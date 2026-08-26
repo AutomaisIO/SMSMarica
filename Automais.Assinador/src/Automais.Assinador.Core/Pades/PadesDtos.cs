@@ -13,11 +13,20 @@ public sealed record CarimboVisual(
     string TextoRodape,
     byte[]? CarimboPng = null);
 
+/// <summary>
+/// Posição do carimbo/assinatura no PDF, em pontos PDF (origem inferior-esquerda),
+/// escolhida pela médica no painel. <see cref="Pagina"/> é 1-based (igual iText).
+/// Quando nula em <see cref="PreparacaoRequisicao"/>, o assinador mantém o padrão
+/// legado (quadrado centralizado no rodapé da última página).
+/// </summary>
+public sealed record CarimboPosicao(int Pagina, float X, float Y, float Largura, float Altura);
+
 /// <summary>Entrada do passo "preparar": PDF original + cadeia do certificado do signatário.</summary>
 public sealed record PreparacaoRequisicao(
     byte[] Pdf,
     IReadOnlyList<byte[]> CadeiaCertificado,
-    CarimboVisual Visual);
+    CarimboVisual Visual,
+    CarimboPosicao? Posicao = null);
 
 /// <summary>
 /// Saída do passo "preparar": o hash que o cliente (agente/VIDaaS) deve assinar +

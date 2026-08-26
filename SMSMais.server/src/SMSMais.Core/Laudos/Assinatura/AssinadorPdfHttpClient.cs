@@ -19,11 +19,14 @@ public sealed class AssinadorPdfHttpClient(
         DadosVisualAssinatura visual,
         CancellationToken cancellationToken = default)
     {
+        var posicao = visual.Posicao is { } p
+            ? new PosicaoReq(p.Pagina, p.X, p.Y, p.Largura, p.Altura)
+            : null;
         var req = new PrepararReq(
             Convert.ToBase64String(pdfOriginal),
             [.. cadeiaCertificado.Select(Convert.ToBase64String)],
             visual.NomeMedico, visual.Crm, visual.UfCrm, visual.Rqe, visual.TextoRodape,
-            visual.CarimboPngBase64);
+            visual.CarimboPngBase64, posicao);
 
         var resp = await EnviarAsync<PrepararReq, PrepararResp>("pades/preparar", req, cancellationToken);
 
@@ -94,7 +97,10 @@ public sealed class AssinadorPdfHttpClient(
         string UfCrm,
         string? Rqe,
         string TextoRodape,
-        string? CarimboPngBase64);
+        string? CarimboPngBase64,
+        PosicaoReq? Posicao);
+
+    private sealed record PosicaoReq(int Pagina, double X, double Y, double Largura, double Altura);
 
     private sealed record PrepararResp(string ToSignHashBase64, string AlgoritmoHash, string TransferStateBase64);
 

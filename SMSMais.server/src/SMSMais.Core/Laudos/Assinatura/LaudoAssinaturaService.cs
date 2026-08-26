@@ -35,9 +35,30 @@ public sealed class LaudoAssinaturaService(
 
     // ---------------- Fluxo do médico ----------------
 
-    public async Task<IniciarAssinaturaResultado> IniciarAsync(
+    public async Task<byte[]> ObterPdfBaseAsync(
         Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default)
     {
+        var laudo = await db.Laudos.AsNoTracking()
+            .FirstOrDefaultAsync(l => l.Id == laudoId && !l.Excluido, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Laudo), laudoId);
+
+        if (laudo.Status != StatusLaudo.Finalizado)
+            throw new ConflitoException("assinatura.so_finalizado", "Apenas laudos finalizados podem ser assinados.");
+
+        var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
+        if (laudo.MedicoId != medico.Id)
+            throw new ConflitoException("assinatura.nao_e_autor", "Apenas o médico autor pode assinar o laudo.");
+
+        // Mesmo layout que será assinado (sem tarja/marca d'água) — a médica posiciona
+        // o carimbo sobre ele (ADR-0049).
+        return await pdf.GerarAsync(laudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
+    }
+
+    public async Task<IniciarAssinaturaResultado> IniciarAsync(
+        Guid laudoId, Guid usuarioId, CarimboPosicaoDto? posicao, CancellationToken cancellationToken = default)
+    {
+        ValidarPosicao(posicao);
+
         var laudo = await db.Laudos.AsNoTracking()
             .FirstOrDefaultAsync(l => l.Id == laudoId && !l.Excluido, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), laudoId);
@@ -88,6 +109,12 @@ public sealed class LaudoAssinaturaService(
         var chave = GerarChave();
         var expira = agora.AddMinutes(_opt.ChaveExpiraMinutos);
 
+        // PDF-base FIXADO (ADR-0049): renderiza UMA vez o layout exato que será assinado
+        // e guarda no job. O "preparar" reutiliza esses bytes em vez de re-renderizar,
+        // eliminando drift de paginação entre o que a médica posicionou e o que é assinado.
+        var pdfBase = await pdf.GerarAsync(laudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
+        var pdfBaseHash = SHA256.HashData(pdfBase);
+
         // Reutiliza um job pendente AINDA VÁLIDO (re-clicou "Assinar") com chave nova.
         var pendente = existentes.FirstOrDefault(a =>
             a.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura);
@@ -96,6 +123,7 @@ public sealed class LaudoAssinaturaService(
             pendente.ChaveAgente = HashChave(chave);
             pendente.ChaveExpiraEm = expira;
             pendente.AtualizadoEm = agora;
+            AplicarBaseEPosicao(pendente, pdfBase, pdfBaseHash, posicao);
             await db.SaveChangesAsync(cancellationToken);
             return new IniciarAssinaturaResultado(pendente.Id, chave);
         }
@@ -111,6 +139,7 @@ public sealed class LaudoAssinaturaService(
             AssinadoPorUsuarioId = usuarioId,
             CriadoEm = agora,
         };
+        AplicarBaseEPosicao(job, pdfBase, pdfBaseHash, posicao);
         db.LaudoAssinaturas.Add(job);
         await db.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
@@ -207,7 +236,10 @@ public sealed class LaudoAssinaturaService(
             throw new ConflitoException("assinatura.medico_sem_rubrica", MensagemSemRubrica);
         }
 
-        var pdfBase = await pdf.GerarAsync(job.LaudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
+        // Reutiliza o PDF-base FIXADO no "iniciar" (ADR-0049) — os bytes exatos que a
+        // médica posicionou. Só re-renderiza no fallback (jobs antigos sem base fixada).
+        var pdfBase = job.PdfBaseFixado
+            ?? await pdf.GerarAsync(job.LaudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
 
         // Compõe o carimbo (rubrica do médico + identificação no quadrado virtual) → PNG.
         var nome = laudo.MedicoNomeSnapshot ?? string.Empty;
@@ -232,9 +264,17 @@ public sealed class LaudoAssinaturaService(
             // agente assina em seguida); este é o instante exibido no carimbo.
             DataAssinatura: FusoBrasilia.ParaExibicao(DateTime.UtcNow)));
 
+        // Posição escolhida pela médica no "iniciar" (ADR-0049); nula = padrão legado.
+        var posicao = job.CarimboPagina is { } pag
+            && job.CarimboX is { } px && job.CarimboY is { } py
+            && job.CarimboLargura is { } pw && job.CarimboAltura is { } ph
+            ? new CarimboPosicaoPdf(pag, px, py, pw, ph)
+            : null;
+
         var visual = new DadosVisualAssinatura(
             nome, crm, uf, rqe, _opt.TextoCarimbo,
-            CarimboPngBase64: Convert.ToBase64String(carimboPng));
+            CarimboPngBase64: Convert.ToBase64String(carimboPng),
+            Posicao: posicao);
 
         PreparacaoAssinatura prep;
         try
@@ -481,9 +521,44 @@ public sealed class LaudoAssinaturaService(
         job.HashParaAssinar = null;
         job.ChaveAgente = null;
         job.ChaveExpiraEm = null;
+        // PDF-base fixado é pesado (bytea) e só serve entre iniciar→preparar; some ao
+        // concluir/cancelar/falhar. A posição (carimbo_*) e o hash ficam para auditoria.
+        job.PdfBaseFixado = null;
     }
 
     private static string GerarChave() => Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+
+    /// <summary>
+    /// Valida grosseiramente a posição do carimbo (ADR-0049): página ≥ 1 e retângulo em
+    /// pontos PDF dentro de limites sãos (A4 ≈ 595×842pt). O clamp fino aos limites reais
+    /// da página acontece no Automais.Assinador, que conhece o tamanho de cada página.
+    /// </summary>
+    private static void ValidarPosicao(CarimboPosicaoDto? p)
+    {
+        if (p is null) return;
+        const double maxPt = 1000d, minLado = 10d;
+        if (p.Pagina < 1
+            || p.Largura < minLado || p.Altura < minLado
+            || p.Largura > maxPt || p.Altura > maxPt
+            || p.X < 0 || p.Y < 0 || p.X > maxPt || p.Y > maxPt)
+        {
+            throw new ValidacaoException("assinatura.posicao_invalida",
+                "Posição do carimbo fora dos limites da página.");
+        }
+    }
+
+    /// <summary>Grava o PDF-base fixado + hash + a posição escolhida no job (ADR-0049).</summary>
+    private static void AplicarBaseEPosicao(
+        LaudoAssinatura job, byte[] pdfBase, byte[] pdfBaseHash, CarimboPosicaoDto? posicao)
+    {
+        job.PdfBaseFixado = pdfBase;
+        job.PdfBaseHash = pdfBaseHash;
+        job.CarimboPagina = posicao?.Pagina;
+        job.CarimboX = posicao?.X;
+        job.CarimboY = posicao?.Y;
+        job.CarimboLargura = posicao?.Largura;
+        job.CarimboAltura = posicao?.Altura;
+    }
 
     /// <summary>Resolve o médico (Practitioner) do usuário logado — espelha LaudosService.</summary>
     private async Task<MedicoDto> ResolverMedicoAsync(Guid usuarioId, CancellationToken ct)

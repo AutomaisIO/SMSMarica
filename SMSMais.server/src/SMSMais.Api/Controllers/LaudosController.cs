@@ -191,19 +191,38 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
     }
 
     /// <summary>
-    /// Inicia a assinatura digital de um laudo finalizado (médico autor). Cria o job e
-    /// devolve a chave de uso único — o front lança o agente via
-    /// <c>automais-assinador://...?chave=</c>.
+    /// PDF-base para o posicionamento do carimbo (ADR-0049): mesmo layout que será
+    /// assinado, sem tarja/marca d'água. O painel o exibe para a médica arrastar/
+    /// redimensionar o carimbo antes de disparar a assinatura.
+    /// </summary>
+    [HttpGet("{id:guid}/assinatura/pdf-base")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Edicao)]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> PdfBaseAssinatura(Guid id, CancellationToken cancellationToken)
+    {
+        var pdf = await _assinatura.ObterPdfBaseAsync(id, ExtrairUsuarioId(), cancellationToken);
+        Response.Headers.CacheControl = "private, no-store";
+        return File(pdf, "application/pdf", $"laudo-{id}-base.pdf");
+    }
+
+    /// <summary>
+    /// Inicia a assinatura digital de um laudo finalizado (médico autor). Cria o job,
+    /// fixa a posição do carimbo escolhida no painel (ADR-0049) e devolve a chave de uso
+    /// único — o front lança o agente via <c>automais-assinador://...?chave=</c>.
     /// </summary>
     [HttpPost("{id:guid}/assinatura/iniciar")]
     [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Edicao)]
     [ProducesResponseType<IniciarAssinaturaResultado>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IniciarAssinaturaResultado> IniciarAssinatura(Guid id, CancellationToken cancellationToken)
+    public async Task<IniciarAssinaturaResultado> IniciarAssinatura(
+        Guid id, [FromBody] IniciarAssinaturaRequest? request, CancellationToken cancellationToken)
     {
         var usuarioId = ExtrairUsuarioId();
-        return await _assinatura.IniciarAsync(id, usuarioId, cancellationToken);
+        return await _assinatura.IniciarAsync(id, usuarioId, request?.Posicao, cancellationToken);
     }
 
     /// <summary>Status da assinatura do laudo (para o front fazer polling após "Assinar").</summary>
@@ -255,3 +274,9 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
         throw new ValidacaoException("auth.sub_invalido", "Token sem identificação do usuário.");
     }
 }
+
+/// <summary>
+/// Corpo do "iniciar assinatura": posição do carimbo escolhida pela médica (ADR-0049).
+/// Opcional — sem corpo/posição, mantém o padrão legado (rodapé da última página).
+/// </summary>
+public sealed record IniciarAssinaturaRequest(CarimboPosicaoDto? Posicao);

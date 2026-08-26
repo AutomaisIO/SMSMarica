@@ -12,8 +12,20 @@ public interface ILaudoAssinaturaService
 {
     // ---- Fluxo do médico (JWT) ----
 
-    /// <summary>Cria (ou reutiliza) o job e devolve a chave de uso único para o agente.</summary>
-    Task<IniciarAssinaturaResultado> IniciarAsync(Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// PDF-base para o posicionamento do carimbo (modo PreparandoAssinatura, sem tarja/
+    /// marca d'água). É o mesmo layout que será assinado — a médica posiciona o carimbo
+    /// sobre ele antes de disparar a assinatura (ADR-0049).
+    /// </summary>
+    Task<byte[]> ObterPdfBaseAsync(Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cria (ou reutiliza) o job e devolve a chave de uso único para o agente. A
+    /// <paramref name="posicao"/> (ADR-0049) fixa onde o carimbo será aplicado; quando
+    /// nula, mantém o padrão legado (rodapé da última página).
+    /// </summary>
+    Task<IniciarAssinaturaResultado> IniciarAsync(
+        Guid laudoId, Guid usuarioId, CarimboPosicaoDto? posicao, CancellationToken cancellationToken = default);
 
     /// <summary>Status da assinatura mais recente do laudo (para polling no front).</summary>
     Task<AssinaturaStatusDto> ObterStatusAsync(Guid laudoId, CancellationToken cancellationToken = default);

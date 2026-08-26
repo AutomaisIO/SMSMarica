@@ -21,6 +21,15 @@ internal sealed class LaudoAssinaturaConfiguration : IEntityTypeConfiguration<La
         builder.Property(a => a.PdfHashSha256).HasColumnName("pdf_hash_sha256").HasColumnType("bytea");
         builder.Property(a => a.TransferState).HasColumnName("transfer_state").HasColumnType("bytea");
         builder.Property(a => a.HashParaAssinar).HasColumnName("hash_para_assinar").HasColumnType("bytea");
+
+        // Posicionamento do carimbo (ADR-0049).
+        builder.Property(a => a.PdfBaseFixado).HasColumnName("pdf_base_fixado").HasColumnType("bytea");
+        builder.Property(a => a.PdfBaseHash).HasColumnName("pdf_base_hash").HasColumnType("bytea");
+        builder.Property(a => a.CarimboPagina).HasColumnName("carimbo_pagina");
+        builder.Property(a => a.CarimboX).HasColumnName("carimbo_x");
+        builder.Property(a => a.CarimboY).HasColumnName("carimbo_y");
+        builder.Property(a => a.CarimboLargura).HasColumnName("carimbo_largura");
+        builder.Property(a => a.CarimboAltura).HasColumnName("carimbo_altura");
         builder.Property(a => a.CertThumbprint).HasColumnName("cert_thumbprint").HasMaxLength(64);
         builder.Property(a => a.EntregueEm).HasColumnName("entregue_em");
         builder.Property(a => a.ChaveAgente).HasColumnName("chave_agente").HasMaxLength(64);

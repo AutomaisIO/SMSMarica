@@ -20,10 +20,14 @@ public sealed class PadesController(IPadesSigner signer) : ControllerBase
             ? null
             : Convert.FromBase64String(req.CarimboPngBase64);
         var visual = new CarimboVisual(req.NomeMedico, req.Crm, req.UfCrm, req.Rqe, req.TextoRodape, carimboPng);
+        var posicao = req.Posicao is { } pos
+            ? new CarimboPosicao(pos.Pagina, pos.X, pos.Y, pos.Largura, pos.Altura)
+            : null;
         var resultado = signer.Preparar(new PreparacaoRequisicao(
             Convert.FromBase64String(req.PdfBase64),
             [.. req.CadeiaCertificadoBase64.Select(Convert.FromBase64String)],
-            visual));
+            visual,
+            posicao));
 
         return new PrepararResponse(
             Convert.ToBase64String(resultado.ToSignHash),
@@ -56,7 +60,11 @@ public sealed record PrepararRequest(
     string UfCrm,
     string? Rqe,
     string TextoRodape,
-    string? CarimboPngBase64 = null);
+    string? CarimboPngBase64 = null,
+    CarimboPosicaoRequest? Posicao = null);
+
+/// <summary>Posição do carimbo em pontos PDF (origem inferior-esquerda; página 1-based).</summary>
+public sealed record CarimboPosicaoRequest(int Pagina, float X, float Y, float Largura, float Altura);
 
 public sealed record PrepararResponse(string ToSignHashBase64, string AlgoritmoHash, string TransferStateBase64);
 

@@ -50,16 +50,18 @@ public sealed class PadesSigner : IPadesSigner
             info.SetCreator("Automais.Assinador");
             info.SetAuthor("Automais.Assinador");
 
-            // Carimbo na ÚLTIMA página (junto da conclusão do laudo). O PDF-base já
-            // reserva a zona do carimbo no fim do conteúdo (LaudoPdfRenderer, modo
-            // PreparandoAssinatura) — juntas, as duas pontas garantem que o carimbo
-            // nunca cubra texto: sem espaço, o gerador quebra página e o carimbo
-            // cai numa página limpa.
-            var ultimaPagina = signer.GetDocument().GetNumberOfPages();
+            // Posição do carimbo: quando a requisição traz uma posição explícita
+            // (médica posicionou no painel — ADR-0049), usa página + retângulo dela,
+            // com clamp defensivo aos limites da página. Sem posição, cai no padrão
+            // legado (quadrado centralizado no rodapé da ÚLTIMA página).
+            var totalPaginas = signer.GetDocument().GetNumberOfPages();
+            var pagina = requisicao.Posicao is { } p
+                ? Math.Clamp(p.Pagina, 1, totalPaginas)
+                : totalPaginas;
             var props = new SignerProperties()
                 .SetFieldName(FieldName)
-                .SetPageNumber(ultimaPagina)
-                .SetPageRect(MontarRect(signer, ultimaPagina, requisicao.Visual))
+                .SetPageNumber(pagina)
+                .SetPageRect(MontarRect(signer, pagina, requisicao.Visual, requisicao.Posicao))
                 .SetSignatureAppearance(MontarAppearance(requisicao.Visual));
             signer.SetSignerProperties(props);
 
@@ -149,18 +151,37 @@ public sealed class PadesSigner : IPadesSigner
     // ----------------- Helpers -----------------
 
     /// <summary>
-    /// Carimbo quadrado (o "quadrado virtual" composto pelo servidor) centralizado
-    /// no rodapé da página alvo quando há imagem; senão a faixa de texto legada no
-    /// canto inferior.
+    /// Retângulo do carimbo na página alvo. Se a médica escolheu a posição (ADR-0049),
+    /// usa o retângulo dela em pontos PDF, com clamp aos limites da página. Sem posição,
+    /// cai no padrão legado: carimbo quadrado centralizado no rodapé quando há imagem;
+    /// faixa de texto no canto inferior quando é só texto.
     /// </summary>
-    private static Rectangle MontarRect(PdfSigner signer, int pagina, CarimboVisual v)
+    private static Rectangle MontarRect(PdfSigner signer, int pagina, CarimboVisual v, CarimboPosicao? posicao)
     {
+        var pageSize = signer.GetDocument().GetPage(pagina).GetPageSize();
+
+        if (posicao is { } p)
+            return ClampNaPagina(p, pageSize);
+
         if (v.CarimboPng is null)
             return new Rectangle(36, 36, 240, 64);
 
         const float lado = 130f;
-        var largura = signer.GetDocument().GetPage(pagina).GetPageSize().GetWidth();
-        return new Rectangle((largura - lado) / 2f, 28f, lado, lado);
+        return new Rectangle((pageSize.GetWidth() - lado) / 2f, 28f, lado, lado);
+    }
+
+    /// <summary>
+    /// Confina o retângulo escolhido aos limites da página (com dimensões mínimas),
+    /// impedindo que uma coordenada malformada estoure o appearance do iText.
+    /// </summary>
+    private static Rectangle ClampNaPagina(CarimboPosicao p, Rectangle pageSize)
+    {
+        const float minLado = 24f;
+        var largura = Math.Clamp(p.Largura, minLado, pageSize.GetWidth());
+        var altura = Math.Clamp(p.Altura, minLado, pageSize.GetHeight());
+        var x = Math.Clamp(p.X, 0f, pageSize.GetWidth() - largura);
+        var y = Math.Clamp(p.Y, 0f, pageSize.GetHeight() - altura);
+        return new Rectangle(x, y, largura, altura);
     }
 
     private static SignatureFieldAppearance MontarAppearance(CarimboVisual v)

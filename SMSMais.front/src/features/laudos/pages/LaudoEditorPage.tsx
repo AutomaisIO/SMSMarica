@@ -41,6 +41,7 @@ import {
 } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { ModalConferenciaAssinatura } from '@/features/laudos/components/ModalConferenciaAssinatura';
+import { ModalPosicionarCarimbo } from '@/features/laudos/components/ModalPosicionarCarimbo';
 import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import { PainelChecklist } from '@/features/laudos/checklist/PainelChecklist';
 import { useListarTemplates } from '@/features/laudo-templates/api/queries';
@@ -48,7 +49,7 @@ import { obterTemplate } from '@/features/laudo-templates/api/laudoTemplatesApi'
 import { templateDaModalidade } from '@/features/laudos/lib/templateModalidade';
 import { coletarContribuicoes, gerarHtmlLaudo } from '@/features/laudos/checklist/gerarTexto';
 import type { EstruturaChecklist, RespostasChecklist } from '@/features/laudos/checklist/types';
-import type { ChecklistLaudoInput } from '@/features/laudos/types';
+import type { CarimboPosicao, ChecklistLaudoInput } from '@/features/laudos/types';
 import {
   TIMEOUT_AGENTE_SEGUNDOS,
   lancarAgenteAssinatura,
@@ -80,6 +81,8 @@ export function LaudoEditorPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [aguardandoAgente, setAguardandoAgente] = useState(false);
   const [agenteNaoEncontrado, setAgenteNaoEncontrado] = useState(false);
+  // Posicionamento do carimbo (ADR-0049): abre antes de disparar o agente.
+  const [posicionandoCarimbo, setPosicionandoCarimbo] = useState(false);
   // Baseline (título/html/json/checklist) para detectar alterações não salvas.
   const [baseline, setBaseline] = useState(() =>
     JSON.stringify({ t: 'Laudo', h: '', j: '{}', r: null }),
@@ -342,12 +345,21 @@ export function LaudoEditorPage() {
     }
   }
 
-  async function aoAssinar() {
+  // 1º passo: a médica posiciona o carimbo sobre o PDF-base (ADR-0049).
+  function aoAssinar() {
     if (!id) return;
     setErro(null);
     setAgenteNaoEncontrado(false);
+    setPosicionandoCarimbo(true);
+  }
+
+  // 2º passo: com a posição escolhida, inicia o job e lança o agente.
+  async function aoConfirmarPosicao(posicao: CarimboPosicao) {
+    if (!id) return;
+    setErro(null);
     try {
-      const { chave } = await iniciarAssinatura.mutateAsync(id);
+      const { chave } = await iniciarAssinatura.mutateAsync({ id, posicao });
+      setPosicionandoCarimbo(false);
       // Lança o agente via protocolo e arma o watchdog que detecta se ele não está instalado.
       lancarAgenteAssinatura(chave);
       setAguardandoAgente(true);
@@ -431,6 +443,15 @@ export function LaudoEditorPage() {
           laudoId={id}
           aberto={aguardandoAprovacao && !conferenciaFechada}
           aoFechar={() => setConferenciaFechada(true)}
+        />
+      ) : null}
+      {!ehNovo && id ? (
+        <ModalPosicionarCarimbo
+          laudoId={id}
+          aberto={posicionandoCarimbo}
+          enviando={iniciarAssinatura.isPending}
+          aoCancelar={() => setPosicionandoCarimbo(false)}
+          aoConfirmar={aoConfirmarPosicao}
         />
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">

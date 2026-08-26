@@ -99,6 +99,18 @@ export type IniciarAssinaturaResp = {
   chave: string;
 };
 
+/**
+ * Posição do carimbo escolhida pela médica (ADR-0049), em pontos PDF
+ * (origem inferior-esquerda; `pagina` 1-based). Enviada ao "iniciar".
+ */
+export type CarimboPosicao = {
+  pagina: number;
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+};
+
 export type LaudoHistoricoItem = {
   id: string;
   versao: number;

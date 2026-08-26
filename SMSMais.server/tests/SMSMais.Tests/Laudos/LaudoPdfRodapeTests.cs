@@ -113,6 +113,31 @@ public class LaudoPdfRodapeTests
         Despejar("laudo-3-preparando-assinatura.pdf", pdf);
     }
 
+    [Fact]
+    public async Task Preparando_assinatura_com_notas_longas_nao_gera_pagina_em_branco()
+    {
+        // #113 / ADR-0049: a antiga reserva rígida de 100pt no fim do conteúdo empurrava
+        // a assinatura para uma página em branco quando as NOTAS eram longas. Sem a
+        // reserva, o modo de assinatura pagina pelo fluxo natural do conteúdo. Como o
+        // rodapé de assinatura é MENOR que o "finalizado não assinado" (sem régua/tarja/
+        // "Emitido em"), ele nunca pode ter MAIS páginas — só igual ou menos. Sob o
+        // código antigo, a reserva podia acrescentar uma página a mais (a em branco).
+        var laudo = LaudoExemplo(StatusLaudo.Finalizado);
+        laudo.ConteudoHtml += "<h3>NOTAS</h3>" + string.Concat(Enumerable.Repeat(
+            "<p>Observação clínica detalhada de rotina, redigida para ocupar a página " +
+            "e aproximar o fim do conteúdo do pé, exatamente o cenário do chamado.</p>", 42));
+
+        var renderer = MontarRenderer(laudo);
+        var preparando = await renderer.GerarAsync(Guid.NewGuid(), ModoRodapeLaudo.PreparandoAssinatura);
+        var naoAssinado = await renderer.GerarAsync(Guid.NewGuid(), ModoRodapeLaudo.FinalizadoNaoAssinado);
+
+        EhPdf(preparando).Should().BeTrue();
+        var paginasPreparando = ContarPaginas(preparando);
+        paginasPreparando.Should().BeGreaterThan(1); // as notas longas realmente paginam
+        paginasPreparando.Should().BeLessThanOrEqualTo(ContarPaginas(naoAssinado));
+        Despejar("laudo-4-preparando-notas-longas.pdf", preparando);
+    }
+
     [Theory]
     [InlineData(FormatoAssinaturaMedico.Quadrada, 800, 800)]
     [InlineData(FormatoAssinaturaMedico.Horizontal, 800, 400)]
@@ -136,6 +161,16 @@ public class LaudoPdfRodapeTests
 
     private static bool EhPdf(byte[] b) =>
         b.Length > 4 && b[0] == 0x25 && b[1] == 0x50 && b[2] == 0x44 && b[3] == 0x46; // %PDF
+
+    /// <summary>
+    /// Conta as páginas de um PDF pelos objetos <c>/Type /Page</c> (excluindo o nó
+    /// <c>/Type /Pages</c>). Suficiente para a saída não-comprimida do QuestPDF nos testes.
+    /// </summary>
+    private static int ContarPaginas(byte[] pdf)
+    {
+        var texto = System.Text.Encoding.Latin1.GetString(pdf);
+        return System.Text.RegularExpressions.Regex.Matches(texto, @"/Type\s*/Page(?![s])").Count;
+    }
 
     private static void Despejar(string nome, byte[] bytes)
     {

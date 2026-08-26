@@ -50,7 +50,15 @@ public sealed record DadosVisualAssinatura(
     string UfCrm,
     string? Rqe,
     string TextoRodape,
-    string? CarimboPngBase64 = null);
+    string? CarimboPngBase64 = null,
+    CarimboPosicaoPdf? Posicao = null);
+
+/// <summary>
+/// Posição do carimbo no PDF, em pontos (origem inferior-esquerda; página 1-based),
+/// escolhida pela médica no painel (ADR-0049). Nula = padrão legado (rodapé da última
+/// página) — mantém o comportamento anterior para quem não posiciona.
+/// </summary>
+public sealed record CarimboPosicaoPdf(int Pagina, double X, double Y, double Largura, double Altura);
 
 /// <summary>Resultado do passo "preparar": o que o cliente precisa assinar + estado opaco.</summary>
 public sealed record PreparacaoAssinatura(

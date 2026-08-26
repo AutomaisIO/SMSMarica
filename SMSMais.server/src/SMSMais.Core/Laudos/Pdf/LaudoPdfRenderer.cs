@@ -43,14 +43,6 @@ public sealed class LaudoPdfRenderer(
     private readonly LaudosPdfOptions _opt = options.Value;
 
     /// <summary>
-    /// Altura reservada ao carimbo da assinatura no fim do conteúdo (modo
-    /// PreparandoAssinatura). Topo do carimbo = 158pt do pé da página; margem
-    /// inferior de 2cm ≈ 57pt e rodapé mínimo (nº da página) ≈ 14pt → o carimbo
-    /// invade ≈ 87pt da área útil. 100pt cobre com folga rodapés enxutos.
-    /// </summary>
-    private const float ReservaCarimboPt = 100f;
-
-    /// <summary>
     /// Corpo do laudo é 10pt; dentro de tabela de dados cai para 9pt — uma tabela
     /// de 7 colunas (densitometria) não cabe na largura útil da A4 com 10pt sem
     /// quebrar os títulos em 3 linhas.
@@ -224,16 +216,12 @@ public sealed class LaudoPdfRenderer(
                     }
                 });
 
-                // RESERVA DO CARIMBO (só no PDF-base de assinatura): o Automais.Assinador
-                // estampa um quadrado de 130pt a 28..158pt do pé da ÚLTIMA página. Com a
-                // margem de 2cm (~57pt) + rodapé, o carimbo invade ~100pt da área útil —
-                // este bloco vazio e inquebrável garante que o TEXTO nunca termine dentro
-                // dessa zona: se não couber, o QuestPDF quebra a página e o carimbo cai
-                // numa página limpa. (Correção do carimbo sobreposto ao texto.)
-                if (modo == ModoRodapeLaudo.PreparandoAssinatura)
-                {
-                    col.Item().Height(ReservaCarimboPt);
-                }
+                // ADR-0049: a reserva rígida do carimbo no fim do conteúdo foi REMOVIDA.
+                // A posição do carimbo deixou de ser fixa (rodapé da última página) e
+                // passou a ser escolhida pela médica sobre este PDF-base; a antiga reserva
+                // de 100pt inquebráveis empurrava a assinatura para uma página em branco
+                // quando as NOTAS eram longas (ticket #113). Sem reserva, o conteúdo flui
+                // natural e o carimbo é aplicado na posição escolhida (Automais.Assinador).
             });
 
             // Marca d'água diagonal de RASCUNHO: forte e inequívoca, atrás do

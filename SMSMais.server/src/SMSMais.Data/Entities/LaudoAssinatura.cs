@@ -50,6 +50,28 @@ public class LaudoAssinatura
     /// <summary>Hash que o agente deve assinar (definido ao preparar). Transitório.</summary>
     public byte[]? HashParaAssinar { get; set; }
 
+    // ---- Posicionamento do carimbo (ADR-0049) ----
+
+    /// <summary>
+    /// PDF-base fixado no "iniciar" (modo PreparandoAssinatura, sem reserva). É o
+    /// artefato EXATO que será assinado: a médica posiciona o carimbo sobre ele e o
+    /// "preparar" o reutiliza, sem re-renderizar (evita drift de paginação). Transitório
+    /// — limpo ao concluir/cancelar/falhar.
+    /// </summary>
+    public byte[]? PdfBaseFixado { get; set; }
+
+    /// <summary>SHA-256 do <see cref="PdfBaseFixado"/> (auditoria/integridade da posição).</summary>
+    public byte[]? PdfBaseHash { get; set; }
+
+    /// <summary>Página escolhida para o carimbo (1-based). Nulo = padrão legado (última página).</summary>
+    public int? CarimboPagina { get; set; }
+
+    /// <summary>Retângulo do carimbo em pontos PDF, origem inferior-esquerda (ADR-0049).</summary>
+    public double? CarimboX { get; set; }
+    public double? CarimboY { get; set; }
+    public double? CarimboLargura { get; set; }
+    public double? CarimboAltura { get; set; }
+
     /// <summary>Thumbprint do certificado escolhido pelo agente (auditoria).</summary>
     public string? CertThumbprint { get; set; }
 

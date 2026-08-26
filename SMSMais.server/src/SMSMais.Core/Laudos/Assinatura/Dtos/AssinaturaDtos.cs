@@ -14,6 +14,12 @@ public sealed record AssinaturaStatusDto(
 /// </summary>
 public sealed record IniciarAssinaturaResultado(Guid AssinaturaId, string Chave);
 
+/// <summary>
+/// Posição do carimbo escolhida pela médica no painel (ADR-0049), em pontos PDF
+/// (origem inferior-esquerda; <see cref="Pagina"/> 1-based). Enviada ao "iniciar".
+/// </summary>
+public sealed record CarimboPosicaoDto(int Pagina, double X, double Y, double Largura, double Altura);
+
 /// <summary>Resposta ao agente ao reivindicar o job pela chave.</summary>
 public sealed record ReivindicarResultado(
     Guid AssinaturaId,

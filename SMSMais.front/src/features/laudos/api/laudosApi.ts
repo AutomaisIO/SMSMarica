@@ -3,6 +3,7 @@ import type {
   AssinaturaStatus,
   AtualizarLaudoPayload,
   CadastrarLaudoPayload,
+  CarimboPosicao,
   FiltroLaudos,
   FinalizarLaudoPayload,
   IniciarAssinaturaResp,
@@ -76,9 +77,23 @@ export async function excluirLaudo(id: string): Promise<void> {
 
 // ---- Assinatura digital ----
 
-export async function iniciarAssinatura(id: string): Promise<IniciarAssinaturaResp> {
-  const { data } = await http.post<IniciarAssinaturaResp>(`/laudos/${id}/assinatura/iniciar`);
+export async function iniciarAssinatura(
+  id: string,
+  posicao?: CarimboPosicao,
+): Promise<IniciarAssinaturaResp> {
+  const { data } = await http.post<IniciarAssinaturaResp>(
+    `/laudos/${id}/assinatura/iniciar`,
+    posicao ? { posicao } : {},
+  );
   return data;
+}
+
+/** PDF-base (mesmo layout que será assinado) para posicionar o carimbo (ADR-0049). */
+export async function obterPdfBaseAssinatura(id: string): Promise<ArrayBuffer> {
+  const { data } = await http.get(`/laudos/${id}/assinatura/pdf-base`, {
+    responseType: 'arraybuffer',
+  });
+  return data as ArrayBuffer;
 }
 
 export async function obterStatusAssinatura(id: string): Promise<AssinaturaStatus> {

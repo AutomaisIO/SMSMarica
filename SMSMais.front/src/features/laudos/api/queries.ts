@@ -17,6 +17,7 @@ import {
 import type {
   AtualizarLaudoPayload,
   CadastrarLaudoPayload,
+  CarimboPosicao,
   FiltroLaudos,
   FinalizarLaudoPayload,
 } from '@/features/laudos/types';
@@ -141,10 +142,11 @@ export function useStatusAssinatura(id: string | null, ativo: boolean) {
 export function useIniciarAssinatura() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => iniciarAssinatura(id),
-    onSuccess: (_d, id) => {
-      client.invalidateQueries({ queryKey: assinaturaKey(id) });
-      client.invalidateQueries({ queryKey: laudosKeys.porId(id) });
+    mutationFn: (v: { id: string; posicao?: CarimboPosicao }) =>
+      iniciarAssinatura(v.id, v.posicao),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: assinaturaKey(v.id) });
+      client.invalidateQueries({ queryKey: laudosKeys.porId(v.id) });
     },
   });
 }
