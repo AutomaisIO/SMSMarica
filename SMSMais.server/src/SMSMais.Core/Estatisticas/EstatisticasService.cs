@@ -67,6 +67,7 @@ public sealed class EstatisticasService(
                 "SELECT count(*) FROM smsmarica.conversa c " +
                 "WHERE c.excluido_em IS NULL AND c.criado_em::date BETWEEN @de AND @ate",
                 de, ate, ct);
+            var robo = await LerRoboConsumoAsync(conn, de, ate, ct);
 
             var dias = ate.DayNumber - de.DayNumber + 1;
             var total = resumoBruto.Enviadas + resumoBruto.Recebidas;
@@ -98,7 +99,7 @@ public sealed class EstatisticasService(
             };
 
             return new EstatisticasWhatsAppDto(de, ate, resumo, porDia, porCategoria,
-                porTemplate, porStatus, porAtendente);
+                porTemplate, porStatus, porAtendente, robo);
         }
         finally
         {
@@ -587,6 +588,49 @@ public sealed class EstatisticasService(
         while (await r.ReadAsync(ct))
             lista.Add(new RotuloContagemDto(RotuloStatus(r.IsDBNull(0) ? (int?)null : r.GetInt32(0)), r.GetInt64(1)));
         return lista;
+    }
+
+    /// <summary>Consumo do robô no período (a partir da fila <c>robo_tarefa</c>, âncora
+    /// <c>criado_em</c>): turnos que de fato chamaram a IA (tokens medidos), tokens e custo, total e
+    /// por assunto. Tarefas sem tokens (robô desligado, hand-off antes da IA) não contam.</summary>
+    private async Task<RoboConsumoDto> LerRoboConsumoAsync(
+        DbConnection conn, DateOnly de, DateOnly ate, CancellationToken ct)
+    {
+        long turnos = 0, tin = 0, tout = 0;
+        decimal custo = 0m;
+        await using (var cmd = CriarComando(conn,
+            "SELECT count(*) FILTER (WHERE t.tokens_entrada IS NOT NULL), " +
+            "COALESCE(sum(t.tokens_entrada),0), COALESCE(sum(t.tokens_saida),0), COALESCE(sum(t.custo_usd),0) " +
+            "FROM smsmarica.robo_tarefa t WHERE t.criado_em::date BETWEEN @de AND @ate", de, ate))
+        await using (var r = await cmd.ExecuteReaderAsync(ct))
+        {
+            if (await r.ReadAsync(ct))
+            {
+                turnos = r.GetInt64(0);
+                tin = r.GetInt64(1);
+                tout = r.GetInt64(2);
+                custo = r.GetDecimal(3);
+            }
+        }
+
+        var porAssunto = new List<RoboConsumoAssuntoDto>();
+        await using (var cmd = CriarComando(conn,
+            "SELECT COALESCE(a.nome,'(sem assunto)'), count(*), " +
+            "COALESCE(sum(t.tokens_entrada),0), COALESCE(sum(t.tokens_saida),0), COALESCE(sum(t.custo_usd),0) " +
+            "FROM smsmarica.robo_tarefa t LEFT JOIN smsmarica.robo_assunto a ON a.id = t.robo_assunto_id " +
+            "WHERE t.criado_em::date BETWEEN @de AND @ate AND t.tokens_entrada IS NOT NULL " +
+            "GROUP BY 1 ORDER BY 5 DESC, 2 DESC", de, ate))
+        await using (var r = await cmd.ExecuteReaderAsync(ct))
+        {
+            while (await r.ReadAsync(ct))
+            {
+                long ein = r.GetInt64(2), eout = r.GetInt64(3);
+                porAssunto.Add(new RoboConsumoAssuntoDto(
+                    r.GetString(0), r.GetInt64(1), ein, eout, ein + eout, r.GetDecimal(4)));
+            }
+        }
+
+        return new RoboConsumoDto(turnos, tin, tout, tin + tout, custo, porAssunto);
     }
 
     private async Task<long> LerEscalarAsync(DbConnection conn, string sql, DateOnly de, DateOnly ate, CancellationToken ct)

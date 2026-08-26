@@ -69,7 +69,13 @@ _GUARDRAIL = (
     "trata a própria pessoa com quem você fala como um terceiro. Não repita descrições em 3ª pessoa "
     "que atendentes tenham escrito no histórico (era conversa interna da equipe, não com o cidadão). "
     "Só não AFIRME um vínculo que o contexto não deixe claro; nesse caso, se for essencial, PERGUNTE.\n"
-    "8. Use SEMPRE a ferramenta responder_cidadao para a resposta final (único canal de saída); não "
+    "8. VOCÊ NÃO AGENDA, NÃO REMARCA e NÃO DESMARCA consultas ou exames — não existe esse recurso "
+    "aqui e você não pode fazê-lo por nenhum canal. Se a pessoa quiser AGENDAR ou REMARCAR, oriente-a "
+    "a procurar presencialmente o posto/unidade de saúde onde é atendida (é lá que se remarca). NUNCA "
+    "prometa remarcar/agendar, NUNCA diga \"vou te ajudar a remarcar\" e NUNCA inicie coleta de "
+    "identidade (dígitos do CPF etc.) para uma ação que você não executa. Só faça o que seus comandos "
+    "habilitados permitem; nunca ofereça uma ação que você não tem.\n"
+    "9. Use SEMPRE a ferramenta responder_cidadao para a resposta final (único canal de saída); não "
     "escreva a resposta fora dela; defina handoff=true apenas nos casos da regra 5."
 )
 
@@ -118,6 +124,30 @@ def _cwd() -> str:
     return config.ATENDIMENTO_CWD if os.path.isdir(config.ATENDIMENTO_CWD) else config.FALLBACK_CWD
 
 
+def _uso_val(usage, chave):
+    """Lê um campo do usage do ResultMessage (dict ou objeto do SDK); 0 se ausente/não-numérico."""
+    if usage is None:
+        return 0
+    v = usage.get(chave) if isinstance(usage, dict) else getattr(usage, chave, None)
+    return v if isinstance(v, (int, float)) else 0
+
+
+def _tokens_do_result(message) -> dict:
+    """Extrai tokens/custo de um ResultMessage. tokensEntrada soma input + cache (tudo faturado
+    como entrada); custoUsd é o total_cost_usd do turno (já considera o preço de cache)."""
+    usage = getattr(message, "usage", None)
+    entrada = (_uso_val(usage, "input_tokens")
+               + _uso_val(usage, "cache_read_input_tokens")
+               + _uso_val(usage, "cache_creation_input_tokens"))
+    saida = _uso_val(usage, "output_tokens")
+    custo = getattr(message, "total_cost_usd", None)
+    return {
+        "tokensEntrada": int(entrada) or None,
+        "tokensSaida": int(saida) or None,
+        "custoUsd": float(custo) if isinstance(custo, (int, float)) else None,
+    }
+
+
 async def responder(payload: dict) -> dict:
     """Executa um turno do robô e devolve {texto, handoff, motivoHandoff, confianca}."""
     model = (payload.get("model") or config.MODEL).strip()
@@ -146,9 +176,12 @@ async def responder(payload: dict) -> dict:
     prompt = _build_prompt(payload.get("historico"), payload.get("mensagem"))
 
     texto_solto: list[str] = []
+    tokens = {"tokensEntrada": None, "tokensSaida": None, "custoUsd": None}
     async with ClaudeSDKClient(options=options) as client:
         await client.query(prompt)
         async for message in client.receive_response():
+            if type(message).__name__ == "ResultMessage":
+                tokens = _tokens_do_result(message)
             for block in getattr(message, "content", None) or []:
                 t = getattr(block, "text", None)
                 if isinstance(t, str) and t.strip():
@@ -160,16 +193,18 @@ async def responder(payload: dict) -> dict:
             "handoff": captured.get("handoff", False),
             "motivoHandoff": captured.get("motivoHandoff"),
             "confianca": captured.get("confianca"),
+            **tokens,
         }
 
     # Fallback: o modelo não usou a ferramenta. Usa o texto solto; se nem isso, pede humano.
     solto = "\n".join(texto_solto).strip()
     if solto:
-        return {"texto": solto, "handoff": False, "motivoHandoff": None, "confianca": None}
+        return {"texto": solto, "handoff": False, "motivoHandoff": None, "confianca": None, **tokens}
     logger.warning("Turno de atendimento sem resposta utilizável — encaminhando ao humano.")
     return {
-        "texto": "Um momento! Vou pedir para um atendente falar com você. 😊",
+        "texto": "Um momento! Vou pedir para um atendente falar com você.",
         "handoff": True,
         "motivoHandoff": "sem-resposta-do-modelo",
         "confianca": 0.0,
+        **tokens,
     }

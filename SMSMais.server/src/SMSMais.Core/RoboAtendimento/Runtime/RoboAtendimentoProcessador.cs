@@ -136,6 +136,9 @@ public sealed class RoboAtendimentoProcessador(
 
         tarefa.RoboAssuntoId = assunto?.Id;
         tarefa.ConfiancaUltima = resposta.Confianca;
+        tarefa.TokensEntrada = resposta.TokensEntrada;
+        tarefa.TokensSaida = resposta.TokensSaida;
+        tarefa.CustoUsd = resposta.CustoUsd;
         tarefa.Status = resposta.HandOff ? StatusRoboTarefa.HandOff : StatusRoboTarefa.Concluida;
         tarefa.AtualizadoEm = DateTime.UtcNow;
 

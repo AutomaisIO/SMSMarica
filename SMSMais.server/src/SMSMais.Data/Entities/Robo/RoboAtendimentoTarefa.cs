@@ -31,6 +31,14 @@ public class RoboAtendimentoTarefa
 
     public double? ConfiancaUltima { get; set; }
 
+    // Consumo do turno de IA (do ResultMessage do aiengine) — para o relatório de custo do robô.
+    /// <summary>Tokens de entrada do turno (input + cache lido/criado). <c>null</c> = não medido.</summary>
+    public long? TokensEntrada { get; set; }
+    /// <summary>Tokens de saída (geração) do turno. <c>null</c> = não medido.</summary>
+    public long? TokensSaida { get; set; }
+    /// <summary>Custo do turno em USD (total_cost_usd do aiengine, já considera cache).</summary>
+    public decimal? CustoUsd { get; set; }
+
     public int Tentativas { get; set; }
 
     public DateTime? ProximaTentativaEm { get; set; }

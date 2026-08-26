@@ -16,12 +16,16 @@ public sealed record EntradaMotorRobo(
     string MensagemAtual,
     bool DentroDoHorario);
 
-/// <summary>Resposta estruturada do motor (a ferramenta terminal <c>responder_cidadao</c>).</summary>
+/// <summary>Resposta estruturada do motor (a ferramenta terminal <c>responder_cidadao</c>).
+/// Tokens/custo do turno vêm do <c>ResultMessage</c> do aiengine (nulos se indisponíveis).</summary>
 public sealed record RespostaMotorRobo(
     string Texto,
     bool HandOff,
     string? MotivoHandOff,
-    double? Confianca);
+    double? Confianca,
+    long? TokensEntrada = null,
+    long? TokensSaida = null,
+    decimal? CustoUsd = null);
 
 /// <summary>
 /// Fala com o motor de IA (aiengine, kind <c>atendimento</c>) e devolve a resposta do robô.

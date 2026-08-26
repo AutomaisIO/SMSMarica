@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Bot } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -43,6 +43,9 @@ function isoMenosDias(dias: number): string {
 }
 function nf(n: number): string {
   return n.toLocaleString('pt-BR');
+}
+function usd(n: number): string {
+  return `US$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
 }
 function diaCurto(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
@@ -295,6 +298,51 @@ export function EstatisticasPage() {
             {/* Ranking de atendentes */}
             <Painel titulo="Mensagens por atendente">
               <BarrasHorizontais dados={dados.porAtendente} cor={COR_RECEBIDAS} />
+            </Painel>
+          </div>
+
+          {/* Consumo do robô (IA) */}
+          <div className="space-y-3">
+            <h2 className="flex items-center gap-2 pt-2 text-sm font-semibold text-gray-800">
+              <Bot className="h-4 w-4 text-indigo-500" /> Consumo do robô de atendimento (IA)
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Tile rotulo="Turnos respondidos" valor={nf(dados.robo.turnos)} />
+              <Tile rotulo="Tokens (total)" valor={nf(dados.robo.tokensTotal)} />
+              <Tile rotulo="Tokens entrada / saída" valor={`${nf(dados.robo.tokensEntrada)} / ${nf(dados.robo.tokensSaida)}`} />
+              <Tile rotulo="Custo estimado" valor={usd(dados.robo.custoUsd)} />
+            </div>
+            <Painel titulo="Consumo por assunto">
+              {dados.robo.porAssunto.length === 0 ? (
+                <SemDados altura={120} />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wide text-gray-500">
+                        <th className="py-2 pr-3 font-medium">Assunto</th>
+                        <th className="py-2 px-3 text-right font-medium">Turnos</th>
+                        <th className="py-2 px-3 text-right font-medium">Tokens entrada</th>
+                        <th className="py-2 px-3 text-right font-medium">Tokens saída</th>
+                        <th className="py-2 px-3 text-right font-medium">Tokens total</th>
+                        <th className="py-2 pl-3 text-right font-medium">Custo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dados.robo.porAssunto.map((a) => (
+                        <tr key={a.assunto} className="border-b border-gray-100 last:border-0">
+                          <td className="py-2 pr-3 text-gray-800">{a.assunto}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.turnos)}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensEntrada)}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensSaida)}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensTotal)}</td>
+                          <td className="py-2 pl-3 text-right tabular-nums font-medium text-gray-900">{usd(a.custoUsd)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </Painel>
           </div>
         </>

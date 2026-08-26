@@ -19,6 +19,9 @@ internal sealed class RoboAtendimentoTarefaConfiguration : IEntityTypeConfigurat
         builder.Property(t => t.Status).HasColumnName("status").HasConversion<int>().IsRequired();
         builder.Property(t => t.SessionIdAiengine).HasColumnName("session_id_aiengine").HasMaxLength(200);
         builder.Property(t => t.ConfiancaUltima).HasColumnName("confianca_ultima");
+        builder.Property(t => t.TokensEntrada).HasColumnName("tokens_entrada");
+        builder.Property(t => t.TokensSaida).HasColumnName("tokens_saida");
+        builder.Property(t => t.CustoUsd).HasColumnName("custo_usd").HasColumnType("numeric(12,6)");
         builder.Property(t => t.Tentativas).HasColumnName("tentativas").HasDefaultValue(0).IsRequired();
         builder.Property(t => t.ProximaTentativaEm).HasColumnName("proxima_tentativa_em");
         builder.Property(t => t.Erro).HasColumnName("erro");

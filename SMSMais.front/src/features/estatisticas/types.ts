@@ -17,6 +17,24 @@ export type SerieDia = { dia: string; enviadas: number; recebidas: number };
 
 export type RotuloContagem = { rotulo: string; total: number };
 
+export type RoboConsumoAssunto = {
+  assunto: string;
+  turnos: number;
+  tokensEntrada: number;
+  tokensSaida: number;
+  tokensTotal: number;
+  custoUsd: number;
+};
+
+export type RoboConsumo = {
+  turnos: number;
+  tokensEntrada: number;
+  tokensSaida: number;
+  tokensTotal: number;
+  custoUsd: number;
+  porAssunto: RoboConsumoAssunto[];
+};
+
 export type EstatisticasWhatsApp = {
   de: string;
   ate: string;
@@ -26,4 +44,5 @@ export type EstatisticasWhatsApp = {
   porTemplate: RotuloContagem[];
   porStatus: RotuloContagem[];
   porAtendente: RotuloContagem[];
+  robo: RoboConsumo;
 };

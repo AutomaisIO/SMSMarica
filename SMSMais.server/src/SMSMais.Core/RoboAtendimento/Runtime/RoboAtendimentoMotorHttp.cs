@@ -61,7 +61,10 @@ public sealed class RoboAtendimentoMotorHttp(
             dto.Texto?.Trim() ?? string.Empty,
             dto.HandOff,
             string.IsNullOrWhiteSpace(dto.MotivoHandOff) ? null : dto.MotivoHandOff,
-            dto.Confianca);
+            dto.Confianca,
+            dto.TokensEntrada,
+            dto.TokensSaida,
+            dto.CustoUsd);
     }
 
     private static string Truncar(string s) => s.Length <= 300 ? s : s[..300];
@@ -70,5 +73,8 @@ public sealed class RoboAtendimentoMotorHttp(
         [property: JsonPropertyName("texto")] string? Texto,
         [property: JsonPropertyName("handoff")] bool HandOff,
         [property: JsonPropertyName("motivoHandoff")] string? MotivoHandOff,
-        [property: JsonPropertyName("confianca")] double? Confianca);
+        [property: JsonPropertyName("confianca")] double? Confianca,
+        [property: JsonPropertyName("tokensEntrada")] long? TokensEntrada,
+        [property: JsonPropertyName("tokensSaida")] long? TokensSaida,
+        [property: JsonPropertyName("custoUsd")] decimal? CustoUsd);
 }

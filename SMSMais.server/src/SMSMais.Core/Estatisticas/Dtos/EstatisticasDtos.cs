@@ -12,7 +12,27 @@ public sealed record EstatisticasWhatsAppDto(
     IReadOnlyList<RotuloContagemDto> PorCategoria,
     IReadOnlyList<RotuloContagemDto> PorTemplate,
     IReadOnlyList<RotuloContagemDto> PorStatus,
-    IReadOnlyList<RotuloContagemDto> PorAtendente);
+    IReadOnlyList<RotuloContagemDto> PorAtendente,
+    RoboConsumoDto Robo);
+
+/// <summary>Consumo do robô de atendimento (IA) no período: turnos respondidos, tokens e custo,
+/// com quebra por assunto. Alimenta a seção de custo do robô no relatório de mensagens.</summary>
+public sealed record RoboConsumoDto(
+    long Turnos,
+    long TokensEntrada,
+    long TokensSaida,
+    long TokensTotal,
+    decimal CustoUsd,
+    IReadOnlyList<RoboConsumoAssuntoDto> PorAssunto);
+
+/// <summary>Consumo do robô agrupado por assunto.</summary>
+public sealed record RoboConsumoAssuntoDto(
+    string Assunto,
+    long Turnos,
+    long TokensEntrada,
+    long TokensSaida,
+    long TokensTotal,
+    decimal CustoUsd);
 
 /// <summary>Cartões-resumo (KPIs) do período.</summary>
 public sealed record EstatisticasResumoDto(
