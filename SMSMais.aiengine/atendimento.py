@@ -215,15 +215,16 @@ async def responder(payload: dict) -> dict:
             **tokens,
         }
 
-    # Fallback: o modelo não usou a ferramenta. Usa o texto solto; se nem isso, pede humano.
+    # Fallback: o modelo NÃO usou a ferramenta de saída (responder_cidadao). NUNCA enviamos a prosa
+    # intermediária dele ao cidadão — ela é raciocínio e pode conter menção a ferramentas/esquemas
+    # ("preciso carregar o schema da ferramenta..."), o que vazaria internals. Guardamos a prosa só
+    # no log e devolvemos uma mensagem SEGURA (segura o cidadão), marcando para um humano assumir.
     solto = "\n".join(texto_solto).strip()
-    if solto:
-        return {"texto": solto, "handoff": False, "motivoHandoff": None, "confianca": None, **tokens}
-    logger.warning("Turno de atendimento sem resposta utilizável — encaminhando ao humano.")
+    logger.warning("Turno de atendimento sem responder_cidadao — prosa DESCARTADA (não enviada): %r", solto[:300])
     return {
-        "texto": "Um momento! Vou pedir para um atendente falar com você.",
+        "texto": "Só um momento, por favor — já retorno com sua resposta.",
         "handoff": True,
-        "motivoHandoff": "sem-resposta-do-modelo",
+        "motivoHandoff": "sem-uso-da-ferramenta-de-saida",
         "confianca": 0.0,
         **tokens,
     }

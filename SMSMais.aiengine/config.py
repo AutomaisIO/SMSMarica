@@ -101,7 +101,9 @@ ATENDIMENTO_RESPONDER_FQN = "mcp__atendimento__responder_cidadao"
 ATENDIMENTO_ALLOWED_TOOLS = [ATENDIMENTO_RESPONDER_FQN]
 # Sandbox vazio e próprio (fora de /opt e do repo). Cai no FALLBACK_CWD se não existir.
 ATENDIMENTO_CWD = os.getenv("AIENGINE_ATENDIMENTO_CWD", "/var/lib/smsmarica-aiengine/atendimento-sandbox")
-ATENDIMENTO_MAX_TURNS = int(os.getenv("AIENGINE_ATENDIMENTO_MAX_TURNS", "4"))
+# Folga para: narrar-nada -> chamar comando -> ler resultado -> responder_cidadao. Baixo demais faz
+# o turno acabar antes do responder_cidadao e cair no fallback (que agora NÃO vaza prosa).
+ATENDIMENTO_MAX_TURNS = int(os.getenv("AIENGINE_ATENDIMENTO_MAX_TURNS", "6"))
 
 # Proxy SQL interno da API .NET (loopback). O tool `consultar_base` fala SÓ com ele.
 PROXYSQL_URL = os.getenv("AIENGINE_PROXYSQL_URL", "http://127.0.0.1:5091/proxy-sql")
