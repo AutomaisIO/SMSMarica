@@ -109,14 +109,18 @@ export function SerFilaPage() {
         <div>
           {/* Com o paciente já conciliado no hub, a linha ganha o bonequinho (resumo) e o
               atalho de WhatsApp — os mesmos do resto da aplicação. Sem conciliação ainda,
-              mostra só o nome: os dois componentes falam por id, não por nome. */}
+              mostra só o nome: os dois componentes falam por id, não por nome.
+              O stopPropagation é essencial: a linha inteira navega para o detalhe, e sem ele
+              clicar no bonequinho/zap abriria o modal e JÁ navegaria para fora por baixo. */}
           {s.pacienteId ? (
-            <NomePacienteComResumo
-              pacienteId={s.pacienteId}
-              nome={s.pacienteNome}
-              classNameNome="text-sm font-medium"
-              mostrarWhatsApp
-            />
+            <span onClick={(e) => e.stopPropagation()}>
+              <NomePacienteComResumo
+                pacienteId={s.pacienteId}
+                nome={s.pacienteNome}
+                classNameNome="text-sm font-medium"
+                mostrarWhatsApp
+              />
+            </span>
           ) : (
             <div className="text-sm font-medium">{s.pacienteNome}</div>
           )}
