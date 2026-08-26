@@ -85,7 +85,16 @@ public sealed class SernitLeitorService(
         var doc = SernitHtmlParser.Documento(_htmlForm);
         if (SernitHtmlParser.BotaoPesquisar(doc) is null)
         {
-            logger.LogInformation("SERNIT: tela de pesquisa perdida — reabrindo antes de pesquisar.");
+            // A sessão do motor caiu no SERNIT — a varredura DIÁRIA reusa o singleton, que ficou
+            // parado desde a última rodada; o SERNIT devolve uma página de sessão-expirada que NÃO
+            // bate com o detector de login/AGUARDE, então o AbrirTela não reautentica sozinho (a
+            // CARGA INICIAL funciona justamente porque abre sessão nova). Força sessão nova e reabre.
+            logger.LogInformation(
+                "SERNIT: tela de pesquisa perdida (sessão caída?) — reautenticando e reabrindo.");
+            sessao.Reiniciar();
+            _htmlForm = string.Empty;
+            _htmlDados = string.Empty;
+            _ultimoViewState = null;
             await PrepararAsync(cancellationToken);
             doc = SernitHtmlParser.Documento(_htmlForm);
         }
