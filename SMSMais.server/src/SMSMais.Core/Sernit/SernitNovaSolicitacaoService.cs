@@ -246,13 +246,28 @@ public sealed partial class SernitNovaSolicitacaoService(
 
     private async Task<string> AbrirEditarAsync(CancellationToken cancellationToken)
     {
-        var tela = await sessao.AbrirTelaAsync(CaminhoTela, cancellationToken);
-        var doc = SernitHtmlParser.Documento(tela);
-
-        if (SernitHtmlParser.BotaoPesquisar(doc) is null)
+        string tela;
+        IHtmlDocument doc;
+        for (var tentativa = 1; ; tentativa++)
         {
-            throw new InvalidOperationException(
-                "O SERNIT não devolveu a tela de Solicitação (sem botão Pesquisar). Sessão derrubada?");
+            tela = await sessao.AbrirTelaAsync(CaminhoTela, cancellationToken);
+            doc = SernitHtmlParser.Documento(tela);
+            if (SernitHtmlParser.BotaoPesquisar(doc) is not null) break;
+
+            if (tentativa >= 2)
+            {
+                throw new InvalidOperationException(
+                    "O SERNIT não devolveu a tela de Solicitação (sem botão Pesquisar). Sessão derrubada?");
+            }
+
+            // A sessão do motor provavelmente caiu no meio de uma varredura longa: o SERNIT devolve
+            // uma página de sessão-expirada que NÃO bate com o detector de login/AGUARDE (por isso o
+            // AbrirTelaAsync não reautenticou sozinho), e o singleton seguia com Logado/ModuloAtivo
+            // marcados — daí as rodadas seguintes falharem na hora. Força sessão nova e tenta de novo,
+            // para a cópia do catálogo resistir a quedas sem exigir novo clique.
+            logger.LogWarning(
+                "SERNIT: tela de Solicitação veio sem o botão Pesquisar (sessão caída?). Reautenticando.");
+            sessao.Reiniciar();
         }
 
         var resposta = await sessao.SubmeterFormAsync(
