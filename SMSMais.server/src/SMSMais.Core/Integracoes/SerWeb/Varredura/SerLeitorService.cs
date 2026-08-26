@@ -271,15 +271,24 @@ public sealed class SerLeitorService(
             "SER: modal de FollowUP de {IdSer} — form {Form}, texto {Campo}, gravar {Botao}.",
             idSer, modal.FormId, modal.CampoTexto, modal.BotaoGravar);
 
-        // 2) Gravar. POST COMUM: sem `AJAXREQUEST` e com o ViewState de DENTRO do form do modal —
-        // mandar o do form0 faria o JSF restaurar a view errada e a ação não rodaria (200 mudo).
+        // 2) Gravar. O botão Gravar do modal é A4J/RichFaces (input:button), não um submit comum:
+        // o onclick faz `A4J.AJAX.Submit('<form do modal>', event, {parameters:{'<botão>':'<botão>'}})`.
+        // Reproduzir ISSO é o que grava — o POST comum antigo (Gravar="Gravar", sem AJAXREQUEST)
+        // era ignorado pelo SER, que devolvia o modal reaberto sem nada gravado (ticket #111,
+        // diagnosticado 26/08 pelo onclick capturado no log). Logo:
+        //  - AJAXREQUEST = id do form do modal (1º arg do A4J.AJAX.Submit);
+        //  - o botão vai como name=name (o SER espera o próprio id como valor, não o rótulo);
+        //  - o ViewState é o de DENTRO do form do modal (mandar o do form0 restaura a view errada).
+        // SubmeterEscritaAsync serializa os demais campos do form e, vendo AJAXREQUEST, adiciona
+        // AJAX:EVENTS_COUNT — fechando o protocolo do RichFaces.
         var resposta = await sessao.SubmeterEscritaAsync(
             htmlModal,
             modal.FormId,
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
+                ["AJAXREQUEST"] = modal.FormId,
                 [modal.CampoTexto] = texto.Trim(),
-                [modal.BotaoGravar] = "Gravar",
+                [modal.BotaoGravar] = modal.BotaoGravar,
                 ["autoScroll"] = string.Empty,
             },
             modal.ViewState,
