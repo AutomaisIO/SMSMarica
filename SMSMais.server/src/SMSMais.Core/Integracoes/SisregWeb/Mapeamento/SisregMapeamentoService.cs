@@ -272,6 +272,39 @@ public sealed class SisregMapeamentoService(
         return irmaos.Count;
     }
 
+    public async Task AlternarProcedimentosDoProfissionalAsync(
+        Guid profissionalId, bool habilitados, bool enviarConfirmacao,
+        CancellationToken cancellationToken = default)
+    {
+        var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
+        var profissional = await db.SisregProfissionaisUnidade
+                .Include(x => x.Procedimentos)
+                .FirstOrDefaultAsync(x => x.Id == profissionalId && x.UnidadeId == unidade.Id, cancellationToken)
+            ?? throw new NaoEncontradoException("Profissional do mapeamento SISREG", profissionalId);
+
+        // Espelha o que o operador faria clicando um a um: o médico e cada procedimento dele
+        // seguem o mesmo habilita/desabilita. Só automatiza os cliques — nenhuma semântica muda.
+        profissional.Habilitado = habilitados;
+        profissional.AtualizadoEm = DateTime.UtcNow;
+        profissional.AtualizadoPor = usuarioAtual.UsuarioId;
+        foreach (var proc in profissional.Procedimentos) proc.Habilitado = habilitados;
+
+        // O zap continua sendo decisão do procedimento NA UNIDADE (ADR-0040): aplica a todas as
+        // linhas dos mesmos códigos na unidade, não só às deste profissional — idêntico a alternar
+        // o zap procedimento a procedimento.
+        var codigos = profissional.Procedimentos.Select(p => p.Codigo).Distinct().ToList();
+        if (codigos.Count > 0)
+        {
+            var irmaos = await db.SisregProcedimentosProfissional
+                .Include(x => x.Profissional)
+                .Where(x => codigos.Contains(x.Codigo) && x.Profissional!.UnidadeId == unidade.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var irmao in irmaos) irmao.EnviarConfirmacao = enviarConfirmacao;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task AlternarProfissionaisEmLoteAsync(
         IReadOnlyList<Guid> ids, bool habilitado, CancellationToken cancellationToken = default)
     {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   alternarEnvioConfirmacao,
   alternarProcedimento,
+  alternarProcedimentosDoProfissional,
   alternarProfissional,
   alternarProfissionaisEmLote,
   atualizarMapeamento,
@@ -84,6 +85,25 @@ export function useAlternarProcedimento(unidadeId: string | null) {
     onSuccess: () => {
       client.invalidateQueries({ queryKey: mapeamentoKeys.mapeamento(unidadeId) });
       // Habilitar/desabilitar muda o custo estimado da varredura mostrado no bloco de sincronismo.
+      client.invalidateQueries({ queryKey: mapeamentoKeys.agenda(unidadeId) });
+    },
+  });
+}
+
+export function useAlternarProcedimentosDoProfissional(unidadeId: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      habilitados,
+      enviarConfirmacao,
+    }: {
+      id: string;
+      habilitados: boolean;
+      enviarConfirmacao: boolean;
+    }) => alternarProcedimentosDoProfissional(id, habilitados, enviarConfirmacao, unidadeId),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: mapeamentoKeys.mapeamento(unidadeId) });
       client.invalidateQueries({ queryKey: mapeamentoKeys.agenda(unidadeId) });
     },
   });

@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  ListChecks,
   Loader2,
   MessageCircle,
   Network,
@@ -16,6 +17,7 @@ import { ModalImportarProcedimento } from '@/features/sisreg-mapeamento/componen
 import {
   useAlternarEnvioConfirmacao,
   useAlternarProcedimento,
+  useAlternarProcedimentosDoProfissional,
   useAlternarProfissional,
   useAlternarProfissionaisEmLote,
   useAtualizarMapeamento,
@@ -45,6 +47,7 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
   const sincronizar = useSincronizarFhir(unidadeId);
   const alternarProf = useAlternarProfissional(unidadeId);
   const alternarProc = useAlternarProcedimento(unidadeId);
+  const alternarProfProcs = useAlternarProcedimentosDoProfissional(unidadeId);
   const alternarLote = useAlternarProfissionaisEmLote(unidadeId);
   const alternarConfirmacao = useAlternarEnvioConfirmacao(unidadeId);
   const agenda = useVarreduraAgenda(unidadeId);
@@ -294,6 +297,13 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
                     () => `${p.nome} ${habilitado ? 'habilitado' : 'desabilitado'}.`,
                   )
                 }
+                aoAplicarLote={(habilitados, enviarConfirmacao, rotulo) =>
+                  executar(
+                    () =>
+                      alternarProfProcs.mutateAsync({ id: p.id, habilitados, enviarConfirmacao }),
+                    () => `${p.nome}: ${rotulo}.`,
+                  )
+                }
                 aoAlternarProcedimento={(id, habilitado, nome) =>
                   executar(
                     () => alternarProc.mutateAsync({ id, habilitado }),
@@ -351,6 +361,7 @@ function LinhaProfissional({
   aoAlternarProfissional,
   aoAlternarProcedimento,
   aoAlternarConfirmacao,
+  aoAplicarLote,
 }: {
   unidadeId: string;
   profissional: SisregProfissional;
@@ -360,10 +371,32 @@ function LinhaProfissional({
   aoAlternarProfissional: (habilitado: boolean) => void;
   aoAlternarProcedimento: (id: string, habilitado: boolean, nome: string) => void;
   aoAlternarConfirmacao: (procedimentoId: string, enviar: boolean, nome: string) => void;
+  aoAplicarLote: (habilitados: boolean, enviarConfirmacao: boolean, rotulo: string) => void;
 }) {
   const habilitadosNoProfissional = profissional.procedimentos.filter((p) => p.habilitado).length;
   // Procedimento cujo modal "Importar" está aberto (import pontual, cons_agendas).
   const [importarProc, setImportarProc] = useState<SisregProcedimento | null>(null);
+
+  // Botão que evita o "clique-clique": um ciclo de 3 passos sobre TODOS os procedimentos do médico.
+  //   1º Selecionar tudo  → médico + procedimentos habilitados + zap ligado
+  //   2º Desligar o zap    → mantém os procedimentos, só desliga o aviso por WhatsApp
+  //   3º Desmarcar tudo    → desabilita médico + procedimentos
+  // Cada passo só dispara os mesmos efeitos que os checkboxes fazem hoje — nada de semântica nova
+  // (o zap continua alcançando o mesmo código sob os outros médicos da unidade, como já é).
+  const procs = profissional.procedimentos;
+  const temProcs = procs.length > 0;
+  const todosHabilitados = temProcs && profissional.habilitado && procs.every((p) => p.habilitado);
+  const algumZap = procs.some((p) => p.enviarConfirmacao);
+  const proximoPasso = !todosHabilitados
+    ? { habilitados: true, enviarConfirmacao: true, rotulo: 'tudo selecionado' }
+    : algumZap
+      ? { habilitados: true, enviarConfirmacao: false, rotulo: 'aviso por WhatsApp desligado' }
+      : { habilitados: false, enviarConfirmacao: false, rotulo: 'tudo desmarcado' };
+  const rotuloBotao = !todosHabilitados
+    ? 'Selecionar tudo'
+    : algumZap
+      ? 'Desligar zap'
+      : 'Desmarcar tudo';
 
   return (
     <li className={profissional.ausente ? 'bg-gray-50' : undefined}>
@@ -400,6 +433,25 @@ function LinhaProfissional({
         <span className="text-xs text-gray-500">
           {habilitadosNoProfissional}/{profissional.procedimentos.length} procedimentos
         </span>
+
+        {podeEditar && temProcs && (
+          <Button
+            variante="outline"
+            tamanho="sm"
+            className="shrink-0"
+            onClick={() =>
+              aoAplicarLote(
+                proximoPasso.habilitados,
+                proximoPasso.enviarConfirmacao,
+                proximoPasso.rotulo,
+              )
+            }
+            title="Aplica de uma vez a todos os procedimentos deste médico (evita clicar um a um). Clique de novo para percorrer: selecionar tudo → desligar o zap → desmarcar tudo."
+          >
+            <ListChecks className="h-3.5 w-3.5" />
+            {rotuloBotao}
+          </Button>
+        )}
 
         {profissional.practitionerId ? (
           <span

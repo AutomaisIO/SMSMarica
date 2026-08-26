@@ -63,6 +63,13 @@ public sealed record AlternarEmLoteRequest(IReadOnlyList<Guid> Ids, bool Habilit
 /// <summary>Ligar/desligar o aviso por WhatsApp de um procedimento nesta unidade.</summary>
 public sealed record AlternarEnvioConfirmacaoRequest(bool Enviar);
 
+/// <summary>
+/// Aplica de uma vez a um profissional: habilita/desabilita o médico e todos os seus
+/// procedimentos (<see cref="Habilitados"/>) e liga/desliga o aviso por WhatsApp
+/// (<see cref="EnviarConfirmacao"/>). É o botão de "selecionar tudo do médico" da tela.
+/// </summary>
+public sealed record AlternarProcedimentosDoProfissionalRequest(bool Habilitados, bool EnviarConfirmacao);
+
 /// <summary>Resultado da sincronização dos profissionais habilitados com o hub FHIR.</summary>
 public sealed record SisregSincronizacaoFhirDto(
     int Avaliados,

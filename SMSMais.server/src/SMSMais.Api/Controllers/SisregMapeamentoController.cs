@@ -94,6 +94,23 @@ public sealed class SisregMapeamentoController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Aplica de uma vez, a um profissional, o habilita/desabilita do médico e de todos os seus
+    /// procedimentos, e o aviso por WhatsApp — o botão "selecionar tudo do médico" da tela, que
+    /// automatiza os cliques sem mudar semântica (o zap segue a regra do procedimento na unidade).
+    /// </summary>
+    [HttpPut("profissionais/{id:guid}/procedimentos")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AlternarProcedimentosDoProfissional(
+        Guid id, [FromBody] AlternarProcedimentosDoProfissionalRequest request, CancellationToken cancellationToken)
+    {
+        await _mapeamentoService.AlternarProcedimentosDoProfissionalAsync(
+            id, request.Habilitados, request.EnviarConfirmacao, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Sincroniza os profissionais habilitados com o hub FHIR (Practitioner), dedup por CPF.</summary>
     [HttpPost("sincronizar-fhir")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]

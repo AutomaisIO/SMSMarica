@@ -45,6 +45,16 @@ public interface ISisregMapeamentoService
     Task AlternarProfissionaisEmLoteAsync(IReadOnlyList<Guid> ids, bool habilitado, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Aplica de uma vez, a um profissional, o habilita/desabilita do médico e de todos os seus
+    /// procedimentos (<paramref name="habilitados"/>) e o aviso por WhatsApp
+    /// (<paramref name="enviarConfirmacao"/>). Automatiza o "clique-clique" da tela sem mudar
+    /// nenhuma semântica: o zap segue a regra do procedimento na unidade (ADR-0040), alcançando
+    /// as demais linhas do mesmo código.
+    /// </summary>
+    Task AlternarProcedimentosDoProfissionalAsync(
+        Guid profissionalId, bool habilitados, bool enviarConfirmacao, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sincroniza os profissionais <b>habilitados</b> com o hub FHIR como <c>Practitioner</c>,
     /// deduplicando por CPF.
     /// </summary>

@@ -66,6 +66,25 @@ export async function alternarProfissionaisEmLote(
   );
 }
 
+/**
+ * Aplica de uma vez a um profissional: habilita/desabilita o médico e todos os seus procedimentos
+ * (`habilitados`) e liga/desliga o aviso por WhatsApp (`enviarConfirmacao`). É o botão "selecionar
+ * tudo do médico" — só automatiza os cliques, sem mudar semântica (o zap segue a regra do
+ * procedimento na unidade, alcançando as demais linhas do mesmo código).
+ */
+export async function alternarProcedimentosDoProfissional(
+  id: string,
+  habilitados: boolean,
+  enviarConfirmacao: boolean,
+  unidadeId?: string | null,
+): Promise<void> {
+  await http.put(
+    `/sisreg/mapeamento/profissionais/${id}/procedimentos`,
+    { habilitados, enviarConfirmacao },
+    cabecalhoUnidade(unidadeId),
+  );
+}
+
 export async function sincronizarFhir(unidadeId?: string | null): Promise<SisregSincronizacaoFhir> {
   const { data } = await http.post<SisregSincronizacaoFhir>(
     '/sisreg/mapeamento/sincronizar-fhir',
