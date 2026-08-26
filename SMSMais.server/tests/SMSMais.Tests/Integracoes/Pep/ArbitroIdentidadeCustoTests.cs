@@ -91,7 +91,10 @@ public class ArbitroIdentidadeCustoTests
             analisadas++;
         }
 
-        Assert.InRange(analisadas, 1, 5);          // parou cedo, não nas 50
-        Assert.True(relogio.Elapsed < TimeSpan.FromSeconds(3));
+        Assert.InRange(analisadas, 1, 5);          // parou cedo, não nas 50 — a prova real da parada
+        // Guarda contra laço travado, NÃO precisão de relógio: sob CI carregado o Task.Delay das
+        // poucas iterações estica (starvation do threadpool) e um teto curto flaka. 30s só pega um
+        // laço genuinamente preso — a parada antecipada já está provada por 'analisadas'.
+        Assert.True(relogio.Elapsed < TimeSpan.FromSeconds(30));
     }
 }
