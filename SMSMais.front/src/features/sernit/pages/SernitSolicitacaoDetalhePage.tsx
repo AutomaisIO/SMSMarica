@@ -4,6 +4,8 @@ import { Button } from '@/shared/ui/Button';
 import { useSolicitacaoSernit } from '@/features/sernit/api/queries';
 import { SituacaoSernitBadge } from '@/features/sernit/components/SituacaoSernitBadge';
 import type { EventoSernit } from '@/features/sernit/types';
+import { usePacientePorId } from '@/features/pacientes/api/queries';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 function dataHora(iso: string | null): string {
   if (!iso) return '—';
@@ -35,6 +37,63 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: string | null | undef
     <div>
       <dt className="text-xs text-slate-500">{rotulo}</dt>
       <dd className="text-sm">{valor && valor.trim() !== '' ? valor : '—'}</dd>
+    </div>
+  );
+}
+
+function formatarCpf(cpf?: string | null): string | null {
+  const d = (cpf ?? '').replace(/\D/g, '');
+  if (d.length === 11) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+  return cpf && cpf.trim() !== '' ? cpf : null;
+}
+
+function rotuloSexo(s?: string | null): string | null {
+  if (!s) return null;
+  const mapa: Record<string, string> = {
+    NaoInformado: 'Não informado',
+    Masculino: 'Masculino',
+    Feminino: 'Feminino',
+    Outro: 'Outro',
+  };
+  return mapa[s] ?? s;
+}
+
+/**
+ * Linha que mostra o valor do SERNIT; quando o SERNIT não trouxe, cai para o do NOSSO cadastro
+ * (paciente conciliado) marcando com um selo "cadastro" — o operador vê que veio da nossa base,
+ * não do SERNIT. Sem valor em nenhum dos dois, mostra "—".
+ */
+function LinhaCad({
+  rotulo,
+  sernit,
+  cadastro,
+}: {
+  rotulo: string;
+  sernit?: string | null;
+  cadastro?: string | null;
+}) {
+  const temSernit = sernit != null && sernit.trim() !== '';
+  const temCadastro = !temSernit && cadastro != null && cadastro.trim() !== '';
+  return (
+    <div>
+      <dt className="text-xs text-slate-500">{rotulo}</dt>
+      <dd className="text-sm">
+        {temSernit ? (
+          sernit
+        ) : temCadastro ? (
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            {cadastro}
+            <span
+              className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500"
+              title="Do cadastro do paciente na nossa base — o SERNIT não trouxe este dado"
+            >
+              cadastro
+            </span>
+          </span>
+        ) : (
+          <span className="text-slate-400">—</span>
+        )}
+      </dd>
     </div>
   );
 }
@@ -77,6 +136,9 @@ export function SernitSolicitacaoDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navegar = useNavigate();
   const { data: detalhe, isLoading } = useSolicitacaoSernit(id);
+  // Paciente conciliado na nossa base (quando existe): serve de fallback para CPF/telefones/etc.
+  // que o SERNIT não trouxe, e habilita o resumo (bonequinho) + WhatsApp no nome.
+  const cadastro = usePacientePorId(detalhe?.resumo.pacienteId ?? null).data;
 
   if (isLoading) return <div className="p-6 text-sm text-slate-500">Carregando…</div>;
   if (!detalhe) return <div className="p-6 text-sm text-slate-500">Solicitação não encontrada.</div>;
@@ -114,12 +176,30 @@ export function SernitSolicitacaoDetalhePage() {
             <User className="size-4 text-red-600" /> Paciente
           </h2>
           <dl className="space-y-2">
-            <Linha rotulo="Nome" valor={r.pacienteNome} />
+            <div>
+              <dt className="text-xs text-slate-500">Nome</dt>
+              <dd className="text-sm">
+                {r.pacienteId ? (
+                  <NomePacienteComResumo
+                    pacienteId={r.pacienteId}
+                    nome={r.pacienteNome}
+                    mostrarWhatsApp
+                    classNameNome="font-medium"
+                  />
+                ) : (
+                  r.pacienteNome || <span className="text-slate-400">—</span>
+                )}
+              </dd>
+            </div>
             <Linha rotulo="Idade" valor={r.idadeTexto} />
-            <Linha rotulo="Nascimento" valor={data(detalhe.dataNascimento)} />
-            <Linha rotulo="Sexo" valor={detalhe.sexo} />
-            <Linha rotulo="Nome da mãe" valor={detalhe.nomeMae} />
-            <Linha rotulo="CPF" valor={r.cpf} />
+            <LinhaCad
+              rotulo="Nascimento"
+              sernit={detalhe.dataNascimento ? data(detalhe.dataNascimento) : null}
+              cadastro={cadastro?.dataNascimento ? data(cadastro.dataNascimento) : null}
+            />
+            <LinhaCad rotulo="Sexo" sernit={detalhe.sexo} cadastro={rotuloSexo(cadastro?.sexo)} />
+            <LinhaCad rotulo="Nome da mãe" sernit={detalhe.nomeMae} cadastro={cadastro?.nomeDaMae} />
+            <LinhaCad rotulo="CPF" sernit={formatarCpf(r.cpf)} cadastro={formatarCpf(cadastro?.cpf)} />
             <Linha rotulo="CNS" valor={r.cns} />
             <Linha rotulo="Endereço" valor={endereco} />
           </dl>
@@ -128,9 +208,21 @@ export function SernitSolicitacaoDetalhePage() {
             <Phone className="size-4 text-red-600" /> Contatos
           </h3>
           <dl className="space-y-2">
-            <Linha rotulo="Residencial" valor={detalhe.telefoneResidencial} />
-            <Linha rotulo="WhatsApp" valor={detalhe.telefoneWhatsapp} />
-            <Linha rotulo="Contato" valor={detalhe.telefoneContato} />
+            <LinhaCad
+              rotulo="Residencial"
+              sernit={detalhe.telefoneResidencial}
+              cadastro={cadastro?.telefoneResidencial}
+            />
+            <LinhaCad
+              rotulo="WhatsApp"
+              sernit={detalhe.telefoneWhatsapp}
+              cadastro={cadastro?.telefonePrincipal}
+            />
+            <LinhaCad
+              rotulo="Contato"
+              sernit={detalhe.telefoneContato}
+              cadastro={cadastro?.telefoneCelular}
+            />
           </dl>
         </section>
 
