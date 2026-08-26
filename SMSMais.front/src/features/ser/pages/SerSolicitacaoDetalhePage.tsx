@@ -3,6 +3,8 @@ import { ArrowLeft, History, Phone, User } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { useSolicitacaoSer } from '@/features/ser/api/queries';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
+import { PainelFollowUpSer } from '@/features/ser/components/PainelFollowUpSer';
+import { PainelContatosSer } from '@/features/ser/components/PainelContatosSer';
 import type { EventoSer } from '@/features/ser/types';
 
 function dataHora(iso: string | null): string {
@@ -107,6 +109,17 @@ export function SerSolicitacaoDetalhePage() {
         </div>
         <SituacaoSerBadge situacao={r.situacao} />
       </div>
+
+      {/* Ações que escrevem no SER — as mesmas do modal da fila. Cada painel se vira sozinho com
+          a sessão do operador (pede a senha quando falta) e, quando a situação não oferece a ação
+          no SER, mostra o motivo em vez de falhar. Deep-link para a solicitação também precisa
+          delas: quem chega aqui direto não deve ter de voltar à fila só para agir. */}
+      {id && (
+        <section className="flex flex-wrap items-center gap-2">
+          <PainelFollowUpSer solicitacaoId={id} />
+          <PainelContatosSer solicitacaoId={id} />
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-1">
