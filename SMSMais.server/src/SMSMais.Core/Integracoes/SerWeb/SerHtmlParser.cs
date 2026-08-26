@@ -475,7 +475,29 @@ public static partial class SerHtmlParser
             .Take(6)
             .ToArray();
 
-        var partes = new List<string> { "campos=[" + string.Join(", ", descritores) + "]" };
+        // Botões do modal COM o onclick — é o JavaScript do submit que revela o protocolo que o SER
+        // espera (POST comum vs. A4J/RichFaces). Sem PII: rótulo é "Gravar"/"Cancelar" e onclick é
+        // JS estrutural. Truncado por segurança de tamanho de log.
+        var botoes = form.QuerySelectorAll("a, input[type=button], input[type=submit]")
+            .Where(e => !(e.GetAttribute("name") ?? e.Id ?? string.Empty)
+                .StartsWith("javax.faces", StringComparison.Ordinal))
+            .Take(8)
+            .Select(e =>
+            {
+                var nome = e.GetAttribute("name") ?? e.Id ?? "?";
+                var tipo = e.GetAttribute("type") ?? e.TagName.ToLowerInvariant();
+                var rotulo = (e.GetAttribute("value") ?? Texto(e)).Trim();
+                var onclick = (e.GetAttribute("onclick") ?? string.Empty).Trim();
+                if (onclick.Length > 300) onclick = string.Concat(onclick.AsSpan(0, 300), "…");
+                return $"{nome}[{tipo}]\"{rotulo}\"" + (onclick.Length > 0 ? $" onclick={{{onclick}}}" : string.Empty);
+            });
+
+        var partes = new List<string>
+        {
+            "formAction=" + (form.GetAttribute("action") ?? "?"),
+            "campos=[" + string.Join(", ", descritores) + "]",
+            "botoes=[" + string.Join(" ;; ", botoes) + "]",
+        };
         if (mensagens.Length > 0)
         {
             partes.Add("validacao=\"" + string.Join(" | ", mensagens) + "\"");
