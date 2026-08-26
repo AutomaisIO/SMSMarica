@@ -86,9 +86,10 @@ public sealed record UnidadeDestinoDto(Guid Id, string Nome);
 /// <summary>
 /// Contadores de não-lidas para sino/badge sem carregar a lista: <paramref name="MinhasNaoLidas"/>
 /// soma as conversas cujo responsável sou eu; <paramref name="FilaNaoLidas"/> soma as SEM
-/// responsável visíveis a mim (minhas unidades + triagem geral).
+/// responsável visíveis a mim (minhas unidades + triagem geral); <paramref name="TodasNaoLidas"/>
+/// soma TODAS as conversas vivas sem recorte de posse/unidade (badge da aba Todas — ADR-0048).
 /// </summary>
-public sealed record ResumoConversasDto(int MinhasNaoLidas, int FilaNaoLidas);
+public sealed record ResumoConversasDto(int MinhasNaoLidas, int FilaNaoLidas, int TodasNaoLidas);
 
 /// <summary>
 /// Uma "sessão" de conversa na aba do cadastro do paciente — bloco de mensagens do mesmo

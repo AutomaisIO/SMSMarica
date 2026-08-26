@@ -41,6 +41,7 @@ export function ListaConversas({ conversaAtivaId, onSelecionar }: Props) {
   const badgeAba: Partial<Record<AbaConversas, number>> = {
     Minhas: resumo?.minhasNaoLidas ?? 0,
     Unidade: resumo?.filaNaoLidas ?? 0,
+    Todas: resumo?.todasNaoLidas ?? 0,
   };
 
   return (

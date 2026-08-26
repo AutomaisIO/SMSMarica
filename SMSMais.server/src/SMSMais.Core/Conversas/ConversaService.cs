@@ -610,7 +610,10 @@ public sealed class ConversaService(
         var vivas = db.Conversas.AsNoTracking().Where(c => c.ExcluidoEm == null);
         var minhas = await FiltrarMinhas(vivas, me).SumAsync(c => c.NaoLidas, ct);
         var fila = await FiltrarFila(vivas, minhasUnidades).SumAsync(c => c.NaoLidas, ct);
-        return new ResumoConversasDto(minhas, fila);
+        // Todas: sem recorte de posse/unidade — espelha o que a aba Todas lista (ADR-0048).
+        // Não é minhas+fila (essas são disjuntas e excluem conversas de outros donos).
+        var todas = await vivas.SumAsync(c => c.NaoLidas, ct);
+        return new ResumoConversasDto(minhas, fila, todas);
     }
 
     // --- helpers -------------------------------------------------------------------------------

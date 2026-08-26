@@ -107,6 +107,7 @@ export type UnidadeDestino = {
 export type ResumoConversas = {
   minhasNaoLidas: number;
   filaNaoLidas: number;
+  todasNaoLidas: number;
 };
 
 /** Payload dos eventos SignalR (espelha ConversaEventoRealtime do backend). */
