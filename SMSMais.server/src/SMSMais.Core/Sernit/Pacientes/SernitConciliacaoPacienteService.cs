@@ -61,7 +61,12 @@ public sealed class SernitConciliacaoPacienteService(
 
         var id = await UpsertCanonicoPep.UpsertAsync(
             ctx, "Patient", system, valor, novo,
-            systemCdInterno: system,
+            // Ponte CNS→CPF (diferente do SER-RJ, que a desliga): no SERNIT o CNS vem já na FILA e o
+            // CPF só depois, no DETALHE. Quando a conciliação re-roda com o CPF recém-descoberto e
+            // ancora por CPF, passar o CNS como chave faz o upsert BUSCAR pelo CNS antes: se não há
+            // registro por CPF, REUSA o paciente que só tinha CNS e acrescenta o CPF (não duplica);
+            // se o CPF já é de OUTRO registro, sinaliza o prontuário partido para mesclagem manual.
+            systemCdInterno: SernitPacienteFhirMapper.SysCns,
             ct,
             fonteParcial: true,
             aoEscrever: (atual, _) => { antes = atual; escreveu = true; });
