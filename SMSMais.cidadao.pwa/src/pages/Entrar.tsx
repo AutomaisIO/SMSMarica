@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { http } from '@/lib/httpClient';
 import { useAuth } from '@/store/auth';
 import { ConfirmarCpf } from './ConfirmarCpf';
@@ -25,7 +25,21 @@ type RespostaMagic = {
 /** Chave usada por Agendados.tsx para exibir o modal "Agenda confirmada" após o magic link. */
 export const CHAVE_CONFIRMACAO_AGENDAMENTO = 'smsmarica-confirmacao-agendamento';
 
-type Fase = 'trocando' | 'cpf' | 'expirado';
+function formatarDataHora(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+type Confirmacao = NonNullable<RespostaMagic['confirmacaoAgendamento']>;
+
+type Fase = 'trocando' | 'cpf' | 'expirado' | 'confirmado';
 
 /**
  * Magic-link: troca o token do link do WhatsApp por uma sessão.
@@ -43,6 +57,7 @@ export function Entrar() {
   const [enviando, setEnviando] = useState(false);
   const [erroCpf, setErroCpf] = useState<string | null>(null);
   const [tentativas, setTentativas] = useState<number | null>(null);
+  const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
   const jaRodou = useRef(false);
 
   /** Conclui a troca bem-sucedida: autentica, limpa a URL e vai ao destino. */
@@ -61,9 +76,19 @@ export function Entrar() {
     navigate(data.destino || '/', { replace: true });
   }
 
-  /** Token gasto/inexistente: nunca autentica. Aparelho com sessão abre o app; senão, login. */
-  function semSessao(destino?: string) {
+  /**
+   * Token gasto/inexistente: nunca autentica. Aparelho com sessão abre o app; senão, login.
+   * EXCEÇÃO: se o backend devolveu a confirmação do agendamento (2º clique no botão "Sim!
+   * Confirmo"), mostramos "presença confirmada" e paramos aí — mandar essa pessoa para o
+   * login/código seria uma barreira sem sentido: ela já provou quem é para receber a mensagem.
+   */
+  function semSessao(destino?: string, confirmada?: Confirmacao | null) {
     window.history.replaceState(null, '', '/');
+    if (confirmada) {
+      setConfirmacao(confirmada);
+      setFase('confirmado');
+      return;
+    }
     if (useAuth.getState().token) {
       navigate(destino || '/', { replace: true });
       return;
@@ -89,7 +114,7 @@ export function Entrar() {
           concluir(data);
           return;
         }
-        semSessao(data.destino);
+        semSessao(data.destino, data.confirmacaoAgendamento);
       } catch {
         // Token inexistente/queimado (410) ou erro de rede.
         semSessao();
@@ -130,6 +155,26 @@ export function Entrar() {
         erro={erroCpf}
         tentativasRestantes={tentativas}
       />
+    );
+  }
+
+  if (fase === 'confirmado' && confirmacao) {
+    return (
+      <div className="mx-auto flex min-h-dvh max-w-[460px] flex-col items-center justify-center gap-3 bg-papel px-8 text-center">
+        <CheckCircle2 className="h-14 w-14 text-green-600" />
+        <p className="font-display text-[22px] font-semibold leading-tight text-tinta">
+          Presença confirmada!
+        </p>
+        <p className="max-w-[20rem] text-[16px] leading-relaxed text-tinta-mute">
+          Sua presença em <strong>{confirmacao.titulo}</strong>
+          {confirmacao.inicioEm ? ` em ${formatarDataHora(confirmacao.inicioEm)}` : ''}
+          {confirmacao.unidade ? `, ${confirmacao.unidade},` : ''} está confirmada.
+        </p>
+        <p className="max-w-[20rem] text-[14px] leading-relaxed text-tinta-mute">
+          Lembre-se de retirar a guia no posto de saúde onde você é atendido(a) e levar documento,
+          cartão do SUS e o pedido médico no dia.
+        </p>
+      </div>
     );
   }
 

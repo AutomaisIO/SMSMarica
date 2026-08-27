@@ -8,6 +8,7 @@ using SMSMais.Core.Laudos.Configuracao;
 using SMSMais.Core.Pacientes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Cidadao;
 
@@ -103,6 +104,49 @@ public sealed class CidadaoLoginLinkService(
         return new MagicLinkDto(link.Id, MontarUrl(link.Id), link.ExpiraEm);
     }
 
+    /// <summary>
+    /// Confirma a presença da solicitação do link (o clique no botão do WhatsApp É a confirmação)
+    /// e devolve o resumo para a tela. IDEMPOTENTE: já confirmada devolve o resumo sem regravar
+    /// (<c>ConfirmadaAgora=false</c>). NÃO chama SaveChanges — quem chama decide a transação.
+    /// Devolve <c>null</c> quando não há solicitação, ela sumiu, ou o agendamento já passou/foi
+    /// cancelado (nesses casos não há o que confirmar).
+    /// </summary>
+    private async Task<ConfirmacaoAgendamentoDto?> ConfirmarPresencaAsync(
+        Guid? solicitacaoId, CancellationToken cancellationToken)
+    {
+        if (solicitacaoId is not { } id) return null;
+
+        var s = await db.Solicitacoes
+            .Include(x => x.ExameImagem!).ThenInclude(e => e.TipoExame)
+            .Include(x => x.UnidadeExecutante)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken);
+        if (s is null) return null;
+
+        var confirmadaAgora = false;
+        // Mesma régua do app (CidadaoClinicoService): vale enquanto o exame for do dia
+        // corrente de Brasília. Exigir hora futura fazia o clique no botão do WhatsApp,
+        // no dia do exame depois do horário, não confirmar nada — e em silêncio.
+        if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente
+            && s.DataAgendada is { } da && da >= FusoBrasilia.InicioDoDiaAtualEmUtc())
+        {
+            s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+            s.ConfirmadoEm = DateTime.UtcNow;
+            s.ConfirmadoCanal = "whatsapp-link";
+            s.AtualizadoEm = DateTime.UtcNow;
+            confirmadaAgora = true;
+        }
+
+        if (!confirmadaAgora && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
+            return null; // cancelada pelo paciente ou fora da régua — nada a mostrar
+
+        return new ConfirmacaoAgendamentoDto(
+            s.ExameImagem?.Id ?? s.Id,
+            s.ExameImagem?.TipoExame?.Nome ?? "Exame",
+            s.DataAgendada,
+            s.UnidadeExecutante?.Nome,
+            confirmadaAgora);
+    }
+
     public async Task<RespostaMagicLinkDto?> TrocarAsync(
         Guid token, string? dispositivo, string? ip, string? cpf = null,
         CancellationToken cancellationToken = default)
@@ -179,10 +223,21 @@ public sealed class CidadaoLoginLinkService(
             // sem JWT — o app abre o exame direto SE já estiver autenticado (facilitador no
             // aparelho original) e, se NÃO estiver, cai no login. Aparelho sem sessão jamais
             // autentica com token gasto (mesmo que a pessoa compartilhe o link).
+            //
+            // MAS o botão "Sim! Confirmo a minha presença" tem de ser IDEMPOTENTE: quem clica de
+            // novo (ou clica pela 1ª vez num link já consumido por um preview) precisa ver
+            // "presença confirmada", não ser jogado no login/OTP — a mensagem só chega a número
+            // verificado ou a quem passou na verificação cadastral, e confirmar comparecimento não
+            // expõe nada clínico. Vale só para link de AGENDAMENTO (sem gate de CPF).
+            var confirmacaoRepetida = link.ExigeConfirmacaoCpf
+                ? null
+                : await ConfirmarPresencaAsync(link.SolicitacaoId, cancellationToken);
+            if (confirmacaoRepetida is not null) await db.SaveChangesAsync(cancellationToken);
+
             return new RespostaMagicLinkDto(
                 Token: null, Paciente: null,
                 Destino: string.IsNullOrWhiteSpace(link.Destino) ? "/" : link.Destino!,
-                ConfirmacaoAgendamento: null);
+                ConfirmacaoAgendamento: confirmacaoRepetida);
         }
 
         // Nome vem do hub FHIR (não persistimos nome no smsmarica).
@@ -191,35 +246,7 @@ public sealed class CidadaoLoginLinkService(
 
         // Link de notificação de agendamento: o USO do link (1 clique no botão do WhatsApp)
         // já confirma a presença do paciente — mesmo SaveChanges do consumo do link.
-        ConfirmacaoAgendamentoDto? confirmacao = null;
-        if (link.SolicitacaoId is { } solicitacaoId)
-        {
-            var s = await db.Solicitacoes
-                .Include(x => x.ExameImagem!).ThenInclude(e => e.TipoExame)
-                .Include(x => x.UnidadeExecutante)
-                .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
-            if (s is not null)
-            {
-                var confirmadaAgora = false;
-                // Mesma régua do app (CidadaoClinicoService): vale enquanto o exame for do dia
-                // corrente de Brasília. Exigir hora futura fazia o clique no botão do WhatsApp,
-                // no dia do exame depois do horário, não confirmar nada — e em silêncio.
-                if (s.StatusConfirmacao == SMSMais.Data.Entities.Enums.StatusConfirmacaoAgendamento.Pendente
-                    && s.DataAgendada is { } da && da >= FusoBrasilia.InicioDoDiaAtualEmUtc())
-                {
-                    s.StatusConfirmacao = SMSMais.Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada;
-                    s.ConfirmadoEm = DateTime.UtcNow;
-                    s.ConfirmadoCanal = "whatsapp-link";
-                    s.AtualizadoEm = DateTime.UtcNow;
-                    confirmadaAgora = true;
-                }
-                if (confirmadaAgora || s.StatusConfirmacao == SMSMais.Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada)
-                {
-                    confirmacao = new ConfirmacaoAgendamentoDto(
-                        s.ExameImagem?.Id ?? s.Id, s.ExameImagem?.TipoExame?.Nome ?? "Exame", s.DataAgendada, s.UnidadeExecutante?.Nome, confirmadaAgora);
-                }
-            }
-        }
+        var confirmacao = await ConfirmarPresencaAsync(link.SolicitacaoId, cancellationToken);
 
         // Abre a sessão normal do cidadão (mesma do OTP) e salva (persiste também o link).
         var (jwt, _) = await sessoes.AbrirSessaoAsync(
