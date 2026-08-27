@@ -12,4 +12,13 @@ public enum EtapaVerificacaoCadastral
 
     /// <summary>Nascimento conferiu; aguardando a confirmação do NOME (Sim/Não ou nome digitado).</summary>
     AguardandoNome = 3,
+
+    /// <summary>Os dados não conferiram; explicamos que são do PACIENTE e perguntamos se a pessoa
+    /// quer tentar de novo. "Sim" (ou já mandar os dígitos) recomeça o ciclo do zero.</summary>
+    AguardandoNovaTentativa = 4,
+
+    /// <summary>Chances esgotadas (ou ambiguidade insolúvel): a máquina se cala e o estado FICA,
+    /// justamente para que reenviar dígitos não recrie o diálogo com o contador zerado. Resolve-se
+    /// no posto (ou por um atendente).</summary>
+    Esgotado = 5,
 }

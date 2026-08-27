@@ -37,7 +37,12 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 {
     private const string PrefixoSim = "vcad_sim:";
     private const string PrefixoNao = "vcad_nao:";
-    private const int MaxTentativasErradas = 2;
+    private const string PrefixoTentarSim = "vcad_retry_sim:";
+    private const string PrefixoTentarNao = "vcad_retry_nao:";
+
+    /// <summary>Chances de acertar os dados antes de encerrar e orientar o posto. Cada ciclo
+    /// (dígitos + nascimento) que não confere gasta uma — errar de digitação é comum.</summary>
+    private const int MaxChances = 3;
     private const int MaxReorientacoes = 3; // mata loop com autoresponder/bot do outro lado
     private static readonly TimeSpan ValidadeEstado = TimeSpan.FromDays(7);
     private static readonly TimeSpan JanelaDesafios = TimeSpan.FromDays(20);
@@ -57,6 +62,17 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoNao, out var idNao))
         {
             await TratarBotaoNomeAsync(ctx, idNao, confirmou: false, ct);
+            return;
+        }
+        // Botões do "quer tentar de novo?"
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoTentarSim, out var idRetrySim))
+        {
+            await TratarBotaoNovaTentativaAsync(ctx, idRetrySim, aceitou: true, ct);
+            return;
+        }
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoTentarNao, out var idRetryNao))
+        {
+            await TratarBotaoNovaTentativaAsync(ctx, idRetryNao, aceitou: false, ct);
             return;
         }
         // Botões/quick-replies de OUTROS domínios nunca são resposta do interrogatório.
@@ -113,7 +129,146 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             case EtapaVerificacaoCadastral.AguardandoNome:
                 await TratarEtapaNomeTextoAsync(ctx, estado, ct);
                 break;
+            case EtapaVerificacaoCadastral.AguardandoNovaTentativa:
+                await TratarEtapaNovaTentativaTextoAsync(ctx, estado, ct);
+                break;
+            case EtapaVerificacaoCadastral.Esgotado:
+                break; // chances esgotadas: silêncio — resolve-se no posto ou com um atendente
         }
+    }
+
+    // ---------- nova tentativa (após dados não conferirem) ----------
+
+    private async Task TratarBotaoNovaTentativaAsync(
+        ManipuladorContexto ctx, Guid estadoId, bool aceitou, CancellationToken ct)
+    {
+        var estado = await db.VerificacoesCadastraisEstado.FirstOrDefaultAsync(e => e.Id == estadoId, ct);
+        if (estado is null || estado.Etapa != EtapaVerificacaoCadastral.AguardandoNovaTentativa) return;
+        if (estado.ExpiraEm <= DateTime.UtcNow) { db.VerificacoesCadastraisEstado.Remove(estado); return; }
+
+        ctx.Consumido = true;
+        if (aceitou) await RecomecarCicloAsync(ctx, estado, ct);
+        else await EncerrarOrientandoPostoAsync(ctx, estado, bloquear: false, ct);
+    }
+
+    /// <summary>Na espera do "quer tentar de novo?", aceitamos o Sim/Não — mas também os DÍGITOS
+    /// direto: quem errou de digitação costuma só reenviar, e travar isso seria burocracia.</summary>
+    private async Task TratarEtapaNovaTentativaTextoAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        if (InterpretadorRespostaCidadao.ExtrairDigitosCpf(ctx.Texto) is not null)
+        {
+            // Já mandou os dígitos: recomeça o ciclo e processa esta mesma mensagem como a resposta.
+            estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+            estado.PacienteId = null;
+            estado.CpfDigitosInformados = null;
+            await TratarEtapaCpfAsync(ctx, estado, ct);
+            return;
+        }
+        if (InterpretadorRespostaCidadao.EhSim(ctx.Texto))
+        {
+            ctx.Consumido = true;
+            await RecomecarCicloAsync(ctx, estado, ct);
+            return;
+        }
+        if (InterpretadorRespostaCidadao.EhNao(ctx.Texto))
+        {
+            ctx.Consumido = true;
+            await EncerrarOrientandoPostoAsync(ctx, estado, bloquear: false, ct);
+            return;
+        }
+        await ReorientarAsync(ctx, estado,
+            "Deseja tentar novamente? Responda *Sim* — ou envie de uma vez os *4 primeiros dígitos do "
+            + "CPF* do paciente.", ct);
+    }
+
+    /// <summary>Zera o ciclo (volta a pedir os dígitos) preservando o contador de chances.</summary>
+    private async Task RecomecarCicloAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+        estado.PacienteId = null;
+        estado.CpfDigitosInformados = null;
+        estado.Reorientacoes = 0;
+        Tocar(estado);
+
+        var nome = await PrimeiroNomeDoAlvoAsync(estado, ct);
+        var restantes = Math.Max(0, MaxChances - estado.TentativasErradas);
+        await ResponderAsync(ctx,
+            $"Vamos lá! Envie os *4 primeiros dígitos do CPF* {(nome is null ? "do paciente" : $"de *{nome}*")}."
+            + (restantes == 1 ? " Esta é a última tentativa." : string.Empty), ct);
+    }
+
+    /// <summary>Os dados não conferiram: avisa, EXPLICA em mensagem separada que CPF e nascimento são
+    /// os do PACIENTE do agendamento (não os de quem escreve) e pergunta se quer tentar de novo.
+    /// Esgotadas as chances, orienta o posto e encerra.</summary>
+    private async Task FalharCicloAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, string oQueNaoConfere, CancellationToken ct)
+    {
+        estado.TentativasErradas++;
+        Tocar(estado);
+        await ResponderAsync(ctx, $"{oQueNaoConfere} não confere com o cadastro.", ct);
+
+        if (estado.TentativasErradas >= MaxChances)
+        {
+            await EncerrarOrientandoPostoAsync(ctx, estado, bloquear: true, ct);
+            return;
+        }
+
+        estado.Etapa = EtapaVerificacaoCadastral.AguardandoNovaTentativa;
+        estado.PacienteId = null;
+        estado.CpfDigitosInformados = null;
+        estado.Reorientacoes = 0;
+
+        // Mensagem SEPARADA: a confusão mais comum é o parente informar os próprios dados.
+        var nome = await PrimeiroNomeDoAlvoAsync(estado, ct);
+        var deQuem = nome is null ? "do paciente do agendamento" : $"de *{nome}*, o paciente do agendamento";
+        await ResponderAsync(ctx,
+            $"Atenção: o CPF e a data de nascimento precisam ser {deQuem} — não os de quem está "
+            + "escrevendo. Se você é parente ou responsável, informe os dados do paciente.", ct);
+
+        await whatsApp.EnviarInterativoBotoesAsync(
+            estado.TelefoneCanonical,
+            "Deseja tentar novamente?",
+            [
+                new BotaoInterativoWhatsApp($"{PrefixoTentarSim}{estado.Id}", "Sim, tentar de novo"),
+                new BotaoInterativoWhatsApp($"{PrefixoTentarNao}{estado.Id}", "Não"),
+            ],
+            pacienteId: ctx.PacienteId, ct: ct);
+    }
+
+    /// <param name="bloquear">Chances esgotadas/ambiguidade: marca <c>Esgotado</c> e MANTÉM o estado —
+    /// apagá-lo faria o reenvio de dígitos recriar o diálogo com o contador zerado (tentativas
+    /// infinitas). Quando é só desistência ("Não") com chances de sobra, o diálogo fica aberto.</param>
+    private async Task EncerrarOrientandoPostoAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, bool bloquear, CancellationToken ct)
+    {
+        estado.Etapa = bloquear
+            ? EtapaVerificacaoCadastral.Esgotado
+            : EtapaVerificacaoCadastral.AguardandoNovaTentativa;
+        estado.PacienteId = null;
+        estado.CpfDigitosInformados = null;
+        Tocar(estado);
+
+        logger.LogInformation(
+            "Verificação cadastral encerrada sem sucesso (…{Fone4}) após {Qtd} tentativa(s); bloqueado={Bloq}.",
+            Ultimos4(estado.TelefoneCanonical), estado.TentativasErradas, bloquear);
+        await ResponderAsync(ctx,
+            (bloquear ? "Não consegui confirmar os dados por aqui." : "Tudo bem.")
+            + " Para sua segurança, não posso enviar as informações do agendamento sem essa confirmação. "
+            + "Procure o posto de saúde onde o paciente é atendido para retirar a guia e atualizar o "
+            + "cadastro.", ct);
+    }
+
+    /// <summary>Primeiro nome do paciente da comunicação PENDURADA (o mesmo que foi ao template).</summary>
+    private async Task<string?> PrimeiroNomeDoAlvoAsync(VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        var pacienteId = estado.PacienteId ?? await db.ComunicacoesPaciente.AsNoTracking()
+            .Where(n => n.Id == estado.ComunicacaoPacienteId)
+            .Select(n => (Guid?)n.PacienteId)
+            .FirstOrDefaultAsync(ct);
+        if (pacienteId is not { } id) return null;
+        return PrimeiroNome((await ObterPacienteAsync(id, ct))?.NomeCompleto);
     }
 
     // ---------- etapa 1: dígitos do CPF ----------
@@ -137,21 +292,11 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
         if (casam.Count == 0)
         {
-            estado.TentativasErradas++;
-            if (estado.TentativasErradas <= MaxTentativasErradas)
-                await ResponderAsync(ctx,
-                    "Esses dígitos não conferem com o cadastro. Confira com calma e envie novamente os "
-                    + "*4 primeiros dígitos do CPF* do paciente.", ct);
-            else if (estado.TentativasErradas == MaxTentativasErradas + 1)
-                await ResponderAsync(ctx,
-                    "Não foi possível confirmar os dados por aqui. Para sua segurança, procure o posto de "
-                    + "saúde onde o paciente é atendido para atualizar o cadastro e retirar a guia.", ct);
-            // depois disso, silencia (continua aceitando uma resposta correta, sem dar pistas).
+            await FalharCicloAsync(ctx, estado, "Esse início de CPF", ct);
             return;
         }
 
         estado.CpfDigitosInformados = digitos;
-        estado.TentativasErradas = 0;
         estado.Etapa = EtapaVerificacaoCadastral.AguardandoNascimento;
         if (casam.Count == 1)
         {
@@ -196,27 +341,16 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 // Mesmo prefixo de CPF + mesmo mês/ano: não dá para desambiguar com segurança.
                 logger.LogWarning("Verificação cadastral ambígua ({Qtd} candidatos) no telefone …{Fone4}.",
                     casam.Count, Ultimos4(estado.TelefoneCanonical));
-                await ResponderAsync(ctx,
-                    "Não consegui concluir a confirmação por aqui. Procure o posto de saúde onde o "
-                    + "paciente é atendido para retirar a guia com segurança.", ct);
+                await EncerrarOrientandoPostoAsync(ctx, estado, bloquear: true, ct);
                 return;
             }
-            estado.TentativasErradas++;
-            if (estado.TentativasErradas <= MaxTentativasErradas)
-                await ResponderAsync(ctx,
-                    "Esse mês/ano não confere com o cadastro. Confira e envie novamente o "
-                    + "*mês e o ano de nascimento* do paciente.", ct);
-            else if (estado.TentativasErradas == MaxTentativasErradas + 1)
-                await ResponderAsync(ctx,
-                    "Não foi possível confirmar os dados por aqui. Para sua segurança, procure o posto de "
-                    + "saúde onde o paciente é atendido para atualizar o cadastro e retirar a guia.", ct);
+            await FalharCicloAsync(ctx, estado, "Esse mês/ano de nascimento", ct);
             return;
         }
 
         var escolhido = casam[0];
         estado.PacienteId = escolhido.Paciente.Id;
         estado.ComunicacaoPacienteId = escolhido.ComunicacaoId;
-        estado.TentativasErradas = 0;
         estado.Etapa = EtapaVerificacaoCadastral.AguardandoNome;
 
         await whatsApp.EnviarInterativoBotoesAsync(
