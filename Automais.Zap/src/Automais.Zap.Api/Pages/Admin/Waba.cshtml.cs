@@ -43,6 +43,9 @@ public sealed class WabaModel(
         if (!permitido) return Forbid();
         if (Alvo is null) return NotFound();
 
+        // Chegar por URL a um WABA de outro tenant realinha o contexto do painel inteiro.
+        escopo.Selecionar(Alvo.TenantId);
+
         var creds = await configuracao.ObterAsync(ct);
         AppIdProprio = creds.AppId;
 
@@ -78,32 +81,53 @@ public sealed class WabaModel(
     /// A URL vira destino de um POST feito PELO SERVIDOR. Sem isto, o operador aponta o relay
     /// para 127.0.0.1:5086, para a metadata da nuvem (169.254.169.254) ou para a rede
     /// interna, e o relay vira proxy de SSRF.
+    ///
+    /// O host também é RESOLVIDO aqui: um nome DNS apontando para IP privado é o mesmo
+    /// ataque com um passo a mais. A checagem é no salvamento — não elimina rebinding
+    /// posterior, mas fecha o caminho barato.
     /// </summary>
-    private static bool UrlDestinoValida(string url, out string motivo)
+    private static async Task<(bool Ok, string Motivo)> UrlDestinoValidaAsync(string url, CancellationToken ct)
     {
-        motivo = "";
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
         {
-            motivo = "A URL de destino precisa ser https absoluta (o relay fala com a instância pela internet).";
-            return false;
+            return (false, "A URL de destino precisa ser https absoluta (a plataforma fala com o sistema de destino pela internet).");
         }
         var host = uri.Host.ToLowerInvariant();
         if (host is "localhost" || host.EndsWith(".local") || host.EndsWith(".internal"))
         {
-            motivo = "Host de destino não permitido.";
-            return false;
+            return (false, "Host de destino não permitido.");
         }
-        if (System.Net.IPAddress.TryParse(host.Trim('[', ']'), out var ip))
+
+        if (System.Net.IPAddress.TryParse(host.Trim('[', ']'), out var ipLiteral))
         {
-            if (System.Net.IPAddress.IsLoopback(ip) || ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal
-                || EhPrivadoV4(ip))
+            return IpProibido(ipLiteral)
+                ? (false, "IP de destino não permitido (loopback, link-local ou rede privada).")
+                : (true, "");
+        }
+
+        try
+        {
+            var ips = await System.Net.Dns.GetHostAddressesAsync(host, ct);
+            if (ips.Length == 0)
             {
-                motivo = "IP de destino não permitido (loopback, link-local ou rede privada).";
-                return false;
+                return (false, "O host de destino não resolve para nenhum endereço.");
+            }
+            if (ips.Any(IpProibido))
+            {
+                return (false, "O host de destino resolve para um endereço interno (loopback, link-local ou rede privada).");
             }
         }
-        return true;
+        catch (Exception)
+        {
+            // Fail-closed: destino que não resolve agora não vira rota; salvar de novo quando o DNS existir.
+            return (false, "Não foi possível resolver o host de destino agora — confira o endereço e tente de novo.");
+        }
+
+        return (true, "");
     }
+
+    private static bool IpProibido(System.Net.IPAddress ip)
+        => System.Net.IPAddress.IsLoopback(ip) || ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || EhPrivadoV4(ip);
 
     private static bool EhPrivadoV4(System.Net.IPAddress ip)
     {
@@ -130,10 +154,14 @@ public sealed class WabaModel(
         if (waba is null) return Forbid();
 
         urlDestino = (urlDestino ?? "").Trim();
-        if (urlDestino.Length > 0 && !UrlDestinoValida(urlDestino, out var motivoUrl))
+        if (urlDestino.Length > 0)
         {
-            Erro = motivoUrl;
-            return RedirectToPage(new { id });
+            var (ok, motivoUrl) = await UrlDestinoValidaAsync(urlDestino, ct);
+            if (!ok)
+            {
+                Erro = motivoUrl;
+                return RedirectToPage(new { id });
+            }
         }
 
         if (ativo && urlDestino.Length == 0)
@@ -146,7 +174,7 @@ public sealed class WabaModel(
         // aceita mais. Ligar o roteamento assim so produziria 401 em serie.
         if (ativo && string.IsNullOrEmpty(waba.SegredoEntregaCifrado))
         {
-            Erro = "Gere o segredo de entrega antes de ligar o roteamento — sem ele a instância recusa tudo com 401.";
+            Erro = "Gere o segredo de entrega antes de ligar o roteamento — sem ele o destino recusa tudo com 401.";
             return RedirectToPage(new { id });
         }
 
@@ -263,10 +291,14 @@ public sealed class WabaModel(
         if (waba is null) return Forbid();
 
         url = (url ?? "").Trim();
-        if (url.Length > 0 && !UrlDestinoValida(url, out var motivoUrl))
+        if (url.Length > 0)
         {
-            Erro = motivoUrl;
-            return RedirectToPage(new { id });
+            var (ok, motivoUrl) = await UrlDestinoValidaAsync(url, ct);
+            if (!ok)
+            {
+                Erro = motivoUrl;
+                return RedirectToPage(new { id });
+            }
         }
 
         var numero = await db.Numeros.FirstOrDefaultAsync(n => n.Id == numeroId && n.WabaId == id, ct);

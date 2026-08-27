@@ -4,14 +4,18 @@
     ViewData["Title"] = "Entregas";
 }
 
-<h1>Entregas</h1>
-<p class="sub">
-    Trilha operacional do relay. Não há corpo de mensagem, wamid nem telefone de cidadão aqui —
-    só a linha nossa, o tipo do evento e o resultado.
-</p>
+<div class="pagina-topo">
+    <div>
+        <h1>Entregas</h1>
+        <p class="sub compacto">
+            Trilha operacional da plataforma. Não há corpo de mensagem, wamid nem telefone de
+            cidadão aqui — só a linha, o tipo do evento e o resultado.
+        </p>
+    </div>
+</div>
 
 <div class="grade-resumo">
-    <div class="resumo ok"><div class="valor">@Model.Entregues24h</div><div class="rotulo">entregues em 24h</div></div>
+    <div class="resumo ok"><div class="valor">@Model.Entregues24h.ToString("N0", new System.Globalization.CultureInfo("pt-BR"))</div><div class="rotulo">entregues em 24h</div></div>
     <div class="resumo @(Model.Falhas24h > 0 ? "alerta" : "")"><div class="valor">@Model.Falhas24h</div><div class="rotulo">falhas em 24h</div></div>
     <div class="resumo @(Model.SemRota24h > 0 ? "alerta" : "")"><div class="valor">@Model.SemRota24h</div><div class="rotulo">sem rota em 24h</div></div>
 </div>
@@ -25,11 +29,11 @@
 }
 
 <div class="cartao">
-    <form method="get" class="linha" style="margin:0 0 12px">
+    <form method="get" class="linha" style="margin:0 0 14px">
         @if (Model.Tenants.Count > 1)
         {
             <div>
-                <label for="f-tenant">Tenant</label>
+                <label for="f-tenant">Cliente</label>
                 <select id="f-tenant" name="tenant" class="campo">
                     <option value="">todos</option>
                     @foreach (var t in Model.Tenants)
@@ -60,7 +64,7 @@
         <thead>
         <tr>
             <th>Quando</th>
-            <th>Tenant</th>
+            <th>Cliente</th>
             <th>Linha</th>
             <th>Tipo</th>
             <th>HTTP</th>
@@ -83,7 +87,7 @@
         }
         @if (Model.Linhas.Count == 0)
         {
-            <tr><td colspan="7" class="sub compacto" style="text-align:center;padding:20px">Nada com esses filtros.</td></tr>
+            <tr><td colspan="7" class="sub compacto" style="text-align:center;padding:22px">Nada com esses filtros.</td></tr>
         }
         </tbody>
     </table>

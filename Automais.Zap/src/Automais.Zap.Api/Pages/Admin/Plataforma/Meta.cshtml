@@ -1,11 +1,18 @@
 @page "/admin/meta"
 @model Automais.Zap.Api.Pages.Admin.Plataforma.MetaModel
 @{
-    ViewData["Title"] = "Meta";
+    ViewData["Title"] = "App da Meta";
 }
 
-<h1>Plataforma · App da Meta</h1>
-<p class="sub">Configuração global — vale para todos os clientes desta instância. Credenciais do App e para onde a Meta entrega os eventos.</p>
+<div class="pagina-topo">
+    <div>
+        <h1>App da Meta</h1>
+        <p class="sub compacto">
+            Configuração global da plataforma — vale para todos os clientes desta instância.
+            Credenciais do App e para onde a Meta entrega os eventos.
+        </p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
@@ -15,6 +22,25 @@
 {
     <div class="aviso ok">@Model.Recado</div>
 }
+
+<div class="grade-resumo">
+    <div class="resumo @(string.IsNullOrEmpty(Model.AppId) ? "alerta" : "ok")">
+        <div class="valor" style="font-size:18px">@(string.IsNullOrEmpty(Model.AppId) ? "falta" : "ok")</div>
+        <div class="rotulo">App ID</div>
+    </div>
+    <div class="resumo @(Model.TemAppSecret ? "ok" : "alerta")">
+        <div class="valor" style="font-size:18px">@(Model.TemAppSecret ? "ok" : "falta")</div>
+        <div class="rotulo">App Secret</div>
+    </div>
+    <div class="resumo @(Model.TemVerifyToken ? "ok" : "alerta")">
+        <div class="valor" style="font-size:18px">@(Model.TemVerifyToken ? "ok" : "falta")</div>
+        <div class="rotulo">Verify token</div>
+    </div>
+    <div class="resumo @(Model.TemTokenSistema ? "ok" : "alerta")">
+        <div class="valor" style="font-size:18px">@(Model.TemTokenSistema ? "ok" : "falta")</div>
+        <div class="rotulo">Token do System User</div>
+    </div>
+</div>
 
 <h2>Webhook do App</h2>
 <div class="cartao">
@@ -39,7 +65,7 @@
                 <tr>
                     <td>@a.Objeto</td>
                     <td><code>@(a.CallbackUrl ?? "—")</code></td>
-                    <td>@string.Join(", ", a.Campos)</td>
+                    <td class="sub compacto">@string.Join(", ", a.Campos)</td>
                     <td><span class="selo @(a.Ativo ? "on" : "off")">@(a.Ativo ? "sim" : "não")</span></td>
                 </tr>
             }
@@ -49,51 +75,55 @@
 
     <form method="post" asp-page-handler="ConfigurarWebhook" class="linha">
         <div style="flex:1;min-width:340px">
-            <label>Callback URL (esta instância do relay)</label>
-            <input type="url" name="urlWebhook" value="@Model.UrlWebhookSugerida" required style="width:100%" />
+            <label for="meta-url">Callback URL (esta instância da plataforma)</label>
+            <input id="meta-url" type="url" name="urlWebhook" value="@Model.UrlWebhookSugerida" required style="width:100%" />
         </div>
         <button class="acao" type="submit">Apontar o App para cá</button>
     </form>
-    <p class="sub" style="margin:10px 0 0">
-        Campos assinados: <code>@string.Join("</code>, <code>", Automais.Zap.Api.Pages.Admin.Plataforma.MetaModel.CamposWebhook)</code>.
-        A Meta chama a URL com o verify token antes de aceitar — se o relay estiver fora do ar, ela recusa.
+    <p class="ajuda-campo" style="margin:10px 0 0">
+        Campos assinados:
+        @foreach (var campo in Automais.Zap.Api.Pages.Admin.Plataforma.MetaModel.CamposWebhook)
+        {
+            <code>@campo</code>
+        }
+        A Meta chama a URL com o verify token antes de aceitar — se a plataforma estiver fora do ar, ela recusa.
     </p>
 </div>
 
 <h2>Credenciais</h2>
 <div class="cartao">
     <p class="sub" style="margin:0 0 4px">
-        Segredos nunca são exibidos de volta. Deixe em branco para manter o valor atual; digite
-        <code>-</code> para apagar.
+        Segredos nunca são exibidos de volta. Nos três campos de segredo, deixar em branco
+        mantém o valor atual e digitar <code>-</code> apaga.
     </p>
     <form method="post" asp-page-handler="Salvar" class="linha">
         <div>
-            <label>App ID</label>
-            <input type="text" name="appId" value="@Model.AppId" />
+            <label for="meta-appid">App ID</label>
+            <input id="meta-appid" type="text" name="appId" value="@Model.AppId" class="num" />
         </div>
         <div>
-            <label>App Secret @(Model.TemAppSecret ? "(configurado)" : "(FALTANDO)")</label>
-            <input type="password" name="appSecret" autocomplete="new-password" />
+            <label for="meta-appsecret">App Secret <span class="selo @(Model.TemAppSecret ? "on" : "off")" style="margin-left:4px">@(Model.TemAppSecret ? "configurado" : "faltando")</span></label>
+            <input id="meta-appsecret" type="password" name="appSecret" autocomplete="new-password" />
         </div>
         <div>
-            <label>Verify token @(Model.TemVerifyToken ? "(configurado)" : "(FALTANDO)")</label>
-            <input type="password" name="verifyToken" autocomplete="new-password" />
+            <label for="meta-verify">Verify token <span class="selo @(Model.TemVerifyToken ? "on" : "off")" style="margin-left:4px">@(Model.TemVerifyToken ? "configurado" : "faltando")</span></label>
+            <input id="meta-verify" type="password" name="verifyToken" autocomplete="new-password" />
         </div>
         <div>
-            <label>Token do System User @(Model.TemTokenSistema ? "(configurado)" : "(FALTANDO)")</label>
-            <input type="password" name="tokenSistema" autocomplete="new-password" />
+            <label for="meta-token">Token do System User <span class="selo @(Model.TemTokenSistema ? "on" : "off")" style="margin-left:4px">@(Model.TemTokenSistema ? "configurado" : "faltando")</span></label>
+            <input id="meta-token" type="password" name="tokenSistema" autocomplete="new-password" />
         </div>
         <div>
-            <label>Graph API</label>
-            <input type="url" name="baseUrl" value="@Model.BaseUrl" />
+            <label for="meta-baseurl">Graph API</label>
+            <input id="meta-baseurl" type="url" name="baseUrl" value="@Model.BaseUrl" class="num" style="min-width:260px" />
         </div>
         <button class="acao" type="submit">Salvar</button>
     </form>
 
     <p class="sub" style="margin:14px 0 0">
-        <strong>App Secret</strong> é o que valida a assinatura de cada evento recebido — sem ele o
+        <strong>App Secret</strong> valida a assinatura de cada evento recebido — sem ele o
         webhook responde 503, de propósito.
-        <strong>Token do System User</strong> serve só para a gestão desta tela (ver WABAs, inscrever
-        o App, templates); o relay não envia mensagem e nunca o usa.
+        <strong>Token do System User</strong> serve para a gestão (WABAs, templates, perfil,
+        métricas); a plataforma nunca o usa para enviar mensagem.
     </p>
 </div>

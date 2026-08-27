@@ -105,6 +105,71 @@ public sealed record NovoTemplate(
     string? Rodape,
     IReadOnlyList<string> ExemplosCorpo);
 
+/// <summary>
+/// Perfil comercial do número, como aparece para o cidadão no WhatsApp. Tudo aqui é
+/// editável pela Graph API — é a parte da gestão que antes exigia entrar na Meta.
+/// </summary>
+public sealed record PerfilNegocioMeta(
+    string? Sobre,
+    string? Endereco,
+    string? Descricao,
+    string? Email,
+    string? FotoUrl,
+    IReadOnlyList<string> Sites,
+    string? Vertical);
+
+/// <summary>Campos do perfil a gravar. Campo nulo ou vazio não é enviado (mantém o que está).</summary>
+public sealed record AtualizarPerfilNegocio(
+    string? Sobre,
+    string? Endereco,
+    string? Descricao,
+    string? Email,
+    IReadOnlyList<string> Sites,
+    string? Vertical);
+
+/// <summary>
+/// Ramos de atividade que a Cloud API aceita em <c>vertical</c>, com o rótulo humano.
+/// A lista é contratual da Meta — valor fora dela é recusado com (#100).
+/// </summary>
+public static class VerticalNegocio
+{
+    public static readonly IReadOnlyList<(string Valor, string Rotulo)> Opcoes =
+    [
+        ("UNDEFINED", "— não informado —"),
+        ("GOVT", "Governo e serviço público"),
+        ("HEALTH", "Saúde"),
+        ("EDU", "Educação"),
+        ("FINANCE", "Finanças"),
+        ("PROF_SERVICES", "Serviços profissionais"),
+        ("RETAIL", "Varejo"),
+        ("GROCERY", "Mercado e alimentação"),
+        ("RESTAURANT", "Restaurante"),
+        ("HOTEL", "Hotelaria"),
+        ("TRAVEL", "Viagens e turismo"),
+        ("AUTO", "Automotivo"),
+        ("BEAUTY", "Beleza e cuidado pessoal"),
+        ("APPAREL", "Vestuário"),
+        ("ENTERTAIN", "Entretenimento"),
+        ("EVENT_PLAN", "Eventos"),
+        ("NONPROFIT", "Sem fins lucrativos"),
+        ("OTHER", "Outro"),
+    ];
+
+    public static string Rotulo(string? valor)
+        => Opcoes.FirstOrDefault(o => string.Equals(o.Valor, valor, StringComparison.OrdinalIgnoreCase)).Rotulo
+           ?? valor ?? "—";
+}
+
+/// <summary>Um dia de tráfego do WABA segundo a própria Meta (campo <c>analytics</c>).</summary>
+public sealed record PontoAnalytics(DateTimeOffset Inicio, long Enviadas, long Entregues);
+
+/// <summary>
+/// Mensagens cobradas e custo por categoria no período (campo <c>pricing_analytics</c>).
+/// Desde julho/2025 a Meta cobra por mensagem, não por conversa — <c>conversation_analytics</c>
+/// ficou para trás junto com o modelo antigo.
+/// </summary>
+public sealed record CategoriaCobranca(string Categoria, long Mensagens, decimal Custo);
+
 public interface IGraphMetaClient
 {
     // --- App (usam token de app: {app-id}|{app-secret}) ---
@@ -123,4 +188,15 @@ public interface IGraphMetaClient
     Task<ResultadoMeta<IReadOnlyList<TemplateMeta>>> ListarTemplatesAsync(string wabaId, CancellationToken ct = default);
     Task<ResultadoMeta<string>> CriarTemplateAsync(string wabaId, NovoTemplate template, CancellationToken ct = default);
     Task<ResultadoMeta<bool>> ExcluirTemplateAsync(string wabaId, string nome, CancellationToken ct = default);
+
+    // --- Perfil comercial do número (o que o cidadão vê no WhatsApp) ---
+    Task<ResultadoMeta<PerfilNegocioMeta>> ObterPerfilNegocioAsync(string phoneNumberId, CancellationToken ct = default);
+    Task<ResultadoMeta<bool>> AtualizarPerfilNegocioAsync(string phoneNumberId, AtualizarPerfilNegocio dados, CancellationToken ct = default);
+    Task<ResultadoMeta<bool>> AtualizarFotoPerfilAsync(string phoneNumberId, byte[] conteudo, string contentType, CancellationToken ct = default);
+
+    // --- Métricas da Meta (WABA) ---
+    Task<ResultadoMeta<IReadOnlyList<PontoAnalytics>>> ObterAnalyticsAsync(
+        string wabaId, DateTimeOffset inicio, DateTimeOffset fim, CancellationToken ct = default);
+    Task<ResultadoMeta<IReadOnlyList<CategoriaCobranca>>> ObterCobrancaAsync(
+        string wabaId, DateTimeOffset inicio, DateTimeOffset fim, CancellationToken ct = default);
 }

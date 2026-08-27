@@ -1,7 +1,5 @@
 using Automais.Zap.Api.Infra;
-using Automais.Zap.Core.Admin;
 using Automais.Zap.Core.Meta;
-using Automais.Zap.Core.Tokens;
 using Automais.Zap.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -9,23 +7,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Automais.Zap.Api.Pages.Admin;
 
+/// <summary>
+/// Painel do cliente: o retrato do canal. Tokens vivem em /admin/tokens e a equipe em
+/// /admin/equipe — cada tela cuida de um assunto.
+/// </summary>
 public sealed class TenantModel(
     ZapDbContext db,
     EscopoUsuario escopo,
-    IAdminService admin,
     IGraphMetaClient graph,
-    ITokenService tokens,
     TimeProvider relogio) : PageModel
 {
     public Data.Entities.Tenant? Alvo { get; private set; }
     public List<Data.Entities.Waba> Wabas { get; private set; } = [];
-    public IReadOnlyList<UsuarioListado> Usuarios { get; private set; } = [];
-    public IReadOnlyList<Data.Entities.TenantToken> Tokens { get; private set; } = [];
-    public List<Data.Entities.Numero> NumerosDoTenant { get; private set; } = [];
+    public int NumerosTotal { get; private set; }
+    public int NumerosAtivos { get; private set; }
+    public int TokensAtivos { get; private set; }
     public int FalhasUltimas24h { get; private set; }
+    public int Entregues24h { get; private set; }
 
-    /// <summary>Token em claro, exibido UMA vez logo apos criar. Nao ha como reexibir.</summary>
-    [TempData] public string? TokenNovo { get; set; }
     public bool Global => escopo.Global;
 
     [TempData] public string? Recado { get; set; }
@@ -34,17 +33,9 @@ public sealed class TenantModel(
     public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken ct)
     {
         if (!await escopo.PodeVerAsync(id, ct)) return Forbid();
-        await CarregarAsync(id, ct);
-        if (Alvo is null) return NotFound();
 
-        escopo.Selecionar(id);
-        return Page();
-    }
-
-    private async Task CarregarAsync(Guid id, CancellationToken ct)
-    {
         Alvo = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
-        if (Alvo is null) return;
+        if (Alvo is null) return NotFound();
 
         Wabas = await db.Wabas.AsNoTracking()
             .Include(w => w.Numeros)
@@ -52,70 +43,19 @@ public sealed class TenantModel(
             .OrderBy(w => w.Nome ?? w.WabaId)
             .ToListAsync(ct);
 
-        Usuarios = await admin.ListarUsuariosAsync(id, ct);
-        Tokens = await tokens.ListarAsync(id, ct);
+        NumerosTotal = Wabas.Sum(w => w.Numeros.Count);
+        NumerosAtivos = Wabas.Sum(w => w.Numeros.Count(n => n.Ativo));
 
-        NumerosDoTenant = await db.Numeros.AsNoTracking()
-            .Where(n => n.Waba!.TenantId == id)
-            .OrderBy(n => n.DisplayPhoneNumber)
-            .ToListAsync(ct);
+        TokensAtivos = await db.TenantTokens.AsNoTracking()
+            .CountAsync(t => t.TenantId == id && t.RevogadoEm == null, ct);
 
         var corte = relogio.GetUtcNow().AddHours(-24);
-        FalhasUltimas24h = await db.EntregasLog.AsNoTracking()
-            .CountAsync(x => x.TenantId == id && !x.Sucesso && x.RecebidoEm >= corte, ct);
-    }
+        var trilha24h = db.EntregasLog.AsNoTracking().Where(x => x.TenantId == id && x.RecebidoEm >= corte);
+        Entregues24h = await trilha24h.CountAsync(x => x.Sucesso, ct);
+        FalhasUltimas24h = await trilha24h.CountAsync(x => !x.Sucesso, ct);
 
-    public async Task<IActionResult> OnPostCriarTokenAsync(
-        Guid id, string nome, string alcance, Guid[]? numeros, CancellationToken ct)
-    {
-        if (!await escopo.PodeVerAsync(id, ct)) return Forbid();
-
-        nome = (nome ?? "").Trim();
-        if (nome.Length == 0)
-        {
-            Erro = "Dê um nome ao token — é como você vai saber qual revogar depois.";
-            return RedirectToPage(new { id });
-        }
-
-        var todos = alcance != "selecionados";
-        var escolhidos = numeros ?? [];
-        if (!todos && escolhidos.Length == 0)
-        {
-            Erro = "Escolha ao menos um número, ou marque que o token vale para todos.";
-            return RedirectToPage(new { id });
-        }
-
-        // Números de OUTRO tenant não entram nem por request forjado.
-        if (!todos)
-        {
-            var validos = await db.Numeros
-                .Where(n => escolhidos.Contains(n.Id) && n.Waba!.TenantId == id)
-                .Select(n => n.Id)
-                .ToListAsync(ct);
-            escolhidos = [.. validos];
-            if (escolhidos.Length == 0)
-            {
-                Erro = "Nenhum dos números escolhidos pertence a este tenant.";
-                return RedirectToPage(new { id });
-            }
-        }
-
-        var criado = await tokens.CriarAsync(id, nome, todos, escolhidos, ct);
-        TokenNovo = criado.ValorEmClaro;
-        Recado = "Token criado. Copie agora — ele não é exibido de novo.";
-        return RedirectToPage(new { id });
-    }
-
-    public async Task<IActionResult> OnPostRevogarTokenAsync(Guid id, Guid tokenId, CancellationToken ct)
-    {
-        if (!await escopo.PodeVerAsync(id, ct)) return Forbid();
-
-        var alvo = await db.TenantTokens.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tokenId, ct);
-        if (alvo is null || alvo.TenantId != id) return Forbid();
-
-        await tokens.RevogarAsync(tokenId, ct);
-        Recado = "Token revogado. Quem estiver usando para de conseguir enviar agora.";
-        return RedirectToPage(new { id });
+        escopo.Selecionar(id);
+        return Page();
     }
 
     public async Task<IActionResult> OnPostSuspenderAsync(Guid id, string? motivo, CancellationToken ct)
@@ -129,7 +69,7 @@ public sealed class TenantModel(
         {
             tenant.SuspensoEm = relogio.GetUtcNow();
             tenant.SuspensoMotivo = string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim();
-            Recado = "Canal suspenso. Os WABAs deste tenant param de receber agora.";
+            Recado = "Canal suspenso. Os WABAs deste cliente param de receber agora.";
         }
         else
         {
@@ -159,7 +99,7 @@ public sealed class TenantModel(
 
         if (await db.Wabas.AnyAsync(w => w.WabaId == wabaId, ct))
         {
-            Erro = "Esse WABA já está cadastrado — em algum tenant.";
+            Erro = "Esse WABA já está cadastrado — em algum cliente.";
             return RedirectToPage(new { id });
         }
 
@@ -185,25 +125,5 @@ public sealed class TenantModel(
         await db.SaveChangesAsync(ct);
 
         return Redirect($"/admin/waba?id={waba.Id}");
-    }
-
-    public async Task<IActionResult> OnPostCriarUsuarioAsync(
-        Guid id, string email, string nome, string senha, CancellationToken ct)
-    {
-        if (!escopo.Global) return Forbid();
-
-        var (ok, erro) = await admin.CriarUsuarioAsync(email, nome, senha, id, ct);
-        if (ok) Recado = $"Usuário {email} criado.";
-        else Erro = erro;
-
-        return RedirectToPage(new { id });
-    }
-
-    public async Task<IActionResult> OnPostDesvincularAsync(Guid id, Guid usuarioId, CancellationToken ct)
-    {
-        if (!escopo.Global) return Forbid();
-        await admin.DesvincularAsync(usuarioId, id, ct);
-        Recado = "Usuário desvinculado deste tenant.";
-        return RedirectToPage(new { id });
     }
 }

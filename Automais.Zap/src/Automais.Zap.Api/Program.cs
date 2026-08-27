@@ -7,11 +7,13 @@ using Automais.Zap.Core.Envio;
 using Automais.Zap.Core.Meta;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -90,6 +92,33 @@ builder.Services
         o.Cookie.HttpOnly = true;
         o.Cookie.SameSite = SameSiteMode.Lax;
         o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+        // O cookie vale 8h — desativar um operador precisa valer antes disso. A cada request
+        // (com cache de 60s) confere no banco se o usuário ainda existe e está ativo; claims
+        // sozinhas transformariam demissão em "acesso por mais um turno".
+        o.Events = new Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async ctx =>
+            {
+                var bruto = ctx.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var servicos = ctx.HttpContext.RequestServices;
+                var valido = Guid.TryParse(bruto, out var usuarioId)
+                    && await servicos.GetRequiredService<IMemoryCache>()
+                        .GetOrCreateAsync($"admin-ativo:{usuarioId}", async entrada =>
+                        {
+                            entrada.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
+                            var db = servicos.GetRequiredService<ZapDbContext>();
+                            return await db.UsuariosAdmin.AsNoTracking()
+                                .AnyAsync(u => u.Id == usuarioId && u.Ativo);
+                        });
+
+                if (!valido)
+                {
+                    ctx.RejectPrincipal();
+                    await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            },
+        };
     });
 
 // Politica "Global": so quem e da casa. Aplicada por PASTA logo abaixo, para que a protecao
@@ -133,6 +162,10 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy("api-publica", ctx => RateLimitPartition.GetFixedWindowLimiter(
         ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 600, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // Tela de login: 10 tentativas/min por IP. Sem isto, forca bruta online e ilimitada.
+    o.AddPolicy("entrar", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
@@ -147,6 +180,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+
+// wwwroot: logo do grupo, favicon e nada mais. O painel continua server-rendered.
+app.UseStaticFiles();
 
 // Auto-provisionamento com FAIL-FAST: migration que falha derruba o boot. O deploy falha
 // alto e o serviço antigo continua no ar — melhor do que subir "saudável" com schema velho.

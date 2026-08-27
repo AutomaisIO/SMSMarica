@@ -1,0 +1,87 @@
+@page "/admin/numeros"
+@model Automais.Zap.Api.Pages.Admin.NumerosModel
+@{
+    ViewData["Title"] = "Números";
+}
+
+@if (Model.Alvo is null)
+{
+    <div class="cartao vazio">Nenhum cliente selecionado.</div>
+    return;
+}
+
+<div class="pagina-topo">
+    <div>
+        <h1>Números</h1>
+        <p class="sub compacto">As linhas de WhatsApp de @Model.Alvo.Nome, com a saúde que a Meta reporta agora.</p>
+    </div>
+</div>
+
+@if (Model.ErroGraph is not null)
+{
+    <div class="aviso atencao">
+        Não foi possível consultar a Meta: @Model.ErroGraph.TrimEnd('.'). A tabela mostra o que a
+        plataforma guarda — qualidade e nome verificado podem estar desatualizados.
+    </div>
+}
+
+<div class="grade-resumo">
+    <div class="resumo">
+        <div class="valor">@Model.Linhas.Count</div>
+        <div class="rotulo">número@(Model.Linhas.Count == 1 ? "" : "s") no total</div>
+    </div>
+    <div class="resumo ok">
+        <div class="valor">@Model.Linhas.Count(l => l.Ativo)</div>
+        <div class="rotulo">ativo@(Model.Linhas.Count(l => l.Ativo) == 1 ? "" : "s") no roteamento</div>
+    </div>
+    <div class="resumo @(Model.Linhas.Any(l => l.Qualidade is "YELLOW" or "RED") ? "alerta" : "")">
+        <div class="valor">@Model.Linhas.Count(l => l.Qualidade is "YELLOW" or "RED")</div>
+        <div class="rotulo">com qualidade em atenção</div>
+    </div>
+</div>
+
+<div class="cartao">
+    @if (Model.Linhas.Count == 0)
+    {
+        <p class="sub compacto" style="text-align:center;padding:14px 0">
+            Nenhum número sincronizado ainda. Abra o WABA no <a href="/admin/tenant?id=@Model.Alvo.Id">Painel</a> e use "Sincronizar com a Meta".
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead>
+            <tr><th>Número</th><th>Nome verificado</th><th>WABA</th><th>Qualidade</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+            @foreach (var l in Model.Linhas)
+            {
+                <tr>
+                    <td><a href="/admin/numero?id=@l.Id" class="num" style="font-weight:500">@(l.Display ?? l.PhoneNumberId)</a></td>
+                    <td>@(l.NomeVerificado ?? l.Rotulo ?? "—")</td>
+                    <td class="sub compacto">@(l.WabaNome ?? l.WabaIdMeta)</td>
+                    <td>
+                        @switch (l.Qualidade)
+                        {
+                            case "GREEN": <span class="selo on">alta</span>; break;
+                            case "YELLOW": <span class="selo atencao">média</span>; break;
+                            case "RED": <span class="selo off">baixa</span>; break;
+                            default: <span class="selo">—</span>; break;
+                        }
+                    </td>
+                    <td><span class="selo @(l.Ativo ? "on" : "off")">@(l.Ativo ? "ativo" : "desligado")</span></td>
+                    <td class="acoes">
+                        <a class="discreto" style="padding:6px 12px;border-radius:8px;border:1px solid var(--campo-borda);font-size:12.5px;font-weight:600" href="/admin/numero?id=@l.Id">Diagnóstico</a>
+                        <a class="discreto" style="padding:6px 12px;border-radius:8px;border:1px solid var(--campo-borda);font-size:12.5px;font-weight:600" href="/admin/perfil?id=@l.Id">Perfil do WhatsApp</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<p class="sub" style="margin-top:14px">
+    A <strong>qualidade</strong> é a nota que a Meta dá à linha com base na reação dos
+    destinatários (bloqueios e denúncias). Qualidade baixa reduz o limite de envio do número.
+</p>

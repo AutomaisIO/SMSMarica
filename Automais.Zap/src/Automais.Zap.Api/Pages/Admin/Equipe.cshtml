@@ -1,0 +1,92 @@
+@page "/admin/equipe"
+@model Automais.Zap.Api.Pages.Admin.EquipeModel
+@{
+    ViewData["Title"] = "Equipe";
+}
+
+@if (Model.Alvo is null)
+{
+    <div class="cartao vazio">Nenhum cliente selecionado.</div>
+    return;
+}
+
+<div class="pagina-topo">
+    <div>
+        <h1>Equipe</h1>
+        <p class="sub compacto">Quem acessa o painel de @Model.Alvo.Nome.</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+<div class="cartao">
+    @if (Model.Usuarios.Count == 0)
+    {
+        <p class="sub compacto" style="text-align:center;padding:14px 0">
+            Nenhum usuário atribuído a este cliente.@(Model.Global ? " Adicione o primeiro abaixo." : " Peça à Automais para incluir acessos.")
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>E-mail</th><th>Nome</th><th>Último acesso</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var u in Model.Usuarios)
+            {
+                <tr>
+                    <td>@u.Email</td>
+                    <td>@u.Nome</td>
+                    <td class="num">@(u.UltimoAcessoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
+                    <td class="acoes">
+                        @if (Model.Global)
+                        {
+                            <form method="post" asp-page-handler="Desvincular" style="display:inline"
+                                  onsubmit="return confirm('Desvincular este usuário deste cliente?');">
+                                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                                <input type="hidden" name="usuarioId" value="@u.Id" />
+                                <button class="acao discreto" type="submit">Desvincular</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (Model.Global)
+{
+    <details class="adicionar">
+        <summary>Adicionar usuário</summary>
+        <div class="cartao">
+            <form method="post" asp-page-handler="Criar" class="linha" style="margin-top:0">
+                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                <div>
+                    <label for="usr-email">E-mail</label>
+                    <input id="usr-email" type="email" name="email" required />
+                </div>
+                <div>
+                    <label for="usr-nome">Nome</label>
+                    <input id="usr-nome" type="text" name="nome" />
+                </div>
+                <div>
+                    <label for="usr-senha">Senha (mín. 10)</label>
+                    <input id="usr-senha" type="password" name="senha" required autocomplete="new-password" />
+                </div>
+                <button class="acao" type="submit">Criar</button>
+            </form>
+            <p class="ajuda-campo" style="margin-top:10px">
+                E-mail do domínio da Automais nasce <strong>global</strong> e enxerga todos os clientes —
+                o vínculo com este cliente nem chega a ser criado.
+            </p>
+        </div>
+    </details>
+}

@@ -323,6 +323,213 @@ public sealed partial class GraphMetaClient(
         return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
     }
 
+    // ------------------------------------------------- Perfil do negócio
+
+    public async Task<ResultadoMeta<PerfilNegocioMeta>> ObterPerfilNegocioAsync(string phoneNumberId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<PerfilNegocioMeta>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get,
+            $"{phoneNumberId}/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical",
+            creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<PerfilNegocioMeta>.Falha(r.Erro!);
+
+        var p = Dados(r.Valor!).FirstOrDefault();
+        if (p.ValueKind != JsonValueKind.Object)
+        {
+            return ResultadoMeta<PerfilNegocioMeta>.Falha("A Meta devolveu o perfil vazio para este número.");
+        }
+
+        var sites = new List<string>();
+        if (p.TryGetProperty("websites", out var ws) && ws.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var s in ws.EnumerateArray())
+            {
+                if (s.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(s.GetString()))
+                {
+                    sites.Add(s.GetString()!);
+                }
+            }
+        }
+
+        return ResultadoMeta<PerfilNegocioMeta>.Ok(new PerfilNegocioMeta(
+            Texto(p, "about"),
+            Texto(p, "address"),
+            Texto(p, "description"),
+            Texto(p, "email"),
+            Texto(p, "profile_picture_url"),
+            sites,
+            Texto(p, "vertical")));
+    }
+
+    public async Task<ResultadoMeta<bool>> AtualizarPerfilNegocioAsync(
+        string phoneNumberId, AtualizarPerfilNegocio dados, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
+
+        // Campo vazio não é enviado: a Cloud API recusa "about" em branco, e mandar só o que
+        // mudou mantém o resto como está — que é o que o operador espera de um formulário.
+        var corpo = new Dictionary<string, object> { ["messaging_product"] = "whatsapp" };
+        if (!string.IsNullOrWhiteSpace(dados.Sobre)) corpo["about"] = dados.Sobre.Trim();
+        if (!string.IsNullOrWhiteSpace(dados.Endereco)) corpo["address"] = dados.Endereco.Trim();
+        if (!string.IsNullOrWhiteSpace(dados.Descricao)) corpo["description"] = dados.Descricao.Trim();
+        if (!string.IsNullOrWhiteSpace(dados.Email)) corpo["email"] = dados.Email.Trim();
+        if (dados.Sites.Count > 0) corpo["websites"] = dados.Sites;
+        if (!string.IsNullOrWhiteSpace(dados.Vertical) && dados.Vertical != "UNDEFINED")
+        {
+            corpo["vertical"] = dados.Vertical;
+        }
+
+        logger.LogInformation("Atualizando perfil do negócio do número {Numero}.", phoneNumberId);
+        var r = await ChamarJsonAsync(HttpMethod.Post, $"{phoneNumberId}/whatsapp_business_profile",
+            creds!.TokenSistema!, JsonSerializer.Serialize(corpo), ct);
+        return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
+    }
+
+    public async Task<ResultadoMeta<bool>> AtualizarFotoPerfilAsync(
+        string phoneNumberId, byte[] conteudo, string contentType, CancellationToken ct = default)
+    {
+        // A Upload API só aceita JPEG/PNG para foto de perfil; barrar aqui devolve uma
+        // mensagem legível em vez do "(#100)" cru da Meta.
+        if (contentType is not ("image/jpeg" or "image/jpg" or "image/png"))
+        {
+            return ResultadoMeta<bool>.Falha("A foto do perfil precisa ser JPEG ou PNG.");
+        }
+
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
+
+        // A foto não vai direto no perfil: primeiro sobe pela Resumable Upload API do App,
+        // que devolve um handle; é o handle que o perfil aceita. file_name é obrigatório
+        // no contrato da Upload API, mesmo que a Meta hoje tolere a ausência.
+        var nomeArquivo = contentType == "image/png" ? "perfil.png" : "perfil.jpg";
+        var abertura = await ChamarAsync(HttpMethod.Post,
+            $"{creds!.AppId}/uploads?file_length={conteudo.Length}&file_type={Uri.EscapeDataString(contentType)}&file_name={nomeArquivo}",
+            creds.TokenSistema!, new Dictionary<string, string>(), ct);
+        if (!abertura.Sucesso) return ResultadoMeta<bool>.Falha("abrindo o upload: " + abertura.Erro);
+
+        var sessao = Texto(abertura.Valor!, "id");
+        if (string.IsNullOrWhiteSpace(sessao))
+        {
+            return ResultadoMeta<bool>.Falha("A Meta não devolveu o id da sessão de upload.");
+        }
+
+        // O envio dos bytes usa o esquema "OAuth" (não "Bearer") e o offset em header — é o
+        // contrato da Upload API, diferente do resto da Graph.
+        string? handle;
+        try
+        {
+            var baseUrl = (await config.ObterAsync(ct)).BaseUrl.TrimEnd('/');
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/{sessao}");
+            req.Headers.TryAddWithoutValidation("Authorization", $"OAuth {creds.TokenSistema}");
+            req.Headers.TryAddWithoutValidation("file_offset", "0");
+            req.Content = new ByteArrayContent(conteudo);
+            req.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+
+            using var resp = await http.SendAsync(req, ct);
+            var texto = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(texto) ? "{}" : texto);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var msg = doc.RootElement.TryGetProperty("error", out var err)
+                    ? Texto(err, "message") ?? $"HTTP {(int)resp.StatusCode}"
+                    : $"HTTP {(int)resp.StatusCode}";
+                logger.LogWarning("Upload da foto de perfil recusado: {Erro}", msg);
+                return ResultadoMeta<bool>.Falha("enviando a imagem: " + msg);
+            }
+
+            handle = Texto(doc.RootElement, "h");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Falha enviando a foto de perfil.");
+            return ResultadoMeta<bool>.Falha(ex is TaskCanceledException ? "timeout enviando a imagem" : ex.Message);
+        }
+
+        if (string.IsNullOrWhiteSpace(handle))
+        {
+            return ResultadoMeta<bool>.Falha("A Meta não devolveu o handle da imagem enviada.");
+        }
+
+        logger.LogInformation("Trocando a foto de perfil do número {Numero}.", phoneNumberId);
+        var grava = await ChamarJsonAsync(HttpMethod.Post, $"{phoneNumberId}/whatsapp_business_profile",
+            creds.TokenSistema!,
+            JsonSerializer.Serialize(new { messaging_product = "whatsapp", profile_picture_handle = handle }), ct);
+        return grava.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(grava.Erro!);
+    }
+
+    // --------------------------------------------------- Métricas da Meta
+
+    public async Task<ResultadoMeta<IReadOnlyList<PontoAnalytics>>> ObterAnalyticsAsync(
+        string wabaId, DateTimeOffset inicio, DateTimeOffset fim, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<IReadOnlyList<PontoAnalytics>>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get,
+            $"{wabaId}?fields=analytics.start({inicio.ToUnixTimeSeconds()}).end({fim.ToUnixTimeSeconds()}).granularity(DAY)",
+            creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<IReadOnlyList<PontoAnalytics>>.Falha(r.Erro!);
+
+        var pontos = new List<PontoAnalytics>();
+        if (r.Valor!.TryGetProperty("analytics", out var a)
+            && a.TryGetProperty("data_points", out var dp) && dp.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var ponto in dp.EnumerateArray())
+            {
+                pontos.Add(new PontoAnalytics(
+                    DateTimeOffset.FromUnixTimeSeconds(Inteiro(ponto, "start")),
+                    Inteiro(ponto, "sent"),
+                    Inteiro(ponto, "delivered")));
+            }
+        }
+
+        return ResultadoMeta<IReadOnlyList<PontoAnalytics>>.Ok(pontos.OrderBy(p => p.Inicio).ToList());
+    }
+
+    public async Task<ResultadoMeta<IReadOnlyList<CategoriaCobranca>>> ObterCobrancaAsync(
+        string wabaId, DateTimeOffset inicio, DateTimeOffset fim, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<IReadOnlyList<CategoriaCobranca>>.Falha(erro);
+
+        // pricing_analytics é o campo do modelo por MENSAGEM (jul/2025+); o antigo
+        // conversation_analytics reporta o modelo por conversa, que não é mais o cobrado.
+        var r = await ChamarAsync(HttpMethod.Get,
+            $"{wabaId}?fields=pricing_analytics.start({inicio.ToUnixTimeSeconds()}).end({fim.ToUnixTimeSeconds()})"
+            + ".granularity(DAILY).dimensions([\"PRICING_CATEGORY\"])",
+            creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<IReadOnlyList<CategoriaCobranca>>.Falha(r.Erro!);
+
+        // Agregado por categoria: a tela mostra o período inteiro, não o dia a dia.
+        var porCategoria = new Dictionary<string, (long Mensagens, decimal Custo)>(StringComparer.OrdinalIgnoreCase);
+        if (r.Valor!.TryGetProperty("pricing_analytics", out var pa)
+            && pa.TryGetProperty("data", out var dados) && dados.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var bloco in dados.EnumerateArray())
+            {
+                if (!bloco.TryGetProperty("data_points", out var dp) || dp.ValueKind != JsonValueKind.Array) continue;
+                foreach (var ponto in dp.EnumerateArray())
+                {
+                    var categoria = Texto(ponto, "pricing_category") ?? "OUTRAS";
+                    var atual = porCategoria.GetValueOrDefault(categoria);
+                    porCategoria[categoria] = (atual.Mensagens + Inteiro(ponto, "volume"),
+                        atual.Custo + Fracionado(ponto, "cost"));
+                }
+            }
+        }
+
+        var lista = porCategoria
+            .Select(kv => new CategoriaCobranca(kv.Key, kv.Value.Mensagens, kv.Value.Custo))
+            .OrderByDescending(c => c.Mensagens)
+            .ToList();
+
+        return ResultadoMeta<IReadOnlyList<CategoriaCobranca>>.Ok(lista);
+    }
+
     // ---------------------------------------------------------------- Apoio
 
     private async Task<(CredenciaisMeta? Creds, string? Erro)> CredenciaisSistemaAsync(CancellationToken ct)
@@ -413,6 +620,18 @@ public sealed partial class GraphMetaClient(
                 _ => (bool?)null,
             }
             : null;
+
+    private static long Inteiro(JsonElement e, string prop)
+        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(prop, out var v)
+           && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n)
+            ? n
+            : 0;
+
+    private static decimal Fracionado(JsonElement e, string prop)
+        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(prop, out var v)
+           && v.ValueKind == JsonValueKind.Number && v.TryGetDecimal(out var n)
+            ? n
+            : 0m;
 
     private static readonly JsonSerializerOptions Identado = new() { WriteIndented = true };
 

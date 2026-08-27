@@ -6,16 +6,25 @@
 
 @if (Model.Alvo is null)
 {
-    <p class="sub">WABA não encontrado.</p>
+    <div class="cartao vazio">WABA não encontrado.</div>
     return;
 }
 
-<h1>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</h1>
-<p class="sub">
-    <code>@Model.Alvo.WabaId</code> ·
-    <a href="/admin/tenant?id=@Model.Alvo.TenantId">voltar ao cliente</a> ·
-    <a href="/admin/templates?id=@Model.Alvo.Id">templates</a>
+<p class="migalhas">
+    <a href="/admin/tenant?id=@Model.Alvo.TenantId">Painel</a>
+    <span class="sep">/</span>
+    <span>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</span>
 </p>
+
+<div class="pagina-topo" style="margin-bottom:8px">
+    <div>
+        <h1>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</h1>
+        <p class="sub compacto">Conta WhatsApp Business · ID na Meta: <code>@Model.Alvo.WabaId</code></p>
+    </div>
+    <div class="acoes">
+        <a class="discreto" style="padding:7px 13px;border-radius:8px;border:1px solid var(--campo-borda);font-size:12.5px;font-weight:600" href="/admin/templates?id=@Model.Alvo.Id">Templates</a>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
@@ -26,38 +35,96 @@
     <div class="aviso ok">@Model.Recado</div>
 }
 
+@{
+    var temDestino = !string.IsNullOrWhiteSpace(Model.Alvo.UrlDestino);
+    var temNumeroAtivo = Model.Numeros.Any(n => n.Ativo);
+    var tudoOk = Model.EsteAppInscrito && Model.TemSegredo && temDestino && Model.Alvo.RoteamentoAtivo && temNumeroAtivo && Model.TenantAtivo;
+}
+
+<h2 style="margin-top:18px">Rota de entrega</h2>
+<div class="cartao">
+    @if (tudoOk)
+    {
+        <p class="sub"><span class="selo on">canal completo</span> Cada evento da Meta percorre esta rota até o seu sistema.</p>
+    }
+    else
+    {
+        <p class="sub"><span class="selo atencao">rota incompleta</span> As estações em vermelho impedem os eventos de chegar ao destino.</p>
+    }
+    <ul class="rota">
+        <li class="@(Model.EsteAppInscrito ? "ok" : (Model.ErroGraph is null ? "falha" : "pendente"))">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Meta envia os eventos deste WABA
+                    <span class="selo @(Model.EsteAppInscrito ? "on" : (Model.ErroGraph is null ? "off" : "atencao"))">@(Model.EsteAppInscrito ? "App inscrito" : (Model.ErroGraph is null ? "App não inscrito" : "não confirmado"))</span>
+                </span>
+                <span class="detalhe">
+                    @if (Model.ErroGraph is not null)
+                    {
+                        <span>A Meta não respondeu agora: @Model.ErroGraph</span>
+                    }
+                    else if (Model.EsteAppInscrito)
+                    {
+                        <span>O App da Automais está inscrito — a Meta entrega os eventos no webhook da plataforma.</span>
+                    }
+                    else
+                    {
+                        <span>Enquanto o App da Automais não estiver inscrito, a Meta não manda nada para cá.</span>
+                    }
+                </span>
+            </span>
+        </li>
+        <li class="@(Model.TemSegredo ? "ok" : "falha")">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Plataforma assina a entrega
+                    <span class="selo @(Model.TemSegredo ? "on" : "off")">@(Model.TemSegredo ? "segredo ok" : "sem segredo")</span>
+                </span>
+                <span class="detalhe">Assinatura própria em <code>X-Automais-Signature</code>; o destino confere com o mesmo segredo.</span>
+            </span>
+        </li>
+        <li class="@(temDestino && Model.Alvo.RoteamentoAtivo ? "ok" : "falha")">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Roteamento até o destino
+                    <span class="selo @(Model.Alvo.RoteamentoAtivo ? "on" : "off")">@(Model.Alvo.RoteamentoAtivo ? "ligado" : "desligado")</span>
+                    <span class="selo @(temDestino ? "on" : "off")">@(temDestino ? "destino ok" : "sem destino")</span>
+                </span>
+                <span class="detalhe">@(Model.Alvo.UrlDestino ?? "Nenhum webhook de destino configurado.")</span>
+            </span>
+        </li>
+        <li class="@(temNumeroAtivo && Model.TenantAtivo ? "ok" : "falha")">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Sistema do cliente recebe
+                    <span class="selo @(temNumeroAtivo ? "on" : "off")">@(temNumeroAtivo ? $"{Model.Numeros.Count(n => n.Ativo)} número(s) ativo(s)" : "nenhum número ativo")</span>
+                    <span class="selo @(Model.TenantAtivo ? "on" : "off")">@(Model.TenantAtivo ? "cliente ativo" : "cliente suspenso")</span>
+                </span>
+                <span class="detalhe">Prova final: uma mensagem real entrando e um envio recebendo <code>delivered</code> em <a href="/admin/entregas">Entregas</a>.</span>
+            </span>
+        </li>
+    </ul>
+</div>
+
 <h2>Roteamento</h2>
 <div class="cartao">
     <form method="post" asp-page-handler="Roteamento" class="linha" style="margin-top:0">
         <input type="hidden" name="id" value="@Model.Alvo.Id" />
         <div style="flex:1;min-width:340px">
-            <label>Webhook da aplicação de destino</label>
-            <input type="url" name="urlDestino" value="@Model.Alvo.UrlDestino" style="width:100%"
+            <label for="waba-destino">Webhook da aplicação de destino</label>
+            <input id="waba-destino" type="url" name="urlDestino" value="@Model.Alvo.UrlDestino" style="width:100%"
                    placeholder="https://api.dominio-do-cliente/integracoes/whatsapp/webhook" />
         </div>
         <div>
-            <label>Entregar</label>
-            <select name="ativo" style="background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:8px 10px;font:inherit">
+            <label for="waba-entregar">Entregar</label>
+            <select id="waba-entregar" name="ativo">
                 <option value="true" selected="@Model.Alvo.RoteamentoAtivo">ligado</option>
                 <option value="false" selected="@(!Model.Alvo.RoteamentoAtivo)">desligado</option>
             </select>
         </div>
         <button class="acao" type="submit">Salvar</button>
     </form>
-    <p class="sub" style="margin:12px 0 0">Todos os números deste WABA herdam esse destino (um número pode ter exceção, abaixo).</p>
-</div>
-
-<h2>Status da entrega</h2>
-<div class="cartao">
-    <ul class="status-lista">
-        <li><span class="selo @(!string.IsNullOrWhiteSpace(Model.Alvo.UrlDestino) ? "on" : "off")">@(!string.IsNullOrWhiteSpace(Model.Alvo.UrlDestino) ? "ok" : "falta")</span> Destino configurado</li>
-        <li><span class="selo @(Model.TemSegredo ? "on" : "off")">@(Model.TemSegredo ? "ok" : "falta")</span> Segredo de entrega gerado</li>
-        <li><span class="selo @(Model.Alvo.RoteamentoAtivo ? "on" : "off")">@(Model.Alvo.RoteamentoAtivo ? "ok" : "desligado")</span> Roteamento ligado</li>
-        <li><span class="selo @(Model.EsteAppInscrito ? "on" : (Model.ErroGraph is null ? "off" : "atencao"))">@(Model.EsteAppInscrito ? "ok" : (Model.ErroGraph is null ? "não" : "?"))</span> App da Meta inscrito neste WABA</li>
-        <li><span class="selo @(Model.Numeros.Any(n => n.Ativo) ? "on" : "off")">@(Model.Numeros.Any(n => n.Ativo) ? "ok" : "nenhum")</span> Ao menos um número ativo</li>
-        <li><span class="selo @(Model.TenantAtivo ? "on" : "off")">@(Model.TenantAtivo ? "ok" : "suspenso")</span> Cliente ativo e não suspenso</li>
-    </ul>
-    <p class="sub compacto" style="margin-top:12px">Todas as linhas em verde = os eventos deste WABA chegam no destino.</p>
+    <p class="ajuda-campo" style="margin:12px 0 0">Todos os números deste WABA herdam esse destino (um número pode ter exceção, abaixo).</p>
 </div>
 
 <h2>Assinatura da entrega</h2>
@@ -115,11 +182,11 @@
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         @if (Model.EsteAppInscrito)
         {
-            <span class="selo on">recebendo</span> <span class="sub compacto">o App da plataforma está inscrito neste WABA</span>
+            <span class="selo on">recebendo</span> <span class="sub compacto">o App da Automais está inscrito neste WABA</span>
         }
         else
         {
-            <span class="selo off">não recebendo</span> <span class="sub compacto">o App da plataforma ainda não está inscrito neste WABA</span>
+            <span class="selo off">não recebendo</span> <span class="sub compacto">o App da Automais ainda não está inscrito neste WABA</span>
         }
 
         @if (Model.Global)
@@ -149,14 +216,14 @@
     }
     else if (Model.EsteAppInscrito)
     {
-        <p class="sub" style="margin:12px 0 0">Só o App da plataforma recebe os eventos deste WABA.</p>
+        <p class="sub" style="margin:12px 0 0">Só o App da Automais recebe os eventos deste WABA.</p>
     }
 </div>
 
-<h2>Números</h2>
+<h2>Números <span class="cont">@Model.Numeros.Count</span></h2>
 <div class="cartao">
     <div style="display:flex;align-items:center;gap:12px">
-        <span class="sub">
+        <span class="sub compacto">
             @if (Model.Alvo.SincronizadoEm is not null)
             {
                 <span>Sincronizado em @Model.Alvo.SincronizadoEm.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
@@ -180,14 +247,14 @@
         @foreach (var n in Model.Numeros)
         {
             <tr>
-                <td><a href="/admin/numero?id=@n.Id">@(n.DisplayPhoneNumber ?? n.PhoneNumberId)</a></td>
+                <td><a href="/admin/numero?id=@n.Id" class="num" style="font-weight:500">@(n.DisplayPhoneNumber ?? n.PhoneNumberId)</a></td>
                 <td>@(n.Rotulo ?? "—")</td>
                 <td class="num"><code>@n.PhoneNumberId</code></td>
                 <td>
                     <form method="post" asp-page-handler="Override" style="display:flex;gap:6px">
                         <input type="hidden" name="id" value="@Model.Alvo.Id" />
                         <input type="hidden" name="numeroId" value="@n.Id" />
-                        <input type="url" name="url" value="@n.UrlDestinoOverride" placeholder="herda do WABA" style="min-width:240px" aria-label="Destino próprio do número @(n.DisplayPhoneNumber ?? n.PhoneNumberId)" />
+                        <input type="url" name="url" value="@n.UrlDestinoOverride" placeholder="herda do WABA" style="min-width:220px" aria-label="Destino próprio do número @(n.DisplayPhoneNumber ?? n.PhoneNumberId)" />
                         <button class="acao discreto" type="submit">Salvar</button>
                     </form>
                 </td>

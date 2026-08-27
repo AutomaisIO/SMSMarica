@@ -5,25 +5,143 @@
     Layout = "_Layout";
 }
 
-<div class="cartao" style="max-width:360px;margin:12vh auto 0">
-    <h1>automais<span style="color:var(--marca)">.zap</span></h1>
-    <p class="sub">Roteador de webhook do WhatsApp.</p>
+@section Head {
+    <style>
+        .portal { display: flex; min-height: 100vh; }
 
-    @if (!string.IsNullOrEmpty(Model.Erro))
-    {
-        <div class="aviso" role="alert">@Model.Erro</div>
-    }
+        /* ------- lado da marca: a casa de máquinas ------- */
+        .portal .vitrine {
+            flex: 1.15; background: var(--tinta); color: var(--tinta-texto);
+            display: flex; flex-direction: column; padding: 48px 56px 36px;
+            position: relative; overflow: hidden;
+        }
+        .vitrine::before {
+            content: ""; position: absolute; width: 560px; height: 560px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(122, 47, 224, .32), transparent 65%);
+            top: -180px; right: -160px; pointer-events: none;
+        }
+        .vitrine::after {
+            content: ""; position: absolute; width: 480px; height: 480px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 211, 199, .16), transparent 65%);
+            bottom: -200px; left: -140px; pointer-events: none;
+        }
+        .vitrine .marca-grande { display: flex; align-items: center; gap: 13px; position: relative; }
+        .vitrine .marca-grande img { width: 44px; height: 44px; filter: drop-shadow(0 4px 14px rgba(0,0,0,.45)); }
+        .vitrine .marca-grande .nome { font: 700 24px/1 var(--fonte-titulo); letter-spacing: -0.02em; color: #E8EDF8; }
+        .vitrine .marca-grande .nome em { font-style: normal; color: var(--ciano-claro); }
+        .vitrine .marca-grande .tag { display: block; margin-top: 6px; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--tinta-fraco); font-weight: 500; }
+        .vitrine .chamada { margin: auto 0; padding: 48px 0; position: relative; max-width: 460px; }
+        .vitrine .chamada h1 { font: 700 clamp(26px, 3.2vw, 36px)/1.22 var(--fonte-titulo); letter-spacing: -0.025em; color: #F2F5FC; margin: 0 0 14px; }
+        .vitrine .chamada h1 em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .vitrine .chamada p { font-size: 14.5px; color: var(--tinta-texto); margin: 0 0 30px; line-height: 1.6; }
+        .vitrine .provas { list-style: none; margin: 0; padding: 0; display: grid; gap: 15px; }
+        .vitrine .provas li { display: grid; grid-template-columns: 34px 1fr; gap: 13px; align-items: start; }
+        .vitrine .provas .simbolo {
+            width: 34px; height: 34px; border-radius: 10px; background: var(--tinta-2);
+            border: 1px solid var(--tinta-borda); display: grid; place-items: center;
+        }
+        .vitrine .provas .simbolo svg { width: 16px; height: 16px; stroke: var(--ciano-claro); }
+        .vitrine .provas .t { display: block; font-weight: 600; font-size: 13.5px; color: #E8EDF8; }
+        .vitrine .provas .d { display: block; font-size: 12.5px; color: var(--tinta-fraco); margin-top: 1px; line-height: 1.5; }
+        .vitrine .grupo { position: relative; display: flex; align-items: center; gap: 26px; padding-top: 26px; border-top: 1px solid var(--tinta-borda); flex-wrap: wrap; }
+        .vitrine .grupo .rotulo { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--tinta-fraco); font-weight: 600; width: 100%; }
+        .vitrine .grupo img.automais { width: 128px; display: block; }
+        .vitrine .grupo img.falarmais { height: 46px; display: block; }
 
-    <form method="post">
-        <div style="margin-bottom:12px">
-            <label for="email">E-mail</label>
-            <input type="email" id="email" name="Email" value="@Model.Email" required autofocus autocomplete="username" style="width:100%" />
+        /* ------- lado do acesso ------- */
+        .portal .acesso { flex: 1; display: grid; place-items: center; padding: 48px 32px; }
+        .acesso .caixa { width: 100%; max-width: 360px; }
+        .acesso h2 { font: 700 22px/1.25 var(--fonte-titulo); letter-spacing: -0.02em; margin: 0 0 6px; }
+        .acesso .sub { margin-bottom: 26px; }
+        .acesso form > div { margin-bottom: 15px; }
+        .acesso input { width: 100%; min-width: 0; padding: 10px 12px; font-size: 14px; }
+        .acesso button.acao { width: 100%; padding: 11px 16px; font-size: 14px; margin-top: 4px; }
+        .acesso .nota { margin-top: 18px; text-align: center; font-size: 12.5px; color: var(--fraco); line-height: 1.5; }
+        .acesso .selo-seguro {
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            margin-top: 26px; font-size: 11.5px; color: var(--fraco);
+        }
+        .acesso .selo-seguro svg { width: 13px; height: 13px; stroke: var(--ok); }
+
+        @@media (max-width: 860px) {
+            .portal { flex-direction: column; }
+            .portal .vitrine { flex: none; padding: 34px 26px 26px; }
+            .vitrine .chamada { padding: 26px 0; }
+            .vitrine .provas { display: none; }
+            .portal .acesso { padding: 36px 22px 56px; }
+        }
+    </style>
+}
+
+<div class="portal">
+    <section class="vitrine" aria-label="Automais.Zap">
+        <div class="marca-grande">
+            <img src="/marca/cruz.svg" alt="" />
+            <span>
+                <span class="nome">automais<em>.zap</em></span>
+                <span class="tag">Plataforma WhatsApp Business</span>
+            </span>
         </div>
-        <div style="margin-bottom:16px">
-            <label for="senha">Senha</label>
-            <input type="password" id="senha" name="Senha" required autocomplete="current-password" style="width:100%" />
+
+        <div class="chamada">
+            <h1>O canal oficial de WhatsApp da sua operação, <em>sob gestão completa</em>.</h1>
+            <p>
+                Números, templates, perfil e entregas do seu WhatsApp Business — administrados
+                em um só lugar, com a infraestrutura da Automais por trás.
+            </p>
+            <ul class="provas">
+                <li>
+                    <span class="simbolo"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5-4-1.3-7-5-7-9.5V6z"/><path d="M9 12l2 2 4-4.5"/></svg></span>
+                    <span><span class="t">Entrega assinada e auditável</span>
+                    <span class="d">Cada evento sai com assinatura própria por cliente e fica registrado na trilha de entregas.</span></span>
+                </li>
+                <li>
+                    <span class="simbolo"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+                    <span><span class="t">Privacidade por desenho</span>
+                    <span class="d">A plataforma roteia envelopes: não guarda conversa, mensagem nem telefone de cidadão.</span></span>
+                </li>
+                <li>
+                    <span class="simbolo"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.5 2.3 3.8 5.2 3.8 8.5s-1.3 6.2-3.8 8.5c-2.5-2.3-3.8-5.2-3.8-8.5S9.5 5.8 12 3.5z"/></svg></span>
+                    <span><span class="t">Gestão Meta sem sair daqui</span>
+                    <span class="d">Templates, qualidade do número, perfil comercial e foto — tudo pela plataforma, direto na API oficial.</span></span>
+                </li>
+            </ul>
         </div>
-        <button class="acao" type="submit" style="width:100%">Entrar</button>
-    </form>
-    <p class="sub compacto" style="margin-top:14px;text-align:center">Esqueceu a senha? Peça a redefinição a quem administra a plataforma.</p>
+
+        <div class="grupo">
+            <span class="rotulo">Grupo Automais</span>
+            <img class="automais" src="/marca/automais.png" alt="Automais" />
+            <img class="falarmais" src="/marca/falarmais.png" alt="FalarMais — VoIP e Telecom" />
+        </div>
+    </section>
+
+    <section class="acesso" aria-label="Entrar">
+        <div class="caixa">
+            <h2>Entrar na plataforma</h2>
+            <p class="sub">Use as credenciais fornecidas pela Automais.</p>
+
+            @if (!string.IsNullOrEmpty(Model.Erro))
+            {
+                <div class="aviso" role="alert">@Model.Erro</div>
+            }
+
+            <form method="post">
+                <div>
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" name="Email" value="@Model.Email" required autofocus autocomplete="username" />
+                </div>
+                <div>
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="Senha" required autocomplete="current-password" />
+                </div>
+                <button class="acao" type="submit">Entrar</button>
+            </form>
+
+            <p class="nota">Esqueceu a senha? Peça a redefinição a quem administra a plataforma.</p>
+            <p class="selo-seguro">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                Conexão criptografada · sessão expira em 8 horas
+            </p>
+        </div>
+    </section>
 </div>

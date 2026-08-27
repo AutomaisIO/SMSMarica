@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Automais.Zap.Api.Pages.Admin;
 
+[EnableRateLimiting("entrar")]
 public sealed class EntrarModel(IAdminService admin, ILogger<EntrarModel> logger) : PageModel
 {
     [BindProperty]

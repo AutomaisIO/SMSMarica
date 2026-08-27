@@ -1,0 +1,157 @@
+@page "/admin/tokens"
+@model Automais.Zap.Api.Pages.Admin.TokensModel
+@{
+    ViewData["Title"] = "API e tokens";
+}
+
+@if (Model.Alvo is null)
+{
+    <div class="cartao vazio">Nenhum cliente selecionado.</div>
+    return;
+}
+
+<div class="pagina-topo">
+    <div>
+        <h1>API e tokens</h1>
+        <p class="sub compacto">Credenciais que os sistemas de @Model.Alvo.Nome usam para enviar mensagens pela plataforma.</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+@if (!string.IsNullOrEmpty(Model.TokenNovo))
+{
+    <div class="aviso ok">
+        <strong>Token criado — copie agora.</strong> Ele não é exibido de novo; o que fica guardado é só o resumo criptográfico.
+        <div class="segredo-linha">
+            <code class="copiavel" id="token-novo">@Model.TokenNovo</code>
+            <button type="button" class="acao discreto" data-copiar="#token-novo">Copiar</button>
+        </div>
+    </div>
+}
+
+<h2>Tokens <span class="cont">@Model.Tokens.Count(t => t.RevogadoEm is null) ativo@(Model.Tokens.Count(t => t.RevogadoEm is null) == 1 ? "" : "s")</span></h2>
+<p class="sub">Crie um token por sistema integrado: revogar um não afeta os outros.</p>
+
+<div class="cartao">
+    @if (Model.Tokens.Count == 0)
+    {
+        <p class="sub compacto" style="text-align:center;padding:14px 0">
+            Nenhum token ainda. Sem token, nenhum sistema consegue enviar mensagens por este cliente — gere o primeiro abaixo.
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>Nome</th><th>Prefixo</th><th>Pode enviar por</th><th>Criado</th><th>Último uso</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Tokens.OrderBy(t => t.RevogadoEm != null).ThenByDescending(t => t.CriadoEm))
+            {
+                <tr class="@(t.RevogadoEm is null ? "" : "apagado")">
+                    <td>@t.Nome</td>
+                    <td class="num"><code>zap_@(t.Prefixo)_…</code></td>
+                    <td class="sub compacto">
+                        @if (t.TodosNumeros)
+                        {
+                            <span>todos os números do cliente</span>
+                        }
+                        else
+                        {
+                            <span>@string.Join(", ", t.Numeros.Select(n => n.Numero?.DisplayPhoneNumber ?? n.NumeroId.ToString()[..8]))</span>
+                        }
+                    </td>
+                    <td class="num">@t.CriadoEm.ToLocalTime().ToString("dd/MM/yy")</td>
+                    <td class="num">@(t.UltimoUsoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
+                    <td>@if (t.RevogadoEm is null) { <span class="selo on">ativo</span> } else { <span class="selo off">revogado</span> }</td>
+                    <td class="acoes">
+                        @if (t.RevogadoEm is null)
+                        {
+                            <form method="post" asp-page-handler="Revogar" style="display:inline"
+                                  onsubmit="return confirm('Revogar este token? Quem estiver usando para de enviar na hora.');">
+                                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                                <input type="hidden" name="tokenId" value="@t.Id" />
+                                <button class="acao perigo" type="submit">Revogar</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<details class="adicionar">
+    <summary>Gerar token</summary>
+    <div class="cartao">
+        <form method="post" asp-page-handler="Criar">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <div class="linha" style="margin-top:0">
+                <div class="campo-largo">
+                    <label for="tok-nome">Para que serve</label>
+                    <input id="tok-nome" type="text" name="nome" required placeholder="Sistema do cliente — produção" />
+                </div>
+            </div>
+
+            <div style="margin-top:14px" role="radiogroup" aria-label="Alcance do token">
+                <span style="display:block;font-size:12px;font-weight:600;color:#3D465C;margin-bottom:5px">Pode enviar por</span>
+                <label class="opcao"><input type="radio" name="alcance" value="todos" checked /> Todos os números do cliente, inclusive os que entrarem depois</label>
+                <label class="opcao"><input type="radio" name="alcance" value="selecionados" /> Só os números marcados abaixo</label>
+
+                @if (Model.NumerosDoTenant.Count > 0)
+                {
+                    <div style="margin-top:8px;padding-left:24px">
+                        @foreach (var n in Model.NumerosDoTenant)
+                        {
+                            <label class="opcao suave">
+                                <input type="checkbox" name="numeros" value="@n.Id" />
+                                @(n.DisplayPhoneNumber ?? n.PhoneNumberId) @(n.Rotulo is null ? "" : "— " + n.Rotulo)
+                            </label>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="ajuda-campo" style="margin-top:8px;padding-left:24px">
+                        Nenhum número sincronizado ainda — só o alcance "todos" faz sentido por enquanto.
+                    </p>
+                }
+            </div>
+
+            <div style="margin-top:16px">
+                <button class="acao" type="submit">Gerar token</button>
+            </div>
+        </form>
+    </div>
+</details>
+
+<h2>Como integrar</h2>
+<div class="cartao">
+    <p class="sub">
+        O envio é um único endpoint. O objeto <code>mensagem</code> segue o formato oficial da
+        Cloud API da Meta e é repassado como está — qualquer tipo que a Meta aceite, a
+        plataforma aceita.
+    </p>
+    <pre class="num" style="margin:0;background:var(--tinta);color:#C8D0E4;border-radius:10px;padding:16px 18px;font-size:12.5px;line-height:1.7;overflow-x:auto">POST https://api.smsmais.automais.com/v1/mensagens
+Authorization: Bearer zap_&lt;prefixo&gt;_&lt;segredo&gt;
+Content-Type: application/json
+
+{
+  "phone_number_id": "&lt;id do número na Meta&gt;",
+  "para": "5521999999999",
+  "mensagem": { "type": "text", "text": { "body": "Olá!" } }
+}</pre>
+    <ul class="sub" style="margin:14px 0 0;padding-left:18px">
+        <li>A resposta traz o <code>wamid</code> da Meta — guarde para conciliar com os eventos de status.</li>
+        <li>O alcance do token é <strong>por número</strong>: ele só envia pelos números autorizados acima.</li>
+        <li>Eventos recebidos (mensagens do cidadão, status) chegam no webhook do seu sistema, assinados em <code>X-Automais-Signature</code>.</li>
+        <li>Especificação completa: <a href="/docs" target="_blank" rel="noopener">documentação da API</a>.</li>
+    </ul>
+</div>

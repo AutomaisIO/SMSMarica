@@ -4,17 +4,60 @@
     ViewData["Title"] = "Templates";
 }
 
-<h1>Templates</h1>
-@if (Model.Alvo is not null)
-{
-    <p class="sub">
-        <strong>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</strong> ·
-        <a href="/admin/waba?id=@Model.Alvo.Id">voltar ao WABA</a> · <a href="/admin/tenant?id=@Model.Alvo.TenantId">cliente</a>
-    </p>
+@section Head {
+    <style>
+        .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
+        .chips a {
+            padding: 6px 14px; border-radius: 20px; border: 1px solid var(--campo-borda);
+            font-weight: 600; font-size: 12.5px; color: var(--suave); background: #fff;
+        }
+        .chips a:hover { text-decoration: none; border-color: var(--ciano); color: var(--ciano-forte); }
+        .chips a.ativo { background: var(--ciano); border-color: var(--ciano); color: #fff; }
+
+        .grade-templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 14px; }
+        .tpl { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+        .tpl .conversa {
+            background: #E5DDD5;
+            background-image: radial-gradient(rgba(255,255,255,.35) 1px, transparent 1.4px);
+            background-size: 18px 18px;
+            padding: 16px 14px; flex: 1;
+        }
+        .tpl .balao {
+            background: #fff; border-radius: 3px 12px 12px 12px; padding: 9px 11px 7px;
+            box-shadow: 0 1px 1px rgba(0,0,0,.12); font-size: 13px; color: #111B21;
+            max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.45;
+        }
+        .tpl .balao mark { background: rgba(8, 153, 184, .14); color: var(--ciano-forte); border-radius: 4px; padding: 0 3px; font-weight: 600; }
+        .tpl .balao .hora { display: block; text-align: right; font-size: 10.5px; color: #8696A0; margin-top: 4px; }
+        .tpl .dados { padding: 12px 14px 13px; display: grid; gap: 7px; border-top: 1px solid var(--borda-suave); }
+        .tpl .dados .nome-linha { display: flex; align-items: center; gap: 8px; }
+        .tpl .dados .nome-linha code { font-size: 12px; }
+        .tpl .dados .nome-linha .selo { margin-left: auto; }
+        .tpl .dados .meta-linha { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 11.5px; color: var(--fraco); }
+        .tpl .dados .motivo { font-size: 12px; color: var(--erro); }
+        .tpl .dados form { margin-left: auto; }
+    </style>
 }
-<p class="sub">
-    Templates são aprovados <strong>por WABA</strong> — cada cliente aprova os seus.
-</p>
+
+<div class="pagina-topo">
+    <div>
+        <h1>Templates</h1>
+        <p class="sub compacto">
+            Modelos aprovados pela Meta para iniciar conversa. São aprovados <strong>por WABA</strong> — cada conta tem os seus.
+        </p>
+    </div>
+</div>
+
+@if (Model.WabasDoTenant.Count > 1)
+{
+    <nav class="chips" aria-label="Conta WhatsApp Business">
+        @foreach (var w in Model.WabasDoTenant)
+        {
+            <a href="/admin/templates?id=@w.Id" class="@(Model.Alvo?.Id == w.Id ? "ativo" : "")"
+               aria-current="@(Model.Alvo?.Id == w.Id ? "true" : null)">@(w.Nome ?? w.WabaId)</a>
+        }
+    </nav>
+}
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
@@ -25,99 +68,107 @@
     <div class="aviso ok">@Model.Recado</div>
 }
 
-@if (Model.Alvo is not null)
+@if (Model.Alvo is null)
 {
-    @if (Model.ErroGraph is not null)
-    {
-        <div class="aviso atencao">Não foi possível consultar a Meta: @Model.ErroGraph. Os dados abaixo podem estar desatualizados.</div>
-    }
+    <div class="cartao vazio">
+        Nenhuma conta WhatsApp Business vinculada ainda. Os templates aparecem aqui quando o
+        primeiro WABA for vinculado no <a href="/admin">Painel</a>.
+    </div>
+    return;
+}
 
-    <div class="cartao">
-        <table>
-            <thead><tr><th>Nome</th><th>Idioma</th><th>Categoria</th><th>Status</th><th>Variáveis</th><th>Corpo</th><th></th></tr></thead>
-            <tbody>
-            @foreach (var t in Model.Templates)
-            {
-                <tr>
-                    <td><code>@t.Nome</code></td>
-                    <td>@t.Idioma</td>
-                    <td>@t.Categoria</td>
-                    <td>
-                        <span class="selo @(t.Status == "APPROVED" ? "on" : (t.Status == "REJECTED" || t.Status == "PAUSED" || t.Status == "DISABLED" ? "off" : "atencao"))">@(t.Status switch { "APPROVED" => "aprovado", "REJECTED" => "rejeitado", "PENDING" => "em análise", "IN_APPEAL" => "em recurso", "PAUSED" => "pausado", "DISABLED" => "desativado", _ => t.Status.ToLowerInvariant() })</span>
-                        @if (!string.IsNullOrEmpty(t.MotivoRejeicao) && t.MotivoRejeicao != "NONE")
-                        {
-                            <div class="sub" style="margin:2px 0 0">@t.MotivoRejeicao</div>
-                        }
-                    </td>
-                    <td class="num">@t.Parametros</td>
-                    <td class="sub" style="max-width:340px">@(t.Corpo ?? "—")</td>
-                    <td style="text-align:right">
-                        <form method="post" asp-page-handler="Excluir" style="display:inline"
-                              onsubmit="return confirm('Excluir este template? Quem usa esse nome para de conseguir enviar.');">
+@if (Model.ErroGraph is not null)
+{
+    <div class="aviso atencao">Não foi possível consultar a Meta: @Model.ErroGraph.TrimEnd('.'). Os dados abaixo podem estar desatualizados.</div>
+}
+else if (Model.Templates.Count == 0)
+{
+    <div class="cartao vazio">Nenhum template neste WABA ainda — crie o primeiro abaixo.</div>
+}
+else
+{
+    <div class="grade-templates">
+        @foreach (var t in Model.Templates)
+        {
+            <div class="cartao tpl">
+                <div class="conversa">
+                    <div class="balao">@Model.CorpoMarcado(t.Corpo)<span class="hora">@(DateTime.Now.ToString("HH:mm"))</span></div>
+                </div>
+                <div class="dados">
+                    <div class="nome-linha">
+                        <code>@t.Nome</code>
+                        <span class="selo @(t.Status == "APPROVED" ? "on" : (t.Status is "REJECTED" or "PAUSED" or "DISABLED" ? "off" : "atencao"))">
+                            @(t.Status switch { "APPROVED" => "aprovado", "REJECTED" => "rejeitado", "PENDING" => "em análise", "IN_APPEAL" => "em recurso", "PAUSED" => "pausado", "DISABLED" => "desativado", _ => t.Status.ToLowerInvariant() })
+                        </span>
+                    </div>
+                    <div class="meta-linha">
+                        <span>@t.Idioma</span> · <span>@(t.Categoria switch { "UTILITY" => "utilidade", "MARKETING" => "marketing", "AUTHENTICATION" => "autenticação", _ => t.Categoria.ToLowerInvariant() })</span>
+                        · <span>@t.Parametros variáve@(t.Parametros == 1 ? "l" : "is")</span>
+                        <form method="post" asp-page-handler="Excluir"
+                              onsubmit="return confirm('Excluir este template? A Meta apaga o nome em TODOS os idiomas, e quem usa esse nome para de conseguir enviar.');">
                             <input type="hidden" name="id" value="@Model.Alvo.Id" />
                             <input type="hidden" name="nome" value="@t.Nome" />
-                            <button class="acao discreto" type="submit">Excluir</button>
+                            <button class="acao perigo" style="padding:4px 10px;font-size:11.5px" type="submit">Excluir</button>
                         </form>
-                    </td>
-                </tr>
-            }
-            @if (Model.Templates.Count == 0 && Model.ErroGraph is null)
-            {
-                <tr><td colspan="7" class="sub">Nenhum template neste WABA.</td></tr>
-            }
-            </tbody>
-        </table>
-    </div>
-
-    <h2>Novo template</h2>
-    <div class="cartao">
-        <form method="post" asp-page-handler="Criar">
-            <input type="hidden" name="id" value="@Model.Alvo.Id" />
-            <div class="linha" style="margin-top:0">
-                <div>
-                    <label>Nome</label>
-                    <input type="text" name="nome" required placeholder="confirmacao_agendamento" />
-                </div>
-                <div>
-                    <label>Idioma</label>
-                    <input type="text" name="idioma" value="pt_BR" required />
-                </div>
-                <div>
-                    <label>Categoria</label>
-                    <select name="categoria" required>
-                        @foreach (var c in Automais.Zap.Api.Pages.Admin.TemplatesModel.Categorias)
-                        {
-                            <option value="@c">@(c switch { "UTILITY" => "UTILITY — utilidade (confirmações, avisos)", "MARKETING" => "MARKETING — promocional", "AUTHENTICATION" => "AUTHENTICATION — código de acesso", _ => c })</option>
-                        }
-                    </select>
+                    </div>
+                    @if (!string.IsNullOrEmpty(t.MotivoRejeicao) && t.MotivoRejeicao != "NONE")
+                    {
+                        <div class="motivo">Motivo da rejeição: @t.MotivoRejeicao</div>
+                    }
                 </div>
             </div>
-            <div class="linha">
-                <div style="flex:1;min-width:300px">
-                    <label>Cabeçalho (opcional, texto)</label>
-                    <input type="text" name="cabecalho" style="width:100%" />
-                </div>
-                <div style="flex:1;min-width:300px">
-                    <label>Rodapé (opcional)</label>
-                    <input type="text" name="rodape" style="width:100%" />
-                </div>
-            </div>
-            <div style="margin-top:10px">
-                <label>Corpo — use {{1}}, {{2}}… para as variáveis</label>
-                <textarea name="corpo" required rows="4"></textarea>
-            </div>
-            <div style="margin-top:10px">
-                <label>Exemplos das variáveis, separados por | (a Meta exige um para cada {{n}})</label>
-                <input type="text" name="exemplos" style="width:100%" placeholder="Maria | 12/09 às 14h" />
-            </div>
-            <div style="margin-top:14px">
-                <button class="acao" type="submit">Enviar para aprovação</button>
-            </div>
-        </form>
-        <p class="sub" style="margin:12px 0 0">
-            O nome vai em minúsculas com underscore — a Meta não aceita outra coisa e o console
-            corrige antes de enviar. Faltando exemplo para alguma variável, entra um placeholder,
-            porque a submissão sem exemplo volta com erro pouco explicativo.
-        </p>
+        }
     </div>
 }
+
+<h2>Novo template</h2>
+<div class="cartao">
+    <form method="post" asp-page-handler="Criar">
+        <input type="hidden" name="id" value="@Model.Alvo.Id" />
+        <div class="linha" style="margin-top:0">
+            <div>
+                <label for="tpl-nome">Nome</label>
+                <input id="tpl-nome" type="text" name="nome" required placeholder="confirmacao_agendamento" class="num" />
+                <div class="ajuda-campo">minúsculas com underscore — a plataforma corrige antes de enviar</div>
+            </div>
+            <div>
+                <label for="tpl-idioma">Idioma</label>
+                <input id="tpl-idioma" type="text" name="idioma" value="pt_BR" required style="min-width:100px" class="num" />
+            </div>
+            <div>
+                <label for="tpl-categoria">Categoria</label>
+                <select id="tpl-categoria" name="categoria" required>
+                    @foreach (var c in Automais.Zap.Api.Pages.Admin.TemplatesModel.Categorias)
+                    {
+                        <option value="@c">@(c switch { "UTILITY" => "Utilidade — confirmações e avisos", "MARKETING" => "Marketing — promocional", "AUTHENTICATION" => "Autenticação — código de acesso", _ => c })</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="linha">
+            <div style="flex:1;min-width:300px">
+                <label for="tpl-cabecalho">Cabeçalho (opcional, texto)</label>
+                <input id="tpl-cabecalho" type="text" name="cabecalho" style="width:100%" />
+            </div>
+            <div style="flex:1;min-width:300px">
+                <label for="tpl-rodape">Rodapé (opcional)</label>
+                <input id="tpl-rodape" type="text" name="rodape" style="width:100%" />
+            </div>
+        </div>
+        <div style="margin-top:12px">
+            <label for="tpl-corpo">Corpo — use {{1}}, {{2}}… para as variáveis</label>
+            <textarea id="tpl-corpo" name="corpo" required rows="4" placeholder="Olá {{1}}, sua consulta está confirmada para {{2}}."></textarea>
+        </div>
+        <div style="margin-top:12px">
+            <label for="tpl-exemplos">Exemplos das variáveis, separados por | (a Meta exige um para cada variável)</label>
+            <input id="tpl-exemplos" type="text" name="exemplos" style="width:100%" placeholder="Maria | 12/09 às 14h" />
+        </div>
+        <div style="margin-top:16px">
+            <button class="acao" type="submit">Enviar para aprovação da Meta</button>
+        </div>
+    </form>
+    <p class="ajuda-campo" style="margin:12px 0 0">
+        A aprovação costuma sair em minutos, mas pode levar até 24h. O resultado chega pelo
+        webhook e o status aparece no cartão do template.
+    </p>
+</div>

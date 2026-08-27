@@ -67,11 +67,20 @@ compartilhado.
 | `GET /meta/webhook` | Handshake `hub.challenge` da Meta |
 | `POST /meta/webhook` | Recebe o evento e entrega — é esta a Callback URL do App |
 | `POST /v1/mensagens` | Envio pelo sistema do cliente (token de tenant) |
-| `GET /admin` | Rotas: destinos e números (login) |
-| `GET /admin/wabas` | WABAs, números, apps inscritos — e o botão de inscrever este App |
-| `GET /admin/templates` | Templates por WABA: status, criar, excluir |
-| `GET /admin/meta` | Credenciais e Callback URL do App |
-| `GET /admin/entregas` | Últimas 200 tentativas |
+| `GET /admin` | Painel do cliente selecionado (login) |
+| `GET /admin/tenant` | Painel: KPIs, WABAs e saúde do canal |
+| `GET /admin/waba` | WABA: rota de entrega, roteamento, segredo, números |
+| `GET /admin/numeros` | Números do cliente com a qualidade que a Meta reporta |
+| `GET /admin/numero` | Diagnóstico do número (estado na Meta, OBA, entrega) |
+| `GET /admin/perfil` | Perfil comercial do número: foto, sobre, endereço, sites — grava direto na Meta |
+| `GET /admin/templates` | Templates por WABA: status, criar, excluir, preview |
+| `GET /admin/atividade` | Trilha local por dia + métricas da Meta (analytics e pricing_analytics) |
+| `GET /admin/entregas` | Trilha de entregas com filtros |
+| `GET /admin/tokens` | Tokens de API do cliente + guia de integração |
+| `GET /admin/equipe` | Usuários do cliente |
+| `GET /admin/clientes` | (global) Todos os tenants com a saúde de cada um |
+| `GET /admin/meta` | (global) Credenciais e Callback URL do App |
+| `GET /admin/novo` | (global) Criar cliente |
 | `GET /privacidade`, `/termos`, `/exclusao-de-dados` | Páginas legais do App, públicas |
 | `GET /health` | Liveness + banco |
 | `GET /docs` | Scalar |

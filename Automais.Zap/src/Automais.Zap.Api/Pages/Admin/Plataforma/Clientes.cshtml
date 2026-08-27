@@ -1,0 +1,106 @@
+@page "/admin/clientes"
+@model Automais.Zap.Api.Pages.Admin.Plataforma.ClientesModel
+@{
+    ViewData["Title"] = "Clientes";
+}
+
+<div class="pagina-topo">
+    <div>
+        <h1>Clientes</h1>
+        <p class="sub compacto">Todos os clientes desta instância — visão da equipe Automais.</p>
+    </div>
+    <div class="acoes">
+        <a class="acao" style="display:inline-block;text-decoration:none;padding:9px 16px;border-radius:9px;background:var(--ciano);color:#fff;font-weight:600;font-size:13.5px" href="/admin/novo">Novo cliente</a>
+    </div>
+</div>
+
+<div class="grade-resumo">
+    <div class="resumo">
+        <div class="valor">@Model.Linhas.Count</div>
+        <div class="rotulo">cliente@(Model.Linhas.Count == 1 ? "" : "s")</div>
+    </div>
+    <div class="resumo ok">
+        <div class="valor">@Model.Linhas.Count(l => l.SuspensoEm is null)</div>
+        <div class="rotulo">com canal ativo</div>
+    </div>
+    <div class="resumo @(Model.Linhas.Any(l => l.SuspensoEm is not null) ? "alerta" : "")">
+        <div class="valor">@Model.Linhas.Count(l => l.SuspensoEm is not null)</div>
+        <div class="rotulo">suspenso@(Model.Linhas.Count(l => l.SuspensoEm is not null) == 1 ? "" : "s")</div>
+    </div>
+    <div class="resumo @(Model.Linhas.Sum(l => l.Falhas24h) > 0 ? "alerta" : "")">
+        <div class="valor">@Model.Linhas.Sum(l => l.Falhas24h)</div>
+        <div class="rotulo"><a href="/admin/entregas?falhas=true">falhas em 24h (todos)</a></div>
+    </div>
+</div>
+
+<div class="cartao">
+    @if (Model.Linhas.Count == 0)
+    {
+        <p class="sub compacto" style="text-align:center;padding:14px 0">
+            Nenhum cliente ainda. <a href="/admin/novo">Crie o primeiro</a>.
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Status</th>
+                <th>WABAs</th>
+                <th>Números</th>
+                <th>Tokens</th>
+                <th>Usuários</th>
+                <th>Entregas 24h</th>
+                <th>Falhas 24h</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var l in Model.Linhas)
+            {
+                <tr>
+                    <td>
+                        <strong>@l.Nome</strong>
+                        @if (!string.IsNullOrEmpty(l.Observacao))
+                        {
+                            <span class="sub compacto" style="display:block">@l.Observacao</span>
+                        }
+                    </td>
+                    <td>
+                        @if (l.SuspensoEm is null)
+                        {
+                            <span class="selo on">ativo</span>
+                        }
+                        else
+                        {
+                            <span class="selo off" title="@l.SuspensoMotivo">suspenso</span>
+                        }
+                    </td>
+                    <td class="num">@l.Wabas</td>
+                    <td class="num">@l.NumerosAtivos/@l.Numeros</td>
+                    <td class="num">@l.TokensAtivos</td>
+                    <td class="num">@l.Usuarios</td>
+                    <td class="num">@l.Entregues24h.ToString("N0", new System.Globalization.CultureInfo("pt-BR"))</td>
+                    <td class="num @(l.Falhas24h > 0 ? "" : "")">
+                        @if (l.Falhas24h > 0)
+                        {
+                            <a href="/admin/entregas?tenant=@l.Id&falhas=true" style="color:var(--erro);font-weight:600">@l.Falhas24h</a>
+                        }
+                        else
+                        {
+                            <span>0</span>
+                        }
+                    </td>
+                    <td class="acoes">
+                        <form method="post" asp-page-handler="Abrir" style="display:inline">
+                            <input type="hidden" name="id" value="@l.Id" />
+                            <button class="acao discreto" type="submit">Abrir painel</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

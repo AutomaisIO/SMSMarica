@@ -7,7 +7,7 @@
 
 @if (Model.Alvo is null || Model.Waba is null)
 {
-    <p class="sub">Número não encontrado.</p>
+    <div class="cartao vazio">Número não encontrado.</div>
     return;
 }
 
@@ -25,78 +25,100 @@
     };
 }
 
-<h1>@(Model.Alvo.DisplayPhoneNumber ?? Model.Alvo.PhoneNumberId)</h1>
-<p class="sub">
-    @(Model.Alvo.Rotulo ?? "sem rótulo") ·
-    <code>@Model.Alvo.PhoneNumberId</code> ·
-    <a href="/admin/waba?id=@Model.Waba.Id">voltar ao WABA</a> ·
-    <a href="@gerenciador" target="_blank" rel="noopener">abrir no Gerenciador do WhatsApp</a>
+@section Head {
+    <style>
+        .abas { display: flex; gap: 6px; border-bottom: 1px solid var(--borda); margin: 4px 0 22px; }
+        .abas a {
+            padding: 8px 14px 10px; font-weight: 600; font-size: 13.5px; color: var(--suave);
+            border-bottom: 2.5px solid transparent; margin-bottom: -1px;
+        }
+        .abas a:hover { text-decoration: none; color: var(--texto); }
+        .abas a.ativa { color: var(--ciano-forte); border-bottom-color: var(--ciano); }
+    </style>
+}
+
+<p class="migalhas">
+    <a href="/admin/numeros">Números</a>
+    <span class="sep">/</span>
+    <span class="num">@(Model.Alvo.DisplayPhoneNumber ?? Model.Alvo.PhoneNumberId)</span>
 </p>
+
+<div class="pagina-topo" style="margin-bottom:8px">
+    <div>
+        <h1 class="num" style="font-family:var(--fonte-titulo)">@(Model.Alvo.DisplayPhoneNumber ?? Model.Alvo.PhoneNumberId)</h1>
+        <p class="sub compacto">
+            @(Model.Alvo.Rotulo ?? "sem rótulo") · ID na Meta: <code>@Model.Alvo.PhoneNumberId</code>
+        </p>
+    </div>
+    <div class="acoes">
+        <a class="discreto" style="padding:7px 13px;border-radius:8px;border:1px solid var(--campo-borda);font-size:12.5px;font-weight:600" href="@gerenciador" target="_blank" rel="noopener">Abrir no Gerenciador da Meta</a>
+    </div>
+</div>
+
+<nav class="abas" aria-label="Seções do número">
+    <a class="ativa" href="/admin/numero?id=@Model.Alvo.Id">Diagnóstico</a>
+    <a href="/admin/perfil?id=@Model.Alvo.Id">Perfil do WhatsApp</a>
+</nav>
 
 @if (Model.ErroGraph is not null)
 {
     <div class="aviso atencao">
         <strong>Não foi possível consultar a Meta:</strong> @Model.ErroGraph<br />
-        O que aparece abaixo é só o que o relay guarda — o estado real na Meta não pôde ser lido agora.
+        O que aparece abaixo é só o que a plataforma guarda — o estado real na Meta não pôde ser lido agora.
     </div>
 }
 
-<h2>Conta comercial oficial (OBA)</h2>
-<div class="cartao">
-    <div class="grade-resumo" style="margin-top:0">
-        <div class="resumo @(ObaStatus.Selo(oba) == "on" ? "ok" : "")">
-            <div class="valor" style="font-size:18px">@(oba ?? "—")</div>
-            <div class="rotulo">oba_status</div>
-        </div>
-        <div class="resumo">
-            <div class="valor" style="font-size:18px">
-                @(m?.ContaOficial is null ? "—" : m.ContaOficial.Value ? "sim" : "não")
-            </div>
-            <div class="rotulo">tem o selo azul hoje</div>
-        </div>
-        <div class="resumo">
-            <div class="valor" style="font-size:18px">
-                @(m?.SearchVisibility is null ? "—" : m.SearchVisibility == "NON_VISIBLE" ? "não" : "sim")
-            </div>
-            <div class="rotulo">aparece na busca do WhatsApp</div>
-        </div>
+<div class="grade-resumo">
+    <div class="resumo @(m is null ? "" : m.Status == "CONNECTED" ? "ok" : "alerta")">
+        <div class="valor" style="font-size:18px">@(m?.Status ?? "—")</div>
+        <div class="rotulo">conexão na Meta</div>
     </div>
+    <div class="resumo @(m?.QualityRating switch { "GREEN" => "ok", "RED" => "alerta", _ => "" })">
+        <div class="valor" style="font-size:18px">@(m?.QualityRating switch { "GREEN" => "alta", "YELLOW" => "média", "RED" => "baixa", null => "—", var q => q })</div>
+        <div class="rotulo">qualidade da linha</div>
+    </div>
+    <div class="resumo">
+        <div class="valor" style="font-size:18px">@(m?.MessagingLimitTier?.Replace("TIER_", "") ?? "—")</div>
+        <div class="rotulo">faixa de limite de envio</div>
+    </div>
+    <div class="resumo @(Model.Entregando ? "ok" : "alerta")">
+        <div class="valor" style="font-size:18px">@(Model.Entregando ? "sim" : "não")</div>
+        <div class="rotulo">entregando eventos</div>
+    </div>
+</div>
 
-    <p class="sub" style="margin:14px 0 0">@ObaStatus.Explicar(oba)</p>
-
-    @if (string.Equals(oba, ObaStatus.NaoIniciado, StringComparison.OrdinalIgnoreCase))
-    {
-        <div class="aviso" style="margin:14px 0 0">
-            <strong>Não existe API para enviar a solicitação.</strong> A documentação da Meta fala em
-            "solicitar ... pela API", mas o único exemplo é o <code>GET</code> que alimenta esta tela —
-            ali "solicitação" é <em>request</em> HTTP, não petição. Submeter só pelo botão
-            <strong>Enviar solicitação</strong> em Gerenciador do WhatsApp → Números de telefone →
-            Perfil → Conta comercial oficial.
-            <br /><br />
-            Se o botão estiver cinza ("pedidos não estão disponíveis para sua empresa no momento"), é o
-            crivo de notabilidade da Meta, avaliado do lado deles — não é formulário que se preencha.
-            A saída indicada pela própria doc é falar com o contato da Meta ou o Suporte.
-            <br /><br />
-            <strong>Solicitação negada custa 30 dias de carência</strong> antes de poder tentar de novo.
-        </div>
-    }
-
-    <h3 style="font-size:14px;margin:18px 0 8px">Critérios de qualificação</h3>
-    <ul class="status-lista">
-        @foreach (var c in Model.Criterios())
-        {
-            <li>
-                <span class="selo @(c.Atendido is null ? "atencao" : c.Atendido.Value ? "on" : "off")">
-                    @(c.Atendido is null ? "?" : c.Atendido.Value ? "ok" : "não")
-                </span>
-                <span>@c.Texto <span class="sub compacto" style="display:block">@c.Nota</span></span>
-            </li>
-        }
+<h2>Entrega na plataforma</h2>
+<div class="cartao">
+    <ul class="rota">
+        <li class="@(Model.Alvo.Ativo ? "ok" : "falha")">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Número ligado no roteamento <span class="selo @(Model.Alvo.Ativo ? "on" : "off")">@(Model.Alvo.Ativo ? "ativo" : "desligado")</span></span>
+                <span class="detalhe">Desligado, os eventos deste número são descartados mesmo com o WABA roteando.</span>
+            </span>
+        </li>
+        <li class="@(Model.Waba.RoteamentoAtivo ? "ok" : "falha")">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Roteamento do WABA <span class="selo @(Model.Waba.RoteamentoAtivo ? "on" : "off")">@(Model.Waba.RoteamentoAtivo ? "ligado" : "desligado")</span></span>
+                <span class="detalhe">Configurado na <a href="/admin/waba?id=@Model.Waba.Id">tela do WABA</a> — vale para todos os números dele.</span>
+            </span>
+        </li>
+        <li class="@(string.IsNullOrWhiteSpace(Model.DestinoEfetivo) ? "falha" : "ok")">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Destino <span class="selo @(string.IsNullOrWhiteSpace(Model.DestinoEfetivo) ? "off" : "on")">@(string.IsNullOrWhiteSpace(Model.DestinoEfetivo) ? "falta" : "ok")</span></span>
+                <span class="detalhe">@(Model.DestinoEfetivo ?? "nenhum") <em>(@(Model.DestinoProprio ? "exceção deste número" : "herdado do WABA"))</em></span>
+            </span>
+        </li>
+        <li class="@(Model.Entregando ? "ok" : "falha")">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao">
+                <span class="titulo">Eventos chegando ao destino <span class="selo @(Model.Entregando ? "on" : "off")">@(Model.Entregando ? "sim" : "não")</span></span>
+                <span class="detalhe">As três condições acima precisam valer juntas. Configurações mudam na <a href="/admin/waba?id=@Model.Waba.Id">tela do WABA</a>.</span>
+            </span>
+        </li>
     </ul>
-    <p class="sub compacto" style="margin-top:12px">
-        <strong>?</strong> = a Graph API não responde esse critério com o token do System User —
-        não quer dizer que esteja reprovado. <a href="@docOba" target="_blank" rel="noopener">Critérios oficiais</a>.
-    </p>
 </div>
 
 <h2>Estado na Meta</h2>
@@ -112,9 +134,7 @@
             <tr><td>Nome verificado</td><td>@(m.VerifiedName ?? "—")</td></tr>
             <tr>
                 <td>Situação do nome</td>
-                <td>
-                    <span class="selo @(m.NameStatus == "APPROVED" ? "on" : "atencao")">@(m.NameStatus ?? "—")</span>
-                </td>
+                <td><span class="selo @(m.NameStatus == "APPROVED" ? "on" : "atencao")">@(m.NameStatus ?? "—")</span></td>
             </tr>
             <tr>
                 <td>Conexão</td>
@@ -147,29 +167,55 @@
     }
 </div>
 
-<h2>Entrega no relay</h2>
+<h2>Conta comercial oficial (selo azul)</h2>
 <div class="cartao">
+    <div class="grade-resumo" style="margin-top:0">
+        <div class="resumo @(ObaStatus.Selo(oba) == "on" ? "ok" : "")">
+            <div class="valor" style="font-size:18px">@(oba ?? "—")</div>
+            <div class="rotulo">status da solicitação</div>
+        </div>
+        <div class="resumo">
+            <div class="valor" style="font-size:18px">@(m?.ContaOficial is null ? "—" : m.ContaOficial.Value ? "sim" : "não")</div>
+            <div class="rotulo">tem o selo azul hoje</div>
+        </div>
+        <div class="resumo">
+            <div class="valor" style="font-size:18px">@(m?.SearchVisibility is null ? "—" : m.SearchVisibility == "NON_VISIBLE" ? "não" : "sim")</div>
+            <div class="rotulo">aparece na busca do WhatsApp</div>
+        </div>
+    </div>
+
+    <p class="sub" style="margin:14px 0 0">@ObaStatus.Explicar(oba)</p>
+
+    @if (string.Equals(oba, ObaStatus.NaoIniciado, StringComparison.OrdinalIgnoreCase))
+    {
+        <div class="aviso" style="margin:14px 0 0">
+            <strong>Não existe API para enviar a solicitação.</strong> Submeter só pelo botão
+            <strong>Enviar solicitação</strong> em Gerenciador do WhatsApp → Números de telefone →
+            Perfil → Conta comercial oficial.
+            <br /><br />
+            Se o botão estiver cinza ("pedidos não estão disponíveis para sua empresa no momento"), é o
+            crivo de notabilidade da Meta, avaliado do lado deles — não é formulário que se preencha.
+            A saída indicada pela própria doc é falar com o contato da Meta ou o Suporte.
+            <br /><br />
+            <strong>Solicitação negada custa 30 dias de carência</strong> antes de poder tentar de novo.
+        </div>
+    }
+
+    <h3>Critérios de qualificação</h3>
     <ul class="status-lista">
-        <li>
-            <span class="selo @(Model.Alvo.Ativo ? "on" : "off")">@(Model.Alvo.Ativo ? "ativo" : "desligado")</span>
-            Número ligado no relay
-        </li>
-        <li>
-            <span class="selo @(Model.Waba.RoteamentoAtivo ? "on" : "off")">@(Model.Waba.RoteamentoAtivo ? "ok" : "desligado")</span>
-            Roteamento do WABA ligado
-        </li>
-        <li>
-            <span class="selo @(string.IsNullOrWhiteSpace(Model.DestinoEfetivo) ? "off" : "on")">@(string.IsNullOrWhiteSpace(Model.DestinoEfetivo) ? "falta" : "ok")</span>
-            Destino: @(Model.DestinoEfetivo ?? "nenhum")
-            <span class="sub compacto">(@(Model.DestinoProprio ? "exceção deste número" : "herdado do WABA"))</span>
-        </li>
-        <li>
-            <span class="selo @(Model.Entregando ? "on" : "off")">@(Model.Entregando ? "sim" : "não")</span>
-            Eventos deste número estão sendo entregues
-        </li>
+        @foreach (var c in Model.Criterios())
+        {
+            <li>
+                <span class="selo @(c.Atendido is null ? "atencao" : c.Atendido.Value ? "on" : "off")">
+                    @(c.Atendido is null ? "?" : c.Atendido.Value ? "ok" : "não")
+                </span>
+                <span>@c.Texto <span class="sub compacto" style="display:block">@c.Nota</span></span>
+            </li>
+        }
     </ul>
     <p class="sub compacto" style="margin-top:12px">
-        Para mudar qualquer coisa daqui, use a <a href="/admin/waba?id=@Model.Waba.Id">tela do WABA</a>.
+        <strong>?</strong> = a Graph API não responde esse critério com o token do System User —
+        não quer dizer que esteja reprovado. <a href="@docOba" target="_blank" rel="noopener">Critérios oficiais</a>.
     </p>
 </div>
 
@@ -181,7 +227,7 @@
             <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
                 <button type="button" class="acao discreto" data-copiar="#json-meta">Copiar</button>
             </div>
-            <pre id="json-meta" style="margin:0;font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--suave)">@m.Json</pre>
+            <pre id="json-meta" class="num" style="margin:0;font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--suave)">@m.Json</pre>
         </div>
     </details>
 }

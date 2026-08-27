@@ -28,7 +28,7 @@ public sealed class NovoModel(ZapDbContext db, EscopoUsuario escopo, TimeProvide
 
         if (await db.Tenants.AnyAsync(t => t.Nome == nome, ct))
         {
-            Erro = $"Já existe um tenant chamado \"{nome}\".";
+            Erro = $"Já existe um cliente chamado \"{nome}\".";
             return RedirectToPage();
         }
 

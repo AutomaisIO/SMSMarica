@@ -65,8 +65,18 @@ public sealed class MetaModel(
     {
         if (!escopo.Global) return Forbid();
 
-        await configuracao.SalvarAsync(
-            new AtualizarConfiguracaoMeta(appId, appSecret, verifyToken, tokenSistema, baseUrl), ct);
+        try
+        {
+            await configuracao.SalvarAsync(
+                new AtualizarConfiguracaoMeta(appId, appSecret, verifyToken, tokenSistema, baseUrl), ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // URL da Graph fora do padrão exigido — devolver a explicação, não um 500.
+            Erro = ex.Message;
+            return RedirectToPage();
+        }
+
         Recado = "Credenciais salvas. Campos de segredo em branco foram mantidos como estavam.";
         return RedirectToPage();
     }

@@ -1,27 +1,57 @@
 @page "/admin/novo"
 @model Automais.Zap.Api.Pages.Admin.Plataforma.NovoModel
 @{
-    ViewData["Title"] = "Novo tenant";
+    ViewData["Title"] = "Novo cliente";
 }
 
-<h1>Novo tenant</h1>
-<p class="sub">Um tenant por cliente. WABAs, números, usuários e tokens penduram nele. Depois de criar, você já entra nele.</p>
+<div class="pagina-topo">
+    <div>
+        <h1>Novo cliente</h1>
+        <p class="sub compacto">Cada cliente tem seu espaço isolado — WABAs, números, usuários e tokens penduram nele. Depois de criar, você já entra no painel dele.</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
     <div class="aviso">@Model.Erro</div>
 }
 
-<div class="cartao">
+<div class="cartao" style="max-width:720px">
     <form method="post" class="linha" style="margin-top:0">
         <div>
-            <label>Nome do cliente</label>
-            <input type="text" name="nome" required autofocus placeholder="Nome da organização cliente" />
+            <label for="cli-nome">Nome do cliente</label>
+            <input id="cli-nome" type="text" name="nome" required autofocus placeholder="Nome da organização cliente" />
         </div>
         <div style="flex:1;min-width:260px">
-            <label>Observação (aparece no cabeçalho do cliente)</label>
-            <input type="text" name="observacao" style="width:100%" />
+            <label for="cli-obs">Observação (aparece no painel do cliente)</label>
+            <input id="cli-obs" type="text" name="observacao" style="width:100%" />
         </div>
-        <button class="acao" type="submit">Criar</button>
+        <button class="acao" type="submit">Criar cliente</button>
     </form>
+</div>
+
+<h2>O que vem depois</h2>
+<div class="cartao" style="max-width:720px">
+    <ul class="rota">
+        <li class="pendente">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao"><span class="titulo">Vincular o WABA do cliente</span>
+            <span class="detalhe">No painel do cliente, com o ID da conta na Meta.</span></span>
+        </li>
+        <li class="pendente">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao"><span class="titulo">Sincronizar números e gerar o segredo de entrega</span>
+            <span class="detalhe">Na tela do WABA.</span></span>
+        </li>
+        <li class="pendente">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao"><span class="titulo">Apontar o destino, ligar o roteamento e inscrever o App</span>
+            <span class="detalhe">A rota de entrega da tela do WABA mostra o que falta.</span></span>
+        </li>
+        <li class="pendente">
+            <span class="no"><span class="ponto"></span></span>
+            <span class="estacao"><span class="titulo">Gerar o token de API e criar os usuários do cliente</span>
+            <span class="detalhe">Em API e tokens, e em Equipe.</span></span>
+        </li>
+    </ul>
 </div>

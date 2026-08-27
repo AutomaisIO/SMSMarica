@@ -5,8 +5,11 @@
     var visiveis = autenticado ? await Escopo.VisiveisAsync() : [];
     var selecionado = autenticado ? await Escopo.SelecionadoAsync() : null;
     var caminho = Context.Request.Path.Value ?? "";
-    string Ativo(string prefixo) => caminho.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase) ? "ativo" : "";
+    bool Em(params string[] prefixos) => prefixos.Any(p => caminho.StartsWith(p, StringComparison.OrdinalIgnoreCase));
     var versao = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev";
+    var iniciais = string.Concat(Escopo.Nome.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Where(p => p.Length > 0).Select(p => char.ToUpperInvariant(p[0])).Take(2));
+    if (iniciais.Length == 0) { iniciais = "OP"; }
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -14,228 +17,467 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@ViewData["Title"] · Automais.Zap</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2325d366'/%3E%3Cpath d='M9 22l1.6-4.4A7 7 0 1 1 14 21.2L9 22z' fill='none' stroke='%23062b14' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="icon" href="/marca/cruz.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
         :root {
-            --fundo: #0f1115; --painel: #171a21; --painel-2: #1c2029; --borda: #272b34;
-            --texto: #e6e8ec; --suave: #9aa3b2; --fraco: #6b7382; --marca: #25d366;
-            --marca-escura: #062b14; --erro: #ff6b6b; --ok: #4ade80; --atencao: #fbbf24;
-            --raio: 10px;
+            /* tinta: o mundo escuro da infraestrutura (trilho lateral, login) */
+            --tinta: #10142B; --tinta-2: #181D3A; --tinta-borda: #262C4F;
+            --tinta-texto: #C8D0E4; --tinta-fraco: #7A83A6;
+            /* bancada: a superfície clara de trabalho */
+            --canvas: #F4F6FA; --cartao-fundo: #FFFFFF;
+            --texto: #182036; --suave: #5C667E; --fraco: #8A93AA;
+            --borda: #E3E7F0; --borda-suave: #EDF0F6; --campo-borda: #D5DBE7;
+            /* marca */
+            --ciano: #0899B8; --ciano-forte: #077E99; --ciano-claro: #28D7E9;
+            --violeta: #7A2FE0;
+            --grad: linear-gradient(100deg, #8A2BE2 0%, #2E5BD7 48%, #00D3C7 100%);
+            /* semântica: verde é status de canal, não é a marca */
+            --ok: #178A50; --ok-fundo: #EDF9F1; --ok-borda: #BFE8CE;
+            --erro: #C93838; --erro-fundo: #FDF1F1; --erro-borda: #F2CACA;
+            --atencao: #A16207; --atencao-fundo: #FDF7EA; --atencao-borda: #EFDFB3;
+            --raio: 12px; --raio-campo: 9px;
+            --fonte: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+            --fonte-titulo: "Sora", var(--fonte);
+            --fonte-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+            --sombra: 0 1px 2px rgba(16, 20, 43, .05), 0 4px 14px rgba(16, 20, 43, .04);
         }
         * { box-sizing: border-box; }
-        html, body { height: 100%; }
+        html { height: 100%; }
         body {
-            margin: 0; background: var(--fundo); color: var(--texto);
-            font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-            display: flex; flex-direction: column;
+            margin: 0; min-height: 100%; background: var(--canvas); color: var(--texto);
+            font: 400 14.5px/1.55 var(--fonte);
+            -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
         }
-        a { color: var(--marca); text-decoration: none; }
+        a { color: var(--ciano-forte); text-decoration: none; }
         a:hover { text-decoration: underline; }
+        ::selection { background: rgba(40, 215, 233, .28); }
+        input:focus, select:focus, textarea:focus, button:focus-visible, summary:focus-visible, a:focus-visible, label:focus-visible {
+            outline: 2px solid var(--ciano); outline-offset: 1px;
+        }
 
-        /* ---------------- cabeçalho ---------------- */
-        header {
-            position: sticky; top: 0; z-index: 10;
-            display: flex; align-items: center; gap: 18px;
-            padding: 0 24px; height: 56px;
-            border-bottom: 1px solid var(--borda); background: rgba(23,26,33,.92);
-            backdrop-filter: blur(8px);
+        /* ============================== casco ============================== */
+        .linha-viva { position: fixed; inset: 0 0 auto 0; height: 3px; background: var(--grad); z-index: 60; }
+        .shell { display: flex; min-height: 100vh; }
+
+        /* ------------------------------ trilho ----------------------------- */
+        .lateral {
+            width: 240px; flex: 0 0 240px; background: var(--tinta); color: var(--tinta-texto);
+            display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+            padding: 22px 14px 16px; overflow-y: auto; scrollbar-width: thin;
         }
-        header .marca {
-            display: flex; align-items: center; gap: 9px;
-            font-weight: 700; letter-spacing: -0.02em; color: var(--texto); white-space: nowrap;
+        .marca { display: flex; align-items: center; gap: 10px; padding: 2px 8px 0; color: #E8EDF8; }
+        .marca img.cruz { width: 30px; height: 30px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
+        .marca .nome { font: 700 17px/1 var(--fonte-titulo); letter-spacing: -0.02em; }
+        .marca .nome em { font-style: normal; color: var(--ciano-claro); }
+        .marca .tag { display: block; margin-top: 4px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--tinta-fraco); font-weight: 500; }
+        .marca:hover { text-decoration: none; }
+
+        .contexto-tenant { margin: 18px 4px 4px; }
+        .contexto-tenant .rotulo { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--tinta-fraco); padding: 0 6px 5px; display: block; }
+        .contexto-tenant .fixo {
+            display: block; padding: 8px 10px; border-radius: 9px; background: var(--tinta-2);
+            border: 1px solid var(--tinta-borda); color: #E8EDF8; font-weight: 600; font-size: 13.5px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        header .marca:hover { text-decoration: none; }
-        header .marca .logo {
-            width: 26px; height: 26px; border-radius: 7px; background: var(--marca);
-            display: grid; place-items: center; color: var(--marca-escura);
-        }
-        header .marca em { font-style: normal; color: var(--marca); }
-        header .contexto { display: flex; align-items: center; gap: 8px; min-width: 0; }
-        header .contexto .rotulo { color: var(--fraco); font-size: 12px; white-space: nowrap; }
-        header nav { display: flex; gap: 4px; margin-left: auto; align-items: center; }
-        header nav a, header nav button {
-            color: var(--suave); background: none; border: 0; font: inherit; cursor: pointer;
-            padding: 6px 10px; border-radius: 7px; white-space: nowrap;
-        }
-        header nav a:hover, header nav button:hover { color: var(--texto); background: var(--painel-2); text-decoration: none; }
-        header nav a.ativo { color: var(--texto); background: var(--painel-2); }
-        header nav .sep { width: 1px; height: 20px; background: var(--borda); margin: 0 6px; }
-        header nav a.botao-nav { border: 1px solid var(--borda); }
-        header nav a.botao-nav:hover { border-color: var(--marca); color: var(--marca); }
-        header nav .quem { color: var(--fraco); font-size: 12px; padding: 0 6px; }
         .seletor-tenant {
-            background: #0d0f13; border: 1px solid var(--borda); color: var(--texto);
-            border-radius: 7px; padding: 6px 28px 6px 10px; font: inherit; max-width: 260px;
+            width: 100%; background: var(--tinta-2); border: 1px solid var(--tinta-borda); color: #E8EDF8;
+            border-radius: 9px; padding: 8px 30px 8px 10px; font: 600 13.5px var(--fonte); cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239aa3b2' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237A83A6' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
             background-repeat: no-repeat; background-position: right 10px center;
         }
+        .seletor-tenant:hover { border-color: var(--ciano); }
 
-        /* ---------------- conteúdo ---------------- */
-        main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 28px 24px 48px; }
-        .pagina-topo { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
-        .pagina-topo h1 { margin: 0; }
+        nav.menu { margin-top: 18px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+        nav.menu .grupo-rotulo {
+            font-size: 10px; letter-spacing: .13em; text-transform: uppercase; font-weight: 600;
+            color: var(--tinta-fraco); padding: 16px 10px 6px;
+        }
+        nav.menu .grupo-rotulo.plataforma { color: #A88BE0; }
+        nav.menu a {
+            display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px;
+            color: var(--tinta-texto); font-weight: 500; font-size: 13.5px; line-height: 1.3;
+            border: 1px solid transparent;
+        }
+        nav.menu a svg { width: 17px; height: 17px; flex: 0 0 17px; stroke: var(--tinta-fraco); }
+        nav.menu a:hover { background: var(--tinta-2); color: #FFFFFF; text-decoration: none; }
+        nav.menu a:hover svg { stroke: var(--ciano-claro); }
+        nav.menu a.ativo {
+            background: var(--tinta-2); color: #FFFFFF; border-color: var(--tinta-borda);
+            box-shadow: inset 2.5px 0 0 var(--ciano-claro);
+        }
+        nav.menu a.ativo svg { stroke: var(--ciano-claro); }
+
+        .grupo-negocios { margin-top: 18px; padding: 14px 10px 4px; border-top: 1px solid var(--tinta-borda); }
+        .grupo-negocios .rotulo { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--tinta-fraco); font-weight: 600; }
+        .grupo-negocios .marcas-grupo { display: flex; align-items: center; gap: 18px; margin-top: 12px; }
+        .grupo-negocios .marcas-grupo img.automais { display: block; width: 108px; }
+        .grupo-negocios .marcas-grupo img.falarmais { display: block; height: 40px; }
+
+        /* ------------------------------ palco ------------------------------ */
+        .palco { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .topo-app {
+            position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 14px;
+            min-height: 58px; padding: 0 30px; background: rgba(244, 246, 250, .88);
+            backdrop-filter: blur(10px); border-bottom: 1px solid var(--borda);
+        }
+        .topo-app .secao { font: 600 13px var(--fonte); color: var(--suave); display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .topo-app .secao .cliente { color: var(--texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topo-app .secao .sep { color: var(--fraco); }
+        .topo-app .direita { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+        .quem { display: flex; align-items: center; gap: 9px; }
+        .quem .avatar {
+            width: 30px; height: 30px; border-radius: 50%; background: var(--grad);
+            display: grid; place-items: center; color: #fff; font: 600 11.5px var(--fonte); letter-spacing: .02em;
+        }
+        .quem .dados { line-height: 1.15; }
+        .quem .dados .n { font-weight: 600; font-size: 12.5px; }
+        .quem .dados .p { font-size: 10.5px; color: var(--fraco); }
+        .botao-sair {
+            background: none; border: 1px solid var(--campo-borda); color: var(--suave); cursor: pointer;
+            font: 500 12.5px var(--fonte); padding: 6px 12px; border-radius: 8px;
+        }
+        .botao-sair:hover { color: var(--erro); border-color: var(--erro-borda); background: var(--erro-fundo); }
+
+        .faixa-suspenso {
+            background: var(--erro-fundo); border-bottom: 1px solid var(--erro-borda); color: var(--erro);
+            padding: 8px 30px; font-size: 13px; font-weight: 500;
+        }
+
+        main { flex: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: 30px 30px 56px; }
+        footer.rodape {
+            border-top: 1px solid var(--borda); padding: 16px 30px; font-size: 12px; color: var(--fraco);
+            display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+        }
+        footer.rodape .dir { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+        footer.rodape .marcas { font: 700 12px var(--fonte-titulo); color: #9AA6BE; letter-spacing: -0.01em; }
+        footer.rodape .marcas em { font-style: normal; color: var(--ciano); }
+
+        /* ============================ tipografia ============================ */
+        h1 { font: 700 23px/1.25 var(--fonte-titulo); letter-spacing: -0.02em; margin: 0 0 4px; }
+        h2 { font: 700 15px/1.3 var(--fonte-titulo); letter-spacing: -0.01em; margin: 30px 0 12px; display: flex; align-items: center; gap: 10px; }
+        h2 .cont { font: 500 11.5px var(--fonte); color: var(--fraco); background: var(--borda-suave); border-radius: 20px; padding: 1px 9px; }
+        h3 { font: 600 13.5px var(--fonte-titulo); margin: 18px 0 8px; }
+        .pagina-topo { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
         .pagina-topo .acoes { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .migalhas { font-size: 12px; color: var(--fraco); margin: 0 0 10px; display: flex; gap: 6px; align-items: center; }
-        .migalhas a { color: var(--suave); }
-        .migalhas .sep { color: var(--borda); }
-        h1 { font-size: 22px; letter-spacing: -0.01em; margin: 0 0 4px; }
-        h2 { font-size: 15px; margin: 28px 0 10px; color: var(--texto); display: flex; align-items: center; gap: 10px; }
-        h2 .cont { font-size: 12px; color: var(--fraco); font-weight: 400; }
         .sub { color: var(--suave); font-size: 13px; margin: 0 0 18px; }
         .sub.compacto { margin: 0; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
-        tr:last-child td { border-bottom: 0; }
-        th { color: var(--fraco); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-        td.num, .num { font-variant-numeric: tabular-nums; }
-        td.acoes { text-align: right; white-space: nowrap; }
-        .cartao { background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 18px; overflow-x: auto; }
+        .migalhas { font-size: 12px; color: var(--fraco); margin: 0 0 10px; display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+        .migalhas a { color: var(--suave); }
+        .migalhas .sep { color: var(--borda); }
+        code {
+            font: 500 12.5px var(--fonte-mono); background: var(--borda-suave); color: #33405E;
+            padding: 1px 6px; border-radius: 5px;
+        }
+        code.copiavel { user-select: all; word-break: break-all; font-size: 13px; display: inline-block; padding: 7px 9px; }
+        .num, td.num { font-family: var(--fonte-mono); font-size: 12.8px; font-variant-numeric: tabular-nums; }
+
+        /* ============================== cartões ============================= */
+        .cartao {
+            background: var(--cartao-fundo); border: 1px solid var(--borda); border-radius: var(--raio);
+            padding: 20px; overflow-x: auto; box-shadow: var(--sombra);
+        }
         .cartao + .cartao { margin-top: 14px; }
-        .cartao.vazio { color: var(--suave); font-size: 13px; text-align: center; padding: 28px 18px; }
-        .grade-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0 8px; }
-        .resumo { background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px; }
-        .resumo .valor { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
-        .resumo .rotulo { color: var(--suave); font-size: 12px; margin-top: 4px; }
+        .cartao.vazio { color: var(--suave); font-size: 13px; text-align: center; padding: 34px 20px; }
+        .grade-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; margin: 0 0 8px; }
+        .resumo {
+            background: var(--cartao-fundo); border: 1px solid var(--borda); border-radius: var(--raio);
+            padding: 14px 16px 12px; box-shadow: var(--sombra); position: relative; overflow: hidden;
+        }
+        .resumo .valor { font: 700 26px/1.1 var(--fonte-titulo); letter-spacing: -0.02em; }
+        .resumo .valor .fraco { font: 500 13px var(--fonte); color: var(--fraco); }
+        .resumo .rotulo { color: var(--suave); font-size: 12px; margin-top: 5px; }
         .resumo .rotulo a { color: var(--suave); }
         .resumo.alerta .valor { color: var(--erro); }
         .resumo.ok .valor { color: var(--ok); }
 
-        /* ---------------- formulários ---------------- */
-        form.linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; }
-        label { display: block; font-size: 12px; color: var(--suave); margin-bottom: 4px; }
-        input[type=text], input[type=url], input[type=email], input[type=password], input[type=search], select.campo, textarea.campo {
-            background: #0d0f13; border: 1px solid var(--borda); color: var(--texto);
-            border-radius: 7px; padding: 8px 10px; font: inherit; min-width: 180px;
+        /* ============================== tabelas ============================= */
+        table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--borda-suave); vertical-align: middle; }
+        tr:last-child td { border-bottom: 0; }
+        th { color: var(--fraco); font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; }
+        tbody tr:hover td { background: #F8FAFD; }
+        td.acoes { text-align: right; white-space: nowrap; }
+        tr.apagado td { opacity: .5; }
+
+        /* ============================ formulários =========================== */
+        .linha { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 14px; }
+        label { display: block; font-size: 12px; font-weight: 600; color: #3D465C; margin-bottom: 5px; }
+        input[type=text], input[type=url], input[type=email], input[type=password], input[type=search], input[type=file], select, textarea {
+            background: #FFFFFF; border: 1px solid var(--campo-borda); color: var(--texto);
+            border-radius: var(--raio-campo); padding: 8px 11px; font: 400 13.5px var(--fonte); min-width: 180px;
+            transition: border-color .12s, box-shadow .12s;
         }
-        input:focus, select:focus, textarea:focus, button:focus-visible, summary:focus-visible, a:focus-visible {
-            outline: 2px solid var(--marca); outline-offset: 1px;
+        input:focus, select:focus, textarea:focus { border-color: var(--ciano); box-shadow: 0 0 0 3px rgba(8, 153, 184, .14); outline: none; }
+        select, select.campo {
+            appearance: none; padding-right: 30px; min-width: 160px; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235C667E' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center;
         }
-        select { appearance: none; padding-right: 28px; background-color: #0d0f13; border: 1px solid var(--borda); color: var(--texto); border-radius: 7px; padding-top: 8px; padding-bottom: 8px; padding-left: 10px; font: inherit; min-width: 160px; }
-        textarea { background: #0d0f13; border: 1px solid var(--borda); color: var(--texto); border-radius: 7px; padding: 8px 10px; font: inherit; width: 100%; resize: vertical; }
-        select.campo { appearance: none; padding-right: 28px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239aa3b2' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 10px center; }
-        textarea.campo { min-width: 0; width: 100%; }
+        textarea { width: 100%; resize: vertical; line-height: 1.5; }
+        textarea.campo { min-width: 0; }
         .campo-largo { flex: 1; min-width: 280px; }
         .campo-largo input { width: 100%; }
+        .ajuda-campo { font-size: 11.5px; color: var(--fraco); font-weight: 400; margin-top: 4px; }
         button.acao {
-            background: var(--marca); color: var(--marca-escura); border: 0; border-radius: 7px;
-            padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap;
+            background: var(--ciano); color: #FFFFFF; border: 0; border-radius: var(--raio-campo);
+            padding: 9px 16px; font: 600 13.5px var(--fonte); cursor: pointer; white-space: nowrap;
+            transition: background .12s;
         }
-        button.acao:hover { filter: brightness(1.06); }
-        button.discreto { background: transparent; color: var(--suave); border: 1px solid var(--borda); font-weight: 500; }
-        button.discreto:hover { color: var(--texto); border-color: var(--suave); filter: none; }
-        button.perigo { background: transparent; color: var(--erro); border: 1px solid #4d1f1f; font-weight: 500; }
-        button.perigo:hover { background: #1d1417; filter: none; }
-        .opcao { display: flex; gap: 8px; align-items: center; color: var(--texto); font-size: 14px; margin-top: 6px; }
-        .opcao input { margin: 0; }
+        button.acao:hover { background: var(--ciano-forte); }
+        button.discreto, a.discreto {
+            background: transparent; color: var(--suave); border: 1px solid var(--campo-borda); font-weight: 500;
+        }
+        button.discreto:hover, a.discreto:hover { color: var(--texto); border-color: var(--suave); background: #F8FAFD; }
+        button.perigo { background: transparent; color: var(--erro); border: 1px solid var(--erro-borda); font-weight: 500; }
+        button.perigo:hover { background: var(--erro-fundo); }
+        .opcao { display: flex; gap: 8px; align-items: center; color: var(--texto); font-size: 13.5px; margin-top: 6px; font-weight: 400; }
+        .opcao input { margin: 0; min-width: 0; accent-color: var(--ciano); }
         .opcao.suave { color: var(--suave); font-size: 13px; margin-top: 4px; }
 
-        /* ---------------- selos e avisos ---------------- */
-        .selo { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--borda); color: var(--suave); white-space: nowrap; line-height: 1.5; }
-        .selo.on { color: var(--ok); border-color: #1f4d33; background: rgba(74,222,128,.06); }
-        .selo.off { color: var(--erro); border-color: #4d1f1f; background: rgba(255,107,107,.06); }
-        .selo.atencao { color: var(--atencao); border-color: #4d3f14; background: rgba(251,191,36,.06); }
-        .aviso { border-left: 3px solid var(--erro); padding: 10px 14px; background: #1d1417; border-radius: 0 8px 8px 0; margin-bottom: 16px; font-size: 14px; }
-        .aviso.ok { border-left-color: var(--marca); background: #101d15; }
-        .aviso.atencao { border-left-color: var(--atencao); background: #1d1a12; }
+        /* ========================== selos e avisos ========================== */
+        .selo {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+            padding: 2px 9px; border-radius: 20px; border: 1px solid var(--borda);
+            color: var(--suave); background: #FBFCFE; white-space: nowrap; line-height: 1.6;
+        }
+        .selo::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--fraco); }
+        .selo.on { color: var(--ok); border-color: var(--ok-borda); background: var(--ok-fundo); }
+        .selo.on::before { background: var(--ok); }
+        .selo.off { color: var(--erro); border-color: var(--erro-borda); background: var(--erro-fundo); }
+        .selo.off::before { background: var(--erro); }
+        .selo.atencao { color: var(--atencao); border-color: var(--atencao-borda); background: var(--atencao-fundo); }
+        .selo.atencao::before { background: var(--atencao); }
+        .aviso {
+            border: 1px solid var(--erro-borda); border-left-width: 3px; padding: 11px 15px;
+            background: var(--erro-fundo); border-radius: 10px; margin-bottom: 16px; font-size: 13.5px;
+        }
+        .aviso.ok { border-color: var(--ok-borda); border-left-color: var(--ok); background: var(--ok-fundo); }
+        .aviso.atencao { border-color: var(--atencao-borda); border-left-color: var(--atencao); background: var(--atencao-fundo); }
         .aviso ul { margin: 8px 0 0; padding-left: 18px; }
-        code { background: #0d0f13; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
-        code.copiavel { user-select: all; word-break: break-all; font-size: 14px; display: inline-block; padding: 6px 8px; }
         .segredo-linha { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; margin-top: 8px; }
-        .segredo-linha code { flex: 1; min-width: 240px; }
-        .status-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-        .status-lista li { display: flex; gap: 10px; align-items: center; font-size: 14px; }
-        .status-lista .selo { min-width: 84px; text-align: center; }
-        tr.apagado td { opacity: .55; }
+        .segredo-linha code { flex: 1; min-width: 240px; background: #FFFFFF; border: 1px dashed var(--campo-borda); }
+        .status-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+        .status-lista li { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; }
+        .status-lista .selo { min-width: 86px; justify-content: center; }
 
-        /* ---------------- disclosure ---------------- */
+        /* ===================== rota de entrega (assinatura) ================= */
+        .rota { list-style: none; margin: 0; padding: 0; }
+        .rota li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; }
+        .rota .no { position: relative; display: flex; justify-content: center; }
+        .rota .no::before {
+            content: ""; position: absolute; top: 20px; bottom: -4px; width: 2px;
+            background: var(--borda); border-radius: 2px;
+        }
+        .rota li:last-child .no::before { display: none; }
+        .rota li.ok .no::before { background: linear-gradient(180deg, var(--ok), #79CFA0); }
+        .rota .ponto {
+            width: 14px; height: 14px; margin-top: 4px; border-radius: 50%;
+            border: 2.5px solid var(--fraco); background: #FFFFFF; z-index: 1;
+        }
+        .rota li.ok .ponto { border-color: var(--ok); background: var(--ok-fundo); }
+        .rota li.falha .ponto { border-color: var(--erro); background: var(--erro-fundo); }
+        .rota li.pendente .ponto { border-color: var(--atencao); background: var(--atencao-fundo); }
+        .rota .estacao { padding-bottom: 18px; min-width: 0; }
+        .rota li:last-child .estacao { padding-bottom: 2px; }
+        .rota .estacao .titulo { font-weight: 600; font-size: 13.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .rota .estacao .detalhe { font-size: 12.5px; color: var(--suave); margin-top: 2px; overflow-wrap: anywhere; }
+
+        /* ============================ disclosure ============================ */
         details.adicionar { margin-top: 14px; }
         details.adicionar > summary {
-            display: inline-block; list-style: none; cursor: pointer; user-select: none;
-            background: transparent; color: var(--marca); border: 1px solid #1f4d33; border-radius: 7px;
-            padding: 8px 14px; font-weight: 600; font-size: 14px;
+            display: inline-flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; user-select: none;
+            background: #FFFFFF; color: var(--ciano-forte); border: 1px solid var(--campo-borda);
+            border-radius: var(--raio-campo); padding: 8px 14px; font-weight: 600; font-size: 13.5px;
         }
-        details.adicionar > summary::before { content: "+ "; }
+        details.adicionar > summary::before { content: "+"; font-weight: 700; font-size: 15px; line-height: 1; }
         details.adicionar > summary::-webkit-details-marker { display: none; }
         details.adicionar > summary::marker { content: ""; }
-        details.adicionar[open] > summary { color: var(--suave); border-color: var(--borda); }
-        details.adicionar[open] > summary::before { content: "− "; }
+        details.adicionar > summary:hover { border-color: var(--ciano); }
+        details.adicionar[open] > summary { color: var(--suave); }
+        details.adicionar[open] > summary::before { content: "−"; }
         details.adicionar > .cartao { margin-top: 12px; }
 
-        /* ---------------- rodapé ---------------- */
-        footer {
-            border-top: 1px solid var(--borda); padding: 14px 24px; font-size: 12px; color: var(--fraco);
-            display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
-        }
-        footer .dir { margin-left: auto; }
-        @@media (max-width: 720px) {
-            header { height: auto; flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
-            header nav { margin-left: 0; flex-wrap: wrap; }
-            main { padding: 18px 14px 36px; }
+        /* ============================ responsivo ============================ */
+        #nav-abrir, .abrir-menu { display: none; }
+        @@media (max-width: 900px) {
+            .shell { flex-direction: column; }
+            .lateral {
+                position: fixed; z-index: 55; height: 100vh; transform: translateX(-100%);
+                transition: transform .18s ease; box-shadow: 0 0 40px rgba(0,0,0,.4);
+            }
+            #nav-abrir:checked ~ .shell .lateral { transform: translateX(0); }
+            .abrir-menu {
+                display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9px;
+                border: 1px solid var(--campo-borda); background: #fff; cursor: pointer; color: var(--suave);
+            }
+            .topo-app { padding: 0 16px; }
+            .faixa-suspenso { padding: 8px 16px; }
+            main { padding: 20px 16px 40px; }
+            footer.rodape { padding: 14px 16px; }
+            .quem .dados { display: none; }
             td.acoes { white-space: normal; }
         }
+        @@media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; animation: none !important; }
+        }
     </style>
+    @await RenderSectionAsync("Head", required: false)
 </head>
 <body>
+<div class="linha-viva" aria-hidden="true"></div>
 @if (autenticado)
 {
-    <header>
-        <a class="marca" href="/admin">
-            <span class="logo" aria-hidden="true">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M5 19l1.4-4A7.5 7.5 0 1 1 9.6 18L5 19z"/></svg>
-            </span>
-            automais<em>.zap</em>
-        </a>
+    <input type="checkbox" id="nav-abrir" aria-hidden="true" />
+    <div class="shell">
+        <aside class="lateral">
+            <a class="marca" href="/admin" aria-label="Automais.Zap — início">
+                <img class="cruz" src="/marca/cruz.svg" alt="" />
+                <span>
+                    <span class="nome">automais<em>.zap</em></span>
+                    <span class="tag">WhatsApp Business</span>
+                </span>
+            </a>
 
-        @* O seletor é o eixo da navegação: trocar de tenant troca o painel inteiro para a
-           visão daquele cliente. Quem tem um só não precisa escolher, só saber onde está. *@
-        <div class="contexto">
-            @if (visiveis.Count > 1)
+            <div class="contexto-tenant">
+                <span class="rotulo">Cliente</span>
+                @if (visiveis.Count > 1)
+                {
+                    <form method="post" action="/admin?handler=Selecionar" style="margin:0">
+                        @Html.AntiForgeryToken()
+                        <select name="id" onchange="this.form.submit()" class="seletor-tenant" aria-label="Trocar de cliente">
+                            @foreach (var t in visiveis)
+                            {
+                                <option value="@t.Id" selected="@(selecionado?.Id == t.Id)">@t.Nome</option>
+                            }
+                        </select>
+                    </form>
+                }
+                else if (selecionado is not null)
+                {
+                    <span class="fixo">@selecionado.Nome</span>
+                }
+                else
+                {
+                    <span class="fixo" style="color:var(--tinta-fraco)">nenhum cliente</span>
+                }
+            </div>
+
+            <nav class="menu" aria-label="Principal">
+                @if (selecionado is not null)
+                {
+                    <span class="grupo-rotulo">Canal</span>
+                    <a href="/admin/tenant?id=@selecionado.Id" class="@(Em("/admin/tenant", "/admin/waba") ? "ativo" : "")">
+                        @Html.Raw(Icone("painel")) Painel
+                    </a>
+                    <a href="/admin/numeros" class="@(Em("/admin/numero", "/admin/perfil") ? "ativo" : "")">
+                        @Html.Raw(Icone("numeros")) Números
+                    </a>
+                    <a href="/admin/templates" class="@(Em("/admin/templates") ? "ativo" : "")">
+                        @Html.Raw(Icone("templates")) Templates
+                    </a>
+                    <a href="/admin/atividade" class="@(Em("/admin/atividade") ? "ativo" : "")">
+                        @Html.Raw(Icone("atividade")) Atividade
+                    </a>
+                    <a href="/admin/entregas" class="@(Em("/admin/entregas") ? "ativo" : "")">
+                        @Html.Raw(Icone("entregas")) Entregas
+                    </a>
+
+                    <span class="grupo-rotulo">Integração</span>
+                    <a href="/admin/tokens" class="@(Em("/admin/tokens") ? "ativo" : "")">
+                        @Html.Raw(Icone("tokens")) API e tokens
+                    </a>
+
+                    <span class="grupo-rotulo">Organização</span>
+                    <a href="/admin/equipe" class="@(Em("/admin/equipe") ? "ativo" : "")">
+                        @Html.Raw(Icone("equipe")) Equipe
+                    </a>
+                }
+                @if (Escopo.Global)
+                {
+                    <span class="grupo-rotulo plataforma">Plataforma Automais</span>
+                    <a href="/admin/clientes" class="@(Em("/admin/clientes") ? "ativo" : "")">
+                        @Html.Raw(Icone("clientes")) Clientes
+                    </a>
+                    <a href="/admin/meta" class="@(Em("/admin/meta") ? "ativo" : "")">
+                        @Html.Raw(Icone("meta")) App da Meta
+                    </a>
+                    <a href="/admin/novo" class="@(Em("/admin/novo") ? "ativo" : "")">
+                        @Html.Raw(Icone("novo")) Novo cliente
+                    </a>
+                }
+            </nav>
+
+            <div class="grupo-negocios">
+                <span class="rotulo">Grupo Automais</span>
+                <span class="marcas-grupo">
+                    <a href="https://automais.io" target="_blank" rel="noopener" aria-label="Automais">
+                        <img class="automais" src="/marca/automais.png" alt="Automais" />
+                    </a>
+                    <a href="https://falarmais.com.br" target="_blank" rel="noopener" aria-label="FalarMais">
+                        <img class="falarmais" src="/marca/falarmais.png" alt="FalarMais" />
+                    </a>
+                </span>
+            </div>
+        </aside>
+
+        <div class="palco">
+            <div class="topo-app">
+                <label class="abrir-menu" for="nav-abrir" aria-label="Abrir menu">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </label>
+                <div class="secao">
+                    @if (selecionado is not null)
+                    {
+                        <span class="cliente">@selecionado.Nome</span>
+                        <span class="sep">/</span>
+                    }
+                    <span>@ViewData["Title"]</span>
+                </div>
+                <div class="direita">
+                    <div class="quem" title="@Escopo.Nome">
+                        <span class="avatar" aria-hidden="true">@iniciais</span>
+                        <span class="dados">
+                            <span class="n">@Escopo.Nome</span><br />
+                            <span class="p">@(Escopo.Global ? "Equipe Automais · acesso global" : "Acesso do cliente")</span>
+                        </span>
+                    </div>
+                    <form method="post" action="/admin/sair" style="margin:0">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="botao-sair">Sair</button>
+                    </form>
+                </div>
+            </div>
+
+            @if (selecionado?.SuspensoEm is not null)
             {
-                <span class="rotulo">Tenant</span>
-                <form method="post" action="/admin?handler=Selecionar" style="display:flex;align-items:center;margin:0">
-                    @Html.AntiForgeryToken()
-                    <select name="id" onchange="this.form.submit()" class="seletor-tenant" aria-label="Trocar de tenant">
-                        @foreach (var t in visiveis)
-                        {
-                            <option value="@t.Id" selected="@(selecionado?.Id == t.Id)">@t.Nome</option>
-                        }
-                    </select>
-                </form>
+                <div class="faixa-suspenso">
+                    Canal de @selecionado.Nome suspenso desde @selecionado.SuspensoEm.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")@(string.IsNullOrEmpty(selecionado.SuspensoMotivo) ? "" : " — " + selecionado.SuspensoMotivo). Nenhum WABA recebe ou envia.
+                </div>
             }
-            else if (selecionado is not null)
-            {
-                <span class="rotulo">Tenant</span>
-                <span>@selecionado.Nome</span>
-            }
+
+            <main>
+                @RenderBody()
+            </main>
+
+            <footer class="rodape">
+                <span>Automais.Zap · infraestrutura de WhatsApp Business</span>
+                <span>@(Escopo.Global ? "acesso global" : "acesso por cliente")</span>
+                <span class="dir">
+                    <span class="marcas">automais<em>.io</em> · falar<em>mais</em></span>
+                    <span>v@(versao)</span>
+                </span>
+            </footer>
         </div>
-
-        <nav aria-label="Principal">
-            @if (selecionado is not null)
-            {
-                <a href="/admin/tenant?id=@selecionado.Id" class="@Ativo("/admin/tenant") @Ativo("/admin/waba") @Ativo("/admin/templates")">Painel</a>
-            }
-            <a href="/admin/entregas" class="@Ativo("/admin/entregas")">Entregas</a>
-            @if (Escopo.Global)
-            {
-                <span class="sep" aria-hidden="true"></span>
-                <a href="/admin/meta" class="@Ativo("/admin/meta")">Meta</a>
-                <a href="/admin/novo" class="botao-nav">Novo tenant</a>
-            }
-            <span class="sep" aria-hidden="true"></span>
-            <span class="quem" title="@Escopo.Nome">@Escopo.Nome</span>
-            <form method="post" action="/admin/sair" style="display:inline;margin:0">
-                @Html.AntiForgeryToken()
-                <button type="submit">Sair</button>
-            </form>
-        </nav>
-    </header>
+    </div>
 }
-<main>
+else
+{
     @RenderBody()
-</main>
+}
 <script>
     // Copiar valor exibido uma unica vez (token/segredo). Delegacao: funciona para qualquer
     // botao com data-copiar="#id".
@@ -247,13 +489,29 @@
         });
     });
 </script>
-@if (autenticado)
-{
-    <footer>
-        <span>Automais.Zap · relay de WhatsApp</span>
-        <span>@(Escopo.Global ? "acesso global" : "acesso por tenant")</span>
-        <span class="dir">v@versao</span>
-    </footer>
-}
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+
+@functions {
+    /// <summary>Ícones do menu — traço 1.7, 24×24, herdam a cor pelo stroke.</summary>
+    private static string Icone(string nome)
+    {
+        const string abre = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">";
+        const string fecha = "</svg>";
+        return abre + nome switch
+        {
+            "painel" => "<rect x=\"3\" y=\"3\" width=\"7.5\" height=\"9\" rx=\"1.5\"/><rect x=\"13.5\" y=\"3\" width=\"7.5\" height=\"5.5\" rx=\"1.5\"/><rect x=\"13.5\" y=\"12\" width=\"7.5\" height=\"9\" rx=\"1.5\"/><rect x=\"3\" y=\"15.5\" width=\"7.5\" height=\"5.5\" rx=\"1.5\"/>",
+            "numeros" => "<path d=\"M6 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z\"/><path d=\"M9 18h2\"/><path d=\"M19.5 8.5a5 5 0 0 0-3-3\"/><path d=\"M21.5 6.5a8 8 0 0 0-4-4\" opacity=\".55\"/>",
+            "templates" => "<path d=\"M21 12a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1.1L3 21l1.6-5.3A8.5 8.5 0 1 1 21 12z\"/><path d=\"M8.5 10.5h7M8.5 14h4.5\"/>",
+            "atividade" => "<path d=\"M3 12h4l2.5-7 5 14 2.5-7h4\"/>",
+            "entregas" => "<path d=\"M21 3 10.5 13.5\"/><path d=\"M21 3l-7 18-3.5-7.5L3 10z\"/>",
+            "tokens" => "<circle cx=\"8\" cy=\"14\" r=\"4.5\"/><path d=\"M11.5 10.5 20 2.5\"/><path d=\"M16.5 6l3 3M14 8.5l2 2\"/>",
+            "equipe" => "<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M3.5 20c.6-3.4 2.8-5.5 5.5-5.5s4.9 2.1 5.5 5.5\"/><circle cx=\"17\" cy=\"9\" r=\"2.6\"/><path d=\"M16 14.7c2.4.2 4 2 4.5 4.8\"/>",
+            "clientes" => "<path d=\"M3 21h18\"/><path d=\"M5 21V7l7-4v18\"/><path d=\"M12 21V11l7 3v7\"/><path d=\"M8 9.5h.01M8 13h.01M8 16.5h.01\"/>",
+            "meta" => "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M3.5 12h17\"/><path d=\"M12 3.5c2.5 2.3 3.8 5.2 3.8 8.5s-1.3 6.2-3.8 8.5c-2.5-2.3-3.8-5.2-3.8-8.5S9.5 5.8 12 3.5z\"/>",
+            "novo" => "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M12 8.5v7M8.5 12h7\"/>",
+            _ => "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/>",
+        } + fecha;
+    }
+}

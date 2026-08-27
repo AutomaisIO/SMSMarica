@@ -1,0 +1,247 @@
+@page "/admin/perfil"
+@model Automais.Zap.Api.Pages.Admin.PerfilModel
+@using Automais.Zap.Core.Meta
+@{
+    ViewData["Title"] = "Perfil do WhatsApp";
+    var p = Model.Perfil;
+}
+
+@if (Model.Alvo is null || Model.Waba is null)
+{
+    <div class="cartao vazio">Número não encontrado.</div>
+    return;
+}
+
+@section Head {
+    <style>
+        .perfil-grade { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 22px; align-items: start; }
+        @@media (max-width: 1020px) { .perfil-grade { grid-template-columns: 1fr; } .celular-coluna { display: none; } }
+
+        .foto-linha { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+        .foto-atual {
+            width: 84px; height: 84px; border-radius: 50%; object-fit: cover;
+            border: 3px solid var(--borda); background: var(--borda-suave);
+        }
+        .foto-vazia {
+            width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center;
+            background: var(--borda-suave); color: var(--fraco); border: 3px solid var(--borda);
+        }
+        .foto-vazia svg { width: 38px; height: 38px; stroke: var(--fraco); }
+
+        /* ------- moldura de celular: como o cidadão vê ------- */
+        .celular-coluna { position: sticky; top: 82px; }
+        .celular {
+            border: 10px solid var(--tinta); border-radius: 38px; background: #FFFFFF;
+            box-shadow: 0 18px 50px rgba(16, 20, 43, .18); overflow: hidden;
+        }
+        .celular .entalhe { height: 22px; background: var(--tinta); border-radius: 0 0 14px 14px; width: 46%; margin: 0 auto; }
+        .celular .zap-topo { background: #075E54; color: #fff; padding: 12px 14px 12px; font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+        .celular .zap-topo svg { width: 15px; height: 15px; stroke: #fff; }
+        .celular .zap-corpo { padding: 20px 16px 22px; text-align: center; }
+        .celular .zap-foto { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; background: #E9EDEF; margin: 0 auto; display: block; }
+        .celular .zap-foto-vazia { width: 96px; height: 96px; border-radius: 50%; background: #E9EDEF; display: grid; place-items: center; margin: 0 auto; }
+        .celular .zap-foto-vazia svg { width: 44px; height: 44px; stroke: #AEBAC1; }
+        .celular .zap-nome { font: 600 16px var(--fonte); color: #111B21; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .celular .zap-nome svg { width: 15px; height: 15px; }
+        .celular .zap-numero { font-size: 12.5px; color: #667781; margin-top: 2px; }
+        .celular .zap-sobre { font-size: 13px; color: #111B21; margin-top: 12px; padding: 10px 12px; background: #F0F2F5; border-radius: 9px; min-height: 20px; }
+        .celular .zap-lista { text-align: left; margin-top: 14px; display: grid; gap: 11px; }
+        .celular .zap-lista .item { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; font-size: 12.5px; color: #111B21; overflow-wrap: anywhere; }
+        .celular .zap-lista .item svg { width: 16px; height: 16px; stroke: #8696A0; margin-top: 1px; }
+        .celular .zap-lista .item .vazio { color: #AEBAC1; }
+        .celular .rotulo-preview { text-align: center; font-size: 11px; color: var(--fraco); margin-top: 10px; letter-spacing: .04em; text-transform: uppercase; }
+
+        .contador { font-size: 11px; color: var(--fraco); text-align: right; margin-top: 3px; }
+
+        .abas { display: flex; gap: 6px; border-bottom: 1px solid var(--borda); margin: 4px 0 22px; }
+        .abas a {
+            padding: 8px 14px 10px; font-weight: 600; font-size: 13.5px; color: var(--suave);
+            border-bottom: 2.5px solid transparent; margin-bottom: -1px;
+        }
+        .abas a:hover { text-decoration: none; color: var(--texto); }
+        .abas a.ativa { color: var(--ciano-forte); border-bottom-color: var(--ciano); }
+    </style>
+}
+
+<p class="migalhas">
+    <a href="/admin/numeros">Números</a>
+    <span class="sep">/</span>
+    <a href="/admin/numero?id=@Model.Alvo.Id" class="num">@(Model.Alvo.DisplayPhoneNumber ?? Model.Alvo.PhoneNumberId)</a>
+    <span class="sep">/</span>
+    <span>Perfil do WhatsApp</span>
+</p>
+
+<div class="pagina-topo" style="margin-bottom:8px">
+    <div>
+        <h1>Perfil do WhatsApp</h1>
+        <p class="sub compacto">
+            O que o cidadão vê ao abrir a conversa com <strong>@(Model.Alvo.DisplayPhoneNumber ?? Model.Alvo.PhoneNumberId)</strong>.
+            Alterações são gravadas direto na Meta.
+        </p>
+    </div>
+</div>
+
+<nav class="abas" aria-label="Seções do número">
+    <a href="/admin/numero?id=@Model.Alvo.Id">Diagnóstico</a>
+    <a class="ativa" href="/admin/perfil?id=@Model.Alvo.Id">Perfil do WhatsApp</a>
+</nav>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+@if (Model.ErroGraph is not null)
+{
+    <div class="aviso atencao">Não foi possível ler o perfil na Meta: @Model.ErroGraph</div>
+}
+
+<div class="perfil-grade">
+    <div>
+        <h2 style="margin-top:0">Foto do perfil</h2>
+        <div class="cartao">
+            <div class="foto-linha">
+                @if (!string.IsNullOrEmpty(p?.FotoUrl))
+                {
+                    <img class="foto-atual" src="@p.FotoUrl" alt="Foto atual do perfil" />
+                }
+                else
+                {
+                    <span class="foto-vazia" aria-label="Sem foto de perfil">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c1-4 4-6 7.5-6s6.5 2 7.5 6"/></svg>
+                    </span>
+                }
+                <form method="post" asp-page-handler="Foto" enctype="multipart/form-data" style="flex:1;min-width:260px">
+                    <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                    <label for="arq-foto">Nova foto (JPEG ou PNG, quadrada, ideal 640×640, até 5 MB)</label>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                        <input id="arq-foto" type="file" name="foto" accept="image/jpeg,image/png" required style="flex:1;min-width:220px" />
+                        <button class="acao" type="submit">Enviar foto</button>
+                    </div>
+                    <p class="ajuda-campo">A troca vale na hora para conversas novas; aparelhos podem levar alguns minutos para atualizar o cache.</p>
+                </form>
+            </div>
+        </div>
+
+        <h2>Informações do negócio</h2>
+        <div class="cartao">
+            <form method="post" asp-page-handler="Salvar">
+                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                <div style="margin-bottom:14px">
+                    <label for="pf-sobre">Recado (aparece abaixo do nome, como um status)</label>
+                    <input id="pf-sobre" type="text" name="sobre" maxlength="139" style="width:100%" value="@p?.Sobre"
+                           data-preview="pv-sobre" placeholder="Atendimento oficial pelo WhatsApp" />
+                    <div class="contador">até 139 caracteres</div>
+                </div>
+                <div style="margin-bottom:14px">
+                    <label for="pf-descricao">Descrição</label>
+                    <textarea id="pf-descricao" name="descricao" rows="3" maxlength="512" data-preview="pv-descricao"
+                              placeholder="Quem é a organização e o que este canal resolve.">@p?.Descricao</textarea>
+                    <div class="contador">até 512 caracteres</div>
+                </div>
+                <div class="linha" style="margin-top:0">
+                    <div class="campo-largo">
+                        <label for="pf-endereco">Endereço</label>
+                        <input id="pf-endereco" type="text" name="endereco" maxlength="256" value="@p?.Endereco" data-preview="pv-endereco" />
+                    </div>
+                    <div class="campo-largo">
+                        <label for="pf-email">E-mail de contato</label>
+                        <input id="pf-email" type="email" name="email" maxlength="128" value="@p?.Email" data-preview="pv-email" />
+                    </div>
+                </div>
+                <div class="linha">
+                    <div class="campo-largo">
+                        <label for="pf-site1">Site principal</label>
+                        <input id="pf-site1" type="url" name="site1" maxlength="256" value="@(p?.Sites.ElementAtOrDefault(0))" data-preview="pv-site1" placeholder="https://" />
+                    </div>
+                    <div class="campo-largo">
+                        <label for="pf-site2">Site adicional</label>
+                        <input id="pf-site2" type="url" name="site2" maxlength="256" value="@(p?.Sites.ElementAtOrDefault(1))" data-preview="pv-site2" placeholder="https://" />
+                    </div>
+                    <div>
+                        <label for="pf-vertical">Ramo de atividade</label>
+                        <select id="pf-vertical" name="vertical" class="campo">
+                            @foreach (var (valor, rotulo) in VerticalNegocio.Opcoes)
+                            {
+                                <option value="@valor" selected="@(string.Equals(p?.Vertical, valor, StringComparison.OrdinalIgnoreCase))">@rotulo</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top:18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <button class="acao" type="submit">Salvar na Meta</button>
+                    <span class="ajuda-campo" style="margin:0">Campos deixados em branco mantêm o valor atual na Meta.</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="celular-coluna" aria-hidden="true">
+        <div class="celular">
+            <div class="entalhe"></div>
+            <div class="zap-topo">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Dados da empresa
+            </div>
+            <div class="zap-corpo">
+                @if (!string.IsNullOrEmpty(p?.FotoUrl))
+                {
+                    <img class="zap-foto" src="@p.FotoUrl" alt="" />
+                }
+                else
+                {
+                    <span class="zap-foto-vazia">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c1-4 4-6 7.5-6s6.5 2 7.5 6"/></svg>
+                    </span>
+                }
+                <div class="zap-nome">
+                    @(Model.Alvo.Rotulo ?? Model.Alvo.DisplayPhoneNumber ?? "—")
+                    <svg viewBox="0 0 24 24" fill="#25D366" stroke="none"><path d="M12 2l2.4 2.4 3.3-.5.6 3.3 3 1.6-1.5 3 1.5 3-3 1.6-.6 3.3-3.3-.5L12 22l-2.4-2.4-3.3.5-.6-3.3-3-1.6 1.5-3-1.5-3 3-1.6.6-3.3 3.3.5z"/><path d="M9.2 12.2l2 2 3.8-4.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="zap-numero num">@(Model.Alvo.DisplayPhoneNumber ?? Model.Alvo.PhoneNumberId)</div>
+                <div class="zap-sobre" id="pv-sobre">@(string.IsNullOrEmpty(p?.Sobre) ? "…" : p.Sobre)</div>
+                <div class="zap-lista">
+                    <div class="item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+                        <span id="pv-descricao" class="@(string.IsNullOrEmpty(p?.Descricao) ? "vazio" : "")">@(string.IsNullOrEmpty(p?.Descricao) ? "Sem descrição" : p.Descricao)</span>
+                    </div>
+                    <div class="item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                        <span id="pv-endereco" class="@(string.IsNullOrEmpty(p?.Endereco) ? "vazio" : "")">@(string.IsNullOrEmpty(p?.Endereco) ? "Sem endereço" : p.Endereco)</span>
+                    </div>
+                    <div class="item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></svg>
+                        <span id="pv-email" class="@(string.IsNullOrEmpty(p?.Email) ? "vazio" : "")">@(string.IsNullOrEmpty(p?.Email) ? "Sem e-mail" : p.Email)</span>
+                    </div>
+                    <div class="item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.3 3.8 5.2 3.8 8.5s-1.3 6.2-3.8 8.5c-2.5-2.3-3.8-5.2-3.8-8.5S9.5 5.8 12 3.5z"/></svg>
+                        <span>
+                            <span id="pv-site1" class="@(p?.Sites.ElementAtOrDefault(0) is null ? "vazio" : "")">@(p?.Sites.ElementAtOrDefault(0) ?? "Sem site")</span><br />
+                            <span id="pv-site2">@(p?.Sites.ElementAtOrDefault(1))</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="rotulo-preview">Pré-visualização · dados da empresa no WhatsApp</div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Pré-visualização ao vivo: cada campo com data-preview espelha o texto no telefone.
+        document.querySelectorAll('[data-preview]').forEach(function (campo) {
+            var alvo = document.getElementById(campo.getAttribute('data-preview'));
+            if (!alvo) return;
+            var vazio = alvo.textContent;
+            campo.addEventListener('input', function () {
+                var v = campo.value.trim();
+                alvo.textContent = v || vazio;
+                alvo.classList.toggle('vazio', !v);
+            });
+        });
+    </script>
+}

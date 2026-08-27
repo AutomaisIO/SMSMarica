@@ -44,6 +44,9 @@ public sealed class NumeroModel(ZapDbContext db, EscopoUsuario escopo, IGraphMet
         // Fail-closed: número é de um tenant, e tenant que o usuário não enxerga não existe.
         if (!await escopo.PodeVerAsync(Waba.TenantId, ct)) return Forbid();
 
+        // Chegar por URL a um número de outro tenant realinha o contexto do painel.
+        escopo.Selecionar(Waba.TenantId);
+
         var r = await graph.ObterNumeroAsync(Alvo.PhoneNumberId, ct);
         if (r.Sucesso) NaMeta = r.Valor;
         else ErroGraph = r.Erro;
@@ -77,7 +80,7 @@ public sealed class NumeroModel(ZapDbContext db, EscopoUsuario escopo, IGraphMet
                 null,
                 Alvo is null
                     ? "Não consultado."
-                    : $"A Meta não expõe a data de registro. No relay este número existe desde "
+                    : $"A Meta não expõe a data de registro. Neste painel o número existe desde "
                       + $"{Alvo.CriadoEm.ToLocalTime():dd/MM/yyyy} — o que é o dia em que foi sincronizado, não o do registro."),
 
             new("Portfólio empresarial verificado",

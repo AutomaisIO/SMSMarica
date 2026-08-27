@@ -1,13 +1,34 @@
 @page "/admin/tenant"
 @model Automais.Zap.Api.Pages.Admin.TenantModel
 @{
-    ViewData["Title"] = Model.Alvo?.Nome ?? "Tenant";
+    ViewData["Title"] = "Painel";
 }
 
 @if (Model.Alvo is null)
 {
-    <div class="cartao vazio">Tenant não encontrado.</div>
+    <div class="cartao vazio">Cliente não encontrado.</div>
     return;
+}
+
+@section Head {
+    <style>
+        .grade-wabas { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+        .waba-cartao { display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+        .waba-cartao .cabeca { display: flex; align-items: center; gap: 10px; }
+        .waba-cartao .cabeca .nome { font: 600 15px var(--fonte-titulo); letter-spacing: -0.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .waba-cartao .cabeca .selo { margin-left: auto; }
+        .waba-cartao .id { font-size: 12px; color: var(--fraco); }
+        .waba-cartao .destino { font-size: 12.5px; color: var(--suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .waba-cartao .saude { display: flex; gap: 6px; flex-wrap: wrap; }
+        .waba-cartao .pe { display: flex; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--borda-suave); }
+        .waba-cartao .pe a {
+            font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 8px;
+            border: 1px solid var(--campo-borda); color: var(--suave);
+        }
+        .waba-cartao .pe a:hover { text-decoration: none; color: var(--texto); border-color: var(--suave); }
+        .waba-cartao .pe a.principal { color: #fff; background: var(--ciano); border-color: var(--ciano); }
+        .waba-cartao .pe a.principal:hover { background: var(--ciano-forte); }
+    </style>
 }
 
 <div class="pagina-topo">
@@ -17,15 +38,14 @@
             @if (Model.Alvo.SuspensoEm is not null)
             {
                 <span class="selo off">canal suspenso</span>
-                <span> desde @Model.Alvo.SuspensoEm.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")@(string.IsNullOrEmpty(Model.Alvo.SuspensoMotivo) ? "" : " — " + Model.Alvo.SuspensoMotivo). Nenhum WABA deste tenant recebe ou envia.</span>
             }
             else
             {
                 <span class="selo on">canal ativo</span>
-                @if (!string.IsNullOrEmpty(Model.Alvo.Observacao))
-                {
-                    <span> · @Model.Alvo.Observacao</span>
-                }
+            }
+            @if (!string.IsNullOrEmpty(Model.Alvo.Observacao))
+            {
+                <span> · @Model.Alvo.Observacao</span>
             }
         </p>
     </div>
@@ -35,9 +55,9 @@
             <input type="hidden" name="id" value="@Model.Alvo.Id" />
             @if (Model.Alvo.SuspensoEm is null)
             {
-                <input type="text" name="motivo" placeholder="motivo (opcional)" style="min-width:200px" />
+                <input type="text" name="motivo" placeholder="motivo (opcional)" aria-label="Motivo da suspensão" style="min-width:200px" />
                 <button class="acao perigo" type="submit"
-                        onclick="return confirm('Suspender o canal deste tenant? Todos os WABAs param de receber e os tokens param de enviar, na hora.');">Suspender canal</button>
+                        onclick="return confirm('Suspender o canal deste cliente? Todos os WABAs param de receber e os tokens param de enviar, na hora.');">Suspender canal</button>
             }
             else
             {
@@ -59,237 +79,114 @@
 <div class="grade-resumo">
     <div class="resumo">
         <div class="valor">@Model.Wabas.Count</div>
-        <div class="rotulo">WABA@(Model.Wabas.Count == 1 ? "" : "s")</div>
+        <div class="rotulo">conta@(Model.Wabas.Count == 1 ? "" : "s") WhatsApp Business</div>
     </div>
     <div class="resumo">
-        <div class="valor">@Model.Wabas.Sum(w => w.Numeros.Count)</div>
-        <div class="rotulo">número@(Model.Wabas.Sum(w => w.Numeros.Count) == 1 ? "" : "s")</div>
+        <div class="valor">@Model.NumerosAtivos<span class="fraco">/@Model.NumerosTotal</span></div>
+        <div class="rotulo"><a href="/admin/numeros">número@(Model.NumerosTotal == 1 ? "" : "s") ativo@(Model.NumerosAtivos == 1 ? "" : "s")</a></div>
     </div>
-    <div class="resumo @(Model.Wabas.Count > 0 && Model.Wabas.All(w => w.RoteamentoAtivo) ? "ok" : (Model.Wabas.Any(w => !w.RoteamentoAtivo) ? "alerta" : ""))">
-        <div class="valor">@Model.Wabas.Count(w => w.RoteamentoAtivo)<span style="font-size:14px;color:var(--fraco);font-weight:400">/@Model.Wabas.Count</span></div>
-        <div class="rotulo">com roteamento ligado</div>
+    <div class="resumo ok">
+        <div class="valor">@Model.Entregues24h.ToString("N0", new System.Globalization.CultureInfo("pt-BR"))</div>
+        <div class="rotulo"><a href="/admin/entregas?tenant=@Model.Alvo.Id">entregas em 24h</a></div>
     </div>
-    <div class="resumo">
-        <div class="valor">@Model.Tokens.Count(t => t.RevogadoEm is null)</div>
-        <div class="rotulo">token@(Model.Tokens.Count(t => t.RevogadoEm is null) == 1 ? "" : "s") de API ativo@(Model.Tokens.Count(t => t.RevogadoEm is null) == 1 ? "" : "s")</div>
-    </div>
-    <div class="resumo @(Model.FalhasUltimas24h > 0 ? "alerta" : "ok")">
+    <div class="resumo @(Model.FalhasUltimas24h > 0 ? "alerta" : "")">
         <div class="valor">@Model.FalhasUltimas24h</div>
-        <div class="rotulo"><a href="/admin/entregas?tenant=@Model.Alvo.Id&falhas=1">falha@(Model.FalhasUltimas24h == 1 ? "" : "s") em 24h</a></div>
+        <div class="rotulo"><a href="/admin/entregas?tenant=@Model.Alvo.Id&falhas=true">falha@(Model.FalhasUltimas24h == 1 ? "" : "s") em 24h</a></div>
+    </div>
+    <div class="resumo">
+        <div class="valor">@Model.TokensAtivos</div>
+        <div class="rotulo"><a href="/admin/tokens">token@(Model.TokensAtivos == 1 ? "" : "s") de API</a></div>
     </div>
 </div>
 
-<h2>WABAs <span class="cont">@Model.Wabas.Count</span></h2>
-<div class="cartao">
-    @if (Model.Wabas.Count == 0)
-    {
-        <p class="sub compacto" style="text-align:center;padding:10px 0">Nenhum WABA neste cliente.@(Model.Global ? " Adicione o primeiro abaixo." : " Peça à plataforma para vincular o WABA.")</p>
-    }
-    else
-    {
-        <table>
-            <thead><tr><th>WABA</th><th>ID na Meta</th><th>Números</th><th>Roteamento</th><th>Destino</th></tr></thead>
-            <tbody>
-            @foreach (var w in Model.Wabas)
-            {
-                <tr>
-                    <td><a href="/admin/waba?id=@w.Id">@(w.Nome ?? "(sem nome)")</a></td>
-                    <td class="num"><code>@w.WabaId</code></td>
-                    <td class="num">@w.Numeros.Count</td>
-                    <td><span class="selo @(w.RoteamentoAtivo ? "on" : "off")">@(w.RoteamentoAtivo ? "ligado" : "desligado")</span></td>
-                    <td class="sub compacto" style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@(w.UrlDestino ?? "—")</td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    }
-</div>
-
-@if (Model.Global)
+@if (Model.Wabas.Count == 0)
 {
-<details class="adicionar">
-    <summary>Adicionar WABA</summary>
+    <h2>Como o canal entra no ar</h2>
     <div class="cartao">
-        <form method="post" asp-page-handler="AdicionarWaba" class="linha" style="margin-top:0">
-            <input type="hidden" name="id" value="@Model.Alvo.Id" />
-            <div>
-                <label for="waba-id">ID do WABA na Meta</label>
-                <input id="waba-id" type="text" name="wabaId" required placeholder="1234567890123456" />
-            </div>
-            <button class="acao" type="submit">Adicionar</button>
-        </form>
-        <p class="sub compacto" style="margin-top:10px">O console consulta a Meta antes de gravar: id errado não vira linha órfã.</p>
-    </div>
-</details>
-}
-
-<h2>Tokens de API <span class="cont">@Model.Tokens.Count(t => t.RevogadoEm is null) ativo@(Model.Tokens.Count(t => t.RevogadoEm is null) == 1 ? "" : "s")</span></h2>
-<p class="sub">
-    Usados pelo seu sistema para enviar mensagens pela API. Crie um por sistema integrado:
-    revogar um não afeta os outros.
-</p>
-
-@if (!string.IsNullOrEmpty(Model.TokenNovo))
-{
-    <div class="aviso ok">
-        <strong>Token criado — copie agora.</strong> Ele não é exibido de novo; o que fica guardado é só o resumo.
-        <div class="segredo-linha">
-            <code class="copiavel" id="token-novo">@Model.TokenNovo</code>
-            <button type="button" class="acao discreto" data-copiar="#token-novo">Copiar</button>
-        </div>
+        <p class="sub">
+            Nenhuma conta WhatsApp Business vinculada ainda. O caminho até a primeira mensagem:
+        </p>
+        <ul class="rota">
+            <li class="pendente">
+                <span class="no"><span class="ponto"></span></span>
+                <span class="estacao">
+                    <span class="titulo">Vincular o WABA</span>
+                    <span class="detalhe">A Automais valida o ID da conta WhatsApp Business direto na Meta e a vincula a este cliente.</span>
+                </span>
+            </li>
+            <li class="pendente">
+                <span class="no"><span class="ponto"></span></span>
+                <span class="estacao">
+                    <span class="titulo">Gerar o segredo de entrega</span>
+                    <span class="detalhe">Cada evento passa a sair assinado — o sistema de destino confere a assinatura antes de aceitar.</span>
+                </span>
+            </li>
+            <li class="pendente">
+                <span class="no"><span class="ponto"></span></span>
+                <span class="estacao">
+                    <span class="titulo">Apontar o destino e ligar o roteamento</span>
+                    <span class="detalhe">O webhook do seu sistema recebe os eventos de todos os números do WABA.</span>
+                </span>
+            </li>
+            <li class="pendente">
+                <span class="no"><span class="ponto"></span></span>
+                <span class="estacao">
+                    <span class="titulo">Inscrever o App da Automais no WABA</span>
+                    <span class="detalhe">A partir daí a Meta entrega os eventos aqui — e o painel mostra tudo em <a href="/admin/entregas">Entregas</a>.</span>
+                </span>
+            </li>
+        </ul>
+        @if (!Model.Global)
+        {
+            <p class="sub compacto" style="margin-top:16px">Fale com a Automais para vincular a primeira conta.</p>
+        }
     </div>
 }
-
-<div class="cartao">
-    @if (Model.Tokens.Count == 0)
-    {
-        <p class="sub compacto" style="text-align:center;padding:10px 0">Nenhum token ativo. Sem token, nenhum sistema consegue enviar por este cliente.</p>
-    }
-    else
-    {
-        <table>
-            <thead><tr><th>Nome</th><th>Prefixo</th><th>Pode enviar por</th><th>Criado</th><th>Último uso</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-            @foreach (var t in Model.Tokens.OrderBy(t => t.RevogadoEm != null).ThenByDescending(t => t.CriadoEm))
-            {
-                <tr class="@(t.RevogadoEm is null ? "" : "apagado")">
-                    <td>@t.Nome</td>
-                    <td class="num"><code>zap_@(t.Prefixo)_…</code></td>
-                    <td class="sub compacto">
-                        @if (t.TodosNumeros)
-                        {
-                            <span>todos os números do tenant</span>
-                        }
-                        else
-                        {
-                            <span>@string.Join(", ", t.Numeros.Select(n => n.Numero?.DisplayPhoneNumber ?? n.NumeroId.ToString()[..8]))</span>
-                        }
-                    </td>
-                    <td class="num">@t.CriadoEm.ToLocalTime().ToString("dd/MM/yy")</td>
-                    <td class="num">@(t.UltimoUsoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
-                    <td>@if (t.RevogadoEm is null) { <span class="selo on">ativo</span> } else { <span class="selo off">revogado</span> }</td>
-                    <td class="acoes">
-                        @if (t.RevogadoEm is null)
-                        {
-                            <form method="post" asp-page-handler="RevogarToken" style="display:inline"
-                                  onsubmit="return confirm('Revogar este token? Quem estiver usando para de enviar na hora.');">
-                                <input type="hidden" name="id" value="@Model.Alvo.Id" />
-                                <input type="hidden" name="tokenId" value="@t.Id" />
-                                <button class="acao perigo" type="submit">Revogar</button>
-                            </form>
-                        }
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    }
-</div>
-
-<details class="adicionar">
-    <summary>Gerar token</summary>
-    <div class="cartao">
-        <form method="post" asp-page-handler="CriarToken">
-            <input type="hidden" name="id" value="@Model.Alvo.Id" />
-            <div class="linha" style="margin-top:0">
-                <div class="campo-largo">
-                    <label for="tok-nome">Para que serve</label>
-                    <input id="tok-nome" type="text" name="nome" required placeholder="Sistema do cliente — produção" />
+else
+{
+    <h2>Contas WhatsApp Business <span class="cont">@Model.Wabas.Count</span></h2>
+    <div class="grade-wabas">
+        @foreach (var w in Model.Wabas)
+        {
+            var temSegredo = !string.IsNullOrEmpty(w.SegredoEntregaCifrado);
+            var temDestino = !string.IsNullOrWhiteSpace(w.UrlDestino);
+            <div class="cartao waba-cartao">
+                <div class="cabeca">
+                    <span class="nome">@(w.Nome ?? "(sem nome)")</span>
+                    <span class="selo @(w.RoteamentoAtivo ? "on" : "off")">@(w.RoteamentoAtivo ? "roteando" : "parado")</span>
+                </div>
+                <div class="id">ID na Meta: <code>@w.WabaId</code></div>
+                <div class="destino" title="@(w.UrlDestino ?? "")">
+                    Destino: @(temDestino ? w.UrlDestino : "— não configurado")
+                </div>
+                <div class="saude">
+                    <span class="selo @(w.Numeros.Any(n => n.Ativo) ? "on" : "off")">@w.Numeros.Count número@(w.Numeros.Count == 1 ? "" : "s")</span>
+                    <span class="selo @(temDestino ? "on" : "off")">destino</span>
+                    <span class="selo @(temSegredo ? "on" : "off")">segredo</span>
+                </div>
+                <div class="pe">
+                    <a class="principal" href="/admin/waba?id=@w.Id">Abrir</a>
+                    <a href="/admin/templates?id=@w.Id">Templates</a>
                 </div>
             </div>
-
-            <div style="margin-top:14px">
-                <label>Pode enviar por</label>
-                <label class="opcao"><input type="radio" name="alcance" value="todos" checked /> Todos os números do tenant, inclusive os que entrarem depois</label>
-                <label class="opcao"><input type="radio" name="alcance" value="selecionados" /> Só os números marcados abaixo</label>
-
-                @if (Model.NumerosDoTenant.Count > 0)
-                {
-                    <div style="margin-top:8px;padding-left:24px">
-                        @foreach (var n in Model.NumerosDoTenant)
-                        {
-                            <label class="opcao suave">
-                                <input type="checkbox" name="numeros" value="@n.Id" />
-                                @(n.DisplayPhoneNumber ?? n.PhoneNumberId) @(n.Rotulo is null ? "" : "— " + n.Rotulo)
-                            </label>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p class="sub compacto" style="margin-top:8px;padding-left:24px">
-                        Nenhum número sincronizado ainda — só o alcance "todos" faz sentido por enquanto.
-                    </p>
-                }
-            </div>
-
-            <div style="margin-top:16px">
-                <button class="acao" type="submit">Gerar</button>
-            </div>
-        </form>
+        }
     </div>
-</details>
-
-<h2>Usuários <span class="cont">@Model.Usuarios.Count</span></h2>
-<div class="cartao">
-    @if (Model.Usuarios.Count == 0)
-    {
-        <p class="sub compacto" style="text-align:center;padding:10px 0">Nenhum usuário atribuído a este cliente.</p>
-    }
-    else
-    {
-        <table>
-            <thead><tr><th>E-mail</th><th>Nome</th><th>Último acesso</th><th></th></tr></thead>
-            <tbody>
-            @foreach (var u in Model.Usuarios)
-            {
-                <tr>
-                    <td>@u.Email</td>
-                    <td>@u.Nome</td>
-                    <td class="num">@(u.UltimoAcessoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
-                    <td class="acoes">
-                        @if (Model.Global)
-                        {
-                            <form method="post" asp-page-handler="Desvincular" style="display:inline"
-                                  onsubmit="return confirm('Desvincular este usuário deste tenant?');">
-                                <input type="hidden" name="id" value="@Model.Alvo.Id" />
-                                <input type="hidden" name="usuarioId" value="@u.Id" />
-                                <button class="acao discreto" type="submit">Desvincular</button>
-                            </form>
-                        }
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    }
-</div>
+}
 
 @if (Model.Global)
 {
     <details class="adicionar">
-        <summary>Adicionar usuário</summary>
+        <summary>Vincular WABA</summary>
         <div class="cartao">
-            <form method="post" asp-page-handler="CriarUsuario" class="linha" style="margin-top:0">
+            <form method="post" asp-page-handler="AdicionarWaba" class="linha" style="margin-top:0">
                 <input type="hidden" name="id" value="@Model.Alvo.Id" />
                 <div>
-                    <label for="usr-email">E-mail</label>
-                    <input id="usr-email" type="email" name="email" required />
+                    <label for="waba-id">ID do WABA na Meta</label>
+                    <input id="waba-id" type="text" name="wabaId" required placeholder="1234567890123456" class="num" />
                 </div>
-                <div>
-                    <label for="usr-nome">Nome</label>
-                    <input id="usr-nome" type="text" name="nome" />
-                </div>
-                <div>
-                    <label for="usr-senha">Senha (mín. 10)</label>
-                    <input id="usr-senha" type="password" name="senha" required autocomplete="new-password" />
-                </div>
-                <button class="acao" type="submit">Criar</button>
+                <button class="acao" type="submit">Vincular</button>
             </form>
-            <p class="sub compacto" style="margin-top:10px">
-                E-mail do domínio da plataforma nasce <strong>global</strong> e enxerga todos os clientes —
-                o vínculo com este cliente nem chega a ser criado.
-            </p>
+            <p class="ajuda-campo" style="margin-top:10px">A plataforma consulta a Meta antes de gravar: ID errado não vira linha órfã.</p>
         </div>
     </details>
 }
