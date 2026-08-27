@@ -6,7 +6,6 @@ using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Laudos.Configuracao;
 using SMSMais.Core.Pacientes;
-using SMSMais.Core.SolicitacoesExame;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 
@@ -43,7 +42,6 @@ public sealed class CidadaoLoginLinkService(
     SmsMaisDbContext db,
     ILaudoConfiguracaoService configuracaoLaudo,
     IPacientesService pacientes,
-    ISolicitacoesExameService solicitacoes,
     ICidadaoSessaoService sessoes,
     Telefones.ITelefoneValidacaoService telefones,
     IUsuarioAtualAccessor usuarioAtual,
@@ -58,14 +56,22 @@ public sealed class CidadaoLoginLinkService(
         Guid solicitacaoExameId, string? destino = null, bool exigeConfirmacaoCpf = false,
         CancellationToken cancellationToken = default)
     {
-        var s = await solicitacoes.ObterPorIdAsync(solicitacaoExameId, cancellationToken);
+        // O parâmetro pode ser o id PÚBLICO do exame de imagem (ExameImagem.Id) OU já o id da
+        // solicitação (regulação SISREG, que NÃO tem ExameImagem). Traduz para o id da espinha.
+        var solicitacaoSpineId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId)
+            .FirstOrDefaultAsync(cancellationToken) ?? solicitacaoExameId;
 
-        var cpf = Digitos(s.PacienteCpf);
-        if (cpf.Length == 0)
-        {
-            var p = await pacientes.ObterPorIdAsync(s.PacienteId, cancellationToken);
-            cpf = Digitos(p.Cpf);
-        }
+        // Carrega a SOLICITAÇÃO direto — NÃO pelo loader de imagem, que exigiria um ExameImagem
+        // (quebrava a confirmação de agendamentos de regulação sem exame de imagem).
+        var sol = await db.Solicitacoes.AsNoTracking()
+            .Where(x => x.Id == solicitacaoSpineId && x.ExcluidoEm == null)
+            .Select(x => new { x.PacienteId, x.DataAgendada })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Solicitacao), solicitacaoSpineId);
+
+        var p = await pacientes.ObterPorIdAsync(sol.PacienteId, cancellationToken);
+        var cpf = Digitos(p.Cpf);
         if (cpf.Length != 11)
             throw new ConflitoException("magiclink.sem_cpf", "Paciente sem CPF válido para gerar o link de acesso.");
 
@@ -73,21 +79,16 @@ public sealed class CidadaoLoginLinkService(
         var dias = Math.Clamp(cfg.MagicLinkValidadeDias, 1, 30);
         // O link da notificação de agendamento precisa viver até o exame (senão o botão
         // "Confirmar" do WhatsApp quebra antes do dia marcado).
-        if (s.DataAgendada is { } da && da > DateTime.UtcNow)
+        if (sol.DataAgendada is { } da && da > DateTime.UtcNow)
         {
             var diasAteExame = (int)Math.Ceiling((da - DateTime.UtcNow).TotalDays) + 1;
             dias = Math.Clamp(Math.Max(dias, diasAteExame), 1, 30);
         }
 
-        // CidadaoLoginLink é ancorado na espinha; o param é o id público do exame → traduz.
-        var solicitacaoSpineId = await db.ExamesImagem.AsNoTracking()
-            .Where(e => e.Id == solicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId)
-            .FirstOrDefaultAsync(cancellationToken) ?? solicitacaoExameId;
-
         var link = new CidadaoLoginLink
         {
             Id = Guid.CreateVersion7(),
-            PatientId = s.PacienteId,
+            PatientId = sol.PacienteId,
             Cpf = cpf,
             Destino = string.IsNullOrWhiteSpace(destino) ? DestinoPadrao : destino,
             SolicitacaoId = solicitacaoSpineId,

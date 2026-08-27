@@ -40,6 +40,11 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
             e => e.TelefoneCanonical == ctx.Conversa.TelefoneCanonical && e.ExpiraEm > DateTime.UtcNow, ct);
         if (temEstadoConfirmacao) return;
 
+        // Verificação cadastral em andamento idem — a máquina determinística conduz, o robô se cala.
+        var temVerificacao = await db.VerificacoesCadastraisEstado.AsNoTracking().AnyAsync(
+            e => e.TelefoneCanonical == ctx.Conversa.TelefoneCanonical && e.ExpiraEm > DateTime.UtcNow, ct);
+        if (temVerificacao) return;
+
         // Trava humano: se um humano já respondeu/assumiu desde o corte, cala. Dentro do expediente o
         // corte é a âncora da janela; FORA dele, só a atividade RECENTE cala (o robô assume quando os
         // atendentes saíram, mas recua se um deles acabou de agir — ex.: correção manual às 20h).

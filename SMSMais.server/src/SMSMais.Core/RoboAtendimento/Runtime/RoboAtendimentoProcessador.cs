@@ -136,6 +136,14 @@ public sealed class RoboAtendimentoProcessador(
             return;
         }
 
+        // Máquina determinística assumiu o telefone enquanto a IA pensava? Não responder por cima.
+        if (await db.VerificacoesCadastraisEstado.AsNoTracking().AnyAsync(
+                e => e.TelefoneCanonical == conversa.TelefoneCanonical && e.ExpiraEm > DateTime.UtcNow, ct))
+        {
+            await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Verificação cadastral determinística em andamento.", ct);
+            return;
+        }
+
         // Reivindica a tarefa (Processando) e COMMITA antes de enviar. Se o save final falhar por
         // corrida, ela não volta a Pendente e o worker não re-envia — evita mensagem duplicada.
         tarefa.Status = StatusRoboTarefa.Processando;

@@ -208,6 +208,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // estado da conversa de cancelamento e registro manual de contatos.
     public DbSet<ComunicacaoPaciente> ComunicacoesPaciente => Set<ComunicacaoPaciente>();
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
+    public DbSet<Entities.Notificacoes.VerificacaoCadastralEstado> VerificacoesCadastraisEstado => Set<Entities.Notificacoes.VerificacaoCadastralEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();
 
     // Consentimento de NÃO validar o WhatsApp (com motivo) — válvula de escape do gate de

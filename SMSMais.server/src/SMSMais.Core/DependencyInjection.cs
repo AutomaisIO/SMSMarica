@@ -638,6 +638,9 @@ public static class DependencyInjection
             Notificacoes.WhatsApp.Manipuladores.AcompanhanteWhatsAppHandler>();
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
             Notificacoes.WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler>();
+        // Verificação cadastral determinística (dígitos CPF → nascimento → nome) — SEM LLM.
+        services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
+            Notificacoes.WhatsApp.Manipuladores.VerificacaoCadastralWhatsAppHandler>();
 
         // ---- Robô de atendimento (assuntos cadastráveis + comandos por assunto) ----
         services.AddScoped<RoboAtendimento.IRoboAssuntoService, RoboAtendimento.RoboAssuntoService>();

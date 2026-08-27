@@ -4,7 +4,6 @@ using SMSMais.Core.Cidadao;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Laudos.Configuracao;
 using SMSMais.Core.Pacientes;
-using SMSMais.Core.SolicitacoesExame;
 using SMSMais.Core.Telefones;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -31,7 +30,6 @@ public class MagicLinkGateCpfTests(PostgresFixture fixture)
         new(db,
             Substitute.For<ILaudoConfiguracaoService>(),
             Substitute.For<IPacientesService>(),
-            Substitute.For<ISolicitacoesExameService>(),
             Substitute.For<ICidadaoSessaoService>(),
             Substitute.For<ITelefoneValidacaoService>(),
             new UsuarioAtualAccessorFake(),

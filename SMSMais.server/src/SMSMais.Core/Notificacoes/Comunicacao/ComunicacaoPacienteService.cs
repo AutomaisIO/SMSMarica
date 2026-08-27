@@ -410,23 +410,22 @@ public sealed class ComunicacaoPacienteService(
         n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
 
         // Confirmação para número NÃO verificado: em vez de mandar os DADOS do agendamento, manda
-        // o DESAFIO cadastral (validacao_cadastro) pedindo os 4 primeiros dígitos do CPF, e SEGURA
-        // a confirmação real. Evita vazar o agendamento para a pessoa/número errado ("1 telefone,
-        // várias pessoas"). O robô valida (VerificarCadastro) → marca verificado → a confirmação
-        // real sai depois. "Assumo o risco" (IgnorarVerificacaoTelefone) pula o desafio.
+        // o DESAFIO cadastral (validacao_cadastro) e SEGURA a confirmação real (pendurada). A
+        // resposta é conduzida pela MÁQUINA DE ESTADOS determinística do webhook
+        // (VerificacaoCadastralWhatsAppHandler: dígitos → nascimento → nome) — independente do
+        // robô LLM estar ligado. "Assumo o risco" (IgnorarVerificacaoTelefone) pula o desafio.
         if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
             && !n.IgnorarVerificacaoTelefone
             && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
-            && await RoboLigadoAsync(ct))
+            && options.Value.VerificacaoCadastralHabilitada)
         {
             var optsDesafio = options.Value;
             var procedimento = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto ?? "seu atendimento";
-            // Conteúdo legível gravado na thread/histórico: deixa CLARO que se pede os dígitos do CPF,
-            // para o robô entender que a próxima resposta (números) é a confirmação cadastral.
+            // Conteúdo legível gravado na thread/histórico: deixa CLARO que se pedem os 4 dígitos.
             var textoDesafio =
                 $"Olá {PrimeiroNome(paciente.NomeCompleto)}! Este é o canal oficial da saúde. Temos uma "
-                + $"informação sobre *{procedimento}*. Para sua segurança, confirme apenas os primeiros "
-                + "dígitos do seu CPF para prosseguir.";
+                + $"informação sobre *{procedimento}*. Para sua segurança, confirme apenas os *4 primeiros "
+                + "dígitos do CPF* do paciente para prosseguir.";
             var desafio = await whatsApp.EnviarTemplateAsync(
                 n.Telefone, optsDesafio.TemplateValidacaoCadastro, optsDesafio.Idioma,
                 [PrimeiroNome(paciente.NomeCompleto), procedimento],
@@ -436,8 +435,9 @@ public sealed class ComunicacaoPacienteService(
             {
                 n.Status = StatusComunicacao.AguardandoVerificacaoCadastral;
                 n.EnviadoEm = DateTime.UtcNow;
-                n.MotivoFalha = "Aguardando confirmação cadastral (4 primeiros dígitos do CPF) pelo robô.";
+                n.MotivoFalha = "Aguardando verificação cadastral (dígitos do CPF + nascimento + nome).";
                 n.ProximaTentativaEm = null;
+                await AbrirEstadoVerificacaoAsync(n, ct);
                 await db.SaveChangesAsync(ct);
                 return;
             }
@@ -513,14 +513,38 @@ public sealed class ComunicacaoPacienteService(
         return linksAtivos;
     }
 
-    /// <summary>Rota de chegada no app após o magic link, por finalidade. Exame liberado e
-    /// laudo pronto caem em /exames com o CARD do exame já expandido (?exame={id}).</summary>
-    private async Task<bool> RoboLigadoAsync(CancellationToken ct)
+    /// <summary>Abre (ou renova) o estado da verificação cadastral determinística apontando para a
+    /// comunicação PENDURADA. Um diálogo em ANDAMENTO (etapa &gt; CPF, não expirado) não é roubado —
+    /// ao concluir, o handler emenda o próximo desafio pendente do telefone sozinho.</summary>
+    private async Task AbrirEstadoVerificacaoAsync(ComunicacaoPaciente n, CancellationToken ct)
     {
-        // Defensivo: se a tabela ainda não existe (janela de deploy antes da migration), trata como
-        // DESLIGADO — o envio segue o comportamento antigo em vez de quebrar a confirmação.
-        try { return await db.RoboConfiguracoes.AsNoTracking().Select(c => c.Ativo).FirstOrDefaultAsync(ct); }
-        catch { return false; }
+        var telefone = Conversas.TelefoneWhatsApp.Canonizar(n.Telefone!);
+        var agora = DateTime.UtcNow;
+        var estado = await db.VerificacoesCadastraisEstado
+            .FirstOrDefaultAsync(e => e.TelefoneCanonical == telefone, ct);
+        if (estado is null)
+        {
+            db.VerificacoesCadastraisEstado.Add(new Data.Entities.Notificacoes.VerificacaoCadastralEstado
+            {
+                Id = Guid.CreateVersion7(),
+                TelefoneCanonical = telefone,
+                ComunicacaoPacienteId = n.Id,
+                Etapa = EtapaVerificacaoCadastral.AguardandoCpf,
+                ExpiraEm = agora.AddDays(7),
+                CriadoEm = agora,
+            });
+            return;
+        }
+        var emAndamento = estado.Etapa != EtapaVerificacaoCadastral.AguardandoCpf && estado.ExpiraEm > agora;
+        if (emAndamento) return;
+        estado.ComunicacaoPacienteId = n.Id;
+        estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+        estado.PacienteId = null;
+        estado.CpfDigitosInformados = null;
+        estado.TentativasErradas = 0;
+        estado.Reorientacoes = 0;
+        estado.ExpiraEm = agora.AddDays(7);
+        estado.AtualizadoEm = agora;
     }
 
     private static string Destino(FinalidadeComunicacao finalidade, Guid solicitacaoId) => finalidade switch

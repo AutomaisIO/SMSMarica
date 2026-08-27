@@ -31,9 +31,15 @@ public sealed class ComunicacaoPacienteOptions
 
     /// <summary>Desafio cadastral para número NÃO verificado (UTILITY, aprovado). 2 params:
     /// {{1}} primeiro nome, {{2}} procedimento. Pede os 4 primeiros dígitos do CPF; botões
-    /// "Não sou essa pessoa." e "Prefiro falar com um atendente". Não revela data/local — o robô
-    /// valida os 4 dígitos (VerificarCadastro) e só então a confirmação real é enviada.</summary>
+    /// "Não sou essa pessoa." e "Prefiro falar com um atendente". Não revela data/local — a
+    /// máquina determinística (VerificacaoCadastralWhatsAppHandler) valida dígitos + nascimento
+    /// + nome e só então a confirmação real (pendurada) é enviada.</summary>
     public string TemplateValidacaoCadastro { get; set; } = "validacao_cadastro";
+
+    /// <summary>Liga o DESAFIO cadastral antes da confirmação para número não verificado (fluxo
+    /// determinístico, independe do robô LLM). Desligado = comportamento antigo: a confirmação
+    /// com data/local sai direto — só desligue com plena consciência do vazamento que reabre.</summary>
+    public bool VerificacaoCadastralHabilitada { get; set; } = true;
 
     /// <summary>3 params (nome, exame, data realizada) + botão URL "Visualizar Exame".</summary>
     public string TemplateExameLiberado { get; set; } = "exame_liberado";
