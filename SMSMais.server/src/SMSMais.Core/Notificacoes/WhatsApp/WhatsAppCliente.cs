@@ -155,12 +155,14 @@ public sealed class WhatsAppCliente(
     public async Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
         string telefone, string template, string idiomaBcp47,
         IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
-        Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
-        var conteudo = parametrosBody.Count == 0
-            ? $"[template:{template}]"
-            : $"[template:{template}] {string.Join(" | ", parametrosBody)}";
+        var conteudo = !string.IsNullOrWhiteSpace(conteudoLegivel)
+            ? conteudoLegivel!
+            : parametrosBody.Count == 0
+                ? $"[template:{template}]"
+                : $"[template:{template}] {string.Join(" | ", parametrosBody)}";
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 

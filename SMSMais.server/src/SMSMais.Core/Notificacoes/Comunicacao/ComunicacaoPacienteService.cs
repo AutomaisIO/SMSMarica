@@ -459,7 +459,8 @@ public sealed class ComunicacaoPacienteService(
             n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, link.Token, opts);
 
         var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
-            n.Telefone, template, opts.Idioma, parametros, botoes, pacienteId: n.PacienteId, ct: ct);
+            n.Telefone, template, opts.Idioma, parametros, botoes,
+            pacienteId: n.PacienteId, conteudoLegivel: ConteudoLegivel(template, opts, parametros), ct: ct);
 
         if (resultado.Ok)
         {
@@ -646,6 +647,25 @@ public sealed class ComunicacaoPacienteService(
         n.Status = status;
         n.MotivoFalha = Truncar(motivo);
         n.ProximaTentativaEm = null;
+    }
+
+    /// <summary>
+    /// Texto humano do template (variáveis preenchidas) para gravar na thread — o operador e o
+    /// histórico veem O QUE o cidadão recebeu, não um marcador técnico. Só para modelos cujo corpo
+    /// aprovado na Meta conhecemos; os demais mantêm o marcador <c>[template:...]</c>.
+    /// </summary>
+    private static string? ConteudoLegivel(string template, ComunicacaoPacienteOptions opts, IReadOnlyList<string> p)
+    {
+        if (template == opts.TemplateConfirmaAgendamento && p.Count == 7)
+            // Corpo aprovado do confirmacao_regulacao (Complexo Regulador), com {{1}}..{{7}}.
+            return $"Bom dia, {p[0]}. Este é o canal do *Alô Maricá* do Complexo Regulador do Município! "
+                + $"Boas notícias! {p[1]} de {p[2]} *foi agendada para o dia {p[3]}*. Pedimos, por gentileza, "
+                + $"que retire a guia no posto de saúde onde {p[4]}. Na sua guia constam todos os dados "
+                + "necessários para a realização do procedimento: dia, hora, local e endereço da unidade "
+                + $"executante. No dia {p[5]} é imprescindível que {p[6]} leve também o pedido médico, guia "
+                + "do SISREG, comprovante de residência e cartão do SUS. Favor confirmar o seu comparecimento "
+                + "clicando no link abaixo. Favor não enviar áudio. Atenciosamente, _*Complexo Regulador de Maricá*_";
+        return null;
     }
 
     private static string PrimeiroNome(string? nome)

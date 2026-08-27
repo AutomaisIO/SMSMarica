@@ -105,7 +105,7 @@ public sealed class PesquisasSatisfacaoService(
             // estáticas. O índice 0 é o do botão de link, que é o primeiro do template aprovado.
             [new BotaoTemplateWhatsApp(TipoBotaoTemplate.Url, envio.PesquisaId.ToString())],
             pacienteId,
-            ct);
+            ct: ct);
 
         if (!resultado.Ok)
             throw new ConflitoException("pesquisa.falha_envio", resultado.Erro ?? "Falha ao enviar a pesquisa.");

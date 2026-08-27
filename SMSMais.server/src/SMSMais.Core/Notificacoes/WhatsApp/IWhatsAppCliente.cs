@@ -69,10 +69,12 @@ public interface IWhatsAppCliente
     /// Envia um template com componentes de botão (URL dinâmica e/ou quick reply), além dos
     /// parâmetros do corpo. Os botões devem vir na ordem configurada no template (posição = index).
     /// </summary>
+    /// <param name="conteudoLegivel">Texto humano do template (variáveis preenchidas) gravado como
+    /// conteúdo da mensagem — thread/histórico legíveis. Nulo mantém o marcador técnico.</param>
     Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
         string telefone, string template, string idiomaBcp47,
         IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
-        Guid? pacienteId = null, CancellationToken ct = default);
+        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default);
 
     /// <summary>
     /// Envia mensagem interativa com botões de resposta (só dentro da janela de 24h — fora dela
