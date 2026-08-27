@@ -56,6 +56,7 @@ const CICLO: EstadoAssento[] = [
   { tipo: TIPOS_ASSENTO.Passageiro, bloqueado: false },
   { tipo: TIPOS_ASSENTO.Motorista, bloqueado: false },
   { tipo: TIPOS_ASSENTO.Acompanhante, bloqueado: false },
+  { tipo: TIPOS_ASSENTO.Cadeirante, bloqueado: false },
   { tipo: TIPOS_ASSENTO.Passageiro, bloqueado: true },
 ];
 
@@ -325,7 +326,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
               <h3 className="text-sm font-semibold text-gray-900">Layout dos assentos</h3>
               <p className="text-xs text-gray-600">
                 Adicione fileiras e ajuste quantos assentos cada uma tem. Clique num assento
-                para alternar entre Passageiro → Motorista → Acompanhante.
+                para alternar entre Passageiro → Motorista → Acompanhante → Cadeirante.
               </p>
             </div>
             <div className="text-xs text-gray-500">
@@ -415,7 +416,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Layout dos assentos</h3>
               <p className="text-xs text-gray-600">
-                Clique num assento para alternar entre Passageiro → Motorista → Acompanhante → Bloqueado.
+                Clique num assento para alternar entre Passageiro → Motorista → Acompanhante → Cadeirante → Bloqueado.
               </p>
             </div>
             <div className="text-xs text-gray-500">

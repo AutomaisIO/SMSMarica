@@ -22,6 +22,7 @@ export const TIPOS_ASSENTO = {
   Motorista: 'Motorista',
   Passageiro: 'Passageiro',
   Acompanhante: 'Acompanhante',
+  Cadeirante: 'Cadeirante',
 } as const;
 
 export type TipoAssento = (typeof TIPOS_ASSENTO)[keyof typeof TIPOS_ASSENTO];
@@ -30,6 +31,7 @@ export const ROTULOS_TIPO_ASSENTO: Record<TipoAssento, string> = {
   [TIPOS_ASSENTO.Motorista]: 'Motorista',
   [TIPOS_ASSENTO.Passageiro]: 'Passageiro',
   [TIPOS_ASSENTO.Acompanhante]: 'Acompanhante',
+  [TIPOS_ASSENTO.Cadeirante]: 'Cadeirante',
 };
 
 export type VeiculoListItem = {

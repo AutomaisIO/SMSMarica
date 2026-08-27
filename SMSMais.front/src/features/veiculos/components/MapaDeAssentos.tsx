@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Armchair, Crown, HeartHandshake, Lock } from 'lucide-react';
+import { Accessibility, Armchair, Crown, HeartHandshake, Lock } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import {
   ROTULOS_TIPO_ASSENTO,
@@ -65,6 +65,11 @@ const CORES: Record<TipoAssento, { base: string; hover: string; icone: React.Ele
     base: 'bg-sky-50 border-sky-400 text-sky-800',
     hover: 'hover:bg-sky-100',
     icone: HeartHandshake,
+  },
+  [TIPOS_ASSENTO.Cadeirante]: {
+    base: 'bg-violet-50 border-violet-400 text-violet-800',
+    hover: 'hover:bg-violet-100',
+    icone: Accessibility,
   },
 };
 
@@ -187,6 +192,7 @@ function Legenda() {
     { tipo: TIPOS_ASSENTO.Motorista },
     { tipo: TIPOS_ASSENTO.Passageiro },
     { tipo: TIPOS_ASSENTO.Acompanhante },
+    { tipo: TIPOS_ASSENTO.Cadeirante },
     { tipo: TIPOS_ASSENTO.Passageiro, bloqueado: true },
   ];
   const rotulos: Record<string, string> = {
