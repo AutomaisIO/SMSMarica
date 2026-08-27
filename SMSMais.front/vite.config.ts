@@ -63,6 +63,22 @@ export default defineConfig(({ mode }) => {
   worker: {
     format: 'es',
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // O worker do pdf.js entra como asset `.mjs` (import `?url`). Servidor que não
+        // conhece essa extensão devolve `application/octet-stream`, e o navegador RECUSA
+        // executar module worker / import() dinâmico com MIME que não seja de JavaScript:
+        // o modal de posicionar carimbo abria com o PDF em branco e a assinatura travava.
+        // Emitir como `.js` tira essa dependência de config de servidor em toda instância
+        // nova de município (ADR-0043). Incidente 2026-08-26.
+        assetFileNames: (info) =>
+          info.names?.some((n) => n.endsWith('.mjs'))
+            ? 'assets/[name]-[hash].js'
+            : 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
