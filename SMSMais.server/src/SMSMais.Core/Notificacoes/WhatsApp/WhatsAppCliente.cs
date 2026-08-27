@@ -63,6 +63,38 @@ public sealed class WhatsAppCliente(
     }
 
     /// <summary>
+    /// Conteúdo gravado na thread para um envio de template: (1) texto explícito do chamador;
+    /// (2) senão, MATERIALIZA o corpo APROVADO do catálogo da Meta (cache 5 min) preenchendo
+    /// <c>{{n}}</c> com os parâmetros — operador e robô leem o que o cidadão recebeu;
+    /// (3) último recurso, o marcador técnico <c>[template:nome] p1 | p2</c>.
+    /// OTP/autenticação não passa por aqui (método próprio; código nunca vai em claro).
+    /// </summary>
+    private async Task<string> ConteudoDaThreadAsync(
+        string template, IReadOnlyList<string> parametros, string? conteudoLegivel, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(conteudoLegivel)) return conteudoLegivel!;
+        try
+        {
+            var corpo = (await ListarTemplatesAsync(ct))
+                .FirstOrDefault(t => string.Equals(t.Nome, template, StringComparison.OrdinalIgnoreCase))?.Corpo;
+            if (!string.IsNullOrWhiteSpace(corpo))
+            {
+                var texto = corpo!;
+                for (var i = 0; i < parametros.Count; i++)
+                    texto = texto.Replace("{{" + (i + 1) + "}}", parametros[i]);
+                return texto;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Falha ao materializar o template {Template} para a thread.", template);
+        }
+        return parametros.Count == 0
+            ? $"[template:{template}]"
+            : $"[template:{template}] {string.Join(" | ", parametros)}";
+    }
+
+    /// <summary>
     /// Lê a resposta de <c>GET /v1/templates</c> do Automais.Zap. Só vêm os aprovados; nome,
     /// idioma, corpo e exemplos já chegam prontos — quem conversa com a Meta e abre os
     /// componentes é o relay.
@@ -133,9 +165,7 @@ public sealed class WhatsAppCliente(
         Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
-        var conteudo = !string.IsNullOrWhiteSpace(conteudoLegivel)
-            ? conteudoLegivel!
-            : parametros.Count == 0 ? $"[template:{template}]" : $"[template:{template}] {string.Join(" | ", parametros)}";
+        var conteudo = await ConteudoDaThreadAsync(template, parametros, conteudoLegivel, ct);
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
@@ -158,11 +188,7 @@ public sealed class WhatsAppCliente(
         Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
-        var conteudo = !string.IsNullOrWhiteSpace(conteudoLegivel)
-            ? conteudoLegivel!
-            : parametrosBody.Count == 0
-                ? $"[template:{template}]"
-                : $"[template:{template}] {string.Join(" | ", parametrosBody)}";
+        var conteudo = await ConteudoDaThreadAsync(template, parametrosBody, conteudoLegivel, ct);
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
