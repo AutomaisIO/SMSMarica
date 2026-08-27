@@ -143,6 +143,12 @@ jobs:
               log "AVISO: Meta__AppSecret/VerifyToken vazios -- o webhook responde 503 ate serem configurados."
             fi
 
+            # Chaves que este script NAO gerencia (Meta__AppId, Relay__UrlWebhookPublica,
+            # Legal__*, o que vier a existir) sao preservadas como estao: foram configuradas
+            # no bootstrap do host e um deploy nao pode apaga-las. Lidas ANTES do tee, que
+            # trunca o arquivo no comeco do pipeline.
+            ENV_EXTRAS="$($SUDO grep -vE '^(ConnectionStrings__ZapDb|Meta__AppSecret|Meta__VerifyToken|DataProtection__CaminhoChaves)=' "$ENV_FILE" 2>/dev/null || true)"
+
             # Chaves do Data Protection fora de $APP_DIR, que e esvaziado a cada deploy.
             $SUDO mkdir -p "$CHAVES_DIR"
             $SUDO chown zap:zap "$CHAVES_DIR"
@@ -154,6 +160,7 @@ jobs:
               printf 'Meta__AppSecret=%s\n' "$META_APP_SECRET"
               printf 'Meta__VerifyToken=%s\n' "$META_VERIFY_TOKEN"
               printf 'DataProtection__CaminhoChaves=%s\n' "$CHAVES_DIR"
+              if [ -n "$ENV_EXTRAS" ]; then printf '%s\n' "$ENV_EXTRAS"; fi
             } | $SUDO tee "$ENV_FILE" >/dev/null
             $SUDO chmod 600 "$ENV_FILE"
             $SUDO chown zap:zap "$ENV_FILE"
