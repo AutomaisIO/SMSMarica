@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowRightLeft, BotOff, Building2, Check, MoreVertical, Undo2 } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, BotOff, Building2, Check, CheckCheck, Clock, MoreVertical, Undo2 } from 'lucide-react';
 import {
   useAssumirConversa,
   useConversa,
@@ -23,6 +23,31 @@ function hora(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   });
+}
+
+/**
+ * Check de entrega/leitura estilo WhatsApp, só para mensagens que saíram para o WhatsApp.
+ * O status vem pronto do backend (whatsapp_mensagem.status, promovido pelo webhook da Meta):
+ *   Enviada → 1 check · Entregue → 2 checks · Lida → 2 checks azuis · Falha → alerta.
+ * `emBolhaEscura` = bolha vermelha (saída normal); fora dela o fundo é claro e a cor muda.
+ */
+function StatusEntrega({ status, emBolhaEscura }: { status: Mensagem['status']; emBolhaEscura: boolean }) {
+  const corBase = emBolhaEscura ? 'text-white/70' : 'text-gray-400';
+  const corLida = emBolhaEscura ? 'text-sky-300' : 'text-sky-500';
+  const corFalha = emBolhaEscura ? 'text-amber-200' : 'text-error-500';
+  switch (status) {
+    case 'Enviada':
+      return <Check className={`h-3 w-3 ${corBase}`} aria-label="Enviada" />;
+    case 'Entregue':
+      return <CheckCheck className={`h-3 w-3 ${corBase}`} aria-label="Entregue" />;
+    case 'Lida':
+      return <CheckCheck className={`h-3 w-3 ${corLida}`} aria-label="Lida" />;
+    case 'Falha':
+      return <AlertTriangle className={`h-3 w-3 ${corFalha}`} aria-label="Falha no envio" />;
+    default:
+      // Sem confirmação ainda (ex.: acabou de sair) — relógio, como no WhatsApp.
+      return <Clock className={`h-3 w-3 ${corBase}`} aria-label="Enviando" />;
+  }
 }
 
 function Bolha({
@@ -60,7 +85,12 @@ function Bolha({
         )}
         {m.template && !m.conteudo && <p className="italic opacity-90">[modelo: {m.template}]</p>}
         {m.conteudo && <p className="whitespace-pre-wrap break-words">{m.conteudo}</p>}
-        <p className={`mt-1 text-[10px] ${saida && !nota && !robo ? 'text-white/70' : 'text-gray-400'}`}>{hora(m.ocorridoEm)}</p>
+        <div className={`mt-1 flex items-center gap-1 ${saida ? 'justify-end' : ''}`}>
+          <p className={`text-[10px] ${saida && !nota && !robo ? 'text-white/70' : 'text-gray-400'}`}>{hora(m.ocorridoEm)}</p>
+          {saida && !nota && m.status !== 'Recebida' && (
+            <StatusEntrega status={m.status} emBolhaEscura={saida && !nota && !robo} />
+          )}
+        </div>
       </div>
       {robo && (onPararRobo || onMarcarErro) && (
         <div className="mt-0.5 flex items-center gap-3">
