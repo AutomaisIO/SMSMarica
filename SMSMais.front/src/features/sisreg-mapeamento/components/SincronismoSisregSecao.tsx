@@ -163,27 +163,14 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           />
         </Campo>
 
-        {/* Ocupa a linha inteira: a explicação é o que decide a escolha, e espremê-la ao lado dos
-            outros campos a deixaria ilegível. */}
-        <label className="flex w-full max-w-3xl items-start gap-2 text-sm text-gray-700">
+        <label className="flex w-full items-center gap-2 text-sm text-gray-700">
           <input
             type="checkbox"
-            className="mt-1"
             checked={unidadeInteira}
             disabled={!podeEditar}
             onChange={(e) => setUnidadeInteira(e.target.checked)}
           />
-          <span>
-            Puxar a agenda da unidade inteira numa requisição
-            <span className="mt-0.5 block text-xs text-gray-500">
-              O SISREG devolve toda a agenda da unidade de uma vez: em vez de{' '}
-              {dados?.combinacoesProntas ?? 0} consultas — uma para cada profissional e
-              procedimento marcado — a varredura faz apenas 1. É o que evita o CAPTCHA, que o SISREG
-              cobra depois de umas 700 consultas seguidas e trava esta unidade por 24 h, até alguém
-              respondê-lo no navegador. Em troca, o que está marcado acima deixa de escolher o que é
-              consultado: a agenda inteira da unidade é importada.
-            </span>
-          </span>
+          Puxar a agenda da unidade inteira numa requisição
         </label>
 
         {podeEditar && (

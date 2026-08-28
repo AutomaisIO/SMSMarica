@@ -67,6 +67,8 @@ public interface IVarreduraAgendaService
 /// </summary>
 public sealed class VarreduraAgendaService(
     SmsMaisDbContext db,
+    // Contexto próprio para o mapeamento observado — ver AtualizarMapeamentoObservadoAsync.
+    IDbContextFactory<SmsMaisDbContext> dbFactory,
     ISisregWebSessao sessao,
     ISisregUnidadeAtual unidadeAtual,
     IImportacaoSisregService importacao,
@@ -320,6 +322,11 @@ public sealed class VarreduraAgendaService(
                 + "de varrer.");
         }
 
+        // Execuções de um processo que morreu (ou que uma exceção deixou pelo caminho) ficariam
+        // "Rodando" para sempre na tela, e o operador não tem como saber que já acabou. Só chega
+        // aqui quem passou pelo GarantirSemTrabalhoVivo, então não há risco de matar uma viva.
+        await FecharOrfasAsync(unidade.Id, ct);
+
         var execucao = new SisregVarreduraExecucao
         {
             Id = Guid.CreateVersion7(),
@@ -425,12 +432,26 @@ public sealed class VarreduraAgendaService(
         {
             estadoVivo.Finalizar();
 
-            if (agenda is not null)
+            // NADA aqui pode lançar. Uma exceção no `finally` substitui a que estava subindo e
+            // passa POR CIMA de todo o tratamento acima — foi assim que um DbUpdateConcurrency
+            // deste SaveChanges escapou até o runner em 28/08/2026, deixando a execução eternamente
+            // "Rodando" na tela e escondendo a causa real. Carimbar a última execução na agenda é
+            // conveniência de tela; nunca vale derrubar o desfecho da varredura.
+            try
             {
-                agenda.UltimaExecucaoEm = DateTime.UtcNow;
-                agenda.UltimaExecucaoId = execucao.Id;
-                agenda.AtualizadoEm = DateTime.UtcNow;
-                await db.SaveChangesAsync(ct);
+                if (agenda is not null)
+                {
+                    agenda.UltimaExecucaoEm = DateTime.UtcNow;
+                    agenda.UltimaExecucaoId = execucao.Id;
+                    agenda.AtualizadoEm = DateTime.UtcNow;
+                    await db.SaveChangesAsync(ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Falha ao carimbar a última execução na agenda da unidade {Unidade}. A varredura "
+                    + "em si já foi finalizada; só o rótulo da agenda ficou para trás.", unidade.Nome);
             }
         }
     }
@@ -627,9 +648,24 @@ public sealed class VarreduraAgendaService(
 
         Interlocked.Add(ref progresso.RegistrosEncontrados, novas.Count);
 
+        // Grava ASSIM QUE LÊ, antes de qualquer processamento. A requisição é uma só, mas importar
+        // milhares de linhas leva minutos — sem isto a tela fica em "0 lidas / 0 importadas" o
+        // tempo todo e o operador não tem como saber se o motor está trabalhando ou travado. É a
+        // diferença entre uma barra parada e "3.286 lidas, importando…".
+        progresso.ProcedimentoAtual = $"{novas.Count} agendamentos lidos — atualizando o mapeamento…";
+        await SalvarProgressoAsync(execucao, progresso, ct);
+
         // O mapeamento sai DE GRAÇA daqui, antes de importar: cada linha já diz quem executa e o
         // quê. Atualizar por AJAX custava 1 + N requisições (100 no CDT); aqui custa zero.
-        await AtualizarMapeamentoObservadoAsync(unidade.Id, novas, ct);
+        var mapa = await AtualizarMapeamentoObservadoAsync(unidade.Id, novas, ct);
+
+        // "1 requisição" não conta história nenhuma na tela. O que o operador precisa ver é o que
+        // veio dentro dela: quantos profissionais e procedimentos a agenda tem, e o que é novidade.
+        progresso.ProfissionalAtual =
+            $"{mapa.Profissionais} profissionais · {mapa.Procedimentos} procedimentos"
+            + (mapa.ProfissionaisNovos + mapa.ProcedimentosNovos > 0
+                ? $" ({mapa.ProfissionaisNovos} prof. e {mapa.ProcedimentosNovos} proc. novos no mapeamento)"
+                : string.Empty);
 
         // Em LOTES, não de uma vez: a requisição é uma só, mas a importação de milhares de linhas
         // leva minutos. Sem isto a tela ficaria congelada em "0 importadas" até o fim, e uma queda
@@ -646,6 +682,10 @@ public sealed class VarreduraAgendaService(
             Interlocked.Add(ref progresso.Invalidos, resultado.Invalidos);
             execucao.JaExistiam += resultado.JaExistiam;
 
+            // A cobertura em combinações não diz nada aqui (é sempre 0/1 ou 1/1): quem informa o
+            // andamento é a contagem de agendamentos processados.
+            progresso.ProcedimentoAtual =
+                $"importando {Math.Min(i + LoteDeImportacao, novas.Count)} de {novas.Count} agendamentos";
             await SalvarProgressoAsync(execucao, progresso, ct);
         }
 
@@ -727,16 +767,24 @@ public sealed class VarreduraAgendaService(
     /// <para>Na mesma medição, 223 dos 272 pares mapeados NÃO tinham agenda na janela. É a prova
     /// concreta de por que a omissão não pode virar <c>Ausente</c>: apagaria 82% do mapeamento.</para>
     /// </summary>
-    private async Task AtualizarMapeamentoObservadoAsync(
+    private async Task<MapaObservado> AtualizarMapeamentoObservadoAsync(
         Guid unidadeId, IReadOnlyList<MarcacaoSisreg> marcacoes, CancellationToken ct)
     {
         var observados = marcacoes
             .Where(m => !string.IsNullOrWhiteSpace(m.CpfProfissionalExecutante))
             .GroupBy(m => m.CpfProfissionalExecutante!)
             .ToList();
-        if (observados.Count == 0) return;
+        if (observados.Count == 0) return new MapaObservado(0, 0, 0, 0);
 
-        var existentes = await db.SisregProfissionaisUnidade
+        // CONTEXTO PRÓPRIO, não o `db` do escopo. O `db` está no meio da varredura, rastreando a
+        // execução e a agenda; misturar nele um grafo de profissionais e procedimentos novos
+        // envenenou o change tracker e a falha só apareceu no SaveChanges seguinte, como
+        // DbUpdateConcurrencyException ("esperava afetar 1 linha, afetou 0") — longe da causa.
+        // É o mesmo motivo pelo qual o lote de importação escreve o progresso por um contexto à
+        // parte.
+        await using var ctx = await dbFactory.CreateDbContextAsync(ct);
+
+        var existentes = await ctx.SisregProfissionaisUnidade
             .Include(p => p.Procedimentos)
             .Where(p => p.UnidadeId == unidadeId)
             .ToListAsync(ct);
@@ -768,7 +816,7 @@ public sealed class VarreduraAgendaService(
                     VistoEm = agora,
                     CriadoEm = agora,
                 };
-                db.SisregProfissionaisUnidade.Add(profissional);
+                ctx.SisregProfissionaisUnidade.Add(profissional);
                 porCpf[grupo.Key] = profissional;
                 profissionaisNovos++;
             }
@@ -791,7 +839,10 @@ public sealed class VarreduraAgendaService(
 
                 if (atual is null)
                 {
-                    profissional.Procedimentos.Add(new SisregProcedimentoProfissional
+                    // Add explícito no DbSet, não na coleção de navegação: com a PK já preenchida,
+                    // o fix-up da coleção podia classificar a linha nova como Modified, o INSERT
+                    // nunca sair e o UPDATE seguinte não achar linha nenhuma.
+                    ctx.Set<SisregProcedimentoProfissional>().Add(new SisregProcedimentoProfissional
                     {
                         Id = Guid.CreateVersion7(),
                         ProfissionalId = profissional.Id,
@@ -813,15 +864,27 @@ public sealed class VarreduraAgendaService(
             }
         }
 
-        await db.SaveChangesAsync(ct);
+        await ctx.SaveChangesAsync(ct);
+
+        var procedimentosDistintos = marcacoes
+            .Select(m => SoDigitos(m.CodigoProcedimentoSisreg ?? string.Empty))
+            .Where(c => c.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .Count();
 
         logger.LogInformation(
             "SISREG_MAPEAMENTO_OBSERVADO: unidade {Unidade} — {Profissionais} profissionais e "
-            + "{Pares} pares vistos na agenda; {ProfNovos} profissionais e {ProcNovos} procedimentos "
-            + "novos, sem custo de requisição.",
-            unidadeId, observados.Count, observados.Sum(g => g.Select(m => m.CodigoProcedimentoSisreg).Distinct().Count()),
-            profissionaisNovos, procedimentosNovos);
+            + "{Procedimentos} procedimentos vistos na agenda; {ProfNovos} profissionais e "
+            + "{ProcNovos} procedimentos novos, sem custo de requisição.",
+            unidadeId, observados.Count, procedimentosDistintos, profissionaisNovos, procedimentosNovos);
+
+        return new MapaObservado(
+            observados.Count, procedimentosDistintos, profissionaisNovos, procedimentosNovos);
     }
+
+    /// <summary>O que a agenda revelou — vai para o status vivo, que é o que o operador lê.</summary>
+    private sealed record MapaObservado(
+        int Profissionais, int Procedimentos, int ProfissionaisNovos, int ProcedimentosNovos);
 
     /// <summary>
     /// Exporta a agenda de UM par profissional × procedimento e devolve as marcações.
@@ -1065,6 +1128,34 @@ public sealed class VarreduraAgendaService(
         return [.. candidatos
             .OrderBy(c => c.Cpf, StringComparer.Ordinal)
             .ThenBy(c => c.Codigo, StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// Fecha execuções que ficaram <c>Pendente</c>/<c>EmExecucao</c> sem ninguém tocando nelas —
+    /// restart no meio da rodada, ou exceção que escapou do tratamento. Sem isto a lista de
+    /// varreduras recentes mostra "Rodando" indefinidamente e o operador fica esperando algo que
+    /// já morreu.
+    /// </summary>
+    private async Task FecharOrfasAsync(Guid unidadeId, CancellationToken ct)
+    {
+        var orfas = await db.SisregVarreduraExecucoes
+            .Where(e => e.UnidadeId == unidadeId
+                        && (e.Status == StatusVarredura.Pendente || e.Status == StatusVarredura.EmExecucao))
+            .ToListAsync(ct);
+        if (orfas.Count == 0) return;
+
+        foreach (var o in orfas)
+        {
+            o.Status = StatusVarredura.Erro;
+            o.MensagemErro ??= "Varredura interrompida (o serviço reiniciou ou a execução falhou "
+                               + "sem registrar o motivo). Nada do que já entrou foi perdido.";
+            o.FinalizadoEm ??= DateTime.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogWarning(
+            "SISREG_VARREDURA_ORFA: {Qtd} execução(ões) da unidade {Unidade} estavam presas em "
+            + "andamento e foram fechadas como erro.", orfas.Count, unidadeId);
     }
 
     private async Task<VarreduraAgendaDto> MontarAgendaDtoAsync(
