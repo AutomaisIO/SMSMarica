@@ -1,7 +1,15 @@
 export type TipoAutenticacaoSisreg = 'Basic' | 'Bearer' | 'ApiKey';
 export type EscopoSisreg = 'Municipal' | 'Nacional';
-/** Onde a importação consulta o cadastro (CADSUS): 1 = SISREG, 2 = SER, 3 = SER com retorno ao SISREG. */
-export type FonteCadastroPaciente = 1 | 2 | 3;
+/**
+ * Onde a importação consulta o cadastro (CADSUS).
+ *
+ * Nome do enum, não número: a API serializa enum como string (JsonStringEnumConverter), como já
+ * acontece com `EscopoSisreg` e `TipoAutenticacaoSisreg` aqui em cima. Tipar como número fazia o
+ * `<select>` receber "Ser" e não casar com nenhuma `<option value={2}>`, então a tela voltava a
+ * exibir a primeira opção — parecendo que o salvamento tinha sido descartado quando o banco já
+ * estava com o valor certo.
+ */
+export type FonteCadastroPaciente = 'Sisreg' | 'Ser' | 'SerComFallbackSisreg';
 
 export type SisregConfiguracao = {
   baseUrl: string;

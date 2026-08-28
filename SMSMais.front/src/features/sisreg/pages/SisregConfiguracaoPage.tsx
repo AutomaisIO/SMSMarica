@@ -43,7 +43,7 @@ const FORM_VAZIO: Form = {
   senha: '',
   token: '',
   ativo: true,
-  fonteCadastroPaciente: 1,
+  fonteCadastroPaciente: 'Sisreg',
 };
 
 export function SisregConfiguracaoPage() {
@@ -201,11 +201,11 @@ export function SisregConfiguracaoPage() {
               <Select
                 id="sr-fonte-cadastro"
                 value={form.fonteCadastroPaciente}
-                onChange={(e) => set('fonteCadastroPaciente', Number(e.target.value) as FonteCadastroPaciente)}
+                onChange={(e) => set('fonteCadastroPaciente', e.target.value as FonteCadastroPaciente)}
               >
-                <option value={1}>SISREG (CADSUS)</option>
-                <option value={2}>SER (SES-RJ)</option>
-                <option value={3}>SER, com retorno ao SISREG se o SER falhar</option>
+                <option value="Sisreg">SISREG (CADSUS)</option>
+                <option value="Ser">SER (SES-RJ)</option>
+                <option value="SerComFallbackSisreg">SER, com retorno ao SISREG se o SER falhar</option>
               </Select>
             </Campo>
 
