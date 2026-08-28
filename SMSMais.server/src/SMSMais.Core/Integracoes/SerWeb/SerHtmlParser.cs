@@ -141,12 +141,40 @@ public static partial class SerHtmlParser
         return m.Success ? System.Net.WebUtility.HtmlDecode(m.Groups[1].Value) : null;
     }
 
-    /// <summary>Id do form de escolha de módulo da home (<c>action="/ser/home"</c>).</summary>
+    /// <summary>
+    /// Id do form de escolha de módulo da home — identificado pelo <c>goModulo</c> que ele declara,
+    /// nunca por posição.
+    ///
+    /// <para><b>Por que não vale mais "o primeiro form j_idNN com action /ser/home".</b> Quando o
+    /// SER tem um aviso pendente para o operador, ele renderiza a tabela de avisos ("Marcar Lida")
+    /// ANTES do painel de módulos — e a tabela é, ela também, um <c>&lt;form id="j_idNN"
+    /// action="/ser/home"&gt;</c>. A escolha por posição passava a mirar o form errado: o POST era
+    /// aceito (HTTP 200, <c>Ajax-Response</c> com <c>Ajax-Update-Ids</c> vazio), não fazia nada, e
+    /// a falha aflorava como "o SER não redirecionou" — mandando o diagnóstico para o protocolo,
+    /// que estava intacto. Medido em 28/08/2026: com o aviso pendente o form era o <c>j_id49</c>
+    /// (avisos); marcado como lido, virou <c>j_id23</c> (módulos), com o mesmo <c>goModulo</c> de
+    /// sempre.</para>
+    ///
+    /// <para>O <c>goModulo</c> é declarado num <c>&lt;script id="{form}:goModulo"&gt;</c> dentro do
+    /// próprio form, e é ele que os cards chamam (<c>onclick="goModulo('ambulatorial')"</c>). Ler o
+    /// id de lá é ler a fonte primária.</para>
+    /// </summary>
     public static string? FormDeModulo(string html)
     {
-        var m = RegexFormModulo().Match(html);
-        return m.Success ? m.Groups[1].Value : null;
+        var porScript = RegexScriptGoModulo().Match(html);
+        if (porScript.Success) return porScript.Groups[1].Value;
+
+        // Sem goModulo na página não existe escolha de módulo — devolver o primeiro form daria um
+        // alvo qualquer e a falha voltaria a mentir. Quem chama trata o null.
+        return null;
     }
+
+    /// <summary>
+    /// A home tem avisos pendentes bloqueando o painel de módulos? É o que explica a ausência do
+    /// <c>goModulo</c> sem que nada esteja quebrado — e o que o operador precisa ouvir.
+    /// </summary>
+    public static bool TemAvisoPendente(string html) =>
+        html.Contains("Marcar Lida", StringComparison.OrdinalIgnoreCase);
 
     // ------------------------------------------------------------------ pesquisa
 
@@ -720,8 +748,10 @@ public static partial class SerHtmlParser
     [GeneratedRegex(@"<meta name=""Location"" content=""([^""]+)""")]
     private static partial Regex RegexMetaLocation();
 
-    [GeneratedRegex(@"<form id=""(j_id\d+)""[^>]*action=""/ser/home""")]
-    private static partial Regex RegexFormModulo();
+    /// <summary>O <c>&lt;script id="{form}:goModulo"&gt;</c> que a home declara dentro do form de
+    /// módulos — a fonte primária do id, imune à ordem dos forms na página.</summary>
+    [GeneratedRegex(@"<script[^>]*\bid=""([^"":]+):goModulo""")]
+    private static partial Regex RegexScriptGoModulo();
 
     [GeneratedRegex(@"^\d{2}/\d{2}/\d{4}")]
     private static partial Regex RegexDataHora();

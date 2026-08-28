@@ -471,10 +471,19 @@ public sealed partial class SerWebSessao(
         var home = await GetAsync(sessao, CaminhoHome, cancellationToken)
             ?? throw new ValidacaoException("ser.home_indisponivel", "A home do SER não respondeu.");
 
+        // Aviso pendente ESCONDE o painel de módulos: o SER exige que alguém leia antes. Não é
+        // defeito nosso e não se resolve tentando de novo — por isso a mensagem diz o que fazer,
+        // em vez de acusar o layout. Custou uma madrugada de investigação em 28/08/2026 achar isso
+        // atrás de um "o SER não redirecionou".
         var formId = SerHtmlParser.FormDeModulo(home)
             ?? throw new ValidacaoException(
                 "ser.home_sem_modulos",
-                "Não foi possível localizar a escolha de módulo na home do SER (layout mudou?).");
+                SerHtmlParser.TemAvisoPendente(home)
+                    ? "O SER está com um aviso pendente para este operador e não mostra os módulos "
+                      + "enquanto ele não for lido. Entre no SER pelo navegador com essa credencial "
+                      + "e clique em \"Marcar Lida\" no aviso da home; depois disso a integração "
+                      + "volta a funcionar sozinha."
+                    : "Não foi possível localizar a escolha de módulo na home do SER (layout mudou?).");
 
         var doc = SerHtmlParser.Documento(home);
         var campos = SerHtmlParser.CamposDoForm(doc, formId);
