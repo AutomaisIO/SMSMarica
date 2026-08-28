@@ -340,7 +340,14 @@ public sealed class SisregWebSessao(
                 AutomaticDecompression = DecompressionMethods.All,
                 PooledConnectionLifetime = TimeSpan.FromMinutes(10),
             };
-            var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+            // 30s bastavam quando toda consulta era de um par profissional × procedimento, que volta
+            // com dezenas de linhas. A exportação da agenda da unidade INTEIRA é outra ordem de
+            // grandeza: o CDT devolve 3.286 registros e o SISREG passa dos 30s só para montar o
+            // arquivo — a varredura morria com "The request was canceled due to the configured
+            // HttpClient.Timeout", e o split por teto ainda repetia a espera oito vezes antes de
+            // desistir. Três minutos cobrem a unidade mais pesada com folga e continuam curtos o
+            // bastante para não segurar uma sessão travada a tarde inteira.
+            var http = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(3) };
             http.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36");
             return http;
