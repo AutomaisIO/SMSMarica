@@ -30,7 +30,15 @@ type Form = {
   token: string;
   ativo: boolean;
   fonteCadastroPaciente: FonteCadastroPaciente;
+  consultasSimultaneasSer: number;
 };
+
+/** Campo vazio vira 1 em vez de NaN; a faixa aceita pelo backend é 1..8. */
+function normalizarSimultaneas(valor: string | number): number {
+  const n = Math.trunc(Number(valor));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(n, 8);
+}
 
 const FORM_VAZIO: Form = {
   baseUrl: 'https://sisreg-es.saude.gov.br/',
@@ -44,6 +52,7 @@ const FORM_VAZIO: Form = {
   token: '',
   ativo: true,
   fonteCadastroPaciente: 'Sisreg',
+  consultasSimultaneasSer: 1,
 };
 
 export function SisregConfiguracaoPage() {
@@ -69,6 +78,7 @@ export function SisregConfiguracaoPage() {
         login: config.data.login ?? '',
         ativo: config.data.ativo,
         fonteCadastroPaciente: config.data.fonteCadastroPaciente,
+        consultasSimultaneasSer: normalizarSimultaneas(config.data.consultasSimultaneasSer),
       }));
     }
   }, [config.data]);
@@ -93,6 +103,7 @@ export function SisregConfiguracaoPage() {
       token: form.token ? form.token : undefined,
       ativo: form.ativo,
       fonteCadastroPaciente: form.fonteCadastroPaciente,
+      consultasSimultaneasSer: normalizarSimultaneas(form.consultasSimultaneasSer),
     };
     salvar.mutate(payload, {
       onSuccess: () => {
@@ -207,6 +218,25 @@ export function SisregConfiguracaoPage() {
                 <option value="Ser">SER (SES-RJ)</option>
                 <option value="SerComFallbackSisreg">SER, com retorno ao SISREG se o SER falhar</option>
               </Select>
+            </Campo>
+
+            <Campo
+              label="Consultas simultâneas no SER"
+              htmlFor="sr-consultas-ser"
+              className="sm:col-span-2"
+              dica="Quantas consultas de cadastro correm ao mesmo tempo, cada uma em sua própria sessão do SER. 1 = uma de cada vez."
+            >
+              <Input
+                id="sr-consultas-ser"
+                type="number"
+                min={1}
+                max={8}
+                step={1}
+                className="sm:max-w-xs"
+                value={form.consultasSimultaneasSer}
+                disabled={form.fonteCadastroPaciente === 'Sisreg'}
+                onChange={(e) => set('consultasSimultaneasSer', normalizarSimultaneas(e.target.value))}
+              />
             </Campo>
 
             <Campo label="Login" htmlFor="sr-login" dica="Usado no esquema Basic.">

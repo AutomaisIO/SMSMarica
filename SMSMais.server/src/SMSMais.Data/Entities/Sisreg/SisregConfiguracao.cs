@@ -51,6 +51,20 @@ public class SisregConfiguracao
     /// </summary>
     public FonteCadastroPaciente FonteCadastroPaciente { get; set; } = FonteCadastroPaciente.Sisreg;
 
+    /// <summary>
+    /// Quantas consultas de cadastro ao SER correm ao mesmo tempo, cada uma na sua sessão.
+    ///
+    /// <para><b>1 = como sempre foi</b> (uma sessão, tudo em fila). Acima disso, a importação abre
+    /// esse tanto de sessões independentes no SER — <b>com a mesma credencial</b>, o que foi medido
+    /// contra o SER real em 28/08/2026: 4 sessões simultâneas logaram sem recusa e cada uma
+    /// devolveu o cadastro do CNS que pediu, sem contaminar as outras. É por isso que dá para
+    /// paralelizar aqui e <b>não</b> no SISREG, onde a sessão é única por operador.</para>
+    ///
+    /// <para>Só vale para a consulta de CADASTRO. O resto do motor do SER (varredura, escrita)
+    /// continua serializado numa sessão só.</para>
+    /// </summary>
+    public int ConsultasSimultaneasSer { get; set; } = 1;
+
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
     public DateTime? AtualizadoEm { get; set; }

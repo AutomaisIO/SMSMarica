@@ -72,6 +72,7 @@ public sealed class VarreduraAgendaService(
     ISisregWebSessao sessao,
     ISisregUnidadeAtual unidadeAtual,
     IImportacaoSisregService importacao,
+    Cadastro.IPreCargaCadastroSerService preCarga,
     IVarreduraSisregFila fila,
     VarreduraSisregEstadoVivo estadoVivo,
     Importacao.Background.SisregImportacaoEstadoVivo importacaoEstadoVivo,
@@ -99,9 +100,16 @@ public sealed class VarreduraAgendaService(
     /// </summary>
     private const string SemFiltro = "0";
 
-    /// <summary>Quantas marcações importar entre duas gravações de progresso, no recorte por
-    /// unidade inteira. Nada a ver com requisição ao SISREG — é só o ritmo do feedback.</summary>
-    private const int LoteDeImportacao = 100;
+    /// <summary>
+    /// Quantas marcações importar entre duas gravações de progresso, no recorte por unidade
+    /// inteira. Nada a ver com requisição ao SISREG — é só o ritmo do feedback.
+    ///
+    /// <para>Era 100 e ficou pequeno demais na prática: cada paciente NOVO custa uns 3 segundos
+    /// (a consulta de cadastro ao SER), então o primeiro número só mudava depois de uns cinco
+    /// minutos e a tela parecia travada em "0 importadas". Com 20, o operador vê movimento a cada
+    /// minuto. O custo é um SaveChanges a mais por lote, que não é nada perto disso.</para>
+    /// </summary>
+    private const int LoteDeImportacao = 20;
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
     private readonly VarreduraSisregOpcoes _opcoes = opcoes.Value;
@@ -666,6 +674,31 @@ public sealed class VarreduraAgendaService(
             + (mapa.ProfissionaisNovos + mapa.ProcedimentosNovos > 0
                 ? $" ({mapa.ProfissionaisNovos} prof. e {mapa.ProcedimentosNovos} proc. novos no mapeamento)"
                 : string.Empty);
+
+        // PRÉ-CARGA dos cadastros, em sessões paralelas do SER, antes de importar. A importação em
+        // si tem de continuar serial (cria paciente, solicitação e exame no mesmo DbContext), mas
+        // a espera pela rede não precisa ser: resolvida antes, ela encontra tudo pronto. Só roda
+        // quando a fonte é o SER e a configuração pede mais de uma sessão; caso contrário devolve
+        // na hora e nada muda.
+        progresso.ProcedimentoAtual = "resolvendo cadastros no SER…";
+        await SalvarProgressoAsync(execucao, progresso, ct);
+
+        var pre = await preCarga.ExecutarAsync(
+            [.. novas.Select(m => m.CnsPaciente).Where(c => !string.IsNullOrWhiteSpace(c))!], ct);
+
+        if (pre.Sessoes > 1 && pre.Pedidos > 0)
+        {
+            logger.LogInformation(
+                "SISREG_VARREDURA_PRECARGA: {Resolvidos}/{Pedidos} cadastros resolvidos em {Seg}s "
+                + "com {Sessoes} sessões do SER.",
+                pre.Resolvidos, pre.Pedidos, pre.DuracaoSegundos, pre.Sessoes);
+        }
+
+        // Grava JÁ. Sem isto a tela só mostraria o resultado do mapeamento junto com o primeiro
+        // lote importado — e como cada paciente novo leva uns 3 segundos no SER, o operador ficaria
+        // minutos olhando "atualizando o mapeamento…" sem saber se anda.
+        progresso.ProcedimentoAtual = $"importando 0 de {novas.Count} agendamentos";
+        await SalvarProgressoAsync(execucao, progresso, ct);
 
         // Em LOTES, não de uma vez: a requisição é uma só, mas a importação de milhares de linhas
         // leva minutos. Sem isto a tela ficaria congelada em "0 importadas" até o fim, e uma queda

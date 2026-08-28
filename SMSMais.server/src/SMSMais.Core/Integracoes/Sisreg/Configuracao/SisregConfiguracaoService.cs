@@ -41,6 +41,9 @@ public sealed class SisregConfiguracaoService(
         config.Login = string.IsNullOrWhiteSpace(request.Login) ? null : request.Login.Trim();
         config.Ativo = request.Ativo;
         config.FonteCadastroPaciente = request.FonteCadastroPaciente;
+        // Teto de 8 no serviço também, não só na tela: a API é pública e um número absurdo aqui
+        // viraria carga desnecessária num sistema do Estado.
+        config.ConsultasSimultaneasSer = Math.Clamp(request.ConsultasSimultaneasSer, 1, 8);
 
         // Senha/token vazios = mantém o atual; preenchidos = cifra e substitui.
         if (!string.IsNullOrWhiteSpace(request.Senha))
@@ -124,5 +127,6 @@ public sealed class SisregConfiguracaoService(
         !string.IsNullOrEmpty(c.SenhaCifrada),
         !string.IsNullOrEmpty(c.TokenCifrado),
         c.Ativo,
-        c.FonteCadastroPaciente);
+        c.FonteCadastroPaciente,
+        c.ConsultasSimultaneasSer);
 }

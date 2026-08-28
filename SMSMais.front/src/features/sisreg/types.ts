@@ -23,6 +23,8 @@ export type SisregConfiguracao = {
   tokenDefinido: boolean;
   ativo: boolean;
   fonteCadastroPaciente: FonteCadastroPaciente;
+  /** Sessões paralelas do SER na consulta de cadastro (o backend limita entre 1 e 8). */
+  consultasSimultaneasSer: number;
 };
 
 export type AtualizarSisregConfiguracaoPayload = {
@@ -37,6 +39,7 @@ export type AtualizarSisregConfiguracaoPayload = {
   token?: string | null;
   ativo: boolean;
   fonteCadastroPaciente: FonteCadastroPaciente;
+  consultasSimultaneasSer: number;
 };
 
 export type TestarConexaoSisregResultado = { sucesso: boolean; mensagem: string };

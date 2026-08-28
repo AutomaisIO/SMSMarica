@@ -1,0 +1,155 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.SerWeb;
+using SMSMais.Core.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+
+namespace SMSMais.Core.Integracoes.Cadastro;
+
+/// <summary>Quantos cadastros a pré-carga resolveu, e em quanto tempo.</summary>
+public sealed record PreCargaCadastroDto(
+    int Pedidos, int Resolvidos, int NaoEncontrados, int Falhas, int Sessoes, int DuracaoSegundos);
+
+/// <summary>
+/// Resolve MUITOS cadastros no SER de uma vez, em sessões paralelas, antes da importação começar.
+///
+/// <para><b>Por que fora do motor normal.</b> A sessão do SER é <i>stateful</i> — ViewState,
+/// conversa Seam, aba aberta — e por isso o <see cref="ISerWebSessao"/> serializa tudo num
+/// semáforo. Paralelizar dentro dele não daria ganho nenhum: as chamadas apenas se enfileirariam.
+/// O que funciona é ter <b>N sessões independentes</b>, cada uma com seu cookie jar e seu login.
+/// Medido contra o SER real em 28/08/2026: 4 sessões simultâneas com a MESMA credencial logaram
+/// sem recusa, e cada uma devolveu o cadastro do CNS que pediu — nenhuma recebeu o paciente da
+/// outra, que era o risco que mataria a ideia (velocidade que troca identidade de paciente é o
+/// pior defeito possível aqui).</para>
+///
+/// <para><b>Por que ANTES e não durante.</b> A importação cria paciente, solicitação e exame no
+/// mesmo <c>DbContext</c>, que não é seguro para uso concorrente. Então ela continua serial: o que
+/// muda é encontrar o cadastro já resolvido no <see cref="CacheCadastroSer"/> em vez de esperar a
+/// rede a cada linha.</para>
+///
+/// <para><b>Nunca lança por causa de um CNS.</b> O que não resolver aqui simplesmente não entra no
+/// cache, e a importação faz o caminho de sempre para aquela linha — a pré-carga é otimização, não
+/// pode virar um novo motivo de falha.</para>
+/// </summary>
+public interface IPreCargaCadastroSerService
+{
+    Task<PreCargaCadastroDto> ExecutarAsync(IReadOnlyCollection<string> cns, CancellationToken ct);
+}
+
+public sealed class PreCargaCadastroSerService(
+    SmsMaisDbContext db,
+    IServiceProvider provedor,
+    CacheCadastroSer cache,
+    ILogger<PreCargaCadastroSerService> logger) : IPreCargaCadastroSerService
+{
+    /// <summary>
+    /// Teto de sessões simultâneas, independente do que a configuração pedir.
+    ///
+    /// <para>O SER é sistema público do Estado e o ganho satura rápido: o gargalo deixa de ser a
+    /// rede e passa a ser a nossa própria escrita no banco. Abrir dezenas de sessões só somaria
+    /// carga no alvo sem devolver tempo — e chamaria atenção para a integração.</para>
+    /// </summary>
+    private const int TetoSessoes = 8;
+
+    public async Task<PreCargaCadastroDto> ExecutarAsync(
+        IReadOnlyCollection<string> cns, CancellationToken ct)
+    {
+        var relogio = System.Diagnostics.Stopwatch.StartNew();
+
+        var alvos = cns
+            .Select(c => new string([.. (c ?? string.Empty).Where(char.IsDigit)]))
+            .Where(c => c.Length == 15)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var config = await db.SisregConfiguracoes.AsNoTracking()
+            .Select(c => new { c.FonteCadastroPaciente, c.ConsultasSimultaneasSer })
+            .FirstOrDefaultAsync(ct);
+
+        // Só faz sentido com o SER na jogada: pelo SISREG cada consulta gasta o orçamento
+        // anti-robô, e paralelizar lá é a receita para o CAPTCHA.
+        var peloSer = config?.FonteCadastroPaciente is FonteCadastroPaciente.Ser
+                      or FonteCadastroPaciente.SerComFallbackSisreg;
+        var sessoes = Math.Clamp(config?.ConsultasSimultaneasSer ?? 1, 1, TetoSessoes);
+
+        if (!peloSer || sessoes <= 1 || alvos.Count == 0)
+        {
+            return new PreCargaCadastroDto(alvos.Count, 0, 0, 0, sessoes, 0);
+        }
+
+        var falhas = 0;
+        var fatias = Particionar(alvos, sessoes);
+
+        logger.LogInformation(
+            "SER/pré-carga: {Qtd} CNS em {Sessoes} sessões simultâneas.", alvos.Count, fatias.Count);
+
+        await Task.WhenAll(fatias.Select(async fatia =>
+        {
+            // Uma instância PRÓPRIA do motor por worker: cada uma tem seu cookie jar, seu login e
+            // seu ViewState. Compartilhar a instância singleton apenas os faria disputar o mesmo
+            // semáforo — e, pior, embaralhar o estado da aba entre eles.
+            var sessao = ActivatorUtilities.CreateInstance<SerWebSessao>(provedor);
+            try
+            {
+                var motor = ActivatorUtilities.CreateInstance<SerNovaSolicitacaoService>(provedor, sessao);
+                var cadastro = new SerCadastroPacienteService(motor);
+
+                foreach (var alvo in fatia)
+                {
+                    if (ct.IsCancellationRequested) return;
+
+                    try
+                    {
+                        cache.Guardar(alvo, await cadastro.ConsultarPorCnsAsync(alvo, ct));
+                    }
+                    catch (NaoEncontradoException)
+                    {
+                        // A fonte respondeu: esse cidadão não está no CADSUS. Guardar o "não" evita
+                        // perguntar de novo na importação.
+                        cache.GuardarNaoEncontrado(alvo);
+                    }
+                    catch (OperationCanceledException) { return; }
+                    catch (Exception ex)
+                    {
+                        Interlocked.Increment(ref falhas);
+                        logger.LogDebug(ex, "SER/pré-carga: falhou para um CNS; segue o baile.");
+                    }
+                }
+            }
+            finally
+            {
+                (sessao as IDisposable)?.Dispose();
+            }
+        }));
+
+        relogio.Stop();
+
+        var resultado = new PreCargaCadastroDto(
+            alvos.Count, cache.Resolvidos, cache.NaoEncontrados, falhas, fatias.Count,
+            (int)relogio.Elapsed.TotalSeconds);
+
+        logger.LogInformation(
+            "SER/pré-carga: {Resolvidos} resolvidos, {NaoEncontrados} sem cadastro, {Falhas} falhas "
+            + "em {Seg}s com {Sessoes} sessões.",
+            resultado.Resolvidos, resultado.NaoEncontrados, resultado.Falhas,
+            resultado.DuracaoSegundos, resultado.Sessoes);
+
+        return resultado;
+    }
+
+    /// <summary>
+    /// Reparte os CNS entre os workers de forma intercalada (round-robin), não em blocos: os
+    /// primeiros CNS de um export tendem a ser da mesma agenda e do mesmo dia, e um bloco contíguo
+    /// poderia cair todo em pacientes já conhecidos enquanto outro worker fica com os caros.
+    /// </summary>
+    private static List<List<string>> Particionar(List<string> alvos, int partes)
+    {
+        var quantas = Math.Min(partes, alvos.Count);
+        var fatias = Enumerable.Range(0, quantas).Select(_ => new List<string>()).ToList();
+        for (var i = 0; i < alvos.Count; i++) fatias[i % quantas].Add(alvos[i]);
+        return fatias;
+    }
+}

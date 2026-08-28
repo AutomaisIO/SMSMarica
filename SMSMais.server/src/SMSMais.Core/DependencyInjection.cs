@@ -268,6 +268,12 @@ public static class DependencyInjection
         services.AddScoped<Integracoes.Cadastro.ISerCadastroPacienteService, Integracoes.Cadastro.SerCadastroPacienteService>();
         services.AddScoped<Integracoes.Cadastro.ICadastroPacienteService, Integracoes.Cadastro.CadastroPacienteRoteador>();
 
+        // Cache por EXECUÇÃO (scoped, morre com a varredura) + a pré-carga que o alimenta em
+        // sessões paralelas do SER. Ver PreCargaCadastroSerService: a sessão do SER é stateful e
+        // serializada, então escala se faz com N sessões, não com N threads na mesma.
+        services.AddScoped<Integracoes.Cadastro.CacheCadastroSer>();
+        services.AddScoped<Integracoes.Cadastro.IPreCargaCadastroSerService, Integracoes.Cadastro.PreCargaCadastroSerService>();
+
         // Fluxos que exigem UMA unidade selecionada (mapeamento e varredura).
         services.AddScoped<Integracoes.SisregWeb.ISisregUnidadeAtual, Integracoes.SisregWeb.SisregUnidadeAtual>();
 

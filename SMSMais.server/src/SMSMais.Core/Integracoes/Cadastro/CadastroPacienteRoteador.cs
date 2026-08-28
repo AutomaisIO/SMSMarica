@@ -20,15 +20,28 @@ public sealed class CadastroPacienteRoteador(
     SmsMaisDbContext db,
     IConsultaCnsService sisreg,
     ISerCadastroPacienteService ser,
+    CacheCadastroSer cache,
     ILogger<CadastroPacienteRoteador> logger) : ICadastroPacienteService
 {
-    public Task<ConsultaCnsRespostaDto> ConsultarPorCnsAsync(
-        string cns, CancellationToken cancellationToken = default) =>
-        ConsultarAsync(
+    public async Task<ConsultaCnsRespostaDto> ConsultarPorCnsAsync(
+        string cns, CancellationToken cancellationToken = default)
+    {
+        // A pré-carga já pode ter resolvido este CNS em paralelo, antes da importação começar.
+        // "Tem resposta e é null" significa que a fonte disse que não existe — repetir a pergunta
+        // custaria uma ida à rede para ouvir o mesmo não.
+        if (cache.TentarObter(cns, out var pronto))
+        {
+            return pronto ?? throw new NaoEncontradoException(
+                "cadastro.paciente_nao_encontrado",
+                "O CADSUS não conhece este CNS (consultado na pré-carga desta execução).");
+        }
+
+        return await ConsultarAsync(
             f => f == FonteCadastroPaciente.Sisreg
                 ? sisreg.ConsultarPorCnsAsync(cns, cancellationToken)
                 : ser.ConsultarPorCnsAsync(cns, cancellationToken),
             cancellationToken);
+    }
 
     public Task<ConsultaCnsRespostaDto> ConsultarPorCpfAsync(
         string cpf, CancellationToken cancellationToken = default) =>
