@@ -276,9 +276,37 @@ Resposta: `text/plain; charset=utf-8`, direto no corpo — sem download intermed
 **Coluna 1 = `pa`, coluna 2 = SIGTAP.** É o de-para autoritativo, dito pelo próprio SISREG — não
 precisa adivinhar por nome.
 
-⚠️ **Teto de 700 registros por exportação.** Intervalos de 61 e de 212 dias devolveram exatamente
-700. Truncamento **silencioso**: o cabeçalho diz 700 e as linhas são 700, nada indica que faltou.
-Quem consumir tem que partir a janela ao bater no teto.
+🚀 **A UNIDADE INTEIRA SAI EM UMA REQUISIÇÃO — `cpf=0` e `procedimento=0` (medido 27/08/2026).**
+Sonda `sonda_export_amplo.py`, CDT 3132358, janela 27/08→25/09 (29 dias), operador
+PROGRAMADOR-BERNARDO:
+
+| Cenário | `cpf` | `procedimento` | Linhas | `pa` distintos |
+|---|---|---|---|---|
+| controle | 085…766 | `1402000` (grupo) | 320 | 4 |
+| A | 085…766 | `0` (sentinela) | 320 | 4 |
+| B | 085…766 | *(vazio)* | 320 | 4 |
+| **C** | **`0`** | **`0`** | **3.286** | **65** |
+
+O cenário C **contém** o controle (todos os 320 nºs de solicitação estão lá) e traz 2.966 a mais.
+O `0` é a option-sentinela `Selecione o Profissional` / `Selecione o Procedimento` do próprio
+formulário — e o JS dele só valida as datas e o range de 31 dias, nunca esses dois campos.
+Consequência: a varredura do CDT, que custa **272 requisições** (uma por par prof×proc habilitado),
+cabe em **1**.
+
+> Não confundir com o `cons_agendas`, onde o mesmo experimento **falha**: lá `ups` com `cpf`/`pa`
+> vazios devolve "A pesquisa não retornou nenhum resultado" (§ tela de agenda). São telas
+> diferentes com regras diferentes — o que vale para uma não vale para a outra.
+
+⚠️ **O teto de 700 NÃO se aplicou nesse recorte:** o cenário C devolveu 3.286 linhas e o cabeçalho
+declarou `3286`. Ou o teto é por profissional, ou mudou. **O cabeçalho é a fonte confiável de
+truncamento** — `total` bateu exatamente com as linhas nos quatro cenários. Detectar corte contando
+linhas *parseadas* é frágil: uma linha rejeitada pelo parser faz 700 virar 699 e o corte passa
+despercebido.
+
+⚠️ **Teto de 700 registros por exportação** (medição de 03/08/2026, com `cpf` e `procedimento`
+preenchidos). Intervalos de 61 e de 212 dias devolveram exatamente 700. Truncamento **silencioso**:
+o cabeçalho diz 700 e as linhas são 700, nada indica que faltou. Quem consumir tem que partir a
+janela ao bater no teto.
 
 ✅ **Código de GRUPO agrega, e é mais barato** (corrigido em 05/08/2026).
 `1402000 GRUPO - ULTRASONOGRAFIA` devolve **120 registros** em 1 requisição, com 4 procedimentos
@@ -400,13 +428,40 @@ SOLICITANTE). Validado 2026-07-01: CDT→**3132358**, RADIOCENTER→**5833841**,
 Na importação o CNES já vem na ficha do agendamento; `cons_unidade` **enriquece**. Mesma fonte,
 sem API externa.
 
-## 🔒 Escopo do perfil (IMPORTANTE p/ "toda a secretaria")
-A credencial de teste (perfil **EXECUTANTE/SOLICITANTE**) enxerga **uma única
-unidade**: o select `ups`/hidden `unidade` só traz **CNES 3132358 (CDT ALBERTO
-LUIS MACHADO BORGES)**. Para cobrir **toda a secretaria** precisaremos de:
-- (a) um perfil mais amplo (gestor/regulador central que liste várias unidades), **ou**
-- (b) **uma credencial por unidade**, iterando cada uma.
-→ Decisão pendente com o usuário.
+## 🔒 Escopo do perfil (RESOLVIDO 2026-08-26)
+A credencial de teste antiga (perfil **EXECUTANTE/SOLICITANTE**, operador 022-ADRIANA)
+enxergava **uma única unidade** (CDT 3132358). **Resolvido:** a credencial
+**`PROGRAMADOR-BERNARDO`** (no `.env` do `Automais.SISCAN`) tem **perfil amplo e enxerga as
+42 unidades da rede** — CDT, CMI, UPA, todas as USF, etc. O select `ups` do `cons_agendas`
+lista as 42. → **Um perfil amplo cobre a secretaria inteira; não precisa de credencial por
+unidade.** (É a credencial que a produção deve usar no robô — sessão dedicada.)
+
+## ⚡ Botão "Importar" PONTUAL — caminho `cons_agendas` por dia (validado 2026-08-26)
+O botão "Importar" por médico×especialidade é **pontual**, para quando **não dá para esperar as
+15h** (o `expo_solicitacoes`/CSV é bloqueado 08h–15h — **confirmado ao vivo:** devolve
+`alert('Aplicativo bloqueado para uso de 8 as 15 horas.')`). Então a fonte do botão é o
+**`cons_agendas` (paginado, SEM bloqueio de horário)**, escopado a **um dia** para custar ~1
+requisição.
+
+**Medição real (26/08/2026, CMI × Renato Roque × USG Gestantes):** 1 requisição → **20
+agendamentos** numa página. Alvos confirmados:
+- **CMI** = CNES **2930242** (CENTRO MATERNO INFANTIL)
+- **RENATO ROQUE DE ANDRADE** = CPF **08675605765**
+- **Ultrassom Gestantes** = `pa` **0229000** (`GRUPO - ULTRASSONOGRAFIA GESTANTES`) — código de
+  GRUPO que expande sozinho nas linhas: USG MORFOLOGICO / TRANSLUCENCIA NUCAL / OBSTETRICA /
+  TRANSVAGINAL - GESTANTE.
+
+Cada registro do `cons_agendas` traz o suficiente para o pipeline de import ordinário:
+`co_solicitacao` (idempotência), `cns` (→ resolve paciente por cadweb50), `paciente`,
+`telefones`, `data`/`hora`, `unidade_solicitante`+`cnes_solicitante`, `cid10`,
+`vaga_consumida`, `situacao`, `procedimentos` (nome — que é o eixo do procedimento).
+**Falta vs as 38 colunas do CSV:** SIGTAP por linha, endereço, mãe, médico solicitante — mas
+paciente é enriquecido no downstream (CNS→CADSUS) e o eixo é o nome. `expo_solicitacoes`/CSV
+continua sendo a fonte de **carga em massa** (após as 15h).
+
+## 🔒 Escopo antigo (histórico)
+Antes de 2026-08-26 a decisão "perfil amplo × credencial por unidade" estava pendente — ver
+seção acima (resolvida por `PROGRAMADOR-BERNARDO`).
 
 ## 🔁 Sessão ÚNICA por operador (reuso obrigatório)
 O SISREG autentica **1 dispositivo/sessão por operador** — cada novo `login()`
