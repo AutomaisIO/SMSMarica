@@ -627,6 +627,10 @@ public sealed class VarreduraAgendaService(
 
         Interlocked.Add(ref progresso.RegistrosEncontrados, novas.Count);
 
+        // O mapeamento sai DE GRAÇA daqui, antes de importar: cada linha já diz quem executa e o
+        // quê. Atualizar por AJAX custava 1 + N requisições (100 no CDT); aqui custa zero.
+        await AtualizarMapeamentoObservadoAsync(unidade.Id, novas, ct);
+
         // Em LOTES, não de uma vez: a requisição é uma só, mas a importação de milhares de linhas
         // leva minutos. Sem isto a tela ficaria congelada em "0 importadas" até o fim, e uma queda
         // no meio não teria deixado o progresso gravado — que é o mesmo motivo pelo qual o modo por
@@ -690,6 +694,133 @@ public sealed class VarreduraAgendaService(
             + "agendamentos, {Validos} importados, {Invalidos} pendências.",
             unidade.Nome, progresso.Requisicoes, progresso.RegistrosEncontrados,
             progresso.Validos, progresso.Invalidos);
+    }
+
+    /// <summary>
+    /// Atualiza o mapeamento (profissionais e seus procedimentos) a partir das linhas já lidas —
+    /// <b>sem gastar uma única requisição</b>.
+    ///
+    /// <para><b>Por que dá:</b> cada linha do export nomeia o executante (colunas 4/5) e o
+    /// procedimento (colunas 1/3). O par que o AJAX <c>PROCEDIMENTOS_POR_PROFISSIONAIS_E_UPS</c>
+    /// entrega a 1 + N requisições — 100 no CDT — está inteiro no arquivo que já baixamos.</para>
+    ///
+    /// <para><b>O que este mapa É e o que NÃO É.</b> Ele é o mapa OBSERVADO: quem de fato tem
+    /// agenda na janela varrida. O AJAX entrega o CATÁLOGO: o que o profissional PODE fazer, mesmo
+    /// sem nenhum agendamento. São coisas diferentes, e por isso <b>nada aqui marca
+    /// <c>Ausente</c></b>: não aparecer no arquivo significa "sem agenda nestes dias", não "saiu da
+    /// unidade". Marcar ausente por omissão apagaria da tela, a cada varredura, todo profissional
+    /// de férias — e a habilitação dele junto.</para>
+    ///
+    /// <para><b>Decisão do operador é intocável:</b> <c>Habilitado</c> e <c>EnviarConfirmacao</c>
+    /// de linha existente nunca são alterados. Linha nova nasce desabilitada (o opt-in de sempre),
+    /// mas HERDA o <c>EnviarConfirmacao</c> das irmãs do mesmo código na unidade — senão um
+    /// profissional novo entraria mudo num procedimento cujo aviso já está ligado, e ninguém
+    /// perceberia.</para>
+    ///
+    /// <para><b>Os pares "novos" são, em boa parte, os ITENS de dentro de um GRUPO já habilitado.</b>
+    /// Conferido no CDT em 27/08/2026 contra o export real: o arquivo mostrou 33 profissionais e 82
+    /// pares, dos quais 49 já estavam mapeados e 33 não — o mapeamento guarda o grupo
+    /// (<c>1402000</c>) e a agenda devolve o item (<c>1402077</c>). Eles entram desabilitados, então
+    /// não passam a custar requisição no modo por par; ganham nome e passam a existir na tela, que
+    /// é o que faltava para o operador decidir sobre o aviso ao paciente item a item.</para>
+    ///
+    /// <para>Na mesma medição, 223 dos 272 pares mapeados NÃO tinham agenda na janela. É a prova
+    /// concreta de por que a omissão não pode virar <c>Ausente</c>: apagaria 82% do mapeamento.</para>
+    /// </summary>
+    private async Task AtualizarMapeamentoObservadoAsync(
+        Guid unidadeId, IReadOnlyList<MarcacaoSisreg> marcacoes, CancellationToken ct)
+    {
+        var observados = marcacoes
+            .Where(m => !string.IsNullOrWhiteSpace(m.CpfProfissionalExecutante))
+            .GroupBy(m => m.CpfProfissionalExecutante!)
+            .ToList();
+        if (observados.Count == 0) return;
+
+        var existentes = await db.SisregProfissionaisUnidade
+            .Include(p => p.Procedimentos)
+            .Where(p => p.UnidadeId == unidadeId)
+            .ToListAsync(ct);
+
+        var porCpf = existentes.ToDictionary(p => p.Cpf, StringComparer.Ordinal);
+
+        // Quem já avisa, por código, na unidade inteira — a régua que a linha nova herda.
+        var avisaPorCodigo = existentes
+            .SelectMany(p => p.Procedimentos)
+            .Where(x => x.EnviarConfirmacao)
+            .Select(x => x.Codigo)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var agora = DateTime.UtcNow;
+        var profissionaisNovos = 0;
+        var procedimentosNovos = 0;
+
+        foreach (var grupo in observados)
+        {
+            if (!porCpf.TryGetValue(grupo.Key, out var profissional))
+            {
+                profissional = new SisregProfissionalUnidade
+                {
+                    Id = Guid.CreateVersion7(),
+                    UnidadeId = unidadeId,
+                    Cpf = grupo.Key,
+                    Nome = grupo.First().NomeProfissionalExecutante ?? "(não informado)",
+                    Habilitado = false,
+                    VistoEm = agora,
+                    CriadoEm = agora,
+                };
+                db.SisregProfissionaisUnidade.Add(profissional);
+                porCpf[grupo.Key] = profissional;
+                profissionaisNovos++;
+            }
+            else
+            {
+                if (grupo.First().NomeProfissionalExecutante is { Length: > 0 } nome) profissional.Nome = nome;
+                profissional.VistoEm = agora;
+                // Tem agenda AGORA — é a prova mais forte de presença que existe.
+                profissional.Ausente = false;
+                profissional.AtualizadoEm = agora;
+            }
+
+            foreach (var porCodigo in grupo
+                .Select(m => (Codigo: SoDigitos(m.CodigoProcedimentoSisreg ?? string.Empty), m.ProcedimentoTexto))
+                .Where(x => x.Codigo.Length > 0)
+                .GroupBy(x => x.Codigo, StringComparer.Ordinal))
+            {
+                var atual = profissional.Procedimentos
+                    .FirstOrDefault(x => string.Equals(x.Codigo, porCodigo.Key, StringComparison.Ordinal));
+
+                if (atual is null)
+                {
+                    profissional.Procedimentos.Add(new SisregProcedimentoProfissional
+                    {
+                        Id = Guid.CreateVersion7(),
+                        ProfissionalId = profissional.Id,
+                        Codigo = porCodigo.Key,
+                        Nome = porCodigo.First().ProcedimentoTexto ?? "(não informado)",
+                        Habilitado = false,
+                        EnviarConfirmacao = avisaPorCodigo.Contains(porCodigo.Key),
+                        Grupo = porCodigo.Key.EndsWith("000", StringComparison.Ordinal),
+                        VistoEm = agora,
+                    });
+                    procedimentosNovos++;
+                }
+                else
+                {
+                    if (porCodigo.First().ProcedimentoTexto is { Length: > 0 } nome) atual.Nome = nome;
+                    atual.VistoEm = agora;
+                    atual.Ausente = false;
+                }
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "SISREG_MAPEAMENTO_OBSERVADO: unidade {Unidade} — {Profissionais} profissionais e "
+            + "{Pares} pares vistos na agenda; {ProfNovos} profissionais e {ProcNovos} procedimentos "
+            + "novos, sem custo de requisição.",
+            unidadeId, observados.Count, observados.Sum(g => g.Select(m => m.CodigoProcedimentoSisreg).Distinct().Count()),
+            profissionaisNovos, procedimentosNovos);
     }
 
     /// <summary>
