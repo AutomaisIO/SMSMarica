@@ -44,6 +44,13 @@ public class SisregConfiguracao
     /// <summary>Integração habilitada. Quando false, as consultas recusam de forma tratada.</summary>
     public bool Ativo { get; set; } = true;
 
+    /// <summary>
+    /// Por qual porta a importação consulta o cadastro do paciente no CADSUS. Ver
+    /// <see cref="FonteCadastroPaciente"/> — é a válvula de escoamento do orçamento anti-robô do
+    /// SISREG. Mora aqui, e não na credencial, porque é decisão de operação e a tela já existe.
+    /// </summary>
+    public FonteCadastroPaciente FonteCadastroPaciente { get; set; } = FonteCadastroPaciente.Sisreg;
+
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
     public DateTime? AtualizadoEm { get; set; }

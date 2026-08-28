@@ -34,6 +34,20 @@ public static class AgendaTxtParser
     private const int CodigoProcedimentoSisreg = 1;
     private const int CodigoSigtap = 2;
     private const int ProcedimentoTexto = 3;
+
+    /// <summary>
+    /// Profissional <b>EXECUTANTE</b> — quem vai atender. Medido em 27/08/2026 comparando um
+    /// export de um só profissional (coluna constante) com o da unidade inteira (33 valores).
+    ///
+    /// <para>Não confundir com as colunas 36/37, que são o <b>solicitante</b> — papéis opostos na
+    /// mesma linha. Enquanto o export era sempre pedido por par profissional × procedimento, o
+    /// executante era conhecido pela requisição e estas colunas não faziam falta. Puxando a
+    /// unidade inteira de uma vez, elas são o que permite reconstituir o par aqui dentro.</para>
+    /// </summary>
+    private const int CpfProfissionalExecutante = 4;
+
+    private const int NomeProfissionalExecutante = 5;
+
     private const int DataAtendimento = 6;
     private const int HoraAtendimento = 7;
     private const int DataSolicitacao = 29; // data em que o pedido foi feito (seguida do operador solicitante na col. 30).
@@ -206,6 +220,8 @@ public static class AgendaTxtParser
                 MunicipioResidencia: LimparNulo(c[MunicipioResidencia]),
                 CodigoIbgeResidencia: Digitos(c[CodigoIbgeResidencia]) is { Length: >= 6 } ibge ? ibge : null,
                 LinhaRaw: linha,
+                CpfProfissionalExecutante: Digitos(c[CpfProfissionalExecutante]) is { Length: 11 } cpfExec ? cpfExec : null,
+                NomeProfissionalExecutante: LimparNulo(c[NomeProfissionalExecutante]),
                 CodigoProcedimentoSisreg: LimparNulo(c[CodigoProcedimentoSisreg])));
         }
 

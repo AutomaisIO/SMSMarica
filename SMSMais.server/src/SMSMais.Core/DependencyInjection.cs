@@ -262,6 +262,12 @@ public static class DependencyInjection
         services.AddSingleton<Integracoes.SisregWeb.ISisregWebSessao, Integracoes.SisregWeb.SisregWebSessao>();
         services.AddScoped<Integracoes.SisregWeb.IConsultaCnsService, Integracoes.SisregWeb.ConsultaCnsService>();
 
+        // ---- CADSUS por porta configurável (SISREG × SER) ----
+        // Quem importa pede o cadastro pelo roteador, não pela porta: a do SISREG tem orçamento
+        // anti-robô (~500 req/h → CAPTCHA → unidade travada 24h) e um lote grande a estoura.
+        services.AddScoped<Integracoes.Cadastro.ISerCadastroPacienteService, Integracoes.Cadastro.SerCadastroPacienteService>();
+        services.AddScoped<Integracoes.Cadastro.ICadastroPacienteService, Integracoes.Cadastro.CadastroPacienteRoteador>();
+
         // Fluxos que exigem UMA unidade selecionada (mapeamento e varredura).
         services.AddScoped<Integracoes.SisregWeb.ISisregUnidadeAtual, Integracoes.SisregWeb.SisregUnidadeAtual>();
 
@@ -471,6 +477,14 @@ public static class DependencyInjection
         services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.SisregImportacaoEstadoVivo>();
         services.AddScoped<Integracoes.SisregWeb.Importacao.IImportacaoLoteService, Integracoes.SisregWeb.Importacao.ImportacaoLoteService>();
         services.AddHostedService<Integracoes.SisregWeb.Importacao.Background.SisregImportacaoRunner>();
+
+        // "Resolver todas as pendências": mesmo desenho (fila de 1 + estado vivo + runner), fila
+        // própria — é outro trabalho na mesma tela, e compartilhar o estado faria um aparecer no
+        // lugar do outro.
+        services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.IResolucaoPendenciasFila, Integracoes.SisregWeb.Importacao.Background.ResolucaoPendenciasFila>();
+        services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ResolucaoPendenciasEstadoVivo>();
+        services.AddScoped<Integracoes.SisregWeb.Importacao.IResolucaoPendenciasService, Integracoes.SisregWeb.Importacao.ResolucaoPendenciasService>();
+        services.AddHostedService<Integracoes.SisregWeb.Importacao.Background.ResolucaoPendenciasRunner>();
 
         // ---- Integração SISREG (feed de leitura DATASUS) — ADR-0012 ----
         // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.

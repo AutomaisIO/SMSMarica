@@ -9,7 +9,9 @@ import type {
   ImportacaoPreviewResultado,
   PendenciaSigtapAgrupada,
   ReprocessoLoteResultado,
+  ReprocessoTodasAceito,
   StatusLote,
+  StatusReprocessoTodas,
 } from '@/features/importacao-sisreg/types';
 
 /** Preview a partir do upload do export de agendamentos do SISREG (TXT ou CSV). Só leitura. */
@@ -117,4 +119,24 @@ export async function reprocessarPendenciasSigtap(
     { procedimentoTexto },
   );
   return data;
+}
+
+/** Dispara a revalidação de TODAS as pendências, em lote no servidor. 409 se já há uma em andamento. ESCRITA. */
+export async function reprocessarTodasFalhas(): Promise<ReprocessoTodasAceito> {
+  const { data } = await http.post<ReprocessoTodasAceito>(
+    '/sisreg/importacao/falhas/reprocessar-todas',
+  );
+  return data;
+}
+
+/** Progresso do "Resolver todas". O backend responde null quando nunca houve reprocessamento. */
+export async function obterStatusReprocessoTodas(): Promise<StatusReprocessoTodas | null> {
+  const { data } = await http.get<StatusReprocessoTodas | null | ''>(
+    '/sisreg/importacao/falhas/reprocessar-todas/status',
+  );
+  return data ? data : null;
+}
+
+export async function cancelarReprocessoTodas(): Promise<void> {
+  await http.post('/sisreg/importacao/falhas/reprocessar-todas/cancelar');
 }

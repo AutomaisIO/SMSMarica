@@ -133,6 +133,36 @@ public sealed class SisregImportacaoController(
         => await importacao.ReprocessarPendenciasSigtapAsync(request.ProcedimentoTexto, cancellationToken);
 
     /// <summary>
+    /// "Resolver todas": revalida em lote, no servidor, todas as pendências que uma nova tentativa
+    /// pode resolver — o mesmo "Validar" de uma linha, aplicado à fila inteira. Responde 202 na
+    /// hora; o front acompanha por <c>GET .../status</c>. ESCRITA.
+    /// </summary>
+    [HttpPost("falhas/reprocessar-todas")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<ResolucaoPendenciasAceitaDto>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ReprocessarTodas(
+        [FromServices] IResolucaoPendenciasService resolucao,
+        CancellationToken cancellationToken)
+        => Accepted(await resolucao.IniciarAsync(cancellationToken));
+
+    /// <summary>Progresso da resolução em andamento (ou o resumo da última). Polling.</summary>
+    [HttpGet("falhas/reprocessar-todas/status")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [ProducesResponseType<StatusResolucaoPendencias>(StatusCodes.Status200OK)]
+    public StatusResolucaoPendencias? StatusReprocessarTodas(
+        [FromServices] IResolucaoPendenciasService resolucao)
+        => resolucao.ObterStatus();
+
+    /// <summary>Para a resolução em andamento. O que já foi importado permanece.</summary>
+    [HttpPost("falhas/reprocessar-todas/cancelar")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public IActionResult CancelarReprocessarTodas([FromServices] IResolucaoPendenciasService resolucao)
+        => Accepted(new { cancelado = resolucao.Cancelar() });
+
+    /// <summary>
     /// "Informar CPF e importar" (ADR-0035): resolve o paciente e replica a linha com ele fixado.
     /// É a ação da pendência cuja causa é <c>CpfNaoResolvido</c> — o CADSUS não devolveu o CPF e o
     /// paciente não existia. Só vincula paciente JÁ cadastrado: o SISREG não informa data de

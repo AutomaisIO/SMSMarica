@@ -25,7 +25,9 @@ namespace SMSMais.Api.Controllers;
 public sealed class IntegracoesController(
     IConsultaCpfService consultaCpf,
     IConsultaCepService consultaCep,
-    IConsultaCnsService consultaCns,
+    // Roteador, não a porta do SISREG: a consulta avulsa da recepção gasta o MESMO orçamento
+    // anti-robô que a importação, e quem configurou "cadastro pelo SER" configurou para as duas.
+    SMSMais.Core.Integracoes.Cadastro.ICadastroPacienteService cadastro,
     IProxyMotorConfiguracaoService motores) : ControllerBase
 {
     /// <summary>Consulta CPF na Receita exigindo data de nascimento.</summary>
@@ -40,8 +42,10 @@ public sealed class IntegracoesController(
         await consultaCpf.ConsultarCpfAsync(cpf, dataNascimento, cancellationToken);
 
     /// <summary>
-    /// Consulta paciente por CNS no SISREG (CADSUS). Não exige data de nascimento. Retorna
-    /// CNS, CPF, nome, sexo, nascimento e nome da mãe para auto-preencher o cadastro.
+    /// Consulta paciente por CNS no CADSUS. Não exige data de nascimento. Retorna CNS, CPF, nome,
+    /// sexo, nascimento e nome da mãe para auto-preencher o cadastro.
+    /// <para>Por qual porta (SISREG ou SER) decide a configuração do SISREG — os dois leem a mesma
+    /// base nacional, e a do SISREG tem orçamento anti-robô.</para>
     /// </summary>
     [HttpGet("cns")]
     [ProducesResponseType<ConsultaCnsRespostaDto>(StatusCodes.Status200OK)]
@@ -50,7 +54,7 @@ public sealed class IntegracoesController(
     public async Task<ConsultaCnsRespostaDto> ConsultarCns(
         [FromQuery] string cns,
         CancellationToken cancellationToken) =>
-        await consultaCns.ConsultarPorCnsAsync(cns, cancellationToken);
+        await cadastro.ConsultarPorCnsAsync(cns, cancellationToken);
 
     /// <summary>Consulta endereço por CEP.</summary>
     [HttpGet("cep/{cep}")]

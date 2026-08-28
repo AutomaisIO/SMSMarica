@@ -16,7 +16,9 @@ public sealed record SisregConfiguracaoDto(
     string? Login,
     bool SenhaDefinida,
     bool TokenDefinido,
-    bool Ativo);
+    bool Ativo,
+    /// <summary>Porta do CADSUS usada na importação — ver <see cref="FonteCadastroPaciente"/>.</summary>
+    FonteCadastroPaciente FonteCadastroPaciente);
 
 /// <summary>
 /// Atualização da configuração SISREG. Senha/token vazios = mantém o atual;
@@ -32,4 +34,5 @@ public sealed record AtualizarSisregConfiguracaoRequest(
     string? Login,
     string? Senha,
     string? Token,
-    bool Ativo);
+    bool Ativo,
+    FonteCadastroPaciente FonteCadastroPaciente = FonteCadastroPaciente.Sisreg);

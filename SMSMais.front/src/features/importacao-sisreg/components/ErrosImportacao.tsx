@@ -1,8 +1,15 @@
-import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, Ban, CheckCircle2, ListChecks, Loader2, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { useFalhasImportacao } from '@/features/importacao-sisreg/api/queries';
+import {
+  invalidarFalhasERastreio,
+  useCancelarReprocessoTodas,
+  useFalhasImportacao,
+  useReprocessarTodasFalhas,
+  useStatusReprocessoTodas,
+} from '@/features/importacao-sisreg/api/queries';
 import { ModalFalha } from '@/features/importacao-sisreg/components/ModalFalha';
 import { PendenciasSigtapSecao } from '@/features/importacao-sisreg/components/PendenciasSigtapSecao';
 import { ModalInformarCpf } from '@/features/painel-inicio/components/ModalInformarCpf';
@@ -37,6 +44,56 @@ export function ErrosImportacao({ buscaInicial = '' }: { buscaInicial?: string }
 
   const lista = falhas.data ?? [];
   const pendentes = lista.filter((f) => !f.resolvidoEm).length;
+
+  const client = useQueryClient();
+  const reprocessarTodas = useReprocessarTodasFalhas();
+  const cancelarTodas = useCancelarReprocessoTodas();
+  // Disparamos AGORA e ainda esperamos o runner começar? Mesma janela do lote de arquivos (ver
+  // ImportacaoLote): o POST responde 202 antes de iniciar, e o status ainda volta como o resumo
+  // do reprocesso ANTERIOR (emExecucao=false).
+  const [aguardandoInicio, setAguardandoInicio] = useState(false);
+  const statusTodas = useStatusReprocessoTodas(true, aguardandoInicio);
+  const rodandoTodas = statusTodas.data?.emExecucao ?? false;
+
+  useEffect(() => {
+    if (rodandoTodas) setAguardandoInicio(false);
+  }, [rodandoTodas]);
+
+  // Quando o reprocesso vivo termina: mensagem final + recarrega a lista pra resolvida sumir.
+  const rodavaAntes = useRef(false);
+  useEffect(() => {
+    if (rodavaAntes.current && !rodandoTodas) {
+      const s = statusTodas.data;
+      if (s) {
+        const resumo = `${s.cancelado ? 'Reprocessamento interrompido' : 'Reprocessamento concluído'}: ${s.resolvidas} resolvida(s), ${s.continuam} continua(m) pendente(s).`;
+        setAviso({ ok: !s.cancelado && s.continuam === 0, texto: s.mensagem ?? resumo });
+      }
+      invalidarFalhasERastreio(client);
+    }
+    rodavaAntes.current = rodandoTodas;
+  }, [rodandoTodas, statusTodas.data, client]);
+
+  async function resolverTodas() {
+    // O verbo é "tentar": a revalidação pode esbarrar no mesmo (ou em outro) motivo e a linha
+    // continuar pendente — só sai da lista o que importar de fato.
+    const confirmado = window.confirm(
+      `Tentar resolver TODAS as pendências de importação (${pendentes} nesta lista)?\n\n` +
+        'O reprocessamento roda no servidor e pode levar vários minutos — acompanhe o progresso ' +
+        'aqui e use "Parar" se precisar. Uma pendência pode continuar pendente por outro motivo ' +
+        '(paciente sem CNS, CPF não resolvido…).',
+    );
+    if (!confirmado) return;
+    setAviso(null);
+    try {
+      await reprocessarTodas.mutateAsync();
+      setAguardandoInicio(true);
+    } catch (e) {
+      // Inclui o 409 de "já há um reprocessamento em andamento" — o refetch faz o progresso
+      // desse reprocessamento (disparado por outro operador) aparecer e o polling ligar.
+      setAviso({ ok: false, texto: extrairMensagemDeErro(e) });
+      void statusTodas.refetch();
+    }
+  }
 
   return (
     <>
@@ -73,8 +130,58 @@ export function ErrosImportacao({ buscaInicial = '' }: { buscaInicial?: string }
             {falhas.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             Atualizar
           </Button>
+          <Button
+            variante="outline"
+            onClick={resolverTodas}
+            disabled={pendentes === 0 || rodandoTodas || aguardandoInicio || reprocessarTodas.isPending}
+            title="Tenta revalidar todas as pendências de uma vez, no servidor — uma linha pode continuar pendente por outro motivo."
+          >
+            {rodandoTodas || aguardandoInicio || reprocessarTodas.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ListChecks className="h-4 w-4" />
+            )}
+            Resolver todas{pendentes > 0 ? ` (${pendentes})` : ''}
+          </Button>
         </div>
       </div>
+
+      {/* Progresso do "Resolver todas": roda no servidor — aqui só acompanhamos e paramos. */}
+      {aguardandoInicio && !rodandoTodas ? (
+        <div className="border-b border-gray-100 px-4 py-2 text-sm text-gray-600">
+          <Loader2 className="mr-1 inline h-4 w-4 animate-spin" /> Iniciando reprocessamento…
+        </div>
+      ) : rodandoTodas && statusTodas.data ? (
+        <div className="border-b border-blue-100 bg-blue-50 px-4 py-2">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-blue-900">
+              <Loader2 className="mr-1 inline h-4 w-4 animate-spin" />
+              Tentando resolver: {statusTodas.data.feitas} de {statusTodas.data.total}
+              {' · '}
+              <span className="text-emerald-700">{statusTodas.data.resolvidas} resolvidas</span>
+              {statusTodas.data.continuam > 0 ? (
+                <span className="text-red-600"> · {statusTodas.data.continuam} continuam</span>
+              ) : null}
+            </span>
+            <Button
+              variante="outline"
+              tamanho="sm"
+              onClick={() => cancelarTodas.mutate()}
+              disabled={cancelarTodas.isPending}
+            >
+              <Ban className="h-4 w-4" /> Parar
+            </Button>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-100">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-all"
+              style={{
+                width: `${statusTodas.data.total > 0 ? (statusTodas.data.feitas / statusTodas.data.total) * 100 : 0}%`,
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {aviso ? (
         <div

@@ -94,7 +94,9 @@ public interface IImportacaoSisregService
 
 public sealed class ImportacaoSisregService(
     SmsMaisDbContext db,
-    IConsultaCnsService consultaCns,
+    // NÃO é o IConsultaCnsService (a porta do SISREG) direto: a porta é escolhida na configuração,
+    // porque a do SISREG tem orçamento anti-robô e um lote grande a estoura sozinho.
+    Cadastro.ICadastroPacienteService cadastro,
     IPacientesService pacientes,
     IGeradorIdentificadores geradorIds,
     IUsuarioAtualAccessor usuarioAtual,
@@ -140,6 +142,20 @@ public sealed class ImportacaoSisregService(
 
     public async Task<ImportacaoPreviewResultado> PreviewDeTextoAsync(string conteudo, string? nomeArquivo, CancellationToken ct)
     {
+        // MESMA guarda do lote (ImportarArquivoAsync): é mesmo um export de agendamentos do SISREG?
+        // Sem ela, o preview de um arquivo alheio gravava UMA FALHA POR LINHA — foi assim que dois
+        // CSV da tela de agenda (12 colunas separadas por vírgula, contra as 38 por ";" do
+        // expo_solicitacoes) viraram 40 pendências de lixo em 26/08/2026, com o próprio cabeçalho
+        // do arquivo entre elas. O arquivo errado é UM problema, e o operador tem que ler UMA linha.
+        var assinatura = AgendaTxtParser.Reconhecer(conteudo);
+        if (!assinatura.Reconhecido)
+        {
+            throw new ValidacaoException(
+                "importacao.arquivo_incompativel",
+                $"Este arquivo não é o export de agendamentos do SISREG: {assinatura.Motivo} "
+                + "Use a exportação de agendamentos (expo_solicitacoes), em TXT ou CSV.");
+        }
+
         var parsed = ParseArquivo(conteudo, nomeArquivo);
 
         // O preview é o ponto em que o arquivo inteiro passa pelo parser — é aqui que as linhas
@@ -335,11 +351,27 @@ public sealed class ImportacaoSisregService(
         }
         else
         {
-            // Só agora vai ao CADSUS (CNS → CPF + demografia) — o passo caro/limitado.
+            // Só agora vai ao CADSUS (CNS → CPF + demografia) — o passo caro/limitado. Por qual
+            // porta (SISREG ou SER) quem decide é a configuração; aqui só se sabe que é a cara.
             ConsultaCnsRespostaDto cadsus;
-            try { cadsus = await consultaCns.ConsultarPorCnsAsync(m.CnsPaciente!, ct); }
-            catch (Exception ex) { return (Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}", CausaFalhaImportacao.CadsusIndisponivel), false); }
-            passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} (cadweb50).");
+            var fonte = await cadastro.FonteAtualAsync(ct);
+            try { cadsus = await cadastro.ConsultarPorCnsAsync(m.CnsPaciente!, ct); }
+            catch (NaoEncontradoException)
+            {
+                // A fonte respondeu e o cidadão não está no CADSUS. Não é indisponibilidade — a
+                // linha não se resolve tentando de novo, e sim informando o CPF.
+                return (Falha(
+                    $"O CADSUS ({NomeDaFonte(fonte)}) não conhece este CNS e o paciente ainda não existe no sistema. "
+                    + "Informe o CPF nesta pendência para importar.",
+                    CausaFalhaImportacao.CpfNaoResolvido), false);
+            }
+            catch (Exception ex)
+            {
+                return (Falha(
+                    $"Falha ao consultar o cadastro do paciente por CNS em {NomeDaFonte(fonte)}: {ex.Message}",
+                    CausaFalhaImportacao.CadsusIndisponivel), false);
+            }
+            passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} ({NomeDaFonte(fonte)}).");
 
             // A régua é CPF com DV válido, não "11 dígitos" (adendo do ADR-0041): um 00000000000
             // vindo do CADSUS passaria como chave nacional e fundiria duas pessoas.
@@ -1043,6 +1075,14 @@ public sealed class ImportacaoSisregService(
         // a mensagem seria sobre um agendamento que já passou.
         if (_suprimirConfirmacao) return false;
 
+        // Agendamento no PASSADO não gera aviso, venha por onde vier. A regra era só do backfill
+        // (que sabia, por construção, estar lendo período antigo) e isso bastava enquanto a
+        // importação era do dia. Deixou de bastar quando a linha pode ficar semanas parada como
+        // pendência: "Resolver todas" importaria de uma vez centenas de marcações vencidas e
+        // avisaria o paciente sobre um exame que já foi — a única mensagem que não tem conserto.
+        if (m.DataHoraAtendimento is { } quando && ParaUtcBrasilia(quando) < DateTime.UtcNow)
+            return false;
+
         var daUnidade = await db.SisregVarreduraAgendas.AsNoTracking()
             .Where(a => a.UnidadeId == unidadeExecutanteId)
             .Select(a => (bool?)a.EnviarConfirmacao)
@@ -1272,13 +1312,40 @@ public sealed class ImportacaoSisregService(
 
     /// <summary>Telefone do TXT em slot NÃO-principal: celular se for móvel (11 díg. e 3º = '9'),
     /// senão residencial. Nunca o Principal (esse é o contato validado por OTP).</summary>
-    private static (string? celular, string? residencial) MontarTelefoneDoTxt(string? telefone)
+    /// <summary>
+    /// Telefones da coluna 21 do TXT — que traz <b>mais de um número</b> com frequência
+    /// (<c>(21)99066-4634 / (21)96692-5684</c>).
+    ///
+    /// <para>A versão anterior fazia <c>SoDigitos</c> na célula inteira: os dois números viravam
+    /// uma string de 22 dígitos, caíam fora da faixa 10–11 e <b>os dois eram descartados</b>. O
+    /// paciente nascia sem telefone nenhum e não recebia a confirmação por WhatsApp. Medido no
+    /// export do CDT de 27/08/2026 (3.286 linhas): <b>873 linhas — 26% — tinham telefone válido e
+    /// eram jogadas fora</b>; sem telefone de verdade eram 29.</para>
+    ///
+    /// <para>Devolve o primeiro móvel e o primeiro fixo que aparecerem, nessa ordem de preferência.</para>
+    /// </summary>
+    internal static (string? celular, string? residencial) MontarTelefoneDoTxt(string? telefone)
     {
-        var d = SoDigitos(telefone);
-        if (d.Length is < 10 or > 11) return (null, null);
-        var movel = d.Length == 11 && d[2] == '9';
-        return movel ? (d, null) : (null, d);
+        string? celular = null, residencial = null;
+
+        foreach (var pedaco in (telefone ?? string.Empty).Split(SeparadoresDeTelefone, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var d = SoDigitos(pedaco);
+            if (d.Length is < 10 or > 11) continue;
+
+            // Móvel: 11 dígitos com o 9 depois do DDD. É o que decide o slot — e o slot importa,
+            // porque a confirmação por WhatsApp só olha o celular.
+            if (d.Length == 11 && d[2] == '9') celular ??= d;
+            else residencial ??= d;
+
+            if (celular is not null && residencial is not null) break;
+        }
+
+        return (celular, residencial);
     }
+
+    /// <summary>Como o SISREG separa vários telefones na mesma célula.</summary>
+    private static readonly char[] SeparadoresDeTelefone = ['/', ',', ';', '|'];
 
     /// <summary>Monta o EnderecoDto a partir das colunas do TXT. Null se não houver nada útil.</summary>
     private static EnderecoDto? MontarEnderecoDoTxt(MarcacaoSisreg m)
@@ -1328,6 +1395,19 @@ public sealed class ImportacaoSisregService(
 
     private static string Mascara(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : v.Length <= 4 ? "***" : v[..3] + "***" + v[^2..];
+
+    /// <summary>
+    /// A porta do CADSUS com o nome que o operador reconhece. Vai para o motivo da pendência: sem
+    /// isto, uma falha do SER apareceria na tela como "falha no SISREG" e mandaria quem lê procurar
+    /// no sistema errado.
+    /// </summary>
+    private static string NomeDaFonte(SMSMais.Data.Entities.Enums.FonteCadastroPaciente fonte) =>
+        fonte switch
+        {
+            SMSMais.Data.Entities.Enums.FonteCadastroPaciente.Ser => "SER",
+            SMSMais.Data.Entities.Enums.FonteCadastroPaciente.SerComFallbackSisreg => "SER (com retorno ao SISREG)",
+            _ => "SISREG",
+        };
 }
 
 internal static class DataHoraExtensions

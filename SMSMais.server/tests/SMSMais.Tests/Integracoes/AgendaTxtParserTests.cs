@@ -291,4 +291,72 @@ public class AgendaTxtParserTests
 
         AgendaTxtParser.Reconhecer(string.Join(';', c)).Reconhecido.Should().BeTrue();
     }
+
+    /// <summary>
+    /// O arquivo que gerou o incidente de 26/08/2026: o CSV da TELA DE AGENDA do SISREG — 12
+    /// colunas separadas por <b>vírgula</b>, com cabeçalho por extenso — enviado no lugar do export
+    /// de agendamentos (38 campos por <c>;</c>).
+    ///
+    /// <para>Ele tem cara de arquivo do SISREG (é do SISREG, só que de outra tela), e cada linha
+    /// dele vira "1 campo" no split por <c>;</c>. Sem a assinatura, dois desses arquivos viraram
+    /// 40 pendências de lixo na aba Erros — inclusive o próprio cabeçalho.</para>
+    /// </summary>
+    [Fact]
+    public void Nao_reconhece_o_csv_da_tela_de_agenda_separado_por_virgula()
+    {
+        var csvDaAgenda = string.Join('\n',
+            "Unidade Executante,Cod. Solic,Data/Hora,CNS,Nome,Nome Social,Nascimento,Idade,Origem,"
+            + "Unidade Solicitante,Vaga Solicitada,CID-10",
+            "CENTRO MATERNO INFANTIL (2930242),686213625,26/08/2026 13:00,898004668794912,"
+            + "FULANA DE TAL,,21/04/2009,17,MARICA - RJ,UNIDADE DE SAUDE DA FAMILIA MUMBUCA,1ª VEZ,Z34");
+
+        var a = AgendaTxtParser.Reconhecer(csvDaAgenda);
+
+        a.Reconhecido.Should().BeFalse();
+        a.Motivo.Should().Contain("38");
+    }
+
+    /// <summary>
+    /// O profissional EXECUTANTE vem nas colunas 4 e 5 (o cabeçalho do CSV as nomeia
+    /// <c>cpf_proficional_executante</c>/<c>nome_profissional_executante</c>) e não pode ser
+    /// confundido com o SOLICITANTE das colunas 36/37 — papéis opostos na mesma linha.
+    ///
+    /// <para>É o que permite puxar a agenda da unidade inteira numa requisição e reconstituir o
+    /// par profissional × procedimento aqui dentro, em vez de pagar uma requisição por par.</para>
+    /// </summary>
+    [Fact]
+    public void Executante_sai_das_colunas_4_e_5_e_nao_se_confunde_com_o_solicitante()
+    {
+        var m = AgendaTxtParser.Parse(Linha("670119011")).Marcacoes.Should().ContainSingle().Subject;
+
+        m.CpfProfissionalExecutante.Should().Be("72754842772");
+        m.NomeProfissionalExecutante.Should().Be("MARCO EXECUTANTE");
+        m.CpfMedicoSolicitante.Should().Be("00344588750");
+        m.NomeMedicoSolicitante.Should().Be("MEDICO SOLICITANTE");
+    }
+
+    /// <summary>
+    /// A célula de telefone traz mais de um número com frequência. Concatenar os dígitos da célula
+    /// inteira dava 21–22 dígitos, fora da faixa de um telefone, e os DOIS eram descartados: 26%
+    /// das 3.286 linhas do export do CDT (27/08/2026) perdiam um telefone que estava lá.
+    /// </summary>
+    [Theory]
+    // Dois móveis: fica o primeiro; o segundo não tem slot próprio (contato só acumula pelo hub).
+    [InlineData("(21)99066-4634 / (21)96692-5684", "21990664634", null)]
+    // Fixo + móvel: cada um no seu slot, independente da ordem em que vieram.
+    [InlineData("(21)2634-1234 / (21)97738-1014", "21977381014", "2126341234")]
+    [InlineData("(21)97738-1014, (21)2634-1234", "21977381014", "2126341234")]
+    [InlineData("(21)2634-1234", null, "2126341234")]
+    [InlineData("(21)97002-9774", "21970029774", null)]
+    // Lixo continua sendo descartado — o objetivo é não perder número válido, não aceitar qualquer coisa.
+    [InlineData("123", null, null)]
+    [InlineData("", null, null)]
+    public void Telefone_da_celula_com_varios_numeros_nao_se_perde(
+        string celula, string? celularEsperado, string? residencialEsperado)
+    {
+        var (celular, residencial) = ImportacaoSisregService.MontarTelefoneDoTxt(celula);
+
+        celular.Should().Be(celularEsperado);
+        residencial.Should().Be(residencialEsperado);
+    }
 }

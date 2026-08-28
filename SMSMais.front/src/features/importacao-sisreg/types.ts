@@ -170,3 +170,24 @@ export type ReprocessoLoteResultado = {
   continuam: number;
   mensagem: string;
 };
+
+/** Resposta do disparo de "Resolver todas": o lote entrou na fila do servidor. */
+export type ReprocessoTodasAceito = {
+  execucaoId: string;
+  /** Quantas pendências entraram no lote. */
+  total: number;
+};
+
+/** Progresso do "Resolver todas" (ou resumo do último). Null quando nunca rodou. */
+export type StatusReprocessoTodas = {
+  emExecucao: boolean;
+  total: number;
+  feitas: number;
+  resolvidas: number;
+  /** Continuam pendentes por OUTRO motivo (paciente sem CNS, CPF não resolvido…). */
+  continuam: number;
+  iniciadoEm: string;
+  concluidoEm: string | null;
+  cancelado: boolean;
+  mensagem: string | null;
+};

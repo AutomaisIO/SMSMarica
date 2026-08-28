@@ -14,6 +14,7 @@ import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTu
 import type {
   AtualizarSisregConfiguracaoPayload,
   EscopoSisreg,
+  FonteCadastroPaciente,
   TipoAutenticacaoSisreg,
 } from '@/features/sisreg/types';
 
@@ -28,6 +29,7 @@ type Form = {
   senha: string;
   token: string;
   ativo: boolean;
+  fonteCadastroPaciente: FonteCadastroPaciente;
 };
 
 const FORM_VAZIO: Form = {
@@ -41,6 +43,7 @@ const FORM_VAZIO: Form = {
   senha: '',
   token: '',
   ativo: true,
+  fonteCadastroPaciente: 1,
 };
 
 export function SisregConfiguracaoPage() {
@@ -65,6 +68,7 @@ export function SisregConfiguracaoPage() {
         tipoAutenticacao: config.data.tipoAutenticacao,
         login: config.data.login ?? '',
         ativo: config.data.ativo,
+        fonteCadastroPaciente: config.data.fonteCadastroPaciente,
       }));
     }
   }, [config.data]);
@@ -88,6 +92,7 @@ export function SisregConfiguracaoPage() {
       senha: form.senha ? form.senha : undefined,
       token: form.token ? form.token : undefined,
       ativo: form.ativo,
+      fonteCadastroPaciente: form.fonteCadastroPaciente,
     };
     salvar.mutate(payload, {
       onSuccess: () => {
@@ -185,6 +190,23 @@ export function SisregConfiguracaoPage() {
                 onChange={(e) => set('centraisReguladoras', e.target.value)}
                 placeholder="32C164, 32C206, 32C211"
               />
+            </Campo>
+
+            <Campo
+              label="Consulta de cadastro do paciente"
+              htmlFor="sr-fonte-cadastro"
+              className="sm:col-span-2"
+              dica="Onde a importação de agendamentos busca os dados de cadastro (CADSUS) do paciente. O SISREG aceita cerca de 500 consultas por hora e depois passa a exigir CAPTCHA, travando o operador da unidade — para importações grandes, prefira o SER, que consulta o mesmo cadastro sem esse limite."
+            >
+              <Select
+                id="sr-fonte-cadastro"
+                value={form.fonteCadastroPaciente}
+                onChange={(e) => set('fonteCadastroPaciente', Number(e.target.value) as FonteCadastroPaciente)}
+              >
+                <option value={1}>SISREG (CADSUS)</option>
+                <option value={2}>SER (SES-RJ)</option>
+                <option value={3}>SER, com retorno ao SISREG se o SER falhar</option>
+              </Select>
             </Campo>
 
             <Campo label="Login" htmlFor="sr-login" dica="Usado no esquema Basic.">

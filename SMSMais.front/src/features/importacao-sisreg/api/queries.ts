@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   cancelarLote,
+  cancelarReprocessoTodas,
   descartarFalhaImportacao,
   importarLote,
   listarExecucoesImportacao,
@@ -8,8 +9,10 @@ import {
   listarPendenciasSigtap,
   obterFalhaDetalhe,
   obterStatusLote,
+  obterStatusReprocessoTodas,
   reprocessarFalhaImportacao,
   reprocessarPendenciasSigtap,
+  reprocessarTodasFalhas,
 } from '@/features/importacao-sisreg/api/importacaoApi';
 
 export const importacaoKeys = {
@@ -18,6 +21,7 @@ export const importacaoKeys = {
   statusLote: ['importacao-sisreg', 'lote-status'] as const,
   execucoes: ['importacao-sisreg', 'execucoes'] as const,
   pendenciasSigtap: ['importacao-sisreg', 'pendencias-sigtap'] as const,
+  statusReprocessoTodas: ['importacao-sisreg', 'reprocesso-todas-status'] as const,
 };
 
 export function useFalhasImportacao(somentePendentes: boolean, busca = '') {
@@ -37,7 +41,7 @@ export function useFalhaDetalhe(id: string | null) {
 }
 
 /** Tudo que muda o lado de uma falha precisa recarregar as falhas E o rastreio. */
-function invalidarFalhasERastreio(client: ReturnType<typeof useQueryClient>) {
+export function invalidarFalhasERastreio(client: ReturnType<typeof useQueryClient>) {
   client.invalidateQueries({ queryKey: ['importacao-sisreg', 'falhas'] });
   client.invalidateQueries({ queryKey: importacaoKeys.execucoes });
 }
@@ -115,5 +119,31 @@ export function useReprocessarPendenciasSigtap() {
       // O lote mexe nas duas visões: some do agrupamento e some da lista individual.
       client.invalidateQueries({ queryKey: ['importacao-sisreg'] });
     },
+  });
+}
+
+/** Status do "Resolver todas" — mesmo polling adaptativo de `useStatusLote` (ver o porquê lá). */
+export function useStatusReprocessoTodas(ativo: boolean, aguardandoInicio = false) {
+  return useQuery({
+    queryKey: importacaoKeys.statusReprocessoTodas,
+    queryFn: obterStatusReprocessoTodas,
+    enabled: ativo,
+    refetchInterval: (query) => (query.state.data?.emExecucao || aguardandoInicio ? 1000 : false),
+  });
+}
+
+export function useReprocessarTodasFalhas() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: reprocessarTodasFalhas,
+    onSuccess: () => client.invalidateQueries({ queryKey: importacaoKeys.statusReprocessoTodas }),
+  });
+}
+
+export function useCancelarReprocessoTodas() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: cancelarReprocessoTodas,
+    onSuccess: () => client.invalidateQueries({ queryKey: importacaoKeys.statusReprocessoTodas }),
   });
 }

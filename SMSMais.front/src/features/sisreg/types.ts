@@ -1,5 +1,7 @@
 export type TipoAutenticacaoSisreg = 'Basic' | 'Bearer' | 'ApiKey';
 export type EscopoSisreg = 'Municipal' | 'Nacional';
+/** Onde a importação consulta o cadastro (CADSUS): 1 = SISREG, 2 = SER, 3 = SER com retorno ao SISREG. */
+export type FonteCadastroPaciente = 1 | 2 | 3;
 
 export type SisregConfiguracao = {
   baseUrl: string;
@@ -12,6 +14,7 @@ export type SisregConfiguracao = {
   senhaDefinida: boolean;
   tokenDefinido: boolean;
   ativo: boolean;
+  fonteCadastroPaciente: FonteCadastroPaciente;
 };
 
 export type AtualizarSisregConfiguracaoPayload = {
@@ -25,6 +28,7 @@ export type AtualizarSisregConfiguracaoPayload = {
   senha?: string | null;
   token?: string | null;
   ativo: boolean;
+  fonteCadastroPaciente: FonteCadastroPaciente;
 };
 
 export type TestarConexaoSisregResultado = { sucesso: boolean; mensagem: string };

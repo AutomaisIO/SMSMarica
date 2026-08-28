@@ -40,6 +40,7 @@ public sealed class SisregConfiguracaoService(
         config.TipoAutenticacao = request.TipoAutenticacao;
         config.Login = string.IsNullOrWhiteSpace(request.Login) ? null : request.Login.Trim();
         config.Ativo = request.Ativo;
+        config.FonteCadastroPaciente = request.FonteCadastroPaciente;
 
         // Senha/token vazios = mantém o atual; preenchidos = cifra e substitui.
         if (!string.IsNullOrWhiteSpace(request.Senha))
@@ -122,5 +123,6 @@ public sealed class SisregConfiguracaoService(
         c.Login,
         !string.IsNullOrEmpty(c.SenhaCifrada),
         !string.IsNullOrEmpty(c.TokenCifrado),
-        c.Ativo);
+        c.Ativo,
+        c.FonteCadastroPaciente);
 }

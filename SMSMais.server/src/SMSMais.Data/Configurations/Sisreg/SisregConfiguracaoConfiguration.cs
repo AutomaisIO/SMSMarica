@@ -22,6 +22,11 @@ internal sealed class SisregConfiguracaoConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.SenhaCifrada).HasColumnName("senha_cifrada");
         builder.Property(x => x.TokenCifrado).HasColumnName("token_cifrado");
         builder.Property(x => x.Ativo).HasColumnName("ativo").IsRequired();
+        builder.Property(x => x.FonteCadastroPaciente)
+            .HasColumnName("fonte_cadastro_paciente").HasConversion<int>().IsRequired()
+            // Default no BANCO, não só no POCO: a linha singleton já existe em produção e uma
+            // coluna nova sem default nasceria NULL/0 — que não é nenhuma fonte válida.
+            .HasDefaultValue(Entities.Enums.FonteCadastroPaciente.Sisreg);
 
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.CriadoPor).HasColumnName("criado_por");
