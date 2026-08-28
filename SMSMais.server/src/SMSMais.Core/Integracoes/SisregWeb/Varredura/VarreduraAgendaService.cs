@@ -82,6 +82,24 @@ public sealed class VarreduraAgendaService(
 
     /// <summary>Teto de registros por exportação, medido no SISREG. Ver ExportarComTetoAsync.</summary>
     private const int TetoRegistrosPorExportacao = 700;
+
+    /// <summary>
+    /// O valor que o formulário do <c>expo_solicitacoes</c> usa para "não escolhi" — a
+    /// option-sentinela <c>Selecione o Profissional</c> / <c>Selecione o Procedimento</c>.
+    ///
+    /// <para>Mandá-lo nos dois campos devolve a agenda da UNIDADE INTEIRA. Medido em 27/08/2026 no
+    /// CDT, janela de 29 dias: 3.286 linhas e 65 procedimentos numa requisição, contendo
+    /// integralmente o recorte por par (os 320 registros do controle estavam todos lá). O JS do
+    /// formulário só valida as datas e o intervalo de 31 dias — nunca estes dois campos.</para>
+    ///
+    /// <para><b>Não vale para o <c>cons_agendas</c></b>, onde o mesmo experimento falha: lá os três
+    /// filtros são obrigatórios no servidor. Telas diferentes, regras diferentes.</para>
+    /// </summary>
+    private const string SemFiltro = "0";
+
+    /// <summary>Quantas marcações importar entre duas gravações de progresso, no recorte por
+    /// unidade inteira. Nada a ver com requisição ao SISREG — é só o ritmo do feedback.</summary>
+    private const int LoteDeImportacao = 100;
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
     private readonly VarreduraSisregOpcoes _opcoes = opcoes.Value;
@@ -136,6 +154,7 @@ public sealed class VarreduraAgendaService(
         agenda.Ativo = request.Ativo;
         agenda.HoraLocal = request.HoraLocal;
         agenda.DiasAFrente = request.DiasAFrente;
+        if (request.RecorteUnidadeInteira is { } recorte) agenda.RecorteUnidadeInteira = recorte;
 
         // PATCH, não PUT: quem manda payload mínimo não apaga em silêncio a decisão de não avisar
         // o paciente. Mesmo cuidado que a agenda do PEP toma com a janela noturna.
@@ -286,8 +305,13 @@ public sealed class VarreduraAgendaService(
         var inicio = janelaInicio ?? hoje;
         var fim = janelaFim ?? hoje.AddDays(diasAFrente);
 
-        var combinacoes = await CarregarCombinacoesAsync(unidade.Id, ct);
-        if (combinacoes.Count == 0)
+        // No recorte por unidade inteira não há combinação a escolher — o SISREG devolve a agenda
+        // toda numa requisição. Exigir mapeamento aqui barraria justamente a unidade que ainda não
+        // mapeou nada, que é quem mais se beneficia de não precisar mapear para varrer.
+        var unidadeInteira = agenda?.RecorteUnidadeInteira == true;
+
+        var combinacoes = unidadeInteira ? [] : await CarregarCombinacoesAsync(unidade.Id, ct);
+        if (!unidadeInteira && combinacoes.Count == 0)
         {
             throw new ValidacaoException(
                 "varredura.sem_combinacoes",
@@ -305,7 +329,7 @@ public sealed class VarreduraAgendaService(
             Status = StatusVarredura.Pendente,
             JanelaInicio = inicio,
             JanelaFim = fim,
-            CombinacoesTotal = combinacoes.Count,
+            CombinacoesTotal = unidadeInteira ? 1 : combinacoes.Count,
             IniciadoEm = DateTime.UtcNow,
             CriadoPor = usuarioId,
             CriadoPorNome = usuarioId is null ? null : await NomeDoUsuarioAsync(usuarioId.Value, ct),
@@ -324,9 +348,11 @@ public sealed class VarreduraAgendaService(
                 "varredura.fila_cheia", "Já há uma varredura na fila. Tente de novo em instantes.");
         }
 
-        return (execucao.Id,
-            $"Varredura enfileirada: {combinacoes.Count} combinações, de {execucao.JanelaInicio:dd/MM/yyyy} "
-            + $"a {execucao.JanelaFim:dd/MM/yyyy}.");
+        return (execucao.Id, unidadeInteira
+            ? $"Varredura enfileirada: agenda da unidade inteira em UMA requisição, de "
+              + $"{execucao.JanelaInicio:dd/MM/yyyy} a {execucao.JanelaFim:dd/MM/yyyy}."
+            : $"Varredura enfileirada: {combinacoes.Count} combinações, de {execucao.JanelaInicio:dd/MM/yyyy} "
+              + $"a {execucao.JanelaFim:dd/MM/yyyy}.");
     }
 
     // ============================================================ execução
@@ -428,6 +454,12 @@ public sealed class VarreduraAgendaService(
         // aqui: a credencial em uso enxerga todas as unidades, então o CNES que a sessão reporta
         // é sempre o mesmo e barraria todas as unidades menos uma.
         var cnes = SoDigitos(unidade.Cnes!);
+
+        if (agenda?.RecorteUnidadeInteira == true)
+        {
+            await VarrerUnidadeInteiraAsync(execucao, unidade, agenda, cnes, progresso, ct);
+            return;
+        }
 
         var combinacoes = await CarregarCombinacoesAsync(unidade.Id, ct);
 
@@ -560,6 +592,107 @@ public sealed class VarreduraAgendaService(
     }
 
     /// <summary>
+    /// A agenda da unidade INTEIRA em uma requisição (<c>cpf=0</c>, <c>procedimento=0</c>).
+    ///
+    /// <para><b>Por que não há cursor de retomada aqui.</b> No modo por par, parar no meio custava
+    /// caro: retomar do zero refaria centenas de requisições, então valia guardar em qual par
+    /// parou. Aqui a leitura inteira custa uma requisição — refazer sai mais barato que a
+    /// contabilidade de onde parou. O que já entrou continua gravado (a importação salva marcação a
+    /// marcação); a rodada seguinte relê tudo e a idempotência por nº do SISREG resolve o resto.</para>
+    ///
+    /// <para>O rastreio por profissional × procedimento continua existindo, só que reconstituído
+    /// <b>do arquivo</b>: cada linha traz o executante (colunas 4/5) e o seu próprio <c>pa</c>
+    /// (coluna 1). É o mesmo detalhe de antes, obtido sem pagar uma requisição por par.</para>
+    /// </summary>
+    private async Task VarrerUnidadeInteiraAsync(
+        SisregVarreduraExecucao execucao,
+        Unidade unidade,
+        SisregVarreduraAgenda agenda,
+        string cnes,
+        ProgressoVarredura progresso,
+        CancellationToken ct)
+    {
+        progresso.ProfissionalAtual = "(unidade inteira)";
+        progresso.ProcedimentoAtual = "(todos os procedimentos)";
+
+        var marcacoes = await ExportarComTetoAsync(
+            cnes, execucao.JanelaInicio, execucao.JanelaFim,
+            SemFiltro, SemFiltro, unidade.Nome, progresso, ct);
+
+        // Dedupe por nº do SISREG: o split por teto pode repetir uma linha na fronteira das metades.
+        var novas = marcacoes
+            .GroupBy(m => m.CodigoSolicitacao, StringComparer.Ordinal)
+            .Select(g => g.First())
+            .ToList();
+
+        Interlocked.Add(ref progresso.RegistrosEncontrados, novas.Count);
+
+        // Em LOTES, não de uma vez: a requisição é uma só, mas a importação de milhares de linhas
+        // leva minutos. Sem isto a tela ficaria congelada em "0 importadas" até o fim, e uma queda
+        // no meio não teria deixado o progresso gravado — que é o mesmo motivo pelo qual o modo por
+        // par importa a cada combinação em vez de acumular.
+        for (var i = 0; i < novas.Count; i += LoteDeImportacao)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var fatia = novas.Skip(i).Take(LoteDeImportacao).ToList();
+            var resultado = await importacao.ImportarMarcacoesAsync(execucao.Id, fatia, ct);
+
+            Interlocked.Add(ref progresso.Validos, resultado.Validos);
+            Interlocked.Add(ref progresso.Invalidos, resultado.Invalidos);
+            execucao.JaExistiam += resultado.JaExistiam;
+
+            await SalvarProgressoAsync(execucao, progresso, ct);
+        }
+
+        // O detalhe por par, reconstituído do próprio arquivo. Os contadores de válido/inválido são
+        // da importação inteira, então não se pode reparti-los por grupo sem inventar número: o
+        // item guarda o que É dele — quantos registros daquele par vieram. Requisições ficam em 0
+        // em todos menos no primeiro, porque a requisição foi UMA para todos.
+        var primeiro = true;
+        foreach (var grupo in novas
+            .GroupBy(m => (
+                Cpf: m.CpfProfissionalExecutante ?? string.Empty,
+                Codigo: SoDigitos(m.CodigoProcedimentoSisreg ?? string.Empty)))
+            .OrderByDescending(g => g.Count()))
+        {
+            db.SisregVarreduraExecucaoItens.Add(new SisregVarreduraExecucaoItem
+            {
+                Id = Guid.CreateVersion7(),
+                ExecucaoId = execucao.Id,
+                ProfissionalCpf = grupo.Key.Cpf,
+                ProfissionalNome = grupo.First().NomeProfissionalExecutante ?? "(não informado)",
+                ProcedimentoCodigo = grupo.Key.Codigo,
+                ProcedimentoNome = grupo.First().ProcedimentoTexto ?? "(não informado)",
+                Requisicoes = primeiro ? progresso.Requisicoes : 0,
+                RegistrosEncontrados = grupo.Count(),
+                Validos = 0,
+                Invalidos = 0,
+                JaExistiam = 0,
+                Observacao = primeiro
+                    ? $"Agenda da unidade inteira em {progresso.Requisicoes} requisição(ões)."
+                    : null,
+            });
+            primeiro = false;
+        }
+
+        progresso.CombinacoesFeitas = 1;
+        agenda.PausadoAte = null;
+        agenda.CursorProfissionalCpf = null;
+        agenda.CursorProcedimentoCodigo = null;
+        agenda.CursorJanelaFim = null;
+        agenda.FalhasConsecutivas = 0;
+
+        await FinalizarAsync(execucao, StatusVarredura.Concluida, null, ct, progresso);
+
+        logger.LogInformation(
+            "SISREG_VARREDURA_OK (unidade inteira): {Unidade} — {Req} requisições, {Registros} "
+            + "agendamentos, {Validos} importados, {Invalidos} pendências.",
+            unidade.Nome, progresso.Requisicoes, progresso.RegistrosEncontrados,
+            progresso.Validos, progresso.Invalidos);
+    }
+
+    /// <summary>
     /// Exporta a agenda de UM par profissional × procedimento e devolve as marcações.
     ///
     /// <para><b>Teto de 700 registros por exportação</b>, medido em 03/08/2026: intervalos de 61 e
@@ -574,34 +707,59 @@ public sealed class VarreduraAgendaService(
         DateOnly fim,
         Combinacao combinacao,
         ProgressoVarredura progresso,
+        CancellationToken ct) =>
+        await ExportarComTetoAsync(
+            cnes, inicio, fim, combinacao.Cpf, combinacao.Codigo,
+            combinacao.NomeProcedimento, progresso, ct);
+
+    /// <summary>
+    /// Uma exportação, partindo a janela ao meio quando o SISREG trunca.
+    ///
+    /// <para><c>cpf</c> e <c>procedimento</c> aceitam <see cref="SemFiltro"/> — é assim que a
+    /// agenda da unidade inteira sai de uma vez.</para>
+    /// </summary>
+    private async Task<List<MarcacaoSisreg>> ExportarComTetoAsync(
+        string cnes,
+        DateOnly inicio,
+        DateOnly fim,
+        string cpf,
+        string procedimento,
+        string rotulo,
+        ProgressoVarredura progresso,
         CancellationToken ct)
     {
-        var texto = await ExportarAsync(cnes, inicio, fim, combinacao, ct);
+        var texto = await ExportarAsync(cnes, inicio, fim, cpf, procedimento, ct);
         Interlocked.Increment(ref progresso.Requisicoes);
 
-        var parsed = AgendaTxtParser.Parse(texto, NomeArquivoSintetico(combinacao, inicio, fim));
+        var parsed = AgendaTxtParser.Parse(texto, NomeArquivoSintetico(procedimento, inicio, fim));
 
-        var bateuNoTeto = parsed.Marcacoes.Count >= TetoRegistrosPorExportacao;
+        // O TOTAL do cabeçalho, não a contagem de linhas PARSEADAS: no corte silencioso o cabeçalho
+        // também diz 700, e uma única linha recusada pelo parser faria 700 virar 699 aqui — o corte
+        // passaria despercebido e o agendamento sumiria sem aviso. Medido em 27/08/2026: o total
+        // declarado bateu exatamente com as linhas nos quatro recortes testados, inclusive num de
+        // 3.286 (o teto de 700 não se aplica ao recorte amplo, mas a guarda continua valendo).
+        var lidos = parsed.Cabecalho.Total ?? parsed.Marcacoes.Count + parsed.Rejeitadas.Count;
+
+        var bateuNoTeto = lidos >= TetoRegistrosPorExportacao;
         if (!bateuNoTeto || inicio >= fim) return [.. parsed.Marcacoes];
 
         // Parte ao meio e reconsulta cada metade. A recursão termina porque a janela encolhe a cada
         // nível e para quando inicio == fim (um único dia).
         var meio = inicio.AddDays((fim.DayNumber - inicio.DayNumber) / 2);
         logger.LogWarning(
-            "SISREG_EXPORT_TRUNCADA: {Proc} em {Ini}..{Fim} bateu o teto de {Teto} registros — "
+            "SISREG_EXPORT_TRUNCADA: {Proc} em {Ini}..{Fim} declarou {Lidos} registros (teto {Teto}) — "
             + "partindo a janela em {Ini}..{Meio} e {Meio2}..{Fim}.",
-            combinacao.NomeProcedimento, inicio, fim, TetoRegistrosPorExportacao,
-            inicio, meio, meio.AddDays(1), fim);
+            rotulo, inicio, fim, lidos, TetoRegistrosPorExportacao, inicio, meio, meio.AddDays(1), fim);
 
-        var esquerda = await ExportarComTetoAsync(cnes, inicio, meio, combinacao, progresso, ct);
-        var direita = await ExportarComTetoAsync(cnes, meio.AddDays(1), fim, combinacao, progresso, ct);
+        var esquerda = await ExportarComTetoAsync(cnes, inicio, meio, cpf, procedimento, rotulo, progresso, ct);
+        var direita = await ExportarComTetoAsync(cnes, meio.AddDays(1), fim, cpf, procedimento, rotulo, progresso, ct);
 
         esquerda.AddRange(direita);
         return esquerda;
     }
 
     private async Task<string> ExportarAsync(
-        string cnes, DateOnly inicio, DateOnly fim, Combinacao combinacao, CancellationToken ct)
+        string cnes, DateOnly inicio, DateOnly fim, string cpf, string procedimento, CancellationToken ct)
     {
         // Pausa ANTES da requisição. Fica aqui e não na sessão HTTP de propósito: atrasar a sessão
         // penalizaria as telas interativas (mapeamento, CADSUS), que não têm nada a ver com o
@@ -615,8 +773,8 @@ public sealed class VarreduraAgendaService(
             // SISREG responderia vazio — falha silenciosa, idêntica a uma agenda sem movimento.
             ["data1"] = inicio.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             ["data2"] = fim.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
-            ["cpf"] = combinacao.Cpf,
-            ["procedimento"] = combinacao.Codigo,
+            ["cpf"] = cpf,
+            ["procedimento"] = procedimento,
             ["tp_arquivo"] = "0", // 0 = TXT, 1 = CSV
             ["etapa"] = "exportar",
             ["unidade"] = cnes,
@@ -627,8 +785,8 @@ public sealed class VarreduraAgendaService(
     /// O parser do TXT usa o nome do arquivo para derivar a unidade executante no formato CSV.
     /// Aqui o cabeçalho já traz o CNES, mas um nome estável ajuda a proveniência da pendência.
     /// </summary>
-    private static string NomeArquivoSintetico(Combinacao combinacao, DateOnly inicio, DateOnly fim) =>
-        $"sisreg-{combinacao.Codigo}-{inicio:yyyyMMdd}-{fim:yyyyMMdd}.txt";
+    private static string NomeArquivoSintetico(string procedimento, DateOnly inicio, DateOnly fim) =>
+        $"sisreg-{(procedimento == SemFiltro ? "unidade" : procedimento)}-{inicio:yyyyMMdd}-{fim:yyyyMMdd}.txt";
 
     private async Task TratarCaptchaAsync(
         SisregVarreduraExecucao execucao,
@@ -797,14 +955,16 @@ public sealed class VarreduraAgendaService(
             agenda?.UltimaExecucaoEm,
             agenda?.FalhasConsecutivas ?? 0,
             prontas,
-            // Uma exportação por combinação; páginas extras entram por cima.
-            prontas,
+            // Uma exportação por combinação; páginas extras entram por cima. No recorte por unidade
+            // inteira é UMA para tudo — o mapeamento deixa de ser o que dita o custo.
+            agenda?.RecorteUnidadeInteira == true ? 1 : prontas,
             _opcoes.TetoPorExecucao,
             _opcoes.BloqueioInicioLocal,
             _opcoes.BloqueioFimLocal,
             _opcoes.CorteEntradaLocal,
             // Unidade sem linha de configuração NÃO envia: o gatilho é opt-in.
-            agenda?.EnviarConfirmacao ?? false);
+            agenda?.EnviarConfirmacao ?? false,
+            agenda?.RecorteUnidadeInteira ?? false);
     }
 
     private async Task<string?> NomeDoUsuarioAsync(Guid usuarioId, CancellationToken ct) =>

@@ -48,6 +48,7 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
   const [ativo, setAtivo] = useState(false);
   const [hora, setHora] = useState('04:30');
   const [dias, setDias] = useState('21');
+  const [unidadeInteira, setUnidadeInteira] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
   /**
@@ -76,7 +77,14 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
     setAtivo(dados.ativo);
     setHora(dados.horaLocal.slice(0, 5));
     setDias(String(dados.diasAFrente));
-  }, [dados?.unidadeId, dados?.ativo, dados?.horaLocal, dados?.diasAFrente]);
+    setUnidadeInteira(dados.recorteUnidadeInteira);
+  }, [
+    dados?.unidadeId,
+    dados?.ativo,
+    dados?.horaLocal,
+    dados?.diasAFrente,
+    dados?.recorteUnidadeInteira,
+  ]);
 
   /**
    * Para de acompanhar quando a varredura sai do ar. O atraso dá tempo de a última atualização do
@@ -112,7 +120,10 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
         </h3>
         <p className="mt-1 text-sm text-gray-600">
           Todo dia, no horário escolhido, o sistema lê no SISREG a agenda desta unidade e cria as
-          solicitações. Varre só os profissionais e procedimentos marcados acima.
+          solicitações.{' '}
+          {dados?.recorteUnidadeInteira
+            ? 'Traz a agenda inteira da unidade, sem separar por profissional ou procedimento.'
+            : 'Varre só os profissionais e procedimentos marcados acima.'}
         </p>
       </header>
 
@@ -152,6 +163,29 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           />
         </Campo>
 
+        {/* Ocupa a linha inteira: a explicação é o que decide a escolha, e espremê-la ao lado dos
+            outros campos a deixaria ilegível. */}
+        <label className="flex w-full max-w-3xl items-start gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={unidadeInteira}
+            disabled={!podeEditar}
+            onChange={(e) => setUnidadeInteira(e.target.checked)}
+          />
+          <span>
+            Puxar a agenda da unidade inteira numa requisição
+            <span className="mt-0.5 block text-xs text-gray-500">
+              O SISREG devolve toda a agenda da unidade de uma vez: em vez de{' '}
+              {dados?.combinacoesProntas ?? 0} consultas — uma para cada profissional e
+              procedimento marcado — a varredura faz apenas 1. É o que evita o CAPTCHA, que o SISREG
+              cobra depois de umas 700 consultas seguidas e trava esta unidade por 24 h, até alguém
+              respondê-lo no navegador. Em troca, o que está marcado acima deixa de escolher o que é
+              consultado: a agenda inteira da unidade é importada.
+            </span>
+          </span>
+        </label>
+
         {podeEditar && (
           <Button
             tamanho="sm"
@@ -163,6 +197,7 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
                     ativo,
                     horaLocal: hora,
                     diasAFrente: Number(dias) || 21,
+                    recorteUnidadeInteira: unidadeInteira,
                   }),
                 () => 'Sincronismo salvo.',
               )

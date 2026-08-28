@@ -28,6 +28,30 @@ public class SisregVarreduraAgenda
     public bool Ativo { get; set; }
 
     /// <summary>
+    /// Puxar a agenda da unidade INTEIRA numa requisição, em vez de uma por par
+    /// profissional × procedimento.
+    ///
+    /// <para><b>Medido contra o SISREG real em 27/08/2026</b> (sonda
+    /// <c>Automais.SISREG/sonda_export_amplo.py</c>): com <c>cpf=0</c> e <c>procedimento=0</c> — as
+    /// option-sentinela do próprio formulário, que o JS dele nunca valida — o
+    /// <c>expo_solicitacoes</c> devolveu 3.286 linhas e 65 procedimentos do CDT numa requisição,
+    /// contendo integralmente o recorte restrito. A varredura que custa 272 requisições cabe em 1.
+    /// Era essa soma que estourava o CAPTCHA (~700 por operador) e deixava a unidade parcial todo
+    /// dia.</para>
+    ///
+    /// <para><b>Muda o significado de "habilitado" no mapeamento:</b> ele deixa de decidir o que se
+    /// CONSULTA (não há mais o que escolher — vem tudo) e a agenda inteira da unidade é importada.
+    /// Filtrar de volta pelos códigos habilitados seria pior que não filtrar: quando o operador
+    /// habilita um GRUPO (<c>1402000</c>), o TXT traz os ITENS (<c>1402077</c>…), e o filtro
+    /// descartaria justamente o que veio pelo grupo. O mapeamento continua valendo para o gatilho
+    /// de confirmação ao paciente, que é opt-in por procedimento.</para>
+    ///
+    /// <para>Nasce DESLIGADO: é mudança de comportamento de um motor de produção, e a unidade
+    /// escolhe quando adotar.</para>
+    /// </summary>
+    public bool RecorteUnidadeInteira { get; set; }
+
+    /// <summary>
     /// Gatilho mestre da unidade: ao importar uma solicitação, avisar o paciente por WhatsApp?
     /// Vale para <b>toda</b> importação da unidade — varredura e upload de arquivo.
     ///

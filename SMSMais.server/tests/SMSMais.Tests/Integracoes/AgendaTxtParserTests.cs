@@ -317,6 +317,29 @@ public class AgendaTxtParserTests
     }
 
     /// <summary>
+    /// O TOTAL declarado no cabeçalho é o que decide se o SISREG truncou — e é o que a varredura
+    /// compara com o teto de 700.
+    ///
+    /// <para>Contar linhas PARSEADAS não serve: no corte silencioso o cabeçalho também diz 700, e
+    /// basta UMA linha recusada pelo parser para a conta dar 699 e o corte passar despercebido —
+    /// a janela não seria partida e os agendamentos que faltaram sumiriam sem aviso.</para>
+    /// </summary>
+    [Fact]
+    public void Total_do_cabecalho_nao_depende_de_a_linha_ser_parseavel()
+    {
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;3\n"
+                  + Linha("670119011") + "\n"
+                  + "linha corrompida sem os 38 campos\n"
+                  + Linha("670121358");
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        r.Cabecalho.Total.Should().Be(3, "é o que o SISREG declarou, não o que conseguimos ler");
+        r.Marcacoes.Should().HaveCount(2);
+        r.Rejeitadas.Should().ContainSingle();
+    }
+
+    /// <summary>
     /// O profissional EXECUTANTE vem nas colunas 4 e 5 (o cabeçalho do CSV as nomeia
     /// <c>cpf_proficional_executante</c>/<c>nome_profissional_executante</c>) e não pode ser
     /// confundido com o SOLICITANTE das colunas 36/37 — papéis opostos na mesma linha.

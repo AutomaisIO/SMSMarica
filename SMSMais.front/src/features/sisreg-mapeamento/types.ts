@@ -105,6 +105,10 @@ export type VarreduraAgenda = {
   /** Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp? Vale para
    * toda importação — varredura e upload de arquivo. */
   enviarConfirmacao: boolean;
+  /** Pede a exportação sem escolher profissional nem procedimento: o SISREG devolve a agenda da
+   * unidade inteira numa requisição só. Ligado, `requisicoesEstimadas` vem 1 (o back calcula) e o
+   * mapeamento deixa de recortar o que é consultado. */
+  recorteUnidadeInteira: boolean;
 };
 
 export type SalvarVarreduraAgendaPayload = {
@@ -114,6 +118,8 @@ export type SalvarVarreduraAgendaPayload = {
   diasAFrente: number;
   /** Omitido mantém o valor atual — dá para salvar só a agenda sem mexer no gatilho. */
   enviarConfirmacao?: boolean;
+  /** Omitido mantém o valor atual, igual ao gatilho de WhatsApp. */
+  recorteUnidadeInteira?: boolean;
 };
 
 export type StatusVarredura =

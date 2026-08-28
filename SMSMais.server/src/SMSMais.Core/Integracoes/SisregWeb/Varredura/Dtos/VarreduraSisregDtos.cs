@@ -29,7 +29,10 @@ public sealed record VarreduraAgendaDto(
     TimeOnly CorteEntradaLocal,
     /// <summary>Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp?
     /// Vale para toda importação — varredura e upload de arquivo.</summary>
-    bool EnviarConfirmacao);
+    bool EnviarConfirmacao,
+    /// <summary>Puxar a agenda da unidade inteira numa requisição, em vez de uma por par
+    /// profissional × procedimento. Ver <c>SisregVarreduraAgenda.RecorteUnidadeInteira</c>.</summary>
+    bool RecorteUnidadeInteira = false);
 
 /// <summary>Ligar/desligar o sincronismo diário e ajustar hora e janela de dias.</summary>
 public sealed record SalvarVarreduraAgendaRequest(
@@ -38,7 +41,9 @@ public sealed record SalvarVarreduraAgendaRequest(
     int DiasAFrente,
     /// <summary>Omitido mantém o valor atual — a tela pode salvar só a agenda sem mexer no
     /// gatilho de confirmação, e vice-versa.</summary>
-    bool? EnviarConfirmacao = null);
+    bool? EnviarConfirmacao = null,
+    /// <summary>Idem: omitido mantém o recorte atual.</summary>
+    bool? RecorteUnidadeInteira = null);
 
 /// <summary>Uma execução do motor, para a lista de "varreduras recentes".</summary>
 public sealed record VarreduraExecucaoDto(
