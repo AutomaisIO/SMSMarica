@@ -87,6 +87,34 @@ public class RoboAtendimentoMotorApiTests(PostgresFixture fixture)
         return (motor, dispatcher, api);
     }
 
+    /// <summary>Mensagem de atendente humano no histórico precisa chegar MARCADA — senão o modelo
+    /// lê como fala própria e passa a imitar promessas que só um humano pode cumprir.</summary>
+    [Fact]
+    public async Task Mensagem_de_atendente_humano_chega_marcada_como_de_outro_autor()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (motor, _, api) = await CriarAsync(db, (HttpStatusCode.OK, RespostaComTexto("ok")));
+        var entrada = Entrada() with
+        {
+            Historico =
+            [
+                new MensagemHistoricoRobo("cidadao", "quero remarcar"),
+                new MensagemHistoricoRobo("atendente", "Claro, já remarquei para o dia 12."),
+                new MensagemHistoricoRobo("robo", "Posso ajudar em algo mais?"),
+            ],
+        };
+
+        await motor.ResponderAsync(entrada, default);
+
+        using var doc = JsonDocument.Parse(api.Requisicoes[0]);
+        var conteudo = string.Join(" | ", doc.RootElement.GetProperty("messages").EnumerateArray()
+            .Select(m => m.GetProperty("content").GetString()));
+        Assert.Contains("ATENDENTE HUMANO", conteudo);
+        Assert.Contains("já remarquei", conteudo);
+        // A fala do próprio robô continua sem marca — ela É dele.
+        Assert.DoesNotContain("HUMANO, não por você] Posso ajudar", conteudo);
+    }
+
     private static EntradaMotorRobo Entrada(params string[] comandos) => new(
         ChaveSessao: "t", ConversaId: Guid.NewGuid(), PacienteId: null, AssuntoId: Guid.NewGuid(),
         Modelo: Modelo, InstrucaoSistema: "Você é um atendente.", ComandosHabilitados: comandos,

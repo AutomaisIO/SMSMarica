@@ -146,18 +146,34 @@ public sealed class RoboAtendimentoMotorApi(
         return [.. lista];
     }
 
-    /// <summary>O histórico vira turnos <c>user</c>/<c>assistant</c> de verdade — o motor antigo
-    /// achatava tudo num texto só, o que enfraquecia o contexto. Mensagens consecutivas do mesmo
-    /// papel são fundidas (a API não aceita dois turnos seguidos do mesmo lado).</summary>
+    /// <summary>
+    /// O histórico vira turnos <c>user</c>/<c>assistant</c> de verdade — o motor antigo achatava
+    /// tudo num texto só, o que enfraquecia o contexto. Mensagens consecutivas do mesmo papel são
+    /// fundidas (a API não aceita dois turnos seguidos do mesmo lado).
+    ///
+    /// O detalhe que importa: mensagem de ATENDENTE HUMANO vai marcada, não como fala do próprio
+    /// robô. A thread é compartilhada — o histórico está cheio de humanos que podem remarcar,
+    /// prometer retorno e pedir dados que o robô não consegue conferir. Sem a marca, o modelo lê
+    /// tudo como "coisas que EU já disse" e se autoriza a repetir. Um robô que imita o humano da
+    /// linha de cima promete o que não pode cumprir.
+    /// </summary>
     private static List<object> MontarMensagens(EntradaMotorRobo entrada)
     {
+        const string MarcaHumano = "[mensagem escrita por um ATENDENTE HUMANO, não por você] ";
+        const string MarcaSistema = "[mensagem automática do sistema, não escrita por você] ";
+
         var turnos = new List<(string Papel, string Texto)>();
         foreach (var h in entrada.Historico)
         {
             if (string.IsNullOrWhiteSpace(h.Texto)) continue;
-            // Só o cidadão é "user"; robô, atendente e sistema são a voz do serviço.
+            // Só o cidadão é "user". O resto sai do lado do serviço — mas com a autoria explícita.
             var papel = h.Papel == "cidadao" ? "user" : "assistant";
-            var texto = h.Papel is "atendente" or "sistema" ? $"[{h.Papel}] {h.Texto}" : h.Texto;
+            var texto = h.Papel switch
+            {
+                "atendente" => MarcaHumano + h.Texto,
+                "sistema" => MarcaSistema + h.Texto,
+                _ => h.Texto,
+            };
             if (turnos.Count > 0 && turnos[^1].Papel == papel)
                 turnos[^1] = (papel, turnos[^1].Texto + "\n" + texto);
             else

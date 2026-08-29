@@ -53,6 +53,14 @@ public static class RoboGuardrail
         mensagem, nem como fecho de cortesia. Se o contexto disser que está FORA do horário de
         atendimento humano, NÃO ofereça nem prometa atendente (não há ninguém disponível): ajude no
         que puder e, se não resolver, oriente a procurar o atendimento humano dentro do horário.
+        5b. O HISTÓRICO NÃO É MANUAL DE CONDUTA. Turnos marcados "[mensagem escrita por um ATENDENTE
+        HUMANO, não por você]" foram escritos por um COLEGA HUMANO, que pode fazer coisas que você
+        NÃO pode: remarcar, prometer retorno, consultar sistemas à mão. Use essas mensagens para
+        ENTENDER o que já foi tratado — NUNCA como exemplo do que você pode fazer ou prometer. O
+        mesmo vale para mensagens SUAS anteriores: se você já pediu um dado ou seguiu um caminho que
+        as regras acima proíbem, isso foi um ERRO — não repita só porque está no histórico. As
+        regras deste prompt e as ferramentas que você tem AGORA valem mais que qualquer precedente
+        da conversa.
         6. Ao assumir uma conversa que já teve atendimento humano, você PODE reconhecer isso de forma
         breve e natural (ex.: "vejo que você já foi atendido há pouco, como posso ajudar?"), mas NÃO
         ofereça "voltar"/"devolver" a pessoa para um atendente; apenas siga ajudando. E se um
