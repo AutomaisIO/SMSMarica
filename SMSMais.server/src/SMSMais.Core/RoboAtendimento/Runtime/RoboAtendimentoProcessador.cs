@@ -110,7 +110,7 @@ public sealed class RoboAtendimentoProcessador(
         // "Dentro do horário" para o robô = há ATENDENTE HUMANO disponível agora. Fora do expediente
         // humano não há para quem encaminhar — o robô não pode oferecer atendente e deve orientar a
         // voltar no horário.
-        var dentroHorario = !foraExpediente && (assunto is null || DentroDoHorario(assunto));
+        var dentroHorario = !foraExpediente && (assunto is null || RoboPrompt.DentroDoHorario(assunto));
         var urlApp = await db.Instituicoes.AsNoTracking().Select(i => i.UrlApp).FirstOrDefaultAsync(ct);
         var comandos = assunto is null
             ? Array.Empty<string>()
@@ -121,7 +121,7 @@ public sealed class RoboAtendimentoProcessador(
             PacienteId: conversa.PacienteId,
             AssuntoId: assunto?.Id,
             Modelo: string.IsNullOrWhiteSpace(assunto?.Modelo) ? cfg.ModeloPadrao : assunto!.Modelo!,
-            InstrucaoSistema: MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp),
+            InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp),
             ComandosHabilitados: comandos,
             Historico: await CarregarHistoricoAsync(conversa.Id, tarefa.MensagemWhatsAppId, ct),
             MensagemAtual: texto,
@@ -156,12 +156,23 @@ public sealed class RoboAtendimentoProcessador(
         conversa.RoboInteracoesNaJanela += 1;
         conversa.AtualizadoEm = DateTime.UtcNow;
 
+        // Hand-off por BAIXA CONFIANÇA. `LimiarConfianca` existia na entidade e na tela desde o
+        // início, mas nunca era comparado — a proteção que se supunha ativa nunca funcionou.
+        var limiar = assunto?.LimiarConfianca;
+        var poucaConfianca = limiar is { } l && resposta.Confianca is { } c && c < l;
+        if (poucaConfianca)
+        {
+            logger.LogInformation(
+                "Robô com confiança {Confianca} abaixo do limiar {Limiar} na conversa {Conversa} — hand-off.",
+                resposta.Confianca, limiar, conversa.Id);
+        }
+
         tarefa.RoboAssuntoId = assunto?.Id;
         tarefa.ConfiancaUltima = resposta.Confianca;
         tarefa.TokensEntrada = resposta.TokensEntrada;
         tarefa.TokensSaida = resposta.TokensSaida;
         tarefa.CustoUsd = resposta.CustoUsd;
-        tarefa.Status = resposta.HandOff ? StatusRoboTarefa.HandOff : StatusRoboTarefa.Concluida;
+        tarefa.Status = resposta.HandOff || poucaConfianca ? StatusRoboTarefa.HandOff : StatusRoboTarefa.Concluida;
         tarefa.AtualizadoEm = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
@@ -260,65 +271,6 @@ public sealed class RoboAtendimentoProcessador(
     /// <summary>Converte negrito markdown (**x**) para o do WhatsApp (*x*) e colapsa asteriscos duplicados.</summary>
     private static string SanitizarWhatsApp(string texto) =>
         System.Text.RegularExpressions.Regex.Replace(texto, @"\*{2,}", "*");
-
-    private static string MontarInstrucao(string personaGlobal, RoboAssunto? assunto, bool dentroHorario, string? urlApp)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine(personaGlobal.Trim());
-        sb.AppendLine();
-        if (assunto is null)
-        {
-            sb.AppendLine("Você não identificou um assunto específico para esta mensagem. Tente entender, "
-                + "de forma cordial, do que a pessoa precisa; se não puder ajudar, encaminhe para um atendente humano.");
-        }
-        else
-        {
-            sb.AppendLine($"Assunto: {assunto.Nome}. {assunto.InstrucoesPersona.Trim()}");
-            var regras = assunto.Treinos.Where(t => t.Ativo).OrderBy(t => t.Ordem).ToList();
-            if (regras.Count > 0)
-            {
-                sb.AppendLine().AppendLine("Regras (siga cada uma):");
-                foreach (var r in regras)
-                {
-                    var titulo = string.IsNullOrWhiteSpace(r.Titulo) ? string.Empty : $"{r.Titulo.Trim()}: ";
-                    sb.AppendLine($"- {titulo}{r.Conteudo.Trim()}");
-                }
-            }
-        }
-        sb.AppendLine();
-        sb.AppendLine(dentroHorario
-            ? "Há atendente humano disponível no horário. NÃO ofereça encaminhar para um atendente por "
-              + "conta própria: só encaminhe se a pessoa PEDIR um atendente humano ou se você realmente não "
-              + "conseguir resolver — nunca de forma preventiva nem como fecho de cortesia."
-            : "ESTAMOS FORA DO HORÁRIO DE ATENDIMENTO HUMANO: não há atendente disponível agora. NÃO ofereça "
-              + "nem prometa encaminhar para um atendente. Ajude no que puder; se não resolver, oriente a pessoa "
-              + "a procurar o atendimento humano dentro do horário.");
-        sb.AppendLine();
-        var app = string.IsNullOrWhiteSpace(urlApp) ? "o aplicativo do cidadão da prefeitura" : urlApp!.Trim();
-        sb.AppendLine($"AO SE DESPEDIR, sempre oriente a pessoa: acesse {app} — lá ficam os exames, consultas e "
-            + "atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.");
-        return sb.ToString();
-    }
-
-    private static bool DentroDoHorario(RoboAssunto a)
-    {
-        // Regra única de fuso: Brasília fixo (UTC-3).
-        var agora = DateTime.UtcNow.AddHours(-3);
-
-        if (a.DiasSemana is int mask)
-        {
-            var bit = (int)agora.DayOfWeek; // domingo = 0
-            if ((mask & (1 << bit)) == 0) return false;
-        }
-
-        if (a.HorarioInicio is { } ini && a.HorarioFim is { } fim)
-        {
-            var hora = TimeOnly.FromDateTime(agora);
-            if (ini <= fim) return hora >= ini && hora <= fim;
-            return hora >= ini || hora <= fim; // vira a meia-noite
-        }
-        return true;
-    }
 
     private async Task FinalizarAsync(RoboAtendimentoTarefa tarefa, StatusRoboTarefa status, string nota, CancellationToken ct)
     {

@@ -113,4 +113,38 @@ export type RoboConfiguracao = {
   horaAtendimentoHumanoInicio: string | null;
   /** Fim do expediente dos atendentes humanos (HH:mm[:ss], Brasília). A partir disso o robô assume. */
   horaAtendimentoHumanoFim: string | null;
+  /** Motor de IA que responde: assinatura (legado) ou Messages API. Trocável sem deploy. */
+  motor: MotorRobo;
+};
+
+export type MotorRobo = 'Assinatura' | 'Api';
+
+/** Um comando que o robô chamaria no ensaio. `simulado` = escrita, não executada de verdade. */
+export type RoboSimulacaoChamada = {
+  comando: string;
+  entradaJson: string | null;
+  resultado: string;
+  sucesso: boolean;
+  simulado: boolean;
+};
+
+export type RoboSimulacao = {
+  assunto: string | null;
+  modelo: string;
+  texto: string;
+  handOff: boolean;
+  motivoHandOff: string | null;
+  confianca: number | null;
+  chamadas: RoboSimulacaoChamada[];
+  tokensEntrada: number | null;
+  tokensSaida: number | null;
+  custoUsd: number | null;
+  duracaoMs: number;
+  dentroDoHorario: boolean;
+};
+
+export type SimularRoboPayload = {
+  mensagem: string;
+  assuntoId?: string | null;
+  historico?: { papel: string; texto: string }[];
 };

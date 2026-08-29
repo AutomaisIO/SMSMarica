@@ -1,3 +1,5 @@
+using SMSMais.Data.Entities.Enums;
+
 namespace SMSMais.Core.RoboAtendimento.Dtos;
 
 /// <summary>Configuração global do robô (singleton).</summary>
@@ -9,7 +11,8 @@ public sealed record RoboConfiguracaoDto(
     string? MensagemHandOff,
     string? MensagemForaHorario,
     TimeOnly? HoraAtendimentoHumanoInicio,
-    TimeOnly? HoraAtendimentoHumanoFim);
+    TimeOnly? HoraAtendimentoHumanoFim,
+    MotorRobo Motor);
 
 public sealed record SalvarRoboConfiguracaoRequest(
     bool Ativo,
@@ -19,4 +22,5 @@ public sealed record SalvarRoboConfiguracaoRequest(
     string? MensagemHandOff,
     string? MensagemForaHorario,
     TimeOnly? HoraAtendimentoHumanoInicio,
-    TimeOnly? HoraAtendimentoHumanoFim);
+    TimeOnly? HoraAtendimentoHumanoFim,
+    MotorRobo Motor = MotorRobo.Assinatura);

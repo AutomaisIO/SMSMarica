@@ -1,3 +1,5 @@
+using SMSMais.Data.Entities.Enums;
+
 namespace SMSMais.Data.Entities.Robo;
 
 /// <summary>
@@ -31,6 +33,11 @@ public class RoboConfiguracao
 
     /// <summary>Modelo padrão quando o assunto não define o seu (default Haiku).</summary>
     public string ModeloPadrao { get; set; } = "claude-haiku-4-5-20251001";
+
+    /// <summary>Motor que responde pelo robô. Default <see cref="MotorRobo.Assinatura"/> (o caminho
+    /// antigo) para que o deploy da migração não mude comportamento nenhum: virar para
+    /// <see cref="MotorRobo.Api"/> é uma decisão explícita na tela, e voltar também.</summary>
+    public MotorRobo Motor { get; set; } = MotorRobo.Assinatura;
 
     /// <summary>Nome de exibição do robô nas conversas (ex.: "Assistente virtual").</summary>
     public string NomeExibicao { get; set; } = "Assistente virtual";

@@ -16,7 +16,8 @@ namespace SMSMais.Api.Controllers;
 public sealed class RoboController(
     IRoboAssuntoService assuntos,
     IRoboConfiguracaoService configuracao,
-    IRoboErroService erros) : ControllerBase
+    IRoboErroService erros,
+    SMSMais.Core.RoboAtendimento.Runtime.IRoboSimulacaoService simulacao) : ControllerBase
 {
     // ---- Assuntos ----
 
@@ -90,6 +91,20 @@ public sealed class RoboController(
         await configuracao.SalvarAsync(request, ct);
         return NoContent();
     }
+
+    // ---- Simulação (ensaio sem falar com o cidadão) ----
+
+    /// <summary>
+    /// Roda um turno do robô pela Messages API e devolve o que ele responderia, os comandos que
+    /// chamaria, tokens, custo e latência. NADA é enviado ao cidadão e comandos de escrita não
+    /// executam — é o ensaio que antecede religar o robô.
+    /// </summary>
+    [HttpPost("simular")]
+    [RequerPermissao(ModuloPermissao.RoboAtendimento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RoboSimulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<RoboSimulacaoDto> Simular([FromBody] SimularRoboRequest request, CancellationToken ct) =>
+        await simulacao.SimularAsync(request, ct);
 
     // ---- Erros para treinamento ----
 

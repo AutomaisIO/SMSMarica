@@ -5,6 +5,8 @@ import type {
   RoboAssuntoListItem,
   RoboConfiguracao,
   RoboErro,
+  RoboSimulacao,
+  SimularRoboPayload,
   SalvarRoboAssuntoPayload,
   StatusRoboErro,
 } from '@/features/robo-atendimento/types';
@@ -46,6 +48,12 @@ export async function obterConfiguracao(): Promise<RoboConfiguracao> {
 
 export async function salvarConfiguracao(payload: RoboConfiguracao): Promise<void> {
   await http.put('/robo/configuracao', payload);
+}
+
+/** Ensaia um turno do robô: nada é enviado ao cidadão e comandos de escrita não executam. */
+export async function simularRobo(payload: SimularRoboPayload): Promise<RoboSimulacao> {
+  const { data } = await http.post<RoboSimulacao>('/robo/simular', payload);
+  return data;
 }
 
 export async function listarErrosRobo(status?: StatusRoboErro): Promise<RoboErro[]> {

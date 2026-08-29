@@ -15,6 +15,8 @@ internal sealed class RoboConfiguracaoConfiguration : IEntityTypeConfiguration<R
         builder.Property(x => x.Ativo).HasColumnName("ativo").HasDefaultValue(false).IsRequired();
         builder.Property(x => x.PersonaGlobal).HasColumnName("persona_global").HasColumnType("text").IsRequired();
         builder.Property(x => x.ModeloPadrao).HasColumnName("modelo_padrao").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Motor).HasColumnName("motor").HasConversion<int>()
+            .HasDefaultValue(Data.Entities.Enums.MotorRobo.Assinatura).IsRequired();
         builder.Property(x => x.NomeExibicao).HasColumnName("nome_exibicao").HasMaxLength(80).IsRequired();
         builder.Property(x => x.MensagemHandOff).HasColumnName("mensagem_handoff").HasMaxLength(1000);
         builder.Property(x => x.MensagemForaHorario).HasColumnName("mensagem_fora_horario").HasMaxLength(1000);

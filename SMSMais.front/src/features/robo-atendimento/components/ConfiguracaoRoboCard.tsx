@@ -82,6 +82,22 @@ export function ConfiguracaoRoboCard() {
         </Campo>
       </div>
 
+      <Campo
+        label="Motor de IA"
+        htmlFor="cfg-motor"
+        dica="API: chamada direta à Anthropic (resposta em segundos, custo medido). Assinatura: caminho antigo pelo serviço de IA. Trocar aqui vale na hora, sem deploy."
+      >
+        <select
+          id="cfg-motor"
+          className={CAMPO_CLASSE}
+          value={form.motor}
+          onChange={(e) => set('motor', e.target.value as RoboConfiguracao['motor'])}
+        >
+          <option value="Api">API (Messages API — recomendado)</option>
+          <option value="Assinatura">Assinatura (legado)</option>
+        </select>
+      </Campo>
+
       <Campo label="Mensagem ao passar para atendente" htmlFor="cfg-handoff" dica="Opcional.">
         <textarea
           id="cfg-handoff"

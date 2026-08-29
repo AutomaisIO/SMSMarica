@@ -7,6 +7,7 @@ import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { ConfiguracaoRoboCard } from '@/features/robo-atendimento/components/ConfiguracaoRoboCard';
 import { EditorAssunto } from '@/features/robo-atendimento/components/EditorAssunto';
 import { ErrosRoboCard } from '@/features/robo-atendimento/components/ErrosRoboCard';
+import { SimuladorRoboCard } from '@/features/robo-atendimento/components/SimuladorRoboCard';
 import { useExcluirAssunto, useListarAssuntos } from '@/features/robo-atendimento/api/queries';
 import type { RoboAssuntoListItem } from '@/features/robo-atendimento/types';
 
@@ -115,6 +116,8 @@ export function RoboAtendimentoPage() {
         carregando={lista.isPending}
         vazio="Nenhum assunto cadastrado."
       />
+
+      <SimuladorRoboCard />
 
       <ErrosRoboCard />
 

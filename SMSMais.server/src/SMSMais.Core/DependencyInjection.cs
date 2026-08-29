@@ -627,6 +627,13 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(anthropicBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(120);
         });
+        // Robô de atendimento na Messages API (ADR-0050) — mesma chave cifrada do módulo IA.
+        // Timeout menor que o do FT3: um turno de WhatsApp que passa disso já perdeu a conversa.
+        services.AddHttpClient<RoboAtendimento.Runtime.RoboAtendimentoMotorApi>(client =>
+        {
+            client.BaseAddress = new Uri(anthropicBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
 
         // Validação de telefone por OTP (WhatsApp) — registro global do número validado.
         services.AddScoped<Telefones.ITelefoneValidacaoService, Telefones.TelefoneValidacaoService>();
@@ -669,7 +676,12 @@ public static class DependencyInjection
         services.AddScoped<PendenciasCadastro.IPendenciaCadastroService, PendenciasCadastro.PendenciaCadastroService>();
 
         // Runtime do robô: motor (aiengine), classificador, processador (1 tarefa) e o worker (fila).
-        services.AddScoped<RoboAtendimento.Runtime.IRoboAtendimentoMotor, RoboAtendimento.Runtime.RoboAtendimentoMotorHttp>();
+        // Dois motores registrados; quem responde é decidido a cada turno pelo seletor, lendo
+        // RoboConfiguracao.Motor (rollback da migração para a API sem deploy — ADR-0050).
+        services.AddScoped<RoboAtendimento.Runtime.RoboAtendimentoMotorHttp>();
+        services.AddScoped<RoboAtendimento.Runtime.IRoboAtendimentoMotor, RoboAtendimento.Runtime.RoboAtendimentoMotorSeletor>();
+        // Ensaio de um turno sem falar com o cidadão (tela do módulo Robô).
+        services.AddScoped<RoboAtendimento.Runtime.IRoboSimulacaoService, RoboAtendimento.Runtime.RoboSimulacaoService>();
         services.AddScoped<RoboAtendimento.Runtime.IRoboClassificador, RoboAtendimento.Runtime.RoboClassificador>();
         services.AddScoped<RoboAtendimento.Runtime.IRoboAtendimentoProcessador, RoboAtendimento.Runtime.RoboAtendimentoProcessador>();
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,

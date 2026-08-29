@@ -13,8 +13,8 @@ public static class ComandoRoboCatalogo
 {
     public static IReadOnlyList<ComandoRoboCatalogoDto> Itens { get; } =
     [
-        new(ComandoRobo.ConsultarStatusAgendamento, "Consultar status do agendamento",
-            "Consulta (só leitura) a situação do agendamento/solicitação do paciente.", false),
+        // ConsultarStatusAgendamento (enum 1) NÃO entra: nunca teve handler nem ferramenta. Ficava
+        // habilitável na tela e o dispatcher só respondia "Comando indisponível" — tool fantasma.
         new(ComandoRobo.ConfirmarPresenca, "Confirmar presença",
             "Marca a presença confirmada pelo paciente.", true),
         new(ComandoRobo.IniciarCancelamento, "Iniciar cancelamento",
@@ -31,6 +31,11 @@ public static class ComandoRoboCatalogo
         new(ComandoRobo.ConsultarPosicaoRegulacao, "Consultar posição na regulação",
             "Situação de agendamento na regulação (SER/SISREG/SERNIT). Devolve dado minimizado (em regra só \"em fila\").",
             false),
+        // Tinha handler e ferramenta, mas estava FORA do catálogo: a tela recusava habilitá-lo
+        // (RoboAssuntoService valida contra Habilitaveis) e só funcionava semeado no banco.
+        new(ComandoRobo.VerificarCadastro, "Verificar cadastro (desafio do CPF)",
+            "Valida os primeiros dígitos do CPF em resposta ao desafio cadastral e libera a confirmação retida.",
+            true),
     ];
 
     /// <summary>Comandos que a tela pode habilitar por assunto (exclui ResponderCidadao).</summary>

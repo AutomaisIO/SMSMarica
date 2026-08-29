@@ -9,10 +9,12 @@ import {
   obterAssunto,
   obterConfiguracao,
   revisarErroRobo,
+  simularRobo,
   salvarConfiguracao,
 } from '@/features/robo-atendimento/api/roboApi';
 import type {
   RoboConfiguracao,
+  SimularRoboPayload,
   SalvarRoboAssuntoPayload,
   StatusRoboErro,
 } from '@/features/robo-atendimento/types';
@@ -97,4 +99,8 @@ export function useRevisarErroRobo() {
       revisarErroRobo(id, { status, nota: nota || null }),
     onSuccess: () => client.invalidateQueries({ queryKey: ['robo-atendimento', 'erros'] }),
   });
+}
+
+export function useSimularRobo() {
+  return useMutation({ mutationFn: (payload: SimularRoboPayload) => simularRobo(payload) });
 }

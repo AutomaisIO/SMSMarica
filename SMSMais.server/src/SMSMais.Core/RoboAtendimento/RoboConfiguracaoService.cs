@@ -3,6 +3,7 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.RoboAtendimento.Dtos;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Robo;
 
 namespace SMSMais.Core.RoboAtendimento;
@@ -15,8 +16,8 @@ public sealed class RoboConfiguracaoService(SmsMaisDbContext db, IUsuarioAtualAc
     {
         var cfg = await db.RoboConfiguracoes.AsNoTracking().FirstOrDefaultAsync(ct);
         return cfg is null
-            ? new RoboConfiguracaoDto(false, RoboConfiguracao.PersonaGlobalPadrao, ModeloPadraoInicial, "Assistente virtual", null, null, null, null)
-            : new RoboConfiguracaoDto(cfg.Ativo, cfg.PersonaGlobal, cfg.ModeloPadrao, cfg.NomeExibicao, cfg.MensagemHandOff, cfg.MensagemForaHorario, cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim);
+            ? new RoboConfiguracaoDto(false, RoboConfiguracao.PersonaGlobalPadrao, ModeloPadraoInicial, "Assistente virtual", null, null, null, null, MotorRobo.Assinatura)
+            : new RoboConfiguracaoDto(cfg.Ativo, cfg.PersonaGlobal, cfg.ModeloPadrao, cfg.NomeExibicao, cfg.MensagemHandOff, cfg.MensagemForaHorario, cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, cfg.Motor);
     }
 
     public async Task SalvarAsync(SalvarRoboConfiguracaoRequest request, CancellationToken ct = default)
@@ -45,6 +46,7 @@ public sealed class RoboConfiguracaoService(SmsMaisDbContext db, IUsuarioAtualAc
         cfg.MensagemForaHorario = Normalizar(request.MensagemForaHorario);
         cfg.HoraAtendimentoHumanoInicio = request.HoraAtendimentoHumanoInicio;
         cfg.HoraAtendimentoHumanoFim = request.HoraAtendimentoHumanoFim;
+        cfg.Motor = request.Motor;
         cfg.AtualizadoEm = agora;
         cfg.AtualizadoPor = me;
 
