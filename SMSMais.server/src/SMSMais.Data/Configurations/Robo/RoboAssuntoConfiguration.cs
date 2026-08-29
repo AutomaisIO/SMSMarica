@@ -20,7 +20,7 @@ internal sealed class RoboAssuntoConfiguration : IEntityTypeConfiguration<RoboAs
         builder.Property(a => a.HorarioInicio).HasColumnName("horario_inicio");
         builder.Property(a => a.HorarioFim).HasColumnName("horario_fim");
         builder.Property(a => a.DiasSemana).HasColumnName("dias_semana");
-        builder.Property(a => a.MaxInteracoesSemResolver).HasColumnName("max_interacoes_sem_resolver").HasDefaultValue(5).IsRequired();
+        builder.Property(a => a.MaxInteracoesSemResolver).HasColumnName("max_interacoes_sem_resolver").HasDefaultValue(20).IsRequired();
         builder.Property(a => a.LimiarConfianca).HasColumnName("limiar_confianca").HasDefaultValue(0.6).IsRequired();
         builder.Property(a => a.EscalonamentoUnidadeId).HasColumnName("escalonamento_unidade_id");
         builder.Property(a => a.Ordem).HasColumnName("ordem").HasDefaultValue(0).IsRequired();

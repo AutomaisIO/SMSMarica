@@ -39,7 +39,7 @@ public class RoboAssunto
     public int? DiasSemana { get; set; }
 
     /// <summary>Quantas interações do robô sem resolver antes de cair para o humano.</summary>
-    public int MaxInteracoesSemResolver { get; set; } = 5;
+    public int MaxInteracoesSemResolver { get; set; } = 20;
 
     /// <summary>Confiança mínima (0..1) para o robô agir; abaixo disso, hand-off.</summary>
     public double LimiarConfianca { get; set; } = 0.6;

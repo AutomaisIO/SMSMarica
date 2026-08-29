@@ -12,7 +12,10 @@ namespace SMSMais.Core.RoboAtendimento.Runtime;
 /// </summary>
 public static class RoboPrompt
 {
-    public static string MontarInstrucao(string personaGlobal, RoboAssunto? assunto, bool dentroHorario, string? urlApp)
+    /// <param name="pertoDoLimite">Última resposta antes de o robô se calar por teto de interações.
+    /// Em vez de sumir no meio da conversa, ele mesmo prepara a pessoa para a passagem.</param>
+    public static string MontarInstrucao(
+        string personaGlobal, RoboAssunto? assunto, bool dentroHorario, string? urlApp, bool pertoDoLimite = false)
     {
         var sb = new StringBuilder();
         sb.AppendLine(personaGlobal.Trim());
@@ -44,6 +47,18 @@ public static class RoboPrompt
             : "ESTAMOS FORA DO HORÁRIO DE ATENDIMENTO HUMANO: não há atendente disponível agora. NÃO ofereça "
               + "nem prometa encaminhar para um atendente. Ajude no que puder; se não resolver, oriente a pessoa "
               + "a procurar o atendimento humano dentro do horário.");
+        if (pertoDoLimite)
+        {
+            sb.AppendLine();
+            sb.AppendLine(dentroHorario
+                ? "ATENÇÃO: esta é a ÚLTIMA mensagem que você pode enviar nesta conversa. Responda o "
+                  + "que der e, no fim, avise com naturalidade que a partir daqui um ATENDENTE vai "
+                  + "continuar o atendimento — sem dizer que existe limite, sistema ou robô."
+                : "ATENÇÃO: esta é a ÚLTIMA mensagem que você pode enviar nesta conversa e estamos FORA "
+                  + "do horário de atendimento. Responda o que der e, no fim, oriente a pessoa a "
+                  + "retornar o contato dentro do horário comercial — sem prometer atendente agora e "
+                  + "sem falar em limite, sistema ou robô.");
+        }
         sb.AppendLine();
         var app = string.IsNullOrWhiteSpace(urlApp) ? "o aplicativo do cidadão da prefeitura" : urlApp!.Trim();
         sb.AppendLine($"AO SE DESPEDIR, sempre oriente a pessoa: acesse {app} — lá ficam os exames, consultas e "

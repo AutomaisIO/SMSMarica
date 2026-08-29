@@ -100,9 +100,36 @@ public sealed class RoboAtendimentoProcessador(
                 .FirstOrDefaultAsync(a => a.Id == id && a.Ativo && a.ExcluidoEm == null, ct)
             : null;
 
-        var maxInteracoes = assunto?.MaxInteracoesSemResolver ?? 5;
+        var maxInteracoes = assunto?.MaxInteracoesSemResolver ?? 20;
         if (conversa.RoboInteracoesNaJanela >= maxInteracoes)
         {
+            // Bateu o teto de interações. Antes isso era silêncio ABSOLUTO: o cidadão seguia
+            // escrevendo ("Ta aí?") e ninguém respondia. Agora ele é avisado UMA vez — e a
+            // `MensagemHandOff`, que existia na tela e nunca era enviada por ninguém, finalmente
+            // serve para alguma coisa. O "uma vez" sai de graça do próprio contador: só o turno que
+            // cruza o limite avisa; os seguintes já entram com o contador maior e ficam quietos.
+            if (conversa.RoboInteracoesNaJanela == maxInteracoes)
+            {
+                // Fora do expediente não há atendente para prometer — aí a orientação certa é
+                // voltar no horário. `MensagemForaHorario` também estava na tela sem uso nenhum.
+                var configurada = foraExpediente ? cfg.MensagemForaHorario : cfg.MensagemHandOff;
+                var aviso = !string.IsNullOrWhiteSpace(configurada)
+                    ? configurada!.Trim()
+                    : foraExpediente
+                        ? "No momento estamos fora do horário de atendimento. Retorne o contato em "
+                          + "horário comercial que a nossa equipe segue com você por aqui."
+                        : "A partir daqui um atendente da nossa equipe continua com você por aqui.";
+                try
+                {
+                    await EnviarComoRoboAsync(conversa, SanitizarWhatsApp(aviso), cfg.NomeExibicao, ct);
+                    conversa.RoboInteracoesNaJanela += 1; // fecha o assunto: daqui pra frente, silêncio
+                    conversa.AtualizadoEm = DateTime.UtcNow;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Falha ao avisar o cidadão do hand-off na conversa {Conversa}.", conversa.Id);
+                }
+            }
             await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Limite de interações atingido.", ct);
             return;
         }
@@ -112,6 +139,8 @@ public sealed class RoboAtendimentoProcessador(
         // voltar no horário.
         var dentroHorario = !foraExpediente && (assunto is null || RoboPrompt.DentroDoHorario(assunto));
         var urlApp = await db.Instituicoes.AsNoTracking().Select(i => i.UrlApp).FirstOrDefaultAsync(ct);
+        // Última resposta permitida: o robô já prepara a pessoa para a passagem, em vez de sumir.
+        var pertoDoLimite = conversa.RoboInteracoesNaJanela == maxInteracoes - 1;
         var comandos = assunto is null
             ? Array.Empty<string>()
             : [.. assunto.Comandos.Where(c => c.Habilitado).Select(c => c.Comando.ToString())];
@@ -121,7 +150,7 @@ public sealed class RoboAtendimentoProcessador(
             PacienteId: conversa.PacienteId,
             AssuntoId: assunto?.Id,
             Modelo: string.IsNullOrWhiteSpace(assunto?.Modelo) ? cfg.ModeloPadrao : assunto!.Modelo!,
-            InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp),
+            InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp, pertoDoLimite),
             ComandosHabilitados: comandos,
             Historico: await CarregarHistoricoAsync(conversa.Id, tarefa.MensagemWhatsAppId, ct),
             MensagemAtual: texto,
