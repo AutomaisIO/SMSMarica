@@ -41,6 +41,22 @@ public static class ComandoRoboCatalogo
             true),
     ];
 
+    /// <summary>
+    /// Comandos disponíveis SEMPRE, mesmo sem assunto identificado — e 22% das mensagens caem sem
+    /// assunto. Sem isto o robô fica sem ferramenta nenhuma justamente no caso mais comum: foi
+    /// assim que ele pediu CPF e data de nascimento, não pôde consultar nada e ainda afirmou que a
+    /// identidade não conferia. Proibi-lo de pedir não resolveu — ele copiava o próprio histórico.
+    /// Dar a ferramenta resolve.
+    ///
+    /// Só entram comandos SEGUROS: conferir identidade (leitura, com minimização) e devolver a
+    /// conversa a um humano. Nada que altere dado entra aqui — isso continua por assunto.
+    /// </summary>
+    public static IReadOnlySet<ComandoRobo> Base { get; } = new HashSet<ComandoRobo>
+    {
+        ComandoRobo.ConsultarCadastro,
+        ComandoRobo.EncaminharParaHumano,
+    };
+
     /// <summary>Comandos que a tela pode habilitar por assunto (exclui ResponderCidadao).</summary>
     public static IReadOnlySet<ComandoRobo> Habilitaveis { get; } =
         Itens.Select(i => i.Comando).ToHashSet();

@@ -53,9 +53,11 @@ public sealed class RoboSimulacaoService(
         var dentroHorario = assunto is null || RoboPrompt.DentroDoHorario(assunto);
         // Mesma leitura do processador — a URL do app entra na despedida.
         var urlApp = await db.Instituicoes.AsNoTracking().Select(i => i.UrlApp).FirstOrDefaultAsync(ct);
-        var comandos = assunto is null
-            ? Array.Empty<string>()
-            : [.. assunto.Comandos.Where(c => c.Habilitado).Select(c => c.Comando.ToString())];
+        // Mesmo conjunto do atendimento real: base sempre + habilitados do assunto.
+        var baseMais = new HashSet<ComandoRobo>(ComandoRoboCatalogo.Base);
+        if (assunto is not null)
+            foreach (var c in assunto.Comandos.Where(c => c.Habilitado)) baseMais.Add(c.Comando);
+        var comandos = baseMais.Select(c => c.ToString()).ToArray();
 
         var entrada = new EntradaMotorRobo(
             ChaveSessao: $"simulacao:{Guid.CreateVersion7()}",

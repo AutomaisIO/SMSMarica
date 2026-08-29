@@ -24,10 +24,14 @@ public sealed class RoboComandoDispatcher(
     public async Task<RoboComandoResultado> ExecutarAsync(
         Guid conversaId, Guid? pacienteId, Guid? assuntoId, ComandoRobo comando, JsonElement args, CancellationToken ct)
     {
-        // 1. Habilitação por assunto (defesa em profundidade — a tool só existe na sessão se habilitada).
-        if (assuntoId is not { } aid ||
-            !await db.RoboAssuntoComandos.AsNoTracking()
-                .AnyAsync(c => c.RoboAssuntoId == aid && c.Comando == comando && c.Habilitado, ct))
+        // 1. Habilitação (defesa em profundidade — a tool só existe na sessão se habilitada).
+        // O conjunto BASE dispensa assunto: são comandos seguros que precisam existir mesmo quando
+        // a classificação não encontrou assunto nenhum (o caso mais comum). Sem esta exceção a
+        // ferramenta apareceria para o modelo e falharia ao executar — pior que não existir.
+        if (!ComandoRoboCatalogo.Base.Contains(comando) &&
+            (assuntoId is not { } aid ||
+             !await db.RoboAssuntoComandos.AsNoTracking()
+                 .AnyAsync(c => c.RoboAssuntoId == aid && c.Comando == comando && c.Habilitado, ct)))
         {
             return new RoboComandoResultado(false, "Comando não habilitado para este assunto.");
         }

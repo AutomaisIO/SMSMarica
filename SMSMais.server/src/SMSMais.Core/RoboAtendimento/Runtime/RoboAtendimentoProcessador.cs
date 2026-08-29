@@ -141,9 +141,9 @@ public sealed class RoboAtendimentoProcessador(
         var urlApp = await db.Instituicoes.AsNoTracking().Select(i => i.UrlApp).FirstOrDefaultAsync(ct);
         // Última resposta permitida: o robô já prepara a pessoa para a passagem, em vez de sumir.
         var pertoDoLimite = conversa.RoboInteracoesNaJanela == maxInteracoes - 1;
-        var comandos = assunto is null
-            ? Array.Empty<string>()
-            : [.. assunto.Comandos.Where(c => c.Habilitado).Select(c => c.Comando.ToString())];
+        // Base SEMPRE + os habilitados no assunto. Sem assunto, o robô ficava sem ferramenta
+        // nenhuma e "verificava" identidade no vazio (ver ComandoRoboCatalogo.Base).
+        var comandos = MontarComandos(assunto);
         var entrada = new EntradaMotorRobo(
             ChaveSessao: conversa.Id.ToString(),
             ConversaId: conversa.Id,
@@ -272,6 +272,15 @@ public sealed class RoboAtendimentoProcessador(
             .Select(n => n.Telefone!)
             .ToListAsync(ct);
         return fones.Any(t => TelefoneWhatsApp.Canonizar(t) == telefoneCanonical);
+    }
+
+    /// <summary>Ferramentas do turno: o conjunto base (sempre) mais o que o assunto habilitou.</summary>
+    private static string[] MontarComandos(RoboAssunto? assunto)
+    {
+        var lista = new HashSet<ComandoRobo>(ComandoRoboCatalogo.Base);
+        if (assunto is not null)
+            foreach (var c in assunto.Comandos.Where(c => c.Habilitado)) lista.Add(c.Comando);
+        return [.. lista.Select(c => c.ToString())];
     }
 
     private async Task<IReadOnlyList<MensagemHistoricoRobo>> CarregarHistoricoAsync(
