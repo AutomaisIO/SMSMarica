@@ -8,7 +8,7 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 
 /// <summary>
 /// Registra que o paciente NÃO vai comparecer (intenção — a equipe decide o cancelamento real).
-/// GATE de identidade (3 primeiros dígitos do CPF + mês e ano de nascimento) e DUAS FASES: primeiro
+/// GATE de identidade (4 primeiros dígitos do CPF + mês e ano de nascimento) e DUAS FASES: primeiro
 /// valida e devolve o NOME COMPLETO + agendamento para a pessoa confirmar; só com <c>confirmado=true</c>
 /// marca. NUNCA revela o agendamento antes da identidade conferir; só agendamentos futuros contam.
 /// </summary>
@@ -31,7 +31,7 @@ public sealed class IniciarCancelamentoComando(SmsMaisDbContext db, IPacientesSe
         var p = await pacientes.ObterPorIdAsync(pacienteId, ct);
         if (!GateIdentidade.CpfInicioConfere(p.Cpf, cpf) || !GateIdentidade.NascimentoMesAnoConfere(p.DataNascimento, mes, ano))
             return new(false,
-                "Identidade não confere. NÃO cancele nem revele o agendamento. Peça novamente os 3 primeiros dígitos do "
+                "Identidade não confere. NÃO cancele nem revele o agendamento. Peça novamente os 4 primeiros dígitos do "
                 + "CPF e o mês e ano de nascimento; se ainda não bater, encaminhe ao atendente humano.");
 
         var s = await SolicitacaoRoboHelper.AcharAgendamentoFuturoAsync(db, pacienteId, ct);

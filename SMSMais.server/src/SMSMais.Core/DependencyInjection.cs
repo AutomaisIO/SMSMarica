@@ -697,6 +697,7 @@ public static class DependencyInjection
         services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.VerificarCadastroComando>();
         services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.InformarHorarioAtendimentoComando>();
         services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.ConsultarStatusExameRecenteComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.ConsultarCadastroComando>();
         services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.ConsultarPosicaoRegulacaoComando>();
 
         // ---- Estatísticas de atendimento (retrato do WhatsApp) — dashboard gerencial ----

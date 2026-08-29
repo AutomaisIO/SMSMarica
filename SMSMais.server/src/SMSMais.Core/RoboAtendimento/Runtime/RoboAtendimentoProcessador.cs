@@ -150,7 +150,7 @@ public sealed class RoboAtendimentoProcessador(
             PacienteId: conversa.PacienteId,
             AssuntoId: assunto?.Id,
             Modelo: string.IsNullOrWhiteSpace(assunto?.Modelo) ? cfg.ModeloPadrao : assunto!.Modelo!,
-            InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp, pertoDoLimite),
+            InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp, pertoDoLimite, comandos.Length > 0),
             ComandosHabilitados: comandos,
             Historico: await CarregarHistoricoAsync(conversa.Id, tarefa.MensagemWhatsAppId, ct),
             MensagemAtual: texto,

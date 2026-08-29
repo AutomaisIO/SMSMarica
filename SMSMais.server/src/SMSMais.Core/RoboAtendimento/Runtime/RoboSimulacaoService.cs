@@ -65,7 +65,7 @@ public sealed class RoboSimulacaoService(
             PacienteId: null,
             AssuntoId: assunto?.Id,
             Modelo: string.IsNullOrWhiteSpace(assunto?.Modelo) ? modeloPadrao : assunto!.Modelo!,
-            InstrucaoSistema: RoboPrompt.MontarInstrucao(personaGlobal, assunto, dentroHorario, urlApp),
+            InstrucaoSistema: RoboPrompt.MontarInstrucao(personaGlobal, assunto, dentroHorario, urlApp, false, comandos.Length > 0),
             ComandosHabilitados: comandos,
             Historico: [.. (request.Historico ?? []).Select(h => new MensagemHistoricoRobo(h.Papel, h.Texto))],
             MensagemAtual: request.Mensagem,

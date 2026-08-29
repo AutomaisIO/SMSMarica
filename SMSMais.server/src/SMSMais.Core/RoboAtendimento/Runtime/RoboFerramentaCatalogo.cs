@@ -77,7 +77,7 @@ public static class RoboFerramentaCatalogo
             [ComandoRobo.ConfirmarPresenca] = new(
                 "confirmar_presenca",
                 "Confirma a presença do paciente no agendamento. FLUXO EM DUAS CHAMADAS: primeiro "
-                + "chame com cpf (os 3 PRIMEIROS dígitos — NUNCA peça o CPF completo) + mesNascimento "
+                + "chame com cpf (os 4 PRIMEIROS dígitos — NUNCA peça o CPF completo) + mesNascimento "
                 + "+ anoNascimento; o comando valida e devolve o NOME para você confirmar com a "
                 + "pessoa. Só depois que ela confirmar o nome, chame de novo com confirmado=true. "
                 + "Nunca revele procedimento, data, hora ou local antes de a identidade conferir.",
@@ -100,17 +100,36 @@ public static class RoboFerramentaCatalogo
                 "consultar_posicao_regulacao",
                 "Situação do pedido na regulação (SER/SISREG/SERNIT). Devolve dado MINIMIZADO — em "
                 + "regra só \"em fila\". Se o número não for verificado, o comando pede identidade: "
-                + "colete os 3 primeiros dígitos do CPF e o mês/ano de nascimento e chame de novo.",
+                + "colete os 4 primeiros dígitos do CPF e o mês/ano de nascimento e chame de novo.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
-                        cpf = new { type = "string", description = "Os 3 primeiros dígitos do CPF informados pela pessoa." },
+                        cpf = new { type = "string", description = "Os 4 primeiros dígitos do CPF informados pela pessoa." },
                         mesNascimento = new { type = "integer", description = "Mês de nascimento (1 a 12)." },
                         anoNascimento = new { type = "integer", description = "Ano de nascimento com 4 dígitos." },
                     },
                     required = Array.Empty<string>(),
+                }),
+
+            [ComandoRobo.ConsultarCadastro] = new(
+                "consultar_cadastro",
+                "Confere a identidade da pessoa contra o cadastro e devolve o NOME dela. Peça os 4 "
+                + "PRIMEIROS dígitos do CPF (nunca o CPF completo) e, em seguida, o mês e o ano de "
+                + "nascimento — do PACIENTE do agendamento, não de quem escreve. Use SEMPRE esta "
+                + "ferramenta para confirmar identidade: nunca diga por conta própria que os dados "
+                + "conferem ou não conferem.",
+                new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        cpf = new { type = "string", description = "Os 4 PRIMEIROS dígitos do CPF do paciente." },
+                        mesNascimento = new { type = "integer", description = "Mês de nascimento (1 a 12)." },
+                        anoNascimento = new { type = "integer", description = "Ano de nascimento com 4 dígitos." },
+                    },
+                    required = new[] { "cpf", "mesNascimento", "anoNascimento" },
                 }),
 
             [ComandoRobo.VerificarCadastro] = new(
@@ -129,7 +148,7 @@ public static class RoboFerramentaCatalogo
         type = "object",
         properties = new
         {
-            cpf = new { type = "string", description = "Os dígitos do CPF que a pessoa enviou (3 ou mais)." },
+            cpf = new { type = "string", description = "Os dígitos do CPF que a pessoa enviou (4 ou mais)." },
         },
         required = new[] { "cpf" },
     };
@@ -140,7 +159,7 @@ public static class RoboFerramentaCatalogo
             type = "object",
             properties = new
             {
-                cpf = new { type = "string", description = "Os 3 PRIMEIROS dígitos do CPF. Nunca peça o CPF completo." },
+                cpf = new { type = "string", description = "Os 4 PRIMEIROS dígitos do CPF. Nunca peça o CPF completo." },
                 mesNascimento = new { type = "integer", description = "Mês de nascimento (1 a 12)." },
                 anoNascimento = new { type = "integer", description = "Ano de nascimento com 4 dígitos." },
                 confirmado = new { type = "boolean", description = "Só true na SEGUNDA chamada, depois que a pessoa confirmar o nome." },
@@ -153,7 +172,7 @@ public static class RoboFerramentaCatalogo
             type = "object",
             properties = new
             {
-                cpf = new { type = "string", description = "Os 3 PRIMEIROS dígitos do CPF. Nunca peça o CPF completo." },
+                cpf = new { type = "string", description = "Os 4 PRIMEIROS dígitos do CPF. Nunca peça o CPF completo." },
                 mesNascimento = new { type = "integer", description = "Mês de nascimento (1 a 12)." },
                 anoNascimento = new { type = "integer", description = "Ano de nascimento com 4 dígitos." },
                 confirmado = new { type = "boolean", description = "Só true na SEGUNDA chamada, depois que a pessoa confirmar o nome." },

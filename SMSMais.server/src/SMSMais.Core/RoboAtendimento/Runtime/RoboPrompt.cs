@@ -14,8 +14,11 @@ public static class RoboPrompt
 {
     /// <param name="pertoDoLimite">Última resposta antes de o robô se calar por teto de interações.
     /// Em vez de sumir no meio da conversa, ele mesmo prepara a pessoa para a passagem.</param>
+    /// <param name="temComandos">Há alguma ação/consulta disponível nesta conversa. Sem nenhuma, o
+    /// robô é proibido de pedir dado pessoal — ele não teria como verificar coisa alguma.</param>
     public static string MontarInstrucao(
-        string personaGlobal, RoboAssunto? assunto, bool dentroHorario, string? urlApp, bool pertoDoLimite = false)
+        string personaGlobal, RoboAssunto? assunto, bool dentroHorario, string? urlApp,
+        bool pertoDoLimite = false, bool temComandos = true)
     {
         var sb = new StringBuilder();
         sb.AppendLine(personaGlobal.Trim());
@@ -47,6 +50,20 @@ public static class RoboPrompt
             : "ESTAMOS FORA DO HORÁRIO DE ATENDIMENTO HUMANO: não há atendente disponível agora. NÃO ofereça "
               + "nem prometa encaminhar para um atendente. Ajude no que puder; se não resolver, oriente a pessoa "
               + "a procurar o atendimento humano dentro do horário.");
+        if (!temComandos)
+        {
+            sb.AppendLine();
+            // Sem ferramenta, pedir CPF/nascimento é encenação: foi assim que o robô coletou os
+            // dados de um cidadão, não verificou nada e ainda afirmou que a identidade "não
+            // conferia" — com os dados dele corretos. Aqui isso vira proibição explícita.
+            sb.AppendLine("VOCÊ NÃO TEM NENHUMA CONSULTA OU AÇÃO DISPONÍVEL nesta conversa: não "
+                + "consegue olhar agendamento, exame, laudo, cadastro nem confirmar identidade. "
+                + "Portanto NUNCA peça CPF, data de nascimento ou qualquer dado pessoal — você não "
+                + "teria como conferir. E NUNCA diga que verificou, confirmou, não confirmou ou não "
+                + "encontrou o cadastro de alguém: você não consultou nada. Ajude com orientação "
+                + "geral e, se a pessoa precisar de algo que dependa de consulta, oriente o posto de "
+                + "saúde ou o app do cidadão.");
+        }
         if (pertoDoLimite)
         {
             sb.AppendLine();

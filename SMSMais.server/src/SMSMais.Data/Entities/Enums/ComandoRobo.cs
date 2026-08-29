@@ -45,4 +45,10 @@ public enum ComandoRobo
     /// <c>validacao_cadastro</c>). Confere → marca o telefone verificado e libera o envio da
     /// confirmação real do agendamento. Aceita CPF inteiro (usa os 4 primeiros).</summary>
     VerificarCadastro = 10,
+
+    /// <summary>Confere a identidade da pessoa contra o cadastro (4 primeiros dígitos do CPF +
+    /// mês/ano de nascimento) e devolve o NOME para o robô tratar a pessoa corretamente. Existe
+    /// porque, sem uma ferramenta assim, o robô pedia esses dados e "verificava" no vazio —
+    /// chegou a afirmar a um cidadão que a identidade não conferia sem ter consultado nada.</summary>
+    ConsultarCadastro = 11,
 }

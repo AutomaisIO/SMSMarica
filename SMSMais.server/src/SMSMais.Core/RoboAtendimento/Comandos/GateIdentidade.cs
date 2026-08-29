@@ -9,12 +9,14 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 /// </summary>
 public static class GateIdentidade
 {
-    /// <summary>Confere os 3 primeiros dígitos do CPF (aceita CPF inteiro/mais dígitos; usa os 3 primeiros).</summary>
+    /// <summary>Confere os 4 PRIMEIROS dígitos do CPF (aceita CPF inteiro; usa os 4 primeiros).
+    /// Comparava 3 — contra a documentação, o template e a máquina determinística, que sempre
+    /// falaram em 4. Além da inconsistência, 3 dígitos é 1 chance em 1.000 de acerto por chute.</summary>
     public static bool CpfInicioConfere(string? cpfPaciente, string? cpfInformado)
     {
         var a = SoDigitos(cpfPaciente);
         var b = SoDigitos(cpfInformado);
-        return a.Length >= 3 && b.Length >= 3 && a[..3] == b[..3];
+        return a.Length >= 4 && b.Length >= 4 && a[..4] == b[..4];
     }
 
     /// <summary>Confere mês e ano de nascimento.</summary>

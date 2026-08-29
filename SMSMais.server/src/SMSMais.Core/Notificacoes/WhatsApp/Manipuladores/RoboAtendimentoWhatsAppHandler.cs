@@ -64,8 +64,14 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
                     || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
         if (humanoAssumiu) return;
 
-        // Limite de interações do robô na janela.
-        if (ctx.Conversa.RoboInteracoesNaJanela >= 8) return;
+        // NÃO existe limite de interações aqui. Havia um `>= 8` fixo no código, ABAIXO do limite
+        // configurável por assunto — e, como o handler nem chega a criar a tarefa, a mensagem sumia
+        // sem deixar rastro: o cidadão escrevia e não recebia nada, nem o aviso de passagem. Dois
+        // limites concorrentes, e o invisível ganhava.
+        //
+        // O limite de verdade é `MaxInteracoesSemResolver`, por assunto, aplicado pelo processador —
+        // que ainda AVISA o cidadão antes de se calar. Enfileirar é barato: passado o limite, o
+        // processador encerra a tarefa sem chamar o modelo, então nada de custo escapa por aqui.
 
         db.RoboTarefas.Add(new RoboAtendimentoTarefa
         {

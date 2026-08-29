@@ -31,6 +31,9 @@ public static class ComandoRoboCatalogo
         new(ComandoRobo.ConsultarPosicaoRegulacao, "Consultar posição na regulação",
             "Situação de agendamento na regulação (SER/SISREG/SERNIT). Devolve dado minimizado (em regra só \"em fila\").",
             false),
+        new(ComandoRobo.ConsultarCadastro, "Conferir identidade no cadastro",
+            "Confere 4 primeiros dígitos do CPF + mês/ano de nascimento e devolve o nome. Sem este comando, o robô não pode pedir dado pessoal.",
+            false),
         // Tinha handler e ferramenta, mas estava FORA do catálogo: a tela recusava habilitá-lo
         // (RoboAssuntoService valida contra Habilitaveis) e só funcionava semeado no banco.
         new(ComandoRobo.VerificarCadastro, "Verificar cadastro (desafio do CPF)",
