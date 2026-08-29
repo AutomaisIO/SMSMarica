@@ -171,6 +171,10 @@ public class RoboAtendimentoMotorApiTests(PostgresFixture fixture)
         Assert.DoesNotContain("confirmar_presenca", tools);     // não habilitada = não existe na sessão
         Assert.Equal(2, tools.Count);
         Assert.Contains("cache_control", api.Requisicoes[0]);   // prompt caching ligado
+
+        // tool_choice OBRIGATÓRIO: sem ele o modelo responde em texto puro e o cidadão fica sem
+        // resposta (o fallback seguro dispara). Foi o que a primeira simulação em produção pegou.
+        Assert.Equal("any", doc.RootElement.GetProperty("tool_choice").GetProperty("type").GetString());
     }
 
     [Fact]

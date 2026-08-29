@@ -77,6 +77,12 @@ public sealed class RoboAtendimentoMotorApi(
                     },
                 },
                 tools = ferramentas,
+                // OBRIGA o uso de ferramenta a cada turno. Sem isto o modelo responde em TEXTO —
+                // e texto não é canal de saída aqui, então a resposta caía no fallback seguro e o
+                // cidadão ficava sem resposta (flagrado na primeira simulação em produção).
+                // Como toda saída passa por ferramenta, ou ele chama um comando ou fecha em
+                // responder_cidadao; o teto de iterações impede laço.
+                tool_choice = new { type = "any" },
                 messages = mensagens,
             };
 
