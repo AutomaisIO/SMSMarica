@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0050 — Motor do robô de atendimento na Messages API (loop de tool-use no .NET)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0050 — Motor do robô de atendimento na Messages API (loop de tool-use no .NET)</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-29 <strong>Relacionado:</strong> <a href="./0011-modulo-ia-consulta-natural.md">ADR-0011</a> §3 (provedor de IA configurável, primeiro alvo Messages API), módulo Robô de Atendimento (<code>SMSMais.Core/RoboAtendimento</code>), serviço <code>SMSMais.aiengine</code> (kinds <code>agente</code>/<code>dados</code> seguem intocados). <strong>Motivado por:</strong> o incidente do go-live do robô em 26/08/2026.</p>
+<h2>Contexto</h2>
+<p>O robô de atendimento do WhatsApp subiu sobre o <strong>Claude Code por assinatura</strong> — o serviço Python <code>SMSMais.aiengine</code>, kind <code>atendimento</code>, usando <code>claude-agent-sdk</code>. Foi um atalho assumido: o ADR-0011 §3 já prescrevia a <strong>Anthropic Messages API com tool use e prompt caching</strong>, e o plano do robô registrou "assinatura agora, medir e migrar depois".</p>
+<p>A noite de 26/08 foi a medição. Com o robô ligado por algumas horas, sobre 62 conversas reais:</p>
+<div class="tw"><table><thead><tr><th>Sintoma medido</th><th>Causa estrutural</th></tr></thead><tbody>
+<tr><td>Latência <strong>p50 159 s, p90 1362 s (22,7 min)</strong></td><td>um subprocesso do agente + servidor MCP por turno, fila sequencial e polling de 15 s</td></tr>
+<tr><td><strong>34 tarefas</strong> em <code>Connection refused (127.0.0.1:5085)</code></td><td>o motor é outro processo, e ele cai</td></tr>
+<tr><td>O robô mandou ao cidadão a <strong>própria prosa de raciocínio</strong> ("preciso carregar o schema da ferramenta <code>verificar_cadastro</code>")</td><td>sem fechar com a ferramenta terminal dentro do <code>max_turns</code>, o fallback enviava o texto solto</td></tr>
+<tr><td>Custo <strong>não atribuível</strong> por atendimento</td><td>assinatura não dá preço por chamada</td></tr>
+<tr><td>5,7 M tokens de entrada para 145 k de saída (~42,8 k por tarefa)</td><td>contexto reenviado inteiro a cada turno, <strong>sem prompt caching</strong></td></tr>
+</tbody></table></div>
+<p>O terceiro item é o que decide o ADR. Ele não foi um erro de instrução — foi um erro de <strong>arquitetura</strong>: quando o canal de saída é "o que sobrar do stream", nenhum guardrail garante que só a mensagem certa chegue ao cidadão. Enquanto o loop for de outro processo, o robô continua podendo falar o que não devia.</p>
+<h2>Decisão</h2>
+<p><strong>O loop de tool-use passa a rodar no <code>SMSMais.server</code>, chamando a Messages API direto.</strong></p>
+<ol>
+<li><strong>Nova implementação de <code>IRoboAtendimentoMotor</code></strong> (<code>RoboAtendimentoMotorApi</code>), que monta a</li>
+</ol>
+<p>   requisição, lê os blocos <code>tool_use</code>, executa os comandos e devolve a resposta. A costura já    existia — o <code>RoboAtendimentoProcessador</code> não muda.</p>
+<ol>
+<li><strong>Comandos executam in-process</strong> pelo <code>IRoboComandoDispatcher</code>, que já fazia habilitação por</li>
+</ol>
+<p>   assunto, idempotência e trilha <code>RoboAcao</code>. Some o guichê de loopback <code>/robo-comando</code>.</p>
+<ol>
+<li><strong>A resposta ao cidadão só sai da ferramenta terminal <code>responder_cidadao</code>.</strong> Terminando sem</li>
+</ol>
+<p>   ela, a prosa é <strong>descartada</strong> (fica no log) e o cidadão recebe uma mensagem segura com    hand-off. Isto é estrutura, não instrução.</p>
+<ol>
+<li><strong>Prompt caching</strong> (<code>cache_control: ephemeral</code>) no bloco <code>system</code>, que carrega persona, treinos</li>
+</ol>
+<p>   e guardrail — a parte que repete a cada turno.</p>
+<ol>
+<li><strong>Chave</strong>: a que já existe cifrada em <code>IaConfiguracao.TokenCifrado</code> (Data Protection, purpose</li>
+</ol>
+<p>   <code>SMSMarica.Ia.Segredos</code>), a mesma que o <code>DistribuidorIa</code> do TFD usa. Sem campo novo, sem Secret    no GitHub, sem mudança no deploy.</p>
+<ol>
+<li><strong><code>RoboConfiguracao.Motor</code></strong> (<code>Assinatura</code> | <code>Api</code>, default <code>Assinatura</code>) escolhe o motor a cada</li>
+</ol>
+<p>   turno. O deploy não muda comportamento; virar e voltar é uma troca na tela.</p>
+<ol>
+<li><strong>Custo estimado por tabela de preços</strong> (<code>PrecoModeloIa</code>): a Messages API devolve <code>usage</code> mas</li>
+</ol>
+<p>   não <code>total_cost_usd</code>, que vinha pronto do SDK.</p>
+<p>O <code>aiengine</code> <strong>continua servindo Agente IA e Consulta</strong> pela assinatura. A migração é só do kind <code>atendimento</code>.</p>
+<h2>Por que não trocar o SDK pela API dentro do Python</h2>
+<p>Foi a alternativa mais óbvia — e é uma armadilha. O <code>aiengine</code> apaga <code>ANTHROPIC_API_KEY</code> em três camadas de propósito: <code>main.py</code> (remoção em runtime), o gate de startup, e <code>UnsetEnvironment=ANTHROPIC_API_KEY</code> no systemd. A razão é que <strong>a precedência da API key vence o token da assinatura</strong>: uma chave dentro daquele processo desviaria a cobrança de <em>Agente IA</em> e <em>Consulta</em> para a API metrada. Migrar no .NET não encosta nessas travas.</p>
+<p>Some-se que o Python manteria dois serviços, o guichê de loopback e a latência de rede — sem resolver o problema central, que é o canal de saída não ser controlado por nós.</p>
+<h2>Consequências</h2>
+<p><strong>Ganhos.</strong> Resposta em segundos em vez de minutos (some o subprocesso, some o polling entre processos). Vazamento de raciocínio deixa de ser possível por construção. Custo e tokens medidos por turno, alimentando o relatório de consumo por assunto que já existe. O robô deixa de depender de um segundo serviço estar de pé. E o motor virou testável: 9 testes com a API dublada, contra zero cobertura .NET do runtime do robô antes disso.</p>
+<p><strong>Custos aceitos.</strong> Passamos a pagar por token no atendimento (antes diluído na assinatura) — com o volume atual, ordem de centavos por dia, e agora visível. Robô e TFD dividem a mesma chave na fatura da Anthropic; a separação por assunto fica no relatório interno. E o guardrail, que era texto no Python, virou constante C# (<code>RoboGuardrail</code>): mudar o comportamento do robô agora exige deploy — o que é mais disciplina, não menos, mas é uma perda de agilidade que vale registrar.</p>
+<p><strong>Reversível.</strong> Enquanto o piloto não fechar, <code>Motor = Assinatura</code> devolve o caminho antigo sem deploy. A limpeza (remover <code>atendimento.py</code>, <code>atendimento_tool.py</code>, <code>RoboComandoEndpoint</code>, <code>RoboAtendimentoMotorHttp</code>) só acontece depois — até lá, são o caminho de volta.</p>
+<h2>Defeitos corrigidos de carona</h2>
+<p>A leitura do código para a migração revelou três coisas que ninguém tinha visto:</p>
+<ul>
+<li><strong><code>RoboAssunto.LimiarConfianca</code> era gravado e nunca comparado.</strong> O hand-off por baixa confiança —</li>
+</ul>
+<p>  decisão registrada desde o plano original do robô — <strong>nunca funcionou</strong>. Agora   <code>Confianca &lt; LimiarConfianca</code> gera hand-off.</p>
+<ul>
+<li><strong><code>ConsultarStatusAgendamento</code> era uma ferramenta fantasma</strong>: estava no catálogo da tela, podia</li>
+</ul>
+<p>  ser habilitada por assunto, e não tinha handler nenhum — só respondia "Comando indisponível".</p>
+<ul>
+<li><strong><code>VerificarCadastro</code> tinha handler e ferramenta, mas estava fora de <code>Habilitaveis</code></strong>: a tela</li>
+</ul>
+<p>  recusava habilitá-lo, e ele só funcionava semeado direto no banco.</p>
+<h2>Alternativas consideradas</h2>
+<p><strong>Manter a assinatura e só endurecer o guardrail.</strong> Foi o que se fez na própria noite do incidente, e resolveu os sintomas de texto (negrito, exemplos de CPF, oferta de atendente). Não resolve latência, custo cego, nem o canal de saída — a prosa continuava podendo vazar pelo fallback. Rejeitada como solução final; serviu de contenção.</p>
+<p><strong>Trocar o SDK pela API dentro do Python.</strong> Ver a seção própria: reativaria a precedência da API key sobre a assinatura dos outros kinds.</p>
+<p><strong>Desligar o robô e ficar só no determinístico.</strong> A máquina de verificação cadastral (<code>VerificacaoCadastralWhatsAppHandler</code>) já cobre identidade sem LLM nenhum, e é o que está de pé hoje. Mas ela responde só ao desafio cadastral; dúvida aberta ("cadê meu laudo?") continua caindo na fila humana. O robô continua fazendo sentido — desde que fora do caminho crítico de identidade.</p>
+<h2>Verificação</h2>
+<p>Suíte do server verde (960/961, 1 skip conhecido), incluindo os 9 testes novos do motor: resposta só pela ferramenta terminal, prosa descartada quando ela não vem, laço de tool-use com execução de comando, teto de iterações, tokens e custo, <code>529</code> reesperado no próprio turno, erro permanente propagado ao worker, ausência de chave falhando explícito, e histórico virando turnos <code>user</code>/<code>assistant</code>.</p>
+<p>Em produção, o roteiro é: subir com <code>Motor = Assinatura</code> (nada muda) → virar para <code>Api</code> com o robô <strong>global desligado</strong> e exercitar pela tela <strong>Simular atendimento</strong> → ligar <strong>um</strong> assunto em horário comercial → abrir os demais por etapas. A meta de latência é p90 abaixo de 30 s, contra os 1362 s medidos hoje.</p>
+</main>
+</body>
+</html>
