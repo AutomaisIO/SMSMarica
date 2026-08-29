@@ -34,6 +34,8 @@ public static class ComandoRoboCatalogo
         new(ComandoRobo.ConsultarCadastro, "Conferir identidade no cadastro",
             "Confere 4 primeiros dígitos do CPF + mês/ano de nascimento e devolve o nome. Sem este comando, o robô não pode pedir dado pessoal.",
             false),
+        new(ComandoRobo.ConsultarUnidades, "Consultar unidades (nome e endereço)",
+            "Diz onde fica um posto, sem inventar endereço. Não é oferta de atendimento.", false),
         // Tinha handler e ferramenta, mas estava FORA do catálogo: a tela recusava habilitá-lo
         // (RoboAssuntoService valida contra Habilitaveis) e só funcionava semeado no banco.
         new(ComandoRobo.VerificarCadastro, "Verificar cadastro (desafio do CPF)",

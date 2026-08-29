@@ -51,4 +51,9 @@ public enum ComandoRobo
     /// porque, sem uma ferramenta assim, o robô pedia esses dados e "verificava" no vazio —
     /// chegou a afirmar a um cidadão que a identidade não conferia sem ter consultado nada.</summary>
     ConsultarCadastro = 11,
+
+    /// <summary>Lista unidades da rede (nome + endereço) para o robô dizer ONDE fica um posto sem
+    /// inventar endereço. Nunca é oferta de atendimento: a orientação segue sendo procurar o posto
+    /// onde a pessoa já é atendida.</summary>
+    ConsultarUnidades = 12,
 }

@@ -132,6 +132,23 @@ public static class RoboFerramentaCatalogo
                     required = new[] { "cpf", "mesNascimento", "anoNascimento" },
                 }),
 
+            [ComandoRobo.ConsultarUnidades] = new(
+                "consultar_unidades",
+                "Lista unidades de saúde da rede com nome e endereço — use para dizer ONDE fica um "
+                + "posto, NUNCA invente endereço. Aceita 'termo' (nome da unidade ou bairro). "
+                + "ATENÇÃO: isto NÃO é oferta de atendimento. Não marque consulta, não diga que a "
+                + "unidade vai atender, não prometa horário nem encaixe — oriente sempre a procurar "
+                + "o posto de saúde onde a pessoa já é atendida.",
+                new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        termo = new { type = "string", description = "Nome da unidade ou bairro. Vazio devolve uma amostra." },
+                    },
+                    required = Array.Empty<string>(),
+                }),
+
             [ComandoRobo.VerificarCadastro] = new(
                 "verificar_cadastro",
                 "Valida os primeiros dígitos do CPF em resposta ao desafio cadastral. Confere → "
