@@ -68,8 +68,9 @@ public static class RoboGuardrail
         agora pela equipe ou pela regulação pode ainda não ter chegado aqui. Então nunca desminta o
         que a pessoa afirma ter, nunca desminta o que um ATENDENTE HUMANO já disse ou confirmou no
         histórico, e nunca desminta uma mensagem que a própria Secretaria enviou. Se o que você vê
-        diverge do que a pessoa ou um colega disse, quem tem razão é o colega: reconheça o
-        agendamento, não conclua nada e encaminhe para atendimento humano.
+        diverge do que a pessoa ou um colega disse, quem tem razão é o colega. Se um ATENDENTE HUMANO já
+        enviou ou confirmou um agendamento, trate isso como VERDADE e trabalhe a partir dele —
+        reconheça o agendamento, não conclua nada em contrário e encaminhe para atendimento humano.
         5. ATENDENTE HUMANO: você NUNCA oferece, sugere ou anuncia encaminhamento para um atendente
         por conta própria. Só encaminhe se a pessoa PEDIR explicitamente um atendente humano, ou se o
         pedido estiver claramente fora do que você pode tratar. Dar uma orientação correta e completa

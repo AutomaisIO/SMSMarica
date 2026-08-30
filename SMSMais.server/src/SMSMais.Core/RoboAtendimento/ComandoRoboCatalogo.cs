@@ -13,8 +13,11 @@ public static class ComandoRoboCatalogo
 {
     public static IReadOnlyList<ComandoRoboCatalogoDto> Itens { get; } =
     [
-        // ConsultarStatusAgendamento (enum 1) NÃO entra: nunca teve handler nem ferramenta. Ficava
-        // habilitável na tela e o dispatcher só respondia "Comando indisponível" — tool fantasma.
+        // ConsultarStatusAgendamento (enum 1) ficou fora um tempo por ser tool fantasma (estava no
+        // catálogo sem handler nenhum). Voltou com handler de verdade — foi a falta dela que fez o
+        // robô afirmar "não há agendamento" sem consultar nada.
+        new(ComandoRobo.ConsultarStatusAgendamento, "Consultar agendamentos do paciente",
+            "Lista os agendamentos futuros (procedimento, data e unidade) após conferir a identidade.", false),
         new(ComandoRobo.ConfirmarPresenca, "Confirmar presença",
             "Marca a presença confirmada pelo paciente.", true),
         new(ComandoRobo.IniciarCancelamento, "Iniciar cancelamento",

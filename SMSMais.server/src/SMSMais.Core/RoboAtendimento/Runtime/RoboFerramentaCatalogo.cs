@@ -113,6 +113,25 @@ public static class RoboFerramentaCatalogo
                     required = Array.Empty<string>(),
                 }),
 
+            [ComandoRobo.ConsultarStatusAgendamento] = new(
+                "consultar_agendamentos",
+                "Lista os agendamentos FUTUROS do paciente (procedimento, data e unidade). Exige "
+                + "identidade: colete os QUATRO primeiros dígitos do CPF (de uma vez) e o mês/ano de "
+                + "nascimento ANTES de chamar. Use SEMPRE esta ferramenta antes de falar qualquer "
+                + "coisa sobre agendamento — inclusive para dizer que NÃO há: nunca afirme ausência "
+                + "sem ter consultado.",
+                new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        cpf = new { type = "string", description = "Os QUATRO primeiros dígitos do CPF do paciente, juntos." },
+                        mesNascimento = new { type = "integer", description = "Mês de nascimento (1 a 12)." },
+                        anoNascimento = new { type = "integer", description = "Ano de nascimento com 4 dígitos." },
+                    },
+                    required = new[] { "cpf", "mesNascimento", "anoNascimento" },
+                }),
+
             [ComandoRobo.ConsultarCadastro] = new(
                 "consultar_cadastro",
                 "Confere a identidade da pessoa contra o cadastro e devolve o NOME dela. Colete "

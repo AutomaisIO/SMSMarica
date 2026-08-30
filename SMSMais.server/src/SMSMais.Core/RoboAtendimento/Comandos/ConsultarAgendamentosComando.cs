@@ -1,0 +1,109 @@
+using Microsoft.EntityFrameworkCore;
+using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Pacientes;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+
+namespace SMSMais.Core.RoboAtendimento.Comandos;
+
+/// <summary>
+/// Consulta os agendamentos FUTUROS do paciente, atrás do mesmo gate de identidade do cadastro
+/// (4 primeiros dígitos do CPF + mês/ano de nascimento). Data, hora e local de atendimento são
+/// dados sensíveis: não saem sem a identidade conferir.
+///
+/// Nasceu de um caso real: uma atendente enviou o agendamento de um cidadão e, dias depois, o robô
+/// — sem ferramenta nenhuma de agendamento — respondeu que "não há agendamento futuro registrado",
+/// desmentindo a própria Secretaria. Faltava a ferramenta; ele preencheu o vazio com uma afirmação.
+///
+/// Quando não encontra, a mensagem deixa explícito que isso significa "não localizei no NOSSO
+/// sistema", não "não existe": a base é uma visão parcial e a importação da regulação é assíncrona.
+/// </summary>
+public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientesService pacientes) : IRoboComando
+{
+    private const int Maximo = 5;
+
+    public ComandoRobo Comando => ComandoRobo.ConsultarStatusAgendamento;
+    public bool Idempotente => false;
+    public string ChaveIdempotencia(RoboComandoContexto ctx) => $"{ctx.ConversaId}:consultar_agendamentos";
+
+    public async Task<RoboComandoResultado> ExecutarAsync(RoboComandoContexto ctx, CancellationToken ct)
+    {
+        var cpf = GateIdentidade.LerString(ctx.Args, "cpf");
+        var mes = GateIdentidade.LerInt(ctx.Args, "mesNascimento");
+        var ano = GateIdentidade.LerInt(ctx.Args, "anoNascimento");
+
+        // Falta ≠ erro: peça o que falta, não conclua nada (ver ConsultarCadastroComando).
+        if (string.IsNullOrWhiteSpace(cpf) || GateIdentidade.SoDigitos(cpf).Length < 4)
+            return new(false, "Faltam os dígitos do CPF. Peça os *4 primeiros dígitos do CPF* do paciente, "
+                + "todos de uma vez, e chame de novo. NÃO conclua nada sobre agendamento.");
+        if (mes is null || ano is null)
+            return new(false, "Falta a data de nascimento. Peça o MÊS e o ANO de nascimento do paciente e "
+                + "chame de novo. NÃO conclua nada sobre agendamento.");
+
+        var alvo = await ResolverPacienteAsync(ctx, cpf, mes, ano, ct);
+        if (alvo is null)
+            return new(false,
+                "Não consegui conferir a identidade para ver agendamentos. NÃO diga que a pessoa não tem "
+                + "agendamento — você não chegou a consultar. Peça os dados novamente ou encaminhe.");
+
+        var agora = DateTime.UtcNow;
+        var futuros = await db.Solicitacoes.AsNoTracking()
+            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+                && s.DataAgendada != null && s.DataAgendada >= agora)
+            .OrderBy(s => s.DataAgendada)
+            .Take(Maximo)
+            .Select(s => new
+            {
+                s.DataAgendada,
+                Procedimento = s.ExameImagem != null && s.ExameImagem.TipoExame != null
+                    ? s.ExameImagem.TipoExame.Nome
+                    : (s.EspecialidadeTexto ?? s.ProcedimentoTexto),
+                Unidade = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
+                s.StatusConfirmacao,
+            })
+            .ToListAsync(ct);
+
+        if (futuros.Count == 0)
+            return new(false,
+                "NÃO localizei agendamento futuro NO NOSSO SISTEMA — o que NÃO quer dizer que não exista: "
+                + "marcação feita agora pela equipe ou pela regulação pode ainda não ter chegado aqui. "
+                + "NUNCA diga que a pessoa não tem nada agendado. Diga que não conseguiu localizar por "
+                + "aqui, peça para ela conferir a guia no posto onde é atendida, e encaminhe para um "
+                + "atendente confirmar.");
+
+        var linhas = futuros.Select(f =>
+        {
+            var quando = f.DataAgendada is { } d ? FusoBrasilia.ParaExibicao(d).ToString("dd/MM/yyyy 'às' HH:mm") : "sem data";
+            var onde = string.IsNullOrWhiteSpace(f.Unidade) ? string.Empty : $" — {f.Unidade}";
+            var conf = f.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada ? " (já confirmado)" : string.Empty;
+            return $"- {f.Procedimento ?? "atendimento"}: {quando}{onde}{conf}";
+        });
+
+        return new(true,
+            string.Join("\n", linhas)
+            + "\n\nInforme esses dados à pessoa. Lembre que a guia é retirada no posto onde ela é atendida. "
+            + "NÃO invente nada além do que está acima.");
+    }
+
+    /// <summary>Confere a identidade e devolve o paciente. Aceita o paciente da conversa e, quando o
+    /// número não está amarrado, procura no cadastro por telefone.</summary>
+    private async Task<Guid?> ResolverPacienteAsync(
+        RoboComandoContexto ctx, string? cpf, int? mes, int? ano, CancellationToken ct)
+    {
+        if (ctx.PacienteId is { } id)
+        {
+            var p = await pacientes.ObterPorIdAsync(id, ct);
+            return GateIdentidade.CpfInicioConfere(p.Cpf, cpf)
+                && GateIdentidade.NascimentoMesAnoConfere(p.DataNascimento, mes, ano)
+                ? p.Id : null;
+        }
+
+        foreach (var p in await pacientes.ListarPorTelefoneAsync(ctx.TelefoneCanonical, ct))
+        {
+            if (GateIdentidade.CpfInicioConfere(p.Cpf, cpf)
+                && GateIdentidade.NascimentoMesAnoConfere(p.DataNascimento, mes, ano))
+                return p.Id;
+        }
+        return null;
+    }
+}
