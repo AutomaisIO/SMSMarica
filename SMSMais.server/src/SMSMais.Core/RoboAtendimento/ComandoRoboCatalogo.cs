@@ -53,12 +53,17 @@ public static class ComandoRoboCatalogo
     /// identidade não conferia. Proibi-lo de pedir não resolveu — ele copiava o próprio histórico.
     /// Dar a ferramenta resolve.
     ///
-    /// Só entram comandos SEGUROS: conferir identidade (leitura, com minimização) e devolver a
-    /// conversa a um humano. Nada que altere dado entra aqui — isso continua por assunto.
+    /// Só entram comandos SEGUROS — leitura, e nada que altere dado (isso continua por assunto):
+    /// conferir identidade e ver agendamento (ambos com minimização e atrás do gate de CPF+data),
+    /// dizer onde fica uma unidade (endereço é informação pública) e devolver a conversa a um
+    /// humano. Os dois de consulta estão aqui pelo mesmo motivo: sem eles o robô AFIRMA no lugar de
+    /// consultar — foi assim que desmentiu um agendamento que a própria Secretaria havia enviado.
     /// </summary>
     public static IReadOnlySet<ComandoRobo> Base { get; } = new HashSet<ComandoRobo>
     {
         ComandoRobo.ConsultarCadastro,
+        ComandoRobo.ConsultarStatusAgendamento,
+        ComandoRobo.ConsultarUnidades,
         ComandoRobo.EncaminharParaHumano,
     };
 
