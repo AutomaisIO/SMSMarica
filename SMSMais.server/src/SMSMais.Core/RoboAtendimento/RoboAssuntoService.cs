@@ -20,7 +20,7 @@ public sealed class RoboAssuntoService(SmsMaisDbContext db, IUsuarioAtualAccesso
 
         var achados = await query.OrderBy(a => a.Ordem).ThenBy(a => a.Nome).ToListAsync(ct);
         return [.. achados.Select(a => new RoboAssuntoListItemDto(
-            a.Id, a.Nome, a.Descricao, a.Ativo, a.Modelo, a.Ordem,
+            a.Id, a.Nome, a.Descricao, a.Ativo, a.Modelo, a.Ordem, a.Padrao,
             a.Comandos.Count(c => c.Habilitado)))];
     }
 
@@ -49,12 +49,15 @@ public sealed class RoboAssuntoService(SmsMaisDbContext db, IUsuarioAtualAccesso
             LimiarConfianca = request.LimiarConfianca,
             EscalonamentoUnidadeId = request.EscalonamentoUnidadeId,
             Ordem = request.Ordem,
+            Padrao = request.Padrao,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = me,
             Condicoes = [.. request.Condicoes.Select(CondicaoParaEntidade)],
             Treinos = [.. request.Treinos.Select(TreinoParaEntidade)],
             Comandos = [.. request.Comandos.Distinct().Select(ComandoParaEntidade)],
         };
+
+        if (assunto.Padrao) await DesmarcarOutrosPadraoAsync(assunto.Id, me, ct);
 
         db.RoboAssuntos.Add(assunto);
         await db.SaveChangesAsync(ct);
@@ -82,8 +85,13 @@ public sealed class RoboAssuntoService(SmsMaisDbContext db, IUsuarioAtualAccesso
         assunto.LimiarConfianca = request.LimiarConfianca;
         assunto.EscalonamentoUnidadeId = request.EscalonamentoUnidadeId;
         assunto.Ordem = request.Ordem;
+        assunto.Padrao = request.Padrao;
         assunto.AtualizadoEm = DateTime.UtcNow;
         assunto.AtualizadoPor = me;
+
+        // Marcar este como padrão desmarca o anterior no MESMO SaveChanges — se fossem duas
+        // gravações, o índice único rejeitaria a segunda e a tela mostraria um erro sem sentido.
+        if (assunto.Padrao) await DesmarcarOutrosPadraoAsync(id, me, ct);
 
         // Filhos são declaração, não têm vida própria: troca por inteiro (molde RespostaRapida).
         db.RoboAssuntoCondicoes.RemoveRange(assunto.Condicoes);
@@ -135,12 +143,30 @@ public sealed class RoboAssuntoService(SmsMaisDbContext db, IUsuarioAtualAccesso
             throw new ConflitoException("robo_assunto.nome_duplicado", $"Já existe um assunto com o nome '{nome}'.");
     }
 
+    /// <summary>Tira a marca de padrão dos demais, para o índice único nunca ser desafiado.</summary>
+    private async Task DesmarcarOutrosPadraoAsync(Guid id, Guid me, CancellationToken ct)
+    {
+        var outros = await db.RoboAssuntos
+            .Where(a => a.Padrao && a.Id != id && a.ExcluidoEm == null)
+            .ToListAsync(ct);
+        foreach (var o in outros)
+        {
+            o.Padrao = false;
+            o.AtualizadoEm = DateTime.UtcNow;
+            o.AtualizadoPor = me;
+        }
+    }
+
     private static void Validar(SalvarRoboAssuntoRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Nome))
             throw new ValidacaoException("nome", "Informe o nome do assunto.");
         if (string.IsNullOrWhiteSpace(request.InstrucoesPersona))
             throw new ValidacaoException("instrucoesPersona", "Descreva como o robô deve agir neste assunto.");
+        // Um padrão desligado não é padrão nenhum: a mensagem cairia sem assunto de novo, em
+        // silêncio, e é justamente o que este recurso existe para evitar.
+        if (request.Padrao && !request.Ativo)
+            throw new ValidacaoException("padrao", "O assunto padrão precisa estar ativo para valer de rede.");
         if (request.MaxInteracoesSemResolver < 1)
             throw new ValidacaoException("maxInteracoesSemResolver", "O limite de interações deve ser pelo menos 1.");
         if (request.LimiarConfianca is < 0 or > 1)
@@ -202,6 +228,7 @@ public sealed class RoboAssuntoService(SmsMaisDbContext db, IUsuarioAtualAccesso
         a.EscalonamentoUnidadeId,
         a.EscalonamentoUnidade?.Nome,
         a.Ordem,
+        a.Padrao,
         [.. a.Condicoes.OrderBy(c => c.Ordem)
             .Select(c => new RoboAssuntoCondicaoDto(c.Tipo, c.Valor, c.Ativo, c.Ordem))],
         [.. a.Treinos.OrderBy(t => t.Ordem)

@@ -33,6 +33,7 @@ public sealed record RoboAssuntoDto(
     Guid? EscalonamentoUnidadeId,
     string? EscalonamentoUnidadeNome,
     int Ordem,
+    bool Padrao,
     IReadOnlyList<RoboAssuntoCondicaoDto> Condicoes,
     IReadOnlyList<RoboAssuntoTreinoDto> Treinos,
     IReadOnlyList<ComandoRobo> Comandos,
@@ -46,6 +47,7 @@ public sealed record RoboAssuntoListItemDto(
     bool Ativo,
     string? Modelo,
     int Ordem,
+    bool Padrao,
     int QtdComandos);
 
 /// <summary>Payload de criar/atualizar assunto (carrega os filhos e os comandos habilitados).</summary>
@@ -62,6 +64,7 @@ public sealed record SalvarRoboAssuntoRequest(
     double LimiarConfianca,
     Guid? EscalonamentoUnidadeId,
     int Ordem,
+    bool Padrao,
     IReadOnlyList<RoboAssuntoCondicaoDto> Condicoes,
     IReadOnlyList<RoboAssuntoTreinoDto> Treinos,
     IReadOnlyList<ComandoRobo> Comandos);

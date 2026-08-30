@@ -50,6 +50,13 @@ public class RoboAssunto
     /// <summary>Prioridade na classificação por condições (menor primeiro).</summary>
     public int Ordem { get; set; }
 
+    /// <summary>
+    /// Assunto usado quando NENHUM outro casa com a mensagem. No máximo um (índice único parcial).
+    /// Sem ele, "sem assunto" não é um estado neutro: é o robô sem orientação, sem treinos, sem
+    /// limiar de confiança e sem os comandos do assunto — e 22% das mensagens caem aí.
+    /// </summary>
+    public bool Padrao { get; set; }
+
     /// <summary>Token de concorrência (xmin do Postgres).</summary>
     public uint RowVersion { get; set; }
 

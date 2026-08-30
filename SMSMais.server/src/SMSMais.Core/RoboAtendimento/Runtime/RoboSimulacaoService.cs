@@ -42,13 +42,9 @@ public sealed class RoboSimulacaoService(
         var personaGlobal = cfg?.PersonaGlobal ?? Data.Entities.Robo.RoboConfiguracao.PersonaGlobalPadrao;
         var modeloPadrao = cfg?.ModeloPadrao ?? "claude-haiku-4-5-20251001";
 
-        var assuntoId = request.AssuntoId ?? await classificador.ClassificarAsync(request.Mensagem, ct);
-        var assunto = assuntoId is { } id
-            ? await db.RoboAssuntos.AsNoTracking()
-                .Include(a => a.Treinos)
-                .Include(a => a.Comandos)
-                .FirstOrDefaultAsync(a => a.Id == id && a.ExcluidoEm == null, ct)
-            : null;
+        // Mesma resolução do atendimento real (inclui a queda no assunto padrão): simular só vale
+        // se o assunto escolhido for o mesmo que o cidadão receberia.
+        var assunto = await classificador.ResolverAsync(request.AssuntoId, request.Mensagem, ct);
 
         var dentroHorario = assunto is null || RoboPrompt.DentroDoHorario(assunto);
         // Mesma leitura do processador — a URL do app entra na despedida.

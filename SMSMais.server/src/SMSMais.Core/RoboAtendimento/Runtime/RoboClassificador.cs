@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Robo;
 
 namespace SMSMais.Core.RoboAtendimento.Runtime;
 
@@ -12,6 +14,13 @@ namespace SMSMais.Core.RoboAtendimento.Runtime;
 public interface IRoboClassificador
 {
     Task<Guid?> ClassificarAsync(string? texto, CancellationToken ct);
+
+    /// <summary>
+    /// Devolve o assunto a usar no turno, já com treinos e comandos carregados: o informado, ou o
+    /// classificado pela mensagem, ou — se nada casar — o marcado como PADRÃO. Atendimento real e
+    /// simulação chamam este mesmo método justamente para não divergirem.
+    /// </summary>
+    Task<RoboAssunto?> ResolverAsync(Guid? assuntoId, string? texto, CancellationToken ct);
 }
 
 public sealed class RoboClassificador(SmsMaisDbContext db, ILogger<RoboClassificador> logger) : IRoboClassificador
@@ -42,6 +51,25 @@ public sealed class RoboClassificador(SmsMaisDbContext db, ILogger<RoboClassific
         }
         return null;
     }
+
+    public async Task<RoboAssunto?> ResolverAsync(Guid? assuntoId, string? texto, CancellationToken ct)
+    {
+        var id = assuntoId ?? await ClassificarAsync(texto, ct);
+        var assunto = id is { } alvo ? await CarregarAsync(a => a.Id == alvo, ct) : null;
+
+        // Nada casou. Antes isso deixava o robô SEM orientação, sem treinos, sem limiar e sem os
+        // comandos do assunto — e é onde cai a maior parte do que o classificador não prevê. O
+        // assunto padrão é a rede: se existir um marcado, ele assume; se não, o comportamento é
+        // exatamente o de antes.
+        return assunto ?? await CarregarAsync(a => a.Padrao, ct);
+    }
+
+    private Task<RoboAssunto?> CarregarAsync(Expression<Func<RoboAssunto, bool>> filtro, CancellationToken ct) =>
+        db.RoboAssuntos.AsNoTracking()
+            .Include(a => a.Treinos)
+            .Include(a => a.Comandos)
+            .Where(a => a.Ativo && a.ExcluidoEm == null)
+            .FirstOrDefaultAsync(filtro, ct);
 
     private bool Casou(string alvoNorm, string textoOriginal, TipoCondicaoRobo tipo, string valor)
     {

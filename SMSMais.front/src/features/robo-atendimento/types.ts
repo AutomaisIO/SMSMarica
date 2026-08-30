@@ -35,6 +35,8 @@ export type RoboAssuntoListItem = {
   ativo: boolean;
   modelo: string | null;
   ordem: number;
+  /** Assunto usado quando nenhum outro casa com a mensagem (no máximo um). */
+  padrao: boolean;
   qtdComandos: number;
 };
 
@@ -55,6 +57,7 @@ export type RoboAssunto = {
   escalonamentoUnidadeId: string | null;
   escalonamentoUnidadeNome: string | null;
   ordem: number;
+  padrao: boolean;
   condicoes: RoboAssuntoCondicao[];
   treinos: RoboAssuntoTreino[];
   comandos: ComandoRobo[];
@@ -74,6 +77,7 @@ export type SalvarRoboAssuntoPayload = {
   limiarConfianca: number;
   escalonamentoUnidadeId: string | null;
   ordem: number;
+  padrao: boolean;
   condicoes: RoboAssuntoCondicao[];
   treinos: RoboAssuntoTreino[];
   comandos: ComandoRobo[];

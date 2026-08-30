@@ -45,6 +45,7 @@ type FormAssunto = {
   instrucoesPersona: string;
   modelo: string;
   ativo: boolean;
+  padrao: boolean;
   todosDias: boolean;
   diasSemana: number;
   horarioInicio: string;
@@ -63,6 +64,7 @@ const FORM_VAZIO: FormAssunto = {
   instrucoesPersona: '',
   modelo: '',
   ativo: true,
+  padrao: false,
   todosDias: true,
   diasSemana: 0,
   horarioInicio: '',
@@ -101,6 +103,7 @@ export function EditorAssunto({ assuntoId, aberto, aoFechar }: Props) {
       instrucoesPersona: a.instrucoesPersona,
       modelo: a.modelo ?? '',
       ativo: a.ativo,
+      padrao: a.padrao,
       todosDias: a.diasSemana == null,
       diasSemana: a.diasSemana ?? 0,
       horarioInicio: a.horarioInicio ? a.horarioInicio.slice(0, 5) : '',
@@ -141,6 +144,7 @@ export function EditorAssunto({ assuntoId, aberto, aoFechar }: Props) {
       instrucoesPersona: form.instrucoesPersona.trim(),
       modelo: form.modelo.trim() || null,
       ativo: form.ativo,
+      padrao: form.padrao,
       horarioInicio: form.horarioInicio ? `${form.horarioInicio}:00` : null,
       horarioFim: form.horarioFim ? `${form.horarioFim}:00` : null,
       diasSemana: form.todosDias ? null : form.diasSemana,
@@ -302,6 +306,23 @@ export function EditorAssunto({ assuntoId, aberto, aoFechar }: Props) {
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input type="checkbox" checked={form.ativo} onChange={(e) => set('ativo', e.target.checked)} />
               Assunto ativo
+            </label>
+
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={form.padrao}
+                onChange={(e) => set('padrao', e.target.checked)}
+              />
+              <span>
+                Assunto padrão
+                <span className="block text-xs text-gray-500">
+                  Usado quando nenhum outro assunto casa com a mensagem. Sem ele, o robô atende sem
+                  orientação, sem treinos e sem os comandos do assunto. Só um assunto pode ser o
+                  padrão — marcar aqui desmarca o anterior.
+                </span>
+              </span>
             </label>
           </section>
 

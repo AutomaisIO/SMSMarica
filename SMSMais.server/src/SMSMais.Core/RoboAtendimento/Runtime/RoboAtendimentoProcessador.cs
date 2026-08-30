@@ -90,15 +90,8 @@ public sealed class RoboAtendimentoProcessador(
         var aguardandoCadastral =
             (conversa.PacienteId is { } pid && await AguardandoVerificacaoCadastralAsync(pid, ct))
             || await AguardandoVerificacaoCadastralPorTelefoneAsync(conversa.TelefoneCanonical, ct);
-        Guid? assuntoId = aguardandoCadastral
-            ? RoboAssuntosPadrao.VerificacaoCadastralId
-            : await classificador.ClassificarAsync(texto, ct);
-        RoboAssunto? assunto = assuntoId is { } id
-            ? await db.RoboAssuntos.AsNoTracking()
-                .Include(a => a.Treinos)
-                .Include(a => a.Comandos)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Ativo && a.ExcluidoEm == null, ct)
-            : null;
+        var assunto = await classificador.ResolverAsync(
+            aguardandoCadastral ? RoboAssuntosPadrao.VerificacaoCadastralId : null, texto, ct);
 
         var maxInteracoes = assunto?.MaxInteracoesSemResolver ?? 20;
         if (conversa.RoboInteracoesNaJanela >= maxInteracoes)

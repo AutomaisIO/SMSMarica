@@ -41,6 +41,11 @@ export function RoboAtendimentoPage() {
       render: (a) => (
         <div>
           <span className="font-medium text-gray-900">{a.nome}</span>
+          {a.padrao ? (
+            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+              padrão
+            </span>
+          ) : null}
           {a.descricao ? <p className="text-xs text-gray-500">{a.descricao}</p> : null}
         </div>
       ),

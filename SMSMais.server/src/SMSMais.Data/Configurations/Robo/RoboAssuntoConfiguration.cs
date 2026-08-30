@@ -24,6 +24,14 @@ internal sealed class RoboAssuntoConfiguration : IEntityTypeConfiguration<RoboAs
         builder.Property(a => a.LimiarConfianca).HasColumnName("limiar_confianca").HasDefaultValue(0.6).IsRequired();
         builder.Property(a => a.EscalonamentoUnidadeId).HasColumnName("escalonamento_unidade_id");
         builder.Property(a => a.Ordem).HasColumnName("ordem").HasDefaultValue(0).IsRequired();
+        builder.Property(a => a.Padrao).HasColumnName("padrao").HasDefaultValue(false).IsRequired();
+
+        // No máximo UM assunto padrão vivo. A tela troca a marca de forma atômica; o índice é a
+        // garantia de que dois caminhos concorrentes não deixem o robô com dois "genéricos".
+        builder.HasIndex(a => a.Padrao)
+            .HasDatabaseName("ix_robo_assunto_padrao")
+            .IsUnique()
+            .HasFilter("padrao AND excluido_em IS NULL");
 
         builder.Property(a => a.RowVersion)
             .HasColumnName("xmin")
