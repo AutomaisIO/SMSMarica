@@ -115,17 +115,19 @@ public static class RoboFerramentaCatalogo
 
             [ComandoRobo.ConsultarCadastro] = new(
                 "consultar_cadastro",
-                "Confere a identidade da pessoa contra o cadastro e devolve o NOME dela. Peça os 4 "
-                + "PRIMEIROS dígitos do CPF (nunca o CPF completo) e, em seguida, o mês e o ano de "
-                + "nascimento — do PACIENTE do agendamento, não de quem escreve. Use SEMPRE esta "
-                + "ferramenta para confirmar identidade: nunca diga por conta própria que os dados "
-                + "conferem ou não conferem.",
+                "Confere a identidade da pessoa contra o cadastro e devolve o NOME dela. Colete "
+                + "ANTES de chamar: os QUATRO primeiros dígitos do CPF (todos de uma vez, nunca "
+                + "dígito por dígito, nunca o CPF completo) e o mês e o ano de nascimento — do "
+                + "PACIENTE do agendamento, não de quem escreve. NUNCA chame esta ferramenta com "
+                + "campo vazio ou inventado: se faltar algum dado, PERGUNTE primeiro. Use SEMPRE "
+                + "esta ferramenta para confirmar identidade — nunca diga por conta própria que os "
+                + "dados conferem ou não conferem.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
-                        cpf = new { type = "string", description = "Os 4 PRIMEIROS dígitos do CPF do paciente." },
+                        cpf = new { type = "string", description = "Os QUATRO primeiros dígitos do CPF do paciente, juntos (ex.: quatro números). Peça os quatro de uma vez, nunca dígito por dígito." },
                         mesNascimento = new { type = "integer", description = "Mês de nascimento (1 a 12)." },
                         anoNascimento = new { type = "integer", description = "Ano de nascimento com 4 dígitos." },
                     },

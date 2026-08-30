@@ -23,31 +23,59 @@ public sealed class ConsultarCadastroComando(IPacientesService pacientes) : IRob
 
     public async Task<RoboComandoResultado> ExecutarAsync(RoboComandoContexto ctx, CancellationToken ct)
     {
-        if (ctx.PacienteId is not { } pacienteId)
-            return new(false,
-                "Este número não está vinculado a um cadastro, então não há o que conferir. NÃO peça "
-                + "mais dados pessoais: oriente a pessoa a procurar o posto de saúde onde é atendida.");
-
         var cpf = GateIdentidade.LerString(ctx.Args, "cpf");
         var mes = GateIdentidade.LerInt(ctx.Args, "mesNascimento");
         var ano = GateIdentidade.LerInt(ctx.Args, "anoNascimento");
 
-        var p = await pacientes.ObterPorIdAsync(pacienteId, ct);
-        var cpfOk = GateIdentidade.CpfInicioConfere(p.Cpf, cpf);
-        var nascimentoOk = GateIdentidade.NascimentoMesAnoConfere(p.DataNascimento, mes, ano);
+        // DADO FALTANDO ≠ DADO ERRADO. O modelo já chegou a chamar isto com "<UNKNOWN>" no mês/ano
+        // em vez de perguntar — e o cidadão recebeu "não localizei seu cadastro", o que é mentira.
+        // Aqui a diferença é explícita: falta é pedido, não veredito.
+        if (string.IsNullOrWhiteSpace(cpf) || GateIdentidade.SoDigitos(cpf).Length < 4)
+            return new(false,
+                "Faltam os dígitos do CPF. NÃO conclua nada: peça à pessoa os *4 primeiros dígitos "
+                + "do CPF* do paciente, todos de uma vez, e chame de novo.");
+        if (mes is null || ano is null)
+            return new(false,
+                "Falta a data de nascimento. NÃO conclua nada e NÃO diga que não encontrou o "
+                + "cadastro: peça o MÊS e o ANO de nascimento do paciente e chame de novo.");
 
-        if (!cpfOk || !nascimentoOk)
+        // O paciente vem da conversa; quando o número não está amarrado (caso comum), procura no
+        // cadastro por telefone — vários casos reais chegam por número que a conversa ainda não
+        // resolveu, e sem isso a verificação seria impossível justamente para eles.
+        var candidatos = new List<(Guid Id, string Nome, string? Cpf, DateOnly? Nascimento, string? Verificado)>();
+        if (ctx.PacienteId is { } pacienteId)
+        {
+            var p = await pacientes.ObterPorIdAsync(pacienteId, ct);
+            candidatos.Add((p.Id, p.NomeCompleto, p.Cpf, p.DataNascimento, p.TelefoneVerificado));
+        }
+        else
+        {
+            foreach (var p in await pacientes.ListarPorTelefoneAsync(ctx.TelefoneCanonical, ct))
+                candidatos.Add((p.Id, p.NomeCompleto, p.Cpf, p.DataNascimento, null));
+        }
+
+        if (candidatos.Count == 0)
+            return new(false,
+                "Este número não está vinculado a nenhum cadastro nosso — não é que os dados estejam "
+                + "errados, é que não há a quem comparar. Diga isso com clareza, NÃO peça mais dados "
+                + "pessoais e oriente a procurar o posto de saúde onde a pessoa é atendida.");
+
+        var achado = candidatos.FirstOrDefault(c =>
+            GateIdentidade.CpfInicioConfere(c.Cpf, cpf)
+            && GateIdentidade.NascimentoMesAnoConfere(c.Nascimento, mes, ano));
+
+        if (achado.Id == Guid.Empty)
             return new(false,
                 "Os dados não conferem com o cadastro. NÃO diga qual deles falhou. Explique que o CPF "
                 + "e a data de nascimento precisam ser os do PACIENTE do agendamento — se quem "
                 + "escreve é parente ou responsável, os dados devem ser do paciente — e ofereça "
                 + "tentar de novo.");
 
-        var nome = (p.NomeCompleto ?? string.Empty).Trim();
-        var verificado = !string.IsNullOrWhiteSpace(p.TelefoneVerificado);
+        var verificado = !string.IsNullOrWhiteSpace(achado.Verificado);
         return new(true,
-            $"Identidade confirmada: {nome}. Trate a pessoa pelo primeiro nome e siga com o "
-            + "atendimento. NÃO repita o CPF nem a data de nascimento na resposta."
-            + (verificado ? string.Empty : " O contato ainda não está verificado no cadastro."));
+            $"Identidade confirmada: {(achado.Nome ?? string.Empty).Trim()}. Trate a pessoa pelo "
+            + "primeiro nome e siga com o atendimento. NÃO repita o CPF nem a data de nascimento na "
+            + "resposta." + (verificado ? string.Empty : " O contato ainda não está verificado no cadastro."),
+            new { pacienteId = achado.Id });
     }
 }
