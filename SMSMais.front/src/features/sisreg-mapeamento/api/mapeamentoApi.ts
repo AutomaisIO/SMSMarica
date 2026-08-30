@@ -1,5 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  AlternarTudoDaUnidade,
   ProcedimentoSigtapDePara,
   SisregMapeamento,
   SisregMapeamentoAtualizacao,
@@ -83,6 +84,26 @@ export async function alternarProcedimentosDoProfissional(
     { habilitados, enviarConfirmacao },
     cabecalhoUnidade(unidadeId),
   );
+}
+
+/**
+ * Aplica de uma vez a TODA a unidade: todos os médicos, todos os procedimentos e o aviso por
+ * WhatsApp. Mesmo efeito do botão por médico, na unidade inteira — existe para o operador não ter
+ * que percorrer 113 médicos um a um. Não vai ao SISREG.
+ */
+export async function alternarTudoDaUnidade(
+  habilitados: boolean,
+  unidadeId?: string | null,
+): Promise<AlternarTudoDaUnidade> {
+  // `enviarConfirmacao` fica de fora de propósito: omitido, o back NÃO encosta no aviso por
+  // WhatsApp. Este botão liga o sincronismo; quem decide o aviso é o mestre da unidade e a
+  // caixinha de cada procedimento.
+  const { data } = await http.put<AlternarTudoDaUnidade>(
+    '/sisreg/mapeamento/habilitar-tudo',
+    { habilitados },
+    cabecalhoUnidade(unidadeId),
+  );
+  return data;
 }
 
 export async function sincronizarFhir(unidadeId?: string | null): Promise<SisregSincronizacaoFhir> {

@@ -111,6 +111,20 @@ public sealed class SisregMapeamentoController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Aplica de uma vez a <b>toda a unidade</b> — todos os médicos e todos os procedimentos, mais
+    /// o aviso por WhatsApp. Existe para não obrigar o operador a percorrer médico por médico numa
+    /// unidade de 113 profissionais. Não vai ao SISREG: só mexe no que já está mapeado.
+    /// </summary>
+    [HttpPut("habilitar-tudo")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AlternarTudoDaUnidadeDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<AlternarTudoDaUnidadeDto> AlternarTudoDaUnidade(
+        [FromBody] AlternarTudoDaUnidadeRequest request, CancellationToken cancellationToken) =>
+        await _mapeamentoService.AlternarTudoDaUnidadeAsync(
+            request.Habilitados, request.EnviarConfirmacao, cancellationToken);
+
     /// <summary>Sincroniza os profissionais habilitados com o hub FHIR (Practitioner), dedup por CPF.</summary>
     [HttpPost("sincronizar-fhir")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]

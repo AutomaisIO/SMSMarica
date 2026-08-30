@@ -26,9 +26,15 @@ public interface ISisregMapeamentoService
     /// request. <paramref name="antesDeCadaRequisicao"/> é chamado antes de cada ida ao SISREG
     /// (o lote usa para respeitar o teto de requisições/hora); passe <c>null</c> no uso interativo.
     /// </summary>
+    /// <param name="ttlProcedimentos">
+    /// Idade a partir da qual os procedimentos de um profissional já conhecido são rebuscados.
+    /// <c>null</c> (uso interativo) busca sempre — é o "atualizar de verdade" que o operador
+    /// espera do botão. O lote passa um TTL porque os procedimentos custam 1 requisição por
+    /// profissional e são a maior parte do gasto da rede inteira.
+    /// </param>
     Task<SisregMapeamentoAtualizacaoDto> AtualizarNoContextoAsync(
         Unidade unidade, Guid? usuarioId, Func<CancellationToken, Task>? antesDeCadaRequisicao,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default, TimeSpan? ttlProcedimentos = null);
 
     Task AlternarProfissionalAsync(Guid profissionalId, bool habilitado, CancellationToken cancellationToken = default);
 
@@ -43,6 +49,19 @@ public interface ISisregMapeamentoService
 
     /// <summary>Liga/desliga vários profissionais de uma vez.</summary>
     Task AlternarProfissionaisEmLoteAsync(IReadOnlyList<Guid> ids, bool habilitado, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Aplica de uma vez a <b>toda a unidade</b>: todos os profissionais e todos os procedimentos
+    /// deles, mais o aviso por WhatsApp. É o mesmo que o botão do médico faz, só que na unidade
+    /// inteira — existe para não obrigar o operador a percorrer médico por médico numa unidade de
+    /// 113 profissionais.
+    ///
+    /// <para>Não vai ao SISREG: mexe só no que já está mapeado aqui. Devolve o que passou a valer
+    /// para a tela avisar o custo (cada par habilitado é uma requisição por varredura — a menos
+    /// que a unidade use o recorte "unidade inteira", que traz a agenda toda numa só).</para>
+    /// </summary>
+    Task<AlternarTudoDaUnidadeDto> AlternarTudoDaUnidadeAsync(
+        bool habilitados, bool? enviarConfirmacao, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Aplica de uma vez, a um profissional, o habilita/desabilita do médico e de todos os seus

@@ -51,17 +51,91 @@ export type MapeamentoLoteAceito = { unidadesTotal: number; mensagem: string };
 export type MapeamentoLoteStatus = {
   emExecucao: boolean;
   disparo: 'Manual' | 'Agendado';
+  /** Descoberta ou mapeamento — a descoberta acontece antes de existir denominador. */
+  fase: string;
   unidadesTotal: number;
   unidadesFeitas: number;
   unidadeAtual: string | null;
+  /** Unidades que a credencial enxerga no SISREG. */
+  unidadesNoSisreg: number;
+  /** Criadas aqui nesta execução (existiam no SISREG e não no nosso cadastro). */
+  unidadesCriadas: number;
+  unidadesMapeadas: number;
+  /** Puladas por TTL ou por orçamento — é o comportamento normal, não falha. */
+  unidadesPuladas: number;
   requisicoesFeitas: number;
   profissionaisEncontrados: number;
   profissionaisNovos: number;
+  procedimentosEncontrados: number;
+  procedimentosNovos: number;
   practitionersCriados: number;
   practitionersVinculados: number;
   unidadesComErro: number;
+  /** Requisições ainda disponíveis na janela de 60 min antes do teto anti-robô. */
+  orcamentoRestante: number;
   iniciadoEm: string;
   ultimoErro: string | null;
+};
+
+/** Estado de uma sincronização — mesmos nomes do rastreio da varredura. */
+export type StatusMapeamentoLote =
+  | 'Pendente'
+  | 'EmExecucao'
+  | 'Concluida'
+  | 'Parcial'
+  | 'Erro'
+  | 'Cancelada';
+
+/** Uma sincronização já encerrada (o que sobra depois que o progresso vivo some). */
+export type MapeamentoLoteExecucao = {
+  id: string;
+  disparo: 'Manual' | 'Agendado';
+  status: StatusMapeamentoLote;
+  unidadesNoSisreg: number;
+  unidadesCriadas: number;
+  unidadesComCnesPreenchido: number;
+  unidadesTotal: number;
+  unidadesMapeadas: number;
+  unidadesPuladas: number;
+  unidadesComErro: number;
+  profissionaisEncontrados: number;
+  profissionaisNovos: number;
+  procedimentosEncontrados: number;
+  procedimentosNovos: number;
+  practitionersCriados: number;
+  practitionersVinculados: number;
+  requisicoes: number;
+  mensagemErro: string | null;
+  iniciadoEm: string;
+  finalizadoEm: string | null;
+  duracaoSegundos: number | null;
+};
+
+/** Desfecho de uma unidade dentro da sincronização. */
+export type ResultadoUnidadeLote =
+  | 'Mapeada'
+  | 'PuladaPorTtl'
+  | 'PuladaPorOrcamento'
+  | 'Erro'
+  | 'SomenteDescoberta';
+
+/** Detalhe por unidade — o "quantos médicos vieram de cada uma". */
+export type MapeamentoLoteExecucaoItem = {
+  id: string;
+  unidadeId: string;
+  unidadeNome: string;
+  cnes: string | null;
+  unidadeCriada: boolean;
+  resultado: ResultadoUnidadeLote;
+  profissionaisEncontrados: number;
+  profissionaisNovos: number;
+  profissionaisAusentes: number;
+  procedimentosEncontrados: number;
+  procedimentosNovos: number;
+  practitionersCriados: number;
+  practitionersVinculados: number;
+  requisicoes: number;
+  observacao: string | null;
 };
 
 /** Configuração do disparo diário automático do lote. */

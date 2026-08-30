@@ -7,6 +7,7 @@ import {
   Download,
   ListChecks,
   Loader2,
+  ListTodo,
   MessageCircle,
   Network,
   RefreshCw,
@@ -20,6 +21,7 @@ import {
   useAlternarProcedimentosDoProfissional,
   useAlternarProfissional,
   useAlternarProfissionaisEmLote,
+  useAlternarTudoDaUnidade,
   useAtualizarMapeamento,
   useMapeamento,
   useSalvarVarreduraAgenda,
@@ -49,6 +51,7 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
   const alternarProc = useAlternarProcedimento(unidadeId);
   const alternarProfProcs = useAlternarProcedimentosDoProfissional(unidadeId);
   const alternarLote = useAlternarProfissionaisEmLote(unidadeId);
+  const alternarTudo = useAlternarTudoDaUnidade(unidadeId);
   const alternarConfirmacao = useAlternarEnvioConfirmacao(unidadeId);
   const agenda = useVarreduraAgenda(unidadeId);
   const salvarAgenda = useSalvarVarreduraAgenda(unidadeId);
@@ -59,6 +62,16 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
   const [soHabilitados, setSoHabilitados] = useState(false);
 
   const dados = mapeamento.data;
+
+  /**
+   * A unidade inteira já está ligada? Decide se o botão de unidade oferece habilitar ou
+   * desabilitar. Só conta como "tudo" quando médicos E procedimentos estão todos habilitados —
+   * senão o botão ofereceria desabilitar bem quando ainda falta habilitar.
+   */
+  const tudoHabilitado =
+    (dados?.totalProfissionais ?? 0) > 0 &&
+    dados?.profissionaisHabilitados === dados?.totalProfissionais &&
+    dados?.procedimentosHabilitados === dados?.totalProcedimentos;
 
   const profissionais = useMemo(() => {
     const lista = dados?.profissionais ?? [];
@@ -245,23 +258,53 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
             Só habilitados
           </label>
           {podeEditar && (
-            <Button
-              variante="ghost"
-              tamanho="sm"
-              disabled={alternarLote.isPending || profissionais.length === 0}
-              onClick={() =>
-                executar(
-                  () =>
-                    alternarLote.mutateAsync({
-                      ids: profissionais.map((p) => p.id),
-                      habilitado: false,
-                    }),
-                  () => 'Profissionais listados desabilitados.',
-                )
-              }
-            >
-              Desabilitar listados
-            </Button>
+            <>
+              {/* Unidade inteira de uma vez. O de cima ("Desabilitar listados") respeita o filtro
+                  da tela; este NÃO — ele é sobre a unidade, e misturar os dois escopos no mesmo
+                  lugar já seria confuso o bastante sem o rótulo dizer qual é qual. */}
+              <Button
+                variante="outline"
+                tamanho="sm"
+                disabled={alternarTudo.isPending || (dados?.totalProfissionais ?? 0) === 0}
+                title={
+                  tudoHabilitado
+                    ? 'Desabilita todos os médicos e procedimentos desta unidade de uma vez.'
+                    : 'Habilita todos os médicos e todos os procedimentos desta unidade de uma vez, '
+                      + 'sem passar médico por médico. Não mexe no aviso por WhatsApp.'
+                }
+                onClick={() =>
+                  executar(
+                    () => alternarTudo.mutateAsync({ habilitados: !tudoHabilitado }),
+                    (r) => (r as { mensagem: string }).mensagem,
+                  )
+                }
+              >
+                {alternarTudo.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ListTodo className="h-3.5 w-3.5" />
+                )}
+                {tudoHabilitado ? 'Desabilitar a unidade toda' : 'Habilitar a unidade toda'}
+              </Button>
+
+              <Button
+                variante="ghost"
+                tamanho="sm"
+                disabled={alternarLote.isPending || profissionais.length === 0}
+                onClick={() =>
+                  executar(
+                    () =>
+                      alternarLote.mutateAsync({
+                        ids: profissionais.map((p) => p.id),
+                        habilitado: false,
+                      }),
+                    () => 'Profissionais listados desabilitados.',
+                  )
+                }
+              >
+                Desabilitar listados
+              </Button>
+            </>
           )}
         </div>
 

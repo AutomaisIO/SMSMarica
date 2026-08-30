@@ -7,15 +7,37 @@ namespace SMSMais.Core.Integracoes.SisregWeb.MapeamentoLote.Background;
 public sealed class ProgressoMapeamentoLote
 {
     public required DisparoSincronizacao Disparo { get; init; }
-    public required int UnidadesTotal { get; init; }
     public required DateTime IniciadoEm { get; init; }
+
+    /// <summary>Linha da execução no banco, para a tela abrir o detalhe assim que termina.</summary>
+    public required Guid ExecucaoId { get; init; }
+
+    /// <summary>
+    /// Em que pé está: a descoberta das unidades vem ANTES de existir denominador, e sem isto a
+    /// tela mostraria "0/0 unidades" durante a primeira requisição, parecendo travada.
+    /// </summary>
+    public volatile string Fase = FaseDescoberta;
+
+    public const string FaseDescoberta = "Descobrindo as unidades no SISREG";
+    public const string FaseMapeamento = "Mapeando as unidades";
+
+    /// <summary>Denominador do progresso. Só passa a valer depois da descoberta.</summary>
+    public int UnidadesTotal;
+
     public int UnidadesFeitas;
+    public int UnidadesNoSisreg;
+    public int UnidadesCriadas;
+    public int UnidadesMapeadas;
+    public int UnidadesPuladas;
     public int RequisicoesFeitas;
     public int ProfissionaisEncontrados;
     public int ProfissionaisNovos;
+    public int ProcedimentosEncontrados;
+    public int ProcedimentosNovos;
     public int PractitionersCriados;
     public int PractitionersVinculados;
     public int UnidadesComErro;
+    public int OrcamentoRestante;
     public string? UnidadeAtual;
     public string? UltimoErro;
 }
@@ -72,10 +94,12 @@ public sealed class MapeamentoLoteEstadoVivo
         {
             if (_progresso is not { } p) return null;
             return new MapeamentoLoteStatusDto(
-                true, p.Disparo, p.UnidadesTotal, p.UnidadesFeitas, p.UnidadeAtual,
+                true, p.Disparo, p.Fase, p.UnidadesTotal, p.UnidadesFeitas, p.UnidadeAtual,
+                p.UnidadesNoSisreg, p.UnidadesCriadas, p.UnidadesMapeadas, p.UnidadesPuladas,
                 p.RequisicoesFeitas, p.ProfissionaisEncontrados, p.ProfissionaisNovos,
+                p.ProcedimentosEncontrados, p.ProcedimentosNovos,
                 p.PractitionersCriados, p.PractitionersVinculados, p.UnidadesComErro,
-                p.IniciadoEm, p.UltimoErro);
+                p.OrcamentoRestante, p.IniciadoEm, p.UltimoErro);
         }
     }
 }

@@ -52,7 +52,10 @@ public sealed record SisregMapeamentoAtualizacaoDto(
     int ProcedimentosNovos,
     int ProcedimentosAusentes,
     int RequisicoesFeitas,
-    string Mensagem);
+    string Mensagem,
+    /// <summary>Profissionais cujos procedimentos NÃO foram rebuscados por ainda estarem dentro do
+    /// TTL — a economia do lote. Sempre 0 no uso interativo, que busca tudo.</summary>
+    int ProfissionaisPuladosPorTtl = 0);
 
 /// <summary>Ligar/desligar um item do mapeamento.</summary>
 public sealed record AlternarHabilitacaoRequest(bool Habilitado);
@@ -69,6 +72,27 @@ public sealed record AlternarEnvioConfirmacaoRequest(bool Enviar);
 /// (<see cref="EnviarConfirmacao"/>). É o botão de "selecionar tudo do médico" da tela.
 /// </summary>
 public sealed record AlternarProcedimentosDoProfissionalRequest(bool Habilitados, bool EnviarConfirmacao);
+
+/// <summary>Aplicar de uma vez a toda a unidade (o "habilitar tudo" da tela).</summary>
+/// <param name="Habilitados">Liga/desliga médicos e procedimentos.</param>
+/// <param name="EnviarConfirmacao">
+/// Omitido (<c>null</c>) <b>não encosta</b> no aviso por WhatsApp — e é assim que a tela chama.
+/// O botão existe para ligar o sincronismo, não para decidir quem recebe mensagem: carregar o zap
+/// junto apagaria, num clique, a escolha que o operador fez procedimento a procedimento. O aviso
+/// tem os controles dele (o mestre da unidade e a caixinha de cada procedimento).
+/// </param>
+public sealed record AlternarTudoDaUnidadeRequest(bool Habilitados, bool? EnviarConfirmacao = null);
+
+/// <summary>O que passou a valer depois do "habilitar tudo" — a tela usa para dizer o custo.</summary>
+public sealed record AlternarTudoDaUnidadeDto(
+    int ProfissionaisAfetados,
+    int ProcedimentosAfetados,
+    /// <summary>Pares habilitados depois da mudança = requisições por varredura, quando a unidade
+    /// NÃO usa o recorte "unidade inteira".</summary>
+    int CombinacoesHabilitadas,
+    /// <summary>A unidade puxa a agenda inteira numa requisição? Muda a leitura do custo acima.</summary>
+    bool RecorteUnidadeInteira,
+    string Mensagem);
 
 /// <summary>Resultado da sincronização dos profissionais habilitados com o hub FHIR.</summary>
 public sealed record SisregSincronizacaoFhirDto(

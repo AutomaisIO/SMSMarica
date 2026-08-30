@@ -80,7 +80,8 @@ public sealed class SisregMapeamentoService(
         Unidade unidade,
         Guid? usuarioId,
         Func<CancellationToken, Task>? antesDeCadaRequisicao,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        TimeSpan? ttlProcedimentos = null)
     {
         if (string.IsNullOrWhiteSpace(unidade.Cnes))
         {
@@ -123,6 +124,7 @@ public sealed class SisregMapeamentoService(
         var novos = 0;
         var procedimentosEncontrados = 0;
         var procedimentosNovos = 0;
+        var puladosPorTtl = 0;
         var vistosAgora = new HashSet<string>(StringComparer.Ordinal);
 
         // Código do SISREG → nome, para alimentar o catálogo do de-para com o SIGTAP. A varredura
@@ -161,6 +163,20 @@ public sealed class SisregMapeamentoService(
             profissional.VistoEm = agora;
             profissional.Ausente = false;
 
+            // Aqui está o maior gasto do mapeamento: UMA requisição por profissional. Quem já foi
+            // buscado há pouco e continua com procedimentos não é rebuscado — a lista acima (1
+            // requisição para a unidade toda) já confirmou que ele segue lá, e procedimento de
+            // médico é cadastro que muda em meses, não em horas. Sem TTL (uso interativo) busca
+            // sempre: quando o operador clica em "atualizar", ele quer o estado de agora.
+            if (ttlProcedimentos is { } ttl
+                && profissional.ProcedimentosVistosEm is { } visto
+                && agora - visto < ttl
+                && profissional.Procedimentos.Count > 0)
+            {
+                puladosPorTtl++;
+                continue;
+            }
+
             if (antesDeCadaRequisicao is not null) await antesDeCadaRequisicao(cancellationToken);
             var xmlProcedimentos = await sessao.GetAsync(
                 CaminhoAjax,
@@ -177,6 +193,7 @@ public sealed class SisregMapeamentoService(
             var procedimentos = SisregAjaxParser.LerLinhas(xmlProcedimentos);
             procedimentosEncontrados += procedimentos.Count;
             procedimentosNovos += ReconciliarProcedimentos(profissional, procedimentos, agora);
+            profissional.ProcedimentosVistosEm = agora;
 
             foreach (var procedimento in procedimentos)
             {
@@ -208,15 +225,21 @@ public sealed class SisregMapeamentoService(
             cancellationToken);
 
         logger.LogInformation(
-            "SISREG: mapeamento da unidade {Unidade} atualizado — {Total} profissionais ({Novos} novos), {Req} requisições.",
-            unidade.Nome, doSisreg.Count, novos, requisicoes);
+            "SISREG: mapeamento da unidade {Unidade} atualizado — {Total} profissionais ({Novos} novos), "
+            + "{Pulados} dentro do TTL, {Req} requisições.",
+            unidade.Nome, doSisreg.Count, novos, puladosPorTtl, requisicoes);
+
+        var economia = puladosPorTtl > 0
+            ? $" ({puladosPorTtl} profissionais já estavam atualizados e não foram consultados de novo)"
+            : string.Empty;
 
         return new SisregMapeamentoAtualizacaoDto(
             doSisreg.Count, novos, ausentes,
             procedimentosEncontrados, procedimentosNovos, procedimentosAusentes,
             requisicoes,
             $"Mapeamento atualizado a partir do SISREG ({unidade.Nome}): {doSisreg.Count} profissionais, "
-            + $"{procedimentosEncontrados} procedimentos, em {requisicoes} requisições.");
+            + $"{procedimentosEncontrados} procedimentos, em {requisicoes} requisições{economia}.",
+            puladosPorTtl);
     }
 
     public async Task AlternarProfissionalAsync(
@@ -324,6 +347,79 @@ public sealed class SisregMapeamentoService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<AlternarTudoDaUnidadeDto> AlternarTudoDaUnidadeAsync(
+        bool habilitados, bool? enviarConfirmacao, CancellationToken cancellationToken = default)
+    {
+        var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
+
+        // Só o que o SISREG ainda reconhece. Reabilitar em massa quem já sumiu de lá reintroduziria
+        // combinação morta na varredura — e o custo dela é exatamente o que este botão tenta poupar.
+        var profissionais = await db.SisregProfissionaisUnidade
+            .Include(x => x.Procedimentos)
+            .Where(x => x.UnidadeId == unidade.Id && !x.Ausente)
+            .ToListAsync(cancellationToken);
+
+        if (profissionais.Count == 0)
+        {
+            throw new ValidacaoException(
+                "sisreg.mapeamento_vazio",
+                $"A unidade '{unidade.Nome}' ainda não tem mapeamento do SISREG. Clique em "
+                + "\"Atualizar mapeamento\" para buscar os profissionais antes de habilitar tudo.");
+        }
+
+        var agora = DateTime.UtcNow;
+        var procedimentosAfetados = 0;
+
+        foreach (var profissional in profissionais)
+        {
+            profissional.Habilitado = habilitados;
+            profissional.AtualizadoEm = agora;
+            profissional.AtualizadoPor = usuarioAtual.UsuarioId;
+
+            foreach (var procedimento in profissional.Procedimentos.Where(p => !p.Ausente))
+            {
+                procedimento.Habilitado = habilitados;
+                // O zap só muda se pedirem explicitamente. Este botão liga o SINCRONISMO; arrastar
+                // o aviso por WhatsApp junto apagaria de uma vez a escolha feita procedimento a
+                // procedimento — e o aviso já tem controles próprios (mestre da unidade e caixinha
+                // de cada procedimento, ADR-0040).
+                if (enviarConfirmacao is { } zap) procedimento.EnviarConfirmacao = zap;
+                procedimentosAfetados++;
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var combinacoes = habilitados ? procedimentosAfetados : 0;
+        var recorte = await db.SisregVarreduraAgendas.AsNoTracking()
+            .Where(x => x.UnidadeId == unidade.Id)
+            .Select(x => (bool?)x.RecorteUnidadeInteira)
+            .FirstOrDefaultAsync(cancellationToken) ?? false;
+
+        logger.LogInformation(
+            "SISREG: unidade {Unidade} — {Acao} {Profs} profissionais e {Procs} procedimentos de uma vez.",
+            unidade.Nome, habilitados ? "habilitados" : "desabilitados",
+            profissionais.Count, procedimentosAfetados);
+
+        var zapDito = enviarConfirmacao switch
+        {
+            true => ", com aviso por WhatsApp ligado",
+            false => ", com aviso por WhatsApp desligado",
+            null => string.Empty, // não mexeu no zap — não anuncia o que não mudou
+        };
+
+        var mensagem = habilitados
+            ? $"{profissionais.Count} profissionais e {procedimentosAfetados} procedimentos habilitados"
+              + zapDito
+              + (recorte
+                  ? ". A varredura desta unidade puxa a agenda inteira numa requisição, então isto não muda o custo dela."
+                  : $". A varredura desta unidade passa a custar {combinacoes} requisições.")
+            : $"{profissionais.Count} profissionais e {procedimentosAfetados} procedimentos desabilitados.";
+
+        return new AlternarTudoDaUnidadeDto(
+            profissionais.Count, procedimentosAfetados, combinacoes, recorte, mensagem);
     }
 
     public async Task<SisregSincronizacaoFhirDto> SincronizarFhirAsync(CancellationToken cancellationToken = default)

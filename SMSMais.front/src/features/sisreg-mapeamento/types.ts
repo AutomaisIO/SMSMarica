@@ -55,6 +55,17 @@ export type SisregMapeamentoAtualizacao = {
   mensagem: string;
 };
 
+/** Resultado do "habilitar tudo" da unidade — a tela usa para dizer o custo resultante. */
+export type AlternarTudoDaUnidade = {
+  profissionaisAfetados: number;
+  procedimentosAfetados: number;
+  /** Pares habilitados = requisições por varredura, quando NÃO há recorte de unidade inteira. */
+  combinacoesHabilitadas: number;
+  /** A unidade puxa a agenda inteira numa requisição? Muda a leitura do custo acima. */
+  recorteUnidadeInteira: boolean;
+  mensagem: string;
+};
+
 export type SisregSincronizacaoFhir = {
   avaliados: number;
   criados: number;

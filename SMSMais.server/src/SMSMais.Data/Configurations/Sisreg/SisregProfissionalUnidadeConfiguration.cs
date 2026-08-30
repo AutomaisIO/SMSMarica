@@ -19,6 +19,7 @@ internal sealed class SisregProfissionalUnidadeConfiguration : IEntityTypeConfig
         builder.Property(x => x.PractitionerId).HasColumnName("practitioner_id");
         builder.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em");
         builder.Property(x => x.VistoEm).HasColumnName("visto_em").IsRequired();
+        builder.Property(x => x.ProcedimentosVistosEm).HasColumnName("procedimentos_vistos_em");
         builder.Property(x => x.Ausente).HasColumnName("ausente").IsRequired();
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.CriadoPor).HasColumnName("criado_por");

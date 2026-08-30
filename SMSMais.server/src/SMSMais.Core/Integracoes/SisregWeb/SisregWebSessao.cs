@@ -49,6 +49,7 @@ public interface ISisregWebSessao
 
 public sealed class SisregWebSessao(
     IServiceScopeFactory scopeFactory,
+    SisregOrcamentoRequisicoes orcamento,
     ILogger<SisregWebSessao> logger) : ISisregWebSessao, IDisposable
 {
     public const string Provedor = "sisreg";
@@ -240,9 +241,14 @@ public sealed class SisregWebSessao(
         sessao.UltimoLoginEm = DateTime.UtcNow;
     }
 
-    private static async Task<(string html, Uri finalUrl, Uri? location)> PostRawAsync(
+    private async Task<(string html, Uri finalUrl, Uri? location)> PostRawAsync(
         SessaoSisreg sessao, string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken)
     {
+        // Contabiliza AQUI, no ponto por onde toda ida ao SISREG passa — inclusive o login e as
+        // repetições pós-relogin. Deixar cada motor contar o que acha que gastou é o que produzia
+        // tetos que ninguém respeitava (ver SisregOrcamentoRequisicoes).
+        orcamento.Registrar();
+
         using var content = new FormUrlEncodedContent(campos);
         using var resposta = await sessao.Http.PostAsync(new Uri(sessao.BaseUri, caminho), content, cancellationToken);
         var html = await LerConteudoAsync(resposta, cancellationToken);
@@ -253,9 +259,11 @@ public sealed class SisregWebSessao(
         return (html, finalUrl, resposta.Headers.Location);
     }
 
-    private static async Task<string> GetRawAsync(
+    private async Task<string> GetRawAsync(
         SessaoSisreg sessao, string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken)
     {
+        orcamento.Registrar();
+
         var uri = new Uri(sessao.BaseUri, caminho);
         if (query is { Count: > 0 })
         {

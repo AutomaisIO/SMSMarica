@@ -4,6 +4,8 @@ import type {
   ConsultaSisreg,
   MapeamentoLoteAceito,
   MapeamentoLoteAgendamento,
+  MapeamentoLoteExecucao,
+  MapeamentoLoteExecucaoItem,
   MapeamentoLoteStatus,
   RegistroSisreg,
   SisregBuscaResultado,
@@ -43,6 +45,22 @@ export async function obterStatusMapeamentoLote(): Promise<MapeamentoLoteStatus 
 
 export async function cancelarMapeamentoLote(): Promise<{ cancelada: boolean }> {
   const { data } = await http.post<{ cancelada: boolean }>('/sisreg/mapeamento/lote/cancelar');
+  return data;
+}
+
+/** Sincronizações recentes — o histórico que sobrevive ao fim da execução. */
+export async function listarExecucoesMapeamentoLote(limite = 10): Promise<MapeamentoLoteExecucao[]> {
+  const { data } = await http.get<MapeamentoLoteExecucao[]>('/sisreg/mapeamento/lote/execucoes', {
+    params: { limite },
+  });
+  return data;
+}
+
+/** Detalhe por unidade de uma sincronização. */
+export async function listarItensMapeamentoLote(id: string): Promise<MapeamentoLoteExecucaoItem[]> {
+  const { data } = await http.get<MapeamentoLoteExecucaoItem[]>(
+    `/sisreg/mapeamento/lote/execucoes/${id}/itens`,
+  );
   return data;
 }
 

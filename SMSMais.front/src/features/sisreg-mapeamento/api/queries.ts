@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   alternarEnvioConfirmacao,
+  alternarTudoDaUnidade,
   alternarProcedimento,
   alternarProcedimentosDoProfissional,
   alternarProfissional,
@@ -85,6 +86,22 @@ export function useAlternarProcedimento(unidadeId: string | null) {
     onSuccess: () => {
       client.invalidateQueries({ queryKey: mapeamentoKeys.mapeamento(unidadeId) });
       // Habilitar/desabilitar muda o custo estimado da varredura mostrado no bloco de sincronismo.
+      client.invalidateQueries({ queryKey: mapeamentoKeys.agenda(unidadeId) });
+    },
+  });
+}
+
+/**
+ * "Habilitar tudo" da unidade. Invalida mapeamento E agenda porque o número de combinações
+ * habilitadas é o custo estimado da varredura — que aparece no bloco de sincronismo logo abaixo.
+ */
+export function useAlternarTudoDaUnidade(unidadeId: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ habilitados }: { habilitados: boolean }) =>
+      alternarTudoDaUnidade(habilitados, unidadeId),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: mapeamentoKeys.mapeamento(unidadeId) });
       client.invalidateQueries({ queryKey: mapeamentoKeys.agenda(unidadeId) });
     },
   });

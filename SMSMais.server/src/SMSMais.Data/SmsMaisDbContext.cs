@@ -118,6 +118,12 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
     public DbSet<SisregVarreduraExecucaoItem> SisregVarreduraExecucaoItens => Set<SisregVarreduraExecucaoItem>();
 
+    // "Sincroniza tudo" do mapeamento: rastreio da rede inteira (o progresso vivo é memória; isto
+    // é o que sobra depois — quantas unidades o SISREG tem, quantas nasceram aqui, quantos médicos
+    // e procedimentos por unidade).
+    public DbSet<SisregMapeamentoLoteExecucao> SisregMapeamentoLoteExecucoes => Set<SisregMapeamentoLoteExecucao>();
+    public DbSet<SisregMapeamentoLoteExecucaoItem> SisregMapeamentoLoteExecucaoItens => Set<SisregMapeamentoLoteExecucaoItem>();
+
     // SER (Sistema Estadual de Regulação, SES-RJ) — ESPELHO da fila do Estado, ADR-0042.
     // Deliberadamente separado de `solicitacao`: solicitação do SER não tem unidade executante
     // em Maricá nem código SIGTAP, e misturá-las contaminaria worklist/recepção/PACS.

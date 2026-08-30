@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   atualizarConfiguracaoSisreg,
   cancelarMapeamentoLote,
+  listarExecucoesMapeamentoLote,
+  listarItensMapeamentoLote,
   obterAgendamentoMapeamentoLote,
   obterConfiguracaoSisreg,
   obterStatusMapeamentoLote,
@@ -17,6 +19,8 @@ export const sisregKeys = {
   configuracao: ['sisreg', 'configuracao'] as const,
   loteStatus: ['sisreg', 'lote', 'status'] as const,
   loteAgendamento: ['sisreg', 'lote', 'agendamento'] as const,
+  loteExecucoes: ['sisreg', 'lote', 'execucoes'] as const,
+  loteItens: (id: string) => ['sisreg', 'lote', 'execucoes', id, 'itens'] as const,
 };
 
 export function useConfiguracaoSisreg() {
@@ -36,12 +40,35 @@ export function useAtualizarConfiguracaoSisreg() {
 
 // ----------------------------------------------------------- lote "sincroniza tudo" (#118)
 
-/** Enquanto há um lote rodando, refaz o status a cada 3s para a barra de progresso andar. */
-export function useStatusMapeamentoLote() {
+/**
+ * Enquanto há um lote rodando, refaz o status a cada 3s para a barra de progresso andar.
+ *
+ * `acompanhando` existe porque o lote leva 1–2s para se registrar depois do clique: a primeira
+ * resposta ainda vem `null`, e sem esse empurrão a tela parava de perguntar e ficava congelada em
+ * "nada rodando" durante a sincronização inteira. Mesma solução da varredura por unidade.
+ */
+export function useStatusMapeamentoLote(acompanhando = false) {
   return useQuery({
     queryKey: sisregKeys.loteStatus,
     queryFn: obterStatusMapeamentoLote,
-    refetchInterval: (query) => (query.state.data?.emExecucao ? 3000 : false),
+    refetchInterval: (query) => (query.state.data?.emExecucao || acompanhando ? 3000 : false),
+  });
+}
+
+/** Histórico das sincronizações. Acompanha junto do status para a linha nova aparecer sozinha. */
+export function useExecucoesMapeamentoLote(acompanhando = false) {
+  return useQuery({
+    queryKey: sisregKeys.loteExecucoes,
+    queryFn: () => listarExecucoesMapeamentoLote(10),
+    refetchInterval: acompanhando ? 5000 : false,
+  });
+}
+
+export function useItensMapeamentoLote(id: string | null) {
+  return useQuery({
+    queryKey: sisregKeys.loteItens(id ?? ''),
+    queryFn: () => listarItensMapeamentoLote(id!),
+    enabled: Boolean(id),
   });
 }
 
@@ -49,7 +76,10 @@ export function useSincronizarMapeamentoLote() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: sincronizarMapeamentoLote,
-    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteStatus }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: sisregKeys.loteStatus });
+      void client.invalidateQueries({ queryKey: sisregKeys.loteExecucoes });
+    },
   });
 }
 
@@ -57,7 +87,10 @@ export function useCancelarMapeamentoLote() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: cancelarMapeamentoLote,
-    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteStatus }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: sisregKeys.loteStatus });
+      void client.invalidateQueries({ queryKey: sisregKeys.loteExecucoes });
+    },
   });
 }
 

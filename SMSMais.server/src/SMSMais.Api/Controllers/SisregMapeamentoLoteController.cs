@@ -53,6 +53,24 @@ public sealed class SisregMapeamentoLoteController(ISisregMapeamentoLoteService 
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult Cancelar() => Ok(new { cancelada = _lote.Cancelar() });
 
+    /// <summary>Sincronizações recentes — o que entrou em cada uma, depois do fato.</summary>
+    [HttpGet("execucoes")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<MapeamentoLoteExecucaoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<MapeamentoLoteExecucaoDto>> Execucoes(
+        [FromQuery] int limite, CancellationToken cancellationToken) =>
+        await _lote.ListarExecucoesAsync(limite <= 0 ? 10 : limite, cancellationToken);
+
+    /// <summary>Detalhe por unidade de uma sincronização: quantos médicos e procedimentos vieram
+    /// de cada uma, e o motivo de quem ficou de fora.</summary>
+    [HttpGet("execucoes/{id:guid}/itens")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<MapeamentoLoteExecucaoItemDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<MapeamentoLoteExecucaoItemDto>> Itens(
+        Guid id, CancellationToken cancellationToken) =>
+        await _lote.ListarItensAsync(id, cancellationToken);
+
     /// <summary>Configuração do disparo diário automático.</summary>
     [HttpGet("agendamento")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]

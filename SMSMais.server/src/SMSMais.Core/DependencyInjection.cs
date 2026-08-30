@@ -259,6 +259,13 @@ public static class DependencyInjection
         // Sessão única por operador → um cliente HTTP com cookies próprios POR OPERADOR
         // (singleton), que reloga sozinho quando a sessão cai. A credencial é a global do store
         // de Integrações ("sisreg") e enxerga todas as unidades.
+        // Orçamento anti-robô COMPARTILHADO: um contador rolante de 60 min por onde toda ida ao
+        // SISREG passa (a sessão o alimenta). Sem ele cada motor tinha o próprio teto e nenhum
+        // enxergava o gasto do outro — e o CAPTCHA aparecia sem ninguém ter "estourado" nada.
+        services.Configure<Integracoes.SisregWeb.SisregOrcamentoOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.SisregOrcamentoOpcoes.Secao));
+        services.AddSingleton<Integracoes.SisregWeb.SisregOrcamentoRequisicoes>();
+
         services.AddSingleton<Integracoes.SisregWeb.ISisregWebSessao, Integracoes.SisregWeb.SisregWebSessao>();
         services.AddScoped<Integracoes.SisregWeb.IConsultaCnsService, Integracoes.SisregWeb.ConsultaCnsService>();
 
@@ -282,6 +289,13 @@ public static class DependencyInjection
         services.AddScoped<
             Integracoes.SisregWeb.Mapeamento.ISisregMapeamentoService,
             Integracoes.SisregWeb.Mapeamento.SisregMapeamentoService>();
+
+        // Catálogo de unidades DO SISREG (combo `ups` do cons_agendas): descobre a rede inteira em
+        // uma requisição e cria aqui as unidades que faltam. É o primeiro passo do "sincroniza
+        // tudo" — antes dele o botão só revisitava as unidades já mapeadas à mão.
+        services.AddScoped<
+            Integracoes.SisregWeb.Unidades.ISisregCatalogoUnidadesService,
+            Integracoes.SisregWeb.Unidades.SisregCatalogoUnidadesService>();
 
         // De-para do código de procedimento do SISREG (o `pa`) para o SIGTAP oficial: a agenda não
         // informa SIGTAP, e sem ele a solicitação nasceria sem categoria e sem worklist.
