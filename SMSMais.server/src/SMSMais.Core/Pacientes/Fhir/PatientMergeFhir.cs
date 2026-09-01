@@ -196,6 +196,11 @@ public static class PatientMergeFhir
     /// </summary>
     public const string ExtContatoConfirmado = "urn:smsmarica:contato-confirmado";
 
+    /// <summary>Marcador de contato NEGADO: quem atendeu este número disse que NÃO é o paciente
+    /// ("não sou essa pessoa"). É o par de alerta do confirmado — o ✔ vira ❗ na tela. Uma
+    /// verificação positiva posterior (OTP) limpa o marcador.</summary>
+    public const string ExtContatoNegado = "urn:smsmarica:contato-negado";
+
     /// <summary>Marcador (no Patient) das chaves de campo que o PAINEL editou — o import não as sobrescreve
     /// (ADR-0020 decisão #1: "painel vence no que editou"). Chaves: telefone,email,endereco,nomeSocial,estadoCivil,filiacao.</summary>
     public const string ExtCamposEditados = "urn:smsmarica:campos-editados";
@@ -305,6 +310,47 @@ public static class PatientMergeFhir
         confirmado.Rank = 1; // o confirmado é o contato principal (memória: só o principal é validável)
         confirmado.RemoveExtension(ExtContatoConfirmado);
         confirmado.AddExtension(ExtContatoConfirmado, new FhirDateTime(em));
+        // Verificação positiva vence a negação anterior: o número foi provado por OTP AGORA.
+        confirmado.RemoveExtension(ExtContatoNegado);
+    }
+
+    /// <summary>
+    /// Carimba (idempotente) o telecom que casa com <paramref name="numero"/> como NEGADO — quem
+    /// atende disse que não é o paciente. NÃO cria telecom novo (adicionar um número que sabemos
+    /// errado seria piorar o cadastro) e NÃO remove nada (regra: contato só acumula; quem corrige
+    /// é a recepção, pela pendência). Devolve true se algum telecom foi marcado.
+    /// </summary>
+    public static bool MarcarTelefoneNegado(Patient p, string numero, DateTimeOffset em)
+    {
+        var alvo = Digitos(numero);
+        if (alvo.Length < 8 || p.Telecom is null) return false;
+
+        var marcado = false;
+        foreach (var t in p.Telecom.Where(t =>
+            t.System == ContactPoint.ContactPointSystem.Phone && MesmoNumero(Digitos(t.Value), alvo)))
+        {
+            t.RemoveExtension(ExtContatoNegado);
+            t.AddExtension(ExtContatoNegado, new FhirDateTime(em));
+            marcado = true;
+        }
+        return marcado;
+    }
+
+    /// <summary>Telecom NEGADO do Patient (número em dígitos + instante), ou null.</summary>
+    public static (string Numero, DateTimeOffset? Em)? TelefoneNegado(Patient p)
+    {
+        var t = p.Telecom?.FirstOrDefault(x =>
+            x.System == ContactPoint.ContactPointSystem.Phone && x.GetExtension(ExtContatoNegado) is not null);
+        var digitos = Digitos(t?.Value);
+        if (t is null || digitos.Length < 8) return null;
+
+        DateTimeOffset? em = null;
+        if (t.GetExtension(ExtContatoNegado)?.Value is FhirDateTime fd)
+        {
+            try { em = fd.ToDateTimeOffset(TimeSpan.Zero); }
+            catch { /* carimbo ilegível não invalida a negação */ }
+        }
+        return (digitos, em);
     }
 
     private static bool EhConfirmado(ContactPoint t) => t.GetExtension(ExtContatoConfirmado) is not null;

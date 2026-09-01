@@ -43,7 +43,10 @@ public sealed record ConversaListItemDto(
     // Nome COMPLETO do paciente resolvido do hub FHIR (pelo vínculo ou pelo telefone).
     // NÃO substitui o NomeContato (perfil do WhatsApp): os dois convivem de propósito,
     // para expor divergência (telefone cadastrado na pessoa errada).
-    string? PacienteNome = null);
+    string? PacienteNome = null,
+    /// <summary>Há pendência ABERTA de "número errado" para este telefone: quem atende já disse
+    /// que NÃO é o paciente. É o ❗ ao lado do telefone — o oposto do ✔ verificado.</summary>
+    bool ContatoNegado = false);
 
 /// <summary>Uma mensagem dentro da thread.</summary>
 public sealed record MensagemDto(

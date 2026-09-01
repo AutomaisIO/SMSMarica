@@ -70,7 +70,11 @@ public sealed record PacienteDto(
     /// <summary>Número do contato VERIFICADO por OTP (marcador no telecom FHIR), se houver.
     /// Fonte única do "telefone verificado" — é por ele que a SMS fala com a pessoa.</summary>
     string? TelefoneVerificado = null,
-    DateTime? TelefoneVerificadoEm = null);
+    DateTime? TelefoneVerificadoEm = null,
+    /// <summary>Número NEGADO ("não sou essa pessoa" — marcador no telecom FHIR), se houver.
+    /// É o alerta ❗: mensagens para este número chegam à pessoa errada.</summary>
+    string? TelefoneNegado = null,
+    DateTime? TelefoneNegadoEm = null);
 
 /// <summary>Identificador FHIR (system + valor) — ex.: CPF, CNS, RG, prontuário.</summary>
 public sealed record IdentificadorDto(string Sistema, string Valor);

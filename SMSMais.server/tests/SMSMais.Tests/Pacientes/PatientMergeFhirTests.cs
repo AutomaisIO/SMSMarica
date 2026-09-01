@@ -65,6 +65,61 @@ public class PatientMergeFhirTests
         p.Telecom.Should().ContainSingle(t => Digitos(t.Value) == "21999990000");
     }
 
+    // ---------------- Telefone NEGADO ("não sou essa pessoa") ----------------
+
+    [Fact]
+    public void Negado_marca_o_telecom_que_casa_e_vira_leitura_no_dto()
+    {
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1)] };
+
+        PatientMergeFhir.MarcarTelefoneNegado(p, "5521999990000", DateTimeOffset.UtcNow)
+            .Should().BeTrue();
+
+        var negado = PatientMergeFhir.TelefoneNegado(p);
+        negado.Should().NotBeNull();
+        negado!.Value.Numero.Should().Be("21999990000");
+    }
+
+    [Fact]
+    public void Negado_NAO_cria_telecom_novo_para_numero_desconhecido()
+    {
+        // Adicionar um número que SABEMOS errado pioraria o cadastro; sem casamento, só a
+        // pendência registra o caso.
+        var p = new Patient { Telecom = [Fone("21999990000")] };
+
+        PatientMergeFhir.MarcarTelefoneNegado(p, "21988887777", DateTimeOffset.UtcNow)
+            .Should().BeFalse();
+
+        p.Telecom.Should().ContainSingle();
+        PatientMergeFhir.TelefoneNegado(p).Should().BeNull();
+    }
+
+    [Fact]
+    public void Verificacao_positiva_por_OTP_limpa_a_negacao_anterior()
+    {
+        // O número foi negado (ex.: chip trocou de dono) e depois alguém PROVOU por código que o
+        // número é do paciente: a prova recente vence o alerta antigo.
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1)] };
+        PatientMergeFhir.MarcarTelefoneNegado(p, "21999990000", DateTimeOffset.UtcNow.AddDays(-10));
+
+        PatientMergeFhir.MarcarTelefoneConfirmado(p, "5521999990000", DateTimeOffset.UtcNow);
+
+        PatientMergeFhir.TelefoneNegado(p).Should().BeNull();
+        PatientMergeFhir.TelefoneConfirmado(p).Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Negar_nao_mexe_no_confirmado_de_OUTRO_numero()
+    {
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1), Fone("21988887777")] };
+        PatientMergeFhir.MarcarTelefoneConfirmado(p, "21999990000", DateTimeOffset.UtcNow);
+
+        PatientMergeFhir.MarcarTelefoneNegado(p, "21988887777", DateTimeOffset.UtcNow);
+
+        PatientMergeFhir.TelefoneConfirmado(p)!.Value.Numero.Should().Be("21999990000");
+        PatientMergeFhir.TelefoneNegado(p)!.Value.Numero.Should().Be("21988887777");
+    }
+
     // ---------------- Telefone confirmado (intocável) ----------------
 
     [Fact]

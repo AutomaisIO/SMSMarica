@@ -12,7 +12,9 @@ namespace SMSMais.Core.PendenciasCadastro;
 public sealed class PendenciaCadastroService(
     SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
-    IPacientesService pacientes) : IPendenciaCadastroService
+    IPacientesService pacientes,
+    Pacientes.Fhir.IPacienteFhirClient fhir,
+    Microsoft.Extensions.Logging.ILogger<PendenciaCadastroService> logger) : IPendenciaCadastroService
 {
     public async Task<IReadOnlyList<PendenciaCadastroListItemDto>> ListarAsync(
         StatusPendenciaCadastro? status, CancellationToken ct = default)
@@ -108,6 +110,29 @@ public sealed class PendenciaCadastroService(
         };
         db.PendenciasCadastro.Add(pendencia);
         await db.SaveChangesAsync(ct);
+        await CarimbarNegadoAsync(pacienteId, telefoneCanonical, ct);
         return pendencia.Id;
+    }
+
+    /// <summary>
+    /// Best-effort: carimba o número como NEGADO no telecom do paciente (o ✔ vira ❗ nas telas).
+    /// Falha aqui não pode derrubar o registro da pendência — a pendência é a fonte da fila; o
+    /// carimbo é o alerta.
+    /// </summary>
+    private async Task CarimbarNegadoAsync(Guid? pacienteId, string telefoneCanonical, CancellationToken ct)
+    {
+        if (pacienteId is not { } id) return;
+        try
+        {
+            var patient = await fhir.ObterAsync(id, ct);
+            if (patient is null) return;
+            if (Pacientes.Fhir.PatientMergeFhir.MarcarTelefoneNegado(patient, telefoneCanonical, DateTimeOffset.UtcNow))
+                await fhir.AtualizarAsync(id, patient, ct);
+        }
+        catch (Exception ex)
+        {
+            Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(
+                logger, ex, "Falha ao carimbar contato negado no FHIR (paciente {Paciente}).", id);
+        }
     }
 }

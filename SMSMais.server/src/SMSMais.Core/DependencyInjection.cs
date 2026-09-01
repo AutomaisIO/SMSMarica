@@ -695,6 +695,7 @@ public static class DependencyInjection
         services.AddScoped<RoboAtendimento.IRoboConfiguracaoService, RoboAtendimento.RoboConfiguracaoService>();
         services.AddScoped<RoboAtendimento.IRoboErroService, RoboAtendimento.RoboErroService>();
         services.AddScoped<PendenciasCadastro.IPendenciaCadastroService, PendenciasCadastro.PendenciaCadastroService>();
+        services.AddScoped<PendenciasCadastro.IVarreduraContatoNegadoService, PendenciasCadastro.VarreduraContatoNegadoService>();
 
         // Runtime do robô: motor (aiengine), classificador, processador (1 tarefa) e o worker (fila).
         // Dois motores registrados; quem responde é decidido a cada turno pelo seletor, lendo

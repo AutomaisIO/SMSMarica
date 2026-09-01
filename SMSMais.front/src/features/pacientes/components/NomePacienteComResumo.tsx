@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Check, Eye, Loader2, Pencil, UserRound } from 'lucide-react';
+import { AlertTriangle, Check, Eye, Loader2, Pencil, UserRound } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { pedirNavegacaoJanelaPrincipal } from '@/shared/lib/janela';
@@ -77,6 +77,8 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
   // Situação do contato principal (WhatsApp): o verificado JÁ VEM no objeto do paciente
   // (marcador no telecom FHIR) — sem request extra, sem "piscada" de não-verificado.
   const telefoneValidado = Boolean(p?.telefoneVerificado);
+  // ❗ quem atende este número disse que NÃO é o paciente (pendência de número errado).
+  const telefoneNegado = Boolean(p?.telefoneNegado);
 
   if (detalhe.isLoading) {
     return (
@@ -125,6 +127,14 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
             <span className="-ml-1.5">
               <TelefoneCopiavel numero={p.telefonePrincipal} />
             </span>
+            {telefoneNegado ? (
+              <span
+                className="inline-flex items-center gap-0.5 font-semibold text-amber-600"
+                title="Contato NEGADO: quem atende este número disse que não é o paciente. Corrija o cadastro (Pendências de Cadastro)."
+              >
+                <AlertTriangle className="h-4 w-4" />
+              </span>
+            ) : null}
             {telefoneValidado ? (
               <span
                 className="inline-flex items-center gap-0.5 text-emerald-600"

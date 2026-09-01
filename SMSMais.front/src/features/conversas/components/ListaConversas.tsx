@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { AlertTriangle, Search } from 'lucide-react';
 import { useListarConversas, useResumoConversas } from '@/features/conversas/api/queries';
 import { useAuth } from '@/shared/auth/authStore';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -104,6 +104,12 @@ export function ListaConversas({ conversaAtivaId, onSelecionar }: Props) {
                     <span className="truncate text-sm font-medium text-gray-900">
                       {c.nomeContato || c.telefoneCanonical}
                     </span>
+                    {c.contatoNegado ? (
+                      <AlertTriangle
+                        className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                        aria-label="Número negado: quem atende disse que não é o paciente"
+                      />
+                    ) : null}
                     {c.pacienteId ? (
                       <span onClick={(e) => e.stopPropagation()}>
                         <NomePacienteComResumo pacienteId={c.pacienteId} mostrarWhatsApp={false} />

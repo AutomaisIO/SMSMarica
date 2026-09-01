@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Inbox, X } from 'lucide-react';
+import { Check, Inbox, Loader2, Radar, X } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
@@ -7,6 +7,7 @@ import {
   useListarPendencias,
   useResolverPendencia,
 } from '@/features/pendencias-cadastro/api/queries';
+import { varrerContatosNegados, type VarreduraResultado } from '@/features/pendencias-cadastro/api/pendenciasApi';
 import type {
   PendenciaCadastro,
   StatusPendenciaCadastro,
@@ -38,6 +39,24 @@ export function PendenciasCadastroPage() {
   const lista = useListarPendencias(filtro === 'todas' ? undefined : filtro);
   const resolver = useResolverPendencia();
   const ignorar = useIgnorarPendencia();
+  const [varrendo, setVarrendo] = useState(false);
+  const [varredura, setVarredura] = useState<VarreduraResultado | null>(null);
+  const [erroVarredura, setErroVarredura] = useState<string | null>(null);
+
+  async function aoVarrer() {
+    if (varrendo) return;
+    setErroVarredura(null);
+    setVarredura(null);
+    setVarrendo(true);
+    try {
+      setVarredura(await varrerContatosNegados(48));
+      await lista.refetch();
+    } catch (e) {
+      setErroVarredura(extrairMensagemDeErro(e));
+    } finally {
+      setVarrendo(false);
+    }
+  }
 
   function aoResolver(p: PendenciaCadastro) {
     const nota = window.prompt('Nota (opcional) sobre como o cadastro foi ajustado:', '');
@@ -115,15 +134,39 @@ export function PendenciasCadastroPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
-          <Inbox className="h-6 w-6 text-primary-600" />
-          Pendências de Cadastro
-        </h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Casos em que o cidadão avisou que o número não é dele. O robô só registra o vínculo — ajuste o cadastro aqui.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
+            <Inbox className="h-6 w-6 text-primary-600" />
+            Pendências de Cadastro
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Casos em que o cidadão avisou que o número não é dele. O robô só registra o vínculo — ajuste o cadastro aqui.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={aoVarrer}
+          disabled={varrendo}
+          title="Procura 'não sou essa pessoa', 'número errado' etc. nas conversas das últimas 48h (filtro por padrões + confirmação pela IA) e registra as pendências que faltam."
+          className="inline-flex items-center gap-1.5 rounded-md border border-primary-300 bg-primary-50 px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-60"
+        >
+          {varrendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />}
+          {varrendo ? 'Varrendo conversas…' : 'Varrer conversas (48h)'}
+        </button>
       </header>
+
+      {erroVarredura ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erroVarredura}</div>
+      ) : null}
+      {varredura ? (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          Varredura ({varredura.horas}h): {varredura.mensagensLidas} mensagens lidas ·{' '}
+          {varredura.conversasCandidatas} conversas candidatas · <b>{varredura.pendenciasRegistradas} pendências novas</b> ·{' '}
+          {varredura.jaExistiam} já existiam · {varredura.descartadasPeloModelo} descartadas pela IA
+          {varredura.erros > 0 ? ` · ${varredura.erros} erros` : ''}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-1.5">
         {FILTROS.map((f) => (

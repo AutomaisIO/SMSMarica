@@ -294,6 +294,7 @@ internal static class PacienteFhirMapper
         var fonte = p.Meta?.Source;
         var dadosFonte = LerExtras(p);
         var confirmado = PatientMergeFhir.TelefoneConfirmado(p);
+        var negado = PatientMergeFhir.TelefoneNegado(p);
         return new PacienteDto(
             Guid.Parse(p.Id!), nome, cpf, cns, latitude, longitude,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default,
@@ -304,7 +305,8 @@ internal static class PacienteFhirMapper
             pl.Alergias, pl.MedicamentosContinuos, pl.Comorbidades, pl.Deficiencias, pl.PlanoSaude,
             pl.Observacoes, pl.FotoBase64, nomeSocial,
             identificadores, obito, conjuge, fonte, dadosFonte,
-            confirmado?.Numero, confirmado?.Em?.UtcDateTime);
+            confirmado?.Numero, confirmado?.Em?.UtcDateTime,
+            negado?.Numero, negado?.Em?.UtcDateTime);
     }
 
     private static IReadOnlyDictionary<string, string>? LerExtras(Patient p)

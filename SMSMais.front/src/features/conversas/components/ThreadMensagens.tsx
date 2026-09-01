@@ -195,6 +195,14 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
               ) : null}
             </p>
             <p className="text-xs text-gray-500">
+              {conversa?.contatoNegado ? (
+                <span
+                  className="mr-1 inline-flex items-center gap-0.5 font-semibold text-amber-600"
+                  title="Número NEGADO: quem atende este telefone disse que NÃO é o paciente do cadastro. Confirme antes de enviar qualquer dado — e resolva em Pendências de Cadastro."
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" /> número negado
+                </span>
+              ) : null}
               {conversa?.telefoneCanonical}
               {conversa?.pacienteNome && conversa?.nomeContato && conversa.nomeContato !== conversa.pacienteNome
                 ? ` · WhatsApp: ${conversa.nomeContato}`

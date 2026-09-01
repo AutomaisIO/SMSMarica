@@ -22,6 +22,8 @@ export type ConversaListItem = {
    * divergência (telefone cadastrado na pessoa errada).
    */
   pacienteNome: string | null;
+  /** ❗ há pendência aberta de "número errado": quem atende este telefone disse que NÃO é o paciente. */
+  contatoNegado: boolean;
   assunto: AssuntoConversa | null;
   status: StatusConversa;
   operadorResponsavelId: string | null;

@@ -102,6 +102,9 @@ export type Paciente = {
   /** Número do contato VERIFICADO por OTP (marcador no telecom FHIR) — já vem no objeto. */
   telefoneVerificado: string | null;
   telefoneVerificadoEm: string | null;
+  /** Número NEGADO ("não sou essa pessoa" — marcador no telecom FHIR): mensagens chegam à pessoa errada. */
+  telefoneNegado: string | null;
+  telefoneNegadoEm: string | null;
   email: string | null;
   contatoEmergencia: ContatoEmergencia | null;
   alturaCm: number | null;

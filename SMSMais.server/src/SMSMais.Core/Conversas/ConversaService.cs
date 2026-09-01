@@ -338,9 +338,28 @@ public sealed class ConversaService(
         // Nome do paciente resolvido do hub (best-effort; hub fora → segue sem nome).
         var nomes = await pacienteResolver.ResolverManyAsync(
             itens.Where(i => i.PacienteId.HasValue).Select(i => i.PacienteId!.Value), ct);
-        return [.. itens.Select(i => i.PacienteId is { } pid && nomes.TryGetValue(pid, out var r)
-            ? i with { PacienteNome = r.Nome }
-            : i)];
+
+        // ❗ contato negado: telefones desta página com pendência ABERTA de número errado. Uma
+        // query para a página inteira — o alerta na lista é o que evita mandar de novo a mensagem
+        // para a pessoa errada.
+        var fones = itens.Select(i => i.TelefoneCanonical).Distinct().ToList();
+        var negados = await db.PendenciasCadastro.AsNoTracking()
+            .Where(p => p.Status == StatusPendenciaCadastro.Aberta
+                && p.Tipo == TipoPendenciaCadastro.NumeroErrado
+                && fones.Contains(p.TelefoneCanonical))
+            .Select(p => p.TelefoneCanonical)
+            .Distinct()
+            .ToListAsync(ct);
+        var setNegados = negados.ToHashSet(StringComparer.Ordinal);
+
+        return [.. itens.Select(i =>
+        {
+            if (i.PacienteId is { } pid && nomes.TryGetValue(pid, out var r))
+                i = i with { PacienteNome = r.Nome };
+            if (setNegados.Contains(i.TelefoneCanonical))
+                i = i with { ContatoNegado = true };
+            return i;
+        })];
     }
 
     public async Task<ConversaListItemDto> ObterAsync(Guid conversaId, CancellationToken ct = default)
@@ -357,6 +376,13 @@ public sealed class ConversaService(
                 c.JanelaExpiraEm != null && c.JanelaExpiraEm > agora))
             .FirstOrDefaultAsync(ct)
             ?? throw new NaoEncontradoException("Conversa", conversaId);
+
+        // ❗ contato negado (ver ConversaListItemDto.ContatoNegado).
+        if (await db.PendenciasCadastro.AsNoTracking().AnyAsync(
+                p => p.Status == StatusPendenciaCadastro.Aberta
+                    && p.Tipo == TipoPendenciaCadastro.NumeroErrado
+                    && p.TelefoneCanonical == dto.TelefoneCanonical, ct))
+            dto = dto with { ContatoNegado = true };
 
         // ADR-0048: leitura destravada — qualquer operador do módulo abre qualquer conversa. A
         // trava de posse continua valendo para as AÇÕES (responder/assumir/devolver/…).

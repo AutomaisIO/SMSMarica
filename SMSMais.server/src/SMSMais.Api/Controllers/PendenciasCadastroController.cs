@@ -21,6 +21,17 @@ public sealed class PendenciasCadastroController(IPendenciaCadastroService servi
         [FromQuery] StatusPendenciaCadastro? status, CancellationToken ct) =>
         await service.ListarAsync(status, ct);
 
+    /// <summary>Varredura manual: procura "não sou essa pessoa" nas conversas recentes (padrões
+    /// amplos + confirmação pelo modelo) e registra as pendências que faltam.</summary>
+    [HttpPost("varredura")]
+    [RequerPermissao(ModuloPermissao.AjusteCadastro, AcoesPermissao.Edicao)]
+    [ProducesResponseType<VarreduraContatoNegadoResultadoDto>(StatusCodes.Status200OK)]
+    public async Task<VarreduraContatoNegadoResultadoDto> Varredura(
+        [FromBody] VarreduraContatoNegadoRequest request,
+        [FromServices] IVarreduraContatoNegadoService varredura,
+        CancellationToken ct) =>
+        await varredura.ExecutarAsync(request.Horas, ct);
+
     [HttpPost("{id:guid}/resolver")]
     [RequerPermissao(ModuloPermissao.AjusteCadastro, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
