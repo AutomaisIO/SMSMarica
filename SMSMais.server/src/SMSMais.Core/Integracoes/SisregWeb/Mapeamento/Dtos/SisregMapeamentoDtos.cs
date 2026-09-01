@@ -11,8 +11,6 @@ public sealed record SisregMapeamentoDto(
     int ProfissionaisHabilitados,
     int TotalProcedimentos,
     int ProcedimentosHabilitados,
-    /// <summary>Pares (profissional × procedimento) habilitados = requisições por varredura.</summary>
-    int CombinacoesHabilitadas,
     IReadOnlyList<SisregProfissionalDto> Profissionais);
 
 public sealed record SisregProfissionalDto(
@@ -83,15 +81,10 @@ public sealed record AlternarProcedimentosDoProfissionalRequest(bool Habilitados
 /// </param>
 public sealed record AlternarTudoDaUnidadeRequest(bool Habilitados, bool? EnviarConfirmacao = null);
 
-/// <summary>O que passou a valer depois do "habilitar tudo" — a tela usa para dizer o custo.</summary>
+/// <summary>O que passou a valer depois do "habilitar tudo".</summary>
 public sealed record AlternarTudoDaUnidadeDto(
     int ProfissionaisAfetados,
     int ProcedimentosAfetados,
-    /// <summary>Pares habilitados depois da mudança = requisições por varredura, quando a unidade
-    /// NÃO usa o recorte "unidade inteira".</summary>
-    int CombinacoesHabilitadas,
-    /// <summary>A unidade puxa a agenda inteira numa requisição? Muda a leitura do custo acima.</summary>
-    bool RecorteUnidadeInteira,
     string Mensagem);
 
 /// <summary>Resultado da sincronização dos profissionais habilitados com o hub FHIR.</summary>

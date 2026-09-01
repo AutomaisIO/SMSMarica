@@ -678,7 +678,7 @@ public sealed class SisregMapeamentoLoteService(
         // A varredura por combinação é a única que depende do mapeamento estar fresco — com o
         // recorte "unidade inteira" a agenda vem numa requisição só, sem olhar o mapeamento.
         var agendas = await db.SisregVarreduraAgendas.AsNoTracking()
-            .Select(a => new { a.UnidadeId, a.Ativo, a.RecorteUnidadeInteira })
+            .Select(a => new { a.UnidadeId, a.Ativo })
             .ToDictionaryAsync(x => x.UnidadeId, ct);
 
         var candidatas = new List<CandidataLote>(unidades.Count);
@@ -686,9 +686,9 @@ public sealed class SisregMapeamentoLoteService(
         foreach (var unidade in unidades)
         {
             resumo.TryGetValue(unidade.Id, out var r);
-            var agenda = agendas.GetValueOrDefault(unidade.Id);
-            var dependeDoMapeamento = agenda is { Ativo: true, RecorteUnidadeInteira: false };
-            var ttlDias = dependeDoMapeamento ? _opcoes.TtlDiasVarreduraPorCombinacao : _opcoes.TtlDiasPadrao;
+            // TTL único: a varredura traz a agenda inteira e já atualiza o mapeamento junto, de
+            // graça — nenhuma unidade depende mais do lote para varrer direito.
+            var ttlDias = _opcoes.TtlDiasPadrao;
 
             // A mais recente das duas fontes: o mapeamento em si e a última visita registrada.
             var mapeadoEm = Maior(r?.MapeadoEm, visitadaEm.GetValueOrDefault(unidade.Id) is var v && v != default ? v : null);
@@ -1029,7 +1029,6 @@ public sealed class SisregMapeamentoLoteService(
             // A agenda inteira da unidade numa requisição. É o que torna o diário viável: sem isto,
             // com todos os médicos e procedimentos habilitados, cada unidade custaria uma requisição
             // por par profissional × procedimento — centenas por unidade, por dia.
-            agenda.RecorteUnidadeInteira = true;
 
             // WhatsApp DESLIGADO, como pedido: a carga inicial traz a agenda inteira e histórica de
             // toda a rede de uma vez. Com o aviso ligado, isso viraria uma enxurrada de mensagens
@@ -1039,9 +1038,6 @@ public sealed class SisregMapeamentoLoteService(
             // Reagendar zera o cursor e o próximo run: o horário mudou, e um cursor de janela antiga
             // faria a primeira rodada retomar do meio de uma varredura que não existe mais.
             agenda.ProximoRunEm = null;
-            agenda.CursorProfissionalCpf = null;
-            agenda.CursorProcedimentoCodigo = null;
-            agenda.CursorJanelaFim = null;
             agenda.AtualizadoEm = agora;
 
             totalProfs += profs;

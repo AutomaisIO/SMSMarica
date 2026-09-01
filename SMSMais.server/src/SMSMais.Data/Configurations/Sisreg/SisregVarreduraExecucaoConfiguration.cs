@@ -27,8 +27,6 @@ internal sealed class SisregVarreduraExecucaoConfiguration : IEntityTypeConfigur
         builder.Property(x => x.Validos).HasColumnName("validos").IsRequired();
         builder.Property(x => x.Invalidos).HasColumnName("invalidos").IsRequired();
         builder.Property(x => x.JaExistiam).HasColumnName("ja_existiam").IsRequired();
-        builder.Property(x => x.CursorProfissionalCpf).HasColumnName("cursor_profissional_cpf").HasMaxLength(11);
-        builder.Property(x => x.CursorProcedimentoCodigo).HasColumnName("cursor_procedimento_codigo").HasMaxLength(20);
         builder.Property(x => x.MensagemErro).HasColumnName("mensagem_erro").HasMaxLength(2000);
         builder.Property(x => x.IniciadoEm).HasColumnName("iniciado_em").IsRequired();
         builder.Property(x => x.FinalizadoEm).HasColumnName("finalizado_em");

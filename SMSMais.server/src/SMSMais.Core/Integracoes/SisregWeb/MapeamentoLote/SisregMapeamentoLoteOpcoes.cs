@@ -40,18 +40,10 @@ public sealed class SisregMapeamentoLoteOpcoes
     public int TickSegundos { get; set; } = 60;
 
     /// <summary>
-    /// Idade máxima do mapeamento de uma unidade <b>cuja varredura depende dele</b> (varredura
-    /// ligada e sem o recorte "unidade inteira"): nesse arranjo cada par profissional × procedimento
-    /// habilitado é o que a varredura vai buscar, então um mapeamento velho deixa agenda de fora.
-    /// </summary>
-    public int TtlDiasVarreduraPorCombinacao { get; set; } = 7;
-
-    /// <summary>
-    /// Idade máxima do mapeamento nas demais unidades. É bem maior porque a varredura com recorte
-    /// "unidade inteira" <b>não usa o mapeamento</b> (traz a agenda toda numa requisição — ver
-    /// <c>VarreduraAgendaService</c>): ali o mapeamento só alimenta o Practitioner no hub FHIR, o
-    /// aviso por WhatsApp por procedimento e o botão de importação pontual. Nada disso justifica
-    /// gastar centenas de requisições por noite.
+    /// Idade máxima do mapeamento de uma unidade. É folgada porque a varredura <b>não depende
+    /// dele</b>: ela traz a agenda inteira numa requisição e já atualiza médicos e procedimentos
+    /// com o que vem nela (<c>VarreduraAgendaService</c>). O lote só existe para alcançar unidade
+    /// que ainda não teve agenda nenhuma — nada disso justifica gastar centenas de acessos por noite.
     /// </summary>
     public int TtlDiasPadrao { get; set; } = 30;
 

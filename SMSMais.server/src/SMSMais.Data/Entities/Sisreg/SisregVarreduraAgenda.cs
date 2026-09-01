@@ -28,39 +28,6 @@ public class SisregVarreduraAgenda
     public bool Ativo { get; set; }
 
     /// <summary>
-    /// Puxar a agenda da unidade INTEIRA numa requisição, em vez de uma por par
-    /// profissional × procedimento.
-    ///
-    /// <para><b>Medido contra o SISREG real em 27/08/2026</b> (sonda
-    /// <c>Automais.SISREG/sonda_export_amplo.py</c>): com <c>cpf=0</c> e <c>procedimento=0</c> — as
-    /// option-sentinela do próprio formulário, que o JS dele nunca valida — o
-    /// <c>expo_solicitacoes</c> devolveu 3.286 linhas e 65 procedimentos do CDT numa requisição,
-    /// contendo integralmente o recorte restrito. A varredura que custa 272 requisições cabe em 1.
-    /// Era essa soma que estourava o CAPTCHA (~700 por operador) e deixava a unidade parcial todo
-    /// dia.</para>
-    ///
-    /// <para><b>Muda o significado de "habilitado" no mapeamento:</b> ele deixa de decidir o que se
-    /// CONSULTA (não há mais o que escolher — vem tudo) e a agenda inteira da unidade é importada.
-    /// Filtrar de volta pelos códigos habilitados seria pior que não filtrar: quando o operador
-    /// habilita um GRUPO (<c>1402000</c>), o TXT traz os ITENS (<c>1402077</c>…), e o filtro
-    /// descartaria justamente o que veio pelo grupo. O mapeamento continua valendo para o gatilho
-    /// de confirmação ao paciente, que é opt-in por procedimento.</para>
-    ///
-    /// <para><b>É REGRA, não escolha</b> (01/09/2026). Nasceu desligado, como opção por unidade,
-    /// enquanto era mudança nova num motor de produção. Depois de rodar, não sobrou caso em que
-    /// varrer por combinação seja melhor: além de custar 1 requisição em vez de uma por par
-    /// profissional × procedimento, este caminho <b>atualiza o mapeamento de graça</b> — cada linha
-    /// da agenda já diz quem executa o quê (<c>AtualizarMapeamentoObservadoAsync</c>), então a
-    /// varredura diária mantém médicos e procedimentos em dia sem gastar acesso nenhum. Deixar
-    /// desligado é escolher pagar caro por menos informação.</para>
-    ///
-    /// <para>A coluna continua existindo, sempre <c>true</c>: o caminho por combinação segue no
-    /// motor como fallback interno (unidade sem agenda exportável), mas não é mais oferecido na
-    /// tela — o operador não tem como desligar sem querer.</para>
-    /// </summary>
-    public bool RecorteUnidadeInteira { get; set; } = true;
-
-    /// <summary>
     /// Gatilho mestre da unidade: ao importar uma solicitação, avisar o paciente por WhatsApp?
     /// Vale para <b>toda</b> importação da unidade — varredura e upload de arquivo.
     ///
@@ -102,14 +69,6 @@ public class SisregVarreduraAgenda
 
     /// <summary>Última execução desta unidade. Sem FK — o rastreio não pode travar a agenda.</summary>
     public Guid? UltimaExecucaoId { get; set; }
-
-    /// <summary>Último par (profissional, procedimento) CONCLUÍDO antes de a varredura parar.</summary>
-    public string? CursorProfissionalCpf { get; set; }
-
-    public string? CursorProcedimentoCodigo { get; set; }
-
-    /// <summary>Fim da janela de datas do run parcial. O cursor só vale enquanto for &gt;= hoje.</summary>
-    public DateOnly? CursorJanelaFim { get; set; }
 
     public DateTime AtualizadoEm { get; set; }
 }

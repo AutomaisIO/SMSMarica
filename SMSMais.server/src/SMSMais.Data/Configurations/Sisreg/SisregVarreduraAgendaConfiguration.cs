@@ -19,8 +19,6 @@ internal sealed class SisregVarreduraAgendaConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.EnviarConfirmacao).HasColumnName("enviar_confirmacao")
             .IsRequired().HasDefaultValue(false);
         // Default FALSE: muda o comportamento de um motor de produção, a unidade escolhe adotar.
-        builder.Property(x => x.RecorteUnidadeInteira).HasColumnName("recorte_unidade_inteira")
-            .IsRequired().HasDefaultValue(true);
         builder.Property(x => x.HoraLocal).HasColumnName("hora_local").IsRequired();
         builder.Property(x => x.DiasAFrente).HasColumnName("dias_a_frente").IsRequired().HasDefaultValue(21);
         builder.Property(x => x.FalhasConsecutivas).HasColumnName("falhas_consecutivas").IsRequired().HasDefaultValue(0);
@@ -28,9 +26,6 @@ internal sealed class SisregVarreduraAgendaConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.PausadoAte).HasColumnName("pausado_ate");
         builder.Property(x => x.UltimaExecucaoEm).HasColumnName("ultima_execucao_em");
         builder.Property(x => x.UltimaExecucaoId).HasColumnName("ultima_execucao_id");
-        builder.Property(x => x.CursorProfissionalCpf).HasColumnName("cursor_profissional_cpf").HasMaxLength(11);
-        builder.Property(x => x.CursorProcedimentoCodigo).HasColumnName("cursor_procedimento_codigo").HasMaxLength(20);
-        builder.Property(x => x.CursorJanelaFim).HasColumnName("cursor_janela_fim");
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em").IsRequired();
 
         // O scheduler varre por elegibilidade: só as ativas interessam.

@@ -413,10 +413,6 @@ public sealed class SisregMapeamentoService(
         await db.SaveChangesAsync(cancellationToken);
 
         var combinacoes = habilitados ? procedimentosAfetados : 0;
-        var recorte = await db.SisregVarreduraAgendas.AsNoTracking()
-            .Where(x => x.UnidadeId == unidade.Id)
-            .Select(x => (bool?)x.RecorteUnidadeInteira)
-            .FirstOrDefaultAsync(cancellationToken) ?? false;
 
         logger.LogInformation(
             "SISREG: unidade {Unidade} — {Acao} {Profs} profissionais e {Procs} procedimentos de uma vez.",
@@ -430,16 +426,16 @@ public sealed class SisregMapeamentoService(
             null => string.Empty, // não mexeu no zap — não anuncia o que não mudou
         };
 
+        // Habilitar não mexe mais no custo da varredura: a agenda vem inteira numa requisição de
+        // qualquer jeito. O que a habilitação decide hoje é quem sobe para o hub FHIR como
+        // Practitioner — dizer isso é mais útil que repetir uma conta de requisições que morreu.
         var mensagem = habilitados
             ? $"{profissionais.Count} profissionais e {procedimentosAfetados} procedimentos habilitados"
               + zapDito
-              + (recorte
-                  ? ". A varredura desta unidade puxa a agenda inteira numa requisição, então isto não muda o custo dela."
-                  : $". A varredura desta unidade passa a custar {combinacoes} requisições.")
+              + ". A importação diária da agenda continua custando uma requisição, como antes."
             : $"{profissionais.Count} profissionais e {procedimentosAfetados} procedimentos desabilitados.";
 
-        return new AlternarTudoDaUnidadeDto(
-            profissionais.Count, procedimentosAfetados, combinacoes, recorte, mensagem);
+        return new AlternarTudoDaUnidadeDto(profissionais.Count, procedimentosAfetados, mensagem);
     }
 
     public async Task<SisregSincronizacaoFhirDto> SincronizarFhirAsync(CancellationToken cancellationToken = default)
@@ -635,7 +631,6 @@ public sealed class SisregMapeamentoService(
             visiveis.Count(p => p.Habilitado),
             procedimentos.Count,
             procedimentos.Count(p => p.Habilitado),
-            visiveis.Where(p => p.Habilitado).Sum(p => p.Procedimentos.Count(x => x.Habilitado)),
             [.. visiveis.Select(p => new SisregProfissionalDto(
                 p.Id, p.Cpf, p.Nome, p.Habilitado, p.PractitionerId, p.SincronizadoEm, p.Ausente,
                 [.. p.Procedimentos

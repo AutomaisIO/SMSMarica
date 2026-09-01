@@ -201,33 +201,4 @@ public class DecididorVarreduraSisregTests
 
         Assert.True(proximo <= diario);
     }
-
-    // ------------------------------------------------------------------ cursor
-
-    [Fact]
-    public void Cursor_da_mesma_janela_e_valido()
-    {
-        var agenda = Agenda();
-        agenda.CursorProfissionalCpf = "12345678901";
-        agenda.CursorJanelaFim = new DateOnly(2026, 8, 24);
-
-        Assert.True(DecididorVarreduraSisreg.CursorValido(agenda, new DateOnly(2026, 8, 24)));
-    }
-
-    [Fact]
-    public void Cursor_de_janela_vencida_e_descartado()
-    {
-        // Retomar numa janela nova pularia combinações que ainda não foram varridas para ESSA janela.
-        var agenda = Agenda();
-        agenda.CursorProfissionalCpf = "12345678901";
-        agenda.CursorJanelaFim = new DateOnly(2026, 8, 20);
-
-        Assert.False(DecididorVarreduraSisreg.CursorValido(agenda, new DateOnly(2026, 8, 25)));
-    }
-
-    [Fact]
-    public void Sem_cursor_gravado_nao_ha_retomada()
-    {
-        Assert.False(DecididorVarreduraSisreg.CursorValido(Agenda(), new DateOnly(2026, 8, 24)));
-    }
 }

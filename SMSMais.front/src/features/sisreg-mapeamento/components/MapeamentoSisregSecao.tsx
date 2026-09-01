@@ -161,11 +161,6 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
               rotulo="Procedimentos"
               valor={`${dados?.procedimentosHabilitados ?? 0}/${dados?.totalProcedimentos ?? 0}`}
             />
-            <Indicador
-              rotulo="Requisições por varredura"
-              valor={String(dados?.combinacoesHabilitadas ?? 0)}
-              destaque
-            />
             {dados?.atualizadoEm && (
               <Indicador
                 rotulo="Atualizado em"

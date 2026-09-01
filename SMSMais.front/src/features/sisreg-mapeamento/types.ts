@@ -39,8 +39,6 @@ export type SisregMapeamento = {
   profissionaisHabilitados: number;
   totalProcedimentos: number;
   procedimentosHabilitados: number;
-  /** Pares (profissional × procedimento) habilitados = requisições por varredura. */
-  combinacoesHabilitadas: number;
   profissionais: SisregProfissional[];
 };
 
@@ -59,10 +57,6 @@ export type SisregMapeamentoAtualizacao = {
 export type AlternarTudoDaUnidade = {
   profissionaisAfetados: number;
   procedimentosAfetados: number;
-  /** Pares habilitados = requisições por varredura, quando NÃO há recorte de unidade inteira. */
-  combinacoesHabilitadas: number;
-  /** A unidade puxa a agenda inteira numa requisição? Muda a leitura do custo acima. */
-  recorteUnidadeInteira: boolean;
   mensagem: string;
 };
 
@@ -103,8 +97,6 @@ export type VarreduraAgenda = {
   pausadoAte: string | null;
   ultimaExecucaoEm: string | null;
   falhasConsecutivas: number;
-  /** Pares habilitados — o que será varrido. O SIGTAP é resolvido depois, na importação. */
-  combinacoesProntas: number;
   requisicoesEstimadas: number;
   tetoPorExecucao: number;
   /** Faixa (Brasília) em que o SISREG bloqueia a exportação: a varredura não roda entre
@@ -119,7 +111,6 @@ export type VarreduraAgenda = {
   /** Pede a exportação sem escolher profissional nem procedimento: o SISREG devolve a agenda da
    * unidade inteira numa requisição só. Ligado, `requisicoesEstimadas` vem 1 (o back calcula) e o
    * mapeamento deixa de recortar o que é consultado. */
-  recorteUnidadeInteira: boolean;
 };
 
 export type SalvarVarreduraAgendaPayload = {
@@ -129,8 +120,6 @@ export type SalvarVarreduraAgendaPayload = {
   diasAFrente: number;
   /** Omitido mantém o valor atual — dá para salvar só a agenda sem mexer no gatilho. */
   enviarConfirmacao?: boolean;
-  /** Omitido mantém o valor atual, igual ao gatilho de WhatsApp. */
-  recorteUnidadeInteira?: boolean;
 };
 
 export type StatusVarredura =

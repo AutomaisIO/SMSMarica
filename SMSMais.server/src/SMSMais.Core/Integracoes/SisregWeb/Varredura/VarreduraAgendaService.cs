@@ -116,7 +116,6 @@ public sealed class VarreduraAgendaService(
 
     /// <summary>Par profissional × procedimento a consultar. Ordenado por (cpf, código) para o
     /// cursor de retomada ser determinístico.</summary>
-    private sealed record Combinacao(string Cpf, string NomeProfissional, string Codigo, string NomeProcedimento);
 
     // ============================================================ agenda (config)
 
@@ -165,12 +164,6 @@ public sealed class VarreduraAgendaService(
         agenda.HoraLocal = request.HoraLocal;
         agenda.DiasAFrente = request.DiasAFrente;
 
-        // O recorte por unidade inteira é REGRA, não escolha (ver SisregVarreduraAgenda): 1
-        // requisição em vez de uma por par profissional × procedimento, e o mapeamento vem de graça
-        // junto. O campo do request continua aceito para não quebrar chamada antiga, mas só liga —
-        // nunca desliga. Desligar por engano custaria centenas de acessos por dia numa unidade
-        // grande, e o operador só descobriria pelo CAPTCHA.
-        if (request.RecorteUnidadeInteira == true) agenda.RecorteUnidadeInteira = true;
 
         // PATCH, não PUT: quem manda payload mínimo não apaga em silêncio a decisão de não avisar
         // o paciente. Mesmo cuidado que a agenda do PEP toma com a janela noturna.
@@ -321,21 +314,6 @@ public sealed class VarreduraAgendaService(
         var inicio = janelaInicio ?? hoje;
         var fim = janelaFim ?? hoje.AddDays(diasAFrente);
 
-        // No recorte por unidade inteira não há combinação a escolher — o SISREG devolve a agenda
-        // toda numa requisição. Exigir mapeamento aqui barraria justamente a unidade que ainda não
-        // mapeou nada, que é quem mais se beneficia de não precisar mapear para varrer.
-        var unidadeInteira = agenda?.RecorteUnidadeInteira == true;
-
-        var combinacoes = unidadeInteira ? [] : await CarregarCombinacoesAsync(unidade.Id, ct);
-        if (!unidadeInteira && combinacoes.Count == 0)
-        {
-            throw new ValidacaoException(
-                "varredura.sem_combinacoes",
-                "Nenhum par profissional × procedimento está habilitado COM código SIGTAP confirmado "
-                + "nesta unidade. Habilite no mapeamento e confirme o SIGTAP dos procedimentos antes "
-                + "de varrer.");
-        }
-
         // Execuções de um processo que morreu (ou que uma exceção deixou pelo caminho) ficariam
         // "Rodando" para sempre na tela, e o operador não tem como saber que já acabou. Só chega
         // aqui quem passou pelo GarantirSemTrabalhoVivo, então não há risco de matar uma viva.
@@ -350,7 +328,10 @@ public sealed class VarreduraAgendaService(
             Status = StatusVarredura.Pendente,
             JanelaInicio = inicio,
             JanelaFim = fim,
-            CombinacoesTotal = unidadeInteira ? 1 : combinacoes.Count,
+            // Sempre 1: a agenda vem inteira numa requisição. A coluna sobrevive pelo histórico —
+            // execuções antigas registraram a cobertura real do modo por par (256/256 no CDT) e
+            // apagá-la destruiria esse rastro.
+            CombinacoesTotal = 1,
             IniciadoEm = DateTime.UtcNow,
             CriadoPor = usuarioId,
             CriadoPorNome = usuarioId is null ? null : await NomeDoUsuarioAsync(usuarioId.Value, ct),
@@ -369,11 +350,9 @@ public sealed class VarreduraAgendaService(
                 "varredura.fila_cheia", "Já há uma varredura na fila. Tente de novo em instantes.");
         }
 
-        return (execucao.Id, unidadeInteira
-            ? $"Varredura enfileirada: agenda da unidade inteira em UMA requisição, de "
-              + $"{execucao.JanelaInicio:dd/MM/yyyy} a {execucao.JanelaFim:dd/MM/yyyy}."
-            : $"Varredura enfileirada: {combinacoes.Count} combinações, de {execucao.JanelaInicio:dd/MM/yyyy} "
-              + $"a {execucao.JanelaFim:dd/MM/yyyy}.");
+        return (execucao.Id,
+            "Varredura enfileirada: agenda da unidade inteira em UMA requisição, de "
+            + $"{execucao.JanelaInicio:dd/MM/yyyy} a {execucao.JanelaFim:dd/MM/yyyy}.");
     }
 
     // ============================================================ execução
@@ -490,140 +469,10 @@ public sealed class VarreduraAgendaService(
         // é sempre o mesmo e barraria todas as unidades menos uma.
         var cnes = SoDigitos(unidade.Cnes!);
 
-        if (agenda?.RecorteUnidadeInteira == true)
-        {
-            await VarrerUnidadeInteiraAsync(execucao, unidade, agenda, cnes, progresso, ct);
-            return;
-        }
-
-        var combinacoes = await CarregarCombinacoesAsync(unidade.Id, ct);
-
-        // Nada de resolver SIGTAP aqui: a exportação traz o código na coluna 2 de cada linha,
-        // dito pelo próprio SISREG. É a razão principal de esta fonte ser melhor que raspar o HTML
-        // da agenda, que não informa SIGTAP nenhum.
-
-        // Retomada: o cursor só vale enquanto a janela for a mesma. Janela vencida é passado, e
-        // refazer o passado gasta orçamento com dado que não muda mais.
-        if (agenda is not null && DecididorVarreduraSisreg.CursorValido(agenda, execucao.JanelaFim))
-        {
-            var antes = combinacoes.Count;
-            combinacoes = [.. combinacoes.Where(c => Depois(c, agenda!.CursorProfissionalCpf!, agenda.CursorProcedimentoCodigo))];
-            logger.LogInformation(
-                "SISREG_VARREDURA_RETOMADA: unidade {Unidade} retoma de {Cpf}/{Pa} — {Restantes} de {Total} combinações.",
-                unidade.Nome, agenda!.CursorProfissionalCpf, agenda.CursorProcedimentoCodigo, combinacoes.Count, antes);
-        }
-
-        // Dedup global do run. Com o TXT o grupo não devolve nada (ver abaixo), então na prática
-        // não há repetição — mas custa um HashSet e protege de reprocessar se isso mudar.
-        var vistos = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var combinacao in combinacoes)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            if (progresso.Requisicoes >= _opcoes.TetoPorExecucao)
-            {
-                await PararParcialAsync(execucao, agenda, progresso, combinacao,
-                    $"Teto de {_opcoes.TetoPorExecucao} requisições atingido — a varredura continua "
-                    + "de onde parou na próxima execução.", ct);
-                return;
-            }
-
-            progresso.ProfissionalAtual = combinacao.NomeProfissional;
-            progresso.ProcedimentoAtual = combinacao.NomeProcedimento;
-            progresso.CpfAtual = combinacao.Cpf;
-            progresso.CodigoAtual = combinacao.Codigo;
-
-            // Código de GRUPO é varrido normalmente. Houve uma versão que os pulava, por eu ter
-            // generalizado de um único caso (GRUPO - MAMOGRAFIA devolveu 0 — mas naquele período a
-            // agenda estava vazia de qualquer jeito). Medido em 05/08/2026:
-            // GRUPO - ULTRASONOGRAFIA devolve 120 registros, cada linha com o SEU procedimento e o
-            // SEU SIGTAP nas colunas 1 e 2. E há profissional cujo SISREG só lista códigos de
-            // grupo — para ele, pular o grupo é descartar a agenda inteira.
-            //
-            // A preocupação de "o grupo carimbaria tudo com o procedimento do grupo" era da
-            // RASPAGEM, onde o procedimento vinha da consulta. Na exportação vem da linha.
-
-            var reqAntes = progresso.Requisicoes;
-
-            var marcacoes = await ExportarComTetoAsync(
-                cnes, execucao.JanelaInicio, execucao.JanelaFim, combinacao, progresso, ct);
-
-            var novas = marcacoes.Where(m => vistos.Add(m.CodigoSolicitacao)).ToList();
-
-            var validosItem = 0;
-            var invalidosItem = 0;
-            var jaExistiamItem = 0;
-            if (novas.Count > 0)
-            {
-                // Importa a cada combinação, não no fim: é isto que faz o parcial ser útil quando
-                // a varredura é interrompida no meio.
-                var resultado = await importacao.ImportarMarcacoesAsync(execucao.Id, novas, ct);
-                validosItem = resultado.Validos;
-                invalidosItem = resultado.Invalidos;
-                jaExistiamItem = resultado.JaExistiam;
-                Interlocked.Add(ref progresso.RegistrosEncontrados, novas.Count);
-                Interlocked.Add(ref progresso.Validos, resultado.Validos);
-                Interlocked.Add(ref progresso.Invalidos, resultado.Invalidos);
-                execucao.JaExistiam += resultado.JaExistiam;
-            }
-
-            // Detalhe por par, para o modal do histórico. Gravado a cada combinação — uma varredura
-            // interrompida (parcial) preserva o detalhe do que já rodou, igual ao agregado. É salvo
-            // no SalvarProgressoAsync logo abaixo.
-            db.SisregVarreduraExecucaoItens.Add(new SisregVarreduraExecucaoItem
-            {
-                Id = Guid.CreateVersion7(),
-                ExecucaoId = execucao.Id,
-                ProfissionalCpf = combinacao.Cpf,
-                ProfissionalNome = combinacao.NomeProfissional,
-                ProcedimentoCodigo = combinacao.Codigo,
-                ProcedimentoNome = combinacao.NomeProcedimento,
-                Requisicoes = progresso.Requisicoes - reqAntes,
-                RegistrosEncontrados = novas.Count,
-                Validos = validosItem,
-                Invalidos = invalidosItem,
-                JaExistiam = jaExistiamItem,
-                Observacao = invalidosItem > 0 ? $"{invalidosItem} pendência(s) gerada(s)." : null,
-            });
-
-            Interlocked.Increment(ref progresso.CombinacoesFeitas);
-
-            // Cursor avança só depois da combinação INTEIRA (todas as páginas) — retomar no meio
-            // de uma paginação perderia registros em silêncio.
-            if (agenda is not null)
-            {
-                agenda.CursorProfissionalCpf = combinacao.Cpf;
-                agenda.CursorProcedimentoCodigo = combinacao.Codigo;
-                agenda.CursorJanelaFim = execucao.JanelaFim;
-            }
-
-            await SalvarProgressoAsync(execucao, progresso, ct);
-        }
-
-        // Varreu tudo: o cursor não serve mais para nada e ficaria pulando combinações amanhã.
-        if (agenda is not null)
-        {
-            agenda.CursorProfissionalCpf = null;
-            agenda.CursorProcedimentoCodigo = null;
-            agenda.CursorJanelaFim = null;
-            agenda.FalhasConsecutivas = 0;
-
-            // Varredura inteira sem CAPTCHA É a prova de que o bloqueio acabou — normalmente
-            // porque alguém o resolveu no navegador. Sem isto a pausa de 24h sobrevivia ao próprio
-            // motivo e engolia o disparo diário seguinte: a unidade programada para 05:00 só
-            // voltava a rodar quando a pausa vencesse, à noite, fazendo o horário escolhido
-            // parecer decorativo.
-            agenda.PausadoAte = null;
-        }
-
-        await FinalizarAsync(execucao, StatusVarredura.Concluida, null, ct, progresso);
-
-        logger.LogInformation(
-            "SISREG_VARREDURA_OK: unidade {Unidade} — {Combinacoes} combinações, {Req} requisições, "
-            + "{Registros} agendamentos, {Validos} importados, {Invalidos} pendências.",
-            unidade.Nome, progresso.CombinacoesFeitas, progresso.Requisicoes,
-            progresso.RegistrosEncontrados, progresso.Validos, progresso.Invalidos);
+        // A agenda da unidade inteira em UMA requisição é o único caminho (ver
+        // SisregVarreduraAgenda): além de custar 1 acesso em vez de um por par profissional ×
+        // procedimento, ela devolve o mapeamento de graça — cada linha diz quem executa o quê.
+        await VarrerUnidadeInteiraAsync(execucao, unidade, agenda, cnes, progresso, ct);
     }
 
     /// <summary>
@@ -642,7 +491,9 @@ public sealed class VarreduraAgendaService(
     private async Task VarrerUnidadeInteiraAsync(
         SisregVarreduraExecucao execucao,
         Unidade unidade,
-        SisregVarreduraAgenda agenda,
+        // Null quando a unidade ainda não tem agenda configurada: a varredura manual pode ser
+        // disparada antes disso, e exigir configuração para ver o resultado seria pedir fé.
+        SisregVarreduraAgenda? agenda,
         string cnes,
         ProgressoVarredura progresso,
         CancellationToken ct)
@@ -760,11 +611,11 @@ public sealed class VarreduraAgendaService(
         }
 
         progresso.CombinacoesFeitas = 1;
-        agenda.PausadoAte = null;
-        agenda.CursorProfissionalCpf = null;
-        agenda.CursorProcedimentoCodigo = null;
-        agenda.CursorJanelaFim = null;
-        agenda.FalhasConsecutivas = 0;
+        if (agenda is not null)
+        {
+            agenda.PausadoAte = null;
+            agenda.FalhasConsecutivas = 0;
+        }
 
         await FinalizarAsync(execucao, StatusVarredura.Concluida, null, ct, progresso);
 
@@ -934,17 +785,6 @@ public sealed class VarreduraAgendaService(
     /// dizendo que faltou. Por isso, ao bater no teto, a janela é partida ao meio e reconsultada:
     /// perder agendamento sem avisar seria o pior desfecho possível aqui.</para>
     /// </summary>
-    private async Task<List<MarcacaoSisreg>> ExportarComTetoAsync(
-        string cnes,
-        DateOnly inicio,
-        DateOnly fim,
-        Combinacao combinacao,
-        ProgressoVarredura progresso,
-        CancellationToken ct) =>
-        await ExportarComTetoAsync(
-            cnes, inicio, fim, combinacao.Cpf, combinacao.Codigo,
-            combinacao.NomeProcedimento, progresso, ct);
-
     /// <summary>
     /// Uma exportação, partindo a janela ao meio quando o SISREG trunca.
     ///
@@ -1045,23 +885,6 @@ public sealed class VarreduraAgendaService(
             progresso.Validos, pausaAte);
     }
 
-    private async Task PararParcialAsync(
-        SisregVarreduraExecucao execucao,
-        SisregVarreduraAgenda? agenda,
-        ProgressoVarredura progresso,
-        Combinacao proxima,
-        string motivo,
-        CancellationToken ct)
-    {
-        if (agenda is not null) agenda.CursorJanelaFim = execucao.JanelaFim;
-
-        await FinalizarAsync(execucao, StatusVarredura.Parcial, motivo, ct, progresso);
-
-        logger.LogWarning(
-            "SISREG_VARREDURA_PARCIAL: unidade {Unidade} parou antes de {Prof}/{Proc} — {Motivo}",
-            execucao.UnidadeNome, proxima.NomeProfissional, proxima.NomeProcedimento, motivo);
-    }
-
     private async Task FinalizarAsync(
         SisregVarreduraExecucao execucao,
         StatusVarredura status,
@@ -1093,8 +916,6 @@ public sealed class VarreduraAgendaService(
         execucao.RegistrosEncontrados = progresso.RegistrosEncontrados;
         execucao.Validos = progresso.Validos;
         execucao.Invalidos = progresso.Invalidos;
-        execucao.CursorProfissionalCpf = progresso.CpfAtual;
-        execucao.CursorProcedimentoCodigo = progresso.CodigoAtual;
     }
 
     // ============================================================ consultas
@@ -1148,28 +969,6 @@ public sealed class VarreduraAgendaService(
     // ============================================================ apoio
 
     /// <summary>
-    /// Pares habilitados, na ordem determinística do cursor.
-    ///
-    /// <para>O código do SISREG aqui é <b>só o filtro da varredura</b> — o que consultar. Ele não
-    /// decide o que o exame é: isso vem do próprio agendamento, na importação. Por isso não há
-    /// nenhum pré-requisito de SIGTAP aqui: exigir o de-para antes de varrer obrigaria a mapear
-    /// procedimento que talvez nunca tenha agendamento nenhum.</para>
-    /// </summary>
-    private async Task<List<Combinacao>> CarregarCombinacoesAsync(Guid unidadeId, CancellationToken ct)
-    {
-        var candidatos = await db.SisregProfissionaisUnidade.AsNoTracking()
-            .Where(p => p.UnidadeId == unidadeId && p.Habilitado && !p.Ausente)
-            .SelectMany(p => p.Procedimentos
-                .Where(x => x.Habilitado && !x.Ausente)
-                .Select(x => new Combinacao(p.Cpf, p.Nome, x.Codigo, x.Nome)))
-            .ToListAsync(ct);
-
-        return [.. candidatos
-            .OrderBy(c => c.Cpf, StringComparer.Ordinal)
-            .ThenBy(c => c.Codigo, StringComparer.Ordinal)];
-    }
-
-    /// <summary>
     /// Fecha execuções que ficaram <c>Pendente</c>/<c>EmExecucao</c> sem ninguém tocando nelas —
     /// restart no meio da rodada, ou exceção que escapou do tratamento. Sem isto a lista de
     /// varreduras recentes mostra "Rodando" indefinidamente e o operador fica esperando algo que
@@ -1200,11 +999,6 @@ public sealed class VarreduraAgendaService(
     private async Task<VarreduraAgendaDto> MontarAgendaDtoAsync(
         Unidade unidade, SisregVarreduraAgenda? agenda, CancellationToken ct)
     {
-        var prontas = await db.SisregProfissionaisUnidade.AsNoTracking()
-            .Where(p => p.UnidadeId == unidade.Id && p.Habilitado && !p.Ausente)
-            .SelectMany(p => p.Procedimentos.Where(x => x.Habilitado && !x.Ausente).Select(x => x.Codigo))
-            .CountAsync(ct);
-
         return new VarreduraAgendaDto(
             unidade.Id,
             unidade.Nome,
@@ -1215,17 +1009,14 @@ public sealed class VarreduraAgendaService(
             agenda?.PausadoAte,
             agenda?.UltimaExecucaoEm,
             agenda?.FalhasConsecutivas ?? 0,
-            prontas,
-            // Uma exportação por combinação; páginas extras entram por cima. No recorte por unidade
-            // inteira é UMA para tudo — o mapeamento deixa de ser o que dita o custo.
-            agenda?.RecorteUnidadeInteira == true ? 1 : prontas,
+            // UMA requisição para toda a agenda da unidade, sempre.
+            1,
             _opcoes.TetoPorExecucao,
             _opcoes.BloqueioInicioLocal,
             _opcoes.BloqueioFimLocal,
             _opcoes.CorteEntradaLocal,
             // Unidade sem linha de configuração NÃO envia: o gatilho é opt-in.
-            agenda?.EnviarConfirmacao ?? false,
-            agenda?.RecorteUnidadeInteira ?? false);
+            agenda?.EnviarConfirmacao ?? false);
     }
 
     private async Task<string?> NomeDoUsuarioAsync(Guid usuarioId, CancellationToken ct) =>
@@ -1233,14 +1024,6 @@ public sealed class VarreduraAgendaService(
             .Where(u => u.Id == usuarioId)
             .Select(u => u.NomeCompleto)
             .FirstOrDefaultAsync(ct);
-
-    /// <summary>A combinação vem depois do cursor na ordem (cpf, código)?</summary>
-    private static bool Depois(Combinacao c, string cursorCpf, string? cursorCodigo)
-    {
-        var porCpf = string.CompareOrdinal(c.Cpf, cursorCpf);
-        if (porCpf != 0) return porCpf > 0;
-        return string.CompareOrdinal(c.Codigo, cursorCodigo ?? string.Empty) > 0;
-    }
 
     private static DateOnly HojeBrasilia() =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia));

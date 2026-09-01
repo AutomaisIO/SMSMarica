@@ -233,7 +233,6 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           <>
             <span className="flex items-center gap-2 text-sm text-blue-700">
               <Loader2 className="h-4 w-4 animate-spin" />
-              {status.data!.combinacoesFeitas}/{status.data!.combinacoesTotal} combinações ·{' '}
               {status.data!.requisicoes} requisições · {status.data!.validos} importadas
               {status.data!.procedimentoAtual ? ` · ${status.data!.procedimentoAtual}` : ''}
             </span>
@@ -371,8 +370,10 @@ function LinhaExecucao({ execucao: e, aoAbrir }: { execucao: VarreduraExecucao; 
             {ROTULO_STATUS[e.status]}
           </span>
         </td>
-        <td className="py-1.5 pr-3 whitespace-nowrap">
-          {e.combinacoesFeitas}/{e.combinacoesTotal}
+        {/* Varredura de hoje traz a agenda inteira numa requisição: "1/1" não informa nada. A
+            coluna sobrevive para as execuções do modo antigo, que varriam centenas de pares. */}
+        <td className="py-1.5 pr-3 whitespace-nowrap text-gray-500">
+          {e.combinacoesTotal > 1 ? `${e.combinacoesFeitas}/${e.combinacoesTotal}` : '—'}
         </td>
         <td className="py-1.5 pr-3">{e.requisicoes}</td>
         <td className="py-1.5 pr-3">{e.validos}</td>

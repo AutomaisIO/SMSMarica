@@ -43,12 +43,15 @@ export function ModalDetalheVarredura({ unidadeId, execucao: e, aoFechar }: Prop
           <dt className="text-xs text-gray-500">Quando</dt>
           <dd className="text-gray-900">{data(e.iniciadoEm)}</dd>
         </div>
-        <div>
-          <dt className="text-xs text-gray-500">Cobertura</dt>
-          <dd className="text-gray-900">
-            {e.combinacoesFeitas}/{e.combinacoesTotal} combinações
-          </dd>
-        </div>
+        {/* Só para execução do modo antigo (varria par a par); hoje a agenda vem inteira. */}
+        {e.combinacoesTotal > 1 && (
+          <div>
+            <dt className="text-xs text-gray-500">Cobertura</dt>
+            <dd className="text-gray-900">
+              {e.combinacoesFeitas}/{e.combinacoesTotal} combinações
+            </dd>
+          </div>
+        )}
         <div>
           <dt className="text-xs text-gray-500">Requisições</dt>
           <dd className="text-gray-900">{e.requisicoes}</dd>

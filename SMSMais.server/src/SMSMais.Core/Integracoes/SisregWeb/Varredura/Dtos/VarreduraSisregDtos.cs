@@ -14,9 +14,6 @@ public sealed record VarreduraAgendaDto(
     DateTime? PausadoAte,
     DateTime? UltimaExecucaoEm,
     int FalhasConsecutivas,
-    /// <summary>Pares profissional × procedimento habilitados — o que será varrido. O SIGTAP não
-    /// entra aqui: ele é resolvido na importação, a partir do procedimento de cada agendamento.</summary>
-    int CombinacoesProntas,
     /// <summary>Estimativa de requisições da próxima varredura, para comparar com o teto.</summary>
     int RequisicoesEstimadas,
     int TetoPorExecucao,
@@ -29,10 +26,7 @@ public sealed record VarreduraAgendaDto(
     TimeOnly CorteEntradaLocal,
     /// <summary>Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp?
     /// Vale para toda importação — varredura e upload de arquivo.</summary>
-    bool EnviarConfirmacao,
-    /// <summary>Puxar a agenda da unidade inteira numa requisição, em vez de uma por par
-    /// profissional × procedimento. Ver <c>SisregVarreduraAgenda.RecorteUnidadeInteira</c>.</summary>
-    bool RecorteUnidadeInteira = false);
+    bool EnviarConfirmacao);
 
 /// <summary>Ligar/desligar o sincronismo diário e ajustar hora e janela de dias.</summary>
 public sealed record SalvarVarreduraAgendaRequest(
@@ -41,12 +35,7 @@ public sealed record SalvarVarreduraAgendaRequest(
     int DiasAFrente,
     /// <summary>Omitido mantém o valor atual — a tela pode salvar só a agenda sem mexer no
     /// gatilho de confirmação, e vice-versa.</summary>
-    bool? EnviarConfirmacao = null,
-    /// <summary>
-    /// OBSOLETO na prática: o recorte por unidade inteira virou regra e não se desliga mais pela
-    /// tela. Só <c>true</c> tem efeito (liga); <c>false</c> e omitido são ignorados.
-    /// </summary>
-    bool? RecorteUnidadeInteira = null);
+    bool? EnviarConfirmacao = null);
 
 /// <summary>Uma execução do motor, para a lista de "varreduras recentes".</summary>
 public sealed record VarreduraExecucaoDto(

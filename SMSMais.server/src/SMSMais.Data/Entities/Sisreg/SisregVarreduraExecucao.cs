@@ -65,11 +65,6 @@ public class SisregVarreduraExecucao
     public int Invalidos { get; set; }
     public int JaExistiam { get; set; }
 
-    /// <summary>Par (profissional, procedimento) em que a varredura parou, quando parcial.</summary>
-    public string? CursorProfissionalCpf { get; set; }
-
-    public string? CursorProcedimentoCodigo { get; set; }
-
     public string? MensagemErro { get; set; }
 
     public DateTime IniciadoEm { get; set; }

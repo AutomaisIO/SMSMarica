@@ -87,15 +87,6 @@ public static class DecididorVarreduraSisreg
         return cedo > diario ? diario : cedo;
     }
 
-    /// <summary>
-    /// O cursor de retomada só vale enquanto a janela de datas for a mesma. Janela vencida é
-    /// passado, e refazer o passado gasta orçamento com dado que não muda mais.
-    /// </summary>
-    public static bool CursorValido(SisregVarreduraAgenda agenda, DateOnly janelaFimAtual) =>
-        agenda.CursorProfissionalCpf is not null
-        && agenda.CursorJanelaFim is { } fim
-        && fim >= janelaFimAtual;
-
     private static DateTime ParaUtc(DateTime local, TimeZoneInfo fuso)
     {
         try
