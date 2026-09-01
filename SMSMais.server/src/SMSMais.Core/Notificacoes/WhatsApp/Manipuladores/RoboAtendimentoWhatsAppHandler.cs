@@ -11,7 +11,10 @@ namespace SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 /// está na janela, ENFILEIRA uma tarefa (robo_tarefa) para o worker responder fora do webhook.
 /// Roda por último (Ordem alta). NÃO chama SaveChanges — o webhook commita.
 /// </summary>
-public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManipuladorMensagemWhatsApp
+public sealed class RoboAtendimentoWhatsAppHandler(
+    SmsMaisDbContext db,
+    IWhatsAppCliente whatsApp,
+    Microsoft.Extensions.Logging.ILogger<RoboAtendimentoWhatsAppHandler> logger) : IManipuladorMensagemWhatsApp
 {
     public int Ordem => 1000; // depois de todos os fluxos de domínio.
 
@@ -23,7 +26,8 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
         // de horário. Só é limpo ao devolver a conversa ao robô.
         if (ctx.Conversa.RoboBloqueado) return;
 
-        var ehAtendente = ctx.BotaoPayload?.StartsWith("atendente:", StringComparison.Ordinal) == true;
+        var ehAtendente = ctx.BotaoPayload?.StartsWith("atendente:", StringComparison.Ordinal) == true
+            || EhPedidoLiteralDeAtendente(ctx.Texto);
         // Botões/replies de outros domínios não são do robô; e sem texto (a menos que seja o botão atendente) não há o que tratar.
         if (!ehAtendente && !string.IsNullOrEmpty(ctx.BotaoPayload)) return;
         if (!string.IsNullOrEmpty(ctx.InterativoReplyId)) return;
@@ -31,7 +35,7 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
 
         // Robô ligado globalmente? (e o expediente humano, para o override por horário)
         var cfg = await db.RoboConfiguracoes.AsNoTracking()
-            .Select(c => new { c.Ativo, c.HoraAtendimentoHumanoInicio, c.HoraAtendimentoHumanoFim, c.DiasSemanaAtendimentoHumano })
+            .Select(c => new { c.Ativo, c.NomeExibicao, c.HoraAtendimentoHumanoInicio, c.HoraAtendimentoHumanoFim, c.DiasSemanaAtendimentoHumano })
             .FirstOrDefaultAsync(ct);
         if (cfg is not { Ativo: true }) return;
 
@@ -64,6 +68,23 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
                     || e.Tipo == TipoEventoConversa.Transferida
                     || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
         if (humanoAssumiu) return;
+
+        // BOTÃO "Falar com um atendente" (quick-reply do template, ou o texto literal): é pedido
+        // DIRETO de humano — não é conversa para o robô decidir. O clique já passou por um LLM
+        // duas noites e deu nas duas caras da moeda no MESMO minuto (22h56 de 01/09): para uma
+        // pessoa a resposta certa; para outra, "estou transferindo você, aguarde um momento" às
+        // onze da noite. Botão não vai mais a modelo:
+        // - DENTRO do expediente: silêncio total — a conversa está na fila e um HUMANO atende
+        //   imediatamente (é a regra do produto).
+        // - FORA do expediente: o ROBÔ assume o atendimento, com abertura DETERMINÍSTICA que
+        //   oferece ajuda SEM falar de horário. Só se a pessoa insistir em humano DURANTE esse
+        //   atendimento é que o modelo declara o fora-do-horário (guardrail já manda).
+        if (ehAtendente)
+        {
+            if (!foraExpediente) return;
+            await AbrirAtendimentoForaDoHorarioAsync(ctx, cfg.NomeExibicao, ct);
+            return;
+        }
 
         // CORTESIA AO ATENDENTE: a última mensagem enviada foi de um HUMANO e o cidadão respondeu
         // só um agradecimento/emoji/ok — é o fecho da interação humana, não um pedido novo. O robô
@@ -121,5 +142,73 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
             "vou", "estarei", "la", "muito", "deus", "abencoe", "bencao", "joia",
         ];
         return palavras.All(p => cortesia.Contains(p, StringComparer.Ordinal));
+    }
+
+    /// <summary>O texto é exatamente o rótulo do botão ("Falar com um atendente")? Digitado
+    /// idêntico conta como botão. Frases maiores ("quero falar com atendente sobre a guia")
+    /// continuam indo ao robô — aí é conversa, não clique.</summary>
+    private static bool EhPedidoLiteralDeAtendente(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return false;
+        var n = RoboAtendimento.Runtime.RoboClassificador.NormalizarTexto(texto).Trim('.', '!', ' ');
+        return n is "falar com um atendente" or "falar com atendente";
+    }
+
+    /// <summary>
+    /// Abertura determinística do atendimento fora do expediente: o robô assume, oferecendo ajuda
+    /// SEM mencionar horário (a regra do produto: fora do horário, a gente atende; o horário só é
+    /// declarado se a pessoa insistir em humano durante o atendimento). Sem LLM — zero variância.
+    /// </summary>
+    private async Task AbrirAtendimentoForaDoHorarioAsync(ManipuladorContexto ctx, string nomeRobo, CancellationToken ct)
+    {
+        const string Abertura =
+            "Olá! Posso te ajudar por aqui. Me conta, por favor: o que você precisa? "
+            + "Se for sobre agendamento, exame ou cadastro, já verifico agora mesmo.";
+
+        // Clique duplo / reenvio do template: não repete a abertura se ela já foi a última fala
+        // do robô nas últimas horas.
+        var corte = DateTime.UtcNow.AddHours(-6);
+        var jaAbriu = await db.MensagensWhatsApp.AsNoTracking().AnyAsync(
+            m => m.ConversaId == ctx.Conversa.Id && m.Direcao == DirecaoMensagem.Saida
+                && m.TipoMensagem == TipoMensagem.Robo && m.OcorridoEm >= corte
+                && m.Conteudo == Abertura, ct);
+        if (jaAbriu) return;
+
+        try
+        {
+            var envio = await whatsApp.EnviarTextoAsync(
+                ctx.Conversa.TelefoneCanonical, Abertura, pacienteId: ctx.Conversa.PacienteId, ct: ct);
+            if (!envio.Ok)
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(
+                    logger, "Falha ao abrir atendimento fora do horário na conversa {Conversa}: {Erro}",
+                    ctx.Conversa.Id, envio.Erro);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(envio.WaMessageId))
+            {
+                var msg = db.MensagensWhatsApp.Local.FirstOrDefault(m => m.WaMessageId == envio.WaMessageId)
+                    ?? await db.MensagensWhatsApp.FirstOrDefaultAsync(m => m.WaMessageId == envio.WaMessageId, ct);
+                if (msg is not null)
+                {
+                    msg.ConversaId = ctx.Conversa.Id;
+                    msg.TipoMensagem = TipoMensagem.Robo;
+                    msg.AutorNomeExibicao = nomeRobo;
+                    msg.AutorUsuarioId = null; // automação — não vira dono nem "atendente"
+                }
+            }
+
+            ctx.Conversa.UltimaMensagemEm = DateTime.UtcNow;
+            ctx.Conversa.UltimaMensagemDirecao = DirecaoMensagem.Saida;
+            ctx.Conversa.UltimaMensagemPreview = Abertura.Length <= 160 ? Abertura : Abertura[..160];
+            ctx.Conversa.RoboInteracoesNaJanela += 1; // conta no teto por conversa
+            // NÃO zera NaoLidas: o robô "ler" não é o operador ler.
+        }
+        catch (Exception ex)
+        {
+            Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(
+                logger, ex, "Erro ao abrir atendimento fora do horário na conversa {Conversa}.", ctx.Conversa.Id);
+        }
     }
 }

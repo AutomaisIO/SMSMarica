@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robô de atendimento — aprendizados (log cumulativo)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Robô de atendimento — aprendizados (log cumulativo)</h1>
+<p>&gt; Cada entrada nasce de um caso REAL, nomeia a causa (<code>código</code> / <code>prompt</code> / <code>treino</code> / <code>classificador</code> &gt; / <code>modelo</code>) e aponta a correção. Manter este log é parte do processo: análise periódica sobre &gt; cenário real (skill <code>analisar-robo-cenarios-reais</code>), correção estrutural, registro aqui.</p>
+<h2>02/09/2026 — Botão "Falar com um atendente" não é conversa (AURORA / VALDIRENE)</h2>
+<p><strong>O caso.</strong> Às 22h53, VALDIRENE clicou o botão do template e o robô respondeu <em>"Claro! Estou transferindo você para um atendente humano. Aguarde um momento."</em> — às onze da noite, com ninguém no atendimento. No <strong>mesmo minuto</strong> (22h56), AURORA clicou o mesmo botão e recebeu a resposta certa. Mesmo prompt, mesmo modelo, dois resultados opostos.</p>
+<p><strong>Causa:</strong> <code>código</code> (mandávamos um CLIQUE DE BOTÃO para um LLM decidir) + <code>modelo</code> (variância do Haiku sob instruções em tensão) + <code>treino</code> (o assunto mandava "use encaminhar_para_humano se insistir" sem ressalva de horário).</p>
+<p><strong>Regra do produto (definida pelo usuário):</strong></p>
+<ul>
+<li><strong>Dentro do horário:</strong> botão = pedido direto de humano → atendimento humano IMEDIATO. O robô fica</li>
+</ul>
+<p>  mudo; a conversa está na fila.</p>
+<ul>
+<li><strong>Fora do horário:</strong> o ROBÔ assume o atendimento — abertura determinística oferecendo ajuda, SEM</li>
+</ul>
+<p>  falar de horário.</p>
+<ul>
+<li><strong>Só se a pessoa insistir em humano DURANTE o atendimento do robô</strong> é que se declara o</li>
+</ul>
+<p>  fora-do-horário (sem prometer encaminhamento, retorno nem "registro da solicitação").</p>
+<p><strong>Correção:</strong> clique do botão (payload <code>atendente:</code> ou o texto literal) tratado deterministicamente no handler — nunca mais passa por modelo. Treinos do assunto reescritos com a regra de horário.</p>
+<p><strong>Medição (10 execuções por modelo, mesmo turno crítico, prompt real):</strong> Haiku prometeu o que não podia em <strong>2/10</strong> ("vou encaminhar sua solicitação… você será contatado"); Sonnet: <strong>0/10</strong>, com fraseado consistente. É o dado para a decisão de modelo.</p>
+<h2>02/09/2026 — Só se pede dado quando HÁ informação para entregar (SIMONE)</h2>
+<p><strong>O caso.</strong> <em>"Já fiz há muito tempo!!! Estou esperando o ultrassom complementar"</em> — o robô coletou os 4 dígitos do CPF + mês/ano, conferiu identidade… para no fim dizer que não tinha nada sobre o ultrassom. Burocracia sem entrega.</p>
+<p><strong>Causa:</strong> <code>código</code> (a ferramenta só funcionava com identidade — não havia como checar antes).</p>
+<p><strong>Regra:</strong> antes de pedir QUALQUER dado, verificar se existe o que informar. Existindo → identidade → informa. Não existindo → não pede nada: <em>"assim que houver informação sobre esse exame, a Secretaria entra em contato por aqui"</em> e ENCERRA — sem nunca afirmar que o exame não foi/será marcado.</p>
+<p><strong>Correção:</strong> <code>consultar_agendamentos</code> em DUAS FASES (fase 1 sem parâmetros responde só SE existe); a pesquisa passou a cobrir as TRÊS fontes: SISREG (data futura) + espelhos SER e SERNIT (situação <em>Agendada</em>, data em texto, rotulada "regulação").</p>
+<h2>02/09/2026 — Cortesia ao atendente é fecho, não pedido (MAURA)</h2>
+<p><strong>O caso.</strong> A atendente mandou o aviso ao meio-dia; às 22h28 a cidadã respondeu "👏" e o robô reabriu com <em>"Oi! Como posso ajudar?"</em>.</p>
+<p><strong>Causa:</strong> <code>código</code> (toda mensagem virava tarefa do robô) + <code>prompt</code> (nada dizia que cortesia encerra).</p>
+<p><strong>Correção:</strong> mensagem que é SÓ cortesia (emoji, "ok", "obrigada", "confirmado", "estarei lá" — régua conservadora) logo após mensagem de um HUMANO nem vira tarefa: silêncio. Guardrail: cortesia a assunto tratado pelo atendente = ENCERRADO; só seguir se houver pedido A MAIS. O mesmo vale para qualquer resposta do cidadão à conclusão de um humano: verificar se é só o fecho antes de dar continuidade.</p>
+<h2>01/09/2026 — 12 correções da análise por simulação (VALDERI, ISIS, hérnia, fim de semana…)</h2>
+<p>Ver <a href="./2026-09-01-simulacao-cenarios-reais.md"><code>2026-09-01-simulacao-cenarios-reais.md</code></a>: anúncio da Secretaria descartado do payload, sábado contando como expediente, laço bot-a-bot com auto-resposta de comércio, "oi" casando com "foi" no classificador, modelo sem noção de data, saudação engolindo pedido real, e mais.</p>
+<h2>Princípios que se repetem (a moral das entradas)</h2>
+<ol>
+<li><strong>Instrução não vence histórico; ferramenta vence.</strong> Proibir por prompt não basta — dar o</li>
+</ol>
+<p>   caminho certo (ferramenta/fase) resolve.</p>
+<ol>
+<li><strong>Mecânico não vai a modelo.</strong> Botão, cortesia, verificação de identidade, auto-resposta de</li>
+</ol>
+<p>   robô: tudo determinístico. LLM é para conversa de verdade.</p>
+<ol>
+<li><strong>Só se pede dado com algo a entregar.</strong> Checar antes, pedir depois.</li>
+<li><strong>O que um humano concluiu está concluído.</strong> O robô trabalha a partir do humano, nunca por cima.</li>
+<li><strong>Fora do horário, o robô atende — sem prometer gente.</strong> A promessa que não se cumpre é pior</li>
+</ol>
+<p>   que a espera anunciada.</p>
+<ol>
+<li><strong>Medir antes de culpar o modelo.</strong> Variância se mede (N execuções); a maior parte das "bolas</li>
+</ol>
+<p>   fora" era desenho nosso.</p>
+</main>
+</body>
+</html>
