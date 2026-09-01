@@ -6,9 +6,11 @@ import {
   listarItensMapeamentoLote,
   obterAgendamentoMapeamentoLote,
   obterConfiguracaoSisreg,
+  alternarAgendamentoRede,
   listarTelefonesNotificacao,
   obterStatusMapeamentoLote,
   prepararRedeSisreg,
+  preverAgendamentoSisreg,
   salvarAgendamentoMapeamentoLote,
   salvarTelefonesNotificacao,
   sincronizarMapeamentoLote,
@@ -17,6 +19,7 @@ import {
 import type {
   AtualizarSisregConfiguracaoPayload,
   PrepararRedePayload,
+  PreverAgendamentoPayload,
   SalvarMapeamentoLoteAgendamento,
 } from '@/features/sisreg/types';
 
@@ -145,4 +148,25 @@ export function useSalvarTelefonesNotificacao(provedor: string) {
 
 export function useTestarNotificacaoSincronismo(provedor: string) {
   return useMutation({ mutationFn: () => testarNotificacaoSincronismo(provedor) });
+}
+
+/**
+ * Prévia da distribuição. `keepPreviousData` deixa o resumo anterior na tela enquanto o novo
+ * carrega: sem isso, cada tecla digitada no intervalo apagava a linha e ela piscava.
+ */
+export function usePreverAgendamento(payload: PreverAgendamentoPayload, habilitado: boolean) {
+  return useQuery({
+    queryKey: ['sisreg', 'lote', 'prever', payload.intervaloMinutos, payload.horaInicialLocal],
+    queryFn: () => preverAgendamentoSisreg(payload),
+    enabled: habilitado,
+    placeholderData: (anterior) => anterior,
+  });
+}
+
+export function useAlternarAgendamentoRede() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (ativo: boolean) => alternarAgendamentoRede(ativo),
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteAgendamento }),
+  });
 }

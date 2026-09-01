@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, Loader2, RefreshCw, Rocket, RotateCw, XCircle } from 'lucide-react';
+import { CalendarClock, Loader2, Power, PowerOff, RefreshCw, Rocket, RotateCw, XCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -9,21 +9,18 @@ import {
   useCancelarMapeamentoLote,
   useExecucoesMapeamentoLote,
   useSalvarAgendamentoMapeamentoLote,
+  useAlternarAgendamentoRede,
   usePrepararRedeSisreg,
+  usePreverAgendamento,
   useSincronizarMapeamentoLote,
   useStatusMapeamentoLote,
 } from '@/features/sisreg/api/queries';
 import { ModalDetalheMapeamentoLote } from '@/features/sisreg/components/ModalDetalheMapeamentoLote';
 import type { MapeamentoLoteExecucao, StatusMapeamentoLote } from '@/features/sisreg/types';
 
-/**
- * Distribuição dos horários diários. Começa às 18:00 (fora do expediente, bem depois do bloqueio
- * do SISREG às 15:00) e espaça de 10 em 10 min — as ~45 unidades terminam por volta de 01:20,
- * todas na madrugada. Uma varredura que estoure o intervalo não faz a seguinte perder a vez: o
- * scheduler segura e dispara assim que a saída para o SISREG libera.
- */
-const INTERVALO_MINUTOS = 10;
-const HORA_INICIAL = '18:00';
+/** Ponto de partida sugerido: fora do expediente e bem depois do bloqueio do SISREG (15:00). */
+const HORA_INICIAL_PADRAO = '18:00';
+const INTERVALO_PADRAO = 10;
 
 const CLASSE_STATUS: Record<StatusMapeamentoLote, string> = {
   Pendente: 'bg-gray-100 text-gray-700',
@@ -73,6 +70,19 @@ export function SincronizarTudoSecao() {
   const [aviso, setAviso] = useState<string | null>(null);
   const [agendaSalva, setAgendaSalva] = useState(false);
   const [detalhe, setDetalhe] = useState<MapeamentoLoteExecucao | null>(null);
+
+  // Parâmetros da distribuição diária. A prévia abaixo recalcula a cada mudança, então o operador
+  // vê o horário de término ANTES de confirmar — com 45 unidades, a diferença entre 10 e 20 min é
+  // terminar 01:20 ou empurrar as últimas para a tarde do dia seguinte.
+  const [horaInicial, setHoraInicial] = useState(HORA_INICIAL_PADRAO);
+  const [intervalo, setIntervalo] = useState(String(INTERVALO_PADRAO));
+
+  const intervaloNum = Number(intervalo) || INTERVALO_PADRAO;
+  const previa = usePreverAgendamento(
+    { intervaloMinutos: intervaloNum, horaInicialLocal: horaInicial },
+    /^\d{2}:\d{2}$/.test(horaInicial) && intervaloNum >= 5,
+  );
+  const alternarRede = useAlternarAgendamentoRede();
 
   useEffect(() => {
     if (agendamento.data) {
@@ -148,11 +158,22 @@ export function SincronizarTudoSecao() {
     setAviso(null);
     try {
       const r = await prepararRede.mutateAsync({
-        intervaloMinutos: INTERVALO_MINUTOS,
-        horaInicialLocal: HORA_INICIAL,
+        intervaloMinutos: intervaloNum,
+        horaInicialLocal: horaInicial,
         diasAFrente: 21,
         habilitar: true,
       });
+      setAviso(r.mensagem);
+    } catch (err) {
+      setErro(extrairMensagemDeErro(err));
+    }
+  }
+
+  async function aoAlternarRede(ativo: boolean) {
+    setErro(null);
+    setAviso(null);
+    try {
+      const r = await alternarRede.mutateAsync(ativo);
       setAviso(r.mensagem);
     } catch (err) {
       setErro(extrairMensagemDeErro(err));
@@ -309,15 +330,37 @@ export function SincronizarTudoSecao() {
         <h3 className="text-sm font-semibold text-gray-900">Programar o sincronismo diário</h3>
         <p className="mt-1 text-sm text-gray-600">
           Habilita todos os médicos e procedimentos já mapeados e liga a importação diária de cada
-          unidade a partir das {HORA_INICIAL}, em horários separados por {INTERVALO_MINUTOS} minutos
-          e fora da faixa de 8h às 15h em que o SISREG bloqueia a exportação. Se uma varredura passar
-          do horário da seguinte, a seguinte espera a saída liberar — não perde o dia. O aviso por
-          WhatsApp ao paciente fica <strong>desligado</strong> em todas.
+          unidade, uma a cada tantos minutos, fora da faixa de 8h às 15h em que o SISREG bloqueia a
+          exportação. Se uma varredura passar do horário da seguinte, a seguinte espera a saída
+          liberar — não perde o dia. O aviso por WhatsApp ao paciente fica{' '}
+          <strong>desligado</strong> em todas.
         </p>
-        <div className="mt-3">
+
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <Campo label="Começar às (Brasília)" htmlFor="rede-hora">
+            <Input
+              id="rede-hora"
+              type="time"
+              className="w-32"
+              value={horaInicial}
+              onChange={(e) => setHoraInicial(e.target.value)}
+            />
+          </Campo>
+          <Campo label="Intervalo (min)" htmlFor="rede-intervalo">
+            <Input
+              id="rede-intervalo"
+              type="number"
+              min={5}
+              max={120}
+              className="w-24"
+              value={intervalo}
+              onChange={(e) => setIntervalo(e.target.value)}
+            />
+          </Campo>
           <Button
             type="button"
             variante="outline"
+            className="mb-0.5"
             disabled={prepararRede.isPending}
             onClick={aoPrepararRede}
           >
@@ -328,6 +371,49 @@ export function SincronizarTudoSecao() {
             )}
             Programar todas as unidades
           </Button>
+        </div>
+
+        {/* A prévia vem ANTES do botão surtir efeito: com 45 unidades, a diferença entre 10 e 20
+            minutos é terminar 01:20 ou empurrar as últimas para a tarde do dia seguinte — e isso
+            não se descobre olhando os dois campos. */}
+        {previa.data ? (
+          <p
+            className={`mt-2 rounded-md border px-3 py-2 text-xs ${
+              previa.data.foraDaMadrugada > 0
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-gray-200 bg-gray-50 text-gray-600'
+            }`}
+          >
+            {previa.data.resumo}
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+          <span className="text-xs text-gray-500">Importação diária de todas as unidades:</span>
+          <Button
+            type="button"
+            variante="outline"
+            tamanho="sm"
+            disabled={alternarRede.isPending}
+            onClick={() => aoAlternarRede(true)}
+          >
+            <Power className="mr-1.5 h-3.5 w-3.5" />
+            Habilitar todas
+          </Button>
+          <Button
+            type="button"
+            variante="ghost"
+            tamanho="sm"
+            disabled={alternarRede.isPending}
+            onClick={() => aoAlternarRede(false)}
+            title="Nenhuma agenda nova entra sozinha até religar. Os horários já configurados ficam."
+          >
+            <PowerOff className="mr-1.5 h-3.5 w-3.5" />
+            Desabilitar todas
+          </Button>
+          {alternarRede.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+          ) : null}
         </div>
       </div>
 

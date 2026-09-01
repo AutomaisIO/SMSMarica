@@ -135,3 +135,27 @@ public sealed record PrepararRedeDto(
 /// <summary>Horário que coube a cada unidade.</summary>
 public sealed record PrepararRedeUnidadeDto(
     Guid UnidadeId, string Nome, string HoraLocal, int Profissionais, int Procedimentos);
+
+/// <summary>
+/// Prévia da distribuição, sem gravar nada. Existe para o operador ver a que horas a fila termina
+/// <b>antes</b> de confirmar: com 45 unidades, a diferença entre 10 e 20 minutos é terminar 01:20
+/// ou empurrar as últimas para a tarde do dia seguinte — e isso não se descobre olhando os dois
+/// campos.
+/// </summary>
+public sealed record PreverAgendamentoRequest(int IntervaloMinutos, string HoraInicialLocal);
+
+/// <summary>O que a distribuição vai produzir.</summary>
+public sealed record PreverAgendamentoDto(
+    int Unidades,
+    string PrimeiroHorario,
+    string UltimoHorario,
+    /// <summary>Quantas não cabem na madrugada e caem depois do bloqueio, na tarde seguinte.</summary>
+    int ForaDaMadrugada,
+    /// <summary>Frase pronta para a tela — inclui o alerta quando há unidade fora da madrugada.</summary>
+    string Resumo);
+
+/// <summary>Ligar ou desligar a importação diária de TODAS as unidades de uma vez.</summary>
+public sealed record AlternarAgendamentoRedeRequest(bool Ativo);
+
+/// <summary>Quantas agendas mudaram de estado.</summary>
+public sealed record AlternarAgendamentoRedeDto(int UnidadesAfetadas, int UnidadesAtivas, string Mensagem);

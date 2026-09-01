@@ -7,8 +7,11 @@ import type {
   MapeamentoLoteExecucao,
   MapeamentoLoteExecucaoItem,
   MapeamentoLoteStatus,
+  AlternarAgendamentoRede,
   PrepararRede,
   PrepararRedePayload,
+  PreverAgendamento,
+  PreverAgendamentoPayload,
   RegistroSisreg,
   SalvarMapeamentoLoteAgendamento,
   SisregBuscaResultado,
@@ -124,5 +127,25 @@ export async function salvarTelefonesNotificacao(
 
 export async function testarNotificacaoSincronismo(provedor: string): Promise<{ enviados: number }> {
   const { data } = await http.post<{ enviados: number }>(`/integracoes/${provedor}/notificacoes/testar`);
+  return data;
+}
+
+/** Prévia da distribuição: a que horas a fila termina, antes de confirmar. */
+export async function preverAgendamentoSisreg(
+  payload: PreverAgendamentoPayload,
+): Promise<PreverAgendamento> {
+  const { data } = await http.post<PreverAgendamento>(
+    '/sisreg/mapeamento/lote/prever-agendamento',
+    payload,
+  );
+  return data;
+}
+
+/** Liga ou desliga a importação diária de todas as unidades de uma vez. */
+export async function alternarAgendamentoRede(ativo: boolean): Promise<AlternarAgendamentoRede> {
+  const { data } = await http.put<AlternarAgendamentoRede>(
+    '/sisreg/mapeamento/lote/agendamento-rede',
+    { ativo },
+  );
   return data;
 }

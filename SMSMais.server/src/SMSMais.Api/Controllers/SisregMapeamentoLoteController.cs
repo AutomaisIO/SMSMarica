@@ -85,6 +85,28 @@ public sealed class SisregMapeamentoLoteController(ISisregMapeamentoLoteService 
         [FromBody] PrepararRedeRequest request, CancellationToken cancellationToken) =>
         await _lote.PrepararRedeAsync(request, cancellationToken);
 
+    /// <summary>
+    /// Prévia da distribuição, sem gravar nada: a que horas a fila termina com essa hora inicial e
+    /// esse intervalo, e quantas unidades não cabem na madrugada.
+    /// </summary>
+    [HttpPost("prever-agendamento")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PreverAgendamentoDto>(StatusCodes.Status200OK)]
+    public async Task<PreverAgendamentoDto> PreverAgendamento(
+        [FromBody] PreverAgendamentoRequest request, CancellationToken cancellationToken) =>
+        await _lote.PreverAgendamentoAsync(request, cancellationToken);
+
+    /// <summary>
+    /// Liga ou desliga a importação diária de <b>todas</b> as unidades de uma vez. Desligar não
+    /// apaga horário nenhum: as agendas ficam prontas para religar.
+    /// </summary>
+    [HttpPut("agendamento-rede")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AlternarAgendamentoRedeDto>(StatusCodes.Status200OK)]
+    public async Task<AlternarAgendamentoRedeDto> AlternarAgendamentoRede(
+        [FromBody] AlternarAgendamentoRedeRequest request, CancellationToken cancellationToken) =>
+        await _lote.AlternarAgendamentoRedeAsync(request.Ativo, cancellationToken);
+
     /// <summary>Configuração do disparo diário automático.</summary>
     [HttpGet("agendamento")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]

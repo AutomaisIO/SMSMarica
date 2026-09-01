@@ -93,6 +93,14 @@ public interface ISisregMapeamentoLoteService
     /// </summary>
     Task<PrepararRedeDto> PrepararRedeAsync(
         PrepararRedeRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Prévia da distribuição, sem gravar: a que horas a fila termina com esses parâmetros.</summary>
+    Task<PreverAgendamentoDto> PreverAgendamentoAsync(
+        PreverAgendamentoRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Liga ou desliga a importação diária de todas as unidades de uma vez.</summary>
+    Task<AlternarAgendamentoRedeDto> AlternarAgendamentoRedeAsync(
+        bool ativo, CancellationToken cancellationToken = default);
 }
 
 public sealed class SisregMapeamentoLoteService(
@@ -110,6 +118,12 @@ public sealed class SisregMapeamentoLoteService(
     IOptions<SisregOrcamentoOpcoes> orcamentoOpcoes,
     ILogger<SisregMapeamentoLoteService> logger) : ISisregMapeamentoLoteService
 {
+    private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    /// <summary>Fim do bloqueio do <c>expo_solicitacoes</c>. Espelha <c>VarreduraSisregOpcoes</c> —
+    /// aqui só para classificar horários na prévia, não para decidir se roda.</summary>
+    private static readonly TimeOnly BloqueioFimLocal = new(15, 0);
+
     public const string ChaveAtivo = "mapeamentoLoteAtivo";
     public const string ChaveHora = "mapeamentoLoteHoraLocal";
     public const string ChaveBootstrap = "mapeamentoLoteBootstrap";
@@ -964,9 +978,7 @@ public sealed class SisregMapeamentoLoteService(
     public async Task<PrepararRedeDto> PrepararRedeAsync(
         PrepararRedeRequest request, CancellationToken cancellationToken = default)
     {
-        var intervalo = Math.Clamp(request.IntervaloMinutos, 5, 120);
-        var inicio = TimeOnly.TryParseExact(request.HoraInicialLocal, "HH:mm",
-            CultureInfo.InvariantCulture, DateTimeStyles.None, out var h) ? h : new TimeOnly(15, 0);
+        var (intervalo, inicio) = NormalizarDistribuicao(request.IntervaloMinutos, request.HoraInicialLocal);
         var dias = Math.Clamp(request.DiasAFrente, 1, Varredura.VarreduraSisregOpcoes.MaxDiasAFrente);
 
         // Só entram unidades com mapeamento: ligar a varredura de quem nunca foi mapeado agendaria
@@ -1062,6 +1074,87 @@ public sealed class SisregMapeamentoLoteService(
             + "O aviso por WhatsApp ficou DESLIGADO em todas.");
     }
 
+    public async Task<PreverAgendamentoDto> PreverAgendamentoAsync(
+        PreverAgendamentoRequest request, CancellationToken cancellationToken = default)
+    {
+        var (intervalo, inicio) = NormalizarDistribuicao(request.IntervaloMinutos, request.HoraInicialLocal);
+        var unidades = await ContarUnidadesComMapeamentoAsync(cancellationToken);
+
+        if (unidades == 0)
+        {
+            return new PreverAgendamentoDto(0, "—", "—", 0,
+                "Nenhuma unidade tem mapeamento do SISREG ainda — não há o que programar.");
+        }
+
+        var horarios = DistribuirHorarios(inicio, intervalo, unidades);
+
+        // "Fora da madrugada" = caiu depois do bloqueio mas antes da hora inicial, ou seja, a fila
+        // deu a volta e transbordou para a tarde seguinte. É exatamente o que o operador não
+        // enxerga olhando só "hora inicial" e "intervalo".
+        var foraDaMadrugada = horarios.Count(h => h >= BloqueioFimLocal && h < inicio);
+        var primeiro = horarios[0].ToString("HH:mm", CultureInfo.InvariantCulture);
+        var ultimo = horarios[^1].ToString("HH:mm", CultureInfo.InvariantCulture);
+
+        var resumo = $"{unidades} unidades, de {primeiro} a {ultimo}, a cada {intervalo} min.";
+        if (foraDaMadrugada > 0)
+        {
+            resumo += $" ATENÇÃO: {foraDaMadrugada} não cabem na madrugada e ficam para a tarde do "
+                + "dia seguinte. Diminua o intervalo para trazer todas para a noite.";
+        }
+
+        return new PreverAgendamentoDto(unidades, primeiro, ultimo, foraDaMadrugada, resumo);
+    }
+
+    public async Task<AlternarAgendamentoRedeDto> AlternarAgendamentoRedeAsync(
+        bool ativo, CancellationToken cancellationToken = default)
+    {
+        var agora = DateTime.UtcNow;
+
+        // Desligar é simples; LIGAR precisa recalcular o próximo disparo, porque o scheduler trata
+        // ProximoRunEm nulo como "não elegível" — sem isso, ligar tudo não faria nada rodar.
+        var agendas = await db.SisregVarreduraAgendas
+            .Where(a => a.Ativo != ativo)
+            .ToListAsync(cancellationToken);
+
+        foreach (var agenda in agendas)
+        {
+            agenda.Ativo = ativo;
+            agenda.ProximoRunEm = ativo
+                ? Varredura.Background.DecididorVarreduraSisreg.ProximoDiario(agenda.HoraLocal, agora, Brasilia)
+                : null;
+            agenda.AtualizadoEm = agora;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var ativas = await db.SisregVarreduraAgendas.CountAsync(a => a.Ativo, cancellationToken);
+        logger.LogInformation(
+            "SISREG_AGENDAMENTO_REDE: {Qtd} unidades {Acao}; {Ativas} ativas no total.",
+            agendas.Count, ativo ? "ligadas" : "desligadas", ativas);
+
+        return new AlternarAgendamentoRedeDto(
+            agendas.Count, ativas,
+            ativo
+                ? $"{agendas.Count} unidade(s) passaram a importar a agenda todo dia ({ativas} ativas no total)."
+                : $"{agendas.Count} unidade(s) deixaram de importar a agenda automaticamente. "
+                  + "Nenhuma agenda nova entra sozinha até religar.");
+    }
+
+    private async Task<int> ContarUnidadesComMapeamentoAsync(CancellationToken ct) =>
+        await db.Unidades
+            .Where(u => u.Ativo && u.Cnes != null && u.Cnes != ""
+                     && db.SisregProfissionaisUnidade.Any(p => p.UnidadeId == u.Id))
+            .CountAsync(ct);
+
+    /// <summary>Valida e normaliza os dois parâmetros da distribuição, num lugar só.</summary>
+    private static (int Intervalo, TimeOnly Inicio) NormalizarDistribuicao(int intervaloMinutos, string? horaInicial)
+    {
+        var intervalo = Math.Clamp(intervaloMinutos, 5, 120);
+        var inicio = TimeOnly.TryParseExact(horaInicial, "HH:mm",
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out var h) ? h : new TimeOnly(18, 0);
+        return (intervalo, inicio);
+    }
+
     /// <summary>
     /// Distribui <paramref name="quantidade"/> horários a partir de <paramref name="inicio"/>,
     /// pulando a faixa em que o SISREG bloqueia a exportação da agenda (08:00–15:00) — varredura
@@ -1070,7 +1163,7 @@ public sealed class SisregMapeamentoLoteService(
     internal static List<TimeOnly> DistribuirHorarios(TimeOnly inicio, int intervaloMinutos, int quantidade)
     {
         var bloqueioInicio = new TimeOnly(7, 30);  // corte de entrada: 08:00 menos a margem
-        var bloqueioFim = new TimeOnly(15, 0);
+        var bloqueioFim = BloqueioFimLocal;
 
         static bool Proibido(TimeOnly t, TimeOnly de, TimeOnly ate) => t > de && t < ate;
 

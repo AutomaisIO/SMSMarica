@@ -223,3 +223,22 @@ export const CONSULTAS_SISREG: { id: ConsultaSisreg; rotulo: string; usaInterval
   { id: 'canceladas-devolvidas', rotulo: 'Canceladas/devolvidas (ambulatorial)', usaIntervalo: false },
   { id: 'internacoes', rotulo: 'Internações (hospitalar)', usaIntervalo: true },
 ];
+
+/** Prévia da distribuição dos horários, sem gravar nada. */
+export type PreverAgendamentoPayload = { intervaloMinutos: number; horaInicialLocal: string };
+
+export type PreverAgendamento = {
+  unidades: number;
+  primeiroHorario: string;
+  ultimoHorario: string;
+  /** Quantas não cabem na madrugada e caem na tarde do dia seguinte. */
+  foraDaMadrugada: number;
+  resumo: string;
+};
+
+/** Resultado de ligar/desligar a importação diária de todas as unidades. */
+export type AlternarAgendamentoRede = {
+  unidadesAfetadas: number;
+  unidadesAtivas: number;
+  mensagem: string;
+};
