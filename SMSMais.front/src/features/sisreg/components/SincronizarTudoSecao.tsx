@@ -18,10 +18,11 @@ import type { MapeamentoLoteExecucao, StatusMapeamentoLote } from '@/features/si
 
 /**
  * Distribuição dos horários diários. Começa às 18:00 (fora do expediente, bem depois do bloqueio
- * do SISREG às 15:00) e espaça de 20 em 20 min. Uma varredura que estoure o intervalo não faz a
- * seguinte perder a vez: o scheduler segura e dispara assim que a saída para o SISREG libera.
+ * do SISREG às 15:00) e espaça de 10 em 10 min — as ~45 unidades terminam por volta de 01:20,
+ * todas na madrugada. Uma varredura que estoure o intervalo não faz a seguinte perder a vez: o
+ * scheduler segura e dispara assim que a saída para o SISREG libera.
  */
-const INTERVALO_MINUTOS = 20;
+const INTERVALO_MINUTOS = 10;
 const HORA_INICIAL = '18:00';
 
 const CLASSE_STATUS: Record<StatusMapeamentoLote, string> = {

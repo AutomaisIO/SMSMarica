@@ -117,7 +117,7 @@ public sealed record PrepararRedeRequest(
     // dispara e NÃO mexe no ProximoRunEm, então a agenda vencida entra assim que a saída libera
     // (DecididorVarreduraSisreg). É o que permite espaçar por tempo sem medo — medido: mediana de
     // 43s por varredura, com um pico de 54 min.
-    int IntervaloMinutos = 20,
+    int IntervaloMinutos = 10,
     string HoraInicialLocal = "18:00",
     int DiasAFrente = 21,
     bool Habilitar = true);
