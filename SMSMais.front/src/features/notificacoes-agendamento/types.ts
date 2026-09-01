@@ -6,7 +6,8 @@ export type StatusNotificacao =
   | 'Falha'
   | 'SemTelefoneValido'
   /** Retida: resultado/laudo só vai para contato verificado. Sai sozinha quando verificarem. */
-  | 'AguardandoTelefoneVerificado';
+  | 'AguardandoTelefoneVerificado'
+  | 'AguardandoCorrecaoContato';
 
 export type StatusConfirmacao = 'Pendente' | 'Confirmada' | 'Cancelada';
 

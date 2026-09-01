@@ -68,6 +68,31 @@ public sealed class PendenciaCadastroService(
         p.ResolvidoPor = usuarioAtual.UsuarioId;
         p.ResolucaoNota = string.IsNullOrWhiteSpace(nota) ? null : nota.Trim();
         await db.SaveChangesAsync(ct);
+        await LiberarComunicacoesRetidasAsync(p, ct);
+    }
+
+    /// <summary>
+    /// Pendência finalizada (resolvida OU ignorada) ⇒ solta as comunicações que estavam retidas
+    /// por número negado para este telefone/paciente. O envio re-resolve o telefone do cadastro,
+    /// então a mensagem sai para o número já corrigido pela recepção.
+    /// </summary>
+    private async Task LiberarComunicacoesRetidasAsync(PendenciaCadastro p, CancellationToken ct)
+    {
+        var retidas = await db.ComunicacoesPaciente
+            .Where(c => c.Status == StatusComunicacao.AguardandoCorrecaoContato)
+            .ToListAsync(ct);
+        var agora = DateTime.UtcNow;
+        var soltas = 0;
+        foreach (var c in retidas)
+        {
+            var mesmoFone = Conversas.TelefoneWhatsApp.MesmoNumero(c.Telefone, p.TelefoneCanonical);
+            if (!mesmoFone && (p.PacienteId is null || c.PacienteId != p.PacienteId)) continue;
+            c.Status = StatusComunicacao.Pendente;
+            c.MotivoFalha = null;
+            c.ProximaTentativaEm = agora;
+            soltas++;
+        }
+        if (soltas > 0) await db.SaveChangesAsync(ct);
     }
 
     public async Task<Guid> RegistrarNumeroErradoAsync(

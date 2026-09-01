@@ -99,6 +99,16 @@ public static class TelefoneWhatsApp
             : InterpretacaoTelefone.Recusado(
                 "O WhatsApp só alcança celular. Esse número parece ser fixo — informe um celular com DDD.");
     }
+
+    /// <summary>Mesmo número tolerando DDI (um é sufixo do outro), com guarda de tamanho — a
+    /// mesma régua do telecom FHIR. Aceita qualquer formatação; compara só os dígitos.</summary>
+    public static bool MesmoNumero(string? a, string? b)
+    {
+        var da = new string([.. (a ?? string.Empty).Where(char.IsDigit)]);
+        var db = new string([.. (b ?? string.Empty).Where(char.IsDigit)]);
+        return da.Length >= 8 && db.Length >= 8
+            && (da.EndsWith(db, StringComparison.Ordinal) || db.EndsWith(da, StringComparison.Ordinal));
+    }
 }
 
 /// <summary>Resultado de <see cref="TelefoneWhatsApp.Interpretar"/>.</summary>

@@ -36,4 +36,13 @@ public enum StatusComunicacao
     /// volta para <see cref="Pendente"/> e o worker envia a confirmação real. NÃO é terminal.
     /// </summary>
     AguardandoVerificacaoCadastral = 8,
+
+    /// <summary>
+    /// Retido: o número de destino tem pendência ABERTA de "número errado" — quem atende já
+    /// disse que NÃO é o paciente. Enviar de novo é assediar a pessoa errada (foi o padrão de
+    /// 01-02/09: templates em massa para números negados). NÃO é terminal: quando a recepção
+    /// resolve (ou ignora) a pendência, a comunicação volta a Pendente e o envio re-resolve o
+    /// telefone já corrigido do cadastro.
+    /// </summary>
+    AguardandoCorrecaoContato = 9,
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, GripHorizontal, RotateCcw, Send } from 'lucide-react';
 import { useConversa, useEnviarMensagem } from '@/features/conversas/api/queries';
+import { ModalNumeroNegado } from '@/features/conversas/components/ModalNumeroNegado';
 import { NovaConversaDialog } from '@/features/conversas/components/NovaConversaDialog';
 import { useChat } from '@/features/conversas/store/chatStore';
 import {
@@ -19,6 +20,7 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [reabrirAberto, setReabrirAberto] = useState(false);
+  const [avisoNegadoAberto, setAvisoNegadoAberto] = useState(false);
   const enviar = useEnviarMensagem();
   // Já está no cache (o ThreadMensagens carrega a mesma query) — serve para levar paciente,
   // telefone e nome ao modal de reabertura sem prop-drilling.
@@ -69,9 +71,15 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
     useChat.getState().consumirRascunho();
   }, [rascunho, conversaId]);
 
-  async function aoEnviar() {
+  async function aoEnviar(cienteDoNegado = false) {
     const t = texto.trim();
     if (!t) return;
+    // ❗ número negado: o envio exige ciência explícita — quem atende já disse que não é o
+    // paciente, e mandar "no automático" foi o que gerou as reclamações de 01-02/09.
+    if (conversa?.contatoNegado && !cienteDoNegado) {
+      setAvisoNegadoAberto(true);
+      return;
+    }
     setErro(null);
     try {
       await enviar.mutateAsync({ id: conversaId, texto: t });
@@ -174,6 +182,17 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
         />
         Enviar com Enter
       </label>
+
+      {avisoNegadoAberto ? (
+        <ModalNumeroNegado
+          telefone={conversa?.telefoneCanonical}
+          onCancelar={() => setAvisoNegadoAberto(false)}
+          onConfirmar={() => {
+            setAvisoNegadoAberto(false);
+            void aoEnviar(true);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

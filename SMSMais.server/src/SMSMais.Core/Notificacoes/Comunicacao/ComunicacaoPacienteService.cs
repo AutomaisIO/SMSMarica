@@ -359,6 +359,19 @@ public sealed class ComunicacaoPacienteService(
         _ => f.ToString(),
     };
 
+    /// <summary>Há pendência ABERTA de número errado para este destino? Comparação tolerante a
+    /// DDI (sufixo), porque a pendência guarda o canônico da conversa ("55...") e o cadastro às
+    /// vezes a forma nacional.</summary>
+    private async Task<bool> NumeroTemPendenciaAbertaAsync(string telefone, CancellationToken ct)
+    {
+        var abertas = await db.PendenciasCadastro.AsNoTracking()
+            .Where(p => p.Status == StatusPendenciaCadastro.Aberta
+                && p.Tipo == TipoPendenciaCadastro.NumeroErrado)
+            .Select(p => p.TelefoneCanonical)
+            .ToListAsync(ct);
+        return abertas.Any(t => Conversas.TelefoneWhatsApp.MesmoNumero(t, telefone));
+    }
+
     private async Task EnviarAsync(ComunicacaoPaciente n, Solicitacao s, CancellationToken ct)
     {
         var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
@@ -408,6 +421,20 @@ public sealed class ComunicacaoPacienteService(
             return;
         }
         n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
+
+        // NÚMERO NEGADO: pendência aberta de "número errado" para o destino ⇒ quem atende já
+        // disse que não é o paciente. Nenhum automático sai — nem o desafio cadastral (é
+        // template do mesmo jeito, para a mesma pessoa errada). Fica retida; resolver/ignorar a
+        // pendência solta (e o telefone é re-resolvido do cadastro, já corrigido).
+        if (await NumeroTemPendenciaAbertaAsync(n.Telefone, ct))
+        {
+            n.Status = StatusComunicacao.AguardandoCorrecaoContato;
+            n.MotivoFalha = "Número com pendência de contato errado (quem atende negou ser o "
+                + "paciente). Corrija o cadastro em Pendências de Cadastro para liberar.";
+            n.ProximaTentativaEm = null;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
 
         // Confirmação para número NÃO verificado: em vez de mandar os DADOS do agendamento, manda
         // o DESAFIO cadastral (validacao_cadastro) e SEGURA a confirmação real (pendurada). A

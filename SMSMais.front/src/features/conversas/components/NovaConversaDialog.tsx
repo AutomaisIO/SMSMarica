@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Search, X } from 'lucide-react';
+import { AlertTriangle, Loader2, Search, X } from 'lucide-react';
 import { useBuscarContatos, useIniciarConversa, useTemplates } from '@/features/conversas/api/queries';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarNomeProprio, primeiroNomeProprio } from '@/shared/lib/nomes';
+import { ModalNumeroNegado } from '@/features/conversas/components/ModalNumeroNegado';
 import { ROTULO_ASSUNTO, type AssuntoConversa, type ContatoConversa } from '@/features/conversas/types';
 
 type Props = {
@@ -83,6 +84,7 @@ export function NovaConversaDialog({
   const termoDebounced = useDebounce(termo, 300);
   const busca = useBuscarContatos(termoDebounced);
   const [contato, setContato] = useState<ContatoConversa | null>(null);
+  const [avisoNegadoAberto, setAvisoNegadoAberto] = useState(false);
 
   const [telefone, setTelefone] = useState(soTelefone ? telefoneFmt(telefoneInicial!) : '');
   const [assunto, setAssunto] = useState<AssuntoConversa | ''>('');
@@ -148,10 +150,15 @@ export function NovaConversaDialog({
   const faltaVariavel = params.some((p) => !p.trim());
   const podeEnviar = Boolean(telefone.trim() && templateNome && !faltaVariavel);
 
-  async function aoEnviar() {
+  async function aoEnviar(cienteDoNegado = false) {
     setErro(null);
     if (!podeEnviar) {
       setErro('Informe o telefone, o modelo e todas as variáveis.');
+      return;
+    }
+    // ❗ número negado: só envia com ciência explícita do operador.
+    if (contato?.contatoNegado && !cienteDoNegado) {
+      setAvisoNegadoAberto(true);
       return;
     }
     try {
@@ -235,8 +242,14 @@ export function NovaConversaDialog({
                           onClick={() => aoSelecionarContato(c)}
                           className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                         >
-                          <span className="block truncate font-medium text-gray-900">
-                            {formatarNomeProprio(c.nome)}
+                          <span className="flex min-w-0 items-center gap-1 font-medium text-gray-900">
+                            <span className="truncate">{formatarNomeProprio(c.nome)}</span>
+                            {c.contatoNegado ? (
+                              <AlertTriangle
+                                className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                                aria-label="Número negado: quem atende disse que não é o paciente"
+                              />
+                            ) : null}
                           </span>
                           <span className="block truncate text-xs text-gray-500">
                             {c.telefone ? telefoneFmt(c.telefone) : 'sem telefone cadastrado'}
@@ -341,6 +354,16 @@ export function NovaConversaDialog({
             </select>
           </div>
 
+          {contato?.contatoNegado ? (
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                <b>Número negado:</b> quem atende este telefone já disse que <b>não é o paciente</b>. Confira
+                a pendência em Pendências de Cadastro antes de enviar.
+              </span>
+            </div>
+          ) : null}
+
           {erro && <p className="text-xs text-red-600">{erro}</p>}
         </div>
 
@@ -357,6 +380,17 @@ export function NovaConversaDialog({
             {iniciar.isPending ? 'Enviando…' : 'Iniciar conversa'}
           </button>
         </div>
+
+        {avisoNegadoAberto ? (
+          <ModalNumeroNegado
+            telefone={telefone || contato?.telefone}
+            onCancelar={() => setAvisoNegadoAberto(false)}
+            onConfirmar={() => {
+              setAvisoNegadoAberto(false);
+              void aoEnviar(true);
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

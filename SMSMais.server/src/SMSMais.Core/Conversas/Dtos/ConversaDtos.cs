@@ -143,4 +143,6 @@ public sealed record ContatoConversaDto(
     string? Telefone,
     string? Cpf,
     DateOnly? DataNascimento,
-    string Origem);
+    string Origem,
+    /// <summary>❗ o telefone do cadastro foi NEGADO por quem atende ("não sou essa pessoa").</summary>
+    bool ContatoNegado = false);

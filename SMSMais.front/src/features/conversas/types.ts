@@ -80,6 +80,8 @@ export type ContatoConversa = {
   dataNascimento: string | null;
   /** Por onde foi achado: "Solicitação SISREG 123456" ou "Cadastro". */
   origem: string;
+  /** ❗ o telefone tem pendência aberta de "número errado" (quem atende negou ser o paciente). */
+  contatoNegado?: boolean;
 };
 
 export type IniciarConversaPayload = {

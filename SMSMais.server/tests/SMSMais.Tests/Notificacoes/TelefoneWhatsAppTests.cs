@@ -63,4 +63,22 @@ public class TelefoneWhatsAppTests
         Assert.False(r.Ok);
         Assert.False(string.IsNullOrWhiteSpace(r.Erro));
     }
+
+    // ---------------- MesmoNumero (régua do número negado) ----------------
+
+    [Theory]
+    [InlineData("5521999990000", "21999990000")]   // canônico com DDI × nacional
+    [InlineData("21999990000", "5521999990000")]
+    [InlineData("(21) 99999-0000", "5521999990000")] // formatado × canônico
+    [InlineData("5521999990000", "5521999990000")]
+    public void MesmoNumero_tolera_ddi_e_formatacao(string a, string b)
+        => TelefoneWhatsApp.MesmoNumero(a, b).Should().BeTrue();
+
+    [Theory]
+    [InlineData("5521999990000", "5521999990001")] // números diferentes
+    [InlineData("990000", "5521999990000")]        // curto demais: sufixo fraco não vale
+    [InlineData(null, "5521999990000")]
+    [InlineData("", "")]
+    public void MesmoNumero_nao_casa_diferente_nem_curto(string? a, string? b)
+        => TelefoneWhatsApp.MesmoNumero(a, b).Should().BeFalse();
 }

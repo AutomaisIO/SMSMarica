@@ -83,7 +83,26 @@ public sealed class ConversaService(
                 p.Id, p.NomeCompleto, p.TelefonePrincipal, p.Cpf, p.DataNascimento, "Cadastro"));
         }
 
-        return achados;
+        return await MarcarContatosNegadosAsync(achados, ct);
+    }
+
+    /// <summary>❗ nos candidatos cujo telefone tem pendência ABERTA de número errado — a fonte da
+    /// verdade é a pendência (mesma régua da lista de conversas), com tolerância a DDI.</summary>
+    private async Task<IReadOnlyList<ContatoConversaDto>> MarcarContatosNegadosAsync(
+        List<ContatoConversaDto> achados, CancellationToken ct)
+    {
+        if (achados.Count == 0 || achados.All(a => string.IsNullOrWhiteSpace(a.Telefone))) return achados;
+        var abertas = await db.PendenciasCadastro.AsNoTracking()
+            .Where(p => p.Status == StatusPendenciaCadastro.Aberta
+                && p.Tipo == TipoPendenciaCadastro.NumeroErrado)
+            .Select(p => p.TelefoneCanonical)
+            .ToListAsync(ct);
+        if (abertas.Count == 0) return achados;
+
+        return [.. achados.Select(a =>
+            abertas.Any(t => TelefoneWhatsApp.MesmoNumero(t, a.Telefone))
+                ? a with { ContatoNegado = true }
+                : a)];
     }
 
     public async Task<IReadOnlyList<PacienteDoTelefoneDto>> ListarPacientesDoTelefoneAsync(
