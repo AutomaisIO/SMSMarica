@@ -118,9 +118,12 @@ public static class RoboFerramentaCatalogo
 
             [ComandoRobo.ConsultarStatusAgendamento] = new(
                 "consultar_agendamentos",
-                "Lista os agendamentos FUTUROS do paciente (procedimento, data e unidade). Exige "
-                + "identidade: colete os QUATRO primeiros dígitos do CPF (de uma vez) e o mês/ano de "
-                + "nascimento ANTES de chamar. Use SEMPRE esta ferramenta antes de falar qualquer "
+                "Consulta os agendamentos FUTUROS do paciente, em DUAS FASES. FASE 1: chame PRIMEIRO "
+                + "SEM NENHUM parâmetro, ANTES de pedir qualquer dado à pessoa — a resposta diz se "
+                + "EXISTE agendamento e o que fazer. Só peça CPF/nascimento se a fase 1 mandar: dado "
+                + "pessoal só se pede quando HÁ informação para entregar. FASE 2: com os QUATRO "
+                + "primeiros dígitos do CPF e o mês/ano de nascimento, confere a identidade e lista "
+                + "(procedimento, data e unidade). Use SEMPRE esta ferramenta antes de falar qualquer "
                 + "coisa sobre agendamento — inclusive para dizer que NÃO há: nunca afirme ausência "
                 + "sem ter consultado.",
                 new
@@ -128,11 +131,11 @@ public static class RoboFerramentaCatalogo
                     type = "object",
                     properties = new
                     {
-                        cpf = new { type = "string", description = "Os QUATRO primeiros dígitos do CPF do paciente, juntos." },
-                        mesNascimento = new { type = "integer", description = "Mês de nascimento (1 a 12)." },
-                        anoNascimento = new { type = "integer", description = "Ano de nascimento com 4 dígitos." },
+                        cpf = new { type = "string", description = "FASE 2: os QUATRO primeiros dígitos do CPF do paciente, juntos. Omita na fase 1." },
+                        mesNascimento = new { type = "integer", description = "FASE 2: mês de nascimento (1 a 12). Omita na fase 1." },
+                        anoNascimento = new { type = "integer", description = "FASE 2: ano de nascimento com 4 dígitos. Omita na fase 1." },
                     },
-                    required = new[] { "cpf", "mesNascimento", "anoNascimento" },
+                    required = Array.Empty<string>(),
                 }),
 
             [ComandoRobo.ConsultarCadastro] = new(

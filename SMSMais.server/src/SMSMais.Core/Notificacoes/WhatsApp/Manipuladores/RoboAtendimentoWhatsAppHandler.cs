@@ -65,6 +65,22 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
                     || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
         if (humanoAssumiu) return;
 
+        // CORTESIA AO ATENDENTE: a última mensagem enviada foi de um HUMANO e o cidadão respondeu
+        // só um agradecimento/emoji/ok — é o fecho da interação humana, não um pedido novo. O robô
+        // reabrindo ("Oi! Como posso ajudar?") vira ruído — caso real de 01/09 22h28: "👏" para o
+        // aviso da atendente e o robô recomeçou o atendimento. Nem cria tarefa.
+        if (EhCortesiaPura(ctx.Mensagem.Conteudo))
+        {
+            var ultimaSaida = await db.MensagensWhatsApp.AsNoTracking()
+                .Where(m => m.ConversaId == ctx.Conversa.Id && m.Direcao == DirecaoMensagem.Saida
+                    && m.TipoMensagem != TipoMensagem.NotaInterna)
+                .OrderByDescending(m => m.OcorridoEm)
+                .Select(m => new { m.AutorUsuarioId, m.TipoMensagem })
+                .FirstOrDefaultAsync(ct);
+            if (ultimaSaida is { AutorUsuarioId: not null } && ultimaSaida.TipoMensagem != TipoMensagem.Robo)
+                return;
+        }
+
         // NÃO existe limite de interações aqui. Havia um `>= 8` fixo no código, ABAIXO do limite
         // configurável por assunto — e, como o handler nem chega a criar a tarefa, a mensagem sumia
         // sem deixar rastro: o cidadão escrevia e não recebia nada, nem o aviso de passagem. Dois
@@ -83,5 +99,27 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
             Status = StatusRoboTarefa.Pendente,
             CriadoEm = DateTime.UtcNow,
         });
+    }
+
+    /// <summary>Mensagem que é SÓ cortesia/fecho (emojis, "ok", "obrigada", "confirmado, estarei
+    /// lá") — sem conteúdo novo. Régua conservadora: qualquer palavra fora da lista já NÃO é
+    /// cortesia pura e segue o fluxo normal.</summary>
+    private static bool EhCortesiaPura(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto) || texto.Length > 60) return false;
+        var norm = RoboAtendimento.Runtime.RoboClassificador.NormalizarTexto(texto);
+        var letras = new string([.. norm.Select(c => char.IsLetter(c) ? c : ' ')]);
+        var palavras = letras.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (palavras.Length > 6) return false;
+        // Sem nenhuma palavra: era só emoji/pontuação — cortesia.
+        if (palavras.Length == 0) return true;
+        string[] cortesia =
+        [
+            "ok", "okay", "blz", "beleza", "obrigado", "obrigada", "obg", "obgd", "grato", "grata",
+            "gratidao", "valeu", "de", "nada", "amem", "ciente", "confirmado", "confirmo", "sim",
+            "ta", "tá", "bom", "bem", "boa", "tarde", "noite", "dia", "certo", "perfeito", "tudo",
+            "vou", "estarei", "la", "muito", "deus", "abencoe", "bencao", "joia",
+        ];
+        return palavras.All(p => cortesia.Contains(p, StringComparer.Ordinal));
     }
 }

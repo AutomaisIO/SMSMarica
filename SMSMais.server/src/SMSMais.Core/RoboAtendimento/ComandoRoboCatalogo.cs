@@ -17,7 +17,7 @@ public static class ComandoRoboCatalogo
         // catálogo sem handler nenhum). Voltou com handler de verdade — foi a falta dela que fez o
         // robô afirmar "não há agendamento" sem consultar nada.
         new(ComandoRobo.ConsultarStatusAgendamento, "Consultar agendamentos do paciente",
-            "Lista os agendamentos futuros (procedimento, data e unidade) após conferir a identidade.", false),
+            "Duas fases: primeiro SÓ diz se existe agendamento (sem pedir dado); com identidade conferida, lista procedimento, data e unidade.", false),
         new(ComandoRobo.ConfirmarPresenca, "Confirmar presença",
             "Marca a presença confirmada pelo paciente.", true),
         new(ComandoRobo.IniciarCancelamento, "Iniciar cancelamento",

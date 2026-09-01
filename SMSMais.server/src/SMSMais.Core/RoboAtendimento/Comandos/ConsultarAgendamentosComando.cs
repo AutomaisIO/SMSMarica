@@ -7,9 +7,16 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.RoboAtendimento.Comandos;
 
 /// <summary>
-/// Consulta os agendamentos FUTUROS do paciente, atrás do mesmo gate de identidade do cadastro
-/// (4 primeiros dígitos do CPF + mês/ano de nascimento). Data, hora e local de atendimento são
-/// dados sensíveis: não saem sem a identidade conferir.
+/// Consulta os agendamentos FUTUROS do paciente em DUAS FASES. Fase 1 (sem identidade): diz apenas
+/// SE existe agendamento futuro para o contato da conversa — sem nenhum detalhe. Fase 2 (com os 4
+/// primeiros dígitos do CPF + mês/ano): confere a identidade e lista. Data, hora e local são
+/// sensíveis: não saem sem a identidade conferir.
+///
+/// A fase 1 nasceu do caso real de 01/09: "estou esperando o ultrassom complementar" — o robô
+/// coletou CPF e nascimento para no fim dizer que não tinha nada. Só se pede dado quando HÁ
+/// informação para entregar; sem nada, explica-se que a Secretaria entra em contato quando houver
+/// e encerra-se. Dizer que EXISTE agendamento não vaza nada além da prática atual (os avisos já
+/// chegam proativamente neste mesmo telefone).
 ///
 /// Nasceu de um caso real: uma atendente enviou o agendamento de um cidadão e, dias depois, o robô
 /// — sem ferramenta nenhuma de agendamento — respondeu que "não há agendamento futuro registrado",
@@ -17,6 +24,10 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 ///
 /// Quando não encontra, a mensagem deixa explícito que isso significa "não localizei no NOSSO
 /// sistema", não "não existe": a base é uma visão parcial e a importação da regulação é assíncrona.
+///
+/// Cobre as TRÊS fontes: solicitações locais (SISREG) por data futura, e os espelhos SER e SERNIT
+/// (regulação estadual/Niterói) por situação Agendada — lá a data vem em TEXTO ("Agendado para"),
+/// então é exibida como está, sem filtro por data.
 /// </summary>
 public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientesService pacientes) : IRoboComando
 {
@@ -32,7 +43,11 @@ public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientes
         var mes = GateIdentidade.LerInt(ctx.Args, "mesNascimento");
         var ano = GateIdentidade.LerInt(ctx.Args, "anoNascimento");
 
-        // Falta ≠ erro: peça o que falta, não conclua nada (ver ConsultarCadastroComando).
+        // FASE 1 — sem NENHUM dado: responde só SE existe, e o que fazer em seguida.
+        if (string.IsNullOrWhiteSpace(cpf) && mes is null && ano is null)
+            return await VerificarExistenciaAsync(ctx, ct);
+
+        // Dados parciais: falta ≠ erro — peça o que falta, não conclua nada.
         if (string.IsNullOrWhiteSpace(cpf) || GateIdentidade.SoDigitos(cpf).Length < 4)
             return new(false, "Faltam os dígitos do CPF. Peça os *4 primeiros dígitos do CPF* do paciente, "
                 + "todos de uma vez, e chame de novo. NÃO conclua nada sobre agendamento.");
@@ -63,7 +78,22 @@ public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientes
             })
             .ToListAsync(ct);
 
-        if (futuros.Count == 0)
+        var linhasSer = await db.SerSolicitacoes.AsNoTracking()
+            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+                && s.Situacao == Data.Entities.Ser.SituacaoSer.Agendada)
+            .OrderByDescending(s => s.AtualizadoEm ?? s.CriadoEm)
+            .Take(Maximo)
+            .Select(s => new { s.Recurso, s.AgendadoParaTexto, s.UnidadeExecutora })
+            .ToListAsync(ct);
+        var linhasSernit = await db.SernitSolicitacoes.AsNoTracking()
+            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+                && s.Situacao == Data.Entities.Sernit.SituacaoSernit.Agendada)
+            .OrderByDescending(s => s.AtualizadoEm ?? s.CriadoEm)
+            .Take(Maximo)
+            .Select(s => new { s.Recurso, s.AgendadoParaTexto, s.UnidadeExecutora })
+            .ToListAsync(ct);
+
+        if (futuros.Count == 0 && linhasSer.Count == 0 && linhasSernit.Count == 0)
             return new(false,
                 "NÃO localizei agendamento futuro NO NOSSO SISTEMA — o que NÃO quer dizer que não exista: "
                 + "marcação feita agora pela equipe ou pela regulação pode ainda não ter chegado aqui. "
@@ -86,6 +116,51 @@ public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientes
             string.Join("\n", linhas)
             + "\n\nInforme esses dados à pessoa. Lembre que a guia é retirada no posto onde ela é atendida. "
             + "NÃO invente nada além do que está acima.");
+    }
+
+    /// <summary>
+    /// FASE 1: existe agendamento futuro para o CONTATO desta conversa? Não devolve detalhe nenhum
+    /// — só o que o robô deve fazer em seguida. É o que garante "pedir dado somente SE TIVER
+    /// informação para dar".
+    /// </summary>
+    private async Task<RoboComandoResultado> VerificarExistenciaAsync(RoboComandoContexto ctx, CancellationToken ct)
+    {
+        var candidatos = new List<Guid>();
+        if (ctx.PacienteId is { } pid) candidatos.Add(pid);
+        else candidatos.AddRange((await pacientes.ListarPorTelefoneAsync(ctx.TelefoneCanonical, ct)).Select(p => p.Id));
+
+        if (candidatos.Count == 0)
+            return new(false,
+                "Este número não está vinculado a nenhum cadastro — não há como consultar agendamento "
+                + "por aqui, e pedir CPF não adiantaria (a busca é pelo telefone). NÃO colete dado "
+                + "nenhum. Oriente: o posto de saúde onde a pessoa é atendida tem a informação; "
+                + "quando houver novidade, a Secretaria entra em contato por aqui. Encerre com cordialidade.");
+
+        var agora = DateTime.UtcNow;
+        var existe = await db.Solicitacoes.AsNoTracking().AnyAsync(
+            s => candidatos.Contains(s.PacienteId)
+                && s.ExcluidoEm == null && s.DataAgendada != null && s.DataAgendada >= agora, ct)
+            || await db.SerSolicitacoes.AsNoTracking().AnyAsync(
+                s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
+                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.Ser.SituacaoSer.Agendada, ct)
+            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(
+                s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
+                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.Sernit.SituacaoSernit.Agendada, ct);
+
+        if (!existe)
+            return new(true,
+                "NÃO há agendamento futuro NO NOSSO SISTEMA para este contato. NÃO peça CPF nem data "
+                + "de nascimento — não há o que informar, e cobrar dados sem ter nada a entregar só "
+                + "desgasta a pessoa. Explique que, assim que houver informação sobre o exame ou a "
+                + "consulta que ela aguarda, a Secretaria entra em contato por este WhatsApp (o posto "
+                + "onde ela é atendida também informa), e ENCERRE o atendimento com cordialidade. "
+                + "NUNCA diga que o exame não foi ou não será marcado — apenas que ainda não chegou aqui.");
+
+        return new(true,
+            "HÁ agendamento futuro registrado para este contato. NÃO revele nada ainda: para informar, "
+            + "peça os *4 primeiros dígitos do CPF* do paciente (todos de uma vez) e, depois que a "
+            + "pessoa responder, o mês e ano de nascimento — então chame esta ferramenta de novo com "
+            + "os dados.");
     }
 
     /// <summary>Confere a identidade e devolve o paciente. Aceita o paciente da conversa e, quando o
