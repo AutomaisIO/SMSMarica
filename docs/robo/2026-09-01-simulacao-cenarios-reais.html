@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robô de atendimento — análise por simulação sobre cenário real (01/09/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Robô de atendimento — análise por simulação sobre cenário real (01/09/2026)</h1>
+<p>&gt; Primeira edição da análise periódica do robô. O método está registrado na skill &gt; <a href="../../.claude/skills/analisar-robo-cenarios-reais/SKILL.md"><code>analisar-robo-cenarios-reais</code></a> para &gt; ser repetido — <strong>sempre sobre tráfego real</strong>, nunca sobre casos inventados.</p>
+<h2>Contexto</h2>
+<p>Na noite de 29/08 o robô (motor antigo) produziu uma sequência de falhas graves em produção — desmentiu um agendamento que a própria atendente havia anunciado (caso VALDERI), pediu CPF dígito a dígito, "confirmou" identidade sem os dados completos, vazou o nome de um cidadão sem identidade conferida, opinou sobre cirurgia de hérnia e inventou lista de documentos — e foi desligado.</p>
+<p>Depois das correções (motor Messages API, ferramentas de consulta, conjunto Base, assunto padrão, guardrail), a pergunta era: <strong>o que ainda quebraria se religássemos?</strong> Em vez de adivinhar, a resposta veio de três medições sobre o tráfego real.</p>
+<h2>Método (resumo)</h2>
+<ol>
+<li><strong>Leitura determinística do código</strong> que monta o prompt e o payload.</li>
+<li><strong>Réplica exata do classificador</strong> sobre 2.500 mensagens reais de cidadãos (30 dias).</li>
+<li><strong>12 cenas reais remontadas</strong> — as conversas de 29/08 e padrões do corpus — cada uma com o</li>
+</ol>
+<p>   prompt de sistema, as ferramentas e o histórico <strong>exatamente</strong> como produção geraria, simuladas    no <strong>próprio Haiku 4.5</strong> (o modelo de produção) e julgadas por revisor adversarial com checklist    de 11 itens. Cada problema classificado por origem: <code>modelo</code>, <code>prompt</code>, <code>codigo</code> ou    <code>classificador</code>.</p>
+<h2>O que o material atual já previne (confirmado nas simulações)</h2>
+<p>Nenhum dos desastres de 29/08 se repetiu com o material de 01/09:</p>
+<ul>
+<li>VALDERI seria confirmado com gate de identidade correto — <strong>sem</strong> "não há agendamento";</li>
+<li>o relato de hérnia recebe a frase padrão + oferta de CEP para urgência, <strong>zero</strong> pergunta de</li>
+</ul>
+<p>  sintoma, zero opinião;</p>
+<ul>
+<li>ADOLPHO não recebe lista de documentos inventada nem "falha de identidade" alucinada;</li>
+<li>pedido de marcação é recusado sem inventar central/telefone;</li>
+<li>endereço não é inventado; troca de telefone não vira promessa de "já atualizei";</li>
+<li>dígitos órfãos não viram "verificação" de mentira.</li>
+</ul>
+<h2>Erros antecipados → corrigidos (deploy <code>b31e1a7</code> + conteúdo no banco, robô desligado)</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Erro antecipado</th><th>Origem</th><th>Correção</th></tr></thead><tbody>
+<tr><td>1</td><td>O <strong>anúncio da Secretaria era descartado do payload</strong> (a API exige começar com turno <code>user</code>; o código removia os turnos iniciais do lado <code>assistant</code> — e em thread de notificação a Secretaria fala primeiro). Efeitos observados: <em>"eu não sei seu nome"</em> logo após o template chamar a pessoa pelo nome; <em>"não localizei sua consulta"</em> para quem tinha o anúncio na tela. A regra "nunca desminta a Secretaria" não funciona se o modelo não vê o que a Secretaria disse.</td><td>código</td><td>turno-abertura sintético <code>(início da conversa)</code> preserva o contexto</td></tr>
+<tr><td>2</td><td><strong>Sábado contava como expediente</strong>: a regra só olhava hora do dia. Na simulação (caso real de sábado 11h33) o robô prometeu <em>"vou conectar você agora"</em> — o cidadão esperaria em silêncio até segunda.</td><td>código</td><td><code>robo_configuracao.dias_semana_atendimento_humano</code> (bitmask, default seg–sex) + seletor na tela</td></tr>
+<tr><td>3</td><td><strong>Laço bot-a-bot</strong>: 17 auto-respostas de outros WhatsApp Business em 14 dias ("X agradece seu contato. Como podemos ajudar?"). O assunto padrão <em>manda</em> responder com pergunta — que dispara nova auto-resposta.</td><td>código</td><td>detecção de auto-resposta <strong>antes</strong> do modelo; tarefa vira HandOff com nota, sem resposta</td></tr>
+<tr><td>4</td><td><strong>Classificador por substring</strong>: "oi" casava com "f<strong>oi</strong>" (41 capturas falsas/30d); "ciente" com "pa<strong>ciente</strong>" — inclusive um relato de <strong>sangramento com câncer</strong> que caiu em "Confirmação de presença".</td><td>código</td><td><code>PalavraChave</code> casa com borda de palavra; <code>Frase</code> continua substring (válvula de escape)</td></tr>
+<tr><td>5</td><td>O modelo <strong>inventou</strong> <em>"você escreveu no sábado"</em> — o prompt não informava nem o dia.</td><td>código</td><td>data de hoje no prompt (granularidade de dia, para não estourar o cache)</td></tr>
+<tr><td>6</td><td>Descrição da ferramenta de exame ainda pedia <strong>3 dígitos</strong> do CPF.</td><td>prompt</td><td>4, todos de uma vez</td></tr>
+<tr><td>7</td><td><code>confirmar_presenca</code> revelava procedimento/data <strong>junto</strong> com a pergunta "é você?" — se os dígitos fossem de outra pessoa, o dado já teria vazado.</td><td>prompt</td><td>confirmar o NOME sem revelar nada; agendamento só após <code>confirmado=true</code></td></tr>
+<tr><td>8</td><td>O retorno "não achou agendamento" mandava <em>"encaminhe para um atendente confirmar"</em> — promessa de atendente às 21h de sábado.</td><td>prompt</td><td>texto com consciência de horário + "agendamento já anunciado na conversa VALE"</td></tr>
+<tr><td>9</td><td><strong>Saudações engolia mensagens com conteúdo</strong> (<em>"Boa tarde Informo que estou mudando de contato…"</em>, <em>"Bom dia... pode marcar para outro dia"</em>): saudação como substring casava antes de qualquer assunto real.</td><td>banco</td><td>condição virou <strong>uma regex de casamento integral</strong> (saudação pura). Efeito medido: 272 mensagens com conteúdo real escapam para o assunto certo; 176 "Ok" puros entram</td></tr>
+<tr><td>10</td><td>"hérnia", "câncer", "sangue", "tumor", "nódulo", "caroço" <strong>não eram</strong> condição do assunto Sintoma — o relato real de hérnia caiu no assunto padrão.</td><td>banco</td><td>+6 palavras-chave</td></tr>
+<tr><td>11</td><td>Desabafo (4 anos de espera, "vcs não me atenderão") recebia de volta uma pergunta fria.</td><td>banco</td><td>treino de acolhimento no assunto padrão (acolher, não decidir pela pessoa, não inventar regra, orientar o posto antes de desistir, encaminhar)</td></tr>
+<tr><td>12</td><td>Guardrail: handoff fora do horário era ambíguo (regra 0 mandava encaminhar; bloco fora-do-horário proibia prometer atendente — o modelo desligava o handoff).</td><td>prompt</td><td>handoff <strong>vale</strong> fora do horário (põe na fila da equipe); só não se <strong>promete</strong> atendente agora. + regra 9b: como responder "como sabe meu nome?" sem negar nem expor mecanismo</td></tr>
+</tbody></table></div>
+<p>Suíte de testes: 986/987 (5 novos de expediente com dia da semana). Migration <code>DiasSemanaAtendimentoHumano</code> aplicada e conferida em produção.</p>
+<h2>Números do classificador (30 dias, 2.500 mensagens)</h2>
+<div class="tw"><table><thead><tr><th>Assunto</th><th>Antes</th><th>Depois dos fixes</th></tr></thead><tbody>
+<tr><td>(padrão / sem assunto)</td><td>36%</td><td>36%</td></tr>
+<tr><td>Falar c/ atendente</td><td>24%</td><td>24% (583 são o clique literal do botão)</td></tr>
+<tr><td>Saudações</td><td>20%</td><td>20% (composição trocou: −272 com conteúdo real, +176 "Ok" puros)</td></tr>
+<tr><td>Confirmação de presença</td><td>13%</td><td>13%</td></tr>
+<tr><td>Auto-resposta (curto-circuito)</td><td>—</td><td>~1% (29 mensagens que nem chegam ao modelo)</td></tr>
+<tr><td>Sintoma/urgência</td><td>23 msgs</td><td>29 msgs (+hérnia/câncer/sangue)</td></tr>
+</tbody></table></div>
+<p>O assunto padrão sem condições continua sendo o <strong>termômetro</strong>: a contagem dele no relatório de consumo é a taxa de erro do classificador.</p>
+<h2>Decisões em aberto (não aplicadas)</h2>
+<ol>
+<li><strong>Assunto "Marcar/remarcar" dedicado</strong> — agora que as saudações soltaram essas mensagens, um</li>
+</ol>
+<p>   assunto com condições (<code>marcar</code>, <code>agendar</code>, <code>remarcar</code>) e instrução dura de não-promessa    atenderia melhor que o padrão.</p>
+<ol>
+<li><strong>"Falar com um atendente" = 583 cliques de botão/30d indo ao modelo</strong> — dava para responder</li>
+</ol>
+<p>   deterministicamente (sem IA, sem custo) e só encaminhar.</p>
+<ol>
+<li><strong>Debounce de rajada</strong> — o robô respondeu 3× a 3 mensagens enviadas no mesmo minuto.</li>
+<li><strong>Mecanismo duplo de hand-off</strong> (ferramenta <code>encaminhar_para_humano</code> × campo <code>handoff</code> do</li>
+</ol>
+<p>   <code>responder_cidadao</code>) — funciona, mas é redundante; unificar um dia.</p>
+<h2>Ressalvas do método</h2>
+<ul>
+<li>A simulação roda o Haiku num harness de agente — muito próximo, não idêntico ao loop de produção</li>
+</ul>
+<p>  (<code>tool_choice=any</code> real vs. role-play).</p>
+<ul>
+<li>Cada cena rodou <strong>uma vez</strong>; o modelo varia entre execuções. Falha não vista ≠ falha impossível.</li>
+<li>O acerto numa simulação pode ser sorte de amostragem — na cena da auto-resposta, o modelo acertou</li>
+</ul>
+<p>  <strong>desobedecendo</strong> a instrução; a proteção verdadeira tinha de ser código, e virou.</p>
+</main>
+</body>
+</html>
