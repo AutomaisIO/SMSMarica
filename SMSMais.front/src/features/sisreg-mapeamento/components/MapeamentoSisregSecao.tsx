@@ -9,8 +9,6 @@ import {
   Loader2,
   ListTodo,
   MessageCircle,
-  Network,
-  RefreshCw,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
@@ -22,10 +20,8 @@ import {
   useAlternarProfissional,
   useAlternarProfissionaisEmLote,
   useAlternarTudoDaUnidade,
-  useAtualizarMapeamento,
   useMapeamento,
   useSalvarVarreduraAgenda,
-  useSincronizarFhir,
   useVarreduraAgenda,
 } from '@/features/sisreg-mapeamento/api/queries';
 import type { SisregProcedimento, SisregProfissional } from '@/features/sisreg-mapeamento/types';
@@ -45,8 +41,6 @@ type Props = {
  */
 export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
   const mapeamento = useMapeamento(unidadeId);
-  const atualizar = useAtualizarMapeamento(unidadeId);
-  const sincronizar = useSincronizarFhir(unidadeId);
   const alternarProf = useAlternarProfissional(unidadeId);
   const alternarProc = useAlternarProcedimento(unidadeId);
   const alternarProfProcs = useAlternarProcedimentosDoProfissional(unidadeId);
@@ -169,46 +163,11 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
             )}
           </div>
 
-          {podeEditar && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={atualizar.isPending}
-                onClick={() =>
-                  executar(
-                    () => atualizar.mutateAsync(),
-                    (r) => (r as { mensagem: string }).mensagem,
-                  )
-                }
-              >
-                {atualizar.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Consultando o SISREG…
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" /> Atualizar mapeamento
-                  </>
-                )}
-              </Button>
-              <Button
-                variante="outline"
-                disabled={sincronizar.isPending}
-                onClick={() =>
-                  executar(
-                    () => sincronizar.mutateAsync(),
-                    (r) => (r as { mensagem: string }).mensagem,
-                  )
-                }
-              >
-                {sincronizar.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Network className="h-4 w-4" />
-                )}
-                Sincronizar profissionais (FHIR)
-              </Button>
-            </div>
-          )}
+          {/* Os botões "Atualizar mapeamento" e "Sincronizar profissionais (FHIR)" saíram daqui:
+              a importação diária faz as duas coisas sozinha e de graça. Ela lê a agenda da unidade
+              inteira numa requisição, e cada linha já diz quem executa o quê — daí o mapeamento
+              sai sem custo, e os médicos sobem para o hub FHIR na mesma passagem. Botão que
+              depende de alguém lembrar de clicar é mapeamento que envelhece em silêncio. */}
         </div>
 
         {/* Gatilho mestre da unidade — acima da lista porque manda em todos os procedimentos. */}
@@ -312,8 +271,9 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
           <div className="p-6 text-sm text-gray-600">
             {dados?.totalProfissionais === 0 ? (
               <>
-                Nenhum profissional mapeado ainda. Clique em <strong>Atualizar mapeamento</strong>{' '}
-                para buscar a lista da unidade no SISREG.
+                Nenhum profissional mapeado ainda. A lista se preenche sozinha na primeira
+                importação diária desta unidade — ou agora, em{' '}
+                <strong>SISREG → Sincronizar tudo</strong>.
               </>
             ) : (
               'Nenhum profissional corresponde ao filtro.'

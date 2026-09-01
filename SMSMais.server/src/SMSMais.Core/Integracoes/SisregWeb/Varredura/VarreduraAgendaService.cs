@@ -72,6 +72,9 @@ public sealed class VarreduraAgendaService(
     ISisregWebSessao sessao,
     ISisregUnidadeAtual unidadeAtual,
     IImportacaoSisregService importacao,
+    // Só para o passo FHIR ao fim da varredura. Fala com o hub, não com o SISREG — não consome
+    // orçamento anti-robô.
+    Mapeamento.ISisregMapeamentoService mapeamento,
     Cadastro.IPreCargaCadastroSerService preCarga,
     IVarreduraSisregFila fila,
     VarreduraSisregEstadoVivo estadoVivo,
@@ -532,6 +535,29 @@ public sealed class VarreduraAgendaService(
                 ? $" ({mapa.ProfissionaisNovos} prof. e {mapa.ProcedimentosNovos} proc. novos no mapeamento)"
                 : string.Empty);
 
+        // Os médicos descobertos aqui sobem para o hub FHIR como Practitioner, na mesma passagem.
+        // Antes isso dependia de alguém lembrar de clicar em "Sincronizar profissionais (FHIR)" na
+        // tela da unidade — e um médico só no SISREG, fora do hub, é identidade clínica que não
+        // existe para o resto do sistema. Fala com o hub, não com o SISREG: não gasta orçamento
+        // anti-robô. Falhar aqui NÃO derruba a varredura: a agenda já foi lida e vai ser importada
+        // de qualquer forma; o vínculo FHIR se resolve na próxima passagem.
+        try
+        {
+            var fhir = await mapeamento.SincronizarFhirNoContextoAsync(unidade, execucao.CriadoPor, ct);
+            if (fhir.Criados + fhir.Vinculados > 0)
+            {
+                logger.LogInformation(
+                    "SISREG_VARREDURA_FHIR: {Unidade} — {Criados} practitioners criados, {Vinc} vinculados.",
+                    unidade.Nome, fhir.Criados, fhir.Vinculados);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex, "SISREG_VARREDURA_FHIR: falha ao sincronizar os profissionais de {Unidade} com o hub.",
+                unidade.Nome);
+        }
+
         // PRÉ-CARGA dos cadastros, em sessões paralelas do SER, antes de importar. A importação em
         // si tem de continuar serial (cria paciente, solicitação e exame no mesmo DbContext), mas
         // a espera pela rede não precisa ser: resolvida antes, ela encontra tudo pronto. Só roda
@@ -702,7 +728,13 @@ public sealed class VarreduraAgendaService(
                     UnidadeId = unidadeId,
                     Cpf = grupo.Key,
                     Nome = grupo.First().NomeProfissionalExecutante ?? "(não informado)",
-                    Habilitado = false,
+                    // Nasce LIGADO. Nascia desligado porque habilitar decidia o custo da varredura
+                    // (uma requisição por par) — essa razão morreu com a agenda vindo inteira. Hoje
+                    // "habilitado" decide quem sobe ao hub FHIR como Practitioner, e quem aparece
+                    // na agenda importada está atendendo de verdade: é a prova mais forte que existe
+                    // de que aquele médico pertence à unidade. Deixá-lo de fora do hub por um
+                    // default herdado de outro problema seria perder identidade clínica de graça.
+                    Habilitado = true,
                     VistoEm = agora,
                     CriadoEm = agora,
                 };

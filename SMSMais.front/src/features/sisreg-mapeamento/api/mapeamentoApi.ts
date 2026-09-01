@@ -3,8 +3,6 @@ import type {
   AlternarTudoDaUnidade,
   ProcedimentoSigtapDePara,
   SisregMapeamento,
-  SisregMapeamentoAtualizacao,
-  SisregSincronizacaoFhir,
 } from '@/features/sisreg-mapeamento/types';
 
 /**
@@ -19,15 +17,6 @@ function cabecalhoUnidade(unidadeId?: string | null) {
 
 export async function obterMapeamento(unidadeId?: string | null): Promise<SisregMapeamento> {
   const { data } = await http.get<SisregMapeamento>('/sisreg/mapeamento', cabecalhoUnidade(unidadeId));
-  return data;
-}
-
-export async function atualizarMapeamento(unidadeId?: string | null): Promise<SisregMapeamentoAtualizacao> {
-  const { data } = await http.post<SisregMapeamentoAtualizacao>(
-    '/sisreg/mapeamento/atualizar',
-    undefined,
-    cabecalhoUnidade(unidadeId),
-  );
   return data;
 }
 
@@ -101,15 +90,6 @@ export async function alternarTudoDaUnidade(
   const { data } = await http.put<AlternarTudoDaUnidade>(
     '/sisreg/mapeamento/habilitar-tudo',
     { habilitados },
-    cabecalhoUnidade(unidadeId),
-  );
-  return data;
-}
-
-export async function sincronizarFhir(unidadeId?: string | null): Promise<SisregSincronizacaoFhir> {
-  const { data } = await http.post<SisregSincronizacaoFhir>(
-    '/sisreg/mapeamento/sincronizar-fhir',
-    undefined,
     cabecalhoUnidade(unidadeId),
   );
   return data;

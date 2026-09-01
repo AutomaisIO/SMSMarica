@@ -42,30 +42,10 @@ export type SisregMapeamento = {
   profissionais: SisregProfissional[];
 };
 
-export type SisregMapeamentoAtualizacao = {
-  profissionaisEncontrados: number;
-  profissionaisNovos: number;
-  profissionaisAusentes: number;
-  procedimentosEncontrados: number;
-  procedimentosNovos: number;
-  procedimentosAusentes: number;
-  requisicoesFeitas: number;
-  mensagem: string;
-};
-
 /** Resultado do "habilitar tudo" da unidade — a tela usa para dizer o custo resultante. */
 export type AlternarTudoDaUnidade = {
   profissionaisAfetados: number;
   procedimentosAfetados: number;
-  mensagem: string;
-};
-
-export type SisregSincronizacaoFhir = {
-  avaliados: number;
-  criados: number;
-  vinculados: number;
-  jaSincronizados: number;
-  erros: string[];
   mensagem: string;
 };
 

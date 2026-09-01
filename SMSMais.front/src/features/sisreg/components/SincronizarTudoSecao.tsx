@@ -528,9 +528,9 @@ export function SincronizarTudoSecao() {
             <p className="mt-2 text-xs text-gray-500">
               A última sincronização não precisou buscar nada: as{' '}
               {execucoes.data![0].unidadesPuladas} unidades já estavam atualizadas. É assim que se
-              economiza acesso ao SISREG — só o que está desatualizado é buscado de novo. Para forçar
-              a releitura de uma unidade específica, use <strong>Atualizar mapeamento</strong> na aba
-              SISREG dela.
+              economiza acesso ao SISREG — só o que está desatualizado é buscado de novo. A
+              importação diária de cada unidade também mantém médicos e procedimentos em dia, de
+              graça, com o que vem na própria agenda.
             </p>
           ) : null}
         </div>

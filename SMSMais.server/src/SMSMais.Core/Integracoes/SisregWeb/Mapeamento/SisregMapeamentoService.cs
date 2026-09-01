@@ -63,12 +63,6 @@ public sealed class SisregMapeamentoService(
             EnviarConfirmacao: procedimento.EnviarConfirmacao);
     }
 
-    public async Task<SisregMapeamentoAtualizacaoDto> AtualizarAsync(CancellationToken cancellationToken = default)
-    {
-        var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
-        return await AtualizarNoContextoAsync(unidade, usuarioAtual.UsuarioId, null, cancellationToken);
-    }
-
     /// <summary>
     /// Núcleo do <see cref="AtualizarAsync"/> com a unidade e o autor <b>explícitos</b> e um gancho
     /// opcional antes de cada requisição ao SISREG. É a porta que o motor em lote usa para
@@ -385,8 +379,9 @@ public sealed class SisregMapeamentoService(
         {
             throw new ValidacaoException(
                 "sisreg.mapeamento_vazio",
-                $"A unidade '{unidade.Nome}' ainda não tem mapeamento do SISREG. Clique em "
-                + "\"Atualizar mapeamento\" para buscar os profissionais antes de habilitar tudo.");
+                $"A unidade '{unidade.Nome}' ainda não tem mapeamento do SISREG. Ele se preenche "
+                + "sozinho na primeira importação da agenda desta unidade — ou agora, em SISREG → "
+                + "\"Sincronizar tudo\".");
         }
 
         var agora = DateTime.UtcNow;
@@ -436,12 +431,6 @@ public sealed class SisregMapeamentoService(
             : $"{profissionais.Count} profissionais e {procedimentosAfetados} procedimentos desabilitados.";
 
         return new AlternarTudoDaUnidadeDto(profissionais.Count, procedimentosAfetados, mensagem);
-    }
-
-    public async Task<SisregSincronizacaoFhirDto> SincronizarFhirAsync(CancellationToken cancellationToken = default)
-    {
-        var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
-        return await SincronizarFhirNoContextoAsync(unidade, usuarioAtual.UsuarioId, cancellationToken);
     }
 
     /// <summary>

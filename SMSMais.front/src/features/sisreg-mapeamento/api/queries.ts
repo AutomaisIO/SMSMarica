@@ -6,11 +6,9 @@ import {
   alternarProcedimentosDoProfissional,
   alternarProfissional,
   alternarProfissionaisEmLote,
-  atualizarMapeamento,
   confirmarDeParaSigtap,
   listarDeParaSigtap,
   obterMapeamento,
-  sincronizarFhir,
   sugerirDeParaSigtap,
 } from '@/features/sisreg-mapeamento/api/mapeamentoApi';
 import {
@@ -51,18 +49,6 @@ export function useMapeamento(unidadeId: string | null) {
     queryKey: mapeamentoKeys.mapeamento(unidadeId),
     queryFn: () => obterMapeamento(unidadeId),
     enabled: Boolean(unidadeId),
-  });
-}
-
-export function useAtualizarMapeamento(unidadeId: string | null) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => atualizarMapeamento(unidadeId),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: mapeamentoKeys.mapeamento(unidadeId) });
-      // Atualizar o mapeamento cataloga procedimentos novos no de-para; a lista de pendentes muda.
-      client.invalidateQueries({ queryKey: mapeamentoKeys.dePara() });
-    },
   });
 }
 
@@ -135,14 +121,6 @@ export function useAlternarProfissionaisEmLote(unidadeId: string | null) {
       client.invalidateQueries({ queryKey: mapeamentoKeys.mapeamento(unidadeId) });
       client.invalidateQueries({ queryKey: mapeamentoKeys.agenda(unidadeId) });
     },
-  });
-}
-
-export function useSincronizarFhir(unidadeId: string | null) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => sincronizarFhir(unidadeId),
-    onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.mapeamento(unidadeId) }),
   });
 }
 

@@ -70,7 +70,7 @@ public sealed record PendenciaSigtapAgrupadaDto(
     string ProcedimentoTexto,
     string? CodigoSisreg,
     /// <summary>Linha do catálogo a mapear. NULL quando o código não foi catalogado — nesse caso
-    /// a correção é rodar "Atualizar mapeamento" na unidade antes.</summary>
+    /// a correção é a unidade ter tido ao menos uma importação de agenda antes.</summary>
     Guid? DeParaId,
     int Solicitacoes,
     DateTime PrimeiraEm,

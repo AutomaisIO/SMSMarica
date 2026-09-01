@@ -34,7 +34,7 @@ public sealed record SisregProcedimentoDto(
     // que o exame é de verdade é o próprio agendamento, na importação — e o que não resolver lá
     // vira pendência no histórico de erro, junto das outras.
     /// <summary>Id da linha no catálogo global de procedimentos do SISREG. NULL enquanto o
-    /// procedimento não foi catalogado (entra ao "Atualizar mapeamento").</summary>
+    /// procedimento não foi catalogado (entra na importação da agenda).</summary>
     Guid? DeParaId = null,
     /// <summary>Importar este procedimento NESTA unidade avisa o paciente por WhatsApp?
     /// Decisão da unidade — outra unidade pode decidir diferente para o mesmo procedimento.

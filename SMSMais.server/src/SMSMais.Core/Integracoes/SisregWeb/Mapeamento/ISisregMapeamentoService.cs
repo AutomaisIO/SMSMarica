@@ -15,12 +15,6 @@ public interface ISisregMapeamentoService
     Task<SisregMapeamentoDto> ObterAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Vai ao SISREG e reconcilia o mapeamento: descobre profissionais e procedimentos,
-    /// preserva as habilitações já escolhidas e marca como ausente o que sumiu.
-    /// </summary>
-    Task<SisregMapeamentoAtualizacaoDto> AtualizarAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Reconcilia o mapeamento de uma unidade <b>explícita</b> (sem depender do header
     /// <c>X-Unidade-Id</c>) e com autor explícito — a porta usada pelo motor em lote fora de uma
     /// request. <paramref name="antesDeCadaRequisicao"/> é chamado antes de cada ida ao SISREG
@@ -72,12 +66,6 @@ public interface ISisregMapeamentoService
     /// </summary>
     Task AlternarProcedimentosDoProfissionalAsync(
         Guid profissionalId, bool habilitados, bool enviarConfirmacao, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Sincroniza os profissionais <b>habilitados</b> com o hub FHIR como <c>Practitioner</c>,
-    /// deduplicando por CPF.
-    /// </summary>
-    Task<SisregSincronizacaoFhirDto> SincronizarFhirAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Núcleo do <see cref="SincronizarFhirAsync"/> com unidade e autor explícitos — para o motor em

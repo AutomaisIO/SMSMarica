@@ -129,8 +129,8 @@ function ModalMapear({
           <p className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             Este procedimento não está no catálogo da unidade — o mapeamento não fica guardado para
-            as próximas varreduras. Rode <strong>Atualizar mapeamento</strong> na aba SISREG da
-            unidade antes, ou siga só para liberar as solicitações já presas.
+            as próximas varreduras. O catálogo se preenche sozinho na próxima importação da agenda
+            desta unidade; siga assim mesmo para liberar as solicitações já presas.
           </p>
         )}
 

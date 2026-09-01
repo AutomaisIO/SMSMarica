@@ -36,17 +36,6 @@ public sealed class SisregMapeamentoController(
     public async Task<SisregMapeamentoDto> Obter(CancellationToken cancellationToken) =>
         await _mapeamentoService.ObterAsync(cancellationToken);
 
-    /// <summary>
-    /// Vai ao SISREG e reconcilia o mapeamento, preservando as habilitações já escolhidas.
-    /// Custa uma requisição por profissional — por isso não é automático.
-    /// </summary>
-    [HttpPost("atualizar")]
-    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
-    [ProducesResponseType<SisregMapeamentoAtualizacaoDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<SisregMapeamentoAtualizacaoDto> Atualizar(CancellationToken cancellationToken) =>
-        await _mapeamentoService.AtualizarAsync(cancellationToken);
-
     [HttpPut("profissionais/{id:guid}/habilitacao")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -124,13 +113,6 @@ public sealed class SisregMapeamentoController(
         [FromBody] AlternarTudoDaUnidadeRequest request, CancellationToken cancellationToken) =>
         await _mapeamentoService.AlternarTudoDaUnidadeAsync(
             request.Habilitados, request.EnviarConfirmacao, cancellationToken);
-
-    /// <summary>Sincroniza os profissionais habilitados com o hub FHIR (Practitioner), dedup por CPF.</summary>
-    [HttpPost("sincronizar-fhir")]
-    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
-    [ProducesResponseType<SisregSincronizacaoFhirDto>(StatusCodes.Status200OK)]
-    public async Task<SisregSincronizacaoFhirDto> SincronizarFhir(CancellationToken cancellationToken) =>
-        await _mapeamentoService.SincronizarFhirAsync(cancellationToken);
 
     // ------------------------------------------------------- de-para pa → SIGTAP
 
