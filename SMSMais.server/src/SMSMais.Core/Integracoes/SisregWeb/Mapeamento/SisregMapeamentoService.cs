@@ -106,18 +106,38 @@ public sealed class SisregMapeamentoService(
         requisicoes++;
 
         var doSisreg = SisregAjaxParser.LerLinhas(xmlProfissionais);
+        var existentes = await CarregarProfissionaisAsync(unidade.Id, rastrear: true, cancellationToken);
+
+        // <ROOT/> vazio tem DUAS causas com a mesma cara, e o que decide é o que já sabemos da
+        // unidade — sem gastar requisição nenhuma para descobrir.
         if (doSisreg.Count == 0)
         {
-            // <ROOT/> vazio não é "unidade sem profissionais": é sessão derrubada ou anti-bot.
-            throw new ValidacaoException(
-                "sisreg.lista_vazia",
-                "O SISREG não devolveu nenhum profissional para esta unidade. Isso normalmente "
-                + "significa que a sessão do operador foi derrubada (o SISREG aceita uma sessão por "
-                + "operador) ou que o acesso está bloqueado por CAPTCHA. Teste a credencial do "
-                + "SISREG e tente de novo.");
-        }
+            if (existentes.Count > 0)
+            {
+                // Tinha gente e agora não tem: quase sempre é sessão derrubada ou anti-bot. Seguir
+                // aqui seria pior do que parar — o trecho abaixo marcaria os 113 profissionais da
+                // unidade como AUSENTES, e ausente sai da varredura e da sincronização com o hub.
+                // Uma unidade inteira sumiria da operação por causa de uma resposta vazia.
+                throw new ValidacaoException(
+                    "sisreg.lista_vazia",
+                    $"O SISREG não devolveu nenhum profissional para '{unidade.Nome}', mas há "
+                    + $"{existentes.Count} cadastrados aqui. Isso normalmente significa que a sessão "
+                    + "do operador foi derrubada (o SISREG aceita uma sessão por operador) ou que o "
+                    + "acesso está bloqueado por CAPTCHA. Nada foi alterado. Teste a credencial do "
+                    + "SISREG e tente de novo.");
+            }
 
-        var existentes = await CarregarProfissionaisAsync(unidade.Id, rastrear: true, cancellationToken);
+            // Nunca teve ninguém: a unidade existe no SISREG mas não é EXECUTANTE — é o caso da
+            // central de regulação, que aparece no combo de unidades e não tem agenda de
+            // profissional. Não é erro, e insistir nela todo dia só gasta orçamento.
+            logger.LogInformation(
+                "SISREG: unidade {Unidade} não tem profissional executante no SISREG.", unidade.Nome);
+
+            return new SisregMapeamentoAtualizacaoDto(
+                0, 0, 0, 0, 0, 0, requisicoes,
+                $"'{unidade.Nome}' não tem profissional executante no SISREG — é o esperado em "
+                + "unidade que não executa agenda (central de regulação, por exemplo).");
+        }
         var porCpf = existentes.ToDictionary(p => p.Cpf, StringComparer.Ordinal);
         var agora = DateTime.UtcNow;
 

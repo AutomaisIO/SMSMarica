@@ -43,6 +43,11 @@ public interface ISisregCatalogoUnidadesService
 /// <param name="Requisicoes">Custo em requisições ao SISREG.</param>
 /// <param name="CriadasNomes">Nomes das criadas, para a mensagem e o rastreio.</param>
 /// <param name="CriadasIds">Ids das criadas — o lote marca o item como "nasceu agora".</param>
+/// <param name="CnesNoSisreg">
+/// CNES que a credencial enxerga. É o recorte "de lá para cá" do lote: unidade que existe só aqui
+/// (fechada, de outro fluxo, ou fora do escopo da credencial) não é ida ao SISREG para descobrir
+/// que não está lá — seria uma requisição por unidade, toda rodada, para não achar nada.
+/// </param>
 public sealed record ReconciliacaoUnidadesSisreg(
     int NoSisreg,
     int Criadas,
@@ -50,7 +55,8 @@ public sealed record ReconciliacaoUnidadesSisreg(
     int JaExistiam,
     int Requisicoes,
     IReadOnlyList<string> CriadasNomes,
-    IReadOnlySet<Guid> CriadasIds);
+    IReadOnlySet<Guid> CriadasIds,
+    IReadOnlySet<string> CnesNoSisreg);
 
 public sealed class SisregCatalogoUnidadesService(
     SmsMaisDbContext db,
@@ -152,7 +158,8 @@ public sealed class SisregCatalogoUnidadesService(
         }
 
         return new ReconciliacaoUnidadesSisreg(
-            doSisreg.Count, criadas.Count, cnesPreenchido, jaExistiam, Requisicoes: 1, criadas, criadasIds);
+            doSisreg.Count, criadas.Count, cnesPreenchido, jaExistiam, Requisicoes: 1, criadas, criadasIds,
+            doSisreg.Select(u => u.Cnes).ToHashSet(StringComparer.Ordinal));
     }
 
     /// <summary>

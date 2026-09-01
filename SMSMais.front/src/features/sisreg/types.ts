@@ -117,7 +117,9 @@ export type ResultadoUnidadeLote =
   | 'PuladaPorTtl'
   | 'PuladaPorOrcamento'
   | 'Erro'
-  | 'SomenteDescoberta';
+  | 'SomenteDescoberta'
+  /** Existe no SISREG e não tem executante (central de regulação). Não é erro. */
+  | 'SemProfissionais';
 
 /** Detalhe por unidade — o "quantos médicos vieram de cada uma". */
 export type MapeamentoLoteExecucaoItem = {

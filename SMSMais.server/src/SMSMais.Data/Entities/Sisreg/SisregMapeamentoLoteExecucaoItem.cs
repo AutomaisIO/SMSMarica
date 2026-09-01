@@ -66,4 +66,11 @@ public enum ResultadoUnidadeLote
     /// <summary>Só descoberta: unidade criada/atualizada no cadastro, sem ir ao mapeamento nesta
     /// execução.</summary>
     SomenteDescoberta = 5,
+
+    /// <summary>
+    /// Existe no SISREG mas não tem profissional executante — a central de regulação é o caso
+    /// típico: aparece no combo de unidades e não tem agenda de profissional. <b>Não é erro</b>, e
+    /// conta como visitada para não voltar à fila todo dia.
+    /// </summary>
+    SemProfissionais = 6,
 }

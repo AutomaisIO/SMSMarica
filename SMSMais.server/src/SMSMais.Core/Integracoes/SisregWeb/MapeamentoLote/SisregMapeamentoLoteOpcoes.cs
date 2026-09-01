@@ -60,6 +60,17 @@ public sealed class SisregMapeamentoLoteOpcoes
     /// </summary>
     public int EstimativaProfissionaisUnidadeNova { get; set; } = 80;
 
+    /// <summary>
+    /// Orçamento mínimo para o lote valer a pena. Abaixo disto ele nem começa.
+    ///
+    /// <para>Nasceu de uma rodada real: em 30/08/2026, cinco minutos depois de um lote que gastou
+    /// 391 requisições, um segundo disparo passou pelo "resta mais que zero" (sobravam 9), gastou
+    /// 1 requisição na descoberta e pulou as 53 unidades por falta de orçamento — deixando no
+    /// histórico uma linha "Parcial" com zero feito. Não é errado, mas é ruído: o operador abre o
+    /// detalhe esperando encontrar trabalho e encontra uma lista de desculpas.</para>
+    /// </summary>
+    public int OrcamentoMinimoParaIniciar { get; set; } = 25;
+
     /// <summary>Intervalo mínimo entre requisições, derivado de <see cref="RequisicoesPorHora"/>.</summary>
     public TimeSpan IntervaloMinimoRequisicao =>
         TimeSpan.FromSeconds(3600.0 / Math.Max(1, RequisicoesPorHora));

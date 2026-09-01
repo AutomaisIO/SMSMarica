@@ -15,6 +15,7 @@ const ROTULO_RESULTADO: Record<ResultadoUnidadeLote, string> = {
   PuladaPorOrcamento: 'Ficou para a próxima',
   Erro: 'Erro',
   SomenteDescoberta: 'Só descoberta',
+  SemProfissionais: 'Sem executante',
 };
 
 const CLASSE_RESULTADO: Record<ResultadoUnidadeLote, string> = {
@@ -23,6 +24,7 @@ const CLASSE_RESULTADO: Record<ResultadoUnidadeLote, string> = {
   PuladaPorOrcamento: 'bg-amber-50 text-amber-800',
   Erro: 'bg-red-50 text-red-700',
   SomenteDescoberta: 'bg-blue-50 text-blue-700',
+  SemProfissionais: 'bg-gray-100 text-gray-600',
 };
 
 function dataHora(iso: string | null | undefined) {

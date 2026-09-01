@@ -132,18 +132,20 @@ public sealed class SisregMapeamentoLoteService(
             return null;
         }
 
-        // Sem orçamento não adianta enfileirar: a primeira requisição já bateria no CAPTCHA.
+        // Sem orçamento não adianta enfileirar: a primeira requisição já bateria no CAPTCHA. E com
+        // orçamento de sobra insuficiente também não — começar para pular tudo só gasta a
+        // requisição da descoberta e polui o histórico com uma rodada de zero.
         var restante = orcamento.Restante(_orcamentoOpcoes.TetoAutomatico);
-        if (restante <= 0)
+        if (restante < _opcoes.OrcamentoMinimoParaIniciar)
         {
             if (lancar)
             {
                 var espera = orcamento.EsperaAteLiberar();
                 throw new ConflitoException(
                     "sisreg.orcamento_esgotado",
-                    "O SISREG já recebeu o máximo de acessos previstos para esta hora "
-                    + $"({_orcamentoOpcoes.TetoAutomatico} requisições). Insistir agora é o que faz "
-                    + "aparecer o CAPTCHA, que bloqueia o operador por 24h."
+                    $"Restam só {restante} acessos ao SISREG nesta hora (o teto é "
+                    + $"{_orcamentoOpcoes.TetoAutomatico}) — não dá para sincronizar nem uma unidade. "
+                    + "Insistir agora é o que faz aparecer o CAPTCHA, que bloqueia o operador por 24h."
                     + (espera is { } e ? $" Tente de novo em {Math.Ceiling(e.TotalMinutes)} min." : string.Empty));
             }
             return null;
@@ -178,6 +180,9 @@ public sealed class SisregMapeamentoLoteService(
         var token = cts.Token;
 
         var agora = DateTime.UtcNow;
+
+        await FecharOrfasAsync(agora, token);
+
         var execucao = new SisregMapeamentoLoteExecucao
         {
             Id = Guid.CreateVersion7(),
@@ -210,11 +215,13 @@ public sealed class SisregMapeamentoLoteService(
         try
         {
             // ---- passo 1: descoberta (1 requisição) ----
-            var criadasIds = await DescobrirUnidadesAsync(execucao, progresso, antesDeCadaRequisicao, token);
+            var descoberta = await DescobrirUnidadesAsync(execucao, progresso, antesDeCadaRequisicao, token);
 
             // ---- passo 2: mapeamento, da mais antiga para a mais nova ----
             progresso.Fase = ProgressoMapeamentoLote.FaseMapeamento;
-            status = await MapearUnidadesAsync(execucao, progresso, criadasIds, job.UsuarioId, antesDeCadaRequisicao, token);
+            status = await MapearUnidadesAsync(
+                execucao, progresso, descoberta.CriadasIds, descoberta.CnesNoSisreg,
+                job.UsuarioId, antesDeCadaRequisicao, token);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -261,7 +268,12 @@ public sealed class SisregMapeamentoLoteService(
     /// <b>não</b> aborta o lote — ficar sem descobrir unidade nova é ruim, mas deixar de atualizar
     /// as que já existem seria pior.
     /// </summary>
-    private async Task<IReadOnlySet<Guid>> DescobrirUnidadesAsync(
+    /// <summary>O que a descoberta entrega ao passo de mapeamento.</summary>
+    /// <param name="CriadasIds">Unidades que nasceram nesta execução.</param>
+    /// <param name="CnesNoSisreg">Recorte "de lá para cá"; vazio = descoberta falhou, vale tudo.</param>
+    private sealed record Descoberta(IReadOnlySet<Guid> CriadasIds, IReadOnlySet<string> CnesNoSisreg);
+
+    private async Task<Descoberta> DescobrirUnidadesAsync(
         SisregMapeamentoLoteExecucao execucao,
         ProgressoMapeamentoLote progresso,
         Func<CancellationToken, Task> antesDeCadaRequisicao,
@@ -282,7 +294,7 @@ public sealed class SisregMapeamentoLoteService(
             execucao.UnidadesComCnesPreenchido = reconciliacao.CnesPreenchido;
             await db.SaveChangesAsync(token);
 
-            return reconciliacao.CriadasIds;
+            return new Descoberta(reconciliacao.CriadasIds, reconciliacao.CnesNoSisreg);
         }
         catch (Exception ex) when (SisregWebSessao.EhCaptcha(ex))
         {
@@ -299,7 +311,8 @@ public sealed class SisregMapeamentoLoteService(
                 + $"as unidades já cadastradas aqui. Motivo: {ex.Message}";
             execucao.MensagemErro = progresso.UltimoErro;
             logger.LogWarning(ex, "SISREG_MAPEAMENTO_LOTE: descoberta de unidades falhou; seguindo com o cadastro local.");
-            return new HashSet<Guid>();
+            // Sem recorte: não dá para saber o que existe lá, então vale o cadastro inteiro.
+            return new Descoberta(new HashSet<Guid>(), new HashSet<string>(StringComparer.Ordinal));
         }
     }
 
@@ -308,11 +321,12 @@ public sealed class SisregMapeamentoLoteService(
         SisregMapeamentoLoteExecucao execucao,
         ProgressoMapeamentoLote progresso,
         IReadOnlySet<Guid> criadasAgora,
+        IReadOnlySet<string> cnesNoSisreg,
         Guid? usuarioId,
         Func<CancellationToken, Task> antesDeCadaRequisicao,
         CancellationToken token)
     {
-        var candidatas = await CarregarCandidatasAsync(token);
+        var candidatas = await CarregarCandidatasAsync(cnesNoSisreg, token);
         progresso.UnidadesTotal = candidatas.Count;
         execucao.UnidadesTotal = candidatas.Count;
         await db.SaveChangesAsync(token);
@@ -381,12 +395,23 @@ public sealed class SisregMapeamentoLoteService(
                 Interlocked.Add(ref progresso.PractitionersVinculados, fhir.Vinculados);
                 Interlocked.Increment(ref progresso.UnidadesMapeadas);
 
+                // Existe no SISREG e não tem executante: a central de regulação é o caso típico.
+                // Conta como visitada (não volta à fila amanhã) e NÃO conta como erro — chamar isso
+                // de falha treina o operador a ignorar a coluna de erro, que é onde mora o que
+                // importa de verdade.
+                var semProfissionais = atualizado.ProfissionaisEncontrados == 0;
+
                 await RegistrarItemAsync(
-                    execucao, candidata, ResultadoUnidadeLote.Mapeada, criadasAgora,
-                    observacao: atualizado.ProfissionaisPuladosPorTtl > 0
-                        ? $"{atualizado.ProfissionaisPuladosPorTtl} profissionais já estavam atualizados "
-                          + "e não custaram requisição."
-                        : null,
+                    execucao, candidata,
+                    semProfissionais ? ResultadoUnidadeLote.SemProfissionais : ResultadoUnidadeLote.Mapeada,
+                    criadasAgora,
+                    observacao: semProfissionais
+                        ? "Sem profissional executante no SISREG — esperado em unidade que não "
+                          + "executa agenda (central de regulação, por exemplo)."
+                        : atualizado.ProfissionaisPuladosPorTtl > 0
+                            ? $"{atualizado.ProfissionaisPuladosPorTtl} profissionais já estavam "
+                              + "atualizados e não custaram requisição."
+                            : null,
                     token: token,
                     profissionaisEncontrados: atualizado.ProfissionaisEncontrados,
                     profissionaisNovos: atualizado.ProfissionaisNovos,
@@ -453,11 +478,21 @@ public sealed class SisregMapeamentoLoteService(
     /// a mais nova. É a ordenação que dispensa cursor de retomada — quem ficou de fora numa rodada
     /// é, por construção, quem entra primeiro na seguinte.
     /// </summary>
-    private async Task<List<CandidataLote>> CarregarCandidatasAsync(CancellationToken ct)
+    private async Task<List<CandidataLote>> CarregarCandidatasAsync(
+        IReadOnlySet<string> cnesNoSisreg, CancellationToken ct)
     {
         var unidades = await db.Unidades.AsNoTracking()
             .Where(u => u.Ativo && u.Cnes != null && u.Cnes != "")
             .ToListAsync(ct);
+
+        // Recorte "de lá para cá": só o que existe no SISREG. Unidade que existe só aqui (fechada,
+        // de outro fluxo, ou fora do escopo da credencial) não é erro nem merece uma requisição por
+        // rodada para confirmar que não está lá. Se a descoberta falhou, o conjunto vem vazio e
+        // vale o cadastro inteiro — é o comportamento antigo, que continua sendo o certo às cegas.
+        if (cnesNoSisreg.Count > 0)
+        {
+            unidades = [.. unidades.Where(u => cnesNoSisreg.Contains(SoDigitos(u.Cnes)))];
+        }
 
         if (unidades.Count == 0) return [];
 
@@ -476,6 +511,17 @@ public sealed class SisregMapeamentoLoteService(
             })
             .ToDictionaryAsync(x => x.UnidadeId, ct);
 
+        // Uma unidade sem profissional nenhum (central de regulação) nunca tem `visto_em`, então
+        // pelo `resumo` ela seria eternamente "nunca mapeada" — primeira da fila, 1 requisição por
+        // rodada, para sempre. O rastreio do lote é a segunda fonte de "quando visitamos": lá a
+        // visita ficou registrada mesmo tendo voltado vazia.
+        var visitadaEm = await db.SisregMapeamentoLoteExecucaoItens.AsNoTracking()
+            .Where(i => i.Resultado == ResultadoUnidadeLote.Mapeada
+                     || i.Resultado == ResultadoUnidadeLote.SemProfissionais)
+            .GroupBy(i => i.UnidadeId)
+            .Select(g => new { UnidadeId = g.Key, Em = g.Max(i => i.RegistradoEm) })
+            .ToDictionaryAsync(x => x.UnidadeId, x => x.Em, ct);
+
         // A varredura por combinação é a única que depende do mapeamento estar fresco — com o
         // recorte "unidade inteira" a agenda vem numa requisição só, sem olhar o mapeamento.
         var agendas = await db.SisregVarreduraAgendas.AsNoTracking()
@@ -491,7 +537,8 @@ public sealed class SisregMapeamentoLoteService(
             var dependeDoMapeamento = agenda is { Ativo: true, RecorteUnidadeInteira: false };
             var ttlDias = dependeDoMapeamento ? _opcoes.TtlDiasVarreduraPorCombinacao : _opcoes.TtlDiasPadrao;
 
-            var mapeadoEm = r?.MapeadoEm;
+            // A mais recente das duas fontes: o mapeamento em si e a última visita registrada.
+            var mapeadoEm = Maior(r?.MapeadoEm, visitadaEm.GetValueOrDefault(unidade.Id) is var v && v != default ? v : null);
             var precisa = mapeadoEm is null || agora - mapeadoEm.Value >= TimeSpan.FromDays(Math.Max(1, ttlDias));
 
             // Estimativa do custo: 1 pela lista + 1 por profissional que vai ao SISREG. Uma unidade
@@ -549,6 +596,36 @@ public sealed class SisregMapeamentoLoteService(
         // Grava a cada unidade: um lote interrompido preserva o detalhe do que já rodou — mesma
         // decisão do rastreio da varredura.
         await db.SaveChangesAsync(token);
+    }
+
+    /// <summary>
+    /// Fecha execuções que ficaram "Rodando" de um processo que morreu — deploy, restart do
+    /// systemd, exceção que escapou. O estado vivo é memória: quem reinicia perde a execução mas
+    /// não a linha, e ela ficaria "Rodando" para sempre no histórico, dizendo ao operador que há
+    /// algo em curso quando não há. Só chega aqui quem passou pelo <c>EmExecucao</c> do estado
+    /// vivo, então não há risco de matar uma execução viva.
+    /// </summary>
+    private async Task FecharOrfasAsync(DateTime agora, CancellationToken ct)
+    {
+        var orfas = await db.SisregMapeamentoLoteExecucoes
+            .Where(x => x.Status == StatusVarredura.EmExecucao || x.Status == StatusVarredura.Pendente)
+            .ToListAsync(ct);
+
+        if (orfas.Count == 0) return;
+
+        foreach (var orfa in orfas)
+        {
+            orfa.Status = StatusVarredura.Cancelada;
+            orfa.MensagemErro ??=
+                "A sincronização foi interrompida pelo reinício do serviço. O que já tinha entrado "
+                + "está salvo — as unidades que faltaram entram na próxima rodada, na frente da fila.";
+            orfa.FinalizadoEm = agora;
+            orfa.DuracaoSegundos = (int)Math.Round((agora - orfa.IniciadoEm).TotalSeconds);
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "SISREG_MAPEAMENTO_LOTE: {Qtd} execução(ões) órfã(s) fechada(s) como cancelada(s).", orfas.Count);
     }
 
     private async Task FinalizarAsync(
@@ -691,6 +768,12 @@ public sealed class SisregMapeamentoLoteService(
     {
         public string Nome => Unidade.Nome;
     }
+
+    private static DateTime? Maior(DateTime? a, DateTime? b) =>
+        a is null ? b : b is null ? a : (a > b ? a : b);
+
+    private static string SoDigitos(string? valor) =>
+        new([.. (valor ?? string.Empty).Where(char.IsDigit)]);
 
     private static string? Truncar(string? texto, int max) =>
         texto is not null && texto.Length > max ? texto[..max] : texto;
