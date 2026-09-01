@@ -46,10 +46,19 @@ public class SisregVarreduraAgenda
     /// descartaria justamente o que veio pelo grupo. O mapeamento continua valendo para o gatilho
     /// de confirmação ao paciente, que é opt-in por procedimento.</para>
     ///
-    /// <para>Nasce DESLIGADO: é mudança de comportamento de um motor de produção, e a unidade
-    /// escolhe quando adotar.</para>
+    /// <para><b>É REGRA, não escolha</b> (01/09/2026). Nasceu desligado, como opção por unidade,
+    /// enquanto era mudança nova num motor de produção. Depois de rodar, não sobrou caso em que
+    /// varrer por combinação seja melhor: além de custar 1 requisição em vez de uma por par
+    /// profissional × procedimento, este caminho <b>atualiza o mapeamento de graça</b> — cada linha
+    /// da agenda já diz quem executa o quê (<c>AtualizarMapeamentoObservadoAsync</c>), então a
+    /// varredura diária mantém médicos e procedimentos em dia sem gastar acesso nenhum. Deixar
+    /// desligado é escolher pagar caro por menos informação.</para>
+    ///
+    /// <para>A coluna continua existindo, sempre <c>true</c>: o caminho por combinação segue no
+    /// motor como fallback interno (unidade sem agenda exportável), mas não é mais oferecido na
+    /// tela — o operador não tem como desligar sem querer.</para>
     /// </summary>
-    public bool RecorteUnidadeInteira { get; set; }
+    public bool RecorteUnidadeInteira { get; set; } = true;
 
     /// <summary>
     /// Gatilho mestre da unidade: ao importar uma solicitação, avisar o paciente por WhatsApp?

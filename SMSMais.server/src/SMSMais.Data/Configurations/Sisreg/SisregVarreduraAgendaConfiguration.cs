@@ -20,7 +20,7 @@ internal sealed class SisregVarreduraAgendaConfiguration : IEntityTypeConfigurat
             .IsRequired().HasDefaultValue(false);
         // Default FALSE: muda o comportamento de um motor de produção, a unidade escolhe adotar.
         builder.Property(x => x.RecorteUnidadeInteira).HasColumnName("recorte_unidade_inteira")
-            .IsRequired().HasDefaultValue(false);
+            .IsRequired().HasDefaultValue(true);
         builder.Property(x => x.HoraLocal).HasColumnName("hora_local").IsRequired();
         builder.Property(x => x.DiasAFrente).HasColumnName("dias_a_frente").IsRequired().HasDefaultValue(21);
         builder.Property(x => x.FalhasConsecutivas).HasColumnName("falhas_consecutivas").IsRequired().HasDefaultValue(0);

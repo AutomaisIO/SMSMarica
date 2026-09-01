@@ -42,7 +42,10 @@ public sealed record SalvarVarreduraAgendaRequest(
     /// <summary>Omitido mantém o valor atual — a tela pode salvar só a agenda sem mexer no
     /// gatilho de confirmação, e vice-versa.</summary>
     bool? EnviarConfirmacao = null,
-    /// <summary>Idem: omitido mantém o recorte atual.</summary>
+    /// <summary>
+    /// OBSOLETO na prática: o recorte por unidade inteira virou regra e não se desliga mais pela
+    /// tela. Só <c>true</c> tem efeito (liga); <c>false</c> e omitido são ignorados.
+    /// </summary>
     bool? RecorteUnidadeInteira = null);
 
 /// <summary>Uma execução do motor, para a lista de "varreduras recentes".</summary>

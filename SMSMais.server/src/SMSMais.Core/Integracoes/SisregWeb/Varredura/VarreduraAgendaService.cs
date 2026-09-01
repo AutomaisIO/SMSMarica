@@ -164,7 +164,13 @@ public sealed class VarreduraAgendaService(
         agenda.Ativo = request.Ativo;
         agenda.HoraLocal = request.HoraLocal;
         agenda.DiasAFrente = request.DiasAFrente;
-        if (request.RecorteUnidadeInteira is { } recorte) agenda.RecorteUnidadeInteira = recorte;
+
+        // O recorte por unidade inteira é REGRA, não escolha (ver SisregVarreduraAgenda): 1
+        // requisição em vez de uma por par profissional × procedimento, e o mapeamento vem de graça
+        // junto. O campo do request continua aceito para não quebrar chamada antiga, mas só liga —
+        // nunca desliga. Desligar por engano custaria centenas de acessos por dia numa unidade
+        // grande, e o operador só descobriria pelo CAPTCHA.
+        if (request.RecorteUnidadeInteira == true) agenda.RecorteUnidadeInteira = true;
 
         // PATCH, não PUT: quem manda payload mínimo não apaga em silêncio a decisão de não avisar
         // o paciente. Mesmo cuidado que a agenda do PEP toma com a janela noturna.

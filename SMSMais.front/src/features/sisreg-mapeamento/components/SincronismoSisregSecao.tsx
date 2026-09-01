@@ -48,7 +48,6 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
   const [ativo, setAtivo] = useState(false);
   const [hora, setHora] = useState('04:30');
   const [dias, setDias] = useState('21');
-  const [unidadeInteira, setUnidadeInteira] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
   /**
@@ -77,13 +76,11 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
     setAtivo(dados.ativo);
     setHora(dados.horaLocal.slice(0, 5));
     setDias(String(dados.diasAFrente));
-    setUnidadeInteira(dados.recorteUnidadeInteira);
   }, [
     dados?.unidadeId,
     dados?.ativo,
     dados?.horaLocal,
     dados?.diasAFrente,
-    dados?.recorteUnidadeInteira,
   ]);
 
   /**
@@ -120,10 +117,9 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
         </h3>
         <p className="mt-1 text-sm text-gray-600">
           Todo dia, no horário escolhido, o sistema lê no SISREG a agenda desta unidade e cria as
-          solicitações.{' '}
-          {dados?.recorteUnidadeInteira
-            ? 'Traz a agenda inteira da unidade, sem separar por profissional ou procedimento.'
-            : 'Varre só os profissionais e procedimentos marcados acima.'}
+          solicitações. Traz a agenda inteira da unidade numa requisição, sem separar por
+          profissional ou procedimento — e já aproveita para atualizar o mapeamento de médicos e
+          procedimentos com o que vier nela, sem custo adicional.
         </p>
       </header>
 
@@ -163,16 +159,6 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           />
         </Campo>
 
-        <label className="flex w-full items-center gap-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            checked={unidadeInteira}
-            disabled={!podeEditar}
-            onChange={(e) => setUnidadeInteira(e.target.checked)}
-          />
-          Puxar a agenda da unidade inteira numa requisição
-        </label>
-
         {podeEditar && (
           <Button
             tamanho="sm"
@@ -184,7 +170,6 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
                     ativo,
                     horaLocal: hora,
                     diasAFrente: Number(dias) || 21,
-                    recorteUnidadeInteira: unidadeInteira,
                   }),
                 () => 'Sincronismo salvo.',
               )
@@ -218,10 +203,10 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           <dt className="text-xs text-gray-500">Última varredura</dt>
           <dd className="text-gray-900">{dataHora(dados?.ultimaExecucaoEm)}</dd>
         </div>
-        <div>
-          <dt className="text-xs text-gray-500">Combinações prontas</dt>
-          <dd className="text-gray-900">{dados?.combinacoesProntas ?? 0}</dd>
-        </div>
+        {/* "Combinações prontas" saiu daqui: com a agenda vindo inteira numa requisição, o número
+            de pares habilitados não tem mais relação com o custo — deixá-lo ao lado das requisições
+            estimadas sugeria uma conta que não existe mais. Quantos médicos e procedimentos estão
+            habilitados continua logo acima, no bloco do mapeamento. */}
         <div>
           <dt className="text-xs text-gray-500">Requisições estimadas</dt>
           <dd
