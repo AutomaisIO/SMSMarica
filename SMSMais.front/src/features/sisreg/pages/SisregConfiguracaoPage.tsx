@@ -11,6 +11,7 @@ import {
   useConfiguracaoSisreg,
 } from '@/features/sisreg/api/queries';
 import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTudoSecao';
+import { TelefonesNotificacaoSecao } from '@/features/sisreg/components/TelefonesNotificacaoSecao';
 import type {
   AtualizarSisregConfiguracaoPayload,
   EscopoSisreg,
@@ -311,6 +312,8 @@ export function SisregConfiguracaoPage() {
       </section>
 
       <SincronizarTudoSecao />
+
+      <TelefonesNotificacaoSecao provedor="sisreg" rotulo="SISREG" podeEditar />
     </div>
   );
 }

@@ -72,6 +72,33 @@ public sealed class MapeamentoLoteScheduler(
         var servico = scope.ServiceProvider.GetRequiredService<ISisregMapeamentoLoteService>();
 
         var agendamento = await servico.ObterAgendamentoAsync(ct);
+
+        // ---- carga inicial: rodada atrás de rodada, sem esperar o dia seguinte ----
+        // A rede inteira custa ~1.500 requisições e o teto é POR HORA. Uma rodada por dia levaria
+        // semanas; aqui a rodada seguinte entra assim que o orçamento reabre. O próprio
+        // DispararAgendadoAsync recusa em silêncio quando não há orçamento ou já há trabalho vivo,
+        // então este tick pode insistir de minuto em minuto sem gastar nada.
+        if (agendamento.Bootstrap)
+        {
+            if (agendamento.PendentesPrimeiroMapeamento == 0)
+            {
+                await servico.DesligarBootstrapAsync(ct);
+                logger.LogInformation(
+                    "SISREG_MAPEAMENTO_LOTE_BOOTSTRAP_FIM: todas as unidades têm primeiro mapeamento; "
+                    + "modo de carga inicial desligado.");
+                return;
+            }
+
+            if (await servico.DispararAgendadoAsync(ct))
+            {
+                logger.LogInformation(
+                    "SISREG_MAPEAMENTO_LOTE_BOOTSTRAP: rodada disparada — faltam {Pendentes} unidades, "
+                    + "{Orcamento} requisições disponíveis nesta hora.",
+                    agendamento.PendentesPrimeiroMapeamento, agendamento.OrcamentoRestante);
+            }
+            return;
+        }
+
         if (!agendamento.Ativo) return;
         if (!TimeOnly.TryParseExact(agendamento.HoraLocal, "HH:mm", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var hora))

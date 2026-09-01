@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, RefreshCw, RotateCw, XCircle } from 'lucide-react';
+import { CalendarClock, Loader2, RefreshCw, Rocket, RotateCw, XCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -9,11 +9,15 @@ import {
   useCancelarMapeamentoLote,
   useExecucoesMapeamentoLote,
   useSalvarAgendamentoMapeamentoLote,
+  usePrepararRedeSisreg,
   useSincronizarMapeamentoLote,
   useStatusMapeamentoLote,
 } from '@/features/sisreg/api/queries';
 import { ModalDetalheMapeamentoLote } from '@/features/sisreg/components/ModalDetalheMapeamentoLote';
 import type { MapeamentoLoteExecucao, StatusMapeamentoLote } from '@/features/sisreg/types';
+
+/** Espaço entre os horários de duas unidades. 20 min faz as ~42 caberem entre 15:00 e 07:30. */
+const INTERVALO_MINUTOS = 20;
 
 const CLASSE_STATUS: Record<StatusMapeamentoLote, string> = {
   Pendente: 'bg-gray-100 text-gray-700',
@@ -55,6 +59,7 @@ export function SincronizarTudoSecao() {
   const sincronizar = useSincronizarMapeamentoLote();
   const cancelar = useCancelarMapeamentoLote();
   const salvar = useSalvarAgendamentoMapeamentoLote();
+  const prepararRede = usePrepararRedeSisreg();
 
   const [ativo, setAtivo] = useState(false);
   const [hora, setHora] = useState('03:30');
@@ -116,6 +121,40 @@ export function SincronizarTudoSecao() {
     }
   }
 
+  async function alternarBootstrap(ligar: boolean) {
+    setErro(null);
+    setAviso(null);
+    try {
+      await salvar.mutateAsync({ ativo, horaLocal: hora, bootstrap: ligar });
+      if (ligar) setAcompanhando(true);
+      setAviso(
+        ligar
+          ? 'Carga inicial ligada. As rodadas seguem sozinhas, respeitando o limite do SISREG.'
+          : 'Carga inicial pausada.',
+      );
+    } catch (err) {
+      setErro(extrairMensagemDeErro(err));
+    }
+  }
+
+  async function aoPrepararRede() {
+    setErro(null);
+    setAviso(null);
+    try {
+      const r = await prepararRede.mutateAsync({
+        intervaloMinutos: INTERVALO_MINUTOS,
+        horaInicialLocal: '15:00',
+        diasAFrente: 21,
+        habilitar: true,
+      });
+      setAviso(r.mensagem);
+    } catch (err) {
+      setErro(extrairMensagemDeErro(err));
+    }
+  }
+
+  const pendentes = agendamento.data?.pendentesPrimeiroMapeamento ?? 0;
+  const bootstrapLigado = agendamento.data?.bootstrap ?? false;
   const s = status.data;
   const pct = s && s.unidadesTotal > 0 ? Math.round((s.unidadesFeitas / s.unidadesTotal) * 100) : 0;
 
@@ -210,6 +249,80 @@ export function SincronizarTudoSecao() {
           </Button>
         </div>
       )}
+
+      {/* Carga inicial da rede — o passo que só existe uma vez */}
+      {pendentes > 0 ? (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <h3 className="text-sm font-semibold text-amber-900">
+            Carga inicial: faltam {pendentes} unidades
+          </h3>
+          <p className="mt-1 text-sm text-amber-800">
+            Trazer médicos e procedimentos de todas elas custa cerca de{' '}
+            {(pendentes * 42).toLocaleString('pt-BR')} acessos ao SISREG, e o limite é por hora
+            (restam {agendamento.data?.orcamentoRestante ?? 0} nesta). Ligando a carga inicial, o
+            sistema dispara uma rodada atrás da outra assim que o limite reabre, sozinho, até não
+            faltar nenhuma — e então se desliga.
+          </p>
+          <div className="mt-3">
+            {bootstrapLigado ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="flex items-center gap-2 text-sm font-medium text-amber-900">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carga inicial em andamento — segue sozinha, inclusive com a aba fechada.
+                </span>
+                <Button
+                  type="button"
+                  variante="outline"
+                  tamanho="sm"
+                  disabled={salvar.isPending}
+                  onClick={() => alternarBootstrap(false)}
+                >
+                  Pausar
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                disabled={salvar.isPending}
+                onClick={() => alternarBootstrap(true)}
+              >
+                {salvar.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Rocket className="mr-2 h-4 w-4" />
+                )}
+                Ligar carga inicial
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Programar o diário da rede inteira */}
+      <div className="mb-4 rounded-lg border border-gray-200 p-4">
+        <h3 className="text-sm font-semibold text-gray-900">Programar o sincronismo diário</h3>
+        <p className="mt-1 text-sm text-gray-600">
+          Habilita todos os médicos e procedimentos já mapeados e liga a importação diária de cada
+          unidade, em horários separados por {INTERVALO_MINUTOS} minutos, fora da faixa de 8h às 15h
+          em que o SISREG bloqueia a exportação. O aviso por WhatsApp ao paciente fica{' '}
+          <strong>desligado</strong> em todas.
+        </p>
+        <div className="mt-3">
+          <Button
+            type="button"
+            variante="outline"
+            disabled={prepararRede.isPending}
+            onClick={aoPrepararRede}
+          >
+            {prepararRede.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CalendarClock className="mr-2 h-4 w-4" />
+            )}
+            Programar todas as unidades
+          </Button>
+        </div>
+      </div>
 
       {/* Agendamento diário */}
       <form onSubmit={aoSalvarAgenda} className="border-t border-gray-100 pt-4">

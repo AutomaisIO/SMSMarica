@@ -71,6 +71,20 @@ public sealed class SisregMapeamentoLoteController(ISisregMapeamentoLoteService 
         Guid id, CancellationToken cancellationToken) =>
         await _lote.ListarItensAsync(id, cancellationToken);
 
+    /// <summary>
+    /// Programa a rede inteira para o sincronismo diário: habilita todos os médicos e procedimentos
+    /// já mapeados e liga a varredura de cada unidade em horários escalonados, fora da janela
+    /// 08h–15h em que o SISREG bloqueia a exportação da agenda. Deixa o aviso por WhatsApp
+    /// desligado em todas.
+    /// </summary>
+    [HttpPost("preparar-rede")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<PrepararRedeDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<PrepararRedeDto> PrepararRede(
+        [FromBody] PrepararRedeRequest request, CancellationToken cancellationToken) =>
+        await _lote.PrepararRedeAsync(request, cancellationToken);
+
     /// <summary>Configuração do disparo diário automático.</summary>
     [HttpGet("agendamento")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]

@@ -7,8 +7,8 @@ namespace SMSMais.Core.Integracoes.SisregWeb.MapeamentoLote;
 /// <para><b>O ritmo não é estético.</b> O mapeamento e a varredura de agenda dividem o mesmo
 /// orçamento anti-robô do SISREG (mesmo IP de saída, ver ADR-0040 e <c>docs/sisreg-egress.md</c>):
 /// o CAPTCHA aparece por volta de 700 requisições por operador. Por isso o lote roda as unidades
-/// <b>em sequência</b> (nunca em paralelo) e espaça as requisições para caber em
-/// <see cref="RequisicoesPorHora"/>.</para>
+/// <b>em sequência</b> (nunca em paralelo) e o teto de volume é do
+/// <see cref="SisregOrcamentoRequisicoes"/>, compartilhado com os demais motores.</para>
 ///
 /// <para><b>Por que existe TTL e rodízio.</b> Mapear uma unidade custa 1 requisição pela lista de
 /// profissionais + 1 por profissional pelos procedimentos dele. Medido em Maricá: as 6 unidades
@@ -22,8 +22,19 @@ public sealed class SisregMapeamentoLoteOpcoes
 {
     public const string Secao = "Sisreg:MapeamentoLote";
 
-    /// <summary>Teto de requisições ao SISREG por hora durante o lote. Default 500.</summary>
-    public int RequisicoesPorHora { get; set; } = 500;
+    /// <summary>
+    /// Pausa entre requisições. <b>350ms, o mesmo da varredura</b> — e o mesmo do script Python que
+    /// rodou sem bloquear.
+    ///
+    /// <para><b>Por que não é mais lento:</b> este motor espaçava as requisições em 7,2s para
+    /// "caber em 500/h", e o resultado foi uma rodada de 391 requisições levando 47 minutos
+    /// (medido em 30/08/2026). Não comprava nada: o SISREG bloqueia por <b>volume acumulado</b>,
+    /// não por ritmo — o laboratório fez 352 requisições em 47 <i>segundos</i> no CDT sem CAPTCHA
+    /// (<c>Automais.SISREG/docs/APRENDIZADOS.md</c>), e a varredura da agenda sempre usou 350ms.
+    /// Quem protege o orçamento é o <see cref="SisregOrcamentoRequisicoes"/>, que conta a janela
+    /// rolante de 60 min; a pausa aqui só evita rajada.</para>
+    /// </summary>
+    public int PausaMs { get; set; } = 350;
 
     /// <summary>Intervalo do tick do scheduler diário, em segundos.</summary>
     public int TickSegundos { get; set; } = 60;
@@ -71,9 +82,7 @@ public sealed class SisregMapeamentoLoteOpcoes
     /// </summary>
     public int OrcamentoMinimoParaIniciar { get; set; } = 25;
 
-    /// <summary>Intervalo mínimo entre requisições, derivado de <see cref="RequisicoesPorHora"/>.</summary>
-    public TimeSpan IntervaloMinimoRequisicao =>
-        TimeSpan.FromSeconds(3600.0 / Math.Max(1, RequisicoesPorHora));
+    public TimeSpan IntervaloMinimoRequisicao => TimeSpan.FromMilliseconds(Math.Max(0, PausaMs));
 
     public TimeSpan TtlProcedimentos => TimeSpan.FromDays(Math.Max(1, TtlDiasProcedimentos));
 }

@@ -13,6 +13,7 @@ using SMSMais.Core.Integracoes.SisregWeb.Mapeamento;
 using SMSMais.Core.Integracoes.SisregWeb.MapeamentoLote.Background;
 using SMSMais.Core.Integracoes.SisregWeb.MapeamentoLote.Dtos;
 using SMSMais.Core.Integracoes.SisregWeb.Unidades;
+using SMSMais.Core.Notificacoes.Sincronismo;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -74,6 +75,24 @@ public interface ISisregMapeamentoLoteService
     /// <summary>Detalhe por unidade de uma execução.</summary>
     Task<IReadOnlyList<MapeamentoLoteExecucaoItemDto>> ListarItensAsync(
         Guid execucaoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unidades com CNES que ainda não têm mapeamento nenhum — o que falta para a carga inicial
+    /// terminar. Unidade já registrada como "sem executante" não conta: ela nunca vai ter
+    /// profissional, e contá-la faria o modo de carga inicial nunca se desligar.
+    /// </summary>
+    Task<int> ContarPendentesPrimeiroMapeamentoAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Desliga o modo de carga inicial (chamado quando não há mais o que carregar).</summary>
+    Task DesligarBootstrapAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Prepara a rede inteira para o sincronismo diário: habilita todos os médicos e procedimentos
+    /// já mapeados e liga a varredura de cada unidade em horários escalonados, fora da janela em
+    /// que o SISREG bloqueia a exportação da agenda.
+    /// </summary>
+    Task<PrepararRedeDto> PrepararRedeAsync(
+        PrepararRedeRequest request, CancellationToken cancellationToken = default);
 }
 
 public sealed class SisregMapeamentoLoteService(
@@ -84,6 +103,7 @@ public sealed class SisregMapeamentoLoteService(
     IMapeamentoLoteFila fila,
     MapeamentoLoteEstadoVivo estadoVivo,
     SisregOrcamentoRequisicoes orcamento,
+    INotificadorSincronismo notificador,
     Varredura.Background.VarreduraSisregEstadoVivo varreduraEstadoVivo,
     Importacao.Background.SisregImportacaoEstadoVivo importacaoEstadoVivo,
     IOptions<SisregMapeamentoLoteOpcoes> opcoes,
@@ -92,6 +112,7 @@ public sealed class SisregMapeamentoLoteService(
 {
     public const string ChaveAtivo = "mapeamentoLoteAtivo";
     public const string ChaveHora = "mapeamentoLoteHoraLocal";
+    public const string ChaveBootstrap = "mapeamentoLoteBootstrap";
     public const string HoraPadrao = "03:30";
 
     private readonly SisregMapeamentoLoteOpcoes _opcoes = opcoes.Value;
@@ -241,6 +262,13 @@ public sealed class SisregMapeamentoLoteService(
                 + "listar as unidades. Resolva o CAPTCHA no navegador com esse operador e rode de novo.";
             execucao.MensagemErro = progresso.UltimoErro;
             logger.LogError("SISREG_MAPEAMENTO_LOTE_CAPTCHA: bloqueado na descoberta das unidades.");
+            await notificador.NotificarAsync(
+                SisregWebSessao.Provedor, "PRECISA DE VOCÊ: CAPTCHA no SISREG",
+                "A sincronização parou antes de listar as unidades: o SISREG passou a exigir "
+                + "CAPTCHA por volume de acessos.\n\nRelogar NÃO resolve — é preciso abrir o SISREG "
+                + "no navegador com o operador do robô e resolver o CAPTCHA. Enquanto isso, nenhuma "
+                + "agenda é importada.",
+                chaveRepeticao: "captcha", ct: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -260,7 +288,46 @@ public sealed class SisregMapeamentoLoteService(
                 status, progresso.UnidadesNoSisreg, progresso.UnidadesCriadas, progresso.UnidadesMapeadas,
                 progresso.UnidadesPuladas, progresso.UnidadesComErro, progresso.RequisicoesFeitas,
                 progresso.ProfissionaisNovos, progresso.ProcedimentosNovos);
+
+            await AvisarFimAsync(status, progresso);
         }
+    }
+
+    /// <summary>
+    /// Resumo do fim da rodada por WhatsApp. Rodada limpa e sem novidade não vira mensagem — o
+    /// aviso serve para o que exige atenção, e um alerta que chega todo dia sem motivo deixa de
+    /// ser lido justamente no dia em que importa. Rodada com erro, ou com coisa nova, avisa.
+    /// </summary>
+    private async Task AvisarFimAsync(StatusVarredura status, ProgressoMapeamentoLote progresso)
+    {
+        var houveNovidade = progresso.UnidadesCriadas > 0
+            || progresso.ProfissionaisNovos > 0
+            || progresso.ProcedimentosNovos > 0;
+        var houveProblema = progresso.UnidadesComErro > 0
+            || status is StatusVarredura.Erro or StatusVarredura.Parcial;
+
+        if (!houveNovidade && !houveProblema) return;
+
+        // O CAPTCHA já mandou o seu próprio aviso, mais específico e mais acionável.
+        if (progresso.UltimoErro?.Contains("CAPTCHA", StringComparison.OrdinalIgnoreCase) == true) return;
+
+        var titulo = houveProblema ? "Sincronização terminou com pendência" : "Sincronização concluída";
+        var linhas = new List<string>
+        {
+            $"Unidades no SISREG: {progresso.UnidadesNoSisreg}",
+            $"Mapeadas agora: {progresso.UnidadesMapeadas} de {progresso.UnidadesTotal}",
+        };
+
+        if (progresso.UnidadesCriadas > 0) linhas.Add($"Unidades novas cadastradas: {progresso.UnidadesCriadas}");
+        if (progresso.UnidadesPuladas > 0) linhas.Add($"Já atualizadas (puladas): {progresso.UnidadesPuladas}");
+        linhas.Add($"Médicos: {progresso.ProfissionaisEncontrados} ({progresso.ProfissionaisNovos} novos)");
+        linhas.Add($"Procedimentos: {progresso.ProcedimentosEncontrados} ({progresso.ProcedimentosNovos} novos)");
+        linhas.Add($"Acessos ao SISREG: {progresso.RequisicoesFeitas}");
+        if (progresso.UnidadesComErro > 0) linhas.Add($"⚠ Unidades com erro: {progresso.UnidadesComErro}");
+        if (progresso.UltimoErro is { Length: > 0 } erro) linhas.Add($"\nÚltimo erro: {erro}");
+
+        await notificador.NotificarAsync(
+            SisregWebSessao.Provedor, titulo, string.Join('\n', linhas), ct: CancellationToken.None);
     }
 
     /// <summary>
@@ -439,6 +506,14 @@ public sealed class SisregMapeamentoLoteService(
                     "SISREG_MAPEAMENTO_LOTE_CAPTCHA: parou em {Unidade} após {Req} requisições, "
                     + "{Feitas}/{Total} unidades.",
                     candidata.Nome, progresso.RequisicoesFeitas, progresso.UnidadesFeitas, progresso.UnidadesTotal);
+                await notificador.NotificarAsync(
+                    SisregWebSessao.Provedor, "PRECISA DE VOCÊ: CAPTCHA no SISREG",
+                    $"A sincronização parou em *{candidata.Nome}* depois de "
+                    + $"{progresso.RequisicoesFeitas} acessos ({progresso.UnidadesFeitas} de "
+                    + $"{progresso.UnidadesTotal} unidades).\n\nO que já entrou está salvo. Relogar "
+                    + "NÃO resolve — é preciso abrir o SISREG no navegador com o operador do robô e "
+                    + "resolver o CAPTCHA.",
+                    chaveRepeticao: "captcha", ct: CancellationToken.None);
                 Interlocked.Increment(ref progresso.UnidadesFeitas);
                 execucao.MensagemErro = progresso.UltimoErro;
                 return StatusVarredura.Parcial;
@@ -727,7 +802,36 @@ public sealed class SisregMapeamentoLoteService(
         var json = await LerParametrosAsync(cancellationToken);
         return new MapeamentoLoteAgendamentoDto(
             json?[ChaveAtivo]?.GetValue<bool>() ?? false,
-            json?[ChaveHora]?.GetValue<string>() ?? HoraPadrao);
+            json?[ChaveHora]?.GetValue<string>() ?? HoraPadrao,
+            json?[ChaveBootstrap]?.GetValue<bool>() ?? false,
+            await ContarPendentesPrimeiroMapeamentoAsync(cancellationToken),
+            orcamento.Restante(_orcamentoOpcoes.TetoAutomatico));
+    }
+
+    public async Task<int> ContarPendentesPrimeiroMapeamentoAsync(CancellationToken cancellationToken = default)
+    {
+        var comMapeamento = db.SisregProfissionaisUnidade.Select(p => p.UnidadeId);
+
+        // "Sem executante" já foi visitada e nunca terá profissional (central de regulação). Sem
+        // esta exclusão o modo de carga inicial ficaria ligado para sempre, tentando de novo todo
+        // ciclo uma unidade que não tem o que buscar.
+        var semExecutante = db.SisregMapeamentoLoteExecucaoItens
+            .Where(i => i.Resultado == ResultadoUnidadeLote.SemProfissionais)
+            .Select(i => i.UnidadeId);
+
+        return await db.Unidades
+            .Where(u => u.Ativo && u.Cnes != null && u.Cnes != ""
+                     && !comMapeamento.Contains(u.Id)
+                     && !semExecutante.Contains(u.Id))
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task DesligarBootstrapAsync(CancellationToken cancellationToken = default)
+    {
+        var atualCfg = await ObterAgendamentoAsync(cancellationToken);
+        await SalvarAgendamentoAsync(
+            new SalvarMapeamentoLoteAgendamentoRequest(atualCfg.Ativo, atualCfg.HoraLocal, Bootstrap: false),
+            cancellationToken);
     }
 
     public async Task<MapeamentoLoteAgendamentoDto> SalvarAgendamentoAsync(
@@ -741,6 +845,7 @@ public sealed class SisregMapeamentoLoteService(
         var json = Parse(atual.ParametrosJson) ?? new JsonObject();
         json[ChaveAtivo] = request.Ativo;
         json[ChaveHora] = hora;
+        if (request.Bootstrap is { } bootstrap) json[ChaveBootstrap] = bootstrap;
 
         await credenciais.AtualizarAsync(
             SisregWebSessao.Provedor,
@@ -752,7 +857,140 @@ public sealed class SisregMapeamentoLoteService(
                 Ativo: atual.Ativo),
             cancellationToken);
 
-        return new MapeamentoLoteAgendamentoDto(request.Ativo, hora);
+        return await ObterAgendamentoAsync(cancellationToken);
+    }
+
+    // ------------------------------------------------------------------ preparar a rede
+
+    public async Task<PrepararRedeDto> PrepararRedeAsync(
+        PrepararRedeRequest request, CancellationToken cancellationToken = default)
+    {
+        var intervalo = Math.Clamp(request.IntervaloMinutos, 5, 120);
+        var inicio = TimeOnly.TryParseExact(request.HoraInicialLocal, "HH:mm",
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out var h) ? h : new TimeOnly(15, 0);
+        var dias = Math.Clamp(request.DiasAFrente, 1, Varredura.VarreduraSisregOpcoes.MaxDiasAFrente);
+
+        // Só entram unidades com mapeamento: ligar a varredura de quem nunca foi mapeado agendaria
+        // uma requisição diária para não trazer nada.
+        var unidades = await db.Unidades.AsNoTracking()
+            .Where(u => u.Ativo && u.Cnes != null && u.Cnes != ""
+                     && db.SisregProfissionaisUnidade.Any(p => p.UnidadeId == u.Id))
+            .OrderBy(u => u.Nome)
+            .Select(u => new { u.Id, u.Nome })
+            .ToListAsync(cancellationToken);
+
+        if (unidades.Count == 0)
+        {
+            throw new ValidacaoException(
+                "sisreg.rede_sem_mapeamento",
+                "Nenhuma unidade tem mapeamento do SISREG ainda. Rode a carga inicial antes de "
+                + "programar o sincronismo diário.");
+        }
+
+        var horarios = DistribuirHorarios(inicio, intervalo, unidades.Count);
+        var agendas = await db.SisregVarreduraAgendas.ToDictionaryAsync(a => a.UnidadeId, cancellationToken);
+        var agora = DateTime.UtcNow;
+
+        var totalProfs = 0;
+        var totalProcs = 0;
+        var detalhe = new List<PrepararRedeUnidadeDto>(unidades.Count);
+
+        for (var i = 0; i < unidades.Count; i++)
+        {
+            var unidade = unidades[i];
+            var hora = horarios[i];
+
+            var profs = 0;
+            var procs = 0;
+            if (request.Habilitar)
+            {
+                // Ausente fica de fora: reabilitar quem já sumiu do SISREG recria combinação morta.
+                profs = await db.SisregProfissionaisUnidade
+                    .Where(p => p.UnidadeId == unidade.Id && !p.Ausente && !p.Habilitado)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.Habilitado, true)
+                        .SetProperty(p => p.AtualizadoEm, agora), cancellationToken);
+
+                procs = await db.SisregProcedimentosProfissional
+                    .Where(pr => pr.Profissional!.UnidadeId == unidade.Id && !pr.Ausente && !pr.Habilitado)
+                    .ExecuteUpdateAsync(s => s.SetProperty(pr => pr.Habilitado, true), cancellationToken);
+            }
+
+            if (!agendas.TryGetValue(unidade.Id, out var agenda))
+            {
+                agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id };
+                db.SisregVarreduraAgendas.Add(agenda);
+                agendas[unidade.Id] = agenda;
+            }
+
+            agenda.Ativo = true;
+            agenda.HoraLocal = hora;
+            agenda.DiasAFrente = dias;
+
+            // A agenda inteira da unidade numa requisição. É o que torna o diário viável: sem isto,
+            // com todos os médicos e procedimentos habilitados, cada unidade custaria uma requisição
+            // por par profissional × procedimento — centenas por unidade, por dia.
+            agenda.RecorteUnidadeInteira = true;
+
+            // WhatsApp DESLIGADO, como pedido: a carga inicial traz a agenda inteira e histórica de
+            // toda a rede de uma vez. Com o aviso ligado, isso viraria uma enxurrada de mensagens
+            // para pacientes de consultas que já aconteceram.
+            agenda.EnviarConfirmacao = false;
+
+            // Reagendar zera o cursor e o próximo run: o horário mudou, e um cursor de janela antiga
+            // faria a primeira rodada retomar do meio de uma varredura que não existe mais.
+            agenda.ProximoRunEm = null;
+            agenda.CursorProfissionalCpf = null;
+            agenda.CursorProcedimentoCodigo = null;
+            agenda.CursorJanelaFim = null;
+            agenda.AtualizadoEm = agora;
+
+            totalProfs += profs;
+            totalProcs += procs;
+            detalhe.Add(new PrepararRedeUnidadeDto(
+                unidade.Id, unidade.Nome, hora.ToString("HH:mm", CultureInfo.InvariantCulture), profs, procs));
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "SISREG_PREPARAR_REDE: {Unidades} unidades programadas ({Intervalo} min entre elas), "
+            + "{Profs} profissionais e {Procs} procedimentos habilitados, WhatsApp desligado.",
+            unidades.Count, intervalo, totalProfs, totalProcs);
+
+        return new PrepararRedeDto(
+            unidades.Count, totalProfs, totalProcs,
+            detalhe[0].HoraLocal, detalhe[^1].HoraLocal, detalhe,
+            $"{unidades.Count} unidades programadas para sincronizar todo dia, de "
+            + $"{detalhe[0].HoraLocal} a {detalhe[^1].HoraLocal}, com {intervalo} min entre elas. "
+            + $"{totalProfs} profissionais e {totalProcs} procedimentos foram habilitados. "
+            + "O aviso por WhatsApp ficou DESLIGADO em todas.");
+    }
+
+    /// <summary>
+    /// Distribui <paramref name="quantidade"/> horários a partir de <paramref name="inicio"/>,
+    /// pulando a faixa em que o SISREG bloqueia a exportação da agenda (08:00–15:00) — varredura
+    /// agendada ali dentro simplesmente não roda.
+    /// </summary>
+    internal static List<TimeOnly> DistribuirHorarios(TimeOnly inicio, int intervaloMinutos, int quantidade)
+    {
+        var bloqueioInicio = new TimeOnly(7, 30);  // corte de entrada: 08:00 menos a margem
+        var bloqueioFim = new TimeOnly(15, 0);
+
+        static bool Proibido(TimeOnly t, TimeOnly de, TimeOnly ate) => t > de && t < ate;
+
+        var horarios = new List<TimeOnly>(quantidade);
+        var atual = inicio;
+        var passos = 0;
+        var maxPassos = quantidade * 4 + 1440; // guarda contra laço infinito
+
+        while (horarios.Count < quantidade && passos++ < maxPassos)
+        {
+            if (!Proibido(atual, bloqueioInicio, bloqueioFim)) horarios.Add(atual);
+            atual = atual.Add(TimeSpan.FromMinutes(intervaloMinutos));
+        }
+
+        return horarios;
     }
 
     // ------------------------------------------------------------------ interno

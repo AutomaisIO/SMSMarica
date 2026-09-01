@@ -259,6 +259,13 @@ public static class DependencyInjection
         // Sessão única por operador → um cliente HTTP com cookies próprios POR OPERADOR
         // (singleton), que reloga sozinho quando a sessão cai. A credencial é a global do store
         // de Integrações ("sisreg") e enxerga todas as unidades.
+        // Aviso por WhatsApp de falha de sincronismo (SISREG/SER/SERNIT). Os motores rodam de
+        // madrugada e sozinhos: sem isto, um CAPTCHA para a importação da noite e ninguém sabe até
+        // alguém reparar que a agenda do dia não entrou.
+        services.AddScoped<
+            Notificacoes.Sincronismo.INotificadorSincronismo,
+            Notificacoes.Sincronismo.NotificadorSincronismo>();
+
         // Orçamento anti-robô COMPARTILHADO: um contador rolante de 60 min por onde toda ida ao
         // SISREG passa (a sessão o alimenta). Sem ele cada motor tinha o próprio teto e nenhum
         // enxergava o gasto do outro — e o CAPTCHA aparecia sem ninguém ter "estourado" nada.

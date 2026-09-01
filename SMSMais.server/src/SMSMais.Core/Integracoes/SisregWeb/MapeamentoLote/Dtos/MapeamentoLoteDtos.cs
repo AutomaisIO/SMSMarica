@@ -36,11 +36,28 @@ public sealed record MapeamentoLoteStatusDto(
     DateTime IniciadoEm,
     string? UltimoErro);
 
-/// <summary>Configuração do disparo diário automático do lote de mapeamento.</summary>
-public sealed record MapeamentoLoteAgendamentoDto(bool Ativo, string HoraLocal);
+/// <summary>Configuração do disparo automático do lote de mapeamento.</summary>
+public sealed record MapeamentoLoteAgendamentoDto(
+    bool Ativo,
+    string HoraLocal,
+    /// <summary>
+    /// Modo de CARGA INICIAL: em vez de uma rodada por dia, dispara uma atrás da outra assim que o
+    /// orçamento da hora permite, até nenhuma unidade estar sem primeiro mapeamento — aí se desliga
+    /// sozinho. Existe porque a carga inicial da rede é da ordem de 1.500 requisições e o teto é
+    /// por hora: sem isto, seriam semanas de uma rodada por dia.
+    /// </summary>
+    bool Bootstrap = false,
+    /// <summary>Unidades que ainda nunca foram mapeadas — o que falta para a carga inicial acabar.</summary>
+    int PendentesPrimeiroMapeamento = 0,
+    /// <summary>Requisições ainda disponíveis na janela de 60 min.</summary>
+    int OrcamentoRestante = 0);
 
-/// <summary>Ligar/desligar o disparo diário e a que horas (Brasília, HH:mm).</summary>
-public sealed record SalvarMapeamentoLoteAgendamentoRequest(bool Ativo, string HoraLocal);
+/// <summary>Ligar/desligar o disparo automático e a que horas (Brasília, HH:mm).</summary>
+public sealed record SalvarMapeamentoLoteAgendamentoRequest(
+    bool Ativo,
+    string HoraLocal,
+    /// <summary>Omitido mantém o modo de carga inicial como está.</summary>
+    bool? Bootstrap = null);
 
 /// <summary>Uma execução do "sincroniza tudo", para a lista de sincronizações recentes.</summary>
 public sealed record MapeamentoLoteExecucaoDto(
@@ -83,3 +100,32 @@ public sealed record MapeamentoLoteExecucaoItemDto(
     int PractitionersVinculados,
     int Requisicoes,
     string? Observacao);
+
+/// <summary>
+/// Preparar a rede inteira para o sincronismo diário, de uma vez: habilita todos os profissionais
+/// e procedimentos já mapeados e liga a varredura diária de cada unidade em horários escalonados.
+/// </summary>
+/// <param name="IntervaloMinutos">Espaço entre os horários de duas unidades.</param>
+/// <param name="HoraInicialLocal">Onde a distribuição começa (Brasília, HH:mm). O padrão são as
+/// 15:00, logo depois da janela em que o SISREG bloqueia a exportação da agenda.</param>
+/// <param name="DiasAFrente">Janela de agenda que cada unidade importa por dia.</param>
+/// <param name="Habilitar">Ligar todos os médicos e procedimentos mapeados de cada unidade.</param>
+public sealed record PrepararRedeRequest(
+    int IntervaloMinutos = 20,
+    string HoraInicialLocal = "15:00",
+    int DiasAFrente = 21,
+    bool Habilitar = true);
+
+/// <summary>O que a preparação deixou pronto.</summary>
+public sealed record PrepararRedeDto(
+    int UnidadesPreparadas,
+    int ProfissionaisHabilitados,
+    int ProcedimentosHabilitados,
+    string PrimeiroHorario,
+    string UltimoHorario,
+    IReadOnlyList<PrepararRedeUnidadeDto> Unidades,
+    string Mensagem);
+
+/// <summary>Horário que coube a cada unidade.</summary>
+public sealed record PrepararRedeUnidadeDto(
+    Guid UnidadeId, string Nome, string HoraLocal, int Profissionais, int Procedimentos);

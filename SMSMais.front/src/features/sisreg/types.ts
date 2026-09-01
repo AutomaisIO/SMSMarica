@@ -140,8 +140,50 @@ export type MapeamentoLoteExecucaoItem = {
   observacao: string | null;
 };
 
-/** Configuração do disparo diário automático do lote. */
-export type MapeamentoLoteAgendamento = { ativo: boolean; horaLocal: string };
+/** Configuração do disparo automático do lote. */
+export type MapeamentoLoteAgendamento = {
+  ativo: boolean;
+  horaLocal: string;
+  /** Carga inicial: rodadas em sequência até toda unidade ter primeiro mapeamento. */
+  bootstrap: boolean;
+  /** Unidades que ainda nunca foram mapeadas. */
+  pendentesPrimeiroMapeamento: number;
+  /** Requisições ainda disponíveis na janela de 60 min. */
+  orcamentoRestante: number;
+};
+
+export type SalvarMapeamentoLoteAgendamento = {
+  ativo: boolean;
+  horaLocal: string;
+  /** Omitido mantém o modo de carga inicial como está. */
+  bootstrap?: boolean;
+};
+
+/** Programar a rede inteira para o sincronismo diário. */
+export type PrepararRedePayload = {
+  intervaloMinutos: number;
+  horaInicialLocal: string;
+  diasAFrente: number;
+  habilitar: boolean;
+};
+
+export type PrepararRedeUnidade = {
+  unidadeId: string;
+  nome: string;
+  horaLocal: string;
+  profissionais: number;
+  procedimentos: number;
+};
+
+export type PrepararRede = {
+  unidadesPreparadas: number;
+  profissionaisHabilitados: number;
+  procedimentosHabilitados: number;
+  primeiroHorario: string;
+  ultimoHorario: string;
+  unidades: PrepararRedeUnidade[];
+  mensagem: string;
+};
 
 export type SisregBuscaResultado<T> = { total: number; itens: T[] };
 

@@ -7,7 +7,10 @@ import type {
   MapeamentoLoteExecucao,
   MapeamentoLoteExecucaoItem,
   MapeamentoLoteStatus,
+  PrepararRede,
+  PrepararRedePayload,
   RegistroSisreg,
+  SalvarMapeamentoLoteAgendamento,
   SisregBuscaResultado,
   SisregConfiguracao,
   TestarConexaoSisregResultado,
@@ -70,7 +73,7 @@ export async function obterAgendamentoMapeamentoLote(): Promise<MapeamentoLoteAg
 }
 
 export async function salvarAgendamentoMapeamentoLote(
-  payload: MapeamentoLoteAgendamento,
+  payload: SalvarMapeamentoLoteAgendamento,
 ): Promise<MapeamentoLoteAgendamento> {
   const { data } = await http.put<MapeamentoLoteAgendamento>('/sisreg/mapeamento/lote/agendamento', payload);
   return data;
@@ -92,5 +95,34 @@ export async function consultarSisreg(
     internacoes: '/sisreg/hospitalar/internacoes',
   };
   const { data } = await http.get<SisregBuscaResultado<RegistroSisreg>>(rota[consulta], { params });
+  return data;
+}
+
+/**
+ * Programa a rede inteira para o sincronismo diário: habilita os médicos e procedimentos já
+ * mapeados e liga a varredura de cada unidade em horários escalonados, fora da janela 08h–15h.
+ * Deixa o aviso por WhatsApp desligado em todas.
+ */
+export async function prepararRedeSisreg(payload: PrepararRedePayload): Promise<PrepararRede> {
+  const { data } = await http.post<PrepararRede>('/sisreg/mapeamento/lote/preparar-rede', payload);
+  return data;
+}
+
+/** Telefones que recebem aviso quando o sincronismo falha (sisreg | ser | sernit). */
+export async function listarTelefonesNotificacao(provedor: string): Promise<string[]> {
+  const { data } = await http.get<string[]>(`/integracoes/${provedor}/notificacoes`);
+  return data;
+}
+
+export async function salvarTelefonesNotificacao(
+  provedor: string,
+  telefones: string[],
+): Promise<string[]> {
+  const { data } = await http.put<string[]>(`/integracoes/${provedor}/notificacoes`, { telefones });
+  return data;
+}
+
+export async function testarNotificacaoSincronismo(provedor: string): Promise<{ enviados: number }> {
+  const { data } = await http.post<{ enviados: number }>(`/integracoes/${provedor}/notificacoes/testar`);
   return data;
 }

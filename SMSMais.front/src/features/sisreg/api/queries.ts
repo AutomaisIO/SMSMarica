@@ -6,13 +6,18 @@ import {
   listarItensMapeamentoLote,
   obterAgendamentoMapeamentoLote,
   obterConfiguracaoSisreg,
+  listarTelefonesNotificacao,
   obterStatusMapeamentoLote,
+  prepararRedeSisreg,
   salvarAgendamentoMapeamentoLote,
+  salvarTelefonesNotificacao,
   sincronizarMapeamentoLote,
+  testarNotificacaoSincronismo,
 } from '@/features/sisreg/api/sisregApi';
 import type {
   AtualizarSisregConfiguracaoPayload,
-  MapeamentoLoteAgendamento,
+  PrepararRedePayload,
+  SalvarMapeamentoLoteAgendamento,
 } from '@/features/sisreg/types';
 
 export const sisregKeys = {
@@ -21,6 +26,7 @@ export const sisregKeys = {
   loteAgendamento: ['sisreg', 'lote', 'agendamento'] as const,
   loteExecucoes: ['sisreg', 'lote', 'execucoes'] as const,
   loteItens: (id: string) => ['sisreg', 'lote', 'execucoes', id, 'itens'] as const,
+  telefonesNotificacao: (provedor: string) => ['integracoes', provedor, 'notificacoes'] as const,
 };
 
 export function useConfiguracaoSisreg() {
@@ -104,7 +110,39 @@ export function useAgendamentoMapeamentoLote() {
 export function useSalvarAgendamentoMapeamentoLote() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (payload: MapeamentoLoteAgendamento) => salvarAgendamentoMapeamentoLote(payload),
+    mutationFn: (payload: SalvarMapeamentoLoteAgendamento) => salvarAgendamentoMapeamentoLote(payload),
     onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteAgendamento }),
   });
+}
+
+/**
+ * Programa a rede inteira. Invalida o agendamento porque a contagem de pendentes e o orçamento
+ * mudam junto — e é por eles que a tela decide o que oferecer.
+ */
+export function usePrepararRedeSisreg() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: PrepararRedePayload) => prepararRedeSisreg(payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteAgendamento }),
+  });
+}
+
+export function useTelefonesNotificacao(provedor: string) {
+  return useQuery({
+    queryKey: sisregKeys.telefonesNotificacao(provedor),
+    queryFn: () => listarTelefonesNotificacao(provedor),
+  });
+}
+
+export function useSalvarTelefonesNotificacao(provedor: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (telefones: string[]) => salvarTelefonesNotificacao(provedor, telefones),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: sisregKeys.telefonesNotificacao(provedor) }),
+  });
+}
+
+export function useTestarNotificacaoSincronismo(provedor: string) {
+  return useMutation({ mutationFn: () => testarNotificacaoSincronismo(provedor) });
 }
