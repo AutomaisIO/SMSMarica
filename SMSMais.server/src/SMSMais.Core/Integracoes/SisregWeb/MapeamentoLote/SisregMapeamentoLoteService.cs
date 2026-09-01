@@ -297,6 +297,44 @@ public sealed class SisregMapeamentoLoteService(
                 progresso.ProfissionaisNovos, progresso.ProcedimentosNovos);
 
             await AvisarFimAsync(status, progresso);
+            await DesligarBootstrapSeNaoHouverMaisTrabalhoAsync(progresso);
+        }
+    }
+
+    /// <summary>
+    /// Encerra a carga inicial quando a rodada não teve o que fazer: nada mapeado e nada adiado por
+    /// falta de orçamento, ou seja, toda candidata estava dentro do TTL.
+    ///
+    /// <para><b>Seguro contra looping</b>, e não a regra principal — quem decide é a contagem de
+    /// pendentes. Ele existe porque a contagem e o recorte do motor são duas listas que precisam
+    /// concordar, e quando discordaram (01/09/2026: 8 unidades que só existiam no nosso cadastro)
+    /// o bootstrap disparou uma rodada por minuto, indefinidamente, cada uma queimando um acesso ao
+    /// SISREG. Uma rodada que não teve trabalho é prova suficiente de que não há mais o que carregar.</para>
+    /// </summary>
+    private async Task DesligarBootstrapSeNaoHouverMaisTrabalhoAsync(ProgressoMapeamentoLote progresso)
+    {
+        if (progresso.UnidadesMapeadas > 0 || progresso.UnidadesTotal == 0) return;
+
+        try
+        {
+            var agendamento = await ObterAgendamentoAsync(CancellationToken.None);
+            if (!agendamento.Bootstrap) return;
+
+            // Ainda há unidade esperando orçamento: não acabou, só não coube nesta hora.
+            var adiadasPorOrcamento = await db.SisregMapeamentoLoteExecucaoItens.AsNoTracking()
+                .CountAsync(i => i.ExecucaoId == progresso.ExecucaoId
+                              && i.Resultado == ResultadoUnidadeLote.PuladaPorOrcamento,
+                    CancellationToken.None);
+            if (adiadasPorOrcamento > 0) return;
+
+            await DesligarBootstrapAsync(CancellationToken.None);
+            logger.LogInformation(
+                "SISREG_MAPEAMENTO_LOTE_BOOTSTRAP_FIM: rodada sem trabalho ({Puladas} unidades dentro "
+                + "do TTL) — carga inicial encerrada.", progresso.UnidadesPuladas);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "SISREG_MAPEAMENTO_LOTE: falha ao encerrar a carga inicial.");
         }
     }
 
@@ -859,11 +897,32 @@ public sealed class SisregMapeamentoLoteService(
             .Where(i => i.Resultado == ResultadoUnidadeLote.SemProfissionais)
             .Select(i => i.UnidadeId);
 
-        return await db.Unidades
+        var pendentes = db.Unidades
             .Where(u => u.Ativo && u.Cnes != null && u.Cnes != ""
                      && !comMapeamento.Contains(u.Id)
-                     && !semExecutante.Contains(u.Id))
-            .CountAsync(cancellationToken);
+                     && !semExecutante.Contains(u.Id));
+
+        // O motor só trata o que EXISTE no SISREG (recorte da descoberta). Contar aqui o que ele
+        // nunca vai tratar deixa a carga inicial ligada para sempre: em 01/09/2026 sobraram 8
+        // unidades que só existem no nosso cadastro — uma delas a Secretaria de Saquarema — e o
+        // bootstrap disparou uma rodada por minuto, cada uma gastando a requisição da descoberta
+        // para pular tudo. A última execução diz quem estava no recorte: unidade que não apareceu
+        // nela não está no SISREG e não é pendência de ninguém.
+        var ultima = await db.SisregMapeamentoLoteExecucoes.AsNoTracking()
+            .Where(e => e.UnidadesNoSisreg > 0) // execução que conseguiu descobrir a rede
+            .OrderByDescending(e => e.IniciadoEm)
+            .Select(e => (Guid?)e.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (ultima is { } execucaoId)
+        {
+            var vistasNoSisreg = db.SisregMapeamentoLoteExecucaoItens
+                .Where(i => i.ExecucaoId == execucaoId)
+                .Select(i => i.UnidadeId);
+            pendentes = pendentes.Where(u => vistasNoSisreg.Contains(u.Id));
+        }
+
+        return await pendentes.CountAsync(cancellationToken);
     }
 
     public async Task DesligarBootstrapAsync(CancellationToken cancellationToken = default)
