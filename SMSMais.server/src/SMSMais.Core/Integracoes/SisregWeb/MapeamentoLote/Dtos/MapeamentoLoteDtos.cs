@@ -106,13 +106,19 @@ public sealed record MapeamentoLoteExecucaoItemDto(
 /// e procedimentos já mapeados e liga a varredura diária de cada unidade em horários escalonados.
 /// </summary>
 /// <param name="IntervaloMinutos">Espaço entre os horários de duas unidades.</param>
-/// <param name="HoraInicialLocal">Onde a distribuição começa (Brasília, HH:mm). O padrão são as
-/// 15:00, logo depois da janela em que o SISREG bloqueia a exportação da agenda.</param>
+/// <param name="HoraInicialLocal">
+/// Onde a distribuição começa (Brasília, HH:mm). 18:00: bem depois do fim do bloqueio (15:00) e já
+/// fora do expediente, então a varredura não disputa a sessão do SISREG com quem está atendendo.
+/// </param>
 /// <param name="DiasAFrente">Janela de agenda que cada unidade importa por dia.</param>
 /// <param name="Habilitar">Ligar todos os médicos e procedimentos mapeados de cada unidade.</param>
 public sealed record PrepararRedeRequest(
+    // O atraso de uma unidade não faz a seguinte perder a vez: com varredura viva o scheduler não
+    // dispara e NÃO mexe no ProximoRunEm, então a agenda vencida entra assim que a saída libera
+    // (DecididorVarreduraSisreg). É o que permite espaçar por tempo sem medo — medido: mediana de
+    // 43s por varredura, com um pico de 54 min.
     int IntervaloMinutos = 20,
-    string HoraInicialLocal = "15:00",
+    string HoraInicialLocal = "18:00",
     int DiasAFrente = 21,
     bool Habilitar = true);
 

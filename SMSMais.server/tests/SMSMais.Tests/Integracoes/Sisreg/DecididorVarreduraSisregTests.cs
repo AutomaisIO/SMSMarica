@@ -129,6 +129,29 @@ public class DecididorVarreduraSisregTests
         Assert.Equal(DecisaoVarredura.PularRunVivo, Decidir(Agenda(), importacaoViva: true));
     }
 
+    /// <summary>
+    /// A unidade atrasada NÃO perde a vez.
+    ///
+    /// <para>É o que sustenta os horários de 10 em 10 minutos com 45 unidades: a mediana de uma
+    /// varredura é 43s, mas já houve uma de 54 <b>minutos</b> — nesse intervalo cinco horários
+    /// vencem enquanto a anterior ainda roda. O semáforo é este par de decisões: com varredura
+    /// viva, <c>PularRunVivo</c> não dispara e <b>não mexe no ProximoRunEm</b>; a agenda continua
+    /// vencida e, no tick seguinte (60s) com a saída livre, dispara. Se aqui devolvesse Aguardar,
+    /// ou se o scheduler empurrasse o ProximoRunEm para o dia seguinte, a unidade simplesmente não
+    /// importaria naquele dia — em silêncio.</para>
+    /// </summary>
+    [Fact]
+    public void Atrasada_por_run_vivo_volta_a_disparar_quando_a_saida_libera()
+    {
+        // Venceu há 40 min e ficou esperando: é a fila do horário anterior tendo estourado.
+        var atrasada = Agenda(proximoRunEm: AgoraUtc.AddMinutes(-40));
+
+        Assert.Equal(DecisaoVarredura.PularRunVivo, Decidir(atrasada, varreduraViva: true));
+
+        // Mesma agenda, saída livre: dispara. O atraso não a desqualifica.
+        Assert.Equal(DecisaoVarredura.Disparar, Decidir(atrasada));
+    }
+
     [Fact]
     public void Varredura_viva_faz_o_robo_esperar()
     {

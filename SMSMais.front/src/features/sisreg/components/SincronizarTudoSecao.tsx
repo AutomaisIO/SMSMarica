@@ -16,8 +16,13 @@ import {
 import { ModalDetalheMapeamentoLote } from '@/features/sisreg/components/ModalDetalheMapeamentoLote';
 import type { MapeamentoLoteExecucao, StatusMapeamentoLote } from '@/features/sisreg/types';
 
-/** Espaço entre os horários de duas unidades. 20 min faz as ~42 caberem entre 15:00 e 07:30. */
+/**
+ * Distribuição dos horários diários. Começa às 18:00 (fora do expediente, bem depois do bloqueio
+ * do SISREG às 15:00) e espaça de 20 em 20 min. Uma varredura que estoure o intervalo não faz a
+ * seguinte perder a vez: o scheduler segura e dispara assim que a saída para o SISREG libera.
+ */
 const INTERVALO_MINUTOS = 20;
+const HORA_INICIAL = '18:00';
 
 const CLASSE_STATUS: Record<StatusMapeamentoLote, string> = {
   Pendente: 'bg-gray-100 text-gray-700',
@@ -143,7 +148,7 @@ export function SincronizarTudoSecao() {
     try {
       const r = await prepararRede.mutateAsync({
         intervaloMinutos: INTERVALO_MINUTOS,
-        horaInicialLocal: '15:00',
+        horaInicialLocal: HORA_INICIAL,
         diasAFrente: 21,
         habilitar: true,
       });
@@ -303,9 +308,10 @@ export function SincronizarTudoSecao() {
         <h3 className="text-sm font-semibold text-gray-900">Programar o sincronismo diário</h3>
         <p className="mt-1 text-sm text-gray-600">
           Habilita todos os médicos e procedimentos já mapeados e liga a importação diária de cada
-          unidade, em horários separados por {INTERVALO_MINUTOS} minutos, fora da faixa de 8h às 15h
-          em que o SISREG bloqueia a exportação. O aviso por WhatsApp ao paciente fica{' '}
-          <strong>desligado</strong> em todas.
+          unidade a partir das {HORA_INICIAL}, em horários separados por {INTERVALO_MINUTOS} minutos
+          e fora da faixa de 8h às 15h em que o SISREG bloqueia a exportação. Se uma varredura passar
+          do horário da seguinte, a seguinte espera a saída liberar — não perde o dia. O aviso por
+          WhatsApp ao paciente fica <strong>desligado</strong> em todas.
         </p>
         <div className="mt-3">
           <Button
