@@ -82,6 +82,19 @@ public sealed class SisregMapeamentoLoteOpcoes
     /// </summary>
     public int OrcamentoMinimoParaIniciar { get; set; } = 25;
 
+    /// <summary>
+    /// Orçamento mínimo para o modo de CARGA INICIAL disparar mais uma rodada — bem maior que o
+    /// mínimo geral, porque ali toda unidade pendente é uma unidade <b>nunca mapeada</b>, e essas
+    /// custam <see cref="EstimativaProfissionaisUnidadeNova"/> acessos, não dois ou três.
+    ///
+    /// <para>Sem isto o bootstrap entra em looping: sobrando 200 acessos e faltando só unidades de
+    /// ~89, a rodada gasta 1 requisição na descoberta, pula todas por orçamento e termina — e o
+    /// tick de 60s repete tudo no minuto seguinte. Observado ao vivo em 01/09/2026: duas rodadas
+    /// vazias seguidas, uma por minuto, cada uma queimando um acesso do mesmo orçamento que o
+    /// bootstrap estava esperando reabrir.</para>
+    /// </summary>
+    public int OrcamentoMinimoBootstrap => 1 + EstimativaProfissionaisUnidadeNova;
+
     public TimeSpan IntervaloMinimoRequisicao => TimeSpan.FromMilliseconds(Math.Max(0, PausaMs));
 
     public TimeSpan TtlProcedimentos => TimeSpan.FromDays(Math.Max(1, TtlDiasProcedimentos));

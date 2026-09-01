@@ -79,6 +79,18 @@ public sealed class NotificadorSincronismo(
 
     private static readonly ConcurrentDictionary<string, DateTime> UltimoEnvio = new();
 
+    /// <summary>
+    /// Última reabertura de janela por telefone. <b>Reabrir é mensagem PAGA</b>, e a janela que ela
+    /// abre só vale se o destinatário responder — enquanto ele não responde, todo aviso seguinte
+    /// falha igual. Sem este freio, uma carga inicial de 40 unidades tentaria reabrir 80 vezes em
+    /// poucos minutos: 80 cobranças e 80 vezes o mesmo "temos uma informação" na tela do operador,
+    /// que é como se garante que ninguém leia nenhuma.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, DateTime> UltimaReabertura = new();
+
+    /// <summary>Intervalo mínimo entre duas tentativas de reabrir a janela do mesmo telefone.</summary>
+    private static readonly TimeSpan IntervaloMinimoReabertura = TimeSpan.FromHours(4);
+
     public async Task NotificarAsync(
         string provedor, string titulo, string detalhe,
         string? chaveRepeticao = null, CancellationToken ct = default)
@@ -130,22 +142,68 @@ public sealed class NotificadorSincronismo(
             return;
         }
 
-        var opcoes = comunicacao.Value;
+        // Já tentamos reabrir há pouco: a janela continua fechada porque o destinatário ainda não
+        // respondeu, não porque faltou insistir. Insistir aqui só gera cobrança.
+        var agora = DateTime.UtcNow;
+        var ultima = UltimaReabertura.GetValueOrDefault(telefone);
+        if (agora - ultima < IntervaloMinimoReabertura)
+        {
+            logger.LogInformation(
+                "NOTIFICADOR_SINCRONISMO: janela de {Telefone} fechada e reabertura já tentada — "
+                + "aviso não entregue. Basta o destinatário responder a qualquer mensagem.", telefone);
+            return;
+        }
+        UltimaReabertura[telefone] = agora;
+
+        // Nome e idioma do template vêm da configuração de comunicação com o paciente — é lá que
+        // eles são mantidos em dia com o que a Meta aprovou. Ler isso NÃO pode derrubar o aviso:
+        // um try/catch próprio aqui, e não o genérico lá de cima, porque a diferença entre "a
+        // configuração não abriu" e "a Meta recusou" muda o que a pessoa tem de ir consertar.
+        string template, idioma;
+        try
+        {
+            var opcoes = comunicacao.Value;
+            template = opcoes.TemplateValidacaoCadastro;
+            idioma = opcoes.Idioma;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex, "NOTIFICADOR_SINCRONISMO: não foi possível ler a configuração de comunicação "
+                + "para reabrir a janela de {Telefone}.", telefone);
+            return;
+        }
+
         var legivel =
             "Olá! Este é o canal oficial da saúde. Temos uma informação sobre "
             + $"*{ProcedimentoDoRelatorio}*.";
 
-        var reabertura = await whatsApp.EnviarTemplateAsync(
-            telefone, opcoes.TemplateValidacaoCadastro, opcoes.Idioma,
-            ["Operador", ProcedimentoDoRelatorio], conteudoLegivel: legivel, ct: ct);
+        EnvioWhatsAppResultado reabertura;
+        try
+        {
+            reabertura = await whatsApp.EnviarTemplateAsync(
+                telefone, template, idioma,
+                ["Operador", ProcedimentoDoRelatorio], conteudoLegivel: legivel, ct: ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex, "NOTIFICADOR_SINCRONISMO: erro ao enviar o template {Template} para {Telefone}.",
+                template, telefone);
+            return;
+        }
 
         if (!reabertura.Ok)
         {
             logger.LogWarning(
-                "NOTIFICADOR_SINCRONISMO: falha ao reabrir a janela de {Telefone}: {Erro}",
-                telefone, reabertura.Erro);
+                "NOTIFICADOR_SINCRONISMO: template {Template} recusado para {Telefone}: {Erro}",
+                template, telefone, reabertura.Erro);
             return;
         }
+
+        logger.LogInformation(
+            "NOTIFICADOR_SINCRONISMO: janela de {Telefone} reaberta com o template {Template}.",
+            telefone, template);
 
         // A janela abre com a mensagem entregue, não com a resposta do destinatário: o relatório
         // pode seguir na sequência.

@@ -89,6 +89,12 @@ public sealed class MapeamentoLoteScheduler(
                 return;
             }
 
+            // Só dispara quando cabe uma unidade INTEIRA. As pendentes do bootstrap nunca foram
+            // mapeadas, então custam ~90 acessos cada: com menos que isso a rodada só gastaria a
+            // requisição da descoberta para pular todas — e o tick repetiria no minuto seguinte,
+            // queimando o orçamento que ela mesma está esperando reabrir.
+            if (agendamento.OrcamentoRestante < _opcoes.OrcamentoMinimoBootstrap) return;
+
             if (await servico.DispararAgendadoAsync(ct))
             {
                 logger.LogInformation(
