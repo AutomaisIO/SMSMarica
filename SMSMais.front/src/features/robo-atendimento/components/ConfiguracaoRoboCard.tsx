@@ -139,6 +139,31 @@ export function ConfiguracaoRoboCard() {
         </Campo>
       </div>
 
+      <Campo label="Dias com atendente humano" htmlFor="cfg-exp-dias"
+        dica="Fora destes dias o robô assume o dia inteiro e não promete atendente. Sem o recorte, sábado de manhã contava como expediente.">
+        <div className="flex gap-1" id="cfg-exp-dias">
+          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dia, i) => {
+            const mask = form.diasSemanaAtendimentoHumano ?? 127;
+            const ligado = (mask & (1 << i)) !== 0;
+            return (
+              <button
+                key={dia}
+                type="button"
+                onClick={() => set('diasSemanaAtendimentoHumano', mask ^ (1 << i))}
+                className={
+                  'rounded-md border px-2 py-1 text-xs font-medium ' +
+                  (ligado
+                    ? 'border-primary-300 bg-primary-50 text-primary-700'
+                    : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50')
+                }
+              >
+                {dia}
+              </button>
+            );
+          })}
+        </div>
+      </Campo>
+
       {erro ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
       ) : null}

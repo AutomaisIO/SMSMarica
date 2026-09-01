@@ -117,6 +117,8 @@ export type RoboConfiguracao = {
   horaAtendimentoHumanoInicio: string | null;
   /** Fim do expediente dos atendentes humanos (HH:mm[:ss], Brasília). A partir disso o robô assume. */
   horaAtendimentoHumanoFim: string | null;
+  /** Dias da semana COM atendente humano (bitmask, bit 0 = domingo). Nulo = todos os dias. */
+  diasSemanaAtendimentoHumano: number | null;
   /** Motor de IA que responde: assinatura (legado) ou Messages API. Trocável sem deploy. */
   motor: MotorRobo;
 };

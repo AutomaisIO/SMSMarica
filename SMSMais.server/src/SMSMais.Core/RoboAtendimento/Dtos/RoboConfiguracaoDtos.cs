@@ -12,6 +12,7 @@ public sealed record RoboConfiguracaoDto(
     string? MensagemForaHorario,
     TimeOnly? HoraAtendimentoHumanoInicio,
     TimeOnly? HoraAtendimentoHumanoFim,
+    int? DiasSemanaAtendimentoHumano,
     MotorRobo Motor);
 
 public sealed record SalvarRoboConfiguracaoRequest(
@@ -23,4 +24,5 @@ public sealed record SalvarRoboConfiguracaoRequest(
     string? MensagemForaHorario,
     TimeOnly? HoraAtendimentoHumanoInicio,
     TimeOnly? HoraAtendimentoHumanoFim,
+    int? DiasSemanaAtendimentoHumano = 62,
     MotorRobo Motor = MotorRobo.Assinatura);

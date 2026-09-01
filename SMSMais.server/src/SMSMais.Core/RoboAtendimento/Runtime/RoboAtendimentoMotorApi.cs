@@ -186,8 +186,14 @@ public sealed class RoboAtendimentoMotorApi(
         else
             turnos.Add(("user", atual));
 
-        // A conversa precisa começar com o cidadão.
-        while (turnos.Count > 0 && turnos[0].Papel != "user") turnos.RemoveAt(0);
+        // A API exige que a conversa comece com um turno "user" — mas DESCARTAR os turnos iniciais
+        // do serviço apagava o ANÚNCIO do agendamento (em thread de notificação, a Secretaria fala
+        // primeiro). Foi assim que o robô respondeu "não consegui localizar a sua consulta" a quem
+        // tinha o anúncio na tela, e "eu não sei seu nome" a quem acabara de ser chamado pelo nome:
+        // a regra "nunca desminta o que a Secretaria enviou" não funciona se o modelo nunca vê o
+        // que foi enviado. Um turno-abertura sintético satisfaz a API e preserva o contexto.
+        if (turnos.Count > 0 && turnos[0].Papel != "user")
+            turnos.Insert(0, ("user", "(início da conversa)"));
 
         return [.. turnos.Select(object (t) => new { role = t.Papel, content = t.Texto })];
     }

@@ -77,7 +77,16 @@ public sealed class RoboClassificador(SmsMaisDbContext db, ILogger<RoboClassific
         switch (tipo)
         {
             case TipoCondicaoRobo.PalavraChave:
+                // Com borda de palavra: por substring pura, 'oi' casava com "foi" (41 capturas
+                // falsas em 30 dias no corpus real), 'ciente' com "paciente" — inclusive num relato
+                // de sangramento que caiu em "Confirmação de presença" — e 'ajuda' com o "Como
+                // podemos ajudar?" das auto-respostas de outros comércios.
+                return System.Text.RegularExpressions.Regex.IsMatch(
+                    alvoNorm,
+                    @"(?<![\p{L}\p{N}])" + System.Text.RegularExpressions.Regex.Escape(Normalizar(valor)) + @"(?![\p{L}\p{N}])",
+                    RegexOptions.CultureInvariant, RegexTimeout);
             case TipoCondicaoRobo.Frase:
+                // Frase continua por substring — é a válvula de escape para quem QUER casar trecho.
                 return alvoNorm.Contains(Normalizar(valor), StringComparison.Ordinal);
             case TipoCondicaoRobo.Regex:
                 try
@@ -94,6 +103,10 @@ public sealed class RoboClassificador(SmsMaisDbContext db, ILogger<RoboClassific
                 return false;
         }
     }
+
+    /// <summary>Normalização canônica do classificador (sem acento, minúsculas). Pública porque o
+    /// processador usa a MESMA régua na detecção de auto-resposta.</summary>
+    public static string NormalizarTexto(string s) => Normalizar(s);
 
     private static string Normalizar(string s)
     {

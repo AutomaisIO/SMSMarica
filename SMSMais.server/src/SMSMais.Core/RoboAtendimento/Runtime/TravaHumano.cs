@@ -32,13 +32,21 @@ public static class TravaHumano
     }
 
     /// <summary>Verdadeiro quando o horário atual (Brasília, UTC-3) está FORA do expediente dos
-    /// atendentes humanos — antes de <paramref name="inicio"/> ou a partir de <paramref name="fim"/>.
-    /// Nesse caso o robô ignora a trava humano-por-janela e assume a conversa. Ambos nulos ⇒ nunca
-    /// assume por horário (retorna falso).</summary>
-    public static bool ForaDoExpedienteHumano(TimeOnly? inicio, TimeOnly? fim, DateTime agoraUtc)
+    /// atendentes humanos — dia da semana fora do expediente, antes de <paramref name="inicio"/> ou
+    /// a partir de <paramref name="fim"/>. Nesse caso o robô ignora a trava humano-por-janela e
+    /// assume a conversa. Tudo nulo ⇒ nunca assume por horário (retorna falso).
+    ///
+    /// <para>O parâmetro <paramref name="diasSemana"/> (bitmask, bit 0 = domingo, como em
+    /// <c>RoboAssunto.DiasSemana</c>) existe porque a regra só de hora tratava SÁBADO 11h como
+    /// "atendente disponível": numa simulação sobre caso real, o robô prometeu "vou conectar você
+    /// agora" num sábado — e o cidadão esperaria em silêncio até segunda.</para></summary>
+    public static bool ForaDoExpedienteHumano(TimeOnly? inicio, TimeOnly? fim, DateTime agoraUtc, int? diasSemana = null)
     {
+        var agora = agoraUtc.AddHours(-3); // regra única de fuso: Brasília fixo
+        if (diasSemana is int mask && (mask & (1 << (int)agora.DayOfWeek)) == 0)
+            return true;                                         // dia sem expediente humano
         if (inicio is null && fim is null) return false;
-        var hora = TimeOnly.FromDateTime(agoraUtc.AddHours(-3)); // regra única de fuso: Brasília fixo
+        var hora = TimeOnly.FromDateTime(agora);
         if (inicio is { } ini && hora < ini) return true;        // atendentes ainda não chegaram
         if (fim is { } f && hora >= f) return true;              // atendentes já saíram
         return false;

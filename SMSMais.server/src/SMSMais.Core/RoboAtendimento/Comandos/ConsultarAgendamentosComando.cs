@@ -67,9 +67,12 @@ public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientes
             return new(false,
                 "NÃO localizei agendamento futuro NO NOSSO SISTEMA — o que NÃO quer dizer que não exista: "
                 + "marcação feita agora pela equipe ou pela regulação pode ainda não ter chegado aqui. "
-                + "NUNCA diga que a pessoa não tem nada agendado. Diga que não conseguiu localizar por "
-                + "aqui, peça para ela conferir a guia no posto onde é atendida, e encaminhe para um "
-                + "atendente confirmar.");
+                + "NUNCA diga que a pessoa não tem nada agendado. E se um ATENDENTE ou a Secretaria já "
+                + "anunciou um agendamento nesta conversa, ELE VALE: reconheça-o e trabalhe a partir "
+                + "dele. Diga que não conseguiu localizar por aqui e peça para a pessoa conferir a guia "
+                + "no posto onde é atendida. Encaminhe para atendimento humano SÓ se estiver dentro do "
+                + "horário — fora dele, não prometa atendente: oriente a retornar no horário de "
+                + "atendimento.");
 
         var linhas = futuros.Select(f =>
         {

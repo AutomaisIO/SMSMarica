@@ -22,6 +22,9 @@ internal sealed class RoboConfiguracaoConfiguration : IEntityTypeConfiguration<R
         builder.Property(x => x.MensagemForaHorario).HasColumnName("mensagem_fora_horario").HasMaxLength(1000);
         builder.Property(x => x.HoraAtendimentoHumanoInicio).HasColumnName("hora_atendimento_humano_inicio");
         builder.Property(x => x.HoraAtendimentoHumanoFim).HasColumnName("hora_atendimento_humano_fim");
+        builder.Property(x => x.DiasSemanaAtendimentoHumano)
+            .HasColumnName("dias_semana_atendimento_humano")
+            .HasDefaultValue(62); // seg-sex; ver comentário na entidade
 
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.CriadoPor).HasColumnName("criado_por");

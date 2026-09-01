@@ -72,7 +72,8 @@ public sealed class RoboAtendimentoProcessador(
         // um atendente agiu recentemente (corte = agora−recência). Dentro do expediente, a trava
         // humano-por-janela vale a janela toda (corte = âncora).
         var foraExpediente = TravaHumano.ForaDoExpedienteHumano(
-            cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow);
+            cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow,
+            cfg.DiasSemanaAtendimentoHumano);
         var corteHumano = TravaHumano.CorteHumano(ancora, foraExpediente, DateTime.UtcNow);
 
         // Trava humano (1ª checagem).
@@ -83,6 +84,20 @@ public sealed class RoboAtendimentoProcessador(
         }
 
         var texto = mensagem.Conteudo ?? string.Empty;
+
+        // AUTO-RESPOSTA de outro WhatsApp Business ("X agradece seu contato. Como podemos ajudar?",
+        // "responderemos assim que possível"): não é gente. Responder dispara a auto-resposta do
+        // outro lado e vira laço bot-a-bot até o teto de interações — na amostra real de 14 dias há
+        // 17 destas, de comércios e consultórios. A proteção tem de ser AQUI, antes do modelo:
+        // na simulação, o Haiku só não caiu no laço por conta própria, desobedecendo a regra que
+        // manda responder com pergunta.
+        if (PareceAutoResposta(texto))
+        {
+            await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff,
+                "Auto-resposta de outro sistema detectada — não respondido.", ct);
+            return;
+        }
+
         // Classificação por ESTADO tem prioridade: se há um desafio cadastral pendente, a resposta
         // (dígitos do CPF / botões) é do assunto "Verificação cadastral". O desafio é buscado por
         // PACIENTE quando a conversa está resolvida, MAS também por TELEFONE — o caso comum é o
@@ -297,6 +312,20 @@ public sealed class RoboAtendimentoProcessador(
         if (tipo == TipoMensagem.Robo) return "robo";
         if (autor != null) return "atendente";
         return "sistema";
+    }
+
+    /// <summary>Heurística de auto-resposta de WhatsApp Business (bot do outro lado). Padrões
+    /// observados no tráfego real; exige mensagem com algum corpo para não pegar frase de gente.</summary>
+    private static bool PareceAutoResposta(string texto)
+    {
+        if (texto.Length < 30) return false;
+        var t = RoboClassificador.NormalizarTexto(texto);
+        return t.Contains("agradece seu contato", StringComparison.Ordinal)
+            || t.Contains("responderemos assim que possivel", StringComparison.Ordinal)
+            || t.Contains("nao estamos disponiveis no momento", StringComparison.Ordinal)
+            || t.Contains("mensagem automatica", StringComparison.Ordinal)
+            || (t.Contains("fora do horario de atendimento", StringComparison.Ordinal)
+                && t.Contains("deixe sua mensagem", StringComparison.Ordinal));
     }
 
     /// <summary>Converte negrito markdown (**x**) para o do WhatsApp (*x*) e colapsa asteriscos duplicados.</summary>

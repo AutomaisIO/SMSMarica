@@ -79,8 +79,10 @@ public static class RoboFerramentaCatalogo
                 "Confirma a presença do paciente no agendamento. FLUXO EM DUAS CHAMADAS: primeiro "
                 + "chame com cpf (os 4 PRIMEIROS dígitos — NUNCA peça o CPF completo) + mesNascimento "
                 + "+ anoNascimento; o comando valida e devolve o NOME para você confirmar com a "
-                + "pessoa. Só depois que ela confirmar o nome, chame de novo com confirmado=true. "
-                + "Nunca revele procedimento, data, hora ou local antes de a identidade conferir.",
+                + "pessoa. Ao confirmar o nome, pergunte SÓ o nome — ainda SEM revelar procedimento, "
+                + "data ou local: se os dígitos forem de outra pessoa, o nome é a última barreira "
+                + "antes do vazamento. Só depois que ela confirmar o nome, chame de novo com "
+                + "confirmado=true e aí sim mostre o agendamento confirmado.",
                 GateComConfirmacao(comMotivo: false)),
 
             [ComandoRobo.IniciarCancelamento] = new(
@@ -92,8 +94,9 @@ public static class RoboFerramentaCatalogo
 
             [ComandoRobo.ConsultarStatusExameRecente] = new(
                 "consultar_status_exame_recente",
-                "Consulta a situação do exame/laudo recente do paciente. Exige identidade: peça os 3 "
-                + "PRIMEIROS dígitos do CPF (nunca o CPF completo) antes de chamar.",
+                "Consulta a situação do exame/laudo recente do paciente. Exige identidade: peça os 4 "
+                + "PRIMEIROS dígitos do CPF, todos de uma vez (nunca o CPF completo, nunca dígito por "
+                + "dígito), antes de chamar.",
                 SoCpf()),
 
             [ComandoRobo.ConsultarPosicaoRegulacao] = new(

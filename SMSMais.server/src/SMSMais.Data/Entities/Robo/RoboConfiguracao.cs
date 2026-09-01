@@ -58,6 +58,12 @@ public class RoboConfiguracao
     /// <c>null</c> = sem limite de fim. Ambos nulos ⇒ a trava humano-por-janela vale o dia todo.</summary>
     public TimeOnly? HoraAtendimentoHumanoFim { get; set; }
 
+    /// <summary>Dias da semana COM atendente humano (bitmask, bit 0 = domingo — mesma convenção de
+    /// <see cref="RoboAssunto.DiasSemana"/>). Nulo = todos os dias. Padrão: segunda a sexta (62) —
+    /// sem isto, sábado de manhã contava como "atendente disponível" e o robô prometia atendente
+    /// que só chega segunda.</summary>
+    public int? DiasSemanaAtendimentoHumano { get; set; } = 62;
+
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
     public DateTime? AtualizadoEm { get; set; }

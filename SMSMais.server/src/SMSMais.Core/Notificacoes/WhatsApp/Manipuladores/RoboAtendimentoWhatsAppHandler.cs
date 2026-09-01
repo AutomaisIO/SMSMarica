@@ -31,7 +31,7 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
 
         // Robô ligado globalmente? (e o expediente humano, para o override por horário)
         var cfg = await db.RoboConfiguracoes.AsNoTracking()
-            .Select(c => new { c.Ativo, c.HoraAtendimentoHumanoInicio, c.HoraAtendimentoHumanoFim })
+            .Select(c => new { c.Ativo, c.HoraAtendimentoHumanoInicio, c.HoraAtendimentoHumanoFim, c.DiasSemanaAtendimentoHumano })
             .FirstOrDefaultAsync(ct);
         if (cfg is not { Ativo: true }) return;
 
@@ -49,7 +49,8 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
         // corte é a âncora da janela; FORA dele, só a atividade RECENTE cala (o robô assume quando os
         // atendentes saíram, mas recua se um deles acabou de agir — ex.: correção manual às 20h).
         var foraExpediente = TravaHumano.ForaDoExpedienteHumano(
-            cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow);
+            cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow,
+            cfg.DiasSemanaAtendimentoHumano);
         var ancora = TravaHumano.AncoraEfetiva(
             ctx.Conversa.JanelaAbertaEm, ctx.Mensagem.OcorridoEm, ctx.Conversa.RoboRearmadoEm);
         var corteHumano = TravaHumano.CorteHumano(ancora, foraExpediente, DateTime.UtcNow);

@@ -18,10 +18,16 @@ public static class RoboPrompt
     /// robô é proibido de pedir dado pessoal — ele não teria como verificar coisa alguma.</param>
     public static string MontarInstrucao(
         string personaGlobal, RoboAssunto? assunto, bool dentroHorario, string? urlApp,
-        bool pertoDoLimite = false, bool temComandos = true)
+        bool pertoDoLimite = false, bool temComandos = true, DateTime? agoraUtc = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine(personaGlobal.Trim());
+        sb.AppendLine();
+        // O modelo não tinha NENHUMA noção de data: numa simulação ele inventou "você escreveu no
+        // sábado" sem ter como saber. Granularidade de DIA de propósito — hora aqui estouraria o
+        // cache do bloco system a cada turno; o que é hora já chega pelo bloco dentro/fora abaixo.
+        var hoje = (agoraUtc ?? DateTime.UtcNow).AddHours(-3); // regra única de fuso: Brasília fixo
+        sb.AppendLine($"Hoje é {hoje.ToString("dddd, dd/MM/yyyy", new System.Globalization.CultureInfo("pt-BR"))}.");
         sb.AppendLine();
         if (assunto is null)
         {
@@ -78,7 +84,8 @@ public static class RoboPrompt
         }
         sb.AppendLine();
         var app = string.IsNullOrWhiteSpace(urlApp) ? "o aplicativo do cidadão da prefeitura" : urlApp!.Trim();
-        sb.AppendLine($"AO SE DESPEDIR, sempre oriente a pessoa: acesse {app} — lá ficam os exames, consultas e "
+        sb.AppendLine($"SOMENTE AO ENCERRAR o atendimento (nunca no meio da conversa nem na primeira "
+            + $"resposta), oriente a pessoa: acesse {app} — lá ficam os exames, consultas e "
             + "atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.");
         return sb.ToString();
     }
