@@ -224,6 +224,13 @@ public sealed class SisregMapeamentoLoteService(
         };
         estadoVivo.Iniciar(progresso, cts);
 
+        // Durante a CARGA INICIAL o operador acompanha unidade a unidade: é um evento único, ele
+        // está esperando, e saber que "a USF X entrou com 12 médicos" é o retorno que faz a espera
+        // valer. No dia a dia isso seria ruído — 40 mensagens por noite todo dia — então o
+        // detalhe morre junto com o bootstrap, sem virar mais um botão para alguém lembrar de
+        // desligar.
+        var detalhado = (await ObterAgendamentoAsync(token)).Bootstrap;
+
         var pacer = new PacerRequisicoes(_opcoes.IntervaloMinimoRequisicao);
         Func<CancellationToken, Task> antesDeCadaRequisicao = async c =>
         {
@@ -242,7 +249,7 @@ public sealed class SisregMapeamentoLoteService(
             progresso.Fase = ProgressoMapeamentoLote.FaseMapeamento;
             status = await MapearUnidadesAsync(
                 execucao, progresso, descoberta.CriadasIds, descoberta.CnesNoSisreg,
-                job.UsuarioId, antesDeCadaRequisicao, token);
+                job.UsuarioId, antesDeCadaRequisicao, detalhado, token);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -391,6 +398,7 @@ public sealed class SisregMapeamentoLoteService(
         IReadOnlySet<string> cnesNoSisreg,
         Guid? usuarioId,
         Func<CancellationToken, Task> antesDeCadaRequisicao,
+        bool detalhado,
         CancellationToken token)
     {
         var candidatas = await CarregarCandidatasAsync(cnesNoSisreg, token);
@@ -440,6 +448,15 @@ public sealed class SisregMapeamentoLoteService(
             progresso.UnidadeAtual = candidata.Nome;
             var requisicoesAntes = progresso.RequisicoesFeitas;
 
+            if (detalhado)
+            {
+                await notificador.NotificarAsync(
+                    SisregWebSessao.Provedor, $"Iniciando {candidata.Nome}",
+                    $"Unidade {progresso.UnidadesFeitas + 1} de {progresso.UnidadesTotal}."
+                    + $"\nAcessos disponíveis nesta hora: {restante}.",
+                    ct: CancellationToken.None);
+            }
+
             try
             {
                 // Escopo próprio por unidade: DbContext limpo, sem acumular rastreamento da rede
@@ -488,6 +505,22 @@ public sealed class SisregMapeamentoLoteService(
                     practitionersCriados: fhir.Criados,
                     practitionersVinculados: fhir.Vinculados,
                     requisicoes: progresso.RequisicoesFeitas - requisicoesAntes);
+
+                if (detalhado)
+                {
+                    var resumo = semProfissionais
+                        ? "Sem médico executante no SISREG (normal em unidade que não atende agenda)."
+                        : $"{atualizado.ProfissionaisEncontrados} médicos "
+                          + $"({atualizado.ProfissionaisNovos} novos)\n"
+                          + $"{atualizado.ProcedimentosEncontrados} procedimentos "
+                          + $"({atualizado.ProcedimentosNovos} novos)\n"
+                          + $"{fhir.Criados} criados no hub / {fhir.Vinculados} vinculados\n"
+                          + $"{progresso.RequisicoesFeitas - requisicoesAntes} acessos ao SISREG";
+
+                    await notificador.NotificarAsync(
+                        SisregWebSessao.Provedor, $"OK {candidata.Nome}", resumo,
+                        ct: CancellationToken.None);
+                }
             }
             catch (Exception ex) when (SisregWebSessao.EhCaptcha(ex))
             {
@@ -533,6 +566,13 @@ public sealed class SisregMapeamentoLoteService(
                     execucao, candidata, ResultadoUnidadeLote.Erro, criadasAgora,
                     observacao: ex.Message, token: token,
                     requisicoes: progresso.RequisicoesFeitas - requisicoesAntes);
+
+                // Erro de unidade avisa SEMPRE, detalhado ou não: é o que exige alguém. A chave de
+                // repetição é por unidade — a mesma unidade quebrando em rodadas seguidas não
+                // manda a mesma mensagem de novo, mas outra unidade quebrando manda.
+                await notificador.NotificarAsync(
+                    SisregWebSessao.Provedor, $"Falhou: {candidata.Nome}", ex.Message,
+                    chaveRepeticao: $"unidade:{candidata.Unidade.Id}", ct: CancellationToken.None);
             }
 
             Interlocked.Increment(ref progresso.UnidadesFeitas);
