@@ -364,6 +364,10 @@ export function SincronizarTudoSecao() {
                   <th className="py-1 pr-3 font-medium">Unid. SISREG</th>
                   <th className="py-1 pr-3 font-medium">Criadas</th>
                   <th className="py-1 pr-3 font-medium">Mapeadas</th>
+                  {/* Sem esta coluna, uma rodada que não teve o que fazer aparece como "0/42" e
+                      lê-se como falha — quando é a economia funcionando: as unidades já estavam
+                      atualizadas e não custaram acesso nenhum ao SISREG. */}
+                  <th className="py-1 pr-3 font-medium">Já atualizadas</th>
                   <th className="py-1 pr-3 font-medium">Médicos</th>
                   <th className="py-1 pr-3 font-medium">Procedimentos</th>
                   <th className="py-1 pr-3 font-medium">Req.</th>
@@ -397,6 +401,9 @@ export function SincronizarTudoSecao() {
                     <td className="py-1.5 pr-3 whitespace-nowrap">
                       {e.unidadesMapeadas}/{e.unidadesTotal}
                     </td>
+                    <td className="py-1.5 pr-3 text-gray-500">
+                      {e.unidadesPuladas > 0 ? e.unidadesPuladas : '—'}
+                    </td>
                     <td className="py-1.5 pr-3 whitespace-nowrap">
                       {e.profissionaisEncontrados}
                       {e.profissionaisNovos > 0 && (
@@ -419,6 +426,20 @@ export function SincronizarTudoSecao() {
               </tbody>
             </table>
           </div>
+
+          {/* A rodada mais recente não mapeou nada e não deu erro: dizer POR QUÊ, aqui, em vez de
+              deixar o "0/42" sozinho na tabela sugerindo que alguma coisa quebrou. */}
+          {execucoes.data![0].unidadesMapeadas === 0 &&
+          execucoes.data![0].unidadesPuladas > 0 &&
+          execucoes.data![0].unidadesComErro === 0 ? (
+            <p className="mt-2 text-xs text-gray-500">
+              A última sincronização não precisou buscar nada: as{' '}
+              {execucoes.data![0].unidadesPuladas} unidades já estavam atualizadas. É assim que se
+              economiza acesso ao SISREG — só o que está desatualizado é buscado de novo. Para forçar
+              a releitura de uma unidade específica, use <strong>Atualizar mapeamento</strong> na aba
+              SISREG dela.
+            </p>
+          ) : null}
         </div>
       )}
 
