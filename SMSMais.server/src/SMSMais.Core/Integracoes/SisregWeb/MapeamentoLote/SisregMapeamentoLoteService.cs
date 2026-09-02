@@ -1047,9 +1047,12 @@ public sealed class SisregMapeamentoLoteService(
             // para pacientes de consultas que já aconteceram.
             agenda.EnviarConfirmacao = false;
 
-            // Reagendar zera o cursor e o próximo run: o horário mudou, e um cursor de janela antiga
-            // faria a primeira rodada retomar do meio de uma varredura que não existe mais.
-            agenda.ProximoRunEm = null;
+            // RECALCULA o próximo disparo para o horário novo. Zerar sem recalcular é o mesmo que
+            // não programar nada: o scheduler trata ProximoRunEm nulo como "não elegível" (de
+            // propósito — senão o primeiro tick depois de um deploy varreria no meio da tarde), e a
+            // unidade ficaria ativa, com horário na tela, sem nunca disparar. Foi exatamente o que
+            // aconteceu em 01/09/2026: 45 unidades programadas, nulas, nenhuma rodou.
+            agenda.ProximoRunEm = Varredura.Background.DecididorVarreduraSisreg.ProximoDiario(hora, agora, Brasilia);
             agenda.AtualizadoEm = agora;
 
             totalProfs += profs;
