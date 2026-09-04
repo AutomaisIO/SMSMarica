@@ -79,7 +79,7 @@ public sealed class ResolvedorTipoExameSisreg(
             AutoCriado = true,
             // Null de propósito — o código exportado pelo SISREG não é o SIGTAP oficial.
             ProcedimentoSigtapId = null,
-            ModalidadeDicom = InferirModalidade(sigtap),
+            ModalidadeDicom = InferirModalidade(nome, sigtap),
             // O worklist item quer texto curto e descritivo — o nome do SISREG já é exatamente isso.
             RequestedProcedureDescription = nome,
             ScheduledProcedureStepDescription = nome,
@@ -145,13 +145,24 @@ public sealed class ResolvedorTipoExameSisreg(
     /// dentro do mesmo 020502. Não é gate: com o envio à worklist desligado, um palpite errado não
     /// chega a equipamento nenhum. O que não encaixa vira
     /// <see cref="ModalidadeDicom.Indefinida"/> em vez de chutar.
+    ///
+    /// <para><b>Mamografia sai do NOME, não do código</b> (corrigido em 04/09/2026). A versão
+    /// anterior separava MG de DX olhando <b>6</b> dígitos (<c>020403</c>) — mas a premissa de que
+    /// "a defasagem não move o subgrupo" só vale para os <b>4</b> primeiros. Medido em produção: o
+    /// SISREG exportou <c>0204030153</c>, <c>0204030145</c>, <c>0204030170</c> e <c>0204030072</c>
+    /// para radiografias de <b>tórax e costelas</b>, e no SIGTAP oficial o subgrupo 02.04.03 tem só
+    /// três procedimentos, todos mamografia (001-3, 003-0, 018-8) — aqueles códigos nem existem lá.
+    /// Resultado: 5 tipos e 165 exames de raio-X ficaram marcados como MG, e teriam resolvido para o
+    /// mamógrafo do CDT no dia em que alguém ligasse a worklist neles. O nome é a chave confiável
+    /// deste resolvedor (ver nota da classe) — e "MAMOGRAFIA" no nome é justamente o que a tabela
+    /// defasada não consegue mentir.</para>
     /// </summary>
-    private static ModalidadeDicom InferirModalidade(string sigtapSoDigitos)
+    internal static ModalidadeDicom InferirModalidade(string nome, string sigtapSoDigitos)
     {
-        if (sigtapSoDigitos.Length < 4) return ModalidadeDicom.Indefinida;
+        // Vem antes do código: dentro de 0204 (radiologia) o nome é o que separa mama de osso/tórax.
+        if (nome.Contains("MAMOGRAF", StringComparison.OrdinalIgnoreCase)) return ModalidadeDicom.MG;
 
-        // Mamografia é 0204 03 — precisa vir antes da regra geral de 0204 (RX).
-        if (sigtapSoDigitos.Length >= 6 && sigtapSoDigitos[..6] == "020403") return ModalidadeDicom.MG;
+        if (sigtapSoDigitos.Length < 4) return ModalidadeDicom.Indefinida;
 
         return sigtapSoDigitos[..4] switch
         {
