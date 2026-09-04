@@ -27,6 +27,15 @@
 | **AE Title local** (Calling AE) | **`RX-CDT`** |
 | **Nome da estação** (Station Name) | **`RX-CDT`** |
 
+**Aparelho identificado pelo primeiro estudo recebido (03/09/2026):** `KONICA MINOLTA`,
+model `0013`, StationName `ImagePilot.`, modalidade **`DX`** — o que confirma o cadastro.
+O envio de imagem (C-STORE) **já estava funcionando** antes mesmo de o AE de worklist existir,
+porque a `11112` aceita qualquer Calling AE. Falta o técnico apontar a worklist.
+
+> A `StationName` que o aparelho emite é `ImagePilot.` (com ponto), não `RX-CDT`. Não é
+> problema: o isolamento da worklist é pelo **Calling AE** e pelo Worklist Label, não pela
+> StationName. Mas vale pedir ao técnico que a ajuste para `RX-CDT`, por coerência.
+
 O AE Title precisa ser **exatamente** `RX-CDT` — é por ele que o servidor entrega a worklist só
 para esta máquina, e é o mesmo valor cadastrado no painel da SMS (Exames de Imagem →
 Equipamentos), associado ao CDT.
@@ -114,15 +123,17 @@ aparelho.
 
 ---
 
-## 8. Duas perguntas para o fabricante (antes de ligar em produção)
+## 8. Uma pergunta para o técnico (antes de ligar em produção)
 
-1. **O console exige `(0040,0008) Scheduled Protocol Code Sequence`** para resolver o menu de
-   exposição a partir da worklist? No mamógrafo Fuji do CDT, a worklist chegava e o exame **não
-   iniciava** por causa disso (tabela de tradução vazia, erro 31027 — ver
-   [`PACS/diagnostico-worklist-fuji.md`](./PACS/diagnostico-worklist-fuji.md)). Hoje o SMSMais
-   **não** emite essa tag; se este aparelho precisar, combinamos o código antes.
-2. **A modalidade emitida é `DX` ou `CR`?** O cadastro está como **`DX`**. Se o aparelho emitir
-   `CR`, avise — é um ajuste de um campo no painel, mas sem ele a worklist não casa.
+**O ImagePilot exige `(0040,0008) Scheduled Protocol Code Sequence`** para resolver o menu de
+exposição a partir da worklist? A pergunta não é acadêmica: no mamógrafo **Fuji** do CDT a
+worklist chegava e o exame **não iniciava** exatamente por causa disso — a tabela que traduz o
+código do procedimento em menu estava vazia, e o console dava erro 31027 (ver
+[`PACS/diagnostico-worklist-fuji.md`](./PACS/diagnostico-worklist-fuji.md)). O SMSMais hoje
+**não** emite essa tag. Se este aparelho precisar, combinamos o código antes de ligar.
+
+> A modalidade **já está confirmada como `DX`** pelo estudo recebido em 03/09 — não precisa
+> perguntar.
 
 ---
 
