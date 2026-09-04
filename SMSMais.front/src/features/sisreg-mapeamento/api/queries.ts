@@ -12,6 +12,7 @@ import {
   sugerirDeParaSigtap,
 } from '@/features/sisreg-mapeamento/api/mapeamentoApi';
 import {
+  alternarHistoricoVarredura,
   cancelarVarredura,
   executarVarredura,
   executarVarreduraPeriodo,
@@ -23,6 +24,7 @@ import {
   salvarVarreduraAgenda,
 } from '@/features/sisreg-mapeamento/api/varreduraApi';
 import type {
+  AlternarHistoricoPayload,
   ImportarAgendaPontualPayload,
   SalvarVarreduraAgendaPayload,
 } from '@/features/sisreg-mapeamento/types';
@@ -179,6 +181,18 @@ export function useSalvarVarreduraAgenda(unidadeId: string | null) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (payload: SalvarVarreduraAgendaPayload) => salvarVarreduraAgenda(payload, unidadeId),
+    onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.agenda(unidadeId) }),
+  });
+}
+
+/**
+ * Liga/desliga a importação do passado da unidade. Invalida a agenda porque é lá que mora a
+ * cobertura (`historicoCobertoDe`), que é o que a tela mostra para responder "já foi feito?".
+ */
+export function useAlternarHistoricoVarredura(unidadeId: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AlternarHistoricoPayload) => alternarHistoricoVarredura(payload, unidadeId),
     onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.agenda(unidadeId) }),
   });
 }

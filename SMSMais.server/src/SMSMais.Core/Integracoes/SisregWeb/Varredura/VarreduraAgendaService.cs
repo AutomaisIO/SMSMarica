@@ -30,6 +30,23 @@ public interface IVarreduraAgendaService
     /// <summary>Disparo pelo scheduler. Devolve null em colisão (não é erro: só reprograma).</summary>
     Task<Guid?> IniciarAgendadoAsync(Guid unidadeId, CancellationToken ct);
 
+    /// <summary>
+    /// Um período específico de uma unidade EXPLÍCITA, sem depender do header <c>X-Unidade-Id</c>.
+    ///
+    /// <para>Existe para o motor de histórico, que roda em background e por isso não tem request de
+    /// onde tirar a unidade. É o mesmo caminho do backfill manual — inclusive a supressão do aviso
+    /// ao paciente, que é obrigatória aqui: importar agenda de meses atrás não pode disparar
+    /// WhatsApp sobre consulta que já aconteceu.</para>
+    ///
+    /// <para>Devolve null em colisão ou fora da janela de entrada — como o disparo agendado, não é
+    /// erro: o motor só tenta de novo no próximo tick.</para>
+    /// </summary>
+    Task<Guid?> IniciarPeriodoAgendadoAsync(
+        Guid unidadeId, DateOnly inicio, DateOnly fim, CancellationToken ct);
+
+    /// <summary>Liga/desliga a importação do passado da unidade ativa.</summary>
+    Task<VarreduraAgendaDto> AlternarHistoricoAsync(AlternarHistoricoRequest request, CancellationToken ct);
+
     /// <summary>Executa o job — chamado pelo runner, fora de qualquer request.</summary>
     Task ExecutarAsync(VarreduraJob job, CancellationToken ct);
 
@@ -298,6 +315,73 @@ public sealed class VarreduraAgendaService(
         catch (ConflitoException)
         {
             // Corrida com um disparo manual: não é erro, o scheduler só reprograma.
+            return null;
+        }
+    }
+
+    public async Task<VarreduraAgendaDto> AlternarHistoricoAsync(
+        AlternarHistoricoRequest request, CancellationToken ct)
+    {
+        var unidade = await unidadeAtual.ObterObrigatoriaAsync(ct);
+
+        var agenda = await db.SisregVarreduraAgendas.FirstOrDefaultAsync(a => a.UnidadeId == unidade.Id, ct);
+        if (agenda is null)
+        {
+            // A linha pode não existir: a unidade nunca configurou varredura diária. O histórico não
+            // depende disso — cria a linha desligada para a diária e ligada só para o passado.
+            agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id, Ativo = false };
+            db.SisregVarreduraAgendas.Add(agenda);
+        }
+
+        agenda.HistoricoAtivo = request.Ativo;
+
+        if (request.Reiniciar)
+        {
+            agenda.HistoricoCobertoDe = null;
+            agenda.HistoricoFatiasVazias = 0;
+            agenda.HistoricoConcluidoEm = null;
+        }
+        else if (request.Ativo)
+        {
+            // Religar uma unidade dada por concluída sem reiniciar não faria nada — o motor pula
+            // quem tem HistoricoConcluidoEm. Limpar só a conclusão retoma de onde parou.
+            agenda.HistoricoConcluidoEm = null;
+            agenda.HistoricoFatiasVazias = 0;
+        }
+
+        agenda.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return await ObterAgendaAsync(ct);
+    }
+
+    public async Task<Guid?> IniciarPeriodoAgendadoAsync(
+        Guid unidadeId, DateOnly inicio, DateOnly fim, CancellationToken ct)
+    {
+        if (estadoVivo.ObterAtual() is not null
+            || importacaoEstadoVivo.ObterAtual() is not null
+            || loteEstadoVivo.EmExecucao)
+        {
+            return null;
+        }
+
+        // O bloqueio 08:00–15:00 do expo_solicitacoes vale igual aqui: disparar dentro dele
+        // gastaria a requisição para receber o alerta de aplicativo bloqueado.
+        var horaLocal = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia));
+        if (!_opcoes.PodeIniciarNaHora(horaLocal)) return null;
+
+        var unidade = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(u => u.Id == unidadeId, ct);
+        if (unidade is null) return null;
+
+        try
+        {
+            var (execucaoId, _) = await CriarExecucaoAsync(
+                unidade, DisparoSincronizacao.Agendado, null, inicio, fim, ct);
+            return execucaoId;
+        }
+        catch (ConflitoException)
+        {
+            // Corrida com um disparo manual: não é erro, o motor só tenta de novo.
             return null;
         }
     }
@@ -1048,7 +1132,10 @@ public sealed class VarreduraAgendaService(
             _opcoes.BloqueioFimLocal,
             _opcoes.CorteEntradaLocal,
             // Unidade sem linha de configuração NÃO envia: o gatilho é opt-in.
-            agenda?.EnviarConfirmacao ?? false);
+            agenda?.EnviarConfirmacao ?? false,
+            agenda?.HistoricoAtivo ?? false,
+            agenda?.HistoricoCobertoDe,
+            agenda?.HistoricoConcluidoEm);
     }
 
     private async Task<string?> NomeDoUsuarioAsync(Guid usuarioId, CancellationToken ct) =>

@@ -514,6 +514,13 @@ public static class DependencyInjection
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoRunner>();
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoScheduler>();
 
+        // Histórico da agenda: anda para trás, uma fatia por tick, dirigido pela cobertura gravada
+        // em sisreg_varredura_agenda. Sem fila e sem runner de propósito — não há execução longa a
+        // orquestrar; cada fatia é uma varredura por período do motor que já existe.
+        services.Configure<Integracoes.SisregWeb.Historico.HistoricoOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.Historico.HistoricoOpcoes.Secao));
+        services.AddHostedService<Integracoes.SisregWeb.Historico.HistoricoAgendaScheduler>();
+
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.
         services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ISisregImportacaoFila, Integracoes.SisregWeb.Importacao.Background.SisregImportacaoFila>();

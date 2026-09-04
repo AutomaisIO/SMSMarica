@@ -70,5 +70,39 @@ public class SisregVarreduraAgenda
     /// <summary>Última execução desta unidade. Sem FK — o rastreio não pode travar a agenda.</summary>
     public Guid? UltimaExecucaoId { get; set; }
 
+    // ---- Importação do PASSADO (backfill histórico, dirigido por cobertura) ----
+
+    /// <summary>
+    /// Traz o histórico desta unidade, andando para trás. Ligado sob demanda, unidade a unidade —
+    /// é caro em requisição e só interessa a quem vai analisar o passado.
+    /// </summary>
+    public bool HistoricoAtivo { get; set; }
+
+    /// <summary>
+    /// <b>Até onde para trás a importação está coberta.</b> NULL = nada além do que a varredura
+    /// diária trouxe.
+    ///
+    /// <para>É o que substitui um contador de "quantas vezes o botão rodou": contador não sabe de
+    /// buracos — se uma execução cobriu 2024, a seguinte morreu em 2022 e a terceira cobriu 2025,
+    /// nenhum número diz o que falta. Um intervalo diz. E rodar de novo fica barato, porque o motor
+    /// pula o que já está coberto em vez de refazer tudo.</para>
+    /// </summary>
+    public DateOnly? HistoricoCobertoDe { get; set; }
+
+    /// <summary>
+    /// Fatias consecutivas que voltaram vazias. É assim que o motor descobre onde a unidade
+    /// realmente começou, em vez de confiar na data de cadastro.
+    ///
+    /// <para><b>Por que não confiar no cadastro:</b> o Centro Materno Infantil declara escala desde
+    /// 10/09/1986. Usar essa data como limite custaria 472 requisições procurando agendamento de 40
+    /// anos atrás que não existe. Deixando o dado decidir, a unidade para sozinha no começo de
+    /// verdade — e o mesmo vale para qualquer data absurda que apareça depois.</para>
+    /// </summary>
+    public int HistoricoFatiasVazias { get; set; }
+
+    /// <summary>Quando o motor concluiu que chegou ao início desta unidade. Preenchido = não há
+    /// mais o que buscar; a tela mostra a cobertura e para de oferecer o comando.</summary>
+    public DateTime? HistoricoConcluidoEm { get; set; }
+
     public DateTime AtualizadoEm { get; set; }
 }

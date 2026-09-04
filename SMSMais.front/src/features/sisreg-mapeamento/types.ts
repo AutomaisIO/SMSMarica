@@ -88,6 +88,14 @@ export type VarreduraAgenda = {
   /** Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp? Vale para
    * toda importação — varredura e upload de arquivo. */
   enviarConfirmacao: boolean;
+  /** Motor do passado ligado para esta unidade. */
+  historicoAtivo: boolean;
+  /** Até onde para trás a importação está coberta (ISO date). Null = só o que a diária trouxe.
+   * É isto que responde "o histórico já foi feito?" — um contador de execuções não saberia dizer
+   * o que ficou faltando. */
+  historicoCobertoDe: string | null;
+  /** Preenchido quando o motor chegou ao início real da unidade (fatias seguidas vazias). */
+  historicoConcluidoEm: string | null;
   /** Pede a exportação sem escolher profissional nem procedimento: o SISREG devolve a agenda da
    * unidade inteira numa requisição só. Ligado, `requisicoesEstimadas` vem 1 (o back calcula) e o
    * mapeamento deixa de recortar o que é consultado. */
@@ -185,4 +193,11 @@ export type ImportacaoAgendaPontualResultado = {
   /** Sem SIGTAP mapeado — vira pendência; a varredura noturna do expo completa depois. */
   pendencias: number;
   mensagem: string;
+};
+
+/** Liga/desliga a importação do passado de uma unidade. */
+export type AlternarHistoricoPayload = {
+  ativo: boolean;
+  /** Recomeça do zero: zera cobertura e contagem de fatias vazias. */
+  reiniciar?: boolean;
 };

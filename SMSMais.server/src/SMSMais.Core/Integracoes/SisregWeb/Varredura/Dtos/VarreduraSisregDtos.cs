@@ -26,7 +26,24 @@ public sealed record VarreduraAgendaDto(
     TimeOnly CorteEntradaLocal,
     /// <summary>Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp?
     /// Vale para toda importação — varredura e upload de arquivo.</summary>
-    bool EnviarConfirmacao);
+    bool EnviarConfirmacao,
+    /// <summary>Motor do passado ligado para esta unidade.</summary>
+    bool HistoricoAtivo,
+    /// <summary>Até onde para trás a importação está coberta. Null = só o que a varredura diária
+    /// trouxe. É isto que responde "o histórico já foi feito?" — um contador de execuções não
+    /// saberia dizer o que ficou faltando.</summary>
+    DateOnly? HistoricoCobertoDe,
+    /// <summary>Preenchido quando o motor chegou ao início real da unidade (fatias seguidas
+    /// vazias). A partir daí não há mais o que buscar.</summary>
+    DateTime? HistoricoConcluidoEm);
+
+/// <summary>Liga/desliga a importação do passado desta unidade.</summary>
+public sealed record AlternarHistoricoRequest(
+    bool Ativo,
+    /// <summary>Recomeça do zero: zera a cobertura e a contagem de fatias vazias. Serve para
+    /// reabrir uma unidade dada por concluída — por exemplo, quando se descobre que ela parou por
+    /// um hiato longo e não por ter chegado ao começo.</summary>
+    bool Reiniciar = false);
 
 /// <summary>Ligar/desligar o sincronismo diário e ajustar hora e janela de dias.</summary>
 public sealed record SalvarVarreduraAgendaRequest(

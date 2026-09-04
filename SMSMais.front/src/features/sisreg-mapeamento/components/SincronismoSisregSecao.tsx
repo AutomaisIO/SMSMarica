@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, CalendarRange, Loader2, Play, Square } from 'lucide-react';
+import { CalendarClock, CalendarRange, History, Loader2, Play, RotateCcw, Square } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import {
+  useAlternarHistoricoVarredura,
   useCancelarVarredura,
   useExecutarVarredura,
   useSalvarVarreduraAgenda,
@@ -62,6 +63,7 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
   const [detalhe, setDetalhe] = useState<VarreduraExecucao | null>(null);
 
   const agenda = useVarreduraAgenda(unidadeId);
+  const alternarHistorico = useAlternarHistoricoVarredura(unidadeId);
   const salvar = useSalvarVarreduraAgenda(unidadeId);
   const executar = useExecutarVarredura(unidadeId);
   const cancelar = useCancelarVarredura(unidadeId);
@@ -292,6 +294,85 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           {aviso.texto}
         </p>
       )}
+
+      {/* Importação do passado */}
+      <div className="mt-4 border-t border-gray-100 pt-3">
+        <h4 className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <History className="h-4 w-4 text-gray-500" />
+          Importar o passado desta unidade
+        </h4>
+        <p className="mt-1 max-w-3xl text-xs text-gray-600">
+          Anda para trás em fatias de 31 dias, <strong>uma por vez</strong>, e para sozinho depois de
+          seis meses seguidos sem nenhum registro — é o dado que diz onde a unidade começou, não a
+          data de cadastro. Traz tudo: cria procedimento e profissional que não existem mais, e
+          guarda a linha crua do SISREG. Não avisa paciente.
+        </p>
+        <p className="mt-1 max-w-3xl text-xs text-gray-500">
+          Roda em segundo plano e cede a vez a qualquer outro trabalho do SISREG, então demora — o
+          que importa é a cobertura abaixo, não a velocidade.
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="text-xs text-gray-600">
+            Coberto até:{' '}
+            <strong className={dados?.historicoCobertoDe ? 'text-gray-900' : 'text-gray-400'}>
+              {dados?.historicoCobertoDe
+                ? new Date(`${dados.historicoCobertoDe}T12:00:00`).toLocaleDateString('pt-BR')
+                : 'só o que a varredura diária trouxe'}
+            </strong>
+          </span>
+          {dados?.historicoConcluidoEm ? (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+              Chegou ao início da unidade
+            </span>
+          ) : dados?.historicoAtivo ? (
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+              Em andamento
+            </span>
+          ) : null}
+        </div>
+
+        {podeEditar && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {dados?.historicoAtivo && !dados?.historicoConcluidoEm ? (
+              <Button
+                variante="outline"
+                tamanho="sm"
+                disabled={alternarHistorico.isPending}
+                onClick={() => alternarHistorico.mutate({ ativo: false })}
+              >
+                <Square className="mr-1.5 h-3.5 w-3.5" />
+                Parar
+              </Button>
+            ) : (
+              <Button
+                tamanho="sm"
+                disabled={alternarHistorico.isPending}
+                onClick={() => alternarHistorico.mutate({ ativo: true })}
+              >
+                <Play className="mr-1.5 h-3.5 w-3.5" />
+                {dados?.historicoCobertoDe ? 'Continuar de onde parou' : 'Importar o passado'}
+              </Button>
+            )}
+
+            {/* Só faz sentido quando já houve cobertura: reabre uma unidade dada por concluída,
+                para o caso de ela ter parado por um hiato longo e não por ter chegado ao começo. */}
+            {dados?.historicoCobertoDe && (
+              <Button
+                variante="ghost"
+                tamanho="sm"
+                disabled={alternarHistorico.isPending}
+                title="Zera a cobertura e recomeça de hoje para trás."
+                onClick={() => alternarHistorico.mutate({ ativo: true, reiniciar: true })}
+              >
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                Recomeçar do zero
+              </Button>
+            )}
+            {alternarHistorico.isPending && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+          </div>
+        )}
+      </div>
 
       {/* Histórico */}
       {(execucoes.data?.length ?? 0) > 0 && (

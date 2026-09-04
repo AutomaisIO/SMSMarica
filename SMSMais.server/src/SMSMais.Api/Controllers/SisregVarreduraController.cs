@@ -47,6 +47,21 @@ public sealed class SisregVarreduraController(
         [FromBody] SalvarVarreduraAgendaRequest request, CancellationToken cancellationToken) =>
         await _varredura.SalvarAgendaAsync(request, cancellationToken);
 
+    /// <summary>
+    /// Liga/desliga a importação do PASSADO desta unidade — o motor anda para trás em fatias de 31
+    /// dias, uma por vez, e para sozinho depois de seis meses seguidos sem nenhum registro.
+    ///
+    /// <para>É trabalho de fundo: cede lugar a qualquer outro motor do SISREG e só toca quando há
+    /// folga de orçamento. Não avisa paciente — importar agenda de meses atrás não pode disparar
+    /// WhatsApp sobre consulta que já aconteceu.</para>
+    /// </summary>
+    [HttpPut("historico")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<VarreduraAgendaDto>(StatusCodes.Status200OK)]
+    public async Task<VarreduraAgendaDto> AlternarHistorico(
+        [FromBody] AlternarHistoricoRequest request, CancellationToken cancellationToken) =>
+        await _varredura.AlternarHistoricoAsync(request, cancellationToken);
+
     /// <summary>Dispara a varredura agora. 202: roda no servidor, fechar a aba não interrompe.</summary>
     [HttpPost("executar")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]

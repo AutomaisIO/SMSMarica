@@ -26,6 +26,12 @@ internal sealed class SisregVarreduraAgendaConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.PausadoAte).HasColumnName("pausado_ate");
         builder.Property(x => x.UltimaExecucaoEm).HasColumnName("ultima_execucao_em");
         builder.Property(x => x.UltimaExecucaoId).HasColumnName("ultima_execucao_id");
+        builder.Property(x => x.HistoricoAtivo).HasColumnName("historico_ativo").IsRequired();
+        builder.Property(x => x.HistoricoCobertoDe).HasColumnName("historico_coberto_de");
+        builder.Property(x => x.HistoricoFatiasVazias)
+            .HasColumnName("historico_fatias_vazias").IsRequired();
+        builder.Property(x => x.HistoricoConcluidoEm).HasColumnName("historico_concluido_em");
+
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em").IsRequired();
 
         // O scheduler varre por elegibilidade: só as ativas interessam.

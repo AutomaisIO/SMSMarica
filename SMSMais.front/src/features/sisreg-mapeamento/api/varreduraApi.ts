@@ -1,5 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  AlternarHistoricoPayload,
   ImportacaoAgendaPontualResultado,
   ImportarAgendaPontualPayload,
   SalvarVarreduraAgendaPayload,
@@ -114,5 +115,21 @@ export async function listarVarreduraExecucoes(
     params: { limite },
     ...cabecalhoUnidade(unidadeId),
   });
+  return data;
+}
+
+/**
+ * Liga/desliga a importação do PASSADO desta unidade. O motor anda para trás em fatias de 31 dias,
+ * uma por vez, e para sozinho depois de seis meses seguidos sem registro nenhum.
+ */
+export async function alternarHistoricoVarredura(
+  payload: AlternarHistoricoPayload,
+  unidadeId?: string | null,
+): Promise<VarreduraAgenda> {
+  const { data } = await http.put<VarreduraAgenda>(
+    '/sisreg/varredura/historico',
+    payload,
+    cabecalhoUnidade(unidadeId),
+  );
   return data;
 }
