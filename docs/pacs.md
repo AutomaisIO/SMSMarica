@@ -246,7 +246,16 @@ para 5.34.3 veio depois, por outros motivos).
 |---|---|---|
 | `WORK-CDT` | `FDR-MAMO` | mamógrafo do CDT |
 | `WORK-CMI` | `US_CMI` | ultrassom do CMI |
+| `WORK-US01-CDT` | `US01-CDT` | ultrassom 01 do CDT |
+| `WORK-US02-CDT` | `US02-CDT` | ultrassom 02 do CDT |
+| `WORK-DO-CDT` | `DO-CDT` | densitometria óssea do CDT |
+| `WORK-RX-CDT` | `RX-CDT` | raio-X do CDT (2026-09-04) |
 | **`WORKLIST`** | **nenhum** (enxerga tudo) | **o backend** — `Pacs:Dcm4chee:WorklistBaseUrl` |
+
+Medição de 04/09/2026 que confirma a partição: `WORKLIST` devolve **133** itens e a soma dos AEs
+com label dá exatamente 133 (`WORK-CDT` 3 + `WORK-CMI` 17 + `WORK-DO-CDT` 7 + `WORK-US01-CDT` 100
++ `WORK-US02-CDT` 6 + `WORK-RX-CDT` 0). Bate — ou seja, **não há item sem label** furando o
+isolamento.
 
 Prova (C-FIND **sem** filtro de modalidade — o pior caso, equipamento mal configurado):
 `WORK-CDT` devolveu só o exame do CDT, `WORK-CMI` só o do CMI, `WORKLIST` os dois.
@@ -275,6 +284,36 @@ deixaria de enxergar itens das outras unidades e quebraria a confirmação
 **Ao cadastrar um equipamento novo:** criar o Archive AE correspondente (clone de um
 existente) e setar o label = AE Title do equipamento. Sem isso, o aparelho novo ou não
 recebe nada, ou recebe a lista de todos.
+
+#### Procedimento — criar o AE de worklist de um equipamento novo
+
+Executado assim em 04/09/2026 para o `WORK-RX-CDT`. Tudo por **LDAP no host**; a API REST não
+serve (ver o aviso do `dcmMWLWorklistLabel` acima). São **quatro** objetos, e esquecer qualquer um
+falha em silêncio:
+
+1. **Backup**: `slapcat -b 'dc=dcm4che,dc=org' > backup.ldif` e
+   `curl -s .../devices/dcm4chee-arc > device.json`.
+2. **O AE e sua subárvore** (12 entradas: transfer capabilities, UPS, MWL FIND, MPPS). Clonar um AE
+   existente com `ldapsearch -b '<DN do AE modelo>' | sed | ldapadd`. O `sed` de
+   `s/<AE-antigo>/<AE-novo>/g` resolve o AE **e** o label de uma vez quando o nome do AE contém o
+   label (`WORK-DO-CDT` contém `DO-CDT`) — conferir com `grep -c` que não sobrou ocorrência do
+   antigo antes de aplicar. As conexões (`cn=dicom` 11112, `cn=dicom-tls` 2762) são herdadas por
+   referência: **equipamento novo não ganha porta nova**.
+3. **O `dcmWebApp` homônimo** — entrada separada, fora da subárvore do AE. **É obrigatório**: sem
+   ele, `/aets/<AE>/rs/mwlitems` responde `404 {"errorMessage":"No Web Application with MWL_RS
+   service class found for Application Entity: ..."}`. Precisa das service classes `MWL_RS`,
+   `MPPS_RS`, `UPS_RS`, `UPS_MATCHING`, `DCM4CHEE_ARC_AET`.
+4. **O registro em `cn=Unique AE Titles Registry`** (`objectClass: dicomUniqueAETitle`). O
+   `WORK-DO-CDT` foi criado sem este passo e funciona, mas fica fora do controle de colisão de AE.
+5. `POST /dcm4chee-arc/ctrl/reload` — **não** precisa `systemctl restart` (que custa ~40 s).
+6. **Verificar**: o AE em `GET /dcm4chee-arc/aets`; `ldapsearch -s base` mostrando o
+   `dcmMWLWorklistLabel`; `/aets/<AE>/rs/mwlitems` respondendo (204 = lista vazia, correto para AE
+   recém-criado); e a **soma dos itens por AE batendo com o total do `WORKLIST`**.
+
+Enquanto isso for manual, cadastrar o equipamento no painel sem fazer este procedimento produz
+itens de worklist carimbados com um label que nenhum AE consulta — o aparelho não recebe nada, sem
+erro de nenhum lado. Proposta de automatização em
+[`pendencias/provisionamento-equipamento-pacs-pela-tela.md`](./pendencias/provisionamento-equipamento-pacs-pela-tela.md).
 
 ### Ciclo de vida do item de worklist (sem MPPS)
 
@@ -306,10 +345,14 @@ do exame (`POST /solicitacoes-exame/{id}/reenviar-worklist`).
 
 Parâmetros por equipamento (entregáveis ao técnico):
 
-| Equipamento | Unidade | Modalidade | AE Title | Doc |
-|---|---|---|---|---|
-| Fuji FDR-3000AWS | CDT | MG | `FDR-MAMO` | [`pacs-cdt-mamografo.md`](./pacs-cdt-mamografo.md) |
-| Ultrassom | Centro Materno Infantil | US | `US_CMI` | [`pacs-us-cmi.md`](./pacs-us-cmi.md) |
+| Equipamento | Unidade | Modalidade | AE Title | AE de worklist | Doc |
+|---|---|---|---|---|---|
+| Mamógrafo Fuji FDR-3000AWS | CDT | MG | `FDR-MAMO` | `WORK-CDT` | [`pacs-cdt-mamografo.md`](./pacs-cdt-mamografo.md) |
+| Ultrassom | Centro Materno Infantil | US | `US_CMI` | `WORK-CMI` | [`pacs-us-cmi.md`](./pacs-us-cmi.md) |
+| Ultrassom 01 | CDT | US | `US01-CDT` | `WORK-US01-CDT` | — |
+| Ultrassom 02 | CDT | US | `US02-CDT` | `WORK-US02-CDT` | — |
+| Densitometria óssea | CDT | OT | `DO-CDT` | `WORK-DO-CDT` | — |
+| **Raio-X** | **CDT** | **DX** | **`RX-CDT`** | **`WORK-RX-CDT`** | [`pacs-rx-cdt.md`](./pacs-rx-cdt.md) |
 
 O AE Title do equipamento **não** precisa ser cadastrado no dcm4chee — o servidor
 aceita qualquer Calling AE (§10.4). O cadastro no painel serve à worklist.
