@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Briefing do robô — a estrutura que o treinamento manipula</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Briefing do robô — a estrutura que o treinamento manipula</h1>
+<p>&gt; Este documento é <strong>injetado no prompt</strong> do agente treinador (<code>RoboBriefingService</code>). Ele &gt; descreve a <em>estrutura</em> — o que é assunto, regra global, regra local, condição, comando e canal &gt; de saída. O <strong>estado atual</strong> (quais assuntos existem, com quais treinos) NÃO mora aqui: é lido &gt; do banco em tempo de execução e anexado ao briefing. Documento estático descreve a máquina; &gt; o banco descreve a configuração da máquina. Se este texto e o banco divergirem, o banco vence &gt; e este texto está com defeito.</p>
+<h2>1. As cinco camadas do prompt do robô</h2>
+<p>Toda resposta do robô ao cidadão nasce de um prompt montado por <code>RoboPrompt.MontarInstrucao(...)</code> + <code>RoboGuardrail.Texto</code>. A ordem abaixo é a ordem real de montagem, e importa: o que vem depois tende a vencer o que veio antes.</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Camada</th><th>Onde mora</th><th>Quem edita</th><th>Alcance</th></tr></thead><tbody>
+<tr><td>1</td><td><strong>Persona global</strong></td><td><code>robo_configuracao.persona_global</code> (banco, linha única)</td><td>humano, pela tela</td><td>todos os assuntos</td></tr>
+<tr><td>2</td><td><strong>Data de hoje</strong></td><td>gerado (<code>RoboPrompt</code>)</td><td>ninguém</td><td>todos</td></tr>
+<tr><td>3</td><td><strong>Persona do assunto</strong></td><td><code>robo_assunto.instrucoes_persona</code></td><td>humano, pela tela</td><td>um assunto</td></tr>
+<tr><td>4</td><td><strong>Regras do assunto (treinos)</strong></td><td><code>robo_assunto_treino</code> (lista ordenada)</td><td>humano <strong>e o agente treinador</strong></td><td>um assunto</td></tr>
+<tr><td>5</td><td><strong>Blocos de situação</strong></td><td>gerado: dentro/fora de horário, sem comandos, perto do limite, despedida com URL do app</td><td>ninguém</td><td>todos</td></tr>
+<tr><td>6</td><td><strong>Guardrail</strong></td><td><code>RoboGuardrail.Texto</code> — <strong>código C#</strong></td><td>só por PR/deploy</td><td>todos, e vence tudo</td></tr>
+</tbody></table></div>
+<p>Consequência prática para o treinamento: <strong>uma crítica só é resolvível sem código quando cabe na camada 4</strong> (ou na 3, ou nas condições de roteamento). Se a correção exigir mexer no guardrail (camada 6), ela é uma <em>pendência de alteração de código</em> — não há como aplicá-la pela tela.</p>
+<h2>2. Assunto</h2>
+<p>Um <code>RoboAssunto</code> é a unidade de competência do robô. Não existe "bot pra tudo": cada assunto carrega sua persona, seus treinos, suas condições de ativação e o conjunto de comandos liberados.</p>
+<p>Campos que mudam comportamento:</p>
+<ul>
+<li><code>Nome</code>, <code>Descricao</code> — identificação.</li>
+<li><code>InstrucoesPersona</code> — camada 3 acima.</li>
+<li><code>Modelo</code> — modelo de IA do assunto; nulo usa <code>robo_configuracao.modelo_padrao</code>.</li>
+<li><code>Ativo</code> — desligado, o assunto não é considerado na classificação.</li>
+<li><code>HorarioInicio</code> / <code>HorarioFim</code> / <code>DiasSemana</code> (bitmask, bit 0 = domingo) — janela do assunto.</li>
+</ul>
+<p>  Fora dela o robô é instruído a <strong>não prometer atendente</strong>.</p>
+<ul>
+<li><code>MaxInteracoesSemResolver</code> — teto de turnos antes do hand-off; no último turno o prompt ganha</li>
+</ul>
+<p>  o bloco "esta é a última mensagem".</p>
+<ul>
+<li><code>LimiarConfianca</code> (0..1) — abaixo disso, hand-off.</li>
+<li><code>EscalonamentoUnidadeId</code> — para qual fila cai o hand-off.</li>
+<li><code>Ordem</code> — prioridade na classificação (menor primeiro).</li>
+<li><code>Padrao</code> — <strong>no máximo um</strong> assunto é o padrão: é ele que atende quando nenhuma condição casa.</li>
+</ul>
+<p>  Sem assunto padrão, "sem assunto" não é neutro — é o robô sem orientação, sem treinos e sem   limiar. Cerca de 22% das mensagens caem nesse caminho.</p>
+<h2>3. Regra local = treino (<code>RoboAssuntoTreino</code>)</h2>
+<p>É o material que o operador (e agora o agente treinador) vai acumulando por assunto. Todo treino <strong>ativo</strong> entra no prompt como um item de uma lista <code>Regras (siga cada uma):</code>, na ordem de <code>Ordem</code>. Campos: <code>Tipo</code>, <code>Titulo</code>, <code>Conteudo</code>, <code>Ordem</code>, <code>Ativo</code>.</p>
+<p>Tipos (<code>TipoTreinoRobo</code>, valores estáveis):</p>
+<div class="tw"><table><thead><tr><th>Valor</th><th>Tipo</th><th>Uso</th></tr></thead><tbody>
+<tr><td>1</td><td><code>Instrucao</code></td><td>diretriz de conduta neste assunto</td></tr>
+<tr><td>2</td><td><code>Exemplo</code></td><td>pergunta do cidadão + resposta desejada (few-shot)</td></tr>
+<tr><td>3</td><td><code>Glossario</code></td><td>termo local e o que significa</td></tr>
+<tr><td>4</td><td><code>Do</code></td><td>o que o robô <strong>deve</strong> fazer</td></tr>
+<tr><td>5</td><td><code>Dont</code></td><td>o que o robô <strong>não</strong> deve fazer</td></tr>
+</tbody></table></div>
+<p>Como o treino vira texto no prompt: <code>- {Titulo}: {Conteudo}</code> (o título é opcional e some quando vazio). Portanto o <code>Conteudo</code> precisa se sustentar sozinho como uma frase imperativa — ele será lido fora de qualquer contexto de tela.</p>
+<p><strong>Exclusão de treino é lógica</strong>: desativa-se (<code>Ativo = false</code>), não se apaga. É o que permite desfazer uma correção do agente.</p>
+<h2>4. Condição de ativação (<code>RoboAssuntoCondicao</code>) — o roteamento</h2>
+<p>Antes de chamar a IA, <code>RoboClassificador</code> faz um pré-match barato da mensagem contra as condições de cada assunto ativo, na ordem de <code>RoboAssunto.Ordem</code>. Tipos (<code>TipoCondicaoRobo</code>):</p>
+<div class="tw"><table><thead><tr><th>Valor</th><th>Tipo</th><th>Semântica</th></tr></thead><tbody>
+<tr><td>1</td><td><code>PalavraChave</code></td><td>o texto <strong>contém a palavra</strong>, insensível a acento e caixa</td></tr>
+<tr><td>2</td><td><code>Regex</code></td><td>o texto casa com a expressão regular</td></tr>
+<tr><td>3</td><td><code>Frase</code></td><td>o texto <strong>contém a frase inteira</strong>, insensível a acento e caixa</td></tr>
+</tbody></table></div>
+<p>Crítica típica que se resolve <strong>aqui e não em treino</strong>: "isso caiu no assunto errado", "ele respondeu como se fosse confirmação de agendamento e a pessoa falava de laudo". Mexer em treino nesse caso é remendo: a regra vai para o assunto que nem deveria ter sido escolhido.</p>
+<p>Cuidado ao criar condição: uma palavra-chave genérica ("exame", "consulta") num assunto de <code>Ordem</code> baixa <strong>rouba</strong> mensagens de todos os assuntos abaixo dele. Condição nova exige checar colisão com os assuntos de ordem menor.</p>
+<h2>5. Comandos = as ferramentas (canal de ação e de saída)</h2>
+<p>O robô só faz o que tem ferramenta para fazer. O conjunto da sessão é <strong><code>ComandoRoboCatalogo.Base</code> ∪ comandos habilitados do assunto</strong>.</p>
+<ul>
+<li><strong>Base (sempre disponíveis, mesmo sem assunto)</strong>: <code>ConsultarCadastro</code>,</li>
+</ul>
+<p>  <code>ConsultarStatusAgendamento</code>, <code>ConsultarUnidades</code>, <code>EncaminharParaHumano</code>. São só leitura.</p>
+<ul>
+<li><strong>Por assunto</strong> (<code>robo_assunto_comando.habilitado</code>): o resto do catálogo, incluindo os de</li>
+</ul>
+<p>  escrita (<code>ConfirmarPresenca</code>, <code>IniciarCancelamento</code>, <code>RegistrarNumeroErrado</code>,   <code>VerificarCadastro</code>).</p>
+<ul>
+<li><strong><code>ResponderCidadao</code> não é um comando opcional</strong>: é a ferramenta <strong>terminal obrigatória</strong>,</li>
+</ul>
+<p>  sempre presente. É o <strong>único canal de saída</strong> — texto solto do modelo é descartado.</p>
+<p>O catálogo é <strong>código</strong> (<code>ComandoRoboCatalogo.Itens</code>), não dado. Comando novo = alteração de código. A tela só liga e desliga o que já existe.</p>
+<p>Regra estrutural que cai direto no treinamento: <strong>sem ferramenta, o robô é proibido de pedir dado pessoal</strong>. Se a crítica for "ele deveria ter consultado X" e não existe comando para X, a resposta correta é uma <em>pendência de alteração de código</em>, nunca um treino mandando ele afirmar o que não pode verificar.</p>
+<h2>6. Saída — o que o cidadão lê</h2>
+<p><code>responder_cidadao(texto, handoff, motivo, confianca)</code>. O campo <code>texto</code> é <strong>exclusivamente</strong> a mensagem que o cidadão lê: nada de raciocínio, nome de ferramenta ou descrição de passo interno. Se o modelo encerra o turno sem chamar essa ferramenta, a prosa dele é <strong>descartada</strong> e a conversa cai em hand-off com motivo <code>sem-uso-da-ferramenta-de-saida</code>.</p>
+<p>Formatação é de WhatsApp: negrito com <strong>um</strong> asterisco, itálico com <code>_</code>, sem markdown.</p>
+<h2>7. Guardrail — o que nenhum treino pode contradizer</h2>
+<p><code>RoboGuardrail.Texto</code> é anexado ao system de <strong>todo</strong> assunto e nasceu de erros reais de produção. Um treino que contrarie qualquer item abaixo é <strong>inválido</strong> e deve virar pendência, não regra:</p>
+<ol>
+<li><strong>Saúde não se orienta por aqui.</strong> Sintoma, dor, urgência, remédio, gravidade: não opina, não</li>
+</ol>
+<p>   orienta, não pergunta sobre sintoma. Encaminha ao posto / rede de urgência. Vence todas as    outras regras.</p>
+<ol>
+<li>Formatação de WhatsApp.</li>
+<li><strong>Privacidade</strong>: nada de procedimento, data, hora ou local antes de identidade confirmada por</li>
+</ol>
+<p>   comando — nem repetindo do histórico.</p>
+<ol>
+<li><strong>Identidade</strong>: quatro primeiros dígitos do CPF de uma vez, depois mês/ano; nunca CPF completo,</li>
+</ol>
+<p>   nunca dígito a dígito, nunca exemplo de formato.</p>
+<ol>
+<li><strong>Nunca afirmar sem ferramenta</strong> — inclusive ausência ("você não tem nada agendado").</li>
+<li><strong>Hand-off só a pedido</strong> ou por impossibilidade real; nunca como cortesia, nunca na primeira</li>
+</ol>
+<p>   mensagem, nunca fora do horário humano.</p>
+<ol>
+<li>Não contradizer atendente humano; cortesia a assunto encerrado não reabre atendimento.</li>
+<li>Sempre 2ª pessoa com quem escreve.</li>
+<li><strong>Não agenda, não remarca, não desmarca.</strong> Orienta o posto.</li>
+<li><strong>Não inventa canais</strong>: só o posto presencial e o app do cidadão. Não existe 0800 nem central.</li>
+<li>Saída só por <code>responder_cidadao</code>.</li>
+</ol>
+<h2>8. Trava de humano e horário</h2>
+<p>Duas janelas diferentes, que se confundem com facilidade:</p>
+<ul>
+<li><strong>Janela do assunto</strong> (<code>RoboAssunto.HorarioInicio/Fim/DiasSemana</code>): quando <em>aquele assunto</em></li>
+</ul>
+<p>  atende.</p>
+<ul>
+<li><strong>Janela do atendente humano</strong> (<code>robo_configuracao.HoraAtendimentoHumanoInicio/Fim</code> +</li>
+</ul>
+<p>  <code>DiasSemanaAtendimentoHumano</code>, padrão 62 = seg-sex): quando <em>existe gente</em>. Fora dela o robô   assume mesmo com humano na sessão, e é proibido de prometer atendente.</p>
+<p>Crítica do tipo "ele prometeu atendente num sábado" quase sempre é configuração de janela, não treino.</p>
+<h2>9. O que o treinamento pode e não pode mudar</h2>
+<div class="tw"><table><thead><tr><th>Alvo</th><th>Quem pode mudar</th><th>Via treinamento?</th></tr></thead><tbody>
+<tr><td>Treino do assunto (camada 4)</td><td>humano e <strong>agente</strong></td><td><strong>sim</strong>, aplicado direto (com desfazer)</td></tr>
+<tr><td>Condição de ativação (roteamento)</td><td>humano e <strong>agente</strong></td><td><strong>sim</strong>, aplicado direto (com desfazer)</td></tr>
+<tr><td>Persona do assunto (camada 3)</td><td>humano</td><td>pendência de regra de negócio</td></tr>
+<tr><td>Persona global (camada 1)</td><td>humano</td><td>pendência de regra de negócio — afeta todos os assuntos</td></tr>
+<tr><td>Janelas de horário, limiar, teto, escalonamento</td><td>humano</td><td>pendência de regra de negócio</td></tr>
+<tr><td>Ligar/desligar comando do assunto</td><td>humano</td><td>pendência de regra de negócio</td></tr>
+<tr><td>Guardrail, catálogo de comandos, novo comando, motor</td><td><strong>código</strong></td><td>pendência de alteração de código</td></tr>
+</tbody></table></div>
+<h2>10. Vocabulário do processo de treinamento</h2>
+<ul>
+<li><strong>Crítica</strong> — o que o atendente escreveu ao marcar uma resposta do robô pelo ícone na bolha.</li>
+<li><strong>Item de treinamento</strong> — a unidade de trabalho: crítica + observação + análise + alterações +</li>
+</ul>
+<p>  pendências + simulações.</p>
+<ul>
+<li><strong>Adversários</strong> — passagem obrigatória de reinterpretação: antes de aplicar, a regra proposta é</li>
+</ul>
+<p>  atacada por leitores que tentam mostrar que ela <strong>anula</strong>, <strong>contradiz</strong> ou <strong>torna dúbia</strong> uma   regra existente (global, do guardrail ou de outro assunto).</p>
+<ul>
+<li><strong>Pendência</strong> — bloqueio que exige humano: <em>regra de negócio</em> (decisão que o agente não pode</li>
+</ul>
+<p>  tomar) ou <em>alteração de código</em> (precisa de PR/deploy, e de autorização explícita).</p>
+<ul>
+<li><strong>Simulação</strong> — ensaio de um turno contra o modelo treinado atual, sem falar com o cidadão e</li>
+</ul>
+<p>  sem executar comando de escrita. Após qualquer alteração aplicada, fica <strong>pendente</strong> até rodar.</p>
+</main>
+</body>
+</html>

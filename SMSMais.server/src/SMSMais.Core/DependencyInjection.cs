@@ -710,6 +710,25 @@ public static class DependencyInjection
             Notificacoes.WhatsApp.Manipuladores.RoboAtendimentoWhatsAppHandler>();
         services.AddHostedService<RoboAtendimento.Runtime.RoboAtendimentoWorker>();
 
+        // ---- Treinamento do robô (crítica do atendente → análise adversarial → correção) ----
+        // Cliente próprio da Messages API: o agente treinador roda no Fable, com turnos longos —
+        // o timeout do motor de atendimento (60s) mataria a análise no meio.
+        services.AddHttpClient<RoboAtendimento.Treinamento.ClienteAnthropicTreinamento>(client =>
+        {
+            client.BaseAddress = new Uri(anthropicBaseUrl);
+            client.Timeout = TimeSpan.FromMinutes(10);
+        });
+        services.AddScoped<RoboAtendimento.Treinamento.IRoboBriefingService,
+            RoboAtendimento.Treinamento.RoboBriefingService>();
+        services.AddScoped<RoboAtendimento.Treinamento.RoboTreinamentoAplicador>();
+        services.AddScoped<RoboAtendimento.Treinamento.IRoboTreinadorAgente,
+            RoboAtendimento.Treinamento.RoboTreinadorAgente>();
+        services.AddScoped<RoboAtendimento.Treinamento.IRoboTreinamentoSimulador,
+            RoboAtendimento.Treinamento.RoboTreinamentoSimulador>();
+        services.AddScoped<RoboAtendimento.Treinamento.IRoboTreinamentoService,
+            RoboAtendimento.Treinamento.RoboTreinamentoService>();
+        services.AddHostedService<RoboAtendimento.Treinamento.RoboTreinamentoWorker>();
+
         // Comandos do robô (o "guichê" tipado) + dispatcher (habilitação por assunto + trilha).
         services.AddScoped<RoboAtendimento.Comandos.IRoboComandoDispatcher, RoboAtendimento.Comandos.RoboComandoDispatcher>();
         services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.RegistrarNumeroErradoComando>();

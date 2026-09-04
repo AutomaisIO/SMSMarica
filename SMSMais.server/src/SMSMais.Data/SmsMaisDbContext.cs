@@ -232,6 +232,13 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RoboConfiguracao> RoboConfiguracoes => Set<RoboConfiguracao>();
     public DbSet<RoboErroResposta> RoboErrosResposta => Set<RoboErroResposta>();
 
+    // Treinamento do robô: a crítica do atendente vira um processo (análise adversarial,
+    // alterações com desfazer, pendências para o humano e simulação de verificação).
+    public DbSet<RoboTreinamentoItem> RoboTreinamentoItens => Set<RoboTreinamentoItem>();
+    public DbSet<RoboTreinamentoPendencia> RoboTreinamentoPendencias => Set<RoboTreinamentoPendencia>();
+    public DbSet<RoboTreinamentoAlteracao> RoboTreinamentoAlteracoes => Set<RoboTreinamentoAlteracao>();
+    public DbSet<RoboTreinamentoSimulacao> RoboTreinamentoSimulacoes => Set<RoboTreinamentoSimulacao>();
+
     // Pendências de ajuste de cadastro ("números errados") levantadas no atendimento.
     public DbSet<PendenciaCadastro> PendenciasCadastro => Set<PendenciaCadastro>();
 

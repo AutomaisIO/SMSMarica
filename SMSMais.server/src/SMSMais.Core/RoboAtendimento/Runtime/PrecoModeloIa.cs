@@ -18,9 +18,14 @@ public static class PrecoModeloIa
     [
         ("claude-haiku-4-5", 1.00m, 5.00m),
         ("claude-sonnet-4-5", 3.00m, 15.00m),
-        ("claude-sonnet-5", 3.00m, 15.00m),
+        // Fable é o modelo do agente TREINADOR (não do atendimento): raciocínio longo, poucas
+        // chamadas por item — sai caro por token e barato por dia.
+        ("claude-fable-5-1", 10.00m, 50.00m),
+        ("claude-fable-5", 10.00m, 50.00m),
+        ("claude-sonnet-5", 2.00m, 10.00m),
+        ("claude-sonnet-4-6", 3.00m, 15.00m),
         ("claude-opus-4", 15.00m, 75.00m),
-        ("claude-opus-5", 15.00m, 75.00m),
+        ("claude-opus-5", 5.00m, 25.00m),
         ("claude-haiku", 1.00m, 5.00m),
         ("claude-sonnet", 3.00m, 15.00m),
         ("claude-opus", 15.00m, 75.00m),

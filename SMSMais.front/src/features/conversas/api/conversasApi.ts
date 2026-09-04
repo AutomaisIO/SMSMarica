@@ -92,6 +92,18 @@ export async function marcarRoboErro(
   await http.post(`/conversas/${id}/robo-erro`, body);
 }
 
+/**
+ * Crítica a uma resposta do robô, a partir da própria bolha: abre (ou reaproveita) um item de
+ * treinamento e devolve o id — quem tem o módulo Robô consegue abrir e mandar treinar.
+ */
+export async function abrirTreinamentoRobo(
+  id: string,
+  body: { mensagemWhatsAppId?: string | null; critica: string },
+): Promise<{ itemId: string }> {
+  const { data } = await http.post<{ itemId: string }>(`/conversas/${id}/robo-treinamento`, body);
+  return data;
+}
+
 export async function transferirConversa(
   id: string,
   payload: { paraUnidadeId: string; observacao?: string | null },

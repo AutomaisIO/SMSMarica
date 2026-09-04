@@ -154,3 +154,105 @@ export type SimularRoboPayload = {
   assuntoId?: string | null;
   historico?: { papel: string; texto: string }[];
 };
+
+// ---- Treinamento (crítica do atendente → análise adversarial → correção) ----
+
+export type StatusTreinamento =
+  | 'Aberto'
+  | 'Analisando'
+  | 'AguardandoHumano'
+  | 'SimulacaoPendente'
+  | 'Concluido'
+  | 'Descartado'
+  | 'Falhou';
+
+export type VereditoSimulacaoTreinamento = 'Passou' | 'Falhou' | 'Duvidoso';
+
+export interface TreinamentoContextoTurno {
+  papel: string;
+  texto: string;
+  em: string | null;
+}
+
+export interface TreinamentoPendencia {
+  id: string;
+  tipo: 'RegraNegocio' | 'AlteracaoCodigo';
+  pergunta: string;
+  contexto: string | null;
+  opcoes: string[];
+  status: 'Aberta' | 'Respondida' | 'Dispensada';
+  resposta: string | null;
+  autorizado: boolean | null;
+  criadoEm: string;
+  respondidoEm: string | null;
+  respondidoPorNome: string | null;
+}
+
+export interface TreinamentoAlteracao {
+  id: string;
+  alvo: 'TreinoAssunto' | 'CondicaoAssunto';
+  operacao: 'Criar' | 'Atualizar' | 'Desativar';
+  roboAssuntoId: string;
+  assuntoNome: string | null;
+  alvoId: string;
+  antes: string | null;
+  depois: string | null;
+  justificativa: string | null;
+  aplicadoEm: string;
+  desfeitoEm: string | null;
+  desfeitoPorNome: string | null;
+}
+
+export interface TreinamentoSimulacao {
+  id: string;
+  mensagem: string;
+  assuntoNome: string | null;
+  resposta: string | null;
+  chamadas: RoboSimulacaoChamada[];
+  veredito: VereditoSimulacaoTreinamento | null;
+  analise: string | null;
+  custoUsd: number | null;
+  duracaoMs: number;
+  automatica: boolean;
+  erroMensagem: string | null;
+  criadoEm: string;
+  criadoPorNome: string | null;
+}
+
+export interface TreinamentoItemResumo {
+  id: string;
+  conversaId: string | null;
+  mensagemWhatsAppId: string | null;
+  assuntoNome: string | null;
+  critica: string;
+  trecho: string | null;
+  status: StatusTreinamento;
+  pendenciasAbertas: number;
+  alteracoesAplicadas: number;
+  ultimoVeredito: VereditoSimulacaoTreinamento | null;
+  criadoEm: string;
+  criadoPorNome: string | null;
+}
+
+export interface TreinamentoItem {
+  id: string;
+  conversaId: string | null;
+  mensagemWhatsAppId: string | null;
+  roboAssuntoId: string | null;
+  assuntoNome: string | null;
+  critica: string;
+  observacao: string | null;
+  trecho: string | null;
+  contexto: TreinamentoContextoTurno[];
+  status: StatusTreinamento;
+  analise: string | null;
+  modelo: string | null;
+  custoUsd: number | null;
+  analisadoEm: string | null;
+  erroMensagem: string | null;
+  pendencias: TreinamentoPendencia[];
+  alteracoes: TreinamentoAlteracao[];
+  simulacoes: TreinamentoSimulacao[];
+  criadoEm: string;
+  criadoPorNome: string | null;
+}

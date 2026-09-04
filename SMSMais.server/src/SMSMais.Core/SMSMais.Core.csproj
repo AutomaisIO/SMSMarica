@@ -38,6 +38,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Briefing do robô: MESMO arquivo que a documentação humana em docs/robo/ — embarcado para
+         ir no prompt do agente treinador. Manter um só arquivo evita o prompt desincronizar do
+         que está documentado (e vice-versa). -->
+    <EmbeddedResource Include="..\..\..\docs\robo\briefing-estrutura.md"
+                      LogicalName="SMSMais.Core.RoboAtendimento.Treinamento.BriefingEstrutura.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Bases de conhecimento (.md) do módulo IA: copiadas para a saída p/ sync/embeddings. -->
     <Content Include="Inteligencia/Conhecimento/Bases/**/*.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

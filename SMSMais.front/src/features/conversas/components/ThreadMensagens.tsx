@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowRightLeft, BotOff, Building2, Check, CheckCheck, Clock, MoreVertical, Undo2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, ArrowRightLeft, BotOff, Building2, Check, CheckCheck, Clock, GraduationCap, MoreVertical, Undo2 } from 'lucide-react';
 import {
   useAssumirConversa,
   useConversa,
   useDevolverConversa,
   useMarcarLida,
-  useMarcarRoboErro,
+  useAbrirTreinamentoRobo,
   useMensagens,
   usePararRoboConversa,
 } from '@/features/conversas/api/queries';
@@ -53,12 +54,12 @@ function StatusEntrega({ status, emBolhaEscura }: { status: Mensagem['status']; 
 function Bolha({
   m,
   onPararRobo,
-  onMarcarErro,
+  onTreinar,
   pararPendente,
 }: {
   m: Mensagem;
   onPararRobo?: () => void;
-  onMarcarErro?: () => void;
+  onTreinar?: () => void;
   pararPendente?: boolean;
 }) {
   const saida = m.direcao === 'Saida';
@@ -92,7 +93,7 @@ function Bolha({
           )}
         </div>
       </div>
-      {robo && (onPararRobo || onMarcarErro) && (
+      {robo && (onPararRobo || onTreinar) && (
         <div className="mt-0.5 flex items-center gap-3">
           {onPararRobo && (
             <button
@@ -105,14 +106,15 @@ function Bolha({
               <BotOff className="h-3.5 w-3.5" /> Parar robô
             </button>
           )}
-          {onMarcarErro && (
+          {onTreinar && (
             <button
               type="button"
-              onClick={onMarcarErro}
+              onClick={onTreinar}
+              aria-label="Ensinar o robô a partir desta resposta"
               className="flex items-center gap-1 text-[11px] font-medium text-amber-600 hover:text-amber-700"
-              title="Marca esta resposta como errada, para revisão e treinamento do robô."
+              title="Corrigir esta resposta: sua crítica vira um item de treinamento do robô."
             >
-              <AlertTriangle className="h-3.5 w-3.5" /> Marcar erro
+              <GraduationCap className="h-3.5 w-3.5" /> Treinar
             </button>
           )}
         </div>
@@ -130,9 +132,12 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   const marcarLida = useMarcarLida();
   const devolver = useDevolverConversa();
   const pararRobo = usePararRoboConversa();
-  const marcarErro = useMarcarRoboErro();
-  const [erroMsgId, setErroMsgId] = useState<string | null>(null);
-  const [erroNota, setErroNota] = useState('');
+  const abrirTreinamento = useAbrirTreinamentoRobo();
+  const [criticaMsgId, setCriticaMsgId] = useState<string | null>(null);
+  const [criticaTexto, setCriticaTexto] = useState('');
+  // Depois de salvar, o modal vira o recibo com o link para o item — sem isso o atendente
+  // escreve a crítica e não tem como saber se ela chegou a algum lugar.
+  const [treinoAberto, setTreinoAberto] = useState<string | false>(false);
   const fimRef = useRef<HTMLDivElement | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const [encaminharAberto, setEncaminharAberto] = useState(false);
@@ -327,11 +332,12 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
                 ? () => void executar(() => pararRobo.mutateAsync(conversaId))
                 : undefined
             }
-            onMarcarErro={
+            onTreinar={
               m.tipoMensagem === 'Robo'
                 ? () => {
-                    setErroNota('');
-                    setErroMsgId(m.id);
+                    setCriticaTexto('');
+                    setTreinoAberto(false);
+                    setCriticaMsgId(m.id);
                   }
                 : undefined
             }
@@ -359,48 +365,82 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
         />
       )}
 
-      {erroMsgId && (
+      {criticaMsgId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-              <AlertTriangle className="h-4 w-4 text-amber-500" /> Marcar resposta do robô como erro
-            </h2>
-            <p className="mt-1 text-xs text-gray-500">
-              Fica registrada para revisão e treinamento do robô. Não altera a mensagem já enviada.
-            </p>
-            <textarea
-              value={erroNota}
-              onChange={(e) => setErroNota(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              placeholder="O que saiu errado? (opcional)"
-              className="mt-3 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-primary-400"
-            />
-            <div className="mt-3 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setErroMsgId(null)}
-                className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={marcarErro.isPending}
-                onClick={() =>
-                  marcarErro.mutate(
-                    { id: conversaId, mensagemWhatsAppId: erroMsgId, nota: erroNota.trim() || undefined },
-                    {
-                      onSuccess: () => setErroMsgId(null),
-                      onError: (e) => setErroAcao(extrairMensagemDeErro(e)),
-                    },
-                  )
-                }
-                className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-              >
-                {marcarErro.isPending ? 'Registrando…' : 'Marcar erro'}
-              </button>
-            </div>
+          <div className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl">
+            {treinoAberto ? (
+              <>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <GraduationCap className="h-4 w-4 text-emerald-600" /> Crítica registrada
+                </h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  Virou um item de treinamento do robô. Quem cuida do robô abre o item, manda treinar
+                  e a correção é analisada antes de entrar em produção.
+                </p>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Link
+                    to={`/robo-atendimento?treinamento=${treinoAberto}`}
+                    onClick={() => setCriticaMsgId(null)}
+                    className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Abrir o item
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setCriticaMsgId(null)}
+                    className="rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <GraduationCap className="h-4 w-4 text-amber-500" /> Ensinar o robô
+                </h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  Escreva o que saiu errado e como deveria ter sido. Não altera a mensagem já
+                  enviada — vira material de treinamento.
+                </p>
+                <textarea
+                  value={criticaTexto}
+                  onChange={(e) => setCriticaTexto(e.target.value)}
+                  rows={5}
+                  maxLength={4000}
+                  autoFocus
+                  placeholder="Ex.: ele prometeu que um atendente ia retornar, mas era sábado e não tem ninguém. Deveria orientar a procurar o posto na segunda."
+                  className="mt-3 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-primary-400"
+                />
+                {erroAcao && <p className="mt-2 text-xs text-red-600">{erroAcao}</p>}
+                <div className="mt-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCriticaMsgId(null)}
+                    className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={abrirTreinamento.isPending || criticaTexto.trim().length === 0}
+                    onClick={() => {
+                      setErroAcao(null);
+                      abrirTreinamento.mutate(
+                        { id: conversaId, mensagemWhatsAppId: criticaMsgId, critica: criticaTexto.trim() },
+                        {
+                          onSuccess: (r) => setTreinoAberto(r.itemId),
+                          onError: (e) => setErroAcao(extrairMensagemDeErro(e)),
+                        },
+                      );
+                    }}
+                    className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    {abrirTreinamento.isPending ? 'Registrando…' : 'Registrar crítica'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

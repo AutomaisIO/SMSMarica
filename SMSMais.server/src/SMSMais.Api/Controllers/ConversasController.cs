@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Conversas;
 using SMSMais.Core.Conversas.Dtos;
@@ -15,7 +15,10 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("conversas")]
-public sealed class ConversasController(IConversaService service, IRoboErroService roboErros) : ControllerBase
+public sealed class ConversasController(
+    IConversaService service,
+    IRoboErroService roboErros,
+    SMSMais.Core.RoboAtendimento.Treinamento.IRoboTreinamentoService treinamento) : ControllerBase
 {
     [HttpGet]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
@@ -142,6 +145,33 @@ public sealed class ConversasController(IConversaService service, IRoboErroServi
 
     /// <summary>Corpo de <c>POST /conversas/{id}/robo-erro</c>.</summary>
     public sealed record MarcarRoboErroBody(Guid? MensagemWhatsAppId, string? Nota);
+
+    /// <summary>
+    /// O atendente critica uma resposta do robô a partir da própria bolha e isso abre um ITEM DE
+    /// TREINAMENTO. Registra também a marcação de erro antiga, para que o relatório de erros por
+    /// assunto e o treinamento continuem falando do mesmo evento.
+    /// </summary>
+    [HttpPost("{id:guid}/robo-treinamento")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AbrirTreinamentoResposta>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<AbrirTreinamentoResposta> AbrirTreinamento(
+        Guid id, [FromBody] AbrirTreinamentoBody body, CancellationToken ct)
+    {
+        if (body?.MensagemWhatsAppId is { } msg)
+            await roboErros.RegistrarAsync(new RegistrarRoboErroRequest(id, msg, body.Critica), ct);
+
+        var itemId = await treinamento.AbrirAsync(
+            new AbrirTreinamentoRequest(body?.Critica ?? string.Empty, id, body?.MensagemWhatsAppId), ct);
+        return new AbrirTreinamentoResposta(itemId);
+    }
+
+    /// <summary>Corpo de <c>POST /conversas/{id}/robo-treinamento</c>.</summary>
+    public sealed record AbrirTreinamentoBody(Guid? MensagemWhatsAppId, string Critica);
+
+    /// <summary>Id do item aberto — a tela do robô abre por ele.</summary>
+    public sealed record AbrirTreinamentoResposta(Guid ItemId);
 
     /// <summary>Para o robô nesta conversa (bloqueio forte) e assume para o operador corrigir.</summary>
     [HttpPost("{id:guid}/parar-robo")]

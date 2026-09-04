@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0051 — Treinamento do robô: a crítica do atendente vira correção, com adversários e simulação</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0051 — Treinamento do robô: a crítica do atendente vira correção, com adversários e simulação</h1>
+<ul>
+<li><strong>Status:</strong> aceito</li>
+<li><strong>Data:</strong> 04/09/2026</li>
+<li><strong>Contexto:</strong> <a href="./0050-motor-robo-messages-api.md">ADR-0050</a> (motor na Messages API),</li>
+</ul>
+<p>  <a href="./0011-modulo-ia-consulta-natural.md">ADR-0011</a> (módulo IA)</p>
+<ul>
+<li><strong>Documento de apoio:</strong> <a href="../robo/briefing-estrutura.md"><code>docs/robo/briefing-estrutura.md</code></a></li>
+</ul>
+<h2>Contexto</h2>
+<p>O robô de atendimento erra, e quem vê o erro primeiro é o atendente humano que está lendo a conversa. Até aqui, o que ele podia fazer era clicar em "marcar erro" e escrever uma nota: isso virava uma linha em <code>robo_erro_resposta</code> para alguém revisar depois, à mão. Na prática, o caminho entre "o robô prometeu atendente num sábado" e "o robô parou de prometer atendente no sábado" passava por um humano abrir a tela de assuntos, entender em qual das seis camadas do prompt aquilo cabia, escrever a regra e torcer para que ela não brigasse com outra.</p>
+<p>Três coisas tornavam isso caro:</p>
+<ol>
+<li><strong>A estrutura não é óbvia.</strong> Persona global, persona do assunto, treinos, condições de</li>
+</ol>
+<p>   roteamento, comandos habilitados e guardrail se parecem, mas moram em lugares diferentes e têm    alcances diferentes. Corrigir na camada errada é o erro mais comum — e o mais silencioso.</p>
+<ol>
+<li><strong>Regra nova quase nunca é errada sozinha.</strong> Ela erra ao <em>anular</em> ou <em>tornar dúbia</em> uma regra</li>
+</ol>
+<p>   que já estava lá. Quem acabou de escrever a regra é justamente quem não enxerga isso.</p>
+<ol>
+<li><strong>"Treinado" não significa "corrigido".</strong> Escrever a regra não prova que o robô mudou de</li>
+</ol>
+<p>   comportamento.</p>
+<h2>Decisão</h2>
+<p>A crítica do atendente vira um <strong>item de treinamento</strong> (<code>robo_treinamento_item</code>), e o item passa por um ciclo com dono definido em cada etapa.</p>
+<h3>1. A captura continua na bolha</h3>
+<p>O botão discreto abaixo de cada resposta do robô, na Central de Atendimento, agora diz <strong>Treinar</strong> e abre um campo para a crítica. Ele registra a marcação de erro antiga (o relatório por assunto continua valendo) <strong>e</strong> abre o item, congelando junto: o texto que o robô disse, o assunto engajado e os 12 turnos anteriores da conversa.</p>
+<p>O contexto é <strong>congelado</strong>, não lido ao vivo depois: a conversa segue andando, e analisar a crítica com mensagens que só chegaram depois levaria o agente a corrigir um erro que o robô não tinha como não cometer.</p>
+<h3>2. Antes de treinar, pergunta-se o que mais o humano sabe</h3>
+<p>Clicar em "Treinar" abre um modal pedindo observações. É onde entra o contexto que só o operador tem — o porquê da regra, o que já foi decidido antes — e é o que evita uma rodada inteira de pergunta e resposta.</p>
+<h3>3. O agente roda em três fases, no <code>claude-fable-5-1</code></h3>
+<p>O briefing que ele lê é montado em tempo de execução: o documento de estrutura (<code>docs/robo/briefing-estrutura.md</code>, embarcado no assembly) <strong>mais o estado real do banco</strong> — configuração global, persona, guardrail, catálogo de comandos e todos os assuntos com seus treinos, condições e comandos, com os ids reais.</p>
+<p><strong>A alternativa rejeitada foi um "prompt que vai crescendo" mantido à mão.</strong> Um arquivo assim desincroniza do que o robô executa, e a partir daí o treinamento passa a raciocinar sobre um robô que não existe. O que cresce são os treinos no banco — que já <em>são</em> o modelo treinado.</p>
+<ol>
+<li><strong>Proposta</strong> — diagnostica a causa, escolhe a camada e propõe a correção mínima.</li>
+<li><strong>Adversários</strong> — três leituras hostis e independentes, em paralelo: <em>conflito de regras</em></li>
+</ol>
+<p>   (anula, contradiz, cria ambiguidade ou redundância?), <em>roteamento e escopo</em> (a regra está no    assunto certo? a condição rouba mensagens de outro assunto?) e <em>dano ao cidadão</em> (afirmar sem    ferramenta, vazar dado, opinar sobre saúde, prometer o que não existe). Um adversário que falha    não derruba o ciclo, mas o juiz é avisado de que a proposta foi menos atacada do que deveria.</p>
+<ol>
+<li><strong>Juiz</strong> — com a proposta e os ataques na mão: aplica, abre pendência ou descarta.</li>
+</ol>
+<h3>4. O agente aplica sozinho — e só duas coisas</h3>
+<p>Ele altera <strong>treino</strong> e <strong>condição de ativação</strong> do assunto, direto, sem esperar aprovação. Toda alteração guarda o valor anterior e tem <strong>desfazer</strong>; nada é apagado (desativar é <code>Ativo = false</code>).</p>
+<p>Tudo o mais — persona do assunto, persona global, horário, limiar, ligar/desligar comando — vira <strong>pendência de regra de negócio</strong>. Guardrail, catálogo de comandos e motor viram <strong>pendência de alteração de código</strong>, que exige autorização explícita antes de virar trabalho de desenvolvimento.</p>
+<p>Pendência <strong>trava</strong> o item: ele para em <code>AguardandoHumano</code> e só anda quando alguém responde. Respondida a última, o item volta para a fila sozinho, e as respostas entram na análise seguinte como decisões vinculantes.</p>
+<h3>5. Aplicou, tem que simular</h3>
+<p>Toda alteração aplicada deixa o item em <code>SimulacaoPendente</code>, e a simulação de verificação dispara automática: o caso é reensaiado contra o robô como ele está agora — mesmo prompt, mesmas ferramentas, sem falar com o cidadão e sem executar comando de escrita — e um juiz diz se a crítica foi atendida (<code>Passou</code> / <code>Falhou</code> / <code>Duvidoso</code>).</p>
+<p>A simulação <strong>não força o assunto</strong>: deixa o classificador escolher de novo. É assim que uma correção de roteamento aparece.</p>
+<p>O botão "Simular situação" fica disponível para sempre, inclusive em item concluído — e desfazer uma alteração devolve o item para <code>SimulacaoPendente</code>, porque o veredito anterior passou a valer para um robô que não existe mais.</p>
+<h3>6. A análise roda fora da requisição</h3>
+<p>O clique só marca <code>Analisando</code>; o <code>RoboTreinamentoWorker</code> processa <strong>um item por vez</strong> (dois itens mexendo no mesmo assunto ao mesmo tempo produziriam regras que nenhum adversário chegou a ver), com teto de 3 tentativas antes de parar em <code>Falhou</code>.</p>
+<h2>Consequências</h2>
+<ul>
+<li>O caminho entre ver o erro e corrigir o robô encurta para dois cliques e um texto, e passa a ser</li>
+</ul>
+<p>  auditável: o rastro completo (proposta, cada ataque, veredito do juiz) fica em <code>analise_json</code>.</p>
+<ul>
+<li>Fica registrado <strong>por que</strong> cada regra entrou, com justificativa legível seis meses depois.</li>
+<li>Custa mais por item (Fable, cinco chamadas ao modelo) e custa tempo: um ciclo leva minutos.</li>
+</ul>
+<p>  O volume é baixo — é análise de regra, não atendimento.</p>
+<ul>
+<li>Um agente que aplica sozinho pode aplicar errado. As contenções são: escopo de duas coisas,</li>
+</ul>
+<p>  adversários antes, desfazer sempre, e simulação obrigatória depois.</p>
+<ul>
+<li>O treinamento <strong>não</strong> é um caminho paralelo para reescrever o robô. Persona global e guardrail</li>
+</ul>
+<p>  continuam sendo decisão humana e código.</p>
+<ul>
+<li><code>docs/robo/briefing-estrutura.md</code> passa a ser código de produção: ele é embarcado no assembly do</li>
+</ul>
+<p>  <code>SMSMais.Core</code> e vai no prompt. Documento errado = agente treinando errado.</p>
+<h2>Alternativas consideradas</h2>
+<ul>
+<li><strong>Aplicar só com aprovação humana em tudo.</strong> Rejeitada: recria o gargalo que o recurso existe</li>
+</ul>
+<p>  para desfazer. O desfazer + a simulação cobrem o risco de aplicar treino e condição.</p>
+<ul>
+<li><strong>Uma passagem só (sem adversários).</strong> Rejeitada: o modo de falha dominante não é a regra errada,</li>
+</ul>
+<p>  é a regra que conflita com outra — e é exatamente isso que uma passagem única não vê.</p>
+<ul>
+<li><strong>Deixar o agente editar qualquer coisa do robô.</strong> Rejeitada: persona global e guardrail valem</li>
+</ul>
+<p>  para todos os assuntos, e o guardrail nasceu de incidentes reais de produção. Mudança ali é   decisão de gente.</p>
+</main>
+</body>
+</html>

@@ -9,6 +9,10 @@ import type {
   SimularRoboPayload,
   SalvarRoboAssuntoPayload,
   StatusRoboErro,
+  StatusTreinamento,
+  TreinamentoItem,
+  TreinamentoItemResumo,
+  TreinamentoSimulacao,
 } from '@/features/robo-atendimento/types';
 
 export async function listarAssuntos(incluirInativos = false): Promise<RoboAssuntoListItem[]> {
@@ -68,4 +72,68 @@ export async function revisarErroRobo(
   payload: { status: 'Revisado' | 'Descartado'; nota?: string | null },
 ): Promise<void> {
   await http.post(`/robo/erros/${id}/revisar`, payload);
+}
+
+// ---- Treinamento ----
+
+export async function listarTreinamento(
+  status?: StatusTreinamento,
+  assuntoId?: string,
+): Promise<TreinamentoItemResumo[]> {
+  const { data } = await http.get<TreinamentoItemResumo[]>('/robo/treinamento', {
+    params: { status: status || undefined, assuntoId: assuntoId || undefined },
+  });
+  return data;
+}
+
+export async function obterTreinamento(id: string): Promise<TreinamentoItem> {
+  const { data } = await http.get<TreinamentoItem>(`/robo/treinamento/${id}`);
+  return data;
+}
+
+export async function abrirTreinamento(payload: {
+  critica: string;
+  roboAssuntoId?: string | null;
+}): Promise<string> {
+  const { data } = await http.post<string>('/robo/treinamento', payload);
+  return data;
+}
+
+/** Enfileira a análise: o ciclo roda em segundo plano e a tela acompanha pelo status. */
+export async function treinarItem(id: string, observacao?: string | null): Promise<void> {
+  await http.post(`/robo/treinamento/${id}/treinar`, { observacao: observacao || null });
+}
+
+export async function responderPendenciaTreinamento(
+  pendenciaId: string,
+  payload: { resposta: string; autorizado?: boolean | null },
+): Promise<void> {
+  await http.post(`/robo/treinamento/pendencias/${pendenciaId}/responder`, payload);
+}
+
+export async function dispensarPendenciaTreinamento(
+  pendenciaId: string,
+  motivo?: string | null,
+): Promise<void> {
+  await http.post(`/robo/treinamento/pendencias/${pendenciaId}/dispensar`, { motivo: motivo || null });
+}
+
+export async function desfazerAlteracaoTreinamento(alteracaoId: string): Promise<void> {
+  await http.post(`/robo/treinamento/alteracoes/${alteracaoId}/desfazer`, {});
+}
+
+/** Simula a situação contra o modelo treinado ATUAL. Sem mensagem, repete o caso original. */
+export async function simularTreinamento(
+  id: string,
+  payload?: { mensagem?: string | null },
+): Promise<TreinamentoSimulacao> {
+  const { data } = await http.post<TreinamentoSimulacao>(
+    `/robo/treinamento/${id}/simular`,
+    payload ?? {},
+  );
+  return data;
+}
+
+export async function descartarTreinamento(id: string): Promise<void> {
+  await http.post(`/robo/treinamento/${id}/descartar`, {});
 }
