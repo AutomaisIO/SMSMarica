@@ -250,3 +250,54 @@ export type AlternarAgendamentoRede = {
   unidadesAtivas: number;
   mensagem: string;
 };
+
+// ----------------------------------------------------------- escalas (a OFERTA de vagas)
+
+/**
+ * Sincronismo da grade de escalas do SISREG.
+ *
+ * Diferente do "sincroniza tudo" do mapeamento: aqui uma ÚNICA requisição traz a rede inteira e
+ * todo o histórico (17.469 linhas na medição), então não há custo por unidade nem rodízio.
+ */
+export type EscalasSincronizacaoAceita = { execucaoId: string; mensagem: string };
+
+/** Progresso da sincronização em curso (null = nenhuma rodando). */
+export type EscalasSincronizacaoStatus = {
+  emExecucao: boolean;
+  disparo: 'Manual' | 'Agendado';
+  /** Texto humano: a maior parte do tempo é o download, quando ainda não há denominador. */
+  fase: string;
+  escalasLidas: number;
+  escalasGravadas: number;
+  escalasNovas: number;
+  escalasAtualizadas: number;
+  linhasRejeitadas: number;
+  unidadesNaoEncontradas: number;
+  iniciadoEm: string;
+  ultimoErro: string | null;
+};
+
+export type EscalasSincronizacaoExecucao = {
+  id: string;
+  disparo: 'Manual' | 'Agendado';
+  status: StatusMapeamentoLote;
+  escalasLidas: number;
+  escalasNovas: number;
+  escalasAtualizadas: number;
+  /** Sumiram do arquivo do SISREG — marcadas ausentes, não apagadas. */
+  escalasAusentes: number;
+  /** Linhas que o SISREG mandou quebradas. Um número estável é o normal; o que importa é crescer. */
+  linhasRejeitadas: number;
+  /** CNES sem unidade no cadastro. Zero é o esperado — valor aqui é unidade nova no SISREG. */
+  unidadesNaoEncontradas: number;
+  requisicoes: number;
+  mensagemErro: string | null;
+  iniciadoEm: string;
+  finalizadoEm: string | null;
+  duracaoSegundos: number | null;
+  criadoPorNome: string | null;
+};
+
+export type EscalasAgendamento = { ativo: boolean; horaLocal: string; orcamentoRestante: number };
+
+export type SalvarEscalasAgendamento = { ativo: boolean; horaLocal: string };

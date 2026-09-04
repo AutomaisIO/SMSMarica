@@ -501,6 +501,19 @@ public static class DependencyInjection
             Integracoes.SisregWeb.Importacao.IBackfillExecutanteService,
             Integracoes.SisregWeb.Importacao.BackfillExecutanteService>();
 
+        // Sincronismo de ESCALAS (a oferta). Mesmo quinteto dos demais motores do SISREG.
+        services.Configure<Integracoes.SisregWeb.Escalas.EscalasSincronizacaoOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.Escalas.EscalasSincronizacaoOpcoes.Secao));
+        services.AddSingleton<
+            Integracoes.SisregWeb.Escalas.Background.IEscalasSincronizacaoFila,
+            Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoFila>();
+        services.AddSingleton<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoEstadoVivo>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Escalas.IEscalasSincronizacaoService,
+            Integracoes.SisregWeb.Escalas.EscalasSincronizacaoService>();
+        services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoRunner>();
+        services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoScheduler>();
+
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.
         services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ISisregImportacaoFila, Integracoes.SisregWeb.Importacao.Background.SisregImportacaoFila>();

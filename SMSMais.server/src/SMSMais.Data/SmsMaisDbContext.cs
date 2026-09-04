@@ -118,6 +118,10 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     /// procedimento × dia da semana. Base da Agenda.</summary>
     public DbSet<SisregEscala> SisregEscalas => Set<SisregEscala>();
 
+    /// <summary>Rastreio das sincronizações da grade de escalas.</summary>
+    public DbSet<SisregEscalaSincronizacaoExecucao> SisregEscalaSincronizacaoExecucoes =>
+        Set<SisregEscalaSincronizacaoExecucao>();
+
     public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
     public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
     public DbSet<SisregVarreduraExecucaoItem> SisregVarreduraExecucaoItens => Set<SisregVarreduraExecucaoItem>();

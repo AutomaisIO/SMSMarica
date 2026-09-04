@@ -11,6 +11,7 @@ import {
   useConfiguracaoSisreg,
 } from '@/features/sisreg/api/queries';
 import { SincronismoAutomaticoSecao } from '@/features/sisreg/components/SincronismoAutomaticoSecao';
+import { SincronismoEscalasSecao } from '@/features/sisreg/components/SincronismoEscalasSecao';
 import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTudoSecao';
 import { TelefonesNotificacaoSecao } from '@/features/sisreg/components/TelefonesNotificacaoSecao';
 import type {
@@ -316,6 +317,8 @@ export function SisregConfiguracaoPage() {
       </section>
 
       <SincronizarTudoSecao />
+
+      <SincronismoEscalasSecao />
 
       <TelefonesNotificacaoSecao provedor="sisreg" rotulo="SISREG" podeEditar />
     </div>

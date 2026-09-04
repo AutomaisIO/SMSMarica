@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   alternarSincronismoAutomatico,
   atualizarConfiguracaoSisreg,
+  cancelarEscalas,
+  listarExecucoesEscalas,
+  obterAgendamentoEscalas,
+  obterStatusEscalas,
+  salvarAgendamentoEscalas,
+  sincronizarEscalas,
   cancelarMapeamentoLote,
   listarExecucoesMapeamentoLote,
   listarItensMapeamentoLote,
@@ -19,6 +25,7 @@ import {
 } from '@/features/sisreg/api/sisregApi';
 import type {
   AtualizarSisregConfiguracaoPayload,
+  SalvarEscalasAgendamento,
   PrepararRedePayload,
   PreverAgendamentoPayload,
   SalvarMapeamentoLoteAgendamento,
@@ -31,6 +38,9 @@ export const sisregKeys = {
   loteExecucoes: ['sisreg', 'lote', 'execucoes'] as const,
   loteItens: (id: string) => ['sisreg', 'lote', 'execucoes', id, 'itens'] as const,
   telefonesNotificacao: (provedor: string) => ['integracoes', provedor, 'notificacoes'] as const,
+  escalasStatus: ['sisreg', 'escalas', 'status'] as const,
+  escalasExecucoes: ['sisreg', 'escalas', 'execucoes'] as const,
+  escalasAgendamento: ['sisreg', 'escalas', 'agendamento'] as const,
 };
 
 export function useConfiguracaoSisreg() {
@@ -181,5 +191,56 @@ export function useAlternarAgendamentoRede() {
   return useMutation({
     mutationFn: (ativo: boolean) => alternarAgendamentoRede(ativo),
     onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteAgendamento }),
+  });
+}
+
+// ----------------------------------------------------------- escalas (a OFERTA de vagas)
+
+/**
+ * `acompanhando` existe pelo mesmo motivo do lote de mapeamento: a sincronização leva 1–2s para se
+ * registrar depois do clique, então a primeira resposta ainda vem `null`. Sem esse empurrão a tela
+ * pararia de perguntar e ficaria congelada em "nada rodando" durante a execução inteira.
+ */
+export function useStatusEscalas(acompanhando = false) {
+  return useQuery({
+    queryKey: sisregKeys.escalasStatus,
+    queryFn: obterStatusEscalas,
+    refetchInterval: (query) => (query.state.data?.emExecucao || acompanhando ? 3000 : false),
+  });
+}
+
+export function useExecucoesEscalas(acompanhando = false) {
+  return useQuery({
+    queryKey: sisregKeys.escalasExecucoes,
+    queryFn: () => listarExecucoesEscalas(10),
+    refetchInterval: acompanhando ? 5000 : false,
+  });
+}
+
+export function useAgendamentoEscalas() {
+  return useQuery({ queryKey: sisregKeys.escalasAgendamento, queryFn: obterAgendamentoEscalas });
+}
+
+export function useSincronizarEscalas() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: sincronizarEscalas,
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.escalasStatus }),
+  });
+}
+
+export function useCancelarEscalas() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: cancelarEscalas,
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.escalasStatus }),
+  });
+}
+
+export function useSalvarAgendamentoEscalas() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SalvarEscalasAgendamento) => salvarAgendamentoEscalas(payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.escalasAgendamento }),
   });
 }

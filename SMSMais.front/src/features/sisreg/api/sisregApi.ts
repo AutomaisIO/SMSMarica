@@ -15,6 +15,11 @@ import type {
   RegistroSisreg,
   SalvarMapeamentoLoteAgendamento,
   SisregBuscaResultado,
+  EscalasAgendamento,
+  EscalasSincronizacaoAceita,
+  EscalasSincronizacaoExecucao,
+  EscalasSincronizacaoStatus,
+  SalvarEscalasAgendamento,
   SincronismoAutomaticoSisreg,
   SisregConfiguracao,
   TestarConexaoSisregResultado,
@@ -163,5 +168,43 @@ export async function alternarAgendamentoRede(ativo: boolean): Promise<AlternarA
     '/sisreg/mapeamento/lote/agendamento-rede',
     { ativo },
   );
+  return data;
+}
+
+// ----------------------------------------------------------- escalas (a OFERTA de vagas)
+
+/** Dispara AGORA a sincronização da grade de escalas — uma requisição traz a rede inteira. */
+export async function sincronizarEscalas(): Promise<EscalasSincronizacaoAceita> {
+  const { data } = await http.post<EscalasSincronizacaoAceita>('/sisreg/escalas/sincronizar');
+  return data;
+}
+
+/** Progresso em curso. 204 (sem corpo) quando não há nenhuma → null. */
+export async function obterStatusEscalas(): Promise<EscalasSincronizacaoStatus | null> {
+  const { data, status } = await http.get<EscalasSincronizacaoStatus | ''>('/sisreg/escalas/status');
+  return status === 204 || !data ? null : data;
+}
+
+export async function cancelarEscalas(): Promise<{ cancelada: boolean }> {
+  const { data } = await http.post<{ cancelada: boolean }>('/sisreg/escalas/cancelar');
+  return data;
+}
+
+export async function listarExecucoesEscalas(limite = 10): Promise<EscalasSincronizacaoExecucao[]> {
+  const { data } = await http.get<EscalasSincronizacaoExecucao[]>('/sisreg/escalas/execucoes', {
+    params: { limite },
+  });
+  return data;
+}
+
+export async function obterAgendamentoEscalas(): Promise<EscalasAgendamento> {
+  const { data } = await http.get<EscalasAgendamento>('/sisreg/escalas/agendamento');
+  return data;
+}
+
+export async function salvarAgendamentoEscalas(
+  payload: SalvarEscalasAgendamento,
+): Promise<EscalasAgendamento> {
+  const { data } = await http.put<EscalasAgendamento>('/sisreg/escalas/agendamento', payload);
   return data;
 }
