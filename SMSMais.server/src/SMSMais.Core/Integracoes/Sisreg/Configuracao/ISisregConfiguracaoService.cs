@@ -15,6 +15,13 @@ public interface ISisregConfiguracaoService
     Task AtualizarAsync(AtualizarSisregConfiguracaoRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Liga/desliga o sincronismo AUTOMÁTICO com o SISREG (varredura diária das unidades + lote de
+    /// mapeamento). Não mexe na programação de nenhuma unidade e não bloqueia ação manual.
+    /// </summary>
+    Task<SincronismoAutomaticoSisregDto> AlternarSincronismoAutomaticoAsync(
+        bool ativo, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Contexto resolvido (segredos revelados) para o cliente HTTP. Lança
     /// <see cref="Common.Excecoes.ValidacaoException"/> se a integração não estiver
     /// configurada/ativa — usado para falhar de forma tratada antes da homologação.

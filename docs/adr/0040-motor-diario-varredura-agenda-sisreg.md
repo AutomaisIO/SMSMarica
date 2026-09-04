@@ -189,6 +189,34 @@ qual entrou. Esse caminho está em extinção, mas enquanto existir respeita o m
 Sessão única por operador: o motor rodando às 10h com a credencial da unidade **derruba o
 atendente**. `SalvarAgendaAsync` recusa hora fora da janela.
 
+### 9. Uma chave-mestra para o sincronismo automático, separada da agenda de cada unidade
+
+Adicionado em 04/09/2026: `sisreg_configuracao.sincronismo_automatico_ativo`, exposto na tela de
+Configuração SISREG e lido por `SincronismoAutomaticoSisreg.LigadoAsync` **nos dois agendadores** —
+a varredura diária das unidades e o lote de mapeamento ("sincronizar tudo", inclusive a carga
+inicial). Desligada, nenhum dos dois dispara; **ações manuais continuam valendo**.
+
+**Por que não bastava o "Desabilitar todas" que já existia.** Aquele botão grava `Ativo = false`
+nas ~45 linhas de `sisreg_varredura_agenda`: desligar é destrutivo (some a distinção entre quem
+estava ligado e quem não estava) e religar exige reprogramar a rede. Para uma pausa — que é o caso
+real, e é frequente — o operador precisa de algo que **preserve a programação**. A chave-mestra
+ignora o agendamento sem tocar em nenhuma agenda.
+
+**Por que ela vale também para o lote de mapeamento.** Os dois consomem a **mesma sessão única do
+SISREG**. Parar só a varredura deixaria o lote continuar derrubando o operador na hora agendada, e
+o interruptor pareceria quebrado.
+
+**Por que a coluna não tem default de banco.** Num `bool`, o sentinela do EF é `false`: uma coluna
+com default `true` faria um INSERT com o valor `false` gravar `true` — o operador clicaria em
+"Desligar", a tela confirmaria, e o sincronismo seguiria rodando. A migration usa
+`ADD COLUMN ... DEFAULT true` só para preencher a linha singleton que já existe em produção (um
+deploy que só queria expor o botão não pode desligar a rede) e em seguida faz `DROP DEFAULT`.
+
+**Uso operacional que motivou.** O SISREG mantém uma sessão por operador; enquanto o sincronismo
+roda, ele derruba e é derrubado por qualquer outro uso da mesma credencial — recepção, laboratório
+de integração, diagnóstico. Sem esse interruptor, trabalhar direto no SISREG com o mesmo login
+significava escolher entre brigar pela sessão e apagar a programação da rede.
+
 ## Consequências
 
 **Ganhamos** um dado que o TXT não dava: **data de nascimento** do paciente (a mensagem "o SISREG

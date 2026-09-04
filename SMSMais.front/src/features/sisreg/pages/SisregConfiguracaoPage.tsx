@@ -10,6 +10,7 @@ import {
   useAtualizarConfiguracaoSisreg,
   useConfiguracaoSisreg,
 } from '@/features/sisreg/api/queries';
+import { SincronismoAutomaticoSecao } from '@/features/sisreg/components/SincronismoAutomaticoSecao';
 import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTudoSecao';
 import { TelefonesNotificacaoSecao } from '@/features/sisreg/components/TelefonesNotificacaoSecao';
 import type {
@@ -146,6 +147,9 @@ export function SisregConfiguracaoPage() {
           {extrairMensagemDeErro(config.error)}
         </div>
       ) : null}
+
+      {/* Antes do formulário: é o que se procura com pressa quando o sincronismo precisa parar. */}
+      <SincronismoAutomaticoSecao />
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <form onSubmit={aoSalvar} className="space-y-5">

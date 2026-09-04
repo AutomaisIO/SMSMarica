@@ -45,6 +45,28 @@ public class SisregConfiguracao
     public bool Ativo { get; set; } = true;
 
     /// <summary>
+    /// <b>Chave-mestra do sincronismo AUTOMÁTICO com o SISREG.</b> Quando false, nenhum agendador
+    /// dispara sozinho: nem a varredura diária das unidades, nem o lote de mapeamento
+    /// ("sincronizar tudo", inclusive a carga inicial). Ações manuais continuam funcionando —
+    /// é um interruptor do que roda sem ninguém pedir, não da integração.
+    ///
+    /// <para><b>Por que existe, separado do "Desabilitar todas":</b> o botão da tela de sincronismo
+    /// grava <c>Ativo=false</c> em cada uma das ~45 linhas de <see cref="SisregVarreduraAgenda"/> —
+    /// desligar é destrutivo (perde quem estava ligado e quem não estava) e religar exige reprogramar
+    /// a rede. Esta chave só ignora o agendamento; a configuração de cada unidade fica intacta e
+    /// religar devolve exatamente o estado anterior.</para>
+    ///
+    /// <para><b>Por que importa:</b> o SISREG mantém <b>uma sessão por operador</b>. Enquanto o
+    /// sincronismo automático roda, qualquer outro uso da mesma credencial (recepção, laboratório de
+    /// integração, diagnóstico) derruba e é derrubado. Poder parar tudo com um clique é o que torna
+    /// esse trabalho possível sem apagar a programação da rede.</para>
+    ///
+    /// <para><b>Nasce LIGADO</b> — a coluna entra com default <c>true</c> para não mudar o
+    /// comportamento de quem já está em produção.</para>
+    /// </summary>
+    public bool SincronismoAutomaticoAtivo { get; set; } = true;
+
+    /// <summary>
     /// Por qual porta a importação consulta o cadastro do paciente no CADSUS. Ver
     /// <see cref="FonteCadastroPaciente"/> — é a válvula de escoamento do orçamento anti-robô do
     /// SISREG. Mora aqui, e não na credencial, porque é decisão de operação e a tela já existe.

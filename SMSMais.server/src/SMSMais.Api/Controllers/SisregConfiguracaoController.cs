@@ -39,6 +39,23 @@ public sealed class SisregConfiguracaoController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Liga/desliga o sincronismo AUTOMÁTICO com o SISREG — varredura diária das unidades e lote de
+    /// mapeamento ("sincronizar tudo", inclusive a carga inicial).
+    ///
+    /// <para>Não é o mesmo que "Desabilitar todas" da tela de sincronismo: aquele grava
+    /// <c>Ativo=false</c> nas ~45 agendas e perde quem estava ligado; este só ignora o agendamento,
+    /// preservando a programação. Ações manuais (executar agora, importar procedimento) seguem
+    /// funcionando — o interruptor é do que roda sem ninguém pedir.</para>
+    /// </summary>
+    [HttpPut("sincronismo-automatico")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SincronismoAutomaticoSisregDto>(StatusCodes.Status200OK)]
+    public async Task<SincronismoAutomaticoSisregDto> AlternarSincronismoAutomatico(
+        [FromBody] AlternarSincronismoAutomaticoRequest request,
+        CancellationToken cancellationToken) =>
+        await _configuracaoService.AlternarSincronismoAutomaticoAsync(request.Ativo, cancellationToken);
+
     /// <summary>Testa as credenciais com uma consulta mínima à fila. Não lança — devolve sucesso/erro.</summary>
     [HttpPost("testar-conexao")]
     [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Edicao)]

@@ -62,6 +62,26 @@ public sealed class SisregConfiguracaoService(
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<SincronismoAutomaticoSisregDto> AlternarSincronismoAutomaticoAsync(
+        bool ativo, CancellationToken cancellationToken = default)
+    {
+        var config = await ObterOuCriarAsync(cancellationToken);
+
+        config.SincronismoAutomaticoAtivo = ativo;
+        config.AtualizadoEm = DateTime.UtcNow;
+        config.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new SincronismoAutomaticoSisregDto(
+            ativo,
+            ativo
+                ? "Sincronismo automático religado. Cada unidade volta a disparar no horário que já "
+                  + "estava programado."
+                : "Sincronismo automático desligado. Nenhuma unidade dispara sozinha até religar; a "
+                  + "programação de cada uma foi preservada, e as ações manuais continuam valendo.");
+    }
+
     public async Task<SisregContexto> ObterContextoAsync(CancellationToken cancellationToken = default)
     {
         var config = await _db.SisregConfiguracoes.AsNoTracking().FirstOrDefaultAsync(cancellationToken)
@@ -127,6 +147,7 @@ public sealed class SisregConfiguracaoService(
         !string.IsNullOrEmpty(c.SenhaCifrada),
         !string.IsNullOrEmpty(c.TokenCifrado),
         c.Ativo,
+        c.SincronismoAutomaticoAtivo,
         c.FonteCadastroPaciente,
         c.ConsultasSimultaneasSer);
 }

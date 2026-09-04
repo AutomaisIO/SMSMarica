@@ -15,6 +15,7 @@ import type {
   RegistroSisreg,
   SalvarMapeamentoLoteAgendamento,
   SisregBuscaResultado,
+  SincronismoAutomaticoSisreg,
   SisregConfiguracao,
   TestarConexaoSisregResultado,
 } from '@/features/sisreg/types';
@@ -28,6 +29,21 @@ export async function atualizarConfiguracaoSisreg(
   payload: AtualizarSisregConfiguracaoPayload,
 ): Promise<void> {
   await http.put('/sisreg/configuracao', payload);
+}
+
+/**
+ * Liga/desliga o sincronismo automático. Endpoint separado do PUT da configuração de propósito:
+ * é um interruptor de emergência, e submeter o formulário inteiro junto arrastaria edições
+ * pendentes de credencial que ninguém pediu para salvar.
+ */
+export async function alternarSincronismoAutomatico(
+  ativo: boolean,
+): Promise<SincronismoAutomaticoSisreg> {
+  const { data } = await http.put<SincronismoAutomaticoSisreg>(
+    '/sisreg/configuracao/sincronismo-automatico',
+    { ativo },
+  );
+  return data;
 }
 
 export async function testarConexaoSisreg(): Promise<TestarConexaoSisregResultado> {

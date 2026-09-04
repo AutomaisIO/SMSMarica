@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Integracoes.SisregWeb.Importacao.Background;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura.Background;
+using SMSMais.Data;
 
 namespace SMSMais.Core.Integracoes.SisregWeb.MapeamentoLote.Background;
 
@@ -69,6 +70,14 @@ public sealed class MapeamentoLoteScheduler(
         }
 
         using var scope = scopeFactory.CreateScope();
+
+        // Chave-mestra da tela de configuração. Vale também aqui, e não só na varredura: o lote usa
+        // a MESMA sessão única do SISREG, então parar só a varredura deixaria o lote continuar
+        // derrubando o operador na hora agendada — o interruptor pareceria quebrado.
+        // Vem antes do bootstrap de propósito: a carga inicial insiste de minuto em minuto.
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
+        if (!await SincronismoAutomaticoSisreg.LigadoAsync(db, ct)) return;
+
         var servico = scope.ServiceProvider.GetRequiredService<ISisregMapeamentoLoteService>();
 
         var agendamento = await servico.ObterAgendamentoAsync(ct);

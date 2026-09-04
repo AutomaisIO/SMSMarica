@@ -65,6 +65,12 @@ public sealed class VarreduraSisregScheduler(
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
 
+        // Chave-mestra da tela de configuração: desligada, nenhuma unidade dispara sozinha — e a
+        // programação de cada uma fica intacta, ao contrário do "Desabilitar todas", que apaga
+        // quem estava ligado. Sai ANTES de olhar as agendas: com o interruptor em off nada mais
+        // desta função pode acontecer.
+        if (!await SincronismoAutomaticoSisreg.LigadoAsync(db, ct)) return;
+
         var agora = DateTime.UtcNow;
         var horaLocal = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(agora, Brasilia));
 

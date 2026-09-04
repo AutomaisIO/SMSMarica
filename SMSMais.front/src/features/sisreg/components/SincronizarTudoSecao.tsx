@@ -389,6 +389,10 @@ export function SincronizarTudoSecao() {
         ) : null}
 
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+          {/* Os dois botões abaixo REESCREVEM a agenda de cada unidade — não confundir com o
+              interruptor mestre no topo da tela, que só pausa o disparo e devolve tudo como
+              estava. Sem esta distinção, "Desabilitar todas" vira o caminho fácil para uma pausa
+              temporária e apaga quem estava ligado. */}
           <span className="text-xs text-gray-500">Importação diária de todas as unidades:</span>
           <Button
             type="button"
@@ -406,7 +410,7 @@ export function SincronizarTudoSecao() {
             tamanho="sm"
             disabled={alternarRede.isPending}
             onClick={() => aoAlternarRede(false)}
-            title="Nenhuma agenda nova entra sozinha até religar. Os horários já configurados ficam."
+            title="Marca as 45 unidades como inativas — perde quem estava ligado e quem não estava. Para uma pausa temporária, use o interruptor de sincronismo automático no topo da tela."
           >
             <PowerOff className="mr-1.5 h-3.5 w-3.5" />
             Desabilitar todas

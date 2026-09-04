@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  alternarSincronismoAutomatico,
   atualizarConfiguracaoSisreg,
   cancelarMapeamentoLote,
   listarExecucoesMapeamentoLote,
@@ -43,6 +44,18 @@ export function useAtualizarConfiguracaoSisreg() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (payload: AtualizarSisregConfiguracaoPayload) => atualizarConfiguracaoSisreg(payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.configuracao }),
+  });
+}
+
+/**
+ * Invalida a configuração no sucesso para a tela refletir o estado que o servidor confirmou —
+ * e não o que o clique supôs.
+ */
+export function useAlternarSincronismoAutomatico() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (ativo: boolean) => alternarSincronismoAutomatico(ativo),
     onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.configuracao }),
   });
 }

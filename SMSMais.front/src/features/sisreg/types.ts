@@ -22,6 +22,11 @@ export type SisregConfiguracao = {
   senhaDefinida: boolean;
   tokenDefinido: boolean;
   ativo: boolean;
+  /**
+   * Chave-mestra do sincronismo AUTOMÁTICO (varredura diária das unidades + lote de mapeamento).
+   * Só de leitura aqui — quem altera é `alternarSincronismoAutomatico`, endpoint próprio.
+   */
+  sincronismoAutomaticoAtivo: boolean;
   fonteCadastroPaciente: FonteCadastroPaciente;
   /** Sessões paralelas do SER na consulta de cadastro (o backend limita entre 1 e 8). */
   consultasSimultaneasSer: number;
@@ -43,6 +48,9 @@ export type AtualizarSisregConfiguracaoPayload = {
 };
 
 export type TestarConexaoSisregResultado = { sucesso: boolean; mensagem: string };
+
+/** Resultado de ligar/desligar o sincronismo automático com o SISREG. */
+export type SincronismoAutomaticoSisreg = { ativo: boolean; mensagem: string };
 
 /** Resposta ao disparo do lote "sincroniza tudo". */
 export type MapeamentoLoteAceito = { unidadesTotal: number; mensagem: string };

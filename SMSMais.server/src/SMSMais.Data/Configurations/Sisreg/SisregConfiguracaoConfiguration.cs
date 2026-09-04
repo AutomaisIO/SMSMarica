@@ -22,6 +22,13 @@ internal sealed class SisregConfiguracaoConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.SenhaCifrada).HasColumnName("senha_cifrada");
         builder.Property(x => x.TokenCifrado).HasColumnName("token_cifrado");
         builder.Property(x => x.Ativo).HasColumnName("ativo").IsRequired();
+        // Sem HasDefaultValue de propósito, ao contrário de `fonte_cadastro_paciente` logo abaixo:
+        // num `bool`, o sentinela do EF é `false` (o default do CLR), então uma coluna com default
+        // de banco `true` faria um INSERT com o valor `false` gravar `true` — o desligamento sumiria
+        // exatamente na linha que ele precisa criar. A linha singleton que já existe em produção é
+        // preenchida com `true` pela própria migration. Mesmo tratamento de `ativo`.
+        builder.Property(x => x.SincronismoAutomaticoAtivo)
+            .HasColumnName("sincronismo_automatico_ativo").IsRequired();
         builder.Property(x => x.FonteCadastroPaciente)
             .HasColumnName("fonte_cadastro_paciente").HasConversion<int>().IsRequired()
             // Default no BANCO, não só no POCO: a linha singleton já existe em produção e uma
