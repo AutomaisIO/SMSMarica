@@ -38,6 +38,10 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
         // 20 e não 10: a coluna já existe em produção com esse tamanho (migration
         // EixoProcedimentoSisreg, 06/08/2026). Estreitá-la agora seria um ALTER sem ganho nenhum.
         builder.Property(s => s.ProcedimentoCodigoSisreg).HasColumnName("procedimento_codigo_sisreg").HasMaxLength(20);
+        builder.Property(s => s.ProfissionalExecutanteCpf)
+            .HasColumnName("profissional_executante_cpf").HasMaxLength(11);
+        builder.Property(s => s.ProfissionalExecutanteNome)
+            .HasColumnName("profissional_executante_nome").HasMaxLength(200);
         builder.Property(s => s.RawSisreg).HasColumnName("raw_sisreg");
         builder.Property(s => s.Justificativa).HasColumnName("justificativa").HasMaxLength(1000);
         builder.Property(s => s.Observacoes).HasColumnName("observacoes").HasMaxLength(2000);
@@ -98,5 +102,10 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
         builder.HasIndex(s => s.Categoria);
         builder.HasIndex(s => s.Status);
         builder.HasIndex(s => new { s.Status, s.DataAgendada });
+        // "abrir a agenda do profissional num período" é a consulta da tela de Agenda; sem este
+        // índice ela varre a tabela inteira. Filtrado: 3 em cada 4 linhas não interessam à agenda
+        // (sem executante ou sem data), e um índice parcial não paga por elas.
+        builder.HasIndex(s => new { s.ProfissionalExecutanteCpf, s.DataAgendada })
+            .HasFilter("profissional_executante_cpf IS NOT NULL AND data_agendada IS NOT NULL");
     }
 }

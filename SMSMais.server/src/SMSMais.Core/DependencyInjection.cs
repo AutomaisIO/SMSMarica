@@ -497,6 +497,9 @@ public static class DependencyInjection
         // visão do solicitante e custar 1 requisição de ficha POR agendamento — sozinho estouraria
         // o limite anti-robô do SISREG.
         services.AddScoped<Integracoes.SisregWeb.Importacao.IImportacaoSisregService, Integracoes.SisregWeb.Importacao.ImportacaoSisregService>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Importacao.IBackfillExecutanteService,
+            Integracoes.SisregWeb.Importacao.BackfillExecutanteService>();
 
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.

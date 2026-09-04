@@ -4,6 +4,7 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Integracoes.Sisreg;
 using SMSMais.Core.Integracoes.Sisreg.Configuracao;
 using SMSMais.Core.Integracoes.Sisreg.Dtos;
+using SMSMais.Core.Integracoes.SisregWeb.Importacao;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -16,10 +17,12 @@ namespace SMSMais.Api.Controllers;
 [Route("sisreg/configuracao")]
 public sealed class SisregConfiguracaoController(
     ISisregConfiguracaoService configuracaoService,
-    ISisregConsultaService consultaService) : ControllerBase
+    ISisregConsultaService consultaService,
+    IBackfillExecutanteService backfillExecutante) : ControllerBase
 {
     private readonly ISisregConfiguracaoService _configuracaoService = configuracaoService;
     private readonly ISisregConsultaService _consultaService = consultaService;
+    private readonly IBackfillExecutanteService _backfillExecutante = backfillExecutante;
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Consulta)]
@@ -55,6 +58,19 @@ public sealed class SisregConfiguracaoController(
         [FromBody] AlternarSincronismoAutomaticoRequest request,
         CancellationToken cancellationToken) =>
         await _configuracaoService.AlternarSincronismoAutomaticoAsync(request.Ativo, cancellationToken);
+
+    /// <summary>
+    /// Completa as solicitações já importadas com o profissional EXECUTANTE, relendo a linha crua do
+    /// SISREG que ficou guardada. <b>Não fala com o SISREG</b> — é reprocessamento do próprio banco,
+    /// então não gasta o orçamento anti-robô nem disputa a sessão do operador.
+    ///
+    /// <para>Idempotente: só toca em solicitação com o campo vazio. Rodar de novo é seguro.</para>
+    /// </summary>
+    [HttpPost("backfill-executante")]
+    [RequerPermissao(ModuloPermissao.SisregConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<BackfillExecutanteResultado>(StatusCodes.Status200OK)]
+    public async Task<BackfillExecutanteResultado> BackfillExecutante(CancellationToken cancellationToken) =>
+        await _backfillExecutante.ExecutarAsync(cancellationToken);
 
     /// <summary>Testa as credenciais com uma consulta mínima à fila. Não lança — devolve sucesso/erro.</summary>
     [HttpPost("testar-conexao")]

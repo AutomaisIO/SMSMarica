@@ -461,6 +461,10 @@ public sealed class ImportacaoSisregService(
             SolicitanteUfConselho = string.Empty,
             SolicitanteConselho = "CRM",
             SolicitanteCpf = m.CpfMedicoSolicitante,
+            // Quem EXECUTA — eixo da escala do SISREG e, portanto, da agenda do profissional.
+            // O parser já lia e descartava; sem isto só dá para medir a unidade, nunca a pessoa.
+            ProfissionalExecutanteCpf = m.CpfProfissionalExecutante,
+            ProfissionalExecutanteNome = m.NomeProfissionalExecutante,
             RawSisreg = m.LinhaRaw,
             CodigoSolicitacao = codigo,
             Status = StatusSolicitacao.Solicitada,
@@ -549,6 +553,12 @@ public sealed class ImportacaoSisregService(
         if (nomeProc.Length > 0) alvo.ProcedimentoTexto = nomeProc;
         if (!string.IsNullOrWhiteSpace(m.NomeMedicoSolicitante)) alvo.SolicitanteNome = m.NomeMedicoSolicitante!;
         if (!string.IsNullOrWhiteSpace(m.CpfMedicoSolicitante)) alvo.SolicitanteCpf = m.CpfMedicoSolicitante;
+        // Só sobrescreve quando a fonte informa: o caminho pontual do `cons_agendas` não traz o
+        // executante (lá ele era o filtro da consulta), e apagar o que já se sabe seria regressão.
+        if (!string.IsNullOrWhiteSpace(m.CpfProfissionalExecutante))
+            alvo.ProfissionalExecutanteCpf = m.CpfProfissionalExecutante;
+        if (!string.IsNullOrWhiteSpace(m.NomeProfissionalExecutante))
+            alvo.ProfissionalExecutanteNome = m.NomeProfissionalExecutante;
 
         alvo.AtualizadoEm = DateTime.UtcNow;
         alvo.AtualizadoPor = UsuarioIdAtual;

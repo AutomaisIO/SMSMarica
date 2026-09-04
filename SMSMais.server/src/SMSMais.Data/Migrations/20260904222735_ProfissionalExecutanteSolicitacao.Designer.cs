@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMais.Data;
 namespace SMSMais.Data.Migrations
 {
     [DbContext(typeof(SmsMaisDbContext))]
-    partial class SmsMaisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260904222735_ProfissionalExecutanteSolicitacao")]
+    partial class ProfissionalExecutanteSolicitacao
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -8618,199 +8621,6 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("sisreg_configuracao", "smsmarica");
                 });
 
-            modelBuilder.Entity("SMSMais.Data.Entities.Sisreg.SisregEscala", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("AgendaLocal")
-                        .HasColumnType("boolean")
-                        .HasColumnName("agenda_local");
-
-                    b.Property<DateOnly?>("AlteradaEmSisreg")
-                        .HasColumnType("date")
-                        .HasColumnName("alterada_em_sisreg");
-
-                    b.Property<DateOnly?>("AtivadaEmSisreg")
-                        .HasColumnType("date")
-                        .HasColumnName("ativada_em_sisreg");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<Guid?>("AtualizadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("atualizado_por");
-
-                    b.Property<bool>("Ausente")
-                        .HasColumnType("boolean")
-                        .HasColumnName("ausente");
-
-                    b.Property<string>("CboCodigo")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("cbo_codigo");
-
-                    b.Property<string>("CboDescricao")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("cbo_descricao");
-
-                    b.Property<string>("Cnes")
-                        .IsRequired()
-                        .HasMaxLength(7)
-                        .HasColumnType("character varying(7)")
-                        .HasColumnName("cnes");
-
-                    b.Property<string>("CodigoEscala")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("codigo_escala");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<Guid?>("CriadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("criado_por");
-
-                    b.Property<int>("DiaSemana")
-                        .HasColumnType("integer")
-                        .HasColumnName("dia_semana");
-
-                    b.Property<bool>("EhGrupo")
-                        .HasColumnType("boolean")
-                        .HasColumnName("eh_grupo");
-
-                    b.Property<TimeOnly>("HoraFim")
-                        .HasColumnType("time without time zone")
-                        .HasColumnName("hora_fim");
-
-                    b.Property<TimeOnly>("HoraInicio")
-                        .HasColumnType("time without time zone")
-                        .HasColumnName("hora_inicio");
-
-                    b.Property<DateOnly?>("InseridaEmSisreg")
-                        .HasColumnType("date")
-                        .HasColumnName("inserida_em_sisreg");
-
-                    b.Property<int>("MinutosPrimeiraVez")
-                        .HasColumnType("integer")
-                        .HasColumnName("minutos_primeira_vez");
-
-                    b.Property<int>("MinutosReserva")
-                        .HasColumnType("integer")
-                        .HasColumnName("minutos_reserva");
-
-                    b.Property<int>("MinutosRetorno")
-                        .HasColumnType("integer")
-                        .HasColumnName("minutos_retorno");
-
-                    b.Property<string>("OperadorCriador")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("operador_criador");
-
-                    b.Property<string>("OperadorModificador")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("operador_modificador");
-
-                    b.Property<string>("ProcedimentoCodigo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("procedimento_codigo");
-
-                    b.Property<string>("ProcedimentoNome")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("procedimento_nome");
-
-                    b.Property<string>("ProcedimentoSigtap")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("procedimento_sigtap");
-
-                    b.Property<string>("ProfissionalCpf")
-                        .IsRequired()
-                        .HasMaxLength(11)
-                        .HasColumnType("character varying(11)")
-                        .HasColumnName("profissional_cpf");
-
-                    b.Property<string>("ProfissionalNome")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("profissional_nome");
-
-                    b.Property<bool>("QuebraAutomatica")
-                        .HasColumnType("boolean")
-                        .HasColumnName("quebra_automatica");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<Guid>("UnidadeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("unidade_id");
-
-                    b.Property<string>("UnidadeNomeSisreg")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("unidade_nome_sisreg");
-
-                    b.Property<int>("VagasPrimeiraVez")
-                        .HasColumnType("integer")
-                        .HasColumnName("vagas_primeira_vez");
-
-                    b.Property<int>("VagasReserva")
-                        .HasColumnType("integer")
-                        .HasColumnName("vagas_reserva");
-
-                    b.Property<int>("VagasRetorno")
-                        .HasColumnType("integer")
-                        .HasColumnName("vagas_retorno");
-
-                    b.Property<int>("VagasTotal")
-                        .HasColumnType("integer")
-                        .HasColumnName("vagas_total");
-
-                    b.Property<DateOnly>("VigenciaFim")
-                        .HasColumnType("date")
-                        .HasColumnName("vigencia_fim");
-
-                    b.Property<DateOnly>("VigenciaInicio")
-                        .HasColumnType("date")
-                        .HasColumnName("vigencia_inicio");
-
-                    b.Property<DateTime>("VistoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("visto_em");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CodigoEscala")
-                        .IsUnique()
-                        .HasDatabaseName("ux_sisreg_escala_codigo");
-
-                    b.HasIndex("ProfissionalCpf", "VigenciaFim");
-
-                    b.HasIndex("UnidadeId", "ProcedimentoCodigo", "DiaSemana");
-
-                    b.HasIndex("UnidadeId", "Status", "VigenciaFim");
-
-                    b.ToTable("sisreg_escala", "smsmarica");
-                });
-
             modelBuilder.Entity("SMSMais.Data.Entities.Sisreg.SisregImportacaoExecucao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11911,17 +11721,6 @@ namespace SMSMais.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Tratamento");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sisreg.SisregEscala", b =>
-                {
-                    b.HasOne("SMSMais.Data.Entities.Unidade", "Unidade")
-                        .WithMany()
-                        .HasForeignKey("UnidadeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Unidade");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Sisreg.SisregMapeamentoLoteExecucaoItem", b =>

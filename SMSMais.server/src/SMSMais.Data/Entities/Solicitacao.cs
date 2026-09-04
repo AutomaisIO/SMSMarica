@@ -81,6 +81,24 @@ public class Solicitacao
     /// </summary>
     public string? ProcedimentoCodigoSisreg { get; set; }
 
+    /// <summary>
+    /// CPF do profissional que vai EXECUTAR (coluna 4 da linha do TXT) — só dígitos.
+    ///
+    /// <para><b>Por que existe:</b> a escala do SISREG é publicada por profissional × unidade ×
+    /// procedimento. Sem carimbar aqui quem executa, dá para dizer quantas vagas a unidade ofertou,
+    /// mas não "abrir a agenda do Dr. Fulano" — que é o eixo de leitura que a Agenda precisa.</para>
+    ///
+    /// <para><b>Nullable de fato:</b> quem entra pelo caminho pontual do <c>cons_agendas</c> não traz
+    /// a coluna (o profissional era o filtro da consulta, não um campo do resultado). Medido em
+    /// 04/09/2026: 21.228 das 21.235 solicitações com RAW têm o CPF; as outras 20 vieram por esse
+    /// caminho. Casa com <c>sisreg_profissional_unidade.cpf</c> — na medição, 271 de 271.</para>
+    /// </summary>
+    public string? ProfissionalExecutanteCpf { get; set; }
+
+    /// <summary>Nome do executante (coluna 5) — snapshot, como <see cref="SolicitanteNome"/>.
+    /// Guardado junto para a tela não depender de join quando o profissional some do mapeamento.</summary>
+    public string? ProfissionalExecutanteNome { get; set; }
+
     /// <summary>Linha CRUA do TXT do SISREG que originou esta solicitação (proveniência). Uso interno.</summary>
     public string? RawSisreg { get; set; }
 

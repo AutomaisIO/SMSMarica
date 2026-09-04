@@ -114,6 +114,10 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SisregProcedimentoSigtap> SisregProcedimentosSigtap => Set<SisregProcedimentoSigtap>();
 
     // Motor diário que varre a agenda do SISREG por unidade: agenda (quando roda) e rastreio (o que rodou)
+    /// <summary>Grade de OFERTA do SISREG (tela cons_escalas) — vagas por profissional × unidade ×
+    /// procedimento × dia da semana. Base da Agenda.</summary>
+    public DbSet<SisregEscala> SisregEscalas => Set<SisregEscala>();
+
     public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
     public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
     public DbSet<SisregVarreduraExecucaoItem> SisregVarreduraExecucaoItens => Set<SisregVarreduraExecucaoItem>();
