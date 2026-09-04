@@ -170,9 +170,16 @@ class SisregClient:
         iframe principal ``f_main`` + a barra "Operador:/Perfil:/Unidade:"). A tela
         de login com falha volta em ``/`` com o ``<div id="mensagem">`` preenchido.
         """
+        # A sessão derrubada por outro logon NÃO redireciona: o SISREG devolve 200
+        # com a página `sisreg_erro.c` ("Este operador efetuou logon em outra
+        # estação de trabalho"). Sem esta checagem, `esta_logado()` diz True e as
+        # requisições seguintes voltam vazias — lidas como "não há dados".
+        html = resp.text
+        baixo = html.lower()
+        if "logon em outra" in baixo or "sisreg_erro" in baixo:
+            return False
         if "/cgi-bin/index" in str(resp.url):
             return True
-        html = resp.text
         return 'id="f_main"' in html or 'href="?logout=1"' in html
 
     @staticmethod

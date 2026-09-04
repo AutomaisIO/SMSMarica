@@ -459,6 +459,95 @@ Cada registro do `cons_agendas` traz o suficiente para o pipeline de import ordi
 paciente é enriquecido no downstream (CNS→CADSUS) e o eixo é o nome. `expo_solicitacoes`/CSV
 continua sendo a fonte de **carga em massa** (após as 15h).
 
+## 📅 `cons_escalas` — GRADE DE HORÁRIOS DA REDE INTEIRA ✅ (2026-09-04)
+
+**Uma requisição traz toda a agenda ofertada do município.** É a fonte da estrutura de
+"horários" da plataforma: profissional × unidade executante × procedimento × dia da semana
+× faixa de horário × nº de vagas. **Não tem paciente** — são as VAGAS, não os agendamentos.
+
+`GET /cgi-bin/cons_escalas` → form único `formulario`, POST para a **própria URL**.
+Os selects `ups`/`cpf`/`pa` chegam vazios no HTML e são preenchidos por AJAX
+(`ajax_populaUpsIbgeEHorario`, `ajax_populaProfPorUpsEHorario`) — **irrelevante para o
+scraping**, porque o POST aceita os campos direto.
+
+| Campo | Valor |
+|-------|-------|
+| `etapa` | `EXIBIR_ESCALAS` (lista HTML paginada) / `EXPORTAR_ESCALAS` (**CSV**) / `DETALHAR_ESCALA` |
+| `ups` | CNES da unidade executante — **aceita vazio** |
+| `radioFiltro` | `cpf` (profissional) ou `pa` (procedimento) — só governa qual combo a tela mostra |
+| `cpf` / `pa` | filtro do profissional / procedimento — **aceitam vazio** |
+| `status` | `''` todos · `A` ativas · `I` inativas · `E` expiradas · `X` excluídas |
+| `dataInicial`/`dataFinal` | data da **última alteração** (não da vigência) — aceitam vazio |
+| `qtd_itens_pag` | 10/20/50/100 (só afeta `EXIBIR_ESCALAS`) |
+| `ibge` | `330270` (Maricá), hidden |
+| `pagina`, `ordenacao`, `clas_lista`, `coluna` | paginação/ordenação |
+
+### ⭐ Recorte SEM CRITÉRIO passa no servidor (ao contrário do `cons_agendas`)
+Medição real (04/09/2026, operador `PROGRAMADOR-BERNARDO`): POST com **ups/cpf/pa/status/datas
+todos vazios** → `HTTP 200 text/csv`, `filename="SISREG_ESCALAS_AMB_330270_<data>_<hora>.csv"`,
+**5,9 MB / 17.469 escalas** em **uma única requisição**. `;` como separador, **UTF-8 sem BOM**,
+34 colunas. Não há bloqueio de horário (diferente do `expo_solicitacoes`, travado das 8h às 15h).
+
+Distribuição por STATUS: **1.639 ATIVAS**, 1.392 inativas, 981 excluídas, 13.457 expiradas
+(o histórico é a maior parte do arquivo — filtrar por `STATUS` ou passar `status=A`).
+Nas ATIVAS: **216 profissionais, 34 unidades executantes, 132 procedimentos**.
+
+### Colunas do CSV (34)
+```
+00 COD. ESCALA AMBULATORIAL      ← chave natural, única por linha (idempotência)
+01 COD. CENTRAL EXEC.            02 DESC. CENTRAL EXEC.        (sempre 330270/MARICA)
+03 CPF PROFISSIONAL EXEC.        04 NOME PROFISSIONAL EXEC.
+05 COD. CBO                      06 DESC. CBO                  ('---' quando não há)
+07 COD CNES EXEC.                08 DESC. CNES EXEC.           ← unidade executante
+09 COD. PROCEDIMENTO INTERNO     10 DESC. PROCEDIMENTO INTERNO ← eixo (código do SISREG)
+11 COD. PROCEDIMENTO UNIFICADO   ← SIGTAP; VAZIO/'---' em 31% das linhas
+12 SIGLA DIA SEMANA              (SEG..DOM — a escala é SEMANAL, não uma data)
+13 QTD VAGAS PRIM. VEZ           14 QTD. MINUTOS PRIM. VEZ
+15 QTD. VAGAS RETORNO            16 QTD. MINUTOS RETORNO
+17 QTD. VAGAS RESERVA            18 QTD. MINUTOS RESERVA
+19 QUEBRA AUTOMATICA (SIM/NAO)   20 AGENDA LOCAL (SIM/NAO)
+21 DATA DE VIGENCIA INICIAL      22 DATA DE VIGENCIA FINAL
+23 HORA INICIAL                  24 HORA FINAL
+25 NOME OPERADOR CRIADOR         26 NOME OPERADOR MODIFICADOR
+27 DATA ULTIMA ALTERACAO         28 HORA ULTIMA ALTERACAO
+29 STATUS  (ATIVA/INATIVA/EXPIRADA/EXCLUIDA)
+30 DATA DA INSERCAO              31 HORA DA INSERCAO
+32 DATA DA ULTIMA ATIVACAO       33 HORA DA ULTIMA ATIVACAO
+```
+
+**Leitura do modelo:** cada linha é **um bloco semanal recorrente** — "toda SEX, das 11:10 às
+12:00, no CNES 3132358, profissional X, procedimento 0229000, 10 vagas de primeira vez" —
+válido de `VIGENCIA INICIAL` a `VIGENCIA FINAL`. O mesmo par profissional×procedimento aparece
+em várias linhas (uma por dia da semana e por faixa de horário). `COD. PROCEDIMENTO INTERNO`
+terminado em `000` é **GRUPO** (mesmo comportamento do `pa` no `marcar`/`cons_agendas`).
+
+⚠️ **`COD. PROCEDIMENTO UNIFICADO` (SIGTAP) vem vazio em ~5.400 linhas** — confirma o que já
+sabíamos: **o nome/código interno do procedimento é o eixo**, o SIGTAP não é confiável aqui.
+
+### Scripts
+- `recon_escalas.py` — só GET; dumpa form, campos, etapas e funções JS.
+- `exportar_escalas.py --saida <fora do repo> [--status A]` — login reusado + GET + 1 POST de
+  sonda (`EXIBIR_ESCALAS`, 10 itens) + 1 POST de export. **Custo: ~4 requisições** do orçamento
+  anti-robô. O CSV tem CPF de profissional → nunca gravar dentro do repo.
+
+### ⚔️ O lab BRIGA com o sincronismo de produção pela mesma credencial (2026-09-04)
+Confirmado pelo operador: **a produção roda sincronismo do SISREG em paralelo** com a mesma
+credencial `PROGRAMADOR-BERNARDO`. Como a sessão é ÚNICA por operador, cada lado derruba o
+outro — foi exatamente o que aconteceu nesta captura (a sessão salva do lab veio morta, e o
+`login()` do lab derrubou a do sincronismo). Consequências práticas:
+
+- Rodar script do lab **interrompe o sincronismo de produção** até ele relogar sozinho.
+- "Veio vazio" durante um run do lab pode ser sessão roubada, **não** ausência de dados.
+- É o argumento definitivo para a pendência já registrada: **provisionar um operador dedicado
+  ao lab**, separado do operador do robô de produção. Enquanto não houver, rodar o lab é uma
+  ação com efeito colateral em PROD — combinar antes.
+
+### 🐛 `esta_logado()` dava falso positivo (corrigido 2026-09-04)
+Quando outro logon derruba a sessão, o SISREG responde **200 com a página `sisreg_erro.c`**
+("Este operador efetuou logon em outra estação de trabalho") — não redireciona. `_login_ok`
+lia isso como sessão viva e as chamadas seguintes voltavam vazias, o que se lê como "não há
+dados" (conclusão errada pelo motivo certo). `_login_ok` agora reprova `logon em outra`/`sisreg_erro`.
+
 ## 🔒 Escopo antigo (histórico)
 Antes de 2026-08-26 a decisão "perfil amplo × credencial por unidade" estava pendente — ver
 seção acima (resolvida por `PROGRAMADOR-BERNARDO`).
@@ -494,6 +583,9 @@ operadores humanos. Definir esse operador com a SMS antes do go-live.
 - [ ] Implementar em Python o extrator de `cons_agendas` (iterar profissional×procedimento, paginar).
 - [ ] Definir escopo: perfil amplo (secretaria) **ou** 1 credencial por unidade.
 - [ ] Implementar paginação completa + parser das colunas → JSON/CSV.
+- [x] Mapear **`cons_escalas`** e baixar o CSV da rede inteira sem critério. ✅ 2026-09-04
+- [ ] Modelar a entidade de **horários** a partir do CSV de escalas e definir a sincronização.
 - [ ] Testar `expo_solicitacoes` (txt) após as 15h.
 - [ ] **Provisionar credencial de operador DEDICADA** para o robô (sessão única).
+- [ ] **Provisionar operador SEPARADO para o LAB** — hoje ele briga com o sincronismo de PROD.
 - [ ] Portar o motor validado para `SMSMais.server`.
