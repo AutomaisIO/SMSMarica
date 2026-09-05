@@ -134,6 +134,14 @@ public sealed class VarreduraAgendaService(
     /// Proporção de ausentes acima da qual a leitura é considerada incompleta, não cancelamento.
     /// Um quinto da agenda sumir de uma vez é evento raríssimo; exportação truncada, não.
     /// </summary>
+    /// <summary>
+    /// Rede de segurança para unidade SEM escala cadastrada: quantos dias varrer quando não há de
+    /// onde derivar a janela. Constante de propósito — a janela deixou de ser escolha em 05/09/2026
+    /// (ver <c>UltimoDiaDeAgendaAsync</c>). A coluna <c>dias_a_frente</c> continua no banco porque
+    /// migration é imutável, mas nada mais a lê para decidir.
+    /// </summary>
+    private const int PisoDiasAFrente = 21;
+
     private const double LimiteAusentesSuspeito = 0.20;
 
     private const int LoteDeImportacao = 20;
@@ -406,14 +414,16 @@ public sealed class VarreduraAgendaService(
     /// <para>É também o que torna o cancelamento detectável: só faz sentido concluir "sumiu do
     /// SISREG" depois de olhar <b>todo</b> o futuro em que a solicitação poderia estar.</para>
     ///
-    /// <para><b>Piso, não teto:</b> unidade sem escala nenhuma cadastrada continua varrendo a janela
-    /// antiga. Derivar de um conjunto vazio daria "hoje", e a unidade pararia de importar em
-    /// silêncio — trocaria um problema de alcance por um de cegueira total.</para>
+    /// <para><b>Piso, não teto:</b> unidade sem escala nenhuma cadastrada continua varrendo
+    /// <see cref="PisoDiasAFrente"/> dias. Derivar de um conjunto vazio daria "hoje", e a unidade
+    /// pararia de importar em silêncio — trocaria um problema de alcance por um de cegueira total.
+    /// É constante, e não configuração: escolher a janela era justamente o que produzia a
+    /// disponibilidade fantasma, então devolver a escolha ao operador reabriria o problema.</para>
     /// </summary>
     private async Task<DateOnly> UltimoDiaDeAgendaAsync(
         Guid unidadeId, DateOnly hoje, SisregVarreduraAgenda? agenda, CancellationToken ct)
     {
-        var piso = hoje.AddDays(agenda?.DiasAFrente ?? 21);
+        var piso = hoje.AddDays(PisoDiasAFrente);
 
         var ultimaEscala = await db.SisregEscalas
             .Where(e => e.UnidadeId == unidadeId

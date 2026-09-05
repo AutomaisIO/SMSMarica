@@ -38,7 +38,7 @@ const ROTULO_STATUS: Record<StatusVarredura, string> = {
 };
 
 /**
- * Sincronismo diário da agenda do SISREG para UMA unidade: liga/desliga, hora, janela de dias,
+ * Sincronismo diário da agenda do SISREG para UMA unidade: liga/desliga e hora,
  * disparo manual e as varreduras recentes.
  *
  * O bloco existe para responder duas perguntas que o operador precisa fazer ANTES de confiar no
@@ -126,6 +126,14 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
       </header>
 
       {/* Configuração */}
+      {/* A janela deixou de ser configurável: escolher "21 dias" era o que fazia a agenda exibir
+          como livre toda vaga além disso, por falta de dado. Quem quiser conferir o alcance real de
+          cada rodada tem a coluna "Cobertura" no histórico abaixo. */}
+      <p className="mb-3 text-xs text-gray-500">
+        A varredura vai de hoje até a <strong>última escala ativa</strong> desta unidade — não até um
+        número de dias escolhido. Só o horário do disparo é configurável.
+      </p>
+
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input
@@ -148,23 +156,6 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           />
         </Campo>
 
-        <Campo
-          label="Mínimo de dias à frente"
-          htmlFor="varredura-dias"
-          dica="A varredura vai até a ÚLTIMA ESCALA ativa da unidade, não até um número escolhido — senão a agenda mostraria como livre toda vaga além da janela, por falta de dado. Este número é só o piso, usado quando a unidade ainda não tem escala cadastrada."
-        >
-          <Input
-            id="varredura-dias"
-            type="number"
-            min={1}
-            max={30}
-            className="w-24"
-            value={dias}
-            disabled={!podeEditar}
-            onChange={(e) => setDias(e.target.value)}
-          />
-        </Campo>
-
         {podeEditar && (
           <Button
             tamanho="sm"
@@ -175,6 +166,9 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
                   salvar.mutateAsync({
                     ativo,
                     horaLocal: hora,
+                    // A janela nao e mais escolha: vai ate a ultima escala da unidade.
+                    // Reenvia o valor que ja esta gravado so para nao quebrar o contrato
+                    // da API — o backend nao o usa mais para decidir o alcance.
                     diasAFrente: Number(dias) || 21,
                   }),
                 () => 'Sincronismo salvo.',
