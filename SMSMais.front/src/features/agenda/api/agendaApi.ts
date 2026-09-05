@@ -163,3 +163,10 @@ export async function agendaPorDiaSemana(f: AgendaFiltro): Promise<AgendaPorDiaS
   const { data } = await http.get<AgendaPorDiaSemana[]>('/agenda/dias-semana', { params: params(f) });
   return data;
 }
+
+export type AgendaSerieDia = { data: string; vagas: number; agendados: number };
+
+export async function agendaSerie(f: AgendaFiltro): Promise<AgendaSerieDia[]> {
+  const { data } = await http.get<AgendaSerieDia[]>('/agenda/serie', { params: params(f) });
+  return data;
+}

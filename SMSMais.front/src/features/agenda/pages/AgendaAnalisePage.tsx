@@ -1,21 +1,28 @@
 import { useState } from 'react';
 import { BarChart3, Loader2 } from 'lucide-react';
+import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   useAgendaPorDiaSemana,
   useRankingAgenda,
   useResumoAgenda,
+  useSerieAgenda,
 } from '@/features/agenda/api/queries';
 import { FiltroAgenda } from '@/features/agenda/components/FiltroAgenda';
 import { CartoesResumo } from '@/features/agenda/components/CartoesResumo';
+import { AvisoCobertura } from '@/features/agenda/components/AvisoCobertura';
+import { diaBrasilia, diaCurto } from '@/features/agenda/lib/datasAgenda';
 import type { AgendaFiltro, AgendaRankingItem } from '@/features/agenda/api/agendaApi';
-
-function hojeBrasilia(offsetDias = 0) {
-  const agora = new Date();
-  const brasilia = new Date(agora.getTime() + (agora.getTimezoneOffset() - 180) * 60_000);
-  brasilia.setDate(brasilia.getDate() + offsetDias);
-  return brasilia.toISOString().slice(0, 10);
-}
 
 const EIXOS = [
   { id: 'unidade', rotulo: 'Por unidade' },
@@ -63,12 +70,13 @@ function Linha({ item, maximo }: { item: AgendaRankingItem; maximo: number }) {
  * na sexta"; aqui se procura "quais especialidades estão ociosas" e "quem está sobrecarregado".</p>
  */
 export function AgendaAnalisePage() {
-  const [filtro, setFiltro] = useState<AgendaFiltro>({ de: hojeBrasilia(), ate: hojeBrasilia(30) });
+  const [filtro, setFiltro] = useState<AgendaFiltro>({ de: diaBrasilia(), ate: diaBrasilia(30) });
   const [eixo, setEixo] = useState<(typeof EIXOS)[number]['id']>('unidade');
 
   const resumo = useResumoAgenda(filtro);
   const ranking = useRankingAgenda(filtro, eixo);
   const semana = useAgendaPorDiaSemana(filtro);
+  const serie = useSerieAgenda(filtro);
 
   const maximo = Math.max(1, ...(ranking.data?.map((r) => r.vagas) ?? [1]));
   const maxSemana = Math.max(1, ...(semana.data?.map((d) => d.vagas) ?? [1]));
@@ -87,9 +95,52 @@ export function AgendaAnalisePage() {
         </p>
       </header>
 
+      <AvisoCobertura de={filtro.de} ate={filtro.ate} />
+
       <FiltroAgenda filtro={filtro} aoMudar={setFiltro} />
 
       <CartoesResumo resumo={resumo.data} carregando={resumo.isPending} />
+
+      {/* Série diária: onde a oferta cai e onde a ocupação encosta no teto */}
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900">Oferta e ocupação dia a dia</h2>
+        <p className="mb-3 text-xs text-gray-500">
+          A área clara é a oferta publicada; a linha, a ocupação. Onde a linha encosta na área, a
+          agenda lotou. Os vales são fim de semana e feriado — dias sem escala aparecem como zero de
+          propósito, para que a queda seja visível em vez de o traço saltar por cima dela.
+        </p>
+        {serie.isPending ? (
+          <Loader2 className="mx-auto my-10 h-5 w-5 animate-spin text-gray-400" />
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart
+              data={(serie.data ?? []).map((d) => ({ ...d, rotulo: diaCurto(d.data) }))}
+              margin={{ top: 4, right: 8, bottom: 8, left: 4 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+              <XAxis dataKey="rotulo" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={20} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip contentStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area
+                type="monotone"
+                dataKey="vagas"
+                name="Vagas ofertadas"
+                stroke="#93c5fd"
+                fill="#dbeafe"
+              />
+              <Line
+                type="monotone"
+                dataKey="agendados"
+                name="Agendados"
+                stroke="#b91c1c"
+                strokeWidth={2}
+                dot={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+      </section>
 
       {/* Composição da oferta */}
       {resumo.data ? (

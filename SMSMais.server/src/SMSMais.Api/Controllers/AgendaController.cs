@@ -14,9 +14,12 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("agenda")]
-public sealed class AgendaController(IAgendaAnaliseService agenda) : ControllerBase
+public sealed class AgendaController(
+    IAgendaAnaliseService agenda,
+    IAgendaDemandaService demanda) : ControllerBase
 {
     private readonly IAgendaAnaliseService _agenda = agenda;
+    private readonly IAgendaDemandaService _demanda = demanda;
 
     /// <summary>Opções dos filtros — só quem ainda tem escala vigente.</summary>
     [HttpGet("opcoes")]
@@ -73,4 +76,81 @@ public sealed class AgendaController(IAgendaAnaliseService agenda) : ControllerB
     public async Task<IReadOnlyList<AgendaPorDiaSemanaDto>> DiasSemana(
         [FromQuery] AgendaFiltro filtro, CancellationToken ct) =>
         await _agenda.PorDiaSemanaAsync(filtro, ct);
+
+    /// <summary>Oferta × ocupação dia a dia — a série que a tela plota.</summary>
+    [HttpGet("serie")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<AgendaSerieDiaDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AgendaSerieDiaDto>> Serie(
+        [FromQuery] AgendaFiltro filtro, CancellationToken ct) =>
+        await _agenda.SerieAsync(filtro, ct);
+
+    /// <summary>
+    /// Até onde o dado existe. Toda tela do módulo depende disto para não apresentar ausência de
+    /// importação como se fosse ausência de movimento.
+    /// </summary>
+    [HttpGet("cobertura")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AgendaCoberturaDto>(StatusCodes.Status200OK)]
+    public async Task<AgendaCoberturaDto> Cobertura(CancellationToken ct) =>
+        await _demanda.CoberturaAsync(ct);
+
+    // ---------------------------------------------------------------- demanda
+
+    /// <summary>Opções dos filtros da demanda — o que aparece em solicitação no último ano.</summary>
+    [HttpGet("demanda/opcoes")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<DemandaOpcoesDto>(StatusCodes.Status200OK)]
+    public async Task<DemandaOpcoesDto> DemandaOpcoes(CancellationToken ct) =>
+        await _demanda.OpcoesAsync(ct);
+
+    /// <summary>Volume regulado e tempo de espera no recorte.</summary>
+    [HttpGet("demanda/resumo")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<DemandaResumoDto>(StatusCodes.Status200OK)]
+    public async Task<DemandaResumoDto> DemandaResumo(
+        [FromQuery] DemandaFiltro filtro, CancellationToken ct) =>
+        await _demanda.ResumoAsync(filtro, ct);
+
+    /// <summary>
+    /// Top procedimentos regulados. <c>ordenarPor</c>: <c>volume</c> (padrão), <c>espera</c> ou
+    /// <c>atraso</c> — ordenar por espera é o que encontra o gargalo, que raramente é o de maior
+    /// volume.
+    /// </summary>
+    [HttpGet("demanda/procedimentos")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<DemandaProcedimentoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<DemandaProcedimentoDto>> DemandaProcedimentos(
+        [FromQuery] DemandaFiltro filtro,
+        [FromQuery] string ordenarPor = "volume",
+        [FromQuery] int limite = 20,
+        CancellationToken ct = default) =>
+        await _demanda.ProcedimentosAsync(filtro, ordenarPor, limite, ct);
+
+    /// <summary>Histograma da espera em faixas fixas.</summary>
+    [HttpGet("demanda/faixas-espera")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<DemandaFaixaEsperaDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<DemandaFaixaEsperaDto>> DemandaFaixas(
+        [FromQuery] DemandaFiltro filtro, CancellationToken ct) =>
+        await _demanda.FaixasEsperaAsync(filtro, ct);
+
+    /// <summary>De onde vem o pedido (<c>solicitante</c>) ou para onde vai (<c>executante</c>).</summary>
+    [HttpGet("demanda/origem")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<DemandaOrigemDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<DemandaOrigemDto>> DemandaOrigem(
+        [FromQuery] DemandaFiltro filtro,
+        [FromQuery] string eixo = "solicitante",
+        [FromQuery] int limite = 15,
+        CancellationToken ct = default) =>
+        await _demanda.OrigemAsync(filtro, eixo, limite, ct);
+
+    /// <summary>Volume e espera mês a mês.</summary>
+    [HttpGet("demanda/serie")]
+    [RequerPermissao(ModuloPermissao.Agenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<DemandaSerieDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<DemandaSerieDto>> DemandaSerie(
+        [FromQuery] DemandaFiltro filtro, CancellationToken ct) =>
+        await _demanda.SerieAsync(filtro, ct);
 }

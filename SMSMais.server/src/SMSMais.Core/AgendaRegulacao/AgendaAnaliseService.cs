@@ -24,6 +24,9 @@ public interface IAgendaAnaliseService
     Task<IReadOnlyList<AgendaPorDiaSemanaDto>> PorDiaSemanaAsync(
         AgendaFiltro filtro, CancellationToken ct = default);
 
+    Task<IReadOnlyList<AgendaSerieDiaDto>> SerieAsync(
+        AgendaFiltro filtro, CancellationToken ct = default);
+
     Task<AgendaOpcoesDto> OpcoesAsync(CancellationToken ct = default);
 }
 
@@ -262,6 +265,27 @@ public sealed class AgendaAnaliseService(
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<AgendaSerieDiaDto>> SerieAsync(
+        AgendaFiltro f, CancellationToken ct = default)
+    {
+        var (veTudo, unidades) = await EscopoAsync(ct);
+
+        // Parte de `dias`, não de `oferta`: dia sem escala nenhuma tem de aparecer com zero. Se a
+        // linha do gráfico simplesmente pulasse o feriado, o traço ligaria véspera e dia seguinte
+        // e a queda desapareceria da tela — que é justamente o que se quer enxergar.
+        var sql = Base + """
+            select d.d "Data",
+                   coalesce((select sum(o.vagas) from oferta o where o.d = d.d), 0)::int "Vagas",
+                   coalesce((select sum(c.agendados) from ocupacao c where c.d = d.d), 0)::int "Agendados"
+            from dias d
+            order by d.d
+            """;
+
+        return await db.Database
+            .SqlQueryRaw<AgendaSerieDiaDto>(Formatar(sql), Parametros(f, veTudo, unidades))
+            .ToListAsync(ct);
+    }
+
     public async Task<AgendaDiaDetalheDto> DetalharDiaAsync(
         Guid unidadeId, string profissionalCpf, DateOnly data, CancellationToken ct = default)
     {
@@ -386,8 +410,11 @@ public sealed class AgendaAnaliseService(
 
     private static object[] Parametros(AgendaFiltro f, bool veTudo, Guid[] unidades) =>
     [
-        f.De.ToDateTime(TimeOnly.MinValue),
-        f.Ate.ToDateTime(TimeOnly.MinValue),
+        // DateOnly direto, NUNCA `ToDateTime`: o Npgsql infere `timestamptz` para um DateTime e
+        // recusa `Kind=Unspecified` antes mesmo de chegar ao `::date` do SQL — a consulta morre com
+        // "Cannot write DateTime with Kind=Unspecified". Como DateOnly, o parâmetro vai como `date`.
+        f.De,
+        f.Ate,
         (object?)f.UnidadeId ?? DBNull.Value,
         (object?)f.Cbo ?? DBNull.Value,
         (object?)f.ProfissionalCpf ?? DBNull.Value,

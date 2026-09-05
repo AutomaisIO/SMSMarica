@@ -92,6 +92,7 @@ import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/Respost
 import { RoboAtendimentoPage } from '@/features/robo-atendimento/pages/RoboAtendimentoPage';
 import { AgendaPage } from '@/features/agenda/pages/AgendaPage';
 import { AgendaAnalisePage } from '@/features/agenda/pages/AgendaAnalisePage';
+import { AgendaDemandaPage } from '@/features/agenda/pages/AgendaDemandaPage';
 import { AlteracoesAgendaPage } from '@/features/alteracoes-agenda/pages/AlteracoesAgendaPage';
 import { PendenciasCadastroPage } from '@/features/pendencias-cadastro/pages/PendenciasCadastroPage';
 import { SandboxPage } from '@/features/sandbox/pages/SandboxPage';
@@ -217,6 +218,7 @@ export function AppRouter() {
           <Route path="robo-atendimento" element={<RoboAtendimentoPage />} />
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="agenda/analise" element={<AgendaAnalisePage />} />
+          <Route path="agenda/demanda" element={<AgendaDemandaPage />} />
           <Route path="alteracoes-agenda" element={<AlteracoesAgendaPage />} />
           <Route path="pendencias-cadastro" element={<PendenciasCadastroPage />} />
           <Route path="estatisticas" element={<EstatisticasPage />} />

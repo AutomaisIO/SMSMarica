@@ -5,19 +5,9 @@ import { Button } from '@/shared/ui/Button';
 import { useDiaAgenda, useDiasAgenda, useResumoAgenda } from '@/features/agenda/api/queries';
 import { FiltroAgenda } from '@/features/agenda/components/FiltroAgenda';
 import { CartoesResumo } from '@/features/agenda/components/CartoesResumo';
+import { AvisoCobertura } from '@/features/agenda/components/AvisoCobertura';
+import { diaBrasilia } from '@/features/agenda/lib/datasAgenda';
 import type { AgendaDia, AgendaFiltro } from '@/features/agenda/api/agendaApi';
-
-/**
- * Hoje em BRASÍLIA, não `new Date()` cru: depois das 21h o relógio em UTC já está no dia seguinte,
- * e a tela abriria num período diferente do que o operador tem na cabeça. Foi exatamente esse
- * deslize que, medido em 05/09/2026, dava 912 contra 934 escalas vigentes.
- */
-function hojeBrasilia(offsetDias = 0) {
-  const agora = new Date();
-  const brasilia = new Date(agora.getTime() + (agora.getTimezoneOffset() - 180) * 60_000);
-  brasilia.setDate(brasilia.getDate() + offsetDias);
-  return brasilia.toISOString().slice(0, 10);
-}
 
 function dataBr(iso: string) {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
@@ -59,7 +49,7 @@ function Barra({ agendados, vagas }: { agendados: number; vagas: number }) {
  * quem ocupa, e a grade de horários deduzida — que é dedução declarada, não dado do SISREG.</p>
  */
 export function AgendaPage() {
-  const [filtro, setFiltro] = useState<AgendaFiltro>({ de: hojeBrasilia(), ate: hojeBrasilia(30) });
+  const [filtro, setFiltro] = useState<AgendaFiltro>({ de: diaBrasilia(), ate: diaBrasilia(30) });
   const [pagina, setPagina] = useState(0);
   const [aberto, setAberto] = useState<AgendaDia | null>(null);
 
@@ -94,6 +84,8 @@ export function AgendaPage() {
           unidade — clique para ver os blocos publicados, quem ocupa e a grade de horários deduzida.
         </p>
       </header>
+
+      <AvisoCobertura de={filtro.de} ate={filtro.ate} />
 
       <FiltroAgenda filtro={filtro} aoMudar={trocarFiltro} />
 

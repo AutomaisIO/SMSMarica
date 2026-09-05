@@ -524,6 +524,7 @@ public static class DependencyInjection
             Integracoes.SisregWeb.Alteracoes.AlteracoesAgendaService>();
 
         services.AddScoped<AgendaRegulacao.IAgendaAnaliseService, AgendaRegulacao.AgendaAnaliseService>();
+        services.AddScoped<AgendaRegulacao.IAgendaDemandaService, AgendaRegulacao.AgendaDemandaService>();
 
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.

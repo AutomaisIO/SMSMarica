@@ -16,6 +16,7 @@ import {
   DownloadCloud,
   DatabaseZap,
   HeartPulse,
+  Hourglass,
   FileCog,
   FileSignature,
   FileText,
@@ -155,6 +156,13 @@ export const SECOES: SecaoMenu[] = [
         icone: BarChart3,
         modulo: 'Agenda',
         descricao: 'Ocupacao por unidade, especialidade e profissional; ociosidade e sobrecarga.',
+      },
+      {
+        rotulo: 'Demanda regulada',
+        to: '/app/agenda/demanda',
+        icone: Hourglass,
+        modulo: 'Agenda',
+        descricao: 'Top procedimentos, tempo de espera e origem da demanda.',
       },
       {
         rotulo: 'Alteracoes de Agenda',
