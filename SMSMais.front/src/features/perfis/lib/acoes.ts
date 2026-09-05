@@ -65,9 +65,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
   { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
   { id: 'Indicadores', rotulo: 'Indicadores contratuais do HMCML' },
-  { id: 'Especialidades', rotulo: 'Especialidades' },
   { id: 'Equipamentos', rotulo: 'Equipamentos' },
-  { id: 'Agendamentos', rotulo: 'Agendamentos' },
   { id: 'Sisreg', rotulo: 'SISREG (consulta)' },
   { id: 'SisregConfiguracao', rotulo: 'Configuração SISREG' },
   { id: 'SisregMapeamento', rotulo: 'Mapeamento SISREG (profissionais e procedimentos da unidade)' },
@@ -102,6 +100,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },
   { id: 'RoboAtendimento', rotulo: 'Robô de atendimento — cadastro de assuntos e comandos do bot' },
   { id: 'AjusteCadastro', rotulo: 'Pendências de cadastro (números errados) — ver e resolver' },
+  { id: 'Agenda', rotulo: 'Agenda — oferta de vagas do SISREG, ocupação e análise' },
   {
     id: 'AlteracoesAgenda',
     rotulo: 'Alterações de agenda do SISREG — ver a fila, tratar e avisar o paciente',

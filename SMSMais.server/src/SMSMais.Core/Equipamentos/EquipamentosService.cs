@@ -91,13 +91,9 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
         var e = await _db.Equipamentos.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Equipamento), id);
 
-        var emUso = await _db.Agendas.AsNoTracking()
-            .AnyAsync(a => a.EquipamentoId == id && a.ExcluidoEm == null, cancellationToken);
-        if (emUso)
-        {
-            throw new ConflitoException("equipamento.em_uso",
-                "Não é possível excluir: há agendas vinculadas a este equipamento. Desative-o em vez disso.");
-        }
+        // A trava "ha agendas vinculadas" saiu junto com a agenda local (05/09/2026). Hoje o
+        // equipamento so e referenciado por PACS/worklist, que nao tem FK para ele — o vinculo e
+        // pelo AE Title. Se algum dia voltar a existir agenda propria, a trava volta com ela.
 
         var agora = DateTime.UtcNow;
         e.ExcluidoEm = agora;

@@ -1,0 +1,206 @@
+==============================================================================
+TRANSCRICAO DOS AUDIOS - grupo "Assistente" (WhatsApp)
+==============================================================================
+
+Audios .......: 15
+Duracao total : 58 min 33 s
+Periodo ......: 2026-09-02 16:26:34 ate 2026-09-04 15:34:53
+Transcricao ..: ElevenLabs Scribe (scribe_v1), portugues do Brasil
+
+COMO LER ESTE ARQUIVO
+
+  Cada audio esta entre um marcador de INICIO e um de FIM, numerados e com
+  data, hora e duracao. Nada foi resumido nem corrigido: o texto e o que foi
+  falado, incluindo hesitacoes ("eee", "ne?"), repeticoes e autocorrecoes -
+  elas costumam carregar a intencao e por isso foram preservadas.
+
+  Marcas entre colchetes, como [PAUSA], sao eventos nao-verbais detectados
+  pela transcricao, nao palavras faladas.
+
+  Onde a transcricao trocou um nome proprio por outro parecido (SER/CER,
+  SERNIT/Cernite/Sernite, SISREG/Sisreg), trata-se do mesmo sistema.
+
+
+==============================================================================
+>>> INICIO DO AUDIO 1 de 15
+    Data ....: 2026-09-02
+    Hora ....: 16:26:34
+    Duracao .: 0:09 (9 s)
+------------------------------------------------------------------------------
+
+E veja também se você consegue ouvir esse áudio e fazer o speech to text
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 1 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 2 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:09:41
+    Duracao .: 6:57 (417 s)
+------------------------------------------------------------------------------
+
+Bom, a situação é o seguinte: ééé, automação lá do Sisreg existe alguns cenários que eu vou citar aqui e depois a gente organiza direitinho. Então nós temos um sistema que seria o NAR. Esse NAR é uma-- É um tipo de regulação. Nós temos o SisReg, nós temos o SE, nós temos o Sernite, que é o que já fazem parte da nossa plataforma. Ééé, a gente vai precisar, dentro da nossa aba de Regulação, que seria uma, uma nova-- Um novo menu chamado deee, ééé, Solicitações, tá? Menu chamado Solicitações, dentro dooo, da aba Regulação. A gente tem alguns cenários que é o seguinte: a pessoa que vai abrir essa aba de Regulação, essa aba de solicitação, nós temos um perfil que é interno, um perfil que é externo, um perfil que é o tal do NAR, tá? Ééé, quando a gente abre essa solicitação, a gente vai precisar de um campo de texto livre pra pesquisar sobre procedimento. Então o que acontece? Tanto o SisReg quanto o SE, Sernit ou qualquer outro sistema de regulação que entrar na nossa plataforma, eles têm vários tipos de procedimento, seja pooor-- Tem-tem os códigos, né? É código pra cada tipo de procedimento. Então a primeira fase dessa solicitação, antes de ser, é, interno, externo ou NAR, a primeira fase dessa solicitação, ééé, é você escrever qual é o procedimento. Então digamos que o procedimento seja, supondo aqui uma coisa que não existe, mas seja implante de cabelo, implante capilar. Então a gente vai ter que fazer uma busca, e aí provavelmente uma busca vetorizada, para que a gente não tenha que toda vez enviar isso prum agente de IA. Cada nome de procedimento desse teria uma coluna nova, que seria os vetores, né? Então quando a gente fizer essa busca, ééé, a gente transformaria, né, essa nossa busca em vetor também e submeteria ao Postgre pra trazer pra gente, ééé, as correlações, né? As correlações. Ééé, adicionalmente, quando houver essas correlações, isso vai ser uma busca local interna via vetores, via máquina de select do Postgre, e vai retornar lá todas as unidades que praticam ou que tenham procedimento que atenda aquela solicitação, tá? Então, por exemplo, é, transplante capilar. Implante capilar. A gente vai dizer lá que o hospital A, que só tem no SisReg, ô! Que no Hospital A, que tem no SE, tem o Hospital A, que é do SE. Esse mesmo procedimento é feito também no Hospital B do Sernit. E temos internamente pelo SisReg, porque o SisReg é o regulação interna, e a gente tem no SisReg internamente que a unidade D, E, F também tem esse procedimento. Então ficaria explícito pra quem está iniciando uma solicitação que esse procedimento ele tem interno nas unidades tais e tem externo nas unidades tais, ok? E aí a pessoa, a princípio, ééé, vai clicar no Interno, por exemplo. Ééé, ao clicar no Interno, sabendo que existe a possibilidade, ela não escolhe aonde que vai. Ela só vai es-- Ela só vai escolher se vai externo ou interno, porque pode ser que implante capilar só tenha externo. Então vai aparecer lá pra ela Hospital A, B, C, que tem aquele negócio e só externo. Então ela só tem a opção de escolher externo, tá? Ééé, e nas configurações, nas configurações do, da regulação, a gente precisa incluir nas configurações se o usuário pode escolher Externo mesmo tendo Interno, tá? Ééé, mas a gente não deixa de mostrar nunca, sempre mostrar o que tem Interno e o que tem Externo em todas as unidades. Então, nesse primeiro momento, o-o usuário, ééé, que teeem-- Que não tem nível deee, de regulador, e aí isso é um novo campo doo, do perfil, um usuário normal, vamos dizer assim, que está abrindo essa solicitação, ele só vê Interno ou Externo, vê as unidades, seleciona se é Interno ou se é Externo. Se na configuração tiver habilitando ele poder escolher Externo mesmo tendo Interno, beleza. Se não, mostra, mas só permite clicar no Interno
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 2 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 3 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:11:18
+    Duracao .: 1:37 (98 s)
+------------------------------------------------------------------------------
+
+Ééé, até aí beleza. Quando segue pra próximaá parte, pra próxima página, ééé, se for interno, se o cara escolheu interno, a gente vai adotar um padrão e um template de inclusão baseado no scraping de tela do Sisreg. Então, no Sisreg dependendo do procedimento podem ter perguntas a mais, perguntas a menos, algumas coisas que envolvem autopreenchimento, não importa. Porém, ééé, porém uma vez que a pessoa começa a preencher nós temos que garantir que o scrapping do Sisreg está sendo feito as it is. Ééé, Ips Literis com a tela do SisReg, ok? Ééé, na tela do SisREG não existe possibilidade de anexar arquivos, porém na nossa plataforma nós poderemos anexar arquivos, tá? Ééé, e além de todos os campos do SisReg teremos adicionar os arquivos isso vai servir pra gente como órgão regulador
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 3 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 4 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:14:28
+    Duracao .: 3:00 (181 s)
+------------------------------------------------------------------------------
+
+Agora, a gente tem a opção de externo. Na regulação externa, que atualmente temos o SER e o SERNIT, a gente não sabe aonde o técnico ou o médico regulador vai agendar ou vai solicitar essa pessoa, tá? Porém, quando ele-- ééé, porém, a gente precisa primeiro validar e garantir que as telas e procedimentos do SER e do Sernit para os mesmos procedimentos, o scrapping da tela seja igual ou semelhante ou de forma que eu consiga me nivelar pelo que tem mais pergunta. É, como o sistema do Ser e do Sernit são muito similares, para não dizer os mesmos precisamos: um, verificar se todos os procedimientos com o seu código que existem no ser são os mismos procedimientos e códigos que existe no Sernit. Por mais que no Ser ou Sernit possam ter procedimientos que não têm no outro mas os que tiverem iguais possam ser conferidos que são iguais pois acredito que sejam. Ééé uma vez feito isso nós vamos fazer o scraping do Ser Nós já fizemos esse scraping uma vez Se eu não me engano Temos documentação disso Inclusive A tela do Cer Do Cernite Já está online Está em produção Então Digamos que No Cernite Para implante De cabelo Se pede O peso Do paciente Porém No cer Para o mesmo procedimento Implante de cabelo Não se perde o peso do paciente. Então, a nossa régua será pedir o peso do paciente. Ok? E então nós faremos a gravação local do nosso sistema, é, talvez um-um formulário JSON baseado em qual sistema foi gerado aquela solicitação ou para qual né sistema foi gerado aquela situação se interna ou se externa e ooo , o Jason gerado fica guardado internamente pra gente
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 4 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 5 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:18:02
+    Duracao .: 3:40 (221 s)
+------------------------------------------------------------------------------
+
+Vamos abrir um outro ponto aí nesse meio do caminho. Existe um manual de inserção do SER, que muito provavelmente pode ser o mesmo do SERNIT. E pode ser que o SISREG venha a ter um manual também. Que manual é esse? Esse manual diz o seguinte: que procedimento de transplante capilar-- de implante capilar são elegíveis pacientes homens acima de trinta e cinco anos. É, circunferência da cabeça maior que meio metro, estou supondo. Porém existe já umas métricas pra isso. É, não pode ter diabetes, é não podeee enfim. Então existem mais métricas para que isso aconteça. Então, para cada procedimento SER, SERNIT e SISREG, embora o procedimiento seja transplante capilar, mesma coisa exista no SISREG, no SER e no SERNIT, cada deles pode ter regras diferentes pra cada tipo de procedimento. Porém temos dois tipos de regra, que são regras dedutíveis e regras não dedutíveis. O que isso significa? Que o paciente seja acima de trinta e cinco anos eu consigo deduzir a partir do cadastro do paciente então eu consigo já fazer filtro e alerta pra evitar o prosseguimento da inclusão daquele paciente e poder ter uma forma de responder pra quem solicitou ou pra quem mesmo está criando saber que não dá pra fazer a inserção pra esse procedimento porque o paciente fere a regra de paciente maior que trinta e cinco anos mas pode ser que para o SERNIT não tenha essa regra. Então quando a gente fala de procedimento externo nós precisamos aplicar essas regras se no SER não permite trinta e cinco e no SERNIT permite trinta e cinco cuando eu entrego--quando eu aceito essa inclusão porque uma das duas, é, não bloqueia a gente admite porém a gente faz uma restrição na hora que o meu técnico for de fato aceitar aquela solicitação ele já tem uma ressalva acho que aquela solicitação só pode ser submetida para o SERNIT porque no SER existe uma restrição de paciente maior que trinta e cinco anos ok?!Então isso é ponto muito importante
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 5 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 6 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:23:57
+    Duracao .: 5:50 (351 s)
+------------------------------------------------------------------------------
+
+E existe a regra que não é dedutível. Ou seja, existe uma regra que o paciente não pode ter diabetes. Mas é uma regra clínica, que eu não consigo saber se o paciente tem ou não diabetes. Então o que não puder ser deduzido, eu preciso gerar um modal com-- ou um modal corrigindo, um modal não, eu preciso que antes de eu propriamente começar preencher aquela solicitação pra aquele paciente, eu já tenha aquele questionário para que a pessoa que está cadastrando possa responder: esse paciente tem diabetes? Sim ou não. Esse paciente tem uma circunferência craniana maior que quinhentos milímetros? Sim ou não. Ou não sei. Tá? Então isso é muito importante, que esse filtro já seja feito, ok? Para alguns exames também existe necessidade de exames então é outra regra. Então a pessoa que vai preencher aquela inclusão sabe que na hora do preenchimento vai aparecer para ele, pra esse procedimento é necessário anexar exame de sangue, exame de coração, exame disso, daquilo, então são a, é, as restrições de documento. Então, a pessoa que está preenchendo ela pode colocar como pendente, não ter esse documento ou pode simplesmente responder que ok, ela sa-- ela tem ciência de que precisa daquele documento porém ela tem a possibilidade de continuar cadastrando porque a-- no primeiro passo né, é escolher o nome do paciente, escolher o paciente, ééé, é, escolher o paciente depois de escolher o paciente... Melhor! A gente pode inverter. Primeiro passo é escolher o procedimento escolheu o procedimento depois escolhe o paciente bom aí você vê o quê que é melhor. Uma vez que escolhe o paciente já confere as regras -- ah não é o paciente depois ou antes porque tem a questão do interno ou externo, né? É, teria que ver qual seria o melhor fluxo tá o que- o que seria a melhor régua de corte Pra evitar que o- que o solicitante evolua e lá na frente descubra algum problema então isso é ponto a definir mas uma vez definido isso a pessoa vai para tela e começa Né?! Já têm os dados do paciente já tem lá o cadastro CPF CNS Se não tiver CPF solicita Que precisa ter o CPF ÉÉÉ enfim se o paciente não existir No nosso banco de dados local A consulta é feita no SER É feeeita em algum outro sistema De regulação--- de outro sistema de cadastro Possivelmente venha a Ter no futuro Como o eSUS Então uma vez resolvemos O cadastro Do paciente E quem é o Paciente E daí Tem todo Preenchimento A Ser Feito Só é permitido Salvar e enviar Uma vez que Não exista Pendência Se houver alguma pendência No preenchimento Seja Anexar arquivoOu qualquer Outra resposta É avisadoA Quem Está fazendo a InclusãoDe queAquela SolicitaçãoEstá salvaComo rascunhoMasNão éNão foi enviadaEla está pendenteEntão por exemploÉ necessárioTrês tipos deExame Exame de SangueExame eletrocardiograma Eee Sei láExameUm outro exameDe imagemQualquerEntão São três examesEntãoParaEsse registroVaiTer TrêsCaixinhasParaAnexarDocumentoS documentosde formaIndividualEntãoNoPrimeiroExameÉSangueAPessoa VaiLáEAnexaO sangreOoutroAnexaOOoutrooOutro AnexaOoutroBelezaSea pessoanã baxar AíFicaComoPendenteOk?ÉÀs vezesPra Um mesmoExamePodemos anexarmais deUma fotoentão àsvezes o exametem duasfotos ea pessoasei lá anexa doisJPG oudois PDFstá?éisso agente tratalá nafrente entãoumavez issofeitouma vezissofeito estandotudo certinhoénesse momentoque seautoriza éabrir essasolicitação
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 6 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 7 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:26:35
+    Duracao .: 2:29 (150 s)
+------------------------------------------------------------------------------
+
+Essas regras, embora hoje o SisReg não tenha regra, são coisas que vão ser construídas pra evitar que um agendamento possa ser iniciado internamente. Por mais que não exista manual e as regras não sejam explícitas, da mesma forma que os outros já terão, ééé, o regulamen-- regulação interna também vai ter as regras cadastradas, né? Vai ter os tipos de resposta: se é dedutível ou se não é. Vai ter os exames pré-necessários que s-- que precisa ser anexado ao-- à solicitação. Então essas coisas são feitas. Adicionalmente no nosso sistema, digamos que para um determinado procedimento é necessário a realização de um raio X... Um raio x do joelho, raio X, uma mamografia, alguma coisa nesse sentido. Nós precisamos antes de tudo conferir internamente nos nossos exames se aquele paciente fez aquele tipo de exame e confirmar com o operador: "Olha, existe exames de raio X desse paciente." E aí apresenta lá a lista de exames. " Olha, existe pa-- exames de sangue desse paciente", quando a gente houver, cuando-- quando a gente tiver, né? Sincronismo com laboratório. Então  o que tiver, e aí é um braço que vai ser evoluído de pouco em pouco, mas é algo que já possa ser consultado e já sabendo que existe, ééé, não vai ser necessário annexar porque vai ser buscado no próprio sistema, de forma que ooo, o profissional que está submetendo esse documento vai ser capaz de falar:" Ok, esse exame de sangue é válido" Ou: "Não, esse exame de sangue não é válido". Eee ter que submeter de outra forma
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 7 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 8 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:29:38
+    Duracao .: 2:53 (174 s)
+------------------------------------------------------------------------------
+
+Ok, nós fizemos um pedaço da primeira parte, né? Que é a solicitação pra regulação. Abrangendo sistema interno, externo, tendo as condições de configuração, se pode ou não pode escolher externo em detrimento do interno. Hããã, sobre essa configuração pode ser habilitado ou não. É, um perfil novo no menu, se a pessoa, ééé, pode escolher a unidade ou não, a pessoa só pode escolher interna ou externa nessa tela. Ééé, ficou de verificar o paciente, o cadastro do paciente onde ele vai se concluir, se antes de tudo ou depois de conferido o procedimento, tentar calcular aí o menor custo de retrabalho. Ééé, é, enfim. Então a gente tem o Cernit, CER, Sisreg. E hoje nós já temos uma-uns tabs, né, umas ta-umas tabs que me mostra as notificações de-- em fila, né? A gente mostra já marcado, agendado, enfim. E nós teremos agora uuum, uuum, um nome que a gente vai precisar saber, que é uma, sei lá, uma fila interna ooou enfim, algum nome que a gente especifique que quando o posto de saúde iniciou essa solicitaçom—essa solicitação fica pendente como unidade solicitante, fica pendente para essa unidade tudo que ela tá pendente e que ainda não foi triado pela regulação seja Sisreg, CE, Cermit esse paciente ainda não foi cadastrado nem no Sisreg, nem no Cer, nem em lugar nenhum então a unidade que solicitou através do filtro da própria unidade ela consegue ver todas as solicitações dela que estão pendentes e que não viraram fila ainda
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 8 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 9 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:41:33
+    Duracao .: 8:28 (509 s)
+------------------------------------------------------------------------------
+
+Então, o que que a gente tem a partir daí? Essas telas todas que a gente conversou vai ser a mesma tela para todo mundo. Porém, vamos ter no nosso menu uma-um perfil, na verdade é um perfil módulo, é um módulo né?! Já temos um módulo que é o regulador, a gente vai ter que ter um perfil dentro do módulo e não é um perfil de acesso que a gente tem lá grandão, é, perfil regulador, perfil atendente, esse perfil de acesso gerenciável, a gente vai ter que ter um-um item dentro do perfil, que é um módulo de segurança, que é agente regulador. O que que tem de diferente nesse agente regulador? O agente regulador ele consegue ver todas as regulações, todas as solicitações que foram feitas, que já foram geradas e que estão nessa fila pré sistema de regulação de verdade. Então eles vão ver lá que chegou uma re-- uma solicitação da Ambulatório XPTO. Aí quando ele abre aquilo ali, ele vê que é uma solicitação interna. Na verdade, ele pode ter filtro, né? Solicitação interna, externa, que é a mesma tela de pendência, mesma tela de fila pendente, que a unidade executante vai ter. Mas que no caso, pra esses meus usuários eu já vou atribuir todas as unidades pra eles, de forma que eles vão ver na mesma tela, no mesmo fluxo, todas as pendências. Ééé, e daí tendo todas as pendências, eles vão ter ali a opção de filtrar interno, externo, por procedimento, é, por unidades executora, por unidade solicitante, é, enfim. Então ele vai clicar numa solicitação que já foi aberta, que na verdade, que está ali naquela lista pendente, né, pré sistemas de regulação, e vai ver tudo. Se a pessoa anexou tudo, se a pessoa preencheu tudo, se fez alguma observação, ééé, se passou algum item desapercebido que não existia na regra, mas é uma regra nova e que o sistema não filtrou, enfim. E vai ter no final dessa solicitação, um botão que é-- ah tá! Ele pode ajustar, tá? Ele pode também configurar alguma coisa, fazer alguma alteração, ok? Ééé, e pra esse perfil Agente Regulador, esse modo de segurança, ele vai passar a ter um botão agora que é salvar, né, porém manter como pendente. É, sendo que se houver alguma alteração do Agente Regulador, eu preciso que isso conste no histórico dessa solicitação, tá?. Qual foi a alteração que foi feita pelo Agente Regulador, enfim. Só que o Agente Regulador ele vai ter um botão agora que é enviar, só que é um "enviar", na verdade pro sistema de regulação. Entãooo o primeiro botão de Enviar pra quem não é Agente Regulador, ele envia pra fila Pré-Regulação, Pré-Sistema de Regulação. E o botão de enviado Agente Regulador, é um botão que agora vai pegar aquele nosso corpo JSON dos-do Sisreg, e aí a gente vai agora de verdade no Sisreg empurrar com a senha do Agente Regulador do Sisreg, a gente vai empurrar através da senha desse cara, oo essa unidade, ess-essa-esse cadastro de verdade. E aí quando esse cadastro de verdade acontecer, a gente vai notificar na aba de notificações para quem solicitou. E, na verdade, na aba de Notificações vai ficar também pra todo mundo, vai ser a mesma aba. Que notificação vai ser que aquela solicitação que era pré-regulação, agora ela entrou na fila de verdade do Sistema de Regulação. E aí o resto dali pra frente é normal, né? Uma vez que o nosso sistema vai guardar a unidade solicitante original nós temos problema entre aspas com o SER e com o Sernit porquequandoa gente faz inclusão pró Ser ou Prósernitnósfazemosemnome dousuárioda regulaçãoa gentenãofaz em nomedousuariodo posto desaúde da família entãoComoisso vaistaranexadodesda origem nósvamosconseguirter Associado a uma solicitação real do SER, à solicitação interna nossa. Né? A gente ganha um número temporário depois que ele vira Ser SisReg ou SerNit, ele ganha agora o número definitivo dessa-- de-de desse agente regulador. Entãooo, a gente passa a não usar mais o re-- número nosso interno, que ele fica pra registro, pra rastro, mas ele não fica mais disponível. A gente passa a trabalhar em cima dos números, dos códigos das regulações. Porém, quando houver uma alteração, uma notificação, né, do SER, atualmente nós não temos a unidade solicitante. Porém, a partir do momento em que o nosso sistema tiver casado, né, associado a um check de regulação nosso, né, foi da onde nasceu, a gente consegue saber qual foi a unidade solicitante. De forma que nós possamos na aba de notificações ter um filtro que é visualizar somente a minha unidade, na verdade vai ser o padrão, ou visualizar todas as unidades. Entããão, a, o postinho, ele quando visualizar todooo--todas as notificações ou tudo que tiver, o padrão é ele visualizar somente as notificações cujo aaah, o solicitante seja eles mesmo. Porém, eles podem ter botãozinho que é "visualizar tooodas as solicitações" de todas as unidades. Certo? Ééé, então isso é uma opção também que pode ficar em configurações. Ééé, a unidade pode ter o botão para visualizar todas as unidades ou só visualiza as unidades do usuário associado. Isso pode inc--ser incluído também nas configurações
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 9 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 10 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:44:40
+    Duracao .: 2:38 (159 s)
+------------------------------------------------------------------------------
+
+E aí a gente entra agora num fluxo, num outro fluxo. Uma vez que essa solicitação foi aceita pela triagem da regulação, essa solicitação ela saiu de umaaa fila, vamos chamar de pré-regulação, e foi pra uma fila realmente da regulação, né? Ééé, onde é o SisReg, por exemplo, já aceitou aquela pessoa. Ééé, o SER também tá lá na fila. Mas vai acontecer muito do SER, do Серdite, etc., posteriormente fazer alguma crítica. Por exemplo: ééé, ele faz lá um follow up, inclui lá o follow up, e esse é o tipo deee, de notificação que a gente já lê os follow ups. Então o follow up pode ser reclamando de que não conseguiu conversar, não conseguiu acessar a pessoa, tá? Uma vez feito isso, de que não aces-- não conseguiu acessar a pessoa, não conseguiu contato com a pessoa, enfim. Esse follow up vai ser tratado, é, de forma que seja criado uma notificação diferente, é uma notificação de, é falh-falha de contato, tá? E essa falha de contato, essa falha de contato, ééé, vai gerar um, um, um, uma notificação diferente. Ééé, porém quem é da unidade, ééé, solicitante vai ver essa aba "Pendência de Contato" com a pessoa, né? Ééé, e vamo seguir conforme a gente já segue pela própria tela do SisReg, pela própria tela do SER, esse cadastro já é alterado. A pessoa já consegue ir lá alterar o número e confirmar
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 10 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 11 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:47:02
+    Duracao .: 1:51 (111 s)
+------------------------------------------------------------------------------
+
+Porém, quem não é agente regulador vai ter a mesma tela, o mesmo acesso às pendências, é, o mesmo acesso aaa ver que o-- a pendência é de contato. Vai ter o mesmo acesso hoje de clicar, listar, ver toda a informação. Porém, quem não é agente regulador não tem o botão do follow-up e do editar número. Melhor dizendo, até tem, porém com o mesmo critério de antes. Quando é um agente não regulador, ele clica no follow up e escreve o follow up. E isso agora entra como uma pendência para o agente regulador. O agente regulador vai ver que teve esse follow up do nosso sistema que foi gerado na ponta lá na-na, no posto. Esse follow up ele não foi escrito direto no SER, não foi inscrito direto no Sisreg, não foi diri--não foi inscrito direto nos-no s-no-non SIsReg-- no-no Se-no SerNit. O agente regulador olha as-a solicitação de alterar número com a informação lá da ponta e olha a solicitação de inserir o follow up que vem lá da ponta. Ele olha aquilo e confirma. E quando ele confirma, ele vai submeter pro SER, pro SerNit ou pro SisReg baseado na senha dele de regulador
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 11 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 12 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:52:36
+    Duracao .: 4:06 (247 s)
+------------------------------------------------------------------------------
+
+Então o que acontece? O Sisreg hoje é uma regulação interna do município. E o SER, o Sernit e depois o tal do Esus, ééé, que vai entrar também, são regulações externas. Ééé, porém, o comportamento deve ser o mesmo embora não seja totalmente compatível com o sistema do SisReg. Que que eu quero dizer com isso? No SisReg hoje não tem campo pra fazer anexo da imagem, mas quando a gente olhar pelo nosso sistema, a gente vai ver os anexos de imagem. No SisReg hoje, ééé, não, não lembro, não sei se gera alguma pendência, né? Porém essa pendência é um ponto a avaliar se ela pode ser informada pelo SisReg mesmo ou se essa pendência fica só no âmbito do nosso sistema. Até porque o SisReg ele vai morrer depois. Então esse-essa pendência, esse follow up que pode ser feito pelo SisReg, seja por qual motivo for-- até a própria questão do contato mesmo. Então pode ser que na tentativa de falar com paciente aqui, a própria regulação não consiga. Então o operador pode dentro do próprio SisReg escrever um follow up de que não consegue atender o paciente. E o retorno do follow up é o mesmo: vai cair nas notificações de falha de contato. Então a unidade solicitante vai ficar sabendo disso, tá?. Ééé, mesma coisa telefone, follow up. Então a pessoa lá na ponta vai ter condição de alterar o telefone e de dar um follow up, porém quando é a ponta, não é um agente regulador, isso sempre retorna em forma de pendência. E o agente regulador que sim, que dá o aceite daquilo. Então o follow up que não tem no SisReg esse recurso, quando o agenteee dá o OK, ele somente tira dependência, mas não enfia nada no SisReg. Quando tiver pendente de algum exame, alguma coisa, ééé, da mesma forma o agente regulador vai dar o ok, no SisReg Isso não vai acontecer nada. Porém no SER, no Sernite e nos outros que tenham, quando ele der okay no arquivo que a pessoa subiu, novo arquivo, a pessoa pode-- pode ser o seguinte: "o arquivo de imagem de sangue tááá... Não dá pra enxergar". Então os caras vão criticar aquele arquivo. Você vai ter que subir outro arquivo. Então no nosso caso a gente vai anexar um novo arquivo. Mas do nosso lado a gente vai organizar que aquele arquivo que está subindo, aquele novo arquivo que tá subindo, é da caixinha do exame de imagem, né? Então o SER não tem esse histórico, mas a gente vai ter, ok?! Entãão toda comunicação de pendência que vier do SER, do Sernit, vai gerar pendência visual-viso-visua-visualmente para todo mundo. Vai gerar pendência lá na ponta de quem é o solicitante de verdade e vai gerar uma pendência aqui pra Regulação poder enxergar isso também. Então é uma pendência geral. Ééé, que seee for o agente não regulador respondendo, ela fica pendente para que o agente regulador aceita, acate aquela solicitação de alteração
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 12 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 13 de 15
+    Data ....: 2026-09-04
+    Hora ....: 13:56:24
+    Duracao .: 3:47 (227 s)
+------------------------------------------------------------------------------
+
+Agora temos uma questão muito importante nisso aí, que pode ser que não tenha sido dado a ênfase necessária. Quando o agente regulador dá o OK na-na-- no cadastro ou na, ou na inserção do Sisreg, ééé, o Sisreg ele tem um recurso que é justamente o rascunho, tá? Então quando um agente não regulador está regulando interno para o Sisreg, quando é inserido essa nova solicitação, o Sisreg ele já gera número, porém ele fica alterável, editável até que sete dias se passem. Existe uma regra que eu não lembro exatamente qual é. Então esse documento ele fica editável até que esses dias se passam. Ééé, e quando o agente regulador dá o ok nisso, ele simplesmente só autoriza aquele-- coloca em fila aquele-aquela solicitação. Porém, esse processo do Sisreg existe esse momento temporário, é, no próprio-- previsto no próprio Sisreg. Isso é importante porque fica guardado no registro do Sisreg qual foi o operador que deu entrada e qual foi a unidade que deu entrada como solicitante. Então isso é ponto que precisa ficar, é, feito. E no SER, SERNIT, nos outros sistemas, como não é o agente não regulador que inclui aquilo no SER e no SERNIT, o SER e o SERNIT sempre incluem, a partir da senha do regulador e a unidade solicitante para o SER e SERNIT sempre fica a unidade solicitante gestor SMS Maricá. É somente o nosso sistema que já vai estar gravado qual foi a unidade solicitante, qual foi o usuário que fez. Então, quando o agente não regulador responder um follow up ou responder telephone e o agente regulador der o okay, essa edição vai ser feita, ééé, essa edição vai ser feita com a senha e cadastro, com a senha e cadastro do agente regulador junto ao SER, junto ao SERNIT. Só quem vai saber quem é a, a unidade solicitante é o nosso sistema. Isso é coisa que precisa ficar claro
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 13 de 15
+==============================================================================
+
+==============================================================================
+>>> INICIO DO AUDIO 14 de 15
+    Data ....: 2026-09-04
+    Hora ....: 14:06:30
+    Duracao .: 9:50 (591 s)
+------------------------------------------------------------------------------
+
+Agora aqui a gente abre um capítulo falando sobre autenticações, capítulo muito importante. Todo usuário, todo usuário em seu perfil-- em seu próprio perfil, ele e somente ele vai ter autonomia de cadastrar as senhas. Então essas senhas serão hasheadas junto com a senha do operador pra evitar vazamento de dados. Então cada usuário, cada perfil de usuário vai ter em seu perfil, por exemplo, qual é a senha pessoal do SisReg daquela pessoa? Aí a pessoa vai colocar lá qual é a senha pessoal do SisReg dela. Qual a senha pessoal do Ser? Qual a senha pessoal do Sernit? Qual a senha pessoal de qualquer outra un-é, unidade de regulação venha a existir. E existe agora uma lista adicional somente para perfis agente regulação nesse mesmo cadastro de perfil de autenticação esse usuário vai ter toda a lista, toda a lista de todas as unidades do SisReg. Então por exemplo eu sou o usuário Bernardo, eu sou agente regulador e estou no meu perfil, estou no meu perfil de cadastra-- de credencial, é, configurações de credencial. Eu vou lá cadastrar a minha senha pessoal do SisReg, cadastrar minha senha pessoal do SER, do Sernit beleza! E vou ter um dropdown embaixo que é o Sernit por unidades então a pessoa vai clicar naquele drop down onde vai trazer todos as unidades então vai trazer, ééé, ambulatório não sei o quê enfim, e a pessoa vai ter a possibilidade de: Ter uma senha só pra todas as unidades. Então vamo dizer que a minha senha pra todas as unidades é usuário e a senha é ABC123, e aí eu tenho a opção de cadastrar essa senha e falar que essa senha é a senha de todas as unidades. E porém entretanto todavia essa seria vamos chamar a senha padrão de todas as unidades mas pode ser que determinado unidade a minha senha seja diferente .Então digamos que na Unidade Ambulatório Péricles ,eu vou lá e cadastro uma senha minha que por acaso é diferente da minha senha padrão e vou ter uma opción usar a senha padrão ou usar a senha dessa unidade aqui você vai poder deixar configurado isso. Por que isso? Porque existe um fluxo que a gente falou lá no início a gente falou que existe o interno o externo e falamos de um fluxo chamado NAR. O fluxo chamado NAR é um fluxo de agendamento indireto [pausa] o qué que seria esse agendamento indireto?[PAUSA] Quando eu escolho o NAR[PAUSA] eu adiciono um campo na minha solicitação eu adiciono um campo qualquer de uma unidade qualquer então por exemplo eu sou um usuário que tem, ééé acesso à três tipos de unidade,um exemplo.[PAUSA] Então quando eu vou abrir uma solicitação se eu tenho mais de uma unidade eu vou ter que ter um dropdown pra escolher a partir de qual unidade eu vou criar aquela solicitação no SISREG,[PAUSA] Isso só precisa pro sisreg ÉÉÉ...Isso pros sisregs Que é o fluxo do nar..Então eu sou hospital conde Modesto Leal....E quando eu clico em Nar sempre quando eu clico em Nar Vamo reformular isso aí eu não vou jogar o áudio fora porque eu não sei de fato o que que a gente já falou aquim Mas o fluxonar ele é sempre pro sisreg ok Ele é sempre internom E elesempre vai solicitar como ponto de partida qual é a unidade solicitante E para todos os usuários que clicarem em NAR, vai ter a possibilidade de escolher qualquer unidade solicitante. Então eu sou um usuário do CONDE ou sou um usuário, sei lá, de qualquer outro lugar e eu tenho minha opção do NAR: Navio Amor Rato. Eu posso escolher então o que eu vou solicitar "em nome de:" Ambulatório Péricles. Dali pra frente, eu sigo completamente igual. Sigo completamente igual, nada muda. Porém, quando for NAR, isso vai cair como pendência no SisReg, pra fila, ééé, pré-regulação do SisReg. Então o que que vai acontecer? Quando o agente de regulação enxergar aquela solicitação NAR, ele vai confirmar: "Ah, quem fez aqui foi o usuário Bernardo, ele é usuário do Conde, está fazendo uma solicitação para o paciente Silvia, ééé, com essas descrições, com esses procedimentos, ééé, em nome do ambulatório Péricles". Aí eu, técnico regulador, vou avaliar aquilo com os meus critérios e vou falar: "Ok, pode dar continuidade". Quando eu dou continuidade pra isso, quando eu dou continuidade pra isso, eu, agente regulador, euuu, eu uso agora a minha senha que eu cadastrei lá das unidades SisReg. Então digamos que eu, no meu perfil, o ambula-ambulatório Péricles, eu não tenha a senha específica dele configurada, eu só tenho minha senha padrão SisReg, que é uma senha diferente da minha senha pessoal, tá?. Então eu tenho minha senha padrão SisReg, e aí que que eu vou fazer? Na minha solicitação, eu vou fazer aquela solicitação com o CNAI, com o CNES, em nome de Ambulatório Péricles, usando a minha senha e credencial do Ambulatório Péricles, porque só quem tem a senha de executante do Laboratório Péricles pode fazer esse tipo de comando. Então eu, agente regulador, vou ter uma senha lá. Digamos que minha senha padrão-- e por qualquer motivo, a minha senha do Péricles é específica para o Péricles. Então eu confiro antes se o Péricles tem uma senha específica e se ela está habilitada pra ser usada ou não, você vai usar a padrão. Sendo uma específica, eu faço autenticação no SisReg com aquela senha, minha senha do Ambulatório Péricles, pra submeter aquilo, porque aí para o SisReg vai aparecer que a solicitação foi do laboratório Péricles e n-no nosso sistema vai saber toda a história, que foi uma solicitação NAR, que veio do CONDE, a pessoa que gerou, o agente regulador que authenticou e a gente teria a história toda dessa forma
+
+------------------------------------------------------------------------------
+<<< FIM DO AUDIO 14 de 15
+==============================================================================
+
+Removi o ultimo audio

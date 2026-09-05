@@ -57,13 +57,9 @@ import { MeuPerfilPage } from '@/features/usuarios/pages/MeuPerfilPage';
 import { UsuariosPage } from '@/features/usuarios/pages/UsuariosPage';
 import { VeiculoDetalhePage } from '@/features/veiculos/pages/VeiculoDetalhePage';
 import { VeiculosPage } from '@/features/veiculos/pages/VeiculosPage';
-import { EspecialidadesPage } from '@/features/especialidades/pages/EspecialidadesPage';
 import { IndicadoresAbaPage } from '@/features/indicadores/pages/IndicadoresAbaPage';
 import { RedirecionaIndicadorLegado } from '@/features/indicadores/pages/RedirecionaIndicadorLegado';
 import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage';
-import { AgendasPage } from '@/features/agendamentos/pages/AgendasPage';
-import { AgendaDetalhePage } from '@/features/agendamentos/pages/AgendaDetalhePage';
-import { MarcarConsultaPage } from '@/features/agendamentos/pages/MarcarConsultaPage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
@@ -94,6 +90,8 @@ import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
 import { NotificacoesAgendamentoPage } from '@/features/notificacoes-agendamento/pages/NotificacoesAgendamentoPage';
 import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/RespostasRapidasPage';
 import { RoboAtendimentoPage } from '@/features/robo-atendimento/pages/RoboAtendimentoPage';
+import { AgendaPage } from '@/features/agenda/pages/AgendaPage';
+import { AgendaAnalisePage } from '@/features/agenda/pages/AgendaAnalisePage';
 import { AlteracoesAgendaPage } from '@/features/alteracoes-agenda/pages/AlteracoesAgendaPage';
 import { PendenciasCadastroPage } from '@/features/pendencias-cadastro/pages/PendenciasCadastroPage';
 import { SandboxPage } from '@/features/sandbox/pages/SandboxPage';
@@ -192,11 +190,7 @@ export function AppRouter() {
           <Route path="indicadores/conde/:aba" element={<IndicadoresAbaPage />} />
           {/* Compatibilidade com links antigos (aba direto sob /indicadores) */}
           <Route path="indicadores/:aba" element={<RedirecionaIndicadorLegado />} />
-          <Route path="especialidades" element={<EspecialidadesPage />} />
           <Route path="equipamentos" element={<EquipamentosPage />} />
-          <Route path="agendas" element={<AgendasPage />} />
-          <Route path="agendas/:id" element={<AgendaDetalhePage />} />
-          <Route path="agendamentos/marcar" element={<MarcarConsultaPage />} />
           <Route path="regulacao/ser" element={<SerFilaPage />} />
           <Route path="regulacao/notificacoes" element={<SerNotificacoesPage />} />
           <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />
@@ -221,6 +215,8 @@ export function AppRouter() {
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
           <Route path="respostas-rapidas" element={<RespostasRapidasPage />} />
           <Route path="robo-atendimento" element={<RoboAtendimentoPage />} />
+          <Route path="agenda" element={<AgendaPage />} />
+          <Route path="agenda/analise" element={<AgendaAnalisePage />} />
           <Route path="alteracoes-agenda" element={<AlteracoesAgendaPage />} />
           <Route path="pendencias-cadastro" element={<PendenciasCadastroPage />} />
           <Route path="estatisticas" element={<EstatisticasPage />} />

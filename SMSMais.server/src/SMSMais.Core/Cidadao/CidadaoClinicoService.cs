@@ -207,50 +207,13 @@ public sealed class CidadaoClinicoService(
     public async Task<IReadOnlyList<AgendamentoResumoDto>> ListarAgendamentosAsync(
         Guid pacienteId, string? tipo, CancellationToken cancellationToken = default)
     {
-        // Agendamento.InicioEm é "timestamp without time zone" (wall-clock Brasília): comparar com
-        // um DateTime Kind=Utc quebra no Npgsql. Usamos a data local de Brasília como Unspecified.
-        var hojeLocal = DateTime.SpecifyKind(FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date, DateTimeKind.Unspecified);
-        // Solicitacao.DataAgendada é "timestamp with time zone" (Kind=Utc).
+        // A agenda local do municipio (Especialidade -> Agenda -> Agendamento, ADR-0012/0013) foi
+        // REMOVIDA em 05/09/2026: nunca saiu de 3 linhas de teste em producao e o motor dela assumia
+        // "1 paciente por slot", incompativel com o bloco de N vagas que o SISREG publica. O que o
+        // cidadao ve aqui vem do que foi de fato regulado — exames e consultas importados.
         var inicioHojeUtc = FusoBrasilia.InicioDoDiaAtualEmUtc();
-
-        var query = db.Agendamentos.AsNoTracking()
-            .Where(a => a.PacienteId == pacienteId && a.ExcluidoEm == null
-                && a.Status != StatusAgendamento.Cancelado
-                && a.InicioEm >= hojeLocal);
-
         var filtro = tipo?.Trim().ToLowerInvariant();
-        if (filtro == "exame") query = query.Where(a => a.TipoExameId != null);
-        else if (filtro == "consulta") query = query.Where(a => a.TipoExameId == null);
-
-        var linhas = await query
-            .OrderBy(a => a.InicioEm)
-            .Select(a => new
-            {
-                a.Id,
-                a.InicioEm,
-                a.FimEm,
-                a.Status,
-                a.TipoExameId,
-                EspecialidadeNome = a.Agenda!.Especialidade != null ? a.Agenda.Especialidade.Nome : null,
-                TipoExameNome = a.TipoExame != null ? a.TipoExame.Nome : null,
-                MedicoNome = a.Agenda!.MedicoNome,
-                UnidadeNome = a.Agenda!.Unidade != null ? a.Agenda.Unidade.Nome : null,
-            })
-            .ToListAsync(cancellationToken);
-
-        var resultado = linhas.Select(l =>
-        {
-            var ehExame = l.TipoExameId != null;
-            return new AgendamentoResumoDto(
-                l.Id,
-                l.InicioEm,
-                l.FimEm,
-                ehExame ? "Exame" : "Consulta",
-                (ehExame ? l.TipoExameNome : l.EspecialidadeNome) ?? (ehExame ? "Exame" : "Consulta"),
-                l.MedicoNome,
-                l.UnidadeNome,
-                DescreverStatusAgendamento(l.Status));
-        }).ToList();
+        var resultado = new List<AgendamentoResumoDto>();
 
         // Exames importados (SISREG) vivem em ExameImagem+Solicitacao, não na agenda local — o card
         // deles traz a confirmação de presença (magic link / quick reply / botões do app).
@@ -404,16 +367,6 @@ public sealed class CidadaoClinicoService(
     {
         StatusSolicitacaoExame.Laudada => "Laudado",
         StatusSolicitacaoExame.Realizada => "Realizado",
-        _ => status.ToString(),
-    };
-
-    private static string DescreverStatusAgendamento(StatusAgendamento status) => status switch
-    {
-        StatusAgendamento.Agendado => "Agendado",
-        StatusAgendamento.Confirmado => "Confirmado",
-        StatusAgendamento.Realizado => "Realizado",
-        StatusAgendamento.Faltou => "Faltou",
-        StatusAgendamento.Cancelado => "Cancelado",
         _ => status.ToString(),
     };
 }

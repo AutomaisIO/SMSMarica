@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Regulacao.Catalogo;
+using SMSMais.Core.Regulacao.Catalogo.Dtos;
 using SMSMais.Core.Integracoes.SisregWeb;
 using SMSMais.Core.Integracoes.SisregWeb.Escalas;
 using SMSMais.Core.Integracoes.SisregWeb.Escalas.Background;
@@ -103,7 +105,30 @@ public class EscalasSincronizacaoTests(PostgresFixture fixture)
             new UsuarioAtualAccessorFake(),
             Options.Create(new EscalasSincronizacaoOpcoes()),
             Options.Create(new SisregOrcamentoOpcoes()),
+            new CatalogoRegulacaoNulo(),
             NullLogger<EscalasSincronizacaoService>.Instance);
+
+    /// <summary>
+    /// O sincronismo de escalas dispara o catálogo canônico da regulação no fim, por carona de
+    /// cadência. Aqui isso não é o que está sob teste — e o de verdade precisaria do provedor de
+    /// embeddings —, então entra um dublê que não faz nada.
+    /// </summary>
+    private sealed class CatalogoRegulacaoNulo : IRegulacaoCatalogoService
+    {
+        public Task<RegulacaoCatalogoSyncResultadoDto> SincronizarAsync(CancellationToken ct) =>
+            Task.FromResult(new RegulacaoCatalogoSyncResultadoDto(0, 0, 0, 0, 0, 0));
+
+        public Task<IReadOnlyList<RegulacaoSugestaoPareamentoDto>> ListarSugestoesAsync(CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<RegulacaoSugestaoPareamentoDto>>([]);
+
+        public Task ConfirmarPareamentoAsync(Guid origemId, Guid procedimentoId, CancellationToken ct) =>
+            Task.CompletedTask;
+
+        public Task RejeitarPareamentoAsync(Guid origemId, CancellationToken ct) => Task.CompletedTask;
+
+        public Task RenomearCanonicoAsync(Guid procedimentoId, string nome, CancellationToken ct) =>
+            Task.CompletedTask;
+    }
 
     /// <summary>Um CNES aleatório por teste: a bancada é compartilhada e o índice de escala é único.</summary>
     private static async Task<(Guid UnidadeId, string Cnes)> CriarUnidadeAsync(SmsMaisDbContext db)

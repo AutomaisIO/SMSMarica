@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMais.Data;
 namespace SMSMais.Data.Migrations
 {
     [DbContext(typeof(SmsMaisDbContext))]
-    partial class SmsMaisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260905125841_CatalogoCanonicoDeProcedimentos")]
+    partial class CatalogoCanonicoDeProcedimentos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -68,6 +71,343 @@ namespace SMSMais.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("agendamento_confirmacao_estado", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.Agenda", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<int>("DuracaoSlotMinutos")
+                        .HasColumnType("integer")
+                        .HasColumnName("duracao_slot_minutos");
+
+                    b.Property<Guid?>("EquipamentoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipamento_id");
+
+                    b.Property<Guid?>("EspecialidadeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("especialidade_id");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<int>("Finalidade")
+                        .HasColumnType("integer")
+                        .HasColumnName("finalidade");
+
+                    b.Property<string>("MedicoCns")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("medico_cns");
+
+                    b.Property<Guid?>("MedicoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medico_id");
+
+                    b.Property<string>("MedicoNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("medico_nome");
+
+                    b.Property<Guid>("UnidadeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unidade_id");
+
+                    b.Property<DateOnly?>("VigenciaFim")
+                        .HasColumnType("date")
+                        .HasColumnName("vigencia_fim");
+
+                    b.Property<DateOnly>("VigenciaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("vigencia_inicio");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipamentoId")
+                        .HasDatabaseName("ix_agenda_equipamento_id");
+
+                    b.HasIndex("EspecialidadeId");
+
+                    b.HasIndex("ExcluidoEm")
+                        .HasDatabaseName("ix_agenda_excluido_em")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.HasIndex("MedicoId")
+                        .HasDatabaseName("ix_agenda_medico_id");
+
+                    b.HasIndex("UnidadeId", "EspecialidadeId")
+                        .HasDatabaseName("ix_agenda_unidade_especialidade");
+
+                    b.ToTable("agenda", "smsmarica", t =>
+                        {
+                            t.HasCheckConstraint("ck_agenda_recurso_por_finalidade", "(finalidade = 1 AND especialidade_id IS NOT NULL AND equipamento_id IS NULL) OR (finalidade = 2 AND equipamento_id IS NOT NULL AND especialidade_id IS NULL AND medico_id IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.Agendamento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgendaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agenda_id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime?>("CanceladoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelado_em");
+
+                    b.Property<DateTime?>("ConfirmadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<DateTime>("FimEm")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("fim_em");
+
+                    b.Property<DateTime>("InicioEm")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("inicio_em");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("motivo_cancelamento");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacao");
+
+                    b.Property<string>("PacienteCns")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("paciente_cns");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<string>("PacienteNome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("paciente_nome");
+
+                    b.Property<DateTime?>("RealizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("realizado_em");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TipoExameId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tipo_exame_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExcluidoEm")
+                        .HasDatabaseName("ix_agendamento_excluido_em")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.HasIndex("PacienteId")
+                        .HasDatabaseName("ix_agendamento_paciente_id");
+
+                    b.HasIndex("TipoExameId");
+
+                    b.HasIndex("AgendaId", "InicioEm")
+                        .HasDatabaseName("ix_agendamento_agenda_inicio");
+
+                    b.ToTable("agendamento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.BloqueioAgenda", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgendaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agenda_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime>("FimEm")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("fim_em");
+
+                    b.Property<DateTime>("InicioEm")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("inicio_em");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("motivo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgendaId")
+                        .HasDatabaseName("ix_bloqueio_agenda_agenda_id");
+
+                    b.ToTable("bloqueio_agenda", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.DisponibilidadeAvulsa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgendaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agenda_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime>("FimEm")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("fim_em");
+
+                    b.Property<DateTime>("InicioEm")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("inicio_em");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("motivo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgendaId")
+                        .HasDatabaseName("ix_disponibilidade_avulsa_agenda_id");
+
+                    b.ToTable("disponibilidade_avulsa", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.DisponibilidadeRecorrente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgendaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agenda_id");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<int>("DiaSemana")
+                        .HasColumnType("integer")
+                        .HasColumnName("dia_semana");
+
+                    b.Property<TimeOnly>("HoraFim")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("hora_fim");
+
+                    b.Property<TimeOnly>("HoraInicio")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("hora_inicio");
+
+                    b.Property<DateOnly?>("VigenciaFim")
+                        .HasColumnType("date")
+                        .HasColumnName("vigencia_fim");
+
+                    b.Property<DateOnly?>("VigenciaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("vigencia_inicio");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgendaId")
+                        .HasDatabaseName("ix_disponibilidade_recorrente_agenda_id");
+
+                    b.ToTable("disponibilidade_recorrente", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Alocacao", b =>
@@ -1543,6 +1883,66 @@ namespace SMSMais.Data.Migrations
                         .HasFilter("excluido_em IS NULL");
 
                     b.ToTable("equipamento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Especialidade", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<string>("CodigoCbo")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("codigo_cbo");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExcluidoEm")
+                        .HasDatabaseName("ix_especialidade_excluido_em")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasDatabaseName("ux_especialidade_nome")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.ToTable("especialidade", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.EstudoAnotacao", b =>
@@ -10692,6 +11092,82 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("ComunicacaoPaciente");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.Agenda", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Equipamento", "Equipamento")
+                        .WithMany()
+                        .HasForeignKey("EquipamentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMais.Data.Entities.Especialidade", "Especialidade")
+                        .WithMany()
+                        .HasForeignKey("EspecialidadeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMais.Data.Entities.Unidade", "Unidade")
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Equipamento");
+
+                    b.Navigation("Especialidade");
+
+                    b.Navigation("Unidade");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.Agendamento", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Agendamentos.Agenda", "Agenda")
+                        .WithMany("Agendamentos")
+                        .HasForeignKey("AgendaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.TipoExame", "TipoExame")
+                        .WithMany()
+                        .HasForeignKey("TipoExameId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Agenda");
+
+                    b.Navigation("TipoExame");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.BloqueioAgenda", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Agendamentos.Agenda", "Agenda")
+                        .WithMany("Bloqueios")
+                        .HasForeignKey("AgendaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agenda");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.DisponibilidadeAvulsa", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Agendamentos.Agenda", "Agenda")
+                        .WithMany("Avulsos")
+                        .HasForeignKey("AgendaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agenda");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.DisponibilidadeRecorrente", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Agendamentos.Agenda", "Agenda")
+                        .WithMany("Recorrencias")
+                        .HasForeignKey("AgendaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agenda");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Alocacao", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Assento", "Assento")
@@ -12156,6 +12632,17 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Perfil");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Agendamentos.Agenda", b =>
+                {
+                    b.Navigation("Agendamentos");
+
+                    b.Navigation("Avulsos");
+
+                    b.Navigation("Bloqueios");
+
+                    b.Navigation("Recorrencias");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.CidadaoAcesso", b =>

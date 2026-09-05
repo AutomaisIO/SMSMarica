@@ -24,6 +24,7 @@ public interface ISernitCatalogoSyncService
 public sealed class SernitCatalogoSyncService(
     SmsMaisDbContext db,
     ISernitNovaSolicitacaoService leitor,
+    Regulacao.Catalogo.IRegulacaoCatalogoService catalogoRegulacao,
     ILogger<SernitCatalogoSyncService> logger) : ISernitCatalogoSyncService
 {
     private static readonly (string Codigo, TipoRecursoSernit Tipo)[] Tipos =
@@ -100,6 +101,19 @@ public sealed class SernitCatalogoSyncService(
             "SERNIT/catálogo: {Recursos} recursos, {Campos} campos, {Listas} itens de lista, "
             + "{Cids} CID, {Falhas} falhas em {Seg}s.",
             recursos, campos, listas, cids, falhas, duracao);
+
+
+        // O catálogo canônico da Regulação (ADR-0052) se alimenta deste espelho. Roda depois,
+        // e num try/catch que só loga: o sync de origem é o que importa aqui e não pode falhar
+        // porque o canônico teve problema (o provedor de embeddings é externo e cai).
+        try
+        {
+            await catalogoRegulacao.SincronizarAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "SERNIT/catálogo: sincronismo do catálogo canônico da regulação falhou.");
+        }
 
         return new SernitCatalogoSyncResultadoDto(recursos, campos, listas, falhas, duracao, cids);
     }

@@ -26,9 +26,7 @@ export type ModuloPermissao =
   | 'InteligenciaConfiguracao'
   | 'InteligenciaAprendizado'
   | 'InteligenciaConsultaDev'
-  | 'Especialidades'
   | 'Equipamentos'
-  | 'Agendamentos'
   | 'Sisreg'
   | 'SisregConfiguracao'
   | 'SisregMapeamento'
@@ -65,7 +63,8 @@ export type ModuloPermissao =
   | 'RegulacaoSernit'
   | 'RoboAtendimento'
   | 'AjusteCadastro'
-  | 'AlteracoesAgenda';
+  | 'AlteracoesAgenda'
+  | 'Agenda';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

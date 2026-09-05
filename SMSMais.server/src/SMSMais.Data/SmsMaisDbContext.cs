@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Data.Entities;
-using SMSMais.Data.Entities.Agendamentos;
 using SMSMais.Data.Entities.Conversas;
 using SMSMais.Data.Entities.Ia;
 using SMSMais.Data.Entities.Integracoes;
 using SMSMais.Data.Entities.Pep;
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
@@ -174,19 +174,17 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SernitSolicitacaoRascunho> SernitSolicitacaoRascunhos => Set<SernitSolicitacaoRascunho>();
     public DbSet<SernitRascunhoAnexo> SernitRascunhoAnexos => Set<SernitRascunhoAnexo>();
 
+    // Catálogo canônico de procedimentos da Regulação (ADR-0052): reúne, sob um procedimento
+    // que o solicitante reconhece, as origens equivalentes do SISREG, do SER e do SERNIT.
+    public DbSet<RegulacaoProcedimento> RegulacaoProcedimentos => Set<RegulacaoProcedimento>();
+    public DbSet<RegulacaoProcedimentoOrigem> RegulacaoProcedimentoOrigens => Set<RegulacaoProcedimentoOrigem>();
+
     // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
     public DbSet<Indicador> Indicadores => Set<Indicador>();
     public DbSet<IndicadorVersao> IndicadorVersoes => Set<IndicadorVersao>();
     public DbSet<IndicadorExecucao> IndicadorExecucoes => Set<IndicadorExecucao>();
 
-    // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012/0013
-    public DbSet<Especialidade> Especialidades => Set<Especialidade>();
     public DbSet<Equipamento> Equipamentos => Set<Equipamento>();
-    public DbSet<Agenda> Agendas => Set<Agenda>();
-    public DbSet<DisponibilidadeRecorrente> DisponibilidadesRecorrentes => Set<DisponibilidadeRecorrente>();
-    public DbSet<DisponibilidadeAvulsa> DisponibilidadesAvulsas => Set<DisponibilidadeAvulsa>();
-    public DbSet<BloqueioAgenda> BloqueiosAgenda => Set<BloqueioAgenda>();
-    public DbSet<Agendamento> Agendamentos => Set<Agendamento>();
 
     // Mensageria WhatsApp — infraestrutura transversal do município (ADR-0038).
     // NÃO é do TFD: o TFD é um dos consumidores, como qualquer outro módulo.

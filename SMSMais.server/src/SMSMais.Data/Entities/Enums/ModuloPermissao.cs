@@ -233,4 +233,8 @@ public enum ModuloPermissao
     /// (remarcação, troca de profissional ou procedimento). <c>Consulta</c> para ver a fila;
     /// <c>Edicao</c> para tratar e para reenviar a mensagem ao paciente.</summary>
     AlteracoesAgenda = 61,
+
+    /// <summary>Agenda: a oferta de vagas do SISREG cruzada com a ocupação já importada — consulta
+    /// por unidade/especialidade/profissional e as estatísticas de gestão dessas vagas.</summary>
+    Agenda = 62,
 }

@@ -74,6 +74,7 @@ public sealed class EscalasSincronizacaoService(
     IUsuarioAtualAccessor usuarioAtual,
     IOptions<EscalasSincronizacaoOpcoes> opcoes,
     IOptions<SisregOrcamentoOpcoes> orcamentoOpcoes,
+    Regulacao.Catalogo.IRegulacaoCatalogoService catalogoRegulacao,
     ILogger<EscalasSincronizacaoService> logger) : IEscalasSincronizacaoService
 {
     private const string Caminho = "/cgi-bin/cons_escalas";
@@ -261,6 +262,21 @@ public sealed class EscalasSincronizacaoService(
             catch (Exception ex)
             {
                 logger.LogError(ex, "SISREG_ESCALAS: falha ao gravar o fim da execução {Id}.", execucao.Id);
+            }
+
+            // O catálogo canônico da Regulação (ADR-0052) pega carona na cadência diária desta
+            // varredura. Não é aqui que nascem as origens SISREG — quem popula
+            // `sisreg_procedimento_sigtap` é o MapeadorSigtapSisreg, na importação —, mas este é
+            // o job diário de rede inteira, e o sincronismo do canônico é idempotente.
+            // Fica no `finally` e engolindo exceção pela mesma razão do resto do bloco: nada
+            // aqui pode deixar a execução pendurada em "Rodando".
+            try
+            {
+                await catalogoRegulacao.SincronizarAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "SISREG_ESCALAS: sincronismo do catálogo canônico da regulação falhou.");
             }
         }
     }

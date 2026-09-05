@@ -246,11 +246,9 @@ public static class DependencyInjection
         // ---- Indicadores contratuais do HMCML (motor = SQL cadastrado) — ADR-0022 ----
         services.AddScoped<Indicadores.IIndicadoresService, Indicadores.IndicadoresService>();
 
-        // ---- Agendamento (Especialidade/Equipamento → Agenda → Agendamento) — ADR-0012/0013 ----
-        services.AddScoped<Especialidades.IEspecialidadesService, Especialidades.EspecialidadesService>();
+        // Equipamento SOBREVIVEU a remocao da agenda local (05/09/2026): ele e recurso de imagem
+        // usado por PACS/worklist, nao residuo daquele modulo.
         services.AddScoped<Equipamentos.IEquipamentosService, Equipamentos.EquipamentosService>();
-        services.AddScoped<Agendamentos.IAgendaService, Agendamentos.AgendaService>();
-        services.AddScoped<Agendamentos.IAgendamentoService, Agendamentos.AgendamentoService>();
 
         // ---- Credenciais de provedores OAuth (Microsoft/Facebook/Google), cifradas ----
         services.AddScoped<Integracoes.Credenciais.IIntegracaoCredencialService, Integracoes.Credenciais.IntegracaoCredencialService>();
@@ -525,6 +523,8 @@ public static class DependencyInjection
             Integracoes.SisregWeb.Alteracoes.IAlteracoesAgendaService,
             Integracoes.SisregWeb.Alteracoes.AlteracoesAgendaService>();
 
+        services.AddScoped<AgendaRegulacao.IAgendaAnaliseService, AgendaRegulacao.AgendaAnaliseService>();
+
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.
         services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ISisregImportacaoFila, Integracoes.SisregWeb.Importacao.Background.SisregImportacaoFila>();
@@ -778,6 +778,9 @@ public static class DependencyInjection
 
         // Motor de geração de translado (FT3): distribuição + sequenciamento de rotas.
         services.AddScoped<Translado.Geracao.IGeradorDeTransladoService, Translado.Geracao.GeradorDeTransladoService>();
+
+        // ---- REGULAÇÃO → SOLICITAÇÕES (ADR-0052) ----
+        services.AddScoped<Regulacao.Catalogo.IRegulacaoCatalogoService, Regulacao.Catalogo.RegulacaoCatalogoService>();
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 

@@ -1,0 +1,61 @@
+﻿texto;categoria_esperada;origem;nota
+PACIENTE FOI AGENDADO PARA O HOSPITAL CHE GUEVARA.;Agendamento;template do SER (11 ocorrencias);
+PACIENTE AGENDADO PARA O HOSTIPAL ERNESTRO CHE GUEVARA.;Agendamento;template do SER (8 ocorrencias);
+Agendamento administrativo em vaga nominal ofertada pelo INCA;Agendamento;template do SER (7 ocorrencias);
+paciente agendado para hospital municipal che guevara.;Agendamento;template do SER (4 ocorrencias);
+Agendamento em vaga extra nominal.;Agendamento;template do SER (3 ocorrencias);
+favor cancelar o paciente , pois o mesmo ja foi agendado para o che e inclusive ja retirou o agendamento.;CancelamentoOuReagendamento;template do SER (5 ocorrencias);
+Paciente já realizou o procedimento. favor cancelar o agendamento!;CancelamentoOuReagendamento;template do SER (5 ocorrencias);
+PACIENTE EM OUTRA UNIDADE , E PREFERE CONTINUAR POR LA . FAVOR CANCELAR O AGENDAMENTO .;CancelamentoOuReagendamento;template do SER (3 ocorrencias);
+CONTATO REALIZADO: PACIENTE CIENTE SOBRE O AGENDAMENTO.;ContatoRealizado;template do SER (6 ocorrencias);
+Após contato telefônico, paciente informou que ainda tem interesse no procedimento.;ContatoRealizado;template do SER (6 ocorrencias);
+Entramos em contato com a própria paciente para informar do agendamento.;ContatoRealizado;template do SER (4 ocorrencias);
+Conforme registro anterior, unidade de saúde informa que possui meios de comunicar o paciente do agendamento.;ContatoRealizado;template do SER (3 ocorrencias);
+SEM CONTATO: TELEFONE NÃO COMPLETA A CHAMADA Não foi possível efetuar contato com o paciente em questão, pois os números informados no cadastro do SER estão incompletos e/ou não completam as ligações.;FalhaContato;template do SER (738 ocorrencias);
+• SEM CONTATO: TELEFONE NÃO COMPLETA A CHAMADA Não foi possível efetuar contato com o paciente em questão, pois os números informados no cadastro do SER estão incompletos e/ou não completam as ligações.;FalhaContato;template do SER (117 ocorrencias);
+Feita tentativa de contato telefônico com os números cadastrados no SER para confirmar disponibilidade para vir ao Rio, porém sem êxito.;FalhaContato;template do SER (26 ocorrencias);
+•SEM CONTATO: TELEFONE NÃO COMPLETA A CHAMADA Não foi possível efetuar contato com o paciente em questão, pois os números informados no cadastro do SER estão incompletos e/ou não completam as ligações.;FalhaContato;template do SER (25 ocorrencias);
+SEM CONTATO - AGENDAMENTO NÃO INFORMADO: DIVERSAS TENTATIVAS SEM SUCESSO E/OU NÃO COMPLETA LIGAÇÃO Tentamos diversos contatos através do telefone, porém não obtivemos sucesso.;FalhaContato;template do SER (20 ocorrencias);
+DIVERSAS TENTATIVAS SEM SUCESSO;FalhaContato;template do SER (18 ocorrencias);
+SEM CONTATO: TELEFONE NÃO CORRESPONDE AO PACIENTE - Não foi possível efetuar contato com o paciente em questão, pois o número informado no SER não corresponde ao paciente.;FalhaContato;template do SER (14 ocorrencias);
+SEM CONTATO: TELEFONE NÃO COMPLETA A CHAMADA Não foi possível efetuar contato com o paciente em questão, pois os números informados no cadastro do SER estão incompletos e/ou não completam as ligações;FalhaContato;template do SER (13 ocorrencias);
+Favor informar ao paciente sobre esta consulta de avaliação e direcionamento do caso, bem como, os documentos de identificação pessoal, encaminhamento do ortopedista, exames realizados e a chave de autorização a serem levados.;OrientacaoAoPaciente;template do SER (92 ocorrencias);
+Favor informar ao paciente sobre esta consulta de avaliação e direcionamento do caso, bem como, os documentos, exames e a chave de autorização a serem levados.;OrientacaoAoPaciente;template do SER (23 ocorrencias);
+Favor informar ao paciente sobre esta consulta de avaliação e direcionamento do caso, bem como, os documentos, encaminhamento do ortopedista, neurologista ou neurocirurgião, exames e a chave de autorização a serem levados.;OrientacaoAoPaciente;template do SER (9 ocorrencias);
+Sr(a). gestor(a), por favor, comunicar o(a) paciente sobre seu agendamento, bem como os documentos necessários para consulta (RG, CPF, CARTÃO DO SUS, COMPROVANTE DE RESIDÊNCIA, todos originais e cópias).;OrientacaoAoPaciente;template do SER (8 ocorrencias);
+Sr Gestor, favor informar o paciente de seu agendamento, bem como os documentos necessários (Identidade, CPF, Cartão SUS, Comprovante de residência e Chave de autorização do sistema SER);OrientacaoAoPaciente;template do SER (6 ocorrencias);
+Previsao da cirurgia informada.;Outro;template do SER (44 ocorrencias);
+Prestador não liberou agenda.;Outro;template do SER (36 ocorrencias);
+documentação ok;Outro;template do SER (28 ocorrencias);
+Solicitação sendo avaliada;Outro;template do SER (28 ocorrencias);
+Enviado e-mail à unidade solicitante, informando e solicitando a resolução da pendência.;Outro;template do SER (27 ocorrencias);
+DOC OK;Outro;template do SER (24 ocorrencias);
+MANDADO ASSOCIADO 2;Outro;template do SER (23 ocorrencias);
+enviado e-mail informando sobre a pendencia, solicitando agilidade na resposta para prosseguirmos com a regulação;Outro;template do SER (16 ocorrencias);
+Risco reclassificado pelo Regulador;ReclassificacaoRisco;template do SER (882 ocorrencias);
+Risco reclassificado pelo ReguladorJustificativa: Paciente apto, aguarda vaga;ReclassificacaoRisco;template do SER (157 ocorrencias);
+Risco reclassificado pelo ReguladorJustificativa: Apto;ReclassificacaoRisco;template do SER (47 ocorrencias);
+Risco reclassificado pelo ReguladorJustificativa: Paciente em fila, aguardando vaga pelo prestador.;ReclassificacaoRisco;template do SER (37 ocorrencias);
+Risco reclassificado pelo ReguladorJustificativa: Paciente apto, ca de próstata;ReclassificacaoRisco;template do SER (25 ocorrencias);
+Risco reclassificado pelo ReguladorJustificativa: Paciente apto, aguarda vaga - farmacológico - Huap;ReclassificacaoRisco;template do SER (20 ocorrencias);
+Risco reclassificado pelo ReguladorJustificativa: Aguardando liberação de vaga;ReclassificacaoRisco;template do SER (19 ocorrencias);
+Risco reclassificado pelo ReguladorJustificativa: Documentação ok, aguardando vaga do prestador.;ReclassificacaoRisco;template do SER (15 ocorrencias);
+sem agenda disponivel;SemVaga;template do SER (276 ocorrencias);
+Sem agenda disponível.;SemVaga;template do SER (233 ocorrencias);
+Paciente apto, aguardando vaga.;SemVaga;template do SER (210 ocorrencias);
+SEM AGENDA DISPONÍVEL;SemVaga;template do SER (145 ocorrencias);
+Paciente apto, aguarda vaga;SemVaga;template do SER (98 ocorrencias);
+Aguardando liberação de vaga.;SemVaga;template do SER (85 ocorrencias);
+PACIENTE APTO.AGUARDA VAGA.;SemVaga;template do SER (81 ocorrencias);
+SEM AGENDA DISPONÍVEL.;SemVaga;template do SER (77 ocorrencias);
+Prezados, favor informar o peso e se já teve alguma reação ao contraste iodado. Paciente em fila, aguardando liberação de vaga.;SolicitacaoAoSolicitante;template do SER (6 ocorrencias);
+Prezados devido ao tempo decorrido de fila solicito informar se menor já realizou o exame e atualizar o contato telefônico do responsável para que possamos dar prosseguimento ao processo .;SolicitacaoAoSolicitante;template do SER (4 ocorrencias);
+PARA PENDENCIAR: Anexo com laudo incompleto.;SolicitacaoAoSolicitante;template do SER (3 ocorrencias);
+Feito contato telefonico para informar a data, informaram que nao poderao comparecer.;ContatoRealizado;escrito a mao (regressao);"'feito contato' e contato REALIZADO; a regra de falha exigia pluralidade"
+Prezados, solicito informar se ja realizou o exame e atualizar o contato telefonico do responsavel.;SolicitacaoAoSolicitante;escrito a mao (regressao);'contato telefonico' tambem aparece em pedido A UNIDADE
+Sr Gestor, favor informar o paciente de seu agendamento e os documentos necessarios.;OrientacaoAoPaciente;escrito a mao (regressao);'informar O paciente' (sem o 'ao') escapava do lookahead
+Favor anexar laudo de biopsia.;SolicitacaoAoSolicitante;escrito a mao (regressao);pedido de documento A UNIDADE, o que vira pendencia
+Prezados, foram realizadas varias tentativas de contato sem exito.;FalhaContato;escrito a mao (regressao);'sem exito' e tao comum quanto 'sem sucesso'
+Prezados, sem disponibilidade de vaga, aguardando liberacao pelo prestador.;SemVaga;escrito a mao (regressao);'sem disponibilidade de vaga' nao casava com 'sem vaga'
+AG. VAGA PARA O HOSPITAL DE REFERENCIA.;SemVaga;escrito a mao (regressao);'AG.' abreviando 'aguardando'
+O telefone informado no cadastro e de outra pessoa, informam ser engano.;FalhaContato;escrito a mao (regressao);telefone errado e falha de contato: a ponta tem de trazer numero novo

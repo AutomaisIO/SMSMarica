@@ -10,7 +10,6 @@ import {
   Building2,
   Calculator,
   CalendarClock,
-  CalendarPlus,
   BookOpen,
   ClipboardCheck,
   ClipboardList,
@@ -136,13 +135,34 @@ export const SECOES: SecaoMenu[] = [
     ],
   },
   {
-    id: 'agendamento',
-    titulo: 'Agendamento',
+    // Era "Agendamento", com a agenda propria do municipio — removida em 05/09/2026 por nunca ter
+    // saido de 3 linhas de teste e por assumir "1 paciente por slot", incompativel com o bloco de N
+    // vagas que o SISREG publica. O que fica e a leitura da agenda REGULADA.
+    id: 'agenda',
+    titulo: 'Agenda',
     icone: CalendarClock,
     itens: [
-      { rotulo: 'Marcar consulta', to: '/app/agendamentos/marcar', icone: CalendarPlus, modulo: 'Agendamentos', descricao: 'Nova marcação por especialidade.' },
-      { rotulo: 'Agendas', to: '/app/agendas', icone: CalendarClock, modulo: 'Agendamentos', descricao: 'Agendas de profissionais e equipamentos.' },
-      { rotulo: 'Especialidades', to: '/app/especialidades', icone: Stethoscope, modulo: 'Especialidades', descricao: 'Catálogo de especialidades.' },
+      {
+        rotulo: 'Consultar agenda',
+        to: '/app/agenda',
+        icone: CalendarClock,
+        modulo: 'Agenda',
+        descricao: 'Oferta de vagas do SISREG x ocupacao: quem atende, quando, e quanto esta livre.',
+      },
+      {
+        rotulo: 'Analise de vagas',
+        to: '/app/agenda/analise',
+        icone: BarChart3,
+        modulo: 'Agenda',
+        descricao: 'Ocupacao por unidade, especialidade e profissional; ociosidade e sobrecarga.',
+      },
+      {
+        rotulo: 'Alteracoes de Agenda',
+        to: '/app/alteracoes-agenda',
+        icone: CalendarClock,
+        modulo: 'AlteracoesAgenda',
+        descricao: 'O que o SISREG remarcou, trocou ou cancelou em agendamentos ja importados.',
+      },
     ],
   },
   {
@@ -469,14 +489,6 @@ export const SECOES: SecaoMenu[] = [
         icone: Bot,
         modulo: 'RoboAtendimento',
         descricao: 'Assuntos, treinos e comandos do robô que responde no WhatsApp.',
-      },
-      {
-        rotulo: 'Alterações de Agenda',
-        to: '/app/alteracoes-agenda',
-        icone: CalendarClock,
-        modulo: 'AlteracoesAgenda',
-        descricao:
-          'O que o SISREG remarcou ou trocou em agendamentos já importados — para a regulação tratar e avisar o paciente.',
       },
       {
         rotulo: 'Pendências de Cadastro',

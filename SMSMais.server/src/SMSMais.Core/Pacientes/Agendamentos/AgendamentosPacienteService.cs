@@ -25,7 +25,9 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         itens.AddRange(await LerSerAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerSernitAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerSisregAsync(pacienteId, cancellationToken));
-        itens.AddRange(await LerLocalAsync(pacienteId, cancellationToken));
+        // A agenda local do municipio foi removida em 05/09/2026 (ver CidadaoClinicoService):
+        // tinha 3 linhas de teste e um modelo incompativel com a grade do SISREG. Sobra o que o
+        // cidadao realmente tem marcado — o que veio da regulacao.
 
         var proximos = itens.Where(i => !EhHistorico(i, hojeLocal))
             .OrderBy(i => i.DataHora is null ? 1 : 0)
@@ -229,57 +231,6 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         StatusSolicitacao.Realizada => SituacaoAgendamentoPaciente.Concluido,
         StatusSolicitacao.Cancelada => SituacaoAgendamentoPaciente.Cancelado,
         _ => SituacaoAgendamentoPaciente.Pendente,
-    };
-
-    // ---- Agenda própria do município (agendamento) ----
-
-    private async Task<IEnumerable<AgendamentoPacienteItemDto>> LerLocalAsync(
-        Guid pacienteId, CancellationToken cancellationToken)
-    {
-        var linhas = await db.Agendamentos.AsNoTracking()
-            .Where(a => a.PacienteId == pacienteId && a.ExcluidoEm == null)
-            .Select(a => new
-            {
-                a.Id,
-                a.TipoExameId,
-                a.InicioEm,
-                a.Status,
-                EspecialidadeNome = a.Agenda!.Especialidade != null ? a.Agenda.Especialidade.Nome : null,
-                TipoExameNome = a.TipoExame != null ? a.TipoExame.Nome : null,
-                UnidadeNome = a.Agenda!.Unidade != null ? a.Agenda.Unidade.Nome : null,
-            })
-            .ToListAsync(cancellationToken);
-
-        return linhas.Select(l =>
-        {
-            var ehExame = l.TipoExameId is not null;
-            var situacao = MapearLocal(l.Status);
-            return new AgendamentoPacienteItemDto(
-                l.Id,
-                OrigemAgendamentoPaciente.Local,
-                ehExame ? "Exame" : "Consulta",
-                NormalizarTexto((ehExame ? l.TipoExameNome : l.EspecialidadeNome) ?? (ehExame ? "Exame" : "Consulta")),
-                l.UnidadeNome,
-                // InicioEm já é wall-clock de Brasília (timestamp without time zone).
-                DateTime.SpecifyKind(l.InicioEm, DateTimeKind.Unspecified),
-                true,
-                null, // agenda local não tem eixo de "data de solicitação"
-                situacao,
-                DescreverSituacao(situacao),
-                l.Status.ToString(),
-                null, // sem número de solicitação externa
-                null); // sem detalhe navegável
-        });
-    }
-
-    private static SituacaoAgendamentoPaciente MapearLocal(StatusAgendamento s) => s switch
-    {
-        StatusAgendamento.Agendado => SituacaoAgendamentoPaciente.Agendado,
-        StatusAgendamento.Confirmado => SituacaoAgendamentoPaciente.Confirmado,
-        StatusAgendamento.Realizado => SituacaoAgendamentoPaciente.Compareceu,
-        StatusAgendamento.Cancelado => SituacaoAgendamentoPaciente.Cancelado,
-        StatusAgendamento.Faltou => SituacaoAgendamentoPaciente.Faltou,
-        _ => SituacaoAgendamentoPaciente.Agendado,
     };
 
     // ---- Helpers ----
