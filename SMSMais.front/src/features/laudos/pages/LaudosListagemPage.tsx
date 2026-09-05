@@ -430,6 +430,7 @@ export function LaudosListagemPage() {
         vazio="Nenhum laudo encontrado para os filtros."
         redimensionavel
         idTabela="laudos"
+        scrollXFlutuante
       />
 
       {totalPaginas > 1 ? (

@@ -196,6 +196,10 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
   const barraRef = useRef<HTMLDivElement>(null);
   const [larguraConteudo, setLarguraConteudo] = useState(0);
   const [precisaBarra, setPrecisaBarra] = useState(false);
+  // Largura visível do scroller — usada para NÃO deixar a soma das colunas salvas (em px, de uma
+  // tela mais larga) estourar num monitor/janela menor, empurrando a última coluna (ações) para
+  // fora da borda. Como o arrasto preserva a soma, sem isto não há como "recolher para caber".
+  const [larguraDisponivel, setLarguraDisponivel] = useState(0);
 
   useLayoutEffect(() => {
     if (!scrollXFlutuante) return;
@@ -224,6 +228,33 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
 
   const escondeBarraNativa = scrollXFlutuante && precisaBarra;
 
+  // Mede a largura visível do scroller enquanto a tabela é redimensionável (independe de
+  // `scrollXFlutuante`), para reescalar as colunas quando a soma salva não couber.
+  useLayoutEffect(() => {
+    if (!redim) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const medir = () => setLarguraDisponivel(el.clientWidth);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    window.addEventListener('resize', medir);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', medir);
+    };
+  }, [redim]);
+
+  // Só reescala quando TODAS as colunas têm largura (estado de arrasto/perfil, nunca parcial) e a
+  // soma passa da área visível. O fator vale só na renderização do <colgroup>; a preferência
+  // salva continua intacta, então em telas largas as larguras originais voltam a valer (fator 1).
+  const somaLarguras = redim ? colunas.reduce((s, c) => s + (larguras[c.chave] ?? 0), 0) : 0;
+  const todasComLargura = redim && colunas.every((c) => (larguras[c.chave] ?? 0) > 0);
+  const fatorEscala =
+    todasComLargura && larguraDisponivel > 0 && somaLarguras > larguraDisponivel
+      ? larguraDisponivel / somaLarguras
+      : 1;
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div
@@ -245,7 +276,10 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
           {redim ? (
             <colgroup>
               {colunas.map((c) => (
-                <col key={c.chave} style={larguras[c.chave] ? { width: larguras[c.chave] } : undefined} />
+                <col
+                  key={c.chave}
+                  style={larguras[c.chave] ? { width: Math.floor(larguras[c.chave] * fatorEscala) } : undefined}
+                />
               ))}
             </colgroup>
           ) : null}
