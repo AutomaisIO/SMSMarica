@@ -708,8 +708,14 @@ public sealed class VarreduraAgendaService(
         progresso.ProcedimentoAtual = "resolvendo cadastros no SER…";
         await SalvarProgressoAsync(execucao, progresso, ct);
 
+        // O callback só mexe no progresso VIVO (memória), que é de onde o endpoint de status lê —
+        // nada de escrever no banco a cada cadastro. É o que tira a tela do silêncio: esta fase
+        // pode levar minutos sem criar uma linha sequer, e sem contador ela parece travada.
         var pre = await preCarga.ExecutarAsync(
-            [.. novas.Select(m => m.CnsPaciente).Where(c => !string.IsNullOrWhiteSpace(c))!], ct);
+            [.. novas.Select(m => m.CnsPaciente).Where(c => !string.IsNullOrWhiteSpace(c))!],
+            ct,
+            (feitos, total) =>
+                progresso.ProcedimentoAtual = $"resolvendo cadastros no SER: {feitos} de {total}");
 
         if (pre.Sessoes > 1 && pre.Pedidos > 0)
         {

@@ -365,16 +365,37 @@ public sealed class ImportacaoSisregService(
             // Só agora vai ao CADSUS (CNS → CPF + demografia) — o passo caro/limitado. Por qual
             // porta (SISREG ou SER) quem decide é a configuração; aqui só se sabe que é a cara.
             ConsultaCnsRespostaDto cadsus;
+            var cnsDesconhecido = false;
             var fonte = await cadastro.FonteAtualAsync(ct);
             try { cadsus = await cadastro.ConsultarPorCnsAsync(m.CnsPaciente!, ct); }
             catch (NaoEncontradoException)
             {
-                // A fonte respondeu e o cidadão não está no CADSUS. Não é indisponibilidade — a
-                // linha não se resolve tentando de novo, e sim informando o CPF.
-                return (Falha(
-                    $"O CADSUS ({NomeDaFonte(fonte)}) não conhece este CNS e o paciente ainda não existe no sistema. "
-                    + "Informe o CPF nesta pendência para importar.",
-                    CausaFalhaImportacao.CpfNaoResolvido), false);
+                // A fonte RESPONDEU e o cidadão não está no CADSUS — CNS temporário, ou errado no
+                // cadastro do SISREG. Não é indisponibilidade: tentar de novo amanhã dá o mesmo.
+                //
+                // Isto era um `return Falha(...)`, e o resultado foi 38 pendências paradas: o
+                // agendamento existe, o paciente vai aparecer na unidade, e o sistema fingia que
+                // nada havia. Pior, a linha reincidia em toda varredura, gerando a mesma pendência
+                // sem fim. É exatamente o desfecho que o bloco abaixo já rejeitou para o caso
+                // "CADSUS respondeu sem CPF" — a régua passa a ser a mesma para os dois.
+                //
+                // Entra com o que o próprio arquivo traz (nome, endereço, telefone, CNS) e SEM CPF,
+                // então herda o gate que já existe: a recepção informa o CPF antes de liberar o
+                // exame. O que se perde é demografia (nascimento, sexo, mãe) — que o CADSUS daria e
+                // aqui não vem. Fica declarado na trilha, não escondido.
+                cnsDesconhecido = true;
+                cadsus = new ConsultaCnsRespostaDto(
+                    Cns: m.CnsPaciente!,
+                    Cpf: string.Empty,
+                    Nome: m.NomePaciente ?? string.Empty,
+                    Sexo: null,
+                    DataNascimento: null,
+                    NomeMae: null);
+                passos.Add(
+                    $"CNS {Mascara(m.CnsPaciente)} NÃO reconhecido pelo CADSUS ({NomeDaFonte(fonte)}) — "
+                    + "cadastro criado com os dados do próprio SISREG, sem CPF. "
+                    + "⚠ CNS possivelmente temporário ou incorreto: confirme a identidade antes de "
+                    + "usar este cadastro para cruzar informação.");
             }
             catch (Exception ex)
             {
@@ -382,7 +403,8 @@ public sealed class ImportacaoSisregService(
                     $"Falha ao consultar o cadastro do paciente por CNS em {NomeDaFonte(fonte)}: {ex.Message}",
                     CausaFalhaImportacao.CadsusIndisponivel), false);
             }
-            passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} ({NomeDaFonte(fonte)}).");
+            if (!cnsDesconhecido)
+                passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} ({NomeDaFonte(fonte)}).");
 
             // A régua é CPF com DV válido, não "11 dígitos" (adendo do ADR-0041): um 00000000000
             // vindo do CADSUS passaria como chave nacional e fundiria duas pessoas.
@@ -429,9 +451,12 @@ public sealed class ImportacaoSisregService(
                     TelefoneResidencial: residencial), ct);
                 pacienteCriado = true;
                 nomeResolvido = nomeNovo;
-                passos.Add(cpfAncora is null
-                    ? "Paciente novo → criado SEM CPF, ancorado no CNS (o CADSUS não devolveu CPF válido). A recepção informa o CPF para liberar o exame."
-                    : "Paciente novo → criado a partir do CADSUS (+ telefone/endereço do TXT).");
+                passos.Add(cnsDesconhecido
+                    ? "Paciente novo → criado SÓ com o que o SISREG informou (CNS não reconhecido pelo CADSUS). "
+                      + "Sem CPF e sem demografia: a recepção informa o CPF para liberar o exame."
+                    : cpfAncora is null
+                        ? "Paciente novo → criado SEM CPF, ancorado no CNS (o CADSUS não devolveu CPF válido). A recepção informa o CPF para liberar o exame."
+                        : "Paciente novo → criado a partir do CADSUS (+ telefone/endereço do TXT).");
             }
         }
 

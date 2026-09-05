@@ -36,7 +36,15 @@ public sealed record PreCargaCadastroDto(
 /// </summary>
 public interface IPreCargaCadastroSerService
 {
-    Task<PreCargaCadastroDto> ExecutarAsync(IReadOnlyCollection<string> cns, CancellationToken ct);
+    /// <param name="aoResolver">
+    /// Chamado a cada cadastro resolvido, com (resolvidos, total). Existe porque esta fase pode
+    /// levar minutos e <b>não escreve nada no banco</b>: sem este sinal a tela fica parada num
+    /// número velho e o operador conclui que travou — foi o que quase fez cancelarem uma corrida
+    /// saudável em 05/09/2026, depois de 7 minutos de silêncio. Nunca lança: reportar progresso não
+    /// pode derrubar a pré-carga.
+    /// </param>
+    Task<PreCargaCadastroDto> ExecutarAsync(
+        IReadOnlyCollection<string> cns, CancellationToken ct, Action<int, int>? aoResolver = null);
 }
 
 public sealed class PreCargaCadastroSerService(
@@ -55,7 +63,7 @@ public sealed class PreCargaCadastroSerService(
     private const int TetoSessoes = 8;
 
     public async Task<PreCargaCadastroDto> ExecutarAsync(
-        IReadOnlyCollection<string> cns, CancellationToken ct)
+        IReadOnlyCollection<string> cns, CancellationToken ct, Action<int, int>? aoResolver = null)
     {
         var relogio = System.Diagnostics.Stopwatch.StartNew();
 
@@ -81,7 +89,18 @@ public sealed class PreCargaCadastroSerService(
         }
 
         var falhas = 0;
+        var processados = 0;
         var fatias = Particionar(alvos, sessoes);
+
+        // Reporta a cada 25 para não transformar 5 mil resoluções em 5 mil escritas de progresso —
+        // o remédio da tela parada não pode virar carga no banco.
+        void Reportar()
+        {
+            var feitos = Interlocked.Increment(ref processados);
+            if (aoResolver is null || (feitos % 25 != 0 && feitos != alvos.Count)) return;
+            try { aoResolver(feitos, alvos.Count); }
+            catch (Exception ex) { logger.LogDebug(ex, "SER/pré-carga: falha ao reportar progresso."); }
+        }
 
         logger.LogInformation(
             "SER/pré-carga: {Qtd} CNS em {Sessoes} sessões simultâneas.", alvos.Count, fatias.Count);
@@ -104,18 +123,21 @@ public sealed class PreCargaCadastroSerService(
                     try
                     {
                         cache.Guardar(alvo, await cadastro.ConsultarPorCnsAsync(alvo, ct));
+                        Reportar();
                     }
                     catch (NaoEncontradoException)
                     {
                         // A fonte respondeu: esse cidadão não está no CADSUS. Guardar o "não" evita
                         // perguntar de novo na importação.
                         cache.GuardarNaoEncontrado(alvo);
+                        Reportar();
                     }
                     catch (OperationCanceledException) { return; }
                     catch (Exception ex)
                     {
                         Interlocked.Increment(ref falhas);
                         logger.LogDebug(ex, "SER/pré-carga: falhou para um CNS; segue o baile.");
+                        Reportar();
                     }
                 }
             }
