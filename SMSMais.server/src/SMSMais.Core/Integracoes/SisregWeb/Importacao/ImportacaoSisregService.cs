@@ -279,7 +279,18 @@ public sealed class ImportacaoSisregService(
         if (existente is not null)
         {
             if (!string.IsNullOrWhiteSpace(existente.RawSisreg))
-                return (Falha("Já existe uma solicitação com esse número do SISREG.", CausaFalhaImportacao.Outro), true);
+            {
+                // Antes isto era um `return` seco: número já visto, pula. Barato e cego — se o
+                // SISREG remarcasse a consulta, nosso banco ficava com a data velha PARA SEMPRE e
+                // nada denunciava. Agora compara (de graça, a linha já está na mão), aplica o que é
+                // do SISREG e deixa o rastro para o regulador tratar.
+                var alteracoes = await ReconciliarAsync(existente, m, ct);
+                return (Falha(
+                    alteracoes == 0
+                        ? "Já existe uma solicitação com esse número do SISREG."
+                        : $"Já existia — {alteracoes} alteração(ões) do SISREG aplicada(s).",
+                    CausaFalhaImportacao.Outro), true);
+            }
             return (await ComplementarManualAsync(existente, m, passos, ct), false);
         }
 
@@ -529,6 +540,80 @@ public sealed class ImportacaoSisregService(
     /// paciente, nem no exame/accession que a recepção já pode ter mandado para a worklist. Registra
     /// o complemento na trilha; o "criada à mão por fulano" continua visível em <c>CriadoPor</c>.
     /// </summary>
+    /// <summary>
+    /// Confere se o SISREG mudou algo numa solicitação que já veio de importação, aplica o que é
+    /// dele e registra o rastro. Devolve quantas alterações foram detectadas.
+    ///
+    /// <para><b>Custo zero:</b> nenhuma requisição a mais — a linha nova já está em mãos e a antiga
+    /// está no banco. O que era um curto-circuito vira uma comparação de meia dúzia de campos.</para>
+    ///
+    /// <para><b>Aplica só o que é do SISREG.</b> Paciente resolvido, exame na worklist, laudo e a
+    /// confirmação dada pelo paciente ficam intocados: são trabalho deste lado, e o arquivo não sabe
+    /// nada sobre eles.</para>
+    ///
+    /// <para><b>Não avisa ninguém aqui.</b> A alteração entra na fila para o regulador ver e decidir
+    /// — inclusive se vale reenviar a mensagem ao paciente. Disparar WhatsApp automaticamente a cada
+    /// remarcação seria decidir por ele, e sem saber ainda com que frequência isso acontece.</para>
+    /// </summary>
+    private async Task<int> ReconciliarAsync(Solicitacao alvo, MarcacaoSisreg m, CancellationToken ct)
+    {
+        var antes = new FotoMarcacao(
+            alvo.DataAgendada,
+            alvo.ProfissionalExecutanteCpf,
+            alvo.ProcedimentoCodigoSisreg,
+            alvo.ProcedimentoTexto);
+
+        var depois = new FotoMarcacao(
+            m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null,
+            m.CpfProfissionalExecutante,
+            SoDigitos(m.CodigoProcedimentoSisreg) is { Length: > 0 } cod ? cod : null,
+            ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty) is { Length: > 0 } nome
+                ? nome
+                : null);
+
+        var alteracoes = ComparadorMarcacao.Comparar(antes, depois);
+        if (alteracoes.Count == 0) return 0;
+
+        var agora = DateTime.UtcNow;
+        foreach (var alteracao in alteracoes)
+        {
+            db.SisregAlteracoesAgenda.Add(new SisregAlteracaoAgenda
+            {
+                Id = Guid.CreateVersion7(),
+                SolicitacaoId = alvo.Id,
+                CodigoSolicitacao = alvo.CodigoSolicitacao,
+                Tipo = alteracao.Tipo,
+                ValorAntes = Truncar(alteracao.Antes, 300),
+                ValorDepois = Truncar(alteracao.Depois, 300),
+                UnidadeExecutanteId = alvo.UnidadeExecutanteId,
+                UnidadeSolicitanteId = alvo.UnidadeSolicitanteId,
+                DetectadaEm = agora,
+            });
+        }
+
+        // Aplica DEPOIS de montar o rastro: o "antes" precisa ser lido da entidade ainda intacta.
+        if (depois.DataAgendadaUtc is { } novaData) alvo.DataAgendada = novaData;
+        if (!string.IsNullOrWhiteSpace(depois.ExecutanteCpf))
+        {
+            alvo.ProfissionalExecutanteCpf = depois.ExecutanteCpf;
+            alvo.ProfissionalExecutanteNome = m.NomeProfissionalExecutante ?? alvo.ProfissionalExecutanteNome;
+        }
+        if (!string.IsNullOrWhiteSpace(depois.ProcedimentoCodigo))
+            alvo.ProcedimentoCodigoSisreg = depois.ProcedimentoCodigo;
+        if (!string.IsNullOrWhiteSpace(depois.ProcedimentoNome))
+            alvo.ProcedimentoTexto = depois.ProcedimentoNome;
+
+        alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg;
+        alvo.AtualizadoEm = agora;
+        alvo.AtualizadoPor = UsuarioIdAtual;
+
+        // Sem log: este serviço não tem ILogger de propósito (ver nota no topo da classe), e o
+        // rastro aqui é durável na tabela — que é onde alguém de fato vai olhar.
+        await db.SaveChangesAsync(ct);
+
+        return alteracoes.Count;
+    }
+
     private async Task<ImportacaoExecucaoResultado> ComplementarManualAsync(
         Solicitacao alvo, MarcacaoSisreg m, List<string> passos, CancellationToken ct)
     {

@@ -102,6 +102,10 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },
   { id: 'RoboAtendimento', rotulo: 'Robô de atendimento — cadastro de assuntos e comandos do bot' },
   { id: 'AjusteCadastro', rotulo: 'Pendências de cadastro (números errados) — ver e resolver' },
+  {
+    id: 'AlteracoesAgenda',
+    rotulo: 'Alterações de agenda do SISREG — ver a fila, tratar e avisar o paciente',
+  },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

@@ -228,4 +228,9 @@ public enum ModuloPermissao
     /// recepção resolve o cadastro aqui. <c>Consulta</c> para ver a fila; <c>Edicao</c> para
     /// resolver/ignorar e registrar manualmente.</summary>
     AjusteCadastro = 60,
+
+    /// <summary>Alterações de agenda: a fila do que o SISREG mudou em agendamentos já importados
+    /// (remarcação, troca de profissional ou procedimento). <c>Consulta</c> para ver a fila;
+    /// <c>Edicao</c> para tratar e para reenviar a mensagem ao paciente.</summary>
+    AlteracoesAgenda = 61,
 }

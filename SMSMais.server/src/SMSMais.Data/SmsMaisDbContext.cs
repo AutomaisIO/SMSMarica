@@ -118,6 +118,10 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     /// procedimento × dia da semana. Base da Agenda.</summary>
     public DbSet<SisregEscala> SisregEscalas => Set<SisregEscala>();
 
+    /// <summary>Alterações que o SISREG fez em solicitações já importadas (remarcação, troca de
+    /// profissional ou procedimento) — a fila que o regulador trata.</summary>
+    public DbSet<SisregAlteracaoAgenda> SisregAlteracoesAgenda => Set<SisregAlteracaoAgenda>();
+
     /// <summary>Rastreio das sincronizações da grade de escalas.</summary>
     public DbSet<SisregEscalaSincronizacaoExecucao> SisregEscalaSincronizacaoExecucoes =>
         Set<SisregEscalaSincronizacaoExecucao>();

@@ -521,6 +521,10 @@ public static class DependencyInjection
             configuration.GetSection(Integracoes.SisregWeb.Historico.HistoricoOpcoes.Secao));
         services.AddHostedService<Integracoes.SisregWeb.Historico.HistoricoAgendaScheduler>();
 
+        services.AddScoped<
+            Integracoes.SisregWeb.Alteracoes.IAlteracoesAgendaService,
+            Integracoes.SisregWeb.Alteracoes.AlteracoesAgendaService>();
+
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.
         services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ISisregImportacaoFila, Integracoes.SisregWeb.Importacao.Background.SisregImportacaoFila>();

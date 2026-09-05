@@ -471,6 +471,14 @@ export const SECOES: SecaoMenu[] = [
         descricao: 'Assuntos, treinos e comandos do robô que responde no WhatsApp.',
       },
       {
+        rotulo: 'Alterações de Agenda',
+        to: '/app/alteracoes-agenda',
+        icone: CalendarClock,
+        modulo: 'AlteracoesAgenda',
+        descricao:
+          'O que o SISREG remarcou ou trocou em agendamentos já importados — para a regulação tratar e avisar o paciente.',
+      },
+      {
         rotulo: 'Pendências de Cadastro',
         to: '/app/pendencias-cadastro',
         icone: Inbox,

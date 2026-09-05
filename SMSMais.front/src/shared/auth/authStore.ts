@@ -64,7 +64,8 @@ export type ModuloPermissao =
   | 'RegulacaoConfiguracao'
   | 'RegulacaoSernit'
   | 'RoboAtendimento'
-  | 'AjusteCadastro';
+  | 'AjusteCadastro'
+  | 'AlteracoesAgenda';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 
