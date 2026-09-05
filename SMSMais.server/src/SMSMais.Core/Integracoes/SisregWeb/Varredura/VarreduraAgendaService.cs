@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Integracoes.SisregWeb.Importacao;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura.Background;
@@ -129,6 +130,12 @@ public sealed class VarreduraAgendaService(
     /// minutos e a tela parecia travada em "0 importadas". Com 20, o operador vê movimento a cada
     /// minuto. O custo é um SaveChanges a mais por lote, que não é nada perto disso.</para>
     /// </summary>
+    /// <summary>
+    /// Proporção de ausentes acima da qual a leitura é considerada incompleta, não cancelamento.
+    /// Um quinto da agenda sumir de uma vez é evento raríssimo; exportação truncada, não.
+    /// </summary>
+    private const double LimiteAusentesSuspeito = 0.20;
+
     private const int LoteDeImportacao = 20;
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
@@ -386,6 +393,38 @@ public sealed class VarreduraAgendaService(
         }
     }
 
+    /// <summary>
+    /// Até que dia a corrida diária desta unidade vai: o <b>último dia de escala ativa</b> dela.
+    ///
+    /// <para><b>Por que não é mais um número escolhido a dedo.</b> A janela era fixa em 21 dias
+    /// porque cabia numa requisição. Mas a oferta vai muito além: medido em 05/09/2026, a mediana
+    /// das unidades tem escala até 117 dias à frente, e o Centro de Radiologia até 2029. Comparar
+    /// oferta que vai a dezembro com ocupação que para no dia 21 produz <b>disponibilidade
+    /// fantasma</b> — toda vaga além da janela aparece livre por falta de dado, não por estar livre.
+    /// Quem gerencia agenda em cima disso marca em cima de horário já ocupado.</para>
+    ///
+    /// <para>É também o que torna o cancelamento detectável: só faz sentido concluir "sumiu do
+    /// SISREG" depois de olhar <b>todo</b> o futuro em que a solicitação poderia estar.</para>
+    ///
+    /// <para><b>Piso, não teto:</b> unidade sem escala nenhuma cadastrada continua varrendo a janela
+    /// antiga. Derivar de um conjunto vazio daria "hoje", e a unidade pararia de importar em
+    /// silêncio — trocaria um problema de alcance por um de cegueira total.</para>
+    /// </summary>
+    private async Task<DateOnly> UltimoDiaDeAgendaAsync(
+        Guid unidadeId, DateOnly hoje, SisregVarreduraAgenda? agenda, CancellationToken ct)
+    {
+        var piso = hoje.AddDays(agenda?.DiasAFrente ?? 21);
+
+        var ultimaEscala = await db.SisregEscalas
+            .Where(e => e.UnidadeId == unidadeId
+                && e.Status == StatusEscalaSisreg.Ativa
+                && !e.Ausente
+                && e.VigenciaFim >= hoje)
+            .MaxAsync(e => (DateOnly?)e.VigenciaFim, ct);
+
+        return ultimaEscala is { } fim && fim > piso ? fim : piso;
+    }
+
     private async Task<(Guid ExecucaoId, string Mensagem)> CriarExecucaoAsync(
         Unidade unidade, DisparoSincronizacao disparo, Guid? usuarioId,
         DateOnly? janelaInicio, DateOnly? janelaFim, CancellationToken ct)
@@ -393,13 +432,12 @@ public sealed class VarreduraAgendaService(
         var agenda = await db.SisregVarreduraAgendas.AsNoTracking()
             .FirstOrDefaultAsync(x => x.UnidadeId == unidade.Id, ct);
 
-        var diasAFrente = agenda?.DiasAFrente ?? 21;
         var hoje = HojeBrasilia();
 
-        // Período explícito = backfill manual; ausência = janela padrão "hoje até hoje + N".
+        // Período explícito = backfill manual ou fatia do histórico; ausência = a corrida diária.
         var ehPeriodo = janelaInicio is not null;
         var inicio = janelaInicio ?? hoje;
-        var fim = janelaFim ?? hoje.AddDays(diasAFrente);
+        var fim = janelaFim ?? await UltimoDiaDeAgendaAsync(unidade.Id, hoje, agenda, ct);
 
         // Execuções de um processo que morreu (ou que uma exceção deixou pelo caminho) ficariam
         // "Rodando" para sempre na tela, e o operador não tem como saber que já acabou. Só chega
@@ -588,9 +626,29 @@ public sealed class VarreduraAgendaService(
         progresso.ProfissionalAtual = "(unidade inteira)";
         progresso.ProcedimentoAtual = "(todos os procedimentos)";
 
-        var marcacoes = await ExportarComTetoAsync(
-            cnes, execucao.JanelaInicio, execucao.JanelaFim,
-            SemFiltro, SemFiltro, unidade.Nome, progresso, ct);
+        // A janela inteira em FATIAS de no máximo 31 dias: o SISREG recusa exportação com intervalo
+        // maior, e a janela agora vai até a última escala da unidade (pode ser anos). O
+        // `ExportarComTetoAsync` continua partindo cada fatia por VOLUME quando bate no teto
+        // silencioso de 700 registros — as duas divisões se compõem, uma por tamanho e outra por
+        // quantidade.
+        var fatias = FatiarJanela(execucao.JanelaInicio, execucao.JanelaFim);
+        var marcacoes = new List<MarcacaoSisreg>();
+
+        for (var i = 0; i < fatias.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            var (fatiaInicio, fatiaFim) = fatias[i];
+
+            // A tela precisa saber que está andando: uma corrida de 36 fatias sem sinal nenhum é
+            // indistinguível de um motor travado.
+            progresso.ProcedimentoAtual =
+                $"lendo {fatiaInicio:dd/MM/yyyy} a {fatiaFim:dd/MM/yyyy} (fatia {i + 1} de {fatias.Count})";
+            if (i > 0) await SalvarProgressoAsync(execucao, progresso, ct);
+
+            marcacoes.AddRange(await ExportarComTetoAsync(
+                cnes, fatiaInicio, fatiaFim,
+                SemFiltro, SemFiltro, unidade.Nome, progresso, ct));
+        }
 
         // Dedupe por nº do SISREG: o split por teto pode repetir uma linha na fronteira das metades.
         var novas = marcacoes
@@ -719,6 +777,11 @@ public sealed class VarreduraAgendaService(
             });
             primeiro = false;
         }
+
+        // A corrida cobriu a janela inteira sem exceção — só aqui a ausência de um agendamento no
+        // arquivo passa a significar alguma coisa. Se qualquer fatia tivesse falhado, este ponto não
+        // teria sido alcançado (a exceção sobe e a execução vira Erro/Parcial).
+        await DetectarAusentesAsync(execucao, unidade, novas, ct);
 
         progresso.CombinacoesFeitas = 1;
         if (agenda is not null)
@@ -907,6 +970,132 @@ public sealed class VarreduraAgendaService(
     /// <para><c>cpf</c> e <c>procedimento</c> aceitam <see cref="SemFiltro"/> — é assim que a
     /// agenda da unidade inteira sai de uma vez.</para>
     /// </summary>
+    /// <summary>
+    /// Parte a janela em pedaços que o SISREG aceita (máximo <see cref="VarreduraSisregOpcoes.MaxDiasAFrente"/>
+    /// + 1 dias por exportação). As fatias <b>encostam sem sobrepor</b>: cada uma começa no dia
+    /// seguinte ao fim da anterior — um dia de folga viraria um dia de agenda invisível por mês.
+    /// </summary>
+    internal static List<(DateOnly Inicio, DateOnly Fim)> FatiarJanela(DateOnly inicio, DateOnly fim)
+    {
+        var fatias = new List<(DateOnly, DateOnly)>();
+        if (fim < inicio) return fatias;
+
+        // O limite do SISREG é sobre a DIFERENÇA entre as datas, então uma fatia de N dias de
+        // diferença cobre N+1 dias de calendário.
+        var passo = VarreduraSisregOpcoes.MaxDiasAFrente;
+        var cursor = inicio;
+
+        while (cursor <= fim)
+        {
+            var fatiaFim = cursor.AddDays(passo);
+            if (fatiaFim > fim) fatiaFim = fim;
+            fatias.Add((cursor, fatiaFim));
+            cursor = fatiaFim.AddDays(1);
+        }
+
+        return fatias;
+    }
+
+    /// <summary>
+    /// Quem estava marcado nesta janela e NÃO veio no arquivo: candidato a cancelamento no SISREG.
+    ///
+    /// <para><b>Por que só aqui, no fim de uma corrida completa.</b> Enquanto a janela era de 21
+    /// dias, ausência não queria dizer nada — um agendamento remarcado para dali a dois meses sumia
+    /// da janela e pareceria cancelado. Agora que a corrida cobre até a última escala da unidade, o
+    /// remarcado aparece em alguma fatia; sobra a ausência de verdade.</para>
+    ///
+    /// <para><b>Não cancela nada.</b> Registra na fila de alterações para um humano confirmar.
+    /// Cancelar atendimento automaticamente a partir de raspagem é o tipo de erro que se paga com
+    /// paciente sem consulta.</para>
+    ///
+    /// <para><b>Freio de sanidade:</b> se a proporção de ausentes for alta demais, não é
+    /// cancelamento em massa — é leitura incompleta (exportação truncada, sessão trocada no meio).
+    /// Nesse caso não registra nada e deixa o aviso no log. Concluir aqui seria despejar centenas de
+    /// falsos cancelamentos na fila e destruir a confiança dela.</para>
+    /// </summary>
+    private async Task DetectarAusentesAsync(
+        SisregVarreduraExecucao execucao, Unidade unidade,
+        List<MarcacaoSisreg> lidas, CancellationToken ct)
+    {
+        var codigosLidos = lidas
+            .Select(m => m.CodigoSolicitacao)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .ToHashSet(StringComparer.Ordinal);
+
+        // A janela é de datas de Brasília; `data_agendada` é instante UTC. Converter pelo
+        // utilitário central (e não com `.Date` cru) é o que impede a janela de escorregar três
+        // horas e varrer o dia errado — o mesmo deslize que faria a agenda mostrar número diferente
+        // depois das 21h.
+        var inicioUtc = FusoBrasilia.DeBrasiliaParaUtc(execucao.JanelaInicio.ToDateTime(TimeOnly.MinValue));
+        var fimUtc = FusoBrasilia.DeBrasiliaParaUtc(execucao.JanelaFim.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+        // Só o que o SISREG conhece: solicitação manual sem nº (extra-SUS, sentinela "0000") nunca
+        // vem no arquivo, e chamá-la de ausente seria acusar o que nasceu fora dele.
+        var marcadas = await db.Solicitacoes
+            .Where(s => s.UnidadeExecutanteId == unidade.Id
+                && s.ExcluidoEm == null
+                && s.CanceladoEm == null
+                && s.DataAgendada >= inicioUtc
+                && s.DataAgendada < fimUtc
+                && s.CodigoSolicitacao != null
+                && s.CodigoSolicitacao != "0000"
+                && s.RawSisreg != null)
+            .Select(s => new { s.Id, s.CodigoSolicitacao, s.UnidadeExecutanteId, s.UnidadeSolicitanteId })
+            .ToListAsync(ct);
+
+        if (marcadas.Count == 0) return;
+
+        var ausentes = marcadas.Where(s => !codigosLidos.Contains(s.CodigoSolicitacao!)).ToList();
+        if (ausentes.Count == 0) return;
+
+        var proporcao = (double)ausentes.Count / marcadas.Count;
+        if (proporcao > LimiteAusentesSuspeito)
+        {
+            logger.LogWarning(
+                "SISREG_AUSENTES_SUSPEITO: {Unidade} — {Ausentes} de {Total} agendamentos não vieram "
+                + "no arquivo ({Pct:P0}). Alto demais para ser cancelamento: tratado como leitura "
+                + "incompleta e IGNORADO.",
+                unidade.Nome, ausentes.Count, marcadas.Count, proporcao);
+            return;
+        }
+
+        // Não duplica: alteração de ausência ainda pendente para a mesma solicitação já está na fila.
+        var ids = ausentes.Select(a => a.Id).ToList();
+        var jaNaFila = await db.SisregAlteracoesAgenda
+            .Where(a => ids.Contains(a.SolicitacaoId)
+                && a.Tipo == TipoAlteracaoAgenda.Ausente
+                && a.TratadaEm == null)
+            .Select(a => a.SolicitacaoId)
+            .ToListAsync(ct);
+
+        var agora = DateTime.UtcNow;
+        var novos = 0;
+        foreach (var ausente in ausentes.Where(a => !jaNaFila.Contains(a.Id)))
+        {
+            db.SisregAlteracoesAgenda.Add(new SisregAlteracaoAgenda
+            {
+                Id = Guid.CreateVersion7(),
+                SolicitacaoId = ausente.Id,
+                CodigoSolicitacao = ausente.CodigoSolicitacao,
+                Tipo = TipoAlteracaoAgenda.Ausente,
+                ValorAntes = "agendado",
+                ValorDepois = "não veio no arquivo do SISREG",
+                UnidadeExecutanteId = ausente.UnidadeExecutanteId,
+                UnidadeSolicitanteId = ausente.UnidadeSolicitanteId,
+                DetectadaEm = agora,
+            });
+            novos++;
+        }
+
+        if (novos == 0) return;
+
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "SISREG_AUSENTES: {Unidade} — {Novos} agendamento(s) sumiram do SISREG e entraram na fila "
+            + "de alterações para confirmação.", unidade.Nome, novos);
+    }
+
     private async Task<List<MarcacaoSisreg>> ExportarComTetoAsync(
         string cnes,
         DateOnly inicio,

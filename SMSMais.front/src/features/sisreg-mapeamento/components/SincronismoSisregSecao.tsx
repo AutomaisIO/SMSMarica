@@ -148,7 +148,11 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           />
         </Campo>
 
-        <Campo label="Dias à frente" htmlFor="varredura-dias">
+        <Campo
+          label="Mínimo de dias à frente"
+          htmlFor="varredura-dias"
+          dica="A varredura vai até a ÚLTIMA ESCALA ativa da unidade, não até um número escolhido — senão a agenda mostraria como livre toda vaga além da janela, por falta de dado. Este número é só o piso, usado quando a unidade ainda não tem escala cadastrada."
+        >
           <Input
             id="varredura-dias"
             type="number"

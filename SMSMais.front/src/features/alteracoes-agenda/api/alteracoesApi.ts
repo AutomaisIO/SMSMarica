@@ -1,7 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 
 /** O que o SISREG mudou. Nome do enum, não número — a API serializa enum como string. */
-export type TipoAlteracaoAgenda = 'DataHora' | 'Executante' | 'Procedimento';
+export type TipoAlteracaoAgenda = 'DataHora' | 'Executante' | 'Procedimento' | 'Ausente';
 
 export type AlteracaoAgenda = {
   id: string;

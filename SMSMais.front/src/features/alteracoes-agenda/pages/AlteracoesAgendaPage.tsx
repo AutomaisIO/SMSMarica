@@ -13,6 +13,7 @@ const ROTULO_TIPO: Record<TipoAlteracaoAgenda, string> = {
   DataHora: 'Remarcado',
   Executante: 'Trocou o profissional',
   Procedimento: 'Trocou o procedimento',
+  Ausente: 'Sumiu do SISREG',
 };
 
 /** Remarcação é a única que muda o que o paciente precisa fazer — por isso destoa das outras. */
@@ -20,6 +21,9 @@ const CLASSE_TIPO: Record<TipoAlteracaoAgenda, string> = {
   DataHora: 'bg-amber-100 text-amber-900',
   Executante: 'bg-gray-100 text-gray-700',
   Procedimento: 'bg-gray-100 text-gray-700',
+  // Sumiu = provável cancelamento lá. Pesa tanto quanto remarcação: a vaga aparece ocupada aqui
+  // por alguém que não vem mais.
+  Ausente: 'bg-red-100 text-red-800',
 };
 
 function dataHora(iso: string | null) {
@@ -62,8 +66,10 @@ export function AlteracoesAgendaPage() {
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-600">
           O que o SISREG mudou em agendamentos que já estavam aqui. <strong>Remarcado</strong> é o
-          que muda a vida do paciente: ele tem na mão um dia que não vale mais. Avisar pelo botão
-          reenvia a mensagem com a data nova e <strong>invalida o link antigo</strong>.
+          que muda a vida do paciente: ele tem na mão um dia que não vale mais — avisar pelo botão
+          reenvia a mensagem com a data nova e <strong>invalida o link antigo</strong>.{' '}
+          <strong>Sumiu do SISREG</strong> é provável cancelamento lá: confirme antes de tratar,
+          porque enquanto estiver aqui a vaga continua contando como ocupada.
         </p>
       </header>
 
