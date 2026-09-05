@@ -1,6 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarSisregConfiguracaoPayload,
+  BackfillExecutanteResultado,
   ConsultaSisreg,
   MapeamentoLoteAceito,
   MapeamentoLoteAgendamento,
@@ -47,6 +48,17 @@ export async function alternarSincronismoAutomatico(
   const { data } = await http.put<SincronismoAutomaticoSisreg>(
     '/sisreg/configuracao/sincronismo-automatico',
     { ativo },
+  );
+  return data;
+}
+
+/**
+ * Completa as solicitações já importadas com o profissional executante, relendo a linha crua do
+ * SISREG que ficou guardada. Idempotente e sem nenhuma requisição externa.
+ */
+export async function backfillExecutante(): Promise<BackfillExecutanteResultado> {
+  const { data } = await http.post<BackfillExecutanteResultado>(
+    '/sisreg/configuracao/backfill-executante',
   );
   return data;
 }

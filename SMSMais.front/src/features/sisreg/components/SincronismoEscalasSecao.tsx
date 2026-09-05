@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarRange, Loader2, RotateCw, XCircle } from 'lucide-react';
+import { CalendarRange, Loader2, RotateCw, UserCheck, XCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -9,6 +9,7 @@ import {
   useCancelarEscalas,
   useExecucoesEscalas,
   useSalvarAgendamentoEscalas,
+  useBackfillExecutante,
   useSincronizarEscalas,
   useStatusEscalas,
 } from '@/features/sisreg/api/queries';
@@ -56,12 +57,14 @@ export function SincronismoEscalasSecao() {
   const sincronizar = useSincronizarEscalas();
   const cancelar = useCancelarEscalas();
   const salvar = useSalvarAgendamentoEscalas();
+  const backfill = useBackfillExecutante();
 
   const [ativo, setAtivo] = useState(false);
   const [hora, setHora] = useState('02:30');
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [agendaSalva, setAgendaSalva] = useState(false);
+  const [resultadoBackfill, setResultadoBackfill] = useState<string | null>(null);
 
   useEffect(() => {
     if (agendamento.data) {
@@ -211,6 +214,56 @@ export function SincronismoEscalasSecao() {
           desligado lá, nada dispara sozinho aqui.
         </p>
       </form>
+
+      {/* Profissional executante das solicitações já importadas */}
+      <div className="mt-4 border-t border-gray-100 pt-4">
+        <h3 className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <UserCheck className="h-4 w-4 text-gray-500" />
+          Completar o profissional executante
+        </h3>
+        <p className="mt-1 max-w-3xl text-xs text-gray-600">
+          A escala é publicada <strong>por profissional</strong>, mas as solicitações importadas até
+          agora não guardavam quem executa — o dado era lido do arquivo e descartado. Sem ele dá para
+          medir a unidade, nunca abrir a agenda de uma pessoa.
+        </p>
+        <p className="mt-1 max-w-3xl text-xs text-gray-500">
+          Relê a linha crua que já está guardada aqui: <strong>não fala com o SISREG</strong> —
+          nenhuma requisição, nenhum risco de CAPTCHA. Rodar de novo é seguro, só toca no que está
+          vazio.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button
+            variante="outline"
+            tamanho="sm"
+            disabled={backfill.isPending}
+            onClick={() => {
+              setResultadoBackfill(null);
+              setErro(null);
+              backfill.mutate(undefined, {
+                onSuccess: (r) => setResultadoBackfill(r.mensagem),
+                onError: (e) => setErro(extrairMensagemDeErro(e)),
+              });
+            }}
+          >
+            {backfill.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <UserCheck className="mr-2 h-4 w-4" />
+            )}
+            Completar executante
+          </Button>
+          {backfill.isPending ? (
+            <span className="text-xs text-gray-500">
+              Relendo as solicitações — pode levar um minuto.
+            </span>
+          ) : null}
+        </div>
+        {resultadoBackfill ? (
+          <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            {resultadoBackfill}
+          </p>
+        ) : null}
+      </div>
 
       {/* Histórico */}
       {execucoes.data && execucoes.data.length > 0 ? (

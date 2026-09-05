@@ -52,6 +52,20 @@ export type TestarConexaoSisregResultado = { sucesso: boolean; mensagem: string 
 /** Resultado de ligar/desligar o sincronismo automático com o SISREG. */
 export type SincronismoAutomaticoSisreg = { ativo: boolean; mensagem: string };
 
+/**
+ * Resultado do backfill do profissional executante — relê a linha crua já guardada em
+ * `raw_sisreg`. Não fala com o SISREG: nenhuma requisição, nenhum risco de CAPTCHA.
+ */
+export type BackfillExecutanteResultado = {
+  examinadas: number;
+  preenchidas: number;
+  /** RAW existe mas não carrega o executante (JSON do caminho pontual do cons_agendas). */
+  semDadoNoRaw: number;
+  /** Seguem sem executante depois desta passada. */
+  pendentes: number;
+  mensagem: string;
+};
+
 /** Resposta ao disparo do lote "sincroniza tudo". */
 export type MapeamentoLoteAceito = { unidadesTotal: number; mensagem: string };
 

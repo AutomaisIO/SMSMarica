@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   alternarSincronismoAutomatico,
   atualizarConfiguracaoSisreg,
+  backfillExecutante,
   cancelarEscalas,
   listarExecucoesEscalas,
   obterAgendamentoEscalas,
@@ -192,6 +193,10 @@ export function useAlternarAgendamentoRede() {
     mutationFn: (ativo: boolean) => alternarAgendamentoRede(ativo),
     onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteAgendamento }),
   });
+}
+
+export function useBackfillExecutante() {
+  return useMutation({ mutationFn: backfillExecutante });
 }
 
 // ----------------------------------------------------------- escalas (a OFERTA de vagas)
