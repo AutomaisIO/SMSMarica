@@ -98,59 +98,34 @@ public sealed class HistoricoAgendaScheduler(
         if (agenda is null) return;
 
         var hoje = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia));
-        var (inicio, fim) = DecididorHistorico.ProximaFatia(
-            agenda.HistoricoCobertoDe, hoje, _opcoes.DiasPorFatia);
 
-        var execucao = await db.SisregVarreduraExecucoes
-            .AsNoTracking()
-            .Where(e => e.UnidadeId == agenda.UnidadeId && e.JanelaInicio == inicio && e.JanelaFim == fim)
-            .OrderByDescending(e => e.IniciadoEm)
-            .FirstOrDefaultAsync(ct);
+        // A reconciliação (ler a fatia corrente, decidir, gravar a cobertura) é COMPARTILHADA com o
+        // disparo manual. Quando era só daqui, o botão manual começava a fatia e nunca movia a
+        // cobertura — e como este scheduler para com o sincronismo automático desligado, cada
+        // clique repetia a mesma janela. Ver AvancoHistorico.
+        var reconciliacao = await AvancoHistorico.ReconciliarAsync(db, agenda, hoje, _opcoes, ct);
 
-        var passo = DecididorHistorico.Decidir(
-            execucao?.Status,
-            execucao?.RegistrosEncontrados ?? 0,
-            agenda.HistoricoFatiasVazias,
-            _opcoes.FatiasVaziasParaConcluir);
-
-        switch (passo)
+        if (reconciliacao.Passo == PassoHistorico.Concluir)
         {
-            // Pede e sai: o resultado é lido no próximo tick. É o que dispensa orquestrador de longa
-            // duração e faz o motor sobreviver a um restart no meio do caminho.
-            case PassoHistorico.Pedir:
-            {
-                var servico = scope.ServiceProvider.GetRequiredService<IVarreduraAgendaService>();
-                var id = await servico.IniciarPeriodoAgendadoAsync(agenda.UnidadeId, inicio, fim, ct);
-                if (id is not null)
-                {
-                    logger.LogInformation(
-                        "SISREG_HISTORICO_FATIA: unidade {UnidadeId}, {Inicio} a {Fim}.",
-                        agenda.UnidadeId, inicio, fim);
-                }
-                return;
-            }
-
-            // Rodando, ou terminou mal. Nos dois casos a cobertura fica onde está — repetir custa uma
-            // requisição, um buraco silencioso custa a análise.
-            case PassoHistorico.Esperar:
-            case PassoHistorico.Repetir:
-                return;
-        }
-
-        agenda.HistoricoCobertoDe = inicio;
-        agenda.HistoricoFatiasVazias = DecididorHistorico.ProximasVazias(
-            agenda.HistoricoFatiasVazias, execucao!.RegistrosEncontrados);
-
-        if (passo == PassoHistorico.Concluir)
-        {
-            agenda.HistoricoConcluidoEm = DateTime.UtcNow;
             logger.LogInformation(
-                "SISREG_HISTORICO_FIM: unidade {UnidadeId} — {Vazias} fatias seguidas sem registro; "
-                + "início real por volta de {Inicio}.",
-                agenda.UnidadeId, agenda.HistoricoFatiasVazias, inicio);
+                "SISREG_HISTORICO_FIM: unidade {UnidadeId} — {Vazias} fatias seguidas sem registro.",
+                agenda.UnidadeId, agenda.HistoricoFatiasVazias);
+            return;
         }
 
-        agenda.AtualizadoEm = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
+        // Rodando, ou terminou mal e será repetida no próximo tick: nos dois casos a cobertura fica
+        // onde está — repetir custa uma requisição, um buraco silencioso custa a análise.
+        if (reconciliacao.Passo == PassoHistorico.Esperar) return;
+
+        var servico = scope.ServiceProvider.GetRequiredService<IVarreduraAgendaService>();
+        var id = await servico.IniciarPeriodoAgendadoAsync(
+            agenda.UnidadeId, reconciliacao.Inicio, reconciliacao.Fim, ct);
+
+        if (id is not null)
+        {
+            logger.LogInformation(
+                "SISREG_HISTORICO_FATIA: unidade {UnidadeId}, {Inicio} a {Fim}.",
+                agenda.UnidadeId, reconciliacao.Inicio, reconciliacao.Fim);
+        }
     }
 }

@@ -111,6 +111,7 @@ public sealed class VarreduraAgendaService(
     MapeamentoLote.Background.MapeamentoLoteEstadoVivo loteEstadoVivo,
     IUsuarioAtualAccessor usuarioAtual,
     IOptions<VarreduraSisregOpcoes> opcoes,
+    IOptions<Historico.HistoricoOpcoes> historicoOpcoes,
     ILogger<VarreduraAgendaService> logger) : IVarreduraAgendaService
 {
     private const string Caminho = "/cgi-bin/expo_solicitacoes";
@@ -159,6 +160,7 @@ public sealed class VarreduraAgendaService(
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
     private readonly VarreduraSisregOpcoes _opcoes = opcoes.Value;
+    private readonly Historico.HistoricoOpcoes _historicoOpcoes = historicoOpcoes.Value;
 
     /// <summary>Par profissional × procedimento a consultar. Ordenado por (cpf, código) para o
     /// cursor de retomada ser determinístico.</summary>
@@ -415,15 +417,36 @@ public sealed class VarreduraAgendaService(
         GarantirJanelaDeEntrada();
 
         var hoje = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia));
-        var (inicio, fim) = Historico.DecididorHistorico.ProximaFatia(
-            agenda.HistoricoCobertoDe, hoje, Historico.HistoricoOpcoes.DiasPorFatiaPadrao);
+
+        // RECONCILIAR ANTES DE PEDIR. Sem isto o comando manual só sabia começar: a cobertura era
+        // gravada pelo scheduler, que para com o sincronismo automático desligado, então cada
+        // clique recomeçava a MESMA fatia. Medido em 05/09/2026 no CDT — duas execuções na janela
+        // 05/08–04/09, a segunda reimportando os 3.923 registros que a primeira já tinha trazido.
+        var reconciliacao = await Historico.AvancoHistorico.ReconciliarAsync(
+            db, agenda, hoje, _historicoOpcoes, ct);
+
+        if (reconciliacao.Passo == Historico.PassoHistorico.Esperar)
+        {
+            throw new ConflitoException(
+                "historico.fatia_em_andamento",
+                $"A fatia de {reconciliacao.Inicio:dd/MM/yyyy} a {reconciliacao.Fim:dd/MM/yyyy} ainda "
+                + "está rodando. Espere ela terminar para pedir a próxima.");
+        }
+
+        if (reconciliacao.Passo == Historico.PassoHistorico.Concluir)
+        {
+            throw new ValidacaoException(
+                "historico.concluido",
+                "Chegou ao começo desta unidade: as últimas fatias vieram todas vazias. "
+                + "Use \"Recomeçar do zero\" se quiser varrer de novo.");
+        }
 
         var (execucaoId, _) = await CriarExecucaoAsync(
-            unidade, DisparoSincronizacao.Manual, null, inicio, fim, ct);
+            unidade, DisparoSincronizacao.Manual, null, reconciliacao.Inicio, reconciliacao.Fim, ct);
 
         logger.LogInformation(
-            "SISREG_HISTORICO_MANUAL: unidade {UnidadeId}, {Inicio} a {Fim}.",
-            unidade.Id, inicio, fim);
+            "SISREG_HISTORICO_MANUAL: unidade {UnidadeId}, {Inicio} a {Fim} (passo {Passo}).",
+            unidade.Id, reconciliacao.Inicio, reconciliacao.Fim, reconciliacao.Passo);
 
         return execucaoId;
     }
