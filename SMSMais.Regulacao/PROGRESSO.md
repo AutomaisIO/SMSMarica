@@ -24,7 +24,14 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.8** (wizard completo — D-5: [NAR: unidade em nome de] → procedimento → destino → paciente → regras → formulário + anexos → revisão; salvar Rascunho e enviar para a fila).
+**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.8 — só o front**. O backend está pronto e commitado; falta o wizard de 7 passos (D-5: [NAR: unidade em nome de] → procedimento → destino → paciente → regras → formulário + anexos → revisão), mais a rota e o item de menu.
+
+> ### Para quem retomar — o que já existe e deve ser reusado, não reescrito
+> - `PassoPaciente` (com `CartaoPacienteCadsus` e `InformarCpfModal`) — pronto em `features/regulacao/components/wizard/`.
+> - `BuscaProcedimento` — pronto, é o passo do procedimento.
+> - `UploadAnexo` em `shared/ui` e `CampoDinamico`/`CampoPaciente` em `shared/regulacao` — prontos.
+> - Endpoints prontos: `POST /regulacao/solicitacoes`, `PUT {id}`, `GET {id}`, `GET formulario?procedimentoId=&fluxo=`, `GET {id}/pendencias`, `POST {id}/enviar-fila`, `POST {id}/cancelar`; e as 5 rotas de exigência/anexo.
+> - O wizard cria a solicitação como **Rascunho já no passo do formulário** (os anexos precisam de dono), e a tela de revisão mostra `GET pendencias` — cada item já vem com o rótulo do campo, pronto para exibir.
 
 **Decidido em 05/09:** os anexos vão para o **Spaces**, não `midia` em bytea (Bernardo). Motivo registrado nos planos 02 e 03: o caminho real é foto de celular, não só PDF.
 
@@ -92,7 +99,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 2.5 `RegulacaoPacienteService` (local → CADSUS → criar) + `RegulacaoPacientesController` + `GET pacientes/por-cns/{cns}` + `PassoPaciente`/`CartaoPacienteCadsus`/`InformarCpfModal`. **60 testes verdes** (11 novos) — **06/09/2026**
 - [x] 2.6 `RegulacaoFormularioService`: união SER ∪ SERNIT por slug de rótulo + tabela de sinônimos, obrigatoriedade por OU, conflito de tipo vira dois campos sufixados, versão reusada por hash, `TraduzirAsync` com de-para de opções e conversão de data. **70 testes verdes** (10 novos) — **06/09/2026**
 - [x] 2.7 esquema `sisreg.inclusao` (5 campos do mapa por GET documentado no `APRENDIZADOS.md`) — saiu no mesmo serviço da 2.6. **Explicitamente provisório**: os campos reais da tela `marcar` só se conhecem no spike b — **06/09/2026**
-- [~] 2.8 **backend pronto**: `RegulacaoSolicitacaoService` (criar/obter/atualizar/pendências/enviar-fila/cancelar, escopo fail-closed) + `RegulacaoSolicitacoesController` (7 rotas). **81 testes verdes** (11 novos). **Falta**: o wizard no front (7 passos, D-5) e a rota/menu.
+- [~] 2.8 **backend pronto e commitado (`6e3c793`)**: `RegulacaoSolicitacaoService` (criar/obter/atualizar/pendências/enviar-fila/cancelar, escopo fail-closed) + `RegulacaoSolicitacoesController` (7 rotas). **81 testes verdes** (11 novos). **Falta**: o wizard no front (7 passos, D-5) e a rota/menu.
 - [ ] 2.9 migração dos rascunhos `ser_*`/`sernit_*` para `regulacao_solicitacao`; telas antigas viram somente-leitura
 - [ ] 2.10 testes
 
@@ -203,6 +210,13 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 06/09/2026 — incremento 2, tarefas 2.1 a 2.8 (backend)
+
+- Commits **`d746f81`** (2.1–2.5 + todo o incremento 1) e **`6e3c793`** (2.6–2.8 backend). **Nenhum pushado.** Suíte completa **1198/1199** na bancada, build 0/0 nos dois lados.
+- **O spike c virou código** na união do formulário: obrigatoriedade por OU, tabela de sinônimos de rótulo, e conflito de tipo gerando dois campos em vez de escolha automática — cada regra com o número medido no comentário e no teste.
+- **Dois defeitos meus, pegos antes de rodar:** o de-para de opções mapeava `valor → valor` (não traduzia nada), e o dublê do formulário nos testes devolvia um `versaoId` inexistente contra uma FK real.
+- **Onde parei e por quê:** o contexto da sessão chegou perto do ponto de resumo. Parar aqui, com o backend fechado e commitado, é melhor do que atravessar o wizard do front pela metade.
 
 ### 05/09/2026 — incremento 1 CONCLUÍDO (tarefas 1.4 a 1.8)
 
