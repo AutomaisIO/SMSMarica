@@ -50,9 +50,10 @@ public class AvancoHistoricoTests(PostgresFixture fixture)
         return agenda;
     }
 
+    /// <param name="minutosAtras">Idade da execução — é o que distingue "rodando" de "abandonada".</param>
     private static void SemearExecucao(
         SmsMaisDbContext db, Guid unidadeId, DateOnly inicio, DateOnly fim,
-        StatusVarredura status, int registros)
+        StatusVarredura status, int registros, int minutosAtras = 0)
     {
         db.SisregVarreduraExecucoes.Add(new SisregVarreduraExecucao
         {
@@ -64,7 +65,7 @@ public class AvancoHistoricoTests(PostgresFixture fixture)
             JanelaInicio = inicio,
             JanelaFim = fim,
             RegistrosEncontrados = registros,
-            IniciadoEm = DateTime.UtcNow,
+            IniciadoEm = DateTime.UtcNow.AddMinutes(-minutosAtras),
         });
     }
 
@@ -132,24 +133,54 @@ public class AvancoHistoricoTests(PostgresFixture fixture)
     public async Task Execucao_orfa_de_restart_e_repetida_e_nao_trava_o_motor()
     {
         await using var db = fixture.CriarDbContext();
+        var opcoes = new HistoricoOpcoes();
         var agenda = await SemearAsync(db);
+        var (inicio, fim) = DecididorHistorico.ProximaFatia(null, Hoje, opcoes.DiasPorFatia);
 
-        var (inicio, fim) = DecididorHistorico.ProximaFatia(null, Hoje, 31);
-        SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.EmExecucao, registros: 4272);
+        // Recém-criada: está mesmo rodando, e esperar é o certo. É este caso que o laço de
+        // 06/09/2026 lia como órfã, disparando outra execução a cada 90 s.
+        SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.EmExecucao, 4272, minutosAtras: 1);
         await db.SaveChangesAsync();
 
-        // Com trabalho vivo de verdade, esperar é o certo.
-        var esperando = await AvancoHistorico.ReconciliarAsync(
-            db, agenda, Hoje, new HistoricoOpcoes(), default, nenhumTrabalhoVivo: false);
-        Assert.Equal(PassoHistorico.Esperar, esperando.Passo);
+        var recente = await AvancoHistorico.ReconciliarAsync(db, agenda, Hoje, opcoes, default);
+        Assert.Equal(PassoHistorico.Esperar, recente.Passo);
 
-        // Sem nada rodando, a mesma linha só pode ser órfã.
-        var orfa = await AvancoHistorico.ReconciliarAsync(
-            db, agenda, Hoje, new HistoricoOpcoes(), default, nenhumTrabalhoVivo: true);
+        // Velha demais para estar viva: aí sim é resto de um restart.
+        await using var db2 = fixture.CriarDbContext();
+        var agenda2 = await SemearAsync(db2);
+        SemearExecucao(db2, agenda2.UnidadeId, inicio, fim, StatusVarredura.EmExecucao, 4272,
+            minutosAtras: opcoes.MinutosParaAbandonada + 5);
+        await db2.SaveChangesAsync();
 
-        Assert.Equal(PassoHistorico.Repetir, orfa.Passo);
-        Assert.Equal(inicio, orfa.Inicio);
-        Assert.Null(agenda.HistoricoCobertoDe);
+        var velha = await AvancoHistorico.ReconciliarAsync(db2, agenda2, Hoje, opcoes, default);
+        Assert.Equal(PassoHistorico.Repetir, velha.Passo);
+        Assert.Null(agenda2.HistoricoCobertoDe);
+    }
+
+    /// <summary>
+    /// A mesma fatia falhando vezes demais DESLIGA o histórico, em vez de insistir.
+    ///
+    /// <para>É o teto que faltava: sem ele, uma janela que nunca passa repete para sempre e queima
+    /// orçamento anti-robô — cujo estouro pausa a unidade por 24 h.</para>
+    /// </summary>
+    [Fact]
+    public async Task Fatia_que_falha_demais_desliga_o_historico()
+    {
+        await using var db = fixture.CriarDbContext();
+        var opcoes = new HistoricoOpcoes();
+        var agenda = await SemearAsync(db);
+        var (inicio, fim) = DecididorHistorico.ProximaFatia(null, Hoje, opcoes.DiasPorFatia);
+
+        for (var i = 0; i < opcoes.TentativasPorFatia; i++)
+        {
+            SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.Erro, 0, minutosAtras: 60 + i);
+        }
+        await db.SaveChangesAsync();
+
+        var r = await AvancoHistorico.ReconciliarAsync(db, agenda, Hoje, opcoes, default);
+
+        Assert.Equal(PassoHistorico.Bloquear, r.Passo);
+        Assert.False(agenda.HistoricoAtivo);
     }
 
     /// <summary>
@@ -175,7 +206,7 @@ public class AvancoHistoricoTests(PostgresFixture fixture)
         await db.SaveChangesAsync();
 
         var r = await AvancoHistorico.ReconciliarAsync(
-            db, agenda, Hoje, new HistoricoOpcoes(), default, nenhumTrabalhoVivo: true);
+            db, agenda, Hoje, new HistoricoOpcoes(), default);
 
         Assert.Equal(PassoHistorico.Avancar, r.Passo);
         Assert.Equal(inicio, agenda.HistoricoCobertoDe);
@@ -194,7 +225,8 @@ public class AvancoHistoricoTests(PostgresFixture fixture)
         var agenda = await SemearAsync(db);
 
         var (inicio, fim) = DecididorHistorico.ProximaFatia(null, Hoje, 31);
-        SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.Erro, registros: 0);
+        SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.Erro, registros: 0,
+            minutosAtras: new HistoricoOpcoes().MinutosEntreTentativas + 1);
         await db.SaveChangesAsync();
 
         var r = await AvancoHistorico.ReconciliarAsync(db, agenda, Hoje, new HistoricoOpcoes(), default);

@@ -35,6 +35,35 @@ public sealed class HistoricoOpcoes
     public int FatiasVaziasParaConcluir { get; set; } = 6;
 
     /// <summary>
+    /// Idade a partir da qual uma execução ainda "rodando" é considerada <b>abandonada</b>.
+    ///
+    /// <para>O estado vivo mora em memória e o banco não: um restart deixa a linha em
+    /// <c>EmExecucao</c> para sempre, e o motor esperaria por ela indefinidamente. A detecção é por
+    /// IDADE e não por "tem algo vivo agora" — essa segunda versão causou, em 06/09/2026, um laço
+    /// que gastou 57 requisições em uma hora repetindo a mesma fatia: a execução é criada antes de
+    /// o runner registrar-se como viva, então o tick seguinte a lia como órfã e disparava outra,
+    /// que matava a anterior.</para>
+    ///
+    /// <para>45 minutos é o dobro largo de uma fatia real (~20 min medidos no CDT). Errar para mais
+    /// custa esperar; errar para menos custa o laço.</para>
+    /// </summary>
+    public int MinutosParaAbandonada { get; set; } = 45;
+
+    /// <summary>
+    /// Espera mínima antes de repetir uma fatia que falhou. Impede que um erro determinístico —
+    /// unidade sem permissão, procedimento que o SISREG recusa — vire uma repetição a cada tick.
+    /// </summary>
+    public int MinutosEntreTentativas { get; set; } = 15;
+
+    /// <summary>
+    /// Tentativas na MESMA fatia antes de o motor desistir e se desligar.
+    ///
+    /// <para>Sem teto, uma janela que falha sempre queima orçamento para sempre. Desligar é
+    /// preferível a insistir: o operador vê parado, olha a última execução e decide.</para>
+    /// </summary>
+    public int TentativasPorFatia { get; set; } = 3;
+
+    /// <summary>
     /// Folga de orçamento exigida para o motor tocar. Alta de propósito: o histórico é trabalho de
     /// fundo e não pode ser o motivo de um operador humano encontrar CAPTCHA.
     /// </summary>

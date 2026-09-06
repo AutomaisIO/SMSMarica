@@ -422,10 +422,17 @@ public sealed class VarreduraAgendaService(
         // gravada pelo scheduler, que para com o sincronismo automático desligado, então cada
         // clique recomeçava a MESMA fatia. Medido em 05/09/2026 no CDT — duas execuções na janela
         // 05/08–04/09, a segunda reimportando os 3.923 registros que a primeira já tinha trazido.
-        // nenhumTrabalhoVivo: GarantirSemTrabalhoVivo() acabou de confirmar isso, lançando se
-        // houvesse. Logo, "rodando" no banco aqui só pode ser resto de um restart.
         var reconciliacao = await Historico.AvancoHistorico.ReconciliarAsync(
-            db, agenda, hoje, _historicoOpcoes, ct, nenhumTrabalhoVivo: true);
+            db, agenda, hoje, _historicoOpcoes, ct);
+
+        if (reconciliacao.Passo == Historico.PassoHistorico.Bloquear)
+        {
+            throw new ValidacaoException(
+                "historico.fatia_falhou_demais",
+                $"A fatia de {reconciliacao.Inicio:dd/MM/yyyy} a {reconciliacao.Fim:dd/MM/yyyy} já "
+                + "falhou várias vezes seguidas. O histórico foi desligado para não seguir gastando "
+                + "requisições. Veja o erro da última execução na lista abaixo antes de religar.");
+        }
 
         if (reconciliacao.Passo == Historico.PassoHistorico.Esperar)
         {
@@ -532,9 +539,9 @@ public sealed class VarreduraAgendaService(
         var inicio = janelaInicio ?? hoje;
         var fim = janelaFim ?? await UltimoDiaDeAgendaAsync(unidade.Id, hoje, agenda, ct);
 
-        // Execuções de um processo que morreu (ou que uma exceção deixou pelo caminho) ficariam
-        // "Rodando" para sempre na tela, e o operador não tem como saber que já acabou. Só chega
-        // aqui quem passou pelo GarantirSemTrabalhoVivo, então não há risco de matar uma viva.
+        // Execuções de um processo que morreu ficariam "Rodando" para sempre na tela. Fecha apenas
+        // as ANTIGAS: matar uma execução viva por presunção foi o que transformou o motor de
+        // histórico num laço que queimava orçamento.
         await FecharOrfasAsync(unidade.Id, ct);
 
         var execucao = new SisregVarreduraExecucao
@@ -1380,9 +1387,17 @@ public sealed class VarreduraAgendaService(
     /// </summary>
     private async Task FecharOrfasAsync(Guid unidadeId, CancellationToken ct)
     {
+        // SÓ o que é velho o bastante para estar mesmo morto. Fechar toda execução em andamento
+        // era seguro enquanto só um humano criava execuções — o comentário na chamada dizia
+        // "só chega aqui quem passou pelo GarantirSemTrabalhoVivo". Deixou de ser verdade quando o
+        // motor de histórico passou a se auto-disparar: em 06/09/2026 cada tick criava uma execução
+        // que matava a anterior ainda viva, 57 requisições numa hora sempre na mesma fatia.
+        var corte = DateTime.UtcNow - TimeSpan.FromMinutes(_historicoOpcoes.MinutosParaAbandonada);
+
         var orfas = await db.SisregVarreduraExecucoes
             .Where(e => e.UnidadeId == unidadeId
-                        && (e.Status == StatusVarredura.Pendente || e.Status == StatusVarredura.EmExecucao))
+                        && (e.Status == StatusVarredura.Pendente || e.Status == StatusVarredura.EmExecucao)
+                        && e.IniciadoEm < corte)
             .ToListAsync(ct);
         if (orfas.Count == 0) return;
 

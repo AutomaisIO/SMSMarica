@@ -41,8 +41,7 @@ public static class AvancoHistorico
         SisregVarreduraAgenda agenda,
         DateOnly hoje,
         HistoricoOpcoes opcoes,
-        CancellationToken ct,
-        bool nenhumTrabalhoVivo = false)
+        CancellationToken ct)
     {
         var (inicio, fim) = DecididorHistorico.ProximaFatia(
             agenda.HistoricoCobertoDe, hoje, opcoes.DiasPorFatia);
@@ -59,12 +58,34 @@ public static class AvancoHistorico
             .ThenByDescending(e => e.IniciadoEm)
             .FirstOrDefaultAsync(ct);
 
+        // Quantas vezes esta MESMA janela já falhou. É o que sustenta o teto de tentativas: sem
+        // ele, uma fatia que nunca passa consome orçamento indefinidamente.
+        var tentativas = await db.SisregVarreduraExecucoes
+            .AsNoTracking()
+            .CountAsync(e => e.UnidadeId == agenda.UnidadeId
+                          && e.JanelaInicio == inicio && e.JanelaFim == fim
+                          && (e.Status == StatusVarredura.Erro
+                              || e.Status == StatusVarredura.Cancelada
+                              || e.Status == StatusVarredura.Parcial), ct);
+
         var passo = DecididorHistorico.Decidir(
             execucao?.Status,
             execucao?.RegistrosEncontrados ?? 0,
             agenda.HistoricoFatiasVazias,
             opcoes.FatiasVaziasParaConcluir,
-            nenhumTrabalhoVivo);
+            execucao is null ? null : DateTime.UtcNow - execucao.IniciadoEm,
+            tentativas,
+            opcoes);
+
+        // Desistir desta unidade: a janela falhou vezes demais. Desligar é melhor que insistir —
+        // o operador vê parado, olha a última execução e decide.
+        if (passo == PassoHistorico.Bloquear)
+        {
+            agenda.HistoricoAtivo = false;
+            agenda.AtualizadoEm = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return new ReconciliacaoHistorico(passo, inicio, fim);
+        }
 
         // Nada a gravar: a fatia ainda não foi pedida, está rodando, ou terminou mal e será
         // repetida — em nenhum desses casos a cobertura pode andar.

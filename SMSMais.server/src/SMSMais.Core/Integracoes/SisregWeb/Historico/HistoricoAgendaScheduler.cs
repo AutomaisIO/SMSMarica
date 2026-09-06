@@ -110,10 +110,16 @@ public sealed class HistoricoAgendaScheduler(
         // disparo manual. Quando era só daqui, o botão manual começava a fatia e nunca movia a
         // cobertura — e como este scheduler para com o sincronismo automático desligado, cada
         // clique repetia a mesma janela. Ver AvancoHistorico.
-        // nenhumTrabalhoVivo: os quatro EstadoVivo foram checados no topo deste tick, então uma
-        // execução que o banco diz "rodando" e ninguém está executando é órfã de um restart.
-        var reconciliacao = await AvancoHistorico.ReconciliarAsync(
-            db, agenda, hoje, _opcoes, ct, nenhumTrabalhoVivo: true);
+        var reconciliacao = await AvancoHistorico.ReconciliarAsync(db, agenda, hoje, _opcoes, ct);
+
+        if (reconciliacao.Passo == PassoHistorico.Bloquear)
+        {
+            logger.LogWarning(
+                "SISREG_HISTORICO_BLOQUEADO: unidade {UnidadeId} — a fatia {Inicio} a {Fim} falhou "
+                + "{Tentativas} vezes; o histórico foi desligado para não seguir gastando orçamento.",
+                agenda.UnidadeId, reconciliacao.Inicio, reconciliacao.Fim, _opcoes.TentativasPorFatia);
+            return;
+        }
 
         if (reconciliacao.Passo == PassoHistorico.Concluir)
         {

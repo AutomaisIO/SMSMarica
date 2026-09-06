@@ -19,6 +19,12 @@ public enum PassoHistorico
 
     /// <summary>Terminou bem e a unidade chegou ao começo — encerra o histórico dela.</summary>
     Concluir,
+
+    /// <summary>
+    /// A mesma fatia falhou vezes demais. <b>Desliga o histórico da unidade</b> em vez de seguir
+    /// queimando orçamento numa janela que não passa.
+    /// </summary>
+    Bloquear,
 }
 
 /// <summary>
@@ -52,36 +58,49 @@ public static class DecididorHistorico
     /// <param name="fatiasVaziasAtuais">Quantas fatias seguidas já vieram vazias antes desta.</param>
     /// <param name="registrosEncontrados">Registros que a fatia trouxe (só vale se concluída).</param>
     /// <param name="fatiasParaConcluir">Quantas vazias seguidas encerram a unidade.</param>
-    /// <param name="nenhumTrabalhoVivo">
-    /// O chamador confirmou que <b>nada</b> está rodando neste instante. Nesse caso uma linha em
-    /// <c>Pendente</c>/<c>EmExecucao</c> só pode ser <b>órfã</b>, e a fatia é repetida.
+    /// <param name="idadeDaExecucao">
+    /// Há quanto tempo a execução começou. É o que distingue "rodando" de "abandonada por um
+    /// restart" — e a distinção precisa ser por IDADE, não por "tem algo vivo agora".
     ///
-    /// <para>Isto existe porque o estado "rodando" vive em memória e o banco não: um deploy no meio
-    /// de uma fatia reinicia o processo e deixa a execução eternamente em <c>EmExecucao</c>.
-    /// Aconteceu em 06/09/2026 no CDT — 21 requisições, 4.272 registros lidos e nenhum
-    /// <c>finalizado_em</c> —, e sem esta saída o motor esperaria para sempre por uma fatia que
-    /// nunca mais ia terminar.</para>
-    ///
-    /// <para>Não é heurística de tempo: os dois chamadores já verificam os <c>EstadoVivo</c> antes
-    /// de reconciliar, então "nada vivo + banco diz rodando" é conclusão, não palpite. O custo de
-    /// errar seria repetir uma fatia, uma requisição — contra travar o motor indefinidamente.</para>
+    /// <para>A versão por liveness causou um laço em 06/09/2026: a linha é criada antes de o runner
+    /// registrar-se como vivo, então o tick seguinte lia a execução recém-criada como órfã,
+    /// disparava outra, e a nova matava a anterior em <c>FecharOrfasAsync</c>. 57 requisições numa
+    /// hora, sempre a mesma fatia, nada avançando.</para>
     /// </param>
+    /// <param name="tentativasNaFatia">Execuções que já falharam nesta mesma janela.</param>
+    /// <param name="opcoes">Limites de idade, espera entre tentativas e teto de tentativas.</param>
     public static PassoHistorico Decidir(
         StatusVarredura? execucaoStatus,
         int registrosEncontrados,
         int fatiasVaziasAtuais,
         int fatiasParaConcluir,
-        bool nenhumTrabalhoVivo = false)
+        TimeSpan? idadeDaExecucao = null,
+        int tentativasNaFatia = 0,
+        HistoricoOpcoes? opcoes = null)
     {
         if (execucaoStatus is null) return PassoHistorico.Pedir;
 
-        if (execucaoStatus is StatusVarredura.Pendente or StatusVarredura.EmExecucao)
-            return nenhumTrabalhoVivo ? PassoHistorico.Repetir : PassoHistorico.Esperar;
+        var o = opcoes ?? new HistoricoOpcoes();
+        var idade = idadeDaExecucao ?? TimeSpan.Zero;
 
-        // Avançar a cobertura sobre uma fatia que falhou deixaria um buraco silencioso: a tela diria
-        // "coberto desde X" e o dado não estaria lá. Repetir custa uma requisição; o buraco custa a
-        // análise inteira, e ninguém teria como saber que ele existe.
-        if (execucaoStatus != StatusVarredura.Concluida) return PassoHistorico.Repetir;
+        if (execucaoStatus is StatusVarredura.Pendente or StatusVarredura.EmExecucao)
+        {
+            // Nova o bastante para estar mesmo rodando: esperar é o certo, e é o que impede o laço.
+            return idade < TimeSpan.FromMinutes(o.MinutosParaAbandonada)
+                ? PassoHistorico.Esperar
+                : PassoHistorico.Repetir;
+        }
+
+        if (execucaoStatus != StatusVarredura.Concluida)
+        {
+            // Teto duro: a mesma janela não pode falhar para sempre consumindo orçamento.
+            if (tentativasNaFatia >= Math.Max(1, o.TentativasPorFatia)) return PassoHistorico.Bloquear;
+
+            // Recuo entre tentativas: sem isto um erro determinístico repete a cada tick.
+            return idade < TimeSpan.FromMinutes(o.MinutosEntreTentativas)
+                ? PassoHistorico.Esperar
+                : PassoHistorico.Repetir;
+        }
 
         if (registrosEncontrados > 0) return PassoHistorico.Avancar;
 

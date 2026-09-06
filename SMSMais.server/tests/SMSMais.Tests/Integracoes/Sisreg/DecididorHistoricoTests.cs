@@ -91,9 +91,68 @@ public class DecididorHistoricoTests
     [InlineData(StatusVarredura.Cancelada)]
     public void Fatia_que_terminou_mal_repete_sem_avancar_a_cobertura(StatusVarredura status)
     {
+        // Passado o recuo entre tentativas. Repetir na hora fazia um erro determinístico —
+        // unidade sem permissão, procedimento recusado — repetir a cada tick de 90 s.
+        var opcoes = new HistoricoOpcoes();
+        var idade = TimeSpan.FromMinutes(opcoes.MinutosEntreTentativas + 1);
+
         Assert.Equal(
             PassoHistorico.Repetir,
-            DecididorHistorico.Decidir(status, 0, 0, ParaConcluir));
+            DecididorHistorico.Decidir(status, 0, 0, ParaConcluir, idade, 0, opcoes));
+    }
+
+    /// <summary>
+    /// Falha RECENTE espera o recuo antes de tentar de novo.
+    ///
+    /// <para>Sem o recuo, uma janela que falha sempre repete a cada tick e queima o orçamento
+    /// anti-robô do operador — cujo estouro pausa a unidade por 24 h.</para>
+    /// </summary>
+    [Fact]
+    public void Falha_recente_recua_antes_de_repetir()
+    {
+        var opcoes = new HistoricoOpcoes();
+
+        Assert.Equal(
+            PassoHistorico.Esperar,
+            DecididorHistorico.Decidir(
+                StatusVarredura.Erro, 0, 0, ParaConcluir, TimeSpan.FromMinutes(1), 0, opcoes));
+    }
+
+    /// <summary>
+    /// Execução "rodando" ainda NOVA é rodando mesmo; só a antiga é abandonada.
+    ///
+    /// <para>Distinguir por idade, e não por "tem algo vivo agora", é o que impede o laço de
+    /// 06/09/2026: a linha nasce antes de o runner se registrar como vivo, então a leitura por
+    /// liveness classificava como órfã uma execução que tinha acabado de começar.</para>
+    /// </summary>
+    [Fact]
+    public void Rodando_ha_pouco_espera_e_rodando_ha_muito_e_abandonada()
+    {
+        var opcoes = new HistoricoOpcoes();
+
+        Assert.Equal(
+            PassoHistorico.Esperar,
+            DecididorHistorico.Decidir(
+                StatusVarredura.EmExecucao, 0, 0, ParaConcluir, TimeSpan.FromMinutes(5), 0, opcoes));
+
+        Assert.Equal(
+            PassoHistorico.Repetir,
+            DecididorHistorico.Decidir(
+                StatusVarredura.EmExecucao, 0, 0, ParaConcluir,
+                TimeSpan.FromMinutes(opcoes.MinutosParaAbandonada + 1), 0, opcoes));
+    }
+
+    /// <summary>Teto de tentativas na mesma fatia: desliga em vez de insistir.</summary>
+    [Fact]
+    public void Tentativas_demais_na_mesma_fatia_bloqueiam()
+    {
+        var opcoes = new HistoricoOpcoes();
+
+        Assert.Equal(
+            PassoHistorico.Bloquear,
+            DecididorHistorico.Decidir(
+                StatusVarredura.Erro, 0, 0, ParaConcluir, TimeSpan.FromHours(2),
+                opcoes.TentativasPorFatia, opcoes));
     }
 
     [Fact]
