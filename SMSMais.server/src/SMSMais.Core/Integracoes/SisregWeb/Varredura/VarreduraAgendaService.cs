@@ -422,8 +422,10 @@ public sealed class VarreduraAgendaService(
         // gravada pelo scheduler, que para com o sincronismo automático desligado, então cada
         // clique recomeçava a MESMA fatia. Medido em 05/09/2026 no CDT — duas execuções na janela
         // 05/08–04/09, a segunda reimportando os 3.923 registros que a primeira já tinha trazido.
+        // nenhumTrabalhoVivo: GarantirSemTrabalhoVivo() acabou de confirmar isso, lançando se
+        // houvesse. Logo, "rodando" no banco aqui só pode ser resto de um restart.
         var reconciliacao = await Historico.AvancoHistorico.ReconciliarAsync(
-            db, agenda, hoje, _historicoOpcoes, ct);
+            db, agenda, hoje, _historicoOpcoes, ct, nenhumTrabalhoVivo: true);
 
         if (reconciliacao.Passo == Historico.PassoHistorico.Esperar)
         {

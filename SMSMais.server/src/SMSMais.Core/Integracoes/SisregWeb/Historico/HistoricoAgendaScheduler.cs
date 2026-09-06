@@ -110,7 +110,10 @@ public sealed class HistoricoAgendaScheduler(
         // disparo manual. Quando era só daqui, o botão manual começava a fatia e nunca movia a
         // cobertura — e como este scheduler para com o sincronismo automático desligado, cada
         // clique repetia a mesma janela. Ver AvancoHistorico.
-        var reconciliacao = await AvancoHistorico.ReconciliarAsync(db, agenda, hoje, _opcoes, ct);
+        // nenhumTrabalhoVivo: os quatro EstadoVivo foram checados no topo deste tick, então uma
+        // execução que o banco diz "rodando" e ninguém está executando é órfã de um restart.
+        var reconciliacao = await AvancoHistorico.ReconciliarAsync(
+            db, agenda, hoje, _opcoes, ct, nenhumTrabalhoVivo: true);
 
         if (reconciliacao.Passo == PassoHistorico.Concluir)
         {

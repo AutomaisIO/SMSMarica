@@ -41,7 +41,8 @@ public static class AvancoHistorico
         SisregVarreduraAgenda agenda,
         DateOnly hoje,
         HistoricoOpcoes opcoes,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool nenhumTrabalhoVivo = false)
     {
         var (inicio, fim) = DecididorHistorico.ProximaFatia(
             agenda.HistoricoCobertoDe, hoje, opcoes.DiasPorFatia);
@@ -56,7 +57,8 @@ public static class AvancoHistorico
             execucao?.Status,
             execucao?.RegistrosEncontrados ?? 0,
             agenda.HistoricoFatiasVazias,
-            opcoes.FatiasVaziasParaConcluir);
+            opcoes.FatiasVaziasParaConcluir,
+            nenhumTrabalhoVivo);
 
         // Nada a gravar: a fatia ainda não foi pedida, está rodando, ou terminou mal e será
         // repetida — em nenhum desses casos a cobertura pode andar.

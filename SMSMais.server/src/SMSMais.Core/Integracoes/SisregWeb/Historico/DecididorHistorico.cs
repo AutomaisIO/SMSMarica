@@ -52,16 +52,31 @@ public static class DecididorHistorico
     /// <param name="fatiasVaziasAtuais">Quantas fatias seguidas já vieram vazias antes desta.</param>
     /// <param name="registrosEncontrados">Registros que a fatia trouxe (só vale se concluída).</param>
     /// <param name="fatiasParaConcluir">Quantas vazias seguidas encerram a unidade.</param>
+    /// <param name="nenhumTrabalhoVivo">
+    /// O chamador confirmou que <b>nada</b> está rodando neste instante. Nesse caso uma linha em
+    /// <c>Pendente</c>/<c>EmExecucao</c> só pode ser <b>órfã</b>, e a fatia é repetida.
+    ///
+    /// <para>Isto existe porque o estado "rodando" vive em memória e o banco não: um deploy no meio
+    /// de uma fatia reinicia o processo e deixa a execução eternamente em <c>EmExecucao</c>.
+    /// Aconteceu em 06/09/2026 no CDT — 21 requisições, 4.272 registros lidos e nenhum
+    /// <c>finalizado_em</c> —, e sem esta saída o motor esperaria para sempre por uma fatia que
+    /// nunca mais ia terminar.</para>
+    ///
+    /// <para>Não é heurística de tempo: os dois chamadores já verificam os <c>EstadoVivo</c> antes
+    /// de reconciliar, então "nada vivo + banco diz rodando" é conclusão, não palpite. O custo de
+    /// errar seria repetir uma fatia, uma requisição — contra travar o motor indefinidamente.</para>
+    /// </param>
     public static PassoHistorico Decidir(
         StatusVarredura? execucaoStatus,
         int registrosEncontrados,
         int fatiasVaziasAtuais,
-        int fatiasParaConcluir)
+        int fatiasParaConcluir,
+        bool nenhumTrabalhoVivo = false)
     {
         if (execucaoStatus is null) return PassoHistorico.Pedir;
 
         if (execucaoStatus is StatusVarredura.Pendente or StatusVarredura.EmExecucao)
-            return PassoHistorico.Esperar;
+            return nenhumTrabalhoVivo ? PassoHistorico.Repetir : PassoHistorico.Esperar;
 
         // Avançar a cobertura sobre uma fatia que falhou deixaria um buraco silencioso: a tela diria
         // "coberto desde X" e o dado não estaria lá. Repetir custa uma requisição; o buraco custa a

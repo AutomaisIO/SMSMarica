@@ -120,6 +120,39 @@ public class AvancoHistoricoTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// Execução ÓRFÃ de um restart é repetida, em vez de travar o motor para sempre.
+    ///
+    /// <para>O estado "rodando" vive em memória; o banco, não. Um deploy no meio de uma fatia deixa
+    /// a linha eternamente em <c>EmExecucao</c> — aconteceu em 06/09/2026 no CDT, com 21
+    /// requisições e 4.272 registros lidos e nenhum <c>finalizado_em</c>. Como <c>Decidir</c>
+    /// devolve <c>Esperar</c> para "rodando", o histórico ficaria parado naquela janela
+    /// indefinidamente, sem nada na tela explicando por quê.</para>
+    /// </summary>
+    [Fact]
+    public async Task Execucao_orfa_de_restart_e_repetida_e_nao_trava_o_motor()
+    {
+        await using var db = fixture.CriarDbContext();
+        var agenda = await SemearAsync(db);
+
+        var (inicio, fim) = DecididorHistorico.ProximaFatia(null, Hoje, 31);
+        SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.EmExecucao, registros: 4272);
+        await db.SaveChangesAsync();
+
+        // Com trabalho vivo de verdade, esperar é o certo.
+        var esperando = await AvancoHistorico.ReconciliarAsync(
+            db, agenda, Hoje, new HistoricoOpcoes(), default, nenhumTrabalhoVivo: false);
+        Assert.Equal(PassoHistorico.Esperar, esperando.Passo);
+
+        // Sem nada rodando, a mesma linha só pode ser órfã.
+        var orfa = await AvancoHistorico.ReconciliarAsync(
+            db, agenda, Hoje, new HistoricoOpcoes(), default, nenhumTrabalhoVivo: true);
+
+        Assert.Equal(PassoHistorico.Repetir, orfa.Passo);
+        Assert.Equal(inicio, orfa.Inicio);
+        Assert.Null(agenda.HistoricoCobertoDe);
+    }
+
+    /// <summary>
     /// Fatia que terminou mal é <b>repetida</b>, sem avançar a cobertura.
     ///
     /// <para>Repetir custa uma requisição; avançar por cima de uma falha custa a análise inteira, e
