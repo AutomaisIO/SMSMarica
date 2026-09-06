@@ -62,6 +62,25 @@ public sealed class SisregVarreduraController(
         [FromBody] AlternarHistoricoRequest request, CancellationToken cancellationToken) =>
         await _varredura.AlternarHistoricoAsync(request, cancellationToken);
 
+    /// <summary>
+    /// Avança UMA fatia do passado agora, por comando do operador.
+    ///
+    /// <para>Não passa pela chave-mestra: ela pausa a <b>agenda automática</b>, não o que uma
+    /// pessoa mandou fazer. Quando não dá para rodar (outro motor na sessão, janela de bloqueio do
+    /// SISREG, orçamento), responde com o motivo — nunca com silêncio.</para>
+    /// </summary>
+    [HttpPost("historico/avancar")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<VarreduraAceitaDto>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AvancarHistorico(CancellationToken cancellationToken)
+    {
+        var id = await _varredura.AvancarHistoricoAgoraAsync(cancellationToken);
+        return Accepted(new VarreduraAceitaDto(
+            id,
+            "Fatia do passado iniciada. O progresso aparece em \"Coberto desde\"."));
+    }
+
     /// <summary>Dispara a varredura agora. 202: roda no servidor, fechar a aba não interrompe.</summary>
     [HttpPost("executar")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]

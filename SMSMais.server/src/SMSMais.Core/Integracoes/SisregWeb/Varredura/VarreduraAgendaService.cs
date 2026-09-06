@@ -48,6 +48,17 @@ public interface IVarreduraAgendaService
     /// <summary>Liga/desliga a importação do passado da unidade ativa.</summary>
     Task<VarreduraAgendaDto> AlternarHistoricoAsync(AlternarHistoricoRequest request, CancellationToken ct);
 
+    /// <summary>
+    /// Avança UMA fatia do passado <b>agora</b>, por comando do operador.
+    ///
+    /// <para>Não passa pela chave-mestra de sincronismo: ela pausa a <b>agenda automática</b>, não
+    /// o que uma pessoa mandou fazer. Os freios que continuam valendo são os que existem por causa
+    /// do SISREG e não da nossa cadência — outro motor na mesma sessão, a janela de bloqueio do
+    /// <c>expo_solicitacoes</c> e o orçamento anti-robô —, e todos falham <b>alto</b>, com o motivo,
+    /// em vez de devolver silêncio.</para>
+    /// </summary>
+    Task<Guid> AvancarHistoricoAgoraAsync(CancellationToken ct);
+
     /// <summary>Executa o job — chamado pelo runner, fora de qualquer request.</summary>
     Task ExecutarAsync(VarreduraJob job, CancellationToken ct);
 
@@ -367,7 +378,54 @@ public sealed class VarreduraAgendaService(
         agenda.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
+        // Ligar TEM que produzir efeito. Antes isto só gravava a flag e quem executava era o
+        // HistoricoAgendaScheduler — que, sendo automático, para com a chave-mestra desligada. O
+        // resultado é que o botão prometia ação e entregava intenção: medido em 05/09/2026, nenhuma
+        // das 45 unidades tinha uma única fatia coberta, e nenhuma execução com janela no passado
+        // havia existido desde a implantação do motor.
+        if (request.Ativo)
+        {
+            await AvancarHistoricoAgoraAsync(ct);
+        }
+
         return await ObterAgendaAsync(ct);
+    }
+
+    public async Task<Guid> AvancarHistoricoAgoraAsync(CancellationToken ct)
+    {
+        var unidade = await unidadeAtual.ObterObrigatoriaAsync(ct);
+
+        var agenda = await db.SisregVarreduraAgendas
+            .FirstOrDefaultAsync(a => a.UnidadeId == unidade.Id, ct)
+            ?? throw new ValidacaoException(
+                "historico.nao_configurado",
+                "Ligue a importação do passado desta unidade antes de mandar avançar.");
+
+        if (agenda.HistoricoConcluidoEm is not null)
+        {
+            throw new ValidacaoException(
+                "historico.concluido",
+                "O passado desta unidade já foi coberto até o começo. Use \"Recomeçar do zero\" "
+                + "para varrer de novo.");
+        }
+
+        // Mesmos freios do disparo manual da varredura, e pelos mesmos motivos: sessão única no
+        // SISREG e orçamento anti-robô que é do OPERADOR — estourar pausa a unidade por 24 h.
+        GarantirSemTrabalhoVivo();
+        GarantirJanelaDeEntrada();
+
+        var hoje = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia));
+        var (inicio, fim) = Historico.DecididorHistorico.ProximaFatia(
+            agenda.HistoricoCobertoDe, hoje, Historico.HistoricoOpcoes.DiasPorFatiaPadrao);
+
+        var (execucaoId, _) = await CriarExecucaoAsync(
+            unidade, DisparoSincronizacao.Manual, null, inicio, fim, ct);
+
+        logger.LogInformation(
+            "SISREG_HISTORICO_MANUAL: unidade {UnidadeId}, {Inicio} a {Fim}.",
+            unidade.Id, inicio, fim);
+
+        return execucaoId;
     }
 
     public async Task<Guid?> IniciarPeriodoAgendadoAsync(

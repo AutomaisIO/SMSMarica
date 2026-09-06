@@ -133,3 +133,21 @@ export async function alternarHistoricoVarredura(
   );
   return data;
 }
+
+/**
+ * Avança UMA fatia do passado AGORA, por comando do operador.
+ *
+ * Não passa pela chave-mestra de sincronismo: ela pausa a agenda automática, não o que uma pessoa
+ * mandou fazer. Quando não dá para rodar, o backend responde com o motivo (outro motor na sessão,
+ * janela de bloqueio do SISREG) — nunca com silêncio, que foi o defeito original.
+ */
+export async function avancarHistoricoVarredura(
+  unidadeId?: string | null,
+): Promise<VarreduraAceita> {
+  const { data } = await http.post<VarreduraAceita>(
+    '/sisreg/varredura/historico/avancar',
+    null,
+    cabecalhoUnidade(unidadeId),
+  );
+  return data;
+}

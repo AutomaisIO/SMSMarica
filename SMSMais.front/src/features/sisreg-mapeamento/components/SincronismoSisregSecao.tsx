@@ -6,6 +6,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import {
   useAlternarHistoricoVarredura,
+  useAvancarHistoricoVarredura,
   useCancelarVarredura,
   useExecutarVarredura,
   useSalvarVarreduraAgenda,
@@ -64,6 +65,7 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
 
   const agenda = useVarreduraAgenda(unidadeId);
   const alternarHistorico = useAlternarHistoricoVarredura(unidadeId);
+  const avancarHistorico = useAvancarHistoricoVarredura(unidadeId);
   const salvar = useSalvarVarreduraAgenda(unidadeId);
   const executar = useExecutarVarredura(unidadeId);
   const cancelar = useCancelarVarredura(unidadeId);
@@ -367,8 +369,43 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
                 Recomeçar do zero
               </Button>
             )}
-            {alternarHistorico.isPending && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+            {/* O avanço automático depende do sincronismo automático estar ligado; este botão
+                não. Existe porque o operador precisa conseguir ver efeito na hora — e porque, com
+                a chave-mestra desligada, ligar o passado sozinho não movia nada. */}
+            {dados?.historicoAtivo && !dados?.historicoConcluidoEm && (
+              <Button
+                variante="outline"
+                tamanho="sm"
+                disabled={avancarHistorico.isPending}
+                title="Busca agora a próxima fatia de 31 dias, sem esperar o motor automático."
+                onClick={() => avancarHistorico.mutate()}
+              >
+                <Play className="mr-1.5 h-3.5 w-3.5" />
+                Avançar agora
+              </Button>
+            )}
+
+            {(alternarHistorico.isPending || avancarHistorico.isPending) && (
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            )}
           </div>
+        )}
+
+        {/* Silêncio foi o defeito original: ligar o passado gravava a flag e nada acontecia,
+            porque quem executa é um motor automático. Agora todo motivo de recusa aparece. */}
+        {(alternarHistorico.isError || avancarHistorico.isError) && (
+          <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {extrairMensagemDeErro(alternarHistorico.error ?? avancarHistorico.error)}
+          </p>
+        )}
+
+        {dados?.historicoAtivo && !dados?.historicoConcluidoEm && (
+          <p className="mt-2 text-[11px] leading-snug text-gray-500">
+            O avanço automático é trabalho de fundo: uma fatia de 31 dias por vez, e só quando não
+            há outro motor do SISREG rodando e sobra orçamento. Ele também <strong>respeita o
+            sincronismo automático</strong> — se a chave-mestra estiver desligada na tela de
+            configuração do SISREG, só o botão <strong>Avançar agora</strong> move a cobertura.
+          </p>
         )}
       </div>
 

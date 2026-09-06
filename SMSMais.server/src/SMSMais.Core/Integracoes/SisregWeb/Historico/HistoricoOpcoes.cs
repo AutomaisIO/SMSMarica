@@ -12,10 +12,17 @@ public sealed class HistoricoOpcoes
     public int TickSegundos { get; set; } = 90;
 
     /// <summary>
+    /// Teto do SISREG para o intervalo de exportação. É <b>const</b> porque o disparo manual do
+    /// passado (fora do scheduler, logo sem <c>IOptions</c> em mãos) precisa da mesma medida — e
+    /// duas fatias de tamanhos diferentes deixariam vãos ou sobreposições na cobertura.
+    /// </summary>
+    public const int DiasPorFatiaPadrao = 31;
+
+    /// <summary>
     /// Tamanho da fatia. <b>31 é o teto do SISREG</b>, que recusa exportação com intervalo maior —
     /// não é escolha de desempenho.
     /// </summary>
-    public int DiasPorFatia { get; set; } = 31;
+    public int DiasPorFatia { get; set; } = DiasPorFatiaPadrao;
 
     /// <summary>
     /// Fatias consecutivas vazias que encerram a unidade. <b>Seis ≈ meio ano.</b>
