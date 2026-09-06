@@ -47,10 +47,16 @@ public static class AvancoHistorico
         var (inicio, fim) = DecididorHistorico.ProximaFatia(
             agenda.HistoricoCobertoDe, hoje, opcoes.DiasPorFatia);
 
+        // Uma execução CONCLUÍDA vence a mais recente, e a ordem importa: "esta janela está
+        // coberta?" se responde por ter dado certo alguma vez, não pela última tentativa. Sem isso,
+        // um restart no meio de uma re-execução faria o motor refazer uma fatia que já tinha
+        // entrado — no CDT, em 06/09/2026, seriam 21 requisições e 22 minutos para rebuscar 3.923
+        // registros que já estavam no banco.
         var execucao = await db.SisregVarreduraExecucoes
             .AsNoTracking()
             .Where(e => e.UnidadeId == agenda.UnidadeId && e.JanelaInicio == inicio && e.JanelaFim == fim)
-            .OrderByDescending(e => e.IniciadoEm)
+            .OrderByDescending(e => e.Status == StatusVarredura.Concluida)
+            .ThenByDescending(e => e.IniciadoEm)
             .FirstOrDefaultAsync(ct);
 
         var passo = DecididorHistorico.Decidir(

@@ -153,6 +153,35 @@ public class AvancoHistoricoTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// Uma execução CONCLUÍDA vence a mais recente na mesma janela.
+    ///
+    /// <para>"Esta janela está coberta?" se responde por ter dado certo alguma vez, não pela última
+    /// tentativa. No CDT, em 06/09/2026, a janela 05/08–04/09 concluiu com 3.923 registros e depois
+    /// ganhou uma re-execução que virou órfã num deploy; sem esta ordenação, o motor gastaria 21
+    /// requisições e 22 minutos rebuscando dado que já estava no banco.</para>
+    /// </summary>
+    [Fact]
+    public async Task Execucao_concluida_vence_a_mais_recente_da_mesma_janela()
+    {
+        await using var db = fixture.CriarDbContext();
+        var agenda = await SemearAsync(db);
+
+        var (inicio, fim) = DecididorHistorico.ProximaFatia(null, Hoje, 31);
+
+        // Primeiro concluiu com dados; depois uma re-execução ficou órfã de um restart.
+        SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.Concluida, registros: 3923);
+        await db.SaveChangesAsync();
+        SemearExecucao(db, agenda.UnidadeId, inicio, fim, StatusVarredura.EmExecucao, registros: 4272);
+        await db.SaveChangesAsync();
+
+        var r = await AvancoHistorico.ReconciliarAsync(
+            db, agenda, Hoje, new HistoricoOpcoes(), default, nenhumTrabalhoVivo: true);
+
+        Assert.Equal(PassoHistorico.Avancar, r.Passo);
+        Assert.Equal(inicio, agenda.HistoricoCobertoDe);
+    }
+
+    /// <summary>
     /// Fatia que terminou mal é <b>repetida</b>, sem avançar a cobertura.
     ///
     /// <para>Repetir custa uma requisição; avançar por cima de uma falha custa a análise inteira, e
