@@ -88,7 +88,7 @@ Todos sob `/cgi-bin/`. `#` = submenu (dropdown), sem navegação direta.
 | Grupos / Procedimentos | `cons_pa` |
 | Tabela SIGTAP | `cons_procedimento.pl` |
 | Prontuários a Enviar / Receber | `cons_prontuario_enviar` / `cons_prontuario_receber` |
-| Solicitações Pendentes na Fila de Espera | `cons_pendente_fila_` |
+| ~~Solicitações Pendentes na Fila de Espera~~ | ~~`cons_pendente_fila_`~~ **⚠️ ERRADO — dá 404. O real é `rel_fila_espera_mun_pendentes.pl`; ver §FILA DE ESPERA** |
 | Arquivo Agendamento (txt) | `expo_solicitacoes` |
 | Solicitações não confirmadas/Unidade | `rel_amb_faltas_sol.pl` |
 | Geração de arquivo BPA (txt) / Consulta | `expo_bpa_v2` / `cons_bpa_v2` |
@@ -589,3 +589,152 @@ operadores humanos. Definir esse operador com a SMS antes do go-live.
 - [ ] **Provisionar credencial de operador DEDICADA** para o robô (sessão única).
 - [ ] **Provisionar operador SEPARADO para o LAB** — hoje ele briga com o sincronismo de PROD.
 - [ ] Portar o motor validado para `SMSMais.server`.
+
+---
+
+## 🧾 FILA DE ESPERA — `gerenciador_solicitacao` ✅ (2026-09-05)
+
+**O buraco que isto fecha:** o sistema só importava solicitação **já agendada**. Medido em
+05/09/2026, 22.081 de 22.101 linhas de `smsmarica.solicitacao` tinham `data_agendada` — quem
+está aguardando vaga era invisível para a operação.
+
+### ⚠️ Correção do mapa de menus acima
+A entrada **"Solicitações Pendentes na Fila de Espera" → `cons_pendente_fila_`** está **errada**:
+esse caminho responde **404**. Não era truncamento, era outro nome. Os nomes reais, extraídos do
+frameset pós-login (`recon_menu.py`):
+
+| Rótulo no menu | Endpoint real |
+|---|---|
+| Pendentes Fila de Espera | `rel_fila_espera_mun_pendentes.pl` |
+| agendamento fila de espera | `rel_fila_espera_mun.pl` |
+| Média de Espera em Fila | `rel_media_fila.pl` |
+| Solicitações (gerenciador) | `gerenciador_solicitacao` |
+
+### ⭐ O caminho bom é o `gerenciador_solicitacao`
+
+`METHOD=GET`, `etapa=LISTAR_SOLICITACOES`. Regras do `validaFormulario()`: **sem** `co_solicitacao`
+nem `cns_paciente`, são obrigatórios `tipo_periodo`, janela de **no máximo 31 dias** e
+`cmb_situacao`. **Unidade é opcional** — dá para varrer a rede inteira de uma vez.
+
+```
+/cgi-bin/gerenciador_solicitacao
+  ?etapa=LISTAR_SOLICITACOES
+  &tipo_periodo=S            # S = por data de SOLICITACAO (A=agend, E=exec, P=confirm, C=cancel)
+  &dt_inicial=05/08/2026&dt_final=05/09/2026     # <= 31 dias
+  &cmb_situacao=1            # 1 = Solicitacao / Pendente / Regulacao  <- A FILA
+  &qtd_itens_pag=0           # 0 = TODOS  <- mata a paginacao
+  &pagina=0&ordenacao=2
+```
+
+**`qtd_itens_pag=0` ("TODOS") é honrado pelo servidor** — é o que derruba o custo:
+
+| Janela | Registros | Bytes | Tempo | Requisições |
+|---|---|---|---|---|
+| 7 dias (recente) | 3.669 | 3,2 MB | 37 s | **1** |
+| **31 dias (recente)** | **15.502** | **13,4 MB** | **75 s** | **1** |
+| 31 dias (jan/2025) | 355 | 0,3 MB | 10 s | **1** |
+
+**Não há teto silencioso** aqui (≠ `expo_solicitacoes`, que corta em 700 sem avisar): 3.669 em
+7 dias × 31/7 = 16,2k ≈ 15,5k medidos em 31 dias. A aritmética fecha.
+
+### Situações (`preencherComboSituacao`)
+`1` Pendente/Regulação · `2` Pendente/Fila de Espera · `3` Cancelada · `4` Devolvida ·
+`5` Reenviada · `6` Negada · `7` Agendada · `9` Agendada/Fila de Espera ·
+`10` Agendamento/Cancelado · `11` Agendamento/Confirmado · `12` Agendamento/Falta
+
+**Em Maricá a fila mora na situação `1`, não na `2`.** A situação 2 volta vazia em toda janela
+testada — o município não usa o fluxo "fila de espera" do SISREG; tudo espera na regulação.
+Sondar só a 2 (o nome óbvio) daria a conclusão errada de que não há fila.
+
+### As 12 colunas da listagem
+`Cód. Solicitação` · `Data da Solicitação` · `Risco` · `Paciente` · `Telefone` · `Município` ·
+`Idade` · `Procedimento` · `CID` · `Unidade Solicitante` · `Unidade Executante` · `Situação`
+
+- `Cód. Solicitação` é a **mesma chave** de `solicitacao.codigo_solicitacao` → idempotência de graça.
+- `Telefone` vem em **99%** (15.336/15.502) — serve para notificar.
+- `Unidade Executante` é sempre `---` e `Risco` sempre vazio: esperado para quem ainda não foi regulado.
+- **Não vem CNS nem CPF.** A identidade só sai em `visualizaFicha(co_solic)`, 1 requisição por
+  pessoa — inviável para 15 mil. Ver ADR-0041: entra marcado, não fica de fora.
+
+### Cruzamento com o nosso banco (05/09/2026)
+Dos **15.502** pendentes de 05/08 a 05/09, **1** já existia em `smsmarica.solicitacao`.
+É dado praticamente 100% novo.
+
+Top da fila: `GRUPO - ULTRASONOGRAFIA` 2.607 · `GRUPO - TOMOGRAFIA` 1.170 ·
+`GRUPO - DIAGNOSTICO POR RADIOLOGIA` 969 · `CONSULTA EM OFTALMOLOGIA` 892 ·
+`GRUPO - RESSONANCIA - ORTOPEDIA` 693 · `MAMOGRAFIA BILATERAL` 605 ·
+`ECOCARDIOGRAMA - ADULTO` 535.
+
+O Ecocardiograma aparecer com 535 na fila **e** com 481 dias de espera mediana entre os já
+agendados (medido na tela de Demanda no mesmo dia) confirma o gargalo por dois caminhos
+independentes.
+
+### ⭐ A fila é um ESTADO, não um histórico (provado 2026-09-05)
+
+**Ao ser agendada, a solicitação SAI da situação 1.** Provado sem gastar requisição: das 15.502
+da fila (solicitadas 05/08–05/09) contra as 6.765 já agendadas do nosso banco **solicitadas na
+mesma janela**, a interseção é **ZERO**. Conjuntos perfeitamente disjuntos.
+
+**Consequência que engana quem lê rápido** — e enganou nesta própria investigação: consultar uma
+janela antiga **não** devolve "quem esperava naquela época", devolve **quem pediu naquela época e
+AINDA espera hoje**. Os 355 de janeiro/2025 não são "355 pendentes em jan/2025"; são 355 pessoas
+que pediram em janeiro de 2025 e seguem na fila **20 meses depois**.
+
+Curva medida em 05/09/2026 (situação 1, `tipo_periodo=S`, janelas de 1 mês):
+
+| Mês do pedido | Ainda na fila hoje | Esperando há |
+|---|---|---|
+| jan/2024 | ~1 | 20 meses |
+| jul/2024 | 0 | — |
+| jan/2025 | 355 | 20 meses |
+| jan/2026 | 2.688 | 8 meses |
+| jun/2026 | 8.014 | 3 meses |
+| ago–set/2026 (31 d) | 15.502 | ~1 mês |
+
+Interpolando, a fila total é da ordem de **60 a 90 mil pessoas** — 3 a 4× o nosso banco inteiro de
+agendados (22.101 em 05/09/2026). É estimativa de 6 pontos; a varredura completa dá o número exato.
+
+### Custo de varrer o passado inteiro
+~33 janelas de 31 dias de jan/2024 até hoje = **~33 requisições** para todo o acervo; o diário fica
+em **1 requisição**. As janelas antigas encolhem sozinhas conforme as pessoas são atendidas, então
+depois da carga inicial dá para revisitar o passado com folga e concentrar o diário nos meses
+recentes.
+
+### O que a importação PRECISA fazer, por causa disso
+1. **Detectar saída, não só entrada.** Quem some da fila ou foi agendado ou foi cancelado/negado.
+   Mesma classe de problema do "sumiu do arquivo" das escalas — mesma solução: baixar a janela
+   inteira, comparar item a item, e só concluir ausência com a cobertura completa.
+2. **Corrigir o viés de sobrevivência das telas de análise.** A espera mediana de 52 dias medida em
+   `Core/AgendaRegulacao` é de **quem conseguiu vaga**; quem espera há 20 meses nunca teve
+   `data_agendada` e não entra em conta nenhuma. Só com a fila importada dá para medir a espera de
+   quem ainda não foi atendido — que é a pergunta da regulação.
+
+### Alternativa mais barata para conferência
+`rel_fila_espera_mun_pendentes.pl` (mesma trava de 31 dias) devolve o **agregado por unidade** com
+resposta minúscula, e `detalha(cnes)` faz o drill-down (`abrangencia=descricao_fila`). Não serve
+para importar (1 requisição por unidade), mas serve de **totalizador de conferência** sem baixar
+13 MB.
+
+### ⛔ Becos sem saída (não repetir)
+- **Buscar por `co_solicitacao` sozinho não devolve nada.** O `validaFormulario()` dispensa período
+  e situação quando o código está preenchido, mas o servidor respondeu vazio para 4 códigos válidos
+  (2 da fila, 2 agendados do nosso banco). O campo deve esperar outro identificador que não o
+  "Cód. Solicitação" exibido na listagem — provavelmente o `co_seq_solicitacao`. Fica em aberto.
+- **`cmb_situacao` só respondeu na situação 1.** As situações 7 (Agendada) e 11
+  (Agendamento/Confirmado) voltaram vazias em toda combinação testada, inclusive com
+  `tipo_periodo=A`. Para a situação 7 em janela recente isso é *correto* — com espera mediana de
+  52 dias, quase nada solicitado nos últimos 7 dias já está agendado —, mas em jan/2025 deveria
+  haver resultado. Não investigado a fundo: a fila (situação 1) já resolve o objetivo.
+- **`/cgi-bin/avisos` NÃO é o menu**, é o mural de comunicados (505 KB). E `/cgi-bin/index` é a
+  tela de login. O menu real só sai da resposta do POST de login.
+
+### Scripts
+- `recon_menu.py` — extrai o mapa de menus real do frameset pós-login.
+- `recon_fila_espera.py` — GET-only dos formulários das telas de fila.
+- `sonda_fila_gerenciador.py` — sonda parametrizada (`--situacao/--de/--ate/--por-pagina`),
+  com teto rígido de requisições e parada imediata em captcha.
+
+### ⚠️ Cuidado ao portar
+`qtd_itens_pag=0` num mês recente leva **75 s** e 13,4 MB. Timeout padrão de 30 s do client não
+serve — foi o que deu `ReadTimeout` na primeira tentativa (situação 7). Usar timeout ≥ 180 s e
+tratar a resposta em streaming.
