@@ -87,14 +87,16 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   // Do Processo Regulatório, entram na matriz só os que hoje concedem alguma coisa de fato: os
   // TRÊS de visão global (lente "Município" do painel de início, ADR-0033 §5) e, desde o
   // ADR-0042, SER e Configuração — que passaram a ter endpoint e tela.
-  // `Regulacao` (47) continua fora: existe no enum do backend mas não tem nenhum endpoint nem
-  // tela, e listá-lo faria o administrador acreditar que o módulo existe.
+  // `Regulacao` (47) entrou em 06/09/2026 (ADR-0052): ganhou endpoints e a tela de abertura de
+  // solicitação, então deixou de ser um enum sem uso. É a permissão da UNIDADE SOLICITANTE —
+  // quem abre o pedido; ver o SER/SERNIT é outra coisa e continua em módulo próprio.
+  { id: 'Regulacao', rotulo: 'Regulação — Solicitações (unidade solicitante: abre, anexa e envia à pré-regulação)' },
   { id: 'RegulacaoTriagem', rotulo: 'Regulação — triagem técnica (visão do município no painel)' },
   { id: 'RegulacaoMedica', rotulo: 'Regulação — médico regulador (visão do município no painel)' },
   { id: 'RegulacaoAgendamento', rotulo: 'Regulação — agendamento (visão do município no painel)' },
   { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (Edição = registrar FollowUP no SER)' },
   { id: 'RegulacaoSernit', rotulo: 'Regulação — SERNIT: fila de Niterói (Edição = FollowUP/telefones no SERNIT)' },
-  { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais e motor do SER/SERNIT)' },
+  { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais, motor do SER/SERNIT, catálogo e regras)' },
   { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
   { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },
   { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },

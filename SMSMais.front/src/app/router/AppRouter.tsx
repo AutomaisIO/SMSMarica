@@ -68,6 +68,7 @@ import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoP
 import { SerFilaPage } from '@/features/ser/pages/SerFilaPage';
 import { SerSolicitacaoDetalhePage } from '@/features/ser/pages/SerSolicitacaoDetalhePage';
 import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfiguracaoPage';
+import { NovaSolicitacaoPage } from '@/features/regulacao/pages/NovaSolicitacaoPage';
 import { SernitNotificacoesPage } from '@/features/sernit/pages/SernitNotificacoesPage';
 import { SernitNovaSolicitacaoPage } from '@/features/sernit/pages/SernitNovaSolicitacaoPage';
 import { SernitFilaPage } from '@/features/sernit/pages/SernitFilaPage';
@@ -197,6 +198,8 @@ export function AppRouter() {
           <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />
           <Route path="regulacao/ser/:id" element={<SerSolicitacaoDetalhePage />} />
           <Route path="regulacao/configuracao" element={<RegulacaoConfiguracaoPage />} />
+          {/* Regulação → Solicitações (ADR-0052): abertura pela unidade solicitante. */}
+          <Route path="regulacao/solicitacoes/nova" element={<NovaSolicitacaoPage />} />
           {/* SERNIT (SER de Niterói) — fila espelhada irmã do SER-RJ, sob /sernit para não colidir. */}
           <Route path="regulacao/sernit" element={<SernitFilaPage />} />
           <Route path="regulacao/sernit/notificacoes" element={<SernitNotificacoesPage />} />

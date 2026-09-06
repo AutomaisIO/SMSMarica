@@ -179,6 +179,15 @@ export const SECOES: SecaoMenu[] = [
     icone: ClipboardCheck,
     itens: [
       {
+        // Módulo Solicitações (ADR-0052): a unidade abre aqui, e o pedido cai na
+        // pré-regulação. Permissão 47 — quem só consulta SER/SERNIT não enxerga.
+        rotulo: 'Nova solicitação',
+        to: '/app/regulacao/solicitacoes/nova',
+        icone: FilePlus2,
+        modulo: 'Regulacao',
+        descricao: 'Abre uma solicitação: procedimento, destino, paciente, formulário e anexos.',
+      },
+      {
         // 2º nível: SER (Estado / SES-RJ). O clique expande os submenus (3º nível).
         rotulo: 'SER',
         to: '/app/regulacao/ser',
