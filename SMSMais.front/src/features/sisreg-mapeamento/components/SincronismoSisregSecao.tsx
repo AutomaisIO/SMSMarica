@@ -401,10 +401,11 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
 
         {dados?.historicoAtivo && !dados?.historicoConcluidoEm && (
           <p className="mt-2 text-[11px] leading-snug text-gray-500">
-            O avanço automático é trabalho de fundo: uma fatia de 31 dias por vez, e só quando não
-            há outro motor do SISREG rodando e sobra orçamento. Ele também <strong>respeita o
-            sincronismo automático</strong> — se a chave-mestra estiver desligada na tela de
-            configuração do SISREG, só o botão <strong>Avançar agora</strong> move a cobertura.
+            Ligado, ele <strong>anda sozinho até o fim</strong> — não depende do sincronismo
+            automático nem de você clicar de novo. Avança uma fatia de 31 dias por vez, cedendo a
+            vez a qualquer outro trabalho do SISREG e só tocando com folga de orçamento, então leva
+            horas. O <strong>Avançar agora</strong> é opcional: força a próxima fatia sem esperar a
+            hora dela.
           </p>
         )}
       </div>

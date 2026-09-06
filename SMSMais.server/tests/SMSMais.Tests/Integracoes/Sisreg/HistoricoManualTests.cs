@@ -89,6 +89,39 @@ public class HistoricoManualTests
             + $"nada acontece: {string.Join(", ", infratores)}");
     }
 
+    /// <summary>
+    /// <b>O motor de histórico não consulta a chave-mestra</b> — e isso é regra, não esquecimento.
+    ///
+    /// <para>Ela pausa a agenda DIÁRIA das unidades: o que roda sem ninguém pedir. Aqui,
+    /// <c>HistoricoAtivo</c> já é o comando de uma pessoa — ela clicou em "Importar o passado" e
+    /// espera que ande até o fim sozinha, sem ter de ligar outra chave nem ficar clicando. Enquanto
+    /// o gate existiu, o botão não produzia efeito nenhum: 0 de 45 unidades cobertas desde a
+    /// implantação.</para>
+    ///
+    /// <para>O que protege a operação não é aquela chave e sim os freios que ficaram, mais fortes
+    /// para este caso: o motor cede a vez a qualquer outro trabalho do SISREG e exige folga larga
+    /// de orçamento, então nunca disputa a sessão única — no máximo espera.</para>
+    /// </summary>
+    [Fact]
+    public void Motor_do_historico_nao_depende_da_chave_mestra()
+    {
+        var scheduler = Path.Combine(
+            RaizDoCore(), "Integracoes", "SisregWeb", "Historico", "HistoricoAgendaScheduler.cs");
+
+        Assert.True(File.Exists(scheduler), scheduler);
+
+        var linhas = File.ReadAllLines(scheduler)
+            .Where(l => l.Contains("SincronismoAutomaticoSisreg.LigadoAsync")
+                        && !l.TrimStart().StartsWith("//", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(
+            linhas.Count == 0,
+            "O passado é comando do operador, não agenda automática: ligar 'Importar o passado' "
+            + "tem de andar sozinho até o fim. Gatear pela chave-mestra faz o botão não produzir "
+            + "efeito nenhum — foi o defeito de 05/09/2026.");
+    }
+
     /// <summary>Sobe até achar <c>src/SMSMais.Core</c>: o teste roda de <c>bin/Debug/netX</c>.</summary>
     private static string RaizDoCore()
     {

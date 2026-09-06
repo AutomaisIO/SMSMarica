@@ -85,7 +85,14 @@ public sealed class HistoricoAgendaScheduler(
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
 
-        if (!await SincronismoAutomaticoSisreg.LigadoAsync(db, ct)) return;
+        // NÃO consulta a chave-mestra de propósito. Ela pausa a AGENDA DIÁRIA das unidades — o que
+        // roda sem ninguém pedir. Aqui, `HistoricoAtivo` já É o comando de uma pessoa: ela clicou
+        // em "Importar o passado" e espera que ande até o fim, sozinha. Gatear isto fazia o botão
+        // não produzir efeito nenhum, que foi o defeito relatado em 05/09/2026.
+        //
+        // O que protege a operação não é aquela chave e sim os freios acima, que são mais fortes
+        // para este caso: o motor cede a vez a QUALQUER outro trabalho do SISREG e só toca com
+        // folga larga de orçamento. Ele nunca disputa a sessão — no máximo espera.
 
         // Quem está mais atrás vai primeiro: com várias unidades ligadas, isso é rodízio justo em
         // vez de uma unidade monopolizar o motor até terminar.
