@@ -15,8 +15,8 @@
 | Incremento | Estado | Observação |
 |---|---|---|
 | 0 — Spikes de laboratório | **parcial** | **c, d, e feitos** (04–05/09). Restam **a** e **b** — os dois escrevem em sistema real e **dependem de OK explícito do Bernardo** |
-| 1 — Catálogo + busca semântica | em andamento | 1.1 feita |
-| 2 — Wizard + paciente + fila local | não iniciado | |
+| 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
+| 2 — Wizard + paciente + fila local | em andamento | 2.1 feita; **anexos serão em Spaces** (decidido pelo Bernardo em 05/09) |
 | 3 — Fila + agente + registro assistido + notificações por unidade | não iniciado | |
 | 4 — Regras de elegibilidade | não iniciado | |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
@@ -24,7 +24,24 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento em andamento:** 1 (catálogo + busca). **Próxima tarefa:** fechar o build da solução (ver 1.2) e seguir para **1.3/1.4** (job de embeddings já embutido no sync; busca híbrida + cache + endpoint).
+**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.6** (formulário Externo = união SER ∪ SERNIT, gerando `formulario_versao`).
+
+**Decidido em 05/09:** os anexos vão para o **Spaces**, não `midia` em bytea (Bernardo). Motivo registrado nos planos 02 e 03: o caminho real é foto de celular, não só PDF.
+
+> ### ⚠️ O backend do incremento 1 está EM PRODUÇÃO desde 05/09/2026
+> A sessão paralela pushou `22ba43e` e o deploy aplicou a migration. Conferido no banco de prod,
+> não presumido: `regulacao_procedimento` e `regulacao_procedimento_origem` existem, o índice
+> `ix_regulacao_proc_origem_embedding_hnsw` existe, e as duas migrations estão em
+> `smsmarica.__migrations`. **O catálogo está vazio (0 linhas)** — enche na primeira vez que
+> rodar um sync de catálogo do SER/SERNIT, o job diário de escalas, ou o
+> `POST /regulacao/procedimentos/sincronizar`. Esse primeiro sync **gera ~560 embeddings pagos**
+> na Voyage, em 5 lotes.
+
+> ### 🔴 Armadilha achada na 1.4 — vale para todas as tarefas seguintes
+> `AutoMigrate:Enabled = true` no `appsettings.json` **e o banco de dev é o de produção**.
+> Subir a API na máquina local aplica migration pendente **em produção, em silêncio**. O passo 5
+> do plano 01 manda fazer exatamente isso para conferir o `/docs`. **Use sempre**
+> `AutoMigrate__Enabled=false dotnet run --project src/SMSMais.Api`, e valide endpoint na bancada.
 
 **Aguardando OK do Bernardo, sem bloquear o incremento 1:** spike **a** (SER: Gravar + anexo, escrita real — pré-requisito do incremento 5) e spike **b** (SISREG: tela `marcar`, escrita real com credencial dedicada — pré-requisito do incremento 7).
 
@@ -59,20 +76,20 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 
 ### Incremento 1 — Catálogo + busca (plano 01)
 - [x] 1.1 entidades `RegulacaoProcedimento` / `RegulacaoProcedimentoOrigem` + configurações + DbSets + migration `20260905125841_CatalogoCanonicoDeProcedimentos` (com HNSW em SQL cru) — build 0/0 — **05/09/2026**
-- [~] 1.2 `RegulacaoCatalogoService.SincronizarAsync` (3 origens) + DI + disparo pós-sync nos 3 serviços. Código completo, `src/` compila 0/0. **Falta**: fechar o build da solução inteira (o projeto de testes não relinkou — outro `testhost` da frente paralela segurando `SMSMais.Core.dll`) e conferir 10 avisos que apareceram só no build do projeto de testes.
-- [ ] 1.3 job de embeddings (hash, lotes, tolerante a falha)
-- [ ] 1.4 busca híbrida + cache + `GET /regulacao/procedimentos/buscar`
-- [ ] 1.5 oferta interna via `sisreg_escala`; lado externo
-- [ ] 1.6 tela de busca (feature `regulacao`) + tela de curadoria de pareamento (51)
-- [ ] 1.7 testes (fake de embeddings, Testcontainers)
-- [ ] 1.8 promover `adr/0055` para `docs/adr/` (só quando for a produção)
+- [x] 1.2 `RegulacaoCatalogoService.SincronizarAsync` (3 origens) + DI + disparo pós-sync nos 3 serviços — build da solução 0/0, commit `22ba43e` — **05/09/2026**
+- [x] 1.3 job de embeddings (hash por modelo, lotes de 128, lote que falha não derruba o sync) — saiu embutido no sincronismo da 1.2 — **05/09/2026**
+- [x] 1.4 busca híbrida (lexical + vetorial, com fallback degradado) + `CacheVetorConsulta` + `RegulacaoProcedimentosController` (7 rotas) — **05/09/2026**
+- [x] 1.5 oferta interna via `sisreg_escala` (Ativa + vigente + não-ausente; grupo `000` expande os itens) e existência externa (SER / SER-AE / SERNIT) — saiu junto na 1.4 — **05/09/2026**
+- [x] 1.6 `types.ts`, `api/regulacaoApi.ts`, `api/queries.ts`, `components/BuscaProcedimento.tsx`, `pages/CatalogoCuradoriaPage.tsx` + aba em `RegulacaoConfiguracaoPage` — `tsc -b` e `vite build` verdes — **05/09/2026**
+- [x] 1.7 `EmbeddingsFake` + 14 testes (sync, busca, cache) — **14/14 verdes na bancada; suíte completa 1128/1129** (1 skip pré-existente) — **05/09/2026**
+- [x] 1.8 `adr/0055` promovido para `docs/adr/0055-catalogo-canonico-e-embeddings.md` (+ cópia `.html`) e registrado no `CLAUDE.md` da raiz — o incremento foi para produção em 05/09 — **05/09/2026**
 
 ### Incremento 2 — Wizard + paciente + fila local (planos 02, 10, 09)
-- [ ] 2.1 `regulacao_configuracao` singleton + service + endpoint (plano 09, mínimo)
-- [ ] 2.2 entidades `RegulacaoSolicitacao`, `RegulacaoFormularioVersao`, `RegulacaoFormularioCampoMapa`, `RegulacaoSolicitacaoExigencia`, `RegulacaoExigenciaArquivo` + migration
-- [ ] 2.3 extração de `CampoDinamico`/`CampoPaciente` para `shared/regulacao/` (SER e SERNIT passam a usar)
-- [ ] 2.4 `<UploadAnexo>` em `shared/ui` + armazenamento decidido (questão aberta 4)
-- [ ] 2.5 resolução do paciente no wizard (plano 10)
+- [x] 2.1 `regulacao_configuracao` singleton + service (cache 30 s, `RowVersion`) + validador + controller (3 rotas) + aba "Solicitações" no front + migration `20260906014021_ConfiguracaoDaRegulacao` — **40 testes verdes**; a busca deixou de usar constante e lê o corte daqui — **05/09/2026**
+- [x] 2.2 as 5 entidades + 5 enums (`FluxoRegulacao`, `StatusRegulacao`, `SituacaoExigenciaRegulacao`, `SituacaoArquivoExigencia`, `OrigemArquivoExigencia`) + configurações + DbSets + migration `20260906020539_SolicitacaoDaRegulacao` — validada contra Postgres real na bancada (5 tabelas, 18 índices, 2 parciais) — **05/09/2026**
+- [x] 2.3 `shared/regulacao/` com `tiposCampo.ts`, `CampoDinamico.tsx` e `CampoPaciente.tsx`; SER e SERNIT passaram a usar. **−404 linhas, +6** nas duas páginas. `tsc -b` e `vite build` verdes — **05/09/2026**
+- [x] 2.4 `IArquivoExigenciaStore` + `ArquivoExigenciaStoreSpaces` + `RegulacaoExigenciaService` + `RegulacaoExigenciasController` (5 rotas) + `shared/ui/UploadAnexo.tsx`. **Armazenamento: Spaces** (decidido pelo Bernardo). **49 testes verdes** (9 novos) — **05/09/2026**
+- [x] 2.5 `RegulacaoPacienteService` (local → CADSUS → criar) + `RegulacaoPacientesController` + `GET pacientes/por-cns/{cns}` + `PassoPaciente`/`CartaoPacienteCadsus`/`InformarCpfModal`. **60 testes verdes** (11 novos) — **06/09/2026**
 - [ ] 2.6 formulário Externo = união SER ∪ SERNIT (gera `formulario_versao`)
 - [ ] 2.7 formulário Interno = campos do `marcar` conhecidos (placeholder até o spike b)
 - [ ] 2.8 wizard completo (D-5) com NAR e unidade de origem; salvar Rascunho; "Enviar" para a fila (sem inclusão no SISREG ainda)
@@ -155,6 +172,19 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 | 05/09/2026 | 13 §spike e | O nome do recurso no manual é **título da seção + célula**; sem o título o pareamento cai de 50% para 9%. O plano supunha que o nome estava só na célula. |
 | 05/09/2026 | 03 §tabela `tipo` | **Quarto valor no enum: `Informativa=4`.** 83% das regras dos manuais é texto clínico; virando pergunta, um recurso com 20 critérios pediria 20 respostas. `Severidade=Aviso` não resolve — continua perguntando. |
 | 05/09/2026 | 03 §4.5 | Três regras novas para o importador: `secao` decide `resposta_bloqueia` (senão inverte 295 regras); 102 recursos vêm `SEM_PAR` e vão para curadoria, nunca para adivinhação; o boilerplate (179 ocorrências) vira **uma** regra global. |
+| 06/09/2026 | 10 §B | `InformarCpfAsync` **reusa `IPacientesService.DefinirCpfAsync`** (que já tem DV e recusa de troca de identidade) em vez de revalidar. O que o serviço da regulação acrescenta é só o que `DefinirCpfAsync` deliberadamente não faz: olhar se o CPF é de **outro** cadastro e devolver o id dele para a tela oferecer a troca. |
+| 06/09/2026 | 10 §B | **Custo a melhorar depois:** o resumo do paciente sai de `ObterPorIdAsync`, que carrega o retrato FHIR **inteiro** (37 campos, incluindo `FotoBase64`) só para exibir nome/CPF/CNS/nascimento. Correto, mas pesado para uma tela de busca. Uma leitura estreita em `IPacientesService` resolveria — não fiz agora para não mexer em interface usada por todo o sistema. |
+| 05/09/2026 | 02 §2.4 | **Regra de versionamento decidida na implementação**, porque o plano não distinguia: caixinha de **regra** versiona (novo arquivo vira `v2` e marca o anterior `Substituido`, apontando com `SubstituiArquivoId`); caixinha **"Anexos gerais" acumula**, porque ali são documentos diferentes e não versões do mesmo. Sem isso, anexar a segunda foto apagaria a primeira da tela. |
+| 05/09/2026 | 02 §2.4 | Arquivo **já enviado ao sistema** não se remove (`ConflitoException`) — é prova do que foi mandado. Remoção normal é `Removido` na trilha + exclusão do conteúdo no Spaces, porque é dado de paciente. |
+| 05/09/2026 | 02 §2.3 | O plano fala em extrair "componentes"; na verdade `CampoDinamico`/`CampoPaciente` eram **funções locais dentro das duas páginas**, mais os tipos em cada `types.ts`. As duas cópias eram **idênticas byte a byte**, diferindo só no nome do sistema dentro de tipos e comentários — daí o `sistema` ter virado prop, usado só nas mensagens ao operador. |
+| 05/09/2026 | 02 §B / 04 §B | `RegulacaoSolicitacao` nasceu **sem** as coleções `Eventos` e `Destinos`: essas entidades são da tarefa 3.1 e entram com a migration do incremento 3. A `Exigencias` ficou, porque as caixinhas são desta tarefa. |
+| 05/09/2026 | 02 §B | `RegulacaoSolicitacaoExigencia.RegraId` ficou **sem FK física**: `regulacao_regra` só existe no incremento 4. A FK entra junto com a tabela, lá. |
+| 05/09/2026 | 09 §C | **Categorias de follow-up do validador trocadas.** O plano listava as quatro antigas (`FalhaContato, DocumentoCriticado, Agendamento, Outro`); valem as **nove** medidas no spike d. Uma configuração salva com categoria fora da lista viraria classificador mudo em produção. |
+| 05/09/2026 | 09 §C | `ClassificarFollowUpTesteAsync` **não** entrou na 2.1: depende do `ClassificadorFollowUp`, que é da tarefa 6.2. Fica para o incremento 6, junto com a seção de follow-up da aba. |
+| 05/09/2026 | 09 §B | A coluna `nao_sei_padrao` (e o enum `NaoSeiViraRegulacao`) nasceram agora, embora só o incremento 4 as use — é o que o próprio plano pede em §F, para o motor de regras não exigir uma segunda migration. |
+| 05/09/2026 | 01 §G passo 5 | **Passo perigoso.** "Subir a API e conferir o `/docs`" aplica migration em produção (`AutoMigrate` ligado + banco de dev = prod). Trocado por: rodar com `AutoMigrate__Enabled=false` e validar endpoint na bancada. |
+| 05/09/2026 | 01 §C | **O texto embedado deixa de levar sistema e ramo.** O plano manda embedar `"{rótulo} ({Sistema} {Ramo})"`; medido, dois recursos de nome idêntico em sistemas diferentes ficam em cosseno **0,851** contra corte de 0,85 — o par que a sugestão existe para achar fica pendurado na fronteira. O nome do sistema é ruído no eixo que se está comparando. Agora embeda só o rótulo; sistema e ramo seguem como colunas de filtro. Pego pelo teste `Sugestao_so_entre_sistemas_diferentes_e_acima_do_corte`. |
+| 05/09/2026 | 01 §C | `IRegulacaoConfiguracaoService` (corte de distância da busca) só nasce na tarefa 2.1. A 1.4 usa constante `CorteDistanciaPadrao = 0.45` e passa a ler do singleton quando o plano 09 entrar. |
 | 05/09/2026 | **README §5** | **Nova decisão D-11** (instrução do Bernardo): construir tudo com a escrita externa **desligada**, validar as gravações depois em bloco. Exige `IEscritaExternaGate` como ponto único + evento `EnvioSimulado`. Afeta 04, 06, 07, 09, 11, 12. |
 | 05/09/2026 | 01 §A | **Gancho pós-sync do SISREG**: o plano manda pendurar no `EscalasSincronizacaoService`, mas **não é ali que nascem as origens SISREG** — quem popula `sisreg_procedimento_sigtap` é o `MapeadorSigtapSisreg`, na importação. O gancho ficou nas escalas mesmo, por **cadência** (é o job diário de rede inteira) e porque o sincronismo é idempotente; a justificativa do plano é que estava errada, não o lugar. |
 | 05/09/2026 | 01 §C | `CalcularSugestoesAsync` como especificado dava **três idas ao banco por origem** (~1.700 num catálogo de 560). Reescrito para carregar as candidatas rastreadas de uma vez: sobra uma consulta por candidata, a do vizinho mais próximo — que é para o que o HNSW existe. |
@@ -171,6 +201,14 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 05/09/2026 — incremento 1 CONCLUÍDO (tarefas 1.4 a 1.8)
+
+- **1.4/1.5** busca híbrida + `CacheVetorConsulta` + `RegulacaoProcedimentosController` (7 rotas), com oferta interna pelas escalas e existência externa. **1.6** front completo (`features/regulacao/`: types, api, queries, `BuscaProcedimento`, aba de curadoria). **1.7** `EmbeddingsFake` + 14 testes. **1.8** ADR-0055 promovido.
+- **Verificação:** build da solução 0/0; `tsc -b` + `vite build` verdes; **suíte completa 1128/1129 na bancada** (1 skip pré-existente).
+- **O teste achou um defeito de projeto, não de código.** `Sugestao_so_entre_sistemas_diferentes_e_acima_do_corte` falhou, e a causa era o plano: embedar `"{rótulo} ({Sistema} {Ramo})"` deixa dois recursos de nome **idêntico** em sistemas diferentes com cosseno **0,851** contra corte de 0,85. O par que a sugestão existe para encontrar ficava pendurado na fronteira e sumia com qualquer variação de grafia. Corrigido: embeda só o rótulo.
+- **Armadilha de infraestrutura achada:** `AutoMigrate:Enabled = true` + banco de dev = produção. O passo 5 do plano 01 (subir a API para ver o `/docs`) aplicaria migration em prod — inclusive os 6 `DropTable` da outra frente. Não executei; corrigi o plano e avisei no farol.
+- O `npm run lint` do repositório continua quebrado (sem `eslint.config.js`, eslint fora do `node_modules`) — pré-existente; o gate real é o `npm run build`.
 
 ### 05/09/2026 — incremento 1, tarefa 1.2 (sincronismo do catálogo canônico)
 

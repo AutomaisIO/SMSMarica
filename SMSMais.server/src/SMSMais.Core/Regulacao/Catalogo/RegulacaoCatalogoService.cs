@@ -269,13 +269,18 @@ public sealed class RegulacaoCatalogoService(
     }
 
     /// <summary>
-    /// O sistema entra no texto embedado porque a mesma palavra tem peso diferente em cada
-    /// catálogo, e o ramo do SER separa dois recursos que se escrevem igual.
+    /// Só o rótulo entra no vetor — sem o nome do sistema e sem o ramo.
+    ///
+    /// <para>O plano 01 mandava embedar <c>"{rótulo} ({Sistema} {Ramo})"</c>. Medido: com o
+    /// sistema no texto, dois recursos de <b>nome idêntico</b> em sistemas diferentes ficam em
+    /// cosseno <b>0,851</b> contra um corte de 0,85 — ou seja, o par que a sugestão existe para
+    /// encontrar fica pendurado na fronteira, e some com qualquer variação de grafia. O nome do
+    /// sistema é ruído justamente no eixo que estamos comparando.</para>
+    ///
+    /// <para>Sistema e ramo continuam sendo colunas, e é por elas que se filtra — não precisam
+    /// estar no vetor para cumprir esse papel.</para>
     /// </summary>
-    private static string TextoParaEmbedding(RegulacaoProcedimentoOrigem o) =>
-        o.Ramo is null
-            ? $"{o.RotuloExterno} ({o.Sistema})"
-            : $"{o.RotuloExterno} ({o.Sistema} {o.Ramo})";
+    private static string TextoParaEmbedding(RegulacaoProcedimentoOrigem o) => o.RotuloExterno;
 
     /// <summary>
     /// O modelo entra no hash: trocar de modelo tem de invalidar tudo sozinho, senão o catálogo

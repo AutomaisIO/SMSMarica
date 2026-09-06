@@ -781,7 +781,14 @@ public static class DependencyInjection
         services.AddScoped<Translado.Geracao.IGeradorDeTransladoService, Translado.Geracao.GeradorDeTransladoService>();
 
         // ---- REGULAÇÃO → SOLICITAÇÕES (ADR-0052) ----
+        services.AddScoped<Regulacao.Configuracao.IRegulacaoConfiguracaoService, Regulacao.Configuracao.RegulacaoConfiguracaoService>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoCatalogoService, Regulacao.Catalogo.RegulacaoCatalogoService>();
+        services.AddScoped<Regulacao.Catalogo.IRegulacaoProcedimentoBuscaService, Regulacao.Catalogo.RegulacaoProcedimentoBuscaService>();
+        services.AddScoped<Regulacao.Anexos.IArquivoExigenciaStore, Regulacao.Anexos.ArquivoExigenciaStoreSpaces>();
+        services.AddScoped<Regulacao.Anexos.IRegulacaoExigenciaService, Regulacao.Anexos.RegulacaoExigenciaService>();
+        services.AddScoped<Regulacao.Pacientes.IRegulacaoPacienteService, Regulacao.Pacientes.RegulacaoPacienteService>();
+        // Singleton: o cache de vetores de consulta só vale se sobreviver entre requisições.
+        services.AddSingleton<Regulacao.Catalogo.CacheVetorConsulta>();
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 

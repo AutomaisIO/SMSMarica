@@ -178,6 +178,12 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // que o solicitante reconhece, as origens equivalentes do SISREG, do SER e do SERNIT.
     public DbSet<RegulacaoProcedimento> RegulacaoProcedimentos => Set<RegulacaoProcedimento>();
     public DbSet<RegulacaoProcedimentoOrigem> RegulacaoProcedimentoOrigens => Set<RegulacaoProcedimentoOrigem>();
+    public DbSet<RegulacaoConfiguracao> RegulacaoConfiguracoes => Set<RegulacaoConfiguracao>();
+    public DbSet<RegulacaoSolicitacao> RegulacaoSolicitacoes => Set<RegulacaoSolicitacao>();
+    public DbSet<RegulacaoFormularioVersao> RegulacaoFormularioVersoes => Set<RegulacaoFormularioVersao>();
+    public DbSet<RegulacaoFormularioCampoMapa> RegulacaoFormularioCampoMapas => Set<RegulacaoFormularioCampoMapa>();
+    public DbSet<RegulacaoSolicitacaoExigencia> RegulacaoSolicitacaoExigencias => Set<RegulacaoSolicitacaoExigencia>();
+    public DbSet<RegulacaoExigenciaArquivo> RegulacaoExigenciaArquivos => Set<RegulacaoExigenciaArquivo>();
 
     // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
     public DbSet<Indicador> Indicadores => Set<Indicador>();

@@ -23,13 +23,11 @@ import {
   useSalvarRascunhoSer,
 } from '@/features/ser/api/queries';
 import type {
-  CampoDinamicoSer,
   CatalogoRecursoSer,
   OpcaoSer,
   RascunhoSerLista,
   StatusRascunhoSer,
   TipoRecursoSer,
-  CampoPacienteSer,
   PacienteEncontradoSer,
 } from '@/features/ser/types';
 import { SeletorCidSer } from '@/features/ser/components/SeletorCidSer';
@@ -38,6 +36,8 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import { CampoDinamico } from '@/shared/regulacao/CampoDinamico';
+import { CampoPaciente } from '@/shared/regulacao/CampoPaciente';
 import { Select } from '@/shared/ui/Select';
 import { formatarInstante } from '@/shared/lib/datas';
 import { pesquisarPacienteSer } from '@/features/ser/api/serApi';
@@ -483,6 +483,7 @@ export function SerNovaSolicitacaoPage() {
                 <div className="flex flex-wrap gap-3">
                   {listaCampos.map((c) => (
                     <CampoDinamico
+                      sistema="SER"
                       key={c.campo}
                       c={c}
                       valor={campos[c.campo] ?? ''}
@@ -614,202 +615,3 @@ export function SerNovaSolicitacaoPage() {
  * capricho de tela: campo `disabled` não é enviado pelo navegador, então esses valores nem chegam
  * ao Gravar. Deixá-los editáveis prometeria uma correção que o SER descarta em silêncio.
  */
-function CampoPaciente({
-  c,
-  valor,
-  desabilitado,
-  onChange,
-  sugestao,
-}: {
-  c: CampoPacienteSer;
-  valor: string;
-  desabilitado?: boolean;
-  onChange: (v: string) => void;
-  /** Nosso número verificado por OTP, quando houver. Oferecido, nunca aplicado sozinho. */
-  sugestao?: string | null;
-}) {
-  const id = `pac-${c.campo.replace(/[^\w]/g, '_')}`;
-  const rotulo = `${c.rotulo}${c.obrigatorio ? ' *' : ''}`;
-  const travado = !c.editavel || desabilitado;
-
-  if (c.tipo === 'select' && c.opcoes?.length) {
-    return (
-      <Campo label={rotulo} htmlFor={id} className="w-52">
-        <Select id={id} value={valor} disabled={travado} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Selecione…</option>
-          {c.opcoes.map((o) => (
-            <option key={o.valor} value={o.valor}>{o.rotulo}</option>
-          ))}
-        </Select>
-      </Campo>
-    );
-  }
-
-  const mesmosDigitos = (a: string, b: string) => {
-    const x = a.replace(/\D/g, '');
-    const y = b.replace(/\D/g, '');
-    // Tolera DDI: um é sufixo do outro (o verificado guarda "55…", o SER guarda nacional).
-    return x.length >= 8 && y.length >= 8 && (x.endsWith(y) || y.endsWith(x));
-  };
-  const oferecer = sugestao && !travado && !mesmosDigitos(sugestao, valor);
-
-  return (
-    <Campo label={rotulo} htmlFor={id} className="w-52">
-      <Input id={id} value={valor} disabled={travado} onChange={(e) => onChange(e.target.value)} />
-      {oferecer ? (
-        <button
-          type="button"
-          onClick={() => onChange(sugestao!)}
-          className="mt-1 text-left text-xs text-emerald-700 underline decoration-dotted hover:text-emerald-900"
-          title="Número verificado por código no nosso cadastro — clique para usar"
-        >
-          verificado no nosso cadastro: {sugestao}
-        </button>
-      ) : null}
-    </Campo>
-  );
-}
-
-/** Desenha o campo conforme o tipo que o catálogo guardou para ele. */
-function CampoDinamico({
-  c,
-  valor,
-  desabilitado,
-  onChange,
-}: {
-  c: CampoDinamicoSer;
-  valor: string;
-  desabilitado?: boolean;
-  onChange: (v: string) => void;
-}) {
-  const rotulo = `${c.rotulo}${c.obrigatorio ? ' *' : ''}`;
-  const id = `din-${c.numero}`;
-
-  if (c.tipo === 'textarea') {
-    return (
-      <Campo label={rotulo} htmlFor={id} className="min-w-96 flex-1">
-        <textarea
-          id={id}
-          rows={3}
-          value={valor}
-          disabled={desabilitado}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
-        />
-      </Campo>
-    );
-  }
-
-  // Múltipla escolha. O SER recebe o MESMO nome repetido, um par por opção marcada; no rascunho
-  // isso cabe num par nome→valor porque os valores viajam juntos separados por quebra de linha —
-  // o contrato de SerValorMultiplo no backend, que desdobra na hora do envio.
-  if (c.tipo === 'checkbox' && c.opcoes?.length) {
-    const marcadas = new Set(valor ? valor.split('\n').filter(Boolean) : []);
-    const alternar = (v: string) => {
-      if (marcadas.has(v)) marcadas.delete(v);
-      else marcadas.add(v);
-      // Reordena pela ordem do SER, não pela ordem dos cliques.
-      onChange(c.opcoes!.filter((o) => marcadas.has(o.valor)).map((o) => o.valor).join('\n'));
-    };
-
-    return (
-      <Campo label={rotulo} htmlFor={id} className="min-w-72">
-        <div id={id} className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1">
-          {c.opcoes.map((o) => (
-            <label key={o.valor} className="flex items-center gap-1.5 text-sm">
-              <input
-                type="checkbox"
-                value={o.valor}
-                disabled={desabilitado}
-                checked={marcadas.has(o.valor)}
-                onChange={() => alternar(o.valor)}
-              />
-              {o.rotulo}
-            </label>
-          ))}
-        </div>
-      </Campo>
-    );
-  }
-
-  // Escolha SEM opção nenhuma = catálogo copiado antes da correção de 10/08/2026. Não deixo isso
-  // virar caixa de texto em silêncio: o SER só aceita os valores da lista dele, e o pedido
-  // voltaria recusado com o campo aparentemente preenchido na tela.
-  if ((c.tipo === 'radio' || c.tipo === 'checkbox') && !c.opcoes?.length) {
-    return (
-      <Campo label={rotulo} htmlFor={id} className="min-w-72">
-        <Input id={id} value={valor} disabled onChange={() => {}} />
-        <p className="mt-1 text-xs text-amber-700">
-          Sem as opções deste campo. Recopie o catálogo do SER em Configurações para liberá-lo.
-        </p>
-      </Campo>
-    );
-  }
-
-  if ((c.tipo === 'select' || c.tipo === 'radio') && c.opcoes?.length) {
-    if (c.tipo === 'radio') {
-      return (
-        <Campo label={rotulo} htmlFor={id} className="min-w-72">
-          <div id={id} className="flex flex-wrap gap-3 pt-1">
-            {c.opcoes.map((o) => (
-              <label key={o.valor} className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="radio"
-                  name={c.campo}
-                  value={o.valor}
-                  disabled={desabilitado}
-                  checked={valor === o.valor}
-                  onChange={() => onChange(o.valor)}
-                />
-                {o.rotulo}
-              </label>
-            ))}
-          </div>
-        </Campo>
-      );
-    }
-
-    return (
-      <Campo label={rotulo} htmlFor={id} className="min-w-72">
-        <Select id={id} value={valor} disabled={desabilitado} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Selecione…</option>
-          {c.opcoes.map((o) => (
-            <option key={o.valor} value={o.valor}>{o.rotulo}</option>
-          ))}
-        </Select>
-      </Campo>
-    );
-  }
-
-  // O SER usa dd/MM/yyyy no rich:calendar. O input nativo de data fala ISO, então a conversão
-  // acontece na borda — o que sai daqui para o payload é sempre o formato que o SER espera.
-  if (c.tipo === 'date') {
-    return (
-      <Campo label={rotulo} htmlFor={id} className="w-52">
-        <Input
-          id={id}
-          type="date"
-          value={paraIso(valor)}
-          disabled={desabilitado}
-          onChange={(e) => onChange(paraBr(e.target.value))}
-        />
-      </Campo>
-    );
-  }
-
-  return (
-    <Campo label={rotulo} htmlFor={id} className="w-56">
-      <Input id={id} value={valor} disabled={desabilitado} onChange={(e) => onChange(e.target.value)} />
-    </Campo>
-  );
-}
-
-function paraIso(br: string): string {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br.trim());
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
-}
-
-function paraBr(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
-}

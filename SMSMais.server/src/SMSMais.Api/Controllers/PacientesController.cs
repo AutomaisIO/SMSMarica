@@ -149,6 +149,21 @@ public sealed class PacientesController(
     }
 
     /// <summary>
+    /// Mesma verificação, pelo CNS. Existe porque o CNS é o identificador que o CADSUS sempre
+    /// traz — e a busca geral não olha para ele, então sem esta rota um paciente cadastrado só
+    /// com CNS não é encontrado e acaba duplicado.
+    /// </summary>
+    [HttpGet("por-cns/{cns}")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PacienteExistenciaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ObterPorCns(string cns, CancellationToken cancellationToken)
+    {
+        var resultado = await _service.ObterPorCnsAsync(cns, cancellationToken);
+        return resultado is null ? NotFound() : Ok(resultado);
+    }
+
+    /// <summary>
     /// Busca um paciente pelo telefone (Patient.telecom). 404 se nenhum; 200 com o
     /// resumo (id, nome, cpf) do primeiro match. Usado pelo agente de voz (CentralIA)
     /// pra reconhecer quem liga de um número já cadastrado.

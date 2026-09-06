@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0055 — Um catálogo canônico de procedimentos une SISREG, SER e SERNIT; a busca é híbrida (lexical + vetorial no Postgres) e o pareamento entre sistemas é sugerido pela máquina e confirmado por pessoa</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0055 — Um catálogo canônico de procedimentos une SISREG, SER e SERNIT; a busca é híbrida (lexical + vetorial no Postgres) e o pareamento entre sistemas é sugerido pela máquina e confirmado por pessoa</h1>
+<p>&gt; <strong>Promovido em 05/09/2026</strong>, quando o incremento 1 foi para produção. Duas coisas mudaram em &gt; relação ao rascunho, e as duas foram medidas, não supostas: &gt; &gt; 1. <strong>O catálogo é plano, sem hierarquia</strong> (decisão D-10). O balde do SERNIT &gt;    (<code>Endocrinologia</code>) e as subespecialidades do SER (<code>ENDOCRINOLOGIA - DIABETES</code>) são &gt;    procedimentos canônicos <strong>distintos</strong>, e a busca devolve todos; quem desempata é o agente &gt;    regulador, que pode trocar o procedimento na triagem. São 17 casos assim, levantados no &gt;    spike c. &gt; 2. <strong>O embedding é só do rótulo</strong> — sem o nome do sistema e sem o ramo. Com o sistema no texto, &gt;    dois recursos de nome idêntico em sistemas diferentes ficam em cosseno <strong>0,851</strong> contra um &gt;    corte de 0,85: o par que a sugestão existe para encontrar fica pendurado na fronteira. &gt;    Sistema e ramo continuam como colunas, que é o que basta para filtrar. &gt; &gt; Relatórios: <a href="../../SMSMais.Regulacao/revisoes/spike-c-paridade.md"><code>SMSMais.Regulacao/revisoes/spike-c-paridade.md</code></a>.</p>
+<ul>
+<li><strong>Status:</strong> rascunho (promover no incremento 1)</li>
+<li><strong>Data:</strong> 04/09/2026</li>
+<li><strong>Contexto:</strong> ADR-0011 (módulo IA, onde o pgvector e os embeddings já vivem), memória do projeto "Procedimento: nome do SISREG é o eixo", <code>SugestaoSigtap</code> (só igualdade exata auto-confirma).</li>
+<li><strong>Documento de apoio:</strong> planos 01 e 08.</li>
+</ul>
+<h2>Contexto</h2>
+<p>Os três sistemas descrevem procedimentos em vocabulários sem chave comum: SISREG usa código <code>pa</code> de 7 dígitos com nome e SIGTAP defasado; SER e SERNIT usam texto com um <code>valor</code> de combo interno a cada instância, sem código e sem SIGTAP. O usuário quer digitar "cardiologia" e ver, numa tela só, as unidades internas que executam e se o procedimento existe no SER/SERNIT.</p>
+<p>O pgvector já está instalado e em uso no módulo IA (<code>vector(1024)</code>, Voyage <code>voyage-3</code>), com o token cifrado no banco. <code>unaccent</code> está instalada; <code>pg_trgm</code> não.</p>
+<h2>Decisão</h2>
+<h3>1. Canônico + origens</h3>
+<p><code>regulacao_procedimento</code> (o que o usuário vê como um procedimento) e <code>regulacao_procedimento_origem</code> (uma linha por sistema × recurso, com a chave externa de cada sistema). O embedding fica <strong>na origem</strong>, porque a busca precisa recordar cada rótulo como cada sistema o escreve.</p>
+<h3>2. Mesmo modelo de embedding do módulo IA</h3>
+<p><code>IServicoEmbeddings</code> (Voyage <code>voyage-3</code>, 1024 dims), sem provedor novo. Só o que mudou é re-embedado (hash de <code>modelo|texto</code>). Falha do provedor não derruba a sincronização nem a busca.</p>
+<h3>3. Busca híbrida com fallback lexical</h3>
+<p><code>ILIKE(unaccent())</code> primeiro (exatos e prefixos), depois <code>CosineDistance</code> com corte calibrado e cache da consulta → vetor. Se a Voyage falhar, a busca devolve só o lexical e se declara degradada. Índice HNSW criado em SQL cru.</p>
+<h3>4. Pareamento é curadoria</h3>
+<p>Origem nova vira canônico 1:1. Origem de outro sistema com cosine ≥ 0,85 vira <strong>sugestão</strong>; só a tela (módulo 51) confirma. Nunca se funde por similaridade — o mesmo princípio de <code>SugestaoSigtap</code>.</p>
+<h3>5. Oferta interna derivada, não armazenada</h3>
+<p>Unidades executantes vêm de <code>sisreg_escala</code> ativa e vigente por <code>pa</code> (grupos <code>…000</code> expandidos). O lado externo é existência por sistema; não há unidade executante em Maricá.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Embedar a consulta do usuário é uma chamada HTTP por busca; debounce e cache são obrigatórios. Custo de catálogo inteiro: centavos.</li>
+<li>Dimensão travada em 1024 pelo tipo da coluna; trocar de modelo exige migration.</li>
+<li>O canônico não se amarra ao SIGTAP (o exportado é defasado); SIGTAP é atributo opcional.</li>
+<li>Regras de elegibilidade (plano 03) ancoram na <strong>origem</strong> quando vêm de manual de um sistema, e no canônico quando são gerais.</li>
+</ul>
+<h2>Alternativas consideradas</h2>
+<ul>
+<li><strong>Busca só lexical.</strong> Não recorda sinônimos ("RX" × "radiografia"; "1ª vez em cardiologia" × "consulta em cardiologia"). Rejeitado como único caminho; fica como fallback.</li>
+<li><strong>Agente de IA a cada busca.</strong> Rejeitado pela transcrição (custo e latência); embedding é o que ela pede.</li>
+<li><strong>Fundir automaticamente por similaridade.</strong> Rejeitado: erro silencioso de pareamento manda paciente para o procedimento errado.</li>
+</ul>
+<h2>Verificação</h2>
+<p>Buscar "cardiologia" retorna canônicos com origens dos três sistemas e unidades internas com vagas; desligar o token da Voyage mantém a busca (degradada); sugestão de par aparece na curadoria e só confirma com clique.</p>
+</main>
+</body>
+</html>
