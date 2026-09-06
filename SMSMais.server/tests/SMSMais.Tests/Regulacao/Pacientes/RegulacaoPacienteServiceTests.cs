@@ -8,6 +8,7 @@ using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Core.Regulacao.Pacientes;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Regulacao.Pacientes;
 
@@ -35,50 +36,9 @@ public class RegulacaoPacienteServiceTests
         return (new RegulacaoPacienteService(pacientes, cadastro), pacientes, cadastro);
     }
 
-    /// <summary>
-    /// `PacienteDto` é um record posicional com 37 campos obrigatórios (é o retrato completo do
-    /// paciente FHIR). Aqui só importam cinco — os outros vão no default e a fábrica existe para
-    /// o teste não virar uma parede de argumentos.
-    /// </summary>
+    /// <summary>Atalho para a fábrica compartilhada — aqui só importam nome, CPF e CNS.</summary>
     private static PacienteDto Dto(Guid id, string nome, string? cpf, string? cns) =>
-        new(
-            Id: id,
-            NomeCompleto: nome,
-            Cpf: cpf ?? string.Empty,
-            Cns: cns,
-            Latitude: 0,
-            Longitude: 0,
-            Ativo: true,
-            CadastradoEm: DateTime.UtcNow,
-            Rg: null,
-            DataNascimento: new DateOnly(1980, 1, 1),
-            Sexo: Sexo.NaoInformado,
-            EstadoCivil: EstadoCivil.NaoInformado,
-            RacaCor: RacaCor.NaoInformado,
-            Escolaridade: Escolaridade.NaoInformado,
-            Ocupacao: null,
-            Naturalidade: null,
-            Nacionalidade: "Brasileira",
-            NomeDaMae: null,
-            NomeDoPai: null,
-            ResponsavelLegal: null,
-            Endereco: null,
-            TelefonePrincipal: null,
-            TelefoneCelular: null,
-            TelefoneResidencial: null,
-            Email: null,
-            ContatoEmergencia: null,
-            AlturaCm: null,
-            PesoKg: null,
-            TipoSanguineo: TipoSanguineo.NaoInformado,
-            FatorRh: FatorRh.NaoInformado,
-            Alergias: [],
-            MedicamentosContinuos: [],
-            Comorbidades: [],
-            Deficiencias: [],
-            PlanoSaude: null,
-            Observacoes: null,
-            FotoBase64: null);
+        PacienteDtoFabrica.Criar(id, nome, cpf, cns);
 
     [Fact]
     public async Task Existente_por_cns_reusa_e_nao_cria_nem_altera_nome()

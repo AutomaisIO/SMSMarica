@@ -24,7 +24,7 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.6** (formulário Externo = união SER ∪ SERNIT, gerando `formulario_versao`).
+**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.8** (wizard completo — D-5: [NAR: unidade em nome de] → procedimento → destino → paciente → regras → formulário + anexos → revisão; salvar Rascunho e enviar para a fila).
 
 **Decidido em 05/09:** os anexos vão para o **Spaces**, não `midia` em bytea (Bernardo). Motivo registrado nos planos 02 e 03: o caminho real é foto de celular, não só PDF.
 
@@ -90,9 +90,9 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 2.3 `shared/regulacao/` com `tiposCampo.ts`, `CampoDinamico.tsx` e `CampoPaciente.tsx`; SER e SERNIT passaram a usar. **−404 linhas, +6** nas duas páginas. `tsc -b` e `vite build` verdes — **05/09/2026**
 - [x] 2.4 `IArquivoExigenciaStore` + `ArquivoExigenciaStoreSpaces` + `RegulacaoExigenciaService` + `RegulacaoExigenciasController` (5 rotas) + `shared/ui/UploadAnexo.tsx`. **Armazenamento: Spaces** (decidido pelo Bernardo). **49 testes verdes** (9 novos) — **05/09/2026**
 - [x] 2.5 `RegulacaoPacienteService` (local → CADSUS → criar) + `RegulacaoPacientesController` + `GET pacientes/por-cns/{cns}` + `PassoPaciente`/`CartaoPacienteCadsus`/`InformarCpfModal`. **60 testes verdes** (11 novos) — **06/09/2026**
-- [ ] 2.6 formulário Externo = união SER ∪ SERNIT (gera `formulario_versao`)
-- [ ] 2.7 formulário Interno = campos do `marcar` conhecidos (placeholder até o spike b)
-- [ ] 2.8 wizard completo (D-5) com NAR e unidade de origem; salvar Rascunho; "Enviar" para a fila (sem inclusão no SISREG ainda)
+- [x] 2.6 `RegulacaoFormularioService`: união SER ∪ SERNIT por slug de rótulo + tabela de sinônimos, obrigatoriedade por OU, conflito de tipo vira dois campos sufixados, versão reusada por hash, `TraduzirAsync` com de-para de opções e conversão de data. **70 testes verdes** (10 novos) — **06/09/2026**
+- [x] 2.7 esquema `sisreg.inclusao` (5 campos do mapa por GET documentado no `APRENDIZADOS.md`) — saiu no mesmo serviço da 2.6. **Explicitamente provisório**: os campos reais da tela `marcar` só se conhecem no spike b — **06/09/2026**
+- [~] 2.8 **backend pronto**: `RegulacaoSolicitacaoService` (criar/obter/atualizar/pendências/enviar-fila/cancelar, escopo fail-closed) + `RegulacaoSolicitacoesController` (7 rotas). **81 testes verdes** (11 novos). **Falta**: o wizard no front (7 passos, D-5) e a rota/menu.
 - [ ] 2.9 migração dos rascunhos `ser_*`/`sernit_*` para `regulacao_solicitacao`; telas antigas viram somente-leitura
 - [ ] 2.10 testes
 
@@ -172,6 +172,8 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 | 05/09/2026 | 13 §spike e | O nome do recurso no manual é **título da seção + célula**; sem o título o pareamento cai de 50% para 9%. O plano supunha que o nome estava só na célula. |
 | 05/09/2026 | 03 §tabela `tipo` | **Quarto valor no enum: `Informativa=4`.** 83% das regras dos manuais é texto clínico; virando pergunta, um recurso com 20 critérios pediria 20 respostas. `Severidade=Aviso` não resolve — continua perguntando. |
 | 05/09/2026 | 03 §4.5 | Três regras novas para o importador: `secao` decide `resposta_bloqueia` (senão inverte 295 regras); 102 recursos vêm `SEM_PAR` e vão para curadoria, nunca para adivinhação; o boilerplate (179 ocorrências) vira **uma** regra global. |
+| 06/09/2026 | 02 §C | **Defeito meu, pego relendo:** o de-para de opções que escrevi mapeava `valor → valor`, ou seja, não traduzia nada. O canônico guarda o valor do **primeiro** sistema; a tradução tem de ir dele para o valor do sistema de destino. Sem isso o valor viajaria com o código do sistema errado e o destino recusaria com o campo aparentemente preenchido. |
+| 06/09/2026 | 02 §2.4 | **Pendência que deixei em aberto:** o plano manda `RemoverArquivoAsync` recusar também quando a solicitação não está em `Rascunho`/`PendenteRegulacao`/`Devolvida`. Só implementei a trava por `EnviadoAoSistemaEm`; a checagem de status entra na 2.8, quando as transições passarem a existir. |
 | 06/09/2026 | 10 §B | `InformarCpfAsync` **reusa `IPacientesService.DefinirCpfAsync`** (que já tem DV e recusa de troca de identidade) em vez de revalidar. O que o serviço da regulação acrescenta é só o que `DefinirCpfAsync` deliberadamente não faz: olhar se o CPF é de **outro** cadastro e devolver o id dele para a tela oferecer a troca. |
 | 06/09/2026 | 10 §B | **Custo a melhorar depois:** o resumo do paciente sai de `ObterPorIdAsync`, que carrega o retrato FHIR **inteiro** (37 campos, incluindo `FotoBase64`) só para exibir nome/CPF/CNS/nascimento. Correto, mas pesado para uma tela de busca. Uma leitura estreita em `IPacientesService` resolveria — não fiz agora para não mexer em interface usada por todo o sistema. |
 | 05/09/2026 | 02 §2.4 | **Regra de versionamento decidida na implementação**, porque o plano não distinguia: caixinha de **regra** versiona (novo arquivo vira `v2` e marca o anterior `Substituido`, apontando com `SubstituiArquivoId`); caixinha **"Anexos gerais" acumula**, porque ali são documentos diferentes e não versões do mesmo. Sem isso, anexar a segunda foto apagaria a primeira da tela. |
