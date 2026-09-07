@@ -6,6 +6,7 @@ import {
   cancelarSolicitacao,
   devolverSolicitacao,
   listarEventos,
+  obterElegibilidade,
   listarNotificacoesRegulacao,
   listarSolicitacoes,
   confirmarOkInterno,
@@ -14,6 +15,7 @@ import {
   obterResumoFila,
   obterResumoNotificacoesRegulacao,
   recusarSolicitacao,
+  responderRegras,
   registrarEnvioSolicitacao,
   atualizarSolicitacao,
   criarSolicitacao,
@@ -27,6 +29,7 @@ import {
 } from './solicitacoesApi';
 import type {
   EscopoNotificacao,
+  RespostaRegraRegulacao,
   FiltroSolicitacoesRegulacao,
   FluxoRegulacao,
 } from '../tiposSolicitacao';
@@ -232,5 +235,29 @@ export function useMarcarNotificacoesDaSolicitacaoVistas() {
   return useMutation({
     mutationFn: marcarNotificacoesDaSolicitacaoVistas,
     onSuccess: () => void qc.invalidateQueries({ queryKey: raizNotificacoes }),
+  });
+}
+
+// ---------------------------------------------------------------- elegibilidade (plano 03)
+
+/**
+ * A avaliação das regras. `enabled` pelo id porque ela só existe depois de a solicitação virar
+ * rascunho — antes disso não há o que avaliar.
+ */
+export function useElegibilidade(id: string | null) {
+  return useQuery({
+    queryKey: [...raiz, id, 'elegibilidade'],
+    queryFn: () => obterElegibilidade(id!),
+    enabled: !!id,
+  });
+}
+
+export function useResponderRegras() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, respostas }: { id: string; respostas: Record<string, RespostaRegraRegulacao> }) =>
+      responderRegras(id, respostas),
+    // Responder muda destinos e caixinhas: invalida a raiz inteira, não só a avaliação.
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
   });
 }

@@ -209,3 +209,58 @@ export type PaginaNotificacoesRegulacao = {
 
 /** `minha` = as unidades do usuário; `todas` = o município (exige módulo 48 ou config aberta). */
 export type EscopoNotificacao = 'minha' | 'todas';
+
+// ---------------------------------------------------------------- regras (plano 03)
+
+export type TipoRegraRegulacao = 'Dedutivel' | 'NaoDedutivel' | 'Documental' | 'Informativa';
+export type SeveridadeRegraRegulacao = 'Bloqueia' | 'Ressalva' | 'Aviso';
+export type RespostaRegraRegulacao = 'Sim' | 'Nao' | 'NaoSei' | 'Deduzido';
+export type ResultadoRegraRegulacao = 'Atende' | 'Bloqueia' | 'Ressalva' | 'Indefinido';
+
+export type RegraAvaliada = {
+  regraId: string;
+  versao: number;
+  tipo: TipoRegraRegulacao;
+  severidade: SeveridadeRegraRegulacao;
+  sistema: SistemaRegulacao | null;
+  descricao: string;
+  resultado: ResultadoRegraRegulacao;
+  /** Por que deu isso — a tela mostra ao lado da regra. */
+  motivo: string | null;
+};
+
+export type PerguntaPendente = {
+  regraId: string;
+  pergunta: string;
+  sistema: SistemaRegulacao | null;
+  severidade: SeveridadeRegraRegulacao;
+};
+
+export type ExameParaRegras = {
+  id: string;
+  tipoExameId: string | null;
+  realizadoEm: string;
+  laudado: boolean;
+  descricao: string;
+  laudoId: string | null;
+};
+
+export type DocumentoPendente = {
+  regraId: string;
+  rotulo: string;
+  obrigatorio: boolean;
+  tipoExameId: string | null;
+  validadeDias: number | null;
+  examesInternosCandidatos: ExameParaRegras[];
+};
+
+export type AvaliacaoElegibilidade = {
+  regras: RegraAvaliada[];
+  perguntasPendentes: PerguntaPendente[];
+  documentosPendentes: DocumentoPendente[];
+  destinosPermitidos: SistemaRegulacao[];
+  destinosComRessalva: SistemaRegulacao[];
+  /** Por que cada destino saiu da lista. */
+  motivosDeBloqueio: Partial<Record<SistemaRegulacao, string>>;
+  bloqueiaEnvio: boolean;
+};

@@ -17,7 +17,10 @@ public static class PacienteDtoFabrica
         string nome,
         string? cpf = null,
         string? cns = null,
-        DateOnly? nascimento = null) =>
+        DateOnly? nascimento = null,
+        // Parâmetro opcional (07/09/2026): as regras de elegibilidade da regulação avaliam sexo,
+        // e o valor fixo `NaoInformado` deixava esse caminho sem teste.
+        Sexo sexo = Sexo.NaoInformado) =>
         new(
             Id: id,
             NomeCompleto: nome,
@@ -29,7 +32,7 @@ public static class PacienteDtoFabrica
             CadastradoEm: DateTime.UtcNow,
             Rg: null,
             DataNascimento: nascimento ?? new DateOnly(1980, 1, 1),
-            Sexo: Sexo.NaoInformado,
+            Sexo: sexo,
             EstadoCivil: EstadoCivil.NaoInformado,
             RacaCor: RacaCor.NaoInformado,
             Escolaridade: Escolaridade.NaoInformado,

@@ -41,6 +41,14 @@ public interface IRegulacaoExigenciaService
     /// <summary>Garante que a caixinha "Anexos gerais" exista — ela vale para toda solicitação.</summary>
     Task<ExigenciaDto> GarantirAnexosGeraisAsync(Guid solicitacaoId, CancellationToken ct);
 
+    /// <summary>
+    /// Garante a caixinha de uma regra documental (plano 03). Idempotente: reavaliar as regras
+    /// não pode criar a mesma caixinha de novo — os anexos já postos ficariam órfãos numa
+    /// caixinha antiga que ninguém mais vê.
+    /// </summary>
+    Task<ExigenciaDto> GarantirDaRegraAsync(
+        Guid solicitacaoId, Guid regraId, string titulo, bool obrigatoria, CancellationToken ct);
+
     Task<ArquivoExigenciaDto> AnexarAsync(
         Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo,
         CancellationToken ct);
@@ -89,6 +97,47 @@ public sealed class RegulacaoExigenciaService(
             Situacao = SituacaoExigenciaRegulacao.Pendente,
             // 1000 para ficar sempre depois das caixinhas de regra, que numeram a partir de 1.
             Ordem = 1000,
+        };
+        db.RegulacaoSolicitacaoExigencias.Add(nova);
+        await db.SaveChangesAsync(ct);
+        return Mapear(nova);
+    }
+
+    public async Task<ExigenciaDto> GarantirDaRegraAsync(
+        Guid solicitacaoId, Guid regraId, string titulo, bool obrigatoria, CancellationToken ct)
+    {
+        await ExigirSolicitacaoAsync(solicitacaoId, ct);
+
+        var existente = await db.RegulacaoSolicitacaoExigencias
+            .Include(e => e.Arquivos)
+            .FirstOrDefaultAsync(e => e.SolicitacaoId == solicitacaoId && e.RegraId == regraId, ct);
+
+        if (existente is not null)
+        {
+            // O rótulo e a obrigatoriedade acompanham a regra: o manual muda, a caixinha muda de
+            // nome — mas os arquivos já anexados continuam onde estão.
+            if (existente.Titulo != titulo || existente.Obrigatoria != obrigatoria)
+            {
+                existente.Titulo = titulo;
+                existente.Obrigatoria = obrigatoria;
+                await db.SaveChangesAsync(ct);
+            }
+            return Mapear(existente);
+        }
+
+        var proximaOrdem = await db.RegulacaoSolicitacaoExigencias
+            .Where(e => e.SolicitacaoId == solicitacaoId && e.RegraId != null)
+            .CountAsync(ct) + 1;
+
+        var nova = new RegulacaoSolicitacaoExigencia
+        {
+            Id = Guid.CreateVersion7(),
+            SolicitacaoId = solicitacaoId,
+            RegraId = regraId,
+            Titulo = titulo,
+            Obrigatoria = obrigatoria,
+            Situacao = SituacaoExigenciaRegulacao.Pendente,
+            Ordem = proximaOrdem,
         };
         db.RegulacaoSolicitacaoExigencias.Add(nova);
         await db.SaveChangesAsync(ct);

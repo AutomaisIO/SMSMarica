@@ -1,6 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 
 import type {
+  AvaliacaoElegibilidade,
   EscopoNotificacao,
   EventoRegulacao,
   Exigencia,
@@ -10,6 +11,7 @@ import type {
   PaginaNotificacoesRegulacao,
   PaginaSolicitacoesRegulacao,
   PendenciaEnvio,
+  RespostaRegraRegulacao,
   ResumoFilaRegulacao,
   SolicitacaoRegulacao,
 } from '../tiposSolicitacao';
@@ -178,4 +180,19 @@ export async function marcarNotificacaoVista(eventoId: string): Promise<void> {
 
 export async function marcarNotificacoesDaSolicitacaoVistas(solicitacaoId: string): Promise<void> {
   await http.post(`/regulacao/notificacoes/solicitacao/${solicitacaoId}/vistas`);
+}
+
+// ---------------------------------------------------------------- elegibilidade (plano 03)
+
+export async function obterElegibilidade(id: string): Promise<AvaliacaoElegibilidade> {
+  const { data } = await http.get<AvaliacaoElegibilidade>(`${base}/${id}/elegibilidade`);
+  return data;
+}
+
+export async function responderRegras(
+  id: string,
+  respostas: Record<string, RespostaRegraRegulacao>,
+): Promise<AvaliacaoElegibilidade> {
+  const { data } = await http.put<AvaliacaoElegibilidade>(`${base}/${id}/respostas`, { respostas });
+  return data;
 }

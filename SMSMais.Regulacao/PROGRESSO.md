@@ -18,7 +18,7 @@
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
 | 2 — Wizard + paciente + fila local | **concluído e EM PRODUÇÃO** | 2.1 a 2.10. **A migração do legado rodou em 07/09**: catálogo com 999 procedimentos, 1 rascunho migrado, 1 descartado a pedido, telas antigas fechadas (410). |
 | 3 — Fila + agente + registro assistido + notificações por unidade | **concluído** | 3.1 a 3.11. ADR-0052 promovido. Falta só o badge da sidebar (3.8) e o `ConciliarAgoraAsync`, que é escrita externa e fica para a validação (D-11) |
-| 4 — Regras de elegibilidade | em andamento | **4.1 e 4.2 feitas** (entidades + motor puro, 15 testes em 97 ms) |
+| 4 — Regras de elegibilidade | em andamento | **4.1 a 4.3 feitas** (entidades, motor puro, serviço + wizard). Faltam 4.4 (exame interno na caixinha), 4.5 (tela + CSV) e 4.6 |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
 | 6 — Pendências pós-envio | não iniciado | |
 | 7 — Escrita no SISREG | não iniciado | |
@@ -166,7 +166,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 ### Incremento 4 — Regras (planos 03, 09)
 - [x] 4.1 `RegulacaoRegra` + `RegulacaoSolicitacaoRespostaRegra` + 4 enums + configurações + DbSets + migration `20260907185430_RegrasDeElegibilidade` (aditiva) — **07/09/2026**
 - [x] 4.2 `AvaliadorElegibilidade` (puro, estático) + 15 testes que rodam em **97 ms** — **07/09/2026**
-- [ ] 4.3 integração no wizard (questionário, caixinhas, ressalva por destino, bloqueio)
+- [x] 4.3 `RegulacaoElegibilidadeService` (busca, avalia, persiste destinos/respostas/caixinhas) + 3 endpoints + `PassoRegras` no wizard, entre paciente e formulário. **4 testes de integração** — **07/09/2026**
 - [ ] 4.4 exames internos (`ICidadaoClinicoService`) na caixinha documental
 - [ ] 4.5 tela de cadastro de regras (51) + importação do CSV do spike e
 - [ ] 4.6 configurações restantes (plano 09)
@@ -247,6 +247,9 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 02 §D-5 / 04 §F | **O passo de regras entrou no wizard** — o desvio de 06/09 dizia que ele faltava porque o motor era do incremento 4. Fica entre paciente e formulário: as regras dependem de quem é o paciente (idade, sexo, CID) e decidem o que o formulário vai exigir. Com isso, **o rascunho passa a ser criado ao sair do passo do paciente**, e não ao entrar no formulário: a avaliação grava destinos e caixinhas, e precisa da solicitação existindo. |
+| 07/09/2026 | 03 §C | **`Outro` e `NaoInformado` no sexo viram `null`, não um valor.** Uma regra de sexo sobre esses cadastros fica `Indefinido` e é conferida por gente — decidir por aproximação recusaria (ou liberaria) pedido com base num campo que ninguém preencheu direito. |
+| 07/09/2026 | 03 §C | **O `ExameResumoDto` do app do cidadão não carrega `TipoExameId`**, que é o que casa com a regra documental. Em vez de reimplementar "o que é exame do paciente" (que já resolve conciliação por UID), o serviço reusa `ListarExamesAsync` e complementa o tipo numa consulta só. |
 | 07/09/2026 | 03 §C | **`AvaliacaoElegibilidadeDto` sem o `PorSistema` e com `MotivosDeBloqueio`.** O plano devolvia um dicionário sistema → lista de regras, que duplicaria cada regra por candidato só para dizer a mesma coisa. A tela precisa de duas respostas: a lista de regras (uma vez) e **por que aquele destino saiu** — a segunda é a que o agente lê para decidir. |
 | 07/09/2026 | 03 §C | **Pergunta de severidade `Aviso` não trava o envio.** O plano dizia "há pendência de pergunta com `Pendencia`"; sem qualificar pela severidade, uma pergunta meramente informativa seguraria o pedido da unidade até alguém responder. Só pergunta bloqueante trava. |
 | 07/09/2026 | 03 §C | **JSON torto numa regra deixa de restringir, em vez de derrubar a avaliação.** Uma regra mal cadastrada não pode impedir que as outras sejam avaliadas — o pedido pararia inteiro por causa de um cadastro errado, e o erro apareceria como falha genérica. |

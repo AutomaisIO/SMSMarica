@@ -23,15 +23,19 @@ import {
 } from '../api/solicitacoesQueries';
 import { BuscaProcedimento } from '../components/BuscaProcedimento';
 import { PassoPaciente } from '../components/wizard/PassoPaciente';
+import { PassoRegras } from '../components/wizard/PassoRegras';
 import type { FluxoRegulacao } from '../tiposSolicitacao';
 import type { PacienteResumoRegulacao, RegulacaoProcedimentoItem } from '../types';
 
-type Passo = 'procedimento' | 'destino' | 'paciente' | 'formulario' | 'revisao';
+type Passo = 'procedimento' | 'destino' | 'paciente' | 'regras' | 'formulario' | 'revisao';
 
 const PASSOS: { id: Passo; rotulo: string }[] = [
   { id: 'procedimento', rotulo: 'Procedimento' },
   { id: 'destino', rotulo: 'Destino' },
   { id: 'paciente', rotulo: 'Paciente' },
+  // Entrou no incremento 4, entre paciente e formulário: as regras dependem de quem é o
+  // paciente (idade, sexo, CID) e decidem o que o formulário vai exigir.
+  { id: 'regras', rotulo: 'Regras' },
   { id: 'formulario', rotulo: 'Formulário e anexos' },
   { id: 'revisao', rotulo: 'Revisão' },
 ];
@@ -104,7 +108,11 @@ export function NovaSolicitacaoPage() {
     return true;
   }
 
-  /** Ao entrar no formulário a solicitação vira rascunho — os anexos precisam de dono. */
+  /**
+   * Ao sair do passo do paciente a solicitação vira rascunho. Antes isso acontecia só ao entrar
+   * no formulário; a avaliação de regras (incremento 4) precisa da solicitação existindo, porque
+   * é nela que os destinos e as caixinhas são gravados.
+   */
   async function avancar() {
     if (passo === 'paciente' && !solicitacaoId && procedimento && paciente && fluxo) {
       try {
@@ -248,7 +256,9 @@ export function NovaSolicitacaoPage() {
           />
         ) : null}
 
-        {passo === 'formulario' ? (
+        {passo === 'regras' ? (
+          <PassoRegras solicitacaoId={solicitacaoId} />
+        ) : passo === 'formulario' ? (
           <div className="space-y-5">
             {formulario.isLoading ? <p className="text-sm text-slate-500">Montando o formulário…</p> : null}
 

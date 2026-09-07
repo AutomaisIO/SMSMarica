@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Formularios;
+using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Core.Regulacao.Solicitacoes;
 using SMSMais.Data.Entities.Enums;
 
@@ -18,7 +19,8 @@ namespace SMSMais.Api.Controllers;
 [Route("regulacao/solicitacoes")]
 public sealed class RegulacaoSolicitacoesController(
     IRegulacaoSolicitacaoService servico,
-    IRegulacaoFormularioService formularios) : ControllerBase
+    IRegulacaoFormularioService formularios,
+    IRegulacaoElegibilidadeService elegibilidade) : ControllerBase
 {
     /// <summary>
     /// A fila. Quem tem só o módulo 47 vê as solicitações das suas unidades; quem tem o 48 (agente
@@ -165,6 +167,38 @@ public sealed class RegulacaoSolicitacoesController(
     public Task<RegulacaoSolicitacaoDetalheDto> TrocarProcedimento(
         Guid id, [FromBody] TrocarProcedimentoRequest req, CancellationToken cancellationToken) =>
         servico.TrocarProcedimentoAsync(id, req.ProcedimentoId, cancellationToken);
+
+    // ---------------------------------------------------------------- elegibilidade (plano 03)
+
+    /// <summary>
+    /// O que as regras do manual dizem sobre este pedido: destinos permitidos, o que bloqueia,
+    /// as perguntas que faltam e as caixinhas de documento. Avaliar também **persiste** o
+    /// veredito — é ele que a fila e o envio consultam.
+    /// </summary>
+    [HttpGet("{id:guid}/elegibilidade")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvaliacaoElegibilidadeDto>(StatusCodes.Status200OK)]
+    public Task<AvaliacaoElegibilidadeDto> Elegibilidade(Guid id, CancellationToken cancellationToken) =>
+        elegibilidade.AvaliarAsync(id, cancellationToken);
+
+    /// <summary>Responde o questionário e reavalia na mesma chamada.</summary>
+    [HttpPut("{id:guid}/respostas")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AvaliacaoElegibilidadeDto>(StatusCodes.Status200OK)]
+    public Task<AvaliacaoElegibilidadeDto> Responder(
+        Guid id, [FromBody] ResponderRegrasRequest req, CancellationToken cancellationToken) =>
+        elegibilidade.ResponderAsync(id, req.Respostas, cancellationToken);
+
+    /// <summary>Exames que o próprio SMSMais já tem e servem para aquela caixinha.</summary>
+    [HttpGet("{id:guid}/exigencias/{exigenciaId:guid}/exames-internos")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ExameParaRegras>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<ExameParaRegras>> ExamesInternos(
+        Guid id, Guid exigenciaId, CancellationToken cancellationToken) =>
+        elegibilidade.ExamesInternosAsync(id, exigenciaId, cancellationToken);
+
+    public sealed record ResponderRegrasRequest(
+        IReadOnlyDictionary<Guid, RespostaRegraRegulacao> Respostas);
 
     public sealed record TrocarProcedimentoRequest(Guid ProcedimentoId);
 
