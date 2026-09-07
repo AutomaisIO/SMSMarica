@@ -41,9 +41,20 @@ public sealed class AlteracoesAgendaController(IAlteracoesAgendaService alteraco
         return NoContent();
     }
 
+    /// <summary>Trata várias de uma vez; devolve quantas foram marcadas.</summary>
+    [HttpPost("tratar-lote")]
+    [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Edicao)]
+    [ProducesResponseType<TratarLoteResposta>(StatusCodes.Status200OK)]
+    public async Task<TratarLoteResposta> TratarLote(
+        [FromBody] TratarLoteRequest request, CancellationToken cancellationToken) =>
+        new(await _alteracoes.TratarLoteAsync(request.Ids ?? [], cancellationToken));
+
     /// <summary>
     /// Reenvia a confirmação ao paciente com os dados atuais e marca a alteração como tratada.
     /// <b>Revoga os links anteriores</b> — quem tem na mão a data velha perde o acesso a ela.
+    ///
+    /// <para>Recusa alteração do tipo <c>Ausente</c>: ali a mensagem seria uma confirmação do
+    /// horário antigo, que provavelmente não existe mais no SISREG.</para>
     /// </summary>
     [HttpPost("{id:guid}/comunicar")]
     [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Edicao)]
@@ -55,3 +66,10 @@ public sealed class AlteracoesAgendaController(IAlteracoesAgendaService alteraco
         return NoContent();
     }
 }
+
+/// <param name="Ids">As alterações que o operador selecionou na tela.</param>
+public sealed record TratarLoteRequest(IReadOnlyList<Guid>? Ids);
+
+/// <param name="Tratadas">Quantas foram efetivamente marcadas — pode ser menos que o pedido se
+/// alguma já tinha sido tratada por outro operador enquanto a tela estava aberta.</param>
+public sealed record TratarLoteResposta(int Tratadas);

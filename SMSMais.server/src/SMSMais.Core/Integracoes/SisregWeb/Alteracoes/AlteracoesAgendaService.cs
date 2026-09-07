@@ -36,6 +36,16 @@ public interface IAlteracoesAgendaService
     Task TratarAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
+    /// Trata várias de uma vez. Devolve quantas foram efetivamente marcadas.
+    ///
+    /// <para><b>Por que o lote existe:</b> a fila é alimentada por máquina e esvaziada por pessoa.
+    /// Em 06/09/2026 ela amanheceu com 1.378 linhas, das quais ~34 eram reais — uma por clique,
+    /// eram semanas de trabalho para chegar às que importavam. Corrigidas as causas, a fila voltou
+    /// a ser pequena; o botão fica porque o desequilíbrio entre quem enche e quem esvazia não.</para>
+    /// </summary>
+    Task<int> TratarLoteAsync(IReadOnlyList<Guid> ids, CancellationToken ct = default);
+
+    /// <summary>
     /// Reenvia a confirmação ao paciente com os dados ATUAIS e marca a alteração como comunicada.
     /// Revoga os links anteriores: quem tem na mão a data velha perde o acesso a ela.
     /// </summary>
@@ -116,9 +126,69 @@ public sealed class AlteracoesAgendaService(
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Teto por chamada. Alto o bastante para uma tela cheia, baixo o bastante para o
+    /// lote continuar sendo uma decisão sobre linhas que o operador viu.</summary>
+    private const int MaxDoLote = 200;
+
+    public async Task<int> TratarLoteAsync(IReadOnlyList<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0) return 0;
+
+        if (ids.Count > MaxDoLote)
+        {
+            throw new ValidacaoException(
+                "alteracao.lote_grande_demais",
+                $"São {ids.Count} alterações de uma vez, e o limite é {MaxDoLote}. Trate por página.");
+        }
+
+        var escopo = await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
+
+        // Filtra pelo MESMO escopo da listagem, e não por confiança no que o front mandou: um id
+        // de outra unidade colado na requisição não pode ser tratado por quem não o enxerga.
+        var query = db.SisregAlteracoesAgenda
+            .Where(a => ids.Contains(a.Id) && a.TratadaEm == null);
+
+        if (!escopo.VeTudo)
+        {
+            query = query.Where(a =>
+                (a.UnidadeExecutanteId != null && escopo.Unidades.Contains(a.UnidadeExecutanteId.Value))
+                || (a.UnidadeSolicitanteId != null && escopo.Unidades.Contains(a.UnidadeSolicitanteId.Value)));
+        }
+
+        var alteracoes = await query.ToListAsync(ct);
+        if (alteracoes.Count == 0) return 0;
+
+        var agora = DateTime.UtcNow;
+        foreach (var alteracao in alteracoes)
+        {
+            alteracao.TratadaEm = agora;
+            alteracao.TratadaPor = usuarioAtual.UsuarioId;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return alteracoes.Count;
+    }
+
     public async Task ComunicarAsync(Guid id, CancellationToken ct = default)
     {
         var alteracao = await ObterNoEscopoAsync(id, ct);
+
+        // "Sumiu do SISREG" não tem o que comunicar, e comunicar é PIOR que não fazer nada: a
+        // mensagem que sai é uma CONFIRMAÇÃO de agendamento montada com os dados de agora — e os
+        // dados de agora são a data velha, porque a ausência não altera a solicitação. O paciente
+        // receberia a confirmação de um horário que muito provavelmente foi cancelado lá, com link
+        // válido, no mesmo momento em que a unidade ainda nem sabe se a vaga existe.
+        //
+        // A providência aqui é outra: conferir no SISREG e, se caiu mesmo, cancelar deste lado.
+        if (alteracao.Tipo == TipoAlteracaoAgenda.Ausente)
+        {
+            throw new ValidacaoException(
+                "alteracao.ausente_nao_se_comunica",
+                "Este agendamento sumiu do arquivo do SISREG — não dá para avisar o paciente a "
+                + "partir daqui, porque a mensagem seria uma confirmação do horário antigo, que "
+                + "provavelmente não existe mais. Confirme no SISREG: se foi cancelado, cancele a "
+                + "solicitação; se continua de pé, use \"Só tratar\".");
+        }
 
         // `EnviarManualAsync` reconstrói a comunicação com os dados de AGORA e revoga os magic links
         // anteriores — é justamente o que se quer numa remarcação: o link com a data velha morre.

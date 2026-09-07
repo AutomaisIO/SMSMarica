@@ -110,6 +110,8 @@ public sealed class VarreduraAgendaService(
     Importacao.Background.SisregImportacaoEstadoVivo importacaoEstadoVivo,
     MapeamentoLote.Background.MapeamentoLoteEstadoVivo loteEstadoVivo,
     IUsuarioAtualAccessor usuarioAtual,
+    SisregOrcamentoRequisicoes orcamento,
+    IOptions<SisregOrcamentoOpcoes> orcamentoOpcoes,
     IOptions<VarreduraSisregOpcoes> opcoes,
     IOptions<Historico.HistoricoOpcoes> historicoOpcoes,
     ILogger<VarreduraAgendaService> logger) : IVarreduraAgendaService
@@ -178,10 +180,20 @@ public sealed class VarreduraAgendaService(
     /// </summary>
     private const int MaxDiasNaoLidosPorCorrida = 8;
 
+    /// <summary>
+    /// Margem que a varredura deixa no orçamento anti-robô antes de encerrar por conta própria.
+    ///
+    /// <para>Uma fatia não custa uma requisição: quando bate no teto de 700 registros ela se parte,
+    /// e cada divisão custa mais. Parar exatamente no zero deixaria a última fatia estourar o teto
+    /// no meio e a conta cairia na próxima ação humana, em forma de CAPTCHA.</para>
+    /// </summary>
+    private const int RespiroDeRequisicoes = 30;
+
     private const int LoteDeImportacao = 20;
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
     private readonly VarreduraSisregOpcoes _opcoes = opcoes.Value;
+    private readonly SisregOrcamentoOpcoes _orcamentoOpcoes = orcamentoOpcoes.Value;
     private readonly Historico.HistoricoOpcoes _historicoOpcoes = historicoOpcoes.Value;
 
     /// <summary>Par profissional × procedimento a consultar. Ordenado por (cpf, código) para o
@@ -765,6 +777,25 @@ public sealed class VarreduraAgendaService(
         {
             ct.ThrowIfCancellationRequested();
             var (fatiaInicio, fatiaFim) = fatias[i];
+
+            // O orçamento anti-robô é do OPERADOR e é compartilhado com mapeamento, CADSUS e
+            // histórico. Ele era só um contador que ninguém consultava: a varredura entrava numa
+            // janela de anos e ia até o fim, e quem pagava a conta era a próxima ação humana, que
+            // encontrava CAPTCHA — e CAPTCHA pausa a unidade por 24h. Parar aqui devolve o controle:
+            // o que já foi lido é importado e a corrida se declara Parcial.
+            if (orcamento.Restante(_orcamentoOpcoes.TetoAutomatico) < RespiroDeRequisicoes)
+            {
+                var faltaram = fatias.Skip(i).ToList();
+                naoLidas.AddRange(faltaram);
+
+                logger.LogWarning(
+                    "SISREG_VARREDURA_ORCAMENTO: {Unidade} — orçamento anti-robô no fim "
+                    + "({Gastas} na última hora, teto {Teto}). Parando com {Faltaram} fatia(s) por "
+                    + "ler; o que já veio será importado.",
+                    unidade.Nome, orcamento.GastasNaUltimaHora(), _orcamentoOpcoes.TetoAutomatico,
+                    faltaram.Count);
+                break;
+            }
 
             // A tela precisa saber que está andando: uma corrida de 36 fatias sem sinal nenhum é
             // indistinguível de um motor travado.

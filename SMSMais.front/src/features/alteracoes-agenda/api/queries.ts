@@ -3,6 +3,7 @@ import {
   comunicarAlteracaoAgenda,
   listarAlteracoesAgenda,
   tratarAlteracaoAgenda,
+  tratarLoteAlteracoesAgenda,
 } from '@/features/alteracoes-agenda/api/alteracoesApi';
 
 export const alteracoesAgendaKeys = {
@@ -25,6 +26,11 @@ function useInvalidar() {
 export function useTratarAlteracao() {
   const invalidar = useInvalidar();
   return useMutation({ mutationFn: tratarAlteracaoAgenda, onSuccess: invalidar });
+}
+
+export function useTratarLote() {
+  const invalidar = useInvalidar();
+  return useMutation({ mutationFn: tratarLoteAlteracoesAgenda, onSuccess: invalidar });
 }
 
 export function useComunicarAlteracao() {

@@ -1,3 +1,4 @@
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Integracoes.SisregWeb.Importacao;
@@ -41,11 +42,11 @@ public static class ComparadorMarcacao
     {
         var alteracoes = new List<AlteracaoDetectada>();
 
-        // Campo vazio de qualquer um dos dois lados nunca vira alteração (ver `Mudou`): o SISREG
-        // deixa campo em branco com frequência — o código do procedimento vem vazio em ~1/3 das
-        // linhas — e tanto "sumiu" quanto "apareceu" são notícia sobre o ARQUIVO, não sobre a
-        // agenda. Ler qualquer um dos dois como troca enche a tela de alterações fantasmas.
-        if (depois.DataAgendadaUtc is { } nova && antes.DataAgendadaUtc != nova)
+        // Data ausente no arquivo novo nunca apaga a que temos, e ganhar a hora que faltava não é
+        // remarcação (ver `SoGanhouHora`) — a solicitação sem horário fica em meia-noite, e o
+        // preenchimento dela mudava o instante sem mudar o compromisso de ninguém.
+        if (depois.DataAgendadaUtc is { } nova && antes.DataAgendadaUtc != nova
+            && !SoGanhouHora(antes.DataAgendadaUtc, nova))
         {
             alteracoes.Add(new(
                 TipoAlteracaoAgenda.DataHora,
@@ -53,6 +54,10 @@ public static class ComparadorMarcacao
                 Data(nova)));
         }
 
+        // Nos campos de texto, vazio de qualquer um dos dois lados nunca vira alteração (ver
+        // `Mudou`): o SISREG deixa campo em branco com frequência — o código do procedimento vem
+        // vazio em ~1/3 das linhas — e tanto "sumiu" quanto "apareceu" são notícia sobre o ARQUIVO,
+        // não sobre a agenda.
         if (Mudou(antes.ExecutanteCpf, depois.ExecutanteCpf))
         {
             alteracoes.Add(new(
@@ -102,6 +107,37 @@ public static class ComparadorMarcacao
         return !string.Equals(a, d, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Formato legível para a tela — quem lê a alteração precisa entender sem decodificar.</summary>
-    private static string? Data(DateTime? utc) => utc?.ToString("dd/MM/yyyy HH:mm");
+    /// <summary>
+    /// A solicitação só <b>ganhou a hora</b> que não tinha? Então não é remarcação.
+    ///
+    /// <para>Solicitação importada sem horário fica com meia-noite. Quando o SISREG passa a mandar
+    /// a hora, o instante muda e a comparação crua acusava "Remarcado" — mesma família de
+    /// <c>vazio → valor</c> que já derrubou 644 linhas de procedimento, só que escondida atrás de
+    /// um campo de data. As duas alterações que sobraram da limpeza de 07/09/2026 eram exatamente
+    /// isto: <c>20/08 00:00 → 20/08 14:00</c> e <c>15/09 00:00 → 15/09 15:30</c>.</para>
+    ///
+    /// <para><b>A regra é estreita de propósito:</b> exige o <b>mesmo dia</b> e meia-noite do lado
+    /// antigo. Mover de 08:00 para 14:00 no mesmo dia continua sendo remarcação — e é remarcação
+    /// que o paciente precisa saber.</para>
+    /// </summary>
+    private static bool SoGanhouHora(DateTime? antesUtc, DateTime depoisUtc)
+    {
+        if (antesUtc is not { } antes) return false;
+
+        var a = FusoBrasilia.ParaExibicao(antes);
+        var d = FusoBrasilia.ParaExibicao(depoisUtc);
+
+        return a.Date == d.Date && a.TimeOfDay == TimeSpan.Zero;
+    }
+
+    /// <summary>
+    /// Formato legível para a tela — quem lê a alteração precisa entender sem decodificar.
+    ///
+    /// <para><b>Em Brasília, não em UTC.</b> Formatar o instante cru punha três horas a mais na
+    /// cara do operador: a linha dizia "Para 15/09 18:30" num agendamento das 15:30. Errado o
+    /// bastante para alguém repassar o horário errado ao paciente — e contra a régua única de fuso
+    /// do projeto.</para>
+    /// </summary>
+    private static string? Data(DateTime? utc) =>
+        utc is { } u ? FusoBrasilia.ParaExibicao(u).ToString("dd/MM/yyyy HH:mm") : null;
 }

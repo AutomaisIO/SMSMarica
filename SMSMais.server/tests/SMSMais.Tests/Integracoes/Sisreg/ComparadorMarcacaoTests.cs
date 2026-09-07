@@ -33,7 +33,14 @@ public class ComparadorMarcacaoTests
         Assert.Empty(ComparadorMarcacao.Comparar(Foto(), Foto()));
     }
 
-    /// <summary>A que importa: o paciente tem na mão um dia que não vale mais.</summary>
+    /// <summary>
+    /// A que importa: o paciente tem na mão um dia que não vale mais.
+    ///
+    /// <para><b>As horas esperadas mudaram em 07/09/2026</b> e a mudança é a correção, não uma
+    /// acomodação de teste: <c>Dia10</c>/<c>Dia17</c> são 14:00 <b>UTC</b>, que é 11:00 em Brasília.
+    /// O comparador formatava o instante cru, então a tela mostrava três horas a mais do que o
+    /// horário real do paciente.</para>
+    /// </summary>
     [Fact]
     public void Remarcacao_gera_alteracao_de_data_com_antes_e_depois()
     {
@@ -41,8 +48,8 @@ public class ComparadorMarcacaoTests
             ComparadorMarcacao.Comparar(Foto(data: Dia10), Foto(data: Dia17)));
 
         Assert.Equal(TipoAlteracaoAgenda.DataHora, alteracao.Tipo);
-        Assert.Equal("10/09/2026 14:00", alteracao.Antes);
-        Assert.Equal("17/09/2026 14:00", alteracao.Depois);
+        Assert.Equal("10/09/2026 11:00", alteracao.Antes);
+        Assert.Equal("17/09/2026 11:00", alteracao.Depois);
     }
 
     [Fact]
@@ -142,6 +149,67 @@ public class ComparadorMarcacaoTests
         Assert.Equal(TipoAlteracaoAgenda.Executante, alteracao.Tipo);
         Assert.Equal("11111111111", alteracao.Antes);
         Assert.Equal("22222222222", alteracao.Depois);
+    }
+
+    /// <summary>
+    /// <b>Ganhar a hora que faltava não é remarcação.</b> Solicitação importada sem horário fica em
+    /// meia-noite; quando o SISREG passa a mandar a hora, o instante muda sem que o compromisso de
+    /// ninguém mude. É a mesma família de <c>vazio → valor</c>, escondida atrás de um campo de data.
+    ///
+    /// <para>As duas únicas alterações que sobraram da limpeza de 07/09/2026 eram exatamente isto —
+    /// e a tela as anunciava como "Remarcado" para o operador.</para>
+    /// </summary>
+    [Fact]
+    public void Meia_noite_que_ganhou_hora_no_mesmo_dia_nao_e_remarcacao()
+    {
+        // 15/09 00:00 e 15/09 15:30 em Brasília = 03:00 e 18:30 UTC.
+        var semHora = new DateTime(2026, 9, 15, 3, 0, 0, DateTimeKind.Utc);
+        var comHora = new DateTime(2026, 9, 15, 18, 30, 0, DateTimeKind.Utc);
+
+        Assert.Empty(ComparadorMarcacao.Comparar(Foto(data: semHora), Foto(data: comHora)));
+    }
+
+    /// <summary>A regra é estreita: mover de hora para hora no mesmo dia continua sendo remarcação,
+    /// e é remarcação que o paciente precisa saber.</summary>
+    [Fact]
+    public void Troca_de_hora_no_mesmo_dia_continua_sendo_remarcacao()
+    {
+        var manha = new DateTime(2026, 9, 15, 11, 0, 0, DateTimeKind.Utc);   // 08:00 Brasília
+        var tarde = new DateTime(2026, 9, 15, 18, 30, 0, DateTimeKind.Utc);  // 15:30 Brasília
+
+        var alteracao = Assert.Single(
+            ComparadorMarcacao.Comparar(Foto(data: manha), Foto(data: tarde)));
+
+        Assert.Equal(TipoAlteracaoAgenda.DataHora, alteracao.Tipo);
+    }
+
+    /// <summary>Meia-noite que virou OUTRO dia é remarcação de verdade — a regra não pode engolir
+    /// mudança de data só porque o lado antigo não tinha hora.</summary>
+    [Fact]
+    public void Meia_noite_que_mudou_de_dia_e_remarcacao()
+    {
+        var dia15 = new DateTime(2026, 9, 15, 3, 0, 0, DateTimeKind.Utc);     // 15/09 00:00 Brasília
+        var dia17 = new DateTime(2026, 9, 17, 18, 30, 0, DateTimeKind.Utc);   // 17/09 15:30 Brasília
+
+        Assert.Single(ComparadorMarcacao.Comparar(Foto(data: dia15), Foto(data: dia17)));
+    }
+
+    /// <summary>
+    /// <b>O que a tela mostra é Brasília, não UTC.</b> Formatar o instante cru punha três horas a
+    /// mais na frente do operador: a linha dizia "Para 15/09 18:30" num agendamento das 15:30.
+    /// Errado o bastante para alguém repassar o horário errado ao paciente.
+    /// </summary>
+    [Fact]
+    public void Antes_e_depois_saem_no_fuso_de_brasilia()
+    {
+        var manha = new DateTime(2026, 9, 15, 11, 0, 0, DateTimeKind.Utc);   // 08:00 Brasília
+        var tarde = new DateTime(2026, 9, 15, 18, 30, 0, DateTimeKind.Utc);  // 15:30 Brasília
+
+        var alteracao = Assert.Single(
+            ComparadorMarcacao.Comparar(Foto(data: manha), Foto(data: tarde)));
+
+        Assert.Equal("15/09/2026 08:00", alteracao.Antes);
+        Assert.Equal("15/09/2026 15:30", alteracao.Depois);
     }
 
     /// <summary>Mudanças independentes são fatos independentes: remarcar E trocar o médico são

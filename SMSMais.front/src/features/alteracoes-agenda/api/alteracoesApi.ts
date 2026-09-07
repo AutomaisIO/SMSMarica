@@ -37,6 +37,12 @@ export async function tratarAlteracaoAgenda(id: string): Promise<void> {
   await http.post(`/alteracoes-agenda/${id}/tratar`);
 }
 
+/** Trata as selecionadas de uma vez. Devolve quantas foram efetivamente marcadas. */
+export async function tratarLoteAlteracoesAgenda(ids: string[]): Promise<number> {
+  const { data } = await http.post<{ tratadas: number }>('/alteracoes-agenda/tratar-lote', { ids });
+  return data.tratadas;
+}
+
 /**
  * Reenvia a confirmação ao paciente com os dados atuais e trata a alteração.
  * Revoga os links anteriores — quem tem a data velha na mão perde o acesso a ela.
