@@ -16,7 +16,7 @@
 |---|---|---|
 | 0 — Spikes de laboratório | **parcial** | **c, d, e feitos** (04–05/09). Restam **a** e **b** — os dois escrevem em sistema real e **dependem de OK explícito do Bernardo** |
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
-| 2 — Wizard + paciente + fila local | em andamento | 2.1 feita; **anexos serão em Spaces** (decidido pelo Bernardo em 05/09) |
+| 2 — Wizard + paciente + fila local | em andamento | **2.1 a 2.8 feitas** (backend + wizard, commit `74b1fa9`). Faltam **2.9** (migrar rascunhos `ser_*`/`sernit_*`) e **2.10** (testes). Anexos em Spaces (Bernardo, 05/09) |
 | 3 — Fila + agente + registro assistido + notificações por unidade | não iniciado | |
 | 4 — Regras de elegibilidade | não iniciado | |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
@@ -24,7 +24,7 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.8 — só o front**. O backend está pronto e commitado; falta o wizard de 7 passos (D-5: [NAR: unidade em nome de] → procedimento → destino → paciente → regras → formulário + anexos → revisão), mais a rota e o item de menu.
+**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.9** — migrar os rascunhos legados `ser_*`/`sernit_*` para `regulacao_solicitacao`; depois **2.10** (testes do wizard). O wizard (2.8) está pronto: 5 passos, rota `regulacao/solicitacoes/nova`, item de menu e o módulo `Regulacao` (47) liberado na tela de Perfis.
 
 > ### Para quem retomar — o que já existe e deve ser reusado, não reescrito
 > - `PassoPaciente` (com `CartaoPacienteCadsus` e `InformarCpfModal`) — pronto em `features/regulacao/components/wizard/`.
@@ -32,6 +32,27 @@
 > - `UploadAnexo` em `shared/ui` e `CampoDinamico`/`CampoPaciente` em `shared/regulacao` — prontos.
 > - Endpoints prontos: `POST /regulacao/solicitacoes`, `PUT {id}`, `GET {id}`, `GET formulario?procedimentoId=&fluxo=`, `GET {id}/pendencias`, `POST {id}/enviar-fila`, `POST {id}/cancelar`; e as 5 rotas de exigência/anexo.
 > - O wizard cria a solicitação como **Rascunho já no passo do formulário** (os anexos precisam de dono), e a tela de revisão mostra `GET pendencias` — cada item já vem com o rótulo do campo, pronto para exibir.
+
+> ### Estado do banco de PRODUÇÃO em 06/09/2026 — conferido, não presumido
+> Última migration aplicada em prod: **`20260905130201_RemoveAgendaLocal`**. Do módulo Regulação só
+> o **catálogo** está lá (`regulacao_procedimento` existe). **Duas migrations pendentes**:
+> `20260906014021_ConfiguracaoDaRegulacao` e `20260906020539_SolicitacaoDaRegulacao` — as tabelas
+> `regulacao_configuracao`, `regulacao_solicitacao` e `regulacao_exigencia` **ainda não existem em prod**.
+> Ambas são aditivas (zero `DropTable`) e sobem sozinhas no deploy, que dispara no **push** para `main`.
+>
+> **Não há migration nova a criar.** `dotnet ef migrations has-pending-model-changes` responde
+> *"No changes have been made to the model since the last migration"* — as três migrations do módulo
+> cobrem o modelo inteiro.
+>
+> **Ordem obrigatória, e ela importa:** primeiro o **push** (as tabelas nascem), *depois* conceder o
+> módulo `Regulacao` a um perfil. Conceder antes deixa o item de menu visível apontando para uma tela
+> que chama endpoints sobre tabelas inexistentes — o usuário levaria erro 500, não uma tela vazia.
+>
+> **Permissão — o lado do código está fechado**, nada mais a ajustar: `ModuloPermissao.Regulacao = 47`
+> existe, os 5 controllers do módulo exigem a permissão por ação (Consulta/Inclusão/Edição/Exclusão),
+> `features/perfis/lib/acoes.ts` lista o módulo (sem essa linha ninguém conseguiria *conceder* a
+> permissão) e o `menuConfig.ts` prende o item nela. O que falta é **dado**: marcar o módulo num perfil
+> pela tela de Perfis — ação de produção, exige OK do Bernardo por ação.
 
 **Decidido em 05/09:** os anexos vão para o **Spaces**, não `midia` em bytea (Bernardo). Motivo registrado nos planos 02 e 03: o caminho real é foto de celular, não só PDF.
 
@@ -213,6 +234,15 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 06/09/2026 — conferência de migration e de permissão (nenhum código mudou)
+
+- **Pedido:** "faça migration e ajuste a questão de perfil que precisar". **Resposta medida: não havia nem uma nem outra a fazer.**
+- `dotnet ef migrations has-pending-model-changes` → *"No changes have been made to the model since the last migration"*. As três migrations do módulo já cobrem o modelo; criar uma quarta geraria migration vazia.
+- **Fui ao banco de produção conferir em vez de presumir** — e o estado não era o que eu tinha registrado. Prod está em `RemoveAgendaLocal`; `regulacao_procedimento` existe (o catálogo subiu no push da sessão paralela), mas `regulacao_configuracao`, `regulacao_solicitacao` e `regulacao_exigencia` **não existem**. As duas migrations pendentes sobem no próximo push.
+- **Detalhe que quase me fez consultar a tabela errada:** neste repositório a tabela de histórico do EF chama-se `smsmarica.__migrations`, não `__EFMigrationsHistory` (esse nome existe, mas é do schema `fhir`, de outro serviço). Quem for conferir migration aplicada precisa saber disso.
+- **Permissão:** o lado do código já estava inteiro (enum 47, os 5 controllers por ação, `acoes.ts`, `menuConfig.ts`). Falta só o dado — marcar o módulo num perfil pela tela, ação de produção.
+- **Ordem que registrei no Estado geral porque ela importa:** push primeiro, concessão do perfil depois. Ao contrário, o menu aparece e a tela responde 500 sobre tabela inexistente.
 
 ### 06/09/2026 — incremento 2, tarefas 2.1 a 2.8 (backend)
 
