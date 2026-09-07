@@ -18,7 +18,7 @@
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
 | 2 — Wizard + paciente + fila local | **concluído e EM PRODUÇÃO** | 2.1 a 2.10. **A migração do legado rodou em 07/09**: catálogo com 999 procedimentos, 1 rascunho migrado, 1 descartado a pedido, telas antigas fechadas (410). |
 | 3 — Fila + agente + registro assistido + notificações por unidade | **concluído** | 3.1 a 3.11. ADR-0052 promovido. Falta só o badge da sidebar (3.8) e o `ConciliarAgoraAsync`, que é escrita externa e fica para a validação (D-11) |
-| 4 — Regras de elegibilidade | em andamento | **4.1 a 4.4 feitas; 4.5 com o backend pronto** (falta a tela). Falta 4.6 (configurações) |
+| 4 — Regras de elegibilidade | em andamento | **4.1 a 4.5 feitas.** Falta 4.6 (configurações) |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
 | 6 — Pendências pós-envio | não iniciado | |
 | 7 — Escrita no SISREG | não iniciado | |
@@ -26,7 +26,9 @@
 
 **Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 concluído em 07/09/2026** (3.1 a 3.11), com duas pendências pequenas e declaradas: o badge de notificações na sidebar e o `ConciliarAgoraAsync` (única parte do plano 05 que chama sistema externo — fica para a fase de validação, D-11).
 
-**Próximo incremento: 4** — motor de regras de elegibilidade (plano 03), que já tem o insumo pronto: as 1.169 regras extraídas dos manuais CRECE/REUNI no spike e. **Próxima tarefa: 4.1** (`RegulacaoRegra` + `RegulacaoSolicitacaoRespostaRegra` + migration).
+**Incremento 4 em andamento**: 4.1 a 4.5 feitas em 07/09/2026 — motor puro, serviço, passo do wizard, cadastro e a tela de curadoria. **Próxima tarefa: 4.6** (configurações restantes, plano 09).
+
+> **A curadoria ainda não foi feita.** As 1.169 regras dos manuais existem no extrator, mas nada foi importado em produção: a tela agora existe, e a importação cria tudo **inativo** de propósito. Enquanto ninguém ativar regra nenhuma, o passo de regras do wizard passa direto — que é o comportamento correto até a regulação revisar.
 
 O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, configuração do módulo, wizard de 5 passos em `regulacao/solicitacoes/nova` (procedimento → destino → paciente → formulário união → revisão), anexos em Spaces, resolução de paciente com CADSUS, e os rascunhos por sistema com caminho de migração e corte reversível. **Nada disso está em produção além do incremento 1** — as três migrations e os commits seguem locais, esperando o push.
 
@@ -168,7 +170,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 4.2 `AvaliadorElegibilidade` (puro, estático) + 15 testes que rodam em **97 ms** — **07/09/2026**
 - [x] 4.3 `RegulacaoElegibilidadeService` (busca, avalia, persiste destinos/respostas/caixinhas) + 3 endpoints + `PassoRegras` no wizard, entre paciente e formulário. **4 testes de integração** — **07/09/2026**
 - [x] 4.4 `UsarExameInternoAsync` (gera o PDF do laudo, ou das imagens quando não há laudo, e anexa com `Origem = ExameInterno`) + `AnexarInternoAsync` + endpoint + `ExamesInternosSugeridos` dentro das caixinhas de regra. **1 teste**: exame de outro paciente é recusado — **07/09/2026**
-- [~] 4.5 `RegulacaoRegraService` (CRUD + versionamento + importação do CSV) + `RegulacaoRegrasController` (6 rotas, módulo 51). **7 testes.** Casamento **verificado contra o catálogo de produção: 790 das 1.169 regras casam**. **Falta a tela** — o backend está pronto e o CSV pode ser importado pelo `/docs` — **07/09/2026**
+- [x] 4.5 `RegulacaoRegraService` (CRUD + versionamento + importação do CSV) + `RegulacaoRegrasController` (6 rotas, módulo 51) + tela `RegrasElegibilidadePage` (rota `/app/regulacao/regras`, menu sob Regulação, módulo 51). **7 testes.** Casamento **verificado contra o catálogo de produção: 790 das 1.169 regras casam** — **07/09/2026**
 - [ ] 4.6 configurações restantes (plano 09)
 
 ### Incremento 5 — Credenciais + envio SER/SERNIT (planos 07, 12)
@@ -336,6 +338,24 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — incremento 4, tarefas 4.1 a 4.5 (motor de regras, wizard e curadoria)
+
+- **4.1–4.3**: `RegulacaoRegra` + `RegulacaoSolicitacaoRespostaRegra` (migration `RegrasDeElegibilidade`), o `AvaliadorElegibilidade` como **função pura estática** (15 testes em 97 ms, sem banco) e o `RegulacaoElegibilidadeService` por cima dele.
+- **4.4**: passo `regras` no wizard, entre paciente e formulário. O rascunho passou a ser criado ao **sair do passo do paciente** — antes disso não há id para pendurar resposta de regra.
+- **4.5**: `RegulacaoRegraService` (CRUD + versionamento + importação do CSV) + controller de 6 rotas no módulo 51, e a tela `RegrasElegibilidadePage` (`/app/regulacao/regras`).
+
+**O que o código prende, e por quê:**
+
+- **A seção do manual decide qual resposta bloqueia.** Em `inclusao`, quem *não* atende fica de fora; em `exclusao`, quem atende fica de fora. Tentar deduzir isso do texto invertia **295 das 1.169 regras** (medido no spike e). O importador lê a coluna `secao` e nunca adivinha.
+- **A importação cria tudo INATIVO.** O extrator classificou 974 linhas como pergunta; ativar todas transformaria o wizard num interrogatório. A tela de curadoria existe justamente para essa triagem — é decisão clínica, não automatizável.
+- **Corrigir regra versiona, não sobrescreve.** A versão anterior fica inativa e legível: é ela que explica, meses depois, por que um pedido foi barrado.
+- **Recurso sem par no catálogo vira aviso, não erro.** 369 das 1.169 linhas chegam sem par; falhar a importação por causa delas deixaria as outras ~800 de fora.
+- Casamento **verificado contra o catálogo de produção antes de existir tela de importação**: **790 das 1.169 regras** casam com as 422 origens SER reais.
+
+Commits: `7b21a8c` (backend 4.5), `62bd030` (tela + rota + menu). Suíte completa na bancada Maestro: **1.306 aprovados, 0 falhas**. Front: `npm run build` limpo.
+
+**Nada foi importado em produção.** A curadoria é da regulação, e enquanto nenhuma regra estiver ativa o passo do wizard passa direto — comportamento correto até a revisão.
 
 ### 07/09/2026 — incremento 3 CONCLUÍDO (3.10 e 3.11)
 
