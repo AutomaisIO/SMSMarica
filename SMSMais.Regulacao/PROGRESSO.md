@@ -18,7 +18,7 @@
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
 | 2 — Wizard + paciente + fila local | **concluído e EM PRODUÇÃO** | 2.1 a 2.10. **A migração do legado rodou em 07/09**: catálogo com 999 procedimentos, 1 rascunho migrado, 1 descartado a pedido, telas antigas fechadas (410). |
 | 3 — Fila + agente + registro assistido + notificações por unidade | **concluído** | 3.1 a 3.11. ADR-0052 promovido. Falta só o badge da sidebar (3.8) e o `ConciliarAgoraAsync`, que é escrita externa e fica para a validação (D-11) |
-| 4 — Regras de elegibilidade | em andamento | **4.1 a 4.4 feitas**. Faltam 4.5 (tela de cadastro + importação do CSV) e 4.6 (configurações) |
+| 4 — Regras de elegibilidade | em andamento | **4.1 a 4.4 feitas; 4.5 com o backend pronto** (falta a tela). Falta 4.6 (configurações) |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
 | 6 — Pendências pós-envio | não iniciado | |
 | 7 — Escrita no SISREG | não iniciado | |
@@ -168,7 +168,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 4.2 `AvaliadorElegibilidade` (puro, estático) + 15 testes que rodam em **97 ms** — **07/09/2026**
 - [x] 4.3 `RegulacaoElegibilidadeService` (busca, avalia, persiste destinos/respostas/caixinhas) + 3 endpoints + `PassoRegras` no wizard, entre paciente e formulário. **4 testes de integração** — **07/09/2026**
 - [x] 4.4 `UsarExameInternoAsync` (gera o PDF do laudo, ou das imagens quando não há laudo, e anexa com `Origem = ExameInterno`) + `AnexarInternoAsync` + endpoint + `ExamesInternosSugeridos` dentro das caixinhas de regra. **1 teste**: exame de outro paciente é recusado — **07/09/2026**
-- [ ] 4.5 tela de cadastro de regras (51) + importação do CSV do spike e
+- [~] 4.5 `RegulacaoRegraService` (CRUD + versionamento + importação do CSV) + `RegulacaoRegrasController` (6 rotas, módulo 51). **7 testes.** Casamento **verificado contra o catálogo de produção: 790 das 1.169 regras casam**. **Falta a tela** — o backend está pronto e o CSV pode ser importado pelo `/docs` — **07/09/2026**
 - [ ] 4.6 configurações restantes (plano 09)
 
 ### Incremento 5 — Credenciais + envio SER/SERNIT (planos 07, 12)
@@ -247,6 +247,9 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 03 §D | **O CSV do spike tem 15 colunas, não 10** — o desvio de 05/09 já avisava. O importador usa `recurso_catalogo` (o rótulo já pareado) em vez de `recurso`, e `ramo_ser` para separar AE de rede geral: sem o ramo, o mesmo rótulo casaria com os dois ramos do SER, que têm formulários e regras diferentes. |
+| 07/09/2026 | 03 §D | **A importação NÃO converte nada para `Informativa`.** O extrator classificou 974 linhas como pergunta; converter por heurística seria decidir clinicamente por adivinhação. Tudo entra **inativo** e a curadoria decide o que vira pergunta, o que vira texto e o que não entra — que é exatamente o que "cria inativas" do plano quer dizer. |
+| 07/09/2026 | 03 §D | **Verificado contra o catálogo de produção antes de existir tela: 790 das 1.169 regras casam** (369 já vinham `SEM_PAR` do próprio spike). A chave de normalização — sem acento, sem pontuação, espaço colapsado, com o ramo — foi conferida com dado real, não presumida. |
 | 07/09/2026 | 03 §C | **`AnexarInternoAsync` nasceu separado do `AnexarAsync`.** O PDF gerado por nós não passa pelas regras de upload: o limite de MB e a lista de tipos existem para o que o operador manda do celular, não para um laudo que o próprio sistema produziu e assinou. Reusar o caminho do upload faria um laudo grande ser recusado pela própria casa. |
 | 07/09/2026 | 03 §C | **Sem laudo, vai o PDF das imagens.** O plano só previa `ObterLaudoPdfAsync`. Exame realizado e não laudado é comum, e o PDF das imagens já comprova que o exame foi feito — mais do que anexo nenhum. |
 | 07/09/2026 | 03 §F | **A sugestão de exame interno só aparece nas caixinhas de regra**, não em "Anexos gerais": ali não há documento específico sendo pedido, e sugerir qualquer exame seria ruído. |
