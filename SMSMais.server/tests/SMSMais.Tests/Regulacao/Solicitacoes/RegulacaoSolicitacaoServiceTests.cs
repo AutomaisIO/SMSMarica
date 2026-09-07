@@ -6,6 +6,9 @@ using Microsoft.Extensions.Caching.Memory;
 using NSubstitute;
 
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Identidade;
+using SMSMais.Core.Identidade.Dtos;
+using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Core.Regulacao.Anexos;
@@ -76,8 +79,16 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         // que estes testes prendem, não uma dependência a isolar.
         var eventos = new RegulacaoEventoService(db, acessor);
 
+        // Escopo com o serviço de identidade dublado SEM o módulo 48: estes testes exercitam a
+        // ponta (unidade solicitante). O lado do agente tem arquivo próprio.
+        var identidade = Substitute.For<IIdentidadeService>();
+        identidade.ObterPermissoesResolvidasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new PermissoesResolvidasDto(Herdadas: [], Overrides: [], Resolvidas: []));
+        var escopo = new RegulacaoEscopo(db, acessor, identidade);
+
         return (
-            new RegulacaoSolicitacaoService(db, acessor, form, exigencias, config, catalogo, eventos, pacientes),
+            new RegulacaoSolicitacaoService(
+                db, acessor, form, exigencias, config, catalogo, eventos, escopo, pacientes),
             pacientes, form, catalogo);
     }
 

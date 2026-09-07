@@ -8,6 +8,7 @@ using SMSMais.Core.Identidade;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Catalogo;
+using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Data;
@@ -53,8 +54,55 @@ public sealed record RegulacaoSolicitacaoDetalheDto(
 /// <summary>Por que a solicitação ainda não pode ir para a fila.</summary>
 public sealed record PendenciaEnvioDto(string Codigo, string Descricao);
 
+/// <param name="SoMinhas">
+/// Só as que este usuário abriu. Vale para o agente, que enxerga tudo e às vezes quer ver o
+/// próprio trabalho.
+/// </param>
+public sealed record RegulacaoSolicitacaoFiltro(
+    StatusRegulacao[]? Status = null,
+    FluxoRegulacao? Fluxo = null,
+    SistemaRegulacao? Sistema = null,
+    Guid? ProcedimentoId = null,
+    Guid? UnidadeSolicitanteId = null,
+    Guid? AgenteId = null,
+    string? Busca = null,
+    bool SoMinhas = false,
+    int Pagina = 1,
+    int Tamanho = 25);
+
+public sealed record RegulacaoSolicitacaoListaDto(
+    Guid Id,
+    long NumeroLocal,
+    string? NumeroExterno,
+    SistemaRegulacao? SistemaDestino,
+    FluxoRegulacao Fluxo,
+    StatusRegulacao Status,
+    string PacienteNome,
+    string? PacienteCpf,
+    string Procedimento,
+    Guid UnidadeSolicitanteId,
+    string UnidadeSolicitante,
+    string? UnidadeEmNomeDe,
+    string? AgenteNome,
+    DateTime CriadoEm,
+    DateTime? AtualizadoEm);
+
+public sealed record PaginaSolicitacoesRegulacaoDto(
+    int Total, IReadOnlyList<RegulacaoSolicitacaoListaDto> Itens);
+
+/// <param name="PorStatus">Contagem por status — alimenta as abas da fila e o badge da sidebar.</param>
+/// <param name="VeTodasUnidades">Se este usuário está enxergando o município inteiro (módulo 48).</param>
+public sealed record RegulacaoResumoFilaDto(
+    IReadOnlyDictionary<StatusRegulacao, int> PorStatus, bool VeTodasUnidades);
+
 public interface IRegulacaoSolicitacaoService
 {
+    Task<PaginaSolicitacoesRegulacaoDto> ListarAsync(
+        RegulacaoSolicitacaoFiltro filtro, CancellationToken ct);
+
+    /// <summary>Contagem por status, no escopo do usuário.</summary>
+    Task<RegulacaoResumoFilaDto> ResumoAsync(CancellationToken ct);
+
     Task<RegulacaoSolicitacaoDetalheDto> CriarAsync(
         CriarRegulacaoSolicitacaoRequest req, CancellationToken ct);
 
@@ -93,9 +141,93 @@ public sealed class RegulacaoSolicitacaoService(
     IRegulacaoConfiguracaoService configuracao,
     IRegulacaoProcedimentoBuscaService catalogo,
     IRegulacaoEventoService eventos,
+    IRegulacaoEscopo escopoRegulacao,
     IPacientesService pacientes) : IRegulacaoSolicitacaoService
 {
     private static readonly JsonElement ObjetoVazio = JsonDocument.Parse("{}").RootElement.Clone();
+
+    public async Task<PaginaSolicitacoesRegulacaoDto> ListarAsync(
+        RegulacaoSolicitacaoFiltro filtro, CancellationToken ct)
+    {
+        var consulta = await ConsultaNoEscopoAsync(ct);
+        if (consulta is null) return new PaginaSolicitacoesRegulacaoDto(0, []);
+
+        if (filtro.Status is { Length: > 0 } status) consulta = consulta.Where(s => status.Contains(s.Status));
+        if (filtro.Fluxo is { } fluxo) consulta = consulta.Where(s => s.Fluxo == fluxo);
+        if (filtro.Sistema is { } sistema) consulta = consulta.Where(s => s.SistemaDestino == sistema);
+        if (filtro.ProcedimentoId is { } proc) consulta = consulta.Where(s => s.ProcedimentoId == proc);
+        if (filtro.UnidadeSolicitanteId is { } unid) consulta = consulta.Where(s => s.UnidadeSolicitanteId == unid);
+        if (filtro.AgenteId is { } agente) consulta = consulta.Where(s => s.AgenteResponsavelId == agente);
+        if (filtro.SoMinhas && usuarioAtual.UsuarioId is { } eu)
+        {
+            consulta = consulta.Where(s => s.CriadoPorUsuarioId == eu);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filtro.Busca))
+        {
+            var termo = filtro.Busca.Trim();
+            var digitos = new string([.. termo.Where(char.IsDigit)]);
+
+            // Três formas de procurar a mesma solicitação, porque é assim que se procura no
+            // balcão: pelo nome de quem está na frente, pelo documento, ou pelo número que a
+            // pessoa traz num papel — que tanto pode ser o nosso quanto o do sistema de lá.
+            consulta = digitos.Length >= 3
+                ? consulta.Where(s =>
+                    EF.Functions.ILike(s.PacienteNome, $"%{termo}%")
+                    || (s.PacienteCpf != null && s.PacienteCpf.Contains(digitos))
+                    || (s.NumeroExterno != null && s.NumeroExterno.Contains(digitos))
+                    || s.NumeroLocal.ToString().Contains(digitos))
+                : consulta.Where(s => EF.Functions.ILike(s.PacienteNome, $"%{termo}%"));
+        }
+
+        var total = await consulta.CountAsync(ct);
+
+        var pagina = Math.Max(1, filtro.Pagina);
+        var tamanho = Math.Clamp(filtro.Tamanho, 1, 200);
+
+        var itens = await consulta
+            // Quem espera há mais tempo aparece primeiro na fila; dentro do mesmo instante, o
+            // número local desempata para a ordenação ser estável entre páginas.
+            .OrderBy(s => s.CriadoEm).ThenBy(s => s.NumeroLocal)
+            .Skip((pagina - 1) * tamanho).Take(tamanho)
+            .Select(s => new RegulacaoSolicitacaoListaDto(
+                s.Id, s.NumeroLocal, s.NumeroExterno, s.SistemaDestino, s.Fluxo, s.Status,
+                s.PacienteNome, s.PacienteCpf,
+                s.Procedimento != null ? s.Procedimento.NomeCanonico : "(procedimento removido)",
+                s.UnidadeSolicitanteId,
+                s.UnidadeSolicitante != null ? s.UnidadeSolicitante.Nome : "(unidade removida)",
+                s.UnidadeEmNomeDe != null ? s.UnidadeEmNomeDe.Nome : null,
+                null,
+                s.CriadoEm, s.AtualizadoEm))
+            .ToListAsync(ct);
+
+        // O nome do agente sai de uma segunda consulta, e não de um join por linha: são poucos
+        // agentes e muitas solicitações.
+        var agentes = await CarregarNomesDeAgentesAsync(consulta, pagina, tamanho, ct);
+        var comAgente = itens
+            .Select(i => agentes.TryGetValue(i.Id, out var nome) ? i with { AgenteNome = nome } : i)
+            .ToList();
+
+        return new PaginaSolicitacoesRegulacaoDto(total, comAgente);
+    }
+
+    public async Task<RegulacaoResumoFilaDto> ResumoAsync(CancellationToken ct)
+    {
+        var veTudo = await escopoRegulacao.EhAgenteAsync(ct);
+        var consulta = await ConsultaNoEscopoAsync(ct);
+        if (consulta is null)
+        {
+            return new RegulacaoResumoFilaDto(new Dictionary<StatusRegulacao, int>(), veTudo);
+        }
+
+        var contagens = await consulta
+            .GroupBy(s => s.Status)
+            .Select(g => new { Status = g.Key, Total = g.Count() })
+            .ToListAsync(ct);
+
+        return new RegulacaoResumoFilaDto(
+            contagens.ToDictionary(c => c.Status, c => c.Total), veTudo);
+    }
 
     public async Task<RegulacaoSolicitacaoDetalheDto> CriarAsync(
         CriarRegulacaoSolicitacaoRequest req, CancellationToken ct)
@@ -334,6 +466,50 @@ public sealed class RegulacaoSolicitacaoService(
     // ---------------------------------------------------------------- apoio
 
     /// <summary>
+    /// A consulta base já filtrada pelo escopo. <c>null</c> significa <b>sem acesso a unidade
+    /// nenhuma</b> — e quem chama devolve conjunto vazio, em vez de deixar um `Contains` sobre
+    /// array vazio decidir isso por acidente (ADR-0037, fail-closed).
+    /// </summary>
+    private async Task<IQueryable<RegulacaoSolicitacao>?> ConsultaNoEscopoAsync(CancellationToken ct)
+    {
+        var escopo = await escopoRegulacao.ResolverAsync(ct);
+        if (escopo.SemAcesso) return null;
+
+        var consulta = db.RegulacaoSolicitacoes.AsNoTracking()
+            .Include(s => s.Procedimento)
+            .Include(s => s.UnidadeSolicitante)
+            .Include(s => s.UnidadeEmNomeDe)
+            .Where(s => s.ExcluidoEm == null);
+
+        if (escopo.VeTudo) return consulta;
+
+        var unidades = escopo.Unidades;
+        return consulta.Where(s => unidades.Contains(s.UnidadeSolicitanteId));
+    }
+
+    private async Task<Dictionary<Guid, string>> CarregarNomesDeAgentesAsync(
+        IQueryable<RegulacaoSolicitacao> consulta, int pagina, int tamanho, CancellationToken ct)
+    {
+        var pares = await consulta
+            .OrderBy(s => s.CriadoEm).ThenBy(s => s.NumeroLocal)
+            .Skip((pagina - 1) * tamanho).Take(tamanho)
+            .Where(s => s.AgenteResponsavelId != null)
+            .Select(s => new { s.Id, AgenteId = s.AgenteResponsavelId!.Value })
+            .ToListAsync(ct);
+        if (pares.Count == 0) return [];
+
+        var ids = pares.Select(p => p.AgenteId).Distinct().ToArray();
+        var nomes = await db.Usuarios.AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .Select(u => new { u.Id, u.NomeCompleto })
+            .ToDictionaryAsync(u => u.Id, u => u.NomeCompleto, ct);
+
+        return pares
+            .Where(p => nomes.ContainsKey(p.AgenteId))
+            .ToDictionary(p => p.Id, p => nomes[p.AgenteId]);
+    }
+
+    /// <summary>
     /// Muda o estado passando pela máquina (plano 04): valida se a transição existe para aquele
     /// ator, grava o evento correspondente e carimba a alteração.
     ///
@@ -401,7 +577,7 @@ public sealed class RegulacaoSolicitacaoService(
     private async Task<RegulacaoSolicitacao> CarregarNoEscopoAsync(
         Guid id, CancellationToken ct, bool rastrear = false)
     {
-        var escopo = await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
+        var escopo = await escopoRegulacao.ResolverAsync(ct);
 
         var consulta = rastrear
             ? db.RegulacaoSolicitacoes.AsQueryable()

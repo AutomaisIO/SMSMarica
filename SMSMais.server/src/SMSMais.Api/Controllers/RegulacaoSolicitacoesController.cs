@@ -20,6 +20,34 @@ public sealed class RegulacaoSolicitacoesController(
     IRegulacaoSolicitacaoService servico,
     IRegulacaoFormularioService formularios) : ControllerBase
 {
+    /// <summary>
+    /// A fila. Quem tem só o módulo 47 vê as solicitações das suas unidades; quem tem o 48 (agente
+    /// regulador) vê o município inteiro — a ampliação é do serviço, não deste atributo.
+    /// </summary>
+    [HttpGet]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PaginaSolicitacoesRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<PaginaSolicitacoesRegulacaoDto> Listar(
+        [FromQuery] RegulacaoSolicitacaoFiltro filtro, CancellationToken cancellationToken) =>
+        servico.ListarAsync(filtro, cancellationToken);
+
+    /// <summary>Contagem por status — as abas da fila e o badge da sidebar saem daqui.</summary>
+    [HttpGet("resumo")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<RegulacaoResumoFilaDto>(StatusCodes.Status200OK)]
+    public Task<RegulacaoResumoFilaDto> Resumo(CancellationToken cancellationToken) =>
+        servico.ResumoAsync(cancellationToken);
+
+    /// <summary>
+    /// A história do caso: quem fez o quê, de qual estado para qual, com o que mudou. Passa pelo
+    /// mesmo escopo do detalhe — a linha do tempo é dado de paciente.
+    /// </summary>
+    [HttpGet("{id:guid}/eventos")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<RegulacaoEventoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<RegulacaoEventoDto>> Eventos(Guid id, CancellationToken cancellationToken) =>
+        servico.EventosAsync(id, cancellationToken);
+
     [HttpPost]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Inclusao)]
     [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]

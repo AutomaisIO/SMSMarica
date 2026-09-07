@@ -24,7 +24,7 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 em andamento: 3.1 feita, 3.2 parcial** (falta só o menu e as rotas das filas, que dependem das páginas). **Próxima tarefa: 3.3** — `RegulacaoSolicitacoesController` com o mapa endpoint × módulo do plano 04, `RegulacaoEscopo` (EscopoUnidade + ampliação por 48).
+**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 em andamento: 3.1 feita; 3.2 e 3.3 parciais** — o que falta nas duas depende das telas. **Próxima tarefa: 3.4** — `MinhaFilaPage` e `FilaRegulacaoPage`, e com elas o menu (subitens) e as rotas que ficaram pendentes na 3.2/3.3.
 
 O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, configuração do módulo, wizard de 5 passos em `regulacao/solicitacoes/nova` (procedimento → destino → paciente → formulário união → revisão), anexos em Spaces, resolução de paciente com CADSUS, e os rascunhos por sistema com caminho de migração e corte reversível. **Nada disso está em produção além do incremento 1** — as três migrations e os commits seguem locais, esperando o push.
 
@@ -150,7 +150,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 ### Incremento 3 — Fila + agente (planos 04, 05)
 - [x] 3.1 `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + 3 enums + configurações + DbSets + `MaquinaDeEstadosRegulacao` (pura) + `IRegulacaoEventoService` (evento + diff) + migration `20260907…_FilaPreRegulacao` (com os 2 CHECKs e os 3 uniques parciais de espelho). Criar/editar/enviar-fila/cancelar passam pela máquina e gravam trilha. **12 testes novos** — **06/09/2026**
 - [~] 3.2 permissões — **feito**: XML do enum 47/48/51 reescrito (o bloco citava um "ADR-0024" que é de outro assunto), rótulo do 48 em `acoes.ts`, `<RotaComModulo>` criado e aplicado na rota do wizard, skill `sincronizar-permissoes` corrigida (caminhos `SMSMais.*`, `Sidebar.tsx` → `menuConfig.ts`, gate de build, e o passo 8 do `RotaComModulo`). **Falta**: os subitens do menu (Minha fila / Fila da regulação) e as rotas delas — dependem das páginas da 3.4, e entram junto com ela — **07/09/2026**
-- [ ] 3.3 controller `RegulacaoSolicitacoesController` com o mapa endpoint × módulo do plano 04
+- [~] 3.3 `RegulacaoEscopo` (EscopoUnidade + ampliação por 48) + `ListarAsync`/`ResumoAsync` + `GET /regulacao/solicitacoes`, `…/resumo`, `…/{id}/eventos`. **6 testes de escopo**. **Falta**: as rotas das ações do agente (assumir/devolver/recusar/registrar-envio/ok-interno), que são 3.5 e 3.6 — o mapa do plano lista todas na mesma tabela, mas os métodos ainda não existem — **07/09/2026**
 - [ ] 3.4 fila da unidade (escopo via `EscopoUnidade`) e fila global do agente (filtros)
 - [ ] 3.5 detalhe com timeline; assumir / ajustar (diff) / devolver / recusar
 - [ ] 3.5b trocar procedimento (D-10) — regera formulário, preserva respostas compatíveis, reavalia elegibilidade
@@ -240,6 +240,9 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 04 §D | **`PaginaDto<T>` genérico não existe no repositório.** O padrão daqui é um record por assunto (`PaginaAgendaDto`, `PaginaAlteracoesAgendaDto`, `RaiaPainel<T>`). Criei `PaginaSolicitacoesRegulacaoDto(Total, Itens)` em vez de introduzir um genérico novo só para este módulo. |
+| 07/09/2026 | 04 §D | **`RegulacaoResumoFilaDto` perdeu `PendenciasAbertas` e ganhou `VeTodasUnidades`.** A contagem de pendências depende de `RegulacaoPendencia`, que é do incremento 6 — devolver zero fixo seria pior do que não devolver. E a tela precisa saber se está vendo o município ou só a unidade, para rotular a fila corretamente. |
+| 07/09/2026 | 04 §D | **O nome do agente na listagem sai de uma segunda consulta**, não de um `Include`: são poucos agentes e muitas solicitações, e o join por linha traria o usuário inteiro repetido. |
 | 07/09/2026 | 04 §3.2 | **A 3.2 ficou pela metade de propósito.** Menu e rotas dela apontam para `MinhaFilaPage` e `FilaRegulacaoPage`, que são da **3.4** — escrever a rota antes da página não compila, e pôr o item no menu antes da rota leva o usuário a um 404. Foi feito tudo o que não depende das páginas; o resto entra junto da 3.4. |
 | 07/09/2026 | 04 §3.2 | **A página `regulacao/configuracao` NÃO foi gateada, e isso é deliberado.** Ela mistura abas de módulos diferentes (SER, SERNIT, Solicitações, catálogo): gatear a rota por `RegulacaoConfiguracao` tiraria o acesso de quem tem só `RegulacaoSer` e hoje usa a aba do SER. O gate certo ali é por aba, não por rota — fica como pendência anotada, não como mudança silenciosa que quebraria um usuário real. |
 | 07/09/2026 | 04 §3.2 | **Os módulos 49 e 50 continuam visíveis na tela de Perfis com rótulo funcional** ("médico regulador", "agendamento"), embora não exista nada por trás. Marcá-los como reservados evitaria concessão inútil — não fiz porque está fora da tarefa; o XML do enum já os declara reservados. |
@@ -299,6 +302,14 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — incremento 3, tarefa 3.3 (fila e escopo do agente)
+
+- `IRegulacaoEscopo` + `ListarAsync` (filtros, busca, paginação) + `ResumoAsync` + 3 rotas de leitura. **40/40** nos testes do assunto, 6 novos só de escopo.
+- **Por que uma camada em cima do `EscopoUnidade`:** ele responde "quais unidades", e o agente regulador não é definido por unidade nenhuma — ele existe para ver a fila do município. Sem essa camada, ou o agente ficaria preso à unidade em que está lotado, ou o escopo teria de ser afrouxado para todo mundo. O `RegulacaoEscopo` resolve isso num ponto só, e o resto continua fail-closed.
+- **O teste do agente usa um usuário SEM vínculo nenhum**, de propósito: é assim na vida real (a regulação não é lotada nas UBS), e é o caso que separa "vê tudo porque tem o módulo 48" de "vê tudo porque não configuraram nada" — o segundo é o defeito que o ADR-0037 corrigiu.
+- **Detalhe de outra unidade responde 404, não 403.** Dizer "sem permissão" já confirma que aquele paciente tem solicitação naquela unidade.
+- **Deploy da 3.1/3.2 conferido em produção:** `FilaPreRegulacao` aplicada, `regulacao_evento` e `regulacao_solicitacao_destino` criadas, e os dois CHECKs (`ck_regulacao_solicitacao_nar`, `ck_..._um_espelho`) existem em `pg_constraint`.
 
 ### 07/09/2026 — incremento 3, tarefa 3.2 (permissões) — parcial, pelo motivo certo
 
