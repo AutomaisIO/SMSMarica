@@ -70,6 +70,8 @@ import { SerFilaPage } from '@/features/ser/pages/SerFilaPage';
 import { SerSolicitacaoDetalhePage } from '@/features/ser/pages/SerSolicitacaoDetalhePage';
 import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfiguracaoPage';
 import { NovaSolicitacaoPage } from '@/features/regulacao/pages/NovaSolicitacaoPage';
+import { MinhaFilaPage } from '@/features/regulacao/pages/MinhaFilaPage';
+import { FilaRegulacaoPage } from '@/features/regulacao/pages/FilaRegulacaoPage';
 import { SernitNotificacoesPage } from '@/features/sernit/pages/SernitNotificacoesPage';
 import { SernitNovaSolicitacaoPage } from '@/features/sernit/pages/SernitNovaSolicitacaoPage';
 import { SernitFilaPage } from '@/features/sernit/pages/SernitFilaPage';
@@ -203,7 +205,14 @@ export function AppRouter() {
               Gate por módulo: esconder o item do menu não impede quem digita a URL de cair numa
               tela que só dispara 403 — aqui a pessoa lê o motivo. */}
           <Route element={<RotaComModulo modulo="Regulacao" rotulo="Regulação — Solicitações" />}>
+            <Route path="regulacao/solicitacoes" element={<MinhaFilaPage />} />
             <Route path="regulacao/solicitacoes/nova" element={<NovaSolicitacaoPage />} />
+          </Route>
+          {/* A fila do município é do agente regulador (48) — gate próprio, mais estreito. */}
+          <Route
+            element={<RotaComModulo modulo="RegulacaoTriagem" rotulo="Regulação — Agente regulador" />}
+          >
+            <Route path="regulacao/solicitacoes/regulacao" element={<FilaRegulacaoPage />} />
           </Route>
           {/* SERNIT (SER de Niterói) — fila espelhada irmã do SER-RJ, sob /sernit para não colidir. */}
           <Route path="regulacao/sernit" element={<SernitFilaPage />} />

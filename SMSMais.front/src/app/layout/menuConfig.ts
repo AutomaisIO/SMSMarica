@@ -181,11 +181,38 @@ export const SECOES: SecaoMenu[] = [
       {
         // Módulo Solicitações (ADR-0052): a unidade abre aqui, e o pedido cai na
         // pré-regulação. Permissão 47 — quem só consulta SER/SERNIT não enxerga.
-        rotulo: 'Nova solicitação',
-        to: '/app/regulacao/solicitacoes/nova',
-        icone: FilePlus2,
+        // Fica em primeiro no grupo porque é o ponto de entrada; SER e SERNIT abaixo são as
+        // filas espelhadas dos sistemas de terceiro.
+        rotulo: 'Solicitações',
+        to: '/app/regulacao/solicitacoes',
+        icone: ClipboardList,
         modulo: 'Regulacao',
-        descricao: 'Abre uma solicitação: procedimento, destino, paciente, formulário e anexos.',
+        descricao:
+          'Abertura, fila de pré-regulação e acompanhamento das solicitações (SISREG, SER, SERNIT).',
+        subItens: [
+          {
+            rotulo: 'Minha fila',
+            to: '/app/regulacao/solicitacoes',
+            icone: ClipboardList,
+            modulo: 'Regulacao',
+            end: true,
+            descricao: 'O que as suas unidades abriram e em que pé está cada pedido.',
+          },
+          {
+            rotulo: 'Nova solicitação',
+            to: '/app/regulacao/solicitacoes/nova',
+            icone: FilePlus2,
+            modulo: 'Regulacao',
+            descricao: 'Abre uma solicitação: procedimento, destino, paciente, formulário e anexos.',
+          },
+          {
+            rotulo: 'Fila da regulação',
+            to: '/app/regulacao/solicitacoes/regulacao',
+            icone: ClipboardCheck,
+            modulo: 'RegulacaoTriagem',
+            descricao: 'Todas as unidades do município — a visão do agente regulador.',
+          },
+        ],
       },
       {
         // 2º nível: SER (Estado / SES-RJ). O clique expande os submenus (3º nível).

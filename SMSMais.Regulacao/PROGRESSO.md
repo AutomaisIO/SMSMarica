@@ -24,7 +24,7 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 em andamento: 3.1 feita; 3.2 e 3.3 parciais** — o que falta nas duas depende das telas. **Próxima tarefa: 3.4** — `MinhaFilaPage` e `FilaRegulacaoPage`, e com elas o menu (subitens) e as rotas que ficaram pendentes na 3.2/3.3.
+**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 em andamento: 3.1, 3.2 e 3.4 feitas; 3.3 parcial** (faltam as rotas das ações do agente, que são da 3.5/3.6). **Próxima tarefa: 3.5** — `SolicitacaoDetalhePage` com a linha do tempo, e as ações do agente no serviço (assumir com `RowVersion`, ajustar com diff, devolver, recusar).
 
 O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, configuração do módulo, wizard de 5 passos em `regulacao/solicitacoes/nova` (procedimento → destino → paciente → formulário união → revisão), anexos em Spaces, resolução de paciente com CADSUS, e os rascunhos por sistema com caminho de migração e corte reversível. **Nada disso está em produção além do incremento 1** — as três migrations e os commits seguem locais, esperando o push.
 
@@ -151,7 +151,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 3.1 `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + 3 enums + configurações + DbSets + `MaquinaDeEstadosRegulacao` (pura) + `IRegulacaoEventoService` (evento + diff) + migration `20260907…_FilaPreRegulacao` (com os 2 CHECKs e os 3 uniques parciais de espelho). Criar/editar/enviar-fila/cancelar passam pela máquina e gravam trilha. **12 testes novos** — **06/09/2026**
 - [~] 3.2 permissões — **feito**: XML do enum 47/48/51 reescrito (o bloco citava um "ADR-0024" que é de outro assunto), rótulo do 48 em `acoes.ts`, `<RotaComModulo>` criado e aplicado na rota do wizard, skill `sincronizar-permissoes` corrigida (caminhos `SMSMais.*`, `Sidebar.tsx` → `menuConfig.ts`, gate de build, e o passo 8 do `RotaComModulo`). **Falta**: os subitens do menu (Minha fila / Fila da regulação) e as rotas delas — dependem das páginas da 3.4, e entram junto com ela — **07/09/2026**
 - [~] 3.3 `RegulacaoEscopo` (EscopoUnidade + ampliação por 48) + `ListarAsync`/`ResumoAsync` + `GET /regulacao/solicitacoes`, `…/resumo`, `…/{id}/eventos`. **6 testes de escopo**. **Falta**: as rotas das ações do agente (assumir/devolver/recusar/registrar-envio/ok-interno), que são 3.5 e 3.6 — o mapa do plano lista todas na mesma tabela, mas os métodos ainda não existem — **07/09/2026**
-- [ ] 3.4 fila da unidade (escopo via `EscopoUnidade`) e fila global do agente (filtros)
+- [x] 3.4 `MinhaFilaPage` + `FilaRegulacaoPage` + `TabelaSolicitacoes`, `AbasFilaRegulacao`, `StatusRegulacaoBadge` + tipos/API/hooks da fila; menu com os 3 subitens e as rotas (a do agente gateada por 48). `tsc -b` e `vite build` verdes — **07/09/2026**
 - [ ] 3.5 detalhe com timeline; assumir / ajustar (diff) / devolver / recusar
 - [ ] 3.5b trocar procedimento (D-10) — regera formulário, preserva respostas compatíveis, reavalia elegibilidade
 - [ ] 3.6 "Registrar envio" (número externo digitado) + trava anti-duplo-envio
@@ -240,6 +240,9 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 04 §F | **7 abas de fila, não 12 status soltos.** O plano lista as abas quase 1:1 com o enum; agrupei porque ninguém raciocina em doze caixas. `EnviandoAoSistema`/`EnviadaAoSistema`/`FalhaEnvio` viram "Enviadas" — inclusive a falha, que é o caso que mais precisa de olho e ficaria escondido numa aba própria quase sempre vazia. |
+| 07/09/2026 | 04 §F | **Sem badge de pendências na sidebar e sem "Assumir selecionadas".** O badge depende de `pendenciasAbertas`, que é do incremento 6; a ação em lote depende do endpoint `assumir`, que é da 3.6. Botão que não faz nada é pior do que botão ausente. Os subitens "Pendências" e "Notificações" também ficaram de fora pelo mesmo motivo (planos 06 e 05). |
+| 07/09/2026 | 04 §F | **`RotaComModulo` recebe `<Outlet />`, não `children`.** O plano escreve `({modulo, children}) => ...`; no React Router 6 a forma que funciona para agrupar rotas é o layout route com `Outlet`, e ela também evita repetir o gate em cada rota filha. |
 | 07/09/2026 | 04 §D | **`PaginaDto<T>` genérico não existe no repositório.** O padrão daqui é um record por assunto (`PaginaAgendaDto`, `PaginaAlteracoesAgendaDto`, `RaiaPainel<T>`). Criei `PaginaSolicitacoesRegulacaoDto(Total, Itens)` em vez de introduzir um genérico novo só para este módulo. |
 | 07/09/2026 | 04 §D | **`RegulacaoResumoFilaDto` perdeu `PendenciasAbertas` e ganhou `VeTodasUnidades`.** A contagem de pendências depende de `RegulacaoPendencia`, que é do incremento 6 — devolver zero fixo seria pior do que não devolver. E a tela precisa saber se está vendo o município ou só a unidade, para rotular a fila corretamente. |
 | 07/09/2026 | 04 §D | **O nome do agente na listagem sai de uma segunda consulta**, não de um `Include`: são poucos agentes e muitas solicitações, e o join por linha traria o usuário inteiro repetido. |
@@ -302,6 +305,13 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — incremento 3, tarefa 3.4 (as duas telas de fila)
+
+- `MinhaFilaPage` (unidade) e `FilaRegulacaoPage` (agente), com abas por situação, busca e — na do agente — filtros de fluxo e destino. Mais `TabelaSolicitacoes`, `AbasFilaRegulacao`, `StatusRegulacaoBadge`, tipos, API e hooks. Com elas entraram o menu (3 subitens) e as rotas que a 3.2/3.3 tinham deixado pendentes.
+- **A coluna do número mostra o externo quando existe, não os dois.** Depois que a solicitação entra no sistema de terceiro, é aquele número que a paciente traz no papel; mostrar os dois lado a lado só faz alguém ler o errado em voz alta.
+- **Erro meu, sério, e vale registrar:** o patch do menu usava um regex guloso e **apagou três itens do grupo Agenda** (Consultar agenda, Análise de vagas, Demanda regulada) — trabalho da sessão paralela. O `tsc` pegou pelo import órfão de `Hourglass`. Restaurei o arquivo (todas as mudanças pendentes nele eram minhas) e refiz por substituição **literal**, conferindo `count == 1` antes. Em working tree compartilhado, regex multi-linha sobre arquivo de configuração é perigoso demais para o ganho.
+- **Duas coisas que deixei de fora de propósito**, e estão nos desvios: o badge de pendências (depende do incremento 6) e o "Assumir selecionadas" (depende do endpoint da 3.6). Botão que não faz nada é pior do que botão ausente.
 
 ### 07/09/2026 — incremento 3, tarefa 3.3 (fila e escopo do agente)
 

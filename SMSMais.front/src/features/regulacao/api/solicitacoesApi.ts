@@ -1,10 +1,14 @@
 import { http } from '@/shared/api/httpClient';
 
 import type {
+  EventoRegulacao,
   Exigencia,
+  FiltroSolicitacoesRegulacao,
   FluxoRegulacao,
   FormularioRegulacao,
+  PaginaSolicitacoesRegulacao,
   PendenciaEnvio,
+  ResumoFilaRegulacao,
   SolicitacaoRegulacao,
 } from '../tiposSolicitacao';
 
@@ -83,4 +87,31 @@ export async function anexarArquivo(
 
 export async function removerArquivo(solicitacaoId: string, arquivoId: string): Promise<void> {
   await http.delete(`${base}/${solicitacaoId}/exigencias/arquivos/${arquivoId}`);
+}
+
+// ---------------------------------------------------------------- fila (plano 04)
+
+/**
+ * A fila. Quem tem só o módulo 47 recebe as solicitações das suas unidades; quem tem o 48 recebe
+ * o município inteiro — a decisão é do backend, a tela não escolhe.
+ */
+export async function listarSolicitacoes(
+  filtro: FiltroSolicitacoesRegulacao,
+): Promise<PaginaSolicitacoesRegulacao> {
+  const { data } = await http.get<PaginaSolicitacoesRegulacao>(base, {
+    params: filtro,
+    // `status` é uma lista: sem isto o axios manda `status[]=` e o binder do ASP.NET ignora.
+    paramsSerializer: { indexes: null },
+  });
+  return data;
+}
+
+export async function obterResumoFila(): Promise<ResumoFilaRegulacao> {
+  const { data } = await http.get<ResumoFilaRegulacao>(`${base}/resumo`);
+  return data;
+}
+
+export async function listarEventos(id: string): Promise<EventoRegulacao[]> {
+  const { data } = await http.get<EventoRegulacao[]>(`${base}/${id}/eventos`);
+  return data;
 }

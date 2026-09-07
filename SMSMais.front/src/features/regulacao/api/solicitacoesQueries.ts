@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   anexarArquivo,
+  listarEventos,
+  listarSolicitacoes,
+  obterResumoFila,
   atualizarSolicitacao,
   criarSolicitacao,
   enviarParaFila,
@@ -12,7 +15,8 @@ import {
   removerArquivo,
   type AtualizarSolicitacaoPayload,
 } from './solicitacoesApi';
-import type { FluxoRegulacao } from '../tiposSolicitacao';
+import type { FiltroSolicitacoesRegulacao, FluxoRegulacao } from '../tiposSolicitacao';
+import { useTemConsulta } from '@/shared/auth/authStore';
 
 const raiz = ['regulacao', 'solicitacoes'] as const;
 
@@ -89,5 +93,43 @@ export function useRemoverArquivo() {
     mutationFn: (p: { solicitacaoId: string; arquivoId: string }) =>
       removerArquivo(p.solicitacaoId, p.arquivoId),
     onSuccess: invalidar,
+  });
+}
+
+// ---------------------------------------------------------------- fila (plano 04)
+
+export function useSolicitacoes(filtro: FiltroSolicitacoesRegulacao) {
+  return useQuery({
+    queryKey: [...raiz, 'lista', filtro],
+    queryFn: () => listarSolicitacoes(filtro),
+    // A fila é compartilhada: enquanto a tela está aberta, outro agente assume um caso e o
+    // status muda. Dado velho aqui faz alguém clicar em "assumir" no que já é de outra pessoa.
+    staleTime: 15_000,
+    // Mantém a página anterior visível enquanto a nova carrega — sem isto, trocar de aba pisca
+    // uma tabela vazia.
+    placeholderData: (anterior) => anterior,
+  });
+}
+
+/**
+ * Contagem por status. Alimenta as abas da fila, e é também por aqui que a tela sabe se está
+ * vendo o município inteiro ou só a própria unidade.
+ */
+export function useResumoFilaRegulacao() {
+  const podeVer = useTemConsulta('Regulacao');
+  return useQuery({
+    queryKey: [...raiz, 'resumo'],
+    queryFn: obterResumoFila,
+    enabled: podeVer,
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useEventosSolicitacao(id: string | null) {
+  return useQuery({
+    queryKey: [...raiz, id, 'eventos'],
+    queryFn: () => listarEventos(id!),
+    enabled: !!id,
   });
 }

@@ -90,3 +90,90 @@ export type Exigencia = {
   ordem: number;
   arquivos: ArquivoExigencia[];
 };
+
+// ---------------------------------------------------------------- fila (plano 04)
+
+/**
+ * De que lado veio a ação registrada na linha do tempo. `Sistema` é varredura/importação/job —
+ * sem pessoa por trás.
+ */
+export type PapelEventoRegulacao = 'Solicitante' | 'Agente' | 'Sistema';
+
+export type TipoEventoRegulacao =
+  | 'Criacao'
+  | 'Edicao'
+  | 'Anexo'
+  | 'RespostaRegra'
+  | 'EnvioFila'
+  | 'Assumida'
+  | 'Ajuste'
+  | 'Devolucao'
+  | 'EnvioSistema'
+  | 'FalhaEnvio'
+  | 'NumeroExterno'
+  | 'RessalvaDestino'
+  | 'PendenciaAberta'
+  | 'PendenciaRespondida'
+  | 'PendenciaSubmetida'
+  | 'PendenciaBaixada'
+  | 'SituacaoExterna'
+  | 'Cancelamento'
+  | 'Recusa'
+  | 'OkInterno'
+  | 'TrocaProcedimento';
+
+export type EventoRegulacao = {
+  id: string;
+  tipo: TipoEventoRegulacao;
+  de: StatusRegulacao | null;
+  para: StatusRegulacao | null;
+  usuarioNome: string | null;
+  papel: PapelEventoRegulacao;
+  /** `{campo: {de, para}}` — só nos eventos de edição/ajuste. */
+  diff: Record<string, { de: string | null; para: string | null }> | null;
+  detalhe: Record<string, unknown> | null;
+  criadoEm: string;
+};
+
+export type SolicitacaoRegulacaoLista = {
+  id: string;
+  numeroLocal: number;
+  numeroExterno: string | null;
+  sistemaDestino: SistemaRegulacao | null;
+  fluxo: FluxoRegulacao;
+  status: StatusRegulacao;
+  pacienteNome: string;
+  pacienteCpf: string | null;
+  procedimento: string;
+  unidadeSolicitanteId: string;
+  unidadeSolicitante: string;
+  unidadeEmNomeDe: string | null;
+  agenteNome: string | null;
+  criadoEm: string;
+  atualizadoEm: string | null;
+};
+
+export type PaginaSolicitacoesRegulacao = {
+  total: number;
+  itens: SolicitacaoRegulacaoLista[];
+};
+
+export type FiltroSolicitacoesRegulacao = {
+  status?: StatusRegulacao[];
+  fluxo?: FluxoRegulacao;
+  sistema?: SistemaRegulacao;
+  procedimentoId?: string;
+  unidadeSolicitanteId?: string;
+  agenteId?: string;
+  busca?: string;
+  /** Só as que eu abri — vale sobretudo para o agente, que enxerga tudo. */
+  soMinhas?: boolean;
+  pagina?: number;
+  tamanho?: number;
+};
+
+export type ResumoFilaRegulacao = {
+  porStatus: Partial<Record<StatusRegulacao, number>>;
+  /** `true` = está vendo o município inteiro (módulo 48), não só a própria unidade. */
+  veTodasUnidades: boolean;
+};
