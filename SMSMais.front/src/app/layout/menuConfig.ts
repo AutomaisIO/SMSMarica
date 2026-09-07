@@ -219,6 +219,13 @@ export const SECOES: SecaoMenu[] = [
             modulo: 'Regulacao',
             descricao: 'Movimentações das solicitações que ainda não foram vistas.',
           },
+          {
+            rotulo: 'Regras de elegibilidade',
+            to: '/app/regulacao/regras',
+            icone: BookOpen,
+            modulo: 'RegulacaoConfiguracao',
+            descricao: 'O que o manual exige por procedimento — curadoria e importação.',
+          },
         ],
       },
       {

@@ -74,6 +74,7 @@ import { MinhaFilaPage } from '@/features/regulacao/pages/MinhaFilaPage';
 import { FilaRegulacaoPage } from '@/features/regulacao/pages/FilaRegulacaoPage';
 import { SolicitacaoDetalhePage } from '@/features/regulacao/pages/SolicitacaoDetalhePage';
 import { NotificacoesRegulacaoPage } from '@/features/regulacao/pages/NotificacoesRegulacaoPage';
+import { RegrasElegibilidadePage } from '@/features/regulacao/pages/RegrasElegibilidadePage';
 import { SernitNotificacoesPage } from '@/features/sernit/pages/SernitNotificacoesPage';
 import { SernitNovaSolicitacaoPage } from '@/features/sernit/pages/SernitNovaSolicitacaoPage';
 import { SernitFilaPage } from '@/features/sernit/pages/SernitFilaPage';
@@ -220,6 +221,12 @@ export function AppRouter() {
             element={<RotaComModulo modulo="RegulacaoTriagem" rotulo="Regulação — Agente regulador" />}
           >
             <Route path="regulacao/solicitacoes/regulacao" element={<FilaRegulacaoPage />} />
+          </Route>
+          {/* Curadoria das regras: é configuração da regulação (51), não do solicitante. */}
+          <Route
+            element={<RotaComModulo modulo="RegulacaoConfiguracao" rotulo="Regulação — Configuração" />}
+          >
+            <Route path="regulacao/regras" element={<RegrasElegibilidadePage />} />
           </Route>
           {/* SERNIT (SER de Niterói) — fila espelhada irmã do SER-RJ, sob /sernit para não colidir. */}
           <Route path="regulacao/sernit" element={<SernitFilaPage />} />

@@ -264,3 +264,41 @@ export type AvaliacaoElegibilidade = {
   motivosDeBloqueio: Partial<Record<SistemaRegulacao, string>>;
   bloqueiaEnvio: boolean;
 };
+
+// ---------------------------------------------------------------- cadastro de regras (4.5)
+
+export type RegraElegibilidade = {
+  id: string;
+  procedimentoId: string;
+  procedimentoOrigemId: string | null;
+  sistema: SistemaRegulacao | null;
+  tipo: TipoRegraRegulacao;
+  severidade: SeveridadeRegraRegulacao;
+  /** O texto do manual, literal. */
+  descricao: string;
+  fonte: string | null;
+  idadeMinAnos: number | null;
+  idadeMaxAnos: number | null;
+  sexo: string | null;
+  exigeCpf: boolean;
+  cidsPermitidos: string[];
+  cidsExcluidos: string[];
+  pergunta: string | null;
+  respostaBloqueia: RespostaRegraRegulacao | null;
+  naoSeiVira: 'Ressalva' | 'Pendencia' | null;
+  documentoRotulo: string | null;
+  tipoExameId: string | null;
+  validadeDias: number | null;
+  obrigatorio: boolean;
+  ordem: number;
+  versao: number;
+  ativo: boolean;
+  criadoEm: string;
+};
+
+export type ImportacaoRegrasResultado = {
+  lidas: number;
+  criadas: number;
+  semRecurso: number;
+  avisos: string[];
+};

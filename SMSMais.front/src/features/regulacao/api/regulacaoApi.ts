@@ -10,6 +10,7 @@ import type {
   SugestaoPareamento,
   TipoProcedimentoRegulacao,
 } from '../types';
+import type { ImportacaoRegrasResultado, RegraElegibilidade } from '../tiposSolicitacao';
 
 const base = '/regulacao/procedimentos';
 
@@ -100,5 +101,32 @@ export async function informarCpfPaciente(
   cpf: string,
 ): Promise<PacienteResumoRegulacao> {
   const { data } = await http.post<PacienteResumoRegulacao>(`${basePaciente}/${id}/cpf`, { cpf });
+  return data;
+}
+
+// ---------------------------------------------------------------- regras (plano 03, tarefa 4.5)
+
+export async function listarRegras(
+  procedimentoId: string,
+  inativas: boolean,
+): Promise<RegraElegibilidade[]> {
+  const { data } = await http.get<RegraElegibilidade[]>('/regulacao/regras', {
+    params: { procedimentoId, inativas },
+  });
+  return data;
+}
+
+export async function ativarRegra(id: string, ativo: boolean): Promise<void> {
+  await http.patch(`/regulacao/regras/${id}/ativo`, { ativo });
+}
+
+export async function excluirRegra(id: string): Promise<void> {
+  await http.delete(`/regulacao/regras/${id}`);
+}
+
+export async function importarRegrasCsv(arquivo: File): Promise<ImportacaoRegrasResultado> {
+  const fd = new FormData();
+  fd.append('arquivo', arquivo);
+  const { data } = await http.post<ImportacaoRegrasResultado>('/regulacao/regras/importar-csv', fd);
   return data;
 }
