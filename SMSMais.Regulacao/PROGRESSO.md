@@ -16,7 +16,7 @@
 |---|---|---|
 | 0 — Spikes de laboratório | **parcial** | **c, d, e feitos** (04–05/09). Restam **a** e **b** — os dois escrevem em sistema real e **dependem de OK explícito do Bernardo** |
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
-| 2 — Wizard + paciente + fila local | em andamento | **2.1 a 2.8 feitas** (backend + wizard, commit `74b1fa9`). Faltam **2.9** (migrar rascunhos `ser_*`/`sernit_*`) e **2.10** (testes). Anexos em Spaces (Bernardo, 05/09) |
+| 2 — Wizard + paciente + fila local | **concluído** | **2.1 a 2.10 feitas**. Nada pushado nem rodado em produção. Anexos em Spaces (Bernardo, 05/09) |
 | 3 — Fila + agente + registro assistido + notificações por unidade | não iniciado | |
 | 4 — Regras de elegibilidade | não iniciado | |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
@@ -24,7 +24,9 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento em andamento:** 2 (wizard + paciente + fila local). **Próxima tarefa:** **2.9** — migrar os rascunhos legados `ser_*`/`sernit_*` para `regulacao_solicitacao`; depois **2.10** (testes do wizard). O wizard (2.8) está pronto: 5 passos, rota `regulacao/solicitacoes/nova`, item de menu e o módulo `Regulacao` (47) liberado na tela de Perfis.
+**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10). **Próxima tarefa: 3.1** — `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + migration, e a máquina de estados no service (plano 04).
+
+O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, configuração do módulo, wizard de 5 passos em `regulacao/solicitacoes/nova` (procedimento → destino → paciente → formulário união → revisão), anexos em Spaces, resolução de paciente com CADSUS, e os rascunhos por sistema com caminho de migração e corte reversível. **Nada disso está em produção além do incremento 1** — as três migrations e os commits seguem locais, esperando o push.
 
 > ### Para quem retomar — o que já existe e deve ser reusado, não reescrito
 > - `PassoPaciente` (com `CartaoPacienteCadsus` e `InformarCpfModal`) — pronto em `features/regulacao/components/wizard/`.
@@ -40,7 +42,11 @@
 > `regulacao_configuracao`, `regulacao_solicitacao` e `regulacao_exigencia` **ainda não existem em prod**.
 > Ambas são aditivas (zero `DropTable`) e sobem sozinhas no deploy, que dispara no **push** para `main`.
 >
-> **Não há migration nova a criar.** `dotnet ef migrations has-pending-model-changes` responde
+> **Atualização de 06/09 (tarefa 2.9):** agora são **três** migrations pendentes de push — entrou a
+> `20260907011751_MigracaoRascunhosLegados`, também aditiva (uma coluna nullable em
+> `regulacao_configuracao` + um índice único parcial em `regulacao_solicitacao`), zero `DropTable`.
+>
+> **Não havia migration nova a criar até a 2.8.** `dotnet ef migrations has-pending-model-changes` responde
 > *"No changes have been made to the model since the last migration"* — as três migrations do módulo
 > cobrem o modelo inteiro.
 >
@@ -122,8 +128,8 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 2.7 esquema `sisreg.inclusao` (5 campos do mapa por GET documentado no `APRENDIZADOS.md`) — saiu no mesmo serviço da 2.6. **Explicitamente provisório**: os campos reais da tela `marcar` só se conhecem no spike b — **06/09/2026**
 - [x] 2.8 wizard completo (5 passos) + rota `/app/regulacao/solicitacoes/nova` + item de menu + módulo 47 na tela de Perfis. Backend commitado em `6e3c793`; front verde. **A tela abre e funciona** — **06/09/2026**
   <details><summary>backend (detalhe)</summary> `RegulacaoSolicitacaoService` (criar/obter/atualizar/pendências/enviar-fila/cancelar, escopo fail-closed) + `RegulacaoSolicitacoesController` (7 rotas). **81 testes verdes** (11 novos).</details>
-- [ ] 2.9 migração dos rascunhos `ser_*`/`sernit_*` para `regulacao_solicitacao`; telas antigas viram somente-leitura
-- [ ] 2.10 testes
+- [x] 2.9 `MigradorRascunhosLegadosService` + `IRascunhoLegadoGate` + `RecursoDescontinuadoException` (410) + `RegulacaoLegadoController` (3 rotas) + `GET .../rascunhos/estado` nos dois sistemas + banner e trava nas duas telas antigas + migration aditiva `20260907011751_MigracaoRascunhosLegados`. **7 testes novos; suíte completa 1205/1206** (1 skip pré-existente); `npm run build` verde. **Nada rodado em produção** — o migrador e o corte exigem OK — **06/09/2026**
+- [x] 2.10 testes do wizard — os 5 casos do plano conferidos um a um contra o que já existia; **4 já estavam cobertos** (união com dois catálogos, tradução para nativo, NAR sem `em_nome_de`, envio recusado listando as pendências) e o 5º **não passava porque a regra não existia no backend**: `permitirExternoComInterno` vivia só na tela. Nasceram `ExigirDestinoPermitidoAsync` no service e 3 testes — **06/09/2026**
 
 ### Incremento 3 — Fila + agente (planos 04, 05)
 - [ ] 3.1 `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + migration; máquina de estados no service
@@ -179,6 +185,27 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [ ] 8.1 job pós-sync de paridade + tabela de divergências
 - [ ] 8.2 tela de divergências (51)
 
+## Como rodar a migração dos rascunhos legados (quando houver OK)
+
+As três rotas são de API, **sem tela** — o plano 02 não previu UI para elas e não a inventei. Dá
+para chamá-las pelo `/docs` (Scalar) autenticado com um usuário que tenha o módulo
+`RegulacaoConfiguracao` (51), na ordem:
+
+1. `GET /regulacao/legado/rascunhos/previa` — **não grava**. Mostra o que migraria e o que
+   sobraria, com o motivo de cada pendência.
+2. `POST /regulacao/legado/rascunhos/migrar` com `{ "unidadeFallbackId": null, "fecharTelasAntigas": false }`.
+   Se a prévia acusar autor sem unidade, informar a unidade em `unidadeFallbackId`.
+3. Conferir as solicitações criadas na fila (hoje, no banco: `select numero_local, status,
+   unidade_solicitante_id, origem_legado_id from smsmarica.regulacao_solicitacao where
+   origem_legado_id is not null`).
+4. Só então repetir o passo 2 com `"fecharTelasAntigas": true` — é isso que fecha as telas antigas.
+   Com pendência na lista, a rota **recusa** fechar.
+5. Se algo aparecer errado depois: `POST /regulacao/legado/rascunhos/reabrir` devolve a escrita às
+   telas antigas. As tabelas legadas continuam intactas — o `DropTable` é de uma release depois.
+
+Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** (1 `Rascunho`, 1
+`Pronto`), **0 do SERNIT**, **0 anexos**.
+
 ## OKs de produção registrados
 
 | Data | O quê | Quem autorizou | Resultado |
@@ -189,6 +216,13 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 06/09/2026 | 02 §2.10 / R-03 | **A régua "não mande para fora havendo oferta interna" existia só no front.** `NovaSolicitacaoPage` não oferecia o cartão "Externo" quando havia executante interno e a configuração não permitia — mas o `POST /regulacao/solicitacoes` aceitava. Tela não é trava: uma chamada direta mandava o paciente para a fila do Estado com vaga existindo no município, que é exatamente o que a configuração existe para impedir. A regra passou para `RegulacaoSolicitacaoService.ExigirDestinoPermitidoAsync` (o serviço ganhou `IRegulacaoProcedimentoBuscaService`, reusando o `ObterAsync` que já calcula oferta interna e externa). O NAR não passa por ela — é sempre SISREG, em nome de outra unidade. |
+| 06/09/2026 | 02 §Deprecação + §G passo 6 | **O corte das telas antigas virou uma data em `regulacao_configuracao`, não um `410` fixo no código.** O plano manda ligar o 410 "só depois de rodar o migrador em prod" — isso exige **dois deploys**, e na janela entre eles ou o rascunho fica editável depois de copiado (a edição se perde), ou a tela fecha antes da cópia (o operador perde acesso ao que não migrou). Agora `rascunhos_legados_migrados_em` nasce nula, o migrador a preenche, `IRascunhoLegadoGate` faz as dez ações de escrita responderem 410, e `POST legado/rascunhos/reabrir` desfaz. Um deploy, corte do operador, reversível. |
+| 06/09/2026 | 02 §C (spec do migrador) | **`ProcedimentoId = null + motivo` é impossível e "usa a unidade do admin global" é errado.** As três colunas (`procedimento_id`, `paciente_id`, `unidade_solicitante_id`) são obrigatórias na entidade que nasceu na 2.2. Rascunho sem par no catálogo, sem paciente com aquele CNS ou sem unidade do autor **não migra**: entra em `naoMigrados[]` com o motivo. Para o autor sem vínculo, o configurador informa `unidadeFallbackId` na chamada — quem escolhe a unidade é gente, porque solicitação na fila da unidade errada é pior do que solicitação que não migrou. |
+| 06/09/2026 | 02 §A/§D | **Rota nova que o plano não previa: `GET regulacao/{ser\|sernit}/rascunhos/estado`.** Sem ela a tela só descobriria o corte ao tentar salvar — e o operador perderia o que digitou. O 410 continua existindo como rede de segurança para qualquer outro chamador. As rotas do migrador ficaram em `RegulacaoLegadoController` próprio (`legado/rascunhos/{previa,migrar,reabrir}`), seguindo o um-controller-por-assunto que o módulo já adotou na 2.4. |
+| 06/09/2026 | 02 §A | **410 não existia no repositório.** Criada `RecursoDescontinuadoException` + mapeamento no `ExceptionHandlingMiddleware`, com `substituto` no `ProblemDetails`: 404 diria que sumiu por acaso e 409 sugeriria um conflito a resolver — nenhum dos dois diz "mudou de endereço". O guard ficou nos **serviços** de rascunho, não nos controllers: são dez ações, e a esquecida seria justamente a que deixa editar rascunho já migrado. |
+| 06/09/2026 | 02 §B | **Índice único parcial `ux_regulacao_solicitacao_origem_legado`** (migration aditiva `MigracaoRascunhosLegados`, junto com a coluna nova). A idempotência conferida em código não segura dois cliques simultâneos — a trava real é o banco. |
+| 06/09/2026 | 02 §F | **Aprendizado do teste:** a migração varre a base inteira e a bancada é compartilhada entre os testes — asserção sobre contagem global (`Ser == 1`, `NaoMigrados` vazio) pega rascunho deixado por outro teste. Foi assim que `Migra_cada_rascunho_uma_vez` falhou na primeira execução. Toda asserção passou a ser sobre o `rascunhoId` do próprio cenário. |
 | 04/09/2026 | 08 §Decisões | **Chave de pareamento trocada.** A planejada (rótulo normalizado exato) acha 3 pares acidentais — os catálogos têm convenções de nome disjuntas. Nova chave D3 = tipo + conjunto de tokens sem prefixo de modalidade + dimensão público → 23 pares, zero colisão. Especificação em `revisoes/spike-c-paridade.md` §1. |
 | 04/09/2026 | 08 §Riscos | **Ramo do SER invertido.** O plano supôs que o SERNIT pareia com o ramo "Não"; é o **"Sim"** (23 pares × 0). O pareamento roda contra o SER inteiro mesmo assim. |
 | 04/09/2026 | 08 §A | **SQL do spike descartado.** `unaccent` mora no schema `smsmarica` (falha sem qualificar) e a chave D3 não é expressável em SQL legível. A lógica vai para C# na tarefa 8.1, não para uma query. |
@@ -234,6 +268,23 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 06/09/2026 — incremento 2, tarefa 2.10 (testes do wizard) — **incremento 2 fechado**
+
+- Antes de escrever teste novo, **conferi os 5 casos que a 2.10 pede contra os 21 que já existiam**: quatro estavam cobertos pelas tarefas 2.6 e 2.8. Escrever de novo teria dado a sensação de cobertura sem acrescentar nada.
+- **O quinto caso não passava — e o defeito era do código, não do teste.** "Externo bloqueado quando há interno e a config não permite" (R-03) estava implementado **só no wizard**: a tela escondia o cartão, e o `POST` aceitava. Quem chamasse a API direto mandava o paciente para a fila do Estado havendo vaga em Maricá. A trava virou `ExigirDestinoPermitidoAsync` no serviço, reusando `IRegulacaoProcedimentoBuscaService.ObterAsync` (que já sabe oferta interna e externa) em vez de reimplementar a consulta às escalas. A mensagem cita as unidades que executam — sem isso, o operador lê "não pode" e não sabe para onde ir.
+- Três testes novos: recusa com oferta interna, passa quando a configuração permite (restaurando o singleton no `finally`, que é compartilhado pela bancada), e **o NAR não passa pela régua** — ele é sempre SISREG e não é "mandar para fora".
+- **Trombei com o `testhost` da sessão paralela** (`dotnet test --no-build`, PID 171992) segurando `SMSMais.Core.dll`. Não matei o processo: avisei no farol e esperei liberar.
+
+### 06/09/2026 — incremento 2, tarefa 2.9 (aposentadoria dos rascunhos por sistema)
+
+- `MigradorRascunhosLegadosService` (+ prévia que não grava), `IRascunhoLegadoGate`, `RecursoDescontinuadoException` → 410 no middleware, `RegulacaoLegadoController`, `GET .../rascunhos/estado` nos dois sistemas, guards nas dez ações de escrita, banner e trava nas duas telas antigas, migration aditiva `20260907011751_MigracaoRascunhosLegados`. Build 0/0 nos dois lados, `npm run build` verde, **suíte completa 1205/1206 na bancada** (1 skip pré-existente), 7 testes novos. **Nada commitado, nada rodado em produção.**
+- **Fui ao banco de prod antes de projetar** (só SELECT): são **2 rascunhos do SER** (1 `Rascunho`, 1 `Pronto`), **0 do SERNIT** e **0 anexos**. Isso mudou a régua: com volume assim, "não migrar e dizer por quê" é melhor do que qualquer heurística para preencher dado que falta — e o custo de resolver os casos à mão é de minutos.
+- **O plano estava errado em dois pontos, e o modelo da 2.2 é que estava certo.** A spec mandava gravar `ProcedimentoId = null` quando o recurso não casasse, e usar "a unidade do admin global" quando o autor não tivesse vínculo. A primeira é impossível (coluna obrigatória) e a segunda produziria uma solicitação na fila de uma unidade que não pediu nada — invisível para quem pediu, e trabalho para quem não pediu. Corrigido no plano; ver Desvios.
+- **A ordem que o plano exige ("410 só depois de rodar o migrador em prod") não cabe em um deploy.** Em vez de aceitar a janela — rascunho editável depois de copiado, ou tela fechada antes da cópia —, o corte virou uma data em `regulacao_configuracao` que o operador liga, e que `reabrir` desfaz. É a mesma escolha do gate de escrita externa da D-11: um ponto único, ligado por configuração, em vez de `if` espalhado.
+- **A tela pergunta o estado ao servidor antes de deixar digitar.** Só o 410 no "Salvar" seria tecnicamente correto e péssimo na prática: o operador preenche 12 campos e perde tudo. As duas páginas já tinham a variável `somenteLeitura` (usada para rascunho `Enviado`) — a extensão custou uma linha em cada.
+- **O teste achou um acoplamento que eu não tinha visto:** o migrador varre a base inteira, então na bancada compartilhada as contagens globais somam rascunhos de outros testes. O comportamento está certo (em produção é o que se quer); a asserção é que estava errada. Registrado no plano §F para quem escrever teste novo aqui.
+- **Falta para fechar de verdade em produção**, na ordem: push (as tabelas nascem) → `GET legado/rascunhos/previa` para ver o que migraria → `POST legado/rascunhos/migrar` → conferir as 2 solicitações → só então `fecharTelasAntigas`. Cada passo é ação de produção e **exige OK do Bernardo**.
 
 ### 06/09/2026 — conferência de migration e de permissão (nenhum código mudou)
 

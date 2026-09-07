@@ -92,8 +92,12 @@ Recomendação: **Spaces** desde o início, via `IArmazenamentoArquivos`, genera
 ### Deprecação dos rascunhos por sistema
 
 1. Job único `MigrarRascunhosLegadosParaRegulacao` (endpoint 51, idempotente por `origem_legado_id`): copia `ser_solicitacao_rascunho`/`sernit_solicitacao_rascunho` em `Rascunho`/`Pronto` para `regulacao_solicitacao` (fluxo Externo, `formulario_json.ser|sernit` = `CamposJson`, caixinha "Anexos gerais" com os arquivos de `ser_rascunho_anexo`, `unidade_solicitante_id` = unidade principal do autor, `criado_por` = autor).
-2. As páginas `SerNovaSolicitacaoPage`/`SernitNovaSolicitacaoPage` viram somente-leitura com link para o wizard novo; os endpoints `POST/PUT` de rascunho passam a devolver 410.
+2. As páginas `SerNovaSolicitacaoPage`/`SernitNovaSolicitacaoPage` viram somente-leitura com link para o wizard novo; os endpoints de escrita de rascunho passam a devolver 410.
 3. Uma release depois: migration `RemoveRascunhosPorSistema` com `DropTable` das quatro tabelas. **Nunca no mesmo deploy** da migração de dados.
+
+**O corte é uma data em configuração, não um `if` no código** (decidido na execução da 2.9, 06/09/2026). `regulacao_configuracao.rascunhos_legados_migrados_em` nasce nula; o migrador a preenche ao terminar sem pendência, e a partir daí o gate `IRascunhoLegadoGate` faz as dez ações de escrita dos dois serviços de rascunho lançarem `RecursoDescontinuadoException` (410). Razão: a ordem que o passo 6 do §G exige — "410 só depois de rodar o migrador em produção" — só é possível em **dois deploys**, e entre eles ou os rascunhos ficam editáveis depois de copiados (a edição se perde) ou as telas fecham antes da cópia (o operador perde acesso ao que ainda não migrou). Com a data, é um deploy só, o corte é do operador e `POST regulacao/legado/rascunhos/reabrir` desfaz.
+
+**Rascunho que não tem para onde ir não é forçado.** `procedimento_id`, `paciente_id` e `unidade_solicitante_id` são obrigatórios na entidade da 2.2 — a especificação original previa `ProcedimentoId = null + motivo` e "usa a unidade do admin global", e as duas coisas são impossíveis (a primeira) ou erradas (a segunda: joga a solicitação na fila de uma unidade que não pediu nada). O migrador devolve esses rascunhos em `naoMigrados[]` com o motivo escrito, e o configurador pode informar `unidadeFallbackId` na chamada para resolver o caso do autor sem vínculo.
 
 ## Tarefas
 
@@ -147,7 +151,12 @@ Motor de regras (03), fila e agente (04), inclusão real no SISREG (11), envio a
 | `SMSMais.Core/Regulacao/Legado/MigradorRascunhosLegadosService.cs` | criar |
 | `SMSMais.Core/DependencyInjection.cs` | registrar `IRegulacaoFormularioService`, `IArquivoExigenciaStore`, `IRegulacaoExigenciaService`, `MigradorRascunhosLegadosService` |
 | `SMSMais.Api/Controllers/RegulacaoSolicitacoesController.cs` | criar (plano 04); as rotas de formulário/exigência/arquivo/legado abaixo entram nele |
-| `SMSMais.Api/Controllers/SerController.cs` (`SerRascunhoController`), `SernitController.cs` | tarefa 2.9: `POST/PUT/DELETE` de rascunho devolvem `410 Gone` com `ProblemDetails` apontando `/app/regulacao/solicitacoes/nova` |
+| `SMSMais.Core/Common/Excecoes/RecursoDescontinuadoException.cs` + `SMSMais.Api/Middleware/ExceptionHandlingMiddleware.cs` | criar/alterar: 410 não existia no repositório; a exceção carrega `substituto` para a tela apontar o caminho novo |
+| `SMSMais.Core/Regulacao/Legado/IRascunhoLegadoGate.cs` | criar: ponto único que decide se o rascunho legado ainda aceita escrita |
+| `SMSMais.Core/Ser/SerRascunhoService.cs`, `SMSMais.Core/Sernit/SernitRascunhoService.cs` | tarefa 2.9: as cinco ações de escrita de cada um chamam o gate. O guard fica no **serviço**, não no controller — seriam dez `if` espalhados, e o esquecido é o que deixa alguém editar um rascunho já migrado |
+| `SMSMais.Api/Controllers/SerController.cs` (`SerRascunhoController`), `SernitController.cs` | tarefa 2.9: `GET regulacao/ser\|sernit/rascunhos/estado` — a tela precisa saber ANTES de o operador digitar; receber 410 só no "Salvar" perderia o preenchimento |
+| `SMSMais.Api/Controllers/RegulacaoLegadoController.cs` | criar (o módulo já vinha com um controller por assunto desde a 2.4) |
+| `SMSMais.front/src/shared/regulacao/rascunhoLegado.tsx` | criar: hook de estado + banner, comum às duas telas |
 | `SMSMais.front/src/shared/regulacao/CampoDinamico.tsx`, `CampoPaciente.tsx`, `datas.ts` | criar por **extração** literal de `features/ser/pages/SerNovaSolicitacaoPage.tsx`; a página do SER e a do SERNIT passam a importar daqui |
 | `SMSMais.front/src/shared/ui/UploadAnexo.tsx` | criar |
 | `SMSMais.front/src/features/regulacao/pages/NovaSolicitacaoPage.tsx`, `components/wizard/{EstadoWizard.ts,PassoUnidadeEmNomeDe,PassoProcedimento,PassoDestino,PassoPaciente,PassoRegras,PassoFormulario,PassoRevisao}.tsx` | criar |
@@ -260,7 +269,9 @@ public sealed record ArquivoConteudo(Stream Conteudo, string ContentType, string
 ```
 Regras de `AnexarAsync`: tipo ∈ `config.AnexoTiposPermitidos` e tamanho ≤ `config.AnexoLimiteMb` (senão `ValidacaoException("arquivo", …)`); `Versao = max(versao da caixinha) + 1`; arquivo anterior `Atual` → `Substituido` **só** quando a caixinha é de exigência (regra_id ≠ null); em "Anexos gerais" cada arquivo é independente; caixinha volta a `Atendida` se estava `Pendente`/`Criticada`. `RemoverArquivoAsync` só se `EnviadoAoSistemaEm == null` e solicitação em `Rascunho`/`PendenteRegulacao`/`Devolvida`; marca `Removido` (não apaga do Spaces no ato — job de limpeza fica fora do escopo).
 
-`MigradorRascunhosLegadosService.MigrarAsync(ct)`: para cada `SerSolicitacaoRascunho` com `Status ∈ {Rascunho, Pronto}` sem `RegulacaoSolicitacao.OrigemLegadoId == Id`: cria solicitação `Fluxo = Externo`, `Status = Rascunho`, `UnidadeSolicitanteId` = unidade `Principal` do `CriadoPor` em `usuario_unidade` (senão a primeira vinculada; senão registra em `StatusMotivo` "sem unidade — ajustar" e usa a unidade do admin global), `FormularioJson = {"canonico":{}, "ser": <CamposJson>}`, `ProcedimentoId` = origem SER por `(Tipo, RecursoValor, ramo)` → canônico (não achou → `null` + motivo), exigência "Anexos gerais" com os `SerRascunhoAnexo` copiados de `midia` para o Spaces (`Origem = Upload`). Idem `SernitSolicitacaoRascunho`. Idempotente; devolve `{ ser, sernit }`.
+`MigradorRascunhosLegadosService.MigrarAsync(req, ct)` (`req = { unidadeFallbackId?, fecharTelasAntigas }`): para cada `SerSolicitacaoRascunho` com `Status ∈ {Rascunho, Pronto}` sem `RegulacaoSolicitacao.OrigemLegadoId == Id`: cria solicitação `Fluxo = Externo`, `Status = Rascunho`, `SistemaDestino = Ser`, `UnidadeSolicitanteId` = unidade `Principal` do `CriadoPor` em `usuario_unidade` (senão a primeira vinculada; senão `unidadeFallbackId`), `FormularioJson = {"canonico":{}, "ser": <CamposJson>}` — sem tradução, porque as chaves são nomes JSF e traduzi-las agora seria adivinhação —, `ProcedimentoId` = origem SER por `ChaveExterna = "{(int)Tipo}|{RecursoValor}|{AE|NAO_AE}"` (a mesma que o sincronismo do catálogo monta), `PacienteId` por `IPacientesService.ObterPorCnsAsync` (sem CADSUS: o migrador não fala com sistema externo), exigência "Anexos gerais" com os `SerRascunhoAnexo` copiados de `midia` para o Spaces (`Origem = Upload`, conteúdo antes da linha). Idem `SernitSolicitacaoRascunho` (chave sem ramo). **Idempotente** por `origem_legado_id`, com índice único parcial no banco — a conferência em código não segura dois cliques simultâneos.
+
+Sem procedimento no catálogo, sem paciente com aquele CNS ou sem unidade: **não migra** e entra em `naoMigrados[]` com o motivo. Devolve `{ ser, sernit, jaMigrados, foraDoEscopo, naoMigrados[], telasAntigasFechadasEm }`. `foraDoEscopo` são os `Enviado`/`Falhou`, que ficam onde estão como histórico. `PreviaAsync(ct)` roda as mesmas conferências sem gravar. `fecharTelasAntigas` só tem efeito com `naoMigrados` vazio: fechar com pendência deixaria alguém sem acesso ao próprio trabalho.
 
 ### D. Endpoints (no `RegulacaoSolicitacoesController`, `[Route("regulacao")]`)
 
@@ -273,7 +284,9 @@ Regras de `AnexarAsync`: tipo ∈ `config.AnexoTiposPermitidos` e tamanho ≤ `c
 | DELETE | `solicitacoes/{id:guid}/exigencias/{exigenciaId:guid}/arquivos/{arquivoId:guid}` | `Regulacao`, `Edicao` | | 204 |
 | GET | `solicitacoes/{id:guid}/arquivos/{arquivoId:guid}/conteudo` | `Regulacao`, `Consulta` | | `File(stream, contentType, nome)` |
 | POST | `solicitacoes/{id:guid}/exigencias/{exigenciaId:guid}/dispensar` | `RegulacaoTriagem`, `Edicao` | `{ motivo }` | 204 |
-| POST | `legado/migrar-rascunhos` | `RegulacaoConfiguracao`, `Edicao` | — | `{ ser, sernit }` |
+| GET | `legado/rascunhos/previa` | `RegulacaoConfiguracao`, `Consulta` | — | `ResultadoMigracaoLegadoDto` (não grava) |
+| POST | `legado/rascunhos/migrar` | `RegulacaoConfiguracao`, `Edicao` | `{ unidadeFallbackId?, fecharTelasAntigas }` | `ResultadoMigracaoLegadoDto` |
+| POST | `legado/rascunhos/reabrir` | `RegulacaoConfiguracao`, `Edicao` | — | 204 (desfaz o corte) |
 
 Escopo: todas as rotas de `solicitacoes/{id}` passam pelo `RegulacaoSolicitacaoService.ObterNoEscopoAsync(id)` do plano 04 (unidade do solicitante ∈ escopo, ou módulo 48).
 
@@ -295,7 +308,10 @@ Escopo: todas as rotas de `solicitacoes/{id}` passam pelo `RegulacaoSolicitacaoS
 
 - `RegulacaoFormularioServiceTests`: `Uniao_junta_campos_com_mesmo_slug_e_marca_origens`; `Obrigatorio_se_obrigatorio_em_qualquer_sistema`; `Tipo_diferente_gera_dois_campos_sufixados`; `Hash_igual_reusa_a_versao`; `Traduzir_aplica_mapa_e_transformacoes`; `Obrigatorios_faltando_lista_as_chaves`.
 - `RegulacaoExigenciaServiceTests` (store fake em memória): `Tipo_nao_permitido_e_recusado`; `Acima_do_limite_e_recusado`; `Nova_versao_incrementa_e_marca_a_anterior_substituida`; `Anexos_gerais_nao_substituem`; `Remover_depois_do_envio_e_recusado`.
-- `MigradorRascunhosLegadosTests`: `Migra_cada_rascunho_uma_vez`; `Sem_unidade_vinculada_registra_motivo_e_nao_falha`.
+- `RegulacaoSolicitacaoServiceTests` (2.10): `Externo_com_oferta_interna_e_recusado_quando_a_config_nao_permite`; `Externo_com_oferta_interna_passa_quando_a_config_permite`; `Nar_com_oferta_interna_nao_passa_pela_regua_do_externo`. Os outros quatro casos da 2.10 já estavam cobertos pelas tarefas 2.6 e 2.8.
+  **A régua do R-03 é do serviço, não da tela.** `RegulacaoSolicitacaoService.ExigirDestinoPermitidoAsync` recusa `Fluxo = Externo` quando o procedimento tem executante interno e `permitirExternoComInterno` é falso, reusando `IRegulacaoProcedimentoBuscaService.ObterAsync`. O wizard esconder o cartão continua valendo como conveniência — mas era só isso que existia até a 2.10, e um `POST` direto furava a regra.
+- `MigradorRascunhosLegadosTests`: `Migra_cada_rascunho_uma_vez`; `Sem_unidade_vinculada_registra_motivo_e_nao_falha`; `Sem_paciente_no_cadastro_nao_migra_e_diz_por_que`; `Recurso_fora_do_catalogo_canonico_nao_migra`; `Previa_nao_grava_nada`; `Fechar_telas_antigas_com_pendencia_e_recusado`; `Depois_do_corte_a_tela_antiga_recusa_escrita`.
+  **Cuidado ao escrever asserção aqui:** a migração varre a base inteira (é o que se quer em produção) e a bancada é compartilhada — asserção sobre contagem global (`Ser == 1`, `NaoMigrados` vazio) pega rascunho de outro teste. Afirmar sempre sobre o `rascunhoId` do próprio cenário.
 
 ### G. Passo a passo
 
@@ -304,7 +320,7 @@ Escopo: todas as rotas de `solicitacoes/{id}` passam pelo `RegulacaoSolicitacaoS
 3. Sobrecarga no `ArmazenamentoSpaces` → `IArquivoExigenciaStore` → `IRegulacaoExigenciaService` → endpoints → testes.
 4. **Extração** de `CampoDinamico`/`CampoPaciente`/conversor de data para `shared/regulacao/` → SER e SERNIT importam de lá → `npm run build` verde **antes** do wizard.
 5. `UploadAnexo` → passos → `NovaSolicitacaoPage` → rota → `npm run build`.
-6. Migrador de legado + `410` nas rotas antigas + banner → só depois de rodar o migrador em prod (com OK registrado em `PROGRESSO.md`).
+6. Migrador de legado + gate do 410 + banner, tudo no mesmo deploy: o corte fica atrás de `rascunhos_legados_migrados_em`, que só o operador liga (ver §Depreciação). Rodar o migrador em prod **exige OK registrado em `PROGRESSO.md`**; ligar o corte, também.
 7. `PROGRESSO.md`: 2.2–2.4, 2.6–2.9.
 
 ### H. Critério de pronto

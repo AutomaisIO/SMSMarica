@@ -9,6 +9,8 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Core.Regulacao.Anexos;
+using SMSMais.Core.Regulacao.Catalogo;
+using SMSMais.Core.Regulacao.Catalogo.Dtos;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Core.Regulacao.Solicitacoes;
@@ -43,7 +45,8 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         public Task ExcluirAsync(string c, CancellationToken ct) => Task.CompletedTask;
     }
 
-    private static (RegulacaoSolicitacaoService Servico, IPacientesService Pacientes, IRegulacaoFormularioService Form)
+    private static (RegulacaoSolicitacaoService Servico, IPacientesService Pacientes,
+        IRegulacaoFormularioService Form, IRegulacaoProcedimentoBuscaService Catalogo)
         Montar(SmsMaisDbContext db, Guid usuarioId, Guid unidadeAtiva, Guid versaoFormularioId)
     {
         // Usuário e unidade ativa reais: o escopo é fail-closed e, sem vínculo, o serviço recusa
@@ -61,8 +64,26 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         form.ObrigatoriosFaltando(Arg.Any<RegulacaoFormularioDto>(), Arg.Any<JsonElement>())
             .Returns([]);
 
-        return (new RegulacaoSolicitacaoService(db, acessor, form, exigencias, config, pacientes), pacientes, form);
+        // Sem oferta interna por padrão: é o caso da maioria dos testes (procedimento que só
+        // existe fora). Quem exercita a régua do R-03 redefine este dublê.
+        var catalogo = Substitute.For<IRegulacaoProcedimentoBuscaService>();
+        catalogo.ObterAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new RegulacaoProcedimentoDetalheDto(
+                ci.Arg<Guid>(), "PROC", TipoProcedimentoRegulacao.Consulta, null, [], [],
+                new ExisteExternoDto(false, false, false)));
+
+        return (
+            new RegulacaoSolicitacaoService(db, acessor, form, exigencias, config, catalogo, pacientes),
+            pacientes, form, catalogo);
     }
+
+    /// <summary>Faz o procedimento ter oferta em Maricá — o gatilho da régua do R-03.</summary>
+    private static void ComOfertaInterna(IRegulacaoProcedimentoBuscaService catalogo, string unidade) =>
+        catalogo.ObterAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new RegulacaoProcedimentoDetalheDto(
+                ci.Arg<Guid>(), "CONSULTA EM CARDIOLOGIA", TipoProcedimentoRegulacao.Consulta, null, [],
+                [new ExecutanteInternoDto(Guid.NewGuid(), unidade, "1234567", 20, null)],
+                new ExisteExternoDto(true, false, false)));
 
     private static void PacienteDublado(IPacientesService pacientes, Guid id, string nome, string? cpf)
     {
@@ -131,7 +152,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "MARIA", "52998224725");
 
@@ -154,7 +175,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "JOAO", "52998224725");
 
@@ -172,7 +193,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "ANA", "52998224725");
 
@@ -189,7 +210,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "ANA", "52998224725");
 
@@ -206,7 +227,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "SEM CPF", null);
 
@@ -231,7 +252,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
 
@@ -249,7 +270,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, form) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, form, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
 
@@ -278,7 +299,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
 
@@ -299,7 +320,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
 
@@ -321,7 +342,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
 
@@ -342,7 +363,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
-        var (servico, pacientes, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
         var pacienteId = Guid.NewGuid();
         PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
 
@@ -359,5 +380,95 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
 
         // Depois de o agente assumir, a ponta não puxa o tapete de quem está trabalhando no caso.
         await acao.Should().ThrowAsync<ConflitoException>();
+    }
+
+    [Fact]
+    public async Task Externo_com_oferta_interna_e_recusado_quando_a_config_nao_permite()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
+        ComOfertaInterna(catalogo, "CDT MARICA");
+
+        var acao = () => servico.CriarAsync(
+            new CriarRegulacaoSolicitacaoRequest(
+                FluxoRegulacao.Externo, procedimentoId, pacienteId, null, SistemaRegulacao.Ser, null),
+            CancellationToken.None);
+
+        // `PermitirExternoComInterno` nasce false: havendo vaga em Maricá, o normal é resolver
+        // dentro do município. A trava é do serviço — a tela só esconder o cartão não segura um
+        // POST direto.
+        var erro = await acao.Should().ThrowAsync<ValidacaoException>();
+        erro.Which.Erros.Should().ContainKey("fluxo");
+        erro.Which.Erros["fluxo"][0].Should().Contain("CDT MARICA");
+    }
+
+    [Fact]
+    public async Task Externo_com_oferta_interna_passa_quando_a_config_permite()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
+        ComOfertaInterna(catalogo, "CDT MARICA");
+
+        var config = await db.RegulacaoConfiguracoes
+            .FirstOrDefaultAsync(c => c.Id == RegulacaoConfiguracao.IdSingleton);
+        if (config is null)
+        {
+            config = new RegulacaoConfiguracao();
+            db.RegulacaoConfiguracoes.Add(config);
+        }
+        config.PermitirExternoComInterno = true;
+        await db.SaveChangesAsync();
+        try
+        {
+            var s = await servico.CriarAsync(
+                new CriarRegulacaoSolicitacaoRequest(
+                    FluxoRegulacao.Externo, procedimentoId, pacienteId, null, SistemaRegulacao.Ser, null),
+                CancellationToken.None);
+
+            s.Fluxo.Should().Be(FluxoRegulacao.Externo);
+        }
+        finally
+        {
+            // O singleton é compartilhado por toda a bancada: deixá-lo ligado mudaria a régua
+            // dos outros testes.
+            config.PermitirExternoComInterno = false;
+            await db.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Nar_com_oferta_interna_nao_passa_pela_regua_do_externo()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, _, catalogo) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
+        ComOfertaInterna(catalogo, "CDT MARICA");
+
+        var outra = new Unidade
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"UNID EM NOME DE {Sufixo()}",
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.Unidades.Add(outra);
+        await db.SaveChangesAsync();
+
+        // O NAR é sempre SISREG, em nome de outra unidade — a régua "não mande para fora havendo
+        // oferta interna" não se aplica a ele.
+        var s = await servico.CriarAsync(
+            new CriarRegulacaoSolicitacaoRequest(
+                FluxoRegulacao.Nar, procedimentoId, pacienteId, outra.Id, null, null),
+            CancellationToken.None);
+
+        s.Fluxo.Should().Be(FluxoRegulacao.Nar);
+        s.SistemaDestino.Should().Be(SistemaRegulacao.Sisreg);
     }
 }

@@ -7,6 +7,7 @@ using SMSMais.Core.Common.Unidades;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Regulacao.Anexos;
+using SMSMais.Core.Regulacao.Catalogo;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Data;
@@ -87,6 +88,7 @@ public sealed class RegulacaoSolicitacaoService(
     IRegulacaoFormularioService formularios,
     IRegulacaoExigenciaService exigencias,
     IRegulacaoConfiguracaoService configuracao,
+    IRegulacaoProcedimentoBuscaService catalogo,
     IPacientesService pacientes) : IRegulacaoSolicitacaoService
 {
     private static readonly JsonElement ObjetoVazio = JsonDocument.Parse("{}").RootElement.Clone();
@@ -123,6 +125,8 @@ public sealed class RegulacaoSolicitacaoService(
         var procedimento = await db.RegulacaoProcedimentos.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == req.ProcedimentoId && p.Ativo, ct)
             ?? throw new NaoEncontradoException("Procedimento canônico da regulação", req.ProcedimentoId);
+
+        await ExigirDestinoPermitidoAsync(req.Fluxo, req.ProcedimentoId, ct);
 
         var (nome, cpf, cns) = await LerIdentidadePacienteAsync(req.PacienteId, ct);
 
@@ -299,6 +303,34 @@ public sealed class RegulacaoSolicitacaoService(
     }
 
     // ---------------------------------------------------------------- apoio
+
+    /// <summary>
+    /// R-03: com oferta interna em Maricá, o Externo só passa se a configuração permitir.
+    ///
+    /// <para><b>A regra estava só na tela</b> (o wizard não oferecia o cartão "Externo"), e tela
+    /// não é trava: um <c>POST</c> direto mandava o paciente para a fila do Estado com vaga
+    /// existindo no município — exatamente o que a configuração existe para impedir. Aqui é o
+    /// lugar dela; a tela continua escondendo a opção, o que é conveniência, não segurança.</para>
+    ///
+    /// <para>O NAR não passa por isto: ele é sempre SISREG, em nome de outra unidade.</para>
+    /// </summary>
+    private async Task ExigirDestinoPermitidoAsync(
+        FluxoRegulacao fluxo, Guid procedimentoId, CancellationToken ct)
+    {
+        if (fluxo != FluxoRegulacao.Externo) return;
+
+        var config = await configuracao.ObterEntidadeAsync(ct);
+        if (config.PermitirExternoComInterno) return;
+
+        var detalhe = await catalogo.ObterAsync(procedimentoId, ct);
+        if (detalhe.ExecutantesInternos.Count == 0) return;
+
+        var unidades = string.Join(", ", detalhe.ExecutantesInternos.Take(3).Select(u => u.Nome));
+        throw new ValidacaoException(
+            "fluxo",
+            $"{detalhe.Nome} tem oferta em Maricá ({unidades}). A configuração do módulo não "
+            + "permite mandar para fora havendo oferta interna — abra como Interno.");
+    }
 
     /// <summary>
     /// Carrega respeitando o escopo por unidade. <b>Fail-closed</b>: fora do escopo devolve
