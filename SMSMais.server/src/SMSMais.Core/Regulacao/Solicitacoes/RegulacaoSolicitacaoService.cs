@@ -168,16 +168,25 @@ public sealed class RegulacaoSolicitacaoService(
             var termo = filtro.Busca.Trim();
             var digitos = new string([.. termo.Where(char.IsDigit)]);
 
-            // Três formas de procurar a mesma solicitação, porque é assim que se procura no
-            // balcão: pelo nome de quem está na frente, pelo documento, ou pelo número que a
-            // pessoa traz num papel — que tanto pode ser o nosso quanto o do sistema de lá.
-            consulta = digitos.Length >= 3
-                ? consulta.Where(s =>
-                    EF.Functions.ILike(s.PacienteNome, $"%{termo}%")
-                    || (s.PacienteCpf != null && s.PacienteCpf.Contains(digitos))
-                    || (s.NumeroExterno != null && s.NumeroExterno.Contains(digitos))
-                    || s.NumeroLocal.ToString().Contains(digitos))
-                : consulta.Where(s => EF.Functions.ILike(s.PacienteNome, $"%{termo}%"));
+            // O número local é buscado por IGUALDADE e sem piso de dígitos. O piso de 3 existe
+            // para CPF e número externo, onde `Contains` com um ou dois dígitos devolveria meia
+            // fila — mas a solicitação 7 é a 7, e exigir três dígitos a tornaria impossível de
+            // achar até o município passar de cem pedidos. Achado pelo CI, num banco novo: a
+            // bancada tem números altos de execuções anteriores e escondia isto.
+            // O `&&` curto-circuita antes do TryParse, então o compilador não garante a
+            // atribuição — daí a variável nascer explícita em vez de sair do `out`.
+            long numeroLocal = 0;
+            var ehNumeroLocal = digitos.Length == termo.Length && long.TryParse(termo, out numeroLocal);
+            var buscaAmpla = digitos.Length >= 3;
+
+            // Quatro formas de procurar a mesma solicitação, porque é assim que se procura no
+            // balcão: pelo nome de quem está na frente, pelo documento, pelo nosso número, ou
+            // pelo número que a pessoa traz num papel do sistema de lá.
+            consulta = consulta.Where(s =>
+                EF.Functions.ILike(s.PacienteNome, $"%{termo}%")
+                || (ehNumeroLocal && s.NumeroLocal == numeroLocal)
+                || (buscaAmpla && s.PacienteCpf != null && s.PacienteCpf.Contains(digitos))
+                || (buscaAmpla && s.NumeroExterno != null && s.NumeroExterno.Contains(digitos)));
         }
 
         var total = await consulta.CountAsync(ct);

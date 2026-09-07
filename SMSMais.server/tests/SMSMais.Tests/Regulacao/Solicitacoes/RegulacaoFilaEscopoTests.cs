@@ -253,6 +253,9 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
         var nome = await db.RegulacaoSolicitacoes.AsNoTracking()
             .Where(s => s.Id == c.SolicitacaoA).Select(s => s.PacienteNome).FirstAsync();
 
+        // Busca pelo número local, qualquer que seja o tamanho dele. Este teste falhou no CI e
+        // passou na bancada: lá os números já estão altos de execuções anteriores, e o código
+        // exigia 3 dígitos para considerar número. Num município novo, a solicitação 7 é a 7.
         var porNumero = await servico.ListarAsync(
             new RegulacaoSolicitacaoFiltro(Busca: numero.ToString()), CancellationToken.None);
         porNumero.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoA);

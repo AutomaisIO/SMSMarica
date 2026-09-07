@@ -240,6 +240,8 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 04 §D | **A busca por número local exigia 3 dígitos — e o CI pegou o que a bancada escondia.** O piso de 3 existe para CPF e número externo (`Contains` com 1-2 dígitos devolve meia fila), mas foi aplicado também ao nosso número. Na bancada os `numero_local` já estão altos de execuções anteriores e o teste passava; num banco novo — que é o caso de **toda instância nova de município** — a solicitação 7 seria impossível de achar até passar de cem pedidos. Agora o número local é buscado por **igualdade**, sem piso; o piso continua valendo para CPF e número externo. |
+| 07/09/2026 | **01 §sync** | **Defeito real, achado rodando o sync em produção: `TaskCanceledException` herda de `OperationCanceledException`.** O laço de embeddings tinha `catch (… ) when (ex is not OperationCanceledException)` para não engolir o cancelamento do chamador — mas é exatamente essa a exceção que `HttpClient.Timeout` lança. O timeout do provedor escapava do catch e derrubava o sync inteiro com 500 (ERRO-47UCPG), contrariando o comentário logo abaixo dele. O que separa as duas coisas não é o tipo, é o `ct.IsCancellationRequested`. Corrigido, com dois testes (o antigo simulava `HttpRequestException`, que passava pelo filtro e por isso nunca pegou o defeito). Lote 128 → 64 e timeout do cliente 60 s → 3 min. |
 | 07/09/2026 | 04 §F | **7 abas de fila, não 12 status soltos.** O plano lista as abas quase 1:1 com o enum; agrupei porque ninguém raciocina em doze caixas. `EnviandoAoSistema`/`EnviadaAoSistema`/`FalhaEnvio` viram "Enviadas" — inclusive a falha, que é o caso que mais precisa de olho e ficaria escondido numa aba própria quase sempre vazia. |
 | 07/09/2026 | 04 §F | **Sem badge de pendências na sidebar e sem "Assumir selecionadas".** O badge depende de `pendenciasAbertas`, que é do incremento 6; a ação em lote depende do endpoint `assumir`, que é da 3.6. Botão que não faz nada é pior do que botão ausente. Os subitens "Pendências" e "Notificações" também ficaram de fora pelo mesmo motivo (planos 06 e 05). |
 | 07/09/2026 | 04 §F | **`RotaComModulo` recebe `<Outlet />`, não `children`.** O plano escreve `({modulo, children}) => ...`; no React Router 6 a forma que funciona para agrupar rotas é o layout route com `Outlet`, e ela também evita repetir o gate em cada rota filha. |
@@ -305,6 +307,21 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — o CI reprovou dois deploys meus, e estava certo nas duas vezes
+
+- **Descobri que os deploys de `4f488f2` (3.3) e `1db0fdf` (fix do timeout) FALHARAM.** Eu tinha assumido que estavam no ar. O que me fez olhar: o binário em produção era de 03:23 UTC e meu push, de 04:15. `gh run list` mostrou os dois `completed/failure`.
+- **A causa é um teste meu que passa na bancada e falha no CI** — e o defeito era do código, não do teste. A busca da fila só considerava número quando havia ≥3 dígitos; na bancada os `numero_local` já estão altos, no CI o banco é novo e o número é `1`, `2`, `3`. **Isso valeria para toda instância nova de município** (ADR-0043): a solicitação 7 seria impossível de achar até o município passar de cem pedidos.
+- É exatamente o que a memória do projeto avisa: **a bancada não substitui o CI**. Aqui não foi a extensão `pgvector` — foi o *estado* do banco. Bancada com dados acumulados esconde defeito que só aparece em base limpa.
+- **Consequência operacional:** enquanto o CI estiver vermelho, nada da 3.3 em diante chega em produção — inclusive o fix do timeout, que é pré-requisito do sync do catálogo. A ordem passou a ser: CI verde → deploy → sync → migração.
+
+### 07/09/2026 — acesso à API autorizado; o primeiro sync do catálogo achou um defeito
+
+- Com a autorização explícita do Bernardo, criei um token de serviço temporário e rodei o runbook. **A prévia da migração funcionou de primeira** e confirmou o que estava previsto: os 2 rascunhos do SER recusados por catálogo vazio, com o motivo exato (`O recurso 1|1023|AE não existe no catálogo canônico`).
+- **O sync do catálogo falhou com 500** — e o defeito não estava no ambiente, estava no nosso código. `HttpClient.Timeout` lança `TaskCanceledException`, que **herda** de `OperationCanceledException`; o filtro do catch (`is not OperationCanceledException`) deixava o timeout do provedor escapar e derrubar o sync inteiro. O comentário logo abaixo dizia o contrário do que o código fazia.
+- **O teste que existia não pegava**: simulava `HttpRequestException`, que passava pelo filtro. Entraram dois — um com o caso real (`TaskCanceledException`) e um provando que cancelamento de verdade continua propagando. É a diferença entre testar "o provedor caiu" e "o provedor demorou".
+- Também: lote de 128 para 64 e timeout do cliente de 60 s para 3 minutos. Embedding em lote é chamada de provedor pago dentro de um job — o que importa é terminar, e quem espera não é uma pessoa.
+- **Ainda não rodou:** o sync depende deste fix chegar em produção. Depois dele, migração dos rascunhos e fechamento das telas antigas.
 
 ### 07/09/2026 — incremento 3, tarefa 3.4 (as duas telas de fila)
 
