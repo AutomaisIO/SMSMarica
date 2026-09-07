@@ -110,16 +110,37 @@ public class ComparadorMarcacaoTests
         Assert.Empty(ComparadorMarcacao.Comparar(Foto(nome: antes), Foto(nome: depois)));
     }
 
-    /// <summary>Campo que nasce preenchido (não existia aqui) é alteração legítima, com "antes" vazio —
-    /// é o caso das solicitações antigas que nunca souberam quem executa.</summary>
+    /// <summary>
+    /// <b>Campo que passa a vir preenchido não é troca</b> — e este teste era o oposto disto.
+    ///
+    /// <para>A regra anterior ("campo que nasce preenchido é alteração legítima, com antes vazio")
+    /// parecia razoável no papel e foi desmentida pela produção: em 06/09/2026 a fila do regulador
+    /// amanheceu com <b>644 linhas de "trocou o procedimento"</b>, e a distribuição não deixou
+    /// dúvida — <b>644 de 644 eram <c>vazio → código</c></b>, nenhuma era <c>código → outro
+    /// código</c>. Ninguém trocou procedimento de ninguém: o SISREG passou a mandar o <c>pa</c> que
+    /// vinha em branco em ~1/3 das linhas. Junto com 702 cancelamentos falsos, isso levou a fila a
+    /// 1.378 pendências das quais ~34 eram reais — e fila que ninguém consegue ler não protege
+    /// paciente nenhum.</para>
+    ///
+    /// <para>É notícia sobre o ARQUIVO, não sobre a agenda. O valor entra na solicitação na
+    /// importação normal; o que não entra é uma linha de fila pedindo providência.</para>
+    /// </summary>
     [Fact]
-    public void Campo_que_estava_vazio_aqui_e_veio_do_sisreg_e_alteracao()
+    public void Campo_que_passou_a_vir_preenchido_nao_e_alteracao()
+    {
+        Assert.Empty(ComparadorMarcacao.Comparar(Foto(cpf: null), Foto(cpf: "22222222222")));
+        Assert.Empty(ComparadorMarcacao.Comparar(Foto(codigo: ""), Foto(codigo: "1402147")));
+    }
+
+    /// <summary>O que continua sendo alteração: valor real trocado por outro valor real.</summary>
+    [Fact]
+    public void Troca_entre_dois_valores_preenchidos_continua_sendo_alteracao()
     {
         var alteracao = Assert.Single(
-            ComparadorMarcacao.Comparar(Foto(cpf: null), Foto(cpf: "22222222222")));
+            ComparadorMarcacao.Comparar(Foto(cpf: "11111111111"), Foto(cpf: "22222222222")));
 
         Assert.Equal(TipoAlteracaoAgenda.Executante, alteracao.Tipo);
-        Assert.Null(alteracao.Antes);
+        Assert.Equal("11111111111", alteracao.Antes);
         Assert.Equal("22222222222", alteracao.Depois);
     }
 

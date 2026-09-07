@@ -156,6 +156,28 @@ public sealed class VarreduraAgendaService(
 
     private const double LimiteAusentesSuspeito = 0.20;
 
+    /// <summary>
+    /// Espera antes de repetir uma fatia de um dia só que o SISREG recusou. Curta de propósito: é
+    /// para atravessar o soluço (o 504 de um momento), não para esperar o sistema sarar.
+    /// </summary>
+    private const int SegundosAntesDeRetentarFatia = 5;
+
+    /// <summary>
+    /// Quantos dias podem falhar antes da corrida desistir de insistir.
+    ///
+    /// <para><b>Isto é um freio de orçamento, não de qualidade.</b> Partir a faixa recusada ao meio
+    /// recupera o dia que o SISREG só não entrega em bloco — mas se o SISREG estiver fora do ar,
+    /// TODA fatia recusa, e a recursão viraria uma explosão de requisições descendo até o dia. O
+    /// contador de orçamento (<c>SisregOrcamentoRequisicoes</c>) só CONTA, não barra, e a varredura
+    /// não o consulta no meio da corrida: sem este teto, uma indisponibilidade do SISREG queimaria o
+    /// orçamento anti-robô do operador e cobraria a conta em CAPTCHA — que pausa a unidade por 24h e
+    /// exige um humano no navegador.</para>
+    ///
+    /// <para>Chegando aqui, o resto da janela é marcado como não lido <b>sem gastar requisição</b>:
+    /// a corrida termina Parcial, declarando o que ficou de fora.</para>
+    /// </summary>
+    private const int MaxDiasNaoLidosPorCorrida = 8;
+
     private const int LoteDeImportacao = 20;
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
@@ -734,6 +756,11 @@ public sealed class VarreduraAgendaService(
         var fatias = FatiarJanela(execucao.JanelaInicio, execucao.JanelaFim);
         var marcacoes = new List<MarcacaoSisreg>();
 
+        // O que o SISREG não entregou. Enquanto isto não existia, uma fatia que voltasse com página
+        // de erro era indistinguível de uma fatia sem agendamento — e a diferença entre as duas é a
+        // diferença entre "não li" e "foi cancelado".
+        var naoLidas = new List<(DateOnly Inicio, DateOnly Fim)>();
+
         for (var i = 0; i < fatias.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
@@ -747,7 +774,7 @@ public sealed class VarreduraAgendaService(
 
             marcacoes.AddRange(await ExportarComTetoAsync(
                 cnes, fatiaInicio, fatiaFim,
-                SemFiltro, SemFiltro, unidade.Nome, progresso, ct));
+                SemFiltro, SemFiltro, unidade.Nome, progresso, naoLidas, ct));
         }
 
         // Dedupe por nº do SISREG: o split por teto pode repetir uma linha na fronteira das metades.
@@ -884,12 +911,42 @@ public sealed class VarreduraAgendaService(
             primeiro = false;
         }
 
-        // A corrida cobriu a janela inteira sem exceção — só aqui a ausência de um agendamento no
-        // arquivo passa a significar alguma coisa. Se qualquer fatia tivesse falhado, este ponto não
-        // teria sido alcançado (a exceção sobe e a execução vira Erro/Parcial).
-        await DetectarAusentesAsync(execucao, unidade, novas, ct);
+        // Ausência só significa alguma coisa onde a leitura de fato aconteceu. Os dias que o SISREG
+        // não entregou vão excluídos daqui — é a diferença entre "não li" e "foi cancelado", e foi
+        // não fazer essa distinção que despejou 702 cancelamentos falsos na fila em 06/09/2026.
+        await DetectarAusentesAsync(execucao, unidade, novas, naoLidas, ct);
 
         progresso.CombinacoesFeitas = 1;
+
+        if (naoLidas.Count > 0)
+        {
+            // NÃO zera as falhas consecutivas nem a pausa: a corrida não cobriu o que se propôs, e
+            // tratá-la como sadia esconderia um SISREG que está errando de forma repetida.
+            //
+            // A lista vai truncada: numa indisponibilidade do SISREG ela tem uma entrada por fatia
+            // restante, e `mensagem_erro` tem 2.000 caracteres. Estourar a coluna trocaria o aviso
+            // por um erro de gravação — a corrida acabaria sem deixar recado nenhum.
+            const int MaxFaixasNaMensagem = 10;
+            var faixas = string.Join(", ", naoLidas.Take(MaxFaixasNaMensagem).Select(f =>
+                f.Inicio == f.Fim ? $"{f.Inicio:dd/MM/yyyy}" : $"{f.Inicio:dd/MM}..{f.Fim:dd/MM/yyyy}"));
+
+            if (naoLidas.Count > MaxFaixasNaMensagem)
+                faixas += $" e mais {naoLidas.Count - MaxFaixasNaMensagem} faixa(s)";
+
+            await FinalizarAsync(execucao, StatusVarredura.Parcial,
+                $"O SISREG não entregou o arquivo de {naoLidas.Count} faixa(s) de data: {faixas}. "
+                + "Tudo que veio nas outras fatias foi importado, e a checagem de cancelamento foi "
+                + "suspensa nesses dias — sem o arquivo não há como saber se um agendamento sumiu "
+                + "de lá ou se foi a leitura que falhou. Rode de novo mais tarde para cobrir o que "
+                + "ficou de fora.", ct, progresso);
+
+            logger.LogWarning(
+                "SISREG_VARREDURA_PARCIAL (unidade inteira): {Unidade} — {Faixas} faixa(s) de data "
+                + "não lidas ({Lista}); {Req} requisições, {Validos} importados.",
+                unidade.Nome, naoLidas.Count, faixas, progresso.Requisicoes, progresso.Validos);
+            return;
+        }
+
         if (agenda is not null)
         {
             agenda.PausadoAte = null;
@@ -1114,14 +1171,24 @@ public sealed class VarreduraAgendaService(
     /// Cancelar atendimento automaticamente a partir de raspagem é o tipo de erro que se paga com
     /// paciente sem consulta.</para>
     ///
+    /// <para><b>Só olha o que foi lido.</b> Dia cuja fatia o SISREG não entregou fica de fora por
+    /// <paramref name="naoLidas"/> — sem o arquivo daquele dia, "não veio" não é informação sobre a
+    /// agenda, é ausência de informação. Foi a falta desta distinção que, em 06/09/2026, marcou
+    /// como cancelada a agenda inteira de quatro dias do CDT (702 marcações) porque duas fatias
+    /// voltaram com página de erro.</para>
+    ///
     /// <para><b>Freio de sanidade:</b> se a proporção de ausentes for alta demais, não é
     /// cancelamento em massa — é leitura incompleta (exportação truncada, sessão trocada no meio).
     /// Nesse caso não registra nada e deixa o aviso no log. Concluir aqui seria despejar centenas de
-    /// falsos cancelamentos na fila e destruir a confiança dela.</para>
+    /// falsos cancelamentos na fila e destruir a confiança dela. Ele continua como segunda linha:
+    /// pega a leitura incompleta que passou pelas guardas anteriores.</para>
     /// </summary>
+    /// <param name="naoLidas">Faixas de dias que o SISREG não entregou nesta corrida.</param>
     private async Task DetectarAusentesAsync(
         SisregVarreduraExecucao execucao, Unidade unidade,
-        List<MarcacaoSisreg> lidas, CancellationToken ct)
+        List<MarcacaoSisreg> lidas,
+        IReadOnlyList<(DateOnly Inicio, DateOnly Fim)> naoLidas,
+        CancellationToken ct)
     {
         var codigosLidos = lidas
             .Select(m => m.CodigoSolicitacao)
@@ -1146,10 +1213,32 @@ public sealed class VarreduraAgendaService(
                 && s.CodigoSolicitacao != null
                 && s.CodigoSolicitacao != "0000"
                 && s.RawSisreg != null)
-            .Select(s => new { s.Id, s.CodigoSolicitacao, s.UnidadeExecutanteId, s.UnidadeSolicitanteId })
+            .Select(s => new
+            {
+                s.Id,
+                s.CodigoSolicitacao,
+                s.DataAgendada,
+                s.UnidadeExecutanteId,
+                s.UnidadeSolicitanteId,
+            })
             .ToListAsync(ct);
 
         if (marcadas.Count == 0) return;
+
+        // Fora do universo: o que caiu em dia não lido. Sai ANTES do freio de sanidade, para não
+        // contaminar também a proporção que ele mede.
+        if (naoLidas.Count > 0)
+        {
+            var antes = marcadas.Count;
+            marcadas = [.. marcadas.Where(s => !EmFaixaNaoLida(s.DataAgendada, naoLidas))];
+
+            logger.LogInformation(
+                "SISREG_AUSENTES_ESCOPO: {Unidade} — {Fora} de {Antes} agendamento(s) ficaram fora da "
+                + "checagem de cancelamento porque o dia deles não foi lido.",
+                unidade.Nome, antes - marcadas.Count, antes);
+
+            if (marcadas.Count == 0) return;
+        }
 
         var ausentes = marcadas.Where(s => !codigosLidos.Contains(s.CodigoSolicitacao!)).ToList();
         if (ausentes.Count == 0) return;
@@ -1202,6 +1291,90 @@ public sealed class VarreduraAgendaService(
             + "de alterações para confirmação.", unidade.Nome, novos);
     }
 
+    /// <summary>
+    /// A resposta de uma fatia é mesmo um export, e é o export que se pediu?
+    ///
+    /// <para><b>Por que existe.</b> Em 06/09/2026 o SISREG devolveu, para duas faixas de data do
+    /// CDT, uma página com <c>alert('Ocorreu um erro nao esperado durante a exportacao do
+    /// arquivo.')</c> e <b>HTTP 200</b>; para outra, um <b>504 Gateway Timeout</b>. Nenhuma das
+    /// duas tem linha de dados, então o parser devolvia zero marcações; a única guarda que existia
+    /// olhava o teto de 700, que zero não bate; a fatia era dada como lida e a corrida fechava
+    /// <c>Concluída</c>. O <see cref="DetectarAusentesAsync"/> então concluiu que a agenda inteira
+    /// daqueles quatro dias — 702 marcações — tinha sido cancelada no SISREG. Ninguém cancelou
+    /// nada: os dias não foram entregues.</para>
+    ///
+    /// <para><b>O cabeçalho é a prova.</b> O TXT abre com <c>CNES;unidade;dt_ini;dt_fim;total</c>.
+    /// Página de erro não tem isso. Conferir o cabeçalho é mais forte que conferir o status HTTP —
+    /// pega também o erro que veio com 200 —, e é o que deixa passar o caso legítimo que a
+    /// checagem ingênua ("veio vazio? falhou") reprovaria: <b>fatia sem agendamento nenhum</b>
+    /// (fim de semana, feriado), que vem com cabeçalho válido e <c>total=0</c>.</para>
+    /// </summary>
+    /// <returns><c>null</c> quando a resposta é um export legítimo da faixa pedida; caso contrário
+    /// o motivo da recusa, já em texto de operador.</returns>
+    internal static string? RecusarExport(
+        AgendaTxtParser.Resultado parsed, DateOnly inicio, DateOnly fim, int bytes)
+    {
+        if (string.IsNullOrEmpty(parsed.Cabecalho.CnesUnidade))
+        {
+            return $"a resposta não traz o cabeçalho do export (CNES;unidade;dt_ini;dt_fim;total) "
+                + $"em {bytes} byte(s) — é página de erro do SISREG, não o arquivo.";
+        }
+
+        // Período diferente do pedido = o arquivo é de outra coisa. Contar as linhas dele como se
+        // fossem da faixa pedida faria a faixa pedida parecer vazia.
+        if (parsed.Cabecalho.Inicio is { } ci && parsed.Cabecalho.Fim is { } cf
+            && (ci != inicio || cf != fim))
+        {
+            return $"o cabeçalho declara {ci:dd/MM/yyyy}..{cf:dd/MM/yyyy}, e o pedido era "
+                + $"{inicio:dd/MM/yyyy}..{fim:dd/MM/yyyy}.";
+        }
+
+        // O total declarado é o contrato do arquivo. Vieram menos linhas que isso = corte no meio
+        // da transferência, e o resto sumiria sem erro nenhum.
+        var vistas = parsed.Marcacoes.Count + parsed.Rejeitadas.Count;
+        if (parsed.Cabecalho.Total is { } total && vistas < total)
+        {
+            return $"o cabeçalho declara {total} registro(s) e só {vistas} linha(s) vieram — "
+                + "arquivo cortado no meio.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// O agendamento caiu num dia que o SISREG não entregou?
+    ///
+    /// <para>Compara em data de <b>Brasília</b>, pela mesma régua central do resto do módulo: as
+    /// faixas não lidas são datas do formulário do SISREG e <c>data_agendada</c> é instante UTC.
+    /// Comparar sem converter faria as três horas de diferença jogarem o começo e o fim do dia para
+    /// o lado errado da faixa — exatamente o tipo de deslize que a checagem existe para evitar.</para>
+    /// </summary>
+    internal static bool EmFaixaNaoLida(
+        DateTime? dataAgendadaUtc, IReadOnlyList<(DateOnly Inicio, DateOnly Fim)> naoLidas)
+    {
+        if (dataAgendadaUtc is not { } utc) return false;
+
+        var dia = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(utc));
+        return naoLidas.Any(f => dia >= f.Inicio && dia <= f.Fim);
+    }
+
+    /// <summary>Uma requisição de fatia, validada. <c>Parsed</c> é null quando houve recusa.</summary>
+    private async Task<(AgendaTxtParser.Resultado? Parsed, string? Recusa)> ExportarEValidarAsync(
+        string cnes, DateOnly inicio, DateOnly fim, string cpf, string procedimento,
+        ProgressoVarredura progresso, CancellationToken ct)
+    {
+        var texto = await ExportarAsync(cnes, inicio, fim, cpf, procedimento, ct);
+        Interlocked.Increment(ref progresso.Requisicoes);
+
+        var parsed = AgendaTxtParser.Parse(texto, NomeArquivoSintetico(procedimento, inicio, fim));
+        var recusa = RecusarExport(parsed, inicio, fim, texto?.Length ?? 0);
+
+        return recusa is null ? (parsed, null) : (null, recusa);
+    }
+
+    /// <param name="falhas">Faixas que não puderam ser lidas. Sai vazia na corrida sadia; qualquer
+    /// item aqui significa <b>cobertura incompleta</b>, e é o que impede a ausência de virar
+    /// cancelamento.</param>
     private async Task<List<MarcacaoSisreg>> ExportarComTetoAsync(
         string cnes,
         DateOnly inicio,
@@ -1210,33 +1383,83 @@ public sealed class VarreduraAgendaService(
         string procedimento,
         string rotulo,
         ProgressoVarredura progresso,
+        List<(DateOnly Inicio, DateOnly Fim)> falhas,
         CancellationToken ct)
     {
-        var texto = await ExportarAsync(cnes, inicio, fim, cpf, procedimento, ct);
-        Interlocked.Increment(ref progresso.Requisicoes);
+        // Desistiu: o SISREG está recusando demais para ser data ruim. Marca o resto como não lido
+        // SEM gastar requisição — insistir aqui é que quebraria o orçamento anti-robô.
+        if (falhas.Count >= MaxDiasNaoLidosPorCorrida)
+        {
+            falhas.Add((inicio, fim));
+            return [];
+        }
 
-        var parsed = AgendaTxtParser.Parse(texto, NomeArquivoSintetico(procedimento, inicio, fim));
+        var (parsed, recusa) = await ExportarEValidarAsync(
+            cnes, inicio, fim, cpf, procedimento, progresso, ct);
 
-        // O TOTAL do cabeçalho, não a contagem de linhas PARSEADAS: no corte silencioso o cabeçalho
-        // também diz 700, e uma única linha recusada pelo parser faria 700 virar 699 aqui — o corte
-        // passaria despercebido e o agendamento sumiria sem aviso. Medido em 27/08/2026: o total
-        // declarado bateu exatamente com as linhas nos quatro recortes testados, inclusive num de
-        // 3.286 (o teto de 700 não se aplica ao recorte amplo, mas a guarda continua valendo).
-        var lidos = parsed.Cabecalho.Total ?? parsed.Marcacoes.Count + parsed.Rejeitadas.Count;
+        // Faixa de um dia só não tem como ser partida — então aqui, e só aqui, vale uma
+        // retentativa: o 504 às vezes é do momento, não da data. Repetir a faixa larga seria pagar
+        // orçamento anti-robô pelo mesmo diagnóstico que partir ao meio já dá de graça.
+        if (recusa is not null && inicio >= fim)
+        {
+            logger.LogWarning(
+                "SISREG_EXPORT_RECUSADA: {Proc} em {Dia:dd/MM/yyyy} — {Motivo} Tentando uma vez mais.",
+                rotulo, inicio, recusa);
 
-        var bateuNoTeto = lidos >= TetoRegistrosPorExportacao;
-        if (!bateuNoTeto || inicio >= fim) return [.. parsed.Marcacoes];
+            await Task.Delay(TimeSpan.FromSeconds(SegundosAntesDeRetentarFatia), ct);
+            (parsed, recusa) = await ExportarEValidarAsync(
+                cnes, inicio, fim, cpf, procedimento, progresso, ct);
+
+            if (recusa is not null)
+            {
+                // Desiste DESTE dia — e declara. A corrida continua e importa o que conseguir ler;
+                // o que não pode acontecer é o dia sumir calado, que é o que produzia os
+                // cancelamentos falsos.
+                falhas.Add((inicio, fim));
+                logger.LogError(
+                    "SISREG_EXPORT_FALHOU: {Proc} em {Dia:dd/MM/yyyy} não pôde ser lido em 2 "
+                    + "tentativas — {Motivo} O dia fica FORA desta corrida e a execução será Parcial.",
+                    rotulo, inicio, recusa);
+                return [];
+            }
+        }
+
+        var meio = inicio.AddDays((fim.DayNumber - inicio.DayNumber) / 2);
+
+        if (recusa is null)
+        {
+            // O TOTAL do cabeçalho, não a contagem de linhas PARSEADAS: no corte silencioso o
+            // cabeçalho também diz 700, e uma única linha recusada pelo parser faria 700 virar 699
+            // aqui — o corte passaria despercebido e o agendamento sumiria sem aviso. Medido em
+            // 27/08/2026: o total declarado bateu exatamente com as linhas nos quatro recortes
+            // testados, inclusive num de 3.286 (o teto de 700 não se aplica ao recorte amplo, mas a
+            // guarda continua valendo).
+            var lidos = parsed!.Cabecalho.Total ?? parsed.Marcacoes.Count + parsed.Rejeitadas.Count;
+
+            if (lidos < TetoRegistrosPorExportacao || inicio >= fim) return [.. parsed.Marcacoes];
+
+            logger.LogWarning(
+                "SISREG_EXPORT_TRUNCADA: {Proc} em {Ini}..{Fim} declarou {Lidos} registros (teto {Teto}) — "
+                + "partindo a janela em {Ini}..{Meio} e {Meio2}..{Fim}.",
+                rotulo, inicio, fim, lidos, TetoRegistrosPorExportacao, inicio, meio, meio.AddDays(1), fim);
+        }
+        else
+        {
+            // Partir também serve de retentativa, e mais barata: o SISREG errou a faixa inteira,
+            // mas costuma responder às metades. Foi assim que 27/08..28/08 e 02/09..03/09 caíram
+            // inteiros — a faixa falhava e ninguém tentava os dias separados.
+            logger.LogWarning(
+                "SISREG_EXPORT_RECUSADA: {Proc} em {Ini:dd/MM}..{Fim:dd/MM} — {Motivo} "
+                + "Partindo ao meio e tentando cada metade.",
+                rotulo, inicio, fim, recusa);
+        }
 
         // Parte ao meio e reconsulta cada metade. A recursão termina porque a janela encolhe a cada
         // nível e para quando inicio == fim (um único dia).
-        var meio = inicio.AddDays((fim.DayNumber - inicio.DayNumber) / 2);
-        logger.LogWarning(
-            "SISREG_EXPORT_TRUNCADA: {Proc} em {Ini}..{Fim} declarou {Lidos} registros (teto {Teto}) — "
-            + "partindo a janela em {Ini}..{Meio} e {Meio2}..{Fim}.",
-            rotulo, inicio, fim, lidos, TetoRegistrosPorExportacao, inicio, meio, meio.AddDays(1), fim);
-
-        var esquerda = await ExportarComTetoAsync(cnes, inicio, meio, cpf, procedimento, rotulo, progresso, ct);
-        var direita = await ExportarComTetoAsync(cnes, meio.AddDays(1), fim, cpf, procedimento, rotulo, progresso, ct);
+        var esquerda = await ExportarComTetoAsync(
+            cnes, inicio, meio, cpf, procedimento, rotulo, progresso, falhas, ct);
+        var direita = await ExportarComTetoAsync(
+            cnes, meio.AddDays(1), fim, cpf, procedimento, rotulo, progresso, falhas, ct);
 
         esquerda.AddRange(direita);
         return esquerda;

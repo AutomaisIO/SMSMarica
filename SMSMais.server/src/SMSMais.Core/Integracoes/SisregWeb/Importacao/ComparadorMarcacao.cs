@@ -41,9 +41,10 @@ public static class ComparadorMarcacao
     {
         var alteracoes = new List<AlteracaoDetectada>();
 
-        // Nulo no lado NOVO nunca vira alteração: o SISREG deixa campo em branco com frequência
-        // (o código do procedimento vem vazio em ~1/3 das linhas), e ler isso como "mudou para
-        // nada" encheria a tela de alterações fantasmas e apagaria dado bom.
+        // Campo vazio de qualquer um dos dois lados nunca vira alteração (ver `Mudou`): o SISREG
+        // deixa campo em branco com frequência — o código do procedimento vem vazio em ~1/3 das
+        // linhas — e tanto "sumiu" quanto "apareceu" são notícia sobre o ARQUIVO, não sobre a
+        // agenda. Ler qualquer um dos dois como troca enche a tela de alterações fantasmas.
         if (depois.DataAgendadaUtc is { } nova && antes.DataAgendadaUtc != nova)
         {
             alteracoes.Add(new(
@@ -77,15 +78,27 @@ public static class ComparadorMarcacao
     }
 
     /// <summary>
-    /// Mudou de verdade? Ignora diferença só de espaço/caixa e nunca considera "sumiu" uma mudança:
-    /// campo que o SISREG deixou de mandar não é informação nova sobre a agenda.
+    /// Mudou de verdade? Ignora diferença só de espaço/caixa, e não confunde com troca nenhuma das
+    /// duas pontas vazias:
+    ///
+    /// <list type="bullet">
+    ///   <item><b>Sumiu</b> (<c>valor → vazio</c>): campo que o SISREG deixou de mandar não é
+    ///   informação nova sobre a agenda.</item>
+    ///   <item><b>Apareceu</b> (<c>vazio → valor</c>): é o campo sendo <b>preenchido</b>, não
+    ///   trocado. O <c>pa</c> do procedimento vem em branco em ~1/3 das linhas; quando o SISREG
+    ///   passa a mandá-lo, ninguém mudou o procedimento de ninguém — nós é que passamos a saber
+    ///   qual era. Ler isso como troca gerou 642 linhas de fila num dia só em 06/09/2026, todas
+    ///   <c>vazio → código</c>, todas falsas, afogando as alterações de verdade.</item>
+    /// </list>
     /// </summary>
     private static bool Mudou(string? antes, string? depois)
     {
         var d = depois?.Trim();
         if (string.IsNullOrEmpty(d)) return false;
 
-        var a = antes?.Trim() ?? string.Empty;
+        var a = antes?.Trim();
+        if (string.IsNullOrEmpty(a)) return false;
+
         return !string.Equals(a, d, StringComparison.OrdinalIgnoreCase);
     }
 
