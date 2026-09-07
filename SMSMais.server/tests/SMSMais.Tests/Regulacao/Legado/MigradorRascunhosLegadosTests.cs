@@ -14,6 +14,7 @@ using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Core.Regulacao.Legado;
+using SMSMais.Core.Regulacao.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;
@@ -157,7 +158,7 @@ public class MigradorRascunhosLegadosTests(PostgresFixture fixture)
             .Returns(new RegulacaoFormularioDto(versaoFormularioId, "externo.uniao", []));
 
         var servico = new MigradorRascunhosLegadosService(
-            db, pacientes, form, store, midias, config, acessor,
+            db, pacientes, form, store, midias, config, new RegulacaoEventoService(db, acessor), acessor,
             NullLogger<MigradorRascunhosLegadosService>.Instance);
 
         return (servico, pacientes, store);
@@ -209,6 +210,14 @@ public class MigradorRascunhosLegadosTests(PostgresFixture fixture)
 
         // Toda solicitação nasce com a caixinha "Anexos gerais".
         criada.Exigencias.Should().ContainSingle(e => e.RegraId == null);
+
+        // E com a trilha contando de onde veio: uma solicitação que aparece na fila sem ninguém
+        // ter aberto pela tela precisa explicar a própria existência.
+        var evento = await db.RegulacaoEventos.AsNoTracking()
+            .FirstAsync(e => e.SolicitacaoId == criada.Id);
+        evento.Tipo.Should().Be(TipoEventoRegulacao.Criacao);
+        evento.Papel.Should().Be(PapelEventoRegulacao.Sistema);
+        evento.DetalheJson.Should().Contain(rascunho.Id.ToString());
 
         // Rodar de novo não duplica: é o `origem_legado_id` (e o único parcial) que segura.
         var segunda = await servico.MigrarAsync(

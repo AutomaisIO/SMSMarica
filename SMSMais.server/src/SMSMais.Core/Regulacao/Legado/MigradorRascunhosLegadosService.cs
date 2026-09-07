@@ -11,6 +11,7 @@ using SMSMais.Core.Pacientes;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
+using SMSMais.Core.Regulacao.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Regulacao;
@@ -77,6 +78,7 @@ public sealed class MigradorRascunhosLegadosService(
     IArquivoExigenciaStore store,
     IMidiasService midias,
     IRegulacaoConfiguracaoService configuracao,
+    IRegulacaoEventoService eventos,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<MigradorRascunhosLegadosService> log) : IMigradorRascunhosLegadosService
 {
@@ -328,6 +330,21 @@ public sealed class MigradorRascunhosLegadosService(
             exigencia.Situacao = SituacaoExigenciaRegulacao.Atendida;
         }
 
+        // A trilha nasceu na tarefa 3.1, depois deste migrador, e ninguém as ligou: a primeira
+        // solicitação migrada em produção (07/09/2026) ficou com a linha do tempo VAZIA. Quem
+        // abrisse não veria de onde ela veio — e "de onde veio" é justamente o que explica uma
+        // solicitação que aparece na fila sem ninguém ter aberto pela tela.
+        await eventos.RegistrarAsync(
+            solicitacao.Id, TipoEventoRegulacao.Criacao, PapelEventoRegulacao.Sistema, ct,
+            para: StatusRegulacao.Rascunho,
+            detalhe: new
+            {
+                migradoDe = r.Sistema,
+                rascunhoLegadoId = r.Id,
+                rascunhoCriadoEm = r.CriadoEm,
+                anexosCopiados = versao,
+            });
+
         try
         {
             await db.SaveChangesAsync(ct);
@@ -345,6 +362,11 @@ public sealed class MigradorRascunhosLegadosService(
             db.Entry(exigencia).State = EntityState.Detached;
             foreach (var entrada in db.ChangeTracker.Entries<RegulacaoExigenciaArquivo>()
                 .Where(e => e.Entity.ExigenciaId == exigencia.Id).ToList())
+            {
+                entrada.State = EntityState.Detached;
+            }
+            foreach (var entrada in db.ChangeTracker.Entries<RegulacaoEvento>()
+                .Where(e => e.Entity.SolicitacaoId == solicitacao.Id).ToList())
             {
                 entrada.State = EntityState.Detached;
             }
