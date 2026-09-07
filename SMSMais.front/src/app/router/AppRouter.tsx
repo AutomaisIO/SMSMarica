@@ -4,6 +4,7 @@ import { InicioPage } from '@/app/pages/InicioPage';
 import { MenuHubPage } from '@/app/pages/MenuHubPage';
 import { NaoEncontradoPage } from '@/app/pages/NaoEncontradoPage';
 import { RotaProtegida } from '@/app/router/RotaProtegida';
+import { RotaComModulo } from '@/app/router/RotaComModulo';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
@@ -198,8 +199,12 @@ export function AppRouter() {
           <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />
           <Route path="regulacao/ser/:id" element={<SerSolicitacaoDetalhePage />} />
           <Route path="regulacao/configuracao" element={<RegulacaoConfiguracaoPage />} />
-          {/* Regulação → Solicitações (ADR-0052): abertura pela unidade solicitante. */}
-          <Route path="regulacao/solicitacoes/nova" element={<NovaSolicitacaoPage />} />
+          {/* Regulação → Solicitações (ADR-0052): abertura pela unidade solicitante.
+              Gate por módulo: esconder o item do menu não impede quem digita a URL de cair numa
+              tela que só dispara 403 — aqui a pessoa lê o motivo. */}
+          <Route element={<RotaComModulo modulo="Regulacao" rotulo="Regulação — Solicitações" />}>
+            <Route path="regulacao/solicitacoes/nova" element={<NovaSolicitacaoPage />} />
+          </Route>
           {/* SERNIT (SER de Niterói) — fila espelhada irmã do SER-RJ, sob /sernit para não colidir. */}
           <Route path="regulacao/sernit" element={<SernitFilaPage />} />
           <Route path="regulacao/sernit/notificacoes" element={<SernitNotificacoesPage />} />

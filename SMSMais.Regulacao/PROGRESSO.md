@@ -17,14 +17,14 @@
 | 0 — Spikes de laboratório | **parcial** | **c, d, e feitos** (04–05/09). Restam **a** e **b** — os dois escrevem em sistema real e **dependem de OK explícito do Bernardo** |
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
 | 2 — Wizard + paciente + fila local | **concluído** | **2.1 a 2.10 feitas**. Backend das tarefas 2.1–2.8 **EM PRODUÇÃO** desde 06/09 23h (push da sessão paralela). **2.9 e 2.10 seguem locais** (commits `1004a2c` e `60ff133`). Anexos em Spaces (Bernardo, 05/09) |
-| 3 — Fila + agente + registro assistido + notificações por unidade | não iniciado | |
+| 3 — Fila + agente + registro assistido + notificações por unidade | em andamento | **3.1 feita** (máquina de estados + trilha de eventos + destinos + migration `FilaPreRegulacao`) |
 | 4 — Regras de elegibilidade | não iniciado | |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
 | 6 — Pendências pós-envio | não iniciado | |
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10). **Próxima tarefa: 3.1** — `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + migration, e a máquina de estados no service (plano 04).
+**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 em andamento: 3.1 feita, 3.2 parcial** (falta só o menu e as rotas das filas, que dependem das páginas). **Próxima tarefa: 3.3** — `RegulacaoSolicitacoesController` com o mapa endpoint × módulo do plano 04, `RegulacaoEscopo` (EscopoUnidade + ampliação por 48).
 
 O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, configuração do módulo, wizard de 5 passos em `regulacao/solicitacoes/nova` (procedimento → destino → paciente → formulário união → revisão), anexos em Spaces, resolução de paciente com CADSUS, e os rascunhos por sistema com caminho de migração e corte reversível. **Nada disso está em produção além do incremento 1** — as três migrations e os commits seguem locais, esperando o push.
 
@@ -148,8 +148,8 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 2.10 testes do wizard — os 5 casos do plano conferidos um a um contra o que já existia; **4 já estavam cobertos** (união com dois catálogos, tradução para nativo, NAR sem `em_nome_de`, envio recusado listando as pendências) e o 5º **não passava porque a regra não existia no backend**: `permitirExternoComInterno` vivia só na tela. Nasceram `ExigirDestinoPermitidoAsync` no service e 3 testes — **06/09/2026**
 
 ### Incremento 3 — Fila + agente (planos 04, 05)
-- [ ] 3.1 `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + migration; máquina de estados no service
-- [ ] 3.2 permissões: docs do enum 47/48/51; `acoes.ts`; `authStore.ts`; `menuConfig.ts`; `AppRouter.tsx`; `<RotaComModulo>`
+- [x] 3.1 `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + 3 enums + configurações + DbSets + `MaquinaDeEstadosRegulacao` (pura) + `IRegulacaoEventoService` (evento + diff) + migration `20260907…_FilaPreRegulacao` (com os 2 CHECKs e os 3 uniques parciais de espelho). Criar/editar/enviar-fila/cancelar passam pela máquina e gravam trilha. **12 testes novos** — **06/09/2026**
+- [~] 3.2 permissões — **feito**: XML do enum 47/48/51 reescrito (o bloco citava um "ADR-0024" que é de outro assunto), rótulo do 48 em `acoes.ts`, `<RotaComModulo>` criado e aplicado na rota do wizard, skill `sincronizar-permissoes` corrigida (caminhos `SMSMais.*`, `Sidebar.tsx` → `menuConfig.ts`, gate de build, e o passo 8 do `RotaComModulo`). **Falta**: os subitens do menu (Minha fila / Fila da regulação) e as rotas delas — dependem das páginas da 3.4, e entram junto com ela — **07/09/2026**
 - [ ] 3.3 controller `RegulacaoSolicitacoesController` com o mapa endpoint × módulo do plano 04
 - [ ] 3.4 fila da unidade (escopo via `EscopoUnidade`) e fila global do agente (filtros)
 - [ ] 3.5 detalhe com timeline; assumir / ajustar (diff) / devolver / recusar
@@ -203,6 +203,10 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 
 ## Como rodar a migração dos rascunhos legados (quando houver OK)
 
+> O passo a passo completo, com os motivos de recusa e como desfazer, está em
+> [`RUNBOOK-migracao-rascunhos.md`](./RUNBOOK-migracao-rascunhos.md). O resumo abaixo continua
+> valendo.
+
 As três rotas são de API, **sem tela** — o plano 02 não previu UI para elas e não a inventei. Dá
 para chamá-las pelo `/docs` (Scalar) autenticado com um usuário que tenha o módulo
 `RegulacaoConfiguracao` (51), na ordem:
@@ -236,6 +240,13 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 04 §3.2 | **A 3.2 ficou pela metade de propósito.** Menu e rotas dela apontam para `MinhaFilaPage` e `FilaRegulacaoPage`, que são da **3.4** — escrever a rota antes da página não compila, e pôr o item no menu antes da rota leva o usuário a um 404. Foi feito tudo o que não depende das páginas; o resto entra junto da 3.4. |
+| 07/09/2026 | 04 §3.2 | **A página `regulacao/configuracao` NÃO foi gateada, e isso é deliberado.** Ela mistura abas de módulos diferentes (SER, SERNIT, Solicitações, catálogo): gatear a rota por `RegulacaoConfiguracao` tiraria o acesso de quem tem só `RegulacaoSer` e hoje usa a aba do SER. O gate certo ali é por aba, não por rota — fica como pendência anotada, não como mudança silenciosa que quebraria um usuário real. |
+| 07/09/2026 | 04 §3.2 | **Os módulos 49 e 50 continuam visíveis na tela de Perfis com rótulo funcional** ("médico regulador", "agendamento"), embora não exista nada por trás. Marcá-los como reservados evitaria concessão inútil — não fiz porque está fora da tarefa; o XML do enum já os declara reservados. |
+| 06/09/2026 | 04 §D | **A máquina de estados guarda o papel, não só o par de estados.** O plano especifica `PodeTransitar(de, para, papel)`, e ao escrever a tabela ficou claro por quê: `PendenteRegulacao → EmAnalise` existe **para o agente e só para ele** — um solicitante que a alcançasse assumiria o próprio caso e furaria a triagem inteira. O mesmo par com papel diferente é outra transição, e é isso que a tabela expressa. Virou o teste `Papel_errado_na_transicao_certa_e_recusado`. |
+| 06/09/2026 | 04 §D | **`TransitarAsync` não chama `SaveChanges`.** O evento e o fato que ele descreve têm de ir na mesma gravação: evento sem fato (ou fato sem evento) faz a trilha mentir justamente onde ela vale como prova. Quem chama decide quando gravar. |
+| 06/09/2026 | 04 §B | **Enum de evento ganhou `TrocaProcedimento = 21`**, que o plano cita na tarefa 3.5b mas não tinha na lista de tipos do §B. Sem ele, a troca de procedimento (D-10) seria registrada como `Ajuste` e a linha do tempo não distinguiria "corrigiu um campo" de "mudou o procedimento, o formulário e as regras". |
+| 06/09/2026 | 04 §D | **Edição sem mudança não gera evento.** O plano não diz nada a respeito; medindo o uso real (salvar o formulário a cada passo do wizard), gravar sempre encheria a linha do tempo de "editou" idênticos e esconderia as edições que importam. O `Diferenca` devolve `null` quando nada mudou, e o service não registra. |
 | 06/09/2026 | 02 §2.10 / R-03 | **A régua "não mande para fora havendo oferta interna" existia só no front.** `NovaSolicitacaoPage` não oferecia o cartão "Externo" quando havia executante interno e a configuração não permitia — mas o `POST /regulacao/solicitacoes` aceitava. Tela não é trava: uma chamada direta mandava o paciente para a fila do Estado com vaga existindo no município, que é exatamente o que a configuração existe para impedir. A regra passou para `RegulacaoSolicitacaoService.ExigirDestinoPermitidoAsync` (o serviço ganhou `IRegulacaoProcedimentoBuscaService`, reusando o `ObterAsync` que já calcula oferta interna e externa). O NAR não passa por ela — é sempre SISREG, em nome de outra unidade. |
 | 06/09/2026 | 02 §Deprecação + §G passo 6 | **O corte das telas antigas virou uma data em `regulacao_configuracao`, não um `410` fixo no código.** O plano manda ligar o 410 "só depois de rodar o migrador em prod" — isso exige **dois deploys**, e na janela entre eles ou o rascunho fica editável depois de copiado (a edição se perde), ou a tela fecha antes da cópia (o operador perde acesso ao que não migrou). Agora `rascunhos_legados_migrados_em` nasce nula, o migrador a preenche, `IRascunhoLegadoGate` faz as dez ações de escrita responderem 410, e `POST legado/rascunhos/reabrir` desfaz. Um deploy, corte do operador, reversível. |
 | 06/09/2026 | 02 §C (spec do migrador) | **`ProcedimentoId = null + motivo` é impossível e "usa a unidade do admin global" é errado.** As três colunas (`procedimento_id`, `paciente_id`, `unidade_solicitante_id`) são obrigatórias na entidade que nasceu na 2.2. Rascunho sem par no catálogo, sem paciente com aquele CNS ou sem unidade do autor **não migra**: entra em `naoMigrados[]` com o motivo. Para o autor sem vínculo, o configurador informa `unidadeFallbackId` na chamada — quem escolhe a unidade é gente, porque solicitação na fila da unidade errada é pior do que solicitação que não migrou. |
@@ -288,6 +299,22 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — incremento 3, tarefa 3.2 (permissões) — parcial, pelo motivo certo
+
+- Feito: XML do enum 47/48/51, rótulo do 48 em `acoes.ts`, `RotaComModulo` (criado e aplicado na rota do wizard) e a skill `sincronizar-permissoes` corrigida.
+- **O comentário do enum descrevia um sistema que não foi construído.** Citava "ADR-0024" (que é o sync contínuo Salux→FHIR) e falava em parecer médico, prioridade e deferimento — desenho antigo. Quem lesse aquilo para decidir uma permissão decidiria errado.
+- **`RotaComModulo` existe porque menu escondido não é barreira.** Quem digita a URL entrava na tela, que disparava chamadas e recebia 403 solto. O backend segue sendo a trava; o gate serve para a pessoa ler o motivo em vez de ver uma tela quebrada.
+- **Não gateei `regulacao/configuracao`** — ela mistura abas de módulos diferentes, e gatear a rota inteira tiraria acesso de quem só tem `RegulacaoSer`. Anotado como pendência em vez de mudança silenciosa.
+- **Achado de ambiente, não de código:** o `node_modules` do front estava com `@cornerstonejs/core` truncado (`index.d.ts` ausente) e `.bin` vazio — instalação interrompida por alguém. O `npm run build` quebrava com erro de PACS, nada a ver com a Regulação. Reinstalei só o pacote; `package-lock.json` **não** mudou.
+
+### 07/09/2026 — incremento 3, tarefa 3.1 (máquina de estados e trilha de eventos)
+
+- `RegulacaoEvento` + `RegulacaoSolicitacaoDestino` + 3 enums + configurações + DbSets + `MaquinaDeEstadosRegulacao` (pura, estática) + `IRegulacaoEventoService` + migration `FilaPreRegulacao`. Build 0/0; **34/34** nos testes do assunto.
+- **A migration acrescenta 2 CHECKs a uma tabela que já existe em produção.** `ck_regulacao_solicitacao_nar` e `ck_…_um_espelho` falhariam se houvesse linha violando — conferi antes: `regulacao_solicitacao` tem **0 linhas** em prod, e o módulo ainda não está concedido a perfil nenhum, então ninguém consegue criar uma até o deploy. Quem repetir isso em outra instância: conferir antes, não presumir.
+- **Escrever a tabela de transições respondeu uma pergunta de projeto:** o papel faz parte da transição, não é um filtro depois dela. `PendenteRegulacao → EmAnalise` existe para o agente **e só para ele**; com o par sozinho, um solicitante assumiria o próprio caso.
+- **Dois cuidados que viraram comentário no código**, porque são o tipo de coisa que a próxima pessoa desfaz sem perceber: `TransitarAsync` não chama `SaveChanges` (evento e fato na mesma gravação), e edição sem diferença não vira evento (senão o wizard, que salva a cada passo, enche a trilha de "editou" vazios).
+- **Ainda não** existem as ações do agente (assumir/devolver/recusar/registrar envio): são 3.5 e 3.6. A máquina já as prevê, e a tabela é o contrato que elas vão cumprir.
 
 ### 06/09/2026 23h — o incremento 2 subiu em produção (push da sessão paralela)
 

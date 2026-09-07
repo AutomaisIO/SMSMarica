@@ -91,7 +91,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   // solicitação, então deixou de ser um enum sem uso. É a permissão da UNIDADE SOLICITANTE —
   // quem abre o pedido; ver o SER/SERNIT é outra coisa e continua em módulo próprio.
   { id: 'Regulacao', rotulo: 'Regulação — Solicitações (unidade solicitante: abre, anexa e envia à pré-regulação)' },
-  { id: 'RegulacaoTriagem', rotulo: 'Regulação — triagem técnica (visão do município no painel)' },
+  { id: 'RegulacaoTriagem', rotulo: 'Regulação — Agente regulador (vê todas as unidades, assume, ajusta e envia aos sistemas)' },
   { id: 'RegulacaoMedica', rotulo: 'Regulação — médico regulador (visão do município no painel)' },
   { id: 'RegulacaoAgendamento', rotulo: 'Regulação — agendamento (visão do município no painel)' },
   { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (Edição = registrar FollowUP no SER)' },
