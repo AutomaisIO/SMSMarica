@@ -26,6 +26,13 @@ public interface IRegulacaoElegibilidadeService
     /// <summary>Exames do próprio SMSMais que servem para aquela caixinha.</summary>
     Task<IReadOnlyList<ExameParaRegras>> ExamesInternosAsync(
         Guid solicitacaoId, Guid exigenciaId, CancellationToken ct);
+
+    /// <summary>
+    /// Usa um exame que o SMSMais já tem como resposta à exigência (R-09): gera o PDF, anexa na
+    /// caixinha e registra quem validou que aquele exame é o pedido.
+    /// </summary>
+    Task<ExigenciaDto> UsarExameInternoAsync(
+        Guid solicitacaoId, Guid exigenciaId, Guid exameId, Guid? laudoId, CancellationToken ct);
 }
 
 /// <summary>
@@ -112,6 +119,63 @@ public sealed class RegulacaoElegibilidadeService(
         return [.. exames
             .Where(e => e.TipoExameId == regra.TipoExameId && e.RealizadoEm >= limite)
             .OrderByDescending(e => e.Laudado).ThenByDescending(e => e.RealizadoEm)];
+    }
+
+    public async Task<ExigenciaDto> UsarExameInternoAsync(
+        Guid solicitacaoId, Guid exigenciaId, Guid exameId, Guid? laudoId, CancellationToken ct)
+    {
+        var s = await CarregarAsync(solicitacaoId, ct);
+
+        var exigencia = await db.RegulacaoSolicitacaoExigencias
+            .FirstOrDefaultAsync(e => e.Id == exigenciaId && e.SolicitacaoId == solicitacaoId, ct)
+            ?? throw new NaoEncontradoException("Exigência da solicitação", exigenciaId);
+
+        // O exame tem de ser DAQUELE paciente. A checagem é do serviço clínico, que já resolve
+        // conciliação por UID — refazer a conta aqui deixaria uma porta por onde o exame de
+        // outra pessoa entraria na solicitação.
+        var candidatos = await ExamesAsync(s.PacienteId, ct);
+        var exame = candidatos.FirstOrDefault(e => e.Id == exameId)
+            ?? throw new ValidacaoException(
+                "exame", "Este exame não é do paciente da solicitação.");
+
+        var idDoLaudo = laudoId ?? exame.LaudoId;
+
+        // Prefere o laudo: é o que a regulação lê. Sem laudo, vai o PDF das imagens — serve de
+        // comprovação de que o exame foi feito, que já é mais do que anexo nenhum.
+        byte[]? conteudo = null;
+        var nome = $"{exame.Descricao} - {exame.RealizadoEm:dd-MM-yyyy}.pdf";
+
+        if (idDoLaudo is { } lid)
+        {
+            var pdf = await clinico.ObterLaudoPdfAsync(s.PacienteId, lid, ct);
+            conteudo = pdf?.Conteudo;
+            if (pdf is not null) nome = $"Laudo - {nome}";
+        }
+
+        conteudo ??= await clinico.ObterImagensPdfAsync(s.PacienteId, exameId, ct);
+
+        if (conteudo is null || conteudo.Length == 0)
+        {
+            throw new ValidacaoException(
+                "exame",
+                "Não foi possível gerar o PDF deste exame. Anexe o arquivo manualmente.");
+        }
+
+        await exigencias.AnexarInternoAsync(
+            solicitacaoId, exigenciaId, nome, "application/pdf", conteudo, ct);
+
+        exigencia.Situacao = SituacaoExigenciaRegulacao.Atendida;
+        exigencia.ExameInternoExameImagemId = exameId;
+        exigencia.ExameInternoLaudoId = idDoLaudo;
+
+        // Quem validou que aquele exame é o pedido é uma pessoa, e isso fica registrado: o
+        // sistema ofereceu, alguém confirmou.
+        exigencia.ValidadoExamePor = usuarioAtual.UsuarioId;
+        exigencia.ValidadoExameEm = DateTime.UtcNow;
+        exigencia.CriticaTexto = null;
+        await db.SaveChangesAsync(ct);
+
+        return (await exigencias.ListarAsync(solicitacaoId, ct)).First(e => e.Id == exigenciaId);
     }
 
     // ---------------------------------------------------------------- apoio

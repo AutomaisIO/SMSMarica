@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
 using SMSMais.Api.Auth;
+using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Core.Regulacao.Solicitacoes;
@@ -196,6 +197,20 @@ public sealed class RegulacaoSolicitacoesController(
     public Task<IReadOnlyList<ExameParaRegras>> ExamesInternos(
         Guid id, Guid exigenciaId, CancellationToken cancellationToken) =>
         elegibilidade.ExamesInternosAsync(id, exigenciaId, cancellationToken);
+
+    /// <summary>
+    /// Usa um exame que o SMSMais já tem para atender a exigência (R-09) — evita pedir ao
+    /// paciente um documento que a própria rede produziu.
+    /// </summary>
+    [HttpPost("{id:guid}/exigencias/{exigenciaId:guid}/usar-exame-interno")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ExigenciaDto>(StatusCodes.Status200OK)]
+    public Task<ExigenciaDto> UsarExameInterno(
+        Guid id, Guid exigenciaId, [FromBody] UsarExameInternoRequest req,
+        CancellationToken cancellationToken) =>
+        elegibilidade.UsarExameInternoAsync(id, exigenciaId, req.ExameId, req.LaudoId, cancellationToken);
+
+    public sealed record UsarExameInternoRequest(Guid ExameId, Guid? LaudoId);
 
     public sealed record ResponderRegrasRequest(
         IReadOnlyDictionary<Guid, RespostaRegraRegulacao> Respostas);

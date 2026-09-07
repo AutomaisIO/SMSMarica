@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NSubstitute;
 
 using SMSMais.Core.Cidadao;
+using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Cidadao.Dtos;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Identidade.Dtos;
@@ -253,6 +254,32 @@ public class RegulacaoElegibilidadeServiceTests(PostgresFixture fixture)
             .Where(e => e.SolicitacaoId == c.SolicitacaoId && e.RegraId != null)
             .ToListAsync();
         caixinhas.Should().ContainSingle().Which.Titulo.Should().Be("Laudo do cardiologista");
+    }
+
+    [Fact]
+    public async Task Exame_de_outro_paciente_nao_entra_na_solicitacao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+
+        db.RegulacaoRegras.Add(NovaRegra(
+            c.ProcedimentoId, TipoRegraRegulacao.Documental, documento: "Raio-X"));
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var servico = Montar(db, c);
+        await servico.AvaliarAsync(c.SolicitacaoId, CancellationToken.None);
+
+        var exigencia = await db.RegulacaoSolicitacaoExigencias.AsNoTracking()
+            .FirstAsync(e => e.SolicitacaoId == c.SolicitacaoId && e.RegraId != null);
+
+        // O dublê do serviço clínico devolve lista vazia: nenhum exame é deste paciente. A
+        // checagem tem de ser essa — sem ela, um id adivinhado anexaria o exame de outra pessoa
+        // à solicitação, e o erro só apareceria na mesa da regulação.
+        var acao = () => servico.UsarExameInternoAsync(
+            c.SolicitacaoId, exigencia.Id, Guid.NewGuid(), null, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<ValidacaoException>();
     }
 
     [Fact]

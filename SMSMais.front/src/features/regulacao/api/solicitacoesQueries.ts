@@ -6,6 +6,7 @@ import {
   cancelarSolicitacao,
   devolverSolicitacao,
   listarEventos,
+  listarExamesInternos,
   obterElegibilidade,
   listarNotificacoesRegulacao,
   listarSolicitacoes,
@@ -16,6 +17,7 @@ import {
   obterResumoNotificacoesRegulacao,
   recusarSolicitacao,
   responderRegras,
+  usarExameInterno,
   registrarEnvioSolicitacao,
   atualizarSolicitacao,
   criarSolicitacao,
@@ -258,6 +260,33 @@ export function useResponderRegras() {
     mutationFn: ({ id, respostas }: { id: string; respostas: Record<string, RespostaRegraRegulacao> }) =>
       responderRegras(id, respostas),
     // Responder muda destinos e caixinhas: invalida a raiz inteira, não só a avaliação.
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
+  });
+}
+
+/** Exames do acervo que servem para aquela caixinha. Só busca quando a caixinha é aberta. */
+export function useExamesInternos(solicitacaoId: string | null, exigenciaId: string | null) {
+  return useQuery({
+    queryKey: [...raiz, solicitacaoId, 'exames-internos', exigenciaId],
+    queryFn: () => listarExamesInternos(solicitacaoId!, exigenciaId!),
+    enabled: !!solicitacaoId && !!exigenciaId,
+  });
+}
+
+export function useUsarExameInterno() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      solicitacaoId,
+      exigenciaId,
+      exameId,
+      laudoId,
+    }: {
+      solicitacaoId: string;
+      exigenciaId: string;
+      exameId: string;
+      laudoId?: string | null;
+    }) => usarExameInterno(solicitacaoId, exigenciaId, exameId, laudoId),
     onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
   });
 }

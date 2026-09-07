@@ -10,6 +10,7 @@ import type {
   FormularioRegulacao,
   PaginaNotificacoesRegulacao,
   PaginaSolicitacoesRegulacao,
+  ExameParaRegras,
   PendenciaEnvio,
   RespostaRegraRegulacao,
   ResumoFilaRegulacao,
@@ -194,5 +195,28 @@ export async function responderRegras(
   respostas: Record<string, RespostaRegraRegulacao>,
 ): Promise<AvaliacaoElegibilidade> {
   const { data } = await http.put<AvaliacaoElegibilidade>(`${base}/${id}/respostas`, { respostas });
+  return data;
+}
+
+export async function listarExamesInternos(
+  solicitacaoId: string,
+  exigenciaId: string,
+): Promise<ExameParaRegras[]> {
+  const { data } = await http.get<ExameParaRegras[]>(
+    `${base}/${solicitacaoId}/exigencias/${exigenciaId}/exames-internos`,
+  );
+  return data;
+}
+
+export async function usarExameInterno(
+  solicitacaoId: string,
+  exigenciaId: string,
+  exameId: string,
+  laudoId?: string | null,
+): Promise<Exigencia> {
+  const { data } = await http.post<Exigencia>(
+    `${base}/${solicitacaoId}/exigencias/${exigenciaId}/usar-exame-interno`,
+    { exameId, laudoId },
+  );
   return data;
 }

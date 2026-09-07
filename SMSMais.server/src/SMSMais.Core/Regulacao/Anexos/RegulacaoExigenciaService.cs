@@ -53,6 +53,18 @@ public interface IRegulacaoExigenciaService
         Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo,
         CancellationToken ct);
 
+    /// <summary>
+    /// Anexa um PDF gerado pelo próprio SMSMais (exame/laudo do acervo), marcado
+    /// <see cref="OrigemArquivoExigencia.ExameInterno"/>.
+    ///
+    /// <para>Existe separado de <see cref="AnexarAsync"/> porque <b>não passa pelas regras de
+    /// upload</b>: o limite de MB e a lista de tipos valem para o que o operador manda do
+    /// celular, não para um laudo que nós mesmos produzimos e assinamos.</para>
+    /// </summary>
+    Task<ArquivoExigenciaDto> AnexarInternoAsync(
+        Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo,
+        CancellationToken ct);
+
     Task RemoverArquivoAsync(Guid solicitacaoId, Guid arquivoId, CancellationToken ct);
 
     Task<ConteudoArquivoDto> ObterConteudoAsync(Guid solicitacaoId, Guid arquivoId, CancellationToken ct);
@@ -219,6 +231,54 @@ public sealed class RegulacaoExigenciaService(
         }
 
         await db.SaveChangesAsync(ct);
+        return Mapear(arquivo);
+    }
+
+    public async Task<ArquivoExigenciaDto> AnexarInternoAsync(
+        Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo,
+        CancellationToken ct)
+    {
+        var solicitacao = await ExigirSolicitacaoAsync(solicitacaoId, ct);
+        var exigencia = await ExigirExigenciaAsync(solicitacaoId, exigenciaId, ct);
+
+        if (conteudo.LongLength == 0)
+        {
+            throw new ValidacaoException("arquivo", "O PDF gerado veio vazio.");
+        }
+
+        var versaoAnterior = await db.RegulacaoExigenciaArquivos
+            .Where(a => a.ExigenciaId == exigenciaId)
+            .OrderByDescending(a => a.Versao)
+            .FirstOrDefaultAsync(ct);
+
+        if (exigencia.RegraId is not null && versaoAnterior is { Situacao: SituacaoArquivoExigencia.Atual })
+        {
+            versaoAnterior.Situacao = SituacaoArquivoExigencia.Substituido;
+        }
+
+        var id = Guid.CreateVersion7();
+        var chave = store.MontarChave(solicitacao.PacienteId, id, "pdf");
+        await store.SalvarAsync(chave, conteudo, ct);
+
+        var arquivo = new RegulacaoExigenciaArquivo
+        {
+            Id = id,
+            ExigenciaId = exigenciaId,
+            ChaveArmazenamento = chave,
+            Nome = LimparNome(nome),
+            ContentType = contentType,
+            Tamanho = conteudo.LongLength,
+            Sha256 = Convert.ToHexStringLower(SHA256.HashData(conteudo)),
+            Versao = (versaoAnterior?.Versao ?? 0) + 1,
+            SubstituiArquivoId = exigencia.RegraId is not null ? versaoAnterior?.Id : null,
+            Situacao = SituacaoArquivoExigencia.Atual,
+            Origem = OrigemArquivoExigencia.ExameInterno,
+            CriadoEm = DateTime.UtcNow,
+            CriadoPor = usuarioAtual.UsuarioId,
+        };
+        db.RegulacaoExigenciaArquivos.Add(arquivo);
+        await db.SaveChangesAsync(ct);
+
         return Mapear(arquivo);
     }
 

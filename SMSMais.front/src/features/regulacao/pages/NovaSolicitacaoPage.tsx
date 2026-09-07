@@ -24,6 +24,7 @@ import {
 import { BuscaProcedimento } from '../components/BuscaProcedimento';
 import { PassoPaciente } from '../components/wizard/PassoPaciente';
 import { PassoRegras } from '../components/wizard/PassoRegras';
+import { ExamesInternosSugeridos } from '../components/ExamesInternosSugeridos';
 import type { FluxoRegulacao } from '../tiposSolicitacao';
 import type { PacienteResumoRegulacao, RegulacaoProcedimentoItem } from '../types';
 
@@ -290,8 +291,8 @@ export function NovaSolicitacaoPage() {
             <div className="space-y-2 border-t border-slate-200 pt-4">
               <h2 className="text-sm font-semibold text-slate-700">Anexos</h2>
               {(exigencias.data ?? []).map((e) => (
+                <div key={e.id}>
                 <UploadAnexo
-                  key={e.id}
                   titulo={e.titulo}
                   obrigatoria={e.obrigatoria}
                   situacao={e.criticaTexto ?? undefined}
@@ -307,6 +308,12 @@ export function NovaSolicitacaoPage() {
                     await remover.mutateAsync({ solicitacaoId: solicitacaoId!, arquivoId });
                   }}
                 />
+                {/* Só nas caixinhas de regra: em "Anexos gerais" não há o que sugerir, porque
+                    não existe um documento específico sendo pedido. */}
+                {e.regraId && solicitacaoId && (
+                  <ExamesInternosSugeridos solicitacaoId={solicitacaoId} exigenciaId={e.id} />
+                )}
+                </div>
               ))}
             </div>
           </div>
