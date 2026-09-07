@@ -211,3 +211,61 @@ public enum SituacaoDestinoRegulacao
     Bloqueado = 2,
     ComRessalva = 3,
 }
+
+/// <summary>
+/// Como a regra do manual se comporta na tela.
+///
+/// <para><b><see cref="Informativa"/> existe por medição, não por elegância</b> (spike e, 05/09/2026):
+/// 83% das 1.169 regras extraídas dos manuais CRECE/REUNI são texto clínico corrido. Virando
+/// pergunta, um recurso com 20 critérios pediria 20 respostas ao solicitante — e o questionário
+/// morreria de inanição. Informativa é lida, não respondida.</para>
+/// </summary>
+public enum TipoRegraRegulacao
+{
+    /// <summary>O sistema decide sozinho pelo cadastro (idade, sexo, CID).</summary>
+    Dedutivel = 1,
+
+    /// <summary>Vira pergunta ao solicitante: sim / não / não sei.</summary>
+    NaoDedutivel = 2,
+
+    /// <summary>Exige documento — vira uma caixinha de anexo própria.</summary>
+    Documental = 3,
+
+    /// <summary>Texto do manual que a tela mostra e ninguém responde.</summary>
+    Informativa = 4,
+}
+
+/// <summary>O que acontece quando a regra não é atendida.</summary>
+public enum SeveridadeRegraRegulacao
+{
+    /// <summary>Aquele destino sai da lista.</summary>
+    Bloqueia = 1,
+
+    /// <summary>Passa marcada — o agente decide na triagem.</summary>
+    Ressalva = 2,
+
+    /// <summary>Só avisa.</summary>
+    Aviso = 3,
+}
+
+public enum RespostaRegraRegulacao
+{
+    Sim = 1,
+    Nao = 2,
+
+    /// <summary>O solicitante não sabe. O destino disso é configurável (ressalva ou pendência).</summary>
+    NaoSei = 3,
+
+    /// <summary>Não foi perguntado: o sistema deduziu do cadastro.</summary>
+    Deduzido = 4,
+}
+
+public enum ResultadoRegraRegulacao
+{
+    Atende = 1,
+    Bloqueia = 2,
+    Ressalva = 3,
+
+    /// <summary>Falta dado para decidir (sem nascimento, sem CID, sem resposta).</summary>
+    Indefinido = 4,
+}

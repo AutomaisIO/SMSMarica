@@ -187,6 +187,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RegulacaoEvento> RegulacaoEventos => Set<RegulacaoEvento>();
     public DbSet<RegulacaoSolicitacaoDestino> RegulacaoSolicitacaoDestinos => Set<RegulacaoSolicitacaoDestino>();
     public DbSet<RegulacaoEventoVisto> RegulacaoEventosVistos => Set<RegulacaoEventoVisto>();
+    public DbSet<RegulacaoRegra> RegulacaoRegras => Set<RegulacaoRegra>();
+    public DbSet<RegulacaoSolicitacaoRespostaRegra> RegulacaoSolicitacaoRespostasRegra =>
+        Set<RegulacaoSolicitacaoRespostaRegra>();
 
     // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
     public DbSet<Indicador> Indicadores => Set<Indicador>();

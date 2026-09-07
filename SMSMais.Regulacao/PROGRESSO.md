@@ -18,7 +18,7 @@
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
 | 2 — Wizard + paciente + fila local | **concluído e EM PRODUÇÃO** | 2.1 a 2.10. **A migração do legado rodou em 07/09**: catálogo com 999 procedimentos, 1 rascunho migrado, 1 descartado a pedido, telas antigas fechadas (410). |
 | 3 — Fila + agente + registro assistido + notificações por unidade | **concluído** | 3.1 a 3.11. ADR-0052 promovido. Falta só o badge da sidebar (3.8) e o `ConciliarAgoraAsync`, que é escrita externa e fica para a validação (D-11) |
-| 4 — Regras de elegibilidade | não iniciado | |
+| 4 — Regras de elegibilidade | em andamento | **4.1 e 4.2 feitas** (entidades + motor puro, 15 testes em 97 ms) |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
 | 6 — Pendências pós-envio | não iniciado | |
 | 7 — Escrita no SISREG | não iniciado | |
@@ -164,8 +164,8 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 3.11 `adr/0052` promovido para `docs/adr/0052-fila-pre-regulacao-e-agente-regulador.md` (+ cópia `.html`) e registrado no `CLAUDE.md` da raiz. **Duas correções no texto**, feitas na promoção: o rascunho dizia que "o estado externo nunca regride além de `EmFilaExterna`" (falso — desmarcação existe) e não dizia que o papel faz parte da transição — **07/09/2026**
 
 ### Incremento 4 — Regras (planos 03, 09)
-- [ ] 4.1 `RegulacaoRegra` + `RegulacaoSolicitacaoRespostaRegra` + migration
-- [ ] 4.2 motor puro `AvaliadorElegibilidade` + testes unitários
+- [x] 4.1 `RegulacaoRegra` + `RegulacaoSolicitacaoRespostaRegra` + 4 enums + configurações + DbSets + migration `20260907185430_RegrasDeElegibilidade` (aditiva) — **07/09/2026**
+- [x] 4.2 `AvaliadorElegibilidade` (puro, estático) + 15 testes que rodam em **97 ms** — **07/09/2026**
 - [ ] 4.3 integração no wizard (questionário, caixinhas, ressalva por destino, bloqueio)
 - [ ] 4.4 exames internos (`ICidadaoClinicoService`) na caixinha documental
 - [ ] 4.5 tela de cadastro de regras (51) + importação do CSV do spike e
@@ -247,6 +247,9 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 03 §C | **`AvaliacaoElegibilidadeDto` sem o `PorSistema` e com `MotivosDeBloqueio`.** O plano devolvia um dicionário sistema → lista de regras, que duplicaria cada regra por candidato só para dizer a mesma coisa. A tela precisa de duas respostas: a lista de regras (uma vez) e **por que aquele destino saiu** — a segunda é a que o agente lê para decidir. |
+| 07/09/2026 | 03 §C | **Pergunta de severidade `Aviso` não trava o envio.** O plano dizia "há pendência de pergunta com `Pendencia`"; sem qualificar pela severidade, uma pergunta meramente informativa seguraria o pedido da unidade até alguém responder. Só pergunta bloqueante trava. |
+| 07/09/2026 | 03 §C | **JSON torto numa regra deixa de restringir, em vez de derrubar a avaliação.** Uma regra mal cadastrada não pode impedir que as outras sejam avaliadas — o pedido pararia inteiro por causa de um cadastro errado, e o erro apareceria como falha genérica. |
 | 07/09/2026 | **04 §Máquina** | **A máquina não previa que o mundo pula estados.** A varredura lê o estado ATUAL do sistema de lá, não a sequência: entre o nosso envio e a primeira leitura, o caso pode já estar agendado, concluído ou cancelado. Faltavam as transições `EnviadaAoSistema → {Agendada, Concluida, Cancelada}` — sem elas, a conciliação ligava a FK e deixava a solicitação parada em "enviada", contando uma história desatualizada que ninguém percebe (a FK está lá). Achado pelo teste da conciliação. |
 | 07/09/2026 | 05 §C | **A régua "não regride" foi descartada.** O plano pedia `EmFilaExterna < Agendada < Concluida` com `Cancelada` livre, para proteger de leitura atrasada. Mas a conciliação lê o **espelho**, que guarda a situação atual da última varredura — não um histórico fora de ordem. Travar a volta faria a ficha dizer "agendada" para quem perdeu a vaga numa desmarcação real, e ninguém descobriria pela tela. Quem impede o absurdo é a máquina: de terminal não sai transição. |
 | 07/09/2026 | 05 §D | **`RegulacaoNotificacaoResumoDto` sem `PorTipo`.** A contagem por tipo não é usada por tela nenhuma hoje, e um campo que ninguém lê vira dado que ninguém mantém. Fica o `NaoVistas`, que é o número do badge. |
