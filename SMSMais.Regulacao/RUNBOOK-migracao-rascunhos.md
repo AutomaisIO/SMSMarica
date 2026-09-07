@@ -3,8 +3,15 @@
 > Quatro chamadas, na ordem. Todas exigem um usuário com o módulo **`RegulacaoConfiguracao` (51)**
 > e podem ser feitas pelo **`/docs`** (Scalar) já autenticado, em `https://api.smsmarica.online/docs`.
 >
-> Escrito em 07/09/2026, depois que o deploy entregou as tabelas. **Nenhum destes passos foi
-> executado** — dependem do OK e de uma sessão autenticada.
+> ### ✅ EXECUTADO EM MARICÁ em 07/09/2026
+>
+> Catálogo: 999 procedimentos. Migração: 1 rascunho virou solicitação (`numero_local = 1`), 1 foi
+> descartado a pedido do Bernardo (o pedido já tinha sido feito direto no SER). Telas antigas
+> fechadas às **17:04:08Z** — escrita responde 410, leitura segue aberta.
+>
+> **Este documento continua valendo para a próxima instalação de município**, onde tudo isto é
+> feito do zero. Os três defeitos que a execução em Maricá revelou já estão corrigidos no código;
+> os motivos de recusa da tabela abaixo foram todos vistos na prática.
 
 ## Por que nesta ordem
 

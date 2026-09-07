@@ -16,7 +16,7 @@
 |---|---|---|
 | 0 — Spikes de laboratório | **parcial** | **c, d, e feitos** (04–05/09). Restam **a** e **b** — os dois escrevem em sistema real e **dependem de OK explícito do Bernardo** |
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
-| 2 — Wizard + paciente + fila local | **concluído** | **2.1 a 2.10 feitas**. Backend das tarefas 2.1–2.8 **EM PRODUÇÃO** desde 06/09 23h (push da sessão paralela). **2.9 e 2.10 seguem locais** (commits `1004a2c` e `60ff133`). Anexos em Spaces (Bernardo, 05/09) |
+| 2 — Wizard + paciente + fila local | **concluído e EM PRODUÇÃO** | 2.1 a 2.10. **A migração do legado rodou em 07/09**: catálogo com 999 procedimentos, 1 rascunho migrado, 1 descartado a pedido, telas antigas fechadas (410). |
 | 3 — Fila + agente + registro assistido + notificações por unidade | em andamento | **3.1 feita** (máquina de estados + trilha de eventos + destinos + migration `FilaPreRegulacao`) |
 | 4 — Regras de elegibilidade | não iniciado | |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
@@ -234,7 +234,12 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | O quê | Quem autorizou | Resultado |
 |---|---|---|---|
-| — | — | — | — |
+| 07/09/2026 | Push de `1004a2c`…`66a9c34` (2.9, 2.10, 3.1–3.4 e 4 correções) | Bernardo ("pode executar todas as ações") | 6 deploys; 2 reprovados pelo CI e corrigidos |
+| 07/09/2026 | Token de serviço temporário para chamar a API | Bernardo ("autorizo explicitamente o acesso à API") | criado, usado e **revogado** (401 conferido); chave apagada |
+| 07/09/2026 | `POST /regulacao/procedimentos/sincronizar` (~999 embeddings pagos na Voyage) | idem | **999 procedimentos canônicos**, 999 origens com embedding, 0 falhas, 173 sugestões |
+| 07/09/2026 | `POST /regulacao/legado/rascunhos/migrar` | idem | 1 rascunho migrado (`numero_local = 1`); tabelas legadas intactas |
+| 07/09/2026 | `DELETE /regulacao/ser/rascunhos/a4c9fc5d…` | Bernardo ("Descartar. A pessoa já fez direto") | rascunho de cintilografia (Pronto, 24/08, sem anexos) descartado — o pedido foi feito direto no SER |
+| 07/09/2026 | `fecharTelasAntigas: true` | Bernardo | corte às **17:04:08Z**; escrita nos rascunhos SER/SERNIT responde **410**, leitura segue 200 |
 
 ## Desvios do plano
 
@@ -308,6 +313,23 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — a migração rodou em produção, ponta a ponta
+
+Com o acesso autorizado, o runbook foi executado inteiro. O que aconteceu, em ordem:
+
+1. **Catálogo sincronizado** — 999 procedimentos canônicos, 999 origens com embedding (SISREG 439, SER 482, SERNIT 78), **0 falhas**, 173 sugestões de pareamento. 19 segundos.
+2. **Migração** — 1 dos 2 rascunhos virou solicitação (`numero_local = 1`, Externo/SER, CPF preenchido e `paciente_cns` **nulo** porque o documento era CPF). Tabelas legadas **intactas**.
+3. **Descarte do outro** — o Bernardo esclareceu que aquele pedido (cintilografia, Pronto desde 24/08) **já tinha sido feito direto no SER**. Descartado pela rota do próprio sistema (`DELETE`), não por SQL.
+4. **Telas antigas fechadas às 17:04:08Z** — conferido: escrita responde **410** com o caminho substituto, `GET .../rascunhos/estado` devolve `somenteLeitura: true`, e a **leitura continua 200** (era o objetivo: histórico consultável, não bloqueio).
+5. **Token revogado** e a chave apagada — 401 conferido depois da revogação.
+
+**Três defeitos foram descobertos justamente por rodar contra o dado real** — nenhum deles apareceria na bancada:
+
+- **O timeout derrubava o sync inteiro.** `TaskCanceledException` herda de `OperationCanceledException`; o `catch` filtrava pelo tipo e deixava o timeout do provedor escapar. O teste que existia simulava `HttpRequestException` e por isso nunca pegou: testava "o provedor caiu", não "o provedor demorou".
+- **A busca não achava número em base nova.** Exigia 3 dígitos; na bancada os números já são altos, no CI o banco é novo. Isso valeria para **toda instância nova de município** (ADR-0043) — a solicitação 7 seria inacessível até passar de cem pedidos. Foi o CI que pegou, reprovando dois deploys meus.
+- **A coluna `cns` do rascunho guarda CPF ou CNS.** Dos 2 rascunhos reais, um tinha 11 dígitos. O migrador recusava metade deles com uma mensagem que era falsa ("está sem CNS", quando havia documento).
+- E uma lacuna de integração: **a solicitação migrada nascia com a linha do tempo vazia** — o migrador é da 2.9, a trilha nasceu na 3.1, e ninguém ligou os dois. Corrigido; a solicitação já migrada ficou sem esse evento (o fix vale das próximas em diante).
 
 ### 07/09/2026 — o CI reprovou dois deploys meus, e estava certo nas duas vezes
 
