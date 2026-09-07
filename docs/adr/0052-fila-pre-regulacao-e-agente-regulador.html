@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0052 — A solicitação de regulação nasce no SMSMais como entidade própria, agnóstica de destino, e passa por um agente regulador antes de existir em qualquer sistema externo</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0052 — A solicitação de regulação nasce no SMSMais como entidade própria, agnóstica de destino, e passa por um agente regulador antes de existir em qualquer sistema externo</h1>
+<ul>
+<li><strong>Status:</strong> aceito — implementado nos incrementos 2 e 3 (07/09/2026)</li>
+<li><strong>Data:</strong> 04/09/2026</li>
+<li><strong>Contexto:</strong> <a href="./0021-ecossistema-solicitacao-e-fulfillment.md">ADR-0021</a> (espinha <code>solicitacao</code> das marcações importadas), <a href="./0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> (SER como espelho fiel, sem promoção), ADR-0037 (escopo por unidade fail-closed), ADR-0039 (unidade como eixo durável).</li>
+<li><strong>Documento de apoio:</strong> <code>SMSMais.Regulacao/README.md</code>, planos 02, 04, 05.</li>
+</ul>
+<h2>Contexto</h2>
+<p>O SMSMais lê três sistemas de regulação e guarda espelhos fiéis de cada um: <code>solicitacao</code> (marcações do SISREG importadas), <code>ser_solicitacao</code>, <code>sernit_solicitacao</code>. Nenhum deles é o <strong>pedido antes de existir</strong> — a solicitação que a UBS quer fazer, com regras conferidas e documentos anexados, e que ainda não tem número em lugar nenhum.</p>
+<p>Existem hoje dois rascunhos locais, um por sistema (<code>ser_solicitacao_rascunho</code>, <code>sernit_solicitacao_rascunho</code>), sem unidade solicitante, sem autor visível, sem triagem e sem envio. Copiá-los para o SISREG faria a terceira cópia e perpetuaria a divisão por sistema que o módulo veio acabar.</p>
+<p>A transcrição do Bernardo pede uma fila única ("pré-regulação"), um agente regulador que vê todas as unidades e ajusta com histórico, e que só depois do OK dele a solicitação exista no sistema de regulação — com a exceção do fluxo interno, em que o próprio solicitante inclui no SISREG com a credencial dele (D-8) e a fila guarda "já no SISREG, aguardando OK".</p>
+<h2>Decisão</h2>
+<h3>1. Uma entidade própria: <code>regulacao_solicitacao</code></h3>
+<p>Agnóstica de destino: fluxo (Interno / Externo / NAR), unidade solicitante, autor, "em nome de" (NAR), paciente, procedimento canônico, formulário em JSON com a versão do catálogo, estado, agente responsável, número externo e a trilha de "com qual credencial, em nome de quem". Prefixo <code>regulacao_</code> em tudo para não colidir com <code>solicitacao</code> (ADR-0021).</p>
+<h3>2. FK unidirecional para os espelhos</h3>
+<p><code>regulacao_solicitacao</code> aponta (FK nullable, no máximo uma setada) para <code>solicitacao</code>, <code>ser_solicitacao</code> ou <code>sernit_solicitacao</code> quando o número externo é conciliado. <strong>Nunca o inverso</strong>: os espelhos continuam fiéis ao sistema externo (ADR-0042), e o SER/SERNIT continuam registrando "gestor SMS Maricá" como solicitante — a unidade real só existe deste lado do vínculo.</p>
+<h3>3. Máquina de estados com histórico append-only</h3>
+<p><code>Rascunho → PendenteRegulacao → EmAnalise → EnviandoAoSistema → EnviadaAoSistema → EmFilaExterna → Agendada → Concluida</code>, com <code>Devolvida</code>, <code>FalhaEnvio</code>, <code>Cancelada</code>, <code>Recusada</code>. Cada transição grava <code>regulacao_evento</code> (quem, papel, unidade, jti, diff). O agente pode ajustar; o ajuste fica no histórico com o diff.</p>
+<p><strong>O papel faz parte da transição</strong>, e não é um filtro aplicado depois: <code>PendenteRegulacao → EmAnalise</code> existe para o agente e só para ele — com o par de estados sozinho, um solicitante assumiria o próprio caso e furaria a triagem.</p>
+<p><strong>Correção do rascunho (07/09/2026):</strong> este ADR dizia que "o estado externo nunca regride além de <code>EmFilaExterna</code>". Está errado, e a implementação faz o contrário: <code>Agendada → EmFilaExterna</code> é justamente o que acontece quando o sistema de regulação <strong>desmarca</strong>. A conciliação lê o <em>espelho</em>, que guarda a situação atual da última varredura — não um histórico fora de ordem —, então travar a volta faria a ficha dizer "agendada" para um paciente que perdeu a vaga, sem ninguém descobrir pela tela. Quem impede o absurdo é a própria máquina: de <code>Concluida</code>, <code>Cancelada</code> e <code>Recusada</code> não sai transição nenhuma.</p>
+<p><strong>A varredura pode pular estados.</strong> Ela lê o estado atual, não a sequência: entre o nosso envio e a primeira leitura, o caso pode já estar agendado, concluído ou cancelado. Por isso <code>EnviadaAoSistema</code> transita direto para qualquer um dos três.</p>
+<h3>4. Agente regulador é módulo, não perfil</h3>
+<p>Reaproveitamos o bloco reservado e nunca implementado do enum: <code>Regulacao</code> (47) para o solicitante, escopado por unidade via <code>EscopoUnidade</code>; <code>RegulacaoTriagem</code> (48) para o agente, que amplia o escopo para todas as unidades e libera as ações de triagem e envio; <code>RegulacaoConfiguracao</code> (51) para regras, catálogo e configuração. Mesmo idioma de <code>Conversas</code> + <code>ConversasSupervisao</code>. Os valores 49 e 50 seguem reservados.</p>
+<h3>5. Deprecação dos rascunhos por sistema</h3>
+<p>Os rascunhos existentes são migrados por job idempotente para <code>regulacao_solicitacao</code> (fluxo Externo), as telas antigas viram somente-leitura e as tabelas são removidas uma release depois. Não ficam como satélite: duas verdades para "pedido que ainda não existe" recriariam o problema.</p>
+<h3>6. CPF obrigatório na transição para a fila, não no cadastro</h3>
+<p>O ADR-0041 continua valendo (paciente sem CPF entra marcado). O módulo só não <strong>regula</strong> sem CPF, porque o SERNIT não grava sem ele e os demais precisam dele para casar identidade.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Um só wizard e uma só fila para os três sistemas; o front extrai o núcleo comum (<code>shared/regulacao/</code>) em vez de clonar <code>features/ser</code> pela terceira vez.</li>
+<li>As notificações do SER/SERNIT passam a ter unidade solicitante real — via o vínculo — e podem ser filtradas por "minha unidade".</li>
+<li>O incremento 3 entrega valor sem escrita externa: o agente registra o número que incluiu à mão; os incrementos 5 e 7 trocam o botão por envio automático sem mudar o modelo.</li>
+<li>O enum de permissões não cresce; os comentários do bloco 47–51 foram reescritos (citavam um "ADR-0024" que é de outro assunto, o sync contínuo Salux→FHIR).</li>
+<li><strong>A notificação não é uma tabela de avisos</strong>: é uma leitura da própria trilha, filtrada pelos tipos que pedem atenção (<code>NumeroExterno</code>, <code>SituacaoExterna</code>, <code>Devolucao</code>, <code>Recusa</code>, <code>FalhaEnvio</code>, <code>PendenciaAberta</code>). Duplicar o fato criaria duas versões da mesma história, que divergem no dia em que uma escrita falha. O "visto" é por usuário (<code>regulacao_evento_visto</code>) — a mesma movimentação interessa a quem abriu o pedido e ao agente, e um não pode apagar o aviso do outro.</li>
+<li><strong>O claim do agente é uma gravação condicional</strong> (<code>UPDATE … WHERE status = PendenteRegulacao</code>), não um "leia e escreva": dois agentes clicando junto passariam os dois pela leitura, e o segundo sobrescreveria o primeiro sem ninguém notar.</li>
+</ul>
+<h2>Alternativas consideradas</h2>
+<ul>
+<li><strong>Estender <code>ser_solicitacao_rascunho</code> com colunas de unidade/estado e clonar para o SISREG.</strong> Rejeitado: três tabelas, três telas, três máquinas de estado; e o fluxo NAR/Interno não cabe num rascunho "do SER".</li>
+<li><strong>Promover a pré-regulação para <code>solicitacao</code> (ADR-0021).</strong> Rejeitado: <code>solicitacao</code> exige unidade executante não nula e nasce de marcação já feita; misturar "pedido" com "marcação" contamina relatórios e o PACS.</li>
+<li><strong>Perfil de acesso "Agente regulador".</strong> Rejeitado: perfil é bag de módulos; o que se quer é um módulo a mais em qualquer perfil, como já se faz com supervisão de conversas.</li>
+</ul>
+<h2>Verificação</h2>
+<p>Solicitação aberta por uma UBS não aparece para outra; aparece para o agente; cada ajuste do agente tem evento com diff; número registrado casa com o espelho na varredura seguinte e a notificação chega só à UBS de origem.</p>
+<p><strong>Verificado em 07/09/2026</strong> por 56 testes automatizados no módulo (escopo fail-closed, agente vendo tudo, claim concorrente com dois <code>DbContext</code>, diff do ajuste, transições inválidas recusadas, número externo duplicado barrado pelo índice único) e pela execução em produção: catálogo canônico com 999 procedimentos, migração dos rascunhos legados concluída e telas antigas fechadas (410) às 17:04:08Z.</p>
+</main>
+</body>
+</html>

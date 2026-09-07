@@ -17,14 +17,16 @@
 | 0 — Spikes de laboratório | **parcial** | **c, d, e feitos** (04–05/09). Restam **a** e **b** — os dois escrevem em sistema real e **dependem de OK explícito do Bernardo** |
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
 | 2 — Wizard + paciente + fila local | **concluído e EM PRODUÇÃO** | 2.1 a 2.10. **A migração do legado rodou em 07/09**: catálogo com 999 procedimentos, 1 rascunho migrado, 1 descartado a pedido, telas antigas fechadas (410). |
-| 3 — Fila + agente + registro assistido + notificações por unidade | em andamento | **3.1 feita** (máquina de estados + trilha de eventos + destinos + migration `FilaPreRegulacao`) |
+| 3 — Fila + agente + registro assistido + notificações por unidade | **concluído** | 3.1 a 3.11. ADR-0052 promovido. Falta só o badge da sidebar (3.8) e o `ConciliarAgoraAsync`, que é escrita externa e fica para a validação (D-11) |
 | 4 — Regras de elegibilidade | não iniciado | |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
 | 6 — Pendências pós-envio | não iniciado | |
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3: 3.1 a 3.9 feitas** (3.8 sem o badge da sidebar). Faltam **3.10** (testes) e **3.11** (promover o ADR-0052).
+**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 concluído em 07/09/2026** (3.1 a 3.11), com duas pendências pequenas e declaradas: o badge de notificações na sidebar e o `ConciliarAgoraAsync` (única parte do plano 05 que chama sistema externo — fica para a fase de validação, D-11).
+
+**Próximo incremento: 4** — motor de regras de elegibilidade (plano 03), que já tem o insumo pronto: as 1.169 regras extraídas dos manuais CRECE/REUNI no spike e. **Próxima tarefa: 4.1** (`RegulacaoRegra` + `RegulacaoSolicitacaoRespostaRegra` + migration).
 
 O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, configuração do módulo, wizard de 5 passos em `regulacao/solicitacoes/nova` (procedimento → destino → paciente → formulário união → revisão), anexos em Spaces, resolução de paciente com CADSUS, e os rascunhos por sistema com caminho de migração e corte reversível. **Nada disso está em produção além do incremento 1** — as três migrations e os commits seguem locais, esperando o push.
 
@@ -158,8 +160,8 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 3.7 `MapaSituacaoExterna` + `RegulacaoConciliacaoService` (SER/SERNIT/SISREG) + ganchos nas duas varreduras e na importação, todos em `try/catch`. **8 testes** — **07/09/2026**
 - [~] 3.8 `RegulacaoEventoVisto` + `RegulacaoNotificacaoService` + 4 rotas + `NotificacoesRegulacaoPage` com filtro minha/todas + migration `NotificacoesRegulacao`. **Falta o badge da sidebar** — **07/09/2026**
 - [x] 3.9 sai de graça do desenho: `NumeroExterno` é um dos tipos que viram notificação, então registrar o envio já avisa a unidade solicitante — sem código próprio — **07/09/2026**
-- [ ] 3.10 testes
-- [ ] 3.11 promover `adr/0052`
+- [x] 3.10 testes — os 6 casos que o plano lista já estavam cobertos, porque cada um foi escrito **junto da tarefa que o exigia**, não no fim: escopo fail-closed, agente vendo tudo, claim concorrente (dois `DbContext`), ajuste com diff, transições inválidas e número externo duplicado. **56 testes no módulo** — **07/09/2026**
+- [x] 3.11 `adr/0052` promovido para `docs/adr/0052-fila-pre-regulacao-e-agente-regulador.md` (+ cópia `.html`) e registrado no `CLAUDE.md` da raiz. **Duas correções no texto**, feitas na promoção: o rascunho dizia que "o estado externo nunca regride além de `EmFilaExterna`" (falso — desmarcação existe) e não dizia que o papel faz parte da transição — **07/09/2026**
 
 ### Incremento 4 — Regras (planos 03, 09)
 - [ ] 4.1 `RegulacaoRegra` + `RegulacaoSolicitacaoRespostaRegra` + migration
@@ -322,6 +324,12 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — incremento 3 CONCLUÍDO (3.10 e 3.11)
+
+- **3.10 já estava feita.** Conferi os 6 casos do plano contra os testes existentes: todos cobertos, porque escrevi cada um junto da tarefa que o exigia. Escrever teste no fim, em bloco, teria produzido a mesma lista com menos valor — foi justamente rodando cada teste na hora que apareceram a lacuna da máquina de estados, o envenenamento do change tracker e o defeito da busca por número.
+- **3.11: ADR-0052 promovido**, com **duas correções no próprio texto** — o rascunho afirmava que "o estado externo nunca regride além de `EmFilaExterna`" (falso: desmarcação existe, e travar isso faria a ficha mentir sobre a vaga) e não dizia que o papel faz parte da transição. Um ADR que descreve o que não foi construído é pior do que ADR nenhum.
+- Registrado no `CLAUDE.md` da raiz, com cópia `.html`.
 
 ### 07/09/2026 — incremento 3, tarefas 3.5b e 3.7–3.9 (troca de procedimento, conciliação e notificações)
 
