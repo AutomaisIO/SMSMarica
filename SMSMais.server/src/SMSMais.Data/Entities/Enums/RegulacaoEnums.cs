@@ -132,3 +132,82 @@ public enum OrigemArquivoExigencia
     /// <summary>Gerado a partir de exame/laudo que já existia no SMSMais.</summary>
     ExameInterno = 2,
 }
+
+/// <summary>
+/// O que aconteceu com a solicitação. É a trilha que responde, meses depois, por que ela demorou —
+/// e por isso o evento é <b>append-only</b>: nada aqui é editado nem apagado (ADR-0052).
+/// </summary>
+public enum TipoEventoRegulacao
+{
+    Criacao = 1,
+    Edicao = 2,
+    Anexo = 3,
+    RespostaRegra = 4,
+
+    /// <summary>A ponta mandou para a pré-regulação.</summary>
+    EnvioFila = 5,
+
+    /// <summary>Um agente assumiu o caso.</summary>
+    Assumida = 6,
+
+    /// <summary>Ajuste do agente durante a triagem, com o diff do que mudou.</summary>
+    Ajuste = 7,
+
+    Devolucao = 8,
+
+    /// <summary>Envio ao sistema de regulação disparado (a credencial usada vai no detalhe).</summary>
+    EnvioSistema = 9,
+
+    FalhaEnvio = 10,
+
+    /// <summary>Número do SISREG/SER/SERNIT capturado — automático ou digitado pelo agente.</summary>
+    NumeroExterno = 11,
+
+    /// <summary>Destino permitido só com ressalva (bloqueado em um sistema, livre em outro).</summary>
+    RessalvaDestino = 12,
+
+    PendenciaAberta = 13,
+    PendenciaRespondida = 14,
+    PendenciaSubmetida = 15,
+    PendenciaBaixada = 16,
+
+    /// <summary>A situação mudou no sistema de lá e a varredura trouxe.</summary>
+    SituacaoExterna = 17,
+
+    Cancelamento = 18,
+    Recusa = 19,
+
+    /// <summary>D-8: o agente conferiu a solicitação interna que o solicitante já incluiu no SISREG.</summary>
+    OkInterno = 20,
+
+    /// <summary>
+    /// D-10: o agente trocou o procedimento canônico. Não é <see cref="Ajuste"/> porque muda o
+    /// formulário e as regras — o diff registra o que sobreviveu e o que caiu.
+    /// </summary>
+    TrocaProcedimento = 21,
+}
+
+/// <summary>
+/// De que lado veio a ação. Separa o que a unidade fez do que a regulação fez e do que o sistema
+/// fez sozinho — sem isso, a linha do tempo não distingue "a unidade corrigiu" de "o agente
+/// corrigiu por ela".
+/// </summary>
+public enum PapelEventoRegulacao
+{
+    Solicitante = 1,
+    Agente = 2,
+
+    /// <summary>Sem usuário: varredura, importação, job.</summary>
+    Sistema = 3,
+}
+
+/// <summary>
+/// Se a solicitação pode ir para aquele sistema. <see cref="ComRessalva"/> é o caso do procedimento
+/// bloqueado num sistema e permitido em outro: a solicitação passa, marcada "só pode ir para X".
+/// </summary>
+public enum SituacaoDestinoRegulacao
+{
+    Elegivel = 1,
+    Bloqueado = 2,
+    ComRessalva = 3,
+}

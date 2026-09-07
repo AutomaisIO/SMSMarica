@@ -11,7 +11,20 @@ internal sealed class RegulacaoSolicitacaoConfiguration
 {
     public void Configure(EntityTypeBuilder<RegulacaoSolicitacao> builder)
     {
-        builder.ToTable("regulacao_solicitacao");
+        // Os dois invariantes que o banco tem de garantir sozinho, porque uma linha que os viole
+        // e chegue lá não tem conserto pela tela: NAR sem "em nome de" não pode ser incluído no
+        // SISREG por ninguém, e uma solicitação pendurada em dois espelhos ao mesmo tempo faz a
+        // conciliação escolher um deles em silêncio.
+        builder.ToTable("regulacao_solicitacao", t =>
+        {
+            t.HasCheckConstraint(
+                "ck_regulacao_solicitacao_nar",
+                "(fluxo = 3) = (unidade_em_nome_de_id IS NOT NULL)");
+            t.HasCheckConstraint(
+                "ck_regulacao_solicitacao_um_espelho",
+                "((solicitacao_id IS NOT NULL)::int + (ser_solicitacao_id IS NOT NULL)::int"
+                + " + (sernit_solicitacao_id IS NOT NULL)::int) <= 1");
+        });
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.Id).HasColumnName("id");
@@ -87,6 +100,27 @@ internal sealed class RegulacaoSolicitacaoConfiguration
         builder.HasIndex(x => x.Status).HasDatabaseName("ix_regulacao_solicitacao_status");
         builder.HasIndex(x => x.PacienteId).HasDatabaseName("ix_regulacao_solicitacao_paciente");
         builder.HasIndex(x => x.ExcluidoEm).HasDatabaseName("ix_regulacao_solicitacao_excluido_em");
+
+        // A fila do agente filtra por status + fluxo; a do procedimento serve a curadoria e ao
+        // "trocar procedimento"; a do agente responde "o que eu assumi".
+        builder.HasIndex(x => new { x.Status, x.Fluxo })
+            .HasDatabaseName("ix_regulacao_solicitacao_status_fluxo");
+        builder.HasIndex(x => x.ProcedimentoId)
+            .HasDatabaseName("ix_regulacao_solicitacao_procedimento");
+        builder.HasIndex(x => x.AgenteResponsavelId)
+            .HasDatabaseName("ix_regulacao_solicitacao_agente");
+
+        // Um espelho pertence a UMA solicitação. Sem isto, duas solicitações do mesmo paciente
+        // poderiam casar com o mesmo registro externo e as duas apareceriam "agendadas".
+        builder.HasIndex(x => x.SolicitacaoId)
+            .IsUnique().HasFilter("solicitacao_id IS NOT NULL")
+            .HasDatabaseName("ux_regulacao_solicitacao_espelho_solicitacao");
+        builder.HasIndex(x => x.SerSolicitacaoId)
+            .IsUnique().HasFilter("ser_solicitacao_id IS NOT NULL")
+            .HasDatabaseName("ux_regulacao_solicitacao_espelho_ser");
+        builder.HasIndex(x => x.SernitSolicitacaoId)
+            .IsUnique().HasFilter("sernit_solicitacao_id IS NOT NULL")
+            .HasDatabaseName("ux_regulacao_solicitacao_espelho_sernit");
 
         // Um rascunho legado vira UMA solicitação. A idempotência do migrador é conferida em
         // código, mas dois cliques simultâneos passariam pela conferência juntos — a trava real

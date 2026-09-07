@@ -69,6 +69,9 @@ public interface IRegulacaoSolicitacaoService
     Task<RegulacaoSolicitacaoDetalheDto> EnviarParaFilaAsync(Guid id, CancellationToken ct);
 
     Task CancelarAsync(Guid id, string motivo, CancellationToken ct);
+
+    /// <summary>A história do caso, em ordem. É o que a linha do tempo da tela mostra.</summary>
+    Task<IReadOnlyList<RegulacaoEventoDto>> EventosAsync(Guid id, CancellationToken ct);
 }
 
 /// <summary>
@@ -89,6 +92,7 @@ public sealed class RegulacaoSolicitacaoService(
     IRegulacaoExigenciaService exigencias,
     IRegulacaoConfiguracaoService configuracao,
     IRegulacaoProcedimentoBuscaService catalogo,
+    IRegulacaoEventoService eventos,
     IPacientesService pacientes) : IRegulacaoSolicitacaoService
 {
     private static readonly JsonElement ObjetoVazio = JsonDocument.Parse("{}").RootElement.Clone();
@@ -156,6 +160,14 @@ public sealed class RegulacaoSolicitacaoService(
             CriadoPor = usuarioId,
         };
         db.RegulacaoSolicitacoes.Add(s);
+
+        await eventos.RegistrarAsync(
+            s.Id, TipoEventoRegulacao.Criacao, PapelEventoRegulacao.Solicitante, ct,
+            para: StatusRegulacao.Rascunho,
+            detalhe: new { fluxo = s.Fluxo.ToString(), procedimento = procedimento.NomeCanonico });
+
+        // Solicitação e evento na mesma gravação: evento sem fato (ou fato sem evento) faria a
+        // trilha mentir justamente onde ela é usada como prova.
         await db.SaveChangesAsync(ct);
 
         // A caixinha "Anexos gerais" existe desde o começo: os anexos precisam de dono antes de
@@ -197,8 +209,12 @@ public sealed class RegulacaoSolicitacaoService(
             s.SistemaDestino = req.SistemaDestino;
         }
 
+        IReadOnlyDictionary<string, object?>? diff = null;
         if (req.Formulario is { } f)
         {
+            // O diff sai ANTES da sobrescrita — depois dela, o valor anterior já não existe.
+            diff = eventos.Diferenca(LerCanonico(s.FormularioJson), f);
+
             // O formulário é guardado por sistema: `canonico` é o que a tela preenche, e a
             // tradução para `ser`/`sernit`/`sisreg` acontece no envio, com a versão gravada.
             s.FormularioJson = JsonSerializer.Serialize(new { canonico = f });
@@ -208,6 +224,15 @@ public sealed class RegulacaoSolicitacaoService(
 
         s.AtualizadoEm = DateTime.UtcNow;
         s.AtualizadoPor = usuarioAtual.UsuarioId;
+
+        // Sem diff não há evento: "editou" sem dizer o quê polui a linha do tempo e esconde as
+        // edições que importam. Salvar duas vezes a mesma coisa não vira duas linhas.
+        if (diff is not null)
+        {
+            await eventos.RegistrarAsync(
+                id, TipoEventoRegulacao.Edicao, PapelEventoRegulacao.Solicitante, ct, diff: diff);
+        }
+
         await db.SaveChangesAsync(ct);
 
         return await ObterAsync(id, ct);
@@ -255,10 +280,15 @@ public sealed class RegulacaoSolicitacaoService(
     {
         var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
 
-        if (s.Status is not (StatusRegulacao.Rascunho or StatusRegulacao.Devolvida))
+        // Pergunta à máquina, e não a uma segunda lista de estados: duas fontes de verdade
+        // divergem no dia em que alguém acrescenta uma transição em uma só delas. O motivo de
+        // checar aqui, antes, é custo — calcular pendências consulta formulário, exigências e
+        // configuração, e não faz sentido pagar isso para uma solicitação que já saiu do rascunho.
+        if (!MaquinaDeEstadosRegulacao.PodeTransitar(
+                s.Status, StatusRegulacao.PendenteRegulacao, PapelEventoRegulacao.Solicitante))
         {
             throw new ConflitoException(
-                "regulacao.solicitacao.status_invalido",
+                "regulacao.transicao_invalida",
                 $"Uma solicitação em {s.Status} não vai para a fila.");
         }
 
@@ -273,10 +303,8 @@ public sealed class RegulacaoSolicitacaoService(
         // Aqui é onde, no incremento 7, o fluxo Interno inclui no SISREG com a credencial do
         // solicitante (D-8) antes de mudar de status. Enquanto o spike b não roda, a solicitação
         // interna entra na fila sem número e o agente registra o envio à mão (incremento 3).
-        s.Status = StatusRegulacao.PendenteRegulacao;
+        await TransitarAsync(s, StatusRegulacao.PendenteRegulacao, PapelEventoRegulacao.Solicitante, ct);
         s.StatusMotivo = null;
-        s.AtualizadoEm = DateTime.UtcNow;
-        s.AtualizadoPor = usuarioAtual.UsuarioId;
         await db.SaveChangesAsync(ct);
 
         return await ObterAsync(id, ct);
@@ -286,23 +314,56 @@ public sealed class RegulacaoSolicitacaoService(
     {
         var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
 
-        // Depois de o agente assumir, cancelar é decisão dele — a ponta não puxa o tapete de
-        // quem já está trabalhando no caso.
-        if (s.Status is not (StatusRegulacao.Rascunho or StatusRegulacao.PendenteRegulacao))
-        {
-            throw new ConflitoException(
-                "regulacao.solicitacao.nao_cancelavel",
-                $"Uma solicitação em {s.Status} não pode ser cancelada pela unidade solicitante.");
-        }
-
-        s.Status = StatusRegulacao.Cancelada;
+        // Quem decide o que pode cancelar é a máquina de estados: depois de o agente assumir, a
+        // ponta não puxa o tapete de quem já está trabalhando no caso.
+        await TransitarAsync(
+            s, StatusRegulacao.Cancelada, PapelEventoRegulacao.Solicitante, ct,
+            detalhe: new { motivo });
         s.StatusMotivo = motivo;
-        s.AtualizadoEm = DateTime.UtcNow;
-        s.AtualizadoPor = usuarioAtual.UsuarioId;
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<RegulacaoEventoDto>> EventosAsync(Guid id, CancellationToken ct)
+    {
+        // Passa pelo escopo primeiro: a linha do tempo conta a história do paciente, e quem não
+        // enxerga a solicitação não pode enxergá-la por esta porta.
+        var s = await CarregarNoEscopoAsync(id, ct);
+        return await eventos.ListarAsync(s.Id, ct);
+    }
+
     // ---------------------------------------------------------------- apoio
+
+    /// <summary>
+    /// Muda o estado passando pela máquina (plano 04): valida se a transição existe para aquele
+    /// ator, grava o evento correspondente e carimba a alteração.
+    ///
+    /// <para><b>Não chama <c>SaveChanges</c></b> — quem chamou decide quando gravar, e assim o
+    /// evento e a mudança vão juntos.</para>
+    /// </summary>
+    private async Task TransitarAsync(
+        RegulacaoSolicitacao s,
+        StatusRegulacao para,
+        PapelEventoRegulacao papel,
+        CancellationToken ct,
+        object? diff = null,
+        object? detalhe = null)
+    {
+        var de = s.Status;
+        var evento = MaquinaDeEstadosRegulacao.EventoDe(de, para, papel);
+        if (evento is null)
+        {
+            throw new ConflitoException(
+                "regulacao.transicao_invalida",
+                $"Uma solicitação em {de} não pode ir para {para} por esta ação.");
+        }
+
+        s.Status = para;
+        s.AtualizadoEm = DateTime.UtcNow;
+        s.AtualizadoPor = usuarioAtual.UsuarioId;
+
+        await eventos.RegistrarAsync(
+            s.Id, evento.Value, papel, ct, de: de, para: para, diff: diff, detalhe: detalhe);
+    }
 
     /// <summary>
     /// R-03: com oferta interna em Maricá, o Externo só passa se a configuração permitir.

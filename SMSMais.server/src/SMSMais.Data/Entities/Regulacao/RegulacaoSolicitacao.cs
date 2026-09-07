@@ -115,4 +115,10 @@ public sealed class RegulacaoSolicitacao
     public uint RowVersion { get; set; }
 
     public ICollection<RegulacaoSolicitacaoExigencia> Exigencias { get; set; } = [];
+
+    /// <summary>A história do caso, append-only (tarefa 3.1).</summary>
+    public ICollection<RegulacaoEvento> Eventos { get; set; } = [];
+
+    /// <summary>Veredito de elegibilidade por sistema de destino.</summary>
+    public ICollection<RegulacaoSolicitacaoDestino> Destinos { get; set; } = [];
 }

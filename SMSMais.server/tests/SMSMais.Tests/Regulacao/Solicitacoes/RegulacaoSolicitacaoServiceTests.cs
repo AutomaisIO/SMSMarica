@@ -72,8 +72,12 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
                 ci.Arg<Guid>(), "PROC", TipoProcedimentoRegulacao.Consulta, null, [], [],
                 new ExisteExternoDto(false, false, false)));
 
+        // O serviço de eventos entra de verdade, não dublado: a trilha é parte do comportamento
+        // que estes testes prendem, não uma dependência a isolar.
+        var eventos = new RegulacaoEventoService(db, acessor);
+
         return (
-            new RegulacaoSolicitacaoService(db, acessor, form, exigencias, config, catalogo, pacientes),
+            new RegulacaoSolicitacaoService(db, acessor, form, exigencias, config, catalogo, eventos, pacientes),
             pacientes, form, catalogo);
     }
 
@@ -380,6 +384,96 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
 
         // Depois de o agente assumir, a ponta não puxa o tapete de quem está trabalhando no caso.
         await acao.Should().ThrowAsync<ConflitoException>();
+    }
+
+    [Fact]
+    public async Task A_trilha_registra_a_criacao_e_a_ida_para_a_fila()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, _, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
+
+        var s = await servico.CriarAsync(
+            new CriarRegulacaoSolicitacaoRequest(
+                FluxoRegulacao.Externo, procedimentoId, pacienteId, null, SistemaRegulacao.Ser, null),
+            CancellationToken.None);
+        await servico.EnviarParaFilaAsync(s.Id, CancellationToken.None);
+
+        var trilha = await servico.EventosAsync(s.Id, CancellationToken.None);
+
+        trilha.Select(e => e.Tipo).Should().ContainInOrder(
+            TipoEventoRegulacao.Criacao, TipoEventoRegulacao.EnvioFila);
+
+        var envio = trilha.Last(e => e.Tipo == TipoEventoRegulacao.EnvioFila);
+        envio.De.Should().Be(StatusRegulacao.Rascunho);
+        envio.Para.Should().Be(StatusRegulacao.PendenteRegulacao);
+        envio.Papel.Should().Be(PapelEventoRegulacao.Solicitante);
+
+        // O nome é copiado no momento do evento: renomear o usuário depois não reescreve a
+        // história.
+        envio.UsuarioNome.Should().Be("SOLICITANTE TESTE");
+    }
+
+    [Fact]
+    public async Task Editar_grava_o_diff_e_editar_igual_nao_grava_nada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, _, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
+
+        var s = await servico.CriarAsync(
+            new CriarRegulacaoSolicitacaoRequest(
+                FluxoRegulacao.Externo, procedimentoId, pacienteId, null, SistemaRegulacao.Ser, null),
+            CancellationToken.None);
+
+        var antes = JsonDocument.Parse("""{"queixa":"dor no peito"}""").RootElement;
+        await servico.AtualizarAsync(
+            s.Id, new AtualizarRegulacaoSolicitacaoRequest(null, antes, null), CancellationToken.None);
+
+        var depois = JsonDocument.Parse("""{"queixa":"dor no peito ha 3 dias"}""").RootElement;
+        await servico.AtualizarAsync(
+            s.Id, new AtualizarRegulacaoSolicitacaoRequest(null, depois, null), CancellationToken.None);
+
+        // Salvar o MESMO conteúdo não vira linha: "editou" sem dizer o quê é ruído que esconde
+        // as edições que importam.
+        await servico.AtualizarAsync(
+            s.Id, new AtualizarRegulacaoSolicitacaoRequest(null, depois, null), CancellationToken.None);
+
+        var edicoes = (await servico.EventosAsync(s.Id, CancellationToken.None))
+            .Where(e => e.Tipo == TipoEventoRegulacao.Edicao).ToList();
+
+        edicoes.Should().HaveCount(2);
+        var diff = edicoes[1].Diff!.Value.GetProperty("queixa");
+        diff.GetProperty("de").GetString().Should().Be("dor no peito");
+        diff.GetProperty("para").GetString().Should().Be("dor no peito ha 3 dias");
+    }
+
+    [Fact]
+    public async Task Cancelar_depois_de_assumido_recusa_pela_maquina_de_estados()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (unidadeId, procedimentoId, usuarioId, versaoId) = await CenarioAsync(db);
+        var (servico, pacientes, _, _) = Montar(db, usuarioId, unidadeId, versaoId);
+        var pacienteId = Guid.NewGuid();
+        PacienteDublado(pacientes, pacienteId, "COM CPF", "52998224725");
+
+        var s = await servico.CriarAsync(
+            new CriarRegulacaoSolicitacaoRequest(
+                FluxoRegulacao.Externo, procedimentoId, pacienteId, null, SistemaRegulacao.Ser, null),
+            CancellationToken.None);
+
+        var linha = await db.RegulacaoSolicitacoes.FirstAsync(x => x.Id == s.Id);
+        linha.Status = StatusRegulacao.EmAnalise;
+        await db.SaveChangesAsync();
+
+        var acao = () => servico.CancelarAsync(s.Id, "desisti", CancellationToken.None);
+
+        var erro = await acao.Should().ThrowAsync<ConflitoException>();
+        erro.Which.Codigo.Should().Be("regulacao.transicao_invalida");
     }
 
     [Fact]
