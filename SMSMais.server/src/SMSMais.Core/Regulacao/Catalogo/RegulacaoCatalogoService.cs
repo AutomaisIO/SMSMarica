@@ -27,8 +27,13 @@ public sealed class RegulacaoCatalogoService(
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<RegulacaoCatalogoService> log) : IRegulacaoCatalogoService
 {
-    /// <summary>Lote do provedor de embeddings. 560 origens cabem em 5 chamadas.</summary>
-    private const int TamanhoLote = 128;
+    /// <summary>
+    /// Lote do provedor de embeddings. Era 128 ("560 origens em 5 chamadas") e a primeira
+    /// chamada estourou o timeout do HttpClient em produção. 64 dobra o número de idas e divide
+    /// por dois o tempo de cada uma — e, com o `catch` corrigido, um lote lento agora custa
+    /// aquele lote, não o sync inteiro.
+    /// </summary>
+    private const int TamanhoLote = 64;
 
     /// <summary>
     /// Corte da sugestão de pareamento. Abaixo disso o par é ruído: medido no spike c, os pares
@@ -247,7 +252,14 @@ public sealed class RegulacaoCatalogoService(
                 }
                 gerados += lote.Length;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            // `ct.IsCancellationRequested` é o que separa as duas coisas que o .NET representa
+            // com a MESMA exceção: o cliente desistiu (propaga) e o HttpClient estourou o próprio
+            // timeout (é um lote que falhou). `TaskCanceledException` herda de
+            // `OperationCanceledException`, então o filtro anterior — `is not
+            // OperationCanceledException` — deixava o timeout do provedor escapar e derrubar o
+            // sync inteiro com 500, contrariando o comentário logo abaixo. Medido em produção em
+            // 07/09/2026: ERRO-47UCPG.
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 // Um lote que falha não pode derrubar o sync: o catálogo (rótulos, oferta,
                 // pareamento por igualdade) vale sem embedding, e a busca lexical continua de pé.

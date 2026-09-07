@@ -149,6 +149,52 @@ public class RegulacaoCatalogoSyncTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Timeout_do_provedor_nao_derruba_o_sync()
+    {
+        await using var db = fixture.CriarDbContext();
+        var recurso = await RecursoSerAsync(db, $"NEFROLOGIA TESTE {Sufixo()}");
+
+        // O caso REAL de produção (ERRO-47UCPG): `HttpClient.Timeout` lança
+        // `TaskCanceledException`, que herda de `OperationCanceledException`. O filtro antigo
+        // (`is not OperationCanceledException`) deixava isso escapar e derrubava o sync inteiro
+        // com 500 — o teste anterior não pegava porque simulava `HttpRequestException`, que
+        // passava pelo filtro.
+        var fake = new EmbeddingsFake
+        {
+            FalharCom = new TaskCanceledException(
+                "The request was canceled due to the configured HttpClient.Timeout of 60 seconds elapsing."),
+        };
+        var servico = new RegulacaoCatalogoService(
+            db, fake, new UsuarioAtualAccessorFake(), NullLogger<RegulacaoCatalogoService>.Instance);
+
+        var resultado = await servico.SincronizarAsync(CancellationToken.None);
+
+        resultado.SemEmbedding.Should().BeGreaterThan(0);
+        (await db.RegulacaoProcedimentoOrigens.AsNoTracking()
+            .AnyAsync(o => o.SerCatalogoRecursoId == recurso.Id))
+            .Should().BeTrue("o catálogo tem de ficar de pé mesmo quando a Voyage demora demais");
+    }
+
+    [Fact]
+    public async Task Cancelamento_de_verdade_continua_propagando()
+    {
+        await using var db = fixture.CriarDbContext();
+        await RecursoSerAsync(db, $"HEMATOLOGIA TESTE {Sufixo()}");
+
+        var fake = new EmbeddingsFake { FalharCom = new OperationCanceledException() };
+        var servico = new RegulacaoCatalogoService(
+            db, fake, new UsuarioAtualAccessorFake(), NullLogger<RegulacaoCatalogoService>.Instance);
+
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        // Quem desistiu foi o chamador: engolir isso faria o sync continuar rodando depois de
+        // a requisição morrer. A distinção é o `ct.IsCancellationRequested`, não o tipo.
+        var acao = () => servico.SincronizarAsync(cts.Token);
+        await acao.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task Sugestao_so_entre_sistemas_diferentes_e_acima_do_corte()
     {
         await using var db = fixture.CriarDbContext();

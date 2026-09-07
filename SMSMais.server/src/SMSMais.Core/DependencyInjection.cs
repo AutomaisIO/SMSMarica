@@ -627,7 +627,11 @@ public static class DependencyInjection
         var anthropicBaseUrl = configuration["Ia:Anthropic:BaseUrl"] ?? "https://api.anthropic.com/";
         services.AddHttpClient<Inteligencia.Provedores.IServicoEmbeddings, Inteligencia.Provedores.VoyageEmbeddings>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(60);
+            // 60 s não bastava para um lote grande de embeddings: o primeiro sync do catálogo da
+            // regulação estourou o timeout em produção (ERRO-47UCPG, 07/09/2026). Embedding é
+            // chamada de provedor pago em lote, não requisição de tela — o que importa aqui é
+            // terminar, e quem espera é um job, não uma pessoa.
+            client.Timeout = TimeSpan.FromMinutes(3);
         });
         services.AddScoped<Inteligencia.Fontes.IFonteDadosFactory, Inteligencia.Fontes.FonteDadosFactory>();
 
