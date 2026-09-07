@@ -16,7 +16,7 @@
 |---|---|---|
 | 0 — Spikes de laboratório | **parcial** | **c, d, e feitos** (04–05/09). Restam **a** e **b** — os dois escrevem em sistema real e **dependem de OK explícito do Bernardo** |
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
-| 2 — Wizard + paciente + fila local | **concluído** | **2.1 a 2.10 feitas**. Nada pushado nem rodado em produção. Anexos em Spaces (Bernardo, 05/09) |
+| 2 — Wizard + paciente + fila local | **concluído** | **2.1 a 2.10 feitas**. Backend das tarefas 2.1–2.8 **EM PRODUÇÃO** desde 06/09 23h (push da sessão paralela). **2.9 e 2.10 seguem locais** (commits `1004a2c` e `60ff133`). Anexos em Spaces (Bernardo, 05/09) |
 | 3 — Fila + agente + registro assistido + notificações por unidade | não iniciado | |
 | 4 — Regras de elegibilidade | não iniciado | |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
@@ -42,11 +42,27 @@ O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, config
 > `regulacao_configuracao`, `regulacao_solicitacao` e `regulacao_exigencia` **ainda não existem em prod**.
 > Ambas são aditivas (zero `DropTable`) e sobem sozinhas no deploy, que dispara no **push** para `main`.
 >
-> **Atualização de 06/09 (tarefa 2.9):** agora são **três** migrations pendentes de push — entrou a
-> `20260907011751_MigracaoRascunhosLegados`, também aditiva (uma coluna nullable em
-> `regulacao_configuracao` + um índice único parcial em `regulacao_solicitacao`), zero `DropTable`.
+> ### ✅ 06/09/2026 23h — as tabelas da Regulação NASCERAM em produção
 >
-> **Não havia migration nova a criar até a 2.8.** `dotnet ef migrations has-pending-model-changes` responde
+> A sessão paralela pushou `main` (até `41824a7`) e o deploy entregou. **Conferido no banco e no
+> OpenAPI de produção, não presumido:** `smsmarica.__migrations` agora tem
+> `20260906014021_ConfiguracaoDaRegulacao` e `20260906020539_SolicitacaoDaRegulacao`; as **8
+> tabelas** `regulacao_*` existem; a API expõe `/regulacao/{configuracao,procedimentos,pacientes,
+> solicitacoes}` (520 rotas, contra 495 antes). Com isso, **conceder o módulo `Regulacao` (47) a um
+> perfil já é seguro** — a ordem "push antes do perfil" está cumprida.
+>
+> **O deploy demora.** Entre o push (23:04) e as rotas no ar passaram-se ~15 min. Medi duas vezes
+> nesse intervalo e as rotas não estavam lá — quase registrei "o deploy não entregou". Quem for
+> conferir pós-deploy: esperar, e conferir `__migrations` **e** o OpenAPI, não um só.
+>
+> **⚠️ O catálogo está VAZIO em produção** (`regulacao_procedimento` = 0 linhas). Sem sincronizá-lo,
+> a busca do wizard não devolve nada **e a migração dos rascunhos legados recusa todos** por
+> "recurso não existe no catálogo canônico". O primeiro sync gera **~560 embeddings pagos** na
+> Voyage — é ação de produção, exige OK.
+>
+> **Ainda pendente de push:** a migration `20260907011751_MigracaoRascunhosLegados` (aditiva: uma
+> coluna nullable + um índice único parcial, zero `DropTable`), nos commits locais `1004a2c` e
+> `60ff133`. `dotnet ef migrations has-pending-model-changes` responde
 > *"No changes have been made to the model since the last migration"* — as três migrations do módulo
 > cobrem o modelo inteiro.
 >
@@ -191,6 +207,10 @@ As três rotas são de API, **sem tela** — o plano 02 não previu UI para elas
 para chamá-las pelo `/docs` (Scalar) autenticado com um usuário que tenha o módulo
 `RegulacaoConfiguracao` (51), na ordem:
 
+0. **Antes de tudo, o catálogo precisa estar cheio.** Em 06/09 ele está com **0 linhas** em
+   produção, e a migração casa o rascunho com o procedimento pela origem do catálogo — com ele
+   vazio, todos os rascunhos são recusados por "recurso não existe no catálogo canônico".
+   `POST /regulacao/procedimentos/sincronizar` enche (e gera ~560 embeddings pagos na Voyage).
 1. `GET /regulacao/legado/rascunhos/previa` — **não grava**. Mostra o que migraria e o que
    sobraria, com o motivo de cada pendência.
 2. `POST /regulacao/legado/rascunhos/migrar` com `{ "unidadeFallbackId": null, "fecharTelasAntigas": false }`.
@@ -268,6 +288,13 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 06/09/2026 23h — o incremento 2 subiu em produção (push da sessão paralela)
+
+- Fui conferir o banco antes de commitar e o estado tinha mudado: `origin/main` já continha os commits da Regulação até a 2.8. **Medi em vez de presumir** — e nas duas primeiras medições (02:17 e 02:18 UTC) as rotas do módulo **não estavam** no OpenAPI de produção, com `__migrations` ainda em `RemoveAgendaLocal`. Cheguei a reportar "o deploy não entregou".
+- **Estava errado: era latência do pipeline.** ~15 min depois do push, as duas migrations estavam aplicadas, as 8 tabelas `regulacao_*` existiam e a API subira de 495 para 520 rotas, com `/regulacao/{configuracao,procedimentos,pacientes,solicitacoes}`. A lição prática: **pós-deploy, conferir `__migrations` E o OpenAPI, e esperar** — uma medição só, feita cedo demais, produz um falso "falhou calado" (o oposto do erro que a memória do projeto registra, e igualmente caro).
+- **Consequência boa:** a ordem "push antes de conceder o perfil" está cumprida — conceder o módulo 47 já é seguro.
+- **Consequência a tratar:** `regulacao_procedimento` está com **0 linhas**. Sem sincronizar o catálogo, a busca do wizard não acha nada **e a migração dos rascunhos recusaria os 2 do SER** por falta de procedimento canônico. Virou o passo 0 do runbook.
 
 ### 06/09/2026 — incremento 2, tarefa 2.10 (testes do wizard) — **incremento 2 fechado**
 
