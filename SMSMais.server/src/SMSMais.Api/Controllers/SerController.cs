@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Ser;
 using SMSMais.Core.Ser.Dtos;
 using SMSMais.Core.Ser.Sessao;
@@ -480,8 +481,20 @@ public sealed record SerTestarCredencialRequest(string Usuario, string Senha);
 [Route("regulacao/ser/rascunhos")]
 public sealed class SerRascunhoController(
     ISerCatalogoService catalogo,
-    ISerRascunhoService rascunhos) : ControllerBase
+    ISerRascunhoService rascunhos,
+    IRascunhoLegadoGate legado) : ControllerBase
 {
+    /// <summary>
+    /// Se esta tela ainda aceita escrita. Depois da migração para Regulação → Solicitações ela
+    /// vira somente-leitura, e a página precisa saber disso ANTES de o operador digitar — receber
+    /// 410 só no "Salvar" seria perder o preenchimento.
+    /// </summary>
+    [HttpGet("estado")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<EstadoRascunhoLegadoDto>(StatusCodes.Status200OK)]
+    public Task<EstadoRascunhoLegadoDto> Estado(CancellationToken cancellationToken) =>
+        legado.EstadoAsync(cancellationToken);
+
     /// <summary>Formulário montado do NOSSO catálogo — offline e instantâneo.</summary>
     [HttpGet("formulario")]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]

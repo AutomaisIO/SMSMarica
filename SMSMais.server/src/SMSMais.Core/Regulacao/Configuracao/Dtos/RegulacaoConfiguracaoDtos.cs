@@ -18,6 +18,8 @@ public sealed record RegulacaoConfiguracaoDto(
     int AnexoLimiteMb,
     string[] AnexoTiposPermitidos,
     NaoSeiViraRegulacao NaoSeiPadrao,
+    /// <summary>Não-nulo = telas antigas de rascunho SER/SERNIT fechadas (tarefa 2.9).</summary>
+    DateTime? RascunhosLegadosMigradosEm,
     DateTime? AtualizadoEm,
     string? AtualizadoPorNome,
     uint RowVersion);

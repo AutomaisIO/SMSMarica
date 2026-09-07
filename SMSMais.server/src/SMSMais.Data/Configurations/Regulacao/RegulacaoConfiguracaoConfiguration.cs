@@ -25,6 +25,8 @@ internal sealed class RegulacaoConfiguracaoConfiguration
             .HasColumnName("exigir_cpf").IsRequired().HasDefaultValue(true);
         builder.Property(c => c.RotuloFila)
             .HasColumnName("rotulo_fila").HasMaxLength(60).IsRequired();
+        builder.Property(c => c.RascunhosLegadosMigradosEm)
+            .HasColumnName("rascunhos_legados_migrados_em");
 
         builder.Property(c => c.SisregPrazoEdicaoDias)
             .HasColumnName("sisreg_prazo_edicao_dias").IsRequired().HasDefaultValue(7);

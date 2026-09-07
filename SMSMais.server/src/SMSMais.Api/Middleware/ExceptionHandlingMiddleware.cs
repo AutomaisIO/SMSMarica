@@ -39,6 +39,15 @@ public sealed partial class ExceptionHandlingMiddleware(
         {
             await EscreverValidationProblem(context, ex.Erros);
         }
+        // 410: a rota existia e foi desativada de propósito (ex.: os rascunhos por sistema
+        // depois da migração para a Regulação). O `substituto` vai na resposta porque a tela
+        // precisa apontar o caminho novo, não só dizer que este acabou.
+        catch (RecursoDescontinuadoException ex)
+        {
+            await EscreverProblemDetails(
+                context, StatusCodes.Status410Gone, "Recurso descontinuado", ex.Message,
+                type: ex.Codigo, extras: ex.Substituto is null ? null : new() { ["substituto"] = ex.Substituto });
+        }
         // Corrida perdida: violação do índice único (ex.: 2ª assinatura concluída do
         // mesmo laudo) ou conflito otimista (xmin) viram 409 limpo, não 500.
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
@@ -139,7 +148,8 @@ public sealed partial class ExceptionHandlingMiddleware(
         string? type = null,
         Exception? excecao = null,
         string? codigoReferencia = null,
-        bool jaReportado = false)
+        bool jaReportado = false,
+        Dictionary<string, object?>? extras = null)
     {
         var problem = new ProblemDetails
         {
@@ -152,6 +162,11 @@ public sealed partial class ExceptionHandlingMiddleware(
 
         if (codigoReferencia is not null)
             problem.Extensions["codigoReferencia"] = codigoReferencia;
+
+        if (extras is not null)
+        {
+            foreach (var (chave, valor) in extras) problem.Extensions[chave] = valor;
+        }
 
         if (jaReportado)
             problem.Extensions["jaReportado"] = true;

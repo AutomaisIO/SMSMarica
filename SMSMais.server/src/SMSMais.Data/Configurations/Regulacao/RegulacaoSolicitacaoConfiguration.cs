@@ -88,6 +88,14 @@ internal sealed class RegulacaoSolicitacaoConfiguration
         builder.HasIndex(x => x.PacienteId).HasDatabaseName("ix_regulacao_solicitacao_paciente");
         builder.HasIndex(x => x.ExcluidoEm).HasDatabaseName("ix_regulacao_solicitacao_excluido_em");
 
+        // Um rascunho legado vira UMA solicitação. A idempotência do migrador é conferida em
+        // código, mas dois cliques simultâneos passariam pela conferência juntos — a trava real
+        // é esta. Parcial porque solicitação nascida no wizard não tem origem legada.
+        builder.HasIndex(x => x.OrigemLegadoId)
+            .IsUnique()
+            .HasFilter("origem_legado_id IS NOT NULL")
+            .HasDatabaseName("ux_regulacao_solicitacao_origem_legado");
+
         // Um número externo pertence a UMA solicitação, por sistema. Índice parcial porque só as
         // enviadas têm número, e sem o filtro os nulos colidiriam entre si. É esta trava que
         // impede o mesmo pedido virar dois no SISREG por duplo clique.

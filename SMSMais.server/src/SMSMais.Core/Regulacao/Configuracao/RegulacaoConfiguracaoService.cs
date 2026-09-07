@@ -24,6 +24,13 @@ public interface IRegulacaoConfiguracaoService
 
     /// <summary>A entidade em si, para quem precisa dos valores sem montar DTO (a busca usa).</summary>
     Task<RegulacaoConfiguracao> ObterEntidadeAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Liga (data) ou desliga (<c>null</c>) o corte dos rascunhos por sistema. Fica fora do
+    /// <c>PUT</c> da configuração de propósito: é consequência da migração, não um campo que
+    /// alguém digita junto com o rótulo da fila.
+    /// </summary>
+    Task DefinirRascunhosLegadosMigradosAsync(DateTime? em, CancellationToken ct);
 }
 
 /// <inheritdoc cref="IRegulacaoConfiguracaoService"/>
@@ -79,6 +86,22 @@ public sealed class RegulacaoConfiguracaoService(
         return nova;
     }
 
+    public async Task DefinirRascunhosLegadosMigradosAsync(DateTime? em, CancellationToken ct)
+    {
+        await CarregarOuCriarAsync(ct);
+        var atual = await db.RegulacaoConfiguracoes
+            .FirstAsync(c => c.Id == RegulacaoConfiguracao.IdSingleton, ct);
+
+        atual.RascunhosLegadosMigradosEm = em;
+        atual.AtualizadoEm = DateTime.UtcNow;
+        atual.AtualizadoPor = usuarioAtual.UsuarioId;
+        await db.SaveChangesAsync(ct);
+
+        // Sem limpar o cache, as telas antigas continuariam aceitando escrita por até 30 s
+        // depois de a migração ter copiado os rascunhos — e essa edição se perderia.
+        cache.Remove(ChaveCache);
+    }
+
     public async Task<RegulacaoConfiguracaoDto> ObterAsync(CancellationToken ct)
     {
         var c = await ObterEntidadeAsync(ct);
@@ -103,6 +126,7 @@ public sealed class RegulacaoConfiguracaoService(
             c.AnexoLimiteMb,
             c.AnexoTiposPermitidos,
             c.NaoSeiPadrao,
+            c.RascunhosLegadosMigradosEm,
             c.AtualizadoEm,
             nome,
             c.RowVersion);

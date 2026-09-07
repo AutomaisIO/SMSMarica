@@ -41,6 +41,21 @@ public sealed class RegulacaoConfiguracao
     /// <summary>Nome da fila na tela. "Pré-regulação" é provisório (D-6).</summary>
     public string RotuloFila { get; set; } = "Pré-regulação";
 
+    /// <summary>
+    /// Quando os rascunhos <c>ser_*</c>/<c>sernit_*</c> foram migrados para
+    /// <c>regulacao_solicitacao</c>. <b>Não-nulo fecha as telas antigas</b>: as páginas "Nova
+    /// solicitação (SER/SERNIT)" viram somente-leitura e as rotas de escrita dos rascunhos
+    /// respondem 410.
+    ///
+    /// <para>É uma data em configuração, e não um <c>if</c> no código, porque a migração dos
+    /// dados e o fechamento das telas precisam acontecer no mesmo instante e sem depender de
+    /// deploy: com o corte no código, ou os rascunhos ficam editáveis depois de copiados (e a
+    /// edição se perde), ou as telas fecham antes da cópia (e o operador perde o acesso ao que
+    /// ainda não migrou). Aqui o migrador liga ao terminar, e o configurador reabre se
+    /// precisar.</para>
+    /// </summary>
+    public DateTime? RascunhosLegadosMigradosEm { get; set; }
+
     // ---- SISREG ----
 
     /// <summary>

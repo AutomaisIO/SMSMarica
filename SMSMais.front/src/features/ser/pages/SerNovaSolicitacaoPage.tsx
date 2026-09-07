@@ -38,6 +38,10 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { CampoDinamico } from '@/shared/regulacao/CampoDinamico';
 import { CampoPaciente } from '@/shared/regulacao/CampoPaciente';
+import {
+  AvisoRascunhoLegado,
+  useEstadoRascunhoLegado,
+} from '@/shared/regulacao/rascunhoLegado';
 import { Select } from '@/shared/ui/Select';
 import { formatarInstante } from '@/shared/lib/datas';
 import { pesquisarPacienteSer } from '@/features/ser/api/serApi';
@@ -122,7 +126,12 @@ export function SerNovaSolicitacaoPage() {
   );
 
   const listaCampos = dinamicos.data ?? [];
-  const somenteLeitura = carregado.data?.status === 'Enviado';
+
+  // Duas razões distintas para travar a tela: o rascunho já foi ao SER (não se edita o que já
+  // está lá) ou a tela inteira virou histórico depois da migração para Regulação → Solicitações.
+  const legado = useEstadoRascunhoLegado('ser');
+  const telaAposentada = legado.data?.somenteLeitura === true;
+  const somenteLeitura = carregado.data?.status === 'Enviado' || telaAposentada;
 
   function corpo() {
     return {
@@ -241,9 +250,11 @@ export function SerNovaSolicitacaoPage() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button variante="secundaria" onClick={novo}>Novo</Button>
+          <Button variante="secundaria" onClick={novo} disabled={telaAposentada}>Novo</Button>
         </div>
       </header>
+
+      <AvisoRascunhoLegado estado={legado.data} sistema="SER" />
 
       {semCatalogo && !catalogo.isLoading && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -263,6 +274,7 @@ export function SerNovaSolicitacaoPage() {
         </p>
       )}
 
+      {!telaAposentada && (
       <div className="flex items-start gap-2 rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
         <p>
@@ -271,6 +283,7 @@ export function SerNovaSolicitacaoPage() {
           <em> Pronto</em> são os que vão.
         </p>
       </div>
+      )}
 
       {erro && <p className="rounded bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
       {aviso && <p className="rounded bg-emerald-50 p-3 text-sm text-emerald-800">{aviso}</p>}

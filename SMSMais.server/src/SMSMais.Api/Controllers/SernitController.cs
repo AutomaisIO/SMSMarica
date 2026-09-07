@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Sernit;
 using SMSMais.Core.Sernit.Dtos;
 using SMSMais.Core.Sernit.Sessao;
@@ -380,8 +381,19 @@ public sealed class SernitConfiguracaoController(
 [Route("regulacao/sernit/rascunhos")]
 public sealed class SernitRascunhoController(
     ISernitCatalogoService catalogo,
-    ISernitRascunhoService rascunhos) : ControllerBase
+    ISernitRascunhoService rascunhos,
+    IRascunhoLegadoGate legado) : ControllerBase
 {
+    /// <summary>
+    /// Se esta tela ainda aceita escrita. Depois da migração para Regulação → Solicitações ela
+    /// vira somente-leitura, e a página precisa saber disso ANTES de o operador digitar.
+    /// </summary>
+    [HttpGet("estado")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
+    [ProducesResponseType<EstadoRascunhoLegadoDto>(StatusCodes.Status200OK)]
+    public Task<EstadoRascunhoLegadoDto> Estado(CancellationToken cancellationToken) =>
+        legado.EstadoAsync(cancellationToken);
+
     [HttpGet("formulario")]
     [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
     [ProducesResponseType<SernitCatalogoFormularioDto>(StatusCodes.Status200OK)]

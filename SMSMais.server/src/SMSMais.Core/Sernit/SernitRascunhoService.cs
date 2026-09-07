@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Midias;
+using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Sernit.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Sernit;
@@ -31,7 +32,8 @@ public interface ISernitRascunhoService
 public sealed class SernitRascunhoService(
     SmsMaisDbContext db,
     IMidiasService midias,
-    IUsuarioAtualAccessor usuarioAtual) : ISernitRascunhoService
+    IUsuarioAtualAccessor usuarioAtual,
+    IRascunhoLegadoGate legado) : ISernitRascunhoService
 {
     private const int TamanhoMaximoAnexo = 10 * 1024 * 1024;
 
@@ -63,6 +65,8 @@ public sealed class SernitRascunhoService(
     public async Task<SernitRascunhoDetalheDto> SalvarAsync(
         Guid? id, SernitRascunhoRequest request, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SERNIT", cancellationToken);
+
         var r = id is { } existente
             ? await db.SernitSolicitacaoRascunhos
                   .Include(x => x.Anexos)
@@ -98,6 +102,8 @@ public sealed class SernitRascunhoService(
 
     public async Task ExcluirAsync(Guid id, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SERNIT", cancellationToken);
+
         var r = await db.SernitSolicitacaoRascunhos
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException("Rascunho de solicitação do SERNIT", id);
@@ -115,6 +121,8 @@ public sealed class SernitRascunhoService(
 
     public async Task<SernitRascunhoDetalheDto> MarcarProntoAsync(Guid id, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SERNIT", cancellationToken);
+
         var r = await db.SernitSolicitacaoRascunhos
             .Include(x => x.Anexos)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
@@ -137,6 +145,8 @@ public sealed class SernitRascunhoService(
     public async Task<SernitRascunhoAnexoDto> AnexarAsync(
         Guid id, string nomeArquivo, string? contentType, byte[] conteudo, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SERNIT", cancellationToken);
+
         var r = await db.SernitSolicitacaoRascunhos
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException("Rascunho de solicitação do SERNIT", id);
@@ -184,6 +194,8 @@ public sealed class SernitRascunhoService(
 
     public async Task RemoverAnexoAsync(Guid id, Guid anexoId, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SERNIT", cancellationToken);
+
         var anexo = await db.SernitRascunhoAnexos
             .FirstOrDefaultAsync(x => x.Id == anexoId && x.RascunhoId == id, cancellationToken)
             ?? throw new NaoEncontradoException("Anexo do rascunho", anexoId);

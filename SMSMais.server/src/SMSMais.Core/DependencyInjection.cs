@@ -789,6 +789,8 @@ public static class DependencyInjection
         services.AddScoped<Regulacao.Pacientes.IRegulacaoPacienteService, Regulacao.Pacientes.RegulacaoPacienteService>();
         services.AddScoped<Regulacao.Formularios.IRegulacaoFormularioService, Regulacao.Formularios.RegulacaoFormularioService>();
         services.AddScoped<Regulacao.Solicitacoes.IRegulacaoSolicitacaoService, Regulacao.Solicitacoes.RegulacaoSolicitacaoService>();
+        services.AddScoped<Regulacao.Legado.IRascunhoLegadoGate, Regulacao.Legado.RascunhoLegadoGate>();
+        services.AddScoped<Regulacao.Legado.IMigradorRascunhosLegadosService, Regulacao.Legado.MigradorRascunhosLegadosService>();
         // Singleton: o cache de vetores de consulta só vale se sobreviver entre requisições.
         services.AddSingleton<Regulacao.Catalogo.CacheVetorConsulta>();
 

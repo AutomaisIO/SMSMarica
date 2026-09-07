@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Midias;
+using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Ser.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Ser;
@@ -46,7 +47,8 @@ public interface ISerRascunhoService
 public sealed class SerRascunhoService(
     SmsMaisDbContext db,
     IMidiasService midias,
-    IUsuarioAtualAccessor usuarioAtual) : ISerRascunhoService
+    IUsuarioAtualAccessor usuarioAtual,
+    IRascunhoLegadoGate legado) : ISerRascunhoService
 {
     /// <summary>10 MB. O SER não publica limite; este é o nosso, para um anexo absurdo não virar
     /// uma linha gigante no banco e um envio que nunca termina.</summary>
@@ -80,6 +82,8 @@ public sealed class SerRascunhoService(
     public async Task<SerRascunhoDetalheDto> SalvarAsync(
         Guid? id, SerRascunhoRequest request, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SER", cancellationToken);
+
         var r = id is { } existente
             ? await db.SerSolicitacaoRascunhos
                   .Include(x => x.Anexos)
@@ -119,6 +123,8 @@ public sealed class SerRascunhoService(
 
     public async Task ExcluirAsync(Guid id, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SER", cancellationToken);
+
         var r = await db.SerSolicitacaoRascunhos
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException("Rascunho de solicitação do SER", id);
@@ -138,6 +144,8 @@ public sealed class SerRascunhoService(
     public async Task<SerRascunhoDetalheDto> MarcarProntoAsync(
         Guid id, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SER", cancellationToken);
+
         var r = await db.SerSolicitacaoRascunhos
             .Include(x => x.Anexos)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
@@ -163,6 +171,8 @@ public sealed class SerRascunhoService(
         Guid id, string nomeArquivo, string? contentType, byte[] conteudo,
         CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SER", cancellationToken);
+
         var r = await db.SerSolicitacaoRascunhos
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException("Rascunho de solicitação do SER", id);
@@ -212,6 +222,8 @@ public sealed class SerRascunhoService(
 
     public async Task RemoverAnexoAsync(Guid id, Guid anexoId, CancellationToken cancellationToken)
     {
+        await legado.GarantirEscritaPermitidaAsync("SER", cancellationToken);
+
         var anexo = await db.SerRascunhoAnexos
             .FirstOrDefaultAsync(x => x.Id == anexoId && x.RascunhoId == id, cancellationToken)
             ?? throw new NaoEncontradoException("Anexo do rascunho", anexoId);
