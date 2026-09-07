@@ -189,17 +189,26 @@ public sealed class MigradorRascunhosLegadosService(
                 + "Rode a sincronização do catálogo da regulação e tente de novo.");
         }
 
-        var cns = new string([.. (r.Cns ?? string.Empty).Where(char.IsDigit)]);
-        if (cns.Length != 15)
+        // A coluna chama-se `cns`, mas guarda o que o operador digitou no campo de documento do
+        // SER — e ali cabe CPF **ou** CNS. Medido em produção (07/09/2026): dos 2 rascunhos, um
+        // tem 15 dígitos (CNS) e o outro tem 11 (CPF). Exigir CNS recusaria metade deles com uma
+        // mensagem que ainda por cima seria falsa ("está sem CNS" — ele tem documento).
+        var documento = new string([.. (r.Cns ?? string.Empty).Where(char.IsDigit)]);
+        if (documento.Length is not (11 or 15))
         {
-            return Recusa("O rascunho está sem CNS do paciente — não dá para saber de quem é a solicitação.");
+            return Recusa(
+                "O rascunho está sem CPF nem CNS do paciente — não dá para saber de quem é a solicitação.");
         }
 
-        var paciente = await pacientes.ObterPorCnsAsync(cns, ct);
+        var ehCns = documento.Length == 15;
+        var paciente = ehCns
+            ? await pacientes.ObterPorCnsAsync(documento, ct)
+            : await pacientes.ObterPorCpfAsync(documento, ct);
         if (paciente is null)
         {
             return Recusa(
-                $"Nenhum paciente no cadastro com o CNS {cns}. Cadastre o paciente e rode a migração de novo.");
+                $"Nenhum paciente no cadastro com o {(ehCns ? "CNS" : "CPF")} {documento}. "
+                + "Cadastre o paciente e rode a migração de novo.");
         }
 
         var unidadeId = await ResolverUnidadeAsync(r.CriadoPor, req.UnidadeFallbackId, ct);
@@ -243,7 +252,9 @@ public sealed class MigradorRascunhosLegadosService(
             PacienteId = paciente.Id,
             PacienteNome = string.IsNullOrWhiteSpace(r.PacienteNome) ? paciente.NomeCompleto : r.PacienteNome,
             PacienteCpf = string.IsNullOrWhiteSpace(paciente.Cpf) ? null : paciente.Cpf,
-            PacienteCns = cns,
+            // Só copia como CNS o que É um CNS. Gravar um CPF nesta coluna faria a solicitação
+            // viajar com identificador errado para o sistema de destino.
+            PacienteCns = ehCns ? documento : null,
             ProcedimentoId = procedimentoId.Value,
             SistemaDestino = r.SistemaDestino,
             FormularioVersaoId = formulario.VersaoId,

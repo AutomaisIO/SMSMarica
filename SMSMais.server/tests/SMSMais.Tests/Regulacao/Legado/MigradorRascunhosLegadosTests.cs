@@ -265,6 +265,36 @@ public class MigradorRascunhosLegadosTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Documento_de_11_digitos_e_tratado_como_CPF()
+    {
+        await using var db = fixture.CriarDbContext();
+        var recurso = Sufixo();
+        var c = await MontarCenarioAsync(db, recurso);
+
+        // A coluna chama-se `cns`, mas guarda o que foi digitado no campo de documento do SER —
+        // e ali cabe CPF. Metade dos rascunhos reais de produção estava assim (07/09/2026).
+        const string cpf = "52998224725";
+        var rascunho = NovoRascunhoSer(c.UsuarioId, recurso, cpf);
+        db.SerSolicitacaoRascunhos.Add(rascunho);
+        await db.SaveChangesAsync();
+
+        var (servico, pacientes, _) = Montar(db, c.UsuarioId, c.VersaoFormularioId);
+        var pacienteId = Guid.NewGuid();
+        pacientes.ObterPorCpfAsync(cpf, Arg.Any<CancellationToken>())
+            .Returns(new PacienteExistenciaDto(pacienteId, "MARIA DO TESTE", cpf, true));
+
+        var r = await servico.MigrarAsync(
+            new MigrarRascunhosLegadosRequest(null, false), CancellationToken.None);
+
+        r.NaoMigrados.Should().NotContain(n => n.RascunhoId == rascunho.Id);
+
+        var criada = await db.RegulacaoSolicitacoes.AsNoTracking()
+            .FirstAsync(s => s.OrigemLegadoId == rascunho.Id);
+        criada.PacienteId.Should().Be(pacienteId);
+        criada.PacienteCns.Should().BeNull("um CPF não pode ser copiado para a coluna do CNS");
+    }
+
+    [Fact]
     public async Task Sem_paciente_no_cadastro_nao_migra_e_diz_por_que()
     {
         await using var db = fixture.CriarDbContext();
