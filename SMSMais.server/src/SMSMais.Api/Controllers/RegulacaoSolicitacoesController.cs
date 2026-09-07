@@ -103,5 +103,72 @@ public sealed class RegulacaoSolicitacoesController(
         return NoContent();
     }
 
+    // ---------------------------------------------------------------- agente regulador (48)
+
+    /// <summary>
+    /// Assume o caso. Concorrência resolvida no banco: dois agentes clicando junto, um ganha e o
+    /// outro recebe 409 — em vez de os dois acharem que assumiram.
+    /// </summary>
+    [HttpPost("{id:guid}/assumir")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<RegulacaoSolicitacaoDetalheDto> Assumir(Guid id, CancellationToken cancellationToken) =>
+        servico.AssumirAsync(id, cancellationToken);
+
+    /// <summary>Devolve à unidade com o motivo — a ponta corrige e reenvia.</summary>
+    [HttpPost("{id:guid}/devolver")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]
+    public Task<RegulacaoSolicitacaoDetalheDto> Devolver(
+        Guid id, [FromBody] MotivoRequest req, CancellationToken cancellationToken) =>
+        servico.DevolverAsync(id, req.Motivo, cancellationToken);
+
+    /// <summary>Recusa em definitivo. É `Exclusao` porque encerra o caso sem atendimento.</summary>
+    [HttpPost("{id:guid}/recusar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Exclusao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Recusar(
+        Guid id, [FromBody] MotivoRequest req, CancellationToken cancellationToken)
+    {
+        await servico.RecusarAsync(id, req.Motivo, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Envio assistido: o agente incluiu pela tela do sistema de regulação e digita o número
+    /// aqui. <b>Nada sai daqui para o SISREG/SER/SERNIT</b> — a D-11 continua de pé.
+    /// </summary>
+    [HttpPost("{id:guid}/registrar-envio")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<RegulacaoSolicitacaoDetalheDto> RegistrarEnvio(
+        Guid id, [FromBody] RegistrarEnvioRequest req, CancellationToken cancellationToken) =>
+        servico.RegistrarEnvioAsync(id, req, cancellationToken);
+
+    /// <summary>D-8: confere a solicitação interna que o solicitante já incluiu no SISREG.</summary>
+    [HttpPost("{id:guid}/ok-interno")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]
+    public Task<RegulacaoSolicitacaoDetalheDto> OkInterno(Guid id, CancellationToken cancellationToken) =>
+        servico.ConfirmarOkInternoAsync(id, cancellationToken);
+
+    /// <summary>
+    /// D-10: troca o procedimento canônico. Não é um ajuste comum — muda o formulário e as regras,
+    /// então o serviço regera a versão, preserva o que sobrevive e registra o que caiu.
+    /// </summary>
+    [HttpPost("{id:guid}/trocar-procedimento")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<RegulacaoSolicitacaoDetalheDto> TrocarProcedimento(
+        Guid id, [FromBody] TrocarProcedimentoRequest req, CancellationToken cancellationToken) =>
+        servico.TrocarProcedimentoAsync(id, req.ProcedimentoId, cancellationToken);
+
+    public sealed record TrocarProcedimentoRequest(Guid ProcedimentoId);
+
     public sealed record CancelarRequest(string Motivo);
+
+    public sealed record MotivoRequest(string Motivo);
 }

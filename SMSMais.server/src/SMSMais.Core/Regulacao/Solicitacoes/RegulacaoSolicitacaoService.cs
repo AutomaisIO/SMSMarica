@@ -2,6 +2,8 @@ using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
 
+using Npgsql;
+
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Unidades;
 using SMSMais.Core.Identidade;
@@ -48,11 +50,23 @@ public sealed record RegulacaoSolicitacaoDetalheDto(
     Guid? FormularioVersaoId,
     JsonElement Formulario,
     string? NumeroExterno,
+    /// <summary>Quem assumiu o caso na regulação. Nulo = ainda na fila.</summary>
+    Guid? AgenteResponsavelId,
+    DateTime? EnviadoEm,
+    /// <summary>O número foi digitado pelo agente (envio assistido), não gerado pelo nosso envio.</summary>
+    bool EnvioAssistido,
     string? Observacoes,
     DateTime CriadoEm);
 
 /// <summary>Por que a solicitação ainda não pode ir para a fila.</summary>
 public sealed record PendenciaEnvioDto(string Codigo, string Descricao);
+
+/// <param name="NumeroExterno">
+/// O número que o sistema de regulação gerou. É ele que passa a identificar o caso lá fora — e é
+/// por ele que a conciliação (plano 05) vai casar com o espelho depois.
+/// </param>
+public sealed record RegistrarEnvioRequest(
+    SistemaRegulacao Sistema, string NumeroExterno, DateTime? EnviadoEm);
 
 /// <param name="SoMinhas">
 /// Só as que este usuário abriu. Vale para o agente, que enxerga tudo e às vezes quer ver o
@@ -120,6 +134,37 @@ public interface IRegulacaoSolicitacaoService
 
     /// <summary>A história do caso, em ordem. É o que a linha do tempo da tela mostra.</summary>
     Task<IReadOnlyList<RegulacaoEventoDto>> EventosAsync(Guid id, CancellationToken ct);
+
+    // ---- agente regulador (módulo 48) ----
+
+    /// <summary>Assume o caso. Dois agentes clicando junto: um ganha, o outro recebe conflito.</summary>
+    Task<RegulacaoSolicitacaoDetalheDto> AssumirAsync(Guid id, CancellationToken ct);
+
+    /// <summary>Devolve à unidade com o motivo — a ponta corrige e reenvia.</summary>
+    Task<RegulacaoSolicitacaoDetalheDto> DevolverAsync(Guid id, string motivo, CancellationToken ct);
+
+    /// <summary>Recusa em definitivo. Motivo obrigatório: é o que a unidade lê.</summary>
+    Task RecusarAsync(Guid id, string motivo, CancellationToken ct);
+
+    /// <summary>
+    /// Envio assistido: o agente incluiu pela tela do próprio sistema de regulação e digita aqui
+    /// o número gerado. <b>Não é escrita externa</b> — nada sai daqui para o SISREG/SER/SERNIT.
+    /// </summary>
+    Task<RegulacaoSolicitacaoDetalheDto> RegistrarEnvioAsync(
+        Guid id, RegistrarEnvioRequest req, CancellationToken ct);
+
+    /// <summary>
+    /// D-8: a solicitação interna já nasceu no SISREG pelas mãos do solicitante; o "OK" do agente
+    /// é ação local, que a tira da fila de triagem.
+    /// </summary>
+    Task<RegulacaoSolicitacaoDetalheDto> ConfirmarOkInternoAsync(Guid id, CancellationToken ct);
+
+    /// <summary>
+    /// D-10: o catálogo é plano, o solicitante pode ter escolhido o balde ou o específico, e é o
+    /// agente quem desempata — nos dois sentidos.
+    /// </summary>
+    Task<RegulacaoSolicitacaoDetalheDto> TrocarProcedimentoAsync(
+        Guid id, Guid procedimentoId, CancellationToken ct);
 }
 
 /// <summary>
@@ -334,11 +379,19 @@ public sealed class RegulacaoSolicitacaoService(
     {
         var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
 
-        if (s.Status is not (StatusRegulacao.Rascunho or StatusRegulacao.Devolvida))
+        // Quem edita o quê: a unidade mexe no que ainda é dela (rascunho, devolvida); o agente
+        // mexe no que assumiu. São dois momentos diferentes do mesmo caso, e o evento distingue
+        // um do outro — `Edicao` da ponta, `Ajuste` do agente.
+        var ehAgente = await escopoRegulacao.EhAgenteAsync(ct);
+        var ajusteDoAgente = ehAgente && s.Status == StatusRegulacao.EmAnalise;
+
+        if (!ajusteDoAgente && s.Status is not (StatusRegulacao.Rascunho or StatusRegulacao.Devolvida))
         {
             throw new ConflitoException(
                 "regulacao.solicitacao.nao_editavel",
-                $"Uma solicitação em {s.Status} não é editável pela unidade solicitante.");
+                ehAgente
+                    ? $"Uma solicitação em {s.Status} só é editável depois de você assumi-la."
+                    : $"Uma solicitação em {s.Status} não é editável pela unidade solicitante.");
         }
 
         if (req.SistemaDestino is not null)
@@ -371,7 +424,10 @@ public sealed class RegulacaoSolicitacaoService(
         if (diff is not null)
         {
             await eventos.RegistrarAsync(
-                id, TipoEventoRegulacao.Edicao, PapelEventoRegulacao.Solicitante, ct, diff: diff);
+                id,
+                ajusteDoAgente ? TipoEventoRegulacao.Ajuste : TipoEventoRegulacao.Edicao,
+                ajusteDoAgente ? PapelEventoRegulacao.Agente : PapelEventoRegulacao.Solicitante,
+                ct, diff: diff);
         }
 
         await db.SaveChangesAsync(ct);
@@ -470,6 +526,263 @@ public sealed class RegulacaoSolicitacaoService(
         // enxerga a solicitação não pode enxergá-la por esta porta.
         var s = await CarregarNoEscopoAsync(id, ct);
         return await eventos.ListarAsync(s.Id, ct);
+    }
+
+    // ---------------------------------------------------------------- agente regulador
+
+    public async Task<RegulacaoSolicitacaoDetalheDto> AssumirAsync(Guid id, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+        var usuarioId = usuarioAtual.UsuarioId
+            ?? throw new ValidacaoException("usuario", "Sessão sem usuário — refaça o login.");
+
+        // Leitura sem rastreamento e usada só para o escopo: `db.Entry(...)` nela ANEXARIA a
+        // instância com o status antigo ao contexto, e a próxima leitura rastreada devolveria
+        // esse valor obsoleto por identity resolution — foi assim que "assumir e devolver na
+        // mesma sessão" quebrou no teste.
+        await CarregarNoEscopoAsync(id, ct);
+
+        // O claim é uma gravação condicional, não um "leia e escreva": dois agentes clicando no
+        // mesmo caso ao mesmo tempo passariam os dois pela leitura e o segundo sobrescreveria o
+        // primeiro sem que ninguém notasse. O `WHERE status = PendenteRegulacao` faz o banco
+        // decidir, e quem perde recebe conflito.
+        var afetadas = await db.RegulacaoSolicitacoes
+            .Where(x => x.Id == id
+                && x.Status == StatusRegulacao.PendenteRegulacao
+                && x.ExcluidoEm == null)
+            .ExecuteUpdateAsync(
+                set => set
+                    .SetProperty(x => x.Status, StatusRegulacao.EmAnalise)
+                    .SetProperty(x => x.AgenteResponsavelId, usuarioId)
+                    .SetProperty(x => x.AtualizadoEm, DateTime.UtcNow)
+                    .SetProperty(x => x.AtualizadoPor, usuarioId),
+                ct);
+
+        if (afetadas == 0)
+        {
+            var atual = await db.RegulacaoSolicitacoes.AsNoTracking()
+                .Where(x => x.Id == id).Select(x => (StatusRegulacao?)x.Status).FirstOrDefaultAsync(ct);
+            throw new ConflitoException(
+                "regulacao.ja_assumida",
+                atual == StatusRegulacao.EmAnalise
+                    ? "Outro agente assumiu esta solicitação primeiro."
+                    : $"Uma solicitação em {atual?.ToString() ?? "estado desconhecido"} não pode ser assumida.");
+        }
+
+        // `ExecuteUpdateAsync` grava direto no banco e NÃO avisa o change tracker. Se esta
+        // solicitação já estiver rastreada no contexto — e estará sempre que algo a tenha lido
+        // antes na mesma requisição —, a próxima leitura rastreada devolve a instância em cache,
+        // com o status de ANTES do claim, por identity resolution. O caso seguinte ("devolver
+        // logo depois de assumir") então falha dizendo que a solicitação ainda está pendente.
+        //
+        // Desanexa só esta entidade: `ChangeTracker.Clear()` derrubaria alterações que outro
+        // serviço do mesmo escopo ainda vai gravar, e o `SaveChanges` seguinte não escreveria
+        // nada — sem erro nenhum.
+        var rastreada = db.ChangeTracker.Entries<RegulacaoSolicitacao>()
+            .FirstOrDefault(e => e.Entity.Id == id);
+        if (rastreada is not null) rastreada.State = EntityState.Detached;
+
+        await eventos.RegistrarAsync(
+            id, TipoEventoRegulacao.Assumida, PapelEventoRegulacao.Agente, ct,
+            de: StatusRegulacao.PendenteRegulacao, para: StatusRegulacao.EmAnalise);
+        await db.SaveChangesAsync(ct);
+
+        return await ObterAsync(id, ct);
+    }
+
+    public async Task<RegulacaoSolicitacaoDetalheDto> DevolverAsync(
+        Guid id, string motivo, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+        if (string.IsNullOrWhiteSpace(motivo))
+        {
+            // Sem motivo, a unidade recebe o caso de volta sem saber o que corrigir — e devolve
+            // igual. O campo obrigatório é o que faz a devolução andar.
+            throw new ValidacaoException("motivo", "Diga à unidade o que precisa ser corrigido.");
+        }
+
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        await TransitarAsync(
+            s, StatusRegulacao.Devolvida, PapelEventoRegulacao.Agente, ct, detalhe: new { motivo });
+        s.StatusMotivo = motivo.Trim();
+        await db.SaveChangesAsync(ct);
+
+        return await ObterAsync(id, ct);
+    }
+
+    public async Task RecusarAsync(Guid id, string motivo, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+        if (string.IsNullOrWhiteSpace(motivo))
+        {
+            throw new ValidacaoException("motivo", "A recusa precisa de um motivo — é o que a unidade lê.");
+        }
+
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        await TransitarAsync(
+            s, StatusRegulacao.Recusada, PapelEventoRegulacao.Agente, ct, detalhe: new { motivo });
+        s.StatusMotivo = motivo.Trim();
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<RegulacaoSolicitacaoDetalheDto> RegistrarEnvioAsync(
+        Guid id, RegistrarEnvioRequest req, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+
+        var numero = (req.NumeroExterno ?? string.Empty).Trim();
+        if (numero.Length == 0)
+        {
+            throw new ValidacaoException("numeroExterno", "Digite o número gerado pelo sistema.");
+        }
+        if (numero.Length > 40)
+        {
+            throw new ValidacaoException("numeroExterno", "O número tem no máximo 40 caracteres.");
+        }
+
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+
+        // O NAR termina no SISREG por definição (D-9). Registrar outro destino aqui faria a
+        // conciliação procurar o número no espelho errado e nunca casar.
+        if (s.Fluxo == FluxoRegulacao.Nar && req.Sistema != SistemaRegulacao.Sisreg)
+        {
+            throw new ValidacaoException("sistema", "O NAR sempre termina no SISREG.");
+        }
+
+        s.SistemaDestino = req.Sistema;
+        s.NumeroExterno = numero;
+        s.EnviadoEm = req.EnviadoEm ?? DateTime.UtcNow;
+        s.EnviadoPorUsuarioId = usuarioAtual.UsuarioId;
+        s.EnvioAssistido = true;
+
+        await TransitarAsync(
+            s, StatusRegulacao.EnviadaAoSistema, PapelEventoRegulacao.Agente, ct,
+            detalhe: new { assistido = true, sistema = req.Sistema.ToString(), numeroExterno = numero });
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            // `ux_regulacao_solicitacao_numero_externo`: o mesmo número já pertence a outra
+            // solicitação naquele sistema. É a trava que impede o mesmo pedido virar dois — e o
+            // caminho mais provável para cá é o duplo clique ou dois agentes registrando o mesmo
+            // número. A mensagem tem de dizer isso, não "erro ao salvar".
+            throw new ConflitoException(
+                "regulacao.numero_externo_duplicado",
+                $"O número {numero} já está registrado em outra solicitação do {req.Sistema}. "
+                + "Confira se o caso não foi lançado duas vezes.");
+        }
+
+        return await ObterAsync(id, ct);
+    }
+
+    public async Task<RegulacaoSolicitacaoDetalheDto> ConfirmarOkInternoAsync(
+        Guid id, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        if (s.Fluxo != FluxoRegulacao.Interno)
+        {
+            throw new ValidacaoException(
+                "fluxo",
+                "O OK do agente é do fluxo Interno — a solicitação já está no SISREG pela unidade (D-8).");
+        }
+
+        await TransitarAsync(s, StatusRegulacao.EmFilaExterna, PapelEventoRegulacao.Agente, ct);
+        await db.SaveChangesAsync(ct);
+
+        return await ObterAsync(id, ct);
+    }
+
+    public async Task<RegulacaoSolicitacaoDetalheDto> TrocarProcedimentoAsync(
+        Guid id, Guid procedimentoId, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+
+        // Depois do número externo, o pedido existe lá fora com aquele procedimento. Trocar aqui
+        // faria a nossa ficha divergir do que o sistema de regulação tem — e ninguém saberia qual
+        // das duas está certa. O caminho, nesse ponto, é cancelar e refazer.
+        if (!string.IsNullOrWhiteSpace(s.NumeroExterno))
+        {
+            throw new ConflitoException(
+                "regulacao.procedimento_travado",
+                $"Esta solicitação já está no sistema sob o número {s.NumeroExterno}. "
+                + "Para mudar o procedimento, cancele e abra outra.");
+        }
+
+        if (s.ProcedimentoId == procedimentoId)
+        {
+            return await ObterAsync(id, ct);
+        }
+
+        var novo = await db.RegulacaoProcedimentos.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == procedimentoId && p.Ativo, ct)
+            ?? throw new NaoEncontradoException("Procedimento canônico da regulação", procedimentoId);
+
+        var anterior = await db.RegulacaoProcedimentos.AsNoTracking()
+            .Where(p => p.Id == s.ProcedimentoId)
+            .Select(p => p.NomeCanonico)
+            .FirstOrDefaultAsync(ct) ?? "(procedimento removido)";
+
+        // Trocar o procedimento troca o formulário: o novo pode pedir campos que o antigo não
+        // pedia, e vice-versa. Regerar a versão é o que mantém a solicitação legível como ela
+        // será preenchida daqui em diante.
+        var formulario = await formularios.ObterOuGerarAsync(procedimentoId, s.Fluxo, ct);
+
+        // As respostas cuja chave sobrevive no formulário novo são preservadas; as demais caem.
+        // Descartar tudo faria o agente redigitar o que já estava certo; preservar tudo deixaria
+        // resposta órfã de campo que não existe mais. O que cai vai para o diff — é o registro de
+        // que aquela informação foi perdida na troca, e não simplesmente esquecida.
+        var canonicoAntes = LerCanonico(s.FormularioJson);
+        var chavesNovas = formulario.Campos.Select(c => c.Chave).ToHashSet(StringComparer.Ordinal);
+
+        var preservadas = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var descartadas = new Dictionary<string, object?>(StringComparer.Ordinal);
+        if (canonicoAntes.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var campo in canonicoAntes.EnumerateObject())
+            {
+                var valor = campo.Value.ValueKind == JsonValueKind.String
+                    ? campo.Value.GetString()
+                    : campo.Value.GetRawText();
+
+                if (chavesNovas.Contains(campo.Name)) preservadas[campo.Name] = valor;
+                else descartadas[campo.Name] = new { de = valor, para = (string?)null };
+            }
+        }
+
+        s.ProcedimentoId = procedimentoId;
+        s.FormularioVersaoId = formulario.VersaoId;
+        s.FormularioJson = JsonSerializer.Serialize(new { canonico = preservadas });
+
+        // Os destinos avaliados valiam para o procedimento ANTIGO. O motor de regras é do
+        // incremento 4; até lá, apagar é mais honesto do que deixar um veredito que já não se
+        // refere ao que está na ficha.
+        var destinos = await db.RegulacaoSolicitacaoDestinos
+            .Where(d => d.SolicitacaoId == id).ToListAsync(ct);
+        if (destinos.Count > 0) db.RegulacaoSolicitacaoDestinos.RemoveRange(destinos);
+
+        s.AtualizadoEm = DateTime.UtcNow;
+        s.AtualizadoPor = usuarioAtual.UsuarioId;
+
+        await eventos.RegistrarAsync(
+            id, TipoEventoRegulacao.TrocaProcedimento, PapelEventoRegulacao.Agente, ct,
+            diff: descartadas.Count > 0 ? descartadas : null,
+            detalhe: new
+            {
+                de = anterior,
+                para = novo.NomeCanonico,
+                respostasPreservadas = preservadas.Count,
+                respostasDescartadas = descartadas.Count,
+            });
+
+        await db.SaveChangesAsync(ct);
+        return await ObterAsync(id, ct);
     }
 
     // ---------------------------------------------------------------- apoio
@@ -637,5 +950,6 @@ public sealed class RegulacaoSolicitacaoService(
             s.ProcedimentoId, procedimentoNome,
             s.SistemaDestino, s.FormularioVersaoId,
             LerCanonico(s.FormularioJson),
-            s.NumeroExterno, s.Observacoes, s.CriadoEm);
+            s.NumeroExterno, s.AgenteResponsavelId, s.EnviadoEm, s.EnvioAssistido,
+            s.Observacoes, s.CriadoEm);
 }

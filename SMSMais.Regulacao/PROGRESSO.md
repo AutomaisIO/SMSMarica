@@ -24,7 +24,7 @@
 | 7 — Escrita no SISREG | não iniciado | |
 | 8 — Paridade SER × SERNIT recorrente | não iniciado | |
 
-**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 em andamento: 3.1, 3.2 e 3.4 feitas; 3.3 parcial** (faltam as rotas das ações do agente, que são da 3.5/3.6). **Próxima tarefa: 3.5** — `SolicitacaoDetalhePage` com a linha do tempo, e as ações do agente no serviço (assumir com `RowVersion`, ajustar com diff, devolver, recusar).
+**Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3: 3.1 a 3.9 feitas** (3.8 sem o badge da sidebar). Faltam **3.10** (testes) e **3.11** (promover o ADR-0052).
 
 O que existe hoje, ponta a ponta: catálogo canônico com busca híbrida, configuração do módulo, wizard de 5 passos em `regulacao/solicitacoes/nova` (procedimento → destino → paciente → formulário união → revisão), anexos em Spaces, resolução de paciente com CADSUS, e os rascunhos por sistema com caminho de migração e corte reversível. **Nada disso está em produção além do incremento 1** — as três migrations e os commits seguem locais, esperando o push.
 
@@ -152,12 +152,12 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [~] 3.2 permissões — **feito**: XML do enum 47/48/51 reescrito (o bloco citava um "ADR-0024" que é de outro assunto), rótulo do 48 em `acoes.ts`, `<RotaComModulo>` criado e aplicado na rota do wizard, skill `sincronizar-permissoes` corrigida (caminhos `SMSMais.*`, `Sidebar.tsx` → `menuConfig.ts`, gate de build, e o passo 8 do `RotaComModulo`). **Falta**: os subitens do menu (Minha fila / Fila da regulação) e as rotas delas — dependem das páginas da 3.4, e entram junto com ela — **07/09/2026**
 - [~] 3.3 `RegulacaoEscopo` (EscopoUnidade + ampliação por 48) + `ListarAsync`/`ResumoAsync` + `GET /regulacao/solicitacoes`, `…/resumo`, `…/{id}/eventos`. **6 testes de escopo**. **Falta**: as rotas das ações do agente (assumir/devolver/recusar/registrar-envio/ok-interno), que são 3.5 e 3.6 — o mapa do plano lista todas na mesma tabela, mas os métodos ainda não existem — **07/09/2026**
 - [x] 3.4 `MinhaFilaPage` + `FilaRegulacaoPage` + `TabelaSolicitacoes`, `AbasFilaRegulacao`, `StatusRegulacaoBadge` + tipos/API/hooks da fila; menu com os 3 subitens e as rotas (a do agente gateada por 48). `tsc -b` e `vite build` verdes — **07/09/2026**
-- [ ] 3.5 detalhe com timeline; assumir / ajustar (diff) / devolver / recusar
-- [ ] 3.5b trocar procedimento (D-10) — regera formulário, preserva respostas compatíveis, reavalia elegibilidade
-- [ ] 3.6 "Registrar envio" (número externo digitado) + trava anti-duplo-envio
-- [ ] 3.7 FKs para os espelhos + conciliação por número nas varreduras/importação (plano 05)
-- [ ] 3.8 notificações por unidade (`regulacao_evento_visto`, filtro minha/todas) + badge da sidebar
-- [ ] 3.9 notificação ao solicitante ao registrar envio
+- [x] 3.5 `AssumirAsync` (claim condicional no banco) / `DevolverAsync` / `RecusarAsync` + ajuste do agente virando evento `Ajuste` + 3 endpoints (48) + `SolicitacaoDetalhePage` com `LinhaDoTempo` (diff campo a campo) e as ações por permissão. **6 testes novos**, entre eles o claim concorrente com dois `DbContext` — **07/09/2026**
+- [x] 3.5b `TrocarProcedimentoAsync` + endpoint: regera a versão do formulário, preserva as respostas de chave sobrevivente, manda o resto para o diff, apaga os destinos avaliados (eram do procedimento antigo) e recusa depois do número externo. **2 testes** — **07/09/2026**
+- [x] 3.6 `RegistrarEnvioAsync` (número digitado, `EnvioAssistido = true`, violação do único parcial virando conflito legível) + `ConfirmarOkInternoAsync` (D-8) + 2 endpoints (48) + `ModalRegistrarEnvio` e os botões no detalhe. **4 testes novos**, entre eles o número duplicado — **07/09/2026**
+- [x] 3.7 `MapaSituacaoExterna` + `RegulacaoConciliacaoService` (SER/SERNIT/SISREG) + ganchos nas duas varreduras e na importação, todos em `try/catch`. **8 testes** — **07/09/2026**
+- [~] 3.8 `RegulacaoEventoVisto` + `RegulacaoNotificacaoService` + 4 rotas + `NotificacoesRegulacaoPage` com filtro minha/todas + migration `NotificacoesRegulacao`. **Falta o badge da sidebar** — **07/09/2026**
+- [x] 3.9 sai de graça do desenho: `NumeroExterno` é um dos tipos que viram notificação, então registrar o envio já avisa a unidade solicitante — sem código próprio — **07/09/2026**
 - [ ] 3.10 testes
 - [ ] 3.11 promover `adr/0052`
 
@@ -245,6 +245,15 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | **04 §Máquina** | **A máquina não previa que o mundo pula estados.** A varredura lê o estado ATUAL do sistema de lá, não a sequência: entre o nosso envio e a primeira leitura, o caso pode já estar agendado, concluído ou cancelado. Faltavam as transições `EnviadaAoSistema → {Agendada, Concluida, Cancelada}` — sem elas, a conciliação ligava a FK e deixava a solicitação parada em "enviada", contando uma história desatualizada que ninguém percebe (a FK está lá). Achado pelo teste da conciliação. |
+| 07/09/2026 | 05 §C | **A régua "não regride" foi descartada.** O plano pedia `EmFilaExterna < Agendada < Concluida` com `Cancelada` livre, para proteger de leitura atrasada. Mas a conciliação lê o **espelho**, que guarda a situação atual da última varredura — não um histórico fora de ordem. Travar a volta faria a ficha dizer "agendada" para quem perdeu a vaga numa desmarcação real, e ninguém descobriria pela tela. Quem impede o absurdo é a máquina: de terminal não sai transição. |
+| 07/09/2026 | 05 §D | **`RegulacaoNotificacaoResumoDto` sem `PorTipo`.** A contagem por tipo não é usada por tela nenhuma hoje, e um campo que ninguém lê vira dado que ninguém mantém. Fica o `NaoVistas`, que é o número do badge. |
+| 07/09/2026 | 05 §F | **`ConciliarAgoraAsync` (botão do agente) não entrou.** Ele lê o SER por ID para materializar o espelho quando a varredura ainda não passou — é a única parte do plano 05 que **chama sistema externo**, e a D-11 manda deixar isso para a fase de validação. As três varreduras já conciliam sozinhas. |
+| 07/09/2026 | 04 §D | **O `RegulacaoSolicitacaoDetalheDto` não expunha `AgenteResponsavelId`, `EnviadoEm` nem `EnvioAssistido`** — o plano os previa, mas eles ficaram de fora quando o DTO nasceu na 2.8. Sem eles a tela não distingue "enviada pelo nosso envio" de "número digitado pelo agente", que é justamente o que muda o que se pode fazer em seguida. |
+| 07/09/2026 | 04 §D | **A violação do índice único vira mensagem, não 500.** `ux_regulacao_solicitacao_numero_externo` já impedia o número repetido; o que faltava era traduzir o erro do Postgres em algo que o agente entenda ("o número X já está em outra solicitação — confira se o caso não foi lançado duas vezes"). O caminho mais provável para lá é duplo clique ou dois agentes lançando o mesmo número. |
+| 07/09/2026 | 04 §D | **`ExecuteUpdateAsync` mente para o change tracker — e mordeu aqui.** Depois do claim, "devolver na mesma sessão" falhava dizendo que a solicitação ainda estava `PendenteRegulacao`: a instância já rastreada no contexto guarda o status de ANTES, e a leitura rastreada seguinte devolve ela por identity resolution. O plano já mandava não usar `ChangeTracker.Clear()`; o que faltava era dizer o que usar — desanexar **a entrada daquela solicitação**, e só ela. Prendido por dois testes ("assumir e devolver" e "assumir e ajustar"). |
+| 07/09/2026 | 04 §D | **O motivo é obrigatório em devolver e recusar, validado no serviço.** O plano só o marca como obrigatório na tabela de transições. Sem ele, a unidade recebe o caso de volta sem saber o que corrigir — e devolve igual. |
+| 07/09/2026 | 04 §F | **A tela usa `window.prompt` para o motivo.** Feio, e honesto enquanto não há modal próprio: o campo é obrigatório no backend, e um botão que falha por falta dele seria pior. Trocar por modal é trabalho de acabamento, não de comportamento. |
 | 07/09/2026 | 02 §C | **A coluna `cns` do rascunho legado guarda CPF ou CNS — não só CNS.** O campo de documento do formulário do SER aceita os dois, e o rascunho gravou como veio. Medido nos 2 rascunhos reais: um tem 15 dígitos (CNS), o outro tem 11 (CPF). O migrador exigia CNS e recusava metade deles com uma mensagem que ainda era falsa ("está sem CNS" — ele tem documento). Agora: 15 dígitos → `ObterPorCnsAsync`, 11 → `ObterPorCpfAsync`, e a coluna `paciente_cns` da solicitação só recebe o que É um CNS (copiar um CPF ali faria a solicitação viajar com identificador errado para o sistema de destino). |
 | 07/09/2026 | 04 §D | **A busca por número local exigia 3 dígitos — e o CI pegou o que a bancada escondia.** O piso de 3 existe para CPF e número externo (`Contains` com 1-2 dígitos devolve meia fila), mas foi aplicado também ao nosso número. Na bancada os `numero_local` já estão altos de execuções anteriores e o teste passava; num banco novo — que é o caso de **toda instância nova de município** — a solicitação 7 seria impossível de achar até passar de cem pedidos. Agora o número local é buscado por **igualdade**, sem piso; o piso continua valendo para CPF e número externo. |
 | 07/09/2026 | **01 §sync** | **Defeito real, achado rodando o sync em produção: `TaskCanceledException` herda de `OperationCanceledException`.** O laço de embeddings tinha `catch (… ) when (ex is not OperationCanceledException)` para não engolir o cancelamento do chamador — mas é exatamente essa a exceção que `HttpClient.Timeout` lança. O timeout do provedor escapava do catch e derrubava o sync inteiro com 500 (ERRO-47UCPG), contrariando o comentário logo abaixo dele. O que separa as duas coisas não é o tipo, é o `ct.IsCancellationRequested`. Corrigido, com dois testes (o antigo simulava `HttpRequestException`, que passava pelo filtro e por isso nunca pegou o defeito). Lote 128 → 64 e timeout do cliente 60 s → 3 min. |
@@ -313,6 +322,29 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — incremento 3, tarefas 3.5b e 3.7–3.9 (troca de procedimento, conciliação e notificações)
+
+- **3.5b**: trocar o procedimento regera o formulário, preserva as respostas de chave sobrevivente e manda o que caiu para o diff — informação perdida na troca é diferente de informação esquecida. Recusa depois do número externo: ali a ficha divergiria do sistema de lá sem ninguém saber qual está certa.
+- **3.7**: `MapaSituacaoExterna` (puro) + `RegulacaoConciliacaoService`, com gancho nas varreduras do SER e do SERNIT e na importação do SISREG, os três em `try/catch` — uma solicitação torta não pode derrubar uma varredura de rede inteira.
+- **O teste da conciliação achou uma lacuna na máquina de estados**: faltavam `EnviadaAoSistema → {Agendada, Concluida, Cancelada}`. A varredura lê o estado **atual**, não a sequência — entre o envio e a primeira leitura o caso já pode ter sido agendado. Sem isso a FK era ligada e o status ficava parado em "enviada", contando uma história desatualizada que ninguém percebe.
+- **3.8**: notificação **não é tabela nova** — é uma leitura da própria trilha, filtrada pelos 6 tipos que pedem atenção. Duplicar o fato numa tabela de avisos criaria duas versões da mesma história, que divergem no dia em que uma escrita falha. O "visto" é por usuário (`regulacao_evento_visto`): a mesma movimentação interessa a quem abriu o pedido e ao agente, e um não pode apagar o aviso do outro.
+- **3.9 saiu de graça**: `NumeroExterno` é um dos tipos que viram notificação, então registrar o envio já avisa a unidade — sem código próprio. Foi o desenho que resolveu, não uma implementação.
+
+### 07/09/2026 — incremento 3, tarefa 3.6 (registrar envio e OK interno)
+
+- `RegistrarEnvioAsync` + `ConfirmarOkInternoAsync`, 2 endpoints (48), `ModalRegistrarEnvio` e os botões no detalhe. 4 testes novos.
+- **Nada disto escreve em sistema externo** (D-11): o agente inclui pela tela do próprio SISREG/SER/SERNIT e traz o número de volta. É o caminho do incremento 3 e continua valendo depois do envio automático — sempre haverá caso que se resolve à mão.
+- **A trava contra o mesmo pedido virar dois já existia no banco**; o que faltava era a mensagem. Erro do Postgres vira "o número X já está registrado em outra solicitação do SER — confira se o caso não foi lançado duas vezes".
+- **O "OK interno" só vale para o fluxo Interno.** Deixá-lo passar no Externo tiraria da fila um caso que ninguém incluiu em lugar nenhum — o teste prende isso.
+- O modal só fecha quando dá certo: com número duplicado, o agente vê o erro sem redigitar tudo.
+
+### 07/09/2026 — incremento 3, tarefa 3.5 (as ações do agente e a linha do tempo)
+
+- `AssumirAsync`, `DevolverAsync`, `RecusarAsync` + o ajuste do agente virando evento `Ajuste`; 3 endpoints sob o módulo 48 (recusar é `Exclusao` — encerra o caso sem atendimento); `SolicitacaoDetalhePage` com `LinhaDoTempo`. **12/12** nos testes do assunto, 6 novos.
+- **O claim é uma gravação condicional, não um "leia e escreva".** `UPDATE … WHERE status = PendenteRegulacao`: dois agentes clicando junto passariam os dois pela leitura, e o segundo sobrescreveria o primeiro sem ninguém notar. O teste usa **dois `DbContext`** — com um só, o change tracker mascararia a corrida.
+- **E aí a armadilha conhecida apareceu:** `ExecuteUpdateAsync` grava no banco e não avisa o tracker. "Devolver logo depois de assumir" falhava dizendo que a solicitação ainda estava pendente — a instância rastreada guardava o status de antes. Diagnostiquei medindo (o retorno do assumir e a leitura `AsNoTracking` já mostravam `EmAnalise`; só a leitura **rastreada** mentia). Corrigido desanexando a entrada daquela solicitação — não `ChangeTracker.Clear()`, que derrubaria o que outro serviço do mesmo escopo ainda vai gravar.
+- **A linha do tempo mostra o diff campo a campo.** "O agente ajustou" sem dizer o quê obriga a comparar versões de cabeça — e essa é justamente a pergunta que aparece meses depois.
 
 ### 07/09/2026 — a migração rodou em produção, ponta a ponta
 

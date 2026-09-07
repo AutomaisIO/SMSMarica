@@ -2,9 +2,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   anexarArquivo,
+  assumirSolicitacao,
+  cancelarSolicitacao,
+  devolverSolicitacao,
   listarEventos,
+  listarNotificacoesRegulacao,
   listarSolicitacoes,
+  confirmarOkInterno,
+  marcarNotificacaoVista,
+  marcarNotificacoesDaSolicitacaoVistas,
   obterResumoFila,
+  obterResumoNotificacoesRegulacao,
+  recusarSolicitacao,
+  registrarEnvioSolicitacao,
   atualizarSolicitacao,
   criarSolicitacao,
   enviarParaFila,
@@ -15,7 +25,11 @@ import {
   removerArquivo,
   type AtualizarSolicitacaoPayload,
 } from './solicitacoesApi';
-import type { FiltroSolicitacoesRegulacao, FluxoRegulacao } from '../tiposSolicitacao';
+import type {
+  EscopoNotificacao,
+  FiltroSolicitacoesRegulacao,
+  FluxoRegulacao,
+} from '../tiposSolicitacao';
 import { useTemConsulta } from '@/shared/auth/authStore';
 
 const raiz = ['regulacao', 'solicitacoes'] as const;
@@ -131,5 +145,92 @@ export function useEventosSolicitacao(id: string | null) {
     queryKey: [...raiz, id, 'eventos'],
     queryFn: () => listarEventos(id!),
     enabled: !!id,
+  });
+}
+
+// ---------------------------------------------------------------- ações do agente (módulo 48)
+
+/**
+ * Todas invalidam a raiz `['regulacao','solicitacoes']`: uma ação muda o detalhe, a fila e as
+ * contagens das abas ao mesmo tempo, e invalidar só o detalhe deixaria a fila mentindo.
+ */
+function useAcaoDeSolicitacao<T>(fn: (v: T) => Promise<unknown>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
+  });
+}
+
+export function useAssumirSolicitacao() {
+  return useAcaoDeSolicitacao((id: string) => assumirSolicitacao(id));
+}
+
+export function useDevolverSolicitacao() {
+  return useAcaoDeSolicitacao(({ id, motivo }: { id: string; motivo: string }) =>
+    devolverSolicitacao(id, motivo),
+  );
+}
+
+export function useRecusarSolicitacao() {
+  return useAcaoDeSolicitacao(({ id, motivo }: { id: string; motivo: string }) =>
+    recusarSolicitacao(id, motivo),
+  );
+}
+
+export function useCancelarSolicitacao() {
+  return useAcaoDeSolicitacao(({ id, motivo }: { id: string; motivo: string }) =>
+    cancelarSolicitacao(id, motivo),
+  );
+}
+
+export function useRegistrarEnvio() {
+  return useAcaoDeSolicitacao(
+    ({ id, sistema, numeroExterno }: { id: string; sistema: string; numeroExterno: string }) =>
+      registrarEnvioSolicitacao(id, { sistema, numeroExterno }),
+  );
+}
+
+export function useOkInterno() {
+  return useAcaoDeSolicitacao((id: string) => confirmarOkInterno(id));
+}
+
+// ---------------------------------------------------------------- notificações (plano 05)
+
+const raizNotificacoes = ['regulacao', 'notificacoes'] as const;
+
+export function useNotificacoesRegulacao(escopo: EscopoNotificacao, soNaoVistas: boolean) {
+  return useQuery({
+    queryKey: [...raizNotificacoes, escopo, soNaoVistas],
+    queryFn: () => listarNotificacoesRegulacao(escopo, soNaoVistas),
+    // A varredura roda em segundo plano; sem o refetch, a tela ficaria mostrando o mundo de
+    // quando foi aberta.
+    refetchInterval: 60_000,
+  });
+}
+
+export function useResumoNotificacoesRegulacao(escopo: EscopoNotificacao) {
+  const podeVer = useTemConsulta('Regulacao');
+  return useQuery({
+    queryKey: [...raizNotificacoes, 'resumo', escopo],
+    queryFn: () => obterResumoNotificacoesRegulacao(escopo),
+    enabled: podeVer,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarcarNotificacaoVista() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: marcarNotificacaoVista,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raizNotificacoes }),
+  });
+}
+
+export function useMarcarNotificacoesDaSolicitacaoVistas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: marcarNotificacoesDaSolicitacaoVistas,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: raizNotificacoes }),
   });
 }

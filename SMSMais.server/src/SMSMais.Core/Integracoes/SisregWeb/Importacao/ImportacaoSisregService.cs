@@ -104,6 +104,9 @@ public sealed class ImportacaoSisregService(
     // Sem ILogger: o único log deste serviço era o da catalogação automática de SIGTAP, removida em
     // 10/08/2026. Quem registra a criação de tipo agora é o ResolvedorTipoExameSisreg.
     IResolvedorTipoExameSisreg resolvedorTipoExame,
+    // Conciliação da regulação (plano 05): casa o número do SISREG com a solicitação que nasceu
+    // no SMSMais, quando houver.
+    SMSMais.Core.Regulacao.Conciliacao.IRegulacaoConciliacaoService conciliacao,
     // Trilha: a reconciliação COMPLEMENTA uma solicitação criada manualmente pela recepção (mesmo
     // número do SISREG) — o histórico tem de mostrar "criada à mão por fulano, depois complementada".
     Auditoria.IAuditoriaService auditoria,
@@ -552,6 +555,18 @@ public sealed class ImportacaoSisregService(
 
         await db.SaveChangesAsync(ct);
         passos.Add(accession is null ? "Solicitação criada." : $"Solicitação criada (accession {accession}).");
+
+        // Se este pedido nasceu no SMSMais e foi incluído no SISREG, a solicitação da regulação
+        // está esperando por este número para saber que chegou lá (plano 05). Em try/catch: a
+        // importação não pode falhar por causa da conciliação.
+        try
+        {
+            await conciliacao.ConciliarSisregAsync([codigo], ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            passos.Add($"Conciliação com a regulação falhou ({ex.GetType().Name}) — o vínculo pode ser refeito depois.");
+        }
 
         return (new ImportacaoExecucaoResultado(
             codigo, true, idPublico, accession ?? string.Empty,

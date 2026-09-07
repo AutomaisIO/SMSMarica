@@ -1,11 +1,13 @@
 import { http } from '@/shared/api/httpClient';
 
 import type {
+  EscopoNotificacao,
   EventoRegulacao,
   Exigencia,
   FiltroSolicitacoesRegulacao,
   FluxoRegulacao,
   FormularioRegulacao,
+  PaginaNotificacoesRegulacao,
   PaginaSolicitacoesRegulacao,
   PendenciaEnvio,
   ResumoFilaRegulacao,
@@ -114,4 +116,66 @@ export async function obterResumoFila(): Promise<ResumoFilaRegulacao> {
 export async function listarEventos(id: string): Promise<EventoRegulacao[]> {
   const { data } = await http.get<EventoRegulacao[]>(`${base}/${id}/eventos`);
   return data;
+}
+
+// ---------------------------------------------------------------- ações do agente (módulo 48)
+
+export async function assumirSolicitacao(id: string): Promise<SolicitacaoRegulacao> {
+  const { data } = await http.post<SolicitacaoRegulacao>(`${base}/${id}/assumir`);
+  return data;
+}
+
+export async function devolverSolicitacao(id: string, motivo: string): Promise<SolicitacaoRegulacao> {
+  const { data } = await http.post<SolicitacaoRegulacao>(`${base}/${id}/devolver`, { motivo });
+  return data;
+}
+
+export async function recusarSolicitacao(id: string, motivo: string): Promise<void> {
+  await http.post(`${base}/${id}/recusar`, { motivo });
+}
+
+export async function cancelarSolicitacao(id: string, motivo: string): Promise<void> {
+  await http.post(`${base}/${id}/cancelar`, { motivo });
+}
+
+export async function registrarEnvioSolicitacao(
+  id: string,
+  payload: { sistema: string; numeroExterno: string; enviadoEm?: string | null },
+): Promise<SolicitacaoRegulacao> {
+  const { data } = await http.post<SolicitacaoRegulacao>(`${base}/${id}/registrar-envio`, payload);
+  return data;
+}
+
+export async function confirmarOkInterno(id: string): Promise<SolicitacaoRegulacao> {
+  const { data } = await http.post<SolicitacaoRegulacao>(`${base}/${id}/ok-interno`);
+  return data;
+}
+
+// ---------------------------------------------------------------- notificações (plano 05)
+
+export async function listarNotificacoesRegulacao(
+  escopo: EscopoNotificacao,
+  soNaoVistas: boolean,
+): Promise<PaginaNotificacoesRegulacao> {
+  const { data } = await http.get<PaginaNotificacoesRegulacao>('/regulacao/notificacoes', {
+    params: { escopo, soNaoVistas, tamanho: 50 },
+  });
+  return data;
+}
+
+export async function obterResumoNotificacoesRegulacao(
+  escopo: EscopoNotificacao,
+): Promise<{ naoVistas: number }> {
+  const { data } = await http.get<{ naoVistas: number }>('/regulacao/notificacoes/resumo', {
+    params: { escopo },
+  });
+  return data;
+}
+
+export async function marcarNotificacaoVista(eventoId: string): Promise<void> {
+  await http.post(`/regulacao/notificacoes/${eventoId}/vista`);
+}
+
+export async function marcarNotificacoesDaSolicitacaoVistas(solicitacaoId: string): Promise<void> {
+  await http.post(`/regulacao/notificacoes/solicitacao/${solicitacaoId}/vistas`);
 }

@@ -212,6 +212,13 @@ export const SECOES: SecaoMenu[] = [
             modulo: 'RegulacaoTriagem',
             descricao: 'Todas as unidades do município — a visão do agente regulador.',
           },
+          {
+            rotulo: 'Notificações',
+            to: '/app/regulacao/solicitacoes/notificacoes',
+            icone: BellRing,
+            modulo: 'Regulacao',
+            descricao: 'Movimentações das solicitações que ainda não foram vistas.',
+          },
         ],
       },
       {

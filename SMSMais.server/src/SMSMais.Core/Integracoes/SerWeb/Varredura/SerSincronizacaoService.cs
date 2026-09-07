@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.Regulacao.Conciliacao;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -39,6 +40,7 @@ public sealed class SerSincronizacaoService(
     ISerExportLeitor exportLeitor,
     ISerExportSolicitacaoLeitor exportSolicitacaoLeitor,
     VarredorSerPorExport varredorExport,
+    IRegulacaoConciliacaoService conciliacao,
     ILogger<SerSincronizacaoService> logger) : ISerSincronizacaoService
 {
     /// <summary>Todas as situações do SER. A busca EXIGE o filtro, então varrer "tudo" é
@@ -409,6 +411,18 @@ public sealed class SerSincronizacaoService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Depois de o espelho estar gravado, casa com as solicitações abertas no SMSMais pelo
+        // número externo (plano 05). Em try/catch porque a varredura é de rede inteira: um caso
+        // torto na conciliação não pode derrubar a leitura do SER.
+        try
+        {
+            await conciliacao.ConciliarSerAsync([.. doLote.Keys], cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Conciliação da regulação falhou no lote do SER ({N} ids).", doLote.Count);
+        }
     }
 
     private static void PreencherDaGrade(SerSolicitacao alvo, SerLinhaGrade linha, SituacaoSer situacao)

@@ -72,6 +72,8 @@ import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfigu
 import { NovaSolicitacaoPage } from '@/features/regulacao/pages/NovaSolicitacaoPage';
 import { MinhaFilaPage } from '@/features/regulacao/pages/MinhaFilaPage';
 import { FilaRegulacaoPage } from '@/features/regulacao/pages/FilaRegulacaoPage';
+import { SolicitacaoDetalhePage } from '@/features/regulacao/pages/SolicitacaoDetalhePage';
+import { NotificacoesRegulacaoPage } from '@/features/regulacao/pages/NotificacoesRegulacaoPage';
 import { SernitNotificacoesPage } from '@/features/sernit/pages/SernitNotificacoesPage';
 import { SernitNovaSolicitacaoPage } from '@/features/sernit/pages/SernitNovaSolicitacaoPage';
 import { SernitFilaPage } from '@/features/sernit/pages/SernitFilaPage';
@@ -207,6 +209,11 @@ export function AppRouter() {
           <Route element={<RotaComModulo modulo="Regulacao" rotulo="Regulação — Solicitações" />}>
             <Route path="regulacao/solicitacoes" element={<MinhaFilaPage />} />
             <Route path="regulacao/solicitacoes/nova" element={<NovaSolicitacaoPage />} />
+            <Route
+              path="regulacao/solicitacoes/notificacoes"
+              element={<NotificacoesRegulacaoPage />}
+            />
+            <Route path="regulacao/solicitacoes/:id" element={<SolicitacaoDetalhePage />} />
           </Route>
           {/* A fila do município é do agente regulador (48) — gate próprio, mais estreito. */}
           <Route

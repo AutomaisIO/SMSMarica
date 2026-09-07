@@ -67,3 +67,25 @@ internal sealed class RegulacaoSolicitacaoDestinoConfiguration
             .HasDatabaseName("ux_regulacao_destino");
     }
 }
+
+internal sealed class RegulacaoEventoVistoConfiguration : IEntityTypeConfiguration<RegulacaoEventoVisto>
+{
+    public void Configure(EntityTypeBuilder<RegulacaoEventoVisto> builder)
+    {
+        builder.ToTable("regulacao_evento_visto");
+
+        // Chave composta: um "visto" por evento e por pessoa. Sem isso, marcar de novo criaria
+        // linha nova e a contagem de não vistas ficaria negativa na prática.
+        builder.HasKey(x => new { x.EventoId, x.UsuarioId });
+
+        builder.Property(x => x.EventoId).HasColumnName("evento_id");
+        builder.Property(x => x.UsuarioId).HasColumnName("usuario_id");
+        builder.Property(x => x.VistoEm).HasColumnName("visto_em").IsRequired();
+
+        builder.HasOne(x => x.Evento).WithMany()
+            .HasForeignKey(x => x.EventoId).OnDelete(DeleteBehavior.Cascade);
+
+        // A pergunta real é sempre "o que ESTE usuário ainda não viu".
+        builder.HasIndex(x => x.UsuarioId).HasDatabaseName("ix_regulacao_evento_visto_usuario");
+    }
+}

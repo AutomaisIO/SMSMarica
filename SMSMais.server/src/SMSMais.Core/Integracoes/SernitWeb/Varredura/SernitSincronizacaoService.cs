@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.Regulacao.Conciliacao;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -39,6 +40,7 @@ public sealed class SernitSincronizacaoService(
     SmsMaisDbContext db,
     ISernitLeitorService leitor,
     VarredorSernitPorPaginacao varredor,
+    IRegulacaoConciliacaoService conciliacao,
     ILogger<SernitSincronizacaoService> logger) : ISernitSincronizacaoService
 {
     private static readonly SituacaoSernit[] TodasSituacoes =
@@ -347,6 +349,17 @@ public sealed class SernitSincronizacaoService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Espelho gravado: casa com as solicitações abertas no SMSMais pelo número externo
+        // (plano 05). Em try/catch — um caso torto não derruba a varredura.
+        try
+        {
+            await conciliacao.ConciliarSernitAsync([.. doLote.Keys], cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Conciliação da regulação falhou no lote do SERNIT ({N} ids).", doLote.Count);
+        }
     }
 
     private static void PreencherDaGrade(SernitSolicitacao alvo, SernitLinhaGrade linha, SituacaoSernit situacao)

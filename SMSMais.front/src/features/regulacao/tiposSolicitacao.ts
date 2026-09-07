@@ -60,6 +60,11 @@ export type SolicitacaoRegulacao = {
   formularioVersaoId: string | null;
   formulario: Record<string, unknown>;
   numeroExterno: string | null;
+  /** Quem assumiu o caso na regulação. `null` = ainda na fila. */
+  agenteResponsavelId: string | null;
+  enviadoEm: string | null;
+  /** O número foi digitado pelo agente (envio assistido), não gerado pelo nosso envio. */
+  envioAssistido: boolean;
   observacoes: string | null;
   criadoEm: string;
 };
@@ -177,3 +182,30 @@ export type ResumoFilaRegulacao = {
   /** `true` = está vendo o município inteiro (módulo 48), não só a própria unidade. */
   veTodasUnidades: boolean;
 };
+
+// ---------------------------------------------------------------- notificações (plano 05)
+
+export type NotificacaoRegulacao = {
+  eventoId: string;
+  solicitacaoId: string;
+  numeroLocal: number;
+  numeroExterno: string | null;
+  sistema: SistemaRegulacao | null;
+  tipo: TipoEventoRegulacao;
+  de: StatusRegulacao | null;
+  para: StatusRegulacao | null;
+  pacienteNome: string;
+  procedimento: string;
+  unidadeSolicitanteId: string;
+  unidadeSolicitante: string;
+  criadoEm: string;
+  vista: boolean;
+};
+
+export type PaginaNotificacoesRegulacao = {
+  total: number;
+  itens: NotificacaoRegulacao[];
+};
+
+/** `minha` = as unidades do usuário; `todas` = o município (exige módulo 48 ou config aberta). */
+export type EscopoNotificacao = 'minha' | 'todas';

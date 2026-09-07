@@ -73,7 +73,17 @@ public static class MaquinaDeEstadosRegulacao
             PapelEventoRegulacao.Sistema, TipoEventoRegulacao.NumeroExterno),
         new(StatusRegulacao.EnviandoAoSistema, StatusRegulacao.FalhaEnvio,
             PapelEventoRegulacao.Sistema, TipoEventoRegulacao.FalhaEnvio),
+        // A varredura lê o estado ATUAL do sistema de lá, não a sequência: entre o nosso envio e
+        // a primeira leitura, o caso pode já ter sido agendado, concluído ou cancelado. Sem estas
+        // três, a conciliação ligava a FK e deixava a solicitação parada em "enviada", contando
+        // uma história desatualizada — e ninguém percebe, porque a FK está lá.
         new(StatusRegulacao.EnviadaAoSistema, StatusRegulacao.EmFilaExterna,
+            PapelEventoRegulacao.Sistema, TipoEventoRegulacao.SituacaoExterna),
+        new(StatusRegulacao.EnviadaAoSistema, StatusRegulacao.Agendada,
+            PapelEventoRegulacao.Sistema, TipoEventoRegulacao.SituacaoExterna),
+        new(StatusRegulacao.EnviadaAoSistema, StatusRegulacao.Concluida,
+            PapelEventoRegulacao.Sistema, TipoEventoRegulacao.SituacaoExterna),
+        new(StatusRegulacao.EnviadaAoSistema, StatusRegulacao.Cancelada,
             PapelEventoRegulacao.Sistema, TipoEventoRegulacao.SituacaoExterna),
         new(StatusRegulacao.EmFilaExterna, StatusRegulacao.Agendada,
             PapelEventoRegulacao.Sistema, TipoEventoRegulacao.SituacaoExterna),
