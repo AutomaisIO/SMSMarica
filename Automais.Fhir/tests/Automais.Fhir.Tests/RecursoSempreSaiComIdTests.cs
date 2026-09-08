@@ -64,6 +64,12 @@ public class RecursoSempreSaiComIdTests(PostgresFhirFixture fixture)
 
         var id = Guid.NewGuid();
         var nome = $"BUSCA SEM ID {Guid.NewGuid():N}"[..30];
+
+        // Busca por CPF, e não por nome, de propósito: a busca por nome usa `unaccent()`, que
+        // existe na bancada mas NÃO no Postgres do container do CI. Um teste que dependesse dela
+        // passaria aqui e derrubaria o deploy — foi exatamente o que aconteceu em 08/09/2026.
+        var cpf = Random.Shared.NextInt64(10_000_000_000, 99_999_999_999).ToString();
+
         db.Patients.Add(new PatientRow
         {
             Id = id,
@@ -71,17 +77,19 @@ public class RecursoSempreSaiComIdTests(PostgresFhirFixture fixture)
             LastUpdated = DateTimeOffset.UtcNow,
             MetaSource = "https://smsmarica.saude.marica/source/sisreg/implantacao",
             Nome = nome,
+            Cpf = cpf,
             Content = """
                 {"resourceType":"Patient","active":true,
+                 "identifier":[{"system":"https://fhir.saude.gov.br/sid/cpf","value":"CPF"}],
                  "name":[{"use":"official","text":"NOME"}],
                  "meta":{"source":"https://smsmarica.saude.marica/source/sisreg/implantacao"}}
-                """.Replace("NOME", nome),
+                """.Replace("NOME", nome).Replace("CPF", cpf),
         });
         await db.SaveChangesAsync();
 
         // A busca é o caminho que quebrou em produção: /pacientes e a lista da conversa passam
         // por aqui, e uma única ficha sem id derrubava a resposta inteira, não só aquela linha.
-        var bundle = await service.BuscarAsync(new PatientBusca(Nome: nome));
+        var bundle = await service.BuscarAsync(new PatientBusca(Cpf: cpf));
 
         bundle.Entry.Should().NotBeEmpty();
         bundle.Entry.Select(e => (e.Resource as Patient)?.Id)
