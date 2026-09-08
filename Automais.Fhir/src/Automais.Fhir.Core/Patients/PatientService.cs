@@ -37,7 +37,7 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
             ?? throw new RecursoNaoEncontradoException(TipoRecurso, id.ToString());
 
-        return FhirJson.Parse<Patient>(row.Content);
+        return LerRecurso(row);
     }
 
     public async Task<Patient> AtualizarAsync(Guid id, Patient patient, int? versaoEsperada = null, CancellationToken ct = default)
@@ -190,7 +190,7 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         {
             bundle.Entry.Add(new Bundle.EntryComponent
             {
-                Resource = FhirJson.Parse<Patient>(row.Content),
+                Resource = LerRecurso(row),
                 Search = new Bundle.SearchComponent { Mode = Bundle.SearchEntryMode.Match },
             });
         }
@@ -206,7 +206,7 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
         var bundle = new Bundle { Type = Bundle.BundleType.Searchset, Total = rows.Count };
         foreach (var row in rows)
-            bundle.Entry.Add(new Bundle.EntryComponent { Resource = FhirJson.Parse<Patient>(row.Content) });
+            bundle.Entry.Add(new Bundle.EntryComponent { Resource = LerRecurso(row) });
         if (rows.Count == count)
             bundle.Link.Add(new Bundle.LinkComponent
             {
@@ -214,6 +214,26 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
                 Url = $"fhir/Patient/_manutencao?_cursor={rows[^1].Id}&_count={count}",
             });
         return bundle;
+    }
+
+    /// <summary>
+    /// Lê o documento canônico da linha <b>garantindo que o recurso saia com id</b>.
+    ///
+    /// <para>A coluna <c>id</c> é a verdade — é a chave primária e é por ela que o recurso é
+    /// endereçado. O <c>content</c> deveria repeti-la, mas basta um escritor esquecer para o
+    /// recurso sair sem identidade, e quem consome não tem como se defender: em 08/09/2026 uma
+    /// carga inseriu 36.257 fichas com o id só na coluna, e o <c>Guid.Parse(p.Id)</c> do
+    /// SMSMais.server derrubou <c>/pacientes</c>, a lista de pacientes da conversa e o webhook do
+    /// WhatsApp por quase quatro horas — a conversa com o paciente parada.</para>
+    ///
+    /// <para>Preencher aqui custa uma comparação por linha e fecha a classe inteira de falha,
+    /// independentemente de quem gravou.</para>
+    /// </summary>
+    private static Patient LerRecurso(PatientRow row)
+    {
+        var patient = FhirJson.Parse<Patient>(row.Content);
+        if (string.IsNullOrWhiteSpace(patient.Id)) patient.Id = row.Id.ToString();
+        return patient;
     }
 
     private static void CarimbarMeta(Patient patient, Guid id, int versao, DateTimeOffset agora, string source)

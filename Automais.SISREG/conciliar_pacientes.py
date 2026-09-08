@@ -32,6 +32,7 @@ import os
 import pathlib
 import sys
 import time
+import uuid
 import unicodedata
 from collections import defaultdict
 
@@ -233,9 +234,18 @@ def _gravar(cur, vincular, criar, cadastro, pacientes, lote):
             nome = c.get("nome") or dados["nome"]
             nasc = _iso(c.get("nascimento"))
 
-            doc = {"resourceType": "Patient", "identifier": ident,
+            # O id vai DENTRO do documento, e nao so na coluna.
+            #
+            # Incidente 08/09/2026: aqui o id nascia de `gen_random_uuid()` no SQL, entao o
+            # `content` saia sem a chave `"id"`. O .NET faz `Guid.Parse(p.Id!)` ao ler a ficha, e
+            # `Guid.Parse(null)` lanca ArgumentNullException — 36.257 fichas viraram 500 em
+            # /pacientes, /conversas/{id}/pacientes e no webhook do WhatsApp, parando a conversa
+            # com o paciente por quase quatro horas. Gerar o UUID aqui mantem coluna e documento
+            # dizendo a mesma coisa.
+            pid = str(uuid.uuid4())
+            doc = {"resourceType": "Patient", "id": pid, "identifier": ident,
                    "name": [{"use": "official", "text": nome}], "active": True,
-                   "meta": {"source": FONTE}}
+                   "meta": {"source": FONTE, "versionId": "1"}}
             if nasc:
                 doc["birthDate"] = nasc
             if s := c.get("sexo"):
@@ -248,15 +258,15 @@ def _gravar(cur, vincular, criar, cadastro, pacientes, lote):
             if not cpf or not nasc:
                 doc["meta"]["tag"] = [{"system": "urn:smsmarica:qualidade",
                                        "code": "identidade-incompleta"}]
-            linhas.append((json.dumps(doc, ensure_ascii=False), cns_sisreg, todos, cpf, nome, nasc,
-                           dados.get("telefone")))
+            linhas.append((pid, json.dumps(doc, ensure_ascii=False), cns_sisreg, todos, cpf, nome,
+                           nasc, dados.get("telefone")))
 
         psycopg2.extras.execute_batch(cur, """
             INSERT INTO fhir.patient (id, version_id, last_updated, meta_source, is_deleted,
                                       content, cns, cns_todos, cpf, nome, nascimento, telefone)
-            VALUES (gen_random_uuid(), 1, now(), %s, false,
+            VALUES (%s::uuid, 1, now(), %s, false,
                     %s::jsonb, %s, %s, %s, %s, %s::date, %s)
-        """, [(FONTE, *l) for l in linhas])
+        """, [(l[0], FONTE, *l[1:]) for l in linhas])
         criados += len(linhas)
         if criados % 5000 < lote:
             print(f"  criados {criados:,}/{len(criar):,}  "
