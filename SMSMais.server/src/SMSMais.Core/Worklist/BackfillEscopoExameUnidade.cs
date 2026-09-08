@@ -43,7 +43,9 @@ internal sealed class BackfillEscopoExameUnidade(
                   e => e.SolicitacaoId, s => s.Id,
                   (e, s) => new { TipoExameId = e.TipoExameId!.Value, s.UnidadeExecutanteId })
             .Distinct()
-            .Join(db.TiposExame.AsNoTracking(),
+            // Tipo EXCLUIDO fica de fora: a primeira versão não filtrava e ressuscitou na tela um
+            // "ZZ TESTE ... (REMOVER)" que estava soft-deleted desde 12/08.
+            .Join(db.TiposExame.AsNoTracking().Where(t => t.ExcluidoEm == null),
                   p => p.TipoExameId, t => t.Id,
                   (p, t) => new { p.TipoExameId, p.UnidadeExecutanteId, t.EnviarParaWorklist })
             .ToListAsync(cancellationToken);

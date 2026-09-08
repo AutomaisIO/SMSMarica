@@ -38,7 +38,10 @@ internal sealed class EscopoExamesService(
             .Include(a => a.TipoExame)
             .Include(a => a.Unidade)
             .Include(a => a.Equipamento)
-            .Where(a => a.UnidadeId == unidadeId && a.ExcluidoEm == null);
+            // TipoExame!.ExcluidoEm: exame excluído do catálogo não volta a aparecer na tela
+            // da unidade só porque a associação sobreviveu a ele.
+            .Where(a => a.UnidadeId == unidadeId && a.ExcluidoEm == null
+                        && a.TipoExame!.ExcluidoEm == null);
 
         if (!incluirInativos) query = query.Where(a => a.Ativo);
 
@@ -64,7 +67,8 @@ internal sealed class EscopoExamesService(
             .Include(a => a.TipoExame)
             .Include(a => a.Unidade)
             .Include(a => a.Equipamento)
-            .Where(a => a.TipoExameId == tipoExameId && a.ExcluidoEm == null && a.Ativo)
+            .Where(a => a.TipoExameId == tipoExameId && a.ExcluidoEm == null && a.Ativo
+                        && a.TipoExame!.ExcluidoEm == null)
             .OrderBy(a => a.Unidade!.Nome)
             .ToListAsync(cancellationToken);
 
