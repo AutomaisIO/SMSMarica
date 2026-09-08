@@ -139,6 +139,14 @@ export type VarreduraExecucao = {
   finalizadoEm: string | null;
   duracaoSegundos: number | null;
   criadoPorNome: string | null;
+  /** Última prova de vida do processo. Null nas execuções anteriores ao batimento. */
+  ultimoSinalEm: string | null;
+  /**
+   * Diz "Rodando" no banco mas não responde há minutos — quase sempre o serviço reiniciou
+   * (deploy) por baixo dela. A tela mostra isso, e não "Rodando": foi anunciar como viva uma
+   * execução já morta que custou 65 minutos de dúvida em 08/09/2026.
+   */
+  semSinal: boolean;
 };
 
 /** Detalhe por profissional × procedimento de UMA execução (modal do histórico). */
@@ -168,6 +176,8 @@ export type StatusVarreduraVivo = {
   invalidos: number;
   profissionalAtual: string | null;
   procedimentoAtual: string | null;
+  /** Início da corrida — a tela mostra "há X" ao lado do contador. */
+  iniciadoEm: string;
 };
 
 export type VarreduraAceita = { execucaoId: string; mensagem: string };

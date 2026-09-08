@@ -71,6 +71,28 @@ public class SisregVarreduraExecucao
     public DateTime? FinalizadoEm { get; set; }
     public int? DuracaoSegundos { get; set; }
 
+    /// <summary>
+    /// Última prova de vida do processo que roda esta execução — carimbada por um relógio próprio,
+    /// a cada meio minuto, <b>independente da fase</b>.
+    ///
+    /// <para><b>Por que não bastava <see cref="IniciadoEm"/>.</b> Decidir "abandonada" pela IDADE
+    /// não distingue corrida <b>longa e saudável</b> de corrida <b>morta</b>: como uma varredura
+    /// legítima leva 20–45 minutos, o corte tinha de ser generoso (45 min), e o preço era uma
+    /// execução morta anunciando "Rodando" por até 45 minutos — ou <b>para sempre</b>, já que a
+    /// faxina só acontecia quando alguém iniciava a próxima varredura daquela unidade. Em
+    /// 08/09/2026 uma execução do CDT ficou 65 minutos assim depois de dois deploys reiniciarem o
+    /// serviço embaixo dela.</para>
+    ///
+    /// <para><b>Por que ela é escrita mesmo sem progresso.</b> A fase de pré-carga do SER não grava
+    /// progresso de propósito (seriam milhares de escritas), então uma corrida viva parecia
+    /// congelada. O batimento é uma linha por meio minuto e não depende de haver avanço: separa
+    /// "não terminou" de "não responde", que são coisas diferentes para quem olha a tela.</para>
+    ///
+    /// <para>Null nas execuções anteriores à coluna — quem lê deve cair no critério antigo, a
+    /// idade, em vez de tratar ausência de batimento como morte.</para>
+    /// </summary>
+    public DateTime? UltimoSinalEm { get; set; }
+
     /// <summary>Quem disparou. NULL no disparo agendado — não há usuário-robô, a autoria é o
     /// <see cref="Disparo"/>.</summary>
     public Guid? CriadoPor { get; set; }

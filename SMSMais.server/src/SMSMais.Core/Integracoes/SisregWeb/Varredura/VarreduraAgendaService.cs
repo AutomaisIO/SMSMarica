@@ -189,6 +189,19 @@ public sealed class VarreduraAgendaService(
     /// </summary>
     private const int RespiroDeRequisicoes = 30;
 
+    /// <summary>Intervalo do batimento. Meio minuto é curto o bastante para a tela reagir e longo
+    /// o bastante para o custo ser uma linha por minuto.</summary>
+    private const int SegundosEntreBatimentos = 30;
+
+    /// <summary>
+    /// Silêncio a partir do qual a execução é dada como <b>sem sinal</b> na listagem.
+    ///
+    /// <para>Três batimentos perdidos. Curto porque agora se mede SILÊNCIO e não idade: uma corrida
+    /// de duas horas continua verde enquanto bater, e uma que morreu há 2 minutos já aparece caída.
+    /// Antes, com o critério de idade, esses dois objetivos brigavam.</para>
+    /// </summary>
+    private const int MinutosSemSinal = 3;
+
     private const int LoteDeImportacao = 20;
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
@@ -646,7 +659,13 @@ public sealed class VarreduraAgendaService(
         estadoVivo.Iniciar(progresso, cts);
 
         execucao.Status = StatusVarredura.EmExecucao;
+        execucao.UltimoSinalEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+
+        // Relógio próprio, que bate enquanto esta execução viver. Não depende de haver progresso —
+        // é justamente na fase silenciosa (pré-carga do SER) que a tela precisava de sinal.
+        using var batimentoCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+        var batimento = BaterAsync(execucao.Id, batimentoCts.Token);
 
         try
         {
@@ -683,6 +702,18 @@ public sealed class VarreduraAgendaService(
         finally
         {
             estadoVivo.Finalizar();
+
+            // Para o relógio ANTES de qualquer outra coisa: um batimento depois do desfecho faria a
+            // execução encerrada parecer viva por mais meio minuto.
+            try
+            {
+                await batimentoCts.CancelAsync();
+                await batimento;
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Batimento da varredura {Execucao} encerrou com erro.", execucao.Id);
+            }
 
             // NADA aqui pode lançar. Uma exceção no `finally` substitui a que estava subindo e
             // passa POR CIMA de todo o tratamento acima — foi assim que um DbUpdateConcurrency
@@ -1585,6 +1616,45 @@ public sealed class VarreduraAgendaService(
 
     // ============================================================ consultas
 
+    /// <summary>
+    /// Carimba <c>ultimo_sinal_em</c> enquanto a execução viver. É a prova de vida que separa
+    /// "não terminou" de "não responde".
+    ///
+    /// <para><b>Contexto PRÓPRIO</b>, do factory: o <c>DbContext</c> da varredura está sendo usado
+    /// pela importação na mesma linha do tempo, e ele não é seguro para uso concorrente — dividir o
+    /// mesmo contexto entre o relógio e a importação trocaria um problema de tela por corrupção de
+    /// dado.</para>
+    ///
+    /// <para><b>Nunca derruba a varredura.</b> Falha de batimento vira log e a próxima batida tenta
+    /// de novo: o relógio existe para informar, e informar mal não pode custar a corrida.</para>
+    /// </summary>
+    private async Task BaterAsync(Guid execucaoId, CancellationToken ct)
+    {
+        using var relogio = new PeriodicTimer(TimeSpan.FromSeconds(SegundosEntreBatimentos));
+
+        try
+        {
+            while (await relogio.WaitForNextTickAsync(ct))
+            {
+                try
+                {
+                    await using var contexto = await dbFactory.CreateDbContextAsync(ct);
+                    await contexto.SisregVarreduraExecucoes
+                        .Where(e => e.Id == execucaoId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(e => e.UltimoSinalEm, DateTime.UtcNow), ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogDebug(ex, "Falha ao bater a execução {Execucao}; segue.", execucaoId);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Fim normal: a varredura terminou e cancelou o relógio.
+        }
+    }
+
     public Task<StatusVarreduraVivo?> ObterStatusAsync(CancellationToken ct) =>
         Task.FromResult(estadoVivo.ObterAtual());
 
@@ -1594,7 +1664,7 @@ public sealed class VarreduraAgendaService(
     {
         var unidade = await unidadeAtual.ObterObrigatoriaAsync(ct);
 
-        return await db.SisregVarreduraExecucoes.AsNoTracking()
+        var linhas = await db.SisregVarreduraExecucoes.AsNoTracking()
             .Where(x => x.UnidadeId == unidade.Id)
             .OrderByDescending(x => x.IniciadoEm)
             .Take(Math.Clamp(limite, 1, 100))
@@ -1602,8 +1672,30 @@ public sealed class VarreduraAgendaService(
                 x.Id, x.UnidadeId, x.UnidadeNome, x.Disparo, x.Status, x.JanelaInicio, x.JanelaFim,
                 x.CombinacoesTotal, x.CombinacoesFeitas, x.Requisicoes, x.RegistrosEncontrados,
                 x.Validos, x.Invalidos, x.JaExistiam, x.MensagemErro, x.IniciadoEm, x.FinalizadoEm,
-                x.DuracaoSegundos, x.CriadoPorNome))
+                x.DuracaoSegundos, x.CriadoPorNome, x.UltimoSinalEm))
             .ToListAsync(ct);
+
+        // "Rodando" no banco não é prova de que alguém está rodando: o banco não sabe se o processo
+        // morreu. Quem sabe é a memória desta instância (`estadoVivo`) e o batimento. Só marca aqui
+        // — NÃO fecha a execução: dar por morta uma corrida viva foi o que produziu, em 06/09/2026,
+        // um laço que queimava 57 requisições por hora sempre na mesma fatia.
+        var viva = estadoVivo.ObterAtual();
+        var agora = DateTime.UtcNow;
+
+        return [.. linhas.Select(x =>
+        {
+            if (x.Status is not (StatusVarredura.Pendente or StatusVarredura.EmExecucao)) return x;
+            if (viva is not null && viva.ExecucaoId == x.Id) return x;
+
+            // Sem batimento (execução anterior à coluna) cai no critério antigo, a idade — tratar
+            // ausência de batimento como morte carimbaria de vermelho todo o histórico.
+            var referencia = x.UltimoSinalEm ?? x.IniciadoEm;
+            var limiteSilencio = x.UltimoSinalEm is null
+                ? TimeSpan.FromMinutes(_historicoOpcoes.MinutosParaAbandonada)
+                : TimeSpan.FromMinutes(MinutosSemSinal);
+
+            return agora - referencia > limiteSilencio ? x with { SemSinal = true } : x;
+        })];
     }
 
     public async Task<IReadOnlyList<VarreduraExecucaoItemDto>> ListarItensAsync(

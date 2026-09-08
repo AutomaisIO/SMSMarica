@@ -74,7 +74,15 @@ public sealed record VarreduraExecucaoDto(
     DateTime IniciadoEm,
     DateTime? FinalizadoEm,
     int? DuracaoSegundos,
-    string? CriadoPorNome);
+    string? CriadoPorNome,
+    /// <summary>Última prova de vida. Null nas execuções anteriores ao batimento.</summary>
+    DateTime? UltimoSinalEm = null,
+    /// <summary>
+    /// Diz "Rodando" mas não responde. A tela deve mostrar isso, e não "Rodando" — foi anunciar
+    /// como viva uma execução que dois deploys tinham matado que custou 65 minutos de dúvida em
+    /// 08/09/2026.
+    /// </summary>
+    bool SemSinal = false);
 
 /// <summary>Varredura aceita e enfileirada.</summary>
 public sealed record VarreduraAceitaDto(Guid ExecucaoId, string Mensagem);

@@ -7,6 +7,11 @@ public sealed class ProgressoVarredura
     public required Guid UnidadeId { get; init; }
     public required string UnidadeNome { get; init; }
     public required int CombinacoesTotal { get; init; }
+
+    /// <summary>Quando esta corrida começou. Vai para a tela porque um contador parado sem
+    /// relógio ao lado não diz se é lentidão ou morte — foram 46 minutos de dúvida em
+    /// 08/09/2026 justamente por falta deste dado.</summary>
+    public DateTime IniciadoEm { get; init; } = DateTime.UtcNow;
     public int CombinacoesFeitas;
     public int Requisicoes;
     public int RegistrosEncontrados;
@@ -33,7 +38,9 @@ public sealed record StatusVarreduraVivo(
     int Validos,
     int Invalidos,
     string? ProfissionalAtual,
-    string? ProcedimentoAtual);
+    string? ProcedimentoAtual,
+    /// <summary>Início da corrida, para a tela mostrar há quanto tempo ela dura.</summary>
+    DateTime IniciadoEm);
 
 /// <summary>
 /// Verdade do "está varrendo" — memória, não banco (o banco não sabe se o processo morreu).
@@ -83,7 +90,7 @@ public sealed class VarreduraSisregEstadoVivo
             return new StatusVarreduraVivo(
                 p.ExecucaoId, p.UnidadeId, p.UnidadeNome, true, p.CombinacoesTotal, p.CombinacoesFeitas,
                 p.Requisicoes, p.RegistrosEncontrados, p.Validos, p.Invalidos,
-                p.ProfissionalAtual, p.ProcedimentoAtual);
+                p.ProfissionalAtual, p.ProcedimentoAtual, p.IniciadoEm);
         }
     }
 }

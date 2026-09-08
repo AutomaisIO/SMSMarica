@@ -31,6 +31,7 @@ internal sealed class SisregVarreduraExecucaoConfiguration : IEntityTypeConfigur
         builder.Property(x => x.IniciadoEm).HasColumnName("iniciado_em").IsRequired();
         builder.Property(x => x.FinalizadoEm).HasColumnName("finalizado_em");
         builder.Property(x => x.DuracaoSegundos).HasColumnName("duracao_segundos");
+        builder.Property(x => x.UltimoSinalEm).HasColumnName("ultimo_sinal_em");
         builder.Property(x => x.CriadoPor).HasColumnName("criado_por");
         builder.Property(x => x.CriadoPorNome).HasColumnName("criado_por_nome").HasMaxLength(200);
 

@@ -75,6 +75,13 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
   const dados = agenda.data;
   const rodando = Boolean(status.data);
 
+  // Minutos desde o início da corrida. Recalcula a cada poll do status — que é o que mantém o
+  // número andando mesmo quando os contadores da varredura não andam, que é justamente o caso em
+  // que o operador precisa saber há quanto tempo está assim.
+  const decorrido = status.data
+    ? Math.floor((Date.now() - new Date(status.data.iniciadoEm).getTime()) / 60000)
+    : 0;
+
   useEffect(() => {
     if (!dados) return;
     setAtivo(dados.ativo);
@@ -233,10 +240,19 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
         {rodando ? (
           <>
+            {/* O relógio ao lado do contador não é enfeite: em 08/09/2026 um operador ficou 46
+                minutos olhando "24 requisições · 0 importadas" sem saber se era lentidão ou morte.
+                "há 38 min" ao lado do mesmo número responde isso em 5 segundos. */}
             <span className="flex items-center gap-2 text-sm text-blue-700">
               <Loader2 className="h-4 w-4 animate-spin" />
               {status.data!.requisicoes} requisições · {status.data!.validos} importadas
               {status.data!.procedimentoAtual ? ` · ${status.data!.procedimentoAtual}` : ''}
+              <span
+                className={decorrido >= 20 ? 'font-medium text-amber-700' : 'text-blue-500'}
+                title={`Começou ${dataHora(status.data!.iniciadoEm)}. Uma varredura de janela longa leva 20–45 min; muito além disso, confira o log.`}
+              >
+                · há {decorrido < 1 ? 'menos de 1 min' : `${decorrido} min`}
+              </span>
             </span>
             {podeEditar && (
               <Button
@@ -483,9 +499,25 @@ function LinhaExecucao({ execucao: e, aoAbrir }: { execucao: VarreduraExecucao; 
         <td className="py-1.5 pr-3 whitespace-nowrap">{dataHora(e.iniciadoEm)}</td>
         <td className="py-1.5 pr-3">{e.disparo === 'Agendado' ? '⏱ Agendado' : 'Manual'}</td>
         <td className="py-1.5 pr-3">
-          <span className={`rounded px-1.5 py-0.5 text-xs ${CLASSE_STATUS[e.status]}`}>
-            {ROTULO_STATUS[e.status]}
-          </span>
+          {/* "Rodando" no banco não prova que alguém está rodando — o banco não sabe se o processo
+              morreu. Quando o backend diz que não há sinal, dizer a verdade vale mais que manter a
+              aparência de progresso. */}
+          {e.semSinal ? (
+            <span
+              className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900"
+              title={
+                e.ultimoSinalEm
+                  ? `Sem responder desde ${dataHora(e.ultimoSinalEm)}. Quase sempre é o serviço ter reiniciado (deploy) no meio. Nada do que entrou foi perdido — rode de novo.`
+                  : 'Ficou marcada como em andamento e não responde. Quase sempre é o serviço ter reiniciado no meio. Nada do que entrou foi perdido — rode de novo.'
+              }
+            >
+              ⚠ Sem sinal
+            </span>
+          ) : (
+            <span className={`rounded px-1.5 py-0.5 text-xs ${CLASSE_STATUS[e.status]}`}>
+              {ROTULO_STATUS[e.status]}
+            </span>
+          )}
         </td>
         {/* Varredura de hoje traz a agenda inteira numa requisição: "1/1" não informa nada. A
             coluna sobrevive para as execuções do modo antigo, que varriam centenas de pares. */}
