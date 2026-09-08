@@ -52,3 +52,9 @@ docs/agente-sql/*.rar
 
 # Dependencias de node em qualquer nivel (a regra por-projeto continua valendo; esta cobre cascas de rename)
 node_modules/
+
+# Arquivos de exame de pacientes reais (.xcm e afins). Descoberto em 08/09/2026, ao conferir um
+# "commita tudo": 11 arquivos, 54 MB, com NOME DO PACIENTE em texto claro dentro do binário.
+# Histórico de git é permanente — um `git rm` depois não desfaz. Exame vai para fora da árvore.
+docs/Exames/
+*.xcm

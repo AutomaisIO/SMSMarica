@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISCAN — aprendizados do protocolo (medidos, não deduzidos)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>SISCAN — aprendizados do protocolo (medidos, não deduzidos)</h1>
+<p>Laboratório de integração com o <strong>SISCAN</strong> (Sistema de Informação do Câncer, DATASUS) em <code>https://siscan.saude.gov.br</code>. Tudo abaixo foi verificado contra o sistema real em <strong>07/08/2026</strong>, versão <strong>V2.19.1-RC08</strong>.</p>
+<p>Stack do alvo: <strong>JSF 1.2 (Mojarra) + RichFaces 3.3.3.Final + Apache Coyote</strong>, o mesmo do SER — vale o acervo de armadilhas de <a href="../../docs/ser.md"><code>docs/ser.md</code></a>.</p>
+<p>&gt; <strong>PRODUÇÃO FEDERAL.</strong> A base é real, com pacientes reais de Maricá. O cliente nasce &gt; com <code>somente_leitura=True</code> e trava escrita em duas camadas (nome do parâmetro <strong>e</strong> &gt; rótulo visível do componente). Qualquer gravação exige OK explícito por ação.</p>
+<hr>
+<h2>1. Login: a senha vai em SHA-256, nunca em texto puro</h2>
+<p>A tela tem <code>onsubmit="cifrar()"</code>, e <code>cifrar()</code> faz:</p>
+<p>``<code>js frm.senha.value = hex_sha256(frm.senha.value); </code>``</p>
+<p>Mandar a senha crua devolve <strong>"O endereço de e-mail ou a senha estão incorretos"</strong> — idêntico ao erro de credencial errada. Custou um diagnóstico falso de "credencial desatualizada". O correto:</p>
+<p>``<code>python senha = hashlib.sha256(senha_clara.encode("utf-8")).hexdigest() </code>``</p>
+<p>Campos do form <code>formLogin</code>: <code>email</code>, <code>senha</code>, e o submit (<code>j_id34</code> = "Acessar", localizado pelo <code>value</code>, não pelo id).</p>
+<h2>2. A tela só existe inteira quando se chega PELO MENU</h2>
+<p><strong>GET direto em <code>/visao/exame/pesquisarExame.jsf</code> devolve HTTP 200 com a tela meio-inicializada</strong>: sem o checkbox de tipo de exame e com o combo UF sem o <code>RJ</code>. Postar nela um id colhido da renderização boa causa <strong>erro 500</strong> ("Ocorreu um erro inesperado no servidor").</p>
+<p>Navegar é clicar no item de menu, reproduzindo o JS real do RichFaces:</p>
+<p>``<code>js RichFaces.Menu.submitForm = f(D,B,A){ ... F[B.id+":hidden"]=B.id;                                       Richfaces.jsFormSubmit(B.id,C.id,E,F) } </code>``</p>
+<p>que delega a <code>_JSFFormSubmit</code>, o qual grava o disparador em <code>&lt;form&gt;:_link_hidden_</code>. Ou seja, o POST precisa de <strong>dois</strong> parâmetros:</p>
+<p>``<code> &lt;form&gt;:_link_hidden_ = &lt;item_id&gt; &lt;item_id&gt;:hidden     = &lt;item_id&gt; </code>``</p>
+<p>Sem esse par, o POST volta 200 com a <strong>mesma</strong> tela, sem erro — a falha silenciosa clássica do JSF.</p>
+<h2>3. Os ids <code>j_idNN</code> são auto-gerados e MUDAM conforme o caminho de renderização</h2>
+<p>O checkbox "Mamografia" é <code>frm:j_id47</code> quando a tela vem pelo menu — e <strong>não existe</strong> na tela vinda por GET direto. Vários campos da requisição são assim (<code>frm:j_id91</code> = risco elevado, <code>frm:j_id105</code> = fez mamografia, <code>frm:j_id121</code> = radioterapia, <code>frm:j_id151</code> = cirurgia, <code>frm:j_id242</code> = tipo de mamografia).</p>
+<p><strong>Nunca fixar <code>j_idNN</code> no código.</strong> Resolver sempre pelo rótulo visível (<code>campo_por_rotulo</code>) ou pelo <code>title</code> do link (<code>acoes_da_linha</code>). Um id fixo não só quebra em silêncio: pode acertar o <strong>campo errado</strong>.</p>
+<h2>4. A data precisa de um round-trip A4J antes do Pesquisar</h2>
+<p>Preencher <code>frm:dataRequisicaoInputDate</code> no submit completo e clicar Pesquisar responde <strong>"Data para comparação não informada."</strong> e não pesquisa nada.</p>
+<p>Causa: em JSF 1.2 a fase de <strong>validação roda antes do Update Model</strong>, então o validador cruzado da data lê no bean o valor <strong>antigo</strong> (nulo). No navegador isso nunca aparece porque o <code>onblur</code> do campo já fez um <code>A4J.AJAX.Submit</code> com <code>ajaxSingle</code>, empurrando o valor pro bean antes do clique.</p>
+<p>A sonda precisa reproduzir esse POST parcial (<code>AJAXREQUEST=_viewRoot</code> + o par disparador + <code>ajaxSingle=frm:dataRequisicao</code>) <strong>antes</strong> de pesquisar. Só a data <strong>inicial</strong> tem esse handler; a final não tem.</p>
+<p>É o primo do que já nos pegou no SER: <em>filtro que só é aplicado quando a requisição A4J acontece</em>.</p>
+<h2>5. Tela GERENCIAR EXAME — códigos</h2>
+<p><code>EXAME → GERENCIAR EXAME</code> → <code>/visao/exame/pesquisarExame.jsf</code>, form <code>frm</code>.</p>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Valores</th></tr></thead><tbody>
+<tr><td>checkbox tipo (<code>j_idNN</code>)</td><td><code>01</code> = Mamografia</td></tr>
+<tr><td><code>frm:statusExame</code></td><td><code>01</code> Requisitado · <code>02</code> Com Resultado · <code>03</code> Liberado</td></tr>
+<tr><td><code>frm:unidadeRequisitante2</code></td><td><strong>índice do <code>&lt;option&gt;</code></strong>, não o CNES</td></tr>
+<tr><td><code>frm:dataRequisicao{,Final}InputDate</code></td><td><code>dd/MM/yyyy</code> — período é <strong>obrigatório</strong></td></tr>
+</tbody></table></div>
+<p>Botão Pesquisar é <code>commandLink</code> Mojarra: <code>jsfcljs</code> injeta <code>frm:botaoPesquisarExame=frm:botaoPesquisarExame</code>.</p>
+<p>Grade: <code>table#frm:listaExamePaginada</code>, corpo em <code>tbody#frm:listaExamePaginada:tb</code>, <strong>10 linhas por página</strong>. Cada <code>&lt;tr&gt;</code> contém tabelas aninhadas — usar <code>find_all("tr", recursive=False)</code>, senão a contagem dobra.</p>
+<p>Colunas: Paciente · Cartão SUS · Datas · Protocolo · Exame · Unidade Requisitante · Profissional Responsável - Resultado · Status · Opções.</p>
+<p>Ações por linha (localizar pelo <code>title</code>; o id embute o nº do exame, <code>frm:listaExamePaginada:&lt;ID_EXAME&gt;:j_idNNN</code>):</p>
+<ul>
+<li><code>Visualizar Requisição do Exame</code></li>
+<li><code>Alterar/Visualizar Requisição do Exame</code></li>
+<li><code>Incluir Resultado do Exame</code></li>
+</ul>
+<p>A conta usada enxerga <strong>38 unidades</strong>, todas da SMS Maricá. Prestador logado: <strong>CDT DR ALBERTO LUIS MACHADO BORGES</strong>, CNES <code>3132358</code>.</p>
+<h2>6. Regras de negócio que limitam a edição</h2>
+<p>Lidas do JS da própria tela (<code>verificaTempoRequisicao</code> / <code>mensagemLaudoLiberado</code>):</p>
+<ul>
+<li><strong>Requisição: prazo de alteração de 168 horas (7 dias) após a criação.</strong></li>
+<li><strong>Requisição com resultado já lançado não pode ser alterada.</strong></li>
+<li><strong>Laudo liberado não pode ser alterado</strong>, exceto se o exame estiver</li>
+</ul>
+<p>  <strong>"Destravado"</strong> (<code>statusDestravamentoExame == 'S'</code>).</p>
+<p>⚠️ Essas checagens no cliente são <code>alert()</code> — elas <strong>avisam mas não bloqueiam</strong> a navegação. A imposição real é do servidor e ainda <strong>não foi medida</strong>. Não testar o limite por tentativa em produção.</p>
+<h2>6b. A tela de requisição tem DOIS MODOS — e a ação do menu não diz qual</h2>
+<p>O link <code>Alterar/Visualizar Requisição do Exame</code> abre <strong>ou</strong> o modo de edição <strong>ou</strong> o de leitura, e só o <code>&lt;h1&gt;</code> da resposta revela qual:</p>
+<div class="tw"><table><thead><tr><th><code>&lt;h1&gt;</code></th><th>Campos</th><th>Botões</th><th>Significado</th></tr></thead><tbody>
+<tr><td><code>SOLICITAR REQUISIÇÃO DO EXAME DE MAMOGRAFIA</code></td><td>editáveis</td><td><strong>Salvar</strong>, Voltar</td><td>dá para alterar</td></tr>
+<tr><td><code>VISUALIZAR REQUISIÇÃO DO EXAME DE MAMOGRAFIA</code></td><td><strong>todos <code>disabled</code></strong></td><td>só Voltar</td><td>não dá</td></tr>
+</tbody></table></div>
+<p><strong>Consequência que custou meia investigação:</strong> disparar A4J na versão travada devolve as regiões condicionais <strong>vazias</strong> — campo <code>disabled</code> não é submetido, então o modelo nunca muda. Isso parece bug do scraper (e eu cheguei a descartar <code>ajaxSingle</code> como culpado) mas é comportamento correto do JSF. <strong>Sempre checar o <code>&lt;h1&gt;</code> antes de concluir qualquer coisa sobre o comportamento da tela.</strong></p>
+<p>O que decide o modo <strong>ainda não é conhecido</strong>. Medido em 07/08/2026, com sessão limpa por exame:</p>
+<ul>
+<li>O corte de <strong>168 h é real</strong>: uma requisição de 169 h já abre em leitura.</li>
+<li>Mas o prazo <strong>não é suficiente</strong>: várias dentro da janela (6 h, 30 h, 54 h, 55 h, 75 h,</li>
+</ul>
+<p>  99 h, 100 h) também abrem em leitura.</p>
+<ul>
+<li>Decisivo: <strong>139054044</strong> (criada 03/08 11:46:26) abre <strong>editável</strong> e <strong>139054139</strong></li>
+</ul>
+<p>  (03/08 11:47:47) abre em <strong>leitura</strong> — 1 minuto de diferença. Logo <strong>não é tempo</strong>.</p>
+<p>Hipótese em aberto (a confirmar com quem conhece a operação): a edição é permitida só para quem <strong>criou</strong> a requisição (usuário/estabelecimento), e não para todo mundo que a enxerga.</p>
+<p>&gt; <strong>Armadilha de medição:</strong> reaproveitar o documento da busca para clicar várias linhas em &gt; sequência dá resultados <strong>inconsistentes</strong> — o ViewState já foi consumido. É preciso &gt; refazer a pesquisa antes de cada abertura. Uma medição feita assim me fez publicar uma &gt; correlação errada; refazer com busca fresca a cada passo estabilizou tudo.</p>
+<h2>6c. Ramos condicionais da requisição — mapa completo</h2>
+<p>Levantado por varredura <strong>opção a opção</strong> (<code>mapear_formulario.py</code>), ligando um valor de cada vez a partir do estado em que ele é a única mudança, e registrando o que <strong>abre</strong> e o que <strong>fecha</strong>. 18 opções testadas. O script nunca aciona Salvar (trava dura contra qualquer parâmetro com "salvar"); os A4J só alteram o bean em sessão.</p>
+<div class="tw"><table><thead><tr><th>Pergunta</th><th>Resposta</th><th>Efeito</th></tr></thead><tbody>
+<tr><td><strong>Apresenta risco elevado</strong> (<code>j_id91</code>)</td><td>Sim / Não / Não sabe</td><td><strong>não abre nem fecha nada</strong> — apesar de disparar A4J</td></tr>
+<tr><td><strong>Fez mamografia alguma vez</strong> (<code>j_id105</code>)</td><td>Sim <code>01</code></td><td>abre <code>anoUltimaMamografia</code></td></tr>
+<tr><td></td><td>Não <code>02</code> / Não sabe <code>03</code></td><td><strong>fecha</strong> <code>anoUltimaMamografia</code></td></tr>
+<tr><td><strong>Fez radioterapia</strong> (<code>j_id121</code>)</td><td>Sim <code>01</code></td><td>abre a localização (<code>j_id128</code>)</td></tr>
+<tr><td></td><td>Não <code>02</code> / Não sabe <code>03</code></td><td>nada</td></tr>
+<tr><td>↳ <strong>Localização</strong> (<code>j_id128</code>)</td><td>Esquerda <code>01</code></td><td>abre <code>anoRadioterapiaEsquerda</code></td></tr>
+<tr><td></td><td>Direita <code>02</code></td><td>abre <code>anoRadioterapiaDireita</code></td></tr>
+<tr><td></td><td>Ambas <code>03</code></td><td>abre <strong>os dois</strong> anos</td></tr>
+<tr><td><strong>Fez cirurgia de mama</strong> (<code>j_id151</code>)</td><td>Sim <code>S</code></td><td>abre 26 campos de ano (13 tipos × 2 lados)</td></tr>
+<tr><td></td><td>Não <code>N</code></td><td>nada</td></tr>
+<tr><td><strong>Tipo de mamografia</strong> (<code>j_id242</code>)</td><td>Diagnóstica <code>01</code></td><td>abre 6 checkboxes de indicação e <strong>fecha</strong> os 3 radios de rastreamento</td></tr>
+<tr><td></td><td>Rastreamento <code>02</code></td><td>o inverso</td></tr>
+</tbody></table></div>
+<p><strong>Três níveis de profundidade</strong>, não dois: radioterapia → localização → ano por lado. Uma sondagem de um nível só (a primeira que fiz) para na localização e perde os anos.</p>
+<p><strong>Só um controle não chama o servidor:</strong> <code>frm:tipoMamografiaRastreamento</code> — alterna por JS no cliente. Todo o resto é re-render A4J, portanto observável por HTTP.</p>
+<p>As leituras "não abre nem fecha nada" de <code>j_id105=01</code> e <code>j_id242=02</code> são relativas ao registro usado, que já vinha com esses valores; o efeito de cada um está caracterizado pela transição complementar.</p>
+<p><strong>Cirurgia de mama</strong> abre um par de campos de ano (Direita/Esquerda) para cada tipo: biópsia cirúrgica incisional, biópsia cirúrgica excisional, segmentectomia, centralectomia, dutectomia, mastectomia, mastectomia poupadora de pele, mastectomia poupadora de pele e complexo papilar, linfadenectomia axilar, biópsia de linfonodo sentinela, reconstrução mamária, mastoplastia redutora, inclusão de implantes.</p>
+<p><strong>Mamografia diagnóstica</strong> (6 checkboxes): <code>achadosExameClinico</code>, <code>controleRadiologicoLesao</code>, <code>lesaoDiagnosticoCancer</code>, <code>avaliacaoRespostaQuimioterapia</code>, <code>revisaoMamografia</code>, <code>controleLesao</code>.</p>
+<h2>6c-bis. Ramos condicionais do LAUDO (55 opções testadas, sem gravar)</h2>
+<p>Levantado com o mesmo <code>mapear_formulario.py --laudo</code>. Dos 14 controles A4J do form <code>frm</code>, <strong>só três abrem ou fecham campos</strong>; o resto é dado puro.</p>
+<div class="tw"><table><thead><tr><th>Pergunta</th><th>Resposta</th><th>Efeito</th></tr></thead><tbody>
+<tr><td><strong>Histórico menstrual</strong></td><td>Ainda menstrua <code>01</code></td><td>abre <code>dataUltimaMenstruacaoInputDate</code></td></tr>
+<tr><td></td><td>Menopausa <code>02</code></td><td>abre <code>tempoMenopausa</code> (idade da menopausa)</td></tr>
+<tr><td></td><td>Nunca menstruou <code>03</code></td><td>nada</td></tr>
+<tr><td><strong>Achados benignos</strong> (por mama)</td><td>Sim <code>S</code></td><td>abre 11 opções de achado</td></tr>
+<tr><td>↳ <strong>Opções de achado</strong></td><td>Outros <code>13</code></td><td>abre <code>outrosAchadosBenig</code> (texto livre)</td></tr>
+</tbody></table></div>
+<p>Não abrem nada (são só coleta): pele, tipo de mama, linfonodos axilares, dilatação ductal, mama não radiografada, nº de filmes, uso de hormônio, gravidez.</p>
+<p><strong>Domínios medidos</strong> (o rótulo envolve o input — <code>&lt;label&gt;&lt;input/&gt; texto&lt;/label&gt;</code> —, não é <code>&lt;label for&gt;</code>; extrair pelo pai):</p>
+<ul>
+<li><strong>Pele</strong>: <code>03</code> Normal · <code>01</code> Espessada · <code>02</code> Retraída</li>
+<li><strong>Tipo de mama</strong>: <code>01</code> Densa · <code>02</code> Adiposa · <code>03</code> Predominantemente densa ·</li>
+</ul>
+<p>  <code>04</code> Predominantemente adiposa · <code>05</code> Parênquima deslocado anteriormente <strong>(disabled)</strong> ·   <code>06</code> Mama reconstruída <strong>(disabled)</strong></p>
+<ul>
+<li><strong>Linfonodos axilares</strong>: <code>04</code> Normais · <code>01</code> Aumentados · <code>03</code> Confluentes ·</li>
+</ul>
+<p>  <code>05</code> Não visibilizados · <code>02</code> Densos</p>
+<ul>
+<li><strong>Achados benignos</strong>: <code>01</code> Nódulo com densidade de gordura · <code>02</code> Nódulo calcificado</li>
+</ul>
+<p>  (sugere fibroadenoma) · <code>03</code> Nódulo com densidade heterogênea · <code>04</code> Calcificações   vasculares · <code>05</code> Calcificações tipicamente benignas · <code>06</code> Linfonodo intramamário ·   <code>07</code> Distorção arquitetural por cirurgia · <code>10</code> Cisto oleoso (esteatonecrose) ·   <code>11</code> Ginecomastia · <code>12</code> Ectasia ductal · <code>13</code> Outros. <strong>Não há <code>08</code> nem <code>09</code></strong> — a   numeração tem buraco, então não gerar a lista por intervalo.</p>
+<h3>O BI-RADS é RESTRINGIDO pelos achados, não escolhido livremente</h3>
+<p><code>frm:catBiradsDireita</code> / <code>catBiradsEsquerda</code> (valores <code>1</code>..<code>7</code>) nascem <strong>todos <code>disabled</code></strong>. Ao marcar um achado, o servidor <strong>habilita apenas as categorias compatíveis</strong>: medido em 07/08/2026, marcar <em>Nódulo calcificado (sugere fibroadenoma)</em> habilitou <strong>exclusivamente a categoria 3</strong>, mantendo as demais bloqueadas.</p>
+<p>Ou seja: o SISCAN não calcula o BI-RADS sozinho nem aceita qualquer valor — ele deriva o <strong>conjunto permitido</strong> a partir dos achados e deixa o profissional escolher dentro dele. Consequência para o nosso laudo: nossa régua de BI-RADS precisa <strong>concordar</strong> com essa tabela, senão o laudo será recusado na hora de enviar. Vale cruzar com <code>project-laudo-checklist-birads</code>.</p>
+<p><strong>Dois tipos de mama vêm <code>disabled</code></strong> (<code>05</code> parênquima deslocado, <code>06</code> mama reconstruída). A hipótese natural é que dependam do que a REQUISIÇÃO respondeu sobre cirurgia/implante — não verificado.</p>
+<h2>6c-ter. Os modais de achados do laudo</h2>
+<p>Seis <code>&lt;form&gt;</code> próprios, já renderizados (ocultos) na página do resultado — inventariáveis sem clicar. <strong>Nenhum deles tem controle A4J interno</strong>: são formulários planos, sem sub-condicionais. Botão interno: <strong><code>Incluir</code></strong> (não "Adicionar" — a trava do mapeador foi estendida para cobrir essa palavra).</p>
+<p><strong><code>localizacaoMama</code> é o mesmo ValueSet de 11 posições nos seis modais:</strong> <code>01</code> QSL · <code>02</code> QIL · <code>03</code> QSM · <code>04</code> QIM · <code>05</code> UQLat · <code>06</code> UQsup · <code>07</code> UQmed · <code>08</code> UQinf · <code>09</code> RRA · <code>10</code> PA · <code>11</code> RC.</p>
+<p>A <strong>cardinalidade muda</strong> conforme o achado — detalhe fácil de errar:</p>
+<div class="tw"><table><thead><tr><th>Modal</th><th>Localização</th><th>Campos próprios</th></tr></thead><tbody>
+<tr><td><code>...Nodulo</code></td><td><strong>radio</strong> (uma só)</td><td><code>tamanho</code> (texto); contorno <code>01</code> Regular · <code>02</code> Lobulado · <code>03</code> Irregular · <code>04</code> Espiculado; limites <code>01</code> Definidos · <code>02</code> Parcialmente definidos · <code>03</code> Pouco definidos</td></tr>
+<tr><td><code>...Microcalcificacao</code></td><td><strong>checkbox</strong> (várias)</td><td>forma <code>01</code> Arredondadas · <code>02</code> Puntiformes · <code>03</code> Irregulares · <code>04</code> Ramificadas; distribuição <code>01</code> Agrupadas · <code>02</code> Segmento mamário · <code>03</code> Trajeto ductal</td></tr>
+<tr><td><code>...DistorcaoFocal</code></td><td><strong>radio</strong> (uma só)</td><td>—</td></tr>
+<tr><td><code>...AssimetriaFocal</code></td><td><strong>checkbox</strong></td><td>—</td></tr>
+<tr><td><code>...AssimetriaDifusa</code></td><td><strong>checkbox</strong></td><td>—</td></tr>
+<tr><td><code>...AssimetriaDensa</code></td><td><strong>checkbox</strong></td><td>—</td></tr>
+</tbody></table></div>
+<h3>O lado da mama NÃO está no modal</h3>
+<p>Os modais são <strong>compartilhados</strong> entre mama direita e esquerda. O que define o lado é o botão que abriu: o form principal tem <strong>12 botões <code>Adicionar</code></strong> = 6 tipos × 2 lados, com nome explícito, por exemplo <code>frm:botaoAdicionarNoduloDireito</code> / <code>frm:botaoAdicionarNoduloEsquerda</code>, <code>frm:botaoAdicionarMicrocalcificacaoDireita</code> / <code>...Esquerda</code>, e assim por diante.</p>
+<p>Consequência para a integração: para lançar um achado é preciso <strong>(1)</strong> acionar o botão do tipo <strong>e lado</strong> corretos, <strong>(2)</strong> preencher o modal, <strong>(3)</strong> acionar <code>Incluir</code>. Mandar o modal sem passar pelo botão certo grava no lado errado — e o modal não tem como denunciar isso, porque o campo de lado não existe nele.</p>
+<p><strong>Ainda não exercitado:</strong> o ciclo <code>Adicionar → preencher → Incluir</code> não foi executado (a trava impede). Falta medir se <code>Incluir</code> só altera a lista em sessão (esperado) e como o achado incluído altera as categorias BI-RADS habilitadas.</p>
+<h2>6d. Três perguntas estão na tela ERRADA</h2>
+<p><code>historicoMenstrual</code>, <code>usaHormonio</code> e <code>estaGravida</code> existem <strong>só no formulário de resultado</strong> e <strong>não existem no de requisição</strong> (verificado nos dois formulários do mesmo exame). São autorrelato da paciente, mas hoje quem os preenche é quem lança o laudo — depois que a paciente já foi embora. Na nossa plataforma eles pertencem à anamnese, e devem ser transportados para o laudo na hora de gravar.</p>
+<h2>6e. Escrita — o que foi provado em produção (07/08/2026)</h2>
+<p>Testes autorizados na requisição da Adriana (protocolo <code>00000138986378</code>, exame <code>139054044</code>), sempre alterando um campo e relendo com sessão nova.</p>
+<p><strong>Gravar funciona</strong> e é simples: re-postar o form como veio, trocando só o campo alvo, mais o par <code>frm:btSalvar=frm:btSalvar</code>. Diferente da pesquisa, <strong>não</strong> exige round-trip A4J prévio, e a data da solicitação não dispara o "Data para comparação não informada". Resposta de sucesso volta como <code>SOLICITAR REQUISIÇÃO...</code> e sem mensagens.</p>
+<p><strong>Campo <code>disabled</code> não pode ser re-postado.</strong> <code>frm:conselho</code> é <code>disabled</code> porque o servidor o DERIVA do responsável escolhido. O <code>campos()</code> do cliente foi corrigido para pular <code>disabled</code>, como faz o navegador — mandá-lo de volta arriscaria gravar o conselho de um profissional com o nome de outro. Isso importa direto para a criação de requisição: <strong>escolher o profissional e deixar o servidor preencher o conselho.</strong></p>
+<p><strong>O Responsável NÃO é alterável pela tela de edição.</strong> Medido de forma decisiva: numa ÚNICA gravação que mudava <code>frm:prontuario</code> <strong>e</strong> <code>frm:responsavelColeta</code>, o prontuário mudou e o responsável não (<code>13</code> continuou <code>13</code>). Não é falha de transporte — o A4J do <code>onchange</code> funciona e o servidor chega a derivar o conselho do novo profissional (<code>CRM - 995630</code>), mas descarta o valor no Salvar. Consequência de projeto: <strong>o responsável tem de ser definido na CRIAÇÃO da requisição</strong>; não há como corrigi-lo depois por aqui.</p>
+<p>Hipóteses descartadas nesse caminho, para não serem reabertas: não é ViewState velho (o ViewState nem muda no A4J — continua <code>j_id6</code>); não é campo <code>disabled</code> (o select está habilitado); e não existe hidden paralelo carregando o responsável (procurado, não há).</p>
+<h2>7. Formulários (a especificação das nossas telas)</h2>
+<p><strong>Requisição de mamografia</strong> → <code>salvarRequisicaoMamografia.jsf</code>, form <code>frm</code>, 34 campos:</p>
+<ul>
+<li><em>Dados Principais</em> (só leitura): cartão SUS, paciente, sexo, CNES/prestador,</li>
+</ul>
+<p>  CNES/unidade, nº protocolo, nº prontuário.</p>
+<ul>
+<li>Anamnese: nódulo/caroço (checkbox por mama) · risco elevado · mamas já examinadas ·</li>
+</ul>
+<p>  fez mamografia · radioterapia · cirurgia de mama · <strong>tipo de mamografia</strong>   (<code>01</code> Diagnóstica / <code>02</code> Rastreamento) · <strong>mamografia de rastreamento</strong>   (<code>01</code> população alvo / <code>02</code> risco elevado / <code>03</code> já tratado).</p>
+<ul>
+<li><em>Dados do exame</em>: data da solicitação, responsável pela coleta (combo), conselho.</li>
+</ul>
+<p>Seções com resposta "Sim" abrem sub-perguntas por re-render A4J — <strong>o inventário completo exige exercitar cada ramo condicional</strong> (pendente).</p>
+<p><strong>Resultado/laudo de mamografia</strong> → <code>salvarResultadoMamografia.jsf</code>, form <code>frm</code>, 92 campos, espelhados em <strong>mama direita</strong> e <strong>mama esquerda</strong>: histórico menstrual, uso de hormônio, gravidez, nº de filmes, pele, tipo de mama (1..6), linfonodos axilares, dilatação ductal, achados benignos. Além do <code>frm</code>, há sub-formulários modais próprios: <code>formPanelAdicionarNodulo</code>, microcalcificações, <code>formPanelAdicionarAssimetriaFocal</code> / <code>...Difusa</code> / <code>...Densa</code>, cada um com sua <code>localizacaoMama</code> (11 posições).</p>
+<h2>8. Método</h2>
+<p>Quando o SISCAN responde 200 e vazio/errado, <strong>desconfiar do transporte antes dos filtros</strong> — e ler o JS da própria tela em vez de deduzir o protocolo. As quatro armadilhas acima foram todas resolvidas lendo <code>ui.pack.js</code>, <code>geral.js</code> e os <code>onclick</code>/<code>onblur</code> renderizados; nenhuma exigiu tentativa e erro contra produção.</p>
+</main>
+</body>
+</html>

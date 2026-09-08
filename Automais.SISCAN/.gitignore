@@ -1,0 +1,25 @@
+# Segredos e PII — NUNCA versionar
+.env
+.env.*
+!.env.example
+credenciais_siscan.txt
+
+# Capturas de sessão / respostas do SISCAN (contêm dados de paciente / PII).
+#
+# Este arquivo nasceu em 08/09/2026, tarde: o SISCAN era o único laboratório SEM .gitignore, e
+# `capturas/` estava prestes a entrar num commit "de tudo". As páginas guardadas ali trazem
+# identificadores de mulheres rastreadas para mamografia — histórico de git é permanente, e
+# apagar depois não desfaz.
+capturas/
+*.html.dump
+*.session.json
+*.xls
+cookies.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/

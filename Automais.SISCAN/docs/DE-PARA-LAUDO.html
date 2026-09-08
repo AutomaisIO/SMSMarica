@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>De-para: nosso laudo de mamografia × laudo do SISCAN</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>De-para: nosso laudo de mamografia × laudo do SISCAN</h1>
+<p>Comparação entre o template <strong>"Mamografia Digital Bilateral (CDT)"</strong> (único template de mamografia em produção, <code>smsmarica.laudo_template</code>) e o formulário de resultado do SISCAN (<code>salvarResultadoMamografia.jsf</code>), mapeado em 07/08/2026.</p>
+<h2>A diferença de natureza</h2>
+<p>Os dois modelos não são a mesma coisa em formatos diferentes — são <strong>modelos diferentes</strong>:</p>
+<div class="tw"><table><thead><tr><th></th><th>Nosso template</th><th>SISCAN</th></tr></thead><tbody>
+<tr><td>Objetivo</td><td><strong>gerar prosa</strong> para o laudo em PDF</td><td><strong>capturar dados estruturados</strong> para vigilância</td></tr>
+<tr><td>Unidade</td><td>frase pronta, com lacunas (<code>{lado}</code>, <code>{medida}</code>)</td><td>campo codificado com domínio fechado</td></tr>
+<tr><td>Lateralidade</td><td>embutida no texto, muitas frases bilaterais</td><td><strong>obrigatoriamente separada</strong> por mama</td></tr>
+<tr><td>BI-RADS</td><td>uma categoria para o laudo</td><td><strong>uma por mama</strong>, e restrita pelos achados</td></tr>
+</tbody></table></div>
+<p>Consequência: a conversão <strong>não é 1-para-1</strong> e não pode ser totalmente automática.</p>
+<h2>1. Campos que o SISCAN exige e o nosso template NÃO tem</h2>
+<h3>1a. Anamnese da paciente (não é achado de imagem)</h3>
+<ul>
+<li><strong>Histórico menstrual</strong> — ainda menstrua / menopausa / nunca menstruou</li>
+<li>"ainda menstrua" abre <strong>data da última menstruação</strong></li>
+<li>"menopausa" abre <strong>idade da menopausa</strong></li>
+<li><strong>Usa hormônio para menopausa?</strong> — sim / não / não sabe</li>
+<li><strong>Está grávida?</strong> — sim / não / não sabe</li>
+</ul>
+<p>São autorrelato da paciente. Não estão no nosso template porque não são achado radiológico — e no SISCAN estão na tela errada (ver <code>APRENDIZADOS.md §6d</code>). <strong>Devem ser coletados na anamnese/requisição</strong> e transportados para o laudo na hora de enviar.</p>
+<h3>1b. Dados técnicos do exame</h3>
+<ul>
+<li><strong>Número do exame</strong> e <strong>data de recebimento</strong> (administrativo)</li>
+<li><strong>Número de filmes</strong></li>
+<li><strong>Mama não radiografada</strong> (direita / esquerda)</li>
+</ul>
+<h3>1c. Achados que nosso template não descreve</h3>
+<ul>
+<li><strong>Dilatação ductal isolada na região retroareolar</strong> (por mama)</li>
+<li><strong>Contorno do nódulo</strong> — regular / lobulado / irregular / espiculado</li>
+<li><strong>Limites do nódulo</strong> — definidos / parcialmente definidos / pouco definidos</li>
+<li><strong>Forma das microcalcificações</strong> — arredondadas / puntiformes / irregulares / ramificadas</li>
+<li><strong>Distribuição das microcalcificações</strong> — agrupadas / segmento mamário / trajeto ductal</li>
+</ul>
+<h2>2. O que o nosso template já diz e PODE ser interpretado</h2>
+<p>Correspondências diretas, por frase marcada no checklist:</p>
+<div class="tw"><table><thead><tr><th>Frase do nosso template</th><th>Campo SISCAN</th><th>Valor</th></tr></thead><tbody>
+<tr><td>Pele e papilas sem alterações</td><td><code>alteracoesPele{Lado}</code></td><td><code>03</code> Normal</td></tr>
+<tr><td>Mamas extremamente densas</td><td><code>tipoMama{Lado}</code></td><td><code>01</code> Densa</td></tr>
+<tr><td>Mamas heterogeneamente densas</td><td><code>tipoMama{Lado}</code></td><td><code>03</code> Predominantemente densa</td></tr>
+<tr><td>Mamas predominantemente adiposas</td><td><code>tipoMama{Lado}</code></td><td><code>02</code> Adiposa</td></tr>
+<tr><td>Mamas com densidades fibroglandulares esparsas</td><td><code>tipoMama{Lado}</code></td><td><code>04</code> Predominantemente adiposa <em>(inferência)</em></td></tr>
+<tr><td>Linfonodos axilares sem alterações</td><td><code>linfonodosAxiliares{Lado}</code></td><td><code>04</code> Normais</td></tr>
+<tr><td>Linfonodos axilares não visibilizados</td><td><code>linfonodosAxiliares{Lado}</code></td><td><code>05</code> Não visibilizados</td></tr>
+<tr><td>Linfonodos intramamários</td><td>achados benignos</td><td><code>06</code> Linfonodo intramamário</td></tr>
+<tr><td>Nódulo com calcificações grosseiras, compatível com fibroadenoma</td><td>achados benignos</td><td><code>02</code> Nódulo calcificado (sugere fibroadenoma)</td></tr>
+<tr><td>Calcificações de aspecto benigno</td><td>achados benignos</td><td><code>05</code> Calcificações tipicamente benignas</td></tr>
+<tr><td>Distorção arquitetural por cirurgia prévia (mastoplastia)</td><td>achados benignos</td><td><code>07</code> Distorção arquitetural por cirurgia</td></tr>
+<tr><td>Implante mamário ântero/retromuscular</td><td><code>tipoMama{Lado}</code></td><td><code>06</code> Mama reconstruída — <strong>vem <code>disabled</code></strong></td></tr>
+<tr><td>Nódulo oval… medindo <code>{medida}</code> cm</td><td>modal Nódulo → <code>tamanho</code></td><td>valor de <code>{medida}</code></td></tr>
+<tr><td>Nódulo <code>{tipo}</code> = circunscrito / obscurecido</td><td>modal Nódulo → <strong>limites</strong></td><td><code>01</code> Definidos / <code>02</code> Parcialmente definidos <em>(inferência)</em></td></tr>
+<tr><td>Calcificações agrupadas</td><td>modal Microcalcificação → distribuição</td><td><code>01</code> Agrupadas</td></tr>
+<tr><td>Assimetria focal</td><td>modal Assimetria Focal</td><td>(só localização)</td></tr>
+</tbody></table></div>
+<p>O campo <code>{lado}</code> do nosso template (<code>mama direita</code> / <code>mama esquerda</code>) resolve a lateralidade da maioria dos itens — inclusive escolhendo <strong>qual dos 12 botões <code>Adicionar</code></strong> acionar, já que o modal não carrega o lado.</p>
+<h2>3. Os quatro pontos que exigem decisão (não dá para inferir)</h2>
+<h3>3.1. <code>terço</code> ≠ quadrante — eixos ortogonais</h3>
+<p>Nosso template localiza por <strong>profundidade</strong>: <code>1/3 anterior</code>, <code>1/3 médio</code>, <code>1/3 posterior</code>. O SISCAN localiza por <strong>quadrante/região</strong>: QSL, QIL, QSM, QIM, UQLat, UQsup, UQmed, UQinf, RRA, PA, RC.</p>
+<p>São <strong>eixos diferentes</strong> — profundidade não determina quadrante nem vice-versa. <strong>Não existe conversão possível</strong>: um nódulo no "1/3 médio" pode estar em qualquer quadrante. Localização é obrigatória (<code>*</code>) em todos os modais de achado, então <strong>todo laudo com nódulo, microcalcificação, distorção ou assimetria vai travar</strong> sem essa informação.</p>
+<p><strong>É a maior lacuna do de-para.</strong> Ou o template ganha o eixo de quadrante, ou quem lauda informa na hora do envio.</p>
+<h3>3.2. Não existe 4A / 4B / 4C no SISCAN</h3>
+<p>Nossa régua usa <code>0,1,2,3,4,4A,4B,4C,5,6</code>. O SISCAN só tem sete categorias:</p>
+<div class="tw"><table><thead><tr><th>SISCAN <code>value</code></th><th>Categoria</th></tr></thead><tbody>
+<tr><td><code>1</code></td><td>0 — avaliação adicional com US</td></tr>
+<tr><td><code>2</code></td><td>1 — sem achados</td></tr>
+<tr><td><code>3</code></td><td>2 — achados benignos</td></tr>
+<tr><td><code>4</code></td><td>3 — provavelmente benignos</td></tr>
+<tr><td><code>5</code></td><td>4 — suspeitos</td></tr>
+<tr><td><code>6</code></td><td>5 — altamente suspeitos</td></tr>
+<tr><td><code>7</code></td><td>6 — já biopsiados, com câncer</td></tr>
+</tbody></table></div>
+<p>Ou seja <strong><code>value</code> = categoria + 1</strong>. E <code>4A</code>/<code>4B</code>/<code>4C</code> precisam <strong>colapsar em <code>4</code></strong> (<code>value</code> <code>5</code>). Hoje o item "Calcificações agrupadas" do nosso template pontua <code>4A</code>.</p>
+<h3>3.3. BI-RADS é por mama; o nosso é um só</h3>
+<p>O SISCAN exige <code>catBiradsDireita</code> <strong>e</strong> <code>catBiradsEsquerda</code>. Nosso <code>biRadsFinal</code> é único para o laudo. Não dá para duplicar o mesmo valor nos dois lados sem mentir: um laudo com nódulo suspeito só à direita ficaria com a esquerda marcada como suspeita também.</p>
+<p>Exige <strong>calcular por lado</strong>, o que por sua vez exige que cada item marcado saiba a que mama pertence — hoje vários itens são explicitamente bilaterais.</p>
+<h3>3.4. O SISCAN restringe as categorias permitidas</h3>
+<p>As categorias nascem <code>disabled</code> e o servidor <strong>habilita só as compatíveis com os achados</strong> (medido: <em>Nódulo calcificado (sugere fibroadenoma)</em> habilitou <strong>exclusivamente</strong> a categoria 2). Nossa régua é "achado mais suspeito" (MAX) e é livre.</p>
+<p>Portanto o valor que a nossa régua sugerir pode <strong>não estar habilitado</strong> no SISCAN, e o envio falha. A boa notícia: no caso medido as duas concordaram — nosso template pontua <code>birads=2</code> para a frase equivalente.</p>
+<p><strong>Ainda não medido:</strong> a tabela completa de achado → categorias habilitadas. É o que falta para garantir que nossa régua nunca proponha algo que o SISCAN recusa.</p>
+<h2>4. Resumo executivo</h2>
+<ul>
+<li><strong>Dá para pré-preencher</strong>: tipo de mama, pele, linfonodos, achados benignos, tamanho do</li>
+</ul>
+<p>  nódulo, distribuição de microcalcificações, lateralidade e a categoria BI-RADS.</p>
+<ul>
+<li><strong>Falta coletar na anamnese</strong>: histórico menstrual (+ data/idade), hormônio, gravidez.</li>
+<li><strong>Falta no laudo</strong>: nº de filmes, mama não radiografada, dilatação ductal, contorno e</li>
+</ul>
+<p>  limites do nódulo, forma das microcalcificações.</p>
+<ul>
+<li><strong>Bloqueio real</strong>: localização por quadrante, que o nosso template não tem em eixo</li>
+</ul>
+<p>  compatível.</p>
+</main>
+</body>
+</html>

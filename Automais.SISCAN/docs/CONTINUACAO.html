@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISCAN — handoff para retomar</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>SISCAN — handoff para retomar</h1>
+<p><strong>Leia este arquivo primeiro.</strong> Estado em <strong>07/08/2026</strong>, versão do alvo <strong>V2.19.1-RC08</strong>. Detalhe técnico completo em <a href="./APRENDIZADOS.md"><code>APRENDIZADOS.md</code></a>; o comparativo com o nosso laudo em <a href="./DE-PARA-LAUDO.md"><code>DE-PARA-LAUDO.md</code></a>.</p>
+<hr>
+<h2>0. Regras que não podem ser esquecidas</h2>
+<ol>
+<li><strong>É PRODUÇÃO FEDERAL</strong>, com pacientes reais de Maricá. Toda escrita exige **OK</li>
+</ol>
+<p>   explícito do Bernardo, por ação**. O cliente nasce <code>somente_leitura=True</code>.</p>
+<ol>
+<li><strong>Confirmar sempre pelo <code>&lt;h1&gt;</code></strong> antes de concluir qualquer coisa sobre comportamento</li>
+</ol>
+<p>   de tela — ver §2.1. Foi o erro que mais custou nesta sessão.</p>
+<ol>
+<li><strong>Refazer a pesquisa antes de cada abertura de registro.</strong> Reaproveitar o documento da</li>
+</ol>
+<p>   busca (ViewState consumido) produz resultados <strong>inconsistentes</strong> — chega a fazer    requisição editável parecer travada. Isso me fez publicar uma correlação errada.</p>
+<ol>
+<li><strong>Nunca fixar id <code>j_idNN</code> no código.</strong> São auto-gerados e mudam conforme o caminho de</li>
+</ol>
+<p>   renderização; um id fixo pode acertar o <strong>campo errado</strong>. Resolver por rótulo/<code>title</code>.</p>
+<ol>
+<li>Nada de teste ficou em produção: o <code>Nº do Prontuário</code> da requisição usada nos testes</li>
+</ol>
+<p>   foi restaurado a vazio e conferido.</p>
+<hr>
+<h2>1. O que já funciona</h2>
+<ul>
+<li><strong>Login</strong> (<code>siscan/client.py</code>) — a senha vai em <strong>SHA-256 hex</strong>, nunca em texto puro.</li>
+<li><strong>Navegação por menu</strong> e <strong>pesquisa</strong> <code>EXAME → GERENCIAR EXAME</code> filtrando Mamografia +</li>
+</ul>
+<p>  status + período, com a grade parseada (10 linhas/página).</p>
+<ul>
+<li><strong>Escrita validada ponta a ponta</strong> na requisição: gravar → reler → restaurar.</li>
+<li><strong>Mapa completo das duas telas</strong>, levantado opção a opção sem gravar:</li>
+</ul>
+<p>  requisição (18 opções, 3 níveis) e laudo (55 opções), mais os 6 modais de achados.</p>
+<h3>Arquivos</h3>
+<div class="tw"><table><thead><tr><th>Arquivo</th><th>Para quê</th></tr></thead><tbody>
+<tr><td><code>siscan/client.py</code></td><td>login, navegação, <code>post_form</code>, <code>post_a4j</code>, trava de escrita</td></tr>
+<tr><td><code>siscan/exame.py</code></td><td>tela Gerenciar Exame: filtro, grade, ações por linha</td></tr>
+<tr><td><code>mapear_formulario.py</code></td><td>varredura opção a opção (<code>--laudo</code> para a tela de laudo)</td></tr>
+<tr><td><code>probe_modais.py</code></td><td>inventário dos 6 modais de achados</td></tr>
+<tr><td><code>probe_variacoes.py</code>, <code>probe_requisicao.py</code>, <code>probe_menu.py</code></td><td>sondas de apoio</td></tr>
+<tr><td><code>teste_edicao_requisicao.py</code></td><td>teste de escrita controlado (<code>--restaurar-apenas</code>)</td></tr>
+<tr><td><code>teste_troca_responsavel.py</code></td><td>prova de que o Responsável não é editável</td></tr>
+</tbody></table></div>
+<p>Credencial no <code>.env</code> (gitignored). <strong>Não existe credencial de SISCAN em <code>integracao_credencial</code></strong> — se for para produção, terá de ser cadastrada.</p>
+<hr>
+<h2>2. As armadilhas medidas (não reabrir)</h2>
+<ol>
+<li><strong>Senha em SHA-256.</strong> Senha crua devolve <em>"e-mail ou senha incorretos"</em> — idêntico a</li>
+</ol>
+<p>   credencial errada. Cheguei a diagnosticar credencial desatualizada; o Bernardo estava    certo ao insistir que estava boa.</p>
+<ol>
+<li><strong>GET direto na URL devolve a tela meio-inicializada</strong> (HTTP 200, sem o checkbox de</li>
+</ol>
+<p>   tipo de exame, combo UF sem RJ). Postar nela ids da tela boa dá <strong>erro 500</strong>. Só    navegar <strong>pelo menu</strong>, com o par <code>&lt;form&gt;:_link_hidden_</code> + <code>&lt;item&gt;:hidden</code>.</p>
+<ol>
+<li><strong>Os ids <code>j_idNN</code> mudam</strong> conforme o caminho de renderização.</li>
+<li><strong>A pesquisa exige round-trip A4J da data</strong> antes do Pesquisar (<code>ajaxSingle</code>), senão</li>
+</ol>
+<p>   responde <em>"Data para comparação não informada"</em>. Em JSF 1.2 a validação roda <strong>antes</strong>    do Update Model. <strong>A gravação NÃO exige</strong> esse round-trip.</p>
+<ol>
+<li><strong>Campo <code>disabled</code> não se reposta</strong> — o navegador não posta, e no SISCAN vários campos</li>
+</ol>
+<p>   são derivados pelo servidor (conselho, BI-RADS).</p>
+<h3>2.1. A tela de requisição tem DOIS MODOS</h3>
+<p><code>SOLICITAR REQUISIÇÃO…</code> = editável, com <strong>Salvar</strong>. <code>VISUALIZAR REQUISIÇÃO…</code> = todos os campos <code>disabled</code>, só <em>Voltar</em>. A ação do menu (<em>Alterar/Visualizar</em>) é a mesma nos dois casos — <strong>só o <code>&lt;h1&gt;</code> revela</strong>.</p>
+<p>Disparar A4J na versão travada devolve as regiões condicionais <strong>vazias</strong>, o que parece bug do scraper e não é. Perdi meia investigação nisso, inclusive descartando <code>ajaxSingle</code> como culpado por engano.</p>
+<hr>
+<h2>3. Regras de negócio descobertas</h2>
+<ul>
+<li><strong>Requisição:</strong> prazo de alteração de <strong>168 h (7 dias)</strong> após a criação, e <strong>não</strong> é</li>
+</ul>
+<p>  alterável se já tiver resultado.</p>
+<ul>
+<li><strong>O prazo não explica tudo</strong>: várias requisições dentro da janela (6 h, 30 h, 54 h,</li>
+</ul>
+<p>  55 h, 75 h, 99 h, 100 h) abrem travadas. Caso decisivo: <code>139054044</code> (03/08 11:46:26)   abre editável e <code>139054139</code> (03/08 11:47:47) abre travada — <strong>1 minuto de diferença</strong>.</p>
+<ul>
+<li><strong>O Responsável NÃO é alterável</strong> depois de criada a requisição. Confirmado dos dois</li>
+</ul>
+<p>  lados: pelo protocolo (gravação com dois campos — o prontuário mudou, ele não) e pelo   Bernardo, na tela. O A4J chega a derivar o conselho do novo profissional e o servidor   descarta no Salvar. <strong>Logo: o profissional tem de sair certo na criação.</strong></p>
+<ul>
+<li><strong>O <code>conselho</code> é derivado</strong> do responsável (campo <code>disabled</code>).</li>
+<li><strong>O BI-RADS é restringido, não escolhido</strong>: as 7 categorias nascem <code>disabled</code> e o</li>
+</ul>
+<p>  servidor habilita só as compatíveis com os achados. Medido: <em>Nódulo calcificado   (sugere fibroadenoma)</em> habilitou <strong>exclusivamente</strong> a categoria 2.</p>
+<ul>
+<li><strong>Três perguntas estão na tela errada</strong>: histórico menstrual, uso de hormônio e</li>
+</ul>
+<p>  gravidez são autorrelato da paciente mas ficam no <strong>laudo</strong>, preenchidas por quem lauda   depois que a paciente foi embora. Pertencem à anamnese.</p>
+<ul>
+<li><strong>O lado da mama não existe nos modais de achado</strong> — vem do botão que abriu (são 12:</li>
+</ul>
+<p>  6 tipos × 2 lados). Errar o botão grava no lado errado, sem aviso.</p>
+<hr>
+<h2>4. Próximos passos, em ordem</h2>
+<ol>
+<li>**Responder: quem digita no SISCAN as requisições das USF — elas mesmas ou alguém do</li>
+</ol>
+<p>   CDT?** É a hipótese que explicaria por que só 3 de 20 requisições abrem editáveis.    Sem isso não dá para prometer "editar requisição pela nossa plataforma".</p>
+<ol>
+<li><strong>Levantar a tabela achado → categorias BI-RADS habilitadas.</strong> Incluir achados um a um</li>
+</ol>
+<p>   e ler quais categorias abrem. É o que garante que a nossa régua nunca proponha algo    que o SISCAN recusa. Sem gravar o laudo.</p>
+<ol>
+<li><strong>Exercitar o ciclo <code>Adicionar → preencher → Incluir</code></strong> dos modais (a trava do</li>
+</ol>
+<p>   mapeador impede hoje; ela bloqueia "salvar", "adicionar", "incluir", "liberar").    Medir se <code>Incluir</code> só mexe na lista em sessão.</p>
+<ol>
+<li><strong>Resolver a lacuna de localização</strong> — nosso template usa profundidade (1/3 anterior/</li>
+</ol>
+<p>   médio/posterior) e o SISCAN quer quadrante (QSL, QIL, …). São eixos ortogonais, <strong>não    há conversão</strong>. Ou o template ganha o eixo, ou quem lauda informa no envio.    É o bloqueio real do de-para (ver <code>DE-PARA-LAUDO.md §3.1</code>).</p>
+<ol>
+<li><strong>Ajustar a régua de BI-RADS</strong>: colapsar <code>4A/4B/4C</code> em <code>4</code>, e passar a calcular</li>
+</ol>
+<p>   <strong>por mama</strong> (o SISCAN exige uma categoria de cada lado; a nossa é única).</p>
+<ol>
+<li><strong>Testar a criação de requisição</strong> — só depois de (1) e (5).</li>
+<li>Verificar a hipótese de que <em>Parênquima deslocado</em> e <em>Mama reconstruída</em> (tipos de mama</li>
+</ol>
+<p>   que vêm <code>disabled</code> no laudo) dependem do que a requisição respondeu sobre    cirurgia/implante.</p>
+<hr>
+<h2>5. O que ainda NÃO foi feito</h2>
+<ul>
+<li>Criar requisição do zero (só editamos uma existente).</li>
+<li>Gravar laudo (nenhum resultado foi enviado).</li>
+<li>Excluir/refazer requisição — não sabemos se é o caminho de correção quando o</li>
+</ul>
+<p>  responsável sai errado.</p>
+<ul>
+<li>Portar qualquer coisa para o <code>SMSMarica.server</code>. <strong>Nada foi commitado</strong>: a pasta</li>
+</ul>
+<p>  <code>Automais.SISCAN/</code> inteira está sem versionar (<code>??</code> no git status).</p>
+</main>
+</body>
+</html>
