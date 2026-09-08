@@ -16,6 +16,9 @@ internal sealed class ExameAssociacaoConfiguration : IEntityTypeConfiguration<Ex
         builder.Property(a => a.ExameImagemId).HasColumnName("exame_imagem_id").IsRequired();
         builder.Property(a => a.PacienteId).HasColumnName("paciente_id").IsRequired();
         builder.Property(a => a.AccessionNumberDicomOriginal).HasColumnName("accession_number_dicom_original").HasMaxLength(64);
+        builder.Property(a => a.PatientIdDicomOriginal).HasColumnName("patient_id_dicom_original").HasMaxLength(64);
+        builder.Property(a => a.NomePacienteDicomOriginal).HasColumnName("nome_paciente_dicom_original").HasMaxLength(256);
+        builder.Property(a => a.StudyInstanceUidOriginal).HasColumnName("study_instance_uid_original").HasMaxLength(128);
         builder.Property(a => a.Origem).HasColumnName("origem").HasConversion<int>().IsRequired();
         builder.Property(a => a.StatusSolicitacaoAnterior).HasColumnName("status_solicitacao_anterior").HasConversion<int>();
 

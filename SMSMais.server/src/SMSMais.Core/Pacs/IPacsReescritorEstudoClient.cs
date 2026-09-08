@@ -12,7 +12,16 @@ public sealed record IdentidadeDicom(
     string? Sexo = null);
 
 /// <summary>Resultado da reescrita: o estudo novo que substituiu o original.</summary>
-public sealed record EstudoReescrito(string StudyInstanceUIDNovo, int InstanciasReescritas);
+/// <param name="PatientIdOriginal">
+/// Identidade que estava DENTRO do objeto antes da reescrita — o que a técnica digitou no
+/// equipamento. Lida do primeiro arquivo baixado e devolvida para virar trilha: sem ela, depois da
+/// reescrita não sobra prova de como o estudo chegou.
+/// </param>
+public sealed record EstudoReescrito(
+    string StudyInstanceUIDNovo,
+    int InstanciasReescritas,
+    string? PatientIdOriginal = null,
+    string? PatientNameOriginal = null);
 
 /// <summary>
 /// Reescreve a identidade de um estudo no dcm4chee — de verdade, dentro do objeto armazenado.
@@ -32,7 +41,13 @@ public interface IPacsReescritorEstudoClient
 {
     /// <summary>
     /// Reescreve o estudo com a identidade informada e devolve o StudyInstanceUID novo.
-    /// O original é rejeitado e apagado ao final — só depois de o novo estar confirmado no PACS.
+    ///
+    /// <para>O original é <b>rejeitado</b> (IOCM <c>113038</c>) ao final — só depois de o novo estar
+    /// confirmado no PACS — e <b>não é mais apagado</b>. Ele fica no acervo, visível pelo AE
+    /// <c>IOCM_WRONG_MWL</c>, recuperável por <i>Revoke Rejection</i>, e o expurgo em 90 dias é do
+    /// próprio dcm4chee. Até 09/2026 rejeitávamos e apagávamos no mesmo passo: o motivo era
+    /// registrado e destruído em seguida (<c>rejected_instance</c> ficava zerado), e associação
+    /// errada não tinha volta.</para>
     /// </summary>
     Task<EstudoReescrito> ReescreverIdentidadeAsync(
         string studyInstanceUID, IdentidadeDicom identidade, CancellationToken cancellationToken = default);

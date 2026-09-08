@@ -36,6 +36,25 @@ public class ExameAssociacao
     /// <summary>Snapshot do AccessionNumber DICOM cru do estudo na associação (auditoria/reversão).</summary>
     public string? AccessionNumberDicomOriginal { get; set; }
 
+    /// <summary>
+    /// <b>PatientID que estava DENTRO do objeto</b> antes da reescrita — o que a técnica digitou no
+    /// equipamento (uma data, um timestamp, às vezes o nome da pessoa). Guardado porque a reescrita
+    /// substitui a identidade no arquivo: sem este campo, depois de associar não sobra prova de como
+    /// o estudo chegou, e uma associação para o paciente errado fica sem rastro.
+    /// </summary>
+    public string? PatientIdDicomOriginal { get; set; }
+
+    /// <summary>PatientName cru do objeto antes da reescrita. Mesmo motivo do
+    /// <see cref="PatientIdDicomOriginal"/>.</summary>
+    public string? NomePacienteDicomOriginal { get; set; }
+
+    /// <summary>
+    /// StudyInstanceUID do estudo ANTES da reescrita. O estudo reescrito nasce com UID novo (o
+    /// antigo está colado ao que foi rejeitado), então sem isto não há como achar o original no
+    /// acervo — que agora fica rejeitado, e não apagado, por 90 dias.
+    /// </summary>
+    public string? StudyInstanceUidOriginal { get; set; }
+
     /// <summary>Manual (operador) ou Automatica (Patient ID na chegada).</summary>
     public OrigemAssociacaoExame Origem { get; set; } = OrigemAssociacaoExame.Manual;
 

@@ -49,6 +49,12 @@ public sealed class PacsReescritorEstudoClient(
         // UMA instância por vez — baixa, reescreve, armazena e solta. A mamografia do CDT é
         // gravada SEM compressão: 56 MB por instância, ~224 MB o estudo. Acumular tudo em
         // memória antes do STOW (e o multipart duplicando) passaria de 400 MB no droplet.
+        // Identidade que estava DENTRO do objeto — o que a técnica digitou. Lida uma vez, do
+        // primeiro arquivo, para virar trilha na associação: depois da reescrita não há mais onde
+        // buscá-la.
+        string? patientIdOriginal = null;
+        string? patientNameOriginal = null;
+
         foreach (var (series, sop) in instancias)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -58,6 +64,8 @@ public sealed class PacsReescritorEstudoClient(
                 seriesNova = DicomUIDGenerator.GenerateDerivedFromUUID().UID;
                 seriesNovas[series] = seriesNova;
             }
+            if (patientIdOriginal is null)
+                (patientIdOriginal, patientNameOriginal) = LerIdentidade(arquivo);
             await ArmazenarAsync(Reescrever(arquivo, identidade, studyNovo, seriesNova), cancellationToken);
         }
 
@@ -69,25 +77,38 @@ public sealed class PacsReescritorEstudoClient(
                 $"O PACS confirmou {confirmadas} de {instancias.Count} instâncias reescritas. " +
                 "O estudo original foi preservado.");
 
-        await DescartarAsync(studyInstanceUID, cancellationToken);
+        // REJEITA, não apaga. O original com a identidade errada fica no acervo sob
+        // IOCM_WRONG_MWL — é o que permite desfazer uma associação errada e responder a uma
+        // diligência. O expurgo depois de 90 dias é do próprio dcm4chee.
+        await RejeitarAsync(studyInstanceUID, cancellationToken);
 
         logger.LogInformation(
-            "Estudo {Antigo} reescrito para {Novo} ({N} instâncias) — identidade {PatientId}/{Accession}.",
+            "Estudo {Antigo} reescrito para {Novo} ({N} instâncias) — identidade {PatientId}/{Accession}. "
+            + "Original rejeitado (recuperável).",
             studyInstanceUID, studyNovo, instancias.Count, identidade.PatientId, identidade.AccessionNumber);
 
-        return new EstudoReescrito(studyNovo, instancias.Count);
+        return new EstudoReescrito(studyNovo, instancias.Count, patientIdOriginal, patientNameOriginal);
     }
 
-    public async Task DescartarAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Só rejeita (IOCM <c>113038</c>), sem apagar. O estudo sai das vistas normais, continua no
+    /// acervo e pode voltar por <i>Revoke Rejection</i>. 409 = já rejeitado; é sucesso (idempotente).
+    /// </summary>
+    private async Task RejeitarAsync(string studyInstanceUID, CancellationToken cancellationToken)
     {
-        // A rejeição IOCM é a trilha de auditoria do próprio PACS: registra POR QUE o estudo saiu.
-        // 409 = já rejeitado antes; conta como sucesso (idempotente).
         var rejeicao = await http.PostAsync(
             $"studies/{Uri.EscapeDataString(studyInstanceUID)}/reject/{CodigoRejeicaoWorklistErrada}",
             null, cancellationToken);
         if (!rejeicao.IsSuccessStatusCode && rejeicao.StatusCode != HttpStatusCode.Conflict)
             logger.LogWarning("Rejeição IOCM do estudo {Uid} retornou {Status}.",
                 studyInstanceUID, (int)rejeicao.StatusCode);
+    }
+
+    public async Task DescartarAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        // Descarte DELIBERADO (exige motivo e recusa com laudo assinado, ver
+        // CorrecaoIdentidadeExameService): aqui apagar é a intenção, não efeito colateral.
+        await RejeitarAsync(studyInstanceUID, cancellationToken);
 
         var exclusao = await http.DeleteAsync(
             $"studies/{Uri.EscapeDataString(studyInstanceUID)}", cancellationToken);
@@ -142,6 +163,26 @@ public sealed class PacsReescritorEstudoClient(
     }
 
     /// <summary>Troca a identidade e os UIDs. NÃO toca nos pixels nem no transfer-syntax.</summary>
+    /// <summary>
+    /// PatientID e PatientName como estavam no objeto recebido. Falha de leitura não pode derrubar
+    /// a associação — a trilha é desejável, o exame chegar ao paciente certo é essencial.
+    /// </summary>
+    private (string? Id, string? Nome) LerIdentidade(byte[] original)
+    {
+        try
+        {
+            using var entrada = new MemoryStream(original);
+            var ds = DicomFile.Open(entrada).Dataset;
+            return (ds.GetSingleValueOrDefault(DicomTag.PatientID, (string?)null),
+                    ds.GetSingleValueOrDefault(DicomTag.PatientName, (string?)null));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Não consegui ler a identidade original do objeto DICOM.");
+            return (null, null);
+        }
+    }
+
     private static byte[] Reescrever(byte[] original, IdentidadeDicom id, string studyNovo, string seriesNova)
     {
         using var entrada = new MemoryStream(original);

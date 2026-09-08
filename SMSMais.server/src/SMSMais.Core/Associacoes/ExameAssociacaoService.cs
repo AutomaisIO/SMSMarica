@@ -5,6 +5,7 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.Pacs;
 using SMSMais.Core.SolicitacoesExame;
 using SMSMais.Core.Worklist;
 using SMSMais.Data;
@@ -36,14 +37,14 @@ public sealed class ExameAssociacaoService(
     /// (que apaga o original e re-armazena) perderia as instâncias que chegassem depois. No manual
     /// quem decide é uma pessoa, com o exame já terminado.</para>
     /// </summary>
-    private async Task<string> ReescreverDicomAsync(string uid, Guid exameImagemId, CancellationToken ct)
+    private async Task<EstudoReescrito> ReescreverDicomAsync(string uid, Guid exameImagemId, CancellationToken ct)
     {
         var identidade = await identidades.ObterAsync(exameImagemId, ct);
         var resultado = await reescritor.ReescreverIdentidadeAsync(uid, identidade, ct);
         logger.LogInformation(
             "Associação manual reescreveu o estudo {Antigo} → {Novo} com a identidade do pedido.",
             uid, resultado.StudyInstanceUIDNovo);
-        return resultado.StudyInstanceUIDNovo;
+        return resultado;
     }
 
     public async Task<ExameAssociacaoDto> AssociarAsync(
@@ -90,9 +91,11 @@ public sealed class ExameAssociacaoService(
         // no equipamento. Só no manual — ver ReescreverDicomAsync. Falha aqui ABORTA a associação:
         // meia correção (banco certo, arquivo errado) é justamente o que estamos eliminando.
         var uidDicomOriginal = uid;
+        EstudoReescrito? reescrita = null;
         if (origem == OrigemAssociacaoExame.Manual)
         {
-            uid = await ReescreverDicomAsync(uid, solicitacao.Id, cancellationToken);
+            reescrita = await ReescreverDicomAsync(uid, solicitacao.Id, cancellationToken);
+            uid = reescrita.StudyInstanceUIDNovo;
             // O UID mudou: laudos que apontavam para o estudo antigo seguem o objeto, senão
             // ficariam órfãos apontando para um estudo que não existe mais.
             await db.Laudos
@@ -120,6 +123,11 @@ public sealed class ExameAssociacaoService(
             PacienteId = pacienteId,
             AccessionNumberDicomOriginal = string.IsNullOrWhiteSpace(request.AccessionNumberDicomOriginal)
                 ? null : request.AccessionNumberDicomOriginal!.Trim(),
+            // Trilha da reescrita: como o estudo chegou e sob qual UID. Só existe no caminho manual,
+            // que é o único que reescreve. Sem isto, associar para o paciente errado não teria volta.
+            PatientIdDicomOriginal = reescrita?.PatientIdOriginal,
+            NomePacienteDicomOriginal = reescrita?.PatientNameOriginal,
+            StudyInstanceUidOriginal = reescrita is null ? null : uidDicomOriginal,
             Origem = origem,
             StatusSolicitacaoAnterior = promovel ? solicitacao.Status : null,
             CriadoEm = agora,
