@@ -64,6 +64,10 @@ sol_total, sol_cid, sol_agend, sol_min, sol_max = cur.fetchone()
 inconf = ler(IMPL / "_inconformidades.csv")
 nao_imp = ler(IMPL / "_solicitacoes_nao_importadas.csv")
 diverg = ler(SER / "divergencias_classificadas.csv")
+# As 92 nao sao todas dos itens 1 e 2 -- conferir isso e o que revelou o buraco abaixo.
+cns_92 = {r["detalhe"].split("·")[0].replace("CNS", "").strip() for r in nao_imp}
+avaliados = ({i["cns_sisreg"] for i in inconf} | {d["cns_sisreg"] for d in diverg})
+nunca_vistos = cns_92 - avaliados
 retidos = [d for d in diverg if d["decisao"] != "mesma_pessoa"]
 
 md = [
@@ -141,11 +145,18 @@ if retidos:
 md += [
     "## 3. Solicitações não importadas",
     "",
-    f"**{len(nao_imp)} solicitações** — todas pertencentes aos pacientes dos itens 1 e 2. "
-    "Sem paciente no hub, a solicitação não teria para onde apontar.",
+    f"**{len(nao_imp)} solicitações**, de **{len(cns_92)} pessoas** — mais gente do que os itens "
+    "1 e 2 juntos.",
     "",
-    "Entram sozinhas assim que a identidade daqueles pacientes for resolvida: basta rodar "
-    "`importar_solicitacoes.py --gravar` de novo, que é idempotente.",
+    f"{len(cns_92) - len(nunca_vistos)} dessas pessoas passaram por alguma triagem (itens 1, 2 ou "
+    f"as divergências do SER). As outras **{len(nunca_vistos)} não foram avaliadas por nada**: "
+    "a lista de entrada da conciliação foi fechada antes de a colheita terminar, então a última "
+    "leva de TXT trouxe pacientes que nunca passaram por triagem — e sumiram em silêncio, que é o "
+    "pior jeito de um dado se perder. Não são casos duvidosos: são casos **não olhados**.",
+    "",
+    f"As {len(nunca_vistos)} não avaliadas entram rodando a conciliação de novo (ela é idempotente e não toca em "
+    "conflito nem em baixa confiança) e depois o importador. As dos itens 1 e 2 dependem da "
+    "decisão humana sobre a identidade.",
     "",
     "---",
     "",
