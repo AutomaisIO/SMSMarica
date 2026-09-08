@@ -244,6 +244,8 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 07/09/2026 | `POST /regulacao/legado/rascunhos/migrar` | idem | 1 rascunho migrado (`numero_local = 1`); tabelas legadas intactas |
 | 07/09/2026 | `DELETE /regulacao/ser/rascunhos/a4c9fc5d…` | Bernardo ("Descartar. A pessoa já fez direto") | rascunho de cintilografia (Pronto, 24/08, sem anexos) descartado — o pedido foi feito direto no SER |
 | 07/09/2026 | `fecharTelasAntigas: true` | Bernardo | corte às **17:04:08Z**; escrita nos rascunhos SER/SERNIT responde **410**, leitura segue 200 |
+| 07/09/2026 | Push de `748cc68` (4.6) e `102f193`…`7f1f1e8` (parser + formulário + runbook) | Bernardo ("pode commitar e dploy em prod", "seguir com as recomendações") | 4 deploys, todos verdes; OpenAPI de prod em 549 rotas |
+| 07/09/2026 | `importar_regras_manuais.py --gravar` — INSERT de 574 regras em `regulacao_regra` | Bernardo (comando digitado por ele) | **574 gravadas, 0 ativas, 72 procedimentos**. Conferido: nenhuma descrição com aspa solta ou truncada, nenhuma fonte fora de CRECE/REUNI |
 
 ## Desvios do plano
 
@@ -346,6 +348,24 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — as regras dos manuais entraram em produção
+
+`importar_regras_manuais.py --gravar`, autorizado pelo Bernardo. Resultado conferido no banco:
+
+| | |
+|---|---|
+| Gravadas | **574** (421 perguntas, 133 documentais, 20 dedutíveis) |
+| **Ativas** | **0** |
+| Procedimentos atingidos | 72 |
+| Descrição com aspa solta ou truncada | 0 |
+| Fonte fora do padrão `CRECE`/`REUNI` | 0 |
+
+As 133 documentais são 61 do manual mais 72 do encaminhamento — uma por procedimento, porque não existe regra global no schema.
+
+**Nada filtra ainda, por construção.** Com zero regras ativas, o passo de regras do wizard passa direto. Ativar é a curadoria, e é clínica: pelo que apurei montando a importação, ativar sem ler leva a procedimento intransitável (faixas etárias alternativas que se anulam) e a barreiras erradas (sexo inferido onde não havia).
+
+Os textos com ponto e vírgula sobreviveram inteiros — é o caso que o `Split(';')` do importador da tela cortava, corrigido em `102f193`.
 
 ### 07/09/2026 — a importação das regras não podia ser feita como estava
 
