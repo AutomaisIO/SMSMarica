@@ -6,7 +6,9 @@ import { Input } from '@/shared/ui/Input';
 import { notificar } from '@/shared/ui/Notificacoes';
 
 import { useConfiguracaoRegulacao, useSalvarConfiguracaoRegulacao } from '../../api/queries';
-import type { ConfiguracaoRegulacao } from '../../types';
+import type { ConfiguracaoRegulacao, NaoSeiViraRegulacao } from '../../types';
+
+import { EditorRegrasFollowUp } from './EditorRegrasFollowUp';
 
 const TIPOS_ANEXO = [
   { valor: 'image/jpeg', rotulo: 'JPEG' },
@@ -147,6 +149,25 @@ export function AbaConfiguracaoSolicitacoes() {
         </Campo>
       </Secao>
 
+      <Secao
+        titulo="Regras de elegibilidade"
+        descricao="Como o wizard trata o &ldquo;não sei&rdquo; quando a regra do manual faz uma pergunta ao solicitante."
+      >
+        <Campo
+          rotulo="O &ldquo;não sei&rdquo; vira"
+          ajuda="Ressalva: segue, e o agente decide na triagem. Pendência: não envia até alguém responder."
+        >
+          <select
+            value={form.naoSeiPadrao}
+            onChange={(e) => alterar('naoSeiPadrao', e.target.value as NaoSeiViraRegulacao)}
+            className="max-w-xs rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none"
+          >
+            <option value="Ressalva">Ressalva — segue e o agente decide</option>
+            <option value="Pendencia">Pendência — trava o envio</option>
+          </select>
+        </Campo>
+      </Secao>
+
       <Secao titulo="Anexos">
         <Campo rotulo="Tamanho máximo por arquivo (MB)">
           <Input
@@ -176,6 +197,16 @@ export function AbaConfiguracaoSolicitacoes() {
             ))}
           </div>
         </Campo>
+      </Secao>
+
+      <Secao
+        titulo="Follow-up do SER e do SERNIT"
+        descricao="O que cada mensagem da central significa, e qual delas vira tarefa para a unidade. Vazio = classificador desligado: tudo cai em &ldquo;Outro&rdquo; e nada abre pendência sozinho."
+      >
+        <EditorRegrasFollowUp
+          valor={form.regrasFollowup}
+          aoMudar={(v) => alterar('regrasFollowup', v)}
+        />
       </Secao>
 
       <div className="flex items-center gap-3 border-t border-slate-200 pt-4">

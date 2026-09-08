@@ -6,6 +6,7 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Configuracao.Dtos;
 using SMSMais.Core.Regulacao.Configuracao.Validators;
+using SMSMais.Core.Regulacao.FollowUp;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
@@ -119,6 +120,10 @@ public class RegulacaoConfiguracaoServiceTests(PostgresFixture fixture)
     // Regex que não compila: salva sem erro e explode depois, classificando follow-up real.
     [InlineData("""[{"categoria":"FalhaContato","padrao":"SEM CONTATO ([A-"}]""", false)]
     [InlineData("""{"categoria":"FalhaContato"}""", false)]
+    // `vira_pendencia` desconhecido abriria, no incremento 6, pendência de tipo que ninguém trata.
+    [InlineData("""[{"categoria":"FalhaContato","padrao":"X","vira_pendencia":"contato"}]""", true)]
+    [InlineData("""[{"categoria":"FalhaContato","padrao":"X","vira_pendencia":null}]""", true)]
+    [InlineData("""[{"categoria":"FalhaContato","padrao":"X","vira_pendencia":"telefone"}]""", false)]
     public void Regras_de_followup_sao_validadas(string json, bool esperadoValido)
     {
         var validador = new AtualizarRegulacaoConfiguracaoValidator();
@@ -130,6 +135,62 @@ public class RegulacaoConfiguracaoServiceTests(PostgresFixture fixture)
         var r = validador.Validate(req);
 
         r.IsValid.Should().Be(esperadoValido);
+    }
+
+    [Fact]
+    public async Task Testar_followup_usa_as_regras_gravadas_agora()
+    {
+        // A caixa de teste da tela só serve se ler o que está salvo neste instante: calibrar é
+        // editar a regex, salvar e passar um texto real por ela. Se lesse a semente fixa, diria
+        // "funciona" para uma regra que ninguém aplicou.
+        await using var db = fixture.CriarDbContext();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var servico = Servico(db, cache);
+
+        // A configuração é uma LINHA ÚNICA e a bancada é compartilhada: o estado de fábrica só
+        // existe na primeira execução da vida. Este teste escreve a própria precondição — e a
+        // desfaz no fim — em vez de supor que ninguém passou por aqui antes.
+        await GravarRegrasAsync(servico, null);
+
+        var antes = await servico.TestarFollowUpAsync("Não atende", CancellationToken.None);
+        antes.Categoria.Should().Be("Outro");   // sem regra, classificador desligado
+
+        await GravarRegrasAsync(servico, SementeFollowUp.Json);
+
+        var depois = await servico.TestarFollowUpAsync("Não atende", CancellationToken.None);
+
+        depois.Categoria.Should().Be("FalhaContato");
+        depois.ViraPendencia.Should().Be("contato");
+        // O texto normalizado volta para a tela porque é assim que o classificador o enxerga —
+        // sem isso, quem calibra não entende por que a regex "não pegou".
+        depois.TextoNormalizado.Should().Be("NAO ATENDE");
+
+        await GravarRegrasAsync(servico, null);
+    }
+
+    /// <summary>Grava as regras de follow-up (JSON, ou <c>null</c> para nenhuma) na linha única.</summary>
+    private static async Task GravarRegrasAsync(RegulacaoConfiguracaoService servico, string? json)
+    {
+        var atual = await servico.ObterAsync(CancellationToken.None);
+        await servico.AtualizarAsync(
+            Requisicao(atual) with
+            {
+                RegrasFollowup = JsonDocument.Parse(json ?? "[]").RootElement,
+            },
+            CancellationToken.None);
+    }
+
+    [Fact]
+    public void A_semente_oferecida_pela_tela_passa_pelo_proprio_validador()
+    {
+        // Oferecer como ponto de partida um JSON que o PUT recusaria seria um convite a um 400
+        // sem explicação. As duas coisas têm de concordar.
+        var req = new AtualizarRegulacaoConfiguracaoRequest(
+            false, false, false, true, "Pré-regulação", 7, 0.45m, 0.85m,
+            JsonDocument.Parse(SementeFollowUp.Json).RootElement,
+            15, ["application/pdf"], NaoSeiViraRegulacao.Ressalva, 0);
+
+        new AtualizarRegulacaoConfiguracaoValidator().Validate(req).IsValid.Should().BeTrue();
     }
 
     [Theory]

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Regulacao.Configuracao.Dtos;
+using SMSMais.Core.Regulacao.FollowUp;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Regulacao;
 
@@ -31,6 +32,14 @@ public interface IRegulacaoConfiguracaoService
     /// alguém digita junto com o rótulo da fila.
     /// </summary>
     Task DefinirRascunhosLegadosMigradosAsync(DateTime? em, CancellationToken ct);
+
+    /// <summary>
+    /// Roda o classificador de follow-up sobre um texto colado na tela, com as regras <b>gravadas
+    /// agora</b>. É o que torna a calibração possível: as regex do spike d têm até 600 caracteres,
+    /// e a única forma honesta de saber se uma mudança quebrou algo é passar um texto real por
+    /// ela antes de a varredura noturna usar.
+    /// </summary>
+    Task<TesteFollowUpDto> TestarFollowUpAsync(string texto, CancellationToken ct);
 }
 
 /// <inheritdoc cref="IRegulacaoConfiguracaoService"/>
@@ -130,6 +139,16 @@ public sealed class RegulacaoConfiguracaoService(
             c.AtualizadoEm,
             nome,
             c.RowVersion);
+    }
+
+    public async Task<TesteFollowUpDto> TestarFollowUpAsync(string texto, CancellationToken ct)
+    {
+        var c = await ObterEntidadeAsync(ct);
+        var regras = ClassificadorFollowUp.Ler(c.RegrasFollowupJson);
+        var r = ClassificadorFollowUp.Classificar(texto, regras);
+
+        return new TesteFollowUpDto(
+            r.Categoria, r.ViraPendencia, r.OrdemDaRegra, ClassificadorFollowUp.Normalizar(texto));
     }
 
     public async Task<RegulacaoConfiguracaoFluxoDto> ObterFluxoAsync(CancellationToken ct)

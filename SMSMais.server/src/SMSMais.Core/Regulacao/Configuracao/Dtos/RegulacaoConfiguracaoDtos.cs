@@ -52,3 +52,16 @@ public sealed record AtualizarRegulacaoConfiguracaoRequest(
     string[] AnexoTiposPermitidos,
     NaoSeiViraRegulacao NaoSeiPadrao,
     uint RowVersion);
+
+/// <summary>
+/// O que a caixa "testar texto" da tela devolve. Mostra <b>qual regra</b> decidiu, não só a
+/// categoria: sem isso, calibrar é adivinhar qual das nove pegou o texto primeiro.
+/// </summary>
+public sealed record TesteFollowUpDto(
+    string Categoria,
+    string? ViraPendencia,
+    int? OrdemDaRegra,
+    /// <summary>O texto como o classificador o vê — sem acento, maiúsculo, espaços colapsados.</summary>
+    string TextoNormalizado);
+
+public sealed record TestarFollowUpRequest(string Texto);

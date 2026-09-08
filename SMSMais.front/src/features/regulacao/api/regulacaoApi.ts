@@ -8,6 +8,8 @@ import type {
   PacienteResumoRegulacao,
   RegulacaoProcedimentoDetalhe,
   SugestaoPareamento,
+  RegraFollowUp,
+  TesteFollowUp,
   TipoProcedimentoRegulacao,
 } from '../types';
 import type { ImportacaoRegrasResultado, RegraElegibilidade } from '../tiposSolicitacao';
@@ -70,6 +72,22 @@ export async function salvarConfiguracaoRegulacao(
   payload: Omit<ConfiguracaoRegulacao, 'atualizadoEm' | 'atualizadoPorNome'>,
 ): Promise<ConfiguracaoRegulacao> {
   const { data } = await http.put<ConfiguracaoRegulacao>(baseConfig, payload);
+  return data;
+}
+
+/**
+ * Passa um texto pelo classificador com as regras **gravadas agora**. É o que torna a calibração
+ * possível: as regex do manual têm até 600 caracteres, e a única forma honesta de saber se uma
+ * mudança quebrou algo é passar um texto real por ela antes da varredura noturna usar.
+ */
+export async function testarFollowUp(texto: string): Promise<TesteFollowUp> {
+  const { data } = await http.post<TesteFollowUp>(`${baseConfig}/followup/testar`, { texto });
+  return data;
+}
+
+/** As regras medidas no spike d. Não são aplicadas: servem de ponto de partida na tela. */
+export async function obterSementeFollowUp(): Promise<RegraFollowUp[]> {
+  const { data } = await http.get<RegraFollowUp[]>(`${baseConfig}/followup/semente`);
   return data;
 }
 

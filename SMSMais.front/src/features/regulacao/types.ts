@@ -83,6 +83,24 @@ export type CatalogoSyncResultado = {
 
 export type NaoSeiViraRegulacao = 'Ressalva' | 'Pendencia';
 
+/** Uma regra de classificação de follow-up, como fica gravada em `regrasFollowup`. */
+export type RegraFollowUp = {
+  categoria: string;
+  ordem: number;
+  /** Regex escrita sobre o texto normalizado: sem acento, maiúsculo, espaços colapsados. */
+  padrao: string;
+  /** `contato`, `documento` ou nulo. Só duas das nove categorias abrem pendência. */
+  vira_pendencia: string | null;
+};
+
+/** O que a caixa "testar texto" devolve — inclusive qual regra decidiu. */
+export type TesteFollowUp = {
+  categoria: string;
+  viraPendencia: string | null;
+  ordemDaRegra: number | null;
+  textoNormalizado: string;
+};
+
 /** Configuração completa — só para quem tem o módulo de configuração (51). */
 export type ConfiguracaoRegulacao = {
   permitirExternoComInterno: boolean;

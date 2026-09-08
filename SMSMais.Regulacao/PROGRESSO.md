@@ -18,7 +18,7 @@
 | 1 — Catálogo + busca semântica | **concluído** | backend **EM PRODUÇÃO** desde 05/09; front e 14 testes prontos (não deployados) |
 | 2 — Wizard + paciente + fila local | **concluído e EM PRODUÇÃO** | 2.1 a 2.10. **A migração do legado rodou em 07/09**: catálogo com 999 procedimentos, 1 rascunho migrado, 1 descartado a pedido, telas antigas fechadas (410). |
 | 3 — Fila + agente + registro assistido + notificações por unidade | **concluído** | 3.1 a 3.11. ADR-0052 promovido. Falta só o badge da sidebar (3.8) e o `ConciliarAgoraAsync`, que é escrita externa e fica para a validação (D-11) |
-| 4 — Regras de elegibilidade | em andamento | **4.1 a 4.5 feitas.** Falta 4.6 (configurações) |
+| 4 — Regras de elegibilidade | **concluído** | 4.1 a 4.6. Falta só a curadoria em si, que é da regulação: nada foi importado em produção |
 | 5 — Credenciais + envio automático SER/SERNIT | não iniciado | marco D-4 |
 | 6 — Pendências pós-envio | não iniciado | |
 | 7 — Escrita no SISREG | não iniciado | |
@@ -26,7 +26,7 @@
 
 **Incremento 2 concluído em 06/09/2026** (2.1 a 2.10) e **em produção**. **Incremento 3 concluído em 07/09/2026** (3.1 a 3.11), com duas pendências pequenas e declaradas: o badge de notificações na sidebar e o `ConciliarAgoraAsync` (única parte do plano 05 que chama sistema externo — fica para a fase de validação, D-11).
 
-**Incremento 4 em andamento**: 4.1 a 4.5 feitas em 07/09/2026 — motor puro, serviço, passo do wizard, cadastro e a tela de curadoria. **Próxima tarefa: 4.6** (configurações restantes, plano 09).
+**Incremento 4 concluído em 07/09/2026** (4.1 a 4.6) — motor puro, serviço, passo do wizard, cadastro, tela de curadoria e as configurações do plano 09. **Próximo incremento: 5** (credenciais pessoais + envio SER/SERNIT, planos 07 e 12) — **mas ele depende de duas coisas que não são minhas**: o OK do Bernardo para a fase de gravação (D-11) e a credencial dedicada do SISREG. A parte que dá para fazer sem escrever em sistema nenhum é a 5.1 a 5.4 (cofre por usuário, endpoints write-only e a tela "Minhas credenciais").
 
 > **A curadoria ainda não foi feita.** As 1.169 regras dos manuais existem no extrator, mas nada foi importado em produção: a tela agora existe, e a importação cria tudo **inativo** de propósito. Enquanto ninguém ativar regra nenhuma, o passo de regras do wizard passa direto — que é o comportamento correto até a regulação revisar.
 
@@ -171,7 +171,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 4.3 `RegulacaoElegibilidadeService` (busca, avalia, persiste destinos/respostas/caixinhas) + 3 endpoints + `PassoRegras` no wizard, entre paciente e formulário. **4 testes de integração** — **07/09/2026**
 - [x] 4.4 `UsarExameInternoAsync` (gera o PDF do laudo, ou das imagens quando não há laudo, e anexa com `Origem = ExameInterno`) + `AnexarInternoAsync` + endpoint + `ExamesInternosSugeridos` dentro das caixinhas de regra. **1 teste**: exame de outro paciente é recusado — **07/09/2026**
 - [x] 4.5 `RegulacaoRegraService` (CRUD + versionamento + importação do CSV) + `RegulacaoRegrasController` (6 rotas, módulo 51) + tela `RegrasElegibilidadePage` (rota `/app/regulacao/regras`, menu sob Regulação, módulo 51). **7 testes.** Casamento **verificado contra o catálogo de produção: 790 das 1.169 regras casam** — **07/09/2026**
-- [ ] 4.6 configurações restantes (plano 09)
+- [x] 4.6 chaves de busca, follow-up e `nao_sei_padrao` na aba de configuração + `ClassificadorFollowUp` (puro) + `POST /regulacao/configuracao/followup/testar` + `GET …/followup/semente` + `EditorRegrasFollowUp` com teste inline. **13 testes novos** (11 do classificador, em 216 ms, sem banco) — **07/09/2026**
 
 ### Incremento 5 — Credenciais + envio SER/SERNIT (planos 07, 12)
 - [ ] 5.1 `UsuarioCofre` + `UsuarioCredencialIntegracao` + migration; `ICofreUsuarioService`; login abre o cofre; troca re-embrulha; reset invalida
@@ -249,6 +249,9 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 09 §C / 06 §6.2 | **O `ClassificadorFollowUp` nasceu na 4.6, não na 6.2.** O plano 09 pede a caixa "testar texto" na tela e a assinatura `ClassificarFollowUpTesteAsync`, que só existe se o classificador existir — e o plano 06 o colocava dois incrementos adiante. Ele veio agora, **puro e estático** (11 testes, 216 ms, sem banco); a 6.2 passa a ser só o consumidor. |
+| 07/09/2026 | 09 §C | **`GET /regulacao/configuracao/followup/semente` não estava no plano.** Sem ele, adotar as regras do spike d significaria alguém digitar à mão oito regex, uma delas com 601 caracteres — na prática, ninguém adotaria e o campo ficaria vazio para sempre. A semente fica em código (`SementeFollowUp`), **não em migration nem em seed de banco** (CLAUDE.md, regra 9), e não é aplicada: a tela a oferece e quem configura decide. |
+| 07/09/2026 | 09 §C | **`vira_pendencia` passou a ser validado** (`contato`, `documento` ou nulo). Não estava no plano porque o plano supunha quatro categorias; com nove, um valor escrito errado viraria, no incremento 6, pendência de um tipo que nenhuma tela trata. |
 | 07/09/2026 | 03 §D | **O CSV do spike tem 15 colunas, não 10** — o desvio de 05/09 já avisava. O importador usa `recurso_catalogo` (o rótulo já pareado) em vez de `recurso`, e `ramo_ser` para separar AE de rede geral: sem o ramo, o mesmo rótulo casaria com os dois ramos do SER, que têm formulários e regras diferentes. |
 | 07/09/2026 | 03 §D | **A importação NÃO converte nada para `Informativa`.** O extrator classificou 974 linhas como pergunta; converter por heurística seria decidir clinicamente por adivinhação. Tudo entra **inativo** e a curadoria decide o que vira pergunta, o que vira texto e o que não entra — que é exatamente o que "cria inativas" do plano quer dizer. |
 | 07/09/2026 | 03 §D | **Verificado contra o catálogo de produção antes de existir tela: 790 das 1.169 regras casam** (369 já vinham `SEM_PAR` do próprio spike). A chave de normalização — sem acento, sem pontuação, espaço colapsado, com o ramo — foi conferida com dado real, não presumida. |
@@ -338,6 +341,27 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — incremento 4 CONCLUÍDO, tarefa 4.6 (configurações e o classificador de follow-up)
+
+As colunas já existiam desde a migration da 2.1; o que faltava era o que a tela e o motor fazem com elas.
+
+- **Aba de configuração**: seção "Regras de elegibilidade" (para onde vai o "não sei": ressalva ou pendência) e seção "Follow-up", com editor de JSON, botão que carrega a semente medida e caixa de teste.
+- **`ClassificadorFollowUp`** (novo, puro e estático) + `POST /regulacao/configuracao/followup/testar` + `GET …/followup/semente`.
+- **`vira_pendencia` validado** na gravação.
+
+**O que aprendi escrevendo:**
+
+- **Um formulário campo a campo esconderia a regra.** As regras são regex — a maior tem 601 caracteres, com alternativas, classes e um lookahead negativo (é ele que separa "favor informar ao paciente" de "favor informar o peso"). Editor de texto com validação de JSON mostra a regra inteira; formulário mostraria pedaços.
+- **A caixa de teste devolve o texto normalizado, não só a categoria.** Sem isso, quem calibra vê a regex "não pegar" e não tem como saber que o classificador leu `NAO ATENDE` e a regra procurava `NÃO ATENDE`.
+- **A ordem das regras é regra.** "Sem contato; permanece em fila de espera" casa `FalhaContato` (2) e `SemVaga` (7). Quem vem primeiro decide — e decide se a unidade recebe pendência ou não. Virou teste.
+- **Regra quebrada não pode derrubar as seguintes.** Uma regex inválida gravada antes de o validador existir devolveria "Outro" para os 19 mil eventos seguintes. O `catch` é por regra, não pela varredura.
+
+**A suíte completa pegou um erro que o teste isolado escondia.** O teste novo passava sozinho e falhava no meio dos 1.336: ele afirmava que, sem regra gravada, "Não atende" cai em "Outro" — e a configuração é uma **linha única** numa bancada compartilhada, onde o estado de fábrica só existe na primeira execução da vida. A execução anterior do próprio teste tinha deixado a semente gravada lá. Corrigido escrevendo a precondição explicitamente e desfazendo no fim; conferido rodando duas vezes seguidas. Vale para qualquer teste de singleton daqui em diante: **na bancada não existe "estado inicial", existe o que a última execução deixou**.
+
+Suíte completa na bancada Maestro. Front: `npm run build` limpo.
+
+**Nada disso liga sozinho:** `regras_followup_json` nasce vazio, e vazio significa classificador desligado — tudo cai em "Outro" e nada abre pendência. A semente é oferecida, nunca aplicada.
 
 ### 07/09/2026 — incremento 4, tarefas 4.1 a 4.5 (motor de regras, wizard e curadoria)
 

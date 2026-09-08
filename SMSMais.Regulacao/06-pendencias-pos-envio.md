@@ -93,7 +93,7 @@ Regras em `regulacao_configuracao.regras_followup_json` (plano 09), com versão 
 ## Tarefas
 
 - [ ] **6.1** Entidade `RegulacaoPendencia` + enums + configuração + migration `PendenciasDeRegulacao`.
-- [ ] **6.2** `ClassificadorFollowUp` (função pura sobre `regras_followup_json`) + teste contra o fixture do spike d.
+- [x] **6.2** `ClassificadorFollowUp` (função pura sobre `regras_followup_json`) + teste contra o fixture do spike d. **Antecipado para a 4.6 em 07/09/2026**: o plano 09 pede a caixa "testar texto" na tela de configuração, e ela só existe se o classificador existir. Está em `SMSMais.Core/Regulacao/FollowUp/` com 11 testes (216 ms, sem banco), mais a semente do spike d em `SementeFollowUp`. **O que resta ao incremento 6 é o consumidor** — 6.3 em diante —, não o classificador.
   O fixture já existe: `tests/SMSMais.Tests/Regulacao/Pendencias/Fixtures/followups-rotulados.csv` (60 casos, sem PII). **`SMSMais.Tests.csproj` não tem regra de cópia para a saída e nenhum teste hoje lê arquivo** — acrescentar `<None Update="**\Fixtures\**" CopyToOutputDirectory="PreserveNewest" />`, senão o teste falha por arquivo não encontrado.
   Os 8 últimos casos do fixture são **regressões de defeitos reais** do classificador (spike d §4) e não devem ser removidos: `AO?` não casa "o"; "sem êxito" ≠ "sem sucesso"; "feito contato" é sucesso, não falha; `CONTATO TELEFONIC` também aparece em pedido à unidade; "sem disponibilidade de vaga"; "telefone é de outra pessoa".
 - [ ] **6.3** `RegulacaoPendenciaConsumidor` (background) + idempotência por gatilho + carimbo `ProcessadoPor`.

@@ -24,6 +24,15 @@ public sealed class AtualizarRegulacaoConfiguracaoValidator
     /// separada de `SolicitacaoAoSolicitante` — juntas, a fila de pendências nasceria com 5,5×
     /// itens falsos.
     /// </summary>
+    /// <summary>
+    /// O que uma regra pode abrir na unidade solicitante. Só duas das nove categorias abrem algo:
+    /// as outras sete são estado da fila externa, e transformá-las em pendência encheria a tela de
+    /// itens que ninguém pode resolver (5,5× itens falsos, medido no spike d). Um valor escrito
+    /// errado aqui viraria pendência de tipo desconhecido lá no incremento 6 — barrar na gravação
+    /// é o barato.
+    /// </summary>
+    private static readonly string[] TiposDePendencia = ["contato", "documento"];
+
     private static readonly string[] CategoriasFollowUp =
     [
         "ReclassificacaoRisco", "FalhaContato", "ContatoRealizado", "CancelamentoOuReagendamento",
@@ -61,8 +70,9 @@ public sealed class AtualizarRegulacaoConfiguracaoValidator
             .Must(SerListaDeRegrasValida)
             .When(x => x.RegrasFollowup.HasValue)
             .WithMessage(
-                "As regras de follow-up devem ser uma lista de {categoria, regex, ordem}, com "
-                + $"regex compilável e categoria entre: {string.Join(", ", CategoriasFollowUp)}.");
+                "As regras de follow-up devem ser uma lista de {categoria, ordem, padrao, "
+                + "vira_pendencia}, com `padrao` compilável como regex, `vira_pendencia` em "
+                + $"(contato, documento, nulo) e categoria entre: {string.Join(", ", CategoriasFollowUp)}.");
     }
 
     private static bool SerListaDeRegrasValida(JsonElement? elemento)
@@ -82,6 +92,13 @@ public sealed class AtualizarRegulacaoConfiguracaoValidator
             }
 
             if (!item.TryGetProperty("padrao", out var padrao) || padrao.ValueKind != JsonValueKind.String)
+            {
+                return false;
+            }
+
+            if (item.TryGetProperty("vira_pendencia", out var vira)
+                && vira.ValueKind is not JsonValueKind.Null
+                && (vira.ValueKind != JsonValueKind.String || !TiposDePendencia.Contains(vira.GetString())))
             {
                 return false;
             }

@@ -50,8 +50,8 @@ Aba "Solicitações" na `RegulacaoConfiguracaoPage`: seções "Fluxo" (externo c
 
 ## Tarefas
 
-- [ ] **2.1** (inc. 2) entidade + configuração + migration `ConfiguracaoDaRegulacao` + service + endpoints + aba com as chaves de fluxo e anexos.
-- [ ] **4.6** (inc. 4) chaves de busca, follow-up, `nao_sei_padrao`; editor de regras de follow-up com teste inline.
+- [x] **2.1** (inc. 2) entidade + configuração + migration `ConfiguracaoDaRegulacao` + service + endpoints + aba com as chaves de fluxo e anexos. **Feito em 06/09/2026.**
+- [x] **4.6** (inc. 4) chaves de busca, follow-up, `nao_sei_padrao`; editor de regras de follow-up com teste inline. **Feito em 07/09/2026** — junto veio o `ClassificadorFollowUp` (que o plano 06 colocava na 6.2, mas sem ele não há teste inline) e `GET followup/semente`, que oferece as regras medidas no spike d em vez de exigir que alguém digite oito regex à mão.
 
 ## Dependências
 
