@@ -149,13 +149,58 @@ internal sealed class EscopoExamesService(
 
         await ValidarEquipamentoAsync(request.EquipamentoId, a.UnidadeId, cancellationToken);
 
+        var estavaDesligado = !a.EnviarParaWorklist;
+
         a.EnviarParaWorklist = request.EnviarParaWorklist;
         a.EquipamentoId = request.EquipamentoId;
         a.Ativo = request.Ativo;
         a.AtualizadoEm = DateTime.UtcNow;
         a.AtualizadoPor = usuarioAtual.UsuarioId;
 
+        // LIGAR TEM DE VALER PARA QUEM JÁ ESTÁ ESPERANDO. O worker só seleciona por
+        // ProximaTentativaEm, e um exame autorizado enquanto o envio estava desligado saiu da fila
+        // com esse campo nulo — ligar depois não o traria de volta. Foi o que aconteceu em
+        // 08/09/2026: às 17:52 o 260908005 foi autorizado e carimbado como impedido; às 18:06
+        // alguém ligou o exame na tela e nada aconteceu, porque o toggle mexia só na configuração.
+        // A tela oferecia um botão que parecia resolver e não resolvia.
+        if (estavaDesligado && request.EnviarParaWorklist && request.Ativo)
+        {
+            await ReenfileirarPendentesAsync(a.TipoExameId, a.UnidadeId, cancellationToken);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Devolve à fila os exames deste par que estavam esperando: só os ainda vivos
+    /// (<c>Solicitada</c>/<c>Enviada</c>), já autorizados pela recepção e sem item na worklist.
+    /// Mesma régua do "Reenviar worklist", aplicada em lote — inclusive limpando o motivo antigo,
+    /// que senão continuaria na tela contradizendo o estado novo.
+    ///
+    /// <para>Não toca em exame realizado, laudado ou cancelado, nem em exame não autorizado: o gate
+    /// da recepção continua valendo, ligar o envio não autoriza ninguém.</para>
+    /// </summary>
+    private async Task ReenfileirarPendentesAsync(Guid tipoExameId, Guid unidadeId, CancellationToken ct)
+    {
+        var agora = DateTime.UtcNow;
+
+        var pendentes = await db.ExamesImagem
+            .Where(e => e.TipoExameId == tipoExameId
+                        && e.ExcluidoEm == null
+                        && e.WorklistItemUid == null
+                        && (e.Status == StatusSolicitacaoExame.Solicitada
+                            || e.Status == StatusSolicitacaoExame.Enviada)
+                        && e.Solicitacao!.UnidadeExecutanteId == unidadeId
+                        && e.Solicitacao!.AutorizadoEm != null)
+            .ToListAsync(ct);
+
+        foreach (var e in pendentes)
+        {
+            e.ProximaTentativaEm = agora;
+            e.ErroIntegracaoPacs = null;
+            e.AtualizadoEm = agora;
+            e.AtualizadoPor = usuarioAtual.UsuarioId;
+        }
     }
 
     public async Task RemoverAsync(Guid id, CancellationToken cancellationToken = default)
