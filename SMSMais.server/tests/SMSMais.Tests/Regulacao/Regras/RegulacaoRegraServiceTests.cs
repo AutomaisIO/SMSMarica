@@ -154,6 +154,51 @@ public class RegulacaoRegraServiceTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Ponto_e_virgula_dentro_de_aspas_nao_parte_a_regra_ao_meio()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (procedimentoId, rotulo) = await CatalogoAsync(db);
+
+        // 98 das 1.169 linhas do manual vêm entre aspas, porque o texto clínico usa ponto e
+        // vírgula. Partindo por `;` sem olhar as aspas, o critério entra cortado e o pedaço final
+        // vai parar na coluna da FONTE — que é a linha que a unidade lê para saber de onde veio a
+        // exigência. Ela leria "infecções de repetição (mais de 8 no último ano)" como se fosse a
+        // página do manual.
+        var csv = Csv(
+            $"X;SER;CRECE;AmbulatorioEstadual;{rotulo};celula;inclusao;NaoDedutivel;"
+            + "\"Imunodeficiência primária: pneumonia de repetição (mais de 2 no último ano); "
+            + "infecções de repetição (mais de 8 no último ano)\";;;;;;CRECE p.12");
+
+        var r = await Servico(db).ImportarCsvAsync(csv, CancellationToken.None);
+
+        r.Criadas.Should().Be(1);
+
+        var regra = await db.RegulacaoRegras.AsNoTracking()
+            .FirstAsync(x => x.ProcedimentoId == procedimentoId);
+
+        regra.Descricao.Should().Contain("infecções de repetição (mais de 8 no último ano)");
+        regra.Descricao.Should().NotStartWith("\"");
+        regra.Fonte.Should().Be("CRECE p.12");
+    }
+
+    [Fact]
+    public async Task Aspas_duplicadas_viram_uma_aspa_e_nao_quebram_o_registro()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (procedimentoId, rotulo) = await CatalogoAsync(db);
+
+        var csv = Csv(
+            $"X;SER;CRECE;AmbulatorioEstadual;{rotulo};celula;inclusao;NaoDedutivel;"
+            + "\"Laudo dito \"\"recente\"\"; até 6 meses\";;;;;;CRECE p.9");
+
+        var r = await Servico(db).ImportarCsvAsync(csv, CancellationToken.None);
+
+        r.Criadas.Should().Be(1);
+        (await db.RegulacaoRegras.AsNoTracking().FirstAsync(x => x.ProcedimentoId == procedimentoId))
+            .Descricao.Should().Be("Laudo dito \"recente\"; até 6 meses");
+    }
+
+    [Fact]
     public async Task Nova_versao_desativa_a_anterior_em_vez_de_sobrescrever()
     {
         await using var db = fixture.CriarDbContext();

@@ -194,14 +194,14 @@ public sealed class RegulacaoRegraService(
     {
         using var leitor = new StreamReader(csv, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
 
-        var cabecalho = await leitor.ReadLineAsync(ct);
-        if (string.IsNullOrWhiteSpace(cabecalho))
+        var registros = SepararCsv(await leitor.ReadToEndAsync(ct));
+        if (registros.Count == 0)
         {
             throw new ValidacaoException("csv", "O arquivo está vazio.");
         }
 
-        var colunas = cabecalho.TrimStart('﻿').Split(';')
-            .Select((nome, i) => (nome: nome.Trim().ToLowerInvariant(), i))
+        var colunas = registros[0]
+            .Select((nome, i) => (nome: nome.Trim().TrimStart('﻿').ToLowerInvariant(), i))
             .ToDictionary(x => x.nome, x => x.i);
 
         foreach (var obrigatoria in new[] { "sistema", "tipo", "texto_original", "secao" })
@@ -232,15 +232,13 @@ public sealed class RegulacaoRegraService(
         var agora = DateTime.UtcNow;
         var usuarioId = usuarioAtual.UsuarioId;
 
-        string? linha;
-        var numero = 1;
-        while ((linha = await leitor.ReadLineAsync(ct)) is not null)
+        for (var indiceRegistro = 1; indiceRegistro < registros.Count; indiceRegistro++)
         {
-            numero++;
-            if (string.IsNullOrWhiteSpace(linha)) continue;
+            var numero = indiceRegistro + 1;
+            var c = registros[indiceRegistro];
+            if (c.All(string.IsNullOrWhiteSpace)) continue;
 
             lidas++;
-            var c = linha.Split(';');
 
             string Campo(string nome) =>
                 colunas.TryGetValue(nome, out var i) && i < c.Length ? c[i].Trim() : string.Empty;
@@ -335,6 +333,88 @@ public sealed class RegulacaoRegraService(
     }
 
     // ---------------------------------------------------------------- apoio
+
+    /// <summary>
+    /// Separa o CSV em registros e campos <b>honrando as aspas</b> (RFC 4180): campo entre aspas
+    /// pode conter <c>;</c>, quebra de linha e aspas duplicadas (<c>""</c>).
+    ///
+    /// <para>Não é preciosismo: <b>98 das 1.169 linhas do manual vêm entre aspas</b>, porque o
+    /// texto clínico usa ponto e vírgula ("Pneumonia de repetição (mais de 2 no último ano);
+    /// infecções de repetição…"). Um <c>Split(';')</c> corta o critério ao meio e empurra o resto
+    /// das colunas uma casa para a direita — o pedaço final do texto vira a "fonte" da regra, que
+    /// é justamente a linha que a unidade solicitante lê para saber de onde veio a exigência.</para>
+    /// </summary>
+    private static List<string[]> SepararCsv(string texto)
+    {
+        var registros = new List<string[]>();
+        var campos = new List<string>();
+        var campo = new StringBuilder();
+        var dentroDeAspas = false;
+        var temConteudo = false;
+
+        void FecharCampo()
+        {
+            campos.Add(campo.ToString());
+            campo.Clear();
+        }
+
+        void FecharRegistro()
+        {
+            FecharCampo();
+            if (temConteudo) registros.Add([.. campos]);
+            campos.Clear();
+            temConteudo = false;
+        }
+
+        for (var i = 0; i < texto.Length; i++)
+        {
+            var ch = texto[i];
+
+            if (dentroDeAspas)
+            {
+                if (ch != '"')
+                {
+                    campo.Append(ch);
+                    continue;
+                }
+
+                // "" dentro de campo entre aspas é uma aspa literal.
+                if (i + 1 < texto.Length && texto[i + 1] == '"')
+                {
+                    campo.Append('"');
+                    i++;
+                    continue;
+                }
+
+                dentroDeAspas = false;
+                continue;
+            }
+
+            switch (ch)
+            {
+                case '"' when campo.Length == 0:
+                    dentroDeAspas = true;
+                    temConteudo = true;
+                    break;
+                case ';':
+                    FecharCampo();
+                    temConteudo = true;
+                    break;
+                case '\r':
+                    break;
+                case '\n':
+                    FecharRegistro();
+                    break;
+                default:
+                    campo.Append(ch);
+                    if (!char.IsWhiteSpace(ch)) temConteudo = true;
+                    break;
+            }
+        }
+
+        if (campo.Length > 0 || campos.Count > 0) FecharRegistro();
+        return registros;
+    }
 
     /// <summary>Rótulo sem acento, sem pontuação e em caixa alta — os catálogos variam a grafia.</summary>
     private static string Chave(SistemaRegulacao sistema, string rotulo, string? ramo)
