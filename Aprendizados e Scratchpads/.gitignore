@@ -1,0 +1,10 @@
+# Este ARQUIVO e o INDICE.md sao versionados de proposito: a dor que resolvem e
+# "o projeto nao sabe o que ja existe", e isso so funciona se todo mundo receber.
+#
+# Ja o SCRATCHPAD nao entra no git: guarda saida de consulta, que costuma ter dado
+# de paciente (nome, CNS, CPF, telefone, endereco). Ver
+# ../alterações entre sessoes/ferramentas/LEIA-ME.md
+scratchpad/
+*.csv
+*.txt
+*.jsonl

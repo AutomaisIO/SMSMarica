@@ -34,6 +34,28 @@ Always read the canonical documentation in [`docs/`](./docs/) before making arch
 
 Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.
 
+## Antes de investigar do zero: o índice
+
+[`Aprendizados e Scratchpads/INDICE.md`](./Aprendizados%20e%20Scratchpads/INDICE.md) é o **mapa do
+que já existe**: as ~125 ferramentas dos laboratórios (SISREG, SER, SERNIT, SISCAN, Salux), o que
+cada sonda **já respondeu**, e para onde ir quando precisar de servidor, banco de produção ou
+MikroTik — que **já são skills** (`operar-servidor`, `acessar-banco-no-servidor`,
+`configurar-mikrotik-unidade`). Consultar antes economiza a redescoberta; foi escrito porque ela
+estava acontecendo toda semana.
+
+**Duas obrigações, e elas são o que mantêm isso vivo:**
+
+1. **Criou ou mudou ferramenta** num laboratório? Acrescente a linha no índice. Confira com
+   `python "Aprendizados e Scratchpads/ferramentas/catalogar.py" --faltando` — ele lista o que
+   está fora do índice e o que está fora do git.
+2. **Aprendeu algo que a skill não dizia** (uma armadilha, um caminho que não é o óbvio, um custo
+   medido)? Escreva **na skill**, ou no `docs/APRENDIZADOS.md` do laboratório. Aprendizado que fica
+   só na conversa morre com a sessão — e a próxima paga de novo.
+
+Saída de consulta com dado de paciente **nunca** entra no repositório: vai para
+`Aprendizados e Scratchpads/scratchpad/` (ignorado) ou fora da árvore. Um TXT de agenda do SISREG
+tem nome, CNS, telefone e endereço.
+
 ## Regras não-negociáveis (resumo)
 
 As regras abaixo não podem ser violadas sem novo ADR.
