@@ -51,8 +51,15 @@ public sealed class PreCargaCadastroSerService(
     SmsMaisDbContext db,
     IServiceProvider provedor,
     CacheCadastroSer cache,
+    Pacientes.Fhir.IPacienteFhirClient hub,
     ILogger<PreCargaCadastroSerService> logger) : IPreCargaCadastroSerService
 {
+    /// <summary>
+    /// Consultas simultâneas ao hub na triagem. Mais alto que o teto do SER de propósito: aqui é a
+    /// nossa própria API, na mesma máquina, sem sessão nem orçamento anti-robô a proteger.
+    /// </summary>
+    private const int TetoConsultasHub = 16;
+
     /// <summary>
     /// Teto de sessões simultâneas, independente do que a configuração pedir.
     ///
@@ -87,6 +94,28 @@ public sealed class PreCargaCadastroSerService(
         {
             return new PreCargaCadastroDto(alvos.Count, 0, 0, 0, sessoes, 0);
         }
+
+        // TRIAGEM: quem já é nosso não precisa do SER.
+        //
+        // O importador só vai ao CADSUS quando não acha o paciente pelo CNS — para todo o resto ele
+        // reusa o cadastro e sequer olha o cache que esta pré-carga encheu. Perguntar mesmo assim
+        // custava caro: medido no CDT em 08/09/2026, 5.717 consultas ao SER numa janela cujos 5.604
+        // agendamentos JÁ tinham paciente resolvido (zero sem paciente). São ~35 minutos de espera
+        // antes de importar a primeira linha — todo dia, em toda unidade — e carga inútil num
+        // sistema público do Estado.
+        //
+        // Pergunta ao HUB pela API (ADR-0010), não à tabela `fhir.patient`. E errar aqui é barato
+        // nos dois sentidos: dizer "já conheço" quem não conhecemos apenas faz o importador
+        // perguntar na hora, e dizer "não conheço" quem já existe recai no comportamento antigo.
+        var totalLido = alvos.Count;
+        alvos = await TriarDesconhecidosAsync(alvos, ct);
+
+        logger.LogInformation(
+            "SER/pré-carga: {Total} CNS no arquivo, {Novos} desconhecidos — {Poupadas} consulta(s) "
+            + "ao SER poupadas por já termos o paciente.",
+            totalLido, alvos.Count, totalLido - alvos.Count);
+
+        if (alvos.Count == 0) return new PreCargaCadastroDto(0, 0, 0, 0, sessoes, 0);
 
         var falhas = 0;
         var processados = 0;
@@ -160,6 +189,48 @@ public sealed class PreCargaCadastroSerService(
             resultado.DuracaoSegundos, resultado.Sessoes);
 
         return resultado;
+    }
+
+    /// <summary>
+    /// Dos CNS do arquivo, quais o hub <b>ainda não conhece</b> — os únicos que valem uma ida ao SER.
+    ///
+    /// <para>Usa exatamente a mesma pergunta que o importador faz antes de decidir se consulta o
+    /// CADSUS, para não haver duas réguas de "já temos este paciente".</para>
+    ///
+    /// <para><b>Hub mudo conta como desconhecido.</b> Tratar indisponibilidade como "já conheço"
+    /// esconderia paciente novo e faria a importação parar nele; na dúvida, pré-carrega — que é o
+    /// comportamento anterior a esta triagem.</para>
+    /// </summary>
+    private async Task<List<string>> TriarDesconhecidosAsync(
+        List<string> alvos, CancellationToken ct)
+    {
+        var desconhecidos = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+        await Parallel.ForEachAsync(
+            alvos,
+            new ParallelOptions { MaxDegreeOfParallelism = TetoConsultasHub, CancellationToken = ct },
+            async (cns, token) =>
+            {
+                try
+                {
+                    var bundle = await hub.BuscarAsync(identifier: cns, ct: token);
+                    var achou = bundle.Entry
+                        .Select(e => e.Resource)
+                        .OfType<Hl7.Fhir.Model.Patient>()
+                        .Any();
+
+                    if (!achou) desconhecidos.Add(cns);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    logger.LogDebug(
+                        ex, "SER/pré-carga: hub não respondeu para um CNS; tratando como desconhecido.");
+                    desconhecidos.Add(cns);
+                }
+            });
+
+        return [.. desconhecidos];
     }
 
     /// <summary>
