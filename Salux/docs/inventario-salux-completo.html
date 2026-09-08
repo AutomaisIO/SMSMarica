@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventário completo do Salux — todas as camadas de material</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Inventário completo do Salux — todas as camadas de material</h1>
+<p>Extração de <strong>todo o material cadastrado e em estoque no Salux (schema <code>INFOSAUDE</code>)</strong>, em arquivo único, para carga em outro prontuário/ERP. Cobre os <strong>3 hospitais</strong> que existem no Salux (Conde Modesto Leal, UPA 24h Inoã, PA 24h Santa Rita).</p>
+<ul>
+<li>Gerado por: <code>Salux/scripts/exportar_inventario_completo.py</code> (roda <strong>no droplet</strong>, via proxy SQL</li>
+</ul>
+<p>  interno, somente leitura — o Oracle do hospital só é alcançável de lá).</p>
+<ul>
+<li>Saídas (em <code>Salux/capturas/estoque/</code>, gitignored):</li>
+<li><code>inventario_salux_completo.csv</code> — 66.089 linhas, todas as camadas</li>
+<li><code>inventario_salux_resumo.csv</code> — totais por camada × hospital × tipo de item</li>
+<li><code>inventario_salux_divergencias.csv</code> — onde a soma dos lotes não bate com o saldo do almoxarifado</li>
+<li>CSV <code>;</code> (ponto-e-vírgula), UTF-8 com BOM (abre direto no Excel pt-BR).</li>
+</ul>
+<h2>1. As camadas (coluna <code>ORIGEM_TABELA</code> + <code>TIPO_REGISTRO</code>)</h2>
+<p>A mesma unidade de material aparece em mais de uma tabela do Salux, com granularidades diferentes. Por isso <strong>cada linha diz de qual tabela veio</strong> e se entra ou não no total — a coluna <code>CONTA_NO_TOTAL</code> existe justamente para impedir dupla contagem.</p>
+<div class="tw"><table><thead><tr><th>ORIGEM_TABELA</th><th>TIPO_REGISTRO</th><th>Linhas</th><th>Conta?</th><th>O que é</th></tr></thead><tbody>
+<tr><td><code>MATMED_LOTE</code></td><td><code>SALDO_LOTE</code></td><td>11.660</td><td><strong>S</strong></td><td>Saldo por hospital × almoxarifado × material × <strong>lote/validade</strong>. É o grão mais fino.</td></tr>
+<tr><td><code>MATMED_ESTOQUE</code></td><td><code>SALDO_SEM_LOTE</code></td><td>1.935</td><td><strong>S</strong></td><td>Saldo de item que <strong>não tem controle de lote</strong> — só aparece aqui.</td></tr>
+<tr><td><code>MATMED_ESTOQUE</code></td><td><code>SALDO_ESTOQUE_COM_LOTE</code></td><td>6.432</td><td>N</td><td>Mesmo saldo já detalhado em <code>SALDO_LOTE</code>. Serve para <strong>conferir</strong> lote × almoxarifado.</td></tr>
+<tr><td><code>MATMED_ESTOQUE</code></td><td><code>CONSIGNADO</code></td><td>285</td><td>N</td><td>Material de terceiro em consignação (está fisicamente lá, não é patrimônio próprio).</td></tr>
+<tr><td><code>MATMED_HOSPITAL</code></td><td><code>CONSOLIDADO_HOSPITAL</code></td><td>3.110</td><td>N</td><td>Totalizador do próprio Salux por hospital + <strong>custo médio oficial</strong>. Referência de conferência.</td></tr>
+<tr><td><code>MATMED</code></td><td><code>CATALOGO</code></td><td>2.316</td><td>N</td><td><strong>Cadastro completo de itens</strong>, com ou sem saldo — é o que alimenta a tabela de materiais do sistema novo.</td></tr>
+<tr><td><code>EMPRESTIMO_ITEM</code></td><td><code>EMPRESTIMO_SALDO</code></td><td>16.115</td><td>N</td><td>Itens movimentados em empréstimo a/de terceiros, com data e nome do terceiro. Ver armadilha (4).</td></tr>
+<tr><td><code>MATMED_LOTE_ENT</code></td><td><code>ENTRADA_FIFO_SALDO</code></td><td>11.395</td><td>N</td><td>Saldo residual por <strong>entrada</strong> (rastreio FIFO). A tabela <strong>não guarda hospital/almoxarifado</strong>.</td></tr>
+<tr><td><code>INVENTARIO_ITEM</code></td><td><code>ULTIMA_CONTAGEM</code></td><td>12.841</td><td>N</td><td>Última <strong>contagem física</strong> por hospital × almoxarifado × material, com a data.</td></tr>
+</tbody></table></div>
+<p><strong>Regra de ouro:</strong> o inventário para carga é <code>CONTA_NO_TOTAL = 'S'</code> — 13.595 linhas, 1.766 materiais distintos, <strong>R$ 7.879.419,96</strong>. Todo o resto é catálogo, conferência ou rastreio.</p>
+<h2>2. Conferência contra o próprio Salux</h2>
+<p>Somando só as linhas que contam, contra o totalizador <code>MATMED_HOSPITAL</code> do Salux:</p>
+<div class="tw"><table><thead><tr><th>Hospital</th><th>Camadas de saldo</th><th>Totalizador Salux</th><th>Diferença</th></tr></thead><tbody>
+<tr><td>Conde Modesto Leal</td><td>3.789.363,45</td><td>3.776.485,37</td><td>+12.878,08 (+0,34%)</td></tr>
+<tr><td>PA 24h Santa Rita</td><td>1.355.176,89</td><td>1.372.508,53</td><td>−17.331,64 (−1,26%)</td></tr>
+<tr><td>UPA 24h Inoã</td><td>2.734.879,62</td><td>2.754.734,08</td><td>−19.854,46 (−0,72%)</td></tr>
+</tbody></table></div>
+<p>A diferença é a divergência interna do próprio Salux entre a soma dos lotes e o saldo do almoxarifado — <strong>46 pares item × almoxarifado, R$ 40.079,45 de impacto</strong>, listados em <code>inventario_salux_divergencias.csv</code>. Só contagem física resolve; nenhuma consulta desempata.</p>
+<h2>3. Dicionário de colunas (36)</h2>
+<div class="tw"><table><thead><tr><th>Coluna</th><th>Conteúdo</th></tr></thead><tbody>
+<tr><td><code>ORIGEM_TABELA</code> / <code>TIPO_REGISTRO</code> / <code>CONTA_NO_TOTAL</code></td><td>Procedência da linha e se ela entra no total</td></tr>
+<tr><td><code>CD_HOSPITAL</code> / <code>DS_HOSPITAL</code></td><td>Hospital (1 Conde · 2 UPA Inoã · 3 Santa Rita)</td></tr>
+<tr><td><code>CD_ESTOQUE</code> / <code>DS_ESTOQUE</code></td><td>Almoxarifado/farmácia (61 no Conde, 17 na UPA, 9 em Santa Rita)</td></tr>
+<tr><td><code>CODIGO</code> / <code>DESCRICAO</code></td><td><code>CD_MATERIAL</code> e <code>DS_MATERIAL</code> do catálogo</td></tr>
+<tr><td><code>UNIDADE</code></td><td>Unidade de medida (COMP, UND, FR…)</td></tr>
+<tr><td><code>TIPO_ITEM</code></td><td>Classificação normalizada: <code>MEDICAMENTO</code>, <code>MEDICAMENTO_CONTROLADO</code>, <code>MEDICAMENTO_ANTIRRETROVIRAL</code>, <code>MATERIAL_MEDICO_HOSPITALAR</code>, <code>OPME</code>, <code>MATERIAL_ODONTOLOGICO</code>, <code>DIETA_NUTRICAO</code>, <code>MATERIAL_EXPEDIENTE</code>, <code>HIGIENE_LIMPEZA</code>, <code>EQUIPAMENTO_MANUTENCAO</code>, …</td></tr>
+<tr><td><code>CLASSIFICACAO</code> / <code>SUBGRUPO</code> / <code>GRUPO_COMPRA</code></td><td>Grupo de estocagem, subgrupo e grupo de compra, como estão no Salux</td></tr>
+<tr><td><code>LOTE</code> / <code>VALIDADE</code> / <code>SITUACAO_VALIDADE</code></td><td>Lote, validade e situação: <code>OK</code>, <code>VENCE_EM_ATE_90D</code>, <code>VENCIDO</code>, <code>SEM_VALIDADE</code></td></tr>
+<tr><td><code>QUANTIDADE</code></td><td>Saldo na unidade do item</td></tr>
+<tr><td><code>VALOR_UNITARIO</code></td><td><strong>Custo médio do hospital</strong> (<code>MATMED_HOSPITAL</code>), com fallback no custo médio do catálogo</td></tr>
+<tr><td><code>VALOR_TOTAL</code></td><td><code>QUANTIDADE × VALOR_UNITARIO</code>, em reais</td></tr>
+<tr><td><code>VALOR_AQUISICAO_UNIT</code></td><td>Custo de aquisição (última compra)</td></tr>
+<tr><td><code>MARCA</code> / <code>LABORATORIO</code></td><td>Só nas camadas que têm lote</td></tr>
+<tr><td><code>LOCALIZACAO</code></td><td>Sala / estante / prateleira, quando cadastrado</td></tr>
+<tr><td><code>IN_MEDICAMENTO</code>, <code>IN_CONTROLADO</code>, <code>IN_ANTIBIOTICO</code>, <code>IN_PATRIMONIO</code>, <code>IN_CONSIGNADO</code>, <code>IN_KIT</code>, <code>IN_ATIVO_ITEM</code></td><td>Flags do cadastro (S/N)</td></tr>
+<tr><td><code>REGISTRO_MS</code> / <code>CD_DCB</code></td><td>Registro ANVISA e código DCB do princípio ativo</td></tr>
+<tr><td><code>REFERENCIA</code></td><td>Contexto da linha (nº do empréstimo + terceiro, saldo do sistema na contagem, descrição completa no catálogo…)</td></tr>
+<tr><td><code>DATA_REF</code></td><td>Data que dá sentido à linha (movimento do empréstimo, data da contagem, cadastro do item…)</td></tr>
+<tr><td><code>EXTRAIDO_EM</code></td><td>Carimbo único da extração (todas as camadas leem o mesmo instante lógico)</td></tr>
+</tbody></table></div>
+<h2>4. Armadilhas (lidas na marra)</h2>
+<ol>
+<li><strong>Nunca somar todas as linhas.</strong> <code>SALDO_ESTOQUE_COM_LOTE</code>, <code>CONSOLIDADO_HOSPITAL</code> e</li>
+</ol>
+<p>   <code>ENTRADA_FIFO_SALDO</code> repetem o mesmo material já contado em <code>SALDO_LOTE</code>. Filtrar    <code>CONTA_NO_TOTAL = 'S'</code>.</p>
+<ol>
+<li><strong>Vencidos entram na extração</strong> — 2.504 linhas, R$ 744.997,78. Estão marcados em</li>
+</ol>
+<p>   <code>SITUACAO_VALIDADE</code>; quem decide se migram é a operação, não a consulta. Outros R$ 959.329,51    vencem em até 90 dias.</p>
+<ol>
+<li><strong><code>IN_CONTROLAR_LOTE_VALIDADE</code> é NULL no banco inteiro</strong> — não serve de filtro. Quem não tem</li>
+</ol>
+<p>   lote é material/OPME/expediente na prática.</p>
+<ol>
+<li><strong><code>EMPRESTIMO_ITEM.QT_SALDO</code> não é saldo em aberto</strong>: ele é praticamente igual a <code>QT_MATERIAL</code></li>
+</ol>
+<p>   (o movimento), inclusive em empréstimos de 2021. Trate como histórico, use <code>DATA_REF</code>.</p>
+<ol>
+<li><strong><code>MATMED_LOTE_ENT</code> não tem hospital nem almoxarifado</strong> (as colunas existem mas são nulas em</li>
+</ol>
+<p>   ~99% das linhas) — por isso a camada sai agregada por material × lote × validade.</p>
+<ol>
+<li><strong>UPA Inoã e Santa Rita saíram do Salux para o Klinikos em ~abr/2025.</strong> O saldo delas aqui está</li>
+</ol>
+<p>   congelado nessa época — a última contagem física dessas duas é de jun/2025, contra ago/2026 no    Conde. Conferir antes de migrar.</p>
+<ol>
+<li>O <code>TIPO_ITEM</code> vem do <strong>grupo de estocagem</strong> do Salux, que tem erros de digitação de origem</li>
+</ol>
+<p>   (<code>EQUPAMENTOS MANUTENCAO</code>) e grupos vazios; a coluna normalizada corrige isso sem alterar    <code>CLASSIFICACAO</code>, que preserva o texto original.</p>
+<h2>5. Reproduzir</h2>
+<p>``<code>bash ssh root@smsmarica.online python3 /root/exportar_inventario_completo.py /root/inventario_salux_completo.csv \                                               /root/inventario_salux_resumo.csv </code>``</p>
+<p>Leva ~1 min. Só leitura: passa pelo proxy SQL interno (<code>salux-hcml</code>), que tem guard read-only e corta em 5.000 linhas por consulta — o script pagina de 4.000 em 4.000. Ponto e vírgula dentro de literal de texto no SQL é <strong>bloqueado pelo guard</strong> (lê como múltiplos statements).</p>
+</main>
+</body>
+</html>

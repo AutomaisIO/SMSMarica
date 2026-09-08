@@ -1,0 +1,20 @@
+# Segredos e PII — NUNCA versionar
+.env
+.env.*
+!.env.example
+credenciais_sernit.txt
+
+# Capturas de sessão / respostas do SERNIT (contêm dados de paciente / PII)
+capturas/
+*.html.dump
+*.session.json
+*.xls
+cookies.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
