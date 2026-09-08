@@ -43,6 +43,14 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
         builder.Property(s => s.ProfissionalExecutanteNome)
             .HasColumnName("profissional_executante_nome").HasMaxLength(200);
         builder.Property(s => s.RawSisreg).HasColumnName("raw_sisreg");
+
+        // 10 basta para o formato do CID-10 com subcategoria (ex.: "C50.9"); a origem manda so o
+        // codigo, sem descricao.
+        builder.Property(s => s.CidCodigo).HasColumnName("cid_codigo").HasMaxLength(10);
+
+        // Analise por CID e consulta de rede inteira ("quais diagnosticos mais pedem exame"), entao
+        // vale indice; parcial porque a maioria das solicitacoes antigas nao tem o campo.
+        builder.HasIndex(s => s.CidCodigo).HasFilter("cid_codigo IS NOT NULL");
         builder.Property(s => s.Justificativa).HasColumnName("justificativa").HasMaxLength(1000);
         builder.Property(s => s.Observacoes).HasColumnName("observacoes").HasMaxLength(2000);
 

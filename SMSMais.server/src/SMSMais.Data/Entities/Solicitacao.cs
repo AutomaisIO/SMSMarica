@@ -102,6 +102,19 @@ public class Solicitacao
     /// <summary>Linha CRUA do TXT do SISREG que originou esta solicitação (proveniência). Uso interno.</summary>
     public string? RawSisreg { get; set; }
 
+    /// <summary>
+    /// CID-10 informado na solicitação (coluna 35 do TXT do SISREG; o SER traz o equivalente).
+    ///
+    /// <para><b>Texto, não FK.</b> O CID vem da origem como código solto e pode não existir no
+    /// nosso catálogo — recusar a solicitação por causa disso perderia o pedido inteiro por um
+    /// campo acessório. Mesma escolha já feita em <see cref="ProcedimentoTexto"/> e em
+    /// <c>SerSolicitacao.Cid</c>.</para>
+    ///
+    /// <para>É o que torna a análise de demanda clínica: sem ele dá para dizer quantas
+    /// ultrassonografias a rede pede, não <b>por quê</b>.</para>
+    /// </summary>
+    public string? CidCodigo { get; set; }
+
     public string? Justificativa { get; set; }
     public string? Observacoes { get; set; }
 
