@@ -36,10 +36,15 @@ import psycopg2
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
+# `--reconciliar` alcanca tambem quem esta DESATUALIZADO, nao so quem esta nulo. Precisou existir
+# no primeiro uso: uma ficha escrita pelo codigo antigo durante a janela do deploy ficou com
+# `cns_todos = []` tendo CNS no documento, e o filtro "IS NULL" nao a alcancava. Enquanto houver
+# escrita por versao antiga -- deploy, rollback, outro conector -- a coluna pode divergir do
+# documento, e divergencia silenciosa aqui significa paciente que some da busca.
 SQL_LOTE = r"""
 WITH alvo AS (
     SELECT id FROM fhir.patient
-    WHERE cns_todos IS NULL AND id > %s
+    WHERE (cns_todos IS NULL OR %s) AND id > %s
     ORDER BY id
     LIMIT %s
 ),
@@ -71,6 +76,8 @@ def conexao(cs: str):
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--lote", type=int, default=5000)
+    ap.add_argument("--reconciliar", action="store_true",
+                    help="recalcula TODAS as fichas, nao so as nulas — para depois de deploy")
     ap.add_argument("--conexao", help="connection string; default = user-secrets do SMSMais.Api")
     args = ap.parse_args(argv)
 
@@ -83,7 +90,19 @@ def main(argv: list[str]) -> int:
     cx.autocommit = True          # lote a lote: queda no meio nao desfaz o que ja passou
     cur = cx.cursor()
 
-    cur.execute("select count(*) from fhir.patient where cns_todos is null")
+    if args.reconciliar:
+        # Divergente = o que a projecao diz difere do que o documento tem.
+        cur.execute(r"""
+            select count(*) from fhir.patient p
+            where p.cns_todos is null
+               or p.cns_todos is distinct from (
+                    select coalesce(array_agg(distinct regexp_replace(e->>'value','\D','','g')),
+                                    array[]::text[])
+                    from jsonb_array_elements(p.content->'identifier') e
+                    where e->>'system' like '%%/cns'
+                      and regexp_replace(e->>'value','\D','','g') <> '')""")
+    else:
+        cur.execute("select count(*) from fhir.patient where cns_todos is null")
     faltam = cur.fetchone()[0]
     print(f"a preencher: {faltam:,}")
     if not faltam:
@@ -91,7 +110,7 @@ def main(argv: list[str]) -> int:
 
     ultimo, feitos, t0 = "00000000-0000-0000-0000-000000000000", 0, time.monotonic()
     while True:
-        cur.execute(SQL_LOTE, (ultimo, args.lote))
+        cur.execute(SQL_LOTE, (args.reconciliar, ultimo, args.lote))
         ids = [r[0] for r in cur.fetchall()]
         if not ids:
             break
