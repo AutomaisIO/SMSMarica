@@ -35,8 +35,16 @@ public sealed class PacientesService(
             var soDigitos = digitos.Length == termo.Replace(".", "").Replace("-", "").Replace(" ", "").Length;
 
             // Até 15 dígitos: cobre o CPF (11) e também o CNS (15) — os dois são identifier no hub.
+            // O CNS só chega lá QUALIFICADO: sem o system o hub compara o número com a coluna de
+            // CPF e devolve vazio, que era o motivo de procurar paciente pelo CNS não achar nada.
+            var chave = digitos.Length switch
+            {
+                11 => $"{PatientMergeFhir.SystemCpf}|{digitos}",
+                15 => $"{PatientMergeFhir.SystemCns}|{digitos}",
+                _ => digitos,
+            };
             bundle = digitos.Length >= 3 && digitos.Length <= 15 && soDigitos
-                ? await fhir.BuscarAsync(identifier: digitos, ct: cancellationToken)
+                ? await fhir.BuscarAsync(identifier: chave, ct: cancellationToken)
                 : await fhir.BuscarAsync(name: termo, ct: cancellationToken);
         }
 
@@ -72,7 +80,14 @@ public sealed class PacientesService(
         var normalizado = Digitos(cns);
         if (normalizado.Length != 15) return null;
 
-        var bundle = await fhir.BuscarAsync(identifier: normalizado, ct: cancellationToken);
+        // COM o system, sempre. O hub trata `identifier` sem `|` como CPF (SepararIdentifier), então
+        // um CNS pelado virava `WHERE cpf = '<15 dígitos>'` — que não casa nunca, e devolvia "não
+        // existe" para paciente que existe. Silencioso e caro: esta é a ÚNICA verificação de "já
+        // temos este paciente" do importador do SISREG, e sem ela toda linha ia ao CADSUS.
+        // Com o system, cai no ramo que procura em `cns_todos` pelo índice GIN — que já estava
+        // escrito no hub e era inalcançável.
+        var bundle = await fhir.BuscarAsync(
+            identifier: $"{PatientMergeFhir.SystemCns}|{normalizado}", ct: cancellationToken);
         var patient = bundle.Entry.Select(e => e.Resource).OfType<Patient>().FirstOrDefault();
         if (patient is null) return null;
 
@@ -128,7 +143,13 @@ public sealed class PacientesService(
 
         // A busca é SEMPRE por uma chave preenchida: com identifier vazio o hub trataria a
         // ausência de filtro como "listar todos", e um match qualquer viraria falso "duplicado".
-        var chave = cpf.Length == 11 ? cpf : cns;
+        //
+        // E SEMPRE com o system. Sem ele o hub lê o valor como CPF, então a checagem por CNS —
+        // o caminho de quem não tem CPF (ADR-0041) — não encontrava nunca: `cns_duplicado` era
+        // inalcançável e cada cadastro repetido criava uma pessoa nova no hub.
+        var chave = cpf.Length == 11
+            ? $"{PatientMergeFhir.SystemCpf}|{cpf}"
+            : $"{PatientMergeFhir.SystemCns}|{cns}";
         var existentes = await fhir.BuscarAsync(identifier: chave, ct: cancellationToken);
         if (existentes.Entry.Select(e => e.Resource).OfType<Hl7.Fhir.Model.Patient>().Any())
         {

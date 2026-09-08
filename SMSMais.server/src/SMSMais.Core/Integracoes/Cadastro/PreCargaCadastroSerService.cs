@@ -213,7 +213,12 @@ public sealed class PreCargaCadastroSerService(
             {
                 try
                 {
-                    var bundle = await hub.BuscarAsync(identifier: cns, ct: token);
+                    // COM o system — ver a mesma nota em PacientesService.ObterPorCnsAsync. Sem ele
+                    // o hub lê o CNS como CPF e responde "não conheço" para TODO mundo: a triagem
+                    // virava um no-op caro, mandando 100% dos CNS ao SER (5.786 numa varredura só,
+                    // medido no CDT em 08/09/2026) exatamente o que ela existia para evitar.
+                    var bundle = await hub.BuscarAsync(
+                        identifier: $"{Pacientes.Fhir.PatientMergeFhir.SystemCns}|{cns}", ct: token);
                     var achou = bundle.Entry
                         .Select(e => e.Resource)
                         .OfType<Hl7.Fhir.Model.Patient>()
