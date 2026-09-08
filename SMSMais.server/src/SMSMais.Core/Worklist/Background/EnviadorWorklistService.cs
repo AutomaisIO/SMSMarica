@@ -70,13 +70,16 @@ public sealed class EnviadorWorklistService(
         var max = Math.Clamp(_options.MaximoPorPassagem, 1, 200);
 
         // Pega só os IDs primeiro, ordenado por urgência (proxima vencida primeiro).
+        // O escopo vem de EscopoExameUnidade — a MESMA expressão que a tela usa para dizer se o
+        // exame está configurado. Antes era `s.TipoExame!.EnviarParaWorklist`, um bit do município:
+        // não conseguia valer false para quem não tem aparelho e true para quem tem.
         var pendentes = await db.ExamesImagem.AsNoTracking()
             .Where(s => s.ExcluidoEm == null
                         && (s.Status == StatusSolicitacaoExame.Solicitada
                             || s.Status == StatusSolicitacaoExame.Enviada)
-                        && s.TipoExame!.EnviarParaWorklist // tipo com envio ao worklist desligado fica de fora
                         && s.ProximaTentativaEm != null
                         && s.ProximaTentativaEm <= agora)
+            .Where(EscopoExameUnidade.EnviaParaWorklist(db))
             .OrderBy(s => s.ProximaTentativaEm)
             .Take(max)
             .Select(s => s.Id)

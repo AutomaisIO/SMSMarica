@@ -198,6 +198,10 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
 
     public DbSet<Equipamento> Equipamentos => Set<Equipamento>();
 
+    /// <summary>O que cada unidade executa de imagem: worklist e aparelho de destino por par
+    /// (tipo, unidade). Ver <see cref="TipoExameUnidade"/>.</summary>
+    public DbSet<TipoExameUnidade> TiposExameUnidade => Set<TipoExameUnidade>();
+
     // Mensageria WhatsApp — infraestrutura transversal do município (ADR-0038).
     // NÃO é do TFD: o TFD é um dos consumidores, como qualquer outro módulo.
     public DbSet<MensagemWhatsApp> MensagensWhatsApp => Set<MensagemWhatsApp>();

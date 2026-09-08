@@ -12,6 +12,7 @@ import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/queries';
 import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
 import { EquipamentosDaUnidadeSecao } from '@/features/unidades/components/EquipamentosDaUnidadeSecao';
+import { EscopoExamesDaUnidadeSecao } from '@/features/escopo-exames/components/EscopoExamesDaUnidadeSecao';
 import { PesquisaSatisfacaoAba } from '@/features/pesquisa-satisfacao/components/PesquisaSatisfacaoAba';
 import { MapeamentoSisregSecao } from '@/features/sisreg-mapeamento/components/MapeamentoSisregSecao';
 import { SincronismoSisregSecao } from '@/features/sisreg-mapeamento/components/SincronismoSisregSecao';
@@ -144,6 +145,11 @@ export function UnidadeDetalhePage() {
       rotulo: 'Equipamentos',
       conteudo: <EquipamentosDaUnidadeSecao unidadeId={id} />,
       badge: equipamentosDaUnidade.data?.length || undefined,
+    },
+    {
+      id: 'exames-imagem',
+      rotulo: 'Exames de imagem',
+      conteudo: <EscopoExamesDaUnidadeSecao unidadeId={id} />,
     },
     {
       id: 'usuarios',

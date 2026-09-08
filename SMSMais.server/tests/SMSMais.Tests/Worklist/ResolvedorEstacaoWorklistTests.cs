@@ -17,7 +17,7 @@ namespace SMSMais.Tests.Worklist;
 public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
 {
     private static ResolvedorEstacaoWorklist CriarResolvedor(SmsMaisDbContext db) =>
-        new(db, NullLogger<ResolvedorEstacaoWorklist>.Instance);
+        new(db, new EscopoExameUnidade(db), NullLogger<ResolvedorEstacaoWorklist>.Instance);
 
     private static async Task<Equipamento> AdicionarEquipamentoAsync(
         SmsMaisDbContext db,

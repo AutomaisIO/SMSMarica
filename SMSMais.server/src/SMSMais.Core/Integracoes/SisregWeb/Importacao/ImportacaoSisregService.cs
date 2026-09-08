@@ -104,6 +104,7 @@ public sealed class ImportacaoSisregService(
     // Sem ILogger: o único log deste serviço era o da catalogação automática de SIGTAP, removida em
     // 10/08/2026. Quem registra a criação de tipo agora é o ResolvedorTipoExameSisreg.
     IResolvedorTipoExameSisreg resolvedorTipoExame,
+    SMSMais.Core.Worklist.IEscopoExameUnidade escopoExameUnidade,
     // Conciliação da regulação (plano 05): casa o número do SISREG com a solicitação que nasceu
     // no SMSMais, quando houver.
     SMSMais.Core.Regulacao.Conciliacao.IRegulacaoConciliacaoService conciliacao,
@@ -474,6 +475,18 @@ public sealed class ImportacaoSisregService(
         passos.Add(execCriada
             ? $"Unidade executante criada do cabeçalho: {exec.Nome}{CnesSufixo(exec.Cnes)}."
             : $"Unidade executante: {exec.Nome} (contexto atual).");
+
+        // 4b. O exame entra no escopo da unidade que o executa — automático, mas DESLIGADO. É a
+        //     contrapartida do tipo nascer sozinho: sem isto, procedimento novo ficaria fora do
+        //     escopo e o exame nunca chegaria ao aparelho, com o mesmo silêncio de antes. Ligar e
+        //     amarrar o equipamento continuam manuais (Unidades → Exames de imagem), e é a
+        //     associação desligada que alimenta a lista "Exames a configurar".
+        if (tipoExameId is { } tipoParaEscopo)
+        {
+            var (_, escopoCriado) = await escopoExameUnidade.GarantirAsync(tipoParaEscopo, unidadeExecId, ct);
+            if (escopoCriado)
+                passos.Add($"Exame adicionado ao escopo de {exec.Nome} — envio à worklist DESLIGADO até alguém configurar.");
+        }
 
         var (unidadeSolicId, solicCriada) = await ResolverOuCriarUnidadeAsync(m.CnesUnidadeSolicitante, m.NomeUnidadeSolicitante, ct);
         if (solicCriada) passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante}{CnesSufixo(m.CnesUnidadeSolicitante)}.");

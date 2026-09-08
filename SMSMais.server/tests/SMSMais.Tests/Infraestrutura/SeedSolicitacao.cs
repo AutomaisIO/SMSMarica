@@ -67,9 +67,23 @@ internal static class SeedSolicitacao
             CriadoEm = DateTime.UtcNow,
         };
 
+        // Quem decide se o exame vai à worklist é o ESCOPO da unidade, não mais a flag global do
+        // tipo (que segue preenchida só enquanto a coluna existir). Por isso o seed cria o par
+        // (tipo, unidade) — sem ele, o exame estaria fora do escopo e nada seria enviado.
+        var escopo = new TipoExameUnidade
+        {
+            Id = Guid.CreateVersion7(),
+            TipoExameId = tipo.Id,
+            UnidadeId = unidade.Id,
+            EnviarParaWorklist = enviarParaWorklist,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        };
+
         db.ProcedimentosSigtap.Add(proc);
         db.TiposExame.Add(tipo);
         db.Unidades.Add(unidade);
+        db.TiposExameUnidade.Add(escopo);
         db.Solicitacoes.Add(solicitacao);
         db.ExamesImagem.Add(exame);
         await db.SaveChangesAsync();

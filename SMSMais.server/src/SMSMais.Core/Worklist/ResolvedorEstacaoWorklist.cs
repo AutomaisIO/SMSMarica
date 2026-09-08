@@ -17,9 +17,11 @@ namespace SMSMais.Core.Worklist;
 /// </summary>
 public sealed class ResolvedorEstacaoWorklist(
     SmsMaisDbContext db,
+    IEscopoExameUnidade escopoExame,
     ILogger<ResolvedorEstacaoWorklist> logger) : IResolvedorEstacaoWorklist
 {
     private readonly SmsMaisDbContext _db = db;
+    private readonly IEscopoExameUnidade _escopoExame = escopoExame;
     private readonly ILogger<ResolvedorEstacaoWorklist> _logger = logger;
 
     public async Task<string> ResolverAsync(ExameImagem exame, CancellationToken cancellationToken = default)
@@ -40,6 +42,18 @@ public sealed class ResolvedorEstacaoWorklist(
             _logger.LogWarning(
                 "Equipamento {Id} escolhido para {Accession} não está mais utilizável — rededuzindo.",
                 escolhido, exame.AccessionNumber);
+        }
+
+        // Destino configurado no escopo da unidade: a resposta fixa, quando existe. Vem antes da
+        // dedução de propósito — é o que tira o casamento por modalidade do caminho crítico. Foi
+        // esse casamento que, em 04/09/2026, fez cinco radiografias marcadas como MG apontarem
+        // para o mamógrafo do CDT.
+        var escopo = await _escopoExame.ObterAsync(exame, cancellationToken);
+        if (escopo?.Equipamento is { } configurado
+            && configurado.Ativo && configurado.ExcluidoEm == null
+            && AeTitleValido(configurado.IdentificadorDicom))
+        {
+            return configurado.IdentificadorDicom!.Trim();
         }
 
         var candidatos = await ListarCandidatosAsync(exame, cancellationToken);

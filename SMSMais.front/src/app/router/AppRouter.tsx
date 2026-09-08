@@ -61,6 +61,7 @@ import { VeiculosPage } from '@/features/veiculos/pages/VeiculosPage';
 import { IndicadoresAbaPage } from '@/features/indicadores/pages/IndicadoresAbaPage';
 import { RedirecionaIndicadorLegado } from '@/features/indicadores/pages/RedirecionaIndicadorLegado';
 import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage';
+import { ExamesAConfigurarPage } from '@/features/escopo-exames/pages/ExamesAConfigurarPage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
@@ -199,6 +200,7 @@ export function AppRouter() {
           {/* Compatibilidade com links antigos (aba direto sob /indicadores) */}
           <Route path="indicadores/:aba" element={<RedirecionaIndicadorLegado />} />
           <Route path="equipamentos" element={<EquipamentosPage />} />
+          <Route path="exames-a-configurar" element={<ExamesAConfigurarPage />} />
           <Route path="regulacao/ser" element={<SerFilaPage />} />
           <Route path="regulacao/notificacoes" element={<SerNotificacoesPage />} />
           <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />

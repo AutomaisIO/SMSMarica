@@ -27,6 +27,7 @@ public sealed class SolicitacoesExameService(
     IGeradorIdentificadores geradorIds,
     IDcm4cheeMwlClient mwlClient,
     IResolvedorEstacaoWorklist estacaoWorklist,
+    IEscopoExameUnidade escopoExame,
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
@@ -44,6 +45,7 @@ public sealed class SolicitacoesExameService(
     private readonly IGeradorIdentificadores _geradorIds = geradorIds;
     private readonly IDcm4cheeMwlClient _mwlClient = mwlClient;
     private readonly IResolvedorEstacaoWorklist _estacaoWorklist = estacaoWorklist;
+    private readonly IEscopoExameUnidade _escopoExame = escopoExame;
     private readonly Pacientes.IPacientesService _pacientes = pacientes;
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
@@ -565,7 +567,11 @@ public sealed class SolicitacoesExameService(
         // e não há mais ninguém para perguntar. Nenhum equipamento cadastrado NÃO bloqueia: isso é
         // cadastro de administrador, e travar a recepção deixaria o paciente parado no balcão; o
         // exame é autorizado e o erro "Sem equipamento configurado" aparece no envio.
-        if (s.Status == StatusSolicitacaoExame.Solicitada && (s.TipoExame?.EnviarParaWorklist ?? false))
+        var escopoDaUnidade = s.TipoExameId is { } tipoParaEscopo
+            ? await _escopoExame.ObterAsync(tipoParaEscopo, reg.UnidadeExecutanteId, cancellationToken)
+            : null;
+
+        if (s.Status == StatusSolicitacaoExame.Solicitada && (escopoDaUnidade?.EnviarParaWorklist ?? false))
         {
             var candidatos = await _estacaoWorklist.ListarCandidatosAsync(s, cancellationToken);
 
@@ -610,7 +616,9 @@ public sealed class SolicitacoesExameService(
         }
 
         // Só AGORA enfileira o envio ao PACS (se o tipo envia à worklist e ainda não foi enviado).
-        var impedimento = s.Status == StatusSolicitacaoExame.Solicitada ? ImpedimentoEnvioPacs(s, reg) : null;
+        var impedimento = s.Status == StatusSolicitacaoExame.Solicitada
+            ? await ImpedimentoEnvioPacsAsync(s, reg, cancellationToken)
+            : null;
 
         if (s.Status == StatusSolicitacaoExame.Solicitada)
         {
@@ -638,21 +646,39 @@ public sealed class SolicitacoesExameService(
 
     /// <summary>
     /// Motivo pelo qual um exame autorizado NÃO chegará à worklist — null quando o caminho está
-    /// livre. Cobre os dois furos já vistos em produção, ambos silenciosos: exame importado sem
-    /// TipoExame (código SIGTAP do SISREG não bate com nenhum cadastrado) e tipo com o envio à
-    /// worklist desligado. Nos dois casos o worker nem enxerga a linha — ele filtra por
-    /// <c>TipoExame.EnviarParaWorklist</c>, que é INNER JOIN e descarta quem não tem tipo.
+    /// livre. Cobre os furos já vistos em produção, todos silenciosos: exame importado sem
+    /// TipoExame (código SIGTAP do SISREG não bate com nenhum cadastrado), exame fora do escopo da
+    /// unidade e escopo com o envio desligado. Em todos, o worker nem enxerga a linha.
+    ///
+    /// <para>A pergunta é sempre "esta UNIDADE manda este exame?" — nunca mais "o município
+    /// manda?". O texto diz qual unidade, porque o mesmo tipo pode estar ligado numa e desligado
+    /// noutra de propósito (quem tem aparelho × quem não tem).</para>
     /// </summary>
-    private static string? ImpedimentoEnvioPacs(ExameImagem s, Solicitacao reg)
+    private async Task<string?> ImpedimentoEnvioPacsAsync(
+        ExameImagem s, Solicitacao reg, CancellationToken ct)
     {
         if (s.TipoExameId is null)
             return $"Exame sem tipo mapeado — o procedimento SIGTAP {reg.ProcedimentoSigtapCodigo ?? "(não informado)"} " +
                    $"(\"{reg.ProcedimentoTexto}\") não está vinculado a nenhum tipo de exame. " +
                    "Vincule em Exames de Imagem → Mapeamento SIGTAP para que o exame vá à worklist.";
 
-        if (!(s.TipoExame?.EnviarParaWorklist ?? false))
-            return $"O tipo de exame \"{s.TipoExame?.Nome}\" está com o envio à worklist desligado. " +
-                   "Ligue em Exames de Imagem → Tipos de Exame para que o exame chegue ao equipamento.";
+        var nomeTipo = s.TipoExame?.Nome ?? "(sem nome)";
+        var escopo = await _escopoExame.ObterAsync(s.TipoExameId.Value, reg.UnidadeExecutanteId, ct);
+
+        if (escopo is null)
+        {
+            var unidade = await _db.Unidades.AsNoTracking()
+                .Where(u => u.Id == reg.UnidadeExecutanteId)
+                .Select(u => u.Nome)
+                .FirstOrDefaultAsync(ct) ?? "(unidade não identificada)";
+
+            return $"O exame \"{nomeTipo}\" não está no escopo de {unidade}. " +
+                   "Adicione em Unidades → a unidade → Exames de imagem para que ele chegue ao equipamento.";
+        }
+
+        if (!escopo.EnviarParaWorklist)
+            return $"O exame \"{nomeTipo}\" está com o envio à worklist desligado nesta unidade. " +
+                   "Ligue em Unidades → a unidade → Exames de imagem para que ele chegue ao equipamento.";
 
         return null;
     }
@@ -878,7 +904,7 @@ public sealed class SolicitacoesExameService(
         // com o 260908001 em 08/09/2026: a autorização carimbou o impedimento e abriu o ERRO-KF775R,
         // alguém clicou em Reenviar 15 min depois, o aviso sumiu e o exame ficou parado com
         // tentativas_envio=0. Quem clicou não tinha como saber. Agora recusa dizendo o porquê.
-        if (ImpedimentoEnvioPacs(s, s.Solicitacao!) is { } impedimento)
+        if (await ImpedimentoEnvioPacsAsync(s, s.Solicitacao!, cancellationToken) is { } impedimento)
         {
             throw new ConflitoException("solicitacaoExame.envio_impedido", impedimento);
         }
@@ -1220,11 +1246,15 @@ public sealed class SolicitacoesExameService(
                 $"Não é possível trocar o equipamento de um exame no status '{s.Status}' (já em execução/realizado/cancelado).");
         }
 
-        if (!(s.TipoExame?.EnviarParaWorklist ?? false))
+        var escopoTroca = s.TipoExameId is { } tipoTroca
+            ? await _escopoExame.ObterAsync(tipoTroca, s.Solicitacao!.UnidadeExecutanteId, cancellationToken)
+            : null;
+
+        if (!(escopoTroca?.EnviarParaWorklist ?? false))
         {
             throw new ConflitoException(
                 "solicitacaoExame.sem_worklist",
-                "Este tipo de exame não é enviado à worklist; não há equipamento de destino a trocar.");
+                "Este exame não é enviado à worklist nesta unidade; não há equipamento de destino a trocar.");
         }
 
         // Não fura o gate de autorização: um exame Solicitada que nunca foi autorizado pela recepção

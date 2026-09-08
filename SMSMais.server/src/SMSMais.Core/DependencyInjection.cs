@@ -130,6 +130,7 @@ public static class DependencyInjection
 
         services.Configure<Dcm4cheeMwlOptions>(configuration.GetSection(Dcm4cheeMwlOptions.SecaoConfig));
         services.AddScoped<IResolvedorEstacaoWorklist, ResolvedorEstacaoWorklist>();
+        services.AddScoped<IEscopoExameUnidade, EscopoExameUnidade>();
         var worklistBaseUrl = configuration["Pacs:Dcm4chee:WorklistBaseUrl"]
             ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/WORKLIST/rs/";
         services
@@ -249,6 +250,8 @@ public static class DependencyInjection
         // Equipamento SOBREVIVEU a remocao da agenda local (05/09/2026): ele e recurso de imagem
         // usado por PACS/worklist, nao residuo daquele modulo.
         services.AddScoped<Equipamentos.IEquipamentosService, Equipamentos.EquipamentosService>();
+        services.AddScoped<EscopoExames.IEscopoExamesService, EscopoExames.EscopoExamesService>();
+        services.AddScoped<IBackfillEscopoExameUnidade, BackfillEscopoExameUnidade>();
 
         // ---- Credenciais de provedores OAuth (Microsoft/Facebook/Google), cifradas ----
         services.AddScoped<Integracoes.Credenciais.IIntegracaoCredencialService, Integracoes.Credenciais.IntegracaoCredencialService>();
