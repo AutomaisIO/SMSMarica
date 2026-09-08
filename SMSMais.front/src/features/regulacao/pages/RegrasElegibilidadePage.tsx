@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Loader2, Upload } from 'lucide-react';
+import { BookOpen, Loader2, Plus, Upload } from 'lucide-react';
 
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 
 import { BuscaProcedimento } from '../components/BuscaProcedimento';
+import { FormularioRegra } from '../components/FormularioRegra';
 import { ativarRegra, excluirRegra, importarRegrasCsv, listarRegras } from '../api/regulacaoApi';
 import type { ImportacaoRegrasResultado, RegraElegibilidade } from '../tiposSolicitacao';
 import type { RegulacaoProcedimentoItem } from '../types';
@@ -32,6 +33,7 @@ export function RegrasElegibilidadePage() {
   const [mostrarInativas, setMostrarInativas] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ImportacaoRegrasResultado | null>(null);
+  const [criando, setCriando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
   const regras = useQuery({
@@ -143,14 +145,33 @@ export function RegrasElegibilidadePage() {
               />
               mostrar inativas
             </label>
+            <Button
+              variante="secundaria"
+              className="ml-auto"
+              onClick={() => setCriando((c) => !c)}
+            >
+              <Plus className="size-4" />
+              Nova regra
+            </Button>
           </div>
+
+          {criando && (
+            <FormularioRegra
+              procedimentoId={procedimento.id}
+              aoCancelar={() => setCriando(false)}
+              aoCriar={() => {
+                setCriando(false);
+                invalidar();
+              }}
+            />
+          )}
 
           {regras.isLoading && <p className="text-sm text-slate-500">Carregando…</p>}
 
           {!regras.isLoading && lista.length === 0 && (
             <p className="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-              Nenhuma regra cadastrada para este procedimento. Importe o CSV do manual ou cadastre
-              à mão.
+              Nenhuma regra cadastrada para este procedimento. Importe o CSV do manual ou use
+              “Nova regra”.
             </p>
           )}
 

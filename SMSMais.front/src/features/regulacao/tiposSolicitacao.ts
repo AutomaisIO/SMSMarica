@@ -267,6 +267,31 @@ export type AvaliacaoElegibilidade = {
 
 // ---------------------------------------------------------------- cadastro de regras (4.5)
 
+/** O que o formulário manda ao criar uma regra à mão. */
+export type SalvarRegra = {
+  procedimentoId: string;
+  procedimentoOrigemId: string | null;
+  sistema: SistemaRegulacao | null;
+  tipo: TipoRegraRegulacao;
+  severidade: SeveridadeRegraRegulacao;
+  descricao: string;
+  fonte: string | null;
+  idadeMinAnos: number | null;
+  idadeMaxAnos: number | null;
+  sexo: string | null;
+  exigeCpf: boolean;
+  cidsPermitidos: string[] | null;
+  cidsExcluidos: string[] | null;
+  pergunta: string | null;
+  respostaBloqueia: RespostaRegraRegulacao | null;
+  naoSeiVira: 'Ressalva' | 'Pendencia' | null;
+  documentoRotulo: string | null;
+  tipoExameId: string | null;
+  validadeDias: number | null;
+  obrigatorio: boolean;
+  ordem: number;
+};
+
 export type RegraElegibilidade = {
   id: string;
   procedimentoId: string;

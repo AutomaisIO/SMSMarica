@@ -12,7 +12,11 @@ import type {
   TesteFollowUp,
   TipoProcedimentoRegulacao,
 } from '../types';
-import type { ImportacaoRegrasResultado, RegraElegibilidade } from '../tiposSolicitacao';
+import type {
+  ImportacaoRegrasResultado,
+  RegraElegibilidade,
+  SalvarRegra,
+} from '../tiposSolicitacao';
 
 const base = '/regulacao/procedimentos';
 
@@ -131,6 +135,11 @@ export async function listarRegras(
   const { data } = await http.get<RegraElegibilidade[]>('/regulacao/regras', {
     params: { procedimentoId, inativas },
   });
+  return data;
+}
+
+export async function criarRegra(payload: SalvarRegra): Promise<RegraElegibilidade> {
+  const { data } = await http.post<RegraElegibilidade>('/regulacao/regras', payload);
   return data;
 }
 
