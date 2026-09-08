@@ -246,6 +246,7 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 07/09/2026 | `fecharTelasAntigas: true` | Bernardo | corte às **17:04:08Z**; escrita nos rascunhos SER/SERNIT responde **410**, leitura segue 200 |
 | 07/09/2026 | Push de `748cc68` (4.6) e `102f193`…`7f1f1e8` (parser + formulário + runbook) | Bernardo ("pode commitar e dploy em prod", "seguir com as recomendações") | 4 deploys, todos verdes; OpenAPI de prod em 549 rotas |
 | 07/09/2026 | `importar_regras_manuais.py --gravar` — INSERT de 574 regras em `regulacao_regra` | Bernardo (comando digitado por ele) | **574 gravadas, 0 ativas, 72 procedimentos**. Conferido: nenhuma descrição com aspa solta ou truncada, nenhuma fonte fora de CRECE/REUNI |
+| 08/09/2026 | `ativar_regras.py --ativar` — **as 574 regras ligadas** | Bernardo ("quero que ative todas as regras", risco já apontado duas vezes) | 574 ativas. Impacto medido: **1 procedimento intransitável** (Gastroenterologia), 1 com janela de um ano só (Alergologia Pediatria), 1 sexo inferido errado (Hematologia Oncologia). Média de 5,8 perguntas por procedimento |
 
 ## Desvios do plano
 
@@ -348,6 +349,24 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 08/09/2026 — as 574 regras foram ativadas, a pedido, e o que isso quebrou
+
+Eu tinha apontado o risco duas vezes; o Bernardo decidiu ativar tudo. Ativei e medi o efeito, que é **menor do que eu previa** — mas há três defeitos concretos, todos corrigíveis pela tela em minutos:
+
+| Procedimento | O que acontece | Correção |
+|---|---|---|
+| `CONSULTA EM GASTROENTEROLOGIA` | **intransitável**: as regras somam ≥18 anos **e** ≤2 anos | desativar as duas de refluxo |
+| `CONSULTA EM ALERGOLOGIA - PEDIATRIA` | só aceita quem tem exatamente 2 anos (2–12, 2–12 e "até 2" se cruzam num ponto) | desativar as duas de 2–12 |
+| `Ambulatório 1ª vez - Hematologia (Oncologia)` | **barra todos os homens**: a regra de plaquetas veio marcada como sexo feminino | desativar essa regra |
+
+Das 7 regras de sexo, **6 são legítimas** (pré-natal, ginecologia infertilidade, endocrinologia gestante e doenças do ovário) — só a de plaquetas é inferência errada do extrator.
+
+**Onde eu tinha exagerado:** previ que as faixas etárias alternativas travariam vários procedimentos. Travam **um**. Só dois procedimentos têm mais de uma regra de idade ativa; os outros 18 dedutíveis são regra única e se comportam bem.
+
+**Onde eu tinha razão:** o volume de perguntas. A média (5,8 por procedimento) é aceitável, mas **sete procedimentos passam de 15 perguntas** — Gastroenterologia com 43, Pré-Natal de Alto Risco com 30, Alergologia Pediatria com 26. Esses são os que valem uma passada de curadoria antes de a rede começar a usar.
+
+`ativar_regras.py --desativar` desfaz em bloco, e o desfazer é exato **enquanto ninguém tiver mexido regra a regra pela tela** — depois disso, desligar tudo apagaria a curadoria junto.
 
 ### 07/09/2026 — as regras dos manuais entraram em produção
 
