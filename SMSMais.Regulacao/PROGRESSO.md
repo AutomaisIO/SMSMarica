@@ -249,6 +249,11 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 | Data | Plano | O que mudou e por quê |
 |---|---|---|
+| 07/09/2026 | 03 §D | **O CSV do spike não pode ser importado como está: 288 das 790 importáveis não são regra.** 280 são cacos de uma frase só — "Observar os critérios de inclusão do paciente de acordo com cada prestador" —, que o extrator partiu em três (`Observar os` / `do prestador (unidade executante)` / `de cada prestador e faixa etária`). Importadas, virariam 280 perguntas sem sentido na tela de quem solicita. A triagem ficou em `importar_regras_manuais.py`, que grava direto no banco; o importador da tela não tem como distinguir caco de regra. **Sobram 502 regras limpas em 72 procedimentos**, mais 72 documentais do encaminhamento (uma por procedimento). |
+| 07/09/2026 | 03 §B | **Não existe regra global no schema**: `regulacao_regra.procedimento_id` é obrigatório. A exigência do encaminhamento médico, que os manuais repetem 218 vezes, entra como **uma regra por procedimento**. Tornar `procedimento_id` anulável seria o certo, mas é migration e mudança no avaliador — fica registrado, não improvisado. |
+| 07/09/2026 | 03 §E | **As dedutíveis NÃO podem entrar ativas** — cheguei a recomendar isso e estava errado. O `AvaliadorElegibilidade` soma as regras com E (cada falha barra), e o manual lista faixas etárias como critérios **alternativos**: "Consulta em alergologia - pediatria" tem três (2–12, 2–12 e até 2 anos), e ativadas juntas nenhuma criança passa nas três. Há ainda sexo inferido errado — a regra de plaquetas da hematologia veio marcada como feminina e barraria todos os homens. **Tudo entra inativo.** |
+| 07/09/2026 | 03 §D | **A tela de curadoria não tinha formulário de cadastro** e ainda assim dizia "cadastre à mão" no estado vazio — mandava fazer o que ela não fazia. Criado `FormularioRegra`, com os campos mudando por tipo, e o texto corrigido. Regra criada à mão nasce **ativa**: cadastrá-la já é a decisão de que vale. |
+| 07/09/2026 | 03 §D | **O importador partia as linhas com `Split(';')` e isso estava errado.** 98 das 1.169 linhas do manual vêm entre aspas, porque o texto clínico usa ponto e vírgula; **56 delas seriam importadas** com o critério cortado no primeiro `;` e com o pedaço final do texto ocupando a coluna da **fonte** — a linha que a unidade lê para saber de onde veio a exigência. Trocado por um separador que honra RFC 4180 (aspas, `;` e quebra de linha dentro do campo, `""` literal), com 2 testes. Achado conferindo o CSV contra os PDFs originais, **antes de qualquer importação**. |
 | 07/09/2026 | 09 §C / 06 §6.2 | **O `ClassificadorFollowUp` nasceu na 4.6, não na 6.2.** O plano 09 pede a caixa "testar texto" na tela e a assinatura `ClassificarFollowUpTesteAsync`, que só existe se o classificador existir — e o plano 06 o colocava dois incrementos adiante. Ele veio agora, **puro e estático** (11 testes, 216 ms, sem banco); a 6.2 passa a ser só o consumidor. |
 | 07/09/2026 | 09 §C | **`GET /regulacao/configuracao/followup/semente` não estava no plano.** Sem ele, adotar as regras do spike d significaria alguém digitar à mão oito regex, uma delas com 601 caracteres — na prática, ninguém adotaria e o campo ficaria vazio para sempre. A semente fica em código (`SementeFollowUp`), **não em migration nem em seed de banco** (CLAUDE.md, regra 9), e não é aplicada: a tela a oferece e quem configura decide. |
 | 07/09/2026 | 09 §C | **`vira_pendencia` passou a ser validado** (`contato`, `documento` ou nulo). Não estava no plano porque o plano supunha quatro categorias; com nove, um valor escrito errado viraria, no incremento 6, pendência de um tipo que nenhuma tela trata. |
@@ -341,6 +346,34 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 07/09/2026 — a importação das regras não podia ser feita como estava
+
+Fui montar a importação e a conferência contra os PDFs derrubou três coisas que eu tinha dado por boas.
+
+**1. 288 das 790 "regras importáveis" não são regra.** 280 delas são pedaços de uma frase só, que aparece no fim de quase todo recurso do manual e que o extrator estilhaçou em três linhas. O que parecia "790 regras, menos 13 corrompidas" virou **502 limpas, em 72 procedimentos**.
+
+**2. Não dá para ativar nem as dedutíveis.** Eu tinha recomendado ativar as 20 de idade/sexo, com o argumento de que não perguntam nada ao solicitante. Olhando uma a uma antes de gravar: o motor soma as regras com **E**, e o manual lista faixas etárias como critérios **alternativos**. Três faixas ativas no mesmo procedimento = procedimento intransitável. E havia sexo inferido errado (plaquetas marcadas como femininas). **Tudo entra inativo**; ativar é decisão clínica, uma a uma.
+
+**3. Não existe regra global.** `procedimento_id` é obrigatório, então a exigência do encaminhamento — que os manuais repetem 218 vezes — entra como uma regra por procedimento (72). Anular a coluna seria o certo e fica registrado como pendência.
+
+**Ainda: a tela mandava "cadastrar à mão" sem ter formulário.** Só existia o `POST` pelo `/docs`. Criei o `FormularioRegra`, com os campos mudando conforme o tipo — dedutível olha o cadastro, não-dedutível precisa saber qual resposta barra, documental pede anexo; mostrar os três juntos sugeriria que dá para combinar. O formulário avisa, na cara, que as regras se somam e que faixas alternativas devem virar pergunta, não dedutível — que foi exatamente a armadilha em que eu caí.
+
+`importar_regras_manuais.py` roda em simulação por padrão e recusa gravar se a tabela não estiver vazia (a importação não é idempotente).
+
+### 07/09/2026 — conferência dos manuais CRECE e REUNI contra o CSV do spike e
+
+Antes de importar as 1.169 regras, li os dois PDFs e comparei linha a linha com `revisoes/spike-e-manual-regras.csv`. Resultado em `RUNBOOK-importacao-regras-manuais.md`.
+
+- **Os PDFs em `documantacao/` são bit a bit os mesmos do spike** (mesmo MD5 das cópias em `Automais.SER/documentacao/`; 54 e 44 páginas). Não é preciso reextrair.
+- **A extração é fiel em 1.121 das 1.169 linhas.** Mais 35 trazem um prefixo de subtítulo acrescentado de propósito (`HIPÓFISE:`, `Pacientes apresentando:`) — sem ele "Feocromocitoma" ficaria solto e não se saberia que é critério da supra-renal.
+- **13 linhas estão corrompidas na origem**, em cinco páginas do REUNI: o defeito de colunas intercaladas que o spike dá como resolvido sobreviveu onde o nome do recurso quebrou em cima da régua (`SOS O TEIRO`, `MÃO OU RIAL)`). **Só 2 entrariam** — as outras 11 não têm par no catálogo. Ficam listadas no runbook para exclusão na curadoria.
+- **A atribuição de manual está certa**: nenhuma regra marcada CRECE aparece só no REUNI, nem o inverso.
+- **790 das 1.169 casam com o catálogo de produção de hoje** (999 procedimentos, 560 origens SER/SERNIT) — o mesmo número medido na 4.5, agora reconferido.
+
+**E achei um defeito meu, do importador da 4.5**, descrito nos desvios: `Split(';')` sem olhar aspas quebrava 56 regras importáveis, jogando o final do texto clínico na coluna da fonte. Corrigido com um separador RFC 4180 e 2 testes.
+
+**Também sobrou uma pendência de conteúdo:** a frase "Inserir no SER o encaminhamento médico com a descrição clara e detalhada do caso" aparece **218 vezes** nos manuais; o extrator descartou a maioria como boilerplate, mas **10 escaparam** e virão como se fossem regra do procedimento. O certo é uma regra documental única para todos, cadastrada à mão — está no runbook.
 
 ### 07/09/2026 — incremento 4 CONCLUÍDO, tarefa 4.6 (configurações e o classificador de follow-up)
 
