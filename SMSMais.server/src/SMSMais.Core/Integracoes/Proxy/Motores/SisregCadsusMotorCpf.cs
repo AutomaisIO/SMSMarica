@@ -27,6 +27,15 @@ public sealed class SisregCadsusMotorCpf(IConsultaCnsService cadsus) : IMotorCpf
         {
             throw new MotorNaoEncontrouException(Motor, "CPF não encontrado no cadastro do SUS (CADSUS).");
         }
+        catch (ConflitoException)
+        {
+            // A guarda recusou a ficha: o CADSUS devolveu o cadastro de OUTRO CPF. Não é falha de
+            // fonte — retentar (o que o bloco abaixo provoca) gastaria o orçamento anti-robô para
+            // receber a mesma ficha errada. "Não encontrou" é o veredito honesto e deixa o executor
+            // cair no próximo motor, que é o desfecho certo.
+            throw new MotorNaoEncontrouException(
+                Motor, "CPF não foi validado: o CADSUS devolveu o cadastro de outro CPF.");
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // Sessão caída/SISREG fora do ar/HTML inesperado → transitório: o executor retenta

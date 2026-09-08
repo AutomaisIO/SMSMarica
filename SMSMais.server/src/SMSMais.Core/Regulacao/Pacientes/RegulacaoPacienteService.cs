@@ -105,6 +105,13 @@ public sealed class RegulacaoPacienteService(
             // Não achou é resposta, não falha: o front oferece cadastrar à mão.
             throw;
         }
+        catch (ConflitoException)
+        {
+            // A guarda recusou a ficha (o CADSUS devolveu o cadastro de outro CPF). Cair no bloco
+            // abaixo diria "o CADSUS está fora" e o operador tentaria de novo para sempre, com a
+            // fonte respondendo perfeitamente. A mensagem da guarda é que serve aqui.
+            throw;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException and not ValidacaoException)
         {
             // Citar a porta importa: "o SISREG está fora" e "o SER está fora" levam o operador a

@@ -37,6 +37,7 @@ public sealed class CadastroPacienteRoteador(
         }
 
         return await ConsultarAsync(
+            cns, porCpf: false,
             f => f == FonteCadastroPaciente.Sisreg
                 ? sisreg.ConsultarPorCnsAsync(cns, cancellationToken)
                 : ser.ConsultarPorCnsAsync(cns, cancellationToken),
@@ -46,6 +47,7 @@ public sealed class CadastroPacienteRoteador(
     public Task<ConsultaCnsRespostaDto> ConsultarPorCpfAsync(
         string cpf, CancellationToken cancellationToken = default) =>
         ConsultarAsync(
+            cpf, porCpf: true,
             f => f == FonteCadastroPaciente.Sisreg
                 ? sisreg.ConsultarPorCpfAsync(cpf, cancellationToken)
                 : ser.ConsultarPorCpfAsync(cpf, cancellationToken),
@@ -59,23 +61,32 @@ public sealed class CadastroPacienteRoteador(
         ?? FonteCadastroPaciente.Sisreg;
 
     private async Task<ConsultaCnsRespostaDto> ConsultarAsync(
+        string chave, bool porCpf,
         Func<FonteCadastroPaciente, Task<ConsultaCnsRespostaDto>> consultar,
         CancellationToken cancellationToken)
     {
         var fonte = await FonteAtualAsync(cancellationToken);
 
         if (fonte != FonteCadastroPaciente.SerComFallbackSisreg)
-            return await consultar(fonte);
+            return Conferir(chave, porCpf, await consultar(fonte), fonte);
 
         try
         {
-            return await consultar(FonteCadastroPaciente.Ser);
+            return Conferir(chave, porCpf, await consultar(FonteCadastroPaciente.Ser),
+                            FonteCadastroPaciente.Ser);
         }
         catch (NaoEncontradoException)
         {
             // O SER RESPONDEU: o cidadão não está no CADSUS. Perguntar ao SISREG a mesma coisa
             // gastaria o orçamento anti-robô para ouvir a mesma resposta. O fallback é para falha
             // da fonte, não para ausência do dado.
+            throw;
+        }
+        catch (ConflitoException)
+        {
+            // A guarda de identidade recusou a ficha. Isso é uma RESPOSTA da fonte, não uma falha
+            // dela: cair no SISREG perguntaria a mesma coisa à mesma base nacional, gastando o
+            // orçamento anti-robô para, no melhor caso, ouvir o mesmo. O caso precisa de gente.
             throw;
         }
         catch (OperationCanceledException)
@@ -87,7 +98,46 @@ public sealed class CadastroPacienteRoteador(
             logger.LogWarning(
                 ex, "Cadastro: o SER falhou ({Erro}) — consultando o SISREG (fallback configurado).",
                 ex.Message);
-            return await consultar(FonteCadastroPaciente.Sisreg);
+            return Conferir(chave, porCpf, await consultar(FonteCadastroPaciente.Sisreg),
+                            FonteCadastroPaciente.Sisreg);
         }
+    }
+
+    /// <summary>
+    /// A ficha que voltou é de quem perguntamos? Ver <see cref="GuardaIdentidadeCadastro"/> para o
+    /// porquê da régua ser diferente para CPF e para CNS.
+    /// </summary>
+    private ConsultaCnsRespostaDto Conferir(
+        string chave, bool porCpf, ConsultaCnsRespostaDto resposta, FonteCadastroPaciente fonte)
+    {
+        var devolvido = porCpf ? resposta.Cpf : resposta.Cns;
+
+        switch (GuardaIdentidadeCadastro.Conferir(chave, devolvido, porCpf))
+        {
+            case VeredictoCadastro.TrocaDeIdentidade:
+                // Sem PII no log: o par de identificadores já é suficiente para achar o caso, e o
+                // log da API não é lugar de nome de cidadão.
+                logger.LogError(
+                    "Cadastro: {Fonte} devolveu CPF diferente do perguntado — ficha RECUSADA. "
+                    + "Pedido {Pedido}, devolvido {Devolvido}.",
+                    fonte, chave, devolvido);
+
+                throw new ConflitoException(
+                    "cadastro.identidade_divergente",
+                    "A consulta ao CADSUS devolveu o cadastro de outro CPF. O cadastro não foi "
+                    + "preenchido automaticamente porque pode ser de outra pessoa — confira "
+                    + "manualmente antes de continuar.");
+
+            case VeredictoCadastro.OutroCns:
+                // Não é erro: a pessoa tem mais de um CNS. Fica registrado porque é o sinal que
+                // permite ao hub guardar os dois números (cns_todos) em vez de trocar um pelo outro.
+                logger.LogInformation(
+                    "Cadastro: {Fonte} devolveu outro CNS ({Devolvido}) para o CNS {Pedido} — "
+                    + "mesma pessoa com mais de um número; os dois valem como identificador.",
+                    fonte, devolvido, chave);
+                break;
+        }
+
+        return resposta;
     }
 }
