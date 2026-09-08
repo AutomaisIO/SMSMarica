@@ -229,10 +229,33 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
     /// <para>Preencher aqui custa uma comparação por linha e fecha a classe inteira de falha,
     /// independentemente de quem gravou.</para>
     /// </summary>
+    /// <summary>
+    /// Devolve o recurso completando, a partir da linha, o que o documento gravado não trouxe.
+    ///
+    /// <para>O <c>id</c> entrou aqui depois do incidente de 08/09/2026 (36.257 fichas gravadas sem
+    /// a chave <c>"id"</c> derrubaram <c>/pacientes</c> e o webhook do WhatsApp). O <c>meta</c> é
+    /// a mesma classe de falha, um campo adiante: das mesmas 36.257, <b>36.253 continuam sem
+    /// <c>meta.versionId</c> no documento</b>. Não derruba nada — o ETag só sai no PUT, que sempre
+    /// passa pelo <see cref="CarimbarMeta"/> —, mas quem lê um recurso e o grava de volta não tem
+    /// versão para mandar no <c>If-Match</c>, e a concorrência otimista deixa de existir sem
+    /// avisar. Perda de atualização silenciosa é pior que erro.</para>
+    ///
+    /// <para><b>Só completa o que falta.</b> Documento com <c>meta</c> próprio é preservado: a
+    /// linha é a autoridade sobre versão e instante, não sobre o resto do <c>meta</c>.</para>
+    /// </summary>
     private static Patient LerRecurso(PatientRow row)
     {
         var patient = FhirJson.Parse<Patient>(row.Content);
         if (string.IsNullOrWhiteSpace(patient.Id)) patient.Id = row.Id.ToString();
+
+        patient.Meta ??= new Meta();
+        if (string.IsNullOrWhiteSpace(patient.Meta.VersionId))
+            patient.Meta.VersionId = row.VersionId.ToString();
+        if (patient.Meta.LastUpdated is null)
+            patient.Meta.LastUpdated = row.LastUpdated;
+        if (string.IsNullOrWhiteSpace(patient.Meta.Source))
+            patient.Meta.Source = row.MetaSource;
+
         return patient;
     }
 

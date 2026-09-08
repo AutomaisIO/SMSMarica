@@ -112,4 +112,67 @@ public class RecursoSempreSaiComIdTests(PostgresFhirFixture fixture)
 
         lido.Id.Should().Be(criado.Id);
     }
+
+    [Fact]
+    // Mesma carga, campo adiante: 36.253 das 36.257 fichas ficaram sem `meta.versionId` no
+    // documento. Não derruba leitura — o ETag só sai no PUT —, mas quem lê e grava de volta fica
+    // sem versão para o If-Match, e a concorrência otimista some sem avisar. Perda de atualização
+    // silenciosa é pior que erro.
+    public async Task Ficha_gravada_sem_meta_e_lida_com_a_versao_da_coluna()
+    {
+        await using var db = fixture.CriarContexto();
+        var service = new PatientService(db, TimeProvider.System);
+
+        var id = Guid.NewGuid();
+        var gravadoEm = DateTimeOffset.UtcNow.AddHours(-3);
+        db.Patients.Add(new PatientRow
+        {
+            Id = id,
+            VersionId = 1,
+            LastUpdated = gravadoEm,
+            MetaSource = "https://smsmarica.saude.marica/source/sisreg/implantacao",
+            Nome = "PACIENTE SEM META NO DOCUMENTO",
+            Content = """
+                {"resourceType":"Patient","active":true,
+                 "name":[{"use":"official","text":"PACIENTE SEM META NO DOCUMENTO"}]}
+                """,
+        });
+        await db.SaveChangesAsync();
+
+        var lido = await service.LerAsync(id);
+
+        lido.Meta!.VersionId.Should().Be("1", "sem versão o consumidor não tem o que pôr no If-Match");
+        lido.Meta.LastUpdated.Should().BeCloseTo(gravadoEm, TimeSpan.FromSeconds(1));
+        lido.Meta.Source.Should().Contain("sisreg/implantacao");
+    }
+
+    [Fact]
+    // A linha manda em versão e instante; no resto do meta, o documento é a autoridade. Sobrescrever
+    // o que já veio gravado trocaria um defeito por outro.
+    public async Task Meta_ja_gravado_no_documento_e_preservado()
+    {
+        await using var db = fixture.CriarContexto();
+        var service = new PatientService(db, TimeProvider.System);
+
+        var id = Guid.NewGuid();
+        db.Patients.Add(new PatientRow
+        {
+            Id = id,
+            VersionId = 7,
+            LastUpdated = DateTimeOffset.UtcNow,
+            MetaSource = "https://smsmarica.saude.marica/source/coluna",
+            Nome = "PACIENTE COM META",
+            Content = """
+                {"resourceType":"Patient","active":true,
+                 "name":[{"use":"official","text":"PACIENTE COM META"}],
+                 "meta":{"versionId":"7","source":"https://smsmarica.saude.marica/source/documento"}}
+                """,
+        });
+        await db.SaveChangesAsync();
+
+        var lido = await service.LerAsync(id);
+
+        lido.Meta!.Source.Should().Be("https://smsmarica.saude.marica/source/documento",
+            "o meta do próprio documento não é sobrescrito pela coluna");
+    }
 }

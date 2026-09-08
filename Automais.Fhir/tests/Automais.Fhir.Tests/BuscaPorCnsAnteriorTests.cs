@@ -116,7 +116,10 @@ public class BuscaPorCnsAnteriorTests(PostgresFhirFixture fixture)
         };
         var criado = await service.CriarAsync(paciente);
 
-        var linha = await db.Patients.FindAsync(Guid.Parse(criado.Id));
+        // `criado.Id` é string nullable no modelo do Firely, mas CriarAsync sempre carimba o id.
+        // Afirmar isso aqui tira o CS8604 e, se um dia deixar de valer, o teste diz onde dói.
+        criado.Id.Should().NotBeNullOrWhiteSpace("CriarAsync carimba o id no recurso devolvido");
+        var linha = await db.Patients.FindAsync(Guid.Parse(criado.Id!));
         linha!.Cns.Should().Be(definitivo, "a coluna de busca representa a pessoa HOJE");
         linha.CnsTodos.Should().BeEquivalentTo([definitivo, anterior],
             "mas a lista guarda os dois — o antigo continua sendo chave de busca válida");
