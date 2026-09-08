@@ -888,6 +888,79 @@ LAN física (pode não caber um segundo MK de borda).
   **~2 min**, config íntegra, sem nenhum reflexo reportado. Continua valendo pegar a janela dark
   quando ela existir, mas não é motivo para deixar um MK atrasado indefinidamente.
 
+## 4b. Relé PMM — AD e serviços da Prefeitura quando a perna dela cai
+
+> Padrão completo: **`Telefonia/docs/rele-pmm.md`**. Em produção desde 08/09/2026
+> (Péricles id 1 → CAPS III id 3). Latência medida: **20 ms**.
+
+O v5 devolve **internet** em contingência, mas não devolve **AD, DNS interno nem file server** —
+essas redes só existem do outro lado da perna morta. O relé empresta a perna de outra unidade
+pelo túnel do DC que ambas já têm.
+
+Quatro peças, e **nenhuma rota nova na unidade socorrida**:
+
+| Onde | O quê |
+|---|---|
+| **CCR2116 (DC)** | 2 regras de `forward` (ida **e volta**) acima das de isolamento + rota `10.135.16.0/24 → <tunel do relé>` + `allowed-address` do peer **do relé** |
+| **Relé** | 1 `masquerade src-address=<tunel da socorrida> dst-address=10.135.16.0/24 out-interface=bridge-transparente` |
+| **Socorrida** | `check-gateway=ping` na rota "PMM internas" + regra `FO-RELE-PMM` |
+| **DNS** | nada — o forwarder `pmm-dc` volta a alcançar os DCs sozinho |
+
+🔴 **Nunca alterar o peer da unidade SOCORRIDA no DC.** Ele carrega toda a internet dela durante a
+contingência. Todo o ajuste fica no peer do relé, que por definição não está em contingência.
+
+🔴 **`FO-RELE-PMM` tem de vir ANTES de `FO-INTERNO-A`.** Senão o `accept` de `10.0.0.0/8` ponteia o
+tráfego para o roteador da Prefeitura — que é o que está morto — e ele nem chega na tabela de rotas.
+O comentário começa com `FO-` de propósito: o `FO-tick` já a gerencia sem alteração no motor.
+
+✅ **`check-gateway=ping` dispensa script.** A rota pelo gateway real fica inativa enquanto ele não
+responde e **reativa sozinha** quando o link volta. Auto-cicatrizante nos dois sentidos.
+
+Escolha do relé: menor tráfego, maior uptime, e **`:resolve pmm.local` respondendo** — o Boqueirão
+(id 7) devolve SERVFAIL mesmo com `ether1` viva e por isso não serve.
+
+---
+
+## 4c. Armadilhas provadas em 08/09/2026 (incidente do Péricles)
+
+> Contexto completo: `Telefonia/docs/incidente-pericles-080926.md`.
+> Três destas já estavam escritas no `projeto-base-F3.md` e foram violadas mesmo assim.
+
+🔴 **Alvo de sonda NUNCA pode ser forwarder do `/ip dns`.** O v5 usa rotas `/32` para prender
+`1.1.1.1`/`8.8.8.8`/`9.9.9.10` na perna da Prefeitura. Se esses mesmos IPs estiverem em
+`/ip dns servers`, o resolver do MK fica com **zero servidores alcançáveis** em contingência — e
+como o MK sequestra o `:53` de todos os clientes, a unidade inteira fica "sem internet" com a
+internet funcionando. Usar `1.0.0.1`, `8.8.4.4`, `9.9.9.9` como forwarders. (`projeto-base-F3.md:557`
+já avisava.)
+
+🔴 **`/ip dhcp-client set [find interface=<CONNECT>] default-route-distance=2`** — obrigatório.
+Com `distance=1` ela empata com a rota FO via EVEO e o RouterOS forma **ECMP**: metade das conexões
+sai pela Connect **sem NAT** (o masquerade é `out-interface=wg-eveo`) e morre em `syn-sent`.
+Sintoma: "às vezes abre, às vezes não". (`projeto-base-F3.md:530` e `:692`.)
+
+🔴 **Zona AD por forwarder dedicado**, não por lista chapada:
+`/ip dns forwarders add name=pmm-dc dns-servers=<DCs>` + `static type=FWD name=pmm.local
+match-subdomain=yes forward-to=pmm-dc` + os reversos. (`projeto-base-F3.md:571-574`.)
+
+🔴 **Capturar `:53` em UDP **e** TCP.** O Péricles só tinha a regra UDP.
+
+🔴 **`authoritative` e `delay-threshold` NÃO existem em `/ip dhcp-server` no RouterOS 7.23.2** — o
+`get` devolve vazio e o `set` não erra. Um `FO-tick` que tentava reconciliá-las reescrevia a config
+do DHCP **a cada 5 s**: log do MK reduzido a 4 minutos e 1,23 setor/s de escrita em flash num hEX
+de 16 MB. Não tocar nessas propriedades.
+
+🔴 **`find` com CIDR sem aspas falha EM SILÊNCIO.**
+`/ip dhcp-server network set [find address=10.1.19.0/24] ...` retorna sem erro e **não muda nada**.
+Usar `find address="10.1.19.0/24"` (com aspas) ou o índice — e **sempre conferir com `print`**.
+
+⚠️ **Um MK que some não prova que o último comando o derrubou** — conferir `uptime` e o log de link
+antes de assumir culpa (lição de 02/09, reconfirmada).
+
+⚠️ **Publicar script no MK exige SFTP.** Inline pelo SSH o RouterOS junta tudo numa linha e quebra
+`:foreach`/`:local`. Enviar o `.rsc` por SFTP e usar
+`/system script set [find name=X] source=[/file get "arquivo.rsc" contents]`, depois rodar
+`/system script run X` manualmente **antes** de deixar o scheduler assumir.
+
 ## 5. Blindagem de segurança (hardening)
 
 Modelo de confiança: **Prefeitura ($UP/LAN) = confiável; Connect ($CONN) = NÃO confiável**
@@ -966,5 +1039,7 @@ unidade** e joga o problema no lado do automais.io. No SRT I o `wg-voip` estava 
 - `Telefonia/registro/unidades.csv`: `mk_pubkey`, `mk_lan_atual`, `status=ATIVA`,
   **`mk_mac` (MAC da etiqueta, sem separadores)** e **`mk_senha_etiqueta`** — o MAC da
   etiqueta é a referência única do aparelho em toda a documentação.
+- **`rele_pmm` / `rele_de`** — o par do relé PMM (§4b). É o modelo de dependência
+  declarado: quem socorre quem. Sem isso não dá para alertar "o relé caiu junto com a unidade".
 - Doc da unidade em `Infraestrutura/<Unidade>/` (rede + migração + failover), espelhando o Complexo.
 - Atualizar memória `project_telefonia_vpn_wireguard` com o estado da unidade.

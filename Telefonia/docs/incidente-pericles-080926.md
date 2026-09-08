@@ -137,21 +137,31 @@ um `set` que usa `find` com valor CIDR.
 
 1. 🔴 **`ether1` sem link há 54 h** — causa raiz, física. Chamado para a Prefeitura / visita.
    Enquanto isso a unidade depende inteiramente da Connect + túnel do DC.
-2. 🔴 **`FO-tick` ainda com o loop de escrita.** A versão corrigida está em
-   `docs/failover-v5/fo-tick-pericles.rsc` (bloco `authoritative` removido; regex do redirect DNS
-   passou de `"FO dns udp"` para `"FO dns"`, cobrindo a regra TCP nova). **Falta publicar** —
-   exige SFTP + `/system script set FO-tick source=[/file get "fo-tick.rsc" contents]`
-   (inline pelo SSH o RouterOS junta as linhas e quebra os `:foreach`/`:local`).
-   Enquanto não for publicado, a regra `FO dns tcp` não é gerenciada pelo tick e **ficará ligada
-   quando a `ether1` voltar** — efeito benigno (DNS-over-TCP dos clientes respondido pelo MK, que
-   agora resolve `pmm.local` corretamente pelos forwarders), mas fora do desenho.
+2. ✅ **`FO-tick` corrigido e publicado** (08/09 ~13:38). Bloco `authoritative` removido; regex do
+   redirect DNS passou de `"FO dns udp"` para `"FO dns"`, cobrindo a regra TCP nova. Publicado por
+   SFTP + `/system script set FO-tick source=[/file get "fo-tick.rsc" contents]` — inline pelo SSH
+   o RouterOS junta as linhas e quebra os `:foreach`/`:local`. Rodado manualmente antes de deixar o
+   scheduler assumir; estado preservado (`emFO=true`, DHCP ligado, rota FO ativa).
+   **Efeito medido em 90 s:** escrita em flash caiu de **1,23 para 0,055 setor/s** (22× menos) e o
+   buffer de log passou a cobrir **74 minutos** em vez de 4.
 3. 🟡 **Vazamento `10.1.19.0/24 → 192.168.0.0/24`** (LAN compartilhada da Connect) — sem regra de
    bloqueio ainda.
 4. 🟡 **`lease-time=8h` no DHCP de retaguarda.** O F3 (`:281`) pede `10m`, para os hosts voltarem
    ao IPAM da PMM logo após a recuperação. **Deliberadamente não alterado** durante a contingência
    ativa: um lease longo é mais seguro enquanto o link primário está fora. Revisar quando voltar.
-5. 🟡 **`:resolve pmm.local` devolve SERVFAIL** — correto e esperado hoje (os DCs estão atrás da
-   `ether1`). Deve voltar a resolver sozinho quando o link retornar, pelos forwarders do item 6.
+5. ✅ **`pmm.local` voltou a resolver** — não por causa do link, mas porque construímos o **relé
+   PMM** no mesmo dia: os DCs passaram a ser alcançáveis pelo túnel do DC via CAPS III. Ver
+   [`rele-pmm.md`](rele-pmm.md). `:resolve pmm.local → 10.135.16.18`, e um cliente do Péricles já
+   com sessão TCP estabelecida contra um host da Prefeitura.
+
+## Sequência do dia
+
+| Hora | O quê |
+|---|---|
+| ~12:30 | PINs de endpoint, DNS corrigido, ECMP eliminado — **internet volta** |
+| ~12:50 | Forwarders FWD, captura DNS em TCP, escopo do DHCP |
+| ~13:20 | Relé PMM: exceção no CCR2116 + masquerade no CAPS III + `check-gateway` no Péricles — **AD volta** |
+| ~13:38 | `FO-tick` corrigido publicado — loop de escrita em flash morre |
 
 ## O que isto implica para o resto da frota
 
