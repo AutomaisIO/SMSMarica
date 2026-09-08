@@ -111,7 +111,20 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         if (!string.IsNullOrWhiteSpace(filtro.Cpf))
             query = query.Where(p => p.Cpf == filtro.Cpf);
         if (!string.IsNullOrWhiteSpace(filtro.Cns))
-            query = query.Where(p => p.Cns == filtro.Cns);
+        {
+            // Procura entre TODOS os CNS, nao so o oficial: quem busca pelo numero antigo -- uma
+            // solicitacao ja gravada, uma carga do SISREG com o provisorio -- tem de achar a
+            // pessoa. Sem isso ela parece nao existir e o chamador cria uma ficha nova.
+            //
+            // `Any(... Contains ...)` de proposito, e nao `CnsTodos.Contains(x)`: o segundo gera
+            // `x = ANY(cns_todos)`, que o GIN NAO atende -- medido em producao com 344 mil linhas,
+            // dava Parallel Seq Scan. Esta forma gera o operador `&&` (overlaps), que usa o indice
+            // (Bitmap Index Scan). A diferenca importa porque esta busca roda uma vez por paciente
+            // durante a importacao.
+            var procurado = new[] { filtro.Cns! };
+            query = query.Where(p => p.Cns == filtro.Cns
+                || (p.CnsTodos != null && p.CnsTodos.Any(c => procurado.Contains(c))));
+        }
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
             // Insensível a acento E case: unaccent() (extensão, provisionada pela migration do
             // SMSMais.server no mesmo banco) normaliza os dois lados; o ILIKE cuida do case.
@@ -215,7 +228,8 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
     private static void ExtrairSearchParams(PatientRow row, Patient patient)
     {
         row.Cpf = ValorIdentifier(patient, FhirSystems.Cpf);
-        row.Cns = ValorIdentifier(patient, FhirSystems.Cns);
+        row.Cns = CnsOficial(patient);
+        row.CnsTodos = TodosOsCns(patient);
         row.Nome = patient.Name.FirstOrDefault(n => n.Use == HumanName.NameUse.Official)?.Text
                    ?? patient.Name.FirstOrDefault()?.Text;
         row.Telefone = ExtrairTelefones(patient);
@@ -224,6 +238,39 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
     private static string? ValorIdentifier(Patient patient, string system) =>
         patient.Identifier.FirstOrDefault(i => i.System == system)?.Value;
+
+    /// <summary>
+    /// O CNS que representa a pessoa HOJE: o marcado <c>use=official</c> e, na falta dele, o
+    /// primeiro que nao esteja marcado como <c>old</c>.
+    ///
+    /// <para>A ordem importa quando o paciente tem mais de um: sem a preferencia pelo oficial, um
+    /// CNS antigo gravado antes ficaria na coluna e a ficha apareceria pelo numero que ja nao vale.</para>
+    /// </summary>
+    private static string? CnsOficial(Patient patient)
+    {
+        var cns = patient.Identifier.Where(i => i.System == FhirSystems.Cns).ToList();
+        return (cns.FirstOrDefault(i => i.Use == Identifier.IdentifierUse.Official)
+                ?? cns.FirstOrDefault(i => i.Use != Identifier.IdentifierUse.Old)
+                ?? cns.FirstOrDefault())?.Value;
+    }
+
+    /// <summary>
+    /// TODOS os CNS, separados por espaco — inclusive os que ja nao sao oficiais.
+    ///
+    /// <para>Um CNS antigo continua sendo chave de busca legitima: o legado (solicitacao, exame,
+    /// laudo) aponta para ele, e a proxima carga do SISREG pode trazer o numero velho. Sem isto, a
+    /// pessoa "some" quando procurada pelo identificador anterior e vira ficha duplicada.</para>
+    /// </summary>
+    private static string[]? TodosOsCns(Patient patient)
+    {
+        var todos = patient.Identifier
+            .Where(i => i.System == FhirSystems.Cns)
+            .Select(i => Digitos(i.Value))
+            .Where(d => d.Length > 0)
+            .Distinct()
+            .ToArray();
+        return todos.Length == 0 ? null : todos;
+    }
 
     /// <summary>Dígitos de todos os telefones (telecom[system=phone]), juntos por espaço.</summary>
     private static string? ExtrairTelefones(Patient patient)

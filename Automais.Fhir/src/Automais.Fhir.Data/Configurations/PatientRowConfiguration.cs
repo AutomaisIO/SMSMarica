@@ -24,6 +24,11 @@ public sealed class PatientRowConfiguration : IEntityTypeConfiguration<PatientRo
         // Search params extraídos do documento.
         builder.Property(p => p.Cpf).HasColumnName("cpf").HasMaxLength(11);
         builder.Property(p => p.Cns).HasColumnName("cns").HasMaxLength(15);
+
+        // text[] em vez de texto concatenado: a busca aqui e por CNS INTEIRO, entao igualdade
+        // exata indexada (GIN) bate LIKE '%...%' com folga -- e nao exige pg_trgm, que nao esta
+        // instalado neste banco.
+        builder.Property(p => p.CnsTodos).HasColumnName("cns_todos");
         builder.Property(p => p.Nome).HasColumnName("nome").HasMaxLength(300);
         builder.Property(p => p.Telefone).HasColumnName("telefone").HasMaxLength(400);
         builder.Property(p => p.Nascimento).HasColumnName("nascimento");
@@ -32,6 +37,7 @@ public sealed class PatientRowConfiguration : IEntityTypeConfiguration<PatientRo
         builder.HasIndex(p => p.Cns).HasFilter("cns IS NOT NULL");
         builder.HasIndex(p => p.Nome);
         builder.HasIndex(p => p.Telefone);
+        builder.HasIndex(p => p.CnsTodos).HasMethod("gin");
         builder.HasIndex(p => p.MetaSource);
     }
 }
