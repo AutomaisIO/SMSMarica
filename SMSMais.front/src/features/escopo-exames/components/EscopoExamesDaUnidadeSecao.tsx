@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
@@ -15,7 +15,6 @@ import {
 } from '@/features/escopo-exames/api/queries';
 import type { EscopoExameItem } from '@/features/escopo-exames/types';
 import { ModalAdicionarExameAoEscopo } from '@/features/escopo-exames/components/ModalAdicionarExameAoEscopo';
-import { SituacaoBadge } from '@/features/escopo-exames/components/SituacaoBadge';
 
 type Props = { unidadeId: string; podeEditar?: boolean };
 
@@ -26,13 +25,13 @@ type Props = { unidadeId: string; podeEditar?: boolean };
  * no cadastro GLOBAL do tipo de exame: uma decisão de unidade morando na tela do município, que não
  * conseguia valer `false` para quem não tem aparelho e `true` para quem tem.
  *
- * Compartilhada entre a aba do detalhe da unidade e a página `/app/escopo-exames`, que abre na
- * unidade ativa — mesmo padrão de `EquipamentosDaUnidadeSecao`.
+ * **Não há aviso de pendência aqui.** Exame desligado é decisão da unidade, não cadastro pela
+ * metade: no CDT, ecocardiograma e ecodoppler não devem ir à worklist. A primeira versão marcava
+ * 40 linhas de lá como "a configurar" — quarenta alarmes falsos ensinam a ignorar a tela.
  */
 export function EscopoExamesDaUnidadeSecao({ unidadeId, podeEditar = true }: Props) {
   const [incluirInativos, setIncluirInativos] = useState(false);
   const [busca, setBusca] = useState('');
-  const [soPendentes, setSoPendentes] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [paraRemover, setParaRemover] = useState<EscopoExameItem | null>(null);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
@@ -43,19 +42,17 @@ export function EscopoExamesDaUnidadeSecao({ unidadeId, podeEditar = true }: Pro
   const remover = useRemoverEscopo();
 
   const itens = lista.data ?? [];
-  const pendentes = itens.filter((i) => i.situacao !== 'Configurado').length;
 
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return itens.filter((i) => {
-      if (soPendentes && i.situacao === 'Configurado') return false;
       if (!termo) return true;
       return (
         i.tipoExameNome.toLowerCase().includes(termo) ||
         (i.codigoSisreg ?? '').toLowerCase().includes(termo)
       );
     });
-  }, [itens, busca, soPendentes]);
+  }, [itens, busca]);
 
   function salvar(item: EscopoExameItem, mudanca: Partial<EscopoExameItem>) {
     setErroAcao(null);
@@ -104,9 +101,14 @@ export function EscopoExamesDaUnidadeSecao({ unidadeId, podeEditar = true }: Pro
       chave: 'equipamento',
       cabecalho: 'Aparelho de destino',
       render: (i) => {
-        // Só os aparelhos DESTA unidade — é o que impede mandar exame daqui para a máquina de
-        // outra. O backend valida de novo; o select não é a trava.
-        const opcoes = (equipamentos.data ?? []).filter((e) => e.ativo && e.identificadorDicom);
+        // Só os aparelhos DESTA unidade E da modalidade DESTE exame. A unidade é o que impede
+        // mandar exame daqui para a máquina de outra (o backend valida de novo); a modalidade é o
+        // que impede oferecer o mamógrafo para uma radiografia de tórax. Lista vazia aqui costuma
+        // ser sintoma de modalidade errada no cadastro do tipo — foi assim que cinco radiografias
+        // ficaram marcadas como MG.
+        const opcoes = (equipamentos.data ?? []).filter(
+          (e) => e.ativo && e.identificadorDicom && e.modalidadeDicom === i.modalidadeDicom,
+        );
         return (
           <Select
             aria-label={`Aparelho de destino de ${i.tipoExameNome}`}
@@ -146,11 +148,6 @@ export function EscopoExamesDaUnidadeSecao({ unidadeId, podeEditar = true }: Pro
       ),
     },
     {
-      chave: 'situacao',
-      cabecalho: 'Situação',
-      render: (i) => <SituacaoBadge situacao={i.situacao} compativeis={i.equipamentosCompativeis} />,
-    },
-    {
       chave: 'acoes',
       cabecalho: 'Ações',
       className: 'text-right',
@@ -170,25 +167,6 @@ export function EscopoExamesDaUnidadeSecao({ unidadeId, podeEditar = true }: Pro
 
   return (
     <div className="space-y-4">
-      {pendentes > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>
-            <strong>
-              {pendentes} {pendentes === 1 ? 'exame' : 'exames'} a configurar.
-            </strong>{' '}
-            Enquanto não enviam à worklist, não chegam ao aparelho.
-          </span>
-          <button
-            type="button"
-            className="ml-auto font-semibold text-red-700 hover:underline"
-            onClick={() => setSoPendentes((v) => !v)}
-          >
-            {soPendentes ? 'Ver todos' : 'Ver só estes'}
-          </button>
-        </div>
-      ) : null}
-
       {erroAcao ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {erroAcao}

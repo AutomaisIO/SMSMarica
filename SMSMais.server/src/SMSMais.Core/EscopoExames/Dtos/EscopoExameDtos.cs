@@ -3,12 +3,19 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.EscopoExames.Dtos;
 
 /// <summary>
-/// Uma linha da aba "Exames de imagem" da unidade. Traz o suficiente para a tela decidir sem
-/// segunda chamada: o que é o exame, para onde vai e o que falta configurar.
+/// Uma linha da aba "Exames de imagem" da unidade: o que é o exame, se vai à worklist daqui e para
+/// qual aparelho.
+///
+/// <para><b>Não existe "situação pendente" aqui, de propósito.</b> Um exame desligado é uma decisão
+/// legítima da unidade — no CDT, os ecocardiogramas e ecodopplers não devem ir à worklist —, não um
+/// cadastro pela metade. A primeira versão marcava 40 linhas do CDT como "a configurar" e
+/// transformava configuração correta em alarme; quarenta alarmes falsos ensinam a ignorar a tela.
+/// Deixar o destino em branco também é legítimo: com mais de um aparelho na modalidade, quem
+/// escolhe a sala é a recepção, na autorização.</para>
 /// </summary>
-/// <param name="Situacao">
-/// Resumo pronto para o operador: <c>Configurado</c>, <c>ADefinir</c> (worklist ligada e sem
-/// destino, com mais de um aparelho possível) ou <c>Desligado</c>.
+/// <param name="EquipamentosCompativeis">
+/// Aparelhos ativos da unidade que atendem a modalidade deste exame. A tela usa para dizer se o
+/// destino será deduzido (um) ou escolhido pela recepção (mais de um).
 /// </param>
 public sealed record EscopoExameItemDto(
     Guid Id,
@@ -23,21 +30,7 @@ public sealed record EscopoExameItemDto(
     string? EquipamentoNome,
     string? EquipamentoAeTitle,
     int EquipamentosCompativeis,
-    bool Ativo,
-    SituacaoEscopoExame Situacao);
-
-/// <summary>Como a tela pinta a linha. Derivado, nunca gravado.</summary>
-public enum SituacaoEscopoExame
-{
-    /// <summary>Não envia à worklist nesta unidade — estado de quem acabou de chegar pela importação.</summary>
-    Desligado = 0,
-
-    /// <summary>Envia e o destino está resolvido (amarrado ou dedutível sem ambiguidade).</summary>
-    Configurado = 1,
-
-    /// <summary>Envia, mas o destino depende de escolha: nenhum aparelho compatível, ou mais de um.</summary>
-    ADefinir = 2,
-}
+    bool Ativo);
 
 public sealed record AdicionarEscopoExameRequest(
     Guid TipoExameId,
@@ -49,15 +42,3 @@ public sealed record AtualizarEscopoExameRequest(
     bool EnviarParaWorklist,
     Guid? EquipamentoId,
     bool Ativo = true);
-
-/// <summary>Uma linha do painel "Exames a configurar" — a fila de trabalho.</summary>
-public sealed record PendenciaEscopoExameDto(
-    Guid Id,
-    Guid UnidadeId,
-    string UnidadeNome,
-    Guid TipoExameId,
-    string TipoExameNome,
-    ModalidadeDicom ModalidadeDicom,
-    SituacaoEscopoExame Situacao,
-    string OQueFalta,
-    int ExamesParados);

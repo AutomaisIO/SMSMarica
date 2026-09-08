@@ -72,8 +72,16 @@ recepção quando a resposta é fixa (os dois ultrassons do CDT).
 
 Procedimento novo entra no escopo da unidade que o importou **automaticamente**, `ativo` e
 **desligado**, sem equipamento. Ligar e amarrar o aparelho são decisão de quem conhece a operação.
-A associação desligada **é** a fila de trabalho da tela "Exames a configurar" — antes, ninguém
-sabia que faltava configurar até um paciente estar no balcão.
+
+**Desligado não é pendência.** Corrigido em 08/09, no mesmo dia, depois de ver a tela com dados
+reais: o CDT tem 48 exames no escopo e 40 desligados — ecocardiogramas, ecodopplers e afins que
+**não devem** ir à worklist. A primeira versão marcava esses 40 como "a configurar" e trazia um
+painel de pendências; quarenta alarmes falsos ensinam a ignorar a tela. Não há aviso de pendência,
+não há coluna de situação e não existe painel de "exames a configurar". O que está desligado está
+como tem de estar.
+
+Pela mesma razão, **deixar o destino em branco é legítimo**: com mais de um aparelho na modalidade,
+quem escolhe a sala é a recepção, na autorização — que é o comportamento correto e já existia.
 
 ### 6. Backfill fora da migration
 
@@ -93,9 +101,11 @@ posterior.
 - A configuração ganha lugar próprio na **unidade** (aba "Exames de imagem"), que é como a operação
   pensa. O toggle "Integração PACS" sai do cadastro global — era decisão de unidade morando na tela
   do município.
-- O trabalho de configuração é finito e pequeno: 62 pares hoje.
 - Uma tela só edita (a aba da unidade), seguindo o precedente do mapeamento SISREG, que foi
   aposentado como página standalone justamente para não ter dois lugares editando a mesma coisa.
+- O select de aparelho oferece só os da unidade **e da modalidade do exame**. Lista vazia ali é
+  sintoma útil: costuma ser modalidade errada no cadastro do tipo, que foi como cinco radiografias
+  de tórax acabaram marcadas como `MG`.
 
 ## Alternativas consideradas
 

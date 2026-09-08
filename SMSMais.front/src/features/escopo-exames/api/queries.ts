@@ -3,7 +3,6 @@ import {
   adicionarEscopo,
   atualizarEscopo,
   listarEscopoDaUnidade,
-  listarPendenciasEscopo,
   listarUnidadesDoTipo,
   removerEscopo,
   rodarBackfillEscopo,
@@ -18,8 +17,6 @@ export const escopoExamesKeys = {
   daUnidade: (unidadeId: string, incluirInativos?: boolean) =>
     ['escopo-exames', 'unidade', unidadeId, { incluirInativos: !!incluirInativos }] as const,
   doTipo: (tipoExameId: string) => ['escopo-exames', 'tipo', tipoExameId] as const,
-  pendencias: (unidadeId?: string) =>
-    ['escopo-exames', 'pendencias', { unidadeId: unidadeId ?? null }] as const,
 };
 
 export function useEscopoDaUnidade(unidadeId: string, incluirInativos = false) {
@@ -38,12 +35,6 @@ export function useUnidadesDoTipo(tipoExameId: string) {
   });
 }
 
-export function usePendenciasEscopo(unidadeId?: string) {
-  return useQuery({
-    queryKey: escopoExamesKeys.pendencias(unidadeId),
-    queryFn: () => listarPendenciasEscopo(unidadeId),
-  });
-}
 
 export function useAdicionarEscopo() {
   const client = useQueryClient();

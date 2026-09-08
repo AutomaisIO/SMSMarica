@@ -36,18 +36,6 @@ public sealed class EscopoExamesController(
         Guid tipoExameId, CancellationToken cancellationToken) =>
         await service.ListarDoTipoAsync(tipoExameId, cancellationToken);
 
-    /// <summary>
-    /// A fila de trabalho: exames no escopo de unidades COM aparelho que ainda não enviam ou não
-    /// têm destino. Unidade sem equipamento fica fora — cobrar destino de quem não tem máquina
-    /// seria ruído.
-    /// </summary>
-    [HttpGet("pendencias")]
-    [RequerPermissao(ModuloPermissao.TiposExame, AcoesPermissao.Consulta)]
-    [ProducesResponseType<IReadOnlyList<PendenciaEscopoExameDto>>(StatusCodes.Status200OK)]
-    public async Task<IReadOnlyList<PendenciaEscopoExameDto>> ListarPendencias(
-        [FromQuery] Guid? unidadeId, CancellationToken cancellationToken) =>
-        await service.ListarPendenciasAsync(unidadeId, cancellationToken);
-
     [HttpPost]
     [RequerPermissao(ModuloPermissao.TiposExame, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]

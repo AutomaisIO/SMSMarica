@@ -3,7 +3,6 @@ import type {
   AdicionarEscopoPayload,
   AtualizarEscopoPayload,
   EscopoExameItem,
-  PendenciaEscopoExame,
   ResultadoBackfillEscopo,
 } from '@/features/escopo-exames/types';
 
@@ -27,12 +26,6 @@ export async function listarUnidadesDoTipo(tipoExameId: string): Promise<EscopoE
   return data;
 }
 
-export async function listarPendenciasEscopo(unidadeId?: string): Promise<PendenciaEscopoExame[]> {
-  const { data } = await http.get<PendenciaEscopoExame[]>('/escopo-exames/pendencias', {
-    params: { unidadeId: unidadeId || undefined },
-  });
-  return data;
-}
 
 export async function adicionarEscopo(payload: AdicionarEscopoPayload): Promise<string> {
   const { data } = await http.post<string>('/escopo-exames', {

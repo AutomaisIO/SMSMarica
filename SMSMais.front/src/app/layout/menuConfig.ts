@@ -426,13 +426,6 @@ export const SECOES: SecaoMenu[] = [
         descricao: 'Modalidades, unidade e AE Title da worklist.',
       },
       {
-        rotulo: 'Exames a configurar',
-        to: '/app/exames-a-configurar',
-        icone: ScanLine,
-        modulo: 'TiposExame',
-        descricao: 'Exames que a unidade executa e ainda não chegam ao aparelho.',
-      },
-      {
         rotulo: 'Relatórios e Estatísticas',
         to: '/app/relatorios-imagem',
         icone: BarChart3,
