@@ -10,7 +10,7 @@ Este é o **padrão do projeto**. Consolidado a partir da migração do Complexo
 `Telefonia/docs/plano-enderecamento.md`, `servidor-wireguard-hub.md`, `mikrotik-unidade.md`;
 scripts `Telefonia/scripts/mikrotik-gen.sh` e `hub-add-unidade.sh`; registro
 `Telefonia/registro/unidades.csv`. Exemplo real documentado em
-`Infraestrutura/Complexo de Regulacao/` (migração + failover).
+`Telefonia/docs/failover-v5/` (projeto, export, scripts e análises).
 
 > **Regra de manutenção:** mudou algo no procedimento → atualize ESTA skill, a doc em
 > `Telefonia/docs/` e o `unidades.csv`. A skill e a doc andam juntas.
@@ -22,7 +22,7 @@ scripts `Telefonia/scripts/mikrotik-gen.sh` e `hub-add-unidade.sh`; registro
    portas fixa abaixo). Se for OUTRO modelo (CCR do Complexo, RB antigo), aí sim perguntar as
    portas. **A checagem de versão é obrigatória em TODO MK — ver §0.1 logo abaixo.**
 3. **Dados L3 da LAN da unidade** (levantar com sniffer se não souber — ver skill de
-   levantamento / `Infraestrutura/Complexo de Regulacao/README.md`):
+   levantamento / `Telefonia/docs/failover-v5/README.md`):
    - Sub-rede da LAN (ex.: `10.3.74.0/24`), **gateway real** (ex.: `10.3.74.1`),
      e **IP que o MK assume na LAN** (ex.: `10.3.74.254`, herdado do MK antigo).
 
@@ -436,6 +436,69 @@ mostrando os 3 links verdes. Piloto natural: Complexo Regulador (3 links reais).
 
 ## 4. Failover de internet pela Connect (detecção v2 em camadas + DHCP de contingência)
 
+> 🔴 **SUPERADO PELO v5 (02/09/2026) — leia `Telefonia/docs/failover-v5/README.md` ANTES de usar esta seção.**
+>
+> O desenho descrito abaixo (v2/v3/v4) **falhou em produção em 02/09/2026**: a internet da Prefeitura
+> caiu **acima do gateway** e o failover não entrou, porque as três camadas de detecção só medem o
+> enlace local (porta up, contador de pacotes, ping ao gateway). Naquele dia: porta ON, 39.035 pacotes
+> em 5 s e o gateway respondendo — enquanto `ping 8.8.8.8` dava 100 % de perda.
+>
+> Pior, a comutação por **takeover do IP do gateway** é estruturalmente quebrada: possuir o IP do
+> gateway deixa o MK **surdo** ao roteador real (o kernel descarta pacotes com origem local como
+> *martian* e não responde ARP cujo sender é IP local). Por isso o takeover só "funciona" com a porta
+> da Prefeitura desabilitada, e é a causa do "uma parte funciona, outra não, e oscila".
+>
+> **O que o v5 faz no lugar:** o MK **nunca** assume o IP do gateway — intercepta em L2 os quadros que
+> os clientes já endereçam ao **MAC do roteador da Prefeitura** (`bridge nat action=redirect`) e
+> responde ARP com **o MAC deles** (`arp-reply`). Convergência 0 s. Detecção por **sonda de internet
+> fim-a-fim pela perna da Prefeitura** (ICMP + TCP + DNS externo pelo DC), volta com **2 min** de
+> estabilidade, estado ancorado em objeto de configuração (não em variável de RAM). Validado em
+> produção no Complexo em 02/09, ida e volta, sem derrubar a unidade.
+>
+> Esta seção fica como **referência histórica** e porque 10 das 12 unidades ainda rodam o v2 —
+> ver o estado real em `Telefonia/docs/frota-check-020926.md`.
+
+### §4b. PMTU e MSS por link de saída — OBRIGATÓRIO em todo link que não seja o da Prefeitura
+
+**Regra de ouro: "o link está instável" é hipótese PROIBIDA enquanto o teste de DF não tiver sido feito.**
+
+Descoberto no Complexo em 02/09: a "instabilidade da Connect" era **buraco negro de PMTU** — o caminho
+tem PMTU **1480**, pacotes de 1484+ somem em silêncio e o ICMP *fragmentation needed* não volta. Ping
+pequeno dá 0 % de perda e os contadores da porta ficam limpos, então o link *parece* perfeito.
+
+```
+# medir (size= no RouterOS e o pacote IP TOTAL, nao o payload)
+/ping 8.8.8.8 size=1500 do-not-fragment count=2 interface=<link>   # falha
+/ping 8.8.8.8 size=1480 do-not-fragment count=2 interface=<link>   # passa -> PMTU=1480
+/ping <gw do link> size=1500 do-not-fragment count=2               # controle: CPE aceita 1500
+
+# corrigir (os DOIS mecanismos)
+/interface ethernet set <link> mtu=<PMTU>
+/ip firewall mangle add chain=forward protocol=tcp tcp-flags=syn out-interface=<link> \
+    tcp-mss=<PMTU-39>-65535 action=change-mss new-mss=<PMTU-40> comment="MSS clamp <link> (PMTU <v> medido <data>)"
+/ip firewall mangle add chain=forward protocol=tcp tcp-flags=syn in-interface=<link> \
+    tcp-mss=<PMTU-39>-65535 action=change-mss new-mss=<PMTU-40> comment="MSS clamp <link> in"
+```
+
+Túnel WireGuard sobre o link: **`MTU_WG + 60 ≤ PMTU`**. Com PMTU 1480 o padrão 1420 fica com margem
+zero — considerar 1380. Registrar em `unidades.csv` (`pmtu_connect`, `pmtu_medido_em`).
+Doc: `Telefonia/docs/pmtu-links-de-saida.md`.
+
+### §4c. Saída pela Connect é SEMPRE por túnel ao Datacenter Automais
+
+A Connect **é CGNAT** (`100.64/10`) com CPE compartilhado por dezenas de terceiros — o bloco de portas
+esgota e derruba **conexão nova** (medido no Complexo: 126-147 `syn-sent` sustentados). **NAT direto na
+Connect está proibido.**
+
+Padrão: interface `wg-eveo` sempre de pé para o **CCR2116 da Eveo** (IP público `177.136.233.75`), com
+o endpoint **pinado por rota `/32` pela física**, MSS clamp e faixa `10.203.0.0/24` (DC = `.1`,
+unidade = `.<id+10>`). Gestão, VOIP e demais túneis **não** passam por ele.
+Destinos internos da Prefeitura (`10.0.0.0/8`, `172.16.0.0/12`) **nunca** vão pelo túnel.
+
+Serviços essenciais (SISREG, SER, smsmarica) **seguem o link ativo**, sem exceção de rota — existe a
+address-list `SERVICOS-ESSENCIAIS` preparada e inerte, caso um dia seja preciso desviar só eles.
+M-EGRESS 02/09: SISREG responde **200** pelo IP da Eveo (o bloqueio antigo era **geográfico**, EUA).
+
 Assume gateway+DNS(+DHCP) e sai pela Connect. **Detecção v2 EM CAMADAS** (lição do incidente
 Regulação 20/07/2026 — porta ON com **fibra partida atrás da ONU** e o failover v1 não entrou):
 - **ENTRAR** (estado normal, 3 ciclos ~15s de "morto"): `$UP running=false` **OU** (delta
@@ -450,7 +513,7 @@ Regulação 20/07/2026 — porta ON com **fibra partida atrás da ONU** e o fail
 Regras **pré-criadas desabilitadas**; script liga/desliga. Template pronto:
 `Telefonia/scripts/templates/failover-hex.rsc` (o script descobre o IP do gw pelo próprio
 objeto `FAILOVER gw takeover` → sem o objeto, degrada p/ detecção só-física = no-op de bancada).
-Ver desenho completo em `Infraestrutura/Complexo de Regulacao/failover-eth3.md`.
+Ver desenho completo em `Telefonia/docs/failover-v5/README.md`.
 
 ```
 /ip dns set servers=8.8.8.8,9.9.9.9         # forwarders (NÃO usar o alvo de sonda)
@@ -536,8 +599,7 @@ cada um antes de assumir que "o DHCP nosso só entra se o real cair":
 ⚠️ **O DNS entregue é SEMPRE o real**, nunca `8.8.8.8`. Quem troca o DNS na queda é o **redirect
 `:53`** — vale instantaneamente pra todo mundo, inclusive quem já tem IP. Mexer no `dns-server` do
 escopo só afetaria lease novo e deixaria DNS público na mão do cliente por até 1 lease **depois**
-da volta do link (é o que acontece hoje na Regulação, que entrega `8.8.8.8,1.1.1.1` — divergência
-a reconciliar). O `conflict-detection` (ARP-probe antes de oferecer) é o que evita IP duplicado
+da volta do link (era o caso da Regulação até julho; corrigido). O `conflict-detection` (ARP-probe antes de oferecer) é o que evita IP duplicado
 convivendo com o DHCP real. O takeover do IP do servidor real continua **só no failover** — assumir
 o IP dele permanentemente seria sequestrar o serviço.
 
@@ -622,10 +684,20 @@ fica **sem internet nenhuma** — trocar "fura o proxy" por "não tem internet" 
 Assim, mesmo que uma transição falhe, o tick seguinte corrige em 5 segundos. Testar as **duas**
 direções antes de deixar em produção.
 
-### Estado dos MKs ativos — nivelado em 31/07/2026, ampliado em 10/08/2026
+### Estado dos MKs ativos
 
-Padrão-alvo: **detecção v2** + **DHCP sempre ligado com delay (v3)** + **redirect `:53`
-alternado pelo script** + **conntrack limpo nas duas transições (v4)**.
+> ⚠️ **A tabela abaixo está DESATUALIZADA (julho/agosto).** O levantamento real da frota inteira
+> foi refeito em 02/09/2026 e está em **`Telefonia/docs/frota-check-020926.md`** — use aquele.
+>
+> Resumo de 02/09: **12 MKs de Maricá online**; só o **Complexo (id 0) roda o v5**. As outras 11
+> estão no v2, **7 com takeover de IP ativo**, **nenhuma com sonda de internet**, **8 com o DHCP do
+> MK ligado 24/7 e escopo errado** (falta o DNS primário `10.135.16.18`, sobra `domain=pmm.local`
+> que a Prefeitura não entrega, lease de 10 min em vez de 24 h), **11 sem MSS clamp** e **11 sem o
+> túnel do Datacenter**. Além disso: **SRT I (id 18) está ATIVA no registro mas offline**, e
+> **CAPSI (id 5) está online mas ainda em estado de bancada**.
+
+Padrão-alvo **antigo** (v2/v3/v4) da tabela histórica: detecção v2 + DHCP sempre ligado com delay
+(v3) + redirect `:53` alternado pelo script + conntrack limpo nas duas transições (v4).
 
 | Item do padrão | id=0 Regulação (CCR) | id=1 Péricles | id=3 CAPS III | id=4 CAPS AD | id=6 CDT | id=7 Boqueirão | id=10 CMI | id=11 CEREST | id=17 SAE |
 |---|---|---|---|---|---|---|---|---|---|
