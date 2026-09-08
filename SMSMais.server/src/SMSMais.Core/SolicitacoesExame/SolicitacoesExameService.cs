@@ -848,7 +848,11 @@ public sealed class SolicitacoesExameService(
 
     public async Task ReenviarWorklistAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
+        // TipoExame entra no Include porque ImpedimentoEnvioPacs o lê: sem carregar, a navegação vem
+        // nula e TODO reenvio seria recusado como "tipo com envio desligado".
+        var s = await _db.ExamesImagem
+            .Include(x => x.Solicitacao)
+            .Include(x => x.TipoExame)
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
 
@@ -866,6 +870,17 @@ public sealed class SolicitacoesExameService(
             throw new ConflitoException(
                 "solicitacaoExame.nao_autorizada",
                 "Este exame ainda não foi autorizado pela recepção. Autorize com a chave de confirmação antes de enviar ao PACS.");
+        }
+
+        // Enfileirar o que o worker NUNCA vai processar é pior que recusar: ele filtra por
+        // TipoExame.EnviarParaWorklist (INNER JOIN), então o exame ficaria na fila para sempre — e,
+        // como o reenvio limpa ErroIntegracaoPacs, o motivo sumia da tela junto. Foi o que aconteceu
+        // com o 260908001 em 08/09/2026: a autorização carimbou o impedimento e abriu o ERRO-KF775R,
+        // alguém clicou em Reenviar 15 min depois, o aviso sumiu e o exame ficou parado com
+        // tentativas_envio=0. Quem clicou não tinha como saber. Agora recusa dizendo o porquê.
+        if (ImpedimentoEnvioPacs(s, s.Solicitacao!) is { } impedimento)
+        {
+            throw new ConflitoException("solicitacaoExame.envio_impedido", impedimento);
         }
 
         s.ProximaTentativaEm = DateTime.UtcNow;

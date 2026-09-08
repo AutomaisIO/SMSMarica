@@ -223,6 +223,29 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
         Assert.NotNull(atual.ProximaTentativaEm);
     }
 
+    [Fact]
+    public async Task Reenviar_worklist_recusa_quando_o_tipo_esta_com_envio_desligado()
+    {
+        // Caso real 260908001 (08/09/2026): a autorização carimbou o impedimento e abriu o
+        // ERRO-KF775R; 15 min depois alguém clicou em Reenviar, o aviso sumiu da tela e o exame
+        // ficou parado com tentativas_envio=0 — o worker filtra por EnviarParaWorklist e nunca o
+        // enxergou. Reenviar tem que RECUSAR, não apagar o diagnóstico.
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId, enviarParaWorklist: false);
+        s.Solicitacao!.AutorizadoEm = DateTime.UtcNow;
+        s.ErroIntegracaoPacs = "motivo carimbado na autorização";
+        await db.SaveChangesAsync();
+        var service = CriarService(db, null, pacienteId);
+
+        var ex = await Assert.ThrowsAsync<ConflitoException>(() => service.ReenviarWorklistAsync(s.Id));
+
+        Assert.Equal("solicitacaoExame.envio_impedido", ex.Codigo);
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.Null(atual.ProximaTentativaEm);                        // não foi para a fila
+        Assert.NotNull(atual.ErroIntegracaoPacs);                     // e o motivo continua na tela
+    }
+
     // ---- Escolha da estação na autorização ----
 
     private static async Task<Equipamento> SemearEquipamentoAsync(
