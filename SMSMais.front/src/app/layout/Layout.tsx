@@ -10,6 +10,7 @@ import { useVisaoSolicitacoes } from '@/features/solicitacoes-exame/store/visaoP
 import { useTabelaPreferencias } from '@/shared/ui/tabelaPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useModalidadesExames } from '@/features/pacs/store/modalidadesPreferencia';
+import { useSistemasOcultos } from '@/features/regulacao/store/sistemasOcultosPreferencia';
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
@@ -23,6 +24,7 @@ export function Layout() {
   const hidratarVisao = useVisaoSolicitacoes((s) => s.hidratar);
   const hidratarTabela = useTabelaPreferencias((s) => s.hidratar);
   const hidratarModalidades = useModalidadesExames((s) => s.hidratar);
+  const hidratarSistemasOcultos = useSistemasOcultos((s) => s.hidratar);
   const { novaVersao, atualizar } = useVersaoApp();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -61,6 +63,7 @@ export function Layout() {
         hidratarVisao(p.verComoSolicitante);
         hidratarTabela(p.largurasTabela);
         hidratarModalidades({ modalidades: p.examesModalidades, tipos: p.examesTipos });
+        hidratarSistemasOcultos(p.regulacaoSistemasOcultos);
       })
       .catch(() => {
         /* offline/erro — segue com o cache local. */
@@ -68,7 +71,14 @@ export function Layout() {
     return () => {
       ativo = false;
     };
-  }, [hidratar, hidratarComposer, hidratarVisao, hidratarTabela, hidratarModalidades]);
+  }, [
+    hidratar,
+    hidratarComposer,
+    hidratarVisao,
+    hidratarTabela,
+    hidratarModalidades,
+    hidratarSistemasOcultos,
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -417,23 +417,8 @@ public sealed class RegulacaoRegraService(
     }
 
     /// <summary>Rótulo sem acento, sem pontuação e em caixa alta — os catálogos variam a grafia.</summary>
-    private static string Chave(SistemaRegulacao sistema, string rotulo, string? ramo)
-    {
-        var normalizado = new string([.. rotulo
-            .Normalize(NormalizationForm.FormD)
-            .Where(ch => CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-            .Where(ch => char.IsLetterOrDigit(ch) || ch == ' ')])
-            .ToUpperInvariant()
-            .Trim();
-
-        // Espaços repetidos viram um só: o catálogo do SER tem rótulos com espaço duplo.
-        while (normalizado.Contains("  ", StringComparison.Ordinal))
-        {
-            normalizado = normalizado.Replace("  ", " ", StringComparison.Ordinal);
-        }
-
-        return $"{sistema}|{normalizado}|{ramo}";
-    }
+    private static string Chave(SistemaRegulacao sistema, string rotulo, string? ramo) =>
+        $"{sistema}|{ChaveRotulo.Normalizar(rotulo)}|{ramo}";
 
     private static void Validar(SalvarRegulacaoRegraRequest req)
     {

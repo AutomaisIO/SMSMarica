@@ -14,10 +14,30 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("regulacao/regras")]
-public sealed class RegulacaoRegrasController(IRegulacaoRegraService servico) : ControllerBase
+public sealed class RegulacaoRegrasController(
+    IRegulacaoRegraService servico,
+    IRegulacaoProcedimentoRegradoService regrados) : ControllerBase
 {
     /// <summary>Limite de corpo da importação: o CSV dos manuais tem ~1.200 linhas.</summary>
     private const int LimiteCorpoBytes = 20 * 1024 * 1024;
+
+    /// <summary>
+    /// Os procedimentos mais pedidos, com quantas regras cada um já tem. É o que a tela mostra ao
+    /// abrir: com 999 procedimentos no catálogo e tempo para poucos, a curadoria precisa começar
+    /// por onde a rede realmente pede, não por uma caixa de busca vazia.
+    ///
+    /// <para>Ordena por <b>demanda histórica</b>, e calcula o topo de cada sistema em separado —
+    /// as escalas não se comparam (SISREG tem 1.017.902 solicitações, SERNIT tem 1.223), então um
+    /// ranking único seria o do SISREG com ruído.</para>
+    /// </summary>
+    [HttpGet("procedimentos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ProcedimentoRegradoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<ProcedimentoRegradoDto>> Procedimentos(
+        [FromQuery] SistemaRegulacao[]? sistemas,
+        [FromQuery] int limite,
+        CancellationToken cancellationToken) =>
+        regrados.MaisPedidosAsync(sistemas ?? [], limite <= 0 ? 100 : limite, cancellationToken);
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]

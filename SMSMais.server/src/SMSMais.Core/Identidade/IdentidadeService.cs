@@ -415,7 +415,8 @@ public sealed class IdentidadeService(
             preferencias.VerComoSolicitante ?? atual.VerComoSolicitante,
             preferencias.LargurasTabela ?? atual.LargurasTabela,
             preferencias.ExamesModalidades ?? atual.ExamesModalidades,
-            preferencias.ExamesTipos ?? atual.ExamesTipos);
+            preferencias.ExamesTipos ?? atual.ExamesTipos,
+            preferencias.RegulacaoSistemasOcultos ?? atual.RegulacaoSistemasOcultos);
         u.PreferenciasUi = JsonSerializer.Serialize(mesclado, PreferenciasJson);
         await _db.SaveChangesAsync(cancellationToken);
     }

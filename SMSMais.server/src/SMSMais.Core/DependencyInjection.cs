@@ -799,6 +799,7 @@ public static class DependencyInjection
         services.AddScoped<Regulacao.Conciliacao.IRegulacaoConciliacaoService, Regulacao.Conciliacao.RegulacaoConciliacaoService>();
         services.AddScoped<Regulacao.Notificacoes.IRegulacaoNotificacaoService, Regulacao.Notificacoes.RegulacaoNotificacaoService>();
         services.AddScoped<Regulacao.Regras.IRegulacaoRegraService, Regulacao.Regras.RegulacaoRegraService>();
+        services.AddScoped<Regulacao.Regras.IRegulacaoProcedimentoRegradoService, Regulacao.Regras.RegulacaoProcedimentoRegradoService>();
         services.AddScoped<Regulacao.Regras.IRegulacaoElegibilidadeService, Regulacao.Regras.RegulacaoElegibilidadeService>();
         services.AddScoped<Regulacao.Solicitacoes.IRegulacaoEventoService, Regulacao.Solicitacoes.RegulacaoEventoService>();
         services.AddScoped<Regulacao.Solicitacoes.IRegulacaoSolicitacaoService, Regulacao.Solicitacoes.RegulacaoSolicitacaoService>();

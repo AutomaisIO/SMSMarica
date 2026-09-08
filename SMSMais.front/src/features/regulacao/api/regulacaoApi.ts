@@ -10,10 +10,12 @@ import type {
   SugestaoPareamento,
   RegraFollowUp,
   TesteFollowUp,
+  SistemaRegulacao,
   TipoProcedimentoRegulacao,
 } from '../types';
 import type {
   ImportacaoRegrasResultado,
+  ProcedimentoRegrado,
   RegraElegibilidade,
   SalvarRegra,
 } from '../tiposSolicitacao';
@@ -134,6 +136,22 @@ export async function listarRegras(
 ): Promise<RegraElegibilidade[]> {
   const { data } = await http.get<RegraElegibilidade[]>('/regulacao/regras', {
     params: { procedimentoId, inativas },
+  });
+  return data;
+}
+
+/**
+ * Os procedimentos mais pedidos, com quantas regras cada um tem. `sistemas` vazio = todos.
+ * O servidor calcula o topo de cada sistema em separado e soma — SISREG e SERNIT diferem em
+ * três ordens de grandeza, e um ranking único esconderia o menor.
+ */
+export async function listarProcedimentosRegrados(
+  sistemas: SistemaRegulacao[],
+  limite = 100,
+): Promise<ProcedimentoRegrado[]> {
+  const { data } = await http.get<ProcedimentoRegrado[]>('/regulacao/regras/procedimentos', {
+    params: { sistemas, limite },
+    paramsSerializer: { indexes: null },
   });
   return data;
 }

@@ -171,6 +171,7 @@ Cada linha aponta a tarefa numerada do plano. Detalhe da tarefa fica no plano; a
 - [x] 4.3 `RegulacaoElegibilidadeService` (busca, avalia, persiste destinos/respostas/caixinhas) + 3 endpoints + `PassoRegras` no wizard, entre paciente e formulário. **4 testes de integração** — **07/09/2026**
 - [x] 4.4 `UsarExameInternoAsync` (gera o PDF do laudo, ou das imagens quando não há laudo, e anexa com `Origem = ExameInterno`) + `AnexarInternoAsync` + endpoint + `ExamesInternosSugeridos` dentro das caixinhas de regra. **1 teste**: exame de outro paciente é recusado — **07/09/2026**
 - [x] 4.5 `RegulacaoRegraService` (CRUD + versionamento + importação do CSV) + `RegulacaoRegrasController` (6 rotas, módulo 51) + tela `RegrasElegibilidadePage` (rota `/app/regulacao/regras`, menu sob Regulação, módulo 51). **7 testes.** Casamento **verificado contra o catálogo de produção: 790 das 1.169 regras casam** — **07/09/2026**
+- [x] 4.7 (fora do plano, pedido do Bernardo em 08/09) tela de regras abre pelos **procedimentos mais pedidos**, com contagem de regras por linha e filtro por sistema regulador salvo no usuário. `RegulacaoProcedimentoRegradoService` + `GET /regulacao/regras/procedimentos` + `ListaProcedimentosRegrados` + `sistemasOcultosPreferencia`. **9 testes** — **08/09/2026**
 - [x] 4.6 chaves de busca, follow-up e `nao_sei_padrao` na aba de configuração + `ClassificadorFollowUp` (puro) + `POST /regulacao/configuracao/followup/testar` + `GET …/followup/semente` + `EditorRegrasFollowUp` com teste inline. **13 testes novos** (11 do classificador, em 216 ms, sem banco) — **07/09/2026**
 
 ### Incremento 5 — Credenciais + envio SER/SERNIT (planos 07, 12)
@@ -349,6 +350,27 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 05/09/2026 | 13 §spike e | CSV com **5 colunas a mais** que o previsto (`manual`, `ramo_ser`, `recurso_catalogo`, `pareamento`, `secao`) — sem elas a importação teria de refazer o pareamento e não distinguiria os ramos do SER. |
 
 ## Diário
+
+### 08/09/2026 — a tela de regras passou a abrir pelo que a rede mais pede
+
+Pedido do Bernardo, fora do plano 03: listar os procedimentos mais regulados já na abertura, com quantas regras cada um tem, e poder omitir sistemas — com a escolha salva no usuário.
+
+**O que decide "mais pedido" é a demanda histórica, não a quantidade de regra.** A curadoria tem 999 procedimentos pela frente e tempo para poucos; ordenar por número de regra colocaria no topo o que o manual escreveu mais, que não é o que a rede pede. Por demanda, o topo é eletrocardiograma (51.671 pedidos), oftalmologia (37.549) e ortopedia (33.146) — onde uma regra mal ativada trava fila de verdade.
+
+**O topo é calculado por sistema e só depois somado.** As escalas não se comparam: SISREG tem **1.017.902** solicitações históricas, SER **25.857** e SERNIT **1.223**. Um ranking único por contagem bruta seria o ranking do SISREG com ruído — o SERNIT inteiro não alcançaria a centésima linha. Virou teste.
+
+**Como cada sistema casa com o catálogo:**
+
+| Sistema | Junção | Onde |
+|---|---|---|
+| SISREG | por **código** (`procedimento_codigo_sisreg` = `chave_externa`) | no banco — são 1 milhão de linhas |
+| SER e SERNIT | por **rótulo normalizado** (a solicitação só guarda o texto digitado) | na memória — poucas centenas de rótulos, e normalizar em SQL exigiria `unaccent` |
+
+A normalização saiu de dentro do importador para `ChaveRotulo`, compartilhada: se as duas divergirem, o rótulo casa num lugar e não no outro, e a regra some do procedimento em que aparece.
+
+**Cache de 6 h** na agregação do SISREG: varrer 1.017.902 linhas leva ~4 s, e o insumo é histórico importado uma vez por dia — recalcular a cada abertura de tela seria pagar 4 segundos pelo mesmo número.
+
+**O filtro fica salvo no usuário**, em `PreferenciasUi.regulacaoSistemasOcultos`, no mesmo padrão das modalidades do PACS (servidor + cache em `localStorage`). É conveniência: omitir o SISREG o tira da listagem, mas as regras dele seguem valendo no wizard.
 
 ### 08/09/2026 — as 574 regras foram ativadas, a pedido, e o que isso quebrou
 

@@ -12,6 +12,7 @@ namespace SMSMais.Core.Identidade.Dtos;
 /// <param name="LargurasTabela">Larguras (px) das colunas das tabelas redimensionáveis, por tela: id da tela → (chave da coluna → largura). Ajustadas pelo separador arrastável no cabeçalho e salvas no perfil. Ver ticket #99. O front envia o mapa completo (não parcial), então o merge por campo aqui preserva tudo.</param>
 /// <param name="ExamesTipos">Ids dos tipos de exame marcados na tela de Exames de imagem — o recorte fino de quem lauda MG e OT mas não lauda tudo dentro delas. Aplicado pelo servidor (o tipo não existe no DICOM). Lista vazia = todos.</param>
 /// <param name="ExamesModalidades">Modalidades DICOM que a tela de Exames de imagem mostra por padrão (ex.: <c>["MG","OT"]</c> para quem lauda mamografia e densitometria). Vira o filtro <c>ModalitiesInStudy</c> do QIDO — recorte de CONVENIÊNCIA, não de segurança: quem limpa a seleção volta a ver todas as modalidades da sua unidade. Lista vazia = sem recorte.</param>
+/// <param name="RegulacaoSistemasOcultos">Sistemas reguladores que a tela de Regras de elegibilidade NÃO lista (ex.: <c>["Sisreg"]</c> para quem cuida só do estadual). Recorte de CONVENIÊNCIA: some da listagem, mas as regras do sistema omitido continuam valendo no wizard — quem desmarca volta a ver tudo. Lista vazia = mostra todos.</param>
 public sealed record PreferenciasUiDto(
     Dictionary<string, string>? MenuDefaults,
     int? AlturaComposerChat = null,
@@ -19,4 +20,5 @@ public sealed record PreferenciasUiDto(
     bool? VerComoSolicitante = null,
     Dictionary<string, Dictionary<string, int>>? LargurasTabela = null,
     List<string>? ExamesModalidades = null,
-    List<string>? ExamesTipos = null);
+    List<string>? ExamesTipos = null,
+    List<string>? RegulacaoSistemasOcultos = null);

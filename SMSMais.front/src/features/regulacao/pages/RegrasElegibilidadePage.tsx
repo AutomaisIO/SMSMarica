@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/Button';
 
 import { BuscaProcedimento } from '../components/BuscaProcedimento';
 import { FormularioRegra } from '../components/FormularioRegra';
+import { ListaProcedimentosRegrados } from '../components/ListaProcedimentosRegrados';
 import { ativarRegra, excluirRegra, importarRegrasCsv, listarRegras } from '../api/regulacaoApi';
 import type { ImportacaoRegrasResultado, RegraElegibilidade } from '../tiposSolicitacao';
 import type { RegulacaoProcedimentoItem } from '../types';
@@ -130,6 +131,15 @@ export function RegrasElegibilidadePage() {
           </p>
         )}
       </div>
+
+      {/* Sem procedimento escolhido, a tela mostra por onde começar em vez de uma busca vazia. */}
+      {!procedimento && (
+        <ListaProcedimentosRegrados
+          aoSelecionar={(p) =>
+            setProcedimento({ id: p.procedimentoId, nome: p.nome } as RegulacaoProcedimentoItem)
+          }
+        />
+      )}
 
       {procedimento && (
         <>

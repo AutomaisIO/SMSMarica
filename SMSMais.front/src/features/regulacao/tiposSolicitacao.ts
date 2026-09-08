@@ -267,6 +267,21 @@ export type AvaliacaoElegibilidade = {
 
 // ---------------------------------------------------------------- cadastro de regras (4.5)
 
+/** Quanto o procedimento foi pedido num sistema, historicamente. */
+export type DemandaPorSistema = { sistema: SistemaRegulacao; demanda: number };
+
+/** Uma linha da lista de procedimentos mais pedidos, na tela de regras. */
+export type ProcedimentoRegrado = {
+  procedimentoId: string;
+  nome: string;
+  tipo: string;
+  /** Soma da demanda nos sistemas visíveis — é por ela que a lista vem ordenada. */
+  demanda: number;
+  porSistema: DemandaPorSistema[];
+  totalRegras: number;
+  regrasAtivas: number;
+};
+
 /** O que o formulário manda ao criar uma regra à mão. */
 export type SalvarRegra = {
   procedimentoId: string;

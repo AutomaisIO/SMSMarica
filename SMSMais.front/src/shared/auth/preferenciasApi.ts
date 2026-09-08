@@ -22,6 +22,12 @@ export type PreferenciasUi = {
   examesModalidades?: string[];
   /** Ids dos tipos de exame marcados na tela de Exames de imagem. Vazio = todos. */
   examesTipos?: string[];
+  /**
+   * Sistemas reguladores que a tela de Regras de elegibilidade NÃO lista (ex.: `["Sisreg"]`).
+   * Conveniência: some da listagem, mas as regras do sistema omitido continuam valendo no
+   * wizard. Vazio = mostra todos.
+   */
+  regulacaoSistemasOcultos?: string[];
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -34,6 +40,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     largurasTabela: data?.largurasTabela ?? undefined,
     examesModalidades: data?.examesModalidades ?? undefined,
     examesTipos: data?.examesTipos ?? undefined,
+    regulacaoSistemasOcultos: data?.regulacaoSistemasOcultos ?? undefined,
   };
 }
 
