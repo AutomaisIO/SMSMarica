@@ -101,6 +101,7 @@ import { AgendaPage } from '@/features/agenda/pages/AgendaPage';
 import { AgendaAnalisePage } from '@/features/agenda/pages/AgendaAnalisePage';
 import { AgendaDemandaPage } from '@/features/agenda/pages/AgendaDemandaPage';
 import { AlteracoesAgendaPage } from '@/features/alteracoes-agenda/pages/AlteracoesAgendaPage';
+import { OfertasPage } from '@/features/sisreg/pages/OfertasPage';
 import { PendenciasCadastroPage } from '@/features/pendencias-cadastro/pages/PendenciasCadastroPage';
 import { SandboxPage } from '@/features/sandbox/pages/SandboxPage';
 import { useAuth } from '@/shared/auth/authStore';
@@ -251,6 +252,7 @@ export function AppRouter() {
           <Route path="agenda/analise" element={<AgendaAnalisePage />} />
           <Route path="agenda/demanda" element={<AgendaDemandaPage />} />
           <Route path="alteracoes-agenda" element={<AlteracoesAgendaPage />} />
+          <Route path="ofertas" element={<OfertasPage />} />
           <Route path="pendencias-cadastro" element={<PendenciasCadastroPage />} />
           <Route path="estatisticas" element={<EstatisticasPage />} />
           <Route path="relatorios-imagem" element={<RelatoriosImagemPage />} />

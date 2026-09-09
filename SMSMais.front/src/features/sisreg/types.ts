@@ -322,3 +322,45 @@ export type EscalasAgendamento = {
 };
 
 export type SalvarEscalasAgendamento = { ativo: boolean; horariosLocais: string[] };
+
+// ---------------------------------------------------------------- Ofertas
+
+/** Um bloco de agenda que passou a existir no SISREG. */
+export type AgendaNova = {
+  unidadeId: string;
+  unidadeNome: string;
+  procedimentoCodigo: string;
+  procedimentoNome: string;
+  cboDescricao: string | null;
+  /** Linhas de escala que formam esta agenda — 1 = dia unico, varios = recorrente. */
+  blocos: number;
+  vagas: number;
+  vigenciaInicio: string;
+  vigenciaFim: string;
+  /** DayOfWeek: 0 = domingo. */
+  diasSemana: number[];
+  /** Quando NOS vimos pela primeira vez — nao quando nasceu no SISREG. */
+  vistaEm: string;
+  esperaMedianaDias: number | null;
+};
+
+/** Agendamento que sumiu do SISREG e cuja data ainda nao passou. */
+export type VagaLiberada = {
+  alteracaoId: string;
+  solicitacaoId: string;
+  unidadeId: string | null;
+  unidadeNome: string | null;
+  procedimentoCodigo: string | null;
+  procedimentoNome: string | null;
+  dataAgendada: string;
+  detectadaEm: string;
+  esperaMedianaDias: number | null;
+};
+
+export type Ofertas = {
+  agendasNovas: AgendaNova[];
+  vagasLiberadas: VagaLiberada[];
+  janelaDias: number;
+  diasEsperaUrgente: number;
+  diasVagaPerecivel: number;
+};

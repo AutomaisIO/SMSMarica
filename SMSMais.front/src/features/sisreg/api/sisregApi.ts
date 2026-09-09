@@ -1,3 +1,4 @@
+import type { Ofertas } from '../types';
 import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarSisregConfiguracaoPayload,
@@ -218,5 +219,10 @@ export async function salvarAgendamentoEscalas(
   payload: SalvarEscalasAgendamento,
 ): Promise<EscalasAgendamento> {
   const { data } = await http.put<EscalasAgendamento>('/sisreg/escalas/agendamento', payload);
+  return data;
+}
+
+export async function listarOfertas(dias: number): Promise<Ofertas> {
+  const { data } = await http.get<Ofertas>('/sisreg/ofertas', { params: { dias } });
   return data;
 }

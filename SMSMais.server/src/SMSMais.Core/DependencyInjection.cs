@@ -515,6 +515,12 @@ public static class DependencyInjection
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoRunner>();
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoScheduler>();
 
+        // Ofertas: o que abriu (agenda nova + vaga liberada). Só leitura sobre o que os motores
+        // acima já trouxeram — não tem fila, runner nem acesso ao SISREG.
+        services.AddScoped<
+            Integracoes.SisregWeb.Ofertas.IOfertasSisregService,
+            Integracoes.SisregWeb.Ofertas.OfertasSisregService>();
+
         // Histórico da agenda: anda para trás, uma fatia por tick, dirigido pela cobertura gravada
         // em sisreg_varredura_agenda. Sem fila e sem runner de propósito — não há execução longa a
         // orquestrar; cada fatia é uma varredura por período do motor que já existe.

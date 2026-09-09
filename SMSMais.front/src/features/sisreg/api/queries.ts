@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  listarOfertas,
   alternarSincronismoAutomatico,
   atualizarConfiguracaoSisreg,
   backfillExecutante,
@@ -42,6 +43,7 @@ export const sisregKeys = {
   escalasStatus: ['sisreg', 'escalas', 'status'] as const,
   escalasExecucoes: ['sisreg', 'escalas', 'execucoes'] as const,
   escalasAgendamento: ['sisreg', 'escalas', 'agendamento'] as const,
+  ofertas: (dias: number) => ['sisreg', 'ofertas', dias] as const,
 };
 
 export function useConfiguracaoSisreg() {
@@ -247,5 +249,18 @@ export function useSalvarAgendamentoEscalas() {
   return useMutation({
     mutationFn: (payload: SalvarEscalasAgendamento) => salvarAgendamentoEscalas(payload),
     onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.escalasAgendamento }),
+  });
+}
+
+/**
+ * Ofertas: o que abriu no SISREG. Recarrega sozinha porque o sincronismo de escalas roda varias
+ * vezes ao dia e a vaga liberada e perecivel — uma tela parada aqui perde o dado que ela existe
+ * para mostrar.
+ */
+export function useOfertas(dias: number) {
+  return useQuery({
+    queryKey: sisregKeys.ofertas(dias),
+    queryFn: () => listarOfertas(dias),
+    refetchInterval: 5 * 60 * 1000,
   });
 }

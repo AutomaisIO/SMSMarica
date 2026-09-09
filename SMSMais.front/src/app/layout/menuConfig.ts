@@ -165,6 +165,13 @@ export const SECOES: SecaoMenu[] = [
         descricao: 'Top procedimentos, tempo de espera e origem da demanda.',
       },
       {
+        rotulo: 'Ofertas',
+        to: '/app/ofertas',
+        icone: Sparkles,
+        modulo: 'AlteracoesAgenda',
+        descricao: 'O que abriu no SISREG: agenda nova e horario que vagou por cancelamento.',
+      },
+      {
         rotulo: 'Alteracoes de Agenda',
         to: '/app/alteracoes-agenda',
         icone: CalendarClock,
