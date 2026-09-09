@@ -289,12 +289,30 @@ export function useCancelarVarredura(unidadeId: string | null) {
 /**
  * Varreduras recentes. Enquanto o operador acompanha, refaz sozinha — é onde o resultado final
  * aparece, e uma varredura pode terminar em 2 s. Sem isso a linha fica em "Rodando" para sempre.
+ *
+ * <p><b>Por que NÃO depende só de `acompanhando`:</b> ele é um flag local que cai sozinho 6 s
+ * depois de o status ficar sem dado, e uma vez caído não volta. Em 08/09/2026, no CDT, ele caiu no
+ * meio da corrida: o último GET saiu às 23:32:07 e a varredura só terminou às 23:32:58 — a tabela
+ * congelou a linha em <c>EmExecucao</c> e o operador ficou olhando "Rodando" com os contadores
+ * parados, de uma varredura que tinha acabado bem. O <c>/status</c> não salva: ele se auto-sustenta
+ * enquanto tem dado, some sozinho no fim e leva junto só o painel ao vivo.</p>
+ *
+ * <p>Por isso o gatilho passa a ser <b>o próprio dado</b>: enquanto houver linha viva, continua
+ * buscando — e a linha que vira Concluída ainda é buscada uma última vez, que é justamente a que
+ * faltava. <c>semSinal</c> corta o laço: execução órfã (processo morreu) é marcada pelo servidor e
+ * não merece poll eterno.</p>
  */
 export function useVarreduraExecucoes(unidadeId: string | null, acompanhando = false) {
   return useQuery({
     queryKey: mapeamentoKeys.varreduraExecucoes(unidadeId),
     queryFn: () => listarVarreduraExecucoes(unidadeId),
     enabled: Boolean(unidadeId),
-    refetchInterval: acompanhando ? 2000 : false,
+    refetchInterval: (query) => {
+      if (acompanhando) return 2000;
+      const viva = query.state.data?.some(
+        (e) => (e.status === 'Pendente' || e.status === 'EmExecucao') && !e.semSinal,
+      );
+      return viva ? 2000 : false;
+    },
   });
 }

@@ -69,8 +69,18 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
   const salvar = useSalvarVarreduraAgenda(unidadeId);
   const executar = useExecutarVarredura(unidadeId);
   const cancelar = useCancelarVarredura(unidadeId);
-  const status = useStatusVarredura(unidadeId, acompanhando);
   const execucoes = useVarreduraExecucoes(unidadeId, acompanhando);
+
+  // Linha viva na tabela = alguém está varrendo, mesmo que não tenha sido nesta aba (o periódico,
+  // ou outra janela). Sem isto quem só OBSERVA abre a tela e nada se mexe: `acompanhando` só liga
+  // no clique de executar, então o status nem começava a ser buscado e o painel ao vivo não
+  // aparecia para quem não disparou.
+  const algumaViva =
+    execucoes.data?.some(
+      (e) => (e.status === 'Pendente' || e.status === 'EmExecucao') && !e.semSinal,
+    ) ?? false;
+
+  const status = useStatusVarredura(unidadeId, acompanhando || algumaViva);
 
   const dados = agenda.data;
   const rodando = Boolean(status.data);
