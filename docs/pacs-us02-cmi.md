@@ -137,10 +137,14 @@ na compressão do aparelho.
 
 ## 9. Como o sistema decide para qual dos dois ultrassons o exame vai
 
-A partir de agora o CMI tem **dois** ultrassons. Por decisão da SMS, **a recepção escolhe o
+O CMI tem **dois** ultrassons ativos desde 09/09/2026. Por decisão da SMS, **a recepção escolhe o
 aparelho no momento de autorizar o exame** — não há aparelho padrão. Se ninguém escolher, o envio
 falha com a mensagem *"A unidade tem mais de um equipamento para esta modalidade. Selecione em
 qual o exame será realizado."*
+
+> ⚠️ **Isto muda a rotina da recepção do CMI a partir de agora.** Antes havia um só ultrassom e o
+> sistema deduzia sozinho. Avisar a equipe: ao autorizar um exame de ultrassom, aparece o seletor
+> de aparelho e é preciso escolher entre **Ultrassom** (`US_CMI`) e **Ultrassom 02** (`US02-CMI`).
 
 O item de worklist sai carimbado com `ScheduledStationAETitle` igual ao AE do aparelho escolhido,
 e só o AE de worklist correspondente o enxerga.
@@ -154,11 +158,11 @@ e só o AE de worklist correspondente o enxerga.
 | AE de worklist `WORK-US02-CMI` (label `US02-CMI`) | **criado e verificado** em 2026-09-09 |
 | Web Application `WORK-US02-CMI` (`MWL_RS`) | **criada** — `/rs/mwlitems` responde 204 |
 | Registro em *Unique AE Titles Registry* | **criado** |
-| Equipamento no painel (Exames de Imagem → Equipamentos) | cadastrado como **`Ultrassom 02` / `US02-CMI`**, **INATIVO** |
-| Ativação | **pendente** — ligar no painel quando o aparelho estiver fisicamente instalado |
+| Equipamento no painel (Exames de Imagem → Equipamentos) | cadastrado como **`Ultrassom 02` / `US02-CMI`** |
+| Ativação | **ATIVO** desde 2026-09-09 |
 
-> O equipamento fica **inativo** de propósito: um segundo ultrassom ativo já obrigaria a recepção
-> a escolher aparelho em todo exame de US do CMI, antes de a máquina existir.
+**Do lado da SMS está tudo pronto.** Falta apenas a configuração no aparelho, descrita nas
+seções 2 a 4 deste documento.
 
 ---
 

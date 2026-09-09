@@ -98,7 +98,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>O ultrassom Mindray DC-28 do CMI exigiu tratamento específico no servidor para as imagens comprimidas (RLE com YBR planar). <strong>Já está resolvido em produção</strong> — se as imagens aparecerem com cores trocadas ou distorcidas, avise a equipe Automais citando este parágrafo em vez de mexer na compressão do aparelho.</p>
 <hr>
 <h2>9. Como o sistema decide para qual dos dois ultrassons o exame vai</h2>
-<p>A partir de agora o CMI tem <strong>dois</strong> ultrassons. Por decisão da SMS, <strong>a recepção escolhe o aparelho no momento de autorizar o exame</strong> — não há aparelho padrão. Se ninguém escolher, o envio falha com a mensagem <em>"A unidade tem mais de um equipamento para esta modalidade. Selecione em qual o exame será realizado."</em></p>
+<p>O CMI tem <strong>dois</strong> ultrassons ativos desde 09/09/2026. Por decisão da SMS, <strong>a recepção escolhe o aparelho no momento de autorizar o exame</strong> — não há aparelho padrão. Se ninguém escolher, o envio falha com a mensagem <em>"A unidade tem mais de um equipamento para esta modalidade. Selecione em qual o exame será realizado."</em></p>
+<p>&gt; ⚠️ <strong>Isto muda a rotina da recepção do CMI a partir de agora.</strong> Antes havia um só ultrassom e o &gt; sistema deduzia sozinho. Avisar a equipe: ao autorizar um exame de ultrassom, aparece o seletor &gt; de aparelho e é preciso escolher entre <strong>Ultrassom</strong> (<code>US_CMI</code>) e <strong>Ultrassom 02</strong> (<code>US02-CMI</code>).</p>
 <p>O item de worklist sai carimbado com <code>ScheduledStationAETitle</code> igual ao AE do aparelho escolhido, e só o AE de worklist correspondente o enxerga.</p>
 <hr>
 <h2>10. Estado do provisionamento (lado da SMS)</h2>
@@ -106,10 +107,10 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>AE de worklist <code>WORK-US02-CMI</code> (label <code>US02-CMI</code>)</td><td><strong>criado e verificado</strong> em 2026-09-09</td></tr>
 <tr><td>Web Application <code>WORK-US02-CMI</code> (<code>MWL_RS</code>)</td><td><strong>criada</strong> — <code>/rs/mwlitems</code> responde 204</td></tr>
 <tr><td>Registro em <em>Unique AE Titles Registry</em></td><td><strong>criado</strong></td></tr>
-<tr><td>Equipamento no painel (Exames de Imagem → Equipamentos)</td><td>cadastrado como <strong><code>Ultrassom 02</code> / <code>US02-CMI</code></strong>, <strong>INATIVO</strong></td></tr>
-<tr><td>Ativação</td><td><strong>pendente</strong> — ligar no painel quando o aparelho estiver fisicamente instalado</td></tr>
+<tr><td>Equipamento no painel (Exames de Imagem → Equipamentos)</td><td>cadastrado como <strong><code>Ultrassom 02</code> / <code>US02-CMI</code></strong></td></tr>
+<tr><td>Ativação</td><td><strong>ATIVO</strong> desde 2026-09-09</td></tr>
 </tbody></table></div>
-<p>&gt; O equipamento fica <strong>inativo</strong> de propósito: um segundo ultrassom ativo já obrigaria a recepção &gt; a escolher aparelho em todo exame de US do CMI, antes de a máquina existir.</p>
+<p><strong>Do lado da SMS está tudo pronto.</strong> Falta apenas a configuração no aparelho, descrita nas seções 2 a 4 deste documento.</p>
 <hr>
 <p><em>Dúvidas técnicas: equipe Automais. Documentação interna do PACS: <a href="./pacs.md"><code>pacs.md</code></a>. Aparelho 1 do CMI: <a href="./pacs-us-cmi.md"><code>pacs-us-cmi.md</code></a>.</em></p>
 </main>

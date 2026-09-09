@@ -116,9 +116,12 @@ Exames de Imagem → Equipamentos. `identificador_dicom` = o AE Title do **apare
 
 - **`descricao_max_caracteres`**: deixar o padrão **64** (teto do VR `LO`). Só baixar se o console
   daquele aparelho falhar com descrição longa — é o caso do Fuji FDR-3000AWS, que fica em 16.
-- **`ativo`**: cadastrar **INATIVO** enquanto o aparelho não estiver fisicamente instalado. Um
-  equipamento ativo a mais na mesma modalidade da unidade torna a dedução ambígua e **todo envio
-  daquela unidade passa a exigir escolha da recepção** antes de a máquina existir.
+- **`ativo`**: **perguntar ao operador**, não decidir sozinho. Cadastrar **INATIVO** é o default
+  seguro quando o aparelho ainda não chegou — um equipamento ativo a mais na mesma modalidade
+  torna a dedução ambígua e **todo envio daquela unidade passa a exigir escolha da recepção**
+  antes de a máquina existir. Mas ativar desde já é uma escolha legítima (feita para o `US02-CMI`
+  em 09/09/2026), e aí **a recepção da unidade precisa ser avisada no mesmo dia**: a tela passa a
+  exigir a escolha do aparelho, o que antes o sistema deduzia sozinho.
 
 ### 7. Escopo do exame por unidade (ADR-0056)
 
@@ -132,12 +135,19 @@ duas configurações válidas — e a escolha é do operador, não sua:
 
 A tela de autorização suporta as duas (`temEscolhaEquip` aparece quando há mais de um candidato).
 
+> **Ativou um segundo aparelho numa unidade que só tinha um?** Isso muda a rotina da recepção
+> **na hora**. Avisar a unidade faz parte da tarefa, não é acessório.
+
 ### 8. Documento para o técnico
 
 Criar `docs/pacs-<aparelho>.md` no molde de `docs/pacs-us-cmi.md` ou `docs/pacs-rx-cdt.md`, com
 servidor, porta, Called AE de imagem (`PACS-CDT`), Called AE de worklist (`WORK-XXX`), Calling AE
 do aparelho, filtros e a cola rápida. **Gerar também a cópia `.html`** (`node WiFi/md2html.mjs`) —
-é a regra de documento para humanos.
+é a regra de documento para humanos. **Se o operador pedir PDF**, não há ferramenta no repo:
+gerar do HTML com o Chrome headless —
+`chrome.exe --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=<saida.pdf> "file:///<caminho>.html"`.
+Conferir antes de enviar que o documento reflete o estado **final** (ativo × inativo) — o PDF é o
+que vai para a mão do técnico.
 
 Acrescentar o aparelho às tabelas de `docs/pacs.md` (§8 e §9.1).
 
