@@ -195,8 +195,36 @@ Os 2.650 do legado (lá o issuer separa **14 pessoas diferentes** que dividem o 
 - **Não mexer na coerção do dcm4chee.** Ela é o que segura o legado de pé.
 - **Não simetrizar com o CNS.** Ver [[feedback_cadsus_guarda_identidade_assimetrica]].
 
-## Verificação
+## Verificação — feita em 2026-09-08/09
 
-Associar um estudo e conferir que o original aparece em `IOCM_WRONG_MWL` (e não sumiu); desfazer a
-associação e ver o original restaurado; conferir que `rejected_instance` deixa de ficar zerado;
-depois do merge, os 6 CPFs passam a ter um registro só e o `260908005` chega à worklist.
+**A coerção nova dispara.** Uma instância sintética foi armazenada com `PatientID` de 11 dígitos e
+**sem** `IssuerOfPatientID`; o dcm4chee carimbou `CPF`. Estudo e paciente sintéticos rejeitados e
+apagados em seguida — sobraram 0 registros.
+
+**O ciclo inteiro fechou no caso real.** A radiografia `260908005`, travada em 409 desde 08/09, foi
+enviada sozinha pelo worker na tentativa 11 (09/09 01:33 UTC), já com o código novo:
+`status = Recebida`, `worklist_item_uid = 260908005`, sem erro. O item no dcm4chee traz
+`PatientID = 12389715710`, **`IssuerOfPatientID = CPF`**, `WorklistLabel = RX-CDT`, modalidade `DX`.
+
+> ⚠️ **O merge sozinho NÃO destravou o 409** — o que este documento afirmava antes, e estava errado.
+> A tentativa 9, às 23:33 UTC, foi **depois** do merge e ainda falhou: o registro **absorvido**
+> continua pesando na busca por `PatientID` **sem** issuer, então a ambiguidade sobrevive ao merge.
+> Quem resolve é o **par exato** `PatientID` + `IssuerOfPatientID` — ou seja, a fase 3, não a 2.
+> A fase 2 continua tendo valor (um registro por pessoa, estudos reunidos), mas não era a cura.
+
+**Também confirmado:** contagem de pacientes (4.775) e de estudos inalterada depois de tudo; zero
+CPF duplicado; os 16 AEs respondendo e os 6 `dcmMWLWorklistLabel` de pé depois do `ctrl/reload`.
+
+## O que ficou em aberto
+
+- **Ordem dos nomes.** O `PatientName` vai em `SOBRENOME^NOMES` (DICOM PN), e o console do aparelho
+  mostra nessa ordem. Mexer no formato era proibido enquanto o nome alimentava o hash da identidade
+  — **agora não alimenta mais**, então virou uma decisão livre. Pendências separadas: inverter os
+  componentes **na leitura** (hoje `LimparNomePn` no server e `valorNomePaciente` no front trocam
+  `^` por espaço e preservam a ordem DICOM, então estudo órfão aparece com o sobrenome na frente nas
+  nossas telas) e tratar partículas (`DOS`, `DAS`, `DA`, `DE`) como parte do sobrenome em
+  `FormatarPn`.
+- **Os 187 coringa** não convertem sozinhos: o `POST /patients` com issuer casa com eles de forma
+  leniente e o dcm4chee **não** preenche o nulo. Se um dia incomodar, a saída é desligar
+  temporariamente o *change patient id tracking* — que é a proteção contra troca ambígua de
+  identidade. Não vale o preço hoje.
