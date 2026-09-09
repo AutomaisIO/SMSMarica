@@ -1252,6 +1252,29 @@ public sealed class VarreduraAgendaService(
         IReadOnlyList<(DateOnly Inicio, DateOnly Fim)> naoLidas,
         CancellationToken ct)
     {
+        // JANELA PASSADA NÃO TEM AUSENTE — a inferência aqui é "sumiu da agenda futura, logo
+        // provavelmente foi cancelado". Para um dia que JÁ ACONTECEU ela não vale: o agendamento
+        // atendido sai da agenda por ter acontecido, não por ter sido desmarcado, e marcá-lo de
+        // ausente inventa cancelamento em cima de fato consumado.
+        //
+        // Isto passou a importar quando a carga do histórico entrou (1.017.877 solicitações, todas
+        // com `raw_sisreg`, que é o filtro que as põe no escopo abaixo). Medido em 08/09/2026, para
+        // 02/09..08/09 na rede toda: 4.854 agendamentos no universo do detector — a 10% de ausência
+        // seriam ~485 cancelamentos falsos, e o freio de 20% NÃO pega, porque é por unidade e só
+        // corta acima de um quinto. O `historico_ativo = 0` protegia o botão do histórico; o
+        // disparo por PERÍODO nunca passou por essa proteção e aceita data passada sem restrição.
+        //
+        // Basta um pedaço no passado para contaminar: a janela diária começa hoje e não é afetada.
+        var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        if (execucao.JanelaInicio < hoje)
+        {
+            logger.LogInformation(
+                "SISREG_AUSENTES_PULADO: {Unidade} — janela {Ini}..{Fim} começa no passado; "
+                + "checagem de cancelamento não se aplica a dia que já aconteceu.",
+                unidade.Nome, execucao.JanelaInicio, execucao.JanelaFim);
+            return;
+        }
+
         var codigosLidos = lidas
             .Select(m => m.CodigoSolicitacao)
             .Where(c => !string.IsNullOrWhiteSpace(c))
