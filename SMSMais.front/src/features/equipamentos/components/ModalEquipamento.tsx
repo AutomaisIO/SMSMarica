@@ -12,6 +12,8 @@ import {
   useCadastrarEquipamento,
 } from '@/features/equipamentos/api/queries';
 import {
+  DESCRICAO_MAX_MINIMO,
+  DESCRICAO_MAX_PADRAO,
   MODALIDADES,
   type EquipamentoListItem,
   type ModalidadeDicom,
@@ -23,6 +25,7 @@ type FormEquip = {
   unidadeId: string;
   modalidadeDicom: ModalidadeDicom;
   identificadorDicom: string;
+  descricaoMaxCaracteres: number;
   ativo: boolean;
 };
 
@@ -33,6 +36,7 @@ function formVazio(unidadeIdFixa?: string): FormEquip {
     unidadeId: unidadeIdFixa ?? '',
     modalidadeDicom: 'US',
     identificadorDicom: '',
+    descricaoMaxCaracteres: DESCRICAO_MAX_PADRAO,
     ativo: true,
   };
 }
@@ -76,6 +80,7 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
         unidadeId: equipamento.unidadeId,
         modalidadeDicom: equipamento.modalidadeDicom,
         identificadorDicom: equipamento.identificadorDicom ?? '',
+        descricaoMaxCaracteres: equipamento.descricaoMaxCaracteres ?? DESCRICAO_MAX_PADRAO,
         ativo: equipamento.ativo,
       });
     } else {
@@ -97,6 +102,7 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
       unidadeId,
       modalidadeDicom: form.modalidadeDicom,
       identificadorDicom: form.identificadorDicom.trim() || null,
+      descricaoMaxCaracteres: form.descricaoMaxCaracteres,
       ativo: form.ativo,
     };
     const opcoes = {
@@ -168,6 +174,26 @@ export function ModalEquipamento({ aberto, aoFechar, equipamento, unidadeIdFixa 
             value={form.identificadorDicom}
             onChange={(e) => setForm((f) => ({ ...f, identificadorDicom: e.target.value }))}
             placeholder="Ex.: US_CMI"
+          />
+        </Campo>
+
+        <Campo
+          label="Limite da descrição do exame"
+          htmlFor="eq-desc-max"
+          dica="Quantos caracteres da descrição do exame este aparelho aguenta receber na worklist. O padrão 64 é o teto do próprio DICOM — deixe assim. Só baixe se o console DESTE aparelho falhar com descrição longa: é o caso do mamógrafo Fuji FDR-3000AWS, que fica em 16. Valor menor corta o nome do exame na tela do técnico."
+        >
+          <Input
+            id="eq-desc-max"
+            type="number"
+            min={DESCRICAO_MAX_MINIMO}
+            max={DESCRICAO_MAX_PADRAO}
+            value={form.descricaoMaxCaracteres}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                descricaoMaxCaracteres: Number(e.target.value) || DESCRICAO_MAX_PADRAO,
+              }))
+            }
           />
         </Campo>
 

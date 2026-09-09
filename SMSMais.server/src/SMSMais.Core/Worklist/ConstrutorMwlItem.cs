@@ -73,7 +73,9 @@ internal static class ConstrutorMwlItem
     /// continua enxergando tudo — é por ele que criamos, confirmamos e removemos itens.
     /// </para>
     /// </summary>
-    public static JsonObject Item(ExameImagem s, PacienteResumo paciente, string stationAeTitle)
+    public static JsonObject Item(
+        ExameImagem s, PacienteResumo paciente, string stationAeTitle,
+        int descricaoMax = Equipamento.DescricaoMaxPadrao)
     {
         var tipo = s.TipoExame ?? throw new InvalidOperationException("TipoExame não carregado.");
         var quando = s.Solicitacao!.DataAgendada ?? DateTime.UtcNow;
@@ -87,7 +89,7 @@ internal static class ConstrutorMwlItem
             // 00100021 (IssuerOfPatientID) entra logo abaixo, só quando o PatientID é o CPF.
             ["00100040"] = Cs(MapearSexo(paciente.Sexo)),                   // PatientSex
             ["0020000D"] = Ui(s.StudyInstanceUID),                          // StudyInstanceUID
-            ["00321060"] = LoDesc(tipo.RequestedProcedureDescription),      // RequestedProcedureDescription (<= 16, exigência do Fuji)
+            ["00321060"] = LoDesc(tipo.RequestedProcedureDescription, descricaoMax),  // RequestedProcedureDescription
             ["00401001"] = Sh(RequestedProcedureId(s)),                     // RequestedProcedureID (<=10; se omitido o dcm4chee gera RP-XXXXXXXX >10)
             ["00401003"] = Sh(MapearPrioridade(s.Solicitacao!.Prioridade)),             // RequestedProcedurePriority
             ["00741202"] = Lo(stationAeTitle),                              // WorklistLabel — ver nota abaixo
@@ -102,7 +104,7 @@ internal static class ConstrutorMwlItem
                         ["00400001"] = Ae(stationAeTitle),                          // ScheduledStationAETitle (filtro do equipamento)
                         ["00400002"] = ComVr("DA", quando.ToString("yyyyMMdd")),    // SPS StartDate
                         ["00400003"] = ComVr("TM", quando.ToString("HHmmss")),      // SPS StartTime
-                        ["00400007"] = LoDesc(tipo.ScheduledProcedureStepDescription), // SPS Description (<= 16, exigência do Fuji)
+                        ["00400007"] = LoDesc(tipo.ScheduledProcedureStepDescription, descricaoMax), // SPS Description
                         ["00400009"] = Sh(SpsId(s)),                                // SPS ID (<=10; se omitido o dcm4chee gera SPS-XXXXXXXX >10)
                         ["00400010"] = Sh(stationAeTitle),                          // ScheduledStationName
                         ["00400020"] = Cs("SCHEDULED"),                             // SPS Status
@@ -136,10 +138,16 @@ internal static class ConstrutorMwlItem
     private static JsonObject Sh(string v) => ComVr("SH", Ascii(v));
     private static JsonObject Lo(string v) => ComVr("LO", Ascii(v));
 
-    /// <summary>Descrição (LO) limitada a 16 caracteres. O Fuji falha ao montar a imagem
-    /// ("obter informações de imagem", erro 31027) com descrições longas — a worklist de
-    /// referência aceita pelo console usava ~10 ("Mamografia").</summary>
-    private static JsonObject LoDesc(string v) => Lo(Truncar(v, 16));
+    /// <summary>
+    /// Descrição (VR <c>LO</c>) cortada no que <b>aquele aparelho</b> aguenta — o padrão é 64, o
+    /// teto do próprio DICOM.
+    /// <para>O corte é configurável por equipamento
+    /// (<see cref="Equipamento.DescricaoMaxCaracteres"/>) porque um único console impõe menos: o
+    /// Fuji FDR-3000AWS falha ao montar a imagem ("obter informações de imagem", erro 31027) com
+    /// descrição longa, e a worklist de referência que ele aceitava usava ~10 ("Mamografia"). Até
+    /// 09/09/2026 esse 16 era fixo e valia para todos, truncando 189 dos 205 tipos de exame no
+    /// meio da palavra.</para></summary>
+    private static JsonObject LoDesc(string v, int max) => Lo(Truncar(v, max));
 
     private static string Truncar(string? v, int max)
     {

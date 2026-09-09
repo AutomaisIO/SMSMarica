@@ -3,7 +3,15 @@ using SMSMais.Data.Entities;
 namespace SMSMais.Core.Worklist;
 
 /// <summary>Equipamento elegível para executar um exame (unidade executante + modalidade).</summary>
-public sealed record EquipamentoCandidato(Guid Id, string Nome, string AeTitle);
+public sealed record EquipamentoCandidato(
+    Guid Id, string Nome, string AeTitle, int DescricaoMaxCaracteres = Equipamento.DescricaoMaxPadrao);
+
+/// <summary>
+/// A estação que vai executar o exame e o que ela aguenta. O limite de descrição viaja junto com
+/// o AE Title de propósito: é propriedade do aparelho, não do exame nem da rede — foi por ele ter
+/// sido global que o remendo do Fuji truncava a worklist de todo mundo.
+/// </summary>
+public sealed record EstacaoWorklist(string AeTitle, int DescricaoMaxCaracteres);
 
 /// <summary>
 /// Descobre qual estação (AE Title) deve executar um exame, para carimbar o
@@ -21,7 +29,7 @@ public interface IResolvedorEstacaoWorklist
     /// <c>worklist.equipamento_ambiguo</c> quando há mais de um e ninguém escolheu —
     /// o sistema não sorteia estação.
     /// </summary>
-    Task<string> ResolverAsync(ExameImagem exame, CancellationToken cancellationToken = default);
+    Task<EstacaoWorklist> ResolverAsync(ExameImagem exame, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Equipamentos elegíveis para o exame (unidade executante + modalidade, ativos e com

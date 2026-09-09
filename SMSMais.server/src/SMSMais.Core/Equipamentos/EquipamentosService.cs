@@ -56,6 +56,7 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
             UnidadeId = request.UnidadeId,
             ModalidadeDicom = request.ModalidadeDicom,
             IdentificadorDicom = Normalizar(request.IdentificadorDicom),
+            DescricaoMaxCaracteres = request.DescricaoMaxCaracteres,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
@@ -79,6 +80,7 @@ public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccess
         e.UnidadeId = request.UnidadeId;
         e.ModalidadeDicom = request.ModalidadeDicom;
         e.IdentificadorDicom = Normalizar(request.IdentificadorDicom);
+        e.DescricaoMaxCaracteres = request.DescricaoMaxCaracteres;
         e.Ativo = request.Ativo;
         e.AtualizadoEm = DateTime.UtcNow;
         e.AtualizadoPor = _usuarioAtual.UsuarioId;

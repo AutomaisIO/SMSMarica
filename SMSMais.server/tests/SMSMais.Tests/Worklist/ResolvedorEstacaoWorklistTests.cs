@@ -83,7 +83,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
 
         var ae = await CriarResolvedor(db).ResolverAsync(exame);
 
-        Assert.Equal("MAMO_X", ae);
+        Assert.Equal("MAMO_X", ae.AeTitle);
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
 
         var ae = await CriarResolvedor(db).ResolverAsync(exame);
 
-        Assert.Equal("SALA_B", ae); // e não a primeira em ordem alfabética
+        Assert.Equal("SALA_B", ae.AeTitle); // e não a primeira em ordem alfabética
     }
 
     [Fact]
@@ -168,7 +168,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
 
         var ae = await CriarResolvedor(db).ResolverAsync(exame);
 
-        Assert.Equal("SALA_OK", ae);
+        Assert.Equal("SALA_OK", ae.AeTitle);
     }
 
     [Fact]

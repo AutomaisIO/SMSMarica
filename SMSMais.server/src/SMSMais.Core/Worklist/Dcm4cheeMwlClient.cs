@@ -40,8 +40,9 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
 
         // 2) Cria/atualiza o MWL item (upsert por StudyInstanceUID + SPS ID). O AE da
         //    estação vem do equipamento da unidade executante (fallback no appsettings).
-        var stationAeTitle = await _estacao.ResolverAsync(s, ct);
-        var item = ConstrutorMwlItem.Item(s, paciente, stationAeTitle);
+        var estacao = await _estacao.ResolverAsync(s, ct);
+        var item = ConstrutorMwlItem.Item(
+            s, paciente, estacao.AeTitle, estacao.DescricaoMaxCaracteres);
         var req = new HttpRequestMessage(HttpMethod.Post, "mwlitems")
         {
             Content = JsonContent.Create(item, DicomJson),

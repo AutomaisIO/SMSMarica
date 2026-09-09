@@ -12,6 +12,7 @@ internal static class EquipamentosMapper
         e.Unidade?.Nome ?? string.Empty,
         e.ModalidadeDicom,
         e.IdentificadorDicom,
+        e.DescricaoMaxCaracteres,
         e.Ativo,
         e.CriadoEm);
 
@@ -22,5 +23,6 @@ internal static class EquipamentosMapper
         e.Unidade?.Nome ?? string.Empty,
         e.ModalidadeDicom,
         e.IdentificadorDicom,
+        e.DescricaoMaxCaracteres,
         e.Ativo);
 }

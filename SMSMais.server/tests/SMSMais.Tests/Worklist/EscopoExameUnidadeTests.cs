@@ -131,7 +131,7 @@ public class EscopoExameUnidadeTests(PostgresFixture fixture)
 
         var estacao = await CriarResolvedor(db).ResolverAsync(exame);
 
-        Assert.Equal("RX-TESTE", estacao);
+        Assert.Equal("RX-TESTE", estacao.AeTitle);
     }
 
     [Fact]
@@ -148,6 +148,6 @@ public class EscopoExameUnidadeTests(PostgresFixture fixture)
 
         var estacao = await CriarResolvedor(db).ResolverAsync(exame);
 
-        Assert.Equal("MAMO-UNICO", estacao);
+        Assert.Equal("MAMO-UNICO", estacao.AeTitle);
     }
 }

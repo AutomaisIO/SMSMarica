@@ -23,6 +23,7 @@ export type Equipamento = {
   unidadeNome: string;
   modalidadeDicom: ModalidadeDicom;
   identificadorDicom: string | null;
+  descricaoMaxCaracteres: number;
   ativo: boolean;
   criadoEm: string;
 };
@@ -34,6 +35,7 @@ export type EquipamentoListItem = {
   unidadeNome: string;
   modalidadeDicom: ModalidadeDicom;
   identificadorDicom: string | null;
+  descricaoMaxCaracteres: number;
   ativo: boolean;
 };
 
@@ -42,5 +44,14 @@ export type SalvarEquipamentoPayload = {
   unidadeId: string;
   modalidadeDicom: ModalidadeDicom;
   identificadorDicom?: string | null;
+  descricaoMaxCaracteres?: number;
   ativo?: boolean;
 };
+
+/**
+ * Teto do VR `LO` do DICOM — nenhum aparelho lê mais que isto, e é o padrão de todo
+ * equipamento novo. Baixar só quando um console concreto falhar: o mamógrafo Fuji
+ * FDR-3000AWS não monta a imagem (erro 31027) com descrição longa e fica em 16.
+ */
+export const DESCRICAO_MAX_PADRAO = 64;
+export const DESCRICAO_MAX_MINIMO = 4;
