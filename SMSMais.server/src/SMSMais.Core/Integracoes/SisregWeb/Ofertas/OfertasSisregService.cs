@@ -96,35 +96,51 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     /// oferta, é histórico.</para>
     /// </summary>
     private async Task<List<AgendaNovaDto>> AgendasNovasAsync(
-        DateTime desde, DateOnly hoje, CancellationToken ct) =>
-        await db.SisregEscalas.AsNoTracking()
+        DateTime desde, DateOnly hoje, CancellationToken ct)
+    {
+        // Busca CHAPADA e agrupa em memória, de propósito. Agrupar no banco parece mais barato mas
+        // não compila: `Distinct()` sobre uma coleção dentro da projeção de um GroupBy não tem
+        // tradução no EF ("Unable to translate a collection subquery in a projection") — e isso só
+        // aparece em RUNTIME, com 500 na cara do operador. O conjunto aqui é pequeno por
+        // construção (só escalas vistas nos últimos N dias: 32 numa janela de 5 dias, medido em
+        // 09/09/2026), então trazer as linhas custa menos que a ginástica para o SQL aceitar.
+        var linhas = await db.SisregEscalas.AsNoTracking()
             .Where(e => e.CriadoEm >= desde
                 && e.Status == StatusEscalaSisreg.Ativa
                 && !e.Ausente
                 && e.VigenciaFim >= hoje)
-            .GroupBy(e => new
+            .Select(e => new
             {
                 e.UnidadeId,
                 UnidadeNome = e.Unidade!.Nome,
                 e.ProcedimentoCodigo,
                 e.ProcedimentoNome,
                 e.CboDescricao,
+                e.DiaSemana,
+                e.VagasTotal,
+                e.VigenciaInicio,
+                e.VigenciaFim,
+                e.CriadoEm,
             })
+            .ToListAsync(ct);
+
+        return [.. linhas
+            .GroupBy(e => new { e.UnidadeId, e.ProcedimentoCodigo })
             .Select(g => new AgendaNovaDto(
                 g.Key.UnidadeId,
-                g.Key.UnidadeNome,
+                g.First().UnidadeNome,
                 g.Key.ProcedimentoCodigo,
-                g.Key.ProcedimentoNome,
-                g.Key.CboDescricao,
+                g.First().ProcedimentoNome,
+                g.First().CboDescricao,
                 g.Count(),
                 g.Sum(e => e.VagasTotal),
                 g.Min(e => e.VigenciaInicio),
                 g.Max(e => e.VigenciaFim),
                 // Dias da semana em que essa agenda abre — é o que diz "toda terça" vs "um dia só".
-                g.Select(e => (int)e.DiaSemana).Distinct().ToList(),
+                [.. g.Select(e => (int)e.DiaSemana).Distinct().Order()],
                 g.Min(e => e.CriadoEm),
-                null))
-            .ToListAsync(ct);
+                null))];
+    }
 
     /// <summary>
     /// Agendamentos que sumiram do SISREG e cuja data ainda não passou — as vagas que dá para
