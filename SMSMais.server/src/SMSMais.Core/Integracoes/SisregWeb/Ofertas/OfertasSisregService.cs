@@ -95,9 +95,24 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     /// <para>Só entra escala <b>ativa, não ausente e ainda vigente</b>: bloco que já venceu não é
     /// oferta, é histórico.</para>
     /// </summary>
+    /// <summary>
+    /// Acima disto, uma execução do sincronismo não trouxe novidade: ela POVOOU a base. A primeira
+    /// sincronização de todas criou 17.452 escalas de uma vez (04/09/2026) — chamar aquilo de
+    /// "agenda nova" faria a tela anunciar 10.456 vagas que ninguém abriu, e o operador aprenderia
+    /// no primeiro dia que este número é mentira.
+    /// </summary>
+    private const int EscalasNovasQueDenunciamCarga = 500;
+
     private async Task<List<AgendaNovaDto>> AgendasNovasAsync(
         DateTime desde, DateOnly hoje, CancellationToken ct)
     {
+        // Janelas de tempo das execuções que foram CARGA, não novidade. O que nasceu dentro delas
+        // fica de fora: é o retrato inicial do SISREG, não oferta que apareceu.
+        var cargas = await db.SisregEscalaSincronizacaoExecucoes.AsNoTracking()
+            .Where(e => e.EscalasNovas >= EscalasNovasQueDenunciamCarga && e.IniciadoEm >= desde)
+            .Select(e => new { e.IniciadoEm, e.FinalizadoEm })
+            .ToListAsync(ct);
+
         // Busca CHAPADA e agrupa em memória, de propósito. Agrupar no banco parece mais barato mas
         // não compila: `Distinct()` sobre uma coleção dentro da projeção de um GroupBy não tem
         // tradução no EF ("Unable to translate a collection subquery in a projection") — e isso só
@@ -123,6 +138,15 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 e.CriadoEm,
             })
             .ToListAsync(ct);
+
+        // Folga de 1 minuto de cada lado: `criado_em` é carimbado linha a linha durante a gravação,
+        // então uma escala da carga pode cair alguns segundos depois do `FinalizadoEm` registrado.
+        if (cargas.Count > 0)
+        {
+            linhas = [.. linhas.Where(l => !cargas.Any(c =>
+                l.CriadoEm >= c.IniciadoEm.AddMinutes(-1)
+                && l.CriadoEm <= (c.FinalizadoEm ?? c.IniciadoEm.AddHours(1)).AddMinutes(1)))];
+        }
 
         return [.. linhas
             .GroupBy(e => new { e.UnidadeId, e.ProcedimentoCodigo })

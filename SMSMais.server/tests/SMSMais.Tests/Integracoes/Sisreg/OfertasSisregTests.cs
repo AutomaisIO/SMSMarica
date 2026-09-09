@@ -146,6 +146,46 @@ public class OfertasSisregTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// <b>Carga não é novidade.</b> A primeira sincronização de todas criou 17.452 escalas de uma
+    /// vez; sem esta regra a tela anunciava <b>10.456 vagas novas</b> na janela de 7 dias contra
+    /// 101 reais (medido em produção em 09/09/2026, minutos depois do deploy). O operador
+    /// aprenderia no primeiro dia que o número é mentira — e uma tela em que não se acredita não
+    /// serve para nada.
+    /// </summary>
+    [Fact]
+    public async Task Escala_que_nasceu_numa_CARGA_nao_conta_como_agenda_nova()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var daCarga = Random.Shared.Next(1_000_000, 9_999_999).ToString();
+        var organica = Random.Shared.Next(1_000_000, 9_999_999).ToString();
+        var fim = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
+
+        var inicioCarga = DateTime.UtcNow.AddHours(-2);
+        db.SisregEscalaSincronizacaoExecucoes.Add(new SisregEscalaSincronizacaoExecucao
+        {
+            Id = Guid.CreateVersion7(),
+            Disparo = DisparoSincronizacao.Manual,
+            Status = StatusVarredura.Concluida,
+            EscalasNovas = 17_452,
+            IniciadoEm = inicioCarga,
+            FinalizadoEm = inicioCarga.AddMinutes(1),
+        });
+
+        db.SisregEscalas.AddRange(
+            // Nasceu no meio da carga: é retrato inicial, não oferta.
+            Escala(unidadeId, daCarga, DayOfWeek.Monday, 500, fim, inicioCarga.AddSeconds(30)),
+            // Nasceu depois, num sincronismo comum: é oferta de verdade.
+            Escala(unidadeId, organica, DayOfWeek.Tuesday, 7, fim, DateTime.UtcNow.AddMinutes(-5)));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).ListarAsync(7);
+
+        Assert.DoesNotContain(r.AgendasNovas, a => a.ProcedimentoCodigo == daCarga);
+        Assert.Contains(r.AgendasNovas, a => a.ProcedimentoCodigo == organica);
+    }
+
+    /// <summary>
     /// A consulta de vagas liberadas (join com solicitação + subconsulta de espera em SQL cru)
     /// também precisa executar de verdade — é o outro caminho que só um banco prova.
     /// </summary>
