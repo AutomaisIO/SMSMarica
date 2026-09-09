@@ -174,6 +174,26 @@ antigos. Parâmetros para o técnico do equipamento: [`pacs-cdt-mamografo.md`](.
 A regra `dcmAllowDeleteStudyPermanently = REJECTED` está em todas — só estudos
 explicitamente rejeitados podem ser apagados permanentemente.
 
+### AEs de worklist por equipamento
+
+Cada aparelho tem o **seu** AE de worklist, com um `dcmMWLWorklistLabel` que recorta a lista.
+Estes não apareciam nesta tabela até 09/09/2026 — e é justamente por isso que o passo de criá-los
+vive sendo esquecido. Criar um novo: skill **`criar-equipamento-imagem`**.
+
+| AE de worklist | `dcmMWLWorklistLabel` | Aparelho (AE do equipamento) | Unidade |
+|---|---|---|---|
+| `WORK-CDT` | `FDR-MAMO` | Mamógrafo Fuji FDR-3000AWS | CDT |
+| `WORK-CMI` | `US_CMI` | Ultrassom | CMI |
+| `WORK-US02-CMI` | `US02-CMI` | Ultrassom 02 — **inativo até a instalação** | CMI |
+| `WORK-US01-CDT` | `US01-CDT` | Ultrassom 01 | CDT |
+| `WORK-US02-CDT` | `US02-CDT` | Ultrassom 02 | CDT |
+| `WORK-DO-CDT` | `DO-CDT` | Densitometria óssea | CDT |
+| `WORK-RX-CDT` | `RX-CDT` | Raio-X (Konica ImagePilot) | CDT |
+| `WORKLIST` | **nenhum** | — enxerga TUDO; é o AE do backend | — |
+
+> **Prova de isolamento:** a soma dos itens dos AEs com label tem que bater **exatamente** com o
+> total do `WORKLIST`. Em 09/09/2026: 153 = 153.
+
 > **`PACS-CDT` e `WORK-CDT` escutam na MESMA porta DICOM (11112 plain / 2762 TLS).**
 > O que separa "enviar imagem" de "consultar worklist" é o **AE Title**, não a porta.
 > `PACS-CDT` recebe/serve imagens e **não** responde MWL; `WORK-CDT` serve worklist
@@ -436,6 +456,8 @@ dependem da lista sair do nosso banco.
 | `US01-CDT` | Ultrassom 01 | CDT | 158 |
 | `DO-CDT` | Densitometria óssea | CDT | 143 |
 | `US02-CDT` | Ultrassom 02 | CDT | 9 |
+| `RX-CDT` | Raio-X (Konica ImagePilot) | CDT | — (criado em 04/09/2026) |
+| `US02-CMI` | Ultrassom 02 | Centro Materno Infantil | — (criado em 09/09/2026, **inativo**) |
 | `DICOMPACSSCU` | — (acervo legado importado) | — | 1263 |
 
 `DICOMPACSSCU` é o acervo migrado: **todos os 1263 estudos têm StudyDate ≤ 31/12/2025**, são MG e
