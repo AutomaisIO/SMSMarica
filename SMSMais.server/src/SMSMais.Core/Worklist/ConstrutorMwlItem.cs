@@ -43,6 +43,24 @@ internal static class ConstrutorMwlItem
         return cpf.Length == 11 ? cpf : s.Solicitacao!.PacienteId.ToString();
     }
 
+    /// <summary>IssuerOfPatientID (0010,0021) quando o PatientID é o CPF — a autoridade que
+    /// emitiu aquele número.
+    /// <para><b>Por que isto existe:</b> o dcm4chee tem uma coerção que, na ausência de issuer,
+    /// fabrica um a partir do <b>nome</b> e do nascimento
+    /// (<c>DCM4CHEE.{PatientName,hash}.{PatientBirthDate,hash}</c>). Com isso o nome passa a fazer
+    /// parte da identidade: corrigir um sobrenome no cadastro criava um SEGUNDO paciente para o
+    /// mesmo CPF, e o registro seguinte batia em 409 por ambiguidade. Mandando um issuer estável,
+    /// o CPF vira o código único de verdade — o nome pode mudar à vontade.</para>
+    /// <para><b>Só para CPF.</b> Paciente sem CPF entra com o Guid do hub e <b>sem</b> issuer: para
+    /// esses a coerção antiga continua valendo, e mandar um issuer nosso faria o registro deixar de
+    /// casar com a imagem que o equipamento devolve. Ver
+    /// <c>docs/pendencias/identidade-do-paciente-no-pacs.md</c>.</para></summary>
+    public const string IssuerCpf = "CPF";
+
+    /// <summary>Issuer correspondente a um PatientID, ou <c>null</c> quando não é CPF.</summary>
+    public static string? IssuerDoPatientId(string patientId) =>
+        patientId.Length == 11 && patientId.All(char.IsAsciiDigit) ? IssuerCpf : null;
+
     /// <summary>
     /// Item MWL completo (top-level + Scheduled Procedure Step Sequence).
     /// <para>
@@ -66,6 +84,7 @@ internal static class ConstrutorMwlItem
             ["00100010"] = Pn(paciente.Nome),                               // PatientName
             ["00100020"] = Lo(PatientId(s, paciente)),                      // PatientID (CPF ou Guid do hub FHIR)
             ["00100030"] = Da(paciente.DataNascimento),                     // PatientBirthDate
+            // 00100021 (IssuerOfPatientID) entra logo abaixo, só quando o PatientID é o CPF.
             ["00100040"] = Cs(MapearSexo(paciente.Sexo)),                   // PatientSex
             ["0020000D"] = Ui(s.StudyInstanceUID),                          // StudyInstanceUID
             ["00321060"] = LoDesc(tipo.RequestedProcedureDescription),      // RequestedProcedureDescription (<= 16, exigência do Fuji)
@@ -90,18 +109,26 @@ internal static class ConstrutorMwlItem
                     },
                 },
             },
-        };
+        }.ComIssuer(PatientId(s, paciente));
     }
 
     /// <summary>Recurso Patient mínimo para registrar/atualizar no dcm4chee antes do
     /// MWL item (o <c>POST /mwlitems</c> exige que o paciente já exista no arquivo).</summary>
-    public static JsonObject Paciente(ExameImagem s, PacienteResumo p) => new()
+    public static JsonObject Paciente(ExameImagem s, PacienteResumo p) => new JsonObject
     {
         ["00100010"] = Pn(p.Nome),
         ["00100020"] = Lo(PatientId(s, p)),
         ["00100030"] = Da(p.DataNascimento),
         ["00100040"] = Cs(MapearSexo(p.Sexo)),
-    };
+    }.ComIssuer(PatientId(s, p));
+
+    /// <summary>Acrescenta IssuerOfPatientID (0010,0021) quando o PatientID é o CPF. Devolve o
+    /// mesmo objeto para encadear.</summary>
+    private static JsonObject ComIssuer(this JsonObject ds, string patientId)
+    {
+        if (IssuerDoPatientId(patientId) is { } issuer) ds["00100021"] = Lo(issuer);
+        return ds;
+    }
 
     // ---- helpers DICOM+JSON ----
 

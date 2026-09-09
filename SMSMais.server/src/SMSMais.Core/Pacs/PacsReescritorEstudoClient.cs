@@ -197,6 +197,10 @@ public sealed class PacsReescritorEstudoClient(
 
         ds.AddOrUpdate(DicomTag.PatientID, id.PatientId);
         ds.AddOrUpdate(DicomTag.PatientName, id.PatientName);
+        // Sem issuer o dcm4chee fabrica um a partir do NOME (coerção SupplementIssuerOfPatientID),
+        // e o estudo reescrito nasceria num paciente diferente do que a worklist criou.
+        if (!string.IsNullOrWhiteSpace(id.IssuerOfPatientId))
+            ds.AddOrUpdate(DicomTag.IssuerOfPatientID, id.IssuerOfPatientId);
         ds.AddOrUpdate(DicomTag.AccessionNumber, id.AccessionNumber ?? string.Empty);
         if (id.DataNascimento is { } nasc)
             ds.AddOrUpdate(DicomTag.PatientBirthDate, nasc.ToString("yyyyMMdd", CultureInfo.InvariantCulture));

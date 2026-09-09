@@ -4,12 +4,16 @@ namespace SMSMais.Core.Pacs;
 /// <param name="PatientId">(0010,0020) — o que usamos como identidade do paciente no PACS.</param>
 /// <param name="PatientName">(0010,0010) já no formato DICOM "SOBRENOME^NOMES".</param>
 /// <param name="AccessionNumber">(0008,0050) — o nº do pedido.</param>
+/// <param name="IssuerOfPatientId">(0010,0021) — a autoridade do <paramref name="PatientId"/>.
+/// Vem preenchido quando o id é o CPF e <c>null</c> quando é o Guid do hub; sem ele o dcm4chee
+/// fabrica um issuer a partir do NOME, e o nome vira parte da identidade.</param>
 public sealed record IdentidadeDicom(
     string PatientId,
     string PatientName,
     string AccessionNumber,
     DateOnly? DataNascimento = null,
-    string? Sexo = null);
+    string? Sexo = null,
+    string? IssuerOfPatientId = null);
 
 /// <summary>Resultado da reescrita: o estudo novo que substituiu o original.</summary>
 /// <param name="PatientIdOriginal">

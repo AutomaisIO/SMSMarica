@@ -50,7 +50,8 @@ public sealed class ResolvedorIdentidadeDicom(
             PatientName: ConstrutorMwlItem.FormatarPn(paciente.Nome),
             AccessionNumber: exame.AccessionNumber ?? string.Empty,
             DataNascimento: paciente.DataNascimento,
-            Sexo: MapearSexo(paciente.Sexo));
+            Sexo: MapearSexo(paciente.Sexo),
+            IssuerOfPatientId: ConstrutorMwlItem.IssuerDoPatientId(patientId));
     }
 
     private static string? MapearSexo(Sexo sexo) => sexo switch
