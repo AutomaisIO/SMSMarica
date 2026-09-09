@@ -85,6 +85,29 @@ public sealed class EscalasSincronizacaoService(
     public const string ChaveAtivo = "escalasAtivo";
     public const string ChaveHora = "escalasHoraLocal";
 
+    /// <summary>
+    /// Lista de horários do disparo diário. Substitui <see cref="ChaveHora"/>, que fica como
+    /// leitura de compatibilidade — quem já tinha um horário só continua com ele até salvar de novo.
+    ///
+    /// <para><b>Por que mais de um por dia.</b> A escala é a OFERTA: vaga e agenda nova nascem no
+    /// SISREG a qualquer hora do dia, e é justamente isso que a regulação precisa saber cedo — uma
+    /// agenda de cardiologia que abre às 09:00 e só é vista às 02:30 do dia seguinte custa 17 horas
+    /// de fila parada. Sincronizar de novo é barato: <b>1 requisição para a rede inteira</b> (o
+    /// <c>cons_escalas</c> sem critério traz tudo), contra as ~223 de uma passada de agenda.</para>
+    ///
+    /// <para><b>Não há trava de horário aqui</b> — a trava 07:30–15:00 é do <c>expo_solicitacoes</c>,
+    /// não do <c>cons_escalas</c>. Por isso 06/12/18 funciona para escalas e <b>não</b> funcionaria
+    /// para a varredura de agenda, cujo horário do meio cairia no bloqueio.</para>
+    /// </summary>
+    public const string ChaveHorarios = "escalasHorariosLocais";
+
+    /// <summary>
+    /// Teto de disparos por dia. Cada um custa 1 requisição, então o limite não é orçamento: é não
+    /// transformar o motor em enxurrada de execuções que ninguém lê, e deixar espaço entre eles para
+    /// os outros motores (que se recusam mutuamente quando um está vivo).
+    /// </summary>
+    public const int MaxHorariosPorDia = 6;
+
     private readonly EscalasSincronizacaoOpcoes _opcoes = opcoes.Value;
 
     // ------------------------------------------------------------------ disparo
@@ -560,23 +583,60 @@ public sealed class EscalasSincronizacaoService(
     public async Task<EscalasAgendamentoDto> ObterAgendamentoAsync(CancellationToken cancellationToken = default)
     {
         var json = await LerParametrosAsync(cancellationToken);
+        var horarios = LerHorarios(json, _opcoes.HoraPadrao);
         return new EscalasAgendamentoDto(
             json?[ChaveAtivo]?.GetValue<bool>() ?? false,
-            json?[ChaveHora]?.GetValue<string>() ?? _opcoes.HoraPadrao,
+            // Primeiro da lista: mantém o contrato antigo de campo único vivo para quem ainda o lê.
+            horarios[0],
+            horarios,
             orcamento.Restante(orcamentoOpcoes.Value.TetoAutomatico));
+    }
+
+    /// <summary>
+    /// Horários configurados, já normalizados e ordenados. Lê a lista nova; na ausência dela cai no
+    /// campo único antigo; sem nenhum dos dois, no padrão. <b>Nunca devolve vazio</b> — o scheduler
+    /// indexa o primeiro elemento e uma lista vazia o derrubaria a cada tick.
+    /// </summary>
+    internal static IReadOnlyList<string> LerHorarios(JsonObject? json, string padrao)
+    {
+        if (json?[ChaveHorarios] is JsonArray arr && arr.Count > 0)
+        {
+            var lista = new List<string>();
+            foreach (var item in arr)
+            {
+                // Item inválido é PULADO, não derruba a leitura: um JSON editado à mão não pode
+                // impedir o motor de rodar nos horários que estão certos.
+                if (item?.GetValue<string>() is not { } bruto) continue;
+                if (!TimeOnly.TryParseExact(bruto.Trim(), "HH:mm", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var t))
+                {
+                    continue;
+                }
+                lista.Add(t.ToString("HH:mm", CultureInfo.InvariantCulture));
+            }
+
+            if (lista.Count > 0) return [.. lista.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+        }
+
+        var unico = json?[ChaveHora]?.GetValue<string>();
+        return [TimeOnly.TryParseExact(unico?.Trim(), "HH:mm", CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out var u) ? u.ToString("HH:mm", CultureInfo.InvariantCulture) : padrao];
     }
 
     public async Task<EscalasAgendamentoDto> SalvarAgendamentoAsync(
         SalvarEscalasAgendamentoRequest request, CancellationToken cancellationToken = default)
     {
-        var hora = NormalizarHora(request.HoraLocal);
+        var horarios = NormalizarHorarios(request);
 
         // Merge: baseUrl, autoLogin e o agendamento do lote de mapeamento vivem no MESMO
         // ParametrosJson — sobrescrever o JSON inteiro apagaria a credencial de acesso.
         var atual = await credenciais.ObterAsync(SisregWebSessao.Provedor, cancellationToken);
         var json = Parse(atual.ParametrosJson) ?? new JsonObject();
         json[ChaveAtivo] = request.Ativo;
-        json[ChaveHora] = hora;
+        json[ChaveHorarios] = new JsonArray([.. horarios.Select(h => JsonValue.Create(h))]);
+        // Espelha o primeiro no campo antigo: um rollback do binário volta a ler ChaveHora e
+        // encontra um horário válido em vez do padrão de fábrica.
+        json[ChaveHora] = horarios[0];
 
         await credenciais.AtualizarAsync(
             SisregWebSessao.Provedor,
@@ -589,6 +649,42 @@ public sealed class EscalasSincronizacaoService(
             cancellationToken);
 
         return await ObterAgendamentoAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Horários do pedido, normalizados, sem repetição e ordenados. Aceita a lista nova ou o campo
+    /// único antigo (nesta ordem) para o front poder migrar depois do backend.
+    /// </summary>
+    internal static IReadOnlyList<string> NormalizarHorarios(SalvarEscalasAgendamentoRequest request)
+    {
+        // `HoraLocal` é anulável no contrato antigo; `NormalizarHora` recusa nulo com mensagem
+        // própria, então o caminho de erro continua sendo o dele, não um NullReference aqui.
+        IReadOnlyList<string?> brutos = request.HorariosLocais is { Count: > 0 }
+            ? [.. request.HorariosLocais]
+            : [request.HoraLocal];
+
+        var horarios = brutos
+            .Select(NormalizarHora)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        if (horarios.Count == 0)
+        {
+            throw new ValidacaoException(
+                "escalas.sem_horario", "Informe ao menos um horário para o sincronismo diário.");
+        }
+
+        if (horarios.Count > MaxHorariosPorDia)
+        {
+            throw new ValidacaoException(
+                "escalas.horarios_demais",
+                $"No máximo {MaxHorariosPorDia} horários por dia. Cada disparo custa 1 requisição ao "
+                + "SISREG e os motores se recusam mutuamente quando um está vivo — mais que isso só "
+                + "produz execuções que se atropelam.");
+        }
+
+        return horarios;
     }
 
     internal static string NormalizarHora(string? hora)

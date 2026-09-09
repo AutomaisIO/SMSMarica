@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarRange, Loader2, RotateCw, UserCheck, XCircle } from 'lucide-react';
+import { CalendarRange, Loader2, RotateCw, UserCheck, X, XCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -60,7 +60,12 @@ export function SincronismoEscalasSecao() {
   const backfill = useBackfillExecutante();
 
   const [ativo, setAtivo] = useState(false);
-  const [hora, setHora] = useState('02:30');
+  /**
+   * Horários do dia. É lista porque a escala é a OFERTA: um bloco novo ("Gastro abriu 20 vagas no
+   * Conde") nasce no SISREG a qualquer hora, e vaga que a regulação só vê na madrugada seguinte
+   * passa o dia sem ser aproveitada. Sincronizar de novo custa 1 requisição para a rede inteira.
+   */
+  const [horarios, setHorarios] = useState<string[]>(['02:30']);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [agendaSalva, setAgendaSalva] = useState(false);
@@ -69,7 +74,10 @@ export function SincronismoEscalasSecao() {
   useEffect(() => {
     if (agendamento.data) {
       setAtivo(agendamento.data.ativo);
-      setHora(agendamento.data.horaLocal);
+      // `horariosLocais` é a verdade; `horaLocal` fica como reserva para o caso de o backend
+      // ainda não ter subido quando o front sobe.
+      const lista = agendamento.data.horariosLocais;
+      setHorarios(lista && lista.length > 0 ? lista : [agendamento.data.horaLocal]);
     }
   }, [agendamento.data]);
 
@@ -100,7 +108,7 @@ export function SincronismoEscalasSecao() {
     setErro(null);
     setAgendaSalva(false);
     try {
-      await salvar.mutateAsync({ ativo, horaLocal: hora });
+      await salvar.mutateAsync({ ativo, horariosLocais: horarios });
       setAgendaSalva(true);
     } catch (err) {
       setErro(extrairMensagemDeErro(err));
@@ -190,17 +198,44 @@ export function SincronismoEscalasSecao() {
 
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <Campo
-            label="Hora (Brasília)"
-            htmlFor="escalas-hora"
-            dica="De madrugada: o SISREG aceita uma sessão por operador, e rodar no expediente derruba quem está atendendo."
+            label="Horários (Brasília)"
+            htmlFor="escalas-hora-0"
+            dica="Vaga e agenda nova nascem no SISREG a qualquer hora. Cada sincronismo custa 1 requisição para a rede inteira, e esta tela não sofre o bloqueio das 07:30 às 15:00."
           >
-            <Input
-              id="escalas-hora"
-              type="time"
-              className="w-36"
-              value={hora}
-              onChange={(e) => setHora(e.target.value)}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              {horarios.map((h, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <Input
+                    id={`escalas-hora-${i}`}
+                    type="time"
+                    className="w-32"
+                    value={h}
+                    onChange={(e) =>
+                      setHorarios((atual) => atual.map((v, j) => (j === i ? e.target.value : v)))
+                    }
+                  />
+                  {horarios.length > 1 ? (
+                    <button
+                      type="button"
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                      title="Remover este horário"
+                      onClick={() => setHorarios((atual) => atual.filter((_, j) => j !== i))}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {horarios.length < 6 ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-dashed border-gray-300 px-2 py-1.5 text-xs text-gray-600 hover:border-primary-400 hover:text-primary-700"
+                  onClick={() => setHorarios((atual) => [...atual, '12:00'])}
+                >
+                  + horário
+                </button>
+              ) : null}
+            </div>
           </Campo>
           <Button type="submit" variante="outline" className="mb-0.5" disabled={salvar.isPending}>
             {salvar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

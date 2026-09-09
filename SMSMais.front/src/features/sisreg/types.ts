@@ -312,6 +312,13 @@ export type EscalasSincronizacaoExecucao = {
   criadoPorNome: string | null;
 };
 
-export type EscalasAgendamento = { ativo: boolean; horaLocal: string; orcamentoRestante: number };
+export type EscalasAgendamento = {
+  ativo: boolean;
+  /** Primeiro da lista. Contrato antigo, mantido; a verdade e `horariosLocais`. */
+  horaLocal: string;
+  /** Horarios do dia, normalizados (HH:mm) e ordenados. */
+  horariosLocais: string[];
+  orcamentoRestante: number;
+};
 
-export type SalvarEscalasAgendamento = { ativo: boolean; horaLocal: string };
+export type SalvarEscalasAgendamento = { ativo: boolean; horariosLocais: string[] };

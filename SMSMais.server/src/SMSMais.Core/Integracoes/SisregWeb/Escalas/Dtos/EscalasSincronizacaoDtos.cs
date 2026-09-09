@@ -46,6 +46,21 @@ public sealed record EscalasSincronizacaoExecucaoDto(
 
 /// <summary>Configuração do disparo diário. Guardada no <c>ParametrosJson</c> da credencial
 /// <c>sisreg</c>, junto com o agendamento do lote de mapeamento — não em tabela nova.</summary>
-public sealed record EscalasAgendamentoDto(bool Ativo, string HoraLocal, int OrcamentoRestante);
+/// <param name="HoraLocal">
+/// Primeiro horário da lista. Mantido para não quebrar quem lê o campo único; a verdade é
+/// <paramref name="HorariosLocais"/>.
+/// </param>
+/// <param name="HorariosLocais">Todos os horários do dia, normalizados (HH:mm) e ordenados.</param>
+public sealed record EscalasAgendamentoDto(
+    bool Ativo,
+    string HoraLocal,
+    IReadOnlyList<string> HorariosLocais,
+    int OrcamentoRestante);
 
-public sealed record SalvarEscalasAgendamentoRequest(bool Ativo, string HoraLocal);
+/// <param name="HoraLocal">Caminho antigo, de um horário só. Ignorado quando
+/// <paramref name="HorariosLocais"/> vem preenchido.</param>
+/// <param name="HorariosLocais">Lista de horários; tem precedência.</param>
+public sealed record SalvarEscalasAgendamentoRequest(
+    bool Ativo,
+    string? HoraLocal = null,
+    IReadOnlyList<string>? HorariosLocais = null);
