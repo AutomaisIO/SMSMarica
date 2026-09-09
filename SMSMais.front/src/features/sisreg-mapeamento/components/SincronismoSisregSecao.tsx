@@ -535,7 +535,12 @@ function LinhaExecucao({ execucao: e, aoAbrir }: { execucao: VarreduraExecucao; 
           {e.combinacoesTotal > 1 ? `${e.combinacoesFeitas}/${e.combinacoesTotal}` : '—'}
         </td>
         <td className="py-1.5 pr-3">{e.requisicoes}</td>
-        <td className="py-1.5 pr-3">{e.validos}</td>
+        {/* LIDAS é `registrosEncontrados`, não `validos`. Eram a mesma coisa só no fim de uma
+            varredura que deu certo — e por isso o erro passou. Enquanto ela roda, `validos` fica em
+            zero até a importação começar: no CDT em 08/09/2026 a tela dizia "Lidas 0" com 6.268
+            agendamentos já lidos e gravados, durante os minutos da pré-carga. É exatamente quando o
+            operador está olhando que a coluna mentia. */}
+        <td className="py-1.5 pr-3">{e.registrosEncontrados}</td>
         <td className={`py-1.5 pr-3 ${novas > 0 ? 'font-semibold text-emerald-700' : 'text-gray-400'}`}>
           {novas > 0 ? novas : '—'}
         </td>
