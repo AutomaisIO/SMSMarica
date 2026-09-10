@@ -126,6 +126,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SisregEscalaSincronizacaoExecucao> SisregEscalaSincronizacaoExecucoes =>
         Set<SisregEscalaSincronizacaoExecucao>();
 
+    /// <summary>Quem pediu no SISREG e ainda NAO foi agendado — a fila de espera de verdade.</summary>
+    public DbSet<SisregFilaPendente> SisregFilaPendentes => Set<SisregFilaPendente>();
+
     public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
     public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
     public DbSet<SisregVarreduraExecucaoItem> SisregVarreduraExecucaoItens => Set<SisregVarreduraExecucaoItem>();
