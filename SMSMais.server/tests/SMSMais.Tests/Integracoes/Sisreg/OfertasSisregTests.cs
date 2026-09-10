@@ -451,6 +451,38 @@ public class OfertasSisregTests(PostgresFixture fixture)
         Assert.False(nossas[0].AgendaLocal);
     }
 
+    /// <summary>
+    /// O caso do ECG do Bairro da Amizade (10/09/2026): a MESMA unidade tem agenda local num período
+    /// e regulada em outro. O regulador só enxerga a regulada — a primeira vaga dele é a do bloco
+    /// regulado, não a do local que vem antes. A unidade aparece duas vezes, uma de cada tipo.
+    /// </summary>
+    [Fact]
+    public async Task Unidade_mista_separa_as_datas_locais_das_reguladas()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var sexta = Proxima(DayOfWeek.Friday);
+
+        var local = EscalaDeVagas(unidadeId, codigo, DayOfWeek.Friday, 10, 10, agendaLocal: true);
+        local.VigenciaFim = sexta.AddDays(20);                      // as 3 primeiras sextas: local
+        var regulada = EscalaDeVagas(unidadeId, codigo, DayOfWeek.Friday, 10, 10, inicio: sexta.AddDays(21));
+        db.SisregEscalas.AddRange(local, regulada);
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).DatasDaOfertaAsync(codigo, 60);
+        var daUnidade = r.Unidades.Where(u => u.UnidadeId == unidadeId).ToList();
+
+        Assert.Equal(2, daUnidade.Count);
+        var reg = Assert.Single(daUnidade, u => !u.AgendaLocal);
+        var loc = Assert.Single(daUnidade, u => u.AgendaLocal);
+        Assert.Equal(sexta.AddDays(21), reg.PrimeiraVagaLivre);
+        Assert.Equal(sexta, loc.PrimeiraVagaLivre);
+        Assert.All(reg.Dias, d => Assert.True(d.Data >= sexta.AddDays(21)));
+        Assert.True(hoje < reg.PrimeiraVagaLivre);
+    }
+
     [Fact]
     public async Task Agenda_nova_diz_se_e_agenda_local()
     {

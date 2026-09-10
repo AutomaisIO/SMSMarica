@@ -176,7 +176,7 @@ export function DatasDaOfertaPainel({ codigo }: { codigo: string }) {
           {reguladas.length > 0 ? (
             <ul className="mt-3 space-y-2">
               {reguladas.map((u, i) => (
-                <Unidade key={u.unidadeId} u={u} abertaDeInicio={i === 0} />
+                <Unidade key={`${u.unidadeId}-${u.agendaLocal}`} u={u} abertaDeInicio={i === 0} />
               ))}
             </ul>
           ) : (
@@ -198,7 +198,7 @@ export function DatasDaOfertaPainel({ codigo }: { codigo: string }) {
               {verLocais ? (
                 <ul className="mt-2 space-y-2">
                   {locais.map((u) => (
-                    <Unidade key={u.unidadeId} u={u} abertaDeInicio={false} />
+                    <Unidade key={`${u.unidadeId}-${u.agendaLocal}`} u={u} abertaDeInicio={false} />
                   ))}
                 </ul>
               ) : null}

@@ -165,28 +165,35 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
             .Select(s => new { s.UnidadeExecutanteId, s.ProcedimentoCodigoSisreg, s.DataAgendada })
             .ToListAsync(cancellationToken);
 
+        // Local × regulada é decidido POR ESCALA, não por unidade. Em 10/09/2026 o ECG do Bairro da
+        // Amizade era local em set/out/dez e regulado só em novembro — o regulador só enxerga
+        // novembro, e tratar a unidade inteira como "regulada" anunciava setembro. 63 pares
+        // unidade × procedimento da rede são mistos assim. Unidade mista aparece duas vezes.
         var unidades = new List<UnidadeDaOfertaDto>();
-        foreach (var daUnidade in escalas.GroupBy(e => e.UnidadeId))
+        foreach (var daUnidade in escalas.GroupBy(e => (e.UnidadeId, e.AgendaLocal)))
         {
             var porFamilia = daUnidade.Any(e => EhCodigoDeGrupo(e.ProcedimentoCodigo));
 
             var ocupacao = agendamentos
-                .Where(a => a.UnidadeExecutanteId == daUnidade.Key
+                .Where(a => a.UnidadeExecutanteId == daUnidade.Key.UnidadeId
                     && (porFamilia || a.ProcedimentoCodigoSisreg == codigo))
                 .GroupBy(a => DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(a.DataAgendada!.Value)))
                 .ToDictionary(g => g.Key, g => g.Count());
 
             var diasDaUnidade = ExpandirDias(daUnidade.ToList(), ocupacao, hoje, ate);
-            var agendadosFuturos = ocupacao.Values.Sum();
+
+            // Só os agendamentos que caem em dia DESTA agenda: numa unidade mista, a marcação do
+            // dia local não prova que a agenda regulada está sendo ofertada.
+            var agendadosFuturos = diasDaUnidade.Sum(d => d.Agendados);
 
             var semAgendamentoFuturo = agendadosFuturos == 0
                 && diasDaUnidade.Count > 0
                 && daUnidade.Min(e => e.VigenciaInicio) <= hoje.AddDays(-DiasParaDesconfiarDeAgendaVazia);
 
             unidades.Add(new UnidadeDaOfertaDto(
-                daUnidade.Key,
+                daUnidade.Key.UnidadeId,
                 daUnidade.First().UnidadeNome,
-                daUnidade.All(e => e.AgendaLocal),
+                daUnidade.Key.AgendaLocal,
                 diasDaUnidade.FirstOrDefault(d => d.Livres > 0)?.Data,
                 diasDaUnidade.Sum(d => d.Livres),
                 agendadosFuturos,
@@ -501,18 +508,27 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 && e.Status == StatusEscalaSisreg.Ativa
                 && !e.Ausente
                 && e.VigenciaFim >= hoje)
-            .Select(e => new { e.UnidadeId, e.ProcedimentoCodigo, e.AgendaLocal })
+            .Select(e => new { e.UnidadeId, e.ProcedimentoCodigo, e.AgendaLocal, e.DiaSemana, e.VigenciaInicio, e.VigenciaFim })
             .ToListAsync(ct);
 
         return [.. vagas.Select(v =>
         {
             if (v.UnidadeId is null || string.IsNullOrEmpty(v.ProcedimentoCodigo)) return v;
             var grupo = GrupoDoCodigo(v.ProcedimentoCodigo);
-            var daVaga = escalas
+            var doProcedimento = escalas
                 .Where(e => e.UnidadeId == v.UnidadeId
                     && (e.ProcedimentoCodigo == v.ProcedimentoCodigo || e.ProcedimentoCodigo == grupo))
                 .ToList();
-            return daVaga.Count == 0 ? v : v with { AgendaLocal = daVaga.All(e => e.AgendaLocal) };
+
+            // A escala que cobre o DIA da vaga decide: na mesma unidade o setembro pode ser local e
+            // o novembro regulado. Sem escala no dia, cai para a unidade inteira.
+            var dia = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(v.DataAgendada));
+            var doDia = doProcedimento
+                .Where(e => e.DiaSemana == dia.DayOfWeek && e.VigenciaInicio <= dia && e.VigenciaFim >= dia)
+                .ToList();
+            var decide = doDia.Count > 0 ? doDia : doProcedimento;
+
+            return decide.Count == 0 ? v : v with { AgendaLocal = decide.All(e => e.AgendaLocal) };
         })];
     }
 
