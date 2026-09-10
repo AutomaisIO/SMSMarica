@@ -515,6 +515,12 @@ public static class DependencyInjection
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoRunner>();
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoScheduler>();
 
+        // Fila de espera: quem pediu no SISREG e ainda NÃO foi agendado. Só leitura, 1 requisição
+        // por janela de 31 dias, e sem a trava 07:30–15:00 (que é do expo_solicitacoes).
+        services.AddScoped<
+            Integracoes.SisregWeb.Fila.IFilaPendenteSisregService,
+            Integracoes.SisregWeb.Fila.FilaPendenteSisregService>();
+
         // Ofertas: o que abriu (agenda nova + vaga liberada). Só leitura sobre o que os motores
         // acima já trouxeram — não tem fila, runner nem acesso ao SISREG.
         services.AddScoped<
