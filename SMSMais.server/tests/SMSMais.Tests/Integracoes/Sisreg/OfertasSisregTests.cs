@@ -289,6 +289,210 @@ public class OfertasSisregTests(PostgresFixture fixture)
             new OfertasSisregService(db).FilaDaOfertaAsync("  ", null, 100, 0));
     }
 
+    // ------------------------------------------------------------------ datas da oferta
+
+    /// <summary>Próxima ocorrência do dia da semana a partir de amanhã (dia de Brasília).</summary>
+    private static DateOnly Proxima(DayOfWeek dia)
+    {
+        var d = DateOnly.FromDateTime(SMSMais.Core.Common.Tempo.FusoBrasilia.ParaExibicao(DateTime.UtcNow)).AddDays(1);
+        while (d.DayOfWeek != dia) d = d.AddDays(1);
+        return d;
+    }
+
+    private static string CodigoItem() => Random.Shared.Next(1000, 9999) + Random.Shared.Next(100, 999).ToString();
+
+    private static SisregEscala EscalaDeVagas(
+        Guid unidadeId, string codigo, DayOfWeek dia, int primeiraVez, int total,
+        DateOnly? inicio = null, bool agendaLocal = false) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            CodigoEscala = Random.Shared.Next(100_000_000, 999_999_999).ToString(),
+            UnidadeId = unidadeId,
+            UnidadeNomeSisreg = "X",
+            Cnes = "1234567",
+            ProfissionalNome = "DRA TESTE",
+            ProcedimentoCodigo = codigo,
+            ProcedimentoNome = codigo.EndsWith("000") ? $"GRUPO - TESTE {codigo}" : $"PROC {codigo}",
+            EhGrupo = codigo.EndsWith("000"),
+            DiaSemana = dia,
+            HoraInicio = new TimeOnly(8, 0),
+            HoraFim = new TimeOnly(12, 0),
+            VigenciaInicio = inicio ?? DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1),
+            VigenciaFim = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(60),
+            VagasPrimeiraVez = primeiraVez,
+            VagasTotal = total,
+            AgendaLocal = agendaLocal,
+            Status = StatusEscalaSisreg.Ativa,
+            Ausente = false,
+            CriadoEm = DateTime.UtcNow.AddDays(-40),
+        };
+
+    private static Solicitacao Agendado(Guid unidadeId, string codigo, DateOnly dia) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            CodigoSolicitacao = Random.Shared.Next(100_000_000, 999_999_999).ToString(),
+            UnidadeExecutanteId = unidadeId,
+            ProcedimentoCodigoSisreg = codigo,
+            // 12:00 UTC = 09:00 em Brasília: o mesmo dia dos dois lados.
+            DataAgendada = dia.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc),
+            Status = StatusSolicitacao.Agendada,
+            CriadoEm = DateTime.UtcNow,
+        };
+
+    /// <summary>
+    /// A queixa que originou isto (10/09/2026): a tela mostrava a VIGÊNCIA como se fosse o período
+    /// com vaga. Um dia lotado não é vaga — a primeira data livre é a do dia seguinte com sobra, e
+    /// só vaga de PRIMEIRA VEZ conta, porque é a que a regulação marca.
+    /// </summary>
+    [Fact]
+    public async Task Primeira_vaga_livre_pula_o_dia_lotado_e_conta_so_primeira_vez()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+        var segunda = Proxima(DayOfWeek.Monday);
+
+        // 10 vagas no dia, só 6 de primeira vez.
+        db.SisregEscalas.Add(EscalaDeVagas(unidadeId, codigo, DayOfWeek.Monday, primeiraVez: 6, total: 10));
+        for (var i = 0; i < 10; i++) db.Solicitacoes.Add(Agendado(unidadeId, codigo, segunda));
+        for (var i = 0; i < 7; i++) db.Solicitacoes.Add(Agendado(unidadeId, codigo, segunda.AddDays(7)));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).DatasDaOfertaAsync(codigo, 60);
+
+        var u = Assert.Single(r.Unidades, x => x.UnidadeId == unidadeId);
+        var dia1 = Assert.Single(u.Dias, d => d.Data == segunda);
+        var dia2 = Assert.Single(u.Dias, d => d.Data == segunda.AddDays(7));
+        var dia3 = Assert.Single(u.Dias, d => d.Data == segunda.AddDays(14));
+
+        Assert.Equal(0, dia1.Livres);            // lotado
+        Assert.Equal(3, dia2.Livres);            // 10 − 7 = 3, cabe nas 6 de primeira vez
+        Assert.Equal(6, dia3.Livres);            // vazio: o teto é a primeira vez, não o total
+        Assert.Equal(6, dia3.Vagas);
+        Assert.Equal(segunda.AddDays(7), u.PrimeiraVagaLivre);
+    }
+
+    /// <summary>
+    /// O caso do ECG do CDT: escala ativa há meses, 280 vagas por semana declaradas e nenhum
+    /// agendamento futuro — o SISREG não está ofertando. A tela avisa em vez de anunciar vaga.
+    /// Agenda aberta ontem não é suspeita: ainda não teve tempo de receber marcação.
+    /// </summary>
+    [Fact]
+    public async Task Agenda_antiga_sem_nenhum_agendamento_futuro_e_marcada_suspeita()
+    {
+        await using var db = fixture.CriarDbContext();
+        var antiga = await CriarUnidadeAsync(db);
+        var nova = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        db.SisregEscalas.AddRange(
+            EscalaDeVagas(antiga, codigo, DayOfWeek.Tuesday, 20, 20, inicio: hoje.AddDays(-200)),
+            EscalaDeVagas(nova, codigo, DayOfWeek.Tuesday, 20, 20, inicio: hoje.AddDays(-1)));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).DatasDaOfertaAsync(codigo, 60);
+
+        Assert.True(Assert.Single(r.Unidades, u => u.UnidadeId == antiga).SemAgendamentoFuturo);
+        Assert.False(Assert.Single(r.Unidades, u => u.UnidadeId == nova).SemAgendamentoFuturo);
+    }
+
+    /// <summary>
+    /// A vaga de ITEM é marcada na escala do GRUPO ("GRUPO - ULTRASONOGRAFIA" recebe a
+    /// transvaginal), e em escala de grupo qualquer item do grupo ocupa a vaga.
+    /// </summary>
+    [Fact]
+    public async Task Item_casa_com_a_escala_do_grupo_e_qualquer_item_ocupa_a_vaga_do_grupo()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var prefixo = Random.Shared.Next(1000, 9999).ToString();
+        var grupo = prefixo + "000";
+        var item = prefixo + "012";
+        var outroItem = prefixo + "034";
+        var quarta = Proxima(DayOfWeek.Wednesday);
+
+        db.SisregEscalas.Add(EscalaDeVagas(unidadeId, grupo, DayOfWeek.Wednesday, 5, 5));
+        db.Solicitacoes.AddRange(Agendado(unidadeId, item, quarta), Agendado(unidadeId, outroItem, quarta));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).DatasDaOfertaAsync(item, 30);
+
+        var u = Assert.Single(r.Unidades, x => x.UnidadeId == unidadeId);
+        var dia = Assert.Single(u.Dias, d => d.Data == quarta);
+        Assert.Equal(2, dia.Agendados);
+        Assert.Equal(3, dia.Livres);
+    }
+
+    /// <summary>
+    /// Agenda local não é oferta para a regulação: a unidade marca direto e o regulador nunca vê.
+    /// A tela separa, e a regulada vem primeiro.
+    /// </summary>
+    [Fact]
+    public async Task Agenda_local_vem_marcada_e_depois_da_regulada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var local = await CriarUnidadeAsync(db);
+        var regulada = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+
+        db.SisregEscalas.AddRange(
+            EscalaDeVagas(local, codigo, DayOfWeek.Thursday, 5, 5, agendaLocal: true),
+            EscalaDeVagas(regulada, codigo, DayOfWeek.Thursday, 5, 5));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).DatasDaOfertaAsync(codigo, 30);
+        var nossas = r.Unidades.Where(u => u.UnidadeId == local || u.UnidadeId == regulada).ToList();
+
+        Assert.Equal([regulada, local], nossas.Select(u => u.UnidadeId));
+        Assert.True(nossas[1].AgendaLocal);
+        Assert.False(nossas[0].AgendaLocal);
+    }
+
+    [Fact]
+    public async Task Agenda_nova_diz_se_e_agenda_local()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var proc = Random.Shared.Next(1_000_000, 9_999_999).ToString();
+        var fim = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
+        var escala = Escala(unidadeId, proc, DayOfWeek.Monday, 10, fim, DateTime.UtcNow);
+        escala.AgendaLocal = true;
+        db.SisregEscalas.Add(escala);
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).ListarAsync(7);
+
+        Assert.True(Assert.Single(r.AgendasNovas, a => a.ProcedimentoCodigo == proc).AgendaLocal);
+    }
+
+    /// <summary>
+    /// A vaga de item serve a quem pediu o GRUPO inteiro: a fila guarda o que foi pedido, e em
+    /// ultrassom isso costuma ser "GRUPO - ULTRASONOGRAFIA". Casar só o nome do item daria zero.
+    /// </summary>
+    [Fact]
+    public async Task Fila_de_item_inclui_quem_pediu_o_grupo()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var prefixo = Random.Shared.Next(1000, 9999).ToString();
+        var grupo = prefixo + "000";
+        var item = prefixo + "056";
+        var escalaGrupo = EscalaDeVagas(unidadeId, grupo, DayOfWeek.Friday, 5, 5);
+        db.SisregEscalas.Add(escalaGrupo);
+        db.SisregFilaPendentes.AddRange(
+            NaFila($"PROC {item}", new DateOnly(2026, 1, 1), nome: "PEDIU O ITEM"),
+            NaFila(escalaGrupo.ProcedimentoNome, new DateOnly(2025, 6, 1), nome: "PEDIU O GRUPO"));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).FilaDaOfertaAsync($"PROC {item}", null, 100, 0, item);
+
+        Assert.Equal(["PEDIU O GRUPO", "PEDIU O ITEM"], r.Pessoas.Select(p => p.Nome));
+        Assert.Contains(escalaGrupo.ProcedimentoNome, r.ProcedimentosIncluidos);
+    }
+
     /// <summary>
     /// A consulta de vagas liberadas (join com solicitação + subconsulta de espera em SQL cru)
     /// também precisa executar de verdade — é o outro caminho que só um banco prova.

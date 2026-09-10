@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.SisregWeb.Fila;
+using SMSMais.Core.Integracoes.SisregWeb.Fila.Background;
 using SMSMais.Core.Integracoes.SisregWeb.Ofertas;
 using SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -9,8 +13,9 @@ namespace SMSMais.Api.Controllers;
 /// <summary>
 /// <b>Ofertas</b>: o que abriu no SISREG — agenda nova e vaga liberada por cancelamento.
 ///
-/// <para>Somente leitura, e nada aqui fala com o SISREG: lê o que a varredura e o sincronismo de
-/// escalas já trouxeram.</para>
+/// <para>A leitura é sobre o que a varredura, o sincronismo de escalas e o motor da fila já
+/// trouxeram. O único ponto que fala com o SISREG é <c>fila/carregar</c>, e mesmo ele só
+/// <b>enfileira</b>: quem lê é o agendador, uma janela por vez.</para>
 ///
 /// <para>Usa a permissão <see cref="ModuloPermissao.AlteracoesAgenda"/> de propósito, em vez de um
 /// módulo novo: as vagas liberadas <b>são</b> as alterações do tipo Ausente, lidas pelo lado da
@@ -19,7 +24,10 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("sisreg/ofertas")]
-public sealed class SisregOfertasController(IOfertasSisregService ofertas) : ControllerBase
+public sealed class SisregOfertasController(
+    IOfertasSisregService ofertas,
+    IFilaPendenteSisregService fila,
+    FilaPendenteEstadoVivo estadoFila) : ControllerBase
 {
     /// <summary>Agendas que nasceram na janela pedida e vagas liberadas ainda no futuro.</summary>
     /// <param name="dias">Janela de novidade das agendas, em dias (1 a 90; padrão 7).</param>
@@ -31,11 +39,30 @@ public sealed class SisregOfertasController(IOfertasSisregService ofertas) : Con
         await ofertas.ListarAsync(dias, cancellationToken);
 
     /// <summary>
+    /// As datas do procedimento, por unidade executante: dias com vaga de primeira vez, quantas
+    /// estão livres e a primeira data em que dá para marcar.
+    /// </summary>
+    /// <param name="procedimentoCodigo">Código do SISREG (7 dígitos). Item casa também com a escala
+    /// do grupo dele; grupo cobre todos os itens.</param>
+    /// <param name="dias">Horizonte olhado a partir de hoje (7 a 180; padrão 120).</param>
+    [HttpGet("datas")]
+    [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<DatasDaOfertaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<DatasDaOfertaDto> Datas(
+        [FromQuery] string procedimentoCodigo,
+        [FromQuery] int dias = 120,
+        CancellationToken cancellationToken = default) =>
+        await ofertas.DatasDaOfertaAsync(procedimentoCodigo, dias, cancellationToken);
+
+    /// <summary>
     /// Quem está esperando por este procedimento — a lista que a oferta destrava.
     /// </summary>
-    /// <param name="procedimento">Nome exato, como o SISREG escreve. É o eixo: esta tela do SISREG
-    /// não manda código de procedimento.</param>
+    /// <param name="procedimento">Nome exato, como o SISREG escreve. É o eixo: a tela da fila do
+    /// SISREG não manda código de procedimento.</param>
     /// <param name="ordenar"><c>espera</c> (padrão), <c>risco</c>, <c>idade</c> ou <c>nome</c>.</param>
+    /// <param name="procedimentoCodigo">Opcional: com ele, a fila inclui quem pediu o grupo (vaga de
+    /// item) ou qualquer item do grupo (vaga de grupo).</param>
     [HttpGet("fila")]
     [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Consulta)]
     [ProducesResponseType<FilaDaOfertaDto>(StatusCodes.Status200OK)]
@@ -45,6 +72,42 @@ public sealed class SisregOfertasController(IOfertasSisregService ofertas) : Con
         [FromQuery] string? ordenar = null,
         [FromQuery] int limite = 100,
         [FromQuery] int pulo = 0,
+        [FromQuery] string? procedimentoCodigo = null,
         CancellationToken cancellationToken = default) =>
-        await ofertas.FilaDaOfertaAsync(procedimento, ordenar, limite, pulo, cancellationToken);
+        await ofertas.FilaDaOfertaAsync(
+            procedimento, ordenar, limite, pulo, procedimentoCodigo, cancellationToken);
+
+    /// <summary>A fila já foi lida? Está lendo agora? Quantas pessoas há nela?</summary>
+    [HttpGet("fila/status")]
+    [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<FilaCargaStatusDto>(StatusCodes.Status200OK)]
+    public async Task<FilaCargaStatusDto> StatusDaFila(CancellationToken cancellationToken = default) =>
+        estadoFila.Snapshot(await fila.ResumoAsync(cancellationToken));
+
+    /// <summary>
+    /// Pede a leitura da fila no SISREG. Só enfileira — o agendador lê uma janela por vez, cedendo
+    /// a vez aos outros motores.
+    /// </summary>
+    /// <param name="completa"><c>true</c>: o acervo inteiro desde jan/2024 (~33 janelas, 2
+    /// requisições cada). <c>false</c>: só os últimos 31 dias (2 requisições).</param>
+    [HttpPost("fila/carregar")]
+    [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Edicao)]
+    [ProducesResponseType<FilaCargaStatusDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<FilaCargaStatusDto> CarregarFila(
+        [FromQuery] bool completa = false, CancellationToken cancellationToken = default)
+    {
+        var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        var janelas = completa
+            ? JanelasDaFila.Completa(hoje, JanelasDaFila.InicioDoAcervo)
+            : JanelasDaFila.Recente(hoje);
+
+        if (!estadoFila.Enfileirar(janelas, completa))
+        {
+            throw new ConflitoException(
+                "fila.em_andamento", "Já há uma leitura da fila em andamento. Acompanhe o progresso.");
+        }
+
+        return estadoFila.Snapshot(await fila.ResumoAsync(cancellationToken));
+    }
 }

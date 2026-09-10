@@ -259,12 +259,17 @@ public class FilaPendenteSisregTests(PostgresFixture fixture)
             Criar(db, Pagina()).LerJanelaAsync(new DateOnly(2026, 9, 30), new DateOnly(2026, 9, 1)));
     }
 
-    /// <summary>Uma janela = uma requisição. É o que torna o diário barato.</summary>
+    /// <summary>
+    /// Uma requisição por situação: pendente (1) e reenviada (5). As reenviadas estão na fila do
+    /// regulador (conferido na tela Autorizar em 10/09/2026) e ficavam de fora. Continua barato:
+    /// 2 requisições por janela, e a mesma solicitação nas duas respostas grava uma vez só.
+    /// </summary>
     [Fact]
-    public async Task Uma_janela_custa_exatamente_uma_requisicao()
+    public async Task Uma_janela_custa_uma_requisicao_por_situacao_e_nao_duplica()
     {
         await using var db = fixture.CriarDbContext();
-        var sessao = new SessaoFake(Pagina((Codigo(), "10/09/2026", "700000000000011")));
+        var cod = Codigo();
+        var sessao = new SessaoFake(Pagina((cod, "10/09/2026", "700000000000011")));
         var servico = new FilaPendenteSisregService(
             db, sessao, new SisregOrcamentoRequisicoes(),
             Options.Create(new SisregOrcamentoOpcoes()),
@@ -272,7 +277,78 @@ public class FilaPendenteSisregTests(PostgresFixture fixture)
 
         var r = await servico.LerJanelaAsync(new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30));
 
-        Assert.Equal(1, sessao.Chamadas);
-        Assert.Equal(1, r.Requisicoes);
+        Assert.Equal(2, sessao.Chamadas);
+        Assert.Equal(2, r.Requisicoes);
+        Assert.Equal(1, r.Lidas);
+        Assert.Equal(1, await db.SisregFilaPendentes.CountAsync(f => f.CodigoSolicitacao == cod));
+    }
+
+    /// <summary>Sessão que responde conforme a situação pedida.</summary>
+    private sealed class SessaoPorSituacao(IReadOnlyDictionary<string, string> porSituacao) : ISisregWebSessao
+    {
+        public Task<string> PostFormAsync(
+            string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken ct) =>
+            throw new NotSupportedException();
+
+        public Task<string> GetAsync(
+            string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken ct,
+            Func<string, bool>? pareceSessaoCaida = null) =>
+            Task.FromResult(porSituacao.GetValueOrDefault(query!["cmb_situacao"], ""));
+    }
+
+    /// <summary>
+    /// Quem decide se a leitura conclui saídas é a situação 1. As reenviadas são ~1%: se a pendente
+    /// volta vazia (sessão caída) e só a reenviada traz gente, concluir saídas marcaria como
+    /// atendidos os 99% que simplesmente não foram lidos.
+    /// </summary>
+    [Fact]
+    public async Task Pendente_vazia_nao_conclui_saida_mesmo_com_reenviada_cheia()
+    {
+        await using var db = fixture.CriarDbContext();
+        var ini = new DateOnly(2026, 9, 1);
+        var fim = new DateOnly(2026, 9, 30);
+        var pendente = Codigo();
+
+        await Criar(db, Pagina((pendente, "10/09/2026", "700000000000012"))).LerJanelaAsync(ini, fim);
+
+        var servico = new FilaPendenteSisregService(
+            db,
+            new SessaoPorSituacao(new Dictionary<string, string>
+            {
+                ["1"] = "<html>Nenhum registro encontrado</html>",
+                ["5"] = Pagina((Codigo(), "12/09/2026", "700000000000013")),
+            }),
+            new SisregOrcamentoRequisicoes(),
+            Options.Create(new SisregOrcamentoOpcoes()),
+            NullLogger<FilaPendenteSisregService>.Instance);
+
+        var r = await servico.LerJanelaAsync(ini, fim);
+
+        Assert.Equal(1, r.Lidas);
+        Assert.Equal(0, r.Saidas);
+        Assert.Null((await db.SisregFilaPendentes.AsNoTracking()
+            .SingleAsync(x => x.CodigoSolicitacao == pendente)).SaiuEm);
+    }
+
+    /// <summary>
+    /// A carga completa anda do mais recente para o mais antigo, sem buraco e sem sobreposição, e
+    /// nenhuma janela passa do teto que o SISREG aceita.
+    /// </summary>
+    [Fact]
+    public void Carga_completa_cobre_o_periodo_em_janelas_de_ate_31_dias_sem_buraco()
+    {
+        var hoje = new DateOnly(2026, 9, 10);
+        var desde = new DateOnly(2026, 7, 1);
+
+        var janelas = SMSMais.Core.Integracoes.SisregWeb.Fila.Background.JanelasDaFila.Completa(hoje, desde);
+
+        Assert.Equal(hoje, janelas[0].Fim);
+        Assert.Equal(desde, janelas[^1].Inicio);
+        Assert.All(janelas, j => Assert.InRange(j.Fim.DayNumber - j.Inicio.DayNumber + 1, 1,
+            FilaPendenteSisregService.MaxDiasPorJanela));
+        for (var i = 1; i < janelas.Count; i++)
+        {
+            Assert.Equal(janelas[i - 1].Inicio.AddDays(-1), janelas[i].Fim);
+        }
     }
 }

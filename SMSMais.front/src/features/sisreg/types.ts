@@ -342,6 +342,8 @@ export type AgendaNova = {
   /** Quando NOS vimos pela primeira vez — nao quando nasceu no SISREG. */
   vistaEm: string;
   esperaMedianaDias: number | null;
+  /** A unidade marca direto nestas vagas; nao passam pela regulacao. */
+  agendaLocal: boolean;
 };
 
 /** Agendamento que sumiu do SISREG e cuja data ainda nao passou. */
@@ -355,6 +357,8 @@ export type VagaLiberada = {
   dataAgendada: string;
   detectadaEm: string;
   esperaMedianaDias: number | null;
+  /** A vaga volta para a propria unidade (agenda local); null = sem escala vigente para dizer. */
+  agendaLocal: boolean | null;
 };
 
 export type Ofertas = {
@@ -390,6 +394,59 @@ export type FilaDaOferta = {
   esperaMaxDias: number | null;
   porRisco: Record<string, number>;
   pessoas: PessoaNaFila[];
+  /** Nomes que entraram na conta: vaga de item serve a quem pediu o grupo, e vice-versa. */
+  procedimentosIncluidos: string[];
 };
 
 export type OrdemDaFila = 'espera' | 'risco' | 'idade' | 'nome';
+
+/** Um dia da agenda da unidade para o procedimento. */
+export type DiaDaOferta = {
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  /** Vagas de PRIMEIRA VEZ — o que a regulação marca. */
+  vagas: number;
+  agendados: number;
+  /** Estimativa: escala − agendados, limitada à primeira vez. A grade do SISREG é a verdade. */
+  livres: number;
+  profissionais: string[];
+};
+
+export type UnidadeDaOferta = {
+  unidadeId: string;
+  unidadeNome: string;
+  /** A unidade marca direto; não passa pela regulação. */
+  agendaLocal: boolean;
+  primeiraVagaLivre: string | null;
+  vagasLivres: number;
+  agendadosFuturos: number;
+  /** Escala antiga, com vaga declarada e nenhum agendamento futuro: provavelmente não ofertada. */
+  semAgendamentoFuturo: boolean;
+  dias: DiaDaOferta[];
+};
+
+export type DatasDaOferta = {
+  procedimentoCodigo: string;
+  procedimentoNome: string | null;
+  de: string;
+  ate: string;
+  unidades: UnidadeDaOferta[];
+};
+
+/** Situação da leitura da fila do SISREG. */
+export type FilaCargaStatus = {
+  emExecucao: boolean;
+  completa: boolean;
+  janelasTotal: number;
+  janelasLidas: number;
+  janelaAtualInicio: string | null;
+  janelaAtualFim: string | null;
+  iniciadoEm: string | null;
+  pessoasLidas: number;
+  ultimoErro: string | null;
+  ultimoErroEm: string | null;
+  pessoasNaFila: number;
+  /** Nulo = a fila nunca foi lida. */
+  ultimaLeitura: string | null;
+};

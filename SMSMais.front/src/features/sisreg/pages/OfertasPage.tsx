@@ -1,15 +1,11 @@
 import { useState } from 'react';
-import { CalendarPlus, Clock, Loader2, PackageOpen, Sparkles, Timer } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Clock, Home, Loader2, PackageOpen, Sparkles, Timer } from 'lucide-react';
 import { useOfertas } from '../api/queries';
+import { DatasDaOfertaPainel } from '../components/DatasDaOfertaPainel';
 import { FilaDaOfertaPainel } from '../components/FilaDaOfertaPainel';
 import type { AgendaNova, VagaLiberada } from '../types';
 
 const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-
-function dataCurta(iso: string) {
-  const [a, m, d] = iso.slice(0, 10).split('-');
-  return `${d}/${m}/${a.slice(2)}`;
-}
 
 function dataHora(iso: string) {
   const d = new Date(iso);
@@ -25,6 +21,9 @@ function diasAte(iso: string) {
   const hoje = new Date();
   return Math.ceil((alvo.getTime() - hoje.getTime()) / 86_400_000);
 }
+
+/** O procedimento aberto: código para as datas, nome para a fila. */
+type Aberta = { codigo: string | null; nome: string };
 
 /**
  * A espera é o que ordena a tela — "4 vagas" é burocracia, "4 vagas numa fila de 466 dias" faz
@@ -48,6 +47,36 @@ function Espera({ dias, urgente }: { dias: number | null; urgente: number }) {
   );
 }
 
+function AgendaLocal() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600"
+      title="A própria unidade marca nestas vagas — não passam pela regulação."
+    >
+      <Home className="h-3 w-3" />
+      agenda local
+    </span>
+  );
+}
+
+/** Clicável por mouse e teclado. */
+function propsDeClique(ativo: boolean, abrir: () => void) {
+  return ativo
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick: abrir,
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            abrir();
+          }
+        },
+        title: 'Ver as datas e quem está esperando',
+      }
+    : {};
+}
+
 function CartaoAgenda({
   a,
   urgente,
@@ -55,22 +84,13 @@ function CartaoAgenda({
 }: {
   a: AgendaNova;
   urgente: number;
-  aoAbrir: (procedimento: string) => void;
+  aoAbrir: (x: Aberta) => void;
 }) {
-  const destaque = (a.esperaMedianaDias ?? 0) >= urgente;
+  const destaque = !a.agendaLocal && (a.esperaMedianaDias ?? 0) >= urgente;
   const recorrente = a.blocos > 1;
   return (
     <li
-      role="button"
-      tabIndex={0}
-      onClick={() => aoAbrir(a.procedimentoNome)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          aoAbrir(a.procedimentoNome);
-        }
-      }}
-      title="Ver quem espera por este procedimento"
+      {...propsDeClique(true, () => aoAbrir({ codigo: a.procedimentoCodigo, nome: a.procedimentoNome }))}
       className={`cursor-pointer rounded-lg border p-3 transition hover:shadow-sm ${
         destaque
           ? 'border-red-200 bg-red-50/40 hover:border-red-300'
@@ -87,22 +107,21 @@ function CartaoAgenda({
         </div>
         <div className="shrink-0 text-right">
           <p className="text-lg font-semibold leading-none text-primary-700">{a.vagas}</p>
-          <p className="text-[11px] text-gray-500">vagas</p>
+          <p className="text-[11px] text-gray-500">vagas/semana</p>
         </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <Espera dias={a.esperaMedianaDias} urgente={urgente} />
-        <span className="text-xs text-gray-500">
-          {dataCurta(a.vigenciaInicio)} a {dataCurta(a.vigenciaFim)}
+        {a.agendaLocal ? <AgendaLocal /> : null}
+        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
+          {recorrente
+            ? [...a.diasSemana].sort((x, y) => x - y).map((d) => DIAS_SEMANA[d]).join(', ')
+            : 'dia único'}
         </span>
-        {recorrente ? (
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
-            {[...a.diasSemana].sort((x, y) => x - y).map((d) => DIAS_SEMANA[d]).join(', ')}
-          </span>
-        ) : (
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">dia único</span>
-        )}
+        {/* A vigência NÃO vai no cartão: ela é a validade do bloco, e foi lida como "período com
+            vaga" (ECG "01/07/25 a 31/12/26" quando a vaga era em novembro). As datas estão no clique. */}
+        <span className="text-[11px] font-medium text-primary-700">ver datas →</span>
         <span className="text-[11px] text-gray-400">vista {dataHora(a.vistaEm)}</span>
       </div>
     </li>
@@ -118,23 +137,14 @@ function CartaoVaga({
   v: VagaLiberada;
   urgente: number;
   perecivel: number;
-  aoAbrir: (procedimento: string) => void;
+  aoAbrir: (x: Aberta) => void;
 }) {
   const dias = diasAte(v.dataAgendada);
   const corre = dias <= perecivel;
   const clicavel = Boolean(v.procedimentoNome);
   return (
     <li
-      role={clicavel ? 'button' : undefined}
-      tabIndex={clicavel ? 0 : undefined}
-      onClick={() => clicavel && aoAbrir(v.procedimentoNome!)}
-      onKeyDown={(e) => {
-        if (clicavel && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          aoAbrir(v.procedimentoNome!);
-        }
-      }}
-      title={clicavel ? 'Ver quem espera por este procedimento' : undefined}
+      {...propsDeClique(clicavel, () => aoAbrir({ codigo: v.procedimentoCodigo, nome: v.procedimentoNome! }))}
       className={`rounded-lg border p-3 transition ${clicavel ? 'cursor-pointer hover:shadow-sm' : ''} ${
         corre ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 bg-white hover:border-primary-300'
       }`}
@@ -159,6 +169,7 @@ function CartaoVaga({
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <Espera dias={v.esperaMedianaDias} urgente={urgente} />
+        {v.agendaLocal ? <AgendaLocal /> : null}
         <span className="text-[11px] text-gray-400">detectada {dataHora(v.detectadaEm)}</span>
       </div>
     </li>
@@ -172,22 +183,48 @@ function CartaoVaga({
  * passou a existir) e <b>vaga liberada</b> (alguém cancelou lá e o horário voltou). A segunda é
  * perecível: uma vaga para depois de amanhã morre se ninguém agir hoje.</p>
  *
- * <p>A tela é deliberadamente de LEITURA. Ela responde "o que abriu e o que é urgente"; agir ainda
- * é no SISREG, porque a fila de quem espera não é lida por nós — e prometer um botão "chamar o
- * próximo" sem saber quem é o próximo seria mentira.</p>
+ * <p><b>Agenda local fica escondida por padrão.</b> Nela a própria unidade marca; o regulador não
+ * enxerga essas vagas no SISREG. Em 10/09/2026 todas as "vagas de ECG" da tela eram de USF de
+ * agenda local — anunciar isso ao regulador é mandá-lo atrás de vaga que ele não pode usar.</p>
+ *
+ * <p>Clicar abre <b>quando dá para marcar</b> (as datas, por unidade) e <b>quem espera</b> (a fila
+ * lida do SISREG). Agendar continua sendo no SISREG.</p>
  */
 export function OfertasPage() {
   const [dias, setDias] = useState(7);
-  /** Procedimento cuja fila está aberta; null = mostrando as ofertas. */
-  const [filaAberta, setFilaAberta] = useState<string | null>(null);
+  const [comAgendaLocal, setComAgendaLocal] = useState(false);
+  const [aberta, setAberta] = useState<Aberta | null>(null);
   const { data, isLoading, isError } = useOfertas(dias);
 
   const urgente = data?.diasEsperaUrgente ?? 180;
   const perecivel = data?.diasVagaPerecivel ?? 7;
-  const agendas = data?.agendasNovas ?? [];
-  const vagas = data?.vagasLiberadas ?? [];
+  const todasAgendas = data?.agendasNovas ?? [];
+  const todasVagas = data?.vagasLiberadas ?? [];
+  const agendas = comAgendaLocal ? todasAgendas : todasAgendas.filter((a) => !a.agendaLocal);
+  const vagas = comAgendaLocal ? todasVagas : todasVagas.filter((v) => v.agendaLocal !== true);
+  const ocultas = todasAgendas.length - agendas.length + (todasVagas.length - vagas.length);
   const totalVagasNovas = agendas.reduce((s, a) => s + a.vagas, 0);
   const correndo = vagas.filter((v) => diasAte(v.dataAgendada) <= perecivel).length;
+
+  if (aberta) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-4 px-4 py-6">
+        <header>
+          <button
+            type="button"
+            onClick={() => setAberta(null)}
+            className="mb-1 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            voltar para as ofertas
+          </button>
+          <h1 className="text-lg font-semibold text-gray-900">{aberta.nome}</h1>
+        </header>
+        {aberta.codigo ? <DatasDaOfertaPainel codigo={aberta.codigo} /> : null}
+        <FilaDaOfertaPainel procedimento={aberta.nome} codigo={aberta.codigo} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -199,11 +236,11 @@ export function OfertasPage() {
         <p className="mt-1 max-w-3xl text-sm text-gray-600">
           O que abriu no SISREG: agendas que passaram a existir e horários que vagaram por
           cancelamento. Ordenado pela espera do procedimento — quanto maior a fila, mais alto.
-          <strong> Clique numa oferta para ver quem está esperando.</strong>
+          <strong> Clique numa oferta para ver as datas livres e quem está esperando.</strong>
         </p>
       </header>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
         <label className="text-sm text-gray-700">
           Agendas vistas nos últimos{' '}
           <select
@@ -218,6 +255,17 @@ export function OfertasPage() {
             <option value={30}>30 dias</option>
           </select>
         </label>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={comAgendaLocal}
+            onChange={(e) => setComAgendaLocal(e.target.checked)}
+          />
+          Mostrar agenda local das unidades
+          {!comAgendaLocal && ocultas > 0 ? (
+            <span className="text-xs text-gray-500">({ocultas} oculta(s) — fora da regulação)</span>
+          ) : null}
+        </label>
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : null}
       </div>
 
@@ -227,9 +275,6 @@ export function OfertasPage() {
         </p>
       ) : null}
 
-      {filaAberta ? (
-        <FilaDaOfertaPainel procedimento={filaAberta} aoFechar={() => setFilaAberta(null)} />
-      ) : (
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
@@ -237,7 +282,7 @@ export function OfertasPage() {
             Abriu agenda
             {agendas.length > 0 ? (
               <span className="text-xs font-normal text-gray-500">
-                {agendas.length} agenda(s) · {totalVagasNovas} vagas
+                {agendas.length} agenda(s) · {totalVagasNovas} vagas por semana
               </span>
             ) : null}
           </h2>
@@ -252,7 +297,7 @@ export function OfertasPage() {
                   key={`${a.unidadeId}-${a.procedimentoCodigo}`}
                   a={a}
                   urgente={urgente}
-                  aoAbrir={setFilaAberta}
+                  aoAbrir={setAberta}
                 />
               ))}
             </ul>
@@ -282,23 +327,22 @@ export function OfertasPage() {
                   v={v}
                   urgente={urgente}
                   perecivel={perecivel}
-                  aoAbrir={setFilaAberta}
+                  aoAbrir={setAberta}
                 />
               ))}
             </ul>
           )}
         </section>
       </div>
-      )}
 
       <footer className="mt-6 flex items-start gap-2 rounded-md bg-gray-50 p-3 text-xs text-gray-600">
         <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
         <p>
-          <strong>Como ler a fila.</strong> É a espera mediana de quem <em>já conseguiu data</em>{' '}
-          neste procedimento neste ano, não a de quem está esperando agora — a fila do SISREG sem
-          data marcada não é lida por nós, então o número real é maior. Serve para priorizar entre
-          procedimentos, não para prometer prazo. <strong>“Vagou”</strong> quer dizer que o SISREG
-          parou de mostrar aquele agendamento; confirmar se a vaga está livre é trabalho de gente.
+          <strong>Como ler.</strong> “Fila Nd” é a espera mediana de quem <em>já conseguiu data</em>{' '}
+          neste procedimento neste ano — serve para priorizar entre procedimentos; a espera de quem
+          ainda aguarda está no clique. <strong>“Vagou”</strong> quer dizer que o SISREG parou de
+          mostrar aquele agendamento; confirmar se a vaga está livre é trabalho de gente. As datas
+          livres são estimativa (escala − agendados): a grade do SISREG, ao autorizar, é a verdade.
         </p>
       </footer>
     </div>

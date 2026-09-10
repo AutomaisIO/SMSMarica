@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
 using SMSMais.Data;
@@ -24,8 +24,13 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Ofertas;
 /// <para><b>Por que a espera entra aqui.</b> "4 vagas de ecocardiograma" é burocracia; "4 vagas
 /// numa fila que espera 466 dias" muda o que a pessoa faz agora. A espera é o que ordena a tela.
 /// <b>Ressalva que precisa aparecer na interface</b>: é a espera de quem JÁ foi atendido
-/// (<c>data_agendada − data_solicitacao</c>), não a de quem está esperando — a fila viva do SISREG
-/// não é lida por nós. Serve para PRIORIZAR entre procedimentos, não para prometer prazo.</para>
+/// (<c>data_agendada − data_solicitacao</c>), não a de quem está esperando. Serve para PRIORIZAR
+/// entre procedimentos, não para prometer prazo.</para>
+///
+/// <para><b>Vigência não é data de vaga.</b> A reguladora apontou em 10/09/2026: a tela mostrava o
+/// eletrocardiograma "de 01/07/25 a 31/12/26" e no SISREG a primeira vaga era em novembro. A
+/// vigência é a validade do bloco semanal; quando dá para marcar sai de
+/// <see cref="DatasDaOfertaAsync"/>, dia a dia.</para>
 ///
 /// <para><b>Somente leitura.</b> Nada aqui escreve, nada aqui fala com o SISREG.</para>
 /// </summary>
@@ -36,13 +41,23 @@ public interface IOfertasSisregService
     Task<OfertasSisregDto> ListarAsync(int dias, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// As datas do procedimento por unidade executante: o que o SISREG mostra ao autorizar
+    /// (unidades que executam → dias com vaga), deduzido de escala − agendados.
+    /// </summary>
+    Task<DatasDaOfertaDto> DatasDaOfertaAsync(
+        string procedimentoCodigo, int dias, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Quem está esperando por este procedimento — a lista que a oferta destrava.
     /// </summary>
     /// <param name="ordenar">
     /// <c>espera</c> (padrão, mais antigo primeiro), <c>risco</c>, <c>idade</c> ou <c>nome</c>.
     /// </param>
+    /// <param name="procedimentoCodigo">Com ele, entra na conta quem pediu o grupo (oferta de item)
+    /// ou qualquer item do grupo (oferta de grupo). Sem ele, só o nome exato.</param>
     Task<FilaDaOfertaDto> FilaDaOfertaAsync(
         string procedimentoNome, string? ordenar, int limite, int pulo,
+        string? procedimentoCodigo = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -59,6 +74,13 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     /// "aproveitável" de "registro histórico".
     /// </summary>
     private const int DiasVagaPerecivel = 7;
+
+    /// <summary>
+    /// Escala com mais que isto de vida e nenhum agendamento futuro é suspeita. Uma agenda aberta
+    /// ontem ainda não teve tempo de receber marcação; uma de meses, sem nenhuma, não está sendo
+    /// ofertada — foi o caso do ECG do CDT.
+    /// </summary>
+    private const int DiasParaDesconfiarDeAgendaVazia = 30;
 
     public async Task<OfertasSisregDto> ListarAsync(int dias, CancellationToken cancellationToken = default)
     {
@@ -91,8 +113,141 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
             DiasVagaPerecivel);
     }
 
+    public async Task<DatasDaOfertaDto> DatasDaOfertaAsync(
+        string procedimentoCodigo, int dias, CancellationToken cancellationToken = default)
+    {
+        var codigo = (procedimentoCodigo ?? string.Empty).Trim();
+        if (codigo.Length == 0)
+        {
+            throw new Common.Excecoes.ValidacaoException(
+                "datas.procedimento_obrigatorio", "Informe o procedimento para ver as datas.");
+        }
+
+        var horizonte = Math.Clamp(dias, 7, 180);
+        var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        var ate = hoje.AddDays(horizonte);
+        var grupo = GrupoDoCodigo(codigo);
+
+        // Item casa com a própria escala E com a do grupo dele: a vaga de "GRUPO - ULTRASONOGRAFIA"
+        // é onde uma transvaginal é marcada. Grupo casa só consigo mesmo.
+        var escalas = await db.SisregEscalas.AsNoTracking()
+            .Where(e => (e.ProcedimentoCodigo == codigo || e.ProcedimentoCodigo == grupo)
+                && e.Status == StatusEscalaSisreg.Ativa
+                && !e.Ausente
+                && e.VigenciaFim >= hoje
+                && e.VigenciaInicio <= ate)
+            .Select(e => new EscalaDaOferta(
+                e.UnidadeId, e.Unidade!.Nome, e.ProcedimentoCodigo, e.ProcedimentoNome,
+                e.ProfissionalNome, e.DiaSemana, e.HoraInicio, e.HoraFim,
+                e.VigenciaInicio, e.VigenciaFim, e.VagasPrimeiraVez, e.VagasTotal, e.AgendaLocal))
+            .ToListAsync(cancellationToken);
+
+        var nome = escalas.FirstOrDefault(e => e.ProcedimentoCodigo == codigo)?.ProcedimentoNome
+                   ?? escalas.FirstOrDefault()?.ProcedimentoNome;
+
+        if (escalas.Count == 0) return new DatasDaOfertaDto(codigo, nome, hoje, ate, []);
+
+        // Ocupação: busca pela família (mesmo prefixo) e decide por unidade o que conta — em
+        // escala de grupo, qualquer item do grupo ocupa a vaga; em escala de item, só o item.
+        var unidadeIds = escalas.Select(e => e.UnidadeId).Distinct().ToList();
+        var prefixo = codigo.Length >= 4 ? codigo[..4] : codigo;
+        var inicioUtc = FusoBrasilia.InicioDoDiaAtualEmUtc();
+        var fimUtc = FusoBrasilia.DeBrasiliaParaUtc(ate.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+        var agendamentos = await db.Solicitacoes.AsNoTracking()
+            .Where(s => unidadeIds.Contains(s.UnidadeExecutanteId)
+                && s.ExcluidoEm == null
+                && s.CanceladoEm == null
+                && s.DataAgendada >= inicioUtc
+                && s.DataAgendada < fimUtc
+                && s.ProcedimentoCodigoSisreg != null
+                && s.ProcedimentoCodigoSisreg.StartsWith(prefixo))
+            .Select(s => new { s.UnidadeExecutanteId, s.ProcedimentoCodigoSisreg, s.DataAgendada })
+            .ToListAsync(cancellationToken);
+
+        var unidades = new List<UnidadeDaOfertaDto>();
+        foreach (var daUnidade in escalas.GroupBy(e => e.UnidadeId))
+        {
+            var porFamilia = daUnidade.Any(e => EhCodigoDeGrupo(e.ProcedimentoCodigo));
+
+            var ocupacao = agendamentos
+                .Where(a => a.UnidadeExecutanteId == daUnidade.Key
+                    && (porFamilia || a.ProcedimentoCodigoSisreg == codigo))
+                .GroupBy(a => DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(a.DataAgendada!.Value)))
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var diasDaUnidade = ExpandirDias(daUnidade.ToList(), ocupacao, hoje, ate);
+            var agendadosFuturos = ocupacao.Values.Sum();
+
+            var semAgendamentoFuturo = agendadosFuturos == 0
+                && diasDaUnidade.Count > 0
+                && daUnidade.Min(e => e.VigenciaInicio) <= hoje.AddDays(-DiasParaDesconfiarDeAgendaVazia);
+
+            unidades.Add(new UnidadeDaOfertaDto(
+                daUnidade.Key,
+                daUnidade.First().UnidadeNome,
+                daUnidade.All(e => e.AgendaLocal),
+                diasDaUnidade.FirstOrDefault(d => d.Livres > 0)?.Data,
+                diasDaUnidade.Sum(d => d.Livres),
+                agendadosFuturos,
+                semAgendamentoFuturo,
+                diasDaUnidade));
+        }
+
+        // Regulada primeiro (é o que o regulador pode usar), a suspeita depois da confiável, e
+        // dentro disso quem tem vaga mais cedo.
+        return new DatasDaOfertaDto(
+            codigo,
+            nome,
+            hoje,
+            ate,
+            [.. unidades
+                .OrderBy(u => u.AgendaLocal)
+                .ThenBy(u => u.SemAgendamentoFuturo)
+                .ThenBy(u => u.PrimeiraVagaLivre ?? DateOnly.MaxValue)
+                .ThenBy(u => u.UnidadeNome, StringComparer.Ordinal)]);
+    }
+
+    /// <summary>
+    /// Um dia por ocorrência da escala no horizonte. Vagas são as de <b>primeira vez</b> (o que a
+    /// regulação marca); livres é o que sobra da agenda do dia inteira, limitado a elas — um
+    /// agendamento de retorno ocupa a vaga de retorno antes de tirar a de primeira vez.
+    /// </summary>
+    private static List<DiaDaOfertaDto> ExpandirDias(
+        IReadOnlyList<EscalaDaOferta> escalas, IReadOnlyDictionary<DateOnly, int> ocupacao,
+        DateOnly de, DateOnly ate)
+    {
+        var dias = new List<DiaDaOfertaDto>();
+        for (var d = de; d <= ate; d = d.AddDays(1))
+        {
+            var blocos = escalas
+                .Where(e => e.DiaSemana == d.DayOfWeek && e.VigenciaInicio <= d && e.VigenciaFim >= d)
+                .ToList();
+            if (blocos.Count == 0) continue;
+
+            var vagasDoDia = blocos.Sum(b => b.VagasTotal);
+            var primeiraVez = blocos.Sum(b => b.VagasPrimeiraVez);
+            if (vagasDoDia == 0) continue;
+
+            var agendados = ocupacao.GetValueOrDefault(d);
+            dias.Add(new DiaDaOfertaDto(
+                d,
+                blocos.Min(b => b.HoraInicio),
+                blocos.Max(b => b.HoraFim),
+                primeiraVez,
+                agendados,
+                Math.Clamp(vagasDoDia - agendados, 0, primeiraVez),
+                [.. blocos.Select(b => b.ProfissionalNome)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)]));
+        }
+        return dias;
+    }
+
     public async Task<FilaDaOfertaDto> FilaDaOfertaAsync(
         string procedimentoNome, string? ordenar, int limite, int pulo,
+        string? procedimentoCodigo = null,
         CancellationToken cancellationToken = default)
     {
         var nome = (procedimentoNome ?? string.Empty).Trim();
@@ -106,11 +261,14 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
         var salto = Math.Max(0, pulo);
         var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
 
-        // Casa pelo NOME porque o SISREG não manda código do procedimento nesta tela — é a régua
-        // da casa. Comparação exata, sem `Contains`: "CONSULTA EM CARDIOLOGIA" não pode arrastar
-        // "CONSULTA EM CARDIOLOGIA - PEDIATRIA", que é outra fila com outra espera.
+        // Casa pelo NOME porque o SISREG não manda código do procedimento na tela da fila — é a
+        // régua da casa. Comparação exata, sem `Contains`: "CONSULTA EM CARDIOLOGIA" não pode
+        // arrastar "CONSULTA EM CARDIOLOGIA - PEDIATRIA", que é outra fila com outra espera. O que
+        // o código acrescenta é o outro lado do grupo, também por nome exato.
+        var nomes = await NomesDaFilaAsync(nome, procedimentoCodigo?.Trim(), cancellationToken);
+
         var baseQuery = db.SisregFilaPendentes.AsNoTracking()
-            .Where(f => f.SaiuEm == null && f.ProcedimentoNome == nome);
+            .Where(f => f.SaiuEm == null && f.ProcedimentoNome != null && nomes.Contains(f.ProcedimentoNome));
 
         var total = await baseQuery.CountAsync(cancellationToken);
 
@@ -163,11 +321,64 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 l.Cns,
                 l.Telefone,
                 l.UnidadeSolicitante,
-                l.CidCodigo))]);
+                l.CidCodigo))],
+            [.. nomes.Order(StringComparer.Ordinal)]);
     }
+
+    /// <summary>
+    /// Os nomes de fila que uma vaga deste procedimento atende.
+    ///
+    /// <para>A vaga liberada chega com o nome do ITEM ("ULTRASONOGRAFIA TRANSVAGINAL") e a fila
+    /// guarda o que foi pedido — muitas vezes o GRUPO ("GRUPO - ULTRASONOGRAFIA"). Casar só o nome
+    /// daria zero justamente nos procedimentos de fila maior.</para>
+    /// </summary>
+    private async Task<List<string>> NomesDaFilaAsync(string nome, string? codigo, CancellationToken ct)
+    {
+        var nomes = new HashSet<string>(StringComparer.Ordinal) { nome };
+        if (string.IsNullOrEmpty(codigo) || GrupoDoCodigo(codigo) is not { } grupo) return [.. nomes];
+
+        if (EhCodigoDeGrupo(codigo))
+        {
+            // Vaga de grupo: quem pediu qualquer item do grupo espera por ela.
+            var prefixo = codigo[..4];
+            nomes.UnionWith(await db.SisregEscalas.AsNoTracking()
+                .Where(e => e.ProcedimentoCodigo.StartsWith(prefixo))
+                .Select(e => e.ProcedimentoNome).Distinct().ToListAsync(ct));
+            nomes.UnionWith(await db.Solicitacoes.AsNoTracking()
+                .Where(s => s.ProcedimentoCodigoSisreg != null
+                    && s.ProcedimentoCodigoSisreg.StartsWith(prefixo)
+                    && s.ProcedimentoTexto != null)
+                .Select(s => s.ProcedimentoTexto!).Distinct().ToListAsync(ct));
+        }
+        else
+        {
+            // Vaga de item: quem pediu o grupo inteiro também serve.
+            nomes.UnionWith(await db.SisregEscalas.AsNoTracking()
+                .Where(e => e.ProcedimentoCodigo == grupo)
+                .Select(e => e.ProcedimentoNome).Distinct().ToListAsync(ct));
+        }
+
+        return [.. nomes];
+    }
+
+    /// <summary>Código do SISREG tem 7 dígitos; terminado em <c>000</c> é GRUPO.</summary>
+    internal static bool EhCodigoDeGrupo(string codigo) =>
+        codigo.Length == 7 && codigo.EndsWith("000", StringComparison.Ordinal);
+
+    /// <summary>O grupo que cobre o item: mesmo prefixo de 4 dígitos + <c>000</c>.</summary>
+    internal static string? GrupoDoCodigo(string codigo) =>
+        codigo.Length == 7 && codigo.All(char.IsAsciiDigit) ? codigo[..4] + "000" : null;
 
     private static int? Espera(IReadOnlyDictionary<string, int> mapa, string? codigo) =>
         codigo is not null && mapa.TryGetValue(codigo, out var d) ? d : null;
+
+    /// <summary>
+    /// Acima disto, uma execução do sincronismo não trouxe novidade: ela POVOOU a base. A primeira
+    /// sincronização de todas criou 17.452 escalas de uma vez (04/09/2026) — chamar aquilo de
+    /// "agenda nova" faria a tela anunciar 10.456 vagas que ninguém abriu, e o operador aprenderia
+    /// no primeiro dia que este número é mentira.
+    /// </summary>
+    private const int EscalasNovasQueDenunciamCarga = 500;
 
     /// <summary>
     /// Blocos de escala vistos pela primeira vez dentro da janela, agrupados por unidade ×
@@ -180,14 +391,6 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     /// <para>Só entra escala <b>ativa, não ausente e ainda vigente</b>: bloco que já venceu não é
     /// oferta, é histórico.</para>
     /// </summary>
-    /// <summary>
-    /// Acima disto, uma execução do sincronismo não trouxe novidade: ela POVOOU a base. A primeira
-    /// sincronização de todas criou 17.452 escalas de uma vez (04/09/2026) — chamar aquilo de
-    /// "agenda nova" faria a tela anunciar 10.456 vagas que ninguém abriu, e o operador aprenderia
-    /// no primeiro dia que este número é mentira.
-    /// </summary>
-    private const int EscalasNovasQueDenunciamCarga = 500;
-
     private async Task<List<AgendaNovaDto>> AgendasNovasAsync(
         DateTime desde, DateOnly hoje, CancellationToken ct)
     {
@@ -221,6 +424,7 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 e.VigenciaInicio,
                 e.VigenciaFim,
                 e.CriadoEm,
+                e.AgendaLocal,
             })
             .ToListAsync(ct);
 
@@ -248,7 +452,9 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 // Dias da semana em que essa agenda abre — é o que diz "toda terça" vs "um dia só".
                 [.. g.Select(e => (int)e.DiaSemana).Distinct().Order()],
                 g.Min(e => e.CriadoEm),
-                null))];
+                null,
+                // Local só se TODOS os blocos forem: um bloco regulado já é vaga para a regulação.
+                g.All(e => e.AgendaLocal)))];
     }
 
     /// <summary>
@@ -261,12 +467,16 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     ///
     /// <para><b>Não afirmamos que a vaga está livre</b> — afirmamos que o SISREG parou de mostrar
     /// aquele agendamento. Confirmar é trabalho de gente, e a tela diz isso.</para>
+    ///
+    /// <para><b>E dizemos para quem ela volta.</b> Em agenda local a vaga volta para a própria
+    /// unidade: as 4 "vagas de ECG" que a tela mostrava em 10/09/2026 eram todas de USF de agenda
+    /// local, que o regulador nunca vê.</para>
     /// </summary>
     private async Task<List<VagaLiberadaDto>> VagasLiberadasAsync(DateOnly hoje, CancellationToken ct)
     {
         var inicioUtc = FusoBrasilia.InicioDoDiaAtualEmUtc();
 
-        return await db.SisregAlteracoesAgenda.AsNoTracking()
+        var vagas = await db.SisregAlteracoesAgenda.AsNoTracking()
             .Where(a => a.Tipo == TipoAlteracaoAgenda.Ausente && a.TratadaEm == null)
             .Join(db.Solicitacoes.AsNoTracking().Where(s => s.ExcluidoEm == null && s.DataAgendada >= inicioUtc),
                 a => a.SolicitacaoId, s => s.Id, (a, s) => new { a, s })
@@ -279,8 +489,31 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 x.s.ProcedimentoTexto,
                 x.s.DataAgendada!.Value,
                 x.a.DetectadaEm,
+                null,
                 null))
             .ToListAsync(ct);
+
+        if (vagas.Count == 0) return vagas;
+
+        var unidades = vagas.Where(v => v.UnidadeId is not null).Select(v => v.UnidadeId!.Value).Distinct().ToList();
+        var escalas = await db.SisregEscalas.AsNoTracking()
+            .Where(e => unidades.Contains(e.UnidadeId)
+                && e.Status == StatusEscalaSisreg.Ativa
+                && !e.Ausente
+                && e.VigenciaFim >= hoje)
+            .Select(e => new { e.UnidadeId, e.ProcedimentoCodigo, e.AgendaLocal })
+            .ToListAsync(ct);
+
+        return [.. vagas.Select(v =>
+        {
+            if (v.UnidadeId is null || string.IsNullOrEmpty(v.ProcedimentoCodigo)) return v;
+            var grupo = GrupoDoCodigo(v.ProcedimentoCodigo);
+            var daVaga = escalas
+                .Where(e => e.UnidadeId == v.UnidadeId
+                    && (e.ProcedimentoCodigo == v.ProcedimentoCodigo || e.ProcedimentoCodigo == grupo))
+                .ToList();
+            return daVaga.Count == 0 ? v : v with { AgendaLocal = daVaga.All(e => e.AgendaLocal) };
+        })];
     }
 
     /// <summary>
@@ -323,4 +556,19 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     }
 
     private sealed record EsperaLinha(string? Codigo, int? Dias);
+
+    private sealed record EscalaDaOferta(
+        Guid UnidadeId,
+        string UnidadeNome,
+        string ProcedimentoCodigo,
+        string ProcedimentoNome,
+        string ProfissionalNome,
+        DayOfWeek DiaSemana,
+        TimeOnly HoraInicio,
+        TimeOnly HoraFim,
+        DateOnly VigenciaInicio,
+        DateOnly VigenciaFim,
+        int VagasPrimeiraVez,
+        int VagasTotal,
+        bool AgendaLocal);
 }

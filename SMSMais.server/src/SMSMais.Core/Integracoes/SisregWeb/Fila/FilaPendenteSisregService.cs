@@ -20,13 +20,22 @@ public sealed record LeituraFilaDto(
     int SaidasAgendadas,
     int Requisicoes);
 
+/// <summary>O retrato da fila que já está no banco. Não fala com o SISREG.</summary>
+/// <param name="UltimaLeitura">Último momento em que alguém foi visto na fila; nulo = nunca lida.</param>
+public sealed record ResumoFilaDto(int PessoasNaFila, DateTime? UltimaLeitura);
+
 public interface IFilaPendenteSisregService
 {
-    /// <summary>Lê uma janela de <b>no máximo 31 dias</b> por data de solicitação. 1 requisição.</summary>
+    /// <summary>
+    /// Lê uma janela de <b>no máximo 31 dias</b> por data de solicitação. Uma requisição por
+    /// situação lida (hoje duas: pendente e reenviada).
+    /// </summary>
     Task<LeituraFilaDto> LerJanelaAsync(DateOnly inicio, DateOnly fim, CancellationToken ct = default);
 
     /// <summary>A janela recente — o que o diário roda.</summary>
     Task<LeituraFilaDto> SincronizarRecenteAsync(CancellationToken ct = default);
+
+    Task<ResumoFilaDto> ResumoAsync(CancellationToken ct = default);
 }
 
 /// <summary>
@@ -35,14 +44,19 @@ public interface IFilaPendenteSisregService
 /// <para><b>Somente leitura</b> (ADR-0012). O <c>gerenciador_solicitacao</c> não escreve nada; e,
 /// ao contrário do <c>expo_solicitacoes</c>, <b>não sofre a trava 07:30–15:00</b>.</para>
 ///
-/// <para><b>1 requisição por janela.</b> <c>qtd_itens_pag=0</c> significa "todos" e é honrado pelo
-/// servidor — 15.502 registros em 13,4 MB numa requisição só, medido pelo laboratório em
-/// 05/09/2026. Não há teto silencioso aqui (ao contrário do <c>expo</c>, que corta em 700 sem
+/// <para><b>1 requisição por situação e janela.</b> <c>qtd_itens_pag=0</c> significa "todos" e é
+/// honrado pelo servidor — 15.502 registros em 13,4 MB numa requisição só, medido pelo laboratório
+/// em 05/09/2026. Não há teto silencioso aqui (ao contrário do <c>expo</c>, que corta em 700 sem
 /// avisar): 3.669 em 7 dias × 31/7 ≈ 16,2k contra 15,5k medidos em 31 dias — a aritmética fecha.</para>
 ///
 /// <para><b>Em Maricá a fila mora na situação 1</b> (Solicitação/Pendente/Regulação), não na 2
 /// ("Fila de Espera"), que volta vazia em toda janela testada. Sondar só a 2 — o nome óbvio —
 /// daria a conclusão errada de que não há fila.</para>
+///
+/// <para><b>E também na 5 (Reenviada).</b> Conferido em 10/09/2026 contra a tela do regulador
+/// (Autorizar → Ambulatorial): a fila que ele trabalha é a da situação 1 — 356 × 355 e 544 × 545
+/// nas duas janelas comparadas, códigos 100/100 — <b>mais</b> as reenviadas (<c>SOL/REE/REG</c>,
+/// ~1%), que ficavam de fora. A situação 5 respondeu com 23 fichas em 31 dias.</para>
 /// </summary>
 public sealed class FilaPendenteSisregService(
     SmsMaisDbContext db,
@@ -56,20 +70,36 @@ public sealed class FilaPendenteSisregService(
     /// <summary>O <c>validaFormulario()</c> do SISREG recusa janela maior que isto.</summary>
     public const int MaxDiasPorJanela = 31;
 
-    /// <summary>Janela do sincronismo diário. 31 dias porque custa o mesmo que 7: uma requisição.</summary>
+    /// <summary>Janela do sincronismo diário. 31 dias porque custa o mesmo que 7.</summary>
     private const int DiasDaJanelaRecente = 31;
 
     /// <summary>
-    /// Folga exigida no orçamento anti-robô para começar. A leitura gasta 1, mas entrar com o
+    /// Folga exigida no orçamento anti-robô para começar. A leitura gasta 2, mas entrar com o
     /// orçamento no fim é tomar a frente de um operador humano que está a poucas requisições do
     /// CAPTCHA — e CAPTCHA pausa a credencial por 24 horas.
     /// </summary>
     private const int OrcamentoMinimo = 20;
 
+    /// <summary>1 = Solicitação/Pendente/Regulação — onde a fila de Maricá mora.</summary>
+    private const string SituacaoPendenteRegulacao = "1";
+
+    /// <summary>5 = Reenviada: devolvida e mandada de novo, e de volta na mesa do regulador.</summary>
+    private const string SituacaoReenviada = "5";
+
+    /// <summary>A pendente vem primeiro: é ela que decide se a leitura conclui saídas.</summary>
+    private static readonly string[] SituacoesDaFila = [SituacaoPendenteRegulacao, SituacaoReenviada];
+
     public Task<LeituraFilaDto> SincronizarRecenteAsync(CancellationToken ct = default)
     {
         var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
         return LerJanelaAsync(hoje.AddDays(-(DiasDaJanelaRecente - 1)), hoje, ct);
+    }
+
+    public async Task<ResumoFilaDto> ResumoAsync(CancellationToken ct = default)
+    {
+        var abertas = await db.SisregFilaPendentes.CountAsync(f => f.SaiuEm == null, ct);
+        var ultima = await db.SisregFilaPendentes.MaxAsync(f => (DateTime?)f.UltimoVistoEm, ct);
+        return new ResumoFilaDto(abertas, ultima);
     }
 
     public async Task<LeituraFilaDto> LerJanelaAsync(
@@ -99,21 +129,37 @@ public sealed class FilaPendenteSisregService(
                 + "para depois, para não tomar a frente de quem está atendendo.");
         }
 
-        var html = await sessao.GetAsync(Caminho, Consulta(inicio, fim), ct);
-        var linhas = FilaPendenteHtmlParser.Ler(html);
+        // Uma requisição por situação. A mesma solicitação não aparece nas duas, mas o código é a
+        // chave da tabela: se aparecer, fica a primeira e o upsert não tenta gravar duas vezes.
+        var linhas = new List<LinhaFilaPendente>();
+        var codigos = new HashSet<string>(StringComparer.Ordinal);
+        var pendentes = 0;
+
+        foreach (var situacao in SituacoesDaFila)
+        {
+            var html = await sessao.GetAsync(Caminho, Consulta(inicio, fim, situacao), ct);
+            var lidas = FilaPendenteHtmlParser.Ler(html);
+            if (situacao == SituacaoPendenteRegulacao) pendentes = lidas.Count;
+
+            foreach (var l in lidas)
+            {
+                if (codigos.Add(l.CodigoSolicitacao)) linhas.Add(l);
+            }
+        }
 
         logger.LogInformation(
-            "SISREG_FILA: janela {Ini}..{Fim} devolveu {Qtd} pendente(s) em 1 requisição.",
-            inicio, fim, linhas.Count);
+            "SISREG_FILA: janela {Ini}..{Fim} devolveu {Qtd} pessoa(s) na fila ({Pend} pendentes) em {Req} requisições.",
+            inicio, fim, linhas.Count, pendentes, SituacoesDaFila.Length);
 
         var (novas, atualizadas) = await GravarAsync(linhas, ct);
-        var (saidas, agendadas) = await MarcarSaidasAsync(inicio, fim, linhas, ct);
+        var (saidas, agendadas) = await MarcarSaidasAsync(inicio, fim, linhas, pendentes, ct);
 
-        return new LeituraFilaDto(inicio, fim, linhas.Count, novas, atualizadas, saidas, agendadas, 1);
+        return new LeituraFilaDto(
+            inicio, fim, linhas.Count, novas, atualizadas, saidas, agendadas, SituacoesDaFila.Length);
     }
 
     /// <summary>Os campos exatamente como o formulário os envia (<c>METHOD=GET</c>).</summary>
-    private static Dictionary<string, string> Consulta(DateOnly inicio, DateOnly fim) => new()
+    private static Dictionary<string, string> Consulta(DateOnly inicio, DateOnly fim, string situacao) => new()
     {
         ["etapa"] = "LISTAR_SOLICITACOES",
         ["co_solicitacao"] = "",
@@ -128,7 +174,7 @@ public sealed class FilaPendenteSisregService(
         ["tipo_periodo"] = "S",
         ["dt_inicial"] = inicio.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
         ["dt_final"] = fim.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
-        ["cmb_situacao"] = "1",
+        ["cmb_situacao"] = situacao,
         // 0 = TODOS. É o que derruba o custo de N páginas para 1 requisição.
         ["qtd_itens_pag"] = "0",
         ["co_seq_solicitacao"] = "",
@@ -212,17 +258,19 @@ public sealed class FilaPendenteSisregService(
     /// maioria da fila pediu antes. É a mesma lição que o detector de ausentes da agenda pagou:
     /// ausência só significa alguma coisa onde a leitura de fato aconteceu.</para>
     ///
-    /// <para><b>Leitura vazia não conclui nada.</b> Zero linhas é indistinguível de sessão caída ou
-    /// SISREG fora do ar; marcar a janela inteira como "saiu" seria transformar uma falha de rede
-    /// em "todo mundo foi atendido".</para>
+    /// <para><b>Leitura vazia não conclui nada — e quem decide é a situação 1.</b> Zero linhas é
+    /// indistinguível de sessão caída ou SISREG fora do ar. As reenviadas são ~1% da fila: se a
+    /// pendente viesse vazia e só a reenviada trouxesse gente, concluir saídas marcaria como
+    /// atendidos os 99% que simplesmente não foram lidos.</para>
     /// </summary>
     private async Task<(int Saidas, int Agendadas)> MarcarSaidasAsync(
-        DateOnly inicio, DateOnly fim, IReadOnlyList<LinhaFilaPendente> linhas, CancellationToken ct)
+        DateOnly inicio, DateOnly fim, IReadOnlyList<LinhaFilaPendente> linhas, int pendentes,
+        CancellationToken ct)
     {
-        if (linhas.Count == 0)
+        if (pendentes == 0)
         {
             logger.LogWarning(
-                "SISREG_FILA_VAZIA: janela {Ini}..{Fim} não devolveu linha nenhuma — nada é marcado "
+                "SISREG_FILA_VAZIA: janela {Ini}..{Fim} não devolveu pendente nenhum — nada é marcado "
                 + "como saída. Leitura vazia é indistinguível de sessão caída.",
                 inicio, fim);
             return (0, 0);

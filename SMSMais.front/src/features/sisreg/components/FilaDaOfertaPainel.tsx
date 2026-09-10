@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft, Loader2, Phone, Users } from 'lucide-react';
-import { useFilaDaOferta } from '../api/queries';
-import type { OrdemDaFila, PessoaNaFila } from '../types';
+import { DownloadCloud, Loader2, Phone, Users } from 'lucide-react';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { Button } from '@/shared/ui/Button';
+import { useCarregarFila, useFilaDaOferta, useStatusFila } from '../api/queries';
+import type { FilaCargaStatus, OrdemDaFila, PessoaNaFila } from '../types';
 
 const ORDENS: { valor: OrdemDaFila; rotulo: string; dica: string }[] = [
   { valor: 'espera', rotulo: 'Quem espera há mais tempo', dica: 'Ordem de chegada — o critério mais defensável numa fila pública.' },
@@ -33,6 +35,17 @@ function dataCurta(iso: string | null) {
   if (!iso) return '—';
   const [a, m, d] = iso.slice(0, 10).split('-');
   return `${d}/${m}/${a}`;
+}
+
+function dataHora(iso: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 /** Espera em texto humano: acima de um ano, "1a 3m" diz mais que "462 dias". */
@@ -80,44 +93,115 @@ function Linha({ p, i }: { p: PessoaNaFila; i: number }) {
 }
 
 /**
+ * De onde vem a lista e se ela está completa. Sem isto, fila nunca lida aparecia como "ninguém
+ * esperando" — foi o que a tela mostrou até 10/09/2026, com a tabela vazia em produção.
+ */
+function SituacaoDaLeitura({ status }: { status: FilaCargaStatus | undefined }) {
+  const carregar = useCarregarFila();
+  const [erro, setErro] = useState<string | null>(null);
+
+  if (!status) return null;
+
+  function pedir(completa: boolean) {
+    setErro(null);
+    carregar.mutate(completa, { onError: (e) => setErro(extrairMensagemDeErro(e)) });
+  }
+
+  return (
+    <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+      {status.emExecucao ? (
+        <p className="flex items-center gap-2 text-blue-800">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Lendo a fila do SISREG: {status.janelasLidas} de {status.janelasTotal} período(s)
+          {status.janelaAtualInicio
+            ? ` — agora ${dataCurta(status.janelaAtualInicio)} a ${dataCurta(status.janelaAtualFim)}`
+            : ''}
+          . A lista abaixo cresce sozinha.
+        </p>
+      ) : status.ultimaLeitura ? (
+        <p>
+          Fila lida do SISREG em <strong>{dataHora(status.ultimaLeitura)}</strong> —{' '}
+          {status.pessoasNaFila.toLocaleString('pt-BR')} pessoa(s) esperando na rede toda. Atualiza
+          sozinha todo dia às 05:30.
+        </p>
+      ) : (
+        <p>
+          <strong>A fila ainda não foi lida do SISREG.</strong> Enquanto isso, esta lista fica vazia
+          — não quer dizer que ninguém espera.
+        </p>
+      )}
+
+      {status.ultimoErro ? (
+        <p className="mt-1 text-red-700">
+          Última leitura interrompida ({dataHora(status.ultimoErroEm)}): {status.ultimoErro}
+        </p>
+      ) : null}
+
+      {!status.emExecucao ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button tamanho="sm" variante="outline" disabled={carregar.isPending} onClick={() => pedir(true)}>
+            {carregar.isPending ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <DownloadCloud className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {status.ultimaLeitura ? 'Reler a fila inteira' : 'Carregar a fila inteira'}
+          </Button>
+          <span className="text-[11px] text-gray-500">
+            Desde jan/2024, um mês por vez em segundo plano — cerca de 66 requisições ao SISREG,
+            intercaladas com o resto do trabalho.
+          </span>
+        </div>
+      ) : null}
+      {erro ? <p className="mt-1 text-red-700">{erro}</p> : null}
+    </div>
+  );
+}
+
+/**
  * Quem está esperando pelo procedimento de uma oferta.
  *
- * <p>É a metade que faltava: a oferta diz "abriram 4 vagas de eco"; isto diz quem chamar. A ordem
- * padrão é a de chegada — qualquer outra exige alguém escolhendo, e a escolha fica visível.</p>
+ * <p>A oferta diz "abriram 4 vagas de eco"; isto diz quem chamar. A ordem padrão é a de chegada —
+ * qualquer outra exige alguém escolhendo, e a escolha fica visível.</p>
  */
 export function FilaDaOfertaPainel({
   procedimento,
-  aoFechar,
+  codigo,
 }: {
   procedimento: string;
-  aoFechar: () => void;
+  codigo: string | null;
 }) {
   const [ordem, setOrdem] = useState<OrdemDaFila>('espera');
-  const { data, isLoading, isError } = useFilaDaOferta(procedimento, ordem);
+  const status = useStatusFila();
+  const { data, isLoading, isError } = useFilaDaOferta(
+    procedimento,
+    ordem,
+    codigo,
+    status.data?.emExecucao ?? false,
+  );
 
   const dica = ORDENS.find((o) => o.valor === ordem)?.dica;
+  const outros = data?.procedimentosIncluidos.filter((n) => n !== procedimento) ?? [];
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <button
-            type="button"
-            onClick={aoFechar}
-            className="mb-1 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            voltar para as ofertas
-          </button>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
             <Users className="h-4 w-4 text-primary-600" />
-            Quem espera por {procedimento}
+            Quem espera
           </h2>
           {data ? (
             <p className="mt-1 text-xs text-gray-600">
               <strong>{data.total}</strong> pessoa(s) na fila
               {data.esperaP50Dias !== null ? ` · metade espera há mais de ${espera(data.esperaP50Dias)}` : ''}
               {data.esperaMaxDias !== null ? ` · a mais antiga há ${espera(data.esperaMaxDias)}` : ''}
+            </p>
+          ) : null}
+          {outros.length > 0 ? (
+            <p className="mt-0.5 text-[11px] text-gray-500" title={outros.join('\n')}>
+              Inclui quem pediu {outros.length === 1 ? `“${outros[0]}”` : `${outros.length} nomes do mesmo grupo`}
+              {' '}— esta vaga também serve para eles.
             </p>
           ) : null}
         </div>
@@ -137,6 +221,8 @@ export function FilaDaOfertaPainel({
           </select>
         </label>
       </header>
+
+      <SituacaoDaLeitura status={status.data} />
 
       {dica ? <p className="mb-2 text-[11px] text-gray-500">{dica}</p> : null}
 
@@ -170,9 +256,9 @@ export function FilaDaOfertaPainel({
         </p>
       ) : null}
 
-      {data && data.total === 0 ? (
+      {data && data.total === 0 && status.data?.ultimaLeitura ? (
         <p className="rounded-lg border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-          Ninguém esperando por este procedimento na fila lida do SISREG.
+          Ninguém esperando por este procedimento na última leitura do SISREG.
         </p>
       ) : null}
 
@@ -207,7 +293,7 @@ export function FilaDaOfertaPainel({
       ) : null}
 
       <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-gray-500">
-        Esta lista vem do SISREG (situação Solicitação/Pendente/Regulação) e é o retrato da última
+        Esta lista vem do SISREG (pendentes e reenviadas na regulação) e é o retrato da última
         leitura. <strong>Agendar continua sendo no SISREG</strong> — aqui se decide quem chamar.
       </p>
     </section>

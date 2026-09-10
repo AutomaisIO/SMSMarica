@@ -1,4 +1,4 @@
-import type { FilaDaOferta, Ofertas, OrdemDaFila } from '../types';
+import type { DatasDaOferta, FilaCargaStatus, FilaDaOferta, Ofertas, OrdemDaFila } from '../types';
 import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarSisregConfiguracaoPayload,
@@ -230,10 +230,35 @@ export async function listarOfertas(dias: number): Promise<Ofertas> {
 export async function listarFilaDaOferta(
   procedimento: string,
   ordenar: OrdemDaFila,
+  procedimentoCodigo: string | null,
   limite = 200,
 ): Promise<FilaDaOferta> {
   const { data } = await http.get<FilaDaOferta>('/sisreg/ofertas/fila', {
-    params: { procedimento, ordenar, limite },
+    params: { procedimento, ordenar, limite, procedimentoCodigo: procedimentoCodigo ?? undefined },
+  });
+  return data;
+}
+
+/** Dias com vaga por unidade executante — o que o SISREG mostra ao autorizar. */
+export async function listarDatasDaOferta(
+  procedimentoCodigo: string,
+  dias = 120,
+): Promise<DatasDaOferta> {
+  const { data } = await http.get<DatasDaOferta>('/sisreg/ofertas/datas', {
+    params: { procedimentoCodigo, dias },
+  });
+  return data;
+}
+
+export async function obterStatusFila(): Promise<FilaCargaStatus> {
+  const { data } = await http.get<FilaCargaStatus>('/sisreg/ofertas/fila/status');
+  return data;
+}
+
+/** Só enfileira: o servidor lê uma janela de 31 dias por vez, em segundo plano. */
+export async function carregarFila(completa: boolean): Promise<FilaCargaStatus> {
+  const { data } = await http.post<FilaCargaStatus>('/sisreg/ofertas/fila/carregar', null, {
+    params: { completa },
   });
   return data;
 }

@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { OrdemDaFila } from '../types';
 import {
+  carregarFila,
+  listarDatasDaOferta,
   listarFilaDaOferta,
   listarOfertas,
+  obterStatusFila,
   alternarSincronismoAutomatico,
   atualizarConfiguracaoSisreg,
   backfillExecutante,
@@ -46,7 +49,10 @@ export const sisregKeys = {
   escalasExecucoes: ['sisreg', 'escalas', 'execucoes'] as const,
   escalasAgendamento: ['sisreg', 'escalas', 'agendamento'] as const,
   ofertas: (dias: number) => ['sisreg', 'ofertas', dias] as const,
-  filaDaOferta: (proc: string, ordem: string) => ['sisreg', 'ofertas', 'fila', proc, ordem] as const,
+  filaDaOferta: (proc: string, ordem: string, codigo: string) =>
+    ['sisreg', 'ofertas', 'fila', proc, ordem, codigo] as const,
+  filaStatus: ['sisreg', 'ofertas', 'fila-status'] as const,
+  datasDaOferta: (codigo: string) => ['sisreg', 'ofertas', 'datas', codigo] as const,
 };
 
 export function useConfiguracaoSisreg() {
@@ -268,11 +274,45 @@ export function useOfertas(dias: number) {
   });
 }
 
-/** Quem espera por este procedimento. So busca quando ha procedimento escolhido. */
-export function useFilaDaOferta(procedimento: string | null, ordem: OrdemDaFila) {
+/**
+ * Quem espera por este procedimento. So busca quando ha procedimento escolhido. Com a fila sendo
+ * lida em segundo plano, reconsulta de tempos em tempos para a lista crescer na frente do operador.
+ */
+export function useFilaDaOferta(
+  procedimento: string | null,
+  ordem: OrdemDaFila,
+  codigo: string | null,
+  acompanhando = false,
+) {
   return useQuery({
-    queryKey: sisregKeys.filaDaOferta(procedimento ?? '', ordem),
-    queryFn: () => listarFilaDaOferta(procedimento!, ordem),
+    queryKey: sisregKeys.filaDaOferta(procedimento ?? '', ordem, codigo ?? ''),
+    queryFn: () => listarFilaDaOferta(procedimento!, ordem, codigo),
     enabled: Boolean(procedimento),
+    refetchInterval: acompanhando ? 15_000 : false,
+  });
+}
+
+/** Dias com vaga por unidade — o que o SISREG mostra depois de autorizar. */
+export function useDatasDaOferta(codigo: string | null) {
+  return useQuery({
+    queryKey: sisregKeys.datasDaOferta(codigo ?? ''),
+    queryFn: () => listarDatasDaOferta(codigo!),
+    enabled: Boolean(codigo),
+  });
+}
+
+export function useStatusFila() {
+  return useQuery({
+    queryKey: sisregKeys.filaStatus,
+    queryFn: obterStatusFila,
+    refetchInterval: (query) => (query.state.data?.emExecucao ? 5000 : false),
+  });
+}
+
+export function useCarregarFila() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (completa: boolean) => carregarFila(completa),
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.filaStatus }),
   });
 }

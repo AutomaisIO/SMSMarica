@@ -738,3 +738,44 @@ para importar (1 requisição por unidade), mas serve de **totalizador de confer
 `qtd_itens_pag=0` num mês recente leva **75 s** e 13,4 MB. Timeout padrão de 30 s do client não
 serve — foi o que deu `ReadTimeout` na primeira tentativa (situação 7). Usar timeout ≥ 180 s e
 tratar a resposta em streaming.
+
+## 🩺 AUTORIZAR → Ambulatorial — `autorizador` (a fila do REGULADOR) ✅ (2026-09-10)
+
+A credencial `PROGRAMADOR-BERNARDO` é **REGULADOR/AUTORIZADOR** (Central de Regulação Municipal,
+CNES 7481535) — não EXECUTANTE/SOLICITANTE como o topo deste documento diz do operador de teste
+antigo. É **o mesmo operador que o servidor de produção usa** (`sisreg_configuracao.login`): logar
+pelo laboratório derruba a sessão dos motores de PROD e vice-versa.
+
+`POST /cgi-bin/autorizador`, form `form`, `programa=AUTORIZADOR`:
+
+| Botão | JS | `ETAPA` | Efeito |
+|---|---|---|---|
+| CONSULTAR | `send('0')` | `LISTAR` | leitura |
+| clique na linha | `mostrar(cod)` | `VISUALIZAR` (+`co_solicitacao`) | leitura (ficha + histórico do regulador) |
+| **APLICAR** | `enviarFormulario()` | **`APLICAR`** | ⛔ **ESCRITA**: grava a decisão (`tipo` R/F + `status` A/P/D/N). O histórico da ficha mostra decisões anteriores ("DEVOLVIDO" + justificativa) — é isso que APLICAR cria. |
+| (lote) | `enviarFormularioMassa()` | **`APLICARMASS`** | ⛔ ESCRITA em massa |
+| Alterar Classificação | `alteraClassificacao()` | **`ALTERA_RISCO_AMB`** | ⛔ ESCRITA |
+
+A grade "unidades que executam → expandir → datas" (`expandirVagas(unidade)`, linhas `U<n>V<i>`)
+só aparece DEPOIS do APLICAR com AUTORIZADO — não há como vê-la por esta tela sem autorizar.
+
+- `no_procedimento` é **busca por trecho**: "ECOCARDIOGRAMA" = ADULTO 6.011 + FETAL 37 = 6.048
+  (INFANTIL: "SOLICITAÇÕES INEXISTENTES!").
+- `qtd_itens_pag` aceita só 10/20/50/100; **`0` devolve a página vazia** (≠ gerenciador). O total
+  vem de graça no cabeçalho `Solicitações (N)` — contar custa 1 requisição, listar tudo N/100.
+- Colunas da listagem (12): check · código · data (dd.mm.aaaa) · risco · paciente · idade ·
+  procedimento · CID · unidade solicitante · município · situação · (vazio).
+- Situações vistas: `SOL/PEN/REG` e **`SOL/REE/REG` (reenviada)** — ~1%.
+
+### Conferência contra o `gerenciador_solicitacao` (situação 1), ECO
+| Janela do pedido | autorizador (10/09) | gerenciador (05/09) | 100 códigos cruzados |
+|---|---|---|---|
+| jan/2026 | 356 | 355 | 100/100 nos dois |
+| 05/08–05/09 | 544 | 545 | 100/100 nos dois |
+
+**São a mesma fila** — o gerenciador é a fonte certa e barata (1 req/31 dias). Única diferença:
+as **reenviadas** (`SOL/REE/REG`) estão na fila do regulador e o nosso leitor pede só `cmb_situacao=1`
+(reenviada é a `5`).
+
+- Conexão cai às vezes (`RemoteProtocolError: Server disconnected`) entre POSTs seguidos;
+  pausa de 4–8 s e 1 retentativa resolveram.
