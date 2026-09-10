@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CalendarPlus, Clock, Loader2, PackageOpen, Sparkles, Timer } from 'lucide-react';
 import { useOfertas } from '../api/queries';
+import { FilaDaOfertaPainel } from '../components/FilaDaOfertaPainel';
 import type { AgendaNova, VagaLiberada } from '../types';
 
 const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
@@ -47,13 +48,33 @@ function Espera({ dias, urgente }: { dias: number | null; urgente: number }) {
   );
 }
 
-function CartaoAgenda({ a, urgente }: { a: AgendaNova; urgente: number }) {
+function CartaoAgenda({
+  a,
+  urgente,
+  aoAbrir,
+}: {
+  a: AgendaNova;
+  urgente: number;
+  aoAbrir: (procedimento: string) => void;
+}) {
   const destaque = (a.esperaMedianaDias ?? 0) >= urgente;
   const recorrente = a.blocos > 1;
   return (
     <li
-      className={`rounded-lg border p-3 ${
-        destaque ? 'border-red-200 bg-red-50/40' : 'border-gray-200 bg-white'
+      role="button"
+      tabIndex={0}
+      onClick={() => aoAbrir(a.procedimentoNome)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          aoAbrir(a.procedimentoNome);
+        }
+      }}
+      title="Ver quem espera por este procedimento"
+      className={`cursor-pointer rounded-lg border p-3 transition hover:shadow-sm ${
+        destaque
+          ? 'border-red-200 bg-red-50/40 hover:border-red-300'
+          : 'border-gray-200 bg-white hover:border-primary-300'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -88,13 +109,34 @@ function CartaoAgenda({ a, urgente }: { a: AgendaNova; urgente: number }) {
   );
 }
 
-function CartaoVaga({ v, urgente, perecivel }: { v: VagaLiberada; urgente: number; perecivel: number }) {
+function CartaoVaga({
+  v,
+  urgente,
+  perecivel,
+  aoAbrir,
+}: {
+  v: VagaLiberada;
+  urgente: number;
+  perecivel: number;
+  aoAbrir: (procedimento: string) => void;
+}) {
   const dias = diasAte(v.dataAgendada);
   const corre = dias <= perecivel;
+  const clicavel = Boolean(v.procedimentoNome);
   return (
     <li
-      className={`rounded-lg border p-3 ${
-        corre ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 bg-white'
+      role={clicavel ? 'button' : undefined}
+      tabIndex={clicavel ? 0 : undefined}
+      onClick={() => clicavel && aoAbrir(v.procedimentoNome!)}
+      onKeyDown={(e) => {
+        if (clicavel && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          aoAbrir(v.procedimentoNome!);
+        }
+      }}
+      title={clicavel ? 'Ver quem espera por este procedimento' : undefined}
+      className={`rounded-lg border p-3 transition ${clicavel ? 'cursor-pointer hover:shadow-sm' : ''} ${
+        corre ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 bg-white hover:border-primary-300'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -136,6 +178,8 @@ function CartaoVaga({ v, urgente, perecivel }: { v: VagaLiberada; urgente: numbe
  */
 export function OfertasPage() {
   const [dias, setDias] = useState(7);
+  /** Procedimento cuja fila está aberta; null = mostrando as ofertas. */
+  const [filaAberta, setFilaAberta] = useState<string | null>(null);
   const { data, isLoading, isError } = useOfertas(dias);
 
   const urgente = data?.diasEsperaUrgente ?? 180;
@@ -155,6 +199,7 @@ export function OfertasPage() {
         <p className="mt-1 max-w-3xl text-sm text-gray-600">
           O que abriu no SISREG: agendas que passaram a existir e horários que vagaram por
           cancelamento. Ordenado pela espera do procedimento — quanto maior a fila, mais alto.
+          <strong> Clique numa oferta para ver quem está esperando.</strong>
         </p>
       </header>
 
@@ -182,6 +227,9 @@ export function OfertasPage() {
         </p>
       ) : null}
 
+      {filaAberta ? (
+        <FilaDaOfertaPainel procedimento={filaAberta} aoFechar={() => setFilaAberta(null)} />
+      ) : (
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
@@ -200,7 +248,12 @@ export function OfertasPage() {
           ) : (
             <ul className="space-y-2">
               {agendas.map((a) => (
-                <CartaoAgenda key={`${a.unidadeId}-${a.procedimentoCodigo}`} a={a} urgente={urgente} />
+                <CartaoAgenda
+                  key={`${a.unidadeId}-${a.procedimentoCodigo}`}
+                  a={a}
+                  urgente={urgente}
+                  aoAbrir={setFilaAberta}
+                />
               ))}
             </ul>
           )}
@@ -224,12 +277,19 @@ export function OfertasPage() {
           ) : (
             <ul className="space-y-2">
               {vagas.map((v) => (
-                <CartaoVaga key={v.alteracaoId} v={v} urgente={urgente} perecivel={perecivel} />
+                <CartaoVaga
+                  key={v.alteracaoId}
+                  v={v}
+                  urgente={urgente}
+                  perecivel={perecivel}
+                  aoAbrir={setFilaAberta}
+                />
               ))}
             </ul>
           )}
         </section>
       </div>
+      )}
 
       <footer className="mt-6 flex items-start gap-2 rounded-md bg-gray-50 p-3 text-xs text-gray-600">
         <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />

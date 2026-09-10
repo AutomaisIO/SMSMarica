@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { OrdemDaFila } from '../types';
 import {
+  listarFilaDaOferta,
   listarOfertas,
   alternarSincronismoAutomatico,
   atualizarConfiguracaoSisreg,
@@ -44,6 +46,7 @@ export const sisregKeys = {
   escalasExecucoes: ['sisreg', 'escalas', 'execucoes'] as const,
   escalasAgendamento: ['sisreg', 'escalas', 'agendamento'] as const,
   ofertas: (dias: number) => ['sisreg', 'ofertas', dias] as const,
+  filaDaOferta: (proc: string, ordem: string) => ['sisreg', 'ofertas', 'fila', proc, ordem] as const,
 };
 
 export function useConfiguracaoSisreg() {
@@ -262,5 +265,14 @@ export function useOfertas(dias: number) {
     queryKey: sisregKeys.ofertas(dias),
     queryFn: () => listarOfertas(dias),
     refetchInterval: 5 * 60 * 1000,
+  });
+}
+
+/** Quem espera por este procedimento. So busca quando ha procedimento escolhido. */
+export function useFilaDaOferta(procedimento: string | null, ordem: OrdemDaFila) {
+  return useQuery({
+    queryKey: sisregKeys.filaDaOferta(procedimento ?? '', ordem),
+    queryFn: () => listarFilaDaOferta(procedimento!, ordem),
+    enabled: Boolean(procedimento),
   });
 }

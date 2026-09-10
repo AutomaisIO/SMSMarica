@@ -364,3 +364,32 @@ export type Ofertas = {
   diasEsperaUrgente: number;
   diasVagaPerecivel: number;
 };
+
+/** Uma pessoa esperando por um procedimento, na fila do SISREG. */
+export type PessoaNaFila = {
+  codigoSolicitacao: string;
+  dataSolicitacao: string | null;
+  /** Dias desde o pedido — a conta que a tela ordena por padrao. */
+  esperandoHaDias: number | null;
+  /** 0 = vermelho (mais urgente) ... 3 = azul; null = nao classificado. */
+  risco: number | null;
+  nome: string | null;
+  idadeAnos: number | null;
+  dataNascimento: string | null;
+  cns: string | null;
+  telefone: string | null;
+  unidadeSolicitante: string | null;
+  cidCodigo: string | null;
+};
+
+export type FilaDaOferta = {
+  procedimentoNome: string;
+  total: number;
+  /** Mediana da espera de quem AINDA espera — diferente da espera mostrada na oferta. */
+  esperaP50Dias: number | null;
+  esperaMaxDias: number | null;
+  porRisco: Record<string, number>;
+  pessoas: PessoaNaFila[];
+};
+
+export type OrdemDaFila = 'espera' | 'risco' | 'idade' | 'nome';

@@ -29,4 +29,22 @@ public sealed class SisregOfertasController(IOfertasSisregService ofertas) : Con
     public async Task<OfertasSisregDto> Listar(
         [FromQuery] int dias = 7, CancellationToken cancellationToken = default) =>
         await ofertas.ListarAsync(dias, cancellationToken);
+
+    /// <summary>
+    /// Quem está esperando por este procedimento — a lista que a oferta destrava.
+    /// </summary>
+    /// <param name="procedimento">Nome exato, como o SISREG escreve. É o eixo: esta tela do SISREG
+    /// não manda código de procedimento.</param>
+    /// <param name="ordenar"><c>espera</c> (padrão), <c>risco</c>, <c>idade</c> ou <c>nome</c>.</param>
+    [HttpGet("fila")]
+    [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<FilaDaOfertaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<FilaDaOfertaDto> Fila(
+        [FromQuery] string procedimento,
+        [FromQuery] string? ordenar = null,
+        [FromQuery] int limite = 100,
+        [FromQuery] int pulo = 0,
+        CancellationToken cancellationToken = default) =>
+        await ofertas.FilaDaOfertaAsync(procedimento, ordenar, limite, pulo, cancellationToken);
 }

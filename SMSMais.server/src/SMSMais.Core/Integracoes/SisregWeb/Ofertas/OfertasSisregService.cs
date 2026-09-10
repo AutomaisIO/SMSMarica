@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
 using SMSMais.Data;
@@ -34,6 +34,16 @@ public interface IOfertasSisregService
     /// <param name="dias">Janela de "novidade" das agendas: quantos dias atrás olhar o
     /// <c>CriadoEm</c> da escala.</param>
     Task<OfertasSisregDto> ListarAsync(int dias, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Quem está esperando por este procedimento — a lista que a oferta destrava.
+    /// </summary>
+    /// <param name="ordenar">
+    /// <c>espera</c> (padrão, mais antigo primeiro), <c>risco</c>, <c>idade</c> ou <c>nome</c>.
+    /// </param>
+    Task<FilaDaOfertaDto> FilaDaOfertaAsync(
+        string procedimentoNome, string? ordenar, int limite, int pulo,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregService
@@ -79,6 +89,81 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
             janela,
             DiasEsperaUrgente,
             DiasVagaPerecivel);
+    }
+
+    public async Task<FilaDaOfertaDto> FilaDaOfertaAsync(
+        string procedimentoNome, string? ordenar, int limite, int pulo,
+        CancellationToken cancellationToken = default)
+    {
+        var nome = (procedimentoNome ?? string.Empty).Trim();
+        if (nome.Length == 0)
+        {
+            throw new Common.Excecoes.ValidacaoException(
+                "fila.procedimento_obrigatorio", "Informe o procedimento para listar a fila.");
+        }
+
+        var pagina = Math.Clamp(limite, 1, 500);
+        var salto = Math.Max(0, pulo);
+        var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+
+        // Casa pelo NOME porque o SISREG não manda código do procedimento nesta tela — é a régua
+        // da casa. Comparação exata, sem `Contains`: "CONSULTA EM CARDIOLOGIA" não pode arrastar
+        // "CONSULTA EM CARDIOLOGIA - PEDIATRIA", que é outra fila com outra espera.
+        var baseQuery = db.SisregFilaPendentes.AsNoTracking()
+            .Where(f => f.SaiuEm == null && f.ProcedimentoNome == nome);
+
+        var total = await baseQuery.CountAsync(cancellationToken);
+
+        var porRisco = await baseQuery
+            .GroupBy(f => f.Risco)
+            .Select(g => new { Risco = g.Key, Qtd = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var esperas = await baseQuery
+            .Where(f => f.DataSolicitacao != null)
+            .Select(f => f.DataSolicitacao!.Value)
+            .ToListAsync(cancellationToken);
+
+        var dias = esperas.Select(d => hoje.DayNumber - d.DayNumber).Where(x => x >= 0).Order().ToList();
+
+        var ordenada = (ordenar?.Trim().ToLowerInvariant()) switch
+        {
+            // Risco primeiro, e dentro do mesmo risco quem espera há mais tempo. Nulo por último:
+            // "não classificado" não pode passar na frente de um vermelho.
+            "risco" => baseQuery.OrderBy(f => f.Risco == null).ThenBy(f => f.Risco)
+                .ThenBy(f => f.DataSolicitacao),
+            "idade" => baseQuery.OrderByDescending(f => f.IdadeAnos ?? -1).ThenBy(f => f.DataSolicitacao),
+            "nome" => baseQuery.OrderBy(f => f.PacienteNome).ThenBy(f => f.DataSolicitacao),
+            // Padrão: quem chegou primeiro. É o critério mais defensável numa fila pública.
+            _ => baseQuery.OrderBy(f => f.DataSolicitacao == null).ThenBy(f => f.DataSolicitacao),
+        };
+
+        var linhas = await ordenada.Skip(salto).Take(pagina)
+            .Select(f => new
+            {
+                f.CodigoSolicitacao, f.DataSolicitacao, f.Risco, f.PacienteNome,
+                f.IdadeAnos, f.DataNascimento, f.Cns, f.Telefone, f.UnidadeSolicitante, f.CidCodigo,
+            })
+            .ToListAsync(cancellationToken);
+
+        return new FilaDaOfertaDto(
+            nome,
+            total,
+            dias.Count > 0 ? dias[dias.Count / 2] : null,
+            dias.Count > 0 ? dias[^1] : null,
+            porRisco.ToDictionary(x => x.Risco?.ToString() ?? "sem", x => x.Qtd),
+            [.. linhas.Select(l => new PessoaNaFilaDto(
+                l.CodigoSolicitacao,
+                l.DataSolicitacao,
+                l.DataSolicitacao is { } d ? hoje.DayNumber - d.DayNumber : null,
+                l.Risco,
+                l.PacienteNome,
+                l.IdadeAnos,
+                l.DataNascimento,
+                l.Cns,
+                l.Telefone,
+                l.UnidadeSolicitante,
+                l.CidCodigo))]);
     }
 
     private static int? Espera(IReadOnlyDictionary<string, int> mapa, string? codigo) =>

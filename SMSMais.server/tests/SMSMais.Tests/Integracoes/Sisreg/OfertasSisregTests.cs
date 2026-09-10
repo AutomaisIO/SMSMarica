@@ -185,6 +185,110 @@ public class OfertasSisregTests(PostgresFixture fixture)
         Assert.Contains(r.AgendasNovas, a => a.ProcedimentoCodigo == organica);
     }
 
+    private static SisregFilaPendente NaFila(
+        string procedimento, DateOnly pedido, int? risco = null, string? nome = null, int? idade = null) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            CodigoSolicitacao = Random.Shared.Next(100_000_000, 999_999_999).ToString(),
+            DataSolicitacao = pedido,
+            Risco = risco,
+            PacienteNome = nome ?? "PACIENTE TESTE",
+            IdadeAnos = idade,
+            ProcedimentoNome = procedimento,
+            PrimeiroVistoEm = DateTime.UtcNow,
+            UltimoVistoEm = DateTime.UtcNow,
+            CriadoEm = DateTime.UtcNow,
+        };
+
+    /// <summary>
+    /// A ordem padrão é a mais defensável numa fila pública: quem chegou primeiro é chamado
+    /// primeiro. Qualquer outra precisa de alguém escolhendo, e a escolha fica registrada na URL.
+    /// </summary>
+    [Fact]
+    public async Task Fila_vem_por_ordem_de_chegada_por_padrao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var proc = $"CONSULTA TESTE {Random.Shared.Next(100_000, 999_999)}";
+        db.SisregFilaPendentes.AddRange(
+            NaFila(proc, new DateOnly(2026, 3, 10), nome: "MAIS RECENTE"),
+            NaFila(proc, new DateOnly(2025, 1, 5), nome: "MAIS ANTIGO"),
+            NaFila(proc, new DateOnly(2026, 1, 20), nome: "DO MEIO"));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).FilaDaOfertaAsync(proc, null, 100, 0);
+
+        Assert.Equal(3, r.Total);
+        Assert.Equal(["MAIS ANTIGO", "DO MEIO", "MAIS RECENTE"], r.Pessoas.Select(p => p.Nome));
+        Assert.True(r.Pessoas[0].EsperandoHaDias > r.Pessoas[2].EsperandoHaDias);
+    }
+
+    /// <summary>
+    /// Ordenar por risco põe o vermelho na frente — e "não classificado" NÃO pode passar na frente
+    /// de um vermelho só por ser nulo.
+    /// </summary>
+    [Fact]
+    public async Task Por_risco_o_vermelho_vem_primeiro_e_o_sem_classificacao_por_ultimo()
+    {
+        await using var db = fixture.CriarDbContext();
+        var proc = $"CONSULTA TESTE {Random.Shared.Next(100_000, 999_999)}";
+        db.SisregFilaPendentes.AddRange(
+            NaFila(proc, new DateOnly(2026, 1, 1), risco: null, nome: "SEM RISCO"),
+            NaFila(proc, new DateOnly(2026, 1, 1), risco: 3, nome: "AZUL"),
+            NaFila(proc, new DateOnly(2026, 1, 1), risco: 0, nome: "VERMELHO"));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).FilaDaOfertaAsync(proc, "risco", 100, 0);
+
+        Assert.Equal(["VERMELHO", "AZUL", "SEM RISCO"], r.Pessoas.Select(p => p.Nome));
+    }
+
+    /// <summary>
+    /// Comparação exata, sem <c>Contains</c>: "CONSULTA EM CARDIOLOGIA" não pode arrastar
+    /// "CONSULTA EM CARDIOLOGIA - PEDIATRIA", que é outra fila com outra espera.
+    /// </summary>
+    [Fact]
+    public async Task Procedimento_parecido_nao_entra_na_fila_de_outro()
+    {
+        await using var db = fixture.CriarDbContext();
+        var n = Random.Shared.Next(100_000, 999_999);
+        var proc = $"CONSULTA {n}";
+        db.SisregFilaPendentes.AddRange(
+            NaFila(proc, new DateOnly(2026, 1, 1)),
+            NaFila($"{proc} - PEDIATRIA", new DateOnly(2026, 1, 1)));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).FilaDaOfertaAsync(proc, null, 100, 0);
+
+        Assert.Equal(1, r.Total);
+    }
+
+    /// <summary>Quem já saiu não é fila — continuar oferecendo seria chamar quem já foi atendido.</summary>
+    [Fact]
+    public async Task Quem_saiu_da_fila_nao_aparece()
+    {
+        await using var db = fixture.CriarDbContext();
+        var proc = $"CONSULTA TESTE {Random.Shared.Next(100_000, 999_999)}";
+        var saiu = NaFila(proc, new DateOnly(2026, 1, 1));
+        saiu.SaiuEm = DateTime.UtcNow;
+        saiu.SaiuPara = SaidaDaFilaSisreg.Agendada;
+        db.SisregFilaPendentes.AddRange(saiu, NaFila(proc, new DateOnly(2026, 2, 1)));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).FilaDaOfertaAsync(proc, null, 100, 0);
+
+        Assert.Equal(1, r.Total);
+    }
+
+    [Fact]
+    public async Task Procedimento_vazio_e_recusado()
+    {
+        await using var db = fixture.CriarDbContext();
+
+        await Assert.ThrowsAsync<SMSMais.Core.Common.Excecoes.ValidacaoException>(() =>
+            new OfertasSisregService(db).FilaDaOfertaAsync("  ", null, 100, 0));
+    }
+
     /// <summary>
     /// A consulta de vagas liberadas (join com solicitação + subconsulta de espera em SQL cru)
     /// também precisa executar de verdade — é o outro caminho que só um banco prova.

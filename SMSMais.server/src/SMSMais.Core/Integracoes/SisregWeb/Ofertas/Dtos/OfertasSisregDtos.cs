@@ -1,4 +1,4 @@
-namespace SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
+﻿namespace SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
 
 /// <summary>
 /// Um bloco de agenda que passou a existir no SISREG dentro da janela olhada.
@@ -42,6 +42,35 @@ public sealed record VagaLiberadaDto(
     DateTime DataAgendada,
     DateTime DetectadaEm,
     int? EsperaMedianaDias);
+
+/// <summary>Uma pessoa esperando por este procedimento.</summary>
+/// <param name="EsperandoHaDias">Dias desde o pedido. É a conta que a tela ordena por padrão —
+/// quem espera há mais tempo primeiro.</param>
+/// <param name="Risco">0 = vermelho (mais urgente) … 3 = azul; nulo quando o SISREG não
+/// classificou.</param>
+public sealed record PessoaNaFilaDto(
+    string CodigoSolicitacao,
+    DateOnly? DataSolicitacao,
+    int? EsperandoHaDias,
+    int? Risco,
+    string? Nome,
+    int? IdadeAnos,
+    DateOnly? DataNascimento,
+    string? Cns,
+    string? Telefone,
+    string? UnidadeSolicitante,
+    string? CidCodigo);
+
+/// <param name="Total">Quantas pessoas esperam por este procedimento, além da página devolvida.</param>
+/// <param name="EsperaP50Dias">Mediana da espera de <b>quem ainda está na fila</b> — diferente da
+/// espera mostrada na oferta, que é a de quem já conseguiu data.</param>
+public sealed record FilaDaOfertaDto(
+    string ProcedimentoNome,
+    int Total,
+    int? EsperaP50Dias,
+    int? EsperaMaxDias,
+    IReadOnlyDictionary<string, int> PorRisco,
+    IReadOnlyList<PessoaNaFilaDto> Pessoas);
 
 /// <param name="JanelaDias">Janela de novidade efetivamente usada (o pedido é limitado a 1–90).</param>
 /// <param name="DiasEsperaUrgente">Acima disto a tela destaca a oferta.</param>
