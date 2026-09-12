@@ -702,6 +702,15 @@ Curva medida em 05/09/2026 (situação 1, `tipo_periodo=S`, janelas de 1 mês):
 Interpolando, a fila total é da ordem de **60 a 90 mil pessoas** — 3 a 4× o nosso banco inteiro de
 agendados (22.101 em 05/09/2026). É estimativa de 6 pontos; a varredura completa dá o número exato.
 
+> ⚠️ **Corrigido em 12/09/2026 pela carga completa (32 janelas, 2 situações, servidor):** a linha
+> "jul/2024 = 0" acima está **errada** — todo mês de 2024 tem gente ainda na fila (5 a 27 por mês,
+> ~170 no ano). A fila real em 12/09/2026 é **73.680 pessoas**, pedido mais antigo em 10/01/2024.
+> Antes de 2024, pela tela do regulador (`autorizador`, período de 1 ano por consulta): **2023 = 9**
+> (8 reenviadas `SOL/REE/REG` + 1 pendente; 4 de pequenas cirurgias), **2022 = 2021 = 2020 = 0**.
+> Conferência: ECOCARDIOGRAMA **6.059 no nosso banco × 6.059 no SISREG** (6.023 adulto + 36 fetal),
+> no mesmo minuto. A carga levou ~18 min; o SISREG cortou a conexão 1× e devolveu página que não era
+> a listagem 1× — as duas recusadas e relidas na hora.
+
 ### Custo de varrer o passado inteiro
 ~33 janelas de 31 dias de jan/2024 até hoje = **~33 requisições** para todo o acervo; o diário fica
 em **1 requisição**. As janelas antigas encolhem sozinhas conforme as pessoas são atendidas, então

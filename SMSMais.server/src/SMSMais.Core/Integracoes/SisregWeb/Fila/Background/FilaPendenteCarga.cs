@@ -26,10 +26,13 @@ public sealed record FilaCargaStatusDto(
 public static class JanelasDaFila
 {
     /// <summary>
-    /// De onde a carga completa parte. Medido em 05/09/2026: jan/2024 tinha ~1 pessoa ainda na
-    /// fila e jul/2024 nenhuma — antes disso é requisição gasta procurando ninguém.
+    /// De onde a carga completa parte. Era jan/2024, com base numa medição de laboratório ("jul/2024
+    /// = 0") que a carga completa de 12/09/2026 desmentiu: todo mês de 2024 tem gente esperando. Na
+    /// tela do regulador, no mesmo dia: 2023 = 9 pessoas (8 reenviadas), 2022 = 2021 = 2020 = 0.
+    /// Antes de 2023 é requisição gasta procurando ninguém; 2023 são poucas, mas são as que esperam
+    /// há mais tempo.
     /// </summary>
-    public static readonly DateOnly InicioDoAcervo = new(2024, 1, 1);
+    public static readonly DateOnly InicioDoAcervo = new(2023, 1, 1);
 
     public static IReadOnlyList<JanelaFila> Recente(DateOnly hoje) =>
         [new(hoje.AddDays(-(FilaPendenteSisregService.MaxDiasPorJanela - 1)), hoje)];

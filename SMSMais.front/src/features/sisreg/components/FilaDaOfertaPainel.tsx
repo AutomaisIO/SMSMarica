@@ -151,8 +151,8 @@ function SituacaoDaLeitura({ status }: { status: FilaCargaStatus | undefined }) 
             {status.ultimaLeitura ? 'Reler a fila inteira' : 'Carregar a fila inteira'}
           </Button>
           <span className="text-[11px] text-gray-500">
-            Atualizar custa 2 requisições ao SISREG. A fila inteira (desde jan/2024) lê um mês por
-            vez em segundo plano — cerca de 64 requisições. Quem vira agendamento sai da fila
+            Atualizar custa 2 requisições ao SISREG. A fila inteira (desde jan/2023) lê um mês por
+            vez em segundo plano — cerca de 88 requisições. Quem vira agendamento sai da fila
             sozinho, sem reler o passado.
           </span>
         </div>

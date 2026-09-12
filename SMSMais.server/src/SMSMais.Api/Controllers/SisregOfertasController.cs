@@ -88,7 +88,7 @@ public sealed class SisregOfertasController(
     /// Pede a leitura da fila no SISREG. Só enfileira — o agendador lê uma janela por vez, cedendo
     /// a vez aos outros motores.
     /// </summary>
-    /// <param name="completa"><c>true</c>: o acervo inteiro desde jan/2024 (~33 janelas, 2
+    /// <param name="completa"><c>true</c>: o acervo inteiro desde jan/2023 (~44 janelas, 2
     /// requisições cada). <c>false</c>: só os últimos 31 dias (2 requisições).</param>
     [HttpPost("fila/carregar")]
     [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Edicao)]
