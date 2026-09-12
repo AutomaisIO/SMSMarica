@@ -139,6 +139,9 @@ function SituacaoDaLeitura({ status }: { status: FilaCargaStatus | undefined }) 
 
       {!status.emExecucao ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button tamanho="sm" variante="outline" disabled={carregar.isPending} onClick={() => pedir(false)}>
+            Atualizar (últimos 31 dias)
+          </Button>
           <Button tamanho="sm" variante="outline" disabled={carregar.isPending} onClick={() => pedir(true)}>
             {carregar.isPending ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -148,8 +151,9 @@ function SituacaoDaLeitura({ status }: { status: FilaCargaStatus | undefined }) 
             {status.ultimaLeitura ? 'Reler a fila inteira' : 'Carregar a fila inteira'}
           </Button>
           <span className="text-[11px] text-gray-500">
-            Desde jan/2024, um mês por vez em segundo plano — cerca de 66 requisições ao SISREG,
-            intercaladas com o resto do trabalho.
+            Atualizar custa 2 requisições ao SISREG. A fila inteira (desde jan/2024) lê um mês por
+            vez em segundo plano — cerca de 64 requisições. Quem vira agendamento sai da fila
+            sozinho, sem reler o passado.
           </span>
         </div>
       ) : null}

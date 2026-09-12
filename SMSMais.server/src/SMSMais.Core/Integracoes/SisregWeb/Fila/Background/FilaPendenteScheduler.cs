@@ -8,11 +8,15 @@ using SMSMais.Data;
 namespace SMSMais.Core.Integracoes.SisregWeb.Fila.Background;
 
 /// <summary>
-/// Dá vida ao motor da fila: o diário e a carga pedida pela tela.
+/// Dá vida ao motor da fila: o diário, a carga pedida pela tela e o fechamento pela agenda.
 ///
 /// <para><b>Por que existe.</b> O motor foi escrito e registrado, mas nada o chamava — em 10/09/2026
 /// a tabela de produção tinha <b>zero linhas</b>, e a tela de Ofertas abria sempre "ninguém
 /// esperando". Uma lista vazia que parece resposta é pior que erro.</para>
+///
+/// <para><b>Daqui para frente.</b> O SISREG só é relido na janela recente (o diário); o passado é
+/// carregado uma vez, a pedido. Quem sai da fila por agendamento — 94% das saídas medidas — sai
+/// pelo fechamento pela agenda, que não custa requisição.</para>
 ///
 /// <para><b>Uma janela por tick.</b> Cada janela custa 2 requisições e até ~75 s; fazer a carga
 /// inteira (~33 janelas) num laço prenderia a sessão do operador por meia hora. Um tick por vez
@@ -40,11 +44,17 @@ public sealed class FilaPendenteScheduler(
     /// </summary>
     private static readonly TimeOnly HoraDoDiario = new(5, 30);
 
-    /// <summary>Com a chave-mestra desligada, reconsultar a cada tick seria polling à toa.</summary>
-    private static readonly TimeSpan EsperaComChaveDesligada = TimeSpan.FromMinutes(10);
+    /// <summary>
+    /// Entre duas tentativas do diário no mesmo dia. Leitura que falha (sessão caída às 05:30, como
+    /// em 12/09/2026) é tentada de novo mais tarde, em vez de o dia inteiro ficar sem leitura.
+    /// </summary>
+    private static readonly TimeSpan EsperaEntreTentativasDoDiario = TimeSpan.FromMinutes(30);
 
-    private DateOnly? _diarioEnfileiradoEm;
-    private DateTime _proximaChecagemDaChave = DateTime.MinValue;
+    /// <summary>Fechamento pela agenda: barato (uma consulta), sem SISREG.</summary>
+    private static readonly TimeSpan IntervaloDoFechamento = TimeSpan.FromMinutes(10);
+
+    private DateTime _proximaTentativaDoDiario = DateTime.MinValue;
+    private DateTime _proximoFechamento = DateTime.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -70,6 +80,16 @@ public sealed class FilaPendenteScheduler(
 
     private async Task TickAsync(CancellationToken ct)
     {
+        using var scope = scopeFactory.CreateScope();
+        var servico = scope.ServiceProvider.GetRequiredService<IFilaPendenteSisregService>();
+
+        // Não fala com o SISREG: roda mesmo com outro motor usando a sessão.
+        if (DateTime.UtcNow >= _proximoFechamento)
+        {
+            _proximoFechamento = DateTime.UtcNow + IntervaloDoFechamento;
+            await servico.FecharAgendadosAsync(ct);
+        }
+
         // Todos dividem a mesma sessão e o mesmo orçamento: com trabalho vivo, espera.
         if (varreduraEstadoVivo.ObterAtual() is not null
             || importacaoEstadoVivo.ObterAtual() is not null
@@ -79,14 +99,11 @@ public sealed class FilaPendenteScheduler(
             return;
         }
 
-        using var scope = scopeFactory.CreateScope();
-
-        await TalvezEnfileirarDiarioAsync(scope, ct);
+        await TalvezEnfileirarDiarioAsync(scope, servico, ct);
 
         var janela = estado.Proxima();
         if (janela is null) return;
 
-        var servico = scope.ServiceProvider.GetRequiredService<IFilaPendenteSisregService>();
         try
         {
             var r = await servico.LerJanelaAsync(janela.Inicio, janela.Fim, ct);
@@ -94,6 +111,7 @@ public sealed class FilaPendenteScheduler(
             logger.LogInformation(
                 "SISREG_FILA_JANELA: {Ini}..{Fim} — {Lidas} na fila, {Novas} novas, {Saidas} saídas.",
                 r.Inicio, r.Fim, r.Lidas, r.Novas, r.Saidas);
+            await servico.FecharAgendadosAsync(ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -113,29 +131,41 @@ public sealed class FilaPendenteScheduler(
         }
         catch (Exception ex)
         {
+            // Inclui LeituraDaFilaInvalidaException: a janela volta para a frente e é relida no
+            // próximo tick (a sessão já terá sido refeita). Três seguidas desistem da leitura.
             estado.Falhar(ex.Message, desistir: false);
-            logger.LogError(ex, "SISREG_FILA_FALHA: janela {Ini}..{Fim}.", janela.Inicio, janela.Fim);
+            logger.LogWarning(ex, "SISREG_FILA_FALHA: janela {Ini}..{Fim}.", janela.Inicio, janela.Fim);
         }
     }
 
-    private async Task TalvezEnfileirarDiarioAsync(IServiceScope scope, CancellationToken ct)
+    /// <summary>
+    /// "Já li hoje?" é decidido pelo BANCO (a última pessoa vista na fila), não pela memória do
+    /// processo. Assim um restart depois das 05:30 não relê o que já foi lido, e uma leitura que
+    /// falhou é tentada de novo meia hora depois.
+    /// </summary>
+    private async Task TalvezEnfileirarDiarioAsync(
+        IServiceScope scope, IFilaPendenteSisregService servico, CancellationToken ct)
     {
         var agora = FusoBrasilia.ParaExibicao(DateTime.UtcNow);
         var hoje = DateOnly.FromDateTime(agora);
 
-        if (_diarioEnfileiradoEm == hoje || TimeOnly.FromDateTime(agora) < HoraDoDiario) return;
-        if (estado.EmExecucao || DateTime.UtcNow < _proximaChecagemDaChave) return;
+        if (TimeOnly.FromDateTime(agora) < HoraDoDiario) return;
+        if (estado.EmExecucao || DateTime.UtcNow < _proximaTentativaDoDiario) return;
 
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
-        if (!await SincronismoAutomaticoSisreg.LigadoAsync(db, ct))
+        _proximaTentativaDoDiario = DateTime.UtcNow + EsperaEntreTentativasDoDiario;
+
+        var resumo = await servico.ResumoAsync(ct);
+        if (resumo.UltimaLeitura is { } ultima
+            && DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(ultima)) == hoje)
         {
-            _proximaChecagemDaChave = DateTime.UtcNow + EsperaComChaveDesligada;
             return;
         }
 
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
+        if (!await SincronismoAutomaticoSisreg.LigadoAsync(db, ct)) return;
+
         if (estado.Enfileirar(JanelasDaFila.Recente(hoje), completa: false))
         {
-            _diarioEnfileiradoEm = hoje;
             logger.LogInformation("SISREG_FILA_DIARIO: leitura da janela recente enfileirada.");
         }
     }

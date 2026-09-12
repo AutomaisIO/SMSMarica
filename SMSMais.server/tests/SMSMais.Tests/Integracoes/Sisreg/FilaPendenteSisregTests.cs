@@ -194,10 +194,9 @@ public class FilaPendenteSisregTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var cod = Codigo();
-        var ini = new DateOnly(2026, 9, 1);
-        var fim = new DateOnly(2026, 9, 30);
+        var (ini, fim, ano) = JanelaIsolada();
 
-        await Criar(db, Pagina((cod, "10/09/2026", "700000000000008"))).LerJanelaAsync(ini, fim);
+        await Criar(db, Pagina((cod, $"10/01/{ano}", "700000000000008"))).LerJanelaAsync(ini, fim);
         var r = await Criar(db, "<html>Nenhum registro encontrado</html>").LerJanelaAsync(ini, fim);
 
         Assert.Equal(0, r.Lidas);
@@ -305,18 +304,17 @@ public class FilaPendenteSisregTests(PostgresFixture fixture)
     public async Task Pendente_vazia_nao_conclui_saida_mesmo_com_reenviada_cheia()
     {
         await using var db = fixture.CriarDbContext();
-        var ini = new DateOnly(2026, 9, 1);
-        var fim = new DateOnly(2026, 9, 30);
+        var (ini, fim, ano) = JanelaIsolada();
         var pendente = Codigo();
 
-        await Criar(db, Pagina((pendente, "10/09/2026", "700000000000012"))).LerJanelaAsync(ini, fim);
+        await Criar(db, Pagina((pendente, $"10/01/{ano}", "700000000000012"))).LerJanelaAsync(ini, fim);
 
         var servico = new FilaPendenteSisregService(
             db,
             new SessaoPorSituacao(new Dictionary<string, string>
             {
                 ["1"] = "<html>Nenhum registro encontrado</html>",
-                ["5"] = Pagina((Codigo(), "12/09/2026", "700000000000013")),
+                ["5"] = Pagina((Codigo(), $"12/01/{ano}", "700000000000013")),
             }),
             new SisregOrcamentoRequisicoes(),
             Options.Create(new SisregOrcamentoOpcoes()),
@@ -350,5 +348,180 @@ public class FilaPendenteSisregTests(PostgresFixture fixture)
         {
             Assert.Equal(janelas[i - 1].Inicio.AddDays(-1), janelas[i].Fim);
         }
+    }
+
+    // ------------------------------------------------------------------ leitura inválida
+
+    /// <summary>
+    /// Janela de janeiro de um ano distante e aleatório: a bancada acumula linhas de execuções
+    /// anteriores, e as regras abaixo contam quem está aberto na janela.
+    /// </summary>
+    private static (DateOnly Ini, DateOnly Fim, int Ano) JanelaIsolada()
+    {
+        var ano = Random.Shared.Next(2200, 2900);
+        return (new DateOnly(ano, 1, 1), new DateOnly(ano, 1, 31), ano);
+    }
+
+    private static FilaPendenteSisregService Servico(SmsMaisDbContext db, ISisregWebSessao sessao) =>
+        new(db, sessao, new SisregOrcamentoRequisicoes(),
+            Options.Create(new SisregOrcamentoOpcoes()),
+            NullLogger<FilaPendenteSisregService>.Instance);
+
+    /// <summary>
+    /// Página sem linha e sem "Nenhum registro encontrado" não é listagem vazia — é sessão caída
+    /// ou erro. Aceitá-la como "ninguém" foi o que aconteceu em 12/09/2026 às 05:30. A leitura é
+    /// recusada e nada é gravado; o agendador tenta de novo.
+    /// </summary>
+    [Fact]
+    public async Task Pagina_que_nao_e_a_listagem_e_recusada_e_nada_e_gravado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (ini, fim, ano) = JanelaIsolada();
+        var reenviada = Codigo();
+
+        var servico = Servico(db, new SessaoPorSituacao(new Dictionary<string, string>
+        {
+            ["1"] = "<html><body>Erro de Sistema</body></html>",
+            ["5"] = Pagina((reenviada, $"10/01/{ano}", "700000000000014")),
+        }));
+
+        await Assert.ThrowsAsync<LeituraDaFilaInvalidaException>(() => servico.LerJanelaAsync(ini, fim));
+        Assert.False(await db.SisregFilaPendentes.AnyAsync(f => f.CodigoSolicitacao == reenviada));
+    }
+
+    /// <summary>
+    /// A pendente zerada numa janela com muita gente aberta é leitura quebrada, mesmo que a página
+    /// diga "Nenhum registro encontrado": a fila de um mês não some de um dia para o outro.
+    /// </summary>
+    [Fact]
+    public async Task Pendente_zerada_numa_janela_cheia_e_recusada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (ini, fim, ano) = JanelaIsolada();
+        for (var i = 0; i < 60; i++)
+        {
+            db.SisregFilaPendentes.Add(new SisregFilaPendente
+            {
+                Id = Guid.CreateVersion7(),
+                CodigoSolicitacao = Codigo(),
+                DataSolicitacao = new DateOnly(ano, 1, 15),
+                ProcedimentoNome = "CONSULTA TESTE",
+                PrimeiroVistoEm = DateTime.UtcNow,
+                UltimoVistoEm = DateTime.UtcNow,
+                CriadoEm = DateTime.UtcNow,
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var servico = Servico(db, new SessaoFake("<html>Nenhum registro encontrado</html>"));
+
+        await Assert.ThrowsAsync<LeituraDaFilaInvalidaException>(() => servico.LerJanelaAsync(ini, fim));
+        Assert.Equal(60, await db.SisregFilaPendentes.CountAsync(f =>
+            f.DataSolicitacao == new DateOnly(ano, 1, 15) && f.SaiuEm == null));
+    }
+
+    /// <summary>Janela rala continua podendo vir vazia de verdade — e é aceita.</summary>
+    [Fact]
+    public async Task Janela_rala_vazia_de_verdade_e_aceita()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (ini, fim, _) = JanelaIsolada();
+
+        var r = await Servico(db, new SessaoFake("<html>Nenhum registro encontrado</html>"))
+            .LerJanelaAsync(ini, fim);
+
+        Assert.Equal(0, r.Lidas);
+        Assert.Equal(0, r.Saidas);
+    }
+
+    // ------------------------------------------------------------------ fechamento pela agenda
+
+    private async Task<(SisregFilaPendente Fila, Solicitacao Agendada)> NaFilaEAgendadaAsync(
+        SmsMaisDbContext db, DateTime vistaNaFila, DateTime importadaEm, SaidaDaFilaSisreg? saiu = null)
+    {
+        var unidade = new Unidade
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"UNIDADE FILA {Random.Shared.Next(100_000, 999_999)}",
+            Cnes = Random.Shared.Next(1_000_000, 9_999_999).ToString(),
+            CriadoEm = DateTime.UtcNow,
+        };
+        var cod = Codigo();
+        var fila = new SisregFilaPendente
+        {
+            Id = Guid.CreateVersion7(),
+            CodigoSolicitacao = cod,
+            DataSolicitacao = new DateOnly(2026, 8, 20),
+            ProcedimentoNome = "CONSULTA TESTE",
+            PrimeiroVistoEm = vistaNaFila,
+            UltimoVistoEm = vistaNaFila,
+            CriadoEm = vistaNaFila,
+            SaiuEm = saiu is null ? null : vistaNaFila,
+            SaiuPara = saiu,
+        };
+        var agendada = new Solicitacao
+        {
+            Id = Guid.CreateVersion7(),
+            CodigoSolicitacao = cod,
+            UnidadeExecutanteId = unidade.Id,
+            DataAgendada = DateTime.UtcNow.AddDays(20),
+            Status = StatusSolicitacao.Agendada,
+            CriadoEm = importadaEm,
+        };
+        db.Unidades.Add(unidade);
+        db.SisregFilaPendentes.Add(fila);
+        db.Solicitacoes.Add(agendada);
+        await db.SaveChangesAsync();
+        return (fila, agendada);
+    }
+
+    /// <summary>
+    /// Quem aparece agendado (a varredura importou o agendamento com o mesmo código) sai da fila
+    /// sem reler o SISREG — é o caminho de 94% das saídas medidas em 11/09/2026.
+    /// </summary>
+    [Fact]
+    public async Task Quem_aparece_agendado_depois_de_visto_na_fila_sai_como_Agendada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (fila, _) = await NaFilaEAgendadaAsync(db, DateTime.UtcNow.AddHours(-3), DateTime.UtcNow);
+
+        await Servico(db, new SessaoFake("")).FecharAgendadosAsync();
+
+        var f = await db.SisregFilaPendentes.AsNoTracking().SingleAsync(x => x.Id == fila.Id);
+        Assert.NotNull(f.SaiuEm);
+        Assert.Equal(SaidaDaFilaSisreg.Agendada, f.SaiuPara);
+    }
+
+    /// <summary>
+    /// A fila viu a pessoa DEPOIS do agendamento (cancelado, voltou a esperar): a evidência mais
+    /// nova vence e ela continua na fila.
+    /// </summary>
+    [Fact]
+    public async Task Quem_a_fila_viu_depois_do_agendamento_continua_na_fila()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (fila, _) = await NaFilaEAgendadaAsync(db, DateTime.UtcNow, DateTime.UtcNow.AddDays(-5));
+
+        await Servico(db, new SessaoFake("")).FecharAgendadosAsync();
+
+        var f = await db.SisregFilaPendentes.AsNoTracking().SingleAsync(x => x.Id == fila.Id);
+        Assert.Null(f.SaiuEm);
+    }
+
+    /// <summary>
+    /// Saiu rotulada "sem agendar" porque a fila foi lida antes de a agenda ser importada (284 de
+    /// 304 na primeira leitura). Quando o agendamento aparece, o rótulo se corrige.
+    /// </summary>
+    [Fact]
+    public async Task Saida_sem_agendar_que_aparece_agendada_depois_e_corrigida()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (fila, _) = await NaFilaEAgendadaAsync(
+            db, DateTime.UtcNow.AddHours(-3), DateTime.UtcNow, SaidaDaFilaSisreg.SaiuSemAgendar);
+
+        await Servico(db, new SessaoFake("")).FecharAgendadosAsync();
+
+        var f = await db.SisregFilaPendentes.AsNoTracking().SingleAsync(x => x.Id == fila.Id);
+        Assert.Equal(SaidaDaFilaSisreg.Agendada, f.SaiuPara);
     }
 }
