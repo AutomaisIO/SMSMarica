@@ -139,7 +139,7 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
             .Select(e => new EscalaDaOferta(
                 e.UnidadeId, e.Unidade!.Nome, e.ProcedimentoCodigo, e.ProcedimentoNome,
                 e.ProfissionalNome, e.DiaSemana, e.HoraInicio, e.HoraFim,
-                e.VigenciaInicio, e.VigenciaFim, e.VagasPrimeiraVez, e.VagasTotal, e.AgendaLocal))
+                e.VigenciaInicio, e.VigenciaFim, e.VagasPrimeiraVez, e.VagasReserva, e.VagasTotal, e.AgendaLocal))
             .ToListAsync(cancellationToken);
 
         var nome = escalas.FirstOrDefault(e => e.ProcedimentoCodigo == codigo)?.ProcedimentoNome
@@ -216,9 +216,14 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     }
 
     /// <summary>
-    /// Um dia por ocorrência da escala no horizonte. Vagas são as de <b>primeira vez</b> (o que a
-    /// regulação marca); livres é o que sobra da agenda do dia inteira, limitado a elas — um
-    /// agendamento de retorno ocupa a vaga de retorno antes de tirar a de primeira vez.
+    /// Um dia por ocorrência da escala no horizonte. Vagas são as <b>da regulação</b>: primeira vez
+    /// <b>mais reserva</b>. Retorno fica com a unidade. Livres é o que sobra da agenda do dia
+    /// inteira, limitado a elas — um agendamento de retorno ocupa a vaga de retorno antes.
+    ///
+    /// <para><b>A reserva conta.</b> Até 12/09/2026 só a primeira vez contava, e o ECO da DIMAGEM
+    /// (e do CDT, e do Ernesto) declara as vagas da regulação TODAS como reserva, com zero de
+    /// primeira vez: a tela dizia "lotado" em todo dia, e as vagas de 12 a 26/11 que a reguladora
+    /// via no SISREG não apareciam.</para>
     /// </summary>
     private static List<DiaDaOfertaDto> ExpandirDias(
         IReadOnlyList<EscalaDaOferta> escalas, IReadOnlyDictionary<DateOnly, int> ocupacao,
@@ -233,7 +238,7 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
             if (blocos.Count == 0) continue;
 
             var vagasDoDia = blocos.Sum(b => b.VagasTotal);
-            var primeiraVez = blocos.Sum(b => b.VagasPrimeiraVez);
+            var daRegulacao = blocos.Sum(b => b.VagasPrimeiraVez + b.VagasReserva);
             if (vagasDoDia == 0) continue;
 
             var agendados = ocupacao.GetValueOrDefault(d);
@@ -241,9 +246,9 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 d,
                 blocos.Min(b => b.HoraInicio),
                 blocos.Max(b => b.HoraFim),
-                primeiraVez,
+                daRegulacao,
                 agendados,
-                Math.Clamp(vagasDoDia - agendados, 0, primeiraVez),
+                Math.Clamp(vagasDoDia - agendados, 0, daRegulacao),
                 [.. blocos.Select(b => b.ProfissionalNome)
                     .Where(n => !string.IsNullOrWhiteSpace(n))
                     .Distinct(StringComparer.Ordinal)
@@ -585,6 +590,7 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
         DateOnly VigenciaInicio,
         DateOnly VigenciaFim,
         int VagasPrimeiraVez,
+        int VagasReserva,
         int VagasTotal,
         bool AgendaLocal);
 }

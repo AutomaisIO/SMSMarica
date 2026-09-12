@@ -164,12 +164,12 @@ export function DatasDaOfertaPainel({ codigo }: { codigo: string }) {
           <p className="mt-1 text-xs text-gray-600">
             {primeira ? (
               <>
-                Primeira vaga de primeira vez pela regulação:{' '}
+                Primeira vaga livre pela regulação:{' '}
                 <strong className="text-gray-900">{dia(primeira.primeiraVagaLivre!)}</strong> em{' '}
                 {primeira.unidadeNome}.
               </>
             ) : (
-              <>Nenhuma vaga de primeira vez livre pela regulação até {dia(data.ate)}.</>
+              <>Nenhuma vaga livre pela regulação até {dia(data.ate)}.</>
             )}
           </p>
 
@@ -206,7 +206,8 @@ export function DatasDaOfertaPainel({ codigo }: { codigo: string }) {
           ) : null}
 
           <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-gray-500">
-            Até {dia(data.ate)}. Contamos só vagas de <strong>primeira vez</strong> e descontamos os
+            Até {dia(data.ate)}. Contamos as vagas de <strong>1ª vez e de reserva</strong> (retorno fica com
+            a unidade) e descontamos os
             agendamentos que já importamos — é uma estimativa. A grade do SISREG, que aparece ao
             autorizar, é a verdade.
           </p>

@@ -86,11 +86,12 @@ public sealed record FilaDaOfertaDto(
     IReadOnlyList<string> ProcedimentosIncluidos);
 
 /// <summary>Um dia de agenda da unidade para o procedimento.</summary>
-/// <param name="Vagas">Vagas de <b>primeira vez</b> — é o que a regulação marca. Retorno e reserva
-/// são da unidade.</param>
+/// <param name="Vagas">Vagas <b>da regulação</b>: primeira vez + reserva. Retorno fica com a
+/// unidade. (A reserva conta: o ECO da DIMAGEM declara todas as vagas da regulação como reserva,
+/// com zero de primeira vez — contar só primeira vez escondia as vagas de novembro.)</param>
 /// <param name="Agendados">Agendamentos que já importamos para o dia (sem os cancelados).</param>
-/// <param name="Livres">Estimativa: o que sobra da agenda do dia, limitado às vagas de primeira
-/// vez. É dedução nossa (escala − agendados); a verdade é a grade do SISREG.</param>
+/// <param name="Livres">Estimativa: o que sobra da agenda do dia, limitado às vagas da
+/// regulação. É dedução nossa (escala − agendados); a verdade é a grade do SISREG.</param>
 public sealed record DiaDaOfertaDto(
     DateOnly Data,
     TimeOnly HoraInicio,

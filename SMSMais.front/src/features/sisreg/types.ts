@@ -405,7 +405,7 @@ export type DiaDaOferta = {
   data: string;
   horaInicio: string;
   horaFim: string;
-  /** Vagas de PRIMEIRA VEZ — o que a regulação marca. */
+  /** Vagas da regulação: 1ª vez + reserva (retorno fica com a unidade). */
   vagas: number;
   agendados: number;
   /** Estimativa: escala − agendados, limitada à primeira vez. A grade do SISREG é a verdade. */

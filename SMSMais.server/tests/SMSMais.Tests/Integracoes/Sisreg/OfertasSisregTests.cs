@@ -375,6 +375,34 @@ public class OfertasSisregTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// O caso do ECO da DIMAGEM (12/09/2026): o SISREG declara as vagas da regulação como RESERVA,
+    /// com zero de primeira vez. Contar só primeira vez fazia a tela dizer "lotado" em todo dia, e
+    /// as vagas de 12 a 26/11 que a reguladora via no SISREG sumiam.
+    /// </summary>
+    [Fact]
+    public async Task Vagas_de_reserva_sao_vagas_da_regulacao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+        var quinta = Proxima(DayOfWeek.Thursday);
+
+        var escala = EscalaDeVagas(unidadeId, codigo, DayOfWeek.Thursday, primeiraVez: 0, total: 33);
+        escala.VagasReserva = 33;
+        db.SisregEscalas.Add(escala);
+        for (var i = 0; i < 3; i++) db.Solicitacoes.Add(Agendado(unidadeId, codigo, quinta));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).DatasDaOfertaAsync(codigo, 30);
+
+        var u = Assert.Single(r.Unidades, x => x.UnidadeId == unidadeId);
+        var dia = Assert.Single(u.Dias, d => d.Data == quinta);
+        Assert.Equal(33, dia.Vagas);
+        Assert.Equal(30, dia.Livres);
+        Assert.Equal(quinta, u.PrimeiraVagaLivre);
+    }
+
+    /// <summary>
     /// O caso do ECG do CDT: escala ativa há meses, 280 vagas por semana declaradas e nenhum
     /// agendamento futuro — o SISREG não está ofertando. A tela avisa em vez de anunciar vaga.
     /// Agenda aberta ontem não é suspeita: ainda não teve tempo de receber marcação.
