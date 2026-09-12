@@ -17,6 +17,15 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
 /// Nulo quando não há histórico suficiente.</param>
 /// <param name="AgendaLocal">A unidade marca direto nestas vagas; elas não passam pela
 /// regulação e o regulador nunca as vê.</param>
+/// <param name="Vagas">Tamanho do bloco que ABRIU (soma dos blocos novos). É a novidade, não o que
+/// sobra — para isso, <paramref name="VagasLivresRegulacao"/>.</param>
+/// <param name="VagasLivresRegulacao">O que a regulação ainda pode marcar no procedimento nos
+/// próximos 120 dias: soma das unidades reguladas e confiáveis (1ª vez + reserva − agendados).
+/// É o número grande do cartão — em 12/09/2026 o ECO adulto mostrava "4 vagas/semana" (o bloco
+/// novo) com ~300 livres na rede.</param>
+/// <param name="PrimeiraVagaLivreRegulacao">A primeira data com vaga, entre essas unidades.</param>
+/// <param name="UnidadesComVaga">Quantas dessas unidades têm alguma vaga livre.</param>
+/// <param name="VagasLivresUnidade">Livres na própria unidade do cartão (mesmo tipo de agenda).</param>
 public sealed record AgendaNovaDto(
     Guid UnidadeId,
     string UnidadeNome,
@@ -30,7 +39,11 @@ public sealed record AgendaNovaDto(
     IReadOnlyList<int> DiasSemana,
     DateTime VistaEm,
     int? EsperaMedianaDias,
-    bool AgendaLocal);
+    bool AgendaLocal,
+    int? VagasLivresRegulacao = null,
+    DateOnly? PrimeiraVagaLivreRegulacao = null,
+    int? UnidadesComVaga = null,
+    int? VagasLivresUnidade = null);
 
 /// <summary>
 /// Um agendamento que sumiu do SISREG e cuja data ainda não passou — candidato a vaga livre.

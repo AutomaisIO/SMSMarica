@@ -22,6 +22,12 @@ function diasAte(iso: string) {
   return Math.ceil((alvo.getTime() - hoje.getTime()) / 86_400_000);
 }
 
+/** "12/11" — dia e mês bastam no cartão. */
+function diaMes(iso: string) {
+  const [, m, d] = iso.slice(0, 10).split('-');
+  return `${d}/${m}`;
+}
+
 /** O procedimento aberto: código para as datas, nome para a fila. */
 type Aberta = { codigo: string | null; nome: string };
 
@@ -105,9 +111,30 @@ function CartaoAgenda({
             {a.cboDescricao ? ` · ${a.cboDescricao}` : ''}
           </p>
         </div>
+        {/* O número grande é o que a regulação ainda pode marcar no procedimento — não o tamanho do
+            bloco que abriu (o ECO adulto aparecia com "4 vagas/semana" e havia ~300 livres). */}
         <div className="shrink-0 text-right">
-          <p className="text-lg font-semibold leading-none text-primary-700">{a.vagas}</p>
-          <p className="text-[11px] text-gray-500">vagas/semana</p>
+          {a.agendaLocal ? (
+            <>
+              <p className="text-lg font-semibold leading-none text-primary-700">
+                {a.vagasLivresUnidade ?? '—'}
+              </p>
+              <p className="text-[11px] text-gray-500">livres nesta unidade</p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-semibold leading-none text-primary-700">
+                {a.vagasLivresRegulacao ?? '—'}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                vagas livres na regulação
+                {a.unidadesComVaga ? ` · ${a.unidadesComVaga} unid.` : ''}
+              </p>
+              {a.primeiraVagaLivreRegulacao ? (
+                <p className="text-[11px] text-gray-500">1ª em {diaMes(a.primeiraVagaLivreRegulacao)}</p>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 
@@ -121,6 +148,10 @@ function CartaoAgenda({
         </span>
         {/* A vigência NÃO vai no cartão: ela é a validade do bloco, e foi lida como "período com
             vaga" (ECG "01/07/25 a 31/12/26" quando a vaga era em novembro). As datas estão no clique. */}
+        <span className="text-[11px] text-gray-500">
+          {a.agendaLocal ? '' : `nesta unidade: ${a.vagasLivresUnidade ?? '—'} livres · `}abriu {a.vagas}{' '}
+          vaga(s)
+        </span>
         <span className="text-[11px] font-medium text-primary-700">ver datas →</span>
         <span className="text-[11px] text-gray-400">vista {dataHora(a.vistaEm)}</span>
       </div>
@@ -201,9 +232,12 @@ export function OfertasPage() {
   const todasAgendas = data?.agendasNovas ?? [];
   const todasVagas = data?.vagasLiberadas ?? [];
   const agendas = comAgendaLocal ? todasAgendas : todasAgendas.filter((a) => !a.agendaLocal);
-  const vagas = comAgendaLocal ? todasVagas : todasVagas.filter((v) => v.agendaLocal !== true);
-  const ocultas = todasAgendas.length - agendas.length + (todasVagas.length - vagas.length);
-  const totalVagasNovas = agendas.reduce((s, a) => s + a.vagas, 0);
+  // Horário que já passou não é vaga: sai da tela. O servidor já não manda; isto cobre o intervalo
+  // entre uma recarga e outra (a página recarrega a cada 5 minutos).
+  const agora = Date.now();
+  const vagasFuturas = todasVagas.filter((v) => new Date(v.dataAgendada).getTime() > agora);
+  const vagas = comAgendaLocal ? vagasFuturas : vagasFuturas.filter((v) => v.agendaLocal !== true);
+  const ocultas = todasAgendas.length - agendas.length + (vagasFuturas.length - vagas.length);
   const correndo = vagas.filter((v) => diasAte(v.dataAgendada) <= perecivel).length;
 
   if (aberta) {
@@ -282,7 +316,7 @@ export function OfertasPage() {
             Abriu agenda
             {agendas.length > 0 ? (
               <span className="text-xs font-normal text-gray-500">
-                {agendas.length} agenda(s) · {totalVagasNovas} vagas por semana
+                {agendas.length} agenda(s)
               </span>
             ) : null}
           </h2>
@@ -341,8 +375,10 @@ export function OfertasPage() {
           <strong>Como ler.</strong> “Fila Nd” é a espera mediana de quem <em>já conseguiu data</em>{' '}
           neste procedimento neste ano — serve para priorizar entre procedimentos; a espera de quem
           ainda aguarda está no clique. <strong>“Vagou”</strong> quer dizer que o SISREG parou de
-          mostrar aquele agendamento; confirmar se a vaga está livre é trabalho de gente. As datas
-          livres são estimativa (escala − agendados): a grade do SISREG, ao autorizar, é a verdade.
+          mostrar aquele agendamento; confirmar se a vaga está livre é trabalho de gente.{' '}
+          <strong>“Vagas livres na regulação”</strong> soma as unidades reguladas nos próximos 120
+          dias (1ª vez + reserva, menos o que já está agendado) — é estimativa: a grade do SISREG, ao
+          autorizar, é a verdade.
         </p>
       </footer>
     </div>

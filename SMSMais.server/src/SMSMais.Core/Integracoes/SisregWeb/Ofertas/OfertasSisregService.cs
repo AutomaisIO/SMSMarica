@@ -82,6 +82,9 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     /// </summary>
     private const int DiasParaDesconfiarDeAgendaVazia = 30;
 
+    /// <summary>Horizonte das vagas livres do cartão — o mesmo das datas mostradas no clique.</summary>
+    private const int HorizonteDasVagasLivres = 120;
+
     public async Task<OfertasSisregDto> ListarAsync(int dias, CancellationToken cancellationToken = default)
     {
         var janela = Math.Clamp(dias, 1, 90);
@@ -102,10 +105,20 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
 
         var espera = await EsperaPorProcedimentoAsync(codigos, cancellationToken);
 
+        // O número do cartão é o que a regulação AINDA PODE MARCAR no procedimento — não o tamanho do
+        // bloco que abriu. Em 12/09/2026 o ECO adulto aparecia com "4 vagas/semana" (o bloco novo do
+        // Ernesto) e havia ~300 livres na rede. Mesma conta das datas do clique, uma vez por
+        // procedimento na tela.
+        var datas = new Dictionary<string, DatasDaOfertaDto>(StringComparer.Ordinal);
+        foreach (var codigo in agendas.Select(a => a.ProcedimentoCodigo).Distinct(StringComparer.Ordinal))
+        {
+            datas[codigo] = await DatasDaOfertaAsync(codigo, HorizonteDasVagasLivres, cancellationToken);
+        }
+
         return new OfertasSisregDto(
-            [.. agendas.Select(a => a with { EsperaMedianaDias = Espera(espera, a.ProcedimentoCodigo) })
+            [.. agendas.Select(a => ComVagasLivres(a, datas) with { EsperaMedianaDias = Espera(espera, a.ProcedimentoCodigo) })
                 .OrderByDescending(a => a.EsperaMedianaDias ?? -1)
-                .ThenByDescending(a => a.Vagas)],
+                .ThenByDescending(a => a.VagasLivresRegulacao ?? a.Vagas)],
             [.. vagas.Select(v => v with { EsperaMedianaDias = Espera(espera, v.ProcedimentoCodigo) })
                 .OrderBy(v => v.DataAgendada)],
             janela,
@@ -381,6 +394,28 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     internal static string? GrupoDoCodigo(string codigo) =>
         codigo.Length == 7 && codigo.All(char.IsAsciiDigit) ? codigo[..4] + "000" : null;
 
+    /// <summary>
+    /// Vagas livres do procedimento para o cartão: soma das unidades REGULADAS e confiáveis (fora a
+    /// agenda local, que o regulador não vê, e a "vaga não confirmada", como o ECG do CDT), mais as
+    /// livres da própria unidade do cartão.
+    /// </summary>
+    private static AgendaNovaDto ComVagasLivres(
+        AgendaNovaDto a, IReadOnlyDictionary<string, DatasDaOfertaDto> datas)
+    {
+        if (!datas.TryGetValue(a.ProcedimentoCodigo, out var d)) return a;
+
+        var confiaveis = d.Unidades.Where(u => !u.AgendaLocal && !u.SemAgendamentoFuturo).ToList();
+        return a with
+        {
+            VagasLivresRegulacao = confiaveis.Sum(u => u.VagasLivres),
+            PrimeiraVagaLivreRegulacao = confiaveis.Min(u => u.PrimeiraVagaLivre),
+            UnidadesComVaga = confiaveis.Count(u => u.VagasLivres > 0),
+            VagasLivresUnidade = d.Unidades
+                .Where(u => u.UnidadeId == a.UnidadeId && u.AgendaLocal == a.AgendaLocal)
+                .Sum(u => u.VagasLivres),
+        };
+    }
+
     private static int? Espera(IReadOnlyDictionary<string, int> mapa, string? codigo) =>
         codigo is not null && mapa.TryGetValue(codigo, out var d) ? d : null;
 
@@ -486,11 +521,13 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     /// </summary>
     private async Task<List<VagaLiberadaDto>> VagasLiberadasAsync(DateOnly hoje, CancellationToken ct)
     {
-        var inicioUtc = FusoBrasilia.InicioDoDiaAtualEmUtc();
+        // Pelo HORÁRIO, não pelo dia: vaga das 08:00 não é mais vaga às 15:00 (pedido de 12/09/2026 —
+        // a lista mostrava horário do dia que já tinha passado).
+        var agoraUtc = DateTime.UtcNow;
 
         var vagas = await db.SisregAlteracoesAgenda.AsNoTracking()
             .Where(a => a.Tipo == TipoAlteracaoAgenda.Ausente && a.TratadaEm == null)
-            .Join(db.Solicitacoes.AsNoTracking().Where(s => s.ExcluidoEm == null && s.DataAgendada >= inicioUtc),
+            .Join(db.Solicitacoes.AsNoTracking().Where(s => s.ExcluidoEm == null && s.DataAgendada > agoraUtc),
                 a => a.SolicitacaoId, s => s.Id, (a, s) => new { a, s })
             .Select(x => new VagaLiberadaDto(
                 x.a.Id,

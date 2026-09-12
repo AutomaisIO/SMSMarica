@@ -511,6 +511,40 @@ public class OfertasSisregTests(PostgresFixture fixture)
         Assert.True(hoje < reg.PrimeiraVagaLivre);
     }
 
+    /// <summary>
+    /// O cartão mostra o que a regulação ainda pode marcar no PROCEDIMENTO, não o tamanho do bloco
+    /// que abriu. Em 12/09/2026 o ECO adulto aparecia com "4 vagas/semana" (o bloco novo do
+    /// Ernesto) e havia ~300 livres na rede.
+    /// </summary>
+    [Fact]
+    public async Task Cartao_de_agenda_nova_traz_as_vagas_livres_do_procedimento()
+    {
+        await using var db = fixture.CriarDbContext();
+        var grande = await CriarUnidadeAsync(db);
+        var nova = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+
+        var escalaGrande = EscalaDeVagas(grande, codigo, DayOfWeek.Tuesday, primeiraVez: 0, total: 30);
+        escalaGrande.VagasReserva = 30;
+        var aberta = EscalaDeVagas(nova, codigo, DayOfWeek.Friday, primeiraVez: 4, total: 4);
+        aberta.CriadoEm = DateTime.UtcNow;                 // é a "agenda nova" da janela
+        db.SisregEscalas.AddRange(escalaGrande, aberta);
+        await db.SaveChangesAsync();
+
+        var servico = new OfertasSisregService(db);
+        var r = await servico.ListarAsync(7);
+        var datas = await servico.DatasDaOfertaAsync(codigo, 120);
+
+        var cartao = Assert.Single(r.AgendasNovas, a => a.ProcedimentoCodigo == codigo);
+        Assert.Equal(4, cartao.Vagas);
+        Assert.Equal(
+            datas.Unidades.Where(u => !u.AgendaLocal && !u.SemAgendamentoFuturo).Sum(u => u.VagasLivres),
+            cartao.VagasLivresRegulacao);
+        Assert.True(cartao.VagasLivresRegulacao > 30);
+        Assert.Equal(2, cartao.UnidadesComVaga);
+        Assert.Equal(datas.Unidades.Single(u => u.UnidadeId == nova).VagasLivres, cartao.VagasLivresUnidade);
+    }
+
     [Fact]
     public async Task Agenda_nova_diz_se_e_agenda_local()
     {
@@ -551,6 +585,47 @@ public class OfertasSisregTests(PostgresFixture fixture)
 
         Assert.Equal(["PEDIU O GRUPO", "PEDIU O ITEM"], r.Pessoas.Select(p => p.Nome));
         Assert.Contains(escalaGrupo.ProcedimentoNome, r.ProcedimentosIncluidos);
+    }
+
+    /// <summary>
+    /// "Vagou" é vaga para frente, pelo HORÁRIO: um horário de hoje que já passou sai da lista
+    /// (pedido de 12/09/2026 — a tela mostrava vaga das 08:00 às 15:00).
+    /// </summary>
+    [Fact]
+    public async Task Vagou_nao_mostra_horario_que_ja_passou()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+
+        Solicitacao Marcada(DateTime quando) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            CodigoSolicitacao = Random.Shared.Next(100_000_000, 999_999_999).ToString(),
+            UnidadeExecutanteId = unidadeId,
+            ProcedimentoCodigoSisreg = codigo,
+            DataAgendada = quando,
+            Status = StatusSolicitacao.Agendada,
+            CriadoEm = DateTime.UtcNow,
+        };
+        SisregAlteracaoAgenda Sumiu(Solicitacao s) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            SolicitacaoId = s.Id,
+            Tipo = TipoAlteracaoAgenda.Ausente,
+            DetectadaEm = DateTime.UtcNow,
+        };
+
+        var passou = Marcada(DateTime.UtcNow.AddHours(-1));
+        var vai = Marcada(DateTime.UtcNow.AddHours(1));
+        db.Solicitacoes.AddRange(passou, vai);
+        db.SisregAlteracoesAgenda.AddRange(Sumiu(passou), Sumiu(vai));
+        await db.SaveChangesAsync();
+
+        var r = await new OfertasSisregService(db).ListarAsync(7);
+
+        Assert.DoesNotContain(r.VagasLiberadas, v => v.SolicitacaoId == passou.Id);
+        Assert.Contains(r.VagasLiberadas, v => v.SolicitacaoId == vai.Id);
     }
 
     /// <summary>

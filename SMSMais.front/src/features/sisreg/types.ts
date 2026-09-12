@@ -344,6 +344,15 @@ export type AgendaNova = {
   esperaMedianaDias: number | null;
   /** A unidade marca direto nestas vagas; nao passam pela regulacao. */
   agendaLocal: boolean;
+  /**
+   * O que a regulacao ainda pode marcar no procedimento (proximos 120 dias, unidades reguladas e
+   * confiaveis, 1a vez + reserva - agendados). `vagas` e so o tamanho do bloco que abriu.
+   */
+  vagasLivresRegulacao: number | null;
+  primeiraVagaLivreRegulacao: string | null;
+  unidadesComVaga: number | null;
+  /** Livres na propria unidade do cartao. */
+  vagasLivresUnidade: number | null;
 };
 
 /** Agendamento que sumiu do SISREG e cuja data ainda nao passou. */
