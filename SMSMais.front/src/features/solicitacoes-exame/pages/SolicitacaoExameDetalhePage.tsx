@@ -50,6 +50,7 @@ import { useListarUnidades } from '@/features/unidades/api/queries';
 import { BotaoDispensarVerificacao } from '@/features/telefone-validacao/components/BotaoDispensarVerificacao';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { RawSisregDisclosure } from '@/features/solicitacoes-exame/components/RawSisregDisclosure';
+import { SecaoSisreg } from '@/features/solicitacoes-exame/components/SecaoSisreg';
 import { Select } from '@/shared/ui/Select';
 import type { HistoricoComunicacao } from '@/features/solicitacoes-exame/types';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
@@ -486,6 +487,8 @@ export function SolicitacaoExameDetalhePage() {
             </div>
           </section>
         ) : null}
+
+        <SecaoSisreg solicitacaoId={s.id} codigoSolicitacao={s.codigoSolicitacao} />
 
         {s.rawSisreg ? <RawSisregDisclosure raw={s.rawSisreg} /> : null}
       </div>

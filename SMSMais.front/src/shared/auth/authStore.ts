@@ -64,7 +64,8 @@ export type ModuloPermissao =
   | 'RoboAtendimento'
   | 'AjusteCadastro'
   | 'AlteracoesAgenda'
-  | 'Agenda';
+  | 'Agenda'
+  | 'RevelarChaveSisreg';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

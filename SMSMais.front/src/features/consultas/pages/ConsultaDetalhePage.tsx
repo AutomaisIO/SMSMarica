@@ -20,6 +20,7 @@ import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacie
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { ConfirmacaoBadge } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
 import { RawSisregDisclosure } from '@/features/solicitacoes-exame/components/RawSisregDisclosure';
+import { SecaoSisreg } from '@/features/solicitacoes-exame/components/SecaoSisreg';
 import type { StatusConfirmacaoPaciente } from '@/features/solicitacoes-exame/types';
 import {
   useHistoricoConsulta,
@@ -149,6 +150,8 @@ export function ConsultaDetalhePage() {
           </div>
 
           <CardComunicacao consultaId={c.id} />
+
+          <SecaoSisreg solicitacaoId={c.id} codigoSolicitacao={c.codigoSolicitacao} />
 
           {c.rawSisreg ? <RawSisregDisclosure raw={c.rawSisreg} /> : null}
         </>

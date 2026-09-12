@@ -9,6 +9,17 @@ import type {
   SolicitacaoExame,
 } from '@/features/solicitacoes-exame/types';
 
+export type ChaveConfirmacaoSisreg = { codigoSolicitacao: string; chave: string; lidaEm: string };
+
+/**
+ * Lê no SISREG a chave de confirmação. `id` é o da tela (exame ou consulta). Gasta o orçamento
+ * anti-robô e fica na auditoria — por isso é POST e nunca vira query com cache.
+ */
+export async function revelarChaveSisreg(id: string): Promise<ChaveConfirmacaoSisreg> {
+  const { data } = await http.post<ChaveConfirmacaoSisreg>(`/solicitacoes/${id}/sisreg/chave`);
+  return data;
+}
+
 export async function listarSolicitacoes(
   filtro: FiltroSolicitacoes,
   signal?: AbortSignal,

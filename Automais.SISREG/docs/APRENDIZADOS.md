@@ -144,6 +144,14 @@ Parâmetros:
   `pagina` é **0-based** (JS `exibirPagina(index, N)`; seta "próxima" = `exibirPagina(1,N)`).
   Iterar `pagina` de `0..N-1`. Total exibido em `SOLICITAÇÕES PESQUISADAS (n)`.
 - Ficha detalhe: `etapa=EXIBIR_FICHA` + `co_solicitacao`.
+- 🔑 **A "Chave de Confirmação" mora AQUI** — é o 1º campo da ficha, em fonte 180%, antes da
+  unidade solicitante (`<b>Chave de Confirma&#231;&#227;o:</b>` e, na linha seguinte, `<b>NNNNN</b>`;
+  5 dígitos na captura `capturas/ficha_670644717.html`). É a chave que o executante digita para dar
+  baixa e que a recepção do SMSMais pede em `AutorizarAsync` (`solicitacao.chave_confirmacao`).
+  Nem o TXT exportado nem o `cons_agendas` (visão do executante) trazem a chave, e isso é de
+  propósito: é ela que prova que o paciente trouxe o comprovante. Custo: **1 requisição por
+  solicitação** (foi por isso que o leitor do `cons_marcados_reg` saiu do servidor). ⚠️ Um grep
+  por "confirmação" não acha nada — o HTML usa entidade (`&#231;&#227;`). Procure por `Chave de Confirma`.
 - ✅ **Extrator completo validado** (`extrair_marcados.py`): `tp=exe` 01–31/07/2026
   → **334/334** registros, 34 páginas, **9 unidades executantes** (Ernesto Che
   Guevara 153, CDT 98, Ambulatório Péricles 49, DIMAGEM 20, Conde Modesto Leal 6,

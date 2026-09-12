@@ -276,6 +276,9 @@ public static class DependencyInjection
 
         services.AddSingleton<Integracoes.SisregWeb.ISisregWebSessao, Integracoes.SisregWeb.SisregWebSessao>();
         services.AddScoped<Integracoes.SisregWeb.IConsultaCnsService, Integracoes.SisregWeb.ConsultaCnsService>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Chave.IChaveConfirmacaoSisregService,
+            Integracoes.SisregWeb.Chave.ChaveConfirmacaoSisregService>();
 
         // ---- CADSUS por porta configurável (SISREG × SER) ----
         // Quem importa pede o cadastro pelo roteador, não pela porta: a do SISREG tem orçamento

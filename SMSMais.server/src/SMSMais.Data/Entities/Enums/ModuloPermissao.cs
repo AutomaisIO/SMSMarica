@@ -240,4 +240,14 @@ public enum ModuloPermissao
     /// <summary>Agenda: a oferta de vagas do SISREG cruzada com a ocupação já importada — consulta
     /// por unidade/especialidade/profissional e as estatísticas de gestão dessas vagas.</summary>
     Agenda = 62,
+
+    /// <summary>Revelar a <b>chave de confirmação</b> de uma solicitação, lida na hora no SISREG
+    /// (ficha do <c>cons_marcados_reg</c>), pela seção "SISREG" do detalhe de exame e de consulta.
+    /// <para>Módulo próprio, e não uma ação de <see cref="SolicitacoesExame"/>/<see cref="Consultas"/>,
+    /// porque a chave é a <b>prova de comparecimento</b>: é o que o executante digita no SISREG para
+    /// dar baixa, e o SISREG só a entrega a quem traz o comprovante. Quem vê o pedido não deveria,
+    /// por isso, poder dar baixa sem o paciente. Cada revelação gasta uma requisição do orçamento
+    /// anti-robô e fica na auditoria (sem o valor da chave).</para>
+    /// <para>Usa apenas <c>Consulta</c> — é ela que mostra o botão "Mostrar chave".</para></summary>
+    RevelarChaveSisreg = 63,
 }

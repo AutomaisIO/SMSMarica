@@ -107,6 +107,10 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
     id: 'AlteracoesAgenda',
     rotulo: 'Alterações de agenda do SISREG — ver a fila, tratar e avisar o paciente',
   },
+  {
+    id: 'RevelarChaveSisreg',
+    rotulo: 'Revelar chave de confirmação do SISREG (seção SISREG do exame/consulta)',
+  },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
@@ -146,6 +150,11 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   },
   // O que se edita aqui aparece na tela de login, no PDF de laudo e na página pública de
   // verificação — inclusive para quem NÃO está autenticado. Não é configuração operacional.
+  // Só a Consulta: é ela que mostra o botão "Mostrar chave". A chave é a prova de comparecimento
+  // no SISREG — "Consulta" sem apelido pareceria só ver o pedido.
+  RevelarChaveSisreg: {
+    Consulta: 'Mostrar a chave de confirmação (lida no SISREG, fica na auditoria)',
+  },
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',
     Edicao: 'Alterar nome, marca, domínios e contatos legais (afeta telas públicas)',
