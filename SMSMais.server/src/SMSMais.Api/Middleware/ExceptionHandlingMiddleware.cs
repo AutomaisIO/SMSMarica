@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using SMSMais.Core.Alertas;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Erros;
 using SMSMais.Core.Erros.Dtos;
@@ -129,7 +130,19 @@ public sealed partial class ExceptionHandlingMiddleware(
                 UserAgent: string.IsNullOrEmpty(ua) ? null : ua);
 
             // CancellationToken.None: garante que o log seja gravado mesmo se o cliente desistir.
-            return await servico.RegistrarAsync(dados, CancellationToken.None);
+            var resultado = await servico.RegistrarAsync(dados, CancellationToken.None);
+
+            // Erro NOVO vai ao celular com o código; repetição do mesmo erro em aberto não.
+            if (!resultado.JaReportado)
+            {
+                context.RequestServices.GetService<IAlertaPlataforma>()?.Reportar(new EventoAlerta(
+                    AlertaCatalogo.Erro500,
+                    $"{resultado.Codigo} em {dados.Metodo} {dados.Caminho}",
+                    $"{dados.TipoExcecao}: {dados.Mensagem}"
+                    + (dados.Interna is null ? string.Empty : $"\n{dados.Interna}")));
+            }
+
+            return resultado;
         }
         catch (Exception persistEx)
         {

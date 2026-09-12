@@ -87,6 +87,7 @@ import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { InstituicaoPage } from '@/features/instituicao/pages/InstituicaoPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
+import { AvisosCelularPage } from '@/features/alertas-plataforma/pages/AvisosCelularPage';
 import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
 import { EstatisticasPage } from '@/features/estatisticas/pages/EstatisticasPage';
 import { RelatoriosImagemPage } from '@/features/relatorios-imagem/pages/RelatoriosImagemPage';
@@ -244,6 +245,7 @@ export function AppRouter() {
           <Route path="auditoria" element={<AuditoriaPage />} />
           <Route path="instituicao" element={<InstituicaoPage />} />
           <Route path="erros" element={<ErrosPage />} />
+          <Route path="avisos-celular" element={<AvisosCelularPage />} />
           <Route path="conversas" element={<ConversasPage />} />
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
           <Route path="respostas-rapidas" element={<RespostasRapidasPage />} />

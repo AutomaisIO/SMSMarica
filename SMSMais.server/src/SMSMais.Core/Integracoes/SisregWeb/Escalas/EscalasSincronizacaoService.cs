@@ -266,7 +266,8 @@ public sealed class EscalasSincronizacaoService(
             status = StatusVarredura.Parcial;
             erro = "O SISREG exigiu CAPTCHA. A sincronização parou — um operador precisa resolver "
                    + "no navegador antes da próxima tentativa.";
-            logger.LogWarning(ex, "SISREG_ESCALAS_CAPTCHA: sincronização interrompida.");
+            // Error: é o nível que leva o aviso ao celular — CAPTCHA só se resolve com gente.
+            logger.LogError(ex, "SISREG_ESCALAS_CAPTCHA: sincronização interrompida.");
         }
         catch (Exception ex)
         {

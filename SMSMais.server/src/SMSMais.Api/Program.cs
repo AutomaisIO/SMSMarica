@@ -31,9 +31,13 @@ using SMSMais.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((ctx, cfg) => cfg
+// O sink de alerta leva todo LogError da plataforma ao celular de quem cuida dela (tela
+// Sistema → Avisos no celular). Só enfileira: o log não espera o WhatsApp.
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
     .ReadFrom.Configuration(ctx.Configuration)
-    .WriteTo.Console());
+    .WriteTo.Console()
+    .WriteTo.Sink(new SMSMais.Api.Alertas.AlertaSerilogSink(
+        services.GetRequiredService<SMSMais.Core.Alertas.IAlertaPlataforma>())));
 
 builder.Services.AddControllers(o =>
 {

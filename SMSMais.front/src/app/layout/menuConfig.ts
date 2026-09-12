@@ -621,6 +621,13 @@ export const SECOES: SecaoMenu[] = [
         descricao: 'Log de erros (500) para diagnóstico pelo código de referência.',
       },
       {
+        rotulo: 'Avisos no celular',
+        to: '/app/avisos-celular',
+        icone: BellRing,
+        modulo: 'Erros',
+        descricao: 'Quem recebe no WhatsApp os erros da plataforma, o que é reportado e o que já saiu.',
+      },
+      {
         rotulo: 'Sandbox (QA)',
         to: '/app/sandbox',
         icone: FlaskConical,

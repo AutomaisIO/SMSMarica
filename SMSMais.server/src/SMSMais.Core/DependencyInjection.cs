@@ -267,6 +267,18 @@ public static class DependencyInjection
             Notificacoes.Sincronismo.INotificadorSincronismo,
             Notificacoes.Sincronismo.NotificadorSincronismo>();
 
+        // Avisos de erro da plataforma no celular (robô, sincronismos, erro 500, todo LogError).
+        // A fila é singleton para qualquer um reportar — inclusive o sink do Serilog e os
+        // BackgroundServices — sem escopo e sem esperar.
+        services.Configure<Alertas.AlertaPlataformaOptions>(
+            configuration.GetSection(Alertas.AlertaPlataformaOptions.SecaoConfig));
+        services.AddSingleton<Alertas.AlertaPlataformaFila>();
+        services.AddSingleton<Alertas.IAlertaPlataforma>(sp => sp.GetRequiredService<Alertas.AlertaPlataformaFila>());
+        services.AddScoped<Alertas.AlertaPlataformaDespachante>();
+        services.AddScoped<Alertas.IAlertaPlataformaService, Alertas.AlertaPlataformaService>();
+        services.AddHostedService<Alertas.AlertaPlataformaWorker>();
+        services.AddTransient<Alertas.FalhaContaIaHandler>();
+
         // Orçamento anti-robô COMPARTILHADO: um contador rolante de 60 min por onde toda ida ao
         // SISREG passa (a sessão o alimenta). Sem ele cada motor tinha o próprio teto e nenhum
         // enxergava o gasto do outro — e o CAPTCHA aparecia sem ninguém ter "estourado" nada.
@@ -701,14 +713,21 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri(anthropicBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(120);
-        });
+        }).AddHttpMessageHandler<Alertas.FalhaContaIaHandler>();
         // Robô de atendimento na Messages API (ADR-0050) — mesma chave cifrada do módulo IA.
         // Timeout menor que o do FT3: um turno de WhatsApp que passa disso já perdeu a conversa.
         services.AddHttpClient<RoboAtendimento.Runtime.RoboAtendimentoMotorApi>(client =>
         {
             client.BaseAddress = new Uri(anthropicBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(60);
-        });
+        }).AddHttpMessageHandler<Alertas.FalhaContaIaHandler>();
+        // Cliente NOMEADO usado pela varredura de contato negado (CreateClient + "v1/messages"
+        // relativo). Não estava registrado — sem BaseAddress, a URI relativa não resolve.
+        services.AddHttpClient(RoboAtendimento.Runtime.RoboAtendimentoMotorApi.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(anthropicBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(60);
+        }).AddHttpMessageHandler<Alertas.FalhaContaIaHandler>();
 
         // Validação de telefone por OTP (WhatsApp) — registro global do número validado.
         services.AddScoped<Telefones.ITelefoneValidacaoService, Telefones.TelefoneValidacaoService>();
@@ -771,7 +790,7 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri(anthropicBaseUrl);
             client.Timeout = TimeSpan.FromMinutes(10);
-        });
+        }).AddHttpMessageHandler<Alertas.FalhaContaIaHandler>();
         services.AddScoped<RoboAtendimento.Treinamento.IRoboBriefingService,
             RoboAtendimento.Treinamento.RoboBriefingService>();
         services.AddScoped<RoboAtendimento.Treinamento.RoboTreinamentoAplicador>();

@@ -1,12 +1,10 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using SMSMais.Core.Alertas;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Integracoes.Credenciais;
 using SMSMais.Core.Integracoes.Credenciais.Dtos;
-using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Notificacoes.WhatsApp;
 
 namespace SMSMais.Core.Notificacoes.Sincronismo;
@@ -18,28 +16,36 @@ namespace SMSMais.Core.Notificacoes.Sincronismo;
 /// <para><b>Por que existe:</b> os motores do SISREG, SER e SERNIT rodam de madrugada e sozinhos.
 /// Quando o SISREG pede CAPTCHA, o motor para e <b>ninguém fica sabendo</b> até alguém abrir a tela
 /// e reparar que a importação do dia não aconteceu — o que na prática significa descobrir depois
-/// que o paciente já perdeu a consulta. O aviso vai para os telefones cadastrados na própria
-/// integração.</para>
+/// que o paciente já perdeu a consulta.</para>
 ///
-/// <para><b>Onde ficam os telefones:</b> no <c>parametros_json</c> da credencial de cada provedor
-/// (<c>telefonesNotificacao</c>), no mesmo lugar em que já moram baseUrl, autoLogin e a agenda do
-/// lote. Não é tabela nova de propósito: é configuração da integração, tem o mesmo ciclo de vida da
-/// credencial e é apagada junto com ela.</para>
+/// <para><b>Falha vai pelo aviso da plataforma</b> (<see cref="IAlertaPlataforma"/>, template
+/// <c>erro_plataforma</c>), para os telefones da plataforma E os desta integração. Antes ia por
+/// texto livre com "reabertura" pelo template de verificação cadastral — e fora da janela de 24h a
+/// Meta aceita o texto e só descarta depois, então o aviso "saía" e não chegava.</para>
+///
+/// <para><b>Onde ficam os telefones da integração:</b> no <c>parametros_json</c> da credencial de
+/// cada provedor (<c>telefonesNotificacao</c>), no mesmo lugar em que já moram baseUrl, autoLogin e
+/// a agenda do lote. É configuração da integração e é apagada junto com ela.</para>
 /// </summary>
 public interface INotificadorSincronismo
 {
     /// <summary>
-    /// Manda o aviso aos telefones do provedor. Nunca lança: falhar em avisar não pode derrubar o
-    /// motor que estava tentando trabalhar — o erro real já está no log.
+    /// Manda o aviso. Nunca lança: falhar em avisar não pode derrubar o motor que estava tentando
+    /// trabalhar — o erro real já está no log.
     /// </summary>
     /// <param name="provedor">Chave da integração: <c>sisreg</c>, <c>ser</c>, <c>sernit</c>.</param>
     /// <param name="chaveRepeticao">
-    /// Identifica o TIPO do aviso para não repetir o mesmo alerta em looping (ex.: <c>captcha</c>).
-    /// Nulo desliga o freio — use em resumo de fim de rodada, que é único por natureza.
+    /// Tipo do aviso. Sem <c>:</c> (ex.: <c>captcha</c>) vira fonte própria na tela, com freio
+    /// próprio — um CAPTCHA não pode ficar preso atrás do freio de uma unidade que falhou dez
+    /// minutos antes. Com <c>:</c> (ex.: <c>unidade:{id}</c>) entra na fonte do provedor.
+    /// </param>
+    /// <param name="informativo">
+    /// Progresso, não falha ("Iniciando X", "OK X", rodada limpa): só texto, só para os telefones
+    /// da integração. Não gasta template — se a janela de 24h estiver fechada, não chega, e tudo bem.
     /// </param>
     Task NotificarAsync(
         string provedor, string titulo, string detalhe,
-        string? chaveRepeticao = null, CancellationToken ct = default);
+        string? chaveRepeticao = null, CancellationToken ct = default, bool informativo = false);
 
     /// <summary>Telefones cadastrados para receber avisos deste provedor.</summary>
     Task<IReadOnlyList<string>> ListarTelefonesAsync(string provedor, CancellationToken ct = default);
@@ -52,167 +58,52 @@ public interface INotificadorSincronismo
 public sealed class NotificadorSincronismo(
     IIntegracaoCredencialService credenciais,
     IWhatsAppCliente whatsApp,
-    IOptions<ComunicacaoPacienteOptions> comunicacao,
+    IAlertaPlataforma alerta,
     ILogger<NotificadorSincronismo> logger) : INotificadorSincronismo
 {
     public const string ChaveTelefones = "telefonesNotificacao";
 
-    /// <summary>
-    /// Código da Meta para "fora da janela de 24h" (re-engagement). Fora dela só entra template
-    /// aprovado — é o que obriga o passo de reabertura abaixo.
-    /// </summary>
-    private const string CodigoForaDaJanela = "131047";
-
-    /// <summary>
-    /// Enquanto não existe template próprio para relatório técnico, reabrimos a janela com o
-    /// template de verificação cadastral, que é genérico o bastante ("temos uma informação sobre
-    /// {procedimento}"). O destinatário é o operador da integração, não o paciente.
-    /// </summary>
-    private const string ProcedimentoDoRelatorio = "relatório de sincronismo";
-
-    /// <summary>
-    /// Freio de repetição: o mesmo aviso não sai de novo antes disto. Uma rodada com 30 unidades
-    /// quebrando pelo mesmo motivo mandaria 30 mensagens iguais — e um alerta que chega 30 vezes
-    /// deixa de ser lido na primeira.
-    /// </summary>
-    private static readonly TimeSpan IntervaloMinimoRepeticao = TimeSpan.FromMinutes(30);
-
-    private static readonly ConcurrentDictionary<string, DateTime> UltimoEnvio = new();
-
-    /// <summary>
-    /// Última reabertura de janela por telefone. <b>Reabrir é mensagem PAGA</b>, e a janela que ela
-    /// abre só vale se o destinatário responder — enquanto ele não responde, todo aviso seguinte
-    /// falha igual. Sem este freio, uma carga inicial de 40 unidades tentaria reabrir 80 vezes em
-    /// poucos minutos: 80 cobranças e 80 vezes o mesmo "temos uma informação" na tela do operador,
-    /// que é como se garante que ninguém leia nenhuma.
-    /// </summary>
-    private static readonly ConcurrentDictionary<string, DateTime> UltimaReabertura = new();
-
-    /// <summary>Intervalo mínimo entre duas tentativas de reabrir a janela do mesmo telefone.</summary>
-    private static readonly TimeSpan IntervaloMinimoReabertura = TimeSpan.FromHours(4);
-
     public async Task NotificarAsync(
         string provedor, string titulo, string detalhe,
-        string? chaveRepeticao = null, CancellationToken ct = default)
+        string? chaveRepeticao = null, CancellationToken ct = default, bool informativo = false)
     {
         try
         {
-            if (chaveRepeticao is not null)
-            {
-                var chave = $"{provedor}|{chaveRepeticao}";
-                var agora = DateTime.UtcNow;
-                var ultimo = UltimoEnvio.GetValueOrDefault(chave);
-                if (agora - ultimo < IntervaloMinimoRepeticao) return;
-                UltimoEnvio[chave] = agora;
-            }
-
             var telefones = await ListarTelefonesAsync(provedor, ct);
-            if (telefones.Count == 0) return;
+            var sistema = provedor.ToUpperInvariant();
 
-            var texto = $"*{provedor.ToUpperInvariant()} — {titulo}*\n\n{detalhe}";
-
-            foreach (var telefone in telefones)
+            if (informativo)
             {
-                await EnviarComReaberturaAsync(telefone, texto, ct);
+                var texto = $"*{sistema} — {titulo}*\n\n{detalhe}";
+                foreach (var telefone in telefones)
+                {
+                    var envio = await whatsApp.EnviarTextoAsync(telefone, texto, ct: ct);
+                    if (!envio.Ok)
+                        logger.LogInformation(
+                            "NOTIFICADOR_SINCRONISMO: informativo não entregue a {Telefone}: {Erro}", telefone, envio.Erro);
+                }
+                return;
             }
+
+            var chave = AlertaCatalogo.Sincronismo(provedor);
+            var rotulo = $"Sincronismo {sistema}";
+            if (chaveRepeticao is { Length: > 0 } sub && !sub.Contains(':'))
+            {
+                chave = $"{chave}.{sub.ToLowerInvariant()}";
+                rotulo = $"{rotulo} — {sub}";
+            }
+
+            alerta.Reportar(new EventoAlerta(chave, titulo, detalhe)
+            {
+                Rotulo = rotulo,
+                Grupo = "Sincronismo",
+                TelefonesExtras = telefones,
+            });
         }
         catch (Exception ex)
         {
             // Avisar é secundário: se falhar, o motor segue e o erro original continua no log.
             logger.LogWarning(ex, "NOTIFICADOR_SINCRONISMO: falha ao avisar sobre {Provedor}.", provedor);
-        }
-    }
-
-    /// <summary>
-    /// Texto livre primeiro; se a janela de 24h estiver fechada, reabre com template e repete.
-    ///
-    /// <para>Nesta ordem de propósito: o texto livre carrega o relatório inteiro, e o template só
-    /// cabe duas variáveis. Tentar o template antes gastaria uma mensagem paga em toda notificação,
-    /// inclusive nas 23 horas em que a conversa está aberta.</para>
-    /// </summary>
-    private async Task EnviarComReaberturaAsync(string telefone, string texto, CancellationToken ct)
-    {
-        var envio = await whatsApp.EnviarTextoAsync(telefone, texto, ct: ct);
-        if (envio.Ok) return;
-
-        if (envio.Erro?.Contains(CodigoForaDaJanela, StringComparison.Ordinal) != true)
-        {
-            logger.LogWarning(
-                "NOTIFICADOR_SINCRONISMO: não foi possível avisar {Telefone}: {Erro}", telefone, envio.Erro);
-            return;
-        }
-
-        // Já tentamos reabrir há pouco: a janela continua fechada porque o destinatário ainda não
-        // respondeu, não porque faltou insistir. Insistir aqui só gera cobrança.
-        var agora = DateTime.UtcNow;
-        var ultima = UltimaReabertura.GetValueOrDefault(telefone);
-        if (agora - ultima < IntervaloMinimoReabertura)
-        {
-            logger.LogInformation(
-                "NOTIFICADOR_SINCRONISMO: janela de {Telefone} fechada e reabertura já tentada — "
-                + "aviso não entregue. Basta o destinatário responder a qualquer mensagem.", telefone);
-            return;
-        }
-        UltimaReabertura[telefone] = agora;
-
-        // Nome e idioma do template vêm da configuração de comunicação com o paciente — é lá que
-        // eles são mantidos em dia com o que a Meta aprovou. Ler isso NÃO pode derrubar o aviso:
-        // um try/catch próprio aqui, e não o genérico lá de cima, porque a diferença entre "a
-        // configuração não abriu" e "a Meta recusou" muda o que a pessoa tem de ir consertar.
-        string template, idioma;
-        try
-        {
-            var opcoes = comunicacao.Value;
-            template = opcoes.TemplateValidacaoCadastro;
-            idioma = opcoes.Idioma;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex, "NOTIFICADOR_SINCRONISMO: não foi possível ler a configuração de comunicação "
-                + "para reabrir a janela de {Telefone}.", telefone);
-            return;
-        }
-
-        var legivel =
-            "Olá! Este é o canal oficial da saúde. Temos uma informação sobre "
-            + $"*{ProcedimentoDoRelatorio}*.";
-
-        EnvioWhatsAppResultado reabertura;
-        try
-        {
-            reabertura = await whatsApp.EnviarTemplateAsync(
-                telefone, template, idioma,
-                ["Operador", ProcedimentoDoRelatorio], conteudoLegivel: legivel, ct: ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex, "NOTIFICADOR_SINCRONISMO: erro ao enviar o template {Template} para {Telefone}.",
-                template, telefone);
-            return;
-        }
-
-        if (!reabertura.Ok)
-        {
-            logger.LogWarning(
-                "NOTIFICADOR_SINCRONISMO: template {Template} recusado para {Telefone}: {Erro}",
-                template, telefone, reabertura.Erro);
-            return;
-        }
-
-        logger.LogInformation(
-            "NOTIFICADOR_SINCRONISMO: janela de {Telefone} reaberta com o template {Template}.",
-            telefone, template);
-
-        // A janela abre com a mensagem entregue, não com a resposta do destinatário: o relatório
-        // pode seguir na sequência.
-        var segunda = await whatsApp.EnviarTextoAsync(telefone, texto, ct: ct);
-        if (!segunda.Ok)
-        {
-            logger.LogWarning(
-                "NOTIFICADOR_SINCRONISMO: janela reaberta mas o relatório não saiu para {Telefone}: {Erro}",
-                telefone, segunda.Erro);
         }
     }
 
@@ -272,7 +163,7 @@ public sealed class NotificadorSincronismo(
         }
         catch (ValidacaoException)
         {
-            return null; // integração sem credencial: não há para quem avisar
+            return null; // integração sem credencial: não há telefone da integração
         }
     }
 

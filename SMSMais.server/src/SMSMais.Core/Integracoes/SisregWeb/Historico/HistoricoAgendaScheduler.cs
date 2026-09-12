@@ -114,7 +114,8 @@ public sealed class HistoricoAgendaScheduler(
 
         if (reconciliacao.Passo == PassoHistorico.Bloquear)
         {
-            logger.LogWarning(
+            // Error: o histórico desligou sozinho e só volta com gente — leva o aviso ao celular.
+            logger.LogError(
                 "SISREG_HISTORICO_BLOQUEADO: unidade {UnidadeId} — a fatia {Inicio} a {Fim} falhou "
                 + "{Tentativas} vezes; o histórico foi desligado para não seguir gastando orçamento.",
                 agenda.UnidadeId, reconciliacao.Inicio, reconciliacao.Fim, _opcoes.TentativasPorFatia);

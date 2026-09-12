@@ -172,7 +172,8 @@ public sealed class ResolucaoPendenciasService(
                 if (seguidasDeFonte >= FalhasDeFonteSeguidasParaDesistir)
                 {
                     desistiu = true;
-                    logger.LogWarning(
+                    // Error: a fonte caiu (CAPTCHA, provável) — leva o aviso ao celular.
+                    logger.LogError(
                         "Resolução {ExecucaoId} interrompida: {Qtd} falhas seguidas de consulta ao "
                         + "cadastro. A fonte está indisponível (CAPTCHA do SISREG?).",
                         job.ExecucaoId, seguidasDeFonte);

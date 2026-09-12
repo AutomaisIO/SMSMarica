@@ -83,6 +83,13 @@ export function TelefonesNotificacaoSecao({ provedor, rotulo, podeEditar }: Prop
           credencial derrubada, unidade com erro. O sincronismo roda de madrugada e sozinho; sem
           aviso, uma parada só aparece quando alguém abre esta tela.
         </p>
+        <p className="mt-1 text-xs text-gray-500">
+          Para receber os erros da plataforma inteira (robô, todos os sincronismos, erro 500), use{' '}
+          <a href="/app/avisos-celular" className="font-medium text-primary-700 underline">
+            Sistema → Avisos no celular
+          </a>
+          . Lá também fica o histórico do que foi enviado.
+        </p>
       </header>
 
       {aviso && (

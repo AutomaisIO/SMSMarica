@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.Alertas;
 using SMSMais.Core.Conversas;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Data;
@@ -21,6 +22,7 @@ public sealed class RoboAtendimentoProcessador(
     IRoboAtendimentoMotor motor,
     IWhatsAppCliente whats,
     IConversaNotificador notificador,
+    IAlertaPlataforma alerta,
     ILogger<RoboAtendimentoProcessador> logger) : IRoboAtendimentoProcessador
 {
     private const int MaxTentativas = 3;
@@ -38,6 +40,19 @@ public sealed class RoboAtendimentoProcessador(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Falha ao processar tarefa {Tarefa} do robô.", tarefaId);
+
+            // Foi assim que o crédito acabou sem ninguém saber: cada tarefa só virava este Warning.
+            // Falha de CONTA da IA (crédito/chave) já sai pelo FalhaContaIaHandler, com o texto
+            // certo — aqui fica o resto (modelo fora, erro de ferramenta, banco…).
+            if (!FalhaContaIa.EhFalhaDeConta(ex.Message))
+            {
+                alerta.Reportar(new EventoAlerta(
+                    AlertaCatalogo.RoboFalha,
+                    "O robô não conseguiu responder",
+                    $"Tarefa {tarefaId} (tentativa {tarefa.Tentativas + 1} de {MaxTentativas}).\n\n"
+                    + $"{ex.GetType().Name}: {ex.Message}"));
+            }
+
             await ReagendarOuFalharAsync(tarefa, ex.Message, ct);
         }
     }

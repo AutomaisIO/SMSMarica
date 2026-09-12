@@ -385,8 +385,10 @@ public sealed class SisregMapeamentoLoteService(
         if (progresso.UnidadesComErro > 0) linhas.Add($"⚠ Unidades com erro: {progresso.UnidadesComErro}");
         if (progresso.UltimoErro is { Length: > 0 } erro) linhas.Add($"\nÚltimo erro: {erro}");
 
+        // Rodada com problema é falha (vai ao celular da plataforma); só novidade é informativo.
         await notificador.NotificarAsync(
-            SisregWebSessao.Provedor, titulo, string.Join('\n', linhas), ct: CancellationToken.None);
+            SisregWebSessao.Provedor, titulo, string.Join('\n', linhas), ct: CancellationToken.None,
+            informativo: !houveProblema);
     }
 
     /// <summary>
@@ -506,7 +508,7 @@ public sealed class SisregMapeamentoLoteService(
                     SisregWebSessao.Provedor, $"Iniciando {candidata.Nome}",
                     $"Unidade {progresso.UnidadesFeitas + 1} de {progresso.UnidadesTotal}."
                     + $"\nAcessos disponíveis nesta hora: {restante}.",
-                    ct: CancellationToken.None);
+                    ct: CancellationToken.None, informativo: true);
             }
 
             try
@@ -571,7 +573,7 @@ public sealed class SisregMapeamentoLoteService(
 
                     await notificador.NotificarAsync(
                         SisregWebSessao.Provedor, $"OK {candidata.Nome}", resumo,
-                        ct: CancellationToken.None);
+                        ct: CancellationToken.None, informativo: true);
                 }
             }
             catch (Exception ex) when (SisregWebSessao.EhCaptcha(ex))
