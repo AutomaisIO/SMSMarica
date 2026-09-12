@@ -26,6 +26,8 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
 /// <param name="PrimeiraVagaLivreRegulacao">A primeira data com vaga, entre essas unidades.</param>
 /// <param name="UnidadesComVaga">Quantas dessas unidades têm alguma vaga livre.</param>
 /// <param name="VagasLivresUnidade">Livres na própria unidade do cartão (mesmo tipo de agenda).</param>
+/// <param name="NaFila">Quantas pessoas esperam AGORA por este procedimento — a mesma conta do
+/// "Quem espera" do clique. Diferente de <paramref name="EsperaMedianaDias"/>, que é tempo.</param>
 public sealed record AgendaNovaDto(
     Guid UnidadeId,
     string UnidadeNome,
@@ -43,7 +45,8 @@ public sealed record AgendaNovaDto(
     int? VagasLivresRegulacao = null,
     DateOnly? PrimeiraVagaLivreRegulacao = null,
     int? UnidadesComVaga = null,
-    int? VagasLivresUnidade = null);
+    int? VagasLivresUnidade = null,
+    int? NaFila = null);
 
 /// <summary>
 /// Um agendamento que sumiu do SISREG e cuja data ainda não passou — candidato a vaga livre.
@@ -53,6 +56,7 @@ public sealed record AgendaNovaDto(
 /// <param name="DetectadaEm">Quando a varredura percebeu a ausência.</param>
 /// <param name="AgendaLocal">A escala da unidade para este procedimento é agenda local: a vaga
 /// volta para a unidade, não para a regulação. Nulo quando não há escala vigente para dizer.</param>
+/// <param name="NaFila">Quantas pessoas esperam agora por este procedimento.</param>
 public sealed record VagaLiberadaDto(
     Guid AlteracaoId,
     Guid SolicitacaoId,
@@ -63,7 +67,8 @@ public sealed record VagaLiberadaDto(
     DateTime DataAgendada,
     DateTime DetectadaEm,
     int? EsperaMedianaDias,
-    bool? AgendaLocal);
+    bool? AgendaLocal,
+    int? NaFila = null);
 
 /// <summary>Uma pessoa esperando por este procedimento.</summary>
 /// <param name="EsperandoHaDias">Dias desde o pedido. É a conta que a tela ordena por padrão —

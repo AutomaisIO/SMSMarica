@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, CalendarPlus, Clock, Home, Loader2, PackageOpen, Sparkles, Timer } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Clock, Home, Loader2, PackageOpen, Sparkles, Timer, Users } from 'lucide-react';
 import { useOfertas } from '../api/queries';
 import { DatasDaOfertaPainel } from '../components/DatasDaOfertaPainel';
 import { FilaDaOfertaPainel } from '../components/FilaDaOfertaPainel';
@@ -46,9 +46,32 @@ function Espera({ dias, urgente }: { dias: number | null; urgente: number }) {
         ? 'bg-amber-50 text-amber-700 ring-amber-200'
         : 'bg-gray-50 text-gray-600 ring-gray-200';
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${cor}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${cor}`}
+      title="Espera mediana de quem já conseguiu data neste procedimento, neste ano"
+    >
       <Timer className="h-3 w-3" />
-      fila {dias}d
+      espera {dias}d
+    </span>
+  );
+}
+
+/**
+ * Quantas pessoas esperam AGORA — o que faltava ao lado da espera: "4 vagas numa fila de 466 dias"
+ * diz a urgência; "6.059 esperando" diz o tamanho. Mesma conta do "Quem espera" do clique.
+ */
+function NaFila({ n }: { n: number | null }) {
+  if (n === null) return null;
+  if (n === 0) {
+    return <span className="text-xs text-gray-400">ninguém na fila</span>;
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-primary-200"
+      title="Pessoas esperando agora por este procedimento (fila do SISREG)"
+    >
+      <Users className="h-3 w-3" />
+      {n.toLocaleString('pt-BR')} na fila
     </span>
   );
 }
@@ -139,6 +162,7 @@ function CartaoAgenda({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
+        <NaFila n={a.naFila} />
         <Espera dias={a.esperaMedianaDias} urgente={urgente} />
         {a.agendaLocal ? <AgendaLocal /> : null}
         <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
@@ -199,6 +223,7 @@ function CartaoVaga({
         </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
+        <NaFila n={v.naFila} />
         <Espera dias={v.esperaMedianaDias} urgente={urgente} />
         {v.agendaLocal ? <AgendaLocal /> : null}
         <span className="text-[11px] text-gray-400">detectada {dataHora(v.detectadaEm)}</span>
@@ -372,9 +397,10 @@ export function OfertasPage() {
       <footer className="mt-6 flex items-start gap-2 rounded-md bg-gray-50 p-3 text-xs text-gray-600">
         <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
         <p>
-          <strong>Como ler.</strong> “Fila Nd” é a espera mediana de quem <em>já conseguiu data</em>{' '}
-          neste procedimento neste ano — serve para priorizar entre procedimentos; a espera de quem
-          ainda aguarda está no clique. <strong>“Vagou”</strong> quer dizer que o SISREG parou de
+          <strong>Como ler.</strong> “N na fila” é quantas pessoas esperam agora pelo procedimento
+          (fila do SISREG). “Espera Nd” é a espera mediana de quem <em>já conseguiu data</em> neste
+          procedimento neste ano — serve para priorizar entre procedimentos; a espera de quem ainda
+          aguarda está no clique. <strong>“Vagou”</strong> quer dizer que o SISREG parou de
           mostrar aquele agendamento; confirmar se a vaga está livre é trabalho de gente.{' '}
           <strong>“Vagas livres na regulação”</strong> soma as unidades reguladas nos próximos 120
           dias (1ª vez + reserva, menos o que já está agendado) — é estimativa: a grade do SISREG, ao

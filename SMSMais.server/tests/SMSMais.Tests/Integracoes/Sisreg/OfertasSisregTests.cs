@@ -545,6 +545,38 @@ public class OfertasSisregTests(PostgresFixture fixture)
         Assert.Equal(datas.Unidades.Single(u => u.UnidadeId == nova).VagasLivres, cartao.VagasLivresUnidade);
     }
 
+    /// <summary>
+    /// O cartão diz quantas pessoas esperam — com a MESMA régua do "Quem espera": quem pediu o item
+    /// e quem pediu o grupo. Os dois números têm de bater, senão a tela se contradiz no clique.
+    /// </summary>
+    [Fact]
+    public async Task Cartao_mostra_quantos_esperam_com_a_mesma_regua_do_quem_espera()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var prefixo = Random.Shared.Next(1000, 9999).ToString();
+        var grupo = prefixo + "000";
+        var item = prefixo + "078";
+
+        var escalaGrupo = EscalaDeVagas(unidadeId, grupo, DayOfWeek.Monday, 5, 5);
+        var aberta = EscalaDeVagas(unidadeId, item, DayOfWeek.Friday, 4, 4);
+        aberta.CriadoEm = DateTime.UtcNow;
+        db.SisregEscalas.AddRange(escalaGrupo, aberta);
+        db.SisregFilaPendentes.AddRange(
+            NaFila(aberta.ProcedimentoNome, new DateOnly(2026, 1, 1)),
+            NaFila(aberta.ProcedimentoNome, new DateOnly(2026, 2, 1)),
+            NaFila(escalaGrupo.ProcedimentoNome, new DateOnly(2025, 6, 1)));
+        await db.SaveChangesAsync();
+
+        var servico = new OfertasSisregService(db);
+        var r = await servico.ListarAsync(7);
+        var fila = await servico.FilaDaOfertaAsync(aberta.ProcedimentoNome, null, 100, 0, item);
+
+        var cartao = Assert.Single(r.AgendasNovas, a => a.ProcedimentoCodigo == item);
+        Assert.Equal(3, cartao.NaFila);
+        Assert.Equal(fila.Total, cartao.NaFila);
+    }
+
     [Fact]
     public async Task Agenda_nova_diz_se_e_agenda_local()
     {

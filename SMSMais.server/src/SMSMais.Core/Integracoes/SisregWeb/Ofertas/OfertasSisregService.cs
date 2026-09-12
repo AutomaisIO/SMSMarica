@@ -115,11 +115,28 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
             datas[codigo] = await DatasDaOfertaAsync(codigo, HorizonteDasVagasLivres, cancellationToken);
         }
 
+        // Quantos ESPERAM agora, por cartão — a mesma régua do "Quem espera" do clique, em lote.
+        var naFila = await ContarNaFilaAsync(
+            [.. agendas.Select(a => ((string?)a.ProcedimentoCodigo, a.ProcedimentoNome)),
+             .. vagas.Where(v => v.ProcedimentoNome is not null)
+                     .Select(v => (v.ProcedimentoCodigo, v.ProcedimentoNome!))],
+            cancellationToken);
+
         return new OfertasSisregDto(
-            [.. agendas.Select(a => ComVagasLivres(a, datas) with { EsperaMedianaDias = Espera(espera, a.ProcedimentoCodigo) })
+            [.. agendas.Select(a => ComVagasLivres(a, datas) with
+                {
+                    EsperaMedianaDias = Espera(espera, a.ProcedimentoCodigo),
+                    NaFila = naFila.GetValueOrDefault(((string?)a.ProcedimentoCodigo, a.ProcedimentoNome)),
+                })
                 .OrderByDescending(a => a.EsperaMedianaDias ?? -1)
                 .ThenByDescending(a => a.VagasLivresRegulacao ?? a.Vagas)],
-            [.. vagas.Select(v => v with { EsperaMedianaDias = Espera(espera, v.ProcedimentoCodigo) })
+            [.. vagas.Select(v => v with
+                {
+                    EsperaMedianaDias = Espera(espera, v.ProcedimentoCodigo),
+                    NaFila = v.ProcedimentoNome is null
+                        ? null
+                        : naFila.GetValueOrDefault((v.ProcedimentoCodigo, v.ProcedimentoNome)),
+                })
                 .OrderBy(v => v.DataAgendada)],
             janela,
             DiasEsperaUrgente,
@@ -351,6 +368,83 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
     }
 
     /// <summary>
+    /// Quantas pessoas esperam por cada procedimento dos cartões — a MESMA régua de
+    /// <see cref="NomesDaFilaAsync"/> (nome exato + o outro lado do grupo), feita em lote.
+    ///
+    /// <para><b>Em lote porque a tela tem centenas de cartões.</b> Uma consulta agrupa a fila por
+    /// nome; uma traz os nomes das escalas dos prefixos na tela; e só os GRUPOS pedem a busca cara
+    /// em <c>solicitacao</c> (os itens pedidos de cada grupo), uma vez para todos.</para>
+    /// </summary>
+    private async Task<Dictionary<(string? Codigo, string Nome), int>> ContarNaFilaAsync(
+        IReadOnlyCollection<(string? Codigo, string Nome)> chaves, CancellationToken ct)
+    {
+        var resultado = new Dictionary<(string? Codigo, string Nome), int>();
+        if (chaves.Count == 0) return resultado;
+
+        var porNome = await db.SisregFilaPendentes.AsNoTracking()
+            .Where(f => f.SaiuEm == null && f.ProcedimentoNome != null)
+            .GroupBy(f => f.ProcedimentoNome!)
+            .Select(g => new { Nome = g.Key, Qtd = g.Count() })
+            .ToDictionaryAsync(x => x.Nome, x => x.Qtd, StringComparer.Ordinal, ct);
+
+        var codigos = chaves
+            .Select(c => c.Codigo)
+            .Where(c => c is not null && GrupoDoCodigo(c) is not null)
+            .Select(c => c!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var prefixos = codigos.Select(c => c[..4]).Distinct(StringComparer.Ordinal).ToList();
+        var prefixosDeGrupo = codigos.Where(EhCodigoDeGrupo).Select(c => c[..4])
+            .Distinct(StringComparer.Ordinal).ToList();
+
+        var escalas = new List<(string Codigo, string Nome)>();
+        if (prefixos.Count > 0)
+        {
+            var lidas = await db.SisregEscalas.AsNoTracking()
+                .Where(e => prefixos.Contains(e.ProcedimentoCodigo.Substring(0, 4)))
+                .Select(e => new { e.ProcedimentoCodigo, e.ProcedimentoNome })
+                .Distinct()
+                .ToListAsync(ct);
+            escalas.AddRange(lidas.Select(e => (e.ProcedimentoCodigo, e.ProcedimentoNome)));
+        }
+
+        var itensDeGrupo = new List<(string Codigo, string Nome)>();
+        if (prefixosDeGrupo.Count > 0)
+        {
+            var lidos = await db.Solicitacoes.AsNoTracking()
+                .Where(s => s.ProcedimentoCodigoSisreg != null
+                    && s.ProcedimentoTexto != null
+                    && prefixosDeGrupo.Contains(s.ProcedimentoCodigoSisreg.Substring(0, 4)))
+                .Select(s => new { Codigo = s.ProcedimentoCodigoSisreg!, Nome = s.ProcedimentoTexto! })
+                .Distinct()
+                .ToListAsync(ct);
+            itensDeGrupo.AddRange(lidos.Select(s => (s.Codigo, s.Nome)));
+        }
+
+        foreach (var chave in chaves.Distinct())
+        {
+            var nomes = new HashSet<string>(StringComparer.Ordinal) { chave.Nome };
+            if (chave.Codigo is { } codigo && GrupoDoCodigo(codigo) is { } grupo)
+            {
+                var prefixo = codigo[..4];
+                if (EhCodigoDeGrupo(codigo))
+                {
+                    nomes.UnionWith(escalas.Where(e => e.Codigo.StartsWith(prefixo, StringComparison.Ordinal)).Select(e => e.Nome));
+                    nomes.UnionWith(itensDeGrupo.Where(i => i.Codigo.StartsWith(prefixo, StringComparison.Ordinal)).Select(i => i.Nome));
+                }
+                else
+                {
+                    nomes.UnionWith(escalas.Where(e => e.Codigo == grupo).Select(e => e.Nome));
+                }
+            }
+
+            resultado[chave] = nomes.Sum(n => porNome.GetValueOrDefault(n));
+        }
+
+        return resultado;
+    }
+
+    /// <summary>
     /// Os nomes de fila que uma vaga deste procedimento atende.
     ///
     /// <para>A vaga liberada chega com o nome do ITEM ("ULTRASONOGRAFIA TRANSVAGINAL") e a fila
@@ -538,6 +632,7 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 x.s.ProcedimentoTexto,
                 x.s.DataAgendada!.Value,
                 x.a.DetectadaEm,
+                null,
                 null,
                 null))
             .ToListAsync(ct);

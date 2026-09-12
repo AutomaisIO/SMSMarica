@@ -353,6 +353,8 @@ export type AgendaNova = {
   unidadesComVaga: number | null;
   /** Livres na propria unidade do cartao. */
   vagasLivresUnidade: number | null;
+  /** Quantas pessoas esperam agora pelo procedimento (mesma conta do "Quem espera"). */
+  naFila: number | null;
 };
 
 /** Agendamento que sumiu do SISREG e cuja data ainda nao passou. */
@@ -368,6 +370,8 @@ export type VagaLiberada = {
   esperaMedianaDias: number | null;
   /** A vaga volta para a propria unidade (agenda local); null = sem escala vigente para dizer. */
   agendaLocal: boolean | null;
+  /** Quantas pessoas esperam agora pelo procedimento. */
+  naFila: number | null;
 };
 
 export type Ofertas = {
