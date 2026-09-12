@@ -10,6 +10,7 @@ import {
   useAtualizarConfiguracaoSisreg,
   useConfiguracaoSisreg,
 } from '@/features/sisreg/api/queries';
+import { FilaEsperaSecao } from '@/features/sisreg/components/FilaEsperaSecao';
 import { SincronismoAutomaticoSecao } from '@/features/sisreg/components/SincronismoAutomaticoSecao';
 import { SincronismoEscalasSecao } from '@/features/sisreg/components/SincronismoEscalasSecao';
 import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTudoSecao';
@@ -319,6 +320,8 @@ export function SisregConfiguracaoPage() {
       <SincronizarTudoSecao />
 
       <SincronismoEscalasSecao />
+
+      <FilaEsperaSecao />
 
       <TelefonesNotificacaoSecao provedor="sisreg" rotulo="SISREG" podeEditar />
     </div>

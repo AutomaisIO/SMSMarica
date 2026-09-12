@@ -4,7 +4,12 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Fila.Background;
 public sealed record JanelaFila(DateOnly Inicio, DateOnly Fim);
 
 /// <summary>O que a tela mostra sobre a leitura da fila.</summary>
-/// <param name="Completa">A leitura em curso é a carga do acervo inteiro (e não o diário).</param>
+/// <param name="Completa">A leitura em curso é a do acervo inteiro (e não só os últimos 31 dias).</param>
+/// <param name="UltimoErro">Só quando a leitura <b>desistiu</b> (CAPTCHA ou falhas seguidas). Falha
+/// que a nova tentativa resolveu não é erro — em 12/09/2026 a tela mostrava "leitura interrompida"
+/// para uma janela relida com sucesso 22 s depois, e parecia que a carga tinha falhado.</param>
+/// <param name="RelidasAposFalha">Janelas que falharam (sessão caída, conexão cortada) e foram
+/// relidas com sucesso. Informação, não alarme.</param>
 /// <param name="PessoasNaFila">Quem está na fila segundo a última leitura — do banco.</param>
 /// <param name="UltimaLeitura">Nulo = a fila nunca foi lida, e a tela tem de dizer isso em vez de
 /// mostrar "ninguém esperando".</param>
@@ -20,7 +25,8 @@ public sealed record FilaCargaStatusDto(
     string? UltimoErro,
     DateTime? UltimoErroEm,
     int PessoasNaFila,
-    DateTime? UltimaLeitura);
+    DateTime? UltimaLeitura,
+    int RelidasAposFalha);
 
 /// <summary>Como fatiar o tempo em janelas que o SISREG aceita.</summary>
 public static class JanelasDaFila
@@ -60,8 +66,7 @@ public static class JanelasDaFila
 /// Janelas a ler e o progresso — em memória, como o estado vivo dos outros motores do SISREG.
 ///
 /// <para>Reiniciar o servidor no meio de uma carga perde as janelas que faltavam, e isso é
-/// aceitável: a leitura é idempotente (upsert por código), então clicar de novo só relê o que já
-/// foi lido, a 2 requisições por janela.</para>
+/// aceitável: a leitura é idempotente (upsert por código), e a releitura do dia seguinte cobre.</para>
 /// </summary>
 public sealed class FilaPendenteEstadoVivo
 {
@@ -76,6 +81,7 @@ public sealed class FilaPendenteEstadoVivo
     private int _lidas;
     private int _pessoas;
     private int _falhasSeguidas;
+    private int _relidasAposFalha;
     private DateTime? _iniciadoEm;
     private string? _ultimoErro;
     private DateTime? _ultimoErroEm;
@@ -98,6 +104,7 @@ public sealed class FilaPendenteEstadoVivo
             _lidas = 0;
             _pessoas = 0;
             _falhasSeguidas = 0;
+            _relidasAposFalha = 0;
             _iniciadoEm = DateTime.UtcNow;
             _ultimoErro = null;
             _ultimoErroEm = null;
@@ -124,6 +131,7 @@ public sealed class FilaPendenteEstadoVivo
             _atual = null;
             _lidas++;
             _pessoas += leitura.Lidas;
+            if (_falhasSeguidas > 0) _relidasAposFalha++;
             _falhasSeguidas = 0;
         }
     }
@@ -145,13 +153,14 @@ public sealed class FilaPendenteEstadoVivo
         {
             var janela = _atual;
             _atual = null;
-            _ultimoErro = erro;
-            _ultimoErroEm = DateTime.UtcNow;
             _falhasSeguidas++;
 
             if (desistir || _falhasSeguidas >= MaximoDeFalhasSeguidas)
             {
+                // Só aqui vira erro para a tela: a leitura parou e alguém precisa saber.
                 _pendentes.Clear();
+                _ultimoErro = erro;
+                _ultimoErroEm = DateTime.UtcNow;
             }
             else if (janela is not null)
             {
@@ -176,7 +185,8 @@ public sealed class FilaPendenteEstadoVivo
                 _ultimoErro,
                 _ultimoErroEm,
                 resumo.PessoasNaFila,
-                resumo.UltimaLeitura);
+                resumo.UltimaLeitura,
+                _relidasAposFalha);
         }
     }
 }

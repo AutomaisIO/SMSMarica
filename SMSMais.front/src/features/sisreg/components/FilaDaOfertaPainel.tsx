@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { DownloadCloud, Loader2, Phone, Users } from 'lucide-react';
-import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { Button } from '@/shared/ui/Button';
-import { useCarregarFila, useFilaDaOferta, useStatusFila } from '../api/queries';
+import { Loader2, Phone, Users } from 'lucide-react';
+import { useFilaDaOferta, useStatusFila } from '../api/queries';
 import type { FilaCargaStatus, OrdemDaFila, PessoaNaFila } from '../types';
 
 const ORDENS: { valor: OrdemDaFila; rotulo: string; dica: string }[] = [
@@ -95,17 +93,12 @@ function Linha({ p, i }: { p: PessoaNaFila; i: number }) {
 /**
  * De onde vem a lista e se ela está completa. Sem isto, fila nunca lida aparecia como "ninguém
  * esperando" — foi o que a tela mostrou até 10/09/2026, com a tabela vazia em produção.
+ *
+ * <p>Só mostra: disparar a leitura é na Configuração do SISREG (seção “Fila de espera”), porque
+ * gasta requisições do SISREG com o operador da integração.</p>
  */
 function SituacaoDaLeitura({ status }: { status: FilaCargaStatus | undefined }) {
-  const carregar = useCarregarFila();
-  const [erro, setErro] = useState<string | null>(null);
-
   if (!status) return null;
-
-  function pedir(completa: boolean) {
-    setErro(null);
-    carregar.mutate(completa, { onError: (e) => setErro(extrairMensagemDeErro(e)) });
-  }
 
   return (
     <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
@@ -121,8 +114,8 @@ function SituacaoDaLeitura({ status }: { status: FilaCargaStatus | undefined }) 
       ) : status.ultimaLeitura ? (
         <p>
           Fila lida do SISREG em <strong>{dataHora(status.ultimaLeitura)}</strong> —{' '}
-          {status.pessoasNaFila.toLocaleString('pt-BR')} pessoa(s) esperando na rede toda. Atualiza
-          sozinha todo dia às 05:30.
+          {status.pessoasNaFila.toLocaleString('pt-BR')} pessoa(s) esperando na rede toda. É relida
+          inteira todo dia, de madrugada; quem vira agendamento sai sozinho.
         </p>
       ) : (
         <p>
@@ -131,33 +124,17 @@ function SituacaoDaLeitura({ status }: { status: FilaCargaStatus | undefined }) 
         </p>
       )}
 
-      {status.ultimoErro ? (
-        <p className="mt-1 text-red-700">
-          Última leitura interrompida ({dataHora(status.ultimoErroEm)}): {status.ultimoErro}
+      {status.relidasAposFalha > 0 && !status.ultimoErro ? (
+        <p className="mt-1 text-gray-500">
+          {status.relidasAposFalha} período(s) precisaram ser relidos (a sessão do SISREG caiu) —
+          resolvido na nova tentativa.
         </p>
       ) : null}
-
-      {!status.emExecucao ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button tamanho="sm" variante="outline" disabled={carregar.isPending} onClick={() => pedir(false)}>
-            Atualizar (últimos 31 dias)
-          </Button>
-          <Button tamanho="sm" variante="outline" disabled={carregar.isPending} onClick={() => pedir(true)}>
-            {carregar.isPending ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <DownloadCloud className="mr-1.5 h-3.5 w-3.5" />
-            )}
-            {status.ultimaLeitura ? 'Reler a fila inteira' : 'Carregar a fila inteira'}
-          </Button>
-          <span className="text-[11px] text-gray-500">
-            Atualizar custa 2 requisições ao SISREG. A fila inteira (desde jan/2023) lê um mês por
-            vez em segundo plano — cerca de 88 requisições. Quem vira agendamento sai da fila
-            sozinho, sem reler o passado.
-          </span>
-        </div>
+      {status.ultimoErro ? (
+        <p className="mt-1 text-red-700">
+          Leitura interrompida ({dataHora(status.ultimoErroEm)}): {status.ultimoErro}
+        </p>
       ) : null}
-      {erro ? <p className="mt-1 text-red-700">{erro}</p> : null}
     </div>
   );
 }

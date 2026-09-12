@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
-using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Integracoes.SisregWeb.Fila;
 using SMSMais.Core.Integracoes.SisregWeb.Fila.Background;
 using SMSMais.Core.Integracoes.SisregWeb.Ofertas;
 using SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
-using SMSMais.Core.Common.Tempo;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -13,9 +11,9 @@ namespace SMSMais.Api.Controllers;
 /// <summary>
 /// <b>Ofertas</b>: o que abriu no SISREG — agenda nova e vaga liberada por cancelamento.
 ///
-/// <para>A leitura é sobre o que a varredura, o sincronismo de escalas e o motor da fila já
-/// trouxeram. O único ponto que fala com o SISREG é <c>fila/carregar</c>, e mesmo ele só
-/// <b>enfileira</b>: quem lê é o agendador, uma janela por vez.</para>
+/// <para>Somente leitura, sobre o que a varredura, o sincronismo de escalas e o motor da fila já
+/// trouxeram. Disparar a leitura da fila fica na Configuração do SISREG
+/// (<see cref="SisregFilaController"/>); aqui só se mostra a situação dela.</para>
 ///
 /// <para>Usa a permissão <see cref="ModuloPermissao.AlteracoesAgenda"/> de propósito, em vez de um
 /// módulo novo: as vagas liberadas <b>são</b> as alterações do tipo Ausente, lidas pelo lado da
@@ -77,37 +75,10 @@ public sealed class SisregOfertasController(
         await ofertas.FilaDaOfertaAsync(
             procedimento, ordenar, limite, pulo, procedimentoCodigo, cancellationToken);
 
-    /// <summary>A fila já foi lida? Está lendo agora? Quantas pessoas há nela?</summary>
+    /// <summary>Situação da leitura da fila — só leitura; disparar é na Configuração do SISREG.</summary>
     [HttpGet("fila/status")]
     [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Consulta)]
     [ProducesResponseType<FilaCargaStatusDto>(StatusCodes.Status200OK)]
     public async Task<FilaCargaStatusDto> StatusDaFila(CancellationToken cancellationToken = default) =>
         estadoFila.Snapshot(await fila.ResumoAsync(cancellationToken));
-
-    /// <summary>
-    /// Pede a leitura da fila no SISREG. Só enfileira — o agendador lê uma janela por vez, cedendo
-    /// a vez aos outros motores.
-    /// </summary>
-    /// <param name="completa"><c>true</c>: o acervo inteiro desde jan/2023 (~44 janelas, 2
-    /// requisições cada). <c>false</c>: só os últimos 31 dias (2 requisições).</param>
-    [HttpPost("fila/carregar")]
-    [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Edicao)]
-    [ProducesResponseType<FilaCargaStatusDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<FilaCargaStatusDto> CarregarFila(
-        [FromQuery] bool completa = false, CancellationToken cancellationToken = default)
-    {
-        var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
-        var janelas = completa
-            ? JanelasDaFila.Completa(hoje, JanelasDaFila.InicioDoAcervo)
-            : JanelasDaFila.Recente(hoje);
-
-        if (!estadoFila.Enfileirar(janelas, completa))
-        {
-            throw new ConflitoException(
-                "fila.em_andamento", "Já há uma leitura da fila em andamento. Acompanhe o progresso.");
-        }
-
-        return estadoFila.Snapshot(await fila.ResumoAsync(cancellationToken));
-    }
 }

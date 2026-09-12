@@ -5,7 +5,10 @@ import {
   listarDatasDaOferta,
   listarFilaDaOferta,
   listarOfertas,
+  obterAgendamentoFila,
   obterStatusFila,
+  obterStatusFilaConfig,
+  salvarAgendamentoFila,
   alternarSincronismoAutomatico,
   atualizarConfiguracaoSisreg,
   backfillExecutante,
@@ -52,6 +55,8 @@ export const sisregKeys = {
   filaDaOferta: (proc: string, ordem: string, codigo: string) =>
     ['sisreg', 'ofertas', 'fila', proc, ordem, codigo] as const,
   filaStatus: ['sisreg', 'ofertas', 'fila-status'] as const,
+  filaStatusConfig: ['sisreg', 'fila', 'status'] as const,
+  filaAgendamento: ['sisreg', 'fila', 'agendamento'] as const,
   datasDaOferta: (codigo: string) => ['sisreg', 'ofertas', 'datas', codigo] as const,
 };
 
@@ -313,6 +318,30 @@ export function useCarregarFila() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (completa: boolean) => carregarFila(completa),
-    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.filaStatus }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: sisregKeys.filaStatus });
+      client.invalidateQueries({ queryKey: sisregKeys.filaStatusConfig });
+    },
+  });
+}
+
+/** Situação da leitura, pela Configuração do SISREG. Acompanha enquanto lê. */
+export function useStatusFilaConfig() {
+  return useQuery({
+    queryKey: sisregKeys.filaStatusConfig,
+    queryFn: obterStatusFilaConfig,
+    refetchInterval: (query) => (query.state.data?.emExecucao ? 5000 : false),
+  });
+}
+
+export function useAgendamentoFila() {
+  return useQuery({ queryKey: sisregKeys.filaAgendamento, queryFn: obterAgendamentoFila });
+}
+
+export function useSalvarAgendamentoFila() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: salvarAgendamentoFila,
+    onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.filaAgendamento }),
   });
 }

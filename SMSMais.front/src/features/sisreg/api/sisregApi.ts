@@ -1,4 +1,11 @@
-import type { DatasDaOferta, FilaCargaStatus, FilaDaOferta, Ofertas, OrdemDaFila } from '../types';
+import type {
+  DatasDaOferta,
+  FilaAgendamento,
+  FilaCargaStatus,
+  FilaDaOferta,
+  Ofertas,
+  OrdemDaFila,
+} from '../types';
 import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarSisregConfiguracaoPayload,
@@ -255,10 +262,29 @@ export async function obterStatusFila(): Promise<FilaCargaStatus> {
   return data;
 }
 
-/** Só enfileira: o servidor lê uma janela de 31 dias por vez, em segundo plano. */
+/**
+ * Só enfileira: o servidor lê uma janela de 31 dias por vez, em segundo plano. Fica na
+ * Configuração do SISREG (permissão SisregConfiguracao), não em Ofertas.
+ */
 export async function carregarFila(completa: boolean): Promise<FilaCargaStatus> {
-  const { data } = await http.post<FilaCargaStatus>('/sisreg/ofertas/fila/carregar', null, {
+  const { data } = await http.post<FilaCargaStatus>('/sisreg/fila/carregar', null, {
     params: { completa },
   });
+  return data;
+}
+
+/** Situação da leitura da fila, pela Configuração do SISREG. */
+export async function obterStatusFilaConfig(): Promise<FilaCargaStatus> {
+  const { data } = await http.get<FilaCargaStatus>('/sisreg/fila/status');
+  return data;
+}
+
+export async function obterAgendamentoFila(): Promise<FilaAgendamento> {
+  const { data } = await http.get<FilaAgendamento>('/sisreg/fila/agendamento');
+  return data;
+}
+
+export async function salvarAgendamentoFila(payload: FilaAgendamento): Promise<FilaAgendamento> {
+  const { data } = await http.put<FilaAgendamento>('/sisreg/fila/agendamento', payload);
   return data;
 }

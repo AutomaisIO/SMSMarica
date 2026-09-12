@@ -449,4 +449,13 @@ export type FilaCargaStatus = {
   pessoasNaFila: number;
   /** Nulo = a fila nunca foi lida. */
   ultimaLeitura: string | null;
+  /** Janelas que falharam e foram relidas com sucesso. Informação, não alarme. */
+  relidasAposFalha: number;
+};
+
+/** Releitura completa diária da fila (Configuração do SISREG). */
+export type FilaAgendamento = {
+  ativo: boolean;
+  /** HH:mm, horário de Brasília. */
+  horaLocal: string;
 };
