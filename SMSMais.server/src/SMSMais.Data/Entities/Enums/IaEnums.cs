@@ -11,6 +11,20 @@ public enum TipoFonte
 
     /// <summary>Base SQL Server, tipicamente alcançada por agente proxy (WSS reverso).</summary>
     SqlServer = 6,
+
+    /// <summary>
+    /// O próprio banco do SMSMais, recortado para <b>regulação</b>: SISREG (interno), SER e SERNIT
+    /// (externos), a fila, as escalas, os agendamentos e as solicitações da pré-regulação. Postgres,
+    /// conta só-SELECT nas tabelas desse assunto. Conhecimento em <c>Bases/regulacao/</c>.
+    /// </summary>
+    Regulacao = 7,
+
+    /// <summary>
+    /// O próprio banco do SMSMais, recortado para <b>atendimento</b>: conversas com os pacientes,
+    /// mensagens, robô e comunicações. Exige o módulo <c>InteligenciaAtendimento</c>. Conhecimento
+    /// em <c>Bases/atendimento/</c>.
+    /// </summary>
+    Atendimento = 8,
 }
 
 /// <summary>Dialeto SQL gerado/executado para a fonte.</summary>

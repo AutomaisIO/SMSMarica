@@ -59,8 +59,14 @@ VIZ_TOOL_NAME = "visualizar"
 VIZ_TOOL_FQN = f"mcp__{SERVER_NAME}__{VIZ_TOOL_NAME}"
 
 
-def make_server(base_slug: str):
+def make_server(base_slug: str, auditoria=None):
     """Cria o MCP server in-process com as ferramentas presas a ESTA base (slug fixo).
+
+    `auditoria`: função sem argumentos que devolve o dict do TURNO corrente
+    ({usuarioId, pergunta, turnoId}). Vai junto de cada SQL para o /proxy-sql, que grava pergunta
+    + SQL + operador em `ia_consulta` — e recusa as bases do próprio SMSMais (Regulação,
+    Atendimento) quando não sabe quem perguntou. É lida a cada chamada, não na criação: o cliente
+    vive por vários turnos.
 
     Duas ferramentas, ambas benignas (nenhuma toca host/código):
     - `consultar_base`: SELECT read-only via /proxy-sql (slug no closure — o modelo não troca
@@ -82,11 +88,17 @@ def make_server(base_slug: str):
             return {"content": [{"type": "text", "text": "Erro: informe o parâmetro 'sql'."}],
                     "is_error": True}
 
-        corpo = json.dumps({
+        payload = {
             "base": base_slug,
             "consultas": [sql],
             "maxLinhas": _MAX_LINHAS,
-        }).encode("utf-8")
+        }
+        if auditoria is not None:
+            try:
+                payload["auditoria"] = auditoria() or None
+            except Exception:  # noqa: BLE001 — sem auditoria o proxy decide (recusa as sensíveis)
+                payload["auditoria"] = None
+        corpo = json.dumps(payload).encode("utf-8")
 
         def _chamar() -> tuple[int, str]:
             req = urllib.request.Request(

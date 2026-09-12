@@ -3,8 +3,11 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SMSMais.Core.Identidade;
 using SMSMais.Core.Inteligencia.Fontes;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMais.Api.Interno;
 
@@ -30,6 +33,13 @@ namespace SMSMais.Api.Interno;
 ///
 /// Read-only continua garantido pelo <c>SqlReadOnlyGuard</c> dentro de cada <see cref="IFonteDados"/>
 /// (e, nas bases via agente, de novo no agente). Ver ADR-0023.
+///
+/// <para><b>Auditoria.</b> A Consulta Inteligente manda junto quem perguntou e o quê
+/// (<see cref="ProxySqlAuditoria"/>); cada SQL vira uma linha em <c>ia_consulta</c>. Nas bases do
+/// próprio SMSMais (Regulação, Atendimento — <see cref="PermissaoDaFonte.AuditoriaObrigatoria"/>)
+/// isso é obrigatório: sem operador identificado, ou se a linha de auditoria não puder ser gravada,
+/// a consulta <b>não roda</b>. E a base Atendimento confere a permissão do operador aqui também —
+/// a sessão foi aberta com a permissão, mas perfil muda.</para>
 /// </summary>
 public static class ProxySqlEndpoint
 {
@@ -44,6 +54,7 @@ public static class ProxySqlEndpoint
         IOptions<ProxySqlOpcoes> opcoes,
         SmsMaisDbContext db,
         IFonteDadosFactory factory,
+        IIdentidadeService identidade,
         ILoggerFactory logs,
         CancellationToken ct)
     {
@@ -104,12 +115,71 @@ public static class ProxySqlEndpoint
             ? Math.Min(requisicao.MaxLinhas.Value, cfg.MaxLinhasTeto)
             : (int?)null;
 
-        // 4. Execução SEQUENCIAL — são bancos de produção de hospital, não abrimos várias sessões.
+        // 4. Quem pergunta. Bases do próprio SMSMais não respondem a chamada anônima, e a base
+        //    Atendimento confere a permissão do operador a cada chamada.
+        var usuarioId = Guid.TryParse(requisicao.Auditoria?.UsuarioId, out var u) ? u : (Guid?)null;
+        var auditoriaObrigatoria = PermissaoDaFonte.AuditoriaObrigatoria(fonte.Tipo);
+        if (auditoriaObrigatoria && usuarioId is null)
+        {
+            log.LogWarning("Proxy SQL [{Base}]: chamada sem operador identificado — recusada.", slug);
+            return Results.Json(new
+            {
+                mensagem = "Esta base só responde a perguntas de um operador identificado (auditoria obrigatória).",
+            }, statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        if (!await PermissaoDaFonte.PodeUsarAsync(identidade, usuarioId, fonte.Tipo, ct))
+        {
+            log.LogWarning("Proxy SQL [{Base}]: usuário {Usuario} sem permissão para a base.", slug, usuarioId);
+            return Results.Json(new { mensagem = "O operador não tem permissão para consultar esta base." },
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        var auditar = auditoriaObrigatoria || usuarioId is not null;
+        var pergunta = string.IsNullOrWhiteSpace(requisicao.Auditoria?.Pergunta)
+            ? "(sem pergunta informada)"
+            : requisicao.Auditoria!.Pergunta!.Trim();
+
+        // 5. Execução SEQUENCIAL — são bancos de produção de hospital, não abrimos várias sessões.
         var dados = factory.Criar(fonte);
         var resultados = new List<ProxySqlResultado>(consultas.Count);
 
         for (var i = 0; i < consultas.Count; i++)
         {
+            // A linha de auditoria nasce ANTES de executar: se ela não grava, a consulta não roda.
+            IaConsulta? registro = null;
+            if (auditar)
+            {
+                registro = new IaConsulta
+                {
+                    Id = Guid.CreateVersion7(),
+                    FonteId = fonte.Id,
+                    Pergunta = pergunta,
+                    SqlGerado = consultas[i],
+                    Status = StatusConsulta.Executando,
+                    Tentativas = 1,
+                    CriadoEm = DateTime.UtcNow,
+                    CriadoPor = usuarioId,
+                };
+                db.IaConsultas.Add(registro);
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    log.LogError(ex, "Proxy SQL [{Base}]: auditoria não gravou.", slug);
+                    if (auditoriaObrigatoria)
+                    {
+                        return Results.Json(new { mensagem = "Auditoria indisponível — a consulta não foi executada." },
+                            statusCode: StatusCodes.Status503ServiceUnavailable);
+                    }
+
+                    db.Entry(registro).State = EntityState.Detached;
+                    registro = null;
+                }
+            }
+
             var cronometro = Stopwatch.StartNew();
             ResultadoConsulta r;
             try
@@ -123,8 +193,11 @@ public static class ProxySqlEndpoint
             catch (Exception ex)
             {
                 log.LogWarning("Proxy SQL [{Base}] consulta {Indice} rejeitada: {Erro}", slug, i, ex.Message);
+                await FecharAuditoriaAsync(db, registro, ResultadoConsulta.ComErro(ex.Message), cronometro, log);
                 return Results.BadRequest(new { indice = i, mensagem = ex.Message });
             }
+
+            await FecharAuditoriaAsync(db, registro, r, cronometro, log);
 
             if (!r.Sucesso)
             {
@@ -140,6 +213,31 @@ public static class ProxySqlEndpoint
             slug, consultas.Count, resultados.Sum(x => x.DuracaoMs));
 
         return Results.Ok(new ProxySqlResposta(resultados));
+    }
+
+    /// <summary>
+    /// Desfecho da consulta na linha de auditoria. Melhor esforço: a linha já existe (com o SQL e
+    /// quem perguntou), então perder só o desfecho não justifica esconder o resultado do operador.
+    /// </summary>
+    private static async Task FecharAuditoriaAsync(
+        SmsMaisDbContext db, IaConsulta? registro, ResultadoConsulta r, Stopwatch cronometro, ILogger log)
+    {
+        if (registro is null)
+        {
+            return;
+        }
+
+        registro.Status = r.Sucesso ? StatusConsulta.Sucesso : StatusConsulta.Erro;
+        registro.Erro = r.Sucesso ? null : r.Erro;
+        registro.DuracaoMs = (int)Math.Min(cronometro.ElapsedMilliseconds, int.MaxValue);
+        try
+        {
+            await db.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning(ex, "Proxy SQL: desfecho da auditoria {Id} não gravou.", registro.Id);
+        }
     }
 
     private static bool TokenConfere(string apresentado, string esperado)
@@ -168,7 +266,15 @@ public sealed class ProxySqlOpcoes
     public int MaxConsultasPorChamada { get; set; } = 25;
 }
 
-public sealed record ProxySqlRequisicao(string Base, IReadOnlyList<string> Consultas, int? MaxLinhas);
+public sealed record ProxySqlRequisicao(
+    string Base, IReadOnlyList<string> Consultas, int? MaxLinhas, ProxySqlAuditoria? Auditoria = null);
+
+/// <summary>
+/// Quem perguntou e o quê — enviado pelo motor da Consulta Inteligente a cada SQL. O motor é
+/// confiável (loopback + token); o operador foi autenticado pela API ao abrir o turno.
+/// </summary>
+/// <param name="TurnoId">Só para log/correlação com o motor.</param>
+public sealed record ProxySqlAuditoria(string? UsuarioId, string? Pergunta, string? TurnoId);
 
 public sealed record ProxySqlResultado(
     IReadOnlyList<string> Colunas,

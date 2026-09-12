@@ -61,6 +61,10 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'ConfiguracaoLaudo', rotulo: 'Configuração de laudo (cabeçalho/rodapé)' },
   { id: 'Inteligencia', rotulo: 'Consulta Inteligente' },
   { id: 'InteligenciaConsultaDev', rotulo: 'Consulta Inteligente — modo desenvolvedor (mostra o raciocínio)' },
+  {
+    id: 'InteligenciaAtendimento',
+    rotulo: 'Consulta Inteligente — base Atendimento (lê as conversas com pacientes da rede toda)',
+  },
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
   { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
@@ -154,6 +158,12 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // no SISREG — "Consulta" sem apelido pareceria só ver o pedido.
   RevelarChaveSisreg: {
     Consulta: 'Mostrar a chave de confirmação (lida no SISREG, fica na auditoria)',
+  },
+  // Só a Consulta: é ela que faz a base Atendimento aparecer na Consulta Inteligente. "Consulta"
+  // sem apelido pareceria inofensivo — o que ela libera é LER CONVERSAS de cidadão, sem recorte
+  // de unidade. Toda pergunta fica na auditoria da IA.
+  InteligenciaAtendimento: {
+    Consulta: 'Perguntar sobre as conversas com pacientes (rede toda; fica na auditoria)',
   },
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',

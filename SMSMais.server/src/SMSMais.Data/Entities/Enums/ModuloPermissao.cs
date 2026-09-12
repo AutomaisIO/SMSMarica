@@ -250,4 +250,15 @@ public enum ModuloPermissao
     /// anti-robô e fica na auditoria (sem o valor da chave).</para>
     /// <para>Usa apenas <c>Consulta</c> — é ela que mostra o botão "Mostrar chave".</para></summary>
     RevelarChaveSisreg = 63,
+
+    /// <summary>Consulta Inteligente — base <b>Atendimento</b>: perguntar sobre as conversas com os
+    /// pacientes (WhatsApp), o conteúdo das mensagens, o robô e as comunicações enviadas.
+    /// <para>Módulo próprio, e não parte de <see cref="Inteligencia"/>, porque o que se lê aqui é a
+    /// <b>conversa do cidadão</b> — texto livre, com queixa, telefone e às vezes dado clínico — da
+    /// rede toda, sem o recorte de unidade que a Central de Atendimento aplica. Quem pergunta sobre
+    /// fila e agenda não deveria, por isso, poder ler conversas. Toda pergunta e todo SQL ficam na
+    /// auditoria da consulta (<c>ia_consulta</c>).</para>
+    /// <para>Usa apenas <c>Consulta</c>: é ela que faz a base aparecer na Consulta Inteligente. Exige
+    /// também <see cref="Inteligencia"/> (a tela).</para></summary>
+    InteligenciaAtendimento = 64,
 }

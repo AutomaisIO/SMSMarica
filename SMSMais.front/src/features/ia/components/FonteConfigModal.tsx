@@ -163,7 +163,8 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
               onChange={(e) => {
                 const t = e.target.value;
                 // Sugere o dialeto conforme o tipo (ajustável).
-                const dialeto = t === 'Postgres' ? 'postgres' : t === 'Fhir' ? '' : 'oracle';
+                const postgres = t === 'Postgres' || t === 'Regulacao' || t === 'Atendimento';
+                const dialeto = postgres ? 'postgres' : t === 'Fhir' ? '' : 'oracle';
                 setForm((f) => ({ ...f, tipo: t, dialeto }));
               }}
             >
@@ -172,6 +173,8 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
               <option value="Eco">ECO</option>
               <option value="Fhir">FHIR (API REST)</option>
               <option value="Postgres">PostgreSQL</option>
+              <option value="Regulacao">Regulação — SISREG, SER e SERNIT (banco do SMSMais)</option>
+              <option value="Atendimento">Atendimento — conversas com pacientes (banco do SMSMais)</option>
             </Select>
           </Campo>
 

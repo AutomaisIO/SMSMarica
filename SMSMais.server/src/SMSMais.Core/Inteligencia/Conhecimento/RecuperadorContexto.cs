@@ -5,6 +5,7 @@ using Pgvector;
 using Pgvector.EntityFrameworkCore;
 using SMSMais.Core.Inteligencia.Provedores;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Inteligencia.Conhecimento;
 
@@ -28,10 +29,23 @@ public sealed class RecuperadorContexto(
 
     private readonly bool _embeddingsHabilitado = configuration.GetValue("Ia:Embeddings:Habilitado", false);
 
+    /// <summary>
+    /// Bases cujo conhecimento é CURADO à mão e pequeno: vai inteiro em toda pergunta, com ou sem
+    /// RAG. O RAG só indexa o que foi extraído pela tela; os .md do repositório nunca entram no
+    /// índice vetorial — e é neles que estão as regras que não podem faltar (interno × externo,
+    /// "pergunte quando houver dúvida", como juntar SISREG com SER).
+    /// </summary>
+    private static readonly HashSet<TipoFonte> ConhecimentoSempreInteiro = [TipoFonte.Regulacao, TipoFonte.Atendimento];
+
     public async Task<ContextoRecuperado> RecuperarAsync(
         Guid fonteId, string pergunta, CancellationToken cancellationToken = default)
     {
-        var conhecimento = _embeddingsHabilitado
+        var tipo = await db.IaFontes
+            .Where(f => f.Id == fonteId)
+            .Select(f => f.Tipo)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var conhecimento = _embeddingsHabilitado && !ConhecimentoSempreInteiro.Contains(tipo)
             ? await RecuperarPorSimilaridadeAsync(fonteId, pergunta, cancellationToken)
             : await CarregarConhecimentoCompletoAsync(fonteId, cancellationToken);
 

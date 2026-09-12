@@ -64,6 +64,14 @@ class LiveSession:
     #: certo. Sem isto, um operador sem autorização herdaria Edit/Write de uma sessão
     #: aberta pelo admin.
     operador: Optional[tuple[Optional[str], bool]] = None
+    #: Modo `dados`: quem perguntou o quê NESTE turno. A ferramenta de SQL manda isto ao
+    #: /proxy-sql, que grava a auditoria (ia_consulta). Trocado a cada turno.
+    auditoria: dict = field(default_factory=dict)
+
+
+def _pergunta_do_prompt(prompt: str) -> str:
+    """Só a pergunta do operador: o .NET anexa o contexto (RAG) depois de uma linha '---'."""
+    return (prompt or "").split("\n---\n", 1)[0].strip()[:4000]
 
 
 def _block_to_event(block: Any) -> Optional[dict]:
@@ -251,7 +259,8 @@ class ClaudeEngine:
             cwd = record.get("cwd") or config.DADOS_CWD
             os.makedirs(cwd, exist_ok=True)
             repo_available = False
-            mcp_server = dados_tool.make_server(record.get("base_slug") or "")
+            mcp_server = dados_tool.make_server(
+                record.get("base_slug") or "", auditoria=lambda: live.auditoria)
 
             def montar(resume: bool) -> ClaudeAgentOptions:
                 return _extras(ClaudeAgentOptions(
@@ -610,6 +619,8 @@ class ClaudeEngine:
             store.create_turn(tid, sid, prompt, time.time(), usuario_id, usuario_nome)
             store.touch_session(sid, title=prompt[:80])
             live.current_turn_id = tid
+            live.auditoria = {"usuarioId": usuario_id, "pergunta": _pergunta_do_prompt(prompt),
+                              "turnoId": tid}
             live.seq = 0
             live.partial_text = ""
             live.encerramento_forcado = None

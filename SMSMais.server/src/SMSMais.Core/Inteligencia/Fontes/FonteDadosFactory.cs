@@ -34,6 +34,7 @@ public sealed class FonteDadosFactory(
         return fonte.Dialeto switch
         {
             DialetoSql.Oracle => CriarOracle(fonte),
+            DialetoSql.Postgres => CriarPostgres(fonte),
             _ => throw new NotSupportedException(
                 $"Dialeto '{fonte.Dialeto}' (fonte '{fonte.Nome}') ainda não é suportado pelo módulo IA. "
                 + "Para SQL Server, cadastre a base como proxy via agente (ViaAgente)."),
@@ -57,6 +58,38 @@ public sealed class FonteDadosFactory(
 
     private SaluxOracleFonte CriarOracle(IaFonte fonte)
     {
+        ExigirConexaoDireta(fonte, "serviço/SID");
+        var senha = protetor.Revelar(fonte.SenhaCifrada!);
+
+        return new SaluxOracleFonte(
+            host: fonte.Host!,
+            porta: fonte.Porta ?? 1521,
+            servico: fonte.Servico!,
+            usuario: fonte.Usuario!,
+            senha: senha,
+            commandTimeoutSegundos: _timeoutSegundos,
+            maxLinhas: _rowLimit);
+    }
+
+    /// <summary>
+    /// Postgres direto. <c>Servico</c> é o nome do database. A conta cadastrada deve ser uma role
+    /// só-SELECT nas tabelas daquela fonte — é ela que recorta o que a IA enxerga.
+    /// </summary>
+    private PostgresFonte CriarPostgres(IaFonte fonte)
+    {
+        ExigirConexaoDireta(fonte, "database");
+        return new PostgresFonte(
+            host: fonte.Host!,
+            porta: fonte.Porta ?? 5432,
+            database: fonte.Servico!,
+            usuario: fonte.Usuario!,
+            senha: protetor.Revelar(fonte.SenhaCifrada!),
+            commandTimeoutSegundos: _timeoutSegundos,
+            maxLinhas: _rowLimit);
+    }
+
+    private static void ExigirConexaoDireta(IaFonte fonte, string rotuloServico)
+    {
         if (string.IsNullOrWhiteSpace(fonte.Host))
         {
             throw new ValidacaoException("ia.fonte.host", $"Fonte '{fonte.Nome}' sem host configurado.");
@@ -64,7 +97,7 @@ public sealed class FonteDadosFactory(
 
         if (string.IsNullOrWhiteSpace(fonte.Servico))
         {
-            throw new ValidacaoException("ia.fonte.servico", $"Fonte '{fonte.Nome}' sem serviço/SID configurado.");
+            throw new ValidacaoException("ia.fonte.servico", $"Fonte '{fonte.Nome}' sem {rotuloServico} configurado.");
         }
 
         if (string.IsNullOrWhiteSpace(fonte.Usuario))
@@ -76,16 +109,5 @@ public sealed class FonteDadosFactory(
         {
             throw new ValidacaoException("ia.fonte.senha", $"Fonte '{fonte.Nome}' sem senha configurada.");
         }
-
-        var senha = protetor.Revelar(fonte.SenhaCifrada);
-
-        return new SaluxOracleFonte(
-            host: fonte.Host,
-            porta: fonte.Porta ?? 1521,
-            servico: fonte.Servico,
-            usuario: fonte.Usuario,
-            senha: senha,
-            commandTimeoutSegundos: _timeoutSegundos,
-            maxLinhas: _rowLimit);
     }
 }

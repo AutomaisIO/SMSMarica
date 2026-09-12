@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Inteligencia.Conhecimento;
+using SMSMais.Core.Inteligencia.Fontes;
 using SMSMais.Core.Tfd.Configuracao;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -31,6 +32,7 @@ public sealed class IaChatController : ControllerBase
     private readonly IUsuarioAtualAccessor _usuarioAtual;
     private readonly IRecuperadorContexto _recuperador;
     private readonly ITfdConfigService _tfdConfig;
+    private readonly IIdentidadeService _identidade;
     private readonly SmsMaisDbContext _db;
     private readonly ILogger<IaChatController> _logger;
     private readonly string _baseUrl;
@@ -41,6 +43,7 @@ public sealed class IaChatController : ControllerBase
         IUsuarioAtualAccessor usuarioAtual,
         IRecuperadorContexto recuperador,
         ITfdConfigService tfdConfig,
+        IIdentidadeService identidade,
         SmsMaisDbContext db,
         IConfiguration configuration,
         ILogger<IaChatController> logger)
@@ -49,6 +52,7 @@ public sealed class IaChatController : ControllerBase
         _usuarioAtual = usuarioAtual;
         _recuperador = recuperador;
         _tfdConfig = tfdConfig;
+        _identidade = identidade;
         _db = db;
         _logger = logger;
         _baseUrl = (configuration["AgenteIa:BaseUrl"] ?? "http://127.0.0.1:5085").TrimEnd('/');
@@ -83,6 +87,11 @@ public sealed class IaChatController : ControllerBase
         if (fonte is null)
         {
             return NotFound(new { message = "Base não encontrada ou inativa." });
+        }
+
+        if (!await PodeUsarAsync(fonte, ct))
+        {
+            return SemPermissaoNaBase();
         }
 
         var corpo = new { baseSlug = fonte.Slug, title = string.Empty };
@@ -127,6 +136,11 @@ public sealed class IaChatController : ControllerBase
         if (fonte is null)
         {
             return NotFound(new { message = "Base não encontrada ou inativa." });
+        }
+
+        if (!await PodeUsarAsync(fonte, ct))
+        {
+            return SemPermissaoNaBase();
         }
 
         var promptFinal = await MontarPromptComContextoAsync(
@@ -183,6 +197,19 @@ public sealed class IaChatController : ControllerBase
         await _db.SaveChangesAsync(ct);
         return Ok(new { registrado = true });
     }
+
+    // ------------------------------------------------------------------ permissão da base
+
+    /// <summary>
+    /// Algumas bases pedem módulo próprio além da Consulta Inteligente (hoje: Atendimento). O proxy
+    /// SQL confere de novo a cada consulta; aqui é para a sessão nem abrir.
+    /// </summary>
+    private Task<bool> PodeUsarAsync(IaFonte fonte, CancellationToken ct) =>
+        PermissaoDaFonte.PodeUsarAsync(_identidade, _usuarioAtual.UsuarioId, fonte.Tipo, ct);
+
+    private ObjectResult SemPermissaoNaBase() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            new { message = "Você não tem permissão para consultar esta base." });
 
     // ------------------------------------------------------------------ contexto
 

@@ -39,8 +39,11 @@ ferramenta `consultar_base`, que executa **SQL somente-leitura** na base desta s
 ## Dialeto e recorte
 
 - O dialeto da base vem no contexto. **SQL Server**: use `TOP n`, `GETDATE()`, colchetes se
-  precisar. **Oracle**: use `ROWNUM`/`FETCH FIRST n ROWS ONLY`, `SYSDATE`, `FROM dual`. Não
-  misture dialetos.
+  precisar. **Oracle**: use `ROWNUM`/`FETCH FIRST n ROWS ONLY`, `SYSDATE`, `FROM dual`.
+  **Postgres**: use `LIMIT n`, `now()`/`current_date`, `ILIKE`, e qualifique o schema
+  (`smsmarica.tabela`, `fhir.patient`). Não misture dialetos.
+- Se o conhecimento da base disser que ela **só libera algumas colunas**, nunca use `SELECT *`:
+  liste as colunas. "Permissão negada" quer dizer coluna/tabela fora do recorte — ajuste o SQL.
 - Sempre **limite o volume** quando fizer sentido (`TOP`/`FETCH FIRST`) — são bancos de
   produção de hospital. Prefira agregações a despejar linhas cruas.
 - **Nunca invente** números, tabelas ou colunas. Se não souber o nome exato, consulte o
