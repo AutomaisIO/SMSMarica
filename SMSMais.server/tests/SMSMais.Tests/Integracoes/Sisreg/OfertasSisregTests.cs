@@ -96,7 +96,10 @@ public class OfertasSisregTests(PostgresFixture fixture)
         await using var db = fixture.CriarDbContext();
         var unidadeId = await CriarUnidadeAsync(db);
         var proc = Random.Shared.Next(1_000_000, 9_999_999).ToString();
-        var ontem = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+        // "Ontem" no dia de Maricá, como o serviço conta. Em UTC, entre 21h e meia-noite o "ontem"
+        // ainda é hoje aqui — o teste falhou assim no deploy de 12/09/2026 às 21h08.
+        var ontem = DateOnly.FromDateTime(
+            SMSMais.Core.Common.Tempo.FusoBrasilia.ParaExibicao(DateTime.UtcNow)).AddDays(-1);
 
         db.SisregEscalas.Add(Escala(unidadeId, proc, DayOfWeek.Monday, 10, ontem, DateTime.UtcNow));
         await db.SaveChangesAsync();
