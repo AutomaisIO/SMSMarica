@@ -249,8 +249,11 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         if (string.IsNullOrWhiteSpace(patient.Id)) patient.Id = row.Id.ToString();
 
         patient.Meta ??= new Meta();
-        if (string.IsNullOrWhiteSpace(patient.Meta.VersionId))
-            patient.Meta.VersionId = row.VersionId.ToString();
+        // A versão AUTORITATIVA é a coluna version_id (é ela que AtualizarAsync compara no
+        // If-Match). O versionId embutido no JSONB pode estar defasado por backfill parcial
+        // (incidente 08/09/2026) — se ele for menor que a coluna, o chamador mandaria um
+        // If-Match obsoleto e levaria 409 para sempre. Sempre reflete a coluna, nunca o doc.
+        patient.Meta.VersionId = row.VersionId.ToString();
         if (patient.Meta.LastUpdated is null)
             patient.Meta.LastUpdated = row.LastUpdated;
         if (string.IsNullOrWhiteSpace(patient.Meta.Source))
