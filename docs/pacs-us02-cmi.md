@@ -6,7 +6,7 @@
 > AE de worklist `WORK-US02-CMI` criado e verificado no servidor em **2026-09-09**.
 
 > ⚠️ **Este documento é do aparelho NOVO.** O ultrassom que já está em operação no CMI continua
-> com o AE Title `US_CMI` e a worklist `WORK-CMI` — **não altere a configuração dele**. Ver
+> com o AE Title `US_CMI` e a worklist `WORK-US-CMI` (até 14/09/2026 era `WORK-CMI`) — **não altere a configuração dele**. Ver
 > [`pacs-us-cmi.md`](./pacs-us-cmi.md).
 
 ---

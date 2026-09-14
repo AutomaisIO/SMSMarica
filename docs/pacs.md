@@ -183,8 +183,8 @@ vive sendo esquecido. Criar um novo: skill **`criar-equipamento-imagem`**.
 | AE de worklist | `dcmMWLWorklistLabel` | Aparelho (AE do equipamento) | Unidade |
 |---|---|---|---|
 | `WORK-CDT` | `FDR-MAMO` | Mamógrafo Fuji FDR-3000AWS | CDT |
-| `WORK-CMI` | `US_CMI` | Ultrassom | CMI |
-| `WORK-US02-CMI` | `US02-CMI` | Ultrassom 02 — **inativo até a instalação** | CMI |
+| `WORK-US-CMI` | `US_CMI` | Ultrassom (aparelho 1 — nomes legados, fora do padrão; até 14/09/2026 era `WORK-CMI`) | CMI |
+| `WORK-US02-CMI` | `US02-CMI` | Ultrassom 02 (instalado em 11/09/2026) | CMI |
 | `WORK-US01-CDT` | `US01-CDT` | Ultrassom 01 | CDT |
 | `WORK-US02-CDT` | `US02-CDT` | Ultrassom 02 | CDT |
 | `WORK-DO-CDT` | `DO-CDT` | Densitometria óssea | CDT |
@@ -265,7 +265,8 @@ para 5.34.3 veio depois, por outros motivos).
 | AE | Label | Quem usa |
 |---|---|---|
 | `WORK-CDT` | `FDR-MAMO` | mamógrafo do CDT |
-| `WORK-CMI` | `US_CMI` | ultrassom do CMI |
+| `WORK-US-CMI` | `US_CMI` | ultrassom 1 do CMI (era `WORK-CMI` até 14/09/2026) |
+| `WORK-US02-CMI` | `US02-CMI` | ultrassom 02 do CMI (2026-09-09) |
 | `WORK-US01-CDT` | `US01-CDT` | ultrassom 01 do CDT |
 | `WORK-US02-CDT` | `US02-CDT` | ultrassom 02 do CDT |
 | `WORK-DO-CDT` | `DO-CDT` | densitometria óssea do CDT |
@@ -368,7 +369,8 @@ Parâmetros por equipamento (entregáveis ao técnico):
 | Equipamento | Unidade | Modalidade | AE Title | AE de worklist | Doc |
 |---|---|---|---|---|---|
 | Mamógrafo Fuji FDR-3000AWS | CDT | MG | `FDR-MAMO` | `WORK-CDT` | [`pacs-cdt-mamografo.md`](./pacs-cdt-mamografo.md) |
-| Ultrassom | Centro Materno Infantil | US | `US_CMI` | `WORK-CMI` | [`pacs-us-cmi.md`](./pacs-us-cmi.md) |
+| Ultrassom | Centro Materno Infantil | US | `US_CMI` | `WORK-US-CMI` | [`pacs-us-cmi.md`](./pacs-us-cmi.md) |
+| Ultrassom 02 | Centro Materno Infantil | US | `US02-CMI` | `WORK-US02-CMI` | [`pacs-us02-cmi.md`](./pacs-us02-cmi.md) |
 | Ultrassom 01 | CDT | US | `US01-CDT` | `WORK-US01-CDT` | — |
 | Ultrassom 02 | CDT | US | `US02-CDT` | `WORK-US02-CDT` | — |
 | Densitometria óssea | CDT | OT | `DO-CDT` | `WORK-DO-CDT` | — |

@@ -7,7 +7,7 @@ public sealed class Dcm4cheeMwlOptions
     /// <summary>Base URL do AE ADMINISTRATIVO de worklist (<c>WORKLIST</c>) — sem
     /// <c>dcmMWLWorklistLabel</c>, enxerga todos os itens; é por ele que criamos,
     /// confirmamos e removemos (<c>mwlitems</c> + <c>patients</c>). Os equipamentos usam
-    /// os AEs com label (WORK-CDT, WORK-CMI), que só devolvem a lista da própria estação.
+    /// os AEs com label (WORK-CDT, WORK-US-CMI, ...), que só devolvem a lista da própria estação.
     /// Ex.: <c>http://pacs.../dcm4chee-arc/aets/WORKLIST/rs/</c></summary>
     public string WorklistBaseUrl { get; set; } = string.Empty;
 

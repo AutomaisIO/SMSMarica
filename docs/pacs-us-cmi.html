@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuração do PACS para o ultrassom do CMI</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Configuração do PACS para o ultrassom do CMI</h1>
+<p>&gt; <strong>Para o técnico do equipamento.</strong> Parâmetros de rede DICOM para integrar o &gt; ultrassom do <strong>Centro Materno Infantil (CMI)</strong> ao PACS da SMS Maricá: para onde &gt; <strong>enviar as imagens</strong> e de onde <strong>puxar a lista de trabalho (worklist)</strong>. &gt; Validado por C-ECHO em <strong>2026-07-22</strong>. <strong>Em 14/09/2026 o AE de worklist passou de <code>WORK-CMI</code> &gt; para <code>WORK-US-CMI</code></strong>, que é o nome configurado no aparelho desde a visita técnica de 11/09. O &gt; <code>WORK-CMI</code> não existe mais. O AE do aparelho continua <code>US_CMI</code>.</p>
+<hr>
+<h2>1. Servidor (mesmo para imagem e worklist)</h2>
+<div class="tw"><table><thead><tr><th>Item</th><th>Valor</th></tr></thead><tbody>
+<tr><td>Endereço (IP)</td><td><strong><code>104.236.203.40</code></strong></td></tr>
+<tr><td>Hostname (DNS)</td><td><code>pacs.marica.automais.cloud</code></td></tr>
+<tr><td>Porta DICOM</td><td><strong><code>11112</code></strong> (sem TLS)</td></tr>
+<tr><td>Porta DICOM TLS (opcional)</td><td><code>2762</code></td></tr>
+</tbody></table></div>
+<p>&gt; Use o <strong>IP</strong> se a rede do CMI não resolver o DNS público.</p>
+<hr>
+<h2>2. Identificação do equipamento (lado do ultrassom)</h2>
+<div class="tw"><table><thead><tr><th>Parâmetro</th><th>Valor</th></tr></thead><tbody>
+<tr><td><strong>AE Title local</strong> (Calling AE)</td><td><strong><code>US_CMI</code></strong></td></tr>
+<tr><td><strong>Nome da estação</strong> (Station Name)</td><td><strong><code>US_CMI</code></strong></td></tr>
+<tr><td>Porta local</td><td><code>104</code></td></tr>
+</tbody></table></div>
+<p>O AE Title precisa ser <strong>exatamente</strong> <code>US_CMI</code> — é por ele que o sistema entrega a worklist só para esta máquina, e é o mesmo valor cadastrado no painel da SMS (Exames de Imagem → Equipamentos), associado ao Centro Materno Infantil.</p>
+<hr>
+<h2>3. Envio de imagens — Storage / C-STORE</h2>
+<div class="tw"><table><thead><tr><th>Parâmetro</th><th>Valor</th></tr></thead><tbody>
+<tr><td><strong>AE Title de destino</strong> (Called AE)</td><td><strong><code>PACS-CDT</code></strong></td></tr>
+<tr><td>Host / IP</td><td><code>104.236.203.40</code></td></tr>
+<tr><td><strong>Porta</strong></td><td><strong><code>11112</code></strong></td></tr>
+<tr><td>AE Title do equipamento (Calling AE)</td><td><code>US_CMI</code></td></tr>
+</tbody></table></div>
+<hr>
+<h2>4. Lista de trabalho — Modality Worklist (MWL)</h2>
+<div class="tw"><table><thead><tr><th>Parâmetro</th><th>Valor</th></tr></thead><tbody>
+<tr><td><strong>AE Title de destino</strong> (Called AE)</td><td><strong><code>WORK-US-CMI</code></strong></td></tr>
+<tr><td>Host / IP</td><td><code>104.236.203.40</code></td></tr>
+<tr><td><strong>Porta</strong></td><td><strong><code>11112</code></strong> &amp;nbsp;← <em>a MESMA porta do envio de imagens</em></td></tr>
+<tr><td>AE Title do equipamento (Calling AE)</td><td><code>US_CMI</code></td></tr>
+<tr><td>Filtros</td><td>Modalidade = <code>US</code>; Data = dia atual; <strong>Scheduled Station AE Title = <code>US_CMI</code></strong></td></tr>
+</tbody></table></div>
+<p>&gt; <strong>O <code>WORK-US-CMI</code> já entrega só os exames do CMI</strong>, mesmo que o filtro por estação não &gt; seja configurado: o servidor isola por Worklist Label (ver <code>pacs.md</code>). Ainda assim, &gt; preencha o filtro quando o aparelho oferecer — é defesa em profundidade.</p>
+<p>Se a máquina suportar <strong>MPPS</strong>, aponte para o mesmo <strong><code>WORK-US-CMI</code></strong> na porta <code>11112</code>.</p>
+<p>&gt; <strong>Imagem e worklist usam a MESMA porta.</strong> O que muda é só o AE Title de destino. &gt; Não configure a worklist para <code>PACS-CDT</code> — esse AE não responde MWL e a &gt; associação será recusada. E vice-versa.</p>
+<hr>
+<h2>5. Resumo (cola rápida)</h2>
+<p>``` SERVIDOR:        104.236.203.40   (pacs.marica.automais.cloud) PORTA DICOM:     11112            (TLS opcional: 2762)</p>
+<p>ENVIO DE IMAGEM (C-STORE)   Called AE:     PACS-CDT   Host:          104.236.203.40   Porta:         11112</p>
+<p>WORKLIST (MWL)   Called AE:     WORK-US-CMI   Host:          104.236.203.40   Porta:         11112   Filtros:       Modality = US, data de hoje,                  Scheduled Station AE Title = US_CMI   &lt;- obrigatorio</p>
+<p>MPPS (se houver):   Called AE:     WORK-US-CMI   Porta: 11112</p>
+<p>EQUIPAMENTO (local)   AE Title / Station Name:  US_CMI   Porta local:              104 ```</p>
+<hr>
+<h2>6. Rede</h2>
+<p>Liberar no firewall do CMI a <strong>saída</strong> TCP para <code>104.236.203.40:11112</code> (e <code>:2762</code> se for usar TLS). O ultrassom é sempre quem inicia a conexão — o PACS não precisa alcançar a porta local <code>104</code>.</p>
+<hr>
+<h2>7. Teste de conectividade</h2>
+<ol>
+<li><strong>C-ECHO</strong> (DICOM ping), com Calling AE <code>US_CMI</code>:</li>
+</ol>
+<ul>
+<li><code>PACS-CDT@104.236.203.40:11112</code> → <strong>Success (0x0000)</strong></li>
+<li><code>WORK-US-CMI@104.236.203.40:11112</code> → <strong>Success (0x0000)</strong></li>
+<li><em>(Ambos validados em 2026-07-21 pela equipe Automais, a partir da internet.)</em></li>
+</ul>
+<ol>
+<li><strong>Worklist</strong>: os exames aparecem conforme forem agendados na plataforma</li>
+</ol>
+<p>   SMSMais <strong>com o CMI como unidade executante</strong>. Lista vazia costuma ser    ausência de exame agendado para a data — confirmar com a equipe Automais.</p>
+<ol>
+<li><strong>Envio</strong>: dispare um C-STORE de teste para <code>PACS-CDT</code>. A imagem deve aparecer</li>
+</ol>
+<p>   no visualizador da plataforma logo em seguida.</p>
+<hr>
+<h2>8. Como o sistema usa esses nomes</h2>
+<p>O item de worklist sai carimbado com <code>ScheduledStationAETitle = US_CMI</code> — valor tirado do cadastro <strong>Exames de Imagem → Equipamentos</strong> (equipamento do CMI, modalidade US). Se a unidade executante não tiver equipamento cadastrado na modalidade do exame, o envio à worklist falha com "Sem equipamento configurado" e o exame mostra o erro — não existe AE de fallback.</p>
+<p>A separação de "Exames de Imagem" por unidade <strong>não</strong> depende do AE: ela vem da unidade executante da solicitação.</p>
+<hr>
+<p><em>Dúvidas técnicas: equipe Automais. Documentação interna do PACS: <a href="./pacs.md"><code>pacs.md</code></a>. Equivalente do mamógrafo: <a href="./pacs-cdt-mamografo.md"><code>pacs-cdt-mamografo.md</code></a>.</em></p>
+</main>
+</body>
+</html>

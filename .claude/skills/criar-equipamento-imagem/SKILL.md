@@ -37,6 +37,14 @@ Convenção em uso: `<MODALIDADE><NN>-<UNIDADE>` para o aparelho (`US02-CMI`, `R
 `US01-CDT`) e `WORK-<AE do aparelho>` para o AE de worklist (`WORK-US02-CMI`). Nomes legados sem
 número (`US_CMI`) ficam como estão — **não renomear aparelho que já funciona só por simetria.**
 
+**Padrão para TODO aparelho novo (definido pelo Bernardo em 14/09/2026):**
+`WORK-<MODALIDADE><NN>-<UNIDADE>` para a worklist e `<MODALIDADE><NN>-<UNIDADE>` para o aparelho,
+com o índice de dois dígitos sempre, mesmo quando só existe um aparelho daquela modalidade na
+unidade (`US01-XXX`, não `US-XXX`). O próximo ultrassom do CMI é `US03-CMI` / `WORK-US03-CMI`.
+**Exceção conhecida, que não deve ser "corrigida":** o ultrassom 1 do CMI, um dos primeiros
+aparelhos. Continua com o AE `US_CMI`, e a worklist dele é `WORK-US-CMI` desde 14/09/2026 (antes
+era `WORK-CMI`, e o aparelho foi reconfigurado para o nome novo). O label continua `US_CMI`.
+
 Confirmar o nome com o operador e conferir que está livre:
 
 ```bash
@@ -166,6 +174,38 @@ Acrescentar o aparelho às tabelas de `docs/pacs.md` (§8 e §9.1).
   (`JJ1017V3CodeMapping` vazia). Console que não mostra a descrição do estudo costuma precisar de
   `(0040,0008) ScheduledProtocolCodeSequence`, que hoje não emitimos — medido no Konica
   ImagePilot em 09/09/2026, que descarta `(0032,1060)` e `(0040,0007)`.
+- **Instalar o aparelho 2 pode desconfigurar o aparelho 1.** Em 11/09/2026, na visita para
+  instalar o `US02-CMI`, o técnico mexeu também no `US_CMI` que já funcionava: o Called AE da
+  worklist virou `WORK-US-CMI` (antes tentou `WORK-US01-CMI` e `WORK-USG-CMI`, e por um tempo o
+  Calling AE ficou `AE`). Nenhum desses existe — o PACS recusou tudo com
+  `called-AE-title-not-recognized` e o aparelho ficou sem worklist dias, enquanto a imagem seguia
+  chegando (exame digitado no console, Patient ID `AAAAMMDD_hhmmss_...`). **Depois de toda visita
+  técnica, conferir no log os DOIS aparelhos da unidade**, não só o novo.
+
+## Diagnóstico: "o aparelho não recebe a worklist"
+
+Antes de mexer em LDAP, **ver o que o aparelho está pedindo de verdade** — o log do dcm4chee dá
+o Called e o Calling AE de cada associação. No host do PACS:
+
+```bash
+LOGD=/opt/wildfly/standalone/log; IP=<IP público da unidade>
+# associações do IP por dia x "CALLED<-CALLING"
+grep -h "addr=$IP" $LOGD/server.log* | grep "close Socket" \
+  | awk '{for(i=1;i<=NF;i++) if($i ~ /<-/){n=$i; sub(/\(.*$/,"",n); print $1, n}}' | sort | uniq -c
+# recusas por nome errado (associação recusada não tem "close Socket" com o IP)
+grep -h "A-ASSOCIATE-RJ" $LOGD/server.log | grep -v "ANY-SCP<-" | cut -c1-230 | tail
+```
+
+| Sintoma no log | Causa |
+|---|---|
+| `WORK-XXX<-...` com `A-ASSOCIATE-RJ ... called-AE-title-not-recognized` | Called AE digitado errado no aparelho |
+| `WORK-XXX<-<outro nome>` aceito, mas lista vazia | Calling AE errado não importa (o recorte é pelo label); ver datas dos itens |
+| nenhuma associação `WORK-*` do IP | aparelho não está consultando (config desligada, rede, ou só consulta ao abrir a tela) |
+| C-FIND aceito (`status=ff00H` = item devolvido) e nada na tela | filtro do console (data, modalidade, estação) |
+
+Depois conferir o lado do servidor: `GET /aets/<AE>/rs/mwlitems` e as **datas** dos itens
+(`00400002`) — console filtrando "hoje" mostra vazio se só há itens de outros dias. `ANY-SCP<-ECHOSCU`,
+`<-CENSYS`, `<-FINDSCU` são varreduras da internet, ruído.
 
 ## Memórias relacionadas
 

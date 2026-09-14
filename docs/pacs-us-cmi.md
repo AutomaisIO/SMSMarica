@@ -3,7 +3,9 @@
 > **Para o técnico do equipamento.** Parâmetros de rede DICOM para integrar o
 > ultrassom do **Centro Materno Infantil (CMI)** ao PACS da SMS Maricá: para onde
 > **enviar as imagens** e de onde **puxar a lista de trabalho (worklist)**.
-> Validado por C-ECHO em **2026-07-22** (AE de worklist do CMI: `WORK-CMI`).
+> Validado por C-ECHO em **2026-07-22**. **Em 14/09/2026 o AE de worklist passou de `WORK-CMI`
+> para `WORK-US-CMI`**, que é o nome configurado no aparelho desde a visita técnica de 11/09. O
+> `WORK-CMI` não existe mais. O AE do aparelho continua `US_CMI`.
 
 ---
 
@@ -49,17 +51,17 @@ worklist só para esta máquina, e é o mesmo valor cadastrado no painel da SMS
 
 | Parâmetro | Valor |
 |-----------|-------|
-| **AE Title de destino** (Called AE) | **`WORK-CMI`** |
+| **AE Title de destino** (Called AE) | **`WORK-US-CMI`** |
 | Host / IP | `104.236.203.40` |
 | **Porta** | **`11112`** &nbsp;← *a MESMA porta do envio de imagens* |
 | AE Title do equipamento (Calling AE) | `US_CMI` |
 | Filtros | Modalidade = `US`; Data = dia atual; **Scheduled Station AE Title = `US_CMI`** |
 
-> **O `WORK-CMI` já entrega só os exames do CMI**, mesmo que o filtro por estação não
+> **O `WORK-US-CMI` já entrega só os exames do CMI**, mesmo que o filtro por estação não
 > seja configurado: o servidor isola por Worklist Label (ver `pacs.md`). Ainda assim,
 > preencha o filtro quando o aparelho oferecer — é defesa em profundidade.
 
-Se a máquina suportar **MPPS**, aponte para o mesmo **`WORK-CMI`** na porta `11112`.
+Se a máquina suportar **MPPS**, aponte para o mesmo **`WORK-US-CMI`** na porta `11112`.
 
 > **Imagem e worklist usam a MESMA porta.** O que muda é só o AE Title de destino.
 > Não configure a worklist para `PACS-CDT` — esse AE não responde MWL e a
@@ -79,14 +81,14 @@ ENVIO DE IMAGEM (C-STORE)
   Porta:         11112
 
 WORKLIST (MWL)
-  Called AE:     WORK-CMI
+  Called AE:     WORK-US-CMI
   Host:          104.236.203.40
   Porta:         11112
   Filtros:       Modality = US, data de hoje,
                  Scheduled Station AE Title = US_CMI   <- obrigatorio
 
 MPPS (se houver):
-  Called AE:     WORK-CMI   Porta: 11112
+  Called AE:     WORK-US-CMI   Porta: 11112
 
 EQUIPAMENTO (local)
   AE Title / Station Name:  US_CMI
@@ -107,7 +109,7 @@ não precisa alcançar a porta local `104`.
 
 1. **C-ECHO** (DICOM ping), com Calling AE `US_CMI`:
    - `PACS-CDT@104.236.203.40:11112` → **Success (0x0000)**
-   - `WORK-CMI@104.236.203.40:11112` → **Success (0x0000)**
+   - `WORK-US-CMI@104.236.203.40:11112` → **Success (0x0000)**
    - *(Ambos validados em 2026-07-21 pela equipe Automais, a partir da internet.)*
 2. **Worklist**: os exames aparecem conforme forem agendados na plataforma
    SMSMais **com o CMI como unidade executante**. Lista vazia costuma ser
