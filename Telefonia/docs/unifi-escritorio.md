@@ -83,5 +83,6 @@ Enquanto houver AP com `inform_url = http://10.30.30.23:8080/inform` gravado —
 | `10.203.0.0/24` | unidades SMS Maricá (`.<id+10>`) | `wg-unidades` :51833 |
 | `10.204.0.0/24` | IPR | `wg-ipr` :51834 |
 | `10.205.0.0/24` | Escritório Automais | `wg-escritorio` :51835 |
+| `10.206.0.0/24` | Servidor `smsmarica.online` — egress SISREG (14/09/2026, ver `docs/sisreg-egress.md`) | `wg-smsmarica` :51836 |
 
 Backup: `antes-unifi-020926` no AUTOMAIS-ROUTER; `antes-wg-ipr-020926` no CCR2116.
