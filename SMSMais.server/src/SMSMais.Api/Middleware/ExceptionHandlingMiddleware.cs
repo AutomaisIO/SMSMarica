@@ -36,6 +36,14 @@ public sealed partial class ExceptionHandlingMiddleware(
         {
             await EscreverProblemDetails(context, StatusCodes.Status409Conflict, "Conflito", ex.Message, type: ex.Codigo);
         }
+        // Conflito otimista contra o hub FHIR (If-Match): edição concorrente é condição normal
+        // e retryável — 409 limpo, não 500 registrado como erro/alerta falso.
+        catch (SMSMais.Core.Pacientes.Fhir.ConflitoVersaoHubException)
+        {
+            await EscreverProblemDetails(context, StatusCodes.Status409Conflict, "Conflito",
+                "O cadastro foi alterado por outra edição concorrente. Recarregue e tente novamente.",
+                type: "concorrencia.hub_fhir");
+        }
         catch (ValidacaoException ex)
         {
             await EscreverValidationProblem(context, ex.Erros);
