@@ -48,6 +48,16 @@ public interface IOfertasSisregService
         string procedimentoCodigo, int dias, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Quem ocupa as vagas de UM dia da oferta: os agendamentos que o cartão do dia descontou
+    /// ("3 de 4 livres"), com a mesma régua de <see cref="DatasDaOfertaAsync"/>.
+    /// </summary>
+    /// <param name="agendaLocal">Qual das agendas da unidade (numa unidade mista, a local e a
+    /// regulada são cartões diferentes).</param>
+    Task<OcupacaoDoDiaDto> OcupacaoDoDiaAsync(
+        string procedimentoCodigo, Guid unidadeId, DateOnly data, bool agendaLocal,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Quem está esperando por este procedimento — a lista que a oferta destrava.
     /// </summary>
     /// <param name="ordenar">
@@ -61,7 +71,10 @@ public interface IOfertasSisregService
         CancellationToken cancellationToken = default);
 }
 
-public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregService
+/// <param name="pacientes">Nome/idade de quem ocupa a vaga, no hub FHIR. Opcional: sem ele (testes)
+/// a ocupação sai sem nome — nunca quebra a tela por o hub estar fora.</param>
+public sealed class OfertasSisregService(
+    SmsMaisDbContext db, SMSMais.Core.Pacientes.Fhir.IPacienteResolver? pacientes = null) : IOfertasSisregService
 {
     /// <summary>
     /// Espera acima da qual a oferta é destacada. Seis meses não é um número clínico — é o ponto a
@@ -243,6 +256,118 @@ public sealed class OfertasSisregService(SmsMaisDbContext db) : IOfertasSisregSe
                 .ThenBy(u => u.SemAgendamentoFuturo)
                 .ThenBy(u => u.PrimeiraVagaLivre ?? DateOnly.MaxValue)
                 .ThenBy(u => u.UnidadeNome, StringComparer.Ordinal)]);
+    }
+
+    public async Task<OcupacaoDoDiaDto> OcupacaoDoDiaAsync(
+        string procedimentoCodigo, Guid unidadeId, DateOnly data, bool agendaLocal,
+        CancellationToken cancellationToken = default)
+    {
+        var codigo = (procedimentoCodigo ?? string.Empty).Trim();
+        if (codigo.Length == 0)
+        {
+            throw new Common.Excecoes.ValidacaoException(
+                "ocupacao.procedimento_obrigatorio", "Informe o procedimento para ver quem ocupa a vaga.");
+        }
+
+        var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        var grupo = GrupoDoCodigo(codigo);
+
+        // As mesmas escalas que formaram o cartão: esta unidade, este tipo de agenda, vigentes.
+        var escalas = await db.SisregEscalas.AsNoTracking()
+            .Where(e => e.UnidadeId == unidadeId
+                && e.AgendaLocal == agendaLocal
+                && (e.ProcedimentoCodigo == codigo || e.ProcedimentoCodigo == grupo)
+                && e.Status == StatusEscalaSisreg.Ativa
+                && !e.Ausente
+                && e.VigenciaFim >= hoje)
+            .Select(e => new EscalaDaOferta(
+                e.UnidadeId, e.Unidade!.Nome, e.ProcedimentoCodigo, e.ProcedimentoNome,
+                e.ProfissionalNome, e.DiaSemana, e.HoraInicio, e.HoraFim,
+                e.VigenciaInicio, e.VigenciaFim, e.VagasPrimeiraVez, e.VagasReserva, e.VagasTotal, e.AgendaLocal))
+            .ToListAsync(cancellationToken);
+
+        // Mesma régua de DatasDaOfertaAsync: escala de grupo é ocupada por qualquer item da família;
+        // escala de item, só pelo item.
+        var porFamilia = escalas.Any(e => EhCodigoDeGrupo(e.ProcedimentoCodigo));
+        var prefixo = codigo.Length >= 4 ? codigo[..4] : codigo;
+        var inicioUtc = FusoBrasilia.DeBrasiliaParaUtc(data.ToDateTime(TimeOnly.MinValue));
+        var fimUtc = FusoBrasilia.DeBrasiliaParaUtc(data.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+        var agendados = await db.Solicitacoes.AsNoTracking()
+            .Where(s => s.UnidadeExecutanteId == unidadeId
+                && s.ExcluidoEm == null
+                && s.CanceladoEm == null
+                && s.DataAgendada >= inicioUtc
+                && s.DataAgendada < fimUtc
+                && s.ProcedimentoCodigoSisreg != null
+                && s.ProcedimentoCodigoSisreg.StartsWith(prefixo)
+                && (porFamilia || s.ProcedimentoCodigoSisreg == codigo))
+            .OrderBy(s => s.DataAgendada)
+            .Select(s => new
+            {
+                s.Id,
+                s.PacienteId,
+                s.CodigoSolicitacao,
+                DataAgendada = s.DataAgendada!.Value,
+                s.ProcedimentoTexto,
+                s.ProfissionalExecutanteNome,
+                UnidadeSolicitante = s.UnidadeSolicitante != null ? s.UnidadeSolicitante.Nome : null,
+                s.StatusConfirmacao,
+                s.Categoria,
+            })
+            .ToListAsync(cancellationToken);
+
+        var ids = agendados.Select(a => a.PacienteId).Where(id => id != Guid.Empty).Distinct().ToList();
+        IReadOnlyDictionary<Guid, SMSMais.Core.Pacientes.Fhir.PacienteResumo> nomes =
+            new Dictionary<Guid, SMSMais.Core.Pacientes.Fhir.PacienteResumo>();
+        if (pacientes is not null && ids.Count > 0)
+        {
+            try
+            {
+                nomes = await pacientes.ResolverManyAsync(ids, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Hub fora: a lista sai sem nome (com o código do SISREG) em vez de a tela quebrar.
+            }
+        }
+
+        var blocos = escalas
+            .Where(e => e.DiaSemana == data.DayOfWeek && e.VigenciaInicio <= data && e.VigenciaFim >= data)
+            .ToList();
+        var vagasDoDia = blocos.Sum(b => b.VagasTotal);
+        var daRegulacao = blocos.Sum(b => b.VagasPrimeiraVez + b.VagasReserva);
+
+        var ocupantes = agendados.Select(a =>
+        {
+            var p = nomes.GetValueOrDefault(a.PacienteId);
+            int? idade = p?.DataNascimento is { } nasc
+                ? hoje.Year - nasc.Year - (hoje < nasc.AddYears(hoje.Year - nasc.Year) ? 1 : 0)
+                : null;
+            return new OcupanteDaVagaDto(
+                a.Id,
+                a.CodigoSolicitacao,
+                TimeOnly.FromDateTime(FusoBrasilia.ParaExibicao(a.DataAgendada)),
+                p?.Nome,
+                idade,
+                p?.Cns,
+                a.ProcedimentoTexto,
+                a.ProfissionalExecutanteNome,
+                a.UnidadeSolicitante,
+                a.StatusConfirmacao,
+                a.Categoria);
+        }).ToList();
+
+        return new OcupacaoDoDiaDto(
+            codigo,
+            unidadeId,
+            escalas.FirstOrDefault()?.UnidadeNome,
+            data,
+            blocos.Count > 0 ? blocos.Min(b => b.HoraInicio) : null,
+            blocos.Count > 0 ? blocos.Max(b => b.HoraFim) : null,
+            daRegulacao,
+            Math.Clamp(vagasDoDia - ocupantes.Count, 0, daRegulacao),
+            ocupantes);
     }
 
     /// <summary>

@@ -447,6 +447,36 @@ export type DatasDaOferta = {
   unidades: UnidadeDaOferta[];
 };
 
+/** Um agendamento que ocupa vaga no dia (GET /sisreg/ofertas/ocupacao). */
+export type OcupanteDaVaga = {
+  solicitacaoId: string;
+  codigoSolicitacao: string | null;
+  /** "HH:mm:ss", relógio de Maricá. */
+  hora: string;
+  /** Do hub FHIR; nulo se não resolveu. */
+  pacienteNome: string | null;
+  idadeAnos: number | null;
+  cns: string | null;
+  procedimentoTexto: string | null;
+  profissionalExecutanteNome: string | null;
+  unidadeSolicitante: string | null;
+  statusConfirmacao: 'Pendente' | 'Confirmada' | 'Cancelada';
+  categoria: string;
+};
+
+/** Quem ocupa as vagas de um dia da oferta, com a mesma conta do cartão. */
+export type OcupacaoDoDia = {
+  procedimentoCodigo: string;
+  unidadeId: string;
+  unidadeNome: string | null;
+  data: string;
+  horaInicio: string | null;
+  horaFim: string | null;
+  vagas: number;
+  livres: number;
+  ocupantes: OcupanteDaVaga[];
+};
+
 /** Situação da leitura da fila do SISREG. */
 export type FilaCargaStatus = {
   emExecucao: boolean;

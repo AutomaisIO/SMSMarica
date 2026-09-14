@@ -54,6 +54,25 @@ public sealed class SisregOfertasController(
         await ofertas.DatasDaOfertaAsync(procedimentoCodigo, dias, cancellationToken);
 
     /// <summary>
+    /// Quem ocupa as vagas de um dia da oferta — o clique no cartão do dia ("3 de 4 livres").
+    /// </summary>
+    /// <param name="procedimentoCodigo">O mesmo código usado em <c>/datas</c>.</param>
+    /// <param name="unidadeId">Unidade executante do cartão.</param>
+    /// <param name="data">O dia (aaaa-mm-dd, relógio de Maricá).</param>
+    /// <param name="agendaLocal">Qual agenda da unidade: local ou regulada.</param>
+    [HttpGet("ocupacao")]
+    [RequerPermissao(ModuloPermissao.AlteracoesAgenda, AcoesPermissao.Consulta)]
+    [ProducesResponseType<OcupacaoDoDiaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<OcupacaoDoDiaDto> Ocupacao(
+        [FromQuery] string procedimentoCodigo,
+        [FromQuery] Guid unidadeId,
+        [FromQuery] DateOnly data,
+        [FromQuery] bool agendaLocal = false,
+        CancellationToken cancellationToken = default) =>
+        await ofertas.OcupacaoDoDiaAsync(procedimentoCodigo, unidadeId, data, agendaLocal, cancellationToken);
+
+    /// <summary>
     /// Quem está esperando por este procedimento — a lista que a oferta destrava.
     /// </summary>
     /// <param name="procedimento">Nome exato, como o SISREG escreve. É o eixo: a tela da fila do

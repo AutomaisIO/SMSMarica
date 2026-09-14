@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Home, Loader2 } from 'lucide-react';
 import { useDatasDaOferta } from '../api/queries';
 import type { DiaDaOferta, UnidadeDaOferta } from '../types';
+import { OcupacaoDoDiaModal } from './OcupacaoDoDiaModal';
 
 const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
@@ -15,29 +16,38 @@ function hora(h: string) {
   return h.slice(0, 5);
 }
 
-function Dia({ d }: { d: DiaDaOferta }) {
+/** Cartão do dia. Clicar abre quem está ocupando as vagas daquele dia. */
+function Dia({ d, aoAbrir }: { d: DiaDaOferta; aoAbrir: (d: DiaDaOferta) => void }) {
   const lotado = d.livres === 0;
   return (
-    <li
-      className={`rounded-md border px-2 py-1.5 text-xs ${
-        lotado ? 'border-gray-200 bg-gray-50 text-gray-400' : 'border-emerald-200 bg-emerald-50/60 text-gray-800'
-      }`}
-      title={d.profissionais.join(', ')}
-    >
-      <p className="font-medium">{dia(d.data)}</p>
-      <p className="text-[11px]">
-        {hora(d.horaInicio)}–{hora(d.horaFim)}
-      </p>
-      <p className={`text-[11px] ${lotado ? '' : 'font-semibold text-emerald-700'}`}>
-        {lotado ? 'lotado' : `${d.livres} de ${d.vagas} livres`}
-      </p>
+    <li>
+      <button
+        type="button"
+        onClick={() => aoAbrir(d)}
+        className={`w-full rounded-md border px-2 py-1.5 text-left text-xs transition hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+          lotado
+            ? 'border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300'
+            : 'border-emerald-200 bg-emerald-50/60 text-gray-800 hover:border-emerald-400'
+        }`}
+        title={`${d.profissionais.join(', ')}${d.profissionais.length ? ' — ' : ''}clique para ver quem ocupa a vaga`}
+      >
+        <p className="font-medium">{dia(d.data)}</p>
+        <p className="text-[11px]">
+          {hora(d.horaInicio)}–{hora(d.horaFim)}
+        </p>
+        <p className={`text-[11px] ${lotado ? '' : 'font-semibold text-emerald-700'}`}>
+          {lotado ? 'lotado' : `${d.livres} de ${d.vagas} livres`}
+        </p>
+      </button>
     </li>
   );
 }
 
-function Unidade({ u, abertaDeInicio }: { u: UnidadeDaOferta; abertaDeInicio: boolean }) {
+function Unidade({ u, codigo, abertaDeInicio }: { u: UnidadeDaOferta; codigo: string; abertaDeInicio: boolean }) {
   const [aberta, setAberta] = useState(abertaDeInicio);
   const [comLotados, setComLotados] = useState(false);
+  const [diaAberto, setDiaAberto] = useState<DiaDaOferta | null>(null);
+  const fecharDia = useCallback(() => setDiaAberto(null), []);
   const visiveis = comLotados ? u.dias : u.dias.filter((d) => d.livres > 0);
   const lotados = u.dias.length - u.dias.filter((d) => d.livres > 0).length;
 
@@ -101,7 +111,7 @@ function Unidade({ u, abertaDeInicio }: { u: UnidadeDaOferta; abertaDeInicio: bo
           {visiveis.length > 0 ? (
             <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-7">
               {visiveis.map((d) => (
-                <Dia key={d.data} d={d} />
+                <Dia key={d.data} d={d} aoAbrir={setDiaAberto} />
               ))}
             </ul>
           ) : (
@@ -118,6 +128,23 @@ function Unidade({ u, abertaDeInicio }: { u: UnidadeDaOferta; abertaDeInicio: bo
           ) : null}
         </div>
       ) : null}
+
+      <OcupacaoDoDiaModal
+        alvo={
+          diaAberto
+            ? {
+                codigo,
+                unidadeId: u.unidadeId,
+                unidadeNome: u.unidadeNome,
+                agendaLocal: u.agendaLocal,
+                data: diaAberto.data.slice(0, 10),
+                rotuloDia: dia(diaAberto.data),
+                horario: `${hora(diaAberto.horaInicio)}–${hora(diaAberto.horaFim)}`,
+              }
+            : null
+        }
+        aoFechar={fecharDia}
+      />
     </li>
   );
 }
@@ -176,7 +203,7 @@ export function DatasDaOfertaPainel({ codigo }: { codigo: string }) {
           {reguladas.length > 0 ? (
             <ul className="mt-3 space-y-2">
               {reguladas.map((u, i) => (
-                <Unidade key={`${u.unidadeId}-${u.agendaLocal}`} u={u} abertaDeInicio={i === 0} />
+                <Unidade key={`${u.unidadeId}-${u.agendaLocal}`} u={u} codigo={codigo}abertaDeInicio={i === 0} />
               ))}
             </ul>
           ) : (
@@ -198,7 +225,7 @@ export function DatasDaOfertaPainel({ codigo }: { codigo: string }) {
               {verLocais ? (
                 <ul className="mt-2 space-y-2">
                   {locais.map((u) => (
-                    <Unidade key={`${u.unidadeId}-${u.agendaLocal}`} u={u} abertaDeInicio={false} />
+                    <Unidade key={`${u.unidadeId}-${u.agendaLocal}`} u={u} codigo={codigo}abertaDeInicio={false} />
                   ))}
                 </ul>
               ) : null}

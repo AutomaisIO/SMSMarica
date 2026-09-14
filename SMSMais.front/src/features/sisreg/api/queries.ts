@@ -5,6 +5,7 @@ import {
   listarDatasDaOferta,
   listarFilaDaOferta,
   listarOfertas,
+  obterOcupacaoDoDia,
   obterAgendamentoFila,
   obterStatusFila,
   obterStatusFilaConfig,
@@ -58,6 +59,8 @@ export const sisregKeys = {
   filaStatusConfig: ['sisreg', 'fila', 'status'] as const,
   filaAgendamento: ['sisreg', 'fila', 'agendamento'] as const,
   datasDaOferta: (codigo: string) => ['sisreg', 'ofertas', 'datas', codigo] as const,
+  ocupacaoDoDia: (codigo: string, unidadeId: string, data: string, agendaLocal: boolean) =>
+    ['sisreg', 'ofertas', 'ocupacao', codigo, unidadeId, data, agendaLocal] as const,
 };
 
 export function useConfiguracaoSisreg() {
@@ -303,6 +306,22 @@ export function useDatasDaOferta(codigo: string | null) {
     queryKey: sisregKeys.datasDaOferta(codigo ?? ''),
     queryFn: () => listarDatasDaOferta(codigo!),
     enabled: Boolean(codigo),
+  });
+}
+
+/** Quem ocupa as vagas do dia clicado. Só busca com o modal aberto. */
+export function useOcupacaoDoDia(
+  alvo: { codigo: string; unidadeId: string; data: string; agendaLocal: boolean } | null,
+) {
+  return useQuery({
+    queryKey: sisregKeys.ocupacaoDoDia(
+      alvo?.codigo ?? '',
+      alvo?.unidadeId ?? '',
+      alvo?.data ?? '',
+      alvo?.agendaLocal ?? false,
+    ),
+    queryFn: () => obterOcupacaoDoDia(alvo!.codigo, alvo!.unidadeId, alvo!.data, alvo!.agendaLocal),
+    enabled: alvo !== null,
   });
 }
 

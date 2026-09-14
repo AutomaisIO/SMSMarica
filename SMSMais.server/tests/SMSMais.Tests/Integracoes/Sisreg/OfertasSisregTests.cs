@@ -321,7 +321,11 @@ public class OfertasSisregTests(PostgresFixture fixture)
             DiaSemana = dia,
             HoraInicio = new TimeOnly(8, 0),
             HoraFim = new TimeOnly(12, 0),
-            VigenciaInicio = inicio ?? DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1),
+            // Começa AMANHÃ (dia de Maricá), como Proxima(): se valesse desde ontem, o dia de hoje
+            // entrava como dia de vaga sempre que caísse no mesmo dia da semana — e "a primeira
+            // vaga livre" virava hoje. Quebrou numa segunda-feira (14/09/2026).
+            VigenciaInicio = inicio ?? DateOnly.FromDateTime(
+                SMSMais.Core.Common.Tempo.FusoBrasilia.ParaExibicao(DateTime.UtcNow)).AddDays(1),
             VigenciaFim = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(60),
             VagasPrimeiraVez = primeiraVez,
             VagasTotal = total,
@@ -375,6 +379,41 @@ public class OfertasSisregTests(PostgresFixture fixture)
         Assert.Equal(6, dia3.Livres);            // vazio: o teto é a primeira vez, não o total
         Assert.Equal(6, dia3.Vagas);
         Assert.Equal(segunda.AddDays(7), u.PrimeiraVagaLivre);
+    }
+
+    /// <summary>
+    /// Clique no cartão do dia ("3 de 4 livres", pedido de 14/09/2026): a lista de quem ocupa tem
+    /// de ser exatamente o que o cartão descontou — sem cancelado, sem outro dia, na ordem da hora.
+    /// </summary>
+    [Fact]
+    public async Task Ocupacao_do_dia_lista_quem_esta_na_vaga_e_bate_com_o_cartao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidadeId = await CriarUnidadeAsync(db);
+        var codigo = CodigoItem();
+        var sexta = Proxima(DayOfWeek.Friday);
+
+        db.SisregEscalas.Add(EscalaDeVagas(unidadeId, codigo, DayOfWeek.Friday, primeiraVez: 4, total: 4));
+        var tarde = Agendado(unidadeId, codigo, sexta);
+        tarde.DataAgendada = sexta.ToDateTime(new TimeOnly(17, 20), DateTimeKind.Utc); // 14:20 em Maricá
+        var manha = Agendado(unidadeId, codigo, sexta);                                  // 09:00 em Maricá
+        var cancelado = Agendado(unidadeId, codigo, sexta);
+        cancelado.CanceladoEm = DateTime.UtcNow;
+        var outroDia = Agendado(unidadeId, codigo, sexta.AddDays(7));
+        db.Solicitacoes.AddRange(tarde, manha, cancelado, outroDia);
+        await db.SaveChangesAsync();
+
+        var servico = new OfertasSisregService(db);
+        var r = await servico.OcupacaoDoDiaAsync(codigo, unidadeId, sexta, agendaLocal: false);
+        var cartao = (await servico.DatasDaOfertaAsync(codigo, 30))
+            .Unidades.Single(u => u.UnidadeId == unidadeId)
+            .Dias.Single(d => d.Data == sexta);
+
+        Assert.Equal([manha.Id, tarde.Id], r.Ocupantes.Select(o => o.SolicitacaoId));
+        Assert.Equal(new TimeOnly(14, 20), r.Ocupantes[1].Hora);
+        Assert.Equal(cartao.Agendados, r.Ocupantes.Count);
+        Assert.Equal(cartao.Livres, r.Livres);
+        Assert.Equal(cartao.Vagas, r.Vagas);
     }
 
     /// <summary>

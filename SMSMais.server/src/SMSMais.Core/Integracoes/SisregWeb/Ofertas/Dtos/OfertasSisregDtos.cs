@@ -1,3 +1,5 @@
+using SMSMais.Data.Entities.Enums;
+
 namespace SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
 
 /// <summary>
@@ -135,6 +137,38 @@ public sealed record UnidadeDaOfertaDto(
     int AgendadosFuturos,
     bool SemAgendamentoFuturo,
     IReadOnlyList<DiaDaOfertaDto> Dias);
+
+/// <summary>Um agendamento que ocupa vaga no dia — quem está "dentro" do "3 de 4 livres".</summary>
+/// <param name="Hora">Hora marcada, no relógio de Maricá.</param>
+/// <param name="PacienteNome">Do hub FHIR; nulo se o hub não respondeu ou o paciente não foi
+/// resolvido (a linha continua, com o código do SISREG).</param>
+/// <param name="StatusConfirmacao">Resposta do paciente ao aviso de WhatsApp.</param>
+public sealed record OcupanteDaVagaDto(
+    Guid SolicitacaoId,
+    string? CodigoSolicitacao,
+    TimeOnly Hora,
+    string? PacienteNome,
+    int? IdadeAnos,
+    string? Cns,
+    string? ProcedimentoTexto,
+    string? ProfissionalExecutanteNome,
+    string? UnidadeSolicitante,
+    StatusConfirmacaoAgendamento StatusConfirmacao,
+    CategoriaSolicitacao Categoria);
+
+/// <summary>Quem ocupa as vagas de um dia da oferta, com a mesma conta do cartão.</summary>
+/// <param name="Vagas">Vagas da regulação no dia (1ª vez + reserva).</param>
+/// <param name="Livres">A mesma estimativa do cartão do dia.</param>
+public sealed record OcupacaoDoDiaDto(
+    string ProcedimentoCodigo,
+    Guid UnidadeId,
+    string? UnidadeNome,
+    DateOnly Data,
+    TimeOnly? HoraInicio,
+    TimeOnly? HoraFim,
+    int Vagas,
+    int Livres,
+    IReadOnlyList<OcupanteDaVagaDto> Ocupantes);
 
 /// <summary>As datas de um procedimento, por unidade — o que o SISREG mostra ao autorizar.</summary>
 public sealed record DatasDaOfertaDto(

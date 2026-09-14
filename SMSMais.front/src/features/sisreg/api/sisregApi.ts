@@ -3,6 +3,7 @@ import type {
   FilaAgendamento,
   FilaCargaStatus,
   FilaDaOferta,
+  OcupacaoDoDia,
   Ofertas,
   OrdemDaFila,
 } from '../types';
@@ -255,6 +256,19 @@ export async function listarDatasDaOferta(
     params: { procedimentoCodigo, dias },
   });
   return data;
+}
+
+/** Quem ocupa as vagas de um dia da oferta — o clique no cartão "3 de 4 livres". */
+export async function obterOcupacaoDoDia(
+  procedimentoCodigo: string,
+  unidadeId: string,
+  data: string,
+  agendaLocal: boolean,
+): Promise<OcupacaoDoDia> {
+  const { data: resposta } = await http.get<OcupacaoDoDia>('/sisreg/ofertas/ocupacao', {
+    params: { procedimentoCodigo, unidadeId, data, agendaLocal },
+  });
+  return resposta;
 }
 
 export async function obterStatusFila(): Promise<FilaCargaStatus> {
