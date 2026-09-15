@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extensão SISREG — ponte de eventos em tempo (quase) real</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Extensão SISREG — ponte de eventos em tempo (quase) real</h1>
+<p>&gt; Estado: <strong>fase 1 em construção</strong> (marcação + cancelamento). Documento vivo — atualizar quando &gt; novas requisições do SISREG forem reveladas/tratadas.</p>
+<h2>Objetivo</h2>
+<p>Atualizar a base do SMSMarica <strong>a partir do que os operadores fazem no SISREG</strong>, antecipando o que hoje só chega pela <strong>varredura diária</strong> (arquivo TXT / <code>cons_agendas</code>). A fonte é a extensão de navegador <a href="../SMSMais.chrome/README.md"><code>SMSMais.chrome</code></a>, que <strong>só observa</strong> o SISREG — nunca dispara requisição para lá, então <strong>não gasta o orçamento anti-robô</strong> e não derruba sessão. Tudo que ela registra foi o próprio operador quem fez, com a senha dele.</p>
+<p>Complementa (não substitui) a varredura: os eventos dão o <strong>delta em tempo quase real</strong>; a varredura continua como conferência/rede de segurança.</p>
+<h2>Arquitetura</h2>
+<ul>
+<li><strong>Extensão MV3</strong> (<code>SMSMais.chrome</code>): captura o <strong>envio</strong> (via <code>webRequest</code> + hook de fetch/XHR) e o</li>
+</ul>
+<p>  <strong>retorno</strong> (HTML da tela, lido do frame). Um blur exige login no SMSMarica; envia lotes   comprimidos para <code>POST /extensao/sisreg/capturas</code>. Detalhes no README do projeto.</p>
+<ul>
+<li><strong>Só observa.</strong> Nenhuma requisição é disparada ao SISREG.</li>
+<li><strong>Persistência (fase de análise):</strong> <code>smsmarica.sisreg_captura_navegador</code> — uma linha por evento</li>
+</ul>
+<p>  (envio, resposta ou ajax), com o payload cru. Descartável depois.</p>
+<ul>
+<li><strong>Processamento (fase 1):</strong> um processador no <strong>servidor</strong> lê as capturas, correlaciona</li>
+</ul>
+<p>  envio+resposta e cria/atualiza a <code>Solicitacao</code> reusando o pipeline do import do TXT. A lógica   frágil (ler a tela do SISREG) fica no servidor — conserto por deploy, sem recarregar os PCs.</p>
+<ul>
+<li><strong>Monitores:</strong> <code>GET /extensao/sisreg/capturas/resumo</code> (contagens por PC/kind/evento/caminho/etapa,</li>
+</ul>
+<p>  sem PII) e <code>.../estrutura</code> (nomes de campo do envio + rótulos da resposta, sem PII).</p>
+<h2>O que já observamos em produção (15/09/2026)</h2>
+<p>Um PC de uma <strong>médica reguladora</strong> gerou ~3.000 capturas num dia. As etapas reais:</p>
+<div class="tw"><table><thead><tr><th>Caminho · etapa</th><th>O que é</th><th>Vezes</th></tr></thead><tbody>
+<tr><td><code>marcar · MARCAR</code></td><td><strong>gravar a marcação</strong> (agendar o paciente na vaga)</td><td>~37</td></tr>
+<tr><td><code>marcar · LST_VAGAS</code> / <code>LST_ITENS_PA</code> / (vazio)</td><td>passos anteriores da marcação</td><td>~110</td></tr>
+<tr><td><code>cadweb50 · DETALHAR</code></td><td>buscar o paciente (CADSUS)</td><td>~40</td></tr>
+<tr><td><code>gerenciador_solicitacao · LISTAR/VISUALIZAR</code></td><td>consultar solicitações</td><td>~28</td></tr>
+<tr><td><code>cons_verificar · EXCLUIR_SOLICITACAO</code></td><td><strong>cancelar</strong></td><td>1</td></tr>
+<tr><td><code>autorizador</code> (sem etapa de escrita)</td><td>fila do regulador (só navegação capturada)</td><td>~1.778</td></tr>
+</tbody></table></div>
+<h2>Fase 1 — ações tratadas agora</h2>
+<h3>Marcação — <code>marcar · MARCAR</code></h3>
+<p><strong>É agendar o paciente numa vaga existente</strong> (consome a vaga; o SISREG gera o <code>co_solicitacao</code> e a Chave de Confirmação). Não é "regular".</p>
+<ul>
+<li><strong>Campos do envio</strong> (já estruturados): <code>cns</code>, <code>pa</code> (procedimento SISREG), <code>cid10</code>, <code>cpfprofsol</code>/</li>
+</ul>
+<p>  <code>nomeprofsol</code> (solicitante), <code>upsexec</code>, e a vaga: <code>vaga_cpfprofexec</code> (CPF do executante),   <code>vaga_dataexec</code> + <code>vaga_horaexec</code> (data/hora), <code>vaga_cod_escala</code>, <code>vaga_upsexec</code>.</p>
+<ul>
+<li><strong>Da resposta:</strong> <code>co_solicitacao</code> (número — <strong>chave de idempotência</strong>) e a Chave de Confirmação.</li>
+<li><strong>Como entra na base:</strong> monta um <code>MarcacaoSisreg</code> e chama <code>ImportarMarcacoesAsync</code> — o <strong>mesmo</strong></li>
+</ul>
+<p>  ponto de entrada do import do TXT. Reusa dedup de paciente (CNS→base→CADSUS), auto-criação de   unidade por CNES, <strong>idempotência por número</strong> e a <strong>reconciliação</strong> com a manual/TXT.</p>
+<ul>
+<li><strong>Vaga consumida = DERIVAÇÃO.</strong> Não existe "baixar vaga": a ocupação é calculada cruzando</li>
+</ul>
+<p>  <code>Solicitacoes × SisregEscala</code> (unidade + CPF do executante + procedimento + dia). Criar a   solicitação já a faz contar nas Agendas — dinâmico, automático.</p>
+<h3>Cancelamento — <code>cons_verificar · EXCLUIR_SOLICITACAO</code></h3>
+<ul>
+<li><strong>Campos do envio</strong> (100% local, sem ler HTML): <code>codigo_solicitacao</code>, <code>justificativa</code>.</li>
+<li><strong>Como entra na base:</strong> acha a <code>Solicitacao</code> pelo <code>CodigoSolicitacao</code> e seta <code>CanceladoEm</code> +</li>
+</ul>
+<p>  <code>MotivoCancelamento</code>. Como a ocupação é derivada com <code>CanceladoEm IS NULL</code>, <strong>cancelar libera a   vaga automaticamente</strong> nas Agendas.</p>
+<h2>Proveniência e "somar" os RAWs</h2>
+<ul>
+<li><strong>Marca de origem:</strong> <code>Solicitacao.FonteCriacao</code> (<code>Manual</code> / <code>ImportacaoTxt</code> / <code>ExtensaoNavegador</code>)</li>
+</ul>
+<p>  — para rastrear de onde a solicitação (ou a alteração) surgiu, se a base divergir.</p>
+<ul>
+<li><strong>Reconciliação:</strong> o pipeline <strong>complementa por número preservando a autoria</strong> (trilha</li>
+</ul>
+<p>  <code>ComplementadaImportacaoSisreg</code>), <strong>não sobrepõe cego</strong>. A extensão escreve em tempo real; quando   o TXT chega com o mesmo número, ele confere/completa. Divergências viram trilha, não sobrescrita   silenciosa.</p>
+<h2>Segurança / LGPD (decisões desta fase)</h2>
+<ul>
+<li><strong>Transporte:</strong> HTTPS/TLS já cifra o corpo na rede. <strong>Sem cifra extra no trânsito</strong> — cifrar com o</li>
+</ul>
+<p>  token do usuário na mesma requisição não agrega (o token viaja junto) e o token não é uma chave.</p>
+<ul>
+<li><strong>Em repouso:</strong> o raw é guardado <strong>como está</strong> nesta fase de análise. A <strong>Chave de Confirmação</strong> é</li>
+</ul>
+<p>  dado sensível (prova de comparecimento) — guardada em campo próprio, fora do raw renderizado.</p>
+<ul>
+<li><strong>Retenção:</strong> o acervo cru é descartável após a análise.</li>
+</ul>
+<h2>O que ainda NÃO tratamos — expectativa (roadmap)</h2>
+<p>Conforme outras requisições forem reveladas no tráfego real, tratar:</p>
+<div class="tw"><table><thead><tr><th>Ação no SISREG</th><th>Efeito na base esperado</th><th>Situação</th></tr></thead><tbody>
+<tr><td><strong>Regular / autorizar</strong> (<code>autorizador</code>, aplicar)</td><td>muda <strong>status</strong> da solicitação (autorizada/agendada)</td><td>maior volume observado, mas <strong>sem etapa de escrita identificável ainda</strong> — provável AJAX; precisa melhorar a captura</td></tr>
+<tr><td><strong>Criar / excluir agenda</strong> (escala do executante, <code>cons_escalas</code>)</td><td>cria/remove <strong>vagas</strong> (aí sim direto, não só por derivação)</td><td><strong>não observado</strong> — esta médica não tem acesso de executante; instrumentar um PC executante</td></tr>
+<tr><td><strong>Criar solicitação</strong> / <strong>devolver à regulação</strong> (<code>REENVIAR_REGULACAO</code>)</td><td>nova solicitação / volta à fila</td><td>não observado ainda</td></tr>
+<tr><td><strong>Confirmar / Falta</strong> (<code>cons_agendas</code>)</td><td>comparecimento / falta</td><td>não observado (ninguém tocou hoje)</td></tr>
+</tbody></table></div>
+<p>A expectativa é que <strong>cada uma vire um evento</strong> que atualiza a base pelo mesmo princípio: capturar (envio + retorno), correlacionar no servidor, e aplicar o delta reusando o pipeline existente — sempre com a varredura diária como conferência.</p>
+<h2>Endpoints</h2>
+<div class="tw"><table><thead><tr><th>Método</th><th>Rota</th><th>Papel</th></tr></thead><tbody>
+<tr><td>POST</td><td><code>/extensao/sisreg/capturas</code></td><td>ingest dos lotes (autenticado; qualquer usuário do SMSMarica)</td></tr>
+<tr><td>GET</td><td><code>/extensao/sisreg/capturas/resumo</code></td><td>monitor: contagens/metadados (sem PII)</td></tr>
+<tr><td>GET</td><td><code>/extensao/sisreg/capturas/estrutura</code></td><td>nomes de campo do envio + rótulos da resposta (sem PII)</td></tr>
+</tbody></table></div>
+</main>
+</body>
+</html>
