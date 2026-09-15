@@ -69,15 +69,23 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
 
         var ultimoRecebido = await q.MaxAsync(x => (DateTime?)x.CriadoEm, ct);
 
-        var instalacoes = await q
+        // Agregações simples (traduzíveis). UltimaVersao via Max da string — aproximação boa o
+        // bastante para um monitor; subquery ordenado dentro do GroupBy não traduz no Npgsql.
+        var instalacoesRaw = await q
             .GroupBy(x => x.InstallId)
-            .Select(g => new CapturaInstalacaoDto(
-                g.Key,
-                g.OrderByDescending(x => x.CriadoEm).Select(x => x.Versao).FirstOrDefault(),
-                g.LongCount(),
-                g.Max(x => x.CriadoEm)))
-            .OrderByDescending(i => i.UltimoEm)
+            .Select(g => new
+            {
+                InstallId = g.Key,
+                Total = g.LongCount(),
+                UltimoEm = g.Max(x => x.CriadoEm),
+                UltimaVersao = g.Max(x => x.Versao),
+            })
             .ToListAsync(ct);
+
+        var instalacoes = instalacoesRaw
+            .OrderByDescending(i => i.UltimoEm)
+            .Select(i => new CapturaInstalacaoDto(i.InstallId, i.UltimaVersao, i.Total, i.UltimoEm))
+            .ToList();
 
         var porKind = await q
             .GroupBy(x => x.Kind)
