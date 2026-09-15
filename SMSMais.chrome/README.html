@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMSMais · Ponte SISREG — extensão Chrome</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>SMSMais · Ponte SISREG — extensão Chrome</h1>
+<p>Registra no SMSMais as operações que o usuário faz no SISREG, para <strong>antecipar</strong> o que hoje só chega pela varredura diária. Nesta fase de piloto o objetivo é <strong>capturar tudo</strong> (envio e retorno) para depois a gente analisar e decidir os endpoints definitivos.</p>
+<p>Regra de ouro: a extensão <strong>só observa</strong> o SISREG. Nunca dispara requisição para lá — não gasta o orçamento anti-robô nem abre sessão. Tudo que ela registra foi o próprio usuário quem fez, com a senha dele.</p>
+<h2>O que ela faz (v0.2.0)</h2>
+<ol>
+<li><strong>Bloqueia o SISREG (blur) até o SMSMarica estar conectado.</strong> A extensão "acha" a sessão do</li>
+</ol>
+<p>   painel <code>smsmarica.online</code> já aberta/logada no navegador; se não houver, o modal pede o login    (o login é feito <strong>no nosso site</strong>, nunca dentro da página do SISREG).</p>
+<ol>
+<li><strong>Selo discreto</strong> no canto, com a marca do SMSMarica e um <strong>LED</strong> de status:</li>
+</ol>
+<p>   | LED | Significado |    |---|---|    | cinza | sem sessão no SMSMarica |    | verde | conectado |    | âmbar piscando | enviando capturas |    | verde com halo | acabou de registrar |    | vermelho | SMSMarica fora de alcance (as capturas ficam guardadas) |</p>
+<ol>
+<li><strong>Captura</strong> cada operação: o <strong>envio</strong> (URL + campos do formulário, com <code>etapa</code> e o evento de</li>
+</ol>
+<p>   negócio — cancelamento, confirmação, falta…) e o <strong>retorno</strong> (o HTML da tela que carregou e os    corpos de AJAX do <code>sisreg_ajax</code>).</p>
+<ol>
+<li><strong>Envia em lote</strong> (comprimido) para a nossa API, autenticando com o <strong>mesmo login</strong> do painel.</li>
+</ol>
+<p>O que o usuário final vê é só o selo com o LED. A lista de requisições existe para depuração e fica escondida: <strong>alt+clique no selo</strong> abre/fecha.</p>
+<h2>Decisões desta fase</h2>
+<ul>
+<li><strong>API fora do ar → o SISREG continua liberado</strong> (o blur exige o login, não a API). As capturas</li>
+</ul>
+<p>  ficam guardadas na memória da extensão e são reenviadas quando a API volta.</p>
+<ul>
+<li><strong>Guardar tudo</strong>, sem expurgo — é material para o agente analisar; depois se descarta.</li>
+<li><strong>Só modo desenvolvedor</strong>, sem distribuição em massa por enquanto.</li>
+</ul>
+<h2>Instalar (modo desenvolvedor)</h2>
+<ol>
+<li><code>chrome://extensions</code> → ligar <strong>Modo do desenvolvedor</strong>.</li>
+<li><strong>Carregar sem compactação</strong> → escolher a pasta <code>SMSMais.chrome/</code>.</li>
+<li>Fixar o ícone na barra.</li>
+</ol>
+<p>Ao editar arquivos: <strong>↻</strong> no card da extensão; para o painel/blur (<code>content.js</code>), dar <strong>F5</strong> na aba do SISREG também.</p>
+<h2>Configurar (antes de testar)</h2>
+<p><code>config.js</code>:</p>
+<ul>
+<li><code>API_BASE</code> — para onde as capturas vão. Padrão <code>http://localhost:5080</code> (backend na sua máquina).</li>
+<li><code>PAINEL_ORIGIN</code> — de onde a extensão lê o login. Padrão <code>https://smsmarica.online</code>.</li>
+</ul>
+<h2>Como funciona (arquivos)</h2>
+<div class="tw"><table><thead><tr><th>Arquivo</th><th>Papel</th></tr></thead><tbody>
+<tr><td><code>manifest.json</code></td><td>MV3; hosts do SISREG, do painel e da API</td></tr>
+<tr><td><code>config.js</code></td><td>endereços e parâmetros de lote</td></tr>
+<tr><td><code>endpoints.js</code></td><td>catálogo de endpoints/etapas conhecidos e campos mascarados (<code>senha</code>)</td></tr>
+<tr><td><code>background.js</code></td><td>o cérebro: guarda o login, observa o tráfego, envia os lotes, mantém o LED</td></tr>
+<tr><td><code>capture-hook.js</code></td><td>roda no mundo da página (todos os frames) para copiar as respostas de fetch/XHR</td></tr>
+<tr><td><code>content.js</code></td><td>roda em todos os frames: captura o HTML da tela; no frame de cima desenha o selo e o blur</td></tr>
+<tr><td><code>auth-content.js</code></td><td>roda em <code>smsmarica.online</code>: lê a sessão do painel e entrega ao cérebro</td></tr>
+<tr><td><code>popup.*</code></td><td>status rápido ao clicar no ícone</td></tr>
+</tbody></table></div>
+<h3>Por que o envio sai do "cérebro", e não da página</h3>
+<p>Enviar de dentro da página do SISREG seria bloqueado pela política de segurança dela (CSP) e pelo CORS. O service worker não sofre nenhum dos dois (tem permissão do host), então é ele quem fala com a nossa API. A senha do SMSMarica só é digitada no nosso site; a extensão nunca a vê.</p>
+<h2>Testar</h2>
+<ol>
+<li>↻ na extensão e F5 no SISREG. O selo deve mostrar <strong>v0.2.0</strong> no popup.</li>
+<li>Sem sessão no SMSMarica: o SISREG aparece <strong>borrado</strong> com o modal "Entrar no SMSMarica".</li>
+<li>Clicar em <strong>Entrar</strong> → logar no painel → o blur some e o LED fica <strong>verde</strong>.</li>
+<li>Navegar/operar no SISREG → o LED pisca <strong>âmbar</strong> ao enviar. Alt+clique no selo para ver as</li>
+</ol>
+<p>   capturas.</p>
+<ol>
+<li>Sem backend rodando, o LED fica <strong>vermelho</strong> e as capturas se acumulam (é o esperado).</li>
+</ol>
+<h2>Armadilhas já vistas</h2>
+<ul>
+<li><strong>Cada pessoa com o SEU operador do SISREG — nunca o do robô de produção</strong> (sessão única).</li>
+<li><strong>Sessão do SISREG derrubada não muda a URL:</strong> <code>/cgi-bin/index</code> vira a tela de login com "logon</li>
+</ul>
+<p>  em outra estação de trabalho".</p>
+<ul>
+<li>O iframe principal é <code>id="f_main"</code> <strong>com <code>name="f_principal"</code></strong>.</li>
+</ul>
+<h2>Pendente (backend)</h2>
+<p>A rota <code>POST /extensao/sisreg/capturas</code> <strong>ainda não existe</strong> — é o próximo passo (tabela nova, permissão nova e a habilitação de descompressão do corpo no servidor). Enquanto isso, o LED do piloto fica vermelho e as capturas ficam só na memória da extensão.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "SMSMais — Ponte SISREG (PoC)",
+  "version": "0.2.0",
+  "description": "Registra no SMSMais as operações feitas no SISREG (só observa) e exige login no SMSMarica para liberar o SISREG.",
+  "action": {
+    "default_title": "SMSMais — Ponte SISREG",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["webRequest", "storage", "alarms", "tabs"],
+  "host_permissions": [
+    "https://sisregiii.saude.gov.br/*",
+    "http://sisregiii.saude.gov.br/*",
+    "https://smsmarica.online/*",
+    "https://*.smsmarica.online/*",
+    "https://api.smsmarica.online/*",
+    "http://localhost:5080/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sisregiii.saude.gov.br/*",
+        "http://sisregiii.saude.gov.br/*"
+      ],
+      "js": ["capture-hook.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://sisregiii.saude.gov.br/*",
+        "http://sisregiii.saude.gov.br/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://smsmarica.online/*",
+        "https://*.smsmarica.online/*"
+      ],
+      "js": ["auth-content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
