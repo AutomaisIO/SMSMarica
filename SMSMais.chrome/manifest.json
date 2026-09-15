@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SMSMais — Ponte SISREG (PoC)",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Registra no SMSMais as operações feitas no SISREG (só observa) e exige login no SMSMarica para liberar o SISREG.",
   "action": {
     "default_title": "SMSMais — Ponte SISREG",

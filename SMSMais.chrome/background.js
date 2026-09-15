@@ -16,6 +16,7 @@ const TIPOS = new Set(['main_frame', 'sub_frame', 'xmlhttprequest', 'other']);
 const buffer = []; // capturas ainda não confirmadas pela API
 const MAX_BUFFER = 5000; // teto de segurança se a API ficar fora
 const pendentesReq = new Map(); // requestId -> item (aguardando status)
+const operadorPorAba = new Map(); // tabId -> operador do SISREG logado (carimba as capturas)
 let sessao = null; // { token, expiraEm, usuario }
 let marca = CONFIG.MARCA_PADRAO;
 let enviando = false;
@@ -140,6 +141,7 @@ function classificar(details) {
     etapa,
     evento: gatilho?.evento ?? null,
     escrita: gatilho?.escrita ?? false,
+    operador: operadorPorAba.get(details.tabId) ?? null,
     campos,
     status: null,
   };
@@ -258,6 +260,7 @@ chrome.runtime.onMessage.addListener((msg, sender, responder) => {
       tabId,
       frameId: sender.frameId,
       quando: new Date().toISOString(),
+      operador: operadorPorAba.get(tabId) ?? null,
       ...msg.dados,
     });
     if (buffer.length >= CONFIG.LOTE_MAX_ITENS) enviarLote();
@@ -265,11 +268,13 @@ chrome.runtime.onMessage.addListener((msg, sender, responder) => {
     return;
   }
   if (msg.tipo === 'operador') {
-    // O content leu a barra "Operador:" — carimba nos próximos eventos daquela aba.
-    empilhar({ kind: 'operador', tabId, quando: new Date().toISOString(), operador: msg.operador });
+    // O content leu a barra "Operador:" — passa a carimbar as capturas seguintes daquela aba.
+    if (msg.operador) operadorPorAba.set(tabId, msg.operador);
     return;
   }
 });
+
+chrome.tabs.onRemoved.addListener((tabId) => operadorPorAba.delete(tabId));
 
 chrome.runtime.onInstalled.addListener(() => {
   buscarMarca();

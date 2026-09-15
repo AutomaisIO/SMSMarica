@@ -38,6 +38,19 @@
     chrome.runtime.sendMessage({ tipo: 'ajax', dados }).catch(() => {});
   });
 
+  // Operador do SISREG (barra "Operador:/Perfil:/Unidade:"). Depois do login o topo vira um
+  // frameset SEM corpo de texto, então a barra fica em ALGUM frame — por isso lemos em todos.
+  function lerOperador() {
+    const txt = document.body?.innerText ?? '';
+    const m = txt.match(/Operador\s*:\s*([^\n\r]+)/i);
+    if (!m) return;
+    const nome = m[1].split(/\s{2,}|Perfil\s*:|Unidade\s*:|Data\s*:/i)[0].trim();
+    if (nome) chrome.runtime.sendMessage({ tipo: 'operador', operador: nome }).catch(() => {});
+  }
+  lerOperador();
+  setTimeout(lerOperador, 1500);
+  setTimeout(lerOperador, 4000);
+
   if (!NOTOPO) return; // o resto é só do frame de cima
 
   // ------------------------------------------------------------- selo + blur (UI)
@@ -176,16 +189,6 @@
     if (msg.tipo === 'requisicao') addLinha(msg.item);
   });
   chrome.runtime.sendMessage({ tipo: 'estado' }).then((estado) => estado && pintar(estado)).catch(() => {});
-
-  // Lê a barra "Operador:" (aparece após o login) e informa ao service worker.
-  function lerOperador() {
-    const txt = document.body?.innerText ?? '';
-    const m = txt.match(/Operador:\s*([^\n\r]+?)\s{2,}|Operador:\s*([^\n\r]+)/i);
-    const nome = (m?.[1] || m?.[2] || '').trim();
-    if (nome) chrome.runtime.sendMessage({ tipo: 'operador', operador: nome }).catch(() => {});
-  }
-  lerOperador();
-  setTimeout(lerOperador, 1500);
 
   document.documentElement.append(host);
 })();
