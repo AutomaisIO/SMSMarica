@@ -115,6 +115,10 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
     id: 'RevelarChaveSisreg',
     rotulo: 'Revelar chave de confirmação do SISREG (seção SISREG do exame/consulta)',
   },
+  {
+    id: 'ExtensaoSisreg',
+    rotulo: 'Extensão do SISREG — enviar as operações capturadas (fase de análise)',
+  },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
@@ -164,6 +168,11 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // de unidade. Toda pergunta fica na auditoria da IA.
   InteligenciaAtendimento: {
     Consulta: 'Perguntar sobre as conversas com pacientes (rede toda; fica na auditoria)',
+  },
+  // Só a Inclusão: é ela que autoriza a extensão a ENVIAR as capturas do SISREG. A extensão
+  // só grava — não há consulta/edição/exclusão por este módulo.
+  ExtensaoSisreg: {
+    Inclusao: 'Enviar as operações capturadas no SISREG (fase de análise)',
   },
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',

@@ -73,6 +73,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(SMSMais.Core.DependencyInjecti
 builder.Services.AddData(builder.Configuration);
 builder.Services.AddCore(builder.Configuration);
 
+// Descompressão do corpo (Content-Encoding: gzip) — a extensão do SISREG envia as capturas
+// comprimidas para poupar banda (o HTML das telas é grande). Aplica-se a qualquer endpoint.
+builder.Services.AddRequestDecompression();
+
 // fo-dicom: registra os codecs nativos (JPEG-LS Lossless) usados pela transcodificação
 // do proxy PACS. Idempotente; a flag Pacs:Compressao:Habilitado controla o uso efetivo.
 SMSMais.Core.Pacs.PacsDicomSetup.Inicializar();
@@ -320,6 +324,9 @@ app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging();
 app.UseCors();
+
+// Antes de qualquer leitura do corpo (model binding): descomprime Content-Encoding: gzip.
+app.UseRequestDecompression();
 
 app.UseAuthentication();
 app.UseAuthorization();

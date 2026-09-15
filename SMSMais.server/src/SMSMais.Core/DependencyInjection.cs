@@ -75,6 +75,9 @@ public static class DependencyInjection
         // contatos legais. Substitui os textos de Maricá que viviam fixos no código.
         services.AddScoped<Institucional.IInstituicaoService, Institucional.InstituicaoService>();
 
+        // Extensão de navegador do SISREG: ingestão das capturas (fase de análise).
+        services.AddScoped<Extensao.IExtensaoCapturaService, Extensao.ExtensaoCapturaService>();
+
 
         // ---- Assinatura digital de laudos (PAdES via Automais.Assinador) ----
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(

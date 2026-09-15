@@ -101,6 +101,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Linhas do export do SISREG que não viraram solicitação (com o RAW, para revalidar)
     public DbSet<Entities.Sisreg.SisregImportacaoFalha> SisregImportacaoFalhas => Set<Entities.Sisreg.SisregImportacaoFalha>();
 
+    // Operações observadas no SISREG pela extensão de navegador (fase de análise; só inclusão)
+    public DbSet<Entities.Sisreg.SisregCapturaNavegador> SisregCapturasNavegador => Set<Entities.Sisreg.SisregCapturaNavegador>();
+
     // Uma linha por arquivo importado (rastreio: quando, quem, válidos, inválidos)
     public DbSet<Entities.Sisreg.SisregImportacaoExecucao> SisregImportacaoExecucoes => Set<Entities.Sisreg.SisregImportacaoExecucao>();
 
