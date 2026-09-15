@@ -74,7 +74,9 @@ public interface IImportacaoSisregService
     /// <param name="suprimirConfirmacao">Força "não avisar o paciente por WhatsApp" nesta execução,
     /// mesmo que a unidade/procedimento estejam configurados para enviar. Usado no backfill por
     /// período: importar agendamento passado não pode disparar mensagem sobre exame já ocorrido.</param>
-    void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId, bool suprimirConfirmacao = false);
+    void DefinirContextoDeBackground(
+        Guid? usuarioId, Guid? unidadeAtivaId, bool suprimirConfirmacao = false,
+        FonteSolicitacao fonte = FonteSolicitacao.ImportacaoSisreg);
 
     /// <summary>Importa UM arquivo inteiro do lote. Reconhece o arquivo antes: se não for do
     /// SISREG, descarta tudo sem tentar linha a linha.</summary>
@@ -127,6 +129,10 @@ public sealed class ImportacaoSisregService(
     /// ver <see cref="DefinirContextoDeBackground"/>. Scoped por execução, como os overrides acima.</summary>
     private bool _suprimirConfirmacao;
 
+    /// <summary>Proveniência a carimbar nas solicitações CRIADAS nesta execução. Default: import
+    /// do SISREG; a extensão de navegador passa <see cref="FonteSolicitacao.ExtensaoNavegador"/>.</summary>
+    private FonteSolicitacao _fonteAtual = FonteSolicitacao.ImportacaoSisreg;
+
     /// <summary>Execução (arquivo) em curso — carimbada nas falhas para a aba de rastreio poder
     /// abrir "os erros desta importação". NULL fora de um lote (ex.: preview avulso).</summary>
     private Guid? _execucaoAtual;
@@ -134,12 +140,15 @@ public sealed class ImportacaoSisregService(
     private Guid? UsuarioIdAtual => _temOverride ? _usuarioOverride : usuarioAtual.UsuarioId;
     private Guid? UnidadeAtivaAtual => _temOverride ? _unidadeOverride : usuarioAtual.UnidadeAtivaId;
 
-    public void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId, bool suprimirConfirmacao = false)
+    public void DefinirContextoDeBackground(
+        Guid? usuarioId, Guid? unidadeAtivaId, bool suprimirConfirmacao = false,
+        FonteSolicitacao fonte = FonteSolicitacao.ImportacaoSisreg)
     {
         _usuarioOverride = usuarioId;
         _unidadeOverride = unidadeAtivaId;
         _temOverride = true;
         _suprimirConfirmacao = suprimirConfirmacao;
+        _fonteAtual = fonte;
     }
 
     // ===================== PREVIEW =====================
@@ -527,6 +536,7 @@ public sealed class ImportacaoSisregService(
             DataRegulacao = m.DataRegulacao,
             CriadoEm = agora,
             CriadoPor = UsuarioIdAtual,
+            FonteCriacao = _fonteAtual,
         };
         db.Solicitacoes.Add(solic);
 

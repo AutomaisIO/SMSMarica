@@ -77,6 +77,8 @@ public static class DependencyInjection
 
         // Extensão de navegador do SISREG: ingestão das capturas (fase de análise).
         services.AddScoped<Extensao.IExtensaoCapturaService, Extensao.ExtensaoCapturaService>();
+        // Processa as ações observadas (fase 1: cancelamento) e aplica na base.
+        services.AddScoped<Extensao.IProcessadorCapturasSisreg, Extensao.ProcessadorCapturasSisreg>();
 
 
         // ---- Assinatura digital de laudos (PAdES via Automais.Assinador) ----

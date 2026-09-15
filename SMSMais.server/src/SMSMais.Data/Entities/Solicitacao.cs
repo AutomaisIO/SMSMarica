@@ -166,6 +166,11 @@ public class Solicitacao
 
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
+
+    /// <summary>Proveniência: de onde a solicitação nasceu (manual / import SISREG / extensão).
+    /// Null no acervo anterior ao campo. Ver <see cref="FonteSolicitacao"/>.</summary>
+    public FonteSolicitacao? FonteCriacao { get; set; }
+
     public DateTime? AtualizadoEm { get; set; }
     public Guid? AtualizadoPor { get; set; }
     public DateTime? ExcluidoEm { get; set; }

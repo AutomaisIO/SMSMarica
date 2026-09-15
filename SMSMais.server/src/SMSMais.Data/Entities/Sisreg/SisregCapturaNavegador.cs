@@ -64,4 +64,8 @@ public class SisregCapturaNavegador
 
     /// <summary>Conteúdo grande fora do jsonb: HTML da tela ou corpo do AJAX. Pode ser nulo.</summary>
     public string? Conteudo { get; set; }
+
+    /// <summary>Quando o processador de eventos já tratou esta captura (marcação/cancelamento
+    /// aplicados na base). Null = ainda não processada. Torna o processamento idempotente.</summary>
+    public DateTime? ProcessadoEm { get; set; }
 }

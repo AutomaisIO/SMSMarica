@@ -27,6 +27,7 @@ internal sealed class SisregCapturaNavegadorConfiguration : IEntityTypeConfigura
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(40);
         builder.Property(x => x.PayloadJson).HasColumnName("payload").HasColumnType("jsonb").IsRequired();
         builder.Property(x => x.Conteudo).HasColumnName("conteudo").HasColumnType("text");
+        builder.Property(x => x.ProcessadoEm).HasColumnName("processado_em");
 
         // Consultas típicas da análise: por PC/instalação e por tipo de evento, no tempo.
         builder.HasIndex(x => x.CriadoEm).HasDatabaseName("ix_sisreg_captura_criado");

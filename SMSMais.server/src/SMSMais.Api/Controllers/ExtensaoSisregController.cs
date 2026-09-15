@@ -10,7 +10,9 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("extensao/sisreg")]
-public sealed class ExtensaoSisregController(IExtensaoCapturaService capturas) : ControllerBase
+public sealed class ExtensaoSisregController(
+    IExtensaoCapturaService capturas,
+    IProcessadorCapturasSisreg processador) : ControllerBase
 {
     /// <summary>
     /// Recebe um lote de capturas. Basta estar autenticado no SMSMarica — sem permissão de
@@ -44,4 +46,11 @@ public sealed class ExtensaoSisregController(IExtensaoCapturaService capturas) :
     [ProducesResponseType<CapturaAmostraRespostaDto>(StatusCodes.Status200OK)]
     public Task<CapturaAmostraRespostaDto> AmostraResposta(CancellationToken cancellationToken)
         => capturas.ObterAmostraRespostaMarcacaoAsync(cancellationToken);
+
+    /// <summary>Processa as capturas ainda não tratadas e aplica na base (fase 1: cancelamento).
+    /// Disparo manual; idempotente.</summary>
+    [HttpPost("processar")]
+    [ProducesResponseType<ProcessamentoResultado>(StatusCodes.Status200OK)]
+    public Task<ProcessamentoResultado> Processar(CancellationToken cancellationToken)
+        => processador.ProcessarAsync(cancellationToken);
 }

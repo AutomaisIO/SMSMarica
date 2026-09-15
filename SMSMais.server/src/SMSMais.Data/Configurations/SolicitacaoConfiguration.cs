@@ -77,6 +77,7 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
 
         builder.Property(s => s.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(s => s.CriadoPor).HasColumnName("criado_por");
+        builder.Property(s => s.FonteCriacao).HasColumnName("fonte_criacao").HasConversion<int>();
         builder.Property(s => s.AtualizadoEm).HasColumnName("atualizado_em");
         builder.Property(s => s.AtualizadoPor).HasColumnName("atualizado_por");
         builder.Property(s => s.ExcluidoEm).HasColumnName("excluido_em");
