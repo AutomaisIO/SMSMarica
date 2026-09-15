@@ -168,8 +168,8 @@ export function UnidadeDetalhePage() {
                   Profissionais e procedimentos desta unidade no SISREG, e o sincronismo diário da
                   agenda dela. A credencial é uma só, global, e fica em Sistema → Integrações.
                 </p>
-                <MapeamentoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
                 <SincronismoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
+                <MapeamentoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
               </div>
             ),
           } satisfies Aba,
