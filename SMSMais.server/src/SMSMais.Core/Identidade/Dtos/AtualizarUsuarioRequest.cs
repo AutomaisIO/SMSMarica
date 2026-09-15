@@ -20,7 +20,12 @@ public sealed record AtualizarUsuarioRequest(
     /// Enxergar todas as unidades. <c>null</c> = não mexe. Só quem já tem acesso global
     /// consegue conceder ou revogar.
     /// </summary>
-    bool? AcessoGlobal = null);
+    bool? AcessoGlobal = null,
+    /// <summary>
+    /// Logins no SISREG. <c>null</c> = não mexe; lista vazia = remove a associação. Cada login
+    /// pertence a no máximo um usuário.
+    /// </summary>
+    IReadOnlyList<string>? LoginsSisreg = null);
 
 /// <summary>
 /// O próprio usuário atualiza só os campos que podem ser editados sem privilégio

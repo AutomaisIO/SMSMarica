@@ -15,4 +15,6 @@ public sealed record CadastrarUsuarioRequest(
     /// <summary>Quando há senha inicial, exige troca no próximo login. Ignorado sem senha.</summary>
     bool DeveTrocarSenha = false,
     /// <summary>Nome de usuário para login, alternativa ao e-mail/CPF. Opcional.</summary>
-    string? Login = null);
+    string? Login = null,
+    /// <summary>Logins no SISREG. Opcional; cada login pertence a no máximo um usuário.</summary>
+    IReadOnlyList<string>? LoginsSisreg = null);

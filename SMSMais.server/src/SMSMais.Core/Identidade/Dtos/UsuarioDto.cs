@@ -27,7 +27,9 @@ public sealed record UsuarioDto(
     /// <summary>Nome de usuário para login, alternativa ao e-mail/CPF. Null quando não definido.</summary>
     string? Login = null,
     /// <summary>Enxerga todas as unidades, sem depender de vínculo em usuario_unidade.</summary>
-    bool AcessoGlobal = false);
+    bool AcessoGlobal = false,
+    /// <summary>Logins desta pessoa no SISREG (maiúsculas). Vazio = sem associação.</summary>
+    IReadOnlyList<string>? LoginsSisreg = null);
 
 public sealed record UsuarioListItemDto(
     Guid Id,

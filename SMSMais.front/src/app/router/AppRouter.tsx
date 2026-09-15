@@ -63,6 +63,7 @@ import { RedirecionaIndicadorLegado } from '@/features/indicadores/pages/Redirec
 import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
+import { SisregEstatisticasPage } from '@/features/sisreg-estatisticas/pages/SisregEstatisticasPage';
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
 import { SerNotificacoesPage } from '@/features/ser/pages/SerNotificacoesPage';
 import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoPage';
@@ -238,6 +239,7 @@ export function AppRouter() {
           <Route path="regulacao/sernit/:id" element={<SernitSolicitacaoDetalhePage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
+          <Route path="sisreg/estatisticas" element={<SisregEstatisticasPage />} />
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />

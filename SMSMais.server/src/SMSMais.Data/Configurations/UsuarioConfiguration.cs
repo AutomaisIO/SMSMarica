@@ -15,6 +15,11 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.NomeCompleto).HasColumnName("nome_completo").HasMaxLength(200).IsRequired();
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(200);
         builder.Property(u => u.Login).HasColumnName("login").HasMaxLength(40);
+        builder.Property(u => u.LoginsSisreg)
+            .HasColumnName("logins_sisreg")
+            .HasColumnType("text[]")
+            .HasDefaultValueSql("'{}'::text[]")
+            .IsRequired();
         builder.Property(u => u.Cpf).HasColumnName("cpf").HasMaxLength(11);
         builder.Property(u => u.Rg).HasColumnName("rg").HasMaxLength(20);
         builder.Property(u => u.DataNascimento).HasColumnName("data_nascimento");

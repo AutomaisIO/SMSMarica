@@ -340,6 +340,13 @@ export const SECOES: SecaoMenu[] = [
           // (/app/unidades/{id}), junto com a credencial e o sincronismo diário. Manter os dois
           // caminhos duplicaria manutenção e deixaria duas verdades sobre a mesma unidade.
           {
+            rotulo: 'Estatísticas',
+            to: '/app/sisreg/estatisticas',
+            icone: BarChart3,
+            modulo: 'Sisreg',
+            descricao: 'Trabalho dos operadores da regulação: equipe, individual e rankings.',
+          },
+          {
             rotulo: 'Configuração',
             to: '/app/sisreg/configuracao',
             icone: Settings2,

@@ -28,6 +28,15 @@ public class Usuario
     /// </summary>
     public string? Login { get; set; }
 
+    /// <summary>
+    /// Logins desta pessoa no SISREG, em MAIÚSCULAS (como o SISREG grava no "Op. autorizador" do
+    /// export). Vários porque a mesma pessoa costuma ter mais de um (ELAINE-MONNERAT e
+    /// 074ELAINEMONNERAT; 148DAYANEPITA.REG/.ADM/.VIDEOFONIST). Serve para as estatísticas de
+    /// operador mostrarem o nome e somarem os logins da mesma pessoa. Um login do SISREG pertence a
+    /// no máximo um usuário. Vazio = sem associação.
+    /// </summary>
+    public string[] LoginsSisreg { get; set; } = [];
+
     public string? Cpf { get; set; }
     public string? Rg { get; set; }
     public DateOnly? DataNascimento { get; set; }

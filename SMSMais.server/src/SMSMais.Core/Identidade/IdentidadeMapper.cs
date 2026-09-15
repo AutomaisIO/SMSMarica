@@ -26,7 +26,8 @@ internal static class IdentidadeMapper
         DetectarPapel(u) ?? (medico is not null ? "Medico" : null),
         medico?.Texto,
         u.Login,
-        u.AcessoGlobal);
+        u.AcessoGlobal,
+        u.LoginsSisreg);
 
     public static UsuarioListItemDto ParaListItem(Usuario u) =>
         new(u.Id, u.NomeCompleto, u.Cpf, u.Email, u.FotoBase64, u.Ativo, u.DeveTrocarSenha);

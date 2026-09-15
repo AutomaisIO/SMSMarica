@@ -548,6 +548,9 @@ public static class DependencyInjection
         services.AddScoped<
             Integracoes.SisregWeb.Ofertas.IOfertasSisregService,
             Integracoes.SisregWeb.Ofertas.OfertasSisregService>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Estatisticas.IEstatisticasOperadoresService,
+            Integracoes.SisregWeb.Estatisticas.EstatisticasOperadoresService>();
 
         // Histórico da agenda: anda para trás, uma fatia por tick, dirigido pela cobertura gravada
         // em sisreg_varredura_agenda. Sem fila e sem runner de propósito — não há execução longa a

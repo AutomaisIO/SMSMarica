@@ -50,6 +50,8 @@ export type Usuario = {
   login: string | null;
   /** Enxerga todas as unidades, sem depender de vínculo. Só quem tem pode conceder. */
   acessoGlobal: boolean;
+  /** Logins desta pessoa no SISREG (maiúsculas) — dão nome ao operador nas estatísticas. */
+  loginsSisreg: string[] | null;
 };
 
 export type CadastrarUsuarioPayload = {
@@ -66,6 +68,8 @@ export type CadastrarUsuarioPayload = {
   deveTrocarSenha?: boolean;
   /** Nome de usuário para login. Opcional — o CPF já serve. */
   login?: string;
+  /** Logins no SISREG. */
+  loginsSisreg?: string[];
 };
 
 export type AtualizarUsuarioPayload = {
@@ -78,6 +82,8 @@ export type AtualizarUsuarioPayload = {
   login?: string;
   /** Acesso a todas as unidades. Omitido = não altera; só quem tem pode conceder. */
   acessoGlobal?: boolean;
+  /** Logins no SISREG. Omitido = não altera; lista vazia = remove a associação. */
+  loginsSisreg?: string[];
 };
 
 export type AtualizarMinhaContaPayload = {

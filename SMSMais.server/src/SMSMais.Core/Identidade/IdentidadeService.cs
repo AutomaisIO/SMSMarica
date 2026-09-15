@@ -127,6 +127,47 @@ public sealed class IdentidadeService(
     }
 
     /// <summary>
+    /// Normaliza os logins do SISREG (maiúsculas, sem repetição) e garante que nenhum já pertença a
+    /// outro usuário — senão a estatística de operador somaria a produção de uma pessoa na outra.
+    /// </summary>
+    private async Task<string[]> ResolverLoginsSisregAsync(
+        IReadOnlyList<string>? brutos, Guid? idAtual, CancellationToken ct)
+    {
+        if (brutos is null || brutos.Count == 0) return [];
+
+        var logins = brutos
+            .Select(l => (l ?? string.Empty).Trim().ToUpperInvariant())
+            .Where(l => l.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var invalido = logins.FirstOrDefault(l =>
+            l.Length > 60 || !l.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-'));
+        if (invalido is not null)
+        {
+            throw new ValidacaoException(
+                "usuario.login_sisreg_invalido",
+                $"Login do SISREG inválido: \"{invalido}\". Use letras, números, ponto, hífen ou _.");
+        }
+
+        if (logins.Length == 0) return [];
+
+        var dono = await _db.Usuarios.AsNoTracking()
+            .Where(u => (idAtual == null || u.Id != idAtual) && u.LoginsSisreg.Any(l => logins.Contains(l)))
+            .Select(u => new { u.NomeCompleto, u.LoginsSisreg })
+            .FirstOrDefaultAsync(ct);
+        if (dono is not null)
+        {
+            var repetido = dono.LoginsSisreg.First(l => logins.Contains(l));
+            throw new ConflitoException(
+                "usuario.login_sisreg_duplicado",
+                $"O login do SISREG \"{repetido}\" já está associado a {dono.NomeCompleto}.");
+        }
+
+        return logins;
+    }
+
+    /// <summary>
     /// Conceder acesso global é elevar privilégio: só quem já o tem pode dar a outro. Sem essa
     /// trava, qualquer perfil com edição de usuários viraria caminho para ver todas as unidades.
     /// </summary>
@@ -282,6 +323,7 @@ public sealed class IdentidadeService(
         }
 
         var login = await ResolverLoginAsync(request.Login, idAtual: null, cancellationToken);
+        var loginsSisreg = await ResolverLoginsSisregAsync(request.LoginsSisreg, idAtual: null, cancellationToken);
 
         var u = new Usuario
         {
@@ -289,6 +331,7 @@ public sealed class IdentidadeService(
             NomeCompleto = request.NomeCompleto.Trim(),
             Email = email,
             Login = login,
+            LoginsSisreg = loginsSisreg,
             Cpf = cpfNormalizado,
             DataNascimento = request.DataNascimento,
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
@@ -344,6 +387,12 @@ public sealed class IdentidadeService(
         if (!string.IsNullOrWhiteSpace(request.Login))
         {
             u.Login = await ResolverLoginAsync(request.Login, id, cancellationToken);
+        }
+
+        // Diferente do login: aqui lista vazia é intencional (tirar a associação); só null não mexe.
+        if (request.LoginsSisreg is not null)
+        {
+            u.LoginsSisreg = await ResolverLoginsSisregAsync(request.LoginsSisreg, id, cancellationToken);
         }
 
         if (request.AcessoGlobal is bool acessoGlobal && acessoGlobal != u.AcessoGlobal)

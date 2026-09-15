@@ -56,6 +56,8 @@ type Valores = {
   nomeCompleto: string;
   email: string;
   login: string;
+  /** Logins do SISREG separados por vírgula ou espaço. */
+  loginsSisreg: string;
   acessoGlobal: boolean;
   senha: string;
   cpf: string;
@@ -70,6 +72,7 @@ const INICIAL: Valores = {
   nomeCompleto: '',
   email: '',
   login: '',
+  loginsSisreg: '',
   acessoGlobal: false,
   senha: '',
   cpf: '',
@@ -81,8 +84,16 @@ const INICIAL: Valores = {
 };
 
 type Erros = Partial<
-  Record<'nomeCompleto' | 'email' | 'login' | 'senha' | 'cpf' | 'dataNascimento' | 'telefone', string>
+  Record<
+    'nomeCompleto' | 'email' | 'login' | 'loginsSisreg' | 'senha' | 'cpf' | 'dataNascimento' | 'telefone',
+    string
+  >
 >;
+
+/** "emilia-regulador, 074ELAINE" → ["EMILIA-REGULADOR", "074ELAINE"]. */
+function parseLoginsSisreg(texto: string): string[] {
+  return [...new Set(texto.split(/[\s,;]+/).map((l) => l.trim().toUpperCase()).filter(Boolean))];
+}
 
 function formatarCpfDigitos(cpf: string): string {
   const d = cpf.replace(/\D/g, '');
@@ -144,6 +155,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
         nomeCompleto: detalhe.data.nomeCompleto,
         email: detalhe.data.email ?? '',
         login: detalhe.data.login ?? '',
+        loginsSisreg: (detalhe.data.loginsSisreg ?? []).join(', '),
         acessoGlobal: detalhe.data.acessoGlobal,
         senha: '',
         cpf: formatarCpfDigitos(detalhe.data.cpf ?? ''),
@@ -266,6 +278,10 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
       // com nascimento, ou cadastro de médico/paciente sem nascimento).
     }
     if (cpf && cpf.replace(/\D/g, '').length !== 11) ne.cpf = 'CPF precisa ter 11 dígitos.';
+    const loginsSisreg = parseLoginsSisreg(valores.loginsSisreg);
+    if (loginsSisreg.some((l) => !/^[A-Z0-9._-]{1,60}$/.test(l))) {
+      ne.loginsSisreg = 'Use letras, números, ponto, hífen ou _; separe os logins por vírgula.';
+    }
     if (Object.keys(ne).length > 0) {
       setErros(ne);
       return;
@@ -299,6 +315,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
           fotoBase64: valores.fotoBase64,
           senha: senha || undefined,
           login: valores.login.trim() || undefined,
+          loginsSisreg: loginsSisreg.length > 0 ? loginsSisreg : undefined,
           deveTrocarSenha: senha ? valores.deveTrocarSenha : undefined,
           perfilIds: perfilIdsSelecionados,
         });
@@ -320,6 +337,8 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
             fotoBase64: valores.fotoBase64,
             email: email || undefined,
             login: valores.login.trim() || undefined,
+            // Sempre enviado na edição: apagar o campo tem de tirar a associação.
+            loginsSisreg,
             acessoGlobal: podeConcederAcessoGlobal ? valores.acessoGlobal : undefined,
           },
         });
@@ -439,6 +458,21 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
             value={valores.login}
             onChange={(e) => setCampo('login', e.target.value)}
             placeholder="ex.: bernardo"
+            autoComplete="off"
+            disabled={pendente}
+          />
+        </Campo>
+        <Campo
+          label="Logins no SISREG"
+          htmlFor="loginsSisreg"
+          erro={erros.loginsSisreg}
+          dica="Opcional. Um ou mais, separados por vírgula. Dá nome ao operador nas estatísticas do SISREG."
+        >
+          <Input
+            id="loginsSisreg"
+            value={valores.loginsSisreg}
+            onChange={(e) => setCampo('loginsSisreg', e.target.value)}
+            placeholder="ex.: EMILIA-REGULADOR, 074ELAINEMONNERAT"
             autoComplete="off"
             disabled={pendente}
           />
