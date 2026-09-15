@@ -261,10 +261,4 @@ public enum ModuloPermissao
     /// <para>Usa apenas <c>Consulta</c>: é ela que faz a base aparecer na Consulta Inteligente. Exige
     /// também <see cref="Inteligencia"/> (a tela).</para></summary>
     InteligenciaAtendimento = 64,
-
-    /// <summary>Extensão de navegador do SISREG: recebe as operações capturadas no SISREG
-    /// (envio e retorno) para a fase de análise. É a permissão que autoriza a extensão a enviar
-    /// as capturas — o operador precisa dela no perfil para o <c>POST /extensao/sisreg/capturas</c>
-    /// aceitar. Usa apenas <c>Inclusao</c> (a extensão só grava).</summary>
-    ExtensaoSisreg = 65,
 }
