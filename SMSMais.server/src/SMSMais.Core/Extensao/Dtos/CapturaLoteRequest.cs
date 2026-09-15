@@ -46,3 +46,10 @@ public sealed record CapturaEstruturaDto(
 public sealed record EstruturaEnvioDto(string Caminho, string? Etapa, int Amostras, IReadOnlyList<string> Campos);
 
 public sealed record EstruturaRespostaDto(string Caminho, int Amostras, IReadOnlyList<string> RotulosPresentes);
+
+/// <summary>Trechos REDIGIDOS (CPF/CNS/telefone mascarados) da resposta de uma marcação, só nas
+/// vizinhanças dos rótulos não-sensíveis (número, chave, procedimento, unidade) — para escrever o
+/// parser sem expor nome/identificadores de paciente.</summary>
+public sealed record CapturaAmostraRespostaDto(string? Caminho, DateTime? Quando, IReadOnlyList<AmostraTrechoDto> Trechos);
+
+public sealed record AmostraTrechoDto(string Rotulo, string Trecho);

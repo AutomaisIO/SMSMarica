@@ -200,6 +200,42 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
         return new CapturaEstruturaDto(envios, respostas);
     }
 
+    // Vizinhanças SEGURAS de ler (valores não são PII de paciente): número, chave, procedimento,
+    // unidade, vaga. Deliberadamente NÃO inclui "Paciente"/"Solicitante" (nome).
+    private static readonly string[] RotulosAmostra =
+        ["Chave de Confirma", "Solicita", "Procedimento", "Unidade Executante", "Unidade Solicitante", "Vaga"];
+
+    public async Task<CapturaAmostraRespostaDto> ObterAmostraRespostaMarcacaoAsync(CancellationToken ct = default)
+    {
+        // A resposta da marcação é a tela de confirmação: contém "Chave de Confirma".
+        var resp = await _db.SisregCapturasNavegador.AsNoTracking()
+            .Where(x => x.Kind == "resposta" && x.Caminho == "/cgi-bin/marcar" && x.Conteudo != null
+                && x.Conteudo.Contains("Chave de Confirma"))
+            .OrderByDescending(x => x.CriadoEm)
+            .Select(x => new { x.CriadoEm, x.Conteudo, x.Caminho })
+            .FirstOrDefaultAsync(ct);
+
+        if (resp?.Conteudo is null)
+            return new CapturaAmostraRespostaDto(null, null, []);
+
+        var html = resp.Conteudo;
+        var trechos = new List<AmostraTrechoDto>();
+        foreach (var rotulo in RotulosAmostra)
+        {
+            var i = html.IndexOf(rotulo, StringComparison.OrdinalIgnoreCase);
+            if (i < 0) continue;
+            var ini = Math.Max(0, i - 20);
+            var fim = Math.Min(html.Length, i + 320);
+            var janela = Redigir(html[ini..fim]);
+            trechos.Add(new AmostraTrechoDto(rotulo, janela));
+        }
+        return new CapturaAmostraRespostaDto(resp.Caminho, resp.CriadoEm, trechos);
+    }
+
+    // Mascara sequências de 11+ dígitos (CPF, CNS, telefone). co_solicitacao (≤10) fica visível.
+    private static string Redigir(string s) =>
+        System.Text.RegularExpressions.Regex.Replace(s, @"\d{11,}", "•redigido•");
+
     private static IEnumerable<string> LerCamposKeys(string payloadJson)
     {
         try

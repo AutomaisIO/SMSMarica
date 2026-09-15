@@ -38,4 +38,10 @@ public sealed class ExtensaoSisregController(IExtensaoCapturaService capturas) :
     [ProducesResponseType<CapturaEstruturaDto>(StatusCodes.Status200OK)]
     public Task<CapturaEstruturaDto> Estrutura(CancellationToken cancellationToken)
         => capturas.ObterEstruturaAsync(cancellationToken);
+
+    /// <summary>Trechos redigidos (sem PII) da resposta de uma marcação — para desenhar o parser.</summary>
+    [HttpGet("capturas/amostra-resposta")]
+    [ProducesResponseType<CapturaAmostraRespostaDto>(StatusCodes.Status200OK)]
+    public Task<CapturaAmostraRespostaDto> AmostraResposta(CancellationToken cancellationToken)
+        => capturas.ObterAmostraRespostaMarcacaoAsync(cancellationToken);
 }
