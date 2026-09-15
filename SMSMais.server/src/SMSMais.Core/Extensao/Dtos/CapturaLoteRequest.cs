@@ -15,3 +15,21 @@ public sealed record CapturaLoteRequest(
 
 /// <summary>Resultado do recebimento: quantos itens foram gravados.</summary>
 public sealed record CapturaLoteResultado(int Gravados);
+
+/// <summary>Panorama do que a extensão já enviou (monitor do piloto). Sem PII de paciente:
+/// não traz campos, payload nem conteúdo — só metadados de operação.</summary>
+public sealed record CapturaResumoDto(
+    long Total,
+    DateTime? UltimoRecebidoEm,
+    IReadOnlyList<CapturaInstalacaoDto> Instalacoes,
+    IReadOnlyList<CapturaContagemDto> PorKind,
+    IReadOnlyList<CapturaContagemDto> PorEvento,
+    IReadOnlyList<CapturaRecenteDto> Ultimas);
+
+public sealed record CapturaInstalacaoDto(string InstallId, string? UltimaVersao, long Total, DateTime UltimoEm);
+
+public sealed record CapturaContagemDto(string Chave, long Total);
+
+public sealed record CapturaRecenteDto(
+    DateTime CriadoEm, DateTime? OcorridoEm, string? OperadorSisreg,
+    string Kind, string? Metodo, string? Caminho, string? Etapa, string? Evento, bool Escrita, string? Status);

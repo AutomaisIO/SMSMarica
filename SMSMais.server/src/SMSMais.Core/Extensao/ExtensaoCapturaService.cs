@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Extensao.Dtos;
 using SMSMais.Core.Identidade;
 using SMSMais.Data;
@@ -56,6 +57,50 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
         _db.SisregCapturasNavegador.AddRange(linhas);
         await _db.SaveChangesAsync(ct);
         return new CapturaLoteResultado(linhas.Count);
+    }
+
+    public async Task<CapturaResumoDto> ObterResumoAsync(CancellationToken ct = default)
+    {
+        var q = _db.SisregCapturasNavegador.AsNoTracking();
+
+        var total = await q.LongCountAsync(ct);
+        if (total == 0)
+            return new CapturaResumoDto(0, null, [], [], [], []);
+
+        var ultimoRecebido = await q.MaxAsync(x => (DateTime?)x.CriadoEm, ct);
+
+        var instalacoes = await q
+            .GroupBy(x => x.InstallId)
+            .Select(g => new CapturaInstalacaoDto(
+                g.Key,
+                g.OrderByDescending(x => x.CriadoEm).Select(x => x.Versao).FirstOrDefault(),
+                g.LongCount(),
+                g.Max(x => x.CriadoEm)))
+            .OrderByDescending(i => i.UltimoEm)
+            .ToListAsync(ct);
+
+        var porKind = await q
+            .GroupBy(x => x.Kind)
+            .Select(g => new CapturaContagemDto(g.Key, g.LongCount()))
+            .OrderByDescending(c => c.Total)
+            .ToListAsync(ct);
+
+        var porEvento = await q
+            .Where(x => x.Evento != null)
+            .GroupBy(x => x.Evento!)
+            .Select(g => new CapturaContagemDto(g.Key, g.LongCount()))
+            .OrderByDescending(c => c.Total)
+            .ToListAsync(ct);
+
+        var ultimas = await q
+            .OrderByDescending(x => x.CriadoEm)
+            .Take(15)
+            .Select(x => new CapturaRecenteDto(
+                x.CriadoEm, x.OcorridoEm, x.OperadorSisreg,
+                x.Kind, x.Metodo, x.Caminho, x.Etapa, x.Evento, x.Escrita, x.Status))
+            .ToListAsync(ct);
+
+        return new CapturaResumoDto(total, ultimoRecebido, instalacoes, porKind, porEvento, ultimas);
     }
 
     private static string? LerTexto(JsonElement o, string prop) =>

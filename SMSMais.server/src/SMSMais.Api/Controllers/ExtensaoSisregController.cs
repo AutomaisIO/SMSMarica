@@ -24,4 +24,11 @@ public sealed class ExtensaoSisregController(IExtensaoCapturaService capturas) :
     public Task<CapturaLoteResultado> Receber(
         [FromBody] CapturaLoteRequest lote, CancellationToken cancellationToken)
         => capturas.ReceberAsync(lote, cancellationToken);
+
+    /// <summary>Panorama do que já chegou (contagens/metadados, sem PII de paciente) — monitor
+    /// do piloto. Basta estar autenticado.</summary>
+    [HttpGet("capturas/resumo")]
+    [ProducesResponseType<CapturaResumoDto>(StatusCodes.Status200OK)]
+    public Task<CapturaResumoDto> Resumo(CancellationToken cancellationToken)
+        => capturas.ObterResumoAsync(cancellationToken);
 }
