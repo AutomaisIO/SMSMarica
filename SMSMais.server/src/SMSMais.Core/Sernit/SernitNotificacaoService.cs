@@ -24,7 +24,9 @@ public sealed class SernitNotificacaoService(
     SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual) : ISernitNotificacaoService
 {
-    private const int TamanhoMaximo = 200;
+    // A tela oferece 100/200/500/1000 por página (15/09/2026). Acima do teto a página vinha
+    // cortada sem aviso — o operador escolhia 500 e recebia 200.
+    private const int TamanhoMaximo = 1000;
 
     public async Task<SernitNotificacaoResumoDto> ResumoAsync(CancellationToken cancellationToken)
     {

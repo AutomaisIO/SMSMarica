@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BellRing, Check, Loader2 } from 'lucide-react';
 
 import {
@@ -19,6 +19,7 @@ import { ModalSolicitacaoSernit } from '@/features/sernit/components/ModalSolici
 import { Button } from '@/shared/ui/Button';
 import { formatarInstante } from '@/shared/lib/datas';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { Paginacao } from '@/shared/ui/Paginacao';
 
 /**
  * Regulação → Notificações: o que mudou no SERNIT e ainda ninguém olhou.
@@ -49,9 +50,37 @@ export function SernitNotificacoesPage() {
   const [tipo, setTipo] = useState<TipoRecursoSernit>('Consulta');
   const [situacao, setSituacao] = useState<SituacaoSernit | undefined>(undefined);
 
+  // Página e tamanho: até 15/09/2026 a tela trazia só os 100 mais recentes, e o resto só aparecia
+  // marcando os primeiros como vistos.
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [tamanho, setTamanho] = useState(100);
+
   const { data: resumo } = useResumoNotificacoesSernit();
-  const filtro = useMemo(() => ({ tipo, situacao, pagina: 1, tamanho: 100 }), [tipo, situacao]);
+  const filtro = useMemo(
+    () => ({ tipo, situacao, pagina: paginaAtual, tamanho }),
+    [tipo, situacao, paginaAtual, tamanho],
+  );
   const { data: pagina, isLoading } = useNotificacoesSernit(filtro);
+
+  // Marcar como vista encolhe a lista: se a página atual deixou de existir, volta para a última.
+  useEffect(() => {
+    if (!pagina || pagina.total === 0) return;
+    const ultima = Math.ceil(pagina.total / tamanho);
+    if (paginaAtual > ultima) setPaginaAtual(ultima);
+  }, [pagina, paginaAtual, tamanho]);
+
+  const mudarPagina = (p: number) => {
+    setPaginaAtual(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const mudarTamanho = (t: number) => {
+    setTamanho(t);
+    setPaginaAtual(1);
+  };
+  const escolherSituacao = (s: SituacaoSernit | undefined) => {
+    setSituacao(s);
+    setPaginaAtual(1);
+  };
 
   const marcarUma = useMarcarNotificacaoSernitVista();
 
@@ -91,6 +120,7 @@ export function SernitNotificacoesPage() {
             onClick={() => {
               setTipo(t);
               setSituacao(undefined);
+              setPaginaAtual(1);
             }}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
               tipo === t
@@ -110,11 +140,11 @@ export function SernitNotificacoesPage() {
 
       {/* Situações: só aparecem as que têm movimento — lista cheia de zeros é ruído */}
       <div className="flex flex-wrap gap-2">
-        <FiltroSituacao ativo={situacao === undefined} onClick={() => setSituacao(undefined)}>
+        <FiltroSituacao ativo={situacao === undefined} onClick={() => escolherSituacao(undefined)}>
           Todas
         </FiltroSituacao>
         {SITUACOES_SERNIT.filter((s) => porSituacao(s) > 0).map((s) => (
-          <FiltroSituacao key={s} ativo={situacao === s} onClick={() => setSituacao(s)}>
+          <FiltroSituacao key={s} ativo={situacao === s} onClick={() => escolherSituacao(s)}>
             {ROTULO_SITUACAO[s]}
             <span className="ml-1.5 text-xs opacity-80">{porSituacao(s)}</span>
           </FiltroSituacao>
@@ -133,6 +163,16 @@ export function SernitNotificacoesPage() {
         </div>
       )}
 
+      {pagina && pagina.total > 0 && (
+        <Paginacao
+          pagina={paginaAtual}
+          tamanho={tamanho}
+          total={pagina.total}
+          aoMudarPagina={mudarPagina}
+          aoMudarTamanho={mudarTamanho}
+        />
+      )}
+
       <div className="space-y-2">
         {pagina?.itens.map((n) => (
           <LinhaNotificacao
@@ -146,9 +186,13 @@ export function SernitNotificacoesPage() {
       </div>
 
       {pagina && pagina.total > pagina.itens.length && (
-        <p className="text-center text-xs text-slate-500">
-          Mostrando {pagina.itens.length} de {pagina.total}. Marque as vistas para revelar o resto.
-        </p>
+        <Paginacao
+          pagina={paginaAtual}
+          tamanho={tamanho}
+          total={pagina.total}
+          aoMudarPagina={mudarPagina}
+          aoMudarTamanho={mudarTamanho}
+        />
       )}
       <ModalSolicitacaoSernit solicitacaoId={detalhe} aoFechar={() => setDetalhe(null)} />
     </div>
