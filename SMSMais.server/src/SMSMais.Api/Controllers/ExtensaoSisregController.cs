@@ -31,4 +31,11 @@ public sealed class ExtensaoSisregController(IExtensaoCapturaService capturas) :
     [ProducesResponseType<CapturaResumoDto>(StatusCodes.Status200OK)]
     public Task<CapturaResumoDto> Resumo(CancellationToken cancellationToken)
         => capturas.ObterResumoAsync(cancellationToken);
+
+    /// <summary>Estrutura das ações de escrita (nomes de campos do envio + rótulos da resposta),
+    /// sem PII — para decidir o que dá para montar na base a partir das capturas.</summary>
+    [HttpGet("capturas/estrutura")]
+    [ProducesResponseType<CapturaEstruturaDto>(StatusCodes.Status200OK)]
+    public Task<CapturaEstruturaDto> Estrutura(CancellationToken cancellationToken)
+        => capturas.ObterEstruturaAsync(cancellationToken);
 }

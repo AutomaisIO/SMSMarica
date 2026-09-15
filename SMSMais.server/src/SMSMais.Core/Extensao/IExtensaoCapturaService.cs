@@ -9,4 +9,8 @@ public interface IExtensaoCapturaService
 
     /// <summary>Panorama do que já chegou (contagens/metadados, sem PII de paciente).</summary>
     Task<CapturaResumoDto> ObterResumoAsync(CancellationToken ct = default);
+
+    /// <summary>Estrutura das ações de escrita (nomes de campos do envio + rótulos da resposta),
+    /// sem PII — para decidir o que dá para montar na base.</summary>
+    Task<CapturaEstruturaDto> ObterEstruturaAsync(CancellationToken ct = default);
 }

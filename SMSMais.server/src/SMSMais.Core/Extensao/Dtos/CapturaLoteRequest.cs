@@ -35,3 +35,14 @@ public sealed record CapturaContagemDto(string Chave, long Total);
 public sealed record CapturaRecenteDto(
     DateTime CriadoEm, DateTime? OcorridoEm, string? OperadorSisreg,
     string Kind, string? Metodo, string? Caminho, string? Etapa, string? Evento, bool Escrita, string? Status);
+
+/// <summary>Estrutura observada nas ações de escrita, SEM PII: só nomes de campos do envio e
+/// quais rótulos aparecem na resposta. Serve para decidir se dá para montar uma Solicitação
+/// completa a partir do que a extensão captura.</summary>
+public sealed record CapturaEstruturaDto(
+    IReadOnlyList<EstruturaEnvioDto> Envios,
+    IReadOnlyList<EstruturaRespostaDto> Respostas);
+
+public sealed record EstruturaEnvioDto(string Caminho, string? Etapa, int Amostras, IReadOnlyList<string> Campos);
+
+public sealed record EstruturaRespostaDto(string Caminho, int Amostras, IReadOnlyList<string> RotulosPresentes);

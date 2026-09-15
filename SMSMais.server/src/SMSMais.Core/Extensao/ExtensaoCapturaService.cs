@@ -148,6 +148,70 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
         return new CapturaResumoDto(total, ultimoRecebido, instalacoes, porKind, porEvento, porCaminho, porEtapa, ultimas);
     }
 
+    // Rótulos de página (texto fixo do SISREG, NÃO são PII) que provam quais campos a resposta traz.
+    private static readonly string[] Rotulos =
+    [
+        "Chave de Confirma", "Solicita", "Paciente", "Cartão Nacional", "CNS", "CPF",
+        "Nascimento", "Data", "Hora", "Profissional", "Procedimento",
+        "Unidade Executante", "Unidade Solicitante", "CID", "Telefone", "Endereço", "Vaga",
+    ];
+
+    private static readonly string[] CaminhosEscrita =
+        ["/cgi-bin/marcar", "/cgi-bin/cons_verificar", "/cgi-bin/cadweb50", "/cgi-bin/gerenciador_solicitacao"];
+
+    public async Task<CapturaEstruturaDto> ObterEstruturaAsync(CancellationToken ct = default)
+    {
+        // Envio: nomes dos campos por (caminho, etapa) — nomes de campo NÃO são PII.
+        var reqs = await _db.SisregCapturasNavegador.AsNoTracking()
+            .Where(x => x.Kind == "requisicao" && x.Caminho != null && CaminhosEscrita.Contains(x.Caminho))
+            .OrderByDescending(x => x.CriadoEm)
+            .Select(x => new { x.Caminho, x.Etapa, x.PayloadJson })
+            .Take(300)
+            .ToListAsync(ct);
+
+        var envios = reqs
+            .GroupBy(r => new { r.Caminho, r.Etapa })
+            .Select(g => new EstruturaEnvioDto(
+                g.Key.Caminho!,
+                g.Key.Etapa,
+                g.Count(),
+                g.SelectMany(r => LerCamposKeys(r.PayloadJson)).Distinct().OrderBy(k => k).ToList()))
+            .OrderByDescending(e => e.Amostras)
+            .ToList();
+
+        // Resposta: quais rótulos (texto fixo) aparecem — prova o que a tela devolve, sem valores.
+        var resps = await _db.SisregCapturasNavegador.AsNoTracking()
+            .Where(x => x.Kind == "resposta" && x.Conteudo != null
+                && (x.Caminho == "/cgi-bin/marcar" || x.Caminho == "/cgi-bin/cons_verificar"))
+            .OrderByDescending(x => x.CriadoEm)
+            .Select(x => new { x.Caminho, x.Conteudo })
+            .Take(10)
+            .ToListAsync(ct);
+
+        var respostas = resps
+            .GroupBy(r => r.Caminho!)
+            .Select(g => new EstruturaRespostaDto(
+                g.Key,
+                g.Count(),
+                Rotulos.Where(rot => g.Any(r => (r.Conteudo ?? "").Contains(rot, StringComparison.OrdinalIgnoreCase)))
+                    .ToList()))
+            .ToList();
+
+        return new CapturaEstruturaDto(envios, respostas);
+    }
+
+    private static IEnumerable<string> LerCamposKeys(string payloadJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.TryGetProperty("campos", out var campos) && campos.ValueKind == JsonValueKind.Object)
+                return campos.EnumerateObject().Select(p => p.Name).ToList();
+        }
+        catch { /* payload malformado */ }
+        return [];
+    }
+
     private static string? LerTexto(JsonElement o, string prop) =>
         o.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
