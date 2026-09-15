@@ -25,6 +25,7 @@ public sealed record CapturaResumoDto(
     IReadOnlyList<CapturaContagemDto> PorKind,
     IReadOnlyList<CapturaContagemDto> PorEvento,
     IReadOnlyList<CapturaContagemDto> PorCaminho,
+    IReadOnlyList<CapturaContagemDto> PorEtapa,
     IReadOnlyList<CapturaRecenteDto> Ultimas);
 
 public sealed record CapturaInstalacaoDto(string InstallId, string? UltimaVersao, long Total, DateTime UltimoEm);

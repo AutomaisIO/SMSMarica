@@ -65,7 +65,7 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
 
         var total = await q.LongCountAsync(ct);
         if (total == 0)
-            return new CapturaResumoDto(0, null, [], [], [], [], []);
+            return new CapturaResumoDto(0, null, [], [], [], [], [], []);
 
         var ultimoRecebido = await q.MaxAsync(x => (DateTime?)x.CriadoEm, ct);
 
@@ -118,6 +118,18 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
             .Select(c => new CapturaContagemDto(c.Key, c.Total))
             .ToList();
 
+        // Quebra por caminho+etapa: revela as ações de ESCRITA reais (ex.: o APLICAR do
+        // autorizador, a gravação do marcar) para sabermos o que dá para deduzir. Só metadados.
+        var porEtapaRaw = await q
+            .Where(x => x.Etapa != null)
+            .GroupBy(x => new { x.Caminho, x.Etapa })
+            .Select(g => new { g.Key.Caminho, g.Key.Etapa, Total = g.LongCount() })
+            .ToListAsync(ct);
+        var porEtapa = porEtapaRaw
+            .OrderByDescending(c => c.Total)
+            .Select(c => new CapturaContagemDto($"{c.Caminho} · {c.Etapa}", c.Total))
+            .ToList();
+
         var ultimasRaw = await q
             .OrderByDescending(x => x.CriadoEm)
             .Take(15)
@@ -133,7 +145,7 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
                 x.Kind, x.Metodo, x.Caminho, x.Etapa, x.Evento, x.Escrita, x.Status))
             .ToList();
 
-        return new CapturaResumoDto(total, ultimoRecebido, instalacoes, porKind, porEvento, porCaminho, ultimas);
+        return new CapturaResumoDto(total, ultimoRecebido, instalacoes, porKind, porEvento, porCaminho, porEtapa, ultimas);
     }
 
     private static string? LerTexto(JsonElement o, string prop) =>
