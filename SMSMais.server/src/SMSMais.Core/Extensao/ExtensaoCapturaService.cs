@@ -65,7 +65,7 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
 
         var total = await q.LongCountAsync(ct);
         if (total == 0)
-            return new CapturaResumoDto(0, null, [], [], [], []);
+            return new CapturaResumoDto(0, null, [], [], [], [], []);
 
         var ultimoRecebido = await q.MaxAsync(x => (DateTime?)x.CriadoEm, ct);
 
@@ -108,6 +108,16 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
             .Select(c => new CapturaContagemDto(c.Key, c.Total))
             .ToList();
 
+        var porCaminhoRaw = await q
+            .Where(x => x.Caminho != null)
+            .GroupBy(x => x.Caminho!)
+            .Select(g => new { g.Key, Total = g.LongCount() })
+            .ToListAsync(ct);
+        var porCaminho = porCaminhoRaw
+            .OrderByDescending(c => c.Total)
+            .Select(c => new CapturaContagemDto(c.Key, c.Total))
+            .ToList();
+
         var ultimasRaw = await q
             .OrderByDescending(x => x.CriadoEm)
             .Take(15)
@@ -123,7 +133,7 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
                 x.Kind, x.Metodo, x.Caminho, x.Etapa, x.Evento, x.Escrita, x.Status))
             .ToList();
 
-        return new CapturaResumoDto(total, ultimoRecebido, instalacoes, porKind, porEvento, ultimas);
+        return new CapturaResumoDto(total, ultimoRecebido, instalacoes, porKind, porEvento, porCaminho, ultimas);
     }
 
     private static string? LerTexto(JsonElement o, string prop) =>
