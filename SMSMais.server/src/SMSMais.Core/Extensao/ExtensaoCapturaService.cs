@@ -87,26 +87,41 @@ public sealed class ExtensaoCapturaService(SmsMaisDbContext db, IUsuarioAtualAcc
             .Select(i => new CapturaInstalacaoDto(i.InstallId, i.UltimaVersao, i.Total, i.UltimoEm))
             .ToList();
 
-        var porKind = await q
+        // Projeção para o construtor do record DENTRO do GroupBy não traduz no Npgsql: agrupa em
+        // tipo anônimo no SQL e mapeia/ordena em memória.
+        var porKindRaw = await q
             .GroupBy(x => x.Kind)
-            .Select(g => new CapturaContagemDto(g.Key, g.LongCount()))
-            .OrderByDescending(c => c.Total)
+            .Select(g => new { g.Key, Total = g.LongCount() })
             .ToListAsync(ct);
+        var porKind = porKindRaw
+            .OrderByDescending(c => c.Total)
+            .Select(c => new CapturaContagemDto(c.Key, c.Total))
+            .ToList();
 
-        var porEvento = await q
+        var porEventoRaw = await q
             .Where(x => x.Evento != null)
             .GroupBy(x => x.Evento!)
-            .Select(g => new CapturaContagemDto(g.Key, g.LongCount()))
-            .OrderByDescending(c => c.Total)
+            .Select(g => new { g.Key, Total = g.LongCount() })
             .ToListAsync(ct);
+        var porEvento = porEventoRaw
+            .OrderByDescending(c => c.Total)
+            .Select(c => new CapturaContagemDto(c.Key, c.Total))
+            .ToList();
 
-        var ultimas = await q
+        var ultimasRaw = await q
             .OrderByDescending(x => x.CriadoEm)
             .Take(15)
+            .Select(x => new
+            {
+                x.CriadoEm, x.OcorridoEm, x.OperadorSisreg,
+                x.Kind, x.Metodo, x.Caminho, x.Etapa, x.Evento, x.Escrita, x.Status,
+            })
+            .ToListAsync(ct);
+        var ultimas = ultimasRaw
             .Select(x => new CapturaRecenteDto(
                 x.CriadoEm, x.OcorridoEm, x.OperadorSisreg,
                 x.Kind, x.Metodo, x.Caminho, x.Etapa, x.Evento, x.Escrita, x.Status))
-            .ToListAsync(ct);
+            .ToList();
 
         return new CapturaResumoDto(total, ultimoRecebido, instalacoes, porKind, porEvento, ultimas);
     }
