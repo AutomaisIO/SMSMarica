@@ -6,6 +6,8 @@
  * tem) e com `idSernit` no lugar de `idSer`.
  */
 
+import type { CategoriaFollowUp } from '@/shared/regulacao/categoriasFollowUp';
+
 export const SITUACOES_SERNIT = [
   'EmFila',
   'Pendente',
@@ -205,6 +207,9 @@ export type FollowUpResumoSernit = {
   dataEvento: string;
   usuario: string | null;
   observacao: string | null;
+  /** Categoria do classificador de FollowUP (FalhaContato, SemVaga…). Null enquanto o worker
+   * não classificou; 'Outro' quando nenhuma regra casou. */
+  categoria: CategoriaFollowUp | null;
 };
 
 export type NotificacoesSernitPagina = {
@@ -229,6 +234,8 @@ export type NotificacoesSernitFiltro = {
   tipo?: TipoRecursoSernit;
   situacao?: SituacaoSernit;
   tipoGatilho?: TipoGatilhoSernit;
+  /** Só solicitações cujo ÚLTIMO FollowUP tem esta categoria. */
+  categoriaFollowUp?: CategoriaFollowUp;
   pagina?: number;
   tamanho?: number;
 };

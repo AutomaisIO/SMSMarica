@@ -24,6 +24,9 @@ internal sealed class SerEventoConfiguration : IEntityTypeConfiguration<SerEvent
         builder.Property(x => x.Ip).HasColumnName("ip").HasMaxLength(45);
         builder.Property(x => x.Observacao).HasColumnName("observacao");
         builder.Property(x => x.CapturadoEm).HasColumnName("capturado_em").IsRequired();
+        builder.Property(x => x.TipoEvento).HasColumnName("tipo_evento").IsRequired();
+        builder.Property(x => x.FollowUpCategoria).HasColumnName("followup_categoria").HasMaxLength(40);
+        builder.Property(x => x.FollowUpRegrasHash).HasColumnName("followup_regras_hash").HasMaxLength(16);
 
         // IDEMPOTÊNCIA DO RE-SCRAPING. O SER não numera os eventos, então a identidade é a
         // tripla (solicitação, instante, verbo). Sem isto, reler o histórico todo dia — o que
@@ -40,5 +43,15 @@ internal sealed class SerEventoConfiguration : IEntityTypeConfiguration<SerEvent
         // "Quais FollowUPs entraram hoje" — a consulta do gatilho.
         builder.HasIndex(x => new { x.Evento, x.CapturadoEm })
             .HasDatabaseName("ix_ser_evento_evento_capturado");
+
+        // "Último FollowUP desta solicitação" — a subconsulta dos cards de notificação.
+        builder.HasIndex(x => new { x.SerSolicitacaoId, x.TipoEvento, x.DataEvento })
+            .HasDatabaseName("ix_ser_evento_solicitacao_tipo_data")
+            .IsDescending(false, false, true);
+
+        // Fila do worker de classificação: FollowUPs sem categoria ou com regras defasadas.
+        builder.HasIndex(x => x.FollowUpRegrasHash)
+            .HasDatabaseName("ix_ser_evento_followup_regras_hash")
+            .HasFilter("tipo_evento = 2");
     }
 }

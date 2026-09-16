@@ -3,6 +3,7 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Ser.Dtos;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Core.Ser;
@@ -74,6 +75,17 @@ public sealed class SerNotificacaoService(
         if (filtro.Tipo is { } tipo) consulta = consulta.Where(x => x.Solicitacao.Tipo == tipo);
         if (filtro.Situacao is { } sit) consulta = consulta.Where(x => x.Gatilho.SituacaoAtual == sit);
         if (filtro.TipoGatilho is { } tg) consulta = consulta.Where(x => x.Gatilho.Tipo == tg);
+        if (!string.IsNullOrWhiteSpace(filtro.CategoriaFollowUp))
+        {
+            // O filtro olha o ÚLTIMO FollowUP, o mesmo que o card mostra: "falha de contato" é
+            // o estado atual da cobrança, não qualquer falha que já tenha existido na trilha.
+            var cat = filtro.CategoriaFollowUp.Trim();
+            consulta = consulta.Where(x => db.SerEventos
+                .Where(e => e.SerSolicitacaoId == x.Solicitacao.Id && e.TipoEvento == TipoEventoExterno.FollowUp)
+                .OrderByDescending(e => e.DataEvento)
+                .Select(e => e.FollowUpCategoria)
+                .FirstOrDefault() == cat);
+        }
 
         var total = await consulta.CountAsync(cancellationToken);
         var tamanho = Math.Clamp(filtro.Tamanho, 1, TamanhoMaximo);
@@ -99,14 +111,14 @@ public sealed class SerNotificacaoService(
                 x.Solicitacao.DataSolicitacao,
                 x.Solicitacao.AgendadoParaTexto,
                 x.Solicitacao.UnidadeExecutora,
-                // Subconsulta correlacionada (uma por linha da página, resolvida no banco). O
-                // padrão "%follow%up%" cobre as grafias que o sincronizador tolera ("FollowUP",
-                // "Follow-UP", "follow up") — ver EhFollowUp em SerSincronizacaoService.
+                // Subconsulta correlacionada (uma por linha da página, resolvida no banco) sobre
+                // o verbo TIPADO — a classificação textual aconteceu uma vez, na captura.
                 db.SerEventos
                     .Where(e => e.SerSolicitacaoId == x.Solicitacao.Id
-                                && EF.Functions.ILike(e.Evento, "%follow%up%"))
+                                && e.TipoEvento == TipoEventoExterno.FollowUp)
                     .OrderByDescending(e => e.DataEvento)
-                    .Select(e => new SerFollowUpResumoDto(e.DataEvento, e.Usuario, e.Observacao))
+                    .Select(e => new SerFollowUpResumoDto(
+                        e.DataEvento, e.Usuario, e.Observacao, e.FollowUpCategoria))
                     .FirstOrDefault()))
             .ToListAsync(cancellationToken);
 

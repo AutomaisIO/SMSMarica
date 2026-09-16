@@ -25,7 +25,8 @@ public sealed record SernitNotificacaoDto(
     SernitFollowUpResumoDto? UltimoFollowUp);
 
 /// <summary>Resumo de um FollowUP para o card: quando, quem e o texto (de <c>sernit_evento</c>).</summary>
-public sealed record SernitFollowUpResumoDto(DateTime DataEvento, string? Usuario, string? Observacao);
+public sealed record SernitFollowUpResumoDto(
+    DateTime DataEvento, string? Usuario, string? Observacao, string? Categoria);
 
 public sealed record SernitNotificacaoPaginaDto(
     IReadOnlyList<SernitNotificacaoDto> Itens, int Total, int Pagina, int Tamanho);
@@ -41,6 +42,9 @@ public sealed record SernitNotificacaoFiltroDto
     public TipoRecursoSernit? Tipo { get; init; }
     public SituacaoSernit? Situacao { get; init; }
     public TipoGatilhoSernit? TipoGatilho { get; init; }
+
+    /// <summary>Só solicitações cujo ÚLTIMO FollowUP tem esta categoria.</summary>
+    public string? CategoriaFollowUp { get; init; }
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;
 }

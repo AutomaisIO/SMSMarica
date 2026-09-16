@@ -835,6 +835,12 @@ public static class DependencyInjection
 
         // ---- REGULAÇÃO → SOLICITAÇÕES (ADR-0052) ----
         services.AddScoped<Regulacao.Configuracao.IRegulacaoConfiguracaoService, Regulacao.Configuracao.RegulacaoConfiguracaoService>();
+
+        // Classificação PERSISTIDA de FollowUP (ser_evento/sernit_evento.followup_categoria): o
+        // sincronizador classifica na captura; o worker cobre o passado e reclassifica quando as
+        // regras mudam pela tela (hash das regras gravado em cada evento).
+        services.AddScoped<Regulacao.FollowUp.IFollowUpClassificacaoService, Regulacao.FollowUp.FollowUpClassificacaoService>();
+        services.AddHostedService<Regulacao.FollowUp.FollowUpClassificacaoWorker>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoCatalogoService, Regulacao.Catalogo.RegulacaoCatalogoService>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoProcedimentoBuscaService, Regulacao.Catalogo.RegulacaoProcedimentoBuscaService>();
         services.AddScoped<Regulacao.Anexos.IArquivoExigenciaStore, Regulacao.Anexos.ArquivoExigenciaStoreSpaces>();

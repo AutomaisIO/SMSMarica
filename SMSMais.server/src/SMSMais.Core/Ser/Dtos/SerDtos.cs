@@ -341,7 +341,13 @@ public sealed record SerNotificacaoDto(
 
 /// <summary>Resumo de um FollowUP para o card: quando, quem e o texto. Vem de
 /// <c>ser_evento</c>, que é a trilha crua do SER.</summary>
-public sealed record SerFollowUpResumoDto(DateTime DataEvento, string? Usuario, string? Observacao);
+public sealed record SerFollowUpResumoDto(
+    DateTime DataEvento,
+    string? Usuario,
+    string? Observacao,
+    /// <summary>Categoria do classificador (FalhaContato, SemVaga…). Null enquanto o worker não
+    /// classificou; "Outro" quando nenhuma regra casou.</summary>
+    string? Categoria);
 
 public sealed record SerNotificacaoPaginaDto(
     IReadOnlyList<SerNotificacaoDto> Itens, int Total, int Pagina, int Tamanho);
@@ -361,6 +367,10 @@ public sealed record SerNotificacaoFiltroDto
 
     /// <summary>Filtra pelo que provocou a notificação (mudança de situação, FollowUP novo…).</summary>
     public TipoGatilhoSer? TipoGatilho { get; init; }
+
+    /// <summary>Só solicitações cujo ÚLTIMO FollowUP tem esta categoria (ex.: "FalhaContato"
+    /// para a fila de quem a central não conseguiu contatar).</summary>
+    public string? CategoriaFollowUp { get; init; }
 
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;

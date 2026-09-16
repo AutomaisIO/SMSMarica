@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BellRing, Check, Loader2 } from 'lucide-react';
+import { AlertTriangle, BellRing, Check, Loader2 } from 'lucide-react';
 
 import {
   useMarcarNotificacaoVista,
@@ -21,6 +21,13 @@ import { Button } from '@/shared/ui/Button';
 import { formatarInstante } from '@/shared/lib/datas';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { Paginacao } from '@/shared/ui/Paginacao';
+import {
+  CATEGORIAS_FOLLOWUP,
+  ROTULO_CATEGORIA_FOLLOWUP,
+  ehCategoriaDeAtencao,
+  rotuloCategoriaFollowUp,
+  type CategoriaFollowUp,
+} from '@/shared/regulacao/categoriasFollowUp';
 
 /**
  * Regulação → Notificações: o que mudou no SER e ainda ninguém olhou.
@@ -50,6 +57,9 @@ const TIPOS: TipoRecursoSer[] = ['Consulta', 'Exame'];
 export function SerNotificacoesPage() {
   const [tipo, setTipo] = useState<TipoRecursoSer>('Consulta');
   const [situacao, setSituacao] = useState<SituacaoSer | undefined>(undefined);
+  // Filtro pelo ÚLTIMO FollowUP da solicitação (a categoria que o card mostra). Não zera
+  // ao trocar de aba: quem está caçando "falha de contato" quer isso em Consulta e Exame.
+  const [categoria, setCategoria] = useState<CategoriaFollowUp | undefined>(undefined);
 
   // Página e tamanho: até 15/09/2026 a tela trazia só os 100 mais recentes, e o resto só aparecia
   // marcando os primeiros como vistos.
@@ -58,8 +68,8 @@ export function SerNotificacoesPage() {
 
   const { data: resumo } = useResumoNotificacoesSer();
   const filtro = useMemo(
-    () => ({ tipo, situacao, pagina: paginaAtual, tamanho }),
-    [tipo, situacao, paginaAtual, tamanho],
+    () => ({ tipo, situacao, categoriaFollowUp: categoria, pagina: paginaAtual, tamanho }),
+    [tipo, situacao, categoria, paginaAtual, tamanho],
   );
   const { data: pagina, isLoading } = useNotificacoesSer(filtro);
 
@@ -80,6 +90,10 @@ export function SerNotificacoesPage() {
   };
   const escolherSituacao = (s: SituacaoSer | undefined) => {
     setSituacao(s);
+    setPaginaAtual(1);
+  };
+  const escolherCategoria = (c: CategoriaFollowUp | undefined) => {
+    setCategoria(c);
     setPaginaAtual(1);
   };
 
@@ -150,6 +164,44 @@ export function SerNotificacoesPage() {
             <span className="ml-1.5 text-xs opacity-80">{porSituacao(s)}</span>
           </FiltroSituacao>
         ))}
+      </div>
+
+      {/* Filtro pelo último FollowUP. O atalho "Falha de contato" é a fila de quem a central
+          não conseguiu achar — e nós temos telefone verificado e WhatsApp que ela não tem. */}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <label htmlFor="ser-filtro-categoria-followup" className="text-slate-600">
+          Último FollowUP:
+        </label>
+        <select
+          id="ser-filtro-categoria-followup"
+          value={categoria ?? ''}
+          onChange={(e) =>
+            escolherCategoria((e.target.value || undefined) as CategoriaFollowUp | undefined)
+          }
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+        >
+          <option value="">Todos</option>
+          {CATEGORIAS_FOLLOWUP.map((c) => (
+            <option key={c} value={c}>
+              {ROTULO_CATEGORIA_FOLLOWUP[c]}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() =>
+            escolherCategoria(categoria === 'FalhaContato' ? undefined : 'FalhaContato')
+          }
+          className={`flex items-center gap-1 rounded-full border px-3 py-1 text-sm ${
+            categoria === 'FalhaContato'
+              ? 'border-amber-500 bg-amber-100 text-amber-900'
+              : 'border-amber-300 text-amber-800 hover:bg-amber-50'
+          }`}
+          title="Só solicitações cujo último FollowUP é falha de contato com o paciente"
+        >
+          <AlertTriangle className="size-4" />
+          Falha de contato
+        </button>
       </div>
 
       {isLoading && (
@@ -235,8 +287,18 @@ function LinhaNotificacao({
   onVista: () => void;
   onAbrir: () => void;
 }) {
+  // Ponto de atenção: o último FollowUP pede ação da unidade (falha de contato, pedido de
+  // documento). O card inteiro muda de cor — é o que se enxerga rolando uma fila de 100.
+  const atencao = ehCategoriaDeAtencao(n.ultimoFollowUp?.categoria);
+
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-slate-300 hover:bg-slate-50">
+    <div
+      className={`flex items-start gap-3 rounded-lg border p-3 transition ${
+        atencao
+          ? 'border-amber-300 bg-amber-50/60 hover:border-amber-400 hover:bg-amber-50'
+          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+      }`}
+    >
       {/* A linha inteira abre o detalhe: o alvo de clique é o caso, não um link escondido no
           meio do texto. Os botões ficam fora deste bloco para não disparar o modal junto. */}
       <div
@@ -312,10 +374,31 @@ function LinhaNotificacao({
 /** Último FollowUP da solicitação: quando, quem e o texto (cortado em duas linhas — o card é
  * um resumo; o texto inteiro está no detalhe). */
 function UltimoFollowUp({ f }: { f: FollowUpResumoSer }) {
+  const atencao = ehCategoriaDeAtencao(f.categoria);
+  const rotulo = rotuloCategoriaFollowUp(f.categoria);
+
   return (
-    <div className="rounded border border-rose-100 bg-rose-50/60 px-2 py-1 text-xs text-slate-700">
-      <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-rose-800">
+    <div
+      className={`rounded border px-2 py-1 text-xs text-slate-700 ${
+        atencao ? 'border-amber-300 bg-amber-100/70' : 'border-rose-100 bg-rose-50/60'
+      }`}
+    >
+      <div
+        className={`flex flex-wrap items-center gap-x-2 text-[11px] ${
+          atencao ? 'text-amber-900' : 'text-rose-800'
+        }`}
+      >
+        {atencao && <AlertTriangle className="size-3.5" aria-label="Pede atenção" />}
         <span className="font-semibold">Último FollowUP</span>
+        {rotulo && (
+          <span
+            className={`rounded px-1.5 py-0.5 font-medium ${
+              atencao ? 'bg-amber-200 text-amber-900' : 'bg-white/70 text-slate-700'
+            }`}
+          >
+            {rotulo}
+          </span>
+        )}
         <span>{formatarInstante(f.dataEvento)}</span>
         {f.usuario && <span className="text-slate-500">por {f.usuario}</span>}
       </div>

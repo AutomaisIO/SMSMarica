@@ -1,3 +1,5 @@
+using SMSMais.Data.Entities.Regulacao;
+
 namespace SMSMais.Data.Entities.Sernit;
 
 /// <summary>
@@ -23,6 +25,19 @@ public class SernitEvento
     /// <summary>Verbo do SERNIT: <c>Solicitar</c>, <c>FollowUP</c>, <c>Pendenciar</c>,
     /// <c>Cancelar</c>. Guardado como TEXTO CRU — verbo novo vira dado, não falha de importação.</summary>
     public string Evento { get; set; } = string.Empty;
+
+    /// <summary>Verbo tipado — classificado UMA vez, na captura (ou pelo backfill). O texto cru
+    /// continua em <see cref="Evento"/>.</summary>
+    public TipoEventoExterno TipoEvento { get; set; }
+
+    /// <summary>Categoria do FollowUP pelo classificador de regex da regulação (FalhaContato,
+    /// SemVaga, ReclassificacaoRisco…). Só em <see cref="TipoEventoExterno.FollowUp"/>; null
+    /// enquanto o worker não classificou.</summary>
+    public string? FollowUpCategoria { get; set; }
+
+    /// <summary>Hash das regras que produziram <see cref="FollowUpCategoria"/>. Regras editadas
+    /// pela tela mudam o hash, e o worker reclassifica o que ficou diferente.</summary>
+    public string? FollowUpRegrasHash { get; set; }
 
     public string? EstadoAnterior { get; set; }
     public string? EstadoAtual { get; set; }

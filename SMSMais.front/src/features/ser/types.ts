@@ -5,6 +5,8 @@
  * Os campos espelham as colunas da grade do SER de propósito, para o operador reconhecer a tela.
  */
 
+import type { CategoriaFollowUp } from '@/shared/regulacao/categoriasFollowUp';
+
 /** Situações do SER. A ordem aqui é a da fila (do que espera para o que terminou). */
 export const SITUACOES_SER = [
   'EmFila',
@@ -297,6 +299,9 @@ export type FollowUpResumoSer = {
   dataEvento: string;
   usuario: string | null;
   observacao: string | null;
+  /** Categoria do classificador de FollowUP (FalhaContato, SemVaga…). Null enquanto o worker
+   * não classificou; 'Outro' quando nenhuma regra casou. */
+  categoria: CategoriaFollowUp | null;
 };
 
 export type NotificacoesPagina = {
@@ -322,6 +327,8 @@ export type NotificacoesFiltro = {
   tipo?: TipoRecursoSer;
   situacao?: SituacaoSer;
   tipoGatilho?: TipoGatilhoSer;
+  /** Só solicitações cujo ÚLTIMO FollowUP tem esta categoria. */
+  categoriaFollowUp?: CategoriaFollowUp;
   pagina?: number;
   tamanho?: number;
 };

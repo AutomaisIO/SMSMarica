@@ -1,3 +1,5 @@
+using SMSMais.Data.Entities.Regulacao;
+
 namespace SMSMais.Data.Entities.Ser;
 
 /// <summary>
@@ -27,6 +29,19 @@ public class SerEvento
     /// <c>Cancelar</c>. Guardado como TEXTO CRU de propósito — o SER pode introduzir um verbo
     /// novo, e um enum transformaria isso em falha de importação em vez de dado.</summary>
     public string Evento { get; set; } = string.Empty;
+
+    /// <summary>Verbo tipado — classificado UMA vez, na captura (ou pelo backfill). O texto cru
+    /// continua em <see cref="Evento"/>.</summary>
+    public TipoEventoExterno TipoEvento { get; set; }
+
+    /// <summary>Categoria do FollowUP pelo classificador de regex da regulação (FalhaContato,
+    /// SemVaga, ReclassificacaoRisco…). Só em <see cref="TipoEventoExterno.FollowUp"/>; null
+    /// enquanto o worker não classificou.</summary>
+    public string? FollowUpCategoria { get; set; }
+
+    /// <summary>Hash das regras que produziram <see cref="FollowUpCategoria"/>. Regras editadas
+    /// pela tela mudam o hash, e o worker reclassifica o que ficou diferente.</summary>
+    public string? FollowUpRegrasHash { get; set; }
 
     /// <summary>Situação antes, em texto do SER ("Em fila"). Texto pelo mesmo motivo do verbo.</summary>
     public string? EstadoAnterior { get; set; }

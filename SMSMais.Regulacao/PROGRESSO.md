@@ -351,6 +351,15 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 
 ## Diário
 
+### 16/09/2026 — FollowUP estruturado: verbo tipado + categoria persistida (antecipa parte da 6.2/6.3)
+- **Pedido do Bernardo:** o card de notificação do SER/SERNIT mostra o último FollowUP; os de **falha de contato** ganham ponto de atenção e a tela filtra por categoria. Motivação: a central não achou o paciente, e nós temos telefone verificado e WhatsApp que ela não tem.
+- **O que mudou no dado:** `ser_evento`/`sernit_evento` ganharam `tipo_evento` (enum `TipoEventoExterno`: Solicitar/FollowUp/Pendenciar/Cancelar/Agendar/Outro), `followup_categoria` e `followup_regras_hash`. O verbo cru continua em `evento`. Migration `20260916120925_FollowUpEstruturado` faz o backfill do verbo em SQL (`ILIKE '%follow%up%'` etc.); a **categoria fica fora da migration** — depende das regras editáveis — e quem preenche é o `FollowUpClassificacaoWorker` (lotes de 500, a cada 15 min, com hash das regras gravado em cada evento; editar regras pela tela reclassifica só o que ficou defasado).
+- **Na captura:** os dois sincronizadores classificam o evento ao inserir (`ClassificadorEventoRegulacao.TipoDoVerbo` + `IFollowUpClassificacaoService.ClassificarAsync`). A função `EhFollowUp` privada de cada um foi substituída pela regra única.
+- **Nas notificações:** subconsulta do último FollowUP passou de `ILIKE` para `tipo_evento = 2` (índice `ix_*_evento_solicitacao_tipo_data`); filtro `categoriaFollowUp` olha o **último** FollowUP, não a trilha inteira. Front: `shared/regulacao/categoriasFollowUp.ts` (rótulos + categorias de atenção: `FalhaContato`, `SolicitacaoAoSolicitante`), select + atalho "Falha de contato", card âmbar quando pede ação.
+- **Armadilhas achadas:** (1) já existia `TipoEventoRegulacao` (trilha interna) — o enum novo chama `TipoEventoExterno`; (2) `regras_followup_json` é `jsonb`, e o Postgres devolve o texto **reformatado com chaves reordenadas** — o hash é do JSON canônico (regras parseadas e reserializadas), senão reclassificaria tudo a cada leitura; (3) a configuração padrão nasce com `regras_followup_json = "[]"` — a semente só entra pela tela. **Em produção, conferir que as regras estão carregadas antes de esperar categoria diferente de "Outro".**
+- Testes: 56 verdes na bancada (migration validada contra Postgres real). Commit local; **nada em produção** — migration + worker esperam OK.
+- O que a 6.3 ganha de graça: o consumidor de gatilhos não precisa mais classificar — lê `followup_categoria` do evento.
+
 ### 08/09/2026 — a tela de regras passou a abrir pelo que a rede mais pede
 
 Pedido do Bernardo, fora do plano 03: listar os procedimentos mais regulados já na abertura, com quantas regras cada um tem, e poder omitir sistemas — com a escolha salva no usuário.

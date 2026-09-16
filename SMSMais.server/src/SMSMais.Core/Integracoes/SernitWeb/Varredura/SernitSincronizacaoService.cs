@@ -3,9 +3,11 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Regulacao.Conciliacao;
+using SMSMais.Core.Regulacao.FollowUp;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Sernit;
 
 namespace SMSMais.Core.Integracoes.SernitWeb.Varredura;
@@ -41,6 +43,7 @@ public sealed class SernitSincronizacaoService(
     ISernitLeitorService leitor,
     VarredorSernitPorPaginacao varredor,
     IRegulacaoConciliacaoService conciliacao,
+    IFollowUpClassificacaoService followUpClassificacao,
     ILogger<SernitSincronizacaoService> logger) : ISernitSincronizacaoService
 {
     private static readonly SituacaoSernit[] TodasSituacoes =
@@ -523,12 +526,22 @@ public sealed class SernitSincronizacaoService(
 
             if (!conhecidos.Add(Chave(data.Value, lido.Evento!))) continue;
 
+            // Classifica na captura: o verbo vira enum e o FollowUP já nasce com categoria.
+            // O texto cru fica ao lado — a classificação é pista, não verdade.
+            var tipo = ClassificadorEventoRegulacao.TipoDoVerbo(lido.Evento);
+            var classificacao = tipo == TipoEventoExterno.FollowUp
+                ? await followUpClassificacao.ClassificarAsync(lido.Observacao, cancellationToken)
+                : null;
+
             db.SernitEventos.Add(new SernitEvento
             {
                 Id = Guid.NewGuid(),
                 SernitSolicitacaoId = solicitacao.Id,
                 DataEvento = data.Value,
                 Evento = lido.Evento!,
+                TipoEvento = tipo,
+                FollowUpCategoria = classificacao?.Categoria,
+                FollowUpRegrasHash = classificacao?.RegrasHash,
                 EstadoAnterior = lido.EstadoAnterior,
                 EstadoAtual = lido.EstadoAtual,
                 CentralRegulacao = lido.CentralRegulacao,
@@ -542,7 +555,7 @@ public sealed class SernitSincronizacaoService(
 
             execucao.EventosNovos++;
 
-            if (EhFollowUp(lido.Evento!))
+            if (tipo == TipoEventoExterno.FollowUp)
             {
                 execucao.FollowUpsNovos++;
                 RegistrarGatilho(execucao, solicitacao, TipoGatilhoSernit.NovoFollowUp,
@@ -590,9 +603,6 @@ public sealed class SernitSincronizacaoService(
         execucao.EventosNovos++;
     }
 
-    private static bool EhFollowUp(string evento) =>
-        evento.Replace("-", string.Empty).Replace(" ", string.Empty)
-            .Contains("followup", StringComparison.OrdinalIgnoreCase);
 
     private static string Chave(DateTime data, string evento) =>
         $"{data:O}|{evento.Trim().ToLowerInvariant()}";
