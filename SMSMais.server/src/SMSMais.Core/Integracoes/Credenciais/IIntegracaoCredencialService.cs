@@ -55,12 +55,10 @@ public static class ProvedoresIntegracao
         // SERNIT — SER de Niterói (regulacao.niteroi.rj.gov.br), mesma stack, instância própria.
         // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
         ["sernit"] = "SERNIT — SER de Niterói",
-        // Klinikos (Eco Sistemas), integração "como usuário" via web (ADITIVA à leitura SQL).
-        // Três instâncias/servers distintos, uma credencial cada. clientId=usuário,
-        // clientSecret=senha, parametrosJson={baseUrl, appRoot?, unidCodigo?}.
-        ["klinikos_conde"] = "Klinikos — HMCML (Conde Modesto Leal)",
-        ["klinikos_upa"] = "Klinikos — UPA 24h Maricá",
-        ["klinikos_santarita"] = "Klinikos — UPA 24h Santa Rita",
+        // NB: o conector web do Klinikos NÃO é um provedor de credencial de serviço (não é
+        // integração tipo Google/Spaces). É uma FONTE DE PRONTUÁRIO — configurada em
+        // "Importar Prontuários → Fontes/Conectores" como uma IaFonte (Tipo=KlinikosWeb), com
+        // URL/usuário/senha próprios. Por isso não aparece aqui.
     };
 
     public static bool EhSuportado(string provedor) => Suportados.ContainsKey(provedor);

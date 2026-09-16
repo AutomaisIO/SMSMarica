@@ -25,6 +25,10 @@ public enum TipoFonte
     /// em <c>Bases/atendimento/</c>.
     /// </summary>
     Atendimento = 8,
+
+    /// <summary>Conector de prontuário "como usuário" via web (Klinikos: Conde/UPA/Santa Rita).
+    /// Login + relatórios; sem acesso direto ao banco. Config completa na própria IaFonte.</summary>
+    KlinikosWeb = 9,
 }
 
 /// <summary>Dialeto SQL gerado/executado para a fonte.</summary>

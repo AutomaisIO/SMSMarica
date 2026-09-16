@@ -38,6 +38,8 @@ type FormState = {
   baseUrl: string;
   senha: string;
   ativo: boolean;
+  familia: string;
+  parametrosJson: string;
 };
 
 function estadoInicial(fonte?: FonteConfig): FormState {
@@ -54,6 +56,8 @@ function estadoInicial(fonte?: FonteConfig): FormState {
     baseUrl: fonte?.baseUrl ?? '',
     senha: '',
     ativo: fonte?.ativo ?? true,
+    familia: fonte?.familia ?? '',
+    parametrosJson: fonte?.parametrosJson ?? '',
   };
 }
 
@@ -93,6 +97,8 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
       baseUrl: form.baseUrl.trim() || undefined,
       senha: form.senha ? form.senha : undefined,
       ativo: form.ativo,
+      familia: form.familia.trim() || undefined,
+      parametrosJson: form.parametrosJson.trim() || undefined,
     };
   }
 
@@ -164,14 +170,25 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
                 const t = e.target.value;
                 // Sugere o dialeto conforme o tipo (ajustável).
                 const postgres = t === 'Postgres' || t === 'Regulacao' || t === 'Atendimento';
-                const dialeto = postgres ? 'postgres' : t === 'Fhir' ? '' : 'oracle';
-                setForm((f) => ({ ...f, tipo: t, dialeto }));
+                const dialeto = postgres ? 'postgres' : t === 'Fhir' || t === 'KlinikosWeb' ? '' : 'oracle';
+                setForm((f) => ({
+                  ...f,
+                  tipo: t,
+                  dialeto,
+                  // Conector web do Klinikos: sugere família e um template de parâmetros.
+                  familia: t === 'KlinikosWeb' && !f.familia ? 'klinikos' : f.familia,
+                  parametrosJson:
+                    t === 'KlinikosWeb' && !f.parametrosJson
+                      ? '{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true }'
+                      : f.parametrosJson,
+                }));
               }}
             >
               <option value="Salux">Salux</option>
               <option value="Mv">MV</option>
               <option value="Eco">ECO</option>
               <option value="Fhir">FHIR (API REST)</option>
+              <option value="KlinikosWeb">Klinikos (web — "como usuário", login + relatórios)</option>
               <option value="Postgres">PostgreSQL</option>
               <option value="Regulacao">Regulação — SISREG, SER e SERNIT (banco do SMSMais)</option>
               <option value="Atendimento">Atendimento — conversas com pacientes (banco do SMSMais)</option>
@@ -248,13 +265,49 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
             />
           </Campo>
 
-          {form.tipo === 'Fhir' ? (
+          {form.tipo === 'Fhir' || form.tipo === 'KlinikosWeb' ? (
             <Campo label="URL base" htmlFor="fc-baseurl" className="sm:col-span-2">
               <Input
                 id="fc-baseurl"
                 value={form.baseUrl}
                 onChange={(e) => set('baseUrl', e.target.value)}
-                placeholder="https://api.exemplo.com"
+                placeholder={
+                  form.tipo === 'KlinikosWeb'
+                    ? 'https://klinikosconde.smsmarica.online'
+                    : 'https://api.exemplo.com'
+                }
+              />
+            </Campo>
+          ) : null}
+
+          <Campo
+            label="Família"
+            htmlFor="fc-familia"
+            dica="Bases de mesma estrutura compartilham conhecimento (ex.: klinikos)."
+          >
+            <Input
+              id="fc-familia"
+              value={form.familia}
+              onChange={(e) => set('familia', e.target.value)}
+              placeholder="klinikos"
+            />
+          </Campo>
+
+          {form.tipo === 'KlinikosWeb' ? (
+            <Campo
+              label="Parâmetros (JSON)"
+              htmlFor="fc-parametros"
+              className="sm:col-span-2"
+              dica="appRoot (/KlinikosNet ou /UPA24H), unidCodigo, metaSource e webPrimaria (só o Conde grava)."
+            >
+              <textarea
+                id="fc-parametros"
+                value={form.parametrosJson}
+                onChange={(e) => set('parametrosJson', e.target.value)}
+                rows={3}
+                spellCheck={false}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-800 shadow-sm focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+                placeholder='{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true }'
               />
             </Campo>
           ) : null}

@@ -58,6 +58,8 @@ public sealed class IaFonteService(
             Usuario = Normalizar(request.Usuario),
             BaseUrl = Normalizar(request.BaseUrl),
             ViaAgente = request.ViaAgente,
+            Familia = Normalizar(request.Familia),
+            ParametrosJson = Normalizar(request.ParametrosJson),
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
@@ -174,6 +176,8 @@ public sealed class IaFonteService(
         fonte.Servico = Normalizar(request.Servico);
         fonte.Usuario = Normalizar(request.Usuario);
         fonte.BaseUrl = Normalizar(request.BaseUrl);
+        fonte.Familia = Normalizar(request.Familia);
+        fonte.ParametrosJson = Normalizar(request.ParametrosJson);
         fonte.Ativo = request.Ativo;
 
         // Senha nula/vazia = mantém a atual; preenchida = cifra e substitui.
@@ -255,7 +259,9 @@ public sealed class IaFonteService(
         f.Ativo,
         f.ViaAgente,
         f.ViaAgente && f.Slug is not null && _agenteRegistry.EstaConectado(f.Slug),
-        !string.IsNullOrEmpty(f.AgenteTokenHash));
+        !string.IsNullOrEmpty(f.AgenteTokenHash),
+        f.Familia,
+        f.ParametrosJson);
 
     private static TipoFonte ParseTipo(string valor) =>
         Enum.TryParse<TipoFonte>(valor, ignoreCase: true, out var v)

@@ -15,13 +15,16 @@ public sealed record AtualizarConfiguracaoRequest(string Provedor, string Modelo
 
 public sealed record FonteDetalheDto(Guid Id, string Nome, string? Slug, string Tipo, string Dialeto,
     string Ambiente, string? Host, int? Porta, string? Servico, string? Usuario,
-    string? BaseUrl, bool SenhaDefinida, bool Ativo, bool ViaAgente, bool AgenteConectado, bool TokenDefinido);
+    string? BaseUrl, bool SenhaDefinida, bool Ativo, bool ViaAgente, bool AgenteConectado, bool TokenDefinido,
+    string? Familia = null, string? ParametrosJson = null);
 
 public sealed record CadastrarFonteRequest(string Nome, string? Slug, string Tipo, string Dialeto, string Ambiente,
-    string? Host, int? Porta, string? Servico, string? Usuario, string? Senha, string? BaseUrl, bool ViaAgente = false);
+    string? Host, int? Porta, string? Servico, string? Usuario, string? Senha, string? BaseUrl, bool ViaAgente = false,
+    string? Familia = null, string? ParametrosJson = null);
 
 public sealed record AtualizarFonteRequest(string Nome, string? Slug, string Ambiente, string? Host, int? Porta,
-    string? Servico, string? Usuario, string? Senha, string? BaseUrl, bool Ativo);
+    string? Servico, string? Usuario, string? Senha, string? BaseUrl, bool Ativo,
+    string? Familia = null, string? ParametrosJson = null);
 
 public sealed record TestarConexaoResultado(bool Sucesso, string? Mensagem);
 

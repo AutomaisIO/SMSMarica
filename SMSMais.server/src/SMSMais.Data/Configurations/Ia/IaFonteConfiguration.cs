@@ -27,6 +27,7 @@ internal sealed class IaFonteConfiguration : IEntityTypeConfiguration<IaFonte>
         builder.Property(x => x.AgenteTokenHash).HasColumnName("agente_token_hash").HasMaxLength(64);
         builder.Property(x => x.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(x => x.Familia).HasColumnName("familia").HasMaxLength(60);
+        builder.Property(x => x.ParametrosJson).HasColumnName("parametros_json");
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.CriadoPor).HasColumnName("criado_por");
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em");

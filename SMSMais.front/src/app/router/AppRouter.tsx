@@ -82,6 +82,7 @@ import { SernitFilaPage } from '@/features/sernit/pages/SernitFilaPage';
 import { SernitSolicitacaoDetalhePage } from '@/features/sernit/pages/SernitSolicitacaoDetalhePage';
 import RegulacaoSernitConfiguracaoPage from '@/features/sernit/pages/RegulacaoSernitConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
+import { FontesProntuarioPage } from '@/features/pep-sincronizacao/pages/FontesProntuarioPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
@@ -242,6 +243,7 @@ export function AppRouter() {
           <Route path="sisreg/estatisticas" element={<SisregEstatisticasPage />} />
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
+          <Route path="pep-sincronizacao/fontes" element={<FontesProntuarioPage />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />
           <Route path="integracoes" element={<IntegracoesPage />} />
           <Route path="auditoria" element={<AuditoriaPage />} />

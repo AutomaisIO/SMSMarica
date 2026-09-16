@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using SMSMais.Core.Integracoes.Credenciais;
 
 namespace SMSMais.Core.Integracoes.KlinikosWeb.Varredura;
 
@@ -13,29 +12,29 @@ namespace SMSMais.Core.Integracoes.KlinikosWeb.Varredura;
 public interface IKlinikosWebSincronizacaoService
 {
     /// <summary>Monta a espinha de um dia (JOIN 407×667 por <c>spa_codigo</c>), sem gravar.</summary>
-    Task<IReadOnlyList<EspinhaRegistro>> MontarEspinhaAsync(string provedor, DateOnly dia, CancellationToken ct);
+    Task<IReadOnlyList<EspinhaRegistro>> MontarEspinhaAsync(string slug, DateOnly dia, CancellationToken ct);
 
     /// <summary>CID por boletim do dia, do relatório 526 (texto do diagnóstico), sem gravar.</summary>
-    Task<IReadOnlyDictionary<string, string>> PuxarCidPorBoletimAsync(string provedor, DateOnly dia, CancellationToken ct);
+    Task<IReadOnlyDictionary<string, string>> PuxarCidPorBoletimAsync(string slug, DateOnly dia, CancellationToken ct);
 
     /// <summary>Contagens da espinha de um dia (sem PII).</summary>
-    Task<ResumoDryRun> DryRunEspinhaAsync(string provedor, DateOnly dia, CancellationToken ct);
+    Task<ResumoDryRun> DryRunEspinhaAsync(string slug, DateOnly dia, CancellationToken ct);
 }
 
 public sealed class KlinikosWebSincronizacaoService(
     IKlinikosWebSessao sessao,
-    IIntegracaoCredencialService credenciais,
+    IKlinikosWebFonteResolver resolver,
     ILogger<KlinikosWebSincronizacaoService> logger) : IKlinikosWebSincronizacaoService
 {
     public async Task<IReadOnlyList<EspinhaRegistro>> MontarEspinhaAsync(
-        string provedor, DateOnly dia, CancellationToken ct)
+        string slug, DateOnly dia, CancellationToken ct)
     {
-        var instancia = await ResolverInstanciaAsync(provedor, ct);
+        var instancia = await ResolverInstanciaAsync(slug, ct);
         var d = dia.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
 
         // 407 — registrados no dia (boletim + prontuário + paciente + clínica).
         var xls407 = await sessao.BaixarRelatorioXlsAsync(
-            provedor,
+            slug,
             $"rptviewXls.aspx?parRel=407&parNum=4&par1={instancia.UnidCodigo}&par2={d}&par3={d}&par4=1&Modulo=UPA",
             ct);
         var boletins = KlinikosRelatorioParser.Ler407(xls407)
@@ -43,7 +42,7 @@ public sealed class KlinikosWebSincronizacaoService(
 
         // 667 — nominal por classificação (chegada + cor).
         var xls667 = await sessao.BaixarRelatorioXlsAsync(
-            provedor,
+            slug,
             $"rptviewXls.aspx?parNomeMaquina=&parRel=667&parNum=6&par1={d}&par2={d}&par3=&par4={instancia.UnidCodigo}&par5=PAR&par6=",
             ct);
         var classif = KlinikosRelatorioParser.Ler667(xls667)
@@ -66,14 +65,14 @@ public sealed class KlinikosWebSincronizacaoService(
     }
 
     public async Task<IReadOnlyDictionary<string, string>> PuxarCidPorBoletimAsync(
-        string provedor, DateOnly dia, CancellationToken ct)
+        string slug, DateOnly dia, CancellationToken ct)
     {
-        var instancia = await ResolverInstanciaAsync(provedor, ct);
+        var instancia = await ResolverInstanciaAsync(slug, ct);
         var d = dia.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
 
         // 526 — atendidos por profissional (CID em sub-linha). Pesado (~50s): uso pontual/noturno.
         var xls526 = await sessao.BaixarRelatorioXlsAsync(
-            provedor,
+            slug,
             $"rptviewXls.aspx?parNomeMaquina=&parRel=526&parNum=5&par1={instancia.UnidCodigo}&par2={d}&par3={d}&par4=5&par5=",
             ct);
 
@@ -85,10 +84,10 @@ public sealed class KlinikosWebSincronizacaoService(
         return mapa;
     }
 
-    public async Task<ResumoDryRun> DryRunEspinhaAsync(string provedor, DateOnly dia, CancellationToken ct)
+    public async Task<ResumoDryRun> DryRunEspinhaAsync(string slug, DateOnly dia, CancellationToken ct)
     {
         var relogio = Stopwatch.StartNew();
-        var espinha = await MontarEspinhaAsync(provedor, dia, ct);
+        var espinha = await MontarEspinhaAsync(slug, dia, ct);
         relogio.Stop();
 
         var porCor = espinha
@@ -96,7 +95,7 @@ public sealed class KlinikosWebSincronizacaoService(
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
 
         var resumo = new ResumoDryRun(
-            provedor, dia,
+            slug, dia,
             Boletins: espinha.Count,
             ComCor: espinha.Count(e => e.Cor is not null),
             ComChegada: espinha.Count(e => e.Chegada is not null),
@@ -109,15 +108,12 @@ public sealed class KlinikosWebSincronizacaoService(
         logger.LogInformation(
             "Klinikos dry-run espinha {Prov} {Dia}: {N} boletins ({Cor} com cor, {Cheg} com chegada; "
             + "407∩667={Ambos}, só407={So407}, só667={So667}) em {Seg:0.0}s.",
-            provedor, dia, resumo.Boletins, resumo.ComCor, resumo.ComChegada,
+            slug, dia, resumo.Boletins, resumo.ComCor, resumo.ComChegada,
             resumo.EmAmbos, resumo.SoEm407, resumo.SoEm667, resumo.Segundos);
 
         return resumo;
     }
 
-    private async Task<KlinikosInstancia> ResolverInstanciaAsync(string provedor, CancellationToken ct)
-    {
-        var ctx = await credenciais.ObterContextoAsync(provedor, ct);
-        return KlinikosInstancia.De(provedor, ctx.ParametrosJson);
-    }
+    private async Task<KlinikosInstancia> ResolverInstanciaAsync(string slug, CancellationToken ct) =>
+        (await resolver.ResolverAsync(slug, ct)).Instancia;
 }

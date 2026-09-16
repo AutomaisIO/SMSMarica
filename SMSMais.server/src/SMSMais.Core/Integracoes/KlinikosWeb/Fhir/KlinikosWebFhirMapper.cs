@@ -18,8 +18,8 @@ namespace SMSMais.Core.Integracoes.KlinikosWeb.Fhir;
 ///   <item>a espinha web não tem CPF/CNS/mãe/sexo (o 407 dá nome+nascimento+prontuário) — o
 ///     Patient sai fino; identidade completa vem do cadastro (rel. 21) e do deep;</item>
 ///   <item>a chave local do paciente aqui é o PRONTUÁRIO (o 407 não expõe o <c>pac_codigo</c> que
-///     o SQL usa) — por isso a escrita web só é primária no Conde (ver
-///     <see cref="KlinikosWebInstanciaFhir.EhFonteWebPrimaria"/>);</item>
+///     o SQL usa) — por isso a escrita web só é primária onde não há dono SQL (Conde), controlado
+///     pelo <c>webPrimaria</c> do <c>ParametrosJson</c> da <c>IaFonte</c>;</item>
 ///   <item>a hora do 667/526 tem precisão de minuto; o SQL tem o segundo.</item>
 /// </list>
 /// </summary>

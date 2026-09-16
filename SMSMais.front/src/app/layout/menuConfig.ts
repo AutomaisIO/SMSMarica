@@ -450,15 +450,22 @@ export const SECOES: SecaoMenu[] = [
   },
   {
     id: 'pep-sincronizacao',
-    titulo: 'Sincronização PEP',
+    titulo: 'Importar Prontuários',
     icone: DatabaseZap,
     itens: [
       {
-        rotulo: 'Importar prontuários',
+        rotulo: 'Painel',
         to: '/app/pep-sincronizacao',
         icone: DatabaseZap,
         modulo: 'SincronizacaoPep',
-        descricao: 'Importação de PEPs externos.',
+        descricao: 'Status dos motores e divergências de importação.',
+      },
+      {
+        rotulo: 'Fontes / Conectores',
+        to: '/app/pep-sincronizacao/fontes',
+        icone: Layers,
+        modulo: 'SincronizacaoPep',
+        descricao: 'Bases (banco/agente) e conectores web (Klinikos) de prontuário.',
       },
     ],
   },

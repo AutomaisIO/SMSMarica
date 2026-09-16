@@ -1,82 +1,14 @@
-﻿using System.Text.Json;
-
 namespace SMSMais.Core.Integracoes.KlinikosWeb;
 
 /// <summary>
-/// Uma instância do Klinikos (Eco Sistemas) — Conde, UPA Maricá ou Santa Rita. São três
-/// <b>servidores e bases distintos</b> (só sincronizam login e cadastro entre si), então cada um
-/// é um provedor de credencial próprio. O <c>AppRoot</c> difere: Conde serve em
-/// <c>/KlinikosNet</c>; UPA e Santa Rita em <c>/UPA24H</c> (medido 16/09/2026).
+/// Uma instância do Klinikos (Eco Sistemas) já resolvida para uso: <c>Slug</c> da
+/// <c>IaFonte</c>, URL base, caminho da app e código da unidade. São três <b>servidores e bases
+/// distintos</b> (Conde, UPA Maricá, Santa Rita — só sincronizam login e cadastro entre si);
+/// o <c>AppRoot</c> difere: Conde serve em <c>/KlinikosNet</c>; UPA e Santa Rita em <c>/UPA24H</c>
+/// (medido 16/09/2026). A config completa (URL/usuário/senha/params) vive na <c>IaFonte</c> e é
+/// montada por <see cref="KlinikosWebFonteResolver"/>.
 /// </summary>
-public sealed record KlinikosInstancia(string Provedor, Uri BaseUri, string AppRoot, string UnidCodigo)
-{
-    /// <summary>Provedores por instância (chave da credencial em <c>integracao_credencial</c>).</summary>
-    public const string ProvedorConde = "klinikos_conde";
-    public const string ProvedorUpa = "klinikos_upa";
-    public const string ProvedorSantaRita = "klinikos_santarita";
-
-    /// <summary>
-    /// Defaults medidos por provedor (<c>AppRoot</c> + <c>UnidCodigo</c>). O operador só precisa
-    /// informar URL/usuário/senha; o resto é constante da instância, sobrescritível pelo
-    /// <c>parametrosJson</c> da credencial se algum dia mudar.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<string, (string AppRoot, string Unid)> Defaults =
-        new Dictionary<string, (string, string)>(StringComparer.Ordinal)
-        {
-            [ProvedorConde] = ("/KlinikosNet", "0005"),
-            [ProvedorUpa] = ("/UPA24H", "0006"),
-            [ProvedorSantaRita] = ("/UPA24H", "0007"),
-        };
-
-    public static bool EhProvedorKlinikos(string provedor) => Defaults.ContainsKey(provedor);
-
-    /// <summary>
-    /// Monta a instância a partir do provedor + <c>parametrosJson</c> da credencial. <c>baseUrl</c>
-    /// é obrigatório (é o que o operador informa); <c>appRoot</c>/<c>unidCodigo</c> caem no default
-    /// da instância quando ausentes.
-    /// </summary>
-    public static KlinikosInstancia De(string provedor, string? parametrosJson)
-    {
-        if (!Defaults.TryGetValue(provedor, out var padrao))
-        {
-            throw new ArgumentException($"Provedor '{provedor}' não é uma instância Klinikos.", nameof(provedor));
-        }
-
-        string? baseUrl = null, appRoot = null, unid = null;
-        if (!string.IsNullOrWhiteSpace(parametrosJson))
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(parametrosJson);
-                baseUrl = Texto(doc.RootElement, "baseUrl");
-                appRoot = Texto(doc.RootElement, "appRoot");
-                unid = Texto(doc.RootElement, "unidCodigo");
-            }
-            catch (JsonException)
-            {
-                // parametrosJson inválido → usa defaults; baseUrl ausente cai na validação abaixo.
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(baseUrl))
-        {
-            throw new InvalidOperationException(
-                $"A credencial '{provedor}' não tem baseUrl no parametrosJson — informe a URL da instância.");
-        }
-
-        return new KlinikosInstancia(
-            provedor,
-            new Uri(baseUrl.TrimEnd('/')),
-            "/" + (appRoot ?? padrao.AppRoot).Trim('/'),
-            unid ?? padrao.Unid);
-    }
-
-    private static string? Texto(JsonElement root, string prop) =>
-        root.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String
-            && !string.IsNullOrWhiteSpace(v.GetString())
-            ? v.GetString()
-            : null;
-}
+public sealed record KlinikosInstancia(string Slug, Uri BaseUri, string AppRoot, string UnidCodigo);
 
 /// <summary>
 /// Uma linha do relatório 407 (Pacientes Registrados no Dia): a base do Encounter + identidade.
@@ -95,7 +27,7 @@ public sealed record ClassificacaoRegistro(
 /// <summary>
 /// Registro da ESPINHA por boletim, resultado do JOIN 407×667 por <c>SpaCodigo</c> — o que a via
 /// rápida gravaria como Encounter (chegada, cor, clínica) + identidade (paciente/prontuário).
-/// A etapa de escrita FHIR (próxima) converte isto em recurso via o mapper canônico.
+/// A etapa de escrita FHIR converte isto em recurso via o mapper canônico.
 /// </summary>
 public sealed record EspinhaRegistro(
     string SpaCodigo, string? Chegada, string? Cor, string? Clinica,
@@ -114,7 +46,7 @@ public sealed record CidResolvido(string? Codigo, string Texto, bool Mapeado);
 
 /// <summary>Contagens do dry-run da espinha (sem PII) — o que seria montado, sem gravar nada.</summary>
 public sealed record ResumoDryRun(
-    string Provedor,
+    string Slug,
     DateOnly Dia,
     int Boletins,
     int ComCor,

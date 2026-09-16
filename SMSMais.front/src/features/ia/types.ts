@@ -52,6 +52,10 @@ export type FonteConfig = {
   agenteConectado: boolean;
   /** Se já existe token de agente gerado. */
   tokenDefinido: boolean;
+  /** Família de bases de mesma estrutura (ex.: `klinikos`). */
+  familia?: string | null;
+  /** Parâmetros específicos do conector, em JSON (ex.: KlinikosWeb: {appRoot,unidCodigo,metaSource,webPrimaria}). */
+  parametrosJson?: string | null;
 };
 
 /** Payload de criação/edição de base. Senha só vai quando o usuário a digita. */
@@ -71,6 +75,10 @@ export type SalvarFonteConfigPayload = {
   ativo: boolean;
   /** Cria a base como proxy via agente (sem host/senha; credenciais no .env do destino). */
   viaAgente?: boolean;
+  /** Família de bases de mesma estrutura (ex.: `klinikos`). */
+  familia?: string;
+  /** Parâmetros específicos do conector, em JSON. */
+  parametrosJson?: string;
 };
 
 /** Documento de conhecimento (.md) de uma base — repositório orientado ao banco. */

@@ -26,8 +26,8 @@ public sealed class KlinikosWebController(
     [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Consulta)]
     [ProducesResponseType<ResumoDryRun>(StatusCodes.Status200OK)]
     public async Task<ResumoDryRun> DryRun(
-        [FromQuery] string provedor, [FromQuery] DateOnly dia, CancellationToken ct) =>
-        await sincronizacao.DryRunEspinhaAsync(provedor, dia, ct);
+        [FromQuery] string slug, [FromQuery] DateOnly dia, CancellationToken ct) =>
+        await sincronizacao.DryRunEspinhaAsync(slug, dia, ct);
 
     /// <summary>
     /// Paridade SQL × web (só leitura): compara os recursos web em memória com o que o hub já tem
@@ -37,24 +37,24 @@ public sealed class KlinikosWebController(
     [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Consulta)]
     [ProducesResponseType<ParidadeRelatorio>(StatusCodes.Status200OK)]
     public async Task<ParidadeRelatorio> Paridade(
-        [FromQuery] string provedor, [FromQuery] DateOnly dia, [FromQuery] int amostra = 20,
+        [FromQuery] string slug, [FromQuery] DateOnly dia, [FromQuery] int amostra = 20,
         CancellationToken ct = default) =>
-        await paridade.CompararAsync(provedor, dia, amostra, ct);
+        await paridade.CompararAsync(slug, dia, amostra, ct);
 
     /// <summary>Grava a espinha de um dia no hub. Só Conde e só com a escrita habilitada.</summary>
     [HttpPost("gravar")]
     [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Edicao)]
     [ProducesResponseType<ResumoEscrita>(StatusCodes.Status200OK)]
     public async Task<ResumoEscrita> Gravar(
-        [FromQuery] string provedor, [FromQuery] DateOnly dia, CancellationToken ct) =>
-        await escrita.GravarEspinhaAsync(provedor, dia, ct);
+        [FromQuery] string slug, [FromQuery] DateOnly dia, CancellationToken ct) =>
+        await escrita.GravarEspinhaAsync(slug, dia, ct);
 
     /// <summary>Backfill do buraco da migração (Conde: 08/08→hoje), dia a dia. Só com escrita habilitada.</summary>
     [HttpPost("backfill")]
     [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Edicao)]
     [ProducesResponseType<IReadOnlyList<ResumoEscrita>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<ResumoEscrita>> Backfill(
-        [FromQuery] string provedor, [FromQuery] DateOnly de, [FromQuery] DateOnly ate,
+        [FromQuery] string slug, [FromQuery] DateOnly de, [FromQuery] DateOnly ate,
         CancellationToken ct) =>
-        await escrita.BackfillAsync(provedor, de, ate, ct);
+        await escrita.BackfillAsync(slug, de, ate, ct);
 }

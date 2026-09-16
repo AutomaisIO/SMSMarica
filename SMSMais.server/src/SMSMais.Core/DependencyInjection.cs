@@ -489,6 +489,11 @@ public static class DependencyInjection
         // (Conde/UPA/Santa Rita são servers distintos), singleton com cookies próprios por provedor.
         // Sem HostedService nesta etapa: o dry-run é disparado sob demanda; schedulers vêm depois.
         services.AddSingleton<Integracoes.KlinikosWeb.IKlinikosWebSessao, Integracoes.KlinikosWeb.KlinikosWebSessao>();
+        // Resolve a instância (URL/usuário/senha/params) a partir da IaFonte (Tipo=KlinikosWeb) —
+        // o conector é uma FONTE DE PRONTUÁRIO, não uma credencial de integração de serviço.
+        services.AddScoped<
+            Integracoes.KlinikosWeb.IKlinikosWebFonteResolver,
+            Integracoes.KlinikosWeb.KlinikosWebFonteResolver>();
         services.AddScoped<
             Integracoes.KlinikosWeb.Varredura.IKlinikosWebSincronizacaoService,
             Integracoes.KlinikosWeb.Varredura.KlinikosWebSincronizacaoService>();

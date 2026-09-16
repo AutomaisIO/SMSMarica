@@ -62,6 +62,14 @@ public class IaFonte
     /// </summary>
     public string? Familia { get; set; }
 
+    /// <summary>
+    /// Parâmetros específicos do conector, em JSON (nullable). Livre e extensível a novos
+    /// conectores de prontuário sem migração por conector. O conector web do Klinikos guarda
+    /// aqui <c>{"appRoot","unidCodigo","metaSource","webPrimaria"}</c> — a URL/usuário/senha vão
+    /// nos campos próprios (<see cref="BaseUrl"/>/<see cref="Usuario"/>/<see cref="SenhaCifrada"/>).
+    /// </summary>
+    public string? ParametrosJson { get; set; }
+
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
     public DateTime? AtualizadoEm { get; set; }

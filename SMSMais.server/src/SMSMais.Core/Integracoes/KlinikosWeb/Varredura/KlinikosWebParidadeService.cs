@@ -15,7 +15,7 @@ public sealed record ParidadeCampo(string Campo, string? Web, string? Hub, Parid
 public sealed record ParidadeBoletim(string Spa, bool NoHub, IReadOnlyList<ParidadeCampo> Campos);
 
 public sealed record ParidadeRelatorio(
-    string Provedor, DateOnly Dia, int Amostra, int NoHub, int ForaDoHub,
+    string Slug, DateOnly Dia, int Amostra, int NoHub, int ForaDoHub,
     IReadOnlyDictionary<string, int> ResumoPorStatus,
     IReadOnlyList<ParidadeBoletim> Itens);
 
@@ -32,11 +32,12 @@ public sealed record ParidadeRelatorio(
 /// </summary>
 public interface IKlinikosWebParidadeService
 {
-    Task<ParidadeRelatorio> CompararAsync(string provedor, DateOnly dia, int amostra, CancellationToken ct);
+    Task<ParidadeRelatorio> CompararAsync(string slug, DateOnly dia, int amostra, CancellationToken ct);
 }
 
 public sealed class KlinikosWebParidadeService(
     IKlinikosWebSincronizacaoService sincronizacao,
+    IKlinikosWebFonteResolver resolver,
     IHubFhirEscritor hub,
     ICidDeParaService cid,
     ILogger<KlinikosWebParidadeService> logger) : IKlinikosWebParidadeService
@@ -44,13 +45,13 @@ public sealed class KlinikosWebParidadeService(
     private const string SysBoletim = "urn:klinikos:boletim";
 
     public async Task<ParidadeRelatorio> CompararAsync(
-        string provedor, DateOnly dia, int amostra, CancellationToken ct)
+        string slug, DateOnly dia, int amostra, CancellationToken ct)
     {
-        var id = KlinikosWebInstanciaFhir.De(provedor);
-        var mapper = new KlinikosWebFhirMapper(id.Slug, id.Source, cid);
+        var fonte = await resolver.ResolverAsync(slug, ct);
+        var mapper = new KlinikosWebFhirMapper(fonte.Instancia.Slug, fonte.MetaSource, cid);
 
-        var espinha = await sincronizacao.MontarEspinhaAsync(provedor, dia, ct);
-        var cids = await sincronizacao.PuxarCidPorBoletimAsync(provedor, dia, ct);
+        var espinha = await sincronizacao.MontarEspinhaAsync(slug, dia, ct);
+        var cids = await sincronizacao.PuxarCidPorBoletimAsync(slug, dia, ct);
 
         var itens = new List<ParidadeBoletim>();
         var resumo = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -60,7 +61,7 @@ public sealed class KlinikosWebParidadeService(
         {
             ct.ThrowIfCancellationRequested();
 
-            var encHub = await BuscarUnicoAsync<Encounter>("Encounter", $"{id.Slug}:{e.SpaCodigo}", ct);
+            var encHub = await BuscarUnicoAsync<Encounter>("Encounter", $"{fonte.Instancia.Slug}:{e.SpaCodigo}", ct);
             if (encHub is null)
             {
                 foraDoHub++;
@@ -71,7 +72,7 @@ public sealed class KlinikosWebParidadeService(
 
             // Encounter web em memória (mesma forma do SQL).
             var pacRef = encHub.Subject?.Reference ?? "Patient/desconhecido";
-            var encWeb = mapper.MontarEncounter(e, pacRef, encHub.ServiceProvider?.Reference, id.UnidCodigo);
+            var encWeb = mapper.MontarEncounter(e, pacRef, encHub.ServiceProvider?.Reference, fonte.Instancia.UnidCodigo);
 
             var campos = new List<ParidadeCampo>
             {
@@ -83,7 +84,7 @@ public sealed class KlinikosWebParidadeService(
             // Condition (CID) — web via de-para; hub via SQL.
             cids.TryGetValue(e.SpaCodigo, out var cidTexto);
             var condWeb = mapper.MontarCondition(e.SpaCodigo, cidTexto, pacRef, $"Encounter/{encHub.Id}", out _);
-            var condHub = await BuscarUnicoAsync<Condition>("Condition", $"{id.Slug}:{e.SpaCodigo}:cond", ct);
+            var condHub = await BuscarUnicoAsync<Condition>("Condition", $"{fonte.Instancia.Slug}:{e.SpaCodigo}:cond", ct);
             campos.Add(Campo("Condition.cid",
                 CodigoCid(condWeb?.Code), CodigoCid(condHub?.Code)));
 
@@ -102,9 +103,9 @@ public sealed class KlinikosWebParidadeService(
 
         logger.LogInformation(
             "Klinikos paridade {Prov} {Dia}: amostra {Am}, no hub {NoHub}, fora {Fora}.",
-            provedor, dia, itens.Count, noHub, foraDoHub);
+            slug, dia, itens.Count, noHub, foraDoHub);
 
-        return new ParidadeRelatorio(provedor, dia, itens.Count, noHub, foraDoHub, resumo, itens);
+        return new ParidadeRelatorio(slug, dia, itens.Count, noHub, foraDoHub, resumo, itens);
     }
 
     // ------------------------------------------------------------------ helpers de comparação

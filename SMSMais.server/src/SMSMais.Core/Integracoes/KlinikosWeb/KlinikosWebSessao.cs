@@ -6,7 +6,6 @@ using AngleSharp.Html.Dom;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Excecoes;
-using SMSMais.Core.Integracoes.Credenciais;
 
 namespace SMSMais.Core.Integracoes.KlinikosWeb;
 
@@ -220,7 +219,7 @@ public sealed partial class KlinikosWebSessao(
         // Sessão em outra estação: confirmar nesta (derruba a outra — esperado, usuário dedicado).
         if (KlinikosHtmlParser.PedeConfirmacaoDeSessao(resposta))
         {
-            logger.LogInformation("Klinikos[{Prov}]: usuário logado em outra estação — confirmando nesta.", sessao.Instancia.Provedor);
+            logger.LogInformation("Klinikos[{Prov}]: usuário logado em outra estação — confirmando nesta.", sessao.Instancia.Slug);
             var docConf = KlinikosHtmlParser.Documento(resposta);
             var formConf = KlinikosHtmlParser.PrimeiroForm(docConf)
                 ?? throw new ValidacaoException("klinikos.confirma_sem_form", "A confirmação de sessão veio sem form.");
@@ -235,7 +234,7 @@ public sealed partial class KlinikosWebSessao(
         {
             throw new ValidacaoException(
                 "klinikos.login_falhou",
-                $"Login no Klinikos falhou ({sessao.Instancia.Provedor}). Confira usuário/senha da credencial.");
+                $"Login no Klinikos falhou ({sessao.Instancia.Slug}). Confira usuário/senha da credencial.");
         }
     }
 
@@ -283,7 +282,7 @@ public sealed partial class KlinikosWebSessao(
         {
             throw new ValidacaoException(
                 "klinikos.gate_nao_passou",
-                $"Não foi possível definir o local de atendimento ({sessao.Instancia.Provedor}).");
+                $"Não foi possível definir o local de atendimento ({sessao.Instancia.Slug}).");
         }
     }
 
@@ -346,18 +345,12 @@ public sealed partial class KlinikosWebSessao(
     // ------------------------------------------------------------------ credencial
 
     private async Task<(KlinikosInstancia Instancia, string Usuario, string Senha)> CarregarAsync(
-        string provedor, CancellationToken ct)
+        string slug, CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
-        var credenciais = scope.ServiceProvider.GetRequiredService<IIntegracaoCredencialService>();
-        var ctx = await credenciais.ObterContextoAsync(provedor, ct);
-        if (string.IsNullOrWhiteSpace(ctx.ClientId) || string.IsNullOrWhiteSpace(ctx.ClientSecret))
-        {
-            throw new ValidacaoException(
-                "klinikos.credencial_incompleta",
-                $"Configure usuário e senha da instância Klinikos '{provedor}'.");
-        }
-        return (KlinikosInstancia.De(provedor, ctx.ParametrosJson), ctx.ClientId!, ctx.ClientSecret!);
+        var resolver = scope.ServiceProvider.GetRequiredService<IKlinikosWebFonteResolver>();
+        var fonte = await resolver.ResolverAsync(slug, ct);
+        return (fonte.Instancia, fonte.Usuario, fonte.Senha);
     }
 
     // ------------------------------------------------------------------ sessão (estado)

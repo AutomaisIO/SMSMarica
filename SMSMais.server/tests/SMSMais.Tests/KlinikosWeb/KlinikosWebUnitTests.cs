@@ -160,10 +160,30 @@ public class KlinikosWebUnitTests
     }
 
     [Fact]
-    public void Instancia_conde_e_fonte_web_primaria_upa_nao()
+    public void Parametros_conde_e_web_primaria_por_json()
     {
-        KlinikosWebInstanciaFhir.EhFonteWebPrimaria(KlinikosInstancia.ProvedorConde).Should().BeTrue();
-        KlinikosWebInstanciaFhir.EhFonteWebPrimaria(KlinikosInstancia.ProvedorUpa).Should().BeFalse();
-        KlinikosWebInstanciaFhir.De(KlinikosInstancia.ProvedorUpa).Slug.Should().Be("upa24h-marica-sqlserver");
+        var conde = KlinikosWebParametros.Resolver(
+            "klinikos-conde", """{"appRoot":"/KlinikosNet","unidCodigo":"0005","webPrimaria":true}""");
+        conde.WebPrimaria.Should().BeTrue();
+        conde.AppRoot.Should().Be("/KlinikosNet");
+        conde.UnidCodigo.Should().Be("0005");
+    }
+
+    [Fact]
+    public void Parametros_default_nao_e_web_primaria_e_source_deriva_do_slug()
+    {
+        // Sem parametrosJson: webPrimaria default FALSE (segurança) e metaSource derivado do slug.
+        var v = KlinikosWebParametros.Resolver("upa24h-marica-sqlserver", parametrosJson: null);
+        v.WebPrimaria.Should().BeFalse();
+        v.MetaSource.Should().Be("https://smsmarica.saude.marica/source/klinikos/upa24h-marica-sqlserver");
+        v.AppRoot.Should().Be("/KlinikosNet"); // default conservador quando não informado
+    }
+
+    [Fact]
+    public void Parametros_json_invalido_cai_no_default()
+    {
+        var v = KlinikosWebParametros.Resolver("klinikos-conde", "{ nao é json");
+        v.WebPrimaria.Should().BeFalse();
+        v.MetaSource.Should().Be("https://smsmarica.saude.marica/source/klinikos/klinikos-conde");
     }
 }
