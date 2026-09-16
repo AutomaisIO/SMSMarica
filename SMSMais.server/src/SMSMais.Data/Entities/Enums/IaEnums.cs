@@ -34,6 +34,9 @@ public enum TipoFonte
 /// <summary>Dialeto SQL gerado/executado para a fonte.</summary>
 public enum DialetoSql
 {
+    /// <summary>Sem dialeto SQL — fontes não consultadas por SQL (web/FHIR "como usuário").</summary>
+    Nenhum = 0,
+
     Oracle = 1,
     Postgres = 2,
 

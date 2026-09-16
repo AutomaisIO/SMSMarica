@@ -269,9 +269,12 @@ public sealed class IaFonteService(
             : throw new ValidacaoException("iaFonte.tipo_invalido", $"Tipo de fonte inválido: '{valor}'.");
 
     private static DialetoSql ParseDialeto(string valor) =>
-        Enum.TryParse<DialetoSql>(valor, ignoreCase: true, out var v)
-            ? v
-            : throw new ValidacaoException("iaFonte.dialeto_invalido", $"Dialeto SQL inválido: '{valor}'.");
+        // Fonte web/FHIR não tem dialeto SQL: vazio ou "-" vira Nenhum, em vez de erro.
+        string.IsNullOrWhiteSpace(valor) || valor.Trim() is "-" or "nenhum"
+            ? DialetoSql.Nenhum
+            : Enum.TryParse<DialetoSql>(valor, ignoreCase: true, out var v)
+                ? v
+                : throw new ValidacaoException("iaFonte.dialeto_invalido", $"Dialeto SQL inválido: '{valor}'.");
 
     private static AmbienteFonte ParseAmbiente(string valor) =>
         Enum.TryParse<AmbienteFonte>(valor, ignoreCase: true, out var v)

@@ -48,7 +48,7 @@ function estadoInicial(fonte?: FonteConfig): FormState {
     slug: fonte?.slug ?? '',
     tipo: fonte?.tipo ?? 'Salux',
     dialeto: fonte?.dialeto ?? 'oracle',
-    ambiente: fonte?.ambiente ?? 'TREINAMENTO',
+    ambiente: fonte?.ambiente ?? 'PRODUCAO',
     host: fonte?.host ?? '',
     porta: fonte?.porta != null ? String(fonte.porta) : '',
     servico: fonte?.servico ?? '',
@@ -129,6 +129,8 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
   }
 
   const salvando = criar.isPending || atualizar.isPending;
+  // Fontes "como usuário" (web/FHIR): sem dialeto SQL nem host/porta/serviço — esses campos não se aplicam.
+  const ehWeb = form.tipo === 'Fhir' || form.tipo === 'KlinikosWeb';
 
   return (
     <Modal
@@ -188,19 +190,21 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
               <option value="Mv">MV</option>
               <option value="Eco">ECO</option>
               <option value="Fhir">FHIR (API REST)</option>
-              <option value="KlinikosWeb">Klinikos (web — "como usuário", login + relatórios)</option>
+              <option value="KlinikosWeb">Klinikos Web</option>
               <option value="Postgres">PostgreSQL</option>
               <option value="Regulacao">Regulação — SISREG, SER e SERNIT (banco do SMSMais)</option>
               <option value="Atendimento">Atendimento — conversas com pacientes (banco do SMSMais)</option>
             </Select>
           </Campo>
 
-          <Campo label="Dialeto" htmlFor="fc-dialeto" dica="Dialeto SQL usado na geração das consultas.">
-            <Select id="fc-dialeto" value={form.dialeto} onChange={(e) => set('dialeto', e.target.value)}>
-              <option value="oracle">Oracle</option>
-              <option value="postgres">PostgreSQL</option>
-            </Select>
-          </Campo>
+          {!ehWeb && (
+            <Campo label="Dialeto" htmlFor="fc-dialeto" dica="Dialeto SQL usado na geração das consultas.">
+              <Select id="fc-dialeto" value={form.dialeto} onChange={(e) => set('dialeto', e.target.value)}>
+                <option value="oracle">Oracle</option>
+                <option value="postgres">PostgreSQL</option>
+              </Select>
+            </Campo>
+          )}
 
           <Campo label="Ambiente" htmlFor="fc-ambiente" required>
             <Select
@@ -213,33 +217,37 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
             </Select>
           </Campo>
 
-          <Campo label="Host / IP" htmlFor="fc-host">
-            <Input
-              id="fc-host"
-              value={form.host}
-              onChange={(e) => set('host', e.target.value)}
-              placeholder="10.50.0.18"
-            />
-          </Campo>
+          {!ehWeb && (
+            <>
+              <Campo label="Host / IP" htmlFor="fc-host">
+                <Input
+                  id="fc-host"
+                  value={form.host}
+                  onChange={(e) => set('host', e.target.value)}
+                  placeholder="0.0.0.0"
+                />
+              </Campo>
 
-          <Campo label="Porta" htmlFor="fc-porta">
-            <Input
-              id="fc-porta"
-              type="number"
-              value={form.porta}
-              onChange={(e) => set('porta', e.target.value)}
-              placeholder="1521"
-            />
-          </Campo>
+              <Campo label="Porta" htmlFor="fc-porta">
+                <Input
+                  id="fc-porta"
+                  type="number"
+                  value={form.porta}
+                  onChange={(e) => set('porta', e.target.value)}
+                  placeholder="1521"
+                />
+              </Campo>
 
-          <Campo label="Serviço / SID" htmlFor="fc-servico">
-            <Input
-              id="fc-servico"
-              value={form.servico}
-              onChange={(e) => set('servico', e.target.value)}
-              placeholder="ORCL"
-            />
-          </Campo>
+              <Campo label="Serviço / SID" htmlFor="fc-servico">
+                <Input
+                  id="fc-servico"
+                  value={form.servico}
+                  onChange={(e) => set('servico', e.target.value)}
+                  placeholder="ORCL"
+                />
+              </Campo>
+            </>
+          )}
 
           <Campo label="Usuário" htmlFor="fc-usuario">
             <Input
