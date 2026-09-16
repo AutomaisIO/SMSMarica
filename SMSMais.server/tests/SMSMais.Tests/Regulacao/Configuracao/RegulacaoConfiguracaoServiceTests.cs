@@ -150,10 +150,16 @@ public class RegulacaoConfiguracaoServiceTests(PostgresFixture fixture)
         // A configuração é uma LINHA ÚNICA e a bancada é compartilhada: o estado de fábrica só
         // existe na primeira execução da vida. Este teste escreve a própria precondição — e a
         // desfaz no fim — em vez de supor que ninguém passou por aqui antes.
-        await GravarRegrasAsync(servico, null);
+        //
+        // A precondição NÃO pode ser "sem regra": desde 16/09/2026 uma configuração sem regra de
+        // FollowUP recebe a semente na primeira leitura (a classificação persistida precisa
+        // dela). Então a precondição é uma regra própria, que ninguém mais grava.
+        const string regraDoTeste =
+            """[{"categoria":"RegraDoTeste","ordem":1,"padrao":"NAO ATENDE","vira_pendencia":null}]""";
+        await GravarRegrasAsync(servico, regraDoTeste);
 
         var antes = await servico.TestarFollowUpAsync("Não atende", CancellationToken.None);
-        antes.Categoria.Should().Be("Outro");   // sem regra, classificador desligado
+        antes.Categoria.Should().Be("RegraDoTeste");   // lê o que está salvo, não a semente
 
         await GravarRegrasAsync(servico, SementeFollowUp.Json);
 
@@ -165,7 +171,8 @@ public class RegulacaoConfiguracaoServiceTests(PostgresFixture fixture)
         // sem isso, quem calibra não entende por que a regex "não pegou".
         depois.TextoNormalizado.Should().Be("NAO ATENDE");
 
-        await GravarRegrasAsync(servico, null);
+        // Deixa a bancada como uma instância real fica: com a semente.
+        await GravarRegrasAsync(servico, SementeFollowUp.Json);
     }
 
     /// <summary>Grava as regras de follow-up (JSON, ou <c>null</c> para nenhuma) na linha única.</summary>
