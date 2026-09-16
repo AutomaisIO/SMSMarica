@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Inteligencia.Dtos;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Inteligencia;
 
@@ -17,7 +18,9 @@ public sealed class IaService(SmsMaisDbContext db) : IIaService
     {
         return await db.IaFontes
             .AsNoTracking()
-            .Where(f => f.Ativo && f.ExcluidoEm == null)
+            // Só bases consultáveis por SQL entram na Consulta Inteligente. Fontes "como usuário"
+            // (web/FHIR) têm Dialeto=Nenhum: são de INGESTÃO — a busca desses dados é na base FHIR.
+            .Where(f => f.Ativo && f.ExcluidoEm == null && f.Dialeto != DialetoSql.Nenhum)
             .OrderBy(f => f.Nome)
             .Select(f => new FonteResumoDto(
                 f.Id, f.Nome, f.Tipo.ToString(), f.Ambiente.ToString(), f.Slug ?? string.Empty))
