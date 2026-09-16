@@ -82,6 +82,9 @@ public sealed class VarreduraSisregScheduler(
         // num dia, isso vira rodízio justo em vez de umas unidades nunca serem varridas.
         var candidatas = await db.SisregVarreduraAgendas
             .Where(a => a.Ativo && a.ProximoRunEm != null && a.ProximoRunEm <= agora)
+            // Unidade externa (outro município) nunca entra na varredura automática, mesmo que tenha
+            // sobrado uma agenda ativa de antes da classificação — a flag externa é a fronteira.
+            .Where(a => !db.Unidades.Any(u => u.Id == a.UnidadeId && u.Externa))
             .OrderBy(a => a.UltimaExecucaoEm == null ? 0 : 1)
             .ThenBy(a => a.UltimaExecucaoEm)
             .Take(10)

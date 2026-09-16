@@ -227,6 +227,18 @@ public sealed class VarreduraAgendaService(
     {
         var unidade = await unidadeAtual.ObterObrigatoriaAsync(ct);
 
+        // Unidade de outro município (externa) não sincroniza com o SISREG: ligar a varredura dela
+        // foi o que trouxe a agenda inteira de um hospital de fora para dentro da base. A flag
+        // externa é a fronteira — quem quiser sincronizar precisa primeiro classificá-la como local.
+        if (request.Ativo && unidade.Externa)
+        {
+            throw new ValidacaoException(
+                "varredura.unidade_externa",
+                "Esta unidade é de outro município (marcada como externa) e não é sincronizada pelo "
+                + "SISREG. Se ela for mesmo da rede local, desmarque 'externa' no cadastro antes de "
+                + "ligar a varredura.");
+        }
+
         if (request.DiasAFrente < 1 || request.DiasAFrente > VarreduraSisregOpcoes.MaxDiasAFrente)
         {
             throw new ValidacaoException(
@@ -379,6 +391,11 @@ public sealed class VarreduraAgendaService(
 
         var unidade = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(u => u.Id == unidadeId, ct);
         if (unidade is null) return null;
+
+        // Unidade externa (outro município) nunca varre pelo agendador — mesmo que sobre uma agenda
+        // ativa de antes da classificação. Silencioso de propósito: não é erro, é uma unidade que
+        // não é nossa. O choke point em CriarExecucaoAsync ainda barra os disparos manuais.
+        if (unidade.Externa) return null;
 
         try
         {
@@ -576,6 +593,17 @@ public sealed class VarreduraAgendaService(
         Unidade unidade, DisparoSincronizacao disparo, Guid? usuarioId,
         DateOnly? janelaInicio, DateOnly? janelaFim, CancellationToken ct)
     {
+        // Choke point de TODOS os disparos (manual, agendado, período, histórico): unidade externa
+        // (outro município) não é sincronizada pelo SISREG. É aqui que a fronteira de município
+        // vira regra dura — foi a varredura de uma unidade de fora que poluiu a base.
+        if (unidade.Externa)
+        {
+            throw new ValidacaoException(
+                "varredura.unidade_externa",
+                "Esta unidade é de outro município (marcada como externa) e não é sincronizada pelo "
+                + "SISREG.");
+        }
+
         var agenda = await db.SisregVarreduraAgendas.AsNoTracking()
             .FirstOrDefaultAsync(x => x.UnidadeId == unidade.Id, ct);
 
