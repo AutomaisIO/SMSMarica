@@ -289,6 +289,14 @@ export type NotificacaoSer = {
   dataSolicitacao: string | null;
   agendadoParaTexto: string | null;
   unidadeExecutora: string | null;
+  /** FollowUP mais recente da solicitação (em qualquer notificação). Null se nunca houve. */
+  ultimoFollowUp: FollowUpResumoSer | null;
+};
+
+export type FollowUpResumoSer = {
+  dataEvento: string;
+  usuario: string | null;
+  observacao: string | null;
 };
 
 export type NotificacoesPagina = {

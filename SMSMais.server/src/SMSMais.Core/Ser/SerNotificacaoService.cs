@@ -98,7 +98,16 @@ public sealed class SerNotificacaoService(
                 x.Solicitacao.Recurso,
                 x.Solicitacao.DataSolicitacao,
                 x.Solicitacao.AgendadoParaTexto,
-                x.Solicitacao.UnidadeExecutora))
+                x.Solicitacao.UnidadeExecutora,
+                // Subconsulta correlacionada (uma por linha da página, resolvida no banco). O
+                // padrão "%follow%up%" cobre as grafias que o sincronizador tolera ("FollowUP",
+                // "Follow-UP", "follow up") — ver EhFollowUp em SerSincronizacaoService.
+                db.SerEventos
+                    .Where(e => e.SerSolicitacaoId == x.Solicitacao.Id
+                                && EF.Functions.ILike(e.Evento, "%follow%up%"))
+                    .OrderByDescending(e => e.DataEvento)
+                    .Select(e => new SerFollowUpResumoDto(e.DataEvento, e.Usuario, e.Observacao))
+                    .FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
         return new SerNotificacaoPaginaDto(itens, total, pagina, tamanho);

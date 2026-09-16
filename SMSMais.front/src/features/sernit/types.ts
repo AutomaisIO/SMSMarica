@@ -197,6 +197,14 @@ export type NotificacaoSernit = {
   dataSolicitacao: string | null;
   agendadoParaTexto: string | null;
   unidadeExecutora: string | null;
+  /** FollowUP mais recente da solicitação (em qualquer notificação). Null se nunca houve. */
+  ultimoFollowUp: FollowUpResumoSernit | null;
+};
+
+export type FollowUpResumoSernit = {
+  dataEvento: string;
+  usuario: string | null;
+  observacao: string | null;
 };
 
 export type NotificacoesSernitPagina = {

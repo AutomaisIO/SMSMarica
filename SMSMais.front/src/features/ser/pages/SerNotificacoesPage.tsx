@@ -9,6 +9,7 @@ import {
 import {
   ROTULO_SITUACAO,
   SITUACOES_SER,
+  type FollowUpResumoSer,
   type NotificacaoSer,
   type SituacaoSer,
   type TipoGatilhoSer,
@@ -290,6 +291,10 @@ function LinhaNotificacao({
           <div className="text-xs text-slate-500">Agendado para {n.agendadoParaTexto}</div>
         )}
 
+        {/* O último FollowUP aparece em TODO card, não só no de "FollowUP novo": quem tria a
+            fila precisa saber o que já foi cobrado sem abrir o detalhe de cada linha. */}
+        {n.ultimoFollowUp && <UltimoFollowUp f={n.ultimoFollowUp} />}
+
         <span className="inline-block text-xs text-red-700">solicitação {n.idSer}</span>
       </div>
 
@@ -299,6 +304,28 @@ function LinhaNotificacao({
           Vista
         </Button>
       </div>
+    </div>
+  );
+}
+
+
+/** Último FollowUP da solicitação: quando, quem e o texto (cortado em duas linhas — o card é
+ * um resumo; o texto inteiro está no detalhe). */
+function UltimoFollowUp({ f }: { f: FollowUpResumoSer }) {
+  return (
+    <div className="rounded border border-rose-100 bg-rose-50/60 px-2 py-1 text-xs text-slate-700">
+      <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-rose-800">
+        <span className="font-semibold">Último FollowUP</span>
+        <span>{formatarInstante(f.dataEvento)}</span>
+        {f.usuario && <span className="text-slate-500">por {f.usuario}</span>}
+      </div>
+      {f.observacao ? (
+        <p className="line-clamp-2 whitespace-pre-line" title={f.observacao}>
+          {f.observacao}
+        </p>
+      ) : (
+        <p className="italic text-slate-400">(sem texto)</p>
+      )}
     </div>
   );
 }

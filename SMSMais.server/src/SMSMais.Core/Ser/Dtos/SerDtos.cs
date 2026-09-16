@@ -333,7 +333,15 @@ public sealed record SerNotificacaoDto(
     string? Recurso,
     DateOnly? DataSolicitacao,
     string? AgendadoParaTexto,
-    string? UnidadeExecutora);
+    string? UnidadeExecutora,
+    /// <summary>O FollowUP mais recente da trilha da solicitação, em QUALQUER notificação — não
+    /// só na de "FollowUP novo". Quem tria a fila precisa saber o que já foi cobrado/respondido
+    /// sem abrir o detalhe de cada linha. Null quando a solicitação nunca teve FollowUP.</summary>
+    SerFollowUpResumoDto? UltimoFollowUp);
+
+/// <summary>Resumo de um FollowUP para o card: quando, quem e o texto. Vem de
+/// <c>ser_evento</c>, que é a trilha crua do SER.</summary>
+public sealed record SerFollowUpResumoDto(DateTime DataEvento, string? Usuario, string? Observacao);
 
 public sealed record SerNotificacaoPaginaDto(
     IReadOnlyList<SerNotificacaoDto> Itens, int Total, int Pagina, int Tamanho);

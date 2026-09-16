@@ -74,7 +74,15 @@ public sealed class SernitNotificacaoService(
                 x.Solicitacao.Recurso,
                 x.Solicitacao.DataSolicitacao,
                 x.Solicitacao.AgendadoParaTexto,
-                x.Solicitacao.UnidadeExecutora))
+                x.Solicitacao.UnidadeExecutora,
+                // Subconsulta correlacionada, uma por linha da página. "%follow%up%" cobre as
+                // grafias que EhFollowUp (SernitSincronizacaoService) tolera.
+                db.SernitEventos
+                    .Where(e => e.SernitSolicitacaoId == x.Solicitacao.Id
+                                && EF.Functions.ILike(e.Evento, "%follow%up%"))
+                    .OrderByDescending(e => e.DataEvento)
+                    .Select(e => new SernitFollowUpResumoDto(e.DataEvento, e.Usuario, e.Observacao))
+                    .FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
         return new SernitNotificacaoPaginaDto(itens, total, pagina, tamanho);

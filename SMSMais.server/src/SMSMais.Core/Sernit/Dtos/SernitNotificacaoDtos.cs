@@ -19,7 +19,13 @@ public sealed record SernitNotificacaoDto(
     string? Recurso,
     DateOnly? DataSolicitacao,
     string? AgendadoParaTexto,
-    string? UnidadeExecutora);
+    string? UnidadeExecutora,
+    /// <summary>O FollowUP mais recente da trilha da solicitação, em QUALQUER notificação — não
+    /// só na de "FollowUP novo". Null quando a solicitação nunca teve FollowUP.</summary>
+    SernitFollowUpResumoDto? UltimoFollowUp);
+
+/// <summary>Resumo de um FollowUP para o card: quando, quem e o texto (de <c>sernit_evento</c>).</summary>
+public sealed record SernitFollowUpResumoDto(DateTime DataEvento, string? Usuario, string? Observacao);
 
 public sealed record SernitNotificacaoPaginaDto(
     IReadOnlyList<SernitNotificacaoDto> Itens, int Total, int Pagina, int Tamanho);
