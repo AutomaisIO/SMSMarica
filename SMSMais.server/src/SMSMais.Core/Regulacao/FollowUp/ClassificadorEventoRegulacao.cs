@@ -29,13 +29,30 @@ public static class ClassificadorEventoRegulacao
         if (string.IsNullOrWhiteSpace(verbo)) return TipoEventoExterno.Outro;
         if (EhFollowUp(verbo)) return TipoEventoExterno.FollowUp;
 
+        // Prefixos, na mesma ordem do backfill em SQL das migrations FollowUpEstruturado e
+        // VerbosExternosAmpliados. "Reagendar" e "Dar Alta" não colidem com "Agendar"/"Alta"
+        // porque a comparação é por INÍCIO do texto.
         var v = verbo.Trim();
-        if (v.StartsWith("solicit", StringComparison.OrdinalIgnoreCase)) return TipoEventoExterno.Solicitar;
-        if (v.StartsWith("pendenc", StringComparison.OrdinalIgnoreCase)) return TipoEventoExterno.Pendenciar;
-        if (v.StartsWith("cancel", StringComparison.OrdinalIgnoreCase)) return TipoEventoExterno.Cancelar;
-        if (v.StartsWith("agend", StringComparison.OrdinalIgnoreCase)) return TipoEventoExterno.Agendar;
-        return TipoEventoExterno.Outro;
+        return v switch
+        {
+            _ when Comeca(v, "solicit") => TipoEventoExterno.Solicitar,
+            _ when Comeca(v, "pendenc") => TipoEventoExterno.Pendenciar,
+            _ when Comeca(v, "cancel") => TipoEventoExterno.Cancelar,
+            _ when Comeca(v, "reagend") => TipoEventoExterno.Reagendar,
+            _ when Comeca(v, "agend") => TipoEventoExterno.Agendar,
+            _ when Comeca(v, "chegada") => TipoEventoExterno.ChegadaNoDestino,
+            _ when Comeca(v, "transfer") => TipoEventoExterno.Transferir,
+            _ when Comeca(v, "devolvid") => TipoEventoExterno.DevolvidoParaRegulacao,
+            _ when Comeca(v, "whatsapp") => TipoEventoExterno.WhatsApp,
+            _ when Comeca(v, "retornar") => TipoEventoExterno.RetornarParaFila,
+            _ when Comeca(v, "alta") || Comeca(v, "dar alta") => TipoEventoExterno.Alta,
+            _ when Comeca(v, "corrig") => TipoEventoExterno.CorrigirDados,
+            _ => TipoEventoExterno.Outro,
+        };
     }
+
+    private static bool Comeca(string v, string prefixo) =>
+        v.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Identidade curta do conjunto de regras (16 hex do SHA-256). Cada evento classificado carrega

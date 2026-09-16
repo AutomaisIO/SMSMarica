@@ -1,3 +1,4 @@
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Sernit;
 
@@ -22,7 +23,11 @@ public sealed record SernitNotificacaoDto(
     string? UnidadeExecutora,
     /// <summary>O FollowUP mais recente da trilha da solicitação, em QUALQUER notificação — não
     /// só na de "FollowUP novo". Null quando a solicitação nunca teve FollowUP.</summary>
-    SernitFollowUpResumoDto? UltimoFollowUp);
+    SernitFollowUpResumoDto? UltimoFollowUp,
+    /// <summary>O último evento da trilha, de qualquer verbo — é o que o filtro "último evento" olha.</summary>
+    SernitEventoResumoDto? UltimoEvento);
+
+public sealed record SernitEventoResumoDto(TipoEventoExterno Tipo, string Evento, DateTime DataEvento);
 
 /// <summary>Resumo de um FollowUP para o card: quando, quem e o texto (de <c>sernit_evento</c>).</summary>
 public sealed record SernitFollowUpResumoDto(
@@ -45,6 +50,9 @@ public sealed record SernitNotificacaoFiltroDto
 
     /// <summary>Só solicitações cujo ÚLTIMO FollowUP tem esta categoria.</summary>
     public string? CategoriaFollowUp { get; init; }
+
+    /// <summary>Só solicitações cujo ÚLTIMO evento da trilha (qualquer verbo) é deste tipo.</summary>
+    public TipoEventoExterno? TipoUltimoEvento { get; init; }
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;
 }

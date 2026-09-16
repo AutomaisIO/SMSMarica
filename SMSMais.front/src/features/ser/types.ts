@@ -6,6 +6,7 @@
  */
 
 import type { CategoriaFollowUp } from '@/shared/regulacao/categoriasFollowUp';
+import type { EventoResumoExterno, TipoEventoExterno } from '@/shared/regulacao/eventosExternos';
 
 /** Situações do SER. A ordem aqui é a da fila (do que espera para o que terminou). */
 export const SITUACOES_SER = [
@@ -293,6 +294,8 @@ export type NotificacaoSer = {
   unidadeExecutora: string | null;
   /** FollowUP mais recente da solicitação (em qualquer notificação). Null se nunca houve. */
   ultimoFollowUp: FollowUpResumoSer | null;
+  /** Último evento da trilha, de qualquer verbo. Null se o histórico ainda não foi lido. */
+  ultimoEvento: EventoResumoExterno | null;
 };
 
 export type FollowUpResumoSer = {
@@ -329,6 +332,8 @@ export type NotificacoesFiltro = {
   tipoGatilho?: TipoGatilhoSer;
   /** Só solicitações cujo ÚLTIMO FollowUP tem esta categoria. */
   categoriaFollowUp?: CategoriaFollowUp;
+  /** Só solicitações cujo ÚLTIMO evento da trilha (qualquer verbo) é deste tipo. */
+  tipoUltimoEvento?: TipoEventoExterno;
   pagina?: number;
   tamanho?: number;
 };

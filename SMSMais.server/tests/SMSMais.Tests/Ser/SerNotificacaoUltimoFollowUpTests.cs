@@ -3,6 +3,7 @@ using SMSMais.Core.Regulacao.FollowUp;
 using SMSMais.Core.Ser;
 using SMSMais.Core.Ser.Dtos;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Tests.Infraestrutura;
 
@@ -123,6 +124,38 @@ public class SerNotificacaoUltimoFollowUpTests(PostgresFixture fixture)
         Assert.Contains(pagina.Itens, n => n.IdSer == idFalha);
         Assert.DoesNotContain(pagina.Itens, n => n.IdSer == idResolvido);
         Assert.DoesNotContain(pagina.Itens, n => n.IdSer == idSem);
+    }
+
+    [Fact]
+    public async Task Filtro_por_tipo_do_ultimo_evento_olha_qualquer_verbo()
+    {
+        await using var db = fixture.CriarDbContext();
+        var t0 = new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Utc);
+
+        // Último evento é "Chegada no Destino": entra no filtro, e o card mostra o verbo.
+        var idChegou = "T" + Random.Shared.Next(100000, 999999);
+        var a = Semear(db, idChegou, SituacaoSer.ChegadaConfirmada);
+        Evento(db, a, "FollowUP", t0, "X", "sem contato", "FalhaContato");
+        Evento(db, a, "Chegada no Destino", t0.AddDays(2), "RECEPCAO", null);
+
+        // Chegou e depois foi transferida: o último evento é Transferir, fica de fora.
+        var idTransferida = "T" + Random.Shared.Next(100000, 999999);
+        var b = Semear(db, idTransferida, SituacaoSer.EmFila);
+        Evento(db, b, "Chegada no Destino", t0, "RECEPCAO", null);
+        Evento(db, b, "Transferir", t0.AddDays(1), "CENTRAL", null);
+        await db.SaveChangesAsync();
+
+        var pagina = await CriarService(db).ListarAsync(
+            new SerNotificacaoFiltroDto { TipoUltimoEvento = TipoEventoExterno.ChegadaNoDestino, Tamanho = 1000 },
+            CancellationToken.None);
+
+        var linha = Assert.Single(pagina.Itens, n => n.IdSer == idChegou);
+        Assert.DoesNotContain(pagina.Itens, n => n.IdSer == idTransferida);
+        Assert.NotNull(linha.UltimoEvento);
+        Assert.Equal(TipoEventoExterno.ChegadaNoDestino, linha.UltimoEvento!.Tipo);
+        Assert.Equal("Chegada no Destino", linha.UltimoEvento.Evento);
+        // O último FollowUP continua vindo, mesmo não sendo o último evento.
+        Assert.Equal("FalhaContato", linha.UltimoFollowUp?.Categoria);
     }
 
     [Fact]

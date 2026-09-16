@@ -28,6 +28,12 @@ import {
   rotuloCategoriaFollowUp,
   type CategoriaFollowUp,
 } from '@/shared/regulacao/categoriasFollowUp';
+import {
+  ROTULO_TIPO_EVENTO_EXTERNO,
+  TIPOS_EVENTO_EXTERNO_FILTRO,
+  rotuloTipoEventoExterno,
+  type TipoEventoExterno,
+} from '@/shared/regulacao/eventosExternos';
 
 /**
  * Regulação → Notificações: o que mudou no SERNIT e ainda ninguém olhou.
@@ -60,6 +66,8 @@ export function SernitNotificacoesPage() {
   // Filtro pelo ÚLTIMO FollowUP da solicitação (a categoria que o card mostra). Não zera
   // ao trocar de aba: quem está caçando "falha de contato" quer isso em Consulta e Exame.
   const [categoria, setCategoria] = useState<CategoriaFollowUp | undefined>(undefined);
+  // Filtro pelo ÚLTIMO evento da trilha, de qualquer verbo ("Chegada no Destino", "Transferir"…).
+  const [tipoEvento, setTipoEvento] = useState<TipoEventoExterno | undefined>(undefined);
 
   // Página e tamanho: até 15/09/2026 a tela trazia só os 100 mais recentes, e o resto só aparecia
   // marcando os primeiros como vistos.
@@ -68,8 +76,15 @@ export function SernitNotificacoesPage() {
 
   const { data: resumo } = useResumoNotificacoesSernit();
   const filtro = useMemo(
-    () => ({ tipo, situacao, categoriaFollowUp: categoria, pagina: paginaAtual, tamanho }),
-    [tipo, situacao, categoria, paginaAtual, tamanho],
+    () => ({
+      tipo,
+      situacao,
+      categoriaFollowUp: categoria,
+      tipoUltimoEvento: tipoEvento,
+      pagina: paginaAtual,
+      tamanho,
+    }),
+    [tipo, situacao, categoria, tipoEvento, paginaAtual, tamanho],
   );
   const { data: pagina, isLoading } = useNotificacoesSernit(filtro);
 
@@ -94,6 +109,10 @@ export function SernitNotificacoesPage() {
   };
   const escolherCategoria = (c: CategoriaFollowUp | undefined) => {
     setCategoria(c);
+    setPaginaAtual(1);
+  };
+  const escolherTipoEvento = (t: TipoEventoExterno | undefined) => {
+    setTipoEvento(t);
     setPaginaAtual(1);
   };
 
@@ -202,6 +221,25 @@ export function SernitNotificacoesPage() {
           <AlertTriangle className="size-4" />
           Falha de contato
         </button>
+
+        <label htmlFor="sernit-filtro-tipo-evento" className="ml-2 text-slate-600">
+          Último evento:
+        </label>
+        <select
+          id="sernit-filtro-tipo-evento"
+          value={tipoEvento ?? ''}
+          onChange={(e) =>
+            escolherTipoEvento((e.target.value || undefined) as TipoEventoExterno | undefined)
+          }
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+        >
+          <option value="">Todos</option>
+          {TIPOS_EVENTO_EXTERNO_FILTRO.map((t) => (
+            <option key={t} value={t}>
+              {ROTULO_TIPO_EVENTO_EXTERNO[t]}
+            </option>
+          ))}
+        </select>
       </div>
 
       {isLoading && (
@@ -356,6 +394,18 @@ function LinhaNotificacao({
         {/* O último FollowUP aparece em TODO card, não só no de "FollowUP novo": quem tria a
             fila precisa saber o que já foi cobrado sem abrir o detalhe de cada linha. */}
         {n.ultimoFollowUp && <UltimoFollowUp f={n.ultimoFollowUp} />}
+
+        {/* O último evento de qualquer verbo, quando não é o próprio FollowUP já mostrado acima:
+            "Chegada no Destino" fecha o ciclo; "Transferir"/"Devolvido" pedem reação. */}
+        {n.ultimoEvento && n.ultimoEvento.tipo !== 'FollowUp' && (
+          <div className="text-xs text-slate-500">
+            Último evento:{' '}
+            <span className="font-medium text-slate-700">
+              {rotuloTipoEventoExterno(n.ultimoEvento.tipo, n.ultimoEvento.evento)}
+            </span>{' '}
+            {formatarInstante(n.ultimoEvento.dataEvento)}
+          </div>
+        )}
 
         <span className="inline-block text-xs text-red-700">solicitação {n.idSernit}</span>
       </div>

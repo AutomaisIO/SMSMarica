@@ -7,6 +7,7 @@
  */
 
 import type { CategoriaFollowUp } from '@/shared/regulacao/categoriasFollowUp';
+import type { EventoResumoExterno, TipoEventoExterno } from '@/shared/regulacao/eventosExternos';
 
 export const SITUACOES_SERNIT = [
   'EmFila',
@@ -201,6 +202,8 @@ export type NotificacaoSernit = {
   unidadeExecutora: string | null;
   /** FollowUP mais recente da solicitação (em qualquer notificação). Null se nunca houve. */
   ultimoFollowUp: FollowUpResumoSernit | null;
+  /** Último evento da trilha, de qualquer verbo. Null se o histórico ainda não foi lido. */
+  ultimoEvento: EventoResumoExterno | null;
 };
 
 export type FollowUpResumoSernit = {
@@ -236,6 +239,8 @@ export type NotificacoesSernitFiltro = {
   tipoGatilho?: TipoGatilhoSernit;
   /** Só solicitações cujo ÚLTIMO FollowUP tem esta categoria. */
   categoriaFollowUp?: CategoriaFollowUp;
+  /** Só solicitações cujo ÚLTIMO evento da trilha (qualquer verbo) é deste tipo. */
+  tipoUltimoEvento?: TipoEventoExterno;
   pagina?: number;
   tamanho?: number;
 };

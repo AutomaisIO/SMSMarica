@@ -1,3 +1,4 @@
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
 
@@ -337,7 +338,13 @@ public sealed record SerNotificacaoDto(
     /// <summary>O FollowUP mais recente da trilha da solicitação, em QUALQUER notificação — não
     /// só na de "FollowUP novo". Quem tria a fila precisa saber o que já foi cobrado/respondido
     /// sem abrir o detalhe de cada linha. Null quando a solicitação nunca teve FollowUP.</summary>
-    SerFollowUpResumoDto? UltimoFollowUp);
+    SerFollowUpResumoDto? UltimoFollowUp,
+    /// <summary>O último evento da trilha, de qualquer verbo — "Chegada no Destino",
+    /// "Transferir", "WhatsApp"… É o que o filtro "último evento" da tela olha.</summary>
+    SerEventoResumoDto? UltimoEvento);
+
+/// <summary>Resumo do último evento da trilha para o card: verbo tipado, verbo cru e quando.</summary>
+public sealed record SerEventoResumoDto(TipoEventoExterno Tipo, string Evento, DateTime DataEvento);
 
 /// <summary>Resumo de um FollowUP para o card: quando, quem e o texto. Vem de
 /// <c>ser_evento</c>, que é a trilha crua do SER.</summary>
@@ -371,6 +378,10 @@ public sealed record SerNotificacaoFiltroDto
     /// <summary>Só solicitações cujo ÚLTIMO FollowUP tem esta categoria (ex.: "FalhaContato"
     /// para a fila de quem a central não conseguiu contatar).</summary>
     public string? CategoriaFollowUp { get; init; }
+
+    /// <summary>Só solicitações cujo ÚLTIMO evento da trilha (qualquer verbo) é deste tipo —
+    /// ex.: <c>ChegadaNoDestino</c>, <c>Transferir</c>, <c>WhatsApp</c>.</summary>
+    public TipoEventoExterno? TipoUltimoEvento { get; init; }
 
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;

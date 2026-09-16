@@ -86,6 +86,16 @@ public sealed class SerNotificacaoService(
                 .Select(e => e.FollowUpCategoria)
                 .FirstOrDefault() == cat);
         }
+        if (filtro.TipoUltimoEvento is { } tue)
+        {
+            // O último evento de QUALQUER verbo: "Chegada no Destino" é o fecho do ciclo, e
+            // "Transferir"/"Devolvido" são o que a unidade precisa reagir.
+            consulta = consulta.Where(x => db.SerEventos
+                .Where(e => e.SerSolicitacaoId == x.Solicitacao.Id)
+                .OrderByDescending(e => e.DataEvento)
+                .Select(e => (TipoEventoExterno?)e.TipoEvento)
+                .FirstOrDefault() == tue);
+        }
 
         var total = await consulta.CountAsync(cancellationToken);
         var tamanho = Math.Clamp(filtro.Tamanho, 1, TamanhoMaximo);
@@ -119,6 +129,11 @@ public sealed class SerNotificacaoService(
                     .OrderByDescending(e => e.DataEvento)
                     .Select(e => new SerFollowUpResumoDto(
                         e.DataEvento, e.Usuario, e.Observacao, e.FollowUpCategoria))
+                    .FirstOrDefault(),
+                db.SerEventos
+                    .Where(e => e.SerSolicitacaoId == x.Solicitacao.Id)
+                    .OrderByDescending(e => e.DataEvento)
+                    .Select(e => new SerEventoResumoDto(e.TipoEvento, e.Evento, e.DataEvento))
                     .FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
