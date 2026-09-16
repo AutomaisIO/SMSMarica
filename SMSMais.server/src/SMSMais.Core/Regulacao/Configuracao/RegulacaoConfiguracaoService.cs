@@ -73,11 +73,17 @@ public sealed class RegulacaoConfiguracaoService(
     {
         var existente = await db.RegulacaoConfiguracoes.AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == RegulacaoConfiguracao.IdSingleton, ct);
-        if (existente is not null) return existente;
+        if (existente is not null)
+        {
+            return SemRegrasDeFollowUp(existente.RegrasFollowupJson)
+                ? await SemearRegrasDeFollowUpAsync(ct)
+                : existente;
+        }
 
         // A linha default nasce aqui, não em migration: migration é imutável e roda igual em
-        // toda instância nova (CLAUDE.md, regra 9).
-        var nova = new RegulacaoConfiguracao();
+        // toda instância nova (CLAUDE.md, regra 9). As regras de FollowUP já nascem com a
+        // semente do spike d: sem regra, o classificador persistido marcaria tudo como "Outro".
+        var nova = new RegulacaoConfiguracao { RegrasFollowupJson = SementeFollowUp.Json };
         db.RegulacaoConfiguracoes.Add(nova);
         try
         {
@@ -93,6 +99,38 @@ public sealed class RegulacaoConfiguracaoService(
         }
         db.Entry(nova).State = EntityState.Detached;
         return nova;
+    }
+
+    /// <summary>"[]", vazio ou JSON inválido: nenhuma regra utilizável.</summary>
+    private static bool SemRegrasDeFollowUp(string? json) =>
+        ClassificadorFollowUp.Ler(json).Count == 0;
+
+    /// <summary>
+    /// Configuração que existe mas está sem regra de FollowUP (instância criada antes da semente
+    /// existir, ou regras apagadas) recebe a semente na primeira leitura. É o que deixa o worker
+    /// de classificação produtivo sem ninguém precisar colar o JSON pela tela. Quem quiser
+    /// desligar a classificação mantém ao menos uma regra que não case nada.
+    /// </summary>
+    private async Task<RegulacaoConfiguracao> SemearRegrasDeFollowUpAsync(CancellationToken ct)
+    {
+        var atual = await db.RegulacaoConfiguracoes
+            .FirstAsync(c => c.Id == RegulacaoConfiguracao.IdSingleton, ct);
+        atual.RegrasFollowupJson = SementeFollowUp.Json;
+        atual.AtualizadoEm = DateTime.UtcNow;
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Duas leituras simultâneas semeando ao mesmo tempo: o xmin (RowVersion) faz a segunda
+            // perder. Ela lê o que a primeira gravou — é a mesma semente.
+            db.Entry(atual).State = EntityState.Detached;
+            return await db.RegulacaoConfiguracoes.AsNoTracking()
+                .FirstAsync(c => c.Id == RegulacaoConfiguracao.IdSingleton, ct);
+        }
+        db.Entry(atual).State = EntityState.Detached;
+        return atual;
     }
 
     public async Task DefinirRascunhosLegadosMigradosAsync(DateTime? em, CancellationToken ct)
