@@ -1,5 +1,6 @@
 import { abrirJanelaSolta, janelaSoltaAberta } from '@/shared/lib/janela';
 import { useChat } from '@/features/conversas/store/chatStore';
+import { salvarPreferencias } from '@/shared/auth/preferenciasApi';
 
 /** Nome fixo da janela — reabrir com o mesmo nome traz a existente para frente. */
 export const NOME_JANELA_CHAT = 'smsmarica-chat-janela';
@@ -24,9 +25,11 @@ export function abrirJanelaChat(conversaId?: string) {
 }
 
 /**
- * Liga/desliga o bip sonoro do chat para ESTA sessão (memória, sem persistência —
- * ticket #44) e propaga a escolha às demais janelas abertas (principal ↔ janela do
- * chat) pelo mesmo BroadcastChannel. Quem recebe o eco é o useChatHub.
+ * Liga/desliga o bip sonoro do chat. A escolha é PERSISTIDA no usuário (ticket #127):
+ * silenciou, continua silenciado entre sessões/máquinas até reativar — substitui o
+ * comportamento só-de-sessão do ticket #44. Também propaga às demais janelas abertas
+ * (principal ↔ janela do chat) pelo mesmo BroadcastChannel para eco imediato; quem
+ * recebe o eco é o useChatHub. A persistência é fire-and-forget: a UI já refletiu.
  */
 export function definirSomChat(ativo: boolean) {
   useChat.getState().setSom(ativo);
@@ -35,6 +38,9 @@ export function definirSomChat(ativo: boolean) {
     canal.postMessage({ tipo: 'som', ativo });
     canal.close();
   }
+  void salvarPreferencias({ bipChatSilenciado: !ativo }).catch(() => {
+    /* silencioso — próxima alteração tenta de novo. */
+  });
 }
 
 /** True quando o código roda DENTRO da janela do chat (decide trocar in-place vs. focar). */

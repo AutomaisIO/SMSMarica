@@ -14,6 +14,7 @@ import { useSistemasOcultos } from '@/features/regulacao/store/sistemasOcultosPr
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
+import { useChat } from '@/features/conversas/store/chatStore';
 import { ModalTicketRespondido } from '@/features/tickets/components/ModalTicketRespondido';
 
 export function Layout() {
@@ -64,6 +65,9 @@ export function Layout() {
         hidratarTabela(p.largurasTabela);
         hidratarModalidades({ modalidades: p.examesModalidades, tipos: p.examesTipos });
         hidratarSistemasOcultos(p.regulacaoSistemasOcultos);
+        // Bip do chat persistido no usuário (ticket #127): aplica o silêncio salvo. Só
+        // seta o estado — NÃO re-persiste (evita gravar de volta na hidratação).
+        useChat.getState().setSom(!(p.bipChatSilenciado ?? false));
       })
       .catch(() => {
         /* offline/erro — segue com o cache local. */

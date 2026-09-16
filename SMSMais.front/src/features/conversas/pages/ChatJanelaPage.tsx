@@ -39,7 +39,11 @@ export function ChatJanelaPage() {
     let ativo = true;
     obterPreferencias()
       .then((p) => {
-        if (ativo) hidratarComposer({ altura: p.alturaComposerChat, enviarComEnter: p.enviarComEnter });
+        if (!ativo) return;
+        hidratarComposer({ altura: p.alturaComposerChat, enviarComEnter: p.enviarComEnter });
+        // Bip do chat persistido no usuário (ticket #127): aplica o silêncio salvo também
+        // nesta janela solta. Só seta o estado — NÃO re-persiste na hidratação.
+        useChat.getState().setSom(!(p.bipChatSilenciado ?? false));
       })
       .catch(() => {
         /* offline/erro — segue com o cache local. */

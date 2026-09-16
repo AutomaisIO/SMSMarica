@@ -13,6 +13,7 @@ namespace SMSMais.Core.Identidade.Dtos;
 /// <param name="ExamesTipos">Ids dos tipos de exame marcados na tela de Exames de imagem — o recorte fino de quem lauda MG e OT mas não lauda tudo dentro delas. Aplicado pelo servidor (o tipo não existe no DICOM). Lista vazia = todos.</param>
 /// <param name="ExamesModalidades">Modalidades DICOM que a tela de Exames de imagem mostra por padrão (ex.: <c>["MG","OT"]</c> para quem lauda mamografia e densitometria). Vira o filtro <c>ModalitiesInStudy</c> do QIDO — recorte de CONVENIÊNCIA, não de segurança: quem limpa a seleção volta a ver todas as modalidades da sua unidade. Lista vazia = sem recorte.</param>
 /// <param name="RegulacaoSistemasOcultos">Sistemas reguladores que a tela de Regras de elegibilidade NÃO lista (ex.: <c>["Sisreg"]</c> para quem cuida só do estadual). Recorte de CONVENIÊNCIA: some da listagem, mas as regras do sistema omitido continuam valendo no wizard — quem desmarca volta a ver tudo. Lista vazia = mostra todos.</param>
+/// <param name="BipChatSilenciado">Bip sonoro de mensagem nova da Central de Atendimento silenciado? Persistido no usuário (ticket #127): silenciou, continua silenciado entre sessões/máquinas até a própria pessoa reativar. Ausente/false = bip ligado (padrão de conta nova). Substitui o comportamento só-de-sessão do ticket #44.</param>
 public sealed record PreferenciasUiDto(
     Dictionary<string, string>? MenuDefaults,
     int? AlturaComposerChat = null,
@@ -21,4 +22,5 @@ public sealed record PreferenciasUiDto(
     Dictionary<string, Dictionary<string, int>>? LargurasTabela = null,
     List<string>? ExamesModalidades = null,
     List<string>? ExamesTipos = null,
-    List<string>? RegulacaoSistemasOcultos = null);
+    List<string>? RegulacaoSistemasOcultos = null,
+    bool? BipChatSilenciado = null);

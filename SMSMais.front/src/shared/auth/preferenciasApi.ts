@@ -28,6 +28,12 @@ export type PreferenciasUi = {
    * wizard. Vazio = mostra todos.
    */
   regulacaoSistemasOcultos?: string[];
+  /**
+   * Bip sonoro de mensagem nova da Central de Atendimento silenciado? Persistido no usuário
+   * (ticket #127): silenciou, continua silenciado entre sessões/máquinas até reativar.
+   * Ausente/false = bip ligado. Substitui o comportamento só-de-sessão do ticket #44.
+   */
+  bipChatSilenciado?: boolean;
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -41,6 +47,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     examesModalidades: data?.examesModalidades ?? undefined,
     examesTipos: data?.examesTipos ?? undefined,
     regulacaoSistemasOcultos: data?.regulacaoSistemasOcultos ?? undefined,
+    bipChatSilenciado: data?.bipChatSilenciado ?? undefined,
   };
 }
 

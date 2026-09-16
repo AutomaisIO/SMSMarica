@@ -173,8 +173,9 @@ export function useChatHub(habilitado: boolean) {
     };
   }, [token, habilitado, queryClient]);
 
-  // Sincroniza o mudo do bip (ticket #44) entre a janela principal e a janela do chat:
-  // silenciar em uma vale para a sessão nas duas. Só troca de estado — sem persistência.
+  // Sincroniza o mudo do bip entre a janela principal e a janela do chat: silenciar em
+  // uma reflete na outra na hora (eco). A persistência no usuário fica com definirSomChat
+  // (ticket #127); aqui só ecoamos o estado — quem grava é quem originou a ação.
   useEffect(() => {
     if (!('BroadcastChannel' in window)) return;
     const canal = new BroadcastChannel(CANAL_CHAT);

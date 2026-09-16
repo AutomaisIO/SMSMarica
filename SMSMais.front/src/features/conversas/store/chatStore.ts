@@ -8,9 +8,12 @@ type ChatState = {
   /** Alertas do navegador (Notification API) habilitados pelo operador. */
   alertasAtivos: boolean;
   /**
-   * Bip sonoro de mensagem nova ligado? Preferência SÓ da sessão (memória, sem
-   * persistência): ao (re)logar volta ligado; o operador silencia manualmente
-   * quando quiser (ticket #44). Sincronizada entre a janela principal e a do chat.
+   * Bip sonoro de mensagem nova ligado? PERSISTIDO no usuário (ticket #127): silenciou,
+   * continua silenciado entre sessões/máquinas até reativar — substitui o comportamento
+   * só-de-sessão do ticket #44. Hidratado no login a partir das preferências do servidor
+   * (`bipChatSilenciado`) e gravado por `definirSomChat`. Sincronizado entre a janela
+   * principal e a do chat pelo BroadcastChannel para eco imediato. O default `true` aqui
+   * é só o valor até a hidratação chegar (conta nova = bip ligado).
    */
   somAtivo: boolean;
   /** Total agregado de não-lidas visíveis (alimenta o sino do Header e o título da aba). */
