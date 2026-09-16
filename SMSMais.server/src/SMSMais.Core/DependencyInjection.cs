@@ -483,6 +483,30 @@ public static class DependencyInjection
             configuration.GetSection(Integracoes.SernitWeb.Varredura.Background.VarreduraSernitOpcoes.Secao));
         services.AddHostedService<Integracoes.SernitWeb.Varredura.Background.VarreduraSernitScheduler>();
 
+        // ---- Klinikos (Eco Sistemas) — integração "como usuário" via web, ADITIVA à leitura SQL ----
+        // NÃO substitui a estratégia SQL das UPAs (Integracoes/Pep/Estrategias/Klinikos): é um
+        // conector novo, separado, que lê pelos relatórios da aplicação. Sessão ÚNICA por instância
+        // (Conde/UPA/Santa Rita são servers distintos), singleton com cookies próprios por provedor.
+        // Sem HostedService nesta etapa: o dry-run é disparado sob demanda; schedulers vêm depois.
+        services.AddSingleton<Integracoes.KlinikosWeb.IKlinikosWebSessao, Integracoes.KlinikosWeb.KlinikosWebSessao>();
+        services.AddScoped<
+            Integracoes.KlinikosWeb.Varredura.IKlinikosWebSincronizacaoService,
+            Integracoes.KlinikosWeb.Varredura.KlinikosWebSincronizacaoService>();
+        // De-para de CID (texto→código): catálogo carregado uma vez, singleton.
+        services.AddSingleton<
+            Integracoes.KlinikosWeb.Cid.ICidDeParaService,
+            Integracoes.KlinikosWeb.Cid.CidDeParaService>();
+        // Teste de paridade SQL×web (read-only) e escrita/backfill (INERTES: flag KlinikosWeb:EscritaHabilitada
+        // padrão false + só Conde). NENHUM job dispara sozinho — tudo por gatilho RBAC.
+        services.AddScoped<
+            Integracoes.KlinikosWeb.Varredura.IKlinikosWebParidadeService,
+            Integracoes.KlinikosWeb.Varredura.KlinikosWebParidadeService>();
+        services.AddScoped<
+            Integracoes.KlinikosWeb.Escrita.IKlinikosWebEscritaService,
+            Integracoes.KlinikosWeb.Escrita.KlinikosWebEscritaService>();
+        services.Configure<Integracoes.KlinikosWeb.KlinikosWebOpcoes>(
+            configuration.GetSection(Integracoes.KlinikosWeb.KlinikosWebOpcoes.Secao));
+
         // Config do disparo diário do SERNIT em BANCO (mudar a hora não pode exigir deploy).
         services.AddScoped<Sernit.ISernitVarreduraConfigService, Sernit.SernitVarreduraConfigService>();
 

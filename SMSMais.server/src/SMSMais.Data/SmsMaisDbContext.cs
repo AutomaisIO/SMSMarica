@@ -98,6 +98,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<PepSincronizacaoAgenda> PepSincronizacaoAgendas => Set<PepSincronizacaoAgenda>();
     public DbSet<PepDivergenciaIdentidade> PepDivergenciasIdentidade => Set<PepDivergenciaIdentidade>();
 
+    /// <summary>Fila lenta do "deep" do conector web do Klinikos (ADITIVO).</summary>
+    public DbSet<SMSMais.Data.Entities.KlinikosWeb.KlinikosDeepFila> KlinikosDeepFilas => Set<SMSMais.Data.Entities.KlinikosWeb.KlinikosDeepFila>();
+
     // Linhas do export do SISREG que não viraram solicitação (com o RAW, para revalidar)
     public DbSet<Entities.Sisreg.SisregImportacaoFalha> SisregImportacaoFalhas => Set<Entities.Sisreg.SisregImportacaoFalha>();
 
