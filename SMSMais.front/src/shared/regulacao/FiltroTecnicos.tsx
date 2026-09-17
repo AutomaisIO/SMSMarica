@@ -83,8 +83,11 @@ export function FiltroTecnicos({ id, tecnicos, selecionados, aoMudar }: Props) {
         <ChevronDown className="size-4 shrink-0 text-slate-400" />
       </button>
 
+      {/* Painel ancorado pela DIREITA: o botão fica no canto direito da linha das abas e muda
+          de largura conforme o nome do técnico selecionado. Alinhado pela esquerda, ele escapava
+          para fora da janela. */}
       {aberto && (
-        <div className="absolute z-20 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+        <div className="absolute right-0 z-20 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-slate-200 bg-white p-1 shadow-lg">
           <input
             type="search"
             autoFocus
