@@ -1,4 +1,5 @@
 import { http } from '@/shared/api/httpClient';
+import type { TecnicoNotificacao } from '@/shared/regulacao/tecnicos';
 import type {
   BuscaSernitFiltro,
   BuscaSernitResultado,
@@ -72,8 +73,17 @@ export async function salvarCredencialSernit(usuario: string, senha: string): Pr
 
 // ---------------------------------------------------------------- notificações
 
-export async function obterResumoNotificacoesSernit(): Promise<NotificacoesSernitResumo> {
-  const { data } = await http.get<NotificacoesSernitResumo>('/regulacao/sernit/notificacoes/resumo');
+// `indexes: null` manda a lista como `tecnicos=A&tecnicos=B` — o formato que o ASP.NET liga.
+export async function obterResumoNotificacoesSernit(tecnicos: string[]): Promise<NotificacoesSernitResumo> {
+  const { data } = await http.get<NotificacoesSernitResumo>('/regulacao/sernit/notificacoes/resumo', {
+    params: { tecnicos },
+    paramsSerializer: { indexes: null },
+  });
+  return data;
+}
+
+export async function listarTecnicosNotificacoesSernit(): Promise<TecnicoNotificacao[]> {
+  const { data } = await http.get<TecnicoNotificacao[]>('/regulacao/sernit/notificacoes/tecnicos');
   return data;
 }
 
@@ -82,6 +92,7 @@ export async function listarNotificacoesSernit(
 ): Promise<NotificacoesSernitPagina> {
   const { data } = await http.get<NotificacoesSernitPagina>('/regulacao/sernit/notificacoes', {
     params: filtro,
+    paramsSerializer: { indexes: null },
   });
   return data;
 }

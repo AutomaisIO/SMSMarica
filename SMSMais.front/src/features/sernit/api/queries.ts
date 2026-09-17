@@ -20,6 +20,7 @@ import {
   obterFormularioNovaSernit,
   listarRecursosNovaSernit,
   obterResumoNotificacoesSernit,
+  listarTecnicosNotificacoesSernit,
   obterVarreduraAutomaticaSernit,
   salvarVarreduraAutomaticaSernit,
   listarExecucoesSernit,
@@ -130,7 +131,8 @@ export function useSalvarCredencialSernit() {
 // ---------------------------------------------------------------- notificações
 
 export const notificacaoSernitKeys = {
-  resumo: ['sernit', 'notificacoes', 'resumo'] as const,
+  resumo: (tecnicos: string[]) => ['sernit', 'notificacoes', 'resumo', tecnicos] as const,
+  tecnicos: ['sernit', 'notificacoes', 'tecnicos'] as const,
   lista: (f: NotificacoesSernitFiltro) => ['sernit', 'notificacoes', 'lista', f] as const,
 };
 
@@ -138,11 +140,22 @@ export const notificacaoSernitKeys = {
  * Resumo com polling curto: notificação que chega tarde não serve de notificação. 10s é o
  * suficiente — a varredura que as produz roda de hora em hora, no melhor caso.
  */
-export function useResumoNotificacoesSernit() {
+/** Com técnicos marcados, o resumo reconta só o que é deles — abas e situações batem com a lista. */
+export function useResumoNotificacoesSernit(tecnicos: string[] = []) {
   return useQuery({
-    queryKey: notificacaoSernitKeys.resumo,
-    queryFn: obterResumoNotificacoesSernit,
+    queryKey: notificacaoSernitKeys.resumo(tecnicos),
+    queryFn: () => obterResumoNotificacoesSernit(tecnicos),
     refetchInterval: 10_000,
+  });
+}
+
+/** Técnicos reguladores do filtro, com as pendências de cada um. Polling mais espaçado que o do
+ * resumo: a lista de nomes quase não muda, só os números. */
+export function useTecnicosNotificacoesSernit() {
+  return useQuery({
+    queryKey: notificacaoSernitKeys.tecnicos,
+    queryFn: listarTecnicosNotificacoesSernit,
+    refetchInterval: 30_000,
   });
 }
 

@@ -5,6 +5,7 @@ import {
   useMarcarNotificacaoVista,
   useNotificacoesSer,
   useResumoNotificacoesSer,
+  useTecnicosNotificacoesSer,
 } from '@/features/ser/api/queries';
 import {
   ROTULO_SITUACAO,
@@ -34,6 +35,10 @@ import {
   rotuloTipoEventoExterno,
   type TipoEventoExterno,
 } from '@/shared/regulacao/eventosExternos';
+import { AvatarTecnico } from '@/shared/regulacao/AvatarTecnico';
+import { FiltroTecnicos } from '@/shared/regulacao/FiltroTecnicos';
+import { SEM_TECNICO } from '@/shared/regulacao/tecnicos';
+import { useTecnicosFiltro } from '@/shared/regulacao/tecnicosFiltroPreferencia';
 
 /**
  * Regulação → Notificações: o que mudou no SER e ainda ninguém olhou.
@@ -74,17 +79,28 @@ export function SerNotificacoesPage() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [tamanho, setTamanho] = useState(100);
 
-  const { data: resumo } = useResumoNotificacoesSer();
+  // Técnico regulador (quem incluiu no SER): salvo no perfil do usuário. Resumo e lista
+  // recontam pelo filtro — o número da aba tem de bater com o que aparece embaixo.
+  const tecnicosSelecionados = useTecnicosFiltro((s) => s.ser);
+  const definirTecnicos = useTecnicosFiltro((s) => s.definir);
+  const { data: tecnicos = [] } = useTecnicosNotificacoesSer();
+  const escolherTecnicos = (chaves: string[]) => {
+    definirTecnicos('ser', chaves);
+    setPaginaAtual(1);
+  };
+
+  const { data: resumo } = useResumoNotificacoesSer(tecnicosSelecionados);
   const filtro = useMemo(
     () => ({
       tipo,
+      tecnicos: tecnicosSelecionados,
       situacao,
       categoriaFollowUp: categoria,
       tipoUltimoEvento: tipoEvento,
       pagina: paginaAtual,
       tamanho,
     }),
-    [tipo, situacao, categoria, tipoEvento, paginaAtual, tamanho],
+    [tipo, tecnicosSelecionados, situacao, categoria, tipoEvento, paginaAtual, tamanho],
   );
   const { data: pagina, isLoading } = useNotificacoesSer(filtro);
 
@@ -188,7 +204,17 @@ export function SerNotificacoesPage() {
       {/* Filtro pelo último FollowUP. O atalho "Falha de contato" é a fila de quem a central
           não conseguiu achar — e nós temos telefone verificado e WhatsApp que ela não tem. */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor="ser-filtro-categoria-followup" className="text-slate-600">
+        <label htmlFor="ser-filtro-tecnicos" className="text-slate-600">
+          Técnico regulador:
+        </label>
+        <FiltroTecnicos
+          id="ser-filtro-tecnicos"
+          tecnicos={tecnicos}
+          selecionados={tecnicosSelecionados}
+          aoMudar={escolherTecnicos}
+        />
+
+        <label htmlFor="ser-filtro-categoria-followup" className="ml-2 text-slate-600">
           Último FollowUP:
         </label>
         <select
@@ -337,6 +363,9 @@ function LinhaNotificacao({
           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
       }`}
     >
+      {/* Quem incluiu a solicitação: a bolinha colorida é o que o técnico procura na fila. */}
+      <AvatarTecnico chave={n.tecnico ?? SEM_TECNICO} className="mt-0.5" />
+
       {/* A linha inteira abre o detalhe: o alvo de clique é o caso, não um link escondido no
           meio do texto. Os botões ficam fora deste bloco para não disparar o modal junto. */}
       <div

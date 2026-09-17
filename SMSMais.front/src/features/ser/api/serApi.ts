@@ -1,4 +1,5 @@
 import { http } from '@/shared/api/httpClient';
+import type { TecnicoNotificacao } from '@/shared/regulacao/tecnicos';
 import type {
   BuscaSerFiltro,
   ConsultaDiretaFiltro,
@@ -101,13 +102,25 @@ export async function historicoDiretoSer(
 
 // ---------------------------------------------------------------- notificações
 
-export async function obterResumoNotificacoesSer(): Promise<NotificacoesResumo> {
-  const { data } = await http.get<NotificacoesResumo>('/regulacao/ser/notificacoes/resumo');
+// `indexes: null` manda a lista como `tecnicos=A&tecnicos=B` — o formato que o ASP.NET liga.
+export async function obterResumoNotificacoesSer(tecnicos: string[]): Promise<NotificacoesResumo> {
+  const { data } = await http.get<NotificacoesResumo>('/regulacao/ser/notificacoes/resumo', {
+    params: { tecnicos },
+    paramsSerializer: { indexes: null },
+  });
   return data;
 }
 
 export async function listarNotificacoesSer(filtro: NotificacoesFiltro): Promise<NotificacoesPagina> {
-  const { data } = await http.get<NotificacoesPagina>('/regulacao/ser/notificacoes', { params: filtro });
+  const { data } = await http.get<NotificacoesPagina>('/regulacao/ser/notificacoes', {
+    params: filtro,
+    paramsSerializer: { indexes: null },
+  });
+  return data;
+}
+
+export async function listarTecnicosNotificacoesSer(): Promise<TecnicoNotificacao[]> {
+  const { data } = await http.get<TecnicoNotificacao[]>('/regulacao/ser/notificacoes/tecnicos');
   return data;
 }
 

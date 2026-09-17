@@ -34,6 +34,10 @@ export type PreferenciasUi = {
    * Ausente/false = bip ligado. Substitui o comportamento só-de-sessão do ticket #44.
    */
   bipChatSilenciado?: boolean;
+  /** Técnicos reguladores marcados no filtro das Notificações do SER. Vazio = todos. */
+  notificacoesSerTecnicos?: string[];
+  /** Técnicos reguladores marcados no filtro das Notificações do SERNIT. Vazio = todos. */
+  notificacoesSernitTecnicos?: string[];
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -48,6 +52,8 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     examesTipos: data?.examesTipos ?? undefined,
     regulacaoSistemasOcultos: data?.regulacaoSistemasOcultos ?? undefined,
     bipChatSilenciado: data?.bipChatSilenciado ?? undefined,
+    notificacoesSerTecnicos: data?.notificacoesSerTecnicos ?? undefined,
+    notificacoesSernitTecnicos: data?.notificacoesSernitTecnicos ?? undefined,
   };
 }
 

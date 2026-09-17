@@ -14,6 +14,8 @@ namespace SMSMais.Core.Identidade.Dtos;
 /// <param name="ExamesModalidades">Modalidades DICOM que a tela de Exames de imagem mostra por padrão (ex.: <c>["MG","OT"]</c> para quem lauda mamografia e densitometria). Vira o filtro <c>ModalitiesInStudy</c> do QIDO — recorte de CONVENIÊNCIA, não de segurança: quem limpa a seleção volta a ver todas as modalidades da sua unidade. Lista vazia = sem recorte.</param>
 /// <param name="RegulacaoSistemasOcultos">Sistemas reguladores que a tela de Regras de elegibilidade NÃO lista (ex.: <c>["Sisreg"]</c> para quem cuida só do estadual). Recorte de CONVENIÊNCIA: some da listagem, mas as regras do sistema omitido continuam valendo no wizard — quem desmarca volta a ver tudo. Lista vazia = mostra todos.</param>
 /// <param name="BipChatSilenciado">Bip sonoro de mensagem nova da Central de Atendimento silenciado? Persistido no usuário (ticket #127): silenciou, continua silenciado entre sessões/máquinas até a própria pessoa reativar. Ausente/false = bip ligado (padrão de conta nova). Substitui o comportamento só-de-sessão do ticket #44.</param>
+/// <param name="NotificacoesSerTecnicos">Técnicos reguladores (chave = nome normalizado de quem incluiu a solicitação) marcados no filtro das Notificações do SER. Salvo no usuário: quem filtra "o que é meu" não quer refazer a seleção a cada login. Lista vazia = todos.</param>
+/// <param name="NotificacoesSernitTecnicos">O mesmo para as Notificações do SERNIT — separado do SER porque os nomes e as filas são de sistemas diferentes.</param>
 public sealed record PreferenciasUiDto(
     Dictionary<string, string>? MenuDefaults,
     int? AlturaComposerChat = null,
@@ -23,4 +25,6 @@ public sealed record PreferenciasUiDto(
     List<string>? ExamesModalidades = null,
     List<string>? ExamesTipos = null,
     List<string>? RegulacaoSistemasOcultos = null,
-    bool? BipChatSilenciado = null);
+    bool? BipChatSilenciado = null,
+    List<string>? NotificacoesSerTecnicos = null,
+    List<string>? NotificacoesSernitTecnicos = null);

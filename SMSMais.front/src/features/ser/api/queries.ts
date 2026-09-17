@@ -20,6 +20,7 @@ import {
   obterFormularioNovaSer,
   listarRecursosNovaSer,
   obterResumoNotificacoesSer,
+  listarTecnicosNotificacoesSer,
   obterVarreduraAutomaticaSer,
   salvarVarreduraAutomaticaSer,
   listarExecucoesSer,
@@ -135,7 +136,8 @@ export function useSalvarCredencialSer() {
 // ---------------------------------------------------------------- notificações
 
 export const notificacaoKeys = {
-  resumo: ['ser', 'notificacoes', 'resumo'] as const,
+  resumo: (tecnicos: string[]) => ['ser', 'notificacoes', 'resumo', tecnicos] as const,
+  tecnicos: ['ser', 'notificacoes', 'tecnicos'] as const,
   lista: (f: NotificacoesFiltro) => ['ser', 'notificacoes', 'lista', f] as const,
 };
 
@@ -143,11 +145,22 @@ export const notificacaoKeys = {
  * Resumo com polling curto: notificação que chega tarde não serve de notificação. 10s é o
  * suficiente — a varredura que as produz roda de hora em hora, no melhor caso.
  */
-export function useResumoNotificacoesSer() {
+/** Com técnicos marcados, o resumo reconta só o que é deles — abas e situações batem com a lista. */
+export function useResumoNotificacoesSer(tecnicos: string[] = []) {
   return useQuery({
-    queryKey: notificacaoKeys.resumo,
-    queryFn: obterResumoNotificacoesSer,
+    queryKey: notificacaoKeys.resumo(tecnicos),
+    queryFn: () => obterResumoNotificacoesSer(tecnicos),
     refetchInterval: 10_000,
+  });
+}
+
+/** Técnicos reguladores do filtro, com as pendências de cada um. Polling mais espaçado que o do
+ * resumo: a lista de nomes quase não muda, só os números. */
+export function useTecnicosNotificacoesSer() {
+  return useQuery({
+    queryKey: notificacaoKeys.tecnicos,
+    queryFn: listarTecnicosNotificacoesSer,
+    refetchInterval: 30_000,
   });
 }
 

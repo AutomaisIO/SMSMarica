@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Sernit.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Regulacao;
@@ -15,10 +16,20 @@ namespace SMSMais.Core.Sernit;
 /// </summary>
 public interface ISernitNotificacaoService
 {
-    Task<SernitNotificacaoResumoDto> ResumoAsync(CancellationToken cancellationToken);
+    /// <summary>Contadores por tipo e situação; com <paramref name="tecnicos"/>, só o que é deles.</summary>
+    Task<SernitNotificacaoResumoDto> ResumoAsync(
+        IReadOnlyList<string>? tecnicos, CancellationToken cancellationToken);
+
+    /// <summary>Todos os técnicos que já incluíram solicitação no SERNIT, com as pendências de cada um.</summary>
+    Task<IReadOnlyList<TecnicoNotificacaoDto>> TecnicosAsync(CancellationToken cancellationToken);
     Task<SernitNotificacaoPaginaDto> ListarAsync(SernitNotificacaoFiltroDto filtro, CancellationToken cancellationToken);
     Task MarcarVistaAsync(Guid gatilhoId, CancellationToken cancellationToken);
     Task<int> MarcarVistasDaSolicitacaoAsync(string idSernit, CancellationToken cancellationToken);
+
+    /// <summary>Limpa as notificações de <b>Alta</b> que ninguém marcou em
+    /// <see cref="LimpezaAltaNotificacao.Prazo"/> — ver <see cref="LimpezaAltaNotificacao"/>.
+    /// Devolve quantas saíram da fila.</summary>
+    Task<int> LimparAltasAntigasAsync(CancellationToken cancellationToken);
 }
 
 public sealed class SernitNotificacaoService(
@@ -29,9 +40,10 @@ public sealed class SernitNotificacaoService(
     // cortada sem aviso — o operador escolhia 500 e recebia 200.
     private const int TamanhoMaximo = 1000;
 
-    public async Task<SernitNotificacaoResumoDto> ResumoAsync(CancellationToken cancellationToken)
+    public async Task<SernitNotificacaoResumoDto> ResumoAsync(
+        IReadOnlyList<string>? tecnicos, CancellationToken cancellationToken)
     {
-        var linhas = await PendentesQuery()
+        var linhas = await FiltrarTecnicos(PendentesQuery(), tecnicos)
             .GroupBy(x => new { x.Solicitacao.Tipo, x.Gatilho.SituacaoAtual })
             .Select(g => new { g.Key.Tipo, Situacao = g.Key.SituacaoAtual, Quantidade = g.Count() })
             .ToListAsync(cancellationToken);
@@ -44,10 +56,28 @@ public sealed class SernitNotificacaoService(
                 .OrderBy(l => l.Tipo).ThenBy(l => l.Situacao)]);
     }
 
+    public async Task<IReadOnlyList<TecnicoNotificacaoDto>> TecnicosAsync(
+        CancellationToken cancellationToken)
+    {
+        var nomes = await db.SernitEventos
+            .Where(e => e.TipoEvento == TipoEventoExterno.Solicitar
+                        && e.Usuario != null && e.Usuario.Trim() != "")
+            .Select(e => e.Usuario!.Trim().ToUpper())
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var pendentes = await PendentesQuery()
+            .GroupBy(x => x.Tecnico)
+            .Select(g => new { Tecnico = g.Key, Quantidade = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return TecnicoInclusao.ComPendentes(nomes, pendentes.Select(p => (p.Tecnico, p.Quantidade)));
+    }
+
     public async Task<SernitNotificacaoPaginaDto> ListarAsync(
         SernitNotificacaoFiltroDto filtro, CancellationToken cancellationToken)
     {
-        var consulta = PendentesQuery();
+        var consulta = FiltrarTecnicos(PendentesQuery(), filtro.Tecnicos);
 
         if (filtro.Tipo is { } tipo) consulta = consulta.Where(x => x.Solicitacao.Tipo == tipo);
         if (filtro.Situacao is { } sit) consulta = consulta.Where(x => x.Gatilho.SituacaoAtual == sit);
@@ -109,7 +139,8 @@ public sealed class SernitNotificacaoService(
                     .Where(e => e.SernitSolicitacaoId == x.Solicitacao.Id)
                     .OrderByDescending(e => e.DataEvento)
                     .Select(e => new SernitEventoResumoDto(e.TipoEvento, e.Evento, e.DataEvento))
-                    .FirstOrDefault()))
+                    .FirstOrDefault(),
+                x.Tecnico))
             .ToListAsync(cancellationToken);
 
         return new SernitNotificacaoPaginaDto(itens, total, pagina, tamanho);
@@ -144,11 +175,51 @@ public sealed class SernitNotificacaoService(
         return pendentes.Count;
     }
 
+    public Task<int> LimparAltasAntigasAsync(CancellationToken cancellationToken)
+    {
+        var corte = DateTime.UtcNow - LimpezaAltaNotificacao.Prazo;
+        // Update em massa: não passa pelo change tracker, e nem precisa — o worker usa escopo
+        // próprio e não lê estas linhas depois.
+        return db.SernitGatilhos
+            .Where(g => g.ProcessadoEm == null
+                        && g.SituacaoAtual == SituacaoSernit.Alta
+                        && g.CriadoEm < corte)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(g => g.ProcessadoEm, DateTime.UtcNow)
+                .SetProperty(g => g.ProcessadoPor, LimpezaAltaNotificacao.ProcessadoPor),
+                cancellationToken);
+    }
+
+    /// <summary>Gatilho pendente + a solicitação + o técnico que a incluiu (subconsulta
+    /// correlacionada, ver <see cref="TecnicoInclusao"/>; só vira SQL onde é usada).</summary>
     private IQueryable<GatilhoComSolicitacao> PendentesQuery() =>
         from g in db.SernitGatilhos
         join s in db.SernitSolicitacoes on g.SernitSolicitacaoId equals s.Id
         where g.ProcessadoEm == null && s.ExcluidoEm == null
-        select new GatilhoComSolicitacao { Gatilho = g, Solicitacao = s };
+        select new GatilhoComSolicitacao
+        {
+            Gatilho = g,
+            Solicitacao = s,
+            Tecnico = db.SernitEventos
+                .Where(e => e.SernitSolicitacaoId == s.Id
+                            && e.TipoEvento == TipoEventoExterno.Solicitar
+                            && e.Usuario != null && e.Usuario.Trim() != "")
+                .OrderBy(e => e.DataEvento)
+                .Select(e => e.Usuario!.Trim().ToUpper())
+                .FirstOrDefault(),
+        };
+
+    private static IQueryable<GatilhoComSolicitacao> FiltrarTecnicos(
+        IQueryable<GatilhoComSolicitacao> consulta, IEnumerable<string>? tecnicos)
+    {
+        var chaves = TecnicoInclusao.Normalizar(tecnicos);
+        if (chaves.Count == 0) return consulta;
+
+        var incluiSemTecnico = chaves.Contains(TecnicoInclusao.SemTecnico);
+        var nomes = chaves.Where(c => c != TecnicoInclusao.SemTecnico).ToList();
+        return consulta.Where(x =>
+            (x.Tecnico == null && incluiSemTecnico) || (x.Tecnico != null && nomes.Contains(x.Tecnico)));
+    }
 
     private static void Carimbar(SernitGatilho gatilho, string? quem)
     {
@@ -170,5 +241,6 @@ public sealed class SernitNotificacaoService(
     {
         public required SernitGatilho Gatilho { get; init; }
         public required SernitSolicitacao Solicitacao { get; init; }
+        public string? Tecnico { get; init; }
     }
 }

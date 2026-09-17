@@ -25,7 +25,10 @@ public sealed record SernitNotificacaoDto(
     /// só na de "FollowUP novo". Null quando a solicitação nunca teve FollowUP.</summary>
     SernitFollowUpResumoDto? UltimoFollowUp,
     /// <summary>O último evento da trilha, de qualquer verbo — é o que o filtro "último evento" olha.</summary>
-    SernitEventoResumoDto? UltimoEvento);
+    SernitEventoResumoDto? UltimoEvento,
+    /// <summary>Técnico regulador que incluiu a solicitação no SERNIT (usuário do primeiro
+    /// "Solicitar", em maiúsculas). Null enquanto o histórico não foi lido.</summary>
+    string? Tecnico);
 
 public sealed record SernitEventoResumoDto(TipoEventoExterno Tipo, string Evento, DateTime DataEvento);
 
@@ -53,6 +56,10 @@ public sealed record SernitNotificacaoFiltroDto
 
     /// <summary>Só solicitações cujo ÚLTIMO evento da trilha (qualquer verbo) é deste tipo.</summary>
     public TipoEventoExterno? TipoUltimoEvento { get; init; }
+
+    /// <summary>Só solicitações incluídas por estes técnicos (chaves de
+    /// <c>GET notificacoes/tecnicos</c>). Vazio = todos.</summary>
+    public List<string>? Tecnicos { get; init; }
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;
 }

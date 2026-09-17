@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
+using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Regulacao.Legado;
 using SMSMais.Core.Ser;
@@ -181,8 +182,17 @@ public sealed class SerNotificacaoController(ISerNotificacaoService notificacoes
     [HttpGet("resumo")]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
     [ProducesResponseType<SerNotificacaoResumoDto>(StatusCodes.Status200OK)]
-    public Task<SerNotificacaoResumoDto> Resumo(CancellationToken cancellationToken) =>
-        notificacoes.ResumoAsync(cancellationToken);
+    public Task<SerNotificacaoResumoDto> Resumo(
+        [FromQuery] List<string>? tecnicos, CancellationToken cancellationToken) =>
+        notificacoes.ResumoAsync(tecnicos, cancellationToken);
+
+    /// <summary>Técnicos reguladores (quem incluiu a solicitação) com as pendências de cada um —
+    /// as opções do filtro por técnico.</summary>
+    [HttpGet("tecnicos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<TecnicoNotificacaoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<TecnicoNotificacaoDto>> Tecnicos(CancellationToken cancellationToken) =>
+        notificacoes.TecnicosAsync(cancellationToken);
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]

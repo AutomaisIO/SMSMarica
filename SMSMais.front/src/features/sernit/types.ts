@@ -204,6 +204,8 @@ export type NotificacaoSernit = {
   ultimoFollowUp: FollowUpResumoSernit | null;
   /** Último evento da trilha, de qualquer verbo. Null se o histórico ainda não foi lido. */
   ultimoEvento: EventoResumoExterno | null;
+  /** Técnico regulador que incluiu a solicitação (chave normalizada). Null se o histórico não foi lido. */
+  tecnico: string | null;
 };
 
 export type FollowUpResumoSernit = {
@@ -241,6 +243,8 @@ export type NotificacoesSernitFiltro = {
   categoriaFollowUp?: CategoriaFollowUp;
   /** Só solicitações cujo ÚLTIMO evento da trilha (qualquer verbo) é deste tipo. */
   tipoUltimoEvento?: TipoEventoExterno;
+  /** Só solicitações incluídas por estes técnicos (chaves). Vazio = todos. */
+  tecnicos?: string[];
   pagina?: number;
   tamanho?: number;
 };

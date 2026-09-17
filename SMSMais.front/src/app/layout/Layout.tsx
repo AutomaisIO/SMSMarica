@@ -11,6 +11,7 @@ import { useTabelaPreferencias } from '@/shared/ui/tabelaPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useModalidadesExames } from '@/features/pacs/store/modalidadesPreferencia';
 import { useSistemasOcultos } from '@/features/regulacao/store/sistemasOcultosPreferencia';
+import { useTecnicosFiltro } from '@/shared/regulacao/tecnicosFiltroPreferencia';
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
@@ -26,6 +27,7 @@ export function Layout() {
   const hidratarTabela = useTabelaPreferencias((s) => s.hidratar);
   const hidratarModalidades = useModalidadesExames((s) => s.hidratar);
   const hidratarSistemasOcultos = useSistemasOcultos((s) => s.hidratar);
+  const hidratarTecnicos = useTecnicosFiltro((s) => s.hidratar);
   const { novaVersao, atualizar } = useVersaoApp();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -65,6 +67,7 @@ export function Layout() {
         hidratarTabela(p.largurasTabela);
         hidratarModalidades({ modalidades: p.examesModalidades, tipos: p.examesTipos });
         hidratarSistemasOcultos(p.regulacaoSistemasOcultos);
+        hidratarTecnicos({ ser: p.notificacoesSerTecnicos, sernit: p.notificacoesSernitTecnicos });
         // Bip do chat persistido no usuário (ticket #127): aplica o silêncio salvo. Só
         // seta o estado — NÃO re-persiste (evita gravar de volta na hidratação).
         useChat.getState().setSom(!(p.bipChatSilenciado ?? false));
@@ -82,6 +85,7 @@ export function Layout() {
     hidratarTabela,
     hidratarModalidades,
     hidratarSistemasOcultos,
+    hidratarTecnicos,
   ]);
 
   return (

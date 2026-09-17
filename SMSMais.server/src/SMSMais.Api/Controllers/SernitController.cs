@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SMSMais.Api.Auth;
+using SMSMais.Core.Regulacao.Notificacoes;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Regulacao.Legado;
@@ -145,8 +146,17 @@ public sealed class SernitNotificacaoController(ISernitNotificacaoService notifi
     [HttpGet("resumo")]
     [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
     [ProducesResponseType<SernitNotificacaoResumoDto>(StatusCodes.Status200OK)]
-    public Task<SernitNotificacaoResumoDto> Resumo(CancellationToken cancellationToken) =>
-        notificacoes.ResumoAsync(cancellationToken);
+    public Task<SernitNotificacaoResumoDto> Resumo(
+        [FromQuery] List<string>? tecnicos, CancellationToken cancellationToken) =>
+        notificacoes.ResumoAsync(tecnicos, cancellationToken);
+
+    /// <summary>Técnicos reguladores (quem incluiu a solicitação) com as pendências de cada um —
+    /// as opções do filtro por técnico.</summary>
+    [HttpGet("tecnicos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<TecnicoNotificacaoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<TecnicoNotificacaoDto>> Tecnicos(CancellationToken cancellationToken) =>
+        notificacoes.TecnicosAsync(cancellationToken);
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]

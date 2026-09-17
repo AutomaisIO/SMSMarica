@@ -341,7 +341,10 @@ public sealed record SerNotificacaoDto(
     SerFollowUpResumoDto? UltimoFollowUp,
     /// <summary>O último evento da trilha, de qualquer verbo — "Chegada no Destino",
     /// "Transferir", "WhatsApp"… É o que o filtro "último evento" da tela olha.</summary>
-    SerEventoResumoDto? UltimoEvento);
+    SerEventoResumoDto? UltimoEvento,
+    /// <summary>Técnico regulador que incluiu a solicitação no SER (usuário do primeiro
+    /// "Solicitar", em maiúsculas). Null enquanto o histórico não foi lido.</summary>
+    string? Tecnico);
 
 /// <summary>Resumo do último evento da trilha para o card: verbo tipado, verbo cru e quando.</summary>
 public sealed record SerEventoResumoDto(TipoEventoExterno Tipo, string Evento, DateTime DataEvento);
@@ -382,6 +385,10 @@ public sealed record SerNotificacaoFiltroDto
     /// <summary>Só solicitações cujo ÚLTIMO evento da trilha (qualquer verbo) é deste tipo —
     /// ex.: <c>ChegadaNoDestino</c>, <c>Transferir</c>, <c>WhatsApp</c>.</summary>
     public TipoEventoExterno? TipoUltimoEvento { get; init; }
+
+    /// <summary>Só solicitações incluídas por estes técnicos (chaves de
+    /// <c>GET notificacoes/tecnicos</c>). Vazio = todos.</summary>
+    public List<string>? Tecnicos { get; init; }
 
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;

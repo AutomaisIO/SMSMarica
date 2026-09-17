@@ -180,6 +180,11 @@ public static class DependencyInjection
             configuration.GetSection(Notificacoes.Comunicacao.ComunicacaoPacienteOptions.SecaoConfig));
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoPacienteService,
             Notificacoes.Comunicacao.ComunicacaoPacienteService>();
+        // Menu Confirmações: regras de disparo (janela, vazão, só SISREG) + leituras da fila.
+        services.AddScoped<Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService,
+            Notificacoes.Confirmacoes.ConfirmacaoConfiguracaoService>();
+        services.AddScoped<Notificacoes.Confirmacoes.IConfirmacoesPainelService,
+            Notificacoes.Confirmacoes.ConfirmacoesPainelService>();
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoGestaoService,
             Notificacoes.Comunicacao.ComunicacaoGestaoService>();
         // Resolução preguiçosa: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
@@ -874,6 +879,9 @@ public static class DependencyInjection
         // regras mudam pela tela (hash das regras gravado em cada evento).
         services.AddScoped<Regulacao.FollowUp.IFollowUpClassificacaoService, Regulacao.FollowUp.FollowUpClassificacaoService>();
         services.AddHostedService<Regulacao.FollowUp.FollowUpClassificacaoWorker>();
+
+        // Notificações de Alta do SER/SERNIT saem sozinhas da fila após 5 dias sem ninguém marcar.
+        services.AddHostedService<Regulacao.Notificacoes.LimpezaAltaNotificacaoWorker>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoCatalogoService, Regulacao.Catalogo.RegulacaoCatalogoService>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoProcedimentoBuscaService, Regulacao.Catalogo.RegulacaoProcedimentoBuscaService>();
         services.AddScoped<Regulacao.Anexos.IArquivoExigenciaStore, Regulacao.Anexos.ArquivoExigenciaStoreSpaces>();
