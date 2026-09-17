@@ -196,6 +196,12 @@ public static class PatientMergeFhir
     /// </summary>
     public const string ExtContatoConfirmado = "urn:smsmarica:contato-confirmado";
 
+    /// <summary>Vínculo declarado de quem verificou o número: próprio paciente, mãe/pai/responsável
+    /// ou outro parente/cuidador (<see cref="Data.Entities.Enums.VinculoContatoVerificado"/>). Fica
+    /// junto do marcador de confirmado, porque é a resposta a "por que esta pessoa recebe o dado
+    /// daquela".</summary>
+    public const string ExtContatoVinculo = "urn:smsmarica:contato-vinculo";
+
     /// <summary>Marcador de contato NEGADO: quem atendeu este número disse que NÃO é o paciente
     /// ("não sou essa pessoa"). É o par de alerta do confirmado — o ✔ vira ❗ na tela. Uma
     /// verificação positiva posterior (OTP) limpa o marcador.</summary>
@@ -283,7 +289,9 @@ public static class PatientMergeFhir
     /// existir no telecom, adiciona-o como principal. Usado pela validação por OTP e pelo backfill.
     /// Reconcilia DDI: <c>contato_validado</c> guarda "55…", o FHIR guarda nacional (match por sufixo).
     /// </summary>
-    public static void MarcarTelefoneConfirmado(Patient p, string numero, DateTimeOffset em)
+    public static void MarcarTelefoneConfirmado(
+        Patient p, string numero, DateTimeOffset em,
+        Data.Entities.Enums.VinculoContatoVerificado vinculo = Data.Entities.Enums.VinculoContatoVerificado.Proprio)
     {
         var alvo = Digitos(numero);
         if (alvo.Length < 8) return;
@@ -314,6 +322,8 @@ public static class PatientMergeFhir
         confirmado.Rank = 1; // o confirmado é o contato principal (memória: só o principal é validável)
         confirmado.RemoveExtension(ExtContatoConfirmado);
         confirmado.AddExtension(ExtContatoConfirmado, new FhirDateTime(em));
+        confirmado.RemoveExtension(ExtContatoVinculo);
+        confirmado.AddExtension(ExtContatoVinculo, new FhirString(vinculo.ToString()));
         // Verificação positiva vence a negação anterior: o número foi provado por OTP AGORA.
         confirmado.RemoveExtension(ExtContatoNegado);
     }
@@ -357,6 +367,16 @@ public static class PatientMergeFhir
             tirou = true;
         }
         return tirou;
+    }
+
+    /// <summary>Vínculo declarado no telecom confirmado (default: próprio paciente).</summary>
+    public static Data.Entities.Enums.VinculoContatoVerificado VinculoContatoConfirmado(Patient p)
+    {
+        var t = p.Telecom?.FirstOrDefault(x =>
+            x.System == ContactPoint.ContactPointSystem.Phone && x.GetExtension(ExtContatoConfirmado) is not null);
+        var valor = (t?.GetExtension(ExtContatoVinculo)?.Value as FhirString)?.Value;
+        return Enum.TryParse<Data.Entities.Enums.VinculoContatoVerificado>(valor, out var v)
+            ? v : Data.Entities.Enums.VinculoContatoVerificado.Proprio;
     }
 
     /// <summary>Telecom NEGADO do Patient (número em dígitos + instante), ou null.</summary>

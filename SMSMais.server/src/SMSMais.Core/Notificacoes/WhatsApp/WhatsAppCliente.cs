@@ -24,9 +24,35 @@ public sealed class WhatsAppCliente(
     SmsMaisDbContext db,
     IConfiguration configuration,
     IMemoryCache memoryCache,
+    PendenciasCadastro.IContatoNegadoService contatosNegados,
     ILogger<WhatsAppCliente> logger) : IWhatsAppCliente
 {
     private const string CacheKeyTemplates = "whatsapp:templates";
+
+    /// <summary>
+    /// Guarda de LGPD, no único ponto por onde tudo sai: mensagem que o SISTEMA inicia nunca vai
+    /// para um número cujo dono já disse que não conhece aquele paciente. A tentativa fica
+    /// registrada (mensagem com o motivo) para a recepção tratar depois.
+    /// </summary>
+    private async Task<EnvioWhatsAppResultado?> BloqueioAsync(
+        OrigemEnvioWhatsApp origem, string telefone, string? template, string conteudo,
+        Guid? pacienteId, CancellationToken ct)
+    {
+        if (origem != OrigemEnvioWhatsApp.Automatico) return null;
+        if (!await contatosNegados.BloqueadoAsync(telefone, pacienteId, ct)) return null;
+
+        const string motivo = "BLOQUEADO (LGPD): número marcado como inválido para este paciente — "
+            + "quem atende disse que não o conhece. Corrija o contato no cadastro para liberar.";
+        var msg = NovaMensagem(telefone, template, Truncar($"[BLOQUEADO] {conteudo}"), pacienteId);
+        msg.Status = StatusMensagemWhatsApp.Falha;
+        msg.ErroMeta = motivo;
+        db.MensagensWhatsApp.Add(msg);
+        try { await db.SaveChangesAsync(ct); } catch { /* best-effort: o bloqueio vale mesmo sem registro */ }
+
+        logger.LogWarning("Envio automático bloqueado (contato negado) para …{Fone4} / paciente {Paciente}.",
+            telefone.Length <= 4 ? telefone : telefone[^4..], pacienteId);
+        return new EnvioWhatsAppResultado(false, null, $"{BloqueioEnvioWhatsApp.CodigoNumeroNegado}: {motivo}");
+    }
 
     public async Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default)
     {
@@ -150,9 +176,11 @@ public sealed class WhatsAppCliente(
     }
 
     public async Task<EnvioWhatsAppResultado> EnviarTextoAsync(
-        string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default)
+        string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
     {
         var fone = NormalizarTelefone(telefone);
+        if (await BloqueioAsync(origem, fone, null, texto, pacienteId, ct) is { } bloqueio) return bloqueio;
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template: null, texto, pacienteId, ct);
 
@@ -162,10 +190,12 @@ public sealed class WhatsAppCliente(
 
     public async Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
         string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
-        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default)
+        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
     {
         var fone = NormalizarTelefone(telefone);
         var conteudo = await ConteudoDaThreadAsync(template, parametros, conteudoLegivel, ct);
+        if (await BloqueioAsync(origem, fone, template, conteudo, pacienteId, ct) is { } bloqueio) return bloqueio;
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
@@ -185,10 +215,12 @@ public sealed class WhatsAppCliente(
     public async Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
         string telefone, string template, string idiomaBcp47,
         IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
-        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default)
+        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
     {
         var fone = NormalizarTelefone(telefone);
         var conteudo = await ConteudoDaThreadAsync(template, parametrosBody, conteudoLegivel, ct);
+        if (await BloqueioAsync(origem, fone, template, conteudo, pacienteId, ct) is { } bloqueio) return bloqueio;
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
@@ -227,10 +259,12 @@ public sealed class WhatsAppCliente(
 
     public async Task<EnvioWhatsAppResultado> EnviarInterativoBotoesAsync(
         string telefone, string texto, IReadOnlyList<BotaoInterativoWhatsApp> botoes,
-        Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
     {
         var fone = NormalizarTelefone(telefone);
         var conteudo = $"{texto} [{string.Join(" / ", botoes.Select(b => b.Titulo))}]";
+        if (await BloqueioAsync(origem, fone, null, conteudo, pacienteId, ct) is { } bloqueio) return bloqueio;
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template: null, conteudo, pacienteId, ct);
 
@@ -254,11 +288,13 @@ public sealed class WhatsAppCliente(
 
     public async Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
         string telefone, string template, string idiomaBcp47, string codigo,
-        Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
     {
         var fone = NormalizarTelefone(telefone);
         // Auditoria sem o código em claro (é credencial de uso único).
         var conteudo = $"[template:{template}] código de acesso";
+        if (await BloqueioAsync(origem, fone, template, conteudo, pacienteId, ct) is { } bloqueio) return bloqueio;
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 

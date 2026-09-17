@@ -50,6 +50,9 @@ public sealed class CidadaoLoginLinkService(
 {
     private const string DestinoPadrao = "/exames";
 
+    /// <summary>Quanto tempo o clique no link ainda ABRE o app.</summary>
+    private static readonly TimeSpan JanelaSessao = TimeSpan.FromHours(24);
+
     /// <summary>Tentativas de CPF antes de o link ser queimado.</summary>
     private const int MaxTentativasCpf = 3;
 
@@ -94,6 +97,10 @@ public sealed class CidadaoLoginLinkService(
             Destino = string.IsNullOrWhiteSpace(destino) ? DestinoPadrao : destino,
             SolicitacaoId = solicitacaoSpineId,
             ExigeConfirmacaoCpf = exigeConfirmacaoCpf,
+            // Entrar no app só nas primeiras 24h (decisão de 17/09/2026). Depois disso o link
+            // continua servindo para CONFIRMAR a presença até o dia do exame, mas não autentica
+            // mais ninguém: link repassado, ou o celular que passou de mão, não abre o prontuário.
+            SessaoAteEm = DateTime.UtcNow.Add(JanelaSessao),
             ExpiraEm = DateTime.UtcNow.AddDays(dias),
             CriadoEm = DateTime.UtcNow,
             CriadoPor = usuarioAtual.UsuarioId,
@@ -155,7 +162,24 @@ public sealed class CidadaoLoginLinkService(
             .FirstOrDefaultAsync(x => x.Id == token, cancellationToken);
         if (link is null) return null; // token inexistente → 410 (app manda pro login)
 
+        // REVOGADO ≠ expirado: o link foi cortado porque pode estar com a pessoa errada (reenvio,
+        // troca de número, correção de identidade do exame). Não autentica, não confirma presença
+        // e não devolve nem o destino.
+        if (link.RevogadoEm is not null) return null;
+
         var agora = DateTime.UtcNow;
+
+        // Passada a janela de 24h, o link de agendamento ainda serve para o paciente confirmar a
+        // presença — e só isso. Nada de sessão, mesmo que o token nunca tenha sido usado.
+        if (!link.ExigeConfirmacaoCpf && link.SessaoAteEm is { } sessaoAte && agora > sessaoAte)
+        {
+            var confirmacaoTardia = await ConfirmarPresencaAsync(link.SolicitacaoId, cancellationToken);
+            if (confirmacaoTardia is not null) await db.SaveChangesAsync(cancellationToken);
+            return new RespostaMagicLinkDto(
+                Token: null, Paciente: null,
+                Destino: string.IsNullOrWhiteSpace(link.Destino) ? "/" : link.Destino!,
+                ConfirmacaoAgendamento: confirmacaoTardia);
+        }
         var usadoIp = ip is { Length: > 64 } ? ip[..64] : ip;
 
         // GATE DE CPF — antes de qualquer consumo. Vale para os links que carregam resultado

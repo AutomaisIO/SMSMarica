@@ -29,7 +29,10 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 /// (regulação estadual/Niterói) por situação Agendada — lá a data vem em TEXTO ("Agendado para"),
 /// então é exibida como está, sem filtro por data.
 /// </summary>
-public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientesService pacientes) : IRoboComando
+public sealed class ConsultarAgendamentosComando(
+    SmsMaisDbContext db,
+    IPacientesService pacientes,
+    PendenciasCadastro.IContatoNegadoService contatosNegados) : IRoboComando
 {
     private const int Maximo = 5;
 
@@ -127,7 +130,8 @@ public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientes
     {
         var candidatos = new List<Guid>();
         if (ctx.PacienteId is { } pid) candidatos.Add(pid);
-        else candidatos.AddRange((await pacientes.ListarPorTelefoneAsync(ctx.TelefoneCanonical, ct)).Select(p => p.Id));
+        else candidatos.AddRange(
+            (await PacientesDoNumeroAsync(ctx, ct)).Select(p => p.Id));
 
         if (candidatos.Count == 0)
             return new(false,
@@ -176,12 +180,23 @@ public sealed class ConsultarAgendamentosComando(SmsMaisDbContext db, IPacientes
                 ? p.Id : null;
         }
 
-        foreach (var p in await pacientes.ListarPorTelefoneAsync(ctx.TelefoneCanonical, ct))
+        foreach (var p in await PacientesDoNumeroAsync(ctx, ct))
         {
             if (GateIdentidade.CpfInicioConfere(p.Cpf, cpf)
                 && GateIdentidade.NascimentoMesAnoConfere(p.DataNascimento, mes, ano))
                 return p.Id;
         }
         return null;
+    }
+
+    /// <summary>Pacientes deste número, SEM os que tiveram o contato negado nele (LGPD).</summary>
+    private async Task<List<Pacientes.Dtos.PacienteListItemDto>> PacientesDoNumeroAsync(
+        RoboComandoContexto ctx, CancellationToken ct)
+    {
+        var lista = new List<Pacientes.Dtos.PacienteListItemDto>();
+        foreach (var p in await pacientes.ListarPorTelefoneAsync(ctx.TelefoneCanonical, ct))
+            if (!await contatosNegados.BloqueadoAsync(ctx.TelefoneCanonical, p.Id, ct))
+                lista.Add(p);
+        return lista;
     }
 }

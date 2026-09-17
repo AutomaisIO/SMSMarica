@@ -466,7 +466,8 @@ public class ConversaPosseTests(PostgresFixture fixture)
     {
         var whats = Substitute.For<IWhatsAppCliente>();
         whats.EnviarTextoAsync(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>(),
+                Arg.Any<OrigemEnvioWhatsApp>())
             .Returns(new EnvioWhatsAppResultado(true, $"wamid.teste.{Guid.NewGuid():N}", null));
 
         // O hub FHIR não é o objeto destes testes: nome de paciente é decoração da thread.

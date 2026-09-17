@@ -211,8 +211,10 @@ public sealed class PacienteAuthService(
 
         var template = config.GetValue("Tfd:Otp:WhatsAppTemplate", "authzap")!;
         var idioma = config.GetValue("Tfd:Otp:WhatsAppIdioma", "pt_BR")!;
+        // O próprio cidadão pediu o código para entrar no app.
         var envio = await whatsapp.EnviarTemplateAutenticacaoAsync(
-            telefone, template, idioma, codigo, pacienteId: pacienteId, ct: ct);
+            telefone, template, idioma, codigo, pacienteId: pacienteId, ct: ct,
+            origem: OrigemEnvioWhatsApp.Humano);
 
         // Sem credenciais salvas no servidor → o cliente "simula". Não trava o login:
         // cai no fallback de tela e registra aviso para configurar o WhatsApp.

@@ -153,6 +153,7 @@ public sealed class ComunicacaoPacienteService(
     private static void RearmarParaNovoEnvio(ComunicacaoPaciente n)
     {
         var agora = DateTime.UtcNow;
+        n.IgnorarVerificacaoTelefone = false; // vale por envio, não para sempre
         n.Status = StatusComunicacao.Pendente;
         n.MotivoFalha = null;
         n.Telefone = null;
@@ -295,6 +296,9 @@ public sealed class ComunicacaoPacienteService(
         n.IgnorarJanelaHorario = false;
         n.ProximaTentativaEm = agora;
         n.AtualizadoEm = agora;
+        // "Assumo o risco" era de UM envio, para UM número. Mantê-lo ligado fazia o reenvio pular
+        // o desafio cadastral e mandar link de sessão para um número novo e não provado.
+        n.IgnorarVerificacaoTelefone = false;
 
         // Trilha na linha do tempo: quem reenviou e o que foi revogado.
         db.ContatosRegistro.Add(new ContatoRegistro
@@ -563,6 +567,14 @@ public sealed class ComunicacaoPacienteService(
         }
         // O Automais.Zap devolve "{message} (code {code})"; o formato antigo era "({code}) {message}".
         // Casar pelo codigo em ambos, senao numero inexistente volta para a fila em vez de falhar.
+        else if (resultado.Erro?.StartsWith(BloqueioEnvioWhatsApp.CodigoNumeroNegado, StringComparison.Ordinal) == true)
+        {
+            // A guarda central barrou: fica retida com o motivo, sem gastar tentativa.
+            n.Status = StatusComunicacao.AguardandoCorrecaoContato;
+            n.MotivoFalha = Truncar(resultado.Erro);
+            n.ProximaTentativaEm = null;
+            n.Tentativas--;
+        }
         else if (ErroPermanente(resultado.Erro))
         {
             Terminal(n, StatusComunicacao.Falha, resultado.Erro);
@@ -581,9 +593,16 @@ public sealed class ComunicacaoPacienteService(
         // qualquer link anterior pode ter ido para o número — ou para a pessoa — errada.
         // Expirar é a revogação: ninguém mais autentica com eles.
         var linksAtivos = await db.CidadaoLoginLinks
-            .Where(l => l.SolicitacaoId == solicitacaoId && l.ExpiraEm > agora)
+            .Where(l => l.SolicitacaoId == solicitacaoId && l.ExpiraEm > agora && l.RevogadoEm == null)
             .ToListAsync(ct);
-        foreach (var l in linksAtivos) l.ExpiraEm = agora;
+        foreach (var l in linksAtivos)
+        {
+            l.ExpiraEm = agora;
+            // Carimbo próprio: revogado não confirma presença nem devolve destino (o expirado
+            // natural ainda confirma). Sem isto, um link cortado por engano de número continuava
+            // valendo para confirmar.
+            l.RevogadoEm = agora;
+        }
 
         // Se algum link JÁ FOI USADO, derruba as sessões ativas do paciente daquele link — se quem
         // clicou foi a pessoa errada, ela perde o acesso ao app AGORA. O paciente certo reentra

@@ -8,5 +8,8 @@ namespace SMSMais.Core.Cidadao;
 /// </summary>
 public interface IPacienteTokenService
 {
-    string Gerar(Guid pacienteId, string nome, string? cpf, Guid sessaoJti, DateTime expiraEm);
+    /// <param name="canal">Como a sessão nasceu: "magic-link" ou "otp". Vai no token e decide o
+    /// que a sessão pode fazer (sessão de link não troca o telefone verificado).</param>
+    string Gerar(Guid pacienteId, string nome, string? cpf, Guid sessaoJti, DateTime expiraEm,
+        string? canal = null);
 }

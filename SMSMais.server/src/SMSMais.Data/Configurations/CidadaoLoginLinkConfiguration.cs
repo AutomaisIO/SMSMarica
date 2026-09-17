@@ -22,6 +22,8 @@ internal sealed class CidadaoLoginLinkConfiguration : IEntityTypeConfiguration<C
             .HasColumnName("exige_confirmacao_cpf").HasDefaultValue(false).IsRequired();
         builder.Property(l => l.TentativasCpf)
             .HasColumnName("tentativas_cpf").HasDefaultValue(0).IsRequired();
+        builder.Property(l => l.SessaoAteEm).HasColumnName("sessao_ate_em");
+        builder.Property(l => l.RevogadoEm).HasColumnName("revogado_em");
         builder.Property(l => l.UsadoEm).HasColumnName("usado_em");
         builder.Property(l => l.UsadoIp).HasColumnName("usado_ip").HasMaxLength(64);
         builder.Property(l => l.CriadoEm).HasColumnName("criado_em").IsRequired();

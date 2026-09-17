@@ -71,6 +71,10 @@ public sealed record PacienteDto(
     /// Fonte única do "telefone verificado" — é por ele que a SMS fala com a pessoa.</summary>
     string? TelefoneVerificado = null,
     DateTime? TelefoneVerificadoEm = null,
+    /// <summary>A que título o número verificado atende este paciente: "Proprio",
+    /// "MaeOuPaiOuResponsavel" ou "OutroParenteOuCuidador". Só faz sentido com
+    /// <see cref="TelefoneVerificado"/> preenchido.</summary>
+    string? TelefoneVerificadoVinculo = null,
     /// <summary>Número NEGADO ("não sou essa pessoa" — marcador no telecom FHIR), se houver.
     /// É o alerta ❗: mensagens para este número chegam à pessoa errada.</summary>
     string? TelefoneNegado = null,

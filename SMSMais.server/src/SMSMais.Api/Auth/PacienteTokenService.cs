@@ -12,7 +12,8 @@ public sealed class PacienteTokenService(IOptions<JwtOptions> options) : IPacien
 {
     private readonly JwtOptions _opt = options.Value;
 
-    public string Gerar(Guid pacienteId, string nome, string? cpf, Guid sessaoJti, DateTime expiraEm)
+    public string Gerar(Guid pacienteId, string nome, string? cpf, Guid sessaoJti, DateTime expiraEm,
+        string? canal = null)
     {
         if (string.IsNullOrWhiteSpace(_opt.Key))
         {
@@ -27,6 +28,10 @@ public sealed class PacienteTokenService(IOptions<JwtOptions> options) : IPacien
             // jti = id da sessão; validado contra cidadao_sessao a cada request (single-device).
             new(JwtRegisteredClaimNames.Jti, sessaoJti.ToString()),
             new("tipo", "cidadao"),
+            // Como esta sessão nasceu: "magic-link" (1 clique no WhatsApp) ou "otp" (código).
+            // Sessão de link não troca o telefone verificado — seria tomar a conta com um link
+            // que pode ter chegado à pessoa errada.
+            new("canal", string.IsNullOrWhiteSpace(canal) ? "otp" : canal!),
         };
         if (!string.IsNullOrWhiteSpace(cpf))
         {

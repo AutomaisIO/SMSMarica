@@ -183,8 +183,11 @@ public sealed class ConversaService(
         await db.SaveChangesAsync(ct); // garante a conversa antes de enviar/vincular
 
         var nomeOperador = await ObterNomeAsync(me, ct);
+        // Operador escolheu o template e o destinatário: a guarda de contato negado não barra
+        // (a tela avisa e pede ciência); o que não pode é o SISTEMA falar sozinho.
         var envio = await whats.EnviarTemplateAsync(
-            fone, request.Template, request.Idioma, request.Parametros, pacienteId: conversa.PacienteId, ct: ct);
+            fone, request.Template, request.Idioma, request.Parametros, pacienteId: conversa.PacienteId, ct: ct,
+            origem: OrigemEnvioWhatsApp.Humano);
         if (!envio.Ok)
             throw new ConflitoException("conversa.envio_falhou", $"Falha ao enviar o modelo: {envio.Erro}");
 
@@ -214,7 +217,8 @@ public sealed class ConversaService(
         var nomeOperador = await ObterNomeAsync(me, ct);
         var corpo = MontarCorpo(nomeOperador, request.Texto);
 
-        var envio = await whats.EnviarTextoAsync(conversa.TelefoneCanonical, corpo, pacienteId: conversa.PacienteId, ct: ct);
+        var envio = await whats.EnviarTextoAsync(conversa.TelefoneCanonical, corpo, pacienteId: conversa.PacienteId,
+            ct: ct, origem: OrigemEnvioWhatsApp.Humano);
         if (!envio.Ok)
             throw new ConflitoException("conversa.envio_falhou", $"Falha ao enviar a mensagem: {envio.Erro}");
 

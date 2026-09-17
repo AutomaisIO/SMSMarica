@@ -45,6 +45,9 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     private const string PrefixoTentarSim = "vcad_retry_sim:";
     private const string PrefixoTentarNao = "vcad_retry_nao:";
     private const string PrefixoNaoConheco = "vcad_naoconheco:";
+    private const string PrefixoVinculoProprio = "vcad_vinc_proprio:";
+    private const string PrefixoVinculoResponsavel = "vcad_vinc_resp:";
+    private const string PrefixoVinculoParente = "vcad_vinc_parente:";
     private const string PrefixoConheco = "vcad_conheco:";
 
     /// <summary>Chances de acertar os dados antes de encerrar e orientar o posto. Cada ciclo
@@ -82,6 +85,26 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             await TratarBotaoNovaTentativaAsync(ctx, idRetryNao, aceitou: false, ct);
             return;
         }
+        // Vínculo declarado ("este número é seu ou você recebe pela pessoa?").
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoVinculoProprio, out var idVincProprio))
+        {
+            ctx.Consumido = true;
+            await ConcluirComVinculoAsync(ctx, idVincProprio, VinculoContatoVerificado.Proprio, ct);
+            return;
+        }
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoVinculoResponsavel, out var idVincResp))
+        {
+            ctx.Consumido = true;
+            await ConcluirComVinculoAsync(ctx, idVincResp, VinculoContatoVerificado.MaeOuPaiOuResponsavel, ct);
+            return;
+        }
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoVinculoParente, out var idVincParente))
+        {
+            ctx.Consumido = true;
+            await ConcluirComVinculoAsync(ctx, idVincParente, VinculoContatoVerificado.OutroParenteOuCuidador, ct);
+            return;
+        }
+
         // "Você conhece FULANO?" — resposta à pergunta aberta por "Não sou essa pessoa."
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoNaoConheco, out var idNaoConheco))
         {
@@ -176,6 +199,9 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 break;
             case EtapaVerificacaoCadastral.AguardandoNome:
                 await TratarEtapaNomeTextoAsync(ctx, estado, ct);
+                break;
+            case EtapaVerificacaoCadastral.AguardandoVinculo:
+                await TratarEtapaVinculoTextoAsync(ctx, estado, ct);
                 break;
             case EtapaVerificacaoCadastral.AguardandoNovaTentativa:
                 await TratarEtapaNovaTentativaTextoAsync(ctx, estado, ct);
@@ -282,7 +308,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 new BotaoInterativoWhatsApp($"{PrefixoTentarSim}{estado.Id}", "Sim, tentar de novo"),
                 new BotaoInterativoWhatsApp($"{PrefixoTentarNao}{estado.Id}", "Não"),
             ],
-            pacienteId: ctx.PacienteId, ct: ct);
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     /// <param name="bloquear">Chances esgotadas/ambiguidade: marca <c>Esgotado</c> e MANTÉM o estado —
@@ -408,7 +434,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 new BotaoInterativoWhatsApp($"{PrefixoSim}{estado.Id}", "Sim"),
                 new BotaoInterativoWhatsApp($"{PrefixoNao}{estado.Id}", "Não"),
             ],
-            pacienteId: ctx.PacienteId, ct: ct);
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     // ---------- etapa 3: confirmação do nome ----------
@@ -421,7 +447,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         if (estado.ExpiraEm <= DateTime.UtcNow) { db.VerificacoesCadastraisEstado.Remove(estado); return; }
 
         ctx.Consumido = true;
-        if (confirmou) await ConcluirComSucessoAsync(ctx, estado, ct);
+        if (confirmou) await PerguntarVinculoAsync(ctx, estado, ct);
         else await ConcluirComoNumeroErradoAsync(ctx, estado, ct);
     }
 
@@ -439,7 +465,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             || InterpretadorRespostaCidadao.NomeConfere(paciente.NomeCompleto, ctx.Texto))
         {
             ctx.Consumido = true;
-            await ConcluirComSucessoAsync(ctx, estado, ct);
+            await PerguntarVinculoAsync(ctx, estado, ct);
             return;
         }
         if (InterpretadorRespostaCidadao.EhNao(ctx.Texto))
@@ -453,9 +479,62 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             $"Só falta confirmar: o paciente é *{paciente.NomeCompleto?.Trim()}*? Responda *Sim* ou *Não*.", ct);
     }
 
+    // ---------- etapa 4: vínculo (LGPD) ----------
+
+    /// <summary>
+    /// Última pergunta: o número é do próprio paciente ou de quem recebe por ele? A resposta fica
+    /// GRAVADA no cadastro — é o que permite o celular da mãe atender pelos filhos sem virar
+    /// "número duplicado", e é a resposta de LGPD para "por que essa pessoa recebe o dado daquela".
+    /// </summary>
+    private async Task PerguntarVinculoAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        estado.Etapa = EtapaVerificacaoCadastral.AguardandoVinculo;
+        estado.Reorientacoes = 0;
+        Tocar(estado);
+
+        var nome = await PrimeiroNomeDoAlvoAsync(estado, ct);
+        await whatsApp.EnviarInterativoBotoesAsync(
+            estado.TelefoneCanonical,
+            $"Confirmado! Só falta uma coisa: este WhatsApp é {(nome is null ? "do paciente" : $"de *{nome}*")} "
+            + "ou você recebe as mensagens por ele(a)?",
+            [
+                new BotaoInterativoWhatsApp($"{PrefixoVinculoProprio}{estado.Id}", "Sou o paciente"),
+                new BotaoInterativoWhatsApp($"{PrefixoVinculoResponsavel}{estado.Id}", "Sou responsável"),
+                new BotaoInterativoWhatsApp($"{PrefixoVinculoParente}{estado.Id}", "Outro parente"),
+            ],
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+    }
+
+    private async Task ConcluirComVinculoAsync(
+        ManipuladorContexto ctx, Guid estadoId, VinculoContatoVerificado vinculo, CancellationToken ct)
+    {
+        var estado = await db.VerificacoesCadastraisEstado.FirstOrDefaultAsync(e => e.Id == estadoId, ct);
+        if (estado is null || estado.Etapa != EtapaVerificacaoCadastral.AguardandoVinculo) return;
+        if (estado.ExpiraEm <= DateTime.UtcNow) { db.VerificacoesCadastraisEstado.Remove(estado); return; }
+        await ConcluirComSucessoAsync(ctx, estado, vinculo, ct);
+    }
+
+    /// <summary>Quem responde em texto ("sou a mãe dele", "sou eu mesmo") não precisa tocar botão.</summary>
+    private async Task TratarEtapaVinculoTextoAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        if (InterpretadorRespostaCidadao.TentarLerVinculo(ctx.Texto) is { } vinculo)
+        {
+            ctx.Consumido = true;
+            await ConcluirComSucessoAsync(ctx, estado, vinculo, ct);
+            return;
+        }
+        await ReorientarAsync(ctx, estado,
+            "Só para registrar: este WhatsApp é *do próprio paciente* ou você recebe as mensagens "
+            + "*por ele(a)* (mãe, pai, responsável, parente)?", ct);
+    }
+
     // ---------- conclusões ----------
 
-    private async Task ConcluirComSucessoAsync(ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    private async Task ConcluirComSucessoAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, VinculoContatoVerificado vinculo,
+        CancellationToken ct)
     {
         var pacienteId = estado.PacienteId!.Value;
         var paciente = await ObterPacienteAsync(pacienteId, ct);
@@ -464,7 +543,11 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         // Carimbo de telefone verificado (melhor esforço; conflito = número confirmado de outro CPF).
         if (!string.IsNullOrWhiteSpace(paciente?.Cpf))
         {
-            try { await telefones.MarcarValidadoAsync(paciente!.Cpf, telefone, "verificacao-cadastral", null, ct); }
+            try
+            {
+                await telefones.MarcarValidadoAsync(
+                    paciente!.Cpf, telefone, "verificacao-cadastral", null, ct, vinculo);
+            }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Falha ao carimbar telefone verificado na verificação cadastral (paciente {Id}).", pacienteId);
@@ -498,8 +581,9 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             pacienteId, Ultimos4(telefone), retidas.Count);
 
         var nome = PrimeiroNome(paciente?.NomeCompleto);
+        var tratamento = vinculo == VinculoContatoVerificado.Proprio && nome is not null ? $", {nome}" : "";
         await ResponderAsync(ctx,
-            $"Perfeito{(nome is null ? "" : $", {nome}")}! Cadastro confirmado. Já estou enviando as "
+            $"Perfeito{tratamento}! Cadastro confirmado. Já estou enviando as "
             + "informações do agendamento — chegam aqui em instantes.", ct);
 
         // Multi-paciente: há desafio pendente para OUTRA pessoa neste número? Emenda o próximo.
@@ -578,7 +662,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 new BotaoInterativoWhatsApp($"{PrefixoNaoConheco}{alvo.Id}", "Não conheço"),
                 new BotaoInterativoWhatsApp($"{PrefixoConheco}{alvo.Id}", "Conheço"),
             ],
-            pacienteId: ctx.PacienteId, ct: ct);
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     private async Task TratarConhecePacienteAsync(ManipuladorContexto ctx, Guid comunicacaoId, CancellationToken ct)
@@ -707,7 +791,8 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     }
 
     private Task ResponderAsync(ManipuladorContexto ctx, string texto, CancellationToken ct) =>
-        whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical, texto, pacienteId: ctx.PacienteId, ct: ct);
+        whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical, texto, pacienteId: ctx.PacienteId, ct: ct,
+            origem: OrigemEnvioWhatsApp.Resposta);
 
     private static void Tocar(VerificacaoCadastralEstado estado) => estado.AtualizadoEm = DateTime.UtcNow;
 

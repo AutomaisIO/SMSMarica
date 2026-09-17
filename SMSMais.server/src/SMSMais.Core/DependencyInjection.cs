@@ -181,6 +181,8 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoPacienteService,
             Notificacoes.Comunicacao.ComunicacaoPacienteService>();
         // Menu Confirmações: regras de disparo (janela, vazão, só SISREG) + leituras da fila.
+        // Régua do contato negado (guarda central de LGPD no WhatsAppCliente).
+        services.AddScoped<PendenciasCadastro.IContatoNegadoService, PendenciasCadastro.ContatoNegadoService>();
         services.AddScoped<Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService,
             Notificacoes.Confirmacoes.ConfirmacaoConfiguracaoService>();
         services.AddScoped<Notificacoes.Confirmacoes.IConfirmacoesPainelService,

@@ -2,6 +2,31 @@ namespace SMSMais.Core.Notificacoes.WhatsApp;
 
 public sealed record EnvioWhatsAppResultado(bool Ok, string? WaMessageId, string? Erro);
 
+/// <summary>
+/// Quem provocou o envio. É o que permite a guarda central de LGPD distinguir "o sistema resolveu
+/// falar com o cidadão" de "alguém pediu esta mensagem".
+/// </summary>
+public enum OrigemEnvioWhatsApp
+{
+    /// <summary>O sistema iniciou a conversa (worker, gatilho, agendador). <b>Padrão de propósito</b>:
+    /// quem esquecer de declarar cai na regra mais restritiva. É o único bloqueado por contato negado.</summary>
+    Automatico = 1,
+
+    /// <summary>Resposta a uma mensagem que o cidadão acabou de mandar (máquinas de estado, robô).
+    /// Não é bloqueada — quem escreveu espera resposta —, mas nunca deve revelar dado de paciente
+    /// cujo contato foi negado (isso é barrado antes, na resolução do paciente).</summary>
+    Resposta = 2,
+
+    /// <summary>Pedida por uma pessoa: operador no painel, ou o próprio cidadão (código de acesso).</summary>
+    Humano = 3,
+}
+
+/// <summary>Código de erro devolvido quando a guarda de contato negado barra o envio.</summary>
+public static class BloqueioEnvioWhatsApp
+{
+    public const string CodigoNumeroNegado = "bloqueio.numero_negado";
+}
+
 /// <summary>Tipo do botão em um template com componentes de botão.</summary>
 public enum TipoBotaoTemplate
 {
@@ -46,14 +71,16 @@ public sealed record TemplateWhatsApp(
 public interface IWhatsAppCliente
 {
     Task<EnvioWhatsAppResultado> EnviarTextoAsync(
-        string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default);
+        string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
 
     /// <param name="conteudoLegivel">Texto humano do template (com as variáveis já preenchidas) para
     /// gravar como conteúdo da mensagem — aparece na thread e no histórico do robô. Nulo mantém o
     /// marcador <c>[template:nome] param | param</c>.</param>
     Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
         string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
-        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default);
+        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
 
     /// <summary>
     /// Envia um template da categoria <b>AUTHENTICATION</b> (OTP). Diferente de um template
@@ -63,7 +90,8 @@ public interface IWhatsAppCliente
     /// </summary>
     Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
         string telefone, string template, string idiomaBcp47, string codigo,
-        Guid? pacienteId = null, CancellationToken ct = default);
+        Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
 
     /// <summary>
     /// Envia um template com componentes de botão (URL dinâmica e/ou quick reply), além dos
@@ -74,7 +102,8 @@ public interface IWhatsAppCliente
     Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
         string telefone, string template, string idiomaBcp47,
         IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
-        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default);
+        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
 
     /// <summary>
     /// Envia mensagem interativa com botões de resposta (só dentro da janela de 24h — fora dela
@@ -83,7 +112,8 @@ public interface IWhatsAppCliente
     /// </summary>
     Task<EnvioWhatsAppResultado> EnviarInterativoBotoesAsync(
         string telefone, string texto, IReadOnlyList<BotaoInterativoWhatsApp> botoes,
-        Guid? pacienteId = null, CancellationToken ct = default);
+        Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
 
     /// <summary>
     /// Lista os templates <b>APPROVED</b> da WABA (catálogo Meta), para o operador escolher ao

@@ -177,7 +177,8 @@ public sealed class RoboAtendimentoWhatsAppHandler(
         try
         {
             var envio = await whatsApp.EnviarTextoAsync(
-                ctx.Conversa.TelefoneCanonical, Abertura, pacienteId: ctx.Conversa.PacienteId, ct: ct);
+                ctx.Conversa.TelefoneCanonical, Abertura, pacienteId: ctx.Conversa.PacienteId, ct: ct,
+                origem: OrigemEnvioWhatsApp.Resposta);
             if (!envio.Ok)
             {
                 Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(

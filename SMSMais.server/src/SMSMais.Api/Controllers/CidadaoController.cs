@@ -61,9 +61,20 @@ public sealed class CidadaoController(
 
     [HttpPut("me/contato")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AtualizarContato(
         [FromBody] AtualizarContatoCidadaoRequest req, CancellationToken ct)
     {
+        // LGPD: sessão aberta em 1 clique pelo link do WhatsApp NÃO troca telefone. O link pode ter
+        // chegado a outra pessoa (repasse, celular emprestado) e trocar o número verificado é tomar
+        // a conta. Para mexer no contato, entrar com o código (OTP) — que prova o número atual.
+        var mexeEmTelefone = req.TelefonePrincipal is not null || req.TelefoneCelular is not null
+            || req.TelefoneResidencial is not null;
+        if (mexeEmTelefone && string.Equals(User.FindFirst("canal")?.Value, "magic-link", StringComparison.Ordinal))
+            throw new SMSMais.Core.Common.Excecoes.ConflitoException(
+                "contato.sessao_por_link",
+                "Para alterar telefone, entre no aplicativo com o código enviado por WhatsApp.");
+
         await pacientes.AtualizarContatoAsync(
             PacienteId(), req.Email, req.TelefonePrincipal, req.TelefoneCelular, req.TelefoneResidencial, ct);
         return NoContent();

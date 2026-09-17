@@ -86,7 +86,7 @@ public sealed class CidadaoSessaoService(
         db.CidadaoSessoes.Add(sessao);
         await db.SaveChangesAsync(ct);
 
-        var token = tokens.Gerar(patientId, nome, cpfDigitos, sessao.Id, expira);
+        var token = tokens.Gerar(patientId, nome, cpfDigitos, sessao.Id, expira, canal);
         return (token, expira);
     }
 

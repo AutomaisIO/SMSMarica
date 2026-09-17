@@ -15,7 +15,9 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 /// Minimização: em caso de acerto devolve só o nome (e se o contato já é verificado). Em caso de
 /// erro não diz QUAL dado não bateu — isso viraria um oráculo para adivinhar cadastro alheio.
 /// </summary>
-public sealed class ConsultarCadastroComando(IPacientesService pacientes) : IRoboComando
+public sealed class ConsultarCadastroComando(
+    IPacientesService pacientes,
+    PendenciasCadastro.IContatoNegadoService contatosNegados) : IRoboComando
 {
     public ComandoRobo Comando => ComandoRobo.ConsultarCadastro;
     public bool Idempotente => false;
@@ -51,7 +53,11 @@ public sealed class ConsultarCadastroComando(IPacientesService pacientes) : IRob
         else
         {
             foreach (var p in await pacientes.ListarPorTelefoneAsync(ctx.TelefoneCanonical, ct))
+            {
+                // LGPD: paciente cujo contato foi NEGADO neste número não entra na conferência.
+                if (await contatosNegados.BloqueadoAsync(ctx.TelefoneCanonical, p.Id, ct)) continue;
                 candidatos.Add((p.Id, p.NomeCompleto, p.Cpf, p.DataNascimento, null));
+            }
         }
 
         if (candidatos.Count == 0)

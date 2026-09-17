@@ -94,7 +94,8 @@ public class NotificadorSincronismoTests
         public List<string> Templates { get; } = [];
 
         public Task<EnvioWhatsAppResultado> EnviarTextoAsync(
-            string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default)
+            string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default,
+            OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
         {
             Textos.Add(texto);
             return Task.FromResult(new EnvioWhatsAppResultado(true, "wamid", null));
@@ -102,7 +103,8 @@ public class NotificadorSincronismoTests
 
         public Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
             string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
-            Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default)
+            Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,
+            OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
         {
             Templates.Add(template);
             return Task.FromResult(new EnvioWhatsAppResultado(true, "wamid", null));
@@ -110,18 +112,21 @@ public class NotificadorSincronismoTests
 
         public Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
             string telefone, string template, string idiomaBcp47, string codigo,
-            Guid? pacienteId = null, CancellationToken ct = default) =>
+            Guid? pacienteId = null, CancellationToken ct = default,
+            OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico) =>
             throw new NotSupportedException();
 
         public Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
             string telefone, string template, string idiomaBcp47,
             IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
-            Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default) =>
+            Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,
+            OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico) =>
             throw new NotSupportedException();
 
         public Task<EnvioWhatsAppResultado> EnviarInterativoBotoesAsync(
             string telefone, string texto, IReadOnlyList<BotaoInterativoWhatsApp> botoes,
-            Guid? pacienteId = null, CancellationToken ct = default) =>
+            Guid? pacienteId = null, CancellationToken ct = default,
+            OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico) =>
             throw new NotSupportedException();
 
         public Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default) =>

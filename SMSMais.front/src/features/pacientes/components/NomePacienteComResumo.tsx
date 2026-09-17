@@ -138,10 +138,21 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
             {telefoneValidado ? (
               <span
                 className="inline-flex items-center gap-0.5 text-emerald-600"
-                title="Contato verificado no WhatsApp"
+                title={
+                  p.telefoneVerificadoVinculo === 'MaeOuPaiOuResponsavel'
+                    ? 'Contato verificado no WhatsApp — quem recebe é a mãe, o pai ou o responsável'
+                    : p.telefoneVerificadoVinculo === 'OutroParenteOuCuidador'
+                      ? 'Contato verificado no WhatsApp — quem recebe é um parente ou cuidador'
+                      : 'Contato verificado no WhatsApp — é o telefone do próprio paciente'
+                }
               >
                 <WhatsappIcon className="h-4 w-4" />
                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                {p.telefoneVerificadoVinculo && p.telefoneVerificadoVinculo !== 'Proprio' ? (
+                  <span className="ml-0.5 text-[11px] font-medium text-emerald-700">
+                    {p.telefoneVerificadoVinculo === 'MaeOuPaiOuResponsavel' ? '(responsável)' : '(parente)'}
+                  </span>
+                ) : null}
               </span>
             ) : (
               <>

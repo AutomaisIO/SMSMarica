@@ -162,6 +162,12 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
         Assert.Equal(StatusComunicacao.AguardandoVerificacaoCadastral, antes.Status);
 
         await ResponderAsync(db, c, "sim");             // confirma o nome
+        // 4º passo (LGPD): a que título recebe. Só aí a comunicação é liberada.
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoVinculo, (await EstadoAsync(db))!.Etapa);
+        var noVinculo = await db.ComunicacoesPaciente.AsNoTracking().FirstAsync(n => n.Id == c.Comunicacao.Id);
+        Assert.Equal(StatusComunicacao.AguardandoVerificacaoCadastral, noVinculo.Status);
+
+        await ResponderAsync(db, c, "sou a mãe dele");  // vínculo declarado
         var depois = await db.ComunicacoesPaciente.AsNoTracking().FirstAsync(n => n.Id == c.Comunicacao.Id);
         Assert.Equal(StatusComunicacao.Pendente, depois.Status);
         Assert.True(depois.IgnorarVerificacaoTelefone); // envia mesmo se o carimbo FHIR falhar
@@ -198,12 +204,12 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
         await c.Whats.Received().EnviarTextoAsync(
             _telefone,
             Arg.Is<string>(t => t.Contains("Maria") && t.Contains("parente")),
-            Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>());
         // E a pergunta "quer tentar de novo?" em botões.
         await c.Whats.Received().EnviarInterativoBotoesAsync(
             _telefone, Arg.Is<string>(t => t.Contains("tentar novamente")),
             Arg.Any<IReadOnlyList<BotaoInterativoWhatsApp>>(),
-            Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>());
     }
 
     [Fact]

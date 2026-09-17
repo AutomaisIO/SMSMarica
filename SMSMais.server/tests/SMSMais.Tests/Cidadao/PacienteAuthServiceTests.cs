@@ -53,7 +53,7 @@ public sealed class PacienteAuthServiceTests
         _whatsapp
             .EnviarTemplateAutenticacaoAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid?>(), Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>())
             .Returns(new EnvioWhatsAppResultado(true, "wamid.123", null));
 
         _sessoes
@@ -84,7 +84,7 @@ public sealed class PacienteAuthServiceTests
         // Dica dos últimos 4 dígitos do número do cadastro — sem revelar o número inteiro.
         r.TelefoneMascarado.Should().Be("***-0000");
         await _whatsapp.DidNotReceiveWithAnyArgs().EnviarTemplateAutenticacaoAsync(
-            default!, default!, default!, default!, default, default);
+            default!, default!, default!, default!, default, default, default);
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public sealed class PacienteAuthServiceTests
         r.Situacao.Should().Be(SituacaoLoginCidadao.Cadastro);
         r.Enviado.Should().BeFalse();
         await _whatsapp.DidNotReceiveWithAnyArgs().EnviarTemplateAutenticacaoAsync(
-            default!, default!, default!, default!, default, default);
+            default!, default!, default!, default!, default, default, default);
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public sealed class PacienteAuthServiceTests
         r.TelefoneMascarado.Should().Be("***-1234");
         await _whatsapp.Received(1).EnviarTemplateAutenticacaoAsync(
             "5521999991234", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            id, Arg.Any<CancellationToken>());
+            id, Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>());
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class PacienteAuthServiceTests
         (await acao.Should().ThrowAsync<ValidacaoException>())
             .Which.Erros.Should().ContainKey("nascimento.nao_confere");
         await _whatsapp.DidNotReceiveWithAnyArgs().EnviarTemplateAutenticacaoAsync(
-            default!, default!, default!, default!, default, default);
+            default!, default!, default!, default!, default, default, default);
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public sealed class PacienteAuthServiceTests
         (await acao.Should().ThrowAsync<ValidacaoException>())
             .Which.Erros.Should().ContainKey("identidade.nao_confere");
         await _whatsapp.DidNotReceiveWithAnyArgs().EnviarTemplateAutenticacaoAsync(
-            default!, default!, default!, default!, default, default);
+            default!, default!, default!, default!, default, default, default);
     }
 
     [Fact]

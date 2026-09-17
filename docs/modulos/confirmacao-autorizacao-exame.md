@@ -38,6 +38,19 @@ Tela `/app/confirmacoes` (módulo **65 `Confirmacoes`**; API `confirmacoes/*`), 
    - As respostas reforçam: retirar a **guia (ficha de solicitação) no posto** e levar **pedido
      médico**, cartão do SUS e comprovante de residência. O app do cidadão mostra o mesmo recado.
 
+### Destinatário correto (LGPD) — [ADR-0057](../adr/0057-destinatario-correto-e-contato-negado.md)
+
+- **Guarda central** no `WhatsAppCliente` (único ponto de saída): envio `Automatico` não vai para
+  número com contato negado **daquele paciente**. `Resposta` (máquina de estados, robô) e `Humano`
+  (operador, código pedido pelo cidadão) passam. Quem não declarar origem é tratado como automático.
+- A tentativa bloqueada fica registrada como mensagem `[BLOQUEADO]` com o motivo.
+- **Vínculo declarado** ao fim da verificação (próprio / mãe-pai-responsável / outro parente),
+  gravado em `urn:smsmarica:contato-vinculo`. Com isso o mesmo número atende **vários pacientes**;
+  a trava de "número de outra pessoa" só vale entre dois `Proprio`.
+- **Link**: abre o app só nas primeiras **24h** (`sessao_ate_em`); depois, até o dia do exame, apenas
+  confirma presença. `revogado_em` ≠ `expira_em`: revogado não confirma nem devolve destino.
+- **Sessão aberta por link não troca telefone** (claim `canal` no token; 409 orientando o código).
+
 ### Número inválido
 - O envio **pula** telefone carimbado como negado; se só sobra ele, retém com motivo explícito.
 - Telefone trocado no cadastro **não herda** a marca. Pendência **ignorada** tira a marca; pendência

@@ -96,7 +96,8 @@ public sealed class SandboxService(
         }
 
         // Texto livre: só entrega dentro da janela de 24h (abra mandando uma msg ao número).
-        var r = await whatsApp.EnviarTextoAsync(TelefoneWhatsApp.Canonizar(telefone), texto, pacienteId: req.PacienteId, ct: ct);
+        var r = await whatsApp.EnviarTextoAsync(TelefoneWhatsApp.Canonizar(telefone), texto, pacienteId: req.PacienteId, ct: ct,
+            origem: OrigemEnvioWhatsApp.Humano);
         return new ResultadoEnvioTesteDto(r.Ok, r.Erro, url);
     }
 

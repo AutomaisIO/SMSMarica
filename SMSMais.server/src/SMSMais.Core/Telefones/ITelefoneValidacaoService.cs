@@ -20,7 +20,12 @@ public interface ITelefoneValidacaoService
         string cpf, string numero, string codigo, CancellationToken ct = default, string origem = "painel");
 
     /// <summary>Marca o contato de um CPF como validado sem OTP (ex.: PWA cidadão). Idempotente por CPF.</summary>
-    Task MarcarValidadoAsync(string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default);
+    /// <param name="vinculo">A que título este número atende o paciente (próprio, mãe/pai/responsável,
+    /// outro parente). Fica gravado no cadastro — é a resposta de LGPD para "por que essa pessoa
+    /// recebe o dado daquela".</param>
+    Task MarcarValidadoAsync(string cpf, string numero, string origem, Guid? validadoPor,
+        CancellationToken ct = default,
+        Data.Entities.Enums.VinculoContatoVerificado vinculo = Data.Entities.Enums.VinculoContatoVerificado.Proprio);
 
     /// <summary>
     /// Lança <c>ConflitoException</c> se o número já é o contato CONFIRMADO de OUTRO CPF. Existe

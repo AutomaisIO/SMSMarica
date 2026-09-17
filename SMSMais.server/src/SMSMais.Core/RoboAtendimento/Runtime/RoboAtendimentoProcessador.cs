@@ -23,6 +23,7 @@ public sealed class RoboAtendimentoProcessador(
     IWhatsAppCliente whats,
     IConversaNotificador notificador,
     IAlertaPlataforma alerta,
+    PendenciasCadastro.IContatoNegadoService contatosNegados,
     ILogger<RoboAtendimentoProcessador> logger) : IRoboAtendimentoProcessador
 {
     private const int MaxTentativas = 3;
@@ -167,10 +168,18 @@ public sealed class RoboAtendimentoProcessador(
         // Base SEMPRE + os habilitados no assunto. Sem assunto, o robô ficava sem ferramenta
         // nenhuma e "verificava" identidade no vazio (ver ComandoRoboCatalogo.Base).
         var comandos = MontarComandos(assunto);
+        // LGPD: se o dono deste número já disse que NÃO conhece o paciente amarrado à conversa,
+        // o robô não trata a conversa como sendo dele — nada daquele cadastro pode ser revelado
+        // aqui. Os comandos caem na busca por telefone, que também filtra os negados.
+        var pacienteDaConversa = conversa.PacienteId is { } pidConversa
+            && await contatosNegados.BloqueadoAsync(conversa.TelefoneCanonical, pidConversa, ct)
+                ? null
+                : conversa.PacienteId;
+
         var entrada = new EntradaMotorRobo(
             ChaveSessao: conversa.Id.ToString(),
             ConversaId: conversa.Id,
-            PacienteId: conversa.PacienteId,
+            PacienteId: pacienteDaConversa,
             AssuntoId: assunto?.Id,
             Modelo: string.IsNullOrWhiteSpace(assunto?.Modelo) ? cfg.ModeloPadrao : assunto!.Modelo!,
             InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp, pertoDoLimite, comandos.Length > 0),
@@ -238,7 +247,10 @@ public sealed class RoboAtendimentoProcessador(
     /// <summary>Envia texto como robô SEM virar dono da conversa (não faz claim, não zera NaoLidas).</summary>
     private async Task EnviarComoRoboAsync(Data.Entities.Conversas.Conversa conversa, string texto, string nomeRobo, CancellationToken ct)
     {
-        var envio = await whats.EnviarTextoAsync(conversa.TelefoneCanonical, texto, pacienteId: conversa.PacienteId, ct: ct);
+        // O robô só fala porque o cidadão escreveu. O que ele NÃO pode é revelar dado de paciente
+        // cujo contato foi negado — isso é barrado antes, na resolução do paciente da conversa.
+        var envio = await whats.EnviarTextoAsync(conversa.TelefoneCanonical, texto, pacienteId: conversa.PacienteId,
+            ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
         if (!envio.Ok)
             throw new InvalidOperationException($"Falha ao enviar mensagem do robô: {envio.Erro}");
 

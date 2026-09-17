@@ -306,6 +306,7 @@ internal static class PacienteFhirMapper
             pl.Observacoes, pl.FotoBase64, nomeSocial,
             identificadores, obito, conjuge, fonte, dadosFonte,
             confirmado?.Numero, confirmado?.Em?.UtcDateTime,
+            confirmado is null ? null : PatientMergeFhir.VinculoContatoConfirmado(p).ToString(),
             negado?.Numero, negado?.Em?.UtcDateTime);
     }
 

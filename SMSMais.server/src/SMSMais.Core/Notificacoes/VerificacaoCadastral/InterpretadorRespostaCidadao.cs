@@ -139,6 +139,28 @@ public static partial class InterpretadorRespostaCidadao
         return emComum >= 2 && cad.Length > 0 && res[0] == cad[0];
     }
 
+    // ---------- Vínculo com o paciente ----------
+
+    /// <summary>Lê, em texto livre, se quem responde é o próprio paciente ou quem recebe por ele.
+    /// Null quando a resposta não deixa claro (o fluxo então re-orienta).</summary>
+    public static Data.Entities.Enums.VinculoContatoVerificado? TentarLerVinculo(string? texto)
+    {
+        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', ' ');
+        if (t.Length == 0) return null;
+        if (t is "sou o paciente" or "sou a paciente" or "sou eu" or "eu mesmo" or "eu mesma" or "meu"
+            or "e meu" or "e o meu" or "sou eu mesmo" or "sou eu mesma" or "proprio" || EhSim(t))
+            return Data.Entities.Enums.VinculoContatoVerificado.Proprio;
+        if (t.Contains("mae") || t.Contains("pai") || t.Contains("responsav") || t.Contains("tutor")
+            || t.Contains("guarda"))
+            return Data.Entities.Enums.VinculoContatoVerificado.MaeOuPaiOuResponsavel;
+        if (t.Contains("filh") || t.Contains("irma") || t.Contains("irmao") || t.Contains("neto")
+            || t.Contains("neta") || t.Contains("sobrinh") || t.Contains("tia") || t.Contains("tio")
+            || t.Contains("esposa") || t.Contains("marido") || t.Contains("cuidador")
+            || t.Contains("vizinh") || t.Contains("parente") || t.Contains("amig"))
+            return Data.Entities.Enums.VinculoContatoVerificado.OutroParenteOuCuidador;
+        return null;
+    }
+
     // ---------- Não sou essa pessoa ----------
 
     /// <summary>Botão "Não sou essa pessoa." do desafio cadastral (a Meta devolve o TEXTO do botão

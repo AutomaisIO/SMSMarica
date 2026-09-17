@@ -36,6 +36,22 @@ public class CidadaoLoginLink
     /// antecipado) e a recepção precisa reenviar.</summary>
     public int TentativasCpf { get; set; }
 
+    /// <summary>
+    /// Até quando o clique ABRE O APP (sessão). Decisão de 17/09/2026: o link de confirmação vale
+    /// 24h para entrar; depois disso, até a data do exame, o clique ainda CONFIRMA a presença, mas
+    /// não autentica ninguém — link repassado ou guardado no celular não vira prontuário.
+    /// <para>Null = regra antiga (a sessão vale enquanto o link não expirar).</para>
+    /// </summary>
+    public DateTime? SessaoAteEm { get; set; }
+
+    /// <summary>
+    /// Revogado: reenvio da comunicação, troca de número, correção de identidade do exame. É
+    /// DIFERENTE de expirado — o revogado não confirma presença nem devolve destino, porque pode
+    /// ter ido para a pessoa errada. Antes os dois eram a mesma coisa (<see cref="ExpiraEm"/>
+    /// antecipado) e um link revogado ainda confirmava.
+    /// </summary>
+    public DateTime? RevogadoEm { get; set; }
+
     /// <summary>Preenchido na 1ª troca por sessão — a partir daí o link é inválido.</summary>
     public DateTime? UsadoEm { get; set; }
     public string? UsadoIp { get; set; }

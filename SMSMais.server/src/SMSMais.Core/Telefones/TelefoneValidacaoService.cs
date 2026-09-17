@@ -67,7 +67,10 @@ public sealed class TelefoneValidacaoService(
 
         var template = config.GetValue("Tfd:Otp:WhatsAppTemplate", "authzap")!;
         var idioma = config.GetValue("Tfd:Otp:WhatsAppIdioma", "pt_BR")!;
-        var envio = await whatsapp.EnviarTemplateAutenticacaoAsync(canon, template, idioma, codigo, ct: ct);
+        // Pedido por uma pessoa (recepção ou o próprio cidadão) e é justamente o que PROVA o número:
+        // barrar aqui deixaria um contato negado sem caminho de conserto.
+        var envio = await whatsapp.EnviarTemplateAutenticacaoAsync(canon, template, idioma, codigo, ct: ct,
+            origem: OrigemEnvioWhatsApp.Humano);
 
         // Sem credenciais → o cliente "simula"; cai no fallback de tela (não trava).
         var simulado = envio.Ok && (envio.WaMessageId?.StartsWith("simulado-", StringComparison.Ordinal) ?? false);
@@ -104,18 +107,20 @@ public sealed class TelefoneValidacaoService(
         }
 
         cache.Remove(chave);
+        // Código enviado pela recepção/cidadão: quem confirma é tratado como o próprio paciente.
         var validadoEm = await MarcarValidadoInternoAsync(cpfDig, canon, origem, atual.UsuarioId, exigirFhir: true, ct);
         return new TelefoneValidadoDto(canon, true, validadoEm);
     }
 
     public async Task MarcarValidadoAsync(
-        string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default)
+        string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default,
+        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio)
     {
         var cpfDig = CpfDigitos(cpf, lancar: false);
         var canon = Canonizar(numero);
         if (cpfDig.Length != 11 || canon.Length < 12) return;
         // Caminho silencioso (login do PWA): melhor esforço no FHIR — não pode travar o login.
-        await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, exigirFhir: false, ct);
+        await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, exigirFhir: false, ct, vinculo);
     }
 
     public async Task<TelefoneValidadoDto> DefinirPrincipalAsync(
@@ -161,25 +166,38 @@ public sealed class TelefoneValidacaoService(
     public Task GarantirNumeroLivreAsync(string cpf, string numero, CancellationToken ct = default) =>
         GarantirNumeroLivreCanonAsync(CpfDigitos(cpf), Canonizar(numero), ct);
 
-    /// <summary>Lança 409 se o número já é contato CONFIRMADO de OUTRO CPF (busca por telecom no hub).</summary>
-    private async Task GarantirNumeroLivreCanonAsync(string cpfDig, string canon, CancellationToken ct)
+    /// <summary>
+    /// Um número pode atender VÁRIOS pacientes — é o celular da mãe que recebe pelos três filhos
+    /// (decisão de 17/09/2026). O que não pode é DUAS pessoas dizerem que o número é o delas
+    /// mesmas: aí uma das duas está tomando o contato da outra (foi o caso das duas Márcias).
+    /// <para>Por isso a trava só vale quando os dois lados declaram <b>próprio</b>: quem declara
+    /// mãe/pai/responsável ou parente passa, e o vínculo fica gravado no cadastro.</para>
+    /// </summary>
+    private async Task GarantirNumeroLivreCanonAsync(
+        string cpfDig, string canon, CancellationToken ct,
+        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio)
     {
+        if (vinculo != VinculoContatoVerificado.Proprio) return;
+
         // O hub guarda a forma nacional (sem DDI) — busca pelos últimos 11 dígitos.
         var nacional = canon.Length > 11 ? canon[^11..] : canon;
         var bundle = await fhir.BuscarAsync(telecom: nacional, ct: ct);
         var donoOutro = bundle.Entry.Select(e => e.Resource).OfType<Patient>().Any(p =>
             PatientMergeFhir.TelefoneEstaConfirmado(p, canon)
+            && PatientMergeFhir.VinculoContatoConfirmado(p) == VinculoContatoVerificado.Proprio
             && CpfDoPatient(p) is { Length: 11 } outroCpf && outroCpf != cpfDig);
         if (donoOutro)
             throw new ConflitoException(
                 "telefone.duplicado",
-                "Este número já é o contato principal de outra pessoa. Use um número diferente.");
+                "Este número já é o contato principal de outra pessoa. Se você recebe pela pessoa "
+                + "(mãe, pai ou responsável), registre o contato com esse vínculo.");
     }
 
     private async Task<DateTime> MarcarValidadoInternoAsync(
-        string cpfDig, string canon, string origem, Guid? por, bool exigirFhir, CancellationToken ct)
+        string cpfDig, string canon, string origem, Guid? por, bool exigirFhir, CancellationToken ct,
+        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio)
     {
-        await GarantirNumeroLivreCanonAsync(cpfDig, canon, ct);
+        await GarantirNumeroLivreCanonAsync(cpfDig, canon, ct, vinculo);
 
         var agora = DateTime.UtcNow;
 
@@ -187,7 +205,7 @@ public sealed class TelefoneValidacaoService(
         // aposentada). Quando exigido (OTP confirmado pelo operador/cidadão), falha ALTO se não
         // conseguir carimbar — validação sem carimbo seria invisível para todo o sistema.
         // Verificado é conceito de PACIENTE: sem Patient no hub não há o que validar.
-        var patientId = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct);
+        var patientId = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct, vinculo);
         if (patientId is null && exigirFhir)
             throw new ValidacaoException(
                 "telefone.sem_paciente",
@@ -219,13 +237,15 @@ public sealed class TelefoneValidacaoService(
             : null;
 
     /// <summary>Carimba o marcador no telecom e devolve o id do Patient; null = não estampou.</summary>
-    private async Task<Guid?> EstamparConfirmadoNoFhirAsync(string cpfDig, string canon, DateTime em, CancellationToken ct)
+    private async Task<Guid?> EstamparConfirmadoNoFhirAsync(
+        string cpfDig, string canon, DateTime em, CancellationToken ct,
+        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio)
     {
         try
         {
             var patient = await ObterPatientPorCpfAsync(cpfDig, ct);
             if (patient?.Id is null) return null;
-            PatientMergeFhir.MarcarTelefoneConfirmado(patient, canon, new DateTimeOffset(em, TimeSpan.Zero));
+            PatientMergeFhir.MarcarTelefoneConfirmado(patient, canon, new DateTimeOffset(em, TimeSpan.Zero), vinculo);
             var id = Guid.Parse(patient.Id);
             await fhir.AtualizarAsync(id, patient, ct);
             return id;

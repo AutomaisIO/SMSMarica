@@ -95,7 +95,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
                 new BotaoInterativoWhatsApp($"{PrefixoCancelaSim}{solicitacaoId}", "Quero cancelar"),
                 new BotaoInterativoWhatsApp($"{PrefixoCancelaNao}{solicitacaoId}", "Não quero cancelar"),
             ],
-            pacienteId: ctx.PacienteId, ct: ct);
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     // "Não quero cancelar" — vira confirmação de presença.
@@ -119,7 +119,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
 
         await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
             $"Combinado! Sua presença {DescricaoAgendamento(s)} está *CONFIRMADA* ✅\n\n{LembreteGuia}",
-            pacienteId: ctx.PacienteId, ct: ct);
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     // "Quero cancelar" — registra o cancelamento já; o motivo é opcional e vem depois.
@@ -156,7 +156,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             + "Obrigado por avisar! 🙏\n\n"
             + "Se quiser, escreva aqui o *motivo* (não é obrigatório).\n\n"
             + "Para marcar uma nova data, procure o *posto de saúde* onde você é atendido(a).",
-            pacienteId: ctx.PacienteId, ct: ct);
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     // Texto livre só é motivo quando há estado AguardandoMotivo ativo para o telefone.
@@ -207,7 +207,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
 
         await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
             "Obrigado por explicar! 🙏 Anotamos o motivo.",
-            pacienteId: ctx.PacienteId, ct: ct);
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     private Task ResponderJaRegistradaAsync(ManipuladorContexto ctx, Solicitacao s, CancellationToken ct)
@@ -217,7 +217,8 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
               + "*posto de saúde* onde você é atendido(a)."
             : $"Sua presença já está *confirmada* ✅. Se precisar mudar, procure o *posto de saúde* "
               + $"onde você é atendido(a).\n\n{LembreteGuia}";
-        return whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical, texto, pacienteId: ctx.PacienteId, ct: ct);
+        return whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical, texto, pacienteId: ctx.PacienteId, ct: ct,
+            origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     private Task<Solicitacao?> CarregarAsync(Guid solicitacaoId, CancellationToken ct) =>

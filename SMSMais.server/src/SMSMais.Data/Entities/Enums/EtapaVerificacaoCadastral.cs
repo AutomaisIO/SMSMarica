@@ -13,6 +13,10 @@ public enum EtapaVerificacaoCadastral
     /// <summary>Nascimento conferiu; aguardando a confirmação do NOME (Sim/Não ou nome digitado).</summary>
     AguardandoNome = 3,
 
+    /// <summary>Nome confirmado; aguardando o VÍNCULO — o número é do próprio paciente ou de quem
+    /// recebe por ele (mãe, pai, responsável, outro parente). Fica gravado no cadastro (LGPD).</summary>
+    AguardandoVinculo = 6,
+
     /// <summary>Os dados não conferiram; explicamos que são do PACIENTE e perguntamos se a pessoa
     /// quer tentar de novo. "Sim" (ou já mandar os dígitos) recomeça o ciclo do zero.</summary>
     AguardandoNovaTentativa = 4,
