@@ -75,18 +75,14 @@ export function Otp() {
         <PrimaryButton type="submit" disabled={!valido} carregando={enviando}>
           Entrar
         </PrimaryButton>
+        {/* Quem já tem número verificado NÃO troca de número por aqui: seria a porta para alguém
+            com a guia de papel apontar o contato para o próprio celular. Em vez de mandar a pessoa
+            a um formulário que vai recusar, já se diz o caminho. */}
         {podeTrocarNumero && (
-          <button
-            type="button"
-            onClick={() =>
-              navigate('/login/verificacao', {
-                state: { cpf, situacao: 'verificacao', telefoneMascarado },
-              })
-            }
-            className="block w-full text-center text-sm font-medium text-lagoa underline"
-          >
-            Não tenho mais esse número
-          </button>
+          <p className="rounded-2xl border border-areia bg-white/70 px-4 py-3 text-center text-sm leading-relaxed text-tinta-mute">
+            Não tem mais esse número? Para trocar, procure o <strong>posto de saúde</strong> onde
+            você é atendido(a), com um documento com foto.
+          </p>
         )}
         <button
           type="button"

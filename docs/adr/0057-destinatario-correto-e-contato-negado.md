@@ -75,6 +75,21 @@ link por engano apontava o contato verificado para o próprio número — tomada
 
 `IgnorarVerificacaoTelefone` ("assumo o risco") vale **por envio**: é zerado no reenvio e no rearme.
 
+### 5. Trocar de número só no posto, quando já existe contato verificado
+
+O passo 2 do login do app (nascimento + nº de uma solicitação + telefone à escolha) **continua
+valendo só para quem ainda NÃO tem contato verificado** — é o caminho de quem nunca foi verificado
+ou nunca teve número no cadastro.
+
+Quem **já tem** um número verificado não troca por ali: os dados pedidos não são segredo (o nº da
+solicitação está impresso na guia de papel), e quem estivesse com a guia apontaria o contato
+verificado para o próprio celular, passando a receber laudo e login da pessoa. A resposta é
+`telefone.troca_no_posto` e a orientação é procurar o posto com documento com foto. Reenviar para o
+**mesmo** número verificado continua funcionando (não é troca).
+
+No app, o atalho "Não tenho mais esse número" da tela do código deixou de abrir o formulário e
+passou a dizer o caminho.
+
 ## Consequências
 
 - O padrão passa a ser restritivo: um remetente novo que esqueça de declarar a origem nasce
@@ -87,8 +102,9 @@ link por engano apontava o contato verificado para o próprio número — tomada
 
 ## Pendências conhecidas (levantadas no mapeamento, ainda abertas)
 
-1. **Passo 2 do login** troca o número verificado sabendo nascimento + nº de uma solicitação (que
-   está na guia de papel). O dono antigo não é avisado.
+1. ~~Passo 2 do login troca o número verificado~~ — **fechado em 17/09/2026** (ver decisão 5).
+   Fica em aberto: a recepção, ao trocar o número, não avisa o número antigo; e o passo 2 aceita
+   solicitação de qualquer época (uma guia velha serve de chave para quem nunca verificou).
 2. **Robô marca número como verificado** com 4 dígitos do CPF (`VerificarCadastroComando`), e pode
    ser acionado de um segundo número do cadastro.
 3. **Passo 1 do login** revela se um CPF tem cadastro e os últimos 4 dígitos de um telefone.

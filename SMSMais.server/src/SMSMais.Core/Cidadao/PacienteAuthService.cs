@@ -107,6 +107,22 @@ public sealed class PacienteAuthService(
             }
 
             var dados = await pacientes.ObterPorIdAsync(paciente.Id, ct);
+
+            // TROCA DE NÚMERO NÃO SE FAZ POR AQUI (decisão do produto em 17/09/2026, LGPD).
+            // Quem JÁ tem contato verificado só troca no posto: os três dados pedidos nesta tela
+            // (nascimento + nº de solicitação) não são segredo — o número da solicitação está
+            // impresso na guia de papel. Quem estivesse com a guia apontaria o contato verificado
+            // para o próprio celular e passaria a receber laudo e login da pessoa.
+            // Continua valendo quando o número informado É o verificado (não há troca nenhuma).
+            if (!string.IsNullOrWhiteSpace(dados.TelefoneVerificado)
+                && !TelefoneValidacaoService.EhMesmoNumero(dados.TelefoneVerificado, telefone))
+            {
+                throw new ValidacaoException(
+                    "telefone.troca_no_posto",
+                    "Este cadastro já tem um WhatsApp verificado. Para trocar o número, procure o "
+                    + "posto de saúde onde você é atendido(a), com um documento com foto.");
+            }
+
             if (dados.DataNascimento is { } nascimento)
             {
                 if (nascimento != request.DataNascimento)

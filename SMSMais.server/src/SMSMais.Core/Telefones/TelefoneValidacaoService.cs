@@ -163,6 +163,10 @@ public sealed class TelefoneValidacaoService(
         return new TelefoneValidadoDto(canon, PatientMergeFhir.TelefoneEstaConfirmado(patient, canon), null);
     }
 
+    /// <summary>Mesmo número, tolerante a DDI/formatação (o cadastro guarda a forma nacional).</summary>
+    public static bool EhMesmoNumero(string? a, string? b) =>
+        Conversas.TelefoneWhatsApp.MesmoNumero(a, b);
+
     public Task GarantirNumeroLivreAsync(string cpf, string numero, CancellationToken ct = default) =>
         GarantirNumeroLivreCanonAsync(CpfDigitos(cpf), Canonizar(numero), ct);
 

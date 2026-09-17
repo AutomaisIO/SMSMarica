@@ -143,6 +143,26 @@ public sealed class PacienteAuthServiceTests
     }
 
     [Fact]
+    public async Task SolicitarOtpVerificacao_ComNumeroVerificado_MandaProcurarOPosto()
+    {
+        // A porta desta tela (nascimento + nº da solicitação) não é segredo — o número está
+        // impresso na guia. Quem já tem contato verificado só troca de número no posto.
+        var id = Guid.NewGuid();
+        _pacientes.ObterPorCpfAsync(Cpf, Arg.Any<CancellationToken>())
+            .Returns(new PacienteExistenciaDto(id, "MARIA DA SILVA", Cpf, Ativo: true));
+        _pacientes.ObterPorIdAsync(id, Arg.Any<CancellationToken>())
+            .Returns(Paciente(id, nascimento: Nascimento, telefoneVerificado: "5521999991234"));
+
+        var acao = () => CriarServico().SolicitarOtpVerificacaoAsync(
+            new SolicitarOtpVerificacaoRequest(Cpf, Nascimento, "998877", "21988887777"));
+
+        (await acao.Should().ThrowAsync<ValidacaoException>())
+            .Which.Erros.Should().ContainKey("telefone.troca_no_posto");
+        await _whatsapp.DidNotReceiveWithAnyArgs().EnviarTemplateAutenticacaoAsync(
+            default!, default!, default!, default!, default, default, default);
+    }
+
+    [Fact]
     public async Task SolicitarOtpVerificacao_CadastroNovo_ReceitaNega_NaoEnvia()
     {
         _pacientes.ObterPorCpfAsync(Cpf, Arg.Any<CancellationToken>())

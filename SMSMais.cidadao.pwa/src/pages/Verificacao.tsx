@@ -45,9 +45,13 @@ const CAMPO =
   'min-h-[52px] w-full rounded-2xl border border-areia bg-white px-4 text-base tabular-nums text-tinta shadow-carta transition placeholder:text-tinta-mute/40 focus:border-lagoa focus:outline-none focus:ring-4 focus:ring-lagoa/15';
 
 /**
- * Passo 2 do login de quem não tem o WhatsApp verificado (ou perdeu o número). Prova de
- * identidade + o telefone que vai receber o código. Quem já tem cadastro informa o nº da
- * solicitação; quem ainda não tem cai na conferência do CPF na Receita (o backend decide).
+ * Passo 2 do login de quem NÃO tem WhatsApp verificado no cadastro. Prova de identidade + o
+ * telefone que vai receber o código. Quem já tem cadastro informa o nº da solicitação; quem ainda
+ * não tem cai na conferência do CPF na Receita (o backend decide).
+ *
+ * Quem JÁ tem um número verificado não passa por aqui: trocar o número exige ir ao posto
+ * (LGPD — ver ADR-0057). O backend recusa com "telefone.troca_no_posto" e a mensagem aparece
+ * no lugar do erro.
  */
 export function Verificacao() {
   const navigate = useNavigate();
