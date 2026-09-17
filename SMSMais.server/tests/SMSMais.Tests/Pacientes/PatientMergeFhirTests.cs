@@ -95,6 +95,28 @@ public class PatientMergeFhirTests
     }
 
     [Fact]
+    public void Numero_novo_no_lugar_do_invalido_nao_herda_a_marca()
+    {
+        // A recepção corrigiu o telefone: o número NOVO não pode nascer marcado como inválido.
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1)] };
+        PatientMergeFhir.MarcarTelefoneNegado(p, "21999990000", DateTimeOffset.UtcNow);
+
+        PatientMergeFhir.AplicarContatos(p, "21977776666", null, null, null, manual: true);
+
+        PatientMergeFhir.TelefoneNegado(p).Should().BeNull();
+    }
+
+    [Fact]
+    public void Desmarcar_tira_a_marca_de_invalido()
+    {
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1)] };
+        PatientMergeFhir.MarcarTelefoneNegado(p, "21999990000", DateTimeOffset.UtcNow);
+
+        PatientMergeFhir.DesmarcarTelefoneNegado(p, "5521999990000").Should().BeTrue();
+        PatientMergeFhir.TelefoneNegado(p).Should().BeNull();
+    }
+
+    [Fact]
     public void Verificacao_positiva_por_OTP_limpa_a_negacao_anterior()
     {
         // O número foi negado (ex.: chip trocou de dono) e depois alguém PROVOU por código que o

@@ -7,6 +7,9 @@ export type StatusNotificacao =
   | 'SemTelefoneValido'
   /** Retida: resultado/laudo só vai para contato verificado. Sai sozinha quando verificarem. */
   | 'AguardandoTelefoneVerificado'
+  /** Confirmação para número não verificado: pediu-se o início do CPF antes de mandar os dados. */
+  | 'AguardandoVerificacaoCadastral'
+  /** Número marcado como inválido (quem atende disse que não conhece o paciente). */
   | 'AguardandoCorrecaoContato';
 
 export type StatusConfirmacao = 'Pendente' | 'Confirmada' | 'Cancelada';

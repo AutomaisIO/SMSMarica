@@ -255,9 +255,15 @@ public sealed class CidadaoLoginLinkService(
 
         // Login por magic-link comprova que o WhatsApp CHEGOU no número e que ele é válido →
         // marca o contato como verificado (idempotente). Best-effort: nunca impede o login.
+        // O número verificado é o que RECEBEU este link (o da comunicação) — não o "principal" do
+        // cadastro, que pode ser outro número e nunca ter recebido nada. Link sem comunicação
+        // (gerado à mão) não prova número nenhum.
         try
         {
-            var fone = paciente.TelefonePrincipal ?? paciente.TelefoneCelular;
+            var fone = await db.ComunicacoesPaciente.AsNoTracking()
+                .Where(c => c.LoginLinkId == token && c.Telefone != null)
+                .Select(c => c.Telefone)
+                .FirstOrDefaultAsync(cancellationToken);
             if (!string.IsNullOrWhiteSpace(fone))
                 await telefones.MarcarValidadoAsync(link.Cpf, fone, "magic-link", null, cancellationToken);
         }

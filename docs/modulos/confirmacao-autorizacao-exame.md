@@ -1,6 +1,48 @@
 # Confirmação de agendamento + autorização presencial + comunicações ao paciente
 
-> Estado: **em produção** desde 2026-07-05. Migrations: `20260704012933_ConfirmacaoAgendamentoWhatsApp`, `20260705011223_AutorizacaoPresencialSolicitacao`, `20260705022530_RenomearComunicacaoPaciente`.
+> Estado: **em produção** desde 2026-07-05. Migrations: `20260704012933_ConfirmacaoAgendamentoWhatsApp`, `20260705011223_AutorizacaoPresencialSolicitacao`, `20260705022530_RenomearComunicacaoPaciente`, `ConfirmacoesJanelaHorario` (17/09/2026).
+
+## Menu Confirmações (17/09/2026)
+
+Tela `/app/confirmacoes` (módulo **65 `Confirmacoes`**; API `confirmacoes/*`), com três abas:
+
+- **Fila de envio** — só a finalidade confirmação: números do dia, faixa "disparando agora / fora do
+  horário, começa a sair em …", lista paginada com o motivo de cada retenção.
+- **Respostas dos pacientes** — quem confirmou e quem avisou que não vai, com o motivo, o canal e a
+  data da resposta. **A resposta vive só no SMSMais: nada é escrito no SISREG.**
+- **Regras e parâmetros** — `smsmarica.confirmacao_configuracao` (linha única):
+  - janela de envio em Brasília (padrão **08:00–18:00**, fim exclusivo). Fora dela a confirmação
+    fica **empilhada** (o worker nem a seleciona; o processamento empurra `proxima_tentativa_em` para
+    a abertura sem gastar tentativa). Vale também para reenvio manual. Única exceção:
+    `comunicacao_paciente.ignorar_janela_horario`, ligado quando o paciente **acabou de concluir** a
+    verificação cadastral e está na conversa esperando;
+  - vazão por rodada do worker (padrão 100, teto 1000; o worker roda a cada minuto);
+  - **só SISREG** (padrão ligado): solicitação `Manual` não enfileira nem sai confirmação;
+  - chave por unidade (a mesma `sisreg_varredura_agenda.enviar_confirmacao`), com atalho para
+    escolher os procedimentos na aba SISREG da unidade.
+
+### Conversa no WhatsApp
+
+1. **Número não verificado** → template `validacao_cadastro` (CPF → nascimento → nome).
+   - Botão **"Não sou essa pessoa."** (chega como texto do botão) → pergunta interativa
+     "Você conhece FULANO?" **[Não conheço] [Conheço]**. *Não conheço* = número **inválido** para o
+     paciente: pendência `NumeroErrado` + carimbo `urn:smsmarica:contato-negado` no telecom FHIR;
+     as confirmações dele naquele número vão a `AguardandoCorrecaoContato`. *Conheço* = segue o desafio.
+   - Botão **"Prefiro falar com um atendente"** → deixa a conversa com a equipe.
+2. **Confirmação** (`confirmacao_regulacao`): link (clicar = confirmar) · "Não poderei ir!" · "Falar com atendente".
+3. **"Não poderei ir!"** → "Você quer CANCELAR sua presença no exame de X do dia …?"
+   **[Quero cancelar] [Não quero cancelar]** (rótulos sem depender de vírgula).
+   - *Quero cancelar* → **Cancelada na hora** (antes só valia depois do motivo); o motivo é opcional
+     (próximo texto em 48h).
+   - *Não quero cancelar* → Confirmada.
+   - As respostas reforçam: retirar a **guia (ficha de solicitação) no posto** e levar **pedido
+     médico**, cartão do SUS e comprovante de residência. O app do cidadão mostra o mesmo recado.
+
+### Número inválido
+- O envio **pula** telefone carimbado como negado; se só sobra ele, retém com motivo explícito.
+- Telefone trocado no cadastro **não herda** a marca. Pendência **ignorada** tira a marca; pendência
+  **resolvida** sem trocar o número mantém.
+- Verificação por magic link carimba o número que **recebeu** o link (antes: o "principal").
 
 ## Comunicações ao paciente (`comunicacao_paciente`)
 

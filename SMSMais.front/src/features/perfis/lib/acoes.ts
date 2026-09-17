@@ -66,6 +66,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
     rotulo: 'Consulta Inteligente — base Atendimento (lê as conversas com pacientes da rede toda)',
   },
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
+  { id: 'Confirmacoes', rotulo: 'Confirmações de agendamento (fila, respostas dos pacientes e regras de envio)' },
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
   { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
   { id: 'Indicadores', rotulo: 'Indicadores contratuais do HMCML' },
@@ -164,6 +165,10 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // de unidade. Toda pergunta fica na auditoria da IA.
   InteligenciaAtendimento: {
     Consulta: 'Perguntar sobre as conversas com pacientes (rede toda; fica na auditoria)',
+  },
+  Confirmacoes: {
+    Consulta: 'Ver a fila, as respostas dos pacientes e as regras',
+    Edicao: 'Alterar horário/vazão do envio, ligar unidades e recolocar mensagens na fila',
   },
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',

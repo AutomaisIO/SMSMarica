@@ -50,7 +50,8 @@ const ROTULO_STATUS: Record<StatusNotificacao, string> = {
   Falha: 'Falha',
   SemTelefoneValido: 'Sem celular válido',
   AguardandoTelefoneVerificado: 'Aguardando contato verificado',
-  AguardandoCorrecaoContato: 'Retida: número negado (contato errado)',
+  AguardandoVerificacaoCadastral: 'Aguardando o paciente se identificar',
+  AguardandoCorrecaoContato: 'Número inválido (não é do paciente)',
 };
 
 const CLASSE_STATUS: Record<StatusNotificacao, string> = {
@@ -61,7 +62,8 @@ const CLASSE_STATUS: Record<StatusNotificacao, string> = {
   Falha: 'badge-danger',
   SemTelefoneValido: 'badge-warning',
   AguardandoTelefoneVerificado: 'badge-warning',
-  AguardandoCorrecaoContato: 'badge-warning',
+  AguardandoVerificacaoCadastral: 'badge-warning',
+  AguardandoCorrecaoContato: 'badge-danger',
 };
 
 const ROTULO_CONFIRMACAO: Record<StatusConfirmacao, string> = {
@@ -317,7 +319,8 @@ export function NotificacoesAgendamentoPage() {
           <option value="Falha">Falha</option>
           <option value="SemTelefoneValido">Sem celular válido</option>
           <option value="AguardandoTelefoneVerificado">Aguardando contato verificado</option>
-          <option value="AguardandoCorrecaoContato">Retida: número negado</option>
+          <option value="AguardandoVerificacaoCadastral">Aguardando identificação</option>
+          <option value="AguardandoCorrecaoContato">Número inválido</option>
         </Select>
         <Select
           value={confirmacao}

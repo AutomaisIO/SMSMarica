@@ -180,6 +180,11 @@ public static class DependencyInjection
             configuration.GetSection(Notificacoes.Comunicacao.ComunicacaoPacienteOptions.SecaoConfig));
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoPacienteService,
             Notificacoes.Comunicacao.ComunicacaoPacienteService>();
+        // Menu Confirmações: regras de disparo (janela, vazão, só SISREG) + leituras da fila.
+        services.AddScoped<Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService,
+            Notificacoes.Confirmacoes.ConfirmacaoConfiguracaoService>();
+        services.AddScoped<Notificacoes.Confirmacoes.IConfirmacoesPainelService,
+            Notificacoes.Confirmacoes.ConfirmacoesPainelService>();
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoGestaoService,
             Notificacoes.Comunicacao.ComunicacaoGestaoService>();
         // Resolução preguiçosa: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.

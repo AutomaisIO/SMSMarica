@@ -51,6 +51,13 @@ public class ComunicacaoPaciente
     /// </summary>
     public bool IgnorarVerificacaoTelefone { get; set; }
 
+    /// <summary>
+    /// Sai mesmo fora da janela de horário da confirmação. Só é ligado quando o PACIENTE acabou de
+    /// concluir a verificação cadastral: ele está na conversa agora, e segurar a resposta até as 8h
+    /// seria deixá-lo esperando sem motivo. Zerado a cada rearme.
+    /// </summary>
+    public bool IgnorarJanelaHorario { get; set; }
+
     /// <summary>Magic link ativo desta comunicação (renovado a cada reenvio).</summary>
     public Guid? LoginLinkId { get; set; }
     public CidadaoLoginLink? LoginLink { get; set; }

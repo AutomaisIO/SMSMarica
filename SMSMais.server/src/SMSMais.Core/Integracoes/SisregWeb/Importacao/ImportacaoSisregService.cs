@@ -564,9 +564,9 @@ public sealed class ImportacaoSisregService(
         }
 
         // Notificação WhatsApp de confirmação — só enfileira (o worker envia com ritmo).
-        // Dois gates, em "E": o da unidade executante e o do procedimento. Ambos nascem ligados,
-        // e ausência de configuração significa ENVIAR — silenciar o paciente por causa de uma
-        // lacuna de cadastro seria pior do que uma mensagem a mais.
+        // Dois gates, em "E": o da unidade executante e o do procedimento. Ambos nascem DESLIGADOS
+        // e ausência de configuração significa NÃO enviar — a unidade liga o aviso no mapeamento
+        // SISREG dela (ou pelo menu Confirmações). Horário e vazão do disparo: menu Confirmações.
         if (await DeveEnviarConfirmacaoAsync(unidadeExecId, m, ct))
         {
             await comunicacoes.EnfileirarAsync(solic, SMSMais.Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);

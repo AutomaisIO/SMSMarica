@@ -98,6 +98,7 @@ import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
 import { NotificacoesAgendamentoPage } from '@/features/notificacoes-agendamento/pages/NotificacoesAgendamentoPage';
+import { ConfirmacoesPage } from '@/features/confirmacoes/pages/ConfirmacoesPage';
 import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/RespostasRapidasPage';
 import { RoboAtendimentoPage } from '@/features/robo-atendimento/pages/RoboAtendimentoPage';
 import { AgendaPage } from '@/features/agenda/pages/AgendaPage';
@@ -252,6 +253,9 @@ export function AppRouter() {
           <Route path="avisos-celular" element={<AvisosCelularPage />} />
           <Route path="conversas" element={<ConversasPage />} />
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
+          <Route element={<RotaComModulo modulo="Confirmacoes" rotulo="Confirmações" />}>
+            <Route path="confirmacoes" element={<ConfirmacoesPage />} />
+          </Route>
           <Route path="respostas-rapidas" element={<RespostasRapidasPage />} />
           <Route path="robo-atendimento" element={<RoboAtendimentoPage />} />
           <Route path="agenda" element={<AgendaPage />} />

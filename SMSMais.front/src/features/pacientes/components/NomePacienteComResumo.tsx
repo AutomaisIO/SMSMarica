@@ -129,10 +129,10 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
             </span>
             {telefoneNegado ? (
               <span
-                className="inline-flex items-center gap-0.5 font-semibold text-amber-600"
-                title="Contato NEGADO: quem atende este número disse que não é o paciente. Corrija o cadastro (Pendências de Cadastro)."
+                className="inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold uppercase text-red-700"
+                title="Quem atende este número disse que NÃO conhece o paciente. Nenhuma mensagem automática vai para ele."
               >
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="h-3.5 w-3.5" /> Número inválido
               </span>
             ) : null}
             {telefoneValidado ? (
@@ -192,6 +192,14 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
             {erroFone ? <span className="text-xs text-red-700">{erroFone}</span> : null}
           </form>
         )}
+        {p.telefoneNegado ? (
+          <div className="mt-1 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-800">
+            <strong>Número inválido: {p.telefoneNegado}</strong>
+            {p.telefoneNegadoEm ? ` (desde ${new Date(p.telefoneNegadoEm).toLocaleDateString('pt-BR')})` : ''}. Quem
+            atende disse que não conhece o paciente — nenhuma mensagem automática vai para esse número. Atualize o
+            telefone para voltar a avisar.
+          </div>
+        ) : null}
       </div>
       <Linha rotulo="Nome da mãe" valor={p.nomeDaMae} />
     </div>

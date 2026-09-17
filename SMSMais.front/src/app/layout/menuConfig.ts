@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   BellRing,
+  CalendarCheck2,
   FilePlus2,
   Bot,
   BrainCircuit,
@@ -547,6 +548,13 @@ export const SECOES: SecaoMenu[] = [
         descricao: 'Chat de WhatsApp com os cidadãos (por unidade).',
         // Abre a janela flutuante do chat (não navega) — ticket #18.
         acao: 'chat',
+      },
+      {
+        rotulo: 'Confirmações',
+        to: '/app/confirmacoes',
+        icone: CalendarCheck2,
+        modulo: 'Confirmacoes',
+        descricao: 'Aviso de agendamento do SISREG pelo WhatsApp: fila, respostas dos pacientes e regras.',
       },
       {
         rotulo: 'Notificações de Agendamento',

@@ -35,6 +35,7 @@ public class AvisoObsoletoAposCorrecaoTests(PostgresFixture fixture)
             Options.Create(new ComunicacaoPacienteOptions()),
             new UsuarioAtualAccessorFake(),
             Substitute.For<SMSMais.Core.Telefones.IDispensaContatoService>(),
+            Substitute.For<SMSMais.Core.Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService>(),
             NullLogger<ComunicacaoPacienteService>.Instance);
 
     private static async Task<ComunicacaoPaciente> SemearAvisoEnviadoAsync(

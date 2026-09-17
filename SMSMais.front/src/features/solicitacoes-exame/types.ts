@@ -150,7 +150,16 @@ export type SolicitacaoExameListItem = {
 
 /** Resumo da comunicação para os checks na lista. */
 export type ComunicacaoChip = {
-  status: 'Pendente' | 'Enviada' | 'Entregue' | 'Lida' | 'Falha' | 'SemTelefoneValido';
+  status:
+    | 'Pendente'
+    | 'Enviada'
+    | 'Entregue'
+    | 'Lida'
+    | 'Falha'
+    | 'SemTelefoneValido'
+    | 'AguardandoTelefoneVerificado'
+    | 'AguardandoVerificacaoCadastral'
+    | 'AguardandoCorrecaoContato';
   visualizado: boolean;
   motivo: string | null;
 };

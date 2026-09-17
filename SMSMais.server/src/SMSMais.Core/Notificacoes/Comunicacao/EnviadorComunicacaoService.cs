@@ -79,13 +79,25 @@ public sealed class EnviadorComunicacaoService(
         var servico = scope.ServiceProvider.GetRequiredService<IComunicacaoPacienteService>();
 
         var agora = DateTime.UtcNow;
-        var max = Math.Clamp(_options.MaximoPorPassagem, 1, 100);
+
+        // Regras do menu Confirmações: vazão por rodada e janela de horário. Fora da janela a
+        // confirmação nem é selecionada (fica empilhada); a exceção é a que acabou de ser liberada
+        // pela verificação cadastral — o paciente está na conversa esperando.
+        var regras = await scope.ServiceProvider
+            .GetRequiredService<Confirmacoes.IConfirmacaoConfiguracaoService>().ObterAsync(ct);
+        var max = Math.Clamp(regras.MaximoPorPassagem,
+            1, Confirmacoes.ConfirmacaoConfiguracaoService.MaximoPorPassagemTeto);
+        var janelaAberta = Confirmacoes.JanelaEnvioConfirmacao.Dentro(
+            agora, TimeOnly.Parse(regras.HoraInicioEnvio), TimeOnly.Parse(regras.HoraFimEnvio));
 
         var pendentes = await db.ComunicacoesPaciente.AsNoTracking()
             .Where(n => n.Status == StatusComunicacao.Pendente
                         && n.ProximaTentativaEm != null
                         && n.ProximaTentativaEm <= agora
-                        && habilitadas.Contains(n.Finalidade))
+                        && habilitadas.Contains(n.Finalidade)
+                        && (janelaAberta
+                            || n.Finalidade != FinalidadeComunicacao.ConfirmacaoAgendamento
+                            || n.IgnorarJanelaHorario))
             .OrderBy(n => n.ProximaTentativaEm)
             .Take(max)
             .Select(n => n.Id)

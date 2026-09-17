@@ -27,6 +27,8 @@ internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguratio
         builder.Property(n => n.EnviadoPor).HasColumnName("enviado_por");
         builder.Property(n => n.IgnorarVerificacaoTelefone)
             .HasColumnName("ignorar_verificacao_telefone").HasDefaultValue(false).IsRequired();
+        builder.Property(n => n.IgnorarJanelaHorario)
+            .HasColumnName("ignorar_janela_horario").HasDefaultValue(false).IsRequired();
         builder.Property(n => n.LoginLinkId).HasColumnName("login_link_id");
         builder.Property(n => n.MensagemWhatsAppId).HasColumnName("mensagem_whatsapp_id");
         builder.Property(n => n.Tentativas).HasColumnName("tentativas").HasDefaultValue(0).IsRequired();

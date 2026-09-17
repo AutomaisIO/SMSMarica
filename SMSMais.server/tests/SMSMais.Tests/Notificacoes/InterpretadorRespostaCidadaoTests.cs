@@ -12,6 +12,17 @@ public class InterpretadorRespostaCidadaoTests
 {
     private const string Cpf = "04528822733";
 
+    // ---------- Não sou essa pessoa ----------
+
+    [Theory]
+    [InlineData("Não sou essa pessoa.", true)]
+    [InlineData("nao sou essa pessoa", true)]
+    [InlineData("Não conheço essa pessoa", true)]
+    [InlineData("não", false)]
+    [InlineData("sou essa pessoa", false)]
+    public void Reconhece_o_botao_nao_sou_essa_pessoa(string texto, bool esperado) =>
+        Assert.Equal(esperado, InterpretadorRespostaCidadao.EhNaoSouEssaPessoa(texto));
+
     // ---------- CPF ----------
 
     [Theory]

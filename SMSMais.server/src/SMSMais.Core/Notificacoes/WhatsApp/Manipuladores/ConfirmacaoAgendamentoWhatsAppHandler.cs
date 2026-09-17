@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -7,17 +9,21 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 
 /// <summary>
-/// Fluxo de confirmação/cancelamento do agendamento de exame pelo WhatsApp:
+/// Fluxo de confirmação/cancelamento do agendamento pelo WhatsApp:
 ///
-///   quick reply "Não poderei comparecer" (payload <c>confirma:{solicitacaoId}</c>)
-///     → pergunta interativa "Deseja realmente cancelar?" (<c>cancela_sim:/cancela_nao:</c>)
-///   cancela_nao → StatusConfirmacao=Confirmada (canal whatsapp-quickreply)
-///   cancela_sim → pede o motivo (estado AguardandoMotivo)
-///   texto livre COM estado AguardandoMotivo ativo → grava motivo + Cancelada
+///   quick reply "Não poderei ir!" (payload <c>confirma:{solicitacaoId}</c>)
+///     → pergunta com os botões "Quero cancelar" / "Não quero cancelar"
+///       (<c>cancela_sim:/cancela_nao:</c>) — botões que se leem sem depender de pontuação
+///       ("Não, vou comparecer" confundia quem lê rápido)
+///   "Não quero cancelar" → StatusConfirmacao=Confirmada (canal whatsapp-quickreply)
+///   "Quero cancelar"     → StatusConfirmacao=Cancelada NA HORA, e pede o motivo (opcional)
+///   texto livre COM estado AguardandoMotivo ativo → grava o motivo no cancelamento já feito
 ///
+/// Antes o cancelamento só valia depois do motivo: quem tocava "cancelar" e não escrevia nada
+/// ficava como "sem resposta" e a unidade nunca sabia que a vaga ia sobrar.
 /// Sem estado ativo, texto livre passa reto — não sequestra o chat do módulo Conversas.
-/// Muta entidades rastreadas (sem SaveChanges); respostas outbound via IWhatsAppCliente
-/// (mesmo precedente do AcompanhanteWhatsAppHandler).
+/// Muta entidades rastreadas (sem SaveChanges); respostas outbound via IWhatsAppCliente.
+/// Nada daqui vai para o SISREG: a resposta do paciente vive só no nosso sistema.
 /// </summary>
 public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     SmsMaisDbContext db,
@@ -28,6 +34,14 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     private const string PrefixoCancelaSim = "cancela_sim:";
     private const string PrefixoCancelaNao = "cancela_nao:";
     private static readonly TimeSpan ValidadeEstado = TimeSpan.FromHours(48);
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+
+    /// <summary>O que o paciente precisa fazer — o mesmo que o template da regulação pede, dito
+    /// de forma direta. É o recado que não pode se perder.</summary>
+    internal const string LembreteGuia =
+        "⚠️ *IMPORTANTE:* antes do dia, passe no *posto de saúde* onde você é atendido(a) para "
+        + "retirar a *guia (ficha de solicitação)*. Sem ela não é possível fazer o atendimento.\n\n"
+        + "No dia, leve: a *guia*, o *pedido médico*, o *cartão do SUS* e o *comprovante de residência*.";
 
     public int Ordem => 110; // depois do AcompanhanteWhatsAppHandler (100)
 
@@ -35,35 +49,35 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     {
         if (TentarExtrairId(ctx.BotaoPayload, PrefixoQuickReply, out var idQuick))
         {
+            ctx.Consumido = true;
             await TratarNaoPodereiAsync(ctx, idQuick, ct);
             return;
         }
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoCancelaNao, out var idNao))
         {
-            await TratarDesistiuDoCancelamentoAsync(ctx, idNao, ct);
+            ctx.Consumido = true;
+            await TratarNaoQueroCancelarAsync(ctx, idNao, ct);
             return;
         }
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoCancelaSim, out var idSim))
         {
-            await TratarConfirmouCancelamentoAsync(ctx, idSim, ct);
+            ctx.Consumido = true;
+            await TratarQueroCancelarAsync(ctx, idSim, ct);
             return;
         }
 
         await TratarTextoLivreComoMotivoAsync(ctx, ct);
     }
 
-    // Quick reply "Não poderei comparecer" do template.
+    // Quick reply "Não poderei ir!" do template.
     private async Task TratarNaoPodereiAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
     {
-        var s = await db.Solicitacoes.FirstOrDefaultAsync(
-            x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
+        var s = await CarregarAsync(solicitacaoId, ct);
         if (s is null) return;
 
         if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
         {
-            await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
-                "Sua resposta para esse agendamento já foi registrada. Se precisar alterar, procure a unidade de saúde. 😊",
-                pacienteId: ctx.PacienteId, ct: ct);
+            await ResponderJaRegistradaAsync(ctx, s, ct);
             return;
         }
 
@@ -76,43 +90,72 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
 
         await whatsApp.EnviarInterativoBotoesAsync(
             ctx.Conversa.TelefoneCanonical,
-            "Entendi! Você quer mesmo CANCELAR sua presença nesse exame?",
+            $"Você quer *CANCELAR* sua presença {DescricaoAgendamento(s)}?\n\nToque em um dos botões abaixo.",
             [
-                new BotaoInterativoWhatsApp($"{PrefixoCancelaSim}{solicitacaoId}", "Sim, cancelar"),
-                new BotaoInterativoWhatsApp($"{PrefixoCancelaNao}{solicitacaoId}", "Não, vou comparecer"),
+                new BotaoInterativoWhatsApp($"{PrefixoCancelaSim}{solicitacaoId}", "Quero cancelar"),
+                new BotaoInterativoWhatsApp($"{PrefixoCancelaNao}{solicitacaoId}", "Não quero cancelar"),
             ],
             pacienteId: ctx.PacienteId, ct: ct);
     }
 
-    // "Não, vou comparecer" — vira confirmação.
-    private async Task TratarDesistiuDoCancelamentoAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
+    // "Não quero cancelar" — vira confirmação de presença.
+    private async Task TratarNaoQueroCancelarAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
     {
-        var s = await db.Solicitacoes.FirstOrDefaultAsync(
-            x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
+        var s = await CarregarAsync(solicitacaoId, ct);
         if (s is null) return;
 
         await RemoverEstadoAsync(ctx.Conversa.TelefoneCanonical, ct);
 
-        if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
+        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
         {
-            Confirmar(s, "whatsapp-quickreply");
-            await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
-                "Perfeito, presença confirmada! ✅ Até lá. 😊", pacienteId: ctx.PacienteId, ct: ct);
+            await ResponderJaRegistradaAsync(ctx, s, ct);
+            return;
         }
-    }
 
-    // "Sim, cancelar" — pede o motivo.
-    private async Task TratarConfirmouCancelamentoAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
-    {
-        var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
-            n => n.SolicitacaoId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
-        if (notificacao is null) return;
-
-        await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
-            EtapaConfirmacaoAgendamento.AguardandoMotivo, ct);
+        s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+        s.ConfirmadoEm = DateTime.UtcNow;
+        s.ConfirmadoCanal = "whatsapp-quickreply";
+        s.AtualizadoEm = DateTime.UtcNow;
 
         await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
-            "Tudo bem. Pode me dizer o motivo? Assim conseguimos oferecer a vaga a outra pessoa.",
+            $"Combinado! Sua presença {DescricaoAgendamento(s)} está *CONFIRMADA* ✅\n\n{LembreteGuia}",
+            pacienteId: ctx.PacienteId, ct: ct);
+    }
+
+    // "Quero cancelar" — registra o cancelamento já; o motivo é opcional e vem depois.
+    private async Task TratarQueroCancelarAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
+    {
+        var s = await CarregarAsync(solicitacaoId, ct);
+        if (s is null) return;
+
+        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+        {
+            await RemoverEstadoAsync(ctx.Conversa.TelefoneCanonical, ct);
+            await ResponderJaRegistradaAsync(ctx, s, ct);
+            return;
+        }
+
+        var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
+            n => n.SolicitacaoId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+
+        s.StatusConfirmacao = StatusConfirmacaoAgendamento.Cancelada;
+        s.ConfirmacaoCanceladaEm = DateTime.UtcNow;
+        s.ConfirmadoCanal = "whatsapp-quickreply";
+        s.MotivoCancelamentoPaciente = null;
+        s.AtualizadoEm = DateTime.UtcNow;
+        logger.LogInformation("Paciente avisou que não irá ao agendamento {Id} via WhatsApp.", s.Id);
+
+        if (notificacao is not null)
+            await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
+                EtapaConfirmacaoAgendamento.AguardandoMotivo, ct);
+        else
+            await RemoverEstadoAsync(ctx.Conversa.TelefoneCanonical, ct);
+
+        await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
+            $"Pronto. Registramos que você *NÃO VAI* {DescricaoAgendamento(s, cancelamento: true)}. "
+            + "Obrigado por avisar! 🙏\n\n"
+            + "Se quiser, escreva aqui o *motivo* (não é obrigatório).\n\n"
+            + "Para marcar uma nova data, procure o *posto de saúde* onde você é atendido(a).",
             pacienteId: ctx.PacienteId, ct: ct);
     }
 
@@ -121,8 +164,8 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     {
         if (string.IsNullOrWhiteSpace(ctx.Texto)) return;
         // Toque em botão nunca é motivo — ex.: "Falar com atendente" (payload atendente:)
-        // durante o AguardandoMotivo deve seguir para a Central de Atendimento, não cancelar.
-        if (!string.IsNullOrEmpty(ctx.BotaoPayload)) return;
+        // durante o AguardandoMotivo deve seguir para a Central de Atendimento.
+        if (!string.IsNullOrEmpty(ctx.BotaoPayload) || !string.IsNullOrEmpty(ctx.InterativoReplyId)) return;
 
         var estado = await db.AgendamentoConfirmacaoEstados
             .Include(e => e.ComunicacaoPaciente)
@@ -138,36 +181,66 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
 
         // A partir daqui o texto livre é tratado como o motivo — o robô não responde por cima.
         ctx.Consumido = true;
+        db.AgendamentoConfirmacaoEstados.Remove(estado);
         var solicitacaoId = estado.ComunicacaoPaciente?.SolicitacaoId;
-        if (solicitacaoId is null) { db.AgendamentoConfirmacaoEstados.Remove(estado); return; }
+        if (solicitacaoId is null) return;
 
         var s = await db.Solicitacoes.FirstOrDefaultAsync(
             x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
-        db.AgendamentoConfirmacaoEstados.Remove(estado);
         if (s is null) return;
 
+        // Estado aberto pela versão anterior (pedia o motivo ANTES de cancelar): o motivo chegou,
+        // então o cancelamento vale agora.
         if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
         {
-            var motivo = ctx.Texto.Trim();
             s.StatusConfirmacao = StatusConfirmacaoAgendamento.Cancelada;
             s.ConfirmacaoCanceladaEm = DateTime.UtcNow;
             s.ConfirmadoCanal = "whatsapp-quickreply";
-            s.MotivoCancelamentoPaciente = motivo.Length <= 500 ? motivo : motivo[..500];
-            s.AtualizadoEm = DateTime.UtcNow;
-
-            logger.LogInformation("Paciente avisou que não irá ao exame {Id} via WhatsApp.", s.Id);
-            await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
-                "Obrigado por avisar! 🙏 Registramos que você não poderá comparecer; a equipe da unidade vai reavaliar a vaga.",
-                pacienteId: ctx.PacienteId, ct: ct);
         }
+        // Só completa o cancelamento deste fluxo que ainda está sem motivo.
+        else if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Cancelada
+            || s.MotivoCancelamentoPaciente is not null) return;
+
+        var motivo = ctx.Texto.Trim();
+        s.MotivoCancelamentoPaciente = motivo.Length <= 500 ? motivo : motivo[..500];
+        s.AtualizadoEm = DateTime.UtcNow;
+
+        await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
+            "Obrigado por explicar! 🙏 Anotamos o motivo.",
+            pacienteId: ctx.PacienteId, ct: ct);
     }
 
-    private static void Confirmar(Solicitacao s, string canal)
+    private Task ResponderJaRegistradaAsync(ManipuladorContexto ctx, Solicitacao s, CancellationToken ct)
     {
-        s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
-        s.ConfirmadoEm = DateTime.UtcNow;
-        s.ConfirmadoCanal = canal;
-        s.AtualizadoEm = DateTime.UtcNow;
+        var texto = s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada
+            ? "Já registramos que você *não vai* comparecer. Para marcar uma nova data, procure o "
+              + "*posto de saúde* onde você é atendido(a)."
+            : $"Sua presença já está *confirmada* ✅. Se precisar mudar, procure o *posto de saúde* "
+              + $"onde você é atendido(a).\n\n{LembreteGuia}";
+        return whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical, texto, pacienteId: ctx.PacienteId, ct: ct);
+    }
+
+    private Task<Solicitacao?> CarregarAsync(Guid solicitacaoId, CancellationToken ct) =>
+        db.Solicitacoes
+            .Include(x => x.ExameImagem!).ThenInclude(e => e.TipoExame)
+            .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
+
+    /// <summary>"no exame de X do dia dd/MM/aaaa às HH:mm" / "na consulta de Y…" — exame e consulta
+    /// escritos certo, com a data, para a pessoa saber de QUAL agendamento se trata.</summary>
+    internal static string DescricaoAgendamento(Solicitacao s, bool cancelamento = false)
+    {
+        var consulta = s.Categoria == CategoriaSolicitacao.Consulta;
+        var nome = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto;
+        var artigo = cancelamento
+            ? (consulta ? "à consulta" : "ao exame")
+            : (consulta ? "na consulta" : "no exame");
+        var texto = string.IsNullOrWhiteSpace(nome) ? artigo : $"{artigo} de *{nome.Trim()}*";
+        if (s.DataAgendada is { } da)
+        {
+            var local = FusoBrasilia.ParaExibicao(da);
+            texto += $" do dia *{local.ToString("dd/MM/yyyy", PtBr)} às {local.ToString("HH:mm", PtBr)}*";
+        }
+        return texto;
     }
 
     private async Task AbrirOuAtualizarEstadoAsync(

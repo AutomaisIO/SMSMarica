@@ -251,6 +251,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Comunicações ao paciente (fila WhatsApp: confirmação/exame liberado/laudo pronto),
     // estado da conversa de cancelamento e registro manual de contatos.
     public DbSet<ComunicacaoPaciente> ComunicacoesPaciente => Set<ComunicacaoPaciente>();
+    public DbSet<Entities.Notificacoes.ConfirmacaoConfiguracao> ConfirmacaoConfiguracoes => Set<Entities.Notificacoes.ConfirmacaoConfiguracao>();
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
     public DbSet<Entities.Notificacoes.VerificacaoCadastralEstado> VerificacoesCadastraisEstado => Set<Entities.Notificacoes.VerificacaoCadastralEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();

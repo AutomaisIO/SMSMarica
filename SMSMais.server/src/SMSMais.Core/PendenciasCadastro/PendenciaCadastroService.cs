@@ -68,7 +68,31 @@ public sealed class PendenciaCadastroService(
         p.ResolvidoPor = usuarioAtual.UsuarioId;
         p.ResolucaoNota = string.IsNullOrWhiteSpace(nota) ? null : nota.Trim();
         await db.SaveChangesAsync(ct);
+        // IGNORAR = a denúncia não procede: o número volta a valer para o paciente. (RESOLVER = a
+        // recepção corrigiu o cadastro; se o número continuou o mesmo, a marca de inválido fica.)
+        if (status == StatusPendenciaCadastro.Ignorada)
+            await DesmarcarNegadoAsync(p.PacienteId, p.TelefoneCanonical, ct);
         await LiberarComunicacoesRetidasAsync(p, ct);
+    }
+
+    private async Task DesmarcarNegadoAsync(Guid? pacienteId, string telefoneCanonical, CancellationToken ct)
+    {
+        if (pacienteId is not { } id) return;
+        // Outra pendência ABERTA do mesmo número/paciente ainda sustenta a marca.
+        if (await db.PendenciasCadastro.AnyAsync(x => x.Status == StatusPendenciaCadastro.Aberta
+                && x.PacienteId == id && x.TelefoneCanonical == telefoneCanonical, ct))
+            return;
+        try
+        {
+            var patient = await fhir.ObterAsync(id, ct);
+            if (patient is not null && Pacientes.Fhir.PatientMergeFhir.DesmarcarTelefoneNegado(patient, telefoneCanonical))
+                await fhir.AtualizarAsync(id, patient, ct);
+        }
+        catch (Exception ex)
+        {
+            Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(
+                logger, ex, "Falha ao retirar a marca de contato negado no FHIR (paciente {Paciente}).", id);
+        }
     }
 
     /// <summary>

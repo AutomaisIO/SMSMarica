@@ -22,6 +22,26 @@ export function ChecksComunicacao({
   if (!chip) return null;
   const rotulo = ROTULO[finalidade];
 
+  if (chip.status === 'AguardandoCorrecaoContato') {
+    return (
+      <span
+        title={`${rotulo}: NÚMERO INVÁLIDO — quem atende disse que não conhece o paciente. Atualize o telefone.`}
+        className="inline-flex"
+      >
+        <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+      </span>
+    );
+  }
+  if (chip.status === 'AguardandoVerificacaoCadastral' || chip.status === 'AguardandoTelefoneVerificado') {
+    return (
+      <span
+        title={`${rotulo}: aguardando o paciente se identificar pelo WhatsApp (número ainda não verificado)`}
+        className="inline-flex"
+      >
+        <Clock3 className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+      </span>
+    );
+  }
   if (chip.status === 'Falha' || chip.status === 'SemTelefoneValido') {
     return (
       <span title={`${rotulo}: falha${chip.motivo ? ` — ${chip.motivo}` : ''}`} className="inline-flex">

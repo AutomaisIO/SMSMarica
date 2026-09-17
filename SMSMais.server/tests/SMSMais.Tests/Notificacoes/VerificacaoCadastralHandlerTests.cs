@@ -63,7 +63,8 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
     /// <summary>A conversa é a MESMA em todas as mensagens (e existe no banco): a pendência de
     /// "número errado" tem FK para ela, e uma conversa solta faria o teste falhar por FK — não
     /// pela regra sob teste.</summary>
-    private ManipuladorContexto Contexto(Conversa conversa, string? texto = null, string? interativoReplyId = null)
+    private ManipuladorContexto Contexto(
+        Conversa conversa, string? texto = null, string? interativoReplyId = null, string? botaoPayload = null)
     {
         var msg = new MensagemWhatsApp
         {
@@ -75,7 +76,7 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
             OcorridoEm = DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
         };
-        return new ManipuladorContexto(conversa, msg, texto, null, null, interativoReplyId);
+        return new ManipuladorContexto(conversa, msg, texto, null, botaoPayload, interativoReplyId);
     }
 
     /// <summary>Semeia solicitação + comunicação retida (status 8) + o estado no início do diálogo.</summary>
@@ -121,8 +122,12 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
         var pacientes = Substitute.For<IPacientesService>();
         pacientes.ObterPorIdAsync(pacienteId).ReturnsForAnyArgs(Paciente(pacienteId));
         var whats = CriarWhatsAppMock();
+        var pendencias = new SMSMais.Core.PendenciasCadastro.PendenciaCadastroService(
+            db, new UsuarioAtualAccessorFake(), pacientes,
+            Substitute.For<SMSMais.Core.Pacientes.Fhir.IPacienteFhirClient>(),
+            NullLogger<SMSMais.Core.PendenciasCadastro.PendenciaCadastroService>.Instance);
         var handler = new VerificacaoCadastralWhatsAppHandler(
-            db, whats, pacientes, Substitute.For<ITelefoneValidacaoService>(),
+            db, whats, pacientes, Substitute.For<ITelefoneValidacaoService>(), pendencias,
             NullLogger<VerificacaoCadastralWhatsAppHandler>.Instance);
 
         return new Cenario(handler, whats, comunicacao, conversa, pacienteId);
@@ -283,7 +288,52 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
             .AnyAsync(p => p.TelefoneCanonical == _telefone && p.Tipo == TipoPendenciaCadastro.NumeroErrado));
 
         var comunicacao = await db.ComunicacoesPaciente.AsNoTracking().FirstAsync(n => n.Id == c.Comunicacao.Id);
-        Assert.Equal(StatusComunicacao.AguardandoVerificacaoCadastral, comunicacao.Status); // nada liberado
+        // Nada liberado — e fica retida como número inválido, com o motivo explícito.
+        Assert.Equal(StatusComunicacao.AguardandoCorrecaoContato, comunicacao.Status);
+    }
+
+    [Fact]
+    public async Task Nao_sou_essa_pessoa_pergunta_antes_e_nao_conheco_marca_o_numero_invalido()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararAsync(db);
+
+        // Toque no botão do template: a Meta devolve o texto do botão.
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "Não sou essa pessoa.", botaoPayload: "Não sou essa pessoa."), default);
+        await db.SaveChangesAsync();
+
+        // Ainda NÃO marcou nada: primeiro pergunta.
+        Assert.False(await db.PendenciasCadastro.AsNoTracking().AnyAsync(p => p.TelefoneCanonical == _telefone));
+        await c.Whats.ReceivedWithAnyArgs(1).EnviarInterativoBotoesAsync(null!, null!, null!);
+
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "Não conheço", interativoReplyId: $"vcad_naoconheco:{c.Comunicacao.Id}"), default);
+        await db.SaveChangesAsync();
+
+        Assert.True(await db.PendenciasCadastro.AsNoTracking()
+            .AnyAsync(p => p.TelefoneCanonical == _telefone && p.Tipo == TipoPendenciaCadastro.NumeroErrado
+                && p.PacienteId == c.PacienteId && p.Status == StatusPendenciaCadastro.Aberta));
+        var comunicacao = await db.ComunicacoesPaciente.AsNoTracking().FirstAsync(n => n.Id == c.Comunicacao.Id);
+        Assert.Equal(StatusComunicacao.AguardandoCorrecaoContato, comunicacao.Status);
+        Assert.Null(await EstadoAsync(db)); // interrogatório encerrado
+    }
+
+    [Fact]
+    public async Task Nao_sou_essa_pessoa_e_depois_conheco_segue_o_desafio_sem_marcar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararAsync(db);
+
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "Não sou essa pessoa.", botaoPayload: "Não sou essa pessoa."), default);
+        await db.SaveChangesAsync();
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "Conheço", interativoReplyId: $"vcad_conheco:{c.Comunicacao.Id}"), default);
+        await db.SaveChangesAsync();
+
+        Assert.False(await db.PendenciasCadastro.AsNoTracking().AnyAsync(p => p.TelefoneCanonical == _telefone));
+        Assert.NotNull(await EstadoAsync(db));
+
+        // E o desafio continua valendo: os dígitos seguem para a etapa do nascimento.
+        await ResponderAsync(db, c, "0452");
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoNascimento, (await EstadoAsync(db))!.Etapa);
     }
 
     [Fact]

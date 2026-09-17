@@ -139,6 +139,24 @@ public static partial class InterpretadorRespostaCidadao
         return emComum >= 2 && cad.Length > 0 && res[0] == cad[0];
     }
 
+    // ---------- Não sou essa pessoa ----------
+
+    /// <summary>Botão "Não sou essa pessoa." do desafio cadastral (a Meta devolve o TEXTO do botão
+    /// quando o template não leva payload próprio) ou a mesma frase digitada.</summary>
+    public static bool EhNaoSouEssaPessoa(string? texto)
+    {
+        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', ' ');
+        return t is "nao sou essa pessoa" or "nao sou esta pessoa" or "nao sou essa pessoa nao"
+            or "nao conheco essa pessoa" or "nao conheco esta pessoa";
+    }
+
+    /// <summary>Botão "Prefiro falar com um atendente" do desafio cadastral (texto do botão).</summary>
+    public static bool EhBotaoPrefiroAtendente(string? texto)
+    {
+        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', ' ');
+        return t is "prefiro falar com um atendente" or "prefiro falar com atendente";
+    }
+
     // ---------- Atendente ----------
 
     /// <summary>Pedido de atendente humano, em qualquer etapa ("prefiro falar com atendente",

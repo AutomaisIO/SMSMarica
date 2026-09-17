@@ -261,4 +261,10 @@ public enum ModuloPermissao
     /// <para>Usa apenas <c>Consulta</c>: é ela que faz a base aparecer na Consulta Inteligente. Exige
     /// também <see cref="Inteligencia"/> (a tela).</para></summary>
     InteligenciaAtendimento = 64,
+
+    /// <summary>Confirmações de agendamento por WhatsApp: fila de disparo (o que está empilhado e
+    /// por quê), respostas dos pacientes (confirmou / não vai, com o motivo) e as regras de disparo
+    /// (janela de horário, vazão, só SISREG, chave por unidade). <c>Edicao</c> altera as regras e
+    /// reenvia.</summary>
+    Confirmacoes = 65,
 }

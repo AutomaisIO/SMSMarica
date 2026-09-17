@@ -10,7 +10,8 @@ public sealed class ComunicacaoPacienteOptions
     /// <summary>Intervalo entre passagens do worker. Default 60s.</summary>
     public int IntervaloSegundos { get; set; } = 60;
 
-    /// <summary>Máximo de comunicações por passagem (evita rajada num Importar-todos).</summary>
+    /// <summary>OBSOLETO: a vazão agora é a do menu Confirmações (<c>confirmacao_configuracao</c>).
+    /// Mantido só para não quebrar o bind de configurações antigas.</summary>
     public int MaximoPorPassagem { get; set; } = 20;
 
     /// <summary>Tentativas de envio antes de marcar Falha terminal.</summary>

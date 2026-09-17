@@ -17,6 +17,10 @@ namespace SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 /// (lição do incidente de 26/08: vazamento, latência e validação fraca). O desafio
 /// <c>validacao_cadastro</c> abre um <see cref="VerificacaoCadastralEstado"/>; daqui em diante:
 ///
+///   "Não sou essa pessoa." (botão do template) → "Você conhece FULANO?" [Não conheço | Conheço]
+///     → "Não conheço" marca o número como INVÁLIDO para aquele paciente (pendência de número
+///       errado + carimbo no telefone do cadastro) e nada mais é enviado para ele sobre essa pessoa.
+///
 ///   dígitos do CPF (≥4, sem pontuação) → mês/ano de nascimento (formatos tolerantes)
 ///     → confirmação do NOME (botões Sim/Não ou nome digitado)
 ///     → marca o telefone verificado PARA AQUELE paciente e ENVIA a comunicação PENDURADA
@@ -33,12 +37,15 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     IWhatsAppCliente whatsApp,
     IPacientesService pacientes,
     ITelefoneValidacaoService telefones,
+    PendenciasCadastro.IPendenciaCadastroService pendencias,
     ILogger<VerificacaoCadastralWhatsAppHandler> logger) : IManipuladorMensagemWhatsApp
 {
     private const string PrefixoSim = "vcad_sim:";
     private const string PrefixoNao = "vcad_nao:";
     private const string PrefixoTentarSim = "vcad_retry_sim:";
     private const string PrefixoTentarNao = "vcad_retry_nao:";
+    private const string PrefixoNaoConheco = "vcad_naoconheco:";
+    private const string PrefixoConheco = "vcad_conheco:";
 
     /// <summary>Chances de acertar os dados antes de encerrar e orientar o posto. Cada ciclo
     /// (dígitos + nascimento) que não confere gasta uma — errar de digitação é comum.</summary>
@@ -75,11 +82,52 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             await TratarBotaoNovaTentativaAsync(ctx, idRetryNao, aceitou: false, ct);
             return;
         }
+        // "Você conhece FULANO?" — resposta à pergunta aberta por "Não sou essa pessoa."
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoNaoConheco, out var idNaoConheco))
+        {
+            ctx.Consumido = true;
+            await MarcarNumeroInvalidoAsync(ctx, idNaoConheco, ct);
+            return;
+        }
+        if (TentarExtrairId(ctx.InterativoReplyId, PrefixoConheco, out var idConheco))
+        {
+            ctx.Consumido = true;
+            await TratarConhecePacienteAsync(ctx, idConheco, ct);
+            return;
+        }
+
+        var telefone = ctx.Conversa.TelefoneCanonical;
+
+        // Botões do TEMPLATE do desafio: a Meta devolve o texto do botão (o template não leva
+        // payload próprio). Só valem se há desafio em aberto para este número.
+        if (string.IsNullOrEmpty(ctx.InterativoReplyId))
+        {
+            if (InterpretadorRespostaCidadao.EhNaoSouEssaPessoa(ctx.Texto))
+            {
+                if (await ComunicacaoDoDesafioAsync(ctx, telefone, ct) is { } alvo)
+                {
+                    ctx.Consumido = true;
+                    await PerguntarSeConhecePacienteAsync(ctx, alvo, ct);
+                }
+                return;
+            }
+            if (!string.IsNullOrEmpty(ctx.BotaoPayload) && InterpretadorRespostaCidadao.EhBotaoPrefiroAtendente(ctx.Texto))
+            {
+                if (await ComunicacaoDoDesafioAsync(ctx, telefone, ct) is not null)
+                {
+                    ctx.Consumido = true;
+                    await ResponderAsync(ctx,
+                        "Certo! Vou deixar sua conversa com a nossa equipe — um atendente te responde por aqui "
+                        + "dentro do horário de atendimento.", ct);
+                }
+                return;
+            }
+        }
+
         // Botões/quick-replies de OUTROS domínios nunca são resposta do interrogatório.
         if (!string.IsNullOrEmpty(ctx.BotaoPayload) || !string.IsNullOrEmpty(ctx.InterativoReplyId)) return;
         if (string.IsNullOrWhiteSpace(ctx.Texto)) return;
 
-        var telefone = ctx.Conversa.TelefoneCanonical;
         var estado = await db.VerificacoesCadastraisEstado
             .FirstOrDefaultAsync(e => e.TelefoneCanonical == telefone, ct);
 
@@ -439,6 +487,8 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             n.ProximaTentativaEm = agora;
             n.MotivoFalha = null;
             n.IgnorarVerificacaoTelefone = true;
+            // O paciente acabou de se identificar e está esperando a resposta: sai mesmo fora do horário.
+            n.IgnorarJanelaHorario = true;
             n.Tentativas = 0;
         }
 
@@ -476,23 +526,122 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
     private async Task ConcluirComoNumeroErradoAsync(ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
     {
-        db.PendenciasCadastro.Add(new PendenciaCadastro
-        {
-            Id = Guid.CreateVersion7(),
-            ConversaId = ctx.Conversa.Id,
-            TelefoneCanonical = estado.TelefoneCanonical,
-            PacienteId = estado.PacienteId,
-            Tipo = TipoPendenciaCadastro.NumeroErrado,
-            Vinculo = VinculoContato.NaoInformado,
-            Observacao = "Verificação cadastral: a pessoa negou ser o paciente na confirmação do nome.",
-            Status = StatusPendenciaCadastro.Aberta,
-            CriadoEm = DateTime.UtcNow,
-        });
         db.VerificacoesCadastraisEstado.Remove(estado);
+        if (estado.PacienteId is { } pacienteId)
+            await RegistrarNumeroInvalidoAsync(ctx, estado.TelefoneCanonical, pacienteId,
+                "Verificação cadastral: a pessoa negou ser o paciente na confirmação do nome.", ct);
 
         await ResponderAsync(ctx,
             "Sem problemas, obrigado por avisar! Este número não será usado para essa pessoa. A equipe "
             + "de cadastro vai revisar o contato.", ct);
+    }
+
+    // ---------- "Não sou essa pessoa." ----------
+
+    /// <summary>A comunicação de que trata o toque: a mensagem respondida (contexto) → o estado do
+    /// diálogo → o desafio pendente mais novo do número. Null = não há desafio para este número.</summary>
+    private async Task<Data.Entities.ComunicacaoPaciente?> ComunicacaoDoDesafioAsync(
+        ManipuladorContexto ctx, string telefone, CancellationToken ct)
+    {
+        if (ctx.Mensagem.ContextoWaMessageId is { } wamid)
+        {
+            var porContexto = await db.ComunicacoesPaciente
+                .Where(n => n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                    && n.MensagemWhatsApp != null && n.MensagemWhatsApp.WaMessageId == wamid)
+                .FirstOrDefaultAsync(ct);
+            if (porContexto is not null) return porContexto;
+        }
+
+        var estado = await db.VerificacoesCadastraisEstado.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.TelefoneCanonical == telefone && e.ExpiraEm > DateTime.UtcNow, ct);
+        if (estado is not null)
+            return await db.ComunicacoesPaciente.FirstOrDefaultAsync(n => n.Id == estado.ComunicacaoPacienteId, ct);
+
+        var pendentes = await DesafiosPendentesDoTelefoneAsync(telefone, ct);
+        return pendentes.Count == 0
+            ? null
+            : await db.ComunicacoesPaciente.FirstOrDefaultAsync(n => n.Id == pendentes[0].Id, ct);
+    }
+
+    /// <summary>Confirma ANTES de marcar: tocar no botão errado não pode inutilizar o número de
+    /// um paciente. A pergunta usa o primeiro nome que o próprio template já mostrou.</summary>
+    private async Task PerguntarSeConhecePacienteAsync(
+        ManipuladorContexto ctx, Data.Entities.ComunicacaoPaciente alvo, CancellationToken ct)
+    {
+        var nome = PrimeiroNome((await ObterPacienteAsync(alvo.PacienteId, ct))?.NomeCompleto);
+        var quem = nome is null ? "o paciente" : $"*{nome}*";
+        await whatsApp.EnviarInterativoBotoesAsync(
+            ctx.Conversa.TelefoneCanonical,
+            $"Entendi. Você *conhece* {quem}, a pessoa desta mensagem?\n\n"
+            + "Se for alguém da sua família, toque em *Conheço* e informe os dados dela.",
+            [
+                new BotaoInterativoWhatsApp($"{PrefixoNaoConheco}{alvo.Id}", "Não conheço"),
+                new BotaoInterativoWhatsApp($"{PrefixoConheco}{alvo.Id}", "Conheço"),
+            ],
+            pacienteId: ctx.PacienteId, ct: ct);
+    }
+
+    private async Task TratarConhecePacienteAsync(ManipuladorContexto ctx, Guid comunicacaoId, CancellationToken ct)
+    {
+        var alvo = await db.ComunicacoesPaciente.AsNoTracking().FirstOrDefaultAsync(n => n.Id == comunicacaoId, ct);
+        if (alvo is null) return;
+        var nome = PrimeiroNome((await ObterPacienteAsync(alvo.PacienteId, ct))?.NomeCompleto);
+        var deQuem = nome is null ? "do paciente" : $"de *{nome}*";
+        await ResponderAsync(ctx,
+            $"Tudo bem! Então envie os *4 primeiros dígitos do CPF* {deQuem} para continuar.", ct);
+    }
+
+    /// <summary>"Não conheço": o número passa a ser INVÁLIDO para esse paciente — pendência de número
+    /// errado + carimbo no telefone do cadastro (o envio pula número carimbado) — e as confirmações
+    /// dele presas neste número ficam retidas até a recepção corrigir o contato.</summary>
+    private async Task MarcarNumeroInvalidoAsync(ManipuladorContexto ctx, Guid comunicacaoId, CancellationToken ct)
+    {
+        var alvo = await db.ComunicacoesPaciente.FirstOrDefaultAsync(n => n.Id == comunicacaoId, ct);
+        if (alvo is null) return;
+        var telefone = ctx.Conversa.TelefoneCanonical;
+
+        await RegistrarNumeroInvalidoAsync(ctx, telefone, alvo.PacienteId,
+            "Quem atende este número disse que NÃO CONHECE o paciente (botão \"Não sou essa pessoa.\" "
+            + "da confirmação de agendamento).", ct);
+
+        var estado = await db.VerificacoesCadastraisEstado.FirstOrDefaultAsync(e => e.TelefoneCanonical == telefone, ct);
+        if (estado is not null && (estado.ComunicacaoPacienteId == alvo.Id || estado.PacienteId == alvo.PacienteId))
+            db.VerificacoesCadastraisEstado.Remove(estado);
+
+        logger.LogInformation("Número …{Fone4} marcado como inválido para o paciente {Paciente} (não conhece).",
+            Ultimos4(telefone), alvo.PacienteId);
+        await ResponderAsync(ctx,
+            "Obrigado por avisar! 🙏 Este número *não vai mais receber* mensagens sobre essa pessoa. "
+            + "Desculpe o incômodo.", ct);
+    }
+
+    private async Task RegistrarNumeroInvalidoAsync(
+        ManipuladorContexto ctx, string telefone, Guid pacienteId, string observacao, CancellationToken ct)
+    {
+        try
+        {
+            await pendencias.RegistrarNumeroErradoAsync(
+                ctx.Conversa.Id, telefone, pacienteId, VinculoContato.SemVinculo, observacao, criadoPor: null, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Falha ao registrar número inválido (…{Fone4}) do paciente {Paciente}.",
+                Ultimos4(telefone), pacienteId);
+        }
+
+        // Tudo o que estava preso para esse paciente NESTE número fica retido com o motivo explícito.
+        var retidas = await db.ComunicacoesPaciente
+            .Where(n => n.PacienteId == pacienteId
+                && (n.Status == StatusComunicacao.AguardandoVerificacaoCadastral || n.Status == StatusComunicacao.Pendente))
+            .ToListAsync(ct);
+        foreach (var n in retidas.Where(n => n.Telefone is not null && TelefoneWhatsApp.MesmoNumero(n.Telefone, telefone)))
+        {
+            n.Status = StatusComunicacao.AguardandoCorrecaoContato;
+            n.MotivoFalha = "Número INVÁLIDO: quem atende disse que não conhece o paciente. "
+                + "Atualize o telefone no cadastro para liberar o envio.";
+            n.ProximaTentativaEm = null;
+            n.AtualizadoEm = DateTime.UtcNow;
+        }
     }
 
     // ---------- apoio ----------

@@ -66,6 +66,7 @@ public sealed class ComunicacaoPacienteService(
     IOptions<ComunicacaoPacienteOptions> options,
     Identidade.IUsuarioAtualAccessor usuarioAtual,
     Telefones.IDispensaContatoService dispensasContato,
+    Confirmacoes.IConfirmacaoConfiguracaoService regrasConfirmacao,
     ILogger<ComunicacaoPacienteService> logger) : IComunicacaoPacienteService
 {
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
@@ -88,6 +89,13 @@ public sealed class ComunicacaoPacienteService(
         // Confirmação só faz sentido antes do atendimento; as demais finalidades valem sempre.
         if (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
             && (solicitacao.DataAgendada is not { } da || da <= DateTime.UtcNow))
+            return;
+
+        // Por enquanto só se confirma agendamento do SISREG (regra do menu Confirmações): o
+        // cadastrado à mão na recepção não gera mensagem.
+        if (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            && (await RegrasAsync(ct)).SomenteSisreg
+            && !Confirmacoes.OrigemAgendamento.EhDoSisreg(solicitacao))
             return;
 
         // Idempotência: uma comunicação por solicitação × finalidade (o índice único garante;
@@ -155,6 +163,7 @@ public sealed class ComunicacaoPacienteService(
         n.EntregueEm = null;
         n.LidoEm = null;
         n.VisualizadoEm = null;
+        n.IgnorarJanelaHorario = false;
         n.ProximaTentativaEm = agora;
         n.AtualizadoEm = agora;
     }
@@ -189,6 +198,23 @@ public sealed class ComunicacaoPacienteService(
             {
                 Terminal(n, StatusComunicacao.Falha, "Paciente já respondeu por outro canal.");
             }
+            else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                     && (await RegrasAsync(ct)).SomenteSisreg
+                     && !Confirmacoes.OrigemAgendamento.EhDoSisreg(s))
+            {
+                Terminal(n, StatusComunicacao.Falha,
+                    "Confirmação por WhatsApp está restrita a agendamentos do SISREG (menu Confirmações).");
+            }
+            else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                     && !n.IgnorarJanelaHorario
+                     && await ForaDaJanelaAsync(ct) is { } abertura)
+            {
+                // Fora do horário (padrão 08h–18h): não é tentativa — fica EMPILHADA e sai quando a
+                // janela abrir. Vale também para reenvio manual: a regra é sobre o paciente.
+                n.Tentativas--;
+                n.ProximaTentativaEm = abertura;
+                n.MotivoFalha = null;
+            }
             else
             {
                 await EnviarAsync(n, s, ct);
@@ -202,6 +228,23 @@ public sealed class ComunicacaoPacienteService(
         }
 
         await db.SaveChangesAsync(ct);
+    }
+
+    private Confirmacoes.Dtos.ConfirmacaoConfiguracaoDto? _regras;
+
+    private async Task<Confirmacoes.Dtos.ConfirmacaoConfiguracaoDto> RegrasAsync(CancellationToken ct)
+        => _regras ??= await regrasConfirmacao.ObterAsync(ct);
+
+    /// <summary>Próxima abertura da janela (UTC) quando AGORA está fora dela; null se está dentro.</summary>
+    private async Task<DateTime?> ForaDaJanelaAsync(CancellationToken ct)
+    {
+        var r = await RegrasAsync(ct);
+        var inicio = TimeOnly.Parse(r.HoraInicioEnvio);
+        var fim = TimeOnly.Parse(r.HoraFimEnvio);
+        var agora = DateTime.UtcNow;
+        return Confirmacoes.JanelaEnvioConfirmacao.Dentro(agora, inicio, fim)
+            ? null
+            : Confirmacoes.JanelaEnvioConfirmacao.ProximaAbertura(agora, inicio, fim);
     }
 
     public async Task ReenviarAsync(Guid solicitacaoExameId, Guid comunicacaoId, CancellationToken ct = default)
@@ -249,6 +292,7 @@ public sealed class ComunicacaoPacienteService(
         n.EntregueEm = null;
         n.LidoEm = null;
         n.VisualizadoEm = null;
+        n.IgnorarJanelaHorario = false;
         n.ProximaTentativaEm = agora;
         n.AtualizadoEm = agora;
 
@@ -325,6 +369,7 @@ public sealed class ComunicacaoPacienteService(
         n.EntregueEm = null;
         n.LidoEm = null;
         n.VisualizadoEm = null;
+        n.IgnorarJanelaHorario = false;
         n.ProximaTentativaEm = agora;
         n.AtualizadoEm = agora;
         n.Origem = OrigemComunicacao.Manual;
@@ -411,12 +456,24 @@ public sealed class ComunicacaoPacienteService(
         // Telefone: contato VERIFICADO (marcador no telecom FHIR, já vem no DTO) > qualquer
         // CELULAR do cadastro (celular > principal > residencial — import às vezes guarda o
         // celular como "home").
+        // Número marcado como INVÁLIDO (quem atendeu disse que não conhece o paciente) nunca é
+        // destino — nem de mensagem automática nem de reenvio. Só volta a valer quando o número é
+        // verificado de novo ou a recepção dá a marcação por improcedente.
+        bool Negado(string? t) => paciente.TelefoneNegado is { } neg && TelefoneWhatsApp.MesmoNumero(t, neg);
+        var candidatos = new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal, paciente.TelefoneResidencial };
         var telefone = paciente.TelefoneVerificado
-            ?? new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal, paciente.TelefoneResidencial }
-                .FirstOrDefault(TelefoneWhatsApp.EhCelularBr);
+            ?? candidatos.FirstOrDefault(t => TelefoneWhatsApp.EhCelularBr(t) && !Negado(t));
 
         if (!TelefoneWhatsApp.EhCelularBr(telefone))
         {
+            if (candidatos.Any(t => TelefoneWhatsApp.EhCelularBr(t) && Negado(t)))
+            {
+                n.Status = StatusComunicacao.AguardandoCorrecaoContato;
+                n.MotivoFalha = "Número marcado como INVÁLIDO: quem atende disse que não conhece o paciente. "
+                    + "Atualize o telefone no cadastro para liberar o envio.";
+                n.ProximaTentativaEm = null;
+                return;
+            }
             Terminal(n, StatusComunicacao.SemTelefoneValido, "Paciente sem número de celular válido.");
             return;
         }
@@ -462,6 +519,11 @@ public sealed class ComunicacaoPacienteService(
             {
                 n.Status = StatusComunicacao.AguardandoVerificacaoCadastral;
                 n.EnviadoEm = DateTime.UtcNow;
+                // Liga a mensagem do desafio à comunicação: os recibos da Meta aparecem na fila e o
+                // toque em "Não sou essa pessoa." é casado pelo contexto da resposta.
+                if (desafio.WaMessageId is { } wamidDesafio)
+                    n.MensagemWhatsAppId = await db.MensagensWhatsApp.AsNoTracking()
+                        .Where(m => m.WaMessageId == wamidDesafio).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct);
                 n.MotivoFalha = "Aguardando verificação cadastral (dígitos do CPF + nascimento + nome).";
                 n.ProximaTentativaEm = null;
                 await AbrirEstadoVerificacaoAsync(n, ct);

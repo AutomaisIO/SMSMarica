@@ -90,19 +90,39 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         Assert.Equal(EtapaConfirmacaoAgendamento.AguardandoConfirmacaoCancelamento, estado.Etapa);
         await whatsApp.ReceivedWithAnyArgs(1).EnviarInterativoBotoesAsync(null!, null!, null!);
 
-        // 2. "Sim, cancelar" → aguarda o motivo.
+        // 2. "Quero cancelar" → o cancelamento JÁ vale; o motivo é opcional.
         await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, interativoReplyId: $"cancela_sim:{solic.SolicitacaoId}"), default);
         await db.SaveChangesAsync();
         estado = await db.AgendamentoConfirmacaoEstados.SingleAsync(e => e.TelefoneCanonical == telefone);
         Assert.Equal(EtapaConfirmacaoAgendamento.AguardandoMotivo, estado.Etapa);
+        var cancelada = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
+        Assert.Equal(StatusConfirmacaoAgendamento.Cancelada, cancelada.StatusConfirmacao);
+        Assert.Null(cancelada.MotivoCancelamentoPaciente);
 
-        // 3. Texto livre com estado ativo = motivo → cancela e limpa o estado.
+        // 3. Texto livre com estado ativo = motivo → completa o cancelamento e limpa o estado.
         await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, texto: "vou estar viajando"), default);
         await db.SaveChangesAsync();
         var s = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
         Assert.Equal(StatusConfirmacaoAgendamento.Cancelada, s.StatusConfirmacao);
         Assert.Equal("vou estar viajando", s.MotivoCancelamentoPaciente);
         Assert.False(await db.AgendamentoConfirmacaoEstados.AnyAsync(e => e.TelefoneCanonical == telefone));
+    }
+
+    [Fact]
+    public async Task Quero_cancelar_sem_escrever_motivo_ja_fica_cancelado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (solic, notif) = await SeedAsync(db);
+        var telefone = SeedSolicitacao.TelefoneAleatorio();
+        var handler = new ConfirmacaoAgendamentoWhatsAppHandler(db, CriarWhatsAppMock(), NullLogger<ConfirmacaoAgendamentoWhatsAppHandler>.Instance);
+
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, interativoReplyId: $"cancela_sim:{solic.SolicitacaoId}"), default);
+        await db.SaveChangesAsync();
+
+        var s = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
+        Assert.Equal(StatusConfirmacaoAgendamento.Cancelada, s.StatusConfirmacao);
+        Assert.NotNull(s.ConfirmacaoCanceladaEm);
+        Assert.Equal("whatsapp-quickreply", s.ConfirmadoCanal);
     }
 
     [Fact]

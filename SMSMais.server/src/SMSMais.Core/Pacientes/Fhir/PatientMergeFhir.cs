@@ -259,6 +259,10 @@ public static class PatientMergeFhir
             if (rank != 1) slot.Use = use; // Use só em slot novo não-principal; não muta reusados
             p.Telecom.Add(slot);
         }
+        // Número DIFERENTE entrando no slot: a marca de inválido era do número antigo, não do novo
+        // (antes a troca do telefone pela recepção fazia o número corrigido nascer com o ❗).
+        if (slot.Value is not null && !MesmoNumero(Digitos(slot.Value), digitos))
+            slot.RemoveExtension(ExtContatoNegado);
         slot.Value = digitos;
         if (rank == 1) slot.Rank = 1;
     }
@@ -334,6 +338,25 @@ public static class PatientMergeFhir
             marcado = true;
         }
         return marcado;
+    }
+
+    /// <summary>
+    /// Retira a marca de NEGADO/inválido do telecom que casa com <paramref name="numero"/> — a
+    /// recepção deu a denúncia por improcedente (pendência ignorada). Devolve true se tirou algo.
+    /// </summary>
+    public static bool DesmarcarTelefoneNegado(Patient p, string numero)
+    {
+        var alvo = Digitos(numero);
+        if (alvo.Length < 8 || p.Telecom is null) return false;
+        var tirou = false;
+        foreach (var t in p.Telecom.Where(t =>
+            t.System == ContactPoint.ContactPointSystem.Phone && MesmoNumero(Digitos(t.Value), alvo)
+            && t.GetExtension(ExtContatoNegado) is not null))
+        {
+            t.RemoveExtension(ExtContatoNegado);
+            tirou = true;
+        }
+        return tirou;
     }
 
     /// <summary>Telecom NEGADO do Patient (número em dígitos + instante), ou null.</summary>

@@ -170,10 +170,17 @@ export function Entrar() {
           {confirmacao.inicioEm ? ` em ${formatarDataHora(confirmacao.inicioEm)}` : ''}
           {confirmacao.unidade ? `, ${confirmacao.unidade},` : ''} está confirmada.
         </p>
-        <p className="max-w-[20rem] text-[14px] leading-relaxed text-tinta-mute">
-          Lembre-se de retirar a guia no posto de saúde onde você é atendido(a) e levar documento,
-          cartão do SUS e o pedido médico no dia.
-        </p>
+        <div className="max-w-[22rem] rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-[15px] leading-relaxed text-amber-900">
+          <p className="font-bold">⚠️ Importante</p>
+          <p className="mt-1">
+            Antes do dia, passe no <strong>posto de saúde</strong> onde você é atendido(a) para retirar a{' '}
+            <strong>guia (ficha de solicitação)</strong>. Sem ela não é possível fazer o atendimento.
+          </p>
+          <p className="mt-1">
+            No dia, leve a <strong>guia</strong>, o <strong>pedido médico</strong>, o <strong>cartão do SUS</strong> e o{' '}
+            <strong>comprovante de residência</strong>.
+          </p>
+        </div>
       </div>
     );
   }
