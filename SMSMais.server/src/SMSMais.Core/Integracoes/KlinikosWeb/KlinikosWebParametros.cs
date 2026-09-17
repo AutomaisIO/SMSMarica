@@ -25,23 +25,27 @@ public static class KlinikosWebParametros
     /// <param name="DeepThrottleSeg">Espaçamento em SEGUNDOS entre boletins na fila do deep (drenada
     ///   pela tela viva, fora do Crystal). <c>0</c> = sem drenador ainda; campo pronto para quando o
     ///   drenador existir.</param>
+    /// <param name="Build">Versão do Klinikos DECLARADA para esta fonte (o dropdown do cadastro, ex.:
+    ///   <c>U.2025.06.1.26</c>). O motor detecta a versão da tela e só sincroniza se bater com esta —
+    ///   ver <see cref="KlinikosBuildCatalogo"/>. Vazio = não declarada (o motor bloqueia até selecionar).</param>
     public sealed record Valores(
         string AppRoot, string UnidCodigo, string MetaSource, bool WebPrimaria,
-        bool PeriodicoLigado = false, int PeriodicoIntervaloMin = 0, int DeepThrottleSeg = 0);
+        bool PeriodicoLigado = false, int PeriodicoIntervaloMin = 0, int DeepThrottleSeg = 0,
+        string Build = "");
 
     /// <summary>Sugestões de preenchimento por slug conhecido — usadas só como conveniência de
     /// cadastro/seed; o runtime lê o que estiver gravado no <c>ParametrosJson</c>.</summary>
     public static readonly IReadOnlyDictionary<string, Valores> Sugestoes =
         new Dictionary<string, Valores>(StringComparer.OrdinalIgnoreCase)
         {
-            ["klinikos-conde"] = new("/KlinikosNet", "0005", $"{SourceBase}/klinikos/klinikos-conde", WebPrimaria: true),
-            ["upa24h-marica-sqlserver"] = new("/UPA24H", "0006", $"{SourceBase}/klinikos/upa24h-marica-sqlserver", WebPrimaria: false),
-            ["santarita-marica-sqlserver"] = new("/UPA24H", "0007", $"{SourceBase}/klinikos/santarita-marica-sqlserver", WebPrimaria: false),
+            ["klinikos-conde"] = new("/KlinikosNet", "0005", $"{SourceBase}/klinikos/klinikos-conde", WebPrimaria: true, Build: "K.2024.09.2.1"),
+            ["upa24h-marica-sqlserver"] = new("/UPA24H", "0006", $"{SourceBase}/klinikos/upa24h-marica-sqlserver", WebPrimaria: false, Build: "U.2025.06.1.26"),
+            ["santarita-marica-sqlserver"] = new("/UPA24H", "0007", $"{SourceBase}/klinikos/santarita-marica-sqlserver", WebPrimaria: false, Build: "U.2025.06.1.26"),
         };
 
     public static Valores Resolver(string slug, string? parametrosJson)
     {
-        string? appRoot = null, unid = null, metaSource = null;
+        string? appRoot = null, unid = null, metaSource = null, build = null;
         bool? webPrimaria = null;
         bool periodicoLigado = false;
         int periodicoIntervaloMin = 0, deepThrottleSeg = 0;
@@ -55,6 +59,7 @@ public static class KlinikosWebParametros
                 appRoot = Texto(r, "appRoot");
                 unid = Texto(r, "unidCodigo");
                 metaSource = Texto(r, "metaSource");
+                build = Texto(r, "build");
                 if (r.TryGetProperty("webPrimaria", out var wp) &&
                     (wp.ValueKind == JsonValueKind.True || wp.ValueKind == JsonValueKind.False))
                 {
@@ -81,7 +86,8 @@ public static class KlinikosWebParametros
             WebPrimaria: webPrimaria ?? false,
             PeriodicoLigado: periodicoLigado,
             PeriodicoIntervaloMin: periodicoIntervaloMin,
-            DeepThrottleSeg: deepThrottleSeg);
+            DeepThrottleSeg: deepThrottleSeg,
+            Build: KlinikosBuildCatalogo.Normalizar(build));
     }
 
     private static string? Texto(JsonElement root, string prop) =>

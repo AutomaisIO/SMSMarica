@@ -56,6 +56,19 @@ public sealed partial class ExceptionHandlingMiddleware(
             await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
                 "Origem indisponível", ex.Message, type: "klinikos.crystal_indisponivel");
         }
+        // Guarda de versão do Klinikos: a versão detectada na tela diverge da declarada (o build da
+        // origem mudou) — bloqueio de segurança, reconciliar a versão no cadastro. 409, sem alerta.
+        catch (SMSMais.Core.Integracoes.KlinikosWeb.KlinikosBuildDivergenteException ex)
+        {
+            await EscreverProblemDetails(context, StatusCodes.Status409Conflict,
+                "Versão do Klinikos divergente", ex.Message, type: "klinikos.build_divergente");
+        }
+        // Build novo do Klinikos, sem perfil no catálogo — precisa de recon + perfil novo. 422.
+        catch (SMSMais.Core.Integracoes.KlinikosWeb.KlinikosBuildDesconhecidoException ex)
+        {
+            await EscreverProblemDetails(context, StatusCodes.Status422UnprocessableEntity,
+                "Build do Klinikos sem perfil", ex.Message, type: "klinikos.build_desconhecido");
+        }
         // 410: a rota existia e foi desativada de propósito (ex.: os rascunhos por sistema
         // depois da migração para a Regulação). O `substituto` vai na resposta porque a tela
         // precisa apontar o caminho novo, não só dizer que este acabou.

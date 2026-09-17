@@ -19,9 +19,10 @@ public interface IKlinikosWebFonteResolver
     Task<KlinikosFonteResolvida> ResolverAsync(string slug, CancellationToken ct);
 }
 
-/// <summary>Instância resolvida: conexão + credenciais reveladas + identidade FHIR.</summary>
+/// <summary>Instância resolvida: conexão + credenciais reveladas + identidade FHIR + versão declarada.</summary>
 public sealed record KlinikosFonteResolvida(
-    KlinikosInstancia Instancia, string Usuario, string Senha, string MetaSource, bool WebPrimaria);
+    KlinikosInstancia Instancia, string Usuario, string Senha, string MetaSource, bool WebPrimaria,
+    string Build);
 
 public sealed class KlinikosWebFonteResolver(SmsMaisDbContext db, IProtetorSegredos protetor)
     : IKlinikosWebFonteResolver
@@ -51,6 +52,7 @@ public sealed class KlinikosWebFonteResolver(SmsMaisDbContext db, IProtetorSegre
             slug, new Uri(fonte.BaseUrl!.TrimEnd('/')), p.AppRoot, p.UnidCodigo);
 
         return new KlinikosFonteResolvida(
-            instancia, fonte.Usuario!, protetor.Revelar(fonte.SenhaCifrada!), p.MetaSource, p.WebPrimaria);
+            instancia, fonte.Usuario!, protetor.Revelar(fonte.SenhaCifrada!), p.MetaSource, p.WebPrimaria,
+            p.Build);
     }
 }

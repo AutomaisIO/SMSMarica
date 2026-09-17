@@ -166,6 +166,77 @@ internal static partial class KlinikosRelatorioParser
         return saida;
     }
 
+    // ------------------------------------------------------------------ 751 (build 2025)
+
+    /// <summary>
+    /// 751 — Nominal (build 2025, UPA/Santa Rita): "Estatística de Atendimento". Colunas medidas:
+    /// Nº Boletim, Código (prontuário), Hora Atendimento, Tipo, Nome Paciente, Idade, Sexo. Só
+    /// boletins ATENDIDOS. <b>Não traz chegada nem cor</b> (nesta build vêm da fila viva/deep) —
+    /// por isso o registro sai com <c>Clinica</c> nula e a idade em <c>NascimentoIdade</c>.
+    /// </summary>
+    public static IReadOnlyList<BoletimRegistro> Ler751(byte[] xls)
+    {
+        var (colunas, linhas) = LerGrade(xls, new()
+        {
+            ["no boletim"] = "boletim",
+            ["n boletim"] = "boletim",
+            ["numero do boletim"] = "boletim",
+            ["boletim"] = "boletim",
+            ["codigo"] = "prontuario",
+            ["nome paciente"] = "paciente",
+            ["paciente"] = "paciente",
+            ["nome"] = "paciente",
+            ["idade"] = "idade",
+        });
+
+        var saida = new List<BoletimRegistro>();
+        foreach (var celulas in linhas)
+        {
+            var spa = NormalizarBoletim(Campo(colunas, celulas, "boletim"));
+            if (spa is null) continue;
+            saida.Add(new BoletimRegistro(
+                spa,
+                Campo(colunas, celulas, "prontuario"),
+                Campo(colunas, celulas, "paciente"),
+                Campo(colunas, celulas, "idade"),
+                Clinica: null));
+        }
+        return saida;
+    }
+
+    // ------------------------------------------------------------------ 752 (build 2025)
+
+    /// <summary>
+    /// 752 — Por CID (build 2025): = 751 + coluna CID (texto do diagnóstico, SEM código ICD-10 →
+    /// exige o de-para texto→código). Um registro por linha com boletim; o CID vem da COLUNA, não
+    /// de sub-linha (diferente do 526 do Conde).
+    /// </summary>
+    public static IReadOnlyList<AtendimentoRegistro> Ler752(byte[] xls)
+    {
+        var (colunas, linhas) = LerGrade(xls, new()
+        {
+            ["no boletim"] = "boletim",
+            ["n boletim"] = "boletim",
+            ["numero do boletim"] = "boletim",
+            ["boletim"] = "boletim",
+            ["hora atendimento"] = "hora",
+            ["hora"] = "hora",
+            ["cid"] = "cid",
+        });
+
+        var saida = new List<AtendimentoRegistro>();
+        foreach (var celulas in linhas)
+        {
+            var spa = NormalizarBoletim(Campo(colunas, celulas, "boletim"));
+            if (spa is null) continue;
+            saida.Add(new AtendimentoRegistro(
+                spa,
+                Campo(colunas, celulas, "hora"),
+                Campo(colunas, celulas, "cid")));
+        }
+        return saida;
+    }
+
     // ------------------------------------------------------------------ base
 
     /// <summary>

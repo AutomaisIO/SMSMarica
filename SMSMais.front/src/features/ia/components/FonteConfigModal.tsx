@@ -61,6 +61,37 @@ function estadoInicial(fonte?: FonteConfig): FormState {
   };
 }
 
+/** Versões do Klinikos com perfil no catálogo do servidor (KlinikosBuildCatalogo). Ao surgir um
+ *  build novo, o motor gera erro "criar perfil"; aí acrescenta-se a versão aqui e no catálogo. */
+const KLINIKOS_BUILDS: ReadonlyArray<{ versao: string; rotulo: string }> = [
+  { versao: 'K.2024.09.2.1', rotulo: 'Conde 2024 (K.2024.09.2.1)' },
+  { versao: 'U.2025.06.1.26', rotulo: 'UPA/Santa Rita 2025 (U.2025.06.1.26)' },
+];
+
+/** Lê a chave `build` de dentro do ParametrosJson (tolerante a JSON inválido). */
+function lerBuild(parametrosJson: string): string {
+  try {
+    const o = JSON.parse(parametrosJson || '{}');
+    return o && typeof o.build === 'string' ? o.build : '';
+  } catch {
+    return '';
+  }
+}
+
+/** Grava a chave `build` no ParametrosJson preservando as demais chaves. */
+function comBuild(parametrosJson: string, versao: string): string {
+  let o: Record<string, unknown> = {};
+  try {
+    const parsed = parametrosJson.trim() ? JSON.parse(parametrosJson) : {};
+    if (parsed && typeof parsed === 'object') o = parsed as Record<string, unknown>;
+  } catch {
+    o = {};
+  }
+  if (versao) o.build = versao;
+  else delete o.build;
+  return JSON.stringify(o);
+}
+
 export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
   const ehEdicao = Boolean(fonte);
   const [form, setForm] = useState<FormState>(() => estadoInicial(fonte));
@@ -181,7 +212,7 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
                   familia: t === 'KlinikosWeb' && !f.familia ? 'klinikos' : f.familia,
                   parametrosJson:
                     t === 'KlinikosWeb' && !f.parametrosJson
-                      ? '{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true, "periodicoLigado": false, "periodicoIntervaloMin": 60, "deepThrottleSeg": 0 }'
+                      ? '{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true, "build": "K.2024.09.2.1", "periodicoLigado": false, "periodicoIntervaloMin": 60, "deepThrottleSeg": 0 }'
                       : f.parametrosJson,
                 }));
               }}
@@ -303,6 +334,27 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
 
           {form.tipo === 'KlinikosWeb' ? (
             <Campo
+              label="Versão do Klinikos (build)"
+              htmlFor="fc-build"
+              dica="O motor detecta a versão na tela e só sincroniza se bater com esta. Build novo → erro pedindo para criar o perfil."
+            >
+              <Select
+                id="fc-build"
+                value={lerBuild(form.parametrosJson)}
+                onChange={(e) => set('parametrosJson', comBuild(form.parametrosJson, e.target.value))}
+              >
+                <option value="">— selecione a versão —</option>
+                {KLINIKOS_BUILDS.map((b) => (
+                  <option key={b.versao} value={b.versao}>
+                    {b.rotulo}
+                  </option>
+                ))}
+              </Select>
+            </Campo>
+          ) : null}
+
+          {form.tipo === 'KlinikosWeb' ? (
+            <Campo
               label="Parâmetros (JSON)"
               htmlFor="fc-parametros"
               className="sm:col-span-2"
@@ -315,7 +367,7 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
                 rows={3}
                 spellCheck={false}
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-800 shadow-sm focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
-                placeholder='{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true, "periodicoLigado": false, "periodicoIntervaloMin": 60, "deepThrottleSeg": 0 }'
+                placeholder='{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true, "build": "K.2024.09.2.1", "periodicoLigado": false, "periodicoIntervaloMin": 60, "deepThrottleSeg": 0 }'
               />
             </Campo>
           ) : null}
