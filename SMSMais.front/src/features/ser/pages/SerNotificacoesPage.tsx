@@ -161,8 +161,10 @@ export function SerNotificacoesPage() {
         )}
       </header>
 
-      {/* Abas Consulta / Exame — cada uma com o próprio contador */}
-      <div className="flex gap-2 border-b border-slate-200">
+      {/* Abas Consulta / Exame — cada uma com o próprio contador. O filtro por técnico fica
+          aqui, à direita, e não lá embaixo com os outros: é o primeiro corte que quem tria a fila
+          faz ("o que é meu"), e recorta todos os números que aparecem abaixo dele. */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200">
         {TIPOS.map((t) => (
           <button
             key={t}
@@ -186,6 +188,18 @@ export function SerNotificacoesPage() {
             )}
           </button>
         ))}
+
+        <div className="mb-1 ml-auto flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+          <label htmlFor="ser-filtro-tecnicos" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Técnico regulador
+          </label>
+          <FiltroTecnicos
+            id="ser-filtro-tecnicos"
+            tecnicos={tecnicos}
+            selecionados={tecnicosSelecionados}
+            aoMudar={escolherTecnicos}
+          />
+        </div>
       </div>
 
       {/* Situações: só aparecem as que têm movimento — lista cheia de zeros é ruído */}
@@ -204,17 +218,7 @@ export function SerNotificacoesPage() {
       {/* Filtro pelo último FollowUP. O atalho "Falha de contato" é a fila de quem a central
           não conseguiu achar — e nós temos telefone verificado e WhatsApp que ela não tem. */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor="ser-filtro-tecnicos" className="text-slate-600">
-          Técnico regulador:
-        </label>
-        <FiltroTecnicos
-          id="ser-filtro-tecnicos"
-          tecnicos={tecnicos}
-          selecionados={tecnicosSelecionados}
-          aoMudar={escolherTecnicos}
-        />
-
-        <label htmlFor="ser-filtro-categoria-followup" className="ml-2 text-slate-600">
+        <label htmlFor="ser-filtro-categoria-followup" className="text-slate-600">
           Último FollowUP:
         </label>
         <select
