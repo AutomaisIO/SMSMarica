@@ -145,7 +145,9 @@
     raiz.host.style.setProperty('--marca', cor);
     host.style.setProperty('--marca', cor);
     const nome = estado.marca?.nomeCurto || 'SMSMarica';
-    $('[data-ref=nome]').textContent = nome;
+    // Qual sítio é esta aba (rótulo no selo + se tem blur).
+    const meuSitio = (estado.sitios || []).find((s) => s.host === location.host);
+    $('[data-ref=nome]').textContent = meuSitio ? `${nome} · ${meuSitio.label}` : nome;
     $('[data-ref=nomeBlur]').textContent = nome;
     $('[data-ref=tituloBlur]').textContent = nome;
     if (estado.marca?.logoUrl) {
@@ -161,7 +163,8 @@
     $('[data-ref=estadoBlur]').textContent = estado.pendentes
       ? `${estado.pendentes} captura(s) aguardando envio`
       : '';
-    capa.classList.toggle('mostra', !estado.auth);
+    // Blur só nos sítios marcados com blur (ex.: SISREG). Ecossistemas = captura passiva.
+    capa.classList.toggle('mostra', !estado.auth && !!meuSitio?.blur);
   }
 
   $('[data-ref=entrar]').addEventListener('click', () => {

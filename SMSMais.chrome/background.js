@@ -6,11 +6,22 @@
 //
 // Só observa o SISREG: nunca dispara requisição para lá.
 
-import { CONFIG, ROTA_CAPTURAS } from './config.js';
+import { CONFIG, ROTA_CAPTURAS, SITIOS } from './config.js';
 import { ENDPOINTS, ETAPAS, CAMPOS_SENSIVEIS } from './endpoints.js';
 
-const FILTRO = { urls: ['*://sisregiii.saude.gov.br/*'] };
+// Observa TODOS os sítios configurados (SISREG, Ecossistemas, …). Cada captura leva o `sitio`.
+const FILTRO = { urls: SITIOS.map((s) => `*://${s.host}/*`) };
 const TIPOS = new Set(['main_frame', 'sub_frame', 'xmlhttprequest', 'other']);
+
+// Descobre de qual sítio é uma URL (para carimbar a origem da captura).
+function sitioDeUrl(url) {
+  try {
+    const host = new URL(url).host;
+    return SITIOS.find((s) => s.host === host)?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // ---------------------------------------------------------------- estado vivo
 const buffer = []; // capturas ainda não confirmadas pela API
@@ -83,12 +94,13 @@ function estadoAtual() {
     usuario: sessao?.usuario?.nome ?? sessao?.usuario?.nomeCompleto ?? null,
     marca,
     painelOrigin: CONFIG.PAINEL_ORIGIN,
+    sitios: SITIOS, // o content usa para saber o rótulo e se este site tem blur
   };
 }
 
 async function difundirEstado() {
   const estado = estadoAtual();
-  const abas = await chrome.tabs.query({ url: '*://sisregiii.saude.gov.br/*' });
+  const abas = await chrome.tabs.query({ url: FILTRO.urls });
   for (const aba of abas) {
     chrome.tabs.sendMessage(aba.id, { tipo: 'estado', estado }, { frameId: 0 }).catch(() => {});
   }
@@ -142,6 +154,7 @@ function classificar(details) {
     evento: gatilho?.evento ?? null,
     escrita: gatilho?.escrita ?? false,
     operador: operadorPorAba.get(details.tabId) ?? null,
+    sitio: sitioDeUrl(details.url),
     campos,
     status: null,
   };
@@ -261,6 +274,7 @@ chrome.runtime.onMessage.addListener((msg, sender, responder) => {
       frameId: sender.frameId,
       quando: new Date().toISOString(),
       operador: operadorPorAba.get(tabId) ?? null,
+      sitio: sitioDeUrl(sender.url ?? sender.tab?.url),
       ...msg.dados,
     });
     if (buffer.length >= CONFIG.LOTE_MAX_ITENS) enviarLote();

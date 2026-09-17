@@ -21,5 +21,14 @@ export const CONFIG = {
   MARCA_PADRAO: { nomeCurto: 'SMSMarica', corPrimaria: '#C8102E' },
 };
 
-// Endpoint de ingestão (a criar no backend).
+// Endpoint de ingestão.
 export const ROTA_CAPTURAS = '/extensao/sisreg/capturas';
+
+// Sítios observados. Cada captura é carimbada com o `id` (origem), para o hub distinguir de
+// qual sistema veio. `blur: true` = bloqueia o site até o login no SMSMais (como no SISREG);
+// `blur: false` = só captura passiva, sem bloquear. Para monitorar um sistema novo: acrescente
+// uma linha aqui E o host em manifest.json (host_permissions + os dois content_scripts).
+export const SITIOS = [
+  { id: 'sisreg', label: 'SISREG', host: 'sisregiii.saude.gov.br', blur: true },
+  { id: 'ecosistemas', label: 'Ecossistemas Maricá', host: 'marica.ecosistemas.com.br', blur: false },
+];

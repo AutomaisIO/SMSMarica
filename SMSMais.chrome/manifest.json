@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "SMSMais — Ponte SISREG (PoC)",
-  "version": "0.2.1",
-  "description": "Registra no SMSMais as operações feitas no SISREG (só observa) e exige login no SMSMarica para liberar o SISREG.",
+  "name": "SMSMais — Ponte de Sistemas",
+  "version": "0.3.0",
+  "description": "Observa os sistemas do município (SISREG, Ecossistemas…) e registra as operações no SMSMais (hub). Só observa; exige login no SMSMais.",
   "action": {
-    "default_title": "SMSMais — Ponte SISREG",
+    "default_title": "SMSMais — Ponte de Sistemas",
     "default_popup": "popup.html"
   },
   "background": {
@@ -15,6 +15,7 @@
   "host_permissions": [
     "https://sisregiii.saude.gov.br/*",
     "http://sisregiii.saude.gov.br/*",
+    "https://marica.ecosistemas.com.br/*",
     "https://smsmarica.online/*",
     "https://*.smsmarica.online/*",
     "https://api.smsmarica.online/*",
@@ -24,7 +25,8 @@
     {
       "matches": [
         "https://sisregiii.saude.gov.br/*",
-        "http://sisregiii.saude.gov.br/*"
+        "http://sisregiii.saude.gov.br/*",
+        "https://marica.ecosistemas.com.br/*"
       ],
       "js": ["capture-hook.js"],
       "run_at": "document_start",
@@ -34,7 +36,8 @@
     {
       "matches": [
         "https://sisregiii.saude.gov.br/*",
-        "http://sisregiii.saude.gov.br/*"
+        "http://sisregiii.saude.gov.br/*",
+        "https://marica.ecosistemas.com.br/*"
       ],
       "js": ["content.js"],
       "run_at": "document_end",
