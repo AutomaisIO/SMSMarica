@@ -288,7 +288,11 @@ public sealed class CidadaoLoginLinkService(
                 .Where(c => c.LoginLinkId == token && c.Telefone != null)
                 .Select(c => c.Telefone)
                 .FirstOrDefaultAsync(cancellationToken);
-            if (!string.IsNullOrWhiteSpace(fone))
+            // E nunca TROCA um contato já provado: se o paciente tem outro número verificado, a
+            // mudança é no posto ([ADR-0057]) — o clique num link não prova a posse do número atual.
+            var jaTemOutroVerificado = !string.IsNullOrWhiteSpace(paciente.TelefoneVerificado)
+                && !Telefones.TelefoneValidacaoService.EhMesmoNumero(paciente.TelefoneVerificado, fone);
+            if (!string.IsNullOrWhiteSpace(fone) && !jaTemOutroVerificado)
                 await telefones.MarcarValidadoAsync(link.Cpf, fone, "magic-link", null, cancellationToken);
         }
         catch { /* número de outra pessoa / falha FHIR — não trava o login */ }

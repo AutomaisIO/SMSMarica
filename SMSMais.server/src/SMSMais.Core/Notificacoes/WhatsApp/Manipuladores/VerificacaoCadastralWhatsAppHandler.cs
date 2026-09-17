@@ -540,8 +540,19 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         var paciente = await ObterPacienteAsync(pacienteId, ct);
         var telefone = estado.TelefoneCanonical;
 
+        // Mesma régua do robô e do login: verificação cadastral NÃO troca contato já provado. Se o
+        // paciente tem outro número verificado (ex.: foi verificado depois que este desafio saiu), o
+        // carimbo não acontece; a comunicação liberada abaixo sai para o número verificado, e trocar
+        // o cadastro exige o posto ([ADR-0057]).
+        var trocariaVerificado = !string.IsNullOrWhiteSpace(paciente?.TelefoneVerificado)
+            && !Telefones.TelefoneValidacaoService.EhMesmoNumero(paciente!.TelefoneVerificado, telefone);
+        if (trocariaVerificado)
+            logger.LogInformation(
+                "Verificação cadastral concluída em …{Fone4}, mas o paciente {Paciente} já tem outro "
+                + "contato verificado: o número NÃO foi trocado.", Ultimos4(telefone), pacienteId);
+
         // Carimbo de telefone verificado (melhor esforço; conflito = número confirmado de outro CPF).
-        if (!string.IsNullOrWhiteSpace(paciente?.Cpf))
+        if (!trocariaVerificado && !string.IsNullOrWhiteSpace(paciente?.Cpf))
         {
             try
             {

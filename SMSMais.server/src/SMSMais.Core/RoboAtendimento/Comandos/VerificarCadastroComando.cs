@@ -11,6 +11,12 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 /// <c>validacao_cadastro</c>). Confere → marca o telefone da conversa como VERIFICADO para o
 /// paciente e LIBERA a confirmação real (as comunicações retidas em AguardandoVerificacaoCadastral
 /// voltam para a fila; o worker reenvia, agora verificado → confirmacao_regulacao com os dados).
+///
+/// <para><b>Nunca TROCA um número verificado</b> (regra do produto, 17/09/2026): o robô só carimba
+/// quando o paciente ainda não tem contato provado. Já havendo um, trocar exigiria os 4 dígitos do
+/// CPF e mais nada — seria a porta de trás da regra que manda ir ao posto ([ADR-0057]). Nesse caso
+/// o robô não carimba: apenas libera o que estava retido (que sai para o número já verificado) e
+/// orienta o posto.</para>
 /// </summary>
 public sealed class VerificarCadastroComando(
     SmsMaisDbContext db,
@@ -31,6 +37,18 @@ public sealed class VerificarCadastroComando(
         if (!GateIdentidade.CpfInicioConfere(p.Cpf, cpf))
             return new(false,
                 "Os primeiros dígitos do CPF não conferem. Peça novamente, com calma; se persistir, encaminhe ao atendente humano.");
+
+        // Já existe contato provado, e é OUTRO número? Não troca — nem por aqui.
+        var jaTemOutroVerificado = !string.IsNullOrWhiteSpace(p.TelefoneVerificado)
+            && !TelefoneValidacaoService.EhMesmoNumero(p.TelefoneVerificado, ctx.TelefoneCanonical);
+        if (jaTemOutroVerificado)
+        {
+            return new(false,
+                "Este cadastro já tem um WhatsApp verificado, e não é este número. NÃO diga que "
+                + "confirmou a identidade e NÃO prometa enviar dados por aqui. Explique que, para "
+                + "trocar o número do cadastro, é preciso procurar o posto de saúde onde a pessoa é "
+                + "atendida, levando um documento com foto.");
+        }
 
         // Marca o número da conversa como verificado para este paciente (também corrige o cadastro).
         if (!string.IsNullOrWhiteSpace(p.Cpf))

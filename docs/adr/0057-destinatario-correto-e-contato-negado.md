@@ -90,6 +90,13 @@ verificado para o próprio celular, passando a receber laudo e login da pessoa. 
 No app, o atalho "Não tenho mais esse número" da tela do código deixou de abrir o formulário e
 passou a dizer o caminho.
 
+**A mesma régua vale para todos os carimbos automáticos de "verificado"** (robô
+`VerificarCadastroComando`, máquina determinística da verificação cadastral e clique no magic
+link): eles só marcam quando o paciente **ainda não tem** número verificado. Havendo um, e sendo
+outro número, não se troca nada — a mudança é no posto. Quem muda número continua sendo: a recepção
+(código para o número novo, com a pessoa na frente) e o próprio cidadão de dentro do app, em sessão
+aberta por **código** (que prova a posse do número atual).
+
 ## Consequências
 
 - O padrão passa a ser restritivo: um remetente novo que esqueça de declarar a origem nasce
@@ -105,8 +112,10 @@ passou a dizer o caminho.
 1. ~~Passo 2 do login troca o número verificado~~ — **fechado em 17/09/2026** (ver decisão 5).
    Fica em aberto: a recepção, ao trocar o número, não avisa o número antigo; e o passo 2 aceita
    solicitação de qualquer época (uma guia velha serve de chave para quem nunca verificou).
-2. **Robô marca número como verificado** com 4 dígitos do CPF (`VerificarCadastroComando`), e pode
-   ser acionado de um segundo número do cadastro.
+2. ~~Robô marca número como verificado com 4 dígitos do CPF~~ — **fechado em 17/09/2026**: o robô
+   (e a máquina determinística, e o clique no magic link) só carimba quando o paciente **ainda não
+   tem** contato verificado. Havendo um, e sendo outro número, nada é trocado: o robô orienta o
+   posto e apenas libera o que estava retido (que sai para o número já verificado).
 3. **Passo 1 do login** revela se um CPF tem cadastro e os últimos 4 dígitos de um telefone.
 4. **Sandbox** envia magic link real de login para qualquer número digitado (permissão 39).
 5. O **desafio cadastral** mostra primeiro nome + procedimento a número ainda não verificado, e o
