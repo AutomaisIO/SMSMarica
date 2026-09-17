@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SMSMais — Ponte de Sistemas",
-  "version": "0.3.0",
-  "description": "Observa os sistemas do município (SISREG, Ecossistemas…) e registra as operações no SMSMais (hub). Só observa; exige login no SMSMais.",
+  "version": "0.4.0",
+  "description": "Observa os sistemas do município e registra no SMSMais (hub). No SISREG envia só o comando + o nº da solicitação (sem dados do paciente); uma janela mostra tudo que é enviado.",
   "action": {
     "default_title": "SMSMais — Ponte de Sistemas",
     "default_popup": "popup.html"

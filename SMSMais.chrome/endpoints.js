@@ -22,10 +22,16 @@ export const ENDPOINTS = {
 
 // Etapas que são gatilhos de negócio (o que interessaria ao SMSMais no futuro).
 // `escrita: true` = a operação altera dado no SISREG.
+// Para o modo MÍNIMO, os comandos mapeados carregam:
+//   `comando`     — rótulo enviado ao SMSMais ("agendou"/"cancelou");
+//   `numeroDe`    — onde está o nº da solicitação: 'envio' (campo do form) ou 'resposta' (tela);
+//   `campoNumero` — quando 'envio', qual campo tem o número.
 export const ETAPAS = {
   ACESSO: { evento: 'login', escrita: false },
-  EXCLUIR_SOLICITACAO: { evento: 'cancelamento', escrita: true },
-  CANCELAR_SOLICITACAO: { evento: 'cancelamento', escrita: true },
+  // A GRAVAÇÃO da marcação: o nº da solicitação só existe na tela de confirmação (resposta).
+  MARCAR: { evento: 'agendamento', escrita: true, comando: 'agendou', numeroDe: 'resposta' },
+  EXCLUIR_SOLICITACAO: { evento: 'cancelamento', escrita: true, comando: 'cancelou', numeroDe: 'envio', campoNumero: 'codigo_solicitacao' },
+  CANCELAR_SOLICITACAO: { evento: 'cancelamento', escrita: true, comando: 'cancelou', numeroDe: 'envio', campoNumero: 'co_seq_solicitacao' },
   REENVIAR_REGULACAO: { evento: 'devolucao-regulacao', escrita: true },
   Confirma: { evento: 'confirmacao-comparecimento', escrita: true },
   Falta: { evento: 'falta', escrita: true },

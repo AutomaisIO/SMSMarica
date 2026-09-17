@@ -28,7 +28,11 @@ export const ROTA_CAPTURAS = '/extensao/sisreg/capturas';
 // qual sistema veio. `blur: true` = bloqueia o site até o login no SMSMais (como no SISREG);
 // `blur: false` = só captura passiva, sem bloquear. Para monitorar um sistema novo: acrescente
 // uma linha aqui E o host em manifest.json (host_permissions + os dois content_scripts).
+// `modo`:
+//  - 'minimo'  → envia SÓ o comando + o nº da solicitação (sem PII); o resto é descartado no
+//                background antes de qualquer envio. É o que a apresentação usa no SISREG.
+//  - 'analise' → captura BURRA: manda envio+retorno crus (ainda estamos aprendendo o sistema).
 export const SITIOS = [
-  { id: 'sisreg', label: 'SISREG', host: 'sisregiii.saude.gov.br', blur: true },
-  { id: 'ecosistemas', label: 'Ecossistemas Maricá', host: 'marica.ecosistemas.com.br', blur: false },
+  { id: 'sisreg', label: 'SISREG', host: 'sisregiii.saude.gov.br', blur: true, modo: 'minimo' },
+  { id: 'ecosistemas', label: 'Ecossistemas Maricá', host: 'marica.ecosistemas.com.br', blur: false, modo: 'analise' },
 ];

@@ -100,10 +100,14 @@
       .dev header { padding: 6px 10px; background: #f6f8fa; border-bottom: 1px solid #d0d7de;
         font-size: 11px; color: #57606a; }
       .dev ul { list-style: none; margin: 0; padding: 0; overflow: auto; }
-      .dev li { display: flex; gap: 6px; padding: 5px 10px; border-bottom: 1px solid #eaeef2; font-size: 11px; }
+      .dev li { display: flex; gap: 8px; align-items: baseline; padding: 8px 10px;
+        border-bottom: 1px solid #eaeef2; font-size: 12px; }
       .dev .met { font-weight: 600; width: 34px; }
       .dev .cam { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .dev .ev { color: #b91c1c; }
+      .dev .cmd { font-weight: 700; color: #fff; background: var(--marca, #C8102E);
+        border-radius: 5px; padding: 2px 7px; font-size: 11px; letter-spacing: .3px; }
+      .dev .hora { color: #8a929c; font-size: 11px; }
     </style>
     <div class="selo" title="SMSMarica">
       <img data-ref="logo" hidden>
@@ -111,7 +115,10 @@
       <span class="led" data-ref="led"></span>
       <span class="quem" data-ref="quem"></span>
     </div>
-    <div class="dev" data-ref="dev"><header>capturas (modo dev — alt+clique no selo)</header><ul data-ref="lista"></ul></div>
+    <div class="dev" data-ref="dev">
+      <header data-ref="devcab">Enviado ao SMSMarica</header>
+      <ul data-ref="lista"></ul>
+    </div>
     <div class="capa" data-ref="capa">
       <div class="cartao">
         <img data-ref="logoBlur" hidden>
@@ -165,16 +172,32 @@
       : '';
     // Blur só nos sítios marcados com blur (ex.: SISREG). Ecossistemas = captura passiva.
     capa.classList.toggle('mostra', !estado.auth && !!meuSitio?.blur);
+    // Cabeçalho da janela de tráfego, honesto por modo.
+    $('[data-ref=devcab]').innerHTML =
+      meuSitio?.modo === 'minimo'
+        ? 'Enviado ao SMSMarica <b>— só o comando + o nº da solicitação</b> (sem dados do paciente)'
+        : `Modo análise — tráfego bruto para o log${meuSitio ? ` (${meuSitio.label})` : ''}`;
   }
 
   $('[data-ref=entrar]').addEventListener('click', () => {
     window.open(painelOrigin, '_blank', 'noopener');
   });
 
-  // alt+clique no selo abre a lista de capturas (só para depurar; usuário final não usa).
-  $('.selo').addEventListener('click', (e) => {
-    if (e.altKey) dev.classList.toggle('mostra');
-  });
+  // Clique no selo abre/fecha a janela do que é enviado ao SMSMarica (transparência).
+  $('.selo').addEventListener('click', () => dev.classList.toggle('mostra'));
+  dev.classList.add('mostra'); // já visível — mostra que só sai comando + número
+
+  // Uma linha na janela de tráfego: "→ agendou · solicitação NNNN".
+  function addTrafego(item) {
+    const li = document.createElement('li');
+    const comando = item.comando === 'agendou' ? 'AGENDOU' : item.comando === 'cancelou' ? 'CANCELOU' : (item.comando || '?');
+    li.innerHTML =
+      `<span class="cmd">${comando}</span>` +
+      `<span class="cam">solicitação <b>${item.numero ?? '(nº na confirmação)'}</b></span>` +
+      `<span class="hora">${new Date(item.quando).toLocaleTimeString('pt-BR')}</span>`;
+    lista.prepend(li);
+    while (lista.children.length > 100) lista.lastChild.remove();
+  }
 
   function addLinha(item) {
     const li = document.createElement('li');
@@ -189,7 +212,8 @@
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.tipo === 'estado') pintar(msg.estado);
-    if (msg.tipo === 'requisicao') addLinha(msg.item);
+    if (msg.tipo === 'requisicao') addLinha(msg.item); // modo análise (raw)
+    if (msg.tipo === 'trafego') addTrafego(msg.item); // modo mínimo (comando + número)
   });
   chrome.runtime.sendMessage({ tipo: 'estado' }).then((estado) => estado && pintar(estado)).catch(() => {});
 

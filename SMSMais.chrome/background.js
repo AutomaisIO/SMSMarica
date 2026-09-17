@@ -14,13 +14,51 @@ const FILTRO = { urls: SITIOS.map((s) => `*://${s.host}/*`) };
 const TIPOS = new Set(['main_frame', 'sub_frame', 'xmlhttprequest', 'other']);
 
 // Descobre de qual sítio é uma URL (para carimbar a origem da captura).
-function sitioDeUrl(url) {
+function sitioDeUrlObj(url) {
   try {
     const host = new URL(url).host;
-    return SITIOS.find((s) => s.host === host)?.id ?? null;
+    return SITIOS.find((s) => s.host === host) ?? null;
   } catch {
     return null;
   }
+}
+function sitioDeUrl(url) {
+  return sitioDeUrlObj(url)?.id ?? null;
+}
+
+const soDigitos = (s) => (s ? String(s).replace(/\D/g, '') : '');
+
+// Nº da solicitação na tela de CONFIRMAÇÃO da marcação (modo mínimo do "agendou").
+// A tela tem "Solicita&ccedil;&atilde;o: NNNN". Defensivo: alguns padrões, sem PII.
+function numeroDaConfirmacaoMarcar(html) {
+  if (!html) return null;
+  const texto = html.replace(/&#\d+;|&[a-z]+;/gi, ' '); // entidades HTML → espaço
+  const m =
+    texto.match(/Solicita\w*\s*[:\-nº.]*\s*(\d{4,})/i) ||
+    texto.match(/N[ºo.]?\s*(?:da\s*)?Solicita\w*\s*[:\-]*\s*(\d{4,})/i);
+  return m ? m[1] : null;
+}
+
+// MODO MÍNIMO: envia SÓ o comando + o número (sem PII). Mostra na janela de tráfego.
+// Dedupe: o mesmo comando+número não repete (o content manda a resposta 2x; ações repetem).
+const eventosRecentes = new Map(); // "sitio:comando:numero" -> timestamp
+function emitirEvento(tabId, sitioId, comando, numero) {
+  const chave = `${sitioId}:${comando}:${numero || '?'}`;
+  const agora = Date.now();
+  if (eventosRecentes.get(chave) && agora - eventosRecentes.get(chave) < 15000) return;
+  eventosRecentes.set(chave, agora);
+
+  const item = {
+    kind: 'evento',
+    sitio: sitioId,
+    comando,
+    numero: numero || null,
+    quando: new Date().toISOString(),
+    operador: operadorPorAba.get(tabId) ?? null,
+  };
+  empilhar(item);
+  talvezEnviar();
+  chrome.tabs.sendMessage(tabId, { tipo: 'trafego', item }, { frameId: 0 }).catch(() => {});
 }
 
 // ---------------------------------------------------------------- estado vivo
@@ -163,6 +201,23 @@ function classificar(details) {
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     if (details.tabId < 0 || !TIPOS.has(details.type)) return;
+    const sitio = sitioDeUrlObj(details.url);
+    const modo = sitio?.modo ?? 'analise';
+
+    if (modo === 'minimo') {
+      // Só comandos de escrita cujo NÚMERO já está no envio (cancelar). O "agendou" tem o número
+      // só na resposta — tratado no handler de 'resposta'. Nada de raw sai daqui.
+      const campos = lerCampos(details);
+      const etapa = campos.etapa?.[0];
+      const cfg = etapa ? ETAPAS[etapa] : null;
+      if (cfg?.comando && cfg.numeroDe === 'envio') {
+        const numero = soDigitos(campos[cfg.campoNumero]?.[0]);
+        emitirEvento(details.tabId, sitio.id, cfg.comando, numero);
+      }
+      return;
+    }
+
+    // modo 'analise': captura burra (envio cru).
     const item = classificar(details);
     pendentesReq.set(details.requestId, item);
     empilhar(item);
@@ -267,14 +322,30 @@ chrome.runtime.onMessage.addListener((msg, sender, responder) => {
     return true;
   }
   if (msg.tipo === 'resposta' || msg.tipo === 'ajax') {
-    // HTML da tela (content.js no load do frame) ou corpo de AJAX (capture-hook).
+    const sitio = sitioDeUrlObj(sender.url ?? sender.tab?.url);
+    const modo = sitio?.modo ?? 'analise';
+
+    if (modo === 'minimo') {
+      // Agendar: o número da solicitação só existe na tela de confirmação da marcação.
+      // Extrai só o número (nada de HTML/PII sai daqui) e emite o evento mínimo.
+      if (
+        msg.tipo === 'resposta' &&
+        msg.dados?.caminho === '/cgi-bin/marcar' &&
+        /Chave de Confirma/i.test(msg.dados?.html ?? '')
+      ) {
+        emitirEvento(tabId, sitio.id, 'agendou', numeroDaConfirmacaoMarcar(msg.dados.html));
+      }
+      return; // minimo: nada de raw
+    }
+
+    // modo 'analise': captura burra (retorno cru — HTML da tela ou corpo de AJAX).
     empilhar({
       kind: msg.tipo,
       tabId,
       frameId: sender.frameId,
       quando: new Date().toISOString(),
       operador: operadorPorAba.get(tabId) ?? null,
-      sitio: sitioDeUrl(sender.url ?? sender.tab?.url),
+      sitio: sitio?.id ?? null,
       ...msg.dados,
     });
     if (buffer.length >= CONFIG.LOTE_MAX_ITENS) enviarLote();
