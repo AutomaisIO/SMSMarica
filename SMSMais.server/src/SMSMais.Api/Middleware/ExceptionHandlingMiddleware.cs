@@ -48,6 +48,14 @@ public sealed partial class ExceptionHandlingMiddleware(
         {
             await EscreverValidationProblem(context, ex.Erros);
         }
+        // Crystal da origem (Klinikos) saturado: indisponibilidade TEMPORÁRIA de terceiro, não erro
+        // nosso — 503 retryável, sem registrar em registro_erro nem alertar o celular. O
+        // conector/scheduler já recua sozinho; o endpoint sob demanda apenas vê o 503.
+        catch (SMSMais.Core.Integracoes.KlinikosWeb.KlinikosCrystalIndisponivelException ex)
+        {
+            await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
+                "Origem indisponível", ex.Message, type: "klinikos.crystal_indisponivel");
+        }
         // 410: a rota existia e foi desativada de propósito (ex.: os rascunhos por sistema
         // depois da migração para a Regulação). O `substituto` vai na resposta porque a tela
         // precisa apontar o caminho novo, não só dizer que este acabou.

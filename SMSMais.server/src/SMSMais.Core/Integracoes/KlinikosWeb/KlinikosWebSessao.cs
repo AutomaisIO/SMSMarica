@@ -98,6 +98,14 @@ public sealed partial class KlinikosWebSessao(
                 texto = Encoding.UTF8.GetString(bytes);
             }
 
+            // Crystal saturado (vazamento de memória do servidor de relatório deles): não é erro
+            // nosso nem pedido malformado — é indisponibilidade TEMPORÁRIA da origem. Exceção
+            // própria para o scheduler recuar (circuit breaker) e o endpoint responder 503, não 400.
+            if (EhCrystalIndisponivel(texto))
+            {
+                throw new KlinikosCrystalIndisponivelException(provedor, Resumo(texto));
+            }
+
             throw new ValidacaoException(
                 "klinikos.relatorio_nao_xls",
                 $"O Klinikos não devolveu um XLS para o relatório ({provedor}). Resposta: "
@@ -108,6 +116,16 @@ public sealed partial class KlinikosWebSessao(
             gate.Release();
         }
     }
+
+    /// <summary>Sinais de que o servidor de relatório (Crystal) esgotou memória ou expirou: mesmos
+    /// tokens que o laboratório mediu no OOM (<c>COMException 0x80041004: Not enough memory</c>) e no
+    /// 504 do gateway. É a condição em que a origem se recupera só no recycle do app pool.</summary>
+    private static bool EhCrystalIndisponivel(string texto) =>
+        !string.IsNullOrEmpty(texto)
+        && CrystalTokens.Any(t => texto.Contains(t, StringComparison.OrdinalIgnoreCase));
+
+    private static readonly string[] CrystalTokens =
+        ["Not enough memory", "OutOfMemory", "COMException", "Gateway Time-out", "Gateway Timeout"];
 
     public async Task<string> AbrirTelaAsync(string provedor, string caminhoRelativo, CancellationToken ct)
     {
@@ -400,3 +418,16 @@ public sealed partial class KlinikosWebSessao(
 
 /// <summary>A trava de somente-leitura recusou a operação. É <b>bug do motor</b>, não do Klinikos.</summary>
 public sealed class EscritaNoKlinikosBloqueadaException(string mensagem) : Exception(mensagem);
+
+/// <summary>
+/// O servidor de relatório (Crystal) da origem está saturado: esgotou memória (o vazamento medido
+/// no laboratório, que só recicla no app pool) ou expirou no gateway. É indisponibilidade
+/// TEMPORÁRIA e retryável da ORIGEM, não erro nosso — por isso vira 503 (não 500/400) e o scheduler
+/// a usa como sinal de circuit breaker para pular o ciclo sem tocar na cadência configurada.
+/// </summary>
+public sealed class KlinikosCrystalIndisponivelException(string provedor, string detalhe)
+    : Exception($"O Klinikos ({provedor}) está com o servidor de relatório saturado "
+        + $"(memória/timeout do Crystal). Tente mais tarde. Detalhe: {detalhe}")
+{
+    public string Provedor { get; } = provedor;
+}

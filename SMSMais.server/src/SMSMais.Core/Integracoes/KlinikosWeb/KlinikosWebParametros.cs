@@ -17,7 +17,17 @@ public static class KlinikosWebParametros
     /// <summary>Base do <c>meta.source</c>, igual à do conector SQL (mesmo hub).</summary>
     public const string SourceBase = "https://smsmarica.saude.marica/source";
 
-    public sealed record Valores(string AppRoot, string UnidCodigo, string MetaSource, bool WebPrimaria);
+    /// <param name="PeriodicoLigado">Liga a puxada periódica da espinha desta base pelo scheduler.
+    ///   MANUAL e por base — o motor nunca liga sozinho nem ajusta a cadência.</param>
+    /// <param name="PeriodicoIntervaloMin">Intervalo em MINUTOS entre puxadas periódicas (ex.: 60,
+    ///   30, 15). <c>0</c> ou negativo = desligado. É o número que o operador especifica por base,
+    ///   depois de medir o ponto de saturação do Crystal daquela unidade.</param>
+    /// <param name="DeepThrottleSeg">Espaçamento em SEGUNDOS entre boletins na fila do deep (drenada
+    ///   pela tela viva, fora do Crystal). <c>0</c> = sem drenador ainda; campo pronto para quando o
+    ///   drenador existir.</param>
+    public sealed record Valores(
+        string AppRoot, string UnidCodigo, string MetaSource, bool WebPrimaria,
+        bool PeriodicoLigado = false, int PeriodicoIntervaloMin = 0, int DeepThrottleSeg = 0);
 
     /// <summary>Sugestões de preenchimento por slug conhecido — usadas só como conveniência de
     /// cadastro/seed; o runtime lê o que estiver gravado no <c>ParametrosJson</c>.</summary>
@@ -33,6 +43,8 @@ public static class KlinikosWebParametros
     {
         string? appRoot = null, unid = null, metaSource = null;
         bool? webPrimaria = null;
+        bool periodicoLigado = false;
+        int periodicoIntervaloMin = 0, deepThrottleSeg = 0;
 
         if (!string.IsNullOrWhiteSpace(parametrosJson))
         {
@@ -48,6 +60,13 @@ public static class KlinikosWebParametros
                 {
                     webPrimaria = wp.GetBoolean();
                 }
+                if (r.TryGetProperty("periodicoLigado", out var pl) &&
+                    (pl.ValueKind == JsonValueKind.True || pl.ValueKind == JsonValueKind.False))
+                {
+                    periodicoLigado = pl.GetBoolean();
+                }
+                periodicoIntervaloMin = Inteiro(r, "periodicoIntervaloMin");
+                deepThrottleSeg = Inteiro(r, "deepThrottleSeg");
             }
             catch (JsonException)
             {
@@ -59,7 +78,10 @@ public static class KlinikosWebParametros
             AppRoot: "/" + (appRoot ?? "/KlinikosNet").Trim('/'),
             UnidCodigo: unid ?? string.Empty,
             MetaSource: metaSource ?? $"{SourceBase}/klinikos/{slug}",
-            WebPrimaria: webPrimaria ?? false);
+            WebPrimaria: webPrimaria ?? false,
+            PeriodicoLigado: periodicoLigado,
+            PeriodicoIntervaloMin: periodicoIntervaloMin,
+            DeepThrottleSeg: deepThrottleSeg);
     }
 
     private static string? Texto(JsonElement root, string prop) =>
@@ -67,4 +89,17 @@ public static class KlinikosWebParametros
             && !string.IsNullOrWhiteSpace(v.GetString())
             ? v.GetString()
             : null;
+
+    /// <summary>Lê um inteiro do JSON, aceitando número (<c>15</c>) ou texto numérico (<c>"15"</c>).
+    /// Ausente ou inválido → <c>0</c> (que o chamador trata como desligado).</summary>
+    private static int Inteiro(JsonElement root, string prop)
+    {
+        if (!root.TryGetProperty(prop, out var v)) return 0;
+        return v.ValueKind switch
+        {
+            JsonValueKind.Number when v.TryGetInt32(out var n) => n,
+            JsonValueKind.String when int.TryParse(v.GetString(), out var n) => n,
+            _ => 0,
+        };
+    }
 }

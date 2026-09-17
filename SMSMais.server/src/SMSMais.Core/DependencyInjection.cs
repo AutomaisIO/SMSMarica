@@ -487,7 +487,7 @@ public static class DependencyInjection
         // NÃO substitui a estratégia SQL das UPAs (Integracoes/Pep/Estrategias/Klinikos): é um
         // conector novo, separado, que lê pelos relatórios da aplicação. Sessão ÚNICA por instância
         // (Conde/UPA/Santa Rita são servers distintos), singleton com cookies próprios por provedor.
-        // Sem HostedService nesta etapa: o dry-run é disparado sob demanda; schedulers vêm depois.
+        // O dry-run/paridade são sob demanda; o periódico tem scheduler (abaixo), INERTE por padrão.
         services.AddSingleton<Integracoes.KlinikosWeb.IKlinikosWebSessao, Integracoes.KlinikosWeb.KlinikosWebSessao>();
         // Resolve a instância (URL/usuário/senha/params) a partir da IaFonte (Tipo=KlinikosWeb) —
         // o conector é uma FONTE DE PRONTUÁRIO, não uma credencial de integração de serviço.
@@ -511,6 +511,10 @@ public static class DependencyInjection
             Integracoes.KlinikosWeb.Escrita.KlinikosWebEscritaService>();
         services.Configure<Integracoes.KlinikosWeb.KlinikosWebOpcoes>(
             configuration.GetSection(Integracoes.KlinikosWeb.KlinikosWebOpcoes.Secao));
+        // Periódico da espinha: cadência MANUAL por base (periodicoIntervaloMin no ParametrosJson).
+        // Registrado sempre, mas dormente — só age com SchedulersHabilitados + EscritaHabilitada
+        // ligados E a base com periodicoLigado/intervalo/webPrimaria. Circuit breaker no Crystal saturado.
+        services.AddHostedService<Integracoes.KlinikosWeb.Background.KlinikosWebPeriodicoScheduler>();
 
         // Config do disparo diário do SERNIT em BANCO (mudar a hora não pode exigir deploy).
         services.AddScoped<Sernit.ISernitVarreduraConfigService, Sernit.SernitVarreduraConfigService>();

@@ -181,7 +181,7 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
                   familia: t === 'KlinikosWeb' && !f.familia ? 'klinikos' : f.familia,
                   parametrosJson:
                     t === 'KlinikosWeb' && !f.parametrosJson
-                      ? '{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true }'
+                      ? '{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true, "periodicoLigado": false, "periodicoIntervaloMin": 60, "deepThrottleSeg": 0 }'
                       : f.parametrosJson,
                 }));
               }}
@@ -306,7 +306,7 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
               label="Parâmetros (JSON)"
               htmlFor="fc-parametros"
               className="sm:col-span-2"
-              dica="appRoot (/KlinikosNet ou /UPA24H), unidCodigo, metaSource e webPrimaria (só o Conde grava)."
+              dica="appRoot (/KlinikosNet ou /UPA24H), unidCodigo, metaSource e webPrimaria (só o Conde grava). Cadência por base: periodicoLigado (liga a puxada automática), periodicoIntervaloMin (minutos, ex.: 60/30/15) e deepThrottleSeg."
             >
               <textarea
                 id="fc-parametros"
@@ -315,7 +315,7 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
                 rows={3}
                 spellCheck={false}
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-800 shadow-sm focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
-                placeholder='{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true }'
+                placeholder='{ "appRoot": "/KlinikosNet", "unidCodigo": "0005", "metaSource": "https://smsmarica.saude.marica/source/klinikos/klinikos-conde", "webPrimaria": true, "periodicoLigado": false, "periodicoIntervaloMin": 60, "deepThrottleSeg": 0 }'
               />
             </Campo>
           ) : null}
