@@ -833,6 +833,18 @@ public static class DependencyInjection
             Notificacoes.WhatsApp.Manipuladores.RoboAtendimentoWhatsAppHandler>();
         services.AddHostedService<RoboAtendimento.Runtime.RoboAtendimentoWorker>();
 
+        // ---- Cliente da Messages API do treinador do robô (ADR-0050/0051) — turnos longos, poucas
+        // chamadas/dia; timeout folgado (o do motor de atendimento mataria a análise no meio).
+        // Reposto após f192fee7 ter tirado a linha (que apontava para o tipo errado,
+        // Inteligencia.Provedores.ClienteMessagesApi) sem repor o tipo certo: a classe real
+        // ClienteAnthropicTreinamento continuou como dependência, e sua ausência no DI derrubava
+        // TODO o /conversas na ativação do controller (ERRO-A834QN).
+        services.AddHttpClient<RoboAtendimento.Treinamento.ClienteAnthropicTreinamento>(client =>
+        {
+            client.BaseAddress = new Uri(anthropicBaseUrl);
+            client.Timeout = TimeSpan.FromMinutes(10);
+        }).AddHttpMessageHandler<Alertas.FalhaContaIaHandler>();
+
         // ---- Treinamento do robô (crítica do atendente → análise adversarial → correção) ----
         services.AddScoped<RoboAtendimento.Treinamento.IRoboBriefingService,
             RoboAtendimento.Treinamento.RoboBriefingService>();
