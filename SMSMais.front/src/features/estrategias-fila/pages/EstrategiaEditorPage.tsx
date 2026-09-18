@@ -314,7 +314,27 @@ export function EstrategiaEditorPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+      </header>
+
+      {erro ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{extrairMensagemDeErro(erro)}</p> : null}
+
+      {carregando ? (
+        <div className="flex items-center justify-center py-16 text-gray-400">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="ml-2 text-xs">Montando o cenário atual…</span>
+        </div>
+      ) : null}
+
+      {cenario ? (
+        <>
+          <AvisoCobertura de={diaBrasilia(-84)} ate={diaBrasilia()} />
+          <CenarioAtualCard cenario={cenario} />
+
+          {/* Ações junto da simulação: o cenário acima é estático; o que muda começa aqui. A barra
+              gruda no topo ao rolar para o botão não ficar longe do quadro nem da projeção. */}
+          <div className="sticky top-0 z-10 -mx-1 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-xs font-semibold text-gray-700">Simulação</span>
           <Button variante="ghost" tamanho="sm" disabled={ocupado || voltando || !procedimentoNome} onClick={aoVoltarParaHoje} title="Descarta as mudanças da tela e recarrega o cenário e os parâmetros como estão hoje no SISREG. Não grava.">
             {voltando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Voltar para hoje
           </Button>
@@ -347,28 +367,14 @@ export function EstrategiaEditorPage() {
               <Archive className="h-4 w-4" /> Arquivar
             </Button>
           ) : null}
-        </div>
-      </header>
-
-      {rodar.isPending && rodar.variables?.modo === 'Agente' ? (
+                    </div>
+            {rodar.isPending && rodar.variables?.modo === 'Agente' ? (
         <p className="flex items-center gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
           <Loader2 className="h-4 w-4 animate-spin" /> O agente está testando combinações no simulador. Isso leva de 30 a 90 segundos — pode continuar olhando o cenário.
         </p>
-      ) : null}
+            ) : null}
 
-      {erro ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{extrairMensagemDeErro(erro)}</p> : null}
-
-      {carregando ? (
-        <div className="flex items-center justify-center py-16 text-gray-400">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="ml-2 text-xs">Montando o cenário atual…</span>
-        </div>
-      ) : null}
-
-      {cenario ? (
-        <>
-          <AvisoCobertura de={diaBrasilia(-84)} ate={diaBrasilia()} />
-          <CenarioAtualCard cenario={cenario} />
+          </div>
 
           {parametros ? (
             <>

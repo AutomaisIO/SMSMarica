@@ -95,8 +95,9 @@ export function QuadroSimulacao({ parametros: p, aoMudar, desabilitado }: Props)
         <div>
           <h2 className="text-sm font-semibold text-gray-900">Quadro de oferta</h2>
           <p className="text-[11px] text-gray-500">
-            Clique nos dias para acender e apagar. Anel = dia que a escala publica hoje. Ponto âmbar = o médico já tem
-            outra escala nesse dia (a simulação deixa; o agente não).
+            Clique nos dias para acender e apagar. <span className="rounded bg-red-600 px-1 text-white">vermelho</span> = dia
+            que a escala publica hoje · <span className="rounded bg-emerald-500 px-1 text-white">verde</span> = dia acrescentado na
+            simulação · contorno riscado = dia real apagado · ponto âmbar = já tem outra escala nesse dia (a simulação deixa; o agente não).
           </p>
         </div>
         <p className="text-xs text-gray-600">
@@ -111,7 +112,7 @@ export function QuadroSimulacao({ parametros: p, aoMudar, desabilitado }: Props)
             <tr className="text-left text-[10px] uppercase tracking-wide text-gray-500">
               <th className="py-1 pr-2">Profissional</th>
               {ORDEM_DIAS.map((d) => (
-                <th key={d} className="px-0.5 py-1 text-center">
+                <th key={d} className="w-7 px-0 py-1 text-center">
                   {DIAS_CURTOS[d]}
                 </th>
               ))}
@@ -232,7 +233,7 @@ export function QuadroSimulacao({ parametros: p, aoMudar, desabilitado }: Props)
               const real = l.diasReais.includes(d);
               const ocupado = l.outrasEscalas[d];
               return (
-                <td key={d} className="px-0.5 py-1 text-center">
+                <td key={d} className="w-7 px-0 py-1 text-center">
                   <button
                     type="button"
                     disabled={desabilitado}
@@ -242,13 +243,13 @@ export function QuadroSimulacao({ parametros: p, aoMudar, desabilitado }: Props)
                       (real ? 'Dia publicado na escala hoje. ' : '') +
                       (aceso ? 'Clique para apagar' : 'Clique para acender')
                     }
-                    className={`relative inline-flex h-7 w-8 items-center justify-center rounded text-[10px] font-semibold transition-colors ${
+                    className={`relative inline-flex h-6 w-6 items-center justify-center rounded text-[9px] font-semibold leading-none transition-colors ${
                       aceso
                         ? real
-                          ? 'bg-primary-600 text-white ring-2 ring-primary-200'
-                          : 'bg-primary-500 text-white'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-emerald-500 text-white'
                         : real
-                          ? 'bg-white text-gray-400 ring-2 ring-gray-200 line-through'
+                          ? 'bg-white text-red-300 ring-1 ring-red-300 line-through'
                           : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                     }`}
                   >
