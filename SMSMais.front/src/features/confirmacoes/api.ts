@@ -3,6 +3,7 @@ import { http } from '@/shared/api/httpClient';
 import type { NotificacaoDetalhe } from '@/features/notificacoes-agendamento/types';
 import type {
   ConfirmacaoConfiguracao,
+  PreviaLote,
   FiltroFila,
   FiltroRespostas,
   PaginaFila,
@@ -81,6 +82,27 @@ export function useSalvarConfiguracaoConfirmacao() {
       qc.setQueryData([...raiz, 'configuracao'], dados);
       void qc.invalidateQueries({ queryKey: [...raiz, 'resumo'] });
     },
+  });
+}
+
+export function usePreviaLote(
+  filtro: { unidadeId?: string; de?: string; ate?: string; forcar?: boolean },
+  ativo: boolean,
+) {
+  return useQuery({
+    queryKey: [...raiz, 'lote', 'previa', filtro],
+    queryFn: async () =>
+      (await http.get<PreviaLote>('/confirmacoes/lote/previa', { params: params(filtro) })).data,
+    enabled: ativo,
+  });
+}
+
+export function useDispararLote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dados: { unidadeId?: string; de?: string; ate?: string; forcar?: boolean }) =>
+      (await http.post<PreviaLote>('/confirmacoes/lote', dados)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: raiz }),
   });
 }
 

@@ -84,6 +84,18 @@ export type PaginaRespostas = {
   tamanho: number;
 };
 
+export type PreviaLote = {
+  elegiveis: number;
+  candidatos: number;
+  foraProcedimentoDesligado: number;
+  foraJaAvisado: number;
+  foraNaoSisreg: number;
+  porDia: { dia: string; total: number; consultas: number; exames: number }[];
+  /** Só no disparo: quantos foram enfileirados. */
+  enfileiradas: number | null;
+  aviso: string | null;
+};
+
 export type RegraUnidade = {
   unidadeId: string;
   unidadeNome: string;

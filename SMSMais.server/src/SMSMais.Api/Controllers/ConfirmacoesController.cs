@@ -18,6 +18,7 @@ namespace SMSMais.Api.Controllers;
 public sealed class ConfirmacoesController(
     IConfirmacaoConfiguracaoService configuracao,
     IConfirmacoesPainelService painel,
+    ILoteConfirmacaoService lote,
     IComunicacaoGestaoService gestao) : ControllerBase
 {
     // ---- Fila ----
@@ -77,6 +78,31 @@ public sealed class ConfirmacoesController(
         [FromQuery] int tamanho = 50,
         CancellationToken ct = default) =>
         await painel.ListarRespostasAsync(resposta, de, ate, texto, pagina, tamanho, ct);
+
+    // ---- Disparo em lote (estoque que a importação deixou para trás) ----
+
+    /// <summary>Prévia do lote: quantos seriam avisados, por dia, e quantos ficam de fora e por quê.
+    /// Não muda nada. <paramref name="de"/>/<paramref name="ate"/> são dias de Brasília, inclusivos
+    /// (é como se deixa o dia seguinte de fora e começa na segunda).</summary>
+    [HttpGet("lote/previa")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PreviaLoteConfirmacaoDto>(StatusCodes.Status200OK)]
+    public async Task<PreviaLoteConfirmacaoDto> PreviaLote(
+        [FromQuery] Guid? unidadeId, [FromQuery] DateOnly? de, [FromQuery] DateOnly? ate,
+        [FromQuery] bool forcar = false, CancellationToken ct = default) =>
+        await lote.PreverAsync(unidadeId, de, ate, forcar, ct);
+
+    /// <param name="Forcar">Ignora as chaves de unidade/procedimento (exige unidade escolhida).</param>
+    public sealed record DispararLoteRequest(Guid? UnidadeId, DateOnly? De, DateOnly? Ate, bool Forcar = false);
+
+    /// <summary>Enfileira o lote (o worker envia, respeitando janela e vazão). Idempotente.</summary>
+    [HttpPost("lote")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<PreviaLoteConfirmacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<PreviaLoteConfirmacaoDto> DispararLote(
+        [FromBody] DispararLoteRequest request, CancellationToken ct) =>
+        await lote.DispararAsync(request.UnidadeId, request.De, request.Ate, request.Forcar, ct);
 
     // ---- Regras ----
 

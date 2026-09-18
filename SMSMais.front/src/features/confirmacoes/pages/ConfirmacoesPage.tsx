@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarCheck2, Clock, RefreshCw, Save, Search } from 'lucide-react';
+import { CalendarCheck2, Clock, RefreshCw, Save, Search, Send } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -20,6 +20,8 @@ import type {
 import {
   useAlterarRegraUnidade,
   useConfiguracaoConfirmacao,
+  useDispararLote,
+  usePreviaLote,
   useFila,
   useItemFila,
   useRegrasUnidades,
@@ -416,6 +418,212 @@ function AbaRespostas() {
   );
 }
 
+// ------------------------------------------------------------------ Lote
+
+/** dd/mm (seg) — o dia como quem lê a agenda enxerga. */
+function diaLegivel(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', weekday: 'short' });
+}
+
+function hojeMais(dias: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Avisar o estoque que a importação deixou para trás: quando a unidade liga a chave, o que já
+ * estava importado não gera aviso nenhum. Aqui se escolhe o período da AGENDA (não do envio) —
+ * é assim que se deixa o dia seguinte de fora e se começa na segunda.
+ */
+function AbaLote() {
+  const podeEditar = usePermissao('Confirmacoes', 'Edicao');
+  const regras = useRegrasUnidades();
+
+  const [unidadeId, setUnidadeId] = useState('');
+  const [de, setDe] = useState(hojeMais(1));
+  const [ate, setAte] = useState(hojeMais(10));
+  const [forcar, setForcar] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  // Forçando, a lista precisa ter TODAS as unidades: a graça é justamente disparar para uma que
+  // está com a chave desligada (sem religar o automático).
+  const unidadesDaLista = useMemo(
+    () => (regras.data ?? []).filter((u) => forcar || u.enviarConfirmacao),
+    [regras.data, forcar],
+  );
+
+  const filtro = { unidadeId: unidadeId || undefined, de, ate, forcar: forcar || undefined };
+  const previa = usePreviaLote(filtro, Boolean(de && ate) && (!forcar || Boolean(unidadeId)));
+  const disparar = useDispararLote();
+  const p = previa.data;
+  const resultado = disparar.data;
+
+  // 100 por rodada, uma rodada por minuto: é o que o worker escoa.
+  const minutos = p ? Math.max(1, Math.ceil(p.elegiveis / 100)) : 0;
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm text-gray-600">
+        O aviso nasce na importação: ligar a chave da unidade <strong>não</strong> avisa quem já
+        estava agendado. Este disparo cobre esse estoque, com a <strong>mesma régua</strong> — só
+        SISREG, unidade ligada, procedimento marcado, agendamento futuro e paciente que ainda não
+        respondeu. Quem já recebeu aviso não entra de novo.
+      </p>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <label className="flex flex-col gap-1 text-sm md:col-span-2">
+          <span className="font-medium text-gray-700">Unidade</span>
+          <Select value={unidadeId} onChange={(e) => setUnidadeId(e.target.value)}>
+            <option value="">Todas as unidades com aviso ligado</option>
+            {unidadesDaLista.map((u) => (
+              <option key={u.unidadeId} value={u.unidadeId}>
+                {u.unidadeNome}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-gray-700">Agenda de</span>
+          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-gray-700">até</span>
+          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+        </label>
+      </div>
+
+      {podeEditar ? (
+        <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={forcar}
+            onChange={(e) => {
+              setForcar(e.target.checked);
+              if (e.target.checked) setUnidadeId('');
+            }}
+          />
+          <span>
+            <strong>Ignorar as chaves</strong> de unidade e de procedimento (exige escolher a unidade).
+            Serve para avisar uma unidade que está com o automático <em>desligado</em>, sem religá-lo —
+            o disparo passa a ser decisão de quem clica. As regras de privacidade continuam valendo:
+            número marcado como inválido não recebe, e número não verificado recebe primeiro o desafio
+            de identificação.
+          </span>
+        </label>
+      ) : null}
+
+      {forcar && !unidadeId ? (
+        <p className="text-sm text-amber-800">Escolha a unidade para poder forçar o disparo.</p>
+      ) : null}
+
+      {previa.isError ? <p className="text-sm text-red-700">{extrairMensagemDeErro(previa.error)}</p> : null}
+
+      {p ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Numero rotulo="Serão avisados" valor={p.elegiveis} destaque="text-emerald-700" />
+            <Numero
+              rotulo={forcar ? 'Procedimento desligado (incluídos)' : 'Procedimento desligado'}
+              valor={p.foraProcedimentoDesligado}
+              dica={
+                forcar
+                  ? 'No modo forçado a chave do procedimento é ignorada — estes entram no lote.'
+                  : 'Agendamentos do período cujo procedimento não está marcado para avisar.'
+              }
+            />
+            <Numero rotulo="Já avisados antes" valor={p.foraJaAvisado} />
+            <Numero rotulo="Fora do SISREG" valor={p.foraNaoSisreg} />
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 text-left">Dia da agenda</th>
+                  <th className="px-3 py-2 text-right">Total</th>
+                  <th className="px-3 py-2 text-right">Consultas</th>
+                  <th className="px-3 py-2 text-right">Exames</th>
+                </tr>
+              </thead>
+              <tbody>
+                {p.porDia.map((d) => (
+                  <tr key={d.dia} className="border-t border-gray-100">
+                    <td className="px-3 py-1.5">{diaLegivel(d.dia)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{d.total}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-gray-600">{d.consultas}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-gray-600">{d.exames}</td>
+                  </tr>
+                ))}
+                {p.porDia.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-3 text-center text-gray-500">
+                      Nada a avisar neste período.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {p.aviso ? (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{p.aviso}</p>
+          ) : null}
+
+          {p.elegiveis > 0 ? (
+            <p className="text-sm text-gray-600">
+              As mensagens entram na fila e saem no ritmo do worker: cerca de <strong>{minutos} min</strong>{' '}
+              de envio, dentro da janela de horário. Fora dela, ficam empilhadas até a janela abrir.
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
+      {resultado ? (
+        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {resultado.enfileiradas} mensagem(ns) na fila. Acompanhe na aba <strong>Fila de envio</strong>.
+        </p>
+      ) : null}
+      {disparar.isError ? (
+        <p className="text-sm text-red-700">{extrairMensagemDeErro(disparar.error)}</p>
+      ) : null}
+
+      {podeEditar && p && p.elegiveis > 0 ? (
+        confirmando ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-900">
+              Confirma o envio para <strong>{p.elegiveis}</strong> agendamento(s) de{' '}
+              {diaLegivel(p.porDia[0]?.dia ?? de)} a {diaLegivel(p.porDia[p.porDia.length - 1]?.dia ?? ate)}? São
+              mensagens reais para pacientes — e a resposta deles volta para a Central de Atendimento.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                disabled={disparar.isPending}
+                onClick={() => {
+                  disparar.mutate(filtro);
+                  setConfirmando(false);
+                }}
+              >
+                Sim, disparar {p.elegiveis}
+              </Button>
+              <Button variante="outline" onClick={() => setConfirmando(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button onClick={() => setConfirmando(true)} disabled={disparar.isPending}>
+            <Send className="mr-1.5 h-4 w-4" /> Disparar lote
+          </Button>
+        )
+      ) : null}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ Regras
 
 function AbaRegras() {
@@ -592,6 +800,7 @@ export function ConfirmacoesPage() {
         abas={[
           { id: 'fila', rotulo: 'Fila de envio', conteudo: <AbaFila /> },
           { id: 'respostas', rotulo: 'Respostas dos pacientes', conteudo: <AbaRespostas /> },
+          { id: 'lote', rotulo: 'Disparar lote', conteudo: <AbaLote /> },
           { id: 'regras', rotulo: 'Regras e parâmetros', conteudo: <AbaRegras /> },
         ]}
       />

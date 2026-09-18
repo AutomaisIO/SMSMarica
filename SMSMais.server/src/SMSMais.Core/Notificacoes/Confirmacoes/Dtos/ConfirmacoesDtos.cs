@@ -60,3 +60,22 @@ public sealed record RegraUnidadeConfirmacaoDto(
     bool EnviarConfirmacao,
     int ProcedimentosComAviso,
     int ProcedimentosTotal);
+
+/// <summary>Prévia (ou resultado) de um disparo em lote da confirmação.</summary>
+public sealed record PreviaLoteConfirmacaoDto(
+    /// <summary>Quantos seriam avisados com a régua atual.</summary>
+    int Elegiveis,
+    /// <summary>Agendamentos pendentes no período, antes dos filtros.</summary>
+    int Candidatos,
+    /// <summary>De fora: o procedimento está com o aviso desligado.</summary>
+    int ForaProcedimentoDesligado,
+    /// <summary>De fora: já existe comunicação de confirmação para o agendamento.</summary>
+    int ForaJaAvisado,
+    /// <summary>De fora: não veio do SISREG (cadastro manual).</summary>
+    int ForaNaoSisreg,
+    IReadOnlyList<LoteConfirmacaoPorDiaDto> PorDia,
+    /// <summary>Preenchido só no disparo: quantos foram enfileirados.</summary>
+    int? Enfileiradas,
+    string? Aviso);
+
+public sealed record LoteConfirmacaoPorDiaDto(DateOnly Dia, int Total, int Consultas, int Exames);
