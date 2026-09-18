@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0059 — Atendimento humano de confirmação: posse por solicitação, filas derivadas e cancelamento em duas fases</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0059 — Atendimento humano de confirmação: posse por solicitação, filas derivadas e cancelamento em duas fases</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-09-18 <strong>Relacionado:</strong> <a href="./0047-posse-de-conversa-filas.md">ADR-0047</a> (posse de conversa — o mesmo modelo de claim/trilha/xmin, aplicado à solicitação) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (contato negado; número errado registrado pela atendente entra pela mesma pendência) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (SISREG só-leitura — <strong>mantido</strong> nesta fase) · <a href="./0043-instancia-por-municipio.md">ADR-0043</a></p>
+<h2>Contexto</h2>
+<p>As atendentes da regulação confirmavam presença numa planilha Excel com a agenda de todas as unidades: liam a próxima solicitação, ligavam ou chamavam no zap, e marcavam "confirmou" / "não conseguiu contato" à mão. O sistema já sabia tudo que a planilha sabia — solicitações do SISREG, comunicação automática com recibos (✓, ✓✓, lida, falha), resposta do paciente, "não sou essa pessoa", conversa com janela de 24h — mas não tinha o <strong>fluxo humano por cima</strong>: quem está com qual solicitação, confirmar/cancelar pela mão, pendências e contatos errados como filas.</p>
+<p>Duas telas vizinhas se sobrepunham: <strong>Confirmações</strong> (módulo 65, criado em 17/09: fila de envio, respostas, lote, regras) e <strong>Notificações de Agendamento</strong> (módulo 38: lista crua de <code>comunicacao_paciente</code>). Nenhuma servia à atendente; nenhuma servia ao gestor.</p>
+<h2>Decisão</h2>
+<h3>1. Confirmações é o trabalho das atendentes; Mensageria é a gestão dos envios</h3>
+<ul>
+<li><strong>Confirmações</strong> (módulo 65) passa a ter quatro abas — **Não confirmados · Confirmados ·</li>
+</ul>
+<p>  Contato errado · Pendentes** — em cards ordenados pelo agendamento mais próximo. Sem escopo por   <code>X-Unidade-Id</code>: a planilha era da rede inteira, o filtro por unidade é opcional.</p>
+<ul>
+<li><strong>Mensageria</strong> (módulo 38, ex-"Notificações de Agendamento", rota <code>/app/mensageria</code>, número</li>
+</ul>
+<p>  do módulo mantido) recebe o que é gestão: <strong>resumo diário</strong> (entradas, envios, entregas,   leituras, falhas por erro Meta, retidas, respostas, taxas), a lista de envios com paginação,   as respostas dos pacientes, o <strong>disparo em lote</strong> e as <strong>regras</strong> — tudo que estava em   Confirmações e não era atendimento.</p>
+<h3>2. As abas são DERIVADAS; a posse é a única coisa nova</h3>
+<p>Nada de estado duplicado: confirmado/cancelado continuam em <code>solicitacao.status_confirmacao</code> e <code>solicitacao.status</code>; "número negado" continua na <code>pendencia_cadastro</code>; o envio continua em <code>comunicacao_paciente</code>. O que entra é a <strong>posse humana</strong>:</p>
+<ul>
+<li><code>atendimento_confirmacao</code> — no máximo <strong>uma linha ativa por solicitação</strong> (índice único</li>
+</ul>
+<p>  filtrado por <code>encerrado_em IS NULL</code>), com atendente, situação (<code>EmAtendimento</code>, <code>Pendente</code>,   <code>ContatoErrado</code> = ativas; <code>Confirmado</code>, <code>Cancelado</code>, <code>Liberado</code>, <code>ContatoCorrigido</code> =   encerradas), motivo e <code>xmin</code> como token de concorrência.</p>
+<ul>
+<li><code>atendimento_confirmacao_evento</code> — trilha append-only (Atendido, Assumido, Transferido,</li>
+</ul>
+<p>  Confirmado, Cancelado, EnviadoPendente, ContatoErrado, Retomado, Liberado, ContatoCorrigido),   com De/Para em snapshot.</p>
+<div class="tw"><table><thead><tr><th>Aba</th><th>Regra (sobre solicitações vivas, agendadas de hoje em diante, não canceladas pela equipe; só SISREG quando a régua manda)</th></tr></thead><tbody>
+<tr><td>Não confirmados</td><td><code>status_confirmacao = Pendente</code>, sem pendência de número errado, sem atendimento estacionado</td></tr>
+<tr><td>Confirmados</td><td><code>status_confirmacao = Confirmada</code>, por qualquer canal (link, botão, robô, app, presencial, atendente)</td></tr>
+<tr><td>Contato errado</td><td>pendência aberta de número errado para o paciente <strong>ou</strong> atendimento em <code>ContatoErrado</code> <strong>ou</strong> comunicação retida em <code>AguardandoCorrecaoContato</code></td></tr>
+<tr><td>Pendentes</td><td>atendimento em <code>Pendente</code> (com motivo)</td></tr>
+</tbody></table></div>
+<p>Cancelados somem das quatro abas (ficam em Mensageria → Respostas e no detalhe da solicitação).</p>
+<h3>3. A posse é trava de ação, com "Assumir" explícito</h3>
+<p>Igual ao ADR-0047: <strong>Atender</strong> cria a posse (ou retoma uma estacionada); atender o que está com outra pessoa é <code>409 atendimento.ja_atendido</code>; <strong>Assumir</strong> troca a posse explicitamente (evento Assumido com De/Para); <strong>Transferir</strong> e <strong>Liberar</strong> exigem ser o dono; corrida no <code>xmin</code> → 409 legível. Confirmar/cancelar/estacionar sem ter clicado em Atender cria a posse na hora (é o mesmo gesto, encurtado).</p>
+<h3>4. Depois que uma pessoa entra, o automático não tenta mais</h3>
+<p>Ao <strong>Atender</strong> (e em todo desfecho humano), a comunicação automática de confirmação que <strong>ainda não saiu</strong> — na fila, em retry após falha, ou retida esperando identificação/correção de contato — vira terminal: <code>StatusComunicacao.SubstituidaPorAtendente = 10</code>. O que já foi enviado fica como está (os recibos continuam chegando). O handler da verificação cadastral e o comando do robô respeitam o status: identificar-se depois não ressuscita o envio.</p>
+<p>Motivo: "se não enviou, não tenta novamente; depois que o humano entra no circuito não precisa mais enviar" (Bernardo, 18/09/2026). O risco oposto — o paciente receber a mensagem automática minutos depois de falar com a atendente — era pior que perder um envio.</p>
+<h3>5. Confirmar e cancelar pela mão gravam o canal <code>atendente</code></h3>
+<p><code>solicitacao.confirmado_canal = "atendente"</code> (string livre, como os demais canais) + <code>contato_registro</code> (meio/resultado/observação) em cada desfecho. O <strong>presencial continua vencendo tudo</strong> (autorizar na recepção não foi tocado).</p>
+<h3>6. Cancelamento em DUAS fases — nesta, o SISREG não é tocado</h3>
+<p><strong>Fase 1 (esta ADR):</strong> <code>Cancelar</code> grava <code>solicitacao.status = Cancelada</code>, <code>cancelado_em</code>, <code>cancelado_por</code>, <code>motivo_cancelamento</code>, <code>status_confirmacao = Cancelada</code> (canal <code>atendente</code>), espelha o satélite de imagem, encerra as comunicações pendentes, <strong>revoga os magic links</strong> e registra o contato. A vaga volta a contar <strong>por derivação</strong> (<code>OfertasSisregService</code> filtra <code>cancelado_em IS NULL</code>) — não existe "recalcular vagas". A resposta traz <code>orientacaoSisreg = true</code> e a tela manda cancelar também no SISREG pelo navegador: a extensão Chrome já observa <code>cons_verificar · EXCLUIR_SOLICITACAO</code> e concilia (<code>ProcessadorCapturasSisreg</code>).</p>
+<p><strong>Fase 2 (plano próprio, fora desta ADR):</strong> modal de senha + escrita no SISREG. Pré-requisitos decididos em 18/09/2026: (a) spike do formulário de cancelamento em PROD <strong>com OK explícito por ação</strong> (hoje só se conhece <code>codigo_solicitacao</code> + <code>justificativa</code>, pela observação da extensão); (b) <code>ISisregSessaoOperador.PostEscritaAsync</code> com allowlist de URLs de escrita; (c) <strong>credencial do operador só em memória por sessão</strong>, no modelo do <code>SerSessaoOperadorStore</code> (senha digitada uma vez por login no painel, validada no SISREG, morre no logout) — <strong>sem cofre no banco</strong>; (d) reconciliação "cancelou mesmo?" relendo a solicitação; (e) aviso de que a sessão do navegador da atendente <strong>cai</strong> (o SISREG derruba a sessão anterior do mesmo login).</p>
+<p>Por que não fazer tudo de uma vez: escrever no SISREG sem o spike é chute em produção; e o efeito colateral de sessão única (robô derruba humano e vice-versa, ADR-0012 §CAPTCHA) precisa de desenho de operação, não só de código.</p>
+<h3>7. Contato errado pela mão da atendente entra pela mesma pendência do robô</h3>
+<p>"Contato errado" no card chama <code>IPendenciaCadastroService.RegistrarNumeroErradoAsync</code> — a mesma pendência <code>NumeroErrado</code> + carimbo FHIR de contato negado do ADR-0057. Corrigir = a recepção grava/verifica o número novo (OTP, <code>ModalOtpTelefone</code>) e clica em <strong>Corrigir contato</strong>: as pendências abertas do paciente são resolvidas (o que solta as comunicações retidas), a comunicação substituída por atendente é rearmada, e a solicitação volta à fila automática.</p>
+<h3>8. Botão do zap abre a conversa quando a janela está aberta</h3>
+<p><code>GET /conversas/situacao?pacienteId=&amp;telefone=</code> responde se há conversa viva com janela de 24h aberta. <code>BotaoWhatsAppPaciente</code> (em qualquer tela) abre a <strong>thread direto, com histórico</strong>, em vez do diálogo de template. Sem janela, o caminho antigo.</p>
+<h3>9. Lote manual: reenviar para já avisados e já confirmados</h3>
+<p>O disparo em lote (agora em Mensageria) ganha <code>incluirJaAvisados</code> (rearma a comunicação: links revogados, recibos zerados, envio novo) e <code>incluirJaConfirmados</code> (a resposta anterior vai para <code>contato_registro</code> e <code>status_confirmacao</code> volta a Pendente — senão o worker mata o envio como "já respondeu"). Opções discretas, tela de admin. Assunção registrada: "reenviar para quem confirmou" = <strong>pedir nova confirmação</strong>.</p>
+<h3>10. Custos são módulo próprio</h3>
+<p><code>ModuloPermissao.EstatisticaCustos = 67</code>. Sem ele, <code>GET /estatisticas/whatsapp</code> devolve o consumo do robô <strong>sem tokens e sem custo</strong> (tokens revelam custo) e sem a estimativa Meta — o backend omite, o front só esconde. A <strong>estimativa de custo Meta</strong> usa tarifas por categoria (utility/marketing/authentication, USD) e um mapa template → categoria guardados em <code>mensageria_configuracao</code> (singleton editado em Mensageria → Regras; <strong>nada seedado em migration</strong>, regra 9). Utility com janela de 24h aberta e texto de sessão não custam; é estimativa, a fatura é da Meta.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Migration única <code>20260918233414_AtendimentoConfirmacaoEMensageriaConfiguracao</code>: três tabelas,</li>
+</ul>
+<p>  três índices, nenhuma alteração em tabela existente. Enums novos são ints.</p>
+<ul>
+<li>Rotas antigas de Confirmações (<code>/confirmacoes/fila<em></code>, <code>/respostas</code>, <code>/lote</em></code>,</li>
+</ul>
+<p>  <code>/configuracao</code>, <code>/regras/*</code>) continuam existindo e aceitam <strong>Confirmações OU Mensageria</strong>   (<code>RequerQualquerPermissao</code>). A rota de front <code>/app/notificacoes-agendamento</code> redireciona para a   Mensageria e passa a ter guarda de módulo (antes não tinha).</p>
+<ul>
+<li>Permissões: <code>Confirmacoes</code> ganha <strong>Exclusao</strong> = cancelar agendamento; <code>NotificacoesAgendamento</code></li>
+</ul>
+<p>  vira "Mensageria" no rótulo (número mantido, sem migração de perfis); <code>EstatisticaCustos</code> novo.</p>
+<ul>
+<li>Polling de 30 s cobre a posse de terceiros nesta fase (sem SignalR).</li>
+<li>O que <strong>não</strong> muda: nada escreve no SISREG; presencial vence; ADR-0057 continua a régua de LGPD.</li>
+</ul>
+<h2>Pendências</h2>
+<ul>
+<li>Fase 2 do cancelamento (spike + sessão por operador em memória + escrita com allowlist).</li>
+<li>Tempo real da posse por SignalR, se o polling incomodar.</li>
+<li>Tarifas Meta puxadas automaticamente (hoje tabela editada à mão).</li>
+</ul>
+</main>
+</body>
+</html>

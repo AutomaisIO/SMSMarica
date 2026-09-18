@@ -2,7 +2,54 @@
 
 > Estado: **em produção** desde 2026-07-05. Migrations: `20260704012933_ConfirmacaoAgendamentoWhatsApp`, `20260705011223_AutorizacaoPresencialSolicitacao`, `20260705022530_RenomearComunicacaoPaciente`, `ConfirmacoesJanelaHorario` (17/09/2026).
 
-## Menu Confirmações (17/09/2026)
+## Confirmações (atendimento humano) + Mensageria (18/09/2026) — [ADR-0059](../adr/0059-atendimento-humano-de-confirmacao.md)
+
+O menu **Confirmações** (módulo 65, `/app/confirmacoes`) virou o trabalho das atendentes, no
+lugar da planilha: quatro abas em cards, do agendamento mais próximo para o mais distante —
+**Não confirmados · Confirmados · Contato errado · Pendentes**. O que era gestão (fila de envio,
+respostas, disparo em lote, regras) foi para a **Mensageria** (módulo 38, `/app/mensageria`,
+ex-"Notificações de Agendamento"), que ganhou o **Resumo diário** (entradas, envios, entregas,
+leituras, falhas por erro Meta, retidas, respostas, taxas) e as **tarifas Meta** para a
+estimativa de custo (Estatísticas, módulo 67).
+
+**Posse por solicitação** (`atendimento_confirmacao` + trilha `atendimento_confirmacao_evento`):
+*Atender* puxa o card (ou retoma uma estacionada); o card fica esmaecido para as outras com
+"Em atendimento por Fulana" e o botão *Assumir*; quem atende tem *Confirmar*, *Cancelar*,
+*Enviar para pendente*, *Contato errado*, *Transferir* e *Liberar*. Corrida = 409
+`atendimento.ja_atendido`. Confirmar/cancelar sem Atender antes cria a posse na hora.
+
+**Regra de ouro:** ao Atender (e em todo desfecho humano), a comunicação automática que ainda
+**não saiu** vira `StatusComunicacao.SubstituidaPorAtendente = 10` (terminal) — depois que uma
+pessoa entra no circuito o sistema não tenta mais. O que já foi enviado fica.
+
+**Canal `atendente`** em `solicitacao.confirmado_canal` + `contato_registro` em cada desfecho.
+Presencial continua vencendo tudo.
+
+**Cancelar — fase 1:** só no SMSMais (`status = Cancelada`, `cancelado_em` → a vaga volta a
+contar por derivação; links revogados; comunicações pendentes encerradas). A resposta traz
+`orientacaoSisreg` e a tela manda cancelar também no SISREG pelo navegador (a extensão concilia).
+Escrita no SISREG é fase 2 (spike com OK + sessão por operador em memória — ver ADR-0059 §6).
+
+**Contato errado** pela atendente = mesma pendência `NumeroErrado` do robô (ADR-0057). *Corrigir
+contato* = OTP no número novo (`ModalOtpTelefone`) + `POST .../contato-corrigido` (resolve as
+pendências, rearma a comunicação, devolve à fila).
+
+**Zap com janela aberta:** `GET /conversas/situacao?pacienteId=` — o botão do WhatsApp ao lado do
+paciente abre a thread direto (com histórico) quando há conversa viva nas 24h; senão, template.
+
+**Lote manual** (Mensageria): opções *reenviar para quem já recebeu* (rearma) e *reenviar para
+quem já confirmou* (resposta anterior vai para `contato_registro` e volta a Pendente).
+
+Endpoints: `GET /confirmacoes/atendimento?aba=&texto=&unidadeId=&envio=` ·
+`GET .../atendimento/resumo` · `GET .../atendimento/atendentes` · `GET .../atendimento/{id}/historico` ·
+`POST .../atendimento/{id}/atender|assumir|transferir|liberar|confirmar|cancelar|pendente|contato-errado|contato-corrigido`
+(permissão `Confirmacoes`: Consulta/Edicao; **Exclusao** = cancelar) ·
+`GET /comunicacoes-paciente/resumo-diario` · `GET|PUT /comunicacoes-paciente/configuracao-mensageria`
+(`NotificacoesAgendamento`). As rotas antigas de Confirmações aceitam qualquer um dos dois módulos.
+
+Testes: `AtendimentoConfirmacaoTests` (integração — 7 casos, verdes na bancada em 18/09/2026).
+
+## Menu Confirmações (17/09/2026) — fila/respostas/lote/regras (hoje em Mensageria)
 
 Tela `/app/confirmacoes` (módulo **65 `Confirmacoes`**; API `confirmacoes/*`), com três abas:
 
