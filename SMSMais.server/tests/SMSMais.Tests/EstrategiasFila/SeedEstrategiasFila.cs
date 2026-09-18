@@ -90,6 +90,30 @@ internal sealed class SeedEstrategiasFila
             });
         }
 
+        // O mesmo profissional tem MAMOGRAFIA na terça: é o "ocupado em" que o agente não pode acender.
+        db.SisregEscalas.Add(new SisregEscala
+        {
+            Id = Guid.NewGuid(),
+            CodigoEscala = Random.Shared.Next(100_000_000, 999_999_999).ToString(),
+            UnidadeId = seed.UnidadeId,
+            Cnes = "1234567",
+            UnidadeNomeSisreg = $"UNIDADE ESTRATEGIA {sufixo}",
+            ProfissionalCpf = seed.Cpf,
+            ProfissionalNome = $"DR TESTE {sufixo}",
+            ProcedimentoCodigo = "9" + Random.Shared.Next(100, 999) + "001",
+            ProcedimentoNome = $"MAMOGRAFIA TESTE {sufixo}",
+            DiaSemana = DayOfWeek.Tuesday,
+            HoraInicio = new TimeOnly(8, 0),
+            HoraFim = new TimeOnly(12, 0),
+            VigenciaInicio = hoje.AddDays(-70),
+            VigenciaFim = hoje.AddDays(56),
+            VagasPrimeiraVez = 4,
+            VagasTotal = 4,
+            Status = StatusEscalaSisreg.Ativa,
+            VistoEm = DateTime.UtcNow,
+            CriadoEm = DateTime.UtcNow,
+        });
+
         // Fila: 3 pelo nome do grupo, 2 pelo nome do item, e 1 que saiu sem agendar.
         for (var i = 0; i < NaFila + 1; i++)
         {

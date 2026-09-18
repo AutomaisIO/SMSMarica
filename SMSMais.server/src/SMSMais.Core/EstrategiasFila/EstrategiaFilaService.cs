@@ -39,6 +39,9 @@ public sealed class EstrategiaFilaService(
         return new SimularRespostaDto(cenario, SimuladorFila.Projetar(parametros, cenario.Fila.Total));
     }
 
+    public ProjecaoDto Projetar(ProjetarRequest request) =>
+        SimuladorFila.Projetar(Normalizar(request.Parametros), request.FilaInicial);
+
     // ------------------------------------------------------------------ leitura
 
     public async Task<IReadOnlyList<EstrategiaResumoDto>> ListarAsync(EstrategiaFiltro filtro, CancellationToken ct = default)

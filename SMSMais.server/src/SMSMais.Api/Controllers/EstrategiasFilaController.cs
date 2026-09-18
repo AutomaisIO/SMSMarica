@@ -44,6 +44,12 @@ public sealed class EstrategiasFilaController(
     public async Task<SimularRespostaDto> Simular([FromBody] SimularRequest request, CancellationToken ct) =>
         await estrategias.SimularAsync(request, ct);
 
+    /// <summary>Só a projeção (função pura): o que a tela chama a cada clique no quadro.</summary>
+    [HttpPost("projetar")]
+    [RequerPermissao(ModuloPermissao.EstrategiasFila, AcoesPermissao.Consulta)]
+    [ProducesResponseType<ProjecaoDto>(StatusCodes.Status200OK)]
+    public ProjecaoDto Projetar([FromBody] ProjetarRequest request) => estrategias.Projetar(request);
+
     [HttpGet]
     [RequerPermissao(ModuloPermissao.EstrategiasFila, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<EstrategiaResumoDto>>(StatusCodes.Status200OK)]

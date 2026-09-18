@@ -8,6 +8,8 @@ using SMSMais.Core.Integracoes.SisregWeb.Comum;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Sisreg;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace SMSMais.Core.EstrategiasFila;
 
@@ -242,7 +244,11 @@ public sealed class CenarioFilaService(
         var blocos = await db.Database.SqlQueryRaw<BlocoExpandido>(
             Formatar(SqlBlocosExpandidos), nomes, hoje, hoje.AddDays(7 * SemanasOferta), codigos, (object?)prefixo ?? DBNull.Value)
             .ToListAsync(ct);
-        var oferta = MontarOferta(blocos);
+        // Mesmas posições do FiltroFamiliaEscala ({0} nomes, {3} códigos, {4} prefixo); {1} = hoje, {2} sobra.
+        var outras = await db.Database.SqlQueryRaw<OutraEscalaLinha>(
+            Formatar(SqlOutrasEscalas), nomes, hoje, hoje, codigos, (object?)prefixo ?? DBNull.Value)
+            .ToListAsync(ct);
+        var oferta = MontarOferta(blocos, outras);
 
         // ---- ocupação (últimas 8 semanas cheias) ----
         var inicioOcupacao = inicioSemanaAtual.AddDays(-7 * SemanasOcupacao);
@@ -314,8 +320,18 @@ public sealed class CenarioFilaService(
         return new RitmoDto(m12, Media(26), m12 > 0 ? Math.Round(m4 / m12, 2) : null, cheia);
     }
 
-    private static OfertaCenarioDto MontarOferta(List<BlocoExpandido> blocos)
+    private static OfertaCenarioDto MontarOferta(List<BlocoExpandido> blocos, List<OutraEscalaLinha> outras)
     {
+        var outrasPorCpf = outras
+            .GroupBy(o => o.Cpf, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => (IReadOnlyDictionary<int, string>)g
+                .GroupBy(o => o.DiaSemana)
+                .ToDictionary(d => d.Key, d =>
+                {
+                    var rotulos = d.Select(o => $"{o.UnidadeNome} · {o.ProcedimentoNome}").Distinct().ToList();
+                    return rotulos.Count <= 2 ? string.Join("; ", rotulos) : $"{rotulos[0]}; {rotulos[1]} (+{rotulos.Count - 2})";
+                }), StringComparer.Ordinal);
+
         var regulados = blocos.Where(b => !b.AgendaLocal).ToList();
         var locais = blocos.Where(b => b.AgendaLocal).ToList();
 
@@ -333,11 +349,19 @@ public sealed class CenarioFilaService(
 
         var profissionais = regulados
             .GroupBy(b => b.Cpf)
-            .Select(g => new ProfissionalOfertaDto(
-                g.First().ProfissionalNome, g.First().Cbo,
-                g.GroupBy(b => b.UnidadeNome).OrderByDescending(x => x.Count()).First().Key,
-                [.. g.Select(b => (int)b.Dia.DayOfWeek).Distinct().Order()],
-                PorSemana(g.Sum(b => b.V1 + b.Vres))))
+            .Select(g =>
+            {
+                var turnosProf = g.Select(b => b.Dia).Distinct().Count();
+                var vagasProf = g.Sum(b => b.V1 + b.Vres);
+                var unidadePrincipal = g.GroupBy(b => (b.UnidadeId, b.UnidadeNome)).OrderByDescending(x => x.Count()).First().Key;
+                return new ProfissionalOfertaDto(
+                    IdEstavel(g.Key), g.First().ProfissionalNome, g.First().Cbo,
+                    unidadePrincipal.UnidadeId, unidadePrincipal.UnidadeNome,
+                    [.. g.Select(b => (int)b.Dia.DayOfWeek).Distinct().Order()],
+                    PorSemana(vagasProf),
+                    turnosProf == 0 ? 0 : Math.Round(vagasProf / (double)turnosProf, 2),
+                    outrasPorCpf.TryGetValue(g.Key, out var oe) ? oe : new Dictionary<int, string>());
+            })
             .OrderByDescending(p => p.VagasRegulacaoSemana).ThenBy(p => p.Nome)
             .ToList();
 
@@ -369,28 +393,35 @@ public sealed class CenarioFilaService(
     }
 
     /// <summary>
-    /// Os parâmetros que reproduzem a oferta de hoje. Sem escala nenhuma, entram valores de
-    /// partida razoáveis (2 turnos/semana, 10 por turno) para o agente ter de onde propor — e
-    /// ficam livres.
+    /// Os parâmetros que reproduzem a oferta de hoje: o quadro com os profissionais reais, os dias
+    /// que a escala publica acesos e as vagas por turno de cada um. Sem escala, o quadro nasce vazio
+    /// e o agente (ou o gestor) acrescenta médicos de simulação.
     /// </summary>
     private static ParametrosEstrategia ParametrosIniciais(OfertaCenarioDto oferta, OcupacaoCenarioDto ocupacao, RitmoDto entrada)
     {
-        var temOferta = oferta.Profissionais.Count > 0 && oferta.AtendimentosPorTurno > 0;
-        var unidadesReguladas = oferta.Unidades.Where(u => !u.AgendaLocal).Select(u => u.UnidadeId).Distinct().Count();
+        var quadro = oferta.Profissionais
+            .Select(p => new LinhaQuadro(
+                p.Id, p.Nome, Simulado: false, p.UnidadeId, p.Unidade,
+                Dias: p.Dias, p.AtendimentosPorTurno, Travado: false, DiasReais: p.Dias, p.OutrasEscalas))
+            .ToList();
 
         return new ParametrosEstrategia(
             Objetivo: ObjetivoEstrategia.ZerarEmSemanas,
             PrazoAlvoSemanas: null,
-            Unidades: new ParametroNumero(unidadesReguladas, false, 0, null),
-            Profissionais: new ParametroNumero(oferta.Profissionais.Count, false, 0, null),
-            TurnosPorProfissionalSemana: new ParametroNumero(temOferta ? oferta.TurnosPorProfissionalSemana : 2, false, 0, 14),
-            AtendimentosPorTurno: new ParametroNumero(temOferta ? oferta.AtendimentosPorTurno : 10, false, 0, null),
+            Quadro: quadro,
+            UnidadesSimuladas: [],
+            PermitirNovosProfissionais: true,
+            MaxNovosProfissionais: ParametrosEstrategia.MaxNovosPadrao,
             Aproveitamento: new ParametroNumero(Math.Round(ocupacao.Aproveitamento ?? AproveitamentoPadrao, 2), false, 0, 1),
             EntradaSemanal: new ParametroNumero(entrada.MediaSemanal12, true, 0, null),
             Mutiroes: [],
             MutiroesTravados: false,
             HorizonteSemanas: ParametrosEstrategia.HorizontePadrao);
     }
+
+    /// <summary>Hash curto do CPF: estável entre rodadas, sem expor o número.</summary>
+    private static string IdEstavel(string cpf) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("prof:" + cpf)))[..10].ToLowerInvariant();
 
     // ------------------------------------------------------------------ apoio
 
@@ -509,6 +540,26 @@ public sealed class CenarioFilaService(
           and
         """ + FiltroFamiliaEscala;
 
+    /// <summary>
+    /// Em que dias os profissionais da família já têm escala de OUTRO procedimento (qualquer unidade,
+    /// inclusive agenda local): {0} nomes, {1} hoje, {2} sem uso, {3} códigos, {4} prefixo. É o que impede o agente de
+    /// "acender" um dia em que o médico está na mamografia.
+    /// </summary>
+    private const string SqlOutrasEscalas = """
+        select e.profissional_cpf "Cpf", e.dia_semana "DiaSemana", u.nome "UnidadeNome", e.procedimento_nome "ProcedimentoNome"
+        from smsmarica.sisreg_escala e
+        join smsmarica.unidade u on u.id = e.unidade_id
+        where e.status = 1 and not e.ausente and e.vigencia_fim >= {1}::date
+          and e.profissional_cpf in (
+              select distinct e.profissional_cpf from smsmarica.sisreg_escala e
+              where e.status = 1 and not e.ausente and e.vigencia_fim >= {1}::date and
+        """ + FiltroFamiliaEscala + """
+          )
+          and not
+        """ + FiltroFamiliaEscala + """
+        group by 1, 2, 3, 4
+        """;
+
     /// <summary>Oferta por procedimento da escala nas próximas semanas: {0} início, {1} fim (exclusivo).</summary>
     private const string SqlOfertaPorProcedimento = """
         with dias as (
@@ -528,6 +579,8 @@ public sealed class CenarioFilaService(
     // ------------------------------------------------------------------ linhas SQL
 
     private sealed record OfertaPorProcedimentoLinha(string Codigo, string Nome, int Unidades, int Profissionais, int VagasRegulacao);
+
+    private sealed record OutraEscalaLinha(string Cpf, int DiaSemana, string UnidadeNome, string ProcedimentoNome);
 
     private sealed record BlocoExpandido(
         Guid UnidadeId, string UnidadeNome, string? Cnes, bool AgendaLocal,

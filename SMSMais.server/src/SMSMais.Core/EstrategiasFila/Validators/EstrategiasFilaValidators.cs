@@ -14,6 +14,19 @@ public sealed class ParametroNumeroValidator : AbstractValidator<ParametroNumero
     }
 }
 
+public sealed class LinhaQuadroValidator : AbstractValidator<LinhaQuadro>
+{
+    public LinhaQuadroValidator()
+    {
+        RuleFor(l => l.Id).NotEmpty().MaximumLength(40);
+        RuleFor(l => l.Nome).NotEmpty().MaximumLength(200);
+        RuleFor(l => l.Unidade).MaximumLength(200);
+        RuleFor(l => l.AtendimentosPorTurno).GreaterThanOrEqualTo(0).LessThanOrEqualTo(1000);
+        RuleFor(l => l.Dias).NotNull();
+        RuleForEach(l => l.Dias).InclusiveBetween(0, 6).When(l => l.Dias is not null);
+    }
+}
+
 public sealed class ParametrosEstrategiaValidator : AbstractValidator<ParametrosEstrategia>
 {
     public ParametrosEstrategiaValidator()
@@ -23,14 +36,14 @@ public sealed class ParametrosEstrategiaValidator : AbstractValidator<Parametros
         RuleFor(p => p.PrazoAlvoSemanas).GreaterThan(0).LessThanOrEqualTo(ParametrosEstrategia.HorizonteMaximo)
             .When(p => p.PrazoAlvoSemanas is not null);
         RuleFor(p => p.HorizonteSemanas).InclusiveBetween(0, ParametrosEstrategia.HorizonteMaximo);
+        RuleFor(p => p.MaxNovosProfissionais).InclusiveBetween(0, 50);
 
-        RuleFor(p => p.Unidades).NotNull().SetValidator(new ParametroNumeroValidator());
-        RuleFor(p => p.Profissionais).NotNull().SetValidator(new ParametroNumeroValidator());
-        RuleFor(p => p.TurnosPorProfissionalSemana).NotNull().SetValidator(new ParametroNumeroValidator());
-        RuleFor(p => p.TurnosPorProfissionalSemana.Valor).LessThanOrEqualTo(14)
-            .WithMessage("No máximo 14 turnos por semana por profissional (2 por dia).")
-            .When(p => p.TurnosPorProfissionalSemana is not null);
-        RuleFor(p => p.AtendimentosPorTurno).NotNull().SetValidator(new ParametroNumeroValidator());
+        RuleFor(p => p.Quadro).NotNull();
+        RuleForEach(p => p.Quadro).SetValidator(new LinhaQuadroValidator()).When(p => p.Quadro is not null);
+        RuleFor(p => p.Quadro).Must(q => q.Count <= 300).WithMessage("Quadro grande demais (máximo 300 linhas).")
+            .When(p => p.Quadro is not null);
+        RuleForEach(p => p.UnidadesSimuladas).NotEmpty().MaximumLength(200).When(p => p.UnidadesSimuladas is not null);
+
         RuleFor(p => p.Aproveitamento).NotNull().SetValidator(new ParametroNumeroValidator());
         RuleFor(p => p.Aproveitamento.Valor).LessThanOrEqualTo(1).When(p => p.Aproveitamento is not null);
         RuleFor(p => p.EntradaSemanal).NotNull().SetValidator(new ParametroNumeroValidator());
@@ -41,6 +54,15 @@ public sealed class ParametrosEstrategiaValidator : AbstractValidator<Parametros
             m.RuleFor(x => x.Vagas).InclusiveBetween(1, 100_000);
             m.RuleFor(x => x.Descricao).MaximumLength(200);
         }).When(p => p.Mutiroes is not null);
+    }
+}
+
+public sealed class ProjetarRequestValidator : AbstractValidator<ProjetarRequest>
+{
+    public ProjetarRequestValidator()
+    {
+        RuleFor(r => r.FilaInicial).InclusiveBetween(0, 10_000_000);
+        RuleFor(r => r.Parametros).NotNull().SetValidator(new ParametrosEstrategiaValidator());
     }
 }
 

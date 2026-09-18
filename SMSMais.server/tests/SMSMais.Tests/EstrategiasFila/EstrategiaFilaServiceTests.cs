@@ -68,7 +68,8 @@ public class EstrategiaFilaServiceTests(PostgresFixture fixture)
             .Returns(ci =>
             {
                 var p = ci.ArgAt<ParametrosEstrategia>(1);
-                var finais = p with { Profissionais = p.Profissionais.Com(p.Profissionais.Valor * 2) };
+                // O agente acende sábado no único profissional.
+                var finais = p with { Quadro = [.. p.Quadro.Select(l => l with { Dias = [.. l.Dias, 6] })] };
                 var proj = SimuladorFila.Projetar(finais, ci.ArgAt<CenarioFilaDto>(0).Fila.Total);
                 return new ResultadoAgenteEstrategia(
                     finais, proj,
@@ -82,13 +83,14 @@ public class EstrategiaFilaServiceTests(PostgresFixture fixture)
         rodada.Modo.Should().Be(ModoRodadaEstrategia.Agente);
         rodada.Proposta.Should().NotBeNull();
         rodada.Proposta!.Acoes.Should().ContainSingle();
-        rodada.ParametrosResultado.Profissionais.Valor.Should().Be(antes.Profissionais.Valor * 2);
+        rodada.ParametrosResultado.Quadro[0].Dias.Should().Contain(6);
         rodada.CustoUsd.Should().BeGreaterThan(0);
         rodada.Falha.Should().BeNull();
 
         var depois = await servico.ObterAsync(id);
         depois.RodadaAtual!.Numero.Should().Be(2);
-        depois.Parametros.Profissionais.Valor.Should().Be(antes.Profissionais.Valor * 2);
+        depois.Parametros.Quadro[0].Dias.Should().Contain(6);
+        depois.Parametros.TurnosSemanais().Should().Be(antes.TurnosSemanais() + 1);
         depois.Rodadas.Should().HaveCount(2);
 
         // Agente falha: a rodada 3 existe (com o custo), mas a atual continua a 2.
@@ -115,11 +117,17 @@ public class EstrategiaFilaServiceTests(PostgresFixture fixture)
         var id = await servico.CriarAsync(new CriarEstrategiaRequest("Manual", seed.CodigoGrupo, seed.NomeGrupo, null!));
         var p = (await servico.ObterAsync(id)).Parametros;
 
-        var novos = p with { Profissionais = p.Profissionais.Com(4), Mutiroes = [new MutiraoDto(1, 100, "sábado")] };
+        var novos = p with
+        {
+            Quadro = [.. p.Quadro, new LinhaQuadro("sim-1", "Médico simulação 1", true, null, "Unidade simulação", [1, 2, 3], 10, false, [], new Dictionary<int, string>())],
+            UnidadesSimuladas = ["Unidade simulação"],
+            Mutiroes = [new MutiraoDto(1, 100, "sábado")],
+        };
         var rodada = await servico.RodarAsync(id, new NovaRodadaRequest(ModoRodadaEstrategia.Manual, novos));
 
         rodada.Numero.Should().Be(2);
-        rodada.ParametrosResultado.Profissionais.Valor.Should().Be(4);
+        rodada.ParametrosResultado.Quadro.Should().HaveCount(2);
+        rodada.ParametrosResultado.Quadro[1].Simulado.Should().BeTrue();
         rodada.Projecao.Serie[1].Capacidade.Should().BeGreaterThan(rodada.Projecao.CapacidadeSemanal);
         (await servico.ObterAsync(id)).RodadaAtual!.Numero.Should().Be(2);
     }

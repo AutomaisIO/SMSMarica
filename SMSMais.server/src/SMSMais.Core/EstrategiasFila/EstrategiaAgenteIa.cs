@@ -200,11 +200,10 @@ public sealed class EstrategiaAgenteIa(
             atendidosAteZerar = proj.AtendidosAteZerar,
             parametrosUsados = new
             {
-                unidades = p.Unidades.Valor,
-                profissionais = p.Profissionais.Valor,
-                turnosPorProfissionalSemana = p.TurnosPorProfissionalSemana.Valor,
-                atendimentosPorTurno = p.AtendimentosPorTurno.Valor,
                 turnosSemanais = p.TurnosSemanais(),
+                profissionais = p.Quadro.Count,
+                medicosSimulacao = p.Quadro.Count(l => l.Simulado),
+                quadro = p.Quadro.Select(l => new { l.Id, l.Nome, l.Unidade, l.Simulado, l.Dias, l.AtendimentosPorTurno, l.Travado }),
                 aproveitamento = p.Aproveitamento.Valor,
                 entradaSemanal = p.EntradaSemanal.Valor,
                 mutiroes = p.Mutiroes,
@@ -253,16 +252,55 @@ public sealed class EstrategiaAgenteIa(
 
     // ------------------------------------------------------------------ ferramentas
 
+    private static readonly object SchemaDias = new
+    {
+        type = "array",
+        description = "Dias da semana acesos: 0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sáb.",
+        items = new { type = "integer", minimum = 0, maximum = 6 },
+    };
+
     private static readonly object SchemaParametros = new
     {
         type = "object",
         additionalProperties = false,
         properties = new
         {
-            unidades = new { type = "number", description = "Nº de unidades executantes (só restrição/rótulo; não entra na capacidade)." },
-            profissionais = new { type = "number", description = "Nº de profissionais atendendo o procedimento." },
-            turnosPorProfissionalSemana = new { type = "number", description = "Média de turnos (dias com atendimento do procedimento) por semana de cada profissional. Ex.: 1,5 = um médico atende 1 ou 2 dias por semana." },
-            atendimentosPorTurno = new { type = "number", description = "Vagas de regulação por turno (por profissional por dia)." },
+            quadro = new
+            {
+                type = "array",
+                description = "Alterações em linhas EXISTENTES do quadro, pelo `id` da tabela do cenário. Linha omitida fica como está. Linha TRAVADA não pode mudar. Profissional real não pode ganhar dia em que já tem outra escala.",
+                items = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "id" },
+                    properties = new
+                    {
+                        id = new { type = "string" },
+                        dias = SchemaDias,
+                        atendimentosPorTurno = new { type = "number", description = "Vagas de regulação por turno." },
+                        unidade = new { type = "string", description = "Nome da unidade (só para médico de simulação)." },
+                    },
+                },
+            },
+            novos = new
+            {
+                type = "array",
+                description = "Lista COMPLETA dos médicos de simulação (substitui os anteriores não travados). Só se o gestor permitiu, até o máximo indicado.",
+                items = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "dias" },
+                    properties = new
+                    {
+                        nome = new { type = "string", description = "Ex.: 'Médico simulação 1' ou 'Ultrassonografista novo no CDT'." },
+                        unidade = new { type = "string", description = "Unidade existente ou 'Unidade simulação'." },
+                        dias = SchemaDias,
+                        atendimentosPorTurno = new { type = "number" },
+                    },
+                },
+            },
             aproveitamento = new { type = "number", description = "Fração das vagas que viram atendimento (0–1)." },
             entradaSemanal = new { type = "number", description = "Pessoas novas por semana." },
             mutiroes = new
@@ -288,7 +326,7 @@ public sealed class EstrategiaAgenteIa(
     private static readonly FerramentaModelo[] Ferramentas =
     [
         new(FerramentaSimular,
-            "Roda a projeção determinística da fila com os parâmetros informados (os omitidos mantêm o valor atual). " +
+            "Roda a projeção determinística da fila com o quadro alterado (linhas omitidas mantêm o valor atual). " +
             "Devolve capacidade/semana, se zera e em que semana, equilíbrio e a forma da curva. Chame quantas vezes precisar.",
             SchemaParametros),
         new(FerramentaPropor,

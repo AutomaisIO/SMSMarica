@@ -60,28 +60,52 @@ public static class ObjetivoEstrategia
 }
 
 /// <summary>
-/// Os parâmetros da simulação. Todos têm valor inicial tirado do cenário atual, de modo que
-/// "rodar sem mudar nada" reproduz a oferta de hoje.
+/// Uma linha do <b>quadro</b> de simulação: um profissional (real, vindo da escala, ou de
+/// simulação) com os dias da semana em que atende e quantas vagas de regulação rende por turno.
 ///
-/// <para><b>Capacidade por semana</b> = <c>Profissionais × TurnosPorProfissionalSemana ×
-/// AtendimentosPorTurno × Aproveitamento</c> + mutirões. <b>Turno</b> = um profissional num dia
-/// com escala para o procedimento (profissional-dia). Não há "horas" aqui de propósito: a hora
-/// de início/fim da escala do SISREG não é tempo de trabalho — medido em 17/09/2026, a
-/// ultrassonografia tem blocos de 5 minutos com 125 vagas. O que a escala diz de verdade é
-/// <i>quantos dias</i> e <i>quantas vagas por dia</i>.</para>
+/// <para>Para o profissional real, <see cref="DiasReais"/> guarda os dias que a escala publica hoje
+/// (o que se mostra "aceso" de partida) e <see cref="OutrasEscalas"/> os dias em que ele já tem
+/// escala de OUTRO procedimento ou unidade — o agente não pode acender esses; a tela avisa.</para>
+/// </summary>
+/// <param name="Id">Estável e sem PII: hash do CPF para o real, <c>sim-…</c> para o simulado.</param>
+public sealed record LinhaQuadro(
+    string Id,
+    string Nome,
+    bool Simulado,
+    Guid? UnidadeId,
+    string Unidade,
+    /// <summary>Dias da semana acesos (0=domingo … 6=sábado).</summary>
+    IReadOnlyList<int> Dias,
+    double AtendimentosPorTurno,
+    /// <summary>Travado = o agente não mexe nesta linha.</summary>
+    bool Travado,
+    IReadOnlyList<int> DiasReais,
+    IReadOnlyDictionary<int, string> OutrasEscalas)
+{
+    public int Turnos => Dias?.Where(d => d is >= 0 and <= 6).Distinct().Count() ?? 0;
+    public double VagasSemana => Turnos * Math.Max(0, AtendimentosPorTurno);
+}
+
+/// <summary>
+/// Os parâmetros da simulação. O centro é o <see cref="Quadro"/>: quem atende, em que dias, com
+/// quantas vagas por turno. Todos têm valor inicial tirado do cenário atual, de modo que "rodar
+/// sem mudar nada" reproduz a oferta de hoje.
 ///
-/// <para><c>Unidades</c> não entra na conta — é restrição e rótulo para as ações ("abrir em 2
-/// unidades"), porque quem atende é profissional, não prédio.</para>
+/// <para><b>Capacidade por semana</b> = <c>Σ(linha: dias acesos × atendimentos por turno) ×
+/// Aproveitamento</c> + mutirões. <b>Turno</b> = um profissional num dia com escala para o
+/// procedimento. Não há "horas" de propósito: a hora de início/fim da escala do SISREG não é tempo
+/// de trabalho (a ultrassonografia tem blocos de 5 minutos com 125 vagas); o que a escala diz de
+/// verdade é <i>quantos dias</i> e <i>quantas vagas por dia</i>.</para>
 /// </summary>
 public sealed record ParametrosEstrategia(
     string Objetivo,
     int? PrazoAlvoSemanas,
-    ParametroNumero Unidades,
-    ParametroNumero Profissionais,
-    /// <summary>Média de turnos (dias com atendimento) por semana de cada profissional.</summary>
-    ParametroNumero TurnosPorProfissionalSemana,
-    /// <summary>Atendimentos (vagas de regulação) por turno.</summary>
-    ParametroNumero AtendimentosPorTurno,
+    IReadOnlyList<LinhaQuadro> Quadro,
+    /// <summary>Unidades que só existem na simulação ("Unidade simulação", ou um nome dado pelo gestor).</summary>
+    IReadOnlyList<string> UnidadesSimuladas,
+    /// <summary>O agente pode acrescentar médicos de simulação?</summary>
+    bool PermitirNovosProfissionais,
+    int MaxNovosProfissionais,
     /// <summary>Fração das vagas ofertadas que viram atendimento (0..1). Medido no cenário.</summary>
     ParametroNumero Aproveitamento,
     /// <summary>Pessoas novas por semana.</summary>
@@ -92,35 +116,48 @@ public sealed record ParametrosEstrategia(
 {
     public const int HorizonteMaximo = 156;
     public const int HorizontePadrao = 104;
+    public const int MaxNovosPadrao = 5;
+    public const double AtendimentosPorTurnoPadraoSemOferta = 10;
 
     /// <summary>Turnos por semana na rede toda.</summary>
-    public double TurnosSemanais() =>
-        Math.Max(0, Profissionais.Valor) * Math.Max(0, TurnosPorProfissionalSemana.Valor);
+    public double TurnosSemanais() => Quadro?.Sum(l => l.Turnos) ?? 0;
 
     /// <summary>Vagas ofertadas por semana (antes do aproveitamento).</summary>
-    public double VagasSemanais() => TurnosSemanais() * Math.Max(0, AtendimentosPorTurno.Valor);
+    public double VagasSemanais() => Quadro?.Sum(l => l.VagasSemana) ?? 0;
 
     /// <summary>Capacidade semanal sem mutirões.</summary>
     public double CapacidadeSemanal() => VagasSemanais() * Math.Clamp(Aproveitamento.Valor, 0, 1);
 
+    /// <summary>Atendimentos por turno para um médico novo: a média do quadro, ou o padrão sem oferta.</summary>
+    public double AtendimentosPorTurnoPadrao()
+    {
+        var comTurno = Quadro?.Where(l => l.Turnos > 0).ToList() ?? [];
+        return comTurno.Count == 0
+            ? AtendimentosPorTurnoPadraoSemOferta
+            : Math.Round(comTurno.Sum(l => l.VagasSemana) / comTurno.Sum(l => l.Turnos), 2);
+    }
+
     public IEnumerable<(string Nome, ParametroNumero Parametro)> Numericos()
     {
-        yield return (nameof(Unidades), Unidades);
-        yield return (nameof(Profissionais), Profissionais);
-        yield return (nameof(TurnosPorProfissionalSemana), TurnosPorProfissionalSemana);
-        yield return (nameof(AtendimentosPorTurno), AtendimentosPorTurno);
         yield return (nameof(Aproveitamento), Aproveitamento);
         yield return (nameof(EntradaSemanal), EntradaSemanal);
     }
 
-    /// <summary>Um parâmetro gravado antes de existir (JSON antigo) chega nulo; vira zero em vez de
-    /// derrubar a tela — o operador vê o zero e usa "voltar para hoje".</summary>
+    /// <summary>Um campo gravado antes de existir (JSON antigo) chega nulo; vira vazio/zero em vez
+    /// de derrubar a tela — o operador vê e usa "voltar para hoje".</summary>
     public ParametrosEstrategia Sanear() => this with
     {
-        Unidades = Unidades ?? new ParametroNumero(0),
-        Profissionais = Profissionais ?? new ParametroNumero(0),
-        TurnosPorProfissionalSemana = TurnosPorProfissionalSemana ?? new ParametroNumero(0),
-        AtendimentosPorTurno = AtendimentosPorTurno ?? new ParametroNumero(0),
+        Quadro = (Quadro ?? []).Select(l => l with
+        {
+            Dias = l.Dias ?? [],
+            DiasReais = l.DiasReais ?? [],
+            OutrasEscalas = l.OutrasEscalas ?? new Dictionary<int, string>(),
+            Unidade = l.Unidade ?? string.Empty,
+            Nome = l.Nome ?? string.Empty,
+            Id = l.Id ?? Guid.NewGuid().ToString("N")[..12],
+        }).ToList(),
+        UnidadesSimuladas = UnidadesSimuladas ?? [],
+        MaxNovosProfissionais = MaxNovosProfissionais <= 0 ? MaxNovosPadrao : MaxNovosProfissionais,
         Aproveitamento = Aproveitamento ?? new ParametroNumero(1),
         EntradaSemanal = EntradaSemanal ?? new ParametroNumero(0),
         Mutiroes = Mutiroes ?? [],
@@ -164,14 +201,21 @@ public sealed record UnidadeOfertaDto(
     int VagasTotalSemana);
 
 /// <summary>Profissional na escala vigente. Sem CPF de propósito: o cenário vai ao modelo e à
-/// tela; nome + CBO bastam para a ação "habilitar o Dr. X em Y".</summary>
+/// tela; o <see cref="Id"/> é um hash estável do CPF.</summary>
+/// <param name="OutrasEscalas">Dias (0..6) em que o profissional já tem escala de OUTRO
+/// procedimento ou unidade, com o rótulo "UNIDADE · PROCEDIMENTO".</param>
 public sealed record ProfissionalOfertaDto(
+    string Id,
     string Nome,
     string? Cbo,
+    Guid? UnidadeId,
     string Unidade,
     /// <summary>Dias da semana (0=domingo … 6=sábado) em que tem bloco.</summary>
     IReadOnlyList<int> Dias,
-    int VagasRegulacaoSemana);
+    int VagasRegulacaoSemana,
+    /// <summary>Vagas de regulação por turno deste profissional (vagas ÷ turnos nas 4 semanas).</summary>
+    double AtendimentosPorTurno,
+    IReadOnlyDictionary<int, string> OutrasEscalas);
 
 public sealed record OfertaCenarioDto(
     IReadOnlyList<UnidadeOfertaDto> Unidades,
@@ -352,6 +396,9 @@ public sealed record EstrategiaDto(
 public sealed record SimularRequest(string? ProcedimentoCodigo, string ProcedimentoNome, ParametrosEstrategia Parametros);
 
 public sealed record SimularRespostaDto(CenarioFilaDto Cenario, ProjecaoDto Projecao);
+
+/// <summary>Projeção pura, sem remontar o cenário — é o que a tela chama a cada clique no quadro.</summary>
+public sealed record ProjetarRequest(ParametrosEstrategia Parametros, int FilaInicial);
 
 public sealed record CriarEstrategiaRequest(
     string Nome,

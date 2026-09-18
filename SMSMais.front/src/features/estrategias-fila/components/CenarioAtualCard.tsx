@@ -215,17 +215,25 @@ export function CenarioAtualCard({ cenario: c }: { cenario: CenarioFila }) {
                     <th className="py-1 pr-2">CBO</th>
                     <th className="py-1 pr-2">Unidade</th>
                     <th className="py-1 pr-2">Dias</th>
-                    <th className="py-1 text-right">Vagas reg./sem</th>
+                    <th className="py-1 pr-2 text-right">Por turno</th>
+                    <th className="py-1 pr-2 text-right">Vagas reg./sem</th>
+                    <th className="py-1">Já ocupado em</th>
                   </tr>
                 </thead>
                 <tbody>
                   {o.profissionais.map((p) => (
-                    <tr key={`${p.nome}-${p.unidade}`} className="border-t border-gray-100">
+                    <tr key={p.id} className="border-t border-gray-100">
                       <td className="py-1 pr-2">{p.nome}</td>
                       <td className="py-1 pr-2 text-gray-500">{p.cbo ?? '—'}</td>
                       <td className="py-1 pr-2">{p.unidade}</td>
                       <td className="py-1 pr-2">{p.dias.map((d) => DIAS_CURTOS[d]).join(', ')}</td>
-                      <td className="py-1 text-right">{n(p.vagasRegulacaoSemana)}</td>
+                      <td className="py-1 pr-2 text-right">{n(p.atendimentosPorTurno, 1)}</td>
+                      <td className="py-1 pr-2 text-right">{n(p.vagasRegulacaoSemana)}</td>
+                      <td className="py-1 text-[10px] text-amber-800">
+                        {Object.entries(p.outrasEscalas)
+                          .map(([d, o]) => `${DIAS_CURTOS[Number(d)]}: ${o}`)
+                          .join(' · ') || '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

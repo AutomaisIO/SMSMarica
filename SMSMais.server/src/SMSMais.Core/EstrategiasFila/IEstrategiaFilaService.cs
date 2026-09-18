@@ -12,6 +12,9 @@ public interface IEstrategiaFilaService
     /// <summary>Cenário + projeção com os parâmetros informados. Não grava nada.</summary>
     Task<SimularRespostaDto> SimularAsync(SimularRequest request, CancellationToken ct = default);
 
+    /// <summary>Só a projeção, sem remontar o cenário — para a tela reagir a cada clique no quadro.</summary>
+    ProjecaoDto Projetar(ProjetarRequest request);
+
     Task<IReadOnlyList<EstrategiaResumoDto>> ListarAsync(EstrategiaFiltro filtro, CancellationToken ct = default);
 
     Task<EstrategiaDto> ObterAsync(Guid id, CancellationToken ct = default);

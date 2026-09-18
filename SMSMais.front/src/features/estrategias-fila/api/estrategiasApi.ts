@@ -5,6 +5,7 @@ import type {
   ModoRodada,
   ParametrosEstrategia,
   ProcedimentoComFila,
+  Projecao,
   Rodada,
   SimularResposta,
   StatusEstrategia,
@@ -39,6 +40,12 @@ export async function simular(
     procedimentoNome,
     parametros,
   });
+  return data;
+}
+
+/** Só a projeção (função pura no servidor) — o que a tela chama a cada clique no quadro. */
+export async function projetar(parametros: ParametrosEstrategia, filaInicial: number): Promise<Projecao> {
+  const { data } = await http.post<Projecao>(`${BASE}/projetar`, { parametros, filaInicial });
   return data;
 }
 

@@ -1,53 +1,4 @@
-import type {
-  ChaveNumerica,
-  Objetivo,
-  ParametrosEstrategia,
-  Projecao,
-  RodadaResumo,
-  StatusEstrategia,
-} from '@/features/estrategias-fila/types';
-
-export const CHAVES_NUMERICAS: ChaveNumerica[] = [
-  'profissionais',
-  'turnosPorProfissionalSemana',
-  'atendimentosPorTurno',
-  'aproveitamento',
-  'unidades',
-  'entradaSemanal',
-];
-
-export const ROTULOS: Record<ChaveNumerica, { rotulo: string; dica: string; passo: number; unidade?: string }> = {
-  profissionais: {
-    rotulo: 'Profissionais',
-    dica: 'Quantos profissionais atendem o procedimento na rede regulada.',
-    passo: 1,
-  },
-  turnosPorProfissionalSemana: {
-    rotulo: 'Turnos por semana (por profissional)',
-    dica: 'Um turno = um profissional num dia com escala para este procedimento. Ex.: 1,5 = cada médico atende 1 ou 2 dias por semana. É a média da rede.',
-    passo: 0.5,
-  },
-  atendimentosPorTurno: {
-    rotulo: 'Atendimentos por turno',
-    dica: 'Vagas de regulação (1ª vez + reserva) que cada turno rende. Vem da escala: vagas por semana ÷ turnos por semana.',
-    passo: 1,
-  },
-  aproveitamento: {
-    rotulo: 'Aproveitamento',
-    dica: 'Fração das vagas ofertadas que viram atendimento (medido nas últimas 8 semanas). Escala viva com vaga morta aparece aqui.',
-    passo: 0.05,
-  },
-  unidades: {
-    rotulo: 'Unidades executantes',
-    dica: 'Quantas unidades executam. Não entra na conta da capacidade — é restrição e rótulo para as ações.',
-    passo: 1,
-  },
-  entradaSemanal: {
-    rotulo: 'Entrada por semana',
-    dica: 'Pessoas novas por semana. Vem travada na média medida; destrave para simular a demanda crescendo ou caindo.',
-    passo: 1,
-  },
-};
+import type { LinhaQuadro, Objetivo, ParametrosEstrategia, Projecao, RodadaResumo, StatusEstrategia } from '@/features/estrategias-fila/types';
 
 export const OBJETIVOS: { id: Objetivo; rotulo: string; dica: string }[] = [
   { id: 'zerar_em_semanas', rotulo: 'Zerar a fila até um prazo', dica: 'Menor acréscimo de recursos que zera no prazo.' },
@@ -84,17 +35,30 @@ export function dataHoraBr(iso: string | null | undefined): string {
   return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-/** Capacidade semanal — a mesma fórmula do backend, para a tela reagir antes de simular. */
+/** Turnos, vagas e capacidade — a mesma fórmula do backend, para a tela reagir antes da resposta. */
+export function turnosLinha(l: LinhaQuadro): number {
+  return new Set(l.dias.filter((d) => d >= 0 && d <= 6)).size;
+}
+
 export function turnosSemanais(p: ParametrosEstrategia): number {
-  return Math.max(0, p.profissionais.valor) * Math.max(0, p.turnosPorProfissionalSemana.valor);
+  return p.quadro.reduce((s, l) => s + turnosLinha(l), 0);
 }
 
 export function vagasSemanais(p: ParametrosEstrategia): number {
-  return turnosSemanais(p) * Math.max(0, p.atendimentosPorTurno.valor);
+  return p.quadro.reduce((s, l) => s + turnosLinha(l) * Math.max(0, l.atendimentosPorTurno), 0);
 }
 
 export function capacidadeSemanal(p: ParametrosEstrategia): number {
   return vagasSemanais(p) * Math.min(1, Math.max(0, p.aproveitamento.valor));
+}
+
+/** Atendimentos por turno para um médico novo: a média do quadro, ou 10 sem oferta. */
+export function atendimentosPorTurnoPadrao(p: ParametrosEstrategia): number {
+  const comTurno = p.quadro.filter((l) => turnosLinha(l) > 0);
+  if (comTurno.length === 0) return 10;
+  const turnos = comTurno.reduce((s, l) => s + turnosLinha(l), 0);
+  const vagas = comTurno.reduce((s, l) => s + turnosLinha(l) * l.atendimentosPorTurno, 0);
+  return Math.round((vagas / turnos) * 100) / 100;
 }
 
 /** Frase-resumo da projeção, a que vai no cartão e na lista. */
@@ -124,14 +88,27 @@ export function fraseRodada(r: RodadaResumo | null): string {
   return 'não zera';
 }
 
-/** O que mudou entre dois conjuntos de parâmetros, em frases curtas. */
+/** O que mudou entre dois conjuntos de parâmetros, em frases curtas — linha a linha do quadro. */
 export function diferencas(antes: ParametrosEstrategia, depois: ParametrosEstrategia): string[] {
   const out: string[] = [];
-  for (const chave of CHAVES_NUMERICAS) {
-    const a = antes[chave].valor;
-    const b = depois[chave].valor;
-    if (Math.abs(a - b) > 1e-6) out.push(`${ROTULOS[chave].rotulo}: ${n(a, 2)} → ${n(b, 2)}`);
+  const antesPorId = new Map(antes.quadro.map((l) => [l.id, l]));
+  for (const l of depois.quadro) {
+    const a = antesPorId.get(l.id);
+    if (!a) {
+      out.push(`+ ${l.nome} (${l.unidade}): ${l.dias.map((d) => DIAS_CURTOS[d]).join(',') || 'sem dia'} × ${n(l.atendimentosPorTurno, 1)}`);
+      continue;
+    }
+    const acesos = l.dias.filter((d) => !a.dias.includes(d)).map((d) => `+${DIAS_CURTOS[d]}`);
+    const apagados = a.dias.filter((d) => !l.dias.includes(d)).map((d) => `−${DIAS_CURTOS[d]}`);
+    const partes = [...acesos, ...apagados];
+    if (Math.abs(a.atendimentosPorTurno - l.atendimentosPorTurno) > 1e-6) partes.push(`${n(a.atendimentosPorTurno, 1)}→${n(l.atendimentosPorTurno, 1)}/turno`);
+    if (partes.length > 0) out.push(`${l.nome}: ${partes.join(' ')}`);
   }
+  for (const a of antes.quadro) if (!depois.quadro.some((l) => l.id === a.id)) out.push(`− ${a.nome}`);
+  if (Math.abs(antes.aproveitamento.valor - depois.aproveitamento.valor) > 1e-6)
+    out.push(`Aproveitamento: ${Math.round(antes.aproveitamento.valor * 100)}% → ${Math.round(depois.aproveitamento.valor * 100)}%`);
+  if (Math.abs(antes.entradaSemanal.valor - depois.entradaSemanal.valor) > 1e-6)
+    out.push(`Entrada: ${n(antes.entradaSemanal.valor, 1)} → ${n(depois.entradaSemanal.valor, 1)}/sem`);
   const ma = antes.mutiroes.reduce((s, m) => s + m.vagas, 0);
   const mb = depois.mutiroes.reduce((s, m) => s + m.vagas, 0);
   if (ma !== mb || antes.mutiroes.length !== depois.mutiroes.length)

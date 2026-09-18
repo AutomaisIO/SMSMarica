@@ -28,27 +28,36 @@ export type Mutirao = { semana: number; vagas: number; descricao?: string | null
 
 export type Objetivo = 'zerar_em_semanas' | 'equilibrio' | 'minimo_recursos';
 
+export type LinhaQuadro = {
+  /** Estável e sem PII: hash do CPF para o real, `sim-…` para o simulado. */
+  id: string;
+  nome: string;
+  simulado: boolean;
+  unidadeId: string | null;
+  unidade: string;
+  /** Dias acesos (0=domingo … 6=sábado). */
+  dias: number[];
+  atendimentosPorTurno: number;
+  travado: boolean;
+  /** Dias que a escala publica hoje (só o real). */
+  diasReais: number[];
+  /** Dia → "UNIDADE · PROCEDIMENTO" em que o real já tem outra escala. */
+  outrasEscalas: Record<string, string>;
+};
+
 export type ParametrosEstrategia = {
   objetivo: Objetivo;
   prazoAlvoSemanas: number | null;
-  unidades: ParametroNumero;
-  profissionais: ParametroNumero;
-  turnosPorProfissionalSemana: ParametroNumero;
-  atendimentosPorTurno: ParametroNumero;
+  quadro: LinhaQuadro[];
+  unidadesSimuladas: string[];
+  permitirNovosProfissionais: boolean;
+  maxNovosProfissionais: number;
   aproveitamento: ParametroNumero;
   entradaSemanal: ParametroNumero;
   mutiroes: Mutirao[];
   mutiroesTravados: boolean;
   horizonteSemanas: number;
 };
-
-export type ChaveNumerica =
-  | 'unidades'
-  | 'profissionais'
-  | 'turnosPorProfissionalSemana'
-  | 'atendimentosPorTurno'
-  | 'aproveitamento'
-  | 'entradaSemanal';
 
 export type FaixaEspera = { ordem: number; rotulo: string; volume: number };
 
@@ -82,11 +91,15 @@ export type UnidadeOferta = {
 };
 
 export type ProfissionalOferta = {
+  id: string;
   nome: string;
   cbo: string | null;
+  unidadeId: string | null;
   unidade: string;
   dias: number[];
   vagasRegulacaoSemana: number;
+  atendimentosPorTurno: number;
+  outrasEscalas: Record<string, string>;
 };
 
 export type OfertaCenario = {

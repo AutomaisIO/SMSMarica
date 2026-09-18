@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Archive, ArrowLeft, Bot, CheckCircle2, Loader2, Play, RotateCcw, Save, Target } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
@@ -23,11 +23,12 @@ import {
 } from '@/features/estrategias-fila/api/queries';
 import { CenarioAtualCard } from '@/features/estrategias-fila/components/CenarioAtualCard';
 import { HistoricoRodadas } from '@/features/estrategias-fila/components/HistoricoRodadas';
-import { PainelParametros } from '@/features/estrategias-fila/components/PainelParametros';
+import { BarraSimulacao } from '@/features/estrategias-fila/components/BarraSimulacao';
+import { QuadroSimulacao } from '@/features/estrategias-fila/components/QuadroSimulacao';
 import { ProjecaoChart } from '@/features/estrategias-fila/components/ProjecaoChart';
 import { PropostaAgente } from '@/features/estrategias-fila/components/PropostaAgente';
 import { STATUS_ROTULO, dataHoraBr, diferencas } from '@/features/estrategias-fila/lib/parametros';
-import { obterCenario } from '@/features/estrategias-fila/api/estrategiasApi';
+import { obterCenario, projetar } from '@/features/estrategias-fila/api/estrategiasApi';
 import type { CenarioFila, ParametrosEstrategia, Projecao, Rodada } from '@/features/estrategias-fila/types';
 
 /**
@@ -131,6 +132,32 @@ export function EstrategiaEditorPage() {
     () => (rodadaExibida ? diferencas(rodadaExibida.parametrosEntrada, rodadaExibida.parametrosResultado) : []),
     [rodadaExibida],
   );
+
+  // Projeção AO VIVO: a cada mudança no quadro (debounce curto), pede só a projeção ao servidor —
+  // função pura, sem remontar o cenário. É o que faz "acender um dia" mexer no gráfico embaixo.
+  const [projetando, setProjetando] = useState(false);
+  const versaoRef = useRef(0);
+  useEffect(() => {
+    if (!parametros || !cenario || !sujo) return;
+    const versao = ++versaoRef.current;
+    setProjetando(true);
+    const t = setTimeout(async () => {
+      try {
+        const proj = await projetar(parametros, cenario.fila.total);
+        if (versao === versaoRef.current) {
+          setProjecao(proj);
+          setRodadaExibida(null);
+          setRodadaSelecionada(null);
+        }
+      } catch {
+        // silencioso: a próxima mudança tenta de novo; "Simular" continua disponível
+      } finally {
+        if (versao === versaoRef.current) setProjetando(false);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parametros]);
 
   // ---- ações ----
   const [voltando, setVoltando] = useState(false);
@@ -291,8 +318,8 @@ export function EstrategiaEditorPage() {
           <Button variante="ghost" tamanho="sm" disabled={ocupado || voltando || !procedimentoNome} onClick={aoVoltarParaHoje} title="Descarta as mudanças da tela e recarrega o cenário e os parâmetros como estão hoje no SISREG. Não grava.">
             {voltando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Voltar para hoje
           </Button>
-          <Button variante="outline" tamanho="sm" disabled={ocupado || !parametros} onClick={aoSimular} title="Recalcula a projeção com os parâmetros da tela. Não grava.">
-            {simular.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Simular
+          <Button variante="outline" tamanho="sm" disabled={ocupado || !parametros} onClick={aoSimular} title="Remonta o cenário (fila e escala de agora) e recalcula com o quadro da tela. Não grava. A projeção já atualiza sozinha a cada clique.">
+            {simular.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Recalcular
           </Button>
           {!somenteLeitura ? (
             <Button
@@ -343,30 +370,37 @@ export function EstrategiaEditorPage() {
           <AvisoCobertura de={diaBrasilia(-84)} ate={diaBrasilia()} />
           <CenarioAtualCard cenario={cenario} />
 
-          <div className="grid gap-4 xl:grid-cols-[1fr_28rem]">
-            <div className="space-y-4">
-              <ProjecaoChart projecao={projecao} base={base ?? baseSalva} prazoAlvo={parametros?.prazoAlvoSemanas ?? null} carregando={simular.isPending} />
-              {rodadaExibida?.modo === 'Agente' ? <PropostaAgente rodada={rodadaExibida} mudancas={mudancas} /> : null}
-              {estrategia.data ? (
-                <HistoricoRodadas
-                  rodadas={estrategia.data.rodadas}
-                  atualId={estrategia.data.rodadaAtual?.id ?? null}
-                  selecionada={rodadaSelecionada}
-                  aoSelecionar={setRodadaSelecionada}
-                />
-              ) : null}
-            </div>
-            {parametros ? (
-              <PainelParametros
+          {parametros ? (
+            <>
+              <QuadroSimulacao
                 parametros={parametros}
-                desabilitado={somenteLeitura || ocupado}
+                desabilitado={somenteLeitura || rodar.isPending}
                 aoMudar={(p) => {
                   setParametros(p);
                   setSujo(true);
                 }}
               />
-            ) : null}
-          </div>
+              <BarraSimulacao
+                parametros={parametros}
+                desabilitado={somenteLeitura || rodar.isPending}
+                aoMudar={(p) => {
+                  setParametros(p);
+                  setSujo(true);
+                }}
+              />
+            </>
+          ) : null}
+
+          <ProjecaoChart projecao={projecao} base={base ?? baseSalva} prazoAlvo={parametros?.prazoAlvoSemanas ?? null} carregando={simular.isPending || projetando} />
+          {rodadaExibida?.modo === 'Agente' ? <PropostaAgente rodada={rodadaExibida} mudancas={mudancas} /> : null}
+          {estrategia.data ? (
+            <HistoricoRodadas
+              rodadas={estrategia.data.rodadas}
+              atualId={estrategia.data.rodadaAtual?.id ?? null}
+              selecionada={rodadaSelecionada}
+              aoSelecionar={setRodadaSelecionada}
+            />
+          ) : null}
           {rodadaExibida && rodadaExibida.numero !== estrategia.data?.rodadaAtual?.numero ? (
             <p className="text-[11px] text-gray-500">
               Exibindo a rodada {rodadaExibida.numero} ({dataHoraBr(rodadaExibida.criadoEm)}). Os parâmetros ao lado continuam os vigentes.

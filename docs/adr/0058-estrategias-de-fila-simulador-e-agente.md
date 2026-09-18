@@ -29,16 +29,20 @@ A projeção da fila é uma função pura em .NET (`SimuladorFila.Projetar`), se
 Passo semanal, horizonte até 156 semanas:
 
 ```
-capacidade/semana = profissionais × turnosPorProfissionalSemana × atendimentosPorTurno × aproveitamento
+capacidade/semana = Σ(linha do quadro: dias acesos × atendimentos por turno) × aproveitamento
                     + mutirões da semana
 fila(t+1) = fila(t) + entrada − min(capacidade, fila(t) + entrada)
 ```
 
-**Turno** = um profissional num dia com escala para o procedimento. **Não há "horas" no modelo,
-de propósito** (revisto em 18/09/2026, primeira versão usava dias × horas × atendimentos/hora): a
-hora de início/fim da escala do SISREG não é tempo de trabalho — a ultrassonografia tem blocos de
-5 minutos com 125 vagas e escalas de um dia só, o que dava "1,6 h/dia e 1,4 dias/semana" na tela.
-O que a escala diz de verdade é *quantos dias* e *quantas vagas por dia*; é isso que vira alavanca.
+**O quadro** (revisto em 18/09/2026 a pedido do Bernardo — "trabalhar em cima dos recursos de
+verdade é que fica legal assistir a projeção das linhas"): uma linha por profissional, real (da
+escala, com os dias publicados acesos e o "já ocupado em" de outras escalas) ou de simulação
+("Médico simulação", em unidade real ou "Unidade simulação"); sete botões de dia que acendem e
+apagam; vagas por turno; cadeado por linha. A projeção refaz a cada clique (endpoint `projetar`,
+função pura). **Turno** = um profissional num dia com escala. **Não há "horas" no modelo, de
+propósito**: a hora de início/fim da escala do SISREG não é tempo de trabalho — a ultrassonografia
+tem blocos de 5 minutos com 125 vagas — e a primeira versão, com médias (dias × horas ×
+atendimentos/hora), dava "1,6 h/dia e 1,4 dias/semana", correto pela conta e sem sentido para quem lê.
 
 Saída: semana em que zera (ou "não zera" e quanto cresce), capacidade de equilíbrio (= entrada),
 capacidade necessária para zerar num prazo, pico, atendidos até zerar, série. Coberta por teste
@@ -60,11 +64,13 @@ faixa, séries de entrada e vazão, oferta por unidade e profissional, aproveita
 com estado). Sem PII: nomes de profissional entram porque já são dado público do SISREG e
 aparecem na tela de Agenda; paciente nunca.
 
-### 3. Trava é contrato, não instrução
+### 3. Trava é contrato, não instrução — e a realidade também
 
-Cada parâmetro numérico carrega `{ valor, travado, min?, max? }`. `ParametrosEstrategiaAplicador`
-aplica o que o modelo mandou **rejeitando** parâmetro travado com valor diferente e parâmetro
-livre fora de mín/máx. A violação volta ao modelo como erro de ferramenta; ele corrige ou a rodada
+Cada linha do quadro tem cadeado; aproveitamento e entrada carregam `{ valor, travado, min?, max? }`.
+`ParametrosEstrategiaAplicador` aplica o que o modelo mandou **rejeitando**: linha travada alterada;
+**profissional real ganhando dia em que já tem escala de outro procedimento ou unidade** (o cenário
+traz esses dias de `sisreg_escala`); médico de simulação quando o gestor não permitiu ou acima do
+máximo; numérico travado diferente ou fora de mín/máx. A violação volta ao modelo como erro de ferramenta; ele corrige ou a rodada
 termina em `Falha` — registrada com o custo, sem 500, sem virar a rodada atual.
 
 ### 4. Rodada é append-only
@@ -105,10 +111,11 @@ fora das médias:
 | Oferta | escalas ativas expandidas nas próximas 4 semanas ÷ 4 | mesmo método da Análise de vagas; vaga da regulação = 1ª vez + reserva; **agenda local fora** |
 | Aproveitamento | marcações ÷ vagas ofertadas nas últimas 8 semanas | escala viva com vaga morta (ECG do CDT) aparece aqui, e a capacidade efetiva é vagas × isto |
 
-Os parâmetros iniciais reproduzem a oferta de hoje por construção
-(`atendimentosPorTurno = vagas/semana ÷ turnos/semana`), então "rodar sem mudar nada" é o cenário
-atual — e a tela tem "Voltar para hoje" para recarregá-lo. Sem escala, entram valores de partida
-(2 turnos/semana, 10 por turno, aproveitamento 0,85) para o agente ter de onde propor.
+Os parâmetros iniciais reproduzem a oferta de hoje por construção: o quadro nasce com os
+profissionais reais, os dias publicados acesos e `atendimentosPorTurno = vagas ÷ turnos` de cada
+um — "rodar sem mudar nada" é o cenário atual, e a tela tem "Voltar para hoje" para recarregá-lo.
+Sem escala, o quadro nasce vazio (10 por turno como padrão para médico novo) e o agente ou o
+gestor acrescenta médicos de simulação.
 
 ### 8. Permissão e escopo
 

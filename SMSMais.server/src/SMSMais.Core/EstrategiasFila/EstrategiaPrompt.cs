@@ -20,19 +20,22 @@ public static class EstrategiaPrompt
 
         sb.AppendLine("""
             Você é o planejador de oferta da Secretaria de Saúde. Sua tarefa: propor uma ESTRATÉGIA para
-            reduzir ou zerar a fila de espera de UM procedimento regulado, mexendo na oferta (profissionais,
-            turnos por semana, atendimentos por turno, mutirões). Um TURNO é um profissional num dia com
-            escala para o procedimento.
+            reduzir ou zerar a fila de espera de UM procedimento regulado, mexendo no QUADRO de oferta: quais
+            profissionais atendem, em que dias da semana, com quantas vagas por turno; médicos de
+            simulação (se o gestor permitiu); mutirões. Um TURNO é um profissional num dia com escala
+            para o procedimento.
 
             REGRAS — leia com atenção:
             1. Você NÃO faz conta. Toda projeção sai da ferramenta `simular`, que roda o nosso modelo
                determinístico. Chame-a quantas vezes precisar para testar combinações. Nunca afirme um
                prazo que não veio dela.
-            2. Parâmetro TRAVADO é fato: não pode mudar. Se mandar valor diferente, a ferramenta devolve
-               erro e você corrige. Parâmetro LIVRE pode mudar dentro do mínimo/máximo indicado.
+            2. Linha TRAVADA do quadro é fato: não pode mudar. Profissional REAL não pode ganhar dia em que já
+               tem escala de outro procedimento ou unidade (coluna "ocupado em"). Se mandar algo assim, a
+               ferramenta devolve erro e você corrige. Médico de simulação só se o gestor permitiu, até o máximo.
             3. Procure a estratégia MAIS ECONÔMICA que cumpra o objetivo: o menor acréscimo de recursos
-               (profissionais, turnos, atendimentos por turno) que atinja o prazo. Não proponha o dobro de
-               tudo se 20% a mais resolve. Prefira mais turnos de quem já atende a contratar; prefira mutirão pontual
+               (dias acesos, vagas por turno, médicos novos) que atinja o prazo. Não proponha o dobro de
+               tudo se 20% a mais resolve. Prefira acender dias livres de quem já atende a criar médico novo;
+               prefira mutirão pontual
                para a "corcova" da fila antiga e capacidade permanente para o fluxo.
             4. O `aproveitamento` mede o quanto da vaga ofertada vira atendimento de verdade. Se está baixo,
                a primeira ação costuma ser fazer a vaga existente ser usada (confirmação, remarcação,
@@ -106,9 +109,21 @@ public static class EstrategiaPrompt
             sb.AppendLine();
         }
 
-        sb.AppendLine("## Parâmetros da simulação");
+        sb.AppendLine("## Quadro de simulação (o que você pode mudar)");
         sb.AppendLine($"- Objetivo: **{p.Objetivo}**" + (p.PrazoAlvoSemanas is { } pz ? $" — prazo alvo: {pz} semanas" : ""));
-        sb.AppendLine("- Capacidade/semana = profissionais × turnosPorProfissionalSemana × atendimentosPorTurno × aproveitamento (+ mutirões)");
+        sb.AppendLine("- Capacidade/semana = Σ(linha: dias acesos × atendimentos por turno) × aproveitamento (+ mutirões)");
+        sb.AppendLine($"- Hoje: {D(p.TurnosSemanais())} turnos/semana, {D(p.VagasSemanais())} vagas/semana, {D(p.CapacidadeSemanal())} atendidos/semana");
+        sb.AppendLine(p.PermitirNovosProfissionais
+            ? $"- Médicos de simulação: PERMITIDO, até {p.MaxNovosProfissionais} (hoje {p.Quadro.Count(l => l.Simulado)}). Unidades possíveis: {string.Join("; ", p.Quadro.Select(l => l.Unidade).Concat(p.UnidadesSimuladas).Where(u => u.Length > 0).Distinct())}{(p.UnidadesSimuladas.Count == 0 ? "; ou uma 'Unidade simulação'" : "")}"
+            : "- Médicos de simulação: NÃO permitido (o gestor travou).");
+        sb.AppendLine();
+        sb.AppendLine("| id | Profissional | Unidade | Tipo | Dias hoje | Dias acesos | Atend/turno | Estado | Ocupado em (outra escala) |");
+        sb.AppendLine("|---|---|---|---|---|---|---:|---|---|");
+        foreach (var l in p.Quadro)
+        {
+            var ocupado = l.OutrasEscalas.Count == 0 ? "-" : string.Join("; ", l.OutrasEscalas.OrderBy(k => k.Key).Select(k => $"{Dias[k.Key]}: {k.Value}"));
+            sb.AppendLine($"| {l.Id} | {l.Nome} | {l.Unidade} | {(l.Simulado ? "simulação" : "real")} | {DiasTexto(l.DiasReais)} | {DiasTexto(l.Dias)} | {D(l.AtendimentosPorTurno)} | {(l.Travado ? "TRAVADO" : "livre")} | {ocupado} |");
+        }
         sb.AppendLine();
         sb.AppendLine("| Parâmetro | Valor atual | Estado | Mín | Máx |");
         sb.AppendLine("|---|---:|---|---:|---:|");
@@ -120,6 +135,9 @@ public static class EstrategiaPrompt
 
         return sb.ToString();
     }
+
+    private static string DiasTexto(IReadOnlyList<int> dias) =>
+        dias.Count == 0 ? "nenhum" : string.Join(",", dias.Order().Select(d => Dias[d]));
 
     private static string N(int v) => v.ToString("N0", Pt);
     private static string D(double v) => v.ToString("0.##", Pt);

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using SMSMais.Core.AgendaRegulacao;
 using SMSMais.Core.EstrategiasFila;
+using SMSMais.Core.EstrategiasFila.Dtos;
 using SMSMais.Data;
 using SMSMais.Tests.Infraestrutura;
 
@@ -121,9 +122,23 @@ public class CenarioFilaServiceTests(PostgresFixture fixture)
         c.Ocupacao.Agendados.Should().Be(SeedEstrategiasFila.Marcacoes);
         c.Ocupacao.Aproveitamento.Should().BeApproximately(0.025, 0.0001);
 
-        // Parâmetros iniciais reproduzem a oferta: capacidade = vagas × aproveitamento.
+        // O profissional traz o que o quadro precisa: id estável sem CPF, 10 por turno, e o dia em que
+        // já está ocupado com outro procedimento.
+        var prof = c.Oferta.Profissionais.Single();
+        prof.Id.Should().HaveLength(10).And.NotContain(seed.Cpf);
+        prof.AtendimentosPorTurno.Should().Be(10);
+        prof.UnidadeId.Should().Be(seed.UnidadeId);
+        prof.OutrasEscalas.Should().ContainKey(2).WhoseValue.Should().Contain("MAMOGRAFIA");
+        prof.OutrasEscalas.Should().NotContainKey(1);
+
+        // Parâmetros iniciais reproduzem a oferta: o quadro nasce com os dias reais acesos.
         var p = c.ParametrosIniciais;
-        p.Profissionais.Valor.Should().Be(1);
+        p.Quadro.Should().ContainSingle();
+        p.Quadro[0].Dias.Should().Equal(1, 3);
+        p.Quadro[0].DiasReais.Should().Equal(1, 3);
+        p.Quadro[0].Simulado.Should().BeFalse();
+        p.Quadro[0].OutrasEscalas.Should().ContainKey(2);
+        p.TurnosSemanais().Should().Be(2);
         p.VagasSemanais().Should().BeApproximately(20, 0.01);
         p.EntradaSemanal.Travado.Should().BeTrue();
         p.Aproveitamento.Valor.Should().BeApproximately(0.03, 0.01);
@@ -157,9 +172,9 @@ public class CenarioFilaServiceTests(PostgresFixture fixture)
         c.Fila.Total.Should().Be(0);
         c.Oferta.Profissionais.Should().BeEmpty();
         c.Ocupacao.Aproveitamento.Should().BeNull();
-        c.ParametrosIniciais.Profissionais.Valor.Should().Be(0);
-        c.ParametrosIniciais.TurnosPorProfissionalSemana.Valor.Should().Be(2);
-        c.ParametrosIniciais.AtendimentosPorTurno.Valor.Should().Be(10);
+        c.ParametrosIniciais.Quadro.Should().BeEmpty();
+        c.ParametrosIniciais.PermitirNovosProfissionais.Should().BeTrue();
+        c.ParametrosIniciais.AtendimentosPorTurnoPadrao().Should().Be(ParametrosEstrategia.AtendimentosPorTurnoPadraoSemOferta);
         c.ParametrosIniciais.Aproveitamento.Valor.Should().Be(0.85);
     }
 }

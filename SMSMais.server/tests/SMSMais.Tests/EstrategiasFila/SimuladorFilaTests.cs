@@ -12,17 +12,24 @@ public class SimuladorFilaTests
 {
     private static ParametroNumero N(double v, bool travado = false) => new(v, travado);
 
+    /// <summary>Uma linha do quadro: 5 dias (seg–sex) × 8 por turno = 40 vagas/semana.</summary>
+    public static LinhaQuadro Linha(string id, double atendPorTurno = 8, params int[] dias) => new(
+        id, $"Médico {id}", Simulado: false, null, "Unidade A",
+        Dias: dias.Length == 0 ? [1, 2, 3, 4, 5] : dias,
+        AtendimentosPorTurno: atendPorTurno, Travado: false, DiasReais: [1, 2, 3, 4, 5],
+        OutrasEscalas: new Dictionary<int, string>());
+
     /// <summary>10 profissionais × 5 turnos/semana × 8 por turno × 100% = 400/semana.</summary>
-    private static ParametrosEstrategia Base(
-        double entrada = 100, double aproveitamento = 1, double profissionais = 10,
+    public static ParametrosEstrategia Base(
+        double entrada = 100, double aproveitamento = 1, int profissionais = 10,
         int? prazo = null, IReadOnlyList<MutiraoDto>? mutiroes = null, int horizonte = 104) =>
         new(
             Objetivo: ObjetivoEstrategia.ZerarEmSemanas,
             PrazoAlvoSemanas: prazo,
-            Unidades: N(3),
-            Profissionais: N(profissionais),
-            TurnosPorProfissionalSemana: N(5),
-            AtendimentosPorTurno: N(8),
+            Quadro: [.. Enumerable.Range(1, profissionais).Select(i => Linha($"p{i}"))],
+            UnidadesSimuladas: [],
+            PermitirNovosProfissionais: true,
+            MaxNovosProfissionais: 5,
             Aproveitamento: N(aproveitamento),
             EntradaSemanal: N(entrada),
             Mutiroes: mutiroes ?? [],
@@ -30,11 +37,17 @@ public class SimuladorFilaTests
             HorizonteSemanas: horizonte);
 
     [Fact]
-    public void Capacidade_e_o_produto_dos_parametros_vezes_o_aproveitamento()
+    public void Capacidade_e_a_soma_das_linhas_vezes_o_aproveitamento()
     {
         var p = Base(aproveitamento: 0.75);
+        p.TurnosSemanais().Should().Be(50);
         p.VagasSemanais().Should().Be(400);
         p.CapacidadeSemanal().Should().Be(300);
+
+        // Uma linha com dias repetidos ou inválidos não conta duas vezes nem explode.
+        var torta = Linha("x", 10, 1, 1, 9, -1, 3);
+        torta.Turnos.Should().Be(2);
+        torta.VagasSemana.Should().Be(20);
     }
 
     [Fact]
@@ -49,7 +62,6 @@ public class SimuladorFilaTests
         proj.FilaFinal.Should().Be(0);
         proj.CrescimentoSemanal.Should().Be(0);
         proj.CapacidadeEquilibrio.Should().Be(100);
-        // Até zerar atendeu a fila inicial mais as 4 semanas de entrada.
         proj.AtendidosAteZerar.Should().Be(1000 + 4 * 100);
         proj.Serie.Should().HaveCount(105);
         proj.Serie[0].Fila.Should().Be(1000);
@@ -70,14 +82,22 @@ public class SimuladorFilaTests
     }
 
     [Fact]
+    public void Acender_um_dia_numa_linha_aumenta_a_capacidade_daquela_linha()
+    {
+        var p = Base(entrada: 100);
+        var comSabado = p with { Quadro = [.. p.Quadro.Select((l, i) => i == 0 ? l with { Dias = [1, 2, 3, 4, 5, 6] } : l)] };
+
+        comSabado.CapacidadeSemanal().Should().Be(408);
+        SimuladorFila.Projetar(comSabado, 1000).SemanaZera.Should().BeLessThanOrEqualTo(SimuladorFila.Projetar(p, 1000).SemanaZera!.Value);
+    }
+
+    [Fact]
     public void Aproveitamento_baixo_reduz_a_capacidade_efetiva()
     {
-        // Escala viva com vaga morta: 400 ofertadas, 50% viram atendimento → 200/semana.
         var proj = SimuladorFila.Projetar(Base(entrada: 100, aproveitamento: 0.5), filaInicial: 1000);
 
         proj.CapacidadeSemanal.Should().Be(200);
         proj.VagasSemanais.Should().Be(400);
-        // 100 líquidas por semana → 10 semanas.
         proj.SemanaZera.Should().Be(10);
     }
 
@@ -91,7 +111,6 @@ public class SimuladorFilaTests
         com.Serie[1].Capacidade.Should().Be(900);
         com.Serie[1].Fila.Should().Be(1000 + 100 - 900);
         com.SemanaZera.Should().BeLessThan(sem.SemanaZera!.Value);
-        // Mutirão fora do horizonte ou com vagas zero é ignorado, não explode.
         SimuladorFila.Projetar(Base(mutiroes: [new MutiraoDto(0, 10), new MutiraoDto(5, 0)]), 1000)
             .SemanaZera.Should().Be(sem.SemanaZera);
     }
@@ -99,11 +118,9 @@ public class SimuladorFilaTests
     [Fact]
     public void Capacidade_necessaria_para_zerar_no_prazo_e_a_fila_mais_a_entrada_do_periodo()
     {
-        // Em 5 semanas precisa atender 1000 + 5×100 = 1500 → 300/semana.
         var proj = SimuladorFila.Projetar(Base(entrada: 100, prazo: 5), 1000);
         proj.CapacidadeParaZerarNoPrazo.Should().Be(300);
 
-        // Mutirão dentro do prazo abate: (1500 − 500) / 5 = 200.
         var comMutirao = SimuladorFila.Projetar(
             Base(entrada: 100, prazo: 5, mutiroes: [new MutiraoDto(2, 500)]), 1000);
         comMutirao.CapacidadeParaZerarNoPrazo.Should().Be(200);
@@ -112,20 +129,23 @@ public class SimuladorFilaTests
     }
 
     [Fact]
-    public void Profissionais_para_uma_capacidade_alvo()
+    public void Turnos_a_mais_para_uma_capacidade_alvo()
     {
-        // Cada profissional rende 5 × 8 = 40/semana → 300 pedem 7,5.
-        SimuladorFila.ProfissionaisPara(Base(), 300).Should().Be(7.5);
-        SimuladorFila.ProfissionaisPara(Base() with { AtendimentosPorTurno = N(0) }, 300).Should().BeNull();
+        // Capacidade hoje 400; para 480 faltam 80 → 10 turnos de 8.
+        SimuladorFila.TurnosAMaisPara(Base(), 480, 8).Should().Be(10);
+        SimuladorFila.TurnosAMaisPara(Base(), 300, 8).Should().Be(0);
+        SimuladorFila.TurnosAMaisPara(Base(), 480, 0).Should().BeNull();
     }
 
     [Fact]
-    public void Fila_vazia_sem_oferta_nao_explode_e_nao_zera_se_continua_entrando()
+    public void Quadro_vazio_nao_explode_e_nao_zera_se_continua_entrando()
     {
         var semOferta = SimuladorFila.Projetar(Base(entrada: 10, profissionais: 0), 0);
         semOferta.CapacidadeSemanal.Should().Be(0);
         semOferta.Zera.Should().BeFalse();
         semOferta.FilaFinal.Should().Be(10 * 104);
+        Base(profissionais: 0).AtendimentosPorTurnoPadrao().Should().Be(ParametrosEstrategia.AtendimentosPorTurnoPadraoSemOferta);
+        Base().AtendimentosPorTurnoPadrao().Should().Be(8);
 
         var nada = SimuladorFila.Projetar(Base(entrada: 0, profissionais: 0), 0);
         nada.Zera.Should().BeTrue();
