@@ -610,12 +610,6 @@ public static class DependencyInjection
         services.AddScoped<AgendaRegulacao.IAgendaAnaliseService, AgendaRegulacao.AgendaAnaliseService>();
         services.AddScoped<AgendaRegulacao.IAgendaDemandaService, AgendaRegulacao.AgendaDemandaService>();
 
-        // ---- Estratégias de fila (ADR-0058): simulador determinístico + agente que só escolhe
-        // parâmetros livres. Só planejamento — nada escreve no SISREG.
-        services.AddScoped<EstrategiasFila.ICenarioFilaService, EstrategiasFila.CenarioFilaService>();
-        services.AddScoped<EstrategiasFila.IEstrategiaAgenteIa, EstrategiasFila.EstrategiaAgenteIa>();
-        services.AddScoped<EstrategiasFila.IEstrategiaFilaService, EstrategiasFila.EstrategiaFilaService>();
-
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.
         services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ISisregImportacaoFila, Integracoes.SisregWeb.Importacao.Background.SisregImportacaoFila>();
@@ -838,15 +832,6 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
             Notificacoes.WhatsApp.Manipuladores.RoboAtendimentoWhatsAppHandler>();
         services.AddHostedService<RoboAtendimento.Runtime.RoboAtendimentoWorker>();
-
-        // ---- Cliente genérico da Messages API (agentes de bastidor com loop no .NET) ----
-        // Serve o treinador do robô e o agente de estratégias de fila: turnos longos, poucas
-        // chamadas por dia — o timeout do motor de atendimento (60s) mataria a análise no meio.
-        services.AddHttpClient<Inteligencia.Provedores.ClienteMessagesApi>(client =>
-        {
-            client.BaseAddress = new Uri(anthropicBaseUrl);
-            client.Timeout = TimeSpan.FromMinutes(10);
-        }).AddHttpMessageHandler<Alertas.FalhaContaIaHandler>();
 
         // ---- Treinamento do robô (crítica do atendente → análise adversarial → correção) ----
         services.AddScoped<RoboAtendimento.Treinamento.IRoboBriefingService,
