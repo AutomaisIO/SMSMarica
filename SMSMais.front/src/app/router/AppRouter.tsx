@@ -97,7 +97,7 @@ import { ChatJanelaPage } from '@/features/conversas/pages/ChatJanelaPage';
 import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
-import { NotificacoesAgendamentoPage } from '@/features/notificacoes-agendamento/pages/NotificacoesAgendamentoPage';
+import { MensageriaPage } from '@/features/mensageria/pages/MensageriaPage';
 import { ConfirmacoesPage } from '@/features/confirmacoes/pages/ConfirmacoesPage';
 import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/RespostasRapidasPage';
 import { RoboAtendimentoPage } from '@/features/robo-atendimento/pages/RoboAtendimentoPage';
@@ -254,7 +254,11 @@ export function AppRouter() {
           <Route path="erros" element={<ErrosPage />} />
           <Route path="avisos-celular" element={<AvisosCelularPage />} />
           <Route path="conversas" element={<ConversasPage />} />
-          <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
+          <Route element={<RotaComModulo modulo="NotificacoesAgendamento" rotulo="Mensageria" />}>
+            <Route path="mensageria" element={<MensageriaPage />} />
+            {/* Rota antiga: quem tinha o link salvo cai na Mensageria. */}
+            <Route path="notificacoes-agendamento" element={<MensageriaPage />} />
+          </Route>
           <Route element={<RotaComModulo modulo="Confirmacoes" rotulo="Confirmações" />}>
             <Route path="confirmacoes" element={<ConfirmacoesPage />} />
           </Route>

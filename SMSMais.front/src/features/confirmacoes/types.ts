@@ -1,105 +1,106 @@
-import type {
-  NotificacaoResumo,
-  StatusConfirmacao,
-} from '@/features/notificacoes-agendamento/types';
+import type { StatusConfirmacao, StatusNotificacao } from '@/features/mensageria/types';
 
-export type ConfirmacaoConfiguracao = {
-  /** "HH:mm" — Brasília. */
-  horaInicioEnvio: string;
-  horaFimEnvio: string;
-  maximoPorPassagem: number;
-  somenteSisreg: boolean;
-  janelaAbertaAgora: boolean;
+export type AbaAtendimento = 'NaoConfirmados' | 'Confirmados' | 'ContatoErrado' | 'Pendentes';
+
+export type SituacaoAtendimento =
+  | 'EmAtendimento'
+  | 'Confirmado'
+  | 'Cancelado'
+  | 'Pendente'
+  | 'ContatoErrado'
+  | 'Liberado'
+  | 'ContatoCorrigido';
+
+export type EnvioConfirmacao = {
+  comunicacaoId: string;
+  status: StatusNotificacao;
+  motivoFalha: string | null;
+  erroMeta: string | null;
+  tentativas: number;
+  proximaTentativaEm: string | null;
+  enviadoEm: string | null;
+  entregueEm: string | null;
+  lidoEm: string | null;
+  visualizadoEm: string | null;
+  telefone: string | null;
+};
+
+export type Atendimento = {
+  id: string;
+  atendenteId: string;
+  atendenteNome: string;
+  situacao: SituacaoAtendimento;
+  motivo: string | null;
+  iniciadoEm: string;
   atualizadoEm: string | null;
+  ehMeu: boolean;
 };
 
-export type SalvarConfirmacaoConfiguracao = Pick<
-  ConfirmacaoConfiguracao,
-  'horaInicioEnvio' | 'horaFimEnvio' | 'maximoPorPassagem' | 'somenteSisreg'
->;
-
-export type ResumoFilaConfirmacao = {
-  janelaAbertaAgora: boolean;
-  horaInicioEnvio: string;
-  horaFimEnvio: string;
-  proximaAberturaEm: string;
-  naFila: number;
-  prontasParaSair: number;
-  aguardandoVerificacaoCadastral: number;
-  numeroInvalido: number;
-  semTelefoneValido: number;
-  falha: number;
-  enviadasHoje: number;
-  confirmadasHoje: number;
-  canceladasHoje: number;
-};
-
-export type FiltroFila = {
-  status?: string;
-  confirmacao?: string;
-  texto?: string;
-  de?: string;
-  ate?: string;
-  pagina?: number;
-  tamanho?: number;
-};
-
-export type PaginaFila = {
-  itens: NotificacaoResumo[];
-  total: number;
-  pagina: number;
-  tamanho: number;
-};
-
-export type RespostaConfirmacao = {
+export type SolicitacaoAtendimento = {
   solicitacaoId: string;
   exameId: string | null;
   codigoSolicitacao: string | null;
   pacienteId: string;
   pacienteNome: string | null;
+  pacienteCpf: string | null;
+  telefone: string | null;
+  telefoneVerificado: boolean;
   categoria: string;
   procedimento: string | null;
+  unidadeExecutanteId: string;
   unidadeExecutante: string | null;
   dataAgendada: string | null;
   statusConfirmacao: StatusConfirmacao;
-  canal: string | null;
+  confirmadoCanal: string | null;
   respondidoEm: string | null;
-  motivo: string | null;
-  statusSolicitacao: string;
+  motivoCancelamentoPaciente: string | null;
+  envio: EnvioConfirmacao | null;
+  janelaZapAberta: boolean;
+  conversaId: string | null;
+  contatoNegado: boolean;
+  atendimento: Atendimento | null;
 };
 
-export type FiltroRespostas = {
-  resposta?: string;
-  de?: string;
-  ate?: string;
-  texto?: string;
-  pagina?: number;
-  tamanho?: number;
-};
-
-export type PaginaRespostas = {
-  itens: RespostaConfirmacao[];
+export type PaginaAtendimento = {
+  itens: SolicitacaoAtendimento[];
   total: number;
   pagina: number;
   tamanho: number;
 };
 
-export type PreviaLote = {
-  elegiveis: number;
-  candidatos: number;
-  foraProcedimentoDesligado: number;
-  foraJaAvisado: number;
-  foraNaoSisreg: number;
-  porDia: { dia: string; total: number; consultas: number; exames: number }[];
-  /** Só no disparo: quantos foram enfileirados. */
-  enfileiradas: number | null;
-  aviso: string | null;
+export type ResumoAbas = {
+  naoConfirmados: number;
+  confirmados: number;
+  contatoErrado: number;
+  pendentes: number;
+  emAtendimentoComigo: number;
 };
 
-export type RegraUnidade = {
-  unidadeId: string;
-  unidadeNome: string;
-  enviarConfirmacao: boolean;
-  procedimentosComAviso: number;
-  procedimentosTotal: number;
+export type AtendenteConfirmacao = { id: string; nome: string };
+
+export type FiltroAtendimento = {
+  aba: AbaAtendimento;
+  texto?: string;
+  unidadeId?: string;
+  envio?: string;
+  pagina?: number;
+  tamanho?: number;
+};
+
+export type AcaoResultado = {
+  atendimentoId: string;
+  situacao: SituacaoAtendimento;
+  orientacaoSisreg: boolean;
+};
+
+export type EventoAtendimento = {
+  tipo: string;
+  atorUsuarioId: string | null;
+  atorNome: string | null;
+  deUsuarioId: string | null;
+  deNome: string | null;
+  paraUsuarioId: string | null;
+  paraNome: string | null;
+  observacao: string | null;
+  ocorridoEm: string;
 };

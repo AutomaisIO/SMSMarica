@@ -10,7 +10,9 @@ export type StatusNotificacao =
   /** Confirmação para número não verificado: pediu-se o início do CPF antes de mandar os dados. */
   | 'AguardandoVerificacaoCadastral'
   /** Número marcado como inválido (quem atende disse que não conhece o paciente). */
-  | 'AguardandoCorrecaoContato';
+  | 'AguardandoCorrecaoContato'
+  /** Terminal: uma atendente entrou no circuito (menu Confirmações) antes de a mensagem sair. */
+  | 'SubstituidaPorAtendente';
 
 export type StatusConfirmacao = 'Pendente' | 'Confirmada' | 'Cancelada';
 
@@ -70,4 +72,153 @@ export type NotificacaoDetalhe = {
   linkExpiraEm: string | null;
   linkUsadoEm: string | null;
   linkUsadoIp: string | null;
+};
+
+// ------------------------------------------------------------------ Resumo diário
+
+export type DiaMensageria = {
+  dia: string;
+  enfileiradas: number;
+  enviadasNoDia: number;
+  enviadas: number;
+  entregues: number;
+  lidas: number;
+  visualizadas: number;
+  falhas: number;
+  naFila: number;
+  aguardandoIdentificacao: number;
+  numeroNegado: number;
+  semTelefone: number;
+  aguardandoVerificado: number;
+  substituidasPorAtendente: number;
+  confirmadas: number;
+  canceladas: number;
+  semResposta: number;
+};
+
+export type ContagemRotulo = { erro: string; total: number };
+
+export type TotaisMensageria = {
+  enfileiradas: number;
+  enviadas: number;
+  entregues: number;
+  lidas: number;
+  visualizadas: number;
+  falhas: number;
+  retidas: number;
+  substituidasPorAtendente: number;
+  confirmadas: number;
+  canceladas: number;
+  semResposta: number;
+  taxaEntrega: number;
+  taxaLeitura: number;
+  taxaResposta: number;
+};
+
+export type ResumoDiarioMensageria = {
+  de: string;
+  ate: string;
+  totais: TotaisMensageria;
+  dias: DiaMensageria[];
+  falhasPorErro: ContagemRotulo[];
+  porFinalidade: ContagemRotulo[];
+  porUnidade: ContagemRotulo[];
+};
+
+// ------------------------------------------------------------------ Regras (confirmação)
+
+export type ConfirmacaoConfiguracao = {
+  /** "HH:mm" — Brasília. */
+  horaInicioEnvio: string;
+  horaFimEnvio: string;
+  maximoPorPassagem: number;
+  somenteSisreg: boolean;
+  janelaAbertaAgora: boolean;
+  atualizadoEm: string | null;
+};
+
+export type SalvarConfirmacaoConfiguracao = Pick<
+  ConfirmacaoConfiguracao,
+  'horaInicioEnvio' | 'horaFimEnvio' | 'maximoPorPassagem' | 'somenteSisreg'
+>;
+
+export type RegraUnidade = {
+  unidadeId: string;
+  unidadeNome: string;
+  enviarConfirmacao: boolean;
+  procedimentosComAviso: number;
+  procedimentosTotal: number;
+};
+
+/** Tarifas Meta (USD) e mapa template → categoria para a estimativa de custo. */
+export type MensageriaConfiguracao = {
+  tarifaUtilityUsd: number | null;
+  tarifaMarketingUsd: number | null;
+  tarifaAuthenticationUsd: number | null;
+  templatesCategorias: Record<string, string>;
+  atualizadoEm: string | null;
+};
+
+export type SalvarMensageriaConfiguracao = Omit<MensageriaConfiguracao, 'atualizadoEm'>;
+
+// ------------------------------------------------------------------ Respostas
+
+export type RespostaConfirmacao = {
+  solicitacaoId: string;
+  exameId: string | null;
+  codigoSolicitacao: string | null;
+  pacienteId: string;
+  pacienteNome: string | null;
+  categoria: string;
+  procedimento: string | null;
+  unidadeExecutante: string | null;
+  dataAgendada: string | null;
+  statusConfirmacao: StatusConfirmacao;
+  canal: string | null;
+  respondidoEm: string | null;
+  motivo: string | null;
+  statusSolicitacao: string;
+};
+
+export type FiltroRespostas = {
+  resposta?: string;
+  de?: string;
+  ate?: string;
+  texto?: string;
+  pagina?: number;
+  tamanho?: number;
+};
+
+export type PaginaRespostas = {
+  itens: RespostaConfirmacao[];
+  total: number;
+  pagina: number;
+  tamanho: number;
+};
+
+// ------------------------------------------------------------------ Lote
+
+export type FiltroLote = {
+  unidadeId?: string;
+  de?: string;
+  ate?: string;
+  forcar?: boolean;
+  incluirJaAvisados?: boolean;
+  incluirJaConfirmados?: boolean;
+};
+
+export type DisparoLote = FiltroLote & { ignorarJanela?: boolean };
+
+export type PreviaLote = {
+  elegiveis: number;
+  candidatos: number;
+  foraProcedimentoDesligado: number;
+  foraJaAvisado: number;
+  foraNaoSisreg: number;
+  porDia: { dia: string; total: number; consultas: number; exames: number }[];
+  /** Só no disparo: quantos foram enfileirados. */
+  enfileiradas: number | null;
+  aviso: string | null;
+  reenviosAvisados: number;
+  reenviosConfirmados: number;
 };

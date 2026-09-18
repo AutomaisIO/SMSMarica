@@ -1,0 +1,201 @@
+import { Link } from 'react-router-dom';
+import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, Clock, Hand, PhoneOff, Undo2, UserRound, X } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { Button } from '@/shared/ui/Button';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { CLASSE_RESPOSTA, ROTULO_RESPOSTA, ROTULO_STATUS, dataHora, hora, rotuloCanal } from '@/features/mensageria/lib/rotulos';
+import type { AbaAtendimento, EnvioConfirmacao, SolicitacaoAtendimento } from '@/features/confirmacoes/types';
+
+export type AcaoCard =
+  | 'atender'
+  | 'assumir'
+  | 'liberar'
+  | 'confirmar'
+  | 'cancelar'
+  | 'pendente'
+  | 'contato-errado'
+  | 'transferir'
+  | 'contato-corrigido';
+
+type Props = {
+  item: SolicitacaoAtendimento;
+  aba: AbaAtendimento;
+  podeEditar: boolean;
+  podeCancelar: boolean;
+  ocupado: boolean;
+  aoAcao: (acao: AcaoCard, item: SolicitacaoAtendimento) => void;
+};
+
+/** Situação do envio automático com o "check" do zap: ✓ enviada, ✓✓ entregue, ✓✓ azul lida, ⚠ falha. */
+function BadgeEnvio({ envio }: { envio: EnvioConfirmacao | null }) {
+  if (!envio) {
+    return <span className="badge badge-gray" title="Nenhuma mensagem automática foi gerada para este agendamento.">Não enviada</span>;
+  }
+  const rotulo = ROTULO_STATUS[envio.status] ?? envio.status;
+  const dica = [
+    envio.enviadoEm ? `Enviada ${dataHora(envio.enviadoEm)}` : null,
+    envio.entregueEm ? `Entregue ${dataHora(envio.entregueEm)}` : null,
+    envio.lidoEm ? `Lida ${dataHora(envio.lidoEm)}` : null,
+    envio.visualizadoEm ? `Abriu o link ${dataHora(envio.visualizadoEm)}` : null,
+    envio.proximaTentativaEm && envio.status === 'Pendente' ? `Sai a partir de ${dataHora(envio.proximaTentativaEm)}` : null,
+    envio.motivoFalha ?? envio.erroMeta,
+  ].filter(Boolean).join(' · ');
+
+  switch (envio.status) {
+    case 'Enviada':
+      return <span className="badge badge-info inline-flex items-center gap-1" title={dica}><Check className="h-3 w-3" /> Enviada</span>;
+    case 'Entregue':
+      return <span className="badge badge-info inline-flex items-center gap-1" title={dica}><CheckCheck className="h-3 w-3" /> Entregue</span>;
+    case 'Lida':
+      return <span className="badge badge-success inline-flex items-center gap-1" title={dica}><CheckCheck className="h-3 w-3 text-sky-600" /> Lida</span>;
+    case 'Falha':
+      return <span className="badge badge-danger inline-flex items-center gap-1" title={dica}><AlertTriangle className="h-3 w-3" /> Falhou</span>;
+    case 'Pendente':
+      return <span className="badge badge-gray inline-flex items-center gap-1" title={dica}><Clock className="h-3 w-3" /> Na fila</span>;
+    case 'AguardandoCorrecaoContato':
+      return <span className="badge badge-danger" title={dica}>Número negado</span>;
+    case 'AguardandoVerificacaoCadastral':
+      return <span className="badge badge-warning" title={dica}>Aguardando identificação</span>;
+    case 'SubstituidaPorAtendente':
+      return <span className="badge badge-gray" title={dica}>Atendida por pessoa</span>;
+    default:
+      return <span className="badge badge-warning" title={dica}>{rotulo}</span>;
+  }
+}
+
+export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, aoAcao }: Props) {
+  const a = item.atendimento;
+  const emAtendimentoPorOutro = a?.situacao === 'EmAtendimento' && !a.ehMeu;
+  const meuEmAtendimento = a?.situacao === 'EmAtendimento' && a.ehMeu;
+  const estacionada = a?.situacao === 'Pendente' || a?.situacao === 'ContatoErrado';
+  const rotaSolicitacao = item.exameId ? `/app/solicitacoes-exame/${item.exameId}` : `/app/consultas/${item.solicitacaoId}`;
+  const dataAgendada = item.dataAgendada ? new Date(item.dataAgendada) : null;
+  const ehHoje = dataAgendada ? dataAgendada.toDateString() === new Date().toDateString() : false;
+
+  return (
+    <article
+      className={cn(
+        'rounded-lg border bg-white p-3 shadow-sm transition-opacity',
+        emAtendimentoPorOutro ? 'border-gray-200 opacity-60' : 'border-gray-200',
+        meuEmAtendimento ? 'border-red-300 ring-1 ring-red-100' : null,
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* Paciente + contato */}
+        <div className="min-w-[220px] flex-1 space-y-1">
+          <div className="flex items-center gap-1">
+            <NomePacienteComResumo
+              pacienteId={item.pacienteId}
+              nome={item.pacienteNome ?? '(sem nome)'}
+              classNameNome="font-medium text-gray-900"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            {item.pacienteCpf ? <span>CPF {item.pacienteCpf}</span> : null}
+            <TelefoneCopiavel numero={item.telefone} />
+            {item.telefoneVerificado ? <span className="text-emerald-700" title="Contato verificado">✔ verificado</span> : null}
+            {item.contatoNegado ? <span className="text-red-700" title="Quem atende disse que não é o paciente">❗ número negado</span> : null}
+            {item.janelaZapAberta ? (
+              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-800" title="O paciente escreveu no zap nas últimas 24h — o botão do WhatsApp abre a conversa direto.">
+                respondeu no zap
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Agendamento */}
+        <div className="min-w-[240px] flex-1 space-y-0.5 text-sm">
+          <div className={cn('font-semibold tabular-nums', ehHoje ? 'text-red-700' : 'text-gray-900')}>
+            {dataHora(item.dataAgendada)}{ehHoje ? ' · hoje' : ''}
+          </div>
+          <div className="text-gray-800">
+            <Link to={rotaSolicitacao} className="hover:underline">
+              {item.procedimento ?? (item.categoria === 'Consulta' ? 'Consulta' : 'Exame')}
+            </Link>
+          </div>
+          <div className="text-xs text-gray-600">{item.unidadeExecutante ?? '—'}{item.codigoSolicitacao ? ` · SISREG ${item.codigoSolicitacao}` : ''}</div>
+        </div>
+
+        {/* Situação */}
+        <div className="flex min-w-[200px] flex-col items-start gap-1.5 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <BadgeEnvio envio={item.envio} />
+            <span className={`badge ${CLASSE_RESPOSTA[item.statusConfirmacao]}`} title={item.respondidoEm ? `${dataHora(item.respondidoEm)} · ${rotuloCanal(item.confirmadoCanal)}` : undefined}>
+              {ROTULO_RESPOSTA[item.statusConfirmacao]}
+            </span>
+          </div>
+          {a ? (
+            <div className={cn('inline-flex items-center gap-1 rounded px-1.5 py-0.5', a.ehMeu ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-700')}>
+              <UserRound className="h-3 w-3" />
+              {a.situacao === 'EmAtendimento'
+                ? `${a.ehMeu ? 'Você está atendendo' : `Em atendimento por ${a.atendenteNome}`} desde ${hora(a.iniciadoEm)}`
+                : a.situacao === 'Pendente'
+                  ? `Pendente (${a.atendenteNome}): ${a.motivo ?? 'sem motivo'}`
+                  : a.situacao === 'ContatoErrado'
+                    ? `Contato errado (${a.atendenteNome})${a.motivo ? `: ${a.motivo}` : ''}`
+                    : a.situacao}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Ações */}
+      {podeEditar ? (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
+          {!a || a.situacao === 'Liberado' || a.situacao === 'ContatoCorrigido' ? (
+            <Button tamanho="sm" disabled={ocupado} onClick={() => aoAcao('atender', item)}>
+              <Hand className="mr-1 h-3.5 w-3.5" /> Atender
+            </Button>
+          ) : null}
+
+          {emAtendimentoPorOutro ? (
+            <Button tamanho="sm" variante="outline" disabled={ocupado} onClick={() => aoAcao('assumir', item)}>
+              <ArrowRightLeft className="mr-1 h-3.5 w-3.5" /> Assumir atendimento
+            </Button>
+          ) : null}
+
+          {estacionada ? (
+            <Button tamanho="sm" variante="outline" disabled={ocupado} onClick={() => aoAcao('atender', item)}>
+              <Undo2 className="mr-1 h-3.5 w-3.5" /> Retomar
+            </Button>
+          ) : null}
+
+          {meuEmAtendimento ? (
+            <>
+              {item.statusConfirmacao !== 'Confirmada' ? (
+                <Button tamanho="sm" disabled={ocupado} onClick={() => aoAcao('confirmar', item)}>
+                  <Check className="mr-1 h-3.5 w-3.5" /> Confirmar
+                </Button>
+              ) : null}
+              <Button tamanho="sm" variante="outline" disabled={ocupado} onClick={() => aoAcao('pendente', item)}>
+                <Clock className="mr-1 h-3.5 w-3.5" /> Enviar para pendente
+              </Button>
+              <Button tamanho="sm" variante="outline" disabled={ocupado} onClick={() => aoAcao('contato-errado', item)}>
+                <PhoneOff className="mr-1 h-3.5 w-3.5" /> Contato errado
+              </Button>
+              <Button tamanho="sm" variante="ghost" disabled={ocupado} onClick={() => aoAcao('transferir', item)}>
+                <ArrowRightLeft className="mr-1 h-3.5 w-3.5" /> Transferir
+              </Button>
+              <Button tamanho="sm" variante="ghost" disabled={ocupado} onClick={() => aoAcao('liberar', item)}>
+                Liberar
+              </Button>
+            </>
+          ) : null}
+
+          {aba === 'ContatoErrado' && item.pacienteCpf ? (
+            <Button tamanho="sm" variante="outline" disabled={ocupado} onClick={() => aoAcao('contato-corrigido', item)}>
+              Corrigir contato
+            </Button>
+          ) : null}
+
+          {podeCancelar && (meuEmAtendimento || aba === 'Confirmados' || (!a && aba === 'NaoConfirmados')) ? (
+            <Button tamanho="sm" variante="danger" className="ml-auto" disabled={ocupado} onClick={() => aoAcao('cancelar', item)}>
+              <X className="mr-1 h-3.5 w-3.5" /> Cancelar agendamento
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  );
+}

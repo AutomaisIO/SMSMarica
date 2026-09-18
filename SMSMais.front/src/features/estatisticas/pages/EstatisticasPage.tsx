@@ -308,9 +308,13 @@ export function EstatisticasPage() {
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Tile rotulo="Turnos respondidos" valor={nf(dados.robo.turnos)} />
-              <Tile rotulo="Tokens (total)" valor={nf(dados.robo.tokensTotal)} />
-              <Tile rotulo="Tokens entrada / saída" valor={`${nf(dados.robo.tokensEntrada)} / ${nf(dados.robo.tokensSaida)}`} />
-              <Tile rotulo="Custo estimado" valor={usd(dados.robo.custoUsd)} />
+              {dados.veCustos ? (
+                <>
+                  <Tile rotulo="Tokens (total)" valor={nf(dados.robo.tokensTotal ?? 0)} />
+                  <Tile rotulo="Tokens entrada / saída" valor={`${nf(dados.robo.tokensEntrada ?? 0)} / ${nf(dados.robo.tokensSaida ?? 0)}`} />
+                  <Tile rotulo="Custo estimado" valor={usd(dados.robo.custoUsd ?? 0)} />
+                </>
+              ) : null}
             </div>
             <Painel titulo="Consumo por assunto">
               {dados.robo.porAssunto.length === 0 ? (
@@ -322,10 +326,14 @@ export function EstatisticasPage() {
                       <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wide text-gray-500">
                         <th className="py-2 pr-3 font-medium">Assunto</th>
                         <th className="py-2 px-3 text-right font-medium">Turnos</th>
-                        <th className="py-2 px-3 text-right font-medium">Tokens entrada</th>
-                        <th className="py-2 px-3 text-right font-medium">Tokens saída</th>
-                        <th className="py-2 px-3 text-right font-medium">Tokens total</th>
-                        <th className="py-2 pl-3 text-right font-medium">Custo</th>
+                        {dados.veCustos ? (
+                          <>
+                            <th className="py-2 px-3 text-right font-medium">Tokens entrada</th>
+                            <th className="py-2 px-3 text-right font-medium">Tokens saída</th>
+                            <th className="py-2 px-3 text-right font-medium">Tokens total</th>
+                            <th className="py-2 pl-3 text-right font-medium">Custo</th>
+                          </>
+                        ) : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -333,10 +341,14 @@ export function EstatisticasPage() {
                         <tr key={a.assunto} className="border-b border-gray-100 last:border-0">
                           <td className="py-2 pr-3 text-gray-800">{a.assunto}</td>
                           <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.turnos)}</td>
-                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensEntrada)}</td>
-                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensSaida)}</td>
-                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensTotal)}</td>
-                          <td className="py-2 pl-3 text-right tabular-nums font-medium text-gray-900">{usd(a.custoUsd)}</td>
+                          {dados.veCustos ? (
+                            <>
+                              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensEntrada ?? 0)}</td>
+                              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensSaida ?? 0)}</td>
+                              <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(a.tokensTotal ?? 0)}</td>
+                              <td className="py-2 pl-3 text-right tabular-nums font-medium text-gray-900">{usd(a.custoUsd ?? 0)}</td>
+                            </>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -345,6 +357,56 @@ export function EstatisticasPage() {
               )}
             </Painel>
           </div>
+
+          {/* Custo Meta (estimativa) — só para quem tem o módulo de custos */}
+          {dados.veCustos && dados.custosMeta ? (
+            <div className="space-y-3">
+              <h2 className="pt-2 text-sm font-semibold text-gray-800">Custo Meta (estimativa)</h2>
+              {!dados.custosMeta.tarifaCadastrada ? (
+                <p className="text-sm text-amber-800">
+                  Nenhuma tarifa cadastrada — cadastre em Mensageria → Regras e parâmetros para a estimativa aparecer.
+                </p>
+              ) : null}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Tile rotulo="Custo estimado" valor={usd(dados.custosMeta.totalUsd)} />
+                <Tile rotulo="Templates enviados" valor={nf(dados.custosMeta.templatesEnviados)} />
+                <Tile rotulo="Cobrados" valor={nf(dados.custosMeta.templatesCobrados)} />
+                <Tile rotulo="Grátis (janela aberta)" valor={nf(dados.custosMeta.templatesGratis)} />
+              </div>
+              <Painel titulo="Por template">
+                {dados.custosMeta.porTemplate.length === 0 ? (
+                  <SemDados altura={120} />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wide text-gray-500">
+                          <th className="py-2 pr-3 font-medium">Template</th>
+                          <th className="py-2 px-3 font-medium">Categoria</th>
+                          <th className="py-2 px-3 text-right font-medium">Enviadas</th>
+                          <th className="py-2 px-3 text-right font-medium">Cobradas</th>
+                          <th className="py-2 px-3 text-right font-medium">Tarifa</th>
+                          <th className="py-2 pl-3 text-right font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dados.custosMeta.porTemplate.map((t) => (
+                          <tr key={t.template} className="border-b border-gray-100 last:border-0">
+                            <td className="py-2 pr-3 font-mono text-xs text-gray-800">{t.template}</td>
+                            <td className="py-2 px-3 text-gray-700">{t.categoria}</td>
+                            <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(t.enviadas)}</td>
+                            <td className="py-2 px-3 text-right tabular-nums text-gray-700">{nf(t.cobradas)}</td>
+                            <td className="py-2 px-3 text-right tabular-nums text-gray-700">{t.tarifaUsd === null ? '—' : usd(t.tarifaUsd)}</td>
+                            <td className="py-2 pl-3 text-right tabular-nums font-medium text-gray-900">{usd(t.totalUsd)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Painel>
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

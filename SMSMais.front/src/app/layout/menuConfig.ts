@@ -565,14 +565,14 @@ export const SECOES: SecaoMenu[] = [
         to: '/app/confirmacoes',
         icone: CalendarCheck2,
         modulo: 'Confirmacoes',
-        descricao: 'Aviso de agendamento do SISREG pelo WhatsApp: fila, respostas dos pacientes e regras.',
+        descricao: 'Atendimento das confirmações de agendamento: não confirmados, confirmados, contato errado e pendentes.',
       },
       {
-        rotulo: 'Notificações de Agendamento',
-        to: '/app/notificacoes-agendamento',
+        rotulo: 'Mensageria',
+        to: '/app/mensageria',
         icone: BellRing,
         modulo: 'NotificacoesAgendamento',
-        descricao: 'Envio e confirmação de exames pelo WhatsApp.',
+        descricao: 'Gestão dos envios de WhatsApp ao paciente: resumo diário, falhas, respostas, lote e regras.',
       },
       {
         rotulo: 'Mensagens Prontas',

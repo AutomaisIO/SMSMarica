@@ -121,6 +121,22 @@ export async function listarUnidadesDestino(): Promise<UnidadeDestino[]> {
   return data;
 }
 
+export type SituacaoContato = {
+  telefoneCanonical: string | null;
+  conversaId: string | null;
+  janelaExpiraEm: string | null;
+  podeTextoLivre: boolean;
+  contatoNegado: boolean;
+};
+
+/** Há conversa viva com janela de 24h aberta para este paciente/telefone? (não cria nada) */
+export async function obterSituacaoContato(pacienteId?: string, telefone?: string): Promise<SituacaoContato> {
+  const { data } = await http.get<SituacaoContato>('/conversas/situacao', {
+    params: { pacienteId: pacienteId || undefined, telefone: telefone || undefined },
+  });
+  return data;
+}
+
 export async function obterResumoConversas(): Promise<ResumoConversas> {
   const { data } = await http.get<ResumoConversas>('/conversas/resumo');
   return data;
