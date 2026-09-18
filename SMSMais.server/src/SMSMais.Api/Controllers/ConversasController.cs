@@ -46,6 +46,17 @@ public sealed class ConversasController(
         [FromQuery] string? termo, CancellationToken ct) =>
         await service.BuscarContatosAsync(termo, ct);
 
+    /// <summary>
+    /// Situação do contato para o atalho do zap: há conversa viva com janela de 24h aberta para
+    /// este paciente/telefone? Se sim, o botão abre a thread direto; senão, o diálogo de template.
+    /// </summary>
+    [HttpGet("situacao")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SituacaoContatoDto>(StatusCodes.Status200OK)]
+    public async Task<SituacaoContatoDto> Situacao(
+        [FromQuery] Guid? pacienteId, [FromQuery] string? telefone, CancellationToken ct) =>
+        await service.ObterSituacaoContatoAsync(pacienteId, telefone, ct);
+
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
     [ProducesResponseType<ConversaListItemDto>(StatusCodes.Status200OK)]

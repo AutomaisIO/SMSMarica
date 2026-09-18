@@ -577,6 +577,8 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         {
             if (n.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue or StatusComunicacao.Lida)
                 continue; // flag anti-reenvio: o que já saiu não sai de novo
+            if (n.Status == StatusComunicacao.SubstituidaPorAtendente)
+                continue; // uma pessoa já entrou no circuito (menu Confirmações): o automático não volta
             n.Status = StatusComunicacao.Pendente;
             n.ProximaTentativaEm = agora;
             n.MotivoFalha = null;

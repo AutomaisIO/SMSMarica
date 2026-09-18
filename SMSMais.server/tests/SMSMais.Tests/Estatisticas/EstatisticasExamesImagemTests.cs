@@ -237,7 +237,10 @@ public class EstatisticasExamesImagemTests(PostgresFixture fixture)
         // Sem usuário no contexto o escopo é "tudo" (EscopoUnidade §1); o recorte vem da unidade.
         var resolver = Substitute.For<IPacienteResolver>();
         var servico = new EstatisticasService(
-            db, new UsuarioAtualAccessorFake(), resolver, NullLogger<EstatisticasService>.Instance);
+            db, new UsuarioAtualAccessorFake(), resolver,
+            Substitute.For<SMSMais.Core.Identidade.IIdentidadeService>(),
+            Substitute.For<SMSMais.Core.Notificacoes.Mensageria.IMensageriaConfiguracaoService>(),
+            NullLogger<EstatisticasService>.Instance);
 
         return await servico.ObterExamesImagemAsync(
             dia, dia, unidadeId, ModalidadeDicom.MG, tipoExameId: null);

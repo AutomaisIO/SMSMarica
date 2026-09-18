@@ -25,6 +25,8 @@ public sealed class EstatisticasService(
     SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
+    IIdentidadeService identidade,
+    Notificacoes.Mensageria.IMensageriaConfiguracaoService mensageria,
     ILogger<EstatisticasService> logger) : IEstatisticasService
 {
     private const int MaxDiasPeriodo = 400;
@@ -67,7 +69,26 @@ public sealed class EstatisticasService(
                 "SELECT count(*) FROM smsmarica.conversa c " +
                 "WHERE c.excluido_em IS NULL AND c.criado_em::date BETWEEN @de AND @ate",
                 de, ate, ct);
+            // Custos (tokens/USD do robô e estimativa Meta) só para quem tem o módulo próprio —
+            // quem vê volume não precisa saber quanto se gasta (decisão do produto, 18/09/2026).
+            var veCustos = await VeCustosAsync(ct);
             var robo = await LerRoboConsumoAsync(conn, de, ate, ct);
+            CustosMetaDto? custosMeta = null;
+            if (veCustos)
+            {
+                custosMeta = await LerCustosMetaAsync(conn, de, ate, ct);
+            }
+            else
+            {
+                robo = robo with
+                {
+                    TokensEntrada = null, TokensSaida = null, TokensTotal = null, CustoUsd = null,
+                    PorAssunto = [.. robo.PorAssunto.Select(a => a with
+                    {
+                        TokensEntrada = null, TokensSaida = null, TokensTotal = null, CustoUsd = null,
+                    })],
+                };
+            }
 
             var dias = ate.DayNumber - de.DayNumber + 1;
             var total = resumoBruto.Enviadas + resumoBruto.Recebidas;
@@ -99,7 +120,7 @@ public sealed class EstatisticasService(
             };
 
             return new EstatisticasWhatsAppDto(de, ate, resumo, porDia, porCategoria,
-                porTemplate, porStatus, porAtendente, robo);
+                porTemplate, porStatus, porAtendente, robo, custosMeta, veCustos);
         }
         finally
         {
@@ -631,6 +652,72 @@ public sealed class EstatisticasService(
         }
 
         return new RoboConsumoDto(turnos, tin, tout, tin + tout, custo, porAssunto);
+    }
+
+    private async Task<bool> VeCustosAsync(CancellationToken ct)
+    {
+        if (usuarioAtual.UsuarioId is not { } id) return false;
+        try
+        {
+            var perms = await identidade.ObterPermissoesResolvidasAsync(id, ct);
+            return perms.Resolvidas.Any(p => p.Modulo == ModuloPermissao.EstatisticaCustos
+                && (p.Acoes & AcoesPermissao.Consulta) == AcoesPermissao.Consulta);
+        }
+        catch (NaoEncontradoException) { return false; }
+    }
+
+    /// <summary>
+    /// Estimativa do custo Meta: templates de SAÍDA aceitos (enviada/entregue/lida) × tarifa da
+    /// categoria. "Cobrado" = não havia mensagem do cidadão no mesmo número nas 24h anteriores
+    /// (utility em janela aberta é grátis; autenticação e marketing cobram sempre). O casamento
+    /// de número é pelos 8 últimos dígitos: o envio pode ter completado o 9º dígito e a entrada
+    /// chega canônica.
+    /// </summary>
+    private async Task<CustosMetaDto> LerCustosMetaAsync(
+        DbConnection conn, DateOnly de, DateOnly ate, CancellationToken ct)
+    {
+        var cfg = await mensageria.ObterAsync(ct);
+        var linhas = new List<(string Template, DateOnly Dia, long Enviadas, long ForaDaJanela)>();
+        await using (var cmd = CriarComando(conn,
+            "SELECT m.template, m.ocorrido_em::date AS dia, count(*) AS enviadas, " +
+            "count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM smsmarica.whatsapp_mensagem e " +
+            "  WHERE e.direcao = 2 AND right(e.telefone, 8) = right(m.telefone, 8) " +
+            "  AND e.ocorrido_em > m.ocorrido_em - interval '24 hours' AND e.ocorrido_em <= m.ocorrido_em)) AS fora_janela " +
+            $"FROM smsmarica.whatsapp_mensagem m WHERE {FiltroPeriodoSimulado} " +
+            "AND m.direcao = 1 AND m.template IS NOT NULL AND m.template <> '' AND m.status IN (1,2,3) " +
+            "GROUP BY 1, 2 ORDER BY 2", de, ate))
+        await using (var r = await cmd.ExecuteReaderAsync(ct))
+        {
+            while (await r.ReadAsync(ct))
+                linhas.Add((r.GetString(0), DateOnly.FromDateTime(r.GetDateTime(1)), r.GetInt64(2), r.GetInt64(3)));
+        }
+
+        var porTemplate = new Dictionary<string, (string Categoria, long Enviadas, long Cobradas, decimal Total)>();
+        var porDia = new SortedDictionary<DateOnly, (long Enviadas, long Cobradas, decimal Total)>();
+        foreach (var l in linhas)
+        {
+            var categoria = Notificacoes.Mensageria.CategoriaCobrancaMeta.DoTemplate(l.Template, cfg.TemplatesCategorias);
+            var cobradas = categoria == Notificacoes.Mensageria.CategoriaCobrancaMeta.Utility ? l.ForaDaJanela : l.Enviadas;
+            var total = cobradas * (cfg.Tarifa(categoria) ?? 0m);
+
+            porTemplate[l.Template] = porTemplate.TryGetValue(l.Template, out var t)
+                ? (categoria, t.Enviadas + l.Enviadas, t.Cobradas + cobradas, t.Total + total)
+                : (categoria, l.Enviadas, cobradas, total);
+            porDia[l.Dia] = porDia.TryGetValue(l.Dia, out var d)
+                ? (d.Enviadas + l.Enviadas, d.Cobradas + cobradas, d.Total + total)
+                : (l.Enviadas, cobradas, total);
+        }
+
+        var enviadas = porTemplate.Values.Sum(v => v.Enviadas);
+        var cobradasTotal = porTemplate.Values.Sum(v => v.Cobradas);
+        return new CustosMetaDto(
+            cfg.TarifaCadastrada,
+            Math.Round(porTemplate.Values.Sum(v => v.Total), 4),
+            enviadas, cobradasTotal, enviadas - cobradasTotal,
+            [.. porTemplate.OrderByDescending(kv => kv.Value.Total).ThenByDescending(kv => kv.Value.Enviadas)
+                .Select(kv => new CustoMetaTemplateDto(kv.Key, kv.Value.Categoria, kv.Value.Enviadas, kv.Value.Cobradas,
+                    cfg.Tarifa(kv.Value.Categoria), Math.Round(kv.Value.Total, 4)))],
+            [.. porDia.Select(kv => new CustoMetaDiaDto(kv.Key, kv.Value.Enviadas, kv.Value.Cobradas, Math.Round(kv.Value.Total, 4)))]);
     }
 
     private async Task<long> LerEscalarAsync(DbConnection conn, string sql, DateOnly de, DateOnly ate, CancellationToken ct)

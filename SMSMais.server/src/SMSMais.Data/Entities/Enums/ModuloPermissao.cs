@@ -275,4 +275,9 @@ public enum ModuloPermissao
     /// <c>Inclusao</c> salva estratégia e roda o agente; <c>Edicao</c> edita, reroda e marca como
     /// aplicada; <c>Exclusao</c> arquiva.</summary>
     EstrategiasFila = 66,
+
+    /// <summary>Estatísticas: CUSTOS (IA e Meta). Sem este módulo, o retrato do WhatsApp sai sem
+    /// tokens e sem custo do robô e sem a estimativa de custo Meta — quem vê volume não precisa
+    /// saber quanto se gasta. Só <c>Consulta</c>. Exige também <see cref="Estatistica"/> (a tela).</summary>
+    EstatisticaCustos = 67,
 }

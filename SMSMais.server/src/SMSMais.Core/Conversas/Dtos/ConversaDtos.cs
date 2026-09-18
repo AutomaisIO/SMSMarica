@@ -146,3 +146,11 @@ public sealed record ContatoConversaDto(
     string Origem,
     /// <summary>❗ o telefone do cadastro foi NEGADO por quem atende ("não sou essa pessoa").</summary>
     bool ContatoNegado = false);
+
+/// <summary>Situação do contato para o atalho do zap: conversa viva (se houver) e se a janela está aberta.</summary>
+public sealed record SituacaoContatoDto(
+    string? TelefoneCanonical,
+    Guid? ConversaId,
+    DateTime? JanelaExpiraEm,
+    bool PodeTextoLivre,
+    bool ContatoNegado);

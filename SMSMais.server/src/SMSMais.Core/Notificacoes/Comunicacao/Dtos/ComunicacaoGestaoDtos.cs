@@ -51,3 +51,55 @@ public sealed record ComunicacaoDetalheDto(
     DateTime? LinkExpiraEm,
     DateTime? LinkUsadoEm,
     string? LinkUsadoIp);
+
+/// <summary>
+/// Um dia da Mensageria (coorte pelo dia em que a comunicação ENTROU, Brasília): quantas
+/// entraram, o que aconteceu com elas (enviada/entregue/lida/falha/retida) e o que o paciente
+/// respondeu. <c>EnviadasNoDia</c> é a única coluna pelo dia do ENVIO — é a que casa com o que
+/// saiu de fato naquele dia.
+/// </summary>
+public sealed record DiaMensageriaDto(
+    DateOnly Dia,
+    int Enfileiradas,
+    int EnviadasNoDia,
+    int Enviadas,
+    int Entregues,
+    int Lidas,
+    int Visualizadas,
+    int Falhas,
+    int NaFila,
+    int AguardandoIdentificacao,
+    int NumeroNegado,
+    int SemTelefone,
+    int AguardandoVerificado,
+    int SubstituidasPorAtendente,
+    int Confirmadas,
+    int Canceladas,
+    int SemResposta);
+
+public sealed record ErroMensageriaDto(string Erro, int Total);
+
+public sealed record TotaisMensageriaDto(
+    int Enfileiradas,
+    int Enviadas,
+    int Entregues,
+    int Lidas,
+    int Visualizadas,
+    int Falhas,
+    int Retidas,
+    int SubstituidasPorAtendente,
+    int Confirmadas,
+    int Canceladas,
+    int SemResposta,
+    double TaxaEntrega,
+    double TaxaLeitura,
+    double TaxaResposta);
+
+public sealed record ResumoDiarioMensageriaDto(
+    DateOnly De,
+    DateOnly Ate,
+    TotaisMensageriaDto Totais,
+    IReadOnlyList<DiaMensageriaDto> Dias,
+    IReadOnlyList<ErroMensageriaDto> FalhasPorErro,
+    IReadOnlyList<ErroMensageriaDto> PorFinalidade,
+    IReadOnlyList<ErroMensageriaDto> PorUnidade);

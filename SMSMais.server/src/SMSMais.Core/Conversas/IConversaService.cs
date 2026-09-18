@@ -93,6 +93,12 @@ public interface IConversaService
     /// TODOS os cadastros que têm o telefone desta conversa (telefone de família). O titular
     /// vem marcado. Lista vazia = ninguém no hub tem esse número.
     /// </summary>
+    /// <summary>
+    /// "Tem conversa viva com janela de 24h aberta para este paciente/telefone?" — para o botão do
+    /// zap abrir a thread direto (com histórico) em vez do diálogo de template. Não cria nada.
+    /// </summary>
+    Task<SituacaoContatoDto> ObterSituacaoContatoAsync(Guid? pacienteId, string? telefone, CancellationToken ct = default);
+
     Task<IReadOnlyList<PacienteDoTelefoneDto>> ListarPacientesDoTelefoneAsync(
         Guid conversaId, CancellationToken ct = default);
 }

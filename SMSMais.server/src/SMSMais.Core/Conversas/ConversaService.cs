@@ -105,6 +105,46 @@ public sealed class ConversaService(
                 : a)];
     }
 
+    public async Task<SituacaoContatoDto> ObterSituacaoContatoAsync(
+        Guid? pacienteId, string? telefone, CancellationToken ct = default)
+    {
+        var agora = DateTime.UtcNow;
+        string? fone = null;
+        if (!string.IsNullOrWhiteSpace(telefone))
+        {
+            var inst = await instituicao.ObterAsync(ct);
+            var interp = TelefoneWhatsApp.Interpretar(
+                telefone, inst.DddPadrao?.ToString() ?? TelefoneWhatsApp.DddPadraoFallback);
+            fone = interp.Ok ? TelefoneWhatsApp.Canonizar(interp.Fone!) : null;
+        }
+        if (fone is null && pacienteId is { } pid)
+        {
+            var r = await pacienteResolver.ResolverAsync(pid, ct);
+            var melhor = r?.TelefoneVerificado ?? r?.Celular;
+            if (!string.IsNullOrEmpty(melhor)) fone = TelefoneWhatsApp.Canonizar(melhor);
+        }
+
+        // Conversa viva: pelo telefone (chave de roteamento) ou, na falta dele, pelo paciente.
+        var viva = await db.Conversas.AsNoTracking()
+            .Where(c => c.Canal == CanalConversa.WhatsApp && c.ExcluidoEm == null
+                && (c.Status == StatusConversa.Aberta || c.Status == StatusConversa.Pendente)
+                && ((fone != null && c.TelefoneCanonical == fone)
+                    || (fone == null && pacienteId != null && c.PacienteId == pacienteId)))
+            .OrderByDescending(c => c.UltimaMensagemEm ?? c.CriadoEm)
+            .Select(c => new { c.Id, c.JanelaExpiraEm, c.TelefoneCanonical })
+            .FirstOrDefaultAsync(ct);
+
+        fone ??= viva?.TelefoneCanonical;
+        var negado = fone is not null && await db.PendenciasCadastro.AsNoTracking().AnyAsync(p =>
+            p.Status == StatusPendenciaCadastro.Aberta && p.Tipo == TipoPendenciaCadastro.NumeroErrado
+            && p.TelefoneCanonical == fone && (p.PacienteId == null || pacienteId == null || p.PacienteId == pacienteId), ct);
+
+        return new SituacaoContatoDto(
+            fone, viva?.Id, viva?.JanelaExpiraEm,
+            viva?.JanelaExpiraEm is { } j && j > agora,
+            negado);
+    }
+
     public async Task<IReadOnlyList<PacienteDoTelefoneDto>> ListarPacientesDoTelefoneAsync(
         Guid conversaId, CancellationToken ct = default)
     {

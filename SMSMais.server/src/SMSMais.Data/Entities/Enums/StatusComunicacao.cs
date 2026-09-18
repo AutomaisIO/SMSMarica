@@ -45,4 +45,11 @@ public enum StatusComunicacao
     /// telefone já corrigido do cadastro.
     /// </summary>
     AguardandoCorrecaoContato = 9,
+
+    /// <summary>
+    /// Terminal: um ATENDENTE começou a tratar a solicitação (menu Confirmações) antes de a
+    /// mensagem automática sair — na fila, ou em retry após falha. Depois que uma pessoa entra
+    /// no circuito o sistema não tenta mais; o que já foi enviado fica como está.
+    /// </summary>
+    SubstituidaPorAtendente = 10,
 }

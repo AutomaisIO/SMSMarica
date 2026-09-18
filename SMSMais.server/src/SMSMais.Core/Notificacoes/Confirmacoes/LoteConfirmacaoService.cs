@@ -28,7 +28,8 @@ public interface ILoteConfirmacaoService
     /// <paramref name="de"/> e <paramref name="ate"/> são DIAS de Brasília, inclusivos — é assim que
     /// se decide "não avise o de amanhã, comece na segunda".</summary>
     Task<PreviaLoteConfirmacaoDto> PreverAsync(
-        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, CancellationToken ct = default);
+        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false,
+        bool incluirJaAvisados = false, bool incluirJaConfirmados = false, CancellationToken ct = default);
 
     /// <summary>Enfileira o lote. Idempotente: quem já tem comunicação de confirmação não entra de novo.</summary>
     /// <param name="forcar">Ignora as chaves de unidade e de procedimento — o lote passa a ser
@@ -36,9 +37,13 @@ public interface ILoteConfirmacaoService
     /// negado, número não verificado → desafio) continuam valendo: elas não são chave de operação.</param>
     /// <param name="ignorarJanela">Este lote sai AGORA, mesmo fora do horário de envio. Vale só
     /// para as mensagens deste disparo — a janela continua de pé para todo o resto.</param>
+    /// <param name="incluirJaAvisados">Quem já recebeu a confirmação entra de novo: a comunicação é
+    /// REARMADA (links antigos revogados, recibos zerados, envio novo) em vez de pulada.</param>
+    /// <param name="incluirJaConfirmados">Quem já confirmou também recebe de novo — a resposta
+    /// anterior volta a Pendente (fica na trilha de contato) e o paciente reconfirma.</param>
     Task<PreviaLoteConfirmacaoDto> DispararAsync(
         Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, bool ignorarJanela = false,
-        CancellationToken ct = default);
+        bool incluirJaAvisados = false, bool incluirJaConfirmados = false, CancellationToken ct = default);
 }
 
 public sealed class LoteConfirmacaoService(
@@ -51,17 +56,18 @@ public sealed class LoteConfirmacaoService(
     public const int MaximoPorLote = 2000;
 
     public Task<PreviaLoteConfirmacaoDto> PreverAsync(
-        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, CancellationToken ct = default) =>
-        MontarAsync(unidadeId, de, ate, forcar, disparar: false, ct);
+        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false,
+        bool incluirJaAvisados = false, bool incluirJaConfirmados = false, CancellationToken ct = default) =>
+        MontarAsync(unidadeId, de, ate, forcar, disparar: false, ct, false, incluirJaAvisados, incluirJaConfirmados);
 
     public Task<PreviaLoteConfirmacaoDto> DispararAsync(
         Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, bool ignorarJanela = false,
-        CancellationToken ct = default) =>
-        MontarAsync(unidadeId, de, ate, forcar, disparar: true, ct, ignorarJanela);
+        bool incluirJaAvisados = false, bool incluirJaConfirmados = false, CancellationToken ct = default) =>
+        MontarAsync(unidadeId, de, ate, forcar, disparar: true, ct, ignorarJanela, incluirJaAvisados, incluirJaConfirmados);
 
     private async Task<PreviaLoteConfirmacaoDto> MontarAsync(
         Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar, bool disparar, CancellationToken ct,
-        bool ignorarJanela = false)
+        bool ignorarJanela = false, bool incluirJaAvisados = false, bool incluirJaConfirmados = false)
     {
         // Forçar é o modo "eu sei o que estou fazendo": ignora as chaves, mas exige alvo estreito —
         // sem unidade escolhida seria um disparo para a rede inteira num clique.
@@ -117,22 +123,29 @@ public sealed class LoteConfirmacaoService(
                 && s.Status != StatusSolicitacao.Cancelada
                 && unidadesLigadas.Contains(s.UnidadeExecutanteId)
                 && s.DataAgendada > inicio && s.DataAgendada < limite
-                && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
+                && (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente
+                    || (incluirJaConfirmados && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada)))
             .Include(s => s.ExameImagem)
             .OrderBy(s => s.DataAgendada)
             .ToListAsync(ct);
 
+        var candidatoIds = candidatos.Select(c => c.Id).ToList();
         var jaTemComunicacao = await db.ComunicacoesPaciente.AsNoTracking()
-            .Where(c => c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento && c.SolicitacaoId != null)
+            .Where(c => c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                && c.SolicitacaoId != null && candidatoIds.Contains(c.SolicitacaoId.Value))
             .Select(c => c.SolicitacaoId!.Value)
             .ToHashSetAsync(ct);
 
         var elegiveis = new List<Solicitacao>();
-        int foraProcedimento = 0, foraJaAvisado = 0, foraForaDoSisreg = 0;
+        // Reenvios: quem entra de novo por decisão de quem dispara (já avisado e/ou já confirmado).
+        var reenvios = new List<Solicitacao>();
+        int foraProcedimento = 0, foraJaAvisado = 0, foraForaDoSisreg = 0, reenviosAvisados = 0, reenviosConfirmados = 0;
 
         foreach (var s in candidatos)
         {
-            if (jaTemComunicacao.Contains(s.Id)) { foraJaAvisado++; continue; }
+            var jaConfirmou = s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada;
+            var jaAvisado = jaTemComunicacao.Contains(s.Id);
+            if (jaAvisado && !incluirJaAvisados && !jaConfirmou) { foraJaAvisado++; continue; }
             if (!OrigemAgendamento.EhDoSisreg(s)) { foraForaDoSisreg++; continue; }
 
             if (!forcar)
@@ -145,6 +158,9 @@ public sealed class LoteConfirmacaoService(
                     continue;
                 }
             }
+
+            if (jaConfirmou) { reenviosConfirmados++; reenvios.Add(s); }
+            else if (jaAvisado) { reenviosAvisados++; reenvios.Add(s); }
             elegiveis.Add(s);
         }
 
@@ -171,9 +187,54 @@ public sealed class LoteConfirmacaoService(
                     + "Reduza os dias à frente e dispare em partes.");
             }
 
+            var agoraDisparo = DateTime.UtcNow;
+            var reenvioIds = reenvios.Select(r => r.Id).ToHashSet();
+            var comunicacoesExistentes = reenvioIds.Count == 0
+                ? []
+                : await db.ComunicacoesPaciente
+                    .Where(c => c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                        && c.SolicitacaoId != null && reenvioIds.Contains(c.SolicitacaoId.Value))
+                    .ToListAsync(ct);
+
             var quantos = 0;
             foreach (var s in elegiveis)
             {
+                if (reenvioIds.Contains(s.Id))
+                {
+                    // Reenvio por decisão de quem dispara. Quem já confirmou volta a Pendente (a
+                    // resposta anterior fica na trilha) — senão o worker mata o envio como "já
+                    // respondeu". Links antigos são revogados: podem estar com a pessoa errada.
+                    if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada)
+                    {
+                        db.ContatosRegistro.Add(new ContatoRegistro
+                        {
+                            Id = Guid.CreateVersion7(),
+                            SolicitacaoId = s.Id,
+                            PacienteId = s.PacienteId,
+                            Meio = MeioContato.WhatsApp,
+                            Resultado = ResultadoContato.Outro,
+                            Observacao = $"Reconfirmação pedida em lote (estava confirmada em {s.ConfirmadoEm:dd/MM/yyyy HH:mm} via {s.ConfirmadoCanal}).",
+                            CriadoEm = agoraDisparo,
+                            CriadoPor = usuarioAtual.UsuarioId,
+                        });
+                        s.StatusConfirmacao = StatusConfirmacaoAgendamento.Pendente;
+                        s.ConfirmadoEm = null;
+                        s.ConfirmadoCanal = null;
+                        s.AtualizadoEm = agoraDisparo;
+                        s.AtualizadoPor = usuarioAtual.UsuarioId;
+                    }
+                    var existente = comunicacoesExistentes.FirstOrDefault(c => c.SolicitacaoId == s.Id);
+                    if (existente is not null)
+                    {
+                        await comunicacoes.RevogarAcessosAsync(s.Id, agoraDisparo, ct);
+                        ComunicacaoPacienteService.RearmarParaNovoEnvio(existente);
+                        existente.Origem = OrigemComunicacao.Manual;
+                        existente.EnviadoPor = usuarioAtual.UsuarioId;
+                        existente.IgnorarJanelaHorario = ignorarJanela;
+                        quantos++;
+                        continue;
+                    }
+                }
                 await comunicacoes.EnfileirarAsync(s, FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
                 quantos++;
             }
@@ -211,6 +272,8 @@ public sealed class LoteConfirmacaoService(
             foraForaDoSisreg,
             porDia,
             enfileiradas,
-            aviso);
+            aviso,
+            reenviosAvisados,
+            reenviosConfirmados);
     }
 }

@@ -189,6 +189,10 @@ public static class DependencyInjection
             Notificacoes.Confirmacoes.ConfirmacoesPainelService>();
         services.AddScoped<Notificacoes.Confirmacoes.ILoteConfirmacaoService,
             Notificacoes.Confirmacoes.LoteConfirmacaoService>();
+        services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
+            Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
+        services.AddScoped<Notificacoes.Mensageria.IMensageriaConfiguracaoService,
+            Notificacoes.Mensageria.MensageriaConfiguracaoService>();
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoGestaoService,
             Notificacoes.Comunicacao.ComunicacaoGestaoService>();
         // Resolução preguiçosa: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.

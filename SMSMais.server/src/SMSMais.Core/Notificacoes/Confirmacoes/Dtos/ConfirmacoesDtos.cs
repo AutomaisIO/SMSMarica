@@ -76,6 +76,10 @@ public sealed record PreviaLoteConfirmacaoDto(
     IReadOnlyList<LoteConfirmacaoPorDiaDto> PorDia,
     /// <summary>Preenchido só no disparo: quantos foram enfileirados.</summary>
     int? Enfileiradas,
-    string? Aviso);
+    string? Aviso,
+    /// <summary>Dos elegíveis, quantos são REENVIO para quem já tinha recebido (opção do lote).</summary>
+    int ReenviosAvisados = 0,
+    /// <summary>Dos elegíveis, quantos são reenvio para quem já tinha CONFIRMADO (opção do lote).</summary>
+    int ReenviosConfirmados = 0);
 
 public sealed record LoteConfirmacaoPorDiaDto(DateOnly Dia, int Total, int Consultas, int Exames);

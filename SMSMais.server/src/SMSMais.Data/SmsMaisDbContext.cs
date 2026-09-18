@@ -258,6 +258,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // estado da conversa de cancelamento e registro manual de contatos.
     public DbSet<ComunicacaoPaciente> ComunicacoesPaciente => Set<ComunicacaoPaciente>();
     public DbSet<Entities.Notificacoes.ConfirmacaoConfiguracao> ConfirmacaoConfiguracoes => Set<Entities.Notificacoes.ConfirmacaoConfiguracao>();
+    public DbSet<Entities.Notificacoes.MensageriaConfiguracao> MensageriaConfiguracoes => Set<Entities.Notificacoes.MensageriaConfiguracao>();
+    public DbSet<Entities.Notificacoes.AtendimentoConfirmacao> AtendimentosConfirmacao => Set<Entities.Notificacoes.AtendimentoConfirmacao>();
+    public DbSet<Entities.Notificacoes.AtendimentoConfirmacaoEvento> AtendimentoConfirmacaoEventos => Set<Entities.Notificacoes.AtendimentoConfirmacaoEvento>();
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
     public DbSet<Entities.Notificacoes.VerificacaoCadastralEstado> VerificacoesCadastraisEstado => Set<Entities.Notificacoes.VerificacaoCadastralEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();

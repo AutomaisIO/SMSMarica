@@ -14,8 +14,34 @@ namespace SMSMais.Api.Controllers;
 [ApiController]
 [Route("comunicacoes-paciente")]
 public sealed class ComunicacoesPacienteController(
-    IComunicacaoGestaoService service) : ControllerBase
+    IComunicacaoGestaoService service,
+    SMSMais.Core.Notificacoes.Mensageria.IMensageriaConfiguracaoService mensageria) : ControllerBase
 {
+    /// <summary>Resumo diário da mensageria (entradas, envios, entregas, leituras, falhas por erro
+    /// Meta, retidas, respostas). Dias de Brasília, inclusivos; sem período, últimos 30 dias.</summary>
+    [HttpGet("resumo-diario")]
+    [RequerPermissao(ModuloPermissao.NotificacoesAgendamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<ResumoDiarioMensageriaDto>(StatusCodes.Status200OK)]
+    public async Task<ResumoDiarioMensageriaDto> ResumoDiario(
+        [FromQuery] DateOnly? de, [FromQuery] DateOnly? ate,
+        [FromQuery] string? finalidade, [FromQuery] Guid? unidadeId, CancellationToken ct) =>
+        await service.ResumoDiarioAsync(de, ate, finalidade, unidadeId, ct);
+
+    /// <summary>Tarifas Meta (USD) e mapa template → categoria usados na ESTIMATIVA de custo.</summary>
+    [HttpGet("configuracao-mensageria")]
+    [RequerPermissao(ModuloPermissao.NotificacoesAgendamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.Notificacoes.Mensageria.MensageriaConfiguracaoDto>(StatusCodes.Status200OK)]
+    public async Task<SMSMais.Core.Notificacoes.Mensageria.MensageriaConfiguracaoDto> ObterConfiguracaoMensageria(CancellationToken ct) =>
+        await mensageria.ObterAsync(ct);
+
+    [HttpPut("configuracao-mensageria")]
+    [RequerPermissao(ModuloPermissao.NotificacoesAgendamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SMSMais.Core.Notificacoes.Mensageria.MensageriaConfiguracaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<SMSMais.Core.Notificacoes.Mensageria.MensageriaConfiguracaoDto> SalvarConfiguracaoMensageria(
+        [FromBody] SMSMais.Core.Notificacoes.Mensageria.SalvarMensageriaConfiguracaoRequest request, CancellationToken ct) =>
+        await mensageria.SalvarAsync(request, ct);
+
     /// <summary>Lista paginada, mais recentes primeiro. Filtros: status do envio, finalidade,
     /// resposta do paciente, texto (accession/código SISREG/telefone) e período de criação.</summary>
     [HttpGet]

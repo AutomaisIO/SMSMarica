@@ -150,7 +150,7 @@ public sealed class ComunicacaoPacienteService(
 
     /// <summary>Zera a linha para um envio novo — mesmo saneamento do reenvio manual: telefone,
     /// link e recibos saem, porque todos se referem ao envio anterior.</summary>
-    private static void RearmarParaNovoEnvio(ComunicacaoPaciente n)
+    internal static void RearmarParaNovoEnvio(ComunicacaoPaciente n)
     {
         var agora = DateTime.UtcNow;
         n.IgnorarVerificacaoTelefone = false; // vale por envio, não para sempre
