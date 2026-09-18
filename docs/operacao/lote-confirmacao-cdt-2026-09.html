@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lote de confirmação do CDT — estratégia de medição (setembro/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Lote de confirmação do CDT — estratégia de medição (setembro/2026)</h1>
+<p>&gt; <strong>O que é:</strong> o primeiro envio em volume de confirmação de agendamento por WhatsApp, feito de &gt; propósito como <strong>experimento fechado</strong>, para medir acerto, erro e o que volta de conversa antes &gt; de abrir para a rede. &gt; &gt; Decidido com o Bernardo em 17/09/2026. Regras do canal: <a href="../adr/0057-destinatario-correto-e-contato-negado.md">ADR-0057</a>.</p>
+<h2>Por que assim</h2>
+<p>O envio estava desligado por insegurança com <strong>as respostas</strong> — não com a mensagem. O que não se sabe medir, não se sabe soltar: quantos confirmam, quantos avisam que não vão, quantos números estão errados, quanta conversa volta para a Central e o que o robô faz com ela.</p>
+<p>Por isso: <strong>uma unidade, um lote, uma vez.</strong> Nada entra depois — o que for medido nos próximos dias é resposta a <strong>este</strong> envio, e não a um fluxo contínuo que ninguém consegue separar.</p>
+<h2>Desenho do experimento</h2>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Unidade</strong></td><td>CDT - DR ALBERTO LUIS M. BORGES (única com aviso configurado)</td></tr>
+<tr><td><strong>Coorte</strong></td><td>agendamentos de <strong>21/09 a 27/09</strong> (segunda a domingo)</td></tr>
+<tr><td><strong>Tamanho</strong></td><td><strong>1.024</strong> agendamentos · <strong>993</strong> pacientes distintos (133 consultas, 891 exames)</td></tr>
+<tr><td><strong>Fora de propósito</strong></td><td><strong>18/09 (sexta)</strong> — em cima da hora; o paciente receberia o aviso na véspera</td></tr>
+<tr><td><strong>Disparo</strong></td><td>manual, pela aba <em>Disparar lote</em> → modo <strong>forçar</strong> (ignora as chaves)</td></tr>
+<tr><td><strong>Aviso automático da unidade</strong></td><td><strong>DESLIGADO</strong> em 17/09 21:04 — nada novo entra na coorte</td></tr>
+<tr><td><strong>Varredura da agenda</strong></td><td><strong>LIGADA</strong> (18:10 diário) — a agenda segue em dia, mas não gera aviso</td></tr>
+</tbody></table></div>
+<p>O modo forçado inclui os agendamentos cujo <strong>procedimento</strong> está com o aviso desligado (336 dos 1.024). É deliberado: a medição é do canal, não do recorte de procedimento.</p>
+<h3>O que o lote NÃO ignora</h3>
+<p>Forçar ignora as chaves de operação, nunca as regras de privacidade (<a href="../adr/0057-destinatario-correto-e-contato-negado.md">ADR-0057</a>):</p>
+<ul>
+<li>número marcado como <strong>inválido</strong> não recebe;</li>
+<li>número <strong>não verificado</strong> recebe primeiro o <strong>desafio de identificação</strong> (4 dígitos do CPF →</li>
+</ul>
+<p>  mês/ano → nome → vínculo), e a confirmação com data e local só sai depois que ele passa;</p>
+<ul>
+<li>a resposta do paciente vive <strong>só no SMSMais</strong> — nada vai para o SISREG.</li>
+</ul>
+<p>Isso importa para ler os números: <strong>a maior parte da coorte não tem contato verificado</strong>, então o primeiro contato da maioria será o desafio, não a confirmação. Um "acerto" aqui é a pessoa <strong>concluir o desafio</strong>; a confirmação é o passo seguinte.</p>
+<h2>Ritmo esperado</h2>
+<p>Fila de 100 por rodada, uma rodada por minuto, janela de <strong>08:00–18:00</strong>. Disparado à noite, o lote fica empilhado e <strong>começa a sair às 8h</strong>, escoando em ~11 minutos.</p>
+<h2>O que medir</h2>
+<h3>1. Entrega (o canal funciona?)</h3>
+<ul>
+<li>enviadas, entregues, lidas, falhas;</li>
+<li><strong>sem celular válido</strong> e <strong>número inválido</strong> — qualidade do cadastro, que é o que trava a régua;</li>
+<li>falhas por erro da Meta (número inexistente, fora do WhatsApp).</li>
+</ul>
+<h3>2. Identificação (a régua de LGPD é atravessável por gente comum?)</h3>
+<ul>
+<li>quantos ficaram em <em>aguardando o paciente se identificar</em>;</li>
+<li>quantos <strong>concluíram</strong> o desafio (e viraram confirmação enviada);</li>
+<li>quantos <strong>esgotaram</strong> as 3 chances;</li>
+<li>quantos responderam <strong>"não sou essa pessoa"</strong> → número inválido;</li>
+<li>quantos pediram <strong>atendente</strong> durante o desafio;</li>
+<li><strong>vínculo declarado</strong>: quantos "próprio", "mãe/pai/responsável", "outro parente" — a primeira</li>
+</ul>
+<p>  medida real de quantos pacientes são atendidos pelo telefone de outra pessoa.</p>
+<h3>3. Resposta ao agendamento (o que o serviço ganha)</h3>
+<ul>
+<li><strong>confirmaram</strong> × <strong>avisaram que não vão</strong> × <strong>sem resposta</strong>;</li>
+<li>canal da resposta (link, botões, app, robô);</li>
+<li><strong>motivos de cancelamento</strong> — texto livre, lido a olho: é aqui que aparece o que a fila não conta;</li>
+<li>tempo entre envio e resposta.</li>
+</ul>
+<h3>4. Carga de atendimento (o que custa)</h3>
+<ul>
+<li>conversas abertas no período × média dos dias anteriores;</li>
+<li>mensagens recebidas por paciente da coorte;</li>
+<li>quantas o <strong>robô</strong> respondeu e quantas foram para <strong>humano</strong>;</li>
+<li>quantas viraram <strong>pendência de cadastro</strong>.</li>
+</ul>
+<h3>5. Efeito no dia (o que interessa de verdade)</h3>
+<ul>
+<li>comparecimento nos dias 21–27 × semana anterior — pela autorização na recepção</li>
+</ul>
+<p>  (<code>autorizado_em</code>), que é o que marca a presença;</p>
+<ul>
+<li>vagas liberadas por cancelamento com antecedência.</li>
+</ul>
+<h2>Como medir</h2>
+<p><strong>Na tela:</strong> menu <strong>Confirmações</strong> → aba <em>Fila de envio</em> (números do dia, filtros por situação) e aba <em>Respostas dos pacientes</em> (confirmaram / não vão, com motivo). A coorte é reconhecível por <code>origem = Manual</code> e a data do disparo.</p>
+<p><strong>No banco</strong> (<code>scripts/</code> deste diretório não existe de propósito — são consultas de leitura, para rodar pelo caminho de sempre):</p>
+<p>```sql -- 1. ENTREGA — a coorte é o lote manual disparado no dia with coorte as (   select c.<em> from smsmarica.comunicacao_paciente c   where c.finalidade = 1 and c.origem = 2          -- confirmação, origem Manual     and c.criado_em &gt;= timestamp '2026-09-17 00:00' ) select status, count(</em>) from coorte group by 1 order by 1; -- 1=na fila 2=enviada 3=entregue 4=lida 5=falha 6=sem celular -- 7=aguardando verificado 8=aguardando identificação 9=número inválido</p>
+<p>-- 2. IDENTIFICAÇÃO — quem está no meio do desafio agora select e.etapa, count(*) from smsmarica.verificacao_cadastral_estado e where e.criado_em &gt;= timestamp '2026-09-18 00:00' group by 1 order by 1; -- 1=CPF 2=nascimento 3=nome 4=nova tentativa 5=esgotado 6=vínculo</p>
+<p>-- 3. RESPOSTA ao agendamento (a coorte pela agenda) select s.status_confirmacao, s.confirmado_canal, count(*) from smsmarica.solicitacao s join smsmarica.unidade u on u.id = s.unidade_executante_id where u.nome like 'CDT%'   and s.data_agendada &gt;= timestamp '2026-09-21' and s.data_agendada &lt; timestamp '2026-09-28' group by 1, 2 order by 1, 2;   -- 1=pendente 2=confirmada 3=cancelada</p>
+<p>-- 4. MOTIVOS de quem não vai (ler a olho, é o que a contagem não diz) select s.motivo_cancelamento_paciente, s.confirmacao_cancelada_em from smsmarica.solicitacao s join smsmarica.unidade u on u.id = s.unidade_executante_id where u.nome like 'CDT%' and s.status_confirmacao = 3   and s.confirmacao_cancelada_em &gt;= timestamp '2026-09-18' order by 2;</p>
+<p>-- 5. CARGA — conversas abertas por dia (comparar com a semana anterior) select date_trunc('day', primeiro_contato_em)::date dia, count(*) from smsmarica.conversa where primeiro_contato_em &gt; now() - interval '14 days' group by 1 order by 1;</p>
+<p>-- 6. NÚMEROS INVÁLIDOS surgidos no período select date_trunc('day', criado_em)::date dia, count(*) from smsmarica.pendencia_cadastro where tipo = 1 and criado_em &gt; now() - interval '14 days' group by 1 order by 1;</p>
+<p>-- 7. BLOQUEIOS da guarda de LGPD (o que deixou de sair, e por quê) select date_trunc('day', ocorrido_em)::date dia, count(*) from smsmarica.whatsapp_mensagem where erro_meta like 'BLOQUEADO%' and ocorrido_em &gt; now() - interval '14 days' group by 1 order by 1; ```</p>
+<h2>Cronograma de leitura</h2>
+<div class="tw"><table><thead><tr><th>Quando</th><th>O que olhar</th><th>Decisão possível</th></tr></thead><tbody>
+<tr><td><strong>D+0</strong> (dia do disparo, 8h–9h)</td><td>escoamento da fila, falhas, sem celular</td><td>parar o resto se a falha passar de 10%</td></tr>
+<tr><td><strong>D+0 tarde</strong></td><td>desafios em andamento, conversas abertas, o robô</td><td>pausar o robô se ele estiver errando com a coorte</td></tr>
+<tr><td><strong>D+1</strong> (sexta)</td><td>identificações concluídas, primeiras confirmações</td><td>ajustar texto/fluxo antes da segunda</td></tr>
+<tr><td><strong>D+3</strong> (segunda, 21/09)</td><td>confirmados × cancelados do dia, comparecimento</td><td>comparar com a semana anterior</td></tr>
+<tr><td><strong>D+7</strong></td><td>quadro fechado da semana 21–27</td><td>decidir se abre para outras unidades</td></tr>
+</tbody></table></div>
+<h2>Critérios</h2>
+<p><strong>Sinal de que funciona:</strong> entrega acima de 85% dos que têm celular; mais de um terço da coorte concluindo o desafio; cancelamentos com antecedência aparecendo (vaga que dá para remanejar); carga de atendimento absorvível pela equipe.</p>
+<p><strong>Sinal de parar:</strong> falha de entrega acima de 10%; enxurrada de "não sou essa pessoa" (cadastro pior do que se imagina); fila da Central estourando; robô dando resposta errada sobre agendamento.</p>
+<p><strong>Como parar:</strong> a chave da unidade já está desligada — nada novo entra sozinho. Para interromper o que ainda não saiu, basta desligar o envio de confirmação na configuração (menu Confirmações → <em>Regras e parâmetros</em>), que a fila para de escoar sem perder nada.</p>
+<h2>Registro do que foi feito</h2>
+<div class="tw"><table><thead><tr><th>Quando</th><th>O quê</th></tr></thead><tbody>
+<tr><td>17/09 21:04</td><td>chave de aviso do CDT <strong>ligada</strong> pelo Bernardo</td></tr>
+<tr><td>17/09 ~21:40</td><td>chave <strong>desligada</strong> (coorte fechada); varredura mantida ligada</td></tr>
+<tr><td>17/09</td><td>publicado o disparo em lote com prévia e modo forçado (commit <code>dc985b4</code>)</td></tr>
+<tr><td>_(a preencher)_</td><td>disparo do lote: quem, quantos, período</td></tr>
+</tbody></table></div>
+</main>
+</body>
+</html>
