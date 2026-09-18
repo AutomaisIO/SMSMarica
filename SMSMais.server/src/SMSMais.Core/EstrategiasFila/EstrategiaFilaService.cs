@@ -93,7 +93,7 @@ public sealed class EstrategiaFilaService(
         return new EstrategiaDto(
             e.Id, e.Nome, e.ProcedimentoCodigo, e.ProcedimentoNome, e.RegulacaoProcedimento?.NomeCanonico,
             e.Status,
-            Ler<ParametrosEstrategia>(e.ParametrosJson) ?? throw new ConflitoException("estrategia.parametros_invalidos", "Os parâmetros gravados não puderam ser lidos."),
+            (Ler<ParametrosEstrategia>(e.ParametrosJson) ?? throw new ConflitoException("estrategia.parametros_invalidos", "Os parâmetros gravados não puderam ser lidos.")).Sanear(),
             atual is null ? null : ParaDto(atual),
             [.. rodadas.Select(r => ResumoRodada(r.Id, r.Numero, r.Modo, r.ProjecaoJson, r.Falha, r.Modelo, r.CustoUsd, r.DuracaoMs, r.CriadoEm, r.CriadoPor))],
             e.AplicadaEm, e.AplicadaPor, e.AplicacaoNota, e.CriadoEm, e.CriadoPor, e.AtualizadoEm);
@@ -165,7 +165,7 @@ public sealed class EstrategiaFilaService(
         var e = await CarregarAsync(id, rastrear: true, ct);
         GarantirEditavel(e);
 
-        var parametros = Normalizar(request.Parametros ?? Ler<ParametrosEstrategia>(e.ParametrosJson)!);
+        var parametros = Normalizar(request.Parametros ?? Ler<ParametrosEstrategia>(e.ParametrosJson)!.Sanear());
         var cenario = await cenarios.MontarAsync(e.ProcedimentoCodigo, e.ProcedimentoNome, ct);
         var numero = await db.EstrategiaFilaRodadas.Where(r => r.EstrategiaId == id).MaxAsync(r => (int?)r.Numero, ct) ?? 0;
         numero++;
@@ -296,6 +296,7 @@ public sealed class EstrategiaFilaService(
     /// <summary>Objetivo fechado num conjunto conhecido; horizonte dentro do teto; listas nunca nulas.</summary>
     private static ParametrosEstrategia Normalizar(ParametrosEstrategia p)
     {
+        p = p.Sanear();
         var objetivo = ObjetivoEstrategia.Todos.Contains(p.Objetivo ?? string.Empty)
             ? p.Objetivo! : ObjetivoEstrategia.ZerarEmSemanas;
         var horizonte = p.HorizonteSemanas <= 0
@@ -312,9 +313,9 @@ public sealed class EstrategiaFilaService(
 
     private static RodadaDto ParaDto(EstrategiaFilaRodada r) => new(
         r.Id, r.EstrategiaId, r.Numero, r.Modo,
-        Ler<ParametrosEstrategia>(r.ParametrosEntradaJson)!,
+        Ler<ParametrosEstrategia>(r.ParametrosEntradaJson)!.Sanear(),
         Ler<CenarioFilaDto>(r.CenarioJson)!,
-        Ler<ParametrosEstrategia>(r.ParametrosResultadoJson)!,
+        Ler<ParametrosEstrategia>(r.ParametrosResultadoJson)!.Sanear(),
         Ler<ProjecaoDto>(r.ProjecaoJson)!,
         r.PropostaJson is null ? null : Ler<PropostaAgenteDto>(r.PropostaJson),
         r.Modelo, r.TokensEntrada, r.TokensSaida, r.CustoUsd, r.DuracaoMs, r.Falha, r.CriadoEm, r.CriadoPor);

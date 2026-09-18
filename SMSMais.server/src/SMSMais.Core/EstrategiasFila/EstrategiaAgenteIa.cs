@@ -202,9 +202,9 @@ public sealed class EstrategiaAgenteIa(
             {
                 unidades = p.Unidades.Valor,
                 profissionais = p.Profissionais.Valor,
-                diasPorSemana = p.DiasPorSemana.Valor,
-                horasPorDia = p.HorasPorDia.Valor,
-                atendimentosPorHora = p.AtendimentosPorHora.Valor,
+                turnosPorProfissionalSemana = p.TurnosPorProfissionalSemana.Valor,
+                atendimentosPorTurno = p.AtendimentosPorTurno.Valor,
+                turnosSemanais = p.TurnosSemanais(),
                 aproveitamento = p.Aproveitamento.Valor,
                 entradaSemanal = p.EntradaSemanal.Valor,
                 mutiroes = p.Mutiroes,
@@ -261,9 +261,8 @@ public sealed class EstrategiaAgenteIa(
         {
             unidades = new { type = "number", description = "Nº de unidades executantes (só restrição/rótulo; não entra na capacidade)." },
             profissionais = new { type = "number", description = "Nº de profissionais atendendo o procedimento." },
-            diasPorSemana = new { type = "number", description = "Média de dias por semana por profissional (0–7)." },
-            horasPorDia = new { type = "number", description = "Média de horas por dia por profissional." },
-            atendimentosPorHora = new { type = "number", description = "Atendimentos de regulação por profissional por hora." },
+            turnosPorProfissionalSemana = new { type = "number", description = "Média de turnos (dias com atendimento do procedimento) por semana de cada profissional. Ex.: 1,5 = um médico atende 1 ou 2 dias por semana." },
+            atendimentosPorTurno = new { type = "number", description = "Vagas de regulação por turno (por profissional por dia)." },
             aproveitamento = new { type = "number", description = "Fração das vagas que viram atendimento (0–1)." },
             entradaSemanal = new { type = "number", description = "Pessoas novas por semana." },
             mutiroes = new

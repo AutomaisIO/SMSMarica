@@ -12,7 +12,7 @@ public class SimuladorFilaTests
 {
     private static ParametroNumero N(double v, bool travado = false) => new(v, travado);
 
-    /// <summary>10 profissionais × 5 dias × 4 h × 2 atend/h × 100% = 400/semana.</summary>
+    /// <summary>10 profissionais × 5 turnos/semana × 8 por turno × 100% = 400/semana.</summary>
     private static ParametrosEstrategia Base(
         double entrada = 100, double aproveitamento = 1, double profissionais = 10,
         int? prazo = null, IReadOnlyList<MutiraoDto>? mutiroes = null, int horizonte = 104) =>
@@ -21,9 +21,8 @@ public class SimuladorFilaTests
             PrazoAlvoSemanas: prazo,
             Unidades: N(3),
             Profissionais: N(profissionais),
-            DiasPorSemana: N(5),
-            HorasPorDia: N(4),
-            AtendimentosPorHora: N(2),
+            TurnosPorProfissionalSemana: N(5),
+            AtendimentosPorTurno: N(8),
             Aproveitamento: N(aproveitamento),
             EntradaSemanal: N(entrada),
             Mutiroes: mutiroes ?? [],
@@ -115,9 +114,9 @@ public class SimuladorFilaTests
     [Fact]
     public void Profissionais_para_uma_capacidade_alvo()
     {
-        // Cada profissional rende 5 × 4 × 2 = 40/semana → 300 pedem 7,5.
+        // Cada profissional rende 5 × 8 = 40/semana → 300 pedem 7,5.
         SimuladorFila.ProfissionaisPara(Base(), 300).Should().Be(7.5);
-        SimuladorFila.ProfissionaisPara(Base() with { HorasPorDia = N(0) }, 300).Should().BeNull();
+        SimuladorFila.ProfissionaisPara(Base() with { AtendimentosPorTurno = N(0) }, 300).Should().BeNull();
     }
 
     [Fact]

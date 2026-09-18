@@ -9,9 +9,8 @@ import type {
 
 export const CHAVES_NUMERICAS: ChaveNumerica[] = [
   'profissionais',
-  'diasPorSemana',
-  'horasPorDia',
-  'atendimentosPorHora',
+  'turnosPorProfissionalSemana',
+  'atendimentosPorTurno',
   'aproveitamento',
   'unidades',
   'entradaSemanal',
@@ -23,21 +22,15 @@ export const ROTULOS: Record<ChaveNumerica, { rotulo: string; dica: string; pass
     dica: 'Quantos profissionais atendem o procedimento na rede regulada.',
     passo: 1,
   },
-  diasPorSemana: {
-    rotulo: 'Dias por semana',
-    dica: 'Média de dias por semana em que cada profissional atende (0 a 7).',
+  turnosPorProfissionalSemana: {
+    rotulo: 'Turnos por semana (por profissional)',
+    dica: 'Um turno = um profissional num dia com escala para este procedimento. Ex.: 1,5 = cada médico atende 1 ou 2 dias por semana. É a média da rede.',
     passo: 0.5,
   },
-  horasPorDia: {
-    rotulo: 'Horas por dia',
-    dica: 'Média de horas de atendimento por dia, por profissional.',
-    passo: 0.5,
-    unidade: 'h',
-  },
-  atendimentosPorHora: {
-    rotulo: 'Atendimentos por hora',
-    dica: 'Vagas de regulação que cada profissional rende por hora.',
-    passo: 0.5,
+  atendimentosPorTurno: {
+    rotulo: 'Atendimentos por turno',
+    dica: 'Vagas de regulação (1ª vez + reserva) que cada turno rende. Vem da escala: vagas por semana ÷ turnos por semana.',
+    passo: 1,
   },
   aproveitamento: {
     rotulo: 'Aproveitamento',
@@ -92,14 +85,16 @@ export function dataHoraBr(iso: string | null | undefined): string {
 }
 
 /** Capacidade semanal — a mesma fórmula do backend, para a tela reagir antes de simular. */
+export function turnosSemanais(p: ParametrosEstrategia): number {
+  return Math.max(0, p.profissionais.valor) * Math.max(0, p.turnosPorProfissionalSemana.valor);
+}
+
+export function vagasSemanais(p: ParametrosEstrategia): number {
+  return turnosSemanais(p) * Math.max(0, p.atendimentosPorTurno.valor);
+}
+
 export function capacidadeSemanal(p: ParametrosEstrategia): number {
-  return (
-    Math.max(0, p.profissionais.valor) *
-    Math.max(0, p.diasPorSemana.valor) *
-    Math.max(0, p.horasPorDia.valor) *
-    Math.max(0, p.atendimentosPorHora.valor) *
-    Math.min(1, Math.max(0, p.aproveitamento.valor))
-  );
+  return vagasSemanais(p) * Math.min(1, Math.max(0, p.aproveitamento.valor));
 }
 
 /** Frase-resumo da projeção, a que vai no cartão e na lista. */

@@ -11,7 +11,7 @@ namespace SMSMais.Core.EstrategiasFila;
 /// papel, e o agente só escolhe os parâmetros e chama isto (ADR-0058).</para>
 ///
 /// <para><b>O modelo.</b> Passo semanal. A cada semana entram <c>entrada</c> pessoas; a capacidade
-/// efetiva é <c>profissionais × dias × horas × atendimentos/hora × aproveitamento</c> mais os
+/// efetiva é <c>profissionais × turnos/semana × atendimentos/turno × aproveitamento</c> mais os
 /// mutirões daquela semana; atende-se o mínimo entre a capacidade e quem está esperando (fila
 /// anterior + quem chegou). Não há sazonalidade nem crescimento da demanda: a entrada é constante,
 /// e quem quiser "a demanda cresce 10%" trava <c>EntradaSemanal</c> num valor maior.</para>
@@ -92,14 +92,14 @@ public static class SimuladorFila
     }
 
     /// <summary>
-    /// Quantos profissionais (mantendo dias, horas, atendimentos/hora e aproveitamento) fariam a
+    /// Quantos profissionais (mantendo turnos, atendimentos/turno e aproveitamento) fariam a
     /// capacidade chegar a <paramref name="capacidadeAlvo"/>. Serve para a tela sugerir "faltam
     /// 2,3 profissionais" sem chamar o agente.
     /// </summary>
     public static double? ProfissionaisPara(ParametrosEstrategia p, double capacidadeAlvo)
     {
-        var porProfissional = Math.Max(0, p.DiasPorSemana.Valor) * Math.Max(0, p.HorasPorDia.Valor)
-            * Math.Max(0, p.AtendimentosPorHora.Valor) * Math.Clamp(p.Aproveitamento.Valor, 0, 1);
+        var porProfissional = Math.Max(0, p.TurnosPorProfissionalSemana.Valor)
+            * Math.Max(0, p.AtendimentosPorTurno.Valor) * Math.Clamp(p.Aproveitamento.Valor, 0, 1);
         if (porProfissional <= 0) return null;
         return Arredondar(capacidadeAlvo / porProfissional);
     }

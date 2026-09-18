@@ -63,22 +63,25 @@ public static class ObjetivoEstrategia
 /// Os parâmetros da simulação. Todos têm valor inicial tirado do cenário atual, de modo que
 /// "rodar sem mudar nada" reproduz a oferta de hoje.
 ///
-/// <para><b>Capacidade por semana</b> = <c>Profissionais × DiasPorSemana × HorasPorDia ×
-/// AtendimentosPorHora × Aproveitamento</c> + mutirões. <c>Unidades</c> não entra na conta —
-/// é restrição e rótulo para as ações ("abrir em 2 unidades"), porque quem atende é
-/// profissional, não prédio.</para>
+/// <para><b>Capacidade por semana</b> = <c>Profissionais × TurnosPorProfissionalSemana ×
+/// AtendimentosPorTurno × Aproveitamento</c> + mutirões. <b>Turno</b> = um profissional num dia
+/// com escala para o procedimento (profissional-dia). Não há "horas" aqui de propósito: a hora
+/// de início/fim da escala do SISREG não é tempo de trabalho — medido em 17/09/2026, a
+/// ultrassonografia tem blocos de 5 minutos com 125 vagas. O que a escala diz de verdade é
+/// <i>quantos dias</i> e <i>quantas vagas por dia</i>.</para>
+///
+/// <para><c>Unidades</c> não entra na conta — é restrição e rótulo para as ações ("abrir em 2
+/// unidades"), porque quem atende é profissional, não prédio.</para>
 /// </summary>
 public sealed record ParametrosEstrategia(
     string Objetivo,
     int? PrazoAlvoSemanas,
     ParametroNumero Unidades,
     ParametroNumero Profissionais,
-    /// <summary>Média de dias por semana em que cada profissional atende (1..7).</summary>
-    ParametroNumero DiasPorSemana,
-    /// <summary>Média de horas por dia de atendimento de cada profissional.</summary>
-    ParametroNumero HorasPorDia,
-    /// <summary>Atendimentos (vagas de regulação) por profissional por hora.</summary>
-    ParametroNumero AtendimentosPorHora,
+    /// <summary>Média de turnos (dias com atendimento) por semana de cada profissional.</summary>
+    ParametroNumero TurnosPorProfissionalSemana,
+    /// <summary>Atendimentos (vagas de regulação) por turno.</summary>
+    ParametroNumero AtendimentosPorTurno,
     /// <summary>Fração das vagas ofertadas que viram atendimento (0..1). Medido no cenário.</summary>
     ParametroNumero Aproveitamento,
     /// <summary>Pessoas novas por semana.</summary>
@@ -90,26 +93,39 @@ public sealed record ParametrosEstrategia(
     public const int HorizonteMaximo = 156;
     public const int HorizontePadrao = 104;
 
-    /// <summary>Capacidade semanal sem mutirões.</summary>
-    public double CapacidadeSemanal() =>
-        Math.Max(0, Profissionais.Valor) * Math.Max(0, DiasPorSemana.Valor) * Math.Max(0, HorasPorDia.Valor)
-        * Math.Max(0, AtendimentosPorHora.Valor) * Math.Clamp(Aproveitamento.Valor, 0, 1);
+    /// <summary>Turnos por semana na rede toda.</summary>
+    public double TurnosSemanais() =>
+        Math.Max(0, Profissionais.Valor) * Math.Max(0, TurnosPorProfissionalSemana.Valor);
 
     /// <summary>Vagas ofertadas por semana (antes do aproveitamento).</summary>
-    public double VagasSemanais() =>
-        Math.Max(0, Profissionais.Valor) * Math.Max(0, DiasPorSemana.Valor) * Math.Max(0, HorasPorDia.Valor)
-        * Math.Max(0, AtendimentosPorHora.Valor);
+    public double VagasSemanais() => TurnosSemanais() * Math.Max(0, AtendimentosPorTurno.Valor);
+
+    /// <summary>Capacidade semanal sem mutirões.</summary>
+    public double CapacidadeSemanal() => VagasSemanais() * Math.Clamp(Aproveitamento.Valor, 0, 1);
 
     public IEnumerable<(string Nome, ParametroNumero Parametro)> Numericos()
     {
         yield return (nameof(Unidades), Unidades);
         yield return (nameof(Profissionais), Profissionais);
-        yield return (nameof(DiasPorSemana), DiasPorSemana);
-        yield return (nameof(HorasPorDia), HorasPorDia);
-        yield return (nameof(AtendimentosPorHora), AtendimentosPorHora);
+        yield return (nameof(TurnosPorProfissionalSemana), TurnosPorProfissionalSemana);
+        yield return (nameof(AtendimentosPorTurno), AtendimentosPorTurno);
         yield return (nameof(Aproveitamento), Aproveitamento);
         yield return (nameof(EntradaSemanal), EntradaSemanal);
     }
+
+    /// <summary>Um parâmetro gravado antes de existir (JSON antigo) chega nulo; vira zero em vez de
+    /// derrubar a tela — o operador vê o zero e usa "voltar para hoje".</summary>
+    public ParametrosEstrategia Sanear() => this with
+    {
+        Unidades = Unidades ?? new ParametroNumero(0),
+        Profissionais = Profissionais ?? new ParametroNumero(0),
+        TurnosPorProfissionalSemana = TurnosPorProfissionalSemana ?? new ParametroNumero(0),
+        AtendimentosPorTurno = AtendimentosPorTurno ?? new ParametroNumero(0),
+        Aproveitamento = Aproveitamento ?? new ParametroNumero(1),
+        EntradaSemanal = EntradaSemanal ?? new ParametroNumero(0),
+        Mutiroes = Mutiroes ?? [],
+        Objetivo = Objetivo ?? ObjetivoEstrategia.ZerarEmSemanas,
+    };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -171,13 +187,16 @@ public sealed record OfertaCenarioDto(
     /// <summary>1ª vez + reserva: a vaga que a regulação usa (regra medida em 10/09/2026).</summary>
     int VagasRegulacaoSemana,
     int VagasTotalSemana,
-    /// <summary>Média de dias por semana por profissional.</summary>
-    double MediaDiasPorProfissional,
-    /// <summary>Média de horas por dia por profissional (soma da duração dos blocos do dia).</summary>
-    double MediaHorasPorProfissionalDia,
-    /// <summary>Atendimentos de regulação por profissional por hora — derivado para a identidade
-    /// <c>profissionais × dias × horas × atend/h = vagas/semana</c> fechar.</summary>
-    double AtendimentosPorHoraBase,
+    /// <summary>Turnos (profissional-dias) por semana na rede, para o procedimento.</summary>
+    double TurnosSemana,
+    /// <summary>Média de turnos por semana por profissional.</summary>
+    double TurnosPorProfissionalSemana,
+    /// <summary>Vagas de regulação por turno — derivado para a identidade
+    /// <c>profissionais × turnos × atend/turno = vagas/semana</c> fechar.</summary>
+    double AtendimentosPorTurno,
+    /// <summary>Horas declaradas na escala por semana. <b>Só informação</b>: o SISREG cadastra
+    /// blocos de minutos com dezenas de vagas; isto não é tempo de trabalho.</summary>
+    double HorasDeclaradasSemana,
     /// <summary>Escalas de agenda local (que a regulação não vê) foram deixadas de fora da
     /// capacidade; quantas vagas/semana elas somam, só para informação.</summary>
     int VagasAgendaLocalSemana);

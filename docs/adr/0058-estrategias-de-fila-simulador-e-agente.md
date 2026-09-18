@@ -29,10 +29,16 @@ A projeção da fila é uma função pura em .NET (`SimuladorFila.Projetar`), se
 Passo semanal, horizonte até 156 semanas:
 
 ```
-capacidade/semana = profissionais × diasPorSemana × horasPorDia × atendimentosPorHora × aproveitamento
+capacidade/semana = profissionais × turnosPorProfissionalSemana × atendimentosPorTurno × aproveitamento
                     + mutirões da semana
 fila(t+1) = fila(t) + entrada − min(capacidade, fila(t) + entrada)
 ```
+
+**Turno** = um profissional num dia com escala para o procedimento. **Não há "horas" no modelo,
+de propósito** (revisto em 18/09/2026, primeira versão usava dias × horas × atendimentos/hora): a
+hora de início/fim da escala do SISREG não é tempo de trabalho — a ultrassonografia tem blocos de
+5 minutos com 125 vagas e escalas de um dia só, o que dava "1,6 h/dia e 1,4 dias/semana" na tela.
+O que a escala diz de verdade é *quantos dias* e *quantas vagas por dia*; é isso que vira alavanca.
 
 Saída: semana em que zera (ou "não zera" e quanto cresce), capacidade de equilíbrio (= entrada),
 capacidade necessária para zerar num prazo, pico, atendidos até zerar, série. Coberta por teste
@@ -100,9 +106,9 @@ fora das médias:
 | Aproveitamento | marcações ÷ vagas ofertadas nas últimas 8 semanas | escala viva com vaga morta (ECG do CDT) aparece aqui, e a capacidade efetiva é vagas × isto |
 
 Os parâmetros iniciais reproduzem a oferta de hoje por construção
-(`atendimentosPorHora = vagas/semana ÷ (profissionais × dias × horas)`), então "rodar sem mudar
-nada" é o cenário atual. Sem escala, entram valores de partida (5 dias, 4 h, 2/h, aproveitamento
-0,85) para o agente ter de onde propor.
+(`atendimentosPorTurno = vagas/semana ÷ turnos/semana`), então "rodar sem mudar nada" é o cenário
+atual — e a tela tem "Voltar para hoje" para recarregá-lo. Sem escala, entram valores de partida
+(2 turnos/semana, 10 por turno, aproveitamento 0,85) para o agente ter de onde propor.
 
 ### 8. Permissão e escopo
 

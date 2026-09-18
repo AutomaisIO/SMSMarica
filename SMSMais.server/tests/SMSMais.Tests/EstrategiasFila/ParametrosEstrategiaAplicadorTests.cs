@@ -15,9 +15,8 @@ public class ParametrosEstrategiaAplicadorTests
         PrazoAlvoSemanas: 12,
         Unidades: new ParametroNumero(3, Travado: true),
         Profissionais: new ParametroNumero(10, Travado: false, Min: 0, Max: 20),
-        DiasPorSemana: new ParametroNumero(5, false, 0, 7),
-        HorasPorDia: new ParametroNumero(4, false, 0, 12),
-        AtendimentosPorHora: new ParametroNumero(2, false, 0, null),
+        TurnosPorProfissionalSemana: new ParametroNumero(5, false, 0, 14),
+        AtendimentosPorTurno: new ParametroNumero(8, false, 0, null),
         Aproveitamento: new ParametroNumero(0.8, true, 0, 1),
         EntradaSemanal: new ParametroNumero(100, true, 0, null),
         Mutiroes: [new MutiraoDto(2, 50)],
@@ -37,7 +36,7 @@ public class ParametrosEstrategiaAplicadorTests
         r.Profissionais.Travado.Should().BeFalse();
         r.Unidades.Valor.Should().Be(3);
         // O resto fica como estava.
-        r.DiasPorSemana.Valor.Should().Be(5);
+        r.TurnosPorProfissionalSemana.Valor.Should().Be(5);
         r.EntradaSemanal.Valor.Should().Be(100);
     }
 
@@ -60,11 +59,11 @@ public class ParametrosEstrategiaAplicadorTests
     public void Livre_fora_do_intervalo_e_rejeitado()
     {
         var (r, violacoes) = ParametrosEstrategiaAplicador.Aplicar(
-            Vigentes(), J("""{ "profissionais": 25, "diasPorSemana": -1 }"""));
+            Vigentes(), J("""{ "profissionais": 25, "turnosPorProfissionalSemana": -1 }"""));
 
         violacoes.Should().HaveCount(2);
         r.Profissionais.Valor.Should().Be(10);
-        r.DiasPorSemana.Valor.Should().Be(5);
+        r.TurnosPorProfissionalSemana.Valor.Should().Be(5);
     }
 
     [Fact]

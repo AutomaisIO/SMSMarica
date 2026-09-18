@@ -107,11 +107,12 @@ public class CenarioFilaServiceTests(PostgresFixture fixture)
         c.Oferta.Profissionais.Should().ContainSingle().Which.Dias.Should().Equal(1, 3);
         c.Oferta.Unidades.Should().ContainSingle().Which.UnidadeId.Should().Be(seed.UnidadeId);
         c.Oferta.DiasSemana.Should().Equal(1, 3);
-        c.Oferta.MediaDiasPorProfissional.Should().Be(2);
-        c.Oferta.MediaHorasPorProfissionalDia.Should().Be(4);
-        // 20 vagas/semana ÷ (1 × 2 dias × 4 h) = 2,5 por hora — a identidade que faz "sem mudança"
-        // reproduzir a oferta de hoje.
-        c.Oferta.AtendimentosPorHoraBase.Should().Be(2.5);
+        // 8 turnos (seg+qua × 4 semanas) → 2 por semana, de um profissional; 20 vagas ÷ 2 turnos = 10 por
+        // turno — a identidade que faz "sem mudança" reproduzir a oferta de hoje.
+        c.Oferta.TurnosSemana.Should().Be(2);
+        c.Oferta.TurnosPorProfissionalSemana.Should().Be(2);
+        c.Oferta.AtendimentosPorTurno.Should().Be(10);
+        c.Oferta.HorasDeclaradasSemana.Should().Be(8);
         c.Oferta.HoraInicioTipica.Should().Be(new TimeOnly(8, 0));
         c.Oferta.HoraFimTipica.Should().Be(new TimeOnly(12, 0));
 
@@ -157,7 +158,8 @@ public class CenarioFilaServiceTests(PostgresFixture fixture)
         c.Oferta.Profissionais.Should().BeEmpty();
         c.Ocupacao.Aproveitamento.Should().BeNull();
         c.ParametrosIniciais.Profissionais.Valor.Should().Be(0);
-        c.ParametrosIniciais.DiasPorSemana.Valor.Should().Be(5);
+        c.ParametrosIniciais.TurnosPorProfissionalSemana.Valor.Should().Be(2);
+        c.ParametrosIniciais.AtendimentosPorTurno.Valor.Should().Be(10);
         c.ParametrosIniciais.Aproveitamento.Valor.Should().Be(0.85);
     }
 }

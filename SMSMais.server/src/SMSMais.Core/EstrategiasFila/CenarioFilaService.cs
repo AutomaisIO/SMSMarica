@@ -342,15 +342,15 @@ public sealed class CenarioFilaService(
             .ToList();
 
         var nProf = regulados.Select(b => b.Cpf).Distinct().Count();
-        var profDias = regulados.Select(b => (b.Cpf, b.Dia)).Distinct().Count();
+        // Turno = profissional num dia com bloco. É o que a escala diz de verdade: a hora de
+        // início/fim NÃO é tempo de trabalho (a ultrassonografia tem blocos de 5 min com 125 vagas).
+        var turnos = regulados.Select(b => (b.Cpf, b.Dia)).Distinct().Count();
         var horas = regulados.Sum(b => (b.HoraFim - b.HoraInicio).TotalHours);
         var vagasReg = regulados.Sum(b => b.V1 + b.Vres);
 
-        var mediaDias = nProf == 0 ? 0 : Math.Round(profDias / (double)SemanasOferta / nProf, 2);
-        var mediaHoras = profDias == 0 ? 0 : Math.Round(horas / profDias, 2);
-        var atendHora = nProf == 0 || mediaDias == 0 || mediaHoras == 0
-            ? 0
-            : Math.Round(vagasReg / (double)SemanasOferta / (nProf * mediaDias * mediaHoras), 3);
+        var turnosSemana = Math.Round(turnos / (double)SemanasOferta, 2);
+        var turnosPorProf = nProf == 0 ? 0 : Math.Round(turnosSemana / nProf, 2);
+        var atendPorTurno = turnos == 0 ? 0 : Math.Round(vagasReg / (double)turnos, 2);
 
         return new OfertaCenarioDto(
             unidades, profissionais,
@@ -363,17 +363,19 @@ public sealed class CenarioFilaService(
             PorSemana(regulados.Sum(b => b.Vres)),
             PorSemana(vagasReg),
             PorSemana(regulados.Sum(b => b.V1 + b.Vr + b.Vres)),
-            mediaDias, mediaHoras, atendHora,
+            turnosSemana, turnosPorProf, atendPorTurno,
+            Math.Round(horas / SemanasOferta, 1),
             PorSemana(locais.Sum(b => b.V1 + b.Vr + b.Vres)));
     }
 
     /// <summary>
     /// Os parâmetros que reproduzem a oferta de hoje. Sem escala nenhuma, entram valores de
-    /// partida razoáveis (5 dias, 4 h, 2/h) para o agente ter de onde propor — e ficam livres.
+    /// partida razoáveis (2 turnos/semana, 10 por turno) para o agente ter de onde propor — e
+    /// ficam livres.
     /// </summary>
     private static ParametrosEstrategia ParametrosIniciais(OfertaCenarioDto oferta, OcupacaoCenarioDto ocupacao, RitmoDto entrada)
     {
-        var temOferta = oferta.Profissionais.Count > 0 && oferta.AtendimentosPorHoraBase > 0;
+        var temOferta = oferta.Profissionais.Count > 0 && oferta.AtendimentosPorTurno > 0;
         var unidadesReguladas = oferta.Unidades.Where(u => !u.AgendaLocal).Select(u => u.UnidadeId).Distinct().Count();
 
         return new ParametrosEstrategia(
@@ -381,9 +383,8 @@ public sealed class CenarioFilaService(
             PrazoAlvoSemanas: null,
             Unidades: new ParametroNumero(unidadesReguladas, false, 0, null),
             Profissionais: new ParametroNumero(oferta.Profissionais.Count, false, 0, null),
-            DiasPorSemana: new ParametroNumero(temOferta ? oferta.MediaDiasPorProfissional : 5, false, 0, 7),
-            HorasPorDia: new ParametroNumero(temOferta ? oferta.MediaHorasPorProfissionalDia : 4, false, 0, 12),
-            AtendimentosPorHora: new ParametroNumero(temOferta ? oferta.AtendimentosPorHoraBase : 2, false, 0, null),
+            TurnosPorProfissionalSemana: new ParametroNumero(temOferta ? oferta.TurnosPorProfissionalSemana : 2, false, 0, 14),
+            AtendimentosPorTurno: new ParametroNumero(temOferta ? oferta.AtendimentosPorTurno : 10, false, 0, null),
             Aproveitamento: new ParametroNumero(Math.Round(ocupacao.Aproveitamento ?? AproveitamentoPadrao, 2), false, 0, 1),
             EntradaSemanal: new ParametroNumero(entrada.MediaSemanal12, true, 0, null),
             Mutiroes: [],

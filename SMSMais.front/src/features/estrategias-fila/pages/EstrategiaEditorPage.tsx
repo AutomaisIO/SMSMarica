@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Archive, ArrowLeft, Bot, CheckCircle2, Loader2, Play, Save, Target } from 'lucide-react';
+import { Archive, ArrowLeft, Bot, CheckCircle2, Loader2, Play, RotateCcw, Save, Target } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -27,6 +27,7 @@ import { PainelParametros } from '@/features/estrategias-fila/components/PainelP
 import { ProjecaoChart } from '@/features/estrategias-fila/components/ProjecaoChart';
 import { PropostaAgente } from '@/features/estrategias-fila/components/PropostaAgente';
 import { STATUS_ROTULO, dataHoraBr, diferencas } from '@/features/estrategias-fila/lib/parametros';
+import { obterCenario } from '@/features/estrategias-fila/api/estrategiasApi';
 import type { CenarioFila, ParametrosEstrategia, Projecao, Rodada } from '@/features/estrategias-fila/types';
 
 /**
@@ -132,6 +133,32 @@ export function EstrategiaEditorPage() {
   );
 
   // ---- ações ----
+  const [voltando, setVoltando] = useState(false);
+
+  /**
+   * Volta tudo para "como está hoje": busca o cenário de novo (não o snapshot da rodada) e põe os
+   * parâmetros iniciais dele. Não grava — é só a tela.
+   */
+  async function aoVoltarParaHoje() {
+    if (!procedimentoNome) return;
+    setVoltando(true);
+    try {
+      const r = await obterCenario(procedimentoCodigo, procedimentoNome);
+      setCenario(r.cenario);
+      setParametros(r.cenario.parametrosIniciais);
+      setProjecao(r.projecao);
+      setBaseSalva(r.projecao);
+      setRodadaExibida(null);
+      setRodadaSelecionada(null);
+      setSujo(!!id);
+      notificar('Parâmetros voltaram para o cenário de hoje.', 'info');
+    } catch (e) {
+      notificar(extrairMensagemDeErro(e), 'erro');
+    } finally {
+      setVoltando(false);
+    }
+  }
+
   async function aoSimular() {
     if (!parametros || !procedimentoNome) return;
     try {
@@ -261,6 +288,9 @@ export function EstrategiaEditorPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Button variante="ghost" tamanho="sm" disabled={ocupado || voltando || !procedimentoNome} onClick={aoVoltarParaHoje} title="Descarta as mudanças da tela e recarrega o cenário e os parâmetros como estão hoje no SISREG. Não grava.">
+            {voltando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Voltar para hoje
+          </Button>
           <Button variante="outline" tamanho="sm" disabled={ocupado || !parametros} onClick={aoSimular} title="Recalcula a projeção com os parâmetros da tela. Não grava.">
             {simular.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Simular
           </Button>

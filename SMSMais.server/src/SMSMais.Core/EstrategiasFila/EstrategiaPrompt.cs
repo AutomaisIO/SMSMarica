@@ -21,7 +21,8 @@ public static class EstrategiaPrompt
         sb.AppendLine("""
             Você é o planejador de oferta da Secretaria de Saúde. Sua tarefa: propor uma ESTRATÉGIA para
             reduzir ou zerar a fila de espera de UM procedimento regulado, mexendo na oferta (profissionais,
-            dias, horas, atendimentos por hora, mutirões).
+            turnos por semana, atendimentos por turno, mutirões). Um TURNO é um profissional num dia com
+            escala para o procedimento.
 
             REGRAS — leia com atenção:
             1. Você NÃO faz conta. Toda projeção sai da ferramenta `simular`, que roda o nosso modelo
@@ -30,8 +31,8 @@ public static class EstrategiaPrompt
             2. Parâmetro TRAVADO é fato: não pode mudar. Se mandar valor diferente, a ferramenta devolve
                erro e você corrige. Parâmetro LIVRE pode mudar dentro do mínimo/máximo indicado.
             3. Procure a estratégia MAIS ECONÔMICA que cumpra o objetivo: o menor acréscimo de recursos
-               (profissionais, dias, horas) que atinja o prazo. Não proponha o dobro de tudo se 20% a mais
-               resolve. Prefira aumentar horas/dias de quem já atende a contratar; prefira mutirão pontual
+               (profissionais, turnos, atendimentos por turno) que atinja o prazo. Não proponha o dobro de
+               tudo se 20% a mais resolve. Prefira mais turnos de quem já atende a contratar; prefira mutirão pontual
                para a "corcova" da fila antiga e capacidade permanente para o fluxo.
             4. O `aproveitamento` mede o quanto da vaga ofertada vira atendimento de verdade. Se está baixo,
                a primeira ação costuma ser fazer a vaga existente ser usada (confirmação, remarcação,
@@ -80,7 +81,8 @@ public static class EstrategiaPrompt
         sb.AppendLine($"- Profissionais: {o.Profissionais.Count}; unidades reguladas: {o.Unidades.Count(u => !u.AgendaLocal)}; blocos/semana: {N(o.Blocos)}");
         sb.AppendLine($"- Dias com oferta: {string.Join(", ", o.DiasSemana.Select(d => Dias[d]))}"
             + (o.HoraInicioTipica is { } hi ? $"; janela {hi:HH\\:mm}–{o.HoraFimTipica:HH\\:mm}" : ""));
-        sb.AppendLine($"- Por profissional: {D(o.MediaDiasPorProfissional)} dias/semana, {D(o.MediaHorasPorProfissionalDia)} h/dia, {D(o.AtendimentosPorHoraBase)} atendimentos/hora");
+        sb.AppendLine($"- Turnos: {D(o.TurnosSemana)} por semana na rede = {D(o.TurnosPorProfissionalSemana)} por profissional; {D(o.AtendimentosPorTurno)} atendimentos por turno");
+        sb.AppendLine("- (As horas de início/fim da escala do SISREG NÃO são tempo de trabalho — blocos de minutos com dezenas de vagas; ignore-as.)");
         sb.AppendLine($"- Aproveitamento medido ({c.Ocupacao.SemanasMedidas} sem.): "
             + (c.Ocupacao.Aproveitamento is { } ap ? $"**{ap:P0}** ({N(c.Ocupacao.Agendados)} marcações em {N(c.Ocupacao.VagasRegulacaoOfertadas)} vagas)" : "sem oferta no período (não medido)"));
         sb.AppendLine();
@@ -106,7 +108,7 @@ public static class EstrategiaPrompt
 
         sb.AppendLine("## Parâmetros da simulação");
         sb.AppendLine($"- Objetivo: **{p.Objetivo}**" + (p.PrazoAlvoSemanas is { } pz ? $" — prazo alvo: {pz} semanas" : ""));
-        sb.AppendLine("- Capacidade/semana = profissionais × diasPorSemana × horasPorDia × atendimentosPorHora × aproveitamento (+ mutirões)");
+        sb.AppendLine("- Capacidade/semana = profissionais × turnosPorProfissionalSemana × atendimentosPorTurno × aproveitamento (+ mutirões)");
         sb.AppendLine();
         sb.AppendLine("| Parâmetro | Valor atual | Estado | Mín | Máx |");
         sb.AppendLine("|---|---:|---|---:|---:|");

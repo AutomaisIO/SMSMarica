@@ -33,9 +33,8 @@ export type ParametrosEstrategia = {
   prazoAlvoSemanas: number | null;
   unidades: ParametroNumero;
   profissionais: ParametroNumero;
-  diasPorSemana: ParametroNumero;
-  horasPorDia: ParametroNumero;
-  atendimentosPorHora: ParametroNumero;
+  turnosPorProfissionalSemana: ParametroNumero;
+  atendimentosPorTurno: ParametroNumero;
   aproveitamento: ParametroNumero;
   entradaSemanal: ParametroNumero;
   mutiroes: Mutirao[];
@@ -46,9 +45,8 @@ export type ParametrosEstrategia = {
 export type ChaveNumerica =
   | 'unidades'
   | 'profissionais'
-  | 'diasPorSemana'
-  | 'horasPorDia'
-  | 'atendimentosPorHora'
+  | 'turnosPorProfissionalSemana'
+  | 'atendimentosPorTurno'
   | 'aproveitamento'
   | 'entradaSemanal';
 
@@ -103,9 +101,10 @@ export type OfertaCenario = {
   vagasReservaSemana: number;
   vagasRegulacaoSemana: number;
   vagasTotalSemana: number;
-  mediaDiasPorProfissional: number;
-  mediaHorasPorProfissionalDia: number;
-  atendimentosPorHoraBase: number;
+  turnosSemana: number;
+  turnosPorProfissionalSemana: number;
+  atendimentosPorTurno: number;
+  horasDeclaradasSemana: number;
   vagasAgendaLocalSemana: number;
 };
 

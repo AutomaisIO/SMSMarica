@@ -1,7 +1,7 @@
 import { Lock, LockOpen, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
-import { CHAVES_NUMERICAS, OBJETIVOS, ROTULOS, capacidadeSemanal, n } from '@/features/estrategias-fila/lib/parametros';
+import { CHAVES_NUMERICAS, OBJETIVOS, ROTULOS, capacidadeSemanal, n, turnosSemanais, vagasSemanais } from '@/features/estrategias-fila/lib/parametros';
 import type { ChaveNumerica, Objetivo, ParametrosEstrategia } from '@/features/estrategias-fila/types';
 
 type Props = {
@@ -34,7 +34,8 @@ export function PainelParametros({ parametros: p, aoMudar, desabilitado }: Props
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-gray-900">Parâmetros</h2>
         <p className="text-xs text-gray-500">
-          Capacidade com estes valores: <strong className="text-gray-900">{n(cap, 1)}/semana</strong>
+          {n(turnosSemanais(p), 1)} turnos × {n(p.atendimentosPorTurno.valor, 1)} = {n(vagasSemanais(p), 1)} vagas/semana →{' '}
+          <strong className="text-gray-900">{n(cap, 1)} atendidos/semana</strong> com {Math.round(p.aproveitamento.valor * 100)}% de aproveitamento
         </p>
       </div>
 

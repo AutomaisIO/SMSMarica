@@ -30,9 +30,8 @@ public static class ParametrosEstrategiaAplicador
         {
             Unidades = Numero(vigentes.Unidades, "unidades", entrada, violacoes),
             Profissionais = Numero(vigentes.Profissionais, "profissionais", entrada, violacoes),
-            DiasPorSemana = Numero(vigentes.DiasPorSemana, "diasPorSemana", entrada, violacoes),
-            HorasPorDia = Numero(vigentes.HorasPorDia, "horasPorDia", entrada, violacoes),
-            AtendimentosPorHora = Numero(vigentes.AtendimentosPorHora, "atendimentosPorHora", entrada, violacoes),
+            TurnosPorProfissionalSemana = Numero(vigentes.TurnosPorProfissionalSemana, "turnosPorProfissionalSemana", entrada, violacoes),
+            AtendimentosPorTurno = Numero(vigentes.AtendimentosPorTurno, "atendimentosPorTurno", entrada, violacoes),
             Aproveitamento = Numero(vigentes.Aproveitamento, "aproveitamento", entrada, violacoes),
             EntradaSemanal = Numero(vigentes.EntradaSemanal, "entradaSemanal", entrada, violacoes),
         };

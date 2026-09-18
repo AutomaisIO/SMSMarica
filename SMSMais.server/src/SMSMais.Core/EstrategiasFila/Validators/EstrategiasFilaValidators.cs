@@ -26,11 +26,11 @@ public sealed class ParametrosEstrategiaValidator : AbstractValidator<Parametros
 
         RuleFor(p => p.Unidades).NotNull().SetValidator(new ParametroNumeroValidator());
         RuleFor(p => p.Profissionais).NotNull().SetValidator(new ParametroNumeroValidator());
-        RuleFor(p => p.DiasPorSemana).NotNull().SetValidator(new ParametroNumeroValidator());
-        RuleFor(p => p.DiasPorSemana.Valor).LessThanOrEqualTo(7).When(p => p.DiasPorSemana is not null);
-        RuleFor(p => p.HorasPorDia).NotNull().SetValidator(new ParametroNumeroValidator());
-        RuleFor(p => p.HorasPorDia.Valor).LessThanOrEqualTo(24).When(p => p.HorasPorDia is not null);
-        RuleFor(p => p.AtendimentosPorHora).NotNull().SetValidator(new ParametroNumeroValidator());
+        RuleFor(p => p.TurnosPorProfissionalSemana).NotNull().SetValidator(new ParametroNumeroValidator());
+        RuleFor(p => p.TurnosPorProfissionalSemana.Valor).LessThanOrEqualTo(14)
+            .WithMessage("No máximo 14 turnos por semana por profissional (2 por dia).")
+            .When(p => p.TurnosPorProfissionalSemana is not null);
+        RuleFor(p => p.AtendimentosPorTurno).NotNull().SetValidator(new ParametroNumeroValidator());
         RuleFor(p => p.Aproveitamento).NotNull().SetValidator(new ParametroNumeroValidator());
         RuleFor(p => p.Aproveitamento.Valor).LessThanOrEqualTo(1).When(p => p.Aproveitamento is not null);
         RuleFor(p => p.EntradaSemanal).NotNull().SetValidator(new ParametroNumeroValidator());

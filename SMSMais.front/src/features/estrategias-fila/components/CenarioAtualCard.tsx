@@ -154,10 +154,15 @@ export function CenarioAtualCard({ cenario: c }: { cenario: CenarioFila }) {
             {o.diasSemana.map((d) => DIAS_CURTOS[d]).join(', ') || 'sem dia'}
             {o.horaInicioTipica ? ` · ${o.horaInicioTipica.slice(0, 5)}–${o.horaFimTipica?.slice(0, 5)}` : ''}
             {' · '}
-            {n(o.mediaDiasPorProfissional, 1)} dias e {n(o.mediaHorasPorProfissionalDia, 1)} h por profissional ·{' '}
-            {n(o.atendimentosPorHoraBase, 2)} atend./h
+            <strong>{n(o.turnosSemana, 1)} turnos/semana</strong> ({n(o.turnosPorProfissionalSemana, 1)} por profissional) ·{' '}
+            <strong>{n(o.atendimentosPorTurno, 1)} atendimentos por turno</strong>
           </p>
         </div>
+
+        <p className="mt-1 text-[10px] text-gray-400">
+          Turno = um profissional num dia com escala. As horas de início e fim da escala do SISREG não são tempo de trabalho
+          (há blocos de 5 minutos com dezenas de vagas), por isso não entram na conta — só a janela típica é mostrada.
+        </p>
 
         {o.unidades.length === 0 ? (
           <p className="mt-2 flex items-center gap-1 text-xs text-amber-700">
