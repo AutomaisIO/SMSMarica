@@ -267,4 +267,12 @@ public enum ModuloPermissao
     /// (janela de horário, vazão, só SISREG, chave por unidade). <c>Edicao</c> altera as regras e
     /// reenvia.</summary>
     Confirmacoes = 65,
+
+    /// <summary>Estratégias de fila (ADR-0058): simular mudanças na oferta de um procedimento
+    /// (unidades, profissionais, dias, vagas) contra a fila real e pedir ao agente uma estratégia
+    /// para zerá-la. <b>Só planejamento</b> — nada escreve no SISREG; a estratégia fica no nosso
+    /// banco para consulta. <c>Consulta</c> vê a lista, o cenário e simula sem gravar;
+    /// <c>Inclusao</c> salva estratégia e roda o agente; <c>Edicao</c> edita, reroda e marca como
+    /// aplicada; <c>Exclusao</c> arquiva.</summary>
+    EstrategiasFila = 66,
 }

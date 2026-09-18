@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0058 — Estratégias de fila: simulador determinístico + agente que só escolhe parâmetros livres</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0058 — Estratégias de fila: simulador determinístico + agente que só escolhe parâmetros livres</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-09-17 <strong>Relacionado:</strong> <a href="./0050-motor-robo-messages-api.md">ADR-0050</a> (loop de tool-use no .NET; resposta só pela ferramenta terminal) · <a href="./0055-catalogo-canonico-e-embeddings.md">ADR-0055</a> (catálogo canônico; oferta interna derivada da escala) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (SISREG só-leitura) · <a href="./0043-instancia-por-municipio.md">ADR-0043</a> (uma instância por município)</p>
+<h2>Contexto</h2>
+<p>A Agenda lê a oferta regulada (escalas do SISREG × marcações) e a demanda (fila de espera do SISREG, ~74 mil abertas desde a carga de 12/09/2026). Ela responde "onde sobra, onde falta, quem espera quanto". Não responde a pergunta do gestor: <strong>"o que eu preciso mudar na oferta para zerar (ou estabilizar) a fila deste procedimento, e em quanto tempo?"</strong></p>
+<p>Havia três formas de responder, e duas são armadilhas:</p>
+<ol>
+<li><strong>Pedir ao modelo de linguagem que calcule.</strong> Modelo erra aritmética e não é reproduzível: um</li>
+</ol>
+<p>   "zera em 14 semanas" que muda quando se pergunta de novo não pode ir ao secretário.</p>
+<ol>
+<li><strong>Deixar o modelo mexer em tudo.</strong> O gestor que já sabe que "não vai contratar" precisa que isso</li>
+</ol>
+<p>   seja fato, não pedido; instrução no prompt não é garantia.</p>
+<ol>
+<li><strong>Simulação determinística com o modelo escolhendo só o que está livre</strong> — a decisão.</li>
+</ol>
+<h2>Decisão</h2>
+<h3>1. Os números são nossos, nunca do modelo</h3>
+<p>A projeção da fila é uma função pura em .NET (<code>SimuladorFila.Projetar</code>), sem banco e sem IA. Passo semanal, horizonte até 156 semanas:</p>
+<p>``<code> capacidade/semana = profissionais × diasPorSemana × horasPorDia × atendimentosPorHora × aproveitamento                     + mutirões da semana fila(t+1) = fila(t) + entrada − min(capacidade, fila(t) + entrada) </code>``</p>
+<p>Saída: semana em que zera (ou "não zera" e quanto cresce), capacidade de equilíbrio (= entrada), capacidade necessária para zerar num prazo, pico, atendidos até zerar, série. Coberta por teste sem banco — a fórmula não muda sem um teste vermelho dizendo o quê.</p>
+<h3>2. O agente tem duas ferramentas, uma delas terminal</h3>
+<p>O agente (<code>EstrategiaAgenteIa</code>) roda o loop de tool-use no .NET sobre a Messages API, no molde do <a href="./0050-motor-robo-messages-api.md">ADR-0050</a>, com o modelo da Configuração da IA (troca pela tela, sem deploy). Ferramentas:</p>
+<ul>
+<li><code>simular(parametros)</code> — roda o <code>SimuladorFila</code> com os números que o modelo mandou e devolve os</li>
+</ul>
+<p>  marcos. O modelo experimenta quantas vezes quiser (teto de 10 iterações).</p>
+<ul>
+<li><code>propor_estrategia(parametros, resumo, acoes[], riscos[], confianca)</code> — <strong>terminal</strong>. Prosa sem</li>
+</ul>
+<p>  ela é descartada.</p>
+<p>O <code>system</code> vai com <code>cache_control: ephemeral</code> e carrega o <strong>cenário em markdown</strong> (fila por risco e faixa, séries de entrada e vazão, oferta por unidade e profissional, aproveitamento, parâmetros com estado). Sem PII: nomes de profissional entram porque já são dado público do SISREG e aparecem na tela de Agenda; paciente nunca.</p>
+<h3>3. Trava é contrato, não instrução</h3>
+<p>Cada parâmetro numérico carrega <code>{ valor, travado, min?, max? }</code>. <code>ParametrosEstrategiaAplicador</code> aplica o que o modelo mandou <strong>rejeitando</strong> parâmetro travado com valor diferente e parâmetro livre fora de mín/máx. A violação volta ao modelo como erro de ferramenta; ele corrige ou a rodada termina em <code>Falha</code> — registrada com o custo, sem 500, sem virar a rodada atual.</p>
+<h3>4. Rodada é append-only</h3>
+<p><code>estrategia_fila</code> é a cabeça (nome, procedimento, estado, parâmetros vigentes, rodada atual). <code>estrategia_fila_rodada</code> guarda cada execução: parâmetros de entrada (com travas), <strong>snapshot do cenário</strong>, parâmetros resultantes, projeção, proposta, modelo/tokens/custo/duração, falha. Nunca se edita nem apaga uma rodada: reabrir e rodar de novo cria a seguinte. É o que permite comparar rodadas e, depois de aplicada, medir a fila real contra a projeção.</p>
+<h3>5. "Aplicar" é anotação humana — nada escreve no SISREG</h3>
+<p>Decisão explícita do Bernardo (17/09/2026): <strong>nada do que for decidido na simulação aplica no SISREG nem em lugar nenhum</strong>. A estratégia fica no nosso banco para ser consultada; <code>aplicada_em</code>/<code>aplicada_por</code>/<code>aplicacao_nota</code> registram que alguém a executou por fora. O SISREG continua só-leitura (<a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a>).</p>
+<h3>6. O eixo é a família do procedimento do SISREG</h3>
+<p>Procedimento = código <code>pa</code> + nome, com a família grupo↔item que já valia na tela de Ofertas (grupo <code>XXXX000</code> cobre os itens <code>XXXX*</code>; a fila só tem nome, a escala tem código + nome). A regra foi extraída para <code>FamiliaProcedimentoSisreg</code>, compartilhada pelas duas telas — <strong>uma régua só</strong>, para os dois mostrarem o mesmo número. Procedimento <strong>com fila e sem escala</strong> entra na lista com código nulo: é o caso mais grave, e é o que uma lista montada a partir da escala deixaria de fora. Vínculo com o catálogo canônico (<a href="./0055-catalogo-canonico-e-embeddings.md">ADR-0055</a>) só para exibir o nome; não é FK obrigatória.</p>
+<h3>7. O cenário é determinístico e explica de onde cada número sai</h3>
+<p><code>CenarioFilaService</code>, SQL cru em dia de Brasília, semanas de segunda a domingo, semana corrente fora das médias:</p>
+<div class="tw"><table><thead><tr><th>Bloco</th><th>Fonte</th><th>Por quê</th></tr></thead><tbody>
+<tr><td>Fila</td><td><code>sisreg_fila_pendente</code> aberta, nomes da família</td><td>quem espera HOJE (a fila é estado, não histórico)</td></tr>
+<tr><td>Entrada</td><td>união por nº de solicitação: fila (aberta ou saída) ∪ marcações, por <code>data_solicitacao</code></td><td>só a fila subestima — quem foi rápido já saiu dela</td></tr>
+<tr><td>Vazão</td><td>marcações por <code>data_agendada</code></td><td>o que a rede atende de verdade, não o que a escala promete</td></tr>
+<tr><td>Oferta</td><td>escalas ativas expandidas nas próximas 4 semanas ÷ 4</td><td>mesmo método da Análise de vagas; vaga da regulação = 1ª vez + reserva; <strong>agenda local fora</strong></td></tr>
+<tr><td>Aproveitamento</td><td>marcações ÷ vagas ofertadas nas últimas 8 semanas</td><td>escala viva com vaga morta (ECG do CDT) aparece aqui, e a capacidade efetiva é vagas × isto</td></tr>
+</tbody></table></div>
+<p>Os parâmetros iniciais reproduzem a oferta de hoje por construção (<code>atendimentosPorHora = vagas/semana ÷ (profissionais × dias × horas)</code>), então "rodar sem mudar nada" é o cenário atual. Sem escala, entram valores de partida (5 dias, 4 h, 2/h, aproveitamento 0,85) para o agente ter de onde propor.</p>
+<h3>8. Permissão e escopo</h3>
+<p><code>ModuloPermissao.EstrategiasFila = 66</code> (append-only). Consulta = lista, cenário e simular sem gravar; Inclusão = salvar e rodar o agente (gasta chamada de IA); Edição = editar, rerodar, marcar aplicada; Exclusão = arquivar/excluir. Escopo: <strong>rede toda</strong> — é planejamento, o mesmo critério da Demanda regulada.</p>
+<h2>Consequências</h2>
+<ul>
+<li><strong>Positivas:</strong> número reproduzível e conferível no papel; o agente é útil onde é bom (escolher</li>
+</ul>
+<p>  combinações, escrever ações para gente) e afastado de onde é ruim (aritmética); travas viram   garantia; histórico completo de cada tentativa; custo por rodada registrado.</p>
+<ul>
+<li><strong>A vigiar:</strong> a rodada do agente roda síncrona no request (30–90 s; timeout do cliente 4 min) —</li>
+</ul>
+<p>  se ficar lenta na prática, vira tarefa em fila; o modelo é linear (entrada constante, sem   sazonalidade) — quem quiser "a demanda cresce 10%" trava <code>entradaSemanal</code> num valor maior; o   aproveitamento mistura vaga de retorno e agenda local no denominador (é estimativa, dito na   tela); a lista de procedimentos é cacheada por 10 min no backend.</p>
+<ul>
+<li><strong>Não há orçamento global de IA</strong> (não existe no projeto); o teto é por rodada (10 iterações ×</li>
+</ul>
+<p>  6k tokens de saída).</p>
+<h2>Alternativas descartadas</h2>
+<ul>
+<li><strong>Modelo calcula a projeção</strong> (prompt com os dados, resposta com o prazo): não reproduzível, não</li>
+</ul>
+<p>  auditável.</p>
+<ul>
+<li><strong>Otimizador matemático sem agente</strong> (busca em grade sobre os parâmetros livres): dá o mínimo</li>
+</ul>
+<p>  numérico, mas não escreve "abrir 2 blocos na 3ª e 5ª no CDT" nem pondera que aproveitamento   baixo pede ação antes de vaga nova. Fica como possível pré-passo se o custo do agente pesar.</p>
+<ul>
+<li><strong>Escrever no SISREG</strong> ao "aplicar": vetado pelo Bernardo e pelo ADR-0012.</li>
+</ul>
+</main>
+</body>
+</html>

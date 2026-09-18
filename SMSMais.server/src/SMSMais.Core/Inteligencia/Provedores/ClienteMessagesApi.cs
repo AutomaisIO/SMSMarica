@@ -7,7 +7,7 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Inteligencia.Seguranca;
 using SMSMais.Data;
 
-namespace SMSMais.Core.RoboAtendimento.Treinamento;
+namespace SMSMais.Core.Inteligencia.Provedores;
 
 /// <summary>Uma chamada de ferramenta pedida pelo modelo.</summary>
 public sealed record ChamadaFerramenta(string Id, string Nome, JsonElement Argumentos);
@@ -24,12 +24,16 @@ public sealed record TurnoModelo(
 public sealed record FerramentaModelo(string Nome, string Descricao, object InputSchema);
 
 /// <summary>
-/// Cliente da Messages API para o <b>agente treinador</b>. É separado do
-/// <c>RoboAtendimentoMotorApi</c> de propósito: aquele é o motor do atendimento (Haiku, tool_choice
-/// forçado, ferramenta terminal obrigatória, teto apertado) e não pode ganhar peso por causa do
-/// treinamento.
+/// Cliente <b>genérico</b> da Messages API para agentes com loop de tool-use no .NET (ADR-0050):
+/// recebe modelo, instrução, a lista viva de mensagens e as ferramentas, e devolve o turno cru
+/// (blocos para ecoar, chamadas e uso). O <i>loop</i> fica no chamador — treinador do robô
+/// (<c>RoboTreinadorAgente</c>) e agente de estratégias de fila (<c>EstrategiaAgenteIa</c>).
 ///
-/// Duas diferenças que vêm do modelo usado aqui (Fable 5.1):
+/// É separado do <c>RoboAtendimentoMotorApi</c> de propósito: aquele é o motor do atendimento
+/// (Haiku, tool_choice forçado, ferramenta terminal obrigatória, teto apertado) e não pode ganhar
+/// peso por causa de agentes de bastidor.
+///
+/// Duas regras que vêm dos modelos mais novos (Fable 5.1 em diante):
 /// <list type="bullet">
 /// <item><b>Não existe tool_choice forçado</b> — <c>any</c>/<c>tool</c> devolvem 400. O loop usa
 /// <c>auto</c> e a instrução nomeia a ferramenta terminal;</item>
@@ -40,13 +44,13 @@ public sealed record FerramentaModelo(string Nome, string Descricao, object Inpu
 /// Os blocos do assistente são ecoados <b>inteiros</b> a cada volta (inclusive os de raciocínio) —
 /// o histórico é append-only, que é o que o modelo espera ao continuar o próprio turno.
 /// </summary>
-public sealed class ClienteAnthropicTreinamento(
+public sealed class ClienteMessagesApi(
     HttpClient http,
     SmsMaisDbContext db,
     IProtetorSegredos protetor,
-    ILogger<ClienteAnthropicTreinamento> logger)
+    ILogger<ClienteMessagesApi> logger)
 {
-    public const string HttpClientName = "RoboTreinadorIa";
+    public const string HttpClientName = "IaMessagesApi";
 
     private const string Endpoint = "v1/messages";
     private const string VersaoApi = "2023-06-01";
@@ -63,13 +67,13 @@ public sealed class ClienteAnthropicTreinamento(
         string instrucaoSistema,
         List<object> mensagens,
         IReadOnlyList<FerramentaModelo> ferramentas,
-        string esforco,
+        string? esforco,
         int maxTokens,
         CancellationToken ct)
     {
         var token = await ObterTokenAsync(ct)
             ?? throw new ValidacaoException("ia",
-                "Token da Anthropic não configurado (Configuração da IA) — o treinamento do robô precisa dele.");
+                "Token da Anthropic não configurado (Configuração da IA) — este agente precisa dele.");
 
         var body = new Dictionary<string, object?>
         {
@@ -86,9 +90,14 @@ public sealed class ClienteAnthropicTreinamento(
                     cache_control = new { type = "ephemeral" },
                 },
             },
-            ["output_config"] = new { effort = esforco },
             ["messages"] = mensagens,
         };
+
+        // `effort` só existe da geração Opus 4.5 em diante; Haiku 4.5 e Sonnet 4.5 devolvem 400.
+        // Quem chama com o modelo da Configuração da IA (que o operador escolhe) passa nulo
+        // quando não sabe, e o corpo vai sem output_config.
+        if (!string.IsNullOrWhiteSpace(esforco))
+            body["output_config"] = new { effort = esforco };
 
         if (ferramentas.Count > 0)
         {
@@ -183,7 +192,7 @@ public sealed class ClienteAnthropicTreinamento(
                 throw new InvalidOperationException($"Anthropic retornou {(int)resp.StatusCode}: {Truncar(corpo)}");
 
             var espera = TimeSpan.FromSeconds(Math.Pow(2, tentativa)); // 2s, 4s
-            logger.LogWarning("Anthropic {Status} no treinamento (tentativa {N}) — reesperando {Espera}s.",
+            logger.LogWarning("Anthropic {Status} (tentativa {N}) — reesperando {Espera}s.",
                 (int)resp.StatusCode, tentativa, espera.TotalSeconds);
             await Task.Delay(espera, ct);
         }
@@ -199,7 +208,7 @@ public sealed class ClienteAnthropicTreinamento(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Não foi possível revelar o token da Anthropic para o treinamento.");
+            logger.LogWarning(ex, "Não foi possível revelar o token da Anthropic.");
             return null;
         }
     }

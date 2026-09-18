@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Integracoes.SisregWeb.Comum;
 using SMSMais.Core.Integracoes.SisregWeb.Ofertas.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -169,7 +170,7 @@ public sealed class OfertasSisregService(
         var horizonte = Math.Clamp(dias, 7, 180);
         var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
         var ate = hoje.AddDays(horizonte);
-        var grupo = GrupoDoCodigo(codigo);
+        var grupo = FamiliaProcedimentoSisreg.GrupoDoCodigo(codigo);
 
         // Item casa com a própria escala E com a do grupo dele: a vaga de "GRUPO - ULTRASONOGRAFIA"
         // é onde uma transvaginal é marcada. Grupo casa só consigo mesmo.
@@ -215,7 +216,7 @@ public sealed class OfertasSisregService(
         var unidades = new List<UnidadeDaOfertaDto>();
         foreach (var daUnidade in escalas.GroupBy(e => (e.UnidadeId, e.AgendaLocal)))
         {
-            var porFamilia = daUnidade.Any(e => EhCodigoDeGrupo(e.ProcedimentoCodigo));
+            var porFamilia = daUnidade.Any(e => FamiliaProcedimentoSisreg.EhCodigoDeGrupo(e.ProcedimentoCodigo));
 
             var ocupacao = agendamentos
                 .Where(a => a.UnidadeExecutanteId == daUnidade.Key.UnidadeId
@@ -270,7 +271,7 @@ public sealed class OfertasSisregService(
         }
 
         var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
-        var grupo = GrupoDoCodigo(codigo);
+        var grupo = FamiliaProcedimentoSisreg.GrupoDoCodigo(codigo);
 
         // As mesmas escalas que formaram o cartão: esta unidade, este tipo de agenda, vigentes.
         var escalas = await db.SisregEscalas.AsNoTracking()
@@ -288,7 +289,7 @@ public sealed class OfertasSisregService(
 
         // Mesma régua de DatasDaOfertaAsync: escala de grupo é ocupada por qualquer item da família;
         // escala de item, só pelo item.
-        var porFamilia = escalas.Any(e => EhCodigoDeGrupo(e.ProcedimentoCodigo));
+        var porFamilia = escalas.Any(e => FamiliaProcedimentoSisreg.EhCodigoDeGrupo(e.ProcedimentoCodigo));
         var prefixo = codigo.Length >= 4 ? codigo[..4] : codigo;
         var inicioUtc = FusoBrasilia.DeBrasiliaParaUtc(data.ToDateTime(TimeOnly.MinValue));
         var fimUtc = FusoBrasilia.DeBrasiliaParaUtc(data.AddDays(1).ToDateTime(TimeOnly.MinValue));
@@ -432,7 +433,7 @@ public sealed class OfertasSisregService(
         // régua da casa. Comparação exata, sem `Contains`: "CONSULTA EM CARDIOLOGIA" não pode
         // arrastar "CONSULTA EM CARDIOLOGIA - PEDIATRIA", que é outra fila com outra espera. O que
         // o código acrescenta é o outro lado do grupo, também por nome exato.
-        var nomes = await NomesDaFilaAsync(nome, procedimentoCodigo?.Trim(), cancellationToken);
+        var nomes = await FamiliaProcedimentoSisreg.NomesDaFamiliaAsync(db, nome, procedimentoCodigo?.Trim(), cancellationToken);
 
         var baseQuery = db.SisregFilaPendentes.AsNoTracking()
             .Where(f => f.SaiuEm == null && f.ProcedimentoNome != null && nomes.Contains(f.ProcedimentoNome));
@@ -494,7 +495,7 @@ public sealed class OfertasSisregService(
 
     /// <summary>
     /// Quantas pessoas esperam por cada procedimento dos cartões — a MESMA régua de
-    /// <see cref="NomesDaFilaAsync"/> (nome exato + o outro lado do grupo), feita em lote.
+    /// <see cref="FamiliaProcedimentoSisreg.NomesDaFamiliaAsync"/> (nome exato + o outro lado do grupo), feita em lote.
     ///
     /// <para><b>Em lote porque a tela tem centenas de cartões.</b> Uma consulta agrupa a fila por
     /// nome; uma traz os nomes das escalas dos prefixos na tela; e só os GRUPOS pedem a busca cara
@@ -514,12 +515,12 @@ public sealed class OfertasSisregService(
 
         var codigos = chaves
             .Select(c => c.Codigo)
-            .Where(c => c is not null && GrupoDoCodigo(c) is not null)
+            .Where(c => c is not null && FamiliaProcedimentoSisreg.GrupoDoCodigo(c) is not null)
             .Select(c => c!)
             .Distinct(StringComparer.Ordinal)
             .ToList();
         var prefixos = codigos.Select(c => c[..4]).Distinct(StringComparer.Ordinal).ToList();
-        var prefixosDeGrupo = codigos.Where(EhCodigoDeGrupo).Select(c => c[..4])
+        var prefixosDeGrupo = codigos.Where(FamiliaProcedimentoSisreg.EhCodigoDeGrupo).Select(c => c[..4])
             .Distinct(StringComparer.Ordinal).ToList();
 
         var escalas = new List<(string Codigo, string Nome)>();
@@ -549,10 +550,10 @@ public sealed class OfertasSisregService(
         foreach (var chave in chaves.Distinct())
         {
             var nomes = new HashSet<string>(StringComparer.Ordinal) { chave.Nome };
-            if (chave.Codigo is { } codigo && GrupoDoCodigo(codigo) is { } grupo)
+            if (chave.Codigo is { } codigo && FamiliaProcedimentoSisreg.GrupoDoCodigo(codigo) is { } grupo)
             {
                 var prefixo = codigo[..4];
-                if (EhCodigoDeGrupo(codigo))
+                if (FamiliaProcedimentoSisreg.EhCodigoDeGrupo(codigo))
                 {
                     nomes.UnionWith(escalas.Where(e => e.Codigo.StartsWith(prefixo, StringComparison.Ordinal)).Select(e => e.Nome));
                     nomes.UnionWith(itensDeGrupo.Where(i => i.Codigo.StartsWith(prefixo, StringComparison.Ordinal)).Select(i => i.Nome));
@@ -568,50 +569,6 @@ public sealed class OfertasSisregService(
 
         return resultado;
     }
-
-    /// <summary>
-    /// Os nomes de fila que uma vaga deste procedimento atende.
-    ///
-    /// <para>A vaga liberada chega com o nome do ITEM ("ULTRASONOGRAFIA TRANSVAGINAL") e a fila
-    /// guarda o que foi pedido — muitas vezes o GRUPO ("GRUPO - ULTRASONOGRAFIA"). Casar só o nome
-    /// daria zero justamente nos procedimentos de fila maior.</para>
-    /// </summary>
-    private async Task<List<string>> NomesDaFilaAsync(string nome, string? codigo, CancellationToken ct)
-    {
-        var nomes = new HashSet<string>(StringComparer.Ordinal) { nome };
-        if (string.IsNullOrEmpty(codigo) || GrupoDoCodigo(codigo) is not { } grupo) return [.. nomes];
-
-        if (EhCodigoDeGrupo(codigo))
-        {
-            // Vaga de grupo: quem pediu qualquer item do grupo espera por ela.
-            var prefixo = codigo[..4];
-            nomes.UnionWith(await db.SisregEscalas.AsNoTracking()
-                .Where(e => e.ProcedimentoCodigo.StartsWith(prefixo))
-                .Select(e => e.ProcedimentoNome).Distinct().ToListAsync(ct));
-            nomes.UnionWith(await db.Solicitacoes.AsNoTracking()
-                .Where(s => s.ProcedimentoCodigoSisreg != null
-                    && s.ProcedimentoCodigoSisreg.StartsWith(prefixo)
-                    && s.ProcedimentoTexto != null)
-                .Select(s => s.ProcedimentoTexto!).Distinct().ToListAsync(ct));
-        }
-        else
-        {
-            // Vaga de item: quem pediu o grupo inteiro também serve.
-            nomes.UnionWith(await db.SisregEscalas.AsNoTracking()
-                .Where(e => e.ProcedimentoCodigo == grupo)
-                .Select(e => e.ProcedimentoNome).Distinct().ToListAsync(ct));
-        }
-
-        return [.. nomes];
-    }
-
-    /// <summary>Código do SISREG tem 7 dígitos; terminado em <c>000</c> é GRUPO.</summary>
-    internal static bool EhCodigoDeGrupo(string codigo) =>
-        codigo.Length == 7 && codigo.EndsWith("000", StringComparison.Ordinal);
-
-    /// <summary>O grupo que cobre o item: mesmo prefixo de 4 dígitos + <c>000</c>.</summary>
-    internal static string? GrupoDoCodigo(string codigo) =>
-        codigo.Length == 7 && codigo.All(char.IsAsciiDigit) ? codigo[..4] + "000" : null;
 
     /// <summary>
     /// Vagas livres do procedimento para o cartão: soma das unidades REGULADAS e confiáveis (fora a
@@ -776,7 +733,7 @@ public sealed class OfertasSisregService(
         return [.. vagas.Select(v =>
         {
             if (v.UnidadeId is null || string.IsNullOrEmpty(v.ProcedimentoCodigo)) return v;
-            var grupo = GrupoDoCodigo(v.ProcedimentoCodigo);
+            var grupo = FamiliaProcedimentoSisreg.GrupoDoCodigo(v.ProcedimentoCodigo);
             var doProcedimento = escalas
                 .Where(e => e.UnidadeId == v.UnidadeId
                     && (e.ProcedimentoCodigo == v.ProcedimentoCodigo || e.ProcedimentoCodigo == grupo))

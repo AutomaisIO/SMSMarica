@@ -610,6 +610,12 @@ public static class DependencyInjection
         services.AddScoped<AgendaRegulacao.IAgendaAnaliseService, AgendaRegulacao.AgendaAnaliseService>();
         services.AddScoped<AgendaRegulacao.IAgendaDemandaService, AgendaRegulacao.AgendaDemandaService>();
 
+        // ---- Estratégias de fila (ADR-0058): simulador determinístico + agente que só escolhe
+        // parâmetros livres. Só planejamento — nada escreve no SISREG.
+        services.AddScoped<EstrategiasFila.ICenarioFilaService, EstrategiasFila.CenarioFilaService>();
+        services.AddScoped<EstrategiasFila.IEstrategiaAgenteIa, EstrategiasFila.EstrategiaAgenteIa>();
+        services.AddScoped<EstrategiasFila.IEstrategiaFilaService, EstrategiasFila.EstrategiaFilaService>();
+
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
         // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.
         services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ISisregImportacaoFila, Integracoes.SisregWeb.Importacao.Background.SisregImportacaoFila>();
@@ -833,13 +839,12 @@ public static class DependencyInjection
             Notificacoes.WhatsApp.Manipuladores.RoboAtendimentoWhatsAppHandler>();
         services.AddHostedService<RoboAtendimento.Runtime.RoboAtendimentoWorker>();
 
-        // ---- Cliente da Messages API do treinador do robô (ADR-0050/0051) — turnos longos, poucas
-        // chamadas/dia; timeout folgado (o do motor de atendimento mataria a análise no meio).
-        // Reposto após f192fee7 ter tirado a linha (que apontava para o tipo errado,
-        // Inteligencia.Provedores.ClienteMessagesApi) sem repor o tipo certo: a classe real
-        // ClienteAnthropicTreinamento continuou como dependência, e sua ausência no DI derrubava
-        // TODO o /conversas na ativação do controller (ERRO-A834QN).
-        services.AddHttpClient<RoboAtendimento.Treinamento.ClienteAnthropicTreinamento>(client =>
+        // ---- Cliente genérico da Messages API (agentes de bastidor com loop no .NET) ----
+        // Serve o treinador do robô (ADR-0050/0051) e o agente de estratégias de fila (ADR-0058):
+        // turnos longos, poucas chamadas por dia — o timeout do motor de atendimento (60s) mataria
+        // a análise no meio. Registro obrigatório: sem ele, quem injeta IRoboTreinamentoService
+        // (o ConversasController) derruba TODO o /conversas na ativação (ERRO-A834QN).
+        services.AddHttpClient<Inteligencia.Provedores.ClienteMessagesApi>(client =>
         {
             client.BaseAddress = new Uri(anthropicBaseUrl);
             client.Timeout = TimeSpan.FromMinutes(10);

@@ -104,6 +104,8 @@ import { RoboAtendimentoPage } from '@/features/robo-atendimento/pages/RoboAtend
 import { AgendaPage } from '@/features/agenda/pages/AgendaPage';
 import { AgendaAnalisePage } from '@/features/agenda/pages/AgendaAnalisePage';
 import { AgendaDemandaPage } from '@/features/agenda/pages/AgendaDemandaPage';
+import { EstrategiasFilaPage } from '@/features/estrategias-fila/pages/EstrategiasFilaPage';
+import { EstrategiaEditorPage } from '@/features/estrategias-fila/pages/EstrategiaEditorPage';
 import { AlteracoesAgendaPage } from '@/features/alteracoes-agenda/pages/AlteracoesAgendaPage';
 import { OfertasPage } from '@/features/sisreg/pages/OfertasPage';
 import { PendenciasCadastroPage } from '@/features/pendencias-cadastro/pages/PendenciasCadastroPage';
@@ -261,6 +263,11 @@ export function AppRouter() {
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="agenda/analise" element={<AgendaAnalisePage />} />
           <Route path="agenda/demanda" element={<AgendaDemandaPage />} />
+          <Route element={<RotaComModulo modulo="EstrategiasFila" rotulo="Estratégias de fila" />}>
+            <Route path="agenda/estrategias" element={<EstrategiasFilaPage />} />
+            <Route path="agenda/estrategias/nova" element={<EstrategiaEditorPage />} />
+            <Route path="agenda/estrategias/:id" element={<EstrategiaEditorPage />} />
+          </Route>
           <Route path="alteracoes-agenda" element={<AlteracoesAgendaPage />} />
           <Route path="ofertas" element={<OfertasPage />} />
           <Route path="pendencias-cadastro" element={<PendenciasCadastroPage />} />

@@ -109,6 +109,10 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'AjusteCadastro', rotulo: 'Pendências de cadastro (números errados) — ver e resolver' },
   { id: 'Agenda', rotulo: 'Agenda — oferta de vagas do SISREG, ocupação e análise' },
   {
+    id: 'EstrategiasFila',
+    rotulo: 'Estratégias de fila — simular mudanças na oferta e pedir estratégia ao agente (só planejamento)',
+  },
+  {
     id: 'AlteracoesAgenda',
     rotulo: 'Alterações de agenda do SISREG — ver a fila, tratar e avisar o paciente',
   },
@@ -165,6 +169,14 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // de unidade. Toda pergunta fica na auditoria da IA.
   InteligenciaAtendimento: {
     Consulta: 'Perguntar sobre as conversas com pacientes (rede toda; fica na auditoria)',
+  },
+  // Nada aqui escreve no SISREG: "Inclusão" cria a estratégia no nosso banco e gasta uma chamada
+  // de IA por rodada do agente.
+  EstrategiasFila: {
+    Consulta: 'Ver procedimentos com fila, o cenário e simular sem salvar',
+    Inclusao: 'Salvar estratégia e pedir ao agente (gasta chamada de IA)',
+    Edicao: 'Editar, rerodar e marcar como aplicada',
+    Exclusao: 'Arquivar e excluir estratégias',
   },
   Confirmacoes: {
     Consulta: 'Ver a fila, as respostas dos pacientes e as regras',

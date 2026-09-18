@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.RoboAtendimento.Dtos;
 using SMSMais.Core.RoboAtendimento.Runtime;
+using SMSMais.Core.Inteligencia.Provedores;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Robo;
@@ -29,7 +30,7 @@ public interface IRoboTreinamentoSimulador
 /// </summary>
 public sealed class RoboTreinamentoSimulador(
     IRoboSimulacaoService simulacao,
-    ClienteAnthropicTreinamento cliente,
+    ClienteMessagesApi cliente,
     SmsMaisDbContext db,
     ILogger<RoboTreinamentoSimulador> logger) : IRoboTreinamentoSimulador
 {

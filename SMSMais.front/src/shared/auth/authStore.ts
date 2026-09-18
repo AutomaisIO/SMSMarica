@@ -67,7 +67,8 @@ export type ModuloPermissao =
   | 'Agenda'
   | 'RevelarChaveSisreg'
   | 'InteligenciaAtendimento'
-  | 'Confirmacoes';
+  | 'Confirmacoes'
+  | 'EstrategiasFila';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

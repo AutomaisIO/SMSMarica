@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.EstrategiasFila;
 using SMSMais.Data.Entities.Ia;
 using SMSMais.Data.Entities.Integracoes;
 using SMSMais.Data.Entities.Pep;
@@ -206,6 +207,11 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<IndicadorExecucao> IndicadorExecucoes => Set<IndicadorExecucao>();
 
     public DbSet<Equipamento> Equipamentos => Set<Equipamento>();
+
+    // Estratégias de fila (ADR-0058): simulação de mudanças na oferta contra a fila real.
+    // Só planejamento — nada aqui escreve no SISREG.
+    public DbSet<EstrategiaFila> EstrategiasFila => Set<EstrategiaFila>();
+    public DbSet<EstrategiaFilaRodada> EstrategiaFilaRodadas => Set<EstrategiaFilaRodada>();
 
     /// <summary>O que cada unidade executa de imagem: worklist e aparelho de destino por par
     /// (tipo, unidade). Ver <see cref="TipoExameUnidade"/>.</summary>

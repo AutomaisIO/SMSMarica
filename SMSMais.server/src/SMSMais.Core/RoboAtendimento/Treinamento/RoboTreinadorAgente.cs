@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.RoboAtendimento.Runtime;
+using SMSMais.Core.Inteligencia.Provedores;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Robo;
@@ -50,7 +51,7 @@ public interface IRoboTreinadorAgente
 /// paralelo para reescrever o robô inteiro sem ninguém olhando.
 /// </summary>
 public sealed class RoboTreinadorAgente(
-    ClienteAnthropicTreinamento cliente,
+    ClienteMessagesApi cliente,
     IRoboBriefingService briefing,
     RoboTreinamentoAplicador aplicador,
     SmsMaisDbContext db,
@@ -335,7 +336,7 @@ public sealed class RoboTreinadorAgente(
                     parecer = Str(c.Argumentos, "parecer") ?? parecer;
                     descartado = Bool(c.Argumentos, "descartado");
                     concluiu = true;
-                    resultados.Add(ClienteAnthropicTreinamento.ResultadoFerramenta(c.Id, "Registrado."));
+                    resultados.Add(ClienteMessagesApi.ResultadoFerramenta(c.Id, "Registrado."));
                     continue;
                 }
 
@@ -344,13 +345,13 @@ public sealed class RoboTreinadorAgente(
                     var (msg, aplicou, abriu) = await ExecutarAsync(item, c, ct);
                     aplicadas += aplicou;
                     pendencias += abriu;
-                    resultados.Add(ClienteAnthropicTreinamento.ResultadoFerramenta(c.Id, msg));
+                    resultados.Add(ClienteMessagesApi.ResultadoFerramenta(c.Id, msg));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     logger.LogWarning(ex, "Ferramenta {Ferramenta} falhou no treinamento do item {Item}.",
                         c.Nome, item.Id);
-                    resultados.Add(ClienteAnthropicTreinamento.ResultadoFerramenta(
+                    resultados.Add(ClienteMessagesApi.ResultadoFerramenta(
                         c.Id, $"Falhou: {ex.Message}", erro: true));
                 }
             }

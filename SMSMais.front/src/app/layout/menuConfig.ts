@@ -46,6 +46,7 @@ import {
   Wrench,
   Zap,
   type LucideIcon,
+  Target,
 } from 'lucide-react';
 import type { ModuloPermissao } from '@/shared/auth/authStore';
 
@@ -164,6 +165,16 @@ export const SECOES: SecaoMenu[] = [
         icone: Hourglass,
         modulo: 'Agenda',
         descricao: 'Top procedimentos, tempo de espera e origem da demanda.',
+      },
+      {
+        // Estratégias de fila (ADR-0058): simulador determinístico + agente que só escolhe
+        // parâmetros livres. Só planejamento — nada escreve no SISREG; a estratégia fica no
+        // nosso banco para consulta.
+        rotulo: 'Estratégias de fila',
+        to: '/app/agenda/estrategias',
+        icone: Target,
+        modulo: 'EstrategiasFila',
+        descricao: 'Simule mudanças na oferta e peça ao agente uma estratégia para zerar a fila de um procedimento.',
       },
       {
         rotulo: 'Ofertas',
