@@ -100,7 +100,13 @@ export function usePreviaLote(
 export function useDispararLote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (dados: { unidadeId?: string; de?: string; ate?: string; forcar?: boolean }) =>
+    mutationFn: async (dados: {
+      unidadeId?: string;
+      de?: string;
+      ate?: string;
+      forcar?: boolean;
+      ignorarJanela?: boolean;
+    }) =>
       (await http.post<PreviaLote>('/confirmacoes/lote', dados)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: raiz }),
   });

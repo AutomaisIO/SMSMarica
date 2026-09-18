@@ -446,7 +446,9 @@ function AbaLote() {
   const [de, setDe] = useState(hojeMais(1));
   const [ate, setAte] = useState(hojeMais(10));
   const [forcar, setForcar] = useState(false);
+  const [ignorarJanela, setIgnorarJanela] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const cfg = useConfiguracaoConfirmacao();
 
   // Forçando, a lista precisa ter TODAS as unidades: a graça é justamente disparar para uma que
   // está com a chave desligada (sem religar o automático).
@@ -456,6 +458,7 @@ function AbaLote() {
   );
 
   const filtro = { unidadeId: unidadeId || undefined, de, ate, forcar: forcar || undefined };
+  const disparoParams = { ...filtro, ignorarJanela: ignorarJanela || undefined };
   const previa = usePreviaLote(filtro, Boolean(de && ate) && (!forcar || Boolean(unidadeId)));
   const disparar = useDispararLote();
   const p = previa.data;
@@ -512,6 +515,23 @@ function AbaLote() {
             o disparo passa a ser decisão de quem clica. As regras de privacidade continuam valendo:
             número marcado como inválido não recebe, e número não verificado recebe primeiro o desafio
             de identificação.
+          </span>
+        </label>
+      ) : null}
+
+      {podeEditar ? (
+        <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={ignorarJanela}
+            onChange={(e) => setIgnorarJanela(e.target.checked)}
+          />
+          <span>
+            <strong>Enviar agora, ignorando o horário</strong>
+            {cfg.data ? ` (${cfg.data.horaInicioEnvio}–${cfg.data.horaFimEnvio})` : ''}. Vale só para
+            este lote — a janela continua valendo para todo o resto. Fora do horário comercial, lembre
+            que o paciente recebe a mensagem na hora em que ela sair.
           </span>
         </label>
       ) : null}
@@ -576,7 +596,10 @@ function AbaLote() {
           {p.elegiveis > 0 ? (
             <p className="text-sm text-gray-600">
               As mensagens entram na fila e saem no ritmo do worker: cerca de <strong>{minutos} min</strong>{' '}
-              de envio, dentro da janela de horário. Fora dela, ficam empilhadas até a janela abrir.
+              de envio.{' '}
+              {ignorarJanela
+                ? 'Com "enviar agora" marcado, começam a sair na próxima rodada (até 1 min).'
+                : 'Dentro da janela de horário; fora dela, ficam empilhadas até a janela abrir.'}
             </p>
           ) : null}
         </>
@@ -598,12 +621,18 @@ function AbaLote() {
               Confirma o envio para <strong>{p.elegiveis}</strong> agendamento(s) de{' '}
               {diaLegivel(p.porDia[0]?.dia ?? de)} a {diaLegivel(p.porDia[p.porDia.length - 1]?.dia ?? ate)}? São
               mensagens reais para pacientes — e a resposta deles volta para a Central de Atendimento.
+              {ignorarJanela ? (
+                <>
+                  {' '}
+                  <strong>Saem agora</strong>, fora do horário de envio.
+                </>
+              ) : null}
             </p>
             <div className="mt-3 flex items-center gap-2">
               <Button
                 disabled={disparar.isPending}
                 onClick={() => {
-                  disparar.mutate(filtro);
+                  disparar.mutate(disparoParams);
                   setConfirmando(false);
                 }}
               >

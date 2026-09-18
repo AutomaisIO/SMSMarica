@@ -93,7 +93,9 @@ public sealed class ConfirmacoesController(
         await lote.PreverAsync(unidadeId, de, ate, forcar, ct);
 
     /// <param name="Forcar">Ignora as chaves de unidade/procedimento (exige unidade escolhida).</param>
-    public sealed record DispararLoteRequest(Guid? UnidadeId, DateOnly? De, DateOnly? Ate, bool Forcar = false);
+    /// <param name="IgnorarJanela">Este lote sai agora, mesmo fora do horário de envio.</param>
+    public sealed record DispararLoteRequest(
+        Guid? UnidadeId, DateOnly? De, DateOnly? Ate, bool Forcar = false, bool IgnorarJanela = false);
 
     /// <summary>Enfileira o lote (o worker envia, respeitando janela e vazão). Idempotente.</summary>
     [HttpPost("lote")]
@@ -102,7 +104,8 @@ public sealed class ConfirmacoesController(
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<PreviaLoteConfirmacaoDto> DispararLote(
         [FromBody] DispararLoteRequest request, CancellationToken ct) =>
-        await lote.DispararAsync(request.UnidadeId, request.De, request.Ate, request.Forcar, ct);
+        await lote.DispararAsync(
+            request.UnidadeId, request.De, request.Ate, request.Forcar, request.IgnorarJanela, ct);
 
     // ---- Regras ----
 

@@ -34,8 +34,11 @@ public interface ILoteConfirmacaoService
     /// <param name="forcar">Ignora as chaves de unidade e de procedimento — o lote passa a ser
     /// decisão de quem clica, não do cadastro. Exige unidade escolhida. As regras de LGPD (contato
     /// negado, número não verificado → desafio) continuam valendo: elas não são chave de operação.</param>
+    /// <param name="ignorarJanela">Este lote sai AGORA, mesmo fora do horário de envio. Vale só
+    /// para as mensagens deste disparo — a janela continua de pé para todo o resto.</param>
     Task<PreviaLoteConfirmacaoDto> DispararAsync(
-        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, CancellationToken ct = default);
+        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, bool ignorarJanela = false,
+        CancellationToken ct = default);
 }
 
 public sealed class LoteConfirmacaoService(
@@ -52,11 +55,13 @@ public sealed class LoteConfirmacaoService(
         MontarAsync(unidadeId, de, ate, forcar, disparar: false, ct);
 
     public Task<PreviaLoteConfirmacaoDto> DispararAsync(
-        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, CancellationToken ct = default) =>
-        MontarAsync(unidadeId, de, ate, forcar, disparar: true, ct);
+        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar = false, bool ignorarJanela = false,
+        CancellationToken ct = default) =>
+        MontarAsync(unidadeId, de, ate, forcar, disparar: true, ct, ignorarJanela);
 
     private async Task<PreviaLoteConfirmacaoDto> MontarAsync(
-        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar, bool disparar, CancellationToken ct)
+        Guid? unidadeId, DateOnly? de, DateOnly? ate, bool forcar, bool disparar, CancellationToken ct,
+        bool ignorarJanela = false)
     {
         // Forçar é o modo "eu sei o que estou fazendo": ignora as chaves, mas exige alvo estreito —
         // sem unidade escolhida seria um disparo para a rede inteira num clique.
@@ -179,14 +184,18 @@ public sealed class LoteConfirmacaoService(
             {
                 entrada.Entity.Origem = OrigemComunicacao.Manual;
                 entrada.Entity.EnviadoPor = usuarioAtual.UsuarioId;
+                // "Sai agora" é decisão de quem dispara, e vale SÓ para este lote: a janela protege
+                // o paciente de receber de madrugada, mas quem está olhando a operação pode decidir
+                // que este envio não espera até as 8h.
+                entrada.Entity.IgnorarJanelaHorario = ignorarJanela;
             }
 
             await db.SaveChangesAsync(ct);
             enfileiradas = quantos;
             logger.LogInformation(
                 "Lote de confirmação: {Qtd} agendamento(s) enfileirado(s) (unidade {Unidade}, {De} a {Ate}, "
-                + "forcar={Forcar}) por {Usuario}.",
-                quantos, unidadeId, diaInicial, diaFinal, forcar, usuarioAtual.UsuarioId);
+                + "forcar={Forcar}, ignorarJanela={IgnorarJanela}) por {Usuario}.",
+                quantos, unidadeId, diaInicial, diaFinal, forcar, ignorarJanela, usuarioAtual.UsuarioId);
         }
         else if (elegiveis.Count > MaximoPorLote)
         {
