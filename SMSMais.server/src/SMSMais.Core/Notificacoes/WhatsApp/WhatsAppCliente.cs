@@ -25,8 +25,27 @@ public sealed class WhatsAppCliente(
     IConfiguration configuration,
     IMemoryCache memoryCache,
     PendenciasCadastro.IContatoNegadoService contatosNegados,
+    Microsoft.Extensions.Options.IOptions<Comunicacao.ComunicacaoPacienteOptions> comunicacaoOptions,
     ILogger<WhatsAppCliente> logger) : IWhatsAppCliente
 {
+    /// <summary>
+    /// Componente de cabeçalho para modelo com FOTO no topo. A imagem do modelo aprovado é apenas
+    /// exemplo: cada envio precisa mandar a sua, senão a Meta recusa com 132012.
+    /// Modelo sem imagem (ou sem URL configurada) não leva header nenhum.
+    /// </summary>
+    private object? CabecalhoImagem(string template)
+    {
+        var opts = comunicacaoOptions.Value;
+        if (string.IsNullOrWhiteSpace(opts.ImagemCabecalhoUrl)) return null;
+        if (!opts.TemplatesComImagem.Contains(template, StringComparer.OrdinalIgnoreCase)) return null;
+
+        return new
+        {
+            type = "header",
+            parameters = new object[] { new { type = "image", image = new { link = opts.ImagemCabecalhoUrl } } },
+        };
+    }
+
     private const string CacheKeyTemplates = "whatsapp:templates";
 
     /// <summary>
@@ -243,9 +262,11 @@ public sealed class WhatsAppCliente(
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
-        object[]? components = parametros.Count == 0
-            ? null
-            : [new { type = "body", parameters = await ParametrosBodyAsync(template, parametros, ct) }];
+        var componentes = new List<object>();
+        if (CabecalhoImagem(template) is { } cabecalho) componentes.Add(cabecalho);
+        if (parametros.Count > 0)
+            componentes.Add(new { type = "body", parameters = await ParametrosBodyAsync(template, parametros, ct) });
+        object[]? components = componentes.Count == 0 ? null : [.. componentes];
         object body = new
         {
             messaging_product = "whatsapp",
@@ -269,6 +290,7 @@ public sealed class WhatsAppCliente(
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
         var components = new List<object>();
+        if (CabecalhoImagem(template) is { } cabecalhoImagem) components.Add(cabecalhoImagem);
         if (parametrosBody.Count > 0)
             components.Add(new { type = "body", parameters = await ParametrosBodyAsync(template, parametrosBody, ct) });
         for (var i = 0; i < botoes.Count; i++)

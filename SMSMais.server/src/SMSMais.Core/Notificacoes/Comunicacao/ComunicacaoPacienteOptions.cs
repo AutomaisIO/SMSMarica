@@ -20,6 +20,22 @@ public sealed class ComunicacaoPacienteOptions
     /// <summary>Idioma dos templates (BCP-47 da Meta).</summary>
     public string Idioma { get; set; } = "pt_BR";
 
+    // ---- Cabeçalho com IMAGEM ----
+    // Modelo aprovado com foto no topo EXIGE o componente de header em cada envio: a imagem do
+    // modelo é só exemplo, não vai sozinha. Sem isso a Meta recusa com
+    // "(#132012) Parameter format does not match format in the created template" — foi o que
+    // aconteceu com os três modelos novos em 20/09/2026.
+
+    /// <summary>Imagem enviada no cabeçalho dos modelos listados em
+    /// <see cref="TemplatesComImagem"/>. Precisa ser URL PÚBLICA (a Meta baixa o arquivo).</summary>
+    public string ImagemCabecalhoUrl { get; set; } = "https://app.smsmarica.online/icon-512.png";
+
+    /// <summary>Modelos cujo cabeçalho é uma imagem. O catálogo do relay não informa o formato do
+    /// header, então a lista é explícita — errar aqui só custa um 132012 na fila, não uma mensagem
+    /// errada para o paciente.</summary>
+    public string[] TemplatesComImagem { get; set; } =
+        ["confirmacao_exame", "confirmacao_consulta", "agendamento_proximo"];
+
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
 
     /// <summary>Modelo do Complexo Regulador (troca de 2026-07-08; antes era
