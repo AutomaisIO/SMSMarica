@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   alterarRegraUnidade,
   dispararLote,
+  enviarTesteModelo,
+  listarModelos,
   listarNotificacoes,
   listarRegrasUnidades,
   listarRespostas,
@@ -108,6 +110,21 @@ export function useSalvarConfiguracaoConfirmacao() {
   return useMutation({
     mutationFn: (dados: SalvarConfirmacaoConfiguracao) => salvarConfiguracaoConfirmacao(dados),
     onSuccess: (dados) => qc.setQueryData(mensageriaKeys.configuracaoConfirmacao, dados),
+  });
+}
+
+export function useModelosWhatsApp() {
+  return useQuery({
+    queryKey: [...mensageriaKeys.raiz, 'modelos'],
+    queryFn: listarModelos,
+    staleTime: 5 * 60_000, // catálogo da Meta muda pouco
+  });
+}
+
+export function useEnviarTesteModelo() {
+  return useMutation({
+    mutationFn: (dados: { telefone: string; modelo: string; parametros?: string[] }) =>
+      enviarTesteModelo(dados),
   });
 }
 

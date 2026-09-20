@@ -150,6 +150,24 @@ export type SalvarConfirmacaoConfiguracao = Pick<
   | 'lembreteHabilitado'
 >;
 
+/** Modelo aprovado na Meta, como a tela de teste precisa dele. */
+export type ModeloWhatsApp = {
+  nome: string;
+  idioma: string;
+  categoria: string;
+  corpo: string | null;
+  parametros: number;
+  exemplos: string[];
+  /** Valores que o sistema usaria de verdade neste modelo. */
+  sugestao: string[];
+};
+
+export type ResultadoTesteModelo = {
+  ok: boolean;
+  erro: string | null;
+  waMessageId: string | null;
+};
+
 export type RegraUnidade = {
   unidadeId: string;
   unidadeNome: string;

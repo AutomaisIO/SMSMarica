@@ -439,12 +439,14 @@ public sealed class ComunicacaoPacienteService(
         // mandou laudo para destino desconhecido no lote de 2026-07. Confirmação de
         // agendamento continua indo para qualquer celular: não expõe resultado e é ela que
         // provoca o contato (a resposta do paciente é o que permite verificar o número).
-        // Lembrete entra aqui junto com resultado/laudo: mandar "sua data está chegando" para quem
-        // nunca se identificou seria repetir a primeira mensagem com outro texto — e sem prova de
-        // que é a pessoa certa. Fica retido até o contato ser verificado.
+        // Lembrete de quem JÁ confirmou fala da data e do procedimento: só vai para contato provado.
+        // Lembrete de quem NÃO respondeu é a própria mensagem original repetida (decisão de
+        // 20/09/2026) — e ela não expõe nada, é justamente o convite a se identificar.
+        var lembreteDeQuemConfirmou = n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+            && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada;
         var exigeVerificado = n.Finalidade is FinalidadeComunicacao.ExameLiberado
             or FinalidadeComunicacao.LaudoPronto
-            or FinalidadeComunicacao.LembreteAgendamento;
+            || lembreteDeQuemConfirmou;
 
         // Envio manual com "assumo o risco" (n.IgnorarVerificacaoTelefone): o operador decidiu
         // enviar o resultado mesmo sem número verificado — pula o gate e usa o melhor celular.
@@ -519,7 +521,11 @@ public sealed class ComunicacaoPacienteService(
         // "falar com atendente" como única alternativa — e era nele que as pessoas clicavam, em vez
         // de responder. Agora o pedido do CPF só vem depois de "Quero mais informações".
         // "Assumo o risco" (IgnorarVerificacaoTelefone) pula tudo isso.
-        if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+        var repetePrimeiraMensagem = n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            || (n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente);
+
+        if (repetePrimeiraMensagem
             && !n.IgnorarVerificacaoTelefone
             && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
             && options.Value.VerificacaoCadastralHabilitada)
@@ -767,11 +773,24 @@ public sealed class ComunicacaoPacienteService(
             // enquanto o segundo não existir).
             case FinalidadeComunicacao.LembreteAgendamento:
             {
-                var confirmado = s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada;
-                var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
                 var oQue = tipo == TipoAgendamento.Consulta ? "Sua consulta" : "Seu exame";
+
+                // NÃO respondeu ainda: repete a mensagem ORIGINAL (curta, com "Quero mais
+                // informações") — decisão de 20/09/2026. Insistir com data e hora em quem nunca
+                // deu sinal não ajuda; o que falta é ela entrar na conversa.
+                if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
+                {
+                    return (
+                        tipo == TipoAgendamento.Consulta
+                            ? opts.TemplateConfirmacaoConsulta
+                            : opts.TemplateConfirmacaoExame,
+                        [Tratamento(nomePaciente, sexo)],
+                        []);
+                }
+
+                var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
                 return (
-                    confirmado ? opts.TemplateLembreteConfirmado : opts.TemplateLembreteNaoConfirmado,
+                    opts.TemplateLembreteConfirmado,
                     [
                         Tratamento(nomePaciente, sexo),
                         $"{oQue} de {exame}",

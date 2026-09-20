@@ -15,8 +15,29 @@ namespace SMSMais.Api.Controllers;
 [Route("comunicacoes-paciente")]
 public sealed class ComunicacoesPacienteController(
     IComunicacaoGestaoService service,
-    SMSMais.Core.Notificacoes.Mensageria.IMensageriaConfiguracaoService mensageria) : ControllerBase
+    SMSMais.Core.Notificacoes.Mensageria.IMensageriaConfiguracaoService mensageria,
+    SMSMais.Core.Notificacoes.Mensageria.ITesteModeloService testeModelo) : ControllerBase
 {
+    /// <summary>Modelos APROVADOS na Meta, com corpo, nº de variáveis e a sugestão de valores que o
+    /// sistema usaria — para conferir no celular como a mensagem chega.</summary>
+    [HttpGet("modelos")]
+    [RequerPermissao(ModuloPermissao.NotificacoesAgendamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SMSMais.Core.Notificacoes.Mensageria.ModeloWhatsAppDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<SMSMais.Core.Notificacoes.Mensageria.ModeloWhatsAppDto>> Modelos(
+        CancellationToken ct) => await testeModelo.ListarModelosAsync(ct);
+
+    public sealed record EnviarTesteModeloRequest(string Telefone, string Modelo, string[]? Parametros);
+
+    /// <summary>Dispara UM modelo para UM número (teste). Não cria comunicação nem mexe em
+    /// agendamento; é envio de operador.</summary>
+    [HttpPost("modelos/teste")]
+    [RequerPermissao(ModuloPermissao.NotificacoesAgendamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SMSMais.Core.Notificacoes.Mensageria.ResultadoTesteModeloDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<SMSMais.Core.Notificacoes.Mensageria.ResultadoTesteModeloDto> EnviarTesteModelo(
+        [FromBody] EnviarTesteModeloRequest request, CancellationToken ct) =>
+        await testeModelo.EnviarAsync(request.Telefone, request.Modelo, request.Parametros, ct);
+
     /// <summary>Resumo diário da mensageria (entradas, envios, entregas, leituras, falhas por erro
     /// Meta, retidas, respostas). Dias de Brasília, inclusivos; sem período, últimos 30 dias.</summary>
     [HttpGet("resumo-diario")]

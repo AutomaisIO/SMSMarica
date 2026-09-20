@@ -9,8 +9,10 @@ import type {
   NotificacaoFiltro,
   PaginaNotificacoes,
   PaginaRespostas,
+  ModeloWhatsApp,
   PreviaLote,
   RegraUnidade,
+  ResultadoTesteModelo,
   ResumoDiarioMensageria,
   SalvarConfirmacaoConfiguracao,
   SalvarMensageriaConfiguracao,
@@ -90,6 +92,20 @@ export async function obterPreviaLote(filtro: FiltroLote): Promise<PreviaLote> {
 
 export async function dispararLote(dados: DisparoLote): Promise<PreviaLote> {
   const { data } = await http.post<PreviaLote>('/confirmacoes/lote', dados);
+  return data;
+}
+
+export async function listarModelos(): Promise<ModeloWhatsApp[]> {
+  const { data } = await http.get<ModeloWhatsApp[]>('/comunicacoes-paciente/modelos');
+  return data;
+}
+
+export async function enviarTesteModelo(dados: {
+  telefone: string;
+  modelo: string;
+  parametros?: string[];
+}): Promise<ResultadoTesteModelo> {
+  const { data } = await http.post<ResultadoTesteModelo>('/comunicacoes-paciente/modelos/teste', dados);
   return data;
 }
 

@@ -189,6 +189,8 @@ public static class DependencyInjection
             Notificacoes.Confirmacoes.ConfirmacoesPainelService>();
         services.AddScoped<Notificacoes.Confirmacoes.ILoteConfirmacaoService,
             Notificacoes.Confirmacoes.LoteConfirmacaoService>();
+        // Teste de modelo: dispara um template para um número, para conferir no celular.
+        services.AddScoped<Notificacoes.Mensageria.ITesteModeloService, Notificacoes.Mensageria.TesteModeloService>();
         // Lembrete X dias antes (enfileira; quem envia é o EnviadorComunicacaoService).
         services.AddScoped<Notificacoes.Confirmacoes.ILembreteAgendamentoService,
             Notificacoes.Confirmacoes.LembreteAgendamentoService>();

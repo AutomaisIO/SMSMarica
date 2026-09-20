@@ -5,9 +5,10 @@ import { AbaEnvios } from '@/features/mensageria/components/AbaEnvios';
 import { AbaLote } from '@/features/mensageria/components/AbaLote';
 import { AbaRegras } from '@/features/mensageria/components/AbaRegras';
 import { AbaRespostas } from '@/features/mensageria/components/AbaRespostas';
+import { AbaTesteModelo } from '@/features/mensageria/components/AbaTesteModelo';
 import { AbaResumoDiario } from '@/features/mensageria/components/AbaResumoDiario';
 
-const ABAS = ['resumo', 'envios', 'respostas', 'lote', 'regras'] as const;
+const ABAS = ['resumo', 'envios', 'respostas', 'lote', 'regras', 'teste'] as const;
 
 /**
  * Mensageria (módulo 38): a gestão dos envios de WhatsApp ao paciente — o que saiu, chegou, falhou
@@ -38,6 +39,7 @@ export function MensageriaPage() {
           { id: 'respostas', rotulo: 'Respostas dos pacientes', conteudo: <AbaRespostas /> },
           { id: 'lote', rotulo: 'Disparar lote', conteudo: <AbaLote /> },
           { id: 'regras', rotulo: 'Regras e parâmetros', conteudo: <AbaRegras /> },
+          { id: 'teste', rotulo: 'Testar modelo', conteudo: <AbaTesteModelo /> },
         ]}
       />
     </div>

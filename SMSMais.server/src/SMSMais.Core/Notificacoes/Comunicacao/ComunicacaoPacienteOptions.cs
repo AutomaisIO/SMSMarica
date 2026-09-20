@@ -43,12 +43,13 @@ public sealed class ComunicacaoPacienteOptions
     /// agendada!"). O texto fixo é do próprio modelo — por isso são dois.</summary>
     public string TemplateConfirmacaoConsulta { get; set; } = "confirmacao_consulta";
 
-    /// <summary>Lembrete X dias antes para quem AINDA NÃO respondeu — precisa continuar oferecendo
-    /// confirmar/avisar que não vai. X é configurado no menu Confirmações.</summary>
-    public string TemplateLembreteNaoConfirmado { get; set; } = "agendamento_proximo";
-
-    /// <summary>Lembrete X dias antes para quem JÁ confirmou — só relembra a data (mais objetivo).
-    /// Enquanto o modelo próprio não existir, usa o mesmo do não confirmado.</summary>
+    /// <summary>
+    /// Lembrete X dias antes para quem JÁ confirmou: "…está se aproximando! … Ainda está confirmado
+    /// seu comparecimento?" com os botões *Sim! Está confirmado!* e *Não poderei ir.*
+    /// <para>Quem ainda NÃO respondeu não recebe este: recebe a mensagem ORIGINAL de novo
+    /// (<see cref="TemplateConfirmacaoExame"/>/<see cref="TemplateConfirmacaoConsulta"/>) — o que
+    /// falta a essa pessoa não é lembrar a data, é entrar na conversa.</para>
+    /// </summary>
     public string TemplateLembreteConfirmado { get; set; } = "agendamento_proximo";
 
     /// <summary>OBSOLETO desde 20/09/2026: a primeira mensagem virou
