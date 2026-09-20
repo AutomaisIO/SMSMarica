@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { notificar } from '@/shared/ui/Notificacoes';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useAtualizarConfiguracaoOuvidoria, useConfiguracaoOuvidoria } from '@/features/ouvidoria/api/queries';
 import { Textarea } from '@/features/ouvidoria/components/Textarea';
 import type { OuvidoriaConfiguracaoDto } from '@/features/ouvidoria/types';
@@ -66,10 +67,13 @@ export function ConfiguracaoOuvidoriaPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
-          <Settings2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-          Configuração da ouvidoria
-        </h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
+            <Settings2 className="h-5 w-5 text-red-600" aria-hidden="true" />
+            Configuração da ouvidoria
+          </h1>
+          <AjudaManual artigo="ouvidoria" secao="gestao" />
+        </div>
         <p className="text-sm text-slate-500">Prazos legais e regras de aviso. Vale para toda a instância.</p>
       </div>
 

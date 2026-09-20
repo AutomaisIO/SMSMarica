@@ -8,6 +8,7 @@ import { Input } from '@/shared/ui/Input';
 import { Paginacao } from '@/shared/ui/Paginacao';
 import { Select } from '@/shared/ui/Select';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useManifestacoes, useResumoOuvidoria } from '@/features/ouvidoria/api/queries';
 import { SeletorPontoResposta, SeletorUnidade } from '@/features/ouvidoria/components/Seletores';
 import { TabelaManifestacoes } from '@/features/ouvidoria/components/TabelaManifestacoes';
@@ -112,10 +113,13 @@ export function OuvidoriaFilaPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
-            <Megaphone className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Ouvidoria
-          </h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
+              <Megaphone className="h-5 w-5 text-red-600" aria-hidden="true" />
+              Ouvidoria
+            </h1>
+            <AjudaManual artigo="ouvidoria" />
+          </div>
           <p className="text-sm text-slate-500">Manifestações dos cidadãos: triagem, encaminhamento, resposta e prazos.</p>
         </div>
         {podeRegistrar ? (

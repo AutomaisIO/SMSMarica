@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FilePlus2 } from 'lucide-react';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { ModalProtocoloCriado } from '@/features/ouvidoria/components/ModalProtocoloCriado';
 import { RegistrarManifestacaoForm } from '@/features/ouvidoria/components/RegistrarManifestacaoForm';
 import type { ManifestacaoCriadaDto } from '@/features/ouvidoria/types';
@@ -21,10 +22,13 @@ export function RegistrarManifestacaoPage() {
       </button>
 
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
-          <FilePlus2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-          Registrar manifestação
-        </h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
+            <FilePlus2 className="h-5 w-5 text-red-600" aria-hidden="true" />
+            Registrar manifestação
+          </h1>
+          <AjudaManual artigo="ouvidoria" secao="registrar" />
+        </div>
         <p className="text-sm text-slate-500">
           Só tipo, identificação, canal e relato são obrigatórios. Nada é recusado por falta dos demais campos.
         </p>

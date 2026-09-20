@@ -5,6 +5,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Input } from '@/shared/ui/Input';
 import { Paginacao } from '@/shared/ui/Paginacao';
 import { Select } from '@/shared/ui/Select';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useManifestacoes } from '@/features/ouvidoria/api/queries';
 import { TabelaManifestacoes } from '@/features/ouvidoria/components/TabelaManifestacoes';
 import type { FiltroManifestacoes, OuvidoriaStatus } from '@/features/ouvidoria/types';
@@ -38,10 +39,13 @@ export function MeuPontoPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
-          <Inbox className="h-5 w-5 text-red-600" aria-hidden="true" />
-          Meu ponto de resposta
-        </h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
+            <Inbox className="h-5 w-5 text-red-600" aria-hidden="true" />
+            Meu ponto de resposta
+          </h1>
+          <AjudaManual artigo="ouvidoria" secao="meu-ponto" />
+        </div>
         <p className="text-sm text-slate-500">
           Manifestações encaminhadas à sua unidade ou área. Você vê o relato e responde; quem manifestou fica com a ouvidoria.
         </p>

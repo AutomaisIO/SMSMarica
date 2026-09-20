@@ -10,6 +10,7 @@ import { notificar } from '@/shared/ui/Notificacoes';
 import { Select } from '@/shared/ui/Select';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useListarUsuarios } from '@/features/usuarios/api/queries';
 import { usePontosResposta, useSalvarPontoResposta } from '@/features/ouvidoria/api/queries';
 import { SeletorUnidade } from '@/features/ouvidoria/components/Seletores';
@@ -60,10 +61,13 @@ export function PontosRespostaPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
-            <Network className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Pontos de resposta
-          </h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
+              <Network className="h-5 w-5 text-red-600" aria-hidden="true" />
+              Pontos de resposta
+            </h1>
+            <AjudaManual artigo="ouvidoria" secao="gestao" />
+          </div>
           <p className="text-sm text-slate-500">Unidades, áreas centrais e unidades apuratórias que recebem e respondem manifestações.</p>
         </div>
         {podeCriar ? (

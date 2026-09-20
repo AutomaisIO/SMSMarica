@@ -14,7 +14,8 @@
 | 20/09/2026 | T2 Core + T3 Api | concluídas | `Core/Ouvidoria/*` (3 services, DTOs, validators, prazos, protocolo, notificador, rotina 6 h), `OuvidoriaController` + `OuvidoriaPublicoController`, política de rate limit `ouvidoria-publico`; build 0/0. **API não foi subida localmente**: user-secrets apontam para PROD e o AutoMigrate aplicaria a migration. Desvios do contrato documentados abaixo |
 | 20/09/2026 | T5 Testes | concluída | `tests/SMSMais.Tests/Ouvidoria/` — 54 testes (prazos, protocolo, service, público) **aprovados** na bancada do Maestro; migration `Ouvidoria` aplicou sem erro. **Dois bugs reais corrigidos** no service (ver abaixo) |
 | 20/09/2026 | T6 Docs | concluída | ADR-0060, `docs/architecture.md`, `CLAUDE.md`, este arquivo |
-| | **Commit + deploy** | **aguardando OK do Bernardo** | commit em duas partes (módulo; migration + snapshot só com o hunk da ouvidoria). Deploy aplica a migration em PROD via AutoMigrate — conferir `__migrations` depois |
+| 20/09/2026 | Commit + push | feito | Bernardo autorizou prod. Commits `7bb7242` (módulo) e `3ee933a` (migration, regenerada sobre o HEAD com id mantido `20260920142356`). Chegaram ao origin pelo push de outra sessão no branch compartilhado; `55323b3` (dela) commitou a pasta do manual, que levou o artigo `conteudo/ouvidoria.tsx`. Deploy do `3b7a666` em andamento às 16:15 — conferir `__migrations` em PROD e marcar módulos 71–74 nos perfis |
+| 20/09/2026 | Manual do usuário | artigo feito | `features/manual/conteudo/ouvidoria.tsx` + simulação `FluxoManifestacao`; os `?` (`AjudaManual`) nas 7 páginas ficaram para commit seguinte |
 
 ## Avisos vivos
 - O erro pré-existente em `WhatsAppCliente.cs` (outra sessão) foi corrigido por ela; build baseline voltou a 0/0. `tests/` pode falhar por DLL travada por `testhost` de outra sessão — não matar o processo.

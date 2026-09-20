@@ -5,6 +5,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { hojeSP } from '@/shared/lib/datas';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { usePainelOuvidoria } from '@/features/ouvidoria/api/queries';
 import { SeletorUnidade } from '@/features/ouvidoria/components/Seletores';
 import { ROTULO_FAIXA_PRAZO, type FaixaPrazo } from '@/features/ouvidoria/lib/rotulos';
@@ -35,10 +36,13 @@ export function PainelOuvidoriaPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
-          <BarChart3 className="h-5 w-5 text-red-600" aria-hidden="true" />
-          Painel da ouvidoria
-        </h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
+            <BarChart3 className="h-5 w-5 text-red-600" aria-hidden="true" />
+            Painel da ouvidoria
+          </h1>
+          <AjudaManual artigo="ouvidoria" secao="gestao" />
+        </div>
         <p className="text-sm text-slate-500">Manifestações registradas no período, resposta, prazo e resolutividade.</p>
       </div>
 

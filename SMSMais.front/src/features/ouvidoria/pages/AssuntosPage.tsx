@@ -10,6 +10,7 @@ import { notificar } from '@/shared/ui/Notificacoes';
 import { Select } from '@/shared/ui/Select';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabs } from '@/shared/ui/Tabs';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useAssuntos, useMarcadores, useSalvarAssunto, useSalvarMarcador } from '@/features/ouvidoria/api/queries';
 import type { AssuntoDto, MarcadorDto } from '@/features/ouvidoria/types';
 
@@ -18,10 +19,13 @@ export function AssuntosPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
-          <Tags className="h-5 w-5 text-red-600" aria-hidden="true" />
-          Assuntos e marcadores
-        </h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
+            <Tags className="h-5 w-5 text-red-600" aria-hidden="true" />
+            Assuntos e marcadores
+          </h1>
+          <AjudaManual artigo="ouvidoria" secao="gestao" />
+        </div>
         <p className="text-sm text-slate-500">Como as manifestações são classificadas. Assunto tem dois níveis; marcador é etiqueta livre.</p>
       </div>
       <Tabs
