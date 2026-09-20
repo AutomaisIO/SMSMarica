@@ -159,6 +159,41 @@ pior do que se imagina); fila da Central estourando; robô dando resposta errada
 que ainda não saiu, basta desligar o envio de confirmação na configuração (menu Confirmações →
 *Regras e parâmetros*), que a fila para de escoar sem perder nada.
 
+## Por que o canal não alcança parte da base
+
+Dos 1.824 avisos do lote, **520 pessoas (29%) não tinham como ser avisadas**. Não é falha de
+envio: é o cadastro. Os três porquês, e o que cada um pede:
+
+| Porquê | Quantos | O que significa | O que resolve |
+|---|---|---|---|
+| **Sem celular no cadastro** | 229 | Não há número para tentar — a comunicação nem sai (status `SemTelefoneValido`). | Pegar o número na próxima passagem pela unidade. |
+| **Número não é WhatsApp** | 270 | A Meta recusou a entrega (erro **131026**, ou 131030). O número pode existir e **atender ligação** — só não tem WhatsApp. | Ligar; perguntar se há outro número com WhatsApp. |
+| **Número inválido** | 21 | Quem atendeu disse que não conhece o paciente — é contato de outra pessoa. | Já tem fila própria: aba **Contato errado**. |
+
+### Onde isso aparece (desde 20/09)
+
+Antes, cada um desses fatos vivia preso a **uma** solicitação: sumia de vista quando o agendamento
+passava, e o próximo exame do mesmo paciente redescobria o mesmo problema do zero. Agora o fato é
+marcado no **cadastro** (`smsmarica.contato_comprometido`) e aparece na aba **Telefone
+comprometido**, em Confirmações — com o motivo em cada card, quantas mensagens já se perderam por
+ele, e um painel no topo com os agregados.
+
+Dois números, de propósito: **agendamentos parados** mede o prejuízo (vagas em risco) e **pessoas a
+contatar** mede o trabalho da recepção — cada pessoa é um telefonema, tenha ela um exame ou seis.
+
+Essas pessoas **saem da aba "Não confirmados"**. Lá se trabalha mandando mensagem; para estas não
+adianta, e deixá-las misturadas só faz a atendente gastar tempo com quem o robô nunca vai alcançar.
+
+**A marca se desfaz sozinha.** Ela vale para um número específico; quando o cadastro passa a usar
+outro — ou passa a ter algum —, o próprio envio fecha o que deixou de valer. Sem isso a lista
+viraria um cemitério de problemas já resolvidos, e a recepção pararia de confiar nela.
+
+**Não confundir com "número negado".** Negado é quem atendeu e disse *não sou essa pessoa*: é
+questão de LGPD, e bloqueia mensagem automática ([ADR-0057](../adr/0057-destinatario-correto-e-contato-negado.md)).
+Telefone comprometido é problema de entrega — o número provavelmente é do paciente mesmo. Por isso
+são tabelas separadas: misturar faria uma regra de privacidade pegar carona num problema de
+cadastro, e 270 pessoas ficariam bloqueadas sem motivo.
+
 ## Em observação (não tratado de propósito)
 
 ### Remarcação pela regulação depois do aviso
