@@ -134,7 +134,12 @@ export type ProcedimentoCenario = {
   nomeCanonico: string | null;
   regulacaoProcedimentoId: string | null;
   ehGrupo: boolean;
+  /** GRUPO: o grupo e todos os itens; ITEM: só ele. */
   familia: string[];
+  /** Quando é ITEM: o grupo que o cobre (a escala é compartilhada com ele). */
+  grupoCodigo: string | null;
+  grupoNome: string | null;
+  vagasGrupoSemana: number;
 };
 
 export type Cobertura = {

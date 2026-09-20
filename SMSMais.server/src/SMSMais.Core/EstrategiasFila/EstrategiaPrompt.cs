@@ -54,7 +54,13 @@ public static class EstrategiaPrompt
         sb.AppendLine($"**Procedimento:** {c.Procedimento.Nome}"
             + (c.Procedimento.Codigo is { } cod ? $" (código SISREG {cod}{(c.Procedimento.EhGrupo ? ", GRUPO" : "")})" : " (sem escala cadastrada no SISREG)")
             + (c.Procedimento.NomeCanonico is { } can ? $" — catálogo: {can}" : ""));
-        if (c.Procedimento.Familia.Count > 1)
+        if (c.Procedimento.GrupoCodigo is not null)
+            sb.AppendLine($"**Este é um ITEM do grupo {c.Procedimento.GrupoNome ?? c.Procedimento.GrupoCodigo}.** A escala é compartilhada com o grupo "
+                + $"({N(c.Procedimento.VagasGrupoSemana)} vagas de regulação/semana no grupo inteiro). Fila, entrada e vazão abaixo são SÓ do item. "
+                + "No quadro, 'atendimentos por turno' é a FATIA do item que cada profissional realizou por turno; aumentar isso "
+                + "significa reservar mais vagas do grupo para este item (ação: 'reservar N vagas de DIU por turno do Dr. X'). "
+                + "O aproveitamento já está embutido (o quadro parte do realizado, não da vaga).");
+        else if (c.Procedimento.Familia.Count > 1)
             sb.AppendLine($"Família considerada na fila: {string.Join("; ", c.Procedimento.Familia)}");
         sb.AppendLine();
 

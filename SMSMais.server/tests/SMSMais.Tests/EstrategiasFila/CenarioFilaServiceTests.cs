@@ -147,8 +147,13 @@ public class CenarioFilaServiceTests(PostgresFixture fixture)
         proj.VagasSemanais.Should().BeApproximately(20, 0.01);
     }
 
+    /// <summary>
+    /// Abrir o ITEM conta só o item: a fila é de quem pediu exatamente ele (não os 10 mil do grupo),
+    /// e o quadro parte do que cada profissional realizou do item — a fatia dele nos turnos do
+    /// grupo, com aproveitamento 100% por construção. O grupo aparece como contexto.
+    /// </summary>
     [Fact]
-    public async Task Cenario_pelo_item_inclui_a_escala_do_grupo()
+    public async Task Cenario_pelo_item_conta_so_o_item_e_parte_do_realizado()
     {
         await using var db = fixture.CriarDbContext();
         var seed = await SeedEstrategiasFila.CriarAsync(db);
@@ -156,10 +161,31 @@ public class CenarioFilaServiceTests(PostgresFixture fixture)
         var c = await Servico(db).MontarAsync(seed.CodigoItem, seed.NomeItem);
 
         c.Procedimento.EhGrupo.Should().BeFalse();
-        c.Procedimento.Familia.Should().Contain(seed.NomeGrupo);
-        // A vaga de grupo atende quem pediu o item: oferta e fila são as mesmas.
-        c.Oferta.VagasRegulacaoSemana.Should().Be(2 * SeedEstrategiasFila.VagasPorBloco);
-        c.Fila.Total.Should().Be(SeedEstrategiasFila.NaFila);
+        c.Procedimento.Familia.Should().Equal(seed.NomeItem);
+        c.Procedimento.GrupoCodigo.Should().Be(seed.CodigoGrupo);
+        c.Procedimento.GrupoNome.Should().Be(seed.NomeGrupo);
+        c.Procedimento.VagasGrupoSemana.Should().Be(2 * SeedEstrategiasFila.VagasPorBloco);
+
+        // Fila: só os 2 que pediram o item.
+        c.Fila.Total.Should().Be(2);
+        // Vazão: as 4 marcações do item.
+        c.Vazao.Serie.Sum(s => s.Quantidade).Should().Be(SeedEstrategiasFila.Marcacoes);
+
+        // Sem escala própria do item: a oferta vem do realizado. As 4 marcações caíram num só dia da
+        // semana (há 9 dias) → 1 dia aceso, 4 ÷ (12 × 1) = 0,33 por turno; vagas/sem = 4 ÷ 12 ≈ 0.
+        var prof = c.Oferta.Profissionais.Should().ContainSingle().Subject;
+        prof.Nome.Should().StartWith("DR TESTE");
+        prof.Dias.Should().ContainSingle().Which.Should().Be((int)seed.Hoje.AddDays(-9).DayOfWeek);
+        prof.AtendimentosPorTurno.Should().BeApproximately(0.33, 0.01);
+        // A mamografia (fora do grupo) continua como "ocupado em"; a escala do grupo não.
+        prof.OutrasEscalas.Should().ContainKey(2);
+        prof.OutrasEscalas.Values.Should().OnlyContain(v => v.Contains("MAMOGRAFIA"));
+
+        var p = c.ParametrosIniciais;
+        p.Quadro.Should().ContainSingle();
+        p.Aproveitamento.Valor.Should().Be(1);
+        // Capacidade reproduz a vazão real do item: 1 dia × 0,33 = 0,33/semana ≈ 4 ÷ 12.
+        p.CapacidadeSemanal().Should().BeApproximately(SeedEstrategiasFila.Marcacoes / 12.0, 0.02);
     }
 
     [Fact]

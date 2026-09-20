@@ -253,14 +253,19 @@ public sealed record OcupacaoCenarioDto(
     /// <summary>Agendados ÷ ofertadas, 0..1 (limitado a 1). Nulo sem oferta no período.</summary>
     double? Aproveitamento);
 
+/// <param name="GrupoCodigo">Quando é ITEM: o grupo que o cobre (a oferta é compartilhada com ele).</param>
+/// <param name="VagasGrupoSemana">Vagas de regulação por semana do grupo inteiro — contexto, não capacidade do item.</param>
 public sealed record ProcedimentoCenarioDto(
     string? Codigo,
     string Nome,
     string? NomeCanonico,
     Guid? RegulacaoProcedimentoId,
     bool EhGrupo,
-    /// <summary>Nomes que entraram na conta da fila (a família).</summary>
-    IReadOnlyList<string> Familia);
+    /// <summary>Nomes que entraram na conta da fila. GRUPO: o grupo e todos os itens; ITEM: só ele.</summary>
+    IReadOnlyList<string> Familia,
+    string? GrupoCodigo = null,
+    string? GrupoNome = null,
+    int VagasGrupoSemana = 0);
 
 /// <summary>O retrato do procedimento hoje — o ponto de partida de toda simulação.</summary>
 public sealed record CenarioFilaDto(

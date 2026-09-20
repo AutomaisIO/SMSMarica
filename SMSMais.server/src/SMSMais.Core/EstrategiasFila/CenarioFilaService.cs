@@ -34,6 +34,14 @@ namespace SMSMais.Core.EstrategiasFila;
 /// impede o simulador de mentir — escala viva com vaga morta (ECG do CDT) aparece aqui.</item>
 /// </list>
 ///
+/// <para><b>Grupo × item.</b> Abrir o GRUPO ("GRUPO - ULTRASONOGRAFIA") conta tudo que pertence a
+/// ele: quem pediu o grupo ou qualquer item, todas as escalas do prefixo, todas as marcações. Abrir
+/// um ITEM ("TRANSVAGINAL - DIU") conta <b>só o item</b>: quem pediu exatamente ele, marcações
+/// dele. Como a escala do item costuma ser a do grupo (compartilhada), a capacidade do item não
+/// pode ser as vagas do grupo — seria o "2% de aproveitamento" que enganava. O quadro do item parte
+/// do que cada profissional <i>realizou</i> do item: a fatia dele em cada turno. Aumentar
+/// "atendimentos por turno" ali significa reservar mais vagas do grupo para o item.</para>
+///
 /// <para><b>Semanas são segunda a domingo</b> (<c>date_trunc('week')</c>), e a semana corrente,
 /// incompleta, fica fora das médias — senão toda série terminaria com uma queda falsa.</para>
 /// </summary>
@@ -45,6 +53,9 @@ public sealed class CenarioFilaService(
     private const int SemanasEntrada = 26;
     private const int SemanasOcupacao = 8;
     private const int SemanasOferta = 4;
+
+    /// <summary>Janela do "realizado" do item por profissional (a fatia do item nos turnos).</summary>
+    private const int SemanasRealizado = 12;
 
     /// <summary>Sem medição (procedimento sem escala), a fração de vaga que vira atendimento.
     /// Conservador de propósito: melhor prometer menos.</summary>
@@ -176,22 +187,16 @@ public sealed class CenarioFilaService(
     /// <summary>Mesma regra de <see cref="FamiliaProcedimentoSisreg.NomesDaFamiliaAsync"/>, mas
     /// sobre listas já carregadas — a lista tem centenas de procedimentos e não pode ir ao banco
     /// por linha.</summary>
+    /// <summary>GRUPO: o grupo e todos os itens do prefixo. ITEM: só ele — quem pediu o grupo inteiro
+    /// não é fila do item (era isso que fazia a TRANSVAGINAL - DIU mostrar 10 mil em vez de 260).</summary>
     private static HashSet<string> FamiliaEmMemoria(
         string codigo, string nome, List<(string Codigo, string Nome)> porCodigo)
     {
         var nomes = new HashSet<string>(StringComparer.Ordinal) { nome };
-        if (FamiliaProcedimentoSisreg.GrupoDoCodigo(codigo) is not { } grupo) return nomes;
+        if (!FamiliaProcedimentoSisreg.EhCodigoDeGrupo(codigo)) return nomes;
 
-        if (FamiliaProcedimentoSisreg.EhCodigoDeGrupo(codigo))
-        {
-            var prefixo = codigo[..4];
-            nomes.UnionWith(porCodigo.Where(p => p.Codigo.StartsWith(prefixo, StringComparison.Ordinal)).Select(p => p.Nome));
-        }
-        else
-        {
-            nomes.UnionWith(porCodigo.Where(p => p.Codigo == grupo).Select(p => p.Nome));
-        }
-
+        var prefixo = codigo[..4];
+        nomes.UnionWith(porCodigo.Where(p => p.Codigo.StartsWith(prefixo, StringComparison.Ordinal)).Select(p => p.Nome));
         return nomes;
     }
 
@@ -208,9 +213,13 @@ public sealed class CenarioFilaService(
         var hoje = Hoje();
         var inicioSemanaAtual = InicioDaSemana(hoje);
 
-        var familia = await FamiliaProcedimentoSisreg.NomesDaFamiliaAsync(db, nome, codigo, ct);
+        // ITEM: só o item (nome exato, código exato). GRUPO ou sem código: a família inteira.
+        var grupoCodigo = codigo is not null && !FamiliaProcedimentoSisreg.EhCodigoDeGrupo(codigo)
+            ? FamiliaProcedimentoSisreg.GrupoDoCodigo(codigo) : null;
+        var ehItem = grupoCodigo is not null;
+        var familia = ehItem ? [nome] : await FamiliaProcedimentoSisreg.NomesDaFamiliaAsync(db, nome, codigo, ct);
         var nomes = familia.ToArray();
-        var (codigos, prefixo) = RecorteDeCodigos(codigo);
+        var (codigos, prefixo) = ehItem ? ([codigo!], null) : RecorteDeCodigos(codigo);
 
         // ---- fila ----
         var filaLinhas = await db.SisregFilaPendentes.AsNoTracking()
@@ -245,10 +254,32 @@ public sealed class CenarioFilaService(
             Formatar(SqlBlocosExpandidos), nomes, hoje, hoje.AddDays(7 * SemanasOferta), codigos, (object?)prefixo ?? DBNull.Value)
             .ToListAsync(ct);
         // Mesmas posições do FiltroFamiliaEscala ({0} nomes, {3} códigos, {4} prefixo); {1} = hoje, {2} sobra.
+        // Para o ITEM, "outra escala" é o que está fora do GRUPO inteiro: a escala do grupo é a que o
+        // serve, não um conflito.
+        var prefixoOutras = ehItem ? codigo![..4] + "%" : prefixo;
         var outras = await db.Database.SqlQueryRaw<OutraEscalaLinha>(
-            Formatar(SqlOutrasEscalas), nomes, hoje, hoje, codigos, (object?)prefixo ?? DBNull.Value)
+            Formatar(SqlOutrasEscalas), nomes, hoje, hoje, ehItem ? Array.Empty<string>() : codigos, (object?)prefixoOutras ?? DBNull.Value)
             .ToListAsync(ct);
         var oferta = MontarOferta(blocos, outras);
+
+        // ---- item: o quadro parte do REALIZADO por profissional (a fatia do item em cada turno) ----
+        var inicioRealizado = inicioSemanaAtual.AddDays(-7 * SemanasRealizado);
+        string? grupoNome = null;
+        var vagasGrupoSemana = 0;
+        if (ehItem)
+        {
+            var realizado = await db.Database.SqlQueryRaw<ItemRealizadoLinha>(
+                Formatar(SqlItemRealizadoPorProfissional), nomes, inicioRealizado, codigos, DBNull.Value, inicioSemanaAtual)
+                .ToListAsync(ct);
+            oferta = oferta with { Profissionais = ProfissionaisDoItem(oferta.Profissionais, realizado, outras) };
+
+            var blocosGrupo = await db.Database.SqlQueryRaw<BlocoExpandido>(
+                Formatar(SqlBlocosExpandidos), Array.Empty<string>(), hoje, hoje.AddDays(7 * SemanasOferta), Array.Empty<string>(), codigo![..4] + "%")
+                .ToListAsync(ct);
+            vagasGrupoSemana = (int)Math.Round(blocosGrupo.Where(b => !b.AgendaLocal).Sum(b => b.V1 + b.Vres) / (double)SemanasOferta);
+            grupoNome = blocosGrupo.Select(b => b.ProcedimentoNome).FirstOrDefault(n => n.StartsWith("GRUPO", StringComparison.OrdinalIgnoreCase))
+                ?? await db.SisregEscalas.AsNoTracking().Where(e => e.ProcedimentoCodigo == grupoCodigo).Select(e => e.ProcedimentoNome).FirstOrDefaultAsync(ct);
+        }
 
         // ---- ocupação (últimas 8 semanas cheias) ----
         var inicioOcupacao = inicioSemanaAtual.AddDays(-7 * SemanasOcupacao);
@@ -269,11 +300,12 @@ public sealed class CenarioFilaService(
         var procedimento = new ProcedimentoCenarioDto(
             codigo, nome, canonico?.Nome, canonico?.Id,
             codigo is not null && FamiliaProcedimentoSisreg.EhCodigoDeGrupo(codigo),
-            [.. familia.Order(StringComparer.Ordinal)]);
+            [.. familia.Order(StringComparer.Ordinal)],
+            grupoCodigo, grupoNome, vagasGrupoSemana);
 
         var cobertura = await demanda.CoberturaAsync(ct);
 
-        var parametros = ParametrosIniciais(oferta, ocupacao, entrada);
+        var parametros = ParametrosIniciais(oferta, ocupacao, entrada, ehItem);
 
         return new CenarioFilaDto(
             procedimento, fila, entrada, vazao, semAgendar, oferta, ocupacao, cobertura, parametros, DateTime.UtcNow);
@@ -397,7 +429,7 @@ public sealed class CenarioFilaService(
     /// que a escala publica acesos e as vagas por turno de cada um. Sem escala, o quadro nasce vazio
     /// e o agente (ou o gestor) acrescenta médicos de simulação.
     /// </summary>
-    private static ParametrosEstrategia ParametrosIniciais(OfertaCenarioDto oferta, OcupacaoCenarioDto ocupacao, RitmoDto entrada)
+    private static ParametrosEstrategia ParametrosIniciais(OfertaCenarioDto oferta, OcupacaoCenarioDto ocupacao, RitmoDto entrada, bool ehItem)
     {
         var quadro = oferta.Profissionais
             .Select(p => new LinhaQuadro(
@@ -412,11 +444,56 @@ public sealed class CenarioFilaService(
             UnidadesSimuladas: [],
             PermitirNovosProfissionais: true,
             MaxNovosProfissionais: ParametrosEstrategia.MaxNovosPadrao,
-            Aproveitamento: new ParametroNumero(Math.Round(ocupacao.Aproveitamento ?? AproveitamentoPadrao, 2), false, 0, 1),
+            // ITEM: o quadro já é o realizado (marcação, não vaga) — aproveitamento 100% por construção.
+            Aproveitamento: new ParametroNumero(ehItem ? 1 : Math.Round(ocupacao.Aproveitamento ?? AproveitamentoPadrao, 2), false, 0, 1),
             EntradaSemanal: new ParametroNumero(entrada.MediaSemanal12, true, 0, null),
             Mutiroes: [],
             MutiroesTravados: false,
             HorizonteSemanas: ParametrosEstrategia.HorizontePadrao);
+    }
+
+    /// <summary>
+    /// Os profissionais do ITEM: quem realizou o item nas últimas semanas (a fatia dele em cada
+    /// turno) mais quem tem escala específica do item. Dias = dias em que houve marcação do item
+    /// (ou escala do item); atendimentos por turno = marcações ÷ (semanas × dias), para que a soma
+    /// reproduza a vazão real do item por construção.
+    /// </summary>
+    private static IReadOnlyList<ProfissionalOfertaDto> ProfissionaisDoItem(
+        IReadOnlyList<ProfissionalOfertaDto> daEscala, List<ItemRealizadoLinha> realizado, List<OutraEscalaLinha> outras)
+    {
+        var outrasPorCpf = outras.GroupBy(o => o.Cpf, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => (IReadOnlyDictionary<int, string>)g.GroupBy(o => o.DiaSemana)
+                .ToDictionary(d => d.Key, d => string.Join("; ", d.Select(o => $"{o.UnidadeNome} · {o.ProcedimentoNome}").Distinct().Take(2))), StringComparer.Ordinal);
+
+        var porId = daEscala.ToDictionary(p => p.Id, StringComparer.Ordinal);
+        foreach (var g in realizado.GroupBy(r => r.Cpf, StringComparer.Ordinal))
+        {
+            var id = IdEstavel(g.Key);
+            var dias = g.Select(r => r.DiaSemana).Distinct().Order().ToList();
+            var total = g.Sum(r => r.Marcacoes);
+            var unidade = g.GroupBy(r => (r.UnidadeId, r.UnidadeNome)).OrderByDescending(x => x.Sum(r => r.Marcacoes)).First().Key;
+            var porTurno = dias.Count == 0 ? 0 : Math.Round(total / (double)(SemanasRealizado * dias.Count), 2);
+
+            if (porId.TryGetValue(id, out var existente))
+            {
+                var diasUniao = existente.Dias.Concat(dias).Distinct().Order().ToList();
+                porId[id] = existente with
+                {
+                    Dias = diasUniao,
+                    AtendimentosPorTurno = porTurno > 0 ? Math.Round(total / (double)(SemanasRealizado * diasUniao.Count), 2) : existente.AtendimentosPorTurno,
+                    VagasRegulacaoSemana = (int)Math.Round(total / (double)SemanasRealizado),
+                };
+            }
+            else
+            {
+                porId[id] = new ProfissionalOfertaDto(
+                    id, g.First().Nome, null, unidade.UnidadeId, unidade.UnidadeNome, dias,
+                    (int)Math.Round(total / (double)SemanasRealizado), porTurno,
+                    outrasPorCpf.TryGetValue(g.Key, out var oe) ? oe : new Dictionary<int, string>());
+            }
+        }
+
+        return [.. porId.Values.OrderByDescending(p => p.VagasRegulacaoSemana).ThenBy(p => p.Nome)];
     }
 
     /// <summary>Hash curto do CPF: estável entre rodadas, sem expor o número.</summary>
@@ -530,6 +607,7 @@ public sealed class CenarioFilaService(
         )
         select e.unidade_id "UnidadeId", u.nome "UnidadeNome", e.cnes "Cnes", e.agenda_local "AgendaLocal",
                e.profissional_cpf "Cpf", e.profissional_nome "ProfissionalNome", e.cbo_descricao "Cbo",
+               e.procedimento_nome "ProcedimentoNome",
                d.d "Dia", e.hora_inicio "HoraInicio", e.hora_fim "HoraFim",
                e.vagas_primeira_vez "V1", e.vagas_retorno "Vr", e.vagas_reserva "Vres"
         from smsmarica.sisreg_escala e
@@ -560,6 +638,29 @@ public sealed class CenarioFilaService(
         group by 1, 2, 3, 4
         """;
 
+    /// <summary>
+    /// Marcações do ITEM por profissional e dia da semana nas últimas semanas: {0} nomes, {1} início,
+    /// {2} códigos, {3} prefixo, {4} fim (exclusivo). O nome vem da escala (a marcação só tem o CPF).
+    /// </summary>
+    private const string SqlItemRealizadoPorProfissional = """
+        select s.profissional_executante_cpf "Cpf",
+               coalesce((select max(e.profissional_nome) from smsmarica.sisreg_escala e
+                         where e.profissional_cpf = s.profissional_executante_cpf),
+                        'PROFISSIONAL ' || right(s.profissional_executante_cpf, 4)) "Nome",
+               s.unidade_executante_id "UnidadeId", u.nome "UnidadeNome",
+               extract(dow from (s.data_agendada at time zone 'America/Sao_Paulo'))::int "DiaSemana",
+               count(*)::int "Marcacoes"
+        from smsmarica.solicitacao s
+        join smsmarica.unidade u on u.id = s.unidade_executante_id
+        where s.excluido_em is null and s.cancelado_em is null and s.data_agendada is not null
+          and s.profissional_executante_cpf is not null
+          and (s.data_agendada at time zone 'America/Sao_Paulo')::date >= {1}::date
+          and (s.data_agendada at time zone 'America/Sao_Paulo')::date < {4}::date
+          and
+        """ + FiltroFamiliaSolicitacao + """
+        group by 1, 3, 4, 5
+        """;
+
     /// <summary>Oferta por procedimento da escala nas próximas semanas: {0} início, {1} fim (exclusivo).</summary>
     private const string SqlOfertaPorProcedimento = """
         with dias as (
@@ -582,8 +683,10 @@ public sealed class CenarioFilaService(
 
     private sealed record OutraEscalaLinha(string Cpf, int DiaSemana, string UnidadeNome, string ProcedimentoNome);
 
+    private sealed record ItemRealizadoLinha(string Cpf, string Nome, Guid UnidadeId, string UnidadeNome, int DiaSemana, int Marcacoes);
+
     private sealed record BlocoExpandido(
         Guid UnidadeId, string UnidadeNome, string? Cnes, bool AgendaLocal,
-        string Cpf, string ProfissionalNome, string? Cbo,
+        string Cpf, string ProfissionalNome, string? Cbo, string ProcedimentoNome,
         DateOnly Dia, TimeOnly HoraInicio, TimeOnly HoraFim, int V1, int Vr, int Vres);
 }

@@ -61,6 +61,18 @@ export function CenarioAtualCard({ cenario: c }: { cenario: CenarioFila }) {
 
   return (
     <section className="space-y-3">
+      {c.procedimento.grupoCodigo ? (
+        <p className="flex gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <strong>Item do grupo {c.procedimento.grupoNome ?? c.procedimento.grupoCodigo}.</strong> A escala é compartilhada com
+            o grupo ({n(c.procedimento.vagasGrupoSemana)} vagas de regulação por semana no grupo inteiro). Fila, entrada e vazão
+            aqui são <strong>só deste item</strong>. No quadro, "por turno" é a fatia do item que cada profissional realizou em
+            cada turno — aumentar isso significa reservar mais vagas do grupo para este item. O aproveitamento já está
+            embutido (o quadro parte do realizado, não da vaga).
+          </span>
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <Cartao rotulo="Na fila hoje" valor={n(c.fila.total)} dica="Pessoas esperando no SISREG (família inteira)." classe="text-red-700" />
         <Cartao
@@ -81,15 +93,17 @@ export function CenarioAtualCard({ cenario: c }: { cenario: CenarioFila }) {
           classe={balanco > 0 ? 'text-amber-700' : 'text-emerald-700'}
         />
         <Cartao
-          rotulo="Vagas de regulação/sem"
+          rotulo={c.procedimento.grupoCodigo ? 'Realizado/sem (item)' : 'Vagas de regulação/sem'}
           valor={n(o.vagasRegulacaoSemana)}
           dica={`1ª vez ${n(o.vagasPrimeiraVezSemana)} + reserva ${n(o.vagasReservaSemana)}; retorno ${n(o.vagasRetornoSemana)} fica com a unidade${o.vagasAgendaLocalSemana > 0 ? `; agenda local ${n(o.vagasAgendaLocalSemana)} fora da conta` : ''}.`}
         />
         <Cartao
           rotulo="Aproveitamento"
-          valor={pct(c.ocupacao.aproveitamento)}
+          valor={c.procedimento.grupoCodigo ? 'embutido' : pct(c.ocupacao.aproveitamento)}
           dica={
-            c.ocupacao.aproveitamento === null
+            c.procedimento.grupoCodigo
+              ? 'Item: o quadro parte do realizado, então o aproveitamento já está dentro dos números.'
+              : c.ocupacao.aproveitamento === null
               ? 'Sem oferta nas últimas 8 semanas — não medido.'
               : `${n(c.ocupacao.agendados)} marcações em ${n(c.ocupacao.vagasRegulacaoOfertadas)} vagas nas últimas ${c.ocupacao.semanasMedidas} semanas.`
           }
