@@ -1,0 +1,569 @@
+                GERÊNCIA DE CONTRATUALIZAÇÃO DA REDE PRÓPRIA
+NÚCLEO ESPECIAL DE AVALIAÇÃO E MONITORAMENTO DAS ORGANIZAÇÕES
+
+                                                   SOCIAIS
+  COMISSÃO DE MONITORAMENTO E AVALIAÇÃO DOS SERVIÇOS DE SAÚDE
+
+                                              ASSISTENCIAL
+
+                 MANUAL DE INDICADORES DA PARTE VARIÁVEL
+                    DESCRIÇÃO E METODOLOGIA DE CÁLCULO
+
+          HOSPITAL ESTADUAL DE URGÊNCIA E EMERGÊNCIA
+
+                                                                Última revisão em setembro de 2021
+                                                                                                                   1
+1 INTRODUÇÃO
+
+Este documento descreve os indicadores qualitativos que serão avaliados pela Secretaria
+Estadual da Saúde - SESA, para o repasse de 10% do valor de custeio do Contrato de Gestão
+em seus respectivos trimestres de apuração, para subsidiar o Edital de Convocação Pública em
+Parceria com Organização Social de Saúde - OSS para operacionalização do Hospital Estadual
+de Urgência e Emergência ­ HEUE. A Comissão de Monitoramento e Avaliação de Serviços de
+Saúde ­ CMASS Assistencial manterá o acompanhamento mensal de cada indicador com
+posterior encaminhamento através do relatório mensal ao Núcleo Especial de Avaliação e
+Monitoramento das Organizações Sociais ­ NEAMOS e à OSS.
+
+O prazo para entrega das informações sobre estes indicadores à CMASS é até o dia 15º dia do
+mês subsequente.
+
+A CMASS Assistencial do HEUE fará análise dos dados recebidos através do sistema de
+prontuário eletrônico informatizado, relatórios padronizados pela Contratante, entre outros que
+se fizerem necessários.
+
+Os indicadores de qualidade, referentes à parte variável do contrato que serão monitorados
+inicialmente são:
+
+Quadro 1.                                 META PROPOSTA                                  PESO
+                                                   85%                             PERCENTUAL
+        INDICADORES DE QUALIDADE
+                                                                                         12,5%
+Atenção  Resolução de Reclamações
+   ao        Satisfação do Usuário                                90%              12,5%
+                                                                                    25%
+Usuário                                        100% das atividades previstas no     25%
+                                                                período             25%
+Implantação de protocolos clínicos
+                                                                 10%
+Taxa de cancelamento de cirurgia eletiva
+                                           Envio de relatório diário para CIHDOTT
+   Melhoria do processo de captação e     Envio de relatório para a CMASS com as
+  manutenção de doadores de órgãos e
+                                                         atividades 1, 2 e 3
+                      tecidos
+
+                                                                                          2
+2 IMPORTÂNCIA DOS INDICADORES DE QUALIDADE
+
+O indicador é uma pista, uma informação primeira sobre algo de significado mais amplo. Ele
+torna evidente e perceptível uma tendência ou a existência de um fenômeno não imediato ou
+facilmente detectável. Assim, indicador é um sinal, um sintoma, que nos dá condição de
+conhecer algo com razoável grau de certeza. O indicador revela, evidencia e se constitui não
+somente na medição, mas a um nível de avaliação e interesse no fenômeno detectado.
+Medir qualidade e quantidade em programas e serviços de saúde é imprescindível para o
+planejamento, organização, coordenação/direção e avaliação/controle das atividades
+desenvolvidas, sendo alvo dessa medição os resultados, processos e a estrutura necessária ou
+utilizada, bem como as influências e repercussões promovidas no meio ambiente.
+
+3 METAS E INDICADORES
+
+Para Edital de Convocação Pública para Parceria com Organização Social de Saúde - OSS
+serão propostos os indicadores relacionados abaixo. Estes serão avaliados quanto ao
+cumprimento da meta para o pagamento da parte variável do Contrato de Gestão que será
+celebrado entre a SESA e a OSS, visando dar melhoria contínua na qualidade da assistência ao
+usuário.
+Abordaremos nos próximos itens o conceito e a metodologia aplicada para a avaliação e
+mensuração dos indicadores de qualidade propostos.
+
+3. 1 ATENÇÃO AO USUÁRIO
+A Política Nacional de Humanização institui as Ouvidorias/SAU (Serviço de Atendimento do
+Usuário) que vem com o intuito de sistematizar as demandas que recebe de forma a possibilitar
+a elaboração de indicadores abrangentes que podem servir de suporte estratégico para a
+tomada de decisão. Ela orienta, encaminha, acompanha a demanda e responde ao cidadão
+sobre as providências adotadas.
+
+                                                                                                                     3
+Considerando os critérios de humanização que visa à valorização e o respeito à dignidade da
+pessoa usuária do serviço de saúde, familiar/acompanhante ou não, ou até mesmo o próprio
+usuário que ali trabalha, garantindo assim condições humanizadas para um atendimento em
+ambiente hospitalar.
+É com este conceito de humanização que a CMASS Assistencial realizará o acompanhamento
+e monitoramento das manifestações realizadas no Ouvidoria/SAU para que este realmente
+inspire a credibilidade, a ética e o respeito ao cidadão. Assim, os indicadores de qualidade
+relacionados à atenção ao usuário contribuem na produção de informações que podem auxiliar
+na identificação dos pontos fortes e de fragilidade da instituição.
+A Ouvidoria/SAU deverá encaminhar um relatório mensal para cada indicador e os dados
+consolidados em planilha da pesquisa de Satisfação e Resolução de Reclamações, que serão
+avaliadas mensalmente, mas o período para a análise final do cumprimento da meta do
+indicador será trimestral, com consequente ajuste sobre o repasse financeiro caso não seja
+atingida a meta pactuada.
+A valoração do indicador ATENÇÃO AO USUÁRIO será de 25%, sendo que destes 12,5% se
+referem ao indicador RESOLUÇÃO DE RECLAMAÇÕES e os outros 12,5 % ao indicador
+SATISFAÇÃO DO USUÁRIO.
+Este indicador ATENÇÃO AO USUÁRIO serve como uma ferramenta gerencial que a OS utiliza
+para melhorar a qualidade da assistência ao usuário, com o foco na família e no paciente.
+A OS deverá informar os locais das urnas distribuídas no hospital e de forma visível e acessível
+ao usuário.
+
+3.1.1 Resolução de Reclamações
+Entende-se por reclamação a demonstração de descontentamento do cidadão diante do serviço
+ofertado, com o intuito de reivindicar os direitos relacionados ao atendimento de qualidade.
+Todas as reclamações registradas nos canais de serviço de atenção ao usuário
+(SAU/Ouvidorias/Urna) e as detectadas na aplicação dos formulários de Pesquisa de Satisfação,
+deverão ser enviadas em planilha à Comissão de Monitoramento. Para pontuação do indicador
+serão consideradas as reclamações que estão dentro da governabilidade da Organização
+Social.
+
+                                                                                                                     4
+A resolução é o conjunto de ações geradas por uma reclamação, no sentido de solucioná-la de
+modo imediato e em sua causa raiz, a fim de ser encaminhada ao seu autor e à CMASS, como
+resposta ou esclarecimento ao problema apresentado.
+
+A análise de causa raiz tem como objetivo principal entender a razão da falha e implementar
+ações corretivas para evitar reincidências. É importante saber diferenciar o que são sintomas e
+causas falhas que originaram a reclamação, tendo em vista a melhor eficácia na realização das
+tratativas.
+
+Na verificação mensal da planilha de reclamações da OUVIDORIA/SAU serão consideradas
+como tratativas satisfatórias aquelas que apresentarem respostas completas e coerentes com a
+reivindicação do usuário e o tratamento da causa raiz (sempre que necessário), demonstrando
+o processo de apuração e ações corretivas adotadas pelo gestor responsável. Sempre que
+solicitado pela Comissão, o gestor deverá apresentar as evidências das tratativas.
+
+As respostas consideradas pendentes, que necessitam de nova tratativa, deverão ser
+apresentadas de forma definitiva no prazo de até 05 dias úteis, bem como a materialidade das
+evidências, a partir da data de solicitação de esclarecimentos realizada pela CMASS.
+
+Serão considerados como instrumentos de gestão para validação das respostas: plano de ação
+específico, relatórios gerenciais, evidências documentais (ata de reunião, lista de presença),
+entre outros.
+
+Mensalmente a Ouvidoria/SAU deverá apresentar 10% da amostra total das entrevistas de
+satisfação do usuário dos setores de: ambulatório, Serviço de Apoio e Diagnóstico Terapêutico
+SADT/ exames internos e externos, Atendimento de urgência e emergência, Internação na UTI
+adulto geral. Deverá apresentar também a pesquisa original preenchida, onde contenha os
+dados de identificação do usuário e sua opinião.
+
+Deverá ser registrado mensalmente na Planilha de Reclamações Serviço de Atendimento ao
+Usuário (SAU) o cálculo percentual de respostas às reclamações recebidas pelo SAU/Ouvidoria
+SESA, dentro do prazo igual ou menor que 07 dias úteis, onde o período a ser considerado
+será a data da solicitação do usuário à data de retorno da primeira resposta (tratativa). As
+tratativas consideradas pendentes deverão ser respondidas no prazo de até 05 dias úteis e
+devendo retornar ao cidadão pelo canal de escolha do mesmo, a fim de registrar sua satisfação
+final na planilha.
+
+                                                                                                                     5
+O relatório mensal para este indicador e os dados consolidados em planilha, deverão ser
+encaminhado a CMASS na prestação de contas do mês vigente.
+A forma de cálculo deste indicador, em %, será:
+
+                                                   Fórmula de Cálculo
+    Resolução de Reclamações= (número de reclamações resolvidas/ número de reclamações
+
+                                                      recebidas) x 100
+
+META:  85% de resolução das reclamações recebidas no trimestre, relacionadas a
+todos os setores do hospital.
+
+Nota: Excepcionalmente no 1º trimestre a avaliação pela CMASS Assistencial se dará da
+seguinte forma:
+
+     1º mês contratual: Entrega de Relatório descritivo com a apresentação da metodologia
+         de trabalho a ser desenvolvida pela Ouvidoria/SAU da OS à Comissão de
+         monitoramento;
+
+     Para o segundo e o terceiro mês contratual do primeiro trimestre e para os demais
+         trimestres, a análise seguirá conforme metodologia descrita acima.
+
+3.1.2 Satisfação do Usuário
+A Pesquisa de Satisfação do Usuário destina-se à avaliação da percepção do usuário sobre a
+qualidade do serviço prestado pelo hospital e deverá ser realizada mensalmente nos setores de:
+ambulatório, Serviço de Apoio e Diagnóstico Terapêutico SADT/ exames internos e externos,
+Atendimento de urgência e emergência, Internação na UTI adulto geral, por meio de
+questionário estruturado (instrumento de avaliação) com amostragem compatível à metodologia
+científica adotada, considerando o universo da pesquisa.
+Utilizando critérios amostrais e estatísticos para o cálculo do índice global da Pesquisa de
+Satisfação do Usuário do hospital, deverão ser adotados procedimentos para o tratamento dos
+erros amostrais (exemplos: não resposta, duplicidade de resposta, o usuário não aceitou
+
+                                                                                                                     6
+participar da pesquisa ou não foi localizado, etc.). A amostra calculada deverá ser alcançada na
+aplicação das entrevistas para fins de validação da pesquisa de satisfação.
+O questionário da pesquisa de satisfação do usuário será respondido preferencialmente pelo
+paciente e na impossibilidade, pelo seu acompanhante.
+O monitoramento e a avaliação deste indicador serão realizados através da análise dos
+relatórios de dados dos resultados consolidados e estratificados por unidade de atendimento, e
+também de checagem através de contatos fonados dos formulários da pesquisa de satisfação
+respondidos pelos usuários e apresentados pela OS
+Os formulários de entrevista devem conter minimamente os seguintes campos de identificação
+para preenchimento: nome completo do paciente; número de prontuário; nome completo do
+acompanhante; tipo de vínculo com o paciente (pai, mãe, irmão, vizinho, etc.); telefones de
+contato; data de preenchimento da pesquisa; setor; leito; identificação do entrevistado como o
+paciente ou acompanhante; identificação da forma de pesquisa (presencial, telefone, urna, etc.);
+assinatura do entrevistado e do entrevistador.
+Os relatórios mensais da Pesquisa de Satisfação do Usuário deverão ser assinados pelo
+profissional/profissionais que respondem pelo planejamento amostral da pesquisa, roteiro de
+entrevista (formulário), tipo de coleta, sistema interno de controle e verificação, conferência e
+fiscalização de coleta de dados e do trabalho de campo, entre outros aspectos operativos e
+éticos que envolvem a pesquisa.
+Entende-se como satisfação os resultados obtidos para cálculo como "muito satisfeito" ou
+"satisfeito" (ou terminologias equivalentes) conforme fórmula abaixo:
+
+     N.º questionários com respostas afirmativas à pergunta padrão = muito satisfeito ou
+         satisfeito (ou terminologias equivalentes).
+
+     N.º de Questionários efetivos = amostragem dos pacientes atendidos nos setores de
+         Urgência e Emergência, Unidades de Internação, UTI, Ambulatório e SADT interno e
+         externo.
+                                                  Fórmula de Cálculo:
+
+ Satisfação do Usuário= (número de questionários com resposta "muito satisfeito" ou "satisfeito"
+                                     / número de questionários efetivos) x 100
+
+                                                                                                                     7
+O relatório mensal para este indicador e os dados consolidados em planilha, deverá ser
+encaminhado a CMASS na prestação de contas mensal.
+
+META: Índice de satisfação global do usuário  90%.
+
+Nota: Excepcionalmente no 1º trimestre a avaliação pela CMASS Assistencial se dará da
+seguinte forma:
+
+     1º mês contratual: Entrega de Relatório descritivo com a apresentação da metodologia
+         de trabalho a ser desenvolvida pela Ouvidoria/SAU da OS à Comissão de
+         monitoramento;
+
+     Para o segundo e o terceiro mês contratual do primeiro trimestre e para os demais
+         trimestres, a análise seguirá conforme metodologia descrita acima.
+
+3.2 IMPLANTAÇÃO DE PROTOCOLOS CLÍNICOS
+A implementação de protocolos clínicos gerenciados é uma ferramenta útil, auxiliando as
+instituições na padronização do atendimento ao paciente, diminuindo desfechos negativos e
+proporcionando melhor efetividade do tratamento. Os protocolos tornam-se um instrumento de
+monitorização e de intervenção em várias etapas dos processos assistenciais, disseminando a
+cultura da qualidade.
+O HEUE deverá implementar 03 protocolos de atendimento clínico por trimestre e aplicação
+destes com registros em Prontuário Eletrônico do paciente, com base nas diretrizes de boas
+práticas para o tratamento ou a última evidência científica publicada, de acordo com suas
+características e prioridades do hospital conforme identificação dos riscos dos pacientes.
+O cronograma de implementação e as suas respectivas ações, como treinamento das equipes
+atuantes, deverão ser apresentados pela OSS a CMASS, e as etapas serão acompanhados
+pela comissão, por demonstração da ação concluída por meio de evidência em ata, formulário
+do protocolo preenchido ou evidência de indicadores demonstráveis. Cada protocolo implantado
+no período deverá ser apresentado pela OSS, no trimestre seguinte, os seus respectivos
+
+                                                                                                                     8
+resultados impactados nos pacientes assistidos e ou selecionados após a implantação.
+O relatório mensal de implantação de Protocolos Clínicos deverá ser encaminhado juntamente
+com os outros indicadores da parte variável na prestação de contas (Informar a lista nominal do
+quantitativo mensal de protocolos abertos). A periodicidade de análise deste indicador é mensal,
+porém terá valor na avaliação das metas qualitativas na trimestralidade; isso significa que nos
+primeiros meses o indicador poderá ser informado parcialmente à CMASS (como por ex. "em
+construção") e no terceiro mês de cada trimestre ser informado todas as evidências e o
+resultado alcançado.
+
+META: 100% das atividades previstas no trimestre (3 protocolos de atendimento clínico
+no trimestre implantados)
+
+Este indicador será avaliado a partir do primeiro trimestre. O valor ponderal deste será 25% em
+cada trimestre, podendo ser proporcional o seu alcance, da seguinte forma:
+
+Quadro 2.                                     ALCANCE DA META                PESO PERCENTUAL
+                                                                                         25%
+  INDICADOR DE QUALIDADE       100% das atividades previstas (3 protocolos               17%
+                                           implantados) no trimestre.                    9%
+    Implantação de protocolos
+                 clínicos      66,6% das atividades previstas (2 protocolos
+                                           implantados) no trimestre.
+
+                               33,3% das atividades previstas (1 protocolo
+                                            implantado) no trimestre.
+
+3.3 TAXA DE CANCELAMENTO DE CIRURGIAS ELETIVAS
+O cancelamento de cirurgias acarreta muitos prejuízos ao paciente (interfere no preparo que o
+paciente faz em relação à ausência no trabalho, arranjos familiares de assistência, dentre
+outros fatores) e à instituição de saúde (interfere em relação à ocupação do leito, a reserva da
+sala operatória, o desperdício de material cuja esterilização é dispendiosa, o pessoal envolvido
+
+                                                                                                                     9
+no preparo de material e da sala cirúrgica e a perda da oportunidade de inclusão de outro
+paciente na programação cirúrgica) e acarreta prejuízos incalculáveis para todo sistema
+hospitalar envolvido.
+
+Diversos são os motivos que levam a suspensão ou cancelamento de uma cirurgia: razões
+administrativas e dificuldades na compreensão das orientações; cancelamentos de
+procedimentos em cirurgias ambulatoriais relacionados à deficiência da avaliação pré-operatória;
+não comparecimento dos pacientes; falta de condições clínicas, dentre outros.
+
+Esse indicador tem por objetivo identificar os motivos que levaram os pacientes a não serem
+operados, buscando subsídios para a melhoria da qualidade de assistência ao paciente
+cirúrgico e diminuição da taxa de suspensão de cirurgias.
+
+MÉTODO DE CÁLCULO:
+
+                    Taxa de cirurgias eletivas canceladas =
+
+Nº de cirurgias eletivas suspensas ou canceladas em determinado período no mês
+
+________________________________________________________     x 100
+
+Nº de cirurgias programadas em determinado período no mês
+
+Numerador: Número de cirurgias eletivas suspensas ou canceladas em determinado período =
+Número de cirurgias suspensas ou canceladas durante o mês analisado.
+
+Denominador: Número de cirurgias programadas em determinado período: Número de cirurgias
+programadas durante o mês analisado.
+
+Acatamos como motivos aceitáveis para cancelamento de cirurgia: Falta de hemoderivados e
+seus componentes, cirurgias urgentes sendo colocadas nas vagas/marcações das cirurgias
+eletivas, pacientes sem condições clínicas, paciente não compareceu para realização da
+cirurgia, paciente evadiu e ausência de vaga de UTI para o pós-operatório daqueles pacientes
+com indicação. No caso da Falta de hemoderivados é importante considerar que serão aceitos
+apenas os casos de falta de estoque.
+
+Este relatório emitido pelo Sistema MV no período relacionado à prestação de contas do mês
+de competência deverá conter as informações como:
+
+     Nome completo do paciente;
+
+                                                                                10
+     Data da cirurgia;
+     Numero de atendimento MV;
+     Tipo de cirurgia;
+     Motivo de cancelamento;
+A periodicidade de análise deste indicador é mensal, porém terá valor na avaliação das metas
+qualitativas na trimestralidade, já a partir do primeiro trimestre, portanto, deverá ser informado
+mensalmente junto à prestação de contas do mês vigente.
+
+META:  10%
+
+O valor ponderal deste indicador será 25% em cada trimestre.
+
+Nota: Excepcionalmente no 1º trimestre a avaliação pela CMASS Assistencial se dará da
+seguinte forma:
+
+     1º mês contratual: Elaboração de relatório com dados analíticos de pacientes com
+         cirurgias canceladas no período, constando as seguintes informações: Nome completo
+         do paciente, número do prontuário, data do agendamento cirúrgico, motivo do
+         cancelamento, plano de ação e conduta da Instituição para resolução do incidente.
+         Entrega de documento com Fluxo padrão para agendamento de cirurgias.
+         O material a ser entregue para a CMASS como comprovação do cumprimento deste
+         indicador neste 1º mês contratual serão as evidências documentais descritas acima.
+
+     Para o segundo e o terceiro mês contratual a metodologia seguirá o cálculo do indicador
+         Taxa de cirurgias eletivas canceladas.
+
+3.4 MELHORIA DO PROCESSO DE CAPTAÇÃO E MANUTENÇÃO DE DOADORES DE
+ÓRGÃOS E TECIDOS
+Indicador: Rastreamento de Potenciais Doadores de Órgãos e Tecidos para Transplante ­
+RPDOT
+
+                                                                                                                   11
+Considerando a redução do número de transplantes realizados no Estado do Espírito Santo,
+entre 2017 e 2019, e o ANEXO III, Seção II da Portaria de Consolidação n° 4, de 28 de
+Setembro de 2017, que trata da obrigatoriedade da criação das Comissões Intra-Hospitalares
+de Doação de Órgãos e Tecidos para Transplantes ­ CIHDOTTs e suas atribuições, a Central
+Estadual de Transplantes do Espírito Santo (CET-ES) entendeu a necessidade de criação de
+um plano de ação que possibilite o alcance da meta anual estadual de doadores por milhão de
+população, estabelecida pelo Sistema Nacional de Transplantes.
+
+Os anos de 2020 e 2021 foram singulares devido aos impactos da Pandemia de COVID 19, que
+também contribuíram para a redução do número de notificações, captações e transplantes, e,
+por isso, justifica-se a necessidade de retomar ações que melhorem o processo de seleção e
+captação de órgãos.
+
+Dentre essas ações, está a criação de indicadores que possibilitem a identificação dos
+problemas para resolução que traga o aumento do número de doadores efetivos. Desse modo,
+o indicador "Rastreamento de Potenciais Doadores de Órgãos e Tecidos para Transplante ­
+RPDOT" visa melhorar o processo de identificação de doadores, captação e doação de órgãos
+e tecidos nos hospitais da rede pública do Estado do Espírito Santo.
+
+Para o cumprimento desse indicador, é necessário o funcionamento pleno da CIHDOTT na
+instituição, em respeito à Portaria de Consolidação n°4, de 28 de setembro de 2017, que possui
+como atribuições, dentre outas: "notificar e promover o registro de todos os casos com
+diagnóstico estabelecido de morte encefálica (ME), mesmo daqueles que não se tratem de
+possíveis doadores de órgãos e tecidos, ou em que a doação não seja efetivada, com registro
+dos motivos da não-doação"; acompanhar a realização de protocolos de morte encefálica (ME)
+em todos pacientes com suspeita de ME, de acordo com os parâmetros da resolução 2.173 de
+2017 do Conselho Federal de Medicina (CFM); e "manter o registro do número de óbitos
+ocorridos em sua instituição".
+
+A equipe da Central de Transplantes do Espírito Santo poderá, mediante necessidade, fazer
+amostragem dos prontuários de pacientes neurocríticos, de forma aleatória, para averiguação
+do cumprimento da abertura do protocolo de ME.
+
+Esse indicador é composto por 3 atividades que deverão ser cumpridas pelo HEUE, conforme a
+Portaria de Consolidação n°4, de 28 de setembro de 2017, a saber:
+
+                                                                                                                   12
+    1. Realizar a busca ativa diária em pacientes neuro críticos (Glasgow = 5) nas UTI's e
+         Unidades de Emergência para identificação de potenciais doadores de órgãos e tecidos
+         e enviar relatório padrão (Anexo I) ao e-mail cncdoplantonistases@gmail.com, com
+         cópia para cihdottes@gmail.com.
+         OBS: Mesmo que não haja casos a notificar, o relatório deve ser enviado descrevendo
+         que não existe nenhum paciente dentro do perfil.
+
+    2. Notificação, à CET-ES, de 100% dos óbitos ocorridos na instituição, através do envio de
+         fichas de notificação de óbito (Anexo II) para o e-mail (notificaobitos@gmail.com,
+         conforme Portaria 043-R de 01/06/2006.
+         Para fins de agilizar o processo de captação, também se faz necessário notificar,
+         através de ligação, o Banco de Olhos do Espírito Santo (HUCAM), nos telefones (27)
+         3335-7106 ou (27) 99995-2590. Caso o profissional não consiga contato com o Banco
+         de Olhos, deve-se notificar a CET-ES nos telefones (27) 3636-8271 ou (27) 99755-8796.
+         OBS: O HEUE deverá informar à CNCDO até o 10º dia do mês subsequente quantos
+         óbitos ocorreram no hospital para cálculo da porcentagem deste indicador.
+
+    3. Envio mensal do relatório da CIHDOTT do HEUE conforme Portaria de Consolidação Nº
+         4, DE 28 de setembro de 2017, Formulário III, Anexo 19 do Anexo I, da Comissão Intra-
+         Hospitalar de Doação de Órgãos e Tecidos para Transplante (CIHDOTT). (Anexo III).
+
+MÉTODO DA AVALIAÇÃO PELA CET-ES:
+Atividade 1: Recebimento diário de Relatório de Busca ativa de potenciais doadores de órgãos
+e Transplantes.
+Atividade 2: Recebimento de ficha de notificação de óbitos de todos os óbitos ocorridos na
+instituição. A notificação via telefone de cada óbito se faz necessária, mas não será pontuada
+para alcance da meta até o 10º dia.
+Atividade 3: Recebimento mensal, até o 10º dia do mês subsequente ao mês avaliado, do
+relatório da CIHDOTT da instituição, conforme anexo III.
+
+Para a Atividade 1, considera-se a atividade 100% cumprida se o envio for realizado em todos
+
+                                                                                                                   13
+os dias do mês, fazendo-se o cálculo proporcional de não cumprimento para cada dia de
+relatório não enviado.
+Exemplo: o mês de abril possui 30 dias. Se forem enviados relatórios em apenas 25 dias, será
+calculada a porcentagem de envio referente a esses 25 dias: 25 x 100/30 = 83,33%, ou seja,
+83,33% da atividade será considerada cumprida. Vale ressaltar a obrigatoriedade do envio do
+relatório mesmo quando não há casos a notificar, com descrição de que não existe pacientes
+dentro do perfil.
+Para Atividade 2, considera-se 100 % da atividade cumprida, se todos os óbitos foram
+notificados, através do envio da ficha de notificação de óbito.
+Obs: a instituição deverá informar à CET-ES, até o 10º dia do mês subsequente, o quantitativo
+de óbitos ocorridos no hospital, para cálculo da porcentagem deste indicador.
+Para Atividade 3, considera-se meta cumprida (100%), se o relatório for enviado corretamente
+preenchido, até o 10º dia do mês. Se for entregue a partir desse dia, será considerada a
+porcentagem a seguir: no 11º dia = 90%; 12º dia = 80%; 13º dia = 70%; e a partir do 14º dia =
+0%.
+Ao final da apuração realiza-se a média aritmética das 3 atividades, para o alcance da meta.
+Exemplo:
+Atividade 1: 83,33 %
+Atividade 2: 95%
+Atividade 3: 100%
+Média = 83,33 + 95 + 100 /3 = 92,77%
+
+Meta: Alcance de no mínimo 90% da média das 3 atividades referidas para o
+rastreamento de potenciais doadores de órgãos e tecidos para transplante.
+Até o 20º dia do mês subsequente ao mês avaliado, a equipe da CET-ES encaminhará Circular
+Interna à GECORP, e via e-mail à comissão de monitoramento CMASS, através do endereço
+heue.gestao@saude.es.gov.br, o relatório padronizado (Anexo IV) com a avaliação do
+cumprimento da meta pelo HEUE.
+
+                                                                                                                   14
+Caberá à equipe da CET-ES avaliar se as informações são fidedignas e/ou se é necessário
+auditoria "in loco" por sua própria equipe. A equipe de monitoramento assistencial do HEUE
+ficará responsável em emitir relatório trimestral com o alcance da meta, a partir dos dados
+recebidos da CET-ES.
+
+A periodicidade de análise deste indicador é mensal, porém terá valor na avaliação das metas
+qualitativas na trimestralidade. O valor ponderal deste indicador será 25% em cada trimestre.
+
+Nota: Excepcionalmente no 1º trimestre, a avaliação pela CMASS Assistencial se dará da
+seguinte forma:
+
+     1º mês contratual: A instituição terá como cumprimento de meta a implantação da
+         CIHDOTT no HEUE. Para tanto, deverá enviar à CMASS documento comprovando esta
+         implantação, com nome dos membros da Comissão, formação profissional, regimento
+         interno da CIHDOTT e processo de trabalho da CIHDOTT.
+         Os materiais a serem entregues para a CMASS, como comprovação do cumprimento
+         desse indicador, nesse 1º mês contratual, serão as evidências documentais descritas
+         acima.
+
+     Para o segundo e o terceiro mês contratual, a análise seguirá conforme metodologia
+         descrita para o indicador.
+
+4 PESOS PERCENTUAIS DOS INDICADORES DE QUALIDADE
+
+Quadro 3.                                         1º     2º     3º     4º
+
+             INDICADORES DE QUALIDADE             Trimestre Trimestre Trimestre Trimestre
+
+Atenção ao  Resolução de Reclamação               12,5%  12,5%  12,5%  12,5%
+  Usuário      Satisfação do Usuário
+                                                  12,5%  12,5%  12,5%  12,5%
+
+Implantação de protocolos clínicos                25%    25%    25%    25%
+
+       Taxa de cancelamento de cirurgia eletiva   25%    25%    25%    25%
+                                                  25%    25%    25%    25%
+Melhoria do processo de captação e manutenção de
+               doadores de órgãos e tecidos
+
+                                                                              15
+O quadro abaixo sintetiza os indicadores de qualidade, sua forma de apresentação e suas
+metas a serem alcançadas pelo HEUE, para o novo Edital para avaliação do repasse financeiro
+de 10% do valor do Contrato de Gestão, referente à parte variável.
+
+Quadro 4.
+
+           INDICADOR                 MEIO DE APRESENTAÇÃO                    PARÂMETRO
+
+Atenção ao  Resolução de             Relatório mensal prestação de contas    Percentual de resolução
+  usuário   Reclamação                         do trimestre analisado         de reclamação  85%.
+
+            Satisfação do                Através do relatório mensal de         Índice de satisfação
+                Usuário                Implantação de Protocolos clínicos    global do usuário  90%.
+
+Implantação de protocolos clínicos                                               Implantação de 03
+                                                                              Protocolos clínicos por
+
+                                                                                       trimestre
+
+Taxa de cancelamento de cirurgia       Sistema MV Soul e Relatório de         10%
+                  eletiva            Prestação de Contas HEUE mensal
+
+ Melhoria do processo de captação e     Relatório mensal elaborado pela      Envio de Relatório Diário
+manutenção de doadores de órgãos e     Central Estadual de Transplantes      e mensal para CIHDOTT
+                                     enviados via e-mail e Circular Interna
+                    tecidos
+
+                                                                                        16
+REFERENCIAS BIBLIOGRÁFICAS:
+
+BITTAR, O.J.N.V. Hospital: qualidade & produtividade. Sarvier, 1997
+
+São Paulo. Conselho Regional de Medicina do Estado de São Paulo. Resolução CREMESP nº
+170, de 6 de novembro de 2007. Define e regulamenta as atividades das Unidades de Terapia
+Intensiva. Diário Oficial do Estado de São Paulo; Poder Executivo, 22 nov. 2007. Seção 1, p.
+152.
+
+ABELHA FJ, Castro MA, Landeiro NM, Neves AM, Santos CC. Mortalidade e o tempo de
+internação em uma unidade de terapia intensiva cirúrgica. Rev. Bras. Anestesiol. 2006;56(1):34-
+45.
+
+http://www.utisbrasileiras.com.br/perfis-das-utis/principais-desfechos/#!/taxas-de-mortalidade-
+na-uti-e-no-hospital acessado em 24/05/2021.
+
+PROQUALIS <htpp://proqualis.net
+
+htpp://www.einstein.br/hospital/centro-de-terapia-intensiva/indicadores> acessado em 24/05/21
+
+https://www20.anvisa.gov.br/segurancadopaciente/index.php/publicacoes/item/protocolo-de-
+cirurgia-segura acessado em 24/05/21
+
+https://www.icqbrasil.com.br/icq/site/NoticiaVisualizar.do?vo.codigo=126&v=2 acessado em
+24/05/2021
+
+https://www.sbcoaching.com.br/blog/carreira/importancia-treinamento-organizacoes/ acessado
+em 24/05/2021
+
+https://bvsms.saude.gov.br/bvs/saudelegis/gm/2017/prc0004_03_10_2017.html  Portaria
+saude.es.gov.br/Media/sesa/UECI/NORMA009-014%20-%20-DIOES-21-12-2018.pdf
+121 R de 20 de dezembro de 2018- Norma de procedimento ­ SSP 013;
+
+3º Caderno de Indicadores CQH ­ 2009, EDIÇÃO: Ivomar Gomes Duarte, 1ª Edição, São Paulo
+­ SP.
+
+                                                                                                 17
+18
+

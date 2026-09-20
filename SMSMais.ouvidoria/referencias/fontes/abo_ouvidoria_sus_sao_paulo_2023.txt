@@ -1,0 +1,568 @@
+
+=== PAGE 1 ===
+Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023  |  39
+OUVIDORIA SUS DA CIDADE DE SÃO PAULO: 
+TRABALHO ORGANIZADO EM REDE PARA ATENDER OS USUÁRIOS
+Rosane Jacy Fretes Fava1
+Maria Lucia Bom Angelo2
+Marco Antonio da Silva3
+João Batista Nazareth Aguiar4
+Resumo
+Trabalhar em rede mostra-se vantajoso à medida que promove capilaridade, agilidade e pa-
+dronização de processos, servindo de alternativa para sistemas complexos, como é o caso 
+da ouvidoria da Secretaria Municipal da Saúde da cidade de São Paulo. Este artigo tem por 
+objetivo apresentar a experiência e os processos de trabalho da Rede de Ouvidorias SUS do 
+município e refletir sobre suas vantagens e desafios a serem enfrentados, a partir de revisão 
+bibliográfica e uma abordagem descritiva da atual estrutura, visando contribuir para a implan-
+tação de futuras ouvidorias e convidar aquelas já existentes à reflexão quanto aos processos 
+de trabalho. Em se tratando de órgão governamental, as legislações tornam-se o substrato 
+para fundamentar a atuação da ouvidoria do SUS. Após breve apanhado histórico, chega-se  
+à atual estrutura, sedimentada em 2021 por ato do Secretário Municipal da Saúde, mediante 
+Portaria. A partir de então, a Divisão de Ouvidoria do SUS potencializou e assumiu de maneira 
+imperiosa seu caráter gestor. Estruturou-se em núcleos como forma de trabalho integrado, 
+descentralizou o atendimento ao público, qualificou e deu suporte aos técnicos da Rede, revi-
+sou e instituiu protocolos e fortaleceu a transparência. Legitimou-se enquanto ferramenta de 
+gestão por meio da transformação de informação em conhecimento, com produtos como o 
+Relatório de Gestão e o Boletim Ouvidoria em Dados. Aderiu ao processo de acreditação ins-
+titucional e intensificou o acesso de todos os atores ao órgão gestor, apresentando caminhos 
+da qualidade e a possibilidade de sua aplicação em municípios ou estados de qualquer porte. 
+Palavras-chave: Ouvidoria. Participação social. Sistema Único de Saúde (SUS). Gestão em Saúde.
+1  Graduada em Química pelas Faculdades Oswaldo Cruz. Ouvidora Diretora da Divisão de Ouvidoria do SUS da Secretaria Munici-
+pal da Saúde do Município de São Paulo. Especialista em Gestão de Marketing, em Gestão Estratégica em Ouvidoria da Saúde e em 
+Gestão Estratégica em Ouvidorias Públicas e Privadas. Certificada como Coach Ontológico Organizacional. Ouvidora em Sistemas de 
+Ouvidoria e Mediação de Conflitos Socioambientais. (rosaneffava@hotmail.com) 
+2  Graduada em Psicologia pela Universidade de São Paulo (USP). Coordenadora do Núcleo de Gestão do Conhecimento da Divisão 
+de Ouvidoria do SUS da Secretaria Municipal da Saúde do Município de São Paulo. Especialista em Saúde Pública, Psicanálise, Admi-
+nistração Pública em Saúde, Gestão Estratégica em Ouvidoria da Saúde e em Gestão Estratégica em Ouvidorias Públicas e Privadas. 
+Certificada como Ouvidora em Sistemas de Ouvidoria. (malu.bomangelo@gmail.com)
+3  Graduado em Administração de Empresas pela Universidade Paulista (Unip). Membro da equipe da Coordenadoria de Controle Inter-
+no da Secretaria Municipal da Saúde da Prefeitura Municipal de São Paulo. Especialista em Gestão Estratégica em Ouvidoria da Saúde e 
+em Gestão Estratégica em Ouvidorias Públicas e Privadas. Certificado como Ouvidor em Sistemas de Ouvidoria. (marco484@uol.com.br)
+4  Graduado em Língua e Literatura Inglesa pela Pontifícia Universidade Católica de São Paulo (PUC-SP). Assessor Técnico do Núcleo de 
+Apoio Estratégico da Divisão de Ouvidoria do SUS da Secretaria Municipal da Saúde do Município de São Paulo. Especialista em Gestão 
+Ambiental pela Faculdade de Saúde Pública da USP. Certificado como Ouvidor em Sistemas de Ouvidoria. (jaguiar@prefeitira.sp.gov.br)
+DOI:10.37814/2594-5068.2023v6.p39-51
+
+
+=== PAGE 2 ===
+40  |  Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023
+Abstract
+Networking is advantageous as it promotes capillarity, agility, and standardization of process-
+es, serving as an alternative for complex systems, such as the ombudsman of the Municipal 
+Health Secretariat of the city of São Paulo. This article aims to present the experience and 
+work processes of the SUS Ombudsman Network in the municipality and reflect on its advan-
+tages and challenges to be faced, based on a bibliographical review and descriptive approach 
+of the current structure, aiming to contribute to the implementation of future ombudsman of-
+fices and invite those that already exist to reflect on their work processes. When it comes 
+to a governmental body, legislation becomes the substrate to support the work of the SUS 
+Ombudsman. After a brief historical overview, we arrive at the current structure, sedimented in 
+2021 by an Act of the Municipal Secretary of Health. From then on, the Ombudsman Division 
+of SUS leveraged and imperiously took on its managerial character. Structured into nuclei as 
+a form of integrated work, it decentralized the service to the public, qualified and gave support 
+to the Network technicians, revised and created protocols, and strengthened transparency. It 
+legitimized itself as a management tool through the transformation of information into knowl-
+edge, with products such as the Management Report and the Data Ombudsman Bulletin. It 
+joined the process of institutional accreditation and intensified the access of all actors to the 
+managing body, presenting quality paths and the possibility of their application in municipali-
+ties or states of any size.
+Keywords: Ombudsman. Social participation. Sistema Único de Saúde (SUS). Health management. 
+
+
+=== PAGE 3 ===
+Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023  |  41
+1 INTRODUÇÃO
+O trabalho organizado em rede traz consigo inúmeras vantagens, tais como descentralização, 
+democratização e compartilhamento sistematizado de informações, conferindo mais agilidade e 
+confiabilidade aos que da rede se utilizam, seja no polo ativo (operacionalização) ou no passivo 
+(beneficiário do serviço).
+Trabalhar em rede envolve uma cultura e uma visão de transformação. Assim, não fa-
+lamos de redes como entidades ou organismos, mas enquanto formas de interação e 
+intervenção. A construção do trabalho em rede só faz sentido se o fizermos em função do 
+contexto histórico e dos desafios da sociedade. (HOLLIDAY, 2016) 
+Um sistema de saúde complexo como o brasileiro requer diversas estratégias que promovam a 
+descentralização, gerem capilaridade e, consequentemente proporcionem um atendimento de qua-
+lidade e com segurança a toda a população. A instituição das ouvidorias em saúde é uma dessas 
+estratégias que o Sistema Único de Saúde (SUS) preconiza.
+Alguns marcos históricos são relevantes. A primeira ouvidoria pública brasileira foi criada em 
+1986 em Curitiba e, desde então, em especial após a promulgação da Constituição Federal de 
+1988, as ouvidorias evoluíram rapidamente, sob o impulso das reivindicações populares por partici-
+pação nas deliberações do Estado (SECRETARIA DE ESTADO DA SAÚDE DE SERGIPE, 2020). 
+No que diz respeito particularmente à Ouvidoria em Saúde, as Leis Federais nº 8.080/1990 
+e nº 8.142/1990 trouxeram a participação do cidadão nos Serviços Públicos de Saúde do SUS, 
+representada coletivamente pelo Conselho de Saúde e individualmente pela Ouvidoria dos Ser-
+viços de Saúde.
+Em 2003, com o Decreto Federal nº 4.726/2003, foi criada a Secretaria de Gestão Participativa 
+integrando o Departamento de Ouvidoria-Geral do SUS. Entre suas competências estão estimular 
+e apoiar a criação de estruturas descentralizadas de Ouvidoria da Saúde.
+Outro marco importante para as Ouvidorias SUS acontece após 20 anos em âmbito federal. 
+Em 2023, a Ouvidoria-Geral do SUS do Ministério da Saúde (MS), considerando as competências 
+dispostas no Decreto Federal nº 11.358/2023, resolveu submeter à consulta pública, disponibilizada 
+entre 30 de junho e 21 de julho de 2023, a minuta de resolução que institui a Rede de Ouvidorias 
+do SUS.
+No contexto do município de São Paulo, a primeira ouvidoria em saúde foi instituída em 2001 
+no Hospital Municipal e Maternidade-Escola Dr. Mário de Moraes Altenfelder Silva, na Vila Nova 
+Cachoeirinha. Eunice Pedroso Rodrigues foi designada para estruturar essa ouvidoria e imprimiu 
+ao serviço “[...], como principal foco, a humanização das relações, procurando articular o cuidado 
+técnico-científico com o cuidado humano numa relação de respeito mútuo [...]” (PREFEITURA DO 
+MUNICÍPIO DE SÃO PAULO, 2009). Quatro anos mais tarde, foi convidada a assumir a primeira 
+ouvidoria do SUS na cidade, quando foi implantada a ouvidoria no gabinete da Secretaria Municipal 
+da Saúde (SMS), levando para a instância central a mesma inspiração que baseou sua experiência 
+inicial, passando a receber demandas do Ministério da Saúde. 
+Apesar de sua implementação ter efetivamente ocorrido em 2005, somente em 2008, por meio 
+da Portaria Municipal nº 867/2008-SMS.G, é instalada a Ouvidoria Municipal de Saúde, vinculada 
+
+
+=== PAGE 4 ===
+42  |  Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023
+ao gabinete do Secretário Municipal da Saúde, com atribuições de coordenar, no âmbito do SUS, a 
+política municipal de atendimento e humanização na saúde, por meio da articulação com as ouvido-
+rias adjuntas instaladas nas unidades de saúde do município.
+Em 2015, a Portaria Municipal nº 982/2015-SMS.G normatiza a Rede de Ouvidorias do Municí-
+pio de São Paulo, composta de ouvidorias das divisões e subdivisões Regionais de Saúde, Serviços 
+de Saúde, da administração direta e indireta, Coordenação de Vigilância em Saúde (Covisa), Siste-
+ma de Atendimento Móvel de Urgência (Samu) e Autarquia Hospitalar Municipal (AHM).
+Em 2013, foi criada a Controladoria-Geral do Município (CGM) de São Paulo, por meio da Lei 
+Municipal nº 15.764/2013, com a finalidade de promover o controle interno dos órgãos municipais e 
+das entidades da administração indireta. Passa a figurar como órgão central do Sistema de Controle 
+Interno, do Sistema de Corregedorias e do Sistema de Ouvidorias.
+Em 2017, a SMS, por meio do Decreto Municipal nº 57.857/2017, institui a Coordenadoria de 
+Controle Interno (Cocin). A Divisão de Ouvidoria do SUS (Douv SUS) é uma de suas divisões, com a 
+responsabilidade de coordenar e implementar a política municipal de ouvidoria em saúde e estimu-
+lar e apoiar a criação de estruturas descentralizadas de ouvidoria em saúde em âmbito municipal.
+Três anos mais tarde, é publicado o Decreto Municipal nº 59.685/2020, que reorganiza a SMS 
+com a criação de novas estruturas denominadas Secretarias-Executivas, com o fito de reunir áreas 
+afins, melhorar a comunicação e agilizar os fluxos de trabalho entre os departamentos. A Cocin 
+passa a se subordinar à Secretaria-Executiva de Regulação, Monitoramento, Avaliação e Controle 
+(Sermap), sendo mantida a subordinação da Douv SUS à Cocin.
+Atualmente, a Rede de Ouvidorias SUS da Cidade de São Paulo é formada pela Douv SUS, de 
+caráter gestor, e por 60 unidades descentralizadas, distribuídas em 6 Coordenadorias Regionais de 
+Saúde (CRS), 27 Supervisões Técnicas de Saúde (STS), 25 ouvidorias da rede hospitalar, ouvidoria 
+do Hospital do Servidor Público Municipal (HSPM) e ouvidoria do Serviço de Atendimento Móvel de 
+Urgência (Samu).
+Além disso, conta com aproximadamente 1.400 pontos de resposta, que são os órgãos ou depar-
+tamentos associados à manifestação que são os interlocutores da Rede para tratar das demandas. 
+Sob a égide da legislação em vigor, este artigo objetiva apresentar a experiência da Rede de 
+Ouvidorias SUS da Cidade de São Paulo e o papel por ela desempenhado na concretização do 
+direito fundamental à saúde, por meio do relato do processo de implantação, estruturação e aperfei-
+çoamento do modelo de trabalho em rede.
+Vislumbra-se, portanto, contribuir para a implantação de futuras ouvidorias e convidar aquelas 
+já existentes à reflexão quanto ao processo de transformação da forma de trabalho, pois, apesar da 
+grandeza do porte de uma cidade como a de São Paulo, o modelo aqui proposto pode ser replicado 
+em qualquer organização que entenda ser conveniente dispor desse serviço em localidades distin-
+tas, com o mesmo padrão de qualidade e uniformidade dos processos. 
+2 DESENVOLVIMENTO
+2.1 Rede de Ouvidorias SUS da Cidade de São Paulo: Bases Legais
+Por se tratar de estrutura pública que integra a Secretaria Municipal da Saúde (SMS), as legis-
+lações tornam-se o substrato para acompanhar o percurso da Ouvidoria SUS na cidade. 
+
+
+=== PAGE 5 ===
+Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023  |  43
+A SMS é o órgão da Prefeitura Municipal de São Paulo responsável por propor e implementar 
+políticas públicas de gestão e promoção da saúde, de acordo com as diretrizes do SUS, com foco 
+na promoção de saúde, prevenção, proteção e reabilitação, garantindo o acesso dos usuários aos 
+serviços de saúde.
+É preciso contextualizar o momento de mudança institucional pelo qual a SMS passou em 2020, 
+com a publicação do Decreto Municipal nº 59.685/2020, que, além de reorganizar e descentralizar 
+o organograma, implementou mudanças diretas na estrutura e no funcionamento central da Divisão 
+de Ouvidoria do SUS (Douv SUS).
+Com a extinção da Autarquia Hospitalar Municipal (AHM), transferindo-a para o âmbito da SMS, 
+esse decreto determinou que a ouvidoria da AHM e sua equipe técnica passassem a integrar o 
+quadro de pessoal da Douv SUS. Além disso, a integração da equipe técnica da ouvidoria da Coor-
+denadoria de Vigilância em Saúde (Covisa) à estrutura da Douv SUS deu a esta outros contornos 
+e possibilidades de ação.
+A Portaria Municipal nº 166/2021-SMS.G nasce oito meses depois. É o arcabouço legal que atu-
+almente rege e estabelece a estrutura da Rede (a Rede de Ouvidorias SUS, para fins deste artigo 
+será denominada como Rede, evitando-se repetições longas) e seus macroprocessos de trabalho. 
+Define de forma inequívoca a Douv SUS como a instância gestora responsável por coordená-la 
+tecnicamente. Regulamenta o que já ocorria na prática desde 2019 e encerra as atividades de aten-
+dimento presencial na unidade central. 
+A partir dos documentos legais publicados, pode-se ter um olhar para a curva histórica a respei-
+to do caminho de qualidade que a ouvidoria percorre. De uma perspectiva inicial de trabalho com 
+aspiração de ordenação e organização de processos em 2008, passa posteriormente para um tra-
+balho com maior foco na articulação em 2015, seguido pela inserção de documentos de qualidade, 
+padronização do trabalho e melhoria dos documentos legais em 2016, para posteriormente esta-
+belecer normas básicas para participação, proteção e defesa dos direitos dos usuários em 2018. O 
+momento atual baseado na portaria de 2021 tem ênfase na concretização do formato de Rede, cujo 
+principal ganho é trabalhar a gestão desta estrutura.
+A Rede está inserida em uma administração pública sediada na maior cidade do Brasil e da 
+América do Sul. Uma síntese sobre a cidade consta na introdução de documento histórico da SMS, 
+que, cotejando-se com os dados populacionais do Censo Demográfico de 2022 (GovBR, 2022), 
+mostra-se atual ao abordar os desafios da administração, que reverberam num serviço que acolhe 
+as manifestações de munícipes que se utilizam dos serviços públicos de saúde:
+A cidade de São Paulo é um mosaico gigantesco que se destrói e se reconstrói cotidia-
+namente. Um espaço fluido por onde transitam os maiores fluxos de pessoas, veículos, 
+capitais e culturas de todo tipo. Uma cidade também mega nos seus contrastes, contra-
+dições e conflitos, que pulsa violenta, desafiando a quem quer que queira dimensioná-la, 
+monitorá-la ou planejá-la. É ilusório delimitá-la nos cerca de 11,5 milhões de habitantes, 
+pois é difícil definir quantas pessoas vivem em função direta dessa megalópole (...). Nes-
+se sentido, São Paulo tem dimensões, demandas e problemas de país e parece ser uma 
+cidade imensurável. (PREFEITURA DO MUNICÍPIO DE SÃO PAULO, 2016, p. 37) 
+
+
+=== PAGE 6 ===
+44  |  Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023
+A Douv é orientada pelos princípios do SUS de universalidade, integralidade e equidade. Num 
+recente documento publicado pela área da Atenção Básica da SMS apontam-se as seguintes di-
+retrizes que podem ser tomadas emprestadas para fundamentar as bases da Rede, respeitando, 
+sobretudo, a singularidade de cada território e população: regionalização e hierarquização; territo-
+rialização e adscrição; cuidado centrado na pessoa; resolutividade; longitudinalidade do cuidado; 
+coordenação do cuidado e ordenação da rede; e participação da comunidade (PREFEITURA DO 
+MUNICÍPIO DE SÃO PAULO, 2022, p. 15). 
+2.2 Divisão de Ouvidoria do SUS: Estruturação em Núcleos como Forma de Tra-
+balho Integrado 
+O expressivo contingente populacional da cidade de São Paulo tem efeito direto sobre o serviço 
+de ouvidoria em saúde. Este está apto a receber manifestações a respeito dos 1.490 estabeleci-
+mentos e serviços próprios de SMS, além de unidades conveniadas (PREFEITURA DO MUNICÍPIO 
+DE SÃO PAULO, 2023). Em 2022, as manifestações recebidas pela Rede totalizaram 91.835 re-
+gistros, com média de 7.653 por mês. As manifestações são registradas e tratadas por meio de um 
+sistema único informatizado, o Sistema Ouvidor SUS, de propriedade do MS, que possibilita regis-
+trar todas as etapas do processo: inserção, tipificação, encaminhamento para a área responsável, 
+acompanhamento e envio da resposta ao cidadão.
+O Relatório de Gestão da Rede de Ouvidorias de 2022 (Prefeitura do Município de São Paulo, 
+2023) mostra que 76,62% das demandas referem-se a serviços da Atenção Básica, 8,09% a de-
+mandas da rede hospitalar, 7,82% ao HSPM, 0,41% ao Samu e 7,05% a demais demandas. 
+Uma inovação da Portaria Municipal nº 166/2021-SMS.G foi a definição da estrutura básica 
+da Douv SUS, organizando-a em quatro núcleos de trabalho: Núcleo de Apoio Estratégico, Núcleo 
+Técnico, Núcleo de Qualidade e Relacionamento com a Rede e Núcleo de Gestão do Conheci-
+mento. E incorpora ao seu escopo de atuação a Transparência Passiva – Serviço de Informação 
+ao Cidadão (SIC). 
+O comando da Douv SUS é exercido pelo Núcleo de Apoio Estratégico (NAE), cujas principais 
+atribuições são o planejamento dos processos de trabalho e a gestão das rotinas administrativas 
+internas. É responsável pela articulação com outros setores e unidades do poder público e por dar 
+coerência e coesão interna entre os Núcleos. 
+O Núcleo Técnico (NUT) é o mais robusto dentro da estrutura. Realiza análise, tratamento e en-
+caminhamento das demandas de competência da sub-rede da SMS; elaboração e revisão de docu-
+mentos, orientações técnicas, instruções de trabalho, procedimentos operacionais padrão; e capaci-
+tação dos operadores da Central Telefônica SP156 – canal de maior recebimento de manifestações.
+O Núcleo de Qualidade e Relacionamento com a Rede (NUQ) tem como um de seus principais 
+objetivos implantar processos de avaliação da qualidade, garantindo informações qualificadas para 
+o trabalho de toda a equipe. Sua principal frente de trabalho é o Programa de Avaliação da Qualida-
+de (PAQ), que avalia e aprimora a qualidade na inserção das demandas registradas e nas respos-
+tas, além de monitorar prazos. Foi uma iniciativa desenvolvida inicialmente como projeto-piloto na 
+rede hospitalar e posteriormente refinada e aplicada nas ouvidorias das CRSs e STSs. Em parceria 
+com o Núcleo de Gestão do Conhecimento, houve automatização dos processos do PAQ, ajustan-
+
+
+=== PAGE 7 ===
+Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023  |  45
+do-o para lidar com a ampliação dos dados e uso estendido para a Rede. O NUQ faz o suporte e a 
+articulação com as ouvidorias da Rede, com visitas técnicas e plantão de dúvidas on-line, e contribui 
+para reforçar a Douv SUS enquanto referência técnica da Rede e gerar mais proximidade. 
+O Núcleo de Gestão do Conhecimento (NUG) tem a incumbência de extrair, qualificar e dis-
+ponibilizar informações dos bancos de dados. Transforma-as em conhecimento demonstrado por 
+estatísticas e indicadores de monitoramento consolidados em seus principais produtos: o Relatório 
+Gerencial Anual, os Boletins Ouvidoria em Dados e o Painel de Monitoramento em estilo dashboard. 
+Um diferencial da Douv SUS é o posicionamento do Serviço de Informação ao Cidadão (SIC), 
+situado dentro de sua estrutura básica. Essa organização mostra-se coerente e capaz de gerar 
+trocas e ganhos importantes entre ambos os serviços, que compartilham, entre si, a perspectiva da 
+participação social. As principais atribuições dos pontos focais do SIC são: receber e analisar os 
+pedidos de informação dos cidadãos e encaminhá-los para a resposta das áreas técnicas da SMS; 
+e monitorar os prazos, receber as respostas e devolvê-las aos requerentes. A equipe do SIC faz 
+a gestão dos dados, em conjunto com o NUG, com a construção de um banco de dados próprio 
+e a produção de relatórios. Utiliza a tipificação da árvore do Sistema OuvidorSUS, do MS, uma 
+inovação na área. Essa comunhão entre as demandas de ouvidoria e os pedidos de informação 
+do e-SIC mostra-se como uma potencialidade que pode gerar subsídios refinados para ação da 
+gestão da SMS.
+Para fomentar a integração entre os Núcleos e o planejamento coletivo das ações, foi composto 
+o Grupo Gestor da Divisão de Ouvidoria, que reúne a ouvidora e os coordenadores de cada núcleo, 
+tendo como principais objetivos: i) discutir, avaliar e planejar as diretrizes e as propostas de trabalho; 
+e ii) manifestar os anseios, os questionamentos das equipes e resolvê-los em conjunto. 
+2.3 Acreditação Institucional de Ouvidorias do SUS no Brasil e o Avanço no Cami-
+nho da Qualidade
+No ano de 2021, um marco importante para fortalecer e dar mais visibilidade e legitimação à 
+Douv SUS foi a adesão ao processo de Acreditação Institucional de Ouvidorias do SUS no Bra-
+sil, parceria com a Fundação Instituto Oswaldo Cruz (Fiocruz) e o Ministério da Saúde. A Portaria 
+Municipal nº 138/2021-SMS.G institui o Grupo de Trabalho de Gestão de Qualidade e Acreditação 
+Institucional de Ouvidorias do SUS, no âmbito da SMS. 
+Uma das etapas do processo foi a autoavaliação baseada em 67 padrões de qualidade, que 
+envolveram infraestrutura, gestão, processos de trabalho e resultados. Dessa etapa ocorrida em 
+agosto de 2021 decorreram 17 planos de ação para melhoria, detalhados no Relatório de Autoava-
+liação. O processo intensificou a construção e disseminação de manuais, procedimentos operacio-
+nais padrão e instruções de trabalho, bem como seu monitoramento, com o objetivo de que a Rede 
+trabalhe de forma mais integrada. 
+Em setembro de 2022 ocorreu a avaliação externa, que envolveu, além da equipe gestora da 
+Douv SUS, o Conselho Municipal de Saúde, a Gestão Participativa e a alta gestão da Secretaria 
+Municipal as Saúde, com a presença do secretário. O Relatório de Avaliação Externa trouxe um 
+retrato minucioso e analítico e caminhos para aprimorar o trabalho. A robustez da proposta levou a 
+Secretaria a incluir em seu Plano de Metas, ciclo 2022-2025, a acreditação de todas as unidades da 
+
+
+=== PAGE 8 ===
+46  |  Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023
+Rede. Para atender a essa meta, a Douv SUS utiliza-se da metodologia do design estratégico e iden-
+tifica oportunidades de ação em busca de soluções mais eficazes (CAVALCANTI; FILATRO, 2016). 
+Em conjunto com o Departamento de Tecnologia da Informação e Comunicação (DTIC) da 
+SMS, foi criada uma solução tecnológica inédita que vai permitir maior agilidade e padronização no 
+processo, o Sistema de Avaliação da Rede de Ouvidorias (Saro). A fase de prototipagem ocorrerá 
+em duas ouvidorias hospitalares escolhidas para testar a ferramenta, e, posteriormente, haverá a 
+multiplicação na Rede.
+Outro fator essencial é a maciça divulgação dos canais oficiais de acesso à ouvidoria e a elabo-
+ração do plano de comunicação visual padronizado a ser utilizado em todas as unidades de saúde e 
+nas mídias eletrônicas. Mais uma vez, essa iniciativa lançou mão de legislações (Portaria Municipal 
+nº 333/2022-SMS.G) para legitimá-la frente às organizações sociais que gerenciam boa parte das 
+unidades de saúde da cidade. Essa mesma norma técnica apresenta um indicador de qualidade de 
+ouvidoria baseado no prazo de resposta. 
+2.4 Plano de Capacitação das Equipes de Ouvidoria 
+O processo de Acreditação da Douv SUS evidenciou que uma das formas de fortalecer a Rede 
+passa pela capacitação sistemática dos ouvidores e suas equipes. Em parceria com a Escola Mu-
+nicipal da Saúde (EMS) da SMS, por meio do Contrato Organizativo da Ação Pública de Ensino-
+-Saúde (Coapes), que busca fortalecer a integração entre ensino, serviços e comunidade no SUS, 
+a Douv SUS articula a oferta de cursos, certificações e especializações.
+Em 2022, essa ação conjunta resultou no Curso de Certificação em Ouvidoria, ministrado pela 
+Associação Brasileira de Ouvidores (ABO), oferecido a toda a Rede e que certificou 73 ouvidores. 
+Outra formação foi o MBA Gestão Estratégica em Ouvidoria na Área da Saúde, ofertado à equipe da 
+Douv SUS e a todas as ouvidorias da Rede, que titulou 42 ouvidores em 2022 pelo Centro Universi-
+tário São Camilo, com nova turma iniciada com outros 9 profissionais da Rede em 2023. Em 2023, o 
+MBA Gestão Estratégica em Ouvidoria Pública e Privada ampliou a formação para 22 profissionais.
+Outra parceria em construção com o Centro de Formação de Controle Interno (CFCI) da Con-
+troladoria Geral do Município (CGM) busca cursos e capacitações que proporcionem processos 
+qualificatórios crescentes para as equipes de ouvidoria, com novos temas: mediação de conflitos, 
+Lei Geral de Proteção de Dados (LGPD), transparência passiva, ética no serviço público e experi-
+ência do paciente. 
+O Núcleo Técnico (NUT) cumpre seu papel na formação, atualização e refinamento das norma-
+tivas que pautam as atuações das equipes que tratam das manifestações dos cidadãos. A equipe 
+do Serviço de Informação ao Cidadão contribui ao buscar formas de instrumentalizar seus pontos 
+de resposta para melhor responder aos pedidos de informação e, em conjunto com o CFCI, realizou 
+em 2022 o curso Pedidos de Informação Pública – Ferramenta de Cidadania, com 26 participantes. 
+2.5 Quem Não Mede Não Gerencia
+A reestruturação da SMS impulsionou mudanças na forma de construir os relatórios gerenciais 
+da ouvidoria. Antes, a Douv SUS elaborava relatórios apenas com dados das CRSs, enquanto as 
+ouvidorias da Rede Hospitalar e da Covisa faziam seus próprios relatórios. Desde 2020, o Relatório 
+
+
+=== PAGE 9 ===
+Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023  |  47
+Anual é produzido de forma unificada e reúne os dados de toda a Rede, e incorporou também os 
+dados do Serviço de Informação ao Cidadão. Essa mudança representou um ganho no trabalho 
+da Douv SUS ao superar a fragmentação dos relatórios e padronizar a forma de apresentação das 
+informações de todas as ouvidorias em um documento único, sem perder a especificidade de cada 
+uma delas. Em 2022, a forma de apresentação do Relatório passou por reformulação, tornando-o 
+mais interativo e conciso, e ampliou a oferta de informações que podem ser exploradas de maneira 
+mais tecnológica, conforme o interesse de análise (PREFEITURA DO MUNICÍPIO DE SÃO PAU-
+LO, c. 2017).
+O Relatório Gerencial é um dos principais produtos do trabalho da Douv SUS e contempla o pa-
+recer dos gestores de cada área relacionada. É uma representação sobre a realidade dos serviços 
+de saúde municipais a partir da compreensão das demandas dos usuários.
+Em novembro de 2021, a Douv SUS lançou um novo produto gerencial, o Boletim Ouvidoria 
+em Dados, que mensalmente disponibiliza as informações principais da Rede e do SIC. Apresen-
+ta os dados de forma mais ágil e concisa, centrado em uma perspectiva mais visual e interativa. 
+Busca uma comunicação direta com o público, de fácil acesso para quem lê e supre a necessidade 
+gerencial por uma informação fotográfica da realidade, como alternativa ao Relatório Gerencial 
+Anual, tanto no que diz respeito ao seu hiato anual quanto na sua extensão e aridez. Aumenta a 
+visibilidade sobre o trabalho da Douv SUS e, consequentemente, aperfeiçoa o entendimento geral 
+sobre seu trabalho. As ações internas e externas da Douv SUS, como participação em eventos e 
+outras informações relevantes, são divulgadas e destacam fortemente o papel da ouvidoria como 
+ferramenta de gestão. 
+Tal como o Relatório Anual de Atividades, o Boletim está publicizado no endereço eletrônico 
+na página da SMS e é enviado para uma relação de stakeholders das áreas técnicas da SMS. A 
+partir da edição de maio de 2023, uma seção intitulada Fala, Ouvidor! destaca uma das ouvido-
+rias da Rede, entrevista o ouvidor e traz peculiaridades do trabalho, o que confere personalidade 
+àquele território.
+Uma ação concreta, feita ao se observar o montante de elogios registrados, evidencia que nem 
+só de reclamações e solicitações vive uma ouvidoria. Em torno de 10% das demandas referem-se 
+a elogios para profissionais específicos ou equipes de saúde. Para valorizar os trabalhadores do 
+SUS, foi criado o Selo Gente que faz o SUS, que, em 2023, transformou-se num programa conjunto 
+com a Coordenadoria de Gestão de Pessoas (Cogep) de SMS, no qual são distribuídos certificados 
+que atestam o bom trabalho dos profissionais.
+A ampla divulgação dos canais oficiais da ouvidoria é realizada com frequência em vários tipos 
+de mídia. Em 2022, foram 17 inserções nos instrumentos próprios da SMS, como nos Boletins Co-
+necta e Comunicado Saúde. 
+Para o alinhamento contínuo da Rede de Ouvidorias em suas diretrizes, a Douv SUS mantém 
+um calendário regular de atividades com as unidades da Rede e com os interlocutores de ouvidoria 
+das Organizações Sociais, de modo presencial e on-line. Até 2018, as reuniões ocorriam apenas 
+com os seis ouvidores das CRSs, que repassavam as diretrizes para as demais instâncias. Para 
+aproximar e unificar a Rede, todos os ouvidores das STSs, da rede hospitalar e interlocutores de 
+ouvidoria das Organizações Sociais de Saúde passaram a ter contato direto com o órgão gestor. 
+
+
+=== PAGE 10 ===
+48  |  Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023
+Grupos de trabalho, plantões de dúvidas, eventos temáticos, reuniões de fechamento anual, ofi-
+cinas e reuniões para apresentação dos relatórios estão entre as estratégias para concretizar e 
+fortalecer o trabalho em rede. 
+Outro destaque é que desde 2023 a aproximação com a gestão participativa e o Conselho Mu-
+nicipal da Saúde tem se intensificado, com participação nas plenárias e na comissão executiva para 
+apresentação e discussão dos Relatórios Gerenciais e planejamento de ações conjuntas, como 
+capacitação dos conselheiros sobre o papel e funcionamento da Rede. 
+Essas são as ações principais no caminho da qualidade para conferir melhorias aos processos 
+de trabalho da Rede de Ouvidorias SUS da Cidade de São Paulo.
+3 CONSIDERAÇÕES FINAIS
+A Rede de Ouvidorias SUS da Cidade de São Paulo compõe-se de várias unidades descen-
+tralizadas instaladas nos territórios e proporciona a participação dos usuários do SUS, por meio 
+de um olhar crítico, possibilitando a melhoria dos serviços ofertados, referendando sua missão, in 
+verbis: “Atuar como um canal de comunicação entre o cidadão e a instituição, por meio da parti-
+cipação social, contribuindo para a melhoria contínua dos serviços de saúde prestados pelo SUS 
+na cidade de São Paulo”. 
+O modelo descentralizado pode ser aplicado em municípios ou estados de qualquer por-
+te, bem como organizações privadas com mais de uma ouvidoria, de qualquer segmento, uma 
+vez que o objetivo é manter relações e intercâmbios entre unidades que partilham dos mesmos 
+interesses. 
+Documentos padronizados pela unidade gestora, tais como informações técnicas, procedi-
+mentos operacionais padrão (POPs) e cartas de serviços garantem a uniformidade nos fluxos e 
+processos de trabalho. Tornam-se relevantes ao serem replicados, desdobrados e atualizados 
+para todos os entes da Rede. Utilizados para alinhamento, são essenciais para legitimação dos 
+processos de trabalho e para a governança institucional.
+Por pertencer à administração pública, o arcabouço para o funcionamento da Rede pauta-se 
+em instrumentos legais. Cabe à instância gestora manter legislações atualizadas e coerentes com 
+demais normativas vigentes de outras esferas.
+Quanto à produção de conhecimento, merecem destaque instrumentos gerenciais desenvol-
+vidos: o Relatório Gerencial da Rede de Ouvidorias, o Boletim Ouvidoria em Dados, o Programa 
+de Avaliação da Qualidade e o Painel de Monitoramento. A divulgação sistemática e periódica das 
+informações contribui para identificar oportunidades de melhorias nos serviços públicos de saúde 
+ofertados aos usuários. A parceria profícua com a área da Comunicação proporciona alcance nas 
+mídias digitais.
+Reuniões com a Rede e com áreas técnicas, participação em congressos e outros fóruns 
+científicos, participação em prêmios regionais e nacionais e publicização dos dados na página 
+eletrônica da SMS trazem visibilidade à organização. 
+Metodologias com foco na qualidade mostram-se fundamentais para a consistência nos re-
+sultados. O processo de Acreditação e o Programa de Avaliação da Qualidade baseiam-se em 
+padrões de qualidade e dão o tom de credibilidade e uniformidade nos processos, e podem ser 
+
+
+=== PAGE 11 ===
+Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023  |  49
+ajustados para outras realidades. O desenvolvimento de soluções tecnológicas, como o Sistema 
+de Avaliação da Rede de Ouvidorias, pode impulsionar esse processo.
+Esses aspectos vão ao encontro da visão da Rede de Ouvidorias SUS da Cidade de São Paulo, 
+in verbis: “Ser referência de qualidade em ouvidoria pública de saúde e transparência passiva, for-
+talecer o acolhimento nas ouvidorias locais, orientar o cidadão na busca de seus direitos e deveres 
+e legitimar a ouvidoria como ferramenta de gestão”. 
+Encontros, capacitações e momentos avaliativos entre os entes da Rede possibilitam trocas de 
+experiências sobre situações cotidianas, tanto as exitosas quanto as desafiadoras, e alinham ques-
+tões técnicas que permeiam o dia a dia das equipes. São práticas necessárias para que os valores 
+definidos como primordiais despontem como verdadeiros compromissos. São eles, in verbis: “Ética, 
+confidencialidade, transparência, integração, trabalho em rede, padronização de processos, respei-
+to ao cidadão, às diretrizes do SUS e aos princípios da administração pública”. 
+As boas práticas na condução da gestão da Rede de Ouvidorias do SUS têm gerado resultados 
+positivos e podem inspirar outras organizações na busca do caminho da qualidade.
+Para finalizar, algumas aspirações são destacadas. Uma é a criação de uma carreira de ouvi-
+dor dentro da municipalidade, um grande desafio a ser alcançado que imputaria maior valorização, 
+legitimidade e empoderamento ao ouvidor. A outra é a estruturação de um Sistema Municipal de 
+Ouvidoria, que congregue as ouvidorias municipais das demais áreas, fortaleça a atuação das ouvi-
+dorias setoriais municipais e proporcione a valiosa troca de experiências entre órgãos que buscam 
+a participação da sociedade. 
+Para a concretização desses desafios é relevante a participação de outros entes institucionais 
+que trabalham com as ouvidorias, entre eles a Controladoria Geral do Município, por meio da Ouvi-
+doria Geral do Município, e órgãos do Poder Legislativo. Nesse sentido, sinaliza-se o Projeto de Lei 
+nº 401/2022, que tramita na Câmara dos Deputados.
+REFERÊNCIAS
+BRASIL. Decreto nº 4.726, de 9 de junho de 2003. Aprova a Estrutura Regimental e o Quadro Demonstrativo dos 
+Cargos em Comissão e das Funções Gratificadas do Ministério da Saúde, e dá outras providências. Brasília, DF, 
+2003. Disponível em: https://www.planalto.gov.br/ccivil_03/decreto/2003/D4726.htm. Acesso em: 16 ago. 2023.
+BRASIL. Decreto nº 11.358, de 1 de janeiro de 2023. Aprova a Estrutura Regimental e o Quadro Demonstrativo. 
+Brasília, DF, 2023. Disponível em: https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/decreto/d11358.htm. 
+Acesso em: 10 set. 2023.
+BRASIL. Lei nº 8.080, de 19 de setembro de 1990. Dispõe sobre as condições para a promoção, proteção e recupe-
+ração da saúde, a organização e o funcionamento dos serviços correspondentes e dá outras providências. Brasília, 
+DF, 1990. Disponível em: https://www.planalto.gov.br/ccivil_03/leis/l8080.htm. Acesso em: 15 ago. 2023.
+BRASIL. Lei nº 8.142, de 28 de dezembro de 1990. Dispõe sobre a participação da comunidade na gestão do Siste-
+ma Único de Saúde (SUS) e sobre as transferências intergovernamentais de recursos financeiros na área da saúde 
+e dá outras providências. Brasília, DF, 1990. Disponível em: https://www.planalto.gov.br/ccivil_03/leis/l8142.htm. 
+Acesso em: 15 ago. 2023.
+BRASIL. Projeto de Lei nº 4.068/2019. Estabelece normas para a instituição e a organização das ouvidorias públi-
+cas, regulamentando o § 3. do artigo 37 da Constituição Federal e o disposto na Lei nº 13.460, de 26 de junho de 
+2017. Brasília, DF, 2019. Disponível em: https://www.camara.leg.br/propostas-legislativas/2316575. Acesso em: 23 
+ago. 2023.
+
+
+=== PAGE 12 ===
+50  |  Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023
+CAVALCANTI, C. C.; FILATRO, A. C. Design thinking na educação presencial, a distância e corporativa. 1. ed. São 
+Paulo: Saraiva, 2016.
+GOVBR. Censo 2022 Panorama. IBGE – Instituto Brasileiro de Geografia e Estatística, 2022. Disponível em: https://
+censo2022.ibge.gov.br/panorama. Acesso em: 16 ago. 2023.
+HOLLIDAY, O. J. O que é trabalhar em rede? Rede de Educação para a Cidadania Global, 28 mar. 2016. Disponível 
+em: http://www.rede-ecg.pt/a/index.php/o-que-e-trabalhar-em-rede. Acesso em: 15 ago. 2023.
+PREFEITURA DO MUNICÍPIO DE SÃO PAULO. Boletim CEInfo – Saúde em Dados. Cidade de São Paulo – Saúde, 
+7 jul. 2023. Disponível em: https://www.prefeitura.sp.gov.br/cidade/secretarias/saude/epidemiologia_e_informacao/
+index.php?p=258529. Acesso em: 15 ago. 2023.
+PREFEITURA DO MUNICÍPIO DE SÃO PAULO. Diretrizes da Atenção Básica. Cidade de São Paulo – Saúde, 
+22 nov. 2022. Disponível em: https://www.prefeitura.sp.gov.br/cidade/secretarias/saude/atencao_basica/index.
+php?p=345314. Acesso em: 15 ago. 2023.
+PREFEITURA DO MUNICÍPIO DE SÃO PAULO. Humanização – Hospital Maternidade-Escola de Vila Nova Cacho-
+eirinha. Cidade de São Paulo – Saúde, 2009. Disponível em: https://www.prefeitura.sp.gov.br/cidade/secretarias/sau-
+de/hospital_maternidade_vila_nova_cachoeirinha/index.php?p=7607#ouvid. Acesso em: 14 ago. 2023.
+PREFEITURA DO MUNICÍPIO DE SÃO PAULO. Ouvidoria Central da Saúde. Cidade de São Paulo – Saúde, c. 
+2017. Disponível em: https://www.prefeitura.sp.gov.br/cidade/secretarias/saude/ouvidoria/index.php?p=5422. Acesso 
+em: 16 ago. 2023.
+PREFEITURA DO MUNICÍPIO DE SÃO PAULO. Ouvidoria Central da Saúde. Relatórios Gerenciais da Rede de 
+Ouvidorias SUS: Relatório Gerencial Anual da Rede de Ouvidoria SUS SMS PMSP 2022. Cidade de São Paulo 
+– Saúde, 30 jun. 2023. Disponível em: https://www.prefeitura.sp.gov.br/cidade/secretarias/saude/ouvidoria/index.
+php?p=267334. Acesso em: 15 ago. 2023.
+PREFEITURA DO MUNICÍPIO DE SÃO PAULO. Publicações CEInfo. Epidemiologia e Informação na Secretaria Mu-
+nicipal de Saúde de São Paulo no período de 1989 a 2001: elementos para a escrita de uma história. Cidade de São 
+Paulo – Saúde, São Paulo, p. 243, 12 set. 2016. Disponível em: https://www.prefeitura.sp.gov.br/cidade/secretarias/
+saude/epidemiologia_e_informacao/index.php?p=19289. Acesso em: 16 ago. 2023.
+SÃO PAULO (SP). Decreto nº 57.857, de 5 de setembro de 2017. Legislação Municipal, 2017. Disponível em: https://
+legislacao.prefeitura.sp.gov.br/leis/decreto-57857-de-05-de-setembro-de-2017. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Decreto nº 59.685, de 13 de agosto de 2020. Legislação Municipal, 2020. Disponível em: https://
+legislacao.prefeitura.sp.gov.br/leis/decreto-59685-de-13-de-agosto-de-2020. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Lei nº 15.764, de 27 de maio de 2013. Dispõe sobre a criação e alteração da estrutura organiza-
+cional das Secretarias Municipais que especifica, cria a Subprefeitura de Sapopemba e institui a Gratificação pela 
+Prestação de Serviços de Controladoria. Legislação Municipal, 2013. Disponível em: https://legislacao.prefeitura.
+sp.gov.br/busca?nr_lei=15.764&tipo%5B%5D=LEI. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Portaria nº 867/2008-SMS.G. Instala a ouvidoria Municipal de Saúde, vinculada ao Gabinete do 
+Secretário Municipal da Saúde. Legislação Municipal, 2008. Disponível em: https://legislacao.prefeitura.sp.gov.br/
+busca?nr_lei=867&ano-inicial=2008&ano-final=2008&tipo%5B%5D=PORTARIA. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Portaria nº 982/2015-SMS.G, de 9 de junho de 2015. Normatiza a Rede de Ouvidoria do Municí-
+pio de São Paulo. Legislação Municipal, 2015. Disponível em: http://legislacao.prefeitura.sp.gov.br/leis/portaria-se-
+cretaria-municipal-da-saude-982-de-10-de-junho-de-2015. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Portaria nº 138/2021-SMS.G, de 22 de março de 2021. Dispõe sobre a composição do Grupo de 
+Trabalho de Gestão de Qualidade e Acreditação Institucional de Ouvidorias do SUS, no âmbito da Secretaria Munici-
+pal de Saúde. Legislação Municipal, 2021. Disponível em: http://legislacao.prefeitura.sp.gov.br/leis/portaria-secreta-
+ria-municipal-da-saude-sms-138-de-22-de-marco-de-2021/consolidado. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Portaria nº 166/2021-SMS.G, de 14 de abril de 2021. Estabelece a estrutura da Rede de Ouvido-
+ria dos SUS da Cidade de São Paulo e seus macroprocessos de trabalho, os procedimentos de acesso à informação 
+no âmbito da Secretaria Municipal da Saúde e dá outras providências. Legislação Municipal, 2021. Disponível em: 
+https://legislacao.prefeitura.sp.gov.br/leis/portaria-secretaria-municipal-da-saude-sms-166-de-14-de-abril-de-2021. 
+Acesso em: 16 ago. 2023.
+SÃO PAULO (SP). Portaria nº 333/2022-SMS.G, de 31 de maio de 2022. Atualiza os indicadores de qualidade e 
+produção e institui indicadores de monitoramento para os contratos de gestão celebrados pela Secretaria Municipal 
+da Saúde com organizações sociais, bem como dispõe sobre o acompanhamento assistencial desses contratos. 
+Legislação Municipal, 2022. Disponível em: https://legislacao.prefeitura.sp.gov.br/leis/portaria-secretaria-municipal-
+-da-saude-sms-333-de-31-de-maio-de-2022/detalhe. Acesso em: 15 ago. 2023.
+SECRETARIA DE ESTADO DA SAÚDE DE SERGIPE. Histórico da Ouvidoria. Secretaria de Estado da Saúde de 
+Sergipe, 2020. Disponível em: https://saude.se.gov.br/historico-da-ouvidoria/. Acesso em: 15 ago. 2023.
+
+
+=== PAGE 13 ===
+Revista Científica da Associação Brasileira de Ouvidores/Ombudsman – Ano 7 – nº 6 – 2023  |  51
+APÊNDICE
+BRASIL. Portaria Interministerial nº 1.127, de 4 de agosto de 2015. Institui as diretrizes para a celebração dos 
+Contratos Organizativos de Ação Pública Ensino-Saúde (Coapes), para o fortalecimento da integração entre ensino, 
+serviços e comunidade no âmbito do Sistema Único de Saúde (SUS). Disponível em: https://www2.ufjf.br/icvgv//fi-
+les/2017/06/2.-Portaria-Interministerial-N%c2%ba-1.127-DE-04-de-Agosto-de-2015.pdf. Acesso em: 16 ago. 2023.
+MINISTÉRIO DA SAÚDE. Conheça a Ouvidoria – Apresentação. Governo Federal Brasileiro, 2022. Disponível em: 
+https://www.gov.br/saude/pt-br/canais-de-atendimento/ouvsus/conheca-a-ouvidoria/apresentacao. Acesso em: 14 
+ago. 2023.
+MOREIRA, M. R.; MOTA, J. I. J.; RIBEIRO, J. M. (org.). Acreditação institucional de ouvidorias do SUS no Brasil: 
+documentos de base. Rio de Janeiro: ENSP/Fiocruz, 2018.
+RIECHELMANN, J. C. Ouvidoria como recurso de gestão e gerência de organizações e sistemas de saúde: proposta 
+de desenvolvimento de nova tecnologia de apoio à decisão baseada em stakeholders. Dissertação (Mestrado em 
+Saúde Pública) – Faculdade de Saúde Pública, Universidade de São Paulo, 2009.
+SÃO PAULO (SP). Portaria nº 1.943/2014-SMS.G, de 16 de setembro de 2014. Institui a Coordenação Especial de 
+Comunicação (Cescom), no âmbito da Secretaria Municipal de Saúde, em substituição à Assessoria de Imprensa do 
+Gabinete, respondendo ainda pela coordenação da Rede de Ouvidorias da Secretaria da Saúde. Legislação Munici-
+pal, 2014. Disponível em: http://legislacao.prefeitura.sp.gov.br/leis/portaria-secretaria-municipal-da-saude-1943-de-
+-17-de-setembro-de-2014. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Portaria nº 1.875/2016-SMS.G, de 17 de outubro de 2016. Atribui funções da Rede de Ouvidorias 
+SUS do Município de São Paulo. Legislação Municipal, 2016. Disponível em: http://legislacao.prefeitura.sp.gov.br/
+leis/portaria-secretaria-municipal-da-saude-sms-1875-de-17-de-outubro-de-2016. Acesso em: 15 ago. 2023.
+SÃO PAULO (SP). Portaria nº 522/2018-SMS.G, de 21 de junho de 2018. Estabelece normas básicas para participa-
+ção, proteção e defesa dos direitos do usuário dos serviços públicos prestados direta ou indiretamente pela Secreta-
+ria Municipal da Saúde de São Paulo. Legislação Municipal, 2018. Disponível em: http://legislacao.prefeitura.sp.gov.
+br/leis/portaria-secretaria-municipal-da-saude-sms-522-de-21-de-junho-de-2018/consolidado. Acesso em: 15 ago. 
+2023.
+SÃO PAULO (SP). Portaria nº 62/2019-SMS.G, de 24 de janeiro de 2019. Altera a denominação do Centro de 
+Desenvolvimento, Ensino e Pesquisa em Saúde (Cedeps), institui as Escolas Municipais de Saúde Regionais, bem 
+como os procedimentos para adesão e normas para estágios obrigatórios e residências para a celebração dos 
+Contratos Organizativos de Ação Pública Ensino-Saúde (Coapes) no município de São Paulo junto às unidades da 
+Rede de Assistência da Secretaria Municipal da Saúde (SMS). Legislação Municipal, 2019. Disponível em: https://
+legislacao.prefeitura.sp.gov.br/leis/portaria-secretaria-municipal-da-saude-sms-62-de-24-de-janeiro-de-2019. Acesso 
+em: 16 ago. 2023.
+SÃO PAULO (SP). Portaria nº 99/2021-SMS.G, de 9 de março de 2021. Autoriza a utilização dos equipamentos 
+públicos de saúde municipais como campos de prática pelas instituições públicas de saúde municipais e de outros 
+entes federativos que possuam programas de residência médica e multiprofissional, assegurada a reciprocidade às 
+instituições de saúde municipais. Legislação Municipal, 2021. Disponível em: https://legislacao.prefeitura.sp.gov.br/
+leis/portaria-secretaria-municipal-da-saude-sms-99-de-9-de-marco-de-2021. Acesso em: 16 ago. 2023.

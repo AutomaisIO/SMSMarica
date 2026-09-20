@@ -40,6 +40,9 @@ flowchart TB
 | `SMSMais.front` | Painel administrativo web (operador + gestor), dashboards | Uso por paciente ou motorista final |
 | `SMSMais.cidadao.app` | App do paciente/acompanhante — cadastro, agenda, confirmação, ETA, avaliação | Cadastros administrativos, edição de rotas |
 | `SMSMais.agente.app` | App do motorista (Android) — rotas do dia, postagem de GPS, geofencing, navegação externa | Cadastros administrativos |
+| `SMSMais.ouvidoria.pwa` (planejado, fase 2 do [ADR-0060](./adr/0060-modulo-ouvidoria.md)) | Site público da ouvidoria da saúde por instância (`ouvidoria.<domínio>`): registrar sem login, acompanhar por protocolo + código, complementar, recorrer, responder pesquisa | Tramitação (é do painel); WhatsApp (é do Automais.Zap) |
+
+O **módulo de Ouvidoria** (ADR-0060) vive dentro do `SMSMais.server` (`Core/Ouvidoria/`, tabelas `ouvidoria_*`) e do painel (`features/ouvidoria/`); o levantamento, o contrato da API e o andamento estão em [`SMSMais.ouvidoria/`](../SMSMais.ouvidoria/README.md).
 
 Todos os clientes consomem **exclusivamente** a API do `SMSMais.server`. Clientes não conversam entre si nem acessam o banco diretamente.
 

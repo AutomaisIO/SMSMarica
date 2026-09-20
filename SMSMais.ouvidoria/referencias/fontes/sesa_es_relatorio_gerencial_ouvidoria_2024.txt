@@ -1,0 +1,5524 @@
+
+=== PAGE 1 ===
+0 
+ 
+  
+ 
+ 
+RELATÓRIO GERENCIAL 
+Ouvidoria SUS - 2024 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+SECRETARIA DE ESTADO DA SAÚDE DO ESPÍRITO SANTO 
+OUVIDORIA DO SUS  
+ 
+ 
+ 
+ 
+ 
+ 
+                          05 de Maio de 2025
+
+
+=== PAGE 2 ===
+GOVERNADOR 
+Renato Casagrande 
+ 
+ 
+SECRETÁRIO DE ESTADO DA SAÚDE 
+Miguel Paulo Duarte Neto 
+ 
+ 
+SUBSECRETÁRIO DE PLANEJAMENTO E TRANSPARÊNCIA DA SAÚDE 
+Francisco José Dias da Silva 
+ 
+ 
+OUVIDOR DA SECRETARIA DE ESTADO DA SAÚDE 
+Terezinha do Carmo Alves Bolzani  
+ 
+ 
+EQUIPE DA OUVIDORIA DO SUS DA SECRETARIA DE ESTADO DA SAÚDE 
+Leyliany Moraes da Silva 
+Luiz Claudio Simonassi Caldas  
+Neire Maria Silva da Conceição 
+Lara Aparecida Marques Santana   
+Bruna Guilherme Alves 
+Thais Maria Paulo da Luz 
+Andressa Cristina Araujo da Silva 
+Andrea Moulin Ribeiro 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+=== PAGE 3 ===
+2 
+ 
+Conteúdo 
+ 
+1 - Apresentação ................................................................................................................................................................. 4 
+2 - A Ouvidoria da Secretaria de Estado da Saúde do Espirito Santo ........................................................... 4 
+2.1 - Organograma ................................................................................................................................................................ 5 
+2.2 - Competência .................................................................................................................................................................. 6 
+2.3 - Canais de Comunicação ............................................................................................................................................ 6 
+3 - Legislação ........................................................................................................................................................................ 7 
+4 -  Classificação e Tipificação .................................................................................................................................... 10 
+5 - Analise das Manifestações .................................................................................................................................... 11 
+5.1 – Quantidade de manifestações registradas/recebidas na Ouvidoria SUS SESA/ES por mês .... 11 
+5.1.2  Total Geral ................................................................................................................................................................. 12 
+5.2 – Comparativo do total de manifestações recebidas em 2024 com anos anteriores...................... 13 
+5.3 Manifestações recebidas por Municipio ............................................................................................................ 14 
+5.4 – Manifestações por Canal de Atendimento .................................................................................................... 17 
+5.5 – Manifestação por Classificação e Tipificação ............................................................................................... 17 
+5.5.1 – Assuntos das Manifestações ............................................................................................................................ 18 
+5.5.1.1 - Denúncias ............................................................................................................................................................. 19 
+Denuncias registradas no sistema OuvidorSUS em 2024 ................................................ 19 
+Denuncias registradas no sistema E-OUV em 2024 ........................................................... 21 
+Ações Propostas ................................................................................................................................ 24 
+5.5.1.2 - Informações ........................................................................................................................................................ 25 
+Informações registradas no sistema OuvidorSUS em 2024............................................ 25 
+Informações registradas no sistema E-OUV em 2024 ....................................................... 27 
+Ações Propostas ................................................................................................................................ 29 
+5.5.1.3 - Reclamações........................................................................................................................................................ 29 
+Reclamações registradas no sistema OuvidorSUS em 2024 ........................................... 30 
+Reclamações registradas no sistema E-OUV em 2024 ...................................................... 41 
+Ações Propostas ................................................................................................................................ 42 
+5.5.1.4 - Solicitações .......................................................................................................................................................... 44 
+
+
+=== PAGE 4 ===
+3 
+ 
+Solicitações registradas no sistema OuvidorSUS em 2024 ............................................. 44 
+Ações Propostas ................................................................................................................................ 57 
+5.5.1.5 - Elogios ................................................................................................................................................................... 58 
+Elogios registrados no sistema OuvidorSUS em 2024 ...................................................... 58 
+Elogios registrados no sistema E-OUV em 2024 ................................................................. 59 
+Ações Propostas ................................................................................................................................ 60 
+5.5.1.6 - Sugestões .............................................................................................................................................................. 61 
+Sugestões registradas no sistema OuvidorSUS em 2024 ................................................. 61 
+Sugestões registradas no sistema E-OUV em 2024 ............................................................ 62 
+Ações Propostas ................................................................................................................................ 63 
+5.5.1.7 – Comunicação de Irregularidade ................................................................................................................. 63 
+Ações Propostas ................................................................................................................................ 67 
+6. Sigilo e Anonimato ..................................................................................................................................................... 67 
+7. Tempo de Resposta ................................................................................................................................................... 68 
+Projeto de Implantação de Pesquisa de Satisfação do Usuario do SUS no Espirito Santo ................ 70 
+Eventos ................................................................................................................................................................................ 71 
+Conclusões e Considerações Finais ......................................................................................................................... 84 
+ 
+
+
+=== PAGE 5 ===
+4 
+ 
+1 - Apresentação 
+ 
+A Ouvidoria da Secretaria de Estado da Saúde do Espírito Santo (SESA-ES) exerce papel 
+estratégico como instrumento de participação social e mecanismo de gestão pública, 
+consolidando-se como canal direto de diálogo entre a população e o órgão gestor. Por 
+meio desse espaço, é possível identificar demandas, subsidiar o aprimoramento 
+contínuo dos serviços de saúde e assegurar a defesa dos direitos dos cidadãos, 
+fortalecendo a transparência e a accountability no âmbito da administração estadual. 
+A efetividade da atuação da Ouvidoria está diretamente vinculada à sua capacidade de 
+transformar manifestações em informações estratégicas, capazes de orientar a 
+formulação de políticas públicas, a definição de prioridades e a implementação de ações 
+voltadas à melhoria da saúde em suas diversas dimensões. Para tanto, o tratamento 
+qualificado, a análise detalhada e a sistematização das manifestações constituem etapas 
+essenciais para a produção de respostas mais ágeis, consistentes e fundamentadas, 
+contribuindo para o aperfeiçoamento da gestão e para a elevação da qualidade dos 
+serviços prestados à população capixaba. 
+Este relatório consolida os resultados referentes ao exercício de 2024, em conformidade 
+com o art. 14, inciso II, da Lei nº 13.460/2017, apresentando os principais dados e 
+análises das manifestações recebidas, bem como recomendações estratégicas para o 
+fortalecimento da gestão pública em saúde. As informações foram extraídas 
+prioritariamente do sistema informatizado OuvidorSUS, regulamentado pela Portaria 
+GM/MS nº 8/2007, destinado ao registro, tratamento e acompanhamento das 
+manifestações recebidas pela Ouvidoria da SESA. Complementarmente, foram 
+incorporados dados do sistema E-OUV, utilizado pela Ouvidoria Geral do Estado do 
+Espírito Santo, possibilitando uma visão abrangente e integrada das demandas, 
+assegurando consistência, confiabilidade e efetividade na análise e no encaminhamento 
+das informações. 
+ 
+2 - A Ouvidoria da Secretaria de Estado da Saúde do Espirito Santo 
+ 
+A Ouvidoria do SUS constitui-se em um importante canal de comunicação entre a 
+população capixaba e a gestão da Secretaria de Estado da Saúde. Seu papel central é 
+acolher manifestações de usuários(as), trabalhadores(as) e demais atores do Sistema 
+
+
+=== PAGE 6 ===
+5 
+ 
+Único de Saúde, possibilitando a avaliação dos serviços prestados e a identificação das 
+principais necessidades da sociedade. 
+Além do recebimento de manifestações, a Ouvidoria também desempenha função relevante na 
+disseminação de informações em saúde, orientando sobre doenças, acesso a serviços, canais de 
+atendimento, locais de marcação de consultas, entre outros. 
+Todos os registros são realizados por meio do sistema OuvidorSUS, desenvolvido pelo Ministério 
+da Saúde e regulamentado pela Portaria GM/MS nº 8, de 25 de maio de 2007, destinado ao 
+atendimento da rede nacional de Ouvidorias do SUS. Complementarmente, o sistema E-OUV é 
+utilizado para o recebimento de manifestações via Ouvidoria Geral do Estado do Espírito Santo, 
+ampliando a integração e a abrangência do serviço. 
+A gestão qualificada dessas informações permite a elaboração de relatórios gerenciais 
+consistentes, capazes de retratar a realidade local e subsidiar gestores na tomada de decisão para 
+o aprimoramento das políticas públicas de saúde. Além disso, a Ouvidoria do SUS desenvolve ações 
+ativas, como atividades itinerantes em seu território de atuação e a realização de pesquisas sobre 
+participação, satisfação e avaliação de práticas, ações e serviços de saúde. 
+ 
+2.1 - Organograma 
+*adaptação 
+ 
+A Ouvidoria do SUS está ligada a Subsecretaria de Estado de Planejamento e 
+Transparência da Saúde, com o importante papel de produzir informações para a gestão 
+e, principalmente para o planejamento, na perspectiva da tomada de decisão, além de 
+contribuir para práticas de transparência na gestão pública e da garantia do direito à 
+saúde. 
+As demais subsecretarias e setores seguem no organograma, foram excluídos apenas 
+para facilitar a visualização do setor Ouvidoria. 
+
+
+=== PAGE 7 ===
+6 
+ 
+ 
+2.2 - Competência 
+ 
+É competência da Ouvidoria SUS SESA:  
+I – priorizar os princípios e as diretrizes do SUS, constituindo-se em instrumento 
+garantidor da democratização e da ampliação dos direitos ao cidadão;  
+II – receber as manifestações dos cidadãos relativas aos serviços prestados pelo SUS e 
+encaminhá-las às áreas competentes;  
+III – acompanhar o tratamento e a efetiva conclusão das manifestações de usuários no 
+âmbito da SESA;  
+IV – estimular e apoiar a criação de estruturas descentralizadas de Ouvidorias em Saúde; 
+e  
+V – atuar de forma integrada à Ouvidoria-Geral do SUS (OUVSUS), vinculada ao 
+Ministério da Saúde e à Ouvidoria-Geral do Estado do Espirito Santo, vinculada à 
+Secretaria de Estado de Controle e Transparência – SECONT 
+ 
+2.3 - Canais de Comunicação 
+ 
+Para se manifestar os(as) cidadãos(ãs) podem acessar diversos canais: 
+ 
+ Site da Secretaria de Estado da Saúde – Fale 
+Conosco. 
+ Telefones: 3347-5732 e 3347-5733. 
+ E-mail: ouvidoriasus@saude.es.gov.br 
+ Presencialmente na sede da Secretaria de 
+Estado da Saúde – Enseada do Suá. 
+ Disque Saúde 136 – Tridígito Gratuito do 
+Ministério da Saúde que registra manifestações no 
+Sistema OuvidorSUS e encaminha para a rede de 
+Ouvidorias do Brasil. 
+ 
+Site do Ministério da Saúde – Formulário Web – Contatos. 
+ 
+Sistema E-OUV – Ouvidoria Geral do Estado. 
+ 
+ 
+ 
+
+
+=== PAGE 8 ===
+7 
+ 
+3 - Legislação 
+A legislação que compete às Ouvidorias do SUS tem sua gênese na Constituição  
+Cidadã de 1988: 
+Art. 198. As ações e serviços públicos de saúde integram uma rede regionalizada e 
+hierarquizada e constituem um sistema único, organizado de acordo com as seguintes 
+diretrizes: 
+I - descentralização, com direção única em cada esfera de governo; 
+II - atendimento integral, com prioridade para as atividades preventivas, sem prejuízo dos 
+serviços assistenciais; 
+III - participação da comunidade. 
+ 
+A lei Orgânica do Sistema Único de Saúde, Lei Federal nº 8.080 de 1990, trouxe em seu 
+artigo 7º que as ações do Sistema Único de Saúde (SUS) serão desenvolvidas de acordo 
+com as diretrizes previstas no art. 198 da Constituição Federal, obedecendo ainda a 
+determinados princípios, dentre eles o da participação da comunidade. 
+O Decreto Presidencial nº 7.508 de 28 de junho de 2011, na perspectiva do Contrato 
+Organizativo de Ação Pública de Saúde, apresentava as diretrizes básicas para fins de 
+garantia da gestão participativa: 
+I - estabelecimento de estratégias que incorporem a avaliação do usuário das ações e dos 
+serviços, como ferramenta de sua melhoria; 
+II - apuração permanente das necessidades e interesses do usuário; e 
+III - publicidade dos direitos e deveres do usuário na saúde em todas as unidades de saúde do 
+SUS, inclusive nas unidades privadas que dele participem de forma complementar. 
+ 
+A Portaria/GM/MS nº 2.416 de 7 de novembro de 2014 estabeleceu diretrizes para a 
+organização e funcionamento dos serviços de ouvidoria do Sistema Único de Saúde (SUS) 
+e suas atribuições: 
+Art. 2º Os serviços de ouvidoria do SUS têm como objetivo aprimorar o acesso, pelos cidadãos, às 
+informações sobre o direito à saúde e ao seu exercício e possibilitar a avaliação permanente dos 
+serviços de saúde, com vistas ao aprimoramento da gestão do SUS. 
+Art. 3º A organização e funcionamento dos serviços de ouvidoria do SUS observarão as seguintes 
+diretrizes: 
+I - defesa dos direitos da saúde, visando contribuir para o fortalecimento da cidadania e da 
+transparência; 
+II - reconhecimento dos cidadãos, sem qualquer distinção, como sujeitos de direito; 
+III - objetividade e imparcialidade no tratamento das informações, sugestões, elogios, 
+reclamações e denúncias recebidas dos usuários do SUS; 
+IV - zelo pela celeridade e qualidade das respostas às demandas dos usuários do SUS; 
+V - defesa da ética e da transparência nas relações entre administração pública e os cidadãos; 
+VI - sigilo da fonte quando o interessado solicitar a preservação de sua identidade; e 
+
+
+=== PAGE 9 ===
+8 
+ 
+VII - identificação das necessidades e demandas da sociedade para o setor da saúde, tanto na 
+dimensão coletiva, quanto na individual, transformando-as em suporte estratégico à tomada 
+de decisões no campo da gestão. 
+Art. 4º Os serviços de ouvidoria do SUS serão estruturados nos âmbitos Federal, Distrital, Estadual 
+e Municipal. 
+Parágrafo único. Os serviços de ouvidoria do SUS poderão ser estruturados no âmbito de 
+ouvidorias gerais, de acordo com a oportunidade e conveniência dos respectivos entes 
+federativos. 
+Art. 5º Compete aos serviços de ouvidoria do SUS no âmbito de cada ente federativo: 
+I - analisar, de forma permanente, as necessidades e os interesses dos usuários do SUS, 
+recebidos por meio de sugestões, denúncias, elogios e reclamações relativas às ações e 
+serviços de saúde prestados pelo SUS; 
+II - detectar, mediante procedimentos de ouvidoria, as reclamações, sugestões, elogios e 
+denúncias, para subsidiar a avaliação das ações e serviços de saúde pelos órgãos 
+competentes; 
+III - encaminhar as denúncias aos órgãos e unidades da Secretaria de Saúde ou congêneres 
+para as providências necessárias; 
+IV - realizar a mediação administrativa junto às unidades administrativas do órgão com 
+vistas à correta, objetiva e ágil instrução das demandas apresentadas pelos cidadãos, bem 
+como a sua conclusão dentro do prazo estabelecido para resposta ao demandante; 
+V - informar, sensibilizar e orientar o cidadão para a participação e o controle social dos 
+serviços públicos de saúde; 
+VI - informar os direitos e deveres dos usuários do SUS; e 
+VII - elaborar relatórios contendo subsídios que contribuam para os gestores do SUS 
+solucionarem, minimizarem e equacionarem as deficiências do SUS identificadas e apontadas 
+pelo cidadão. 
+Art. 6º Os gestores de saúde deverão utilizar os dados dos serviços de ouvidoria do SUS como 
+ferramenta para o estabelecimento de estratégias da melhoria das ações e dos serviços de saúde 
+prestados pelo SUS. 
+Art. 7º Com a finalidade de melhor proteger os direitos fundamentais dos cidadãos, os serviços de 
+ouvidoria deverão, sempre que possível, atuar em cooperação com os órgãos e entidades de defesa 
+dos direitos do cidadão. 
+ 
+A Lei nº 13.460/2017, atualmente em vigor para todos os entes da federação, dispõe sobre 
+participação, proteção e defesa dos direitos dos(as) usuários(as) dos serviços públicos da 
+administração pública. Trouxe em seu bojo alguns pontos que dialogam diretamente com 
+as Ouvidorias: 
+ 
+CAPÍTULO III - DAS MANIFESTAÇÕES DOS USUÁRIOS DE SERVIÇOS PÚBLICOS 
+ 
+Art. 9º Para garantir seus direitos, o usuário poderá apresentar manifestações perante a 
+administração pública acerca da prestação de serviços públicos. 
+
+
+=== PAGE 10 ===
+9 
+ 
+Art. 10. A manifestação será dirigida à ouvidoria do órgão ou entidade responsável e conterá a 
+identificação do requerente. 
+ 
+CAPÍTULO IV - DAS OUVIDORIAS 
+Art. 13. As ouvidorias terão como atribuições precípuas, sem prejuízo de outras estabelecidas 
+em regulamento específico: 
+I - promover a participação do usuário na administração pública, em cooperação com outras 
+entidades de defesa do usuário; 
+II - acompanhar a prestação dos serviços, visando a garantir a sua efetividade; III - propor 
+aperfeiçoamentos na prestação dos serviços; 
+IV - auxiliar na prevenção e correção dos atos e procedimentos incompatíveis com os 
+princípios estabelecidos nesta Lei; 
+V - propor a adoção de medidas para a defesa dos direitos do usuário, em observância às 
+determinações desta Lei; 
+VI - receber, analisar e encaminhar às autoridades competentes as manifestações, 
+acompanhando o tratamento e a efetiva conclusão das manifestações de usuário perante 
+órgão ou entidade a que se vincula; e 
+VII - promover a adoção de mediação e conciliação entre o usuário e o órgão ou a entidade 
+pública, sem prejuízo de outros órgãos competentes. 
+Art. 14. Com vistas à realização de seus objetivos, as ouvidorias deverão: 
+I - receber, analisar e responder, por meio de mecanismos proativos e reativos, as 
+manifestações encaminhadas por usuários de serviços públicos; e 
+II - elaborar, anualmente, relatório de gestão, que deverá consolidar as informações 
+mencionadas no inciso I, e, com base nelas, apontar falhas e sugerir melhorias na prestação 
+de serviços públicos. 
+Art. 15. O relatório de gestão de que trata o inciso II do caput do art. 14 deverá indicar, ao menos: 
+I - o número de manifestações recebidas no ano anterior; 
+II - os motivos das manifestações; 
+III - a análise dos pontos recorrentes; e 
+IV - as providências adotadas pela administração pública nas soluções apresentadas. 
+Parágrafo único. O relatório de gestão será: 
+I - encaminhado à autoridade máxima do órgão a que pertence a unidade de ouvidoria; e II 
+- disponibilizado integralmente na internet. 
+Art. 16. A ouvidoria encaminhará a decisão administrativa final ao usuário, observado o prazo 
+de trinta dias, prorrogável de forma justificada uma única vez, por igual período. 
+Parágrafo único. Observado o prazo previsto no caput, a ouvidoria poderá solicitar 
+informações e esclarecimentos diretamente a agentes públicos do órgão ou entidade a que se 
+vincula, e as solicitações devem ser respondidas no prazo de vinte dias, prorrogável de forma 
+justificada uma única vez, por igual período. 
+Art. 17. Atos normativos específicos de cada Poder e esfera de Governo disporão sobre a 
+organização e o funcionamento de suas ouvidorias. 
+
+
+=== PAGE 11 ===
+10 
+ 
+ 
+No Estado do Espírito Santo, o Decreto Estadual 5898-R, de 06 de Dezembro de 2024, 
+dispõe sobre a estruturação do Sistema Integrado de Ouvidoria. 
+O aparato legal definiu, dentre outras funções, a necessidade do recebimento das 
+manifestações, de sua análise e da implementação de melhorias, por meio das 
+informações recebidas da participação da comunidade no SUS. 
+ 
+4 -  Classificação e Tipificação 
+ 
+Toda manifestação registrada na Ouvidoria é classificada conforme seu conteúdo e tipologia, 
+garantindo o direcionamento adequado do tratamento e o controle das informações. Esse 
+processo favorece análises consistentes, a produção de indicadores estratégicos e a identificação 
+de tendências, subsidiando a tomada de decisão e o aprimoramento das políticas públicas de 
+saúde.
+ 
+SUGESTÃO – apresentação de ideia ou formulação de proposta de aprimoramento de 
+práticas, ações e serviços do SUS; 
+INFORMAÇÃO – requisição de informações a respeito de ações, programas, doenças, 
+assistência à saúde ou do SUS., além de dados voltados à Lei de Acesso à Informação; 
+ELOGIO – demonstração de apreço, reconhecimento ou satisfação sobre o serviço ou 
+atendimento; 
+SOLICITAÇÃO – manifestação que, embora também possa indicar insatisfação, 
+necessariamente contém um requerimento de atendimento ou acesso às ações e aos 
+serviços de saúde; 
+RECLAMAÇÃO – desagrado, queixa ou crítica sobre um serviço recebido ou ação/omissão 
+da administração/servidor público, considerada ineficiente ou ineficaz, sem conteúdo de 
+requerimento; 
+DENÚNCIA – apontamento de irregularidades ocorridas, exercício negligente ou abusivo 
+de cargos, empregos e funções, infrações disciplinares ou prática de atos de corrupção, ou 
+improbidade administrativa que venham ferir a ética e a legislação.  
+
+
+=== PAGE 12 ===
+11 
+ 
+COMUNICAÇÃO DE IRREGULARIDADE – é a denúncia cadastrada sob anonimato. 
+ 
+ 
+ 
+ 
+5 - Analise das Manifestações 
+ 
+ 
+A manifestação constitui o principal objeto de atuação das Ouvidorias do SUS, 
+representando uma fonte estratégica de informações sobre as percepções, demandas e 
+necessidades da população. Registradas nos sistemas OuvidorSUS e E-OUV, essas 
+manifestações são organizadas e analisadas de forma sistemática, permitindo a geração 
+de indicadores que subsidiam a tomada de decisão, orientam o aprimoramento dos 
+serviços de saúde e fortalecem a transparência e o controle social. As informações 
+coletadas estão apresentadas a seguir em forma de tabelas, oferecendo uma visão 
+consolidada das demandas e resultados obtidos. 
+ 
+5.1 – Quantidade de manifestações registradas/recebidas na 
+Ouvidoria SUS SESA/ES por mês 
+ 
+
+
+=== PAGE 13 ===
+12 
+ 
+ 
+ 
+No No ano de 2024, a Ouvidoria da Secretaria de Estado da Saúde do Espírito Santo 
+(SESA/ES) registrou um número expressivo de manifestações por meio dos canais 
+disponíveis, totalizando 5.292 registros pelo sistema E-OUV ES, gerido pela Ouvidoria 
+Geral do Estado, e 7.854 pelo sistema OuvidorSUS, integrado à rede nacional de 
+Ouvidorias do SUS. Esse crescimento reflete as estratégias implementadas para a 
+divulgação e fortalecimento do serviço junto a municípios, hospitais e demais unidades 
+de saúde, ampliando a participação e o engajamento da população. 
+Para assegurar a confiabilidade e a precisão das informações, a base de dados do sistema 
+OuvidorSUS passou por tratamento específico, incluindo a exclusão de registros 
+duplicados, permitindo que os dados consolidados reflitam com fidelidade as demandas 
+da população e sirvam como subsídio estratégico para a tomada de decisão e o 
+aprimoramento contínuo dos serviços de saúde prestados pelo Estado. 
+ 
+5.1.2  Total Geral  
+ 
+Total de manifestações registradas nos sistemas informatizados utilizados pela Ouvidoria 
+do SUS da Secretaria de Estado da Saúde (E-OUV e OuvidorSUS): 
+ 
+Tabela 3: Total Geral de Manifestações recebidas  
+Classificações 
+Quantitativo 
+SOLICITAÇÃO 
+6257 
+RECLAMAÇÃO 
+4589 
+DENÚNCIA 
+1637 
+INFORMAÇÃO 
+313 
+COMUNICAÇÃO DE IRREGULARIDADE 
+159 
+
+
+=== PAGE 14 ===
+13 
+ 
+ELOGIO 
+142 
+SUGESTÃO 
+49 
+Total Geral  
+13146 
+ 
+ 
+5.2 – Comparativo do total de manifestações recebidas em 2024 com 
+anos anteriores 
+ 
+
+
+=== PAGE 15 ===
+14 
+ 
+      
+ 
+ 
+A série histórica de manifestações evidencia um crescimento progressivo ao longo dos 
+anos. Esse incremento pode ser atribuído, principalmente, à melhoria no tratamento das 
+manifestações no sistema OuvidorSUS, implementada a partir de 2019 uma vez que, nos 
+anos anteriores os registros por meio de formulário web eram pouco utilizados ou não 
+utilizados pela Ouvidoria da SESA. 
+Adicionalmente, a ampliação da divulgação dos canais de acesso à Ouvidoria, promovida 
+em eventos regionais e municipais, contribuiu para o fortalecimento da participação 
+social, refletindo diretamente no aumento das manifestações. A qualificação do trabalho 
+em rede, com a organização e o encaminhamento adequados das demandas para 
+municípios e serviços específicos, também impactou positivamente o crescimento 
+registrado em 2019. 
+A partir de 2020/2021, observou-se um aumento mais expressivo das manifestações, 
+possivelmente associado à pandemia de COVID-19 e às estratégias de comunicação e 
+divulgação dos canais de Ouvidoria do Estado, tanto da Ouvidoria-Geral quanto da 
+Ouvidoria do SUS da SESA. Nos anos subsequentes, observa-se uma tendência de 
+estabilização, à medida que os serviços e canais de atendimento se consolidam. 
+ 
+5.3 Manifestações recebidas por Municipio 
+ 
+3548
+6521
+11224
+11391
+12344
+13146
+2019
+2020
+2021
+2022
+2023
+2024
+TOTAIS GERAIS NOS ANOS ANTERIORES
+
+
+=== PAGE 16 ===
+15 
+ 
+As manifestações registradas no sistema E-OUV concentram-se principalmente na 
+Região Metropolitana e nos municípios mais populosos, refletindo a distribuição 
+populacional e a complexidade dos serviços de saúde. O Sistema OuvidorSUS, 
+desenvolvido pelo Ministério da Saúde, integra e padroniza o atendimento da rede 
+nacional 
+de 
+Ouvidorias 
+do 
+SUS, 
+permitindo 
+registro, 
+encaminhamento, 
+acompanhamento e análise das demandas em nível nacional. 
+Mesmo com foco na população capixaba, a SESA eventualmente recebe manifestações de 
+cidadãos de outros estados, que são analisadas, registradas e, quando necessário, 
+reencaminhadas ao ente competente, garantindo devolutiva dentro dos prazos. A seguir, 
+apresentamos as manifestações detalhadas por município, oferecendo uma visão 
+territorial que subsidia o aprimoramento contínuo das políticas e serviços de saúde 
+Tabela 5: Municípios - 2025. 
+Municipio 
+Quantitativo 
+Percentual 
+VILA VELHA 
+2908 
+22,12% 
+VITORIA 
+2180 
+16,58% 
+SERRA 
+1842 
+14,01% 
+CARIACICA 
+1472 
+11,20% 
+Todo o Estado 
+975 
+7,42% 
+MUNICIPIOS DE OUTROS ESTADOS 
+641 
+4,88% 
+GUARAPARI 
+357 
+2,72% 
+CACHOEIRO DE ITAPEMIRIM 
+334 
+2,54% 
+SAO MATEUS 
+295 
+2,24% 
+NÃO ESPECIFICADO 
+220 
+1,67% 
+VIANA 
+188 
+1,43% 
+COLATINA 
+184 
+1,40% 
+LINHARES 
+164 
+1,25% 
+São José do Calçado 
+128 
+0,97% 
+BAIXO GUANDU 
+103 
+0,78% 
+BARRA DE SAO FRANCISCO 
+81 
+0,62% 
+ARACRUZ 
+80 
+0,61% 
+SANTA MARIA DE JETIBA 
+47 
+0,36% 
+CONCEICAO DA BARRA 
+42 
+0,32% 
+ITAPEMIRIM 
+42 
+0,32% 
+NOVA VENECIA 
+40 
+0,30% 
+MARECHAL FLORIANO 
+37 
+0,28% 
+CASTELO 
+36 
+0,27% 
+MARATAIZES 
+35 
+0,27% 
+JERONIMO MONTEIRO 
+34 
+0,26% 
+ANCHIETA 
+33 
+0,25% 
+MUQUI 
+32 
+0,24% 
+SANTA TERESA 
+32 
+0,24% 
+VENDA NOVA DO IMIGRANTE 
+32 
+0,24% 
+GUACUI 
+31 
+0,24% 
+DOMINGOS MARTINS 
+30 
+0,23% 
+
+
+=== PAGE 17 ===
+16 
+ 
+FUNDAO 
+29 
+0,22% 
+AFONSO CLAUDIO 
+26 
+0,20% 
+SAO GABRIEL DA PALHA 
+25 
+0,19% 
+ALEGRE 
+24 
+0,18% 
+PINHEIROS 
+23 
+0,17% 
+ITAGUACU 
+22 
+0,17% 
+PIUMA 
+20 
+0,15% 
+JAGUARE 
+18 
+0,14% 
+JOAO NEIVA 
+16 
+0,12% 
+PANCAS 
+16 
+0,12% 
+MIMOSO DO SUL 
+15 
+0,11% 
+ECOPORANGA 
+13 
+0,10% 
+IBIRACU 
+13 
+0,10% 
+IUNA 
+12 
+0,09% 
+IBATIBA 
+11 
+0,08% 
+PEDRO CANARIO 
+11 
+0,08% 
+VARGEM ALTA 
+11 
+0,08% 
+SOORETAMA 
+10 
+0,08% 
+AGUIA BRANCA 
+9 
+0,07% 
+BREJETUBA 
+9 
+0,07% 
+RIO BANANAL 
+9 
+0,07% 
+SANTA LEOPOLDINA 
+9 
+0,07% 
+VILA VALERIO 
+9 
+0,07% 
+ITARANA 
+8 
+0,06% 
+MONTANHA 
+8 
+0,06% 
+MUNIZ FREIRE 
+8 
+0,06% 
+BOA ESPERANCA 
+7 
+0,05% 
+BOM JESUS DO NORTE 
+7 
+0,05% 
+AGUA DOCE DO NORTE 
+6 
+0,05% 
+ATILIO VIVACQUA 
+6 
+0,05% 
+CONCEICAO DO CASTELO 
+6 
+0,05% 
+ICONHA 
+6 
+0,05% 
+MANTENOPOLIS 
+6 
+0,05% 
+SAO ROQUE DO CANAA 
+6 
+0,05% 
+ALFREDO CHAVES 
+5 
+0,04% 
+IRUPI 
+5 
+0,04% 
+LARANJA DA TERRA 
+5 
+0,04% 
+MUCURICI 
+5 
+0,04% 
+PONTO BELO 
+5 
+0,04% 
+PRESIDENTE KENNEDY 
+5 
+0,04% 
+DIVINO DE SAO LOURENCO 
+4 
+0,03% 
+DORES DO RIO PRETO 
+4 
+0,03% 
+SAO DOMINGOS DO NORTE 
+4 
+0,03% 
+ALTO RIO NOVO 
+3 
+0,02% 
+APIACA 
+3 
+0,02% 
+RIO NOVO DO SUL 
+3 
+0,02% 
+IBITIRAMA 
+2 
+0,02% 
+MARILANDIA 
+2 
+0,02% 
+VILA PAVAO 
+2 
+0,02% 
+
+
+=== PAGE 18 ===
+17 
+ 
+TOTAL GERAL 
+13146 
+100,00 
+Fonte: Sistemas OUVIDORSUS e E-OUV, Fevereiro de 2025 
+ 
+ 
+5.4 – Manifestações por Canal de Atendimento 
+ 
+    
+ 
+ 
+O telefone mantém-se como o canal mais utilizado pela população para o registro de 
+manifestações nas Ouvidorias do SUS, por meio do sistema OuvidorSUS, seguido pelo 
+formulário eletrônico e pelo atendimento presencial. Nas Ouvidorias Municipais e na 
+Ouvidoria Estadual/SESA, o atendimento presencial apresenta volume expressivo, 
+evidenciando a relevância da escuta qualificada, do acolhimento humanizado e da 
+garantia de acessibilidade como práticas indispensáveis à efetividade do trabalho das 
+Ouvidorias e ao fortalecimento da proximidade com os cidadãos. 
+No sistema E-OUV, a internet, por meio do portal da Ouvidoria-Geral do Estado, constitui 
+o canal mais utilizado para o registro direto das demandas, assegurando agilidade, 
+praticidade e maior democratização do acesso. A diversificação dos canais de 
+atendimento, aliada à articulação com outros órgãos e instituições, amplia o alcance e a 
+capacidade de resposta das Ouvidorias, fortalecendo seu papel estratégico como 
+instrumento de participação social, de monitoramento dos serviços de saúde e de 
+promoção da transparência na gestão pública. 
+ 
+5.5 – Manifestação por Classificação e Tipificação 
+ 
+O tratamento das manifestações registradas no Sistema OuvidorSUS possibilita sua 
+classificação em diferentes tipologias: Solicitações, Reclamações, Elogios, Sugestões, 
+Denúncias, Informações e Comunicação de Irregularidades. No entanto, o sistema E-OUV 
+não contempla as categorias “Solicitação” e “Comunicação de Irregularidades”. 
+A tipificação das manifestações permite a análise dos dados e a elaboração de relatórios 
+gerenciais a partir de critérios definidos no sistema informatizado. Essa categorização 
+
+
+=== PAGE 19 ===
+18 
+ 
+organiza-se em grandes assuntos (como assistência à saúde, assistência farmacêutica, 
+vigilância sanitária, gestão, entre outros), além de subassuntos de níveis 1, 2 e 3, bem 
+como a categoria “fármaco”, utilizada exclusivamente em manifestações referentes à 
+assistência farmacêutica. O preenchimento mínimo obrigatório exige a indicação de 
+assunto e subassunto 1. 
+Em determinadas situações, a tipificação não é concluída em razão da ausência de opções 
+adequadas, sendo necessário recorrer ao campo “outros”. Nesses casos, alguns campos 
+adicionais podem ser utilizados como complemento; contudo, o ideal seria a 
+disponibilização de sistemas mais flexíveis, que possibilitem às Ouvidorias adequar a 
+tipificação às especificidades e realidades de seus respectivos territórios. 
+                   
+ 
+ 
+ 
+As reclamações e as solicitações foram as maiores classificações registradas pela 
+Ouvidoria da SESA. 
+A maior classificação/tipologia no sistema E-OUV foi de reclamações, não sendo utilizada  
+a classificação solicitação nesse sistema informatizado. Os pedidos de acesso à informação 
+representaram, em 2024, 4,42% das manifestações registradas pela Ouvidoria-Geral do 
+Estado e destinadas à SESA/ES. 
+ 
+ 
+5.5.1 – Assuntos das Manifestações 
+ 
+A distribuição das manifestações por assuntos ocorre a partir da análise de seu conteúdo, 
+permitindo sua padronização. Esse processo garante o encaminhamento adequado das 
+demandas e contribui para a utilização das manifestações como ferramenta estratégica de 
+gestão no âmbito do SUS. 
+
+
+=== PAGE 20 ===
+19 
+ 
+A seguir, apresenta-se o detalhamento dos assuntos, organizados em tabelas de acordo 
+com cada tipo de classificação. Ressalta-se que as tipificações apresentam distinções entre 
+os dois sistemas informatizados, uma vez que o OuvidorSUS foi desenvolvido de forma 
+específica para atender às necessidades e à lógica de funcionamento do Sistema Único de 
+Saúde. 
+ 
+5.5.1.1 - Denúncias 
+ 
+As denúncias correspondem a manifestações que apontam irregularidades ou indícios de 
+irregularidade na administração pública ou privada, incluindo situações ligadas à 
+vigilância sanitária. Esse tipo de manifestação é fundamental para a promoção da 
+transparência, da accountability e para o aprimoramento da qualidade dos serviços de 
+saúde. 
+Para facilitar a leitura e a análise estratégica, os grandes assuntos e os subassuntos 1 
+foram destacados em tonalidade azul nas tabelas, conforme legenda. Os demais níveis 
+(subassuntos 2, subassuntos 3 e fármacos, quando aplicável) aparecem de forma 
+sequencial, assegurando organização detalhada das tipificações e subsidiando a tomada 
+de decisão na gestão estadual do SUS. 
+ 
+Denuncias registradas no sistema OuvidorSUS em 2024 
+ 
+Tabela 9: Tipificação das denúncias na Ouvidoria da SESA/ES, 2024. 
+DENÚNCIAS – OUVIDORSUS 2024 
+ASSUNTOS NÃO PERTINENTES 
+3 
+OUTROS ÓRGÃOS 
+3 
+ATENÇÃO À SAÚDE 
+14 
+ASSISTÊNCIA FARMACÊUTICA 
+3 
+MEDICAMENTO NÃO ESPECIFICADO 
+ 
+DISPENSAÇÃO 
+2 
+MEDICAMENTO NÃO PADRONIZADO NO SUS 
+ 
+DISPENSAÇÃO 
+ 
+MORFINA 30 MG COMP GRUPO 2  
+1 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+5 
+DERMATOLOGIA 
+1 
+NEUROCIRURGIA 
+1 
+ODONTOLOGIA 
+1 
+ORTOPEDIA E TRAUMATOLOGIA 
+2 
+DIAGNÓSTICO (EXAME) 
+1 
+TESTE RÁPIDO 
+1 
+URGÊNCIA E EMERGÊNCIA 
+5 
+ATENDIMENTO 
+ 
+
+
+=== PAGE 21 ===
+20 
+ 
+SAMU 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+4 
+GESTÃO 
+68 
+AÇÕES E PROGRAMAS DE SAÚDE 
+1 
+PROGRAMA MAIS MÉDICOS 
+ 
+AUDITORIA 
+7 
+CREDENCIAMENTO 
+1 
+ESTABELECIMENTO DE SAÚDE 
+ 
+DADOS E INFORMAÇÕES 
+1 
+OUTROS 
+ 
+DESCREDENCIAMENTO 
+1 
+ESTABELECIMENTO DE SAÚDE 
+ 
+ESTABELECIMENTOS DE ASSISTÊNCIA À SAÚDE 
+14 
+ALIMENTAÇÃO PARA O PACIENTE 
+1 
+ESPAÇO FÍSICO 
+1 
+OUTROS 
+11 
+ROTINAS - PROTOCOLOS 
+ 
+TRATAMENTO COM OUTRO PROFISSIONAL 
+1 
+FINANCEIRO 
+2 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+1 
+DIAGNÓSTICO (EXAME) 
+1 
+QUALIDADE DO ATENDIMENTO - SERVIÇO PRESTADO 
+22 
+ASSISTENTE SOCIAL 
+ 
+ADMINISTRATIVO - GERENCIAL 
+1 
+AMBULATÓRIO OU HOSPITAL 
+2 
+AUXILIAR DE ENFERMAGEM 
+ 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+AUXILIAR DE ODONTOLOGIA 
+ 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+ENFERMEIRO 
+1 
+AMBULATÓRIO OU HOSPITAL 
+1 
+EQUIPE 
+ 
+AMBULATÓRIO OU HOSPITAL 
+6 
+NÃO ESPECIFICADO 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+URGÊNCIA E EMERGÊNCIA 
+1 
+OUTROS 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+PSICÓLOGO 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+RECEPCIONISTA - ATENDENTE 
+ 
+AMBULATÓRIO OU HOSPITAL 
+5 
+TRABALHADOR EM SAÚDE 
+14 
+DESVIO ÉTICO 
+ 
+EQUIPE 
+2 
+TÉCNICO EM ENFERMAGEM 
+1 
+IRREGULARIDADES 
+3 
+PROVIMENTO 
+ 
+CONCURSO PÚBLICO - PROCESSO SELETIVO 
+8 
+
+
+=== PAGE 22 ===
+21 
+ 
+TRATAMENTO FORA DE DOMICÍLIO - TFD 
+2 
+TRANSPORTE DO PACIENTE 
+2 
+URGÊNCIA E EMERGÊNCIA 
+1 
+SAMU 
+ 
+EQUIPAMENTOS DA AMBULÂNCIA 
+1 
+VIOLÊNCIA NO SUS 
+2 
+AUXILIAR DE ODONTOLOGIA 
+ 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+NÃO ESPECIFICADO 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+VIGILÂNCIA EM SAÚDE 
+8 
+VIGILÂNCIA AMBIENTAL 
+2 
+QUALIDADE DA ÁGUA PARA CONSUMO HUMANO 
+ 
+INFORMAÇÃO SOBRE A QUALIDADE DA ÁGUA 
+1 
+SAÚDE DE POPULAÇÕES EXPOSTAS A SUBSTÂNCIAS QUÍMICAS 
+ 
+EMISSÃO E LIBERAÇÃO DE RESÍDUOS QUÍMICOS 
+1 
+VIGILÂNCIA EPIDEMIOLÓGICA 
+2 
+ÁGUA E AMBIENTES 
+1 
+IMUNOBIOLÓGICOS 
+ 
+VACINA 
+1 
+VIGILÂNCIA SANITÁRIA 
+4 
+MEDICAMENTOS 
+ 
+FARMÁCIA DE MANIPULAÇÃO 
+1 
+SERVIÇOS DE INTERESSE À SAUDE 
+ 
+CLÍNICA DE ESTÉTICA E BELEZA 
+1 
+SERVIÇOS DE SAÚDE 
+ 
+CENTRO DE ATENÇÃO PSICOSSOCIAL - CAPS 
+1 
+UNIDADE BÁSICA DE SAÚDE - UBS/UBASF 
+1 
+Fonte: Sistema OuvidorSUS, Fevereiro 2025 
+ 
+Legenda: 
+Classificação das Manifestações – Denúncias e Total Geral 
+Assuntos 
+Subassuntos nível 1 
+Subassuntos nível 2 
+Subassuntos nível 3 
+ 
+Denuncias registradas no sistema E-OUV em 2024 
+ 
+Tabela 10: Tipificação das denúncias na Ouvidoria da SESA/ES, 2024 – SISTEMA E-OUV 
+DENÚNCIAS – E-OUV 2024 
+Assuntos  
+Quantitativo 
+Processo Seletivo Simplificado 
+166 
+Saúde Pública 
+147 
+Assistência À Saúde 
+119 
+Servidor Público 
+113 
+Vigilância Sanitária 
+112 
+
+
+=== PAGE 23 ===
+22 
+ 
+Assédio 
+98 
+Acúmulo De Cargo 
+79 
+Conduta De Servidor Público Ou Militar 
+60 
+Servidor Em Designação Temporária - Dt 
+50 
+Repasse De Verba Pública 
+42 
+Ouvidoria 
+40 
+Ações Afirmativas 
+29 
+Carga Horária De Servidor Público 
+27 
+Samu - Serviço De Atendimento Móvel De Urgência 
+27 
+Atendimento Em Posto, Órgão Ou Unidade 
+26 
+Inspeção, Fiscalização Ou Vistoria 
+25 
+Funcionamento De Posto, Órgão Ou Unidade 
+24 
+Cargo Público 
+23 
+Internação 
+20 
+Farmácia Cidadã 
+18 
+Contratos 
+15 
+Alvará E/Ou Licença De Funcionamento 
+14 
+Código de Conduta Ética 
+13 
+Desvio De Função De Servidor Público 
+12 
+Recursos Humanos 
+12 
+Banco De Sangue 
+9 
+Alimentação Hospitalar 
+8 
+Conselho De Saúde 
+8 
+Focos De Mosquito 
+8 
+Pagamento a Servidor Público 
+8 
+Corrupção 
+7 
+Marcação De Exames E/Ou Consultas 
+7 
+Direitos Humanos 
+6 
+Infraestrutura De Posto, Órgão Ou Unidade 
+6 
+Serviço Catálogo 
+6 
+Uso De Veículo Oficial 
+6 
+Atendimento indisponível - Presencial 
+5 
+Licitação Pública 
+5 
+Medicamentos Na Rede Sus 
+5 
+Processo 
+5 
+Ambulâncias 
+4 
+ANDAMENTO DE MANIFESTAÇÃO 
+4 
+Assistência Social 
+4 
+Auditoria Interna 
+4 
+Avaliação De Desempenho Individual De Servidor Público 
+4 
+Convênios E Parcerias 
+4 
+Corregedoria 
+4 
+Hospitais 
+4 
+Indústria, Comércio E Serviço 
+4 
+Leitos Hospitalares 
+4 
+Vacinação 
+4 
+Ações De Governo 
+3 
+Alocação Ou Remoção De Servido Público 
+3 
+Atendimento indisponível - Telefone 
+3 
+
+
+=== PAGE 24 ===
+23 
+ 
+Fornecedores Ou Prestadores De Serviço 
+3 
+Gastos Públicos 
+3 
+Improbidade Administrativa Praticada Por Servidor Público 
+3 
+Licenças E Abonos De Servidor Público 
+3 
+Programas/Projetos De Governo 
+3 
+Qualidade de atendimento 
+3 
+Serviços de Saúde ofertados 
+3 
+Servidor Fantasma 
+3 
+Água - Recursos Hídricos 
+2 
+Bolsa De Estudo E/Ou Pesquisa 
+2 
+Concurso Público 
+2 
+Condutor Infrator 
+2 
+Doenças 
+2 
+Especialidade Médica 
+2 
+Incentivos Financeiros 
+2 
+Material Reciclado 
+2 
+Nepotismo 
+2 
+Obras Públicas 
+2 
+Remuneração, Vencimento e Subsídio 
+2 
+Segurança Pública 
+2 
+Tfd - Tratamento Fora De Domicílio 
+2 
+Tranferência De Paciente 
+2 
+Transferência De Servidor Público 
+2 
+Atraso de entrega de laudo técnico 
+1 
+Boletim De Ocorrência 
+1 
+Cálculo De Tempo De Serviço 
+1 
+Capacitação De Servidor Público Ou Militar 
+1 
+Certidão / Declaração de Tempo de Contribuição 
+1 
+Criação De Animais 
+1 
+Crime Ambiental 
+1 
+Doação De Órgãos 
+1 
+Ensino Médio 
+1 
+Exoneração De Servidor Público 
+1 
+Indenização 
+1 
+Leis E Decretos Estaduais 
+1 
+Licenciamento Ambiental 
+1 
+Manutenção Em Posto, Órgão Ou Unidade 
+1 
+Nomeação De Servidor Público 
+1 
+Normas E Procedimentos De Posto, Órgão Ou Unidade 
+1 
+Patrimônio Público 
+1 
+Propaganda Governamental 
+1 
+Rede Abraço 
+1 
+Resíduos De Saúde 
+1 
+Restituição Ou Reembolso 
+1 
+Site Governamental 
+1 
+Terreno Ou Espaço Público 
+1 
+Transporte Público 
+1 
+Veículo Abandonado 
+1 
+Veículo E/Ou Placa Clonada 
+1 
+
+
+=== PAGE 25 ===
+24 
+ 
+TOTAL GERAL 
+1543 
+Fonte: Sistema E-OUV, Fevereiro 2025 
+ 
+Em relação às denúncias no ano de 2024, foi realizada uma análise no contexto da 
+Ouvidoria SESA. No sistema OuvidorSUS, a tipificação concentrou-se principalmente 
+em denúncias relacionadas a estabelecimentos de saúde (dificuldades de acesso, rotinas 
+e protocolos, alimentação, entre outros), recursos humanos (profissionais), vigilância 
+em saúde e vigilância sanitária. Já no sistema E-OUV, os registros apresentaram maior 
+quantitativo em temas como processos seletivos, saúde pública, vigilância sanitária, 
+profissionais (servidores) e vigilância em saúde. 
+Os dados contidos nas denúncias podem fornecer elementos para apuração, permitindo 
+que as áreas de controle interno e a própria gestão dos serviços averiguem os indícios 
+apresentados pelos cidadãos, reforçando a perspectiva da transparência pública. 
+Denúncias com pequenos quantitativos também indicam a necessidade de fiscalização e 
+acompanhamento das informações relatadas. Todas as denúncias foram encaminhadas 
+às áreas técnicas correspondentes, que, dentro do prazo previsto na legislação, devem 
+adotar respostas e ações corretivas e preventivas. Além disso, é esperado que essas 
+áreas utilizem as manifestações e relatórios para implementar melhorias nos processos, 
+atividades e serviços. 
+A tipificação no sistema E-OUV frequentemente envolve temas interligados (por 
+exemplo: servidor público, desvio de função, acúmulo de cargos), reforçando a 
+necessidade de aprimorar a classificação entre assunto principal e subassuntos, a fim de 
+qualificar a análise e subsidiar políticas de prevenção. Denúncias sobre assédio moral e 
+sexual possuem fluxo específico, sendo encaminhadas diretamente para o gabinete do 
+Secretário e para a Corregedoria da SESA, sem passar pela Ouvidoria SESA. 
+Ações Propostas 
+Para aprimorar o tratamento das denúncias e fortalecer a atuação da Ouvidoria, 
+recomenda-se intensificar o registro do estabelecimento comercial como “local do fato 
+ocorrido”, de forma a identificar com precisão o serviço ou área envolvida. É 
+fundamental ampliar a articulação entre os setores responsáveis pelo acompanhamento 
+das denúncias, incluindo Corregedoria, Auditoria e Subsecretarias específicas, 
+garantindo maior efetividade na apuração e na adoção de medidas corretivas. 
+Além disso, deve-se promover a capacitação contínua das equipes da Ouvidoria da 
+SESA/ES, por meio de programas de formação e atualização, com foco nos 
+
+
+=== PAGE 26 ===
+25 
+ 
+procedimentos relacionados a denúncias e em outros temas estratégicos à atuação do 
+setor. A implantação da política de humanização nos serviços da SESA é recomendada 
+como estratégia para prevenir e mitigar problemas recorrentes, utilizando acolhimento, 
+escuta qualificada e educação permanente. 
+É igualmente essencial assegurar o cumprimento da Lei Geral de Proteção de Dados e 
+demais legislações pertinentes, preservando a privacidade e a segurança das 
+informações fornecidas pelos cidadãos. Por fim, propõe-se evoluir e qualificar os 
+sistemas de informação utilizados pela Ouvidoria, com foco na melhoria da 
+categorização e tipificação das manifestações, ampliando a precisão das análises e a 
+efetividade das respostas institucionais. 
+ 
+5.5.1.2 - Informações 
+ 
+As informações registradas na Ouvidoria compreendem questionamentos, solicitações 
+ou demandas formuladas pelos cidadãos sobre o sistema de saúde, a assistência 
+prestada ou as políticas públicas implementadas pelo SUS. Essas manifestações também 
+se relacionam à Lei nº 12.527/2011 – Lei de Acesso à Informação (L.A.I.), que 
+regulamenta o direito de acesso às informações públicas e assegura a transparência na 
+gestão estatal. 
+Na Ouvidoria SESA, o uso da L.A.I. ocorre predominantemente por meio do sistema E-
+OUV, oficial da Ouvidoria-Geral do Estado, destinado ao registro e à tramitação das 
+solicitações formais de acesso à informação. Já as manifestações que solicitam dados ou 
+esclarecimentos sobre saúde, mas que não se enquadram nos parâmetros legais da L.A.I., 
+são classificadas como “informações sobre saúde”. Essa tipificação permite à Ouvidoria 
+acompanhar e responder adequadamente às demandas, fortalecendo o acesso à 
+informação, a transparência e o controle social sobre o sistema de saúde. 
+ 
+Informações registradas no sistema OuvidorSUS em 2024 
+ 
+Tabela 11: Tipificação das Informações  na Ouvidoria da SESA/ES, 2024. 
+INFORMAÇÃO – OUVIDORSUS 2024 
+ASSUNTOS NÃO PERTINENTES 
+12 
+OUTROS ÓRGÃOS 
+12 
+ATENÇÃO À SAÚDE 
+38 
+ASSISTÊNCIA FARMACÊUTICA 
+3 
+
+
+=== PAGE 27 ===
+26 
+ 
+MEDICAMENTO NÃO ESPECIFICADO 
+ 
+DISPENSAÇÃO 
+2 
+MEDICAMENTO NÃO PADRONIZADO NO SUS 
+1 
+DISPENSAÇÃO 
+ 
+ADALIMUMABE 40 MG SOLUÇÃO INJETÁVEL ELENCO ESTADUAL  
+1 
+BANCO DE CÉLULAS E TECIDOS 
+1 
+COLETA, DOAÇÃO, PROCESSAMENTO E ARMAZENAGEM 
+ 
+SÊMEN 
+1 
+CIRURGIA 
+6 
+APARELHO CIRCULATÓRIO 
+2 
+APARELHO DIGESTIVO, ÓRGÃOS ANEXOS E PAREDE ABDOMINAL 
+1 
+APARELHO GENITURINÁRIO 
+1 
+ONCOLOGIA 
+1 
+PLÁSTICA 
+1 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+10 
+CIRURGIA GERAL 
+3 
+INFECTOLOGIA 
+1 
+NEFROLOGIA 
+1 
+OFTALMOLOGIA 
+2 
+ORTOPEDIA E TRAUMATOLOGIA 
+1 
+OTORRINOLARINGOLOGIA 
+1 
+UROLOGIA 
+1 
+DIAGNÓSTICO (EXAME) 
+8 
+GINECOLOGIA E OBSTETRÍCIA 
+1 
+MEDICINA NUCLEAR IN VIVO 
+ 
+APARELHO CARDIOVASCULAR 
+1 
+NEUROLOGIA 
+1 
+OFTALMOLOGIA 
+1 
+OTORRINOLARINGOLOGIA E FONOAUDIOLOGIA 
+2 
+RESSONÂNCIA MAGNÉTICA 
+ 
+CABEÇA, PESCOÇO E COLUNA VERTEBRAL 
+1 
+ULTRASSONOGRAFIA 
+ 
+SISTEMA CIRCULATÓRIO 
+1 
+JUDICIALIZAÇÃO NO SUS 
+5 
+IMUNOBIOLÓGICOS 
+ 
+VACINA 
+4 
+PRODUTOS PARA SAÚDE E CORRELATOS 
+ 
+APARELHO AUDITIVO 
+1 
+REGISTRO E DOCUMENTAÇÃO 
+2 
+PRONTUÁRIO 
+1 
+RECEITA MÉDICA 
+1 
+TRANSPLANTE DE ORGÃOS, TECIDOS E CÉLULAS 
+2 
+AMBULATORIAL OU HOSPITALAR 
+1 
+HOSPITALAR 
+1 
+TRATAMENTO FORA DE DOMICÍLIO (TFD) 
+1 
+CONCESSÃO DO BENEFÍCIO 
+1 
+GESTÃO 
+21 
+AÇÕES E PROGRAMAS DE SAÚDE 
+3 
+MELHOR EM CASA - SERVIÇO DE ATENÇÃO DOMICILIAR 
+1 
+
+
+=== PAGE 28 ===
+27 
+ 
+PROGRAMA DE QUALIFICAÇÃO DAS AÇÕES DE VIGILÂNCIA EM SAÚDE 
+2 
+COBERTURA DE PROCEDIMENTOS PELO SUS 
+5 
+CREDENCIAMENTO 
+1 
+ESTABELECIMENTO DE SAÚDE 
+1 
+DADOS E INFORMAÇÕES 
+4 
+OUTROS 
+4 
+ESTABELECIMENTOS DE ASSISTÊNCIA À SAÚDE 
+1 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+ 
+CANCELAMENTO - SUSPENSÃO 
+1 
+FINANCEIRO 
+1 
+PAGAMENTO 
+ 
+FORNECEDOR - PRESTADOR DE SERVIÇO 
+1 
+REGISTRO E DOCUMENTAÇÃO 
+1 
+CONTRATO 
+1 
+TRABALHADOR EM SAÚDE 
+5 
+PAGAMENTO 
+ 
+OUTROS 
+1 
+REAJUSTE SALARIAL 
+2 
+PROVIMENTO 
+ 
+CONCURSO PÚBLICO - PROCESSO SELETIVO 
+1 
+RESIDÊNCIA - ESTÁGIO PROFISSIONAL 
+1 
+ORIENTAÇÕES EM SAÚDE 
+2 
+INFORMAÇÕES E PROCEDIMENTOS 
+2 
+VIGILÂNCIA EM SAÚDE 
+4 
+VIGILÂNCIA EPIDEMIOLÓGICA 
+2 
+IMUNOBIOLÓGICOS 
+ 
+VACINA 
+2 
+VIGILÂNCIA SANITÁRIA 
+2 
+COSMÉTICOS (COSMÉTICOS, PRODUTOS DE HIGIENE, PERFUME) 
+ 
+OUTROS ESTABELECIMENTOS 
+1 
+SERVIÇOS DE SAÚDE 
+1 
+SERVIÇOS DE TOMOGRAFIA 
+1 
+Total Geral 
+77 
+Fonte: Sistema OuvidorSUS, Fevereiro 2025. 
+Legenda: 
+Classificação das Manifestações – INFORMAÇÃO e Total Geral 
+Assuntos 
+Subassuntos nível 1 
+Subassuntos nível 2 
+Subassuntos nível 3 
+ 
+Informações registradas no sistema E-OUV em 2024 
+ 
+Tabela 12: Tipificação das Informações  na Ouvidoria da SESA/ES, 2024 – SISTEMA E-OUV 
+INFORMAÇÃO – E-OUV 2024 
+Assuntos 
+Quantitativo 
+
+
+=== PAGE 29 ===
+28 
+ 
+Saúde Pública 
+84 
+Serviços de Saúde ofertados 
+20 
+Medicamentos Na Rede Sus 
+13 
+Ações De Governo 
+11 
+Abertura de Base de Dados 
+6 
+Serviço Catálogo 
+6 
+Farmácia Cidadã 
+5 
+Hospitais 
+5 
+Processo 
+5 
+Processo Seletivo Simplificado 
+5 
+Concurso Público 
+4 
+Contratos 
+4 
+Documento Público 
+4 
+Samu - Serviço De Atendimento Móvel De Urgência 
+4 
+Assistência Social 
+3 
+CONSULTA PÚBLICA 
+3 
+Servidor Público 
+3 
+Vacinação 
+3 
+Cargo Público 
+2 
+Convênios E Parcerias 
+2 
+Coronavírus (COVID-19) 
+2 
+Dados Pessoais - LGPD 
+2 
+Despesa Orçamentária 
+2 
+Direitos Humanos 
+2 
+Estágio 
+2 
+Leis E Decretos Estaduais 
+2 
+Marcação De Exames E/Ou Consultas 
+2 
+Pagamento a Servidor Público 
+2 
+Acúmulo De Cargo 
+1 
+ANDAMENTO DE MANIFESTAÇÃO 
+1 
+Aplicativo Fiscal Cidadão 
+1 
+Aposentadoria De Servidor Público 
+1 
+Arrecadação 
+1 
+Assistência À Saúde 
+1 
+Certidão / Declaração de Tempo de Contribuição 
+1 
+Comunicação E Divulgação 
+1 
+Concessão de Benefícios  
+1 
+Controle Interno 
+1 
+Curso Profissionalizante 
+1 
+Diplomas, Históricos e outros Documentos Escolares 
+1 
+Funcionamento De Posto, Órgão Ou Unidade 
+1 
+Infraestrutura De Posto, Órgão Ou Unidade 
+1 
+Licitação Pública 
+1 
+Limite e Gasto com Saúde 
+1 
+Obras Públicas 
+1 
+Omissão a pedido de acesso à informação 
+1 
+Parecer Jurídico 
+1 
+Planejamento Estratégico 
+1 
+Prestação de Contas 
+1 
+
+
+=== PAGE 30 ===
+29 
+ 
+Recursos Humanos 
+1 
+Registro de Empresa 
+1 
+Resolução 
+1 
+Segurança Pública 
+1 
+Trabalho 
+1 
+TOTAL GERAL 
+234 
+Fonte: Sistema E-OUV, Fevereiro 2025 
+ 
+As informações mais solicitadas pelos cidadãos, em alguns casos, apresentam caráter de 
+solicitação de atendimento ou serviço, uma vez que buscam orientações sobre 
+procedimentos em espera. No ano de 2024, a Ouvidoria recebeu demandas de informação 
+em saúde relacionadas ao acesso a consultas e exames especializados, medicamentos, 
+documentos (como resultados de exames) e orientações sobre procedimentos, incluindo 
+agendamento de exames e procedimentos médicos. 
+A Ouvidoria desempenha papel estratégico na disseminação de informações em saúde, 
+por meio do contato com as áreas competentes e de estudos técnicos, utilizando bancos 
+de dados, a assessoria de comunicação da SESA e iniciativas como “onde agendar exame”, 
+“perfil de atendimento de hospitais” e “hospitais porta aberta”. Contudo, a utilização 
+frequente da tipificação “outros”, em razão da inexistência de categorias específicas, 
+dificulta a obtenção de dados mais precisos sobre as necessidades informacionais da 
+população. A melhor estratificação dos temas nos sistemas de informação permitiria 
+fornecer subsídios mais robustos aos gestores, garantindo compreensão detalhada das 
+principais demandas de informação em saúde da população capixaba. 
+Ações Propostas 
+ 
+Ampliar, em conjunto com a ASSCOM, a disponibilização de informações no site da SESA, 
+incluindo a seção de “Perguntas Frequentes”, bem como realizar campanhas de divulgação ou 
+veiculação de informações com base nas manifestações recebidas pela Ouvidoria SUS/SESA. 
+Distribuir material gráfico produzido aos cidadãos e aos serviços de Ouvidoria do SUS, tanto 
+em âmbito estadual quanto municipal, fortalecendo a comunicação e o acesso às informações. 
+Expandir a capacitação das equipes nos sistemas informatizados, a fim de qualificar o registro 
+das informações e aprimorar a tipificação das manifestações. Ampliar a transparência ativa nos 
+canais da SESA a partir das demandas da Ouvidoria, utilizando os pedidos de informação mais 
+frequentes para publicação em redes sociais e demais meios de comunicação do Governo do 
+Estado e da Secretaria de Estado da Saúde. Por fim, melhorar a tipificação dos sistemas 
+informatizados, detalhando os dados de forma mais precisa, como no caso das categorias 
+
+
+=== PAGE 31 ===
+30 
+ 
+relacionadas a “Ações de Governo”, para subsidiar a análise estratégica e o planejamento das 
+políticas públicas de saúde. 
+ 
+5.5.1.3 - Reclamações 
+ 
+As reclamações registradas junto à Ouvidoria do SUS refletem, essencialmente, a 
+insatisfação dos cidadãos em relação às ações e aos serviços de saúde, geralmente sem 
+caráter de solicitação formal. No entanto, observa-se que, em alguns casos, 
+manifestações classificadas como reclamações contêm elementos de pedido de serviço 
+ou atendimento, o que pode gerar ambiguidades na tipificação e comprometer a análise 
+e o encaminhamento corretos das demandas. 
+Outro aspecto relevante é a interseção entre reclamações e denúncias. Em determinadas 
+situações, o conteúdo relatado pelo cidadão reúne características de ambos os tipos de 
+manifestação, evidenciando a necessidade de aprimorar os critérios de classificação e 
+capacitar os profissionais da Ouvidoria para distinguir adequadamente as categorias. 
+Esse aperfeiçoamento contribui para registros mais precisos, possibilita a elaboração de 
+relatórios gerenciais consistentes e fortalece o papel da Ouvidoria como instrumento de 
+gestão, controle social e transparência no sistema de saúde. 
+ 
+Reclamações registradas no sistema OuvidorSUS em 2024 
+ 
+Tabela 13: Tipificação das Reclamações  na Ouvidoria da SESA/ES, 2024. 
+RECLAMAÇOES – OUVIDORSUS 2024 
+ASSUNTOS NÃO PERTINENTES 
+34 
+OUTROS ÓRGÃOS 
+34 
+ATENÇÃO À SAÚDE 
+659 
+ALIMENTAÇÃO E NUTRIÇÃO 
+18 
+DISPENSAÇÃO 
+ 
+LEITE ARTIFICIAL 
+13 
+OUTROS ALIMENTOS 
+2 
+SUPLEMENTO ALIMENTAR 
+3 
+ASSISTÊNCIA FARMACÊUTICA 
+256 
+MEDICAMENTO NÃO ESPECIFICADO 
+60 
+MEDICAMENTO NÃO PADRONIZADO NO SUS 
+65 
+DISPENSAÇÃO 
+ 
+"LEITE PÓ", MALTODEXTRINA/PROTEÍNA ISOLADA SOJA/OLEÍNA PALMA/, 
+DIETÉTICO, NEUTRO, LACTENTES INTOLERANTES OU ALÉRGICOS AO LEITE VACA, NÃO 
+CONTÉM LEITE/PRODUTOS LÁCTEOS E ISENTO LACTOSE 380 G 
+1 
+ACESSÓRIO BOMBA INSULINA, CÂNULA INFUSÃO CERCA 10 MM,    > 
+POLÍMERO, C/ AGULHA INTRODUTORA 
+3 
+
+
+=== PAGE 32 ===
+31 
+ 
+ACESSÓRIO BOMBA INSULINA, CÂNULA INFUSÃO CERCA 10 MM, POLÍMERO, 
+C/ AGULHA INTRODUTORA 
+2 
+ACESSÓRIO BOMBA INSULINA, CONJUNTO DE INFUSÃO, POLÍMERO, 
+CATÉTER CERCA 30 CM C/ CONECTOR LUER LOCK, C/ CÂNULA INFUSÃO CERCA 6 MM, 
+SUPORTE, TAMPA E ADESIVO PROTETOR, P/ INSERÇÃO C/ APLICADOR 
+1 
+ACESSÓRIO BOMBA INSULINA, CONJUNTO DE INFUSÃO, POLÍMERO, 
+CATÉTER CERCA 60 CM C/ CONECTOR LUER LOCK, C/ CÂNULA INFUSÃO CERCA 10 MM, 
+SUPORTE, TAMPA E ADESIVO PROTETOR, P/ INSERÇÃO C/ APLICADOR 
+1 
+ÁCIDO URSODESOXICÓLICO 150 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+ÁCIDO ZOLEDRÔNICO 50 MCG/ML SOLUÇÃO INJETÁVEL 100 ML ELENCO 
+ESTADUAL  
+2 
+ADALIMUMABE 40 MG SOLUÇÃO INJETÁVEL ELENCO ESTADUAL  
+11 
+ADALIMUMABE 40 MG/ML SOL INJ (SER PREENC) GRUPO 1.A 
+1 
+ATORVASTATINA 40 MG COMP GRUPO 2  
+1 
+AZATIOPRINA 50 MG COMP GRUPO 2  
+1 
+BENZOATO DE ALOGLIPTINA 12,5 MG COMP/METFORMINA CLORIDRATO , 
+LINAGLIPTINA 500 MG + 2,5 MG COMP 
+1 
+CALCITRIOL 0,25 MCG CAP GRUPO 2  
+1 
+CLOZAPINA 100 MG COMP GRUPO 1.A 
+1 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL  33,33 MG/ML SOLUÇÃO ORAL 
+30 ML ELENCO ESTADUAL  
+1 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL 200 MG/ML SOLUÇÃO ORAL 60 
+ML ELENCO ESTADUAL  
+1 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL 50 MG CÁPSULA  
+1 
+FINGOLIMODE 0,5 MG CAP GRUPO 1.A 
+1 
+FORMOTEROL + BUDESONIDA 12 + 400 MCG CAP INAL GRUPO 2  
+1 
+INSULINA DEGLUDECA 100 UI/ML INJ (FR) 3 ML ELENCO ESTADUAL  
+1 
+LACOSAMIDA 100 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA 
+1 
+LAMOTRIGINA 100 MG COMP GRUPO 2  
+1 
+METILFENIDATO, CLORIDRATO 30 MG CAP LIBERAÇÃO CONTROLADA 
+ELENCO ESTADUAL  
+1 
+NÃO INFORMADO 
+2 
+NINTEDANIBE, SAL ESILATO 150 MG CAP 
+1 
+OMALIZUMABE 150 MG PÓ LIOFILIZADO PARA SOLUÇÃO INJETÁVEL ELENCO 
+ESTADUAL  
+1 
+PALIPERIDONA 100 MG/ML SUSPENSÃO INJETÁVEL 0,5 ML ELENCO 
+ESTADUAL  
+1 
+PANCREATINA 25.000 UI CAP GRUPO 1.B  
+1 
+PIRAZINAMIDA 30 MG/ML SUSPENSÃO ORAL  100 ML 
+1 
+PIRFENIDONA 267MG CÁPSULA  
+1 
+PREGABALINA 150 MG CÁPSULA   
+2 
+RISANQUIZUMABE 
+1 
+RITUXIMABE 500 MG SOL INJ (FR-AMP) 50 ML GRUPO 1.A 
+4 
+SACARATO DE HIDRÓXIDO FÉRRICO  100 MG SOL INJ (FR) 5 ML GRUPO 1.B  
+1 
+SENSOR 
+1 
+SENSOR DE GLICOSE PARA CGMS 
+1 
+SENSOR OXIMETRIA, DE DEDO, PARA OXÍMETRO DE PULSO, PERMANENTE, 
+ADULTO, PARA APARELHO DIXTAL 
+1 
+SOMATROPINA 10 MG SOLUÇÃO INJETÁVEL COM SISTEMA DE APLICAÇÃO 
+1,5 ML 
+1 
+SOMATROPINA 12 UI PÓ LIOFILIZADO PARA SUSPENSÃO INJETÁVEL 2 ML 
+ELENCO ESTADUAL  
+1 
+
+
+=== PAGE 33 ===
+32 
+ 
+TERIPARATIDA 250 MCG/ML SOLUÇÃO INJETÁVEL 2,4 ML ELENCO ESTADUAL  
+1 
+TIMOLOL, MALEATO 0,5 % SOLUÇÃO OFTÁLMICA 5 ML 
+1 
+TOXINA BOTULINICA TIPO A 100 U PÓ LIOF INJ (FR-AMP) GRUPO 1.A 
+1 
+TRIMETAZIDINA 35 MG COMPRIMIDO  
+2 
+USTEQUINUMABE 90 MG/ML SOLUÇÃO INJETÁVEL 0,5 ML 
+1 
+VEDOLIZUMABE 300MG PÓ LIOF INJ (FR-AMP) 
+1 
+MEDICAMENTO PADRONIZADO NO SUS 
+130 
+DISPENSAÇÃO 
+ 
+ÁCIDO URSODESOXICÓLICO 150 MG COMPRIMIDO ELENCO ESTADUAL  
+4 
+ÁCIDO URSODESOXICÓLICO 300 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+ÁCIDO VALPRÓICO (VALPROATO DE SÓDIO)  300 MG 
+COMPRIMIDO/SERTRALINA, CLORIDRATO 100 MG COMPRIMIDO /CLONAZEPAM 0,5 
+MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+ÁCIDO ZOLEDRÔNICO 4 MG PÓ LIOFILIZADO PARA SOLUÇÃO INJETÁVEL 5 ML 
+1 
+ADALIMUMABE 40 MG SOLUÇÃO INJETÁVEL ELENCO ESTADUAL  
+1 
+AMOXICILINA 500 MG COMPRIMIDO/NIMESULIDA 100 MG COMPRIMIDO 
+1 
+APIXABANA 2,5 MG COMP REV 
+1 
+ARIPIPRAZOL 10 MG COMPRIMIDO  
+6 
+ARIPIPRAZOL 15 MG COMPRIMIDO ELENCO ESTADUAL  
+4 
+ARIPIPRAZOL 20 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+ARTICAÍNA ASSOCIADA COM EPINEFRINA 4 % + 1/200.000 SOLUÇÃO 
+INJETÁVEL 1,8 ML 
+1 
+ATORVASTATINA 40 MG COMP GRUPO 2  
+1 
+AZATIOPRINA 50 MG COMP GRUPO 2  
+3 
+BARICITINIBE COMPRIMIDO 
+1 
+BISOPROLOL, FUMARATO 5 MG COMPRIMIDO  
+1 
+BOSENTANA 62,5 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+BRIMONIDINA 2 MG/ML SOL OFT (FR) 5 ML GRUPO 2  
+2 
+BUDESONIDA 200 MCG AEROSSOL ORAL 100 DOSES  
+1 
+BUPIVACAÍNA, CLORIDRATO ISOBÁRICA 0,5 % SOLUÇÃO INJETÁVEL  4 ML  
+1 
+BUROSUMABE 20 MG 
+1 
+CABERGOLINA 0,5 MG COMP GRUPO 1.A 
+1 
+CARBONATO DE CÁLCIO (CÁLCIO ELEMENTAR) 500 MG COMPRIMIDO 
+ELENCO ESTADUAL  
+1 
+CARBONATO DE LÍTIO 450 MG COMPRIMIDO  
+1 
+CLOPIDOGREL 75 MG COMP GRUPO 2  
+1 
+CLOZAPINA 100 MG COMP GRUPO 1.A 
+1 
+COLESTIRAMINA 4 G PÓ 
+2 
+DABIGATRANA, ETEXILATO 150 MG CÁPSULA  
+1 
+DAPAGLIFLOZINA 10 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA 
+2 
+DENOSUMABE 60 MG/ML SOLUÇÃO INJETÁVEL 1 ML 
+1 
+DIVALPROATO DE SÓDIO 125 MG CÁPSULA  
+2 
+ENALAPRIL, MALEATO 20 MG COMPRIMIDO/ISOSSORBIDA, MONONITRATO 
+20 MG COMPRIMIDO 
+1 
+ETANERCEPTE  50 MG PÓ LIOF INJ (FR-AMP OU SER PREENC) GRUPO 1.A 
+1 
+Fampridina 10 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA 
+1 
+GABAPENTINA 100 MG COMPRIMIDO  
+1 
+GABAPENTINA 100 MG COMPRIMIDO /RISPERIDONA 0,5 MG COMPRIMIDO 
+/TRAMADOL, CLORIDRATO 100 MG COMPRIMIDO/CODEÍNA 30 MG  COMPRIMIDO 
+1 
+
+
+=== PAGE 34 ===
+33 
+ 
+GALANTAMINA, BROMIDRATO 24 MG CÁPSULA DE LIBERAÇÃO 
+CONTROLADA  
+1 
+GLICLAZIDA 60 MG COMPRIMIDO DE LIBERAÇÃO PROLONGADA 
+1 
+GOLIMUMABE 50 MG SOL INJ (SER PREENC) GRUPO 1.A 
+1 
+HIDROXICLOROQUINA 200 MG COMPRIMIDO 
+1 
+HIDROXICLOROQUINA 400 MG COMP GRUPO 2  
+1 
+HIDROXIURÉIA 500 MG CAP GRUPO 1.B  
+1 
+IBRUTINIBE 140 MG CÁPSULA  
+1 
+INSULINA ANÁLOGA DE AÇÃO RÁPIDA 100 UI/ML TUBETE 3 ML GRUPO 1.A 
+1 
+INSULINA ASPARTE 100 UI/ML SOLUÇÃO INJETÁVEL  10 ML 
+/DAPAGLIFLOZINA 10 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA/INSULINA 
+GLARGINA 100 UI/ML SOLUÇÃO INJETÁVEL 3 ML ELENCO ESTADUAL  
+1 
+INSULINA DEGLUDECA 100 UI/ML COM APLICADOR SOL INJ (AMP) 
+1 
+INSULINA LISPRO 100 UI/ML SOLUÇÃO INJETÁVEL 3 ML ELENCO ESTADUAL  
+1 
+LACOSAMIDA 10 MG/ML SOLUÇÃO ORAL 200 ML 
+1 
+LACOSAMIDA 100 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA 
+1 
+LAMOTRIGINA 100 MG COMP GRUPO 2  
+1 
+LERCANIDIPINO 10 MG COMPRIMIDO  
+2 
+LEVETIRACETAM 250 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+LINAGLIPTINA 5 MG COMPRIMIDO ELENCO ESTADUAL  
+2 
+LISDEXANFETAMINA, MESILATO 30 MG CÁPSULA  
+2 
+LISDEXANFETAMINA, MESILATO 50 MG CÁPSULA  
+1 
+MEMANTINA, CLORIDRATO 10 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+MESALAZINA 800 MG COMP GRUPO 2  
+1 
+METILFENIDATO, CLORIDRATO 10 MG CÁPSULA  ELENCO ESTADUAL  
+2 
+METILFENIDATO, CLORIDRATO 10 MG COMPRIMIDO ELENCO ESTADUAL  
+2 
+METILFENIDATO, CLORIDRATO 18 mg COMPRIMIDO 
+1 
+METILFENIDATO, CLORIDRATO 20 MG CÁPSULA  ELENCO ESTADUAL  
+1 
+METILFENIDATO, CLORIDRATO 30 MG CAP LIBERAÇÃO CONTROLADA 
+ELENCO ESTADUAL  
+1 
+MULTIVITAMINAS + SAIS MINIERAIS + LUTEÍNA + ZEAXANTINA COMPRIMIDO 
+1 
+NÃO INFORMADO 
+1 
+NATALIZUMABE 20 MG/ML SOLUÇÃO INJETÁVEL 15 ML 
+1 
+NINTEDANIBE, SAL ESILATO 150 MG CAP 
+1 
+OMALIZUMABE 150 MG PÓ LIOFILIZADO PARA SOLUÇÃO INJETÁVEL ELENCO 
+ESTADUAL  
+1 
+OXCARBAZEPINA 600 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+PALIPERIDONA 100 MG/ML SUSPENSÃO INJETÁVEL 0,5 ML ELENCO 
+ESTADUAL  
+1 
+PALIPERIDONA 100 MG/ML SUSPENSÃO INJETÁVEL 0,75 ML ELENCO 
+ESTADUAL  
+1 
+PANCREATINA 10.000 UI CAP GRUPO 1.B  
+1 
+PEGVISOMANTO 10 MG PÓ LIOF INJ (AMP) 
+2 
+PIRACETAM 200 MG/ML SOLUÇÃO INJETÁVEL 5 ML 
+1 
+PIRFENIDONA 267MG CÁPSULA  
+1 
+RIFAMPICINA 150MG + ISONIAZIDA 75MG + PIRAZINAMIDA 400MG + 
+ETAMBUTOL 275MG 150 MG + 75MG + 400MG + 275MG COMPRIMIDO 
+1 
+RISANQUIZUMABE 
+2 
+RISEDRONATO 35 MG COMP GRUPO 2  
+1 
+RITUXIMABE 500 MG SOL INJ (FR-AMP) 50 ML GRUPO 1.A 
+2 
+
+
+=== PAGE 35 ===
+34 
+ 
+SACARATO DE SÓDIO FÉRRICO 100 MG SOLUÇÃO INJETÁVEL IM 2 ML  
+1 
+SALMETEROL 50 MCG PÓ INAL OU AER BUCAL (FR DE 60 DOSES) GRUPO 2  
+1 
+SOMATROPINA 10 MG SOLUÇÃO INJETÁVEL COM SISTEMA DE APLICAÇÃO 
+1,5 ML 
+2 
+SOMATROPINA 12 UI PÓ LIOFILIZADO PARA SUSPENSÃO INJETÁVEL 2 ML 
+ELENCO ESTADUAL  
+1 
+SULFADIAZINA 500 MG COMPRIMIDO 
+1 
+TERIPARATIDA 250 MCG/ML SOLUÇÃO INJETÁVEL 2,4 ML ELENCO ESTADUAL  
+2 
+TESTOSTERONA (DECANOATO + FEMPROPIONATO + ISOCAPROATO + 
+PROPIONATO) 100+60+60+30 MG/ML SOLUÇÃO INJETÁVEL  1 ML  
+1 
+TIOTRÓPIO, BROMETO 18 MCG CÁPSULA   
+1 
+TIOTRÓPIO, BROMETO 2,5 MCG SOLUÇÃO PARA INALAÇÃO 60 DOSES 
+ELENCO ESTADUAL  
+1 
+TOFACITINIBE, CITRATO 5 MG COMP 
+1 
+TOPIRAMATO 100 MG COMP GRUPO 2  
+2 
+TOPIRAMATO 100 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+TOXINA BOTULINICA TIPO A 100 UI SOLUÇÃO INJETÁVEL ELENCO ESTADUAL  
+2 
+TRASTUZUMABE 120 MG/ML SOLUÇÃO INJETÁVEL 5 ML 
+1 
+TRIMETAZIDINA 35 MG COMPRIMIDO  
+2 
+UPADACITINIBE 15 MG 
+1 
+USTEQUINUMABE 90 MG/ML SOLUÇÃO INJETÁVEL 0,5 ML 
+2 
+VALSARTANA, ASSOCIADO AO SACUBITRIL 51  MG + 49 MG COMPRIMIDO 
+1 
+VEDOLIZUMABE 300MG PÓ LIOF INJ (FR-AMP) 
+2 
+ZOLPIDEM, HEMITARTARATO 5 MG COMPRIMIDO SUBLINGUAL 
+2 
+PROGRAMA FARMÁCIA POPULAR DO BRASIL (CO-PAGAMENTO) 
+1 
+COMPRA - DISPENSAÇÃO 
+ 
+CLOZAPINA 100 MG COMP GRUPO 1.A 
+1 
+CIRURGIA 
+26 
+APARELHO CIRCULATÓRIO 
+ 
+AMBULATORIAL OU HOSPITALAR 
+2 
+HOSPITALAR 
+1 
+APARELHO DA VISÃO 
+1 
+APARELHO DIGESTIVO, ÓRGÃOS ANEXOS E PAREDE ABDOMINAL 
+1 
+APARELHO GENITURINÁRIO 
+ 
+AMBULATORIAL OU HOSPITALAR 
+1 
+HOSPITALAR 
+2 
+CIRURGIA NÃO ESPECIFICADA 
+1 
+GLÂNDULAS ENDÓCRINAS 
+1 
+MAMA 
+1 
+OBSTETRÍCIA 
+1 
+ONCOLOGIA 
+2 
+OUTRAS CIRURGIAS 
+3 
+SISTEMA OSTEOMUSCULAR 
+4 
+VIAS AÉREAS SUPERIORES, FACE, CABEÇA E PESCOÇO 
+5 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+176 
+ANESTESIOLOGIA 
+1 
+ATENDIMENTO DOMICILIAR 
+2 
+CARDIOLOGIA 
+3 
+CIRURGIA CARDIOVASCULAR 
+2 
+CIRURGIA GERAL 
+11 
+
+
+=== PAGE 36 ===
+35 
+ 
+CIRURGIA VASCULAR 
+1 
+CLÍNICA MÉDICA 
+3 
+COLOPROCTOLOGIA 
+2 
+CONSULTA - ATENDIMENTO - TRATAMENTO NÃO ESPECIFICADO 
+15 
+DERMATOLOGIA 
+5 
+ENDOCRINOLOGIA E METABOLOGIA 
+3 
+FISIATRIA 
+1 
+FISIOTERAPIA 
+8 
+FONOAUDIOLOGIA 
+2 
+GINECOLOGIA E OBSTETRÍCIA 
+3 
+INFECTOLOGIA 
+1 
+NEFROLOGIA 
+ 
+AMBULATORIAL 
+1 
+AMBULATORIAL OU HOSPITALAR 
+1 
+HOSPITALAR 
+3 
+NEUROCIRURGIA 
+3 
+NEUROLOGIA 
+14 
+ODONTOLOGIA 
+ 
+CLÍNICA GERAL 
+1 
+ODONTOLOGIA NÃO ESPECIFICADA 
+1 
+PRÓTESE DENTÁRIA 
+1 
+OFTALMOLOGIA 
+20 
+ONCOLOGIA 
+4 
+AMBULATORIAL 
+3 
+AMBULATORIAL OU HOSPITALAR 
+1 
+ORTOPEDIA E TRAUMATOLOGIA 
+27 
+OTORRINOLARINGOLOGIA 
+7 
+OUTRAS CONSULTAS - ATENDIMENTOS - TRATAMENTOS 
+12 
+PEDIATRIA 
+1 
+PNEUMOLOGIA 
+1 
+PSICOLOGIA 
+1 
+PSIQUIATRIA 
+5 
+REUMATOLOGIA 
+1 
+UROLOGIA 
+6 
+VISITA DOMICILIAR 
+ 
+ESTRATÉGIA SAÚDE DA FAMÍLIA (ESF) 
+3 
+DIAGNÓSTICO (EXAME) 
+81 
+ANGIOLOGIA 
+1 
+CARDIOLOGIA 
+3 
+COLETA DE MATERIAL 
+1 
+DIAGNÓSTICO NÃO ESPECIFICADO 
+1 
+ENDOSCOPIA 
+ 
+APARELHO DIGESTIVO 
+8 
+APARELHO GINECOLÓGICO 
+1 
+APARELHO RESPIRATÓRIO 
+1 
+LABORATÓRIO CLÍNICO 
+4 
+MEDICINA NUCLEAR IN VIVO 
+ 
+APARELHO ESQUELÉTICO (OSSOS E ARTICULAÇÕES) 
+1 
+NEUROLOGIA 
+4 
+
+
+=== PAGE 37 ===
+36 
+ 
+OFTALMOLOGIA 
+8 
+OTORRINOLARINGOLOGIA E FONOAUDIOLOGIA 
+3 
+OUTROS DIAGNÓSTICOS (EXAMES) 
+5 
+RADIOLOGIA 
+ 
+RADIOLOGIA - NÃO ESPECIFICADO 
+1 
+TÓRAX E MEDIASTINO 
+1 
+RESSONÂNCIA MAGNÉTICA 
+ 
+ABDÔMEN, PELVE E MEMBROS INFERIORES 
+3 
+CABEÇA, PESCOÇO E COLUNA VERTEBRAL 
+8 
+NÃO ESPECIFICADO 
+7 
+TÓRAX E MEMBROS SUPERIORES 
+1 
+TOMOGRAFIA 
+ 
+ABDOMEM, PELVE E MEMBROS INFERIORES 
+2 
+CABEÇA, PESCOÇO E COLUNA VERTEBRAL 
+5 
+NÃO ESPECIFICADO 
+1 
+ULTRASSONOGRAFIA 
+ 
+DEMAIS SISTEMAS 
+4 
+SISTEMA CIRCULATÓRIO 
+4 
+ULTRASSONOGRAFIA - NÃO ESPECIFICADO 
+1 
+ULTRASSONOGRAFIA - OUTROS 
+2 
+INTERNAÇÃO 
+9 
+INTERNAÇÃO CLÍNICA 
+ 
+HOSPITALAR 
+7 
+PSIQUIATRIA 
+2 
+JUDICIALIZAÇÃO NO SUS 
+11 
+ALIMENTAÇÃO E NUTRIÇÃO 
+ 
+LEITE ARTIFICIAL 
+1 
+ASSISTÊNCIA FARMACÊUTICA 
+ 
+MEDICAMENTO NÃO PADRONIZADO 
+ 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL 50 MG CÁPSULA  
+1 
+IMUNOBIOLÓGICOS 
+2 
+VACINA 
+2 
+PRODUTOS PARA SAÚDE E CORRELATOS 
+ 
+APARELHO AUDITIVO 
+3 
+BOMBA DE INFUSÃO DE INSULINA 
+3 
+FRALDA DESCARTÁVEL 
+1 
+PRODUTOS PARA SAÚDE E CORRELATOS 
+29 
+APARELHO - BALÃO DE O2  - CPAP 
+1 
+APARELHO AUDITIVO 
+2 
+BOLSA DE COLOSTOMIA  - OSTOMIA  - UROSTOMIA 
+1 
+BOMBA DE INFUSÃO DE INSULINA 
+10 
+CADEIRA DE RODAS 
+5 
+FITAS REAGENTES PARA GLICOSE 
+1 
+FRALDA DESCARTÁVEL 
+2 
+GLICOSÍMETRO 
+1 
+MATERIAL PARA ASSEPSIA E CURATIVO (GAZE, ESPARADRAPO, ATADURA, 
+COMPRESSA, ETC) 
+1 
+ÓCULOS 
+4 
+PRÓTESE 
+1 
+
+
+=== PAGE 38 ===
+37 
+ 
+REGISTRO E DOCUMENTAÇÃO 
+17 
+ATESTADO MÉDICO 
+3 
+CARTÃO DE VACINAÇÃO 
+2 
+DECLARAÇÃO DE COMPARECIMENTO 
+1 
+LAUDO 
+6 
+OUTROS 
+1 
+RECEITA MÉDICA 
+1 
+RESULTADO DE EXAME 
+3 
+TRANSFERÊNCIA DE PACIENTE 
+8 
+LEITOS - ENTRE ESTABELECIMENTOS 
+3 
+OUTRAS 
+5 
+TRATAMENTO FORA DE DOMICÍLIO (TFD) 
+1 
+CONCESSÃO DO BENEFÍCIO 
+1 
+URGÊNCIA E EMERGÊNCIA 
+31 
+ATENDIMENTO 
+ 
+AMBULATÓRIO OU HOSPITAL 
+8 
+SAMU 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+9 
+UNIDADE DE PRONTO ATENDIMENTO - UPA 
+13 
+GESTÃO 
+504 
+AÇÕES E PROGRAMAS DE SAÚDE 
+5 
+POLÍTICA NACIONAL DE SAÚDE BUCAL 
+2 
+PROGRAMA DIGNIDADE MENSTRUAL 
+2 
+PROGRAMA NACIONAL DE APOIO À ATENÇÃO DA SAÚDE DA PESSOA COM 
+DEFICIÊNCIA (PRONAS - PCD) 
+1 
+ASSISTÊNCIA FARMACÊUTICA 
+6 
+PROGRAMA FARMÁCIA POPULAR DO BRASIL (CO-PAGAMENTO) 
+ 
+FARMÁCIA 
+1 
+OUTROS 
+5 
+AUDITORIA 
+3 
+CENTRAL DE REGULAÇÃO 
+2 
+COMUNICAÇÃO 
+6 
+E-MAIL - PORTAL - TELEFONE 
+3 
+OUTROS 
+3 
+CREDENCIAMENTO 
+2 
+ESTABELECIMENTO DE SAÚDE 
+1 
+OUTROS 
+1 
+DADOS E INFORMAÇÕES 
+6 
+FILA DE ESPERA 
+1 
+OUTROS 
+3 
+QUANTIDADE DE EQUIPAMENTOS 
+1 
+TEMPO DE ESPERA PARA CIRURGIAS - TRATAMENTOS 
+1 
+ESTABELECIMENTOS DE ASSISTÊNCIA À SAÚDE 
+130 
+ACOMPANHANTE PARA MENORES DE 12 ANOS 
+2 
+ACOMPANHANTE PARA PESSOAS MAIORES DE 60 ANOS 
+1 
+ALIMENTAÇÃO PARA O PACIENTE 
+1 
+CIRURGIA 
+ 
+CANCELAMENTO - SUSPENSÃO 
+6 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+ 
+
+
+=== PAGE 39 ===
+38 
+ 
+CANCELAMENTO - SUSPENSÃO 
+8 
+REMARCAÇÃO 
+6 
+DIAGNÓSTICO (EXAME) 
+ 
+CANCELAMENTO - SUSPENSÃO 
+3 
+REMARCAÇÃO 
+1 
+ENDEREÇO - TELEFONE 
+11 
+ESPAÇO FÍSICO 
+16 
+HORÁRIO DE FUNCIONAMENTO 
+4 
+INTERRUPÇÃO DE ATENDIMENTO - PROCEDIMENTO 
+3 
+MATERIAL DE EXPEDIENTE 
+1 
+MATERIAL DE USO CONTÍNUO - PERMANENTE - EQUIPAMENTO 
+8 
+OUTROS 
+19 
+ROTINAS - PROTOCOLOS 
+ 
+ALTA MÉDICA 
+2 
+ATENDIMENTO PRIORITÁRIO 
+5 
+ATENDIMENTO RESTRITO 
+1 
+CLASSIFICAÇÃO DE RISCO 
+2 
+HORÁRIO DE VISITA 
+3 
+MUDANÇA DE UNIDADE DEVIDO À ALTERAÇÃO DE ENDEREÇO DO PACIENTE 
+1 
+OUTROS 
+22 
+TRABALHO EM EQUIPE 
+2 
+SUPERLOTAÇÃO 
+2 
+FINANCEIRO 
+2 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+1 
+REPASSE DE VERBA 
+1 
+OUTROS 
+4 
+OUVIDORIA DO SUS 
+6 
+ACESSO À OUVIDORIA 
+ 
+FORMULÁRIO WEB 
+1 
+RESPOSTA À MANIFESTAÇÃO 
+4 
+SISTEMA DE INFORMAÇÃO 
+ 
+BASE DE CONHECIMENTO 
+1 
+QUALIDADE DO ATENDIMENTO - SERVIÇO PRESTADO 
+269 
+AGENTE COMUNITÁRIO DE SAÚDE 
+ 
+ESTRATÉGIA DE SAÚDE DA FAMÍLIA (ESF) 
+10 
+AGENTE DE ENDEMIAS 
+ 
+CONDUTA PROFISSIONAL 
+1 
+NÃO PREENCHIDO 
+1 
+ASSISTENTE SOCIAL 
+ 
+ADMINISTRATIVO - GERENCIAL 
+6 
+AMBULATÓRIO OU HOSPITAL 
+6 
+UNIDADE BÁSICA DE SAÚDE 
+3 
+URGÊNCIA E EMERGÊNCIA 
+1 
+ATENDENTE - TELEATENDENTE DE OUVIDORIA 
+13 
+AUXILIAR DE ENFERMAGEM 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+URGÊNCIA E EMERGÊNCIA 
+4 
+AUXILIAR DE ODONTOLOGIA 
+2 
+
+
+=== PAGE 40 ===
+39 
+ 
+BIOMÉDICO 
+1 
+DIRETOR DE ESTABELECIMENTO DE SAÚDE 
+ 
+AMBULATÓRIO OU HOSPITAL 
+3 
+UNIDADE BÁSICA DE SAÚDE 
+2 
+URGÊNCIA E EMERGÊNCIA 
+1 
+ENFERMEIRO 
+ 
+AMBULATÓRIO OU HOSPITAL 
+5 
+UNIDADE BÁSICA DE SAÚDE 
+3 
+URGÊNCIA E EMERGÊNCIA 
+1 
+EQUIPE 
+ 
+ADMINISTRATIVO - GERENCIAL 
+5 
+AMBULATÓRIO OU HOSPITAL 
+26 
+ESTRATÉGIA SAÚDE DA FAMÍLIA (ESF) 
+3 
+UNIDADE BÁSICA DE SAÚDE 
+12 
+URGÊNCIA E EMERGÊNCIA 
+8 
+EQUIPE ADMINISTRATIVA 
+ 
+ADMINISTRATIVO - GERENCIAL 
+1 
+AMBULATÓRIO OU HOSPITAL 
+2 
+NÃO ESPECIFICADO 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+2 
+FARMACÊUTICO 
+ 
+ADMINISTRATIVO - GERENCIAL 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+FISIOTERAPEUTA 
+1 
+MÉDICO 
+ 
+AMBULATÓRIO OU HOSPITAL 
+22 
+NÃO ESPECIFICADO 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+14 
+URGÊNCIA E EMERGÊNCIA 
+6 
+NÃO ESPECIFICADO 
+ 
+ADMINISTRATIVO - GERENCIAL 
+2 
+AMBULATÓRIO OU HOSPITAL 
+6 
+NÃO ESPECIFICADO 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+7 
+URGÊNCIA E EMERGÊNCIA 
+1 
+ODONTÓLOGO 
+2 
+OUTROS 
+6 
+RECEPCIONISTA - ATENDENTE 
+ 
+AMBULATÓRIO OU HOSPITAL 
+63 
+UNIDADE BÁSICA DE SAÚDE 
+6 
+TÉCNICO DE OUVIDORIA 
+1 
+TÉCNICO EM ENFERMAGEM 
+2 
+TELEATENDENTE 
+ 
+URGÊNCIA E EMERGÊNCIA 
+1 
+REGISTRO E DOCUMENTAÇÃO 
+3 
+CONTRATO 
+2 
+OUTROS 
+1 
+TRABALHADOR EM SAÚDE 
+53 
+DESVIO ÉTICO 
+ 
+
+
+=== PAGE 41 ===
+40 
+ 
+TÉCNICO EM ENFERMAGEM 
+1 
+EXONERAÇÃO - DEMISSÃO 
+1 
+IRREGULARIDADES 
+1 
+OUTROS 
+1 
+PAGAMENTO 
+ 
+OUTROS 
+4 
+REAJUSTE SALARIAL 
+6 
+REMUNERAÇÃO 
+1 
+PROVIMENTO 
+ 
+ASSISTENTE SOCIAL 
+1 
+AUXILIAR - TÉCNICO DE ENFERMAGEM 
+2 
+CONCURSO PÚBLICO - PROCESSO SELETIVO 
+12 
+EQUIPE 
+2 
+FARMACÊUTICO 
+1 
+MÉDICO 
+12 
+NÃO ESPECIFICADO 
+3 
+NUTRICIONISTA 
+1 
+PSICÓLOGO 
+4 
+TRATAMENTO FORA DE DOMICÍLIO - TFD 
+6 
+FUNCIONAMENTO, LEGISLAÇÃO 
+1 
+TRANSPORTE DO PACIENTE 
+5 
+VIOLÊNCIA NO SUS 
+1 
+ASSISTENTE SOCIAL 
+1 
+ORIENTAÇÕES EM SAÚDE 
+1 
+INFORMAÇÕES E PROCEDIMENTOS 
+1 
+VIGILÂNCIA EM SAÚDE 
+17 
+SAÚDE DO TRABALHADOR 
+1 
+INSPEÇÃO DE AMBIENTES E PROCESSOS DE TRABALHO 
+1 
+VIGILÂNCIA EPIDEMIOLÓGICA 
+12 
+ÁGUA E AMBIENTES 
+5 
+ANIMAL SINANTRÓPICO - PEÇONHENTO 
+1 
+APLICAÇÃO DE INSETICIDA - FUMACÊ 
+1 
+DOENÇA - AGRAVO DE NOTIFICAÇÃO COMPULSÓRIA 
+ 
+DENGUE 
+1 
+IMUNOBIOLÓGICOS 
+ 
+VACINA 
+4 
+VIGILÂNCIA SANITÁRIA 
+4 
+ALVARÁ SANITÁRIO - LICENÇA DE FUNCIONAMENTO 
+1 
+FISCALIZAÇÃO 
+1 
+MEDICAMENTOS 
+ 
+NÃO ESPECIFICADO 
+1 
+SERVIÇOS DE SAÚDE 
+ 
+SERVIÇOS DE ATENDIMENTO HOSPITALAR 
+1 
+Total Geral 
+1219 
+Fonte: Sistema OuvidorSUS, Fevereiro de 2025. 
+ 
+Legenda: 
+Classificação das Manifestações – Reclamações e Total Geral 
+ASSUNTO 
+
+
+=== PAGE 42 ===
+41 
+ 
+Subassunto nível 1 
+Subassunto nível 2 
+Subassunto nível 3 
+Medicamento 
+ 
+Reclamações registradas no sistema E-OUV em 2024 
+ 
+Tabela 14: Tipificação das Reclamações  na Ouvidoria da SESA/ES, 2024 – SISTEMA E-OUV 
+RECLAMAÇÕES – EOUV 2023 
+Assuntos 
+Quantitativo 
+Marcação De Exames E/Ou Consultas 
+1435 
+Saúde Pública 
+471 
+Assistência À Saúde 
+289 
+Farmácia Cidadã 
+209 
+Atendimento Em Posto, Órgão Ou Unidade 
+154 
+Ouvidoria 
+79 
+Medicamentos Na Rede Sus 
+71 
+Processo Seletivo Simplificado 
+46 
+Servidor Público 
+46 
+Funcionamento De Posto, Órgão Ou Unidade 
+44 
+Internação 
+36 
+Repasse De Verba Pública 
+34 
+Vigilância Sanitária 
+27 
+Samu - Serviço De Atendimento Móvel De Urgência 
+22 
+Vacinação 
+21 
+Atendimento indisponível - Telefone 
+20 
+CONSULTA PÚBLICA 
+19 
+Especialidade Médica 
+19 
+Pagamento a Servidor Público 
+18 
+Tranferência De Paciente 
+17 
+Leitos Hospitalares 
+16 
+Processo 
+16 
+Conduta De Servidor Público Ou Militar 
+15 
+Doenças 
+12 
+Infraestrutura De Posto, Órgão Ou Unidade 
+11 
+Serviços de Saúde ofertados 
+11 
+Ações Afirmativas 
+10 
+Ações De Governo 
+10 
+ANDAMENTO DE MANIFESTAÇÃO 
+10 
+Serviço Catálogo 
+10 
+Servidor Em Designação Temporária - Dt 
+9 
+Hospitais 
+8 
+Alimentação Hospitalar 
+7 
+Ambulâncias 
+7 
+Assistência Social 
+7 
+Conselho De Saúde 
+6 
+Contratos 
+6 
+
+
+=== PAGE 43 ===
+42 
+ 
+Coronavírus (COVID-19) 
+6 
+Qualidade de atendimento 
+6 
+Código de Conduta Ética 
+4 
+Corregedoria 
+4 
+Direitos Humanos 
+4 
+Manutenção Em Posto, Órgão Ou Unidade 
+4 
+Melhoria do Serviço Público 
+4 
+Programas/Projetos De Governo 
+4 
+Tfd - Tratamento Fora De Domicílio 
+4 
+Atendimento indisponível - Presencial 
+3 
+Avaliação De Desempenho Individual De Servidor Público 
+3 
+Carga Horária De Servidor Público 
+3 
+Contato Com Posto, Órgão Ou Unidade 
+3 
+Fornecedores Ou Prestadores De Serviço 
+3 
+Material Hospitalar 
+3 
+Normas E Procedimentos De Posto, Órgão Ou Unidade 
+3 
+Remuneração, Vencimento e Subsídio 
+3 
+Sistema Informatizado De Posto, Órgão Ou Unidade 
+3 
+Acúmulo De Cargo 
+2 
+Atraso de entrega de laudo técnico 
+2 
+Auditoria Interna 
+2 
+Banco De Sangue 
+2 
+Cargo Público 
+2 
+Concessão de Benefícios  
+2 
+Concurso Público 
+2 
+Internação Domiciliar (Home Care) 
+2 
+Pedido De Acesso À Informação Governamental 
+2 
+Previdência 
+2 
+Recursos Humanos 
+2 
+Segurança Pública 
+2 
+Uti - Unidade De Terapia Intensiva 
+2 
+Água - Recursos Hídricos 
+1 
+Alocação Ou Remoção De Servido Público 
+1 
+Assédio 
+1 
+Ciência E Tecnologia 
+1 
+Comunicação E Divulgação 
+1 
+Condutor Infrator 
+1 
+Conselho Estadual de Economia Solidária 
+1 
+Delegacias 
+1 
+Desvio De Função De Servidor Público 
+1 
+Doação De Órgãos 
+1 
+Documento Público 
+1 
+Educação 
+1 
+Epidemias E Endemias 
+1 
+Estágio 
+1 
+Focos De Mosquito 
+1 
+Incentivos Financeiros 
+1 
+Informe De Rendimentos De Servidor Público 
+1 
+Inspeção, Fiscalização Ou Vistoria 
+1 
+
+
+=== PAGE 44 ===
+43 
+ 
+Lixo 
+1 
+Manutenção De Estradas E Rodovias Do Es 
+1 
+Patrimônio Público 
+1 
+Perícia Médica 
+1 
+Rat - Registros De Acidentes De Trânsito 
+1 
+Rede Abraço 
+1 
+Relacionamento Institucional 
+1 
+Tarifa Social 
+1 
+Terreno Ou Espaço Público 
+1 
+Transferência De Servidor Público 
+1 
+Valor Cobrado Por Serviço Ou Taxa De Posto, Órgão Ou Unidade 
+1 
+TOTAL GERAL 
+3370 
+Fonte: Sistema E-OUV, Fevereiro de 2025 
+ 
+As reclamações mais recorrentes registradas na Ouvidoria da SESA em 2024 estão 
+relacionadas à necessidade de consultas e cirurgias, demora na realização de exames 
+diagnósticos, transferência de leitos, insatisfação com profissionais (principalmente 
+médicos e recepcionistas/atendentes), atrasos no atendimento nos serviços, dificuldade 
+de acesso, rotinas e protocolos adotados, além da falta de determinados medicamentos. 
+No sistema E-OUV, que não contempla a classificação “solicitação”, as principais 
+reclamações referem-se à marcação de exames e consultas, bem como ao acesso a 
+medicamentos na Farmácia Cidadã. As reclamações constituem indicadores relevantes da 
+qualidade e do funcionamento dos serviços de saúde, funcionando como um termômetro 
+da experiência dos usuários. Por esse motivo, é fundamental que os gestores acompanhem 
+esses relatos de forma sistemática, integrando-os aos mecanismos de participação e 
+controle social, de modo a subsidiar decisões estratégicas voltadas à qualificação da 
+gestão e à melhoria contínua da atenção à saúde no Espírito Santo. 
+Ações Propostas 
+ 
+A ampliação da rede de Ouvidorias SUS no estado permitirá uma avaliação mais 
+abrangente e precisa dos serviços de saúde, promovendo maior participação social e 
+fortalecendo o controle social sobre a gestão do SUS. A capacitação contínua das equipes 
+nos sistemas informatizados é essencial para garantir a correta tipificação das 
+manifestações, possibilitando a geração de relatórios específicos por área técnica e 
+subsidiando a tomada de decisão de gestores e profissionais. 
+É importante dar continuidade ao desenvolvimento de pesquisas de satisfação nos 
+serviços, tanto por meios eletrônicos quanto físicos, ampliando o alcance das avaliações 
+realizadas pelos cidadãos no Sistema Único de Saúde. A implantação da política de 
+
+
+=== PAGE 45 ===
+44 
+ 
+humanização nos serviços da SESA contribui para que as manifestações sejam 
+compreendidas como instrumentos de aperfeiçoamento das práticas, ações e serviços de 
+saúde, reconhecendo que cada relato do cidadão pode fornecer dados relevantes para a 
+melhoria contínua do SUS. Nesse sentido, é fundamental sensibilizar a rede interna da 
+SESA para que todas as manifestações sejam utilizadas para promover melhorias efetivas 
+nos serviços e práticas de saúde. 
+5.5.1.4 - Solicitações 
+ 
+ 
+As solicitações, embora possam refletir algum grau de insatisfação, caracterizam-se 
+necessariamente como requerimentos de atendimento ou de acesso às ações e serviços 
+de saúde. Ao receber uma manifestação, é essencial que a Ouvidoria verifique se o cidadão 
+ainda necessita do insumo, procedimento ou atendimento mencionado. Caso a resposta 
+seja afirmativa, a manifestação deve ser registrada como solicitação no sistema 
+OuvidorSUS, garantindo que as áreas técnicas responsáveis adotem as medidas 
+corretivas ou preventivas necessárias e que o acompanhamento seja realizado de forma 
+adequada. 
+No sistema E-OUV, não há a categoria de solicitação. Portanto, todos os dados e análises 
+apresentados nesta seção referem-se exclusivamente ao OuvidorSUS, que permite o 
+registro detalhado das demandas, a tipificação adequada e o monitoramento completo 
+das solicitações, assegurando maior efetividade na gestão e acompanhamento das demandas da 
+população. 
+ 
+Solicitações registradas no sistema OuvidorSUS em 2024 
+ 
+Tabela 15: Tipificação das Solicitações  na Ouvidoria da SESA/ES, 2024 
+SOLICITAÇÕES – OUVIDORSUS 2024 
+ASSUNTOS NÃO PERTINENTES 
+99 
+OUTROS ÓRGÃOS 
+99 
+ATENÇÃO À SAÚDE 
+5960 
+ALIMENTAÇÃO E NUTRIÇÃO 
+21 
+DISPENSAÇÃO 
+21 
+LEITE ARTIFICIAL 
+18 
+OUTROS ALIMENTOS 
+2 
+TERAPIA NUTRICIONAL 
+1 
+ASSISTÊNCIA FARMACÊUTICA 
+459 
+MEDICAMENTO NÃO ESPECIFICADO 
+142 
+DISPENSAÇÃO 
+142 
+MEDICAMENTO NÃO PADRONIZADO NO SUS 
+134 
+DISPENSAÇÃO 
+134 
+
+
+=== PAGE 46 ===
+45 
+ 
+ACESSÓRIO BOMBA INSULINA, CÂNULA INFUSÃO CERCA 10 MM,    > 
+POLÍMERO, C/ AGULHA INTRODUTORA 
+2 
+ACESSÓRIO BOMBA INSULINA, CÂNULA INFUSÃO CERCA 10 MM, 
+POLÍMERO, C/ AGULHA INTRODUTORA 
+1 
+ACESSÓRIO BOMBA INSULINA, CONJUNTO ALIMENTAÇÃO, C/ PILHAS, 
+ADAPTADOR, TAMPA E CHAVE 
+4 
+ACESSÓRIO BOMBA INSULINA, CONJUNTO DE INFUSÃO, POLÍMERO, 
+CATÉTER CERCA 30 CM C/ CONECTOR LUER LOCK, C/ CÂNULA INFUSÃO CERCA 6 
+MM, SUPORTE, TAMPA E ADESIVO PROTETOR, P/ INSERÇÃO C/ APLICADOR 
+1 
+ACESSÓRIO BOMBA INSULINA, CONJUNTO DE INFUSÃO, POLÍMERO, 
+CATÉTER CERCA 60 CM C/ CONECTOR LUER LOCK, C/ CÂNULA INFUSÃO CERCA 10 
+MM, SUPORTE, TAMPA E ADESIVO PROTETOR, P/ INSERÇÃO C/ APLICADOR 
+2 
+ACESSÓRIO BOMBA INSULINA, CONJUNTO DE INFUSÃO, POLÍMERO, 
+CATÉTER CERCA 60 CM C/ CONECTOR LUER LOCK, C/ CÂNULA INFUSÃO CERCA 8 
+MM, SUPORTE, TAMPA E ADESIVO PROTETOR, P/ INSERÇÃO C/ APLICADOR 
+1 
+ÁCIDO URSODESOXICÓLICO 150 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+ÁCIDO ZOLEDRÔNICO 4 MG PÓ LIOFILIZADO PARA SOLUÇÃO INJETÁVEL 5 
+ML 
+2 
+ADALIMUMABE 40 MG SOLUÇÃO INJETÁVEL ELENCO ESTADUAL  
+5 
+ADALIMUMABE 40 MG/ML SOL INJ (SER PREENC) GRUPO 1.A 
+1 
+ALFAEPOETINA 10.000 UI SOLUÇÃO INJETÁVEL 1 ML ELENCO ESTADUAL  
+1 
+ARIPIPRAZOL 10 MG COMPRIMIDO  
+1 
+ARIPIPRAZOL 15 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+ARIPIPRAZOL 20 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+BECLOMETASONA, DIPROPIONATO + FORMOTEROL, FUMARATO 100 + 6 
+MCG/DOSE AEROSSOL ORAL 120 DOSES  
+1 
+BISOPROLOL, FUMARATO 5 MG COMPRIMIDO  
+1 
+BOMBA INFUSÃO, SISTEMA INFUSÃO CONTÍNUA DE INSULINA, 
+FORNECIMENTO PROGRAMADO, PORTÁTIL, MÍNIMA O,1 U/H E MÁXIMA DE 25 
+U/H, BATERIA, ADAPTADOR, CHAVE BATERIA , TAMPA BATERIA, CONJUNTOS DE 
+INFUSÃO E CARTUCHO PLÁSTICO 3,15 ML  
+1 
+BOSENTANA 125 MG COMP REV GRUPO 1.B  
+1 
+BRINZOLAMIDA, TARTARATO + TIMOLOL, MALEATO 10 MG + 5 MG/ML 
+SOLUÇÃO OFTÁLMICA 5 ML/BRIMONIDINA, TARTARATO + TIMOLOL, MALEATO 0,2 
++ 0,5 % SOLUÇÃO OFTÁLMICA 5 ML 
+1 
+CABERGOLINA 0,5 MG COMP GRUPO 1.A 
+1 
+CARNITINA 1 G CÁPSULA   
+1 
+CLOZAPINA 25 MG  COMPRIMIDO 
+1 
+DANAZOL 200 MG CAP GRUPO 1.B  
+1 
+DAPAGLIFLOZINA 10 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA 
+1 
+DENOSUMABE 60 MG/ML SOLUÇÃO INJETÁVEL 1 ML 
+2 
+DESMOPRESSINA, ACETATO 0,1 MG/ML SPRAY  NASAL 2,5 ML ELENCO 
+ESTADUAL  
+1 
+DESVENLAFAXINA, SUCCINATO MONOIDRATADO 100 MG COMPRIMIDO 
+DE LIBERAÇÃO PROLONGADA 
+1 
+DESVENLAFAXINA, SUCCINATO MONOIDRATADO 50 MG COMPRIMIDO 
+1 
+ENOXAPARINA SÓDICA  40 MG SOLUÇÃO INJETÁVEL 0,4 ML ELENCO 
+ESTADUAL  
+1 
+ENZALUTAMIDA 40 MG CAP 
+2 
+ESCITALOPRAM, OXALATO  20 mg COMPRIMIDO 
+1 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL  33,33 MG/ML SOLUÇÃO 
+ORAL 30 ML ELENCO ESTADUAL  
+1 
+
+
+=== PAGE 47 ===
+46 
+ 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL , CÂNHAMO 
+DESCARBOXILADO E FILTRADO, CÚRCUMA E SALGUEIRO, 25 MG CÁPSULA  ELENCO 
+ESTADUAL  
+1 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL 200 MG/ML SOLUÇÃO ORAL 
+60 ML ELENCO ESTADUAL  
+1 
+EXTRATO MEDICINAL, ÓLEO DE CANABIDIOL 24 % SOLUÇÃO ORAL 10 ML 
+ELENCO ESTADUAL  
+1 
+FUMARATO DE DIMETILA 240 MG COMP GRUPO 1.A 
+1 
+GABAPENTINA 400 MG CAP GRUPO 2  
+1 
+GALANTAMINA 16 MG CAP DE LIB PROL GRUPO 1.A 
+1 
+GALANTAMINA, BROMIDRATO 16 MG COMPRIMIDO DE LIBERAÇÃO 
+CONTROLADA  
+1 
+GALANTAMINA, BROMIDRATO 24 MG CÁPSULA DE LIBERAÇÃO 
+CONTROLADA  
+1 
+GLICOPIRRÔNIO 50MCG CÁPSULA  COM INALADOR ELENCO ESTADUAL  
+2 
+HIDROXIURÉIA 500 MG CÁPSULA  ELENCO ESTADUAL  
+1 
+IMUNOGLOBULINA ANTI-RHO (D) 300 MCG SOLUÇÃO INJETÁVEL  2 ML  
+1 
+INSULINA DETEMIR 100 UI/ML INJ (FR) 30 ML 
+1 
+LACOSAMIDA 150 MG COMPRIMIDO 
+1 
+LEVETIRACETAM 250 MG COMPRIMIDO ELENCO ESTADUAL  
+4 
+LEVETIRACETAM 750 MG COMP ELENCO ESTADUAL  
+2 
+LEVOTIROXINA SÓDICA 100 MCG COMPRIMIDO ELENCO ESTADUAL  
+1 
+LISDEXANFETAMINA, MESILATO 50 MG CÁPSULA  
+1 
+MEPOLIZUMABE 100 MG 
+2 
+MESILATO DE OSIMERTINIBE 80 MG COMP REV 
+1 
+METILFENIDATO, CLORIDRATO 20 MG CÁPSULA  ELENCO ESTADUAL  
+4 
+METILFENIDATO, CLORIDRATO 30 MG CAP LIBERAÇÃO CONTROLADA 
+ELENCO ESTADUAL  
+2 
+METILFENIDATO, CLORIDRATO 40 MG CAP LIBERAÇÃO CONTROLADA 
+2 
+METILFENIDATO, CLORIDRATO 40 MG CÁPSULA  ELENCO ESTADUAL  
+1 
+NÃO INFORMADO 
+5 
+NÃO LOCALIZADO 
+1 
+OLANZAPINA 10 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+OLANZAPINA 5 MG COMP GRUPO 1.A 
+1 
+OMALIZUMABE 150 MG PÓ LIOFILIZADO PARA SOLUÇÃO INJETÁVEL 
+ELENCO ESTADUAL  
+1 
+PALIPERIDONA 100 MG/ML SUSPENSÃO INJETÁVEL 0,5 ML ELENCO 
+ESTADUAL  
+2 
+PEGVISOMANTO 10 MG PÓ LIOF INJ (AMP) 
+1 
+PREGABALINA 150 MG CÁPSULA   
+2 
+RITUXIMABE 500 MG SOL INJ (FR-AMP) 50 ML GRUPO 1.A 
+2 
+RIVAROXABANA 20 MG COMPRIMIDO  
+1 
+SALMETEROL, XINAFOATO + FLUTICASONA 25 + 125 MCG/DOSE 
+AEROSSOL 120 DOSES ELENCO ESTADUAL  
+1 
+SENSOR 
+5 
+SENSOR DE GLICOSE PARA CGMS 
+16 
+TESTOSTERONA, SAL UNDECILATO 250 MG/ML AMP 4 ML 
+2 
+TICAGRELOR 90 MG COMPRIMIDO  
+1 
+TRIMETAZIDINA 35 MG COMPRIMIDO  
+3 
+USTEQUINUMABE 90 MG/ML SOLUÇÃO INJETÁVEL 0,5 ML 
+1 
+VALSARTANA + HIDROCLOROTIAZIDA 80 + 12,5  MG COMPRIMIDO  
+1 
+
+
+=== PAGE 48 ===
+47 
+ 
+VEDOLIZUMABE 300MG PÓ LIOF INJ (FR-AMP) 
+8 
+VENLAFAXINA, CLORIDRATO 150 MG CÁPSULA DE LIBERAÇÃO 
+CONTROLADA  
+1 
+MEDICAMENTO PADRONIZADO NO SUS 
+173 
+DISPENSAÇÃO 
+173 
+ACESSÓRIO BOMBA INSULINA, CÂNULA INFUSÃO CERCA 10 MM, 
+POLÍMERO, C/ AGULHA INTRODUTORA 
+2 
+ÁCIDO URSODESOXICÓLICO 150 MG COMPRIMIDO ELENCO ESTADUAL  
+5 
+ÁCIDO URSODESOXICÓLICO 300 MG COMPRIMIDO ELENCO ESTADUAL  
+2 
+ÁCIDO ZOLEDRÔNICO 4 MG PÓ LIOFILIZADO PARA SOLUÇÃO INJETÁVEL 5 
+ML 
+3 
+ADALIMUMABE 40 MG SOLUÇÃO INJETÁVEL ELENCO ESTADUAL  
+5 
+ADALIMUMABE 40 MG SOLUÇÃO INJETÁVEL ELENCO ESTADUAL 
+/METOTREXATO 25 MG/ML SOL INJ (AMP) 2 ML GRUPO 1.A 
+1 
+ADALIMUMABE 40 MG/ML SOL INJ (SER PREENC) GRUPO 1.A 
+1 
+ALENTUZUMABE 10MG/ML AMP 1,2ML 
+1 
+ALENTUZUMABE 30 MG/ML SOLUÇÃO INJETÁVEL 1 ML 
+1 
+ALFATALIGLICERASE 200 U PÓ LIOF INJ (FR-AMP) GRUPO 1.A 
+1 
+AMITRIPTILINA, CLORIDRATO 25 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+AMOXICILINA + CLAVULANATO DE POTÁSSIO 1 G + 0,2 G SOLUÇÃO 
+INJETÁVEL 
+1 
+ARIPIPRAZOL 10 MG COMPRIMIDO  
+6 
+ARIPIPRAZOL 15 MG COMPRIMIDO ELENCO ESTADUAL  
+3 
+ARIPIPRAZOL 20 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+ATORVASTATINA CÁLCICA 40 MG COMPRIMIDO /CLOPIDOGREL, 
+BISSULFATO 75 MG  COMPRIMIDO ELENCO ESTADUAL  
+1 
+AZATIOPRINA 50 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+BACLOFENO 20 MG COMPRIMIDO  
+1 
+BARICITINIBE COMPRIMIDO 
+1 
+BECLOMETASONA, DIPROPIONATO 200 MCG CÁPSULA  60 
+DOSES/CLORETO DE SÓDIO 0,9% SOLUÇÃO 100 ML NÃO INJETÁVEL/PROMETAZINA, 
+CLORIDRATO 25 MG COMPRIMIDO 
+1 
+BENZOATO DE ALOGLIPTINA 25 MG COMP 
+1 
+BOMBA DE INFUSÃO, POLICARBONATO, VOLUMÉTRICAS (LINEAR), 1000 A 
+9999 ML/H, ENTERAL/PARENTERAL, ALÇA PARA TRANSPORTE, TECLADO DE 
+MEMBRANA, SENSOR DE PRESSÃO, PROGAMAÇÃO ML/H, GOTAS, 
+VOLUME/TEMPO, DOSE EM MG, MCG, MMOL E MEQ, 
+1 
+BOSENTANA 62,5 MG COMP REV GRUPO 1.B  
+1 
+BUPROPIONA, CLORIDRATO 150 MG COMPRIMIDO/NICOTINA 4 MG 
+GOMA DE MASCAR/NICOTINA 14 MG ADESIVO TRANSDÉRMICO 
+1 
+CARBAMAZEPINA  200 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA   
+1 
+CITRATO DE POTÁSSIO 540 MG  COMPRIMIDO DE LIBERAÇÃO 
+PROLONGADA 
+1 
+CLORPROMAZINA, CLORIDRATO 100 MG  COMPRIMIDO ELENCO 
+ESTADUAL /PROMETAZINA, CLORIDRATO 25 MG COMPRIMIDO 
+1 
+COLECALCIFEROL (VITAMINA D3) 50.000 UI CÁPSULA  
+1 
+COMPLEMENTO ALIMENTAR P/ PACIENTE FENILCETONURICO MAIOR DE 1 
+ANO - FORMULA DE AMINOÁCIDOS ISENTA DE FENILALANINA 1 G PÓ GRUPO 2  
+1 
+DAPAGLIFLOZINA 10 MG COMPRIMIDO DE LIBERAÇÃO CONTROLADA 
+10 
+DAPAGLIFLOZINA 5 MG COMPRIMIDO 
+2 
+DENOSUMABE 60 MG/ML SOLUÇÃO INJETÁVEL 1 ML 
+1 
+DESMOPRESSINA, ACETATO 0,2 MG COMPRIMIDO 
+1 
+
+
+=== PAGE 49 ===
+48 
+ 
+DEXAMETASONA  0,5 MG COMPRIMIDO 
+1 
+DIAZEPAM 10 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+DORZOLAMIDA 2 % SOLUÇÃO OFTÁLMICA 5 ML ELENCO ESTADUAL  
+1 
+ENALAPRIL, MALEATO 10 MG COMPRIMIDO ELENCO ESTADUAL 
+/ESPIRONOLACTONA  25 MG COMPRIMIDO 
+1 
+ENOXAPARINA SÓDICA  80 MG SOLUÇÃO INJETÁVEL 0,8 ML 
+1 
+ERITROPOETINA HUMANA RECOMBINANTE 4.000 UI PÓ LIOFILIZADO 
+PARA SUSPENSÃO INJETÁVEL 2 ML 
+1 
+ESPIRAMICINA (1,5 MUI) 500 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+EZETIMIBA + SINVASTATINA 10 + 40 MG COMPRIMIDO  
+1 
+FORMOTEROL, FUMARATO 12 MCG CÁPSULA  ELENCO ESTADUAL  
+1 
+GALANTAMINA 24 MG CAP DE LIB PROL GRUPO 1.A 
+1 
+GOLIMUMABE 50 MG SOLUÇÃO INJETÁVEL  0,5 ML  
+1 
+GOSSERRELINA, ACETATO 10,8 MG SOLUÇÃO INJETÁVEL ELENCO 
+ESTADUAL  
+1 
+GOSSERRELINA, ACETATO 3,6 MG SUSPENSÃO INJETÁVEL ELENCO 
+ESTADUAL  
+2 
+HIALURONATO DE SÓDIO 1 % SOLUÇÃO INJETÁVEL  2 ML ELENCO 
+ESTADUAL  
+1 
+INFLIXIMABE 100 MG PÓ LIOFILIZADO PARA SOLUÇÃO INJETÁVEL ELENCO 
+ESTADUAL  
+1 
+INSULINA ASPARTE + ASPARTE PROTAMINA 30 % + 70 % 100 UI/ML 
+SOLUÇÃO INJETÁVEL  3 ML ELENCO ESTADUAL  
+1 
+INSULINA DEGLUDECA 100 UI/ML COM APLICADOR SOL INJ (AMP) 
+2 
+INSULINA DEGLUDECA 100 UI/ML INJ (FR) 3 ML ELENCO ESTADUAL  
+2 
+INSULINA GLARGINA 100 UI/ML SOLUÇÃO INJETÁVEL 10 ML ELENCO 
+ESTADUAL  
+2 
+INSULINA GLARGINA 300 UI/ML SOLUÇÃO INJETÁVEL 1,5 ML 
+1 
+INSULINA HUMANA REGULAR 100 UI/ML SOLUÇÃO INJETÁVEL 3 ML 
+1 
+LAMOTRIGINA 25 MG COMP GRUPO 2  
+1 
+LAMOTRIGINA 50 MG COMPRIMIDO 
+1 
+LATANOPROSTA 0,05 MG/ML SOL OFT (FR) 2,5 ML GRUPO 1.A 
+1 
+LEFLUNOMIDA 20 MG COMP GRUPO 1.A 
+2 
+LEUPRORRELINA 11,25 MG PÓ LIOF INJ (SER PREENC) ELENCO ESTADUAL  
+1 
+LEVETIRACETAM 100 MG/G SOLUÇÃO ORAL  300 ML 
+3 
+LEVETIRACETAM 250 MG COMPRIMIDO ELENCO ESTADUAL  
+4 
+LEVETIRACETAM 750 MG COMP ELENCO ESTADUAL  
+5 
+LEVETIRACETAM 750 MG COMP ELENCO ESTADUAL /LEVETIRACETAM 250 
+MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+LEVOMEPROMAZINA 25 MG COMPRIMIDO 
+1 
+LEVOTIROXINA SÓDICA 25 MCG COMPRIMIDO ELENCO ESTADUAL 
+/LEVOTIROXINA SÓDICA 50 MCG COMPRIMIDO ELENCO ESTADUAL  
+1 
+LEVOTIROXINA SÓDICA 50 MCG COMPRIMIDO ELENCO ESTADUAL 
+/LEVOTIROXINA SÓDICA 100 MCG COMPRIMIDO ELENCO ESTADUAL  
+1 
+LINAGLIPTINA 5 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+LISDEXANFETAMINA, MESILATO 30 MG CÁPSULA  
+2 
+LISDEXANFETAMINA, MESILATO 50 MG CÁPSULA  
+2 
+MEPOLIZUMABE 100 MG 
+2 
+METILFENIDATO, CLORIDRATO 10 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+METILFENIDATO, CLORIDRATO 20 MG CÁPSULA  ELENCO ESTADUAL  
+3 
+
+
+=== PAGE 50 ===
+49 
+ 
+METILFENIDATO, CLORIDRATO 30 MG CAP LIBERAÇÃO CONTROLADA 
+ELENCO ESTADUAL  
+1 
+METILFENIDATO, CLORIDRATO 40 MG CÁPSULA  ELENCO ESTADUAL  
+1 
+NÃO INFORMADO 
+2 
+NATALIZUMABE 20 MG/ML SOLUÇÃO INJETÁVEL 15 ML 
+1 
+NINTEDANIBE, SAL ESILATO 150 MG CAP 
+2 
+OLANZAPINA 5 MG COMP GRUPO 1.A 
+1 
+OLODATEROL, CLORIDRATO 2,5 MCG/DOSE SOLUÇÃO PARA INALAÇÃO 4 
+ML/BUDESONIDA 200 MCG AEROSSOL ORAL 100 DOSES  
+1 
+PALIPERIDONA 100 MG/ML SUSPENSÃO INJETÁVEL 0,5 ML ELENCO 
+ESTADUAL  
+2 
+PANCREATINA 10.000 UI CAP GRUPO 1.B  
+1 
+PANCREATINA 25.000 UI CAP GRUPO 1.B  
+1 
+PEGVISOMANTO 10 MG PÓ LIOF INJ (AMP) 
+2 
+PIRAZINAMIDA 30 MG/ML SUSPENSÃO ORAL  100 ML 
+1 
+PREGABALINA 150 MG CÁPSULA   
+1 
+QUETIAPINA 200 MG COMP GRUPO 1.A 
+1 
+QUETIAPINA 25 MG COMP GRUPO 1.A 
+1 
+RASAGILINA 1MG COMP 
+2 
+RIOCIGUATE 2,5 MG COMPRIMIDO 
+1 
+RISANQUIZUMABE 
+2 
+RISEDRONATO SÓDICO 35 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+RISPERIDONA 1 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+RITUXIMABE 10 MG/ML SOLUÇÃO INJETÁVEL 10 ML ELENCO ESTADUAL  
+1 
+RITUXIMABE 500 MG SOL INJ (FR-AMP) 50 ML GRUPO 1.A 
+1 
+SELEXIPAGUE 
+1 
+SINVASTATINA  20 MG COMPRIMIDO 
+1 
+SOMATROPINA 10 MG SOLUÇÃO INJETÁVEL COM SISTEMA DE APLICAÇÃO 
+1,5 ML 
+1 
+SOMATROPINA 12 UI SOLUÇÃO INJETÁVEL  1,5 ML  
+2 
+TANSULOSINA, CLORIDRATO 0,4 MG COMPRIMIDO  
+1 
+TIOTRÓPIO, BROMETO 18 MCG CÁPSULA   
+1 
+TOCILIZUMABE 20 MG/ML SOL INJ (FR-AMP) 4 ML GRUPO 1.A 
+1 
+TOPIRAMATO 100 MG COMPRIMIDO ELENCO ESTADUAL  
+1 
+TOXINA BOTULINICA TIPO A 100 UI SOLUÇÃO INJETÁVEL ELENCO 
+ESTADUAL  
+1 
+TRIMETAZIDINA 35 MG COMPRIMIDO  
+1 
+TRIPTORRELINA 11,25 MG SUSP INJ (FR-AMP) GRUPO 1.B  
+1 
+UPADACITINIBE 15 MG 
+1 
+USTEQUINUMABE 90 MG/ML SOLUÇÃO INJETÁVEL 0,5 ML 
+4 
+VEDOLIZUMABE 300MG PÓ LIOF INJ (FR-AMP) 
+6 
+VIGABATRINA 500 MG COMPRIMIDO  
+1 
+ZOLPIDEM, HEMITARTARATO 5 MG COMPRIMIDO 
+SUBLINGUAL/DULOXETINA, CLORIDRATO 60 MG CÁPSULA  
+1 
+ASSISTÊNCIA MÉDICA NO EXTERIOR 
+1 
+CERTIFICADO DE DIREITO À ASSISTÊNCIA MÉDICA - CDAM 
+1 
+BANCO DE CÉLULAS E TECIDOS 
+4 
+COLETA, DOAÇÃO, PROCESSAMENTO E ARMAZENAGEM 
+4 
+SANGUE 
+4 
+CARTÃO SUS 
+10 
+
+
+=== PAGE 51 ===
+50 
+ 
+INFORMAÇÕES GERAIS 
+2 
+OUTROS 
+8 
+CIRURGIA 
+635 
+APARELHO CIRCULATÓRIO 
+ 
+AMBULATORIAL OU HOSPITALAR 
+9 
+HOSPITALAR 
+4 
+APARELHO DA VISÃO 
+ 
+AMBULATORIAL 
+16 
+AMBULATORIAL OU HOSPITALAR 
+51 
+HOSPITALAR 
+9 
+APARELHO DIGESTIVO, ÓRGÃOS ANEXOS E PAREDE ABDOMINAL 
+104 
+APARELHO GENITURINÁRIO 
+ 
+AMBULATORIAL 
+11 
+AMBULATORIAL OU HOSPITALAR 
+93 
+HOSPITALAR 
+79 
+CIRURGIA NÃO ESPECIFICADA 
+4 
+GLÂNDULAS ENDÓCRINAS 
+22 
+MAMA 
+ 
+AMBULATORIAL OU HOSPITALAR 
+11 
+HOSPITALAR 
+15 
+NEFROLOGIA 
+11 
+OBSTETRÍCIA 
+ 
+AMBULATORIAL OU HOSPITALAR 
+2 
+HOSPITALAR 
+1 
+ODONTOLOGIA 
+ 
+BUCOMAXILOFACIAL 
+5 
+CIRURGIA ORAL 
+3 
+ONCOLOGIA 
+39 
+OUTRAS CIRURGIAS 
+28 
+PELE, TECIDO SUBCUTÂNEO E MUCOSA 
+1 
+PLÁSTICA 
+5 
+REPARADORA 
+ 
+AMBULATORIAL OU HOSPITALAR 
+2 
+HOSPITALAR 
+9 
+SISTEMA NERVOSO CENTRAL E PERIFÉRICO 
+1 
+SISTEMA OSTEOMUSCULAR 
+ 
+AMBULATORIAL OU HOSPITALAR 
+21 
+HOSPITALAR 
+40 
+TORÁCICA 
+1 
+VIAS AÉREAS SUPERIORES, FACE, CABEÇA E PESCOÇO 
+ 
+AMBULATORIAL OU HOSPITALAR 
+32 
+HOSPITALAR 
+6 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+2861 
+ALERGIA - IMUNOLOGIA 
+13 
+ANESTESIOLOGIA 
+5 
+ANGIOLOGIA 
+19 
+ATENDIMENTO DOMICILIAR 
+3 
+CARDIOLOGIA 
+101 
+CIRURGIA CARDIOVASCULAR 
+18 
+
+
+=== PAGE 52 ===
+51 
+ 
+CIRURGIA DA MÃO 
+3 
+CIRURGIA DE CABEÇA E PESCOÇO 
+9 
+CIRURGIA GERAL 
+289 
+CIRURGIA PEDIÁTRICA 
+5 
+CIRURGIA PLÁSTICA 
+9 
+CIRURGIA TORÁCICA 
+3 
+CIRURGIA VASCULAR 
+14 
+CLÍNICA MÉDICA 
+12 
+COLOPROCTOLOGIA 
+47 
+CONSULTA - ATENDIMENTO - TRATAMENTO NÃO ESPECIFICADO 
+14 
+DERMATOLOGIA 
+94 
+ENDOCRINOLOGIA E METABOLOGIA 
+45 
+FISIATRIA 
+2 
+FISIOTERAPIA 
+76 
+FONOAUDIOLOGIA 
+26 
+GASTROENTEROLOGIA 
+48 
+GENÉTICA MÉDICA 
+1 
+GERIATRIA 
+1 
+GINECOLOGIA E OBSTETRÍCIA 
+50 
+HEMATOLOGIA E HEMOTERAPIA 
+ 
+AMBULATORIAL 
+13 
+AMBULATORIAL OU HOSPITALAR 
+4 
+HEPATOLOGIA 
+6 
+INFECTOLOGIA 
+5 
+MASTOLOGIA 
+12 
+MULTIDISCIPLINAR 
+5 
+NEFROLOGIA 
+ 
+AMBULATORIAL 
+14 
+AMBULATORIAL OU HOSPITALAR 
+4 
+HOSPITALAR 
+17 
+NEUROCIRURGIA 
+56 
+NEUROLOGIA 
+363 
+NUTRIÇÃO 
+4 
+NUTROLOGIA 
+1 
+ODONTOLOGIA 
+ 
+CLÍNICA GERAL 
+5 
+ORTODONTIA 
+5 
+PRÓTESE DENTÁRIA 
+6 
+OFTALMOLOGIA 
+484 
+ONCOLOGIA 
+ 
+AMBULATORIAL 
+12 
+AMBULATORIAL OU HOSPITALAR 
+2 
+ORTOPEDIA E TRAUMATOLOGIA 
+340 
+OTORRINOLARINGOLOGIA 
+196 
+OUTRAS CONSULTAS - ATENDIMENTOS - TRATAMENTOS 
+17 
+PEDIATRIA 
+6 
+PNEUMOLOGIA 
+69 
+PRÁTICAS INTEGRATIVAS E COMPLEMENTARES 
+7 
+PSICOLOGIA 
+13 
+
+
+=== PAGE 53 ===
+52 
+ 
+PSIQUIATRIA 
+111 
+REUMATOLOGIA 
+62 
+UROLOGIA 
+111 
+VISITA DOMICILIAR 
+ 
+ESTRATÉGIA SAÚDE DA FAMÍLIA (ESF) 
+4 
+DIAGNÓSTICO (EXAME) 
+1648 
+ANATOMIA PATOLÓGICA E CITOPATOLOGIA 
+ 
+AMBULATORIAL 
+2 
+AMBULATORIAL OU HOSPITALAR 
+3 
+ANGIOLOGIA 
+3 
+CARDIOLOGIA 
+ 
+AMBULATORIAL 
+4 
+AMBULATORIAL OU HOSPITALAR 
+46 
+COLETA DE MATERIAL 
+32 
+DIAGNÓSTICO NÃO ESPECIFICADO 
+2 
+ENDOSCOPIA 
+ 
+APARELHO DIGESTIVO 
+232 
+APARELHO GINECOLÓGICO 
+39 
+APARELHO RESPIRATÓRIO 
+12 
+APARELHO URINÁRIO 
+5 
+ENDOSCOPIA - NÃO ESPECIFICADO 
+2 
+ENDOSCOPIA - OUTROS 
+2 
+GINECOLOGIA E OBSTETRÍCIA 
+30 
+LABORATÓRIO CLÍNICO 
+14 
+MEDICINA NUCLEAR IN VIVO 
+ 
+APARELHO CARDIOVASCULAR 
+12 
+APARELHO DIGESTIVO 
+2 
+APARELHO ENDÓCRINO 
+1 
+APARELHO ESQUELÉTICO (OSSOS E ARTICULAÇÕES) 
+1 
+APARELHO GENITURINÁRIO 
+2 
+APARELHO RESPIRATÓRIO 
+3 
+MEDICINA NUCLEAR EM VIVO - OUTROS 
+1 
+NEUROLOGIA 
+ 
+AMBULATORIAL 
+8 
+AMBULATORIAL OU HOSPITALAR 
+111 
+OFTALMOLOGIA 
+179 
+OTORRINOLARINGOLOGIA E FONOAUDIOLOGIA 
+89 
+OUTROS DIAGNÓSTICOS (EXAMES) 
+19 
+RADIOLOGIA 
+ 
+ABDÔMEN E PELVE 
+9 
+CABEÇA E PESCOÇO 
+1 
+CINTURA ESCAPULAR E MEMBROS SUPERIORES 
+3 
+CINTURA PÉLVICA E MEMBROS INFERIORES 
+19 
+COLUNA VERTEBRAL 
+3 
+RADIOLOGIA - OUTROS 
+1 
+TÓRAX E MEDIASTINO 
+5 
+VASOS SANGUÍNEOS E LINFÁTICOS 
+3 
+RESSONÂNCIA MAGNÉTICA 
+ 
+ABDÔMEN, PELVE E MEMBROS INFERIORES 
+100 
+
+
+=== PAGE 54 ===
+53 
+ 
+CABEÇA, PESCOÇO E COLUNA VERTEBRAL 
+216 
+NÃO ESPECIFICADO 
+24 
+TÓRAX E MEMBROS SUPERIORES 
+39 
+TOMOGRAFIA 
+ 
+ABDOMEM, PELVE E MEMBROS INFERIORES 
+29 
+CABEÇA, PESCOÇO E COLUNA VERTEBRAL 
+55 
+NÃO ESPECIFICADO 
+8 
+TÓRAX E MEMBROS SUPERIORES 
+8 
+ULTRASSONOGRAFIA 
+ 
+DEMAIS SISTEMAS 
+151 
+SISTEMA CIRCULATÓRIO 
+105 
+ULTRASSONOGRAFIA - NÃO ESPECIFICADO 
+5 
+ULTRASSONOGRAFIA - OUTROS 
+8 
+INTERNAÇÃO 
+23 
+INTERNAÇÃO CLÍNICA 
+ 
+DEPENDÊNCIA QUÍMICA 
+4 
+HOSPITALAR 
+3 
+PSIQUIATRIA 
+16 
+JUDICIALIZAÇÃO NO SUS 
+32 
+ALIMENTAÇÃO E NUTRIÇÃO 
+ 
+LEITE ARTIFICIAL 
+2 
+ASSISTÊNCIA FARMACÊUTICA 
+ 
+MEDICAMENTO NÃO PADRONIZADO 
+ 
+PEMBROLIZUMABE 25 MG/ML SOLUÇÃO INJETÁVEL 4 ML 
+1 
+RUXOLITINIBE 20MG COMPRIMIDO 
+1 
+MEDICAMENTO PADRONIZADO NO SUS 
+ 
+ÁCIDO FOLÍNICO (FOLINATO DE CÁLCIO) 0,5 MG/ML SOLUÇÃO ORAL 50 
+ML 
+1 
+IMUNOBIOLÓGICOS 
+ 
+VACINA 
+2 
+PRODUTOS PARA SAÚDE E CORRELATOS 
+ 
+APARELHO - BALÃO DE O2 - CPAP 
+3 
+APARELHO AUDITIVO 
+17 
+BOMBA DE INFUSÃO DE INSULINA 
+1 
+CADEIRA DE RODAS MOTORIZADA 
+1 
+PRÓTESE 
+3 
+PRODUTOS PARA SAÚDE E CORRELATOS 
+118 
+APARELHO - BALÃO DE O2  - CPAP 
+3 
+APARELHO AUDITIVO 
+49 
+APARELHO PARA AFERIR PRESSÃO SANGUÍNEA (ESFIGMOMANÔMETRO) 
+1 
+AUXILIAR DA RESPIRAÇÃO (BALÃO DE O2  - CPAP) 
+1 
+BATERIA PARA CADEIRA DE RODAS MOTORIZADA 
+2 
+BOMBA DE INFUSÃO DE INSULINA 
+9 
+CADEIRA DE RODAS 
+7 
+CADEIRA DE RODAS MOTORIZADA 
+1 
+CADEIRA PARA BANHO 
+1 
+CANETA PARA APLICAÇÃO DE INSULINA 
+1 
+FITAS REAGENTES PARA GLICOSE 
+3 
+FRALDA DESCARTÁVEL 
+3 
+
+
+=== PAGE 55 ===
+54 
+ 
+GLICOSÍMETRO 
+1 
+ÓCULOS 
+20 
+ÓRTESE 
+1 
+OUTROS PRODUTOS PARA SAÚDE E CORRELATOS 
+5 
+PRÓTESE 
+7 
+SONDA - EQUIPO - FRASCO 
+3 
+REGISTRO E DOCUMENTAÇÃO 
+98 
+ATESTADO DE SANIDADE MENTAL 
+1 
+ATESTADO MÉDICO 
+4 
+CADERNETA DE SAÚDE DA GESTANTE 
+1 
+CARTÃO DE VACINAÇÃO 
+1 
+CÓPIA DE RESULTADO EXAMES 
+4 
+DECLARAÇÃO DE ÓBITO 
+3 
+LAUDO 
+8 
+OUTROS 
+5 
+PRONTUÁRIO 
+65 
+RESULTADO DE EXAME 
+6 
+TRANSFERÊNCIA DE PACIENTE 
+56 
+LEITOS - ENTRE ESTABELECIMENTOS 
+32 
+LEITOS - MESMO ESTABELECIMENTO 
+2 
+OUTRAS 
+19 
+UTI - CTI - ENTRE ESTABELECIMENTOS 
+2 
+UTI - CTI - MESMO ESTABELECIMENTO 
+1 
+TRANSPLANTE DE ORGÃOS, TECIDOS E CÉLULAS 
+8 
+AMBULATORIAL OU HOSPITALAR 
+4 
+HOSPITALAR 
+4 
+TRATAMENTO FORA DE DOMICÍLIO (TFD) 
+6 
+CONCESSÃO DO BENEFÍCIO 
+6 
+URGÊNCIA E EMERGÊNCIA 
+5 
+ATENDIMENTO  
+ 
+UNIDADE BÁSICA DE SAÚDE 
+4 
+UNIDADE DE PRONTO ATENDIMENTO - UPA 
+1 
+GESTÃO 
+154 
+AÇÕES E PROGRAMAS DE SAÚDE 
+3 
+MELHOR EM CASA - SERVIÇO DE ATENÇÃO DOMICILIAR 
+1 
+OUTRAS AÇÕES E PROGRAMAS DE SAÚDE 
+1 
+PROGRAMA NACIONAL DE CONTROLE DO TABAGISMO 
+1 
+CADASTRO NACIONAL DE ESTABELECIMENTOS DE SAÚDE - CNES 
+3 
+CENTRAL DE REGULAÇÃO 
+2 
+COBERTURA DE PROCEDIMENTOS PELO SUS 
+5 
+COMUNICAÇÃO 
+1 
+OUTROS 
+1 
+DADOS E INFORMAÇÕES 
+7 
+FILA DE ESPERA 
+2 
+OUTROS 
+1 
+PESQUISAS DESENVOLVIDAS PELO MINISTÉRIO DA SAÚDE 
+1 
+PRODUÇÃO DE MEDICAMENTOS - VACINAS 
+1 
+QUANTIDADE DE EQUIPAMENTOS 
+1 
+QUANTIDADE DE LEITOS SUS 
+1 
+
+
+=== PAGE 56 ===
+55 
+ 
+ESTABELECIMENTOS DE ASSISTÊNCIA À SAÚDE 
+18 
+ACOMPANHANTE PARA GESTANTES 
+ 
+URGÊNCIA E EMERGÊNCIA 
+1 
+ALIMENTAÇÃO PARA O ACOMPANHANTE 
+1 
+CIRURGIA 
+ 
+CANCELAMENTO - SUSPENSÃO 
+2 
+REMARCAÇÃO 
+1 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+ 
+REMARCAÇÃO 
+1 
+ESPAÇO FÍSICO 
+1 
+INTERRUPÇÃO DE ATENDIMENTO - PROCEDIMENTO 
+1 
+MATERIAL DE USO CONTÍNUO - PERMANENTE - EQUIPAMENTO 
+2 
+ROTINAS - PROTOCOLOS 
+ 
+ALTA MÉDICA 
+1 
+ATENDIMENTO PRIORITÁRIO 
+3 
+HORÁRIO DE VISITA 
+1 
+INFORMAÇÕES SOBRE O PACIENTE 
+1 
+TRABALHO EM EQUIPE 
+1 
+TRATAMENTO COM OUTRO PROFISSIONAL 
+1 
+FINANCEIRO 
+5 
+DOCUMENTO 
+ 
+OUTROS DOCUMENTOS 
+1 
+FATURAMENTO 
+1 
+PAGAMENTO 
+2 
+FORNECEDOR - PRESTADOR DE SERVIÇO 
+2 
+REPASSE DE VERBA 
+1 
+PESQUISA, PROJETO, EVENTO 
+1 
+OUTROS 
+1 
+OUVIDORIA DO SUS 
+2 
+RESPOSTA À MANIFESTAÇÃO 
+1 
+SISTEMA DE INFORMAÇÃO 
+1 
+QUALIDADE DO ATENDIMENTO - SERVIÇO PRESTADO 
+52 
+ASSISTENTE SOCIAL 
+ 
+ADMINISTRATIVO - GERENCIAL 
+1 
+AMBULATÓRIO OU HOSPITAL 
+1 
+AUXILIAR DE ENFERMAGEM 
+2 
+ADMINISTRATIVO - GERENCIAL 
+1 
+AMBULATÓRIO OU HOSPITAL 
+1 
+EQUIPE 
+6 
+ADMINISTRATIVO - GERENCIAL 
+1 
+AMBULATÓRIO OU HOSPITAL 
+4 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+MÉDICO 
+2 
+AMBULATÓRIO OU HOSPITAL 
+2 
+OUTROS 
+1 
+ADMINISTRATIVO - GERENCIAL 
+1 
+RECEPCIONISTA - ATENDENTE 
+ 
+AMBULATÓRIO OU HOSPITAL 
+37 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+
+
+=== PAGE 57 ===
+56 
+ 
+SECRETÁRIO DO MINISTÉRIO DA SAÚDE 
+1 
+REGISTRO E DOCUMENTAÇÃO 
+5 
+CONTRATO 
+5 
+TRABALHADOR EM SAÚDE 
+45 
+FICHA FINANCEIRA 
+2 
+IRREGULARIDADES 
+1 
+OUTROS 
+1 
+PAGAMENTO 
+ 
+APOSENTADORIA 
+1 
+OUTROS 
+1 
+REAJUSTE SALARIAL 
+9 
+PROCESSO DE APOSENTADORIA 
+2 
+PROVIMENTO 
+ 
+CONCURSO PÚBLICO - PROCESSO SELETIVO 
+24 
+PSICÓLOGO 
+1 
+REMOÇÃO - TRANSFERÊNCIA - READAPTAÇÃO 
+1 
+RESIDÊNCIA - ESTÁGIO PROFISSIONAL 
+2 
+TRANSPORTE 
+1 
+AMBULÂNCIA 
+1 
+TRATAMENTO FORA DE DOMICÍLIO - TFD 
+3 
+FUNCIONAMENTO, LEGISLAÇÃO 
+1 
+TRANSPORTE DO PACIENTE 
+2 
+ORIENTAÇÕES EM SAÚDE 
+4 
+INFORMAÇÕES E PROCEDIMENTOS 
+3 
+SISTEMA ÚNICO DE SAÚDE 
+1 
+VIGILÂNCIA EM SAÚDE 
+25 
+VIGILÂNCIA EPIDEMIOLÓGICA 
+10 
+AGENTE DE ENDEMIAS 
+ 
+VISITA DO AGENTE 
+3 
+DOENÇA - AGRAVO DE NOTIFICAÇÃO COMPULSÓRIA 
+ 
+TUBERCULOSE 
+1 
+IMUNOBIOLÓGICOS 
+ 
+SORO 
+1 
+VACINA 
+5 
+VIGILÂNCIA SANITÁRIA 
+15 
+SERVIÇOS 
+ 
+E-MAIL - PORTAL - TELEFONE 
+1 
+SERVIÇOS DE SAÚDE 
+14 
+CENTRO DE REABILITAÇÃO 
+1 
+SERVIÇOS DE DIAGNÓSTICO POR REGISTRO GRÁFICO (ECOCARDIOGRAMA E 
+ELETROENCEFALOGRAMA) 
+1 
+SERVIÇOS DE FISIOTERAPIA E TERAPIA OCUPACIONAL 
+3 
+SERVIÇOS DE RAIO - X 
+6 
+SERVIÇOS DE RESSONÂNCIA MAGNÉTICA 
+1 
+SERVIÇOS DE TERAPIA RENAL SUBSTITUTIVA (HEMODIÁLISE/TRANSPLANTE 
+RENAL) 
+1 
+SERVIÇOS DE TOMOGRAFIA 
+1 
+TOTAL GERAL 
+6257 
+Fonte: Sistema OuvidorSUS, Fevereiro 2025. 
+
+
+=== PAGE 58 ===
+57 
+ 
+ 
+Legenda: 
+Classificação das Manifestações – Solicitações e Total Geral 
+ASSUNTO 
+Subassunto nível 1 
+Subassunto nível 2 
+Subassunto nível 3 
+Medicamento 
+Em 2024, as principais solicitações registradas na Ouvidoria referiram-se a cirurgias, 
+mantendo padrão semelhante aos anos anteriores, além de consultas e tratamentos 
+diretamente relacionados ao tamanho das filas de espera. Outros temas recorrentes 
+incluíram diagnósticos, transferências de pacientes, medicamentos, resultados de 
+exames, prontuários e produtos de saúde, como aparelhos auditivos, entre outros. 
+Em algumas situações, observa-se que a tipificação registrada como solicitação também 
+apresenta elementos de reclamação, como no caso de “falta de medicamento”. Essa 
+sobreposição evidencia a necessidade de capacitação contínua das equipes da Ouvidoria 
+e do aprimoramento dos sistemas informatizados, de forma a permitir a distinção clara 
+entre solicitações e reclamações, assegurando respostas adequadas e a elaboração de 
+relatórios gerenciais precisos. A análise detalhada das solicitações possibilita identificar 
+demandas urgentes e prioritárias, subsidiando ações estratégicas para redução de filas, 
+melhoria do atendimento e qualificação dos serviços, contribuindo para a eficiência do 
+SUS e o fortalecimento da participação social. 
+ 
+Ações Propostas 
+O desenvolvimento de uma política de humanização deve ser encarado como um 
+elemento transversal a todas as ações propostas neste relatório, permeando tanto a 
+gestão das demandas quanto o planejamento estratégico dos serviços de saúde.  
+Existe a necessidade de melhorar o acesso (quantitativo) de determinadas consultas e 
+exames, porém é necessário desenvolver a rede e verificar se os encaminhamentos aos 
+especialistas são realmente necessários ou se a atenção primária consegue absorver tais 
+atendimentos (em algumas ocasiões).  
+Outra forma seria a qualificação do processo de regulação com melhorias nos sistemas 
+informatizados, permite otimizar o encaminhamento de pacientes, assegurar dados 
+consistentes e gerar informações estratégicas para a gestão. 
+Ampliar a atenção primária (sugestão) representa uma oportunidade de ampliar a 
+
+
+=== PAGE 59 ===
+58 
+ 
+capacidade de atendimento dentro da rede do SUS, reduzindo filas e melhorando a 
+resolutividade dos serviços. Nesse contexto, é essencial que a Ouvidoria do SUS seja 
+descentralizada, alcançando municípios e serviços com maior demanda, ao mesmo tempo 
+em que promove divulgação e orientação à população sobre os serviços disponíveis. 
+Por fim, os dados coletados pela Ouvidoria do SUS devem ser incorporados ao 
+planejamento estratégico das áreas da SESA, permitindo que informações sobre 
+demandas, insatisfação e necessidades dos usuários subsidiem decisões, contribuindo 
+para a melhoria contínua da gestão, a eficiência dos serviços e a humanização do 
+atendimento. 
+ 
+5.5.1.5 - Elogios 
+ 
+ 
+Os elogios apresentam pontos positivos, satisfação, reconhecimento de boas práticas 
+dentro do Sistema Único de Saúde. Essas manifestações para a Ouvidoria e para a 
+administração pública representam avaliações positivas de práticas, ações e serviços de 
+saúde, permitindo identificar experiências exitosas e consolidar modelos de atendimento 
+eficazes. 
+É preciso que os elogios sejam identificados (autor do elogio) , pois isso possibilita que as 
+ações sejam formalmente reconhecidas e valorizadas pela gestão da SESA.  
+O registro e a análise sistemática dos elogios não apenas fortalecem a cultura de 
+valorização e motivação dos profissionais, mas também alimentam o planejamento 
+estratégico da SESA, oferecendo dados concretos sobre o desempenho positivo dos 
+serviços e indicando caminhos para a qualificação contínua da atenção à saúde no Espírito 
+Santo. 
+ 
+Elogios registrados no sistema OuvidorSUS em 2024 
+ 
+Tabela 16: Tipificação dos Elogios  na Ouvidoria da SESA/ES, 2024 
+ELOGIOS – SISTEMA OUVIDORSUS 2024 
+ASSUNTOS NÃO PERTINENTES 
+3 
+OUTROS ÓRGÃOS 
+3 
+GESTÃO 
+33 
+QUALIDADE DO ATENDIMENTO - SERVIÇO PRESTADO 
+33 
+AGENTE COMUNITÁRIO DE SAÚDE 
+ 
+ESTRATÉGIA DE SAÚDE DA FAMÍLIA (ESF) 
+4 
+ASSISTENTE SOCIAL 
+ 
+ADMINISTRATIVO - GERENCIAL 
+1 
+AMBULATÓRIO OU HOSPITAL 
+1 
+
+
+=== PAGE 60 ===
+59 
+ 
+ATENDENTE - TELEATENDENTE DE OUVIDORIA 
+2 
+AUXILIAR DE ENFERMAGEM 
+ 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+ENFERMEIRO 
+ 
+ADMINISTRATIVO - GERENCIAL 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+5 
+EQUIPE 
+ 
+AMBULATÓRIO OU HOSPITAL 
+4 
+UNIDADE BÁSICA DE SAÚDE 
+2 
+EQUIPE DE HIGIENIZAÇÃO 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+MÉDICO 
+ 
+ESTRATÉGIA SAÚDE DA FAMÍLIA (ESF) 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+4 
+OUTROS 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+2 
+RECEPCIONISTA - ATENDENTE 
+ 
+UNIDADE BÁSICA DE SAÚDE 
+2 
+TÉCNICO EM ENFERMAGEM 
+ 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+Total Geral 
+36 
+Fonte: Sistema OuvidorSUS, Fevereiro de 2025. 
+ 
+Legenda: 
+Classificação das Manifestações – ELOGIOS e Total Geral 
+ASSUNTO 
+Subassunto nível 1 
+Subassunto nível 2 
+Subassunto nível 3 
+ 
+ 
+Elogios registrados no sistema E-OUV em 2024 
+ 
+Tabela 17: Tipificação dos Elogios  na Ouvidoria da SESA/ES, 2024 – SISTEMA E-OUV 
+ELOGIOS – E-OUV 2024 
+Assunto 
+Quantitativo 
+Ações Afirmativas 
+36 
+Saúde Pública 
+11 
+Servidor Público 
+11 
+Atendimento Em Posto, Órgão Ou Unidade 
+10 
+Assistência À Saúde 
+6 
+Farmácia Cidadã 
+4 
+Internação 
+4 
+Samu - Serviço De Atendimento Móvel De Urgência 
+4 
+Ouvidoria 
+3 
+Qualidade de atendimento 
+3 
+Fornecedores Ou Prestadores De Serviço 
+2 
+Inspeção, Fiscalização Ou Vistoria 
+2 
+
+
+=== PAGE 61 ===
+60 
+ 
+Servidor Em Designação Temporária - Dt 
+2 
+Ações De Governo 
+1 
+Avaliação De Desempenho Individual De Servidor Público 
+1 
+Conselho De Saúde 
+1 
+Funcionamento De Posto, Órgão Ou Unidade 
+1 
+Marcação De Exames E/Ou Consultas 
+1 
+Processo Seletivo Simplificado 
+1 
+Serviço Catálogo 
+1 
+Vigilância Sanitária 
+1 
+TOTAL GERAL 
+106 
+Fonte: Sistema E-OUV, Fevereiro 2024. 
+ 
+Os elogios recebidos pela SESA no ano de 2024 representaram a satisfação pelo 
+atendimento de profissionais da equipe de saúde, além de outros profissionais de saúde, 
+inclusive da área administrativa. Esses registros evidenciam reconhecimento de boas 
+práticas, eficiência e qualidade no atendimento, reforçando aspectos positivos do Sistema 
+Único de Saúde no Espírito Santo.  
+Foi observado, no sistema E-OUV, o registro de elogios anônimos, muitas vezes recebidos 
+de forma simultânea, possivelmente relacionados a denúncias previamente registradas 
+ou enviados pelo próprio(a) denunciado(a). Nesses casos, é fundamental realizar análises 
+criteriosas, verificando padrões de envio e autenticidade, para garantir que os dados 
+utilizados na avaliação da gestão sejam confiáveis e consistentes. 
+ 
+Ações Propostas 
+ 
+Ampliar a possibilidade dos cidadãos avaliarem as práticas, ações e serviços de saúde, 
+uma vez que os elogios se caracterizam como avaliação positiva. 
+As ouvidorias podem estimular os elogios de forma ética, perguntando aos cidadãos quais 
+são os locais, trabalhadores ou situações que gosta ou que avalia como “positivo”, “bom”, 
+no Sistema Único de Saúde. 
+A ouvidoria da SESA envia no mês dos trabalhadores (outubro) declaração de 
+recebimento de elogio, tanto para os serviços quanto para os profissionais. Essa ação visa 
+incentivar que outros profissionais e serviços qualifiquem suas ações, além de reconhecer 
+os bons serviços prestados pelo Sistema Único de Saúde no Espírito Santo. 
+Ampliar a pesquisa de satisfação para toda a rede de atendimento SESA com estímulo à 
+implantação em todos os serviços SUS dos municípios. 
+Providenciar o regsitro do(a) autor(a) do elogio, uma vez que, em muitos casos na SESA 
+foi possível verificar que os elogios eram anônimos para beneficiar serviços, pessoas, 
+
+
+=== PAGE 62 ===
+61 
+ 
+práticas comumente reclamadas no âmbito da Ouvidoria. 
+Qualificar a tipificação dos sistemas informatizados o que interfere diretamente nos 
+dados dos relatórios da rede de Ouvidorias do SUS.   
+ 
+5.5.1.6 - Sugestões 
+ 
+ 
+As sugestões constituem manifestações voltadas à proposição de melhorias ao Sistema Único 
+de Saúde, refletindo ideias, expectativas e demandas dos cidadãos no âmbito coletivo. Elas 
+podem abranger desde questões administrativas até aspectos relacionados às práticas, ações e 
+serviços prestados pelo SUS, contribuindo para o aprimoramento contínuo da gestão e da 
+qualidade da atenção à saúde. 
+Para facilitar o registro e a participação da população, diversos serviços, como as Farmácias 
+Cidadãs e hospitais, foram equipados com caixas de manifestação e banners informativos 
+sobre o atendimento da Ouvidoria. Essa estratégia permitiu que os cidadãos encaminhassem 
+suas sugestões diretamente, promovendo maior interação com os serviços e garantindo que 
+essas contribuições fossem recebidas, registradas e analisadas de forma sistemática, 
+fortalecendo a transparência, o controle social e o aprimoramento das políticas e práticas 
+implementadas pelo SUS. 
+ 
+Sugestões registradas no sistema OuvidorSUS em 2024 
+ 
+Tabela 18: Tipificação das sugestões na Ouvidoria da SESA/ES, 2024. 
+SUGESTÕES – OUVIDORSUS 2024 
+ASSUNTOS NÃO PERTINENTES 
+4 
+OUTROS ÓRGÃOS 
+4 
+GESTÃO 
+5 
+AÇÕES E PROGRAMAS DE SAÚDE 
+1 
+MELHOR EM CASA - SERVIÇO DE ATENÇÃO DOMICILIAR 
+1 
+ESTABELECIMENTOS DE ASSISTÊNCIA À SAÚDE 
+2 
+ENDEREÇO - TELEFONE 
+1 
+ROTINAS - PROTOCOLOS 
+1 
+OUTROS 
+1 
+QUALIDADE DO ATENDIMENTO - SERVIÇO PRESTADO 
+1 
+ENFERMEIRO 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+URGÊNCIA E EMERGÊNCIA 
+1 
+SAMU 
+1 
+AMBULÂNCIA 
+1 
+VIGILÂNCIA EM SAÚDE 
+1 
+VIGILÂNCIA SANITÁRIA 
+1 
+
+
+=== PAGE 63 ===
+62 
+ 
+SERVIÇOS DE SAÚDE 
+1 
+SERVIÇOS DE VACINAÇÃO E IMUNIZAÇÃO HUMANA 
+1 
+TOTAL GERAL 
+10 
+Fonte: Sistema OuvidorSUS, Fevereiro 2024 
+ 
+Legenda: 
+Classificação das Manifestações – Sugestões e Total 
+Assunto 
+Subassunto nível 1 
+Subassunto nivel 2 
+Subassunto nivel 3 
+ 
+ 
+Sugestões registradas no sistema E-OUV em 2024 
+ 
+ 
+Tabela 19: Tipificação dos Sugestões  na Ouvidoria da SESA/ES, 2024 – SISTEMA E-OUV 
+SUGESTÕES – SISTEMA E-OUV 2023 
+Assunto 
+Quantitativo 
+Saúde Pública 
+9 
+Assistência À Saúde 
+4 
+Servidor Público 
+3 
+Farmácia Cidadã 
+2 
+Marcação De Exames E/Ou Consultas 
+2 
+Ouvidoria 
+2 
+Processo Seletivo Simplificado 
+2 
+Vacinação 
+2 
+Vigilância Sanitária 
+2 
+ANDAMENTO DE MANIFESTAÇÃO 
+1 
+Atendimento Em Posto, Órgão Ou Unidade 
+1 
+Campanha Governamental 
+1 
+ES Solidário - Doações 
+1 
+Medicamentos Na Rede Sus 
+1 
+Melhoria do Serviço Público 
+1 
+Participação Social 
+1 
+Recursos Humanos 
+1 
+Samu - Serviço De Atendimento Móvel De Urgência 
+1 
+Serviço Catálogo 
+1 
+Serviços de Saúde ofertados 
+1 
+TOTAL GERAL 
+39 
+Fonte: Sistema E-OUV, Fevereiro de 2025 
+ 
+No ano de 2024 recebemos sugestões voltadas à gestão, com foco em estabelecimentos de 
+saúde e documentação, bem como referentes à assistência farmacêutica, evidenciando o 
+interesse da população em contribuir com o aprimoramento dos serviços prestados. 
+No sistema E-OUV as sugestões principais trataram de saúde pública (termo generalista), 
+assistencia a saúde, processo seletivo, ações de governo, dentre outros,  
+
+
+=== PAGE 64 ===
+63 
+ 
+demonstrando que a população participa ativamente do debate sobre a gestão e o 
+funcionamento do SUS, oferecendo ideias que podem subsidiar mudanças e inovações. 
+Ao analisar as manifestações, os gestores das áreas correspondentes recebem indicativos 
+claros sobre as expectativas e necessidades da população, podendo avaliar a viabilidade 
+de implementação das sugestões e incorporar melhorias que qualifiquem o atendimento, 
+aumentem a resolutividade dos serviços e promovam a satisfação dos usuários do SUS no 
+Espírito Santo. 
+ 
+Ações Propostas 
+ 
+Ampliar canais de acesso à Ouvidoria é fundamental para consolidar o diálogo entre a 
+comunidade e a gestão, fortalecendo a participação social e garantindo que a população 
+possa contribuir de forma efetiva para o aprimoramento do Sistema Único de Saúde. 
+Nesse sentido, a implementação de caixas de sugestões físicas, formulários digitais e 
+pesquisas de satisfação permite captar de maneira sistemática demandas, elogios e 
+propostas de melhoria. 
+Estruturar a rede de recebimento de manifestações (caixas de manifestação) garantindo 
+que todas as informações sejam centralizadas e disponibilizadas em banco de dados 
+acessível a toda a rede de Ouvidorias da SESA. Essa organização possibilita a análise 
+integrada das sugestões, permitindo identificar tendências, demandas recorrentes e 
+oportunidades de melhoria nos serviços prestados.  
+As áreas técnicas devem avaliar a pertinência da sugestão para o coletivo (Sistema Único 
+de Saúde) na implementação dos serviços. Essa análise orienta decisões estratégicas, 
+subsidiando a implementação de ações que qualifiquem processos, aprimorem serviços e 
+fortaleçam a gestão participativa, assegurando que a voz da população seja efetivamente 
+incorporada à gestão da saúde no Espírito Santo. 
+ 
+5.5.1.7 – Comunicação de Irregularidade 
+ 
+As comunicações de irregularidades são denúncias registradas de forma anônima no 
+sistema OuvidorSUS, constituindo um instrumento estratégico de controle social e 
+fiscalização das ações e serviços de saúde. Esse mecanismo permite que os cidadãos 
+relatem situações de não conformidade, desvios ou falhas na prestação dos serviços, 
+garantindo sigilo e segurança aos denunciantes, ao mesmo tempo em que fornece 
+subsídios valiosos para os gestores públicos. Dessa forma, é possível identificar 
+
+
+=== PAGE 65 ===
+64 
+ 
+problemas estruturais, falhas operacionais ou desvios de conduta, subsidiando a 
+implementação de medidas corretivas e preventivas, aprimorando a qualidade dos 
+serviços, promovendo transparência na gestão e fortalecendo a confiança da população 
+no Sistema Único de Saúde. 
+ 
+Tabela 19: Tipificação das Comunicaçãoes de Irregularidades  na Ouvidoria da SESA/ES, 2024  
+COMUNICAÇÃO DE IRREGULARIDADES – SISTEMA OUVIDORSUS 2024 
+ASSUNTOS NÃO PERTINENTES 
+19 
+OUTROS ÓRGÃOS 
+19 
+ATENÇÃO À SAÚDE 
+13 
+ASSISTÊNCIA FARMACÊUTICA 
+3 
+MEDICAMENTO NÃO ESPECIFICADO 
+ 
+DISPENSAÇÃO 
+3 
+CIRURGIA 
+1 
+APARELHO DA VISÃO 
+1 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+2 
+CARDIOLOGIA 
+1 
+NEFROLOGIA 
+1 
+DIAGNÓSTICO (EXAME) 
+1 
+ULTRASSONOGRAFIA 
+ 
+DEMAIS SISTEMAS 
+1 
+INTERNAÇÃO 
+1 
+INTERNAÇÃO CLÍNICA 
+ 
+HOSPITALAR 
+1 
+JUDICIALIZAÇÃO NO SUS 
+1 
+INTERNAÇÃO 
+ 
+INTERNAÇÃO CLÍNICA 
+1 
+PRODUTOS PARA SAÚDE E CORRELATOS 
+2 
+ÓCULOS 
+1 
+SONDA - EQUIPO - FRASCO 
+1 
+TRATAMENTO FORA DE DOMICÍLIO (TFD) 
+1 
+CONCESSÃO DO BENEFÍCIO 
+1 
+URGÊNCIA E EMERGÊNCIA 
+1 
+ATENDIMENTO 
+ 
+SAMU 
+1 
+GESTÃO 
+102 
+AÇÕES E PROGRAMAS DE SAÚDE 
+1 
+PROGRAMA DE QUALIFICAÇÃO DAS AÇÕES DE VIGILÂNCIA EM SAÚDE 
+1 
+ESTABELECIMENTOS DE ASSISTÊNCIA À SAÚDE 
+5 
+ESPAÇO FÍSICO 
+2 
+ROTINAS - PROTOCOLOS 
+ 
+OUTROS 
+3 
+FINANCEIRO 
+6 
+CONSULTA - ATENDIMENTO - TRATAMENTO 
+1 
+FATURAMENTO 
+1 
+MEDICAMENTO NÃO ESPECIFICADO 
+2 
+REPASSE DE VERBA 
+ 
+
+
+=== PAGE 66 ===
+65 
+ 
+AÇÃO - PROGRAMA 
+1 
+OUTROS 
+1 
+QUALIDADE DO ATENDIMENTO - SERVIÇO PRESTADO 
+56 
+AGENTE DE ENDEMIAS 
+ 
+CONDUTA PROFISSIONAL 
+1 
+ASSISTENTE SOCIAL 
+ 
+ADMINISTRATIVO - GERENCIAL 
+2 
+AMBULATÓRIO OU HOSPITAL 
+8 
+NÃO ESPECIFICADO 
+2 
+URGÊNCIA E EMERGÊNCIA 
+1 
+ATENDENTE - TELEATENDENTE DE OUVIDORIA 
+ 
+ADMINISTRATIVO - GERENCIAL 
+6 
+AMBULATÓRIO OU HOSPITAL 
+5 
+AUXILIAR DE ODONTOLOGIA 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+BIOMÉDICO 
+ 
+URGÊNCIA E EMERGÊNCIA 
+1 
+ENFERMEIRO 
+ 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+EQUIPE 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+MÉDICO 
+ 
+AMBULATÓRIO OU HOSPITAL 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+1 
+ODONTÓLOGO 
+2 
+OUTROS 
+1 
+RECEPCIONISTA - ATENDENTE 
+19 
+SEGURANÇA 
+1 
+TÉCNICO EM SAÚDE BUCAL 
+1 
+TRABALHADOR EM SAÚDE 
+31 
+CONFLITO DE INTERESSES 
+ 
+MÉDICO 
+1 
+DESVIO ÉTICO 
+ 
+AGENTE COMUNITÁRIO DE SAÚDE 
+1 
+ASSISTENTE SOCIAL 
+1 
+AUXILIAR DE ODONTOLOGIA 
+1 
+DIRETOR DE ESTABELECIMENTO DE SAÚDE 
+1 
+ODONTÓLOGO 
+1 
+TÉCNICO EM ENFERMAGEM 
+1 
+EXONERAÇÃO - DEMISSÃO 
+1 
+IRREGULARIDADES 
+ 
+AGENTE COMUNITÁRIO DE SAÚDE 
+1 
+URGÊNCIA E EMERGÊNCIA 
+3 
+NÃO PREENCHIDO 
+7 
+PAGAMENTO 
+ 
+REAJUSTE SALARIAL 
+7 
+PROVIMENTO 
+ 
+CONCURSO PÚBLICO - PROCESSO SELETIVO 
+4 
+
+
+=== PAGE 67 ===
+66 
+ 
+CONTRATAÇÃO 
+1 
+VIOLÊNCIA NO SUS 
+3 
+AUXILIAR DE ODONTOLOGIA 
+3 
+AMBULATÓRIO OU HOSPITAL 
+1 
+UNIDADE BÁSICA DE SAÚDE 
+2 
+VIGILÂNCIA EM SAÚDE 
+25 
+VIGILÂNCIA SANITÁRIA 
+25 
+AGROTÓXICOS - TOXICOLOGIA 
+ 
+COMÉRCIO VAREJISTA 
+1 
+ALIMENTOS - BEBIDAS 
+ 
+INDÚSTRIA - FABRICANTE 
+1 
+SUPERMERCADO - MERCADO - HIPERMERCADO 
+2 
+ALVARÁ SANITÁRIO - LICENÇA DE FUNCIONAMENTO 
+3 
+COSMÉTICOS (COSMÉTICOS, PRODUTOS DE HIGIENE, PERFUME) 
+1 
+FISCALIZAÇÃO 
+4 
+MEDICAMENTOS 
+ 
+COMÉRCIO VAREJISTA 
+ 
+NÃO LOCALIZADO 
+1 
+DROGARIA - FARMÁCIA SEM MANIPULAÇÃO 
+ 
+OCITOCINA 5 UI/ML UI/ML SOLUÇÃO INJETÁVEL 1 ML 
+1 
+FARMÁCIA DE MANIPULAÇÃO 
+ 
+NÃO INFORMADO 
+1 
+OUTROS ESTABELECIMENTOS 
+ 
+NÃO INFORMADO 
+1 
+SERVIÇOS DE SAÚDE 
+ 
+NÃO INFORMADO 
+1 
+PRODUTOS PARA SAÚDE E CORRELATOS 
+ 
+INDÚSTRIA - FABRICANTE 
+2 
+SERVIÇOS DE SAÚDE 
+1 
+RECURSOS FINANCEIROS DA VIGILÂNCIA SANITÁRIA 
+1 
+SERVIÇOS DE INTERESSE À SAUDE 
+ 
+CLÍNICA DE ESTÉTICA E BELEZA 
+1 
+CLÍNICA VETERINÁRIA - HOSPITAL VETERINÁRIO 
+1 
+SERVIÇOS DE SAÚDE 
+ 
+CLÍNICA MÉDICA 
+1 
+ESTABELECIMENTO DE ASSISTÊNCIA À SAÚDE 
+1 
+Total Geral 
+159 
+Fonte: Sistema OuvidorSUS, Fevereiro 2025 
+ 
+Legenda: 
+Classificação das Manifestações – Sugestões e Total 
+Assunto 
+Subassunto nível 1 
+Subassunto nivel 2 
+Subassunto nivel 3 
+Medicamento 
+ 
+ 
+No ano de 2024, foram registradas 159 comunicações de irregularidades na Ouvidoria da 
+
+
+=== PAGE 68 ===
+67 
+ 
+SESA/ES por meio do Sistema OuvidorSUS. A análise da tipificação evidencia que a maior 
+concentração das manifestações esteve relacionada à gestão, com destaque para questões 
+sobre qualidade do atendimento e serviço prestado e denuncias direcionadas a 
+trabalhadores de saúde, especialmente recepcionistas/atendentes. Outro grupo de 
+relevância foram as demandas de vigilância em saúde, voltadas, em sua maioria, à 
+vigilância sanitária, especialmente no que diz respeito à fiscalização e concessão de 
+alvarás sanitários. 
+ 
+ 
+Ações Propostas 
+ 
+Implementar capacitações contínuas para profissionais que atuam na linha de frente do 
+atendimento (recepcionistas, técnicos e administrativos), com foco em humanização, 
+comunicação e acolhimento. 
+Ampliar mecanismos de avaliação periódica da satisfação dos usuários, integrando ao 
+Projeto de Pesquisa de Satisfação dos Usuarios, metodologia NPS (Net Promoter Score) 
+da SESA. 
+Reforçar as ações de educação permanente sobre ética e conduta profissional, 
+promovendo uma cultura organizacional alinhada aos princípios de respeito, 
+responsabilidade e transparência. 
+ 
+6. Sigilo e Anonimato 
+ 
+ 
+Ao entrar em contato com a Ouvidoria da SESA, os cidadãos podem solicitar sigilo (apenas 
+a ouvidoria tem a informação sobre o cidadão, garantindo proteção de dados sensíveis em 
+casos como denúncias e reclamações) ou anonimato (não há registro de qualquer 
+informação pessoal do manifestante, resguardando completamente a identidade do 
+usuário). 
+É importante mencionar que manifestações de Solicitação necessitam do nome do 
+paciente/solicitante e cartão SUS para que as áreas técnicas de regulação e assistência 
+farmacêutica possam tratar e processar adequadamente os dados, garantindo a 
+efetividade do atendimento. 
+Opinamos sobre a necessidade do nome do cidadão que registra o elogio, inibindo 
+potenciais problemas já dialogados neste relatório como auto elogio e satisfação sobre 
+
+
+=== PAGE 69 ===
+68 
+ 
+serviços comumente reclamados. 
+No ano de 2024, no sistema OuvidorSUS e sistema E-OUV, foram registradas 401 
+manifestações sigilosas e 1563 anônimas. As demais (10681) foram identificadas (nome). 
+ 
+ 
+Gráfico 1. Sigilo e Anonimato 2024. 
+ 
+Fonte: Sistema OuvidorSUS e E-OUV, Fevereiro 2025. 
+ 
+ 
+7. Tempo de Resposta 
+ 
+O tempo de resposta no sistema OuvidorSUS depende também de outros entes. Por 
+exemplo: a Ouvidoria SESA conclui a manifestação para a Ouvidoria-Geral do SUS, 
+dependendo desta ao fechamento da manifestação. Em relação à SESA consideramos a 
+conclusão para a Ouvidoria-Geral ou outras ouvidoria da rede como finalização da 
+reposnsabilidade SESA, porém para levantar esses dados no banco demandaria grande 
+trabalho técnico.  
+O tempo de resposta das manifestações registradas no sistema OuvidorSUS depende, em 
+muitos casos, de interações com outros entes e instâncias da rede de Ouvidorias do SUS. 
+Por exemplo, a Ouvidoria da SESA conclui o tratamento de uma manifestação e encaminha 
+o caso para a Ouvidoria-Geral do SUS; a finalização efetiva da manifestação, contudo, 
+depende do fechamento registrado por esse órgão. 
+No âmbito da SESA, considera-se que a manifestação é concluída e a responsabilidade da 
+Ouvidoria estadual é encerrada a partir do momento em que o processo é encaminhado à 
+
+
+=== PAGE 70 ===
+69 
+ 
+Ouvidoria-Geral ou a outras unidades da rede. No entanto, o levantamento de dados 
+precisos sobre a conclusão completa das manifestações no banco de dados nacional 
+demandaria trabalho técnico significativo, dada a necessidade de acompanhamento 
+integrado entre diferentes sistemas e órgãos. 
+Essa interdependência evidencia que a eficiência no tempo de resposta depende não 
+apenas da agilidade da Ouvidoria SESA, mas também da coordenação e integração com as 
+demais Ouvidorias da rede nacional, reforçando a necessidade de aperfeiçoamento dos 
+sistemas informatizados, da padronização de processos e da comunicação entre os entes 
+envolvidos. 
+ 
+Gráfico 2. Tempo de resposta no sistema E-OUV, 2024 
+ 
+Fonte: Sistema OuvidorSUS e E-OUV, Fevereiro 2025. 
+ 
+Na data de extração dos dados, a maioria das manifestações obteve resposta em até 15 
+dias, totalizando  10110 registros, correspondendo a 76,90% do total de manifestação 
+registrada, o que demonstra eficiência operacional e agilidade na condução dos processos 
+da Ouvidoria. No ano de 2024 identificamos manifestações com tempo de resposta acima 
+de 60 dias – 623 manifestações.  
+Nos casos de informação (L.A.I.), o prazo máximo de resposta, pela lei, é de 30 dias 
+(considerando a prorrogação). Nos demais casos, aplicamos a Lei 13.460/2017 e 
+legislações estaduais, possibilitando o tempo de resposta total de até 60 dias 
+(considerando prorrogação). 
+Nesse sentido, é necessário trabalhar a rede interna da SESA para o cumprimento da 
+5963
+2540
+1607
+739
+518
+329
+254
+190
+145
+94
+61
+83
+623
+ENTRE 0 E 5 …
+ENTRE 6 E 10 …
+ENTRE 11 E 15 …
+ENTRE 16 E 20 …
+ENTRE 21 E 25 …
+ENTRE 26 E 30 …
+ENTRE 31 E 35 …
+ENTRE 36 E 40 …
+ENTRE 41 E 45 …
+ENTRE 46 E 50 …
+ENTRE 51 E 55  …
+ENTRE 56 E 60 …
+ACIMA DE 60 …
+Tempo de resposta das manifestações em 2024
+
+
+=== PAGE 71 ===
+70 
+ 
+legislação em relação aos prazos, sensibilizando cada área técnica, quanto à importância 
+do cumprimento rigoroso dos prazos legais, alem de uma capacitação contínua das 
+equipes, assegurando que processos, fluxos e normas legais sejam compreendidos e 
+aplicados de forma uniforme. Essas medidas são fundamentais para garantir a 
+conformidade legal, a eficiência administrativa e a credibilidade da Ouvidoria, 
+fortalecendo a confiança dos cidadãos no Sistema Único de Saúde e consolidando a 
+participação social como instrumento de aprimoramento da gestão pública em saúde. 
+ 
+ Projeto de Implantação de Pesquisa de Satisfação do Usuario do SUS no 
+Espirito Santo 
+ 
+Iniciamos o Projeto Implantação de Pesquisa de Satisfação do Usuário no SUS – instituido 
+atraves da PORTARIA ICEPI Nº06-R, DE 17 DE OUTUBRO DE 2023. A implantação da 
+pesquisa para medir a satisfação dos usuários e pacientes com os atendimentos prestados 
+pelo Sistema Único de Saúde no Espírito Santo (SUS) tem foco no respeito e cumprimento 
+à legislação brasileira, para avaliação dos serviços, mas principalmente promover a 
+melhoria contínua dos processos. A Melhoria Contínua é uma prática que as empresas 
+adotam quando buscam ininterruptamente aperfeiçoar seus produtos, serviços e 
+processos. Ela consiste na análise detalhada dos processos internos procurando quais 
+atividades podem ser melhoradas, desse modo, busca encontrar onde estão as 
+ineficiências, gargalos, atrasos e desperdícios para serem cortados. 
+A consolidação das ações do projeto pode resultar em aumento e qualificação do acesso 
+aos serviços de saúde, além de colaborar com a mudança da cultura organizacional pela 
+prática da melhoria contínua dos processos de trabalho, otimização dos recursos e 
+qualidade da assistência à saúde, garantindo sua utilização pelos órgãos e instituições 
+como forma de monitoramento e melhoria no SUS. 
+O programa tem como objetivo geral implantar pesquisa de satisfação nos serviços de 
+atenção à saúde - SESA (vinculados, contratualidades e próprios) e na atenção primária 
+dos municípios Capixabas para obtenção de dados sobre as práticas, ações e serviços de 
+saúde com foco no monitoramento, avaliação, redução de custos, segurança assistencial, 
+gestão de riscos e melhoria contínua do SUS Capixaba.  
+Como objetivos específicos do projeto, podemos citar: 
+ a Coleta de Dados de Satisfação do Usuário: tanto nos serviços de atenção à saúde 
+vinculados à SESA quanto na atenção primária dos municípios capixabas; Elaboração de 
+notas técnicas e pesquisas para a tomada de decisão informada; 
+
+
+=== PAGE 72 ===
+71 
+ 
+  Monitoramento e Avaliação Contínua: permitindo a avaliação constante do desempenho 
+do SUS capixaba;   
+ Identificação de Áreas de Melhoria: A análise dos resultados das pesquisas identificará 
+áreas específicas em que os serviços de saúde podem ser aprimorados, contribuindo para 
+a melhoria da qualidade e eficácia dos serviços prestados; 
+  Redução de Custos: A identificação de práticas e processos ineficientes poderá levar à 
+redução de custos na prestação de serviços de saúde, otimizando o uso dos recursos 
+disponíveis;  
+ Segurança Assistencial: O projeto poderá contribuir para a promoção da segurança dos 
+pacientes, identificando eventuais problemas na prestação de cuidados de saúde e 
+tomando medidas para mitigar riscos;  
+ Fomento da utilização de Soluções Inovadoras: com foco na melhoria da experiência do 
+usuário, o que poderá incluir a implementação de novas tecnologias e práticas de 
+atendimento;  
+ Transferência de Tecnologia: A transferência de tecnologia resultante do projeto 
+permitirá que as melhores práticas identificadas sejam compartilhadas entre os 
+diferentes serviços de saúde e municípios, promovendo uma maior uniformidade na 
+qualidade dos cuidados;  
+ Educação Permanente em Saúde: para capacitar profissionais de saúde na prestação de 
+cuidados de alta qualidade e na promoção da satisfação do usuário; 
+  Melhoria Contínua do SUS: promovendo uma melhor experiência para os usuários e 
+garantindo a eficácia e eficiência dos serviços de saúde.  
+ 
+Eventos 
+ 
+ 
+Em 2024 participamos anualmente das reuniões de CIR e CIB, COSEMS, além de 
+apresentação de dados e informações anualmente no Conselho Estadual de Saúde 
+garantindo a efetivação da part lançou seu Plano de Integridade 2024-2025 em abril de 
+2024,.icipação e controle social no SUS Capixaba. 
+Participação efetiva e mensal no CES/ES do qual a ouvidora representa a SES/ES... 
+Realizamos reunião de alinhamento a Ouvidora Geral do Estado, Sra Giselli Balestrassi e 
+o Subsecretario de Estado da Transparencia - Fabiano da Rocha Louzada, para 
+alinhamentos de fluxos e parcerias em capacitações das areas tecnicas da SESA, quanto ao 
+
+
+=== PAGE 73 ===
+72 
+ 
+cumprimento de prazos e elaboração de resposta. Tambem foi feita a apresentação do 
+projeto de pesquisa de satisfação 
+              Participação no lançamento do Planode Integridade  SESA 2024/2025  em abril de        
+2024, com o objetivo de estabelecer mecanismos e procedimentos internos para prevenir 
+e combater fraudes e desvios de conduta. 
+Participação no evento “Ouvidoria Day” 2024, com o tema “Controle Social e 
+Transparencia Pública – Fomento das Ouvidorias nos entes jurisdicionados”, em 
+comemoração ao Dia Nacional do Ouvidor, realizado no Tribunal de Contas do Espirito 
+Santo 
+Participação em todas as prestações de contas do Secretario na Assembleia Legislativa do 
+Estado. 
+Participação na 5ª Conferência Estadual de Ciência, Tecnologia e Inovação, uma iniciativa 
+da Secti em parceria com o Ministério da Ciência, Tecnologia e Inovação para estimular 
+contribuições que direcionam a construção da Estratégia Nacional de Ciência, Tecnologia 
+e Inovação. Foram abordados diversos temas relevantes, desde questões relacionadas à 
+pesquisa científica e desenvolvimento tecnológico até iniciativas inovadoras em 
+diferentes setores da sociedade.  
+Participação no evento de lançamento do Plano de Integridade 2024-2025. O evento 
+contou com a presença do secretário de Estado da Saúde, Miguel Duarte, de todos os 
+subsecretários, gerentes, e do secretário de Controle e Transparência, Edmar Camata. 
+Participação no Simpósio de Inovação e Gestão na Saúde (SIGS). O evento contou com a 
+presença de autoridades públicas federais e estaduais, pesquisadores e representantes do 
+setor privado e publico capixaba e de outros estados para debater soluções de gestão em 
+saúde. A abordagem foi ampla, com mesas-redondas que abordaram temas desde o uso 
+de inteligência artificial até projetos de gestão de pessoas. 
+Participação no  2º Seminário Regional de Fortalecimento da Gestão e da Participação 
+Social das Ouvidorias do SUS – Região Sudoeste. O evento foi promovido pelo Ministério 
+da Saúde por meio da Ouvidoria-Geral do SUS (OuvSUS) e organizado com a Escola 
+Nacional de Saúde Pública Sergio Arouca da Fundação Osvaldo Cruz (ENSP/FIOCRUZ), e 
+faz parte de um programa que visa desenvolver ações estratégicas para a ampliação da 
+rede e implementação de ouvidorias descentralizadas do Sistema Único de Saúde (SUS). 
+Entre os temas abordados, destacaram-se a Gestão Participativa, o programa ParticipaSUS 
+e o Controle Social no SUS; o papel da Ouvidoria como Instrumento de Gestão; o 
+OuvidorSUS como ferramenta estruturante do Sistema Nacional de Ouvidorias (SNO); 
+Transparência e Acesso à Informação na construção do SNO; e a Matriz de Análise da 
+
+
+=== PAGE 74 ===
+73 
+ 
+Situação das Ouvidorias 
+Participação na Etapa Municipal de Municipios Capixabas, 4ª Conferência Nacional de 
+Gestão do Trabalho e da Educação na Saúde (4ª CNGTES),  
+Participação  na Etapa Regional Metropolitana e na Etapa estadual da 4ª Conferência 
+Nacional de Gestão do Trabalho e da Educação na Saúde (4ª CNGTES), como membro da 
+comissão de relatoria. 
+Participação no  1ª Oficina de Educação Permanente em Saúde para Ouvidorias do SUS 
+Região Sudeste (ES, MG, RJ, SP). O evento foi promovido pelo Ministério da Saúde por meio 
+da Ouvidoria-Geral do SUS (OuvSUS/MS), em parceria com a Fundação Oswaldo Cruz 
+(Fiocruz) e a Universidade Aberta do Sistema Único de Saúde (UNA-SUS), e faz parte de 
+um programa que visa desenvolver ações estratégicas para a ampliação da rede e 
+implementação de ouvidorias descentralizadas do Sistema Único de Saúde (SUS). 
+Participação no 1º Fórum Estadual de Proteção e Defesa dos Direitos Humanos, evento 
+promovido pela Secretaria de Direitos Humanos (SEDH), por meio da Gerência de 
+Proteção e Defesa dos Direitos Humanos, onde foi debatido sobre a complexidade e os 
+desafios diários enfrentados nos sistemas de garantias de direitos e proteção, articular e 
+construir estratégias e ações que dialoguem com o cenário apresentado por meio das 
+mesas de discussão, a fim de assegurar a defesa e garantir a efetivação da proteção dos 
+direitos sociais.  
+Reunião de Alinhamento com a Ouvidoria SUS/Inova Capixaba: Encontro voltado à 
+integração de ações e estratégias conjuntas para fortalecimento das práticas de gestão 
+participativa e inovação no âmbito das Ouvidorias SUS. 
+                  Participamos da Oficina SESA ES  de Hed.Hat – Novos desafios e seus impactos; A Red Hat   
+no Universo da AI Generativa e Casos de Uso. 
+Participaçao  no Forum  da Comissão Estadual de Segurnaça do Paciente do Estado do 
+Espirito Santo.      
+Particiapçaõa no 2º seminario Regional de Fortalecimento da gestão, da Participação 
+Social e das Ouvidorias do SUS região Sudeste: Espirito Santo,São Paulo, Minas Gerais. 
+Riode Janeiro Julho de 2024. Promovido pela O evento foi promovido pelo Ministério da 
+Saúde por meio da Ouvidoria-Geral do SUS (OuvSUS/MS), em parceria com a Fundação 
+Oswaldo Cruz (Fiocruz) e a Universidade Aberta do Sistema Único de Saúde (UNA-SUS), 
+Participação no Seminario – Solucão de Inteligencia Analitica com profissionais da Vert  
+ 
+
+
+=== PAGE 75 ===
+74 
+ 
+   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+=== PAGE 76 ===
+75 
+ 
+    
+ 
+ 
+ 
+ 
+ 
+ 
+   
+ 
+ 
+ 
+ 
+ 
+
+
+=== PAGE 77 ===
+76 
+ 
+ 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+=== PAGE 78 ===
+77 
+ 
+ 
+ 
+     
+ 
+ 
+ 
+ 
+    
+                    
+
+
+=== PAGE 79 ===
+78 
+ 
+ 
+ 
+ 
+      
+ 
+ 
+ 
+
+
+=== PAGE 80 ===
+79 
+ 
+    
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+=== PAGE 81 ===
+80 
+ 
+       
+ 
+                  
+ 
+ 
+                                                            
+
+
+=== PAGE 82 ===
+81 
+ 
+ 
+ 
+ 
+ 
+     
+ 
+ 
+ 
+ 
+
+
+=== PAGE 83 ===
+82 
+ 
+     
+ 
+ 
+ 
+        
+     
+ 
+ 
+
+
+=== PAGE 84 ===
+83 
+ 
+    
+ 
+ 
+ 
+    
+ 
+ 
+ 
+
+
+=== PAGE 85 ===
+84 
+ 
+ 
+ 
+ 
+Conclusões e Considerações Finais 
+ 
+ 
+O presente relatório tem como propósito apresentar, de forma transparente e 
+fundamentada, os resultados alcançados pela Ouvidoria SUS  da Secretaria de Estado da 
+Saúde do Espírito Santo (SESA/ES) no exercício de 2024. Trata-se de um instrumento de 
+gestão e de controle social que possibilita, simultaneamente, a prestação de contas à 
+população e a oferta de subsídios técnicos e estratégicos aos gestores do Sistema Único 
+de Saúde (SUS) no Estado. 
+A análise realizada evidencia que a Ouvidoria do SUS exerce papel essencial como canal 
+de interlocução entre o cidadão e o poder público, transformando manifestações em 
+informações qualificadas que orientam processos de melhoria contínua na rede de 
+atenção à saúde. Contudo, permanecem desafios estruturais e normativos que demandam 
+enfrentamento para consolidar a Ouvidoria como política de Estado, ampliando sua 
+efetividade e seu alcance. 
+Entre os pontos considerados prioritários para o fortalecimento da Ouvidoria, destacam-
+se: 
+
+
+=== PAGE 86 ===
+85 
+ 
+ 
+Marco legal e normativo: avançar na construção de legislação federal específica para 
+as Ouvidorias do SUS, em articulação com estados e municípios, assegurando 
+padronização e integração em rede. 
+ 
+Expansão e descentralização: intensificar a implantação de Ouvidorias nos 
+municípios capixabas e nos serviços próprios e contratualizados da SESA/ES. 
+ 
+Capacitação permanente: investir em programas contínuos de formação técnica e 
+gerencial, assegurando qualidade e uniformidade nos processos de trabalho. 
+ 
+Agilidade e qualidade das respostas: garantir prazos legais e clareza nas respostas 
+das áreas técnicas, reforçando a credibilidade institucional. 
+ 
+Integração e transparência: ampliar a participação da Ouvidoria em espaços de 
+deliberação e controle social, fortalecendo a gestão participativa. 
+ 
+Aprimoramento tecnológico: viabilizar, junto ao Ministério da Saúde, a nova versão 
+do Sistema OuvidorSUS, com integração a outros sistemas estratégicos. 
+ 
+Monitoramento e pesquisa de satisfação: consolidar instrumentos de avaliação da 
+experiência do usuário, utilizando seus resultados para orientar políticas públicas. 
+ 
+Sensibilização social: promover eventos e ações de comunicação voltados a 
+trabalhadores, gestores e usuários, fortalecendo a percepção da Ouvidoria como 
+instrumento de cidadania e gestão. 
+ 
+Estruturação institucional: ampliar e qualificar a equipe técnica, garantindo 
+condições adequadas para o atendimento das demandas crescentes. 
+Ressalta-se, ainda, o Processo de Acreditação Institucional de Ouvidorias do SUS, 
+conduzido pela FIOCRUZ/RJ, cujo resultado final representará um marco no 
+reconhecimento da qualidade dos processos desenvolvidos pela Ouvidoria da SESA/ES. 
+Também se destaca a adoção de mecanismos proativos de monitoramento, como alertas 
+de prazos e acompanhamento de demandas recorrentes, que contribuem para a gestão 
+preventiva e a antecipação de soluções. 
+Assim, a Ouvidoria SUS SESA/ES reafirma seu compromisso de atuar como elo de 
+comunicação entre o cidadão e a administração pública, orientada pelos princípios da 
+ética, da transparência, da imparcialidade e da celeridade. A busca pela excelência em seus 
+serviços requer aprendizado contínuo, inovação tecnológica e cooperação entre todos os 
+atores do SUS. 
+
+
+=== PAGE 87 ===
+86 
+ 
+Conclui-se, portanto, que a participação social constitui pilar indispensável para o 
+fortalecimento do Sistema Único de Saúde, promovendo a democracia participativa e a 
+melhoria contínua da saúde pública no Espírito Santo. 
+Sugestões, dúvidas ou manifestações acerca deste relatório podem ser encaminhadas 
+pelos canais oficiais da Ouvidoria da SESA/ES. 
+ 
+ 
+“A participação social é um caminho para a qualificação e o fortalecimento do Sistema 
+Único de Saúde, garantindo a democracia participativa.” 
+ 
+Terezinha do Carmo Alves Bolzani  
+Ouvidora SUS Secretaria de Estado da Saúde - SESA/ES  
+ 
+Leyliany Moraes da Silva  
+Coordenadora do Projeto de Pesquisa de Usuarios do SUS no Espirito Santo 

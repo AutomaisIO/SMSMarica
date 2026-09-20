@@ -73,7 +73,13 @@ export type ModuloPermissao =
   // Estatísticas dos operadores por sistema de regulação (68–70): três módulos, um por sistema.
   | 'EstatisticaSisreg'
   | 'EstatisticaSer'
-  | 'EstatisticaSernit';
+  | 'EstatisticaSernit'
+  // Ouvidoria (71–74, ADR-0060): trabalho da ouvidoria, gestão, sigilo (ver identidade/denúncias)
+  // e ponto de resposta (quem responde pela unidade/área, sem ver o manifestante).
+  | 'Ouvidoria'
+  | 'OuvidoriaGestao'
+  | 'OuvidoriaSigilo'
+  | 'OuvidoriaPontoResposta';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

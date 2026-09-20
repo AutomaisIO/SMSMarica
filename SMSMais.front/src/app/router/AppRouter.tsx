@@ -98,8 +98,18 @@ import { ChatJanelaPage } from '@/features/conversas/pages/ChatJanelaPage';
 import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
+import { OuvidoriaFilaPage } from '@/features/ouvidoria/pages/OuvidoriaFilaPage';
+import { RegistrarManifestacaoPage } from '@/features/ouvidoria/pages/RegistrarManifestacaoPage';
+import { ManifestacaoDetalhePage } from '@/features/ouvidoria/pages/ManifestacaoDetalhePage';
+import { MeuPontoPage } from '@/features/ouvidoria/pages/MeuPontoPage';
+import { PontosRespostaPage } from '@/features/ouvidoria/pages/PontosRespostaPage';
+import { AssuntosPage } from '@/features/ouvidoria/pages/AssuntosPage';
+import { PainelOuvidoriaPage } from '@/features/ouvidoria/pages/PainelOuvidoriaPage';
+import { ConfiguracaoOuvidoriaPage } from '@/features/ouvidoria/pages/ConfiguracaoOuvidoriaPage';
 import { MensageriaPage } from '@/features/mensageria/pages/MensageriaPage';
 import { ConfirmacoesPage } from '@/features/confirmacoes/pages/ConfirmacoesPage';
+import { ManualIndicePage } from '@/features/manual/pages/ManualIndicePage';
+import { ManualArtigoPage } from '@/features/manual/pages/ManualArtigoPage';
 import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/RespostasRapidasPage';
 import { RoboAtendimentoPage } from '@/features/robo-atendimento/pages/RoboAtendimentoPage';
 import { AgendaPage } from '@/features/agenda/pages/AgendaPage';
@@ -289,6 +299,27 @@ export function AppRouter() {
           <Route path="estatisticas" element={<EstatisticasPage />} />
           <Route path="relatorios-imagem" element={<RelatoriosImagemPage />} />
           <Route path="sandbox" element={<SandboxPage />} />
+          {/* Ouvidoria (ADR-0060). O detalhe existe em dois caminhos porque `RotaComModulo` gateia um
+              módulo só: a ouvidoria central abre por /ouvidoria/:id; o membro de ponto de resposta, por
+              /ouvidoria/meu-ponto/:id (mesma página, sem card de manifestante). */}
+          <Route element={<RotaComModulo modulo="Ouvidoria" rotulo="Ouvidoria" />}>
+            <Route path="ouvidoria" element={<OuvidoriaFilaPage />} />
+            <Route path="ouvidoria/registrar" element={<RegistrarManifestacaoPage />} />
+            <Route path="ouvidoria/:id" element={<ManifestacaoDetalhePage />} />
+          </Route>
+          <Route element={<RotaComModulo modulo="OuvidoriaPontoResposta" rotulo="Ouvidoria — Meu ponto de resposta" />}>
+            <Route path="ouvidoria/meu-ponto" element={<MeuPontoPage />} />
+            <Route path="ouvidoria/meu-ponto/:id" element={<ManifestacaoDetalhePage modoPonto />} />
+          </Route>
+          <Route element={<RotaComModulo modulo="OuvidoriaGestao" rotulo="Ouvidoria — Gestão" />}>
+            <Route path="ouvidoria/pontos-resposta" element={<PontosRespostaPage />} />
+            <Route path="ouvidoria/assuntos" element={<AssuntosPage />} />
+            <Route path="ouvidoria/painel" element={<PainelOuvidoriaPage />} />
+            <Route path="ouvidoria/configuracao" element={<ConfiguracaoOuvidoriaPage />} />
+          </Route>
+          {/* Manual: sem gate de módulo — todo mundo que entra no painel pode aprender a usá-lo. */}
+          <Route path="manual" element={<ManualIndicePage />} />
+          <Route path="manual/:slug" element={<ManualArtigoPage />} />
           <Route path="tickets" element={<MeusTicketsPage />} />
           <Route path="tickets/gestao" element={<GestaoTicketsPage />} />
           <Route path="tickets/gestao/:id" element={<TicketDetalhePage gestao />} />

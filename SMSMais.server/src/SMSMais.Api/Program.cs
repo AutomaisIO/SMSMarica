@@ -288,6 +288,18 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+
+    // Ouvidoria pública (ADR-0060): registrar e acompanhar por protocolo + código, sem login.
+    // Particiona por IP; barra a varredura de protocolo/código e o registro em massa.
+    options.AddPolicy("ouvidoria-publico", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 // Atrás do nginx (proxy no mesmo host): sem isto, RemoteIpAddress é o loopback do proxy

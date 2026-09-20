@@ -300,4 +300,43 @@ public enum ModuloPermissao
     /// <summary>Estatísticas do SERNIT (SER de Niterói): mesma natureza de
     /// <see cref="EstatisticaSer"/>, sobre as tabelas <c>sernit_*</c>.</summary>
     EstatisticaSernit = 70,
+
+    // ---- Ouvidoria (ADR-0060, 20/09/2026) ----
+    // Quatro módulos, e não um: <c>AcoesPermissao</c> só tem 4 flags (Consulta/Inclusao/Edicao/
+    // Exclusao) e elas já são consumidas pelo trabalho normal da ouvidoria (registrar, triar,
+    // encaminhar, responder, arquivar). Sigilo e ponto de resposta são eixos ORTOGONAIS a esse
+    // trabalho — "quem pode ver a identidade de um manifestante sigiloso" e "quem responde pela
+    // unidade/área sem ver o manifestante" não são graus da mesma escala, são pessoas diferentes
+    // com recortes diferentes. Gestão (pontos, assuntos, configuração, painel) também sai porque
+    // o técnico que tria não é quem cadastra a corregedoria como ponto de apuração.
+
+    /// <summary>Trabalho da ouvidoria: fila e detalhe das manifestações (manifestante mascarado
+    /// quando sigilosa; denúncias inteiras só com <see cref="OuvidoriaSigilo"/>). <c>Consulta</c> =
+    /// ver fila/detalhe; <c>Inclusao</c> = registrar manifestação; <c>Edicao</c> = triar, encaminhar,
+    /// pedir complementação, validar, responder ao cidadão, prorrogar, cobrar, recurso, concluir;
+    /// <c>Exclusao</c> = arquivar (não há DELETE — arquivar é estado final com motivo).</summary>
+    Ouvidoria = 71,
+
+    /// <summary>Gestão do módulo: painel e indicadores, cadastro de pontos de resposta, assuntos,
+    /// marcadores e configuração de prazos. Separado de <see cref="Ouvidoria"/> porque quem tria
+    /// não é quem define a estrutura. <c>Consulta</c> = painel/indicadores e configuração;
+    /// <c>Inclusao</c> = criar pontos de resposta, assuntos, marcadores; <c>Edicao</c> = editar os
+    /// mesmos + configuração + escalonar manifestação; <c>Exclusao</c> = desativar.</summary>
+    OuvidoriaGestao = 72,
+
+    /// <summary>Sigilo (Decreto 10.153/2019): ver denúncias e revelar a identidade de manifestante
+    /// sigiloso — <b>cada revelação exige justificativa e é gravada em
+    /// <c>ouvidoria_acesso_identidade</c></b>. Eixo ortogonal a <see cref="Ouvidoria"/>: um técnico
+    /// pode triar sem nunca ver quem denunciou. <c>Consulta</c> = ver denúncias e revelar identidade;
+    /// <c>Inclusao</c> = habilitar denúncia (juízo de admissibilidade); <c>Edicao</c> = editar o teor
+    /// pseudonimizado que vai à apuração. <c>Exclusao</c> não é usada.</summary>
+    OuvidoriaSigilo = 73,
+
+    /// <summary>Ponto de resposta: o servidor da unidade/área/apuração que responde à ouvidoria
+    /// pelas manifestações encaminhadas aos pontos de que é <i>membro</i>
+    /// (<c>ouvidoria_ponto_resposta_membro</c>), <b>sem nunca ver dados do manifestante</b> e, em
+    /// denúncia, só o teor pseudonimizado. Ortogonal a <see cref="Ouvidoria"/>: não vê a fila
+    /// geral. <c>Consulta</c> = ver as encaminhadas aos seus pontos; <c>Edicao</c> = responder pela
+    /// área. <c>Inclusao</c> e <c>Exclusao</c> não são usadas.</summary>
+    OuvidoriaPontoResposta = 74,
 }

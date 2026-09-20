@@ -1,0 +1,4004 @@
+                       APRESENTAÇÃO
+
+        Apresentamos o Manual de Normas e Procedimentos das Ouvidorias
+Descentralizadas pertencentes a Secretaria de Estado de Saúde do Rio de Janeiro. O
+presente documento tem como objetivo orientar todos os colaboradores que atuam nos
+serviços de ouvidoria que integram a Secretaria de Estado de Saúde do Rio de Janeiro,
+proporcionando qualidade às suas atividades.
+
+        Considerando que a Lei 13.460/17 dispõe sobre a participação, proteção e defesa
+dos direitos do usuário dos serviços públicos, as Ouvidorias do SUS possuem papel
+relevante na identificação das necessidades e demandas sociais, tanto na dimensão
+coletiva quanto na individual, agindo não somente como um canal de comunicação para
+o cidadão, mas também como uma ferramenta que deve ser transformada em suporte
+estratégico à tomada de decisões no campo da gestão.
+
+        O presente manual, desenvolvido através de trabalho coletivo, apresenta
+diretrizes e procedimentos para o acolhimento das manifestações e está estruturado para
+atender às necessidades dos profissionais que atuam nas Ouvidorias Descentralizadas de
+forma que as equipes tenham instrumentos adequados à realização de um trabalho que
+preze pela resolubilidade e transparência, essenciais a um serviço de excelência em
+ouvidoria.
+
+        Assim, este Manual de Normas e Procedimentos das Ouvidorias, em sua terceira
+versão, será parte integrante dos demais instrumentos utilizados pela Ouvidoria.
+
+Bom trabalho a todos!
+
+                                                         Márcia Lopes Silva
+                                                              Ouvidora Geral
+
+                       Secretaria de Estado de Saúde do Rio de Janeiro
+Secretaria de Estado de Saúde
+Subsecretaria Jurídica
+Ouvidoria Geral
+
+Secretário de Saúde
+Sérgio D'Abreu Gama
+
+Subsecretário Jurídico
+Maurício Carlos Araujo Ribeiro
+
+Ouvidor Geral
+Márcia Lopes Silva
+
+Coordenação de Análise e Tratamento das Manifestações
+Christiane Faustino De Alvarenga
+Angélica Cristina
+Elenita Jacinto Fernandes Viana
+Glaucia Almeida
+Marilia Marques Moreira
+Valdenice Ribeiro
+
+Coordenação de Informação, Qualidade e Descentralização
+Felipe Alves Bastos
+Evelyn Silvano da Silva
+Luana dos Santos Pimentel
+Monica Soares da Silva
+Quele Cristina Garcia Pícoli
+Solange Ventura Biato
+
+Apoio Administrativo
+Eliete Alves de Almeida
+Arthur Ferreira
+Jéssica Dos Santos Ramos
+Grupo de Trabalho da Ouvidoria da SES (GT)
+
+Coordenadora do Grupo de Trabalho
+Quele Cristina Garcia Pícoli ­ Ouvidoria Geral
+
+Colaboração Técnica/Grupo de Trabalho
+Alessandra Pestana Albernaz - Instituto Estadual Aloysio de Castro/IECAC
+Camila Roque Soares ­ Hospital Estadual Santa Maria/HESM
+Daniela G. Bastos Perez ­ Centro Psiquiátrico do Rio de Janeiro/CPRJ
+Jurema Mendonça da Cunha ­ Hospital Estadual Azevedo Lima/HEAL
+Natália Pereira Viegas ­ Hospital Estadual Getúlio Vargas/HEGV
+Valdenice Lemos Ribeiro ­ Ouvidoria Geral
+
+Organização desta edição
+Quele Cristina Garcia Pícoli
+Felipe Alves Bastos
+
+Colaboração
+Assessora de Qualidade / E-mail: qualidade@saude.rj.gov.br
+
+Ouvidoria da Secretaria de Estado de Saúde do Rio de Janeiro
+Rua México, 128, sala 514 ­ CEP: 20031-142
+Rio de Janeiro ­ RJ ­ Brasil
+Tel.: 55 (21) 2333-3860 / Fax: 55 (21) 2333-3981
+www.saude.rj.gov.br / E-mail: ouvidoria@saude.rj.gov.br
+                Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                                            CODIFICAÇÃO   VERSÃO                 PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                                                             03                   1 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro                            MNP - 135-001
+
+         MANUAL DE NORMAS E PROCEDIMENTOS DA
+                       OUVIDORIA DA SAÚDE DA
+
+               SECRETARIA DE ESTADO DE SAÚDE
+                            DO RIO DE JANEIRO
+
+         Elaboração:                      Revisão:  REGISTRO DO DOCUMENTO                            Aprovação:
+                                                                             Verificação Normativa:
+                 Grupo de Trabalho da
+                  Ouvidoria SES (GT)      Ouvidoria Geral da SES    Assessoria da Qualidade                     Subsecretaria Jurídica
+
+             Ass. Quele C. Garcia Pícoli  Ass.: Márcia Lopes Silva  Ass. Meirelane Souza Rosa                   Ass.: Maurício Ribeiro
+
+         Data:                            Data:                     Data:                            Data:
+
+                                                 VIGÊNCIA: 02 ANOS A PARTIR DA DATA DA APROVAÇÃO.
+
+                                                         Vigência __/__/___
+                                                    REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03    2 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+                                                           ÍNDICE
+
+         1. OBJETIVO .................................................................................................... 3
+         2. CAMPO DE APLICAÇÃO ............................................................................3
+         3. REFERÊNCIAS ............................................................................................ 3
+         4. DEFINIÇÕES ................................................................................................ 6
+         5. RESPONSABILIDADES .....................................................................................8
+         6. DIRETRIZES.................................................................................................9
+         7. PROCEDIMENTOS ........................................................................................... 10
+         Anexo 1: MACROPROCESSO DO ACOLHIMENTO DA MANIFESTAÇÃO ....... 12
+         Anexo 2: ORGANOGRAMA DA OUVIDORIA SES ............................................ 13
+         Anexo 3: COMPROMISSOS ÉTICOS .................................................................. 14
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA
+         OUVIDORIA .......................................................................................................... 15
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS ................................................... 22
+         Anexo 6: LISTA MESTRA .................................................................................... 32
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03    3 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         1. OBJETIVO
+         Estabelecer metodologia para orientação, acompanhamento e revisão de
+         Instrumentos normativos (IN), visando à padronização das normas e procedimentos
+         contidos neste documento.
+
+         2. CAMPO DE APLICAÇÃO
+         Aplica-se a todas as Unidades de Ouvidorias que integram a Secretaria de Estado
+         de Saúde do Rio de Janeiro ­ SES/RJ.
+
+         3. REFERÊNCIAS
+
+             1. Norma para Elaboração, Controle e Revisão de Instrumentos Normativos
+                  (NOR-2000-001) ­ SES (Assessoria de Qualidade).
+
+             2. Manual Operacional 2010 ­ Ouvidoria da Saúde SESDEC ­ RJ ­ (MNP ­ 135
+                  ­ 001 ­ Versão 01).
+
+             3. Guia de Orientações Básicas para Implantação de Ouvidorias do SUS /
+                  Ministério da Saúde, Secretaria de Gestão Estratégica e Participativa,
+                  Departamento de Ouvidoria Geral do SUS ­ Brasília: Ministério da Saúde,
+                  2013.
+
+             4. Manual Operacional 2014 ­ Ouvidoria da Saúde SESDEC ­ RJ (MNP ­ 135 ­
+                  001 ­ Versão 02).
+
+             5. Material de Apoio do Curso Nacional de Qualificação de Auditorias e
+                  Ouvidorias do SUS; Ouvidoria SUS. / Organizado por Rosa Maria Pinheiro
+                  Souza... [et al]. ­ Rio de Janeiro: FIOCRUZ/ENSP, 2014.
+
+                                                                       Vigência __/__/___
+                                                                  REPRODUÇÃO PROIBIDA
+             Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO     VERSÃO      PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                    03        4 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         6. Lei nº 12.527, de 18 de novembro de 2011, que regula o acesso a
+
+         informações previsto no inciso XXXIII do art. 5º, no inciso II do § 3º do art. 37
+
+         e no § 2º do art. 216 da Constituição Federal; altera a Lei nº 8.112, de 11 de
+
+         dezembro de 1990; revoga a Lei nº 11.111, de 05 de maio de 2005, e
+
+         dispositivos da Lei nº 8.159, de 08 de janeiro de 1991; e dá outras
+
+         providências.         (https://www.saude.rj.gov.br/ouvidoria/para-
+
+         ouvidores/2011/11/lei-n-12-527-de-18-de-novembro-de-2011)
+
+         7. Resolução SES nº 207, de 22 de dezembro de 2011, que dispõe sobre a
+             Regulamentação da Ouvidoria Geral da Secretaria de Estado de Saúde.
+             (https://www.saude.rj.gov.br/ouvidoria/para-ouvidores/2011/12/resolucao-ses-
+             n-207-de-22-de-dezembro-de-2011)
+
+         8. Deliberação CIB-RJ Nº 2630, de 12 de dezembro de 2013, que dispõe sobre
+             a definição dos critérios de implantação dos serviços de Ouvidoria do Sistema
+             Único de Saúde no Estado do Rio de Janeiro.
+             (https://www.saude.rj.gov.br/ouvidoria/para-ouvidores/2013/12/deliberacao-
+             cib-n-2-630-de-12-de-dezembro-de-2013)
+
+         9. Portaria nº 2416, de 07 de novembro de 2014, que estabelece diretrizes para
+
+         a organização e funcionamento dos serviços de ouvidoria do Sistema Único
+
+         de  Saúde      (SUS)                      e    suas            atribuições.
+
+         (https://www.saude.rj.gov.br/ouvidoria/para-ouvidores/2014/11/portaria-n-
+
+         2416-de-07-de-novembro-de-2014)
+
+         10. Deliberação CIB-RJ nº 3413, de 14 de maio de 2015, que dispõe sobre a
+             definição dos critérios de qualidade das respostas a serem apresentadas ao
+             usuário que procura os serviços de Ouvidoria do Sistema Único de Saúde no
+             Estado do Rio de Janeiro. (https://www.saude.rj.gov.br/ouvidoria/para-
+             ouvidores/2015/05/deliberacao-cib-rj-n-3413-de-14-de-maio-de-2015)
+
+                             Vigência __/__/___
+                        REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO     PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03       5 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         11. Resolução SES nº 1250, de 04 de setembro de 2015, que dispõe sobre a
+             organização dos serviços de Ouvidoria em unidades da estrutura da
+             Secretaria de Estado de Saúde. (https://www.saude.rj.gov.br/ouvidoria/para-
+             ouvidores/2015/07/resolucao-ses-n-1250-de-04-de-setembro-de-2015)
+
+         12. Deliberação CIB-RJ nº 3778, de 06 de junho de 2016, dispõe sobre a
+             utilização do sistema ouvidor sus ­ nível 2 que menciona abaixo.
+             (https://www.saude.rj.gov.br/ouvidoria/para-
+             ouvidores/2016/06/deliberacao-cib-n-3-778-de-09-de-junho-de-2016)
+
+         13. Deliberação CIB-RJ nº 3840, de 15 de julho de 2016, que pactua o rol de
+
+         indicadores para monitoramento e avaliação das ações e serviços do sus e
+
+         fortalecimento do planejamento em saúde no âmbito do estado do rio de
+
+         janeiro.                 (https://www.saude.rj.gov.br/ouvidoria/para-
+
+         ouvidores/2016/09/deliberacao-cib-rj-n-3-840-de-15-de-setembro-de-2016)
+
+         14. Lei nº 13.460, de 26 de junho de 2017, que dispõe sobre participação,
+
+         proteção e defesa dos direitos do usuário dos serviços públicos da
+
+         administração  pública.  (https://www.saude.rj.gov.br/ouvidoria/para-
+
+         ouvidores/2017/06/lei-n-13-460-de-26-de-junho-de-2017)
+
+         15. Lei nº 7989, de 14 de junho de 2018, que dispõe sobre o sistema de controle
+             interno do poder executivo do estado do rio de janeiro, cria a controladoria
+             geral do estado do rio de janeiro e o fundo de aprimoramento de controle
+             interno, organiza as carreiras de controle interno.
+             (https://www.saude.rj.gov.br/ouvidoria/para-ouvidores/2018/06/lei-n-7989-de-
+             14-de-junho-de-2018)
+
+                             Vigência __/__/___
+                        REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03    6 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         4. DEFINIÇÕES
+
+             Norma (NOR) ­ Documento técnico escrito, estabelecido por consenso e
+             aprovado pela UF que formaliza, para uso comum e repetitivo, um conjunto de
+             princípios, características e regras sobre atividades e/ou produtos específicos.
+             Tudo isso com a finalidade de uniformizar e garantir o seu modo de
+             funcionamento.
+
+             Manual (MNP) ­ Documento elaborado dentro da Organização com a finalidade
+             de uniformizar procedimentos.
+
+             Procedimento Operacional Padrão (POP) ­ Documento que descreve a rotina
+             de execução de procedimentos de atividades específicas dentro da Organização,
+             com o objetivo de padronizar sua execução visando garantir a qualidade.
+
+             Fluxograma ­ É a representação gráfica das rotinas que integram um
+             determinado procedimento sob a forma sequencial de passos.
+
+             Formulário (FOR) - É o documento, previamente impresso, utilizado para
+             preenchimento de dados e/ou informações visando à formalização do
+             atendimento.
+
+             Unidade Funcional (UF) ­ Parte da estrutura da organização que administra
+             com algum grau de autonomia os grupos de processos que suportam
+             determinados recursos e geram resultados. Para fins desse documento constitui
+             UF as Subsecretarias, Unidades assistenciais (Hospitais, Institutos, UPAS),
+             Perícia Médica, Centros Imagens, Centro Hidratação e Farmácia Popular.
+
+             Formulário de Atendimento da Manifestação (FAM) - é um formulário físico
+             onde são coletatos os dados e as informações, que permitem a formalização, o
+             registro e o controle das manifestações.
+
+                                                                       Vigência __/__/___
+                                                                  REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03    7 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Formulário de Atendimento por Busca Ativa - é um formulário físico onde são
+         coletatos os dados e as informações, que permitem a formalização, o registro e o
+         controle das manifestações quando se realiza o atendimento da manifestação
+         por busca ativa.
+
+         Formulário de Relato de Atendimento das Manifestações ­ é o documento
+         padronizado no qual deve ser formalizado o relato da manifestação, contendo a
+         assinatura do usuário.
+
+         Número de Protocolo ­ é o número gerado automaticamente ao registrar a
+         manifestação no sistema informatizado, sendo fornecido ao usuário para que
+         possa acompanhar a mesma.
+
+         Sistema Informatizado ­ É o sistema que possibilita a inserção das
+         manifestações, sua categorização e seu gerenciamento dos dados assim
+         gerados. É recomendado que se utilize o Sistema Ouvidor SUS, sistema esse
+         regulamentado pela Portaria nº 8, de 25 de maio de 2007, que tem por finalidade
+         o cadastramento das reclamações, sugestões, solicitações, denúncias e elogios
+         dos usuários, assim como a disseminação das informações em saúde viabiliza a
+         comunicação entre as Ouvidorias do Sistema Nacional de Ouvidorias-SNO.
+
+         Controle de Demandas ­ Instrumento utilizado para monitorar a tramitação dos
+         atendimentos realizado mensalmente. Pode ser utilizado também como base
+         dados para elaboração de Relatórios Gerenciais.
+
+         Comunicação Interna (C.I.) ­ é o instrumento de comunicação para assuntos
+         internos entre chefias de unidades administrativas de um mesmo órgão. É o
+         veículo de mensagens rotineiras, objetivas e simples, que não venham a criar,
+         alterar ou suprimir direitos e obrigações nem tratar de assuntos de ordem
+         pessoal.
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03    8 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         5. RESPONSABILIDADES
+
+         FUNÇÃO                RESPONSABILIDADES
+
+                                  Participar na elaboração, controle, revisão e monitoramento deste
+         Ouvidoria Geral documento; assim como promover a guarda e distribuição do
+
+                                  mesmo.
+
+            Ouvidor      Monitorar os indicadores de desempenho do serviço,
+         Coordenador     estabelecidos pela Direção das Unidades de Saúde e Ouvidoria
+                         Geral da SES;
+                         Garantir o funcionamento dos canais de comunicação da
+                         Ouvidoria;
+                         Orientar o encaminhamento de cada manifestação;
+                         Analisar, orientar e acompanhar o andamento das manifestações
+                         para condução adequada dos casos até a sua conclusão;
+                         Encaminhar relatórios estatísticos das atividades da Ouvidoria às
+                         autoridades superiores do órgão/entidade.
+                         Analisar o andamento do Serviço e dispor de estratégias para
+                         otimizá-lo;
+
+          Ouvidor        Receber as manifestações por um dos canais de comunicação
+         Assistente      pela Ouvidoria;
+                         Realizar a identificação do usuário e o registro da manifestação,
+                         após ouvir e aceitar o caso, exceto quando o usuário não desejar
+                         ser identificado; o que impede a resposta do serviço direto ao
+                         manifestante, visando o encaminhamento ao serviço e/ou setor
+                         competente.
+
+              Apoio      Acolher o manifestante que comparecer pessoalmente à
+         administrativo  ouvidoria, encaminhá-lo para o ouvidor assistente ou mesmo o
+                         coordenador que deverá realizar e conduzir o acolhimento ao
+                         manifestante;
+                         Verificar diariamente a chegada de manifestações pelo correio
+                         eletrônico, urnas, carta/fax;
+                         Agendar os atendimentos que forem solicitados pelo familiar ou
+                         manifestante em seu leito ou setor;
+
+                                    Vigência __/__/___
+                               REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03    9 de 125
+
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         6. DIRETRIZES
+
+         a) Nenhum Instrumento Normativo poderá ser criado no âmbito da Ouvidoria Geral e
+         Ouvidorias Descentralizadas sem que atenda ao disposto a Norma para Elaboração,
+         Controle e Revisão de Instrumentos Normativos, pelo qual a Assessoria da
+         Qualidade SES/RJ é a área responsável pela verificação normativa.
+
+         b) Quanto ao Anonimato:
+         - É passível de acolhimento manifestações anônimas por impresso, por urna e por
+         correspondência eletrônica, desde que haja possibilidade de apuração;
+         - A manifestação anônima somente será aceita quando apresentar indícios
+         confiáveis e consistentes para instaurar procedimentos de averiguação do fato
+         denunciado. Compete a Ouvidoria a recomendação de instauração de procedimento
+         de averiguação aos órgãos competentes.
+         - Formulário Impresso: preencher o campo "Nome" com a palavra "ANÔNIMO";
+         - Sistema Informatizado: Identificar no sistema que a manifestação é anônima.
+
+         c) Quanto ao Sigilo:
+         - A proteção do sigilo será baseada na Lei 12.527/11.
+         - Formulário Impresso: sinalizar a opção em caso de "SIM" ou "NÂO" para casos em
+         que haja solicitação de sigilo por parte do manifestante e não encaminhar a
+         manifestação com os referidos contatos, preservando assim a identidade do usuário.
+         - Sistema informatizado: Identificar no sistema que a manifestação é sigilosa.
+
+         d) Quanto ao Nome Social - Portaria Nº 1.820, de 13/08/2009 (Dispõe sobre os
+         direitos e deveres dos usuários da Saúde) ­ Art. 4º, I
+
+         "Identificação pelo nome e sobrenome civil, devendo existir em todo documento do usuário e
+         usuária um campo para se registrar o nome social, independente do registro civil sendo
+         assegurado o uso do nome de preferência, não podendo ser identificado por número, nome
+         ou código da doença ou outras formas desrespeitosas ou preconceituosas;"
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     10 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         7. PROCEDIMENTOS
+
+         a) Acolhimento Por Busca Ativa
+
+         Estratégia utilizada para o acolhimento de manifestações onde o usuário não possua
+         acesso imediato à Ouvidoria SES. No ato do acolhimento da manifestação através
+         da Busca Ativa é feita a apresentação da atribuição da Ouvidoria e a orientação de
+         que nesse pode ser utilizado para a busca de situações a serem melhoradas na
+         organização.
+
+         b) Acolhimento Por Correspondência Eletrônica
+
+         Forma de atendimento realizado através do e-mail institucional da Ouvidoria.
+
+         As mensagens recebidas poderão ser retornadas para o manifestante havendo
+         necessidade de complementação solicitando maiores esclarecimentos e também de
+         algumas informações para preenchimento do Formulário de Atendimento da
+         Manifestação. Caso a resposta seja satisfatória à manifestação a Ouvidoria elabora
+         em linguagem clara e objetiva e responde ao manifestante através do e-mail o qual
+         foi estabelecido o contato.
+
+         c) Acolhimento Por Impresso (Carta ou Órgãos Oficiais)
+
+         São recebidas correspondências que deverão ser endereçadas ao endereço da
+         Ouvidoria, que fará o devido tratamento, considerando sua pertinência,
+         encaminhando cópia do original à área competente e/ou transcrevendo em síntese o
+         teor na Folha do Relato da Manifestação, se necessário.
+
+                                Vigência __/__/___
+                           REPRODUÇÃO PROIBIDA
+               Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                      CODIFICAÇÃO    VERSÃO   PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                        03      11 de
+                                                                                       125
+­ Secretaria de Estado de Saúde do Rio de Janeiro            MNP - 135-001
+
+         d) Acolhimento Presencial
+
+         Procedimento caracterizado pelo acolhimento ao usuário em local adequado, que
+         resguarde a privacidade do atendimento quer seja realizado na sala da Ouvidoria ou
+         em outro ambiente dentro da Instituição, cumprimentando o manifestante de forma
+         acolhedora, identificando-se.
+
+         Com relação ao preenchimento da Folha de relato da Manifestação, não havendo a
+         possibilidade do manifestante redigir, cabe a Ouvidoria transcrever seu relato, e em
+         casos de impossibilidade do manifestante assiná-lo.
+
+         e) Acolhimento Telefônico
+
+         Será realizado através de linha telefônica, com ouvidores capacitados a acolher a
+         manifestação através dos procedimentos de atendimento.
+
+         f) Acolhimento Por Urna
+
+         Estratégia utilizada para possibilitar ao usuário outras formas de acesso à Ouvidoria
+
+         SES.  Este acolhimento de manifestação é realizado através de urnas
+
+         disponibilizadas em locais estratégicos para garantir o acesso do usuário.
+
+                                         Vigência __/__/___
+                                    REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     12 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 1: MACROPROCESSO DO ACOLHIMENTO DA MANIFESTAÇÃO
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO       VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                      03     13 de
+                                                                                    125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 2: ORGANOGRAMA DA OUVIDORIA SES
+
+         Ouvidor Geral
+
+         Apoio Administrativo
+
+           Coordenação de                              Coordenação de
+         Análise e Tratamento                      Informação, Qualidade
+
+             das demandas                            e Descentralização
+
+                                  Ouvidorias
+                               Descentralizadas
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     14 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+             Anexo 3: COMPROMISSOS ÉTICOS
+
+         COMPROMISSOS ÉTICOS QUE OS SERVIDORES PÚBLICOS CIVIS DEVEM
+         OBSERVAR NO DESEMPENHO DE SUAS ATIVIDADES
+
+         (Estes compromissos dizem respeito aos deveres dos Funcionários Públicos Civis do Poder
+         Executivo do Estado do Rio de Janeiro ­ em seu Art. 285, conforme Decreto Nº 2479, de 08
+         de março de 1979)
+
+         I ­ assiduidade;
+
+         II ­ pontualidade;
+
+         III ­ urbanidade;
+
+         IV ­ discrição;
+
+         V ­ boa conduta;
+
+         VI ­ lealdade e respeito às instituições constitucionais e administrativas a que servir;
+
+         VII ­ observância das normas legais e regulamentares;
+
+         VIII ­ obediência as ordens superiores, exceto quando manifestamente ilegais;
+
+         IX ­ levar ao conhecimento da autoridade superior, irregularidades de que tiver ciência em
+         razão do cargo ou função;
+
+         X ­ zelar pela economia e conservação do material que lhe for confiado;
+
+         XI ­ providenciar para que esteja sempre em ordem, no assentamento individual, sua
+         declaração de família;
+
+         XII ­ atender prontamente às requisições para defesa da Fazenda Pública e à expedição de
+         certidões para defesa de direito;
+
+         XIII ­ guardar sigilo sobre a documentação e os assuntos de natureza reservada de que
+         tenha conhecimento em razão do cargo ou função;
+
+         XIV ­ submeter-se à inspeção médica determinada por autoridade competente, salvo justa
+         causa.
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO           PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03              15 de
+                                                                                          125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA OUVIDORIA
+         4.1. FORMULÁRIO DE ATENDIMENTO DAS MANIFESTAÇÕES - FRENTE
+
+         VERSÃO PARA DOWNLOAD EM: https://www.saude.rj.gov.br/ouvidoria/para-ouvidores
+
+                                                      Vigência __/__/___
+                                                 REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO           PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03              16 de
+                                                                                          125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA OUVIDORIA
+         4.1. FORMULÁRIO DE ATENDIMENTO DAS MANIFESTAÇÕES - VERSO
+
+         VERSÃO PARA DOWNLOAD EM: https://www.saude.rj.gov.br/ouvidoria/para-ouvidores
+
+                                                      Vigência __/__/___
+                                                 REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO           PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03              17 de
+                                                                                          125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA OUVIDORIA
+         4.2. FORMULÁRIO DE ATENDIMENTO PARA URNA - FRENTE
+
+         VERSÃO PARA DOWNLOAD EM: https://www.saude.rj.gov.br/ouvidoria/para-ouvidores
+
+                                                      Vigência __/__/___
+                                                 REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO           PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03              18 de
+                                                                                          125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA OUVIDORIA
+         4.2. FORMULÁRIO DE ATENDIMENTO PARA URNA - VERSO
+
+         VERSÃO PARA DOWNLOAD EM: https://www.saude.rj.gov.br/ouvidoria/para-ouvidores
+
+                                                      Vigência __/__/___
+                                                 REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO           PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03              19 de
+                                                                                          125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA OUVIDORIA
+         4.3. FORMULÁRIO DE RELATO DAS MANIFESTAÇÕES - FRENTE
+
+         VERSÃO PARA DOWNLOAD EM: https://www.saude.rj.gov.br/ouvidoria/para-ouvidores
+
+                                                      Vigência __/__/___
+                                                 REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO           PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03              20 de
+                                                                                          125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA OUVIDORIA
+         4.3. FORMULÁRIO DE RELATO DAS MANIFESTAÇÕES - VERSO
+
+         VERSÃO PARA DOWNLOAD EM: https://www.saude.rj.gov.br/ouvidoria/para-ouvidores
+
+                                                      Vigência __/__/___
+                                                 REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO           PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03              21 de
+                                                                                          125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 4: MODELO DE FORMULÁRIOS UTILIZADOS PARA ATENDIMENTO DA OUVIDORIA
+         4.4. PROTOCOLO DE ATENDIMENTO
+
+         VERSÃO PARA DOWNLOAD EM: https://www.saude.rj.gov.br/ouvidoria/para-ouvidores
+
+                                                      Vigência __/__/___
+                                                 REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     22 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.1. OFÍCIO
+
+         CONCEITO - Correspondência por meio da qual se mantém intercâmbio de
+         informações a respeito de assunto técnico ou administrativo entre órgãos e
+         entidades da Administração Pública direta e indireta. São objeto de ofícios as
+         comunicações realizadas entre dirigentes de unidades administrativas do mesmo
+         nível hierárquico, podendo ser também dirigidos aos particulares.
+
+         PARTES COMPONENTES:
+            Título abreviado "Of.", acompanhado da sigla do órgão expedidor, sua unidade
+
+         administrativa, numeração e ano, à esquerda;
+            Local e data, por extenso, à direita, na mesma linha do título;
+             Endereçamento (alinhado à esquerda), contendo o nome do destinatário,
+
+         precedido da forma de tratamento, cargo (se aplicável) e o endereço;
+            Vocativo, a palavra Senhor(a), seguida do cargo (se aplicável) do destinatário e de
+
+         vírgula;
+            Texto paragrafado, com a exposição do(s) assunto(s) e o objetivo do ofício;
+            Fecho de cortesia, expresso por advérbios: "Atenciosamente", "Cordialmente" ou
+
+         "Respeitosamente";
+            Assinatura, nome, cargo e ID funcional da autoridade com competência legal ou
+
+         delegada do emitente do Ofício, centralizados;
+            Rodapé, centralizado.
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                                   03     23 de
+                                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro                       MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.1. OFÍCIO - EXEMPLO
+
+         Governo do Estado do Rio de Janeiro
+              Secretaria Estadual de Saúde
+                Subsecretaria XXXXXXXX
+
+         Of. SES/sigla SUP/ sigla Unidade Própria/sigla OU N° xxx/XXXX  Rio de Janeiro, DIA de MÊS de ANO.
+
+         FORMA DE TRATAMENTO > NOME DO DESTINATÁRIO
+         CARGO (se aplicável)
+         ENDEREÇO
+         ASSUNTO:
+         AENXO(s): (se aplicável)
+
+         VOCATIVO > CARGO DO DESTINATÁRIO(se aplicável),
+
+                    Considerando a Lei 13.460/17 que dispõe sobre participação, proteção e defesa dos direitos
+         do usuário dos serviços públicos da administração pública, encaminhamos para V.Sª a manifestação,
+         sob o registro nº XXXXXX, para análise, pronunciamento e posterior retorno a esta Ouvidoria.
+
+         FECHO DE CORTESIA>Atenciosamente, OU Cordialmente, OU Respeitosamente,
+
+                                                                  ASSINATURA
+                                                                       NOME
+                                                                      CARGO
+
+         ID FUNCIONAL DA AUTORIDADE COM COMPETÊNCIA LEGAL OU DELEGADA DO EMITENTE
+
+         RODAPÉ > INFORMAÇÕES CORRESPONDENTE AO EMITENTE
+                              IDENTIFICAÇÃO DA INSTITUIÇÃO
+                                  IDENTFICAÇÃO DO SETOR
+                                    ENDEREÇO COMPLETO
+                                              TELEFONE
+                                            SITE / e-MAIL
+
+                         Vigência __/__/___
+                    REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     24 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.2. OFÍCIO CIRCULAR
+
+         CONCEITO - Variante do ofício dirigida concomitantemente a diversos órgãos e
+         entidades da Administração Pública direta e indireta, contendo o mesmo texto.
+
+         PARTES COMPONENTES:
+            Título (a palavra OFÍCIO CIRCULAR), em letras maiúsculas, sigla do órgão que o
+
+         expede e número, à esquerda;
+            Local e data, por extenso, à direita, na mesma linha do título;
+            Destinatário, após o termo "Para:" (com inicial maiúscula);
+            "Assunto:", expressado sinteticamente;
+            Texto paragrafado, contendo a exposição do(s) assunto(s) e o objetivo do ofício
+
+         circular;
+            Fecho de cortesia, seguido do advérbio "Atenciosamente";
+            Assinatura, nome, cargo e ID funcional da autoridade com competência legal ou
+
+         delegada que subscreve o ofício circular, centralizados;
+            Rodapé, centralizado.
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                             CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                                               03     25 de
+                                                                                                             125
+­ Secretaria de Estado de Saúde do Rio de Janeiro                                   MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.2. OFÍCIO CIRCULAR - EXEMPLO
+
+         Governo do Estado do Rio de Janeiro
+              Secretaria Estadual de Saúde
+                 Subsecretaria XXXXXXX
+
+         OFÍCIO CIRCULAR SES/sigla SUP/ sigla Unidade Própria/sigla OU N° XXX/XXXX  Rio de Janeiro, DIA de MÊS de ANO.
+
+         Para: DESTINATÁRIO
+         Assunto: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.
+
+                    TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO.
+
+                    TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO TEXTO TEXTO TEXTO.
+
+                    TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+         TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO.
+
+         FECHO DE CORTESIA>Atenciosamente, OU Cordialmente, OU Respeitosamente,
+
+                                                                    ASSINATURA
+                                                                         NOME
+                                                                        CARGO
+
+           ID FUNCIONAL DA AUTORIDADE COM COMPETÊNCIA LEGAL OU DELEGADA DO EMITENTE
+
+         RODAPÉ > INFORMAÇÕES CORRESPONDENTE AO EMITENTE
+                              IDENTIFICAÇÃO DA INSTITUIÇÃO
+                                  IDENTFICAÇÃO DO SETOR
+                                    ENDEREÇO COMPLETO
+                                              TELEFONE
+                                            SITE / e-MAIL
+
+                         Vigência __/__/___
+                    REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     26 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.3. COMUNICAÇÃO INTERNA (C.I.)
+
+         CONCEITO - É o instrumento de comunicação para assuntos internos, entre chefias
+         de unidades administrativas de um mesmo órgão. É o veículo de mensagens
+         rotineiras, objetivas e simples, que não venham a criar, alterar ou suprimir direitos e
+         obrigações, nem tratar de assuntos de ordem pessoal.
+
+         OBSERVAÇÃO - A Correspondência Interna (CI) substitui o memorando, cuja
+         nomenclatura não deve ser mais utilizada.
+
+         PARTES COMPONENTES:
+            Título (abreviado - CI - com a sigla da unidade administrativa emitente e o número
+
+         do documento), em letras maiúsculas, à esquerda;
+            Data, por extenso, na mesma linha do título, à direita;
+            Destinatário, precedido de "Para:", à esquerda;
+            Remetente, precedido de "De:", à esquerda;
+            "Assunto:", expresso sinteticamente, à esquerda;
+            Texto, paragrafado, explanando o assunto da CI;
+            Fecho de cortesia, com o advérbio "Atenciosamente", à esquerda;
+            Assinatura, nome, cargo e ID funcional da autoridade com competência legal ou
+
+         delegada que subscreve a CI, centralizados;
+            Rodapé, centralizado.
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                               CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                                 03     27 de
+                                                                                               125
+­ Secretaria de Estado de Saúde do Rio de Janeiro                     MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.3. COMUNICAÇÃO INTERNA (C.I.) - EXEMPLO
+
+         Governo do Estado do Rio de Janeiro
+              Secretaria Estadual de Saúde
+                Subsecretaria XXXXXXXX
+
+         CI SES/sigla SUP/ sigla Unidade Própria/sigla OU N° XX/XXXX  Rio de Janeiro, DIA de MÊS de ANO.
+
+         Para: DESTINATÁRIO
+         De: REMETENTE
+         Assunto: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.
+
+                                                        PRAZO MÁXIMO DE RESPOSTA: Atendendo ao disposto no
+                                                        artigo 10º da Resolução SES Nº 207, de 22/12/2011, que
+                                                        estabelece prazos de resposta, solicitamos o envio da mesma no
+                                                        prazo máximo de 10 (dez) dias a contar da data do registro da
+                                                        manifestação.
+                   Considerando a Lei 13.460/17 que dispõe sobre participação, proteção e defesa dos direitos
+         do usuário dos serviços públicos da administração pública, encaminhamos para V.Sª a manifestação,
+         sob o registro nº XXXXX, para análise, pronunciamento e posterior retorno a esta Ouvidoria.
+
+         FECHO DE CORTESIA>Atenciosamente, OU Cordialmente, OU Respeitosamente,
+
+                                                                  ASSINATURA
+                                                                       NOME
+                                                                      CARGO
+
+         ID FUNCIONAL DA AUTORIDADE COM COMPETÊNCIA LEGAL OU DELEGADA DO EMITENTE
+
+         RODAPÉ > INFORMAÇÕES CORRESPONDENTE AO EMITENTE
+                              IDENTIFICAÇÃO DA INSTITUIÇÃO
+                                  IDENTFICAÇÃO DO SETOR
+                                    ENDEREÇO COMPLETO
+                                              TELEFONE
+                                            SITE / e-MAIL
+
+                         Vigência __/__/___
+                    REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     28 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.4. DESPACHO
+
+         CONCEITO - É espécie do gênero ato administrativo ordinatório ou interlocutório.
+         Encaminhamento com decisão proferida por autoridade administrativa em matéria
+         que lhe é submetida à apreciação. Pode ser informativo (ordinatório ou de mero
+         expediente) ou decisório.
+
+         OBSERVAÇÕES - O Despacho não deve ser exarado na mesma folha do original
+         submetido à autoridade, e sim em folha separada, para permitir o correto
+         arquivamento dos autos.
+
+         10.3 PARTES COMPONENTES:
+             Setor ou nome do destinatário, seguido do órgão, precedido da preposição
+
+         adequada, à esquerda;
+            Texto que expressa o teor da decisão;
+            Local e data, por extenso, à esquerda;
+            Assinatura, nome, cargo e ID funcional da autoridade com competência legal ou
+
+         delegada que exara o despacho, centralizados;
+            Rodapé, centralizado.
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     29 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.4. DESPACHO - EXEMPLO
+
+                                                                                  Governo do Estado do Rio de Janeiro
+                                                                                      Secretaria de Estado de Saúde
+                                                                                           Subsecretaria XXXXXX
+
+         A(AO)
+         SETOR OU NOME DO DESTINATÁRIO
+         ÓRGÃO DE DESTINO
+
+                   Conforme consta no relato registrado no dia XX/XX/XXXX, o número do processo XXXXXXX-
+         XX.XXXX.X.XXXXXX reencaminhamos a presente manifestação por impresso, a XXXXXXXXXXX
+         para conhecer, apurar e adotar as medidas cabíveis que o caso requer, com retorno das informações
+         a esta Ouvidoria.
+
+                                                    Rio de Janeiro, DIA de MÊS de ANO.
+
+                                                                    ASSINATURA
+                                                                         NOME
+                                                                        CARGO
+
+           ID FUNCIONAL DA AUTORIDADE COM COMPETÊNCIA LEGAL OU DELEGADA DO EMITENTE
+
+                                                                              RODAPÉ > INFORMAÇÕES CORRESPONDENTE AO EMITENTE
+                                                                                                    IDENTIFICAÇÃO DA INSTITUIÇÃO
+                                                                                                        IDENTFICAÇÃO DO SETOR
+                                                                                                          ENDEREÇO COMPLETO
+                                                                                                                    TELEFONE
+                                                                                                                  SITE / e-MAIL
+
+                                                                       Vigência __/__/___
+                                                                  REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                 CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                   03     30 de
+                                                                                 125
+­ Secretaria de Estado de Saúde do Rio de Janeiro       MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.5. CARTA RESPOSTA
+
+         CONCEITO - Forma de comunicação externa dirigida a pessoa física ou jurídica
+         estranha à Administração Pública, utilizada para fazer solicitações, convites, externar
+         agradecimentos ou transmitir informações.
+
+         PARTES COMPONENTES:
+            Título (abreviado - CARTA - com a sigla da unidade administrativa emitente e o
+
+         número do documento), em letras maiúsculas, à esquerda;
+            Local e data, por extenso, à direita;
+             Na linha seguinte, endereçamento alinhado à esquerda, contendo nome do
+
+         destinatário, precedido da forma de tratamento e o endereço;
+            Vocativo, a palavra Senhor(a), seguida do cargo do destinatário e de vírgula;
+            Texto paragrafado, com a exposição do(s) assunto(s) e o objetivo da carta;
+              Fecho de cortesia, seguido de advérbio adequado: "Cordialmente",
+
+         "Atenciosamente", ou "Respeitosamente";
+            Assinatura, nome, cargo e ID funcional da autoridade com competência legal ou
+
+         delegada emitente da carta, centralizados;
+            Rodapé, centralizado.
+
+              Vigência __/__/___
+         REPRODUÇÃO PROIBIDA
+         Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                  CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                                    03     31 de
+                                                                                                  125
+­ Secretaria de Estado de Saúde do Rio de Janeiro                        MNP - 135-001
+
+         Anexo 5: MODELO DE REDAÇÕES OFICIAIS
+         5.5. CARTA RESPOSTA - EXEMPLO
+
+         Governo do Estado do Rio de Janeiro
+              Secretaria Estadual de Saúde
+                 Subsecretaria XXXXXXX
+
+         CARTA SES/sigla SUP/ sigla Unidade Própria/sigla OU N° XX/XXXX  Rio de Janeiro, DIA de MÊS de ANO.
+
+         À(AO)
+         NOME DO DESTINATÁRIO
+         ENDEREÇO DO DESTINATÁRIO
+
+         VOCATIVO > CARGO DO DESTINATÁRIO(se aplicável),
+
+                   Agradecemos sua participação que é de fundamental importância para os serviços oferecidos
+         tenham a qualidade desejável pela Secretaria de Estado de Saúde do Rio de Janeiro.
+
+                   A Ouvidoria é um espaço de comunicação entre o cidadão e os serviços prestados pelo
+         Sistema Único de Saúde (SUS), funcionando como um instrumento de aprimoramento, modernização
+         e humanização das relações entre a sociedade e a gestão pública.
+
+                   Em atendimento à sua manifestação registrada sob nº XXXXXXX, solicitando a medicação
+         XXXXXXXX, informamos que a Superintendência de XXXXXXXXXXX XXXXXXXXXXXX X XXXXXX
+         XXXXXXX (XXXXX), prestou os esclarecimentos devidos e após análise desta Ouvidoria,
+         encaminhamos a seguinte RESPOSTA PARCIAL: "Esclarecemos que a solicitação de compra de
+         medicamentos da SES-RJ é feita conforme a Lei de licitações nº XXXXXXX e a Portaria GM/MS n°
+         XXXX/XX e encontra-se em tramitação nesta Secretaria o processo licitatório para a aquisição do
+         medicamento supramencionado. Ressaltamos que todos os esforços têm sido empreendidos por esta
+         Secretaria no intuito de restabelecer o estoque deste medicamento".
+
+         FECHO DE CORTESIA>Atenciosamente, OU Cordialmente, OU Respeitosamente,
+
+                                                                  ASSINATURA
+                                                                       NOME
+                                                                      CARGO
+
+         ID FUNCIONAL DA AUTORIDADE COM COMPETÊNCIA LEGAL OU DELEGADA DO EMITENTE
+
+         RODAPÉ > INFORMAÇÕES CORRESPONDENTE AO EMITENTE
+                              IDENTIFICAÇÃO DA INSTITUIÇÃO
+                                  IDENTFICAÇÃO DO SETOR
+                                    ENDEREÇO COMPLETO
+                                              TELEFONE
+                                            SITE / e-MAIL
+
+                         Vigência __/__/___
+                    REPRODUÇÃO PROIBIDA
+                 Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                         CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Manual de Normas e Procedimentos da Ouvidoria da Saúde                           03     32 de
+                                                                                         125
+­ Secretaria de Estado de Saúde do Rio de Janeiro               MNP - 135-001
+
+         Anexo 6: LISTA MESTRA
+
+                        MANUAL DE NORMAS E PROCEDIMENTOS - MNP
+
+         Código                 Título                          Versão Aprovação Validade
+
+         MNP -135-001 Manual de Normas e Procedimentos          3       ___/__/__ ___/__/__
+
+                        PROCEDIMENTOS OPERACIONAIS PADRÃO - POP
+
+             Código                            Título           Versão  Aprovação      Validade
+         POP-135-001                                                3    __/__/__      __/__/__
+                        Procedimento Operacional Padrão
+         POP-135-002    Atendimento por Busca Ativa                 3    __/__/__      __/__/__
+                        Procedimento Operacional Padrão             3
+         POP-135-003    Atendimento por Correspondência             3    __/__/__      __/__/__
+         POP-135-004    Eletrônica                                  3    __/__/__      __/__/__
+         POP-135-005    Procedimento Operacional Padrão             3    __/__/__      __/__/__
+         POP-135-006    Atendimento por Impresso                         __/__/__      __/__/__
+                        Procedimento Operacional Padrão
+                        Atendimento Presencial
+                        Procedimento Operacional Padrão
+                        Atendimento Telefônico
+                        Procedimento Operacional Padrão
+                        Atendimento por Urna
+
+                                FORMULÁRIOS - FORM
+
+             Código             Título                          Versão  Aprovação      Validade
+         FOR - 135-001                                                   __/__/__      __/__/__
+         FOR - 135-002  Formulário de Atendimento das           3        __/__/__      __/__/__
+                        Manifestações                                                  __/__/__
+                                                                                       __/__/__
+                        Formulário de Atendimento da            3
+                        Manifestação para Acolhimento por Urna
+
+         FOR - 135-003 Formulário de Relato das Manifestações   3       __/__/__
+
+         FOR - 135-004  Formulário de Protocolo de Atendimento  3       __/__/___
+                        da Manifestação
+
+                                     Vigência __/__/___
+                                REPRODUÇÃO PROIBIDA
+       Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                                 CODIFICAÇÃO  VERSÃO                  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por                                POP-135-001       03                     33 de
+Busca Ativa                                                                                                                    125
+
+       PROCEDIMENTO OPERACIONAL PADRÃO
+                ATENDIMENTO BUSCA ATIVA
+
+Elaboração:                      Revisão:  REGISTRO DO DOCUMENTO                          Aprovação:
+        Grupo de Trabalho da                                 Verificação Normativa:                 Subsecretaria Jurídica
+         Ouvidoria SES (GT)                                                                          Ass.: Maurício Ribeiro
+                                 Ouvidoria Geral da SES    Assessoria da Qualidade
+    Ass. Quele C. Garcia Pícoli
+                                 Ass.: Márcia Lopes Silva  Ass. Meirelane Souza Rosa
+
+Data:                            Data:                     Data:                          Data:
+
+                                        VIGÊNCIA: 02 ANOS A PARTIR DA DATA DA APROVAÇÃO.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     34 de
+Busca Ativa                                                                      125
+
+ÍNDICE
+
+1. OBJETIVO ................................................................................................. 35
+2. RESPONSÁVEL PELA EXECUÇÃO......................................................... 35
+3. CAMPO DE APLICAÇÃO .......................................................................... 35
+4. REFERÊNCIAS .......................................................................................... 35
+5. PROCEDIMENTOS .................................................................................... 37
+6. DIRETRIZES .............................................................................................. 40
+7. ANEXO....................................................................................................... 47
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     35 de
+Busca Ativa                                                                      125
+
+1. OBJETIVO
+Definir, esclarecer e padronizar as etapas do processo de trabalho através do
+acolhimento das manifestações oriundas do atendimento por busca ativa, visando
+à qualidade do atendimento ao usuário nas Ouvidorias.
+
+2. RESPONSÁVEL PELA EXECUÇÃO
+Equipes das Ouvidorias Descentralizadas que integram a Secretaria de Estado de
+Saúde do Rio de Janeiro ­ SES/RJ.
+
+3. CAMPO DE APLICAÇÃO
+Aplica-se a todas as Unidades de Ouvidorias Descentralizadas que integram a
+Secretaria de Estado de Saúde do Rio de Janeiro ­ SES/RJ.
+
+4. REFERÊNCIAS
+
+     Norma para Elaboração, Controle e Revisão de Instrumentos Normativos
+         (NOR-2000-001) ­ SES (Assessoria de Qualidade);
+
+     Manual Operacional 2010 ­ Ouvidoria da Saúde SESDEC ­ RJ ­ (MNP ­
+         135 ­ 001 ­ Versão 01);
+
+     Guia de Orientações Básicas para Implantação de Ouvidorias do SUS /
+         Ministério da Saúde, Secretaria de Gestão Estratégica e Participativa,
+         Departamento de Ouvidoria Geral do SUS ­ Brasília: Ministério da Saúde,
+         2013;
+
+     Manual Operacional 2014 ­ Ouvidoria da Saúde SESDEC ­ RJ (MNP ­ 135
+         ­ 001 ­ Versão 02);
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     36 de
+Busca Ativa                                                                      125
+
+ Material de Apoio do Curso Nacional de Qualificação de Auditorias e
+    Ouvidorias do SUS; Ouvidoria SUS. / Organizado por Rosa Maria Pinheiro
+    Souza... [et al]. ­ Rio de Janeiro: FIOCRUZ/ENSP, 2014;
+
+ Lei nº 12.527, de 18 de novembro de 2011, que regula o acesso a
+    informações previsto no inciso XXXIII do art. 5º, no inciso II do § 3º do art.
+    37 e no § 2º do art. 216 da Constituição Federal; altera a Lei nº 8.112, de 11
+    de dezembro de 1990; revoga a Lei nº 11.111, de 05 de maio de 2005, e
+    dispositivos da Lei nº 8.159, de 08 de janeiro de 1991; e dá outras
+    providências;
+
+ Resolução SES nº 207, de 22 de dezembro de 2011, que dispõe sobre a
+    Regulamentação da Ouvidoria Geral da Secretaria de Estado de Saúde;
+
+ Deliberação CIB-RJ Nº 2630, de 12/12/2013, que dispõe sobre a definição
+    dos critérios de implantação dos serviços de Ouvidoria do Sistema Único de
+    Saúde no Estado do Rio de Janeiro;
+
+ Deliberação CIB-RJ nº 3413, de 14 de maio de 2015, que dispõe sobre a
+    definição dos critérios de qualidade das respostas a serem apresentadas ao
+    usuário que procura os serviços de Ouvidoria do Sistema Único de Saúde
+    no Estado do Rio de Janeiro;
+
+ Resolução SES nº 1250, de 04 de setembro de 2015, que dispõe sobre a
+    organização dos serviços de Ouvidoria em unidades da estrutura da
+    Secretaria de Estado de Saúde, e
+
+ Lei nº 13.460, de 26 de junho de 2017, que dispõe sobre participação e
+    defesa dos direitos do usuário dos serviços públicos da administração
+    pública.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     37 de
+Busca Ativa                                                                      125
+
+5. PROCEDIMENTOS
+
+1. Direcionar-se ao usuário e identificar-se formalmente;
+
+2. Informar ao usuário o objetivo do procedimento;
+
+3. Questionar ao usuário sobre a existência de alguma demanda a ser registrada;
+
+4. Escutar o relato do usuário;
+
+5. Verificar a pertinência da manifestação;
+
+5.1. Se for pertinente à área da Saúde com resposta disponível, responder ao
+usuário e em seguida encerrar o atendimento. Posteriormente, registrar a
+manifestação, evidenciar no registro a resposta disponibilizada ao usuário e
+realizar o fechamento.
+
+5.2. Se for pertinente à área da Saúde sem resposta disponível, prosseguir com o
+atendimento.
+
+5.3 Se não for pertinente à área da Saúde, responder ao cidadão e em seguida
+encerrar o atendimento. Posteriormente, registrar a manifestação, classificar como
+"Informação", evidenciar no registro a resposta disponibilizada ao usuário e
+realizar o fechamento.
+
+6. Realizar sondagem da manifestação.
+
+7. Coletar os dados e o relato do usuário, observando a necessidade de manter o
+sigilo quando solicitado pelo próprio.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     38 de
+Busca Ativa                                                                      125
+
+8. Fazer a leitura do relato da manifestação para analisar a consistência junto ao
+usuário;
+
+8.1. Se o usuário concordar, prosseguir com o atendimento.
+
+8.2. Se o usuário discordar, realizar as alterações necessárias.
+
+9. Orientar o usuário quanto aos meios e prazo estabelecido para o envio de
+resposta. Posteriormente, informar o número de protocolo gerado ao usuário.
+
+10. Retornar à sala da Ouvidoria e classificar a manifestação de acordo com seu
+teor.
+
+11. Analisar e classificar a manifestação em assuntos e sub-assuntos, a partir da
+pertinência do seu conteúdo.
+
+12. Encaminhar a manifestação para a área competente pelas atividades ou
+serviços abordados no relato do usuário.
+
+13. Inserir os dados referentes ao atendimento na planilha de Controle de
+Demandas.
+
+14. Acompanhar as providências dentro do prazo estabelecido para resposta e
+caso este não seja cumprido, reiterar o encaminhamento anterior.
+
+15. Concluir a manifestação com a resposta recebida da área competente, na
+íntegra.
+
+16. Analisar a resposta da área competente quanto à clareza e objetividade e se
+está relacionada ao conteúdo da manifestação;
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     39 de
+Busca Ativa                                                                      125
+
+16.1 Caso a resposta atenda ao relato da manifestação, analisar e tratar o
+conteúdo da resposta da área competente e disponibilizar ao usuário.
+
+16.2 Caso a resposta não atenda ao relato da manifestação, esta deve ser
+reencaminhada à área competente para revisão da resposta; retornar ao item 12 e
+prosseguir.
+
+17. Fechar a manifestação com a resposta analisada e tratada pela Ouvidoria.
+
+18. Enviar a resposta ao usuário.
+
+19. Atualizar o registro na planilha de Controle de Demandas.
+
+20. Se houver contestação, anotar o relato do usuário como nova observação e
+reencaminhar o registro à área pertinente para nova avaliação, conforme o fluxo
+de procedimento do item 12 ao 19.
+
+21. Arquive-se.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     40 de
+Busca Ativa                                                                      125
+
+6. DIRETRIZES
+
+1. ACOLHIMENTO
+
+1.1 ABORDAGEM
+
+a) Ir ao encontro do usuário que encontra-se na instituição;
+b) Disponibilizar o atendimento da Ouvidoria com o objetivo de identificar a
+
+   existência de alguma questão a ser manifestada;
+c) Realizar a abordagem de forma frequente nas áreas internas da instituição,
+
+   podendo ocorrer todos os dias da semana.
+
+1.2 SONDAGEM
+
+a) Fazer as perguntas ao usuário para compreender, aprofundar, verificar e
+confirmar a manifestação por ele apresentada.
+
+b) Quanto ao SIGILO, verificar a necessidade junto ao usuário:
+- Formulário Impresso: preencher os dados de contato identificando com a palavra
+"SIGILO" ao lado da identificação do nome do manifestante e NÃO encaminhar a
+manifestação com os referidos contatos, preservando assim a identidade do
+usuário.
+- Sistema informatizado: Identificar no sistema que a manifestação é sigilosa.
+
+c) Quanto ao ANONIMATO: No atendimento busca ativa não existe acolhimento
+de manifestações anônimas, visto que o ouvidor se apresenta ao usuário
+pessoalmente. Se for desejo do usuário, indicar as possibilidades de recebimento
+da manifestação anônima por outros canais, tais como: carta, endereço eletrônico
+formulário web e Correspondência eletrônica) e urna, preferencialmente ou desde
+que seja disponibilizado um meio de contato.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     41 de
+Busca Ativa                                                                      125
+
+d) Situações obrigatórias de desmembramento de manifestações:
+
+      I. Reclamação/solicitação de mais de um medicamento.
+      II. Solicitação de mais de um exame, cirurgia ou tratamento.
+      III. Solicitação de mais de um produto para saúde.
+      IV. Quando a manifestação fizer referência a mais de um tipo de classificação.
+      V. Quando a manifestação fizer referência a vários teores, dentro da mesma
+      classificação.
+      VI. Reclamação/solicitação referente a mais de uma vacina.
+
+         FONTE: DOGES/SGEP/MS.
+
+1.3 REGISTRO
+
+a) O registro da manifestação é realizado ao retornar para a sala da ouvidoria
+    após a busca ativa;
+
+b) Para que a manifestação possa ser registrada, é necessário que o usuário
+    apresente um conjunto de "INFORMAÇÕES MÍNIMAS", ou seja,
+    informações indispensáveis ao registro, ao encaminhamento e ao
+    tratamento da manifestação apresentada pelo usuário.
+
+c) Utilizar o Formulário de Atendimento das Manifestações impresso ou
+    diretamente no Sistema Informatizado para registrar as informações
+    pertinentes ao usuário.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO                VERSÃO         PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001                     03            42 de
+Busca Ativa                                                                                           125
+
+2. ANÁLISE E TRATAMENTO
+
+Durante a análise da consistência do registro da manifestação verificamos a
+qualidade do relato quanto:
+a) à coerência e à objetividade.
+b) ao desmembramento adequado.
+c) à classificação correta, buscando identificar e corrigir possíveis inconsistências.
+
+2.1 CLASSIFICAÇÃO
+
+Toda demanda registrada deve ser classificada quanto ao seu conteúdo, para
+facilitar e agilizar o seu tratamento e viabilizar a gestão de informações.
+
+Quadro ­ Classificação das manifestações quanto ao seu conteúdo
+
+Denúncia               Comunicação verbal ou escrita que indica irregularidade ou indício de
+                       irregularidade na administração e/ou por entidade pública ou privada.
+
+Reclamação             Comunicação verbal ou escrita que relata insatisfação em relação às ações e
+                       aos serviços de saúde, sem conteúdo de requerimento.
+
+Sugestão               Comunicação verbal ou escrita que propõe ação considerada útil à melhoria
+Solicitação            do sistema de saúde.
+                       Comunicação verbal ou escrita, que embora também possa indicar
+Elogio                 insatisfação, necessariamente, contém um requerimento de atendimento ou
+                       acesso às ações e aos serviços de saúde.
+                       Comunicação verbal ou escrita que demonstra satisfação ou agradecimento
+                       por serviço prestado pelo Sistema Único de Saúde.
+
+Informação             Comunicação verbal ou escrita na qual o usuário faz questionamento a
+
+                       respeito do sistema de saúde ou sobre a assistência à saúde.
+
+FONTE: DOGES/SGEP/MS.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                          CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por         POP-135-001       03     43 de
+Busca Ativa                                                                             125
+
+2.2 TIPIFICAÇÃO
+
+a) Após registrada, a manifestação deve ser analisada e tipificada, segundo a sua
+pertinência ao SUS e às áreas de competência, a partir do seu conteúdo
+(assuntos e sub assuntos).
+
+b) Para a etapa da tipificação, dispomos de Manual de Tipificação do Sistema
+
+Informatizado OuvidorSUS que contempla orientações a respeito da análise de
+
+cada manifestação.   Pode ser acessado na página: <
+
+http://portalarquivos.saude.gov.br/images/pdf/2014/julho/22/manual-ouvidorsus-
+
+tipificacao.pdf >.
+
+c) Definição da prioridade da manifestação
+Antes do encaminhamento da demanda, deve ser definido o seu nível de
+prioridade e fixada uma data limite para a conclusão da análise e da resposta à
+manifestação, definida a partir das informações colhidas no momento de seu
+registro.
+
+Quadro ­ Níveis de prioridade da manifestação e respectivos prazos de resposta.
+
+Prioridade (níveis)  Prazos de Resposta
+
+1                    Urgente                                  02 dias úteis
+
+2                    Situações que não                        15 dias
+
+                     envolve casos de
+
+                     urgência
+
+3                    Situações que                            30 dias
+
+                     demandem análise de
+
+                     processo administrativo
+
+FONTE: RESOLUÇÃO N 207, DE 22 DE DEZEMBRO DE 2011 ­ Art. 10.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     44 de
+Busca Ativa                                                                      125
+
+2.3 ENCAMINHAMENTO
+
+a) Primeiro passo é a identificação da unidade administrativa competente de
+acordo com a sua sub-rede responsável pelas atividades ou serviços abordados
+na manifestação, para a qual (ou as quais) deve ser encaminhada.
+
+b) Utilizar a via mais adequada para encaminhamento a manifestação através de
+sistema informatizado ou por correspondência eletrônica ou por impresso.
+
+2.4 ACOMPANHAMENTO
+
+a) A Ouvidoria deve acompanhar o trâmite da manifestação para agilizar e
+intermediar as ações, se necessário. Por essa razão, é essencial que a Ouvidoria
+mantenha a boa interlocução com as demais unidades administrativas do
+órgão/entidade, responsáveis diretos pela resolução das manifestações para o
+adequado acompanhamento das providências dos resultados.
+
+b) Caso constatados atrasos na análise e na resposta à manifestação, a Ouvidoria
+deve fazer contato com a unidade administrativa para verificação dos motivos do
+atraso.
+
+c) É desejável dispor de uma ferramenta que torne possível o acompanhamento das
+manifestações quando apresentadas até o momento da resposta ao usuário e a
+consolidação das informações relativas às manifestações para conhecimento do
+gestor. Pode-se utilizar o Sistema Informatizados OuvidorSUS ou a planilha
+eletrônica Controle de Demandas/Manifestações.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     45 de
+Busca Ativa                                                                      125
+
+d) Quanto ao protocolo em classificação de ENCAMINHADO:
+
+- dentro do prazo de resposta, orientar o usuário a aguardar a tramitação da
+manifestação;
+
+- fora do prazo de resposta, informar ao usuário que ainda não tem pronunciamento
+da área, porém será feita a cobrança de resposta reiterando o encaminhamento.
+
+2.5 ANÁLISE DA RESPOSTA DA ÁREA E CONCLUSÃO
+
+a) Ao receber a resposta encaminhada pela área competente, a ouvidoria deve
+avaliar se o seu conteúdo é claro e objetivo, se está relacionado ao que foi
+explicitado no relato do registro da manifestação e, ainda, se está alinhado aos
+princípios e às diretrizes do SUS.
+
+2.6 RESPOSTA AO USUÁRIO E FECHAMENTO
+
+a) Quanto à resposta disponível no ato do acolhimento, pode-se criar seu próprio
+banco de informações, pautado nas necessidades específicas das Ouvidorias do
+SUS.
+
+b) Uma manifestação só deve ser fechada mediante uma resposta satisfatória, o
+que não significa que a manifestação tenha que ser atendida. A resposta pode
+indicar a inviabilidade de atendimento à manifestação.
+
+c) Quanto aos meios de envio da resposta:
+- Por Sistema Informatizado: Forma de comunicação externa dirigida ao usuário
+contendo a resposta da manifestação, enviada automaticamente pelo sistema
+informatizado, através do endereço eletrônico do usuário cadastrado. Em caso de
+contestação da resposta, anotar o relato do usuário como NOVO DETALHE e
+REENCAMINHAR o registro para a área competente.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     46 de
+Busca Ativa                                                                      125
+
+- Por Correspondência Eletrônica: Forma de comunicação externa dirigida ao
+usuário contendo a resposta da manifestação através de endereço eletrônico
+institucional. Neste caso, registrar a Correspondência eletrônica enviado em
+anotações no sistema informatizado.
+
+- Por Carta: Forma de comunicação externa dirigida ao usuário contendo a
+resposta da manifestação que poderá ser entregue de forma presencial mediante
+assinatura de retirada ou por via postal. A carta só poderá ser retirada pelo próprio
+manifestante ou seu representante legal; Deve-se anexar a carta ao registro após
+três tentativas de contato com o manifestante em dias e horários diferentes.
+
+2.7 ARQUIVAMENTO
+
+a) Por Sistema Informatizado: Realizado automaticamente através de sistema
+informatizado 60 (sessenta dias) após o fechamento do registro.
+
+b) Por Impresso: Método numérico: Quando o principal elemento de classificação
+de um documento é um número (por exemplo: processes, legislação, documentos
+protocolados etc.), a melhor forma de organização para o arquivo é o método
+numérico. Nesta modalidade de arquivamento, a consulta é, indireta, pois há
+necessidade de se recorrer a um índice auxiliar alfabético que remeterá ao
+número sob o qual a informação foi arquivada.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-001       03     47 de
+Busca Ativa                                                                      125
+
+7. ANEXO         Fluxograma
+        Anexo 1
+       Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                                 CODIFICAÇÃO  VERSÃO                  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por                                POP-135-002       03                     48 de
+Correspondência Eletrônica                                                                                                     125
+
+       PROCEDIMENTO OPERACIONAL PADRÃO
+       ATENDIMENTO POR CORRESPONDÊNCIA
+
+                            ELETRÔNICA
+
+Elaboração:                      Revisão:  REGISTRO DO DOCUMENTO                          Aprovação:
+        Grupo de Trabalho da                                 Verificação Normativa:                 Subsecretaria Jurídica
+         Ouvidoria SES (GT)                                                                          Ass.: Maurício Ribeiro
+                                 Ouvidoria Geral da SES    Assessoria da Qualidade
+    Ass. Quele C. Garcia Pícoli
+                                 Ass.: Márcia Lopes Silva  Ass. Meirelane Souza Rosa
+
+Data:                            Data:                     Data:                          Data:
+
+                                        VIGÊNCIA: 02 ANOS A PARTIR DA DATA DA APROVAÇÃO.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     49 de
+Correspondência Eletrônica                                                       125
+
+                                                  ÍNDICE
+
+1. OBJETIVO ................................................................................................. 50
+2. RESPONSÁVEL PELA EXECUÇÃO......................................................... 50
+3. CAMPO DE APLICAÇÃO .......................................................................... 50
+4. REFERÊNCIAS .......................................................................................... 50
+5. PROCEDIMENTOS .................................................................................... 52
+6. DIRETRIZES .............................................................................................. 55
+7. ANEXO....................................................................................................... 62
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     50 de
+Correspondência Eletrônica                                                       125
+
+1. OBJETIVO
+Definir, esclarecer e padronizar as etapas do processo de trabalho através do
+acolhimento das manifestações oriundas do atendimento por correspondência
+eletrônica, visando à qualidade do atendimento ao usuário nas Ouvidorias.
+
+2. RESPONSÁVEL PELA EXECUÇÃO
+Equipes das Ouvidorias Descentralizadas que integram a Secretaria de Estado de
+Saúde do Rio de Janeiro ­ SES/RJ.
+
+3. CAMPO DE APLICAÇÃO
+Aplica-se a todas as Unidades de Ouvidorias Descentralizadas que integram a
+Secretaria de Estado de Saúde do Rio de Janeiro ­ SES/RJ.
+
+4. REFERÊNCIAS
+
+     Norma para Elaboração, Controle e Revisão de Instrumentos Normativos
+         (NOR-2000-001) ­ SES (Assessoria de Qualidade);
+
+     Manual Operacional 2010 ­ Ouvidoria da Saúde SESDEC ­ RJ ­ (MNP ­
+         135 ­ 001 ­ Versão 01);
+
+     Guia de Orientações Básicas para Implantação de Ouvidorias do SUS /
+         Ministério da Saúde, Secretaria de Gestão Estratégica e Participativa,
+         Departamento de Ouvidoria Geral do SUS ­ Brasília: Ministério da Saúde,
+         2013;
+
+     Manual Operacional 2014 ­ Ouvidoria da Saúde SESDEC ­ RJ (MNP ­ 135
+         ­ 001 ­ Versão 02);
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     51 de
+Correspondência Eletrônica                                                       125
+
+ Material de Apoio do Curso Nacional de Qualificação de Auditorias e
+    Ouvidorias do SUS; Ouvidoria SUS. / Organizado por Rosa Maria Pinheiro
+    Souza... [et al]. ­ Rio de Janeiro: FIOCRUZ/ENSP, 2014;
+
+ Lei nº 12.527, de 18 de novembro de 2011, que regula o acesso a
+    informações previsto no inciso XXXIII do art. 5º, no inciso II do § 3º do art.
+    37 e no § 2º do art. 216 da Constituição Federal; altera a Lei nº 8.112, de 11
+    de dezembro de 1990; revoga a Lei nº 11.111, de 05 de maio de 2005, e
+    dispositivos da Lei nº 8.159, de 08 de janeiro de 1991; e dá outras
+    providências;
+
+ Resolução SES nº 207, de 22 de dezembro de 2011, que dispõe sobre a
+    Regulamentação da Ouvidoria Geral da Secretaria de Estado de Saúde;
+
+ Deliberação CIB-RJ Nº 2630, de 12/12/2013, que dispõe sobre a definição
+    dos critérios de implantação dos serviços de Ouvidoria do Sistema Único de
+    Saúde no Estado do Rio de Janeiro;
+
+ Deliberação CIB-RJ nº 3413, de 14 de maio de 2015, que dispõe sobre a
+    definição dos critérios de qualidade das respostas a serem apresentadas ao
+    usuário que procura os serviços de Ouvidoria do Sistema Único de Saúde
+    no Estado do Rio de Janeiro;
+
+ Resolução SES nº 1250, de 04 de setembro de 2015, que dispõe sobre a
+    organização dos serviços de Ouvidoria em unidades da estrutura da
+    Secretaria de Estado de Saúde, e
+
+ Lei nº 13.460, de 26 de junho de 2017, que dispõe sobre participação e
+    defesa dos direitos do usuário dos serviços públicos da administração
+    pública.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     52 de
+Correspondência Eletrônica                                                       125
+
+5. PROCEDIMENTOS
+1. Acessar a correspondência eletrônica institucional inserindo login e senha.
+
+2. Verificar a existência de número de protocolo;
+
+2.1. Se não houver o número de protocolo, iniciar registro da manifestação.
+
+2.2. Se houver o número de protocolo, verificar o andamento da manifestação e
+prosseguir conforme o estado que a manifestação se encontra.
+
+3. ler o relato do usuário;
+
+4. Verificar a pertinência da manifestação;
+
+4.1. Se for pertinente à área da Saúde com resposta disponível, responder ao
+usuário através de correspondência eletrônica e em seguida encerrar o
+atendimento. Registrar a manifestação, evidenciar no registro a resposta
+disponibilizada ao usuário e realizar o fechamento.
+
+4.2. Se for pertinente à área da Saúde sem resposta disponível, prosseguir com o
+registro.
+
+4.3 Se não for pertinente à área da Saúde, responder ao usuário através de
+correspondência eletrônica e em seguida encerrar o atendimento. Registrar a
+manifestação, classificar como "Informação", evidenciar no registro a resposta
+disponibilizada ao usuário e realizar o fechamento.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     53 de
+Correspondência Eletrônica                                                       125
+
+5. Realizar sondagem da manifestação através da correspondência eletrônica se
+houver necessidade.
+
+6. Registrar os dados do usuário, utilizando o relato presente no corpo da
+mensagem recebida, observando a necessidade de manter o sigilo quando
+solicitado pelo próprio.
+
+7. Informar o número de protocolo gerado, orientar o usuário quanto aos meios e
+prazo estabelecido para o envio de resposta através da correspondência
+eletrônica.
+
+8. Classificar a manifestação de acordo com seu teor.
+
+9. Analisar e classificar a manifestação em assuntos e sub-assuntos, a partir da
+pertinência do seu conteúdo.
+
+10. Encaminhar a manifestação para a área competente pelas atividades ou
+serviços abordados no relato do usuário.
+
+11. Inserir os dados referentes ao atendimento na planilha de Controle de
+Demandas.
+
+12. Acompanhar as providências dentro do prazo estabelecido para resposta e
+caso este não seja cumprido, reiterar o encaminhamento anterior.
+
+13. Concluir a manifestação com a resposta recebida da área competente, na
+íntegra.
+
+14. Analisar a resposta da área competente quanto à clareza e objetividade e se
+está relacionada ao conteúdo da manifestação;
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     54 de
+Correspondência Eletrônica                                                       125
+
+14.1 Caso a resposta atenda ao relato da manifestação, analisar e tratar o
+conteúdo da resposta da área competente e disponibilizar ao usuário.
+
+14.2 Caso a resposta não atenda ao relato da manifestação, esta deve ser
+reencaminhada à área competente para revisão da resposta; retornar ao item 12 e
+prosseguir.
+
+15. Fechar a manifestação com a resposta analisada e tratada pela Ouvidoria.
+
+16. Enviar a resposta ao usuário.
+
+17. Atualizar o andamento do registro na planilha de Controle de Demandas.
+
+18. Se houver contestação, anotar o relato do usuário como nova observação e
+reencaminhar o registro à área pertinente para nova avaliação, conforme o fluxo
+de procedimento do item 10 ao 17.
+
+19. Arquive-se.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     55 de
+Correspondência Eletrônica                                                       125
+
+6. DIRETRIZES
+
+1. ACOLHIMENTO
+
+1.1 RECEBIMENTO
+
+a) Acessar o endereço eletrônico institucional diariamente para identificar novas
+demandas.
+1.2 SONDAGEM
+
+a) Elaborar um roteiro com as perguntas ao usuário para compreender,
+aprofundar, verificar e confirmar a manifestação por ele apresentada e encaminhar
+através da correspondência eletrônica institucional.
+
+b) Quanto ao SIGILO, verificar no relato se há solicitação realizada pelo usuário:
+
+- Formulário Impresso: preencher os dados de contato identificando com a palavra
+"SIGILO" ao lado da identificação do nome do manifestante e NÃO encaminhar a
+manifestação com os referidos contatos, preservando assim a identidade do
+usuário.
+- Sistema informatizado: Identificar no sistema que a manifestação é sigilosa.
+
+c) Quanto ao ANONIMATO: No atendimento presencial não existe acolhimento de
+manifestações anônimas, visto que o usuário se apresenta ao ouvidor
+pessoalmente. Se for desejo do usuário, indicar as possibilidades de recebimento
+da manifestação anônima por outros canais, tais como: carta, endereço eletrônico
+(formulário web e Correspondência eletrônica) e urna, preferencialmente ou desde
+que seja disponibilizado um meio de contato.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     56 de
+Correspondência Eletrônica                                                       125
+
+d) Situações obrigatórias de desmembramento de manifestações:
+
+ I. Reclamação/solicitação de mais de um medicamento.
+ II. Solicitação de mais de um exame, cirurgia ou tratamento.
+ III. Solicitação de mais de um produto para saúde.
+ IV. Quando a manifestação fizer referência a mais de um tipo de classificação.
+ V. Quando a manifestação fizer referência a vários teores, dentro da mesma
+ classificação.
+ VI. Reclamação/solicitação referente a mais de uma vacina.
+
+FONTE: DOGES/SGEP/MS.
+
+1.3 REGISTRO
+
+a) Para que a manifestação possa ser registrada, é necessário que o usuário
+apresente um conjunto de "INFORMAÇÕES MÍNIMAS", ou seja, informações
+indispensáveis ao registro, ao encaminhamento e ao tratamento da manifestação
+apresentada pelo usuário.
+
+b) Utilizar o Formulário de Atendimento das Manifestações impresso ou
+diretamente no Sistema Informatizado para registrar as informações pertinentes ao
+usuário.
+        Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO                VERSÃO         PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002                     03            57 de
+Correspondência Eletrônica                                                                            125
+
+2. ANÁLISE E TRATAMENTO
+
+Durante a análise da consistência do registro da manifestação verificamos a
+qualidade do relato quanto:
+a) à coerência; à objetividade; à ortografia do seu conteúdo.
+b) ao desmembramento adequado.
+c) à classificação correta, buscando identificar e corrigir possíveis inconsistências.
+
+2.1 CLASSIFICAÇÃO
+
+Toda demanda registrada deve ser classificada quanto ao seu conteúdo, para
+facilitar e agilizar o seu tratamento e viabilizar a gestão de informações.
+
+Quadro ­ Classificação das manifestações quanto ao seu conteúdo
+
+Denúncia               Comunicação verbal ou escrita que indica irregularidade ou indício de
+                       irregularidade na administração e/ou por entidade pública ou privada.
+
+Reclamação             Comunicação verbal ou escrita que relata insatisfação em relação às ações e
+                       aos serviços de saúde, sem conteúdo de requerimento.
+
+Sugestão               Comunicação verbal ou escrita que propõe ação considerada útil à melhoria
+                       do sistema de saúde.
+
+Solicitação            Comunicação verbal ou escrita, que embora também possa indicar
+                       insatisfação, necessariamente, contém um requerimento de atendimento ou
+                       acesso às ações e aos serviços de saúde.
+
+Elogio                 Comunicação verbal ou escrita que demonstra satisfação ou agradecimento
+                       por serviço prestado pelo Sistema Único de Saúde.
+
+Informação             Comunicação verbal ou escrita na qual o usuário faz questionamento a
+
+                       respeito do sistema de saúde ou sobre a assistência à saúde.
+
+FONTE: DOGES/SGEP/MS.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                          CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por         POP-135-002       03     58 de
+Correspondência Eletrônica                                                              125
+
+2.2 TIPIFICAÇÃO
+
+a) Após registrada, a manifestação deve ser analisada e tipificada, segundo a sua
+pertinência ao SUS e às áreas de competência, a partir do seu conteúdo
+(assuntos e sub assuntos).
+
+b) Para a etapa da tipificação, dispomos de Manual de Tipificação do Sistema
+
+Informatizado OuvidorSUS que contempla orientações a respeito da análise de
+
+cada manifestação.   Pode ser acessado na página: <
+
+http://portalarquivos.saude.gov.br/images/pdf/2014/julho/22/manual-ouvidorsus-
+
+tipificacao.pdf >.
+
+c) Definição da prioridade da manifestação
+Antes do encaminhamento da demanda, deve ser definido o seu nível de
+prioridade e fixada uma data limite para a conclusão da análise e da resposta à
+manifestação, definida a partir das informações colhidas no momento de seu
+registro.
+
+Quadro ­ Níveis de prioridade da manifestação e respectivos prazos de resposta.
+
+Prioridade (níveis)  Prazos de Resposta
+
+1                    Urgente                                  02 dias úteis
+
+2                    Situações que não                        15 dias
+
+                     envolve casos de
+
+                     urgência
+
+3                    Situações que                            30 dias
+
+                     demandem análise de
+
+                     processo administrativo
+
+FONTE: RESOLUÇÃO N 207, DE 22 DE DEZEMBRO DE 2011 ­ Art. 10.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     59 de
+Correspondência Eletrônica                                                       125
+
+2.3 ENCAMINHAMENTO
+
+a) Primeiro passo é a identificação da unidade administrativa competente de
+acordo com a sua sub-rede responsável pelas atividades ou serviços abordados
+na manifestação, para a qual (ou as quais) deve ser encaminhada.
+
+b) Utilizar a via mais adequada para encaminhamento a manifestação através de
+sistema informatizado ou por correspondência eletrônica ou por impresso.
+
+2.4 ACOMPANHAMENTO
+
+a) A Ouvidoria deve acompanhar o trâmite da manifestação para agilizar e
+intermediar as ações, se necessário. Por essa razão, é essencial que a Ouvidoria
+mantenha a boa interlocução com as demais unidades administrativas do
+órgão/entidade, responsáveis diretos pela resolução das manifestações para o
+adequado acompanhamento das providências dos resultados.
+
+b) Caso constatados atrasos na análise e na resposta à manifestação, a Ouvidoria
+deve fazer contato com a unidade administrativa para verificação dos motivos do
+atraso.
+
+c) É desejável dispor de uma ferramenta que torne possível o acompanhamento das
+manifestações quando apresentadas até o momento da resposta ao usuário e a
+consolidação das informações relativas às manifestações para conhecimento do
+gestor. Pode-se utilizar o Sistema Informatizados OuvidorSUS ou a planilha
+eletrônica Controle de Demandas/Manifestações.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     60 de
+Correspondência Eletrônica                                                       125
+
+d) Quanto ao protocolo em classificação de ENCAMINHADO:
+
+- dentro do prazo de resposta, orientar o usuário a aguardar a tramitação da
+manifestação;
+
+- fora do prazo de resposta, informar ao usuário que ainda não tem pronunciamento
+da área, porém será feita a cobrança de resposta reiterando o encaminhamento.
+
+2.5 ANÁLISE DA RESPOSTA DA ÁREA E CONCLUSÃO
+
+a) Ao receber a resposta encaminhada pela área competente, a ouvidoria deve
+avaliar se o seu conteúdo é claro e objetivo, se está relacionado ao que foi
+explicitado no relato do registro da manifestação e, ainda, se está alinhado aos
+princípios e às diretrizes do SUS.
+
+2.6 RESPOSTA AO USUÁRIO E FECHAMENTO
+
+a) Quanto à resposta disponível no ato do acolhimento, pode-se criar seu próprio
+banco de informações, pautado nas necessidades específicas das Ouvidorias do
+SUS.
+
+b) Uma manifestação só deve ser fechada mediante uma resposta satisfatória, o
+que não significa que a manifestação tenha que ser atendida. A resposta pode
+indicar a inviabilidade de atendimento à manifestação.
+
+c) Quando a manifestação for classificada como anônima com meios de envio de
+resposta fornecidos na correspondência é viável retorno da resposta ao usuário.
+Caso contrário, a resposta fica armazenada nos arquivos da Ouvidoria para
+acesso ao usuário quando solicitado.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     61 de
+Correspondência Eletrônica                                                       125
+
+d) Quanto aos meios de envio da resposta:
+- Por Sistema Informatizado: Forma de comunicação externa dirigida ao usuário
+contendo a resposta da manifestação, enviada automaticamente pelo sistema
+informatizado, através do endereço eletrônico do usuário cadastrado. Em caso de
+contestação da resposta, anotar o relato do usuário como NOVO DETALHE e
+REENCAMINHAR o registro para a área competente.
+
+- Por Correspondência Eletrônica: Forma de comunicação externa dirigida ao
+usuário contendo a resposta da manifestação através de endereço eletrônico
+institucional. Neste caso, registrar a Correspondência eletrônica enviado em
+anotações no sistema informatizado.
+
+- Por Carta: Forma de comunicação externa dirigida ao usuário contendo a
+resposta da manifestação que poderá ser entregue de forma presencial mediante
+assinatura de retirada ou por via postal. A carta só poderá ser retirada pelo próprio
+manifestante ou seu representante legal; Deve-se anexar a carta ao registro após
+três tentativas de contato com o manifestante em dias e horários diferentes.
+
+2.7 ARQUIVAMENTO
+
+a) Por Sistema Informatizado: Realizado automaticamente através de sistema
+informatizado 60 (sessenta dias) após o fechamento do registro.
+
+b) Por Impresso: Método numérico: Quando o principal elemento de classificação
+de um documento é um número (por exemplo: processes, legislação, documentos
+protocolados etc.), a melhor forma de organização para o arquivo é o método
+numérico. Nesta modalidade de arquivamento, a consulta é, indireta, pois há
+necessidade de se recorrer a um índice auxiliar alfabético que remeterá ao
+número sob o qual a informação foi arquivada.
+          Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-002       03     62 de
+Correspondência Eletrônica                                                       125
+
+7. ANEXO
+
+Anexo 1   Fluxograma
+       Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                                      CODIFICAÇÃO  VERSÃO             PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por                                     POP-135-003       03                63 de
+Impresso                                                                                                                       125
+
+       PROCEDIMENTO OPERACIONAL PADRÃO
+              ATENDIMENTO POR IMPRESSO
+
+Elaboração:                      Revisão:  REGISTRO DO DOCUMENTO                          Aprovação:
+        Grupo de Trabalho da                                 Verificação Normativa:                 Subsecretaria Jurídica
+         Ouvidoria SES (GT)                                                                          Ass.: Maurício Ribeiro
+                                 Ouvidoria Geral da SES    Assessoria da Qualidade
+    Ass. Quele C. Garcia Pícoli
+                                 Ass.: Márcia Lopes Silva  Ass. Meirelane Souza Rosa
+
+Data:                            Data:                     Data:                          Data:
+
+                                        VIGÊNCIA: 02 ANOS A PARTIR DA DATA DA APROVAÇÃO.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     64 de
+Impresso                                                                         125
+
+ÍNDICE
+
+1. OBJETIVO ................................................................................................. 65
+2. RESPONSÁVEL PELA EXECUÇÃO ......................................................... 65
+3. CAMPO DE APLICAÇÃO .......................................................................... 65
+4. REFERÊNCIAS .......................................................................................... 65
+5. PROCEDIMENTOS .................................................................................... 67
+6. DIRETRIZES .............................................................................................. 69
+7. ANEXO ....................................................................................................... 76
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     65 de
+Impresso                                                                         125
+
+1. OBJETIVO
+Definir, esclarecer e padronizar as etapas do processo de trabalho através do
+acolhimento das manifestações oriundas do atendimento presencial, visando à
+qualidade do atendimento ao usuário nas Ouvidorias.
+
+2. RESPONSÁVEL PELA EXECUÇÃO
+Equipes das Ouvidorias Descentralizadas que integram a Secretaria de Estado de
+Saúde do Rio de Janeiro ­ SES/RJ.
+
+3. CAMPO DE APLICAÇÃO
+Aplica-se a todas as Unidades de Ouvidorias Descentralizadas que integram a
+Secretaria de Estado de Saúde do Rio de Janeiro ­ SES/RJ.
+
+4. REFERÊNCIAS
+
+     Norma para Elaboração, Controle e Revisão de Instrumentos Normativos (NOR-
+         2000-001) ­ SES (Assessoria de Qualidade);
+
+     Manual Operacional 2010 ­ Ouvidoria da Saúde SESDEC ­ RJ ­ (MNP ­ 135 ­
+         001 ­ Versão 01);
+
+     Guia de Orientações Básicas para Implantação de Ouvidorias do SUS / Ministério
+         da Saúde, Secretaria de Gestão Estratégica e Participativa, Departamento de
+         Ouvidoria Geral do SUS ­ Brasília: Ministério da Saúde, 2013;
+
+     Manual Operacional 2014 ­ Ouvidoria da Saúde SESDEC ­ RJ (MNP ­ 135 ­ 001
+         ­ Versão 02);
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     66 de
+Impresso                                                                         125
+
+ Material de Apoio do Curso Nacional de Qualificação de Auditorias e Ouvidorias
+    do SUS; Ouvidoria SUS. / Organizado por Rosa Maria Pinheiro Souza... [et al]. ­
+    Rio de Janeiro: FIOCRUZ/ENSP, 2014;
+
+ Lei nº 12.527, de 18 de novembro de 2011, que regula o acesso a informações
+    previsto no inciso XXXIII do art. 5º, no inciso II do § 3º do art. 37 e no § 2º do art.
+    216 da Constituição Federal; altera a Lei nº 8.112, de 11 de dezembro de 1990;
+    revoga a Lei nº 11.111, de 05 de maio de 2005, e dispositivos da Lei nº 8.159, de
+    08 de janeiro de 1991; e dá outras providências;
+
+ Resolução SES nº 207, de 22 de dezembro de 2011, que dispõe sobre a
+    Regulamentação da Ouvidoria Geral da Secretaria de Estado de Saúde;
+
+ Deliberação CIB-RJ Nº 2630, de 12/12/2013, que dispõe sobre a definição dos
+    critérios de implantação dos serviços de Ouvidoria do Sistema Único de Saúde no
+    Estado do Rio de Janeiro;
+
+ Deliberação CIB-RJ nº 3413, de 14 de maio de 2015, que dispõe sobre a
+    definição dos critérios de qualidade das respostas a serem apresentadas ao
+    usuário que procura os serviços de Ouvidoria do Sistema Único de Saúde no
+    Estado do Rio de Janeiro;
+
+ Resolução SES nº 1250, de 04 de setembro de 2015, que dispõe sobre a
+    organização dos serviços de Ouvidoria em unidades da estrutura da Secretaria de
+    Estado de Saúde, e
+
+ Lei nº 13.460, de 26 de junho de 2017, que dispõe sobre participação e defesa
+    dos direitos do usuário dos serviços públicos da administração pública.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     67 de
+Impresso                                                                         125
+
+     5. PROCEDIMENTOS
+
+1. Receber correspondências endereçadas à Ouvidoria, e em seguida protocolar o
+documento com assinatura, data e hora;
+
+2. Verificar a pertinência da manifestação;
+
+2.1. Se for pertinente à área da Saúde com resposta disponível, responder ao usuário e
+em seguida encerrar o atendimento. Registrar a manifestação, evidenciar no registro a
+resposta disponibilizada ao usuário e realizar o fechamento.
+
+2.2. Se for pertinente à área da Saúde sem resposta disponível, prosseguir com o
+atendimento.
+
+2.3 Se não for pertinente à área da Saúde, devolver ao setor responsável pelo
+recebimento do impresso através de Comunicação Interna ou Oficio informando a não
+pertinência à área da Saúde.
+
+3. Realizar sondagem da manifestação;
+
+4. Registrar os dados do usuário, observando a necessidade de manter o sigilo quando
+solicitado pelo próprio;
+
+5. Inserir no sistema informatizado o relato da manifestação apresentado no impresso;
+
+6. Classificar a manifestação de acordo com seu teor.
+
+7. Analisar e classificar a manifestação em assuntos e sub-assuntos, a partir da
+pertinência do seu conteúdo.
+
+8. Encaminhar a manifestação para a área competente pelas atividades ou serviços
+abordados no relato do usuário.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     68 de
+Impresso                                                                         125
+
+9. Inserir os dados referentes ao atendimento na planilha de Controle de Demandas.
+
+10. Acompanhar as providências dentro do prazo estabelecido para resposta e caso este
+não seja cumprido, reiterar o encaminhamento anterior.
+
+11. Concluir a manifestação com a resposta recebida da área competente, na íntegra.
+
+12. Analisar a resposta da área competente quanto à clareza e objetividade e se está
+relacionada ao conteúdo da manifestação;
+
+12.1 Caso a resposta atenda ao relato da manifestação, analisar e tratar o conteúdo da
+resposta da área competente e disponibilizar ao usuário.
+
+12.2 Caso a resposta não atenda ao relato da manifestação, esta deve ser
+reencaminhada à área competente para revisão da resposta; retornar ao item 9 e
+prosseguir.
+
+13. Fechar a manifestação com a resposta analisada e tratada pela Ouvidoria.
+
+14. Enviar a resposta ao usuário.
+
+15. Atualizar o andamento do registro na planilha de Controle de Demandas.
+
+16. Se houver contestação, anotar o relato do usuário como nova observação e
+reencaminhar o registro à área pertinente para nova avaliação, conforme o fluxo de
+procedimento do item 8 ao 15.
+
+17. Arquive-se.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     69 de
+Impresso                                                                         125
+
+6. DIRETRIZES
+
+1. ACOLHIMENTO
+
+1.1 RECEBIMENTO
+
+a) Receber correspondências endereçadas à Ouvidoria e verificar a pertinência do
+conteúdo da manifestação quanto aos assuntos relacionados à área da Saúde, e em
+seguida protocolar o documento com assinatura, data e hora.
+
+1.2 SONDAGEM
+
+a) Quanto ao SIGILO, verificar a necessidade após o protocolo do recebimento da
+manifestação:
+
+- Formulário Impresso: preencher os dados de contato identificando com a palavra
+"SIGILO" ao lado da identificação do nome do manifestante e NÃO encaminhar a
+manifestação com os referidos contatos, preservando assim a identidade do usuário.
+- Sistema informatizado: Identificar no sistema que a manifestação é sigilosa.
+
+b) Quanto ao ANONIMATO: É passível de acolhimento manifestações anônimas por
+impresso.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO    PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03       70 de
+Impresso                                                                           125
+
+c) Situações obrigatórias de desmembramento de manifestações:
+
+ I. Reclamação/solicitação de mais de um medicamento.
+ II. Solicitação de mais de um exame, cirurgia ou tratamento.
+ III. Solicitação de mais de um produto para saúde.
+ IV. Quando a manifestação fizer referência a mais de um tipo de classificação.
+ V. Quando a manifestação fizer referência a vários teores, dentro da mesma
+ classificação.
+ VI. Reclamação/solicitação referente a mais de uma vacina.
+
+FONTE: DOGES/SGEP/MS.
+
+1.3 REGISTRO
+
+a) Para que a manifestação possa ser registrada, é necessário que o usuário apresente
+um conjunto de "INFORMAÇÕES MÍNIMAS", ou seja, informações indispensáveis ao
+registro, ao encaminhamento e ao tratamento da manifestação apresentada pelo
+usuário.
+
+b) Utilizar o Formulário de Atendimento das Manifestações impresso ou diretamente no
+Sistema Informatizado para registrar as informações pertinentes ao usuário.
+            Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO                VERSÃO         PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003                     03            71 de
+Impresso                                                                                              125
+
+2. ANÁLISE E TRATAMENTO
+
+Durante a análise da consistência do registro da manifestação verificamos a qualidade
+do registro da manifestação quanto:
+a) à coerência; à objetividade; à ortografia do seu conteúdo.
+b) ao desmembramento adequado.
+c) à classificação correta, buscando identificar e corrigir possíveis inconsistências.
+
+2.1 CLASSIFICAÇÃO
+
+Toda demanda registrada deve ser classificada quanto ao seu conteúdo, para facilitar e
+agilizar o seu tratamento e viabilizar a gestão de informações.
+
+        Quadro ­ Classificação das manifestações quanto ao seu conteúdo
+
+Denúncia               Comunicação verbal ou escrita que indica irregularidade ou indício de
+Reclamação             irregularidade na administração e/ou por entidade pública ou privada.
+Sugestão               Comunicação verbal ou escrita que relata insatisfação em relação às ações e
+Solicitação            aos serviços de saúde, sem conteúdo de requerimento.
+                       Comunicação verbal ou escrita que propõe ação considerada útil à melhoria
+                       do sistema de saúde.
+                       Comunicação verbal ou escrita, que embora também possa indicar
+                       insatisfação, necessariamente, contém um requerimento de atendimento ou
+                       acesso às ações e aos serviços de saúde.
+
+Elogio                 Comunicação verbal ou escrita que demonstra satisfação ou agradecimento
+
+                       por serviço prestado pelo Sistema Único de Saúde.
+
+Informação             Comunicação verbal ou escrita na qual o usuário faz questionamento a
+
+                       respeito do sistema de saúde ou sobre a assistência à saúde.
+
+FONTE: DOGES/SGEP/MS.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                          CODIFICAÇÃO     VERSÃO   PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por         POP-135-003          03      72 de
+Impresso                                                                                    125
+
+2.2 TIPIFICAÇÃO
+
+a) Após registrada, a manifestação deve ser analisada e tipificada, segundo a sua
+pertinência ao SUS e às áreas de competência, a partir do seu conteúdo (assuntos e
+sub assuntos).
+
+b) Para a etapa da tipificação, dispomos de Manual de Tipificação do Sistema
+
+Informatizado OuvidorSUS que contempla orientações a respeito da análise de cada
+
+manifestação.        Pode  ser                                acessado  na       página:  <
+
+http://portalarquivos.saude.gov.br/images/pdf/2014/julho/22/manual-ouvidorsus-
+
+tipificacao.pdf >.
+
+c) Definição da prioridade da manifestação
+Antes do encaminhamento da demanda, deve ser definido o seu nível de prioridade e
+fixada uma data limite para a conclusão da análise e da resposta à manifestação,
+definida a partir das informações colhidas no momento de seu registro.
+
+Quadro ­ Níveis de prioridade da manifestação e respectivos prazos de resposta.
+
+Prioridade (níveis)             Prazos de Resposta
+
+               1           Urgente                                      02 dias úteis
+
+               2     Situações que não                                  15 dias
+
+                     envolve casos de
+
+                           urgência
+
+               3           Situações que                                30 dias
+
+                     demandem análise de
+
+                     processo administrativo
+
+FONTE: RESOLUÇÃO N 207, DE 22 DE DEZEMBRO DE 2011 ­ Art. 10.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     73 de
+Impresso                                                                         125
+
+2.3 ENCAMINHAMENTO
+
+a) Primeiro passo é a identificação da unidade administrativa competente de acordo com
+a sua sub-rede responsável pelas atividades ou serviços abordados na manifestação,
+para a qual (ou as quais) deve ser encaminhada.
+
+b) Utilizar a via mais adequada para encaminhamento à manifestação através de
+sistema informatizado ou por correspondência eletrônica ou por impresso.
+
+2.4 ACOMPANHAMENTO
+
+a) A Ouvidoria deve acompanhar o trâmite da manifestação para agilizar e intermediar as
+ações, se necessário. Por essa razão, é essencial que a Ouvidoria mantenha a boa
+interlocução com as demais unidades administrativas do órgão/entidade, responsáveis
+diretos pela resolução das manifestações para o adequado acompanhamento das
+providências dos resultados.
+
+b) Caso constatados atrasos na análise e na resposta à manifestação, a Ouvidoria deve
+fazer contato com a unidade administrativa para verificação dos motivos do atraso.
+
+c) É desejável dispor de uma ferramenta que torne possível o acompanhamento das
+manifestações quando apresentadas até o momento da resposta ao usuário e a
+consolidação das informações relativas às manifestações para conhecimento do gestor.
+Pode-se utilizar o Sistema Informatizados OuvidorSUS ou a planilha eletrônica Controle de
+Demandas/Manifestações.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     74 de
+Impresso                                                                         125
+
+d) Quanto ao protocolo em classificação de ENCAMINHADO:
+- dentro do prazo de resposta, orientar o usuário a aguardar a tramitação da manifestação;
+
+- fora do prazo de resposta, informar ao usuário que ainda não tem pronunciamento da
+área, porém será feita a cobrança de resposta reiterando o encaminhamento.
+
+2.5 ANÁLISE DA RESPOSTA DA ÁREA E CONCLUSÃO
+
+a) Ao receber a resposta encaminhada pela área competente, a ouvidoria deve avaliar
+se o seu conteúdo é claro e objetivo, se está relacionado ao que foi explicitado no relato
+do registro da manifestação e, ainda, se está alinhado aos princípios e às diretrizes do
+SUS.
+
+2.6 RESPOSTA AO USUÁRIO E FECHAMENTO
+
+a) Quanto à resposta disponível no ato do acolhimento, pode-se criar seu próprio banco
+de informações, pautado nas necessidades específicas das Ouvidorias do SUS.
+b) Uma manifestação só deve ser fechada mediante uma resposta satisfatória, o que
+não significa que a manifestação tenha que ser atendida. A resposta pode indicar a
+inviabilidade de atendimento à manifestação.
+
+c) Quando a manifestação for classificada como anônima com meios de envio de
+resposta fornecidos na correspondência é viável retorno da resposta ao usuário.
+Caso contrário, a resposta fica armazenada nos arquivos da Ouvidoria para acesso ao
+usuário quando solicitado.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     75 de
+Impresso                                                                         125
+
+d) Quanto aos meios de envio da resposta:
+- Por Sistema Informatizado: Forma de comunicação externa dirigida ao usuário
+contendo a resposta da manifestação, enviada automaticamente pelo sistema
+informatizado, através do endereço eletrônico do usuário cadastrado. Em caso de
+contestação da resposta, anotar o relato do usuário como NOVO DETALHE e
+REENCAMINHAR o registro para a área competente.
+
+- Por Correspondência Eletrônica: Forma de comunicação externa dirigida ao usuário
+contendo a resposta da manifestação através de endereço eletrônico institucional. Neste
+caso, registrar a Correspondência eletrônica enviado em anotações no sistema
+informatizado.
+
+- Por Carta: Forma de comunicação externa dirigida ao usuário contendo a resposta da
+manifestação que poderá ser entregue de forma presencial mediante assinatura de
+retirada ou por via postal. A carta só poderá ser retirada pelo próprio manifestante ou
+seu representante legal; Deve-se anexar a carta ao registro após três tentativas de
+contato com o manifestante em dias e horários diferentes.
+
+2.7 ARQUIVAMENTO
+
+a) Por Sistema Informatizado: Realizado automaticamente através de sistema
+informatizado 60 (sessenta dias) após o fechamento do registro.
+
+b) Por Impresso: Método numérico: Quando o principal elemento de classificação de um
+documento é um número (por exemplo: processes, legislação, documentos protocolados
+etc.), a melhor forma de organização para o arquivo é o método numérico. Nesta
+modalidade de arquivamento, a consulta é, indireta, pois há necessidade de se recorrer
+a um índice auxiliar alfabético que remeterá ao número sob o qual a informação foi
+arquivada.
+          Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-003       03     76 de
+Impresso                                                                         125
+
+7. ANEXO
+
+Anexo 1   Fluxograma
+       Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                                CODIFICAÇÃO  VERSÃO             PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento                                   POP-135-004       03                77 de
+Presencial                                                                                                               125
+
+       PROCEDIMENTO OPERACIONAL PADRÃO
+                ATENDIMENTO PRESENCIAL
+
+Elaboração:                     Revisão:  REGISTRO DO DOCUMENTO                      Aprovação:
+       Grupo de Trabalho da                                 Verificação Normativa:            Subsecretaria Jurídica
+        Ouvidoria SES (GT)                                                                     Ass.: Maurício Ribeiro
+                                Ouvidoria Geral da SES    Assessoria da Qualidade
+   Ass. Quele C. Garcia Pícoli
+                                Ass.: Márcia Lopes Silva  Ass. Meirelane Souza Rosa
+
+Data:                           Data:                     Data:                      Data:
+
+                                VIGÊNCIA: 02 ANOS A PARTIR DA DATA DA APROVAÇÃO.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03     78 de
+Presencial                                                                   125
+
+ÍNDICE
+
+1. OBJETIVO ................................................................................................. 79
+2. RESPONSÁVEL PELA EXECUÇÃO ......................................................... 79
+3. CAMPO DE APLICAÇÃO .......................................................................... 79
+4. REFERÊNCIAS .......................................................................................... 79
+5. PROCEDIMENTOS .................................................................................... 81
+6. DIRETRIZES .............................................................................................. 84
+7. ANEXO ....................................................................................................... 91
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO        PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03           79 de
+Presencial                                                                         125
+
+1. OBJETIVO
+Definir, esclarecer e padronizar as etapas do processo de trabalho através do
+acolhimento das manifestações oriundas do atendimento presencial, visando à
+qualidade do atendimento ao usuário nas Ouvidorias.
+
+2. RESPONSÁVEL PELA EXECUÇÃO
+Equipes das Ouvidorias Descentralizadas que integram a Secretaria de Estado
+de Saúde do Rio de Janeiro ­ SES/RJ.
+
+3. CAMPO DE APLICAÇÃO
+Aplica-se a todas as Unidades de Ouvidorias Descentralizadas que integram a
+Secretaria de Estado de Saúde do Rio de Janeiro ­ SES/RJ.
+
+4. REFERÊNCIAS
+
+     Norma para Elaboração, Controle e Revisão de Instrumentos Normativos
+         (NOR-2000-001) ­ SES (Assessoria de Qualidade);
+
+     Manual Operacional 2010 ­ Ouvidoria da Saúde SESDEC ­ RJ ­ (MNP
+         ­ 135 ­ 001 ­ Versão 01);
+
+     Guia de Orientações Básicas para Implantação de Ouvidorias do SUS /
+         Ministério da Saúde, Secretaria de Gestão Estratégica e Participativa,
+         Departamento de Ouvidoria Geral do SUS ­ Brasília: Ministério da
+         Saúde, 2013;
+
+     Manual Operacional 2014 ­ Ouvidoria da Saúde SESDEC ­ RJ (MNP ­
+         135 ­ 001 ­ Versão 02);
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO      PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03         80 de
+Presencial                                                                       125
+
+ Material de Apoio do Curso Nacional de Qualificação de Auditorias e
+    Ouvidorias do SUS; Ouvidoria SUS. / Organizado por Rosa Maria
+    Pinheiro Souza... [et al]. ­ Rio de Janeiro: FIOCRUZ/ENSP, 2014;
+
+ Lei nº 12.527, de 18 de novembro de 2011, que regula o acesso a
+    informações previsto no inciso XXXIII do art. 5º, no inciso II do § 3º do
+    art. 37 e no § 2º do art. 216 da Constituição Federal; altera a Lei nº
+    8.112, de 11 de dezembro de 1990; revoga a Lei nº 11.111, de 05 de
+    maio de 2005, e dispositivos da Lei nº 8.159, de 08 de janeiro de 1991;
+    e dá outras providências;
+
+ Resolução SES nº 207, de 22 de dezembro de 2011, que dispõe sobre a
+    Regulamentação da Ouvidoria Geral da Secretaria de Estado de Saúde;
+
+ Deliberação CIB-RJ Nº 2630, de 12/12/2013, que dispõe sobre a
+    definição dos critérios de implantação dos serviços de Ouvidoria do
+    Sistema Único de Saúde no Estado do Rio de Janeiro;
+
+ Deliberação CIB-RJ nº 3413, de 14 de maio de 2015, que dispõe sobre a
+    definição dos critérios de qualidade das respostas a serem apresentadas
+    ao usuário que procura os serviços de Ouvidoria do Sistema Único de
+    Saúde no Estado do Rio de Janeiro;
+
+ Resolução SES nº 1250, de 04 de setembro de 2015, que dispõe sobre
+    a organização dos serviços de Ouvidoria em unidades da estrutura da
+    Secretaria de Estado de Saúde, e
+
+ Lei nº 13.460, de 26 de junho de 2017, que dispõe sobre participação e
+    defesa dos direitos do usuário dos serviços públicos da administração
+    pública.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO      PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03         81 de
+Presencial                                                                       125
+
+5. PROCEDIMENTOS
+
+1. Recepcionar o usuário e identificar-se formalmente;
+
+2. Verificar a existência de número de protocolo;
+
+2.1. Se não houver o número de protocolo, iniciar o atendimento.
+
+2.2. Se houver o número de protocolo, verificar o andamento da manifestação e
+prosseguir conforme o estado que a manifestação se encontra.
+
+3. Escutar o relato do usuário;
+
+4. Verificar a pertinência da manifestação;
+
+4.1. Se for pertinente à área da Saúde com resposta disponível, responder ao
+usuário e em seguida encerrar o atendimento. Registrar a manifestação,
+evidenciar no registro a resposta disponibilizada ao usuário e realizar o
+fechamento.
+
+4.2. Se for pertinente à área da Saúde sem resposta disponível, prosseguir
+com o atendimento.
+
+4.3 Se não for pertinente à área da Saúde, responder ao usuário e em seguida
+encerrar o atendimento. Registrar a manifestação, classificar como
+"Informação", evidenciar no registro a resposta disponibilizada ao usuário e
+realizar o fechamento.
+
+5. Realizar sondagem da manifestação.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO        PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03           82 de
+Presencial                                                                         125
+
+6. Registrar os dados do usuário, observando a necessidade de manter o sigilo
+quando solicitado pelo próprio.
+
+7. Solicitar ao usuário que redija e assine o relato de sua manifestação. Na
+impossibilidade do próprio redigir, o Ouvidor deverá providenciar a redação
+adequada.
+
+8. Fazer a leitura do relato da manifestação para analisar a consistência junto
+ao usuário;
+
+8.1. Se o usuário concordar, prosseguir com o atendimento.
+
+8.2. Se o usuário discordar, realizar as alterações necessárias.
+
+9. Informar o número de protocolo gerado, orientar o usuário quanto aos meios
+e prazo estabelecido para o envio de resposta.
+
+10. Classificar a manifestação de acordo com seu teor.
+
+11. Analisar e classificar a manifestação em assuntos e sub-assuntos, a partir
+da pertinência do seu conteúdo.
+
+12. Encaminhar a manifestação para a área competente pelas atividades ou
+serviços abordados no relato do usuário.
+
+13. Inserir os dados referentes ao atendimento na planilha de Controle de
+Demandas.
+
+14. Acompanhar as providências dentro do prazo estabelecido para resposta e
+caso este não seja cumprido, reiterar o encaminhamento anterior.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO     PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03        83 de
+Presencial                                                                      125
+
+15. Concluir a manifestação com a resposta recebida da área competente, na
+íntegra.
+
+16. Analisar a resposta da área competente quanto à clareza e objetividade e
+se está relacionada ao conteúdo da manifestação;
+
+16.1 Caso a resposta atenda ao relato da manifestação, analisar e tratar o
+conteúdo da resposta da área competente e disponibilizar ao usuário.
+
+16.2 Caso a resposta não atenda ao relato da manifestação, esta deve ser
+reencaminhada à área competente para revisão da resposta; retornar ao item
+12 e prosseguir.
+
+17. Fechar a manifestação com a resposta analisada e tratada pela Ouvidoria.
+
+18. Enviar a resposta ao usuário.
+
+19. Atualizar o andamento do registro na planilha de Controle de Demandas.
+
+20. Se houver contestação, anotar o relato do usuário como nova observação e
+reencaminhar o registro à área pertinente para nova avaliação, conforme o
+fluxo de procedimento do item 12 ao 19.
+
+21. Arquive-se.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO       PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03          84 de
+Presencial                                                                        125
+
+6. DIRETRIZES
+
+1. ACOLHIMENTO
+1.1 RECEBIMENTO
+
+a) Receber o usuário em local adequado, que resguarde a privacidade do
+atendimento.
+
+1.2 SONDAGEM
+
+a) Fazer as perguntas ao usuário para compreender, aprofundar, verificar e
+confirmar a manifestação por ele apresentada.
+
+b) Quanto ao SIGILO, verificar a necessidade junto ao usuário:
+
+- Formulário Impresso: preencher os dados de contato identificando com a
+palavra "SIGILO" ao lado da identificação do nome do manifestante e NÃO
+encaminhar a
+manifestação com os referidos contatos, preservando assim a identidade do
+usuário.
+
+- Sistema informatizado: Identificar no sistema que a manifestação é sigilosa.
+
+c) Quanto ao ANONIMATO: No atendimento presencial não existe acolhimento
+de manifestações anônimas, visto que o usuário se apresenta ao ouvidor
+pessoalmente. Se for desejo do usuário, indicar as possibilidades de
+recebimento da manifestação anônima por outros canais, tais como: carta,
+endereço eletrônico (formulário web e Correspondência eletrônica) e urna,
+preferencialmente ou desde que seja disponibilizado um meio de contato.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO       PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03          85 de
+Presencial                                                                        125
+
+d) Situações obrigatórias de desmembramento de manifestações:
+
+ I. Reclamação/solicitação de mais de um medicamento.
+ II. Solicitação de mais de um exame, cirurgia ou tratamento.
+ III. Solicitação de mais de um produto para saúde.
+ IV. Quando a manifestação fizer referência a mais de um tipo de classificação.
+ V. Quando a manifestação fizer referência a vários teores, dentro da mesma
+ classificação.
+ VI. Reclamação/solicitação referente a mais de uma vacina.
+
+FONTE: DOGES/SGEP/MS.
+
+1.3 REGISTRO
+
+a) Para que a manifestação possa ser registrada, é necessário que o usuário
+apresente um conjunto de "INFORMAÇÕES MÍNIMAS", ou seja, informações
+indispensáveis ao registro, ao encaminhamento e ao tratamento da
+manifestação apresentada pelo usuário.
+
+b) Utilizar o Formulário de Atendimento das Manifestações impresso ou
+diretamente no Sistema Informatizado para registrar as informações pertinentes
+ao usuário.
+
+2. ANÁLISE E TRATAMENTO
+
+Durante a análise da consistência do registro da manifestação verificamos a
+qualidade do relato quanto:
+a) à coerência; à objetividade; à ortografia do seu conteúdo.
+b) ao desmembramento adequado.
+c) à classificação correta, buscando identificar e corrigir possíveis
+inconsistências.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO                    VERSÃO         PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004                         03            86 de
+Presencial                                                                                            125
+
+2.1 CLASSIFICAÇÃO
+
+Toda demanda registrada deve ser classificada quanto ao seu conteúdo, para
+facilitar e agilizar o seu tratamento e viabilizar a gestão de informações.
+
+Quadro ­ Classificação das manifestações quanto ao seu conteúdo
+
+Denúncia               Comunicação verbal ou escrita que indica irregularidade ou indício de
+Reclamação             irregularidade na administração e/ou por entidade pública ou privada.
+Sugestão               Comunicação verbal ou escrita que relata insatisfação em relação às ações e
+Solicitação            aos serviços de saúde, sem conteúdo de requerimento.
+                       Comunicação verbal ou escrita que propõe ação considerada útil à melhoria
+                       do sistema de saúde.
+                       Comunicação verbal ou escrita, que embora também possa indicar
+                       insatisfação, necessariamente, contém um requerimento de atendimento ou
+                       acesso às ações e aos serviços de saúde.
+
+Elogio                 Comunicação verbal ou escrita que demonstra satisfação ou agradecimento
+                       por serviço prestado pelo Sistema Único de Saúde.
+
+Informação             Comunicação verbal ou escrita na qual o usuário faz questionamento a
+
+                       respeito do sistema de saúde ou sobre a assistência à saúde.
+
+FONTE: DOGES/SGEP/MS.
+
+2.2 TIPIFICAÇÃO
+
+a) Após registrada, a manifestação deve ser analisada e tipificada, segundo a
+sua pertinência ao SUS e às áreas de competência, a partir do seu conteúdo
+(assuntos e sub assuntos).
+
+b) Para a etapa da tipificação, dispomos de Manual de Tipificação do Sistema
+
+Informatizado OuvidorSUS que contempla orientações a respeito da análise de
+
+cada manifestação.     Pode ser acessado na página: <
+
+http://portalarquivos.saude.gov.br/images/pdf/2014/julho/22/manual-ouvidorsus-
+
+tipificacao.pdf >.
+           Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                          CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento             POP-135-004       03     87 de
+Presencial                                                                              125
+
+c) Definição da prioridade da manifestação
+
+Antes do encaminhamento da demanda, deve ser definido o seu nível de
+prioridade e fixada uma data limite para a conclusão da análise e da resposta à
+manifestação, definida a partir das informações colhidas no momento de seu
+registro.
+
+Quadro ­ Níveis de prioridade da manifestação e respectivos prazos de
+
+resposta.
+
+Prioridade (níveis)                         Prazos de Resposta
+
+           1         Urgente                                  02 dias úteis
+
+           2         Situações que não                        15 dias
+
+                     envolve casos de
+
+                     urgência
+
+           3         Situações que                            30 dias
+
+                     demandem análise de
+
+                     processo administrativo
+
+FONTE: RESOLUÇÃO N 207, DE 22 DE DEZEMBRO DE 2011 ­ Art. 10.
+
+2.3 ENCAMINHAMENTO
+
+a) Primeiro passo é a identificação da unidade administrativa competente de
+acordo com a sua sub-rede responsável pelas atividades ou serviços
+abordados na manifestação, para a qual (ou as quais) deve ser encaminhada.
+
+b) Utilizar a via mais adequada para encaminhamento a manifestação através
+de sistema informatizado ou por correspondência eletrônica ou por impresso.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03     88 de
+Presencial                                                                   125
+
+2.4 ACOMPANHAMENTO
+
+a) A Ouvidoria deve acompanhar o trâmite da manifestação para agilizar e
+intermediar as ações, se necessário. Por essa razão, é essencial que a Ouvidoria
+mantenha a boa interlocução com as demais unidades administrativas do
+órgão/entidade, responsáveis diretos pela resolução das manifestações para o
+adequado acompanhamento das providências dos resultados.
+
+b) Caso constatados atrasos na análise e na resposta à manifestação, a
+Ouvidoria deve fazer contato com a unidade administrativa para verificação dos
+motivos do atraso.
+
+c) É desejável dispor de uma ferramenta que torne possível o acompanhamento
+das manifestações quando apresentadas até o momento da resposta ao usuário e
+a consolidação das informações relativas às manifestações para conhecimento do
+gestor. Pode-se utilizar o Sistema Informatizados OuvidorSUS ou a planilha
+eletrônica Controle de Demandas/Manifestações.
+
+d) Quanto ao protocolo em classificação de ENCAMINHADO:
+
+- dentro do prazo de resposta, orientar o usuário a aguardar a tramitação da
+manifestação;
+
+- fora do prazo de resposta, informar ao usuário que ainda não tem
+pronunciamento da área, porém será feita a cobrança de resposta reiterando o
+encaminhamento.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO         PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03            89 de
+Presencial                                                                          125
+
+2.5 ANÁLISE DA RESPOSTA DA ÁREA E CONCLUSÃO
+
+a) Ao receber a resposta encaminhada pela área competente, a ouvidoria deve
+avaliar se o seu conteúdo é claro e objetivo, se está relacionado ao que foi
+explicitado no relato do registro da manifestação e, ainda, se está alinhado aos
+princípios e às diretrizes do SUS.
+
+2.6 RESPOSTA AO USUÁRIO E FECHAMENTO
+
+a) Quanto à resposta disponível no ato do acolhimento, pode-se criar seu
+próprio banco de informações, pautado nas necessidades específicas das
+Ouvidorias do SUS.
+
+b) Uma manifestação só deve ser fechada mediante uma resposta satisfatória,
+o que não significa que a manifestação tenha que ser atendida. A resposta
+pode indicar a inviabilidade de atendimento à manifestação.
+
+c) Quanto aos meios de envio da resposta:
+- Por Sistema Informatizado: Forma de comunicação externa dirigida ao
+usuário contendo a resposta da manifestação, enviada automaticamente pelo
+sistema informatizado, através do endereço eletrônico do usuário cadastrado.
+Em caso de contestação da resposta, anotar o relato do usuário como NOVO
+DETALHE e REENCAMINHAR o registro para a área competente.
+
+- Por Correspondência Eletrônica: Forma de comunicação externa dirigida ao
+usuário contendo a resposta da manifestação através de endereço eletrônico
+institucional. Neste caso, registrar a correspondência eletrônica enviado em
+anotações no sistema informatizado.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO        PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03           90 de
+Presencial                                                                         125
+
+- Por Carta: Forma de comunicação externa dirigida ao usuário contendo a
+resposta da manifestação que poderá ser entregue de forma presencial
+mediante assinatura de retirada ou por via postal. A carta só poderá ser
+retirada pelo próprio manifestante ou seu representante legal; Deve-se anexar
+a carta ao registro após três tentativas de contato com o manifestante em dias
+e horários diferentes.
+
+2.7 ARQUIVAMENTO
+
+a) Por Sistema Informatizado: Realizado automaticamente através de sistema
+informatizado 60 (sessenta dias) após o fechamento do registro.
+
+b) Por Impresso: Método numérico: Quando o principal elemento de
+classificação de um documento é um número (por exemplo: processes,
+legislação, documentos protocolados etc.), a melhor forma de organização para
+o arquivo é o método numérico. Nesta modalidade de arquivamento, a consulta
+é, indireta, pois há necessidade de se recorrer a um índice auxiliar alfabético
+que remeterá ao número sob o qual a informação foi arquivada.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-004       03     91 de
+Presencial                                                                   125
+
+7. ANEXO         Fluxograma
+        Anexo 1
+       Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                                 CODIFICAÇÃO  VERSÃO                  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento                                    POP-135-005       03                     92 de
+Telefônico                                                                                                                     125
+
+       PROCEDIMENTO OPERACIONAL PADRÃO
+                ATENDIMENTO TELEFÔNICO
+
+Elaboração:                      Revisão:  REGISTRO DO DOCUMENTO                          Aprovação:
+        Grupo de Trabalho da                                 Verificação Normativa:                 Subsecretaria Jurídica
+         Ouvidoria SES (GT)                                                                          Ass.: Maurício Ribeiro
+                                 Ouvidoria Geral da SES    Assessoria da Qualidade
+    Ass. Quele C. Garcia Pícoli
+                                 Ass.: Márcia Lopes Silva  Ass. Meirelane Souza Rosa
+
+Data:                            Data:                     Data:                          Data:
+
+                                        VIGÊNCIA: 02 ANOS A PARTIR DA DATA DA APROVAÇÃO.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03     93 de
+Telefônico                                                                   125
+
+ÍNDICE
+
+1. OBJETIVO ................................................................................................. 94
+2. RESPONSÁVEL PELA EXECUÇÃO......................................................... 94
+3. CAMPO DE APLICAÇÃO .......................................................................... 94
+4. REFERÊNCIAS .......................................................................................... 94
+5. PROCEDIMENTOS .................................................................................... 96
+6. DIRETRIZES .............................................................................................. 99
+7. ANEXO..................................................................................................... 106
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03     94 de
+Telefônico                                                                   125
+
+1. OBJETIVO
+Definir, esclarecer e padronizar as etapas do processo de trabalho através do
+acolhimento das manifestações oriundas do atendimento telefônico, visando à
+qualidade do atendimento ao usuário nas Ouvidorias.
+
+2. RESPONSÁVEL PELA EXECUÇÃO
+Equipes das Ouvidorias Descentralizadas que integram a Secretaria de Estado de
+Saúde do Rio de Janeiro ­ SES/RJ.
+
+3. CAMPO DE APLICAÇÃO
+Aplica-se a todas as Unidades de Ouvidorias Descentralizadas que integram a
+Secretaria de Estado de Saúde do Rio de Janeiro ­ SES/RJ.
+
+4. REFERÊNCIAS
+
+     Norma para Elaboração, Controle e Revisão de Instrumentos Normativos
+         (NOR-2000-001) ­ SES (Assessoria de Qualidade);
+
+     Manual Operacional 2010 ­ Ouvidoria da Saúde SESDEC ­ RJ ­ (MNP ­
+         135 ­ 001 ­ Versão 01);
+
+     Guia de Orientações Básicas para Implantação de Ouvidorias do SUS /
+         Ministério da Saúde, Secretaria de Gestão Estratégica e Participativa,
+         Departamento de Ouvidoria Geral do SUS ­ Brasília: Ministério da Saúde,
+         2013;
+
+     Manual Operacional 2014 ­ Ouvidoria da Saúde SESDEC ­ RJ (MNP ­ 135
+         ­ 001 ­ Versão 02);
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03     95 de
+Telefônico                                                                   125
+
+ Material de Apoio do Curso Nacional de Qualificação de Auditorias e
+    Ouvidorias do SUS; Ouvidoria SUS. / Organizado por Rosa Maria Pinheiro
+    Souza... [et al]. ­ Rio de Janeiro: FIOCRUZ/ENSP, 2014;
+
+ Lei nº 12.527, de 18 de novembro de 2011, que regula o acesso a
+    informações previsto no inciso XXXIII do art. 5º, no inciso II do § 3º do art.
+    37 e no § 2º do art. 216 da Constituição Federal; altera a Lei nº 8.112, de 11
+    de dezembro de 1990; revoga a Lei nº 11.111, de 05 de maio de 2005, e
+    dispositivos da Lei nº 8.159, de 08 de janeiro de 1991; e dá outras
+    providências;
+
+ Resolução SES nº 207, de 22 de dezembro de 2011, que dispõe sobre a
+    Regulamentação da Ouvidoria Geral da Secretaria de Estado de Saúde;
+
+ Deliberação CIB-RJ Nº 2630, de 12/12/2013, que dispõe sobre a definição
+    dos critérios de implantação dos serviços de Ouvidoria do Sistema Único de
+    Saúde no Estado do Rio de Janeiro;
+
+ Deliberação CIB-RJ nº 3413, de 14 de maio de 2015, que dispõe sobre a
+    definição dos critérios de qualidade das respostas a serem apresentadas ao
+    usuário que procura os serviços de Ouvidoria do Sistema Único de Saúde
+    no Estado do Rio de Janeiro;
+
+ Resolução SES nº 1250, de 04 de setembro de 2015, que dispõe sobre a
+    organização dos serviços de Ouvidoria em unidades da estrutura da
+    Secretaria de Estado de Saúde, e
+
+ Lei nº 13.460, de 26 de junho de 2017, que dispõe sobre participação e
+    defesa dos direitos do usuário dos serviços públicos da administração
+    pública.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                  CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento     POP-135-005       03     96 de
+Telefônico                                                                      125
+
+5. PROCEDIMENTOS
+1. Atender ao telefone e identificar-se formalmente;
+
+2. Verificar a existência de número de protocolo;
+
+2.1. Se não houver o número de protocolo, iniciar o atendimento.
+
+2.2. Se houver o número de protocolo, verificar o andamento da manifestação e
+prosseguir conforme o estado que a manifestação se encontra.
+
+3. Escutar o relato do usuário;
+
+4. Verificar a pertinência da manifestação;
+
+4.1. Se for pertinente à área da Saúde com resposta disponível, responder ao
+usuário e em seguida encerrar o atendimento. Registrar a manifestação,
+evidenciar no registro a resposta disponibilizada ao usuário e realizar o
+fechamento.
+
+4.2. Se for pertinente à área da Saúde sem resposta disponível, prosseguir com o
+atendimento.
+
+4.3 Se não for pertinente à área da Saúde, responder ao cidadão e em seguida
+encerrar o atendimento. Registrar a manifestação, classificar como "Informação",
+evidenciar no registro a resposta disponibilizada ao usuário e realizar o
+fechamento.
+
+5. Realizar sondagem da manifestação.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03     97 de
+Telefônico                                                                   125
+
+6. Registrar os dados do usuário, observando a necessidade de manter o sigilo
+quando solicitado pelo usuário.
+
+7. Fazer a leitura do relato da manifestação para analisar a consistência junto ao
+usuário;
+
+7.1 Se o usuário concordar, prosseguir com o atendimento.
+
+7.2 Se o usuário discordar, realizar as alterações necessárias.
+
+8. Informar o número de protocolo gerado, orientar o usuário quanto aos meios e
+prazo estabelecido para o envio de resposta.
+
+9. Encerrar a ligação.
+
+10. Classificar a manifestação de acordo com seu teor.
+
+11. Analisar e classificar a manifestação em assuntos e sub-assuntos, a partir da
+pertinência do seu conteúdo.
+
+12. Encaminhar a manifestação para o órgão competente pelas atividades ou
+serviços abordados no relato do usuário.
+13. Inserir os dados referentes ao atendimento na planilha de Controle de
+Demandas.
+
+14. Acompanhar as providências dentro do prazo estabelecido para resposta e
+caso este não seja cumprido, reiterar o encaminhamento anterior.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03     98 de
+Telefônico                                                                   125
+
+15. Concluir a manifestação com a resposta recebida do órgão competente, na
+íntegra.
+
+16. Analisar a resposta do órgão competente quanto à clareza e objetividade e se
+está relacionada ao conteúdo da manifestação;
+
+16.1 Caso a resposta atenda ao relato da manifestação, analisar e tratar o
+conteúdo da resposta da área competente e disponibilizar ao usuário.
+
+16.2 Caso a resposta não atenda ao relato da manifestação, esta deve ser
+reencaminhada à área competente para revisão da resposta; retornar ao item 12 e
+prosseguir.
+
+17. Fechar a manifestação com a resposta analisada e tratada pela Ouvidoria.
+
+18. Enviar a resposta ao usuário.
+
+19. Atualizar o andamento do registro na planilha de Controle de Demandas.
+
+20. Se houver contestação, anotar o relato do usuário como novo detalhe e
+reencaminhar o registro à área pertinente para nova avaliação, conforme o fluxo
+de procedimento do item 12 ao 19.
+
+21. Arquive-se.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO         PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03            99 de
+Telefônico                                                                          125
+
+6. DIRETRIZES
+
+1. ACOLHIMENTO
+1.1 RECEBIMENTO
+a) Atender a ligação identificando-se formalmente e acolher o relato do usuário.
+
+1.2 SONDAGEM
+
+a) Fazer as perguntas ao usuário para compreender, aprofundar, verificar e
+confirmar a manifestação por ele apresentada.
+
+b) Quanto ao SIGILO, verificar a necessidade junto ao usuário:
+- Formulário Impresso: preencher os dados de contato identificando com a palavra
+"SIGILO" ao lado da identificação do nome do manifestante e NÃO encaminhar a
+manifestação com os referidos contatos, preservando assim a identidade do
+usuário.
+
+- Sistema informatizado: Identificar no sistema que a manifestação é sigilosa.
+
+c) Quanto ao ANONIMATO: No atendimento telefônico não existe acolhimento de
+manifestações anônimas. Se for desejo do usuário, indicar as possibilidades de
+recebimento da manifestação anônima por outros canais, tais como: carta,
+endereço eletrônico (formulário web e Correspondência eletrônica) e urna,
+preferencialmente ou desde que seja disponibilizado um meio de contato.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03    100 de
+Telefônico                                                                   125
+
+d) Situações obrigatórias de desmembramento de manifestações:
+      I. Reclamação/solicitação de mais de um medicamento.
+      II. Solicitação de mais de um exame, cirurgia ou tratamento.
+      III. Solicitação de mais de um produto para saúde.
+      IV. Quando a manifestação fizer referência a mais de um tipo de classificação.
+      V. Quando a manifestação fizer referência a vários teores, dentro da mesma
+      classificação.
+      VI. Reclamação/solicitação referente a mais de uma vacina.
+
+         FONTE: DOGES/SGEP/MS.
+
+1.3 REGISTRO
+
+a) Para que a manifestação possa ser registrada, é necessário que o usuário
+apresente um conjunto de "INFORMAÇÕES MÍNIMAS", ou seja, informações
+indispensáveis ao registro, ao encaminhamento e ao tratamento da manifestação
+apresentada pelo usuário.
+
+b) Utilizar o Formulário de Atendimento das Manifestações impresso ou
+diretamente no Sistema Informatizado para registrar as informações pertinentes ao
+usuário.
+
+2. ANÁLISE E TRATAMENTO
+
+Durante a análise da consistência do registro da manifestação verificamos a
+qualidade do relato quanto:
+a) à coerência; à objetividade; à ortografia do seu conteúdo.
+b) ao desmembramento adequado.
+c) à classificação correta, buscando identificar e corrigir possíveis inconsistências.
+        Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                             CODIFICAÇÃO      VERSÃO         PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento                POP-135-005           03           101 de
+Telefônico                                                                                            125
+
+2.1 CLASSIFICAÇÃO
+
+Toda demanda registrada deve ser classificada quanto ao seu conteúdo, para
+
+facilitar e agilizar o seu tratamento e viabilizar a gestão de informações.
+
+Quadro ­ Classificação das manifestações quanto ao seu conteúdo
+
+Denúncia               Comunicação verbal ou escrita que indica irregularidade ou indício de
+
+                       irregularidade na administração e/ou por entidade pública ou privada.
+
+Reclamação             Comunicação verbal ou escrita que relata insatisfação em relação às ações e
+
+                       aos serviços de saúde, sem conteúdo de requerimento.
+
+Sugestão               Comunicação verbal ou escrita que propõe ação considerada útil à melhoria
+
+                       do sistema de saúde.
+
+Solicitação            Comunicação verbal ou escrita, que embora também possa indicar
+
+                       insatisfação, necessariamente, contém um requerimento de atendimento ou
+
+                       acesso às ações e aos serviços de saúde.
+
+Elogio                 Comunicação verbal ou escrita que demonstra satisfação ou agradecimento
+
+                       por serviço prestado pelo Sistema Único de Saúde.
+
+Informação             Comunicação verbal ou escrita na qual o usuário faz questionamento a
+
+                       respeito do sistema de saúde ou sobre a assistência à saúde.
+
+FONTE: DOGES/SGEP/MS.
+
+2.2 TIPIFICAÇÃO
+
+a) Após registrada, a manifestação deve ser analisada e tipificada, segundo a sua
+pertinência ao SUS e às áreas de competência, a partir do seu conteúdo
+(assuntos e sub assuntos).
+
+b) Para a etapa da tipificação, dispomos de Manual de Tipificação do Sistema
+
+Informatizado OuvidorSUS que contempla orientações a respeito da análise de
+
+cada manifestação.     Pode ser acessado na página: <
+
+http://portalarquivos.saude.gov.br/images/pdf/2014/julho/22/manual-ouvidorsus-
+
+tipificacao.pdf >.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                          CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento             POP-135-005       03    102 de
+Telefônico                                                                              125
+
+c) Definição da prioridade da manifestação
+
+Antes do encaminhamento da demanda, deve ser definido o seu nível de
+prioridade e fixada uma data limite para a conclusão da análise e da resposta à
+manifestação, definida a partir das informações colhidas no momento de seu
+registro.
+
+Quadro ­ Níveis de prioridade da manifestação e respectivos prazos de resposta.
+
+Prioridade (níveis)                         Prazos de Resposta
+
+1                    Urgente                                  02 dias úteis
+
+2                    Situações que não                        15 dias
+
+                     envolve casos de
+
+                     urgência
+
+3                    Situações que                            30 dias
+
+                     demandem análise de
+
+                     processo administrativo
+
+FONTE: RESOLUÇÃO N 207, DE 22 DE DEZEMBRO DE 2011 ­ Art. 10.
+
+2.3 ENCAMINHAMENTO
+
+a) Primeiro passo é a identificação da unidade administrativa competente de
+acordo com a sua sub-rede responsável pelas atividades ou serviços abordados
+na manifestação, para a qual (ou as quais) deve ser encaminhada.
+
+b) Utilizar a via mais adequada para encaminhamento a manifestação através de
+sistema informatizado ou por correspondência eletrônica ou por impresso.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03    103 de
+Telefônico                                                                   125
+
+2.4 ACOMPANHAMENTO
+
+a) A Ouvidoria deve acompanhar o trâmite da manifestação para agilizar e
+intermediar as ações, se necessário. Por essa razão, é essencial que a Ouvidoria
+mantenha a boa interlocução com as demais unidades administrativas do
+órgão/entidade, responsáveis diretos pela resolução das manifestações para o
+adequado acompanhamento das providências dos resultados.
+
+b) Caso constatados atrasos na análise e na resposta à manifestação, a Ouvidoria
+deve fazer contato com a unidade administrativa para verificação dos motivos do
+atraso.
+
+c) É desejável dispor de uma ferramenta que torne possível o acompanhamento das
+manifestações quando apresentadas até o momento da resposta ao usuário e a
+consolidação das informações relativas às manifestações para conhecimento do
+gestor. Pode-se utilizar o Sistema Informatizados OuvidorSUS ou a planilha
+eletrônica Controle de Demandas/Manifestações.
+
+d) Quanto ao protocolo em classificação de ENCAMINHADO:
+
+- dentro do prazo de resposta, orientar o usuário a aguardar a tramitação da
+manifestação;
+
+- fora do prazo de resposta, informar ao usuário que ainda não tem pronunciamento
+da área, porém será feita a cobrança de resposta reiterando o encaminhamento.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03    104 de
+Telefônico                                                                   125
+
+2.5 ANÁLISE DA RESPOSTA DA ÁREA E CONCLUSÃO
+
+a) Ao receber a resposta encaminhada pela área competente, a ouvidoria deve
+avaliar se o seu conteúdo é claro e objetivo, se está relacionado ao que foi
+explicitado no relato do registro da manifestação e, ainda, se está alinhado aos
+princípios e às diretrizes do SUS.
+
+2.6 RESPOSTA AO USUÁRIO E FECHAMENTO
+
+a) Quanto à resposta disponível no ato do acolhimento, pode-se criar seu próprio
+banco de informações, pautado nas necessidades específicas das Ouvidorias do
+SUS.
+
+b) Uma manifestação só deve ser fechada mediante uma resposta satisfatória, o
+que não significa que a manifestação tenha que ser atendida. A resposta pode
+indicar a inviabilidade de atendimento à manifestação.
+
+c) Quanto aos meios de envio da resposta:
+- Por Sistema Informatizado: Forma de comunicação externa dirigida ao usuário
+contendo a resposta da manifestação, enviada automaticamente pelo sistema
+informatizado, através do endereço eletrônico do usuário cadastrado. Em caso de
+contestação da resposta, anotar o relato do usuário como NOVO DETALHE e
+REENCAMINHAR o registro para a área competente.
+
+- Por Correspondência Eletrônica: Forma de comunicação externa dirigida ao
+usuário contendo a resposta da manifestação através de endereço eletrônico
+institucional. Neste caso, registrar a correspondência eletrônica enviado em
+anotações no sistema informatizado.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03    105 de
+Telefônico                                                                   125
+
+- Por Carta: Forma de comunicação externa dirigida ao usuário contendo a
+resposta da manifestação que poderá ser entregue de forma presencial mediante
+assinatura de retirada ou por via postal. A carta só poderá ser retirada pelo próprio
+manifestante ou seu representante legal; Deve-se anexar a carta ao registro após
+três tentativas de contato com o manifestante em dias e horários diferentes.
+
+2.7 ARQUIVAMENTO
+
+a) Por Sistema Informatizado: Realizado automaticamente através de sistema
+informatizado 60 (sessenta dias) após o fechamento do registro.
+
+b) Por Impresso: Método numérico: Quando o principal elemento de classificação
+de um documento é um número (por exemplo: processes, legislação, documentos
+protocolados etc.), a melhor forma de organização para o arquivo é o método
+numérico. Nesta modalidade de arquivamento, a consulta é, indireta, pois há
+necessidade de se recorrer a um índice auxiliar alfabético que remeterá ao
+número sob o qual a informação foi arquivada.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                               CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento  POP-135-005       03    106 de
+Telefônico                                                                   125
+
+7. ANEXO         Fluxograma
+        Anexo 1
+       Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                                                 CODIFICAÇÃO  VERSÃO                  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por                                POP-135-006       03                    107 de
+Urna                                                                                                                           125
+
+       PROCEDIMENTO OPERACIONAL PADRÃO
+                  ATENDIMENTO POR URNA
+
+Elaboração:                      Revisão:  REGISTRO DO DOCUMENTO                          Aprovação:
+        Grupo de Trabalho da                                 Verificação Normativa:                 Subsecretaria Jurídica
+         Ouvidoria SES (GT)                                                                          Ass.: Maurício Ribeiro
+                                 Ouvidoria Geral da SES    Assessoria da Qualidade
+    Ass. Quele C. Garcia Pícoli
+                                 Ass.: Márcia Lopes Silva  Ass. Meirelane Souza Rosa
+
+Data:                            Data:                     Data:                          Data:
+
+                                        VIGÊNCIA: 02 ANOS A PARTIR DA DATA DA APROVAÇÃO.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    108 de
+Urna                                                                             125
+
+ÍNDICE
+
+1. OBJETIVO ............................................................................................... 109
+2. RESPONSÁVEL PELA EXECUÇÃO....................................................... 109
+3. CAMPO DE APLICAÇÃO ........................................................................ 109
+4. REFERÊNCIAS ........................................................................................ 109
+5. PROCEDIMENTOS .................................................................................. 111
+6. DIRETRIZES ............................................................................................ 114
+7. ANEXO..................................................................................................... 122
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    109 de
+Urna                                                                             125
+
+1. OBJETIVO
+Definir, esclarecer e padronizar as etapas do processo de trabalho através do
+acolhimento das manifestações oriundas do atendimento por urna, visando à
+qualidade do atendimento ao usuário nas Ouvidorias.
+
+2. RESPONSÁVEL PELA EXECUÇÃO
+Equipes das Ouvidorias Descentralizadas que integram a Secretaria de Estado de
+Saúde do Rio de Janeiro ­ SES/RJ.
+
+3. CAMPO DE APLICAÇÃO
+Aplica-se a todas as Unidades de Ouvidorias Descentralizadas que integram a
+Secretaria de Estado de Saúde do Rio de Janeiro ­ SES/RJ.
+
+4. REFERÊNCIAS
+
+     Norma para Elaboração, Controle e Revisão de Instrumentos Normativos
+         (NOR-2000-001) ­ SES (Assessoria de Qualidade);
+
+     Manual Operacional 2010 ­ Ouvidoria da Saúde SESDEC ­ RJ ­ (MNP ­
+         135 ­ 001 ­ Versão 01);
+
+     Guia de Orientações Básicas para Implantação de Ouvidorias do SUS /
+         Ministério da Saúde, Secretaria de Gestão Estratégica e Participativa,
+         Departamento de Ouvidoria Geral do SUS ­ Brasília: Ministério da Saúde,
+         2013;
+
+     Manual Operacional 2014 ­ Ouvidoria da Saúde SESDEC ­ RJ (MNP ­ 135
+         ­ 001 ­ Versão 02);
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    110 de
+Urna                                                                             125
+
+ Material de Apoio do Curso Nacional de Qualificação de Auditorias e
+    Ouvidorias do SUS; Ouvidoria SUS. / Organizado por Rosa Maria Pinheiro
+    Souza... [et al]. ­ Rio de Janeiro: FIOCRUZ/ENSP, 2014;
+
+ Lei nº 12.527, de 18 de novembro de 2011, que regula o acesso a
+    informações previsto no inciso XXXIII do art. 5º, no inciso II do § 3º do art.
+    37 e no § 2º do art. 216 da Constituição Federal; altera a Lei nº 8.112, de 11
+    de dezembro de 1990; revoga a Lei nº 11.111, de 05 de maio de 2005, e
+    dispositivos da Lei nº 8.159, de 08 de janeiro de 1991; e dá outras
+    providências;
+
+ Resolução SES nº 207, de 22 de dezembro de 2011, que dispõe sobre a
+    Regulamentação da Ouvidoria Geral da Secretaria de Estado de Saúde;
+
+ Deliberação CIB-RJ Nº 2630, de 12/12/2013, que dispõe sobre a definição
+    dos critérios de implantação dos serviços de Ouvidoria do Sistema Único de
+    Saúde no Estado do Rio de Janeiro;
+
+ Deliberação CIB-RJ nº 3413, de 14 de maio de 2015, que dispõe sobre a
+    definição dos critérios de qualidade das respostas a serem apresentadas ao
+    usuário que procura os serviços de Ouvidoria do Sistema Único de Saúde
+    no Estado do Rio de Janeiro;
+
+ Resolução SES nº 1250, de 04 de setembro de 2015, que dispõe sobre a
+    organização dos serviços de Ouvidoria em unidades da estrutura da
+    Secretaria de Estado de Saúde, e
+
+ Lei nº 13.460, de 26 de junho de 2017, que dispõe sobre participação e
+    defesa dos direitos do usuário dos serviços públicos da administração
+    pública.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO    PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03      111 de
+Urna                                                                               125
+
+5. PROCEDIMENTOS
+1. Recolher as manifestações das urnas da Ouvidoria disponíveis na instituição;
+
+2. Ler o relato do usuário;
+
+3. Verificar a pertinência da manifestação;
+
+3.1. Se for pertinente à área da Saúde com resposta disponível, responder ao
+usuário através do meio de contato disponibilizado por ele, e, em seguida encerrar
+o atendimento. Registrar a manifestação, evidenciar no registro a resposta
+disponibilizada ao usuário e realizar o fechamento.
+
+3.2. Se for pertinente à área da Saúde sem resposta disponível, prosseguir com o
+atendimento.
+
+3.3 Se não for pertinente à área da Saúde, responder ao usuário através do meio
+de contato disponibilizado por ele, e, em seguida encerrar o atendimento.
+Registrar a manifestação, classificar como "Informação", evidenciar no registro a
+resposta disponibilizada ao usuário e realizar o fechamento.
+
+4. Verificar a necessidade de se realizar sondagem da manifestação.
+
+4.1 Se houver necessidade de sondagem e não conseguir contato com o usuário
+através do meio de contato disponibilizado pelo mesmo, evidenciar esta
+informação no registro e fechar a manifestação.
+4.2 Se houver necessidade de sondagem e conseguir contato com o usuário,
+realizar a sondagem, informar o número de protocolo gerado, orientar o usuário
+quanto aos meios e prazo estabelecido para o envio de resposta.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    112 de
+Urna                                                                             125
+
+5. Registrar os dados do usuário, utilizando o relato recolhido na urna, observando
+a necessidade de manter o sigilo quando solicitado pelo próprio.
+
+9. Informar o número de protocolo gerado, orientar o usuário quanto aos meios e
+prazo estabelecido para o envio de resposta através do meio de contato
+disponibilizado pelo mesmo.
+
+10. Classificar a manifestação de acordo com seu teor.
+
+11. Analisar e classificar a manifestação em assuntos e sub-assuntos, a partir da
+pertinência do seu conteúdo.
+
+12. Encaminhar a manifestação para a área competente pelas atividades ou
+serviços abordados no relato do usuário.
+
+13. Inserir os dados referentes ao atendimento na planilha de Controle de
+Demandas.
+
+14. Acompanhar as providências dentro do prazo estabelecido para resposta e
+caso este não seja cumprido, reiterar o encaminhamento anterior.
+
+15. Concluir a manifestação com a resposta recebida da área competente, na
+íntegra.
+
+16. Analisar a resposta da área competente quanto à clareza e objetividade e se
+está relacionada ao conteúdo da manifestação;
+
+16.1 Caso a resposta atenda ao relato da manifestação, analisar e tratar o
+conteúdo da resposta da área competente e disponibilizar ao usuário.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    113 de
+Urna                                                                             125
+
+16.2 Caso a resposta não atenda ao relato da manifestação, esta deve ser
+reencaminhada à área competente para revisão da resposta; retornar ao item 12 e
+prosseguir.
+
+17. Fechar a manifestação com a resposta analisada e tratada pela Ouvidoria.
+
+18. Enviar a resposta ao usuário.
+
+19. Atualizar o andamento do registro na planilha de Controle de Demandas.
+
+20. Se houver contestação, anotar o relato do usuário como nova observação e
+reencaminhar o registro à área pertinente para nova avaliação, conforme o fluxo
+de procedimento do item 12 ao 19.
+
+21. Arquive-se.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    114 de
+Urna                                                                             125
+
+6. DIRETRIZES
+
+1. ACOLHIMENTO
+1.1 RECEBIMENTO
+2. a) Recolher as manifestações das urnas da Ouvidoria disponíveis na instituição;
+
+1.2 SONDAGEM
+a) Quanto ao SIGILO, verificar a necessidade junto ao usuário:
+- Formulário Impresso: preencher os dados de contato identificando com a palavra
+"SIGILO" ao lado da identificação do nome do manifestante e NÃO encaminhar a
+manifestação com os referidos contatos, preservando assim a identidade do
+usuário.
+
+- Sistema informatizado: Identificar no sistema que a manifestação é sigilosa.
+
+b) Quanto ao ANONIMATO: É passível de acolhimento manifestações anônimas
+por urna.
+
+c) Situações obrigatórias de desmembramento de manifestações:
+      I. Reclamação/solicitação de mais de um medicamento.
+      II. Solicitação de mais de um exame, cirurgia ou tratamento.
+      III. Solicitação de mais de um produto para saúde.
+      IV. Quando a manifestação fizer referência a mais de um tipo de classificação.
+      V. Quando a manifestação fizer referência a vários teores, dentro da mesma
+      classificação.
+      VI. Reclamação/solicitação referente a mais de uma vacina.
+
+         FONTE: DOGES/SGEP/MS.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    115 de
+Urna                                                                             125
+
+1.3 REGISTRO
+
+a) Para que a manifestação possa ser registrada, é necessário que o usuário
+apresente um conjunto de "INFORMAÇÕES MÍNIMAS", ou seja, informações
+indispensáveis ao registro, ao encaminhamento e ao tratamento da manifestação
+apresentada pelo usuário.
+
+b) Utilizar o Formulário de Atendimento das Manifestações impresso ou
+diretamente no Sistema Informatizado para registrar as informações pertinentes ao
+usuário.
+
+2. ANÁLISE E TRATAMENTO
+
+Durante a análise da consistência do registro da manifestação verificamos a
+qualidade do relato quanto:
+a) à coerência; à objetividade; à ortografia do seu conteúdo.
+b) ao desmembramento adequado.
+c) à classificação correta, buscando identificar e corrigir possíveis inconsistências.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO    VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006         03    116 de
+Urna                                                                               125
+
+2.1 CLASSIFICAÇÃO
+
+Toda demanda registrada deve ser classificada quanto ao seu conteúdo, para
+facilitar e agilizar o seu tratamento e viabilizar a gestão de informações.
+
+Quadro ­ Classificação das manifestações quanto ao seu conteúdo
+
+Denúncia               Comunicação verbal ou escrita que indica irregularidade
+
+                       ou indício de irregularidade na administração e/ou por
+
+                       entidade pública ou privada.
+
+Reclamação Comunicação verbal ou escrita que relata insatisfação em
+
+                       relação às ações e aos serviços de saúde, sem conteúdo
+
+                       de requerimento.
+
+Sugestão               Comunicação verbal ou escrita que propõe ação
+
+                       considerada útil à melhoria do sistema de saúde.
+
+Solicitação Comunicação verbal ou escrita, que embora também
+
+                       possa indicar insatisfação, necessariamente, contém um
+
+                       requerimento de atendimento ou acesso às ações e aos
+
+                       serviços de saúde.
+
+Elogio                 Comunicação verbal ou escrita que demonstra satisfação
+
+                       ou agradecimento por serviço prestado pelo Sistema Único
+
+                       de Saúde.
+
+Informação Comunicação verbal ou escrita na qual o usuário faz
+
+                       questionamento a respeito do sistema de saúde ou sobre
+
+                       a assistência à saúde.
+
+FONTE: DOGES/SGEP/MS.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                          CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por         POP-135-006       03    117 de
+Urna                                                                                    125
+
+2.2 TIPIFICAÇÃO
+
+a) Após registrada, a manifestação deve ser analisada e tipificada, segundo a sua
+pertinência ao SUS e às áreas de competência, a partir do seu conteúdo
+(assuntos e sub assuntos).
+
+b) Para a etapa da tipificação, dispomos de Manual de Tipificação do Sistema
+
+Informatizado OuvidorSUS que contempla orientações a respeito da análise de
+
+cada manifestação.   Pode ser acessado na página: <
+
+http://portalarquivos.saude.gov.br/images/pdf/2014/julho/22/manual-ouvidorsus-
+
+tipificacao.pdf >.
+
+c) Definição da prioridade da manifestação.
+
+- Antes do encaminhamento da demanda, deve ser definido o seu nível de
+prioridade e fixada uma data limite para a conclusão da análise e da resposta à
+manifestação, definida a partir das informações colhidas no momento de seu
+registro.
+
+Quadro ­ Níveis de prioridade da manifestação e respectivos prazos de resposta.
+
+Prioridade (níveis)                          Prazos de Resposta
+
+1                    Urgente                                  02 dias úteis
+
+2                    Situações que não                        15 dias
+
+                     envolve casos de
+
+                     urgência
+
+3                    Situações que                            30 dias
+
+                     demandem análise de
+
+                     processo administrativo
+
+FONTE: RESOLUÇÃO N 207, DE 22 DE DEZEMBRO DE 2011 ­ Art. 10.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    118 de
+Urna                                                                             125
+
+2.3 ENCAMINHAMENTO
+
+a) Primeiro passo é a identificação da unidade administrativa competente de
+acordo com a sua sub-rede responsável pelas atividades ou serviços abordados
+na manifestação, para a qual (ou as quais) deve ser encaminhada.
+
+b) Utilizar a via mais adequada para encaminhamento a manifestação através de
+sistema informatizado ou por correspondência eletrônica ou por impresso.
+
+2.4 ACOMPANHAMENTO
+
+a) A Ouvidoria deve acompanhar o trâmite da manifestação para agilizar e
+intermediar as ações, se necessário. Por essa razão, é essencial que a Ouvidoria
+mantenha a boa interlocução com as demais unidades administrativas do
+órgão/entidade, responsáveis diretos pela resolução das manifestações para o
+adequado acompanhamento das providências dos resultados.
+
+b) Caso constatados atrasos na análise e na resposta à manifestação, a Ouvidoria
+deve fazer contato com a unidade administrativa para verificação dos motivos do
+atraso.
+
+c) É desejável dispor de uma ferramenta que torne possível o acompanhamento das
+manifestações quando apresentadas até o momento da resposta ao usuário e a
+consolidação das informações relativas às manifestações para conhecimento do
+gestor. Pode-se utilizar o Sistema Informatizados OuvidorSUS ou a planilha
+eletrônica Controle de Demandas/Manifestações.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    119 de
+Urna                                                                             125
+
+d) Quanto ao protocolo em classificação de ENCAMINHADO:
+
+- dentro do prazo de resposta, orientar o usuário a aguardar a tramitação da
+manifestação;
+- fora do prazo de resposta, informar ao usuário que ainda não tem pronunciamento
+da área, porém será feita a cobrança de resposta reiterando o encaminhamento.
+
+2.5 ANÁLISE DA RESPOSTA DA ÁREA E CONCLUSÃO
+
+a) Ao receber a resposta encaminhada pela área competente, a ouvidoria deve
+avaliar se o seu conteúdo é claro e objetivo, se está relacionado ao que foi
+explicitado no relato do registro da manifestação e, ainda, se está alinhado aos
+princípios e às diretrizes do SUS.
+
+2.6 RESPOSTA AO USUÁRIO E FECHAMENTO
+
+a) Quanto à resposta disponível no ato do acolhimento, pode-se criar seu próprio
+banco de informações, pautado nas necessidades específicas das Ouvidorias do
+SUS.
+b) Uma manifestação só deve ser fechada mediante uma resposta satisfatória, o
+que não significa que a manifestação tenha que ser atendida. A resposta pode
+indicar a inviabilidade de atendimento à manifestação.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    120 de
+Urna                                                                             125
+
+c) Quando a manifestação for classificada como anônima com meios de envio de
+resposta fornecidos na correspondência é viável retorno da resposta ao usuário.
+Caso contrário, a resposta fica armazenada nos arquivos da Ouvidoria para
+acesso ao usuário quando solicitado.
+
+d) Quanto aos meios de envio da resposta:
+
+- Por Sistema Informatizado: Forma de comunicação externa dirigida ao usuário
+contendo a resposta da manifestação, enviada automaticamente pelo sistema
+informatizado, através do endereço eletrônico do usuário cadastrado. Em caso de
+contestação da resposta, anotar o relato do usuário como NOVO DETALHE e
+REENCAMINHAR o registro para a área competente.
+
+- Por Correspondência Eletrônica: Forma de comunicação externa dirigida ao
+usuário contendo a resposta da manifestação através de endereço eletrônico
+institucional. Neste caso, registrar a correspondência eletrônica enviado em
+anotações no sistema informatizado.
+
+- Por Carta: Forma de comunicação externa dirigida ao usuário contendo a
+resposta da manifestação que poderá ser entregue de forma presencial mediante
+assinatura de retirada ou por via postal. A carta só poderá ser retirada pelo próprio
+manifestante ou seu representante legal; Deve-se anexar a carta ao registro após
+três tentativas de contato com o manifestante em dias e horários diferentes.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    121 de
+Urna                                                                             125
+
+2.7 ARQUIVAMENTO
+
+a) Por Sistema Informatizado: Realizado automaticamente através de sistema
+informatizado 60 (sessenta dias) após o fechamento do registro.
+
+b) Por Impresso: Método numérico: Quando o principal elemento de classificação
+de um documento é um número (por exemplo: processes, legislação, documentos
+protocolados etc.), a melhor forma de organização para o arquivo é o método
+numérico. Nesta modalidade de arquivamento, a consulta é, indireta, pois há
+necessidade de se recorrer a um índice auxiliar alfabético que remeterá ao
+número sob o qual a informação foi arquivada.
+Secretaria de Estado de Saúde do Estado do Rio de Janeiro
+
+TITULO:                                                   CODIFICAÇÃO  VERSÃO  PÁGINA Nº
+
+Procedimento Operacional Padrão/POP ­ Atendimento por  POP-135-006       03    122 de
+Urna                                                                             125
+
+7. ANEXO         Fluxograma
+        Anexo 1
+

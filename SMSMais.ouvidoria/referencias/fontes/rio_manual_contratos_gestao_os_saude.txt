@@ -1,0 +1,2704 @@
+Manual de Contratos de Gestão firmados com
+    Organizações Sociais na Área de Saúde
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+Sumário
+
+1. APRESENTAÇÃO ................................................................................................................. 8
+2. CONCEITOS ......................................................................................................................... 5
+3. CONTRATO DE GESTÃO .................................................................................................... 7
+4. QUALIFICAÇÃO DAS ENTIDADES...................................................................................... 7
+5. CONVOCAÇÃO PÚBLICA DAS ENTIDADES .................................................................... 12
+6. PROCESSO SELETIVO ..................................................................................................... 14
+7. CELEBRAÇÃO DOS CONTRATOS DE GESTÃO ............................................................. 16
+8. CLASSIFICAÇÃO ORÇAMENTÁRIA.................................................................................. 18
+9. REPASSES FINANCEIROS ............................................................................................... 19
+10. EXECUÇÃO DOS CONTRATOS DE GESTÃO.................................................................. 20
+10.3.1- Estoques ......................................................................................................................... 22
+10.3.2 Bens Permanentes ........................................................................................................... 23
+10.4 Liquidação da Despesa ....................................................................................................... 24
+10.5 Aplicação dos Recursos..................................................................................................... 26
+11.2 Macrofunção de Acompanhamento do Orçamento e da Execução dos Serviços da Saúde
+Prestados por intermédio das Organizações Sociais ­ MAPS ................................................... 29
+11.2.2 Monitoramento e Controle da Execução dos Contratos de Gestão............................ 31
+11.2.3 Análise dos Contratos de Gestão pela MAPS ............................................................ 32
+11.2.4 Sanções por descumprimento contratual.................................................................... 36
+12 PRESTAÇÃO DE CONTAS ................................................................................................ 38
+12.1 Prestação de Contas para o Órgão ou Entidade Contratante ............................................ 38
+12.2 Prestação de Contas para fins de Certificação do Controle Interno ................................... 39
+13. GESTÃO E FISCALIZAÇÃO DE CONTRATOS DE GESTÃO ........................................... 42
+13.1 Responsabilidades do Fiscal de Contratos de Gestão ....................................................... 43
+14 BOAS PRÁTICAS PARA A FISCALIZAÇÃO/MONITORAMENTO DE CONTRATOS DE GESTÃO
+
+      43
+14.1 Aspectos Preliminares......................................................................................................... 43
+14.2 Planejamento da Fiscalização............................................................................................. 44
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+14.3 Procedimentos Gerais de Fiscalização ............................................................................... 45
+14.4 Compras e Contratações .................................................................................................... 46
+14.5 Prestação de Contas da Organização Social para o Órgão ou Entidade Contratante ....... 48
+14.6 Recursos Humanos e Obrigações Trabalhistas e Previdenciárias ..................................... 51
+14.7 Controle Patrimonial ............................................................................................................ 52
+14.8 Avaliação das Metas ........................................................................................................... 52
+14.9 Manutenção dos Requisitos de Qualificação/habilitação................................................... 53
+15 SANÇÕES ADMINISTRATIVAS ......................................................................................... 54
+16 APURAÇÃO DE RESPONSABILIDADE............................................................................. 54
+17 FISCALIZAÇÃO DO CONTROLE EXTERNO .................................................................... 54
+18 LEGISLAÇÃO APLICÁVEL ................................................................................................. 55
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+1. APRESENTAÇÃO
+
+        A Controladoria Geral do Município do Rio de Janeiro ­ CGM definiu como
+um de seus objetivos estratégicos o Incremento de Atividades de Ação Orientadora,
+conforme o Planejamento Estratégico 2017-2020, através da Resolução CGM
+nº 1.541, de 26/07/2019, sendo um de seus produtos, a elaboração deste Manual de
+Contratos de Gestão firmados com Organizações Sociais, com foco nos
+procedimentos voltados para a Secretaria Municipal de Saúde do Município do Rio
+de Janeiro e da Empresa Pública de Saúde do Rio de Janeiro ­ RIOSAÚDE.
+
+        O objetivo deste Manual é orientar os servidores municipais que
+desempenham atividades relacionadas aos contratos de gestão firmados com
+Organizações Sociais na área de saúde, visando à padronização dos procedimentos
+e aprimoramento dos controles efetuados para garantir a adequada formalização e a
+execução dos respectivos contratos de acordo com o pactuado.
+
+        De uma forma simples foram descritos conceitos e procedimentos sem a
+pretensão de esgotar os inúmeros aspectos técnicos, administrativos e jurídicos que
+envolvem as contratações públicas.
+
+        O Manual representa um documento dinâmico, seguindo um padrão aplicado
+aos outros Manuais da CGM-RIO, com previsão de atualização periódica de acordo
+com os avanços da legislação e dos procedimentos gerenciais aplicados à gestão
+dos contratos com organizações sociais, podendo sua revisão ocorrer também por
+proposta de todos os que o utilizam.
+
+            Aprovado pela Resolução CGM nº 1.635, de 20 de abril de 2020.
+Manual de Contratos de Gestão firmados com
+    Organizações Sociais na Área de Saúde
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+2. CONCEITOS
+
+        Diante da necessidade de viabilizar a consecução de seus objetivos, a
+Administração Pública realiza contratos de gestão com entidades qualificadas como
+Organizações Sociais. Dessa forma, é necessário reforçar alguns conceitos
+relacionados ao tema.
+
+Contrato de Gestão:
+
+Instrumento firmado entre o Poder Público e entidade qualificada como
+Organização Social, com vista à formação de parceria para execução de
+atividades dirigidas ao ensino, à pesquisa científica, ao desenvolvimento
+tecnológico, à proteção e preservação do meio ambiente, à cultura, à saúde e
+ao esporte, nos termos da Lei Municipal nº 5.026/2009.
+
+Organização Social:
+ Qualificação conferida por meio de ato do Poder Executivo Municipal às
+ pessoas jurídicas de direito privado, sem fins lucrativos, cujas atividades
+ sejam dirigidas ao ensino, à pesquisa científica, ao desenvolvimento
+ tecnológico, à proteção e preservação do meio ambiente, à cultura, à saúde e
+ ao esporte, conforme regulamentação estabelecida pelo Decreto nº
+ 30.780/2009, alterado pelos Decretos nº 30.916/2009, 31.618/2009,
+ 31.897/2010 e 38.300/2014.
+
+Ata de Registro de Preços:
+ Documento vinculativo, obrigacional, com característica de compromisso
+ para futura contratação, em que se registram os preços, fornecedores,
+ órgãos participantes e as condições a serem praticadas, conforme as
+ disposições contidas no instrumento convocatório e nas propostas
+ apresentadas.
+
+Comissão Técnica de Avaliação - CTA:
+ Comissão indicada pelo Secretário Municipal composta por profissionais de
+ notória especialização, responsáveis por auxiliar a fiscalização da execução
+ dos contratos de gestão.
+
+Macrofunção de acompanhamento do orçamento e da execução dos serviços
+da Saúde prestados por intermédio de Organizações Sociais - MAPS
+
+                                                             5
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+ Instituída pelo Decreto Rio nº 44.738/2018, a qual verificar o atendimento ao
+ disposto no artigo 9º da LRF, adotando as medidas necessárias para
+ adequação do cronograma de desembolso dos contratos de gestão
+ celebrados com as Organizações Sociais aos respectivos níveis de receita
+ efetivamente arrecadada.
+
+Metas e Indicadores:
+ Meta é a realização ou finalidade para a qual se dirige a ação. É o caminho
+ percorrido desde a ação planejada até sua conclusão. Já o Indicador é uma
+ medida, de ordem quantitativa ou qualitativa, dotada de significado particular
+ e utilizada para organizar e captar as informações relevantes dos elementos
+ que compõem o objeto da observação. É um recurso metodológico que
+ informa empiricamente sobre a evolução do aspecto observado.
+
+Painel de Gestão das Parcerias com Organizações Sociais:
+ Instrumento institucional de acompanhamento, avaliação e controle dos
+ Contratos de Gestão firmados entre a Secretaria Municipal de Saúde e as
+ Organizações Sociais, instituído pelo Decreto nº 37.079/2013.
+
+Prestação de Contas:
+ Procedimento pelo qual, dentro dos prazos fixados em lei, regulamento,
+ instrução ou instrumento de pactuação, o responsável está obrigado, por
+ iniciativa pessoal, a comprovar, ante o órgão ou entidade competente, a
+ conformidade dos procedimentos, obediência legal, utilização e controle dos
+ recursos públicos que lhe foram atribuídos, entregues ou confiados.
+
+Grupo de Trabalho Permanente de Qualificação e Desqualificação - GQT
+
+ Criado pelo Decreto Rio nº 45.632, de 24/01/19, tem como escopo
+ assessorar os órgãos da Administração Direta e Indireta no processo de
+ qualificação e desqualificação de entidades como Organizações Sociais -
+ OS, mediante a emissão de parecer conclusivo para decisão dos respectivos
+ titulares dos órgãos e entidades estatais e análise pelos órgãos de controles
+ internos e externos.
+
+                                                             6
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+3. CONTRATO DE GESTÃO
+
+                 Trata-se do instrumento firmado entre o Poder Público e a entidade
+qualificada como organização social, com vistas à formação de parceria entre as
+partes para fomento e execução de atividades relativas ao ensino, à cultura, à
+saúde, à pesquisa científica, ao desenvolvimento tecnológico e à proteção e
+preservação do meio ambiente. Seu objetivo principal é buscar a eficiência.
+
+                 No âmbito do Município do Rio de Janeiro, a Lei 5.026, de 19 de maio
+de 2009, dispõe sobre a qualificação de entidades como Organizações Sociais e
+sobre os contratos de gestão, estando regulamentada pelo Decreto nº 30.780 de 02
+de junho de 2009 e suas alterações, que aprovou o Regulamento Geral de
+Qualificação e Contratação das Organizações Sociais no âmbito da Administração
+Direta e Indireta.
+
+                 A Formalização desse instrumento está disciplinada pela Resolução
+CVL nº 189, 06 de setembro de 2019, que aprovou a minuta-padrão de convocação
+pública para parceria com organização social e o modelo de minuta padrão de
+contrato de gestão, incluindo as cláusulas e disposições sobre medidas
+anticorrupção, na forma dos Anexos I-A e I-B do Decreto Rio nº 43.562/2017.
+
+                 Esse instrumento, sempre que cabível, deve prevê submissão aos
+requisitos de conformidade com a Política de Segurança da Informação ­ PSI da
+PCRJ, conforme arts. 1º, 2º e 3º da Deliberação CGTIC-Rio1 nº 1, de 28 de março
+de 2018, visando à redução dos riscos à segurança das informações da PCRJ.
+
+4. QUALIFICAÇÃO DAS ENTIDADES
+
+    4.1. Grupo de Trabalho Permanente de Qualificação e Desqualificação ­
+         GTQ
+
+                 O Decreto Rio nº 45.632, de 24 de janeiro de 2019, alterou o
+Regulamento aprovado pelo Decreto nº 30.780/ 2009 e instituiu o Grupo de Trabalho
+Permanente de Qualificação e Desqualificação ­ GTQ que tem por escopo
+assessorar os órgãos da Administração Direta e Indireta no processo de qualificação
+e de desqualificação de entidades como Organizações Sociais, devendo proceder a
+reuniões em prazo não superior a 30 dias, ou sempre que convocado por sua
+presidência.
+
+                 O GTQ é composto por um membro titular e outro suplente dos
+seguintes órgãos, sob a coordenação do representante do primeiro:
+
+                  I - Secretaria Municipal da Casa Civil;
+
+1
+  COMITÊ DE GOVERNANÇA DA TECNOLOGIA DA INFORMAÇÃO E COMUNICAÇÃO ­ CGTIC-Rio
+
+                                                             7
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+                 II - Procuradoria Geral do Município;
+                 III - Controladoria Geral do Município;
+                 IV - Secretaria Municipal de Fazenda;
+                 V - Secretaria Municipal de Saúde;
+                 VI - Secretaria Municipal de Educação;
+                 VII - Secretaria Municipal de Cultura;
+                 VIII -Secretaria Municipal de Assistência Social e Direitos Humanos
+
+    4.2. Requisitos para a qualificação das organizações Sociais
+
+                 De acordo com o Decreto 45.632/2019, são requisitos para habilitação
+à qualificação como Organização Social das pessoas jurídicas de direito privado,
+sem fins lucrativos:
+
+        I ­ comprovar o registro de seu ato constitutivo, dispondo sobre:
+
+              a) natureza social de seus objetivos relativos à respectiva área de
+              atuação;
+
+              b) finalidade não-lucrativa, com a obrigatoriedade de investimento de seus
+              excedentes financeiros no desenvolvimento das próprias atividades;
+
+              c) previsão expressa de ter a entidade, como órgãos de deliberação
+              superior e de direção, Conselho(s) de Administração e Diretoria(s),
+              definidos nos termos do Estatuto, assegurada àquele ao qual couber,
+              genérico ou específico, composição e atribuições normativas e de
+              controle básicos previstos nos artigos 3º e 4º da Lei Municipal nº 2.506, de
+              19 de maio de 2009, que institui o Plano de Cargos, Carreiras, e
+              Remunerações dos Servidores do Instituto de Previdência do Município
+              do Rio de Janeiro - Previ - Rio e dá outras providências, e alterações ;
+              (Alterado pelo Decreto nº 38.300, de 13 de fevereiro de 2014)
+
+              d) previsão de participação, no órgão colegiado de deliberação superior,
+              de membros da comunidade, de notória capacidade profissional e
+              idoneidade moral;
+
+              e) composição e atribuições da Diretoria da entidade;
+
+              f) obrigatoriedade de publicação anual, no Diário Oficial do Município, dos
+              relatórios financeiros e do relatório de execução do contrato de gestão
+              com o Município;
+
+              g) em caso de associação civil, a aceitação de novos associados, na
+              forma do Estatuto;
+
+              h) proibição de distribuição de bens ou de parcela do patrimônio líquido
+              em qualquer hipótese, inclusive em razão de desligamento, retirada ou
+              falecimento de associado ou membro da entidade;
+
+                                                             8
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+              i) previsão de incorporação integral do patrimônio, dos legados ou das
+              doações que lhe foram destinados, bem como dos excedentes financeiros
+              decorrentes de suas atividades, em caso de extinção ou desqualificação
+              da entidade, ao patrimônio de outra organização social qualificada no
+              âmbito do Município da mesma área de atuação, ou ao patrimônio do
+              Município, na proporção dos recursos e bens por este alocados;
+              j) comprovação dos requisitos legais para constituição de pessoa jurídica.
+
+        II ­ ter sede ou filial localizada no Município do Rio de Janeiro;
+
+        III ­ estar constituída há pelo menos dois anos no pleno exercício das
+        atividades citadas no art. 1º da Lei nº 5.026/2009, a serem comprovadas
+        mediante documentos que atestem a execução direta de projetos, programas
+        ou planos de ação a elas relacionados; (Redação dada pelo Decreto nº
+        30.780/2009)
+
+        IV ­ comprovar a presença, em seu quadro de pessoal, de profissionais com
+        formação específica para a gestão das atividades a serem desenvolvidas,
+        notória competência e experiência comprovada na área de atuação, conforme
+        Resolução da Secretaria Municipal da área correspondente (Redação
+        alterada pela Lei nº 6.220, de 03 de julho de 2017).
+
+        A Resolução SMS nº 3.890/2019 determina que a entidade que pleitear
+qualificação como OS na área de saúde deverá, ainda, cumprir requisitos
+específicos, tais como:
+
+        a) comprovar ter em seus quadros, no mínimo:
+
+         I ­ um profissional responsável técnico médico, detentor do respectivo cartão
+         de anotação de responsabilidade técnica, emitido pelo Conselho Regional de
+         Medicina do Estado da sede da instituição;
+         II ­ um profissional responsável técnico de enfermagem, detentor do
+         respectivo cartão de anotação de responsabilidade técnica emitido pelo
+         Conselho Regional de Enfermagem do Estado da sede da instituição.
+
+         Esses profissionais deverão possuir graduação de nível superior há no
+        mínimo dez anos e experiência mínima de cinco anos em gestão de
+        atividades de saúde.
+
+        b) Formalizar o requerimento de qualificação utilizando os Anexos I a V:
+
+              ANEXO I - FICHA DE IDENTIFICAÇÃO DA INSTITUIÇÃO E DECLARAÇÃO DE
+
+                     VERACIDADE;
+
+              ANEXO II - HISTÓRICO DA INSTITUIÇÃO E DECLARAÇÃO DE VERACIDADE;
+
+                                                             9
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+              ANEXO III - CURRÍCULO DOS TÉCNICOS DA INSTITUIÇÃO E DECLARAÇÃO
+
+                     DE VERACIDADE DOS DADOS;
+
+              ANEXO IV - DECLARAÇÃO DE CONFORMIDADE DOCUMENTAL;
+              ANEXO V - DECLARAÇÃO DE CONFORMIDADE ESTATUTÁRIA.
+
+    4.3. Procedimentos de qualificação/desqualificação das organizações
+         sociais
+
+                 Após a emissão de parecer do órgão ou entidade estatal quanto aos
+requisitos de qualificação, o processo de qualificação será submetido ao GTQ, que
+terá o prazo de até quinze dias, para emissão de parecer conclusivo quanto ao
+pedido de qualificação e consequente restituição. A conclusão do parecer do GTQ
+pelo deferimento ou não do pedido de qualificação será publicada no Diário Oficial.
+
+                 Em caso de deferimento ou não do pedido de qualificação, o titular do
+órgão ou entidade estatal fará publicar a conclusão do seu despacho fundamentado
+no Diário Oficial.
+
+                 Caso a entidade apresente a documentação requerida, de forma
+incompleta, a SMS poderá colocar o pedido em diligência para a complementação
+dos documentos exigidos, sob pena do seu indeferimento.
+
+                 Recebido o parecer técnico emitido pelo GTQ, o dirigente terá até dez
+dias para proferir a sua decisão sobre o pedido de qualificação.
+
+                 Fica excetuado a exigência de ser a OS detentora de Certificação de
+Entidade Beneficente de Assistência Social - CEBAS, constante do inciso VI, do art.
+2º da Lei nº 5.026/2009, em razão da sua não aplicabilidade determinada pelo
+Decreto Rio nº 45.631, de 23 de janeiro de 2019, que atribui eficácia normativa e
+vinculante ao Parecer PG/GAB/03/2018/RAOCG e determina a não aplicação do
+inciso VI do art. 2º da Lei nº 5.026/2009, e dos arts. 1º e 3º da Lei nº 6.220, de 3 de
+julho de 2017, que altera a Lei nº 5.026/ 2009.
+
+                 A desqualificação da organização social poderá nas seguintes
+situações:
+
+        a) a pedido da organização social: nesse caso, a Secretaria Municipal de
+             Saúde deve autuar o requerimento de desqualificação, publicar aviso
+             sucinto de sua apresentação e o encaminhar ao GTQ, com a instrução
+             considerada necessária, para que este emita o seu parecer conclusivo, em
+             até quinze dias. Apresentado o parecer e publicada a sua conclusão, o
+             GTQ restituirá o processo para a consumação da desqualificação.
+
+                                                            10
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        b) por iniciativa da Secretaria Municipal de Saúde, quando a
+             organização social:
+
+         I ­ deixar de preencher os requisitos que originariamente deram ensejo à sua
+         qualificação;
+
+         II ­ descumprir cláusula de contrato de gestão celebrado com a Prefeitura que
+         ensejar a sua rescisão;
+
+         III ­ dispuser de forma irregular dos recursos, bens ou servidores públicos que
+         lhe forem destinados;
+
+         IV ­ descumprir as normas estabelecidas na Lei Municipal nº 5026/2009, ou
+         na legislação a qual deva ficar adstrita, ressalvada a hipótese de que trata o
+         § 9º do art. 4º do Decreto Rio nº 45.632/2019, ou seja, não se aplica a
+         exigência de ser a OS detentora de Certificação de Entidade Beneficente de
+         Assistência Social ­ CEBAS;
+
+         V ­ sofrer, em razão do contrato de gestão celebrado, as punições previstas
+         nos incisos III e IV do art. 87 da Lei nº 8.666, de 21 de junho de 1993.
+
+                 A Secretaria Municipal de Saúde deve publicar a instauração do
+processo de desqualificação em desfavor de OS, com a indicação do fundamento
+legal que a motivou, com todas as provas e o relato de todas as circunstâncias que o
+fundamentam, notificando-a na pessoa de seus dirigentes e representantes e
+assegurando os meios necessários ao exercício do contraditório e da ampla defesa,
+para que, querendo, apresente defesa, no prazo de dez dias, findo o qual, o
+processo seguirá ao GTQ para análise.
+
+                 Apresentada a defesa ou ocorrendo à revelia, o GTQ emitirá seu
+parecer, no prazo de até dez dias, através do qual recomendará o deferimento ou
+não do pedido de desqualificação, submetendo-o ao dirigente do órgão ou da
+entidade estatal competente, para decisão. Serão publicadas no Diário Oficial a
+conclusão do parecer e a decisão do dirigente.
+
+                 A consumação do processo de desqualificação da Organização Social,
+através da publicação da conclusão da decisão da SMS, implicará na:
+
+         I ­ rescisão do contrato de gestão firmado com o Poder Público Municipal;
+
+                                                            11
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+         II ­ reversão dos bens públicos cujo uso lhe tenham sido permitidos;
+
+         III ­ reversão do saldo remanescente de recursos financeiros entregues à
+         utilização da Organização Social; e
+
+         IV ­ cessação do direito de requerer nova qualificação.
+        A medida prevista no item IV perdurará até que seja promovida a reabilitação
+da entidade desqualificada perante a SMS, a qual só poderá ser deferida se
+reunidas, cumulativamente, as seguintes condições:
+        a) ressarcimento dos prejuízos causados pelo contratado à Administração
+        Pública Municipal; e
+        b) preenchimento dos requisitos legais e regulamentares da nova habilitação.
+        Se a desqualificação da Organização Social for concluída de forma irrecorrível
+administrativamente, o processo deverá ser submetido ao Prefeito pela SMS, para
+que decida sobre as seguintes possibilidades:
+         I ­ a incorporação integral do patrimônio, dos legados ou das doações que
+         tenham sido destinados à OS desqualificada, ao patrimônio do Município ou à
+         outra OS contratada para a mesma área de atuação;
+
+         II ­ a destinação dos excedentes financeiros decorrentes de suas atividades
+         ao patrimônio do Município ou à outra OS contratada para a mesma área de
+         atuação;
+
+         III ­ a destinação dos excedentes financeiros ao patrimônio do Município, na
+         proporção dos recursos e bens por este alocados.
+        A garantia da ampla defesa e do contraditório, fica assegurada com a
+interposição de recurso ao Chefe do Poder Executivo contra decisão de
+indeferimento de qualificação ou de desqualificação de O.S.
+
+5. CONVOCAÇÃO PÚBLICA DAS ENTIDADES
+
+        De acordo com o Decreto nº 30.780/2009, deverão constar da Convocação
+Pública para parcerias com organizações, publicada no Diário Oficial previamente à
+formalização de contrato de gestão, os seguintes elementos:
+
+                                                            12
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+         I ­ objeto da(s) parceria(s) que a Secretaria Municipal de Saúde pretende
+         firmar, com a descrição sucinta das atividades que deverão ser executadas;
+
+         II ­ indicação da data-limite para que as Organizações Sociais qualificadas
+         manifestem expressamente seu interesse em firmar o contrato de gestão. No
+         dia útil seguinte à data-limite, deverá ser publicada em site oficial a relação
+         das entidades que manifestarem interesse na celebração do contrato de
+         gestão; (Decreto nº 31.618/2009)
+
+         III ­ metas e indicadores de gestão;
+
+         IV ­ limite máximo de orçamento previsto para realização das atividades e
+         serviços, observado o disposto no art. 5º, § 3º da Lei Municipal nº 5.026/2009;
+
+         V ­ critérios técnicos de seleção da proposta mais vantajosa para a
+         Administração Pública;
+
+         VI ­ prazo, local e forma para apresentação da proposta de trabalho;
+
+         VII ­ designação da comissão de seleção; e
+
+         VIII ­ minuta do contrato de gestão.
+
+        As minutas do edital de convocação e do contrato de gestão deverão ser
+previamente examinadas pela Procuradoria Geral do Município.
+
+        Nessas minutas deverá conter a previsão da obrigação da Organização
+Social, que fizer a gestão de equipamentos públicos municipais, utilizar os serviços
+de segurança e vigilância fornecidos pelo Programa Estadual de Integração na
+Segurança ­ PROEIS, de acordo com o Decreto nº 35.645, de 16 de maio de 2012.
+
+        Na proposta de trabalho apresentada pela entidade deverão constar os meios
+e os recursos necessários à prestação dos serviços a serem executados, e, ainda:
+
+         I ­ especificação do programa de trabalho proposto;
+
+         II ­ especificação do orçamento e de fontes de receita;
+
+                                                            13
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+         III ­ definição de metas e indicadores de gestão adequados à avaliação de
+         desempenho e qualidade na prestação dos serviços e respectivos prazos de
+         execução;
+
+         IV ­ estipulação da política de preços a ser praticada, observado o disposto
+         no art. 5º, § 3º, da Lei Municipal nº 5.026/2009;
+
+         V ­ percentual mínimo de trabalho voluntário.
+
+        Na hipótese de uma única Organização Social manifestar interesse na
+formalização do contrato de gestão objeto da Convocação, e desde que atendidas
+as exigências relativas à proposta de trabalho, o Poder Público poderá celebrar com
+essa entidade o contrato de gestão, sendo que será exigida das fundações privadas
+a apresentação da Certidão de Regular Funcionamento. (Decreto nº 32.318, de 07
+de junho de 2010)
+
+        Em envelope próprio, além do certificado de qualificação, a Organização
+Social que manifestar tempestivamente seu interesse em firmar contrato com o
+Município do Rio de Janeiro, deverá comprovar:
+
+        I ­ a regularidade jurídica, incluindo, para as fundações privadas, a
+apresentação da Certidão de Regular Funcionamento emitida pelo Ministério Público
+do Estado do Rio de Janeiro, conforme Decreto nº 32.318/2010;
+
+        II ­ a boa situação econômico-financeira da entidade, através do cálculo de
+índices contábeis usualmente aceitos; e
+
+        III ­ a experiência técnica para desempenho da atividade objeto do contrato
+de gestão.
+
+6. PROCESSO SELETIVO
+
+        O processo seletivo das Organizações Sociais será executado de acordo com
+os termos do artigo 24, inciso XXIV, da Lei nº 8.666/1993, Lei Municipal 5.026/2009
+e Decreto Municipal 30780/2009 e alterações.
+
+    6.1. Comissão Especial de Seleção
+
+        De acordo com o Decreto nº 30.780/2009, a comissão a ser designada pelo
+Secretário será composta por 03 (três) membros, sendo um deles o presidente. À
+comissão compete:
+
+                                                            14
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+         I ­ receber os documentos e programas de trabalho propostos no processo
+         de seleção;
+
+         II ­ analisar, julgar e classificar as propostas apresentadas, em conformidade
+         com as regras e critérios estabelecidos no edital, bem como declarar a
+         Organização Social vencedora do processo de seleção; (alterado pelo
+         Decreto nº 31.897, de 11 de fevereiro de 2010)
+
+         III ­ julgar os requerimentos apresentados no âmbito do processo de seleção
+         e processar os recursos;
+
+         V ­ dirimir ou esclarecer eventuais dúvidas ou omissões.
+
+    6.2. Julgamento das propostas
+
+        No julgamento dos programas de trabalho propostos, serão observados os
+critérios definidos no edital, conforme índices de pontuação expressamente
+determinados, cuja soma equivalha à nota dez.
+
+         Será considerado vencedor do processo de seleção o programa de trabalho
+proposto que obtiver a maior pontuação na avaliação, assim considerada a média
+aritmética das notas lançadas por cada um dos membros da Comissão de Seleção
+em relação a cada um dos critérios definidos no edital, ao qual deverá ficar
+objetivamente vinculada.
+
+        Após classificados os programas de trabalho propostos, serão abertos os
+envelopes contendo os documentos definidos para o processo de seleção.
+
+        A habilitação de que o participante comprova os requisitos far-se-á com a
+verificação sucessiva, partindo daquele que obtiver a maior nota. Caso restem
+desatendidas as exigências de qualificação e habilitatórias à seleção, a comissão
+examinará os documentos dos candidatos subsequentes, na ordem de classificação,
+e assim sucessivamente, até a apuração de uma que atenda ao edital, sendo
+declarado vencedor;
+
+        Verificado o atendimento das exigências fixadas no edital, o melhor
+classificado na fase de julgamento será declarado vencedor, devendo esse resultado
+se dá dentro do prazo estabelecido no edital e publicado no Diário Oficial do
+Município do Rio de Janeiro;
+
+        Decorridos os prazos sem a interposição de recursos ou após o seu
+julgamento, a Organização Social vencedora será considerada apta a celebrar o
+contrato de gestão.
+
+                                                            15
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+7. CELEBRAÇÃO DOS CONTRATOS DE GESTÃO
+
+        Nos contratos de gestão celebrados pelo Município, por intermédio da
+Secretaria Municipal de Saúde, deverão ser discriminadas as atribuições,
+responsabilidades e obrigações do Poder Público e das entidades contratadas. Os
+contratos de gestão deverão ser publicados na íntegra no Diário Oficial do Município.
+
+        Deverão ser observados os preceitos elencados no artigo 8º do Decreto nº
+30.780, de 02 de junho de 2009, a saber:
+
+        I ­ especificação do programa de trabalho, estipulação das metas a serem
+atingidas e respectivos prazos de execução, bem como previsão expressa dos
+critérios objetivos de avaliação de desempenho a serem utilizados, mediante
+indicadores de qualidade e produtividade;
+
+        II ­ estipulação dos limites e critérios para a despesa com a remuneração e
+vantagens de qualquer natureza a serem percebidas pelos dirigentes e empregados
+das Organizações Sociais, no exercício de suas funções;
+
+        III ­ a concordância expressa da Organização Social, através de declaração
+específica, de que os órgãos de Controle Interno e Controle Externo do Poder
+Público Municipal terão amplo e irrestrito acesso à documentação contábil/financeira
+da entidade como um todo e a decorrente do contrato de gestão, estando à sua
+disposição permanente; (alterado pelo Decreto nº 31.618, de 18 de dezembro de
+2009)
+
+        IV ­ atendimento à disposição do § 2º do art. 5º da Lei Municipal nº
+5026/2009;
+
+        V ­ vedação à cessão total ou parcial do contrato de gestão pela Organização
+Social;
+
+        VI ­ atendimento exclusivo aos usuários do Sistema Único de Saúde ­ SUS,
+no caso das Organizações Sociais da Saúde;
+
+        VII ­ o prazo de vigência do contrato, que deverá ser de dois anos, renovável
+uma vez por igual período e, outra, pela metade, se atingidas, pelo menos, oitenta
+por cento das metas definidas para o período anterior;
+
+        VIII ­ o orçamento, o cronograma de desembolso e as fontes de receita para
+a sua execução;
+
+        IX ­ estipulação da política de preços a ser praticada para execução das
+atividades objeto do contrato de gestão;
+
+                                                            16
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        X ­ vinculação dos repasses financeiros que forem realizados pelo Poder
+Público ao cumprimento das metas pactuadas no contrato de gestão;
+
+        XI ­ discriminação dos bens públicos cujo uso será permitido à Organização
+Social quando houver;
+
+        XII ­ em caso de rescisão do contrato de gestão, do patrimônio, dos legados
+ou das doações que lhe foram destinados, bem como dos excedentes financeiros
+decorrentes de suas atividades, em caso de extinção ou desqualificação da
+entidade, ao patrimônio de outra organização social qualificada no âmbito do
+Município do Rio de Janeiro, da mesma área de atuação, ou ao patrimônio do
+Município do Rio de Janeiro, na proporção dos recursos e bens por este alocados.
+
+         De acordo com a Lei nº 6.260, de 11 de outubro de 2017, regulamentada pelo
+Decreto Rio nº 45.651, de 05 de fevereiro de 2019, poderão ser estabelecidos
+contratos de gestão celebrados entre o Município do Rio de Janeiro e Organizações
+Sociais da área de saúde, que tenham por objeto a gestão compartilhada das
+seguintes ações de saúde:
+
+               serviços de atenção básica em saúde;
+               ações relativas à atividade executada em unidades hospitalares;
+               relativas à atividade fim de Unidades de Pronto Atendimento;
+               relativas às unidades ambulatoriais especializadas, policlínicas e
+              congêneres;
+               serviços de saúde mental;
+               serviços de saúde especificamente delimitados no escopo do Contrato
+              de Gestão que não estejam restritos ao espaço físico de unidades de
+              saúde municipais, tais como o Programa de Atenção Domiciliar ao Idoso ­
+              PADI ­ e "Cegonha Carioca"; e
+               serviços de nutrologia nas unidades de saúde do Município.
+
+        Fica vedada a celebração de novos contratos de gestão, cujos objetos sejam
+as ações e a prestação de serviços referentes a gestão de atividade meio de
+Unidades de Pronto Atendimento ­ UPA e Hospitais, de que trata o Decreto Rio nº
+45.651/2019, com data de vigência posterior a 11 de outubro de 2020 ou, ainda, a
+prorrogação dos vigentes quando ultrapassem a mesma data.
+
+         A gestão da atividade-meio das UPAs e dos hospitais é de competência da
+Secretaria Municipal de Saúde, no que tange a:
+
+        I ­ serviços de hotelaria, serviços relativos ao fornecimento e manutenção de
+infraestrutura necessários à execução das atividades assistenciais das unidades de
+saúde de que trata o parágrafo anterior;
+
+                                                            17
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        II ­ aquisição dos medicamentos e insumos a serem utilizados nas atividades
+assistenciais executadas nas unidades de saúde de que trata o parágrafo anterior;
+
+        III ­ outros serviços não contemplados nos incisos I e II, desde que
+ressalvados por decisão fundamentada do titular da SMS, demonstrando serem eles
+necessários à execução das atividades assistenciais das unidades de saúde de que
+trata o parágrafo anterior.
+
+        São considerados como gestão da atividade-meio, conforme determina o
+Decreto Rio nº 45.651/2019, os seguintes serviços:
+
+        I ­ serviços de hotelaria:
+                 a) serviços de lavanderia;
+                 b) serviços de camararia;
+                 c) serviços de rouparia;
+                 d) serviços de higienização e limpeza.
+
+        II ­ serviços relativos ao fornecimento e manutenção de infraestrutura:
+                 a) serviços de gerenciamento de resíduos sólidos;
+                 b) serviços de engenharia clínica;
+                 c) serviços de manutenção predial;
+                 d) serviços de segurança.
+
+        Realizada a celebração, no prazo máximo de 90 dias da assinatura, a OS
+deverá providenciar a publicação na imprensa e no D.O. Rio de regulamento próprio
+contendo os procedimentos que adotará para a contratação de obras, serviços, e
+compras a serem realizadas com recursos públicos, o qual observará a política de
+preços apresentada no programa de trabalho, bem como, sempre que possível, os
+preços constantes do sistema de registro de preços ou das tabelas constantes do
+sistema de custos existentes no âmbito da Administração Pública, desde que mais
+favoráveis.
+
+8. CLASSIFICAÇÃO ORÇAMENTÁRIA
+
+        Os gestores e responsáveis pela execução orçamentária da Administração
+Municipal da Prefeitura da Cidade do Rio de Janeiro deverão observar as
+orientações contidas na Resolução CGM nº 1.485, de 08 de março de 2019, quanto
+à classificação orçamentária para fins de registro contábil das transferências de
+recursos financeiros a Entidades Privadas sem fins lucrativos, de acordo com os
+preceitos do Manual de Contabilidade Aplicada ao Setor Público (MCASP). As
+transferências se referem àquelas em que há correspondente contraprestação em
+bens e serviços, formalizados por meio de Contratos de Gestão.
+
+                                                            18
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        As transferências de recursos devem ser classificadas na Categoria
+Econômica 3 "Despesas Correntes", Grupo de Natureza de Despesa 3 "Outras
+Despesas Correntes", Modalidade de Aplicação 50 "Transferências a Instituições
+Privadas sem Fins Lucrativos", Elemento de Despesa 39 "Outros Serviços de
+Terceiros ­ Pessoa Jurídica", código 3.3.50.39.
+
+        Quando se tratar de despesas de exercícios já encerrados deverá ser
+utilizado o Elemento de Despesa 92 " Despesas de Exercícios Anteriores", código
+3.3.50.92.
+
+        O desdobramento do elemento de despesa deve ser classificado de acordo
+com a ementa e interpretação prevista no Classificador Orçamentário das Receitas e
+Despesas, disponibilizado no Portal da Controladoria Geral do Município:
+http://www.rio.rj.gov.br/web/cgm/contas-publicas.
+
+        A não adequação da classificação orçamentária da despesa ensejará na
+impossibilidade de liquidação contábil no Sistema de Contabilidade e Execução
+Orçamentária (FINCON).
+
+9. REPASSES FINANCEIROS
+
+        Os repasses financeiros às Organizações Sociais serão efetuados na forma e
+condições do cronograma de desembolso, salvo autorização prévia do órgão ou
+entidade contratante dispondo em sentido contrário, devendo sua movimentação
+ocorrer em conta corrente específica e exclusiva para o contrato de gestão, para que
+não sejam confundidos com os recursos de outras origens.
+
+        Os repasses financeiros estão vinculados ao cumprimento das metas
+pactuadas no programa de trabalho, cabendo à Comissão de Avaliação verificar o
+percentual de atendimento das metas estabelecidas.
+
+        De acordo com o Decreto nº 35.129, de 16 de fevereiro de 2012, uma mesma
+Organização Social não pode ser beneficiária de repasses em percentual superior a
+20% do total das despesas anuais orçadas para o mesmo fim.
+
+        O repasse da parcela subsequente ficará condicionado à apresentação da
+prestação de contas e do cumprimento de eventuais prescrições contidas no Projeto
+Básico. No caso de impropriedades no cumprimento do contrato de gestão, as
+parcelas a serem repassadas poderão ser retidas até o seu saneamento.
+
+        Anteriormente aos repasses, a Secretaria Municipal de Saúde deverá
+preencher o Roteiro Orientador para a emissão da Declaração de Conformidade nos
+atos de autorização de despesa, na forma do Anexo VII (Contrato de Gestão com
+Organizações Sociais) da Resolução CGM nº 1.641, de 06 de maio de 2020. Este
+
+                                                            19
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+roteiro será parte integrante dos processos de despesa e deverá ser emitido após a
+emissão de cada Nota de Autorização de Despesa ­ NAD e antes da emissão da
+primeira Nota de Empenho.
+
+10. EXECUÇÃO DOS CONTRATOS DE GESTÃO
+
+10.1 Aquisições/Contratações
+
+        Todas as contratações de obras e serviços, bem como as compras efetuadas
+com recursos provenientes do Município do Rio de Janeiro devem ser precedidas de
+ampla divulgação no sítio da Organização Social, na rede eletrônica internet, para
+possibilitar a oferta pública a interessados, de acordo com o Decreto Rio nº 41.214,
+de 18 de janeiro de 2016.
+
+        Os preços pagos por cada medicamento e/ou serviço comprados ou
+contratados diretamente pelas Organizações Sociais deverão ser informados, de
+dois em dois meses, à Secretaria Municipal de Saúde, mencionado o mês em que
+se deu a aquisição ou contratação, de acordo com a Lei nº 6.153, de 27 de abril de
+2017.
+
+        De acordo com o Decreto Rio nº 44.025 de 05 de dezembro de 2017, a
+Empresa Municipal de Informática ­ IPLANRIO ­ desenvolverá um sistema que
+deverá ser alimentado pelas Organizações Sociais, bimestralmente, até o quinto dia
+útil do segundo mês, com os dados referentes às aquisições de insumos, serviços e
+medicamentos, tendo como referência a Relação Municipal de Medicamentos
+(REMUME-RIO), estabelecida pela Resolução SMS nº 2.177, de 19 de agosto de
+2013.
+
+        Enquanto esse sistema não for implementado, a Secretaria Municipal de
+Saúde deve tabular os preços dos medicamentos e serviços informados pelas
+Organizações Sociais e os praticados pela própria Secretaria no que tange aos
+Hospitais Públicos e Postos de Saúde. Quando finalizadas, as tabelas deverão ser
+publicadas no Diário Oficial do Município.
+
+        As compras e contratações realizadas pelas Organizações Sociais deverão
+observar como valores máximos os constantes das Atas de Registro de Preços
+vigentes na Secretaria Municipal de Saúde, de acordo com o Decreto Rio nº 41.208,
+de 18 de janeiro de 2016.
+
+        Em caso de descumprimento, será aplicada multa administrativa, prevista no
+RGCAF, sobre o valor da parcela referente ao período da compra ou contratação
+realizadas.
+
+                                                            20
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        Os contratos de gestão deverão prever indicador de excelência em gestão
+que meça a eficiência na gestão de compras e contratações de serviços. Este
+mesmo Decreto determina, ainda, que as compras e contratações de serviços
+realizadas com recursos dos Contratos de Gestão deverão estar abaixo dos valores
+máximos constantes das Atas de Registro de Preços da Secretaria Municipal de
+Saúde em no mínimo 95% das compras e contratações.
+
+        A Secretaria Municipal de Saúde, a Controladoria Geral do Município e as
+Organizações Sociais devem observar os procedimentos constantes na Resolução
+Conjunta CGM/SMS nº 86/2016 para o monitoramento dos preços praticados por
+essas Organizações nas suas aquisições e contratações de serviços. A Portaria
+S/SUBSCOM nº 1, de 22 de maio de 2018, regulamenta as competências previstas
+no artigo 9º da Resolução Conjunta CGM/SMS nº 86/2016 no âmbito da SMS.
+
+        De acordo com a Resolução Conjunta CVL/SMF/SMS nº 40, de 20 de
+dezembro de 20182, Organizações Sociais de Saúde somente poderão executar e
+contratar itens e serviços constantes das respectivas relações:
+
+         Relação Municipal de Procedimentos Diagnósticos que não constituam
+              exames laboratoriais (Anexo I);
+
+         Relação Municipal de Exames Laboratoriais (Anexo II)
+         Relação de Material Médico Hospitalar (Anexo III)
+         Relação Municipal de Saneantes (Anexo V).
+
+        A realização e contratação de serviços, bem como a aquisição de itens que
+possam ser considerados material médico hospitalar que não estejam previstos nas
+Relações Municipais constantes dos Anexos I, II, III e V da Resolução Conjunta,
+somente poderão ser executada e/ou adquirida em caráter excepcional mediante
+autorização prévia da Comissão Especial de Avaliação (CEA) no caso da
+RIOSAÚDE e da Comissão Técnica de Avaliação ­ CTA do respectivo Contrato de
+Gestão.
+
+        A autorização deverá ser fundamentada sob o aspecto técnico-assistencial e
+orçamentário.
+
+10.2 Recursos Humanos
+
+        A Organização Social contratada deverá manter atualizado o registro de todos
+os colaboradores e empregados no CNES ­ Cadastro Nacional de Estabelecimento
+de Saúde, conforme determinação constante no Decreto Rio nº 41.211, de 18 de
+janeiro de 2016. Essas informações deverão ser verificadas pela Secretaria
+Municipal de Saúde através da comparação entre os dados mensais da folha de
+pagamento e o CNES.
+
+2 alterada pela Resolução Conjunta CVL/SMF/SMS nº 41, de 15 de março de 2019
+
+                                                            21
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        O controle e a apuração da frequência dos funcionários contratados pelas
+Organizações Sociais serão feitos por Registro Biométrico de Ponto, conforme
+dispõe o Decreto nº 33.536 de 25 de março de /2011.
+
+        De acordo com o Decreto Rio nº 41.212, de 18 de janeiro de 2016, as
+Organizações Sociais estão proibidas de contratar cônjuges ou parentes até o 3º
+(terceiro) grau de Diretores ou Conselheiros. Estão proibidas, também, de contratar
+Pessoa Jurídica que tenha, em seu quadro societário, cônjuge ou parentes de
+Diretores ou Conselheiros, conforme Decreto Rio nº 41.213, de 18 de janeiro de
+2016.
+
+        A Lei nº 6.258, de 11 de outubro de 2017, dispõe que os membros dos
+Conselhos Municipal e Distrital de Saúde não podem ser contratados por
+Organizações Sociais, empresas e/ou demais entidades que prestem serviços
+terceirizados na área de saúde pública.
+
+        Para fins de monitoramento e controle de pessoal será utilizado o Sistema
+Informatizado de Recursos Humanos ­ ERGON.
+
+10.3 Registros e controles
+
+10.3.1- Estoques
+        Por meio de Decreto 46.356 de 9 de agosto de 2019, foi autorizado às
+
+organizações sociais a licença de uso do Sistema de Informações Gerenciais ­
+SIGMA ou de ferramenta corporativa de gestão e gerenciamento dos estoques que
+venha a lhe substituir ocorrerá sem ônus para as O.S.
+
+        Ó sistema teve seu uso considerado obrigatório a partir de 1º de outubro de
+2019 para o lançamento de todos os materiais e medicamentos adquiridos nos
+contratos de gestão, conforme disposto na Instrução Normativa CODESP Nº
+03/2019 (Deliberação CODESP nº 140 de 05 de setembro de 2019).
+
+        As Organizações Sociais poderão propor melhorias à ferramenta corporativa,
+que serão analisadas de acordo com as melhores práticas do mercado pelo Órgão
+Gestor (nesse caso, a Coordenadoria Geral de Suprimentos e Infraestrutura da
+Subsecretaria de Serviços Compartilhados) e implantadas pela Empresa Municipal
+de Informática S/A de acordo com a conveniência e oportunidade.
+
+        Quaisquer informações, registros e relatórios que as Organizações Sociais
+venham a obter por ocasião da licença de uso não poderão ser cedidas a terceiros
+nem utilizadas para quaisquer outros fins.
+
+                                                            22
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        As Organizações Sociais deverão eleger dentro de seu quadro um ou mais
+colaboradores para atuarem junto ao Órgão Gestor nas solicitações de
+padronização, classificação, catalogação e prestar auxílio quando da necessidade
+de codificação de materiais no referido sistema;
+
+10.3.2 Bens Permanentes
+
+        A Secretaria Municipal de Saúde manterá controle efetivo sobre a utilização e
+a movimentação dos bens permanentes adquiridos por Organizações Sociais, nos
+termos do Decreto Rio nº 41.207, de 18 de janeiro de 2016, regulamentado pela
+Resolução Conjunta CGM/SMS nº 85, de 27 de outubro de 2016, para fins de
+contabilização, apropriação de custos e prestação de contas de gestão.
+
+        Bens permanentes são todos os bens tangíveis ­ móveis e imóveis ­ e
+intangíveis, destinados à manutenção das atividades da entidade ou exercidos com
+essa finalidade, inclusive os decorrentes de operações que transfiram a ela os
+benefícios, os riscos e o controle desses bens.
+
+        Todos os bens permanentes adquiridos com recursos públicos repassados
+pelo Município, decorrentes de contrato de gestão, deverão ser automaticamente
+incorporados ao patrimônio da Secretaria Municipal de Saúde, devendo ser
+controlados através de inventário físico registrado no sistema corporativo de controle
+de bens patrimoniais.
+
+        As Organizações Sociais deverão efetuar o registro dos bens patrimoniais no
+sistema informatizado Painel de Gestão das Organizações Sociais.
+
+        Os bens adquiridos e cadastrados no Painel terão um número
+correspondente, o número de Unidade Administrativa (UA) e o número do Cadastro
+Nacional de Estabelecimentos de Saúde ­ CNES, que indicarão a localização física
+dos bens.
+
+        São responsáveis pelo monitoramento e fiscalização dos bens móveis
+adquiridos por Organização Social:
+
+        I ­ as unidades administrativas, através de seus titulares, quanto à verificação
+        das informações prestadas pela Organização Social no Painel de Gestão;
+
+        II ­ as Gerências de Infraestrutura e Logística ­ GIL ou Órgãos equivalentes,
+        quanto à identificação dos bens e à elaboração, controle e guarda dos
+        documentos referentes à movimentação dos bens das unidades
+
+                                                            23
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        administrativas junto às quais atuam, podendo descentralizar o nível de
+        controle pelos órgãos a ela subordinados; e
+
+        III ­ A s Comissões Especial de Patrimônio, quanto ao recebimento, guarda e
+        emprego adequado dos bens.
+
+        A formalização da incorporação de cada bem permanente ao patrimônio
+municipal, bem como as transferências e baixas devem observar os procedimentos
+e prazos constantes na Resolução Conjunta CGM/SMS nº 85/2016.
+
+10.4 Liquidação da Despesa
+
+          A SMS deverá preencher a declaração de conformidade que será parte
+integrante dos processos de despesa na fase de liquidação, conforme disposto na
+Resolução CGM nº 1.560, de 09 de setembro de 2019. O Roteiro estabelecido é
+composto por elementos fundamentais ao registro contábil da despesa.
+
+        O preenchimento dos roteiros orientadores para Exame da Liquidação da
+Despesa não isenta nem restringe o Órgão/Entidade da análise completa do
+processo de despesa e da responsabilidade de que todos os atos relativos ao
+processo atenderam a legislação vigente.
+
+        No caso das despesas com recursos humanos o Roteiro Orientador para
+Exame da Liquidação da Despesa ­ ELD 11-02 obedece ao modelo estabelecido no
+Anexo do Decreto nº 45.662, em seu art. 9º.
+
+        Conforme previsto no art. 16, da Instrução Normativa CODESP nº 001/2018, o
+processo de liquidação das despesas referentes aos Contratos de Gestão e
+Convênios da RIOSAÚDE será instruído e formalizado em duas etapas, seguindo os
+seguintes fluxos:
+
+        I - Recursos Humanos:
+
+         a) envio à CVL/SUBEX/NAPS/CPO dos dados para elaboração da FCP, pela
+Organização Social e RIOSAÚDE, no prazo máximo estabelecido no Calendário
+divulgado por aquela Coordenadoria;
+
+         b) encaminhamento da FCP pela CVL/SUBEX/NAPS/CPO, após aprovação
+pela presidência da CODESP, à S/SUBGEX/SCGOS até o dia 25 (vinte e cinco) do
+mês de competência da FCP;
+
+         c) abertura de processo específico de liquidação pela S/SUBGEX/SCGOS,
+instrução e preenchimento do Exame da Liquidação da Despesa - ELD, no valor
+
+                                                            24
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+aprovado pela presidência da CODESP, na forma do ANEXO, e envio à
+CG/SUBAC/CGCOP/CEL no prazo máximo de dois dias úteis da data do
+recebimento da FCP;
+
+        d) liquidação, pela CG/SUBAC/CGCOP/CEL, até o primeiro dia útil do mês
+subsequente à competência da FCP;
+
+        O processo de liquidação deverá ser instruído com a seguinte documentação:
+
+         a) Folha de Controle de Pagamento - FCP, que inclui Encargos, Benefícios e
+Provisionamento, elaborada pela CVL/SUBEX/NAPS/CPO - Coordenadoria de
+Controle de Pagamento das OS's, devidamente aprovada pela Presidência da
+CVL/SUBEX/CODESP;
+
+        b) Exame da Liquidação da Despesa - ELD, na forma do Anexo, devidamente
+carimbada e assinada.
+
+        II - demais despesas de custeio e investimento.
+
+        a) Disponibilização do Relatório de Acompanhamento de Atividades - RAT no
+site da MAPS - http://prefeitura.rio/web/cvl/maps, preferencialmente, até o quinto dia
+útil do segundo mês subsequente à competência da Prestação de Contas;
+
+        O Relatório de Acompanhamento de Atividades inclui: Relatório de Análise
+Financeira - RAF, Análise dos Demonstrativos referentes aos Anexos I a IV da
+Instrução Normativa CODESP nº 001/2018, além da Situação Cadastral e Validade
+de Registros dos Fornecedores.
+
+        b) As Comissões Técnicas de Acompanhamento - CTA e Comissões
+Especiais de Avaliação - CEA têm entre o décimo e o décimo quinto dia útil do mês3
+para deliberar sobre a parcela fixa do mês subsequente e a Prestação de Contas a
+que faz referência o RAT, na forma da alínea ``a'';
+
+        c) Abertura de processo específico de liquidação pela Unidade Orçamentária,
+instrução, com juntada da documentação prevista no art. 6º, inciso II, e envio à
+S/SUBGEX/SCGOS com vistas à CG/SUBAC/CGCOP/CEL, no prazo máximo de 3
+(três) dias úteis a contar da realização da CTA ou CEA.
+
+        O processo de liquidação deverá ser instruído com a seguinte documentação:
+
+         a) Relatório de Acompanhamento de Atividades - RAT;
+
+3 alterado pelo decreto 46028 de 30 de maio de 2019
+
+                                                            25
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        b) Relatório conclusivo da Comissão Técnica de Acompanhamento - CTA e
+Comissão Especial de Avaliação - CEA, do correspondente Contrato ou Convênio,
+relativo ao período avaliado;
+
+        c) Certidão Conjunta da Receita Federal, dentro da data da validade do
+documento;
+
+        d) Certificado de Regularidade da CEF/FGTS, dentro da data da validade do
+documento; e) Cópia de publicação do D.O. Rio do ato de designação dos membros
+da CTA ou CEA;
+
+        f) Cópia do Cronograma de Desembolso vigente;
+         g) Declaração em cumprimento ao disposto na Lei nº 6.048, de 02 de março
+de 2016;
+        h) Exame da Liquidação da Despesa - ELD, devidamente carimbado e
+assinado;
+        i) Acompanhamento de Empenho atualizado, emitido pelo Sistema FINCON,
+demonstrando a exequibilidade da despesa.
+
+10.5 Aplicação dos Recursos
+        Os saldos do Contrato de Gestão, enquanto não utilizados, serão
+
+obrigatoriamente aplicados em: caderneta de poupança de instituição financeira
+oficial se a previsão de seu uso for igual ou superior a um mês; fundos de curto
+prazo ou operações lastreadas com títulos públicos federais. Estas aplicações
+deverão ser sempre feitas na mais vantajosa remuneração do capital, em
+conformidade com a adequação do prazo disponibilizado à aplicação, cotejada com
+sua taxa de retorno. (Decreto nº 33.010, de 3 de novembro de 2010).
+
+                                                            26
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+11. MONITORAMENTO, AVALIAÇÃO E FISCALIZAÇÃO DOS CONTRATOS DE
+    GESTÃO
+
+11.1 Comissão Técnica de Avaliação (CTA) e Comissão Especial de Avaliação
+(CEA)
+
+        De acordo com o Decreto nº 30.780/2009, a Comissão de Avaliação tem
+como papel auxiliar o Secretário Municipal na fiscalização do contrato de gestão.
+
+        A nomeação da Comissão é realizada formalmente por Resolução da
+Secretaria Municipal da área correspondente, devendo levar em consideração a
+notória especialização na área que será objeto do contrato de gestão, para melhor
+entendimento e exame das metas e indicadores, conforme determina o § 2º do artigo
+8º da Lei nº 5.026/20094.
+
+        A Comissão deve possuir também conhecimentos que permitam acompanhar
+e controlar a execução físico-financeira do contrato, os recursos transferidos e sua
+aplicação, bem como a conformidade da prestação de contas.
+
+        A Comissão de Avaliação deverá ser composta por titulares e suplentes,
+preferencialmente de servidores do quadro permanente5 do Município do Rio de
+Janeiro, sendo fundamental que os servidores possuam uma boa reputação ética e
+profissional.
+
+        A formalização da designação do fiscal da Comissão de Avaliação deve ser
+prévia ou contemporânea ao início da vigência contratual, não podendo fazer parte
+dela servidores que tenham participado da Convocação Pública, que tenha relação
+comercial, financeira, trabalhista ou civil com a Organização Social e/ou que tenham
+algum tipo de parentesco com seus dirigentes.
+
+        A Resolução SMS nº 4081 de 04 de Julho de 2019 que regulamenta
+procedimentos de acompanhamento, e liberação de recursos dos contratos de
+gestão pela Comissão Técnica de Acompanhamento (CTA) e Comissão Especial de
+Avaliação (CEA), define as suas composições:
+
+              A CTA será composta por 04 (quatro) membros titulares e 02 (dois)
+                  membros suplentes da Subsecretaria de vinculação da unidade.
+
+              A CEA será composta por 04 (quatro) membros titulares e 02 (dois)
+                  membros suplentes, assim especificados: 02 (dois) representantes da
+                  Subsecretaria de Gestão, 01 (um) Titular e 01 (um) suplente; 04
+                  (quatro) representantes da Subsecretaria de vinculação da unidade, 03
+                  (três) titulares e 01 (um) suplente.
+
+4 Inciso IV do Artigo 2º da Lei nº 5.026/2009 com redação dada pelo Artigo 2º da Lei nº 6.220/2017.
+5 Artigo 26, Lei Municipal nº 1.680/91.
+
+                                                            27
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        A CTA e a CEA deverão analisar, controlar e monitorar os resultados
+atingidos com a execução dos contratos de gestão, sob o aspecto econômico-
+financeiro e técnico assistencial.
+
+        A CTA e a CEA se reunirão ordinariamente, conforme calendário da agenda
+de reuniões publicado em Diário Oficial, com quórum mínimo de 03 (três) membros,
+devendo constar a representatividade de duas subsecretarias. A comissão poderá
+se reunir extraordinariamente sempre que entender necessário e/ou for solicitado
+pela SMS, ou pela contratada.
+
+        O relatório conclusivo da CTA e CEA, que integrará o processo de liquidação
+das despesas de custeio e investimentos, deverá contemplar as seguintes
+informações:
+
+        a) deliberação acerca da parcela fixa e do Relatório de Acompanhamento de
+Atividades -RAT, disponível no site da MAPS;
+
+         b) acompanhamento e controle econômicos e financeiros dos contratos de
+gestão e convênios, analisando a aplicação dos recursos, a eficiência e eficácia dos
+serviços de saúde prestados a população;
+
+         c) análise dos relatórios de desempenho elaborados pela Organização Social
+e RIOSÁUDE, considerando os aspectos formais, a compatibilidade com o Programa
+de Trabalho e também a aderência da informações à realidade;
+
+         d) avaliação das metas e dos indicadores pactuados, registrando o
+funcionamento dos serviços prestados;
+
+         e) verificação da ocorrência de faltas ou horas trabalhadas a menor,
+comparando a planilha de controle com a folha de pagamento, efetuando, se for o
+caso, glosa do repasse;
+
+         f) Informações de inspeções regulares a fim de verificar a frequência, a
+produtividade e desempenho dos funcionários da Organização Social e Riosáude,
+conforme folha de controle de pagamento, assim como a verificação das instalações
+das unidades de saúde e postos de trabalho, estoques de insumos e outros;
+
+        g) estudos e análises de propostas de implantação de novos serviços, assim
+como a fixação e rotatividade de profissionais de saúde, quando couber.
+
+        A CTA e a CEA deverão observar o disposto no Decreto Rio nº 45.662/2019,
+que estabelece os prazos e procedimentos para a formalização de processos de
+liquidação de despesas referentes aos contratos de gestão e convênios com
+empresa pública RIOSAÚDE.
+
+         A deliberação da CTA e da CEA em favor da Organização Social e
+RIOSÁUDE se dará mensalmente, de acordo com o cronograma de desembolso,
+respeitados o saldo dos empenhos e a respectiva quota duodecimal disponível,
+conforme o disposto no Art. 8º do Decreto 45.662/2019.
+
+                                                            28
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+11.2 Macrofunção de Acompanhamento do Orçamento e da Execução dos
+     Serviços da Saúde Prestados por intermédio das Organizações Sociais ­
+     MAPS
+
+         A MAPS foi instituída pelo Decreto Rio nº 44.738, de 19 de julho de 2018,
+com a atribuição de verificar o atendimento ao disposto no artigo 9º da LRF,
+adotando as medidas necessárias para adequação do cronograma de desembolso
+dos contratos de gestão celebrados com as Organizações Sociais aos respectivos
+níveis de receita efetivamente arrecadada.
+
+        A MAPS é a união para interação e coordenação entre a Secretaria Municipal
+da Casa Civil ­ CVL, por intermédio da Comissão de Programação e Controle das
+Despesas ­ CODESP, Secretaria Municipal de Fazenda ­ SMF e Secretaria
+Municipal de Saúde ­ SMS.
+
+        A Secretaria Municipal da Casa Civil, por intermédio da CODESP, coordena a
+MAPS, respeitadas as demais competências dos órgãos envolvidos.
+
+        A MAPS, no exercício de suas funções, terá as seguintes competências, de
+acordo com o Decreto Rio nº 44.859, de 07 de agosto de 2018:
+
+        I ­ coordenar, implementar e monitorar as atividades referentes aos Contratos
+        de Gestão com Organizações Sociais para prestação de serviços de saúde,
+        nos seus aspectos administrativos e econômico-financeiros;
+
+        II ­ supervisionar, controlar, avaliar e negociar os Contratos de Gestão em
+        execução nas Unidades de Saúde da Secretaria geridas por Organizações
+        Sociais, tendo, para tal, acesso direto a estas;
+
+        III ­ coordenar e gerenciar o Painel de Gestão de Organizações Sociais;
+
+        IV ­ planejar o processo de contratualização de Organizações Sociais em
+        conjunto com os demais órgãos da SMS;
+
+        V ­ coordenar as atividades de elaboração de minuta padrão e revisão de
+        editais de seleção das Organizações Sociais, subsidiando as áreas
+        correspondentes com informações administrativos e econômico-financeiro;
+
+        VI ­ coordenar a produção de propostas de novas necessidades e/ou
+        alterações nos Contratos de Gestão dos demais órgãos técnicos da SMS, em
+        conjunto com estes;
+
+        VII ­ monitorar a execução física, orçamentária e financeira dos repasses
+        feitos às Organizações Sociais que celebram Contratos de Gestão com a
+        SMS;
+
+                                                            29
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        VIII ­ participar da elaboração da proposta orçamentária da SMS e na
+        supervisão da execução orçamentária dos Contratos de Gestão com
+        Organizações Sociais;
+
+        IX ­ enviar relatório trimestral à Comissão Técnica de Avaliação ­ CTA;
+
+        X ­ coordenar e monitorar o atendimento às recomendações feitas pela CTA
+        nos seus aspectos administrativos e econômico-financeiro;
+
+        XI ­ acompanhar as diligências e inspeções ordinárias dos órgãos
+        fiscalizadores, bem como o seu cumprimento e respectivos prazos;
+
+        XII ­ orientar a fiscalização dos Contratos de Gestão da SMS, subsidiando as
+        Comissões Técnicas de Acompanhamento e Avaliação e as Coordenações de
+        Área de Planejamento ­ CAPs nos seus aspectos administrativos e
+        econômico-financeiro;
+
+        XIII ­ acompanhar e orientar as Organizações Sociais contratadas no que se
+        refere à execução dos recursos orçamentários e financeiros;
+
+        XIV ­ analisar a prestação de contas dos recursos repassados as
+        Organizações Sociais, de acordo com a legislação vigente;
+
+        XV ­ rever os processos de reconhecimento de dívida relativo aos contratos
+        de gestão;
+
+        XVI ­ monitorar a receita e adotar providências para garantir os repasses pelo
+        Sistema Único de Saúde no que se refere à produção das Organizações
+        Sociais;
+
+        XVII ­ propor e difundir modelos e normas referentes aos contratos de gestão
+        com Organizações Sociais;
+
+        XVIII ­ promover debates, no âmbito da SMS, sobre questões, experiências e
+        resultados afetos aos diversos aspectos dos instrumentos de contratualização
+        com Organizações Sociais;
+
+        XIX ­ elaborar relatórios gerenciais
+
+        Através do Decreto Rio nº 44.861/2018 de 10 de agosto de 2018, foi criado o
+Núcleo de Apoio à Macrofunção da Saúde - NASP que passou a integrar a estrutura
+organizacional da Secretaria Municipal da Casa Civil - CVL.
+
+        Em 2019, a NASP foi transferida para a Secretaria Municipal de Fazenda -
+SMF, sendo publicada a Resolução CVL nº 190, de 19 de setembro de 2019
+
+                                                            30
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+dispondo sobre as competências da SMF, em especial as desse Núcleo, que possui
+em sua estrutura:
+
+              Coordenação de Monitoramento, Avaliação e Controle Financeiro:
+                  Gerência de Monitoramento de Análise do Painel de Gestão;
+                  Gerência de Monitoramento e Análise Financeira;
+                  Gerência de Atendimento para Demandas Institucionais.
+
+              Coordenadoria de Controle de Pagamento das Oss:
+                  Gerência de Integração Tecnológica;
+                  Gerência de Controle de Pagamentos.
+
+11.2.1 Painel de Gestão
+
+        O sistema informatizado Painel de Gestão das Parcerias com Organizações
+Sociais, com endereço eletrônico http://osinfo.rio.rj.gov.br, é o instrumento
+institucional de acompanhamento, avaliação e controle dos Contratos de Gestão
+firmados entre a Secretaria Municipal de Saúde - SMS e as Organizações Sociais
+para o gerenciamento de unidades e programas de saúde.
+
+        O Painel de Gestão foi instituído pelo Decreto nº 37.079, de 30 de abril de
+2013, estando o gerenciamento, análise e monitoramento de suas informações a
+cargo da Gerência de Monitoramento de Análise do Painel
+(F/SUBEX/NAPS/CGMAC/GMAP).
+
+11.2.2 Monitoramento e Controle da Execução dos Contratos de Gestão
+
+        Conforme a Instrução Normativa CODESP nº 03/2019 publicada através da
+Deliberação CODESP nº 140, 05/09/2019, o monitoramento e controle da execução
+dos Contratos de Gestão celebrados pelo Município com as Organizações Sociais
+da Saúde, assim como os convênios celebrados pelo Município com a empresa
+pública do Rio de Janeiro - Rio Saúde, se darão através dos seguintes instrumentos:
+
+        I - Painel de Gestão das Parcerias com Organizações Sociais (Painel
+        OSINFO), com endereço eletrônico http://osinfo.prefeitura.rio;
+
+         II- Demonstrativos de controle disponíveis no endereço
+        http://prefeitura.rio/web/cvl/maps;
+
+                                                            31
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+         III - Sistema Informatizado de Recursos Humanos - ERGON;
+
+        IV - Relatórios emitidos pela Comissão Técnica de Avaliação (CTA) e pelas
+        Comissões Especiais de Avaliação (CEA).
+
+                  Para fins de identificação das despesas, as unidades de saúde sob a
+gestão de Organizações Sociais terão suas estruturas organizacionais disponíveis
+para consulta no site: http://prefeitura.rio/web/cvl/maps.
+
+                 O modelo proposto visa atender à necessidade de sistematização e
+padronização das estruturas organizacionais das unidades de saúde sob a gestão
+das Organizações Sociais de forma a manter similaridade com o padrão utilizado
+pela Prefeitura da Cidade do Rio de Janeiro.
+
+11.2.3 Análise dos Contratos de Gestão pela MAPS
+
+         As Organizações Sociais deverão enviar dados e informações atinentes à
+prestação de contas gerencial e financeira, necessárias à alimentação do Painel
+OSINFO até o décimo dia útil do mês subsequente. Toda a documentação
+comprobatória deverá ser digitalizada e anexada ao Painel OSINFO. Nas hipóteses
+em que não conste campo específico no Painel OSINFO para inserção da
+documentação, esta deverá ser lançada através do Módulo Financeiro/
+Terceiros/Contratos de Terceiros do Painel.
+
+        Os comprovantes (imagens) que não estejam em conformidade (ausência de
+comprovante ou comprovante enviado de forma incorreta/incompleta) não serão
+aceitos a título de prestação de contas, ficando o repasse pendente até o respectivo
+ajuste. Nessa hipótese, o analista da CODESP deverá registrar o fato no respectivo
+Relatório de Análise Financeira - RAF.
+
+                 Sem prejuízo da alimentação do Painel OSINFO, as Organizações
+Sociais deverão providenciar a complementação da Prestação de Contas mediante
+o preenchimento dos seguintes formulários que se encontram disponíveis no
+endereço http://prefeitura.rio/web/cvl/maps, conforme disposto na Instrução Normativa
+CODESP Nº 03/2019:
+
+         a) Demonstrativo das despesas com compras de medicamentos - Anexo I;
+
+         b) Demonstrativo das despesas com contratação de procedimentos
+        diagnósticos - Anexo II;
+
+                                                            32
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        c) Demonstrativo das despesas com contratação de serviços de exames
+        laboratoriais - Anexo III;
+        d) Demonstrativo das despesas com compras de material médico- hospitalar -
+        anexo IV;
+        e) Demonstrativo de despesas compromissadas - Anexo V;
+         f) Demonstrativo de despesas vencidas e não pagas - Anexo VI;
+        g) Cadastro de contratos de terceiros (ou similar) - Anexo VII;
+        h) Demonstrativo de registro, controle e movimentação de bens permanentes
+        adquiridos (resolução conjunta CGM/SMS nº 85, de 27/10/16) - Anexo VIII,
+        VIII.1, VIII.2 e VIII.3;
+         i) Listagem de contratos e processos de contratação - Anexo IX;
+         j) Demonstrativo de despesas rateadas - Anexo X e X.1;
+        k) Demonstrativo de movimentação financeira - Anexo XIV e XIV.1;
+         l) Demonstrativo de despesas com compras de saneantes - Anexo XV.
+
+        A análise dos Demonstrativos que constituem os ANEXOS I a IV e XV se dará
+conforme as seguintes diretrizes:
+
+        a) Para fins de análise quanto à adequação das aquisições deverão ser
+             realizadas as seguintes verificações :
+
+        Anexo I - Demonstrativo das despesas com compras de medicamentos:
+
+              Verificação de que os medicamentos adquiridos constam da
+                  REMUME - Relação Municipal de Medicamentos publicada através de
+                  Resolução SMS vigente à época da aquisição.
+
+        Anexo II - Demonstrativo das despesas com contratação de
+        procedimentos diagnósticos que não constituam exames laboratoriais
+
+        Anexo III - Demonstrativo das despesas com contratação de serviços de
+        exames laboratoriais
+
+                                                            33
+                   Manual de Contratos de Gestão firmados com
+                       Organizações Sociais na Área de Saúde
+
+Anexo IV - Demonstrativo das despesas com compras de material
+médico- hospitalar
+
+     Verificação de que os procedimentos diagnósticos e Exames
+         Laboratoriais contratados constam da Relação Municipal de
+         Procedimentos Diagnósticos publicada através de Resolução Conjunta
+         CVL/SMF/SMS nº 40, de 20 de dezembro de 2018, vigente à época da
+         contratação.
+
+Anexo XV - Demonstrativo de despesas com compras de saneantes
+
+     Verificação de que o saneante adquirido consta da Relação Municipal
+         de Saneantes publicada através de Resolução Conjunta
+         CVL/SMF/SMS nº 41 de 15 de março de 2019, vigente à época da
+         contratação.
+
+Para os todos os Anexos:
+
+     Verificação (por amostragem) da validade do registro dos fornecedores
+         contratados para fornecimento dos medicamentos;
+
+     Aferição da adequação das aquisições/contratações com a atividade
+         fim das unidades a que se destinam.
+
+b) Para fins de análise quanto aos preços da aquisição/contratações
+    realizadas deverão ser realizadas as seguintes comparações entre:
+
+     os preços contratados pelas Organizações Sociais com os da SMS e
+         com os praticados pela RIOSAÚDE;
+
+     o tempo demandado pelos processos de compra pela Organização
+         Social com os da SMS e com os da RIOSAÚDE;
+
+     as quantidades adquiridas pelas Organizações Sociais com as
+         adquiridas pela SMS e com as adquiridas pela RIOSAÚDE para
+         unidades de mesmo porte e perfil de atendimento.
+
+E, ainda, as seguintes aferições:
+
+                                                   34
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+              da frequência da aquisição de medicamentos por parte das
+                  Organizações Sociais e da RIOSAÚDE durante períodos de tempo
+                  determinados.
+
+              da data de validade dos medicamentos adquiridos por parte das
+                  Organizações Sociais e da RIOSAÚDE durante períodos de tempo
+                  determinados.
+
+              da aferição do tempo demandado pelos processos de aquisição e o
+                  impacto deste sobre o preço dos itens adquiridos.
+
+              do impacto da data de validade dos medicamentos adquiridos sobre o
+                  preço dos itens adquiridos .
+
+        Toda prestação de contas realizada por meio eletrônico, em Painel de
+Gestão, deverá apresentar declaração assinada pelo representante legal da
+Organização Social e pelo contabilista habilitado de que os documentos e
+informações apresentados são fidedignos e que a Prestação de Contas foi
+corretamente realizada.
+
+        A análise da prestação de contas, no que se refere aos seus aspectos
+financeiros, será realizada pelo Grupo de Análise da CODESP e se dará de acordo
+com o Relatório de Análise Financeira - RAF, disponível para consulta no site:
+http://prefeitura.rio/web/cvl/maps.
+
+        A CODESP elaborará, após o encerramento da análise da prestação de
+contas, 02 (dois) Relatórios de Monitoramento e Controle:
+
+         I - Relatório de Acompanhamento das Atividades - RAT, composto, dentre
+entre outros, pelo (a)s:
+
+        Relatório de Análise Financeira (RAF)
+
+              Demonstrativo da Situação Cadastral e verificação da validade dos
+                  registros dos fornecedores dos itens constantes nos Anexos I a IV e
+                  XV, ambos por amostragem;
+
+              Análise dos Anexos I a IV e XV e das seguintes informações:
+                  distribuição acumulada dos gastos no período, materiais, terceiros,
+                  investimentos, tributos, serviços públicos, despesas bancárias,
+                  transferência entre contratos e outras despesas operacionais e curva
+                  ABC dos principais fornecedores.
+
+        II - Relatório de Despesa de Pessoal, contendo, dentre outras, as seguintes
+informações:
+
+                                                            35
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+              evolução de toda a despesa de pessoal comparada por períodos,
+                  despesas com gratificações, adicional noturno, insalubridade, hora
+                  extra, acompanhamento dos ingressos e vacâncias por categoria,
+                  levantamento de servidores cedidos, detalhamento das contribuições
+                  patronais, distribuição de profissionais por gênero, sexo, faixa etária,
+                  faixa salarial, regime jurídico, escolaridade, benefícios, acordos
+                  coletivos e convenções, cruzamento de CPF, jornada de trabalho e
+                  provisionamento apurados.
+
+11.2.4 Sanções por descumprimento contratual
+
+        O descumprimento total ou parcial de obrigação assumida no Contrato de
+Gestão, assim como de quaisquer dispositivos contidos na Instrução Normativa nº
+03/2019, sem prejuízo da responsabilidade civil e criminal que couber, ensejará a
+aplicação das seguintes sanções previstas no artigo 87 combinado com o artigo 116
+da Lei nº 8.666/1993 e no artigo 589 do RGCAF, garantida prévia defesa:
+
+        I ­ Advertência;
+
+        II ­ Multa de mora no valor de até 1% (um por cento) por dia útil sobre o valor
+        do Contrato de Gestão ou, se for o caso, do saldo não atendido do Contrato
+        de Gestão;
+
+        III ­ Multa de até 20% (vinte por cento) sobre o valor do Contrato de Gestão
+        ou do saldo não atendido do Contrato de Gestão, conforme o caso, e,
+        respectivamente, nas hipóteses de descumprimento total ou parcial da
+        obrigação, inclusive nos casos de rescisão por culpa da Contratada;
+
+        IV ­ Suspensão temporária de participação em licitação e impedimento de
+        contratar com a Administração por prazo não superior a 02 (dois) anos;
+
+        V ­ Declaração de inidoneidade para licitar ou contratar com a Administração
+        Pública;
+
+        VI ­ Perda de qualificação como organização social no âmbito do Município
+        do Rio de Janeiro, na forma prevista no Decreto Rio nº 45.632/2019.
+
+        A Instrução Normativa nº 2/2019 destaca ainda que:
+
+         A imposição das sanções administrativas previstas dependerá da
+            gravidade do fato que as motivar, consideradas as circunstâncias objetivas
+            relacionadas ao caso concreto.
+
+                                                            36
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+         As sanções previstas nos incisos I, IV e V poderão ser aplicadas
+            juntamente com aquelas previstas nos incisos II, III e VI e não excluem a
+            possibilidade de rescisão unilateral do Contrato de Gestão, garantida
+            defesa prévia ao interessado.
+
+         As multas previstas nos incisos II e III não possuem caráter compensatório,
+            e, assim, o seu pagamento não eximirá a Contratada da responsabilidade
+            pelas perdas e danos decorrentes das infrações cometidas.
+
+         As multas deverão ser recolhidas junto à Secretaria Municipal de Fazenda
+            no prazo de 03 (três) dias.
+
+        De acordo com a Resolução SMS nº 3.995, 25 de fevereiro de 2018, havendo
+ciência de descumprimento legal ou contratual por parte de Organização Social no
+âmbito da gestão e operacionalização dos serviços em saúde objeto de Contratos de
+Gestão, deverá ser remetida à Superintendência de Administração de Contratos de
+Gestão com Organização Sociais (S/SUBGEX/SCGOS) manifestação que evidencie
+o descumprimento contratual e/ou legal para apuração e aplicação das penalidades
+e/ou rescisão contratual prevista em lei/contrato.
+
+        A S/SUBGEX/SCGOS realizará a abertura do processo com os seguintes
+documentos:
+
+        I ­ cópia do Contrato de Gestão e seus Termos Aditivos;
+
+        II ­ cópia de todos os relatórios de CTA;
+
+        III ­ histórico de penalidades aplicadas à Organização Social, no âmbito do
+        Contrato de Gestão em questão;
+
+        IV ­ relatórios financeiros elaborados pelo Núcleo de Apoio à Macrofunção de
+        Saúde;
+
+        V ­ último extrato bancário disponível no sistema OSINFO das contas
+        correntes vinculadas ao contrato sob análise; e
+
+        VI ­ demais relatórios extraídos do sistema OSINFO, no que couber.
+
+        Após a Organização Social exercer o seu direito à ampla defesa e ao
+contraditório, a SMS emitirá parecer técnico favorável ou contrário a aplicação das
+penalidades prevista em contrato/legislação.
+
+                                                            37
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+12 PRESTAÇÃO DE CONTAS
+
+12.1 Prestação de Contas para o Órgão ou Entidade Contratante
+
+        A Prestação de Contas prevista nos contratos de gestão é um procedimento
+obrigatório das Organizações Sociais a ser submetido ao órgão ou entidade
+contratante na periodicidade estipulada em cláusula contratual, sendo que a última
+deve ser entregue até 30 (trinta) dias após o término do Contrato de Gestão,
+acompanhada do comprovante de devolução do saldo, se houver.
+
+        Os documentos que devem instruir esta prestação de contas, previstos na
+Cláusula Décima da Minuta Padrão do Contrato de Gestão, instituída pela
+Resolução CVL nº 189, de 06 de setembro de 2019, são os seguintes:
+
+I - Relatórios de execução financeira, discriminando o resumo da movimentação de
+valores, indicando o saldo inicial, o valor de cada despesa efetivamente paga no
+período e o saldo atual acumulado.
+
+II ­ Relatórios indicativos demonstrando a produção contratada e realizada, bem
+como os resultados dos indicadores e das metas estabelecidos.
+
+III - Relação de pagamentos, incluindo o detalhamento das despesas
+administrativas, indicando os números e datas dos cheques emitidos, identificando a
+numeração dos comprovantes de pagamentos ou o tipo de comprovante.
+
+IV - Conciliação do saldo bancário.
+
+V - Cópia do extrato da conta corrente bancária e da aplicação financeira realizada
+na forma da cláusula quinta, referente ao período compreendido entre a última
+prestação de contas e a atual.
+
+VI - Folha de pagamento discriminando nome, números do RG, CPF, PIS, CNES
+(apenas para contratos de gestão na área de saúde) e CTPS, função, carga horária,
+salário e benefícios do pessoal contratado (inclusive de servidor cedido em função
+temporária de direção ou assessoria, se for o caso), acompanhada da
+correspondente relação de pagamento enviada ao banco.
+
+VII - Cópia das guias de pagamento e respectivos comprovantes de pagamento de
+obrigações junto ao Sistema de Previdência Social (FGTS e INSS), de outros
+encargos e das rescisões de contrato de trabalho, e respectivas CTPS, devidamente
+anotadas.
+
+                                                            38
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+VIII - Cópia de todos os comprovantes de pagamentos relacionados no inciso III
+deste parágrafo, bem como de todos os contracheques devidamente assinados
+pelos empregados, podendo estes ser substituídos pela forma prevista no art. 1º da
+Portaria MTE nº 3.281/84, consolidada pelo art. 3º da Lei 9.528/1997, de 10/12/1997
+e suas alterações.
+
+IX - Projeção de expectativa de custo de rescisão dos contratados pelo regime da
+CLT com projeção de encargos fiscais, sociais e trabalhistas.
+
+X - A Certidão Negativa de Débitos Trabalhistas, que deverá ser atualizada antes do
+término do seu prazo de validade de 180 dias.
+
+        A prestação de contas será realizada por meio de alimentação ao Painel de
+Gestão de Parcerias com Organizações Sociais, com endereço
+http://osinfo.rio.rj.gov.br.
+
+        Cada folha da Prestação de Contas deverá conter rubrica do representante
+legal da Organização Social, bem como de contabilista habilitado, capacitado pelo
+Conselho Regional de Contabilidade respectivo. Caso a prestação de contas ocorra
+em via eletrônica, em Painel de Gestão, deverá ser apresentada declaração
+assinada pelo representante legal da Organização Social e pelo contabilista
+habilitado de que os documentos e informações apresentados são fidedignos e que
+a Prestação de Contas foi corretamente realizada.
+
+12.2 Prestação de Contas para fins de Certificação do Controle Interno
+
+        A Prestação de Contas para fins de certificação pelo Controle Interno é o
+procedimento realizado pelo órgão ou entidade municipal contratante, por meio de
+processo administrativo específico, que deve ser formalizado e encaminhado à
+Controladoria Geral do Município, nos termos da Resolução CGM nº 1.224, de 11 de
+março de 2016.
+
+        O prazo para envio da referida prestação de contas é de até 90 (noventa) dias
+após o término do período especificado no contrato de gestão. No caso de
+prorrogações do contrato de gestão, deverá ser encaminhada a prestação de contas
+referente a todo período prorrogado, em até 90 dias após o prazo final do contrato.
+
+        Esta Prestação de Contas não substitui a mencionada no item 12.1 deste
+Manual, devendo ser aberto um processo administrativo próprio, para envio à
+Controladoria Geral, contendo exclusivamente os seguintes documentos:
+
+        I ­ Declaração prestada pelo titular do órgão responsável pelo contrato de
+        gestão, ou servidor por este designado, de que o processo administrativo
+        encontra-se instruído com a documentação comprobatória estabelecida pela
+        Resolução CGM nº 1.224/2016, discriminando numeração das folhas do
+
+                                                            39
+                   Manual de Contratos de Gestão firmados com
+                       Organizações Sociais na Área de Saúde
+
+processo nas quais os documentos exigidos por cada um dos incisos deste
+artigo estão apresentados.
+
+II ­ Cópia do contrato de gestão e aditivos, se for o caso.
+
+III ­ Relatório emitido pela organização social para prestação de contas, de
+acordo com a periodicidade prevista no instrumento contratual, contendo
+comparativo específico das metas propostas com os resultados alcançados,
+referente ao período a ser certificado.
+
+       Os órgãos da área da saúde poderão apresentar, para efeito do
+       cumprimento deste item, o relatório de indicadores do sistema "Painel de
+       Gestão das Parcerias com Organizações Sociais", contendo as
+       informações mensais sobre os indicadores e metas previstas e
+       alcançadas.
+
+IV ­ Relatório final conclusivo elaborado pela Comissão de Avaliação,
+referente ao período a ser certificado, contendo avaliação dos resultados
+alcançados quanto aos objetivos propostos e o percentual de metas
+alcançadas e não alcançadas, informando os motivos no caso do não
+atingimento das metas.
+
+V ­ Cópia da publicação no Diário Oficial do Município do Rio de Janeiro dos
+atos de designação da Comissão de Avaliação responsável pelo
+acompanhamento do contrato de gestão no período a ser certificado.
+
+VI ­ Relatório consolidado emitido pela Comissão de Avaliação informando as
+providências solicitadas pela Comissão à contratada e as medidas adotadas
+para o seu saneamento referente ao período a ser certificado, devendo conter
+manifestação da Comissão de Avaliação quanto à aprovação ou reprovação
+das medidas adotadas pela contratada devidamente aprovadas pela
+Comissão, referente ao período a ser certificado.
+
+VII ­ Declaração prestada pelo titular do órgão responsável pelo contrato de
+gestão, ou servidor por este designado, informando que a Organização Social
+atingiu pelo menos 80% das metas definidas para o período anterior, no caso
+de a prestação de contas referir-se a período de prorrogação do contrato de
+gestão.
+
+VIII ­ Relatório financeiro mensal da Organização Social do período a ser
+certificado acompanhado dos respectivos extratos bancários mensais.
+
+       Os órgãos da área da saúde poderão apresentar, para efeito do
+       cumprimento deste item, o demonstrativo sintético operacional do
+       sistema "Painel de Gestão das Parcerias com Organizações Sociais",
+       referente ao período a ser certificado, acompanhado do último extrato
+       bancário.
+
+                                                  40
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+        IX ­ Parecer final de análise financeira emitido pela Comissão de Avaliação
+        ou servidor designado, referente ao período a ser certificado, informando
+        sobre a adequação dos valores de receitas e despesas apresentados com os
+        documentos comprobatórios e sua vinculação ao contrato de gestão, e sobre
+        a existência de pendências de aspecto financeiro ainda não solucionadas pela
+        organização social no período a ser certificado.
+
+        X ­ Cópia da publicação no Diário Oficial do Município do Rio de Janeiro do
+        balanço anual do último exercício encerrado, anterior ao encerramento do
+        contrato referente ao período a ser certificado, acompanhado de parecer dos
+        auditores independentes, caso exista.
+
+        XI ­ Declaração prestada pelo titular do órgão responsável pelo contrato de
+        gestão, ou servidor por este designado, de que os dados e informações
+        relativos à vigência do contrato foram devidamente alimentados, pelas
+        Organizações Sociais, no sistema denominado "Painel de Gestão das
+        Parcerias com Organizações Sociais" ou contendo justificativa para sua não
+        alimentação.
+
+        XII ­ Relatório emitido pelo titular do órgão responsável pelo contrato de
+        gestão, ou por servidor por este designado, contendo as sanções aplicadas,
+        glosas, ressarcimentos, sindicâncias, tomadas de contas, tomada de contas
+        especiais realizadas, eventuais problemas identificados na execução do
+        contrato de gestão e qualquer outra informação relevante de fatos ocorridos
+        durante a execução do contrato no período a ser certificado.
+
+        XIII ­ Declaração prestada pelo titular do órgão responsável pelo contrato de
+        gestão, ou servidor por este designado, de que todos os bens adquiridos pela
+        organização social, referente ao período a ser certificado, foram inventariados
+        pelo órgão, acompanhada do inventário individualizado dos bens adquiridos
+        contendo especificação e número do bem junto ao órgão contratante, emitido
+        pelo Sistema de Controle de Bens Patrimoniais.
+
+        XIV ­ Declaração prestada pelo titular do órgão responsável pelo contrato de
+        gestão de que as obrigações do contrato de gestão foram cumpridas pela
+        organização social. Caso o titular do órgão entenda que houve
+        descumprimento de obrigações deverão ser relacionados todos os itens
+        descumpridos e as medidas adotadas pelo órgão, junto às Organizações
+        Sociais e instâncias competentes.
+
+        XV ­ Relatório FCTRR 15100 ­ Relação dos dados do instrumento contratual
+        e sua execução, visão: por instrumento contratual, emitido pelo sistema
+        FINCON, tendo como data de referência a data final do período a ser
+        certificado.
+
+        Após emissão do Relatório da Auditoria Geral e respectivo Certificado de
+Auditoria o processo administrativo é devolvido ao órgão que deverá remetê-lo ao
+Tribunal de Contas do Município do Rio de Janeiro, conforme artigo 42 da Lei
+
+                                                            41
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+Municipal nº 289/1981 e no prazo de 180 dias estabelecidos no § 2º do Art. 38 da
+mesma Lei.
+
+13. GESTÃO E FISCALIZAÇÃO DE CONTRATOS DE GESTÃO
+
+        A Gestão e a Fiscalização de contratos são atividades complementares cujo
+objetivo é zelar pelo emprego adequado dos recursos públicos e têm definições e
+atribuições distintas, não sendo adequada a acumulação dessas atividades por um
+único responsável.
+Gestão de Contratos:
+
+É o gerenciamento de todos os Contratos, envolvendo a administração do
+processo desde a sua formalização até o seu encerramento, tais como,
+instrução do processo administrativo de contratação, formalização do
+instrumento contratual, prorrogação de prazos, publicação dos extratos,
+verificação da manutenção das condições de habilitação, adequação
+orçamentária, entre outras providências, realizadas no âmbito do Município do
+Rio de Janeiro.
+
+Fiscalização de Contratos:
+
+É o acompanhamento da execução física do contrato, efetuado por servidores
+designados, que tem como objetivo:
+ Garantir a fiel execução do objeto, nos termos das cláusulas contratuais;
+ Verificar a qualidade e a quantidade do bem ou serviço entregue; e
+ Evitar que seja efetuado o pagamento pela Administração Pública sem o
+
+    devido cumprimento das obrigações contratuais quantitativas e qualitativas
+    pela contratada.
+
+        O desempenho das atividades de Gestão e Fiscalização, além dos aspectos
+legais, deve levar em consideração as dimensões de eficiência, eficácia e
+efetividade.
+
+             Eficiência ­ otimizar os recursos existentes;
+             Eficácia ­ atingir os objetivos da organização; e
+             Efetividade ­ garantir que o resultado previsto seja alcançado ao longo do
+             tempo.
+
+                                                            42
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+13.1 Responsabilidades do Fiscal de Contratos de Gestão
+
+        A responsabilidade principal dos fiscais de contrato de gestão é garantir a fiel
+execução do objeto do contrato, verificando a qualidade e quantidade do bem ou
+serviço entregue, evitando, desta forma, que a Administração Pública realize
+pagamentos sem ter recebido, nas condições pré-estabelecidas, o produto ou
+serviço conforme contratado. Para o alcance deste objetivo os fiscais, bem como os
+setores responsáveis pelo monitoramento dos contratos de gestão, devem
+considerar os procedimentos constantes do item 13 deste manual ­ Boas práticas
+para a fiscalização/monitoramento dos contratos de gestão.
+
+        Os fiscais de contratos de gestão têm deveres cujo descumprimento poderá
+resultar em responsabilização, devendo, portanto, obrigatoriamente cumprir a lei,
+respeitando as normas regimentais aplicáveis e o teor do contrato para evitar esta
+responsabilização.
+
+        A responsabilização pode ocorrer nas esferas administrativas, civil e penal,
+em razão dos atos que praticar (ação) ou deixar de praticar (omissão).
+
+     Administrativa ­ Decorre da ausência ou deficiência da atuação fiscalizatória,
+         podendo haver incidência da Lei 8.429/92, notadamente em seu artigo 10,
+         que dispõe sobre os atos de improbidade administrativa que causem lesão ao
+         erário;
+
+     Civil ­ Disposta, principalmente, nos art. 186 e 927 do Código Civil. É a ação
+         ou omissão voluntária, negligência ou imprudência que provoque dano ao
+         patrimônio de terceiro, havendo obrigação de reparação do dano causado; e
+
+     Penal ­ No caso de prática de conduta definida em Lei como crime. São
+         aplicáveis as hipóteses previstas nos arts. 89 a 99 da Lei 8.666/1993 e as
+         disposições previstas no Título XI do Código Penal (dos crimes contra a
+         Administração Pública).
+
+14 BOAS PRÁTICAS PARA A FISCALIZAÇÃO/MONITORAMENTO DE
+CONTRATOS DE GESTÃO
+
+        A Comissão de Avaliação, no desempenho de sua função de fiscalização da
+execução dos contratos, deve ser responsável pela análise físico-financeira e pelo
+acompanhamento técnico-assistencial dos contratos de gestão, adotando, no
+mínimo, os seguintes procedimentos:
+
+14.1 Aspectos Preliminares
+
+        Ao assumir a função de fiscalização do contrato de gestão, os fiscais devem
+se municiar das informações relativas ao contrato de gestão, da seguinte forma:
+
+                                                            43
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+     Obter conhecimento da legislação aplicável às Organizações Sociais, pois
+         estas serão a base para uma fiscalização eficiente.
+
+     Efetuar a leitura de toda a documentação referente ao edital, contrato de
+         gestão e anexos com o objetivo de conhecer o objeto e condições
+         contratadas, realizando, se for o caso, reuniões com os gestores da
+         Secretaria para dirimir qualquer dúvida.
+
+     Entender bem as definições no processo de contratação, para que na
+         execução, disponha-se de todos os recursos necessários à realização de
+         ações que sejam pertinentes (ex: resultados esperados, processos de
+         medição, rotinas de execução, critérios, prazos, etc.).
+
+     Obter cópia do ato de sua designação para Comissão de Avaliação.
+
+     Verificar a emissão do empenho, assinatura do contrato de gestão e
+         publicação do extrato contratual;
+
+14.2 Planejamento da Fiscalização
+
+        Ao assumir a função de fiscalização do contrato de gestão, os fiscais devem
+planejar as rotinas de fiscalização, abrangendo, no mínimo, os seguintes
+procedimentos:
+
+     Realizar reunião conjunta com os gestores da Secretaria, para definição dos
+         procedimentos de trabalho, lavrando-se em ata de reunião todas as
+         definições.
+
+     Avaliar se existem dúvidas quanto a qualquer aspecto definido no contrato de
+         gestão, ou ainda, na legislação pertinente. Caso as dúvidas não sejam
+         sanadas, formalizar os questionamentos para o responsável da secretaria ou
+         entidade.
+
+     Avaliar a necessidade de dividir as tarefas da fiscalização entre os membros.
+         Devido ao volume de atividades e formação da equipe é possível segregá-las,
+         por exemplo, em: verificação da parte técnica, observância dos
+         procedimentos administrativos e atendimento dos fatores funcionais.
+
+     Precisar as responsabilidades de cada membro da Comissão perante a
+         fiscalização do contrato de gestão, organizando as tarefas de cada um e sua
+         periodicidade.
+
+                                                            44
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+     Considerar a necessidade de elaboração de check-lists para conferência das
+         tarefas obrigatórias.
+
+     Definir os relatórios, documentos e procedimentos que serão cobrados da
+         Organização social, bem com a periodicidade, prazo e formas de entrega,
+         considerando as disposições do contrato.
+
+     respeitar o calendário de reuniões da Comissão de Avaliação, quando
+         estabelecido.
+
+     Definir como e o que será verificado.
+
+     Avaliar a necessidade de solicitar opiniões técnicas de funcionários que não
+         participem da Comissão.
+
+14.3 Procedimentos Gerais de Fiscalização
+
+     Reunir-se, no início da execução do contrato, com os gestores da
+         Organização Social para que sejam explicadas as rotinas e expectativas da
+         fiscalização durante a execução do contrato.
+
+     Realizar visitas periódicas nas dependências da Organização Social para
+         validar sua localização e estrutura para atendimento ao contrato.
+
+     Realizar inspeções regulares nas unidades em que são prestados os serviços
+         objeto do contrato de gestão, para acompanhar a realização dos serviços e
+         subsidiar sua opinião sobre a adequação da prestação do serviço.
+
+     Analisar os relatórios de desempenho elaborados pela Organização Social
+         considerando os aspectos formais, a compatibilidade com o programa de
+         trabalho e também a aderência das informações à realidade.
+
+     Registrar, em atas de reunião e em relatório, caso necessário, todas as
+         ocorrências que sejam pertinentes. Devem ser registrados tanto os pontos de
+         regularidade quanto os que evidenciam o desajuste em relação ao
+         contratado, determinando o que for necessário à regularização das faltas ou
+         defeitos observados.
+
+     Formalizar os critérios estabelecidos pela Comissão de Avaliação para
+         execução das verificações necessárias ao cumprimento da fiscalização
+         (amostra, universo, periodicidade).
+
+     Comunicar ao responsável da Secretaria ou entidade da administração
+         indireta os pontos de inconformidade detectados. As decisões e providências
+
+                                                            45
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+         que ultrapassarem a competência do fiscal deverão ser solicitadas a seus
+         superiores em tempo hábil para a adoção das medidas convenientes.
+
+     Elaborar relatório consolidado informando as providências solicitadas pela
+         Comissão de Avaliação à contratada quanto a eventuais descumprimentos
+         contratuais e as medidas adotadas para o seu saneamento, devendo conter
+         manifestação da Comissão de Avaliação quanto à aprovação ou reprovação
+         das medidas adotadas pela contratada.
+
+     Levantar as informações necessárias para subsidiar o titular do órgão ou da
+         entidade responsável pelo contrato de gestão, ou servidor por ele designado,
+         na preparação da prestação de contas ao controle interno.
+
+     Acompanhar o prazo de vigência do contrato, alertando a administração com
+         antecedência de 120 dias, sobre seu término, para que sejam tomadas as
+         providências cabíveis.
+
+     Verificar se a Organização Social atingiu o percentual de 80% das metas
+         definidas para o período anterior, ao considerar uma possível prorrogação do
+         contrato de gestão.
+
+14.4 Compras e Contratações
+
+     Confirmar se a Organização Social publicou na imprensa e no Diário Oficial
+         do Município, no prazo máximo de 90 dias contados da assinatura do contrato
+         de gestão, regulamento próprio contendo os procedimentos que adotará para
+         a contratação de serviços e obras necessários à execução do contrato de
+         gestão, bem como para compras com emprego de recursos provenientes do
+         Poder Público.
+
+     Avaliar se a Organização Social segue seu regulamento de compras.
+         Escolher, periodicamente de forma aleatória, alguns processos de compras e
+         analisar se todos os procedimentos previstos no regulamento foram
+         respeitados.
+
+     Verificar se as compras e contratações realizadas pelas Organizações Sociais
+         são iguais ou inferiores aos constantes das Atas de Registro de Preços
+         vigentes na Secretaria Municipal de Saúde, de acordo com o Decreto Rio nº
+         41.208, de 18 de janeiro de 2016 e se as compras e contratações de serviços
+         realizadas com recursos dos Contratos de Gestão estão abaixo dos valores
+         máximos constantes das Atas de Registro de Preços da Secretaria Municipal
+         de Saúde em no mínimo 95% (noventa e cinco por cento) das compras e
+         contratações. Em situações excepcionais justificadas pela Organização Social
+         ao órgão ou entidade contratante, este poderá autorizar expondo os motivos
+         da excepcionalidade previamente à contratação.
+
+                                                            46
+                        Manual de Contratos de Gestão firmados com
+                            Organizações Sociais na Área de Saúde
+
+ Verificar se as Organizações Sociais de Saúde que mantêm Contrato de
+    Gestão com o Município do Rio de Janeiro em suas atividades assistenciais
+    somente executaram e contrataram serviços relativos a procedimentos
+    diagnósticos que não constituam exames laboratoriais, assim como
+    executaram e contrataram serviços que constituam exames laboratoriais
+    constantes nos Anexos I e II da Resolução Conjunta CVL/SMF/SMS nº
+    40/2018, respectivamente.
+
+ Verificar ainda se as Organizações Sociais de Saúde somente adquiriram
+    itens que possam ser considerados material médico hospitalar constante do
+    Anexo III desta mesma Resolução. Caso sejam realizados e contratados
+    serviços e adquiridos itens, em caráter excepcional, que possam ser
+    considerados material médico hospitalar que não estejam previstos nos
+    Anexos I, II e III, verificar se tem autorização prévia da Comissão Técnica de
+    Avaliação ­ CTA do respectivo Contrato de Gestão.
+
+ Confirmar se os serviços prestados por terceiros estão respaldados por
+    contratos formais firmados entre a Organização Social e a empresa
+    respectiva.
+
+ Solicitar, por amostragem, cópias dos contratos firmados pela Organização
+    Social com terceiros e avaliar se os serviços estão sendo prestados conforme
+    pactuado. Considerar principalmente os aspectos referentes à: quantidade de
+    pessoas contratadas, frequência, qualidade, prazo e objeto. Esses aspectos,
+    e outros considerados relevantes pela Comissão de Avaliação, deverão ser
+    verificados através de inspeções regulares.
+
+ Verificar, no início da execução da fiscalização e periodicamente durante a
+    prestação dos serviços, a localização física das prestadoras de serviços.
+
+ Avaliar se as contratações de obras e serviços, bem como as compras com
+    recursos provenientes do Município do Rio de Janeiro foram precedidas de
+    ampla divulgação no sítio da Organização Social, na rede eletrônica internet,
+    de forma a possibilitar a oferta pública a interessados. Escolher,
+    periodicamente e de forma aleatória, alguns processos de compras para
+    confirmação.
+
+ Consultar, periodicamente, em sites oficiais, a situação cadastral das
+    empresas contratadas pela Organização Social nos fiscos federal, estadual e
+    municipal, buscando verificar a regularidade destas. Caso seja verificado
+    alguma pendência comunicá-la ao titular do órgão ou entidade responsável
+    pelo contrato de gestão para que sejam adotadas as devidas providências.
+
+                                                       47
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+     Verificar se não há membros dos Conselhos Municipal e Distrital de Saúde
+         contratados pela Organização Social conforme o disposto na
+         Lei nº 6.258/2017.
+
+     Verificar se as Organizações Sociais, obrigatoriamente, alimentaram o
+         sistema desenvolvido pelo IPLANRIO, bimestralmente, até o quinto dia útil do
+         segundo mês, com dados referentes às aquisições de insumos, serviços e
+         medicamentos, tendo como referência a Relação Municipal de Medicamentos,
+         estabelecida pela Resolução SMS nº 2.117, de 19 de agosto de 2013,
+         conforme estabelecido no Art. 2º do Decreto Rio nº 44.025/2017..
+
+     Verificar, enquanto o Sistema acima não for implementado, se a SMS tabulou
+         os preços de medicamentos e serviços informados pelas Organizações
+         Sociais e os praticados pela própria SMS no que tange a Hospitais Públicos e
+         Postos de Saúde, através da publicação no Diário Oficial do Município,
+         conforme Modelos Previstos nos Anexos II e III do Decreto Rio nº
+         44.025/2017 e referenciados no Art.4 º desse Decreto.
+
+     Verificar a existência da declaração dos dirigentes da Organização de que no
+         quadro societário das empresas contratadas pela Organização Social não
+         constam cônjuges ou parentes de Diretores ou Conselheiros da Organização.
+         Adicionalmente, selecionar contratos da Organização Social com terceiros e
+         confirmar, mediante consulta aos sites da Receita Federal, ou Jucerja (ou
+         outro que se equivalente), se dentre os seus sócios não constam sócios ou
+         parentes dos dirigentes da Organização Social. Atentar para a existência de
+         endereços ou telefones comuns entre a Organização Social e as respectivas
+         prestadoras de serviço, o que pode, independentemente da composição
+         societária comum, ser indício de vinculação entre a organização e seus
+         prestadores.
+
+     Averiguar a existência da declaração dos dirigentes da Organização de que
+         cônjuges ou parentes até 3° grau de Diretores ou Conselheiros da
+         Organização Social não são contratados como pessoas físicas.
+
+     Verificar se eventuais subcontratações de atividade-fim estavam previstas no
+         contrato de gestão e, estão devidamente suportadas pela anuência da
+         secretaria/entidade municipal contratante.
+
+14.5 Prestação de Contas da Organização Social para o Órgão ou Entidade
+     Contratante
+
+                                                            48
+                        Manual de Contratos de Gestão firmados com
+                            Organizações Sociais na Área de Saúde
+
+ Avaliar se todos os documentos exigidos para prestação de contas, conforme
+    disposto no item 14.1, constam do processo da prestação de contas
+    elaborada pela Organização Social.
+
+ Conferir a conciliação bancária com os extratos bancários do período,
+    observando se os saldos estão coerentes. Atentar para a completude dos
+    extratos bancários, de forma que o saldo apresentando no extrato atual seja
+    igual ao saldo final do extrato apresentado na prestação de contas
+    imediatamente anterior.
+
+ Averiguar se a Organização Social utiliza apenas a conta bancária específica
+    para movimentação dos repasses.
+
+ Confirmar ser a aplicação obrigatória do saldo dos recursos financeiros está
+    sendo feita conforme determina a legislação.
+
+ Atentar para existência de empréstimos entre contratos de gestão firmados
+    pela Organização Social no âmbito da Prefeitura da Cidade do Rio de Janeiro
+    (PCRJ), prática esta que deve ser evitada. Na existência de eventuais
+    situações, solicitar conciliação com identificação dos contratos devedores e
+    dos contratos credores, de modo a verificar se o saldo líquido é zero.
+    Adicionalmente é possível que se confira os saldos da conciliação na
+    prestação de contas de cada contrato.
+
+ Verificar se os valores dos repasses recebidos pelas Organizações Sociais
+    estão de acordo com o previsto no cronograma de desembolso estabelecido
+    para o contrato. Avaliar a necessidade de se efetivar o próximo repasse nos
+    casos eventuais de a Organização Social contar com saldos significativos
+    ainda não utilizados.
+
+ Verificar se todos os itens da Relação de Pagamentos apresentados na
+    prestação de contas foram inseridos no Painel de Gestão ­ Painel OSINFO
+    (nota fiscal, recibo de pagamento de autônomo).
+
+ Avaliar se as despesas listadas na Relação de Pagamentos são vinculadas
+    ao objeto do contrato, atentando para a existência de despesas não previstas
+    na planilha de custos do contrato estranhas ao objeto do contrato de gestão.
+
+ Averiguar se as despesas administrativas apresentadas pela Organização
+    Social estão dentro do limite percentual determinado no contrato de gestão.
+
+ Realizar um exame criterioso dos documentos fiscais apresentados nas
+    prestações de contas, através do Painel OSINFO, atentando, principalmente,
+    para:
+
+                                                       49
+                        Manual de Contratos de Gestão firmados com
+                            Organizações Sociais na Área de Saúde
+
+         o A data do documento coincide com o período ao qual se está
+             prestando contas.
+
+         o O destinatário é a Organização Social.
+         o A nota fiscal não está cancelada.
+         o A descrição do serviço/produto está clara e detalhada.
+         o Documento se encontra sem rasuras.
+         o Não existência de documentos apresentados em duplicidade.
+
+ Verificar se os repasses realizados estão suportados pela apresentação da
+    prestação de contas anterior devidamente aprovada.
+
+ Tomar conhecimento e acompanhar as recomendações emitidas pela
+    Controladoria Geral do Município do Rio de Janeiro (CGM-RIO) e Tribunal de
+    Contas do Município do Rio de Janeiro (TCM-RJ), para exames realizados no
+    contrato de gestão o qual fiscalizam. No que competir à fiscalização, adotar
+    providências para correção dos problemas levantados e para evitar
+    reincidências.
+
+ Avaliar se a Organização Social está respeitando a vedação de cobrança de
+    taxa de administração, monitoramento, acompanhamento, gerência ou
+    similares, caso esta exista.
+
+ Emitir parecer final de análise financeira informando sobre a adequação dos
+    valores de receitas e despesas apresentados com os documentos
+    comprobatórios e sua vinculação ao contrato de gestão, e sobre a existência
+    de pendências de aspecto financeiro ainda não solucionadas pela
+    Organização Social.
+
+ Acompanhar a execução orçamentária do contrato por meio de análise
+    periódica (Relatório FCTRR 15100 ­ Relação dos dados do instrumento
+    contratual e sua execução, visão: por instrumento contratual, emitido pelo
+    sistema FINCON).
+
+                                                       50
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+14.6 Recursos Humanos e Obrigações Trabalhistas e Previdenciárias
+
+     Verificar se os valores, limites e critérios de remuneração de dirigentes e de
+         empregados das Organizações Sociais estão de acordo com o definido no
+         contrato de gestão, por meio de consulta à folha de pagamento.
+
+     Realizar inspeções periódicas a fim de certificar-se das frequências dos
+         funcionários prevista no contrato de gestão.
+
+     Verificar a ocorrência de faltas ou horas trabalhadas a menor, comparando a
+         planilha de controle com a folha de pagamento, efetuando, se for o caso,
+         glosa do repasse.
+
+     Avaliar se as informações dos colaboradores e empregados das
+         Organizações Sociais estão atualizadas no CNES (Cadastro Nacional de
+         Estabelecimento de Saúde), nos contratos de gestão da saúde.
+
+     Avaliar se o saldo da conta bancária específica para repasses a título de
+         provisionamento para verbas rescisórias e encargos trabalhistas está
+         compatível com repasses efetivados.
+
+     Verificar se a concessão de benefícios aos empregados está de acordo com o
+         previsto no Contrato de Gestão.
+
+     Conferir, por amostragem, os valores das anotações nas Carteiras de
+         Trabalho e Previdência Social (CTPS) dos empregados, verificando se elas
+         coincidem com os valores da planilha de custo do contrato.
+
+     Realizar, por meio de amostragem, entrevista junto aos empregados de modo
+         a verificar se a empresa está pagando salário, férias, 13º salário, vale-
+         transporte e vale-alimentação, quando cabível.
+
+     Verificar as guias de recolhimento dos encargos atentando para autenticidade
+         e exatidão, confrontando com informações da folha de pagamento e
+         verificando a autenticação mecânica do pagamento.
+
+     Confirmar se os recolhimentos de tributos e encargos estão sendo realizados
+         dentro do prazo legal e, consequentemente, sem multas e juros.
+
+     Avaliar, se possível, se os salários pagos respeitam os pisos estabelecidos
+         para as respectivas categorias.
+
+     Avaliar se há similaridade entre os salários praticados pela organização social
+         para uma mesma categoria.
+
+                                                            51
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+     Verificar a utilização de uniformes pelos empregados, quando previsto em
+         contrato.
+
+     Verificar a utilização dos equipamentos de segurança do trabalho pelos
+         empregados, quando previsto em contrato.
+
+14.7 Controle Patrimonial
+
+     Verificar se os bens adquiridos pela Organização Social estão sendo
+         utilizados conforme o objetivo social de sua aquisição.
+
+     Avaliar se a Organização mantém controle efetivo sobre a utilização e
+         movimentação dos bens permanentes.
+
+     Verificar se todos os bens adquiridos pela Organização Social foram
+         inventariados pela Secretaria no Sistema de Controle de Bens Patrimoniais.
+
+14.8 Avaliação das Metas
+
+     Avaliar o real cumprimento das metas pré-estabelecidas e a adequação dos
+         indicadores apresentados pela Organização Social, conforme a seguir:
+
+             o Verificar se os valores informados para a meta estão respaldados por
+                  documentação suporte que comprove a geração desses números.
+
+             o Validar a veracidade das informações apresentadas na documentação
+                  suporte analisada, através de inspeções físicas (ou outros testes).
+
+             o Confirmar se a apuração da meta é realizada de acordo com os
+                  critérios estabelecidos no contrato de gestão (fórmula de cálculo,
+                  metodologia de apuração, periodicidade).
+
+             o Avaliar se os requisitos de qualidade previstos para as metas estão
+                  sendo cumpridos.
+
+             o Revisar anualmente as metas, com o intuito de verificar a necessidade
+                  de melhoria de forma que as metas e indicadores a serem
+                  estabelecidos possam efetivamente mediar a prestação dos serviços
+
+             o Elaborar relatório final conclusivo contendo avaliação dos resultados
+                  alcançados quanto aos objetivos propostos e o percentual de metas
+
+                                                            52
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+                  alcançadas e não alcançadas, informando os motivos no caso do não
+                  atingimento das metas.
+
+14.9 Manutenção dos Requisitos de Qualificação/habilitação
+
+                 Outros verificações, não necessariamente ligadas à atuação da CTA
+devem ser adotadas como boa prática, dentre as quais destacamos:
+
+               Verificar se a entidade mantém os requisitos necessários para a
+         qualificação como Organização Social (art. 2° e 3° Lei 5.026/09). Dentre
+         outros, atentar para os seguintes:
+
+               Obrigatoriedade de publicação anual , no Diário Oficial do Município,
+         dos relatórios financeiros e do relatório de execução do contrato de gestão do
+         Município.
+
+               Verificar os documentos comprobatórios de que a entidade mantém,
+         em seu quadro de pessoal, profissionais com formação específica para
+         gestão de atividades a serem desenvolvidas na área de atuação, com notória
+         competência e experiência para qual foi concedida a qualificação.6
+
+               Verificar, ainda, os documentos comprobatórios de que a entidade
+         mantém, em seu quadro de pessoal, um profissional técnico médico, detentor
+         do respectivo cartão de anotação de responsabilidade técnica, emitido pelo
+         Conselho Regional de Medicina do Estado da sede da instituição e um
+         profissional responsável técnico de enfermagem, detentor do respectivo
+         cartão de anotação de responsabilidade técnica emitido pelo Conselho
+         Regional de Enfermagem do Estado da sede da instituição.7
+
+               Manter atualizado um controle das certidões negativas (INSS, FGTS,
+         tributos federais, estaduais e municipais) através de consultas a sites. Atentar
+         para o vencimento de cada tipo de certidão.
+
+        Além disso, verificar, periodicamente, o desempenho da Organização Social
+    em outros Municípios, Estados e/ou União. Caso a entidade for declarada
+    inidônea para contratar e/ou suspensa temporariamente de participar em licitação
+    por algum deles, informar à secretaria/entidade contratante para as providências
+    cabíveis.
+
+6 Inciso IV do Artigo 2º da Lei nº 5.026/2009 com redação dada pelo Artigo 2º da Lei nº 6.220/2017.
+7 Artigo 2º da Resolução SMS nº 3.890/2019
+
+                                                            53
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+15 SANÇÕES ADMINISTRATIVAS
+
+16 APURAÇÃO DE RESPONSABILIDADE
+
+        A Responsabilidade Administrativa e/ou Disciplinar em razão de infrações
+cometidas no âmbito da Central de Regulação Unificada, instituída pela Resolução
+SMS nº 3.772, de 02 de agosto de 2018, se caracteriza com a criação de dificuldade,
+de qualquer natureza, ou o impedimento ao exercício das funções da Autoridade
+Sanitária no território do Município do Rio de Janeiro, nos termos do ACORDO entre
+o Município do Rio de Janeiro ­ Secretaria Municipal de Saúde, o Estado do Rio de
+Janeiro ­ Secretaria de Estado de Saúde, a União Federal ­ Ministério da Saúde ­
+Secretaria de Atenção à Saúde ­ Departamento de Gestão Hospitalar, o Ministério
+Público Federal e a Defensoria Pública da União.
+
+        A Autoridade Sanitária do território do Município do Rio de Janeiro e o Plano
+de Regulação Unificada, responsável pela regulação única dos leitos, urgência e
+emergência, consultas-exames e procedimentos na cidade do Rio de Janeiro,
+deverá determinar a imediata instauração do procedimento de responsabilização
+administrativa e/ou disciplinar de qualquer agente público, a ele subordinado, que
+dificulte ou impeça o regular funcionamento da Central de Regulação Unificada.
+
+        Quando o ato irregular for imputado, inicialmente, a agentes de entidades
+prestadoras de serviços a qualquer título, como Organizações Sociais, a autoridade
+administrativa municipal que tiver ciência da prática do ato irregular deverá reunir
+toda a documentação pertinente e encaminhá-la ao agente empregador para adoção
+das medidas cabíveis.
+
+        Caso seja comprovada a infração administrativa/disciplinar, a Organização
+Social estará sujeita às sanções administrativas previstas no termo de ajuste firmado
+entre as partes, na forma da Lei Municipal nº 5.026/2009 ou da Lei Federal nº
+8.666/1993, conforme o caso.
+
+17 FISCALIZAÇÃO DO CONTROLE EXTERNO
+
+        A fiscalização da aplicação de quaisquer recursos repassados pelo Município,
+autarquias, fundações instituídas e mantidas pelo poder público e demais órgãos e
+entidades da administração pública municipal mediante contratos de gestão,(...) e
+outros instrumentos congêneres, a qualquer pessoa, física ou jurídica, pública ou
+privada, será feita pelo Tribunal por meio de auditorias, levantamentos, inspeções,
+visitas técnicas, acompanhamentos e monitoramentos, bem como por ocasião do
+
+                                                            54
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+exame dos processos de tomadas ou prestações de contas da unidade ou entidade
+transferidora dos recursos.
+
+        Para o cumprimento do previsto neste item, deverão ser verificados, entre
+outros aspectos, o atingimento dos objetivos acordados, a correção da aplicação dos
+recursos, a observância às normas legais e regulamentares pertinentes e às
+cláusulas pactuadas.
+
+        Ficará sujeito à multa prevista no art. 3º da Lei nº 3.714, de 2003, que dispõe
+sobre a aplicação de sanções pelo Tribunal de Contas do Município do Rio de
+Janeiro, a autoridade administrativa que transferir, mediante convênio, acordo,
+ajuste ou outros instrumentos congêneres, recursos municipais a gestores omissos
+na prestação de contas de recursos anteriormente recebidos ou que tenham dado
+causa à perda, extravio ou outra irregularidade de que resulte dano ao erário, ainda
+não ressarcido.
+
+        A autoridade administrativa competente deverá adotar providências com
+vistas à instauração de tomada de contas especial no caso de omissão na prestação
+de contas ou quando constatar irregularidade na aplicação dos recursos municipais
+transferidos, nos termos do art. 158 da Deliberação TCMRJ nº 266, de 2019, sob
+pena de ser responsabilizada solidariamente.
+
+18 LEGISLAÇÃO APLICÁVEL
+
+         Neste tópico consta a legislação municipal que trata das Organizações Sociais e a
+legislação aplicável aos contratos, sendo recomendável que os integrantes da Comissão de
+Avaliação tomem conhecimento deste conteúdo.
+
+   I. Lei Federal nº 8.666, de 21/06/1993, que regulamenta o art. 37, inciso XXI, da
+         Constituição Federal, institui normas para licitações e contratos da Administração
+         Pública e dá outras providências;
+
+  II. Lei Municipal nº 6.260, de 11/10/2017, que restringe o Objeto de Contratos de
+         Gestão celebrados entre o Município do Rio de Janeiro e Organizações Sociais da
+         área de saúde, e dá outras providências;
+
+ III. Lei Municipal nº 6.258, de 11/10/2017, que trata da proibição da contratação de
+         membros dos Conselhos Municipal e Distrital de Saúde pelas organizações sociais,
+         empresas e demais entidades que prestem serviços terceirizados na área de saúde
+         pública;
+
+ IV. Lei Municipal nº 6.220, de 03/07/2017, que altera a Lei nº 5.026, de 2009 na forma
+         que menciona;
+
+  V. Lei Municipal nº 6.153, de 27/04/2017, que trata da divulgação dos preços pagos por
+         medicamentos e serviços por parte das Organizações Sociais e da Secretaria
+         Municipal de Saúde;
+
+                                                            55
+                             Manual de Contratos de Gestão firmados com
+                                  Organizações Sociais na Área de Saúde
+
+  VI. Lei Municipal nº 5.026, de 19/05/2009, que dispõe sobre a qualificação de entidades
+          como Organizações Sociais e dá outras providências;
+
+ VII. Lei Municipal nº 207, de 19/12/1980, que institui o Código de Administração
+          Financeira e Contabilidade Pública do Município do Rio de Janeiro;
+
+VIII. Decreto Rio 46.356, de 09/08/2019, que Gerenciais de Material - SIGMA ou de
+          ferramenta corporativa de gestão e gerenciamento de estoques que venha a lhe
+          substituir, pertencente ao Município do Rio de Janeiro, às Empresas Terceirizadas
+          ou às Organizações Sociais que possuam contratos de prestação de serviço
+          vigentes e/ou contratos de gestão firmados com os Órgãos ou Entidades da
+          Administração Direta e Indireta.
+
+  IX. Decreto Rio nº 46.029, de 30/05/2019, que dispõe sobre a estrutura organizacional
+          da Secretaria Municipal de Fazenda;
+
+  X. Decreto Rio nº 45.651, de 05/02/2019, que regulamenta a Lei Municipal nº 6.260, de
+          11/10/2017, que restringe o objeto de Contratos de Gestão celebrados entre o
+          Município do Rio de Janeiro e Organizações Sociais da Área de Saúde, e dá outras
+          providências;
+
+  XI. Decreto Rio nº 45.632, de 24/01/2019, que altera o Regulamento aprovado pelo
+          Decreto nº 30.780, de 2/06/2009, que regulamenta a Lei Municipal nº 5.026, de
+          19/05/2009, que dispõe sobre a qualificação de entidades como Organizações
+          Sociais, institui o Grupo de Trabalho Permanente de Qualificação e Desqualificação
+          ­ GTQ, e dá outras providências;
+
+ XII. Decreto Rio nº 45.631, de 23/01/2019, que atribui eficácia normativa e vinculante ao
+          PARECER PG/GAB/03/2018/RAOCG e determina a não aplicação do inciso VI do
+          art. 2º da Lei nº 5.026, de 19/05/2009, que dispõe sobre a qualificação de entidades
+          como organizações sociais e dá outras providências, e dos arts. 1º e 3º da Lei nº
+          6.220, de 03/07/2017, que altera a Lei nº 5.026, de 2009 na forma que menciona, no
+          âmbito da Administração Pública Municipal;
+
+XIII. Decreto Rio nº 45.196, de 15/10/2018, que revoga o Decreto Rio nº 40.304, de
+          24/06/2015, que limita o número de contratos de gestão no âmbito da Secretaria
+          Municipal de Saúde com uma mesma unidade, e o Decreto Rio nº 41.193, de
+          05/01/2016, que estabelece limite para o número de contratos de gestão no âmbito
+          da Secretaria Municipal de Saúde com uma mesma Organização Social;
+
+XIV. Decreto Rio nº 44.859, de 07/08/2018, que dispõe sobre as competências da
+          Macrofunção de acompanhamento do orçamento e da execução dos serviços da
+          Saúde prestados por intermédio de Organizações Sociais ­ MAPS, instituída por
+          intermédio do Decreto Rio nº 44.738, de 19/07/2018;
+
+XV. Decreto Rio nº 44.738, de 19/07/2018, que institui a Macrofunção de
+          acompanhamento do orçamento e da execução dos serviços da Saúde prestados
+          por intermédio de Organizações Sociais;
+
+                                                             56
+        Manual de Contratos de Gestão firmados com
+            Organizações Sociais na Área de Saúde
+
+XVI. Decreto Rio nº 44.025, de 05/12/2017, que regulamenta a Lei nº 6.163, de
+          27/04/2017, que trata da divulgação dos preços pagos por medicamentos e serviços
+          por parte das Organizações Sociais e da Secretaria Municipal de Saúde, e dá outras
+          providências;
+
+XVII.   Decreto Rio nº 43.562, de 15/08/2017, que altera os modelos de minutas-padrão
+        aprovadas pelos Decretos Rio nos 41.081, 41.082 e 41.083, de 9 de dezembro de
+        2015 e pelos Decretos Rio nos 42.695, 42.696, 42.697, 42.698, 42.699 e42.700, de
+        26 de dezembro de 2016, para inclusão de cláusulas e disposições sobre medidas
+        anticorrupção, e dá outras providência;
+
+XVIII.  Decreto Rio nº 41.216, de 18/01/2016, que institui Programa de Capacitação de
+        servidores que atuam na fiscalização de contratos de gestão ­ PCFOS e dá outras
+        providências;
+
+XIX. Decreto Rio nº 41.214, de 18/01/2016, que dispõe sobre a transparência das
+          aquisições e contratações de obras e serviços pelas Organizações Sociais nos
+          Contratos de Gestão celebrados com o Município;
+
+XX. Decreto Rio nº 41.213, de 18/01/2016, que dispõe sobre a proibição de contratação
+         de Pessoa Jurídica que tenha em seu Quadro Societário cônjuge ou parentes de
+         Diretores ou Conselheiros da Organização Social nos Contratos de Gestão
+         celebrados com o Município;
+
+XXI. Decreto Rio nº 41.212, de 18/01/2016, que dispõe sobre a proibição de contratação
+          de cônjuges ou parentes nos Contratos de Gestão celebrados com o Município;
+
+XXII.   Decreto Rio nº 41.211, de 18/01/2016, que dispõe sobre o registro das informações
+        dos colaboradores e empregados das Organizações Sociais no CNES ­ Cadastro
+        Nacional de Estabelecimentos de Saúde;
+
+XXIII. Decreto Rio nº 41.210, de 18/01/2016, que determina o monitoramento de preços
+            praticados pelas Organizações Sociais;
+
+XXIV.   Decreto Rio nº 41.208, de 18/01/2016, que dispõe sobre as compras e contratações
+        de serviços realizadas pelas Organizações Sociais, nos contratos de gestão firmados
+        com a Secretária Municipal de Saúde ­ SMS;
+
+XXV.    Decreto Rio nº 41.207, de 18/01/2016, que dispõe sobre os bens permanentes
+        adquiridos por entidade reconhecida como Organização Social no âmbito da
+        Secretária Municipal de Saúde ­ SMS;
+
+XXVI.   Decreto nº 38.300, de 13/02/2014, que dá nova redação à alínea "c", do inciso I, do
+        art. 1º e inclui os §§ 4º, 5º e 6º ao mesmo art. 1º do ANEXO ÚNICO ao Decreto "N"
+        nº 30.780, de 02/06/2009 e dá outras providências;
+
+XXVII. Decreto nº 37.079, de 30/04/2013, que institui o Painel de Gestão das Parcerias com
+             Organizações Sociais;
+
+        57
+          Manual de Contratos de Gestão firmados com
+              Organizações Sociais na Área de Saúde
+
+XXVIII.   Decreto nº 35.645, de 16/05/2012, que dispõe sobre a obrigação das Organizações
+          Sociais contratarem os serviços de segurança e vigilância fornecidos pelo Programa
+          Estadual de Integração na Segurança ­ PROEIS;
+
+XXIX. Decreto nº 35.129, de 16/02/2012, que limita o percentual de gastos dos contratos de
+            gestão com uma mesma entidade;
+
+XXX. Decreto nº 34.108, de 11/07/2011, que disciplina o Processo Administrativo de
+            Desqualificação de Organizações Sociais e dá outras providências;
+
+XXXI. Decreto nº 33.536, de 25/03/2011, que estabelece procedimentos para o controle e
+            apuração de frequência, na forma que menciona;
+
+XXXII.    Decreto nº 33.010, de 03/11/2010, que dispõe sobre critérios para aplicação
+          financeira dos saldos de recursos transferidos a Organizações Sociais, por conta de
+          contratos de gestão firmados com a municipalidade;
+
+XXXIII. Decreto nº 31.897, de 11/02/2010, que altera o Decreto nº 30.780, de 02/06/2009;
+
+XXXIV. Decreto nº 31.618, de 18/12/2009, que altera o Decreto nº 30.780, de 02/06/2009 e
+              dá outras providências;
+
+XXXV.     Decreto nº 30.907, de 23/07/2009, que determina requisito para entidades
+          qualificadas como Organizações Sociais nos termos da Lei Municipal nº 5.026, de
+          19/05/2009, e dá outras providências;
+
+XXXVI.    Decreto nº 30.780, de 02/06/2009, que regulamenta a Lei Municipal nº 5.026, de
+          19/05/2009, que dispõe sobre a qualificação de entidades como organizações sociais
+          e dá outras providências;
+
+XXXVII.   Decreto nº 3.221, de 18/09/1981, que aprovou o Regulamento Geral do Código de
+          Administração Financeira e Contabilidade Pública do Município do Rio de Janeiro
+          (RGCAF) e atualizações;
+
+XXXVIII.  Deliberação CODESP nº 140, de 05/09/2019, que altera a Instrução Normativa
+          CODESP nº 02/2018, que estabelece procedimentos para o monitoramento e
+          controle da execução dos Contratos de Gestão, no âmbito da Secretaria Municipal
+          de Saúde e dá outras providências;
+
+XXXIX. Deliberação CGTIC-Rio nº 1, de 28/03/2018, que regulamenta a Política de
+              Segurança da Informação ­ PSI da Prefeitura da Cidade do Rio de Janeiro ­ PCRJ;
+
+XL. Resolução Conjunta CVL/SMF/SMS nº 41, de 15/03/2019, que altera a Resolução
+         Conjunta CVL/SMF/SMS nº 40, de 20/12/2018, que institui a Relação Municipal de
+         Procedimentos Diagnósticos, Exames Laboratoriais, Material Médico Hospitalar, no
+         âmbito do Município do Rio de Janeiro e dá outras providências, para incluir o Anexo
+         V;
+
+XLI. Resolução Conjunta CVL/SMF/SMS nº 40, de 20/12/2018, que institui a Relação
+          Municipal de Procedimentos Diagnósticos, Exames Laboratoriais, Material Médico
+          Hospitalar, no âmbito do Município do Rio de Janeiro e dá outras providências;
+
+          58
+         Manual de Contratos de Gestão firmados com
+             Organizações Sociais na Área de Saúde
+
+XLII.    Resolução PGM nº 922, de 09/04/2019, que aprova o Enunciado nº 45 da
+         Procuradoria Geral do Município que trata da dispensa da Certificação de Entidade
+         Beneficente de Assistência Social ­ CEBAS para outorga de qualificação como
+         Organização Social, bem como para as entidades já qualificadas pelo Poder Público
+         Municipal, que atuam no segmento da Saúde;
+
+XLIII.   Resolução CVL nº 189, de 06/09/2019, que aprova as minutas -padrão relacionadas
+         à convocação pública para parceria com organização social, e dá outras
+         providências.
+
+XLIV.    Resolução SMS nº 4.081, de 04/07/2019, que regulamenta procedimentos de
+         acompanhamento e liberação de recursos dos contratos de gestão pela Comissão
+         Técnica de Acompanhamento (CTA) e Comissão Especial de Avaliação ­ CEA;
+
+XLV.     Resolução SMS nº 3.995, de 25/02/2019, que estabelece fluxo procedimental no que
+         tange à aplicação de penalidades no âmbito dos Contratos de Gestão pactuados por
+         intermédio da Secretaria Municipal de Saúde;
+
+XLVI.    Resolução SMS nº 3.890, de 07/02/2019, que regulamenta o inciso IV do artigo 2º da
+         Lei nº 5.026, de 19/05/2009, que dispõe sobre a qualificação de entidades como
+         Organizações Sociais e dá outras providências, com redação dada pelo artigo 2º da
+         Lei nº 6.220, de 03/07/2017 e dá outras providências;
+
+XLVII.   Resolução SMS nº 3.772, de 02/08/2018, que determina a apuração de
+         responsabilidade administrativa e/ou disciplinar em razão de infrações cometidas no
+         âmbito da Central de Regulação Unificada do Município do Rio de Janeiro;
+
+XLVIII.  Resolução CGM nº 1.485, de 08/03/2019, que orienta os gestores e responsáveis
+         pela execução orçamentária da Administração Municipal da Prefeitura do Rio de
+         Janeiro quanto à Classificação Orçamentária para fins de registro contábil das
+         Transferências de Recursos Financeiros a Entidades Privadas sem Fins Lucrativos,
+         de acordo com os preceitos do Manual de Contabilidade Aplicada ao Setor Público
+         (MCASP);
+
+XLIX.    Resolução CGM que aprova os roteiros orientadores para a emissão de Declaração
+         de Conformidade dos atos de autorização de despesa no âmbito da Administração
+         Direta e Indireta do Município do Rio de Janeiro e dá outras providências (Anexo VII
+         ­ Contrato de Gestão com Organizações Sociais);
+
+L. Resolução CGM que aprova os roteiros orientadores para a emissão de Declaração
+       de Conformidade na fase de liquidação da despesa no âmbito da Administração
+       Direta, Indireta e Fundacional do Município do Rio de Janeiro e dá outras
+       providências (Exame da Liquidação da Despesa ­ Contratos de Gestão);
+
+LI. Resolução CGM nº 1.224, de 11/03/2016, que institui a prestação de contas de
+        contratos de gestão com Organizações Sociais de que trata a Lei nº 5.026/2009,
+        que deverá ser remetida à Controladoria Geral do Município ­ CGM, para fins de
+        certificação pela Auditoria Geral;
+
+         59
+                             Manual de Contratos de Gestão firmados com
+                                 Organizações Sociais na Área de Saúde
+
+ LII. Resolução Conjunta CGM/SMS nº 86, de 27/10/2016, que regulamenta os
+          procedimentos para o monitoramento de preços previsto nos Decretos nº
+          41.208/2016, nº 41.209/2016 e nº 41.210/2016;
+
+LIII. Resolução Conjunta CGM/SMS nº 85, de 27/10/2016, que regulamenta os
+          procedimentos para registro, controle e movimentação de bens permanentes
+          adquiridos por entidade reconhecida como Organização Social, no âmbito da
+          Secretaria Municipal de Saúde, previsto no Decreto nº 41.207/2016;
+
+LIV. Portaria S/SUBSCOM nº 1, de 22/05/2018, que regulamenta o artigo 9º da
+          Resolução Conjunta CGM/SMS nº 86, de 27/10/2016.
+
+                                                             60
+

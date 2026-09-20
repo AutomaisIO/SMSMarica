@@ -1,0 +1,626 @@
+1
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+TRATAMENTO DE 
+MANIFESTAÇÕES DA 
+OUVIDORIA-GERAL DO SUS
+Atenção!
+Ouvidoria-Geral do SUS
+OuvSUS
+
+2
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+SUMÁRIO
+Introdução
+	
+Sistema OuvidorSUS
+	
+Canais de atendimento da Ouvidoria-Geral 
+do SUS (OuvSUS)
+Etapas do tratamento da manifestação
+ 
+01. Recebimento e Classificação
+	
+02. Análise e Encaminhamento
+	
+03. Acompanhamento e Monitoramento
+	
+04. Resposta ao manifestante
+Tratamento de manifestações na Ouvidoria-Geral 
+do SUS
+Princípios orientadores
+Referências Normativas e Operacionais
+03
+05
+06
+08
+08
+10
+12
+14
+16
+17
+18
+
+3
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+Introdução
+	
+A Ouvidoria-Geral do Sistema Único de Saúde (OuvSUS) foi cria-
+da em 2003, por meio do Decreto nº 4.726, com a missão de promo-
+ver e estruturar canais de comunicação abertos, acessíveis e eficazes 
+entre o SUS e a população. Seu objetivo é garantir aos(às) cidadãos(ãs) 
+o acesso às informações sobre o direito à saúde e sobre as formas de 
+exercê-lo, além de estimular e integrar práticas que ampliem a par-
+ticipação dos(as) usuários(as) na avaliação das ações e dos serviços 
+públicos de saúde. 
+	
+Como instância estratégica do controle social e da gestão parti-
+cipativa, a OuvSUS atua no fortalecimento da democracia e da trans-
+parência, contribuindo para a melhoria contínua das políticas públicas 
+de saúde. Seu funcionamento articula-se com as ouvidorias estadu-
+ais, municipais e do Distrito Federal, formando a Rede Nacional de 
+Ouvidorias do SUS. 
+	
+Este documento mostra como a Ouvidoria-Geral do SUS, do Mi-
+nistério da Saúde, organiza o atendimento às manifestações recebi-
+das da população. Ele explica os passos que são seguidos dentro da 
+OuvSUS, de forma clara e de acordo com as leis e normas em vigor, 
+dando destaque para três pontos importantes: resolução dos proble-
+mas, transparência e incentivo à participação social. 
+	
+A criação deste documento segue o que está previsto na: 
+principalmente nas seguintes orientações : 
+•	 Artigo 21: 
+	
+- as ouvidorias do governo federal devem organizar e divulgar pu-
+blicamente seus fluxos de trabalho, por meio do site oficial do órgão. 
+Portaria Normativa da Controladoria-Geral da 
+União (CGU) nº 116/2024, 
+
+4
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+•	 Artigo 22: 
+	
+- o processo de tratamento das manifestações deve incluir, no mí-
+nimo: 
+	
+1. receber a manifestação, seja por internet, carta, telefone ou pre-
+sencialmente; 
+	
+2. registrar a manifestação na Plataforma Fala.BR; 
+	
+3. analisar a manifestação e encaminhá-la corretamente para a 
+área técnica responsável; 
+	
+4. pedir mais informações ao(à) cidadão(ã), se necessário; 
+	
+5. encaminhar para outro órgão, se o assunto não for da compe-
+tência da ouvidoria; 
+	
+6. encaminhar para a área técnica responsável; 
+	
+7. elaborar e enviar a resposta final ao(à) cidadão(ã). 
+	
+De acordo com a Lei nº 13.460/2017, qualquer pessoa pode 
+apresentar uma manifestação sobre os serviços públicos, e isso deve 
+ser feito com a identificação do(a) manifestante. Essa manifestação 
+pode ser enviada pela internet, por carta ou feita pessoalmente (nes-
+se caso, deve ser registrada pela ouvidoria). 
+nenhuma 
+manifestação pode 
+ser recusada pela 
+ouvidoria;
+a identidade do(a) ci-
+dadão(ã) será protegi-
+da, conforme a Lei de 
+Acesso à Informação 
+(Lei nº 12.527/2011); 
+quando se tratar de uma denúncia, a 
+proteção da identidade do(a) 
+manifestante é ainda mais 
+rigorosa, como estabelece o 
+Decreto nº 10.153/2019. 
+
+5
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+que a manifestação 
+seja recebida por 
+qualquer meio
+ (internet, carta ou 
+presencialmente); 
+que seja encami-
+nhada corretamente, 
+mesmo que tenha 
+sido recebida fora da 
+ouvidoria; 
+que a identidade do(a) 
+cidadão(ã) seja protegida, conforme 
+a legislação de proteção de dados 
+e de acesso à informação. 
+	
+A mesma lei também garante que: 
+ 
+Por isso, o fluxo de tratamento das manifestações dentro da ou-
+	
+Sistema OuvidorSUS 
+	
+O OuvidorSUS é o sistema usado pela OuvSUS desde 2007 para 
+registrar e tratar as manifestações da população usuária do SUS. Ele 
+foi criado por meio da Portaria GM/MS nº 8, de 25 de maio de 2007, 
+e é a principal ferramenta da OuvSUS. 
+	
+Com o OuvidorSUS é possível receber qualquer tipo de manifes-
+tação sobre a saúde pública, como reclamações, denúncias, suges-
+tões, elogios, solicitações e pedidos de informação. O Sistema orga-
+niza essas manifestações e envia, de forma eletrônica, para as áreas 
+responsáveis do Ministério da Saúde ou para as Ouvidorias estaduais 
+e municipais de saúde. 
+	
+Além disso, o Sistema ajuda a divulgar informações de saúde, 
+analisar os dados recebidos e apoiar estrategicamente a gestão das 
+Ouvidorias. 
+
+6
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+	
+O OuvidorSUS está integrado à Plataforma Fala.BR, que é o canal 
+oficial do governo federal para manifestações e pedidos de acesso à 
+informação. Esta integração facilita o acesso da população e garante 
+RECEBIMENTO DE CLASSIFICAÇÃO CONFORME O SISTEMA
+Classificação
+Sistema OuvidorSUS
+Plataforma Fala.BR
+Elogio
+Sugestão
+Solicitação
+Reclamação
+Denúncia
+Pedido de Acesso à 
+Informação
+	
+Canais de atendimento da Ouvidoria-Geral do SUS 
+(OuvSUS)  
+	
+A OuvSUS garante o sigilo e, quando solicitado, o anonimato das 
+pessoas que registram manifestações. Tal conduta ajuda a proteger 
+quem se manifesta e incentiva a participação da população no aper-
+feiçoamento dos serviços de saúde.
+	
+Qualquer cidadão(ã) pode procurar a OuvSUS para:
+pedir informações 
+sobre o SUS; 
+solicitar serviços ou
+insumos de saúde; 
+fazer reclamações ou
+denúncias; 
+comunicar 
+irregularidades; 
+enviar sugestões 
+ou elogios. 
+
+7
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+	
+Além de receber todos esses tipos de manifestações, a OuvSUS 
+também informa a população sobre saúde, divulgando campanhas, 
+programas e ações do Ministério da Saúde. 
+	
+A seguir, estão os principais canais de atendimento da OuvSUS: 
+Internet
+Carta ou atendimento presencial
+- Esplanada dos Ministérios, Bloco G, Edifício Sede, Térreo – 
+Brasília/DF – CEP: 70058-900 
+- Esplanada dos Ministérios, Bloco O, 3º andar – Brasília/DF 
+– CEP: 70058-900
+Telefone
+WhatsApp
+Envie sua mensagem 
+diretamente pelo 
+WhatsApp da Ouvidoria, 
+através do número:
+0800 275 0620
+Formulário eletrônico 
+OuvidorSUS
+Chatbot
+Plataforma Fala.BR
+
+8
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+Etapas do tratamento da manifestação 
+ 
+01. Recebimento e Classificação  
+Registro no Sistema OuvidorSUS ou Plataforma Fala.BR 
+	
+A manifestação é registrada no Sistema OuvidorSUS 
+ou na Plataforma Fala.BR. O processo é feito diretamente 
+pelo(a) usuário(a) ou por um colaborador da OuvSUS. 
+Avaliação dos dados recebidos
+	
+A equipe da OuvSUS confere se a manifestação tem 
+informações suficientes, como datas, locais e pessoas en-
+volvidas. Também verifica se o conteúdo é claro e compre-
+ensível.
+Classificação conforme tipologia e órgão competente
+ 
+A OuvSUS identifica o tipo de registro (reclamação, 
+denúncia, sugestão, elogio, solicitação ou pedido de infor-
+mação) e, com base nisso, direciona a manifestação ao ór-
+gão ou setor mais adequado para responder. 
+Solicitação de complementação, se necessário
+	
+Se faltar alguma informação essencial na manifesta-
+ção, a OuvSUS entra em contato com o(a) cidadão(ã) para 
+pedir a complementação dos dados. O prazo para resposta 
+é de 20 dias. Se não houver resposta do(a) cidadão(ã) den-
+tro desse prazo, a manifestação é arquivada. 
+
+9
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+01.
+Recebimento
+e Classificação
+Registro no Siste-
+ma OuvidorSUS ou 
+Plataforma Fala.BR 
+Classificação con-
+forme tipologia e 
+órgão competente
+Solicitação de 
+complementação, 
+se necessário
+Avaliação dos 
+dados recebidos
+FIGURA 1. Recebimento e Classificação
+
+10
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+	
+02. Análise e Encaminhamento
+Análise do conteúdo da manifestação
+	
+A equipe da OuvSUS avalia o relato do(a) cidadão(ã), 
+levando em conta o contexto, a relevância do tema e os 
+possíveis desdobramentos técnicos ou jurídicos. 
+Verificação de manifestações parecidas
+ 
+É feita uma busca no Sistema para identificar manifes-
+tações semelhantes, ou sobre o mesmo assunto, já regis-
+tradas pela mesma pessoa. 
+Encaminhamento ao setor responsável
+	
+A manifestação é enviada para o setor mais adequa-
+do, que pode ser: 
+	
+Uma área técnica do Ministério da Saúde; 
+	
+Uma Ouvidoria estadual ou municipal de saúde; 
+	
+Outro órgão público, quando o assunto não for de 
+competência do SUS. 
+
+11
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+02.
+Análise e 
+Encaminhamento
+Análise 
+de conteúdo
+Verificação de 
+manifestações 
+parecidas
+Encaminhamento 
+ao setor
+responsável
+Área técnica do 
+Ministério da Saúde
+Ouvidoria estadual 
+ou municipal 
+de saúde
+Outro órgão público 
+(se não for do SUS)
+FIGURA 2. Análise e Encaminhamento
+
+12
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+	
+03. Acompanhamento e Monitoramento
+Controle de prazos
+ 
+O Sistema define um prazo para a resposta da área 
+responsável, que pode ser prorrogado uma única vez, des-
+de que haja justificativa. 
+Cobrança em caso de atraso
+ 
+Se o prazo vencer e a resposta não for enviada, a Ouv-
+SUS entra em contato com o setor responsável para cobrar 
+o retorno. Nesse caso, pode haver envio de alerta ou enca-
+minhamento para o setor superior imediato. 
+Suporte técnico às áreas que respondem
+	
+A OuvSUS orienta e apoia as pessoas designadas 
+ponto focal de cada área técnica para que o tratamento da 
+manifestação seja feito de forma correta e dentro do prazo. 
+
+13
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+03.
+Acompanhamento 
+e Monitoramento
+Controle de
+prazos
+Cobrança em 
+caso de atraso
+Suporte técnico 
+às áreas que 
+respondem
+FIGURA 3. Acompanhamento e Monitoramento
+
+14
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+	
+04. Resposta ao manifestante
+Avaliação da resposta recebida
+	
+Quando a área técnica envia a resposta, a OuvSUS 
+analisa se o conteúdo está claro, de fácil compreensão e se 
+atende à demanda do(a) cidadão(ã). 
+Pedido de complementação à área técnica (se necessário)
+	
+Se a resposta estiver incompleta ou confusa, a Ouv-
+SUS pode pedir ajustes antes de responder ao(à) cidadão(ã). 
+Preparação da resposta final
+	
+A OuvSUS escreve ou adapta a resposta usando lin-
+guagem simples e respeitosa, para que o(a) cidadão(ã) en-
+tenda com facilidade a resolução proposta. 
+Possibilidade de recurso
+	
+Se o(a) cidadão(ã) não concordar com a resposta, 
+ele(a) pode recorrer diretamente pelo Sistema. Se não hou-
+ver recurso, a manifestação é arquivada automaticamente 
+após 30 dias. O arquivamento também acontece se o(a) ci-
+dadão(ã) não responder a um pedido de complementação 
+das informações dentro do prazo de 20 dias. 
+
+15
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+04.
+Resposta ao 
+manifestante
+Preparação da 
+resposta final 
+(linguagem sim-
+ples)
+Possibilidade de 
+recurso
+(30 dias)
+Pedido de 
+complementação à 
+área técnica 
+(se necessário)
+Avaliação da 
+resposta recebida
+FIGURA 4. Resposta ao Manifestante
+
+16
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+Tratamento de manifestações na 
+Ouvidoria-Geral do SUS
+Etapa
+Manifestante
+Ouvidoria 
+(OuvSUS)
+Ponto de 
+Resposta
+Registro da
+manifestação
+Envia a manifestação 
+por telefone, internet, 
+carta ou presencial-
+mente.
+Recebe e registra no Sistema 
+OuvidorSUS ou Plataforma 
+Fala.BR. 
+-
+Triagem e 
+análise inicial 
+-
+Verifica se a manifestação tem as 
+informações necessárias, classi-
+fica o tipo (reclamação, denúncia 
+etc.) e ajusta, se preciso. 
+-
+Complementação 
+de informações 
+Responde se for so-
+licitado a completar 
+informações. 
+Pede complementação das infor-
+mações quando necessário e, em 
+caso de denúncia, solicita autori-
+zação para encaminhar às Ouvi-
+dorias estaduais ou municipais. 
+-
+Tramitação 
+-
+Encaminha para a área 
+responsável e solicita 
+prorrogação do prazo, se houver 
+justificativa.
+Recebe a manifesta-
+ção, analisa e 
+também pode solici-
+tar prorrogação do 
+prazo, se necessário.
+Elaboração 
+da resposta 
+-
+Acompanha e verifica se a 
+resposta está dentro do prazo. 
+Elabora a 
+resposta técnica 
+sobre o assunto da 
+manifestação. 
+Validação e 
+retorno 
+-
+Avalia o conteúdo da resposta, 
+adapta para linguagem simples 
+e respeitosa e reencaminha ao 
+ponto de resposta, se necessário. 
+-
+Envio da resposta 
+Recebe a resposta final 
+da Ouvidoria. 
+Envia a resposta final ao 
+manifestante. 
+-
+Arquivamento 
+Pode recorrer da 
+resposta em até 
+30 dias. 
+Arquiva automaticamente após 
+30 dias, caso não haja recurso 
+por parte do cidadão, ou após 20 
+dias, se não houver resposta ao 
+pedido de complementação feito 
+pela Ouvidoria.  
+-
+
+17
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+Princípios orientadores
+	
+O trabalho da OuvSUS segue princípios importantes, que ga-
+rantem um atendimento justo, eficiente e respeitoso. São eles:
+Legalidade, eficiência e resolutividade
+	
+ A OuvSUS atua conforme as leis, com agilidade e 
+buscando sempre resolver as demandas da melhor forma 
+possível.
+ 
+Garante o direito à saúde e define as regras de funcio-
+namento do SUS. 
+ 
+Valoriza a participação da população no controle e 
+melhoria dos serviços públicos de saúde. 
+Atendimento com empatia e linguagem simplificada
+	
+O contato com o(a) cidadão(ã) deve ser acolhedor, 
+respeitoso e fácil de entender. 
+	
+As informações dos(as) cidadãos(ãs) são tratadas com 
+segurança, sigilo e responsabilidade.
+Política Nacional de Gestão Estratégica e Participativa 
+no SUS (ParticipaSUS)
+	
+Incentiva a escuta da sociedade e a gestão comparti-
+lhada dos serviços de saúde. 
+Proteção dos dados pessoais (Lei Geral de Proteção de 
+Dados Pessoais – LGPD, Lei nº 13.709/2018)
+Lei Orgânica da Saúde (Lei nº 8.080/1990)
+Lei da Participação Social no SUS (Lei nº 8.142/1990)
+
+18
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+Referências normativas e operacionais 
+	
+O atendimento feito pela Ouvidoria-Geral do SUS se-
+gue regras e orientações previstas em leis, decretos e do-
+cumentos 
+internos 
+do 
+Ministério 
+da 
+Saúde. 
+São 
+eles: 
+	
+Estabelece os direitos dos(as) usuários(as) de serviços 
+públicos e define as responsabilidades das ouvidorias. 
+	
+Estabelece os procedimentos que asseguram o di-
+reito fundamental de acesso à informação, promovendo a 
+transparência da atuação da administração pública. 
+	
+Regulamentam o funcionamento das ouvidorias do 
+Poder Executivo Federal e a proteção da identidade do(a) 
+cidadão(ã), especialmente em casos de denúncia. 
+ 
+Define as regras que todas as ouvidorias federais de-
+vem seguir, incluindo prazos, procedimentos e padrões de 
+atendimento. 
+Lei nº 13.460/2017
+Lei nº 12.527/2011
+Decreto nº 10.153/2019 e Decreto nº 9.492/2018
+Portaria Normativa CGU nº 116/2024
+
+19
+Tratamento de Manifestações
+OuvSUS/MS
+Ouvidoria-Geral do SUS
+OuvSUS
+Procedimento Operacional Padrão (POP) do Núcleo de Atendimento 
+da Coordenação de Atendimento ao Cidadão (COACI/OuvSUS/MS) 
+ 
+Estabelece os fluxos e práticas adotados pela equipe 
+responsável pelo atendimento às manifestações recebidas 
+pela OuvSUS. Este documento orienta a atuação da equipe 
+da COACI, garantindo padronização, agilidade e conformi-
+dade com os princípios do SUS e com a legislação vigente, 
+especialmente no que se refere ao tratamento das deman-
+das dos cidadãos. 

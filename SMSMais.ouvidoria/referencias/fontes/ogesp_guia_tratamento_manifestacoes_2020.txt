@@ -1,0 +1,787 @@
+       OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+                         Guia Prático:
+Tratamento de Manifestações
+
+                                                                         Agosto de 2020
+
+                     SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO
+     Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                                               www.ouvidoriageral.sp.gov.br
+OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+Sumário
+
+Apresentação ........................................................................................................................... 3
+1. Tipos de usuário por perfil .......................................................................................... 4
+2. Tratamento das manifestações ................................................................................. 5
+
+   2.1 Visão geral do tratamento de manifestações ................................................................... 6
+   2.2 Gerenciamento das manifestações no sistema................................................................. 7
+   2.3 Tipos de resposta e prorrogação de prazo ........................................................................ 8
+   2.4 Classificação das manifestações ........................................................................................ 8
+   2.5 Reclassificação de manifestações no sistema ................................................................. 11
+   2.6 Manifestações com pedido de acesso restrito ................................................................ 11
+   2.7 Tratamento de denúncia anônima .................................................................................. 11
+   2.8 Registro de manifestações recebidas por outros meios ................................................. 12
+   2.9 Conclusão das manifestações .......................................................................................... 13
+3. Boas Práticas..................................................................................................................... 14
+   3.1 Encaminhamento para área interna ................................................................................ 14
+   3.2 Pesquisa de uma manifestação........................................................................................ 14
+   3.3 Reabrir manifestações...................................................................................................... 15
+   3.4 Temas gerais e temas específicos .................................................................................... 15
+   3.5 Encaminhamentos para outro órgão ............................................................................... 19
+4. Relatório Semestral ........................................................................................................ 20
+   4.1 Preenchimento do relatório............................................................................................. 20
+   4.2 Ciência do Secretário ........................................................................................................ 21
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  2
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+              OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+Apresentação
+
+         Desenvolvido pela Prodesp (Companhia de Processamento de Dados do
+Estado de São Paulo), o "Sistema Informatizado da Rede de Ouvidorias do Estado
+de São Paulo" é utilizado por diversos órgãos para recebimento e tratamento de
+manifestações.
+
+         A Ouvidoria Geral do Estado (OGE-SP), por meio da Coordenação da Rede
+Paulista de Ouvidorias administra as adesões ao sistema, assim como auxilia as
+ouvidorias na sua utilização realizando treinamento do sistema e realiza ainda a
+intermediação junto à PRODESP nas questões técnicas, oferendo assim suporte aos
+integrantes, quando necessário.
+
+         Os manuais de uso, que apresentam as funcionalidades do sistema para
+servidores e cidadãos, já estão disponíveis na web, assim como as legislações e
+normativas.
+
+         Neste contexto, e diante das atribuições elencadas no Decreto 61.175/2015,
+apresentamos este primeiro Guia Prático, que aborda o tratamento das
+manifestações, trazendo detalhes e exemplos, a partir de situações vividas pelas
+ouvidorias que utilizam o "Sistema Informatizado da Rede de Ouvidorias do Estado
+de São Paulo", com base nas dúvidas apresentadas em reuniões, contatos por e-
+mail, telefone e treinamentos.
+
+Boa leitura!
+
+              Ouvidoria Geral do Estado (OGE-SP)
+
+              SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                    3
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+              www.ouvidoriageral.sp.gov.br
+OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+1. Tipos de usuário por perfil
+
+Existem sete tipos de usuário no "Sistema Informatizado da Rede de Ouvidorias do
+Estado de São Paulo". A seguir, o detalhamento de cada perfil:
+
+            Perfil                                       Descrição
+Cidadão
+Ouvidor - servidor de      Pessoa física/ jurídica que busca atendimento.
+ouvidoria                  Usuário do órgão, Ouvidor, que aderiu ao sistema para
+Assessor de Ouvidoria -    recebimento das manifestações.
+servidor de ouvidoria      Usuário do órgão, apoio ao ouvidor. Acesso total, igual
+Assistente de Ouvidoria -  ao ouvidor.
+servidor de ouvidoria      Usuário do órgão compõe a equipe da ouvidoria, não
+                           tem acesso as manifestações sigilosas.
+Atendente de Ouvidoria -   Usuário do órgão compõe a equipe da ouvidoria, não
+servidor de ouvidoria      tem acesso as manifestações sigilosas e manutenção das
+                           tabelas auxiliares (serviços, temas, modelos de
+Secretário                 respostas, etc. ).
+                           Parecer dos respectivos relatórios, Secretaria e órgãos
+Administrador do Sistema   vinculados. Conforme Decreto nº 50.656/2006.
+                           Perfil restrito a Ouvidoria Geral do Estado, com acesso à
+                           visão geral do sistema.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  4
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                           www.ouvidoriageral.sp.gov.br
+                 OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+2. Tratamento das manifestações
+
+Todas as manifestações que chegam à ouvidoria por meio dos canais de contato
+(telefone, e-mail, carta, sistema, etc.) devem ser tratadas e concluídas. Para o
+usuário do sistema, com cadastro na ouvidoria, existe uma opção básica para
+iniciar o tratamento de uma manifestação: "Relato", onde acessa o conteúdo da
+manifestação e identifica se compete ou não a sua ouvidoria.
+
+Quando a manifestação não é de competência da sua ouvidoria, pode-se fazer o
+"encaminhamento para outro órgão".
+
+Nas manifestações com falta das informações para o seu devido andamento, pode-
+se dar um "Retorno" ao cidadão solicitando os dados necessários.
+
+A "Classificação" da manifestação se dá quando: a manifestação compete à
+ouvidoria do órgão e tem todos os dados necessários para andamento.
+
+Caso a ouvidoria já disponha de pronto da resposta para uma manifestação, não é
+necessário encaminhar para nenhum setor, deve-se dar uma "Resposta Rápida".
+
+O quadro abaixo resume essas ações, que serão detalhadas ao longo do Guia.
+
+Funções para tratamento das                    Definição
+           manifestações
+
+Relato                       Manifestação do cidadão
+
+                                                  Quando a manifestação não compete à aquela
+Encaminhamento para outro órgão
+
+                                                  ouvidoria
+
+Resposta rápida              Quando já se tem uma resposta
+
+Retorno                      Quando falta informação no relato do cidadão,
+                             ouvidoria solicita complemento
+
+Classificação                Quando a manifestação compete à ouvidoria
+
+                 SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                          5
+
+         Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                 www.ouvidoriageral.sp.gov.br
+                   OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+2.1 Visão geral do tratamento de manifestações
+
+Contato com áreas internas: Se a ouvidoria não possui um sistema interno
+de tramitação de manifestações ou documentos, deve encaminhar por e-mail,
+ou impresso. Se a ouvidoria desejar integrar o "Sistema Informatizado da Rede
+de Ouvidorias do Estado de São Paulo" deve entrar em contato com a OGE-SP,
+por meio do endereço ouvidoriageral@sp.gov.br.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  6
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+2.2 Gerenciamento das manifestações no sistema
+
+Antes de começar a análise, é importante conhecer as situações (status) que
+uma manifestação pode ter no sistema e aprender a manusear a lista de
+manifestações, que contém detalhes que podem ajudar a organizar o trabalho.
+
+              Tipos de Situação                   Definição
+                                 Manifestação que não teve nenhum
+Manifestação a classificar       andamento ou foi dado retorno ao
+                                 cidadão.
+Aguardando Resposta da área      Manifestação encaminhada para o
+responsável                      setor, mas ainda não foi respondida
+Em análise - Retorno da área     Manifestação que tem resposta da
+responsável não finalizado       área, mas não teve a finalização da
+                                 ouvidoria.
+
+            Tipos de Conclusão                     Definição
+Solucionada                      Manifestação que teve sua solicitação
+Solucionada Parcialmente         atendida de modo integral.
+Encerrada                        Manifestação que teve sua solicitação
+                                 atendida de modo parcial.
+Improcedente                     Manifestação que perdeu o objeto,
+                                 que não apresenta dados suficientes
+                                 para o encaminhamento, que não se
+                                 enquadra nas atribuições e
+                                 competências da ouvidoria.
+                                 Manifestação que não cabe
+                                 encaminhamento, esclarecimento ou
+                                 orientação; que após apreciação,
+                                 análise ou encaminhamento não
+                                 obteve comprovação fática, autoral ou
+                                 nexo de causalidade.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  7
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                                www.ouvidoriageral.sp.gov.br
+OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+2.3 Tipos de resposta e prorrogação de prazo
+
+A resposta é a principal ação de tratamento da manifestação. Muitas vezes, a
+ouvidoria não tem elementos suficientes para oferecer uma resposta conclusiva
+dentro do prazo legal. Isso pode ocorrer quando aguarda posicionamento de outra
+área.
+
+Caso seja necessária a prorrogação do prazo, deve se dar um retorno ao cidadão
+informando a prorrogação do prazo.
+
+2.4 Classificação das manifestações
+
+A Instrução Normativa OGE 01/2018 definiu alguns critérios para denúncias e
+reclamações graves recebidas pelas ouvidorias da Rede Paulista de Ouvidorias do
+Estado de São Paulo e critérios para remessa para a Corregedoria Geral da
+Administração-CGA, vinculada à Secretaria de Governo, e ao Departamento de
+Controle Avaliação ­ DCA, da Secretaria da Fazenda.
+
+As ouvidorias encaminharão à Corregedoria Geral da Administração ­ CGA as
+denúncias e reclamações que tenham por objeto:
+
+I ­ irregularidades em atividades desenvolvidas pelos órgãos e entidades
+integrantes da Administração Pública Estadual, direta e indireta;
+
+II ­ violação de deveres funcionais, inclusive quanto ao cumprimento das
+obrigações prescritas pelos regimes e jornadas de trabalho;
+
+III ­ recebimento indevido de vencimentos, vantagens, diárias ou passagens
+aéreas;
+
+IV ­ irregularidades em obras públicas;
+
+V ­ irregularidades em procedimentos licitatórios e de contratos administrativos;
+
+VI ­ outras possíveis irregularidades que ensejem trabalho correcional nos termos
+das competências previstas no art. 6º do Dec. 57.500-2011.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  8
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+                   OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+As ouvidorias encaminharão ao Departamento de Controle e Avaliação ­ DCA as
+denúncias e reclamações relativas a:
+
+I ­ situações cuja eventual irregularidade comporte auditoria, fiscalização contábil,
+financeira, orçamentária, operacional e patrimonial;
+
+II ­ manifestações que exijam o exame técnico especializado do registro contábil
+dos atos e fatos relacionados a órgãos e entidades que arrecadam receitas e
+processam despesas;
+
+III ­ verificação de sistemas de controle, avaliação e de indicadores de
+desempenho que permitam mensurar a eficiência e eficácia da gestão econômico-
+financeira de órgãos e entidades;
+
+IV ­ fiscalização sobre procedimentos de inclusão e exclusão de registros no
+Cadastro de Inadimplentes do Estado;
+
+V ­ análise de custos de serviços públicos ou outras situações administrativas
+capazes de justificar atividades de auditoria governamental.
+
+Outro impacto na rotina da ouvidoria é a possibilidade de encerramento da
+denúncia após o seu recebimento e encaminhamento à área responsável. Uma
+denúncia pode desencadear um processo complexo, que requer tempo, como um
+Processo Administrativo Disciplinar ou Auditoria. Neste tipo de situação, após
+realizar o encaminhamento para a área/órgão responsável pelas ações de controle
+ou correição, faculta-se o encerramento da denúncia, com uma resposta conclusiva,
+informando sobre o recebimento e o destino da manifestação. Na existência de
+novas informações após o encerramento da denúncia e que possam ser repassadas
+ao cidadão, o ouvidor pode reabrir a manifestação.
+
+Por exemplo, uma denúncia é encaminhada para a Comissão de Ética do órgão e
+encerrada no sistema. Posteriormente, a comissão realiza a avaliação e emite uma
+decisão. Com a reabertura da manifestação, o cidadão poderá receber uma
+nova resposta, com essas informações.
+
+Por outro lado, a depender da situação e do rito de apuração existente no órgão,
+pode ser viável que a ouvidoria acompanhe e informe o andamento, por meio de
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  9
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+                   OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+retorno, até a conclusão da área responsável. Assim, cabe à ouvidoria fazer uma
+análise de cada caso.
+
+O quadro a seguir apresenta os conceitos para cada tipo de manifestação e
+
+exemplos:
+
+                           Definição, conforme Manual do "Sistema
+
+Tipos de Manifestação      Informatizado da Rede de Ouvidorias do Estado
+
+                                     de São Paulo".
+
+                           expressão de uma insatisfação ou opinião desfavorável
+
+Reclamação                 - um protesto, uma queixa, ou crítica - em relação ao
+                           serviço, ao atendimento ou à informação prestados ao
+
+                           usuário, ao Órgão ou ao Governo.
+
+                           expressão de uma opinião com propostas de melhorias
+
+Sugestão                   ou mudanças ao serviço, ao atendimento ou à
+                           informação prestados ao usuário; ao Órgão; ou ao
+
+                           Governo.
+
+                           expressão de uma opinião favorável ao serviço, ao
+
+Elogio                     atendimento ou à informação prestados ao usuário; ao
+
+                           Órgão; ou ao Governo.
+
+                           manifestação do cidadão que indica possíveis fatos
+
+                           contrários à lei, à ordem pública ou a algum
+
+Denúncia                   regulamento e suscetível de punição em relação ao
+
+                           serviço, ao atendimento ou à informação prestados ao
+
+                           usuário; ao Órgão; ou ao Governo.
+
+                           expressão de interesse particular ou coletivo em relação
+
+Solicitação de Informação  ao serviço, ao atendimento ou à informação prestados
+
+                           ao usuário; ao Órgão; ou ao Governo.
+
+Outros                     manifestação não relacionada a nenhum tipo descrito
+                           acima
+
+            SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                10
+
+          Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                           www.ouvidoriageral.sp.gov.br
+                   OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+2.5 Reclassificação de manifestações no sistema
+
+Para alterar o tipo de manifestação, o servidor faz a classificação. Será computado o
+valor quantitativo no relatório semestral de acordo com a classificação da ouvidoria.
+
+2.6 Manifestações com pedido de acesso restrito
+
+O "Sistema Informatizado da Rede de Ouvidorias do Estado de São Paulo"
+permite o envio de manifestação anônima, sigilosa ou identificada. Se o cidadão
+preferir se identificar, poderá ainda pedir sigilo dos seus dados pessoais. Neste
+caso, antes de realizar um encaminhamento interno, as ouvidorias devem estar
+atentas se o cidadão solicitou sigilo no relato, ainda que não tenha assinalado no
+formulário. Assim as ouvidorias devem fazer o encaminhamento da manifestação
+tomando o cuidado com os dados do cidadão, os dados podem ser ocultados pela
+ouvidoria editando informações que o identifiquem.
+
+Caso a identificação do cidadão seja necessária para o atendimento à manifestação,
+a ouvidoria deve solicitar a autorização ao cidadão para encaminhamento dos seus
+dados à outra área. Para isso, deve utilizar retorno ao cidadão.
+
+2.7 Tratamento de denúncia anônima
+
+As denúncias anônimas devem ser tratadas e encaminhadas aos responsáveis pela
+apuração, desde que contenham elementos suficientes para a verificação dos fatos.
+
+O cidadão não receberá uma resposta sobre o destino da denúncia. Isso ocorre
+porque ao optar por não se identificar, o cidadão deixa de informar seu nome e
+também o e-mail, que, por razões de segurança, é um item obrigatório para a
+consulta do andamento da manifestação.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  11
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+                      OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+  Todavia, após o encaminhamento, o servidor da ouvidoria deve retornar ao sistema
+  e encerrar a denúncia, por meio de uma resposta conclusiva, conforme o caso. Essa
+  prática evita que a manifestação fique em aberto e conste como fora do prazo nos
+  relatórios da ouvidoria.
+
+Todas as denúncias (anônimas ou identificadas) devem ser finalizadas no sistema.
+
+  2.8 Registro de manifestações recebidas por outros meios
+
+  Nem sempre uma manifestação chega à ouvidoria pelo sistema. Dependendo das
+  características do público da ouvidoria, pode chegar por carta, telefone, e-mail ou
+  via atendimento presencial. No entanto, é necessário registrá-las, pois assim as
+  informações são concentradas em uma única base de dados, o que facilita a gestão
+  das manifestações e a elaboração de relatórios.
+
+  O órgão deve fazer uma avaliação dos canais de atendimento disponibilizados para
+  verificar a adequação em relação ao perfil dos cidadãos que procuram a ouvidoria.
+
+  O servidor da ouvidoria pode registrar uma manifestação recebida por outros meios,
+  utilizando uma funcionalidade própria: Transcrição de Manifestação.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  12
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+                   OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+2.9 Conclusão das manifestações
+
+Todas as manifestações que estão no sistema devem ser concluídas, sendo as
+opções Solucionada, Solucionada Parcialmente, Encerrada e Improcedente.
+
+O quadro a seguir apresenta os conceitos para cada tipo de conclusão:
+
+                          Definição, conforme Manual do "Sistema
+
+Tipos de Conclusão        Informatizado da Rede de Ouvidorias do Estado
+
+                                       de São Paulo".
+
+Solucionada               Manifestação que teve sua pretensão/solicitação
+                          atendida de modo integral ou que indique elogio
+
+Solucionada Parcialmente  Manifestação que teve sua pretensão/solicitação
+                          atendida de modo parcial
+
+                          Manifestação que perdeu o objeto antes do
+
+                          encaminhamento ou retorno do setor; que por
+
+                          circunstâncias outras teve sua situação alterada; que
+
+                          não apresenta dados suficientes para o
+
+                          encaminhamento ou que não possibilita o necessário
+
+Encerrada                 contato com o cidadão; que não se enquadra nas
+
+                          atribuições e competências da ouvidoria. Quando o
+
+                          cidadão discorda das providências adotadas ou da
+
+                          resposta apresentada e não há outra alternativa de
+
+                          resolução em duplicidade ou quando a conclusão não
+
+                          se insere em outras definições.
+
+                          Manifestação que, de modo fundamentado, não cabe
+
+                          encaminhamento, esclarecimento ou orientação; que
+
+Improcedente              após apreciação, análise ou encaminhamento não
+
+                          obteve comprovação fática, autoral ou nexo de
+
+                          causalidade
+
+              SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                               13
+
+           Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                          www.ouvidoriageral.sp.gov.br
+                      OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+3. Boas Práticas
+
+   3.1 Encaminhamento para área interna
+
+   As manifestações que foram encaminhadas para área interna irão aparecer nos
+   campos "Aguardando" resposta da área responsável, quando ainda não tem uma
+   resposta, ou "Em Análise" ­ retorno da área responsável não finalizado teve
+   resposta da área, mas ainda não foi finalizada a manifestação pela ouvidoria.
+   Lembrando que as áreas internas devem responder pelo link que vai junto do relato
+   da manifestação.
+   Para o encaminhamento da Reposta ao cidadão deve-se inserir uma resposta no
+   campo "Resposta", não se esquecendo de fazer a "Conclusão".
+
+   3.2 Pesquisa de uma manifestação
+
+   A busca de uma manifestação é uma ferramenta que pode auxiliar na resolução de
+   um caso específico.
+   Um exemplo é o cidadão mencionar uma manifestação anterior, sem citar o
+   protocolo. Pode se fazer uma busca por nome, data, tipo de manifestação, e-mail e
+   assunto (é limitado período de 30 dias).
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  14
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+                   OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+3.3 Reabrir manifestações
+
+Após o encerramento de uma manifestação, podem surgir fatos novos, ou o
+servidor pode perceber que se equivocou e precisa enviar ao cidadão uma
+retificação da resposta. Nestes casos, é possível a Reabertura da Manifestação
+(uma única vez), que se comportará da mesma forma que uma manifestação
+cadastrada, isso é, em estágio inicial de análise. Isso significa que uma vez
+reaberta, a manifestação precisa ser encerrada, o que só é possível com uma
+resposta conclusiva, ou encaminhamento para outro órgão, se for o caso.
+
+Assim, uma manifestação só deve ser reaberta nessas duas hipóteses: a existência
+de uma nova resposta ao cidadão ou a identificação da necessidade de encaminhar
+para outro órgão após o encerramento.
+Não se recomenda reabrir a manifestação para acrescentar alguma informação, pois
+já houve tratamento e resposta ao cidadão.
+
+3.4 Temas gerais e temas específicos
+
+Os Temas Gerais foram criados pela Comissão de Centralização dos Serviços
+Públicos do Estado de São Paulo ­ CCISP, esses dados foram estudados e definidos
+para que as informações apresentadas nos relatórios sejam completos, detalhados e
+que possam influenciar nas políticas públicas.
+Estão definidos 18 Temas Gerais que indicam características gerais da manifestação.
+O quadro a seguir apresenta os Temas Gerais, definições e exemplos:
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  15
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+                    OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+ Tema Geral         Definições                     Exemplos
+
+Acesso              Refere-se às condições de      Unidade fechada, falta de
+                    acesso para solicitar o        acesso para pessoas com
+Atendimento         produto ou ao serviço          deficiência; o telefone não
+                    (inclusive para obter          atende o sistema ou site está
+Taxas/              informações)                   inoperante; não consegue
+Pagamentos                                         acessar o serviço ou solicitar o
+                    Refere-se ao desempenho do     produto.
+Competência de      atendimento ao público         Embora disponível, houve a
+outro órgão         (tanto da atividade meio       recusa do atendimento;
+                    quanto da atividade fim).      qualidade do atendimento.
+Comunicação                                        OBS: Qualidade em geral do
+                    Refere-se a assuntos que       serviço. Observar: conduta do
+Conduta do          envolvam relação monetária     servidor (tema.6);
+Servidor/           entre o usuário de serviços    procedimentos (tema 16).
+funcionário/        públicos e o órgão público     Pagamentos de taxas, multas,
+estagiário/ gestor  (restituição / pagamento /     tributos; análises de isenção;
+Danos Materiais     isenção / devolução).          contestações de cobranças e
+e/ou Pessoais                                      devolução ou restituição de
+Descumprimento      Quando o órgão não presta o    pagamentos; débitos; dívida
+de ordem judicial   serviço a que se refere o      ativa; problemas relacionados a
+                    cidadão.                       taxas e pagamentos.
+
+                    Refere-se a análise de         Informação equivocada/
+                    qualidade das informações      insuficiente ou não
+                    prestadas ou a falta de        compreensível em sites,
+                    informações no material de     materiais de publicidade,
+                    comunicação disponibilizado    folhetos, e-mail, entre outros;
+                    aos usuários internos e        aprovação a informações ou ao
+                    externos                       meio pelo qual foram
+                                                   divulgadas.
+                    Aprovação ou reprovação da     Cortesia, destreza; urbanidade,
+                    conduta do indivíduo na        motivação desídia, morosidade;
+                    prestação do serviço.          descumprimento do código de
+                                                   ética, do regulamento, etc.
+                    Prejuízo/Dano material
+                    decorrente de ato ilícito por  Medicamentos, exames e
+                    ação ou omissão do Órgão       consultas determinadas por
+
+                    SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                              16
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                    www.ouvidoriageral.sp.gov.br
+                    OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+Fiscalização        Qualidade do serviço em         decisão judicial; atos
+Fornecimento de     geral                           administrativos de recursos
+produtos /                                          humanos não executados.
+materiais /         Prazos/não entrega.             Não atendida / não houve
+insumos                                             resposta sobre a denúncia / não
+Infraestrutura      Refere-se às condições físicas  realiza. Aprovação ou sugestão
+                    / estruturais do local de       sobre o tema.
+Irregularidades     prestação do serviço,
+(projetos, obras,   atendimento ou de trabalho.     Falta do medicamento
+contratos,                                          distribuído habitualmente;
+licitações)         Refere-se a execução de um      aprovação sobre o tema.
+                    processo, projeto, obra,
+Legislação          contrato ou licitação.          Hardware/software; recursos de
+                                                    rede e telecomunicações;
+Patrimônio público  Manifestação referente à        instalações físicas; suporte
+                    legislação / norma /            técnico e tecnológico; recursos
+Políticas públicas  regulamento.                    materiais.
+                                                    Fraude em licitação;
+Procedimentos       Refere-se a bens e direitos     favorecimento de contrato;
+                    públicos (uso indevido/mau      desvio de verba;
+                    uso/desvio/apropriação          superfaturamento; propina;
+                    indébita ou manifestações       desacordo ao estabelecido em
+                    positivas/sugestões)            contrato/ licitação/ projeto/
+                                                    obra.
+                    Referem-se a programas,
+                    ações e atividades que visam    Uso de recursos/equipamento
+                    assegurar determinado direito   para fins privados; Desvio de
+                    de cidadania.                   materiais de escritório;
+                    Refere-se a efetividade de      Apropriação indébita de
+                    procedimentos da                merenda escolar; Uso de
+                    organização que envolve         veículo público em atividade
+                    métodos e normas                privada.
+                    preestabelecidas para a
+                                                    Sugestões, elogios ou críticas
+                                                    sobre a política pública em
+                                                    curso ou ausência.
+
+                                                    Burocracia; desvio de normas;
+                                                    falta de organização;
+                                                    questionamento ou aprovação
+                                                    de métodos de gestão; falta de
+                                                    normas definidas e
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  17
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                    www.ouvidoriageral.sp.gov.br
+                     OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+Posicionamentos      gestão técnica e               padronizadas; Processo de
+técnicos             administrativa do órgão        trabalho
+(parecer/laudo/      público. Manifestações         eficiente/indefinido/dependente
+relatório/certidão)  referentes à qualidade dos     de outro; não cumprir prazos
+                     procedimentos e trâmites       previstos; o Deixar de
+Outros               para a prestação do serviço    informar/instruir; a Divisão do
+                     ou gerenciamento de            trabalho desequilibrada;
+                     recursos humanos.              Manifestações positivas ou
+                                                    sugestões sobre o tema.
+                     Refere-se ao
+                     conteúdo/entrega de            Discordância da fundamentação
+                     pareceres/laudos/relatórios/c  técnica ou o documento não foi
+                     ertidão ou outra forma de      entregue ou produzido;
+                     expressão de                   Manifestações positivas ou
+                     posicionamentos/decisões       sugestões sobre o tema.
+                     técnicas
+
+                     Refere-se a todo assunto não
+                     previsto pelos temas gerais
+                     anteriores.
+
+As ouvidorias devem criar seus Temas Específicos ligados aos Temas Gerais, o
+mesmo tema pode estar em um ou mais temas, dependerá do conteúdo da
+manifestação.
+
+Por exemplo: O tema especifico vale transporte, pode estar ligado a fiscalização (se
+o relato falar da venda ilegal de vale transporte) e pode estar ligado também a
+política pública (se o relato falar sobre aumento da passagem).
+
+O Tema Específico deve ser criado para a classificação da manifestação, sem a
+criação não é possível fazer o encaminhamento interno.
+
+Existe a possibilidade de se criar detalhes 1, 2 e 3 ligados ao tema específico, não é
+campo obrigatório.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  18
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+                     www.ouvidoriageral.sp.gov.br
+                   OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+3.5 Encaminhamentos para outro órgão
+
+Muitas vezes o cidadão se confunde ou não sabe para qual órgão enviar a sua
+manifestação. Então, o registro é feito para um órgão que não possui competência
+para tratar do assunto. Neste caso, não é preciso encerrar a manifestação, pois o
+sistema oferece a opção de "Encaminhar para outro órgão".
+
+Por exemplo, a Secretaria de Habitação recebe uma manifestação sobre transporte,
+deve encaminhá-la para a Secretaria de Transporte Metropolitano, que dará
+continuidade ao atendimento pelo próprio sistema.
+
+Mesmo que órgão não tenha aderido ao "Sistema Informatizado da Rede de
+Ouvidorias do Estado de São Paulo", receberá a manifestação por e-mail e deverá
+dar andamento dentro do sistema que utiliza.
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  19
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+                      OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+4. Relatório Semestral
+
+O relatório semestral é confeccionado por cada órgão do estado que está integrado na
+Rede Paulista de Ouvidorias, o decreto que regulamenta é o DECRETO nº 50.656,
+de 30 de março de 2006.
+
+4.1 Preenchimento do relatório
+
+O preenchimento do relatório tem dois formatos:
+
+1. Quem utiliza o "Sistema Informatizado da Rede de Ouvidorias do Estado de
+     São Paulo".
+     O preenchimento será apenas para os dados Qualitativos, em relatórios ir ao
+     item Manifestações Relevantes/ Recomendações/ Dificuldades.
+
+2. Quem não utiliza o "Sistema Informatizado da Rede de Ouvidorias do
+    Estado de São Paulo".
+    O preenchimento será dos dados Quantitativos, Qualitativos e Pesquisa de
+    Satisfação. Segue passo a passo para o preenchimento:
+
+2.1) Entrar no portal www.ouvidoria.sp.gov.br. No canto inferior direito clicar
+na palavra "entrar". Na tela que irá aparecer colocar login e senha;
+
+2.2) Entrar na função "Relatórios"
+     2.2.1) Clicar em "Forma de Contato / Quantidade"
+
+a) Selecionar "período";
+
+b) Clicar em "pesquisar".
+
+i- No primeiro acesso aparecerá uma tela com a confirmação dos
+dados cadastrais, conferir os dados e clicar em Confirmar;
+
+ii- O sistema abrirá o quadro a ser preenchido. Inserir todos os
+dados com o cuidado de conferir todos os números;
+
+c) Clicar em "Salvar".
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  20
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+OUVIDORIA GERAL DO ESTADO ­ OGE-SP
+
+           2.2.2) Voltar à tela anterior, clicar em "Manifestação/Tema Geral".
+           Proceder exatamente como da forma acima: Selecionar período, pesquisar,
+           inserir dados e salvar. Antes de salvar recomenda-se a conferência de
+           todos os dados.
+
+           2.2.3) Voltar à tela anterior, clicar em "Conclusão das
+           Manifestações / Quantidade". Proceder exatamente como da forma
+           acima: Selecionar período, pesquisar, inserir dados e salvar. Antes de
+           salvar recomenda-se a conferência de todos os dados.
+
+           2.2.4) Voltar à tela anterior, clicar em "Manifestações
+           Relevantes/Recomendações/ Dificuldades". Preencher os campos
+           com as informações e clicar em Salvar. O texto é livre e opcional.
+
+Com a realização das instruções acima o relatório referente ao período para quem
+não usa o "Sistema Informatizado da Rede de Ouvidorias do Estado de São
+Paulo" estará pronto para análise da Ouvidoria Geral do Estado. Será permitida a
+importação dos dados inseridos em planilha Excel para fins de conferência,
+impressão.
+
+3. Preenchimento da Pesquisa de Satisfação
+     3.1. Entrar em Relatório Pesquisa de Satisfação/ Quantidade;
+     3.2. Selecionar o Período, Pesquisar;
+     3.3. Preencher as informações (apenas alguns dados são obrigatórios),
+         Salvar.
+
+4.2 Ciência do Secretário
+
+No "Sistema Informatizado da Rede de Ouvidorias do Estado de São Paulo", os
+secretários terão login e senha para visualizarem os dados da secretaria e órgãos
+vinculados. Devem entrar e darem ciência, sendo mais ágil e facilitando o envio das
+informações para a Ouvidoria Geral do Estado (OGE-SP).
+
+SECRETARIA DE GOVERNO - OUVIDORIA GERAL DO ESTADO                                                  21
+
+Rua Voluntários da Pátria, 596 - 10º andar - Fone (11) 2868-4646 ­ CEP 02010-000 - São Paulo ­ SP
+
+www.ouvidoriageral.sp.gov.br
+

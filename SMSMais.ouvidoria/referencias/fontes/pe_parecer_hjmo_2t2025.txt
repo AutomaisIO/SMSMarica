@@ -1,0 +1,355 @@
+
+=== PAGE 1 ===
+COMISSÃO MISTA DE AVALIAÇÃO DOS CONTRATOS DE GESTÃO
+ 
+PARECER CONCLUSIVO
+HOSPITAL JOÃO MURILO DE OLIVEIRA – 2º TRIMESTRE DE 2025
+OBJETO: Parecer Conclusivo referente aos resultados obtidos no 2º trimestre de 2025, no âmbito
+do Contrato de Gestão n° 026/2022, celebrado entre a Secretaria Estadual de Saúde de
+Pernambuco e a Organização Social de Saúde Hospital do Tricentenário, cujo escopo principal é
+o gerenciamento e a execução de ações e serviços de saúde no Hospital João Murilo de Oliveira,
+no município de Vitória de Santo Antão-PE.
+ 
+ 
+INTRODUÇÃO
+ 
+Chega a esta Comissão Mista de Avaliação, instituída através da Portaria Conjunta
+SES/SEPLAG/SAD nº 240, de 06/07/2016, com efeitos retroativos a 01/05/2016, alterada pela Portaria
+Conjunta SES/SEPLAG/SAD nº 001 de 19/01/2022, em atendimento aos termos do § 3º, do Artigo 16, da Lei
+Estadual nº 15.210/2013, com redação alterada pela Lei Estadual nº 16.155/2017, o Parecer da Comissão
+Técnica de Acompanhamento Interno – CTAI nº 312/2025, referente aos resultados obtidos no 2º
+trimestre de 2025 (Hospital João Murilo de Oliveira).
+ 
+O mencionado documento subsidia a emissão de Parecer Conclusivo por esta Comissão Mista,
+em atendimento aos termos do § 1º, do Artigo 16, da Lei Estadual nº 15.210/2013, com redação alterada
+pela Lei Estadual nº 16.771/2019.
+ 
+ 
+FUNDAMENTAÇÃO
+ 
+Para emissão do presente Parecer, esta Comissão Mista de Avaliação dos Contratos de Gestão
+remete-se ao § 1º do Artigo 16 Lei Estadual nº 15.210/2013, com redação alterada pela Lei Estadual nº
+16.771/2019, abaixo transcrito:
+“Art. 16. Será instituída Comissão Mista de Avaliação para proceder à análise deﬁnitiva dos relatórios
+trimestrais sobre os resultados do contrato de gestão.
+§ 1º - Após o recebimento do parecer da Comissão de Acompanhamento Interno do Contrato de Gestão
+acerca dos relatórios trimestrais e resultados atingidos com a execução contratual, a Comissão Mista de
+Avaliação deverá, até o último dia do mês subsequente, emitir parecer conclusivo a ser disponibilizado no
+Portal da Transparência do Governo do Estado de Pernambuco, bem como encaminhado à Secretaria de
+Saúde e à Secretaria da Controladoria Geral do Estado”.
+ 
+O Parecer Técnico CTAI nº 312/2025 referente aos resultados assistenciais obtidos pelo Hospital
+João Murilo de Oliveira, no 2º trimestre de 2025, foi entregue à Diretoria-Geral de Controle Interno e a esta
+Comissão Mista na data de 09/10/2025 através do Despacho CTAI nº 903/2025 constante na plataforma SEI
+Processo nº 2300000999.000422/2025-24.
+ 
+Salientando que a análise desta Comissão Mista foi realizada também através de consulta ao
+Sistema de Monitoramento de Metas Assistenciais (SIMAS), disponibilizado no site https://simas-saude-pe-
+gov.azurewebsites.net/simas/audit/index.html#.
+ 
+Ressalta-se que os números em sobrescrito se referem às considerações desta Comissão Mista
+de Avaliação, que estão listadas no fim desse documento.
+ 
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 1
+
+
+=== PAGE 2 ===
+ 
+UNIDADE ANALISADA
+ 
+O Hospital João Murilo de Oliveira, cujo Contrato nº 026/2022 se encontra vigente até 21/06/2027
+conforme 8º Termo Aditivo, possui perﬁl de atendimento de Urgência/Emergência em regime 24 horas/dia,
+assegurando assistência universal e gratuita à população nas áreas de Clínica Médica, Cirurgia Geral,
+Traumato-Ortopedia, Pediatria e Obstetrícia.
+ 
+A título de repasse mensal, a Unidade recebe o valor global de R$ 4.541.520,20 (quatro milhões,
+quinhentos e quarenta e um mil, quinhentos e vinte reais e vinte centavos) conforme o Contrato de Gestão
+nº 026/2022. Porém, de acordo com as cláusulas 7.1.1.1 e 7.1.1.2 do contrato, do montante referido acima,
+R$ 132.277,29 (cento e trinta e dois mil, duzentos e setenta e sete reais e vinte e nove centavos)
+correspondem ao repasse do rateio dos Custos Indiretos da Administração Central. Assim, considera-se o
+valor de R$ 4.409.242,91 (quatro milhões, quatrocentos e nove mil, duzentos e quarenta e dois reais e
+noventa e um centavos) como valor de repasse mensal de custeio.
+ 
+Para avaliação do Hospital João Murilo de Oliveira, o Contrato de Gestão prevê regras no repasse
+dos valores, sendo 70% desse recurso denominado de parte ﬁxa e 30% denominado de parte variável, essa
+última vinculada ao cumprimento de metas especíﬁcas. No que concerne à parte variável, ela é dividida
+pelos indicadores de produção (20%) e pelos indicadores de qualidade (10%), podendo o Hospital executar o
+mínimo de 85% da meta de produção sem que ocorram descontos no repasse, conforme indicado no Quadro
+01 abaixo:
+ 
+Quadro 01. Sistema de Avaliação por Peso de Produção
+Fonte: Anexo Técnico II do Contrato de Gestão nº 026/2022.
+ 
+ 
+1. INDICADORES DE PRODUÇÃO
+ 
+Na avaliação de Produção do Hospital João Murilo de Oliveira, são considerados os indicadores
+Saídas Hospitalares, Atendimentos de Urgência e Emergência, Consultas Ambulatoriais e Cirurgias Eletivas e
+de Urgência/Emergência. Conforme o Anexo Técnico I do Contrato de Gestão n° 026/2022, as metas
+contratadas correspondem a 500 saídas/mês, 11.000 atendimentos de urgência e emergência/mês, 750
+consultas/mês e 110 cirurgias/mês.
+ 
+1.1 Saídas Hospitalares
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 2
+
+
+=== PAGE 3 ===
+ 
+Conforme informações apresentadas no Parecer CTAI e consulta ao SIMAS, o total de Saídas Hospitalares no
+trimestre avaliado atingiu o volume de 1.727 saídas, representando um percentual de 115,13%,
+cumprindo a meta contratada.
+ 
+Tabela 01. Meta Contratada x Realizado – Saídas Hospitalares
+Fontes: Parecer CTAI nº 312/2025 e SIMAS – Hospital João Murilo de Oliveira – 2º trimestre/2025.
+ 
+ 
+1.2 Atendimentos de Urgência e Emergência
+ 
+Conforme informações apresentadas no Parecer CTAI e consulta ao SIMAS, o total de Atendimentos de
+Urgência e Emergência no trimestre avaliado atingiu o volume de 69.463 atendimentos, representando um
+percentual de 210,49%, cumprindo a meta contratada.
+ 
+Tabela 02. Meta Contratada x Realizado – Atendimentos de Urgência e Emergência
+Fontes: Parecer CTAI nº 312/2025 e SIMAS – Hospital João Murilo de Oliveira – 2º trimestre/2025.
+ 
+ 
+1.3 Consultas Médicas
+ 
+Conforme informações apresentadas no Parecer CTAI e consulta ao SIMAS, o total de Consultas Médicas no
+trimestre avaliado atingiu o volume de 1.826 consultas, representando um percentual de 81,16%, não
+cumprindo a meta contratada.
+ 
+Tabela 03. Meta Contratada x Realizado – Consultas Médicas
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 3
+
+
+=== PAGE 4 ===
+Fontes: Parecer CTAI nº 312/2025 e SIMAS – Hospital João Murilo de Oliveira – 2º trimestre/2025.
+ 
+ 
+1.4 Cirurgias Eletivas e de Urgência/Emergência
+ 
+Conforme informações apresentadas no Parecer CTAI e consulta ao SIMAS, o total de cirurgias no trimestre
+avaliado atingiu o volume de 574 cirurgias, representando um percentual de 173,94%, cumprindo a meta
+contratada.
+ 
+Tabela 04. Meta Contratada x Realizado – Cirurgias Eletivas e de Urgência/Emergência
+Fontes: Parecer CTAI nº 312/2025 e SIMAS – Hospital João Murilo de Oliveira – 2º trimestre/2025.
+ 
+ 
+2. INDICADORES DE QUALIDADE
+ 
+Os Indicadores de Qualidade deﬁnidos para o Hospital João Murilo de Oliveira estão descritos no Anexo I do
+Contrato de Gestão nº 026/2022. São eles:
+2.1 Acolhimento com classificação de risco: acolhimento ao paciente e classiﬁcação do atendimento em
+conformidade com os protocolos vigentes;
+2.2 Satisfação do usuário: medir a satisfação do usuário atendido pela unidade e seus acompanhantes;
+2.3 Taxa de resolução das queixas recebidas: aferir a taxa de resolutividade das queixas prestadas
+pelos usuários da unidade e seus acompanhantes;
+2.4 Taxa de proﬁssionais médicos cadastrados no CNES: garantir que os proﬁssionais médicos que
+realizam os atendimentos nas unidades estejam devidamente cadastrados no CNES;
+2.5 Apresentação do relatório SIA/SUS: Registrar a produção realizada pela unidade no sistema SIA/SUS
+no prazo preconizado pela regulação/SES;
+2.6 Apresentação do relatório SIH/SUS: Registrar a produção realizada pela unidade no sistema SIH/SUS
+no prazo preconizado pela regulação/SES;
+2.7 Entrega do relatório de prestação de contas mensal: apresentar relatório de prestação de contas
+mensal no prazo estabelecido pela SES/PE;
+2.8 Informação e transparência: divulgar as informações preconizadas em lei no portal da transparência
+da entidade;
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 4
+
+
+=== PAGE 5 ===
+2.9 Taxa de revisão de prontuários de pacientes com classiﬁcação de risco vermelho e amarelo:
+certiﬁcar que os prontuários dos pacientes classiﬁcados como vermelho e amarelo foram revisados pela
+comissão de prontuários;
+2.10 Taxa de revisão de óbitos: certiﬁcar que os prontuários dos pacientes que vieram a óbito foram
+revisados pela comissão de prontuários e análise de óbitos;
+2.11 Taxa de infecção hospitalar: medir e avaliar a Taxa de Infecção Hospitalar do Hospital;
+2.12 Escala médica de plantão: averiguar o cumprimento da escala médica mínima prevista em contrato;
+2.13 Taxa de execução do plano de educação permanente: avaliar a execução do plano de educação
+permanente.
+ 
+Tabela 05. RESUMO DOS INDICADORES DE QUALIDADE
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 5
+
+
+=== PAGE 6 ===
+Fonte: Parecer CTAI nº 312/2025 – Hospital João Murilo de Oliveira – 2º trimestre/2025.
+ 
+ 
+3. INDICADORES DE PRODUÇÃO SEM VALORAÇÃO FINANCEIRA
+ 
+Além dos indicadores de produção e de qualidade já informados, a Unidade possui, conforme o
+Anexo Técnico I do Contrato de Gestão nº 026/2022, indicadores de produção relacionados ao Serviço de
+Atenção Domiciliar (SAD) 3 e ao Serviço de Apoio Diagnóstico e Terapêutico (SADT) a serem monitorados,
+mas sem valoração financeira, conforme mostrado na tabela abaixo:
+ 
+Tabela 06. INDICADORES DE PRODUÇÃO SEM VALORAÇÃO FINANCEIRA
+Fonte: Parecer CTAI nº 312/2025 – Hospital João Murilo de Oliveira – 2º trimestre/2025.
+ 
+ 
+4. APONTAMENTOS DE DESCONTO
+ 
+No trimestre em análise, a Unidade não cumpriu as metas valoradas dos indicadores Consultas Médicas e
+Informação e transparência, cabendo os apontamentos de desconto mostrados na tabela abaixo:
+ 
+Tabela 07. Apontamentos de Desconto
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 6
+
+
+=== PAGE 7 ===
+Fonte: Parecer CTAI nº 312/2025 – Hospital João Murilo de Oliveira – 2º trimestre/2025.
+ 
+Quanto ao não cumprimento das metas de qualidade 4, o Parecer CTAI informa que “Desta feita,
+essa CTAI notiﬁcará a Contratada e encaminhará à Diretoria Geral de Monitoramento dos Contratos de
+Gestão os apontamentos de descontos acima registrados, referentes aos Indicadores de Qualidade, para a
+devida instrução necessária ao cumprimento do Art. 15 - A da Lei 15.210/2013”.
+ 
+ 
+5. PARECER DA COMISSÃO TÉCNICA DE ACOMPANHAMENTO INTERNO
+ 
+O Parecer CTAI nº 312/2025 aﬁrma em sua conclusão que “A Comissão Técnica de
+Acompanhamento Interno dos Contratos de Gestão - CTAI tem primado pelo monitoramento eﬁcaz das
+metas e serviços pactuados, levando-se em consideração todos os aspectos apresentados nos relatórios
+enviados pela Unidade Hospital João Murilo de Oliveira, gerenciada pela Organização Social de Saúde
+Hospital do Tricentenário e sob o prisma dos princípios da eﬁciência e da legalidade da Administração
+Pública. Esta Comissão fundamentada no inciso IV do parágrafo único do artig o 15 da Lei Estadual nº
+15.210/2013, alterada pelas Leis nº 16.152/2017, nº 16.155/2017 e nº 16.771/2019, regulamentada pelo
+Decreto nº 58.200/2025, elabora o presente parecer, visando o acompanhamento, ﬁscalização e supervisão
+por esta Secretaria”.
+ 
+ 
+6. QUALIFICAÇÃO COMO ORGANIZAÇÃO SOCIAL DE SAÚDE
+ 
+No que diz respeito à qualiﬁcação da Organização Social de Saúde – Hospital do Tricentenário,
+observou-se que em 21/03/2024 foi publicado o Decreto nº 56.295/2024, retroagindo seus efeitos a
+04/11/2023 e vencendo em 03/11/2025. Assim, durante o trimestre analisado, a Unidade atendeu ao Art. 4º
+da Lei Estadual de nº 15.210/2013, abaixo transcrito:
+“Art. 4º – A cada dois anos, as entidades qualiﬁcadas como Organizações Sociais de Saúde deverão fazer
+a renovação da titulação (...)”.
+ 
+ 
+7. INFORMAÇÕES FINANCEIRAS
+ 
+As informações a respeito da Execução Financeira do Contrato de Gestão nº 026/2022, realizada
+no 1º trimestre de 2025, foram encaminhadas através do documento “Informação nº 146/2025/SES –
+GAVFCG”, em anexo ao processo SEI em análise.
+ 
+Nas informações referentes à Execução Financeira do Contrato, percebe-se que a Unidade
+extrapolou o percentual de 70% (setenta por cento) previsto no Parágrafo Segundo da Cláusula Oitava do
+Contrato de Gestão nº 026/2022, que diz:
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 7
+
+
+=== PAGE 8 ===
+“O CONTRATADO poderá gastar no máximo 70% (setenta por cento) relativo a despesas com pessoal e
+o equivalente a 30% (trinta por cento), referente a outras despesas. Os 70% (setenta por cento) de
+pessoal são calculados com base no quantitativo de proﬁssionais necessários aos serviços a serem
+realizados pelo HOSPITAL JOÃO MURILO DE OLIVEIRA condicionados ao seu porte, perﬁl e capacidade
+instalada, cujos salários são os praticados no mercado (a própria unidade e outras unidades sob gestão de
+OSS) (...)”.
+ 
+A Unidade gastou os percentuais de 98,54% (janeiro), 75,38% (fevereiro) e 90,49% (março),
+perfazendo no 1º trimestre/2025 a média percentual de 87,41%, não atendendo 5 portanto às regras
+contratuais, conforme tabela abaixo:
+Fonte: Processo SEI nº 2300000999.000422/2025-24 - Anexo Financeiro - Hospital João Murilo de Oliveira - 1º tri/2025.
+ 
+Tais informações seguirão sempre referente ao trimestre anterior, pois de acordo com o Manual
+de Prestação de Contas de OSS (Organização Social de Saúde), temos que: “Os responsáveis por prestar
+contas deverão enviar os documentos necessários à GAFCG (SFCG/DGF) até o dia 05 do segundo mês
+subsequente ao mês de competência das informações, prorrogando-se para o 1º dia útil subsequente, caso
+o dia 05 não seja útil, por exemplo, a prestação de contas de abril/2021 deve ser entregue até o dia 05 de
+junho/2021 (sábado), como sábado não é dia útil, a entrega da prestação de contas passa a ser no dia 07 de
+junho/2021 (segunda-feira). Para situações de emergência e ou calamidade pública, os prazos serão
+deﬁnidos em instrumento diverso deste manual, podendo ser realizado por meio de regulamentação
+específica dos órgãos de controle ou semelhantes”.
+ 
+ 
+8. OBSERVAÇÕES DA COMISSÃO MISTA DE AVALIAÇÃO DOS CONTRATOS DE GESTÃO
+ 
+Após análise e apreciação do material enviado pela Comissão Técnica de Acompanhamento Interno – CTAI,
+esta Comissão Mista entende que há recomendações e/ou esclarecimentos a fazer referentes à execução do
+Contrato de Gestão nº 026/2022 – Hospital João Murilo de Oliveira:
+À DGMCG:
+01. (Reiteração) Quanto aos indicadores Apresentação do relatório SIA/SUS e Apresentação do relatório
+SIH/SUS, esta Comissão Mista recomenda que seja feito um estudo para reformulação da metodologia de
+cálculo a ﬁm de avaliar tais indicadores, que juntos correspondem a 10% do total vinculado à avaliação dos
+indicadores de qualidade.
+02. 
+(Reiteração) Referente ao indicador Escala médica de plantão, esta Comissão Mista solicita
+providências no sentido de definir a escala mínima que deve constar no contrato de gestão, atendendo assim
+ao previsto no item 3.2.1 do Contrato de Gestão nº 026/2022. Tal indicador é valorado em 15% da parte
+variável de qualidade.
+03. (Reiteração) Quanto ao indicador Serviço de atenção domiciliar – equipes EMAD e EMAP, a Unidade não
+vem atingindo a meta desde a celebração do contrato em 2022. Embora não seja valorado ﬁnanceiramente,
+esta Comissão Mista recomenda que seja feito um levantamento a ﬁm de sanar as causas desse não alcance
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 8
+
+
+=== PAGE 9 ===
+da meta.
+04. (Reiteração) Tendo em vista que a vigência da LC nº 425/2020 acabou em 30/06/2023, esta Comissão
+Mista solicita informações a respeito da efetivação do desconto no repasse mensal da Unidade, bem como
+seu mecanismo de acompanhamento.
+ 
+À CTAI:
+05. Esta Comissão Mista recomenda que a Unidade seja notiﬁcada quanto ao disposto no Parágrafo Segundo
+da Cláusula Oitava do Contrato de Gestão nº 026/2022, onde prevê que a Unidade gaste no máximo 70%
+(setenta por cento) relativo a despesas com pessoal.
+ 
+ 
+CONCLUSÃO
+ 
+Com base nas informações apresentadas no Parecer CTAI nº 312/2025 e consulta ao SIMAS, bem
+como de acordo com o Contrato de Gestão nº 026/2022 e seus Termos Aditivos, esta Comissão conclui que a
+Unidade ora analisada fez cumprimento das obrigações contratuais no 2º trimestre/2025, exceto nos
+indicadores Consultas Médicas, Informação e transparência e Serviço de Atenção Domiciliar (não valorado),
+conforme relatado acima. Apesar disso, o Hospital João Murilo de Oliveira vem cumprindo sua principal
+função, que é atender os usuários do Sistema Único de Saúde que procuram o serviço, com eﬁciência e
+qualidade, em concordância com os termos do inciso IV, do parágrafo único do artigo 15 da Lei Estadual nº
+15.210/2013, com redação alterada pela Lei Estadual nº 16.771/2019.
+ 
+ 
+É o Parecer.
+ 
+Salvo Melhor Juízo.
+ 
+Recife, 18 de novembro de 2025.
+ 
+ARIADNE PINTO DE HOLANDA
+Matrícula 18374450/01 – SES
+Revisora
+ 
+DANIEL MARQUES RAMOS CARNEIRO
+Matrícula 215731/02 – SEPLAG
+Relator
+ 
+FABIANA TEIXEIRA SEVERO
+Matrícula 18146392/01 – SAD
+Revisora
+ 
+KEOLA NASCIMENTO DE FRANÇA
+Matrícula 4214471/01 – SES
+Revisora
+ 
+Documento assinado eletronicamente por Daniel Marques Ramos Carneiro, em 18/11/2025, às 09:30,
+conforme horário oficial de Recife, com fundamento no art. 10º, do Decreto nº 45.157, de 23 de outubro de
+2017.
+Documento assinado eletronicamente por Keola Nascimento de França, em 18/11/2025, às 09:38,
+conforme horário oficial de Recife, com fundamento no art. 10º, do Decreto nº 45.157, de 23 de outubro de
+2017.
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 9
+
+
+=== PAGE 10 ===
+Documento assinado eletronicamente por Fabiana Teixeira Severo, em 18/11/2025, às 09:39, conforme
+horário oficial de Recife, com fundamento no art. 10º, do Decreto nº 45.157, de 23 de outubro de 2017.
+Documento assinado eletronicamente por Ariadne Pinto de Holanda, em 18/11/2025, às 09:52, conforme
+horário oficial de Recife, com fundamento no art. 10º, do Decreto nº 45.157, de 23 de outubro de 2017.
+A autenticidade deste documento pode ser conferida no site http://sei.pe.gov.br/sei/controlador_externo.php?
+acao=documento_conferir&id_orgao_acesso_externo=0, informando o código verificador 77058475 e o
+código CRC FDA3ABD5.
+SECRETARIA ESTADUAL DE SAÚDE DE PERNAMBUCO​
+Rua Dona Maria Augusta Nogueira, 519, - Bairro Bongi, Recife/PE - CEP 50751-530, Telefone:  
+GOVPE - Parecer Técnico 246 CMA 2º trimestre/2025 (77058475)         SEI 2300000999.000422/2025-24 / pg. 10

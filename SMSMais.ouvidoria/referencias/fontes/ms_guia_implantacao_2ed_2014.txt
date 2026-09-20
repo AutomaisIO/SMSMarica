@@ -1,0 +1,1849 @@
+
+=== PAGE 1 ===
+MINISTÉRIO DA SAÚDE 
+Secretaria de Gestão Estratégica e Participativa
+Departamento de Ouvidoria-Geral do Sus
+Brasília – DF
+2014
+2ª edição
+Implantação de
+Guia de 
+Orientações Básicas 
+para
+Ouvidorias 
+do SUS
+
+
+=== PAGE 2 ===
+© 2014 Ministério da Saúde.
+Todos os direitos reservados. A coleção institucional do Ministério da Saúde pode ser acessada, na íntegra, 
+na Biblioteca Virtual em Saúde do Ministério da Saúde: <www.saude.gov.br/bvs>. O conteúdo desta e de 
+outras obras da Editora do Ministério da Saúde pode ser acessado na página: <http://editora.saude.gov.br>.
+Esta obra é disponibilizada nos termos da Licença Creative Commons – 
+Atribuição – Não Comercial – Sem Derivações 4.0 Internacional. É permitida a 
+reprodução parcial ou total desta obra, desde que citada a fonte.
+Tiragem:    2ª edição – 2014 – 5.000 exemplares
+Elaboração, distribuição e informações: 
+MINISTÉRIO DA SAÚDE 
+Secretaria de Gestão Estratégica e Participativa
+Departamento de Ouvidoria-Geral do SUS
+Coordenação-Geral do Sistema Nacional de 
+Ouvidoria
+SAF Sul, Trecho 2, lotes 5/6, Edifício Premium 
+Torre I, 3º andar, sala 305
+CEP: 70070-600 – Brasília/DF
+Tel.: (61) 3315-8881
+Fax.: (61) 3315-8873
+Site: www.saude.gov.br/ouvidoria
+E-mail: cgsno@saude.gov.br
+Elaboração:
+Andréa Bonatelli Trento
+Lucas Betti de Vasconcellos
+Maria Francisca Santos Abritta Moro
+Colaboração:
+Angela Karine Cruz Moura
+Carita Gabriella de Carvalho
+Deulma Lustosa Nogueira
+Flávia Silvério de Souza Sobrinho
+Maria Angélica Fernandes Aben-Athar
+Silvia Vasconcelos do Prado Arruda
+Editora responsável:
+MINISTÉRIO DA SAÚDE
+Secretaria-Executiva
+Subsecretaria de Assuntos Administrativos
+Coordenação-Geral de Documentação e 
+Informação
+Coordenação de Gestão Editorial
+SIA, Trecho 4, lotes 540/610
+CEP: 71200-040 – Brasília/DF
+Tels.: (61) 3315-7790 / 3315-7794
+Fax: (61) 3233-9558
+Site: http://editora.saude.gov.br
+E-mail: editora.ms@saude.gov.br
+Equipe editorial:
+Normalização: Delano de Aquino Silva
+Revisão: Khamila Silva e Silene Lopes Gil
+Capa, projeto gráfico: Renato Carvalho
+Diagramação: Marcelo Gomes
+Impresso no Brasil / Printed in Brazil
+Ficha Catalográfica
+Brasil. Ministério da Saúde. Secretaria de Gestão Estratégica e Participativa. Departamento de Ouvidoria-Geral 
+do SUS.
+      Guia de orientações básicas para implantação de ouvidorias do SUS/ Ministério da Saúde, Secretaria de 
+Gestão Estratégica e Participativa, Departamento de Ouvidoria-Geral do SUS. – 2. ed. – Brasília : Ministério 
+da Saúde, 2014.
+      68 p. : il.
+      ISBN 978-85-334-2110-3
+      1. Ouvidoria do SUS. 2. Política Nacional de Ouvidorias do Sus. 3. Sistema Nacional de Ouvidorias do Sus. 
+I. Título.
+CDU 614.39
+Catalogação na fonte – Coordenação-Geral de Documentação e Informação – Editora MS – OS 2014/0135
+Títulos para indexação:
+Em inglês: Basic orientation guide for implantation of ombudsmen of the Brazilian Health System (SUS/Brazil)
+Em espanhol: Guía de orientaciones básicas para implantación de oidorías del Sistema Único de Salud 
+(SUS/Brasil)
+
+
+=== PAGE 3 ===
+Sumário
+Apresentação   5
+Primeira Parte   7
+Introdução   7
+O Papel das Ouvidorias do SUS   8
+ Ouvidoria Ativa   9
+Base Legal das Ouvidorias do SUS   10
+Universalidade    11
+Equidade   11
+Integralidade   11
+Regionalização   12
+Hierarquização   12
+Participação da comunidade   12
+Descentralização   12
+
+
+=== PAGE 4 ===
+SEGUNDA PARTE   17
+Requisitos Básicos para Implantar ou Implementar uma Ouvidoria do SUS   17
+Estabelecendo a Rede da Ouvidoria do SUS   26
+TERCEIRA PARTE   31
+Processos de Trabalho da Ouvidoria do SUS   31
+QUARTA PARTE   39
+Orientações Gerais   39
+Central de Teleatendimento   43
+Considerações Finais   45
+ANEXOS   47
+Anexo A – Regulamentação do sistema OuvidorSUS   47
+ANEXO B – Decreto nº 7.508, de 28 de junho de 2011   51
+
+
+=== PAGE 5 ===
+5
+Apresentação
+A Ouvidoria em Saúde constitui-se em um espaço estratégico e demo-
+crático de comunicação entre o cidadão e os gestores do Sistema 
+Único de Saúde, relativos aos serviços prestados. A Ouvidoria, como 
+componente da Política Nacional de Gestão Estratégica e Participa-
+tiva, visa fortalecer os mecanismos de participação social e qualificar a 
+gestão participativa do Sistema Único de Saúde (SUS).
+ Nessa perspectiva, este Guia de Orientações Básicas para Implantação 
+de Ouvidorias do SUS tem por objetivo subsidiar a implantação de 
+unidades de Ouvidoria, no âmbito do SUS.
+É fundamental para a consolidação do SUS que o cidadão tenha um 
+espaço para solicitar informações sobre as ações e os serviços de 
+saúde ou registrar sua sugestão, elogio, reclamação e denúncia, com 
+resposta ágil e resolutiva à sua manifestação, visando à melhoria do 
+atendimento prestado.
+Para tanto, faz-se necessário implantar uma unidade de Ouvidoria com 
+processos de trabalho qualificados, sob a concepção da gestão parti-
+cipativa e da democratização da informação em saúde, que propicie 
+um atendimento capaz de mediar conflitos e ser eficaz na busca de 
+soluções. Além disso, as manifestações recebidas nas ouvidorias do 
+SUS devem ser sistematizadas e organizadas em relatórios gerenciais 
+para informar e subsidiar os respectivos gestores sobre a incidência 
+dos problemas, servindo como referência para mudanças positivas da 
+política de saúde.
+Mediante o presente guia, o Departamento de Ouvidoria-Geral do 
+SUS (DOGES/SGEP/MS), por meio da Coordenação-Geral do Sistema 
+Nacional de Ouvidorias do SUS, disponibiliza cooperação técnica para 
+estados e municípios na implantação e na implementação de ouvido-
+rias. Nosso desafio é formar uma rede de ouvidorias do SUS organizadas 
+no Sistema Nacional de Ouvidoria (SNO), de forma integrada, garan-
+
+
+=== PAGE 6 ===
+6
+tindo a efetiva participação social na construção de um SUS cada vez 
+mais eficaz e na busca da melhoria da qualidade vida para todos os 
+cidadãos brasileiros. 
+
+
+=== PAGE 7 ===
+7
+Primeira Parte
+Introdução
+O Ministério da Saúde, a partir da responsabilidade inerente ao gestor 
+federal, desenvolve estratégias e ações para melhorar o atendimento 
+do Sistema Único de Saúde (SUS), mediante a adoção de mecanismos 
+inovadores que venham possibilitar a participação dos usuários nesse 
+sistema, com o intuito de promover sua consciência sanitária, afirmar 
+o direito à saúde e consolidar o SUS. 
+O Pacto pela Saúde estabelece diretrizes operacionais por meio dos 
+seus componentes pela vida, em defesa do SUS e de gestão. No Pacto 
+de Gestão, uma das ações apontadas para o fortalecimento da partici-
+pação e do controle social é o apoio à implantação e à implementação 
+de ouvidorias nos municípios e nos estados, com vistas ao fortaleci-
+mento da gestão estratégica do SUS. 
+Nessa perspectiva, o Pacto pela Saúde, documento enunciador da 
+política nacional de saúde desde o ano de 2006, efetiva-se como parte 
+da consolidação do SUS, com o objetivo de promover e viabilizar 
+instrumentos de gestão para aprimorar e qualificar o atendimento aos 
+cidadãos brasileiros. O Pacto redefine as responsabilidades de cada 
+gestor, seja ele, federal, estadual ou municipal, por meio da adesão 
+ao Termo de Compromisso de Gestão (TCG), e estabelece metas e 
+compromissos de forma a suprir as necessidades de saúde da popu-
+lação, com garantia de integralidade e equidade, obedecendo aos 
+princípios e às diretrizes do SUS. 
+Nesse contexto, essa diretriz do Pacto de Gestão vem sendo cumprida 
+por meio da Política Nacional de Gestão Estratégica e Participativa do 
+SUS (ParticipaSUS), de responsabilidade da Secretaria de Gestão Estra-
+tégica e Participativa (SGEP), ampliando e fortalecendo a participação 
+
+
+=== PAGE 8 ===
+8
+da comunidade. A ParticipaSUS imprime a gestão estratégica e parti-
+cipativa no sistema de saúde, com a adoção de práticas e mecanismos 
+inovadores que favorecem avanços tanto para a gestão quanto para o 
+controle social do SUS. 
+Assim, é de fundamental importância a criação de canais democrá-
+ticos de informação e de escuta da população em geral, com espaço 
+de recepção das manifestações dos cidadãos, para melhor qualificar 
+a gestão do SUS, nos três níveis de governo. A Ouvidoria é, por exce-
+lência, esse espaço. 
+A implantação da Ouvidoria do SUS, estruturada e articulada entre as 
+três esferas de governo, com a participação do cidadão, contribui para 
+o fortalecimento da democracia e da gestão participativa no SUS, com 
+a correspondente ampliação do processo de controle social e com a 
+corresponsabilização do cidadão na gestão do SUS. 
+O Papel das Ouvidorias do SUS
+As ouvidorias do SUS são unidades de importância estratégica para 
+a gestão do SUS. Ao possibilitar o diálogo entre a sociedade e as 
+diferentes instâncias de gestão, as ouvidorias contribuem para a parti-
+cipação do cidadão na avaliação e na fiscalização da qualidade dos 
+serviços de saúde. Essa forma de controle social auxilia no aprimora-
+mento da gestão pública e no aperfeiçoamento gradual do sistema 
+de saúde.
+Nas ouvidorias do SUS, a manifestação do cidadão pode se apresentar 
+pela busca de informações e orientações em saúde e também por meio 
+de sugestões, elogios, solicitações, reclamações ou denúncias. Diante 
+da necessidade apresentada pelo cidadão e das responsabilidades 
+legais do gestor, as ouvidorias orientam, encaminham, acompanham 
+a demanda e respondem ao cidadão sobre as providências adotadas.
+Em tal contexto, as ouvidorias do SUS são ferramentas estratégicas 
+de promoção da cidadania em saúde, organizando e interpretando 
+
+
+=== PAGE 9 ===
+9
+as informações que recebe da sociedade por meio de condutas que 
+inspirem a credibilidade, a ética e o respeito ao cidadão.
+O processo de escuta do cidadão dá-se individualmente, porém, a 
+Ouvidoria tem como atribuição sistematizar as demandas que recebe, 
+de forma a possibilitar a elaboração de indicadores abrangentes que 
+podem servir de suporte estratégico à tomada de decisão no campo 
+da gestão da Saúde. 
+ Ouvidoria Ativa
+Em 2011 foram iniciadas estratégias de Ouvidoria Ativa, que têm como 
+sentido a busca por mobilizar o cidadão para uma postura crítica 
+em relação ao SUS – visando, em última instância, maior inclusão e 
+governança cidadã nas políticas públicas de saúde. Nesse sentido, a 
+Ouvidoria Ativa deve promover estratégias eficazes para escuta do 
+cidadão, não apenas recebendo as manifestações por meio dos canais 
+de acesso, mas também buscando as informações.
+As estratégias de Ouvidoria Ativa vêm se concretizando nas seguintes 
+ações: qualificação e ampliação do Banco de Informações Técnicas em 
+Saúde (Bits) para disseminação de informações; distribuição de cartas 
+a milhões de usuários do SUS, a CartaSUS, para colher as impressões 
+sobre a atenção recebida e informar sobre os custos de tratamento; 
+implantação de totens, terminais de autoatendimento eletrônico que 
+dão acesso à página web da Ouvidoria; realização de pesquisas tele-
+fônicas, com ampla abrangência, sobre a satisfação com os serviços 
+prestados pelo SUS e promoção de iniciativas de Ouvidoria Itinerante. 
+A OI busca atingir, dentro da perspectiva da estratégia de Ouvidoria 
+Ativa, populações vivendo em condições de vulnerabilidade social, 
+isto é, sem a possibilidade, por questões territoriais, culturais e/ou 
+socioeconômicas, de terem acesso a programas, projetos e atividades 
+que permitam o exercício da cidadania por meio de direitos e serviços 
+garantidos pela Constituição Federal.
+
+
+=== PAGE 10 ===
+10
+Além de levar informação para populações que têm dificuldades histó-
+ricas de acesso ao SUS e aos canais de participação, como o próprio 
+Disque-Saúde 136, faz, ainda, uma escuta humanizada, qualificada e 
+medeia com a gestão o devido encaminhamento para as demandas 
+apresentadas.
+A Ouvidoria Itinerante desempenha, portanto, um papel importan-
+tíssimo, pois congrega a comunicação e a escuta qualificada com o 
+respeito à diversidade e à cultura desses territórios vulneráveis.
+Base Legal das Ouvidorias do SUS
+A Constituição Federal de 1988 consagrou expressamente a saúde 
+como um direito de todos e um dever do Estado. Com a Lei Orgânica 
+da Saúde nº 8.080, de 19 de setembro de 1990, foi dado início à regu-
+lamentação do Sistema Único de Saúde, como sistema integrado de 
+assistência à saúde, garantido pelo Estado brasileiro, administrado 
+pelo Ministério da Saúde em parceria com as secretarias estaduais e 
+municipais de saúde e, principalmente, com a necessária participação 
+da população na gestão, no controle e na fiscalização dos serviços 
+de saúde.
+Historicamente, criaram-se marcos que têm trazido avanços na insti-
+tucionalização de instrumentos que regulamentam a participação 
+popular na gestão da saúde, como, por exemplo, a Lei nº 8.142, de 
+28 de dezembro de 1990, que dispõe sobre a criação de conselhos e 
+conferências de saúde, como mecanismos de atuação da sociedade 
+civil organizada. A Ouvidoria, nesse contexto, fortalece o papel legal 
+das instâncias de gestão e controle social, porém sua identidade é 
+distinta. Ela auxilia e complementa a ação dos conselhos de saúde, das 
+instâncias intergestoras, das corregedorias e dos sistemas de auditoria.
+As ouvidorias do SUS, para assegurar ao cidadão a oportunidade de 
+participação na gestão pública em saúde, apoiam-se nos princípios 
+e nas diretrizes que determinam as ações e os serviços em saúde, 
+expressos nos artigos 196, 197 e 198 da Constituição Federal e na Lei nº 
+8.080/1990. A aplicação dos princípios previstos na Lei nº 8.080/1990 e 
+
+
+=== PAGE 11 ===
+11
+das diretrizes elencadas na Constituição Federal à atuação das ouvido-
+rias do SUS possibilita afirmar que: 
+Universalidade 
+Todo cidadão tem o direito de se manifestar ao Poder Público, quanto 
+ao sistema de saúde. Compete, pois, colocar serviços de Ouvidoria ao 
+alcance da população de modo a permitir o uso do direito de opinião 
+do cidadão.
+Equidade
+Todo cidadão deve contar com pelo menos um meio de acesso 
+gratuito ao serviço de Ouvidoria, seja pessoalmente, por telefone, fax, 
+carta, e-mail ou ainda pela imprensa, de forma que atenda a sua neces-
+sidade, independente da localidade ou situação social. Compete aos 
+níveis administrativos do SUS divulgar e difundir formas e meios de 
+acesso à disposição dos cidadãos.
+Integralidade
+As demandas recebidas na Ouvidoria sobre o sistema de saúde devem 
+ser processadas sob um tratamento que abranja, tanto quanto possível, 
+os aspectos de promoção,  de proteção e de recuperação da saúde.
+
+
+=== PAGE 12 ===
+12
+Regionalização
+Este princípio é pautado pela maior eficácia e transparência causadas 
+pela aproximação das políticas de saúde aos cidadãos, bem como pelo 
+reconhecimento da heterogeneidade e da desigualdade social e terri-
+torial, por meio da identificação e do reconhecimento das diferentes 
+situações regionais e suas peculiaridades. Assim, o serviço de Ouvi-
+doria deve estar presente em todas as secretarias estaduais de saúde; 
+nas secretarias de saúde das capitais; nas cidades com mais de 100 mil 
+habitantes; nas cidades-polo; e nas sedes dos consórcios municipais 
+e das regiões de saúde, a ser acordado nas Comissões Intergestoras 
+Bipartites (CIBs), Conselhos de Saúde e demais estruturas do SUS.
+Hierarquização
+Na organização da rede de ouvidorias, devem ser respeitados os níveis 
+hierárquicos de estruturação do SUS.
+Participação da comunidade
+Compete aos níveis de gestão do SUS promover o relacionamento dos 
+serviços de Ouvidoria com os respectivos conselhos de saúde. 
+Descentralização 
+Deve ser apoiada a criação de estruturas descentralizadas de ouvido-
+rias do SUS nas três esferas de governo. O princípio da descentralização 
+das ações e dos serviços de saúde, por definição, é o processo de 
+transferência de responsabilidades e prerrogativas de gestão para 
+os estados e os municípios, atendendo às determinações institucio-
+nais e legais que embasam o SUS e que definem atribuições comuns 
+
+
+=== PAGE 13 ===
+13
+e competências específicas à União, aos estados, ao Distrito Federal e 
+aos municípios. 
+Portanto, a descentralização promove a participação da sociedade em 
+todo o processo de decisão e controle da gestão e constitui um desafio 
+permanente para mudanças substantivas na gestão responsável da 
+Administração Pública.
+Nesse sentido, a Ouvidoria estabelecerá vínculos com as entidades de 
+representação política dos gestores administrativos, envolvendo os 
+conselhos, as secretarias estaduais e municipais, as unidades de saúde 
+e outros órgãos da área de saúde, para incentivar a abertura de canais 
+de comunicação entre gestores e sociedade. 
+As experiências de ouvidorias implantadas nas três esferas de governo 
+têm contribuído para a construção de um Sistema Nacional de Ouvi-
+doria (SNO). A estruturação do SNO contempla uma rede articulada 
+de ouvidorias com capacidade de integrar as demandas sociais em 
+saúde, no sentido de sistematizá-las nas esferas de governo. O proces-
+samento e a leitura das manifestações captadas poderão dotar o nível 
+federal de informações pertinentes para a formulação de políticas 
+nacionais de saúde.
+Historicamente, no Brasil, a primeira tentativa de regulamentar a 
+figura do Ouvidor e da Ouvidoria deu-se em 1923, pelo deputado 
+constituinte José de Souza Mello.
+Em 1998, a chamada Comissão de Notáveis, que era liderada pelo 
+jurista Afonso Arinos, tentou introduzir o instituto do Ouvidor no texto 
+constitucional brasileiro.
+– Constituição Federal de 1988
+Artigo 37, parágrafo 3º, inciso I. Prevê a existência de uma lei que disci-
+pline as formas de participação do usuário na administração pública 
+direta e indireta e que regule as reclamações relativas à prestação dos 
+serviços públicos em geral, asseguradas a manutenção de serviços de 
+atendimento ao usuário e a avaliação periódica, externa e interna, da 
+qualidade dos serviços.
+
+
+=== PAGE 14 ===
+14
+Artigos de 196 a 200. Definição de saúde como direito de todos e dever 
+do Estado e instituição do SUS, que tem, como uma de suas diretrizes, 
+a da participação da comunidade. Entende-se que a implantação de 
+ouvidorias é uma forma de consolidar esta diretriz.
+– Política Nacional de Gestão Estratégica e Participativa no SUS 
+– ParticipaSUS (Portaria MS/GM nº 3.027, de 26 de novembro de 
+2007) 
+Vislumbra a implantação de ouvidorias como uma das formas de forta-
+lecer a gestão estratégica e participativa no SUS.
+– Decreto Presidencial nº 6.680/2009
+Dispõe sobre a estrutura regimental do Ministério da Saúde e compe-
+tências das áreas que o integram, conferindo ao Departamento de 
+Ouvidoria-Geral do SUS a missão de estimular e apoiar a criação de 
+estruturas descentralizadas de ouvidorias de saúde.
+– Carta dos Direitos dos Usuários da Saúde (Portaria MS/GM nº 
+1.820, de 13 de agosto de 2009) 
+Contém dispositivo que garante aos cidadãos o direito de se expressar 
+e ser ouvido nas suas queixas, denúncias, necessidades, sugestões e 
+outras manifestações por meio das ouvidorias, urnas e qualquer outro 
+mecanismo existente, sendo sempre respeitado na privacidade, no 
+sigilo e na confidencialidade. 
+– Decreto nº 7.508, de 28 de junho de 2011 (Regulamentação da 
+Lei nº 8.080/1990)
+Regulamenta a Lei Orgânica do SUS e estabelece a necessidade da 
+gestão do SUS apurar, de forma permanente, as necessidades e a 
+satisfação do usuário. 
+O Decreto nº 7.508/2011 dispõe sobre a organização do SUS em regiões 
+de saúde, sendo estas instituídas pelo Estado em articulação com seus 
+municípios. As regiões de saúde representam o espaço privilegiado da 
+
+
+=== PAGE 15 ===
+15
+gestão compartilhada da rede de ações e dos serviços da saúde, tendo 
+como objetivos:
+•• garantir o acesso resolutivo e de qualidade à rede de saúde, 
+constituída por ações e serviços de atenção primária, vigilância 
+à saúde, atenção psicossocial, urgência e emergência e 
+atenção ambulatorial especializada e hospitalar;
+•• efetivar o processo de descentralização, com responsabilização 
+compartilhada, favorecendo a ação solidária e cooperativa 
+entre os entes federados;
+•• reduzir as desigualdades locorregionais, por meio da 
+conjugação interfederativa de recursos.
+Para assegurar ao usuário o acesso universal, igualitário e ordenado 
+às ações e aos serviços de saúde do SUS, caberá aos entes federativos, 
+nas Comissões Intergestores, garantir a transparência, a integralidade 
+e a equidade no acesso às ações e aos serviços de saúde; monitorar o 
+acesso às informações e aos serviços de saúde e ofertar regionalmente 
+as ações e os serviços de saúde.
+O Decreto nº 7.508/2011 instituiu o Contrato Organizativo da Ação 
+Pública da Saúde (Coap)
+O Coap é um acordo de colaboração firmado entre os entes federa-
+tivos, no âmbito de uma região de saúde, com o objetivo de organizar 
+e integrar as ações e os serviços de saúde na região, para garantir a 
+integralidade da assistência à saúde da população. Ele é assinado 
+pelos prefeitos e seus secretários de saúde, pelo governador e seu 
+secretário de saúde e pelo Ministro da Saúde.
+A avaliação da execução do Coap é realizada por meio do Relatório 
+de Gestão, de cada ente signatário, devendo ser acompanhada pelos 
+respectivos conselhos de saúde.
+
+
+=== PAGE 16 ===
+16
+Figura 1 – Fluxo Normativo
+Fonte: DOGES/SGEP/MS, 2014.
+
+
+=== PAGE 17 ===
+17
+SEGUNDA PARTE
+Requisitos Básicos para 
+Implantar ou Implementar 
+uma Ouvidoria do SUS
+ Para implantação de uma unidade de Ouvidoria do SUS os seguintes 
+passos são previstos: 
+– Mobilização para a criação da Ouvidoria.
+– Definição no organograma.
+– Clareza quanto aos objetivos de implantação da Ouvidoria.
+– Estruturação da Ouvidoria (estrutura física, instrumento normativo, 
+recursos humanos, fluxo de trabalho).
+– Divulgação do serviço para a comunidade.
+1 – Mobilização para a criação da Ouvidoria
+A primeira etapa para implantação de uma Ouvidoria é a de defi-
+nição de sua necessidade dentro do órgão ao qual estará vinculada. 
+Segue-se o apoio em sua efetivação, para que possa cumprir seu papel 
+com legitimidade e autonomia.
+Para isso, os gestores do SUS e os administradores dos estabeleci-
+mentos de saúde, bem como seus funcionários e a comunidade-alvo, 
+devem estar conscientes das atribuições da Ouvidoria e dispostos 
+a colaborar com seu trabalho. Assim, a secretaria ou o estabeleci-
+
+
+=== PAGE 18 ===
+18
+mento de saúde pode organizar palestras e oficinas internas com 
+essa finalidade.
+2 – Definição no organograma
+A Ouvidoria, por ser um instrumento de gestão, deve estar inserida no 
+organograma da instituição a qual está vinculada e situar-se, preferen-
+cialmente, articulada ao nível central de gestão. Porém há de se refletir 
+sobre a realidade de cada local para essa definição.
+3 – Clareza quanto aos objetivos de implantação da Ouvidoria 
+Tratam-se dos propósitos a serem alcançados pela Ouvidoria, podendo 
+ser relacionados: 
+– Ampliar a participação dos cidadãos na gestão do SUS.
+– Possibilitar à instituição a avaliação contínua da qualidade das ações 
+e dos serviços prestados.
+– Subsidiar a gestão nas tomadas de decisões e na formulação de polí-
+ticas públicas de saúde.
+4 – Estruturação da Ouvidoria (estrutura física, instrumento 
+normativo, recursos humanos, fluxo de trabalho):
+ – Estrutura Física
+Devem-se observar os seguintes itens :
+– Espaço físico determinado.
+– Boa localização, de fácil acesso e visibilidade ao cidadão.
+– Acessibilidade (rampa e banheiros adaptados).
+– Equipamentos e mobiliário adequados para a realização do serviço.
+– Disponibilidade de linha telefônica e acesso à internet.
+
+
+=== PAGE 19 ===
+19
+– Espaço adequado para atendimento presencial, eventualmente com 
+resguardo de sigilo.
+Portanto, o local escolhido deve ser adequado para a execução das 
+funções de Ouvidoria, tais como acolhimento das manifestações, 
+incluindo espaço específico e adequado para o atendimento presen-
+cial, análise e acompanhamentos das manifestações e gestão dos 
+dados da Ouvidoria. Sugere-se a criação de um espaço reservado para 
+garantir acolhimento privativo ao cidadão.
+No processo de escolha do local, é importante que os responsá-
+veis pela implantação da Ouvidoria estejam atentos à acessibilidade 
+dos usuários portadores de necessidades especiais, como rampa de 
+acesso, banheiro com adaptações, entre outros.
+Para a adequação do espaço ao trabalho de Ouvidoria, sugere-se que o 
+local possua mobiliário mínimo, como cadeira, mesa, armário, material 
+de escritório em geral, computador, impressora, aparelho telefônico 
+e fax. 
+Disponibilidade de linha telefônica: a linha telefônica deverá estar 
+disponível para o atendimento ao cidadão e para interlocução da Ouvi-
+doria com sua rede para encaminhamento e acompanhamento das 
+manifestações. Ressalta-se que algumas instituições fazem a opção por 
+disponibilizar um serviço de central de teleatendimento para acolher 
+as manifestações do cidadão. Para a implantação desse tipo de serviço, 
+deve-se primeiramente avaliar a política institucional a este respeito, 
+além da viabilidade de recursos financeiros da instituição, bem como 
+a viabilidade de contratação, capacitação e manutenção desse serviço.
+Acesso à internet e ao endereço eletrônico: atualmente, a internet 
+e os meios de comunicação eletrônicos tornaram-se mecanismos 
+facilitadores do acesso do cidadão. Para que a Ouvidoria possa acom-
+panhar esse processo, é importante viabilizar um e-mail institucional 
+para o qual o cidadão possa fazer contato com a Ouvidoria. 
+É importante que a Ouvidoria possua um sistema informatizado que 
+possibilite a inserção das manifestações, sua categorização e geren-
+ciamento dos dados assim gerados. O sistema implantado deve 
+
+
+=== PAGE 20 ===
+20
+garantir a segurança dos dados inseridos e gerenciados. Além disso, é 
+importante que esse sistema facilite o processo de encaminhamento 
+das manifestações de maneira que a Ouvidoria e sua rede utilizem o 
+mínimo de documentos impressos.
+Os recursos aqui elencados são os mínimos (ou básicos) para a criação 
+da estrutura de uma Ouvidoria. Mas a montagem de cada uma depen-
+derá das condições e necessidades locais.
+– Instrumento Normativo
+Uma vez estruturada fisicamente a Ouvidoria, é importante que ela 
+passe a existir também de direito; vale dizer, que seja formalizada e 
+institucionalizada por meio de um instrumento normativo de criação/
+regulamentação. Diversos são os meios que podem ser utilizados para 
+essa finalidade, de acordo com a estrutura e as regras locais, sejam 
+eles, lei; decreto; resolução; portaria, além de outros.
+Sugere-se, sempre que possível, que seja dada primazia à Lei, por ser 
+o instrumento que possui um processo mais rígido de elaboração e 
+revogação, que passa pelo Poder Legislativo local e, por isso, confere à 
+Ouvidoria maior legitimidade e concretude.
+ No instrumento normativo de criação/regulamentação da Ouvidoria 
+podem constar, entre outros, os seguintes assuntos:
+– Localização da Ouvidoria na estrutura organizacional da instituição a 
+que pertence (previsão no organograma institucional).
+– Definição do vínculo com a instituição, ressaltando-se a necessi-
+dade de autonomia de suas ações, lembrando que a ParticipaSUS, por 
+entender a Ouvidoria como um instrumento de gestão, defende que 
+seu vínculo seja com o gestor.
+– Atribuições e competências da Ouvidoria, inclusive com a previsão 
+de estabelecimento de rede de parcerias e cooperação com outros 
+órgãos e entidades ligadas direta ou indiretamente à instituição.
+
+
+=== PAGE 21 ===
+21
+– Cargos e funções destinados à composição dos recursos humanos 
+da Ouvidoria.
+– Prazos: algumas ouvidorias estabelecem os prazos para a resposta de 
+demandas nesses instrumentos normativos. Para isso, recomenda-se 
+que os prazos sejam previamente acordados entre as partes envol-
+vidas no processo de tratamento das manifestações e ratificados pelo 
+gestor.
+– Recursos Humanos
+Os profissionais que venham atuar na Ouvidoria devem ter formação 
+e capacitação compatível com a função, mediante análise de perfis, e 
+dependerá das condições e necessidades locais.
+Vale ressaltar que os profissionais das ouvidorias do SUS são como 
+agentes do processo de educação para a cidadania e responsáveis 
+pelo acolhimento das demandas que chegam às ouvidorias.
+É recomendável que a Ouvidoria conte com os seguintes recursos 
+humanos discriminados a seguir:
+– Responsável pela Ouvidoria;
+– Teleatendente;
+– Técnico para o tratamento da demanda;
+– Suporte administrativo para atividades burocráticas e administrativas.
+A capacitação é um fator determinante para que a equipe da Ouvi-
+doria realize um trabalho consciente e qualificado.
+
+
+=== PAGE 22 ===
+22
+– Características da Equipe
+Figura 2 – Características da Equipe
+Fonte: DOGES/SGEP/MS, 2014.
+É importante que esses profissionais sejam exclusivos para a Ouvidoria. 
+Não há como atender a Ouvidoria e a outro setor simultaneamente, 
+como fazem os profissionais da sub-rede. 
+– Designação do Ouvidor
+A designação do Ouvidor dependerá de como foi estruturada a 
+Ouvidoria e dos entes envolvidos em sua constituição. A escolha do 
+responsável poderá ser feita pelo gestor, ou resultar de processo demo-
+crático ampliado com participação do usuário, trabalhador e gestor.
+Não há obrigatoriedade quanto à denominação do cargo de Ouvidor. 
+A instituição poderá designá-lo como diretor, encarregado, assessor, 
+técnico, ouvidor ou outro, desde que constem, no documento de 
+criação da Ouvidoria, a denominação e a função daquele(s) que 
+será(ão) responsável(eis) pela Ouvidoria.
+
+
+=== PAGE 23 ===
+23
+ – Características do Ouvidor 
+Figura 3 – Características do Ouvidor
+Fonte: DOGES/SGEP/MS, 2014.
+– Estrutura de Fluxo de Trabalho
+O fluxo de trabalho aqui entendido envolve o caminho percorrido pela 
+manifestação do cidadão internamente e externamente à Ouvidoria.
+– Fluxo de Trabalho Interno
+Refere-se aos processos de recebimento, análise, encaminhamento, 
+acompanhamento, resposta e fechamento das demandas. 
+
+
+=== PAGE 24 ===
+24
+Figura 4 – Fluxo de Trabalho Interno
+Fonte: DOGES/SGEP/MS, 2014.
+Quadro 1 – Fluxo de Trabalho Interno 
+ETAPAS
+PROCEDIMENTOS
+1ª – Recebimento
+As demandas poderão ser recebidas 
+na Ouvidoria por meio de correspon-
+dências 
+diversas, 
+correspondência 
+eletrônica, pessoalmente, telefone e 
+outros. É importante que a Ouvidoria 
+observe os processos de recebimento 
+de documentos já implantados em sua 
+instituição (protocolo de documentos) 
+para que os documentos da Ouvidoria 
+sigam os mesmos processos.
+Continua
+
+
+=== PAGE 25 ===
+25
+ETAPAS
+PROCEDIMENTOS
+2ª – Análise
+O período de análise é compreendido 
+como a etapa pela qual a Ouvidoria 
+deverá analisar o teor da manifestação, 
+verificar se há dados suficientes para 
+dar continuidade ao processo, se há 
+a necessidade de colocar a demanda 
+em sigilo, e para qual o local deverá ser 
+encaminhada.
+3ª – Encaminhamento
+Após a análise, a demanda que tenha 
+dados suficientes deverá ser encami-
+nhada para a área responsável pela sua 
+resolução. É importante que o cidadão 
+tenha conhecimento do encaminha-
+mento dado a sua manifestação.
+4ª – Acompanhamento
+A Ouvidoria deverá acompanhar o 
+trâmite da demanda para agilizar e inter-
+mediar as ações. Deverá, também, avaliar 
+a resposta do setor, órgão ou entidade 
+e, se não for satisfatória, reencaminhar 
+para nova avaliação.
+5ª – Resposta ao Cidadão
+Manter o cidadão informado sobre o 
+trâmite da sua demanda, considerando 
+sua resolução dentro dos princípios legais 
+e diretrizes do SUS. Cada Instituição esta-
+belecerá o modo mais adequado para a 
+tramitação das demandas, tendo em 
+vista sua organização e necessidade.
+6ª – Fechamento
+Uma 
+demanda 
+só 
+pode 
+ser 
+fechada 
+mediante 
+uma 
+resposta 
+satisfatória. Ressalta-se que, não neces-
+sariamente, 
+a 
+resposta 
+satisfatória 
+significa atendimento.
+Conclusão
+Fonte: DOGES/SGEP/MS, 2014
+
+
+=== PAGE 26 ===
+26
+– Fluxo de Trabalho Externo 
+Refere-se aos processos que envolvem o encaminhamento da 
+demanda para as áreas responsáveis, com o estabelecimento de como 
+as demandas serão encaminhadas para as áreas competentes, quando 
+isso não ocorrer via sistema informatizado. 
+A Ouvidoria-Geral do SUS atua por meio de um sistema informatizado, 
+o OuvidorSUS, que permite a otimização de todos os processos de 
+trabalho que permeiam sua ação. 
+O Sistema OuvidorSUS foi desenvolvido pelo Departamento de Ouvi-
+doria-Geral do SUS em parceria com o Departamento de Informática 
+do Ministério da Saúde (DATASUS), e implantado em 2006. O Sistema 
+tem a finalidade de atuar como ferramenta para a descentralização 
+das ouvidorias do SUS, facilitar a democratização das informações 
+em saúde, agilizar o processo de recebimento, encaminhamento, 
+acompanhamento e resposta das manifestações, além de gerar rela-
+tórios gerenciais; e, também a definição de prazos para o tratamento 
+das demandas.
+Estabelecendo a Rede da 
+Ouvidoria do SUS
+ Uma Ouvidoria constitui-se de estrutura física, de organização jurí-
+dica, de recursos humanos e de sua rede. A origem dessa palavra vem 
+do latim retis, que significa entrelaçamento de fios com aberturas 
+regulares que formam uma espécie de tecido. A partir da noção de 
+entrelaçamento e estrutura reticulada, a palavra foi ganhando novos 
+significados ao longo do tempo. Nas duas últimas décadas prevaleceu 
+a noção de alternativa prática de organização que possibilita processos 
+capazes de responder às demandas com flexibilidade, conectividade e 
+descentralização das suas estruturas integrantes. 
+A Ouvidoria é responsável por receber as manifestações, analisar e 
+encaminhar para a área responsável, constituindo, assim, o canali-
+
+
+=== PAGE 27 ===
+27
+zador e intermediador das manifestações do cidadão. Isso significa 
+que a rede de uma Ouvidoria pode ser entendida como a extensão 
+desse processo, pois para o trabalho da Ouvidoria ser efetivo, é neces-
+sário que essa possua articulação com as áreas responsáveis para a 
+resolução da demanda. A rede nada mais é do que as áreas, os órgãos 
+ou as instituições que serão responsáveis por responder ou resolver as 
+demandas acolhidas. 
+Para a estruturação de uma rede, inicialmente, é necessário que a 
+equipe da Ouvidoria apreenda a organização do órgão gestor da saúde 
+respectivo, para que a estruturação da rede não fira a organização dele.
+Também faz-se necessário conhecer as competências e as atribui-
+ções de cada área que integrará a rede. Estabelecer uma rede significa, 
+em primeiro lugar, seguir os princípios e as diretrizes do SUS e, na 
+sequência: conhecer as competências e as atribuições das áreas que 
+integrarão a rede para encaminhamento correto das manifestações; 
+seguir e respeitar a lógica e a organização do órgão gestor e das 
+demais instituições envolvidas; discutir a gestão com a equipe e com 
+os parceiros, as propostas de fluxos, prazos, processos de trabalho, 
+responsabilidades e agentes responsáveis em cada ponto da rede.
+Deve-se analisar, ainda, o perfil das entidades que farão parte da rede, 
+de forma que o percurso da demanda seja rápido e eficiente. Sendo 
+assim, a Ouvidoria pode determinar se a rede será composta por todas 
+as unidades de saúde, ou então composta por todas as unidades 
+de saúde e seus departamentos, ou ainda, por todos esses e suas 
+superintendências.
+Na discussão com os parceiros-membros da rede, torna-se importante 
+estar atento aos tópicos seguintes:
+– Definição dos objetivos da implantação da Ouvidoria do SUS.
+– Importância da Ouvidoria para a gestão e para as áreas envolvidas.
+– Canais de entrada e fluxos propostos para a estruturação da rede, 
+inclusive de relatórios gerenciais.
+
+
+=== PAGE 28 ===
+28
+– Disponibilização de responsáveis em cada ponto para responder 
+às demandas e à pactuação de processos de trabalho com cada 
+integrante da rede.
+– Responsabilização definida nas respostas aos cidadãos (Ouvidoria 
+versus rede). 
+– Definição de prazos para resposta, formalmente (por lei, decreto, 
+portaria) ou não, mas sempre discutido com a rede.
+– Divulgação de informações.
+– Colaboração com o desenvolvimento das ações de cada área.
+– Fundamento ético quanto ao tratamento das demandas.
+É importante ressaltar que as ouvidorias do SUS compõem uma 
+grande rede nacional – o Sistema Nacional de Ouvidorias do SUS – 
+cujo objetivo é proporcionar ao cidadão maior agilidade na resposta 
+às suas manifestações e demandas nos órgãos gestores de saúde.
+Em suma, o que deverão determinar a composição da rede são: 
+(a) responsabilidades e competências em resolver problemas; (b) 
+fluxos voltados para a agilidade do processo, sem desrespeitar a estru-
+tura e o funcionamento dos órgãos participantes; (c) promoção de 
+compreensão e receptividade em relação à Ouvidoria; (d) disponibi-
+lidade de pessoal para dar andamento aos processos inerentes a uma 
+Ouvidoria do SUS.
+Concluindo, é preciso deixar claro que fazer parte de uma rede 
+significa, também, no caso das ouvidorias do SUS, compartilhar 
+compromissos com os cidadãos. Sendo assim, é necessário que a rede 
+tenha conhecimento do processo de trabalho da Ouvidoria, das atri-
+buições da Ouvidoria, das particularidades das demandas sigilosas e 
+em anonimato, da ética envolvida no tratamento da manifestação do 
+cidadão, visto que essa poderá tratar de assuntos relativos a colegas 
+de trabalho ou do próprio interlocutor.
+
+
+=== PAGE 29 ===
+29
+É preciso, também, saber fazer distinção entre membros de uma rede 
+e parceiros, aspecto sistematizado no quadro a seguir:
+Quadro 2 – Membros de Rede e Parceiros 
+MEMBROS DE REDE
+PARCEIROS
+Fazem parte da estrutura da secretaria da 
+instituição.
+Não necessariamente fazem 
+parte da estrutura da insti-
+tuição (corpo de bombeiros, 
+exército, ministério público).
+Possuem 
+competência 
+direta 
+para 
+responder ou atender demandas. 
+Papel auxiliar na resolução 
+de problemas.
+Fonte: DOGES/SGEP/MS, 2014.
+
+
+=== PAGE 30 ===
+
+
+=== PAGE 31 ===
+31
+TERCEIRA PARTE
+Processos de Trabalho 
+da Ouvidoria do SUS
+ Figura 5 – Processos de Trabalho da Ouvidoria do SUS
+Fonte: DOGES/SGEP/MS, 2014.
+As ouvidorias do SUS, além de constituírem-se em um espaço para 
+acolhimento das manifestações dos cidadãos, como reclamações, 
+denúncias, sugestões, elogios e solicitações, são canais democráticos 
+de comunicação que também se destinam a disseminar informa-
+ções, visando maior efetividade no desenvolvimento de um espaço 
+de cidadania.
+
+
+=== PAGE 32 ===
+32
+O termo disseminar está associado à ideia de difundir, espalhar, 
+“semear”, aplicando-se a informações dirigidas não só para o cidadão, 
+mas para os atores do SUS em geral. Tais informações podem ser 
+consideradas verdadeiras ferramentas de gestão. Além disso, a disse-
+minação da informação contribui com eficácia e valor estratégico 
+para o fortalecimento da cidadania e  para a democratização de 
+informações em saúde.
+Pode-se dizer que o grande desafio da Ouvidoria do SUS é o de atuar 
+de forma pautada no compromisso e na transparência de suas ações, 
+incentivando as práticas de democratização de informações em saúde 
+como estratégia de controle social. Para tanto, o papel de disseminar 
+informações deve ser um norteador das práticas de todos que atuam 
+nas ouvidorias do SUS. 
+A organização dos processos de trabalho em uma Ouvidoria do 
+SUS deve seguir algumas recomendações:
+– Estabelecer a Ouvidoria como responsável para receber as manifes-
+tações no âmbito da saúde. É importante discutir essa ação com as 
+áreas da secretaria que recebem demandas próprias, para que esse 
+trabalho fique centralizado na Ouvidoria.
+– Especificar as demandas que chegam à Ouvidoria com algum número 
+de tramitação interna na secretaria (como número de protocolo).
+– Estabelecer o modo de encaminhamento dessas demandas para as 
+áreas competentes (via correspondência oficial, e-mail, por exemplo).
+– Estabelecer o padrão de análise das respostas recebidas da rede 
+pertinente, bem como entrar em contato com o cidadão para informar 
+as providências de sua manifestação.
+De acordo com a experiência do Departamento de Ouvidoria-Geral do 
+SUS, são quatro os macroprocessos de trabalho inerentes à Ouvidoria 
+do SUS: 
+
+
+=== PAGE 33 ===
+33
+1 – Recebimento das manifestações; 
+2 – Análise e tratamento das demandas; 
+3 – Resposta ao cidadão; 
+4 – Gestão da informação.
+1 Recebimento das manifestações
+É importante que os cidadãos tenham amplo acesso às ouvidorias do 
+SUS, que podem disponibilizar, entre outros, os seguintes canais: tele-
+fone (Disque-Saúde 136); fax; correspondência (CartaSUS) e internet 
+(Sistema Eletrônico do Serviço de Informação ao Cidadão – e-SIC), 
+além da forma presencial.
+2 Análise e tratamento das demandas
+Após receber as manifestações pelos diferentes canais de entrada, os 
+técnicos das ouvidorias do SUS realizam todo o processo de análise 
+e tratamento das demandas, que envolve as etapas de: registro; 
+classificação; tipificação; encaminhamento e acompanhamento.
+• Registro
+Para registrar uma manifestação, é importante ter em mente os prin-
+cípios de: (a) Perguntas de Sondagem e Confirmação – entendidas 
+como a operação de pesquisar, explorar, investigar cautelosamente 
+e perguntar de forma direcionada, com o objetivo de compreender 
+o relato do cidadão e identificar o que responder e/ou registrar, no 
+âmbito de operações de avaliação e equilíbrio, de forma a cola-
+borar na compreensão correta da mensagem do cidadão; (b) Coleta 
+de Dados – o que equivale dizer que uma boa sondagem contribui 
+para a qualidade da resposta e para o registro das demandas com 
+todos os dados necessários ao processo de análise e tratamento; 
+demandas sem dados completos podem dificultar todo o processo e 
+até impossibilitar sua resolução.
+
+
+=== PAGE 34 ===
+34
+• Classificação
+Todas as manifestações são classificadas de acordo com as categorias 
+operacionais discriminadas no quadro a seguir:
+Quadro 3 – Classificação das Manifestações
+DENÚNCIA
+Comunicação verbal ou escrita que indica 
+irregularidade na administração ou no aten-
+dimento por entidade pública ou privada de 
+saúde.
+ELOGIO
+Comunicação verbal ou escrita que demonstra 
+satisfação ou agradecimento por serviço pres-
+tado pelo Sistema Único de Saúde (SUS).
+INFORMAÇÃO 
+Comunicação, orientação ou ensinamento 
+relacionado à saúde.
+RECLAMAÇÃO
+Comunicação verbal ou escrita que relata insa-
+tisfação referente às ações e aos serviços de 
+saúde, sem conteúdo de requerimento.
+SOLICITAÇÃO
+Comunicação verbal ou escrita que, embora 
+também possa indicar insatisfação, neces-
+sariamente contém um requerimento de 
+atendimento ou acesso às ações e serviços de 
+saúde.
+SUGESTÃO
+Comunicação verbal ou escrita que propõe 
+ação considerada útil à melhoria do SUS.
+Fonte: DOGES/SGEP/MS, 2014.
+ É importante que todas as ouvidorias do SUS tenham o mesmo enten-
+dimento sobre os conceitos mencionados anteriormente.
+• Tipificação
+A tipificação consiste na categorização das demandas, de acordo com 
+assuntos e subassuntos, de importância para a geração de dados 
+precisos e para a elaboração de relatórios gerenciais fidedignos, 
+potencializando o papel das ouvidorias do SUS como instrumentos de 
+gestão.
+
+
+=== PAGE 35 ===
+35
+• Encaminhamento
+Para o encaminhamento das demandas, são necessários a criação e 
+o conhecimento pleno dos fluxos na rede principal ou nas sub-redes 
+da Ouvidoria do SUS, que receberá as demandas de acordo com sua 
+competência.
+• Acompanhamento
+Todo o acompanhamento do processo pode ser realizado pelo status 
+da demanda, e pode ser otimizado com a utilização de um sistema 
+informatizado. Além do status, a prioridade também deve ser consi-
+derada. É essencial a interlocução com os serviços que fazem parte da 
+rede, responsáveis diretos pela resolução das demandas.
+– Status das Demandas
+Este aspecto é sistematizado no quadro que segue:
+Quadro 4 – Status das Demandas 
+NOVA
+Quando a demanda foi inserida no 
+sistema, mas ainda não foi tratada pelo 
+técnico.
+ENCAMINHADA
+Quando o registro foi encaminhado ao 
+órgão competente, que ainda não tomou 
+conhecimento dele.
+EM ANÁLISE
+Quando o registro já foi visualizado e está 
+em análise pelo órgão competente.
+CONCLUÍDA
+Quando o órgão competente insere a 
+resposta com as providências adotadas 
+para o caso.
+REENCAMINHADA
+Quando a resposta do órgão compe-
+tente não é satisfatória, a demanda é 
+reencaminhada.
+FECHADA
+Quando a Ouvidoria considera a demanda 
+resolvida pelo órgão competente.
+Fonte: DOGES/SGEP/MS, 2014.
+
+
+=== PAGE 36 ===
+36
+3 Resposta ao cidadão
+A Ouvidoria deve manter o cidadão informado sobre todo o 
+processo de tramitação de sua demanda. O cidadão também deve 
+ter possibilidade de entrar em contato com a Ouvidoria para fazer o 
+acompanhamento, bem como para incluir novas informações em sua 
+demanda.
+4 Gestão da informação 
+A Gestão da Informação pode ser entendida como toda ação rela-
+cionada à obtenção da informação adequada. Ou seja; a informação 
+disponibilizada de forma correta, para a pessoa indicada, a um custo 
+adequado, no tempo oportuno, em lugar apropriado, para tomar a 
+decisão mais acertada.  
+A explicação sobre Gestão da Informação remete à gestão dos próprios 
+recursos de informação. Esta pode ser entendida como o processo de 
+organizar dados para alcançar os objetivos institucionais. Visa à cons-
+trução do conhecimento de modo a favorecer a reflexão e a percepção 
+da realidade.
+Alguns processos da Gestão da Informação devem ser conhecidos, de 
+acordo com a síntese do quadro a seguir:
+Quadro 5 – Processos de Gestão da Informação
+Prospecção, seleção e obtenção de dados e de informação a partir 
+de fontes oficiais.
+Mapeamento e reconhecimento dos fluxos formais de informação. 
+Tratamento, análise e armazenamento da informação utilizando 
+tecnologias disponíveis. 
+Disseminação e mediação da informação ao público interessado. 
+Criação e disponibilização de produtos e serviços de informação.
+Fonte: DOGES/SGEP/MS, 2014.
+ Por meio de uma gestão adequada da informação, as ouvidorias 
+podem: subsidiar a tomada de decisão; formular diretrizes, políticas, 
+
+
+=== PAGE 37 ===
+37
+programas, prioridades; delinear cenários futuros e atuação na socie-
+dade; estabelecer indicadores de desempenho; dimensionar a imagem 
+institucional; atualizar os profissionais e contribuir para sua orientação 
+técnica e administrativa. Além disso, são capazes de: informar a popu-
+lação e contribuir para o fortalecimento participativo na gestão da 
+saúde; prestar orientações básicas relativas à saúde individual e cole-
+tiva, bem como os serviços e gestão do SUS; estreitar os vínculos entre 
+o sistema de saúde e seus usuários, (ampliando as possibilidades de 
+acolher e minimizar os anseios da população, além de conhecer suas 
+expectativas). 
+Algumas atribuições envolvidas na prática de Gestão da Informação 
+em Ouvidoria devem ser evidenciadas, de acordo com a síntese a 
+seguir:
+Quadro 6 – Atribuições na Prática de Gestão da Informação em 
+Ouvidoria 
+Organizar, analisar, interpretar e disseminar informações e demandas 
+provenientes do Sistema OuvidorSUS.
+Elaborar indicadores de avaliação e monitoramento do sistema de infor-
+mação adotado pelo serviço de Ouvidoria. 
+Formular e proceder respostas aos usuários e parceiros, acerca das 
+demandas relativas. 
+Elaborar relatórios e periódicos gerenciais, temáticos e segmentados, cuja 
+análise, conteúdo e linguagem devem ser ajustados ao contexto e aos 
+objetivos do destinatário. As estratégias adotadas devem se orientar pela 
+finalidade de fomentar a disseminação e a apropriação comum da infor-
+mação
+Articular, intersetorial e interdisciplinarmente, para promover o aprimo-
+ramento dos recursos de informação e da Ouvidoria como um espaço de 
+cidadania.
+Fonte: DOGES/SGEP/MS, 2014.
+
+
+=== PAGE 38 ===
+38
+Além disso, as ouvidorias do SUS devem estar atentas para alguns 
+dos instrumentos de Gestão da Informação do SUS, que devem ser 
+somados aos recursos estabelecidos localmente. Estas ferramentas 
+possibilitam a captação, a extração e a análise de dados de Ouvidoria, 
+fazendo parte de sistemas próprios da Ouvidoria Central do SUS. 
+São elas: 
+CENTRAL DE TELEATENDIMENTO
+UNIDADE DE RESPOSTA AUDÍVEL (URA)
+GERENCIADOR DE CALL CENTER
+SISTEMA OUVIDORSUS
+BANCO DE DADOS DO SISTEMA OUVIDORSUS/BI
+HOME PAGE DA OUVIDORIA
+SISTEMAS OFICIAIS DE INFORMAÇÃO EM SAÚDE
+OUTRAS FONTES DE INFORMAÇÃO OFICIAIS 
+
+
+=== PAGE 39 ===
+39
+QUARTA PARTE
+Orientações Gerais
+O Departamento de Ouvidoria-Geral do SUS (DOGES) vem propi-
+ciando espaços de discussão para construir, de forma pactuada, as 
+diretrizes que nortearão o Sistema Nacional de Ouvidoria do SUS. O 
+sistema informatizado OuvidorSUS é um dos pilares da política, pois 
+é um instrumento que possibilita a integração em rede das estruturas 
+descentralizadas de ouvidorias, podendo ser acompanhadas pelo 
+nível central de gestão. 
+Existem outras formas de garantir a estruturação de ouvidorias do 
+SUS descentralizadas, como o apoio financeiro, técnico e operacional 
+oferecido pelo DOGES/SGEP/MS, a saber:
+Recursos Financeiros
+Para implementação ou implantação do serviço de Ouvidoria do SUS, 
+os gestores contam com o apoio financeiro do ente federal, que dispo-
+nibiliza um aporte de recursos financeiros para o custeio de ações e 
+serviços de saúde. 
+Apoio Técnico Operacional 
+A capacitação do recurso humano é de suma importância para o cres-
+cimento da Instituição e o alcance de seus objetivos. O profissional 
+que atua em uma Ouvidoria do SUS deve estar comprometido com a 
+saúde pública, e isto envolve vários fatores que vão além de uma visão 
+simplista de um atendimento cordial e humanizado.
+Portanto, o DOGES na sua função de Ouvidoria de âmbito federal, 
+por meio da Coordenação-Geral do Sistema Nacional de Ouvidorias 
+
+
+=== PAGE 40 ===
+40
+(CGSNO), tem a responsabilidade de promover ações que auxiliem as 
+ouvidorias descentralizadas, com apoio técnico e operacional. Para 
+tanto tem em seu quadro profissional uma equipe de técnicos que 
+executam, entre outras, a tarefa de dar suporte por:
+– Telefone já que há sempre um técnico responsável por uma região e 
+que poderá tirar dúvidas durante a rotina da Ouvidoria.
+– Por visitas técnicas.
+– Por meio de publicações pertinentes ao tema.
+– Oficinas e capacitação: em Ouvidoria, no uso do Sistema Infor-
+matizado OuvidorSUS, em tipificação das manifestações, em 
+Gestão da Informação, tanto presencial quanto na modalidade de 
+Ensino a Distância. 
+Política de Formação Continuada em Ouvidorias (Profoco)
+A Política de Formação Continuada em Ouvidorias (Profoco), da 
+Ouvidoria-Geral da União (OGU), destina-se ao desenvolvimento de 
+atividades de capacitação e formação em ouvidoria, fundamentada 
+em um processo de qualificação contínua.
+A Profoco cumpre seus objetivos por intermédio de cursos, oficinas 
+e outros eventos de forma presencial e a distância, com conteúdos 
+que estimulem o processo formativo contínuo e autônomo dos 
+profissionais de ouvidoria.
+A necessidade de aprimorar as atividades da ouvidoria pública torna 
+fundamental o desenvolvimento de competências dos trabalha-
+dores que atuam no processo de interlocução entre o cidadão e a 
+Administração Pública, de modo que as manifestações decorrentes 
+do exercício da cidadania possam motivar a melhoria dos serviços 
+públicos prestados.
+         
+
+
+=== PAGE 41 ===
+41
+ Os cursos são ofertados na modalidade de ensino a distância ou de 
+ensino presencial, considerando que ambas se tratam de práticas 
+baseadas nos pressupostos da responsabilidade e da autonomia.
+EAD (Virtual): os cursos serão ofertados pela internet em duas estraté-
+gias de execução: 
+– Autoinstrucional, no qual o aluno desenvolverá seus traba-
+lhos de forma autônoma, podendo organizar as horas de estudo 
+a seu critério, de acordo com o período de realização do curso. 
+– Tutorial, no qual o aluno conta com o apoio e o acompanhamento 
+de um professor tutor, durante todo o tempo de realização do curso.
+Presencial: A OGU ofertará, com os parceiros institucionais, cursos 
+e oficinas com temas voltados às diversas práticas das ouvido-
+rias públicas, com destaque aos já acordados, por exemplo, gestão, 
+avaliação, efetividade, mediação, entre outros.          
+Os cursos serão ofertados a cada semestre. A OGU divulga a oferta de 
+disciplinas no site: <www.cgu.gov.br/Ouvidoria>.
+Sistema Informatizado OuvidorSUS
+A seguir, são apresentados os requisitos básicos para a implantação 
+do OuvidorSUS na Ouvidoria do SUS descentralizada. É imprescindível 
+que a Ouvidoria esteja institucionalmente legalizada, e devidamente 
+implantada, ou seja, com recursos humanos, materiais e tecnológicos 
+para operar em rede. 
+A solicitação para o uso do OuvidorSUS deverá ser feita por meio de 
+ofício ao Departamento de Ouvidoria-Geral do SUS,  com o Plano 
+Operativo disponível no endereço <www.saude.gov.br/sgep>.
+ O sistema OuvidorSUS possui três níveis de acesso: 
+a. Nível I 
+Para obter o acesso ao nível I, a Ouvidoria deve estar institucional-
+mente legalizada por meio de portaria, decreto, lei etc. O nível I de 
+
+
+=== PAGE 42 ===
+42
+acesso permite às ouvidorias criarem sua própria rede hierarquizada 
+agilizando o fluxo de trabalho; cadastrarem e encaminharem as mani-
+festações dos cidadãos para outras secretarias de saúde dentro do seu 
+estado, para hospitais de sua gestão e internamente, para departa-
+mentos e coordenações da Ouvidoria.
+Visando à maior segurança do fluxo de informações registradas no 
+sistema, o nível I apresenta o Serviço de Controle de Acesso (SCA), 
+onde será gerada automaticamente uma senha para cada CPF infor-
+mado no ofício de solicitação. 
+b. Nível II 
+O nível II de acesso é utilizado atualmente por todos os órgãos que 
+possuem login e senha e recebem as manifestações encaminhadas 
+pelo DOGES.
+c. Nível III
+A partir da disponibilização do nível III de acesso, o encaminhamento 
+de demandas tornar-se-á mais amplo, de forma a permitir que Regio-
+nais Estaduais de Saúde, por exemplo, atinjam o maior número de 
+municípios, mesmo não dispondo do nível I de acesso, lembrando 
+que este último pode formar toda sua rede, possibilitando destinar 
+demandas às mais diversas localidades dentro de seu estado.
+Redefinido o acesso ao sistema, com a implantação desse novo nível, o 
+OuvidorSUS disponibilizará os seguintes níveis de acesso: 
+NÍVEL I: CADASTRA, ENCAMINHA, CONCLUI, FECHA AS MANIFESTAÇÕES; 
+NÍVEL II: ENCAMINHA, CONCLUI A DEMANDA;
+NÍVEL III: SOMENTE ANALISA E CONCLUI AS MANIFESTAÇÕES. 
+          Dessa forma todas as localidades atualmente cadastradas como 
+nível II passarão a ter as funcionalidades que anteriormente seriam do 
+nível III, ou seja, terão a possibilidade de encaminhar a demanda. 
+
+
+=== PAGE 43 ===
+43
+As regras de encaminhamentos continuam seguindo o que atual-
+mente está em vigor por tipo e esfera. 
+Só poderão ser cadastradas, como nível III, o tipo sub-rede. As ouvido-
+rias descentralizadas nível I poderão cadastrar localidades como níveis 
+de acesso II e III. 
+O tipo de ouvidoria SUB-REDE não poderá ser cadastrada como nível II.
+A validação da rede tanto nível II como nível III continuará a ser reali-
+zada pelo cadastro de validação de sub-rede no painel de controle.
+(Funcionalidade não implantada, não houve necessidade).
+O nível II poderá encaminhar tanto para o nível I quanto para o nível III. 
+O nível I poderá encaminhar tanto para o nível II quanto para o nível III. 
+O nome nível agora é denominado nível de acesso.
+O OuvidorSUS, conforme mencionado, é um sistema desenvolvido 
+especialmente para as ouvidorias do SUS. É um instrumento impor-
+tante para o processo de descentralização com a finalidade de 
+melhorar os fluxos de trabalho e permitir autonomia da instituição 
+para registros de manifestações e criação de redes de relacionamento 
+para que venham agilizar os serviços da Ouvidoria.
+Central de Teleatendimento
+O Departamento de Ouvidoria-Geral do SUS disponibiliza diversos 
+canais para que o cidadão se manifeste, sempre tendo em vista a 
+diversidade que caracteriza a população de nosso País, buscando faci-
+litar o acesso por parte de todos. Importante que as ouvidorias do SUS 
+definam seus canais de acesso e divulguem para que a população 
+se manifeste.  
+
+
+=== PAGE 44 ===
+44
+Um dos canais utilizados pelo Departamento de Ouvidoria-Geral 
+do SUS é o telefone, mais popularmente conhecido como Disque- 
+-Saúde 136.
+O Disque-Saúde 136 é um canal democrático de articulação entre o 
+cidadão que exerce o seu papel no controle social e a gestão pública de 
+saúde, com o objetivo de melhorar a qualidade dos serviços prestados 
+pelo SUS.
+Além de ser um canal de entrada de manifestações (reclamações, 
+denúncias, sugestões etc), atua como serviço de promoção da saúde, 
+disseminando informações sobre doenças, programas e campanhas 
+do Ministério da Saúde (MS), entre outras. 
+No Disque-Saúde 136 a ligação é gratuita. De segunda a sexta-feira, 
+das 7h às 22h, aos sábados e domingos, das 8h às 18h, o cidadão pode 
+falar diretamente com o operador. Fora desses horários, é possível 
+obter informações pela Unidade de Resposta Audível, com informa-
+ções gravadas disponíveis no período de tempo definido por cada 
+Ouvidoria, podendo ser de até 24 horas por dia, todos os dias da 
+semana.
+Uma Central de Teleatendimento pode conter uma Unidade de 
+Resposta Audível (URA), com informações gravadas disponíveis o 
+período de tempo definido por cada Ouvidoria, podendo ser até 24 
+horas por dia, todos os dias da semana. As informações gravadas 
+versam sobre os assuntos de saúde mais procurados pelos cidadãos 
+e/ou sobre promoções de campanhas. 
+Portanto, os conteúdos contidos no atendimento eletrônico podem 
+variar de forma a atender as demandas locais. Esse recurso, também, 
+possibilita atender um maior número de ligações ao mesmo tempo.
+ Além do atendimento eletrônico, é importante que o cidadão tenha 
+a opção de falar com o teleatendente para esclarecer dúvidas mais 
+específicas ou para outros questionamentos não contemplados na 
+Unidade de Resposta Audível. Cada Ouvidoria pode definir o horário 
+de funcionamento de sua Central de Teleatendimento.
+
+
+=== PAGE 45 ===
+45
+Considerações Finais
+              Este Guia de Orientações Básicas para Implantação de Ouvido-
+rias do Sus não pretende conceituar de forma exaustiva o modo de 
+funcionamento de uma Ouvidoria do SUS. A discussão é profunda 
+e complexa, é estrutural e ideológica. A implantação ou implemen-
+tação de ouvidorias do SUS é uma proposta, a exemplo da Reforma 
+Sanitária, de inclusão plena dos cidadãos como agente participante 
+e consciente de sua cidadania. O benefício é maior, ultrapassa a satis-
+fação individual, é uma proposta democrática e participativa.
+
+
+=== PAGE 46 ===
+
+
+=== PAGE 47 ===
+47
+ANEXOS
+Anexo A – Regulamentação 
+do sistema OuvidorSUS
+Ministério da Saúde
+Secretaria de Gestão Estratégica e Participativa
+PORTARIA Nº 8, DE 25 DE MAIO DE 2007
+Regulamenta o Sistema OuvidorSUS
+O SECRETÁRIO DE GESTÃO ESTRATÉGICA E PARTICIPATIVA, no uso de 
+suas atribuições legais e considerando o disposto no artigo 29, inciso 
+II, do Decreto n.º 5.974, de 29 de novembro de 2006, que estimula 
+a criação de estruturas descentralizadas de ouvidorias do SUS nos 
+Estados, Distrito Federal e Municípios;
+Considerando o Pacto pela Saúde, que valoriza a relação solidária 
+entre os gestores das três esferas de governo; 
+Considerando a necessidade de padronizar condutas para o aprimo-
+ramento do processo de resolução das demandas apresentadas pelos 
+cidadãos usuários do SUS; e 
+
+
+=== PAGE 48 ===
+48
+Considerando as diretrizes da Política Nacional de Gestão Estratégica e 
+Participativa do SUS, resolve: 
+Art. 1º Aprovar a Regulamentação do Sistema OuvidorSUS, conforme 
+disposto no Anexo desta Portaria. 
+Art. 2º Esta Portaria entra em vigor na data de sua publicação. 
+ANTÔNIO ALVES DE SOUZA
+REGULAMENTAÇÃO DO SISTEMA OUVIDORSUS
+1. O OuvidorSUS é um Sistema informatizado elaborado pelo Departa-
+mento de Ouvidoria-Geral do SUS e desenvolvido pelo Departamento 
+de Informática do SUS - DATASUS. 
+2. O Sistema OuvidorSUS permite a disseminação de informações, o 
+registro e o encaminhamento das manifestações dos cidadãos. 
+3. O OuvidorSUS possibilita a troca de informações entre os órgãos 
+responsáveis pela gestão do SUS, para adoção das providências cabí-
+veis diante das manifestações recebidas. 
+4. São objetivos do Sistema OuvidorSUS: 
+a) atuar como ferramenta no processo de descentralização do Sistema 
+Nacional de ouvidorias do SUS; 
+b) facilitar a democratização de informações em saúde; 
+c) agilizar o processo de recebimento, encaminhamento, acompanha-
+mento e resposta das manifestações recebidas; 
+d) gerar relatórios gerenciais que auxiliem na melhoria contínua do 
+Sistema Único de Saúde. 
+5. O Sistema possui os seguintes Níveis de Acesso para os gestores: 
+
+
+=== PAGE 49 ===
+49
+a) Acesso Nível I - inclui, encaminha, recebe e responde as manifesta-
+ções, bem como permite a criação de sua própria sub-rede; 
+b) Acesso Nível II - permite o recebimento e resposta das manifes-
+tações, assegurando a todos os gestores cadastrados nesse Nível 
+fazerem parte de uma sub-rede. 
+5.1 Para habilitar-se ao Acesso Nível I, o gestor deverá ter implantado 
+o Serviço de Ouvidoria, conforme as orientações do Departamento de 
+Ouvidoria-Geral do SUS - DOGES, da Secretaria de Gestão Estratégica e 
+Participativa do Ministério da Saúde - SGEP/MS.
+5.2 A solicitação de Acesso deverá ser feita pelo gestor, por meio de 
+documento oficial da seguinte forma: 
+a) para o Acesso Nível I, o documento deverá ser enviado ao Departa-
+mento de Ouvidoria-Geral do SUS - DOGES/SGEP; 
+b) para o Acesso Nível II, o documento deverá ser enviado ao gestor da 
+sub-rede da qual faz parte. 
+6. Todas as demandas inseridas no Sistema OuvidorSUS deverão 
+ser classificadas e tipificadas de acordo com os manuais disponí-
+veis na Internet no endereço www.saude.gov.br, por meio do ícone 
+Secretarias - Gestão Estratégica e Participativa - Publicações. 
+7. Depois de inseridas, as demandas deverão ser encaminhadas aos 
+órgãos responsáveis no prazo máximo de 03 (três) dias úteis. 
+8. O prazo máximo para a conclusão das demandas no Sistema será 
+estabelecido pelo teor das manifestações que, por sua vez, determi-
+nará as prioridades especificadas a seguir: 
+a) Urgente - até 15 dias; 
+b) Alta - até 30 dias; 
+c) Média - até 60 dias; 
+
+
+=== PAGE 50 ===
+50
+d) Baixa - até 90 dias. 8.1 O prazo para conclusão será contado a partir 
+da data de encaminhamento da demanda. 
+9. As demandas já inseridas no Sistema até a publicação deste Regula-
+mento terão o prazo de 120 (cento e vinte) dias para serem concluídas.
+10. O gestor será responsável pelas ações dos usuários cadastrados 
+por ele no uso do Sistema OuvidorSUS.
+
+
+=== PAGE 51 ===
+51
+ANEXO B – Decreto nº 7.508, 
+de 28 de junho de 2011
+PRESIDENTA DA REPÚBLICA, no uso da atribuição que lhe confere o 
+art. 84, inciso IV, da Constituição, e tendo em vista o disposto na Lei no 
+8.080, 19 de setembro de 1990, 
+DECRETA:
+CAPÍTULO I
+DAS DISPOSIÇÕES PRELIMINARES 
+Art. 1o Este Decreto regulamenta a Lei no 8.080, de 19 de 
+setembro de 1990, para dispor sobre a organização do Sistema Único 
+de Saúde - SUS, o planejamento da saúde, a assistência à saúde e a arti-
+culação interfederativa. 
+Art. 2º Para efeito deste Decreto, considera-se:
+I - Região de Saúde - espaço geográfico contínuo constituído 
+por agrupamentos de Municípios limítrofes, delimitado a partir de 
+identidades culturais, econômicas e sociais e de redes de comunicação 
+e infraestrutura de transportes compartilhados, com a finalidade 
+de integrar a organização, o planejamento e a execução de ações e 
+serviços de saúde;
+II - Contrato Organizativo da Ação Pública da Saúde - acordo 
+de colaboração firmado entre entes federativos com a finalidade de 
+organizar e integrar as ações e serviços de saúde na rede regionalizada 
+e hierarquizada, com definição de responsabilidades, indicadores e 
+metas de saúde, critérios de avaliação de desempenho, recursos finan-
+ceiros que serão disponibilizados, forma de controle e fiscalização de 
+sua execução e demais elementos necessários à implementação inte-
+grada das ações e serviços de saúde;
+
+
+=== PAGE 52 ===
+52
+III - Portas de Entrada - serviços de atendimento inicial à saúde 
+do usuário no SUS;
+IV - Comissões Intergestores - instâncias de pactuação consen-
+sual entre os entes federativos para definição das regras da gestão 
+compartilhada do SUS;
+V - Mapa da Saúde - descrição geográfica da distribuição de 
+recursos humanos e de ações e serviços de saúde ofertados pelo 
+SUS e pela iniciativa privada, considerando-se a capacidade instalada 
+existente, os investimentos e o desempenho aferido a partir dos indi-
+cadores de saúde do sistema;
+VI - Rede de Atenção à Saúde - conjunto de ações e serviços de 
+saúde articulados em níveis de complexidade crescente, com a finali-
+dade de garantir a integralidade da assistência à saúde;
+VII - Serviços Especiais de Acesso Aberto - serviços de saúde espe-
+cíficos para o atendimento da pessoa que, em razão de agravo ou de 
+situação laboral, necessita de atendimento especial; e
+VIII - Protocolo Clínico e Diretriz Terapêutica - documento que 
+estabelece: critérios para o diagnóstico da doença ou do agravo à 
+saúde; o tratamento preconizado, com os medicamentos e demais 
+produtos apropriados, quando couber; as posologias recomendadas; 
+os mecanismos de controle clínico; e o acompanhamento e a verifi-
+cação dos resultados terapêuticos, a serem seguidos pelos gestores 
+do SUS. 
+CAPÍTULO II
+DA ORGANIZAÇÃO DO SUS 
+Art. 3o  O SUS é constituído pela conjugação das ações e 
+serviços de promoção, proteção e recuperação da saúde executados 
+pelos entes federativos, de forma direta ou indireta, mediante a parti-
+cipação complementar da iniciativa privada, sendo organizado de 
+forma regionalizada e hierarquizada. 
+
+
+=== PAGE 53 ===
+53
+Seção I
+Das Regiões de Saúde 
+Art. 4o As Regiões de Saúde serão instituídas pelo Estado, em 
+articulação com os Municípios, respeitadas as diretrizes gerais pactu-
+adas na Comissão Intergestores Tripartite - CIT a que se refere o inciso 
+I do art. 30. 
+§ 1o Poderão ser instituídas Regiões de Saúde interestaduais, 
+compostas por Municípios limítrofes, por ato conjunto dos respectivos 
+Estados em articulação com os Municípios. 
+§ 2o A instituição de Regiões de Saúde situadas em áreas de 
+fronteira com outros países deverá respeitar as normas que regem as 
+relações internacionais. 
+Art. 5o Para ser instituída, a Região de Saúde deve conter, no 
+mínimo, ações e serviços de:
+I - atenção primária;
+II - urgência e emergência;
+III - atenção psicossocial; 
+IV - atenção ambulatorial especializada e hospitalar; e
+V - vigilância em saúde. 
+
+
+=== PAGE 54 ===
+54
+Parágrafo único. A instituição das Regiões de Saúde observará 
+cronograma pactuado nas Comissões Intergestores. 
+Art. 6o As Regiões de Saúde serão referência para as transferên-
+cias de recursos entre os entes federativos. 
+Art. 7o As Redes de Atenção à Saúde estarão compreendidas no 
+âmbito de uma Região de Saúde, ou de várias delas, em consonância 
+com diretrizes pactuadas nas Comissões Intergestores. 
+Parágrafo único. Os entes federativos definirão os seguintes 
+elementos em relação às Regiões de Saúde:
+I - seus limites geográficos;
+II - população usuária das ações e serviços;
+III - rol de ações e serviços que serão ofertados; e
+IV - respectivas responsabilidades, critérios de acessibilidade e 
+escala para conformação dos serviços.
+Seção II
+Da Hierarquização 
+Art. 8o O acesso universal, igualitário e ordenado às ações 
+e serviços de saúde se inicia pelas Portas de Entrada do SUS e se 
+completa na rede regionalizada e hierarquizada, de acordo com a 
+complexidade do serviço. 
+Art. 9o São Portas de Entrada às ações e aos serviços de saúde nas 
+Redes de Atenção à Saúde os serviços:
+I - de atenção primária;
+II - de atenção de urgência e emergência;
+III - de atenção psicossocial; e
+
+
+=== PAGE 55 ===
+55
+IV - especiais de acesso aberto. 
+Parágrafo único. Mediante justificativa técnica e de acordo com 
+o pactuado nas Comissões Intergestores, os entes federativos poderão 
+criar novas Portas de Entrada às ações e serviços de saúde, conside-
+rando as características da Região de Saúde. 
+Art. 10. Os serviços de atenção hospitalar e os ambulatoriais espe-
+cializados, entre outros de maior complexidade e densidade tecnológica, 
+serão referenciados pelas Portas de Entrada de que trata o art. 9o.
+Art. 11. O acesso universal e igualitário às ações e aos serviços 
+de saúde será ordenado pela atenção primária e deve ser fundado 
+na avaliação da gravidade do risco individual e coletivo e no critério 
+cronológico, observadas as especificidades previstas para pessoas 
+com proteção especial, conforme legislação vigente. 
+Parágrafo único. A população indígena contará com regra-
+mentos diferenciados de acesso, compatíveis com suas especificidades 
+e com a necessidade de assistência integral à sua saúde, de acordo 
+com disposições do Ministério da Saúde. 
+Art. 12. Ao usuário será assegurada a continuidade do cuidado em 
+saúde, em todas as suas modalidades, nos serviços, hospitais e em outras 
+unidades integrantes da rede de atenção da respectiva região. 
+Parágrafo único. As Comissões Intergestores pactuarão as 
+regras de continuidade do acesso às ações e aos serviços de saúde na 
+respectiva área de atuação. 
+Art. 13. Para assegurar ao usuário o acesso universal, igualitário 
+e ordenado às ações e serviços de saúde do SUS, caberá aos entes 
+federativos, além de outras atribuições que venham a ser pactuadas 
+pelas Comissões Intergestores:
+I - garantir a transparência, a integralidade e a equidade no acesso 
+às ações e aos serviços de saúde;
+
+
+=== PAGE 56 ===
+56
+II - orientar e ordenar os fluxos das ações e dos serviços de 
+saúde;
+III - monitorar o acesso às ações e aos serviços de saúde; e
+IV - ofertar regionalmente as ações e os serviços de saúde. 
+Art. 14. O Ministério da Saúde disporá sobre critérios, diretrizes, 
+procedimentos e demais medidas que auxiliem os entes federativos 
+no cumprimento das atribuições previstas no art. 13. 
+CAPÍTULO III
+DO PLANEJAMENTO DA SAÚDE 
+Art. 15. O processo de planejamento da saúde será ascendente 
+e integrado, do nível local até o federal, ouvidos os respectivos Conse-
+lhos de Saúde, compatibilizando-se as necessidades das políticas de 
+saúde com a disponibilidade de recursos financeiros. 
+§ 1o O planejamento da saúde é obrigatório para os entes 
+públicos e será indutor de políticas para a iniciativa privada. 
+§ 2o A compatibilização de que trata o caput será efetuada no 
+âmbito dos planos de saúde, os quais serão resultado do planejamento 
+integrado dos entes federativos, e deverão conter metas de saúde. 
+§ 3o O Conselho Nacional de Saúde estabelecerá as diretrizes a 
+serem observadas na elaboração dos planos de saúde, de acordo com 
+as características epidemiológicas e da organização de serviços nos 
+entes federativos e nas Regiões de Saúde. 
+Art. 16. No planejamento devem ser considerados os serviços 
+e as ações prestados pela iniciativa privada, de forma complementar 
+ou não ao SUS, os quais deverão compor os Mapas da Saúde regional, 
+estadual e nacional. 
+Art. 17. O Mapa da Saúde será utilizado na identificação das 
+necessidades de saúde e orientará o planejamento integrado dos 
+
+
+=== PAGE 57 ===
+57
+entes federativos, contribuindo para o estabelecimento de metas de 
+saúde. 
+Art. 18. O planejamento da saúde em âmbito estadual deve ser 
+realizado de maneira regionalizada, a partir das necessidades dos Municí-
+pios, considerando o estabelecimento de metas de saúde.
+Art. 19. Compete à Comissão IntergestoresBipartite - CIB de que 
+trata o inciso II do art. 30 pactuar as etapas do processo e os prazos do 
+planejamento municipal em consonância com os planejamentos esta-
+dual e nacional. 
+CAPÍTULO IV
+DA ASSISTÊNCIA À SAÚDE 
+Art. 20. A integralidade da assistência à saúde se inicia e se 
+completa na Rede de Atenção à Saúde, mediante referenciamento 
+do usuário na rede regional e interestadual, conforme pactuado nas 
+Comissões Intergestores. 
+Seção I
+Da Relação Nacional de Ações e Serviços de Saúde - RENASES 
+Art. 21. A Relação Nacional de Ações e Serviços de Saúde - RENASES 
+compreende todas as ações e serviços que o SUS oferece ao usuário para 
+atendimento da integralidade da assistência à saúde.
+Art. 22. O Ministério da Saúde disporá sobre a RENASES em âmbito 
+nacional, observadas as diretrizes pactuadas pela CIT.
+Parágrafo único. A cada dois anos, o Ministério da Saúde conso-
+lidará e publicará as atualizações da RENASES. 
+Art. 23. A União, os Estados, o Distrito Federal e os Municípios 
+pactuarão nas respectivas Comissões Intergestores as suas 
+responsabilidades em relação ao rol de ações e serviços constantes da 
+RENASES. 
+
+
+=== PAGE 58 ===
+58
+Art. 24. Os Estados, o Distrito Federal e os Municípios poderão 
+adotar relações específicas e complementares de ações e serviços de 
+saúde, em consonância com a RENASES, respeitadas as responsabili-
+dades dos entes pelo seu financiamento, de acordo com o pactuado 
+nas Comissões Intergestores. 
+Seção II
+Da Relação Nacional de Medicamentos Essenciais - RENAME 
+Art. 25. A Relação Nacional de Medicamentos Essenciais - 
+RENAME compreende a seleção e a padronização de medicamentos 
+indicados para atendimento de doenças ou de agravos no âmbito do 
+SUS. 
+Parágrafo único. A RENAME será acompanhada do Formulário 
+Terapêutico Nacional - FTN que subsidiará a prescrição, a dispensação 
+e o uso dos seus medicamentos. 
+Art. 26. O Ministério da Saúde é o órgão competente para dispor 
+sobre a RENAME e os Protocolos Clínicos e Diretrizes Terapêuticas em 
+âmbito nacional, observadas as diretrizes pactuadas pela CIT.
+Parágrafo único. A cada dois anos, o Ministério da Saúde conso-
+lidará e publicará as atualizações da RENAME, do respectivo FTN e dos 
+Protocolos Clínicos e Diretrizes Terapêuticas. 
+Art. 27. O Estado, o Distrito Federal e o Município poderão 
+adotar relações específicas e complementares de medicamentos, 
+em consonância com a RENAME, respeitadas as responsabilidades 
+dos entes pelo financiamento de medicamentos, de acordo com o 
+pactuado nas Comissões Intergestores. 
+Art. 28. O acesso universal e igualitário à assistência farmacêu-
+tica pressupõe, cumulativamente:
+I - estar o usuário assistido por ações e serviços de saúde do 
+SUS; 
+
+
+=== PAGE 59 ===
+59
+II - ter o medicamento sido prescrito por profissional de saúde, 
+no exercício regular de suas funções no SUS;
+III - estar a prescrição em conformidade com a RENAME e os 
+Protocolos Clínicos e Diretrizes Terapêuticas ou com a relação especí-
+fica complementar estadual, distrital ou municipal de medicamentos; 
+e
+IV - ter a dispensação ocorrido em unidades indicadas pela 
+direção do SUS. 
+§ 1o Os entes federativos poderão ampliar o acesso do usuário à 
+assistência farmacêutica, desde que questões de saúde pública o justi-
+fiquem. 
+§ 2o O Ministério da Saúde poderá estabelecer regras diferen-
+ciadas de acesso a medicamentos de caráter especializado. 
+Art. 29. A RENAME e a relação específica complementar esta-
+dual, distrital ou municipal de medicamentos somente poderão 
+conter produtos com registro na Agência Nacional de Vigilância Sani-
+tária - ANVISA. 
+CAPÍTULO V
+DA ARTICULAÇÃO INTERFEDERATIVA 
+Seção I
+Das Comissões Intergestores
+Art. 30. As Comissões Intergestores pactuarão a organização e o 
+funcionamento das ações e serviços de saúde integrados em redes de 
+atenção à saúde, sendo:
+I - a CIT, no âmbito da União, vinculada ao Ministério da Saúde 
+para efeitos administrativos e operacionais;
+
+
+=== PAGE 60 ===
+60
+II - a CIB, no âmbito do Estado, vinculada à Secretaria Estadual 
+de Saúde para efeitos administrativos e operacionais; e
+III - a Comissão Intergestores Regional - CIR, no âmbito regional, 
+vinculada à Secretaria Estadual de Saúde para efeitos administrativos 
+e operacionais, devendo observar as diretrizes da CIB. 
+Art. 31. Nas Comissões Intergestores, os gestores públicos de 
+saúde poderão ser representados pelo Conselho Nacional de Secre-
+tários de Saúde - CONASS, pelo Conselho Nacional de Secretarias 
+Municipais de Saúde - CONASEMS e pelo Conselho Estadual de Secre-
+tarias Municipais de Saúde - COSEMS. 
+Art. 32. As Comissões Intergestores pactuarão:
+I - aspectos operacionais, financeiros e administrativos da 
+gestão compartilhada do SUS, de acordo com a definição da política 
+de saúde dos entes federativos, consubstanciada nos seus planos de 
+saúde, aprovados pelos respectivos conselhos de saúde;
+II - diretrizes gerais sobre Regiões de Saúde, integração de 
+limites geográficos, referência e contrarreferência e demais aspectos 
+vinculados à integração das ações e serviços de saúde entre os entes 
+federativos;
+III - diretrizes de âmbito nacional, estadual, regional e inte-
+restadual, a respeito da organização das redes de atenção à saúde, 
+principalmente no tocante à gestão institucional e à integração das 
+ações e serviços dos entes federativos; 
+IV - responsabilidades dos entes federativos na Rede de Atenção 
+à Saúde, de acordo com o seu porte demográfico e seu desenvolvi-
+mento econômico-financeiro, estabelecendo as responsabilidades 
+individuais e as solidárias; e
+V - referências das regiões intraestaduais e interestaduais de 
+atenção à saúde para o atendimento da integralidade da assistência. 
+
+
+=== PAGE 61 ===
+61
+Parágrafo único. Serão de competência exclusiva da CIT a 
+pactuação:
+I - das diretrizes gerais para a composição da RENASES;
+II - dos critérios para o planejamento integrado das ações e 
+serviços de saúde da Região de Saúde, em razão do compartilhamento 
+da gestão; e
+III - das diretrizes nacionais, do financiamento e das questões 
+operacionais das Regiões de Saúde situadas em fronteiras com outros 
+países, respeitadas, em todos os casos, as normas que regem as rela-
+ções internacionais.
+Seção II
+Do Contrato Organizativo da Ação Pública da Saúde 
+Art. 33. O acordo de colaboração entre os entes federativos para a 
+organização da rede interfederativa de atenção à saúde será firmado por 
+meio de Contrato Organizativo da Ação Pública da Saúde.
+Art. 34. O objeto do Contrato Organizativo de Ação Pública 
+da Saúde é a organização e a integração das ações e dos serviços de 
+saúde, sob a responsabilidade dos entes federativos em uma Região 
+de Saúde, com a finalidade de garantir a integralidade da assistência 
+aos usuários. 
+Parágrafo único. O Contrato Organizativo de Ação Pública da 
+Saúde resultará da integração dos planos de saúde dos entes fede-
+rativos na Rede de Atenção à Saúde, tendo como fundamento as 
+pactuações estabelecidas pela CIT. 
+Art. 35. O Contrato Organizativo de Ação Pública da Saúde defi-
+nirá as responsabilidades individuais e solidárias dos entes federativos 
+com relação às ações e serviços de saúde, os indicadores e as metas 
+de saúde, os critérios de avaliação de desempenho, os recursos finan-
+ceiros que serão disponibilizados, a forma de controle e fiscalização da 
+
+
+=== PAGE 62 ===
+62
+sua execução e demais elementos necessários à implementação inte-
+grada das ações e serviços de saúde. 
+§ 1o O Ministério da Saúde definirá indicadores nacionais de 
+garantia de acesso às ações e aos serviços de saúde no âmbito do SUS, a 
+partir de diretrizes estabelecidas pelo Plano Nacional de Saúde.
+§ 2o O desempenho aferido a partir dos indicadores nacio-
+nais de garantia de acesso servirá como parâmetro para avaliação 
+do desempenho da prestação das ações e dos serviços definidos no 
+Contrato Organizativo de Ação Pública de Saúde em todas as Regiões 
+de Saúde, considerando-se as especificidades municipais, regionais e 
+estaduais. 
+Art. 36. O Contrato Organizativo da Ação Pública de Saúde 
+conterá as seguintes disposições essenciais:
+I - identificação das necessidades de saúde locais e regionais;
+II - oferta de ações e serviços de vigilância em saúde, promoção, 
+proteção e recuperação da saúde em âmbito regional e inter-regional;
+III - responsabilidades assumidas pelos entes federativos perante 
+a população no processo de regionalização, as quais serão estabelecidas 
+de forma individualizada, de acordo com o perfil, a organização e a capa-
+cidade de prestação das ações e dos serviços de cada ente federativo da 
+Região de Saúde;
+IV - indicadores e metas de saúde;
+V - estratégias para a melhoria das ações e serviços de saúde;
+VI - critérios de avaliação dos resultados e forma de monitora-
+mento permanente; 
+VII - adequação das ações e dos serviços dos entes federativos 
+em relação às atualizações realizadas na RENASES;
+
+
+=== PAGE 63 ===
+63
+VIII - investimentos na rede de serviços e as respectivas 
+responsabilidades; e
+IX - recursos financeiros que serão disponibilizados por cada 
+um dos partícipes para sua execução. 
+Parágrafo único. O Ministério da Saúde poderá instituir formas 
+de incentivo ao cumprimento das metas de saúde e à melhoria das 
+ações e serviços de saúde. 
+Art. 37. O Contrato Organizativo de Ação Pública de Saúde 
+observará as seguintes diretrizes básicas para fins de garantia da 
+gestão participativa:
+I - estabelecimento de estratégias que incorporem a avaliação 
+do usuário das ações e dos serviços, como ferramenta de sua melhoria;
+II - apuração permanente das necessidades e interesses do 
+usuário; e
+III - publicidade dos direitos e deveres do usuário na saúde em 
+todas as unidades de saúde do SUS, inclusive nas unidades privadas 
+que dele participem de forma complementar. 
+Art. 38. A humanização do atendimento do usuário será fator 
+determinante para o estabelecimento das metas de saúde previstas 
+no Contrato Organizativo de Ação Pública de Saúde. 
+Art. 39. As normas de elaboração e fluxos do Contrato Organi-
+zativo de Ação Pública de Saúde serão pactuados pelo CIT, cabendo à 
+Secretaria de Saúde Estadual coordenar a sua implementação. 
+Art. 40. O Sistema Nacional de Auditoria e Avaliação do SUS, 
+por meio de serviço especializado, fará o controle e a fiscalização do 
+Contrato Organizativo de Ação Pública da Saúde. 
+§ 1o O Relatório de Gestão a que se refere o inciso IV do art. 4º 
+da Lei nº 8.142, de 28 de dezembro de 1990, conterá seção específica 
+
+
+=== PAGE 64 ===
+64
+relativa aos compromissos assumidos no âmbito do Contrato Organi-
+zativo de Ação Pública de Saúde. 
+§ 2o O disposto neste artigo será implementado em conformi-
+dade com as demais formas de controle e fiscalização previstas em Lei. 
+Art. 41. Aos partícipes caberá monitorar e avaliar a execução 
+do Contrato Organizativo de Ação Pública de Saúde, em relação ao 
+cumprimento das metas estabelecidas, ao seu desempenho e à apli-
+cação dos recursos disponibilizados. 
+Parágrafo único. Os partícipes incluirão dados sobre o Contrato 
+Organizativo de Ação Pública de Saúde no sistema de informações 
+em saúde organizado pelo Ministério da Saúde e os encaminhará ao 
+respectivo Conselho de Saúde para monitoramento. 
+CAPÍTULO VI
+DAS DISPOSIÇÕES FINAIS 
+Art. 42. Sem prejuízo das outras providências legais, o Minis-
+tério da Saúde informará aos órgãos de controle interno e externo:
+I - o descumprimento injustificado de responsabilidades 
+na prestação de ações e serviços de saúde e de outras obrigações 
+previstas neste Decreto;
+II - a não apresentação do Relatório de Gestão a que se refere o 
+inciso IV do art. 4º da Lei no 8.142, de 1990;
+III - a não aplicação, malversação ou desvio de recursos 
+financeiros; e
+IV - outros atos de natureza ilícita de que tiver conhecimento. 
+Art. 43. A primeira RENASES é a somatória de todas as ações 
+e serviços de saúde que na data da publicação deste Decreto são 
+ofertados pelo SUS à população, por meio dos entes federados, de 
+forma direta ou indireta. 
+
+
+=== PAGE 65 ===
+65
+Art. 44. O Conselho Nacional de Saúde estabelecerá as dire-
+trizes de que trata o § 3o do art. 15 no prazo de cento e oitenta dias a 
+partir da publicação deste Decreto. 
+Art. 45. Este Decreto entra em vigor na data de sua publicação. 
+Brasília, 28 de junho de 2011; 190o da Independência e 123o da 
+República. 
+
+
+=== PAGE 66 ===
+
+
+=== PAGE 67 ===
+
+
+=== PAGE 68 ===
+EDITORA MS
+Coordenação-Geral de Documentação e Informação/SAA/SE
+MINISTÉRIO DA SAÚDE
+Fonte principal: Myriad Pro
+Tipo de papel do miolo: Ap 90gm
+Impresso por meio do contrato 28/2012
+Brasília/DF, janeiro de 2014
+OS 2014/0135

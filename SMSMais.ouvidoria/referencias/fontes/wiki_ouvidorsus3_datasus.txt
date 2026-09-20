@@ -1,0 +1,76 @@
+
+
+===== COMO_TIPIFICAR =====
+ A opção de tipificar está disponível assim que você acessar a manifestação para tratamento Você deve selecionar o tema (1), que no caso é "Sistema Único de Saúde" IMPORTANTE - VOCÊ DEVE AGUARDAR O ÍCONE DE PROCESSANDO FINALIZAR Pesquise no campo Tipificação (2) pelo termo desejado e as opções estarão disponíveis logo abaixo. Assim que você selecionar a tipificação desejada, o sistema vai apresentar as listas (3) que devem ser informadas para essa tipificação Para cada tipificação existe uma ou mais listas configuradas que devem ser informadas. No caso abaixo, temos a lista de Doença (4), Medicamento (5) e Status/Problema Atenção à Saúde - Assistência Farmacêutica (6) IMPORTANTE - Note que para a lista de Doença (4) e Medicamento (5) temos a opção de informar mais de um item, e você precisa utilizar os botões "+" para adicionar e "Lixeira" para excluir o item Complementando a tipificação, temos o Marcador (7) que também pode ser mais de um item. Assim que tudo for informado, é só clicar no botão Tipificar e pronto. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_TIPIFICAR&oldid=128 " <div id="catlinks"
+
+===== COMO_ENCAMINHAR =====
+ A opção de encaminhar está disponível assim que você acessar a manifestação para tratamento Após carregar a página, você escolhe o tipo de encaminhamento (1), podendo encaminhar para outra Ouvidoria, Ponto de Resposta ou Órgão Externo. Após isso, você deve selecionar para onde a manifestação vai ser encaminhada (2). Se preferir, você pode filtrar por Esfera Administrativa, UF e Município Ao encaminhar, você pode ainda adicionar um comentário(3) ou anexar arquivos (4). Após inserir todas as informações, basta clicar em "Encaminhar" Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_ENCAMINHAR&oldid=150 " <div id="catlinks"
+
+===== COMO_RESPONDER =====
+ A opção de Solicitar pedido de complementação está disponível na opção Responder assim que você acessar a manifestação para tratamento Após carregar a página, você escolhe a opção correspondente no campo tipo de reposta (1), informa o Texto da Resposta (2) e opcionalmente, você pode anexar arquivos (3) Feito isso, clique em Responder . Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_RESPONDER&oldid=203 " <div id="catlinks"
+
+===== COMO_PRORROGAR_O_PRAZO =====
+ Para prorrogar uma manifestação, a opção está disponível na opção Prorrogar assim que você acessar a manifestação para tratamento Após carregar a página, você escolhe a opção correspondente no campo tipo de prorrogação(1), informa o Justificativa (2) e opcionalmente, você pode anexar arquivos (3). O sistema apresentará os novos prazos (4). Feito isso, clique em Prorrogar . Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_PRORROGAR_O_PRAZO&oldid=246 " <div id="catlinks"
+
+===== COMO_REGISTRAR_UMA_MANIFESTAÇÃO =====
+ Acesse o menu "Atendimento" Clique no botão "Iniciar atendimento" IMPORTANTE - Confira os campos Canal de atendimento (1), Origem de atendimento (2) e informe o Manifestante (3) " Clique no botão "Registrar manifestação" Informe os dados da Manifestação, sabendo que apenas os campos Classificação (1), Identificação do manifestante (2) e Teor da manifestação (3) são obrigatórios, e então clique no botão "Registrar Manifestação" IMPORTANTE - LEMBRE-SE DE FINALIZAR O ATENDIMENTO Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_REGISTRAR_UMA_MANIFESTAÇÃO&oldid=120 " <div id="catlinks"
+
+===== MARCADORES =====
+ O marcador é uma palavra-chave ou termo que tem o objetivo de complementar a tipificação. Cada Ouvidoria pode personalizar seus marcadores de acordo com sua realidade, desde que essas informações não constem na tipificação ou nas listas. A Ouvidoria pode por exemplo criar marcadores para programas de saúde e campanhas locais, refinando ainda mais o dado estatístico. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=MARCADORES&oldid=137 " <div id="catlinks"
+
+===== PONTO_DE_RESPOSTA =====
+ O ponto de resposta é uma unidade do órgão ou entidade prestadora direta do serviço que responde as manifestações à Ouvidoria, como por exemplo, o Departamento de Assistência Farmacêutica, de Vigilância Sanitária, de Atenção Básica e outros. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=PONTO_DE_RESPOSTA&oldid=136 " <div id="catlinks"
+
+===== REDE =====
+ Funcionalidade opcional disponibilizada às Ouvidorias do SUS que pactuarem entre si processos de trabalho em rede. As unidades de Ouvidoria que integrarem uma mesma rede podem pactuar modalidades de permissões, como a visualização conjunta de todas as manifestações cadastradas e recebidas, o tratamento e/ou a gestão das Ouvidorias integrantes da rede no OuvidorSUS. A pactuação deve ocorrer por meio de instâncias intergestoras (Comissão Intergestores Bipartite – CIB, Comissão Intergestores Regionais – CIR ou outras normativas interinstitucionais). A configuração da rede no sistema é realizada pela Ouvidoria-Geral do SUS, mediante recebimento de documento com a pactuação das Ouvidorias que atuarão na rede Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=REDE&oldid=163 " <div id="catlinks"
+
+===== OUVIDORIA_DE_CADASTRO_(OU_DE_ORIGEM) =====
+ Ouvidoria que cadastrou a manifestação acolhida pelos canais disponibilizados para os usuários. Pode encaminhar as manifestações, caso necessário, para o ponto de resposta e realizar o posterior fechamento da demanda ou entendendo que a manifestação deverá ser solucionada por outra Ouvidoria do SUS (Ouvidoria de destino) fará esse direcionamento. O manifestante será informado da decisão de encaminhamento para a Ouvidoria do SUS de forma automática pelo sistema, caso tenha e-mail cadastrado no seu perfil. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=OUVIDORIA_DE_CADASTRO_(OU_DE_ORIGEM)&oldid=159 " <div id="catlinks"
+
+===== OUVIDORIA_INTERMEDIÁRIA =====
+ Ouvidoria que recebeu a manifestação, porém ao identificar que não é de sua competência, encaminha para a Ouvidoria responsável (Ouvidoria de destino) para o tratamento da manifestação e resposta definitiva ao usuário. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=OUVIDORIA_INTERMEDIÁRIA&oldid=160 " <div id="catlinks"
+
+===== OUVIDORIA_DE_DESTINO =====
+ Ouvidoria competente pela resposta definitiva ao manifestante, podendo fornecê-la de imediato ou encaminhá-la ao ponto de resposta. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=OUVIDORIA_DE_DESTINO&oldid=161 " <div id="catlinks"
+
+===== COMUNICAÇÃO_DE_IRREGULARIDADE_versus_DENÚNCIA =====
+ No que tange o acolhimento de manifestações no sistema OuvidorSUS, o que diferenciará uma Denúncia de Comunicação de Irregularidade , será o anonimato. A comunicação de irregularidade é feita obrigatoriamente de forma anônima, ou seja, ao escolher essa classificação, automaticamente o sistema deixará habilitada somente a opção "Anônimo" . É importante lembrar que, com a essa classificação o manifestante ficará impossibilitado de acompanhar a demanda. → Para complemento das informações, clique aqui para acessar o Manual do Sistema OuvidorSUS! Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMUNICAÇÃO_DE_IRREGULARIDADE_versus_DENÚNCIA&oldid=191 " <div id="catlinks"
+
+===== POSSO_ENCAMINHAR_UMA_MANIFESTAÇÃO_PARA_UMA_OUVIDORIA_EM_OUTRO_ESTADO? =====
+ Sim, o novo OuvidorSUS permite que você encaminhe sua manifestação para qualquer ouvidoria que tenha aderido ao sistema. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=POSSO_ENCAMINHAR_UMA_MANIFESTAÇÃO_PARA_UMA_OUVIDORIA_EM_OUTRO_ESTADO%3F&oldid=154 " <div id="catlinks"
+
+===== POSSO_VISUALIZAR_O_TEOR_DA_MANIFESTAÇÃO_DE_OUTRA_OUVIDORIA? =====
+ Você pode visualizar a manifestação de outra ouvidoria desde que exista uma pactuação de rede entre as ouvidorias que permita essa visualização, caso contrário, não é possível. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=POSSO_VISUALIZAR_O_TEOR_DA_MANIFESTAÇÃO_DE_OUTRA_OUVIDORIA%3F&oldid=143 " <div id="catlinks"
+
+===== COMO_POSSO_INSERIR_O_FORMULÁRIO_WEB_NA_PÁGINA_OFICIAL_DA_MINHA_SECRETARIA/HOSPITAL? =====
+ Será necessário que o Ouvidor ou responsável pelo serviço de ouvidoria disponibilize o link do Sistema OuvidorSUS no sítio de sua escolha, pois a partir daí, todas as vezes que o cidadão acessá-lo, haverá redirecionamento automático para o formulário web do referido sistema. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_POSSO_INSERIR_O_FORMULÁRIO_WEB_NA_PÁGINA_OFICIAL_DA_MINHA_SECRETARIA/HOSPITAL%3F&oldid=190 " <div id="catlinks"
+
+===== COMO_EXPORTAR_LISTA_(BANCO_DE_DADOS) =====
+ Acesse o menu "Manifestação" Após a página carregar, escolha a(s) manifestação(ões) que deseja exportar e clique em Exportar lista Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_EXPORTAR_LISTA_(BANCO_DE_DADOS)&oldid=227 " <div id="catlinks"
+
+===== MANIFESTANTE_versus_REFERIDO_versus_ENVOLVIDOS =====
+ MANIFESTANTE - Pessoa que está entrando em contato com a Ouvidoria para registrar uma manifestação REFERIDO - Quando o manifestante estiver registrando manifestação em favor de outra pessoa, ela é chamada de referido. Exemplo: Uma mãe registrando uma solicitação de medicamento para seu filho. ENVOLVIDOS - Podendo ser mais de uma pessoa, é quem está envolvido na manifestação. Exemplo: o profissional de saúde objeto de uma denúncia Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=MANIFESTANTE_versus_REFERIDO_versus_ENVOLVIDOS&oldid=131 " <div id="catlinks"
+
+===== ORIGEM_DE_ATENDIMENTO =====
+ A origem de atendimento é o local onde o cidadão se manifestou inicialmente. Por exemplo, o cidadão remeteu uma carta ao Gabinete do Secretário de Saúde, que encaminhou à Ouvidoria para providências cabíveis. Ao cadastrar a manifestação no sistema, a Ouvidoria preencherá a origem “Gabinete do Secretário de Saúde”, indicando a procedência daquela carta. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=ORIGEM_DE_ATENDIMENTO&oldid=133 " <div id="catlinks"
+
+===== ÓRGÃO_EXTERNO =====
+ O órgão externo é uma instituição que não acessa o sistema OuvidorSUS. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=ÓRGÃO_EXTERNO&oldid=134 " <div id="catlinks"
+
+===== COMO_SOLICITAR_PEDIDO_DE_COMPLEMENTAÇÃO =====
+ A opção de Solicitar pedido de complementação está disponível na opção Responder assim que você acessar a manifestação para tratamento Após carregar a página, você escolhe a opção Pedido de complementação de informação no campo tipo de reposta (1), informa o Texto da Resposta (2) e opcionalmente, você pode anexar arquivos (3) Feito isso, clique em Responder . Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_SOLICITAR_PEDIDO_DE_COMPLEMENTAÇÃO&oldid=153 " <div id="catlinks"
+
+===== COMO_ATRIBUIR =====
+ A opção está disponível na opção Atribuir assim que você acessar a manifestação para tratamento Após carregar a página, você escolhe a opção com o nome do técnico que deseja atribuir a manifestação no campo Responsável (1) e opcionalmente, informa o Comentário (2) Feito isso, clique em Atribuir . Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_ATRIBUIR&oldid=206 " <div id="catlinks"
+
+===== COMO_REALIZAR_A_CONFIGURAÇÃO_DA_SUA_OUVIDORIA =====
+ Acesse o menu "Configuração da ouvidoria" Após carregar a página, preencha os campos obrigatórios Feito isso, clique em Salvar Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_REALIZAR_A_CONFIGURAÇÃO_DA_SUA_OUVIDORIA&oldid=250 " <div id="catlinks"
+
+===== QUAIS_AÇÕES_SÃO_VISUALIZADAS_PELO_MANIFESTANTE_NO_ACOMPANHAMENTO_DE_DEMANDA =====
+ Na tela de acompanhamento, o manifestante poderá visualizar todos os dados da manifestação (dados do manifestante, teor, dados da manifestação e o histórico). Para tanto, é necessário clicar nas setas para expandir as informações. No campo “histórico”, as seguintes ações não estarão visíveis ao manifestante: TIPIFICADA, ENCAMINHADA PARA PONTO DE RESPOSTA, CONCLUÍDA, ATRIBUÍDA, PRORROGADO PRAZO DE CONCLUSÃO, ANOTAÇÃO DA OUVIDORIA, ARQUIVADA. Também é possível complementar a manifestação (adicionar informação). O botão "RECORRER" ficará disponível somente se a manifestação estiver respondida. → Para complemento das informações, clique aqui para acessar o Manual do Sistema OuvidorSUS! Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=QUAIS_AÇÕES_SÃO_VISUALIZADAS_PELO_MANIFESTANTE_NO_ACOMPANHAMENTO_DE_DEMANDA&oldid=173 " <div id="catlinks"
+
+===== DISSEMINAÇÃO_versus_INFORMAÇÃO =====
+ Utilizamos o termo disseminação , quando a informação repassada ao cidadão no momento do atendimento, estiver na base de conhecimento do Sistema OuvidorSUS. Nos referimos ao termo informação , para classificar manifestação registrada no sistema, na qual o cidadão busca orientações a respeito de ações, programas, doenças, assistência à saúde ou do SUS. Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=DISSEMINAÇÃO_versus_INFORMAÇÃO&oldid=186 " <div id="catlinks"
+
+===== COMO_EXTRAIR_O_ESPELHO_DA_MANIFESTAÇÃO =====
+ Acesse o menu "Manifestação" Após a página carregar, escolha a(s) manifestação(ões) que deseja extrair o espelho da manifestação e clique em Espelho da Manifestação Disponível em " https://wiki.saude.gov.br/ouvidor/index.php?title=COMO_EXTRAIR_O_ESPELHO_DA_MANIFESTAÇÃO&oldid=224 " <div id="catlinks"

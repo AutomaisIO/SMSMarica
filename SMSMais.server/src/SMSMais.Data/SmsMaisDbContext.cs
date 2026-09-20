@@ -11,6 +11,7 @@ using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
 using SMSMais.Data.Entities.Geo;
 using SMSMais.Data.Entities.Notificacoes;
+using SMSMais.Data.Entities.Ouvidoria;
 using SMSMais.Data.Entities.Robo;
 using SMSMais.Data.Entities.Tfd;
 
@@ -291,11 +292,27 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Pendências de ajuste de cadastro ("números errados") levantadas no atendimento.
     public DbSet<PendenciaCadastro> PendenciasCadastro => Set<PendenciaCadastro>();
 
+    // ---- Ouvidoria (ADR-0060) ----
+    // Manifestações do cidadão (solicitação, reclamação, denúncia, sugestão, elogio, informação)
+    // com trilha append-only, pontos de resposta (unidade/área/apuração) e registro de cada
+    // revelação de identidade sigilosa. Transversal: não passa pelo escopo X-Unidade-Id.
+    public DbSet<OuvidoriaManifestacao> OuvidoriaManifestacoes => Set<OuvidoriaManifestacao>();
+    public DbSet<OuvidoriaEvento> OuvidoriaEventos => Set<OuvidoriaEvento>();
+    public DbSet<OuvidoriaAnexo> OuvidoriaAnexos => Set<OuvidoriaAnexo>();
+    public DbSet<OuvidoriaAssunto> OuvidoriaAssuntos => Set<OuvidoriaAssunto>();
+    public DbSet<OuvidoriaMarcador> OuvidoriaMarcadores => Set<OuvidoriaMarcador>();
+    public DbSet<OuvidoriaManifestacaoMarcador> OuvidoriaManifestacaoMarcadores => Set<OuvidoriaManifestacaoMarcador>();
+    public DbSet<OuvidoriaPontoResposta> OuvidoriaPontosResposta => Set<OuvidoriaPontoResposta>();
+    public DbSet<OuvidoriaPontoRespostaMembro> OuvidoriaPontoRespostaMembros => Set<OuvidoriaPontoRespostaMembro>();
+    public DbSet<OuvidoriaAcessoIdentidade> OuvidoriaAcessosIdentidade => Set<OuvidoriaAcessoIdentidade>();
+    public DbSet<OuvidoriaConfiguracao> OuvidoriaConfiguracoes => Set<OuvidoriaConfiguracao>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);
         modelBuilder.HasPostgresExtension("smsmarica", "vector"); // pgvector — embeddings do módulo IA
         modelBuilder.HasPostgresExtension("unaccent"); // busca acento-insensível (chat/#45); instalada no schema public
+        modelBuilder.HasSequence<long>("ouvidoria_protocolo_seq", SchemaPadrao).StartsAt(1).IncrementsBy(1); // Ouvidoria (ADR-0060): protocolo AAAA-NNNNNN
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SmsMaisDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

@@ -1,0 +1,686 @@
+ MANUAL DO SISTEMA FALABR ­
+        MÓDULO OUVIDORIA
+
+Neste espaço, o conselheiro vai encontrar orientações sobre como acessar o sistema
+FalaBR, que é o canal oficial para se comunicar com a Controladoria-Geral da União (CGU).
+Por meio do FalaBR, é possível fazer reclamações, sugestões, elogios, denúncias ou
+solicitar informações ao poder público.
+Se quiser consultar o manual completo com o passo a passo, é só acessar:
+
+    Manual do FalaBR - Módulo Ouvidoria
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Outros tipos de arquivo, caso sejam anexados, podem impedir o registro da manifestação e causar "Erro 400". O sistema também apresenta o limite
+de 10 arquivos anexados por manifestação, e o tamanho somando não pode exceder 30Mb.
+
+Manifestante/Cidadão
+
+Veja aqui um vídeo sobre o tema (https://www.youtube.com/live/G4KmcSm5Wqo?t=2593s)
+
+Identificação do manifestante
+
+Conforme o Art. 10 da Lei nº 13.460/2017, "A manifestação será dirigida à ouvidoria do órgão ou entidade responsável e conterá a identificação do
+requerente." O § 7º do mesmo Art. 10 da Lei n° 13.460/2017 garante aos usuários de serviços públicos proteção de suas informações pessoais, nos
+termos da Lei nº 12.527/2011.
+
+Dessa forma, as ouvidorias devem resguardar a identidade e os elementos que permitam a identificação do usuário de serviços públicos ou do autor
+da manifestação e demais informações de acesso restrito.
+
+O registro anônimo de manifestações está previsto tão somente para as denúncias, conforme estabelece o § 2º, do Art. 23 do Decreto nº 9.492/2018.
+O § 1º inclusive reitera que os registros sem identificação do usuário não configurarão manifestações e não obrigarão resposta.
+
+Autocadastro GOV.BR
+
+A partir do dia 04/11/2024 o acesso ao Fala.BR passou a ser autenticado pela conta única digital do governo federal, a plataforma Gov.BR.
+
+Ao acessar, o usuário é levado à pagina de autenticação do sistema Gov.BR. Em seguida, retorna ao Fala.BR. Então o sistema verifica se existe uma
+conta já criada para o mesmo CPF. Se não existir, é criado novo usuário e o acesso é liberado. Se existir apenas uma conta, o acesso é liberado. Se
+houver mais de uma conta para o CPF, será exibida a tela para selecionar um dos usuários que deseja operar no sistema. Caso deseje simplesmente
+realizar o login optando pela autenticação GOV.BR, o usuário será criado automaticamente no sistema.
+
+Mais detalhes na próxima seção....
+
+Acessando o Fala.BR Pessoa Física
+
+Para acessar o Fala.BR, é necessário utilizar o link https://falabr.cgu.gov.br e clicar no botão Entrar no alto da tela, à direita.
+
+A partir de 04 de novembro de 2024 o acesso ao Fala.BR para cidadãos passou a ser exclusivamente por meio da autenticação
+Gov.BR, a plataforma única de gestão de identidades do Governo Federal. O modo de autenticação pelo Gov.BR já era utilizado pelos agentes de
+ouvidoria desde janeiro/2024. Sua adoção é obrigatória para todos os serviços digitais providos pelos órgãos da administração pública federal,
+conforme determina o Decreto nº 8.936/2016.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                                                   12/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Observações:
+- Caso o usuário não possua uma conta Gov.BR, no canal Digital GOVBR foi disponibilizado um vídeo orientando sua criação - Saiba como criar
+uma conta GOV.BR (https://www.youtube.com/watch?v=df95USfTtLA); e
+- O acesso "Web Service" é utilizado pelas ouvidorias que acessam a API (Application Programming Interface) do Fala.BR e não deve ser
+utilizado para login por usuários comuns (que devem usar o Gov.BR).
+
+Para acessar o sistema clique no botão "Entrar com Gov.BR". O usuário é levado à página de autenticação do Gov.BR.
+
+Após a autenticação, o usuário é levado de volta ao Fala.BR.
+
+O Login Único Gov.BR é um meio de acesso digital que garante a identificação do cidadão que acessa os serviços digitais do governo. Ele oferece um
+acesso unificado em um ambiente de autenticação digital único do usuário aos serviços públicos digitais oferecidos pelo governo federal. Assim, com
+um único usuário e senha, o cidadão poderá utilizar todos os serviços públicos digitais que estejam integrados com a plataforma de Login Único.
+
+Logando a primeira vez com o Gov.BR, o sistema verifica se existe uma conta já criada para o mesmo CPF. Se não existir, é criado novo usuário
+e o acesso é liberado. Se existir apenas uma conta, o acesso é liberado e são atualizados os campos (nome e cpfbrasilcidadao) com as informações do
+Gov.BR. Se houver mais de uma conta para o CPF, será exibida a tela para selecionar um dos usuários que deseja operar no sistema.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         13/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Observações:
+       1 - O Fala.BR apenas utiliza o serviço de autenticação da plataforma Gov.BR, não sendo responsável por qualquer suporte/ajuste. Para
+       suporte Gov.BR acesse Atendimento Gov.BR (https://www.gov.br/governodigital/pt-br/atendimento-gov.br).
+
+Acessando o ambiente de treinamento - treinafalabr.cgu.gov.br
+
+       2 - O ambiente de treinamento usa o login Gov.BR de testes "sso.staging.acesso.gov.br". Mesmo que tenha conta no Gov.BR oficial, se ainda
+       não tem login criado nesse ambiente de testes, será criado um novo, de maneira semelhante ao do ambiente de produção. Isso é necessário
+       por se tratar de outro ambiente do Gov.BR que deve ser acessado por sistemas de teste, treinamento, protótipos e afins. Um roteiro
+       simplificado está aqui (https://cgugovbr.sharepoint.com/:b:/s/oe-se-ogu-cgouv-coordenacaodeprojetosemouvidoria/EcUqDN7RqANDvdNgwC0_
+       ssIBfG8r5sJ0oCfGCIzWc6lMyQ?e=w1A6ko).
+
+Estrangeiro acessando o Fala.BR
+
+Para acessar o sistema devem registrar o CPF para estrangeiro e então acessar autenticando via Gov.BR. A criação do CPF para estrangeiro é realizada
+aqui (https://servicos.receita.fazenda.gov.br/Servicos/CPF/InscricaoCpfEstrangeiro/default.asp).
+
+Acessando o Fala.BR Pessoa Jurídica
+
+Com a autenticação pelo Gov.BR, o acesso a contas PJ exigirá a autenticação da pessoa física autorizada no Gov.BR. Esse processo é conhecido como
+vinculação e habilita a pessoa física autorizada a solicitar serviços públicos em nome da PJ.
+
+A vinculação é realizada aqui (https://www.gov.br/governodigital/pt-br/acessibilidade-e-usuario/atendimento-gov.br/duvidas-na-conta-gov.br/duvi
+das-na-vinculacao-de-cnpj-no-gov.br/como-vincular-cnpj).
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         14/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Após realizar esse procedimento, basta entrar no sistema pela opção PESSOA JURÍDICA. Então o usuário deve se autenticar no Gov.BR com a conta
+PF que foi vinculada, conforme item anterior.
+
+Na sequência será retornado ao sistema com acesso à conta PESSOA JURÍDICA. Assim, conseguirá visualizar e interagir com as manifestações
+anteriormente registradas.
+Outra opção é registrar manifestações diretamente com seu usuário pessoa física.
+IMPORTANTE: Não custa reforçar que no Fala.BR, cada conta é uma entidade distinta e por questões de segurança e proteção de dados, uma conta
+não visualiza dados da outra. Tampouco existe a possibilidade de transferência de titularidade de uma manifestação.
+A operação inversa, DESVINCULAÇÃO, em caso de fim de relacionamento ou da responsabilidade do colaborador na gestão da empresa, é realizada
+na opção "Gerenciar vínculos com a empresa" no acesso logado do Gov.BR com acesso via CNPJ. Orientações aqui (https://acesso.gov.br/faq/_pergu
+ntasdafaq/retirarcolaboradordocnpj.html).
+
+Recuperação de Senha - apenas usuário Web Service
+
+Com a entrada da autenticação Gov.BR, apenas os usuários do tipo Web Service precisarão eventualmente recuperar senha. Para recuperar a
+senha para login Fala.BR, o usuário deverá acessar o sistema em https://falabr.cgu.gov.br e clicar no botão Entrar no alto da tela à direita.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         15/186
+17/09/2025, 17:32                                 Fala.BR - Módulo Ouvidoria - Wiki CGU
+   Em seguida, clique no link "Esqueci a senha".
+
+Será exibido o seguinte pop-up:
+
+Na sequência, informe o login desejado com um dos valores possíveis, ver tela acima, cujos detalhes podem ser obtidos em Seção Login com
+Diferentes Perfis.
+
+Será informado que uma mensagem foi enviada para o e-mail cadastrado.
+
+   O usuário receberá a mensagem contendo um link para geração de uma nova senha:        16/186
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Após clicar no referido link, será exibida uma tela para o usuário informar a nova senha. Finalmente, clique no botão Salvar.
+
+Alterando dados cadastrais
+
+O próprio usuário pode atualizar seus dados cadastrais, através do menu "Meu Cadastro", disponível na tela inicial da Plataforma Fala.BR, no menu
+que aparece ao clicar sobre o nome do usuário, conforme destacado na figura a seguir:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                                             17/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+A partir da funcionalidade Meu Cadastro é possível visualizar e/ou alterar os dados cadastrais na Plataforma Fala.BR. Lembrando que a partir da
+autenticação com a conta única do governo digital (Gov.BR), ao acessar o sistema, o campo nome é sempre confirmado e atualizado com a informação
+do Gov.BR.
+
+Dessa forma, é permitido que o próprio usuário realize a alteração de dados cadastrais. Para realizar tal ação o usuário deve utilizar o seguinte
+procedimento: Primeiramente o usuário deve acessar o menu "Meu usuário", disponível na tela inicial da Plataforma Fala.BR, ou clicar sobre o nome
+do usuário no canto superior direito da tela. Em seguida, na tela alterar meu cadastro, modificar os dados que deseja ver corrigidos, como, por
+exemplo, nome, e-mail, etc. Por fim, clicar em "Salvar" para efetivar essas alterações.
+
+Exclusão de cadastro do sistema
+
+Em conformidade com a LGPD, é possível ainda excluir o próprio cadastro, clicando no botão "Excluir Cadastro". O sistema ainda alertará que a ação
+é irreversível. Lembre-se de clicar no botão "Salvar" para que a Plataforma grave as alterações realizadas.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         18/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Assista aqui vídeo sobre o tema (a partir do minuto 1:48) (https://www.youtube.com/live/G4KmcSm5Wqo?t=2593s)
+
+Importante!!! Vale ressaltar que, as manifestações registradas pelo usuário não serão excluídas do portal por questões de integridade do sistema e
+das ações realizadas pela ouvidoria no seu tratamento. Contudo, será adicionado no histórico das manifestações a ação "Cadastro do usuário
+excluído pelo próprio titular" e a seção Usuário apresentará a indicação "Usuário excluído pelo próprio titular". Naturalmente, ao
+excluir seu usuário, o cidadão deixará de ter acesso às manifestações criadas e para utilizar novamente o sistema terá que realizar novo cadastro.
+
+Guia Histórico
+
+Na aba "Histórico" na tela Meu Cadastro são apresentadas informações relativas às alterações realizadas nos dados cadastrais do usuário, bem
+como o usuário que as executou.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         19/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+IMPORTANTE 2: O login Gov.BR usa o CPF como ponto de checagem com o Fala.BR. Caso haja divergência entre os dados nome e e-mail entre as
+plataformas, esses dados serão atualizados no Fala.BR com as informações do Gov.BR. Mas, caso a divergência seja no endereço de e-mail, o cadastro
+no Fala.BR receberá o "selo inexistente", pois não é possível alterar o endereço de e-mail e o login do usuário pelo sincronismo. Neste caso, o usuário
+precisará atualizar o endereço de e-mail manualmente conforme descrito acima.
+
+IMPORTANTE 3: Além do próprio usuário, apenas administradores do sistema (administrador e cadastrador) conseguem editar dados de usuário
+cidadão. As alterações ficam registradas no histórico do cadastro alterado.
+
+-->
+
+Registrando uma Manifestação
+
+Veja aqui um vídeo específico sobre o tema (https://www.youtube.com/live/G4KmcSm5Wqo?t=4126s)
+
+Veja aqui outro vídeo abordando o tema (https://www.youtube.com/live/G4KmcSm5Wqo?t=4126s)
+
+Inicialmente, ao acessar o sistema (https://falabr.cgu.gov.br) é apresentada a tela com as cinco opções disponíveis: Ouvidoria; Acesso à Informação -
+LAI; Ouvidoria Interna; Consulte seu protocolo; e Perguntas Frequentes.
+
+Mais detalhes sobre essas opções estão disponíveis no tópico Tipos de Manifestação.
+
+Acesso à Informação - LAI
+
+A primeira opção é Acesso à Informação - LAI que, ao ser selecionada, (após o login no sistema) encaminha para o formulário de pedido de acesso
+à informação, conforme segue:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         20/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Ouvidoria e Ouvidoria Interna
+
+Neste tópico serão abordados os passos necessários ao registro de uma manifestação. Para tal, é necessário o cidadão clicar no item Ouvidoria ou
+Ouvidoria Interna para acessar o menu com as opções de manifestações disponíveis.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         21/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Observação: Visando o fortalecimento das ouvidorias setoriais na perspectiva do acolhimento de servidores, empregados e colaboradores, a
+atualização da Plataforma disponibiliza a seção ouvidoria interna que destina-se ao registro de manifestações por trabalhadores das organizações
+federais. Na tela seguinte são disponibilizadas os mesmos tipos de manifestações. A operação de registro da manifestação não é modificada. A
+diferença prática é apenas o registro de tag de triagem "Ouvidoria Interna", facilitando a filtragem pela equipe de triagem da Ouvidoria,
+possibilitando o direcionamento a equipe especializada no tratamento e acolhimento dos colaboradores internos.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         22/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Registrando uma Manifestação de Ouvidoria ou Ouvidoria Interna
+
+Observação: Manifestações do tipo Simplifique estão disponíveis somente para órgãos federais.
+Após selecionar a opção desejada, é necessário se logar no Fala.BR por intermédio da autenticação Gov.BR (para mais informações vide a Seção Login
+com Diferentes Perfis).
+
+Será mostrada a tela com as opções de manifestação disponíveis: denúncia, elogio, reclamação, simplifique, solicitação e sugestão (para mais
+informações vide a Seção Tipos de Manifestação). Em seguida, escolha a manifestação desejada. Para os exemplos a seguir escolher-se-á o tipo
+Elogio, feito por um cidadão já cadastrado no sistema.
+Após escolher o tipo, preencha os campos conforme desejado. Observe que alguns campos são obrigatórios, como por exemplo, a ouvidoria
+destinatária (Órgão para o qual você quer enviar sua manifestação) e campo de teor da manifestação (Fale aqui)
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         23/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Observação:
+                   pode-se incluir documentos de texto, imagens, planilhas, arquivos no formato ".pdf", áudios e vídeos, limitados a 10 anexos por
+                   manifestação. O tamanho total dos anexos não pode superar 30MB.
+
+Após o preenchimento das informações, clique em Avançar; será exibida uma tela de Resumo da Manifestação. Em seguida clique em Concluir:
+
+É gerado o Número de Protocolo. Neste momento o cidadão receberá em seu e-mail (cadastrado no Fala.BR) as principais informações da
+manifestação registrada, incluindo link para acessar a manifestação e acompanhar o andamento de seu tratamento. Para consultá-la também pode
+acessar Minhas Manifestações na tela inicial do usuário.
+
+Por fim, é solicitada uma avaliação acerca da experiência do usuário quanto ao registro da manifestação. Ao clicar no número relativo à nota a ser
+atribuída, aparecerá um campo onde pode ser inserido texto com sugestões de melhoria do sistema. Clique no botão Enviar para concluir a pesquisa.
+Esta pesquisa, após respondida, não é mais apresentada, isto é, para cada usuário é colhida somente uma resposta.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         24/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+O cidadão que ainda não possui cadastro ativo, cuja manifestação foi cadastrada por um usuário de ouvidoria, deve guardar as informações Número
+de Protocolo e Código de Acesso (essas informações serão fornecidas pelo atendente que realizou o cadastro). Portanto aconselha-se anotá-las,
+imprimi-las, gerar arquivo em extensão ".pdf" ou guardar o e-mail recebido (caso tenha sido fornecido ao atendente). Destacamos que, para acessar e
+consultar o andamento da manifestação será necessário informar tanto o Número de Protocolo quanto o Código de Acesso gerados.
+
+Registrando uma Denúncia, inclusive com possibilidade de registo anônimo
+
+Inicialmente, é necessário o cidadão acessar a Plataforma em https://falabr.cgu.gov.br. Será mostrada a tela inicial, onde é necessário clicar no item
+"Ouvidoria" ou "Ouvidoria Interna" para acessar o menu com as opções de manifestações disponíveis.
+
+Em seguida, escolha o tipo Denúncia (para mais informações vide a Seção Tipos de Manifestação). É importante ressaltar que este é o único
+tipo de manifestação possível de se registrar de forma não identificada (anônima), conforme estabelece o § 2º, do Art. 23 do Decreto nº
+9.492/2018. O § 1º inclusive reitera que os registros sem identificação do usuário não configurarão manifestações e não obrigarão resposta. Para os
+exemplos a seguir escolher-se-á o tipo Denúncia. Em seguida será exibida a tela de login (para mais informações vide a Seção Login com Diferentes
+Perfis). Para prosseguir, escolha a opção Não identificado (Continuar sem me identificar).
+
+Será apresentada uma tela contendo informações acerca da manifestação do tipo "Denúncia". Para prosseguir, clique em "Avançar".
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                                               25/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Com o objetivo de aperfeiçoar o registro das denúncias, enriquecendo as informações iniciais, foram criados formulários especializados para três
+assuntos específicos (Assédio moral; Assédio sexual; e Discriminação), com a criação de campos estruturados que garantirão uma melhor
+qualidade dos registros, permitindo a análise mais acurada pelas ouvidorias e elevando a efetividade e apuração das denúncias, reduzindo o índice de
+registros sem elementos mínimos de indicação de autoria e materialidade, essenciais para o adequado tratamento das denúncias.
+
+Para viabilizar essa operação, foi necessário antecipar a seleção do assunto ao selecionar o registro de denúncia. Inicialmente será apresentada a tela
+para indicação do assunto, com destaque para os três assuntos que receberam o formulário específico: Assédio moral; Assédio sexual; e
+Discriminação.
+
+Selecione o assunto relacionado à sua denúncia. Neste ponto será apresentada a tela de Login.
+
+Aqui vale destacar:
+
+O tipo de manifestação "Denúncia" recebe um tratamento específico pelo Fala.BR, principalmente por requerer um análise mais
+profunda pela ouvidoria e pelas unidades de controle, além de exigir uma preservação dos dados do denunciante. Neste sentido foi
+editado o Decreto nº 10.153/2019, que dispõe sobre as salvaguardas de proteção à identidade dos denunciantes de ilícitos e de
+irregularidades praticados contra a administração pública federal direta e indireta. Isto significa que para os dados do cidadão serem
+exibidos é necessário ao servidor de ouvidoria inserir uma justificativa (esta também fica registrada no histórico). Em suma, de todo
+modo (registro identificado ou anônimo o sistema está preparado para evitar o acesso indevido aos dados do manifestante).
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         26/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+O registro de denúncias de maneira identificada tem a vantagem de o cidadão poder acompanhar o andamento do seu
+tratamento com o recebimento de mensagens automatizadas ou pelo logon no sistema, além de poder ser contatado para
+complementar informações, garantindo assim a adequada apreciação pela ouvidoria e pelas unidades apuratórias.
+
+O registro anônimo impossibilita essas ações e, caso não contenha elementos mínimos de autoria e materialidade, poderá ser
+arquivada durante a análise da ouvidoria simplesmente pela impossibilidade de complementação, uma vez que não há identificação
+do manifestante.
+
+Para continuar, escolha a opção de autenticação, caso opte pela denúncia anônima, clique em "Registrar Denúncia".
+
+Será exibido um formulário para inserção das informações acerca da manifestação. Note que alguns campos são obrigatórios, como por exemplo, a
+ouvidoria destinatária (Órgão para o qual você quer enviar sua manifestação) e campo de teor da manifestação (Fale aqui):
+
+Vale uma observação aqui:
+
+pode-se incluir documentos de texto, imagens, planilhas, arquivos no formato ".pdf", áudios e vídeos, limitados a 10 anexos por
+manifestação. O tamanho total dos anexos não pode superar 30MB.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                                               27/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Após o preenchimento das informações, clique em Avançar; será exibida uma tela de Resumo da Manifestação. Em seguida clique em Concluir:
+
+IMPORTANTE: Caso tenha sido registrada de maneira anônima, não será gerado o Código, e o usuário ficará impossibilitado de
+acompanhar o tratamento da manifestação no Fala.BR ou mesmo de complementá-la. Caso seja seu desejo realizá-lo,
+recomenda-se registrar a manifestação de forma identificada, seguindo o procedimento descrito nas seções Registrando uma
+Manifestação ou Registrando uma Manifestação de Ouvidoria ou Ouvidoria Interna.
+
+Como última observação ressalta-se o seguinte: no momento do registro, a Plataforma Fala.BR faz uma análise no teor da manifestações buscando
+por correspondências de palavras, suas derivações e sinônimos. A ideia é evitar o registro de múltiplas manifestações com o mesmo teor ou
+semelhante, bem como a utilização de robots. O procedimento é realizado somente para as comunicações, ou seja, denúncias anônimas. Isso significa
+que não é possível registrar mais de uma manifestação com teor semelhante ou muito parecido.
+
+Novos formulários especializados de denúncias de assédio moral, assédio sexual e discriminação
+Com o objetivo de aperfeiçoar o registro das denúncias, enriquecendo as informações iniciais, foram criados formulários com campos estruturados
+que garantirão uma melhor qualidade dos registros, permitindo a análise mais acurada pelas ouvidorias e elevando a efetividade e apuração das
+denúncias, reduzindo o índice de registros sem elementos mínimos de indicação de autoria e materialidade, essenciais para o adequado tratamento
+das denúncias.
+
+Quando da seleção do assunto, em caso da indicação de um dos três assuntos, após a escolha da identificação usual, será exibido o formulário próprio
+que apresenta uma descrição detalhada do assunto, seguido de algumas questões adicionais, como condutas realizadas, tempo da ocorrência, relação
+entre os envolvidos, entre outras. Há ainda a possibilidade de abertura do registro, para análise, para instituição diversa daquela em que ocorreu o
+fato.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         28/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Minhas Manifestações
+
+Esta funcionalidade permite ao usuário visualizar suas manifestações registradas, acompanhar seu andamento e realizar determinadas ações
+solicitadas pela ouvidoria.
+
+Veja aqui um vídeo sobre o tema (https://www.youtube.com/live/G4KmcSm5Wqo?t=4440s)
+
+Inicialmente, é necessário o cidadão se logar no Fala.BR: basta acessar o sistema em https://falabr.cgu.gov.br e clicar no botão Consulte seu
+protocolo. Na tela de login selecione o tipo de usuário e proceda com a autenticação Gov.BR (para mais informações vide a Seção Login com
+Diferentes Perfis). Caso não possua cadastro, a manifestação poderá ser consultada utilizando-se o Número do Protocolo e o Código (para mais
+informações vide a Seção Acessando uma Manifestação de Usuário sem Cadastro).
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         29/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Caso tenha se logado, na tela inicial do usuário, clique no menu Minhas Manifestações. Na sequência, serão mostradas todas as manifestações
+registradas pelo usuário no Fala.BR:
+
+Na tela de visualização de manifestações é possível verificar a quantidade de manifestações registradas em Total de registros. São apresentadas as
+seguintes colunas:
+
+                   Ações: a depender do tratamento dado pela ouvidoria na manifestação, é solicitado ao usuário a execução de determinadas ações.
+                   Para mais detalhes, vide a Ações do Manifestante;
+
+                   Número: é número de protocolo informado ao cidadão ao final do registro da manifestação. Para mais informações, vide a Seção
+                   Registrando uma Manifestação.
+
+                   Tipo: é um dos sete tipos existentes no Fala.BR, isto é, acesso à informação, denúncia, elogio, reclamação, simplifique, solicitação e
+                   sugestão. Para mais informações, vide a Seção Tipos de Manifestação.
+
+                   Órgão: é o órgão destinatário da manifestação, selecionado durante o registro (campo: Órgão para o qual você quer enviar sua
+                   manifestação). Ressalta-se que uma ouvidoria pode encaminhar a manifestação para outra, em face do assunto ou ausência de
+                   competência.
+
+                   Assunto: assunto selecionado quando o cidadão realizou o registro da manifestação (campo Sobre qual assunto você quer falar).
+                   Ressalta-se que a ouvidoria pode alterar este campo durante sua análise a fim de readequação.
+
+                   Cadastro: data de registro da manifestação pelo cidadão.
+
+                   Prazo: prazo de atendimento final pela ouvidoria. Com a Lei nº 13.460/2017, a ouvidoria deverá responder as manifestações de
+                   forma conclusiva em até 30 dias contados a partir do seu recebimento. Este prazo pode ser prorrogado por igual período, desde que
+                   haja justificativa expressa.
+
+                   Situação: estados em que uma manifestação pode estar, sendo que o inicial é Cadastrada e o final é Concluída. Para mais
+                   informações, vide a Seção Situações de uma Manifestação.
+
+É possível filtrar o resultado ajustando os campos com filtros que permitem selecionar a(s) manifestação(ões) desejada(s), que podem ser acessados
+ao clicar na seta à esquerda da linha "Informe os filtros de consulta desejados", conforme mostrado na figura a seguir:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         30/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Por fim, as subseções a seguir, Acessando uma Manifestação de Usuário sem Cadastro e Acessando uma Denúncia Anônima, descrevem
+procedimentos que não estão disponíveis a partir da funcionalidade Minhas Manifestações. Essas informações foram inseridas nesta seção por
+terem relação com o tema abordado.
+
+IMPORTANTE: Vale destacar que as manifestações registradas via API não ficam associadas aos usuários existentes no Fala.BR. Isso porque não
+ocorre validação da conta de usuário ou do e-mail informado e assim poderia ser objeto de registro indevido para uma conta existente. Dessa forma,
+as manifestações registradas via API somente poderão ser acompanhadas pelo código gerado e enviado ao endereço de e-mail, conforme o
+procedimento descrito em Acessando uma Manifestação de Usuário sem Cadastro (https://wiki.cgu.gov.br/index.php/Fala.BR_-_M%C3%B3dulo_O
+uvidoria#Acessando_uma_Manifesta.C3.A7.C3.A3o_de_Usu.C3.A1rio_sem_Cadastro).
+
+Acessando uma Manifestação
+
+Na lista exibida em Minhas Manifestações, clique no Número do Protocolo da manifestação desejada para exibi-la na mesma janela do navegador
+ou no ícone de seta ao lado dele para abrir em uma nova janela.
+
+A tela de visualização da manifestação é composta por quatro blocos:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         31/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+i) Manifestação Detalhada: contém as informações principais sobre a manifestação, que podem ser verificadas pelo cidadão, tais como:
+
+            Número de protocolo
+            Tipo
+            Esfera
+            Órgão destinatário
+            Fale aqui (teor): contém os dados informados pelo cidadão durante o registro da manifestação
+            Serviço: lista de serviços cadastrados pelo órgão destinatário no Portal de Serviços do Governo Federal (https://www.gov.br);
+            Órgão de Interesse: órgão que, a depender do tema tratado, possa ter competência ou relação com o assunto exposto na
+            manifestação;
+            Assunto: lista de assuntos de abrangência geral cadastrada pela OGU;
+            Subassunto: lista de temas utilizados para classificar as manifestações;
+            Tag da manifestação: lista de marcadores que qualificam a manifestação com temas específicos cadastrados pelas ouvidorias
+            públicas e independentes de assunto/subassunto;
+            Data de cadastro: data de registro da manifestação;
+            Prazo de atendimento: o prazo para atendimento é de 30 dias, conforme a Lei nº 13.460/2017, podendo ser prorrogado por
+            igual período, devidamente justificado;
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         32/186
+17/09/2025, 17:32                                                                 Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+                   Situação atual: apresenta o estágio em que a manifestação se encontra;
+                   Registrado por: nome do usuário que registrou a manifestação. Caso seja uma denúncia aparece o termo genérico "Cidadão";
+                   Modo de resposta:
+                   Canal de entrada: meio pelo qual foi registrada a manifestação.
+
+ii) Anexos Originais: exibe os arquivos anexados à manifestação.
+
+iii) Local do Fato: Informações sobre o local onde ocorreu o fato.
+            UF / Cidade / Local
+
+iv) Históricos de ações: exibe as ações executadas no tratamento da manifestação.
+
+v) Encaminhamentos
+
+vi) Prorrogações
+
+vii) Respostas à pesquisa de satisfação
+
+Note que a tela exibe o teor da manifestação com os campos informados durante seu registro; não é permitida qualquer alteração. Caso deseje
+alterar as informações preenchidas, o usuário deve fazer por meio de uma resposta a um pedido de complementação solicitado pelo servidor de
+ouvidoria ou registrar uma nova manifestação, fazendo menção à original. Ademais, o usuário pode visualizar todas as ações executadas em sua
+manifestação em Respostas e históricos de ações e exportar o conteúdo (bastando clicar em Exportar).
+
+Exportando uma Manifestação
+
+Para exportar uma manifestação, inicialmente acesse a manifestação que deseja exportar. Veja as seções Minhas Manifestações e Acessando uma
+Manifestação.
+
+Com a manifestação aberta, clique no botão Exportar, localizado no final da página. As opções apresentadas podem variar em razão do navegador de
+internet utilizado.
+
+Para exportar uma planilha com as manifestações apresentadas na listagem, clique no botão "Exportar Manifestações", localizado no canto inferior da
+página. Apresentamos um exemplo na figura a seguir:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                 33/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Ações do Manifestante
+
+A partir da análise e tratamento da manifestação registrada no Fala.BR, a ouvidoria pode enviar determinado tipo de resposta e/ou executar alguma
+ação a fim de dar andamento à demanda. Para mais informações, consulte as seções Tipos de Resposta e Ações.
+
+Em consequência desses procedimentos, pode ser solicitado ao usuário realizar um (ou mais) dos quatro tipos de ações distintas, sendo que duas
+ocorrem durante a análise da manifestação pela ouvidoria (Complementar e Autorizar Acesso a Dados) e duas após sua conclusão
+(Responder Pesquisa e Denunciar). Abaixo segue o exemplo da lista de manifestações registradas por um determinado usuário que contempla
+tais ações, sendo estas exibidas na coluna Ações:
+
+A seguir são descritos os procedimentos para executar cada uma das ações do usuário:
+
+Complementar
+Veja aqui um vídeo sobre o tema (https://www.youtube.com/live/G4KmcSm5Wqo?t=4904s)
+
+decorre quando o usuário necessita responder a um pedido de complementação solicitado pela ouvidoria. Tal pedido é utilizado quando há
+necessidade de o cidadão adicionar informações na manifestação, geralmente por estar incompleta ou não estar totalmente inteligível para
+atendimento pela ouvidoria. O pedido de complementação de informações suspende a contagem original, abrindo prazo de 20 dias para que o usuário
+apresente as informações solicitadas. Depois de o usuário complementar a manifestação, o prazo para que a ouvidoria ofereça a resposta é retomado
+de onde parou.
+
+               Para iniciar tal ação basta clicar em Complementar disponível para a manifestação em questão. Em seguida, insira o texto
+               complementar da manifestação, note que também podem ser adicionados mais envolvidos no relato e incluídos anexos, e clique no
+               botão Salvar:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         34/186
+17/09/2025, 17:32  Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Será apresentada uma mensagem confirmando a complementação:
+
+Autorizar Acesso a Dados
+Esta ação existe somente na denúncia e decorre de pedido de consentimento solicitado pela ouvidoria. A título de esclarecimento, o pedido de
+consentimento foi incluído no Fala.BR para atender ao disposto no art. 8º do Decreto nº 10.153/2019, na hipótese de encaminhamento da
+manifestação de uma ouvidoria para outra:
+
+   "(...) Art. 8º O encaminhamento de denúncia com elementos de identificação do denunciante entre unidades do Sistema de Ouvidoria do Poder Executivo federal será precedido de
+   solicitação de consentimento do denunciante, que se manifestará no prazo de vinte dias, contado da data da solicitação do consentimento realizada pela unidade de ouvidoria
+   encaminhadora.
+   Parágrafo único. Na hipótese de negativa ou de decurso do prazo previsto no caput, a unidade de ouvidoria que tenha recebido originalmente a denúncia somente poderá encaminhá-
+   la ou compartilhá-la após a sua pseudonimização. (...)"
+
+Ao acessar a manifestação em que foi solicitado o "pedido de consentimento" o usuário apertar o botão "Autorizar Acesso a Dados"
+
+   O nome "Autorizar Acesso a Dados" também aparece na lista de manifestações que o usuário pesquisou:  35/186
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Para iniciar tal ação basta clicar em Autorizar Acesso a Dados disponível para a manifestação em questão. Será apresentada a
+manifestação, onde o cidadão poderá marcar a seleção "Autorizar?" (1) para a autorização ou não do envio dos seus dados pessoais
+para a atuação de outra ouvidoria. Caso ele autorize, a ouvidoria destino será capaz de visualizar seus dados pessoais; caso contrário -
+negativa ou ausência de manifestação pelo cidadão - a ouvidoria destino não será capaz de fazê-lo, recebendo a denúncia, portanto, de
+forma pseudonimizada (para mais informações sobre o conceito de pseudonimização veja a Seção Analisando e Tratando uma
+Manifestação). O cidadão deve deixar a caixa marcada em vermelho da imagem abaixo desmarcada e clicar em seguida em
+"Salvar" para não autorizar o registro(2). Nesse caso, ele registra que não está fornecendo autorização para envio dos seus dados no
+encaminhamento da denúncia para outro órgão.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         36/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Do contrário, caso deseje autorizar o envio de dados, o denunciante deve ativar a marcação "Autorizar?" e depois salvar a ação.
+
+Em seguida, será apresentada uma mensagem confirmando a autorização:
+
+               A ouvidoria receberá uma notificação pela resposta ao pedido de consentimento, se a ação estiver configurada no cadastro da
+               ouvidoria.
+
+Responder Pesquisa
+Veja aqui um vídeo sobre o tema (https://www.youtube.com/live/G4KmcSm5Wqo?t=4724s)
+
+Após a manifestação ter sido respondida de forma conclusiva pelo servidor de ouvidoria, é permitido (facultativamente) ao cidadão avaliar o
+atendimento realizado pela ouvidoria. As respostas de pesquisas de satisfação fornecerão subsídios, inclusive estaticamente, para a ouvidoria avaliar o
+grau de satisfação do cidadão e promover melhorias no atendimento prestado nos serviços públicos.
+
+               Para iniciar tal ação basta clicar em Responder Pesquisa disponível para a manifestação em questão.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                                               37/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Após marcar as respostas às três questões, clique no botão Salvar. Será apresentada uma mensagem confirmando o registro da
+resposta à pesquisa.
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                                          38/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Denunciar descumprimento de compromisso (Simplifique)
+Esta ação existe somente no simplifique. Ressalta-se que, após a análise da manifestação do tipo "Simplifique" pela ouvidoria, será informado ao
+cidadão se o órgão competente acatou ou não a proposta de melhoria peticionada. Em caso positivo, será também informado um prazo para
+cumprimento da medida.
+
+Caberá ao cidadão autor da manifestação avaliar o integral cumprimento da providência de simplificação ou alteração de procedimento proposta pelo
+órgão ou entidade. Caso identifique o descumprimento do compromisso, poderá denunciá-lo à OGU, que fará gestão junto ao órgão ou entidade a fim
+de recompor ou retificar o procedimento, conforme descrito no art. 14 da IN Conjunta MPDG/CGU nº 1/2018, que dispõe sobre os procedimentos
+aplicáveis à Solicitação de Simplificação de que trata o Decreto nº 9.094, de 17 de julho de 2017.
+
+Para iniciar tal ação basta clicar em Denunciar disponível para a manifestação em questão.
+
+Depois basta ao cidadão descrever os fatos que comprovem o descumprimento de simplificação e, em seguida, clicar no botão Denunciar.
+
+Acessando uma Manifestação de Usuário sem Cadastro - acesso via protocolo de registro
+
+Para o cidadão sem cadastro no Fala.BR conseguir consultar a manifestação no sistema, basta clicar em Consulte seu protocolo na tela inicial do
+Fala.BR:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         39/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Na tela seguinte, na seção "Não possuo Cadastro", clicar no botão "Consulta de protocolo". Depois basta informar o Número e o Código de Acesso;
+estes valores são fornecidos no fim do registro da manifestação. Em seguida clique no botão Consultar. (para mais informações vide a Seção
+Registrando uma Manifestação).
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         40/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+Na sequência é apresentada a tela de visualização da manifestação:
+
+Esta tela de visualização da manifestação é composta por cinco blocos:
+
+               i) Teor: contém os dados informados pelo cidadão durante o registro da manifestação;
+
+               ii) Manifestação Detalhada: contém as informações principais sobre a manifestação, que podem ser verificadas pelo cidadão, tais
+               como:
+
+                           Tipo de protocolo
+                           Número
+                           Esfera
+                           Órgão destinatário
+                           Serviço: lista de serviços cadastrados pelo órgão destinatário no Portal de Serviços do Governo Federal (https://www.gov.br);
+                           Órgão de Interesse: órgão que, a depender do tema tratado, possa ter competência ou relação com o assunto exposto na
+                           manifestação;
+                           Assunto: lista de assuntos de abrangência geral cadastrada pela OGU;
+                           Subassunto: lista de temas utilizados para classificar as manifestações;
+                           Tag da manifestação: lista de marcadores que qualificam a manifestação com temas específicos cadastrados pelas ouvidorias
+                           públicas e independentes de assunto/subassunto;
+                           Data de cadastro: data de registro da manifestação;
+                           Prazo de atendimento: o prazo para atendimento é de 30 dias, conforme a Lei nº 13.460/2017, podendo ser prorrogado por
+                           igual período, devidamente justificado;
+                           Situação: apresenta o estágio em que a manifestação se encontra;
+                           Registrado por: nome do usuário que registrou a manifestação. Caso seja uma denúncia aparece o termo genérico "Cidadão";
+                           Modo de resposta: meio pelo qual serão encaminhadas as respostas ao demandante;
+                           Canal de entrada: meio pelo qual foi registrada a manifestação;
+                           Responsável pela análise: responsável(is) pela análise;
+
+               iii) Observação do órgão: texto com apontamentos relativos à manifestação, elaborado pelo órgão responsável pela análise;
+
+               iv) Anexos: exibe os arquivos anexados à manifestação;
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         41/186
+17/09/2025, 17:32                                                   Fala.BR - Módulo Ouvidoria - Wiki CGU
+
+v) Históricos de ações: exibe as ações executadas no tratamento da manifestação;
+
+vi) Usuário.
+
+Note que a tela exibe o teor da manifestação com os campos informados durante seu registro; não é permitida qualquer alteração. Caso deseje
+alterar as informações preenchidas, o usuário deve fazer por meio de uma resposta a um pedido de complementação solicitado pelo servidor de
+ouvidoria ou registrar uma nova manifestação, fazendo menção àquela. Ademais, o usuário pode visualizar todas as ações executadas em sua
+manifestação em Históricos de ações e exportar o conteúdo (basta clicar em Exportar).
+
+Acessando uma Denúncia Anônima
+
+Foi mostrado na Seção Registrando uma Denúncia Anônima que, após o registro da manifestação, não é gerado um Número de Protocolo e um
+Código de Acesso para que o usuário consiga consultar sua manifestação (o Número de Protocolo é apresentado na tela de conclusão
+somente quando um servidor faz o registro para o cidadão. Nesse caso, esse número não deve ser informado, pois, mesmo de posse dele, o cidadão
+não conseguirá acessar a manifestação).
+
+Assim, o usuário ficará impossibilitado de acompanhar o tratamento da manifestação na Plataforma Fala.BR. Caso seja seu desejo realizá-lo,
+recomenda-se ao cidadão registrar a manifestação de forma identificada, seguindo o procedimento descrito nas seções Registrando uma Manifestação
+ou Registrando uma Denúncia, inclusive com possibilidade de registo anônimo.
+
+Ouvidoria
+
+Usuários
+
+Esse tópico foi abordado no Vídeo 2 do treinamento "Intensivo de Sistemas - Fala.BR" (https://youtu.be/nrJ8hEIQGEA?t=1154)
+
+Por meio da funcionalidade Usuários é possível consultar os usuários cadastrados em uma ouvidoria, além de cadastrar novos. Antes de adentrar na
+funcionalidade em si, é necessário apresentar os tipos e perfis de usuário existentes no Fala.BR.
+
+Tipos e Perfis de Usuário
+
+Tutorial sobre o tema: "Perfis de Usuários" (https://cgugovbr.sharepoint.com/:v:/s/oe-se-ogu-cgouv-coordenacaodeprojetosemouvidoria/EfI1kodCd
+OZGioMFDEw4jekBp8N2pYkDeg7s7Bex4zMbjw?e=JOPkji&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLC
+JyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%
+3D)
+
+Veja aqui outros vídeos sobre o cadastro de usuários e perfis 1 (https://www.youtube.com/watch?v=Gi5jV7boGyc&t=1445s) e 2 (https://www.youtub
+e.com/watch?v=gigYfSDXhjg&t=3397s).
+
+A estrutura de contas de usuários no Fala.BR permite a agregação de funcionalidades em Tipos e Perfis. Ao todo, são doze Perfis de usuários
+distribuídos em quatro Tipos. O Tipo sinaliza o objetivo da interação com o sistema, enquanto o Perfil delimita as funcionalidades de atuação no
+sistema. De modo geral, podemos descrever os quatro tipos de usuários da seguinte forma:
+
+               i) Administrador: pode receber os perfis Cadastrador e Administrador, que gerenciam as configurações do sistema, a criação de
+               unidades de ouvidorias e de usuários no sistema. Em geral, estes usuários são criados para os administrar a plataforma. Por exemplo, os
+               NAOPs regionais recebem o tipo de usuário Administrador com o perfil Cadastrador para poderem cadastrar um novo órgão local que
+               faça a adesão ao Fala.BR;
+               ii) Servidor: é o tipo de usuário para os agentes de ouvidoria realizarem as tarefas de tratamento de manifestações das unidades
+               ouvidorias. Pode receber os perfis Gestor, Observador, Colaborador, Atendente e Respondente, cada qual com funcionalidades
+               específicas de atuação no sistema. O perfil de Gestor é o mais amplo na ouvidoria e tem permissão para cadastrar outros usuários na
+               ouvidoria e ajustar dados cadastrais da Ouvidoria;
+               iii) Cidadão: possui somente o perfil Usuário, que designa qualquer pessoa física ou jurídica que queira utilizar o Fala.BR. Pode registrar
+               e consultar suas manifestações no sistema. Destacamos que esse perfil não requer vinculação a órgão; e
+               iv) Sistema: é o tipo utilizado pelas ouvidorias para realizar integração de sistemas próprios com o Fala.BR via API (Application
+               Programming Interface). Contempla os perfis WebService Observador, Atendente e Respondente.
+
+Abaixo segue um resumo das permissões dos doze perfis de usuário distribuídos entre as onze funcionalidades disponíveis no Fala.BR e apresentadas
+na Seção Funcionalidades disponíveis ao usuário:
+
+https://wiki.cgu.gov.br/index.php?title=Fala.BR_-_Módulo_Ouvidoria                                         42/186
+

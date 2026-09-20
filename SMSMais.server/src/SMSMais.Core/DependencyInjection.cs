@@ -56,6 +56,13 @@ public static class DependencyInjection
         services.AddScoped<IRastreamentoNotificador, NotificadorRastreamentoNulo>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<Tickets.ITicketService, Tickets.TicketService>();
+
+        // Ouvidoria (ADR-0060)
+        services.AddScoped<Ouvidoria.IOuvidoriaCatalogoService, Ouvidoria.OuvidoriaCatalogoService>();
+        services.AddScoped<Ouvidoria.IOuvidoriaManifestacaoService, Ouvidoria.OuvidoriaManifestacaoService>();
+        services.AddScoped<Ouvidoria.IOuvidoriaPublicoService, Ouvidoria.OuvidoriaPublicoService>();
+        services.AddScoped<Ouvidoria.OuvidoriaNotificador>();
+        services.AddHostedService<Ouvidoria.OuvidoriaRotinasService>();
         services.AddScoped<IEstudoAnotacoesService, EstudoAnotacoesService>();
         services.AddScoped<IIdentidadeService, IdentidadeService>();
         services.AddScoped<IApiTokensService, ApiTokensService>();

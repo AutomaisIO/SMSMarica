@@ -1,0 +1,1811 @@
+
+=== PAGE 1 ===
+1
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+MANUAL DO 
+OUVIDOR
+PARA IMPLANTAÇÃO DE 
+OUVIDORIAS DO SUS NO 
+PARANÁ
+
+
+=== PAGE 2 ===
+2
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Secretaria de Estado da Saúde do Paraná-SESA
+Beto Richa
+Governador do Paraná
+Michele Caputo Neto
+Secretário de Estado da Saúde
+Sezifredo Paz 
+Diretor Geral
+Oliva Pacheco Vasconcellos
+Ouvidora Geral da Saúde-PR
+Organização e Elaboração:
+Oliva Vasconcellos 
+Pesquisa Bibliográfica
+Silvia Caroline Barchak (2012)
+Curitiba – 2015.
+Todos os direitos reservados. 
+É permitida a reprodução parcial ou total desta obra, desde que citada a fonte e que 
+não seja para venda ou qualquer fim comercial.
+A responsabilidade pelos direitos autorais de textos e imagens desta obra é da área 
+técnica.
+Tiragem: 2ª edição — 2015 – 2.000 exemplares
+Elaboração, distribuição e informações:
+SECRETARIA DE ESTADO DA SAUDE – SESA/PR
+Ouvidoria Geral da Saúde-SESA/PR
+Rua Piquiri, 170 - Rebouças.
+80.230-140- Curitiba - Paraná
+Telefone: 0800 – 644 4414
+Home Page: www.saude.pr.gov.br
+
+
+=== PAGE 3 ===
+1
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+SUMÁRIO
+Apresentação..................................................................................5
+Introdução.......................................................................................7
+O QUE É UMA OUVIDORIA DO SUS.................................................... 9
+FINALIDADE DE UMA OUVIDORIA E O PAPEL DO OUVIDOR. .......... 9
+INDICADORES BÁSICOS PARA IMPLANTAR E/OU IMPLEMENTAR 
+UMA OUVIDORA NO ESTADO DO PARANÁ.......................................11
+1. ESTRUTURA FÍSICA .............................................................................11
+2. INDICAÇÃO DO OUVIDOR...............................................................11
+3. ATRIBUIÇÕES DO OUVIDOR............................................................12
+4. PROCESSO DE TRABALHO...............................................................12
+GESTÃO DA INFORMAÇÃO................................................................18
+RELATÓRIOS GERENCIAIS............................................................... 20
+Processo de Trabalho da Ouvidoria – Fluxograma....... 20
+COMO REALIZAR O ATENDIMENTO AO TELEFONE........................ 22
+FORMAS DE ACESSO À OUVIDORIA GERAL, REGIONAIS E 
+UNIDADES PROPRIAS DO SUS-SESA/PR ..................................... 25
+PERGUNTAS E RESPOSTAS............................................................. 27
+BASE LEGAL DAS OUVIDORIAS ..........................................................35
+BASE LEGAL DAS OUVIDORIAS DO SUS ..........................................37
+BASE LEGAL DAS OUVIDORIAS DO SUS NO PARANÁ................. 37
+
+
+=== PAGE 4 ===
+2
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+ENDEREÇOS DAS OUVIDORIAS.......................................................... 38
+BIBLIOGRAFIA..........................................................................43
+ANEXOS: . .................................................................................45
+Resolução SESA nº 113/2011 (Instrumento Normativo de 
+Ouvidoria)....................................................................................................45
+Resolução SESA nº 114/2011 (Instrumento Normativo indicando 
+Ouvidor).......................................................................................................49
+Deliberação CIB/PR nº 42/2012 (Define critérios de implantação 
+de Ouvidoria de Saúde no Paraná).........................................................50
+Recomendação CES/PR nº 02/2013 (Recomenda a implantação de 
+Ouvidorias Municipais).............................................................................52
+Resolução SESA nº443/2013 (Cria as Ouvidorias do SUS nas 
+Unidades Próprias do Estado e Consórcios Intermunicipais de 
+Saúde)............................................................................................................53
+Resolução SESA nº 372/2012 (Altera o artigo 7º da Resolução 
+SESA nº 113/2011)....................................................................................58
+
+
+=== PAGE 5 ===
+3
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Apresentação
+A Secretaria de Estado da Saúde do Paraná – SESA/PR, com o objetivo 
+de garantir ao cidadão a oportunidade  de participar da  gestão  pública 
+em  saúde,  apoiando-se  nos  princípios  e  diretrizes  que determinam 
+as  ações  e  serviços  em  saúde,  expressos nos  artigos 196, 197  e 
+198 da Constituição Federal e na Lei n.º 8.080/90, efetivou a criação 
+da Ouvidoria Geral da Saúde-SESA/PR, através das Resoluções SESA 
+Nº 113/11e 114/11, como um  canal democrático de  informação  e  de 
+escuta  da  população  em  geral,  sendo um  espaço  de  recepção  das 
+manifestações dos cidadãos, tendo como objetivo qualificar a gestão do 
+SUS no seu âmbito estadual. 
+Desde que o Movimento pela Reforma Sanitária construiu a proposta 
+do Sistema Único de Saúde – SUS, sempre foi destacado que a sociedade 
+deveria participar ativamente da sua construção e implantação. Para isso, 
+seria importante que tivéssemos os conselhos de saúde garantidos em Lei 
+como instâncias institucionalizadas de proposição e controle social.
+Após 21 anos, a Lei 8.080/90 é regulamentada pelo Decreto Presidencial 
+n. 7.508/12, o qual aprofunda os processos já preconizados no Pacto pela 
+Saúde, ao exercer a importante função de regular a estrutura organizativa 
+do SUS e reafirma o papel do controle social no estabelecimento de 
+diretrizes para o seu planejamento. 
+Esse decreto estabelece os Contratos Organizativos da Ação Pública 
+que formaliza o acordo de colaboração firmado entre Entes Federativos 
+que hoje é expresso por meio do instrumento do Pacto pela Saúde 
+denominado Termo de Compromisso de Gestão, e define claramente as 
+responsabilidades de cada Ente Federado na realização das ações e dos 
+serviços de saúde.
+
+
+=== PAGE 6 ===
+4
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Cada vez mais a ampliação do diálogo com a sociedade se faz 
+necessária.  A Ouvidoria de Saúde é uma ferramenta de gestão, que tem 
+sua importância na medida em que estimula a participação e avaliação 
+dos cidadãos nos serviços de saúde. 
+A implantação das Ouvidorias do SUS, estruturadas e com a participação 
+do cidadão, contribui para a efetivação do exercício da cidadania.
+Michele Caputo Neto
+Secretário de Estado
+
+
+=== PAGE 7 ===
+5
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Introdução
+A Ouvidoria Estadual do SUS/SESA – Paraná tem como objetivo 
+propiciar a participação popular por meio de sugestões, reclamações, 
+denúncias, solicitações e elogios para que a administração pública 
+formule suas políticas públicas atendendo os anseios da população e 
+consequentemente a melhoria da qualidade dos serviços de Saúde. Ao 
+proporcionar a interlocução entre o usuário dos serviços públicos de 
+saúde e os prestadores/órgãos reclamados, a Ouvidoria Estadual do SUS/
+SESA/PR cumpre com seu objetivo.
+Tendo em vista a transparência e a democratização na condução da 
+gestão do SUS no Paraná, o presente Manual procura apresentar os 
+principais passos para implantação e implementação de Ouvidorias 
+Municipais de Saúde com vistas a garantir um canal efetivo entre o 
+cidadão e a administração.
+A 
+seguir, 
+disponibilizaremos 
+aos 
+municípios, 
+estabelecimentos 
+contratualizados ao SUS, Consórcios Intermunicipais de Saúde e 
+demais Ouvidorias do SUS, as orientações básicas para implantação 
+e implementação de Ouvidorias do SUS, procurando respeitar suas 
+características, com critérios mínimos para considerar uma Ouvidoria em 
+funcionamento, mantendo um canal de comunicação para orientação, 
+capacitação e avaliação.
+Oliva Pacheco Vasconcellos
+Ouvidora Estadual do SUS/PR
+
+
+=== PAGE 8 ===
+6
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+
+
+=== PAGE 9 ===
+7
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+O QUE É UMA OUVIDORIA DO SUS
+A Ouvidoria pública deve ser compreendida como uma ferramenta de 
+gestão que auxilia o cidadão em suas relações com o Estado. A Ouvidoria 
+é um canal direto do cidadão com os gestores do Sistema Único de Saúde 
+(SUS), que recebe reclamações, denúncias, solicitações, sugestões e 
+elogios, além de prestar informações. Estimula a participação do cidadão 
+no controle e avaliação da prestação dos serviços públicos, e favorece 
+mudanças e ajustes nas atividades e processos das instituições à frente 
+das necessidades apresentadas pelo cidadão.
+Assim, a Ouvidoria tem como propósito também conhecer o grau de 
+satisfação do usuário, buscando soluções para as questões levantadas, 
+oferecendo informações gerenciais e sugestões à instituição, visando o 
+aprimoramento dos serviços prestados, contribuindo para a melhoria dos 
+processos administrativos e das relações interpessoais com seu público 
+interno e externo.
+A Ouvidoria deve funcionar como um agente promotor de mudanças e 
+favorecer uma gestão flexível e voltada para a satisfação das necessidades 
+do cidadão, garantindo uma prestação de serviços públicos de qualidade, 
+para a promoção da cidadania. 
+Em síntese, é um instrumento a serviço da democracia, pois nos países 
+democráticos o cidadão pode se manifestar das mais variadas formas, seja 
+elogiando, criticando ou sugerindo medidas que venham ao encontro dos 
+interesses coletivos.
+FINALIDADE DE UMA OUVIDORIA E O PAPEL DO OUVIDOR
+A Ouvidoria tem como finalidade buscar soluções para as questões 
+suscitadas com as manifestações; oferecer informações gerenciais e 
+sugestões ao gestor visando aprimorar a prestação do serviço.
+
+
+=== PAGE 10 ===
+8
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+A qualidade dos serviços prestados pela administração se aperfeiçoa 
+com a atuação da Ouvidoria, uma vez que a mesma auxilia na identificação 
+de pontos a serem aprimorados e contribui, dessa forma, para a melhoria 
+dos procedimentos e dos processos administrativos.
+Ao exercer seu papel de porta-voz do cidadão na organização, o Ouvidor 
+tende ser um importante instrumento de interação entre o órgão e o 
+ambiente, aliado na defesa dos direitos do usuário, na busca de soluções 
+de conflitos extrajudiciais e colaborar com os programas de qualidade 
+implementados nas instituições.
+Os órgãos públicos vêm dotando o Ouvidor à uma sensibilidade na 
+captação de problemas, encaminhamento de sugestões e livre acesso entre 
+os diversos setores da organização na busca de soluções, contribuindo 
+para 
+o 
+aperfeiçoamento 
+do 
+atendimento 
+e 
+valorização do cidadão.
+Desta forma o Ouvidor também 
+poderá 
+atuar 
+na 
+defesa 
+da 
+administração, promovendo o 
+atendimento de reivindicações 
+de funcionários, exercendo 
+um controle preventivo e 
+corretivo de arbitrariedades 
+ou 
+de 
+negligências, 
+de 
+problemas 
+interpessoais 
+ou, de abuso de poder das 
+chefias. 
+Para tanto, o Ouvidor deve ter 
+conhecimento de toda estrutura 
+e funcionamento da instituição a qual 
+
+
+=== PAGE 11 ===
+9
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+pertence, pois só assim poderá encaminhar/acompanhar os diversos 
+questionamentos/problemas para soluções, com os quais venha a se 
+deparar.
+INDICADORES BÁSICOS PARA IMPLANTAR E/OU 
+IMPLEMENTAR UMA OUVIDORA NO ESTADO DO PARANÁ
+1. ESTRUTURA FÍSICA 
+Para a implantação e/ou implementação de uma Ouvidoria é importante 
+a definição da sua necessidade dentro do órgão ao qual ela estará 
+vinculada e a decisão para sua efetivação, para que possa cumprir seu 
+papel com legitimidade e autonomia. 
+A Ouvidoria deve compor um espaço físico adequado com boa localização 
+e acessibilidade, inclusive com espaço reservado para atendimento 
+individual ao cidadão, resguardando o sigilo que a atividade requer.
+Recomendamos:
+•	01 sala exclusiva para Ouvidoria – preferencialmente
+•	01 computador e impressora
+•	01 mesa
+•	03 cadeiras
+•	01 armário ou arquivo
+* As Ouvidorias Municipais de Saúde irão se estruturar conforme suas 
+condições, de forma a garantir o pleno funcionamento das Ouvidorias 
+Regionais – Deliberação CIB/PR nº 42/12.
+2. INDICAÇÃO DO OUVIDOR
+Os servidores, preferencialmente de carreira, que serão indicados 
+pelo Gestor para exercer o papel de Ouvidores, devem compor o perfil 
+desejado para a função, como:
+
+
+=== PAGE 12 ===
+10
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+•	Conhecer a política de saúde e os serviços prestados pelo SUS;
+•	Postura ética, imparcialidade e objetividade e ter capacidade de 
+escuta;
+•	Boa comunicação e Relacionamento interpessoal;
+•	Postura pedagógica, propositiva e não contestatória;
+•	Capacidade de planejamento;
+•	Poder de negociação e Liderança;
+•	Possuir credibilidade, ser imparcial e ter bom senso.
+•	Possuir maturidade na prevenção e solução de conflitos e ter 
+capacidade de persuasão,
+Recomendamos que a Ouvidoria de Saúde esteja ligada ao Gabinete do 
+Secretário, facilitando a tomada de decisões. 
+3. ATRIBUIÇÕES DO OUVIDOR
+•	Recepção, Análise E/ou Tratamento e Encaminhamento das demandas
+•	Acompanhamento/trâmite e Resposta das demandas dentro do prazo 
+estabelecido.
+•	Elaboração de Relatórios Gerenciais para a Secretaria Municipal de 
+Saúde
+4. PROCESSO DE TRABALHO
+4.1. RECEPÇÃO, ANÁLISE E/OU TRATAMENTO E 
+ENCAMINHAMENTO DAS DEMANDAS (queixas, denúncias, 
+reclamações, solicitações, elogios)
+•	MANIFESTAÇÃO RECEBIDA POR TELEFONE: deve ser realizada 
+uma sondagem da manifestação, que poderá ser resolvida sem registro. 
+A sondagem é pesquisar, investigar cautelosamente, perguntar de forma 
+direcionada sobre a manifestação a ser registrada.  Checar quais órgãos 
+o cidadão já procurou, pois a Ouvidoria nunca pode ser a primeira 
+
+
+=== PAGE 13 ===
+11
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+porta. Neste caso não se registra a manifestação, e sim orienta qual o 
+caminho de entrada para o Sistema Único de Saúde, ou o caminho de 
+encaminhamento. 
+Caso necessário, o registro da manifestação deve ser coerente, 
+completo, objetivo, ortograficamente correto e fidedigno ao desejo do 
+cidadão. Quando o cidadão não tiver todos os dados suficientes para o 
+registro da manifestação, solicitar que as busque e torne a ligar.
+As demandas de estabelecimentos (hospitais) próprios, conveniados e/
+ou contratados do Estado, podem ser encaminhadas à Ouvidoria Regional 
+de Saúde para agilizar seu encaminhamento.
+•	MANIFESTAÇÃO RECEBIDA POR CARTA: checar se está legível 
+quanto a identificação dos assuntos nela contidos, dados completos e 
+consistentes, remetente completo para posterior resposta.
+•	SISTEMA OUVIDORSUS: Os municípios que são Nível 1 – podem 
+registrar as manifestações no Sistema OuvidorSUS, realizam o processo 
+completo no sistema, desde o registro até a conclusão da manifestação. 
+Aqueles municípios que são Nível 2 — não registram as manifestações 
+no Sistema, somente recebem as demandas do DOGES ou da Ouvidoria 
+Estadual através do Sistema OuvidorSUS. 
+•	SIGO – SISTEMA INTEGRADO PARA OUVIDORIAS: Este é o 
+Sistema utilizado pelas Ouvidorias Regionais de Saúde, Unidades Próprias 
+do Estado, Consórcios Intermunicipais de Saúde e alguns municípios 
+do Estado do Paraná, para o registro das manifestações através do 
+site da SESA/PR e respectivas instituições, ou recebidas por telefone, 
+pessoalmente e carta/correspondência. 
+As Ouvidorias têm a orientação de fazer o trâmite destas manifestações 
+através de Respostas Rápidas quando se trata de assunto a ser resolvido 
+
+
+=== PAGE 14 ===
+12
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+dentro da Instituição/SESA (demanda em que não é necessária a abertura 
+de um processo). São as manifestações que podem ser resolvidas com 
+as suas sub redes (os setores internos da Regional de Saúde), de forma a 
+esclarecer o usuário de forma rápida. 
+Quando for necessário fazer encaminhamento de demanda para outro 
+órgão fora da Instituição, deve ser aberto processo, numerado, para que 
+o mesmo possa ser rastreado e recuperado. 
+Nas Ouvidorias Municipais de Saúde, orientamos que o fluxo deve ser 
+combinado com o Gestor Municipal, o qual deve dar ciência aos seus 
+Chefes de Divisão. 
+4.2 ACOMPANHAMENTO E CONCLUSÃO/RESPOSTA DAS 
+DEMANDAS
+O acompanhamento da demanda deve ser realizado tendo em vista o 
+prazo estabelecido para resposta da mesma ao cidadão. É necessário 
+que cada Ouvidoria tenha um controle do encaminhamento de suas 
+demandas e prazos para as respostas.
+É responsabilidade da Ouvidoria que origina o encaminhamento da 
+demanda, bem como dos setores que a recebem em procurar dar uma 
+resposta ao cidadão dentro do prazo esperado, de forma satisfatória.
+É importante também que a resposta a ser dada ao cidadão seja de 
+forma clara, e se necessário orientar o usuário de algum procedimento 
+dentro das normas estabelecidas no Sistema Único de Saúde, que sejam 
+fornecidos todos os passos para que o mesmo possa seguir a orientação 
+dada.
+Ressalta-se que:
+1. Os processos abertos na Ouvidoria devem ser arquivados na 
+Ouvidoria. 
+
+
+=== PAGE 15 ===
+13
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+2. A Ouvidoria a dar a resposta ao cidadão é 
+aquela que originou a demanda, ou aquela a 
+que a demanda foi atribuída.
+4.3 PRAZOS PARA RESOLUÇÃO 
+DAS DEMANDAS:
+O prazo estabelecido para a 
+conclusão 
+das 
+manifestações 
+acolhidos nas Ouvidorias deve 
+ser sempre o menor possível, 
+porém deve estar contemplado 
+no Instrumento Normativo da 
+Ouvidoria um prazo máximo de tempo 
+para conclusão das manifestações 
+conforme sua classificação, seja ela 
+reclamação, denuncia, sugestão, informação 
+ou elogio.
+4.4 ESTABELECENDO UMA REDE DA OUVIDORIA DO SUS
+O efetivo funcionamento das Ouvidorias – e não apenas de uma unidade 
+em isolado – depende de sua integração sistêmica. Para tanto é necessário 
+que elas se relacionem de forma colaborativa, não hierárquica, continuada 
+e em rede, presencialmente e/ou virtualmente, independentemente da 
+localização física, visando compartilhar conhecimentos, aprender e gerar 
+inovações no trabalho.
+A contínua troca de informações sobre conceitos, fluxos, procedimentos 
+internos, normativos, experiências e relações internas e externas 
+proporcionam um crescimento mútuo das Ouvidorias numa relação onde 
+todas ganham ao mesmo tempo. 
+
+
+=== PAGE 16 ===
+14
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Entre os maiores desafios que hoje se apresentam para uma perceptiva 
+sistêmica está, de um lado, o estímulo à organização interna das Ouvidorias 
+Públicas, com ênfase na eficiência, na eficácia e na efetividade e, de 
+outro, o alcance de um nível cada vez mais elevado de participação das 
+ouvidorias em parceria com outras instâncias de participação e controle 
+social.
+A Ouvidoria é responsável por receber as manifestações, analisar e 
+encaminhar para a área responsável, constituindo, assim, o canalizador e 
+intermediador das manifestações do cidadão. Isso significa que a rede de 
+uma Ouvidoria pode ser entendida como a extensão desse processo, pois 
+para o trabalho da Ouvidoria ser efetivo é necessário que essa possua 
+articulação com as áreas responsáveis para a resolução da demanda. 
+A rede nada mais é do que as áreas, órgãos ou instituições que serão 
+responsáveis por responder ou resolver as demandas acolhidas.  
+Para a estruturação de uma rede, inicialmente, é necessário que a equipe 
+da Ouvidoria sensibilize a organização/estrutura do órgão gestor da 
+saúde respectivo, para que a estruturação da rede não fira a organização 
+do mesmo. Também se faz necessário conhecer as competências e 
+atribuições de cada área que integrará a rede. 
+Estabelecer uma rede, assim, significa em primeiro lugar, seguir os 
+princípios e diretrizes do SUS e, na sequência: 
+•	conhecer as competências e atribuições das áreas que integrarão a 
+rede para encaminhamento correto das manifestações;
+•	seguir e respeitar a lógica e a organização do órgão gestor e demais 
+instituições envolvidas;
+•	discutir com a equipe, a gestão e com os parceiros as propostas 
+de fluxos, prazos, processos de trabalho, responsabilidades e agentes 
+
+
+=== PAGE 17 ===
+15
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+responsáveis em cada ponto da rede.
+Deve-se analisar o perfil dos órgãos/setores que farão parte da rede, de 
+forma que o percurso da demanda seja rápido e eficiente. Sendo assim, a 
+Ouvidoria pode determinar se a rede será composta por todas as unidades 
+de saúde ou então composta por todas as unidades de saúde e seus 
+departamentos, ou ainda, por todos esses e ainda suas superintendências.
+Após essa definição torna-se importante estar atento aos tópicos 
+seguintes:
+•	Definição dos objetivos da implantação da Ouvidoria do SUS.
+•	Importância da Ouvidoria para a gestão e para as áreas envolvidas.
+•	Canais de entrada e fluxos propostos para a estruturação da rede, 
+inclusive de relatórios gerenciais.
+•	Definição de responsáveis em cada órgão/setor para responder as 
+demandas e pactuação de processos de trabalho com cada integrante da 
+rede.
+•	Responsabilização definida nas respostas aos cidadãos (Ouvidoria 
+versus da rede).
+•	Definição de prazos para resposta, formalmente – Instrumento 
+Normativo da Ouvidoria
+•	Divulgação de informações e principio ético quanto ao tratamento 
+das demandas.
+O atendimento à população, muitas das vezes, transcende a capacidade 
+de atuação das ouvidorias. Nesses casos, é preciso contar com os serviços 
+de atendimento (a exemplo das redes da saúde e da assistência social, 
+entre outras), de forma pactuada e planejada. O objetivo de estabelecer 
+rede é proporcionar ao cidadão maior agilidade na resposta às suas 
+manifestações junto aos órgãos gestores de saúde.
+
+
+=== PAGE 18 ===
+16
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+GESTÃO DA INFORMAÇÃO
+Para a ouvidoria alcançar seus objetivos é necessário que as informações 
+fluam de maneira rápida e sem nenhum entrave burocrático dentro da 
+instituição a que pertence.
+Quando o ouvidor receber uma manifestação e solicitar a uma 
+unidade da instituição para que seja providenciada a sua resolução, ele 
+inicia um processo de gestão da informação. As demandas devem ser 
+compreendidas em sua totalidade e as dúvidas dos cidadãos sanadas.
+Esse processo poderá tramitar por diversas unidades da instituição ou 
+até por outros órgãos até retornar à ouvidoria para a conclusão final.
+Caso o processo de resolução venha a demorar ou até fracassar 
+motivado por entrave burocrático em determinada unidade ou órgão, 
+então o ouvidor deve intervir como mediador e sugerir, ao final, medidas 
+administrativas que tornem mais rápidos e eficientes os procedimentos 
+administrativos da instituição.
+
+
+=== PAGE 19 ===
+17
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Recomenda-se que a ouvidoria estabeleça os seguintes elementos:
+a) 	Plano de Trabalho, que contemple informações específicas sobre sua 
+atuação;
+b) 	Tipificação das manifestações em classes e subclasses, de tal 
+maneira que possam ser gerados relatórios em nível gerencial, tático e 
+estratégico;
+c) 	Relatórios estatísticos/ Relatório Gerencial com os tipos de 
+manifestações mais frequentes, por local e períodos de tempo e 
+avaliação qualitativa dos resultados;
+d) 	Definição de prioridades e duração máxima de atendimento das 
+manifestações;
+e) 	Monitoramento contínuo das manifestações por tempo e local de 
+ocorrência;
+f) 	Elaboração de fluxograma das atividades da ouvidoria;
+
+
+=== PAGE 20 ===
+18
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+RELATÓRIOS GERENCIAIS
+Os Relatórios Gerenciais devem destacar os casos que podem ter 
+impacto na gestão ou que julgarem relevantes por outros motivos.
+Nos Relatórios devem constar:
+a) Quantidade de manifestações por espécies (reclamações, sugestões, 
+elogios, informações, denúncias e representações);
+b) Proporções verificadas quanto aos assuntos, órgãos, localidades etc.
+c) Percentuais de atendimento;
+d) Níveis de satisfação com os serviços do órgão;
+e) Indicadores quantitativos e qualitativos;
+g) Sugestões e recomendações ao dirigente da instituição;
+h) Informações sobre impacto na gestão, inclusive com destaque de 
+casos.
+É importante também que na medida do possível se realize pesquisas 
+junto a população acerca dos serviços prestados e de opinião sobre a 
+atuação da Ouvidoria.
+Quando a Ouvidoria elabora um Relatório Gerencial com todas as 
+informações importantes para o gestor estará contribuindo para:
+- a construção e no desenvolvimento da cidadania e o estímulo à 
+qualidade dos serviços prestados.
+- à implementação de mudanças positivas na cultura interna dos 
+servidores
+PROCESSO DE TRABALHO DA OUVIDORIA – FLUXOGRAMA
+
+
+=== PAGE 21 ===
+19
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ  
+
+
+=== PAGE 22 ===
+20
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+COMO REALIZAR O ATENDIMENTO AO TELEFONE
+Atualmente existe varias tecnologias disponíveis para oferecer um 
+bom atendimento ao cidadão que entra em contato com a Ouvidoria por 
+telefone.
+Isso, sem dúvida nenhuma, é de grande valia. O problema é que colocam 
+tudo a perder quando o atendimento telefônico é falho, ineficiente e ruim.
+O telefone ainda é um instrumento bastante utilizado por isso é 
+necessário levar em conta alguns fatores quando precisar atender alguém 
+através dele. Não se deve esquecer-se da qualidade do atendimento 
+tanto das ligações internas, que também compromete a comunicação e a 
+agilidade no andamento das manifestações, mas também no acolhimento 
+das manifestações por telefone.
+Abaixo relacionamos algumas orientações básicas sobre o atendimento 
+por telefone:
+
+
+=== PAGE 23 ===
+21
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+1. Nunca use o “alô”. Utilize a prática adotada pela instituição: nome 
+da empresa, ou seu nome e sua saudação para ligações externas, 
+ou apenas seu nome ou, se preferir, também uma saudação para as 
+internas;
+Ex: Ouvidoria do SUS, boa tarde!
+2. Evite o terrível “quem fala?”, “quem é?” “quem gostaria?”. 
+Seja cortês ao telefone e faça a abordagem de outra forma.
+Ex: “Por gentileza, em que poderia lhe ajudar?”  ou “Com quem 
+gostaria de falar?”.
+3. Saiba lidar com as reclamações. Ninguém gosta de ouvir 
+reclamações, mas se você der atenção a quem reclama certamente 
+você tem muito mais chances de satisfazer a pessoa descontente, e 
+aumentar a possibilidade de que ela ligue novamente. 
+4. Saiba exatamente o que o cidadão está querendo.  Algumas 
+pessoas não sabem explicar corretamente qual o problema que estão 
+enfrentando. Isso faz com que o próprio atendente demore mais 
+tempo que o necessário para resolver o problema, ou, até mesmo, 
+não tenha certeza de que a solução apresentada seja a ideal. Por 
+isso, a comunicação deve ser clara. Não tenha medo de pedir mais 
+informações. 
+5. Acredite no que está dizendo. Se você realmente acredita no que 
+está falando, passará credibilidade para o cidadão. Quando acreditamos 
+em algo, isso se manifesta em nossa linguagem corporal, expressões 
+
+
+=== PAGE 24 ===
+22
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+faciais e na voz. E a sua voz é a forma de contato mais importante em 
+um atendimento. Como passar uma informação para o cidadão, e querer 
+que ele fique satisfeito, se você mesmo não acredita naquilo que falou?
+6. Se for o caso de algum registro de manifestação inicia-se a 
+abordagem sobre o assunto. Se o cidadão precisar aguardar na linha, 
+não o deixe esperando por muito tempo, pois correrá o risco de ele 
+desligar o telefone e perder.
+7. Evite digitar enquanto fala ao telefone ou faça qualquer barulho 
+que possa prejudicar a conversa com o cidadão. Quando necessário 
+interromper para solicitar a complementação de alguma informação, 
+fazê-lo sem prejuízo do raciocínio do conteúdo/teor da manifestação 
+por parte do cidadão. 
+8. Se tiver uma crise de soluço ou tosse, peça licença e coloque o 
+telefone em “espera” até se recuperar. Caso não seja possível, peça para 
+alguém da Ouvidoria para atender a ligação para você. Evite comer, 
+beber, mascar chiclete ou chupar bala enquanto fala ao telefone.
+9. Caso seu chefe não esteja disponível para atender a ligação, peça 
+para o cidadão ligar mais tarde. Se você ficar de retornar corre o risco 
+de falhar na sua atribuição.
+Nunca diga “Ele não se encontra”, afinal ele não está perdido. Diga 
+apenas “Ele não está no momento. Gostaria de deixar recado?” - Tenha 
+sempre à mão papel e caneta, para anotar recado e anote corretamente 
+com letra legível.
+
+
+=== PAGE 25 ===
+23
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+10. Quando for transferir uma ligação externa a alguém internamente 
+da sua instituição, tenha a delicadeza de adiantar o assunto ao colega 
+de trabalho e só assim transferir a ligação. Não cometa a grosseria de 
+transferir diretamente a ligação sem mesmo saber se seu colega está 
+em seu local de trabalho ou mesmo se ele poderá atender o cidadão, 
+pois a ligação poderá voltará para você, e, provavelmente o cidadão 
+estará irritado.
+11. Tente se conter com pessoas mal-educadas ao telefone. 
+Mantenha sua classe e postura e tente acalmá-la. Jamais o interrompa, 
+grite ou seja agressiva com ele.
+FORMAS DE ACESSO À OUVIDORIA GERAL, REGIONAIS E 
+UNIDADES PROPRIAS DO SUS-SESA/PR 
+Como registrar sua manifestação:
+Antes de registrar uma manifestação à Ouvidoria do SUS procure o 
+órgão e/ou instituição envolvida com a resolução de seu problema ou 
+questionamento, podendo ser a Unidade Básica de Saúde, Ouvidoria do 
+Hospital, Laboratório ou Clínica, Secretaria Municipal de Saúde, ou outras 
+instituições vinculadas ao Sistema Único de Saúde. Desta forma, você 
+terá mais agilidade na solução do seu problema.
+ 
+Entretanto, se você tentou e não obteve sucesso, orientamos que 
+primeiramente entre em contato com a Ouvidoria de Saúde do seu 
+município de residência, após ligue para 0800 644 44 14. Este número de 
+
+
+=== PAGE 26 ===
+24
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+telefone identificará o município de origem de sua ligação e direcionará 
+para a Ouvidoria Regional de Saúde a que o município pertence.
+Você pode também registrar sua manifestação através do formulário 
+web, no
+Site www.saude.pr.gov.br no link ouvidoria.
+
+
+=== PAGE 27 ===
+25
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+PERGUNTAS E RESPOSTAS
+É necessário se identificar para registrar uma manifestação?
+Sim. A manifestação deve ter um meio de contato para que a Ouvidoria 
+possa encaminhar a resposta ou solicitar complementação de dados.
+Pode ser registrada sob o estado do sigilo, garantindo a total privacidade 
+do manifestante.
+É possível registrar uma manifestação sob o estado do anonimato?
+A manifestação anônima só será aceita caso esteja escrita de forma 
+bastante clara, explicando o fato em si, endereço, nomes dos envolvidos e 
+de preferência com envio de documentos comprobatórios. Caso contrário 
+a manifestação será rejeitada.
+Como faço para conseguir uma consulta médica pelo SUS?
+O acesso universal, igualitário e ordenado às ações e serviços de saúde, 
+conforme legislação vigente se inicia pelas portas de entrada do Sistema 
+Único de Saúde -SUS e se completa na rede regionalizada e hierarquizada, 
+de acordo com a complexidade do serviço.
+O (a) cidadão (a) deve se dirigir ao Posto de Saúde mais próximo de 
+sua residência e agendar uma consulta na rede de atenção primária. A 
+continuidade do cuidado em saúde será assegurada em todas as suas 
+modalidades, nos serviços, hospitais e em outras unidades integrantes da 
+rede de atenção da respectiva região.
+Como faço para conseguir medicamentos não padronizados do 
+SUS?
+Você deve encaminhar-se à Regional de Saúde do seu município, 
+para abertura de Processo Administrativo para Medicamentos, com os 
+seguintes documentos:
+
+
+=== PAGE 28 ===
+26
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+-CPF; -RG; -Cartão SUS; -Comprovante de residência; -Prescrição 
+Atualizada do(s) medicamento(s) — Receituário Médico; Atestado médico 
+com CID da(s) doença(s); Relatório médico com justificativa para uso 
+desses(s) medicamento(s); Estudo clínico (literatura/publicação) que 
+comprove a eficácia do medicamento escolhido para a(s) doença(s) 
+apontada(s).
+Obs: Não serão aceitos atestados sem o CID da doença;
+* Os documentos preenchidos pelo médico deverão conter carimbo 
+legível (com Nome e CRM do Médico), data e assinatura.
+Como é a classificação dos medicamentos e de quem a 
+responsabilidade pela sua distribuição à população?
+Básico = medicamento relacionado ao Componente Básico da Assistência 
+Farmacêutica, a ser disponibilizado pelas Secretarias Municipais de Saúde, 
+que constam da RENAME - Relação Nacional de Medicamentos.
+O acesso a estes medicamentos se dá através das farmácias Municipais.
+CEAF = Componente Especializado da Assistência Farmacêutica, 
+medicamentos padronizados pelo MS e disponibilizados pelas Secretarias 
+Estaduais de Saúde, quando atendidos os critérios dos protocolos 
+estabelecidos pelo MS.
+O acesso a estes medicamentos se dá através do Estado-SESA, por 
+meio das farmácias Especiais nas Regionais de Saúde.
+Estratégico = Componente Estratégico da Assistência Farmacêutica, 
+medicamentos padronizados e adquiridos pelo MS, enviados aos estados 
+que fazem a distribuição aos municípios.
+O acesso a estes medicamentos se dá através das farmácias Municipais.
+Especial = medicamento padronizado pela SESA PR, nos programas 
+especiais, disponibilizado de acordo com critérios definidos pela SESA.
+
+
+=== PAGE 29 ===
+27
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+O acesso a estes medicamentos se dá através do Estado-SESA, por 
+meio das farmácias Especiais nas Regionais de Saúde.
+NP = medicamento não padronizado no SUS 
+É necessária abertura de   processo Administrativo para medicamentos 
+na Regional de Saúde. 
+ONCOLOGIA = medicamentos destinados ao tratamento de câncer, que 
+devem ser disponibilizados pelos CACONS ou UNACONS. O CEMEPAR 
+não gerencia esta aquisição/distribuição.
+OFTALMOLOGIA = para o tratamento do Glaucoma, o acesso se dá 
+nos serviços cadastrados junto ao SUS como referência os quais devem 
+disponibilizar os colírios, de acordo com protocolo estabelecido pelo MS.
+O que é o Programa Farmácia Popular?
+O Programa Farmácia Popular faz parte da política do Ministério da Saúde 
+para ampliar o acesso da população aos medicamentos, beneficiando as 
+pessoas que têm dificuldade para realizar tratamentos por causa do custo 
+dos remédios. Estão disponíveis medicamentos gratuitos como no caso 
+dos medicamentos para diabetes e hipertensão e outros com desconto 
+de até 85%.
+Para utilizar as Farmácias, basta que o usuário tenha uma receita médica 
+ou odontológica da rede pública ou particular, contendo medicamentos 
+disponíveis no Programa. A receita é importante para evitar a 
+automedicação, que pode causar intoxicações ou mascarar sintomas de 
+doenças importantes. 
+A lista dos medicamentos é encontrada no link: 
+http://portal.saude.gov.br/portal/aplicacoes/faq/faqcategoria.
+cfm?idcat=841&idquest=2418
+
+
+=== PAGE 30 ===
+28
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Qual o órgão que devemos procurar tratando-se de Planos de 
+Saúde ou Atendimento particular?
+Os estabelecimentos privados se caracterizam pela atuação, por 
+iniciativa própria, de profissionais liberais, legalmente habilitados, e de 
+pessoas jurídicas de direito privado na promoção, proteção e recuperação 
+da saúde.
+Informamos que os canais que podem ser procurados são:
+1. A Agência Nacional de Saúde (ANS) que regulamenta a atuação dos 
+planos de saúde, e a Agência Nacional de Vigilância Sanitária (ANVISA) 
+regulam as regras sanitárias que atingem os hospitais. No que diz respeito 
+à infra-estrutura do estabelecimento como limpeza/higiene, entre outras, 
+pode ser procurada a Vigilância Sanitária do seu município na Secretaria 
+Municipal de Saúde. 
+Informamos que o numero de telefone da Agencia nacional de Saúde — 
+ANS é   Disque ANS 0800 701 9656.
+2. O PROCON, que na área da saúde acata reclamações sobre problemas 
+relacionados a hospitais, clínicas, laboratórios, medicamentos, planos de 
+saúde; 
+3. Ministério Público do Paraná, na Ouvidoria-Geral do Ministério 
+Público do Estado do Paraná, Ed. Affonso Alves de Camargo, Rua 
+Marechal Hermes, 751 - Centro Cívico, CEP: 80530-230 - Curitiba — PR 
+- Fone: (41) 3250-4463.
+4. Os Conselhos de Classe, como Conselho Regional de Medicina, 
+Conselho Regional de Farmácia, Conselho Regional de Fisioterapia, 
+Conselho Regional de Enfermagem, Conselho Regional de Odontologia, 
+etc....
+
+
+=== PAGE 31 ===
+29
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+5. A Ouvidoria do Plano de Saúde pelo qual foi realizado o atendimento 
+ou internamento hospitalar.
+É obrigado a implantar uma Ouvidoria de Saúde? 
+Os municípios pactuam a implantação de ouvidorias do SUS através 
+do Sispacto.
+Segundo o COAP, no Indicador 65 – está definida a Proporção de 
+municípios com Ouvidoria Implantada 
+
+
+=== PAGE 32 ===
+30
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Tipo do indicador 
+Específico 
+Diretriz Nacional 
+Diretriz 13 - Qualificação de instrumentos de 
+execução direta, com geração de ganhos de 
+produtividade e eficiência para o SUS. 
+Objetivo Nacional 
+ Objetivo 13.1 - Qualificação de instrumentos 
+de gestão, com geração de ganhos de 
+produtividade e eficiência para o SUS. 
+Meta 
+ Meta Regional e Estadual: 100% de municípios 
+com serviço de ouvidoria implantado
+Relevância do 
+Indicador 
+A ouvidoria, no âmbito do monitoramento e da 
+avaliação, tem a finalidade de contribuir com a 
+avaliação do sistema, por meio do envolvimento 
+do usuário, estabelecendo comunicação entre 
+o cidadão e o Poder Público, de forma a 
+promover encaminhamentos necessários para 
+a solução de problemas e efetiva participação 
+da comunidade na gestão do SUS, de acordo 
+com a Constituição Federal de 1988, visando 
+ganhos de produtividade e eficiência para o 
+SUS. 
+Indicador do SISPACTO
+O serviço de ouvidoria deve ser implantado como um sistema de 
+comunicação entre o cidadão e o poder público, para apurar de forma 
+permanente as necessidades e interesses do usuário, bem como a sua 
+avaliação das ações e serviços de Saúde, visando ganhos de produtividade 
+e eficiência para o SUS.
+Considera-se implantado um serviço de ouvidoria quando houver:
+Espaço físico para o funcionamento da ouvidoria, um ou mais canais de 
+
+
+=== PAGE 33 ===
+31
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+recebimento das manifestações (telefone, formulário web, atendimento 
+presencial, entre outros), um ou mais canais de resposta (meio impresso, 
+telefone, e-mail) ao cidadão e utilização de sistema para o tratamento das 
+demandas de saúde oriundas da população, produção de relatórios para 
+a gestão do SUS com informações sobre necessidades e interesses do 
+usuário, bem como a sua avaliação das ações e serviços de Saúde.
+Como é a parceria da Ouvidoria e Conselho de Saúde?
+A Ouvidoria de Saúde deve ter parceria com o Conselho de Saúde, 
+porém é necessário ter clareza das suas atribuições para não gerar 
+conflitos.
+A Ouvidoria é um instrumento de gestão que garante o canal de 
+comunicação com o usuário de saúde. Na Ouvidoria o cidadão tem um 
+canal direto e individual para apresentar suas questões na área da saúde.
+O Conselho de Saúde fiscaliza e propõe sobre os serviços de saúde 
+prestados pelo Gestor. No Conselho de Saúde, o cidadão é representado 
+através de entidades organizadas da sociedade.
+*A Ouvidoria deve apresentar no Conselho de Saúde o Relatório 
+quadrimestral.
+Como são avaliados os serviços contratualizados ao SUS?
+Todos os serviços contratualizados ao SUS têm um contrato no qual 
+deve estar contemplado a implantação de uma ouvidoria do SUS onde 
+o usuário possa estar participando da administração através de suas 
+manifestações.
+Abaixo apresentamos uma tabela como são avaliados alguns hospitais 
+contratualizados ao SUS:
+
+
+=== PAGE 34 ===
+32
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+PARÂMETROS PARA AVALIAÇÃO DE DESEMPENHO DA 
+HUMANIZAÇÃO DO ATENDIMENTO / OUVIDORIA
+ Indicadores a serem monitorados
+Pontuação
+Apresentar mensalmente relatório à Comissão, sobre 
+Pesquisa de avaliação do nível de satisfação dos usuários 
+do Hospital, através de formulário aprovado pela Comissão
+200
+Manter Ouvidoria permanente no Hospital, apresentando 
+relatórios trimestrais à Comissão
+200
+Nas Ouvidorias ou Auditorias Municipais e estadual, caso 
+haja comprovação de denuncias por cobrança indevida de 
+profissionais e/ou hospital, bem como de outra natureza, a 
+pontuação não será considerada no trimestre
+200
+Manter cartazes da Ouvidoria e de   não ao depósito 
+prévio afixados permanentemente no Hospital, em locais 
+que os usuários tenham acesso, com as informações 
+de gratuidade integral do SUS. Divulgar a existência de 
+ouvidoria para os usuários no município (avaliação da 
+auditoria municipal e estadual)
+200
+Garantir acompanhante (familiar) para crianças (0 a 14 anos) 
+gestantes, deficientes físicos e pacientes acima de 60 anos. 
+Viabilizar o acesso dos visitantes à equipe responsável pelo 
+paciente. Garantir área física para conforto de usuários, 
+familiares e trabalhadores, com condições adequadas de 
+higiene.
+200
+Desenvolver mecanismos de Acolhimento com Avaliação 
+e Classificação de risco e prioridade de atendimento 
+aos usuários do SUS, na Porta de Entrada do Hospital/
+estabelecimento. Mensalmente será avaliada a implantação 
+do mecanismo.
+200
+Total de pontos da humanização do Atendimento
+1100
+
+
+=== PAGE 35 ===
+33
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+BASE LEGAL DAS OUVIDORIAS 
+•	Constituição da República Federativa do Brasil, de 5 de outubro de 
+1988, - Constituição da República Federativa do Brasil, de 5 de outubro 
+de 1988, artigos 37, 
+§ 3º A lei disciplinará as formas de participação do usuário na administração 
+pública direta e indireta, regulando especialmente: (Redação dada pela 
+Emenda Constitucional nº 19, de 1998)
+I - as reclamações relativas à prestação dos serviços públicos em geral, 
+asseguradas a manutenção de serviços de atendimento ao usuário e a 
+avaliação periódica, externa e interna, da qualidade dos serviços; (Incluído 
+pela Emenda Constitucional nº 19, de 1998)
+II - o acesso dos usuários a registros administrativos e a informações sobre 
+atos de governo, observado o disposto no art. 5º, X e XXXIII; (Incluído pela 
+Emenda Constitucional nº 19, de 1998)
+III - a disciplina da representação contra o exercício negligente ou abusivo 
+de cargo, emprego ou função na administração pública. (Incluído pela 
+Emenda Constitucional nº 19, de 1998)
+•	Lei 8.142/90 que dispõe da criação dos Conselhos e Conferências de 
+saúde
+•	Lei de proteção ao usuário do serviço público e determina a criação de 
+ouvidorias em todos os órgãos estaduais- 1.999 — São Paulo
+•	O Decreto nº 3.382/2000 delega ao Secretário Nacional de Direitos 
+Humanos do Ministério da Justiça as funções de Ouvidor-Geral da 
+República - 2000.
+•	A Medida Provisória nº 2.216/2001 que cria a Corregedora-Geral da 
+União, que integra a Presidência da República - 2001.
+•	O Decreto nº 4.177/2002 que transfere as competências de Ouvidoria-
+
+
+=== PAGE 36 ===
+34
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Geral do Ministério da Justiça para a Corregedora-Geral da União, com 
+exceção das relativas à de Ouvidoria Geral de direitos humanos, que 
+permaneceram no Ministério da Justiça-  2002
+•	O Decreto nº 4.490/2002 cria a Ouvidoria-Geral da República na 
+estrutura regimental básica da Corregedoria-Geral da União – 2002
+
+
+=== PAGE 37 ===
+35
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+BASE LEGAL DAS OUVIDORIAS DO SUS 
+•	Constituição da República Federativa do Brasil, de 5 de outubro de 
+1988, art. 196 a 198.
+•	Lei 8080/90 que dispõe sobre as condições para a promoção, proteção 
+e recuperação da saúde, a organização e o funcionamento dos serviços 
+correspondentes e dá outras providências. 
+•	Pacto de Gestão do SUS — Portaria 399/2006 — Prevê a implantação e 
+implementação de Ouvidorias nos Municípios e estados como ação de 
+fortalecimento para o processo de participação social no SUS.
+•	Política Nacional de Gestão Estratégica e Participativa do SUS — 
+ParticipaSUS — Portaria GM/MS nº 3.027/07
+•	Carta dos Direitos dos Usuários da saúde — Portaria GM/MS nº 1.820/09
+BASE LEGAL DAS OUVIDORIAS DO SUS NO PARANÁ
+•	Decreto nº 777/2007, artigo 15 que define as competências da Ouvidoria 
+Geral da Saúde-SESA/PR
+•	Resolução SESA nº 113/2011, que estabelece os objetivos, atribuições 
+e prazos para resposta das manifestações ao cidadão. (Instrumento 
+Normativo da Ouvidoria)
+•	Resolução SESA nº 114/11, que indica o servidor para exercer o cargo 
+de Ouvidor Estadual do SUS-SESA/PR (Instrumento Normativo de 
+Ouvidor)
+•	Resolução 290/11, que indica os Ouvidores Regionais de Saúde,
+•	Deliberação /PR nº 42/2012, que estabelece os critérios mínimos para a 
+implantação de uma Ouvidoria do SUS no Estado do Paraná.
+•	Resolução SESA 372/2012 – Estabelece prazos de resposta as 
+manifestações acolhidas na Ouvidoria Geral e Regionais do SUS/PR;
+•	Resolução SESA 443/2013, que estabelece os objetivos, atribuições 
+
+
+=== PAGE 38 ===
+36
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+e prazos para resposta das manifestações ao cidadão- Instrumento 
+Normativo da Ouvidoria para as Unidades Próprias do estado e 
+Consórcios Intermunicipais de Saúde
+•	Recomendação do CES/PR 002/2013 – que recomenda que todos 
+os municípios do Estado do Paraná implantem a Ouvidoria do SUS, 
+seguindo os critérios da Deliberação CIB nº 42/12; e que as Ouvidorias 
+do SUS apresentem quadrimestralmente seus Relatórios Gerenciais em 
+plenárias dos Conselhos de Saúde dos seus respectivos municípios
+ENDEREÇOS DAS OUVIDORIAS
+Ouvidoria Geral da Saúde/SESA/PR
+Tel: 0800 644 4414
+Site: www.saude.pr.gov.br link ouvidoria
+Associação Brasileira de Ouvidores - ABO
+Tel. (11) 3289-9300
+abonacional@abonacional.org.br
+Associação Nacional de Ouvidores Públicos - ANOP
+faleconosco@anop.com.br
+Departamento Nacional de Ouvidoria – DOGES
+Tel: (61) 3306-7457
+Site: www.saude.gov.br
+Ouvidoria Municipal de Saúde de Curitiba
+Tel: 0800 644 0041
+Hospital das Clínicas da Universidade Federal do Paraná - HC-UFPR
+Tel. (41) 3360-1859
+ouvidoria@hc.ufpr.br
+
+
+=== PAGE 39 ===
+37
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Agência Nacional de Vigilância Sanitária — ANVISA
+Tel. (61) 3462-6838
+ouvidoria@anvisa.gov.br
+Fundação Oswaldo Cruz — FIOCRUZ
+Tel. (21) 3885-1762
+ouvidoria@fiocruz.br
+Instituto Nacional do Câncer — INCA
+Tel. (21) 3207-1399
+ouvidoria.geral@inca.gov.br
+OUVIDORIAS REGIONAIS 
+DE SAÚDE DO PARANÁ
+ENDEREÇO
+1ª RS - PARANAGUÁ
+Avenida Coronel José Lobo, 547 - CEP 83.203-340
+2ª RS - METROPOLITANA - 
+CURITIBA
+Rua Barão do Rio Branco, 465 - CEP 80.010-180
+3ª RS - PONTA GROSSA
+Rua Doutor Paula Xavier, 743 - CEP 84.040-010
+4ª RS - IRATI
+Rua Munhoz da Rocha, 244 -2º andar - CEP 
+84.500-000
+5ª RS - GUARAPUAVA
+Rua Vicente Machado, 1109 - CEP 85.010-260
+6ª RS - UNIÃO DA VITÓRIA
+Rua Mal. Floriano Peixoto, 180 - CEP 84.600-000
+7ª RS - PATO BRANCO
+Rua Tapajós, 470 - CEP: 85.501-030
+8ª RS - FRANCISCO BELTRÃO
+Rua Vereador Romeu Werlang, 521 - CEP 85.601-020
+9ª RS - FOZ DO IGUAÇU
+Rua Santos Dumont, 460 - CEP 85.851-040
+10ª RS - CASCAVEL
+Av. Tancredo Neves, 1453- CEP 85.805-000
+11ª RS - CAMPO MOURÃO
+Rua Mamborê, 1500 - CEP 87.302-140
+12ª RS - UMUARAMA
+Rua Ministro Oliveira Salazar, 4150 - CEP 87.501-225
+13ª RS - CIANORTE
+Praça da República, 71 - CEP 87.200-000
+14ª RS - PARANAVAÍ
+Rua Bahia, 17 - CEP 87.704-040
+
+
+=== PAGE 40 ===
+38
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+16ª RS - APUCARANA
+R. Ozório Ribas de Paula, 435 - CEP 86.800-020
+17ª RS - LONDRINA
+Rua Piauí, 75 - CEP 86.020-390
+18ª RS - CORNÉLIO PROCÓPIO
+R. Justino Marques Bonfin, 17 - CEP 86.300-000
+19ª RS - JACARÉZINHO
+Rua Paraná, 581 - CEP 86.400-000
+20ª RS - TOLEDO
+Rua Rui Barbosa 1858 - CEP 85.900-040
+21ª RS - TELÊMACO BORBA
+Av. Samuel Klabin, 741 Paraná, 443 - CEP 84.265-590
+22ª RS - IVAIPORÃ
+Rua Mato Grosso, 780 - CEP 86.870-000
+CONSÓRCIOS INTERMUNICIPAIS DE SAÚDE NO PARANÁ
+RS
+Município
+Consórcio
+Endereço
+Bairro
+CEP
+01
+Pontal do 
+Paraná
+CISLIPA
+Rua Noêmio 
+Gabriel Simas, 
+138
+Praia de 
+Leste
+83.255-000
+02
+Curitiba
+CIPS
+Rua Voluntária 
+da Pátria, 400
+Centro
+80020-000
+02
+Curitiba
+COMESP
+Avenida 
+Presidente 
+Kennedy, 3768
+Portão
+80.610-010
+03/21
+Ponta Grossa
+CIMSAUDE
+Rua Coronel 
+Bittencourt, 
+270
+Centro
+84010-290
+04
+Irati
+CIS/
+AMCESPAR
+Rua Coronel 
+Grácia, 761
+Centro
+84500-000
+05
+Guarapuava
+CIS CENTRO 
+OESTE
+Rua Vicente 
+Machado, 1109
+Centro
+85010-260
+05
+Pitanga 
+CIS PARANÀ 
+CENTRO
+Rua Machado 
+de Assis S/N 
+Vila Nova
+85.200-000 
+05
+Guarapuava
+CIS CENTRO 
+OESTE
+Rua Rodrigues 
+Alves, 1437
+Centro
+85.903-500
+05
+Laranjeiras 
+do Sul
+ASSISCOP
+Rua Diogo 
+Pinto, 1320
+Centro
+85.301-290 
+
+
+=== PAGE 41 ===
+39
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+06
+ União da 
+Vitória
+CISVALI
+Rua Ipiranga, 
+251
+Centro
+ 84.600-
+000
+07
+Pato Branco
+CONIMS
+Rua Osvaldo 
+Aranha, 377 
+Centro
+85.501-037
+08
+Francisco 
+Beltrão
+ARSS
+Rua Antonio 
+Carneiro Neto, 
+801
+Alvorada
+85.601-090
+09
+Medianeira
+CISI
+Rua Argentina, 
+2191, Sala 03 
+Condá
+85.884-000
+10
+Cascavel
+CISOP
+Rua da 
+Bandeira, 1991
+Centro
+85.120-121
+11
+Campo 
+Mourão
+CIS-
+COMCAM
+Rua Mambore, 
+1542
+Centro
+87.302-140
+12
+Umuarama
+CIS AMERIOS
+Avenida Ângelo 
+Moreira da 
+Fonseca, 866
+Parque 
+Danielle
+87.503 -030
+13
+Cianorte
+CISCENOP
+Rua Piratininga, 
+668 
+Zona 1
+87.200-256
+14
+Paranavaí
+CIS/
+AMUNPAR
+Rua Marechal 
+Candido 
+Rondon, 640
+Centro
+87.704-090
+15
+Maringá
+CISAMUSEP
+Avenida Cidade 
+de Leiria, 416
+Zona 1
+87.013-280
+16
+Apucarana
+CISVIR
+Rua Clotario 
+Portugal, 1147
+Centro
+86.800-020
+17
+ Londrina 
+CISMEPAR
+Travessa 
+Goiânia, 152
+Centro
+86.020-170
+18
+Cornélio 
+Procópio
+CISNOP
+Rua Justino 
+Marques 
+Bonfim, 196 
+Conjunto 
+Vitor 
+Dantas
+86.300-000
+19
+Jacarezinho
+CISNORPI
+Rua Paraná, 
+1261
+Centro
+86.400-000
+20
+Toledo 
+CISCOPAR
+Rua Professora 
+Leonilda, 1203
+Centro
+85.010-230
+22
+Ivaiporã
+CIS 
+IVAIPORÃ
+Rua Professora 
+Diva Proença, 
+500
+Centro
+86.870-000
+
+
+=== PAGE 42 ===
+40
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+
+
+=== PAGE 43 ===
+41
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+BIBLIOGRAFIA
+Guia de Orientações Básicas para Implantação de Ouvidorias do SUS 
+- Ouvidoria Geral do SUS, 2010 - Brasília — DF.
+Guia de Orientações Básicas: Para Ouvir a Vigilância Sanitária - Brasília, 
+julho de 2007.
+A voz da cidadania, orientações básicas para implantação de Ouvidoria 
+do SUS, 2010; Salvador, Bahia; 
+MACHADO, José de Ambrosis Pinheiro; PAULA, Getulio Cesar; de 
+Ouvidoria: Manifestação do Cidadão — Experiência de 10 anos da 
+Ouvidoria; PRODESP/Poupatempo — SP.
+Orientações para Implantação de Unidade de Ouvidoria – Brasília – 
+DF – 5ª edição – 2009 – Presidência da Republica; Controladoria Geral 
+da União – CGU; Ouvidoria- Geral da União.
+Cartilha da Ouvidoria — FHE (Fundação Habitacional do Exercito) — 
+POUPEX (Associação de Poupança e Empréstimo)
+Cartilha da Ouvidoria Estadual de Saúde — Secretaria da Saúde - 
+Governo de Pernambuco
+Ouvidoria-Geral do SUS: Um Espaço de Cidadania - Brasília – DF – 
+2010- 1ª edição -Ministério da Saúde - Serie F. Comunicação e Educação 
+em Saúde.
+
+
+=== PAGE 44 ===
+42
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Cartilha "Orientações para implantação de Unidade de Ouvidoria" — 
+Controladoria Geral da União /CGU — 2012 - www.cgu.gov.br
+Orientações para Implantação de Unidade de Ouvidoria: Rumo 
+ao Sistema Participativo – 5ª edição, 2010, revisada e atualizada – 
+Controladoria Geral da União- CGU- Ouvidoria–Geral da União – Brasília 
+-DF.
+Política Nacional de Humanização da Atenção e da Gestão do SUS 
+(material de apoio) -3º edição — Brasília
+Universidade Federal de Uberlândia - Ouvidoria – 2008.
+
+
+=== PAGE 45 ===
+43
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+ANEXOS: 
+RESOLUÇÃO SESA Nº 0113/2011- Publicado no DOE n° 8477 de 
+31/05/11.
+O SECRETÁRIO DE ESTADO DA SAÚDE, no uso de suas atribuições 
+conferidas pelo artigo 45, inciso XIV, da Lei nº 8.485 de 03.06.1987 e,
+Considerando o artigo 37, parágrafo 3°, inciso I da Constituição Federal 
+de 1988, que prevê a existência de uma lei que discipline as formas de 
+participação do usuário na administração pública direta e indireta e que 
+regule as reclamações relativas à prestação dos serviços públicos em 
+geral, asseguradas a manutenção de serviços de atendimento ao usuário 
+e a avaliação periódica, externa e interna, da qualidade dos serviços;
+Considerando o Pacto de Gestão do SUS (Portaria GM/MS n° 
+399/2006), Eixo 7, tópico 7.1, alínea e, que prevê o apoio à implantação 
+e implementação de Ouvidorias nos municípios e estados como ação de 
+fortalecimento para o processo de participação social no SUS;
+Considerando a Política Nacional de Gestão Estratégica e Participativa 
+do SUS — ParticipaSUS (Portaria GM/MS n° 3.027/2007), que vislumbra 
+a implantação de Ouvidorias como uma das formas de fortalecer os 
+mecanismos de participação social e qualificar a gestão participativa do 
+Sistema único de Saúde — SUS;
+Considerando o disposto no Capítulo II, Seção V do Decreto Estadual 
+n° 777/2007, de 09 de maio de 2007, normatizado pelos artigos 32 e 34 
+do Decreto Federal n° 7.336, de 19 de outubro de 2010, que define as 
+competências da Ouvidoria;
+Considerando a definição do Ministério da Saúde, de que a Ouvidoria do 
+SUS constitui-se num espaço estratégico e democrático de comunicação 
+entre o cidadão e os gestores do Sistema Único de Saúde, relativos aos 
+serviços prestados;
+
+
+=== PAGE 46 ===
+44
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Considerando ainda que, com o objetivo de assegurar esse direito de 
+participação na gestão pública em saúde, as Ouvidorias do SUS apóiam-
+se nos princípios e diretrizes que determinam as ações e serviços em 
+saúde, expressos nos artigos 196, 197 e 198 da Constituição Federal e na 
+Lei n° 8.080/90,
+RESOLVE:
+Art. 1º Definir os principais objetivos da Ouvidoria Estadual do SUS:
+a) propiciar ao cidadão um instrumento de defesa de seus direitos e um 
+canal de comunicação com a administração da Secretaria de Estado da 
+saúde do Paraná;
+b) atuar com ética, transparência e imparcialidade, de forma a 
+garantir respostas às manifestações recebidas e assegurar ao cidadão 
+oportunidade de participação na gestão pública, traduzida pela 
+capacidade de manifestação de suas sugestões, reclamações e denúncias 
+e elogios através de canais de contato ágeis e eficazes; com a preservação 
+dos aspectos éticos de prioridade e confiabilidade de todas as etapas no 
+processo das informações;
+c) contribuir para a melhoria dos serviços prestados pelo Estado e para 
+o combate à corrupção e atos de improbidade administrativa;
+d) implementar as Ouvidorias Regionais de Saúde para assessorar o 
+processo de implantação e/ou implementação das Ouvidorias Municipais 
+de Saúde;
+e) estimular e apoiar a criação de estruturas descentralizadas de 
+Ouvidoria em Saúde;
+f) implementar políticas de estímulo à participação de usuários e 
+entidades da sociedade no processo de avaliação dos serviços prestados 
+pelo SUS.
+
+
+=== PAGE 47 ===
+45
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Art. 2° Estabelecer as atribuições da Ouvidoria Estadual do SUS:
+a) receber, analisar, encaminhar, acompanhar as reclamações, denúncias 
+ou críticas, informações e sugestões apresentadas por cidadãos;
+b) formular e proceder as respostas aos usuários acerca das demandas;
+c) acompanhar o trâmite das demandas dentro do prazo estabelecido 
+para resposta ao cidadão;
+d) organizar e prover as condições necessárias à realização de 
+capacitações junto aos Ouvidores Regionais e Municipais de Saúde;
+e) promover ações de informação e conhecimento acerca da Ouvidoria, 
+junto à população em geral;
+f) apresentar e divulgar relatórios das atividades da Ouvidoria.
+Art. 3° As manifestações à Ouvidoria deverão conter as seguintes 
+informações:
+a) característica da informação, caráter da informação, identificação 
+do manifestante, endereço completo, meios disponíveis para contato 
+(fone, fax, e-mail), informações sobre o fato e sua autoria, se for o caso, a 
+indicação das provas de que tenha conhecimento;
+b) não serão aceitas demandas sob estado do anonimato, salvo se a 
+demanda estiver registrada de forma completa para averiguação e /ou 
+acompanhada de prova documental.
+Parágrafo primeiro: será mantida a privacidade do reclamante que 
+enviar demanda sob o estado de sigilo, quando expressamente solicitado 
+ou quando tal providência se fizer necessária.
+Parágrafo segundo: as manifestações poderão ser feitas pelos seguintes 
+meios: pessoalmente, fone/fax, internet, no site www.saude.pr.gov.br no 
+link Ouvidoria, através do formulário disponível no Sistema OuvidorSUS.
+Art. 4° O(a) Ouvidor(a), mediante despacho fundamentado, poderá 
+
+
+=== PAGE 48 ===
+46
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+determinar liminarmente o arquivamento de reclamação que lhe tenha 
+sido encaminhada e que, a seu juízo, seja improcedente, como a falta de 
+informações suficientes para encaminhamento.
+Art. 5° O(a) Ouvidor(a) e toda sua equipe deverá atuar segundo 
+princípios éticos, pautando seu trabalho pela legalidade, legitimidade, 
+imparcialidade, moralidade e ética.
+Art. 6° O(a) Ouvidor(a), no exercício de sua função, terá assegurado 
+autonomia e independência de ação, sendo-lhe franqueado acesso 
+livre a qualquer dependência ou servidor da Instituição, bem como a 
+informações, registros, processos e documentos de qualquer natureza 
+que, a seu exclusivo juízo, repute necessários ao pleno exercício de suas 
+atribuições.
+Art. 7° Os prazos de resposta ao cidadão serão:
+Urgente — até 15 dias
+Alta — até 30 dias
+Média — até 60 dias
+Baixa — até 90 dias.
+Art. 8° Para auxiliar no desempenho de suas funções, a Ouvidoria terá 
+uma equipe mínima composta de:
+- 01 (um) Ouvidor (a)
+- 01 (um) Assessor (a) do Sistema Ouvidor SUS
+- 01 (um) supervisor para a Recepção, análise e/ou tratamento e 
+distribuição das demandas.
+- 01 (um) supervisor para o Encaminhamento, acompanhamento/trâmite 
+e resposta das demandas.
+- 05 (cinco) estagiários, sendo três de nível médio e dois de nível superior.
+Art. 9° A Ouvidoria contará com a seguinte estrutura física:
+
+
+=== PAGE 49 ===
+47
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+- 01 sala para Ouvidor (a)
+- 01 sala para recepção, analise e/ou tratamento e distribuição das 
+demandas.
+- 01 sala para Encaminhamento, acompanhamento/trâmite e resposta 
+das Demandas.
+- 01 sala atendimento presencial
+Art. 10. É dever dos dirigentes e servidores da Instituição atender, 
+com presteza, pedidos de informação ou requisições formuladas pela 
+Ouvidoria, de forma satisfatória a atender as necessidades do cidadão e o 
+bom funcionamento da Ouvidoria.
+Art. 11. Esta Resolução entrará em vigor na data de sua publicação, 
+revogadas as disposições em contrário.
+Curitiba, 26 de maio de 2011.
+Michele Caputo Neto
+Secretário de Estado da Saúde
+RESOLUÇÃO SESA Nº 0114/2011 - Publicado no DOE n° 8477 de 
+31/05/11
+O SECRETÁRIO DE ESTADO DA SAÚDE, no uso de suas atribuições 
+conferidas pelo artigo 45, inciso XIV, da Lei nº 8.485 de 03.06.1987 e,
+Considerando a Resolução SESA n° 0113/2011, de 26 de maio de 2011, 
+que estabelece os procedimentos e atividades inerentes à Ouvidoria 
+Estadual do SUS,
+RESOLVE:
+Art. 1º Indicar a servidora OLIVA DE FÁTIMA PACHECO VASCONCELLOS 
+como Ouvidora Estadual do SUS – SESA/PR.
+Art. 2° Esta Resolução entrará em vigor na data de sua publicação, 
+
+
+=== PAGE 50 ===
+48
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+revogadas as disposições em contrário.
+Curitiba, 26 de maio de 2011.
+Michele Caputo Neto
+Secretário de Estado da Saúde
+DELIBERAÇÃO N° 042 - 02/04/2012
+A Comissão Intergestores Bipartite do Paraná, reunida em 27/03/2012, 
+no município de Curitiba, considerando:
+1- O artigo 37, parágrafo 30, inciso I da Constituição Federal de 1988, 
+que prevê a existência de uma lei que discipline as formas de participação 
+do usuário na administração pública direta e indireta e que regule 
+as reclamações relativas à prestação dos serviços públicos em geral, 
+asseguradas a manutenção de serviços de atendimento ao usuário e a 
+avaliação periódica, externa e interna, da qualidade dos serviços:
+2- O disposto no Capítulo 11, Seção V do Decreto Estadual nº 777/2007, 
+de 09 de maio de 2007, normatizado pelos artigos 32 e 34 do Decreto 
+Federal nº 7.336, de 19 de outubro de 2010, que define as competências 
+da Ouvidoria;
+Que as Ouvidorias do SUS apóiam-se nos princípios e diretrizes que 
+determinam as ações e serviços em saúde, expressos nos artigos 196, 197 
+e 198 da Constituição Federal e na Lei n° 8.080/90, com o objetivo de 
+assegurar o direito de participação na gestão pública em saúde;
+3- O artigo 30, em seu item II, da Portaria na 2979/11 estabelece como 
+resultados esperados, com a aplicação do repasse do incentivo financeiro, 
+o aperfeiçoamento dos atuais canais de participação social, criação e 
+ampliação de novos canais de interlocução entre usuários e sistemas de 
+saúde, e de mecanismos de escuta do cidadão, com o fortalecimento do 
+
+
+=== PAGE 51 ===
+49
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Sistema Nacional de Ouvidoria e a estruturação da Ouvidoria Ativa, por 
+meio das seguintes ações: adição de medidas de aferição de satisfação 
+dos usuários do SUS; e - realização de atividades de qualificação de 
+ouvidores;
+4- Decreto na 7.508/11, que regulamenta a Lei 8.080/90, em seu art. 37 
+que estabelece que o Contrato Organizativo de Ação Pública de Saúde-
+COAP observará as seguintes diretrizes básicas para fins de garantia da 
+gestão participativa: I. estabelecimento de estratégias que incorporem 
+a avaliação do usuário das ações e dos serviços como ferramenta de 
+sua melhoria; lI- apuração permanente das necessidades e interesses do 
+usuário, e; III- publicidades dos direitos e deveres do usuário na saúde em 
+todas as unidades de saúde do SUS, inclusive nas unidades privadas que 
+dele participem de forma complementar.
+Aprova os critérios mínimos para implantação de Ouvidoria Municipal 
+do SUS no Estado:
+1. Indicação oficial de 1(um) servidor para a função de Ouvidor; 
+preferencialmente de carreira:
+2. Criação de um Instrumento Normativo da Ouvidoria estabelecendo 
+objetivos, estrutura física e equipamentos mínimos para funcionamento, 
+processo de trabalho e prazos para resposta ao cidadão;
+3. Disponibilização de um número de telefone exclusivo para Ouvidoria 
+a ser divulgado à população;
+4. Elaboração de Relatórios Gerenciais quadrimestrais ao Gestor, 
+disponibilizado a Ouvidoria Regional.
+René José Moreira dos Santos	
+Marina S. Ricardo Martins
+	
+Coordenação Estadual	
+Coordenação Municipal
+
+
+=== PAGE 52 ===
+50
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Recomendação CES/PR nº 02/2013
+O Conselho Estadual de Saúde do Paraná – CES/PR, regulamentado 
+conforme disposto no inciso
+III do artigo 169 da Constituição Estadual e artigo 1º da Lei Federal nº 
+8.142, de 28 de dezembro de 1990, pela Lei Estadual nº 10.913, de 04 
+de outubro de 1994, no uso de sua competência regimental conferida 
+pelo artigo 5º, reunido na 205ª Reunião Ordinária, de 18 de novembro 
+de 2013,
+Considerando:
+- os princípios e diretrizes que determinam as ações e serviços em 
+saúde, expressos nos artigos 196, 197 e 198 da Constituição Federal;
+- o disposto no Capítulo II, Seção V, do Decreto Estadual nº 777/2007, 
+de 09 de maio de 2007, normatizado pelos artigos 32 e 34 do Decreto 
+Federal nº 7.336, de 19 de outubro de 2010, que define as competências 
+da Ouvidoria;
+- a definição do Ministério da Saúde, de que a Ouvidoria do SUS 
+constitui-se num espaço estratégico e democrático de comunicação entre 
+o cidadão e os gestores do Sistema Único de Saúde, relativos aos serviços 
+prestados;
+- o Decreto nº 7.508, de 28 de junho de 2011, que regulamenta a Lei 
+nº 8.080, de 19 de setembro de 1990, no seu art. 37 coloca o Contrato 
+Organizativo de Ação Pública de Saúde observará as seguintes diretrizes 
+básicas para fins de garantia da gestão participativa:
+I – estabelecimento de estratégias que incorporem a avaliação do 
+usuário das ações e dos serviços, como ferramenta de sua melhoria;
+II – apuração permanente das necessidades e interesses do usuário; e
+III – publicidade dos direitos e deveres do usuário na saúde em todas 
+
+
+=== PAGE 53 ===
+51
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+as unidades de saúde do SUS, inclusive nas unidades privadas que dele 
+participem de forma complementar,
+Recomenda:
+1. que todos os municípios do Estado do Paraná implantem a Ouvidoria 
+do SUS, seguindo os critérios da Deliberação CIB nº 42/12;
+2. que as Ouvidorias do SUS apresentem quadrimestralmente seus 
+Relatórios Gerenciais em plenárias dos Conselhos de Saúde dos seus 
+respectivos municípios.
+Joelma Aparecida de Souza Carvalho
+Presidente do CES/PR
+RESOLUÇÃO SESA Nº 443/2013
+(Publicada no Diário Oficial do Estado nº 9022, de 15/08/13)
+O SECRETÁRIO DE ESTADO DA SAÚDE, no uso de suas atribuições 
+conferidas pelo artigo 45, inciso XIV, da Lei nº 8.485 de 03.06.1987 e,
+- considerando o artigo 37, parágrafo 3°, inciso I da Constituição Federal 
+de 1988, que prevê a existência de uma lei que discipline as formas de 
+participação do usuário na administração pública direta e indireta e que 
+regule as reclamações relativas à prestação dos serviços públicos em 
+geral, asseguradas a manutenção de serviços de atendimento ao usuário 
+e a avaliação periódica, externa e interna, da qualidade dos serviços;
+- considerando o Pacto de Gestão do SUS (Portaria GM/MS n° 
+399/2006), Eixo 7, tópico 7.1, alínea ‘e’, que prevê o apoio à implantação 
+e implementação de Ouvidorias nos municípios e estados como ação de 
+fortalecimento para o processo de participação social no SUS;
+- considerando o disposto no Capítulo II, Seção V do Decreto Estadual 
+n° 777/2007, de 09 de maio de 2007, normatizado pelos artigos 32 e 34 
+
+
+=== PAGE 54 ===
+52
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+do Decreto Federal n° 7.336, de 19 de outubro de 2010, que define as 
+competências da Ouvidoria;
+- considerando a definição do Ministério da Saúde, de que a Ouvidoria do 
+SUS constitui-se num espaço estratégico e democrático de comunicação 
+entre o cidadão e os gestores do Sistema Único de Saúde, relativos aos 
+serviços prestados;
+- considerando o Decreto nº 7.508, de 28 de junho de 2011, que 
+regulamenta a Lei nº 8.080, de 19 de setembro de 1990, no seu Art. 37 
+coloca que o Contrato Organizativo de Ação Pública de Saúde observará 
+as seguintes diretrizes básicas para fins de garantia da gestão participativa:
+I - estabelecimento de estratégias que incorporem a avaliação do usuário 
+das ações e dos serviços, como ferramenta de sua melhoria; II - apuração 
+permanente das necessidades e interesses do usuário; e III - publicidade 
+dos direitos e deveres do usuário na saúde em todas as unidades de saúde 
+do SUS, inclusive nas unidades privadas que dele participem de forma 
+complementar,
+RESOLVE:
+Art. 1º - Criar ouvidorias do SUS nas unidades próprias do Estado 
+do Paraná e consórcios intermunicipais de saúde, bem como estimular 
+a criação das ouvidorias de saúde nos hospitais contratualizados com 
+o objetivo de assegurar o direito de participação na gestão pública em 
+saúde, apoiando-se nos princípios e diretrizes que determinam as ações e 
+serviços em saúde, expressos nos artigos 196, 197 e 198 da Constituição 
+Federal e na Lei n° 8.080/90.
+Parágrafo Único: As ouvidorias das unidades próprias e consórcios 
+intermunicipais de saúde ficarão sob a coordenação da Ouvidoria Geral 
+da Saúde – SESA/PR.
+
+
+=== PAGE 55 ===
+53
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Art. 2º - São os principais objetivos das Ouvidorias Hospitalares do SUS 
+e Consórcios
+Intermunicipais de Saúde:
+a) propiciar ao cidadão um instrumento de defesa de seus direitos e um 
+canal de comunicação com a administração;
+b) atuar com ética, transparência e imparcialidade, de forma a garantir 
+respostas às manifestações recebidas e assegurar ao cidadão oportunidade 
+de participação na gestão pública e/ou contratualizada, traduzida pela 
+capacidade de manifestação de suas sugestões, reclamações e denúncias 
+e elogios através de canais de contato ágeis e eficazes; com a preservação 
+dos aspectos éticos de prioridade e confiabilidade de todas as etapas no 
+processo das informações;
+c) contribuir para a melhoria dos serviços prestados e/ou contratualizados 
+pelo Estado para o combate à corrupção e atos de improbidade 
+administrativa;
+d) implementar políticas de estímulo à participação de usuários e 
+entidades da sociedade no processo de avaliação dos serviços prestados 
+pelo SUS.
+Art. 3° - São atribuições das Ouvidorias Hospitalares do SUS e 
+Consórcios Intermunicipais de Saúde:
+a) receber, analisar, encaminhar, acompanhar as reclamações, denúncias 
+ou críticas, informações e sugestões apresentadas por cidadãos;
+b) formular e proceder as respostas aos usuários acerca das demandas;
+c) acompanhar o trâmite das demandas dentro do prazo estabelecido 
+para resposta ao cidadão;
+d) promover ações de informação e conhecimento acerca da Ouvidoria, 
+junto aos usuários dos hospitais próprios e/ou Contratualizados e 
+Consórcios;
+
+
+=== PAGE 56 ===
+54
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+e) apresentar, divulgar e disponibilizar relatórios das atividades da 
+Ouvidoria à Ouvidoria Geral da Saúde bem como à sociedade organizada 
+(Conselhos de Saúde e Movimentos Comunitários em Saúde).
+Art. 4° - As manifestações à Ouvidoria deverão conter as seguintes 
+informações:
+a) característica da informação, caráter da informação, identificação 
+do manifestante, endereço completo, meios disponíveis para contato 
+(fone, fax, e-mail), informações sobre o fato e sua autoria, se for o caso, a 
+indicação das provas de que tenha conhecimento;
+b) serão aceitas demandas sob o estado do anonimato, desde que 
+registrada de forma completa para averiguação e /ou acompanhada de 
+prova documental.
+c) será mantida a privacidade do reclamante que enviar demanda sob 
+o estado de sigilo, quando expressamente solicitado ou quando tal 
+providência se fizer necessária.
+Parágrafo Único: as manifestações poderão ser feitas pelos seguintes 
+meios: pessoalmente, fone/fax, web/internet no site do referido Hospital 
+ou da Secretaria Estadual de Saúde, e/ou Consórcio no link Ouvidoria 
+através do sistema informatizado definido pela Ouvidoria Geral da Saúde 
+do Paraná.
+Art. 5° - O Ouvidor, mediante despacho fundamentado, poderá 
+determinar liminarmente o arquivamento de reclamação que lhe tenha 
+sido encaminhada e que, a seu juízo, seja improcedente, como a falta de 
+informações suficientes para encaminhamento.
+Art. 6° - O Ouvidor e toda sua equipe deverão atuar segundo princípios 
+éticos, pautando seu trabalho pela legalidade, legitimidade, imparcialidade 
+e moralidade.
+
+
+=== PAGE 57 ===
+55
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+Art. 7° - Os prazos de resposta das manifestações ao cidadão serão:
+Urgente – até 05 dias (informações e orientações);
+Alta – até 15 dias (solicitações);
+Média – até 45 dias (sugestões);
+Baixa – até 60 dias (denúncias e reclamações).
+Parágrafo Único: Considerando a característica da solicitação e/ou 
+orientação sob análise do ouvidor o atendimento poderá ser definido 
+como imediato ao gestor.
+Art. 8° - O Ouvidor, no exercício de sua função, ficará subordinado 
+diretamente à Direção do Hospital e/ou Consócio e terá assegurado 
+autonomia e independência de ação, sendo-lhe franqueado acesso 
+livre a qualquer dependência ou servidor da Instituição, bem como a 
+informações, registros, processos e documentos de qualquer natureza 
+que, a seu exclusivo juízo, repute necessários ao pleno exercício de suas 
+atribuições.
+Art. 9° - Para auxiliar no desempenho de suas funções, a Ouvidoria 
+terá uma estrutura física e de recursos humanos mínimos conforme a 
+estrutura/capacidade instalada:
+Parágrafo 1º: As estruturas de pequeno porte (até 50 leitos) deverão 
+disponibilizar urnas coletoras para as manifestações, com formulário 
+padronizado, seguindo processo de trabalho estabelecido para as 
+ouvidorias hospitalares;
+Parágrafo 2º: Às estruturas de médio a grande porte (acima de 50 
+leitos) será obrigatório:
+a) indicação oficial de 01 (um) servidor para a função de Ouvidor; 
+preferencialmente de carreira;
+b) disponibilização de um número de telefone exclusivo para Ouvidoria 
+
+
+=== PAGE 58 ===
+56
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+a ser divulgado à população;
+c) disponibilização de uma sala exclusiva para Ouvidoria em local com 
+acessibilidade aos usuários.
+Art. 10 - É dever dos dirigentes e servidores dos estabelecimentos 
+hospitalares e consórcios atender, com presteza, pedidos de informação 
+ou requisições formuladas pela Ouvidoria, de forma satisfatória a atender 
+as necessidades do cidadão e o bom funcionamento da Ouvidoria.
+Art. 11 - Esta Resolução entrará em vigor na data de sua publicação.
+Curitiba, 13 de agosto de 2013.
+Michele Caputo Neto
+Secretário de Estado da Saúde
+RESOLUÇÃO SESA Nº 0372/2012
+(Publicada no Diário Oficial do Estado nº 8768, de 02/08/12)
+O SECRETÁRIO DE ESTADO DA SAÚDE, no uso de suas atribuições 
+conferidas pelo artigo 45, inciso XIV, da Lei nº 8.485 de 03.06.1987, e
+- considerando a Lei nº 12.527, de 18 de novembro de 2011, que regula 
+o acesso a informações previstas no inciso XXXIII do art. 5º, no inciso II 
+do § 3º do art. 37 e no § 2º do art. 216 da Constituição Federal; altera a 
+Lei nº 8.112, de 11 de dezembro de 1990; revoga a Lei nº 11.111, de 5 de 
+maio de 2005, e dispositivos da Lei nº 8.159, de 8 de janeiro de 1991; e 
+dá outras providências;
+- considerando o art. 10, do Decreto nº 4.531, de 15 de maio de 2012, 
+que diz: “As informações pleiteadas deverão ser prestadas logo após o 
+seu requerimento.”
+RESOLVE:
+Art. 1º Alterar o Artigo 7º da Resolução SESA nº 113/2011, de 22 de 
+
+
+=== PAGE 59 ===
+Anotações
+57
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ
+maio de 2011, que passa a ter a seguinte redação:
+“Art. 7º As manifestações devem ser classificadas e posteriormente 
+definido o prazo de resposta ao cidadão sendo:
+Denuncia: 46 a 90 dias – prioridade baixa
+Reclamação: 46 a 90 dias – prioridade baixa
+Solicitações de informação – 01 a 05 dias – prioridade alta
+Outras solicitações: 05 a 15 dias – prioridade alta
+Sugestões – 16 a 45 dias – prioridade média
+Elogio – 16 a 45 dias – prioridade média
+Outras solicitações: 05 a 15 dias – prioridade alta
+Parágrafo Único - Após a classificação a manifestação deve ser analisada 
+e definido o prazo para conclusão considerando o teor e classificação.”
+Art. 2º Esta Resolução entrará em vigor na data de sua publicação, 
+revogadas as disposições em contrário.
+Curitiba, 31 de julho de 2012.
+Michele Caputo Neto
+Secretário de Estado da Saúde
+
+
+=== PAGE 60 ===
+58
+MANUAL DO OUVIDOR PARA IMPLANTAÇÃO DE OUVIDORIAS DO SUS NO PARANÁ

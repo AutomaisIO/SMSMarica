@@ -1,0 +1,319 @@
+                   PROPOSTA DE DEFINIÇÃO DE INDICADORES PARA A
+                                       OUVIDORIA DA ARSAE-MG
+
+                                                           Katherynne Michelynne Cruz Rodrigues1
+
+       Resumo
+        A Ouvidoria Pública é um espaço no qual o cidadão pode levar ao conhecimento da Admi-
+        nistração Pública as suas necessidades e reclamações, auxiliando na busca da melhoria
+        dos serviços prestados e exercendo seu direito à cidadania. O trabalho efetuado pelas Ou-
+        vidorias deve ser mensurado a fim de proporcionar eficácia, visando a prestação do serviço
+        com melhor qualidade. Para tanto, o presente trabalho sugere três indicadores passíveis de
+        uso em Ouvidorias Públicas: Índice de resolubilidade, Índice de atendimento aos prazos de
+        resposta e Prazo médio de resposta das demandas. Para o cálculo dos indicadores usou-se
+        o banco de dados de atendimento da Ouvidoria da Agência Reguladora de Serviços de Água
+        e Esgotamento Sanitário de Minas Gerais entre os anos de 2014 e 2016. A análise dos dados
+        demonstrou que os três indicadores conseguem fornecer informações importantes, que, ao
+        serem analisadas juntamente com metas traçadas, poderão subsidiar as decisões do Ouvidor
+        no sentido de aperfeiçoar a prestação do serviço com mais eficácia.
+
+        Palavras-chave: Ouvidoria. Indicadores. Ouvidor. Eficácia pública.
+
+DOI:10.37814/2594-5068.2018v1.p135-142
+1 Gestora de regulação de serviços públicos. Graduada em Nutrição pela Universidade Federal dos Vales do
+Jequitinhonha e Mucuri. (katherynne.rodrigues@arsae.mg.gov.br)
+
+                                   Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018 | 135
+       Abstract
+       The Public Ombudsman's Office is a place in which citizens can bring their needs and com-
+       plaints to the attention of the Public Administration, helping them to improve their services and
+       exercising their right to citizenship. The work carried out by the Ombudsman should be mea-
+       sured in order to provide efficacy, aiming at providing the highest quality service. The present
+       study suggests three indicators that can be used in Public Ombudsman`s Office: Resolubility
+       index, Time response index and Medium time response of demands. In order to calculate the
+       indicators, the database used by the Public Ombudsman`s Office of the Agência Reguladora
+       de Serviços de Água e Esgotamento Sanitário de Minas Gerais between 2014 and 2016 was
+       used. Data analysis showed that all three indicators can provide important information, which,
+       when analyzed together with goals, can support the decisions of the Ombudsman in order to
+       improve provision of services in a more efficacy way.
+
+       Keywords: Ombudsman's Office. Indicators. Ombudsman. Public efficacy.
+
+136 | Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018
+     INTRODUÇÃO
+
+     Explanação acerca das Ouvidorias Públicas
+
+     A democracia no Brasil se fortaleceu com a promulgação da Constituição Federal de 1988. A
+"Constituição Cidadã" trouxe uma ampla previsão de direitos e a institucionalização de mecanismos
+e processos que possibilitam a efetiva participação da sociedade na formulação, monitoramento,
+controle e gestão das políticas públicas (ENAP, 2015). Pode-se afirmar que a sociedade é instigada
+a organizar-se e apropriar-se de instrumentos como conselhos, conferências, audiências, consultas
+públicas, Ouvidorias, entre outros.
+
+     Dentre estes instrumentos de participação social, as Ouvidorias passaram a exercer uma fun-
+ção primordial na materialização do engajamento do cidadão na gestão pública. Ouvidorias Públi-
+cas são órgãos facilitadores do diálogo entre o cidadão e o Governo. Trata-se de órgãos da Adminis-
+tração Pública que se apresentam como instrumento autêntico da democracia participativa, dando
+voz ao cidadão por meio da figura do Ouvidor (MANUAL OG MG, 2015). O diálogo entre o cidadão
+e a Administração Pública contribui para o aperfeiçoamento dos serviços prestados.
+
+     A função principal de uma Ouvidoria é "ouvir" do cidadão sua manifestação sobre os serviços
+prestados, buscando a mediação de possíveis conflitos e a resolução de suas demandas (PEIXOTO;
+MARSIGLIA; MORRONE, 2014). Segundo RICHE (2010), a função desse "ouvir" é a de transformar
+a cultura de reclamação em uma cultura de cooperação e participação, garantindo assim os direitos
+dos cidadãos.
+
+     Na análise de MORAES et al. (2010), as Ouvidorias são um legítimo canal de atendimento ao
+cidadão, com base na neutralidade e imparcialidade. De fato, a atuação dos Ouvidores deve ser a
+mais neutra possível, fazendo a ponte entre o cidadão e o prestador de serviços, buscando equa-
+cionar as situações apresentadas. A instituição favorece a melhoria do serviço prestado à população
+possibilitando o diálogo do cidadão com a gestão participativa.
+
+     As Ouvidorias Públicas procuram realizar a interlocução dos cidadãos com o Estado, compati-
+bilizando os princípios da democracia representativa e participativa. Segundo LACERDA (2011), as
+Ouvidorias buscam promover a cidadania e a defesa do cidadão quando esse não consegue ser
+atendido em outras instâncias inferiores. O fortalecimento do cidadão é verificado através da atua-
+ção da Ouvidoria quando ela realiza a conscientização da cidadania, aprimorando a participação
+social (MORAES et al., 2010).
+
+     Nesse sentido MORAES et al. (2010) escreve que:
+
+                         As Ouvidorias brasileiras representam um marco nesse processo, configurando-se num
+                         espaço do ouvir dialógico, no qual a sociedade busca integração com o governo, de forma
+                         célere, responsiva e ética, certo de que será ouvida e a sua manifestação registrada, na
+                         busca da construção de um padrão de atenção ao cidadão que sofre um mal e procura o
+                         acolhimento através da escuta humanizada e a acessibilidade com resolutividade satisfa-
+                         tória. As manifestações recebidas pela Administração Pública são analisadas e respondi-
+                         das, buscando-se a resolução da questão apresentada da melhor forma possível.
+
+                                   Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018 | 137
+     Breve relato sobre a Ouvidoria da Arsae-MG
+
+     A Agência Reguladora de Serviços de Água e Esgotamento Sanitário de Minas Gerais (Arsae-
+-MG) foi criada em 2009, por meio da Lei nº 18.309/09. Trata-se de uma autarquia especial dotada
+de autonomia administrativa, financeira, técnica e patrimonial. A Agência tem por finalidade fiscalizar
+e orientar a prestação dos serviços públicos de abastecimento de água e de esgotamento sanitário,
+bem como editar normas técnicas, econômicas e sociais para a sua regulação. Tem ainda como
+competência supervisionar, controlar e avaliar as ações e atividades decorrentes do cumprimento
+da legislação específica para sua área de atuação.
+
+     A referida Lei especifica em seu corpo que a Ouvidoria faz parte da estrutura orgânica da Agên-
+cia. Visando cumprir a determinação legal, a Ouvidoria da Arsae-MG foi instituída em 2009, e desde
+então opera como um importante canal de participação do cidadão.
+
+     O usuário possui um amplo leque de opções para entrar em contato, sendo eles o teleatendi-
+mento, o atendimento via internet, presencial, ou por carta. As demandas recebidas são classifica-
+das como reclamação, denúncia, informação, elogio ou sugestão.
+
+     Após o recebimento, as demandas são encaminhadas aos analistas que procedem de forma
+a solver a questão, solicitando quando necessário apoio interno de outros setores da agência e,
+externo, dos prestadores de serviços regulados.
+
+     No interstício de tempo analisado, de 2014 a 2016, a Ouvidoria da Arsae-MG acolheu 3.705
+demandas. As principais demandas abertas pelos usuários relacionam-se com a falta de água ou
+baixa pressão, o extravasamento de esgoto em via pública, o questionamento de fatura, além dos
+pedidos de informações diversas sobre os prestadores de serviço.
+
+     A importância do uso de indicadores
+
+     A Administração Pública deve controlar seus próprios atos com o objetivo de aperfeiçoar a ges-
+tão e levar à melhoria do serviço público. O controle interno, exercido pelo próprio órgão, fornece
+informações relevantes com relação ao cumprimento das normas e à avaliação dos resultados da
+gestão (ENAP, 2015). Nesse contexto, os indicadores servem para monitorar informações e são
+formas de quantificar o trabalho executado. Os resultados obtidos podem ser disponibilizados à
+sociedade e utilizados para subsidiar os tomadores de decisão.
+
+     O uso de indicadores possibilita a realização de análise de desempenho, comparando o re-
+sultado obtido com a meta determinada. Dessa forma, eles são um ponto importante na melhoria
+contínua dos processos organizacionais (MANUAL OG MG, 2015).
+
+     Para que a Ouvidoria seja uma instituição de sucesso, é necessário que ela acolha as deman-
+das do cidadão e facilite seu diálogo com a Administração Pública. Quantificando as ações das
+Ouvidorias, pode-se realizar uma análise da eficiência, eficácia e efetividade e assim observar se o
+papel que lhes foi imposto está sendo cumprido. Dessa forma, usar esses indicadores pode permitir
+que o gestor público conheça seus resultados e trace novas metas de trabalho, de forma a atingir
+seus objetivos (GRATERON, 1991).
+
+138 | Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018
+     O presente trabalho tem por objetivo a sugestão de indicadores que possam ser utilizados
+pela Ouvidoria da Arsae-MG, de forma a aprimorar a gestão e a tomada de decisão.
+
+     DESENVOLVIMENTO
+
+     Os dados trabalhados foram coletados nos arquivos de atendimento da Ouvidoria da
+Arsae-MG.
+
+     A equipe gera mensalmente tabelas contendo todos os dados de atendimento classificados
+em: número de protocolo, canal de atendimento, nome, data de abertura, bairro, município, pres-
+tador, natureza, detalhamento e data de encerramento. Os dados foram agrupados por ano como
+forma de divisão para efeitos de cálculo dos indicadores.
+
+     A amostra não é probabilística, foi selecionada segundo critérios de conveniência do pes-
+quisador visto que desde 2009 a metodologia de trabalho sofreu grandes ajustes. Desse modo,
+optou-se por analisar os últimos três anos (2014 a 2016), pois nestes a forma de tratamento das
+demandas foi semelhante.
+
+     De acordo com MANUAL OG MG (2015), uma das finalidades das Ouvidorias Públicas é a
+formação de diagnósticos visando uma ação qualitativa de melhoria da prestação dos serviços.
+Para elaborar tais diagnósticos faz-se necessário mensurar as manifestações recebidas por meio
+dos canais de atendimento das Ouvidorias. É nessa etapa que fica visível a importância do uso
+de indicadores adequados.
+
+     Segundo SOUZA JUNIOR (2011), os indicadores podem ser classificados em estratégicos,
+de produtividade (eficiência), de qualidade (eficácia), de efetividade (impacto) e de capacidade. É
+preciso, porém, discernimento na escolha de tais indicadores, verificando se o escolhido de fato
+refletirá o ponto desejado.
+
+     Ao gestor que faz uso de indicadores adequados é possibilitado o conhecimento do passado
+e do momento atual, além de fornecer um direcionamento do futuro. Por conseguinte, um indica-
+dor deve oferecer informações que possibilitem a tomada de decisões, no sentido de melhorar o
+serviço efetuado. Deve ainda ser confiável, acessível e de baixo custo (SOUZA JUNIOR, 2011).
+
+     As principais qualidades de um indicador segundo GRATERON (1991) são: relevância, per-
+tinência, objetividade, sensibilidade, precisão e um bom custo-benefício.
+
+     LACERDA (2011) entende que os indicadores possibilitam ao Ouvidor o controle e a avalia-
+ção dos processos da Ouvidoria. Os indicadores permitem observar o alcance das metas contri-
+buindo para a melhoria contínua dos processos organizacionais, além de auxiliar no processo de
+tomada de decisões (MINISTÉRIO DA SAÚDE, 2013).
+
+     Após estudos iniciais, chegou-se a três indicadores que são recomendados para uso pela
+Ouvidoria da Arsae-MG: Índice de resolubilidade, Índice de atendimento aos prazos de resposta
+e Prazo médio de resposta das demandas. Ver Tabela 1.
+
+                                Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018 | 139
+        TABELA 1 ­ Indicadores Sugeridos: conceitos e fórmulas
+
+INDICADORES         CONCEITO DOS INDICADORES                 FÓRMULA DOS INDICADORES
+Índice de
+resolubilidade      O indicador mensura o percentual           Nº de manifestações resolvidas     x 100
+                    de manifestações resolvidas com a        Nº total de manifestações recebidas
+                    intervenção da Ouvidoria.
+
+Índice de           O indicador representa a quanti-         Nº de manifestações encerradas em até 10 dias x 100
+atendimento aos     dade de respostas, encaminhadas                        Nº total de manifestações
+prazos de resposta  pela Ouvidoria ao cidadão-usuário,
+                    dentro do prazo de 10 dias.
+
+Prazo médio de      O indicador representa o tempo           Média da data de resposta ao cidadão (-) Data de
+respostas das       médio de encaminhamento de                               registro da manifestação
+demandas            respostas ao usuário, a partir do
+                    recebimento da demanda.
+
+     O Gráfico 1 demostra o número de demandas que foram efetivamente trabalhadas pela Ou-
+vidoria da Arsae-MG. Nesse total, estão as demandas nas quais a Ouvidoria atuou visando a so-
+lucionar os problemas trazidos pelo cidadão. No total anual não entram os pedidos de informação
+que foram prestadas diretamente pelos atendentes, sem que fosse necessária uma atuação efetiva
+dos analistas.
+
+        GRÁFICO 1 ­ Número absoluto de demandas trabalhadas
+                pela Ouvidoria da Arsae-MG entre 2014 e 2016
+
+1800            1684                                   992      1029
+1600                 2014                              2015  2016
+1400
+1200
+1000
+
+ 800
+ 600
+ 400
+ 200
+
+     0
+
+     Trabalhando-se os dados de atendimento da Ouvidoria da Arsae-MG dos últimos três anos, de
+acordo com as fórmulas dos indicadores, os resultados obtidos foram os demonstrados na Tabela 2.
+
+140 | Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018
+              TABELA 2 ­ Cálculo Anual dos Indicadores
+
+ANO   ÍNDICE DE       ÍNDICE DE ATENDIMENTO  PRAZO MÉDIO DE RESPOSTA
+2014  RESOLUBILIDADE
+2015                  AOS PRAZOS DE RESPOSTA DAS DEMANDAS
+2016  97,51%
+                      93,45 %                3,28 dias
+
+      98,49%          86,99 %                5,47 dias
+
+      97,96%          78,52%                 6,74 dias
+
+     Ao efetuar a análise dos resultados ano a ano, percebe-se que a Ouvidoria da Arsae-MG cum-
+pre seu papel social de dar voz ao cidadão e solucionar as questões apresentadas. O Índice de
+resolubilidade indicou que mais de 97% das demandas recebidas foram solucionadas dentro do
+mesmo ano em que foram abertas.
+
+     O segundo indicador monitorado mostra o percentual de encerramento de demandas em até
+10 dias após o seu acolhimento pela Ouvidoria. O índice aponta uma queda, demonstrando que
+as demandas estão consumindo um número maior de dias para a sua conclusão, o que enseja do
+gestor um cuidado maior com esse indicador.
+
+     Já o prazo médio de resposta das demandas demonstra a média de dias em que o usuário
+recebe a solução do seu problema. Como a Ouvidoria busca encerrar as demandas em até 10 dias
+após o seu recebimento, o prazo médio de 6,74 indica que a maioria das demandas está sendo
+fechada antes do prazo proposto.
+
+     Após a escolha dos indicadores faz-se necessário definir metas que servirão de balizamento
+para a conduta da equipe de trabalho. As metas devem ser realistas e alcançáveis de forma a se
+evitar situações estressantes e frustrantes que causem a desmotivação dos funcionários. Por outro
+lado, as metas não devem ser facilmente atingíveis, evitando-se a acomodação.
+
+     Consoante o MINISTÉRIO DA SAÚDE (2013), as metas demonstram um compromisso da equi-
+pe para alcançar determinado objetivo. Ao se comparar as metas com o resultado dos indicadores
+pode-se medir a eficácia do trabalho da equipe. Esta é a medida do grau de cumprimento dos obje-
+tivos e metas fixados, ou seja, a comparação entre os resultados obtidos e os resultados esperados
+(GRATERON, 1991).
+
+     CONSIDERAÇÕES
+
+     As Ouvidorias Públicas possuem um papel crucial na defesa dos cidadãos junto ao Estado,
+atuando como instituição de controle e participação social. Por intermédio das Ouvidorias, a socie-
+dade possui um canal para buscar informações, realizar denúncias, registrar reclamações, sugerir
+e elogiar o serviço público recebido.
+
+                                   Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018 | 141
+     O uso de indicadores que contemplem as atividades realizadas pela equipe da Ouvidoria é
+fundamental para balizar o trabalho do Ouvidor. Com os indicadores definidos, pode-se estabelecer
+metas que, após o decurso do tempo, refletirão a eficácia da Ouvidoria.
+
+     O Índice de resolubilidade, o Índice de atendimento aos prazos de resposta e o Prazo médio
+de respostas das demandas são indicadores aconselháveis para uso na Ouvidoria da Arsae-MG,
+uma vez que são de fácil obtenção e monitoramento, além de refletirem de forma clara o trabalho
+da equipe.
+
+     Pautar o trabalho da equipe em metas plausíveis estimula a melhoria dos serviços públicos
+prestados e a promoção dos direitos humanos, pois a Administração Pública necessita estar cons-
+tantemente aberta para receber o cidadão e buscar ofertar os serviços da melhor forma possível.
+Portanto, uma Ouvidoria que atue observando indicadores e com metas definidas estará dando um
+passo à frente no aprimoramento da gestão pública.
+
+REFERÊNCIAS
+
+ENAP. Controle Social. Brasília, DF. 2015. Disponível em: <https://enapvirtual.enap.gov.br/mod/folder/view.
+php?id=52657>. Acesso em: 06 jun. 2017.
+GOVERNO DE MINAS ­ OUVIDORIA-GERAL. Ouvidoria Pública Passo a Passo: Manual de criação, aperfeiçoa-
+mento e boas práticas. MG. 2015. Disponível em: <http://fnou.com.br/mwginternal/de5fs23hu73ds/progress?id=l-
+FRE7p7gLAIC_e3p8kcnmdZkcLFqEv8OFQA790-Xoos>. Acesso em: 05 jan. 2017.
+GRATERON, Ivan Ricardo Guevara. Auditoria de gestão: utilização de indicadores de gestão no setor público.
+Caderno de estudos, n. 21, p. 01-18, 1999. Disponível em: <http://www.scielo.br/scielo.php?script=sci_arttext&pi-
+d=S1413-92511999000200002&lng=en&nrm=iso>. Acesso em: 20 nov. 2014.
+LACERDA, Ricardo. Ouvidoria: Portal da Cidadania. 2. ed rev. e ampl. Olinda, PE: Livro Rápido, 2011. p. 89
+BRASIL. Lei nº 18.309/09, de 03 de agosto de 2009. Disponível em: <http://www.almg.gov.br/consulte/legislacao/
+completa/completa.html?tipo=LEI&num=18309&ano=2009> Acesso em: 24 jan. 2017.
+MINISTÉRIO DA SAÚDE. Caderno de Diretrizes, Objetivos, Metas e Indicadores ­ 2013/2015. Brasília, DF. 2013.
+Disponível em: <http://bvsms.saude.gov.br/bvs/publicacoes/caderno_diretrizes_objetivos_2013_2015.pdf>. Acesso
+em: 05 jan. 2017.
+MORAES, Diana; CRUZ, Amanda; SILVEIRA, Flávia; FERLA, Alcindo. A Ouvidoria como um processo democrático:
+sua história e experiência no Pará. Belém, PA. 2010. Disponível em: <http://www.sead.pa.gov.br/sites/default/files/
+ouvidoriacomoprocessodemocraticohistoriadasouvidorias.pdf> Acesso em: 15 dez. 2016.
+PEIXOTO, Stefano Frugoli; MARSIGLIA, Regina Maria Giffoni; MORRONE, Luiz Carlos. Atribuições de uma Ouvido-
+ria: opinião de usuários e funcionários. Saúde soc., São Paulo, v. 22, n. 3, 2013. Disponível em: <http://www.scielo.
+br/scielo.php?script=sci_arttext&pid=S0104-12902013000300012&lng=pt&nrm=iso>. Acesso em: 12 nov. 2014.
+RICHE, Cristina Ayoub. Ouvidoria, caminho para a civilidade e diálogo. Organicom. São Paulo, ano 7, n. 12, p. 180-
+182, 2010.
+SOUZA JUNIOR, Geraldo Lopes de. Elaboração e Análise de Indicadores. AM. 2011. Disponível em: <http://livrozilla.
+com/doc/774067/elabora%C3%A7%C3%A3o-e-an%C3%A1lise-de-indicadores>. Acesso em: 10 jan. 2017.
+
+142 | Revista Científica da Associação Brasileira de Ouvidores/Ombudsman ­ Ano 1 ­ nº 1 ­ 2017/2018
+

@@ -83,6 +83,12 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Conversas', rotulo: 'Central de Atendimento (chat)' },
   { id: 'ConversasSupervisao', rotulo: 'Atendimento — supervisão (ver todas as unidades)' },
   { id: 'Ticket', rotulo: 'Suporte — gestão de tickets (ver/responder todos)' },
+  // Ouvidoria (71–74, ADR-0060). Sigilo e ponto de resposta são eixos ORTOGONAIS ao trabalho da
+  // ouvidoria (quem vê identidade × quem responde pela unidade) — por isso módulos próprios.
+  { id: 'Ouvidoria', rotulo: 'Ouvidoria — fila e tratamento das manifestações (triar, encaminhar, responder, prorrogar)' },
+  { id: 'OuvidoriaGestao', rotulo: 'Ouvidoria — gestão (painel, configuração, pontos de resposta, assuntos, escalonar)' },
+  { id: 'OuvidoriaSigilo', rotulo: 'Ouvidoria — sigilo (ver denúncias, revelar identidade com justificativa registrada, habilitar denúncia)' },
+  { id: 'OuvidoriaPontoResposta', rotulo: 'Ouvidoria — ponto de resposta (responder pela unidade/área, sem ver o manifestante)' },
   { id: 'NotificacoesAgendamento', rotulo: 'Mensageria — gestão dos envios de WhatsApp (resumo diário, falhas, lote, regras)' },
   { id: 'RespostasRapidas', rotulo: 'Mensagens prontas do chat (cadastro)' },
   { id: 'Estatistica', rotulo: 'Estatísticas de atendimento (retrato WhatsApp)' },
@@ -210,5 +216,32 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',
     Edicao: 'Alterar nome, marca, domínios e contatos legais (afeta telas públicas)',
+  },
+  // Ouvidoria (ADR-0060, plano §1.5). "Exclusão" aqui é ARQUIVAR — não apaga nada (trilha append-only).
+  Ouvidoria: {
+    Consulta: 'Ver fila e detalhe (manifestante mascarado se sigilosa; denúncias só com Sigilo)',
+    Inclusao: 'Registrar manifestação',
+    Edicao: 'Triar, encaminhar, pedir complementação, validar, responder ao cidadão, prorrogar, cobrar, recurso, concluir',
+    Exclusao: 'Arquivar manifestação (com motivo)',
+  },
+  OuvidoriaGestao: {
+    Consulta: 'Ver painel/indicadores e configuração',
+    Inclusao: 'Criar pontos de resposta, assuntos e marcadores',
+    Edicao: 'Editar pontos, assuntos, marcadores e configuração; escalonar',
+    Exclusao: 'Desativar pontos, assuntos e marcadores',
+  },
+  // Só Consulta/Inclusão/Edição valem: não há "exclusão" no eixo do sigilo.
+  OuvidoriaSigilo: {
+    Consulta: 'Ver denúncias e revelar identidade em sigilosas (cada revelação exige justificativa e é logada)',
+    Inclusao: 'Habilitar denúncia (análise de admissibilidade)',
+    Edicao: 'Editar o teor pseudonimizado que vai à apuração',
+    Exclusao: '— (sem efeito)',
+  },
+  // Só Consulta e Edição valem.
+  OuvidoriaPontoResposta: {
+    Consulta: 'Ver manifestações encaminhadas aos pontos de que é membro, SEM dados do manifestante',
+    Inclusao: '— (sem efeito)',
+    Edicao: 'Responder pela área (com anexos)',
+    Exclusao: '— (sem efeito)',
   },
 };
