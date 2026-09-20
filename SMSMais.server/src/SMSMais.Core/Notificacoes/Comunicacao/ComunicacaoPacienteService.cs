@@ -535,8 +535,17 @@ public sealed class ComunicacaoPacienteService(
                 $"Olá {tratamento}, esse é o canal oficial do Alô Maricá da Secretaria Municipal de Saúde.\n\n"
                 + $"{(ehConsulta ? "Sua consulta foi agendada" : "Seu exame foi agendado")}!\n"
                 + "Para mais informações acesse: app.smsmarica.online";
+            // Mesma conferência do resto: o modelo aprovado manda na quantidade de variáveis.
+            var (paramsPrimeiraMsg, incompativelPrimeiraMsg) =
+                await AjustarAoModeloAsync(modeloPrimeiraMsg, [tratamento], ct);
+            if (incompativelPrimeiraMsg is not null)
+            {
+                Terminal(n, StatusComunicacao.Falha, incompativelPrimeiraMsg);
+                return;
+            }
+
             var desafio = await whatsApp.EnviarTemplateAsync(
-                n.Telefone, modeloPrimeiraMsg, optsDesafio.Idioma, [tratamento],
+                n.Telefone, modeloPrimeiraMsg, optsDesafio.Idioma, paramsPrimeiraMsg,
                 pacienteId: n.PacienteId, conteudoLegivel: textoDesafio, ct: ct);
 
             if (desafio.Ok)
