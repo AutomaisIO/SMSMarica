@@ -1,6 +1,7 @@
 using Automais.Zap.Core.Admin;
 using Automais.Zap.Core.Legal;
 using Automais.Zap.Core.Meta;
+using Automais.Zap.Core.Midias;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Core.Roteamento;
 using Automais.Zap.Core.Seguranca;
@@ -32,6 +33,8 @@ public static class DependencyInjection
         services.AddScoped<IRelayService, RelayService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IMidiaService, MidiaService>();
+        services.AddScoped<ITemplateArteService, TemplateArteService>();
 
         return services;
     }

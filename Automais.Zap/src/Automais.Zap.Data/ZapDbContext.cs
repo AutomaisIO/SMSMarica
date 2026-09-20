@@ -21,6 +21,8 @@ public sealed class ZapDbContext(DbContextOptions<ZapDbContext> options) : DbCon
     public DbSet<Waba> Wabas => Set<Waba>();
     public DbSet<TenantToken> TenantTokens => Set<TenantToken>();
     public DbSet<TenantTokenNumero> TenantTokenNumeros => Set<TenantTokenNumero>();
+    public DbSet<Midia> Midias => Set<Midia>();
+    public DbSet<TemplateArte> TemplateArtes => Set<TemplateArte>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

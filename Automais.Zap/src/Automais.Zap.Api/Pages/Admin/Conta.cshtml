@@ -1,0 +1,99 @@
+@page "/admin/conta"
+@model Automais.Zap.Api.Pages.Admin.ContaModel
+@{
+    ViewData["Title"] = "Minha conta";
+    var u = Model.Usuario;
+}
+
+@if (u is null)
+{
+    <div class="cartao vazio">Sessão expirada.</div>
+    return;
+}
+
+<div class="pagina-topo">
+    <div>
+        <h1>Minha conta</h1>
+        <p class="sub compacto">Seus dados de acesso ao painel. Não confundir com o
+            <a href="/admin/numeros">perfil do WhatsApp</a>, que é o que o cidadão vê.</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+<div class="cartao">
+    <table>
+        <tbody>
+            <tr><th style="width:190px">E-mail</th><td>@u.Email</td></tr>
+            <tr>
+                <th>Acesso</th>
+                <td>
+                    @if (Model.Global)
+                    {
+                        <span>Equipe Automais — enxerga todos os clientes</span>
+                    }
+                    else
+                    {
+                        <span>Acesso do cliente</span>
+                    }
+                </td>
+            </tr>
+            <tr>
+                <th>Clientes</th>
+                <td>@(Model.Clientes.Count == 0 ? "nenhum" : string.Join(", ", Model.Clientes))</td>
+            </tr>
+            <tr><th>Na plataforma desde</th><td>@u.CriadoEm.ToLocalTime().ToString("dd/MM/yyyy")</td></tr>
+            <tr>
+                <th>Último acesso</th>
+                <td>@(u.UltimoAcessoEm?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "este agora")</td>
+            </tr>
+        </tbody>
+    </table>
+    <p class="ajuda-campo" style="margin-top:10px">
+        E-mail e nível de acesso são alterados pela Automais, em <a href="/admin/equipe">Equipe</a> —
+        o e-mail é a sua identidade no login.
+    </p>
+</div>
+
+<div class="cartao">
+    <h2>Nome de exibição</h2>
+    <form method="post" asp-page-handler="Nome" class="linha" style="margin-top:0">
+        @Html.AntiForgeryToken()
+        <div>
+            <label for="conta-nome">Como você aparece no painel</label>
+            <input id="conta-nome" type="text" name="nome" value="@u.Nome" required maxlength="120" />
+        </div>
+        <button class="acao" type="submit">Salvar</button>
+    </form>
+</div>
+
+<div class="cartao">
+    <h2>Trocar senha</h2>
+    <form method="post" asp-page-handler="Senha" class="linha" style="margin-top:0">
+        @Html.AntiForgeryToken()
+        <div>
+            <label for="conta-atual">Senha atual</label>
+            <input id="conta-atual" type="password" name="senhaAtual" required autocomplete="current-password" />
+        </div>
+        <div>
+            <label for="conta-nova">Senha nova (mín. 10)</label>
+            <input id="conta-nova" type="password" name="novaSenha" required minlength="10" autocomplete="new-password" />
+        </div>
+        <div>
+            <label for="conta-confirma">Repita a senha nova</label>
+            <input id="conta-confirma" type="password" name="confirmacao" required minlength="10" autocomplete="new-password" />
+        </div>
+        <button class="acao" type="submit">Trocar senha</button>
+    </form>
+    <p class="ajuda-campo" style="margin-top:10px">
+        A senha atual é pedida de propósito: sem ela, uma sessão esquecida aberta viraria tomada
+        de conta. Se você entrou com uma senha que a Automais mandou, troque agora.
+    </p>
+</div>

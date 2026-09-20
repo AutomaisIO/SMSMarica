@@ -1,0 +1,140 @@
+@page "/admin/midias"
+@model Automais.Zap.Api.Pages.Admin.MidiasModel
+@{
+    ViewData["Title"] = "Artes";
+}
+
+@if (Model.Alvo is null)
+{
+    <div class="cartao vazio">Nenhum cliente selecionado.</div>
+    return;
+}
+
+@section Head {
+    <style>
+        .grade-artes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+        .arte { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+        .arte .moldura {
+            background: #E5DDD5;
+            background-image: radial-gradient(rgba(255,255,255,.35) 1px, transparent 1.4px);
+            background-size: 18px 18px;
+            padding: 14px; display: grid; place-items: center;
+        }
+        .arte .moldura img {
+            max-width: 100%; max-height: 170px; border-radius: 6px; display: block;
+            box-shadow: 0 1px 3px rgba(0,0,0,.18); background: #fff;
+        }
+        .arte .dados { padding: 11px 13px 13px; display: grid; gap: 7px; border-top: 1px solid var(--borda-suave); }
+        .arte .dados .nome { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+        .arte .dados .meta-linha { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--fraco); }
+        .arte .endereco { display: flex; align-items: center; gap: 6px; }
+        .arte .endereco code {
+            flex: 1; min-width: 0; font-size: 11px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; direction: rtl; text-align: left;
+        }
+        .arte .rodape-acoes { display: flex; align-items: center; gap: 8px; }
+        .arte .rodape-acoes form { margin-left: auto; }
+        .arte .usado { font-size: 11.5px; color: var(--ciano-forte); }
+    </style>
+}
+
+<div class="pagina-topo">
+    <div>
+        <h1>Artes</h1>
+        <p class="sub compacto">
+            Imagens que a plataforma hospeda para @Model.Alvo.Nome. Modelo com foto no cabeçalho manda a
+            imagem em <strong>toda</strong> mensagem — a que aparece no modelo aprovado é só exemplo —,
+            e é este endereço que a Meta baixa a cada envio.
+        </p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+<div class="cartao">
+    <form method="post" asp-page-handler="Enviar" enctype="multipart/form-data" class="linha" style="margin-top:0">
+        @Html.AntiForgeryToken()
+        <div>
+            <label for="arte-arquivo">Nova arte (PNG ou JPEG, até 5 MB)</label>
+            <input id="arte-arquivo" type="file" name="arquivo" accept="image/png,image/jpeg" required />
+        </div>
+        <button class="acao" type="submit">Publicar</button>
+    </form>
+    <p class="ajuda-campo" style="margin-top:10px">
+        O WhatsApp mostra o cabeçalho <strong>deitado</strong> (proporção próxima de 1,91:1) — arte em
+        pé aparece cortada no celular. Prefira imagem leve: a Meta rebaixa o arquivo a cada mensagem,
+        então 1 MB vira 1 GB de tráfego num disparo de mil.
+    </p>
+</div>
+
+@if (Model.Artes.Count == 0)
+{
+    <div class="cartao vazio">
+        Nenhuma arte publicada ainda. Suba a primeira acima e depois escolha-a em
+        <a href="/admin/templates">Templates</a>, no modelo que tem foto no cabeçalho.
+    </div>
+}
+else
+{
+    <div class="grade-artes">
+        @foreach (var a in Model.Artes)
+        {
+            var url = Model.UrlDe(a);
+            var idUrl = $"url-{a.Id:N}";
+            <div class="cartao arte">
+                <div class="moldura">
+                    <img src="@a.Caminho" alt="@a.NomeArquivo" loading="lazy" />
+                </div>
+                <div class="dados">
+                    <span class="nome">@a.NomeArquivo</span>
+                    <span class="meta-linha">
+                        <span>@(a.TamanhoBytes / 1024) KB</span>
+                        @if (a.Largura is { } l && a.Altura is { } h)
+                        {
+                            <span>·</span>
+                            <span>@l × @h</span>
+                        }
+                        <span>·</span>
+                        <span>@a.CriadoEm.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                    </span>
+
+                    @if (MidiasModel.ProporcaoEstranha(a))
+                    {
+                        <span class="motivo" style="font-size:11.5px">
+                            Imagem em pé: o cabeçalho é deitado e o WhatsApp vai cortá-la.
+                        </span>
+                    }
+
+                    <div class="endereco">
+                        <code id="@idUrl">@url</code>
+                        <button type="button" class="acao discreto" data-copiar="#@idUrl">Copiar</button>
+                    </div>
+
+                    <div class="rodape-acoes">
+                        @if (Model.EmUso.TryGetValue(a.Id, out var modelos))
+                        {
+                            <span class="usado">Em uso: @string.Join(", ", modelos)</span>
+                        }
+                        else
+                        {
+                            <span class="meta-linha">Nenhum modelo usando</span>
+                        }
+                        <form method="post" asp-page-handler="Apagar"
+                              onsubmit="return confirm('Apagar esta arte?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="midiaId" value="@a.Id" />
+                            <button class="acao discreto" type="submit">Apagar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -3,6 +3,7 @@ using System;
 using Automais.Zap.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Automais.Zap.Data.Migrations
 {
     [DbContext(typeof(ZapDbContext))]
-    partial class ZapDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260920143038_MidiasDaPlataforma")]
+    partial class MidiasDaPlataforma
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -245,46 +248,6 @@ namespace Automais.Zap.Data.Migrations
                     b.HasIndex("WabaId");
 
                     b.ToTable("numero", "zap");
-                });
-
-            modelBuilder.Entity("Automais.Zap.Data.Entities.TemplateArte", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<Guid?>("AtualizadoPorUsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("atualizado_por_usuario_id");
-
-                    b.Property<Guid>("MidiaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("midia_id");
-
-                    b.Property<string>("Template")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)")
-                        .HasColumnName("template");
-
-                    b.Property<Guid>("WabaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("waba_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MidiaId");
-
-                    b.HasIndex("WabaId", "Template")
-                        .IsUnique()
-                        .HasDatabaseName("ux_template_arte_waba_template");
-
-                    b.ToTable("template_arte", "zap");
                 });
 
             modelBuilder.Entity("Automais.Zap.Data.Entities.Tenant", b =>
@@ -567,25 +530,6 @@ namespace Automais.Zap.Data.Migrations
                         .HasForeignKey("WabaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Waba");
-                });
-
-            modelBuilder.Entity("Automais.Zap.Data.Entities.TemplateArte", b =>
-                {
-                    b.HasOne("Automais.Zap.Data.Entities.Midia", "Midia")
-                        .WithMany()
-                        .HasForeignKey("MidiaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Automais.Zap.Data.Entities.Waba", "Waba")
-                        .WithMany()
-                        .HasForeignKey("WabaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Midia");
 
                     b.Navigation("Waba");
                 });

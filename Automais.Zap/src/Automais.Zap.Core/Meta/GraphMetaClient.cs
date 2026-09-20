@@ -20,6 +20,10 @@ public sealed partial class GraphMetaClient(
     [GeneratedRegex(@"\{\{(\d{1,3})\}\}")]
     private static partial Regex RegexParametro();
 
+    /// <summary>Variavel no texto, nos DOIS formatos que a Meta aceita: {{1}} e {{nome_paciente}}.</summary>
+    [GeneratedRegex(@"\{\{\s*[A-Za-z0-9_]+\s*\}\}")]
+    private static partial Regex RegexVariavel();
+
     // ------------------------------------------------------------------ App
 
     public async Task<ResultadoMeta<IReadOnlyList<AssinaturaWebhook>>> ObterWebhookDoAppAsync(CancellationToken ct = default)
@@ -222,11 +226,23 @@ public sealed partial class GraphMetaClient(
         {
             string? corpo = null;
             var exemplos = new List<string>();
+            CabecalhoTemplateMeta? cabecalho = null;
             if (t.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
             {
                 foreach (var c in comps.EnumerateArray())
                 {
-                    if (!string.Equals(Texto(c, "type"), "BODY", StringComparison.OrdinalIgnoreCase)) continue;
+                    var tipo = (Texto(c, "type") ?? "").ToUpperInvariant();
+
+                    // O cabecalho vale tanto quanto o corpo: modelo com foto no topo exige o
+                    // componente de header em CADA envio, e sem este campo quem envia nao tem
+                    // como saber disso antes de a Meta recusar.
+                    if (tipo == "HEADER")
+                    {
+                        cabecalho = LerCabecalho(c);
+                        continue;
+                    }
+
+                    if (tipo != "BODY") continue;
 
                     corpo = Texto(c, "text");
                     // example.body_text vem como lista DE LISTAS (um conjunto por variacao);
@@ -241,7 +257,6 @@ public sealed partial class GraphMetaClient(
                             if (v.ValueKind == JsonValueKind.String) exemplos.Add(v.GetString() ?? "");
                         }
                     }
-                    break;
                 }
             }
 
@@ -258,11 +273,39 @@ public sealed partial class GraphMetaClient(
                 corpo,
                 parametros,
                 Texto(t, "rejected_reason"),
-                exemplos));
+                exemplos,
+                cabecalho));
         }
 
         return ResultadoMeta<IReadOnlyList<TemplateMeta>>.Ok(
             lista.OrderBy(x => x.Nome).ThenBy(x => x.Idioma).ToList());
+    }
+
+    /// <summary>
+    /// Le o componente HEADER de um modelo. O <c>format</c> e o que importa para quem envia;
+    /// o <c>example</c> (<c>header_handle</c> para midia, <c>header_text</c> para texto) so
+    /// serve de amostra na tela — a URL que a Meta devolve ali e um handle interno dela,
+    /// nao um endereco para reenviar.
+    /// </summary>
+    private static CabecalhoTemplateMeta LerCabecalho(JsonElement c)
+    {
+        var formato = (Texto(c, "format") ?? "TEXT").ToUpperInvariant();
+        var texto = Texto(c, "text");
+
+        string? exemplo = null;
+        if (c.TryGetProperty("example", out var ex) && ex.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var campo in new[] { "header_handle", "header_text" })
+            {
+                if (!ex.TryGetProperty(campo, out var lista)
+                    || lista.ValueKind != JsonValueKind.Array || lista.GetArrayLength() == 0) continue;
+                if (lista[0].ValueKind == JsonValueKind.String) exemplo = lista[0].GetString();
+                break;
+            }
+        }
+
+        var parametros = texto is null ? 0 : RegexVariavel().Matches(texto).Count;
+        return new CabecalhoTemplateMeta(formato, texto, parametros, exemplo);
     }
 
     public async Task<ResultadoMeta<string>> CriarTemplateAsync(string wabaId, NovoTemplate template, CancellationToken ct = default)

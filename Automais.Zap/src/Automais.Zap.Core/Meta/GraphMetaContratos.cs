@@ -84,6 +84,29 @@ public sealed record AppInscrito(string Id, string? Nome);
 
 public sealed record AssinaturaWebhook(string Objeto, string? CallbackUrl, bool Ativo, IReadOnlyList<string> Campos);
 
+/// <summary>
+/// Cabeçalho do modelo, quando ele tem um.
+///
+/// <para><see cref="Formato"/> é o da Meta (TEXT, IMAGE, VIDEO, DOCUMENT, LOCATION) e decide o
+/// que cada envio precisa mandar: modelo com MÍDIA no topo exige o componente de header em
+/// <b>toda</b> mensagem — a arte que aparece no modelo aprovado é só exemplo e não vai sozinha.
+/// Quem envia sem ela leva <c>(#132012) Parameter format does not match format in the created
+/// template</c>.</para>
+///
+/// <para>O catálogo expõe isto porque a instância não tem credencial da Meta (ADR-0044): sem o
+/// formato aqui, o sistema do cliente só descobre que o modelo pede imagem quando a mensagem
+/// já falhou na fila.</para>
+/// </summary>
+/// <param name="Parametros">Variáveis no texto do cabeçalho (só faz sentido em TEXT; a Meta
+/// aceita no máximo uma).</param>
+/// <param name="Exemplo">O exemplo aprovado: a URL da arte (mídia) ou o texto de amostra.
+/// Serve para a tela mostrar o que foi aprovado — <b>não</b> para enviar.</param>
+public sealed record CabecalhoTemplateMeta(string Formato, string? Texto, int Parametros, string? Exemplo)
+{
+    /// <summary>Formatos que exigem um arquivo em cada envio.</summary>
+    public bool ExigeMidia => Formato is "IMAGE" or "VIDEO" or "DOCUMENT";
+}
+
 public sealed record TemplateMeta(
     string Id,
     string Nome,
@@ -93,7 +116,8 @@ public sealed record TemplateMeta(
     string? Corpo,
     int Parametros,
     string? MotivoRejeicao,
-    IReadOnlyList<string> Exemplos);
+    IReadOnlyList<string> Exemplos,
+    CabecalhoTemplateMeta? Cabecalho = null);
 
 /// <summary>Dados mínimos para submeter um template à aprovação da Meta.</summary>
 public sealed record NovoTemplate(

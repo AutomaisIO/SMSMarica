@@ -28,6 +28,20 @@ public sealed record UsuarioListado(
 public interface IAdminService
 {
     Task<UsuarioAdmin?> AutenticarAsync(string email, string senha, CancellationToken ct = default);
+
+    /// <summary>O próprio usuário logado, para a tela da conta dele. Null se sumiu ou foi desativado.</summary>
+    Task<UsuarioAdmin?> ObterAsync(Guid usuarioId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Troca a senha do PRÓPRIO usuário, conferindo a atual. Exigir a senha em vigor é o que
+    /// impede que uma sessão esquecida aberta vire tomada de conta.
+    /// </summary>
+    Task<(bool Ok, string? Erro)> TrocarSenhaAsync(
+        Guid usuarioId, string senhaAtual, string novaSenha, CancellationToken ct = default);
+
+    /// <summary>Muda o nome de exibição do próprio usuário. E-mail não muda por aqui: é a
+    /// identidade do login e mexer nele é ato da casa, na Equipe.</summary>
+    Task<(bool Ok, string? Erro)> AlterarNomeAsync(Guid usuarioId, string nome, CancellationToken ct = default);
     Task SemearPrimeiroUsuarioAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<UsuarioListado>> ListarUsuariosAsync(Guid? tenantId = null, CancellationToken ct = default);
@@ -64,6 +78,51 @@ public sealed class AdminService(
         usuario.UltimoAcessoEm = relogio.GetUtcNow();
         await db.SaveChangesAsync(ct);
         return usuario;
+    }
+
+    public async Task<UsuarioAdmin?> ObterAsync(Guid usuarioId, CancellationToken ct = default)
+        => await db.UsuariosAdmin.AsNoTracking()
+            .Include(u => u.Tenants).ThenInclude(t => t.Tenant)
+            .FirstOrDefaultAsync(u => u.Id == usuarioId, ct);
+
+    public async Task<(bool Ok, string? Erro)> TrocarSenhaAsync(
+        Guid usuarioId, string senhaAtual, string novaSenha, CancellationToken ct = default)
+    {
+        var usuario = await db.UsuariosAdmin.FirstOrDefaultAsync(u => u.Id == usuarioId && u.Ativo, ct);
+        if (usuario is null) return (false, "Usuário não encontrado.");
+
+        if (!Senhas.Confere(senhaAtual ?? string.Empty, usuario.SenhaHash))
+        {
+            logger.LogWarning("Troca de senha recusada para {Email}: senha atual errada.", usuario.Email);
+            return (false, "A senha atual está errada.");
+        }
+
+        var nova = novaSenha ?? string.Empty;
+        if (nova.Length < 10) return (false, "A senha nova precisa de pelo menos 10 caracteres.");
+        if (Senhas.Confere(nova, usuario.SenhaHash)) return (false, "A senha nova precisa ser diferente da atual.");
+
+        usuario.SenhaHash = Senhas.Gerar(nova);
+        await db.SaveChangesAsync(ct);
+
+        // Sem o e-mail em claro no log não dá para auditar troca de senha; sem log nenhum,
+        // tomada de conta não deixa rastro.
+        logger.LogInformation("Senha trocada pelo próprio usuário {Email}.", usuario.Email);
+        return (true, null);
+    }
+
+    public async Task<(bool Ok, string? Erro)> AlterarNomeAsync(
+        Guid usuarioId, string nome, CancellationToken ct = default)
+    {
+        var limpo = (nome ?? string.Empty).Trim();
+        if (limpo.Length < 2) return (false, "Informe o nome.");
+        if (limpo.Length > 120) return (false, "Nome muito longo.");
+
+        var usuario = await db.UsuariosAdmin.FirstOrDefaultAsync(u => u.Id == usuarioId && u.Ativo, ct);
+        if (usuario is null) return (false, "Usuário não encontrado.");
+
+        usuario.Nome = limpo;
+        await db.SaveChangesAsync(ct);
+        return (true, null);
     }
 
     public async Task SemearPrimeiroUsuarioAsync(CancellationToken ct = default)

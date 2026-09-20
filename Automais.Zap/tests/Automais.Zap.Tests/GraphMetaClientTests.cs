@@ -147,6 +147,94 @@ public sealed class GraphMetaClientTests
         texto.Should().Contain("não documentado");
     }
 
+    /// <summary>
+    /// Os tres modelos com ARTE no topo de Marica, como a Graph os devolve, ao lado de um
+    /// modelo de texto puro. O header_handle que vem no exemplo e um endereco interno da Meta:
+    /// serve de amostra, nao de arte para reenviar.
+    /// </summary>
+    private const string RespostaTemplates = """
+        {
+          "data": [
+            {
+              "id": "1", "name": "confirmacao_exame", "language": "pt_BR",
+              "category": "UTILITY", "status": "APPROVED",
+              "components": [
+                { "type": "HEADER", "format": "IMAGE",
+                  "example": { "header_handle": ["https://scontent.whatsapp.net/v/exemplo.png"] } },
+                { "type": "BODY", "text": "Ola {{1}}, seu exame foi agendado!",
+                  "example": { "body_text": [["Sr. Joao"]] } },
+                { "type": "BUTTONS", "buttons": [{ "type": "QUICK_REPLY", "text": "Nao sou essa pessoa" }] }
+              ]
+            },
+            {
+              "id": "2", "name": "laudo_disponivel", "language": "pt_BR",
+              "category": "UTILITY", "status": "APPROVED",
+              "components": [
+                { "type": "BODY", "text": "{{1}}, o laudo do seu {{2}} de {{3}} esta pronto." }
+              ]
+            },
+            {
+              "id": "3", "name": "aviso_unidade", "language": "pt_BR",
+              "category": "UTILITY", "status": "APPROVED",
+              "components": [
+                { "type": "HEADER", "format": "TEXT", "text": "Aviso da {{1}}",
+                  "example": { "header_text": ["UBS Centro"] } },
+                { "type": "BODY", "text": "Sua unidade estara fechada." }
+              ]
+            }
+          ]
+        }
+        """;
+
+    [Fact]
+    public async Task ListarTemplates_diz_que_o_modelo_tem_FOTO_no_cabecalho()
+    {
+        var (cliente, _) = Montar((HttpStatusCode.OK, RespostaTemplates));
+
+        var r = await cliente.ListarTemplatesAsync("2099272540984687");
+
+        r.Sucesso.Should().BeTrue();
+        var exame = r.Valor!.Single(t => t.Nome == "confirmacao_exame");
+
+        // Sem isto, quem envia so descobre que o modelo pede imagem quando a Meta recusa (132012).
+        exame.Cabecalho.Should().NotBeNull();
+        exame.Cabecalho!.Formato.Should().Be("IMAGE");
+        exame.Cabecalho.ExigeMidia.Should().BeTrue();
+        exame.Cabecalho.Parametros.Should().Be(0);
+        exame.Cabecalho.Exemplo.Should().Contain("exemplo.png");
+
+        // O corpo continua sendo lido mesmo com o HEADER vindo antes dele.
+        exame.Corpo.Should().Contain("seu exame foi agendado");
+        exame.Parametros.Should().Be(1);
+        exame.Exemplos.Should().ContainSingle().Which.Should().Be("Sr. Joao");
+    }
+
+    [Fact]
+    public async Task ListarTemplates_modelo_sem_cabecalho_nao_inventa_um()
+    {
+        var (cliente, _) = Montar((HttpStatusCode.OK, RespostaTemplates));
+
+        var r = await cliente.ListarTemplatesAsync("2099272540984687");
+
+        var laudo = r.Valor!.Single(t => t.Nome == "laudo_disponivel");
+        laudo.Cabecalho.Should().BeNull("modelo sem header nao pode ganhar componente nenhum no envio");
+        laudo.Parametros.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task ListarTemplates_cabecalho_de_TEXTO_conta_a_variavel()
+    {
+        var (cliente, _) = Montar((HttpStatusCode.OK, RespostaTemplates));
+
+        var r = await cliente.ListarTemplatesAsync("2099272540984687");
+
+        var aviso = r.Valor!.Single(t => t.Nome == "aviso_unidade").Cabecalho!;
+        aviso.Formato.Should().Be("TEXT");
+        aviso.ExigeMidia.Should().BeFalse("texto nao pede arquivo, pede o valor da variavel");
+        aviso.Parametros.Should().Be(1);
+        aviso.Texto.Should().Be("Aviso da {{1}}");
+    }
+
     // ---------------------------------------------------------------- apoio
 
     private static (GraphMetaClient Cliente, HandlerFalso Handler) Montar(

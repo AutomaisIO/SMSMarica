@@ -128,7 +128,8 @@
         .topo-app .secao .cliente { color: var(--texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .topo-app .secao .sep { color: var(--fraco); }
         .topo-app .direita { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-        .quem { display: flex; align-items: center; gap: 9px; }
+        .quem { display: flex; align-items: center; gap: 9px; color: inherit; border-radius: 8px; padding: 3px 6px; }
+        a.quem:hover { background: var(--borda-suave); text-decoration: none; }
         .quem .avatar {
             width: 30px; height: 30px; border-radius: 50%; background: var(--grad);
             display: grid; place-items: center; color: #fff; font: 600 11.5px var(--fonte); letter-spacing: .02em;
@@ -379,6 +380,9 @@
                     <a href="/admin/templates" class="@(Em("/admin/templates") ? "ativo" : "")">
                         @Html.Raw(Icone("templates")) Templates
                     </a>
+                    <a href="/admin/midias" class="@(Em("/admin/midias") ? "ativo" : "")">
+                        @Html.Raw(Icone("templates")) Artes
+                    </a>
                     <a href="/admin/atividade" class="@(Em("/admin/atividade") ? "ativo" : "")">
                         @Html.Raw(Icone("atividade")) Atividade
                     </a>
@@ -394,6 +398,9 @@
                     <span class="grupo-rotulo">Organização</span>
                     <a href="/admin/equipe" class="@(Em("/admin/equipe") ? "ativo" : "")">
                         @Html.Raw(Icone("equipe")) Equipe
+                    </a>
+                    <a href="/admin/conta" class="@(Em("/admin/conta") ? "ativo" : "")">
+                        @Html.Raw(Icone("equipe")) Minha conta
                     </a>
                 }
                 @if (Escopo.Global)
@@ -438,13 +445,13 @@
                     <span>@ViewData["Title"]</span>
                 </div>
                 <div class="direita">
-                    <div class="quem" title="@Escopo.Nome">
+                    <a class="quem" href="/admin/conta" title="Minha conta — @Escopo.Nome">
                         <span class="avatar" aria-hidden="true">@iniciais</span>
                         <span class="dados">
                             <span class="n">@Escopo.Nome</span><br />
                             <span class="p">@(Escopo.Global ? "Equipe Automais · acesso global" : "Acesso do cliente")</span>
                         </span>
-                    </div>
+                    </a>
                     <form method="post" action="/admin/sair" style="margin:0">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="botao-sair">Sair</button>

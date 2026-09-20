@@ -2,6 +2,7 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Automais.Zap.Api.Infra;
 using Automais.Zap.Core.Meta;
+using Automais.Zap.Core.Midias;
 using Automais.Zap.Data;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Automais.Zap.Api.Pages.Admin;
 
-public sealed partial class TemplatesModel(ZapDbContext db, EscopoUsuario escopo, IGraphMetaClient graph) : PageModel
+public sealed partial class TemplatesModel(
+    ZapDbContext db,
+    EscopoUsuario escopo,
+    IGraphMetaClient graph,
+    IMidiaService midias,
+    ITemplateArteService artes) : PageModel
 {
     /// <summary>As três categorias que a Cloud API aceita hoje.</summary>
     public static readonly string[] Categorias = ["UTILITY", "MARKETING", "AUTHENTICATION"];
@@ -22,6 +28,13 @@ public sealed partial class TemplatesModel(ZapDbContext db, EscopoUsuario escopo
     public List<Data.Entities.Waba> WabasDoTenant { get; private set; } = [];
     public IReadOnlyList<TemplateMeta> Templates { get; private set; } = [];
     public string? ErroGraph { get; private set; }
+
+    /// <summary>Arte escolhida para cada modelo (nome → arte). É o que vai no envio.</summary>
+    public IReadOnlyDictionary<string, ArteDoTemplate> Artes { get; private set; } =
+        new Dictionary<string, ArteDoTemplate>();
+
+    /// <summary>Artes já publicadas para o cliente, para escolher sem sair da tela.</summary>
+    public IReadOnlyList<MidiaGuardada> ArtesDisponiveis { get; private set; } = [];
 
     [TempData] public string? Recado { get; set; }
     [TempData] public string? Erro { get; set; }
@@ -52,11 +65,39 @@ public sealed partial class TemplatesModel(ZapDbContext db, EscopoUsuario escopo
 
         if (Alvo is null) return Page();
 
+        Artes = await artes.MapaAsync(Alvo.Id, ct);
+        ArtesDisponiveis = await midias.ListarAsync(Alvo.TenantId, "cabecalho", ct);
+
         var r = await graph.ListarTemplatesAsync(Alvo.WabaId, ct);
         if (r.Sucesso) Templates = r.Valor!;
         else ErroGraph = r.Erro;
 
         return Page();
+    }
+
+    /// <summary>
+    /// Escolhe (ou tira, com <paramref name="midiaId"/> vazio) a arte de cabeçalho de um modelo.
+    /// A escolha vale para o WABA: é ela que o catálogo entrega às instâncias, e é ela que vai
+    /// no componente de header de cada mensagem.
+    /// </summary>
+    public async Task<IActionResult> OnPostArteAsync(
+        Guid id, string nome, Guid? midiaId, CancellationToken ct)
+    {
+        var waba = await AutorizarAsync(id, ct);
+        if (waba is null) return Forbid();
+
+        if (midiaId is not { } escolhida || escolhida == Guid.Empty)
+        {
+            await artes.RemoverAsync(waba.Id, nome, ct);
+            Recado = $"Modelo \"{nome}\" ficou sem arte — o envio dele será recusado até escolher uma.";
+            return RedirectToPage(new { id });
+        }
+
+        var (ok, erro) = await artes.DefinirAsync(waba.Id, nome, escolhida, escopo.UsuarioId, ct);
+        if (ok) Recado = $"Arte do modelo \"{nome}\" atualizada.";
+        else Erro = erro;
+
+        return RedirectToPage(new { id });
     }
 
     /// <summary>Corpo do template com as variáveis {{n}} destacadas, já escapado.</summary>
