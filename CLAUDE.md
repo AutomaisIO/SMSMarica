@@ -57,6 +57,25 @@ Saída de consulta com dado de paciente **nunca** entra no repositório: vai par
 `Aprendizados e Scratchpads/scratchpad/` (ignorado) ou fora da árvore. Um TXT de agenda do SISREG
 tem nome, CNS, telefone e endereço.
 
+## O Manual do usuário se confronta a CADA mudança
+
+O painel tem um **Manual** (menu próprio, `/app/manual`) que vive **dentro do código**, em
+`SMSMais.front/src/features/manual/` — artigo por tela, com busca, índice, animações e
+**simulações clicáveis**. Cada tela documentada ganha um `?` ao lado do título
+(`shared/ui/AjudaManual`) que leva direto ao artigo dela.
+
+**A regra, e ela não é opcional:** de SMSMarica para dentro, **toda mudança que altere o que o
+usuário vê ou faz é confrontada com o manual** — tela, aba, botão, campo, rótulo, regra de negócio
+visível, permissão, comportamento de integração. Ou o artigo muda **no mesmo commit**, ou, se a tela
+ainda não tem artigo, **proponha criar** (e, se não for a hora, deixe a dívida registrada num
+ticket). Refactor sem efeito visível não conta — nesse caso diga "sem efeito no manual" e siga.
+
+O procedimento completo (onde olhar, esqueleto do artigo, como escrever, o que nunca fazer) está na
+skill **`confrontar-manual`**. Duas armadilhas que ela cobre e o build não pega: o índice de busca
+só acha o que o artigo **declara** (`palavrasChave` e `busca` da seção — o texto do JSX não é
+indexável), e **simulação desatualizada mente com ar de autoridade** — se a tela mudou, a simulação
+muda junto.
+
 ## Regras não-negociáveis (resumo)
 
 As regras abaixo não podem ser violadas sem novo ADR.
