@@ -599,6 +599,11 @@ public static class DependencyInjection
         services.AddScoped<
             Integracoes.SisregWeb.Estatisticas.IEstatisticasOperadoresService,
             Integracoes.SisregWeb.Estatisticas.EstatisticasOperadoresService>();
+        // Estatísticas dos operadores do SER e do SERNIT (20/09/2026): mesmo desenho, sobre a trilha
+        // de eventos das filas espelhadas. Um serviço, a fonte vai por parâmetro.
+        services.AddScoped<
+            Regulacao.Estatisticas.IEstatisticasOperadoresExternosService,
+            Regulacao.Estatisticas.EstatisticasOperadoresExternosService>();
 
         // Histórico da agenda: anda para trás, uma fatia por tick, dirigido pela cobertura gravada
         // em sisreg_varredura_agenda. Sem fila e sem runner de propósito — não há execução longa a

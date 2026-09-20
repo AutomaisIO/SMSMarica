@@ -69,7 +69,11 @@ export type ModuloPermissao =
   | 'InteligenciaAtendimento'
   | 'Confirmacoes'
   | 'EstrategiasFila'
-  | 'EstatisticaCustos';
+  | 'EstatisticaCustos'
+  // Estatísticas dos operadores por sistema de regulação (68–70): três módulos, um por sistema.
+  | 'EstatisticaSisreg'
+  | 'EstatisticaSer'
+  | 'EstatisticaSernit';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

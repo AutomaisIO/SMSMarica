@@ -278,6 +278,14 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Movimentações do SER que ainda não foram vistas.',
           },
           {
+            // Módulo próprio (69), desligado por padrão: é a produção de cada operador do Estado.
+            rotulo: 'Estatísticas',
+            to: '/app/regulacao/ser/estatisticas',
+            icone: BarChart3,
+            modulo: 'EstatisticaSer',
+            descricao: 'Trabalho dos operadores no SER: equipe, individual e rankings.',
+          },
+          {
             rotulo: 'Configuração',
             to: '/app/regulacao/configuracao',
             icone: Settings2,
@@ -317,6 +325,14 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Movimentações do SERNIT que ainda não foram vistas.',
           },
           {
+            // Módulo próprio (70), desligado por padrão.
+            rotulo: 'Estatísticas',
+            to: '/app/regulacao/sernit/estatisticas',
+            icone: BarChart3,
+            modulo: 'EstatisticaSernit',
+            descricao: 'Trabalho dos operadores no SERNIT: equipe, individual e rankings.',
+          },
+          {
             rotulo: 'Configuração',
             to: '/app/regulacao/sernit/configuracao',
             icone: Settings2,
@@ -352,10 +368,11 @@ export const SECOES: SecaoMenu[] = [
           // (/app/unidades/{id}), junto com a credencial e o sincronismo diário. Manter os dois
           // caminhos duplicaria manutenção e deixaria duas verdades sobre a mesma unidade.
           {
+            // Módulo próprio (68): quem consulta a agenda não precisa ver a produção de cada colega.
             rotulo: 'Estatísticas',
             to: '/app/sisreg/estatisticas',
             icone: BarChart3,
-            modulo: 'Sisreg',
+            modulo: 'EstatisticaSisreg',
             descricao: 'Trabalho dos operadores da regulação: equipe, individual e rankings.',
           },
           {

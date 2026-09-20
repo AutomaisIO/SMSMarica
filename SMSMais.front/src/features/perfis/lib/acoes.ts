@@ -87,6 +87,11 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'RespostasRapidas', rotulo: 'Mensagens prontas do chat (cadastro)' },
   { id: 'Estatistica', rotulo: 'Estatísticas de atendimento (retrato WhatsApp)' },
   { id: 'EstatisticaCustos', rotulo: 'Estatísticas — custos (tokens/USD do robô e estimativa Meta; exige Estatísticas)' },
+  // Um módulo por sistema de regulação: cada um tem a sua equipe, e ver o ranking de um não dá
+  // o do outro. Nascem desligados em todo perfil que não seja o Admin.
+  { id: 'EstatisticaSisreg', rotulo: 'Estatísticas — SISREG (operadores autorizadores: equipe, individual e rankings)' },
+  { id: 'EstatisticaSer', rotulo: 'Estatísticas — SER (operadores da fila do Estado: equipe, individual e rankings)' },
+  { id: 'EstatisticaSernit', rotulo: 'Estatísticas — SERNIT (operadores da fila de Niterói: equipe, individual e rankings)' },
   { id: 'Sandbox', rotulo: 'Sandbox de testes (QA)' },
   { id: 'Consultas', rotulo: 'Consultas reguladas (SISREG)' },
   { id: 'MapeamentoSigtap', rotulo: 'Mapeamento SIGTAP → tipo de exame' },
@@ -190,6 +195,17 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   },
   EstatisticaCustos: {
     Consulta: 'Ver tokens e custo do robô e a estimativa de custo Meta',
+  },
+  // Só a Consulta vale nos três: a tela é leitura. Quem entra nas estatísticas se escolhe na
+  // configuração de cada sistema (Configuração SISREG / Regulação — Configuração).
+  EstatisticaSisreg: {
+    Consulta: 'Ver as estatísticas dos operadores do SISREG',
+  },
+  EstatisticaSer: {
+    Consulta: 'Ver as estatísticas dos operadores do SER',
+  },
+  EstatisticaSernit: {
+    Consulta: 'Ver as estatísticas dos operadores do SERNIT',
   },
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',

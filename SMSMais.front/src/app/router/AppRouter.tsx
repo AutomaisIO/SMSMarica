@@ -64,6 +64,7 @@ import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { SisregEstatisticasPage } from '@/features/sisreg-estatisticas/pages/SisregEstatisticasPage';
+import { RegulacaoEstatisticasPage } from '@/features/regulacao-estatisticas/pages/RegulacaoEstatisticasPage';
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
 import { SerNotificacoesPage } from '@/features/ser/pages/SerNotificacoesPage';
 import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoPage';
@@ -241,9 +242,19 @@ export function AppRouter() {
           <Route path="regulacao/sernit/nova-solicitacao" element={<SernitNovaSolicitacaoPage />} />
           <Route path="regulacao/sernit/configuracao" element={<RegulacaoSernitConfiguracaoPage />} />
           <Route path="regulacao/sernit/:id" element={<SernitSolicitacaoDetalhePage />} />
+          {/* Estatísticas dos operadores: um módulo por sistema (68–70), desligados por padrão.
+              Gate por módulo — esconder o item do menu não é barreira para quem digita a URL. */}
+          <Route element={<RotaComModulo modulo="EstatisticaSer" rotulo="Estatísticas — SER" />}>
+            <Route path="regulacao/ser/estatisticas" element={<RegulacaoEstatisticasPage fonte="ser" />} />
+          </Route>
+          <Route element={<RotaComModulo modulo="EstatisticaSernit" rotulo="Estatísticas — SERNIT" />}>
+            <Route path="regulacao/sernit/estatisticas" element={<RegulacaoEstatisticasPage fonte="sernit" />} />
+          </Route>
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
-          <Route path="sisreg/estatisticas" element={<SisregEstatisticasPage />} />
+          <Route element={<RotaComModulo modulo="EstatisticaSisreg" rotulo="Estatísticas — SISREG" />}>
+            <Route path="sisreg/estatisticas" element={<SisregEstatisticasPage />} />
+          </Route>
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
           <Route path="pep-sincronizacao/fontes" element={<FontesProntuarioPage />} />

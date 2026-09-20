@@ -11,8 +11,10 @@ namespace SMSMais.Api.Controllers;
 /// partir do export da agenda já importado. Somente leitura sobre o nosso banco — nada aqui fala
 /// com o SISREG.
 ///
-/// <para>Ver: <see cref="ModuloPermissao.Sisreg"/> (consulta do SISREG). Escolher quem entra nas
-/// estatísticas: <see cref="ModuloPermissao.SisregConfiguracao"/> — muda o que todos veem.</para>
+/// <para>Ver: <see cref="ModuloPermissao.EstatisticaSisreg"/> — módulo próprio desde 20/09/2026, e
+/// não mais <see cref="ModuloPermissao.Sisreg"/>: quem consulta a agenda não precisa ver a produção
+/// de cada colega. Escolher quem entra nas estatísticas: <see cref="ModuloPermissao.SisregConfiguracao"/>
+/// — muda o que todos veem.</para>
 /// </summary>
 [ApiController]
 [Route("sisreg/estatisticas/operadores")]
@@ -22,7 +24,7 @@ public sealed class SisregEstatisticasController(IEstatisticasOperadoresService 
     /// <param name="de">Primeiro dia (data da autorização).</param>
     /// <param name="ate">Último dia, inclusive. Até 366 dias.</param>
     [HttpGet("equipe")]
-    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.EstatisticaSisreg, AcoesPermissao.Consulta)]
     [ProducesResponseType<EquipeEstatisticaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<EquipeEstatisticaDto> Equipe(
@@ -32,7 +34,7 @@ public sealed class SisregEstatisticasController(IEstatisticasOperadoresService 
     /// <summary>Uma pessoa no período.</summary>
     /// <param name="chave">A <c>chave</c> da linha do ranking (<c>u:&lt;id&gt;</c> ou <c>l:&lt;LOGIN&gt;</c>).</param>
     [HttpGet("individual")]
-    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.EstatisticaSisreg, AcoesPermissao.Consulta)]
     [ProducesResponseType<IndividualEstatisticaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

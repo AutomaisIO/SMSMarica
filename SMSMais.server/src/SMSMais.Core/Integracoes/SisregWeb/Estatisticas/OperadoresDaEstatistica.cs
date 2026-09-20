@@ -37,12 +37,18 @@ public static class OperadoresDaEstatistica
         return saida;
     }
 
+    public static Task<IReadOnlySet<string>> ObterAsync(
+        IIntegracaoCredencialService credenciais, CancellationToken ct) =>
+        ObterAsync(credenciais, SisregWebSessao.Provedor, ct);
+
+    /// <summary>Mesma regra para outro provedor: as estatísticas do SER e do SERNIT guardam os seus
+    /// habilitados na credencial <c>ser</c>/<c>sernit</c>, sob a mesma chave.</summary>
     public static async Task<IReadOnlySet<string>> ObterAsync(
-        IIntegracaoCredencialService credenciais, CancellationToken ct)
+        IIntegracaoCredencialService credenciais, string provedor, CancellationToken ct)
     {
         try
         {
-            var atual = await credenciais.ObterAsync(SisregWebSessao.Provedor, ct);
+            var atual = await credenciais.ObterAsync(provedor, ct);
             return Ler(Parse(atual.ParametrosJson));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -52,8 +58,12 @@ public static class OperadoresDaEstatistica
         }
     }
 
+    public static Task<IReadOnlySet<string>> SalvarAsync(
+        IIntegracaoCredencialService credenciais, IEnumerable<string>? logins, CancellationToken ct) =>
+        SalvarAsync(credenciais, SisregWebSessao.Provedor, logins, ct);
+
     public static async Task<IReadOnlySet<string>> SalvarAsync(
-        IIntegracaoCredencialService credenciais, IEnumerable<string>? logins, CancellationToken ct)
+        IIntegracaoCredencialService credenciais, string provedor, IEnumerable<string>? logins, CancellationToken ct)
     {
         var normalizados = (logins ?? [])
             .Select(Normalizar)
@@ -64,12 +74,12 @@ public static class OperadoresDaEstatistica
 
         // Merge: usuário, senha e os agendamentos vivem no MESMO ParametrosJson — sobrescrever o JSON
         // inteiro apagaria a credencial de acesso.
-        var atual = await credenciais.ObterAsync(SisregWebSessao.Provedor, ct);
+        var atual = await credenciais.ObterAsync(provedor, ct);
         var json = Parse(atual.ParametrosJson) ?? new JsonObject();
         json[Chave] = new JsonArray([.. normalizados.Select(l => (JsonNode?)JsonValue.Create(l))]);
 
         await credenciais.AtualizarAsync(
-            SisregWebSessao.Provedor,
+            provedor,
             new AtualizarIntegracaoCredencialRequest(
                 ClientId: null,
                 ClientSecret: null,
