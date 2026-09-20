@@ -26,15 +26,18 @@ public sealed class ComunicacaoPacienteOptions
     // "(#132012) Parameter format does not match format in the created template" — foi o que
     // aconteceu com os três modelos novos em 20/09/2026.
 
-    /// <summary>Imagem enviada no cabeçalho dos modelos listados em
-    /// <see cref="TemplatesComImagem"/>. Precisa ser URL PÚBLICA (a Meta baixa o arquivo).</summary>
-    public string ImagemCabecalhoUrl { get; set; } = "https://app.smsmarica.online/icon-512.png";
-
-    /// <summary>Modelos cujo cabeçalho é uma imagem. O catálogo do relay não informa o formato do
-    /// header, então a lista é explícita — errar aqui só custa um 132012 na fila, não uma mensagem
-    /// errada para o paciente.</summary>
-    public string[] TemplatesComImagem { get; set; } =
-        ["confirmacao_exame", "confirmacao_consulta", "agendamento_proximo"];
+    /// <summary>
+    /// Imagem de cabeçalho POR MODELO (nome do modelo → URL pública da arte; a Meta baixa o
+    /// arquivo em cada envio). Modelo fora do mapa não leva cabeçalho.
+    /// <para>O catálogo do relay não informa o formato do header, então o mapa é explícito —
+    /// errar aqui custa um 132012 na fila, não uma mensagem errada para o paciente.</para>
+    /// </summary>
+    public Dictionary<string, string> ImagensCabecalho { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["confirmacao_exame"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.png",
+        ["confirmacao_consulta"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.png",
+        ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.png",
+    };
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
 

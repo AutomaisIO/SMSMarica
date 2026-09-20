@@ -35,14 +35,14 @@ public sealed class WhatsAppCliente(
     /// </summary>
     private object? CabecalhoImagem(string template)
     {
-        var opts = comunicacaoOptions.Value;
-        if (string.IsNullOrWhiteSpace(opts.ImagemCabecalhoUrl)) return null;
-        if (!opts.TemplatesComImagem.Contains(template, StringComparer.OrdinalIgnoreCase)) return null;
+        var mapa = comunicacaoOptions.Value.ImagensCabecalho;
+        if (mapa is null || !mapa.TryGetValue(template, out var url) || string.IsNullOrWhiteSpace(url))
+            return null;
 
         return new
         {
             type = "header",
-            parameters = new object[] { new { type = "image", image = new { link = opts.ImagemCabecalhoUrl } } },
+            parameters = new object[] { new { type = "image", image = new { link = url } } },
         };
     }
 
