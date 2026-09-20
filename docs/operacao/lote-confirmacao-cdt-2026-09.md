@@ -215,6 +215,39 @@ confirmação antiga, para a pessoa responder de novo sobre a data certa.
 | 17/09 | publicado o disparo em lote com prévia e modo forçado (commit `dc985b4`) |
 | 18/09 00:45 e 17:29 | **lote disparado** pelo Bernardo: 1.824 mensagens (CDT 1.024 + Centro Materno Infantil 800), agendas de 21/09 a 30/09 |
 | 20/09 | primeira mensagem nova (`confirmacao_exame`/`confirmacao_consulta`), lembrete de 2 dias LIGADO e **as 42 unidades** com aviso ligado |
+| 20/09 | **silêncio de 7 dias** entre a mensagem principal e o lembrete (commit `c422e05`) — sem ele, 679 pessoas do lote de 18/09 receberiam de novo dois dias depois |
+| 20/09 | **42 unidades conferidas como de Maricá** pelo cadastro nacional do CNES; endereço preenchido nas 10 que estavam sem cidade |
+| 20/09 | **todos os procedimentos ligados** na rede (1.315 pares acrescentados, 2.067 no total, 42 unidades) |
+
+### Por que o lembrete não sai logo depois da mensagem principal
+
+O lembrete de X dias e a mensagem de entrada disputam a mesma pessoa. Quem entrou na agenda faltando
+poucos dias recebe a principal e, se nada impedisse, receberia o lembrete na sequência — no caso do
+lote de 18/09, **679 pessoas receberiam de novo em 20/09**. Isso não é lembrete, é insistência, e
+insistência faz bloquear o número (o que custa a nota da conta na Meta).
+
+A régua é a data de **envio** da comunicação de confirmação daquela mesma solicitação:
+`ComunicacaoPacienteOptions.LembreteIntervaloMinimoDias`, padrão **7 dias**.
+
+### Unidades: como se confirmou que são de Maricá
+
+Não pelo SISREG — o orçamento anti-robô é do operador e CAPTCHA pausa a unidade por 24h. Pelo
+**cadastro nacional**, que é a mesma chave que o SISREG usa:
+`GET https://apidadosabertos.saude.gov.br/cnes/estabelecimentos/{cnes}` → `codigo_municipio`.
+As 42 vieram **330270 (Maricá)**. As 10 que estavam sem cidade no cadastro (CEO, CEO de Itaipuaçu,
+Centro de Exames Complementares, Centro de Radiologia, CRAD, COOTEF, DIMAGEM, Ernesto Che Guevara,
+RADIOCENTER, Reabilitar) tiveram logradouro, número, bairro e CEP preenchidos da mesma fonte.
+
+### Volume depois de ligar tudo
+
+| | Antes (5 unidades) | Depois (42 unidades, todos os procedimentos) |
+|---|---|---|
+| Agendamentos novos cobertos por dia | ~220 | **~603** |
+| Lembretes de 2 dias na virada | — | **957** (946 sem resposta, 11 confirmados) |
+
+Os 957 são um acerto de conta única — a fila acumulada de quem entra na janela de 2 dias. O regime
+permanente é ~603/dia de primeira mensagem, bem abaixo do pico já observado sem recusa da Meta
+(1.247 numa hora).
 
 ### Resultado do lote (leitura de 20/09, D+2)
 
