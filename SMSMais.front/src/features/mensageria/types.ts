@@ -158,6 +158,9 @@ export type ModeloWhatsApp = {
   corpo: string | null;
   parametros: number;
   exemplos: string[];
+  /** Nomes das variáveis na ordem: ["1","2"] (numerado) ou ["nome","data"] (nomeado). */
+  variaveis: string[];
+  nomeadas: boolean;
   /** Valores que o sistema usaria de verdade neste modelo. */
   sugestao: string[];
 };

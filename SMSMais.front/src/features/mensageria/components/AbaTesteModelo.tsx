@@ -94,12 +94,13 @@ export function AbaTesteModelo() {
           {modelo.parametros > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                Variáveis ({modelo.parametros})
+                Variáveis ({modelo.parametros}) ·{' '}
+                {modelo.nomeadas ? 'modelo com variáveis NOMEADAS' : 'modelo com variáveis numeradas'}
               </p>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {valores.map((v, i) => (
                   <label key={i} className="flex flex-col gap-1 text-sm">
-                    <span className="text-gray-700">{`{{${i + 1}}}`}</span>
+                    <span className="text-gray-700">{`{{${modelo.variaveis[i] ?? i + 1}}}`}</span>
                     <Input
                       value={v}
                       onChange={(e) =>

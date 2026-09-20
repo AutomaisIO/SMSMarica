@@ -54,13 +54,24 @@ public sealed record BotaoInterativoWhatsApp(string Id, string Titulo);
 /// Exemplos de cada variável, na ordem ({{1}}, {{2}}…), vindos do <c>example.body_text</c>
 /// aprovado na Meta. Alimentam os placeholders da tela de nova conversa.
 /// </param>
+/// <param name="Variaveis">
+/// As variáveis do corpo, NA ORDEM em que aparecem: <c>["1","2"]</c> quando o modelo foi criado
+/// numerado, <c>["nome","procedimento"]</c> quando foi criado com variáveis NOMEADAS (a Meta
+/// aceita os dois formatos desde 2024, e recusa com <c>132012</c> quem envia no formato errado).
+/// </param>
 public sealed record TemplateWhatsApp(
     string Nome,
     string Idioma,
     string Categoria,
     string? Corpo,
     int Parametros,
-    IReadOnlyList<string> Exemplos);
+    IReadOnlyList<string> Exemplos,
+    IReadOnlyList<string>? Variaveis = null)
+{
+    /// <summary>O modelo usa variáveis nomeadas (<c>{{nome}}</c>) em vez de numeradas.</summary>
+    public bool Nomeadas => Variaveis is { Count: > 0 }
+        && !Variaveis.All(v => v.Length > 0 && v.All(char.IsAsciiDigit));
+}
 
 /// <summary>
 /// Cliente do canal WhatsApp via Automais.Zap. Token de tenant e PhoneNumberId vêm da configuração cifrada

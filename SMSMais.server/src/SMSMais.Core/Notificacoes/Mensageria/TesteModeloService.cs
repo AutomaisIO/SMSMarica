@@ -9,6 +9,10 @@ namespace SMSMais.Core.Notificacoes.Mensageria;
 public sealed record ModeloWhatsAppDto(
     string Nome, string Idioma, string Categoria, string? Corpo, int Parametros,
     IReadOnlyList<string> Exemplos,
+    /// <summary>Variáveis na ordem: ["1","2"] (numerado) ou ["nome","data"] (nomeado). A Meta
+    /// recusa (132012) quem envia no formato diferente do que o modelo foi criado.</summary>
+    IReadOnlyList<string> Variaveis,
+    bool Nomeadas,
     /// <summary>Parâmetros que o SISTEMA montaria para este modelo (quando ele é um dos nossos) —
     /// é o que faz o teste valer como ensaio do envio real, e não um texto qualquer.</summary>
     IReadOnlyList<string> Sugestao);
@@ -42,6 +46,7 @@ public sealed class TesteModeloService(
         var catalogo = await whatsApp.ListarTemplatesAsync(ct);
         return [.. catalogo.Select(t => new ModeloWhatsAppDto(
             t.Nome, t.Idioma, t.Categoria, t.Corpo, t.Parametros, t.Exemplos,
+            t.Variaveis ?? [], t.Nomeadas,
             SugestaoDe(t.Nome, t.Parametros, opts)))];
     }
 

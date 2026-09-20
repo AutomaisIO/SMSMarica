@@ -155,8 +155,9 @@ public sealed class WhatsAppCliente(
                         .Select(v => v!)];
                 }
 
+                var variaveis = VariaveisDoCorpo(corpoTexto);
                 lista.Add(new TemplateWhatsApp(
-                    nome, idioma, categoria, corpoTexto, ContarParametros(corpoTexto), exemplos));
+                    nome, idioma, categoria, corpoTexto, variaveis.Count, exemplos, variaveis));
             }
         }
 
@@ -166,13 +167,56 @@ public sealed class WhatsAppCliente(
     private static string? Texto(JsonElement e, string prop)
         => e.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
-    private static int ContarParametros(string? corpo)
+    /// <summary>
+    /// As variáveis do corpo, na ordem em que aparecem e sem repetir. Aceita os DOIS formatos que
+    /// a Meta permite: numerado (<c>{{1}}</c>) e nomeado (<c>{{nome_paciente}}</c>). Antes só o
+    /// numerado era reconhecido — modelo nomeado contava zero variáveis e o envio voltava
+    /// <c>132012 Parameter format does not match</c>.
+    /// </summary>
+    private static IReadOnlyList<string> VariaveisDoCorpo(string? corpo)
     {
-        if (string.IsNullOrEmpty(corpo)) return 0;
-        var max = 0;
-        foreach (Match m in Regex.Matches(corpo, @"\{\{(\d+)\}\}"))
-            if (int.TryParse(m.Groups[1].Value, out var idx) && idx > max) max = idx;
-        return max;
+        if (string.IsNullOrEmpty(corpo)) return [];
+
+        var vistas = new List<string>();
+        foreach (Match m in Regex.Matches(corpo, @"\{\{\s*([A-Za-z0-9_]+)\s*\}\}"))
+        {
+            var v = m.Groups[1].Value;
+            if (!vistas.Contains(v, StringComparer.OrdinalIgnoreCase)) vistas.Add(v);
+        }
+
+        // Numerado: a ordem é a dos índices, não a da leitura ({{2}} pode vir antes de {{1}}).
+        if (vistas.Count > 0 && vistas.All(v => v.All(char.IsAsciiDigit)))
+            return [.. vistas.OrderBy(v => int.Parse(v, System.Globalization.CultureInfo.InvariantCulture))];
+
+        return vistas;
+    }
+
+    /// <summary>
+    /// Monta os parâmetros do corpo no formato que o modelo APROVADO espera: nomeado leva
+    /// <c>parameter_name</c>; numerado vai posicional. Catálogo indisponível (relay fora, modo
+    /// simulado) cai no posicional, que é o formato antigo.
+    /// </summary>
+    private async Task<object[]> ParametrosBodyAsync(
+        string template, IReadOnlyList<string> valores, CancellationToken ct)
+    {
+        IReadOnlyList<string>? nomes = null;
+        try
+        {
+            var modelo = (await ListarTemplatesAsync(ct))
+                .FirstOrDefault(t => string.Equals(t.Nome, template, StringComparison.OrdinalIgnoreCase));
+            if (modelo is { Nomeadas: true }) nomes = modelo.Variaveis;
+        }
+        catch { /* sem catálogo, segue posicional */ }
+
+        if (nomes is null)
+            return [.. valores.Select(object (p) => new { type = "text", text = p })];
+
+        return [.. valores.Select(object (p, i) => new
+        {
+            type = "text",
+            parameter_name = i < nomes.Count ? nomes[i] : $"var{i + 1}",
+            text = p,
+        })];
     }
 
     public async Task<EnvioWhatsAppResultado> EnviarTextoAsync(
@@ -201,7 +245,7 @@ public sealed class WhatsAppCliente(
 
         object[]? components = parametros.Count == 0
             ? null
-            : [new { type = "body", parameters = parametros.Select(p => new { type = "text", text = p }).ToArray() }];
+            : [new { type = "body", parameters = await ParametrosBodyAsync(template, parametros, ct) }];
         object body = new
         {
             messaging_product = "whatsapp",
@@ -226,7 +270,7 @@ public sealed class WhatsAppCliente(
 
         var components = new List<object>();
         if (parametrosBody.Count > 0)
-            components.Add(new { type = "body", parameters = parametrosBody.Select(p => new { type = "text", text = p }).ToArray() });
+            components.Add(new { type = "body", parameters = await ParametrosBodyAsync(template, parametrosBody, ct) });
         for (var i = 0; i < botoes.Count; i++)
         {
             var b = botoes[i];
