@@ -12,6 +12,26 @@ public class InterpretadorRespostaCidadaoTests
 {
     private const string Cpf = "04528822733";
 
+    // ---------- Botões do lembrete ----------
+
+    [Theory]
+    [InlineData("Sim! Está confirmado!", true)]
+    [InlineData("sim esta confirmado", true)]
+    [InlineData("confirmado", true)]
+    [InlineData("Não poderei ir.", false)]
+    [InlineData("sim", false)]           // "sim" solto é do fluxo do nome, não do lembrete
+    public void Reconhece_o_botao_sim_esta_confirmado(string texto, bool esperado) =>
+        Assert.Equal(esperado, InterpretadorRespostaCidadao.ConfirmaComparecimento(texto));
+
+    [Theory]
+    [InlineData("Não poderei ir.", true)]
+    [InlineData("nao poderei ir", true)]
+    [InlineData("não posso ir", true)]
+    [InlineData("Sim! Está confirmado!", false)]
+    [InlineData("não", false)]
+    public void Reconhece_o_botao_nao_poderei_ir(string texto, bool esperado) =>
+        Assert.Equal(esperado, InterpretadorRespostaCidadao.NaoPodereiIr(texto));
+
     // ---------- Quero mais informações ----------
 
     [Theory]

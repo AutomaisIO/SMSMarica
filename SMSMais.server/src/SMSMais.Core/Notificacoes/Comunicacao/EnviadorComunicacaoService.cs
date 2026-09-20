@@ -60,20 +60,25 @@ public sealed class EnviadorComunicacaoService(
         }
     }
 
-    private FinalidadeComunicacao[] FinalidadesHabilitadas()
+    /// <param name="lembreteLigado">Chave de operação do lembrete (menu Confirmações).</param>
+    private FinalidadeComunicacao[] FinalidadesHabilitadas(bool lembreteLigado)
     {
-        var lista = new List<FinalidadeComunicacao>(3);
+        var lista = new List<FinalidadeComunicacao>(4);
         if (_options.EnviarConfirmacaoAgendamento) lista.Add(FinalidadeComunicacao.ConfirmacaoAgendamento);
         if (_options.EnviarExameLiberado) lista.Add(FinalidadeComunicacao.ExameLiberado);
         if (_options.EnviarLaudoPronto) lista.Add(FinalidadeComunicacao.LaudoPronto);
+        if (_options.EnviarLembreteAgendamento && lembreteLigado)
+            lista.Add(FinalidadeComunicacao.LembreteAgendamento);
         return [.. lista];
     }
 
+    /// <summary>Mensagem sobre a AGENDA (confirmação e lembrete) respeita a janela de horário.
+    /// Resultado de exame e laudo não: são a resposta a algo que o paciente está esperando.</summary>
+    private static bool EhSobreAgendamento(FinalidadeComunicacao f) =>
+        f is FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento;
+
     private async Task ExecutarUmaPassagemAsync(CancellationToken ct)
     {
-        var habilitadas = FinalidadesHabilitadas();
-        if (habilitadas.Length == 0) return;
-
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var servico = scope.ServiceProvider.GetRequiredService<IComunicacaoPacienteService>();
@@ -85,6 +90,9 @@ public sealed class EnviadorComunicacaoService(
         // pela verificação cadastral — o paciente está na conversa esperando.
         var regras = await scope.ServiceProvider
             .GetRequiredService<Confirmacoes.IConfirmacaoConfiguracaoService>().ObterAsync(ct);
+
+        var habilitadas = FinalidadesHabilitadas(regras.LembreteHabilitado);
+        if (habilitadas.Length == 0) return;
         var max = Math.Clamp(regras.MaximoPorPassagem,
             1, Confirmacoes.ConfirmacaoConfiguracaoService.MaximoPorPassagemTeto);
         var janelaAberta = Confirmacoes.JanelaEnvioConfirmacao.Dentro(
@@ -96,7 +104,7 @@ public sealed class EnviadorComunicacaoService(
                         && n.ProximaTentativaEm <= agora
                         && habilitadas.Contains(n.Finalidade)
                         && (janelaAberta
-                            || n.Finalidade != FinalidadeComunicacao.ConfirmacaoAgendamento
+                            || !EhSobreAgendamento(n.Finalidade)
                             || n.IgnorarJanelaHorario))
             .OrderBy(n => n.ProximaTentativaEm)
             .Take(max)

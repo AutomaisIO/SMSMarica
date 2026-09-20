@@ -189,10 +189,18 @@ public sealed class ComunicacaoPacienteService(
             {
                 Terminal(n, StatusComunicacao.Falha, "Solicitação excluída ou cancelada antes do envio.");
             }
-            else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            else if (n.Finalidade is FinalidadeComunicacao.ConfirmacaoAgendamento
+                         or FinalidadeComunicacao.LembreteAgendamento
                      && (s.DataAgendada is not { } dataAgendada || dataAgendada <= DateTime.UtcNow))
             {
                 Terminal(n, StatusComunicacao.Falha, "Exame sem data futura no momento do envio.");
+            }
+            else if (n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                     && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
+            {
+                // Avisou que não vai depois de entrar na fila do lembrete: não se lembra quem já
+                // respondeu que não comparece.
+                Terminal(n, StatusComunicacao.Falha, "Paciente avisou que não poderá comparecer.");
             }
             else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
                      && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
@@ -206,7 +214,8 @@ public sealed class ComunicacaoPacienteService(
                 Terminal(n, StatusComunicacao.Falha,
                     "Confirmação por WhatsApp está restrita a agendamentos do SISREG (menu Confirmações).");
             }
-            else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            else if (n.Finalidade is FinalidadeComunicacao.ConfirmacaoAgendamento
+                         or FinalidadeComunicacao.LembreteAgendamento
                      && !n.IgnorarJanelaHorario
                      && await ForaDaJanelaAsync(ct) is { } abertura)
             {
@@ -430,8 +439,12 @@ public sealed class ComunicacaoPacienteService(
         // mandou laudo para destino desconhecido no lote de 2026-07. Confirmação de
         // agendamento continua indo para qualquer celular: não expõe resultado e é ela que
         // provoca o contato (a resposta do paciente é o que permite verificar o número).
+        // Lembrete entra aqui junto com resultado/laudo: mandar "sua data está chegando" para quem
+        // nunca se identificou seria repetir a primeira mensagem com outro texto — e sem prova de
+        // que é a pessoa certa. Fica retido até o contato ser verificado.
         var exigeVerificado = n.Finalidade is FinalidadeComunicacao.ExameLiberado
-            or FinalidadeComunicacao.LaudoPronto;
+            or FinalidadeComunicacao.LaudoPronto
+            or FinalidadeComunicacao.LembreteAgendamento;
 
         // Envio manual com "assumo o risco" (n.IgnorarVerificacaoTelefone): o operador decidiu
         // enviar o resultado mesmo sem número verificado — pula o gate e usa o melhor celular.
@@ -559,6 +572,16 @@ public sealed class ComunicacaoPacienteService(
         var (template, parametros, botoes) = MontarEnvio(
             n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, link.Token, opts);
 
+        // O modelo aprovado manda na quantidade de variáveis: mandar a mais é erro 132000 na Meta
+        // e a mensagem não sai. Corta pela declaração do catálogo (cacheado) e avisa quando o
+        // modelo pede MAIS do que o sistema monta — aí é o modelo que precisa de revisão.
+        (parametros, var incompativel) = await AjustarAoModeloAsync(template, parametros, ct);
+        if (incompativel is not null)
+        {
+            Terminal(n, StatusComunicacao.Falha, incompativel);
+            return;
+        }
+
         var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
             n.Telefone, template, opts.Idioma, parametros, botoes,
             pacienteId: n.PacienteId, conteudoLegivel: ConteudoLegivel(template, opts, parametros), ct: ct);
@@ -591,6 +614,30 @@ public sealed class ComunicacaoPacienteService(
         {
             ReagendarOuFalhar(n, resultado.Erro);
         }
+    }
+
+    /// <summary>
+    /// Ajusta os parâmetros ao modelo APROVADO na Meta: sobra é cortada (modelo mais curto do que
+    /// o texto canônico), falta é erro — e erro que se explica, em vez de 132000 cru na fila.
+    /// Catálogo indisponível (relay fora, modo simulado): segue com o que foi montado.
+    /// </summary>
+    private async Task<(string[] Parametros, string? Erro)> AjustarAoModeloAsync(
+        string template, string[] parametros, CancellationToken ct)
+    {
+        IReadOnlyList<TemplateWhatsApp> catalogo;
+        try { catalogo = await whatsApp.ListarTemplatesAsync(ct); }
+        catch { return (parametros, null); }
+
+        var modelo = catalogo.FirstOrDefault(t => string.Equals(t.Nome, template, StringComparison.OrdinalIgnoreCase));
+        if (modelo is null) return (parametros, null); // não listado (ou catálogo vazio): tenta mesmo assim
+
+        if (modelo.Parametros == parametros.Length) return (parametros, null);
+        if (modelo.Parametros < parametros.Length) return (parametros[..modelo.Parametros], null);
+
+        return (parametros,
+            $"O modelo \"{template}\" aprovado na Meta espera {modelo.Parametros} variáveis e o "
+            + $"sistema monta {parametros.Length}. Revise o modelo (ou avise quem cuida do fluxo) "
+            + "antes de reenviar.");
     }
 
     /// <inheritdoc />
@@ -698,6 +745,32 @@ public sealed class ComunicacaoPacienteService(
 
             case FinalidadeComunicacao.LaudoPronto:
                 return (opts.TemplateLaudoPronto, [nome, exame, DataRealizacao(s)], [url]);
+
+            // agendamento_proximo: "Olá {{1}}, *{{2}}* está se aproximando! Não se esqueça que está
+            // marcado dia *{{3}}*, às *{{4}}*. … Ainda está confirmado seu comparecimento?"
+            //   {{1}} = "Sr. João" / "Sra. Maria"
+            //   {{2}} = "Seu exame de Mamografia" / "Sua consulta de Cardiologia"
+            //   {{3}} = "21/09/2026"
+            //   {{4}} = "14:00h"
+            // Botões (quick reply, sem payload — voltam como TEXTO): "Sim! Está confirmado!" e
+            // "Não poderei ir." — tratados no ConfirmacaoAgendamentoWhatsAppHandler.
+            // Modelo diferente para quem JÁ confirmou e para quem não respondeu (mesmo modelo
+            // enquanto o segundo não existir).
+            case FinalidadeComunicacao.LembreteAgendamento:
+            {
+                var confirmado = s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada;
+                var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
+                var oQue = tipo == TipoAgendamento.Consulta ? "Sua consulta" : "Seu exame";
+                return (
+                    confirmado ? opts.TemplateLembreteConfirmado : opts.TemplateLembreteNaoConfirmado,
+                    [
+                        Tratamento(nomePaciente, sexo),
+                        $"{oQue} de {exame}",
+                        quando.ToString("dd/MM/yyyy", PtBr),
+                        $"{quando.ToString("HH:mm", PtBr)}h",
+                    ],
+                    []);
+            }
 
             // confirmacao_regulacao (modelo do Complexo Regulador; substitui o
             // confirmar_agendamento_urlapp desde 2026-07-08): "Bom dia, {{1}}. … Boas notícias!

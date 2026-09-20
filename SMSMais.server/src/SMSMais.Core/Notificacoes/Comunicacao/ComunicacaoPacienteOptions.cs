@@ -43,9 +43,13 @@ public sealed class ComunicacaoPacienteOptions
     /// agendada!"). O texto fixo é do próprio modelo — por isso são dois.</summary>
     public string TemplateConfirmacaoConsulta { get; set; } = "confirmacao_consulta";
 
-    /// <summary>Lembrete "a agenda está chegando", X dias antes (X no menu Confirmações). O modelo
-    /// ainda está sendo criado na Meta; enquanto não houver conteúdo, nada é enviado.</summary>
-    public string TemplateLembreteAgendamento { get; set; } = "agenda_chegando";
+    /// <summary>Lembrete X dias antes para quem AINDA NÃO respondeu — precisa continuar oferecendo
+    /// confirmar/avisar que não vai. X é configurado no menu Confirmações.</summary>
+    public string TemplateLembreteNaoConfirmado { get; set; } = "agendamento_proximo";
+
+    /// <summary>Lembrete X dias antes para quem JÁ confirmou — só relembra a data (mais objetivo).
+    /// Enquanto o modelo próprio não existir, usa o mesmo do não confirmado.</summary>
+    public string TemplateLembreteConfirmado { get; set; } = "agendamento_proximo";
 
     /// <summary>OBSOLETO desde 20/09/2026: a primeira mensagem virou
     /// <see cref="TemplateConfirmacaoExame"/>/<see cref="TemplateConfirmacaoConsulta"/>, que não
@@ -72,6 +76,10 @@ public sealed class ComunicacaoPacienteOptions
     // sozinho. Útil enquanto o template correspondente aguarda aprovação da Meta. ----
 
     public bool EnviarConfirmacaoAgendamento { get; set; } = true;
+
+    /// <summary>Trava de código do lembrete. A chave de operação é <c>lembrete_habilitado</c>
+    /// (menu Confirmações); esta existe para desligar o recurso inteiro sem mexer no banco.</summary>
+    public bool EnviarLembreteAgendamento { get; set; } = true;
 
     /// <summary>Ligado em 2026-07-06 (template exame_liberado APPROVED).</summary>
     public bool EnviarExameLiberado { get; set; } = true;

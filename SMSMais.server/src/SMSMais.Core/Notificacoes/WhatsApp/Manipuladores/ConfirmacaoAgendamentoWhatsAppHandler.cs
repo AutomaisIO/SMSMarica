@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Notificacoes.VerificacaoCadastral;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -66,7 +67,90 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             return;
         }
 
+        // Botões do LEMBRETE (agendamento_proximo): quick replies sem payload, voltam como TEXTO.
+        // "Sim! Está confirmado!" e "Não poderei ir." — o agendamento é o da mensagem respondida.
+        if (string.IsNullOrEmpty(ctx.InterativoReplyId))
+        {
+            if (InterpretadorRespostaCidadao.ConfirmaComparecimento(ctx.Texto)
+                && await SolicitacaoDoLembreteAsync(ctx, ct) is { } idConfirma)
+            {
+                ctx.Consumido = true;
+                await TratarSegueConfirmadoAsync(ctx, idConfirma, ct);
+                return;
+            }
+            if (InterpretadorRespostaCidadao.NaoPodereiIr(ctx.Texto)
+                && await SolicitacaoDoLembreteAsync(ctx, ct) is { } idNaoVai)
+            {
+                ctx.Consumido = true;
+                await TratarNaoPodereiAsync(ctx, idNaoVai, ct);
+                return;
+            }
+        }
+
         await TratarTextoLivreComoMotivoAsync(ctx, ct);
+    }
+
+    /// <summary>
+    /// De qual agendamento a pessoa está falando? Do que a mensagem RESPONDE (a Meta manda o
+    /// contexto) — e, sem contexto, do lembrete mais recente enviado para aquele número. Sem isso,
+    /// "Não poderei ir." de quem tem dois exames marcados cancelaria o errado.
+    /// </summary>
+    private async Task<Guid?> SolicitacaoDoLembreteAsync(ManipuladorContexto ctx, CancellationToken ct)
+    {
+        if (ctx.Mensagem.ContextoWaMessageId is { } wamid)
+        {
+            var porContexto = await db.ComunicacoesPaciente.AsNoTracking()
+                .Where(c => c.MensagemWhatsApp != null && c.MensagemWhatsApp.WaMessageId == wamid
+                    && c.SolicitacaoId != null)
+                .Select(c => c.SolicitacaoId)
+                .FirstOrDefaultAsync(ct);
+            if (porContexto is not null) return porContexto;
+        }
+
+        var telefone = ctx.Conversa.TelefoneCanonical;
+        var recentes = await db.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                && c.SolicitacaoId != null && c.Telefone != null && c.EnviadoEm != null
+                && c.EnviadoEm > DateTime.UtcNow.AddDays(-30))
+            .OrderByDescending(c => c.EnviadoEm)
+            .Select(c => new { c.SolicitacaoId, c.Telefone })
+            .Take(50)
+            .ToListAsync(ct);
+
+        return recentes
+            .FirstOrDefault(c => Conversas.TelefoneWhatsApp.MesmoNumero(c.Telefone, telefone))
+            ?.SolicitacaoId;
+    }
+
+    /// <summary>"Sim! Está confirmado!" do lembrete: confirma (ou só agradece, se já estava).</summary>
+    private async Task TratarSegueConfirmadoAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
+    {
+        var s = await CarregarAsync(solicitacaoId, ct);
+        if (s is null) return;
+
+        await RemoverEstadoAsync(ctx.Conversa.TelefoneCanonical, ct);
+
+        if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
+        {
+            s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+            s.ConfirmadoEm = DateTime.UtcNow;
+            s.ConfirmadoCanal = "whatsapp-quickreply";
+            s.AtualizadoEm = DateTime.UtcNow;
+        }
+        else if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
+        {
+            // Tinha avisado que não ia e agora diz que vai: a presença volta a valer.
+            s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+            s.ConfirmadoEm = DateTime.UtcNow;
+            s.ConfirmadoCanal = "whatsapp-quickreply";
+            s.ConfirmacaoCanceladaEm = null;
+            s.MotivoCancelamentoPaciente = null;
+            s.AtualizadoEm = DateTime.UtcNow;
+        }
+
+        await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
+            $"Combinado! Sua presença {DescricaoAgendamento(s)} está *CONFIRMADA* ✅\n\n{LembreteGuia}",
+            pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
     // Quick reply "Não poderei ir!" do template.

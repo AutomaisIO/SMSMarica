@@ -189,6 +189,10 @@ public static class DependencyInjection
             Notificacoes.Confirmacoes.ConfirmacoesPainelService>();
         services.AddScoped<Notificacoes.Confirmacoes.ILoteConfirmacaoService,
             Notificacoes.Confirmacoes.LoteConfirmacaoService>();
+        // Lembrete X dias antes (enfileira; quem envia é o EnviadorComunicacaoService).
+        services.AddScoped<Notificacoes.Confirmacoes.ILembreteAgendamentoService,
+            Notificacoes.Confirmacoes.LembreteAgendamentoService>();
+        services.AddHostedService<Notificacoes.Confirmacoes.LembreteAgendamentoWorker>();
         services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
             Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
         services.AddScoped<Notificacoes.Mensageria.IMensageriaConfiguracaoService,

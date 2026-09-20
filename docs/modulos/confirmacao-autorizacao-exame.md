@@ -66,8 +66,15 @@ Tela `/app/confirmacoes` (módulo **65 `Confirmacoes`**; API `confirmacoes/*`), 
   - vazão por rodada do worker (padrão 100, teto 1000; o worker roda a cada minuto);
   - **só SISREG** (padrão ligado): solicitação `Manual` não enfileira nem sai confirmação;
   - **lembrete X dias antes** (`lembrete_dias_antes`, padrão 2, e `lembrete_habilitado`, nasce
-    desligado): configuração **GLOBAL**, não por unidade. O envio entra quando os modelos estiverem
-    aprovados — um para quem já confirmou, outro para quem não respondeu (`agenda_chegando`);
+    desligado): configuração **GLOBAL**, não por unidade. Finalidade
+    `LembreteAgendamento = 4`, enfileirada pelo `LembreteAgendamentoWorker` (30 em 30 min) e
+    enviada pelo worker de sempre — mesma janela, mesma vazão, mesmas regras de LGPD. Modelo
+    `agendamento_proximo` (4 params: `{{1}}` "Sr. João", `{{2}}` "Seu exame de Mamografia",
+    `{{3}}` "21/09/2026", `{{4}}` "14:00h"); botões *Sim! Está confirmado!* e *Não poderei ir.*
+    (quick reply sem payload → voltam como texto, casados pelo contexto da mensagem respondida).
+    Quem **cancelou** não recebe; quem não tem contato verificado fica retido (não se repete a
+    primeira mensagem com outro texto). Dois slots de modelo: quem já confirmou × quem não
+    respondeu — iguais enquanto o segundo não existir;
   - chave por unidade (a mesma `sisreg_varredura_agenda.enviar_confirmacao`), com atalho para
     escolher os procedimentos na aba SISREG da unidade.
 

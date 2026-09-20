@@ -161,6 +161,26 @@ public static partial class InterpretadorRespostaCidadao
         return null;
     }
 
+    // ---------- Botões do lembrete (agendamento_proximo) ----------
+
+    /// <summary>"Sim! Está confirmado!" — botão do lembrete (volta como texto) ou a mesma resposta
+    /// escrita. Confirma o comparecimento.</summary>
+    public static bool ConfirmaComparecimento(string? texto)
+    {
+        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', ' ');
+        return t is "sim esta confirmado" or "sim! esta confirmado" or "esta confirmado"
+            or "sim esta confirmado!" or "confirmado" or "sim confirmado" or "segue confirmado"
+            or "continua confirmado" or "sim vou" or "vou comparecer" or "sim eu vou";
+    }
+
+    /// <summary>"Não poderei ir." — botão do lembrete (volta como texto) ou escrito.</summary>
+    public static bool NaoPodereiIr(string? texto)
+    {
+        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', ' ');
+        return t is "nao poderei ir" or "nao vou poder ir" or "nao posso ir" or "nao vou"
+            or "nao poderei comparecer" or "nao vou poder comparecer" or "nao consigo ir";
+    }
+
     // ---------- Quero mais informações ----------
 
     /// <summary>Botão "Quero mais informações" da primeira mensagem (a Meta devolve o TEXTO do

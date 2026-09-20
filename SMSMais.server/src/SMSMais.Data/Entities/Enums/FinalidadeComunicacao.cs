@@ -15,4 +15,10 @@ public enum FinalidadeComunicacao
 
     /// <summary>Aviso de laudo disponível (gatilho: laudo ASSINADO digitalmente).</summary>
     LaudoPronto = 3,
+
+    /// <summary>
+    /// Lembrete X dias antes do agendamento ("a sua data está chegando"), com modelo diferente
+    /// para quem JÁ confirmou e para quem ainda não respondeu. X é global (menu Confirmações).
+    /// </summary>
+    LembreteAgendamento = 4,
 }
