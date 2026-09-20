@@ -269,6 +269,63 @@
   }
 }
 
+/*
+ * Animações do Manual (menu Manual e o "?" das telas). Ficam aqui, e não em cada componente,
+ * porque usam a cor da marca via `--c-primary-*` — acompanham o tenant sem uma linha de JS.
+ * Tudo abaixo é desligado por `prefers-reduced-motion`: movimento é enfeite, não informação.
+ */
+@keyframes manual-atencao {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(var(--c-primary-500) / 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgb(var(--c-primary-500) / 0);
+  }
+}
+
+@keyframes manual-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes manual-fluxo {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@layer utilities {
+  /* Acende o próximo clique do roteiro da simulação. */
+  .anim-atencao {
+    animation: manual-atencao 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Card que acabou de mudar de fila. */
+  .anim-entrada {
+    animation: manual-entrada 0.35s ease-out both;
+  }
+
+  /* Tracejado que "corre" na seta do diagrama de fluxo. */
+  .anim-fluxo {
+    animation: manual-fluxo 1.2s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-atencao,
+  .anim-entrada,
+  .anim-fluxo {
+    animation: none !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
