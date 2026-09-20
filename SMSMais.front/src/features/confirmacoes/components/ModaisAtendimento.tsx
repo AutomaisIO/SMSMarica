@@ -64,8 +64,11 @@ export function ModalConfirmar({ item, ocupado, erro, aoFechar, aoConfirmar }: B
 }
 
 /**
- * Cancelamento — FASE 1: cancela no SMSMais (a vaga volta a contar) e orienta a cancelar no SISREG
- * pelo navegador; a extensão observa e concilia. A escrita direta no SISREG vem na fase 2.
+ * Cancelamento. Pede o motivo e o meio, e nada mais.
+ *
+ * <para>Já teve um aviso aqui explicando que o SISREG precisava ser cancelado à parte. Saiu: quem
+ * clica é sempre uma pessoa, que sabe o que está fazendo, e texto a mais em modal de ação vira
+ * ruído — lido nas duas primeiras vezes e ignorado nas mil seguintes.</para>
  */
 export function ModalCancelar({ item, ocupado, erro, aoFechar, aoCancelar }: Base & { aoCancelar: (motivo: string, meio: string) => void }) {
   // Quem veio da aba Cancelamento já disse por que — repetir isso à mão é trabalho à toa, e
@@ -78,11 +81,6 @@ export function ModalCancelar({ item, ocupado, erro, aoFechar, aoCancelar }: Bas
     <Modal aberto aoFechar={aoFechar} titulo="Cancelar agendamento">
       <div className="space-y-3">
         <Cabecalho item={item} />
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          O cancelamento vale no SMSMais na hora (a vaga volta a contar e o paciente sai das filas). No{' '}
-          <strong>SISREG</strong> ele ainda precisa ser feito pelo navegador — com a extensão instalada, o sistema
-          reconhece o cancelamento sozinho.
-        </p>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-700">Motivo</span>
           <Input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="ex.: paciente pediu, vai fazer particular" autoFocus />
