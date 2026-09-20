@@ -12,6 +12,18 @@ public class InterpretadorRespostaCidadaoTests
 {
     private const string Cpf = "04528822733";
 
+    // ---------- Quero mais informações ----------
+
+    [Theory]
+    [InlineData("Quero mais informações", true)]
+    [InlineData("quero mais informacoes", true)]
+    [InlineData("gostaria de mais informações sobre o exame", true)]
+    [InlineData("quero saber", true)]
+    [InlineData("não sou essa pessoa", false)]
+    [InlineData("0452", false)]
+    public void Reconhece_o_botao_quero_mais_informacoes(string texto, bool esperado) =>
+        Assert.Equal(esperado, InterpretadorRespostaCidadao.QuerMaisInformacoes(texto));
+
     // ---------- Não sou essa pessoa ----------
 
     [Theory]

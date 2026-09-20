@@ -299,6 +299,47 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Quero_mais_informacoes_e_o_que_destrava_o_pedido_do_CPF()
+    {
+        // A primeira mensagem não pede nada (pedir de cara não funcionou: a pessoa ia direto no
+        // outro botão). O toque em "Quero mais informações" é que abre o pedido dos 4 dígitos.
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararAsync(db);
+        var estadoInicial = (await EstadoAsync(db))!;
+        estadoInicial.Etapa = EtapaVerificacaoCadastral.AguardandoInteresse;
+        await db.SaveChangesAsync();
+
+        await c.Handler.TratarAsync(
+            Contexto(c.Conversa, "Quero mais informações", botaoPayload: "Quero mais informações"), default);
+        await db.SaveChangesAsync();
+
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoCpf, (await EstadoAsync(db))!.Etapa);
+        await c.Whats.Received().EnviarTextoAsync(
+            _telefone,
+            Arg.Is<string>(t => t.Contains("4 primeiros números do CPF")),
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>());
+
+        // E os dígitos, agora, seguem o fluxo de sempre.
+        await ResponderAsync(db, c, "0452");
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoNascimento, (await EstadoAsync(db))!.Etapa);
+    }
+
+    [Fact]
+    public async Task Na_primeira_mensagem_os_digitos_direto_tambem_valem()
+    {
+        // Quem responde os dígitos sem tocar no botão não pode ser barrado por formalidade.
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararAsync(db);
+        var estadoInicial = (await EstadoAsync(db))!;
+        estadoInicial.Etapa = EtapaVerificacaoCadastral.AguardandoInteresse;
+        await db.SaveChangesAsync();
+
+        await ResponderAsync(db, c, "0452");
+
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoNascimento, (await EstadoAsync(db))!.Etapa);
+    }
+
+    [Fact]
     public async Task Nao_sou_essa_pessoa_pergunta_antes_e_nao_conheco_marca_o_numero_invalido()
     {
         await using var db = fixture.CriarDbContext();

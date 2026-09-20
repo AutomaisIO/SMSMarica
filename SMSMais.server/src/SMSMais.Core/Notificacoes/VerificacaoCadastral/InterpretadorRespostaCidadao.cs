@@ -161,6 +161,22 @@ public static partial class InterpretadorRespostaCidadao
         return null;
     }
 
+    // ---------- Quero mais informações ----------
+
+    /// <summary>Botão "Quero mais informações" da primeira mensagem (a Meta devolve o TEXTO do
+    /// botão), ou a mesma intenção escrita. É o que destrava o pedido dos dígitos do CPF.</summary>
+    public static bool QuerMaisInformacoes(string? texto)
+    {
+        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', '?', ' ');
+        if (t.Length == 0) return false;
+        if (t is "quero mais informacoes" or "quero mais informacao" or "mais informacoes"
+            or "mais informacao" or "quero informacoes" or "quero informacao" or "informacoes"
+            or "quero saber" or "quero saber mais" or "sim quero" or "quero") return true;
+        // "gostaria de mais informações sobre o exame", "queria saber do agendamento"...
+        return (t.Contains("informac") || t.Contains("saber"))
+            && (t.Contains("quero") || t.Contains("queria") || t.Contains("gostaria") || t.Contains("preciso"));
+    }
+
     // ---------- Não sou essa pessoa ----------
 
     /// <summary>Botão "Não sou essa pessoa." do desafio cadastral (a Meta devolve o TEXTO do botão

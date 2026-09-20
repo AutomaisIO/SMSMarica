@@ -7,13 +7,18 @@ public sealed record ConfirmacaoConfiguracaoDto(
     int MaximoPorPassagem,
     bool SomenteSisreg,
     bool JanelaAbertaAgora,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+    /// <summary>Dias antes do agendamento em que o lembrete sai (global).</summary>
+    int LembreteDiasAntes = 2,
+    bool LembreteHabilitado = false);
 
 public sealed record SalvarConfirmacaoConfiguracaoRequest(
     string HoraInicioEnvio,
     string HoraFimEnvio,
     int MaximoPorPassagem,
-    bool SomenteSisreg);
+    bool SomenteSisreg,
+    int LembreteDiasAntes = 2,
+    bool LembreteHabilitado = false);
 
 /// <summary>Fotografia da fila de confirmações (só a finalidade confirmação de agendamento).</summary>
 public sealed record ResumoFilaConfirmacaoDto(

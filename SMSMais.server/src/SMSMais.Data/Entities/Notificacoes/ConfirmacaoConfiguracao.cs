@@ -34,6 +34,18 @@ public class ConfirmacaoConfiguracao
     /// </summary>
     public bool SomenteSisreg { get; set; } = true;
 
+    /// <summary>
+    /// Quantos dias ANTES do agendamento sai o lembrete ("a sua data está chegando"). Configuração
+    /// GLOBAL — não é por unidade (decisão do produto em 19/09/2026). Padrão 2.
+    /// </summary>
+    public int LembreteDiasAntes { get; set; } = 2;
+
+    /// <summary>
+    /// Liga o lembrete. Nasce DESLIGADO: só faz sentido quando os modelos estiverem aprovados na
+    /// Meta (um para quem já confirmou, outro para quem ainda não respondeu).
+    /// </summary>
+    public bool LembreteHabilitado { get; set; }
+
     public DateTime CriadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }
     public Guid? AtualizadoPor { get; set; }

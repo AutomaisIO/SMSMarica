@@ -280,4 +280,24 @@ public enum ModuloPermissao
     /// tokens e sem custo do robô e sem a estimativa de custo Meta — quem vê volume não precisa
     /// saber quanto se gasta. Só <c>Consulta</c>. Exige também <see cref="Estatistica"/> (a tela).</summary>
     EstatisticaCustos = 67,
+
+    // ---- Estatísticas dos operadores por sistema de regulação (20/09/2026) ----
+    // Três módulos, e não um: cada sistema tem a sua equipe, e quem gerencia a regulação estadual
+    // não precisa ver o ranking do SISREG (nem o contrário). Só <c>Consulta</c> — a tela é
+    // leitura; escolher quem entra nas estatísticas continua na configuração de cada sistema
+    // (<see cref="SisregConfiguracao"/> e <see cref="RegulacaoConfiguracao"/>). Nascem
+    // desligados em todo perfil que não seja o Admin.
+
+    /// <summary>Estatísticas do SISREG: trabalho dos operadores autorizadores (equipe, individual e
+    /// rankings) a partir do export da agenda importado. Antes vivia dentro de <see cref="Sisreg"/>;
+    /// saiu porque quem consulta a agenda não precisa ver a produção de cada colega.</summary>
+    EstatisticaSisreg = 68,
+
+    /// <summary>Estatísticas do SER (SES-RJ): trabalho dos operadores a partir da trilha de eventos
+    /// da fila espelhada (quem agendou, cancelou, pendenciou, fez FollowUP e quando).</summary>
+    EstatisticaSer = 69,
+
+    /// <summary>Estatísticas do SERNIT (SER de Niterói): mesma natureza de
+    /// <see cref="EstatisticaSer"/>, sobre as tabelas <c>sernit_*</c>.</summary>
+    EstatisticaSernit = 70,
 }

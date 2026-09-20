@@ -135,11 +135,19 @@ export type ConfirmacaoConfiguracao = {
   somenteSisreg: boolean;
   janelaAbertaAgora: boolean;
   atualizadoEm: string | null;
+  /** Dias antes do agendamento em que o lembrete sai — configuração GLOBAL. */
+  lembreteDiasAntes: number;
+  lembreteHabilitado: boolean;
 };
 
 export type SalvarConfirmacaoConfiguracao = Pick<
   ConfirmacaoConfiguracao,
-  'horaInicioEnvio' | 'horaFimEnvio' | 'maximoPorPassagem' | 'somenteSisreg'
+  | 'horaInicioEnvio'
+  | 'horaFimEnvio'
+  | 'maximoPorPassagem'
+  | 'somenteSisreg'
+  | 'lembreteDiasAntes'
+  | 'lembreteHabilitado'
 >;
 
 export type RegraUnidade = {

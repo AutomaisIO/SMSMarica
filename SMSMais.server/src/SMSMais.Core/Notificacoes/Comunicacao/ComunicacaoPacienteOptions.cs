@@ -30,7 +30,26 @@ public sealed class ComunicacaoPacienteOptions
     /// "Falar com atendente" (este cai no módulo Conversas).</summary>
     public string TemplateConfirmaAgendamento { get; set; } = "confirmacao_regulacao";
 
-    /// <summary>Desafio cadastral para número NÃO verificado (UTILITY, aprovado). 2 params:
+    /// <summary>
+    /// Primeira mensagem para número NÃO verificado, quando o agendamento é de EXAME. Curta e sem
+    /// pedir nada: "Olá {{1}}, esse é o canal oficial do Alô Maricá… Seu exame foi agendado! Para
+    /// mais informações acesse: app.smsmarica.online". 1 param: {{1}} = "Sr./Sra. {primeiro nome}".
+    /// Botões: <b>Não sou essa pessoa</b> e <b>Quero mais informações</b> — o pedido dos 4 dígitos
+    /// do CPF só vem depois do toque (ver <see cref="Data.Entities.Enums.EtapaVerificacaoCadastral.AguardandoInteresse"/>).
+    /// </summary>
+    public string TemplateConfirmacaoExame { get; set; } = "confirmacao_exame";
+
+    /// <summary>Igual ao <see cref="TemplateConfirmacaoExame"/>, para CONSULTA ("Sua consulta foi
+    /// agendada!"). O texto fixo é do próprio modelo — por isso são dois.</summary>
+    public string TemplateConfirmacaoConsulta { get; set; } = "confirmacao_consulta";
+
+    /// <summary>Lembrete "a agenda está chegando", X dias antes (X no menu Confirmações). O modelo
+    /// ainda está sendo criado na Meta; enquanto não houver conteúdo, nada é enviado.</summary>
+    public string TemplateLembreteAgendamento { get; set; } = "agenda_chegando";
+
+    /// <summary>OBSOLETO desde 20/09/2026: a primeira mensagem virou
+    /// <see cref="TemplateConfirmacaoExame"/>/<see cref="TemplateConfirmacaoConsulta"/>, que não
+    /// pedem CPF de cara. Mantido só para não quebrar o bind de configurações antigas.</summary>
     /// {{1}} primeiro nome, {{2}} procedimento. Pede os 4 primeiros dígitos do CPF; botões
     /// "Não sou essa pessoa." e "Prefiro falar com um atendente". Não revela data/local — a
     /// máquina determinística (VerificacaoCadastralWhatsAppHandler) valida dígitos + nascimento

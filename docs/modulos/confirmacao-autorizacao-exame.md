@@ -65,12 +65,23 @@ Tela `/app/confirmacoes` (módulo **65 `Confirmacoes`**; API `confirmacoes/*`), 
     verificação cadastral e está na conversa esperando;
   - vazão por rodada do worker (padrão 100, teto 1000; o worker roda a cada minuto);
   - **só SISREG** (padrão ligado): solicitação `Manual` não enfileira nem sai confirmação;
+  - **lembrete X dias antes** (`lembrete_dias_antes`, padrão 2, e `lembrete_habilitado`, nasce
+    desligado): configuração **GLOBAL**, não por unidade. O envio entra quando os modelos estiverem
+    aprovados — um para quem já confirmou, outro para quem não respondeu (`agenda_chegando`);
   - chave por unidade (a mesma `sisreg_varredura_agenda.enviar_confirmacao`), com atalho para
     escolher os procedimentos na aba SISREG da unidade.
 
 ### Conversa no WhatsApp
 
-1. **Número não verificado** → template `validacao_cadastro` (CPF → nascimento → nome).
+> **Primeira mensagem trocada em 20/09/2026.** Era `validacao_cadastro`, que pedia os 4 dígitos do
+> CPF logo de cara e oferecia "falar com atendente" como única alternativa — e era nele que as
+> pessoas clicavam, em vez de responder. Agora a primeira mensagem é curta e **não pede nada**:
+> `confirmacao_exame` / `confirmacao_consulta` (1 param: "Sr./Sra. {primeiro nome}"), com os botões
+> **Não sou essa pessoa** e **Quero mais informações**. O pedido do CPF só vem depois do toque
+> (etapa `AguardandoInteresse` → `AguardandoCpf`). Quem manda os dígitos direto também é aceito.
+
+1. **Número não verificado** → `confirmacao_exame`/`confirmacao_consulta` → "Quero mais informações"
+   → CPF (4 dígitos) → nascimento → nome → vínculo.
    - Botão **"Não sou essa pessoa."** (chega como texto do botão) → pergunta interativa
      "Você conhece FULANO?" **[Não conheço] [Conheço]**. *Não conheço* = número **inválido** para o
      paciente: pendência `NumeroErrado` + carimbo `urn:smsmarica:contato-negado` no telecom FHIR;

@@ -53,6 +53,9 @@ public sealed class ConfirmacaoConfiguracaoService(
         if (request.MaximoPorPassagem is < 1 or > MaximoPorPassagemTeto)
             throw new ValidacaoException("confirmacao.vazao_invalida",
                 $"A quantidade por rodada deve ficar entre 1 e {MaximoPorPassagemTeto}.");
+        if (request.LembreteDiasAntes is < 1 or > 30)
+            throw new ValidacaoException("confirmacao.lembrete_dias_invalido",
+                "O lembrete deve sair de 1 a 30 dias antes do agendamento.");
 
         var agora = DateTime.UtcNow;
         var c = await db.ConfirmacaoConfiguracoes
@@ -67,6 +70,8 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.HoraFimEnvio = fim;
         c.MaximoPorPassagem = request.MaximoPorPassagem;
         c.SomenteSisreg = request.SomenteSisreg;
+        c.LembreteDiasAntes = request.LembreteDiasAntes;
+        c.LembreteHabilitado = request.LembreteHabilitado;
         c.AtualizadoEm = agora;
         c.AtualizadoPor = usuarioAtual.UsuarioId;
         await db.SaveChangesAsync(ct);
@@ -79,5 +84,7 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.MaximoPorPassagem,
         c.SomenteSisreg,
         JanelaEnvioConfirmacao.Dentro(DateTime.UtcNow, c.HoraInicioEnvio, c.HoraFimEnvio),
-        c.AtualizadoEm);
+        c.AtualizadoEm,
+        c.LembreteDiasAntes,
+        c.LembreteHabilitado);
 }

@@ -5,6 +5,14 @@ namespace SMSMais.Data.Entities.Enums;
 public enum EtapaVerificacaoCadastral
 {
     /// <summary>Aguardando os primeiros dígitos (≥4) do CPF.</summary>
+    /// <summary>
+    /// Primeira mensagem entregue ("seu exame foi agendado"), sem pedir nada ainda. O pedido dos
+    /// dígitos do CPF só vem quando a pessoa toca em <b>Quero mais informações</b>.
+    /// <para>Existe porque pedir CPF de cara não funcionou: em vez de responder, as pessoas iam
+    /// direto em "falar com atendente" — era o único outro botão.</para>
+    /// </summary>
+    AguardandoInteresse = 7,
+
     AguardandoCpf = 1,
 
     /// <summary>CPF conferiu; aguardando mês/ano de nascimento.</summary>

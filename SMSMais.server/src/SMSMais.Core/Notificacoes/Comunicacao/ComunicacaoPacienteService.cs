@@ -497,26 +497,33 @@ public sealed class ComunicacaoPacienteService(
             return;
         }
 
-        // Confirmação para número NÃO verificado: em vez de mandar os DADOS do agendamento, manda
-        // o DESAFIO cadastral (validacao_cadastro) e SEGURA a confirmação real (pendurada). A
-        // resposta é conduzida pela MÁQUINA DE ESTADOS determinística do webhook
-        // (VerificacaoCadastralWhatsAppHandler: dígitos → nascimento → nome) — independente do
-        // robô LLM estar ligado. "Assumo o risco" (IgnorarVerificacaoTelefone) pula o desafio.
+        // Confirmação para número NÃO verificado: em vez dos DADOS do agendamento, manda a PRIMEIRA
+        // MENSAGEM — curta, sem pedir nada — e SEGURA a confirmação real (pendurada). A conversa é
+        // conduzida pela MÁQUINA DE ESTADOS determinística do webhook
+        // (VerificacaoCadastralWhatsAppHandler), independente do robô LLM estar ligado.
+        //
+        // Por que curta: a versão anterior pedia os 4 dígitos do CPF logo de cara e oferecia
+        // "falar com atendente" como única alternativa — e era nele que as pessoas clicavam, em vez
+        // de responder. Agora o pedido do CPF só vem depois de "Quero mais informações".
+        // "Assumo o risco" (IgnorarVerificacaoTelefone) pula tudo isso.
         if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
             && !n.IgnorarVerificacaoTelefone
             && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
             && options.Value.VerificacaoCadastralHabilitada)
         {
             var optsDesafio = options.Value;
-            var procedimento = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto ?? "seu atendimento";
-            // Conteúdo legível gravado na thread/histórico: deixa CLARO que se pedem os 4 dígitos.
+            var ehConsulta = n.Tipo == TipoAgendamento.Consulta;
+            var modeloPrimeiraMsg = ehConsulta
+                ? optsDesafio.TemplateConfirmacaoConsulta
+                : optsDesafio.TemplateConfirmacaoExame;
+            var tratamento = Tratamento(paciente.NomeCompleto, paciente.Sexo);
+            // Conteúdo legível gravado na thread/histórico — é o que o operador vê que o cidadão recebeu.
             var textoDesafio =
-                $"Olá {PrimeiroNome(paciente.NomeCompleto)}! Este é o canal oficial da saúde. Temos uma "
-                + $"informação sobre *{procedimento}*. Para sua segurança, confirme apenas os *4 primeiros "
-                + "dígitos do CPF* do paciente para prosseguir.";
+                $"Olá {tratamento}, esse é o canal oficial do Alô Maricá da Secretaria Municipal de Saúde.\n\n"
+                + $"{(ehConsulta ? "Sua consulta foi agendada" : "Seu exame foi agendado")}!\n"
+                + "Para mais informações acesse: app.smsmarica.online";
             var desafio = await whatsApp.EnviarTemplateAsync(
-                n.Telefone, optsDesafio.TemplateValidacaoCadastro, optsDesafio.Idioma,
-                [PrimeiroNome(paciente.NomeCompleto), procedimento],
+                n.Telefone, modeloPrimeiraMsg, optsDesafio.Idioma, [tratamento],
                 pacienteId: n.PacienteId, conteudoLegivel: textoDesafio, ct: ct);
 
             if (desafio.Ok)
@@ -528,7 +535,8 @@ public sealed class ComunicacaoPacienteService(
                 if (desafio.WaMessageId is { } wamidDesafio)
                     n.MensagemWhatsAppId = await db.MensagensWhatsApp.AsNoTracking()
                         .Where(m => m.WaMessageId == wamidDesafio).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct);
-                n.MotivoFalha = "Aguardando verificação cadastral (dígitos do CPF + nascimento + nome).";
+                n.MotivoFalha = "Primeira mensagem entregue; aguardando o paciente se identificar "
+                    + "(Quero mais informações → 4 dígitos do CPF → nascimento → nome).";
                 n.ProximaTentativaEm = null;
                 await AbrirEstadoVerificacaoAsync(n, ct);
                 await db.SaveChangesAsync(ct);
@@ -638,16 +646,18 @@ public sealed class ComunicacaoPacienteService(
                 Id = Guid.CreateVersion7(),
                 TelefoneCanonical = telefone,
                 ComunicacaoPacienteId = n.Id,
-                Etapa = EtapaVerificacaoCadastral.AguardandoCpf,
+                // Nada foi pedido ainda: a primeira mensagem só avisa que há agendamento.
+                Etapa = EtapaVerificacaoCadastral.AguardandoInteresse,
                 ExpiraEm = agora.AddDays(7),
                 CriadoEm = agora,
             });
             return;
         }
-        var emAndamento = estado.Etapa != EtapaVerificacaoCadastral.AguardandoCpf && estado.ExpiraEm > agora;
+        var emAndamento = estado.Etapa is not (EtapaVerificacaoCadastral.AguardandoCpf
+            or EtapaVerificacaoCadastral.AguardandoInteresse) && estado.ExpiraEm > agora;
         if (emAndamento) return;
         estado.ComunicacaoPacienteId = n.Id;
-        estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+        estado.Etapa = EtapaVerificacaoCadastral.AguardandoInteresse;
         estado.PacienteId = null;
         estado.CpfDigitosInformados = null;
         estado.TentativasErradas = 0;
@@ -774,6 +784,18 @@ public sealed class ComunicacaoPacienteService(
                 + "do SISREG, comprovante de residência e cartão do SUS. Favor confirmar o seu comparecimento "
                 + "clicando no link abaixo. Favor não enviar áudio. Atenciosamente, _*Complexo Regulador de Maricá*_";
         return null;
+    }
+
+    /// <summary>"Sr. João" / "Sra. Maria" / só o primeiro nome quando o sexo não está no cadastro.</summary>
+    private static string Tratamento(string? nomeCompleto, Sexo sexo)
+    {
+        var nome = PrimeiroNome(nomeCompleto);
+        return sexo switch
+        {
+            Sexo.Masculino => $"Sr. {nome}",
+            Sexo.Feminino => $"Sra. {nome}",
+            _ => nome,
+        };
     }
 
     private static string PrimeiroNome(string? nome)

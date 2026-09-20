@@ -111,6 +111,8 @@ export function AbaRegras() {
   const [fim, setFim] = useState('18:00');
   const [vazao, setVazao] = useState(100);
   const [somenteSisreg, setSomenteSisreg] = useState(true);
+  const [lembreteDiasAntes, setLembreteDiasAntes] = useState(2);
+  const [lembreteHabilitado, setLembreteHabilitado] = useState(false);
 
   useEffect(() => {
     if (!cfg.data) return;
@@ -118,6 +120,8 @@ export function AbaRegras() {
     setFim(cfg.data.horaFimEnvio);
     setVazao(cfg.data.maximoPorPassagem);
     setSomenteSisreg(cfg.data.somenteSisreg);
+    setLembreteDiasAntes(cfg.data.lembreteDiasAntes);
+    setLembreteHabilitado(cfg.data.lembreteHabilitado);
   }, [cfg.data]);
 
   const colunas: Coluna<RegraUnidade>[] = useMemo(
@@ -177,6 +181,39 @@ export function AbaRegras() {
             <span>Só agendamentos do <strong>SISREG</strong></span>
           </label>
         </div>
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900">Lembrete antes do agendamento</h3>
+          <p className="mt-1 text-sm text-gray-600">
+            Uma segunda mensagem, às vésperas: um modelo para quem <strong>já confirmou</strong> (só
+            para lembrar) e outro para quem <strong>ainda não respondeu</strong> (que continua
+            oferecendo confirmar ou avisar que não vai). Vale para a rede toda — não é por unidade.
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-gray-700">Dias antes do agendamento</span>
+              <Input
+                type="number"
+                min={1}
+                max={30}
+                value={lembreteDiasAntes}
+                onChange={(e) => setLembreteDiasAntes(Number(e.target.value))}
+                disabled={!podeEditar}
+              />
+            </label>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm md:col-span-3">
+              <input
+                type="checkbox"
+                checked={lembreteHabilitado}
+                onChange={(e) => setLembreteHabilitado(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                Enviar o lembrete <span className="text-gray-500">(só depois que os modelos estiverem aprovados na Meta)</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
         {podeEditar ? (
           <div className="mt-4 flex items-center justify-end gap-3">
             {salvar.isError ? <span className="text-sm text-red-700">{extrairMensagemDeErro(salvar.error)}</span> : null}
@@ -184,7 +221,16 @@ export function AbaRegras() {
             <Button
               tamanho="sm"
               disabled={salvar.isPending}
-              onClick={() => salvar.mutate({ horaInicioEnvio: inicio, horaFimEnvio: fim, maximoPorPassagem: vazao, somenteSisreg })}
+              onClick={() =>
+                salvar.mutate({
+                  horaInicioEnvio: inicio,
+                  horaFimEnvio: fim,
+                  maximoPorPassagem: vazao,
+                  somenteSisreg,
+                  lembreteDiasAntes,
+                  lembreteHabilitado,
+                })
+              }
             >
               <Save className="mr-1.5 h-4 w-4" /> Salvar parâmetros
             </Button>

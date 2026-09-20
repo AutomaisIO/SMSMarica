@@ -14,8 +14,13 @@ namespace SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 
 /// <summary>
 /// Máquina de estados DETERMINÍSTICA da verificação cadastral no WhatsApp — SEM LLM no caminho
-/// (lição do incidente de 26/08: vazamento, latência e validação fraca). O desafio
-/// <c>validacao_cadastro</c> abre um <see cref="VerificacaoCadastralEstado"/>; daqui em diante:
+/// (lição do incidente de 26/08: vazamento, latência e validação fraca). A primeira mensagem
+/// (<c>confirmacao_exame</c>/<c>confirmacao_consulta</c>) abre um
+/// <see cref="VerificacaoCadastralEstado"/> em <c>AguardandoInteresse</c> — ela não pede nada.
+/// Daqui em diante:
+///
+///   "Quero mais informações" (botão da primeira mensagem) → pede os 4 dígitos do CPF
+///
 ///
 ///   "Não sou essa pessoa." (botão do template) → "Você conhece FULANO?" [Não conheço | Conheço]
 ///     → "Não conheço" marca o número como INVÁLIDO para aquele paciente (pendência de número
@@ -121,10 +126,19 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
         var telefone = ctx.Conversa.TelefoneCanonical;
 
-        // Botões do TEMPLATE do desafio: a Meta devolve o texto do botão (o template não leva
-        // payload próprio). Só valem se há desafio em aberto para este número.
+        // Botões do TEMPLATE da primeira mensagem: a Meta devolve o texto do botão (o template não
+        // leva payload próprio). Só valem se há conversa de identificação em aberto neste número.
         if (string.IsNullOrEmpty(ctx.InterativoReplyId))
         {
+            if (InterpretadorRespostaCidadao.QuerMaisInformacoes(ctx.Texto))
+            {
+                if (await ComunicacaoDoDesafioAsync(ctx, telefone, ct) is { } alvoInteresse)
+                {
+                    ctx.Consumido = true;
+                    await PedirCpfAsync(ctx, telefone, alvoInteresse, ct);
+                }
+                return;
+            }
             if (InterpretadorRespostaCidadao.EhNaoSouEssaPessoa(ctx.Texto))
             {
                 if (await ComunicacaoDoDesafioAsync(ctx, telefone, ct) is { } alvo)
@@ -191,6 +205,20 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
         switch (estado.Etapa)
         {
+            case EtapaVerificacaoCadastral.AguardandoInteresse:
+                // Quem manda os dígitos direto (sem tocar no botão) não é barrado por formalidade.
+                if (InterpretadorRespostaCidadao.ExtrairDigitosCpf(ctx.Texto) is not null)
+                {
+                    estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+                    await TratarEtapaCpfAsync(ctx, estado, ct);
+                }
+                else
+                {
+                    await ReorientarAsync(ctx, estado,
+                        "Para ver os dados do seu agendamento, toque em *Quero mais informações* na "
+                        + "mensagem acima — ou responda com os *4 primeiros dígitos do CPF* do paciente.", ct);
+                }
+                break;
             case EtapaVerificacaoCadastral.AguardandoCpf:
                 await TratarEtapaCpfAsync(ctx, estado, ct);
                 break;
@@ -631,6 +659,48 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         await ResponderAsync(ctx,
             "Sem problemas, obrigado por avisar! Este número não será usado para essa pessoa. A equipe "
             + "de cadastro vai revisar o contato.", ct);
+    }
+
+    // ---------- "Quero mais informações" ----------
+
+    /// <summary>
+    /// O toque em "Quero mais informações" é o que destrava o pedido do CPF. A primeira mensagem
+    /// deliberadamente não pede nada: quando pedia, a pessoa não respondia — ia no outro botão.
+    /// </summary>
+    private async Task PedirCpfAsync(
+        ManipuladorContexto ctx, string telefone, Data.Entities.ComunicacaoPaciente alvo, CancellationToken ct)
+    {
+        var estado = await db.VerificacoesCadastraisEstado
+            .FirstOrDefaultAsync(e => e.TelefoneCanonical == telefone, ct);
+        var agora = DateTime.UtcNow;
+        if (estado is null)
+        {
+            estado = new VerificacaoCadastralEstado
+            {
+                Id = Guid.CreateVersion7(),
+                TelefoneCanonical = telefone,
+                ComunicacaoPacienteId = alvo.Id,
+                Etapa = EtapaVerificacaoCadastral.AguardandoCpf,
+                ExpiraEm = agora.Add(ValidadeEstado),
+                CriadoEm = agora,
+            };
+            db.VerificacoesCadastraisEstado.Add(estado);
+        }
+        else if (estado.Etapa is EtapaVerificacaoCadastral.AguardandoInteresse
+                 or EtapaVerificacaoCadastral.AguardandoCpf)
+        {
+            // Diálogo já adiantado (nascimento, nome) não volta para trás por um toque repetido.
+            estado.ComunicacaoPacienteId = alvo.Id;
+            estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+            estado.Reorientacoes = 0;
+            estado.ExpiraEm = agora.Add(ValidadeEstado);
+            Tocar(estado);
+        }
+
+        var nome = PrimeiroNome((await ObterPacienteAsync(alvo.PacienteId, ct))?.NomeCompleto);
+        await ResponderAsync(ctx,
+            "Claro! Para sua segurança, informe apenas os *4 primeiros números do CPF* "
+            + $"{(nome is null ? "do paciente" : $"de *{nome}*")}.", ct);
     }
 
     // ---------- "Não sou essa pessoa." ----------
