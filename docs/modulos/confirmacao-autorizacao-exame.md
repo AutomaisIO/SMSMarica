@@ -80,6 +80,15 @@ Tela `/app/confirmacoes` (módulo **65 `Confirmacoes`**; API `confirmacoes/*`), 
 
 ### Conversa no WhatsApp
 
+> ⚠️ **Modelo com FOTO no cabeçalho exige o componente de imagem em CADA envio.** A imagem que
+> aparece no modelo aprovado é só exemplo: mandar apenas o corpo faz a Meta recusar com
+> `(#132012) Parameter format does not match format in the created template`. Foi o que derrubou
+> os três modelos novos em 20/09/2026. O catálogo do relay **não** informa o formato do cabeçalho
+> (devolve nome, idioma, categoria, corpo e exemplos), então o mapa *modelo → URL pública da arte*
+> é explícito em `ComunicacaoPaciente:ImagensCabecalho`. As artes são servidas pelo app do cidadão
+> (`/mensagens/*.jpg`, JPEG ≤ 1125 px — a imagem é baixada a cada envio, pela Meta e pelo aparelho
+> do paciente). **Criou modelo novo com foto? Acrescente no mapa, senão ele falha em silêncio na fila.**
+
 > **Primeira mensagem trocada em 20/09/2026.** Era `validacao_cadastro`, que pedia os 4 dígitos do
 > CPF logo de cara e oferecia "falar com atendente" como única alternativa — e era nele que as
 > pessoas clicavam, em vez de responder. Agora a primeira mensagem é curta e **não pede nada**:
