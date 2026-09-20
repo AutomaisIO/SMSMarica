@@ -876,3 +876,55 @@ releitura.
 Se `codigo_solicitacao` (campo que existe no formulário e vai vazio) serve para cancelar direto,
 sem passar pela listagem. Testar economizaria a navegação inteira — **mas só com um cancelamento
 que alguém de fato queira fazer**, nunca com uma solicitação de verdade escolhida ao acaso.
+
+## 🔎 `cons_verificar` por PERÍODO DE AUTORIZAÇÃO — o que é e o que não aguenta (2026-09-20)
+
+A mesma tela do cancelamento ("Consulta de Autorização/Cancelamento") aceita `etapa=LISTAR` com
+`cns` vazio e `dt_inicial`/`dt_final` (rótulo "Período de Autorização", ≤ 31 dias, sem filtro de
+unidade). Sondado num domingo e num dia útil:
+
+- **O período filtra pela data em que a solicitação foi AUTORIZADA/MARCADA, não por "o que mudou
+  no dia".** Prova: em 20/09 (domingo) a rede devolveu 1 linha — uma marcação feita naquele dia
+  pela própria solicitante (`SOL/AGE/SOL`, agenda local) — e a solicitação que NÓS cancelamos
+  naquele mesmo dia **não apareceu**. Cancelamento continua vindo só de `cons_marcacao_cancelada`.
+- As linhas trazem: código, data de execução, procedimento, **status** (`AGE/CONF/EXEC`,
+  `AGE/FALTA/EXEC`, `SOL/AGE/SOL`…), unidade executante, unidade solicitante, médico, paciente,
+  operador, tipo (1ª vez/retorno) — e checkbox `chk_N` só nas canceláveis. A primeira célula é o
+  checkbox: o código está na SEGUNDA `<td>`.
+- **Dia útil da rede inteira NÃO responde:** 18/09 (sexta, ~60–900 autorizações) estourou 30 s na
+  primeira tentativa e, na segunda (timeout 120 s), o servidor **derrubou a conexão**
+  (`WinError 10054`). Sem filtro de unidade, não há como repartir. Duas tentativas, mesmo
+  resultado — não insistir: é o tipo de carga que o anti-robô pode ler como abuso.
+
+**Conclusão para "vagas ocupadas em tempo real":** esta tela serve para o dia de HOJE enquanto o
+volume é baixo, mas não é confiável como fonte de marcações do dia. Candidatas a sondar (1
+requisição cada, com teto): `cons_marcados_reg` com `unidade` vazio e `tp_periodo=aut` (rede
+inteira?) e, se só por unidade, o custo é 40 requisições por ciclo.
+
+**Adendo (20/09, ~20h):** `cons_marcados_reg` com `unidade` VAZIO e `tp_periodo=aut` também
+respondeu num domingo (0,4 s, "Nenhum registro encontrado" — a regulação não marcou nada) e
+**também derrubou a conexão num dia útil** (18/09, `WinError 10054`, timeout de 120 s). Padrão:
+as duas telas de autorização aceitam a rede inteira, mas o servidor aborta quando o resultado
+passa de algumas centenas de linhas (dia útil = 600–1.100 autorizações). A tela de canceladas
+sobrevive porque um dia tem 50–60. **Marcações do dia só por unidade** — é o custo a dimensionar.
+
+## ⚠️ CORREÇÃO (20/09, ~21h): a listagem de canceladas ANUNCIA o total — ignorar perdeu 269 linhas
+
+A tela `cons_marcacao_cancelada` declara os dois números, e eu tinha escrito o contrário:
+
+- cabeçalho: `MARCAÇÕES PESQUISADAS (1868)`
+- rodapé: `Exibindo Página [1] de 94`, e o JS `exibirPagina(indice, 94)`
+
+A primeira versão do `consultar_canceladas.py` parava "quando a página não trouxesse novidade" e
+tinha um teto de 80 páginas que eu mesmo inventei. Resultado: **1.599 de 1.868 linhas, em
+silêncio** — e o número redondo (80 × 20 = 1.600) não me fez desconfiar. A conciliação acusou 503
+solicitações canceladas ainda de pé na nossa base; o número real é **560**.
+
+**Regra que fica, e vale para qualquer listagem paginada do SISREG:** leia o total declarado pela
+tela e só dê a leitura por completa quando o que você juntou bater com ele. Faltando linha,
+**falhe alto e recuse conciliar** — num inventário de cancelamentos, "faltou" significa "um
+cancelamento se perdeu", que é exatamente o que não pode acontecer.
+
+Detalhe do mesmo experimento: em 1.868 linhas há **1 código repetido** (a mesma marcação
+cancelada duas vezes). Dedupe por código continua certo, mas a repetição tem de ser reportada, não
+engolida.

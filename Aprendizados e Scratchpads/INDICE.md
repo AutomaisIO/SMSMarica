@@ -104,7 +104,7 @@ Motor em `sisreg/client.py` (`SisregClient`: priming + login + sessão). Aprendi
 | script | o que faz |
 |---|---|
 | `cancelar_solicitacao.py` | **ESCREVE no SISREG**: cancela uma solicitação da fila de Cancelamento do SMSMais pelo `cons_verificar` (etapa `EXCLUIR_SOLICITACAO`). Lê a situação na ficha ANTES (se já cancelada, não envia), localiza o checkbox exato na listagem (nunca adivinha `chk_N`), e prova o resultado relendo a ficha — nunca pelo alerta nem pelo HTTP 200. Sem `--executar` só mostra. Validado em produção em 20/09 |
-| `consultar_canceladas.py` | cancelamentos da rede por período (`cons_marcacao_cancelada`, `tp_periodo=C`, máx. 31 dias; 20 por página, rodapé não anuncia o total). Traz justificativa, operador e instante do cancelamento. `--conciliar` cruza com a nossa base — em 31 dias, 503 códigos cancelados no SISREG continuavam de pé no SMSMais |
+| `consultar_canceladas.py` | cancelamentos da rede por período (`cons_marcacao_cancelada`, `tp_periodo=C`, máx. 31 dias; 20 por página; o rodapé ANUNCIA o total (`MARCAÇÕES PESQUISADAS (N)` + `de P` páginas) e o coletor exige que o lido bata com o declarado — ignorar isso perdeu 269 linhas na primeira versão). Traz justificativa, operador e instante do cancelamento. `--conciliar` cruza com a nossa base — em 31 dias, 503 códigos cancelados no SISREG continuavam de pé no SMSMais |
 
 **Sondas — cada uma responde UMA pergunta**
 | script | pergunta que respondeu |

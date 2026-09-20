@@ -9,7 +9,8 @@ da fila de Cancelamento (20/09/2026), **4 já estavam canceladas no SISREG** e o
       tp_periodo  = C   (período de CANCELAMENTO; S = solicitação, M = marcação)
       dt_inicial / dt_final   dd/mm/aaaa — o SISREG recusa intervalo maior que 31 dias
       co_cnes_ups = CNES da executante, ou vazio para TODAS
-      pagina      = 0-based
+      pagina      = 0-based; a tela DECLARA o total em `MARCAÇÕES PESQUISADAS (N)` e o número de
+                    páginas em `exibirPagina(_, P)` — pagine 0..P-1 e confira N no fim
 
 Uso:
     python consultar_canceladas.py                 # cancelamentos de hoje, rede toda
@@ -68,29 +69,58 @@ def linhas(html: str) -> list[dict]:
     return fora
 
 
-MAX_PAGINAS = 80   # 20 linhas por página; teto de sanidade, não expectativa
+TETO_PAGINAS = 500   # sanidade; o número real vem do rodapé
 
 
-def todas_as_paginas(pegar, inicio_html: str) -> list[dict]:
+def total_anunciado(html: str) -> tuple:
+    """(linhas, páginas) que a PRÓPRIA tela declara: `MARCAÇÕES PESQUISADAS (N)` e `de P`."""
+    texto = _html.unescape(re.sub(r"<[^>]+>", " ", html))
+    n = re.search(r"PESQUISADAS?\s*\((\d+)\)", texto, re.I)
+    p = re.findall(r"exibirPagina\(\s*[^,]+,\s*(\d+)\s*\)", html)
+    return (int(n.group(1)) if n else None, max(int(x) for x in p) if p else None)
+
+
+def todas_as_paginas(pegar, inicio_html: str) -> tuple:
     """
-    Junta todas as páginas.
+    Junta todas as páginas. Devolve (linhas, aviso) — aviso vazio quando a leitura fechou.
 
-    O rodapé NÃO diz quantas são — só oferece `buscaSolicitacoes(1)`, o que me fez acreditar,
-    na primeira versão, que 20 linhas eram o resultado inteiro (e 20 é exatamente o tamanho de
-    uma página: número redondo é sempre suspeito). A forma honesta é pedir a próxima página até
-    ela não trazer nada novo.
+    ARMADILHA QUE JÁ CUSTOU UMA CONCLUSÃO ERRADA (20/09/2026): a primeira versão parava na
+    primeira página sem novidade e tinha teto de 80 páginas. Numa janela de 31 dias a tela
+    anunciava **1.868 linhas em 94 páginas** e o coletor devolveu 1.599 — 269 a menos — calado.
+    E o número redondo (80 × 20 = 1.600) não levantou suspeita nenhuma.
+
+    Agora o total vem da própria tela e a leitura só se dá por completa quando o que se juntou
+    bate com o que ela declarou. Faltando linha, devolve aviso — nunca silêncio: aqui "faltou"
+    quer dizer "um cancelamento se perdeu", que é justamente o que não pode acontecer.
     """
-    vistos: dict[str, dict] = {}
+    vistos = {}
+    brutas = 0
     html = inicio_html
-    for pag in range(MAX_PAGINAS):
+    linhas_decl, paginas_decl = total_anunciado(html)
+    limite = min(paginas_decl or TETO_PAGINAS, TETO_PAGINAS)
+    for pag in range(limite):
         if pag:
             html = pegar(pag)
-        novos = [l for l in linhas(html) if l["codigo"] not in vistos]
-        if not novos:
-            break
+        lidas = linhas(html)
+        brutas += len(lidas)
+        novos = [l for l in lidas if l["codigo"] not in vistos]
         for l in novos:
             vistos[l["codigo"]] = l
-    return list(vistos.values())
+        # Sem total declarado, a única parada honesta é a página vazia.
+        if not novos and paginas_decl is None:
+            break
+    aviso = ""
+    if linhas_decl is not None and brutas != linhas_decl:
+        # Faltou LINHA: o parser não leu tudo, ou a paginação cortou.
+        aviso = (f"INCOMPLETO: a tela declarou {linhas_decl} linha(s) em {paginas_decl} página(s); "
+                 f"o parser leu {brutas}. NÃO use para conciliar.")
+    elif len(vistos) != brutas:
+        # Todas as linhas foram lidas, mas há código repetido — a dedupe por código está errada,
+        # ou a mesma marcação foi cancelada duas vezes. Não é motivo para recusar a conciliação,
+        # mas precisa aparecer: silenciar repetição é como silenciar linha faltando.
+        aviso = (f"ATENÇÃO: {brutas} linha(s) lidas e apenas {len(vistos)} código(s) distinto(s) — "
+                 f"{brutas - len(vistos)} repetido(s). Conciliação segue, mas investigue a chave.")
+    return list(vistos.values()), aviso
 
 
 def main() -> int:
@@ -130,12 +160,17 @@ def main() -> int:
                 cli.salvar_sessao("capturas/.sessao.json")
                 return buscar(cli, inicio, fim, args.cnes, pag)
 
-        todas = todas_as_paginas(pegar, pegar(0))
+        todas, aviso = todas_as_paginas(pegar, pegar(0))
+        if aviso:
+            print("\n*** " + aviso + "\n")
 
         print(f"{len(todas)} cancelamento(s).\n")
         for l in todas:
             print("  " + " | ".join(l["celulas"][:7]))
 
+        if args.conciliar and aviso.startswith("INCOMPLETO"):
+            print("conciliação recusada: a leitura veio incompleta (ver aviso acima).")
+            return 1
         if args.conciliar and todas:
             cur = C.conectar_smsmais().cursor()
             codigos = [l["codigo"] for l in todas]
