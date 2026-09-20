@@ -8,14 +8,15 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  KeyRound,
   MapPin,
   Phone,
   Stethoscope,
   XCircle,
 } from 'lucide-react';
-import { api, type AgendamentoExameDetalhe } from '@/lib/api';
+import { api, type AgendamentoExameDetalhe, type ChaveAcessoExame } from '@/lib/api';
 import { extrairMensagemDeErro } from '@/lib/httpClient';
-import { ErroCard, Spinner } from '@/components/ui';
+import { ErroCard, PrimaryButton, Spinner } from '@/components/ui';
 
 const ROTULO_CANAL: Record<string, string> = {
   app: 'pelo aplicativo',
@@ -37,6 +38,22 @@ export function TicketExame() {
   const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<AgendamentoExameDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // Chave de acesso: nunca fica guardada no aparelho — some ao sair da tela.
+  const [chave, setChave] = useState<ChaveAcessoExame | null>(null);
+  const [lendoChave, setLendoChave] = useState(false);
+  const [erroChave, setErroChave] = useState<string | null>(null);
+
+  async function verChave() {
+    setLendoChave(true);
+    setErroChave(null);
+    try {
+      setChave(await api.chaveAcessoExame(id));
+    } catch (e) {
+      setErroChave(extrairMensagemDeErro(e));
+    } finally {
+      setLendoChave(false);
+    }
+  }
 
   // QR do "ticket" — por ora um UUID aleatório (estável enquanto a tela está aberta).
   const qrValor = useMemo(() => crypto.randomUUID(), []);
@@ -153,6 +170,44 @@ export function TicketExame() {
                     <p className="pl-6 text-red-700">Motivo: {d.motivoCancelamentoPaciente}</p>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Chave de acesso — o back só libera no dia do atendimento */}
+          {!cancelada && (d.chaveAcessoDisponivelHoje || d.dataAgendada) && (
+            <div className="rounded-2xl border border-dashed border-marica/40 bg-marica/5 p-4">
+              {chave ? (
+                <div className="animate-rise text-center">
+                  <p className="flex items-center justify-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-marica">
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Chave de acesso
+                  </p>
+                  <p className="mt-2 font-mono text-4xl font-bold tracking-[0.3em] text-tinta">
+                    {chave.chave}
+                  </p>
+                  <p className="mt-2 text-[11px] text-tinta-mute">
+                    Informe esta chave na recepção. Solicitação nº {chave.codigoSolicitacao}.
+                  </p>
+                </div>
+              ) : d.chaveAcessoDisponivelHoje ? (
+                <div className="space-y-2">
+                  <PrimaryButton type="button" onClick={verChave} carregando={lendoChave}>
+                    <KeyRound className="h-5 w-5" />
+                    Visualizar chave de acesso
+                  </PrimaryButton>
+                  <p className="text-center text-[11px] text-tinta-mute">
+                    A chave é a sua confirmação no SISREG. Apresente-a na recepção hoje.
+                  </p>
+                  {erroChave && <p className="text-center text-sm text-red-700">{erroChave}</p>}
+                </div>
+              ) : (
+                <p className="flex items-start gap-2 text-sm text-tinta-mute">
+                  <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-marica" />
+                  <span>
+                    A <strong>chave de acesso</strong> aparece aqui <strong>no dia do exame</strong>.
+                  </span>
+                </p>
               )}
             </div>
           )}

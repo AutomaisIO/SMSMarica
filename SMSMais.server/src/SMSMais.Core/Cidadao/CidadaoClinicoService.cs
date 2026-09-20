@@ -4,6 +4,7 @@ using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Anexos.Dtos;
 using SMSMais.Core.Cidadao.Dtos;
 using SMSMais.Core.Exames;
+using SMSMais.Core.Integracoes.SisregWeb.Chave;
 using SMSMais.Core.Laudos;
 using SMSMais.Core.Laudos.Assinatura;
 using SMSMais.Core.Laudos.Assinatura.Dtos;
@@ -20,7 +21,8 @@ public sealed class CidadaoClinicoService(
     IAnexosService anexos,
     ILaudosService laudos,
     ILaudoAssinaturaService assinatura,
-    IExameImagensPdfService imagensPdf) : ICidadaoClinicoService
+    IExameImagensPdfService imagensPdf,
+    IChaveConfirmacaoSisregService chaves) : ICidadaoClinicoService
 {
     public async Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(
         Guid pacienteId, CancellationToken cancellationToken = default)
@@ -282,7 +284,38 @@ public sealed class CidadaoClinicoService(
             reg.ConfirmadoEm,
             reg.ConfirmadoCanal,
             reg.ConfirmacaoCanceladaEm,
-            reg.MotivoCancelamentoPaciente);
+            reg.MotivoCancelamentoPaciente,
+            ChaveAcessoDisponivelHoje: PodeVerChaveHoje(reg));
+    }
+
+    /// <summary>A chave aparece no dia do atendimento, e só se o pedido tem número do SISREG.</summary>
+    private static bool PodeVerChaveHoje(SMSMais.Data.Entities.Solicitacao reg) =>
+        FusoBrasilia.EhHojeEmBrasilia(reg.DataAgendada)
+        && !string.IsNullOrWhiteSpace(reg.CodigoSolicitacao)
+        && reg.CodigoSolicitacao.Trim() != "0000";
+
+    public async Task<ChaveAcessoCidadaoDto> ObterChaveAcessoExameAsync(
+        Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+    {
+        var solicitacaoId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId && e.ExcluidoEm == null)
+            .Select(e => (Guid?)e.SolicitacaoId).FirstOrDefaultAsync(cancellationToken)
+            ?? solicitacaoExameId;
+        var reg = await db.Solicitacoes.AsNoTracking().FirstOrDefaultAsync(
+            x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
+        // 404 também quando não é do paciente (não vaza existência).
+        if (reg is null || reg.PacienteId != pacienteId)
+            throw new Common.Excecoes.NaoEncontradoException("solicitacao.nao_encontrada", "Agendamento não encontrado.");
+
+        // A janela é decidida AQUI, não no app: véspera e dia seguinte não veem a chave.
+        if (!PodeVerChaveHoje(reg))
+            throw new Common.Excecoes.ConflitoException(
+                "chave_acesso.fora_do_dia",
+                "A chave de acesso fica disponível somente no dia do atendimento.");
+
+        // O mesmo comando do painel: banco primeiro; se não houver, lê no SISREG e guarda.
+        var chave = await chaves.ObterAsync(reg.Id, cancellationToken);
+        return new ChaveAcessoCidadaoDto(chave.Chave, chave.CodigoSolicitacao);
     }
 
     private static string? FormatarEndereco(SMSMais.Data.Entities.Endereco? e)

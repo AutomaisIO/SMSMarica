@@ -58,4 +58,38 @@ public class FichaChaveHtmlParserTests
         Assert.Null(FichaChaveHtmlParser.Ler(""));
         Assert.Null(FichaChaveHtmlParser.Ler(null));
     }
+
+    /// <summary>
+    /// Ficha do <c>gerenciador_solicitacao</c> (menu Consulta Amb → Solicitações,
+    /// <c>etapa=VISUALIZAR_FICHA</c>): mesma estrutura, rótulo já com acento e quebras de linha
+    /// entre as células — é a segunda tela que o serviço tenta.
+    /// </summary>
+    [Fact]
+    public void Le_a_chave_na_ficha_do_gerenciador_de_solicitacoes()
+    {
+        const string html = """
+            <div id="fichaAmbulatorial">    <table class="table_listagem" width="700">
+                <tbody><tr>
+                    <td style="text-align: left;"><b>Chave de Confirmação:</b></td>
+                </tr>
+                <tr>
+                    <td style="text-align: left; font-size: 180%;"><b>93966</b></td>
+                </tr>
+            </tbody><tbody class="FichaCompleta">
+            <tr>
+                <td colspan="6" class="td_titulo_tabela">UNIDADE SOLICITANTE</td>
+            </tr>
+            <tr bgcolor="#F3F3F3">
+                <td colspan="3"><b>Unidade Solicitante:</b></td>
+                <td colspan="1"><b>Cód. CNES:</b></td>
+            </tr>
+            <tr>
+                <td colspan="3">UNIDADE DE SAUDE DA FAMILIA TESTE</td>
+                <td colspan="1">2266946</td>
+            </tr>
+            </tbody>
+            """;
+
+        Assert.Equal("93966", FichaChaveHtmlParser.Ler(html));
+    }
 }

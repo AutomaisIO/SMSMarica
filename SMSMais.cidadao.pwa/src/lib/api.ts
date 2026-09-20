@@ -93,7 +93,12 @@ export type AgendamentoExameDetalhe = {
   confirmadoCanal: string | null;
   confirmacaoCanceladaEm: string | null;
   motivoCancelamentoPaciente: string | null;
+  /** Decidido no back: true só no dia do atendimento (Brasília). */
+  chaveAcessoDisponivelHoje: boolean;
 };
+
+/** Chave de acesso (confirmação do SISREG) — entregue só no dia do exame. */
+export type ChaveAcessoExame = { chave: string; codigoSolicitacao: string };
 
 export type TelefoneOtpEmitido = { canal: string; mascara: string | null; expiraEmSegundos: number };
 export type TelefoneValidado = { numero: string; validado: boolean; validadoEm: string | null };
@@ -152,6 +157,11 @@ export const api = {
         .then((r) => r.data)),
   confirmarExame: (solicitacaoExameId: string) =>
     http.post(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/confirmar`),
+  // Sem cache local de propósito: a chave é lida na hora (o back decide se é o dia).
+  chaveAcessoExame: (solicitacaoExameId: string) =>
+    http
+      .post<ChaveAcessoExame>(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/chave-acesso`)
+      .then((r) => r.data),
   cancelarExame: (solicitacaoExameId: string, motivo: string) =>
     http.post(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/cancelar`, { motivo }),
 };

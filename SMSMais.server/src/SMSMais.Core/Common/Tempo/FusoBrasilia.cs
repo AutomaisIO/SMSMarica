@@ -25,6 +25,13 @@ public static class FusoBrasilia
         ParaExibicao(DateTime.UtcNow).Date.AddHours(-OffsetHoras), DateTimeKind.Utc);
 
     /// <summary>
+    /// O instante cai no dia de HOJE de Brasília? Para janelas "só no dia do atendimento"
+    /// (chave de acesso no app do paciente): véspera e dia seguinte ficam de fora.
+    /// </summary>
+    public static bool EhHojeEmBrasilia(DateTime? utc) =>
+        utc is { } u && ParaExibicao(u).Date == ParaExibicao(DateTime.UtcNow).Date;
+
+    /// <summary>
     /// Caminho inverso de <see cref="ParaExibicao(DateTime)"/>: um wall-clock de Brasília lido de
     /// sistema externo (SER, SISREG, PEP) vira o instante UTC correspondente.
     ///

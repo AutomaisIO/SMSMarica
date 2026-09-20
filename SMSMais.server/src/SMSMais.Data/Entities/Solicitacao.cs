@@ -72,6 +72,18 @@ public class Solicitacao
     public string? ChaveConfirmacao { get; set; }
 
     /// <summary>
+    /// A chave de confirmação <b>como o SISREG a mostrou</b>, guardada na primeira leitura para
+    /// que as seguintes (painel, app do paciente, crítica da recepção) não gastem requisição.
+    /// Não é a mesma coisa que <see cref="ChaveConfirmacao"/>: aquela é o que a recepção digitou
+    /// ao autorizar; esta é a referência para criticar o que foi digitado. Nunca sai no DTO da
+    /// solicitação — só pelo comando de revelação, que audita quem viu.
+    /// </summary>
+    public string? ChaveConfirmacaoSisreg { get; set; }
+
+    /// <summary>Instante (UTC) em que <see cref="ChaveConfirmacaoSisreg"/> foi lida no SISREG.</summary>
+    public DateTime? ChaveSisregLidaEm { get; set; }
+
+    /// <summary>
     /// Código do procedimento no SISREG (o <c>pa</c>) — coluna 1 da linha do TXT.
     ///
     /// <para><b>É opcional de fato, não por displicência:</b> medido em 10/08/2026 sobre as 3.096

@@ -131,7 +131,13 @@ public sealed record AgendamentoExameDetalheDto(
     DateTime? ConfirmadoEm,
     string? ConfirmadoCanal,
     DateTime? ConfirmacaoCanceladaEm,
-    string? MotivoCancelamentoPaciente);
+    string? MotivoCancelamentoPaciente,
+    // A chave de acesso só pode ser vista NO DIA do atendimento (Brasília). Decidido no back;
+    // o app só mostra o botão quando isto vem true — e o endpoint recusa mesmo assim.
+    bool ChaveAcessoDisponivelHoje);
+
+/// <summary>Chave de acesso (confirmação do SISREG) entregue ao paciente no dia do exame.</summary>
+public sealed record ChaveAcessoCidadaoDto(string Chave, string CodigoSolicitacao);
 
 /// <summary>Consulta ou exame agendado (futuro) do paciente, projetado para o app.
 /// Exames importados do SISREG entram como SolicitacaoExame: <c>SolicitacaoExameId</c>

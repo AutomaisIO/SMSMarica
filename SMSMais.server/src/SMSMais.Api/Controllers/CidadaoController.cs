@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -204,6 +204,16 @@ public sealed class CidadaoController(
         var d = await clinico.ObterExameAgendadoAsync(PacienteId(), solicitacaoExameId, ct);
         return d is null ? NotFound() : d;
     }
+
+    /// <summary>Chave de acesso (confirmação do SISREG) do exame — só no dia do atendimento.
+    /// POST porque pode consultar o SISREG na primeira vez e fica na auditoria.</summary>
+    [HttpPost("agendamentos/exames/{solicitacaoExameId:guid}/chave-acesso")]
+    [ProducesResponseType<ChaveAcessoCidadaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ChaveAcessoCidadaoDto>> ChaveAcessoExame(
+        Guid solicitacaoExameId, CancellationToken ct) =>
+        Ok(await clinico.ObterChaveAcessoExameAsync(PacienteId(), solicitacaoExameId, ct));
 
     /// <summary>Confirma a presença no exame agendado (card do app).</summary>
     [HttpPost("agendamentos/exames/{solicitacaoExameId:guid}/confirmar")]

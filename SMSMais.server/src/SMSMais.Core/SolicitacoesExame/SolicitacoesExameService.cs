@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Documentos;
 using SMSMais.Core.Common.Excecoes;
@@ -535,6 +535,18 @@ public sealed class SolicitacoesExameService(
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
         var reg = s.Solicitacao!;
+
+        // Crítica da chave: se a chave do SISREG já foi lida e guardada (comando único de
+        // revelação), o que a recepção digitou tem de bater com ela. Sem chave guardada NÃO se
+        // vai ao SISREG aqui — o balcão não gasta requisição; segue como sempre foi.
+        if (!string.IsNullOrWhiteSpace(reg.ChaveConfirmacaoSisreg)
+            && !string.Equals(reg.ChaveConfirmacaoSisreg.Trim(), chave, StringComparison.Ordinal))
+        {
+            throw new ValidacaoException(
+                "autorizacao.chave_divergente",
+                "A chave informada não confere com a chave de confirmação do SISREG desta solicitação. "
+                + "Confira o comprovante do paciente.");
+        }
 
         // Gate: paciente precisa ter um número VERIFICADO (marcador no telecom do Patient FHIR)
         // OU uma dispensa registrada. A dispensa existe porque o gate rígido travava o balcão:

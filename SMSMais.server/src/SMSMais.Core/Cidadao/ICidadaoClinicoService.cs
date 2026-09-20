@@ -32,6 +32,13 @@ public interface ICidadaoClinicoService
     Task<AgendamentoExameDetalheDto?> ObterExameAgendadoAsync(
         Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Chave de acesso (confirmação do SISREG) do exame agendado — SÓ no dia do atendimento
+    /// (Brasília). Passa pelo comando único de chave: banco primeiro, SISREG se ainda não houver.
+    /// </summary>
+    Task<ChaveAcessoCidadaoDto> ObterChaveAcessoExameAsync(
+        Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
+
     /// <summary>Confirma a presença do paciente no exame agendado (card do app).</summary>
     Task ConfirmarExameAsync(Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
 

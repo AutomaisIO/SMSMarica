@@ -35,6 +35,8 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
 
         builder.Property(s => s.CodigoSolicitacao).HasColumnName("codigo_solicitacao").HasMaxLength(50);
         builder.Property(s => s.ChaveConfirmacao).HasColumnName("chave_confirmacao").HasMaxLength(100);
+        builder.Property(s => s.ChaveConfirmacaoSisreg).HasColumnName("chave_confirmacao_sisreg").HasMaxLength(20);
+        builder.Property(s => s.ChaveSisregLidaEm).HasColumnName("chave_sisreg_lida_em");
         // 20 e não 10: a coluna já existe em produção com esse tamanho (migration
         // EixoProcedimentoSisreg, 06/08/2026). Estreitá-la agora seria um ALTER sem ganho nenhum.
         builder.Property(s => s.ProcedimentoCodigoSisreg).HasColumnName("procedimento_codigo_sisreg").HasMaxLength(20);

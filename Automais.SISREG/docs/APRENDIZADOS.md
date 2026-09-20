@@ -152,6 +152,14 @@ Parâmetros:
   propósito: é ela que prova que o paciente trouxe o comprovante. Custo: **1 requisição por
   solicitação** (foi por isso que o leitor do `cons_marcados_reg` saiu do servidor). ⚠️ Um grep
   por "confirmação" não acha nada — o HTML usa entidade (`&#231;&#227;`). Procure por `Chave de Confirma`.
+  - **A ficha do `gerenciador_solicitacao` também mostra a chave** (menu Consulta Amb → Solicitações,
+    `etapa=VISUALIZAR_FICHA` + `co_seq_solicitacao`, GET — é o que o JS `visualizaFicha(co_solic)` faz).
+    Mesmo `id="fichaAmbulatorial"`, rótulo já decodificado. O backend tenta `cons_marcados_reg` e cai
+    para esta (verificado 18/09/2026 com a solicitação 691197260 → chave 93966).
+  - **Desde 19/09/2026 a chave é guardada** em `solicitacao.chave_confirmacao_sisreg` na primeira
+    leitura (comando único `IChaveConfirmacaoSisregService.ObterAsync`): painel, app do paciente (só
+    no dia do atendimento) e crítica da recepção leem do banco; o SISREG só é consultado uma vez por
+    solicitação.
 - ✅ **Extrator completo validado** (`extrair_marcados.py`): `tp=exe` 01–31/07/2026
   → **334/334** registros, 34 páginas, **9 unidades executantes** (Ernesto Che
   Guevara 153, CDT 98, Ambulatório Péricles 49, DIMAGEM 20, Conde Modesto Leal 6,
