@@ -159,6 +159,53 @@ pior do que se imagina); fila da Central estourando; robô dando resposta errada
 que ainda não saiu, basta desligar o envio de confirmação na configuração (menu Confirmações →
 *Regras e parâmetros*), que a fila para de escoar sem perder nada.
 
+## Em observação (não tratado de propósito)
+
+### Remarcação pela regulação depois do aviso
+
+**A preocupação (Bernardo, 20/09/2026):** a regulação **altera agendamento**, principalmente os que
+estão longe na agenda. Quando isso acontece depois de o paciente já ter sido avisado — e pior,
+depois de ele ter **confirmado** —, o que ele tem no WhatsApp é uma data que não vale mais.
+
+**Por que não se trata agora:** ainda não se sabe o tamanho do problema. Pode ser raro (e aí um
+aviso manual pela tela de Alterações de Agenda resolve), ou frequente o bastante para exigir
+reenvio automático em toda remarcação. Medir primeiro, decidir depois.
+
+**O que já existe:** a varredura detecta a mudança e registra em `sisreg_alteracao_agenda`; a tela
+*Alterações de Agenda* tem o botão **Comunicar**, que refaz a mensagem com a data nova e revoga os
+links antigos. É manual e depende de alguém olhar a fila.
+
+**O que ainda não existe:** nada avisa que aquele paciente **já havia confirmado** a data velha. A
+confirmação continua marcada como válida para um horário que mudou — é o caso que mais incomoda.
+
+**Como acompanhar (rodar junto com a leitura semanal):**
+
+```sql
+-- 1. Remarcações que atingiram gente já avisada (e quantas já tinham confirmado)
+select date_trunc('day', a.detectada_em)::date dia,
+       count(*) remarcacoes,
+       count(*) filter (where c.id is not null) ja_avisados,
+       count(*) filter (where s.status_confirmacao = 2) ja_confirmados,
+       count(*) filter (where a.comunicada_em is not null) recomunicados
+from smsmarica.sisreg_alteracao_agenda a
+join smsmarica.solicitacao s on s.id = a.solicitacao_id
+left join smsmarica.comunicacao_paciente c
+       on c.solicitacao_id = s.id and c.finalidade = 1 and c.enviado_em is not null
+where a.detectada_em > now() - interval '30 days'
+group by 1 order by 1 desc;
+
+-- 2. O estoque do risco AGORA: confirmados cuja data mudou depois da confirmação
+select count(*)
+from smsmarica.sisreg_alteracao_agenda a
+join smsmarica.solicitacao s on s.id = a.solicitacao_id
+where s.status_confirmacao = 2 and s.confirmado_em < a.detectada_em
+  and s.data_agendada > now();
+```
+
+**Gatilho de decisão:** se aparecer remarcação de gente já confirmada com alguma regularidade
+(digamos, mais de 5 por semana), vira trabalho: reenvio automático na remarcação + derrubar a
+confirmação antiga, para a pessoa responder de novo sobre a data certa.
+
 ## Registro do que foi feito
 
 | Quando | O quê |
@@ -166,4 +213,26 @@ que ainda não saiu, basta desligar o envio de confirmação na configuração (
 | 17/09 21:04 | chave de aviso do CDT **ligada** pelo Bernardo |
 | 17/09 ~21:40 | chave **desligada** (coorte fechada); varredura mantida ligada |
 | 17/09 | publicado o disparo em lote com prévia e modo forçado (commit `dc985b4`) |
-| _(a preencher)_ | disparo do lote: quem, quantos, período |
+| 18/09 00:45 e 17:29 | **lote disparado** pelo Bernardo: 1.824 mensagens (CDT 1.024 + Centro Materno Infantil 800), agendas de 21/09 a 30/09 |
+| 20/09 | primeira mensagem nova (`confirmacao_exame`/`confirmacao_consulta`), lembrete de 2 dias LIGADO e **as 42 unidades** com aviso ligado |
+
+### Resultado do lote (leitura de 20/09, D+2)
+
+| | CDT | Centro Materno Infantil |
+|---|---|---|
+| Enviadas | 1.024 | 800 |
+| Entregues/lidas | 349 | 297 |
+| Aguardando identificação | 372 | 285 |
+| Falha de entrega (todas 131026) | 142 | 129 |
+| Sem celular no cadastro | 149 | 80 |
+| Número inválido | 12 | 9 |
+| **Confirmaram** | **264** | **223** |
+| Avisaram que não vão | 9 | 3 |
+
+**487 confirmações (27%)**, quase todas pelo link (474 link · 8 app · 4 botões). Só 12 disseram que
+não vão. **657 pararam no pedido do CPF** — o atrito que a mensagem nova veio resolver, e a
+primeira coisa a reavaliar na próxima leva.
+
+**Alcance do canal:** 520 pessoas (29%) não têm como ser avisadas hoje — 270 com número que não é
+WhatsApp (131026), 229 sem celular no cadastro e 21 com número marcado como inválido. Nenhuma falha
+por teto da Meta: o dia teve hora com 1.247 mensagens sem recusa por volume.
