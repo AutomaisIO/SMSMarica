@@ -15,7 +15,25 @@ public sealed record ModeloWhatsAppDto(
     bool Nomeadas,
     /// <summary>Parâmetros que o SISTEMA montaria para este modelo (quando ele é um dos nossos) —
     /// é o que faz o teste valer como ensaio do envio real, e não um texto qualquer.</summary>
-    IReadOnlyList<string> Sugestao);
+    IReadOnlyList<string> Sugestao,
+    /// <summary>Formato do cabeçalho aprovado na Meta: IMAGE, VIDEO, DOCUMENT, TEXT — ou nulo
+    /// quando o modelo não tem cabeçalho (ou o relay ainda não informa).</summary>
+    string? CabecalhoFormato = null,
+    /// <summary>O modelo tem mídia no topo, e portanto EXIGE a arte em todo envio.</summary>
+    bool CabecalhoExigeArte = false,
+    /// <summary>Texto do cabeçalho, quando ele é de texto.</summary>
+    string? CabecalhoTexto = null,
+    /// <summary>A arte em vigor — a mesma que o envio usaria. Nula = nenhuma definida.</summary>
+    string? ArteUrl = null,
+    /// <summary>A arte vem do Automais.Zap, que é onde ela se publica e se troca.</summary>
+    bool ArteNaPlataforma = false)
+{
+    /// <summary>
+    /// Exige arte e não tem nenhuma: o envio deste modelo é recusado antes de chegar à Meta.
+    /// É o aviso que a tela precisa mostrar em vermelho.
+    /// </summary>
+    public bool ArtePendente => CabecalhoExigeArte && string.IsNullOrWhiteSpace(ArteUrl);
+}
 
 public sealed record ResultadoTesteModeloDto(bool Ok, string? Erro, string? WaMessageId);
 
@@ -44,10 +62,29 @@ public sealed class TesteModeloService(
     {
         var opts = options.Value;
         var catalogo = await whatsApp.ListarTemplatesAsync(ct);
-        return [.. catalogo.Select(t => new ModeloWhatsAppDto(
-            t.Nome, t.Idioma, t.Categoria, t.Corpo, t.Parametros, t.Exemplos,
-            t.Variaveis ?? [], t.Nomeadas,
-            SugestaoDe(t.Nome, t.Parametros, opts)))];
+
+        return [.. catalogo.Select(t =>
+        {
+            // A arte é do Automais.Zap; o mapa de configuração só cobre o período em que o relay
+            // ainda não a informa. Aqui é leitura — trocar a imagem é lá.
+            var daPlataforma = t.Cabecalho?.Arte;
+            var arte = daPlataforma
+                       ?? (opts.ImagensCabecalho is not null
+                           && opts.ImagensCabecalho.TryGetValue(t.Nome, out var padrao)
+                           && !string.IsNullOrWhiteSpace(padrao)
+                           ? padrao
+                           : null);
+
+            return new ModeloWhatsAppDto(
+                t.Nome, t.Idioma, t.Categoria, t.Corpo, t.Parametros, t.Exemplos,
+                t.Variaveis ?? [], t.Nomeadas,
+                SugestaoDe(t.Nome, t.Parametros, opts),
+                t.Cabecalho?.Formato,
+                t.Cabecalho?.ExigeMidia ?? false,
+                t.Cabecalho?.Texto,
+                arte,
+                daPlataforma is not null);
+        })];
     }
 
     public async Task<ResultadoTesteModeloDto> EnviarAsync(

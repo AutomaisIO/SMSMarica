@@ -28,25 +28,103 @@ public sealed class WhatsAppCliente(
     Microsoft.Extensions.Options.IOptions<Comunicacao.ComunicacaoPacienteOptions> comunicacaoOptions,
     ILogger<WhatsAppCliente> logger) : IWhatsAppCliente
 {
+    private const string CacheKeyTemplates = "whatsapp:templates";
     /// <summary>
-    /// Componente de cabeçalho para modelo com FOTO no topo. A imagem do modelo aprovado é apenas
-    /// exemplo: cada envio precisa mandar a sua, senão a Meta recusa com 132012.
-    /// Modelo sem imagem (ou sem URL configurada) não leva header nenhum.
+    /// Monta o componente de cabeçalho do envio — ou diz por que ele não pode ser montado.
+    ///
+    /// <para>Quem manda é o modelo APROVADO, lido do catálogo: modelo com mídia no topo exige o
+    /// header em toda mensagem (a arte do modelo aprovado é só exemplo), e modelo de texto fixo
+    /// não pode receber componente nenhum. Enviar no formato errado é o 132012 da Meta.</para>
+    ///
+    /// <para>Catálogo mudo — relay fora do ar, ou ainda sem o campo <c>cabecalho</c> — cai no que
+    /// estiver configurado, que é o comportamento antigo: não é hora de parar de enviar.</para>
     /// </summary>
-    private object? CabecalhoImagem(string template)
+    private async Task<(object? Componente, string? Erro)> CabecalhoAsync(string template, CancellationToken ct)
     {
-        var mapa = comunicacaoOptions.Value.ImagensCabecalho;
-        if (mapa is null || !mapa.TryGetValue(template, out var url) || string.IsNullOrWhiteSpace(url))
-            return null;
-
-        return new
+        CabecalhoTemplateWhatsApp? cabecalho = null;
+        try
         {
-            type = "header",
-            parameters = new object[] { new { type = "image", image = new { link = url } } },
-        };
+            cabecalho = (await ListarTemplatesAsync(ct))
+                .FirstOrDefault(t => string.Equals(t.Nome, template, StringComparison.OrdinalIgnoreCase))?.Cabecalho;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Sem catálogo para conferir o cabeçalho de {Template}.", template);
+        }
+
+        // A arte é gerida no Automais.Zap — aqui só se usa o que o catálogo entrega. O mapa de
+        // configuração é sobrevivência: vale enquanto o relay não informar a arte daquele modelo.
+        var arte = cabecalho?.Arte ?? ArteDeConfiguracao(template);
+
+        if (cabecalho is null)
+            return (arte is null ? null : ComponenteMidia("image", arte), null);
+
+        if (!cabecalho.ExigeMidia)
+        {
+            // Texto fixo não leva componente. Com variável, leva — e não temos de onde tirar o
+            // valor: melhor recusar dizendo o motivo do que mandar o exemplo aprovado como se
+            // fosse dado do paciente.
+            if (cabecalho.Parametros == 0) return (null, null);
+            return (null, $"O modelo \"{template}\" tem variável no cabeçalho de texto, e o sistema ainda "
+                          + "não sabe preenchê-la. Refaça o modelo com o cabeçalho fixo.");
+        }
+
+        if (arte is null)
+        {
+            var oQue = cabecalho.Formato switch
+            {
+                "IMAGE" => "uma imagem",
+                "VIDEO" => "um vídeo",
+                _ => "um documento",
+            };
+            return (null, $"O modelo \"{template}\" exige {oQue} no cabeçalho e nenhuma arte foi definida. "
+                          + "Escolha a arte no painel do Automais.Zap (Templates) antes de enviar.");
+        }
+
+        return (ComponenteMidia(cabecalho.TipoMidia, arte), null);
     }
 
-    private const string CacheKeyTemplates = "whatsapp:templates";
+    /// <summary>
+    /// Arte que veio na configuração desta instância. Existe só para o período em que o relay
+    /// ainda não informa a arte do modelo — a gestão da imagem é do Automais.Zap.
+    /// </summary>
+    private string? ArteDeConfiguracao(string template)
+    {
+        var mapa = comunicacaoOptions.Value.ImagensCabecalho;
+        return mapa is not null && mapa.TryGetValue(template, out var url) && !string.IsNullOrWhiteSpace(url)
+            ? url.Trim()
+            : null;
+    }
+
+    /// <summary>A arte vai por LINK em cada mensagem: a Meta baixa o arquivo a cada envio.</summary>
+    private static object ComponenteMidia(string tipo, string url)
+    {
+        object parametro = tipo switch
+        {
+            "video" => new { type = "video", video = new { link = url } },
+            "document" => new { type = "document", document = new { link = url } },
+            _ => new { type = "image", image = new { link = url } },
+        };
+        return new { type = "header", parameters = new[] { parametro } };
+    }
+
+    /// <summary>
+    /// Registra e devolve a recusa de um envio que a CONFIGURAÇÃO impede (arte de cabeçalho
+    /// faltando, por exemplo). Falha explícita e auditada vale mais que um 132012 da Meta
+    /// depois de gastar a chamada.
+    /// </summary>
+    private async Task<EnvioWhatsAppResultado> FalhaDeConfiguracaoAsync(
+        string telefone, string template, string conteudo, Guid? pacienteId, string motivo, CancellationToken ct)
+    {
+        var msg = NovaMensagem(telefone, template, Truncar($"[NÃO ENVIADO] {conteudo}"), pacienteId);
+        msg.Status = StatusMensagemWhatsApp.Falha;
+        msg.ErroMeta = motivo;
+        db.MensagensWhatsApp.Add(msg);
+        try { await db.SaveChangesAsync(ct); } catch { /* best-effort: a recusa vale mesmo sem registro */ }
+
+        logger.LogError("Envio do modelo {Template} recusado antes de chamar a Meta: {Motivo}", template, motivo);
+        return new EnvioWhatsAppResultado(false, null, motivo);
+    }
 
     /// <summary>
     /// Guarda de LGPD, no único ponto por onde tudo sai: mensagem que o SISTEMA inicia nunca vai
@@ -144,7 +222,7 @@ public sealed class WhatsAppCliente(
     /// idioma, corpo e exemplos já chegam prontos — quem conversa com a Meta e abre os
     /// componentes é o relay.
     /// </summary>
-    private static IReadOnlyList<TemplateWhatsApp> ParsearTemplates(string corpo)
+    internal static IReadOnlyList<TemplateWhatsApp> ParsearTemplates(string corpo)
     {
         var lista = new List<TemplateWhatsApp>();
         JsonDocument doc;
@@ -174,9 +252,20 @@ public sealed class WhatsAppCliente(
                         .Select(v => v!)];
                 }
 
+                // Modelo com foto no topo: sem este campo o envio só descobre o formato quando falha.
+                CabecalhoTemplateWhatsApp? cabecalho = null;
+                if (t.TryGetProperty("cabecalho", out var cab) && cab.ValueKind == JsonValueKind.Object)
+                {
+                    var parametrosCab = cab.TryGetProperty("parametros", out var pc)
+                        && pc.ValueKind == JsonValueKind.Number && pc.TryGetInt32(out var n) ? n : 0;
+                    cabecalho = new CabecalhoTemplateWhatsApp(
+                        (Texto(cab, "formato") ?? "TEXT").ToUpperInvariant(),
+                        Texto(cab, "texto"), parametrosCab, Texto(cab, "exemplo"), Texto(cab, "arte"));
+                }
+
                 var variaveis = VariaveisDoCorpo(corpoTexto);
                 lista.Add(new TemplateWhatsApp(
-                    nome, idioma, categoria, corpoTexto, variaveis.Count, exemplos, variaveis));
+                    nome, idioma, categoria, corpoTexto, variaveis.Count, exemplos, variaveis, cabecalho));
             }
         }
 
@@ -263,7 +352,10 @@ public sealed class WhatsAppCliente(
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
         var componentes = new List<object>();
-        if (CabecalhoImagem(template) is { } cabecalho) componentes.Add(cabecalho);
+        var (cabecalho, erroCabecalho) = await CabecalhoAsync(template, ct);
+        if (erroCabecalho is not null)
+            return await FalhaDeConfiguracaoAsync(fone, template, conteudo, pacienteId, erroCabecalho, ct);
+        if (cabecalho is not null) componentes.Add(cabecalho);
         if (parametros.Count > 0)
             componentes.Add(new { type = "body", parameters = await ParametrosBodyAsync(template, parametros, ct) });
         object[]? components = componentes.Count == 0 ? null : [.. componentes];
@@ -290,7 +382,10 @@ public sealed class WhatsAppCliente(
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
         var components = new List<object>();
-        if (CabecalhoImagem(template) is { } cabecalhoImagem) components.Add(cabecalhoImagem);
+        var (cabecalho, erroCabecalho) = await CabecalhoAsync(template, ct);
+        if (erroCabecalho is not null)
+            return await FalhaDeConfiguracaoAsync(fone, template, conteudo, pacienteId, erroCabecalho, ct);
+        if (cabecalho is not null) components.Add(cabecalho);
         if (parametrosBody.Count > 0)
             components.Add(new { type = "body", parameters = await ParametrosBodyAsync(template, parametrosBody, ct) });
         for (var i = 0; i < botoes.Count; i++)

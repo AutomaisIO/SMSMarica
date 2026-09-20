@@ -163,6 +163,17 @@ export type ModeloWhatsApp = {
   nomeadas: boolean;
   /** Valores que o sistema usaria de verdade neste modelo. */
   sugestao: string[];
+  /** Formato do cabeçalho aprovado: IMAGE, VIDEO, DOCUMENT, TEXT — null se não tem cabeçalho. */
+  cabecalhoFormato: string | null;
+  /** Tem mídia no topo: a arte vai em TODO envio (a do modelo aprovado é só exemplo). */
+  cabecalhoExigeArte: boolean;
+  cabecalhoTexto: string | null;
+  /** A arte em vigor — a mesma que o envio usa. Gerida no Automais.Zap. */
+  arteUrl: string | null;
+  /** Veio do Automais.Zap (e não do padrão de configuração desta instância). */
+  arteNaPlataforma: boolean;
+  /** Exige arte e não tem: o envio é recusado antes de chegar na Meta. */
+  artePendente: boolean;
 };
 
 export type ResultadoTesteModelo = {

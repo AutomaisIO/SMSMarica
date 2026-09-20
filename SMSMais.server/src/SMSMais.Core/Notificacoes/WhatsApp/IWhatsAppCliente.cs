@@ -59,6 +59,37 @@ public sealed record BotaoInterativoWhatsApp(string Id, string Titulo);
 /// numerado, <c>["nome","procedimento"]</c> quando foi criado com variáveis NOMEADAS (a Meta
 /// aceita os dois formatos desde 2024, e recusa com <c>132012</c> quem envia no formato errado).
 /// </param>
+/// <summary>
+/// Cabeçalho do modelo aprovado, como o catálogo do Automais.Zap o entrega.
+///
+/// <para>Modelo com <b>foto</b> (ou vídeo/documento) no topo exige o componente de header em
+/// <b>cada</b> envio: a arte que aparece no modelo aprovado é só exemplo e não vai sozinha.
+/// Quem envia sem ela leva <c>(#132012) Parameter format does not match format in the created
+/// template</c> — foi o que aconteceu com os três modelos novos em 20/09/2026.</para>
+///
+/// <para>Nulo tem dois significados que se comportam igual: o modelo não tem cabeçalho, ou o
+/// relay ainda não foi atualizado para informá-lo. Nos dois casos o envio cai no mapa
+/// configurado, que é o comportamento antigo.</para>
+/// </summary>
+/// <param name="Formato">TEXT, IMAGE, VIDEO, DOCUMENT ou LOCATION (valores da Meta).</param>
+/// <param name="Parametros">Variáveis no texto do cabeçalho (só em TEXT; a Meta aceita 1).</param>
+/// <param name="Exemplo">A amostra aprovada. Para mídia é um <i>handle</i> interno da Meta —
+/// serve para a tela mostrar o que foi aprovado, <b>nunca</b> para reenviar.</param>
+/// <param name="Arte">
+/// A arte escolhida para este modelo no <b>Automais.Zap</b> — a URL que vai no componente de
+/// header de cada envio. É a fonte preferida: quem gerencia a imagem é a plataforma, e assim a
+/// instância não precisa manter mapa próprio. Nula = ninguém escolheu ainda (ou o relay é antigo).
+/// </param>
+public sealed record CabecalhoTemplateWhatsApp(
+    string Formato, string? Texto, int Parametros, string? Exemplo, string? Arte = null)
+{
+    /// <summary>Formatos que exigem um arquivo NOSSO em cada envio.</summary>
+    public bool ExigeMidia => Formato is "IMAGE" or "VIDEO" or "DOCUMENT";
+
+    /// <summary>Nome do parâmetro de mídia no corpo da Cloud API (<c>image</c>, <c>video</c>…).</summary>
+    public string TipoMidia => Formato.ToLowerInvariant();
+}
+
 public sealed record TemplateWhatsApp(
     string Nome,
     string Idioma,
@@ -66,7 +97,8 @@ public sealed record TemplateWhatsApp(
     string? Corpo,
     int Parametros,
     IReadOnlyList<string> Exemplos,
-    IReadOnlyList<string>? Variaveis = null)
+    IReadOnlyList<string>? Variaveis = null,
+    CabecalhoTemplateWhatsApp? Cabecalho = null)
 {
     /// <summary>O modelo usa variáveis nomeadas (<c>{{nome}}</c>) em vez de numeradas.</summary>
     public bool Nomeadas => Variaveis is { Count: > 0 }
