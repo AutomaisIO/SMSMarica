@@ -6,6 +6,7 @@ import type {
   AtendenteConfirmacao,
   EventoAtendimento,
   FiltroAtendimento,
+  MensagemContexto,
   MotivosTelefoneComprometido,
   PaginaAtendimento,
   ResumoAbas,
@@ -39,6 +40,20 @@ export function useMotivosTelefoneComprometido(habilitado: boolean) {
       (await http.get<MotivosTelefoneComprometido>('/confirmacoes/atendimento/telefone-comprometido/motivos')).data,
     enabled: habilitado,
     refetchInterval: 60_000,
+  });
+}
+
+/**
+ * Contexto da conversa — só carrega quando a atendente abre, porque é leitura pesada e a maioria
+ * dos cards não precisa dela.
+ */
+export function useConversaContexto(solicitacaoId: string | null) {
+  return useQuery({
+    queryKey: [...raiz, 'conversa', solicitacaoId],
+    queryFn: async () =>
+      (await http.get<MensagemContexto[]>(`/confirmacoes/atendimento/${solicitacaoId}/conversa`)).data,
+    enabled: !!solicitacaoId,
+    staleTime: 30_000,
   });
 }
 

@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, Clock, Hand, PhoneOff, Undo2, UserRound, X } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, Clock, Hand, MessagesSquare, PhoneOff, Undo2, UserRound, X } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { CLASSE_RESPOSTA, ROTULO_RESPOSTA, ROTULO_STATUS, dataHora, hora, rotuloCanal } from '@/features/mensageria/lib/rotulos';
+import { useConversaContexto } from '@/features/confirmacoes/api';
 import type { AbaAtendimento, EnvioConfirmacao, SolicitacaoAtendimento } from '@/features/confirmacoes/types';
 
 export type AcaoCard =
@@ -153,6 +155,10 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
         </div>
       </div>
 
+      {aba === 'Cancelamento' ? (
+        <PedidoDeCancelamento item={item} />
+      ) : null}
+
       {/* Ações */}
       {podeEditar ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
@@ -202,7 +208,7 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
             </Button>
           ) : null}
 
-          {podeCancelar && (meuEmAtendimento || aba === 'Confirmados' || (!a && aba === 'NaoConfirmados')) ? (
+          {podeCancelar && (meuEmAtendimento || aba === 'Confirmados' || aba === 'Cancelamento' || (!a && aba === 'NaoConfirmados')) ? (
             <Button tamanho="sm" variante="danger" className="ml-auto" disabled={ocupado} onClick={() => aoAcao('cancelar', item)}>
               <X className="mr-1 h-3.5 w-3.5" /> Cancelar agendamento
             </Button>
@@ -210,5 +216,68 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
         </div>
       ) : null}
     </article>
+  );
+}
+
+/**
+ * O pedido de cancelamento com o que a atendente precisa para decidir: quem pediu, por onde,
+ * quando, com que palavras — e a conversa em volta, sob demanda.
+ *
+ * A conversa não vem aberta de propósito: são dezenas de mensagens por card e a maioria dos
+ * pedidos é óbvia pelo motivo. Quem precisa do contexto é justamente o caso duvidoso, e aí um
+ * clique é barato perto de cancelar o exame de quem queria ir.
+ */
+function PedidoDeCancelamento({ item }: { item: SolicitacaoAtendimento }) {
+  const [aberta, setAberta] = useState(false);
+  const conversa = useConversaContexto(aberta ? item.solicitacaoId : null);
+
+  return (
+    <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="font-medium text-amber-900">Pediu para cancelar</span>
+        <span className="text-xs text-amber-800">
+          {rotuloCanal(item.confirmadoCanal)}
+          {item.respondidoEm ? ` · ${dataHora(item.respondidoEm)}` : ''}
+        </span>
+      </div>
+      <p className="mt-1 text-gray-800">
+        {item.motivoCancelamentoPaciente
+          ? <>Motivo: <q>{item.motivoCancelamentoPaciente}</q></>
+          : <span className="text-gray-500">A pessoa não escreveu o motivo — leia a conversa antes de decidir.</span>}
+      </p>
+
+      <button
+        type="button"
+        className="mt-1.5 inline-flex items-center gap-1 text-xs text-amber-900 underline"
+        onClick={() => setAberta((v) => !v)}
+      >
+        <MessagesSquare className="h-3.5 w-3.5" />
+        {aberta ? 'ocultar conversa' : 'ver a conversa'}
+      </button>
+
+      {aberta ? (
+        conversa.isLoading ? (
+          <p className="mt-2 text-xs text-gray-500">Carregando a conversa…</p>
+        ) : (conversa.data?.length ?? 0) === 0 ? (
+          <p className="mt-2 text-xs text-gray-500">Nenhuma mensagem registrada com este contato.</p>
+        ) : (
+          <div className="mt-2 max-h-72 space-y-1 overflow-y-auto rounded border border-amber-200 bg-white p-2">
+            {conversa.data!.map((m, i) => (
+              <div key={i} className={cn('flex', m.doPaciente ? 'justify-start' : 'justify-end')}>
+                <div
+                  className={cn(
+                    'max-w-[80%] whitespace-pre-wrap break-words rounded px-2 py-1 text-xs',
+                    m.doPaciente ? 'bg-gray-100 text-gray-900' : 'bg-emerald-50 text-emerald-900',
+                  )}
+                  title={`${dataHora(m.ocorridoEm)}${m.autor ? ` · ${m.autor}` : ''}`}
+                >
+                  {m.texto ?? (m.template ? `[modelo ${m.template}]` : '—')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : null}
+    </div>
   );
 }

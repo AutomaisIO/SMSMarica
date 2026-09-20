@@ -5,7 +5,8 @@ export type AbaAtendimento =
   | 'Confirmados'
   | 'ContatoErrado'
   | 'Pendentes'
-  | 'TelefoneComprometido';
+  | 'TelefoneComprometido'
+  | 'Cancelamento';
 
 /** Por que o canal não alcança o paciente. */
 export type MotivoTelefoneComprometido = 'SemCelular' | 'NaoEhWhatsApp';
@@ -87,6 +88,16 @@ export type ResumoAbas = {
   pendentes: number;
   emAtendimentoComigo: number;
   telefoneComprometido: number;
+  cancelamento: number;
+};
+
+/** Uma mensagem da conversa, para ler o contexto antes de cancelar. */
+export type MensagemContexto = {
+  doPaciente: boolean;
+  texto: string | null;
+  template: string | null;
+  ocorridoEm: string;
+  autor: string | null;
 };
 
 export type MotivosTelefoneComprometido = {

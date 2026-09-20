@@ -58,6 +58,16 @@ public static class ComandoRoboCatalogo
     /// dizer onde fica uma unidade (endereço é informação pública) e devolver a conversa a um
     /// humano. Os dois de consulta estão aqui pelo mesmo motivo: sem eles o robô AFIRMA no lugar de
     /// consultar — foi assim que desmentiu um agendamento que a própria Secretaria havia enviado.
+    ///
+    /// <para><b>Exceção deliberada (20/09/2026): IniciarCancelamento.</b> Ele escreve, mas o que
+    /// escreve é INTENÇÃO — "esta pessoa disse que não vem" —, não o cancelamento: a vaga só cai
+    /// quando alguém da equipe trata na aba <b>Cancelamento</b>. Entrou no Base porque estava
+    /// habilitado em um único assunto, e uma conversa que começasse em OUTRO assunto deixava o robô
+    /// sem a ferramenta justamente na hora em que ela era necessária: em 20/09 ele respondeu "vou
+    /// registrar que o exame não será mais necessário" e não registrou nada — a vaga do dia
+    /// seguinte seguiu presa e a responsável foi embora achando que havia cancelado. Varredura
+    /// desde 01/09: <b>74 vagas futuras presas</b> por pedidos que nunca viraram registro.
+    /// Registrar de menos custa vaga; registrar de mais custa um clique de triagem.</para>
     /// </summary>
     public static IReadOnlySet<ComandoRobo> Base { get; } = new HashSet<ComandoRobo>
     {
@@ -65,6 +75,7 @@ public static class ComandoRoboCatalogo
         ComandoRobo.ConsultarStatusAgendamento,
         ComandoRobo.ConsultarUnidades,
         ComandoRobo.EncaminharParaHumano,
+        ComandoRobo.IniciarCancelamento,
     };
 
     /// <summary>Comandos que a tela pode habilitar por assunto (exclui ResponderCidadao).</summary>

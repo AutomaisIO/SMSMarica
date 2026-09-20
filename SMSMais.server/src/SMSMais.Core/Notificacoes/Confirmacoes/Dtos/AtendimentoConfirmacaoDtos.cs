@@ -14,6 +14,16 @@ public enum AbaAtendimentoConfirmacao
     /// chegar nele. Sai da fila automática e entra na de ligação.
     /// </summary>
     TelefoneComprometido = 5,
+
+    /// <summary>
+    /// Pediram para cancelar e ninguém tratou. Vem de qualquer canal — botão do WhatsApp, robô,
+    /// app, recepção: o que importa é que a pessoa disse que não vem e a vaga continua de pé.
+    /// <para>É o estado <c>StatusConfirmacao = Cancelada</c> com <c>Status</c> ainda diferente de
+    /// <c>Cancelada</c>: a INTENÇÃO registrada, sem o cancelamento. Até 20/09/2026 esse estado não
+    /// aparecia em aba nenhuma — as filas Contato errado e Pendentes excluem explicitamente quem
+    /// está cancelado, e as outras duas exigem Pendente/Confirmada. Ficava invisível.</para>
+    /// </summary>
+    Cancelamento = 6,
 }
 
 /// <summary>Situação do envio automático da confirmação (o que a atendente precisa ver no card).</summary>
@@ -79,7 +89,15 @@ public sealed record PaginaAtendimentoDto(
 /// <summary>Contagem por aba (badges) + quantas estão comigo agora.</summary>
 public sealed record ResumoAbasAtendimentoDto(
     int NaoConfirmados, int Confirmados, int ContatoErrado, int Pendentes, int EmAtendimentoComigo,
-    int TelefoneComprometido = 0);
+    int TelefoneComprometido = 0, int Cancelamento = 0);
+
+/// <summary>
+/// Uma mensagem da conversa, para a atendente ler o CONTEXTO antes de cancelar. Pedido de
+/// cancelamento chega em texto livre e ambíguo: "não quero cancelar" e "qual o motivo do
+/// cancelamento?" caem no mesmo filtro que "quero cancelar". Sem ler em volta, cancela-se errado.
+/// </summary>
+public sealed record MensagemContextoDto(
+    bool DoPaciente, string? Texto, string? Template, DateTime OcorridoEm, string? Autor);
 
 /// <summary>
 /// Os "porquês" da aba Telefone comprometido: quantas solicitações estão paradas por cada motivo.

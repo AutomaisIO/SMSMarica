@@ -52,6 +52,14 @@ public sealed class ConfirmacoesController(
     public async Task<MotivosTelefoneComprometidoDto> MotivosTelefoneComprometido(CancellationToken ct) =>
         await atendimento.MotivosTelefoneComprometidoAsync(ct);
 
+    /// <summary>Contexto da conversa com o paciente (aba Cancelamento).</summary>
+    [HttpGet("atendimento/{solicitacaoId:guid}/conversa")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<MensagemContextoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<MensagemContextoDto>> ConversaAtendimento(
+        Guid solicitacaoId, CancellationToken ct, [FromQuery] int quantas = 30) =>
+        await atendimento.ConversaAsync(solicitacaoId, quantas, ct);
+
     [HttpGet("atendimento/atendentes")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<AtendenteConfirmacaoDto>>(StatusCodes.Status200OK)]

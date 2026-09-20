@@ -6,6 +6,7 @@ import { usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { Input } from '@/shared/ui/Input';
 import { Paginacao } from '@/shared/ui/Paginacao';
 import { Select } from '@/shared/ui/Select';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Tabs } from '@/shared/ui/Tabs';
 import {
   useAcaoAtendimento,
@@ -32,6 +33,14 @@ const ABAS: { id: AbaAtendimento; rotulo: string; descricao: string }[] = [
   { id: 'Confirmados', rotulo: 'Confirmados', descricao: 'Confirmados por link, botão, robô, app, recepção ou atendente. Ainda dá para cancelar.' },
   { id: 'ContatoErrado', rotulo: 'Contato errado', descricao: 'Quem atende disse que não é o paciente. Corrija o telefone e verifique para voltar à fila.' },
   { id: 'Pendentes', rotulo: 'Pendentes', descricao: 'Estacionadas por uma atendente com motivo (não atendeu, ligar depois…).' },
+  {
+    id: 'Cancelamento',
+    rotulo: 'Cancelamento',
+    descricao:
+      'Pediram para cancelar e ninguém tratou ainda — veio do botão do WhatsApp, do robô, do app ou da recepção, tanto faz. ' +
+      'Leia o contexto da conversa antes: "não quero cancelar" e "qual o motivo do cancelamento?" chegam parecidos com "quero cancelar". ' +
+      'O cancelamento só acontece quando você clicar.',
+  },
   {
     id: 'TelefoneComprometido',
     rotulo: 'Telefone comprometido',
@@ -196,7 +205,10 @@ export function ConfirmacoesPage() {
         <div className="flex items-start gap-3">
           <CalendarCheck2 className="mt-1 h-6 w-6 text-red-600" />
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Confirmações</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-2xl font-semibold text-gray-900">Confirmações</h1>
+              <AjudaManual artigo="confirmacoes" />
+            </div>
             <p className="mt-1 text-sm text-gray-600">
               Agendamentos do SISREG que precisam de confirmação. Quem atende puxa o card, fala com o paciente e dá o
               desfecho: confirmado, cancelado, pendente ou contato errado.
@@ -220,7 +232,8 @@ export function ConfirmacoesPage() {
               : a.id === 'Confirmados' ? r.confirmados
                 : a.id === 'ContatoErrado' ? r.contatoErrado
                   : a.id === 'Pendentes' ? r.pendentes
-                    : r.telefoneComprometido
+                    : a.id === 'Cancelamento' ? r.cancelamento
+                      : r.telefoneComprometido
             : undefined,
           conteudo,
         }))}

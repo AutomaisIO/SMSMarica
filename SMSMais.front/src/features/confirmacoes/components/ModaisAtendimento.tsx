@@ -68,8 +68,12 @@ export function ModalConfirmar({ item, ocupado, erro, aoFechar, aoConfirmar }: B
  * pelo navegador; a extensão observa e concilia. A escrita direta no SISREG vem na fase 2.
  */
 export function ModalCancelar({ item, ocupado, erro, aoFechar, aoCancelar }: Base & { aoCancelar: (motivo: string, meio: string) => void }) {
-  const [motivo, setMotivo] = useState('');
-  const [meio, setMeio] = useState('Ligacao');
+  // Quem veio da aba Cancelamento já disse por que — repetir isso à mão é trabalho à toa, e
+  // digitado de novo o motivo perde as palavras da pessoa, que é o que vale numa auditoria.
+  const pediuPeloZap = item.statusConfirmacao === 'Cancelada';
+  const [motivo, setMotivo] = useState(
+    pediuPeloZap && item.motivoCancelamentoPaciente ? item.motivoCancelamentoPaciente : '');
+  const [meio, setMeio] = useState(pediuPeloZap ? 'WhatsApp' : 'Ligacao');
   return (
     <Modal aberto aoFechar={aoFechar} titulo="Cancelar agendamento">
       <div className="space-y-3">

@@ -38,6 +38,10 @@ public interface IAtendimentoConfirmacaoService
     /// <summary>Os porquês da aba Telefone comprometido, para o painel no topo da lista.</summary>
     Task<MotivosTelefoneComprometidoDto> MotivosTelefoneComprometidoAsync(CancellationToken ct = default);
 
+    /// <summary>As últimas mensagens trocadas com o paciente — o contexto do pedido de cancelamento.</summary>
+    Task<IReadOnlyList<MensagemContextoDto>> ConversaAsync(
+        Guid solicitacaoId, int quantas = 30, CancellationToken ct = default);
+
     Task<IReadOnlyList<EventoAtendimentoDto>> HistoricoAsync(Guid solicitacaoId, CancellationToken ct = default);
 
     Task<IReadOnlyList<AtendenteConfirmacaoDto>> ListarAtendentesAsync(CancellationToken ct = default);
@@ -211,10 +215,12 @@ public sealed class AtendimentoConfirmacaoService(
         var contatoErrado = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.ContatoErrado, ct)).CountAsync(ct);
         var pendentes = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.Pendentes, ct)).CountAsync(ct);
         var semCanal = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.TelefoneComprometido, ct)).CountAsync(ct);
+        var cancelamento = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.Cancelamento, ct)).CountAsync(ct);
         var comigo = me is null ? 0 : await db.AtendimentosConfirmacao.AsNoTracking()
             .CountAsync(a => a.EncerradoEm == null && a.AtendenteUsuarioId == me
                 && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento, ct);
-        return new ResumoAbasAtendimentoDto(naoConfirmados, confirmados, contatoErrado, pendentes, comigo, semCanal);
+        return new ResumoAbasAtendimentoDto(
+            naoConfirmados, confirmados, contatoErrado, pendentes, comigo, semCanal, cancelamento);
     }
 
     /// <summary>
@@ -243,6 +249,46 @@ public sealed class AtendimentoConfirmacaoService(
             Do(MotivoContatoComprometido.SemCelular),
             Do(MotivoContatoComprometido.NaoEhWhatsApp),
             total, pessoas);
+    }
+
+    /// <summary>
+    /// As últimas mensagens trocadas com o paciente desta solicitação. Existe para a aba
+    /// Cancelamento: o pedido chega em texto livre e ambíguo — na varredura de 01→20/09, no meio
+    /// dos "quero cancelar" vinham "não quero cancelar", "não pretendo cancelar nenhum exame" e
+    /// "qual o motivo do cancelamento?". Cancelar sem ler em volta erra, e errar aqui é tirar a
+    /// vaga de quem queria ir.
+    /// <para>Busca pelo paciente e, como rede, pelo telefone para onde a confirmação foi — linha
+    /// antiga pode não ter <c>paciente_id</c>.</para>
+    /// </summary>
+    public async Task<IReadOnlyList<MensagemContextoDto>> ConversaAsync(
+        Guid solicitacaoId, int quantas = 30, CancellationToken ct = default)
+    {
+        quantas = Math.Clamp(quantas, 1, 200);
+
+        var alvo = await db.Solicitacoes.AsNoTracking()
+            .Where(s => s.Id == solicitacaoId)
+            .Select(s => new { s.PacienteId })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NaoEncontradoException("Solicitação", solicitacaoId);
+
+        var fone = await db.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.SolicitacaoId == solicitacaoId && c.Telefone != null)
+            .OrderByDescending(c => c.CriadoEm)
+            .Select(c => c.Telefone)
+            .FirstOrDefaultAsync(ct);
+
+        var msgs = await db.MensagensWhatsApp.AsNoTracking()
+            .Where(m => m.PacienteId == alvo.PacienteId || (fone != null && m.Telefone == fone))
+            .OrderByDescending(m => m.OcorridoEm)
+            .Take(quantas)
+            .Select(m => new MensagemContextoDto(
+                m.Direcao == DirecaoMensagem.Entrada, m.Conteudo, m.Template, m.OcorridoEm,
+                m.AutorNomeExibicao))
+            .ToListAsync(ct);
+
+        // Devolve em ordem de leitura (mais antiga primeiro) — é assim que se entende uma conversa.
+        msgs.Reverse();
+        return msgs;
     }
 
     public async Task<IReadOnlyList<EventoAtendimentoDto>> HistoricoAsync(Guid solicitacaoId, CancellationToken ct = default)
@@ -339,6 +385,11 @@ public sealed class AtendimentoConfirmacaoService(
                 s.StatusConfirmacao != StatusConfirmacaoAgendamento.Cancelada
                 && db.AtendimentosConfirmacao.Any(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null
                     && a.Situacao == SituacaoAtendimentoConfirmacao.Pendente)),
+
+            // Pediram para cancelar e ninguém tratou. O universo comum já exclui solicitação com
+            // Status=Cancelada, então sobra exatamente a INTENÇÃO sem o cancelamento.
+            AbaAtendimentoConfirmacao.Cancelamento => q.Where(s =>
+                s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada),
 
             // Quem já confirmou por outro caminho (recepção, app) não precisa ser perseguido,
             // mesmo com o telefone ruim; e quem negou ser o paciente é assunto da outra aba.
