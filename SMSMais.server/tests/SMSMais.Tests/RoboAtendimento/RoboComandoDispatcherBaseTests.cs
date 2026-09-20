@@ -76,12 +76,47 @@ public class RoboComandoDispatcherBaseTests(PostgresFixture fixture)
         Assert.Contains("não habilitado", r.Mensagem, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// A regra continua sendo "escrita fica presa ao assunto" — com UMA exceção nomeada.
+    ///
+    /// <para><b>IniciarCancelamento</b> entrou no Base em 20/09/2026 porque o que ele escreve é
+    /// INTENÇÃO ("esta pessoa disse que não vem"), não cancelamento: a vaga só cai quando um
+    /// humano trata na aba Cancelamento. Estando preso a um único assunto, ele faltava justamente
+    /// quando a conversa chegava por outro caminho — e aí o robô prometia "vou registrar" sem
+    /// registrar nada. Varredura de 01→20/09: 74 vagas futuras presas assim.</para>
+    ///
+    /// <para>A lista de exceções é explícita de propósito. Se alguém quiser acrescentar outra
+    /// escrita ao Base, este teste quebra e obriga a justificar aqui — que é o ponto.</para>
+    /// </summary>
     [Fact]
-    public void Conjunto_base_so_tem_comando_seguro()
+    public void Conjunto_base_so_tem_escrita_explicitamente_excecionada()
     {
-        // Nada que ALTERE dado pode ser sempre-disponível: escrita continua presa ao assunto.
+        // Escrita que pode ser sempre-disponível, uma a uma, com motivo escrito acima.
+        var excecoes = new HashSet<ComandoRobo> { ComandoRobo.IniciarCancelamento };
+
         var escrita = ComandoRoboCatalogo.Itens.Where(i => i.Escrita).Select(i => i.Comando).ToHashSet();
-        Assert.DoesNotContain(ComandoRoboCatalogo.Base, c => escrita.Contains(c));
+        var indevidas = ComandoRoboCatalogo.Base.Where(c => escrita.Contains(c) && !excecoes.Contains(c)).ToList();
+
+        Assert.True(indevidas.Count == 0,
+            $"Comando de ESCRITA no conjunto Base sem exceção declarada: {string.Join(", ", indevidas)}. "
+            + "Escrita sempre-disponível precisa de motivo escrito no teste e no catálogo.");
         Assert.Contains(ComandoRobo.ConsultarCadastro, ComandoRoboCatalogo.Base);
+    }
+
+    /// <summary>
+    /// O robô precisa conseguir registrar "não vou" mesmo sem assunto identificado — é o caso que
+    /// deixou 74 vagas presas. Guarda o comportamento, não só a configuração.
+    /// </summary>
+    [Fact]
+    public async Task Pedido_de_cancelamento_e_registrado_mesmo_SEM_assunto_identificado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var conversaId = await SemearConversaAsync(db);
+        var dispatcher = Criar(db, ComandoRobo.IniciarCancelamento);
+
+        var r = await dispatcher.ExecutarAsync(
+            conversaId, null, assuntoId: null, ComandoRobo.IniciarCancelamento, default, default);
+
+        Assert.True(r.Sucesso);
     }
 }

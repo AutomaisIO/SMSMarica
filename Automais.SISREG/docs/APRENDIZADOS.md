@@ -804,3 +804,75 @@ as **reenviadas** (`SOL/REE/REG`) estão na fila do regulador e o nosso leitor p
 
 - Conexão cai às vezes (`RemoteProtocolError: Server disconnected`) entre POSTs seguidos;
   pausa de 4–8 s e 1 retentativa resolveram.
+
+## ❌ CANCELAR AGENDAMENTO — `cons_verificar` (lido de captura real, 2026-09-20)
+
+**Sem nenhuma requisição ao SISREG.** A extensão de navegador já tinha observado uma atendente
+cancelando em 15/09, e a captura ficou em `smsmarica.sisreg_captura_navegador`
+(`evento='cancelamento'`, `escrita=true`) — requisição E resposta. O formulário inteiro saiu daí.
+
+> **Por que isso importa como método:** o orçamento anti-robô é do operador e CAPTCHA pausa a
+> unidade por 24h. Antes de sondar uma tela nova, **procure na tabela de capturas** — pode já
+> existir um exemplo real, de graça, com o payload exato que um humano enviou.
+
+### A tela é uma só: "Consulta de Autorização/Cancelamento"
+
+Tudo acontece em `POST /cgi-bin/cons_verificar`, mudando o campo `etapa`.
+
+**1. Listar as solicitações do paciente** (`etapa=LISTAR`):
+
+```
+pg=0            # página desejada (0 = primeira)
+cns=<CNS>       # a busca é pelo CNS do paciente
+etapa=LISTAR
+ordem=          # "1" quando já está paginando
+total=          # total de linhas, devolvido pela primeira resposta
+nr_pagina=      # página ATUAL (a de onde se está saindo)
+co_solic= dt_inicial= dt_final= codigo_solicitacao=   # vazios
+```
+
+Paginar é repetir com `pg` = destino, `nr_pagina` = origem, `ordem` e `total` ecoados.
+
+**2. Cancelar** (`etapa=EXCLUIR_SOLICITACAO`), a partir da página em que a linha aparece:
+
+```
+etapa=EXCLUIR_SOLICITACAO
+cns=<CNS>
+chk_<N>=<codigo_solicitacao>     # N = índice da LINHA na página; o VALOR é o código
+justificativa=<texto>            # OBRIGATÓRIO, máx. 200 caracteres
+nr_pagina=<página onde a linha está>
+pg= ordem= total= co_solic= dt_inicial= dt_final= codigo_solicitacao=   # vazios
+```
+
+### Como saber se deu certo
+
+A resposta é a página remontada, com um `alert()` embutido. Os desfechos possíveis, todos
+enumerados no JS da própria página:
+
+| `alert(...)` | Significado |
+|---|---|
+| `Agendamento(s) cancelado(s) com sucesso!` | **Deu certo** |
+| `Nenhum item foi selecionado!` | O `chk_<N>` não casou com nada — **no-op, não cancelou errado** |
+| `O campo 'Justificativa' e obrigatorio.` | Faltou justificativa |
+| `O campo justificativa aceita apenas 200 caracteres!` | Justificativa longa demais |
+
+### A armadilha, e como não cair nela
+
+`chk_<N>` mistura duas coisas: **N é a posição da linha** na página renderizada e **o valor é o
+código da solicitação**. Não se sabe (ainda) se o CGI identifica pelo valor ou pela posição —
+e errar a posição, na pior hipótese, cancelaria o exame de OUTRA pessoa.
+
+**Não adivinhe o N.** Faça o que o navegador faz: `LISTAR` a página, achar no HTML a linha que
+contém o código desejado e usar o **nome e o valor exatos daquele checkbox**. Assim as duas
+hipóteses dão no mesmo resultado. Depois do POST, `LISTAR` de novo e conferir que a solicitação
+saiu — a confirmação não é o HTTP 200, é a releitura.
+
+O alívio parcial: se o checkbox não casar, o SISREG responde `Nenhum item foi selecionado!` em vez
+de cancelar outra coisa. Isso torna o erro mais provável **inofensivo**, mas não dispensa a
+releitura.
+
+### Ainda não validado
+
+Se `codigo_solicitacao` (campo que existe no formulário e vai vazio) serve para cancelar direto,
+sem passar pela listagem. Testar economizaria a navegação inteira — **mas só com um cancelamento
+que alguém de fato queira fazer**, nunca com uma solicitação de verdade escolhida ao acaso.
