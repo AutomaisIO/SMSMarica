@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -18,6 +19,10 @@ namespace SMSMais.Core.Notificacoes.Confirmacoes;
 /// objetivo; quem <b>não respondeu</b> recebe o que ainda pede confirmação. Quem já avisou que
 /// <b>não vai</b> não recebe nada — seria pedir de novo o que ela já respondeu.</para>
 ///
+/// <para><b>Silêncio mínimo:</b> quem recebeu a mensagem principal há menos de
+/// <see cref="ComunicacaoPacienteOptions.LembreteIntervaloMinimoDias"/> dias não recebe lembrete.
+/// Avisar de novo quem acabou de ser avisado é insistência — e insistência faz bloquear o número.</para>
+///
 /// <para>Só ENFILEIRA. Quem envia é o <see cref="EnviadorComunicacaoService"/>, com a mesma janela
 /// de horário, a mesma vazão e as mesmas regras de LGPD (contato negado, contato verificado).</para>
 /// </summary>
@@ -31,6 +36,7 @@ public sealed class LembreteAgendamentoService(
     SmsMaisDbContext db,
     IConfirmacaoConfiguracaoService regras,
     IComunicacaoPacienteService comunicacoes,
+    IOptions<ComunicacaoPacienteOptions> options,
     ILogger<LembreteAgendamentoService> logger) : ILembreteAgendamentoService
 {
     /// <summary>Teto por passagem: o lembrete é diário e previsível — rajada aqui é sinal de erro.</summary>
@@ -43,6 +49,7 @@ public sealed class LembreteAgendamentoService(
 
         var agora = DateTime.UtcNow;
         var limite = agora.AddDays(cfg.LembreteDiasAntes);
+        var silencio = agora.AddDays(-Math.Max(0, options.Value.LembreteIntervaloMinimoDias));
 
         // Unidades e procedimentos com aviso ligado — a MESMA régua da primeira mensagem: quem não
         // avisa na entrada não passa a avisar na véspera.
@@ -71,7 +78,12 @@ public sealed class LembreteAgendamentoService(
                 && s.DataAgendada > agora && s.DataAgendada <= limite
                 && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Cancelada
                 && !db.ComunicacoesPaciente.Any(c =>
-                    c.SolicitacaoId == s.Id && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento))
+                    c.SolicitacaoId == s.Id && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento)
+                // Falou com essa pessoa faz pouco tempo? Então não fala de novo.
+                && !db.ComunicacoesPaciente.Any(c =>
+                    c.SolicitacaoId == s.Id
+                    && c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                    && c.EnviadoEm != null && c.EnviadoEm > silencio))
             .OrderBy(s => s.DataAgendada)
             .Take(MaximoPorPassagem)
             .ToListAsync(ct);

@@ -27,10 +27,13 @@ public sealed class ComunicacaoPacienteOptions
     // aconteceu com os três modelos novos em 20/09/2026.
 
     /// <summary>
-    /// Imagem de cabeçalho POR MODELO (nome do modelo → URL pública da arte; a Meta baixa o
-    /// arquivo em cada envio). Modelo fora do mapa não leva cabeçalho.
-    /// <para>O catálogo do relay não informa o formato do header, então o mapa é explícito —
-    /// errar aqui custa um 132012 na fila, não uma mensagem errada para o paciente.</para>
+    /// Arte de cabeçalho POR MODELO (nome do modelo → URL pública; a Meta baixa o arquivo em
+    /// cada envio) — o <b>padrão de fábrica</b> desta instância.
+    /// <para>Desde 20/09/2026 quem manda é o painel (Mensageria → Modelos, gravado em
+    /// <c>mensageria_configuracao.templates_imagens_json</c>): este mapa só vale para modelo que
+    /// o painel não definiu, e existe para a instância já subir funcionando. O formato do
+    /// cabeçalho vem do catálogo do relay — modelo que exige imagem e não tem arte em lugar
+    /// nenhum tem o envio recusado antes da Meta, em vez de voltar 132012 da fila.</para>
     /// </summary>
     public Dictionary<string, string> ImagensCabecalho { get; set; } = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -100,6 +103,15 @@ public sealed class ComunicacaoPacienteOptions
     /// <summary>Trava de código do lembrete. A chave de operação é <c>lembrete_habilitado</c>
     /// (menu Confirmações); esta existe para desligar o recurso inteiro sem mexer no banco.</summary>
     public bool EnviarLembreteAgendamento { get; set; } = true;
+
+    /// <summary>
+    /// Silêncio mínimo entre a mensagem PRINCIPAL e o lembrete. Quem foi avisado há poucos dias não
+    /// precisa ser avisado de novo — vira insistência, e insistência faz a pessoa bloquear o número
+    /// (o que custa a nota da conta na Meta). Padrão 7 dias.
+    /// <para>Cenário que motivou: o lote saiu em 18/09 e o lembrete de 2 dias alcançaria em 20/09
+    /// justamente quem tinha acabado de receber.</para>
+    /// </summary>
+    public int LembreteIntervaloMinimoDias { get; set; } = 7;
 
     /// <summary>Ligado em 2026-07-06 (template exame_liberado APPROVED).</summary>
     public bool EnviarExameLiberado { get; set; } = true;
