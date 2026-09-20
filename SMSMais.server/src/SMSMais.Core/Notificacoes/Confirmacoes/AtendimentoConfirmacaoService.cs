@@ -55,6 +55,10 @@ public interface IAtendimentoConfirmacaoService
     Task<AcaoAtendimentoResultadoDto> EnviarParaPendenteAsync(Guid solicitacaoId, PendenteAtendimentoRequest request, CancellationToken ct = default);
     Task<AcaoAtendimentoResultadoDto> ContatoErradoAsync(Guid solicitacaoId, ContatoErradoAtendimentoRequest request, CancellationToken ct = default);
     Task<AcaoAtendimentoResultadoDto> ContatoCorrigidoAsync(Guid solicitacaoId, ContatoCorrigidoAtendimentoRequest request, CancellationToken ct = default);
+
+    /// <summary>Desfaz um pedido de cancelamento registrado por engano — a ficha volta para a fila.</summary>
+    Task<AcaoAtendimentoResultadoDto> DesfazerPedidoCancelamentoAsync(
+        Guid solicitacaoId, DesfazerPedidoCancelamentoRequest request, CancellationToken ct = default);
 }
 
 public sealed class AtendimentoConfirmacaoService(
@@ -515,6 +519,62 @@ public sealed class AtendimentoConfirmacaoService(
         Encerrar(ativo, SituacaoAtendimentoConfirmacao.Confirmado, me, agora);
         AddEvento(ativo, TipoEventoAtendimentoConfirmacao.Confirmado, me, agora, observacao: request.Observacao);
         await SalvarComTraducaoDeCorridaAsync(ativo, ct);
+        return Resultado(ativo);
+    }
+
+    /// <summary>
+    /// O pedido de cancelamento era engano — a ficha volta para a fila de confirmação.
+    ///
+    /// <para>É a contrapartida obrigatória de registrar intenção por texto livre. "Já fiz a
+    /// reclamação" e "já fiz isso" parecem "já fiz o exame"; "qual o motivo do cancelamento?"
+    /// parece "quero cancelar". Sem uma saída, o falso positivo condenava a pessoa em silêncio:
+    /// ela sumia da fila de Não confirmados e ninguém mais a cobrava — chegaria no dia sem saber
+    /// se o exame valia.</para>
+    ///
+    /// <para>Não mexe em <c>Solicitacao.Status</c>: quem foi cancelado de verdade não passa por
+    /// aqui (some da aba, que só mostra intenção sem cancelamento). Isto desfaz a INTENÇÃO.</para>
+    /// </summary>
+    public async Task<AcaoAtendimentoResultadoDto> DesfazerPedidoCancelamentoAsync(
+        Guid solicitacaoId, DesfazerPedidoCancelamentoRequest request, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var agora = DateTime.UtcNow;
+        var s = await CarregarSolicitacaoAsync(solicitacaoId, ct);
+
+        if (s.Status == StatusSolicitacao.Cancelada)
+            throw new ConflitoException(
+                "atendimento.ja_cancelada",
+                "Este agendamento já foi cancelado de verdade — não é só um pedido. Não dá para desfazer por aqui.");
+
+        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Cancelada)
+            throw new ValidacaoException(
+                "atendimento.sem_pedido", "Não há pedido de cancelamento registrado nesta ficha.");
+
+        var ativo = await GarantirMeuAsync(s.Id, me, agora, ct);
+        var observacao = (request.Observacao ?? string.Empty).Trim();
+        if (observacao.Length > 500) observacao = observacao[..500];
+
+        // O que a pessoa escreveu fica na trilha antes de sumir do card — é a prova de por que a
+        // ficha esteve na fila, e de quem disse que não era isso.
+        var pedido = s.MotivoCancelamentoPaciente;
+        s.StatusConfirmacao = StatusConfirmacaoAgendamento.Pendente;
+        s.ConfirmacaoCanceladaEm = null;
+        s.ConfirmadoCanal = null;
+        s.MotivoCancelamentoPaciente = null;
+        s.AtualizadoEm = agora;
+        s.AtualizadoPor = me;
+
+        var nota = string.IsNullOrEmpty(pedido)
+            ? observacao
+            : $"Pedido desconsiderado (\"{pedido}\"){(observacao.Length > 0 ? ": " + observacao : ".")}";
+        RegistrarContato(s, MeioContato.Outro, ResultadoContato.Outro, nota, me, agora);
+
+        Encerrar(ativo, SituacaoAtendimentoConfirmacao.Liberado, me, agora);
+        AddEvento(ativo, TipoEventoAtendimentoConfirmacao.PedidoCancelamentoDesfeito, me, agora, observacao: nota);
+        await SalvarComTraducaoDeCorridaAsync(ativo, ct);
+
+        logger.LogInformation(
+            "Pedido de cancelamento da solicitação {Solicitacao} desfeito por {Usuario}.", s.Id, me);
         return Resultado(ativo);
     }
 

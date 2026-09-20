@@ -114,6 +114,7 @@ public sealed record PendenteAtendimentoRequest(string Motivo);
 public sealed record ContatoErradoAtendimentoRequest(string? Observacao);
 public sealed record TransferirAtendimentoRequest(Guid ParaUsuarioId, string? Observacao);
 public sealed record ContatoCorrigidoAtendimentoRequest(string? Telefone, string? Observacao);
+public sealed record DesfazerPedidoCancelamentoRequest(string? Observacao);
 
 /// <summary>Resultado de uma ação sobre o atendimento.</summary>
 public sealed record AcaoAtendimentoResultadoDto(

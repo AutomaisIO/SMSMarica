@@ -315,6 +315,12 @@ export const artigoConfirmacoes: Artigo = {
             inteira. Leia antes de clicar: o motivo já vem preenchido no cancelamento, com o que ela escreveu, e é isso
             que vai responder, semanas depois, por que aquela vaga caiu.
           </P>
+          <Callout tipo="dica" titulo='Se não era cancelamento, use "Não era cancelamento"'>
+            O botão devolve a ficha para a fila de confirmação e não destrói nada — use sem medo. Ele existe porque o
+            contrário é pior: uma ficha marcada por engano sai da fila de <AbaRef>Não confirmados</AbaRef>, ninguém
+            mais cobra a pessoa, e ela chega no dia sem saber se o exame valia. O que ela escreveu fica no histórico,
+            junto com quem desfez.
+          </Callout>
           <Callout tipo="dica" titulo="A fila é de vagas, não de mensagens">
             Cada ficha parada aqui é um horário que continua bloqueado para alguém que não vai aparecer. Trabalhar esta
             fila é o que devolve a vaga para a fila de espera a tempo.

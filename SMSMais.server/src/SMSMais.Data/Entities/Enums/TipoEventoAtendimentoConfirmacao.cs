@@ -13,4 +13,11 @@ public enum TipoEventoAtendimentoConfirmacao
     Retomado = 8,
     Liberado = 9,
     ContatoCorrigido = 10,
+
+    /// <summary>
+    /// O pedido de cancelamento era engano: a ficha volta para a fila de confirmação. Existe
+    /// porque pedido chega em texto livre e texto livre erra — sem esta saída, um falso positivo
+    /// tirava a pessoa da cobrança para sempre, calado.
+    /// </summary>
+    PedidoCancelamentoDesfeito = 11,
 }

@@ -81,7 +81,8 @@ type Acao =
   | { tipo: 'pendente'; motivo: string }
   | { tipo: 'contato-errado'; observacao?: string }
   | { tipo: 'transferir'; paraUsuarioId: string; observacao?: string }
-  | { tipo: 'contato-corrigido'; telefone?: string; observacao?: string };
+  | { tipo: 'contato-corrigido'; telefone?: string; observacao?: string }
+  | { tipo: 'desfazer-pedido-cancelamento'; observacao?: string };
 
 /** Uma mutação para todas as ações do card — invalida as listas ao terminar. */
 export function useAcaoAtendimento() {

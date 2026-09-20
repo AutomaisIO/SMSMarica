@@ -18,7 +18,8 @@ export type AcaoCard =
   | 'pendente'
   | 'contato-errado'
   | 'transferir'
-  | 'contato-corrigido';
+  | 'contato-corrigido'
+  | 'desfazer-pedido';
 
 type Props = {
   item: SolicitacaoAtendimento;
@@ -200,6 +201,18 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
                 Liberar
               </Button>
             </>
+          ) : null}
+
+          {aba === 'Cancelamento' ? (
+            <Button
+              tamanho="sm"
+              variante="outline"
+              disabled={ocupado}
+              onClick={() => aoAcao('desfazer-pedido', item)}
+              title="A pessoa não pediu para cancelar — devolve a ficha para a fila de confirmação."
+            >
+              <Undo2 className="mr-1 h-3.5 w-3.5" /> Não era cancelamento
+            </Button>
           ) : null}
 
           {aba === 'ContatoErrado' && item.pacienteCpf ? (

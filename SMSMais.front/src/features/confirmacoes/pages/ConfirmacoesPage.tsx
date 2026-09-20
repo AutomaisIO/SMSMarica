@@ -99,6 +99,15 @@ export function ConfirmacoesPage() {
       acao.mutate({ solicitacaoId: item.solicitacaoId, acao: { tipo } });
       return;
     }
+    // Desfazer um pedido não destrói nada — devolve a ficha para a fila. Pedir confirmação num
+    // ato reversível só ensina a atendente a clicar em "sim" sem ler.
+    if (tipo === 'desfazer-pedido') {
+      acao.mutate({
+        solicitacaoId: item.solicitacaoId,
+        acao: { tipo: 'desfazer-pedido-cancelamento' },
+      });
+      return;
+    }
     acao.reset();
     setModal({ tipo, item });
   }

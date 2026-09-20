@@ -121,6 +121,17 @@ public sealed class ConfirmacoesController(
         Guid solicitacaoId, [FromBody] CancelarAtendimentoRequest request, CancellationToken ct) =>
         await atendimento.CancelarAsync(solicitacaoId, request, ct);
 
+    /// <summary>Desfaz um pedido de cancelamento registrado por engano — a ficha volta para a fila
+    /// de confirmação. Não serve para agendamento já cancelado de verdade.</summary>
+    [HttpPost("atendimento/{solicitacaoId:guid}/desfazer-pedido-cancelamento")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AcaoAtendimentoResultadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<AcaoAtendimentoResultadoDto> DesfazerPedidoCancelamento(
+        Guid solicitacaoId, [FromBody] DesfazerPedidoCancelamentoRequest request, CancellationToken ct) =>
+        await atendimento.DesfazerPedidoCancelamentoAsync(solicitacaoId, request, ct);
+
     [HttpPost("atendimento/{solicitacaoId:guid}/pendente")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<AcaoAtendimentoResultadoDto>(StatusCodes.Status200OK)]
