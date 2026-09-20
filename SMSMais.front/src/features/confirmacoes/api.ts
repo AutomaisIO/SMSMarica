@@ -6,6 +6,7 @@ import type {
   AtendenteConfirmacao,
   EventoAtendimento,
   FiltroAtendimento,
+  MotivosTelefoneComprometido,
   PaginaAtendimento,
   ResumoAbas,
 } from '@/features/confirmacoes/types';
@@ -27,6 +28,17 @@ export function useAtendimento(filtro: FiltroAtendimento) {
       (await http.get<PaginaAtendimento>('/confirmacoes/atendimento', { params: params(filtro) })).data,
     placeholderData: (anterior) => anterior,
     refetchInterval: 30_000,
+  });
+}
+
+/** Os porquês da aba Telefone comprometido — só busca quando a aba está aberta. */
+export function useMotivosTelefoneComprometido(habilitado: boolean) {
+  return useQuery({
+    queryKey: [...raiz, 'telefone-comprometido', 'motivos'],
+    queryFn: async () =>
+      (await http.get<MotivosTelefoneComprometido>('/confirmacoes/atendimento/telefone-comprometido/motivos')).data,
+    enabled: habilitado,
+    refetchInterval: 60_000,
   });
 }
 

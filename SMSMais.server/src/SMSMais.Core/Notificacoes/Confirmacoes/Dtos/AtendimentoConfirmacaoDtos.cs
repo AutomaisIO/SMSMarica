@@ -1,12 +1,19 @@
 namespace SMSMais.Core.Notificacoes.Confirmacoes.Dtos;
 
-/// <summary>As quatro filas do menu Confirmações (derivadas — ver <c>AtendimentoConfirmacaoService</c>).</summary>
+/// <summary>As filas do menu Confirmações (derivadas — ver <c>AtendimentoConfirmacaoService</c>).</summary>
 public enum AbaAtendimentoConfirmacao
 {
     NaoConfirmados = 1,
     Confirmados = 2,
     ContatoErrado = 3,
     Pendentes = 4,
+
+    /// <summary>
+    /// O canal não alcança o paciente: cadastro sem celular, ou número que a Meta recusa por não
+    /// estar no WhatsApp. Não é "contato errado" — o número pode ser do paciente; o que falta é
+    /// chegar nele. Sai da fila automática e entra na de ligação.
+    /// </summary>
+    TelefoneComprometido = 5,
 }
 
 /// <summary>Situação do envio automático da confirmação (o que a atendente precisa ver no card).</summary>
@@ -60,14 +67,26 @@ public sealed record SolicitacaoAtendimentoDto(
     Guid? ConversaId,
     /// <summary>Há pendência aberta de "número errado" para este paciente.</summary>
     bool ContatoNegado,
-    AtendimentoDto? Atendimento);
+    AtendimentoDto? Atendimento,
+    /// <summary>Por que o canal não alcança (<c>SemCelular</c>/<c>NaoEhWhatsApp</c>), quando é o caso.</summary>
+    string? MotivoTelefoneComprometido = null,
+    /// <summary>Quantas mensagens já se perderam por esse mesmo motivo — mede a urgência.</summary>
+    int TentativasPerdidas = 0);
 
 public sealed record PaginaAtendimentoDto(
     IReadOnlyList<SolicitacaoAtendimentoDto> Itens, int Total, int Pagina, int Tamanho);
 
 /// <summary>Contagem por aba (badges) + quantas estão comigo agora.</summary>
 public sealed record ResumoAbasAtendimentoDto(
-    int NaoConfirmados, int Confirmados, int ContatoErrado, int Pendentes, int EmAtendimentoComigo);
+    int NaoConfirmados, int Confirmados, int ContatoErrado, int Pendentes, int EmAtendimentoComigo,
+    int TelefoneComprometido = 0);
+
+/// <summary>
+/// Os "porquês" da aba Telefone comprometido: quantas solicitações estão paradas por cada motivo.
+/// É o que responde "por que o canal não alcança parte da base" sem precisar abrir a lista.
+/// </summary>
+public sealed record MotivosTelefoneComprometidoDto(
+    int SemCelular, int NaoEhWhatsApp, int Total, int PacientesDistintos);
 
 public sealed record AtendenteConfirmacaoDto(Guid Id, string Nome);
 

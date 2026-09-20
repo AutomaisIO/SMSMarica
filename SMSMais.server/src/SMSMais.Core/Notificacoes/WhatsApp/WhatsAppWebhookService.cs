@@ -32,6 +32,7 @@ public sealed class WhatsAppWebhookService(
     IConversaNotificador notificador,
     IEnumerable<IManipuladorMensagemWhatsApp> manipuladores,
     IOptions<ComunicacaoPacienteOptions> notificadorOptions,
+    IContatoComprometidoService contatosComprometidos,
     ILogger<WhatsAppWebhookService> logger) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
@@ -230,6 +231,13 @@ public sealed class WhatsAppWebhookService(
                     {
                         notificacao.Status = StatusComunicacao.Falha;
                         notificacao.ProximaTentativaEm = null;
+
+                        // Recusa permanente (não é WhatsApp): marca o CADASTRO. A maioria das
+                        // falhas 131026 chega por aqui, no recibo — não na resposta do envio.
+                        if (!ErroEntregaRetentavel(erro))
+                            await contatosComprometidos.MarcarAsync(
+                                notificacao.PacienteId, notificacao.Telefone,
+                                MotivoContatoComprometido.NaoEhWhatsApp, erro, notificacao.Id, ct);
                     }
                     break;
             }

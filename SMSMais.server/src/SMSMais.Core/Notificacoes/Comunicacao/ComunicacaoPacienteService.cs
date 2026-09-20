@@ -66,6 +66,7 @@ public sealed class ComunicacaoPacienteService(
     IOptions<ComunicacaoPacienteOptions> options,
     Identidade.IUsuarioAtualAccessor usuarioAtual,
     Telefones.IDispensaContatoService dispensasContato,
+    IContatoComprometidoService contatosComprometidos,
     Confirmacoes.IConfirmacaoConfiguracaoService regrasConfirmacao,
     ILogger<ComunicacaoPacienteService> logger) : IComunicacaoPacienteService
 {
@@ -494,9 +495,17 @@ public sealed class ComunicacaoPacienteService(
                 return;
             }
             Terminal(n, StatusComunicacao.SemTelefoneValido, "Paciente sem número de celular válido.");
+            // Marca no CADASTRO: o problema não é deste agendamento, é da ficha do paciente.
+            await contatosComprometidos.MarcarAsync(
+                n.PacienteId, null, MotivoContatoComprometido.SemCelular,
+                "Nenhum celular brasileiro válido no cadastro.", n.Id, ct);
             return;
         }
         n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
+
+        // O cadastro tem número utilizável: o que estiver marcado sobre um número velho (ou sobre
+        // a falta de número) deixou de valer.
+        await contatosComprometidos.ReconciliarAsync(n.PacienteId, n.Telefone, ct);
 
         // NÚMERO NEGADO: pendência aberta de "número errado" para o destino ⇒ quem atende já
         // disse que não é o paciente. Nenhum automático sai — nem o desafio cadastral (é
@@ -624,6 +633,11 @@ public sealed class ComunicacaoPacienteService(
         else if (ErroPermanente(resultado.Erro))
         {
             Terminal(n, StatusComunicacao.Falha, resultado.Erro);
+            // A Meta disse que este número não recebe. É fato do cadastro, não desta mensagem:
+            // sem a marca, toda solicitação futura do mesmo paciente redescobre o mesmo problema.
+            await contatosComprometidos.MarcarAsync(
+                n.PacienteId, n.Telefone, MotivoContatoComprometido.NaoEhWhatsApp,
+                resultado.Erro, n.Id, ct);
         }
         else
         {

@@ -35,6 +35,9 @@ public interface IAtendimentoConfirmacaoService
 
     Task<ResumoAbasAtendimentoDto> ResumoAsync(CancellationToken ct = default);
 
+    /// <summary>Os porquês da aba Telefone comprometido, para o painel no topo da lista.</summary>
+    Task<MotivosTelefoneComprometidoDto> MotivosTelefoneComprometidoAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<EventoAtendimentoDto>> HistoricoAsync(Guid solicitacaoId, CancellationToken ct = default);
 
     Task<IReadOnlyList<AtendenteConfirmacaoDto>> ListarAtendentesAsync(CancellationToken ct = default);
@@ -147,6 +150,15 @@ public sealed class AtendimentoConfirmacaoService(
             .Select(p => p.PacienteId!.Value)
             .ToHashSetAsync(ct);
 
+        // O porquê de o canal não alcançar, por paciente. Quando há mais de uma marca aberta vale a
+        // mais recente — é a que descreve o número que o cadastro usa hoje.
+        var comprometidos = (await db.ContatosComprometidos.AsNoTracking()
+                .Where(c => c.ResolvidoEm == null && pacienteIds.Contains(c.PacienteId))
+                .Select(c => new { c.PacienteId, c.Motivo, c.Ocorrencias, c.UltimaOcorrenciaEm })
+                .ToListAsync(ct))
+            .GroupBy(c => c.PacienteId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.UltimaOcorrenciaEm).First());
+
         // Janela de 24h: conversa viva do paciente (ou do telefone para onde a confirmação foi).
         var telefones = linhas.Select(l => l.Envio?.Telefone).Where(t => !string.IsNullOrEmpty(t)).Cast<string>()
             .Concat(resumos.Values.Select(r => r.Celular ?? r.TelefoneVerificado).Where(t => !string.IsNullOrEmpty(t))
@@ -183,7 +195,9 @@ public sealed class AtendimentoConfirmacaoService(
                 l.Atendimento is null ? null : new AtendimentoDto(
                     l.Atendimento.Id, l.Atendimento.AtendenteUsuarioId, l.Atendimento.AtendenteNome,
                     l.Atendimento.Situacao.ToString(), l.Atendimento.Motivo, l.Atendimento.IniciadoEm,
-                    l.Atendimento.AtualizadoEm, l.Atendimento.AtendenteUsuarioId == me));
+                    l.Atendimento.AtualizadoEm, l.Atendimento.AtendenteUsuarioId == me),
+                comprometidos.TryGetValue(l.PacienteId, out var cc) ? cc.Motivo.ToString() : null,
+                cc?.Ocorrencias ?? 0);
         }).ToList();
 
         return new PaginaAtendimentoDto(itens, total, pagina, tamanho);
@@ -196,10 +210,39 @@ public sealed class AtendimentoConfirmacaoService(
         var confirmados = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.Confirmados, ct)).CountAsync(ct);
         var contatoErrado = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.ContatoErrado, ct)).CountAsync(ct);
         var pendentes = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.Pendentes, ct)).CountAsync(ct);
+        var semCanal = await (await QueryDaAbaAsync(AbaAtendimentoConfirmacao.TelefoneComprometido, ct)).CountAsync(ct);
         var comigo = me is null ? 0 : await db.AtendimentosConfirmacao.AsNoTracking()
             .CountAsync(a => a.EncerradoEm == null && a.AtendenteUsuarioId == me
                 && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento, ct);
-        return new ResumoAbasAtendimentoDto(naoConfirmados, confirmados, contatoErrado, pendentes, comigo);
+        return new ResumoAbasAtendimentoDto(naoConfirmados, confirmados, contatoErrado, pendentes, comigo, semCanal);
+    }
+
+    /// <summary>
+    /// Quantas solicitações estão paradas por cada motivo — e quantas PESSOAS distintas estão por
+    /// trás. Os dois números interessam: solicitação mede o prejuízo (vagas em risco), paciente
+    /// mede o trabalho de recepção (cada um é um telefonema, não importa quantos exames tenha).
+    /// </summary>
+    public async Task<MotivosTelefoneComprometidoDto> MotivosTelefoneComprometidoAsync(CancellationToken ct = default)
+    {
+        var q = await QueryDaAbaAsync(AbaAtendimentoConfirmacao.TelefoneComprometido, ct);
+
+        var porMotivo = await q
+            .Join(db.ContatosComprometidos.Where(c => c.ResolvidoEm == null),
+                s => s.PacienteId, c => c.PacienteId, (s, c) => new { s.PacienteId, c.Motivo })
+            .GroupBy(x => x.Motivo)
+            .Select(g => new { Motivo = g.Key, Solicitacoes = g.Count() })
+            .ToListAsync(ct);
+
+        int Do(MotivoContatoComprometido m) =>
+            porMotivo.FirstOrDefault(x => x.Motivo == m)?.Solicitacoes ?? 0;
+
+        var total = await q.CountAsync(ct);
+        var pessoas = await q.Select(s => s.PacienteId).Distinct().CountAsync(ct);
+
+        return new MotivosTelefoneComprometidoDto(
+            Do(MotivoContatoComprometido.SemCelular),
+            Do(MotivoContatoComprometido.NaoEhWhatsApp),
+            total, pessoas);
     }
 
     public async Task<IReadOnlyList<EventoAtendimentoDto>> HistoricoAsync(Guid solicitacaoId, CancellationToken ct = default)
@@ -260,11 +303,19 @@ public sealed class AtendimentoConfirmacaoService(
             .Where(p => p.Status == StatusPendenciaCadastro.Aberta && p.PacienteId != null)
             .Select(p => p.PacienteId!.Value);
 
+        // Marca aberta de contato que o canal não alcança (sem celular / não é WhatsApp). Sai da
+        // fila de "não confirmados" por um motivo prático: ali a atendente trabalha mandando
+        // mensagem, e para estes não adianta — o caminho é ligar.
+        var pacientesSemCanal = db.ContatosComprometidos
+            .Where(c => c.ResolvidoEm == null)
+            .Select(c => c.PacienteId);
+
         return aba switch
         {
             AbaAtendimentoConfirmacao.NaoConfirmados => q.Where(s =>
                 s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente
                 && !pacientesNegados.Contains(s.PacienteId)
+                && !pacientesSemCanal.Contains(s.PacienteId)
                 && !db.AtendimentosConfirmacao.Any(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null
                     && (a.Situacao == SituacaoAtendimentoConfirmacao.Pendente
                         || a.Situacao == SituacaoAtendimentoConfirmacao.ContatoErrado))
@@ -288,6 +339,13 @@ public sealed class AtendimentoConfirmacaoService(
                 s.StatusConfirmacao != StatusConfirmacaoAgendamento.Cancelada
                 && db.AtendimentosConfirmacao.Any(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null
                     && a.Situacao == SituacaoAtendimentoConfirmacao.Pendente)),
+
+            // Quem já confirmou por outro caminho (recepção, app) não precisa ser perseguido,
+            // mesmo com o telefone ruim; e quem negou ser o paciente é assunto da outra aba.
+            AbaAtendimentoConfirmacao.TelefoneComprometido => q.Where(s =>
+                s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente
+                && pacientesSemCanal.Contains(s.PacienteId)
+                && !pacientesNegados.Contains(s.PacienteId)),
 
             _ => throw new ValidacaoException("aba", "Aba desconhecida."),
         };

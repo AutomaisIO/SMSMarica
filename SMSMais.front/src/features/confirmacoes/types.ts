@@ -1,6 +1,14 @@
 import type { StatusConfirmacao, StatusNotificacao } from '@/features/mensageria/types';
 
-export type AbaAtendimento = 'NaoConfirmados' | 'Confirmados' | 'ContatoErrado' | 'Pendentes';
+export type AbaAtendimento =
+  | 'NaoConfirmados'
+  | 'Confirmados'
+  | 'ContatoErrado'
+  | 'Pendentes'
+  | 'TelefoneComprometido';
+
+/** Por que o canal não alcança o paciente. */
+export type MotivoTelefoneComprometido = 'SemCelular' | 'NaoEhWhatsApp';
 
 export type SituacaoAtendimento =
   | 'EmAtendimento'
@@ -59,6 +67,10 @@ export type SolicitacaoAtendimento = {
   conversaId: string | null;
   contatoNegado: boolean;
   atendimento: Atendimento | null;
+  /** Preenchido quando há marca aberta de contato que o canal não alcança. */
+  motivoTelefoneComprometido: MotivoTelefoneComprometido | null;
+  /** Mensagens já perdidas por esse mesmo motivo. */
+  tentativasPerdidas: number;
 };
 
 export type PaginaAtendimento = {
@@ -74,6 +86,14 @@ export type ResumoAbas = {
   contatoErrado: number;
   pendentes: number;
   emAtendimentoComigo: number;
+  telefoneComprometido: number;
+};
+
+export type MotivosTelefoneComprometido = {
+  semCelular: number;
+  naoEhWhatsApp: number;
+  total: number;
+  pacientesDistintos: number;
 };
 
 export type AtendenteConfirmacao = { id: string; nome: string };

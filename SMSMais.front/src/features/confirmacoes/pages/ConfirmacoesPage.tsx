@@ -7,7 +7,12 @@ import { Input } from '@/shared/ui/Input';
 import { Paginacao } from '@/shared/ui/Paginacao';
 import { Select } from '@/shared/ui/Select';
 import { Tabs } from '@/shared/ui/Tabs';
-import { useAcaoAtendimento, useAtendimento, useResumoAbas } from '@/features/confirmacoes/api';
+import {
+  useAcaoAtendimento,
+  useAtendimento,
+  useMotivosTelefoneComprometido,
+  useResumoAbas,
+} from '@/features/confirmacoes/api';
 import { CardSolicitacao, type AcaoCard } from '@/features/confirmacoes/components/CardSolicitacao';
 import {
   ModalCancelar,
@@ -27,6 +32,13 @@ const ABAS: { id: AbaAtendimento; rotulo: string; descricao: string }[] = [
   { id: 'Confirmados', rotulo: 'Confirmados', descricao: 'Confirmados por link, botão, robô, app, recepção ou atendente. Ainda dá para cancelar.' },
   { id: 'ContatoErrado', rotulo: 'Contato errado', descricao: 'Quem atende disse que não é o paciente. Corrija o telefone e verifique para voltar à fila.' },
   { id: 'Pendentes', rotulo: 'Pendentes', descricao: 'Estacionadas por uma atendente com motivo (não atendeu, ligar depois…).' },
+  {
+    id: 'TelefoneComprometido',
+    rotulo: 'Telefone comprometido',
+    descricao:
+      'O sistema não consegue avisar por WhatsApp: ou o cadastro não tem celular, ou o número não está no WhatsApp. ' +
+      'Não é contato errado — o número pode ser do paciente. Aqui o caminho é ligar e corrigir o cadastro.',
+  },
 ];
 
 const TAMANHOS = [25, 50, 100] as const;
@@ -59,6 +71,7 @@ export function ConfirmacoesPage() {
   useEffect(() => setPagina(1), [aba, textoDeb, unidadeId, envio, tamanho]);
 
   const resumo = useResumoAbas();
+  const motivos = useMotivosTelefoneComprometido(aba === 'TelefoneComprometido');
   const unidades = useRegrasUnidades();
   const q = useAtendimento({
     aba,
@@ -113,6 +126,27 @@ export function ConfirmacoesPage() {
           ))}
         </Select>
       </div>
+
+      {aba === 'TelefoneComprometido' && motivos.data ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Porque
+            titulo="Sem celular no cadastro"
+            valor={motivos.data.semCelular}
+            detalhe="Não há número para tentar. Pegue na próxima passagem pela unidade."
+          />
+          <Porque
+            titulo="Número não é WhatsApp"
+            valor={motivos.data.naoEhWhatsApp}
+            detalhe="A Meta recusou a entrega (131026). O número pode atender ligação."
+          />
+          <Porque titulo="Agendamentos parados" valor={motivos.data.total} detalhe="Vagas em risco por falta de aviso." />
+          <Porque
+            titulo="Pessoas a contatar"
+            valor={motivos.data.pacientesDistintos}
+            detalhe="Cada uma é um telefonema, mesmo com vários exames."
+          />
+        </div>
+      ) : null}
 
       {acao.isError && !modal ? <p className="text-sm text-red-700">{extrairMensagemDeErro(acao.error)}</p> : null}
       {q.isError ? <p className="text-sm text-red-700">{extrairMensagemDeErro(q.error)}</p> : null}
@@ -185,7 +219,8 @@ export function ConfirmacoesPage() {
             ? a.id === 'NaoConfirmados' ? r.naoConfirmados
               : a.id === 'Confirmados' ? r.confirmados
                 : a.id === 'ContatoErrado' ? r.contatoErrado
-                  : r.pendentes
+                  : a.id === 'Pendentes' ? r.pendentes
+                    : r.telefoneComprometido
             : undefined,
           conteudo,
         }))}
@@ -232,6 +267,20 @@ export function ConfirmacoesPage() {
           aoCorrigido={(telefone) => acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'contato-corrigido', telefone } }, { onSettled: fecharModal })}
         />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Um número do painel de porquês. Cada card responde "quantos" e, logo abaixo, "e daí" — sem a
+ * segunda linha o número não diz à atendente o que fazer com ele.
+ */
+function Porque({ titulo, valor, detalhe }: { titulo: string; valor: number; detalhe: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+      <p className="text-xs text-gray-500">{titulo}</p>
+      <p className="text-xl font-semibold text-gray-900">{valor.toLocaleString('pt-BR')}</p>
+      <p className="mt-0.5 text-xs leading-snug text-gray-500">{detalhe}</p>
     </div>
   );
 }

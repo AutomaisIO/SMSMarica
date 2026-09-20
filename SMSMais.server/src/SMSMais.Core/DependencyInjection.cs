@@ -201,6 +201,8 @@ public static class DependencyInjection
             Notificacoes.Mensageria.MensageriaConfiguracaoService>();
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoGestaoService,
             Notificacoes.Comunicacao.ComunicacaoGestaoService>();
+        services.AddScoped<Notificacoes.Comunicacao.IContatoComprometidoService,
+            Notificacoes.Comunicacao.ContatoComprometidoService>();
         // Resolução preguiçosa: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
         services.AddScoped(sp => new Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService>(
             sp.GetRequiredService<Notificacoes.Comunicacao.IComunicacaoPacienteService>));

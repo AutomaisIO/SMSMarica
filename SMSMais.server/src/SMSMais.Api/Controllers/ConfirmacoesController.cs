@@ -45,6 +45,13 @@ public sealed class ConfirmacoesController(
     public async Task<ResumoAbasAtendimentoDto> ResumoAtendimento(CancellationToken ct) =>
         await atendimento.ResumoAsync(ct);
 
+    /// <summary>Os porquês da aba Telefone comprometido (sem celular × não é WhatsApp).</summary>
+    [HttpGet("atendimento/telefone-comprometido/motivos")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<MotivosTelefoneComprometidoDto>(StatusCodes.Status200OK)]
+    public async Task<MotivosTelefoneComprometidoDto> MotivosTelefoneComprometido(CancellationToken ct) =>
+        await atendimento.MotivosTelefoneComprometidoAsync(ct);
+
     [HttpGet("atendimento/atendentes")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<AtendenteConfirmacaoDto>>(StatusCodes.Status200OK)]

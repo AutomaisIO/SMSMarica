@@ -30,6 +30,7 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
         Substitute.For<IConversaNotificador>(),
         [],
         Options.Create(new ComunicacaoPacienteOptions()),
+        Substitute.For<SMSMais.Core.Notificacoes.Comunicacao.IContatoComprometidoService>(),
         NullLogger<WhatsAppWebhookService>.Instance);
 
     private static string PayloadStatus(string wamid, string status, string? erroJson = null)

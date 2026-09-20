@@ -261,6 +261,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<Entities.Notificacoes.MensageriaConfiguracao> MensageriaConfiguracoes => Set<Entities.Notificacoes.MensageriaConfiguracao>();
     public DbSet<Entities.Notificacoes.AtendimentoConfirmacao> AtendimentosConfirmacao => Set<Entities.Notificacoes.AtendimentoConfirmacao>();
     public DbSet<Entities.Notificacoes.AtendimentoConfirmacaoEvento> AtendimentoConfirmacaoEventos => Set<Entities.Notificacoes.AtendimentoConfirmacaoEvento>();
+    public DbSet<Entities.Notificacoes.ContatoComprometido> ContatosComprometidos => Set<Entities.Notificacoes.ContatoComprometido>();
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
     public DbSet<Entities.Notificacoes.VerificacaoCadastralEstado> VerificacoesCadastraisEstado => Set<Entities.Notificacoes.VerificacaoCadastralEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();

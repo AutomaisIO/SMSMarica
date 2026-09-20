@@ -96,6 +96,19 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
             <TelefoneCopiavel numero={item.telefone} />
             {item.telefoneVerificado ? <span className="text-emerald-700" title="Contato verificado">✔ verificado</span> : null}
             {item.contatoNegado ? <span className="text-red-700" title="Quem atende disse que não é o paciente">❗ número negado</span> : null}
+            {item.motivoTelefoneComprometido ? (
+              <span
+                className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-900"
+                title={
+                  item.motivoTelefoneComprometido === 'SemCelular'
+                    ? 'O cadastro não tem celular válido — não há número para avisar. Pegue o número com o paciente.'
+                    : 'A Meta recusou a entrega dizendo que o número não está no WhatsApp. O número pode existir e atender ligação.'
+                }
+              >
+                {item.motivoTelefoneComprometido === 'SemCelular' ? 'sem celular' : 'não é WhatsApp'}
+                {item.tentativasPerdidas > 1 ? ` · ${item.tentativasPerdidas} tentativas perdidas` : ''}
+              </span>
+            ) : null}
             {item.janelaZapAberta ? (
               <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-800" title="O paciente escreveu no zap nas últimas 24h — o botão do WhatsApp abre a conversa direto.">
                 respondeu no zap
