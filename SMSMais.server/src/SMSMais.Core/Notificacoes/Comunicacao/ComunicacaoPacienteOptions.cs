@@ -34,9 +34,9 @@ public sealed class ComunicacaoPacienteOptions
     /// </summary>
     public Dictionary<string, string> ImagensCabecalho { get; set; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["confirmacao_exame"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.png",
-        ["confirmacao_consulta"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.png",
-        ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.png",
+        ["confirmacao_exame"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
+        ["confirmacao_consulta"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
+        ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.jpg",
     };
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
