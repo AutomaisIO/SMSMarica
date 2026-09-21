@@ -21,8 +21,9 @@ namespace SMSMais.Core.Notificacoes.Confirmacoes;
 ///
 /// <para>As quatro abas são DERIVADAS do estado que já existe (resposta do paciente na
 /// solicitação, comunicação automática, pendência de cadastro) mais a posse humana
-/// (<see cref="AtendimentoConfirmacao"/>). Nada aqui escreve no SISREG: o cancelamento é local
-/// (fase 1) e a atendente é orientada a cancelar lá pelo navegador — a extensão observa e concilia.</para>
+/// (<see cref="AtendimentoConfirmacao"/>). A única escrita no SISREG é o cancelamento: vai lá
+/// PRIMEIRO, com a sessão da própria atendente, e só vale aqui se a ficha de lá confirmar
+/// (ver <see cref="CancelarAsync"/>).</para>
 ///
 /// <para>Regra de ouro pedida pelo produto: depois que uma pessoa entra no circuito, o sistema
 /// não tenta mais enviar a confirmação automática daquela solicitação

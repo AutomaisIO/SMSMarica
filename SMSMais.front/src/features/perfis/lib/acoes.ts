@@ -66,7 +66,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
     rotulo: 'Consulta Inteligente — base Atendimento (lê as conversas com pacientes da rede toda)',
   },
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
-  { id: 'Confirmacoes', rotulo: 'Confirmações — atendimento das confirmações de agendamento (as 4 filas das atendentes)' },
+  { id: 'Confirmacoes', rotulo: 'Confirmações — atendimento das confirmações de agendamento (as filas das atendentes)' },
   { id: 'ConfirmacoesEquipe', rotulo: 'Confirmações — equipe (produção de cada atendente: quem confirmou, cancelou, resolveu telefone; exige Confirmações)' },
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
   { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
@@ -192,9 +192,9 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
     Exclusao: 'Arquivar e excluir estratégias',
   },
   Confirmacoes: {
-    Consulta: 'Ver as quatro filas (não confirmados, confirmados, contato errado, pendentes)',
+    Consulta: 'Ver as filas (não confirmados, confirmados, contato errado, pendentes, cancelamento, telefone comprometido)',
     Edicao: 'Atender, assumir, transferir, confirmar, enviar para pendente e marcar contato errado',
-    Exclusao: 'Cancelar agendamento (no SMSMais; o SISREG é cancelado pelo navegador)',
+    Exclusao: 'Cancelar agendamento — cancela no SISREG primeiro, com o login da própria atendente, e só então aqui',
   },
   ConfirmacoesEquipe: {
     Consulta: 'Ver a aba Equipe: o que cada atendente fez, tempos e ritmo',
