@@ -327,6 +327,9 @@ public static class DependencyInjection
         services.AddScoped<
             Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService,
             Integracoes.SisregWeb.Cancelamento.CancelamentoSisregService>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Cancelamento.IConciliacaoCancelamentosSisregService,
+            Integracoes.SisregWeb.Cancelamento.ConciliacaoCancelamentosSisregService>();
 
         // ---- CADSUS por porta configurável (SISREG × SER) ----
         // Quem importa pede o cadastro pelo roteador, não pela porta: a do SISREG tem orçamento
@@ -602,6 +605,13 @@ public static class DependencyInjection
             Integracoes.SisregWeb.Escalas.EscalasSincronizacaoService>();
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoRunner>();
         services.AddHostedService<Integracoes.SisregWeb.Escalas.Background.EscalasSincronizacaoScheduler>();
+
+        // Conciliação de CANCELAMENTOS: traz para a base o que foi cancelado NO SISREG por outra
+        // pessoa (executante, solicitante, regulação). Só leitura, credencial de sincronismo, e
+        // ocupa a faixa 8h–18h, que hoje não tem requisição automática nenhuma. Nasce desligada.
+        services.Configure<Integracoes.SisregWeb.Cancelamento.ConciliacaoCancelamentosOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.Cancelamento.ConciliacaoCancelamentosOpcoes.Secao));
+        services.AddHostedService<Integracoes.SisregWeb.Cancelamento.ConciliacaoCancelamentosScheduler>();
 
         // Fila de espera: quem pediu no SISREG e ainda NÃO foi agendado. Só leitura, 2 requisições
         // (pendente + reenviada) por janela de 31 dias, e sem a trava 07:30–15:00 (que é do
