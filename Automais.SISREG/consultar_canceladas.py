@@ -130,6 +130,8 @@ def main() -> int:
     ap.add_argument("--cnes", default="", help="CNES da unidade executante (padrão: todas)")
     ap.add_argument("--conciliar", action="store_true",
                     help="cruza com a nossa base e mostra o que está desencontrado")
+    ap.add_argument("--json", help="grava as linhas neste arquivo (tem PII: fora do repositório)")
+    ap.add_argument("--silencioso", action="store_true", help="não imprime linha a linha")
     args = ap.parse_args()
 
     hoje = dt.date.today()
@@ -165,8 +167,18 @@ def main() -> int:
             print("\n*** " + aviso + "\n")
 
         print(f"{len(todas)} cancelamento(s).\n")
-        for l in todas:
-            print("  " + " | ".join(l["celulas"][:7]))
+        if not args.silencioso:
+            for l in todas:
+                print("  " + " | ".join(l["celulas"][:7]))
+
+        if args.json:
+            import json as _json
+            campos = ("codigo", "data_exec", "hora", "procedimento", "profissional",
+                      "paciente", "justificativa", "operador", "cancelado_em")
+            with open(args.json, "w", encoding="utf-8") as f:
+                _json.dump([dict(zip(campos, l["celulas"][:9])) for l in todas],
+                           f, ensure_ascii=False, indent=1)
+            print(f"gravado em {args.json}")
 
         if args.conciliar and aviso.startswith("INCOMPLETO"):
             print("conciliação recusada: a leitura veio incompleta (ver aviso acima).")
