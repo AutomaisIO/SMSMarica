@@ -281,7 +281,7 @@ export const artigoConfirmacoes: Artigo = {
       id: 'cancelamento-sisreg',
       titulo: 'Cancelar: como funciona nos dois sistemas',
       busca:
-        'cancelar sisreg senha login operador assina vaga aviso paciente conciliação cadência intervalo de quanto em quanto tempo janela horário fechamento dia anterior motor configurar',
+        'cancelar sisreg senha login operador assina vaga aviso paciente conciliação cadência intervalo de quanto em quanto tempo janela horário fechamento dia anterior motor configurar cancelando demora travou não aconteceu nada resultado desfecho três linhas conferir',
       conteudo: (
         <div className="space-y-4">
           <P>Este é o ponto que mais gera confusão, então vale ler com calma. Ao cancelar aqui, na mesma hora:</P>
@@ -296,6 +296,15 @@ export const artigoConfirmacoes: Artigo = {
             por isso que aparece o pedido da senha do SISREG na primeira vez do dia. Só depois de a ficha lá confirmar
             que mudou para cancelada é que o cancelamento vale aqui. Se o SISREG não confirmar, <strong>nada muda</strong>:
             a ficha continua como estava e você pode tentar de novo.
+          </Callout>
+          <Callout tipo="atencao" titulo="Vai demorar alguns segundos — e a tela diz o que deu">
+            Depois de confirmar, a janela fica com <strong>“Cancelando…”</strong>: o sistema está entrando no SISREG
+            com o seu login, cancelando e <strong>relendo a ficha</strong> para conferir. São poucos segundos, mas não
+            são instantâneos — não feche a janela nem clique de novo. Quando terminar, a <strong>mesma janela</strong>
+            vira o desfecho, com três linhas: o que aconteceu <strong>aqui no sistema</strong>, o que aconteceu
+            <strong> no SISREG</strong> (e como a ficha de lá ficou) e se o <strong>paciente foi avisado</strong> por
+            WhatsApp. Ela só fecha quando você clicar em Fechar — leia as três antes, principalmente a do aviso:
+            se disser que ele <strong>não</strong> foi avisado e você ainda estiver na linha, avise pelo telefone.
           </Callout>
           <Callout tipo="dica" titulo="A senha do SISREG não fica guardada">
             Ela vale pela sua sessão e some quando você sai. Pedimos a sua porque é o <strong>seu</strong> login que

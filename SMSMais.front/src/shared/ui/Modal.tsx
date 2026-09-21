@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
@@ -18,20 +18,58 @@ const larguras: Record<NonNullable<Props['largura']>, string> = {
   lg: 'max-w-3xl',
 };
 
+/**
+ * Trava de rolagem do corpo — CONTADA, não por modal.
+ *
+ * <p>Cada modal salvava e restaurava o `overflow` do `body` por conta própria. Com dois abertos
+ * — o de cancelar e, por cima dele, o de senha do SISREG — bastava a página re-renderizar para o
+ * de baixo reexecutar o efeito e passar a guardar `hidden` como "valor original". Fechados os
+ * dois, o `body` ficava travado em `hidden` e a página só voltava a rolar com F5.</p>
+ *
+ * <p>Um contador único resolve a classe inteira do problema: o primeiro modal trava, o último
+ * destrava, e reabrir o efeito no meio não corrompe nada.</p>
+ */
+let modaisComRolagemTravada = 0;
+let overflowAntesDaTrava = '';
+
+function travarRolagem(): () => void {
+  if (modaisComRolagemTravada === 0) {
+    overflowAntesDaTrava = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  modaisComRolagemTravada += 1;
+
+  let liberado = false;
+  return () => {
+    if (liberado) return;
+    liberado = true;
+    modaisComRolagemTravada -= 1;
+    if (modaisComRolagemTravada === 0) document.body.style.overflow = overflowAntesDaTrava;
+  };
+}
+
 export function Modal({ aberto, aoFechar, titulo, descricao, children, largura = 'md' }: Props) {
+  // `aoFechar` costuma ser uma função declarada no corpo de quem renderiza, ou seja, uma
+  // identidade nova a cada render. Na lista de dependências ela fazia o efeito inteiro ser
+  // desmontado e remontado sem que nada tivesse mudado — era esse churn que corrompia a trava de
+  // rolagem. Por ref, o efeito roda uma vez por abertura e ainda assim chama sempre a versão atual.
+  const aoFecharRef = useRef(aoFechar);
+  useEffect(() => {
+    aoFecharRef.current = aoFechar;
+  });
+
   useEffect(() => {
     if (!aberto) return;
     function aoPressionar(e: KeyboardEvent) {
-      if (e.key === 'Escape') aoFechar();
+      if (e.key === 'Escape') aoFecharRef.current();
     }
     document.addEventListener('keydown', aoPressionar);
-    const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const destravarRolagem = travarRolagem();
     return () => {
       document.removeEventListener('keydown', aoPressionar);
-      document.body.style.overflow = original;
+      destravarRolagem();
     };
-  }, [aberto, aoFechar]);
+  }, [aberto]);
 
   if (!aberto) return null;
 

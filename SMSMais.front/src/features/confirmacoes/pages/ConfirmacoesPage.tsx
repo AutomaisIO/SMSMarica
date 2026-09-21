@@ -77,6 +77,8 @@ export function ConfirmacoesPage() {
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState<number>(50);
   const [modal, setModal] = useState<ModalAberto>(null);
+  // O desfecho do cancelamento fica NO modal, não num toast. Ver `ResultadoDoCancelamento`.
+  const [resultadoCancelamento, setResultadoCancelamento] = useState<AcaoResultado | null>(null);
   // O cancelamento acontece no SISREG PRIMEIRO, com o login da própria atendente, e só vale aqui
   // se lá confirmar. Não há mais estado "cancelado aqui e não lá" — por isso não há mais aviso.
   const sessaoSisreg = useSessaoSisregObrigatoria();
@@ -115,11 +117,13 @@ export function ConfirmacoesPage() {
       return;
     }
     acao.reset();
+    setResultadoCancelamento(null);
     setModal({ tipo, item });
   }
 
   function fecharModal() {
     setModal(null);
+    setResultadoCancelamento(null);
     acao.reset();
   }
 
@@ -253,15 +257,16 @@ export function ConfirmacoesPage() {
       {modal?.tipo === 'cancelar' ? (
         <ModalCancelar
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
+          resultado={resultadoCancelamento}
           aoCancelar={(motivo, meio) => {
             // O cancelamento vai ao SISREG assinado pela atendente. Sem sessão lá, o modal de
             // senha aparece e a ação é retomada sozinha — ela não redigita o motivo.
             const cancelar = () =>
               acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'cancelar', motivo, meio } }, {
-                onSuccess: (res) => {
-                  fecharModal();
-                  notificar(textoDoCancelamento(res), 'sucesso');
-                },
+                // NÃO fecha: o modal vira o desfecho. Fechar aqui e dizer o resultado num toast
+                // fazia a tela apagar tudo no exato instante em que tinha algo a contar — e o
+                // toast morre em quatro segundos, no canto oposto ao que a pessoa olhava.
+                onSuccess: setResultadoCancelamento,
                 onError: (erro) => sessaoSisreg.tratouFaltaDeSessao(erro, cancelar),
               });
             sessaoSisreg.comSessao(cancelar);
@@ -310,21 +315,4 @@ function Porque({ titulo, valor, detalhe }: { titulo: string; valor: number; det
       <p className="mt-0.5 text-xs leading-snug text-gray-500">{detalhe}</p>
     </div>
   );
-}
-
-/**
- * O que dizer à atendente depois de cancelar.
- *
- * <p>São três coisas diferentes — cancelar aqui, cancelar no SISREG e avisar o paciente — e ela
- * não tem como saber quais saíram. Um "pronto" genérico esconderia justamente o que ela precisa
- * conferir: se a vaga foi liberada lá e se a pessoa foi avisada.</p>
- */
-function textoDoCancelamento(res: AcaoResultado): string {
-  const noSisreg = res.sisregSituacao
-    ? 'Cancelado aqui e no SISREG.'
-    : 'Cancelado. (Este agendamento não existia no SISREG.)';
-  const aviso = res.pacienteAvisado
-    ? ' Paciente avisado por WhatsApp.'
-    : ' O paciente NÃO foi avisado.';
-  return noSisreg + aviso;
 }

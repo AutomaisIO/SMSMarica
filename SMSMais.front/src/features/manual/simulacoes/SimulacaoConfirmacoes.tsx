@@ -4,8 +4,11 @@ import {
   ArrowRightLeft,
   Check,
   CheckCheck,
+  CheckCircle2,
   Clock,
   Hand,
+  Loader2,
+  MessageSquareText,
   PhoneOff,
   Undo2,
   UserRound,
@@ -61,7 +64,6 @@ export function SimulacaoConfirmacoes() {
   const [aba, setAba] = useState<AbaSim>('NaoConfirmados');
   const [modal, setModal] = useState<ModalSim>(null);
   const [eventos, setEventos] = useState<string[]>([]);
-  const [avisoSisreg, setAvisoSisreg] = useState<string | null>(null);
   const [recemMudada, setRecemMudada] = useState<string | null>(null);
 
   function reiniciar() {
@@ -69,7 +71,6 @@ export function SimulacaoConfirmacoes() {
     setAba('NaoConfirmados');
     setModal(null);
     setEventos([]);
-    setAvisoSisreg(null);
     setRecemMudada(null);
   }
 
@@ -194,18 +195,6 @@ export function SimulacaoConfirmacoes() {
             ))}
           </nav>
         </div>
-
-        {avisoSisreg ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            <span>
-              Cancelado aqui: <strong>{avisoSisreg}</strong>. Agora cancele também no <strong>SISREG</strong> pelo
-              navegador — com a extensão instalada, o sistema reconhece sozinho.
-            </span>
-            <button type="button" className="text-xs underline" onClick={() => setAvisoSisreg(null)}>
-              entendi
-            </button>
-          </div>
-        ) : null}
 
         {daAba.length === 0 ? (
           <p className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500">
@@ -333,10 +322,8 @@ export function SimulacaoConfirmacoes() {
             mudar(
               fichaDoModal.id,
               (x) => ({ ...x, cancelado: true, posse: undefined }),
-              `Agendamento de ${primeiroNome(fichaDoModal)} cancelado (${meio.toLowerCase()}): ${motivo}.`,
+              `Agendamento de ${primeiroNome(fichaDoModal)} cancelado no SISREG e aqui (${meio.toLowerCase()}): ${motivo}.`,
             );
-            setAvisoSisreg(fichaDoModal.nome);
-            setModal(null);
           }}
         />
       ) : null}
@@ -698,6 +685,14 @@ function ModalContatoErradoSim({
   );
 }
 
+/**
+ * Cancelamento, com a espera e o desfecho que a tela real tem.
+ *
+ * <para>A espera é de mentira (um tempo fixo), mas ela precisa existir: na tela real o sistema vai
+ * ao SISREG, cancela e relê a ficha antes de responder, e quem não foi avisado disso conclui que
+ * travou e clica de novo. E o desfecho fica <b>na própria janela</b> até a pessoa fechar — as três
+ * linhas são o que ela tem para conferir se a vaga saiu de lá e se o paciente ficou sabendo.</para>
+ */
 function ModalCancelarSim({
   ficha,
   aoFechar,
@@ -709,14 +704,52 @@ function ModalCancelarSim({
 }) {
   const [motivo, setMotivo] = useState('');
   const [meio, setMeio] = useState(MEIOS[0]);
+  const [etapa, setEtapa] = useState<'formulario' | 'cancelando' | 'desfecho'>('formulario');
+
+  function confirmar() {
+    setEtapa('cancelando');
+    window.setTimeout(() => {
+      aoCancelar(motivo.trim(), meio);
+      setEtapa('desfecho');
+    }, 1400);
+  }
+
+  if (etapa === 'desfecho') {
+    return (
+      <Modal aberto aoFechar={aoFechar} titulo="Cancelamento concluído">
+        <div className="space-y-3">
+          <Cabecalho ficha={ficha} />
+          <ul className="space-y-2">
+            <LinhaDesfecho
+              icone={CheckCircle2}
+              titulo="Aqui no sistema"
+              detalhe="Agendamento cancelado e atendimento encerrado."
+            />
+            <LinhaDesfecho
+              icone={CheckCircle2}
+              titulo="No SISREG"
+              detalhe={'A vaga foi liberada — a ficha agora diz “AGENDAMENTO / CANCELADO / REGULADOR”.'}
+            />
+            <LinhaDesfecho
+              icone={MessageSquareText}
+              titulo="Aviso ao paciente"
+              detalhe="Mensagem de cancelamento enviada por WhatsApp."
+            />
+          </ul>
+          <div className="flex justify-end">
+            <Button onClick={aoFechar}>Fechar</Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  const cancelando = etapa === 'cancelando';
+
   return (
     <Modal aberto aoFechar={aoFechar} titulo="Cancelar agendamento">
       <div className="space-y-3">
         <Cabecalho ficha={ficha} />
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          O cancelamento vale aqui na hora (a vaga volta a contar e o paciente sai das filas). No <strong>SISREG</strong>{' '}
-          ele ainda precisa ser feito pelo navegador — com a extensão instalada, o sistema reconhece sozinho.
-        </p>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-700">Motivo</span>
           <Input
@@ -724,11 +757,12 @@ function ModalCancelarSim({
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="ex.: paciente pediu, vai fazer particular"
             autoFocus
+            disabled={cancelando}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-700">Como falou com o paciente</span>
-          <Select value={meio} onChange={(e) => setMeio(e.target.value)}>
+          <Select value={meio} onChange={(e) => setMeio(e.target.value)} disabled={cancelando}>
             {MEIOS.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -736,20 +770,44 @@ function ModalCancelarSim({
             ))}
           </Select>
         </label>
+        {cancelando ? (
+          <p className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+            <Loader2 className="size-4 shrink-0 animate-spin" />
+            <span>Cancelando no SISREG com o seu login e conferindo a ficha. Não feche esta janela.</span>
+          </p>
+        ) : null}
         <div className="flex justify-end gap-2">
-          <Button variante="outline" onClick={aoFechar}>
+          <Button variante="outline" onClick={aoFechar} disabled={cancelando}>
             Voltar
           </Button>
           <Button
             variante="danger"
-            disabled={motivo.trim().length === 0}
-            onClick={() => aoCancelar(motivo.trim(), meio)}
+            disabled={cancelando || motivo.trim().length === 0}
+            onClick={confirmar}
           >
-            Confirmo o cancelamento
+            {cancelando ? <Loader2 className="mr-1 size-4 animate-spin" /> : null}
+            {cancelando ? 'Cancelando…' : 'Confirmo o cancelamento'}
           </Button>
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** Uma das três linhas do desfecho simulado. */
+function LinhaDesfecho({ icone: Icone, titulo, detalhe }: {
+  icone: typeof CheckCircle2;
+  titulo: string;
+  detalhe: string;
+}) {
+  return (
+    <li className="flex items-start gap-2 rounded border border-gray-200 px-3 py-2">
+      <Icone className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+      <div className="text-sm">
+        <p className="font-medium text-gray-900">{titulo}</p>
+        <p className="text-gray-600">{detalhe}</p>
+      </div>
+    </li>
   );
 }
 
