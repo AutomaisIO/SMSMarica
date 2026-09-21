@@ -40,10 +40,8 @@ public sealed class ComunicacaoPacienteOptions
         ["confirmacao_exame"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
         ["confirmacao_consulta"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
         ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.jpg",
-        // A arte de cancelamento só informa (a mensagem não pede ação nenhuma); por isso a
-        // variação "Desculpe-nos pelo transtorno", e não a "Favor remarcar" — na remarcação o
-        // próprio sistema manda a confirmação nova quando o agendamento novo chega.
-        ["agendamento_cancelado_anonimo"] = "https://app.smsmarica.online/mensagens/cancelamento-vermelho.jpg",
+        // Escolha do Bernardo entre as quatro variações da arte (20/09/2026).
+        ["agendamento_cancelado_anonimo"] = "https://app.smsmarica.online/mensagens/cancelamento-branco-invertido.jpg",
     };
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
