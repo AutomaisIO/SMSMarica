@@ -46,8 +46,8 @@ function minutos(v: number | null): string {
 /**
  * Aba Equipe — quem fez o quê na tela de Confirmações. Só existe para quem tem o módulo
  * `ConfirmacoesEquipe`: quem atende não vê o ranking das colegas. Os números são ATOS lidos da
- * trilha (append-only); a trilha começou em 21/09/2026, e a tela diz isso em vez de mostrar zero
- * como se fosse ociosidade.
+ * trilha (append-only), que começou em 21/09/2026 — o porquê de período antigo sair vazio está
+ * no manual, não na tela (o Bernardo pediu a aba sem textos explicativos).
  */
 export function AbaEquipe() {
   const [ate, setAte] = useState(() => hojeSP());
@@ -63,15 +63,9 @@ export function AbaEquipe() {
     setDe(menosDias(hoje, dias - 1));
   }
 
-  const periodoAntesDaTrilha = dados?.trilhaDesde ? de < dados.trilhaDesde.slice(0, 10) : false;
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-3xl text-sm text-gray-600">
-          O que cada atendente fez nesta tela no período. Cada número é um <strong>ato</strong> dela (um clique com
-          desfecho), não uma ficha — a mesma ficha pode ser pega por uma e resolvida por outra.
-        </p>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex overflow-hidden rounded-md border border-gray-200">
             {PRESETS.map((p) => (
@@ -92,13 +86,6 @@ export function AbaEquipe() {
             className="rounded-md border border-gray-200 px-2 py-1 text-xs" />
         </div>
       </div>
-
-      {periodoAntesDaTrilha && dados?.trilhaDesde ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          O registro de quem fez cada ação começou em <strong>{formatarInstante(dados.trilhaDesde)}</strong>. O que foi
-          feito antes disso não aparece aqui — não é que ninguém trabalhou, é que ainda não se anotava.
-        </p>
-      ) : null}
 
       {q.isError ? <p className="text-sm text-red-700">{extrairMensagemDeErro(q.error)}</p> : null}
 

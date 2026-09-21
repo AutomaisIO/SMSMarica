@@ -489,8 +489,8 @@ export const artigoConfirmacoes: Artigo = {
             achar a ficha pela busca.
           </P>
           <Callout tipo="dica" titulo="O registro começou em 21/09/2026">
-            Antes dessa data o sistema não anotava quem fez cada ação, então períodos anteriores saem vazios — a própria
-            aba avisa quando o período escolhido começa antes do registro. Zero ali não quer dizer que ninguém trabalhou.
+            Antes dessa data o sistema não anotava quem fez cada ação, então períodos anteriores saem vazios — e a aba
+            não avisa. Zero ali não quer dizer que ninguém trabalhou.
           </Callout>
           <P>
             Só entra o que uma pessoa fez. O que o sistema faz sozinho (envio automático, conciliação com o SISREG,
