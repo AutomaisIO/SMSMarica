@@ -10,7 +10,11 @@ public sealed record ConfirmacaoConfiguracaoDto(
     DateTime? AtualizadoEm,
     /// <summary>Dias antes do agendamento em que o lembrete sai (global).</summary>
     int LembreteDiasAntes = 2,
-    bool LembreteHabilitado = false);
+    bool LembreteHabilitado = false,
+    /// <summary>Motor que traz os cancelamentos feitos no SISREG por outra pessoa.</summary>
+    bool ConciliacaoCancelamentoHabilitada = false,
+    /// <summary>Aviso ao paciente quando o agendamento é cancelado (sem o motivo).</summary>
+    bool AvisoCancelamentoHabilitado = false);
 
 public sealed record SalvarConfirmacaoConfiguracaoRequest(
     string HoraInicioEnvio,
@@ -18,7 +22,9 @@ public sealed record SalvarConfirmacaoConfiguracaoRequest(
     int MaximoPorPassagem,
     bool SomenteSisreg,
     int LembreteDiasAntes = 2,
-    bool LembreteHabilitado = false);
+    bool LembreteHabilitado = false,
+    bool ConciliacaoCancelamentoHabilitada = false,
+    bool AvisoCancelamentoHabilitado = false);
 
 /// <summary>Fotografia da fila de confirmações (só a finalidade confirmação de agendamento).</summary>
 public sealed record ResumoFilaConfirmacaoDto(

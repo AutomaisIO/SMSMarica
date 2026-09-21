@@ -24,6 +24,10 @@ internal sealed class ConfirmacaoConfiguracaoConfiguration : IEntityTypeConfigur
             .HasDefaultValue(2).IsRequired();
         builder.Property(x => x.LembreteHabilitado).HasColumnName("lembrete_habilitado")
             .HasDefaultValue(false).IsRequired();
+        builder.Property(x => x.ConciliacaoCancelamentoHabilitada)
+            .HasColumnName("conciliacao_cancelamento_habilitada").HasDefaultValue(false).IsRequired();
+        builder.Property(x => x.AvisoCancelamentoHabilitado)
+            .HasColumnName("aviso_cancelamento_habilitado").HasDefaultValue(false).IsRequired();
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em");
         builder.Property(x => x.AtualizadoPor).HasColumnName("atualizado_por");

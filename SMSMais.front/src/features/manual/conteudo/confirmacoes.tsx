@@ -296,6 +296,12 @@ export const artigoConfirmacoes: Artigo = {
             aparece no SISREG como quem desmarcou — a credencial do sistema serve para ler a agenda, não para assinar
             cancelamento no seu nome.
           </Callout>
+          <Callout tipo="dica" titulo="Cancelamento feito por outra pessoa no SISREG">
+            A unidade executante, a solicitante e a regulação também cancelam — e isso não passa por esta tela. O
+            sistema lê os cancelamentos do SISREG a cada dez minutos durante o expediente e traz para cá, liberando a
+            vaga e avisando o paciente. Quem liga e desliga isso é <strong>Mensageria → Regras</strong>, em
+            "Cancelamentos feitos no SISREG".
+          </Callout>
           <Callout tipo="dica" titulo="O paciente é avisado na hora">
             Assim que o cancelamento é confirmado, o aviso sai no WhatsApp — sem esperar rotina nenhuma. A mensagem diz
             que o agendamento foi cancelado e <strong>não</strong> diz o motivo: isso é informação interna.

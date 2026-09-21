@@ -113,6 +113,8 @@ export function AbaRegras() {
   const [somenteSisreg, setSomenteSisreg] = useState(true);
   const [lembreteDiasAntes, setLembreteDiasAntes] = useState(2);
   const [lembreteHabilitado, setLembreteHabilitado] = useState(false);
+  const [conciliacaoCancelamento, setConciliacaoCancelamento] = useState(false);
+  const [avisoCancelamento, setAvisoCancelamento] = useState(false);
 
   useEffect(() => {
     if (!cfg.data) return;
@@ -122,6 +124,8 @@ export function AbaRegras() {
     setSomenteSisreg(cfg.data.somenteSisreg);
     setLembreteDiasAntes(cfg.data.lembreteDiasAntes);
     setLembreteHabilitado(cfg.data.lembreteHabilitado);
+    setConciliacaoCancelamento(cfg.data.conciliacaoCancelamentoHabilitada);
+    setAvisoCancelamento(cfg.data.avisoCancelamentoHabilitado);
   }, [cfg.data]);
 
   const colunas: Coluna<RegraUnidade>[] = useMemo(
@@ -214,6 +218,52 @@ export function AbaRegras() {
           </div>
         </div>
 
+        {/*
+          Cancelamento: dois interruptores separados de propósito. Dá para conciliar a base por
+          alguns dias, conferir os números no log, e só então começar a avisar — ligar os dois
+          juntos no primeiro dia é apostar que o volume diário é o esperado.
+        */}
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900">Cancelamentos feitos no SISREG</h3>
+          <p className="mt-0.5 text-xs text-gray-600">
+            Cancelamento feito pela unidade executante, pela solicitante ou pela regulação não passa por
+            aqui — e sem isto a vaga fica presa e o paciente segue sendo lembrado de um agendamento que
+            já não existe.
+          </p>
+          <div className="mt-3 space-y-2">
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={conciliacaoCancelamento}
+                onChange={(e) => setConciliacaoCancelamento(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                Trazer os cancelamentos do SISREG para a base
+                <span className="block text-xs text-gray-500">
+                  Lê a cada 10 minutos, das 8h às 18h, e relê o dia anterior às 7h. Só leitura.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={avisoCancelamento}
+                onChange={(e) => setAvisoCancelamento(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                Avisar o paciente do cancelamento
+                <span className="block text-xs text-gray-500">
+                  A mensagem diz que foi cancelado e nada mais — o motivo registrado no SISREG é interno.
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
         {podeEditar ? (
           <div className="mt-4 flex items-center justify-end gap-3">
             {salvar.isError ? <span className="text-sm text-red-700">{extrairMensagemDeErro(salvar.error)}</span> : null}
@@ -229,6 +279,8 @@ export function AbaRegras() {
                   somenteSisreg,
                   lembreteDiasAntes,
                   lembreteHabilitado,
+                  conciliacaoCancelamentoHabilitada: conciliacaoCancelamento,
+                  avisoCancelamentoHabilitado: avisoCancelamento,
                 })
               }
             >

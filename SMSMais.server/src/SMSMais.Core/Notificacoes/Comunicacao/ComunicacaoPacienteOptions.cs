@@ -97,12 +97,9 @@ public sealed class ComunicacaoPacienteOptions
     /// </summary>
     public string TemplateCancelamento { get; set; } = "agendamento_cancelado_anonimo";
 
-    /// <summary>
-    /// Trava de código do aviso de cancelamento. Nasce DESLIGADA: o backfill de 20/09/2026
-    /// conciliou 628 cancelamentos de até três meses atrás, e ligar isto antes de a conciliação
-    /// estar rodando ao vivo dispararia aviso sobre coisa velha.
-    /// </summary>
-    public bool EnviarAvisoCancelamento { get; set; }
+    // A chave do aviso de cancelamento NÃO mora aqui: é decisão de operação e vive em
+    // `confirmacao_configuracao.aviso_cancelamento_habilitado`, no menu Confirmações → Regras,
+    // ao lado do lembrete. Chave de operação em arquivo obriga deploy para mudar de ideia.
 
     /// <summary>OBSOLETO desde 20/09/2026: a primeira mensagem virou
     /// <see cref="TemplateConfirmacaoExame"/>/<see cref="TemplateConfirmacaoConsulta"/>, que não

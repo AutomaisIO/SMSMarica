@@ -11,12 +11,6 @@ public sealed class ConciliacaoCancelamentosOpcoes
     public const string Secao = "Sisreg:ConciliacaoCancelamentos";
 
     /// <summary>
-    /// Nasce DESLIGADA. Ligar é decisão de operação: o backfill de 20/09/2026 já pôs a base em dia
-    /// até aquela data, e a partir daí cada passada é sobre o dia corrente.
-    /// </summary>
-    public bool Habilitado { get; set; }
-
-    /// <summary>
     /// Minutos entre passadas. Dez, medido: um dia útil tem 46–62 cancelamentos, a listagem traz
     /// 20 por página, e o ciclo custa ~1 a 3 requisições (~1,5 s). A 10 minutos dá 11 req/h no dia
     /// típico e 60 req/h no pior dia já visto (371 cancelamentos, desligamento de profissional em
@@ -63,20 +57,13 @@ public sealed class ConciliacaoCancelamentosScheduler(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!_opcoes.Habilitado)
-        {
-            logger.LogInformation(
-                "Conciliação de cancelamentos do SISREG: DESLIGADA "
-                + $"({ConciliacaoCancelamentosOpcoes.Secao}:Habilitado).");
-            return;
-        }
-
         var intervalo = TimeSpan.FromMinutes(Math.Clamp(_opcoes.IntervaloMinutos, 1, 120));
         using var timer = new PeriodicTimer(intervalo);
 
         logger.LogInformation(
-            "Conciliação de cancelamentos do SISREG: a cada {Min} min, das {Ini}h às {Fim}h "
-            + "(fechamento do dia anterior às {Fech}h).",
+            "Conciliação de cancelamentos do SISREG: tick a cada {Min} min, das {Ini}h às {Fim}h "
+            + "(fechamento do dia anterior às {Fech}h). Ligar/desligar é no menu Confirmações → "
+            + "Regras, não aqui.",
             intervalo.TotalMinutes, _opcoes.HoraInicio, _opcoes.HoraFim, _opcoes.HoraFechamento);
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
@@ -99,6 +86,15 @@ public sealed class ConciliacaoCancelamentosScheduler(
 
     private async Task TickAsync(CancellationToken ct)
     {
+        // A chave mora no BANCO, com tela — trocar de ideia sobre ligar um motor não pode exigir
+        // deploy. Lida a cada tick: quem desliga às 14h quer que pare às 14h.
+        using (var escopo = scopeFactory.CreateScope())
+        {
+            var regras = escopo.ServiceProvider
+                .GetRequiredService<Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService>();
+            if (!(await regras.ObterAsync(ct)).ConciliacaoCancelamentoHabilitada) return;
+        }
+
         var agora = FusoBrasilia.ParaExibicao(DateTime.UtcNow);
         var hoje = DateOnly.FromDateTime(agora);
 

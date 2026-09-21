@@ -150,7 +150,9 @@ public sealed class ComunicacaoPacienteService(
 
     public async Task AvisarCancelamentoAgoraAsync(Solicitacao solicitacao, CancellationToken ct = default)
     {
-        if (!options.Value.EnviarAvisoCancelamento) return;
+        // A chave mora no banco (menu Confirmações → Regras), não em arquivo: ligar e desligar
+        // aviso ao paciente é decisão de operação e não pode depender de deploy.
+        if (!(await RegrasAsync(ct)).AvisoCancelamentoHabilitado) return;
 
         try
         {

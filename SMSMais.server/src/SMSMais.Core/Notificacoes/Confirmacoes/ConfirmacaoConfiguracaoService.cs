@@ -72,6 +72,8 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.SomenteSisreg = request.SomenteSisreg;
         c.LembreteDiasAntes = request.LembreteDiasAntes;
         c.LembreteHabilitado = request.LembreteHabilitado;
+        c.ConciliacaoCancelamentoHabilitada = request.ConciliacaoCancelamentoHabilitada;
+        c.AvisoCancelamentoHabilitado = request.AvisoCancelamentoHabilitado;
         c.AtualizadoEm = agora;
         c.AtualizadoPor = usuarioAtual.UsuarioId;
         await db.SaveChangesAsync(ct);
@@ -86,5 +88,7 @@ public sealed class ConfirmacaoConfiguracaoService(
         JanelaEnvioConfirmacao.Dentro(DateTime.UtcNow, c.HoraInicioEnvio, c.HoraFimEnvio),
         c.AtualizadoEm,
         c.LembreteDiasAntes,
-        c.LembreteHabilitado);
+        c.LembreteHabilitado,
+        c.ConciliacaoCancelamentoHabilitada,
+        c.AvisoCancelamentoHabilitado);
 }

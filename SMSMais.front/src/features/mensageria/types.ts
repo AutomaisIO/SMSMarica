@@ -138,6 +138,10 @@ export type ConfirmacaoConfiguracao = {
   /** Dias antes do agendamento em que o lembrete sai — configuração GLOBAL. */
   lembreteDiasAntes: number;
   lembreteHabilitado: boolean;
+  /** Motor que traz os cancelamentos feitos no SISREG por outra pessoa (executante, solicitante, regulação). */
+  conciliacaoCancelamentoHabilitada: boolean;
+  /** Aviso ao paciente quando o agendamento é cancelado. O motivo NUNCA vai na mensagem. */
+  avisoCancelamentoHabilitado: boolean;
 };
 
 export type SalvarConfirmacaoConfiguracao = Pick<
@@ -148,6 +152,8 @@ export type SalvarConfirmacaoConfiguracao = Pick<
   | 'somenteSisreg'
   | 'lembreteDiasAntes'
   | 'lembreteHabilitado'
+  | 'conciliacaoCancelamentoHabilitada'
+  | 'avisoCancelamentoHabilitado'
 >;
 
 /** Modelo aprovado na Meta, como a tela de teste precisa dele. */

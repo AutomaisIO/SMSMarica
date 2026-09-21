@@ -46,6 +46,24 @@ public class ConfirmacaoConfiguracao
     /// </summary>
     public bool LembreteHabilitado { get; set; }
 
+    /// <summary>
+    /// Liga o MOTOR que traz para a nossa base os cancelamentos feitos NO SISREG por outra pessoa
+    /// (unidade executante, solicitante, regulação). Só leitura: roda a cada 10 min das 8h às 18h
+    /// e relê o dia anterior às 7h.
+    ///
+    /// <para>Nasce DESLIGADO. Ligar antes de conferir o volume diário traria de uma vez tudo o que
+    /// o backfill não alcançou.</para>
+    /// </summary>
+    public bool ConciliacaoCancelamentoHabilitada { get; set; }
+
+    /// <summary>
+    /// Liga o AVISO ao paciente quando o agendamento é cancelado. Separado do motor de propósito:
+    /// dá para conciliar a base por uns dias, conferir os números, e só então começar a avisar.
+    ///
+    /// <para>O aviso diz que foi cancelado e nada mais — o motivo registrado no SISREG é interno.</para>
+    /// </summary>
+    public bool AvisoCancelamentoHabilitado { get; set; }
+
     public DateTime CriadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }
     public Guid? AtualizadoPor { get; set; }
