@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMais.Data;
 namespace SMSMais.Data.Migrations
 {
     [DbContext(typeof(SmsMaisDbContext))]
-    partial class SmsMaisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260921023005_ConciliacaoCancelamentoConfiguravel")]
+    partial class ConciliacaoCancelamentoConfiguravel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4184,28 +4187,28 @@ namespace SMSMais.Data.Migrations
                         .HasColumnName("conciliacao_cancelamento_habilitada");
 
                     b.Property<int>("ConciliacaoHoraFechamento")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(7)
                         .HasColumnName("conciliacao_hora_fechamento");
 
                     b.Property<int>("ConciliacaoHoraFim")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(18)
                         .HasColumnName("conciliacao_hora_fim");
 
                     b.Property<int>("ConciliacaoHoraInicio")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(8)
                         .HasColumnName("conciliacao_hora_inicio");
 
                     b.Property<int>("ConciliacaoIntervaloMinutos")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(10)
                         .HasColumnName("conciliacao_intervalo_minutos");
-
-                    b.Property<DateOnly?>("ConciliacaoUltimoDiaFechado")
-                        .HasColumnType("date")
-                        .HasColumnName("conciliacao_ultimo_dia_fechado");
 
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")

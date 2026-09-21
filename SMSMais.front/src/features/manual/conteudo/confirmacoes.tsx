@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-09-20',
+  atualizadoEm: '2026-09-21',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
@@ -33,6 +33,11 @@ export const artigoConfirmacoes: Artigo = {
     'faltas',
     'absenteísmo',
     'cancelar',
+    'conciliação',
+    'cadência',
+    'intervalo',
+    'janela de leitura',
+    'fechamento do dia anterior',
     'contato errado',
     'número negado',
     'pendente',
@@ -275,7 +280,8 @@ export const artigoConfirmacoes: Artigo = {
     {
       id: 'cancelamento-sisreg',
       titulo: 'Cancelar: como funciona nos dois sistemas',
-      busca: 'cancelar sisreg senha login operador assina vaga aviso paciente',
+      busca:
+        'cancelar sisreg senha login operador assina vaga aviso paciente conciliação cadência intervalo de quanto em quanto tempo janela horário fechamento dia anterior motor configurar',
       conteudo: (
         <div className="space-y-4">
           <P>Este é o ponto que mais gera confusão, então vale ler com calma. Ao cancelar aqui, na mesma hora:</P>
@@ -298,9 +304,10 @@ export const artigoConfirmacoes: Artigo = {
           </Callout>
           <Callout tipo="dica" titulo="Cancelamento feito por outra pessoa no SISREG">
             A unidade executante, a solicitante e a regulação também cancelam — e isso não passa por esta tela. O
-            sistema lê os cancelamentos do SISREG a cada dez minutos durante o expediente e traz para cá, liberando a
-            vaga e avisando o paciente. Quem liga e desliga isso é <strong>Mensageria → Regras</strong>, em
-            "Cancelamentos feitos no SISREG".
+            sistema relê os cancelamentos do SISREG de tempos em tempos durante o expediente e traz para cá, liberando
+            a vaga e avisando o paciente. De quanto em quanto tempo, em que janela do dia e a que horas ele refaz a
+            leitura do dia anterior ficam em <strong>Mensageria → Regras</strong>, em "Cancelamentos feitos no SISREG" —
+            é o mesmo lugar onde se liga e se desliga.
           </Callout>
           <Callout tipo="dica" titulo="O paciente é avisado na hora">
             Assim que o cancelamento é confirmado, o aviso sai no WhatsApp — sem esperar rotina nenhuma. A mensagem diz

@@ -28,6 +28,20 @@ internal sealed class ConfirmacaoConfiguracaoConfiguration : IEntityTypeConfigur
             .HasColumnName("conciliacao_cancelamento_habilitada").HasDefaultValue(false).IsRequired();
         builder.Property(x => x.AvisoCancelamentoHabilitado)
             .HasColumnName("aviso_cancelamento_habilitado").HasDefaultValue(false).IsRequired();
+        // ValueGeneratedNever nos quatro: o default de banco serve para a coluna NASCER povoada nas
+        // linhas que já existiam, e só. Sem isso o EF trata a coluna como gerada e OMITE do INSERT
+        // todo valor igual ao default do CLR — hora 0 sumiria do comando e o Postgres gravaria 8,
+        // calado, numa instância nova (a linha é singleton e só nasce no primeiro salvamento).
+        builder.Property(x => x.ConciliacaoIntervaloMinutos)
+            .HasColumnName("conciliacao_intervalo_minutos").HasDefaultValue(10).ValueGeneratedNever().IsRequired();
+        builder.Property(x => x.ConciliacaoHoraInicio)
+            .HasColumnName("conciliacao_hora_inicio").HasDefaultValue(8).ValueGeneratedNever().IsRequired();
+        builder.Property(x => x.ConciliacaoHoraFim)
+            .HasColumnName("conciliacao_hora_fim").HasDefaultValue(18).ValueGeneratedNever().IsRequired();
+        builder.Property(x => x.ConciliacaoHoraFechamento)
+            .HasColumnName("conciliacao_hora_fechamento").HasDefaultValue(7).ValueGeneratedNever().IsRequired();
+        builder.Property(x => x.ConciliacaoUltimoDiaFechado)
+            .HasColumnName("conciliacao_ultimo_dia_fechado");
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em");
         builder.Property(x => x.AtualizadoPor).HasColumnName("atualizado_por");

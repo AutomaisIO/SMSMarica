@@ -64,6 +64,44 @@ public class ConfirmacaoConfiguracao
     /// </summary>
     public bool AvisoCancelamentoHabilitado { get; set; }
 
+    /// <summary>
+    /// Minutos entre passadas da conciliação. O padrão 10 saiu de medição: um dia útil tem 46–62
+    /// cancelamentos, a listagem traz 20 por página, e o ciclo custa 1 a 3 requisições em ~1,5 s —
+    /// 11 req/h no dia típico contra um teto de ~700/h. Mas é a operação que decide: apertar custa
+    /// requisição, afrouxar custa latência.
+    /// </summary>
+    public int ConciliacaoIntervaloMinutos { get; set; } = 10;
+
+    /// <summary>
+    /// Janela de leitura, em hora de Brasília. Das 1.599 cancelações medidas em 31 dias, 98,2%
+    /// caem entre 8h e 18h de segunda a sexta, e nada entre 22h e 6h — daí o padrão. Fora da
+    /// janela o SISREG fica em paz e o que escapar é recolhido pela passada de fechamento.
+    /// </summary>
+    public int ConciliacaoHoraInicio { get; set; } = 8;
+    public int ConciliacaoHoraFim { get; set; } = 18;
+
+    /// <summary>
+    /// Hora da passada de FECHAMENTO, que relê o dia ANTERIOR inteiro. É o conferidor: pega o que
+    /// aconteceu fora da janela e qualquer passada que tenha falhado calada — inclusive um
+    /// domingo, na segunda de manhã. Fora da janela de leitura de propósito.
+    /// </summary>
+    public int ConciliacaoHoraFechamento { get; set; } = 7;
+
+    /// <summary>
+    /// Último dia cujo fechamento foi concluído — e a razão de ele estar no banco, não em memória.
+    ///
+    /// <para>Sem isto, um dia perdido ficava perdido para sempre: bastava a API estar fora do ar
+    /// durante a hora marcada (um deploy das 6h58 às 8h05 basta), ou alguém mudar a hora do
+    /// fechamento para um horário que já passou — coisa que só virou possível quando a hora deixou
+    /// de ser código e passou a ser tela. O dia não fecha, o expediente seguinte lê apenas o dia
+    /// corrente, e os cancelamentos daquele dia feitos fora da janela nunca entram: o paciente
+    /// segue sendo lembrado de um agendamento que o SISREG já cancelou.</para>
+    ///
+    /// <para>Guardando o último dia fechado, a passada seguinte descobre sozinha o que ficou para
+    /// trás e recupera — e um reinício dentro da hora do fechamento não refaz o que já foi feito.</para>
+    /// </summary>
+    public DateOnly? ConciliacaoUltimoDiaFechado { get; set; }
+
     public DateTime CriadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }
     public Guid? AtualizadoPor { get; set; }

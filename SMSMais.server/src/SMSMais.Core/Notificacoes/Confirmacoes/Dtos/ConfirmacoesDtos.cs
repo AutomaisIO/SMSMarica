@@ -14,7 +14,13 @@ public sealed record ConfirmacaoConfiguracaoDto(
     /// <summary>Motor que traz os cancelamentos feitos no SISREG por outra pessoa.</summary>
     bool ConciliacaoCancelamentoHabilitada = false,
     /// <summary>Aviso ao paciente quando o agendamento é cancelado (sem o motivo).</summary>
-    bool AvisoCancelamentoHabilitado = false);
+    bool AvisoCancelamentoHabilitado = false,
+    int ConciliacaoIntervaloMinutos = 10,
+    int ConciliacaoHoraInicio = 8,
+    int ConciliacaoHoraFim = 18,
+    int ConciliacaoHoraFechamento = 7,
+    /// <summary>Último dia cujo fechamento foi concluído — só leitura, quem grava é o motor.</summary>
+    DateOnly? ConciliacaoUltimoDiaFechado = null);
 
 public sealed record SalvarConfirmacaoConfiguracaoRequest(
     string HoraInicioEnvio,
@@ -24,7 +30,18 @@ public sealed record SalvarConfirmacaoConfiguracaoRequest(
     int LembreteDiasAntes = 2,
     bool LembreteHabilitado = false,
     bool ConciliacaoCancelamentoHabilitada = false,
-    bool AvisoCancelamentoHabilitado = false);
+    bool AvisoCancelamentoHabilitado = false,
+    /// <summary>
+    /// Cadência e janela da conciliação. <b>Anuláveis de propósito:</b> ausente = <b>manter o que
+    /// está gravado</b>, nunca "voltar ao padrão". Uma aba aberta com o bundle antigo do front, ou
+    /// um PUT montado à mão pela API, não manda estes campos — e com default fixo eles
+    /// devolveriam calados uma configuração afinada (30 min, 6h–22h) para 10 min / 8h–18h,
+    /// dobrando as requisições ao SISREG sem ninguém ter pedido.
+    /// </summary>
+    int? ConciliacaoIntervaloMinutos = null,
+    int? ConciliacaoHoraInicio = null,
+    int? ConciliacaoHoraFim = null,
+    int? ConciliacaoHoraFechamento = null);
 
 /// <summary>Fotografia da fila de confirmações (só a finalidade confirmação de agendamento).</summary>
 public sealed record ResumoFilaConfirmacaoDto(

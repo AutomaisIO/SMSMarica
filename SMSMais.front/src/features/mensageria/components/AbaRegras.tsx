@@ -115,6 +115,14 @@ export function AbaRegras() {
   const [lembreteHabilitado, setLembreteHabilitado] = useState(false);
   const [conciliacaoCancelamento, setConciliacaoCancelamento] = useState(false);
   const [avisoCancelamento, setAvisoCancelamento] = useState(false);
+  // Texto, não número: `Number('')` é 0, e um campo apagado para redigitar viraria "lê a cada 0
+  // minutos, das 0h às 0h" na legenda e um 400 no salvar. Guardar o que foi digitado deixa o campo
+  // vazio de verdade enquanto a pessoa redigita, e a conversão acontece num lugar só, na hora de
+  // validar.
+  const [conciliacaoIntervalo, setConciliacaoIntervalo] = useState('10');
+  const [conciliacaoInicio, setConciliacaoInicio] = useState('8');
+  const [conciliacaoFim, setConciliacaoFim] = useState('18');
+  const [conciliacaoFechamento, setConciliacaoFechamento] = useState('7');
 
   useEffect(() => {
     if (!cfg.data) return;
@@ -126,7 +134,34 @@ export function AbaRegras() {
     setLembreteHabilitado(cfg.data.lembreteHabilitado);
     setConciliacaoCancelamento(cfg.data.conciliacaoCancelamentoHabilitada);
     setAvisoCancelamento(cfg.data.avisoCancelamentoHabilitado);
+    setConciliacaoIntervalo(String(cfg.data.conciliacaoIntervaloMinutos));
+    setConciliacaoInicio(String(cfg.data.conciliacaoHoraInicio));
+    setConciliacaoFim(String(cfg.data.conciliacaoHoraFim));
+    setConciliacaoFechamento(String(cfg.data.conciliacaoHoraFechamento));
   }, [cfg.data]);
+
+  // As mesmas regras do backend, ditas antes do 400 — e apontando o campo, não o rodapé da tela.
+  const conciliacao = useMemo(() => {
+    const n = (t: string) => (/^\d+$/.test(t.trim()) ? Number(t) : null);
+    const intervalo = n(conciliacaoIntervalo);
+    const ini = n(conciliacaoInicio);
+    const f = n(conciliacaoFim);
+    const fech = n(conciliacaoFechamento);
+
+    let erro: string | null = null;
+    if (intervalo === null || ini === null || f === null || fech === null)
+      erro = 'Preencha os quatro campos com números inteiros.';
+    else if (intervalo < 1 || intervalo > 120) erro = 'A leitura deve ocorrer a cada 1 a 120 minutos.';
+    else if (ini > 23 || f < 1 || f > 24 || fech > 23)
+      erro = 'A leitura começa entre 0h e 23h, termina entre 1h e 24h, e o fechamento fica entre 0h e 23h.';
+    else if (ini >= f) erro = 'A hora de início da leitura precisa ser anterior à de fim.';
+    else if (f - ini >= 24)
+      erro = 'A janela não pode cobrir o dia inteiro: o fechamento precisa de uma hora livre, fora dela.';
+    else if (fech >= ini && fech < f)
+      erro = `O fechamento relê o dia anterior e precisa ficar FORA da janela (${ini}h às ${f}h).`;
+
+    return { intervalo, ini, f, fech, erro };
+  }, [conciliacaoIntervalo, conciliacaoInicio, conciliacaoFim, conciliacaoFechamento]);
 
   const colunas: Coluna<RegraUnidade>[] = useMemo(
     () => [
@@ -240,10 +275,80 @@ export function AbaRegras() {
               <span>
                 Trazer os cancelamentos do SISREG para a base
                 <span className="block text-xs text-gray-500">
-                  Lê a cada 10 minutos, das 8h às 18h, e relê o dia anterior às 7h. Só leitura.
+                  {conciliacao.erro ? (
+                    'Só leitura. Ajuste os campos abaixo para valer.'
+                  ) : (
+                    <>
+                      Lê a cada {conciliacao.intervalo} minuto{conciliacao.intervalo === 1 ? '' : 's'}, das{' '}
+                      {conciliacao.ini}h às {conciliacao.f}h, e relê o dia anterior às {conciliacao.fech}h. Só
+                      leitura.
+                    </>
+                  )}
                 </span>
               </span>
             </label>
+
+            {/*
+              A cadência e a janela moram aqui porque o custo delas muda com a operação: apertar
+              para 5 minutos dobra as requisições no SISREG, e o orçamento anti-robô é do operador.
+              Quem estiver olhando o volume precisa poder afrouxar na hora — o motor relê a cada
+              tick, então vale sem reiniciar nada.
+
+              Os campos seguem editáveis com o motor DESLIGADO de propósito: desabilitá-los
+              enquanto o valor em tela estivesse inválido travaria o salvamento da aba inteira
+              (lembrete, horário de envio) por causa de um campo que a própria tela apresenta como
+              inativo — e sem caminho para corrigi-lo a não ser religando o motor.
+            */}
+            <div className="grid grid-cols-2 gap-3 pl-6 md:grid-cols-4">
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-medium text-gray-700">A cada (minutos)</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={conciliacaoIntervalo}
+                  onChange={(e) => setConciliacaoIntervalo(e.target.value)}
+                  disabled={!podeEditar}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-medium text-gray-700">Começa às (hora)</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={conciliacaoInicio}
+                  onChange={(e) => setConciliacaoInicio(e.target.value)}
+                  disabled={!podeEditar}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-medium text-gray-700">Para às (hora)</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={conciliacaoFim}
+                  onChange={(e) => setConciliacaoFim(e.target.value)}
+                  disabled={!podeEditar}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-medium text-gray-700">Fecha o dia anterior às</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={conciliacaoFechamento}
+                  onChange={(e) => setConciliacaoFechamento(e.target.value)}
+                  disabled={!podeEditar}
+                />
+                <span className="text-[11px] text-gray-500">Precisa ficar fora da janela acima.</span>
+              </label>
+            </div>
+            {conciliacao.erro ? (
+              <p className="pl-6 text-xs text-red-700">{conciliacao.erro}</p>
+            ) : null}
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
@@ -268,7 +373,7 @@ export function AbaRegras() {
             {salvar.isSuccess ? <span className="text-sm text-emerald-700">Salvo.</span> : null}
             <Button
               tamanho="sm"
-              disabled={salvar.isPending}
+              disabled={salvar.isPending || conciliacao.erro !== null}
               onClick={() =>
                 salvar.mutate({
                   horaInicioEnvio: inicio,
@@ -279,6 +384,10 @@ export function AbaRegras() {
                   lembreteHabilitado,
                   conciliacaoCancelamentoHabilitada: conciliacaoCancelamento,
                   avisoCancelamentoHabilitado: avisoCancelamento,
+                  conciliacaoIntervaloMinutos: conciliacao.intervalo!,
+                  conciliacaoHoraInicio: conciliacao.ini!,
+                  conciliacaoHoraFim: conciliacao.f!,
+                  conciliacaoHoraFechamento: conciliacao.fech!,
                 })
               }
             >

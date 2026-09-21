@@ -11,28 +11,12 @@ public sealed class ConciliacaoCancelamentosOpcoes
     public const string Secao = "Sisreg:ConciliacaoCancelamentos";
 
     /// <summary>
-    /// Minutos entre passadas. Dez, medido: um dia útil tem 46–62 cancelamentos, a listagem traz
-    /// 20 por página, e o ciclo custa ~1 a 3 requisições (~1,5 s). A 10 minutos dá 11 req/h no dia
-    /// típico e 60 req/h no pior dia já visto (371 cancelamentos, desligamento de profissional em
-    /// massa) — contra um teto de ~700/h, numa faixa do dia em que hoje não há requisição nenhuma.
-    /// Cinco minutos dobraria o custo para ganhar cinco minutos de latência que ninguém sente.
+    /// De quanto em quanto tempo o agendador ACORDA — não é a cadência da leitura, que fica no
+    /// banco (menu Confirmações → Regras). Acordar de minuto em minuto e decidir ali é o que
+    /// permite mudar a cadência sem reiniciar a API: um <c>PeriodicTimer</c> nasce com o intervalo
+    /// fixo e só respeitaria o valor novo no próximo restart.
     /// </summary>
-    public int IntervaloMinutos { get; set; } = 10;
-
-    /// <summary>
-    /// Janela de Brasília. Das 1.599 cancelações medidas em 31 dias, <b>98,2% caem entre 8h e 18h
-    /// de segunda a sexta</b>; nada entre 22h e 6h. Fora da janela o SISREG fica em paz — e o que
-    /// escapar é recolhido pela passada de fechamento.
-    /// </summary>
-    public int HoraInicio { get; set; } = 8;
-    public int HoraFim { get; set; } = 18;
-
-    /// <summary>
-    /// Passada de fechamento: uma vez por dia, cedo, relendo o dia ANTERIOR. É o conferidor do que
-    /// aconteceu fora da janela (as 29 de 1.599 que caíram às 7h, 19h, 21h e no fim de semana) e
-    /// de qualquer passada que tenha falhado calada.
-    /// </summary>
-    public int HoraFechamento { get; set; } = 7;
+    public int TickSegundos { get; set; } = 60;
 }
 
 /// <summary>
@@ -52,19 +36,36 @@ public sealed class ConciliacaoCancelamentosScheduler(
 {
     private readonly ConciliacaoCancelamentosOpcoes _opcoes = opcoes.Value;
 
-    /// <summary>Dia do último fechamento, para não repeti-lo a cada tick da hora marcada.</summary>
-    private DateOnly? _ultimoFechamento;
+    /// <summary>
+    /// Quando a última leitura do dia corrente saiu — é daqui que a cadência é medida.
+    ///
+    /// <para>Nasce com o instante do arranque, não nulo: um reinício não pode ANTECIPAR leitura.
+    /// Com nulo, três deploys seguidos dentro de cinco minutos renderiam três conciliações extras,
+    /// cada uma gastando do orçamento anti-robô. O agendador antigo adiava a primeira leitura em um
+    /// intervalo inteiro; manter esse comportamento é o conservador.</para>
+    /// </summary>
+    private DateTime _ultimaLeituraUtc = DateTime.UtcNow;
+
+    /// <summary>Quantas vezes o fechamento de hoje já falhou — para tentar de novo sem martelar.</summary>
+    private (DateOnly Dia, int Tentativas) _falhasFechamento;
+
+    /// <summary>
+    /// Teto de dias que o fechamento recupera de uma vez. Sete cobre uma semana de API fora do ar
+    /// sem transformar a volta em varredura de mês — cada dia custa uma passada inteira no SISREG.
+    /// </summary>
+    private const int MaximoDiasAtrasados = 7;
+
+    /// <summary>Tentativas de fechamento por dia antes de deixar para o dia seguinte.</summary>
+    private const int MaximoTentativasFechamento = 3;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var intervalo = TimeSpan.FromMinutes(Math.Clamp(_opcoes.IntervaloMinutos, 1, 120));
-        using var timer = new PeriodicTimer(intervalo);
+        using var timer = new PeriodicTimer(
+            TimeSpan.FromSeconds(Math.Clamp(_opcoes.TickSegundos, 15, 300)));
 
         logger.LogInformation(
-            "Conciliação de cancelamentos do SISREG: tick a cada {Min} min, das {Ini}h às {Fim}h "
-            + "(fechamento do dia anterior às {Fech}h). Ligar/desligar é no menu Confirmações → "
-            + "Regras, não aqui.",
-            intervalo.TotalMinutes, _opcoes.HoraInicio, _opcoes.HoraFim, _opcoes.HoraFechamento);
+            "Conciliação de cancelamentos do SISREG: agendador ativo. Cadência, janela e hora do "
+            + "fechamento saem do menu Confirmações → Regras e valem sem reiniciar.");
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
@@ -86,33 +87,110 @@ public sealed class ConciliacaoCancelamentosScheduler(
 
     private async Task TickAsync(CancellationToken ct)
     {
-        // A chave mora no BANCO, com tela — trocar de ideia sobre ligar um motor não pode exigir
-        // deploy. Lida a cada tick: quem desliga às 14h quer que pare às 14h.
+        // TUDO mora no BANCO, com tela: ligar, cadência, janela e hora do fechamento. Lido a cada
+        // tick — quem desliga às 14h quer que pare às 14h, e quem afrouxa a cadência quer que
+        // afrouxe agora, não no próximo restart.
+        Notificacoes.Confirmacoes.Dtos.ConfirmacaoConfiguracaoDto regras;
         using (var escopo = scopeFactory.CreateScope())
         {
-            var regras = escopo.ServiceProvider
-                .GetRequiredService<Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService>();
-            if (!(await regras.ObterAsync(ct)).ConciliacaoCancelamentoHabilitada) return;
+            regras = await escopo.ServiceProvider
+                .GetRequiredService<Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService>()
+                .ObterAsync(ct);
         }
+        if (!regras.ConciliacaoCancelamentoHabilitada) return;
 
         var agora = FusoBrasilia.ParaExibicao(DateTime.UtcNow);
         var hoje = DateOnly.FromDateTime(agora);
 
-        // Fechamento: relê o dia anterior inteiro. Pega o que caiu fora da janela e o que uma
-        // passada anterior tenha perdido — inclusive um domingo, na segunda de manhã.
-        if (agora.Hour == _opcoes.HoraFechamento && _ultimoFechamento != hoje)
-        {
-            _ultimoFechamento = hoje;
-            await ConciliarAsync(hoje.AddDays(-1), "fechamento", ct);
+        // Fechamento: relê dias INTEIROS já encerrados. Pega o que caiu fora da janela e o que uma
+        // passada tenha perdido — inclusive um domingo, na segunda de manhã.
+        if (agora.Hour == regras.ConciliacaoHoraFechamento
+            && await FecharDiasPendentesAsync(regras, hoje, ct))
             return;
-        }
 
-        if (agora.Hour < _opcoes.HoraInicio || agora.Hour >= _opcoes.HoraFim) return;
+        if (agora.Hour < regras.ConciliacaoHoraInicio || agora.Hour >= regras.ConciliacaoHoraFim) return;
 
+        // A cadência é medida da última leitura, não do relógio: assim encurtar o intervalo passa
+        // a valer no próximo tick, e alongar não deixa uma leitura pendurada.
+        //
+        // A tolerância de meio tick existe porque o tick nunca chega redondo: o próprio SELECT da
+        // configuração custa milissegundos e varia. Sem ela, um tick que chega 40 ms curto é
+        // descartado inteiro e a leitura só sai no tick seguinte — um intervalo de 1 minuto
+        // entregaria 2, de forma intermitente e inexplicável para quem configurou.
+        var intervalo = TimeSpan.FromMinutes(Math.Clamp(regras.ConciliacaoIntervaloMinutos, 1, 120));
+        var tolerancia = TimeSpan.FromSeconds(Math.Clamp(_opcoes.TickSegundos, 15, 300) / 2.0);
+        if (DateTime.UtcNow - _ultimaLeituraUtc < intervalo - tolerancia) return;
+
+        _ultimaLeituraUtc = DateTime.UtcNow;
         await ConciliarAsync(hoje, "expediente", ct);
     }
 
-    private async Task ConciliarAsync(DateOnly dia, string motivo, CancellationToken ct)
+    /// <summary>
+    /// Fecha os dias encerrados que ainda não foram fechados, do mais antigo para o mais novo, e
+    /// anota cada um <b>depois</b> de concluído. Devolve <c>true</c> quando trabalhou neste tick.
+    ///
+    /// <para>Três regras que custaram achado de revisão: (1) anotar só depois de a passada voltar
+    /// COMPLETA — marcar antes fazia uma leitura truncada valer como dia fechado, e os
+    /// cancelamentos daquele dia nunca entravam; (2) partir do último dia fechado GRAVADO, não de
+    /// uma variável em memória, para um deploy em cima da hora marcada não sumir com o dia; (3) um
+    /// dia por tick, para a recuperação de uma semana não virar sete passadas em rajada no
+    /// SISREG.</para>
+    /// </summary>
+    private async Task<bool> FecharDiasPendentesAsync(
+        Notificacoes.Confirmacoes.Dtos.ConfirmacaoConfiguracaoDto regras, DateOnly hoje, CancellationToken ct)
+    {
+        var ontem = hoje.AddDays(-1);
+        var proximo = regras.ConciliacaoUltimoDiaFechado is { } ultimo
+            ? ultimo.AddDays(1)
+            : ontem;
+
+        // Nunca mais que o teto para trás, e nunca um dia que ainda não acabou.
+        if (proximo < ontem.AddDays(-MaximoDiasAtrasados)) proximo = ontem.AddDays(-MaximoDiasAtrasados);
+        if (proximo > ontem) return false;
+
+        // Desistir do dia depois de algumas tentativas evita martelar o SISREG de minuto em minuto
+        // durante a hora inteira quando a sessão está caindo — a passada de amanhã tenta de novo,
+        // porque a anotação do dia fechado só avança quando dá certo.
+        if (_falhasFechamento.Dia == hoje && _falhasFechamento.Tentativas >= MaximoTentativasFechamento)
+            return false;
+
+        // O catch é o que faz a tentativa CONTAR. Sem ele a exceção subiria para o laço do
+        // ExecuteAsync, o contador ficaria parado, e um SISREG fora do ar seria martelado de minuto
+        // em minuto durante a hora inteira do fechamento.
+        ConciliacaoCancelamentosDto? r;
+        try
+        {
+            r = await ConciliarAsync(proximo, "fechamento", ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Fechamento de {Dia} falhou.", proximo);
+            r = null;
+        }
+
+        if (r is null || r.Aviso is not null)
+        {
+            _falhasFechamento = _falhasFechamento.Dia == hoje
+                ? (hoje, _falhasFechamento.Tentativas + 1)
+                : (hoje, 1);
+
+            logger.LogWarning(
+                "Fechamento de {Dia} não concluiu ({Tentativa}/{Maximo}): {Aviso}. O dia continua "
+                + "pendente e será tentado de novo.",
+                proximo, _falhasFechamento.Tentativas, MaximoTentativasFechamento,
+                r?.Aviso ?? "a passada falhou");
+            return true;
+        }
+
+        using var escopo = scopeFactory.CreateScope();
+        await escopo.ServiceProvider
+            .GetRequiredService<Notificacoes.Confirmacoes.IConfirmacaoConfiguracaoService>()
+            .MarcarDiaFechadoAsync(proximo, ct);
+        return true;
+    }
+
+    private async Task<ConciliacaoCancelamentosDto?> ConciliarAsync(
+        DateOnly dia, string motivo, CancellationToken ct)
     {
         using var escopo = scopeFactory.CreateScope();
         var servico = escopo.ServiceProvider.GetRequiredService<IConciliacaoCancelamentosSisregService>();
@@ -127,5 +205,7 @@ public sealed class ConciliacaoCancelamentosScheduler(
                 "Conciliação ({Motivo}) de {Dia}: {Novos} cancelamento(s) trazidos para a base.",
                 motivo, dia, r.Conciliados);
         }
+
+        return r;
     }
 }

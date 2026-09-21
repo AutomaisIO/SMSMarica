@@ -142,6 +142,16 @@ export type ConfirmacaoConfiguracao = {
   conciliacaoCancelamentoHabilitada: boolean;
   /** Aviso ao paciente quando o agendamento é cancelado. O motivo NUNCA vai na mensagem. */
   avisoCancelamentoHabilitado: boolean;
+  /** De quantos em quantos minutos o motor relê o dia corrente (1 a 120). */
+  conciliacaoIntervaloMinutos: number;
+  /** Hora em que a leitura do dia começa (0–23). */
+  conciliacaoHoraInicio: number;
+  /** Hora em que a leitura do dia para (1–24, exclusiva). */
+  conciliacaoHoraFim: number;
+  /** Hora do fechamento — relê o dia anterior inteiro. Precisa cair FORA da janela acima. */
+  conciliacaoHoraFechamento: number;
+  /** Último dia cujo fechamento concluiu. Só leitura: quem grava é o motor. */
+  conciliacaoUltimoDiaFechado: string | null;
 };
 
 export type SalvarConfirmacaoConfiguracao = Pick<
@@ -154,6 +164,10 @@ export type SalvarConfirmacaoConfiguracao = Pick<
   | 'lembreteHabilitado'
   | 'conciliacaoCancelamentoHabilitada'
   | 'avisoCancelamentoHabilitado'
+  | 'conciliacaoIntervaloMinutos'
+  | 'conciliacaoHoraInicio'
+  | 'conciliacaoHoraFim'
+  | 'conciliacaoHoraFechamento'
 >;
 
 /** Modelo aprovado na Meta, como a tela de teste precisa dele. */
