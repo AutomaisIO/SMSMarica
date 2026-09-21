@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen, LifeBuoy, Search, Sparkles } from 'lucide-react';
 import { instituicao } from '@/shared/tema/instituicao';
 import { Input } from '@/shared/ui/Input';
 import { buscar } from '@/features/manual/lib/busca';
-import { ARTIGOS, GRUPOS, artigosDoGrupo, artigosRecentes } from '@/features/manual/registro';
+import { GRUPOS, artigosDoGrupo, artigosRecentes } from '@/features/manual/registro';
 import type { Artigo } from '@/features/manual/tipos';
 
 const DIAS_NOVIDADE = 30;
@@ -145,18 +145,6 @@ export function ManualIndicePage() {
               </div>
             </section>
           ))}
-
-          <section className="card max-w-3xl p-5">
-            <h2 className="text-base font-semibold text-gray-900">O manual está sendo construído</h2>
-            <p className="mt-1 text-sm leading-relaxed text-gray-600">
-              Hoje há {ARTIGOS.length} {ARTIGOS.length === 1 ? 'tela documentada' : 'telas documentadas'}. As demais
-              entram aos poucos, começando pelas que mais geram dúvida no dia a dia. Se a sua tela ainda não está aqui,
-              peça — é assim que a fila é priorizada.
-            </p>
-            <Link to="/app/tickets" className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary-700 hover:underline">
-              <LifeBuoy className="h-4 w-4" /> Pedir a documentação de uma tela
-            </Link>
-          </section>
         </>
       )}
     </div>
