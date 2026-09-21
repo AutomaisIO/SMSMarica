@@ -98,13 +98,22 @@ public sealed class EnviadorComunicacaoService(
         var janelaAberta = Confirmacoes.JanelaEnvioConfirmacao.Dentro(
             agora, TimeOnly.Parse(regras.HoraInicioEnvio), TimeOnly.Parse(regras.HoraFimEnvio));
 
+        // A régua de "é sobre agendamento?" vira DADO antes da consulta, não chamada de método
+        // dentro dela. `EhSobreAgendamento(n.Finalidade)` na árvore de expressão é um método C#
+        // que o EF não traduz, e a passagem inteira morria com `InvalidOperationException` — só
+        // FORA da janela, porque dentro dela o `true || …` some com o termo antes de chegar ao
+        // tradutor. O resultado era o pior tipo de falha: o enviador se matava de minuto em
+        // minuto justamente no horário em que só devia sair o que ignora a janela (laudo, TFD),
+        // e o sintoma era um log repetido que ninguém lia — nada deixava de "estar ligado".
+        var sobreAgendamento = habilitadas.Where(EhSobreAgendamento).ToArray();
+
         var pendentes = await db.ComunicacoesPaciente.AsNoTracking()
             .Where(n => n.Status == StatusComunicacao.Pendente
                         && n.ProximaTentativaEm != null
                         && n.ProximaTentativaEm <= agora
                         && habilitadas.Contains(n.Finalidade)
                         && (janelaAberta
-                            || !EhSobreAgendamento(n.Finalidade)
+                            || !sobreAgendamento.Contains(n.Finalidade)
                             || n.IgnorarJanelaHorario))
             .OrderBy(n => n.ProximaTentativaEm)
             .Take(max)
