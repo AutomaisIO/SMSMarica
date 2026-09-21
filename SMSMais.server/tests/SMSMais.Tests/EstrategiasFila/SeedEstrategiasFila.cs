@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -35,7 +36,8 @@ internal sealed class SeedEstrategiasFila
     public static async Task<SeedEstrategiasFila> CriarAsync(SmsMaisDbContext db)
     {
         var sufixo = Guid.NewGuid().ToString("N")[..6].ToUpperInvariant();
-        var prefixo = "9" + Random.Shared.Next(100, 999);
+        var prefixo = await PrefixoLivreAsync(db);
+        var prefixoMamografia = await PrefixoLivreAsync(db, exceto: prefixo);
         var hoje = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
         var seed = new SeedEstrategiasFila
         {
@@ -100,10 +102,7 @@ internal sealed class SeedEstrategiasFila
             UnidadeNomeSisreg = $"UNIDADE ESTRATEGIA {sufixo}",
             ProfissionalCpf = seed.Cpf,
             ProfissionalNome = $"DR TESTE {sufixo}",
-            // Faixa "8xxx" de propósito: o grupo é casado pelo PREFIXO "9xxx" sorteado, e uma
-            // mamografia sorteada na mesma faixa às vezes caía dentro dele — as 4 vagas dela
-            // viravam vagas do grupo (20 → 24) e o deploy parava por sorteio.
-            ProcedimentoCodigo = "8" + Random.Shared.Next(100, 999) + "001",
+            ProcedimentoCodigo = prefixoMamografia + "001",
             ProcedimentoNome = $"MAMOGRAFIA TESTE {sufixo}",
             DiaSemana = DayOfWeek.Tuesday,
             HoraInicio = new TimeOnly(8, 0),
@@ -162,6 +161,28 @@ internal sealed class SeedEstrategiasFila
 
         await db.SaveChangesAsync();
         return seed;
+    }
+
+    /// <summary>
+    /// Um prefixo de 4 dígitos que NINGUÉM usa no banco. O grupo é casado por prefixo, e todos os
+    /// testes desta pasta semeiam no mesmo banco: sorteando entre 900 valores, dois seeds
+    /// coincidiam em ~7% das rodadas (paradoxo do aniversário) e o grupo de um ganhava as vagas e
+    /// os profissionais do outro — 20 vagas viravam 24, 2 turnos viravam 4, e o deploy parava por
+    /// sorteio (21/09/2026, duas vezes no mesmo dia). A coleção roda em série, então conferir e
+    /// usar não corre com ninguém.
+    /// </summary>
+    private static async Task<string> PrefixoLivreAsync(SmsMaisDbContext db, string? exceto = null)
+    {
+        for (var tentativa = 0; tentativa < 200; tentativa++)
+        {
+            var p = Random.Shared.Next(1000, 10_000).ToString();
+            if (p == exceto) continue;
+            if (await db.SisregEscalas.AnyAsync(e => e.ProcedimentoCodigo.StartsWith(p))) continue;
+            if (await db.Solicitacoes.AnyAsync(x => x.ProcedimentoCodigoSisreg != null && x.ProcedimentoCodigoSisreg.StartsWith(p))) continue;
+            return p;
+        }
+        throw new InvalidOperationException(
+            "Sem prefixo de procedimento livre no banco de testes — a bancada encheu; limpe as escalas de teste.");
     }
 
     private static string Codigo() => Random.Shared.NextInt64(100_000_000, 999_999_999).ToString();
