@@ -204,6 +204,9 @@ public static class DependencyInjection
         services.AddHostedService<Notificacoes.Confirmacoes.LembreteAgendamentoWorker>();
         services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
             Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
+        // Aba Equipe (produção por atendente, lida da trilha) — módulo ConfirmacoesEquipe.
+        services.AddScoped<Notificacoes.Confirmacoes.IConfirmacoesEquipeService,
+            Notificacoes.Confirmacoes.ConfirmacoesEquipeService>();
         services.AddScoped<Notificacoes.Mensageria.IMensageriaConfiguracaoService,
             Notificacoes.Mensageria.MensageriaConfiguracaoService>();
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoGestaoService,

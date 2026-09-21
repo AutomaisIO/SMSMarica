@@ -68,6 +68,8 @@ export type ModuloPermissao =
   | 'RevelarChaveSisreg'
   | 'InteligenciaAtendimento'
   | 'Confirmacoes'
+  // Aba Equipe de Confirmações (75): produção por atendente — sem o módulo a aba nem aparece.
+  | 'ConfirmacoesEquipe'
   | 'EstrategiasFila'
   | 'EstatisticaCustos'
   // Estatísticas dos operadores por sistema de regulação (68–70): três módulos, um por sistema.

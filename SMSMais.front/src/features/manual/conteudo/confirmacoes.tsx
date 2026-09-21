@@ -46,6 +46,13 @@ export const artigoConfirmacoes: Artigo = {
     'pedido de cancelamento',
     'atendente',
     'fila',
+    'equipe',
+    'produtividade',
+    'produção por atendente',
+    'estatísticas das atendentes',
+    'quem cancelou',
+    'quem confirmou',
+    'ritmo',
   ],
   secoes: () => [
     {
@@ -430,9 +437,72 @@ export const artigoConfirmacoes: Artigo = {
       ),
     },
     {
+      id: 'equipe',
+      titulo: 'Aba Equipe: quem fez o quê',
+      busca:
+        'equipe produtividade produção atendente estatística quem confirmou quem cancelou sisreg recusou telefone errado resolveu tempo até o desfecho ritmo mediana pausa período gestão ranking',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            A aba <AbaRef>Equipe</AbaRef> é de <strong>gestão</strong>: mostra, por atendente e por período, o que cada uma
+            fez nesta tela. Ela só aparece para quem tem a permissão própria (<em>Confirmações — equipe</em>) — quem
+            atende não vê a produção das colegas. Abre nos últimos 7 dias; os atalhos 30d e 90d e as datas ampliam.
+          </P>
+          <Callout tipo="atencao" titulo="Cada número é um ato, não uma ficha">
+            A mesma ficha pode ser pega por uma atendente e resolvida por outra — cada uma leva o seu ato. Por isso a soma
+            das colunas não bate com o número de fichas das filas, e nem deveria.
+          </Callout>
+          <ListaDefinicoes
+            itens={[
+              { termo: 'Pegou', descricao: 'Começou a atender, assumiu de uma colega ou retomou uma pendente.' },
+              { termo: 'Confirmou', descricao: 'Deu o desfecho de presença confirmada.' },
+              {
+                termo: 'Cancelou · SISREG ok / recusou',
+                descricao:
+                  'Cancelou é a vaga cancelada aqui. "SISREG ok" conta os cancelamentos que o SISREG confirmou; "recusou" conta as tentativas que ele não aceitou — nesse caso nada muda aqui, e a vaga segue de pé nos dois sistemas. Recusa que se repete pede conversa: costuma ser senha, perfil sem permissão lá ou ficha em situação que não cancela.',
+              },
+              { termo: 'Avisou', descricao: 'Avisos de cancelamento que saíram na hora para o WhatsApp do paciente.' },
+              { termo: 'Pendente', descricao: 'Fichas estacionadas com motivo.' },
+              {
+                termo: 'Tel. errado / resolveu',
+                descricao: 'Quantas vezes marcou contato errado e quantas vezes corrigiu o telefone e devolveu a ficha à fila.',
+              },
+              { termo: 'Liberou / transf.', descricao: 'Soltou a ficha sem desfecho, ou passou para uma colega.' },
+              {
+                termo: 'Desfechos',
+                descricao: 'Tudo que tirou uma ficha da frente: confirmou, cancelou, pendente, telefone errado, telefone resolvido e pedido de cancelamento desfeito.',
+              },
+              {
+                termo: 'Até o desfecho',
+                descricao: 'Mediana do tempo entre pegar a ficha e dar o desfecho. É mediana, e não média, para uma ficha esquecida aberta não distorcer o número.',
+              },
+              {
+                termo: 'Ritmo',
+                descricao: 'Mediana do intervalo entre um desfecho e o seguinte, no mesmo dia. Intervalo acima de 60 minutos é tratado como pausa (almoço, reunião) e não entra na conta.',
+              },
+              { termo: 'Dias', descricao: 'Em quantos dias do período ela fez ao menos uma ação.' },
+            ]}
+          />
+          <P>
+            Clicar no nome abre a <strong>linha do tempo</strong> da atendente: cada ato, com hora, o número da solicitação
+            no SISREG, o procedimento e a observação que ela escreveu. Não aparece dado do paciente — o número basta para
+            achar a ficha pela busca.
+          </P>
+          <Callout tipo="dica" titulo="O registro começou em 21/09/2026">
+            Antes dessa data o sistema não anotava quem fez cada ação, então períodos anteriores saem vazios — a própria
+            aba avisa quando o período escolhido começa antes do registro. Zero ali não quer dizer que ninguém trabalhou.
+          </Callout>
+          <P>
+            Só entra o que uma pessoa fez. O que o sistema faz sozinho (envio automático, conciliação com o SISREG,
+            confirmação pelo link ou pelo robô) não é produção de ninguém e fica de fora.
+          </P>
+        </div>
+      ),
+    },
+    {
       id: 'permissoes',
       titulo: 'Quem pode o quê',
-      busca: 'permissão consulta edição exclusão perfil não aparece botão cancelar',
+      busca: 'permissão consulta edição exclusão perfil não aparece botão cancelar aba equipe módulo',
       conteudo: (
         <div className="space-y-3">
           <ListaDefinicoes
@@ -443,6 +513,10 @@ export const artigoConfirmacoes: Artigo = {
                 descricao: 'Atende, assume, transfere, libera, confirma, envia para pendente e registra contato errado.',
               },
               { termo: 'Exclusão', descricao: 'Além de tudo acima, pode cancelar agendamento.' },
+              {
+                termo: 'Confirmações — equipe (permissão à parte)',
+                descricao: 'Vê a aba Equipe, com a produção de cada atendente. Sem ela, a aba nem aparece.',
+              },
             ]}
           />
           <P>

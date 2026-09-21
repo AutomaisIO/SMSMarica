@@ -678,6 +678,18 @@ public sealed class AtendimentoConfirmacaoService(
         var noSisreg = await CancelarNoSisregAsync(s, motivo, ct);
         if (noSisreg is { } r && r.Resultado == ResultadoCancelamentoSisreg.Falhou)
         {
+            // A tentativa recusada também é trabalho da atendente — fica na trilha, quando a ficha
+            // já está com alguém (sem atendimento não há onde pendurar o evento, e criar posse só
+            // para registrar uma falha mudaria a fila).
+            var emCurso = await db.AtendimentosConfirmacao
+                .FirstOrDefaultAsync(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null, ct);
+            if (emCurso is not null)
+            {
+                AddEvento(emCurso, TipoEventoAtendimentoConfirmacao.SisregRecusouCancelamento, me, agora,
+                    observacao: r.Detalhe);
+                await db.SaveChangesAsync(ct);
+            }
+
             throw new ConflitoException(
                 "atendimento.sisreg_nao_cancelou",
                 "O SISREG não confirmou o cancelamento, então nada foi alterado aqui — a vaga "
@@ -714,6 +726,9 @@ public sealed class AtendimentoConfirmacaoService(
         ativo.Motivo = motivo;
         Encerrar(ativo, SituacaoAtendimentoConfirmacao.Cancelado, me, agora);
         AddEvento(ativo, TipoEventoAtendimentoConfirmacao.Cancelado, me, agora, observacao: motivo);
+        if (noSisreg is { } feito)
+            AddEvento(ativo, TipoEventoAtendimentoConfirmacao.CanceladoNoSisreg, me, agora,
+                observacao: $"{feito.Resultado}: {feito.SituacaoDepois}");
         await SalvarComTraducaoDeCorridaAsync(ativo, ct);
 
         if (noSisreg is { } ok)
@@ -726,6 +741,20 @@ public sealed class AtendimentoConfirmacaoService(
         // periódico de conciliação não manda a mesma notícia de novo quando encontrar este
         // cancelamento na tela do SISREG daqui a alguns minutos.
         var avisado = await comunicacoes.AvisarCancelamentoAgoraAsync(s, ct);
+        if (avisado)
+        {
+            // A comunicação nasce sem autor (é a mesma fila do envio automático); quem avisou fica
+            // aqui. Falhar este registro não desfaz um cancelamento já feito nos dois sistemas.
+            try
+            {
+                AddEvento(ativo, TipoEventoAtendimentoConfirmacao.PacienteAvisadoCancelamento, me, DateTime.UtcNow);
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Falha ao registrar o aviso de cancelamento na trilha da solicitação {Solicitacao}.", s.Id);
+            }
+        }
 
         logger.LogInformation(
             "Solicitação {Solicitacao} cancelada por {Usuario} — SISREG: {Sisreg}.",

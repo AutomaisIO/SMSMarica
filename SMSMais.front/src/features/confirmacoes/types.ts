@@ -138,3 +138,54 @@ export type EventoAtendimento = {
   observacao: string | null;
   ocorridoEm: string;
 };
+
+// ---- Aba Equipe (módulo ConfirmacoesEquipe) ----
+
+/** A produção de uma atendente no período — contagem de ATOS dela, lidos da trilha. */
+export type AtendenteProducao = {
+  usuarioId: string;
+  nome: string;
+  pegou: number;
+  confirmou: number;
+  /** Cancelou a vaga AQUI. O que houve no SISREG está nas duas seguintes. */
+  cancelou: number;
+  cancelouNoSisreg: number;
+  sisregRecusou: number;
+  avisouPaciente: number;
+  pendente: number;
+  contatoErrado: number;
+  contatoCorrigido: number;
+  pedidoDesfeito: number;
+  liberou: number;
+  transferiu: number;
+  desfechos: number;
+  /** Mediana em minutos entre pegar a ficha e dar o desfecho. */
+  tempoAteDesfechoMin: number | null;
+  /** Mediana em minutos entre um desfecho e o seguinte (pausas longas não contam). */
+  ritmoMin: number | null;
+  diasAtivos: number;
+  primeiraAcaoEm: string | null;
+  ultimaAcaoEm: string | null;
+};
+
+export type EquipeDia = { dia: string; confirmou: number; cancelou: number; outros: number };
+
+export type EquipeConfirmacoes = {
+  de: string;
+  ate: string;
+  /** Primeiro evento da trilha — antes disso não há o que contar. */
+  trilhaDesde: string | null;
+  pausaMin: number;
+  total: AtendenteProducao;
+  atendentes: AtendenteProducao[];
+  porDia: EquipeDia[];
+};
+
+export type AtoAtendente = {
+  tipo: string;
+  ocorridoEm: string;
+  solicitacaoId: string;
+  codigoSolicitacao: string | null;
+  procedimento: string | null;
+  observacao: string | null;
+};

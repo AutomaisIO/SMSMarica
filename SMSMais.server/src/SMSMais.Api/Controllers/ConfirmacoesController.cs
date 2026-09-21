@@ -20,8 +20,39 @@ public sealed class ConfirmacoesController(
     IConfirmacoesPainelService painel,
     ILoteConfirmacaoService lote,
     IComunicacaoGestaoService gestao,
-    IAtendimentoConfirmacaoService atendimento) : ControllerBase
+    IAtendimentoConfirmacaoService atendimento,
+    IConfirmacoesEquipeService equipe) : ControllerBase
 {
+    // ---- Aba Equipe (módulo próprio: quem atende não vê o ranking das colegas) ----
+
+    /// <summary>Produção por atendente no período (dias de Brasília). Sem datas, os últimos 7 dias.</summary>
+    [HttpGet("equipe")]
+    [RequerPermissao(ModuloPermissao.ConfirmacoesEquipe, AcoesPermissao.Consulta)]
+    [ProducesResponseType<EquipeConfirmacoesDto>(StatusCodes.Status200OK)]
+    public async Task<EquipeConfirmacoesDto> Equipe(
+        [FromQuery] DateOnly? de = null, [FromQuery] DateOnly? ate = null, CancellationToken ct = default)
+    {
+        var (inicio, fim) = PeriodoPadrao(de, ate);
+        return await equipe.ObterAsync(inicio, fim, ct);
+    }
+
+    /// <summary>Os atos de uma atendente no período (linha do tempo dela).</summary>
+    [HttpGet("equipe/{usuarioId:guid}/atos")]
+    [RequerPermissao(ModuloPermissao.ConfirmacoesEquipe, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<AtoAtendenteDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AtoAtendenteDto>> AtosDaAtendente(
+        Guid usuarioId, [FromQuery] DateOnly? de = null, [FromQuery] DateOnly? ate = null, CancellationToken ct = default)
+    {
+        var (inicio, fim) = PeriodoPadrao(de, ate);
+        return await equipe.AtosAsync(usuarioId, inicio, fim, ct);
+    }
+
+    private static (DateOnly De, DateOnly Ate) PeriodoPadrao(DateOnly? de, DateOnly? ate)
+    {
+        var fim = ate ?? DateOnly.FromDateTime(Core.Common.Tempo.FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        return (de ?? fim.AddDays(-6), fim);
+    }
+
     // ---- Atendimento humano (as 4 abas do menu) ----
 
     /// <summary>Uma das quatro filas: NaoConfirmados | Confirmados | ContatoErrado | Pendentes.

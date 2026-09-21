@@ -67,6 +67,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   },
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
   { id: 'Confirmacoes', rotulo: 'Confirmações — atendimento das confirmações de agendamento (as 4 filas das atendentes)' },
+  { id: 'ConfirmacoesEquipe', rotulo: 'Confirmações — equipe (produção de cada atendente: quem confirmou, cancelou, resolveu telefone; exige Confirmações)' },
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
   { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
   { id: 'Indicadores', rotulo: 'Indicadores contratuais do HMCML' },
@@ -194,6 +195,9 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
     Consulta: 'Ver as quatro filas (não confirmados, confirmados, contato errado, pendentes)',
     Edicao: 'Atender, assumir, transferir, confirmar, enviar para pendente e marcar contato errado',
     Exclusao: 'Cancelar agendamento (no SMSMais; o SISREG é cancelado pelo navegador)',
+  },
+  ConfirmacoesEquipe: {
+    Consulta: 'Ver a aba Equipe: o que cada atendente fez, tempos e ritmo',
   },
   NotificacoesAgendamento: {
     Consulta: 'Ver resumo diário, envios, respostas e regras da mensageria',

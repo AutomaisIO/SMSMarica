@@ -4,6 +4,8 @@ import { params } from '@/features/mensageria/api/comunicacoesApi';
 import type {
   AcaoResultado,
   AtendenteConfirmacao,
+  AtoAtendente,
+  EquipeConfirmacoes,
   EventoAtendimento,
   FiltroAtendimento,
   MensagemContexto,
@@ -96,6 +98,26 @@ export function useHistoricoAtendimento(solicitacaoId: string | null) {
     queryFn: async () =>
       (await http.get<EventoAtendimento[]>(`/confirmacoes/atendimento/${solicitacaoId}/historico`)).data,
     enabled: Boolean(solicitacaoId),
+  });
+}
+
+/** Aba Equipe: produção por atendente. Só é chamado por quem tem o módulo ConfirmacoesEquipe. */
+export function useEquipeConfirmacoes(de: string, ate: string, habilitado: boolean) {
+  return useQuery({
+    queryKey: ['confirmacoes', 'equipe', de, ate],
+    queryFn: async () => (await http.get<EquipeConfirmacoes>('/confirmacoes/equipe', { params: { de, ate } })).data,
+    enabled: habilitado,
+    placeholderData: (anterior) => anterior,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useAtosDaAtendente(usuarioId: string | null, de: string, ate: string) {
+  return useQuery({
+    queryKey: ['confirmacoes', 'equipe', 'atos', usuarioId, de, ate],
+    queryFn: async () =>
+      (await http.get<AtoAtendente[]>(`/confirmacoes/equipe/${usuarioId}/atos`, { params: { de, ate } })).data,
+    enabled: Boolean(usuarioId),
   });
 }
 

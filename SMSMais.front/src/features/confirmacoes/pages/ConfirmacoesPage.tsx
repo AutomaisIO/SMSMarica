@@ -17,6 +17,7 @@ import {
 import { ModalLoginSisreg } from '@/features/confirmacoes/components/ModalLoginSisreg';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { useSessaoSisregObrigatoria } from '@/features/confirmacoes/lib/sessaoSisreg';
+import { AbaEquipe } from '@/features/confirmacoes/components/AbaEquipe';
 import { CardSolicitacao, type AcaoCard } from '@/features/confirmacoes/components/CardSolicitacao';
 import {
   ModalCancelar,
@@ -53,6 +54,9 @@ const ABAS: { id: AbaAtendimento; rotulo: string; descricao: string }[] = [
   },
 ];
 
+/** Fora de `ABAS` de propósito: não é fila de atendimento e só existe para quem tem o módulo. */
+const ABA_EQUIPE = 'Equipe';
+
 const TAMANHOS = [25, 50, 100] as const;
 
 type ModalAberto = { tipo: Exclude<AcaoCard, 'atender' | 'assumir' | 'liberar'>; item: SolicitacaoAtendimento } | null;
@@ -66,10 +70,13 @@ export function ConfirmacoesPage() {
   const podeEditar = usePermissao('Confirmacoes', 'Edicao');
   const podeCancelar = usePermissao('Confirmacoes', 'Exclusao');
   const veMensageria = useTemConsulta('NotificacoesAgendamento');
+  // A aba Equipe é de gestão: sem o módulo próprio ela nem aparece (e o endpoint responde 403).
+  const veEquipe = useTemConsulta('ConfirmacoesEquipe');
 
   const [params, setParams] = useSearchParams();
   const abaParam = params.get('aba');
   const aba: AbaAtendimento = ABAS.some((a) => a.id === abaParam) ? (abaParam as AbaAtendimento) : 'NaoConfirmados';
+  const naEquipe = veEquipe && abaParam === ABA_EQUIPE;
 
   const [texto, setTexto] = useState('');
   const [unidadeId, setUnidadeId] = useState('');
@@ -230,9 +237,9 @@ export function ConfirmacoesPage() {
       </header>
 
       <Tabs
-        abaAtiva={aba}
+        abaAtiva={naEquipe ? ABA_EQUIPE : aba}
         aoTrocarAba={trocarAba}
-        abas={ABAS.map((a) => ({
+        abas={[...ABAS.map((a) => ({
           id: a.id,
           rotulo: a.rotulo,
           badge: r
@@ -244,7 +251,9 @@ export function ConfirmacoesPage() {
                       : r.telefoneComprometido
             : undefined,
           conteudo,
-        }))}
+        })),
+        ...(veEquipe ? [{ id: ABA_EQUIPE, rotulo: 'Equipe', conteudo: <AbaEquipe /> }] : []),
+        ]}
       />
 
       {modal?.tipo === 'confirmar' ? (

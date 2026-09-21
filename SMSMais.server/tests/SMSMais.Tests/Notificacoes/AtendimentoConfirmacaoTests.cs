@@ -293,6 +293,41 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
             Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// O que o cancelamento fez FORA daqui entra na trilha com o nome de quem clicou — é o que a
+    /// aba Equipe conta. SISREG confirmou → <c>CanceladoNoSisreg</c>; recusou → a tentativa fica
+    /// registrada (<c>SisregRecusouCancelamento</c>) mesmo sem nada mudar na solicitação.
+    /// </summary>
+    [Theory]
+    [InlineData(false, TipoEventoAtendimentoConfirmacao.CanceladoNoSisreg)]
+    [InlineData(true, TipoEventoAtendimentoConfirmacao.SisregRecusouCancelamento)]
+    public async Task Resultado_do_SISREG_entra_na_trilha_com_o_autor(bool recusa, TipoEventoAtendimentoConfirmacao esperado)
+    {
+        await using var db = fixture.CriarDbContext();
+        var atendente = await CriarUsuarioAsync(db);
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(5));
+        var solicitacao = await db.Solicitacoes.SingleAsync(x => x.Id == exame.SolicitacaoId);
+        solicitacao.CodigoSolicitacao = $"9{Random.Shared.NextInt64(100_000_000, 999_999_999)}";
+        await db.SaveChangesAsync();
+
+        var servico = CriarServico(
+            db, atendente,
+            noSisreg: recusa ? SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Falhou : null,
+            cnsDoPaciente: "700503370774852");
+        await servico.AtenderAsync(exame.SolicitacaoId);
+
+        var pedido = new CancelarAtendimentoRequest("Paciente desistiu", "WhatsApp");
+        if (recusa) await Assert.ThrowsAsync<ConflitoException>(() => servico.CancelarAsync(exame.SolicitacaoId, pedido));
+        else await servico.CancelarAsync(exame.SolicitacaoId, pedido);
+
+        await using var db2 = fixture.CriarDbContext();
+        var tipos = await db2.AtendimentoConfirmacaoEventos
+            .Where(e => e.Atendimento!.SolicitacaoId == exame.SolicitacaoId && e.AtorUsuarioId == atendente)
+            .Select(e => e.Tipo).ToListAsync();
+        Assert.Contains(esperado, tipos);
+        Assert.Equal(!recusa, tipos.Contains(TipoEventoAtendimentoConfirmacao.Cancelado));
+    }
+
     // ===================== apoio =====================
 
     private static AtendimentoConfirmacaoService CriarServico(

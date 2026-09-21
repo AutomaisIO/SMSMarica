@@ -339,4 +339,12 @@ public enum ModuloPermissao
     /// geral. <c>Consulta</c> = ver as encaminhadas aos seus pontos; <c>Edicao</c> = responder pela
     /// área. <c>Inclusao</c> e <c>Exclusao</c> não são usadas.</summary>
     OuvidoriaPontoResposta = 74,
+
+    /// <summary>Confirmações: EQUIPE — a produção de cada atendente na tela de Confirmações (quem
+    /// pegou, confirmou, cancelou, estacionou, marcou e resolveu telefone errado, tempos e ritmo),
+    /// lida da trilha <c>atendimento_confirmacao_evento</c>. Fora de <see cref="Confirmacoes"/> de
+    /// propósito: quem atende não precisa ver o ranking das colegas — sem este módulo a aba nem
+    /// aparece. Só <c>Consulta</c>. Exige também <see cref="Confirmacoes"/> (a tela). Nasce
+    /// desligado em todo perfil que não seja o Admin.</summary>
+    ConfirmacoesEquipe = 75,
 }
