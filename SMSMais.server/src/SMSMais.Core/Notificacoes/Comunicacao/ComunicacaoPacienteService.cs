@@ -59,7 +59,8 @@ public interface IComunicacaoPacienteService
     /// conciliação de avisar de novo quando encontrar este mesmo cancelamento na tela do SISREG
     /// minutos depois. Nunca lança: falha de WhatsApp não desfaz cancelamento.</para>
     /// </summary>
-    Task AvisarCancelamentoAgoraAsync(Solicitacao solicitacao, CancellationToken ct = default);
+    /// <returns><c>true</c> se a mensagem saiu agora.</returns>
+    Task<bool> AvisarCancelamentoAgoraAsync(Solicitacao solicitacao, CancellationToken ct = default);
 
     /// <summary>
     /// Corta o acesso do paciente ao que já foi enviado desta solicitação: expira TODOS os magic
@@ -148,11 +149,11 @@ public sealed class ComunicacaoPacienteService(
         });
     }
 
-    public async Task AvisarCancelamentoAgoraAsync(Solicitacao solicitacao, CancellationToken ct = default)
+    public async Task<bool> AvisarCancelamentoAgoraAsync(Solicitacao solicitacao, CancellationToken ct = default)
     {
         // A chave mora no banco (menu Confirmações → Regras), não em arquivo: ligar e desligar
         // aviso ao paciente é decisão de operação e não pode depender de deploy.
-        if (!(await RegrasAsync(ct)).AvisoCancelamentoHabilitado) return;
+        if (!(await RegrasAsync(ct)).AvisoCancelamentoHabilitado) return false;
 
         try
         {
@@ -166,9 +167,14 @@ public sealed class ComunicacaoPacienteService(
                 .FirstOrDefaultAsync(ct);
 
             // Já foi avisado antes (o motor pegou primeiro): não repete.
-            if (comunicacao is null || comunicacao.Status != StatusComunicacao.Pendente) return;
+            if (comunicacao is null || comunicacao.Status != StatusComunicacao.Pendente) return false;
 
             await ProcessarTentativaEnvioAsync(comunicacao.Id, ct);
+
+            // O que a tela diz à atendente tem de ser o que aconteceu: "avisado" só se a mensagem
+            // saiu mesmo. Número sem WhatsApp, contato negado e janela fechada param aqui.
+            return await db.ComunicacoesPaciente.AsNoTracking()
+                .AnyAsync(c => c.Id == comunicacao.Id && c.EnviadoEm != null, ct);
         }
         catch (Exception ex)
         {
@@ -176,6 +182,7 @@ public sealed class ComunicacaoPacienteService(
             // seria pior. Fica o log e a comunicação na fila, que o worker retenta.
             logger.LogError(ex,
                 "Falha ao avisar o cancelamento da solicitação {Solicitacao} na hora.", solicitacao.Id);
+            return false;
         }
     }
 

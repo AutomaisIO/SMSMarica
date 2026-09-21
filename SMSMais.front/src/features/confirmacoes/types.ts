@@ -121,6 +121,10 @@ export type FiltroAtendimento = {
 export type AcaoResultado = {
   atendimentoId: string;
   situacao: SituacaoAtendimento;
+  /** O que a ficha do SISREG passou a dizer. Nulo quando não havia o que cancelar lá. */
+  sisregSituacao: string | null;
+  /** O aviso de cancelamento saiu na hora para o WhatsApp do paciente. */
+  pacienteAvisado: boolean;
 };
 
 export type EventoAtendimento = {

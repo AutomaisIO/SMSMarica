@@ -725,13 +725,19 @@ public sealed class AtendimentoConfirmacaoService(
         // O aviso ao paciente sai AGORA, e já nasce marcado como enviado — assim o motor
         // periódico de conciliação não manda a mesma notícia de novo quando encontrar este
         // cancelamento na tela do SISREG daqui a alguns minutos.
-        await comunicacoes.AvisarCancelamentoAgoraAsync(s, ct);
+        var avisado = await comunicacoes.AvisarCancelamentoAgoraAsync(s, ct);
 
         logger.LogInformation(
             "Solicitação {Solicitacao} cancelada por {Usuario} — SISREG: {Sisreg}.",
-            s.Id, me, noSisreg?.Resultado.ToString() ?? "sem código/CNS (nada a cancelar lá)");
+            s.Id, me, noSisreg?.Resultado.ToString() ?? "sem código (nada a cancelar lá)");
 
-        return Resultado(ativo);
+        // A tela precisa contar o que aconteceu de fato: cancelar aqui, cancelar no SISREG e
+        // avisar o paciente são três coisas, e a atendente não tem como saber quais saíram.
+        return Resultado(ativo) with
+        {
+            SisregSituacao = noSisreg?.SituacaoDepois,
+            PacienteAvisado = avisado,
+        };
     }
 
     public async Task<AcaoAtendimentoResultadoDto> EnviarParaPendenteAsync(

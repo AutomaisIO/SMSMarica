@@ -15,6 +15,7 @@ import {
   useResumoAbas,
 } from '@/features/confirmacoes/api';
 import { ModalLoginSisreg } from '@/features/confirmacoes/components/ModalLoginSisreg';
+import { notificar } from '@/shared/ui/Notificacoes';
 import { useSessaoSisregObrigatoria } from '@/features/confirmacoes/lib/sessaoSisreg';
 import { CardSolicitacao, type AcaoCard } from '@/features/confirmacoes/components/CardSolicitacao';
 import {
@@ -25,7 +26,7 @@ import {
   ModalPendente,
   ModalTransferir,
 } from '@/features/confirmacoes/components/ModaisAtendimento';
-import type { AbaAtendimento, SolicitacaoAtendimento } from '@/features/confirmacoes/types';
+import type { AcaoResultado, AbaAtendimento, SolicitacaoAtendimento } from '@/features/confirmacoes/types';
 import { useRegrasUnidades } from '@/features/mensageria/api/queries';
 import { ROTULO_STATUS, useDebounce } from '@/features/mensageria/lib/rotulos';
 import type { StatusNotificacao } from '@/features/mensageria/types';
@@ -106,10 +107,11 @@ export function ConfirmacoesPage() {
     // Desfazer um pedido não destrói nada — devolve a ficha para a fila. Pedir confirmação num
     // ato reversível só ensina a atendente a clicar em "sim" sem ler.
     if (tipo === 'desfazer-pedido') {
-      acao.mutate({
-        solicitacaoId: item.solicitacaoId,
-        acao: { tipo: 'desfazer-pedido-cancelamento' },
-      });
+      acao.mutate(
+        { solicitacaoId: item.solicitacaoId, acao: { tipo: 'desfazer-pedido-cancelamento' } },
+        // Esta ação não abre modal: sem o aviso, o card some da aba e nada explica por quê.
+        { onSuccess: () => notificar('Pedido desconsiderado — a ficha voltou para a fila.', 'sucesso') },
+      );
       return;
     }
     acao.reset();
@@ -245,7 +247,7 @@ export function ConfirmacoesPage() {
         <ModalConfirmar
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
           aoConfirmar={(meio, observacao) =>
-            acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'confirmar', meio, observacao } }, { onSuccess: fecharModal })}
+            acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'confirmar', meio, observacao } }, { onSuccess: () => { fecharModal(); notificar('Presença confirmada.', 'sucesso'); } })}
         />
       ) : null}
       {modal?.tipo === 'cancelar' ? (
@@ -256,7 +258,10 @@ export function ConfirmacoesPage() {
             // senha aparece e a ação é retomada sozinha — ela não redigita o motivo.
             const cancelar = () =>
               acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'cancelar', motivo, meio } }, {
-                onSuccess: fecharModal,
+                onSuccess: (res) => {
+                  fecharModal();
+                  notificar(textoDoCancelamento(res), 'sucesso');
+                },
                 onError: (erro) => sessaoSisreg.tratouFaltaDeSessao(erro, cancelar),
               });
             sessaoSisreg.comSessao(cancelar);
@@ -267,20 +272,20 @@ export function ConfirmacoesPage() {
       {modal?.tipo === 'pendente' ? (
         <ModalPendente
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
-          aoEnviar={(motivo) => acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'pendente', motivo } }, { onSuccess: fecharModal })}
+          aoEnviar={(motivo) => acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'pendente', motivo } }, { onSuccess: () => { fecharModal(); notificar('Ficha estacionada como pendente.', 'sucesso'); } })}
         />
       ) : null}
       {modal?.tipo === 'contato-errado' ? (
         <ModalContatoErrado
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
-          aoRegistrar={(observacao) => acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'contato-errado', observacao } }, { onSuccess: fecharModal })}
+          aoRegistrar={(observacao) => acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'contato-errado', observacao } }, { onSuccess: () => { fecharModal(); notificar('Contato marcado como errado.', 'sucesso'); } })}
         />
       ) : null}
       {modal?.tipo === 'transferir' ? (
         <ModalTransferir
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
           aoTransferir={(paraUsuarioId, observacao) =>
-            acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'transferir', paraUsuarioId, observacao } }, { onSuccess: fecharModal })}
+            acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'transferir', paraUsuarioId, observacao } }, { onSuccess: () => { fecharModal(); notificar('Atendimento transferido.', 'sucesso'); } })}
         />
       ) : null}
       {modal?.tipo === 'contato-corrigido' ? (
@@ -305,4 +310,21 @@ function Porque({ titulo, valor, detalhe }: { titulo: string; valor: number; det
       <p className="mt-0.5 text-xs leading-snug text-gray-500">{detalhe}</p>
     </div>
   );
+}
+
+/**
+ * O que dizer à atendente depois de cancelar.
+ *
+ * <p>São três coisas diferentes — cancelar aqui, cancelar no SISREG e avisar o paciente — e ela
+ * não tem como saber quais saíram. Um "pronto" genérico esconderia justamente o que ela precisa
+ * conferir: se a vaga foi liberada lá e se a pessoa foi avisada.</p>
+ */
+function textoDoCancelamento(res: AcaoResultado): string {
+  const noSisreg = res.sisregSituacao
+    ? 'Cancelado aqui e no SISREG.'
+    : 'Cancelado. (Este agendamento não existia no SISREG.)';
+  const aviso = res.pacienteAvisado
+    ? ' Paciente avisado por WhatsApp.'
+    : ' O paciente NÃO foi avisado.';
+  return noSisreg + aviso;
 }

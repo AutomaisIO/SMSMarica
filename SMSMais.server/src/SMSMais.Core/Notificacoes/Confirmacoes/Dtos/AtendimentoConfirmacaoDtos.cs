@@ -117,7 +117,16 @@ public sealed record ContatoCorrigidoAtendimentoRequest(string? Telefone, string
 public sealed record DesfazerPedidoCancelamentoRequest(string? Observacao);
 
 /// <summary>Resultado de uma ação sobre o atendimento.</summary>
-public sealed record AcaoAtendimentoResultadoDto(Guid AtendimentoId, string Situacao);
+/// <param name="SisregSituacao">
+/// O que a ficha do SISREG passou a dizer ("AGENDAMENTO / CANCELADO / REGULADOR"), quando a ação
+/// tocou o SISREG. <c>null</c> quando não havia o que tocar lá (agendamento cadastrado à mão).
+/// </param>
+/// <param name="PacienteAvisado">O aviso de cancelamento saiu na hora para o WhatsApp do paciente.</param>
+public sealed record AcaoAtendimentoResultadoDto(
+    Guid AtendimentoId,
+    string Situacao,
+    string? SisregSituacao = null,
+    bool PacienteAvisado = false);
 
 /// <summary>Evento da trilha do atendimento (detalhe).</summary>
 public sealed record EventoAtendimentoDto(
