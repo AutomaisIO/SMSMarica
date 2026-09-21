@@ -928,3 +928,33 @@ cancelamento se perdeu", que é exatamente o que não pode acontecer.
 Detalhe do mesmo experimento: em 1.868 linhas há **1 código repetido** (a mesma marcação
 cancelada duas vezes). Dedupe por código continua certo, mas a repetição tem de ser reportada, não
 engolida.
+
+## ✅ Cancelar pelo CÓDIGO, não pelo CNS (20/09/2026)
+
+A tela `cons_verificar` aceita as duas buscas, e o **código é estritamente melhor**. O próprio
+JavaScript da página diz que ele dispensa todo o resto:
+
+```js
+function validaFormulario() {
+  var form = document.form;
+  if (form.co_solic.value != '') { return true; }   // <- código: nada mais é exigido
+  else { if (form.cns.value.length <= 0) { ...exige dt_inicial, dt_final, período < 31 dias... } }
+}
+```
+
+Medido numa solicitação viva: `etapa=LISTAR` + `co_solic=<código>` e **todo o resto vazio**
+(inclusive `codigo_solicitacao`, que é da paginação) devolve **uma linha só**, com
+`chk_0 = <código>`. Uma requisição, sem CNS, sem datas.
+
+**Por que isso importa e não é só economia:** pelo CNS vêm TODAS as marcações da pessoa, paginadas
+de 10 em 10 — mais requisições e mais chance de errar de linha, num formulário em que errar de
+linha significa cancelar o exame de outra pessoa. Pelo código só existe uma linha possível.
+
+⚠️ **Duas armadilhas nessa sonda:**
+- Mandar `co_solic` **e** `codigo_solicitacao` juntos devolve a tela vazia. Só `co_solic`.
+- Solicitação **já cancelada não aparece** nessa tela (ela só lista o que ainda é cancelável),
+  então testar com uma cancelada dá "zero linhas" e parece que a busca por código não funciona.
+  Foi o que me enganou na primeira tentativa. Teste com uma viva.
+
+O `alert('Preencha a Data Inicial.')` na resposta **não é o desfecho**: é a função de validação
+que vem no JavaScript de toda página dessa tela.

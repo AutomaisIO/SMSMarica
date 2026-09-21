@@ -39,7 +39,7 @@ public interface ICancelamentoSisregService
     /// não pode ser desfeito por isso.
     /// </summary>
     Task<CancelamentoSisregDto> CancelarAsync(
-        ISisregWebSessao sessao, string codigoSolicitacao, string cns, string justificativa,
+        ISisregWebSessao sessao, string codigoSolicitacao, string justificativa,
         CancellationToken ct = default);
 }
 
@@ -50,7 +50,8 @@ public interface ICancelamentoSisregService
 /// 20/09/2026.
 ///
 /// <para><b>Três passos, e o terceiro é o que vale:</b> lê a ficha (já está cancelada? então não
-/// manda nada), lista para achar a linha, cancela, e <b>relê a ficha</b>. A confirmação nunca é o
+/// manda nada), busca a linha <b>pelo código da solicitação</b> — uma requisição, uma linha —,
+/// cancela, e <b>relê a ficha</b>. A confirmação nunca é o
 /// HTTP 200 nem o <c>alert()</c> da resposta: a primeira versão desta rotina, no laboratório,
 /// conferia "sumiu da listagem" e chegou a aprovar uma solicitação que ninguém havia tocado — a
 /// listagem só mostra o que ainda é cancelável, então "sumiu" confunde "eu cancelei", "já estava
@@ -75,15 +76,11 @@ public sealed class CancelamentoSisregService(
     /// <summary>O SISREG recusa justificativa vazia e corta em 200 caracteres.</summary>
     private const int MaxJustificativa = 200;
 
-    /// <summary>Páginas da listagem daquele CNS — teto de sanidade, não expectativa.</summary>
-    private const int MaxPaginas = 12;
-
     public async Task<CancelamentoSisregDto> CancelarAsync(
-        ISisregWebSessao sessao, string codigoSolicitacao, string cns, string justificativa,
+        ISisregWebSessao sessao, string codigoSolicitacao, string justificativa,
         CancellationToken ct = default)
     {
         var codigo = (codigoSolicitacao ?? string.Empty).Trim();
-        cns = (cns ?? string.Empty).Trim();
         justificativa = (justificativa ?? string.Empty).Trim();
 
         if (codigo.Length == 0)
@@ -107,30 +104,24 @@ public sealed class CancelamentoSisregService(
                 return new(ResultadoCancelamentoSisreg.JaEstavaCancelado, antes, antes,
                     "Já estava cancelada no SISREG.", cnsDaFicha);
 
-            cns = cnsDaFicha ?? cns;
-            if (cns.Length == 0)
-                return new(ResultadoCancelamentoSisreg.Falhou, antes, null,
-                    "A ficha não trouxe o CNS e o cadastro também não tem — a busca no SISREG é "
-                    + "por CNS, então não há como alcançar a marcação.");
-
             // 2. Achar a linha — nunca inventá-la.
-            var alvo = await ProcurarLinhaAsync(sessao, cns, codigo, ct);
+            var alvo = await ProcurarLinhaAsync(sessao, codigo, ct);
             if (alvo is null)
                 return new(ResultadoCancelamentoSisreg.Falhou, antes, null,
-                    "A solicitação não apareceu na listagem de canceláveis desse CNS.", cnsDaFicha);
+                    "A solicitação não apareceu como cancelável no SISREG.", cnsDaFicha);
 
             // 3. Cancelar.
             var resposta = await sessao.PostFormAsync(TelaCancelamento, new Dictionary<string, string>
             {
                 ["pg"] = "",
-                ["cns"] = cns,
+                ["cns"] = "",
+                ["co_solic"] = codigo,
                 [alvo.Value.Campo] = alvo.Value.Valor,
                 ["etapa"] = "EXCLUIR_SOLICITACAO",
                 ["ordem"] = "",
                 ["total"] = "",
-                ["co_solic"] = "",
                 ["dt_final"] = "",
-                ["nr_pagina"] = alvo.Value.Pagina.ToString(),
+                ["nr_pagina"] = "0",
                 ["dt_inicial"] = "",
                 ["justificativa"] = justificativa,
                 ["codigo_solicitacao"] = "",
@@ -201,34 +192,37 @@ public sealed class CancelamentoSisregService(
         return (null, null);
     }
 
-    /// <summary>Varre as páginas daquele CNS até achar a linha do código.</summary>
-    private static async Task<(string Campo, string Valor, int Pagina)?> ProcurarLinhaAsync(
-        ISisregWebSessao sessao, string cns, string codigo, CancellationToken ct)
+    /// <summary>
+    /// A linha daquela solicitação — buscada <b>pelo código</b>, não pelo CNS.
+    ///
+    /// <para>A tela aceita os dois, e o código é estritamente melhor: uma requisição, uma linha,
+    /// nenhuma ambiguidade. Pelo CNS vinham todas as marcações da pessoa, paginadas de 10 em 10 —
+    /// mais requisições e mais chance de errar de linha, num formulário em que errar de linha
+    /// significa cancelar o exame de outra pessoa. O próprio JavaScript da página confirma que o
+    /// código dispensa o resto: <c>if (form.co_solic.value != '') return true;</c> antes de
+    /// qualquer exigência de CNS ou de período.</para>
+    ///
+    /// <para>Ainda assim o checkbox é <b>lido do HTML</b>, nunca montado: o nome carrega a posição
+    /// (<c>chk_0</c>) e o valor carrega o código, e só se aceita quando o valor bate.</para>
+    /// </summary>
+    private static async Task<(string Campo, string Valor)?> ProcurarLinhaAsync(
+        ISisregWebSessao sessao, string codigo, CancellationToken ct)
     {
-        string? total = null, ordem = null;
-        for (var pagina = 0; pagina < MaxPaginas; pagina++)
+        var html = await sessao.PostFormAsync(TelaCancelamento, new Dictionary<string, string>
         {
-            var html = await sessao.PostFormAsync(TelaCancelamento, new Dictionary<string, string>
-            {
-                ["pg"] = pagina.ToString(),
-                ["cns"] = cns,
-                ["etapa"] = "LISTAR",
-                ["ordem"] = pagina == 0 ? "" : ordem ?? "1",
-                ["total"] = pagina == 0 ? "" : total ?? "",
-                ["co_solic"] = "",
-                ["dt_final"] = "",
-                ["nr_pagina"] = pagina == 0 ? "" : (pagina - 1).ToString(),
-                ["dt_inicial"] = "",
-                ["codigo_solicitacao"] = "",
-            }, ct);
+            ["pg"] = "0",
+            ["cns"] = "",
+            ["etapa"] = "LISTAR",
+            ["ordem"] = "",
+            ["total"] = "",
+            ["co_solic"] = codigo,
+            ["dt_final"] = "",
+            ["nr_pagina"] = "",
+            ["dt_inicial"] = "",
+            ["codigo_solicitacao"] = "",
+        }, ct);
 
-            if (FichaCancelamentoHtmlParser.Checkbox(html, codigo) is { } achado)
-                return (achado.Campo, achado.Valor, pagina);
-
-            (total, ordem) = FichaCancelamentoHtmlParser.TotalEOrdem(html);
-            if (!html.Contains("chk_", StringComparison.OrdinalIgnoreCase)) break;
-        }
-        return null;
+        return FichaCancelamentoHtmlParser.Checkbox(html, codigo);
     }
 
     private static string? Alerta(string html)

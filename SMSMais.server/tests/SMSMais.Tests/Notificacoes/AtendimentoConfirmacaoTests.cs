@@ -328,7 +328,7 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         var sisreg = Substitute.For<SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService>();
         sisreg.CancelarAsync(
                 Arg.Any<SMSMais.Core.Integracoes.SisregWeb.ISisregWebSessao>(),
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new SMSMais.Core.Integracoes.SisregWeb.Cancelamento.CancelamentoSisregDto(
                 noSisreg ?? SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Cancelado,
                 "SOLICITAÇÃO / AUTORIZADA / REGULADOR",

@@ -527,8 +527,8 @@ public sealed class AtendimentoConfirmacaoService(
     }
 
     /// <summary>
-    /// Cancela no SISREG a marcação desta solicitação. Devolve <c>null</c> quando falta o que a
-    /// tela do SISREG exige (código da solicitação ou CNS do paciente) — aí não há o que tentar.
+    /// Cancela no SISREG a marcação desta solicitação. Devolve <c>null</c> quando a solicitação
+    /// nunca existiu lá (sem código, ou a sentinela "0000") — aí não há o que tentar.
     /// </summary>
     private async Task<CancelamentoSisregDto?> CancelarNoSisregAsync(
         Solicitacao s, string motivo, CancellationToken ct)
@@ -538,25 +538,20 @@ public sealed class AtendimentoConfirmacaoService(
         // não há o que cancelar lá — este é o ÚNICO caso em que se pula.
         if (codigo.Length == 0 || codigo == "0000") return null;
 
-        // O CNS vive no hub FHIR, não em smsmarica — e é por ele que a tela do SISREG busca.
-        // Quando falta (15% dos agendamentos futuros em 20/09/2026), o serviço o lê da própria
-        // ficha do SISREG: exigi-lo aqui recusaria uma em cada sete tentativas de cancelamento.
-        var paciente = await pacienteResolver.ResolverAsync(s.PacienteId, ct);
-        var cns = paciente?.Cns ?? string.Empty;
-        var tinhaCns = !string.IsNullOrWhiteSpace(cns);
-
         // A sessão é a DO OPERADOR: sem ela, a exceção nomeada faz a tela pedir a senha do
         // SISREG em vez de mostrar erro.
         var sessaoOperador = sessoesSisreg.Exigir(usuarioAtual.SessaoId ?? string.Empty);
 
         // A justificativa fica registrada no SISREG e é lida por gente de fora do nosso sistema:
         // vai o FATO, sem marca de origem nem dado nosso.
-        var resultado = await cancelamentoSisreg.CancelarAsync(sessaoOperador, codigo, cns, motivo, ct);
+        var resultado = await cancelamentoSisreg.CancelarAsync(sessaoOperador, codigo, motivo, ct);
 
-        // O cadastro sai melhor do que entrou: se não tínhamos CNS e a ficha do SISREG trouxe um,
-        // guardamos. Só ACRESCENTA — nunca troca um número existente por outro, porque aí seria
-        // identidade sendo reescrita a partir de um vínculo que pode estar errado.
-        if (!tinhaCns && !string.IsNullOrWhiteSpace(resultado.CnsDaFicha))
+        // O cadastro sai melhor do que entrou: a ficha do SISREG traz o CNS, e 15% dos nossos
+        // agendamentos futuros são de paciente sem ele. Só ACRESCENTA quando falta — trocar um
+        // número existente por outro seria reescrever identidade a partir de um vínculo que pode
+        // estar errado.
+        var paciente = await pacienteResolver.ResolverAsync(s.PacienteId, ct);
+        if (string.IsNullOrWhiteSpace(paciente?.Cns) && !string.IsNullOrWhiteSpace(resultado.CnsDaFicha))
             await GravarCnsDaFichaAsync(s.PacienteId, resultado.CnsDaFicha!, ct);
 
         return resultado;
