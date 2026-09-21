@@ -74,7 +74,10 @@ export function ConfirmacoesPage() {
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState<number>(50);
   const [modal, setModal] = useState<ModalAberto>(null);
-  const [avisoSisreg, setAvisoSisreg] = useState<SolicitacaoAtendimento | null>(null);
+  // Só aparece quando o cancelamento no SISREG NÃO foi confirmado. Desde 20/09/2026 o backend
+  // cancela lá e confere relendo a ficha, então isto é exceção — e é por isso que o texto diz o
+  // que falhou em vez de instruir o caminho manual como se fosse o normal.
+  const [avisoSisreg, setAvisoSisreg] = useState<{ item: SolicitacaoAtendimento; detalhe?: string | null } | null>(null);
   const textoDeb = useDebounce(texto);
 
   useEffect(() => setPagina(1), [aba, textoDeb, unidadeId, envio, tamanho]);
@@ -170,11 +173,11 @@ export function ConfirmacoesPage() {
       {q.isError ? <p className="text-sm text-red-700">{extrairMensagemDeErro(q.error)}</p> : null}
 
       {avisoSisreg ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           <span>
-            Cancelado no SMSMais: <strong>{avisoSisreg.pacienteNome}</strong>
-            {avisoSisreg.codigoSolicitacao ? ` (SISREG ${avisoSisreg.codigoSolicitacao})` : ''}. Agora cancele também no
-            SISREG pelo navegador — com a extensão instalada, o sistema concilia sozinho.
+            <strong>Cancelado aqui, mas não no SISREG</strong> — <strong>{avisoSisreg.item.pacienteNome}</strong>
+            {avisoSisreg.item.codigoSolicitacao ? ` (SISREG ${avisoSisreg.item.codigoSolicitacao})` : ''}.
+            {avisoSisreg.detalhe ? ` ${avisoSisreg.detalhe}` : ''} Cancele lá pelo navegador para a vaga ser liberada.
           </span>
           <button type="button" className="text-xs underline" onClick={() => setAvisoSisreg(null)}>entendi</button>
         </div>
@@ -260,7 +263,10 @@ export function ConfirmacoesPage() {
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
           aoCancelar={(motivo, meio) =>
             acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'cancelar', motivo, meio } }, {
-              onSuccess: (res) => { fecharModal(); if (res.orientacaoSisreg) setAvisoSisreg(modal.item); },
+              onSuccess: (res) => {
+                fecharModal();
+                if (res.orientacaoSisreg) setAvisoSisreg({ item: modal.item, detalhe: res.detalheSisreg });
+              },
             })}
         />
       ) : null}

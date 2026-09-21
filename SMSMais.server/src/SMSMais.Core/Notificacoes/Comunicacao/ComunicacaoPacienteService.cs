@@ -186,7 +186,11 @@ public sealed class ComunicacaoPacienteService(
         {
             var s = n.Solicitacao;
 
-            if (s is null || s.ExcluidoEm is not null || s.Status == StatusSolicitacao.Cancelada)
+            // O aviso de CANCELAMENTO fala justamente de uma solicitação cancelada — sem esta
+            // exceção ele se autoencerraria aqui, calado, e ninguém descobriria tão cedo.
+            if (s is null || s.ExcluidoEm is not null
+                || (s.Status == StatusSolicitacao.Cancelada
+                    && n.Finalidade != FinalidadeComunicacao.CancelamentoAgendamento))
             {
                 Terminal(n, StatusComunicacao.Falha, "Solicitação excluída ou cancelada antes do envio.");
             }
@@ -593,8 +597,14 @@ public sealed class ComunicacaoPacienteService(
         n.LoginLinkId = link.Token;
 
         var opts = options.Value;
+        // Aviso de cancelamento mostra o agendamento inteiro só para contato PROVADO; para os
+        // demais é anônimo ("sua consulta foi cancelada") e o detalhe espera a identificação.
+        var contatoVerificado = TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
+            && TelefoneWhatsApp.MesmoNumero(paciente.TelefoneVerificado, n.Telefone);
+
         var (template, parametros, botoes) = MontarEnvio(
-            n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, link.Token, opts);
+            n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, link.Token, opts,
+            contatoVerificado);
 
         // O modelo aprovado manda na quantidade de variáveis: mandar a mais é erro 132000 na Meta
         // e a mensagem não sai. Corta pela declaração do catálogo (cacheado) e avisa quando o
@@ -758,7 +768,7 @@ public sealed class ComunicacaoPacienteService(
 
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
         FinalidadeComunicacao finalidade, TipoAgendamento tipo, Solicitacao s, string? nomePaciente,
-        Sexo sexo, Guid token, ComunicacaoPacienteOptions opts)
+        Sexo sexo, Guid token, ComunicacaoPacienteOptions opts, bool contatoVerificado = false)
     {
         var nome = PrimeiroNome(nomePaciente);
         // Nome do procedimento: exame de imagem tem TipoExame no satélite; consulta usa a
@@ -785,6 +795,33 @@ public sealed class ComunicacaoPacienteService(
             // "Não poderei ir." — tratados no ConfirmacaoAgendamentoWhatsAppHandler.
             // Modelo diferente para quem JÁ confirmou e para quem não respondeu (mesmo modelo
             // enquanto o segundo não existir).
+            // agendamento_cancelado_anonimo: "Olá *{{1}}*, … Comunicamos que *{{2}}.* Para
+            // maiores esclarecimentos, busque informações no posto que lhe atende."
+            //   {{1}} = "Sr. João" / "Sra. Maria"
+            //   {{2}} = a frase SEM ponto final — o modelo já fecha com ".*"
+            // Botões "Não sou essa pessoa" e "Quero mais informações" (os mesmos da primeira
+            // mensagem, tratados pelo VerificacaoCadastralWhatsAppHandler).
+            case FinalidadeComunicacao.CancelamentoAgendamento:
+            {
+                var oQue = tipo == TipoAgendamento.Consulta ? "sua consulta" : "seu exame";
+                var cancelado = tipo == TipoAgendamento.Consulta ? "foi cancelada" : "foi cancelado";
+
+                // NÃO verificado: nada do agendamento. Nem procedimento, nem data, nem unidade —
+                // quem está do outro lado pode não ser o paciente, e cancelamento é dado de saúde
+                // como qualquer outro. O detalhe vem depois que ela se identificar.
+                if (!contatoVerificado)
+                    return (opts.TemplateCancelamento,
+                        [Tratamento(nomePaciente, sexo), $"{oQue} {cancelado}"], []);
+
+                // Verificado: o agendamento inteiro de uma vez.
+                //   "sua consulta de Otorrinolaringologia marcada para o dia 22/12/2026 às 14:00h
+                //    foi cancelada"
+                // O MOTIVO não entra aqui e não entra em lugar nenhum que o paciente veja.
+                return (opts.TemplateCancelamento,
+                    [Tratamento(nomePaciente, sexo), $"{oQue} de {exame}{Marcada(s, tipo)} {cancelado}"],
+                    []);
+            }
+
             case FinalidadeComunicacao.LembreteAgendamento:
             {
                 var oQue = tipo == TipoAgendamento.Consulta ? "Sua consulta" : "Seu exame";
@@ -899,6 +936,19 @@ public sealed class ComunicacaoPacienteService(
                 + "do SISREG, comprovante de residência e cartão do SUS. Favor confirmar o seu comparecimento "
                 + "clicando no link abaixo. Favor não enviar áudio. Atenciosamente, _*Complexo Regulador de Maricá*_";
         return null;
+    }
+
+    /// <summary>
+    /// " marcada para o dia 22/12/2026 às 14:00h" — o trecho que situa o agendamento cancelado.
+    /// Sem data no cadastro, devolve vazio: dizer "marcada para o dia" sem dia é pior que não dizer.
+    /// </summary>
+    private static string Marcada(Solicitacao s, TipoAgendamento tipo)
+    {
+        if (s.DataAgendada is not { } quando) return string.Empty;
+        var local = FusoBrasilia.ParaExibicao(quando);
+        var flexao = tipo == TipoAgendamento.Consulta ? "marcada" : "marcado";
+        return $" {flexao} para o dia {local.ToString("dd/MM/yyyy", PtBr)} "
+               + $"às {local.ToString("HH:mm", PtBr)}h";
     }
 
     /// <summary>"Sr. João" / "Sra. Maria" / só o primeiro nome quando o sexo não está no cadastro.</summary>

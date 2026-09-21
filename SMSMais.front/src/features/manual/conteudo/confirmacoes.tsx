@@ -285,11 +285,15 @@ export const artigoConfirmacoes: Artigo = {
             <Item>o que ainda ia ser enviado para ele sobre esse agendamento é encerrado;</Item>
             <Item>os links de confirmação que ele já recebeu deixam de funcionar.</Item>
           </Lista>
-          <Callout tipo="atencao" titulo="O SISREG não é cancelado sozinho">
-            Hoje o cancelamento <strong>não é escrito no SISREG</strong>. Depois de cancelar aqui, cancele lá pelo
-            navegador, como você sempre fez. Com a extensão instalada, o sistema percebe o cancelamento no SISREG e
-            concilia sozinho — você não precisa voltar aqui para avisar. O aviso amarelo que aparece na tela é exatamente
-            esse lembrete.
+          <Callout tipo="dica" titulo="O SISREG é cancelado junto">
+            O sistema cancela no SISREG por você, na mesma ação — e só dá por feito depois de <strong>reler a ficha
+            lá</strong> e ver que ela mudou para cancelada. Não é o "ok" da tela que vale: é a releitura.
+          </Callout>
+          <Callout tipo="atencao" titulo="Se aparecer o aviso amarelo, aí sim é com você">
+            Quando o SISREG não confirma o cancelamento — sistema fora do ar, sessão derrubada, ficha que não abre —, a
+            tela avisa <strong>"cancelado aqui, mas não no SISREG"</strong> e diz o que houve. Nesse caso, e só nesse,
+            cancele lá pelo navegador. O cancelamento feito aqui <strong>continua valendo</strong>: você já falou com o
+            paciente, e desfazer isso seria pior.
           </Callout>
         </div>
       ),
@@ -444,7 +448,8 @@ export const artigoConfirmacoes: Artigo = {
               },
               {
                 termo: 'Cancelei aqui e continua marcado no SISREG',
-                descricao: 'É o esperado nesta fase: o cancelamento no SISREG ainda é feito por você, pelo navegador.',
+                descricao:
+                  'Não deveria — o sistema cancela lá junto e confere. Se acontecer, a tela mostra o aviso amarelo dizendo o que falhou; cancele no SISREG pelo navegador. Sem o aviso, o cancelamento lá foi conferido ficha a ficha.',
               },
               {
                 termo: 'A colega está com a ficha e ela saiu do plantão',

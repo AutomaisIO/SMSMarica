@@ -7,6 +7,7 @@ using SMSMais.Core.Identidade;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Notificacoes.Confirmacoes.Dtos;
 using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.Integracoes.SisregWeb.Cancelamento;
 using SMSMais.Core.PendenciasCadastro;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -68,6 +69,7 @@ public sealed class AtendimentoConfirmacaoService(
     IConfirmacaoConfiguracaoService configuracao,
     IComunicacaoPacienteService comunicacoes,
     IPendenciaCadastroService pendencias,
+    Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService cancelamentoSisreg,
     ILogger<AtendimentoConfirmacaoService> logger) : IAtendimentoConfirmacaoService
 {
     /// <summary>Canal gravado na solicitação quando a resposta vem pela mão do atendente.</summary>
@@ -523,6 +525,27 @@ public sealed class AtendimentoConfirmacaoService(
     }
 
     /// <summary>
+    /// Cancela no SISREG a marcação desta solicitação. Devolve <c>null</c> quando falta o que a
+    /// tela do SISREG exige (código da solicitação ou CNS do paciente) — aí não há o que tentar.
+    /// </summary>
+    private async Task<CancelamentoSisregDto?> CancelarNoSisregAsync(
+        Solicitacao s, string motivo, CancellationToken ct)
+    {
+        var codigo = (s.CodigoSolicitacao ?? string.Empty).Trim();
+        // "0000" é a sentinela do agendamento cadastrado à mão: nunca existiu no SISREG.
+        if (codigo.Length == 0 || codigo == "0000") return null;
+
+        // O CNS vive no hub FHIR, não em smsmarica — e é por ele que a tela do SISREG busca.
+        var paciente = await pacienteResolver.ResolverAsync(s.PacienteId, ct);
+        var cns = paciente?.Cns;
+        if (string.IsNullOrWhiteSpace(cns)) return null;
+
+        // A justificativa fica registrada no SISREG e é lida por gente de fora do nosso sistema:
+        // vai o FATO, sem marca de origem nem dado nosso.
+        return await cancelamentoSisreg.CancelarAsync(codigo, cns, motivo, ct);
+    }
+
+    /// <summary>
     /// O pedido de cancelamento era engano — a ficha volta para a fila de confirmação.
     ///
     /// <para>É a contrapartida obrigatória de registrar intenção por texto livre. "Já fiz a
@@ -626,8 +649,26 @@ public sealed class AtendimentoConfirmacaoService(
         AddEvento(ativo, TipoEventoAtendimentoConfirmacao.Cancelado, me, agora, observacao: motivo);
         await SalvarComTraducaoDeCorridaAsync(ativo, ct);
 
-        logger.LogInformation("Solicitação {Solicitacao} cancelada pela atendente {Usuario} (fase 1: só no SMSMais).", s.Id, me);
-        return Resultado(ativo) with { OrientacaoSisreg = true };
+        // O SISREG é cancelado AQUI, pelo backend (formulário lido de captura real da extensão,
+        // validado em produção em 20/09/2026). Falhar lá NÃO desfaz o cancelamento daqui: a
+        // atendente já disse ao paciente que cancelou, e voltar atrás seria pior. Quando falha,
+        // a tela volta a orientar o caminho antigo — o aviso vira exceção, não regra.
+        var noSisreg = await CancelarNoSisregAsync(s, motivo, ct);
+        if (noSisreg is { } r && r.Resultado != ResultadoCancelamentoSisreg.Falhou)
+        {
+            s.MotivoCancelamento = $"{motivo} · SISREG: {r.SituacaoDepois}";
+            await db.SaveChangesAsync(ct);
+        }
+
+        logger.LogInformation(
+            "Solicitação {Solicitacao} cancelada pela atendente {Usuario} — SISREG: {Sisreg}.",
+            s.Id, me, noSisreg?.Resultado.ToString() ?? "sem código/CNS");
+
+        return Resultado(ativo) with
+        {
+            OrientacaoSisreg = noSisreg is null || noSisreg.Resultado == ResultadoCancelamentoSisreg.Falhou,
+            DetalheSisreg = noSisreg?.Detalhe,
+        };
     }
 
     public async Task<AcaoAtendimentoResultadoDto> EnviarParaPendenteAsync(

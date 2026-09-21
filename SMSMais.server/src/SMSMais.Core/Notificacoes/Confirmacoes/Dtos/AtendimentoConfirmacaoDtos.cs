@@ -120,9 +120,13 @@ public sealed record DesfazerPedidoCancelamentoRequest(string? Observacao);
 public sealed record AcaoAtendimentoResultadoDto(
     Guid AtendimentoId,
     string Situacao,
-    /// <summary>Fase 1 do cancelamento: o SMSMais cancelou, mas o SISREG não — a atendente precisa
-    /// cancelar lá pelo navegador (a extensão observa e concilia).</summary>
-    bool OrientacaoSisreg = false);
+    /// <summary>
+    /// O cancelamento no SISREG NÃO foi confirmado — a atendente precisa fazer lá pelo navegador.
+    /// Desde 20/09/2026 isto é EXCEÇÃO: o backend cancela no SISREG e confere relendo a ficha.
+    /// </summary>
+    bool OrientacaoSisreg = false,
+    /// <summary>O que o SISREG respondeu, quando há o que contar (já estava cancelada, falhou por X).</summary>
+    string? DetalheSisreg = null);
 
 /// <summary>Evento da trilha do atendimento (detalhe).</summary>
 public sealed record EventoAtendimentoDto(

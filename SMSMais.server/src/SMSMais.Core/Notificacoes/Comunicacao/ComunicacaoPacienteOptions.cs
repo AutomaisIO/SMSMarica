@@ -40,6 +40,10 @@ public sealed class ComunicacaoPacienteOptions
         ["confirmacao_exame"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
         ["confirmacao_consulta"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
         ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.jpg",
+        // A arte de cancelamento só informa (a mensagem não pede ação nenhuma); por isso a
+        // variação "Desculpe-nos pelo transtorno", e não a "Favor remarcar" — na remarcação o
+        // próprio sistema manda a confirmação nova quando o agendamento novo chega.
+        ["agendamento_cancelado_anonimo"] = "https://app.smsmarica.online/mensagens/cancelamento-vermelho.jpg",
     };
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
@@ -73,6 +77,34 @@ public sealed class ComunicacaoPacienteOptions
     /// falta a essa pessoa não é lembrar a data, é entrar na conversa.</para>
     /// </summary>
     public string TemplateLembreteConfirmado { get; set; } = "agendamento_proximo";
+
+    /// <summary>
+    /// Aviso de cancelamento. Corpo aprovado:
+    /// <code>
+    /// Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+    /// Comunicamos que *{{2}}.*
+    /// Para maiores esclarecimentos, busque informações no posto que lhe atende.
+    /// </code>
+    /// {{1}} = "Sr. João"/"Sra. Maria"; {{2}} = a frase <b>sem ponto final</b> — o modelo já fecha
+    /// com <c>.*</c>, e um ponto a mais vira "cancelada..". Botões "Não sou essa pessoa" e "Quero
+    /// mais informações", os mesmos da primeira mensagem: a máquina de verificação cadastral que
+    /// já existe atende sem alteração.
+    ///
+    /// <para><b>Anônimo por padrão, e daí o nome.</b> Contato NÃO verificado recebe só "seu exame
+    /// foi cancelado" — sem procedimento, sem data, sem unidade. O detalhe só depois de a pessoa
+    /// se identificar (4 dígitos do CPF + mês/ano de nascimento). Contato verificado recebe tudo
+    /// de uma vez.</para>
+    ///
+    /// <para><b>O motivo nunca entra</b>, em nenhuma das duas trilhas.</para>
+    /// </summary>
+    public string TemplateCancelamento { get; set; } = "agendamento_cancelado_anonimo";
+
+    /// <summary>
+    /// Trava de código do aviso de cancelamento. Nasce DESLIGADA: o backfill de 20/09/2026
+    /// conciliou 628 cancelamentos de até três meses atrás, e ligar isto antes de a conciliação
+    /// estar rodando ao vivo dispararia aviso sobre coisa velha.
+    /// </summary>
+    public bool EnviarAvisoCancelamento { get; set; }
 
     /// <summary>OBSOLETO desde 20/09/2026: a primeira mensagem virou
     /// <see cref="TemplateConfirmacaoExame"/>/<see cref="TemplateConfirmacaoConsulta"/>, que não

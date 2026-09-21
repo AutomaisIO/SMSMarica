@@ -242,9 +242,17 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         comunicacoes.RevogarAcessosAsync(Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<CidadaoLoginLink>());
 
+        // Cancelamento no SISREG: dublê que diz "falhou". Nos testes não há SISREG, e o ponto do
+        // desenho é justamente este — falhar lá NÃO desfaz o cancelamento local.
+        var sisreg = Substitute.For<SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService>();
+        sisreg.CancelarAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new SMSMais.Core.Integracoes.SisregWeb.Cancelamento.CancelamentoSisregDto(
+                SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Falhou,
+                null, null, "sem SISREG no teste"));
+
         return new AtendimentoConfirmacaoService(
             db, new UsuarioAtualAccessorFake(usuarioId), resolver, configuracao, comunicacoes,
-            pendencias ?? Substitute.For<IPendenciaCadastroService>(),
+            pendencias ?? Substitute.For<IPendenciaCadastroService>(), sisreg,
             NullLogger<AtendimentoConfirmacaoService>.Instance);
     }
 

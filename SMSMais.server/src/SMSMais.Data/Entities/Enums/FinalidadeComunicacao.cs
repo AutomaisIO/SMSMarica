@@ -21,4 +21,17 @@ public enum FinalidadeComunicacao
     /// para quem JÁ confirmou e para quem ainda não respondeu. X é global (menu Confirmações).
     /// </summary>
     LembreteAgendamento = 4,
+
+    /// <summary>
+    /// Aviso de que o agendamento foi CANCELADO — pela unidade executante, pela solicitante ou
+    /// pela regulação (gatilho: conciliação com a tela de marcações canceladas do SISREG).
+    ///
+    /// <para><b>O motivo nunca vai na mensagem.</b> A justificativa que o SISREG guarda é interna
+    /// ("erro", "desligamento do profissional", "remanejado 12/11") e serve à trilha e à atendente,
+    /// não ao paciente — nem por mensagem nem pela boca do robô.</para>
+    ///
+    /// <para>Quem tem contato verificado recebe o agendamento inteiro na mensagem; quem não tem
+    /// recebe só "sua consulta foi cancelada", e o detalhe só depois de se identificar.</para>
+    /// </summary>
+    CancelamentoAgendamento = 5,
 }
