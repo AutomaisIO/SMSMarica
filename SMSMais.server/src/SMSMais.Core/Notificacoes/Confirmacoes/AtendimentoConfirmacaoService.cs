@@ -71,6 +71,7 @@ public sealed class AtendimentoConfirmacaoService(
     IPendenciaCadastroService pendencias,
     Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService cancelamentoSisreg,
     Sisreg.Sessao.ISisregSessaoOperadorStore sessoesSisreg,
+    Pacientes.Fhir.IPacienteFhirClient pacientesFhir,
     ILogger<AtendimentoConfirmacaoService> logger) : IAtendimentoConfirmacaoService
 {
     /// <summary>Canal gravado na solicitação quando a resposta vem pela mão do atendente.</summary>
@@ -538,17 +539,11 @@ public sealed class AtendimentoConfirmacaoService(
         if (codigo.Length == 0 || codigo == "0000") return null;
 
         // O CNS vive no hub FHIR, não em smsmarica — e é por ele que a tela do SISREG busca.
+        // Quando falta (15% dos agendamentos futuros em 20/09/2026), o serviço o lê da própria
+        // ficha do SISREG: exigi-lo aqui recusaria uma em cada sete tentativas de cancelamento.
         var paciente = await pacienteResolver.ResolverAsync(s.PacienteId, ct);
-        var cns = paciente?.Cns;
-
-        // Tem código do SISREG e não tem CNS: a vaga existe LÁ e não temos como alcançá-la.
-        // Cancelar só aqui deixaria o horário bloqueado para a rede e o paciente avisado de que
-        // não tem mais atendimento — pior que não cancelar. Recusa, e diz o que falta.
-        if (string.IsNullOrWhiteSpace(cns))
-            throw new ConflitoException(
-                "atendimento.sem_cns",
-                "Este agendamento existe no SISREG, mas o paciente está sem CNS no cadastro — sem "
-                + "ele não dá para cancelar lá. Complete o cadastro e tente de novo.");
+        var cns = paciente?.Cns ?? string.Empty;
+        var tinhaCns = !string.IsNullOrWhiteSpace(cns);
 
         // A sessão é a DO OPERADOR: sem ela, a exceção nomeada faz a tela pedir a senha do
         // SISREG em vez de mostrar erro.
@@ -556,7 +551,49 @@ public sealed class AtendimentoConfirmacaoService(
 
         // A justificativa fica registrada no SISREG e é lida por gente de fora do nosso sistema:
         // vai o FATO, sem marca de origem nem dado nosso.
-        return await cancelamentoSisreg.CancelarAsync(sessaoOperador, codigo, cns, motivo, ct);
+        var resultado = await cancelamentoSisreg.CancelarAsync(sessaoOperador, codigo, cns, motivo, ct);
+
+        // O cadastro sai melhor do que entrou: se não tínhamos CNS e a ficha do SISREG trouxe um,
+        // guardamos. Só ACRESCENTA — nunca troca um número existente por outro, porque aí seria
+        // identidade sendo reescrita a partir de um vínculo que pode estar errado.
+        if (!tinhaCns && !string.IsNullOrWhiteSpace(resultado.CnsDaFicha))
+            await GravarCnsDaFichaAsync(s.PacienteId, resultado.CnsDaFicha!, ct);
+
+        return resultado;
+    }
+
+    /// <summary>
+    /// Guarda no cadastro o CNS que a ficha do SISREG informou — só quando não havia nenhum.
+    ///
+    /// <para>É acréscimo, não substituição: trocar um CNS existente por outro seria reescrever
+    /// identidade a partir de um vínculo que pode estar errado, e é justamente o que a guarda de
+    /// identidade do cadastro existe para impedir. Falhar aqui não pode derrubar o cancelamento,
+    /// que já aconteceu nos dois sistemas.</para>
+    /// </summary>
+    private async Task GravarCnsDaFichaAsync(Guid pacienteId, string cns, CancellationToken ct)
+    {
+        try
+        {
+            var patient = await pacientesFhir.ObterAsync(pacienteId, ct);
+            if (patient is null) return;
+
+            // Corrida: outro caminho pode ter preenchido entre a leitura e agora.
+            if (patient.Identifier.Any(i => i.System == PatientMergeFhir.SystemCns
+                                            && !string.IsNullOrWhiteSpace(i.Value)))
+                return;
+
+            PatientMergeFhir.UpsertIdentifier(patient, PatientMergeFhir.SystemCns, cns);
+            await pacientesFhir.AtualizarAsync(pacienteId, patient, ct);
+
+            logger.LogInformation(
+                "Paciente {Paciente} ganhou CNS vindo da ficha do SISREG (cadastro estava sem).",
+                pacienteId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Não consegui guardar o CNS da ficha do SISREG no paciente {Paciente}.", pacienteId);
+        }
     }
 
     /// <summary>

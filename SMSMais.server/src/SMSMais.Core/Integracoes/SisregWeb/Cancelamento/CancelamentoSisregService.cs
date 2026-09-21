@@ -19,11 +19,17 @@ public enum ResultadoCancelamentoSisreg
 /// <param name="SituacaoAntes">"SOLICITAÇÃO / AUTORIZADA / REGULADOR", como a ficha mostrava.</param>
 /// <param name="SituacaoDepois">O que a ficha passou a dizer — é esta a prova, não o HTTP 200.</param>
 /// <param name="Detalhe">Mensagem do SISREG ou o motivo da desistência, para a trilha e para a tela.</param>
+/// <param name="CnsDaFicha">
+/// O CNS que a ficha do SISREG informou. Sai daqui para quem chama poder consertar o cadastro:
+/// 15% dos nossos agendamentos futuros são de paciente sem CNS, e cada cancelamento é uma chance
+/// de preencher esse buraco com o número que o próprio SISREG usa.
+/// </param>
 public sealed record CancelamentoSisregDto(
     ResultadoCancelamentoSisreg Resultado,
     string? SituacaoAntes,
     string? SituacaoDepois,
-    string? Detalhe);
+    string? Detalhe,
+    string? CnsDaFicha = null);
 
 public interface ICancelamentoSisregService
 {
@@ -80,9 +86,9 @@ public sealed class CancelamentoSisregService(
         cns = (cns ?? string.Empty).Trim();
         justificativa = (justificativa ?? string.Empty).Trim();
 
-        if (codigo.Length == 0 || cns.Length == 0)
+        if (codigo.Length == 0)
             return new(ResultadoCancelamentoSisreg.Falhou, null, null,
-                "Sem código de solicitação ou sem CNS do paciente — a busca no SISREG é por CNS.");
+                "Sem código de solicitação — não há o que cancelar no SISREG.");
         if (justificativa.Length == 0)
             justificativa = "Cancelado pela unidade";
         if (justificativa.Length > MaxJustificativa)
@@ -92,16 +98,26 @@ public sealed class CancelamentoSisregService(
         {
             // 1. Em que estado está HOJE? Tentar cancelar o que já está cancelado gasta requisição
             //    do orçamento anti-robô e polui a ficha do paciente com justificativa repetida.
-            var antes = await SituacaoAsync(sessao, codigo, ct);
+            //    A mesma leitura devolve o CNS: a listagem busca por ele, e 15% dos nossos
+            //    agendamentos futuros são de paciente sem CNS no cadastro. Pegar da ficha em vez
+            //    de exigir do cadastro é o que impede uma em cada sete tentativas de ser recusada
+            //    — e o valor vem da fonte que a própria tela vai consultar.
+            var (antes, cnsDaFicha) = await LerFichaAsync(sessao, codigo, ct);
             if (antes is not null && antes.Contains("CANCELAD", StringComparison.OrdinalIgnoreCase))
                 return new(ResultadoCancelamentoSisreg.JaEstavaCancelado, antes, antes,
-                    "Já estava cancelada no SISREG.");
+                    "Já estava cancelada no SISREG.", cnsDaFicha);
+
+            cns = cnsDaFicha ?? cns;
+            if (cns.Length == 0)
+                return new(ResultadoCancelamentoSisreg.Falhou, antes, null,
+                    "A ficha não trouxe o CNS e o cadastro também não tem — a busca no SISREG é "
+                    + "por CNS, então não há como alcançar a marcação.");
 
             // 2. Achar a linha — nunca inventá-la.
             var alvo = await ProcurarLinhaAsync(sessao, cns, codigo, ct);
             if (alvo is null)
                 return new(ResultadoCancelamentoSisreg.Falhou, antes, null,
-                    "A solicitação não apareceu na listagem de canceláveis desse CNS.");
+                    "A solicitação não apareceu na listagem de canceláveis desse CNS.", cnsDaFicha);
 
             // 3. Cancelar.
             var resposta = await sessao.PostFormAsync(TelaCancelamento, new Dictionary<string, string>
@@ -123,14 +139,14 @@ public sealed class CancelamentoSisregService(
             // 4. A PROVA. A resposta traz todos os alert() de validação do JavaScript da página,
             //    então o primeiro deles não diz nada sobre o desfecho — foi o que me fez ler
             //    "Preencha a Data Inicial" num cancelamento que tinha dado certo.
-            var depois = await SituacaoAsync(sessao, codigo, ct);
+            var (depois, _) = await LerFichaAsync(sessao, codigo, ct);
             var ok = depois is not null && depois.Contains("CANCELAD", StringComparison.OrdinalIgnoreCase);
 
             if (ok)
             {
                 logger.LogInformation(
                     "SISREG_CANCELADO: solicitação {Codigo} — {Antes} → {Depois}.", codigo, antes, depois);
-                return new(ResultadoCancelamentoSisreg.Cancelado, antes, depois, null);
+                return new(ResultadoCancelamentoSisreg.Cancelado, antes, depois, null, cnsDaFicha);
             }
 
             logger.LogWarning(
@@ -160,7 +176,7 @@ public sealed class CancelamentoSisregService(
     /// o mesmo sintoma de sessão disputada. Como aqui a resposta É a prova, insistir é barato
     /// perto de concluir errado.</para>
     /// </summary>
-    private static async Task<string?> SituacaoAsync(
+    private static async Task<(string? Situacao, string? Cns)> LerFichaAsync(
         ISisregWebSessao sessao, string codigo, CancellationToken ct)
     {
         for (var volta = 0; volta < 2; volta++)
@@ -170,7 +186,8 @@ public sealed class CancelamentoSisregService(
                 ["etapa"] = "EXIBIR_FICHA",
                 ["co_solicitacao"] = codigo,
             }, ct);
-            if (FichaCancelamentoHtmlParser.Situacao(html, codigo) is { } s) return s;
+            if (FichaCancelamentoHtmlParser.Situacao(html, codigo) is { } s)
+                return (s, FichaCancelamentoHtmlParser.Cns(html));
 
             html = await sessao.GetAsync(TelaFicha.Replace("cons_marcados_reg", "gerenciador_solicitacao"),
                 new Dictionary<string, string>
@@ -178,9 +195,10 @@ public sealed class CancelamentoSisregService(
                     ["etapa"] = "VISUALIZAR_FICHA",
                     ["co_seq_solicitacao"] = codigo,
                 }, ct);
-            if (FichaCancelamentoHtmlParser.Situacao(html, codigo) is { } s2) return s2;
+            if (FichaCancelamentoHtmlParser.Situacao(html, codigo) is { } s2)
+                return (s2, FichaCancelamentoHtmlParser.Cns(html));
         }
-        return null;
+        return (null, null);
     }
 
     /// <summary>Varre as páginas daquele CNS até achar a linha do código.</summary>

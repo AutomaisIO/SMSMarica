@@ -64,6 +64,24 @@ internal static partial class FichaCancelamentoHtmlParser
         return null;
     }
 
+    /// <summary>
+    /// O CNS do paciente, lido da própria ficha.
+    ///
+    /// <para>Existe porque a tela de cancelamento busca por CNS e 15% dos nossos agendamentos
+    /// futuros (2.992 de 19.404, medido em 20/09/2026) são de pacientes sem CNS no cadastro —
+    /// exigi-lo recusaria uma em cada sete tentativas de cancelamento. A ficha já é aberta para
+    /// conferir a situação; o CNS vem de graça na mesma resposta, e vem do SISREG, que é a fonte
+    /// que a própria tela vai consultar.</para>
+    /// </summary>
+    public static string? Cns(string html)
+    {
+        if (string.IsNullOrEmpty(html)) return null;
+        // "CNS:" e, logo depois, os 15 dígitos — a ficha põe rótulo e valor em linhas distintas
+        // da tabela, então o que separa os dois é só espaço no texto plano.
+        var m = Regex.Match(Texto(html), @"CNS:?\s*(\d{15})", RegexOptions.IgnoreCase);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
     /// <summary>Os hidden <c>total</c> e <c>ordem</c>, que a paginação precisa ecoar.</summary>
     public static (string? Total, string? Ordem) TotalEOrdem(string html)
     {

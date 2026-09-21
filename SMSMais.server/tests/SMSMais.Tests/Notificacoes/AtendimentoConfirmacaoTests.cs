@@ -255,11 +255,12 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
     }
 
     /// <summary>
-    /// Com código do SISREG mas sem CNS não há como alcançar a vaga lá — e cancelar só aqui seria
-    /// mentir para a rede. Recusa em vez de fingir.
+    /// Paciente sem CNS no cadastro não trava o cancelamento: o número vem da ficha do SISREG (a
+    /// mesma que já se lê para conferir a situação) e, de quebra, o cadastro sai consertado.
+    /// São 15% dos agendamentos futuros — exigir o CNS recusaria uma em cada sete tentativas.
     /// </summary>
     [Fact]
-    public async Task Marcacao_do_SISREG_sem_CNS_no_cadastro_e_recusada()
+    public async Task Sem_CNS_no_cadastro_usa_o_da_ficha_e_guarda_no_paciente()
     {
         await using var db = fixture.CriarDbContext();
         var atendente = await CriarUsuarioAsync(db);
@@ -269,16 +270,27 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         solicitacao.CodigoSolicitacao = $"9{Random.Shared.NextInt64(100_000_000, 999_999_999)}";
         await db.SaveChangesAsync();
 
-        // cnsDoPaciente fica nulo de propósito.
-        var servico = CriarServico(db, atendente);
+        // Sem CNS no cadastro (cnsDoPaciente nulo) e a ficha do SISREG trazendo um.
+        var fhir = Substitute.For<SMSMais.Core.Pacientes.Fhir.IPacienteFhirClient>();
+        fhir.ObterAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new Hl7.Fhir.Model.Patient());
 
-        await Assert.ThrowsAsync<ConflitoException>(() => servico.CancelarAsync(
-            exame.SolicitacaoId, new CancelarAtendimentoRequest("Paciente desistiu", "WhatsApp")));
+        var servico = CriarServico(db, atendente, fhir: fhir, cnsDaFicha: "700503370774852");
+        await servico.CancelarAsync(
+            exame.SolicitacaoId, new CancelarAtendimentoRequest("Paciente desistiu", "WhatsApp"));
 
         await using var db2 = fixture.CriarDbContext();
-        Assert.NotEqual(
+        Assert.Equal(
             StatusSolicitacao.Cancelada,
             (await db2.Solicitacoes.SingleAsync(x => x.Id == exame.SolicitacaoId)).Status);
+
+        // O cadastro sai melhor do que entrou.
+        await fhir.Received(1).AtualizarAsync(
+            Arg.Any<Guid>(),
+            Arg.Is<Hl7.Fhir.Model.Patient>(p => p.Identifier.Any(
+                i => i.System == SMSMais.Core.Pacientes.Fhir.PatientMergeFhir.SystemCns
+                     && i.Value == "700503370774852")),
+            Arg.Any<CancellationToken>());
     }
 
     // ===================== apoio =====================
@@ -288,7 +300,9 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         IComunicacaoPacienteService? comunicacoes = null,
         IPendenciaCadastroService? pendencias = null,
         SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg? noSisreg = null,
-        string? cnsDoPaciente = null)
+        string? cnsDoPaciente = null,
+        SMSMais.Core.Pacientes.Fhir.IPacienteFhirClient? fhir = null,
+        string? cnsDaFicha = null)
     {
         var configuracao = Substitute.For<IConfirmacaoConfiguracaoService>();
         configuracao.ObterAsync(Arg.Any<CancellationToken>())
@@ -323,7 +337,8 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
                     : "AGENDAMENTO / CANCELADO / REGULADOR",
                 noSisreg == SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Falhou
                     ? "SISREG fora do ar."
-                    : null));
+                    : null,
+                cnsDaFicha));
 
         var sessoes = Substitute.For<SMSMais.Core.Sisreg.Sessao.ISisregSessaoOperadorStore>();
         sessoes.Exigir(Arg.Any<string>())
@@ -332,6 +347,7 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         return new AtendimentoConfirmacaoService(
             db, new UsuarioAtualAccessorFake(usuarioId), resolver, configuracao, comunicacoes,
             pendencias ?? Substitute.For<IPendenciaCadastroService>(), sisreg, sessoes,
+            fhir ?? Substitute.For<SMSMais.Core.Pacientes.Fhir.IPacienteFhirClient>(),
             NullLogger<AtendimentoConfirmacaoService>.Instance);
     }
 
