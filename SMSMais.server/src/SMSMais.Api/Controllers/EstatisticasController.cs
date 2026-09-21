@@ -17,7 +17,7 @@ namespace SMSMais.Api.Controllers;
 public sealed class EstatisticasController(IEstatisticasService service) : ControllerBase
 {
     /// <summary>
-    /// Retrato do WhatsApp no período. Sem <c>de</c>/<c>ate</c>, usa os últimos 30 dias.
+    /// Retrato do WhatsApp no período. Sem <c>de</c>/<c>ate</c>, usa os últimos 7 dias.
     /// </summary>
     [HttpGet("whatsapp")]
     [RequerPermissao(ModuloPermissao.Estatistica, AcoesPermissao.Consulta)]
@@ -28,7 +28,7 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
         CancellationToken ct = default)
     {
         var fim = ate ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var inicio = de ?? fim.AddDays(-29);
+        var inicio = de ?? fim.AddDays(-6);
         return await service.ObterWhatsAppAsync(inicio, fim, ct);
     }
 

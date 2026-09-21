@@ -672,6 +672,12 @@ public sealed class EstatisticasService(
     /// (utility em janela aberta é grátis; autenticação e marketing cobram sempre). O casamento
     /// de número é pelos 8 últimos dígitos: o envio pode ter completado o 9º dígito e a entrada
     /// chega canônica.
+    ///
+    /// A "última entrada do número" sai de UMA passada com função de janela (partição pelos 8
+    /// dígitos, ordenada no tempo; o recorte começa um dia antes para cobrir as 24h do primeiro
+    /// dia). Já foi um NOT EXISTS correlacionado: sem índice por telefone, cada template varria o
+    /// índice inteiro (~37 ms) e, com 20 mil templates no mês, a tela estourava o timeout de 30s
+    /// (ERRO-4YCCKQ, 21/09/2026). Não voltar ao subselect sem antes criar o índice.
     /// </summary>
     private async Task<CustosMetaDto> LerCustosMetaAsync(
         DbConnection conn, DateOnly de, DateOnly ate, CancellationToken ct)
@@ -679,11 +685,16 @@ public sealed class EstatisticasService(
         var cfg = await mensageria.ObterAsync(ct);
         var linhas = new List<(string Template, DateOnly Dia, long Enviadas, long ForaDaJanela)>();
         await using (var cmd = CriarComando(conn,
+            "WITH j AS (" +
+            "  SELECT x.template, x.ocorrido_em, x.direcao, x.status, x.conteudo, x.wa_message_id, x.telefone, " +
+            "    max(x.ocorrido_em) FILTER (WHERE x.direcao = 2) " +
+            "      OVER (PARTITION BY right(x.telefone, 8) ORDER BY x.ocorrido_em) AS ultima_entrada " +
+            "  FROM smsmarica.whatsapp_mensagem x " +
+            "  WHERE x.ocorrido_em::date BETWEEN @de::date - 1 AND @ate) " +
             "SELECT m.template, m.ocorrido_em::date AS dia, count(*) AS enviadas, " +
-            "count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM smsmarica.whatsapp_mensagem e " +
-            "  WHERE e.direcao = 2 AND right(e.telefone, 8) = right(m.telefone, 8) " +
-            "  AND e.ocorrido_em > m.ocorrido_em - interval '24 hours' AND e.ocorrido_em <= m.ocorrido_em)) AS fora_janela " +
-            $"FROM smsmarica.whatsapp_mensagem m WHERE {FiltroPeriodoSimulado} " +
+            "count(*) FILTER (WHERE m.telefone IS NULL OR m.ultima_entrada IS NULL " +
+            "  OR m.ultima_entrada <= m.ocorrido_em - interval '24 hours') AS fora_janela " +
+            $"FROM j m WHERE {FiltroPeriodoSimulado} " +
             "AND m.direcao = 1 AND m.template IS NOT NULL AND m.template <> '' AND m.status IN (1,2,3) " +
             "GROUP BY 1, 2 ORDER BY 2", de, ate))
         await using (var r = await cmd.ExecuteReaderAsync(ct))

@@ -128,7 +128,8 @@ function BarrasHorizontais({
  */
 export function EstatisticasPage() {
   const pode = useTemConsulta('Estatistica');
-  const [de, setDe] = useState(() => isoMenosDias(29));
+  // Abre nos últimos 7 dias; quem quiser mais usa os atalhos 30d/90d ou as datas.
+  const [de, setDe] = useState(() => isoMenosDias(6));
   const [ate, setAte] = useState(() => isoHoje());
 
   const q = useEstatisticasWhatsApp(de, ate);
