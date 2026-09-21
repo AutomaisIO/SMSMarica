@@ -57,6 +57,31 @@ export function useConversaContexto(solicitacaoId: string | null) {
   });
 }
 
+/** Estado da sessão de ESCRITA no SISREG (o cancelamento assina com o login do operador). */
+export type SessaoSisreg = {
+  autenticado: boolean;
+  usuarioSisreg: string | null;
+  autenticadaEm: string | null;
+  expiraEm: string | null;
+};
+
+export function useSessaoSisreg() {
+  return useQuery({
+    queryKey: ['sisreg', 'sessao'],
+    queryFn: async () => (await http.get<SessaoSisreg>('/sisreg/sessao')).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useEntrarNoSisreg() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ usuario, senha }: { usuario: string; senha: string }) =>
+      (await http.post<SessaoSisreg>('/sisreg/sessao', { usuario, senha })).data,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['sisreg', 'sessao'] }),
+  });
+}
+
 export function useAtendentes() {
   return useQuery({
     queryKey: [...raiz, 'atendentes'],

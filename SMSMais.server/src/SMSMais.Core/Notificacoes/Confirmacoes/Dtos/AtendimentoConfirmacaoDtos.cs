@@ -117,16 +117,7 @@ public sealed record ContatoCorrigidoAtendimentoRequest(string? Telefone, string
 public sealed record DesfazerPedidoCancelamentoRequest(string? Observacao);
 
 /// <summary>Resultado de uma ação sobre o atendimento.</summary>
-public sealed record AcaoAtendimentoResultadoDto(
-    Guid AtendimentoId,
-    string Situacao,
-    /// <summary>
-    /// O cancelamento no SISREG NÃO foi confirmado — a atendente precisa fazer lá pelo navegador.
-    /// Desde 20/09/2026 isto é EXCEÇÃO: o backend cancela no SISREG e confere relendo a ficha.
-    /// </summary>
-    bool OrientacaoSisreg = false,
-    /// <summary>O que o SISREG respondeu, quando há o que contar (já estava cancelada, falhou por X).</summary>
-    string? DetalheSisreg = null);
+public sealed record AcaoAtendimentoResultadoDto(Guid AtendimentoId, string Situacao);
 
 /// <summary>Evento da trilha do atendimento (detalhe).</summary>
 public sealed record EventoAtendimentoDto(

@@ -25,6 +25,9 @@ public class FilaPendenteSisregTests(PostgresFixture fixture)
     /// <summary>Sessão dublada: devolve o HTML combinado, sem tocar no SISREG.</summary>
     private sealed class SessaoFake(string html) : ISisregWebSessao
     {
+        /// <summary>Escrita assina com o login do operador — nos dublês não há SISREG para assinar.</summary>
+        public void UsarCredencialDoOperador(string usuario, string senha) { }
+
         public int Chamadas { get; private set; }
 
         public Task<string> PostFormAsync(
@@ -285,6 +288,9 @@ public class FilaPendenteSisregTests(PostgresFixture fixture)
     /// <summary>Sessão que responde conforme a situação pedida.</summary>
     private sealed class SessaoPorSituacao(IReadOnlyDictionary<string, string> porSituacao) : ISisregWebSessao
     {
+        /// <summary>Escrita assina com o login do operador — nos dublês não há SISREG para assinar.</summary>
+        public void UsarCredencialDoOperador(string usuario, string senha) { }
+
         public Task<string> PostFormAsync(
             string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken ct) =>
             throw new NotSupportedException();

@@ -14,6 +14,8 @@ import {
   useMotivosTelefoneComprometido,
   useResumoAbas,
 } from '@/features/confirmacoes/api';
+import { ModalLoginSisreg } from '@/features/confirmacoes/components/ModalLoginSisreg';
+import { useSessaoSisregObrigatoria } from '@/features/confirmacoes/lib/sessaoSisreg';
 import { CardSolicitacao, type AcaoCard } from '@/features/confirmacoes/components/CardSolicitacao';
 import {
   ModalCancelar,
@@ -74,10 +76,9 @@ export function ConfirmacoesPage() {
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState<number>(50);
   const [modal, setModal] = useState<ModalAberto>(null);
-  // Só aparece quando o cancelamento no SISREG NÃO foi confirmado. Desde 20/09/2026 o backend
-  // cancela lá e confere relendo a ficha, então isto é exceção — e é por isso que o texto diz o
-  // que falhou em vez de instruir o caminho manual como se fosse o normal.
-  const [avisoSisreg, setAvisoSisreg] = useState<{ item: SolicitacaoAtendimento; detalhe?: string | null } | null>(null);
+  // O cancelamento acontece no SISREG PRIMEIRO, com o login da própria atendente, e só vale aqui
+  // se lá confirmar. Não há mais estado "cancelado aqui e não lá" — por isso não há mais aviso.
+  const sessaoSisreg = useSessaoSisregObrigatoria();
   const textoDeb = useDebounce(texto);
 
   useEffect(() => setPagina(1), [aba, textoDeb, unidadeId, envio, tamanho]);
@@ -172,17 +173,6 @@ export function ConfirmacoesPage() {
       {acao.isError && !modal ? <p className="text-sm text-red-700">{extrairMensagemDeErro(acao.error)}</p> : null}
       {q.isError ? <p className="text-sm text-red-700">{extrairMensagemDeErro(q.error)}</p> : null}
 
-      {avisoSisreg ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <span>
-            <strong>Cancelado aqui, mas não no SISREG</strong> — <strong>{avisoSisreg.item.pacienteNome}</strong>
-            {avisoSisreg.item.codigoSolicitacao ? ` (SISREG ${avisoSisreg.item.codigoSolicitacao})` : ''}.
-            {avisoSisreg.detalhe ? ` ${avisoSisreg.detalhe}` : ''} Cancele lá pelo navegador para a vaga ser liberada.
-          </span>
-          <button type="button" className="text-xs underline" onClick={() => setAvisoSisreg(null)}>entendi</button>
-        </div>
-      ) : null}
-
       {q.isLoading ? (
         <p className="text-sm text-gray-500">Carregando…</p>
       ) : (q.data?.itens.length ?? 0) === 0 ? (
@@ -261,15 +251,19 @@ export function ConfirmacoesPage() {
       {modal?.tipo === 'cancelar' ? (
         <ModalCancelar
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
-          aoCancelar={(motivo, meio) =>
-            acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'cancelar', motivo, meio } }, {
-              onSuccess: (res) => {
-                fecharModal();
-                if (res.orientacaoSisreg) setAvisoSisreg({ item: modal.item, detalhe: res.detalheSisreg });
-              },
-            })}
+          aoCancelar={(motivo, meio) => {
+            // O cancelamento vai ao SISREG assinado pela atendente. Sem sessão lá, o modal de
+            // senha aparece e a ação é retomada sozinha — ela não redigita o motivo.
+            const cancelar = () =>
+              acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'cancelar', motivo, meio } }, {
+                onSuccess: fecharModal,
+                onError: (erro) => sessaoSisreg.tratouFaltaDeSessao(erro, cancelar),
+              });
+            sessaoSisreg.comSessao(cancelar);
+          }}
         />
       ) : null}
+      <ModalLoginSisreg {...sessaoSisreg.modal} />
       {modal?.tipo === 'pendente' ? (
         <ModalPendente
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}

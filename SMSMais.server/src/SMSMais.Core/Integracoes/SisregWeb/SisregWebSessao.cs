@@ -30,6 +30,18 @@ public interface ISisregWebSessao
     Task<string> PostFormAsync(string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Passa a usar a credencial de UM OPERADOR, em vez da global do store de Integrações.
+    ///
+    /// <para><b>Por que existe.</b> A credencial do banco é de <b>sincronismo</b>: serve para a
+    /// varredura ler. O SISREG carimba cada ação com o login de quem a fez — cancelar com a
+    /// credencial do robô faria todo cancelamento do município sair no nome da mesma pessoa, e
+    /// é essa a trilha que o Ministério audita. Escrita assina com quem assinou.</para>
+    ///
+    /// <para>A senha fica só na memória desta instância e morre com ela. Não há tabela.</para>
+    /// </summary>
+    void UsarCredencialDoOperador(string usuario, string senha);
+
+    /// <summary>
     /// GET autenticado (usado pelo <c>sisreg_ajax</c>, que é GET com querystring).
     ///
     /// <para><paramref name="pareceSessaoCaida"/> existe porque a sessão cai de duas formas e só
@@ -188,8 +200,36 @@ public sealed class SisregWebSessao(
     /// <summary>
     /// A credencial global do store de Integrações — uma só, para todas as unidades.
     /// </summary>
+    /// <summary>Credencial do OPERADOR, quando esta instância é de escrita. Só memória.</summary>
+    private Credenciais? _credencialDoOperador;
+
+    public void UsarCredencialDoOperador(string usuario, string senha)
+    {
+        // O auto-login fica LIGADO aqui de propósito: a trava de reautenticação existe para o
+        // robô não brigar com o humano, e esta sessão É do humano.
+        _credencialDoOperador = new Credenciais(usuario.Trim(), senha, new Uri(BaseUrlPadrao), true);
+    }
+
     private async Task<Credenciais> CarregarCredenciaisAsync(CancellationToken cancellationToken)
     {
+        if (_credencialDoOperador is { } doOperador)
+        {
+            // Só a BASE vem da configuração (homologação × produção); quem assina é o operador.
+            try
+            {
+                using var escopo = scopeFactory.CreateScope();
+                var svc = escopo.ServiceProvider.GetRequiredService<IIntegracaoCredencialService>();
+                var contexto = await svc.ObterContextoAsync(Provedor, cancellationToken);
+                var (url, _) = LerParametros(contexto.ParametrosJson);
+                return doOperador with { BaseUri = new Uri(url) };
+            }
+            catch
+            {
+                // Integração não configurada não pode impedir o operador de assinar a própria ação.
+                return doOperador;
+            }
+        }
+
         using var scope = scopeFactory.CreateScope();
 
         var credenciais = scope.ServiceProvider.GetRequiredService<IIntegracaoCredencialService>();

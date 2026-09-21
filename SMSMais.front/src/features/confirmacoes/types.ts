@@ -121,10 +121,6 @@ export type FiltroAtendimento = {
 export type AcaoResultado = {
   atendimentoId: string;
   situacao: SituacaoAtendimento;
-  /** O cancelamento no SISREG NÃO foi confirmado — é exceção, não o caminho normal. */
-  orientacaoSisreg: boolean;
-  /** O que o SISREG respondeu, quando há o que contar. */
-  detalheSisreg: string | null;
 };
 
 export type EventoAtendimento = {

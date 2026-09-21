@@ -33,7 +33,8 @@ public interface ICancelamentoSisregService
     /// não pode ser desfeito por isso.
     /// </summary>
     Task<CancelamentoSisregDto> CancelarAsync(
-        string codigoSolicitacao, string cns, string justificativa, CancellationToken ct = default);
+        ISisregWebSessao sessao, string codigoSolicitacao, string cns, string justificativa,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -54,12 +55,12 @@ public interface ICancelamentoSisregService
 /// cancelaria o exame de outra pessoa. Por isso a linha é procurada no HTML e usa-se o nome e o
 /// valor exatos daquele checkbox — aí as duas hipóteses dão no mesmo resultado.</para>
 ///
-/// <para><b>Quem aparece no SISREG é o operador da integração</b>, não a atendente que clicou: a
-/// sessão é a mesma da varredura. Quem clicou fica na NOSSA trilha. Trocar isso exige credencial
-/// por operador (fase 2 do ADR-0059) e não muda o que a paciente vê.</para>
+/// <para><b>Quem assina é a atendente</b>, não o robô: a sessão vem do
+/// <c>ISisregSessaoOperadorStore</c>, autenticada com o login dela no SISREG. A credencial
+/// cadastrada no sistema é de SINCRONISMO e não cancela nada — o SISREG carimba a coluna
+/// "Operador" com quem fez, e essa trilha não pode sair toda no nome da mesma pessoa.</para>
 /// </summary>
 public sealed class CancelamentoSisregService(
-    ISisregWebSessao sessao,
     ILogger<CancelamentoSisregService> logger) : ICancelamentoSisregService
 {
     private const string TelaCancelamento = "/cgi-bin/cons_verificar";
@@ -72,7 +73,8 @@ public sealed class CancelamentoSisregService(
     private const int MaxPaginas = 12;
 
     public async Task<CancelamentoSisregDto> CancelarAsync(
-        string codigoSolicitacao, string cns, string justificativa, CancellationToken ct = default)
+        ISisregWebSessao sessao, string codigoSolicitacao, string cns, string justificativa,
+        CancellationToken ct = default)
     {
         var codigo = (codigoSolicitacao ?? string.Empty).Trim();
         cns = (cns ?? string.Empty).Trim();
@@ -90,13 +92,13 @@ public sealed class CancelamentoSisregService(
         {
             // 1. Em que estado está HOJE? Tentar cancelar o que já está cancelado gasta requisição
             //    do orçamento anti-robô e polui a ficha do paciente com justificativa repetida.
-            var antes = await SituacaoAsync(codigo, ct);
+            var antes = await SituacaoAsync(sessao, codigo, ct);
             if (antes is not null && antes.Contains("CANCELAD", StringComparison.OrdinalIgnoreCase))
                 return new(ResultadoCancelamentoSisreg.JaEstavaCancelado, antes, antes,
                     "Já estava cancelada no SISREG.");
 
             // 2. Achar a linha — nunca inventá-la.
-            var alvo = await ProcurarLinhaAsync(cns, codigo, ct);
+            var alvo = await ProcurarLinhaAsync(sessao, cns, codigo, ct);
             if (alvo is null)
                 return new(ResultadoCancelamentoSisreg.Falhou, antes, null,
                     "A solicitação não apareceu na listagem de canceláveis desse CNS.");
@@ -121,7 +123,7 @@ public sealed class CancelamentoSisregService(
             // 4. A PROVA. A resposta traz todos os alert() de validação do JavaScript da página,
             //    então o primeiro deles não diz nada sobre o desfecho — foi o que me fez ler
             //    "Preencha a Data Inicial" num cancelamento que tinha dado certo.
-            var depois = await SituacaoAsync(codigo, ct);
+            var depois = await SituacaoAsync(sessao, codigo, ct);
             var ok = depois is not null && depois.Contains("CANCELAD", StringComparison.OrdinalIgnoreCase);
 
             if (ok)
@@ -158,7 +160,8 @@ public sealed class CancelamentoSisregService(
     /// o mesmo sintoma de sessão disputada. Como aqui a resposta É a prova, insistir é barato
     /// perto de concluir errado.</para>
     /// </summary>
-    private async Task<string?> SituacaoAsync(string codigo, CancellationToken ct)
+    private static async Task<string?> SituacaoAsync(
+        ISisregWebSessao sessao, string codigo, CancellationToken ct)
     {
         for (var volta = 0; volta < 2; volta++)
         {
@@ -181,8 +184,8 @@ public sealed class CancelamentoSisregService(
     }
 
     /// <summary>Varre as páginas daquele CNS até achar a linha do código.</summary>
-    private async Task<(string Campo, string Valor, int Pagina)?> ProcurarLinhaAsync(
-        string cns, string codigo, CancellationToken ct)
+    private static async Task<(string Campo, string Valor, int Pagina)?> ProcurarLinhaAsync(
+        ISisregWebSessao sessao, string cns, string codigo, CancellationToken ct)
     {
         string? total = null, ordem = null;
         for (var pagina = 0; pagina < MaxPaginas; pagina++)

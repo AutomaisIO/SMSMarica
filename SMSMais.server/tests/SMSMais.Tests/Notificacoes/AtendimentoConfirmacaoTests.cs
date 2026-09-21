@@ -117,7 +117,7 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Cancelar_e_local_libera_a_vaga_e_orienta_o_SISREG()
+    public async Task Cancelar_agendamento_que_nao_existe_no_SISREG_vale_so_aqui()
     {
         await using var db = fixture.CriarDbContext();
         var atendente = await CriarUsuarioAsync(db);
@@ -132,7 +132,6 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
             exame.SolicitacaoId, new CancelarAtendimentoRequest("Paciente mudou de cidade", "WhatsApp"));
 
         Assert.Equal(nameof(SituacaoAtendimentoConfirmacao.Cancelado), resultado.Situacao);
-        Assert.True(resultado.OrientacaoSisreg);
         await comunicacoes.Received(1).RevogarAcessosAsync(exame.SolicitacaoId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
 
         await using var db2 = fixture.CriarDbContext();
@@ -140,6 +139,8 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         Assert.Equal(StatusSolicitacao.Cancelada, s.Status);
         Assert.NotNull(s.CanceladoEm); // é o CanceladoEm que devolve a vaga (derivação em OfertasSisregService)
         Assert.Equal(atendente, s.CanceladoPorUsuarioId);
+        // Sem código do SISREG não há o que cancelar lá, então o motivo fica como a atendente
+        // escreveu — sem o carimbo da releitura da ficha.
         Assert.Equal("Paciente mudou de cidade", s.MotivoCancelamento);
         Assert.Equal(StatusConfirmacaoAgendamento.Cancelada, s.StatusConfirmacao);
         Assert.Equal(AtendimentoConfirmacaoService.CanalAtendente, s.ConfirmadoCanal);
@@ -221,12 +222,73 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
             i => i.SolicitacaoId == exame.SolicitacaoId);
     }
 
+    /// <summary>
+    /// A vaga real mora no SISREG: cancelar aqui sem cancelar lá deixaria o horário bloqueado
+    /// para a rede e o paciente avisado de que não tem mais atendimento — o pior dos mundos.
+    /// </summary>
+    [Fact]
+    public async Task SISREG_que_nao_confirma_NAO_cancela_nada_aqui()
+    {
+        await using var db = fixture.CriarDbContext();
+        var atendente = await CriarUsuarioAsync(db);
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(5));
+
+        // Marcação REAL: tem código do SISREG e o paciente tem CNS.
+        var solicitacao = await db.Solicitacoes.SingleAsync(x => x.Id == exame.SolicitacaoId);
+        // Código único: a coluna tem índice exclusivo e a bancada acumula dados entre execuções.
+        solicitacao.CodigoSolicitacao = $"9{Random.Shared.NextInt64(100_000_000, 999_999_999)}";
+        await db.SaveChangesAsync();
+
+        var servico = CriarServico(
+            db, atendente,
+            noSisreg: SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Falhou,
+            cnsDoPaciente: "700503370774852");
+
+        await Assert.ThrowsAsync<ConflitoException>(() => servico.CancelarAsync(
+            exame.SolicitacaoId, new CancelarAtendimentoRequest("Paciente desistiu", "WhatsApp")));
+
+        await using var db2 = fixture.CriarDbContext();
+        var depois = await db2.Solicitacoes.SingleAsync(x => x.Id == exame.SolicitacaoId);
+        Assert.NotEqual(StatusSolicitacao.Cancelada, depois.Status);
+        Assert.Null(depois.CanceladoEm);
+        Assert.Equal(StatusConfirmacaoAgendamento.Pendente, depois.StatusConfirmacao);
+    }
+
+    /// <summary>
+    /// Com código do SISREG mas sem CNS não há como alcançar a vaga lá — e cancelar só aqui seria
+    /// mentir para a rede. Recusa em vez de fingir.
+    /// </summary>
+    [Fact]
+    public async Task Marcacao_do_SISREG_sem_CNS_no_cadastro_e_recusada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var atendente = await CriarUsuarioAsync(db);
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(5));
+
+        var solicitacao = await db.Solicitacoes.SingleAsync(x => x.Id == exame.SolicitacaoId);
+        solicitacao.CodigoSolicitacao = $"9{Random.Shared.NextInt64(100_000_000, 999_999_999)}";
+        await db.SaveChangesAsync();
+
+        // cnsDoPaciente fica nulo de propósito.
+        var servico = CriarServico(db, atendente);
+
+        await Assert.ThrowsAsync<ConflitoException>(() => servico.CancelarAsync(
+            exame.SolicitacaoId, new CancelarAtendimentoRequest("Paciente desistiu", "WhatsApp")));
+
+        await using var db2 = fixture.CriarDbContext();
+        Assert.NotEqual(
+            StatusSolicitacao.Cancelada,
+            (await db2.Solicitacoes.SingleAsync(x => x.Id == exame.SolicitacaoId)).Status);
+    }
+
     // ===================== apoio =====================
 
     private static AtendimentoConfirmacaoService CriarServico(
         SmsMaisDbContext db, Guid usuarioId,
         IComunicacaoPacienteService? comunicacoes = null,
-        IPendenciaCadastroService? pendencias = null)
+        IPendenciaCadastroService? pendencias = null,
+        SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg? noSisreg = null,
+        string? cnsDoPaciente = null)
     {
         var configuracao = Substitute.For<IConfirmacaoConfiguracaoService>();
         configuracao.ObterAsync(Arg.Any<CancellationToken>())
@@ -235,24 +297,41 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         var resolver = Substitute.For<IPacienteResolver>();
         resolver.ResolverManyAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, PacienteResumo>());
+        // Sem CNS o cancelamento pula o SISREG (agendamento que nunca existiu lá); com CNS, a
+        // solicitação é tratada como marcação real e o SISREG passa a mandar.
         resolver.ResolverAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((PacienteResumo?)null);
+            .Returns(cnsDoPaciente is null
+                ? (PacienteResumo?)null
+                : new PacienteResumo(Guid.NewGuid(), "PACIENTE DE TESTE", null, cnsDoPaciente, null, Sexo.NaoInformado));
 
         comunicacoes ??= Substitute.For<IComunicacaoPacienteService>();
         comunicacoes.RevogarAcessosAsync(Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<CidadaoLoginLink>());
 
-        // Cancelamento no SISREG: dublê que diz "falhou". Nos testes não há SISREG, e o ponto do
-        // desenho é justamente este — falhar lá NÃO desfaz o cancelamento local.
+        // Cancelamento no SISREG: dublê que CONFIRMA. É o caminho feliz — o desenho manda cancelar
+        // lá primeiro e só valer aqui se a ficha de lá confirmar, então um dublê que falhasse
+        // faria todo teste de cancelamento virar teste de recusa.
         var sisreg = Substitute.For<SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService>();
-        sisreg.CancelarAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sisreg.CancelarAsync(
+                Arg.Any<SMSMais.Core.Integracoes.SisregWeb.ISisregWebSessao>(),
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new SMSMais.Core.Integracoes.SisregWeb.Cancelamento.CancelamentoSisregDto(
-                SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Falhou,
-                null, null, "sem SISREG no teste"));
+                noSisreg ?? SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Cancelado,
+                "SOLICITAÇÃO / AUTORIZADA / REGULADOR",
+                noSisreg == SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Falhou
+                    ? "SOLICITAÇÃO / AUTORIZADA / REGULADOR"
+                    : "AGENDAMENTO / CANCELADO / REGULADOR",
+                noSisreg == SMSMais.Core.Integracoes.SisregWeb.Cancelamento.ResultadoCancelamentoSisreg.Falhou
+                    ? "SISREG fora do ar."
+                    : null));
+
+        var sessoes = Substitute.For<SMSMais.Core.Sisreg.Sessao.ISisregSessaoOperadorStore>();
+        sessoes.Exigir(Arg.Any<string>())
+            .Returns(Substitute.For<SMSMais.Core.Integracoes.SisregWeb.ISisregWebSessao>());
 
         return new AtendimentoConfirmacaoService(
             db, new UsuarioAtualAccessorFake(usuarioId), resolver, configuracao, comunicacoes,
-            pendencias ?? Substitute.For<IPendenciaCadastroService>(), sisreg,
+            pendencias ?? Substitute.For<IPendenciaCadastroService>(), sisreg, sessoes,
             NullLogger<AtendimentoConfirmacaoService>.Instance);
     }
 

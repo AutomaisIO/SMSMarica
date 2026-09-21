@@ -48,6 +48,20 @@ public interface IComunicacaoPacienteService
         Guid solicitacaoExameId, FinalidadeComunicacao finalidade, bool assumirRisco, CancellationToken ct = default);
 
     /// <summary>
+    /// Avisa o paciente do CANCELAMENTO agora, sem esperar o worker.
+    ///
+    /// <para>É o único aviso que sai na hora, e por um motivo concreto: quem clicou em cancelar
+    /// está com o paciente na linha ou acabou de falar com ele. Esperar o próximo ciclo faria a
+    /// pessoa ser avisada por mensagem de algo que ela já ouviu — ou pior, ouvir primeiro do
+    /// posto.</para>
+    ///
+    /// <para>A comunicação fica registrada como enviada, e é isso que impede o motor periódico de
+    /// conciliação de avisar de novo quando encontrar este mesmo cancelamento na tela do SISREG
+    /// minutos depois. Nunca lança: falha de WhatsApp não desfaz cancelamento.</para>
+    /// </summary>
+    Task AvisarCancelamentoAgoraAsync(Solicitacao solicitacao, CancellationToken ct = default);
+
+    /// <summary>
     /// Corta o acesso do paciente ao que já foi enviado desta solicitação: expira TODOS os magic
     /// links ainda ativos e derruba as sessões de quem chegou a usar algum. NÃO salva — participa
     /// do <c>SaveChanges</c> do chamador (exceto a revogação de sessões, que é <c>ExecuteUpdate</c>).
@@ -132,6 +146,35 @@ public sealed class ComunicacaoPacienteService(
             ProximaTentativaEm = DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
         });
+    }
+
+    public async Task AvisarCancelamentoAgoraAsync(Solicitacao solicitacao, CancellationToken ct = default)
+    {
+        if (!options.Value.EnviarAvisoCancelamento) return;
+
+        try
+        {
+            await EnfileirarAsync(solicitacao, FinalidadeComunicacao.CancelamentoAgendamento, ct);
+            await db.SaveChangesAsync(ct);
+
+            var comunicacao = await db.ComunicacoesPaciente
+                .Where(c => c.SolicitacaoId == solicitacao.Id
+                    && c.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+                .Select(c => new { c.Id, c.Status })
+                .FirstOrDefaultAsync(ct);
+
+            // Já foi avisado antes (o motor pegou primeiro): não repete.
+            if (comunicacao is null || comunicacao.Status != StatusComunicacao.Pendente) return;
+
+            await ProcessarTentativaEnvioAsync(comunicacao.Id, ct);
+        }
+        catch (Exception ex)
+        {
+            // O cancelamento está feito nos dois sistemas; falhar o aviso é ruim, mas desfazer
+            // seria pior. Fica o log e a comunicação na fila, que o worker retenta.
+            logger.LogError(ex,
+                "Falha ao avisar o cancelamento da solicitação {Solicitacao} na hora.", solicitacao.Id);
+        }
     }
 
     /// <summary>

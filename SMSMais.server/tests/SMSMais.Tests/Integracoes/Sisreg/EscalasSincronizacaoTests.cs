@@ -30,6 +30,9 @@ public class EscalasSincronizacaoTests(PostgresFixture fixture)
     /// <summary>Sessão dublada: devolve o CSV combinado, sem tocar no SISREG.</summary>
     private sealed class SessaoFake(string resposta) : ISisregWebSessao
     {
+        /// <summary>Escrita assina com o login do operador — nos dublês não há SISREG para assinar.</summary>
+        public void UsarCredencialDoOperador(string usuario, string senha) { }
+
         public int Chamadas { get; private set; }
 
         public Task<string> PostFormAsync(

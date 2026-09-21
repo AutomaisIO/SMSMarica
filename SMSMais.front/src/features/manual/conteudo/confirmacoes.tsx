@@ -274,8 +274,8 @@ export const artigoConfirmacoes: Artigo = {
     },
     {
       id: 'cancelamento-sisreg',
-      titulo: 'Cancelar: o que este sistema faz e o que falta fazer no SISREG',
-      busca: 'cancelar sisreg extensão navegador conciliação vaga',
+      titulo: 'Cancelar: como funciona nos dois sistemas',
+      busca: 'cancelar sisreg senha login operador assina vaga aviso paciente',
       conteudo: (
         <div className="space-y-4">
           <P>Este é o ponto que mais gera confusão, então vale ler com calma. Ao cancelar aqui, na mesma hora:</P>
@@ -285,15 +285,20 @@ export const artigoConfirmacoes: Artigo = {
             <Item>o que ainda ia ser enviado para ele sobre esse agendamento é encerrado;</Item>
             <Item>os links de confirmação que ele já recebeu deixam de funcionar.</Item>
           </Lista>
-          <Callout tipo="dica" titulo="O SISREG é cancelado junto">
-            O sistema cancela no SISREG por você, na mesma ação — e só dá por feito depois de <strong>reler a ficha
-            lá</strong> e ver que ela mudou para cancelada. Não é o "ok" da tela que vale: é a releitura.
+          <Callout tipo="atencao" titulo="O SISREG vem primeiro">
+            O cancelamento é feito <strong>no SISREG antes de tudo</strong>, com o <strong>seu</strong> login de lá — é
+            por isso que aparece o pedido da senha do SISREG na primeira vez do dia. Só depois de a ficha lá confirmar
+            que mudou para cancelada é que o cancelamento vale aqui. Se o SISREG não confirmar, <strong>nada muda</strong>:
+            a ficha continua como estava e você pode tentar de novo.
           </Callout>
-          <Callout tipo="atencao" titulo="Se aparecer o aviso amarelo, aí sim é com você">
-            Quando o SISREG não confirma o cancelamento — sistema fora do ar, sessão derrubada, ficha que não abre —, a
-            tela avisa <strong>"cancelado aqui, mas não no SISREG"</strong> e diz o que houve. Nesse caso, e só nesse,
-            cancele lá pelo navegador. O cancelamento feito aqui <strong>continua valendo</strong>: você já falou com o
-            paciente, e desfazer isso seria pior.
+          <Callout tipo="dica" titulo="A senha do SISREG não fica guardada">
+            Ela vale pela sua sessão e some quando você sai. Pedimos a sua porque é o <strong>seu</strong> login que
+            aparece no SISREG como quem desmarcou — a credencial do sistema serve para ler a agenda, não para assinar
+            cancelamento no seu nome.
+          </Callout>
+          <Callout tipo="dica" titulo="O paciente é avisado na hora">
+            Assim que o cancelamento é confirmado, o aviso sai no WhatsApp — sem esperar rotina nenhuma. A mensagem diz
+            que o agendamento foi cancelado e <strong>não</strong> diz o motivo: isso é informação interna.
           </Callout>
         </div>
       ),
@@ -449,7 +454,12 @@ export const artigoConfirmacoes: Artigo = {
               {
                 termo: 'Cancelei aqui e continua marcado no SISREG',
                 descricao:
-                  'Não deveria — o sistema cancela lá junto e confere. Se acontecer, a tela mostra o aviso amarelo dizendo o que falhou; cancele no SISREG pelo navegador. Sem o aviso, o cancelamento lá foi conferido ficha a ficha.',
+                  'Não acontece: o cancelamento começa pelo SISREG e só vale aqui depois que a ficha de lá confirma. Se o SISREG falhar, a tela recusa a ação e nada muda — nos dois sistemas.',
+              },
+              {
+                termo: 'Está pedindo a senha do SISREG',
+                descricao:
+                  'É o esperado na primeira vez do dia. O cancelamento assina com o seu login de lá; a senha vale pela sua sessão e não fica guardada.',
               },
               {
                 termo: 'A colega está com a ficha e ela saiu do plantão',

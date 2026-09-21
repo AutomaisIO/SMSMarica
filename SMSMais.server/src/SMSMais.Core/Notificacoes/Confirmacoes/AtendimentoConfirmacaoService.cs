@@ -70,6 +70,7 @@ public sealed class AtendimentoConfirmacaoService(
     IComunicacaoPacienteService comunicacoes,
     IPendenciaCadastroService pendencias,
     Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService cancelamentoSisreg,
+    Sisreg.Sessao.ISisregSessaoOperadorStore sessoesSisreg,
     ILogger<AtendimentoConfirmacaoService> logger) : IAtendimentoConfirmacaoService
 {
     /// <summary>Canal gravado na solicitação quando a resposta vem pela mão do atendente.</summary>
@@ -532,17 +533,30 @@ public sealed class AtendimentoConfirmacaoService(
         Solicitacao s, string motivo, CancellationToken ct)
     {
         var codigo = (s.CodigoSolicitacao ?? string.Empty).Trim();
-        // "0000" é a sentinela do agendamento cadastrado à mão: nunca existiu no SISREG.
+        // "0000" é a sentinela do agendamento cadastrado à mão: nunca existiu no SISREG, então
+        // não há o que cancelar lá — este é o ÚNICO caso em que se pula.
         if (codigo.Length == 0 || codigo == "0000") return null;
 
         // O CNS vive no hub FHIR, não em smsmarica — e é por ele que a tela do SISREG busca.
         var paciente = await pacienteResolver.ResolverAsync(s.PacienteId, ct);
         var cns = paciente?.Cns;
-        if (string.IsNullOrWhiteSpace(cns)) return null;
+
+        // Tem código do SISREG e não tem CNS: a vaga existe LÁ e não temos como alcançá-la.
+        // Cancelar só aqui deixaria o horário bloqueado para a rede e o paciente avisado de que
+        // não tem mais atendimento — pior que não cancelar. Recusa, e diz o que falta.
+        if (string.IsNullOrWhiteSpace(cns))
+            throw new ConflitoException(
+                "atendimento.sem_cns",
+                "Este agendamento existe no SISREG, mas o paciente está sem CNS no cadastro — sem "
+                + "ele não dá para cancelar lá. Complete o cadastro e tente de novo.");
+
+        // A sessão é a DO OPERADOR: sem ela, a exceção nomeada faz a tela pedir a senha do
+        // SISREG em vez de mostrar erro.
+        var sessaoOperador = sessoesSisreg.Exigir(usuarioAtual.SessaoId ?? string.Empty);
 
         // A justificativa fica registrada no SISREG e é lida por gente de fora do nosso sistema:
         // vai o FATO, sem marca de origem nem dado nosso.
-        return await cancelamentoSisreg.CancelarAsync(codigo, cns, motivo, ct);
+        return await cancelamentoSisreg.CancelarAsync(sessaoOperador, codigo, cns, motivo, ct);
     }
 
     /// <summary>
@@ -602,9 +616,19 @@ public sealed class AtendimentoConfirmacaoService(
     }
 
     /// <summary>
-    /// FASE 1: cancela no SMSMais (a vaga volta a contar por derivação — <c>CanceladoEm</c>), encerra
-    /// o que ainda ia sair, revoga os links de acesso. O SISREG NÃO é tocado: a resposta carrega
-    /// <c>OrientacaoSisreg</c> para a tela mandar cancelar lá pelo navegador (a extensão concilia).
+    /// Cancela — <b>no SISREG primeiro</b>, e só aqui se lá confirmar.
+    ///
+    /// <para><b>Por que nessa ordem.</b> A vaga real mora no SISREG. Cancelar aqui e falhar lá
+    /// produz o pior dos mundos: a vaga continua bloqueada para a rede, o paciente é avisado de
+    /// que não tem mais atendimento, e o nosso sistema passa a discordar do sistema que manda.
+    /// Falhar antes de tocar em qualquer coisa é honesto — a atendente vê o erro e tenta de novo.</para>
+    ///
+    /// <para><b>Quem assina é a atendente</b>, com o login DELA no SISREG (modal de senha, sessão
+    /// em memória). A credencial cadastrada no sistema é de sincronismo e não cancela nada: o
+    /// SISREG carimba a coluna "Operador", e essa trilha não pode sair toda no mesmo nome.</para>
+    ///
+    /// <para>Confirmado o cancelamento, o aviso ao paciente sai <b>na hora</b> — não espera o
+    /// worker. É o único caso em que faz sentido: quem clicou está falando com a pessoa.</para>
     /// </summary>
     public async Task<AcaoAtendimentoResultadoDto> CancelarAsync(
         Guid solicitacaoId, CancelarAtendimentoRequest request, CancellationToken ct = default)
@@ -617,6 +641,17 @@ public sealed class AtendimentoConfirmacaoService(
         if (motivo.Length > 500) motivo = motivo[..500];
 
         var s = await CarregarSolicitacaoAsync(solicitacaoId, ct);
+
+        // ---- SISREG PRIMEIRO. Nada muda aqui enquanto lá não confirmar. ----
+        var noSisreg = await CancelarNoSisregAsync(s, motivo, ct);
+        if (noSisreg is { } r && r.Resultado == ResultadoCancelamentoSisreg.Falhou)
+        {
+            throw new ConflitoException(
+                "atendimento.sisreg_nao_cancelou",
+                "O SISREG não confirmou o cancelamento, então nada foi alterado aqui — a vaga "
+                + "continua de pé nos dois sistemas. " + (r.Detalhe ?? string.Empty));
+        }
+
         var ativo = await GarantirMeuAsync(s.Id, me, agora, ct);
 
         s.Status = StatusSolicitacao.Cancelada;
@@ -649,26 +684,22 @@ public sealed class AtendimentoConfirmacaoService(
         AddEvento(ativo, TipoEventoAtendimentoConfirmacao.Cancelado, me, agora, observacao: motivo);
         await SalvarComTraducaoDeCorridaAsync(ativo, ct);
 
-        // O SISREG é cancelado AQUI, pelo backend (formulário lido de captura real da extensão,
-        // validado em produção em 20/09/2026). Falhar lá NÃO desfaz o cancelamento daqui: a
-        // atendente já disse ao paciente que cancelou, e voltar atrás seria pior. Quando falha,
-        // a tela volta a orientar o caminho antigo — o aviso vira exceção, não regra.
-        var noSisreg = await CancelarNoSisregAsync(s, motivo, ct);
-        if (noSisreg is { } r && r.Resultado != ResultadoCancelamentoSisreg.Falhou)
+        if (noSisreg is { } ok)
         {
-            s.MotivoCancelamento = $"{motivo} · SISREG: {r.SituacaoDepois}";
+            s.MotivoCancelamento = $"{motivo} · SISREG: {ok.SituacaoDepois}";
             await db.SaveChangesAsync(ct);
         }
 
-        logger.LogInformation(
-            "Solicitação {Solicitacao} cancelada pela atendente {Usuario} — SISREG: {Sisreg}.",
-            s.Id, me, noSisreg?.Resultado.ToString() ?? "sem código/CNS");
+        // O aviso ao paciente sai AGORA, e já nasce marcado como enviado — assim o motor
+        // periódico de conciliação não manda a mesma notícia de novo quando encontrar este
+        // cancelamento na tela do SISREG daqui a alguns minutos.
+        await comunicacoes.AvisarCancelamentoAgoraAsync(s, ct);
 
-        return Resultado(ativo) with
-        {
-            OrientacaoSisreg = noSisreg is null || noSisreg.Resultado == ResultadoCancelamentoSisreg.Falhou,
-            DetalheSisreg = noSisreg?.Detalhe,
-        };
+        logger.LogInformation(
+            "Solicitação {Solicitacao} cancelada por {Usuario} — SISREG: {Sisreg}.",
+            s.Id, me, noSisreg?.Resultado.ToString() ?? "sem código/CNS (nada a cancelar lá)");
+
+        return Resultado(ativo);
     }
 
     public async Task<AcaoAtendimentoResultadoDto> EnviarParaPendenteAsync(

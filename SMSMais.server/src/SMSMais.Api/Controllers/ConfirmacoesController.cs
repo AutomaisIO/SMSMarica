@@ -111,8 +111,11 @@ public sealed class ConfirmacoesController(
         Guid solicitacaoId, [FromBody] ConfirmarAtendimentoRequest request, CancellationToken ct) =>
         await atendimento.ConfirmarAsync(solicitacaoId, request, ct);
 
-    /// <summary>Cancela o agendamento no SMSMais (fase 1 — o SISREG não é tocado; a resposta traz
-    /// <c>orientacaoSisreg</c> para a tela mandar cancelar lá pelo navegador).</summary>
+    /// <summary>
+    /// Cancela o agendamento — <b>no SISREG primeiro</b>, assinado com o login do operador
+    /// (<c>POST /sisreg/sessao</c>), e só aqui se a ficha de lá confirmar. Se o SISREG não
+    /// confirmar, responde 409 e <b>nada muda</b>: a vaga continua de pé nos dois sistemas.
+    /// </summary>
     [HttpPost("atendimento/{solicitacaoId:guid}/cancelar")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Exclusao)]
     [ProducesResponseType<AcaoAtendimentoResultadoDto>(StatusCodes.Status200OK)]

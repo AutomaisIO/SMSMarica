@@ -461,6 +461,10 @@ public static class DependencyInjection
         // singleton por viver em memória e por sessão de usuário — nunca em banco. Sem isso, toda
         // ação do município sairia assinada pela mesma pessoa na trilha do Estado.
         services.AddSingleton<Ser.Sessao.ISerSessaoOperadorStore, Ser.Sessao.SerSessaoOperadorStore>();
+
+        // Sessão de ESCRITA no SISREG, por operador. Singleton porque a credencial vive em
+        // memória pelo tempo da sessão de quem entrou — scoped a jogaria fora a cada requisição.
+        services.AddSingleton<Sisreg.Sessao.ISisregSessaoOperadorStore, Sisreg.Sessao.SisregSessaoOperadorStore>();
         services.AddScoped<Ser.ISerEscritaService, Ser.SerEscritaService>();
 
         // Config do disparo diário em BANCO: mudar a hora não pode exigir deploy.
