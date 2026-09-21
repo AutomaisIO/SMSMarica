@@ -193,7 +193,7 @@ function LinhaResultado({ ok, neutro, titulo, detalhe, icone }: {
 
 export function ModalPendente({ item, ocupado, erro, aoFechar, aoEnviar }: Base & { aoEnviar: (motivo: string) => void }) {
   const [motivo, setMotivo] = useState('');
-  const sugestoes = ['Não atendeu', 'Caixa postal', 'Pediu para ligar depois', 'Vai confirmar com a família'];
+  const sugestoes = ['Não atendeu', 'Caixa postal', 'Pediu para ligar depois', 'Não respondeu'];
   return (
     <Modal aberto aoFechar={aoFechar} titulo="Enviar para pendente">
       <div className="space-y-3">
