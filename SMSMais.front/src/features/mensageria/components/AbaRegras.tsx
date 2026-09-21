@@ -211,9 +211,7 @@ export function AbaRegras() {
                 onChange={(e) => setLembreteHabilitado(e.target.checked)}
                 disabled={!podeEditar}
               />
-              <span>
-                Enviar o lembrete <span className="text-gray-500">(só depois que os modelos estiverem aprovados na Meta)</span>
-              </span>
+              <span>Enviar o lembrete</span>
             </label>
           </div>
         </div>

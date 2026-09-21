@@ -41,8 +41,8 @@ public class ConfirmacaoConfiguracao
     public int LembreteDiasAntes { get; set; } = 2;
 
     /// <summary>
-    /// Liga o lembrete. Nasce DESLIGADO: só faz sentido quando os modelos estiverem aprovados na
-    /// Meta (um para quem já confirmou, outro para quem ainda não respondeu).
+    /// Liga o lembrete. Os dois modelos (quem já confirmou e quem ainda não respondeu) estão
+    /// aprovados na Meta desde 20/09/2026 — a ressalva que havia aqui deixou de valer.
     /// </summary>
     public bool LembreteHabilitado { get; set; }
 
