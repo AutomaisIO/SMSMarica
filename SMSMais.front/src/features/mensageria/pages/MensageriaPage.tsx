@@ -1,6 +1,7 @@
 import { MessageSquareText } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs } from '@/shared/ui/Tabs';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { AbaEnvios } from '@/features/mensageria/components/AbaEnvios';
 import { AbaLote } from '@/features/mensageria/components/AbaLote';
 import { AbaRegras } from '@/features/mensageria/components/AbaRegras';
@@ -22,9 +23,12 @@ export function MensageriaPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-start gap-3">
-        <MessageSquareText className="mt-1 h-6 w-6 text-red-600" />
+        <MessageSquareText className="mt-1 h-6 w-6 text-primary-600" />
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Mensageria</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-semibold text-gray-900">Mensageria</h1>
+            <AjudaManual artigo="mensageria" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">
             Envios de WhatsApp ao paciente: qualidade da entrega dia a dia, falhas, respostas, disparo em lote e regras.
           </p>

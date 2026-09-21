@@ -5,6 +5,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
   useAlterarRegraUnidade,
@@ -100,6 +101,19 @@ function SecaoTarifasMeta({ podeEditar }: { podeEditar: boolean }) {
   );
 }
 
+/**
+ * Horas cheias, apresentadas como relógio.
+ *
+ * <p>Seletor, e não <code>type="time"</code>, por duas razões concretas: o campo "Para às" aceita
+ * <b>24</b> — fim do dia — que nenhum campo de hora do navegador consegue representar; e um campo
+ * de hora deixaria escolher 8h<b>30</b>, minuto que o motor não tem como respeitar e que a tela
+ * descartaria calada. O que não pode ser obedecido não deve poder ser digitado.</p>
+ */
+const HORAS_DO_DIA = Array.from({ length: 24 }, (_, i) => String(i));
+const HORAS_FIM = Array.from({ length: 24 }, (_, i) => String(i + 1));
+
+const rotuloHora = (h: string) => (h === '24' ? '24:00 (fim do dia)' : `${h.padStart(2, '0')}:00`);
+
 export function AbaRegras() {
   const podeEditar = usePermissao('Confirmacoes', 'Edicao') || usePermissao('NotificacoesAgendamento', 'Edicao');
   const cfg = useConfiguracaoConfirmacao();
@@ -158,7 +172,7 @@ export function AbaRegras() {
     else if (f - ini >= 24)
       erro = 'A janela não pode cobrir o dia inteiro: o fechamento precisa de uma hora livre, fora dela.';
     else if (fech >= ini && fech < f)
-      erro = `O fechamento relê o dia anterior e precisa ficar FORA da janela (${ini}h às ${f}h).`;
+      erro = `O fechamento relê o dia anterior e precisa ficar FORA da janela (${rotuloHora(String(ini))} às ${rotuloHora(String(f))}).`;
 
     return { intervalo, ini, f, fech, erro };
   }, [conciliacaoIntervalo, conciliacaoInicio, conciliacaoFim, conciliacaoFechamento]);
@@ -280,8 +294,8 @@ export function AbaRegras() {
                   ) : (
                     <>
                       Lê a cada {conciliacao.intervalo} minuto{conciliacao.intervalo === 1 ? '' : 's'}, das{' '}
-                      {conciliacao.ini}h às {conciliacao.f}h, e relê o dia anterior às {conciliacao.fech}h. Só
-                      leitura.
+                      {rotuloHora(String(conciliacao.ini))} às {rotuloHora(String(conciliacao.f))}, e relê o dia
+                      anterior às {rotuloHora(String(conciliacao.fech))}. Só leitura.
                     </>
                   )}
                 </span>
@@ -312,37 +326,46 @@ export function AbaRegras() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs">
-                <span className="font-medium text-gray-700">Começa às (hora)</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={23}
+                <span className="font-medium text-gray-700">Começa às</span>
+                <Select
                   value={conciliacaoInicio}
                   onChange={(e) => setConciliacaoInicio(e.target.value)}
                   disabled={!podeEditar}
-                />
+                >
+                  {HORAS_DO_DIA.map((h) => (
+                    <option key={h} value={h}>
+                      {rotuloHora(h)}
+                    </option>
+                  ))}
+                </Select>
               </label>
               <label className="flex flex-col gap-1 text-xs">
-                <span className="font-medium text-gray-700">Para às (hora)</span>
-                <Input
-                  type="number"
-                  min={1}
-                  max={24}
+                <span className="font-medium text-gray-700">Para às</span>
+                <Select
                   value={conciliacaoFim}
                   onChange={(e) => setConciliacaoFim(e.target.value)}
                   disabled={!podeEditar}
-                />
+                >
+                  {HORAS_FIM.map((h) => (
+                    <option key={h} value={h}>
+                      {rotuloHora(h)}
+                    </option>
+                  ))}
+                </Select>
               </label>
               <label className="flex flex-col gap-1 text-xs">
                 <span className="font-medium text-gray-700">Fecha o dia anterior às</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={23}
+                <Select
                   value={conciliacaoFechamento}
                   onChange={(e) => setConciliacaoFechamento(e.target.value)}
                   disabled={!podeEditar}
-                />
+                >
+                  {HORAS_DO_DIA.map((h) => (
+                    <option key={h} value={h}>
+                      {rotuloHora(h)}
+                    </option>
+                  ))}
+                </Select>
                 <span className="text-[11px] text-gray-500">Precisa ficar fora da janela acima.</span>
               </label>
             </div>

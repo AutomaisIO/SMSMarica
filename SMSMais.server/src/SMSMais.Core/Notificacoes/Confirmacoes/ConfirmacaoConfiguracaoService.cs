@@ -106,7 +106,7 @@ public sealed class ConfirmacaoConfiguracaoService(
         if (horaFechamento >= horaInicio && horaFechamento < horaFim)
             throw new ValidacaoException("confirmacao.conciliacao_fechamento_invalido",
                 "O fechamento relê o dia anterior e precisa ficar FORA da janela de leitura "
-                + $"(hoje, {horaInicio}h às {horaFim}h).");
+                + $"(hoje, {horaInicio:00}:00 às {horaFim:00}:00).");
 
         c.HoraInicioEnvio = inicio;
         c.HoraFimEnvio = fim;

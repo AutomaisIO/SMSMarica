@@ -1,5 +1,6 @@
 import { BookOpen, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
+import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
 import type { Artigo, GrupoManual } from '@/features/manual/tipos';
 
@@ -41,7 +42,7 @@ export const GRUPOS: GrupoManual[] = [
   },
 ];
 
-export const ARTIGOS: Artigo[] = [artigoConfirmacoes, artigoOuvidoria];
+export const ARTIGOS: Artigo[] = [artigoConfirmacoes, artigoMensageria, artigoOuvidoria];
 
 /** Ícone de fallback quando um grupo ainda não foi declarado. */
 export const ICONE_MANUAL = BookOpen;
