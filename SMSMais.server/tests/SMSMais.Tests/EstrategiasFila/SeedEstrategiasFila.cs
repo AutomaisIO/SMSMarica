@@ -100,7 +100,10 @@ internal sealed class SeedEstrategiasFila
             UnidadeNomeSisreg = $"UNIDADE ESTRATEGIA {sufixo}",
             ProfissionalCpf = seed.Cpf,
             ProfissionalNome = $"DR TESTE {sufixo}",
-            ProcedimentoCodigo = "9" + Random.Shared.Next(100, 999) + "001",
+            // Faixa "8xxx" de propósito: o grupo é casado pelo PREFIXO "9xxx" sorteado, e uma
+            // mamografia sorteada na mesma faixa às vezes caía dentro dele — as 4 vagas dela
+            // viravam vagas do grupo (20 → 24) e o deploy parava por sorteio.
+            ProcedimentoCodigo = "8" + Random.Shared.Next(100, 999) + "001",
             ProcedimentoNome = $"MAMOGRAFIA TESTE {sufixo}",
             DiaSemana = DayOfWeek.Tuesday,
             HoraInicio = new TimeOnly(8, 0),
