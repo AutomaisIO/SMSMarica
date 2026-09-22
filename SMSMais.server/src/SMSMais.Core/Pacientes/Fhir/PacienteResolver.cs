@@ -129,8 +129,13 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
             // era cortada em 50 alfabéticos — origem do ticket #91.
             ColetarIds(await fhir.BuscarPorTermoAsync(termo.Trim(), limite, ct), ids);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
+            // Mesma régua do ResolverAsync: hub indisponível/LENTO degrada para conjunto vazio
+            // (o chamador cai no match local). O timeout do HttpClient lança
+            // TaskCanceledException (é OperationCanceledException) mas com o ct do chamador
+            // intacto — sem o `|| !ct.IsCancellationRequested` ele escapava e virava 500 na
+            // barra de busca. Só a cancelação do CHAMADOR propaga.
             logger.LogWarning(ex, "Busca de pacientes por termo no hub FHIR falhou — seguindo sem ids.");
         }
         return ids;

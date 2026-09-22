@@ -1,4 +1,5 @@
 ﻿using Hl7.Fhir.Model;
+using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Dtos;
 using SMSMais.Core.Common.Documentos;
 using SMSMais.Core.Common.Excecoes;
@@ -15,7 +16,8 @@ namespace SMSMais.Core.Pacientes;
 public sealed class PacientesService(
     IPacienteFhirClient fhir,
     Auditoria.IAuditoriaService auditoria,
-    Geo.IGeocodificadorService geocoder) : IPacientesService
+    Geo.IGeocodificadorService geocoder,
+    Microsoft.Extensions.Logging.ILogger<PacientesService> logger) : IPacientesService
 {
     private const int LimiteBusca = 10;
 
@@ -117,8 +119,21 @@ public sealed class PacientesService(
             numero = numero[2..];
         if (numero.Length < 8) return [];
 
-        var bundle = await fhir.BuscarAsync(telecom: numero, ct: ct);
-        return [.. bundle.Entry.Select(e => e.Resource).OfType<Patient>()];
+        try
+        {
+            var bundle = await fhir.BuscarAsync(telecom: numero, ct: ct);
+            return [.. bundle.Entry.Select(e => e.Resource).OfType<Patient>()];
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            // Caminho de EXIBIÇÃO (quais pacientes têm este telefone, na thread da conversa):
+            // hub indisponível/lento degrada para vazio em vez de virar 500. O timeout do
+            // HttpClient lança TaskCanceledException com o ct do chamador intacto — por isso o
+            // `|| !ct.IsCancellationRequested`. NÃO é o guard de unicidade do OTP (esse fica em
+            // TelefoneValidacaoService e não pode degradar para "número livre").
+            logger.LogWarning(ex, "Busca de pacientes por telefone no hub FHIR falhou — seguindo sem resultados.");
+            return [];
+        }
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default)
