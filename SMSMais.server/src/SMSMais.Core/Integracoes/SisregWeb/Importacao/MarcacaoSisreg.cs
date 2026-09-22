@@ -64,6 +64,13 @@ public sealed record MarcacaoSisreg(
     /// <summary>Vaga consumida (<c>RESERVA</c> / <c>1ª VEZ</c> / <c>RETORNO</c>).</summary>
     string? VagaConsumida = null,
 
+    /// <summary>
+    /// Natureza da vaga já normalizada: <c>true</c> = RETORNO, <c>false</c> = 1ª VEZ, <c>null</c> =
+    /// desconhecida. No TXT sai da coluna 8 ("Vaga (flag)": 1=Retorno, 0=1ª vez); na varredura, de
+    /// <see cref="VagaSolicitada"/> ("RETORNO"/"1ª VEZ"). É o que materializa <c>Solicitacao.TipoVaga</c>.
+    /// </summary>
+    bool? EhRetorno = null,
+
     /// <summary>CPF do profissional EXECUTANTE — o eixo da varredura. Não confundir com o
     /// solicitante: são papéis opostos na mesma solicitação.</summary>
     string? CpfProfissionalExecutante = null,

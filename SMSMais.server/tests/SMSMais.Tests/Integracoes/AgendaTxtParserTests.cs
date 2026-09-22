@@ -11,12 +11,12 @@ namespace SMSMais.Tests.Integracoes;
 public class AgendaTxtParserTests
 {
     // Uma linha de dados de 38 campos, parametrizada só no que os testes checam.
-    private static string Linha(string codigo, string cns = "700000000000001") =>
+    private static string Linha(string codigo, string cns = "700000000000001", string vaga = "0") =>
         string.Join(';', new[]
         {
             codigo, "1305007", "0204030030", "MAMOGRAFIA BILATERAL",   // 0-3
             "72754842772", "MARCO EXECUTANTE",                          // 4-5 exec prof
-            "01.07.2026", "08:00", "0",                                 // 6-8 data/hora/tipo
+            "01.07.2026", "08:00", vaga,                                // 6-8 data/hora/vaga(flag)
             cns, "FULANA DE TAL",                                       // 9-10 cns/nome
             "08.05.1983", "43", "517", "MAE DE TAL",                    // 11-14
             "RUA", "TRINTA", "LT05", "S/N", "CENTRO", "24921544",       // 15-20 endereço
@@ -54,6 +54,22 @@ public class AgendaTxtParserTests
         m.CodigoSigtap.Should().Be("0204030030");
         m.DataSolicitacao!.Value.ToString("yyyy-MM-dd").Should().Be("2026-05-27");
         m.DataRegulacao!.Value.ToString("yyyy-MM-dd").Should().Be("2026-06-02");
+        m.EhRetorno.Should().BeFalse();                      // coluna 8 = "0" → 1ª vez
+    }
+
+    [Theory]
+    [InlineData("1", true)]    // RETORNO
+    [InlineData("0", false)]   // 1ª vez
+    [InlineData("", null)]     // vazio → desconhecido
+    [InlineData("x", null)]    // fora do domínio → desconhecido
+    public void Coluna_8_vaga_flag_vira_EhRetorno(string flag, bool? esperado)
+    {
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + Linha("670119011", vaga: flag);
+
+        var r = AgendaTxtParser.Parse(txt, "irrelevante.txt");
+
+        r.Marcacoes.Should().HaveCount(1);
+        r.Marcacoes[0].EhRetorno.Should().Be(esperado);
     }
 
     [Fact]

@@ -138,6 +138,7 @@ public static partial class ConsAgendasParser
                 SituacaoAgendamento: situacao,
                 VagaSolicitada: vagaSolicitada,
                 VagaConsumida: vagaConsumida,
+                EhRetorno: RetornoDeTexto(vagaSolicitada ?? vagaConsumida),
                 CpfProfissionalExecutante: ctx.CpfProfissional,
                 NomeProfissionalExecutante: ctx.NomeProfissional,
                 CodigoProcedimentoSisreg: null));
@@ -176,6 +177,17 @@ public static partial class ConsAgendasParser
     }
 
     private static string SoDigitos(string valor) => new([.. valor.Where(char.IsDigit)]);
+
+    /// <summary>Texto da vaga da tela (<c>RETORNO</c> / <c>1ª VEZ</c> / <c>RESERVA</c>) → retorno?
+    /// RETORNO → true; contém "VEZ" (1ª vez) → false; RESERVA/vazio → null (indeterminado).</summary>
+    private static bool? RetornoDeTexto(string? valor)
+    {
+        var v = Normalizar(valor ?? string.Empty);
+        if (v.Length == 0) return null;
+        if (v.Contains("RETORNO")) return true;
+        if (v.Contains("VEZ")) return false;
+        return null;
+    }
 
     /// <summary>Maiúsculas sem acento — os rótulos do SISREG oscilam em acentuação entre telas.</summary>
     private static string Normalizar(string s)

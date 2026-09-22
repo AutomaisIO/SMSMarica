@@ -127,6 +127,14 @@ public class Solicitacao
     /// </summary>
     public string? CidCodigo { get; set; }
 
+    /// <summary>
+    /// Natureza da vaga no SISREG (coluna 8 "Vaga (flag)" do export): Primeira Vez ou Retorno.
+    /// Materializada a partir do TXT/varredura para a tela poder destacar retornos sem reparsear o
+    /// <see cref="RawSisreg"/>. Null = não informado (pedido manual / origem sem o dado). Ver
+    /// <see cref="TipoVaga"/>.
+    /// </summary>
+    public TipoVaga? TipoVaga { get; set; }
+
     public string? Justificativa { get; set; }
     public string? Observacoes { get; set; }
 

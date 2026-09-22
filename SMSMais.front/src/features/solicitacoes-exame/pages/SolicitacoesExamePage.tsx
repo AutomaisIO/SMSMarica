@@ -35,6 +35,7 @@ import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
+import { VagaBadge } from '@/features/solicitacoes-exame/components/VagaBadge';
 import { SituacaoBadge, derivarSituacao } from '@/features/solicitacoes-exame/components/SituacaoSolicitacao';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
@@ -376,6 +377,8 @@ export function SolicitacoesExamePage() {
         return (
           <span className="inline-flex flex-wrap items-center gap-1.5">
             {sit ? <SituacaoBadge situacao={sit} /> : <StatusBadgeSolicitacao status={s.status} />}
+            {/* Marca de RETORNO (vaga do SISREG) — ticket #135. */}
+            <VagaBadge tipoVaga={s.tipoVaga} />
             {/* Checks das comunicações: confirmação do agendamento, exame liberado e laudo pronto. */}
             <ChecksComunicacao chip={s.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
             <ChecksComunicacao chip={s.chipExameLiberado} finalidade="ExameLiberado" />
