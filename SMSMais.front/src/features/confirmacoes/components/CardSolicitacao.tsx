@@ -72,6 +72,16 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
   const emAtendimentoPorOutro = a?.situacao === 'EmAtendimento' && !a.ehMeu;
   const meuEmAtendimento = a?.situacao === 'EmAtendimento' && a.ehMeu;
   const estacionada = a?.situacao === 'Pendente' || a?.situacao === 'ContatoErrado';
+  // "Confirmar" direto do card, sem passar antes por Atender/Retomar: o endpoint de confirmar já
+  // auto-assume a ficha (409 só se OUTRA pessoa estiver ativamente em atendimento). Some quando já
+  // está confirmado, quando é o meu em atendimento (o bloco abaixo já tem o botão) e quando está
+  // preso por outra pessoa (aí o caminho é "Assumir atendimento"). Ticket #133.
+  const abaConfirmaRapido = aba === 'Pendentes' || aba === 'NaoConfirmados' || aba === 'ContatoErrado';
+  const podeConfirmarRapido =
+    abaConfirmaRapido &&
+    item.statusConfirmacao !== 'Confirmada' &&
+    !meuEmAtendimento &&
+    !emAtendimentoPorOutro;
   const rotaSolicitacao = item.exameId ? `/app/solicitacoes-exame/${item.exameId}` : `/app/consultas/${item.solicitacaoId}`;
   const dataAgendada = item.dataAgendada ? new Date(item.dataAgendada) : null;
   const ehHoje = dataAgendada ? dataAgendada.toDateString() === new Date().toDateString() : false;
@@ -178,6 +188,12 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
           {estacionada ? (
             <Button tamanho="sm" variante="outline" disabled={ocupado} onClick={() => aoAcao('atender', item)}>
               <Undo2 className="mr-1 h-3.5 w-3.5" /> Retomar
+            </Button>
+          ) : null}
+
+          {podeConfirmarRapido ? (
+            <Button tamanho="sm" disabled={ocupado} onClick={() => aoAcao('confirmar', item)}>
+              <Check className="mr-1 h-3.5 w-3.5" /> Confirmar
             </Button>
           ) : null}
 

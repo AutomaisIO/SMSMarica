@@ -12,12 +12,13 @@ import {
 } from '@/features/conversas/api/queries';
 import { useAssinaturaConversa } from '@/features/conversas/hooks/useChatHub';
 import { ComposerMensagem } from '@/features/conversas/components/ComposerMensagem';
+import { ConfirmarAgendamentoChat } from '@/features/conversas/components/ConfirmarAgendamentoChat';
 import { EncaminharConversaDialog } from '@/features/conversas/components/EncaminharConversaDialog';
 import { TransferirConversaDialog } from '@/features/conversas/components/TransferirConversaDialog';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { PacientesDoTelefone } from '@/features/conversas/components/PacientesDoTelefone';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { useAuth, useTemConsulta } from '@/shared/auth/authStore';
+import { useAuth, usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import type { Mensagem } from '@/features/conversas/types';
 
 function hora(iso: string): string {
@@ -128,6 +129,8 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   const { data: mensagens, isLoading } = useMensagens(conversaId);
   const usuarioId = useAuth((s) => s.usuario?.id ?? null);
   const podeSupervisao = useTemConsulta('ConversasSupervisao');
+  // #133: confirmar agendamento direto do chat exige quem pode dar desfecho de confirmação.
+  const podeConfirmar = usePermissao('Confirmacoes', 'Edicao');
   const assumir = useAssumirConversa();
   const marcarLida = useMarcarLida();
   const devolver = useDevolverConversa();
@@ -218,6 +221,11 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
 
           {conversa && (
             <div className="flex shrink-0 items-center gap-1.5">
+              {/* #133: confirmar agendamento do paciente sem sair da conversa. */}
+              {conversa.pacienteId && podeConfirmar && (
+                <ConfirmarAgendamentoChat pacienteId={conversa.pacienteId} />
+              )}
+
               {/* Chip de posse: quem atende esta conversa. */}
               {souDono ? (
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">

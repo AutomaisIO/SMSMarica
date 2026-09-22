@@ -108,6 +108,23 @@ public sealed record MotivosTelefoneComprometidoDto(
 
 public sealed record AtendenteConfirmacaoDto(Guid Id, string Nome);
 
+/// <summary>
+/// Um agendamento do paciente que ainda espera confirmação — o suficiente para o atendente
+/// confirmar direto da janela de chat (ticket #133), sem abrir o menu Confirmações. Só entram os
+/// que dá para confirmar: futuros, não cancelados e ainda pendentes de resposta.
+/// </summary>
+/// <param name="EmAtendimentoPorOutro">Outra pessoa está ativamente atendendo esta ficha — confirmar daqui daria 409.</param>
+public sealed record AgendamentoPendentePacienteDto(
+    Guid SolicitacaoId,
+    Guid? ExameId,
+    string? CodigoSolicitacao,
+    string Categoria,
+    string? Procedimento,
+    string? UnidadeExecutante,
+    DateTime? DataAgendada,
+    bool EmAtendimentoPorOutro,
+    string? AtendenteNome);
+
 public sealed record ConfirmarAtendimentoRequest(string? Meio, string? Observacao);
 public sealed record CancelarAtendimentoRequest(string Motivo, string? Meio);
 public sealed record PendenteAtendimentoRequest(string Motivo);
