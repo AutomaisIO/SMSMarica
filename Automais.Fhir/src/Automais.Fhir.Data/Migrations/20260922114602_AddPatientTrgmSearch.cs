@@ -24,6 +24,12 @@ namespace Automais.Fhir.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Autossuficiência: em produção o schema smsmarica já existe (criado pelas migrations
+            // do SMSMais.server) e isto é no-op; no banco de teste do hub (Testcontainers, search
+            // path só `fhir, public`) e numa instância nova ele pode não existir ainda. Sem criá-lo
+            // aqui, o CREATE EXTENSION ... SCHEMA smsmarica abaixo falha e derruba a migração.
+            migrationBuilder.Sql("CREATE SCHEMA IF NOT EXISTS smsmarica;");
+
             // gin_trgm_ops (pg_trgm) e o dicionário unaccent resolvem via search_path.
             migrationBuilder.Sql("SET LOCAL search_path = smsmarica, fhir, public;");
 
