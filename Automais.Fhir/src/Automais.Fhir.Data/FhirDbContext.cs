@@ -25,9 +25,25 @@ public sealed class FhirDbContext(DbContextOptions<FhirDbContext> options) : DbC
     /// <summary>Unidade de saúde — eixo durável do dado clínico (ADR-0039).</summary>
     public DbSet<OrganizationRow> Organizations => Set<OrganizationRow>();
 
+    /// <summary>
+    /// Normalização insensível a acento, versão <b>IMMUTABLE</b> de <c>unaccent()</c> — só
+    /// traduzível em consulta EF (chamar em C# lança). Existe porque a <c>unaccent(text)</c> da
+    /// extensão é <c>STABLE</c> (e pertence ao <c>postgres</c>, não dá para marcá-la IMMUTABLE),
+    /// e um índice de expressão exige IMMUTABLE. A busca de paciente por nome usa
+    /// <c>f_unaccent(nome) ILIKE …</c>, atendida pelo índice GIN trigram
+    /// <c>ix_patient_nome_funaccent_trgm</c> (migration AddPatientTrgmSearch). A função vive no
+    /// schema smsmarica, junto da unaccent que ela encapsula — mesmo acoplamento de runtime que o
+    /// serviço já tem (search_path inclui smsmarica; ver Program.cs).
+    /// </summary>
+    public static string FUnaccent(string input) =>
+        throw new NotSupportedException("f_unaccent só é traduzível em consultas EF.");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FhirDbContext).Assembly);
+
+        modelBuilder.HasDbFunction(typeof(FhirDbContext).GetMethod(nameof(FUnaccent))!)
+            .HasName("f_unaccent").HasSchema("smsmarica");
     }
 }

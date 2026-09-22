@@ -126,10 +126,11 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
                 || (p.CnsTodos != null && p.CnsTodos.Any(c => procurado.Contains(c))));
         }
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
-            // Insensível a acento E case: unaccent() (extensão, provisionada pela migration do
-            // SMSMais.server no mesmo banco) normaliza os dois lados; o ILIKE cuida do case.
+            // Insensível a acento E case: f_unaccent() (wrapper IMMUTABLE de unaccent) normaliza
+            // os dois lados; o ILIKE cuida do case. f_unaccent (não unaccent) porque é o que casa
+            // o índice GIN trigram ix_patient_nome_funaccent_trgm — sem ele, seq scan em 378k.
             query = query.Where(p => p.Nome != null
-                && EF.Functions.ILike(EF.Functions.Unaccent(p.Nome), EF.Functions.Unaccent($"%{filtro.Nome}%")));
+                && EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome), FhirDbContext.FUnaccent($"%{filtro.Nome}%")));
 
         // Busca humana unificada: nome (contém) OU CPF/CNS por PREFIXO (não espera terminar).
         // `%` do termo é escapado para não virar wildcard vindo do usuário.
@@ -141,7 +142,7 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
             var contemNome = $"%{EscaparLike(termo!)}%";
             var prefixoDoc = digitos.Length > 0 ? digitos + "%" : null;
             query = query.Where(p =>
-                (p.Nome != null && EF.Functions.ILike(EF.Functions.Unaccent(p.Nome), EF.Functions.Unaccent(contemNome)))
+                (p.Nome != null && EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome), FhirDbContext.FUnaccent(contemNome)))
                 || (prefixoDoc != null && p.Cpf != null && EF.Functions.Like(p.Cpf, prefixoDoc))
                 || (prefixoDoc != null && p.Cns != null && EF.Functions.Like(p.Cns, prefixoDoc)));
         }
@@ -171,7 +172,7 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
             var padraoPrefixo = $"{EscaparLike(termo!)}%";
             ordenada = query
                 .OrderByDescending(p => p.Nome != null
-                    && EF.Functions.ILike(EF.Functions.Unaccent(p.Nome), EF.Functions.Unaccent(padraoPrefixo)))
+                    && EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome), FhirDbContext.FUnaccent(padraoPrefixo)))
                 .ThenBy(p => p.Nome);
         }
         else
