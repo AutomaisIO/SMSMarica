@@ -223,10 +223,30 @@ public static class PatientMergeFhir
         bool manual = false)
     {
         p.Telecom ??= [];
+        // Principal de-fato ANTES da troca (rank1 ?? primeiro telefone) — para aposentar o número
+        // negado que uma edição humana está substituindo (não apaga: vira histórico). Só em edição
+        // manual: o import não é uma afirmação humana sobre qual é o número certo.
+        var principalAntigo = manual ? PrincipalDeFatoDigitos(p) : null;
         UpsertTelefone(p, principal, use: null, rank: 1, manual);
         UpsertTelefone(p, celular, use: ContactPoint.ContactPointUse.Mobile, rank: null, manual);
         UpsertTelefone(p, residencial, use: ContactPoint.ContactPointUse.Home, rank: null, manual);
         UpsertEmail(p, email);
+        // Trocou o principal por um número diferente: o(s) número(s) negado(s) que não são o novo
+        // principal viram histórico (period.end) em vez de ficarem órfãos alimentando o badge.
+        var principalNovo = Digitos(principal);
+        if (manual && principalAntigo is { Length: >= 8 } && principalNovo.Length >= 8
+            && !MesmoNumero(principalAntigo, principalNovo))
+            AposentarNegadosExceto(p, principalNovo, DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>Número (em dígitos) do principal de-fato: o rank1, ou o primeiro telefone não
+    /// aposentado. Espelha <c>TelefonePrincipalNativo</c> no que importa para a troca.</summary>
+    private static string PrincipalDeFatoDigitos(Patient p)
+    {
+        var fones = (p.Telecom ?? []).Where(t =>
+            t.System == ContactPoint.ContactPointSystem.Phone && !EhAposentado(t)).ToList();
+        var princ = fones.FirstOrDefault(t => t.Rank == 1) ?? fones.FirstOrDefault();
+        return Digitos(princ?.Value);
     }
 
     private static void UpsertTelefone(Patient p, string? valor, ContactPoint.ContactPointUse? use, int? rank, bool manual)
@@ -326,6 +346,10 @@ public static class PatientMergeFhir
         confirmado.AddExtension(ExtContatoVinculo, new FhirString(vinculo.ToString()));
         // Verificação positiva vence a negação anterior: o número foi provado por OTP AGORA.
         confirmado.RemoveExtension(ExtContatoNegado);
+        confirmado.Period = null; // um número verificado agora não é histórico
+        // Verificou um número novo enquanto havia OUTRO número negado (o antigo, errado): esse vira
+        // histórico (period.end), não fica órfão alimentando o badge "Número inválido".
+        AposentarNegadosExceto(p, Digitos(confirmado.Value), em);
     }
 
     /// <summary>
@@ -369,6 +393,42 @@ public static class PatientMergeFhir
         return tirou;
     }
 
+    /// <summary>
+    /// Telecom APOSENTADO: número antigo que continua no cadastro como HISTÓRICO (o carimbo de
+    /// negado é preservado como motivo), mas que NENHUMA leitura/consulta usa. Marcado por
+    /// <c>ContactPoint.period.end</c> no passado. Ver <see cref="AposentarNegadosExceto"/>.
+    /// </summary>
+    public static bool EhAposentado(ContactPoint t)
+    {
+        if (t.Period?.EndElement is not { } fim) return false;
+        try { return fim.ToDateTimeOffset(TimeSpan.Zero) <= DateTimeOffset.UtcNow; }
+        catch { return true; } // period.end presente mas ilegível → tratar como aposentado
+    }
+
+    /// <summary>
+    /// Aposenta (histórico, não-consultável) TODO telecom de telefone marcado como NEGADO cujo
+    /// número seja DIFERENTE de <paramref name="numeroAtivoDigitos"/> — carimba
+    /// <c>period.end = agora</c> e MANTÉM o marcador de negado como motivo/histórico (nunca apaga
+    /// o telecom nem o carimbo). Usado quando um número novo passa a valer (principal manual
+    /// trocado ou número verificado por OTP): o número velho denunciado vira histórico e deixa de
+    /// alimentar o badge "Número inválido", o principal/celular/residencial e os envios.
+    /// </summary>
+    public static void AposentarNegadosExceto(Patient p, string? numeroAtivoDigitos, DateTimeOffset em)
+    {
+        if (p.Telecom is null) return;
+        var ativo = Digitos(numeroAtivoDigitos);
+        foreach (var t in p.Telecom.Where(t =>
+            t.System == ContactPoint.ContactPointSystem.Phone
+            && t.GetExtension(ExtContatoNegado) is not null
+            && !EhAposentado(t)
+            && !(ativo.Length >= 8 && MesmoNumero(Digitos(t.Value), ativo))))
+        {
+            t.Period ??= new Period();
+            t.Period.EndElement = new FhirDateTime(em);
+            t.Rank = null; // aposentado nunca é o principal
+        }
+    }
+
     /// <summary>Vínculo declarado no telecom confirmado (default: próprio paciente).</summary>
     public static Data.Entities.Enums.VinculoContatoVerificado VinculoContatoConfirmado(Patient p)
     {
@@ -383,7 +443,8 @@ public static class PatientMergeFhir
     public static (string Numero, DateTimeOffset? Em)? TelefoneNegado(Patient p)
     {
         var t = p.Telecom?.FirstOrDefault(x =>
-            x.System == ContactPoint.ContactPointSystem.Phone && x.GetExtension(ExtContatoNegado) is not null);
+            x.System == ContactPoint.ContactPointSystem.Phone
+            && x.GetExtension(ExtContatoNegado) is not null && !EhAposentado(x));
         var digitos = Digitos(t?.Value);
         if (t is null || digitos.Length < 8) return null;
 
@@ -405,7 +466,7 @@ public static class PatientMergeFhir
     public static (string Numero, DateTimeOffset? Em)? TelefoneConfirmado(Patient p)
     {
         var t = p.Telecom?.FirstOrDefault(x =>
-            x.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(x));
+            x.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(x) && !EhAposentado(x));
         var digitos = Digitos(t?.Value);
         if (t is null || digitos.Length < 8) return null;
 

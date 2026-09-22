@@ -371,7 +371,7 @@ internal static class PacienteFhirMapper
             && c.Relationship.Any(r => r.Coding != null && r.Coding.Any(cd => cd.Code == code)))?.Name?.Text;
 
     private static string? TelecomNativo(Patient p, ContactPoint.ContactPointSystem sistema) =>
-        p.Telecom?.FirstOrDefault(t => t.System == sistema)?.Value;
+        p.Telecom?.FirstOrDefault(t => t.System == sistema && !PatientMergeFhir.EhAposentado(t))?.Value;
 
     private static EnderecoDto? EnderecoNativo(Patient p)
     {
@@ -415,14 +415,17 @@ internal static class PacienteFhirMapper
 
     private static string? TelefonePrincipalNativo(Patient p)
     {
-        var fones = p.Telecom?.Where(t => t.System == ContactPoint.ContactPointSystem.Phone).ToList() ?? [];
+        // Ignora telecom aposentado (número antigo mantido só como histórico).
+        var fones = p.Telecom?.Where(t => t.System == ContactPoint.ContactPointSystem.Phone
+            && !PatientMergeFhir.EhAposentado(t)).ToList() ?? [];
         var princ = fones.FirstOrDefault(t => t.Rank == 1) ?? fones.FirstOrDefault();
         return string.IsNullOrWhiteSpace(princ?.Value) ? null : princ.Value;
     }
 
     private static string? TelefonePorUsoNativo(Patient p, ContactPoint.ContactPointUse uso)
     {
-        var fones = p.Telecom?.Where(t => t.System == ContactPoint.ContactPointSystem.Phone).ToList() ?? [];
+        var fones = p.Telecom?.Where(t => t.System == ContactPoint.ContactPointSystem.Phone
+            && !PatientMergeFhir.EhAposentado(t)).ToList() ?? [];
         var princ = fones.FirstOrDefault(t => t.Rank == 1) ?? fones.FirstOrDefault();
         // Exclui o principal POR REFERÊNCIA (não por dígitos): permite que celular/residencial
         // com o mesmo número do principal ainda sejam representados/lidos distintamente.
