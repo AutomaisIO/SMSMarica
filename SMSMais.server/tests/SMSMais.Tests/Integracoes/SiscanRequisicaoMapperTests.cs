@@ -45,6 +45,32 @@ public class SiscanRequisicaoMapperTests
             .Should().Be(esperado);
     }
 
+    // ------------------------------------------------------------------ duplicidade
+
+    /// <summary>
+    /// A janela da crítica: 10 dias à frente, recuando um ano. Os 10 dias existem porque a
+    /// requisição pode ter data de solicitação à frente; o ano para trás é o intervalo em que uma
+    /// segunda mamografia da mesma paciente é suspeita.
+    /// </summary>
+    [Fact]
+    public void Janela_de_duplicidade_vai_dez_dias_a_frente_e_um_ano_para_tras()
+    {
+        var (inicio, fim) = SiscanRequisicaoService.JanelaDeDuplicidade(new DateOnly(2026, 9, 22));
+
+        fim.Should().Be(new DateOnly(2026, 10, 2));
+        inicio.Should().Be(new DateOnly(2025, 10, 2));
+    }
+
+    /// <summary>Ano bissexto não pode encolher nem esticar a janela por um dia.</summary>
+    [Fact]
+    public void Janela_atravessa_ano_bissexto_sem_deslizar()
+    {
+        var (inicio, fim) = SiscanRequisicaoService.JanelaDeDuplicidade(new DateOnly(2028, 2, 25));
+
+        fim.Should().Be(new DateOnly(2028, 3, 6));
+        inicio.Should().Be(new DateOnly(2027, 3, 6));
+    }
+
     // ------------------------------------------------------------------ não inventar
 
     /// <summary>

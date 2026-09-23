@@ -71,6 +71,28 @@ public sealed class SiscanRequisicaoService(
         }
 
         var sessao = sessoes.Exigir(SessaoId());
+
+        // 1) A requisição DESTE pedido já está lá? Acontece quando ela nasceu fora do painel.
+        //    Não se cria outra — a tela oferece vincular, e os números vêm junto.
+        var nossa = await ProcurarPeloProntuarioAsync(sessao, caso, cancellationToken);
+        if (nossa is not null)
+        {
+            return new SiscanPreparoDto(
+                false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
+                caso.TipoMamografia, RotuloTipo(caso.TipoMamografia), [], null,
+                caso.SolicitanteDaFicha, [], [], EncontradaPeloProntuario: nossa);
+        }
+
+        // 2) A paciente já tem OUTRA requisição na janela? Aqui o sistema para.
+        var duplicidades = await ProcurarPorCnsAsync(sessao, caso, cancellationToken);
+        if (duplicidades.Count > 0)
+        {
+            return new SiscanPreparoDto(
+                false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
+                caso.TipoMamografia, RotuloTipo(caso.TipoMamografia), [], null,
+                caso.SolicitanteDaFicha, [], [], Duplicidades: duplicidades);
+        }
+
         var percurso = await PercorrerAsync(sessao, caso, cancellationToken);
 
         var campos = SiscanRequisicaoMapper.Montar(
@@ -100,6 +122,39 @@ public sealed class SiscanRequisicaoService(
                 + "duplicada para a mesma paciente.");
         }
 
+        var sessao = sessoes.Exigir(SessaoId());
+
+        // A requisição DESTE pedido já está lá? Vem ANTES da crítica de lacunas de propósito:
+        // vincular o que já existe não pode depender de a anamnese estar completa — o dado já
+        // está no SISCAN de qualquer jeito, e o que falta aqui é só o carimbo.
+        //
+        // Cobre dois casos: o POST que gravou e caiu antes de carimbar, e a requisição que nasceu
+        // fora do painel (foi o que aconteceu com as criadas pelo laboratório).
+        var nossa = await ProcurarPeloProntuarioAsync(sessao, caso, cancellationToken);
+        if (nossa is not null)
+        {
+            logger.LogWarning(
+                "SISCAN: requisição do accession {Accession} JÁ existia (protocolo {Protocolo}). "
+                + "Vinculando em vez de criar outra.", caso.Exame.AccessionNumber, nossa.Protocolo);
+
+            return await CarimbarAsync(
+                caso.Exame, nossa.Protocolo, nossa.NumeroExame, "(já existia no SISCAN)",
+                cancellationToken);
+        }
+
+        // A paciente já tem OUTRA requisição na janela? O sistema não decide qual vale.
+        var duplicidades = await ProcurarPorCnsAsync(sessao, caso, cancellationToken);
+        if (duplicidades.Count > 0)
+        {
+            var lista = string.Join(" · ", duplicidades.Take(3).Select(
+                d => $"protocolo {d.Protocolo} ({d.Status}, {d.Unidade})"));
+
+            throw new ConflitoException(
+                "siscan.paciente_ja_tem_requisicao",
+                $"Esta paciente já tem {duplicidades.Count} requisição(ões) de mamografia no "
+                + $"SISCAN no último ano: {lista}. Resolva lá qual delas vale antes de criar outra.");
+        }
+
         var campos = SiscanRequisicaoMapper.Montar(
             caso.ConteudoAnamnese, caso.Exame.AccessionNumber, caso.DataSolicitacao, caso.TipoMamografia);
 
@@ -109,21 +164,6 @@ public sealed class SiscanRequisicaoService(
                 "siscan.anamnese_incompleta",
                 "A anamnese não respondeu tudo que o SISCAN exige: "
                 + string.Join(" · ", campos.Lacunas.Select(l => l.Pergunta)));
-        }
-
-        var sessao = sessoes.Exigir(SessaoId());
-
-        // Rede contra duplicata: se um POST anterior gravou e caiu antes de carimbar, a requisição
-        // existe lá com o NOSSO AccessionNumber no Nº do Prontuário. Procurar antes é mais barato
-        // que descobrir depois — e o SISCAN não tem nada nosso para barrar uma segunda.
-        var jaLa = await ProcurarPeloProntuarioAsync(sessao, caso, cancellationToken);
-        if (jaLa is not null)
-        {
-            logger.LogWarning(
-                "SISCAN: requisição do accession {Accession} JÁ existia (protocolo {Protocolo}). "
-                + "Carimbando em vez de criar outra.", caso.Exame.AccessionNumber, jaLa.Protocolo);
-
-            return await CarimbarAsync(caso.Exame, jaLa.Protocolo, jaLa.NumeroExame, "(já existia)", cancellationToken);
         }
 
         var percurso = await PercorrerAsync(sessao, caso, cancellationToken);
@@ -430,55 +470,129 @@ public sealed class SiscanRequisicaoService(
 
     // ------------------------------------------------------------------ releitura
 
-    private sealed record NaGrade(string Protocolo, string NumeroExame);
+    /// <summary>
+    /// Os três status da pesquisa. Varrer os três não é zelo: <b>o Status é obrigatório</b> —
+    /// medido em 22/09/2026, sem ele a tela responde "Selecione um Status" e devolve zero linhas.
+    /// Perguntar só por "Requisitado" deixaria passar uma requisição que já tem resultado, que é
+    /// justamente a que mais importa não duplicar.
+    /// </summary>
+    private static readonly string[] TodosOsStatus = ["01", "02", "03"];
 
     /// <summary>
-    /// Procura a requisição pelo Nº do Prontuário — onde gravamos o nosso AccessionNumber.
+    /// A janela da crítica de duplicidade: <b>10 dias à frente, recuando um ano</b>.
     ///
-    /// <para>A pesquisa exige status e período, e a data precisa de um round-trip A4J antes do
-    /// Pesquisar: em JSF 1.2 a validação roda ANTES do Update Model, então o validador cruzado lê
-    /// no bean o valor antigo e responde "Data para comparação não informada".</para>
+    /// <para>Os 10 dias existem porque a requisição pode ter sido lançada com data de solicitação
+    /// à frente; o ano para trás é o intervalo em que uma segunda mamografia da mesma paciente é
+    /// suspeita e merece olho humano.</para>
     /// </summary>
-    private static async Task<NaGrade?> ProcurarPeloProntuarioAsync(
-        ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
+    public static (DateOnly Inicio, DateOnly Fim) JanelaDeDuplicidade(DateOnly hoje)
     {
-        var html = await sessao.AbrirPorMenuAsync(SiscanWebSessao.MenuGerenciarExame, cancellationToken);
-        var doc = SiscanHtml.Documento(html);
+        var fim = hoje.AddDays(10);
+        return (fim.AddYears(-1), fim);
+    }
 
-        var inicio = caso.DataSolicitacao.AddDays(-1).ToString("dd/MM/yyyy");
-        var fim = DateOnly.FromDateTime(DateTime.Today).ToString("dd/MM/yyyy");
+    /// <summary>
+    /// Pesquisa em GERENCIAR EXAME e devolve as linhas da grade.
+    ///
+    /// <para>A data precisa de um round-trip A4J antes do Pesquisar: em JSF 1.2 a validação roda
+    /// ANTES do Update Model, então o validador cruzado lê no bean o valor antigo e responde
+    /// "Data para comparação não informada".</para>
+    /// </summary>
+    private static async Task<List<SiscanHtml.LinhaExame>> PesquisarAsync(
+        ISiscanWebSessao sessao, DateOnly de, DateOnly ate,
+        IReadOnlyDictionary<string, string> filtros, CancellationToken cancellationToken)
+    {
+        var inicio = de.ToString("dd/MM/yyyy");
+        var fim = ate.ToString("dd/MM/yyyy");
+        var achadas = new List<SiscanHtml.LinhaExame>();
 
-        var campoData = doc.QuerySelector("input[name='frm:dataRequisicaoInputDate']");
-        if (campoData is not null)
+        foreach (var status in TodosOsStatus)
         {
-            html = await sessao.SubmeterA4JAsync(
-                html, SiscanHtml.FormPrincipal,
-                new Dictionary<string, string> { ["frm:dataRequisicaoInputDate"] = inicio },
-                SiscanHtml.ParametrosA4JDoElemento(campoData), cancellationToken);
-            doc = SiscanHtml.Documento(html);
+            // Refazer a pesquisa a cada status, e não reaproveitar o documento: o ViewState já
+            // foi consumido, e reaproveitá-lo dá resultado inconsistente sem erro nenhum.
+            var html = await sessao.AbrirPorMenuAsync(
+                SiscanWebSessao.MenuGerenciarExame, cancellationToken);
+            var doc = SiscanHtml.Documento(html);
+
+            var campoData = doc.QuerySelector("input[name='frm:dataRequisicaoInputDate']");
+            if (campoData is not null)
+            {
+                html = await sessao.SubmeterA4JAsync(
+                    html, SiscanHtml.FormPrincipal,
+                    new Dictionary<string, string> { ["frm:dataRequisicaoInputDate"] = inicio },
+                    SiscanHtml.ParametrosA4JDoElemento(campoData), cancellationToken);
+                doc = SiscanHtml.Documento(html);
+            }
+
+            var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["frm:statusExame"] = status,
+                ["frm:dataRequisicaoInputDate"] = inicio,
+                ["frm:dataRequisicaoFinalInputDate"] = fim,
+                ["frm:botaoPesquisarExame"] = "frm:botaoPesquisarExame",
+            };
+            foreach (var (k, v) in filtros) extras[k] = v;
+
+            // O checkbox de tipo de exame tem id auto-gerado — resolvido pelo rótulo.
+            var campoMamografia = SiscanHtml.CampoPorRotulo(doc, "Mamografia");
+            if (campoMamografia is not null) extras[campoMamografia] = "01";
+
+            var resultado = await sessao.SubmeterFormAsync(
+                html, SiscanHtml.FormPrincipal, extras, cancellationToken);
+
+            achadas.AddRange(SiscanHtml.Grade(SiscanHtml.Documento(resultado)));
         }
 
-        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["frm:statusExame"] = "01",   // Requisitado — é como toda requisição nasce
-            ["frm:dataRequisicaoInputDate"] = inicio,
-            ["frm:dataRequisicaoFinalInputDate"] = fim,
-            ["frm:numeroProntuario"] = caso.Exame.AccessionNumber,
-            ["frm:botaoPesquisarExame"] = "frm:botaoPesquisarExame",
-        };
-
-        // O checkbox de tipo de exame tem id auto-gerado — resolvido pelo rótulo.
-        var campoMamografia = SiscanHtml.CampoPorRotulo(doc, "Mamografia");
-        if (campoMamografia is not null) extras[campoMamografia] = "01";
-
-        var resultado = await sessao.SubmeterFormAsync(
-            html, SiscanHtml.FormPrincipal, extras, cancellationToken);
-
-        var linha = SiscanHtml.Grade(SiscanHtml.Documento(resultado)).FirstOrDefault();
-        return linha is null
-            ? null
-            : new NaGrade(SiscanHtml.NormalizarProtocolo(linha.Protocolo), linha.NumeroExame);
+        return achadas;
     }
+
+    /// <summary>
+    /// A requisição DESTE pedido já está no SISCAN? Pergunta pelo Nº do Prontuário, onde gravamos
+    /// o nosso AccessionNumber.
+    ///
+    /// <para>Responde "sim" também quando ela nasceu fora do painel — foi o que aconteceu com as
+    /// requisições criadas pelo laboratório antes de existir o carimbo. Nesse caso não se cria
+    /// outra: vincula-se esta.</para>
+    /// </summary>
+    private static async Task<RequisicaoEncontradaDto?> ProcurarPeloProntuarioAsync(
+        ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
+    {
+        var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
+
+        // A data da solicitação pode ser bem anterior à janela (registro retroativo é o caso
+        // comum) — então a busca pelo NOSSO prontuário recua até ela.
+        if (caso.DataSolicitacao < de) de = caso.DataSolicitacao.AddDays(-1);
+
+        var linhas = await PesquisarAsync(
+            sessao, de, ate,
+            new Dictionary<string, string> { ["frm:numeroProntuario"] = caso.Exame.AccessionNumber },
+            cancellationToken);
+
+        return linhas.Count == 0 ? null : Encontrada(linhas[0]);
+    }
+
+    /// <summary>
+    /// A paciente já tem requisição de mamografia na janela? Pergunta pelo Cartão SUS.
+    ///
+    /// <para>Aqui o sistema <b>não decide</b>: se achar, para e manda resolver no SISCAN. Criar a
+    /// segunda seria empurrar para a frente um problema que só uma pessoa sabe resolver — qual
+    /// das duas vale, e o que fazer com a outra.</para>
+    /// </summary>
+    private static async Task<List<RequisicaoEncontradaDto>> ProcurarPorCnsAsync(
+        ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
+    {
+        var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
+
+        var linhas = await PesquisarAsync(
+            sessao, de, ate,
+            new Dictionary<string, string> { ["frm:cartaoSUS"] = caso.Cns },
+            cancellationToken);
+
+        return linhas.Select(Encontrada).ToList();
+    }
+
+    private static RequisicaoEncontradaDto Encontrada(SiscanHtml.LinhaExame l) =>
+        new(SiscanHtml.NormalizarProtocolo(l.Protocolo), l.NumeroExame, l.Datas, l.Unidade, l.Status);
 
     // ------------------------------------------------------------------ nosso lado
 

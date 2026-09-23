@@ -305,7 +305,9 @@ public static partial class SiscanHtml
     /// <summary>Uma linha da grade de GERENCIAR EXAME.</summary>
     /// <param name="NumeroExame">Embutido no id das ações — <b>não</b> aparece como coluna.</param>
     /// <param name="Protocolo">A coluna "Protocolo" — número DIFERENTE do nº do exame.</param>
-    public sealed record LinhaExame(string NumeroExame, string Protocolo, string Paciente, string Status);
+    public sealed record LinhaExame(
+        string NumeroExame, string Protocolo, string Paciente, string Status,
+        string Datas, string Unidade);
 
     [GeneratedRegex(@"frm:listaExamePaginada:(\d+):")]
     private static partial Regex RegexNumeroExame();
@@ -333,6 +335,8 @@ public static partial class SiscanHtml
         var iProtocolo = Coluna("Protocolo");
         var iPaciente = Coluna("Paciente");
         var iStatus = Coluna("Status");
+        var iDatas = Coluna("Datas");
+        var iUnidade = Coluna("Unidade Requisitante");
 
         var linhas = new List<LinhaExame>();
         foreach (var tr in corpo.QuerySelectorAll(":scope > tr"))
@@ -348,7 +352,8 @@ public static partial class SiscanHtml
 
             string Em(int i) => i >= 0 && i < celulas.Count ? celulas[i] : string.Empty;
 
-            linhas.Add(new LinhaExame(numero, Em(iProtocolo), Em(iPaciente), Em(iStatus)));
+            linhas.Add(new LinhaExame(
+                numero, Em(iProtocolo), Em(iPaciente), Em(iStatus), Em(iDatas), Em(iUnidade)));
         }
 
         return linhas;

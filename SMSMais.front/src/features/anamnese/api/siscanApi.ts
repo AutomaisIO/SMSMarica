@@ -27,6 +27,15 @@ export type CampoEnvioSiscan = { pergunta: string; resposta: string };
 
 export type LacunaAnamnese = { campo: string; pergunta: string };
 
+/** Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade. */
+export type RequisicaoEncontrada = {
+  protocolo: string;
+  numeroExame: string;
+  datas: string;
+  unidade: string;
+  status: string;
+};
+
 export type PreparoSiscan = {
   jaGerada: boolean;
   protocolo: string | null;
@@ -41,6 +50,16 @@ export type PreparoSiscan = {
   nomeSolicitanteDaFicha: string | null;
   envio: CampoEnvioSiscan[];
   lacunas: LacunaAnamnese[];
+  /**
+   * A requisição DESTE pedido já está no SISCAN, mas ainda não estava carimbada aqui — acontece
+   * quando ela nasceu fora do painel. Não se cria outra: vincula-se esta.
+   */
+  encontradaPeloProntuario: RequisicaoEncontrada | null;
+  /**
+   * A paciente já tem requisição no período e ela NÃO é deste pedido. Aqui o sistema para: qual
+   * das duas vale é decisão de gente, no SISCAN.
+   */
+  duplicidades: RequisicaoEncontrada[] | null;
 };
 
 export type RequisicaoSiscan = {

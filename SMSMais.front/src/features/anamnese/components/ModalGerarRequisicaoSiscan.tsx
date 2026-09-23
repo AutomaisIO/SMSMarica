@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileCheck2, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileCheck2, Link2, Loader2 } from 'lucide-react';
 import {
   useGerarRequisicaoSiscan,
   usePreparoSiscan,
@@ -41,6 +41,9 @@ export function ModalGerarRequisicaoSiscan({
   const [cnsEscolhido, setCnsEscolhido] = useState<string>('');
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<RequisicaoSiscan | null>(null);
+  // Vincular e criar terminam no mesmo POST (o backend decide), mas o que a pessoa fez é
+  // diferente — e a tela não pode dizer "criada" quando ela só trouxe o que já existia.
+  const [foiVinculo, setFoiVinculo] = useState(false);
 
   // A sugestão da máquina entra pré-selecionada, mas quem confirma é gente: os nomes não batem
   // na forma entre a ficha do SISREG e o SISCAN ("FERNANDA SOUZA" × "FERNANDA SOUZA LEITE").
@@ -55,8 +58,9 @@ export function ModalGerarRequisicaoSiscan({
     }
   }, [aberto]);
 
-  async function confirmar() {
+  async function confirmar(vinculo = false) {
     setErro(null);
+    setFoiVinculo(vinculo);
     try {
       const gerada = await gerar.mutateAsync(cnsEscolhido);
       setResultado(gerada);
@@ -68,6 +72,8 @@ export function ModalGerarRequisicaoSiscan({
 
   const dados = preparo.data;
   const temLacunas = (dados?.lacunas.length ?? 0) > 0;
+  const jaLa = dados?.encontradaPeloProntuario ?? null;
+  const duplicidades = dados?.duplicidades ?? [];
 
   return (
     <Modal
@@ -98,7 +104,11 @@ export function ModalGerarRequisicaoSiscan({
           <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
             <div className="text-sm text-emerald-900">
-              <p className="font-semibold">Requisição criada no SISCAN.</p>
+              <p className="font-semibold">
+                {foiVinculo
+                  ? 'Requisição vinculada ao pedido.'
+                  : 'Requisição criada no SISCAN.'}
+              </p>
               <p className="mt-1">
                 Protocolo <span className="font-mono font-semibold">{resultado.protocolo}</span>
                 {resultado.numeroExame ? (
@@ -117,6 +127,93 @@ export function ModalGerarRequisicaoSiscan({
           </div>
           <div className="flex justify-end">
             <Button onClick={aoFechar}>Fechar</Button>
+          </div>
+        </div>
+      ) : jaLa ? (
+        /* A requisição DESTE pedido já está no SISCAN e não estava carimbada aqui — foi o que
+           aconteceu com as criadas fora do painel. Criar outra duplicaria a paciente lá. */
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-3">
+            <Link2 className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+            <div className="text-sm text-sky-900">
+              <p className="font-semibold">Este pedido já tem requisição no SISCAN.</p>
+              <p className="mt-1">
+                Ela foi encontrada pelo Nº do Prontuário — que é o número deste pedido. Falta só
+                trazer os números para cá.
+              </p>
+              <p className="mt-2">
+                Protocolo <span className="font-mono font-semibold">{jaLa.protocolo}</span> · Nº do
+                exame <span className="font-mono font-semibold">{jaLa.numeroExame}</span>
+              </p>
+              <p className="mt-1 text-xs">
+                {jaLa.unidade} · {jaLa.status}
+                {jaLa.datas ? ` · ${jaLa.datas}` : ''}
+              </p>
+            </div>
+          </div>
+          {erro ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {erro}
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button variante="secundaria" onClick={aoFechar} disabled={gerar.isPending}>
+              Fechar
+            </Button>
+            <Button onClick={() => confirmar(true)} disabled={gerar.isPending}>
+              {gerar.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Link2 className="mr-2 h-4 w-4" />
+              )}
+              Vincular ao pedido
+            </Button>
+          </div>
+        </div>
+      ) : duplicidades.length > 0 ? (
+        /* A paciente já tem requisição na janela, e não é deste pedido. O sistema não escolhe
+           qual vale: isso é trabalho de gente, no SISCAN. */
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div className="text-sm text-amber-900">
+              <p className="font-semibold">
+                Esta paciente já tem requisição de mamografia no SISCAN.
+              </p>
+              <p className="mt-1">
+                Encontrada no último ano, e ela <strong>não é deste pedido</strong>. Criar outra
+                deixaria duas requisições abertas para a mesma pessoa.
+              </p>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-md border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Protocolo</th>
+                  <th className="px-3 py-2 text-left font-medium">Nº do exame</th>
+                  <th className="px-3 py-2 text-left font-medium">Unidade</th>
+                  <th className="px-3 py-2 text-left font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {duplicidades.map((d) => (
+                  <tr key={`${d.protocolo}-${d.numeroExame}`}>
+                    <td className="px-3 py-2 font-mono">{d.protocolo}</td>
+                    <td className="px-3 py-2 font-mono">{d.numeroExame}</td>
+                    <td className="px-3 py-2 text-gray-600">{d.unidade}</td>
+                    <td className="px-3 py-2 text-gray-600">{d.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-gray-500">
+            Resolva no SISCAN qual delas vale — e o que fazer com a outra — antes de criar uma nova
+            por aqui.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={aoFechar}>Entendi</Button>
           </div>
         </div>
       ) : dados?.jaGerada ? (
@@ -239,7 +336,7 @@ export function ModalGerarRequisicaoSiscan({
                 Cancelar
               </Button>
               <Button
-                onClick={confirmar}
+                onClick={() => confirmar()}
                 disabled={gerar.isPending || temLacunas || !cnsEscolhido}
               >
                 {gerar.isPending ? (

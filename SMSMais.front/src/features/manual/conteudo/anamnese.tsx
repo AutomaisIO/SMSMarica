@@ -26,7 +26,7 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-09-22',
+  atualizadoEm: '2026-09-23',
   palavrasChave: [
     'anamnese',
     'mamografia',
@@ -45,6 +45,9 @@ export const artigoAnamnese: Artigo = {
     'CNS',
     'prontuário',
     'CADSUS',
+    'duplicidade',
+    'vincular',
+    'já tem requisição',
   ],
   secoes: () => [
     {
@@ -267,7 +270,8 @@ export const artigoAnamnese: Artigo = {
       id: 'casos-chatos',
       titulo: 'Os casos chatos',
       busca:
-        'rastreamento diagnóstica idade 36 anos responsável não aparece lista vazia duplicada erro falta responder',
+        'rastreamento diagnóstica idade 36 anos responsável não aparece lista vazia duplicada '
+        + 'duplicidade já tem requisição vincular ao pedido prontuário cartão SUS um ano erro falta responder',
       conteudo: (
         <>
           <Sub>Rastreamento ou diagnóstica — quem decide é a idade</Sub>
@@ -278,6 +282,29 @@ export const artigoAnamnese: Artigo = {
             SISCAN <strong>muda</strong> entre os dois tipos. Ou seja, a idade da paciente também
             decide quem pode assinar a requisição.
           </P>
+
+          <Sub>“Este pedido já tem requisição no SISCAN”</Sub>
+          <P>
+            Antes de criar qualquer coisa, o sistema pergunta ao SISCAN se já existe requisição com
+            o <strong>Nº do Prontuário deste pedido</strong>. Se existir, ele não cria outra: mostra
+            os números e oferece <BotaoRef>Vincular ao pedido</BotaoRef>, que traz o protocolo e o
+            nº do exame para cá. É o que acontece com requisições que nasceram fora do painel —
+            digitadas direto no SISCAN, por exemplo.
+          </P>
+
+          <Sub>“Esta paciente já tem requisição de mamografia”</Sub>
+          <P>
+            A segunda pergunta é pelo <strong>Cartão SUS</strong>, olhando de um ano atrás até dez
+            dias à frente. Se aparecer alguma requisição que <strong>não é deste pedido</strong>, o
+            sistema para e lista o que encontrou — protocolo, unidade e status. Não há botão para
+            seguir: qual das duas vale, e o que fazer com a outra, é decisão de gente, e se resolve
+            no SISCAN.
+          </P>
+          <Callout tipo="regra" titulo="Por que o sistema não escolhe">
+            Duas requisições abertas para a mesma mulher viram dois exames, duas filas e dois
+            laudos possíveis. Criar a segunda em silêncio empurraria para a frente um problema que
+            só quem conhece o caso sabe resolver.
+          </Callout>
 
           <Sub>O responsável não está na lista</Sub>
           <P>

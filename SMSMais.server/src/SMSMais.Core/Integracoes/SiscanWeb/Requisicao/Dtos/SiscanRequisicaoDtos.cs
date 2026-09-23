@@ -27,7 +27,26 @@ public sealed record SiscanPreparoDto(
     string? CnsResponsavelSugerido,
     string? NomeSolicitanteDaFicha,
     IReadOnlyList<SiscanCampoEnvioDto> Envio,
-    IReadOnlyList<LacunaAnamnese> Lacunas);
+    IReadOnlyList<LacunaAnamnese> Lacunas,
+    /// <summary>
+    /// A requisição deste MESMO pedido já está no SISCAN, mas ainda não estava carimbada aqui.
+    /// Acontece quando ela nasceu fora do painel. Não se cria outra: vincula-se esta.
+    /// </summary>
+    RequisicaoEncontradaDto? EncontradaPeloProntuario = null,
+    /// <summary>
+    /// A paciente já tem requisição no período, e ela <b>não é deste pedido</b>. Aqui o sistema
+    /// para: decidir qual das duas vale é trabalho de gente, no SISCAN.
+    /// </summary>
+    IReadOnlyList<RequisicaoEncontradaDto>? Duplicidades = null);
+
+/// <summary>
+/// Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade.
+///
+/// <para>Vai inteira para a tela de propósito: quem vai resolver isso no SISCAN precisa saber
+/// <b>qual</b> requisição é — data, unidade e status —, não só que "existe uma".</para>
+/// </summary>
+public sealed record RequisicaoEncontradaDto(
+    string Protocolo, string NumeroExame, string Datas, string Unidade, string Status);
 
 /// <summary>Quem assina. Vem por CNS porque o índice do combo não é estável.</summary>
 public sealed record SiscanGerarRequest(string CnsResponsavel);
