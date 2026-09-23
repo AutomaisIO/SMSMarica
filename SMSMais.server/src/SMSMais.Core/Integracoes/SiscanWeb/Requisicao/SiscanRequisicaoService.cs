@@ -738,10 +738,17 @@ public sealed class SiscanRequisicaoService(
     /// <summary>
     /// A cascata, isolada do logger para poder ser testada.
     ///
-    /// <para><b>A anamnese é preenchida no dia do exame</b> — medido em 23/09/2026 sobre as 872
-    /// anamneses existentes: <b>818 no mesmo dia</b> do <c>StudyDate</c>, só 2 em dia diferente
-    /// (±29 dias), e ela existe em 100% dos casos, inclusive nos 52 sem DICOM. Por isso ela vem
-    /// logo atrás do aparelho e antes de qualquer chute.</para>
+    /// <para><b>A anamnese é do dia do exame</b> — medido em 23/09/2026 sobre as 872 anamneses:
+    /// <b>818 no mesmo dia</b> do <c>StudyDate</c>, só 2 em dia diferente (±29 dias), e ela existe
+    /// em 100% dos casos, inclusive nos 52 sem DICOM. Por isso vem logo atrás do aparelho e antes
+    /// de qualquer chute. (Detalhe medido, contra a intuição: no mesmo dia ela é salva SEMPRE
+    /// depois do exame — 818 de 818 —, e não antes, com a paciente na frente.)</para>
+    ///
+    /// <para><b>Por que não se usa "a data mais cedo".</b> Parece seguro e não é: entre os dois
+    /// casos divergentes, a regra "mais cedo" acerta aquele em que a anamnese veio depois — que
+    /// esta cascata já acerta, porque o DICOM vence — e <b>erra</b> o outro, gravando o dia da
+    /// anamnese num caso em que o exame aconteceu 28 dias depois. Mudaria 1 registro em 872, para
+    /// pior.</para>
     ///
     /// <para>Fuso, pela regra única da casa: <paramref name="dataEstudo"/> é <b>wall-clock local</b>
     /// (o DICOM, em <c>timestamp without time zone</c>) e se usa como está;

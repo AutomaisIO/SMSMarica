@@ -226,7 +226,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Cuidado que continua valendo: <strong>abrir um REGISTRO</strong> ainda exige pesquisa fresca (o ViewState é consumido, e reaproveitar deu resultado inconsistente em 07/08/2026). O que se mostrou seguro é repetir a PESQUISA na mesma página.</p>
 <h2>13. A data que vai no campo "Data da Solicitação" é a do EXAME</h2>
 <p>Decisão do Bernardo, 23/09/2026. O campo do SISCAN se chama "Data da Solicitação", mas o que se grava ali é <strong>a data em que o exame foi feito</strong> — não a da ficha do SISREG.</p>
-<p>A diferença não é acadêmica. No caso 260903032 a ficha é de <strong>23/07/2026</strong> e o exame aconteceu em <strong>23/09/2026</strong>: dois meses. E a data do exame, por ser mais recente, evita a recusa deles de <em>"não é permitido informar um ano inferior ao da última mamografia cadastrada"</em>.</p>
+<p>A diferença não é acadêmica: no caso 260903032 a ficha é de <strong>23/07/2026</strong> e o exame aconteceu em <strong>23/09/2026</strong> — dois meses.</p>
+<p>&gt; <strong>Correção de uma afirmação errada minha (23/09/2026).</strong> Cheguei a escrever que a data do exame &gt; "evitaria" a recusa <em>"não é permitido informar um ano inferior ao da última mamografia &gt; cadastrada"</em>. <strong>Não evita: são campos diferentes.</strong> Aquela recusa é do campo &gt; <strong>"Quando fez a última mamografia?"</strong> (<code>frm:anoUltimaMamografia</code>) — o SISCAN valida o ano &gt; informado ali contra o ano da última mamografia que ELE já tem registrada para a paciente, e &gt; recusa se for menor. Não tem relação com a Data da Solicitação.</p>
 <p>A cascata, com os números medidos sobre os 871 exames que têm anamnese:</p>
 <div class="tw"><table><thead><tr><th>Degrau</th><th>De onde vem</th><th>Cobre</th></tr></thead><tbody>
 <tr><td>1</td><td><code>data_estudo</code> — o <code>StudyDate</code> do DICOM, a hora do próprio aparelho</td><td>819</td></tr>
@@ -240,10 +241,17 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>em dia diferente</td><td><strong>2</strong> (uma +29 dias, outra −28)</td></tr>
 <tr><td>coincidindo com a data da ficha do SISREG</td><td>6</td></tr>
 </tbody></table></div>
-<p>Ela é preenchida com a paciente na frente, no dia do exame — e existe em <strong>100%</strong> dos casos, inclusive nos 52 em que o DICOM não existe. Antes de ela entrar na cascata, esses 52 caíam em "hoje", que é chute quando a requisição é gerada dias depois.</p>
+<p>Ela é do dia do exame e existe em <strong>100%</strong> dos casos, inclusive nos 52 em que o DICOM não existe. Antes de ela entrar na cascata, esses 52 caíam em "hoje", que é chute quando a requisição é gerada dias depois.</p>
+<p><strong>A ordem, medida:</strong> nos 818 do mesmo dia, a anamnese é registrada <strong>depois</strong> do exame — 818 de 818, nenhuma antes. Ou seja, ela não é preenchida "antes do exame, com a paciente na frente": é salva quando as imagens já saíram. Bom saber antes de supor qualquer coisa sobre o fluxo.</p>
+<p><strong>E não, não se usa "a data mais cedo".</strong> Entre as duas divergentes, <code>260701056</code> (anamnese 29 dias depois) e <code>260824012</code> (anamnese 28 dias antes), a regra "mais cedo" acerta a primeira — que a regra atual já acerta, porque o DICOM vence — e <strong>erra a segunda</strong>, gravando 25/08, um dia em que nenhum exame aconteceu. Ela mudaria 1 registro em 872, para pior.</p>
 <p>Os degraus 3 e 4 viraram rede de segurança: gerar a requisição exige anamnese, então na prática não se chega neles.</p>
 <p><strong>Armadilha de fuso:</strong> <code>data_estudo</code> é wall-clock local e se usa como está; <code>anamnese.criado_em</code> e <code>realizado_em</code> são instantes UTC e passam por Brasília antes. Sem essa conversão, uma anamnese salva às 00:30 UTC — 21:30 daqui — entraria no SISCAN com a data do dia seguinte.</p>
 <p>A data da ficha do SISREG continua sendo usada para <strong>uma</strong> coisa: alargar a janela de busca da crítica de duplicidade, para alcançar requisições antigas criadas quando era ela que gravávamos.</p>
+<h2>14. O SISCAN valida o "ano da última mamografia" contra o que ELE já tem</h2>
+<p>Recebido em produção em 23/09/2026, ao salvar:</p>
+<p>&gt; Não é permitido informar no campo "Quando fez a última mamografia?" um ano inferior ao da última &gt; mamografia cadastrada.</p>
+<p>Ou seja: <code>frm:anoUltimaMamografia</code> não é campo livre. O SISCAN guarda, por paciente, o ano da última mamografia que conhece, e <strong>recusa um ano menor que esse</strong>.</p>
+<p>Consequência para nós: esse número vem da nossa anamnese (seção 7), preenchido pelo que a paciente lembra — e a paciente pode lembrar de um exame mais antigo que o último registrado no Ministério. Não dá para pré-validar do nosso lado: não sabemos o ano que eles têm. O certo é o que já é feito — deixar a mensagem deles chegar inteira até quem preencheu, para corrigir na anamnese e gerar de novo.</p>
 </main>
 </body>
 </html>
