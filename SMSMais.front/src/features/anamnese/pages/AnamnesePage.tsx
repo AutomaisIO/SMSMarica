@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, Loader2, Save, ShieldAlert, User } from 'lucide-react';
+import {
+  ArrowLeft,
+  ClipboardList,
+  FileCheck2,
+  Loader2,
+  Save,
+  ShieldAlert,
+  User,
+} from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -10,6 +18,12 @@ import { useContextoAnamnese, useSalvarAnamnese } from '@/features/anamnese/api/
 import { AnamneseLeitura } from '@/features/anamnese/components/AnamneseLeitura';
 import { AnexosExameSecao } from '@/features/anamnese/components/AnexosExameSecao';
 import { DiagramaMamas } from '@/features/anamnese/components/DiagramaMamas';
+import { ModalGerarRequisicaoSiscan } from '@/features/anamnese/components/ModalGerarRequisicaoSiscan';
+import { ModalLoginSiscan } from '@/features/anamnese/components/ModalLoginSiscan';
+import { SecaoSiscan } from '@/features/anamnese/components/SecaoSiscan';
+import { useSessaoSiscan } from '@/features/anamnese/api/siscanApi';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
+import { Modal } from '@/shared/ui/Modal';
 import {
   CRITERIOS_RISCO,
   PERGUNTAS_HISTORICO,
@@ -68,6 +82,15 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
 
   const [conteudo, setConteudo] = useState<AnamneseMamografiaConteudo>(conteudoVazio);
   const [erro, setErro] = useState<string | null>(null);
+
+  // ---- Requisição no SISCAN ----
+  // A sessão do SISCAN é do próprio operador e não é guardada: se não houver, o botão pede a
+  // senha antes de qualquer coisa. `pendente` é o que retomar depois do login.
+  const sessaoSiscan = useSessaoSiscan(podeEditar);
+  const [loginSiscan, setLoginSiscan] = useState(false);
+  const [gerarSiscan, setGerarSiscan] = useState(false);
+  const [perguntarSiscan, setPerguntarSiscan] = useState<'salvou' | 'saindo' | null>(null);
+  const [saindoApos, setSaindoApos] = useState(false);
   // Baseline para detectar alterações não salvas (comparação com o estado atual).
   const [baseline, setBaseline] = useState(() => JSON.stringify(conteudoVazio()));
 
@@ -105,6 +128,14 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
             ...carregado.saudeReprodutiva?.aindaMenstrua,
           },
         },
+        // Anamnese v1 não tem o bloco `siscan`: o merge sobre o shape vazio abre
+        // as perguntas novas em branco, e o registro antigo continua abrindo.
+        siscan: {
+          ...base.siscan,
+          ...carregado.siscan,
+          radioterapia: { ...base.siscan.radioterapia, ...carregado.siscan?.radioterapia },
+          cirurgias: carregado.siscan?.cirurgias ?? base.siscan.cirurgias,
+        },
       };
       setConteudo(merged);
       setBaseline(JSON.stringify(merged));
@@ -126,7 +157,9 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
       solicitacaoExameId: contexto.data.solicitacaoExameId,
       payload: {
         tipo: 'mamografia',
-        versao: 1,
+        // v2 (22/09/2026): ganhou o bloco `siscan` — as perguntas que a
+        // requisição do SISCAN exige e o formulário de papel não tinha.
+        versao: 2,
         conteudoJson: JSON.stringify(conteudo),
         classificacaoRisco: conteudo.avaliacaoRisco.classificacao,
       },
@@ -137,11 +170,36 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
   async function aoSalvar() {
     try {
       await persistir();
+
+      // Salvou e ainda não há requisição no SISCAN: avisa ANTES de sair da tela. Quem preencheu
+      // está aqui agora, com a paciente na cabeça — depois vira uma pendência que ninguém vê.
+      if (podeEditar && !contexto.data?.siscanProtocolo) {
+        setPerguntarSiscan('salvou');
+        return;
+      }
+
       notificar('Anamnese salva com sucesso.');
       navigate(-1);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
+  }
+
+  /** Sair da anamnese: se não gerou a requisição, pergunta antes de deixar ir. */
+  function sair() {
+    if (podeEditar && !contexto.data?.siscanProtocolo) {
+      setPerguntarSiscan('saindo');
+      return;
+    }
+
+    navigate(-1);
+  }
+
+  /** Abre a geração — pedindo a senha do SISCAN antes, se a sessão não estiver de pé. */
+  function abrirGeracao() {
+    setPerguntarSiscan(null);
+    if (sessaoSiscan.data?.autenticado) setGerarSiscan(true);
+    else setLoginSiscan(true);
   }
 
   // Guarda de alterações não salvas (o painel usa BrowserRouter, sem useBlocker).
@@ -203,7 +261,7 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           {janela ? null : (
             <button
               type="button"
-              onClick={protegerAcao(() => navigate(-1))}
+              onClick={protegerAcao(sair)}
               className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-4 w-4" /> Voltar
@@ -212,6 +270,7 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-gray-900">
             <ClipboardList className="h-6 w-6 text-primary-600" />
             Questionário para Exame de Mamografia
+            <AjudaManual artigo="anamnese" />
           </h1>
           <p className="text-sm text-gray-500">
             Pedido <span className="font-mono">{ctx.accessionNumber}</span> · {ctx.tipoExameNome}
@@ -219,16 +278,37 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
               <> · preenchida por {ctx.anamnese.preenchidoPorNome}</>
             ) : null}
           </p>
+          {/* O carimbo do SISCAN: é o que a médica leva para laudar. Fica no cabeçalho porque é
+              informação de identidade do pedido, não uma resposta do questionário. */}
+          {ctx.siscanProtocolo ? (
+            <p className="mt-1 inline-flex flex-wrap items-center gap-x-2 rounded-md bg-teal-50 px-2 py-1 text-xs text-teal-900">
+              <FileCheck2 className="h-3.5 w-3.5" />
+              SISCAN · protocolo <span className="font-mono font-semibold">{ctx.siscanProtocolo}</span>
+              {ctx.siscanNumeroExame ? (
+                <>
+                  · exame <span className="font-mono font-semibold">{ctx.siscanNumeroExame}</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </div>
         {podeEditar ? (
-          <Button onClick={aoSalvar} disabled={salvar.isPending}>
-            {salvar.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
+          <div className="flex flex-wrap gap-2">
+            {ctx.siscanProtocolo ? null : (
+              <Button variante="secundaria" onClick={abrirGeracao}>
+                <FileCheck2 className="mr-2 h-4 w-4" />
+                Gerar Requisição SISCAN
+              </Button>
             )}
-            Salvar anamnese
-          </Button>
+            <Button onClick={aoSalvar} disabled={salvar.isPending}>
+              {salvar.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Salvar anamnese
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -734,10 +814,27 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
             </label>
           </fieldset>
         </section>
+
+        {/* 7. O que a requisição do SISCAN exige além do formulário de papel */}
+        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <TituloSecao numero={7} titulo="REQUISIÇÃO DO SISCAN" cor="bg-teal-600" />
+          <SecaoSiscan
+            valor={conteudo.siscan}
+            jaFezMamografia={conteudo.historicoClinico.jaRealizouMamografia.resposta === true}
+            jaFezCirurgia={
+              conteudo.historicoClinico.jaRealizouCirurgiaMamaria.resposta === true ||
+              conteudo.historicoClinico.possuiProteseMamaria.resposta === true
+            }
+            somenteLeitura={somenteLeitura}
+            aoMudar={(mudanca) =>
+              setConteudo((c) => ({ ...c, siscan: { ...c.siscan, ...mudanca } }))
+            }
+          />
+        </section>
       </div>
       )}
 
-      {/* 7. Documentos / exames anexados (ponte QR → PWA) */}
+      {/* 8. Documentos / exames anexados (ponte QR → PWA) */}
       <AnexosExameSecao solicitacaoExameId={ctx.solicitacaoExameId} podeEditar={podeAnexar} />
 
       {/* Rodapé */}
@@ -762,6 +859,66 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           </Button>
         ) : null}
       </div>
+
+      {/* ---- Requisição no SISCAN ---- */}
+
+      <ModalLoginSiscan
+        aberto={loginSiscan}
+        aoFechar={() => setLoginSiscan(false)}
+        aoAutenticar={() => setGerarSiscan(true)}
+      />
+
+      <ModalGerarRequisicaoSiscan
+        aberto={gerarSiscan}
+        exameImagemId={ctx.solicitacaoExameId}
+        aoFechar={() => {
+          setGerarSiscan(false);
+          // Quem pediu para sair e parou aqui para gerar continua saindo depois.
+          if (saindoApos) {
+            setSaindoApos(false);
+            navigate(-1);
+          }
+        }}
+        aoGerar={() => contexto.refetch()}
+      />
+
+      {/* O aviso de que a requisição ainda não existe. Aparece ao salvar e ao sair, porque é
+          nesses dois momentos que a pessoa ainda está aqui — depois vira pendência invisível. */}
+      <Modal
+        aberto={perguntarSiscan !== null}
+        aoFechar={() => setPerguntarSiscan(null)}
+        titulo="Ainda não há requisição no SISCAN"
+        largura="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">
+            {perguntarSiscan === 'salvou'
+              ? 'A anamnese foi salva, mas este exame ainda não tem requisição no SISCAN. Sem ela, a médica não consegue lançar o resultado lá.'
+              : 'Você está saindo e este exame ainda não tem requisição no SISCAN. Sem ela, a médica não consegue lançar o resultado lá.'}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variante="secundaria"
+              onClick={() => {
+                setPerguntarSiscan(null);
+                if (perguntarSiscan === 'salvou') notificar('Anamnese salva com sucesso.');
+                navigate(-1);
+              }}
+            >
+              {perguntarSiscan === 'salvou' ? 'Agora não' : 'Sair assim mesmo'}
+            </Button>
+            <Button
+              onClick={() => {
+                setSaindoApos(true);
+                abrirGeracao();
+              }}
+            >
+              <FileCheck2 className="mr-2 h-4 w-4" />
+              Gerar agora
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

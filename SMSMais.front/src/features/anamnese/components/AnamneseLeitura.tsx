@@ -2,6 +2,10 @@ import { DiagramaMamas } from '@/features/anamnese/components/DiagramaMamas';
 import {
   CRITERIOS_RISCO,
   PERGUNTAS_HISTORICO,
+  ROTULOS_CIRURGIA,
+  ROTULOS_LADO,
+  ROTULOS_MAMAS_EXAMINADAS,
+  ROTULOS_SIM_NAO_NAO_SABE,
   ROTULOS_SINTOMAS,
   SINTOMAS_QUEIXA,
   type AnamneseMamografiaConteudo,
@@ -58,8 +62,16 @@ function TextoLeitura({ label, valor }: { label: string; valor: string }) {
  * texto apenas com o conteúdo, dentro de uma div de linha fina.
  */
 export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaConteudo }) {
-  const { avaliacaoClinica, historicoClinico, queixas, avaliacaoRisco, saudeReprodutiva } = conteudo;
+  const { avaliacaoClinica, historicoClinico, queixas, avaliacaoRisco, saudeReprodutiva, siscan } =
+    conteudo;
   const dataMenstruacao = saudeReprodutiva?.aindaMenstrua?.dataUltimaMenstruacao?.trim();
+  // Anos da radioterapia, montados só com o que foi informado.
+  const anosRadioterapia = [
+    siscan?.radioterapia?.anoDireita?.trim() ? `D ${siscan.radioterapia.anoDireita.trim()}` : null,
+    siscan?.radioterapia?.anoEsquerda?.trim() ? `E ${siscan.radioterapia.anoEsquerda.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const achados: string[] = [];
   if (avaliacaoClinica.semAlteracoes) achados.push('Sem alterações');
@@ -241,6 +253,69 @@ export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaCont
           </div>
         </div>
       </section>
+
+      {/* 7. Requisição do SISCAN — v2. Anamnese v1 não tem o bloco: some inteira. */}
+      {siscan ? (
+        <section className="rounded-lg border border-gray-200 bg-white p-3">
+          <TituloSecao numero={7} titulo="REQUISIÇÃO DO SISCAN" cor="bg-teal-600" />
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-800">Mamas já examinadas antes desta consulta</span>
+              {siscan.mamasExaminadasAntes ? (
+                <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+                  {ROTULOS_MAMAS_EXAMINADAS[siscan.mamasExaminadasAntes]}
+                </span>
+              ) : (
+                <span className="text-xs italic text-gray-400">não informado</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-800">Radioterapia na mama ou no plastrão</span>
+              {siscan.radioterapia?.resposta ? (
+                <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+                  {ROTULOS_SIM_NAO_NAO_SABE[siscan.radioterapia.resposta]}
+                  {siscan.radioterapia.resposta === 'sim' && siscan.radioterapia.lado
+                    ? ` · ${ROTULOS_LADO[siscan.radioterapia.lado]}`
+                    : ''}
+                  {anosRadioterapia ? ` · ${anosRadioterapia}` : ''}
+                </span>
+              ) : (
+                <span className="text-xs italic text-gray-400">não informado</span>
+              )}
+            </div>
+            {siscan.anoUltimaMamografia?.trim() ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-800">Ano da última mamografia</span>
+                <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+                  {siscan.anoUltimaMamografia.trim()}
+                </span>
+              </div>
+            ) : null}
+            {siscan.cirurgias?.length ? (
+              <div>
+                <span className="text-sm text-gray-800">Cirurgias de mama</span>
+                <ul className="mt-1 space-y-0.5">
+                  {siscan.cirurgias.map((c, i) => (
+                    <li key={i} className="text-xs text-gray-600">
+                      {ROTULOS_CIRURGIA[c.tipo]} · {c.lado === 'direita' ? 'direita' : 'esquerda'}
+                      {c.ano?.trim() ? ` · ${c.ano.trim()}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {siscan.responsavel ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-800">Responsável pela requisição</span>
+                <span className="text-xs text-gray-600">
+                  {siscan.responsavel.nome}{' '}
+                  <span className="font-mono text-gray-400">CNS {siscan.responsavel.cns}</span>
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -471,6 +471,15 @@ public static class DependencyInjection
         // Sessão de ESCRITA no SISREG, por operador. Singleton porque a credencial vive em
         // memória pelo tempo da sessão de quem entrou — scoped a jogaria fora a cada requisição.
         services.AddSingleton<Sisreg.Sessao.ISisregSessaoOperadorStore, Sisreg.Sessao.SisregSessaoOperadorStore>();
+
+        // Sessão do SISCAN, por operador. Aqui NÃO existe a outra ponta: o SISCAN não tem
+        // credencial de sincronismo no banco e não vai ter — a requisição leva um responsável e
+        // fica carimbada com quem operou, numa base federal de rastreamento de câncer.
+        services.AddSingleton<Siscan.Sessao.ISiscanSessaoOperadorStore, Siscan.Sessao.SiscanSessaoOperadorStore>();
+        services.AddScoped<
+            Integracoes.SiscanWeb.Requisicao.ISiscanRequisicaoService,
+            Integracoes.SiscanWeb.Requisicao.SiscanRequisicaoService>();
+
         services.AddScoped<Ser.ISerEscritaService, Ser.SerEscritaService>();
 
         // Config do disparo diário em BANCO: mudar a hora não pode exigir deploy.

@@ -240,6 +240,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (token) {
       void encerrarSessaoDeEscritaNoSer(token);
       void encerrarSessaoDeEscritaNoSernit(token);
+      void encerrarSessaoNoSiscan(token);
     }
 
     localStorage.removeItem(CHAVE_STORAGE);
@@ -326,5 +327,25 @@ async function encerrarSessaoDeEscritaNoSernit(token: string): Promise<void> {
     });
   } catch {
     // Sair do sistema não pode falhar porque o SERNIT (ou a rede) não respondeu.
+  }
+}
+
+/**
+ * Igual às de cima, para a sessão do SISCAN.
+ *
+ * Aqui a promessa feita a quem digita a senha é literal: "não guardamos, vale enquanto durar a
+ * sua sessão". Sair do painel tem de derrubar a credencial do SISCAN junto — senão a frase vira
+ * mentira e a senha de um sistema do Ministério fica viva em memória depois de a pessoa ir embora.
+ */
+async function encerrarSessaoNoSiscan(token: string): Promise<void> {
+  try {
+    await axios.delete('/siscan/sessao', {
+      baseURL: http.defaults.baseURL,
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000,
+    });
+  } catch {
+    // Sair do sistema não pode falhar porque o SISCAN (ou a rede) não respondeu. A sessão órfã
+    // ainda cai sozinha pela validade por inatividade do servidor.
   }
 }

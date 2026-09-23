@@ -79,6 +79,32 @@ public class ExameImagem
     public DateTime? ImagensPreparadasEm { get; set; }
     public int ImagensPreparacaoTentativas { get; set; }
 
+    // ---- Requisição no SISCAN (rastreamento de câncer, DATASUS) ----
+    //
+    // Mora aqui, e não na anamnese, porque o número é do EXAME — a anamnese é o questionário que
+    // alimenta a requisição, e é 1:1 com este registro. A tela de anamnese exibe o que está aqui.
+    //
+    // São DOIS números, e não é redundância: o SISCAN pesquisa pelos dois e eles são DIFERENTES
+    // para a mesma linha. O modal do Salvar devolve só o protocolo — e com zeros à esquerda em 14
+    // posições (`00000141043026`), enquanto a grade deles mostra sem (`141043026`); guardamos
+    // normalizado, sem zeros. O nº do exame não vem no modal: só relendo a grade, embutido no id
+    // das ações. Por isso a releitura faz parte do fluxo de criação, e não é zelo.
+
+    /// <summary>Protocolo da requisição no SISCAN, sem zeros à esquerda (ex.: "141043026").</summary>
+    public string? SiscanProtocolo { get; set; }
+
+    /// <summary>Nº do exame no SISCAN (ex.: "141108550") — é por ele que se inclui o resultado.</summary>
+    public string? SiscanNumeroExame { get; set; }
+
+    /// <summary>Quando a requisição nasceu lá. Null = ainda não foi gerada.</summary>
+    public DateTime? SiscanRequisicaoEm { get; set; }
+
+    /// <summary>Operador do SMSMais que gerou (a autoria no SISCAN é do responsável escolhido).</summary>
+    public Guid? SiscanRequisicaoPor { get; set; }
+
+    /// <summary>Última falha ao gerar — para a tela explicar em vez de apenas falhar.</summary>
+    public string? SiscanErro { get; set; }
+
     // ---- Auditoria ADR-0006 ----
 
     public DateTime CriadoEm { get; set; }

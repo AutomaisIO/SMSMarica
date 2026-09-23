@@ -46,6 +46,18 @@ internal sealed class ExameImagemConfiguration : IEntityTypeConfiguration<ExameI
         builder.Property(e => e.ImagensPreparadasEm).HasColumnName("imagens_preparadas_em");
         builder.Property(e => e.ImagensPreparacaoTentativas).HasColumnName("imagens_preparacao_tentativas").HasDefaultValue(0).IsRequired();
 
+        builder.Property(e => e.SiscanProtocolo).HasColumnName("siscan_protocolo").HasMaxLength(20);
+        builder.Property(e => e.SiscanNumeroExame).HasColumnName("siscan_numero_exame").HasMaxLength(20);
+        builder.Property(e => e.SiscanRequisicaoEm).HasColumnName("siscan_requisicao_em");
+        builder.Property(e => e.SiscanRequisicaoPor).HasColumnName("siscan_requisicao_por");
+        builder.Property(e => e.SiscanErro).HasColumnName("siscan_erro").HasMaxLength(1000);
+
+        // Índice para a pergunta que a operação faz: "esse protocolo do SISCAN é de qual exame
+        // nosso?". Filtrado porque a esmagadora maioria dos exames não tem requisição no SISCAN.
+        builder.HasIndex(e => e.SiscanProtocolo)
+            .HasDatabaseName("ix_exame_imagem_siscan_protocolo")
+            .HasFilter("siscan_protocolo IS NOT NULL");
+
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(e => e.CriadoPor).HasColumnName("criado_por");
         builder.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");

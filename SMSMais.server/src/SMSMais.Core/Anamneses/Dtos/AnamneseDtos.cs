@@ -27,7 +27,11 @@ public sealed record AnamneseContextoDto(
     string? PacienteCpf,
     string? PacienteCns,
     DateOnly? PacienteNascimento,
-    AnamneseDto? Anamnese);
+    AnamneseDto? Anamnese,
+    /// <summary>Protocolo da requisição no SISCAN, quando já foi gerada. Null = ainda não.</summary>
+    string? SiscanProtocolo = null,
+    /// <summary>Nº do exame no SISCAN — o outro número, que abre o resultado lá.</summary>
+    string? SiscanNumeroExame = null);
 
 /// <summary>Payload de criação/edição (upsert) da anamnese de uma solicitação.</summary>
 public sealed record SalvarAnamneseDto(

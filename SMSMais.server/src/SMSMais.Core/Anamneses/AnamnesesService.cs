@@ -49,7 +49,9 @@ public sealed class AnamnesesService(
             paciente?.Cpf,
             paciente?.Cns,
             paciente?.DataNascimento,
-            anamnese is null ? null : ParaDto(anamnese));
+            anamnese is null ? null : ParaDto(anamnese),
+            sol.SiscanProtocolo,
+            sol.SiscanNumeroExame);
     }
 
     public async Task<AnamneseDto> SalvarAsync(

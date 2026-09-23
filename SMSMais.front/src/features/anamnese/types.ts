@@ -92,7 +92,106 @@ export const CRITERIOS_RISCO = [
 
 export type CriterioRisco = (typeof CRITERIOS_RISCO)[number][0];
 
-/** Conteúdo completo do questionário de mamografia (v1) — gravado como JSON. */
+// ---- v2: o que o SISCAN exige e o formulário de papel não perguntava ----
+//
+// A requisição de mamografia do SISCAN tem 6 perguntas obrigatórias. Quatro já
+// vinham do nosso questionário; estas faltavam, e sem elas a requisição só
+// poderia ser gerada respondendo "Não sabe" — que o SISCAN aceita, mas que é
+// informação jogada fora justamente com a paciente na nossa frente.
+
+/** Resposta de três estados, como o SISCAN pergunta. */
+export type SimNaoNaoSabe = 'sim' | 'nao' | 'naoSabe';
+
+/** Lado da radioterapia, como o SISCAN pergunta. */
+export type LadoOuAmbas = 'direita' | 'esquerda' | 'ambas';
+
+/** "Antes desta consulta, teve as mamas examinadas por um profissional de saúde?" */
+export type MamasExaminadasAntes = 'sim' | 'nunca' | 'naoSabe';
+
+export const ROTULOS_MAMAS_EXAMINADAS: Record<MamasExaminadasAntes, string> = {
+  sim: 'Sim',
+  nunca: 'Nunca foram examinadas anteriormente',
+  naoSabe: 'Não sabe',
+};
+
+export const ROTULOS_SIM_NAO_NAO_SABE: Record<SimNaoNaoSabe, string> = {
+  sim: 'Sim',
+  nao: 'Não',
+  naoSabe: 'Não sabe',
+};
+
+export const ROTULOS_LADO: Record<LadoOuAmbas, string> = {
+  direita: 'Mama direita',
+  esquerda: 'Mama esquerda',
+  ambas: 'Ambas',
+};
+
+/**
+ * Os 13 tipos de cirurgia de mama do SISCAN. A chave espelha o nome do campo
+ * deles (`frm:ano<Chave><Lado>`) para o de-para ser conferível a olho — ex.:
+ * `mastectomiaPoupadoraPele` → `frm:anoMastectomiaPoupadoraPeleDireita`.
+ */
+export const TIPOS_CIRURGIA_MAMA = [
+  ['biopsiaCirurgicaIncisional', 'Biópsia cirúrgica incisional'],
+  ['biopsiaCirurgicaExcisional', 'Biópsia cirúrgica excisional'],
+  ['segmentectomia', 'Segmentectomia'],
+  ['centralectomia', 'Centralectomia'],
+  ['dutectomia', 'Dutectomia'],
+  ['mastectomia', 'Mastectomia'],
+  ['mastectomiaPoupadoraPele', 'Mastectomia poupadora de pele'],
+  ['mastectomiaPoupadoraPeleComplexoPapilar', 'Mastectomia poupadora de pele e complexo papilar'],
+  ['linfadenectomiaAxilar', 'Linfadenectomia axilar'],
+  ['biopsiaLinfonodoSentinela', 'Biópsia de linfonodo sentinela'],
+  ['reconstrucaoMamaria', 'Reconstrução mamária'],
+  ['mastoplastiaRedutora', 'Mastoplastia redutora'],
+  ['inclusaoImplantes', 'Inclusão de implantes'],
+] as const;
+
+export type TipoCirurgiaMama = (typeof TIPOS_CIRURGIA_MAMA)[number][0];
+
+export const ROTULOS_CIRURGIA = Object.fromEntries(TIPOS_CIRURGIA_MAMA) as Record<
+  TipoCirurgiaMama,
+  string
+>;
+
+/** Uma cirurgia relatada: tipo + lado + ano (o SISCAN guarda um ano por par). */
+export type CirurgiaMama = {
+  tipo: TipoCirurgiaMama;
+  lado: LadoMama;
+  ano: string;
+};
+
+/**
+ * Quem assina a requisição no SISCAN.
+ *
+ * O SISCAN identifica o profissional pelo **CNS**, que não existe nem em
+ * `fhir.practitioner` nem na ficha do SISREG (medido em 22/09/2026: nome em
+ * 100% das solicitações, CPF em 33%, nº de conselho em 0%). Por isso guardamos
+ * o par inteiro: o nome é para a tela, o CNS é o que vai no POST. Sem CNS não
+ * existe requisição.
+ */
+export type ResponsavelSiscan = {
+  nome: string;
+  cns: string;
+};
+
+/** Bloco v2 — respostas que existem só porque o SISCAN pede. */
+export type ComplementoSiscan = {
+  mamasExaminadasAntes: MamasExaminadasAntes | null;
+  radioterapia: {
+    resposta: SimNaoNaoSabe | null;
+    lado: LadoOuAmbas | null;
+    anoDireita: string;
+    anoEsquerda: string;
+  };
+  /** Ano da última mamografia — só aparece se a seção 3 disse que já fez. */
+  anoUltimaMamografia: string;
+  /** Cirurgias relatadas — só aparecem se a seção 3 disse que já fez. */
+  cirurgias: CirurgiaMama[];
+  responsavel: ResponsavelSiscan | null;
+};
+
+/** Conteúdo completo do questionário de mamografia (v2) — gravado como JSON. */
 export type AnamneseMamografiaConteudo = {
   avaliacaoClinica: {
     marcacoes: MarcacaoMama[];
@@ -114,6 +213,7 @@ export type AnamneseMamografiaConteudo = {
     classificacao: ClassificacaoRisco | null;
   };
   saudeReprodutiva: SaudeReprodutiva;
+  siscan: ComplementoSiscan;
 };
 
 export function conteudoVazio(): AnamneseMamografiaConteudo {
@@ -167,6 +267,13 @@ export function conteudoVazio(): AnamneseMamografiaConteudo {
       aindaMenstrua: { resposta: null, dataUltimaMenstruacao: '' },
       numeroFilhos: null,
     },
+    siscan: {
+      mamasExaminadasAntes: null,
+      radioterapia: { resposta: null, lado: null, anoDireita: '', anoEsquerda: '' },
+      anoUltimaMamografia: '',
+      cirurgias: [],
+      responsavel: null,
+    },
   };
 }
 
@@ -195,6 +302,10 @@ export type AnamneseContexto = {
   pacienteCns: string | null;
   pacienteNascimento: string | null;
   anamnese: AnamneseDto | null;
+  /** Protocolo da requisição no SISCAN, quando já foi gerada. Null = ainda não. */
+  siscanProtocolo: string | null;
+  /** Nº do exame no SISCAN — o outro número, que abre o resultado lá. */
+  siscanNumeroExame: string | null;
 };
 
 export type SalvarAnamnesePayload = {
