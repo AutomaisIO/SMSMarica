@@ -109,6 +109,19 @@ export type MotivosTelefoneComprometido = {
 
 export type AtendenteConfirmacao = { id: string; nome: string };
 
+/** Um agendamento do paciente que ainda espera confirmação — para confirmar direto do chat (#133). */
+export type AgendamentoPendentePaciente = {
+  solicitacaoId: string;
+  exameId: string | null;
+  codigoSolicitacao: string | null;
+  categoria: string;
+  procedimento: string | null;
+  unidadeExecutante: string | null;
+  dataAgendada: string | null;
+  emAtendimentoPorOutro: boolean;
+  atendenteNome: string | null;
+};
+
 export type FiltroAtendimento = {
   aba: AbaAtendimento;
   texto?: string;

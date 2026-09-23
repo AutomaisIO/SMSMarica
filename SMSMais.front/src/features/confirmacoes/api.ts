@@ -3,6 +3,7 @@ import { http } from '@/shared/api/httpClient';
 import { params } from '@/features/mensageria/api/comunicacoesApi';
 import type {
   AcaoResultado,
+  AgendamentoPendentePaciente,
   AtendenteConfirmacao,
   AtoAtendente,
   EquipeConfirmacoes,
@@ -81,6 +82,20 @@ export function useEntrarNoSisreg() {
     mutationFn: async ({ usuario, senha }: { usuario: string; senha: string }) =>
       (await http.post<SessaoSisreg>('/sisreg/sessao', { usuario, senha })).data,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['sisreg', 'sessao'] }),
+  });
+}
+
+/**
+ * Agendamentos do paciente que ainda esperam confirmação — para o botão "Confirmar" da janela de
+ * chat (#133). Só busca quando há paciente e o chamador habilita (o botão só aparece com permissão).
+ */
+export function usePendentesDoPaciente(pacienteId: string | null, habilitado = true) {
+  return useQuery({
+    queryKey: [...raiz, 'paciente-pendentes', pacienteId],
+    queryFn: async () =>
+      (await http.get<AgendamentoPendentePaciente[]>(`/confirmacoes/atendimento/paciente/${pacienteId}/pendentes`)).data,
+    enabled: habilitado && Boolean(pacienteId),
+    staleTime: 15_000,
   });
 }
 

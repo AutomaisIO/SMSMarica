@@ -30,7 +30,8 @@ public class PacientesServiceTests
     private static PacientesService Criar(IPacienteFhirClient hub) =>
         new(hub,
             Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
-            Substitute.For<SMSMais.Core.Geo.IGeocodificadorService>());
+            Substitute.For<SMSMais.Core.Geo.IGeocodificadorService>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<PacientesService>.Instance);
 
     private static Bundle Vazio() => new() { Type = Bundle.BundleType.Searchset, Entry = [] };
 

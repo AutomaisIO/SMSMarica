@@ -55,6 +55,7 @@ import { Select } from '@/shared/ui/Select';
 import type { HistoricoComunicacao } from '@/features/solicitacoes-exame/types';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
+import { VagaBadge } from '@/features/solicitacoes-exame/components/VagaBadge';
 import { ConfirmacaoBadge, canalConfirmacaoTexto } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
@@ -208,6 +209,7 @@ export function SolicitacaoExameDetalhePage() {
             <CodigoCopiavel codigo={s.accessionNumber} />
             <StatusBadgeSolicitacao status={s.status} />
             <ConfirmacaoBadge status={s.statusConfirmacao} />
+            <VagaBadge tipoVaga={s.tipoVaga} mostrarPrimeiraVez />
             {(s.status === 'Realizada' || s.status === 'Laudada') && (
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />

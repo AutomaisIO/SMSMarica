@@ -142,6 +142,45 @@ public class PatientMergeFhirTests
         PatientMergeFhir.TelefoneNegado(p)!.Value.Numero.Should().Be("21988887777");
     }
 
+    [Fact]
+    public void Troca_do_principal_aposenta_o_numero_negado_como_historico()
+    {
+        // Bug do ticket #134: paciente importado tem UM telefone SEM rank marcado como inválido.
+        // A recepção (ou o próprio cidadão) troca pelo número certo — antes, o antigo ficava órfão
+        // alimentando o badge "Número inválido". Agora ele vira HISTÓRICO (aposentado), não some.
+        var p = new Patient { Telecom = [Fone("21999990000")] }; // rank=None, como vem do import
+        PatientMergeFhir.MarcarTelefoneNegado(p, "21999990000", DateTimeOffset.UtcNow);
+
+        PatientMergeFhir.AplicarContatos(p, "21977776666", null, null, null, manual: true);
+
+        // Não consta mais como número inválido ativo…
+        PatientMergeFhir.TelefoneNegado(p).Should().BeNull();
+        // …mas o número antigo continua no cadastro como histórico (aposentado, com o motivo).
+        var antigo = p.Telecom.Single(t => Digitos(t.Value) == "21999990000");
+        PatientMergeFhir.EhAposentado(antigo).Should().BeTrue();
+        antigo.GetExtension(PatientMergeFhir.ExtContatoNegado).Should().NotBeNull();
+        // O número novo é o principal ATIVO (não aposentado).
+        var novo = p.Telecom.Single(t => Digitos(t.Value) == "21977776666");
+        PatientMergeFhir.EhAposentado(novo).Should().BeFalse();
+        novo.Rank.Should().Be(1);
+    }
+
+    [Fact]
+    public void OTP_de_numero_novo_aposenta_o_negado_antigo()
+    {
+        // Cenário real (caminho do OTP, usado pela recepção e pelo PWA do cidadão): o número antigo
+        // foi negado; verifica-se por código um número NOVO. O antigo vira histórico (aposentado).
+        var p = new Patient { Telecom = [Fone("21999990000", ContactPoint.ContactPointUse.Home)] };
+        PatientMergeFhir.MarcarTelefoneNegado(p, "21999990000", DateTimeOffset.UtcNow.AddDays(-3));
+
+        PatientMergeFhir.MarcarTelefoneConfirmado(p, "5521977776666", DateTimeOffset.UtcNow);
+
+        PatientMergeFhir.TelefoneNegado(p).Should().BeNull();
+        PatientMergeFhir.TelefoneConfirmado(p)!.Value.Numero.Should().Be("21977776666");
+        var antigo = p.Telecom.Single(t => Digitos(t.Value) == "21999990000");
+        PatientMergeFhir.EhAposentado(antigo).Should().BeTrue();
+    }
+
     // ---------------- Telefone confirmado (intocável) ----------------
 
     [Fact]

@@ -97,6 +97,14 @@ public sealed class ConfirmacoesController(
     public async Task<IReadOnlyList<AtendenteConfirmacaoDto>> Atendentes(CancellationToken ct) =>
         await atendimento.ListarAtendentesAsync(ct);
 
+    /// <summary>Os agendamentos do paciente que ainda esperam confirmação — para confirmar direto do chat.</summary>
+    [HttpGet("atendimento/paciente/{pacienteId:guid}/pendentes")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<AgendamentoPendentePacienteDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AgendamentoPendentePacienteDto>> PendentesDoPaciente(
+        Guid pacienteId, CancellationToken ct) =>
+        await atendimento.PendentesDoPacienteAsync(pacienteId, ct);
+
     [HttpGet("atendimento/{solicitacaoId:guid}/historico")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<EventoAtendimentoDto>>(StatusCodes.Status200OK)]

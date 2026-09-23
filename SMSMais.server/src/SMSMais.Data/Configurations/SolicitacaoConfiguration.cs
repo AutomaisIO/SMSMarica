@@ -46,6 +46,10 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
             .HasColumnName("profissional_executante_nome").HasMaxLength(200);
         builder.Property(s => s.RawSisreg).HasColumnName("raw_sisreg");
 
+        // Natureza da vaga (Primeira Vez / Retorno) — coluna 8 do TXT do SISREG. Nullable: pedido
+        // manual e origem sem o dado ficam null. int como os demais enums desta entidade.
+        builder.Property(s => s.TipoVaga).HasColumnName("tipo_vaga").HasConversion<int>();
+
         // 10 basta para o formato do CID-10 com subcategoria (ex.: "C50.9"); a origem manda so o
         // codigo, sem descricao.
         builder.Property(s => s.CidCodigo).HasColumnName("cid_codigo").HasMaxLength(10);

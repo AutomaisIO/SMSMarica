@@ -64,7 +64,8 @@ internal static class SolicitacoesExameMapper
             reg.RawSisreg,
             s.EquipamentoId,
             s.Equipamento?.Nome,
-            s.Equipamento?.IdentificadorDicom);
+            s.Equipamento?.IdentificadorDicom,
+            TipoVaga: reg.TipoVaga);
     }
 
     public static SolicitacaoExameListItemDto ParaListItem(ExameImagem s, Guid? unidadeReferencia = null)
@@ -101,6 +102,7 @@ internal static class SolicitacoesExameMapper
             s.StudyInstanceUID,
             null,
             false,
-            direcao);
+            direcao,
+            TipoVaga: reg.TipoVaga);
     }
 }

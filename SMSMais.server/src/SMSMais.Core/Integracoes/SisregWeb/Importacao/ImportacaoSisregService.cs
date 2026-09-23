@@ -527,6 +527,7 @@ public sealed class ImportacaoSisregService(
             ProfissionalExecutanteCpf = m.CpfProfissionalExecutante,
             ProfissionalExecutanteNome = m.NomeProfissionalExecutante,
             RawSisreg = m.LinhaRaw,
+            TipoVaga = VagaDe(m.EhRetorno),
             CodigoSolicitacao = codigo,
             Status = StatusSolicitacao.Solicitada,
             Prioridade = PrioridadeSolicitacao.Eletiva,
@@ -667,6 +668,7 @@ public sealed class ImportacaoSisregService(
             alvo.ProcedimentoTexto = depois.ProcedimentoNome;
 
         alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg;
+        if (VagaDe(m.EhRetorno) is { } tipoVaga) alvo.TipoVaga = tipoVaga;
         alvo.AtualizadoEm = agora;
         alvo.AtualizadoPor = UsuarioIdAtual;
 
@@ -707,6 +709,8 @@ public sealed class ImportacaoSisregService(
             alvo.ProfissionalExecutanteCpf = m.CpfProfissionalExecutante;
         if (!string.IsNullOrWhiteSpace(m.NomeProfissionalExecutante))
             alvo.ProfissionalExecutanteNome = m.NomeProfissionalExecutante;
+        // Só sobrescreve quando a origem informa (não apaga um valor já conhecido com null).
+        if (VagaDe(m.EhRetorno) is { } tipoVaga) alvo.TipoVaga = tipoVaga;
 
         alvo.AtualizadoEm = DateTime.UtcNow;
         alvo.AtualizadoPor = UsuarioIdAtual;
@@ -728,6 +732,15 @@ public sealed class ImportacaoSisregService(
             alvo.CodigoSolicitacao ?? string.Empty, true, alvo.Id, string.Empty,
             null, false, solicCriada, false, passos, null);
     }
+
+    /// <summary>Natureza da vaga normalizada (<see cref="MarcacaoSisreg.EhRetorno"/>) → enum
+    /// persistido. Null preserva o valor existente (o chamador só aplica quando não-null).</summary>
+    private static TipoVaga? VagaDe(bool? ehRetorno) => ehRetorno switch
+    {
+        true => TipoVaga.Retorno,
+        false => TipoVaga.PrimeiraVez,
+        _ => null,
+    };
 
     /// <summary>Resumo curto para a trilha (antes/depois do complemento). Cabe na coluna.</summary>
     private static string ResumoSolicitacao(Solicitacao s)

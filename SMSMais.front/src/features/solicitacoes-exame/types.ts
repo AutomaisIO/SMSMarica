@@ -22,6 +22,9 @@ export type StatusConfirmacaoPaciente = 'Pendente' | 'Confirmada' | 'Cancelada';
  */
 export type DirecaoSolicitacao = 'Recebida' | 'Enviada';
 
+/** Natureza da vaga no SISREG (coluna 8 "Vaga (flag)" do TXT): 1ª vez ou retorno. */
+export type TipoVaga = 'PrimeiraVez' | 'Retorno';
+
 export type SolicitacaoExame = {
   id: string;
   accessionNumber: string;
@@ -106,6 +109,9 @@ export type SolicitacaoExame = {
   equipamentoId: string | null;
   equipamentoNome: string | null;
   equipamentoAeTitle: string | null;
+
+  /** Natureza da vaga no SISREG (Primeira Vez / Retorno). null = não informado (pedido manual). */
+  tipoVaga: TipoVaga | null;
 };
 
 export type SolicitacaoExameListItem = {
@@ -140,6 +146,8 @@ export type SolicitacaoExameListItem = {
   laudoAssinado: boolean;
   /** Direção relativa à unidade ativa (recebida/enviada). null = sem referência única. */
   direcao: DirecaoSolicitacao | null;
+  /** Natureza da vaga no SISREG (Primeira Vez / Retorno). null = não informado. O card destaca "Retorno". */
+  tipoVaga: TipoVaga | null;
   /** Checks de comunicação (✓ enviado, ✓✓ entregue, ✓✓ azul lida/visualizada, ⚠ falha). */
   chipConfirmacao: ComunicacaoChip | null;
   chipExameLiberado: ComunicacaoChip | null;

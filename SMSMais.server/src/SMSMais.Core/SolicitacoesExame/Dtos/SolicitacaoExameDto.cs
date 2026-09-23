@@ -92,7 +92,11 @@ public sealed record SolicitacaoExameDto(
     // Motivo em texto pronto para a tela (a descrição livre quando o motivo é "Outro").
     string? PacienteContatoDispensaMotivo = null,
     // A dispensa deixa resultado/laudo saírem por WhatsApp? false = entrega presencial.
-    bool PacienteContatoDispensaPermiteEnvio = false);
+    bool PacienteContatoDispensaPermiteEnvio = false,
+
+    // Natureza da vaga no SISREG (Primeira Vez / Retorno). Null = não informado (pedido manual).
+    // A tela destaca "Retorno". Materializado da coluna 8 do TXT (ticket #135).
+    TipoVaga? TipoVaga = null);
 
 /// <summary>
 /// Direção da solicitação RELATIVA à unidade ativa da sessão. <c>Recebida</c> = a unidade
@@ -139,6 +143,9 @@ public sealed record SolicitacaoExameListItemDto(
     bool LaudoAssinado,
     // Direção relativa à unidade ativa (recebida/enviada). Null = sem referência única.
     DirecaoSolicitacao? Direcao,
+    // Natureza da vaga no SISREG (Primeira Vez / Retorno). Null = não informado. O card destaca
+    // "Retorno" (ticket #135).
+    TipoVaga? TipoVaga = null,
     // Checks de comunicação (✓ enviado, ✓✓ entregue, ✓✓ azul lida/visualizada, ⚠ falha).
     // Preenchidos no enriquecimento da listagem; null quando não há comunicação da finalidade.
     ComunicacaoChipDto? ChipConfirmacao = null,

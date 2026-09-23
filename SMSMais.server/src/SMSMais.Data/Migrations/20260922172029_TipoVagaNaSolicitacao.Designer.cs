@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMais.Data;
 namespace SMSMais.Data.Migrations
 {
     [DbContext(typeof(SmsMaisDbContext))]
-    partial class SmsMaisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922172029_TipoVagaNaSolicitacao")]
+    partial class TipoVagaNaSolicitacao
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2171,29 +2174,6 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
-                    b.Property<string>("SiscanErro")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("siscan_erro");
-
-                    b.Property<string>("SiscanNumeroExame")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("siscan_numero_exame");
-
-                    b.Property<string>("SiscanProtocolo")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("siscan_protocolo");
-
-                    b.Property<DateTime?>("SiscanRequisicaoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("siscan_requisicao_em");
-
-                    b.Property<Guid?>("SiscanRequisicaoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("siscan_requisicao_por");
-
                     b.Property<Guid>("SolicitacaoId")
                         .HasColumnType("uuid")
                         .HasColumnName("solicitacao_id");
@@ -2233,10 +2213,6 @@ namespace SMSMais.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("EquipamentoId");
-
-                    b.HasIndex("SiscanProtocolo")
-                        .HasDatabaseName("ix_exame_imagem_siscan_protocolo")
-                        .HasFilter("siscan_protocolo IS NOT NULL");
 
                     b.HasIndex("SolicitacaoId")
                         .IsUnique();

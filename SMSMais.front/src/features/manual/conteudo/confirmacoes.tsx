@@ -23,10 +23,14 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-09-21',
+  atualizadoEm: '2026-09-22',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
+    'confirmar direto',
+    'confirmar sem atender',
+    'confirmar no card',
+    'confirmar pela pendente',
     'agendamento',
     'sisreg',
     'whatsapp',
@@ -174,7 +178,7 @@ export const artigoConfirmacoes: Artigo = {
     {
       id: 'posse',
       titulo: 'A ficha tem dono: Atender, Assumir, Transferir, Liberar',
-      busca: 'posse atender assumir transferir liberar duas atendentes ligam para o mesmo paciente',
+      busca: 'posse atender assumir transferir liberar duas atendentes ligam para o mesmo paciente confirmar direto sem atender atalho confirmar no card',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -211,6 +215,13 @@ export const artigoConfirmacoes: Artigo = {
             No instante em que você pega a ficha, o sistema <strong>encerra o envio automático daquele agendamento</strong>{' '}
             (o selo vira <SeloRef cor="gray">Atendida por pessoa</SeloRef>). Ninguém vai receber uma mensagem automática
             enquanto você está falando com ele — nem depois, para aquele agendamento.
+          </Callout>
+          <Callout tipo="dica" titulo="Atalho: confirmar sem pegar a ficha antes">
+            Nas filas <strong>Não confirmados</strong>, <strong>Pendentes</strong> e <strong>Contato errado</strong> o
+            botão <BotaoRef>Confirmar</BotaoRef> aparece direto no card — você não precisa clicar em{' '}
+            <BotaoRef>Atender</BotaoRef> ou <BotaoRef variante="outline">Retomar</BotaoRef> primeiro. O sistema pega a
+            ficha para o seu nome na hora da confirmação. Só não dá quando outra pessoa já está atendendo aquela ficha:
+            aí o caminho é <BotaoRef variante="outline">Assumir atendimento</BotaoRef>.
           </Callout>
         </div>
       ),

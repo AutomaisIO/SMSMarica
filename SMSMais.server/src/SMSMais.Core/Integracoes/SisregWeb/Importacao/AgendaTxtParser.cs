@@ -50,6 +50,9 @@ public static class AgendaTxtParser
 
     private const int DataAtendimento = 6;
     private const int HoraAtendimento = 7;
+    /// <summary>Coluna 8: "Vaga (flag)" na tela / "tipo" no cabeçalho CSV. <c>1</c> = RETORNO,
+    /// <c>0</c> = 1ª vez. Medido em 22/09/2026 sobre 1.022.346 linhas: só valores "0"/"1".</summary>
+    private const int VagaFlag = 8;
     private const int DataSolicitacao = 29; // data em que o pedido foi feito (seguida do operador solicitante na col. 30).
     private const int DataRegulacao = 31;   // data em que a solicitação foi regulada (seguida do operador de regulação na col. 32).
     private const int CnsPaciente = 9;
@@ -222,11 +225,20 @@ public static class AgendaTxtParser
                 LinhaRaw: linha,
                 CpfProfissionalExecutante: Digitos(c[CpfProfissionalExecutante]) is { Length: 11 } cpfExec ? cpfExec : null,
                 NomeProfissionalExecutante: LimparNulo(c[NomeProfissionalExecutante]),
-                CodigoProcedimentoSisreg: LimparNulo(c[CodigoProcedimentoSisreg])));
+                CodigoProcedimentoSisreg: LimparNulo(c[CodigoProcedimentoSisreg]),
+                EhRetorno: FlagRetorno(c[VagaFlag])));
         }
 
         return new Resultado(cab, marcacoes, rejeitadas);
     }
+
+    /// <summary>Coluna 8 do TXT: "1" → retorno, "0" → 1ª vez, vazio/qualquer outro → desconhecido.</summary>
+    private static bool? FlagRetorno(string? s) => (s ?? string.Empty).Trim() switch
+    {
+        "1" => true,
+        "0" => false,
+        _ => null,
+    };
 
     private static bool EhCnes(string? s) => Digitos(s) is { Length: 7 };
 

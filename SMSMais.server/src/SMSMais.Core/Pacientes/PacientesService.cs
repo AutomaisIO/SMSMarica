@@ -1,4 +1,5 @@
 ﻿using Hl7.Fhir.Model;
+using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Dtos;
 using SMSMais.Core.Common.Documentos;
 using SMSMais.Core.Common.Excecoes;
@@ -15,7 +16,8 @@ namespace SMSMais.Core.Pacientes;
 public sealed class PacientesService(
     IPacienteFhirClient fhir,
     Auditoria.IAuditoriaService auditoria,
-    Geo.IGeocodificadorService geocoder) : IPacientesService
+    Geo.IGeocodificadorService geocoder,
+    Microsoft.Extensions.Logging.ILogger<PacientesService> logger) : IPacientesService
 {
     private const int LimiteBusca = 10;
 
@@ -24,28 +26,40 @@ public sealed class PacientesService(
     {
         Hl7.Fhir.Model.Bundle bundle;
 
-        if (string.IsNullOrWhiteSpace(termo))
+        try
         {
-            bundle = await fhir.BuscarAsync(ct: cancellationToken);
-        }
-        else
-        {
-            termo = termo.Trim();
-            var digitos = Digitos(termo);
-            var soDigitos = digitos.Length == termo.Replace(".", "").Replace("-", "").Replace(" ", "").Length;
-
-            // Até 15 dígitos: cobre o CPF (11) e também o CNS (15) — os dois são identifier no hub.
-            // O CNS só chega lá QUALIFICADO: sem o system o hub compara o número com a coluna de
-            // CPF e devolve vazio, que era o motivo de procurar paciente pelo CNS não achar nada.
-            var chave = digitos.Length switch
+            if (string.IsNullOrWhiteSpace(termo))
             {
-                11 => $"{PatientMergeFhir.SystemCpf}|{digitos}",
-                15 => $"{PatientMergeFhir.SystemCns}|{digitos}",
-                _ => digitos,
-            };
-            bundle = digitos.Length >= 3 && digitos.Length <= 15 && soDigitos
-                ? await fhir.BuscarAsync(identifier: chave, ct: cancellationToken)
-                : await fhir.BuscarAsync(name: termo, ct: cancellationToken);
+                bundle = await fhir.BuscarAsync(ct: cancellationToken);
+            }
+            else
+            {
+                termo = termo.Trim();
+                var digitos = Digitos(termo);
+                var soDigitos = digitos.Length == termo.Replace(".", "").Replace("-", "").Replace(" ", "").Length;
+
+                // Até 15 dígitos: cobre o CPF (11) e também o CNS (15) — os dois são identifier no hub.
+                // O CNS só chega lá QUALIFICADO: sem o system o hub compara o número com a coluna de
+                // CPF e devolve vazio, que era o motivo de procurar paciente pelo CNS não achar nada.
+                var chave = digitos.Length switch
+                {
+                    11 => $"{PatientMergeFhir.SystemCpf}|{digitos}",
+                    15 => $"{PatientMergeFhir.SystemCns}|{digitos}",
+                    _ => digitos,
+                };
+                bundle = digitos.Length >= 3 && digitos.Length <= 15 && soDigitos
+                    ? await fhir.BuscarAsync(identifier: chave, ct: cancellationToken)
+                    : await fhir.BuscarAsync(name: termo, ct: cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            // Barra de busca-enquanto-digita: hub indisponível/lento degrada para lista vazia em
+            // vez de 500 (era o ERRO-C3NQQ2). O timeout do HttpClient lança TaskCanceledException
+            // com o ct do chamador intacto — por isso o `|| !cancellationToken.IsCancellationRequested`.
+            // Só a cancelação do CHAMADOR (usuário mudou o termo/fechou a tela) propaga.
+            logger.LogWarning(ex, "Busca de pacientes no hub FHIR falhou — devolvendo lista vazia.");
+            return [];
         }
 
         return [.. bundle.Entry
@@ -117,8 +131,21 @@ public sealed class PacientesService(
             numero = numero[2..];
         if (numero.Length < 8) return [];
 
-        var bundle = await fhir.BuscarAsync(telecom: numero, ct: ct);
-        return [.. bundle.Entry.Select(e => e.Resource).OfType<Patient>()];
+        try
+        {
+            var bundle = await fhir.BuscarAsync(telecom: numero, ct: ct);
+            return [.. bundle.Entry.Select(e => e.Resource).OfType<Patient>()];
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            // Caminho de EXIBIÇÃO (quais pacientes têm este telefone, na thread da conversa):
+            // hub indisponível/lento degrada para vazio em vez de virar 500. O timeout do
+            // HttpClient lança TaskCanceledException com o ct do chamador intacto — por isso o
+            // `|| !ct.IsCancellationRequested`. NÃO é o guard de unicidade do OTP (esse fica em
+            // TelefoneValidacaoService e não pode degradar para "número livre").
+            logger.LogWarning(ex, "Busca de pacientes por telefone no hub FHIR falhou — seguindo sem resultados.");
+            return [];
+        }
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default)

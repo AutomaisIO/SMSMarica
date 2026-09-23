@@ -48,6 +48,10 @@ public interface IAtendimentoConfirmacaoService
 
     Task<IReadOnlyList<AtendenteConfirmacaoDto>> ListarAtendentesAsync(CancellationToken ct = default);
 
+    /// <summary>Os agendamentos do paciente que ainda esperam confirmação — para confirmar direto do chat.</summary>
+    Task<IReadOnlyList<AgendamentoPendentePacienteDto>> PendentesDoPacienteAsync(
+        Guid pacienteId, CancellationToken ct = default);
+
     Task<AcaoAtendimentoResultadoDto> AtenderAsync(Guid solicitacaoId, CancellationToken ct = default);
     Task<AcaoAtendimentoResultadoDto> AssumirAsync(Guid solicitacaoId, CancellationToken ct = default);
     Task<AcaoAtendimentoResultadoDto> TransferirAsync(Guid solicitacaoId, TransferirAtendimentoRequest request, CancellationToken ct = default);
@@ -331,6 +335,52 @@ public sealed class AtendimentoConfirmacaoService(
             .Where(u => u.Ativo && u.ExcluidoEm == null && (u.AcessoGlobal || porPerfil.Contains(u.Id)))
             .OrderBy(u => u.NomeCompleto)
             .Select(u => new AtendenteConfirmacaoDto(u.Id, u.NomeCompleto))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AgendamentoPendentePacienteDto>> PendentesDoPacienteAsync(
+        Guid pacienteId, CancellationToken ct = default)
+    {
+        var me = usuarioAtual.UsuarioId;
+        var cfg = await configuracao.ObterAsync(ct);
+        var hoje = FusoBrasilia.InicioDoDiaAtualEmUtc();
+
+        // Mesmo universo confirmável das filas (futuros, não cancelados, resposta ainda pendente),
+        // só que recortado por paciente — abrange o que estaria em Não confirmados, Pendentes,
+        // Contato errado e Telefone comprometido, porque do chat tanto faz onde a ficha está parada.
+        var q = db.Solicitacoes.AsNoTracking()
+            .Where(s => s.PacienteId == pacienteId
+                && s.ExcluidoEm == null
+                && s.Status != StatusSolicitacao.Cancelada
+                && s.DataAgendada != null && s.DataAgendada >= hoje
+                && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente);
+
+        if (cfg.SomenteSisreg)
+            q = q.Where(s => s.FonteCriacao == FonteSolicitacao.ImportacaoSisreg
+                || s.FonteCriacao == FonteSolicitacao.ExtensaoNavegador
+                || (s.FonteCriacao == null && s.RawSisreg != null));
+
+        return await q
+            .OrderBy(s => s.DataAgendada)
+            .ThenBy(s => s.CodigoSolicitacao)
+            .Select(s => new AgendamentoPendentePacienteDto(
+                s.Id,
+                s.ExameImagem != null ? (Guid?)s.ExameImagem.Id : null,
+                s.CodigoSolicitacao,
+                s.Categoria.ToString(),
+                s.ExameImagem != null && s.ExameImagem.TipoExame != null
+                    ? s.ExameImagem.TipoExame.Nome
+                    : s.EspecialidadeTexto ?? s.ProcedimentoTexto,
+                s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
+                s.DataAgendada,
+                db.AtendimentosConfirmacao.Any(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null
+                    && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento
+                    && a.AtendenteUsuarioId != me),
+                db.AtendimentosConfirmacao
+                    .Where(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null
+                        && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento)
+                    .Select(a => a.Atendente != null ? a.Atendente.NomeCompleto : "Atendente")
+                    .FirstOrDefault()))
             .ToListAsync(ct);
     }
 
