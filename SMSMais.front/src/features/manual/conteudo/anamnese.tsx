@@ -51,6 +51,10 @@ export const artigoAnamnese: Artigo = {
     'somente leitura',
     'travada',
     'enviada ao SISCAN',
+    'requisição antiga',
+    'lançada à mão',
+    'pareamento',
+    'anamnese travada sem eu ter gerado',
   ],
   secoes: () => [
     {
@@ -244,7 +248,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'dois-numeros',
       titulo: 'São dois números, e os dois importam',
-      busca: 'protocolo número do exame carimbo zeros à esquerda pesquisar laudar resultado travada somente leitura enviada cores do ícone fila',
+      busca: 'protocolo número do exame carimbo zeros à esquerda pesquisar laudar resultado travada somente leitura enviada cores do ícone fila requisição antiga lançada à mão pareamento anamnese travada sem eu ter gerado',
       conteudo: (
         <>
           <P>
@@ -286,6 +290,19 @@ export const artigoAnamnese: Artigo = {
             O número do nosso pedido é gravado no campo <strong>Nº do Prontuário</strong> da
             requisição. Assim dá para achar, lá dentro, qual exame nosso deu origem a cada
             requisição — e é isso que impede o sistema de criar duas para a mesma paciente.
+          </Callout>
+          <Callout tipo="regra" titulo="Anamnese antiga que já aparece travada">
+            Antes deste botão existir, a requisição era digitada direto no SISCAN pela unidade.
+            Essas requisições foram <strong>pareadas com as anamneses e carimbadas</strong> — pela
+            paciente (Cartão SUS) e pelo dia em que a anamnese foi preenchida. Por isso uma
+            anamnese de meses atrás pode abrir somente leitura, com um protocolo que ninguém gerou
+            por aqui: ela já tinha requisição, e agora o sistema sabe disso. O efeito prático é o
+            que importa — o botão não cria uma segunda, e a médica enxerga o número.
+            <br />
+            Onde o pareamento ficou em dúvida (duas requisições no mesmo dia, ou nenhuma naquele
+            dia), <strong>nada foi carimbado</strong>: a anamnese continua editável e o botão
+            continua disponível. Se você gerar e o SISCAN já tiver uma, a crítica avisa antes de
+            criar.
           </Callout>
         </>
       ),

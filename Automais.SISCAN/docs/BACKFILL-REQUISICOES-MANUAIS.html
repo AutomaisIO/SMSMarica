@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backfill: achar as requisições que já foram lançadas à mão</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Backfill: achar as requisições que já foram lançadas à mão</h1>
+<p><strong>23/09/2026.</strong> Medido contra o SISCAN real (V2.19.1-RC08) e contra o banco de produção.</p>
+<h2>O problema</h2>
+<p>Até hoje, a requisição de mamografia era digitada <strong>direto no SISCAN</strong> pela unidade, enquanto a anamnese era preenchida <strong>aqui</strong>. Os dois lados nunca se conheceram:</p>
+<ul>
+<li>a anamnese não sabe o número da requisição, então a médica não tem por onde seguir para o laudo;</li>
+<li>o botão novo de "Gerar Requisição SISCAN", sem saber, criaria uma <strong>segunda</strong> requisição para a</li>
+</ul>
+<p>  mesma paciente e o mesmo exame.</p>
+<p>São 873 anamneses sem protocolo, de 26/06 a 23/09/2026.</p>
+<h2>A ponte: a grade mostra o Cartão SUS</h2>
+<p>A descoberta que torna tudo possível: a grade de <strong>EXAME → GERENCIAR EXAME</strong> traz o <strong>Cartão SUS</strong> como coluna. Ou seja, dá para varrer o período inteiro e cruzar com as nossas anamneses <strong>sem abrir requisição nenhuma</strong>.</p>
+<p>Colunas da grade: <code>Paciente · Cartão SUS · Datas · Protocolo · Exame · Unidade Requisitante · Profissional Responsável - Resultado · Status</code>. O <strong>Nº do Exame não é coluna</strong> — ele mora dentro do id das ações da linha (<code>frm:listaExamePaginada:139257485:j_id173</code>), e é ele que abre o "Incluir Resultado do Exame".</p>
+<h2>Três medidas que fazem a varredura ser barata</h2>
+<div class="tw"><table><thead><tr><th>Medida</th><th>Consequência</th></tr></thead><tbody>
+<tr><td><code>frm:tamanhoPagina</code> aceita <strong>300</strong> (padrão 10)</td><td>1.329 linhas em ~10 pesquisas</td></tr>
+<tr><td>O rodapé traz o total real ("de 544 registro(s)")</td><td>quando estoura a página, <strong>parte-se a janela de datas ao meio</strong> em vez de paginar — o datascroller RichFaces exigiria engenharia reversa, e aritmética de datas não mente</td></tr>
+<tr><td><code>frm:botaoVoltar</code> devolve a grade <strong>com os resultados</strong></td><td>abrir a requisição custa <strong>0,2 s</strong> e voltar <strong>0,2 s</strong>, contra 14–32 s de um clique de menu</td></tr>
+</tbody></table></div>
+<p>Sem a terceira, ler 551 requisições levaria horas. Com ela, minutos.</p>
+<p>⚠️ Na <strong>primeira</strong> pesquisa depois de abrir a tela, o <code>frm:tamanhoPagina</code> ainda não pegou (o bean guarda o 10). Não é problema quando se parte a janela, porque o total do rodapé denuncia o corte — mas quem confiar na contagem de linhas da primeira página vai achar que existem 10 registros.</p>
+<h2>O que a varredura achou</h2>
+<p>01/06 a 30/09/2026, só mamografia: <strong>1.329 requisições</strong> — 752 Liberado, 566 Requisitado, 11 Com Resultado.</p>
+<h2>A regra de pareamento</h2>
+<p>``<code> par = mesma paciente (CNS, inclusive os secundários)     + requisição com Data da Solicitação no MESMO DIA em que a anamnese foi preenchida     + única dos dois lados (uma candidata; e o protocolo não disputado por outro exame nosso) </code>``</p>
+<p><strong>Por que "mesmo dia".</strong> Das 498 candidatas que estavam na mesma unidade, <strong>483 caíam no mesmo dia</strong>. Quem preenche a anamnese lança a requisição na sequência. Ampliar a janela para ±45 dias não trouxe quase nada e trouxe ambiguidade.</p>
+<p><strong>Por que a unidade NÃO é chave.</strong> Quem digita no SISCAN usa, com frequência, "SECRETARIA MUNICIPAL DE SAUDE DE MARICA" ou outra USF que não a do pedido — 14 casos de "CENTRO MATERNO INFANTIL" contra "UNIDADE DE SAUDE DA FAMILIA CENTRAL", por exemplo. A unidade vira <strong>sinal para mostrar</strong>, não critério para casar.</p>
+<h3>Resultado</h3>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>551 pares</strong></td><td>zero colisão de protocolo · todos com Nº do Exame</td></tr>
+<tr><td><strong>241 sem requisição nenhuma</strong></td><td>233 são de setembro — é a fila viva, que o botão novo atende</td></tr>
+<tr><td>70 com requisição em outro dia</td><td>olho humano</td></tr>
+<tr><td>11 com duas ou mais no mesmo dia</td><td>olho humano</td></tr>
+</tbody></table></div>
+<h2>Duas provas independentes, lidas dentro da requisição</h2>
+<p>Abrir a requisição confirma o par sem depender do cruzamento:</p>
+<ul>
+<li><strong><code>frm:cartaoSUS</code></strong> — o CNS da requisição, conferido contra todos os CNS da paciente (o par pode</li>
+</ul>
+<p>  ter casado por um secundário: comparar só com o principal dá falso alarme);</p>
+<ul>
+<li><strong><code>frm:prontuario</code></strong> — <strong>vazio significa digitada à mão</strong>. Quando traz o nosso accession, a</li>
+</ul>
+<p>  requisição saiu daqui. Qualquer outro número é caso para humano.</p>
+<p>A tela ainda entrega <code>frm:cnesUnidade</code> (o CNES, melhor que o nome truncado da grade) e <code>frm:dataSolicitacaoInputDate</code>.</p>
+<h2>O que se traz de volta para a anamnese</h2>
+<p><strong>Só as lacunas.</strong> Nunca se sobrescreve o que a enfermeira respondeu aqui — trocar uma verdade por outra sem ninguém ver é pior que ficar sem a resposta.</p>
+<p>A lacuna é bem definida: <strong>863 das 873 anamneses são v1 e nenhuma tem o bloco <code>siscan</code></strong>, que é justamente onde moram as perguntas que só o SISCAN fazia. O que volta:</p>
+<div class="tw"><table><thead><tr><th>Vem do SISCAN</th><th>Vai para</th></tr></thead><tbody>
+<tr><td>"Antes desta consulta, teve as mamas examinadas?" (01/02; 03 = Não Sabe é descartado)</td><td><code>siscan.mamasExaminadasAntes</code></td></tr>
+<tr><td><code>frm:anoUltimaMamografia</code></td><td><code>siscan.anoUltimaMamografia</code></td></tr>
+<tr><td>"Fez radioterapia?" + local + ano de cada lado</td><td><code>siscan.radioterapia</code></td></tr>
+<tr><td><code>frm:ano{Tipo}{Lado}</code> (13 tipos × 2 lados)</td><td><code>siscan.cirurgias</code></td></tr>
+</tbody></table></div>
+<p>O que <strong>nós já respondemos</strong> — fez mamografia, fez cirurgia, nódulo — é <strong>conferido, não escrito</strong>: a diferença vira linha de relatório.</p>
+<p><code>versao</code> <strong>não</strong> sobe para 2: o bloco passa a existir, mas o resto do questionário v2 não foi respondido, e dizer que foi seria mentir. A tela de leitura renderiza o bloco por presença, não por versão.</p>
+<h2>O que se grava, e como desfazer</h2>
+<p>``<code> smsmarica.exame_imagem   siscan_protocolo, siscan_numero_exame, siscan_requisicao_em smsmarica.anamnese       conteudo_json (só as lacunas) + _origemSiscan </code>``</p>
+<p><code>siscan_requisicao_por</code> fica <strong>NULL de propósito</strong>: ninguém daqui criou essa requisição. Protocolo preenchido + autor nulo é a assinatura do backfill, e o carimbo <code>_origemSiscan</code> no JSON diz de onde veio e quando.</p>
+<p>O <code>UPDATE</code> tem <code>and siscan_protocolo is null</code>: se alguém gerar pela tela enquanto o script roda, o dela vale.</p>
+<p><strong>Gravar o protocolo congela a anamnese</strong> (<code>AnamnesesService</code> recusa alteração de anamnese enviada ao SISCAN). Para quem já tem requisição isso é o comportamento certo — e é exatamente por isso que um par errado custa caro. O arquivo de desfazer nasce <strong>antes</strong> da escrita, com o estado anterior de cada linha.</p>
+<h2>As ferramentas</h2>
+<p>```bash</p>
+<h1>1. o espelho (somente leitura, ~2 min)</h1>
+<p>python espelho_requisicoes.py --de 01/06/2026 --ate 30/09/2026 --saida &lt;fora-do-repo&gt;.json</p>
+<h1>2. cruzar + ler cada requisição (somente leitura)</h1>
+<p>python backfill_siscan.py --espelho &lt;espelho&gt;.json --saida &lt;relatorio&gt;.json [--limite 5]</p>
+<h1>3. aplicar — o ÚNICO que escreve, e só com --confirmar</h1>
+<p>python aplicar_backfill.py --relatorio &lt;relatorio&gt;.json --desfazer &lt;desfazer&gt;.json [--confirmar] ```</p>
+<p>A saída do passo 1 tem nome e CNS; a do passo 2 tem dado clínico. <strong>Nunca no repositório</strong> — scratchpad ou fora da árvore.</p>
+</main>
+</body>
+</html>
