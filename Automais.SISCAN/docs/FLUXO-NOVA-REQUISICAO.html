@@ -175,6 +175,11 @@ li{margin:3px 0}p,li{max-width:75ch}
 <li><strong>Não sabemos se o Nº do Prontuário é obrigatório</strong> — mandamos preenchido. Não testar isso em</li>
 </ul>
 <p>  produção só para saber.</p>
+<h2>9. O SISCAN não tem sessão única (medido em 22/09/2026)</h2>
+<p>No SISREG e no SER, um login novo derruba a sessão anterior daquele operador — inclusive a do humano que está trabalhando. Era a suposição natural aqui também, e é <strong>falsa</strong>.</p>
+<p><code>probe_sessao_unica.py</code> abre duas sessões com a mesma credencial e faz a primeira ler de novo depois que a segunda entrou. As duas continuaram vivas, com o menu completo.</p>
+<p><strong>Consequência:</strong> o painel pode autenticar no SISCAN sem derrubar a atendente que está com a tela dela aberta. E as sondas do laboratório podem rodar sem atrapalhar ninguém — o que, aliás, já vinha acontecendo: cada sonda faz um login novo.</p>
+<p>É a segunda vez que a analogia entre os sistemas engana (a "sessão única herdada do SISREG" também era falsa no SER). <strong>Medir, não deduzir.</strong></p>
 </main>
 </body>
 </html>

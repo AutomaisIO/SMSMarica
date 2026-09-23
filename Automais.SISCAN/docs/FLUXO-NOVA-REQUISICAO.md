@@ -320,3 +320,19 @@ Todas as 8 respostas voltaram exatamente como enviadas, o prontuário persistiu 
 - **Do modal dá para ir direto a *Inserir Resultado***, que é o caminho da médica para o laudo.
 - **Não sabemos se o Nº do Prontuário é obrigatório** — mandamos preenchido. Não testar isso em
   produção só para saber.
+
+
+## 9. O SISCAN não tem sessão única (medido em 22/09/2026)
+
+No SISREG e no SER, um login novo derruba a sessão anterior daquele operador — inclusive a do
+humano que está trabalhando. Era a suposição natural aqui também, e é **falsa**.
+
+`probe_sessao_unica.py` abre duas sessões com a mesma credencial e faz a primeira ler de novo
+depois que a segunda entrou. As duas continuaram vivas, com o menu completo.
+
+**Consequência:** o painel pode autenticar no SISCAN sem derrubar a atendente que está com a tela
+dela aberta. E as sondas do laboratório podem rodar sem atrapalhar ninguém — o que, aliás, já
+vinha acontecendo: cada sonda faz um login novo.
+
+É a segunda vez que a analogia entre os sistemas engana (a "sessão única herdada do SISREG" também
+era falsa no SER). **Medir, não deduzir.**

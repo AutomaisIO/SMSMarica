@@ -148,9 +148,11 @@ modal de "Gerar Requisição"**, com a lista viva, e o escolhido é carimbado de
 
 ## 7. Riscos a medir antes de prometer
 
-- **Sessão única.** No SISREG e no SER, um login novo derruba a sessão anterior daquele operador —
-  inclusive a do humano. **No SISCAN não foi medido.** Se valer o mesmo, o robô logando com a conta
-  de alguém derruba essa pessoa do sistema no meio do trabalho. Medir antes de liberar.
+- ~~**Sessão única.**~~ **MEDIDO em 22/09/2026: o SISCAN NÃO tem sessão única.** Duas sessões
+  com a mesma credencial coexistiram, e a primeira continuou lendo depois que a segunda entrou
+  (`probe_sessao_unica.py`). Entrar pelo painel **não derruba** quem está no navegador — ao
+  contrário do SISREG e do SER. Mais uma vez a analogia entre os três sistemas estava errada, como
+  já tinha acontecido no SER.
 - **A conta do operador enxerga todas as unidades?** A conta do laboratório (prestador CDT) vê as
   37 do município. Contas de USF podem ver menos — o código precisa falhar dizendo *"a unidade da
   ficha não está na lista deste operador"*, e não em silêncio.

@@ -130,9 +130,9 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>Onde o Responsável é escolhido, e por quê ali.</strong> Medido em 22/09/2026: o combo do SISCAN só existe <strong>depois</strong> de percorrer o assistente inteiro para aquela paciente (CNS → tipo → unidade → Avançar → tipo de mamografia). Não há como listar os profissionais de uma unidade sem começar uma requisição. E não existe lista local que sirva: <code>sisreg_profissional_unidade</code> tem 686 nomes em 42 unidades, mas é quem tem <strong>agenda</strong> no SISREG — a profissional que assinou a ficha do nosso caso não está lá (a INOÁ II tem 15 no espelho, nenhuma delas). Logo, o seletor de Responsável <strong>vive no modal de "Gerar Requisição"</strong>, com a lista viva, e o escolhido é carimbado de volta em <code>siscan.responsavel</code> (nome + CNS). A anamnese mostra o que foi carimbado.</p>
 <h2>7. Riscos a medir antes de prometer</h2>
 <ul>
-<li><strong>Sessão única.</strong> No SISREG e no SER, um login novo derruba a sessão anterior daquele operador —</li>
+<li>~~<strong>Sessão única.</strong>~~ <strong>MEDIDO em 22/09/2026: o SISCAN NÃO tem sessão única.</strong> Duas sessões</li>
 </ul>
-<p>  inclusive a do humano. <strong>No SISCAN não foi medido.</strong> Se valer o mesmo, o robô logando com a conta   de alguém derruba essa pessoa do sistema no meio do trabalho. Medir antes de liberar.</p>
+<p>  com a mesma credencial coexistiram, e a primeira continuou lendo depois que a segunda entrou   (<code>probe_sessao_unica.py</code>). Entrar pelo painel <strong>não derruba</strong> quem está no navegador — ao   contrário do SISREG e do SER. Mais uma vez a analogia entre os três sistemas estava errada, como   já tinha acontecido no SER.</p>
 <ul>
 <li><strong>A conta do operador enxerga todas as unidades?</strong> A conta do laboratório (prestador CDT) vê as</li>
 </ul>
