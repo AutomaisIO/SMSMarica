@@ -91,7 +91,7 @@ public sealed class SiscanRequisicaoService(
                 caso.SolicitanteDaFicha, [], [], Duplicidades: critica.DeOutroPedido);
         }
 
-        var percurso = await PercorrerAsync(sessao, caso, cancellationToken);
+        var percurso = await PercorrerAsync(sessao, caso, critica.Html, cancellationToken);
 
         var campos = SiscanRequisicaoMapper.Montar(
             caso.ConteudoAnamnese, caso.Exame.AccessionNumber, caso.DataSolicitacao, caso.TipoMamografia);
@@ -161,7 +161,7 @@ public sealed class SiscanRequisicaoService(
                 + string.Join(" · ", campos.Lacunas.Select(l => l.Pergunta)));
         }
 
-        var percurso = await PercorrerAsync(sessao, caso, cancellationToken);
+        var percurso = await PercorrerAsync(sessao, caso, critica.Html, cancellationToken);
 
         var responsaveis = Responsaveis(percurso.Doc);
         var responsavel = responsaveis.FirstOrDefault(r => r.Cns == corpo.CnsResponsavel?.Trim())
@@ -202,8 +202,9 @@ public sealed class SiscanRequisicaoService(
         var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
         if (caso.DataSolicitacao < de) de = caso.DataSolicitacao.AddDays(-1);
 
-        var naGrade = await PesquisarAsync(
-            sessao, de, ate,
+        // Aqui o menu é inevitável: estamos na tela do protocolo, não na de pesquisa.
+        var (naGrade, _) = await PesquisarAsync(
+            sessao, null, de, ate,
             new Dictionary<string, string> { ["frm:numeroProntuario"] = caso.Exame.AccessionNumber },
             cancellationToken);
 
@@ -224,7 +225,8 @@ public sealed class SiscanRequisicaoService(
     private sealed record Percurso(string Html, IHtmlDocument Doc);
 
     private async Task<Percurso> PercorrerAsync(
-        ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
+        ISiscanWebSessao sessao, Caso caso, string? htmlAberto,
+        CancellationToken cancellationToken)
     {
         var relogio = Stopwatch.StartNew();
 
@@ -246,7 +248,9 @@ public sealed class SiscanRequisicaoService(
             return html;
         }
 
-        var html = await Passo("abrir GERENCIAR EXAME",
+        // Clicar no menu custa de 14 a 32 segundos. Quando a crítica já deixou a tela de pesquisa
+        // aberta, o assistente começa dali — o botão "Novo Exame" está nela.
+        var html = htmlAberto ?? await Passo("abrir GERENCIAR EXAME",
             () => sessao.AbrirPorMenuAsync(SiscanWebSessao.MenuGerenciarExame, cancellationToken));
 
         html = await Passo("clicar Novo Exame",
@@ -574,20 +578,24 @@ public sealed class SiscanRequisicaoService(
     /// ANTES do Update Model, então o validador cruzado lê no bean o valor antigo e responde
     /// "Data para comparação não informada".</para>
     /// </summary>
-    private static async Task<List<SiscanHtml.LinhaExame>> PesquisarAsync(
-        ISiscanWebSessao sessao, DateOnly de, DateOnly ate,
+    private async Task<(List<SiscanHtml.LinhaExame> Linhas, string Html)> PesquisarAsync(
+        ISiscanWebSessao sessao, string? htmlAberto, DateOnly de, DateOnly ate,
         IReadOnlyDictionary<string, string> filtros, CancellationToken cancellationToken)
     {
         var inicio = de.ToString("dd/MM/yyyy");
         var fim = ate.ToString("dd/MM/yyyy");
         var achadas = new List<SiscanHtml.LinhaExame>();
 
+        // CLICAR NO MENU É A COISA CARA. Medido em produção e no laboratório em 23/09/2026: o
+        // POST em /visao/index.jsf leva de 14 a 32 SEGUNDOS, enquanto cada pesquisa custa ~200 ms.
+        // Abrir o menu por status fazia a crítica custar 47 s; abrindo uma vez e repesquisando na
+        // própria página de resultado, custa 21 s — com resultado idêntico.
+        var html = htmlAberto
+                   ?? await sessao.AbrirPorMenuAsync(
+                       SiscanWebSessao.MenuGerenciarExame, cancellationToken);
+
         foreach (var status in TodosOsStatus)
         {
-            // Refazer a pesquisa a cada status, e não reaproveitar o documento: o ViewState já
-            // foi consumido, e reaproveitá-lo dá resultado inconsistente sem erro nenhum.
-            var html = await sessao.AbrirPorMenuAsync(
-                SiscanWebSessao.MenuGerenciarExame, cancellationToken);
             var doc = SiscanHtml.Documento(html);
 
             var campoData = doc.QuerySelector("input[name='frm:dataRequisicaoInputDate']");
@@ -613,18 +621,28 @@ public sealed class SiscanRequisicaoService(
             var campoMamografia = SiscanHtml.CampoPorRotulo(doc, "Mamografia");
             if (campoMamografia is not null) extras[campoMamografia] = "01";
 
-            var resultado = await sessao.SubmeterFormAsync(
+            // A página de resultado É a tela de pesquisa com a grade preenchida: dá para pesquisar
+            // de novo nela, e o botão "Novo Exame" continua lá. Por isso o `html` avança em vez de
+            // ser descartado — é o que evita reabrir o menu.
+            html = await sessao.SubmeterFormAsync(
                 html, SiscanHtml.FormPrincipal, extras, cancellationToken);
 
-            achadas.AddRange(SiscanHtml.Grade(SiscanHtml.Documento(resultado)));
+            achadas.AddRange(SiscanHtml.Grade(SiscanHtml.Documento(html)));
         }
 
-        return achadas;
+        return (achadas, html);
     }
 
-    /// <summary>O que a crítica de duplicidade achou antes de deixar criar.</summary>
+    /// <summary>
+    /// O que a crítica achou — e a página em que ela parou.
+    ///
+    /// <para><paramref name="Html"/> não é detalhe de implementação: é a tela de pesquisa já
+    /// aberta, de onde o assistente continua sem pagar outro clique de menu (que custa dezenas de
+    /// segundos).</para>
+    /// </summary>
     private sealed record Critica(
-        RequisicaoEncontradaDto? Nossa, IReadOnlyList<RequisicaoEncontradaDto> DeOutroPedido);
+        RequisicaoEncontradaDto? Nossa, IReadOnlyList<RequisicaoEncontradaDto> DeOutroPedido,
+        string Html);
 
     /// <summary>
     /// Pergunta ao SISCAN se já existe requisição — primeiro pelo <b>Cartão SUS</b>, e só se achar
@@ -647,8 +665,8 @@ public sealed class SiscanRequisicaoService(
         var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
         if (caso.DataSolicitacao < de) de = caso.DataSolicitacao.AddDays(-1);
 
-        var doPaciente = await PesquisarAsync(
-            sessao, de, ate,
+        var (doPaciente, html) = await PesquisarAsync(
+            sessao, null, de, ate,
             new Dictionary<string, string> { ["frm:cartaoSUS"] = caso.Cns },
             cancellationToken);
 
@@ -656,11 +674,12 @@ public sealed class SiscanRequisicaoService(
             "SISCAN[{Accession}]: crítica por CNS em {De}..{Ate} — {Achadas} requisição(ões) · {Ms} ms",
             caso.Exame.AccessionNumber, de, ate, doPaciente.Count, relogio.ElapsedMilliseconds);
 
-        if (doPaciente.Count == 0) return new Critica(null, []);
+        if (doPaciente.Count == 0) return new Critica(null, [], html);
 
-        // Achou alguma: agora vale a pergunta cara — alguma delas é DESTE pedido?
-        var nossas = await PesquisarAsync(
-            sessao, de, ate,
+        // Achou alguma: agora vale a pergunta cara — alguma delas é DESTE pedido? Continua na
+        // MESMA página, que já é a tela de pesquisa.
+        var (nossas, html2) = await PesquisarAsync(
+            sessao, html, de, ate,
             new Dictionary<string, string> { ["frm:numeroProntuario"] = caso.Exame.AccessionNumber },
             cancellationToken);
 
@@ -668,9 +687,9 @@ public sealed class SiscanRequisicaoService(
             "SISCAN[{Accession}]: crítica por prontuário — {Achadas} · {Ms} ms",
             caso.Exame.AccessionNumber, nossas.Count, relogio.ElapsedMilliseconds);
 
-        if (nossas.Count > 0) return new Critica(Encontrada(nossas[0]), []);
+        if (nossas.Count > 0) return new Critica(Encontrada(nossas[0]), [], html2);
 
-        return new Critica(null, doPaciente.Select(Encontrada).ToList());
+        return new Critica(null, doPaciente.Select(Encontrada).ToList(), html2);
     }
 
     private static RequisicaoEncontradaDto Encontrada(SiscanHtml.LinhaExame l) =>

@@ -406,3 +406,39 @@ existe no assistente.
 
 O laboratório em Python nunca tropeçou nisso porque devolvia a resposta crua, sem mesclar — o que
 funcionava por acidente no caso da navegação e por desatenção no caso do parcial.
+
+
+## 12. O que é caro no SISCAN é CLICAR NO MENU (medido em 23/09/2026)
+
+A primeira geração em produção levou **78 segundos**. O log disse onde, e a resposta é
+contraintuitiva: não é o número de requisições, é **uma** delas.
+
+| Operação | Tempo |
+|---|---|
+| `POST /visao/index.jsf` (clicar no item de menu) | **14 a 32 segundos** |
+| `GET /visao/index.jsf` | ~145 ms |
+| Pesquisar na grade | ~110 a 300 ms |
+| Todo o assistente (Novo Exame → CNS → tipo → Avançar → tipo de mamografia) | **~2,5 s somados** |
+
+Ou seja: percorrer o assistente inteiro custa menos que **um décimo** de um clique no menu.
+
+### A consequência de desenho
+
+A crítica de duplicidade abria o menu uma vez por status (são três) e o assistente abria de novo:
+quatro cliques, ~70 dos 78 segundos. Medido no laboratório, lado a lado:
+
+| | Tempo |
+|---|---|
+| Reabrindo o menu a cada status | 20,8 + 22,3 + 3,8 s = **47 s** (as pesquisas: 452 ms) |
+| Abrindo o menu uma vez e repesquisando na página de resultado | **21 s** (as pesquisas: 584 ms) |
+
+Resultado idêntico nos dois. **A página de resultado É a tela de pesquisa com a grade preenchida**:
+dá para pesquisar de novo nela, e o botão `frm:botaoNovoExame` continua lá — então o assistente
+também começa dali, sem um quarto clique.
+
+**Regra para quem for escrever qualquer outra automação do SISCAN:** conte cliques de menu, não
+requisições. Encadear na página que você já tem vale mais que qualquer outra otimização.
+
+Cuidado que continua valendo: **abrir um REGISTRO** ainda exige pesquisa fresca (o ViewState é
+consumido, e reaproveitar deu resultado inconsistente em 07/08/2026). O que se mostrou seguro é
+repetir a PESQUISA na mesma página.

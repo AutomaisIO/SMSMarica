@@ -206,6 +206,24 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>Regra:</strong> antes de aplicar um parcial, perguntar se ele é parcial (<code>Ajax-Update-Ids</code> ou <code>Ajax-Response</code>). Se não for, a resposta É a tela.</p>
 <p><strong>E o <code>&lt;h1&gt;</code> não serve de discriminador:</strong> a resposta do Novo Exame continua com <code>&lt;h1&gt;GERENCIAR EXAME&lt;/h1&gt;</code>. O que distingue as duas telas é a presença de <code>frm:tipoExame</code>, que só existe no assistente.</p>
 <p>O laboratório em Python nunca tropeçou nisso porque devolvia a resposta crua, sem mesclar — o que funcionava por acidente no caso da navegação e por desatenção no caso do parcial.</p>
+<h2>12. O que é caro no SISCAN é CLICAR NO MENU (medido em 23/09/2026)</h2>
+<p>A primeira geração em produção levou <strong>78 segundos</strong>. O log disse onde, e a resposta é contraintuitiva: não é o número de requisições, é <strong>uma</strong> delas.</p>
+<div class="tw"><table><thead><tr><th>Operação</th><th>Tempo</th></tr></thead><tbody>
+<tr><td><code>POST /visao/index.jsf</code> (clicar no item de menu)</td><td><strong>14 a 32 segundos</strong></td></tr>
+<tr><td><code>GET /visao/index.jsf</code></td><td>~145 ms</td></tr>
+<tr><td>Pesquisar na grade</td><td>~110 a 300 ms</td></tr>
+<tr><td>Todo o assistente (Novo Exame → CNS → tipo → Avançar → tipo de mamografia)</td><td><strong>~2,5 s somados</strong></td></tr>
+</tbody></table></div>
+<p>Ou seja: percorrer o assistente inteiro custa menos que <strong>um décimo</strong> de um clique no menu.</p>
+<h3>A consequência de desenho</h3>
+<p>A crítica de duplicidade abria o menu uma vez por status (são três) e o assistente abria de novo: quatro cliques, ~70 dos 78 segundos. Medido no laboratório, lado a lado:</p>
+<div class="tw"><table><thead><tr><th></th><th>Tempo</th></tr></thead><tbody>
+<tr><td>Reabrindo o menu a cada status</td><td>20,8 + 22,3 + 3,8 s = <strong>47 s</strong> (as pesquisas: 452 ms)</td></tr>
+<tr><td>Abrindo o menu uma vez e repesquisando na página de resultado</td><td><strong>21 s</strong> (as pesquisas: 584 ms)</td></tr>
+</tbody></table></div>
+<p>Resultado idêntico nos dois. <strong>A página de resultado É a tela de pesquisa com a grade preenchida</strong>: dá para pesquisar de novo nela, e o botão <code>frm:botaoNovoExame</code> continua lá — então o assistente também começa dali, sem um quarto clique.</p>
+<p><strong>Regra para quem for escrever qualquer outra automação do SISCAN:</strong> conte cliques de menu, não requisições. Encadear na página que você já tem vale mais que qualquer outra otimização.</p>
+<p>Cuidado que continua valendo: <strong>abrir um REGISTRO</strong> ainda exige pesquisa fresca (o ViewState é consumido, e reaproveitar deu resultado inconsistente em 07/08/2026). O que se mostrou seguro é repetir a PESQUISA na mesma página.</p>
 </main>
 </body>
 </html>
