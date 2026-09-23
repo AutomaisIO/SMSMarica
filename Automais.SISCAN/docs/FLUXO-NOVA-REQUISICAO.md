@@ -181,7 +181,7 @@ resolve a identificação inteira; **a anamnese não vem de lugar nenhum**.
 | Unidade Requisitante | **CNES** da unidade solicitante da ficha → `unidade_por_cnes()`, nunca o índice |
 | Tipo de mamografia | **pela idade** — ver a régua abaixo. O CID da ficha (`Z12.3`) sugere, mas quem decide é a idade |
 | Responsável | operador solicitante da ficha; casar por **CNS do profissional** (`responsavel_por_cns()`) |
-| Data da Solicitação | data da solicitação da ficha |
+| Data da Solicitação | **a data em que o EXAME foi feito** (DICOM → detecção no PACS → hoje), não a da ficha — ver §13 |
 | Conselho | derivado pelo SISCAN a partir do Responsável |
 
 ### A régua do tipo de mamografia é a IDADE
@@ -314,7 +314,7 @@ Todas as 8 respostas voltaram exatamente como enviadas, o prontuário persistiu 
 
 ### Outras coisas medidas de graça
 
-- **Data da Solicitação retroativa é aceita**: gravamos a data da ficha do SISREG, três meses
+- **Data da Solicitação retroativa é aceita**: gravamos uma data de três meses antes
   atrás, sem reclamação. Útil, porque o caso real é justamente registrar no SISCAN um exame que
   já aconteceu.
 - **Do modal dá para ir direto a *Inserir Resultado***, que é o caminho da médica para o laudo.
@@ -442,3 +442,33 @@ requisições. Encadear na página que você já tem vale mais que qualquer outr
 Cuidado que continua valendo: **abrir um REGISTRO** ainda exige pesquisa fresca (o ViewState é
 consumido, e reaproveitar deu resultado inconsistente em 07/08/2026). O que se mostrou seguro é
 repetir a PESQUISA na mesma página.
+
+
+## 13. A data que vai no campo "Data da Solicitação" é a do EXAME
+
+Decisão do Bernardo, 23/09/2026. O campo do SISCAN se chama "Data da Solicitação", mas o que se
+grava ali é **a data em que o exame foi feito** — não a da ficha do SISREG.
+
+A diferença não é acadêmica. No caso 260903032 a ficha é de **23/07/2026** e o exame aconteceu em
+**23/09/2026**: dois meses. E a data do exame, por ser mais recente, evita a recusa deles de
+*"não é permitido informar um ano inferior ao da última mamografia cadastrada"*.
+
+A cascata, com os números medidos sobre os 871 exames que têm anamnese:
+
+| Degrau | De onde vem | Cobre |
+|---|---|---|
+| 1 | `data_estudo` — o `StudyDate` do DICOM, a hora do próprio aparelho | 819 |
+| 2 | `realizado_em` — quando o servidor detectou o estudo no PACS | +45 (864 no total) |
+| 3 | **hoje** | os 7 restantes |
+
+O degrau 3 não é preguiça: é o fluxo normal de quem preenche a anamnese com a paciente na frente e
+gera a requisição na hora — o DICOM ainda não chegou e o exame é hoje. Recusar ali quebraria
+justamente o caminho que a tela incentiva ("salvou e não gerou?"); cair na data da ficha seria
+voltar ao erro que se está corrigindo.
+
+**Armadilha de fuso:** `data_estudo` é wall-clock local e se usa como está; `realizado_em` é
+instante UTC e passa por Brasília antes. Sem essa conversão, um exame detectado às 00:30 UTC —
+21:30 daqui — entraria no SISCAN com a data do dia seguinte.
+
+A data da ficha do SISREG continua sendo usada para **uma** coisa: alargar a janela de busca da
+crítica de duplicidade, para alcançar requisições antigas criadas quando era ela que gravávamos.

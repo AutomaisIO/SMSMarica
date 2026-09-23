@@ -45,6 +45,70 @@ public class SiscanRequisicaoMapperTests
             .Should().Be(esperado);
     }
 
+    // ------------------------------------------------------------ data do exame
+
+    /// <summary>
+    /// O campo que o SISCAN chama de "Data da Solicitação" leva a data em que o exame foi FEITO,
+    /// não a da ficha do SISREG (decisão do Bernardo, 23/09/2026). No caso real 260903032 a ficha
+    /// era de 23/07 e o exame aconteceu em 23/09 — dois meses de diferença.
+    /// </summary>
+    [Fact]
+    public void Data_do_exame_vem_do_dicom_quando_existe()
+    {
+        var (data, origem) = SiscanRequisicaoService.DataDoExameDe(
+            dataEstudo: new DateTime(2026, 9, 23, 8, 26, 20),
+            realizadoEm: new DateTime(2026, 9, 23, 12, 3, 59, DateTimeKind.Utc),
+            agoraUtc: new DateTime(2026, 9, 25, 14, 0, 0, DateTimeKind.Utc));
+
+        data.Should().Be(new DateOnly(2026, 9, 23));
+        origem.Should().Be(SiscanRequisicaoService.OrigemDataDoExame.Dicom);
+    }
+
+    /// <summary>Sem DICOM, vale quando o servidor detectou o estudo no PACS.</summary>
+    [Fact]
+    public void Sem_dicom_cai_na_deteccao_do_pacs()
+    {
+        var (data, origem) = SiscanRequisicaoService.DataDoExameDe(
+            dataEstudo: null,
+            realizadoEm: new DateTime(2026, 9, 23, 12, 3, 59, DateTimeKind.Utc),
+            agoraUtc: new DateTime(2026, 9, 25, 14, 0, 0, DateTimeKind.Utc));
+
+        data.Should().Be(new DateOnly(2026, 9, 23));
+        origem.Should().Be(SiscanRequisicaoService.OrigemDataDoExame.DeteccaoNoPacs);
+    }
+
+    /// <summary>
+    /// `RealizadoEm` é instante UTC: precisa passar por Brasília. Um exame detectado às 00:30 UTC
+    /// aconteceu às 21:30 do DIA ANTERIOR aqui — sem a conversão, ele entraria no SISCAN com a
+    /// data de amanhã.
+    /// </summary>
+    [Fact]
+    public void Deteccao_no_pacs_de_madrugada_utc_conta_como_o_dia_anterior_aqui()
+    {
+        var (data, _) = SiscanRequisicaoService.DataDoExameDe(
+            dataEstudo: null,
+            realizadoEm: new DateTime(2026, 9, 24, 0, 30, 0, DateTimeKind.Utc),
+            agoraUtc: new DateTime(2026, 9, 25, 14, 0, 0, DateTimeKind.Utc));
+
+        data.Should().Be(new DateOnly(2026, 9, 23));
+    }
+
+    /// <summary>
+    /// Exame ainda não realizado: é o caso de quem preenche a anamnese com a paciente na frente e
+    /// gera a requisição na hora — o DICOM ainda não chegou e o exame é hoje. Recusar aqui
+    /// quebraria o fluxo que a própria tela incentiva.
+    /// </summary>
+    [Fact]
+    public void Exame_nao_realizado_usa_hoje_e_nao_a_data_da_ficha()
+    {
+        var (data, origem) = SiscanRequisicaoService.DataDoExameDe(
+            dataEstudo: null, realizadoEm: null,
+            agoraUtc: new DateTime(2026, 9, 25, 14, 0, 0, DateTimeKind.Utc));
+
+        data.Should().Be(new DateOnly(2026, 9, 25));
+        origem.Should().Be(SiscanRequisicaoService.OrigemDataDoExame.HojeExameNaoRealizado);
+    }
+
     // ------------------------------------------------------------------ duplicidade
 
     /// <summary>

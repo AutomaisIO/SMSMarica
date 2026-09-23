@@ -108,7 +108,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Unidade Requisitante</td><td><strong>CNES</strong> da unidade solicitante da ficha → <code>unidade_por_cnes()</code>, nunca o índice</td></tr>
 <tr><td>Tipo de mamografia</td><td><strong>pela idade</strong> — ver a régua abaixo. O CID da ficha (<code>Z12.3</code>) sugere, mas quem decide é a idade</td></tr>
 <tr><td>Responsável</td><td>operador solicitante da ficha; casar por <strong>CNS do profissional</strong> (<code>responsavel_por_cns()</code>)</td></tr>
-<tr><td>Data da Solicitação</td><td>data da solicitação da ficha</td></tr>
+<tr><td>Data da Solicitação</td><td><strong>a data em que o EXAME foi feito</strong> (DICOM → detecção no PACS → hoje), não a da ficha — ver §13</td></tr>
 <tr><td>Conselho</td><td>derivado pelo SISCAN a partir do Responsável</td></tr>
 </tbody></table></div>
 <h3>A régua do tipo de mamografia é a IDADE</h3>
@@ -167,7 +167,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Todas as 8 respostas voltaram exatamente como enviadas, o prontuário persistiu e o conselho (<code>CRM - …</code>) veio derivado e disabled.</p>
 <h3>Outras coisas medidas de graça</h3>
 <ul>
-<li><strong>Data da Solicitação retroativa é aceita</strong>: gravamos a data da ficha do SISREG, três meses</li>
+<li><strong>Data da Solicitação retroativa é aceita</strong>: gravamos uma data de três meses antes</li>
 </ul>
 <p>  atrás, sem reclamação. Útil, porque o caso real é justamente registrar no SISCAN um exame que   já aconteceu.</p>
 <ul>
@@ -224,6 +224,18 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Resultado idêntico nos dois. <strong>A página de resultado É a tela de pesquisa com a grade preenchida</strong>: dá para pesquisar de novo nela, e o botão <code>frm:botaoNovoExame</code> continua lá — então o assistente também começa dali, sem um quarto clique.</p>
 <p><strong>Regra para quem for escrever qualquer outra automação do SISCAN:</strong> conte cliques de menu, não requisições. Encadear na página que você já tem vale mais que qualquer outra otimização.</p>
 <p>Cuidado que continua valendo: <strong>abrir um REGISTRO</strong> ainda exige pesquisa fresca (o ViewState é consumido, e reaproveitar deu resultado inconsistente em 07/08/2026). O que se mostrou seguro é repetir a PESQUISA na mesma página.</p>
+<h2>13. A data que vai no campo "Data da Solicitação" é a do EXAME</h2>
+<p>Decisão do Bernardo, 23/09/2026. O campo do SISCAN se chama "Data da Solicitação", mas o que se grava ali é <strong>a data em que o exame foi feito</strong> — não a da ficha do SISREG.</p>
+<p>A diferença não é acadêmica. No caso 260903032 a ficha é de <strong>23/07/2026</strong> e o exame aconteceu em <strong>23/09/2026</strong>: dois meses. E a data do exame, por ser mais recente, evita a recusa deles de <em>"não é permitido informar um ano inferior ao da última mamografia cadastrada"</em>.</p>
+<p>A cascata, com os números medidos sobre os 871 exames que têm anamnese:</p>
+<div class="tw"><table><thead><tr><th>Degrau</th><th>De onde vem</th><th>Cobre</th></tr></thead><tbody>
+<tr><td>1</td><td><code>data_estudo</code> — o <code>StudyDate</code> do DICOM, a hora do próprio aparelho</td><td>819</td></tr>
+<tr><td>2</td><td><code>realizado_em</code> — quando o servidor detectou o estudo no PACS</td><td>+45 (864 no total)</td></tr>
+<tr><td>3</td><td><strong>hoje</strong></td><td>os 7 restantes</td></tr>
+</tbody></table></div>
+<p>O degrau 3 não é preguiça: é o fluxo normal de quem preenche a anamnese com a paciente na frente e gera a requisição na hora — o DICOM ainda não chegou e o exame é hoje. Recusar ali quebraria justamente o caminho que a tela incentiva ("salvou e não gerou?"); cair na data da ficha seria voltar ao erro que se está corrigindo.</p>
+<p><strong>Armadilha de fuso:</strong> <code>data_estudo</code> é wall-clock local e se usa como está; <code>realizado_em</code> é instante UTC e passa por Brasília antes. Sem essa conversão, um exame detectado às 00:30 UTC — 21:30 daqui — entraria no SISCAN com a data do dia seguinte.</p>
+<p>A data da ficha do SISREG continua sendo usada para <strong>uma</strong> coisa: alargar a janela de busca da crítica de duplicidade, para alcançar requisições antigas criadas quando era ela que gravávamos.</p>
 </main>
 </body>
 </html>

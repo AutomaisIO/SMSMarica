@@ -68,8 +68,13 @@ public static class SiscanRequisicaoMapper
         return idade >= 36 ? Rastreamento : Diagnostica;
     }
 
+    /// <param name="dataDoExame">
+    /// Vai no campo que o SISCAN chama de <b>"Data da Solicitação"</b> — mas o que se grava ali é
+    /// a data em que o exame foi FEITO, não a da ficha do SISREG (decisão do Bernardo, 23/09/2026).
+    /// Quem resolve de onde ela sai é <c>SiscanRequisicaoService.ResolverDataDoExame</c>.
+    /// </param>
     public static CamposRequisicao Montar(
-        string? conteudoJson, string prontuario, DateOnly dataSolicitacao, string tipoMamografia)
+        string? conteudoJson, string prontuario, DateOnly dataDoExame, string tipoMamografia)
     {
         var campos = new List<KeyValuePair<string, string>>();
         var lacunas = new List<LacunaAnamnese>();
@@ -90,7 +95,7 @@ public static class SiscanRequisicaoMapper
         var siscan = Objeto(raiz, "siscan");
 
         campos.Add(new(CampoProntuario, prontuario));
-        campos.Add(new(CampoDataSolicitacao, dataSolicitacao.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)));
+        campos.Add(new(CampoDataSolicitacao, dataDoExame.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)));
         campos.Add(new(CampoTipoMamografia, tipoMamografia));
 
         MontarNodulo(queixas, campos);

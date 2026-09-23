@@ -3,6 +3,7 @@ using AngleSharp.Html.Dom;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Integracoes.SiscanWeb.Requisicao.Dtos;
 using SMSMais.Core.Pacientes.Fhir;
@@ -94,7 +95,7 @@ public sealed class SiscanRequisicaoService(
         var percurso = await PercorrerAsync(sessao, caso, critica.Html, cancellationToken);
 
         var campos = SiscanRequisicaoMapper.Montar(
-            caso.ConteudoAnamnese, caso.Exame.AccessionNumber, caso.DataSolicitacao, caso.TipoMamografia);
+            caso.ConteudoAnamnese, caso.Exame.AccessionNumber, caso.DataDoExame, caso.TipoMamografia);
 
         var responsaveis = Responsaveis(percurso.Doc);
         var sugerido = Sugerir(responsaveis, caso.SolicitanteDaFicha);
@@ -151,7 +152,7 @@ public sealed class SiscanRequisicaoService(
         }
 
         var campos = SiscanRequisicaoMapper.Montar(
-            caso.ConteudoAnamnese, caso.Exame.AccessionNumber, caso.DataSolicitacao, caso.TipoMamografia);
+            caso.ConteudoAnamnese, caso.Exame.AccessionNumber, caso.DataDoExame, caso.TipoMamografia);
 
         if (campos.Lacunas.Count > 0)
         {
@@ -697,10 +698,79 @@ public sealed class SiscanRequisicaoService(
 
     // ------------------------------------------------------------------ nosso lado
 
+    /// <param name="DataSolicitacao">
+    /// A data da ficha do SISREG. <b>Não</b> é a que vai para o SISCAN — serve só para alargar a
+    /// janela de busca até requisições antigas, criadas quando era ela que íamos gravar.
+    /// </param>
+    /// <param name="DataDoExame">
+    /// O que vai no campo "Data da Solicitação" do SISCAN. Ver <see cref="ResolverDataDoExame"/>.
+    /// </param>
     private sealed record Caso(
         ExameImagem Exame, string Cns, string PacienteNome, string CnesUnidade, string UnidadeNome,
-        DateOnly DataSolicitacao, string TipoMamografia, string? ConteudoAnamnese,
-        string? SolicitanteDaFicha);
+        DateOnly DataSolicitacao, DateOnly DataDoExame, string TipoMamografia,
+        string? ConteudoAnamnese, string? SolicitanteDaFicha);
+
+    /// <summary>
+    /// A data que vai no campo <b>"Data da Solicitação"</b> da requisição do SISCAN.
+    ///
+    /// <para><b>É a data em que o exame foi FEITO, não a da ficha do SISREG</b> (decisão do
+    /// Bernardo, 23/09/2026). A diferença não é acadêmica: no caso 260903032 a ficha é de 23/07 e
+    /// o exame aconteceu em 23/09 — dois meses. Além de ser o que o SISCAN espera, a data do exame
+    /// é mais recente, o que evita a recusa deles de "ano inferior ao da última mamografia
+    /// cadastrada".</para>
+    ///
+    /// <para>A cascata, e o porquê de cada degrau (medido sobre os 871 exames com anamnese):</para>
+    /// <list type="number">
+    ///   <item><c>DataEstudo</c> — o <c>StudyDate</c> do DICOM, a hora real do aparelho. É a
+    ///     verdade, e existe em 819 deles.</item>
+    ///   <item><c>RealizadoEm</c> — quando o servidor detectou o estudo no PACS. Cobre quase todo
+    ///     o resto (864 no total têm uma das duas).</item>
+    ///   <item><b>hoje</b> — os 7 restantes são exames que ainda não aconteceram. É o caso normal
+    ///     de quem preenche a anamnese com a paciente na frente e gera a requisição na hora: o
+    ///     DICOM ainda não chegou, e o exame é hoje. Recusar aqui quebraria justamente o fluxo que
+    ///     a tela incentiva; cair na data da ficha do SISREG seria voltar ao erro que se está
+    ///     corrigindo.</item>
+    /// </list>
+    /// </summary>
+    /// <summary>De onde a data saiu. Vai para o log, para a dúvida ser respondível depois.</summary>
+    public enum OrigemDataDoExame { Dicom, DeteccaoNoPacs, HojeExameNaoRealizado }
+
+    /// <summary>
+    /// A cascata, isolada do logger para poder ser testada.
+    ///
+    /// <para><paramref name="dataEstudo"/> é <b>wall-clock local</b> (o <c>StudyDate</c> do DICOM,
+    /// em <c>timestamp without time zone</c>): vira data direto, sem conversão.
+    /// <paramref name="realizadoEm"/> é <b>instante UTC</b> e passa por Brasília antes — senão,
+    /// das 21h em diante, o exame de hoje seria registrado como o de amanhã.</para>
+    /// </summary>
+    public static (DateOnly Data, OrigemDataDoExame Origem) DataDoExameDe(
+        DateTime? dataEstudo, DateTime? realizadoEm, DateTime agoraUtc)
+    {
+        if (dataEstudo is { } estudo)
+        {
+            return (DateOnly.FromDateTime(estudo), OrigemDataDoExame.Dicom);
+        }
+
+        if (realizadoEm is { } detectado)
+        {
+            return (DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(detectado)),
+                    OrigemDataDoExame.DeteccaoNoPacs);
+        }
+
+        return (DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(agoraUtc)),
+                OrigemDataDoExame.HojeExameNaoRealizado);
+    }
+
+    private DateOnly ResolverDataDoExame(ExameImagem exame)
+    {
+        var (data, origem) = DataDoExameDe(exame.DataEstudo, exame.RealizadoEm, DateTime.UtcNow);
+
+        logger.LogInformation(
+            "SISCAN[{Accession}]: data do exame = {Data} ({Origem}).",
+            exame.AccessionNumber, data, origem);
+
+        return data;
+    }
 
     private async Task<Caso> CarregarAsync(Guid exameImagemId, CancellationToken cancellationToken)
     {
@@ -743,19 +813,18 @@ public sealed class SiscanRequisicaoService(
         var anamnese = await db.Anamneses.AsNoTracking()
             .FirstOrDefaultAsync(a => a.ExameImagemId == exame.Id && a.ExcluidoEm == null, cancellationToken);
 
-        // Sem data de solicitação não dá para gerar: o campo é obrigatório lá, e inventar "hoje"
-        // mudaria o que o dado federal diz sobre quando a paciente pediu o exame.
-        var data = solicitacao.DataSolicitacao
-            ?? throw new ValidacaoException(
-                "siscan.sem_data_solicitacao",
-                "O pedido não tem data de solicitação, e o SISCAN exige esse campo na requisição.");
+        // A data da ficha do SISREG NÃO vai mais para o SISCAN — serve só para alargar a busca
+        // até requisições antigas, criadas quando era ela que gravávamos. Pode ser nula.
+        var dataDaFicha = solicitacao.DataSolicitacao
+                          ?? DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        var dataDoExame = ResolverDataDoExame(exame);
 
         var tipo = SiscanRequisicaoMapper.TipoMamografiaPorIdade(
             nascimento, DateOnly.FromDateTime(DateTime.Today));
 
         return new Caso(
             exame, cns, paciente.Nome ?? string.Empty, unidade.Cnes!, unidade.Nome ?? string.Empty,
-            data, tipo, anamnese?.ConteudoJson, solicitacao.SolicitanteNome);
+            dataDaFicha, dataDoExame, tipo, anamnese?.ConteudoJson, solicitacao.SolicitanteNome);
     }
 
     private async Task<SiscanRequisicaoDto> CarimbarAsync(
@@ -836,7 +905,7 @@ public sealed class SiscanRequisicaoService(
         var rotulos = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [SiscanRequisicaoMapper.CampoProntuario] = "Nº do Prontuário (nosso pedido)",
-            [SiscanRequisicaoMapper.CampoDataSolicitacao] = "Data da Solicitação",
+            [SiscanRequisicaoMapper.CampoDataSolicitacao] = "Data da Solicitação (a data do exame)",
             [SiscanRequisicaoMapper.CampoTipoMamografia] = "Tipo de mamografia",
             [SiscanRequisicaoMapper.CampoNodulo] = "Tem nódulo ou caroço na mama?",
             [SiscanRequisicaoMapper.CampoRiscoElevado] = "Apresenta risco elevado?",

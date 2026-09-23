@@ -192,7 +192,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'gerar-requisicao',
       titulo: 'Gerar a requisição no SISCAN',
-      busca: 'gerar requisição botão senha login entrar sessão confirmar salvar criar',
+      busca: 'gerar requisição botão senha login entrar sessão confirmar salvar criar data da solicitação data do exame DICOM',
       conteudo: (
         <>
           <P>
@@ -223,6 +223,12 @@ export const artigoAnamnese: Artigo = {
               },
             ]}
           />
+          <Callout tipo="regra" titulo="A data que vai no SISCAN é a do exame">
+            O campo deles se chama <strong>Data da Solicitação</strong>, mas o que gravamos ali é a
+            data em que o <strong>exame foi feito</strong> — lida do próprio aparelho, pelo DICOM.
+            Não é a data em que a unidade pediu o exame no SISREG, que costuma ser semanas ou meses
+            antes. Se o exame ainda não aconteceu, vale a data de hoje.
+          </Callout>
           <Callout tipo="lgpd" titulo="A sua senha do SISCAN não é guardada">
             Ela fica na memória do servidor presa à sua sessão e morre quando você sai do sistema.
             Não existe tabela para ela, e ninguém além de você a usa.
