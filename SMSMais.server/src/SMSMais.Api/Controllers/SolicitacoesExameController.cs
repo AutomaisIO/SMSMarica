@@ -54,11 +54,13 @@ public sealed class SolicitacoesExameController(
         [FromQuery] bool visaoSolicitante = false,
         [FromQuery] int limite = 50,
         [FromQuery] int pagina = 1,
+        /// <summary>Só solicitações de RETORNO no SISREG (ticket #135).</summary>
+        [FromQuery] bool somenteRetornos = false,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
             new FiltroSolicitacoesDto(
                 status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal,
-                accessionNumber, busca, painel, visaoSolicitante, limite, pagina),
+                accessionNumber, busca, painel, visaoSolicitante, limite, pagina, somenteRetornos),
             cancellationToken);
 
     /// <summary>

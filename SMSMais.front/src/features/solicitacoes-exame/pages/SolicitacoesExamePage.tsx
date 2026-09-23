@@ -10,6 +10,7 @@ import {
   ListOrdered,
   Loader2,
   Plus,
+  RotateCw,
   Siren,
   Trash2,
 } from 'lucide-react';
@@ -229,6 +230,7 @@ export function SolicitacoesExamePage() {
     filtroAplicado.dataFinal,
     filtroAplicado.painel,
     filtroAplicado.visaoSolicitante,
+    filtroAplicado.somenteRetornos,
     filtroAplicado.limite,
   ]);
 
@@ -617,6 +619,25 @@ export function SolicitacoesExamePage() {
               Ver como solicitante
             </label>
           ) : null}
+          {/* Somente retornos (ticket #135): mostra só as solicitações cuja vaga no SISREG é de
+              RETORNO — as mesmas que ganham o selo laranja no card. Filtro de servidor. */}
+          <label
+            className="inline-flex h-8 cursor-pointer select-none items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            title="Marque para listar apenas as solicitações de RETORNO no SISREG."
+          >
+            <input
+              type="checkbox"
+              checked={!!filtroAplicado.somenteRetornos}
+              onChange={(e) => {
+                const marcado = e.target.checked;
+                setFiltroDigitado((f) => ({ ...f, somenteRetornos: marcado || undefined }));
+                setFiltroAplicado((f) => ({ ...f, somenteRetornos: marcado || undefined }));
+              }}
+              className="h-3.5 w-3.5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+            />
+            <RotateCw className="h-4 w-4 text-amber-600" />
+            Somente retornos
+          </label>
         </div>
         <label className="flex items-center gap-2 text-sm text-gray-600">
           Itens por página:

@@ -231,6 +231,8 @@ export type FiltroSolicitacoes = {
    * true = solicitante (o que a unidade pediu). Só faz efeito com UMA unidade ativa (ticket #84).
    */
   visaoSolicitante?: boolean;
+  /** Só solicitações de RETORNO no SISREG (filtro de servidor). Ticket #135. */
+  somenteRetornos?: boolean;
   limite?: number;
   /** Página 1-based (paginação offset). Tamanho da página = limite. */
   pagina?: number;

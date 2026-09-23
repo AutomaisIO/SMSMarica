@@ -37,6 +37,7 @@ export async function listarSolicitacoes(
       busca: filtro.busca,
       painel: filtro.painel,
       visaoSolicitante: filtro.visaoSolicitante ? true : undefined,
+      somenteRetornos: filtro.somenteRetornos ? true : undefined,
       limite: filtro.limite ?? 50,
       pagina: filtro.pagina ?? 1,
     },
