@@ -24,7 +24,10 @@ public sealed record FiltroSolicitacoesDto(
     bool VisaoSolicitante = false,
     int Limite = 50,
     // Página 1-based da listagem (paginação offset). Tamanho da página = Limite.
-    int Pagina = 1);
+    int Pagina = 1,
+    // Só solicitações de RETORNO no SISREG (Solicitacao.TipoVaga == Retorno). Filtro de servidor:
+    // é o que o card destaca com o selo (ticket #135). Ausente/false = não filtra por vaga.
+    bool SomenteRetornos = false);
 
 /// <summary>Recortes que o painel de início abre na listagem de solicitações.</summary>
 public enum RecortePainel

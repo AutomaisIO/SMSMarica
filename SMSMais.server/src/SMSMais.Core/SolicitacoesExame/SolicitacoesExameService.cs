@@ -240,6 +240,8 @@ public sealed class SolicitacoesExameService(
         if (filtro.PacienteId.HasValue) query = query.Where(e => e.Solicitacao!.PacienteId == filtro.PacienteId);
         if (filtro.UnidadeId.HasValue) query = query.Where(e => e.Solicitacao!.UnidadeExecutanteId == filtro.UnidadeId);
         if (filtro.TipoExameId.HasValue) query = query.Where(e => e.TipoExameId == filtro.TipoExameId);
+        // Só retornos (vaga do SISREG) — ticket #135. Filtro de servidor, como os demais.
+        if (filtro.SomenteRetornos) query = query.Where(e => e.Solicitacao!.TipoVaga == TipoVaga.Retorno);
         if (!string.IsNullOrWhiteSpace(filtro.AccessionNumber))
         {
             var a = filtro.AccessionNumber.Trim();
