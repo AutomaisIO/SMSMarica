@@ -181,7 +181,7 @@ resolve a identificação inteira; **a anamnese não vem de lugar nenhum**.
 | Unidade Requisitante | **CNES** da unidade solicitante da ficha → `unidade_por_cnes()`, nunca o índice |
 | Tipo de mamografia | **pela idade** — ver a régua abaixo. O CID da ficha (`Z12.3`) sugere, mas quem decide é a idade |
 | Responsável | operador solicitante da ficha; casar por **CNS do profissional** (`responsavel_por_cns()`) |
-| Data da Solicitação | **a data em que o EXAME foi feito** (DICOM → detecção no PACS → hoje), não a da ficha — ver §13 |
+| Data da Solicitação | **a data em que o EXAME foi feito** (DICOM → preenchimento da anamnese), não a da ficha — ver §13 |
 | Conselho | derivado pelo SISCAN a partir do Responsável |
 
 ### A régua do tipo de mamografia é a IDADE
@@ -458,17 +458,28 @@ A cascata, com os números medidos sobre os 871 exames que têm anamnese:
 | Degrau | De onde vem | Cobre |
 |---|---|---|
 | 1 | `data_estudo` — o `StudyDate` do DICOM, a hora do próprio aparelho | 819 |
-| 2 | `realizado_em` — quando o servidor detectou o estudo no PACS | +45 (864 no total) |
-| 3 | **hoje** | os 7 restantes |
+| 2 | **`anamnese.criado_em`** — quando a anamnese foi preenchida | os 52 restantes |
+| 3 | `realizado_em` — detecção do estudo no PACS | rede |
+| 4 | **hoje** | rede |
 
-O degrau 3 não é preguiça: é o fluxo normal de quem preenche a anamnese com a paciente na frente e
-gera a requisição na hora — o DICOM ainda não chegou e o exame é hoje. Recusar ali quebraria
-justamente o caminho que a tela incentiva ("salvou e não gerou?"); cair na data da ficha seria
-voltar ao erro que se está corrigindo.
+**Por que a anamnese é um degrau tão bom** (medido em 23/09/2026 sobre as 872 anamneses):
 
-**Armadilha de fuso:** `data_estudo` é wall-clock local e se usa como está; `realizado_em` é
-instante UTC e passa por Brasília antes. Sem essa conversão, um exame detectado às 00:30 UTC —
-21:30 daqui — entraria no SISCAN com a data do dia seguinte.
+| | |
+|---|---|
+| preenchidas **no mesmo dia** do `StudyDate` | **818** |
+| em dia diferente | **2** (uma +29 dias, outra −28) |
+| coincidindo com a data da ficha do SISREG | 6 |
+
+Ela é preenchida com a paciente na frente, no dia do exame — e existe em **100%** dos casos,
+inclusive nos 52 em que o DICOM não existe. Antes de ela entrar na cascata, esses 52 caíam em
+"hoje", que é chute quando a requisição é gerada dias depois.
+
+Os degraus 3 e 4 viraram rede de segurança: gerar a requisição exige anamnese, então na prática
+não se chega neles.
+
+**Armadilha de fuso:** `data_estudo` é wall-clock local e se usa como está; `anamnese.criado_em`
+e `realizado_em` são instantes UTC e passam por Brasília antes. Sem essa conversão, uma anamnese
+salva às 00:30 UTC — 21:30 daqui — entraria no SISCAN com a data do dia seguinte.
 
 A data da ficha do SISREG continua sendo usada para **uma** coisa: alargar a janela de busca da
 crítica de duplicidade, para alcançar requisições antigas criadas quando era ela que gravávamos.

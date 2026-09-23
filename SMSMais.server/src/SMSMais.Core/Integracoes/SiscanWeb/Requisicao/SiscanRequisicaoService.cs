@@ -733,22 +733,35 @@ public sealed class SiscanRequisicaoService(
     /// </list>
     /// </summary>
     /// <summary>De onde a data saiu. Vai para o log, para a dúvida ser respondível depois.</summary>
-    public enum OrigemDataDoExame { Dicom, DeteccaoNoPacs, HojeExameNaoRealizado }
+    public enum OrigemDataDoExame { Dicom, PreenchimentoDaAnamnese, DeteccaoNoPacs, HojeSemNadaMelhor }
 
     /// <summary>
     /// A cascata, isolada do logger para poder ser testada.
     ///
-    /// <para><paramref name="dataEstudo"/> é <b>wall-clock local</b> (o <c>StudyDate</c> do DICOM,
-    /// em <c>timestamp without time zone</c>): vira data direto, sem conversão.
-    /// <paramref name="realizadoEm"/> é <b>instante UTC</b> e passa por Brasília antes — senão,
-    /// das 21h em diante, o exame de hoje seria registrado como o de amanhã.</para>
+    /// <para><b>A anamnese é preenchida no dia do exame</b> — medido em 23/09/2026 sobre as 872
+    /// anamneses existentes: <b>818 no mesmo dia</b> do <c>StudyDate</c>, só 2 em dia diferente
+    /// (±29 dias), e ela existe em 100% dos casos, inclusive nos 52 sem DICOM. Por isso ela vem
+    /// logo atrás do aparelho e antes de qualquer chute.</para>
+    ///
+    /// <para>Fuso, pela regra única da casa: <paramref name="dataEstudo"/> é <b>wall-clock local</b>
+    /// (o DICOM, em <c>timestamp without time zone</c>) e se usa como está;
+    /// <paramref name="anamnesePreenchidaEm"/> e <paramref name="realizadoEm"/> são <b>instantes
+    /// UTC</b> e passam por Brasília antes — senão, das 21h em diante, o que foi feito hoje entra
+    /// com a data de amanhã.</para>
     /// </summary>
     public static (DateOnly Data, OrigemDataDoExame Origem) DataDoExameDe(
-        DateTime? dataEstudo, DateTime? realizadoEm, DateTime agoraUtc)
+        DateTime? dataEstudo, DateTime? anamnesePreenchidaEm, DateTime? realizadoEm,
+        DateTime agoraUtc)
     {
         if (dataEstudo is { } estudo)
         {
             return (DateOnly.FromDateTime(estudo), OrigemDataDoExame.Dicom);
+        }
+
+        if (anamnesePreenchidaEm is { } anamnese)
+        {
+            return (DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(anamnese)),
+                    OrigemDataDoExame.PreenchimentoDaAnamnese);
         }
 
         if (realizadoEm is { } detectado)
@@ -758,12 +771,13 @@ public sealed class SiscanRequisicaoService(
         }
 
         return (DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(agoraUtc)),
-                OrigemDataDoExame.HojeExameNaoRealizado);
+                OrigemDataDoExame.HojeSemNadaMelhor);
     }
 
-    private DateOnly ResolverDataDoExame(ExameImagem exame)
+    private DateOnly ResolverDataDoExame(ExameImagem exame, Anamnese? anamnese)
     {
-        var (data, origem) = DataDoExameDe(exame.DataEstudo, exame.RealizadoEm, DateTime.UtcNow);
+        var (data, origem) = DataDoExameDe(
+            exame.DataEstudo, anamnese?.CriadoEm, exame.RealizadoEm, DateTime.UtcNow);
 
         logger.LogInformation(
             "SISCAN[{Accession}]: data do exame = {Data} ({Origem}).",
@@ -817,7 +831,7 @@ public sealed class SiscanRequisicaoService(
         // até requisições antigas, criadas quando era ela que gravávamos. Pode ser nula.
         var dataDaFicha = solicitacao.DataSolicitacao
                           ?? DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
-        var dataDoExame = ResolverDataDoExame(exame);
+        var dataDoExame = ResolverDataDoExame(exame, anamnese);
 
         var tipo = SiscanRequisicaoMapper.TipoMamografiaPorIdade(
             nascimento, DateOnly.FromDateTime(DateTime.Today));

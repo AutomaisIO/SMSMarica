@@ -226,8 +226,10 @@ export const artigoAnamnese: Artigo = {
           <Callout tipo="regra" titulo="A data que vai no SISCAN é a do exame">
             O campo deles se chama <strong>Data da Solicitação</strong>, mas o que gravamos ali é a
             data em que o <strong>exame foi feito</strong> — lida do próprio aparelho, pelo DICOM.
-            Não é a data em que a unidade pediu o exame no SISREG, que costuma ser semanas ou meses
-            antes. Se o exame ainda não aconteceu, vale a data de hoje.
+            Quando o aparelho ainda não mandou as imagens, vale a{' '}
+            <strong>data em que a anamnese foi preenchida</strong>, que é o mesmo dia em 99% das
+            vezes. O que nunca vai ali é a data em que a unidade pediu o exame no SISREG, que
+            costuma ser semanas ou meses antes.
           </Callout>
           <Callout tipo="lgpd" titulo="A sua senha do SISCAN não é guardada">
             Ela fica na memória do servidor presa à sua sessão e morre quando você sai do sistema.
