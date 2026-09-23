@@ -472,20 +472,28 @@ A cascata, com os números medidos sobre os 871 exames que têm anamnese:
 
 | | |
 |---|---|
-| preenchidas **no mesmo dia** do `StudyDate` | **818** |
+| preenchidas **no mesmo dia** do `StudyDate` | **819** de 821 |
 | em dia diferente | **2** (uma +29 dias, outra −28) |
+| no mesmo dia: depois do exame × antes | 712 × 107 |
 | coincidindo com a data da ficha do SISREG | 6 |
 
 Ela é do dia do exame e existe em **100%** dos casos, inclusive nos 52 em que o DICOM não existe.
 Antes de ela entrar na cascata, esses 52 caíam em "hoje", que é chute quando a requisição é gerada
 dias depois.
 
-**A ordem, medida:** nos 818 do mesmo dia, a anamnese é registrada **depois** do exame — 818 de
-818, nenhuma antes. Ou seja, ela não é preenchida "antes do exame, com a paciente na frente": é
-salva quando as imagens já saíram. Bom saber antes de supor qualquer coisa sobre o fluxo.
+**A ordem dentro do dia varia — e não importa.** Dos 819 do mesmo dia: **712 com a anamnese
+salva depois** do exame e **107 antes**. A enfermeira preenche na recepção e o exame vem em
+seguida, ou o contrário. Como a comparação é de DATA, nada disso dispara regra nenhuma.
 
-**Anamnese depois do exame NUNCA acontece** — regra do Bernardo, 23/09/2026, e os 818 de 818
-concordam. Isso reclassifica os dois casos divergentes, e é o que decide a cascata:
+> **Correção (23/09/2026).** Uma primeira medição dizia "818 de 818, a anamnese sempre depois".
+> Era artefato: a consulta de análise usava `criado_em at time zone 'UTC' at time zone
+> 'America/Sao_Paulo'`, que converte **duas vezes** — em vez de UTC−3, dá UTC+3, **6 horas de
+> erro**. O certo é `criado_em at time zone 'America/Sao_Paulo'`. O código nunca teve esse
+> defeito (usa `FusoBrasilia`), mas a conclusão que eu tinha publicado, sim.
+
+**Exame em DIA POSTERIOR ao da anamnese não acontece** — regra do Bernardo, 23/09/2026. (Dentro
+do mesmo dia a ordem varia nos dois sentidos, como está acima; a regra é sobre dias.) Isso
+reclassifica os dois casos divergentes, e é o que decide a cascata:
 
 | Caso | Anamnese | Estudo associado | O que é | O que se grava |
 |---|---|---|---|---|
@@ -530,3 +538,30 @@ lembra — e a paciente pode lembrar de um exame mais antigo que o último regis
 Não dá para pré-validar do nosso lado: não sabemos o ano que eles têm. O certo é o que já é feito
 — deixar a mensagem deles chegar inteira até quem preencheu, para corrigir na anamnese e gerar de
 novo.
+
+
+## 15. Armadilha de análise: `at time zone` duas vezes inverte o sinal
+
+Queimei uma conclusão inteira com isto em 23/09/2026. Para ler um `timestamptz` em horário de
+Brasília numa consulta de análise:
+
+```sql
+-- ERRADO: converte duas vezes, resultado UTC+3 (6 horas de erro)
+criado_em at time zone 'UTC' at time zone 'America/Sao_Paulo'
+
+-- CERTO: timestamptz -> timestamp local
+criado_em at time zone 'America/Sao_Paulo'
+```
+
+Prova rápida, para quem duvidar na hora:
+
+```sql
+select (timestamptz '2026-09-23 12:00:00+00') at time zone 'America/Sao_Paulo';           -- 09:00 ✅
+select (timestamptz '2026-09-23 12:00:00+00') at time zone 'UTC' at time zone 'America/Sao_Paulo'; -- 15:00 ❌
+```
+
+O primeiro `at time zone 'UTC'` já transforma o instante em `timestamp` sem fuso; o segundo então
+**interpreta** aquilo como hora de São Paulo e converte de volta, somando 3 em vez de subtrair.
+
+**Sintoma:** comparações de dia que parecem boas demais — foi um "818 de 818" perfeito que me fez
+desconfiar e conferir. Número redondo demais em dado de produção é sinal, não prêmio.

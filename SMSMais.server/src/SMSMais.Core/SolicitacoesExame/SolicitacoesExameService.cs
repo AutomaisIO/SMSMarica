@@ -349,7 +349,18 @@ public sealed class SolicitacoesExameService(
             .Where(a => ids.Contains(a.ExameImagemId) && a.ExcluidoEm == null)
             .Select(a => a.ExameImagemId)
             .ToListAsync(ct)).ToHashSet();
-        return [.. dtos.Select(d => comAnamnese.Contains(d.Id) ? d with { TemAnamnese = true } : d)];
+        // O protocolo do SISCAN vem no mesmo enriquecimento: é o mesmo conjunto de ids, e a fila
+        // precisa mostrar quais já foram enviadas sem abrir uma a uma.
+        var protocolos = await _db.ExamesImagem.AsNoTracking()
+            .Where(e => ids.Contains(e.Id) && e.SiscanProtocolo != null)
+            .Select(e => new { e.Id, e.SiscanProtocolo })
+            .ToDictionaryAsync(e => e.Id, e => e.SiscanProtocolo, ct);
+
+        return [.. dtos.Select(d => d with
+        {
+            TemAnamnese = comAnamnese.Contains(d.Id),
+            SiscanProtocolo = protocolos.GetValueOrDefault(d.Id),
+        })];
     }
 
     // Checks de comunicação na lista (✓/✓✓/✓✓azul/⚠): resume ExameLiberado e LaudoPronto de

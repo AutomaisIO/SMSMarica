@@ -237,13 +237,15 @@ li{margin:3px 0}p,li{max-width:75ch}
 </tbody></table></div>
 <p><strong>Por que a anamnese é um degrau tão bom</strong> (medido em 23/09/2026 sobre as 872 anamneses):</p>
 <div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
-<tr><td>preenchidas <strong>no mesmo dia</strong> do <code>StudyDate</code></td><td><strong>818</strong></td></tr>
+<tr><td>preenchidas <strong>no mesmo dia</strong> do <code>StudyDate</code></td><td><strong>819</strong> de 821</td></tr>
 <tr><td>em dia diferente</td><td><strong>2</strong> (uma +29 dias, outra −28)</td></tr>
+<tr><td>no mesmo dia: depois do exame × antes</td><td>712 × 107</td></tr>
 <tr><td>coincidindo com a data da ficha do SISREG</td><td>6</td></tr>
 </tbody></table></div>
 <p>Ela é do dia do exame e existe em <strong>100%</strong> dos casos, inclusive nos 52 em que o DICOM não existe. Antes de ela entrar na cascata, esses 52 caíam em "hoje", que é chute quando a requisição é gerada dias depois.</p>
-<p><strong>A ordem, medida:</strong> nos 818 do mesmo dia, a anamnese é registrada <strong>depois</strong> do exame — 818 de 818, nenhuma antes. Ou seja, ela não é preenchida "antes do exame, com a paciente na frente": é salva quando as imagens já saíram. Bom saber antes de supor qualquer coisa sobre o fluxo.</p>
-<p><strong>Anamnese depois do exame NUNCA acontece</strong> — regra do Bernardo, 23/09/2026, e os 818 de 818 concordam. Isso reclassifica os dois casos divergentes, e é o que decide a cascata:</p>
+<p><strong>A ordem dentro do dia varia — e não importa.</strong> Dos 819 do mesmo dia: <strong>712 com a anamnese salva depois</strong> do exame e <strong>107 antes</strong>. A enfermeira preenche na recepção e o exame vem em seguida, ou o contrário. Como a comparação é de DATA, nada disso dispara regra nenhuma.</p>
+<p>&gt; <strong>Correção (23/09/2026).</strong> Uma primeira medição dizia "818 de 818, a anamnese sempre depois". &gt; Era artefato: a consulta de análise usava <code>criado_em at time zone 'UTC' at time zone &gt; 'America/Sao_Paulo'</code>, que converte <strong>duas vezes</strong> — em vez de UTC−3, dá UTC+3, <strong>6 horas de &gt; erro</strong>. O certo é <code>criado_em at time zone 'America/Sao_Paulo'</code>. O código nunca teve esse &gt; defeito (usa <code>FusoBrasilia</code>), mas a conclusão que eu tinha publicado, sim.</p>
+<p><strong>Exame em DIA POSTERIOR ao da anamnese não acontece</strong> — regra do Bernardo, 23/09/2026. (Dentro do mesmo dia a ordem varia nos dois sentidos, como está acima; a regra é sobre dias.) Isso reclassifica os dois casos divergentes, e é o que decide a cascata:</p>
 <div class="tw"><table><thead><tr><th>Caso</th><th>Anamnese</th><th>Estudo associado</th><th>O que é</th><th>O que se grava</th></tr></thead><tbody>
 <tr><td><code>260701056</code></td><td>01/07</td><td>02/06</td><td>normal: anamnese digitada um mês depois (registro retroativo)</td><td><strong>02/06</strong>, o DICOM</td></tr>
 <tr><td><code>260824012</code></td><td>25/08</td><td>22/09</td><td><strong>impossível</strong>: estudo posterior à anamnese → conciliação errada</td><td><strong>25/08</strong>, a anamnese</td></tr>
@@ -258,6 +260,14 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>&gt; Não é permitido informar no campo "Quando fez a última mamografia?" um ano inferior ao da última &gt; mamografia cadastrada.</p>
 <p>Ou seja: <code>frm:anoUltimaMamografia</code> não é campo livre. O SISCAN guarda, por paciente, o ano da última mamografia que conhece, e <strong>recusa um ano menor que esse</strong>.</p>
 <p>Consequência para nós: esse número vem da nossa anamnese (seção 7), preenchido pelo que a paciente lembra — e a paciente pode lembrar de um exame mais antigo que o último registrado no Ministério. Não dá para pré-validar do nosso lado: não sabemos o ano que eles têm. O certo é o que já é feito — deixar a mensagem deles chegar inteira até quem preencheu, para corrigir na anamnese e gerar de novo.</p>
+<h2>15. Armadilha de análise: <code>at time zone</code> duas vezes inverte o sinal</h2>
+<p>Queimei uma conclusão inteira com isto em 23/09/2026. Para ler um <code>timestamptz</code> em horário de Brasília numa consulta de análise:</p>
+<p>```sql -- ERRADO: converte duas vezes, resultado UTC+3 (6 horas de erro) criado_em at time zone 'UTC' at time zone 'America/Sao_Paulo'</p>
+<p>-- CERTO: timestamptz -&gt; timestamp local criado_em at time zone 'America/Sao_Paulo' ```</p>
+<p>Prova rápida, para quem duvidar na hora:</p>
+<p>``<code>sql select (timestamptz '2026-09-23 12:00:00+00') at time zone 'America/Sao_Paulo';           -- 09:00 ✅ select (timestamptz '2026-09-23 12:00:00+00') at time zone 'UTC' at time zone 'America/Sao_Paulo'; -- 15:00 ❌ </code>``</p>
+<p>O primeiro <code>at time zone 'UTC'</code> já transforma o instante em <code>timestamp</code> sem fuso; o segundo então <strong>interpreta</strong> aquilo como hora de São Paulo e converte de volta, somando 3 em vez de subtrair.</p>
+<p><strong>Sintoma:</strong> comparações de dia que parecem boas demais — foi um "818 de 818" perfeito que me fez desconfiar e conferir. Número redondo demais em dado de produção é sinal, não prêmio.</p>
 </main>
 </body>
 </html>

@@ -48,6 +48,9 @@ export const artigoAnamnese: Artigo = {
     'duplicidade',
     'vincular',
     'já tem requisição',
+    'somente leitura',
+    'travada',
+    'enviada ao SISCAN',
   ],
   secoes: () => [
     {
@@ -241,7 +244,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'dois-numeros',
       titulo: 'São dois números, e os dois importam',
-      busca: 'protocolo número do exame carimbo zeros à esquerda pesquisar laudar resultado',
+      busca: 'protocolo número do exame carimbo zeros à esquerda pesquisar laudar resultado travada somente leitura enviada cores do ícone fila',
       conteudo: (
         <>
           <P>
@@ -266,6 +269,19 @@ export const artigoAnamnese: Artigo = {
             Não são o mesmo número escrito de dois jeitos: são registros distintos do SISCAN, e a
             tela deles pesquisa pelos dois. Por isso guardamos ambos.
           </P>
+          <Callout tipo="regra" titulo="Depois de enviada, a anamnese trava">
+            Gerada a requisição, o questionário passa a abrir <strong>somente leitura</strong>, com
+            uma tarja no topo mostrando o protocolo e o Nº do exame. Não é capricho: aquelas
+            respostas viraram uma requisição numa base do Ministério, e mudá-las aqui criaria duas
+            verdades para o mesmo exame sem ninguém saber qual vale. Precisa corrigir? É na própria
+            requisição do SISCAN, que abre editável para quem a criou. Anexar documento continua
+            liberado — não é alterar o questionário.
+          </Callout>
+          <Callout tipo="dica" titulo="Dá para ver pela fila quais já foram">
+            Na lista de Solicitações, o ícone da anamnese tem três cores: <strong>azul</strong> sem
+            anamnese, <strong>verde</strong> preenchida e <strong>verde-azulado</strong> já enviada
+            ao SISCAN. Passando o mouse, o protocolo aparece.
+          </Callout>
           <Callout tipo="dica" titulo="O caminho de volta">
             O número do nosso pedido é gravado no campo <strong>Nº do Prontuário</strong> da
             requisição. Assim dá para achar, lá dentro, qual exame nosso deu origem a cada

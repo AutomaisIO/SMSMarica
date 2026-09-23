@@ -402,6 +402,7 @@ export function SolicitacoesExamePage() {
               solicitacaoExameId={s.id}
               accessionNumber={s.accessionNumber}
               temAnamnese={s.temAnamnese}
+              siscanProtocolo={s.siscanProtocolo}
               iconeApenas
             />
             {realizadaOuLaudada ? (

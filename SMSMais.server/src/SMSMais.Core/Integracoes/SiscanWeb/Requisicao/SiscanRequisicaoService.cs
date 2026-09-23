@@ -66,8 +66,20 @@ public sealed class SiscanRequisicaoService(
 
         if (caso.Exame.SiscanProtocolo is { Length: > 0 } protocolo)
         {
+            // Protocolo carimbado e Nº do Exame em branco: aconteceu em produção em 23/09/2026 —
+            // a releitura logo após o Salvar não achou a linha na grade (o SISCAN parece levar um
+            // instante para indexá-la). Sem o número, a médica fica com metade do que precisa.
+            //
+            // Recupera agora, pelo Nº do Prontuário — que é o NOSSO AccessionNumber, gravado lá
+            // justamente para servir de volta como chave. É a mesma ponte, usada do outro lado.
+            var numeroExame = caso.Exame.SiscanNumeroExame;
+            if (string.IsNullOrEmpty(numeroExame))
+            {
+                numeroExame = await RecuperarNumeroDoExameAsync(caso, cancellationToken);
+            }
+
             return new SiscanPreparoDto(
-                true, protocolo, caso.Exame.SiscanNumeroExame, caso.PacienteNome,
+                true, protocolo, numeroExame, caso.PacienteNome,
                 caso.CnesUnidade, caso.UnidadeNome, caso.TipoMamografia,
                 RotuloTipo(caso.TipoMamografia), [], null, caso.SolicitanteDaFicha, [], []);
         }
@@ -635,6 +647,57 @@ public sealed class SiscanRequisicaoService(
     }
 
     /// <summary>
+    /// Vai buscar no SISCAN o Nº do Exame que faltou ser carimbado, e grava.
+    ///
+    /// <para>O modal do Salvar devolve só o protocolo; o Nº do Exame mora na grade. Quando a
+    /// releitura logo depois de criar não acha a linha — aconteceu em produção em 23/09/2026, o
+    /// SISCAN parece levar um instante para indexá-la —, o exame fica com metade dos números. E
+    /// falta justamente o que abre o "Incluir Resultado do Exame", o caminho da médica.</para>
+    ///
+    /// <para>A chave da busca é o <b>Nº do Prontuário</b>, que é o nosso <c>AccessionNumber</c>
+    /// gravado lá para servir de volta — a mesma ponte, usada do outro lado.</para>
+    ///
+    /// <para>Falhar aqui não derruba a tela: devolve null e a pessoa segue com o protocolo, que
+    /// também pesquisa no SISCAN.</para>
+    /// </summary>
+    private async Task<string?> RecuperarNumeroDoExameAsync(
+        Caso caso, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var sessao = sessoes.Exigir(SessaoId());
+            var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
+            if (caso.DataSolicitacao < de) de = caso.DataSolicitacao.AddDays(-1);
+
+            var (linhas, _) = await PesquisarAsync(
+                sessao, null, de, ate,
+                new Dictionary<string, string> { ["frm:numeroProntuario"] = caso.Exame.AccessionNumber },
+                cancellationToken);
+
+            var numero = linhas.FirstOrDefault()?.NumeroExame;
+            if (string.IsNullOrEmpty(numero)) return null;
+
+            caso.Exame.SiscanNumeroExame = numero;
+            caso.Exame.AtualizadoEm = DateTime.UtcNow;
+            caso.Exame.AtualizadoPor = usuarioAtual.UsuarioId;
+            await db.SaveChangesAsync(cancellationToken);
+
+            logger.LogWarning(
+                "SISCAN[{Accession}]: Nº do Exame {Numero} recuperado pelo prontuário e carimbado "
+                + "(ficou em branco na criação).", caso.Exame.AccessionNumber, numero);
+
+            return numero;
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(
+                e, "SISCAN[{Accession}]: não consegui recuperar o Nº do Exame; segue só o protocolo.",
+                caso.Exame.AccessionNumber);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// O que a crítica achou — e a página em que ela parou.
     ///
     /// <para><paramref name="Html"/> não é detalhe de implementação: é a tela de pesquisa já
@@ -752,18 +815,22 @@ public sealed class SiscanRequisicaoService(
     /// <summary>
     /// A cascata, isolada do logger para poder ser testada.
     ///
-    /// <para><b>A anamnese é do dia do exame</b> — medido em 23/09/2026 sobre as 872 anamneses:
-    /// <b>818 no mesmo dia</b> do <c>StudyDate</c>, só 2 em dia diferente (±29 dias), e ela existe
-    /// em 100% dos casos, inclusive nos 52 sem DICOM. Por isso vem logo atrás do aparelho e antes
-    /// de qualquer chute. (Detalhe medido, contra a intuição: no mesmo dia ela é salva SEMPRE
-    /// depois do exame — 818 de 818 —, e não antes, com a paciente na frente.)</para>
+    /// <para><b>A anamnese é do dia do exame</b> — medido em 23/09/2026: dos 821 exames que têm
+    /// anamnese e <c>StudyDate</c>, <b>819 no mesmo dia</b>, só 2 em dia diferente. E ela existe
+    /// em 100% dos casos, inclusive nos que não têm DICOM. Por isso vem logo atrás do aparelho e
+    /// antes de qualquer chute.</para>
     ///
-    /// <para><b>Anamnese depois do exame NUNCA acontece</b> (regra do Bernardo, 23/09/2026, e os
-    /// 818 de 818 concordam). Então um estudo com data POSTERIOR à anamnese não é um exame que
-    /// demorou: é <b>problema de conciliação</b> — o estudo foi associado ao pedido errado. Nesse
-    /// caso o DICOM perde a confiança e vale a anamnese, com aviso na tela. Acontece em 1 dos 872.
-    /// Confiar no DICOM ali gravaria no Ministério a data de um exame que talvez nem seja desta
-    /// paciente.</para>
+    /// <para><b>Dentro do mesmo dia a ordem varia e não importa:</b> 712 anamneses salvas depois
+    /// do exame e 107 antes — a enfermeira preenche na recepção e o exame vem em seguida, ou o
+    /// contrário. A comparação aqui é de DATA, então nada disso dispara regra nenhuma. (Uma
+    /// medição anterior dizia "818 de 818 depois"; era artefato de uma conversão de fuso feita
+    /// duas vezes na consulta de análise — 6 horas de erro. O código nunca teve esse defeito.)</para>
+    ///
+    /// <para><b>Exame em DIA POSTERIOR ao da anamnese não acontece</b> (regra do Bernardo,
+    /// 23/09/2026). Então um estudo assim não é um exame que demorou: é <b>problema de
+    /// conciliação</b> — o estudo foi associado ao pedido errado. Nesse caso o DICOM perde a
+    /// confiança e vale a anamnese, com aviso na tela. Acontece em 1 dos 821. Confiar no DICOM ali
+    /// gravaria no Ministério a data de um exame que talvez nem seja desta paciente.</para>
     ///
     /// <para>Fuso, pela regra única da casa: <paramref name="dataEstudo"/> é <b>wall-clock local</b>
     /// (o DICOM, em <c>timestamp without time zone</c>) e se usa como está;

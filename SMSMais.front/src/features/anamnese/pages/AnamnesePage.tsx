@@ -78,7 +78,11 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
   // (`?leitura=1`). O gate é só a permissão — que o backend também exige no
   // endpoint. Já o questionário continua somente-leitura fora de Solicitações.
   const podeAnexar = usePermissao('SolicitacoesExame', 'Edicao');
-  const podeEditar = podeAnexar && !janela && !leitura;
+  // Enviada ao SISCAN = somente leitura. As respostas viraram uma requisição numa base federal;
+  // mudá-las aqui criaria duas verdades para o mesmo exame, sem ninguém saber qual vale. O
+  // backend recusa igual — esta trava é a conveniência, aquela é a regra.
+  const enviadaAoSiscan = Boolean(contexto.data?.siscanProtocolo);
+  const podeEditar = podeAnexar && !janela && !leitura && !enviadaAoSiscan;
 
   const [conteudo, setConteudo] = useState<AnamneseMamografiaConteudo>(conteudoVazio);
   const [erro, setErro] = useState<string | null>(null);
@@ -281,15 +285,25 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           {/* O carimbo do SISCAN: é o que a médica leva para laudar. Fica no cabeçalho porque é
               informação de identidade do pedido, não uma resposta do questionário. */}
           {ctx.siscanProtocolo ? (
-            <p className="mt-1 inline-flex flex-wrap items-center gap-x-2 rounded-md bg-teal-50 px-2 py-1 text-xs text-teal-900">
-              <FileCheck2 className="h-3.5 w-3.5" />
-              SISCAN · protocolo <span className="font-mono font-semibold">{ctx.siscanProtocolo}</span>
-              {ctx.siscanNumeroExame ? (
-                <>
-                  · exame <span className="font-mono font-semibold">{ctx.siscanNumeroExame}</span>
-                </>
-              ) : null}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-teal-300 bg-teal-50 px-3 py-2 text-sm text-teal-900">
+              <span className="inline-flex items-center gap-1.5 font-semibold">
+                <FileCheck2 className="h-4 w-4" />
+                Enviada ao SISCAN
+              </span>
+              <span>
+                Protocolo <span className="font-mono font-semibold">{ctx.siscanProtocolo}</span>
+                {ctx.siscanNumeroExame ? (
+                  <>
+                    {' '}
+                    · Nº do exame{' '}
+                    <span className="font-mono font-semibold">{ctx.siscanNumeroExame}</span>
+                  </>
+                ) : null}
+              </span>
+              <span className="text-xs text-teal-800">
+                Somente leitura — a correção é feita na própria requisição do SISCAN.
+              </span>
+            </div>
           ) : null}
         </div>
         {podeEditar ? (

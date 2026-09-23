@@ -57,10 +57,25 @@ public sealed class AnamnesesService(
     public async Task<AnamneseDto> SalvarAsync(
         Guid solicitacaoExameId, SalvarAnamneseDto dto, CancellationToken cancellationToken = default)
     {
-        var solExiste = await db.ExamesImagem.AsNoTracking()
-            .AnyAsync(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null, cancellationToken);
-        if (!solExiste)
-            throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
+        var exame = await db.ExamesImagem.AsNoTracking()
+            .Where(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null)
+            .Select(s => new { s.SiscanProtocolo })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
+
+        // Anamnese já enviada ao SISCAN não se altera por aqui. As respostas viraram uma
+        // requisição numa base federal; mudá-las do nosso lado criaria duas verdades para o mesmo
+        // exame — a nossa e a do Ministério — sem ninguém saber qual vale. A correção é lá, na
+        // requisição, que abre editável para quem a criou.
+        //
+        // A trava mora AQUI, e não só na tela: tela é conveniência, servidor é regra.
+        if (exame.SiscanProtocolo is { Length: > 0 } protocolo)
+        {
+            throw new ConflitoException(
+                "anamnese.enviada_ao_siscan",
+                $"Esta anamnese já gerou a requisição {protocolo} no SISCAN e não pode mais ser "
+                + "alterada aqui. Se algo estiver errado, corrija na própria requisição do SISCAN.");
+        }
 
         var agora = DateTime.UtcNow;
         var usuarioId = usuarioAtual.UsuarioId;

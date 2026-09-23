@@ -152,7 +152,10 @@ public sealed record SolicitacaoExameListItemDto(
     ComunicacaoChipDto? ChipExameLiberado = null,
     ComunicacaoChipDto? ChipLaudoPronto = null,
     // Anamnese (questionário pré-exame) já preenchida — muda a cor do botão na lista.
-    bool TemAnamnese = false);
+    bool TemAnamnese = false,
+    // Protocolo da requisição no SISCAN, quando já foi gerada. Null = ainda não. Vai para a
+    // lista porque "essa já foi?" é a pergunta que se faz olhando a fila, não abrindo cada uma.
+    string? SiscanProtocolo = null);
 
 /// <summary>Página da listagem de solicitações (paginação offset + total para os controles).</summary>
 public sealed record PaginaSolicitacoesDto(

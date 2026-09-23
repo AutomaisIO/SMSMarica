@@ -154,6 +154,8 @@ export type SolicitacaoExameListItem = {
   chipLaudoPronto: ComunicacaoChip | null;
   /** Anamnese (questionário pré-exame) já preenchida — muda a cor do botão na lista. */
   temAnamnese: boolean;
+  /** Protocolo da requisição no SISCAN, quando já foi gerada. Null = ainda não. */
+  siscanProtocolo: string | null;
 };
 
 /** Resumo da comunicação para os checks na lista. */

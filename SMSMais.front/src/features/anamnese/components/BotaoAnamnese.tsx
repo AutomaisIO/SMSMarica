@@ -24,6 +24,11 @@ type Props = {
    * Muda a cor do botão: esmeralda = preenchida, indigo = pendente.
    */
   temAnamnese?: boolean;
+  /**
+   * Protocolo da requisição no SISCAN (vem no DTO da listagem). Presente = já foi enviada, e o
+   * botão muda de cor: é a pergunta que se faz olhando a fila, sem abrir uma a uma.
+   */
+  siscanProtocolo?: string | null;
   className?: string;
 };
 
@@ -39,6 +44,7 @@ export function BotaoAnamnese({
   iconeApenas = false,
   somenteLeitura = false,
   temAnamnese: temAnamneseProp,
+  siscanProtocolo,
   className,
 }: Props) {
   const navigate = useNavigate();
@@ -65,11 +71,29 @@ export function BotaoAnamnese({
     navigate(destino);
   }
 
+  const enviadaAoSiscan = Boolean(siscanProtocolo);
+
   const titulo = semAnamnese
     ? 'Sem anamnese'
+    : enviadaAoSiscan
+      ? `Enviada ao SISCAN — protocolo ${siscanProtocolo} (somente leitura)`
+      : temAnamnese
+        ? 'Anamnese preenchida — clique para ver/editar'
+        : 'Anamnese do paciente (pré-exame)';
+
+  // Três estados, e a ordem importa: enviada ao SISCAN vence "preenchida", porque é o que muda
+  // o que dá para FAZER com ela — dali em diante é só leitura.
+  const corIcone = enviadaAoSiscan
+    ? 'text-teal-600 hover:text-teal-800'
     : temAnamnese
-      ? 'Anamnese preenchida — clique para ver/editar'
-      : 'Anamnese do paciente (pré-exame)';
+      ? 'text-emerald-600 hover:text-emerald-800'
+      : 'text-indigo-600 hover:text-indigo-800';
+
+  const corBotao = enviadaAoSiscan
+    ? 'border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100 disabled:hover:bg-teal-50'
+    : temAnamnese
+      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:hover:bg-emerald-50'
+      : 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:hover:bg-indigo-50';
 
   if (iconeApenas) {
     return (
@@ -81,7 +105,7 @@ export function BotaoAnamnese({
         aria-label="Anamnese do paciente"
         className={cn(
           'inline-flex items-center rounded p-0.5 transition-colors',
-          temAnamnese ? 'text-emerald-600 hover:text-emerald-800' : 'text-indigo-600 hover:text-indigo-800',
+          corIcone,
           'disabled:cursor-not-allowed disabled:text-gray-300',
           className,
         )}
@@ -101,9 +125,7 @@ export function BotaoAnamnese({
         variante === 'compacto'
           ? 'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium'
           : 'inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium',
-        temAnamnese
-          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:hover:bg-emerald-50'
-          : 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:hover:bg-indigo-50',
+        corBotao,
         'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
