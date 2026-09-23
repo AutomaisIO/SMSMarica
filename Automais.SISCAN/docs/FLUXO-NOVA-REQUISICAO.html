@@ -180,6 +180,21 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><code>probe_sessao_unica.py</code> abre duas sessões com a mesma credencial e faz a primeira ler de novo depois que a segunda entrou. As duas continuaram vivas, com o menu completo.</p>
 <p><strong>Consequência:</strong> o painel pode autenticar no SISCAN sem derrubar a atendente que está com a tela dela aberta. E as sondas do laboratório podem rodar sem atrapalhar ninguém — o que, aliás, já vinha acontecendo: cada sonda faz um login novo.</p>
 <p>É a segunda vez que a analogia entre os sistemas engana (a "sessão única herdada do SISREG" também era falsa no SER). <strong>Medir, não deduzir.</strong></p>
+<h2>10. Como perguntar "essa paciente já tem requisição?" (medido em 23/09/2026)</h2>
+<p>Duas perguntas diferentes, que viram duas críticas antes de criar. Ferramenta: <a href="../probe_duplicidade.py"><code>probe_duplicidade.py</code></a>.</p>
+<h3>O Status é obrigatório de verdade</h3>
+<p>A tela marca <code>Status: *</code>, e o comportamento confirma: <strong>sem status, a pesquisa responde "Selecione um Status" e devolve zero linhas</strong>. Não é filtro ignorado em silêncio — é recusa. Por isso qualquer varredura tem de repetir a busca nos três status (<code>01</code> Requisitado, <code>02</code> Com Resultado, <code>03</code> Liberado). Perguntar só por "Requisitado" deixaria passar justamente a requisição que já tem resultado — a que mais importa não duplicar.</p>
+<h3>As duas perguntas</h3>
+<div class="tw"><table><thead><tr><th>Pergunta</th><th>Filtro</th><th>O que fazer com a resposta</th></tr></thead><tbody>
+<tr><td>A requisição <strong>deste pedido</strong> já está lá?</td><td><code>frm:numeroProntuario</code> = nosso AccessionNumber</td><td>É nossa: <strong>não criar outra</strong> — vincular, trazendo protocolo e nº do exame</td></tr>
+<tr><td>A paciente tem <strong>alguma</strong> requisição na janela?</td><td><code>frm:cartaoSUS</code> = CNS</td><td>Não é nossa: <strong>parar</strong> e mandar resolver no SISCAN</td></tr>
+</tbody></table></div>
+<p><strong>A janela:</strong> <code>fim = hoje + 10 dias</code>, <code>início = fim − 1 ano</code>. Os 10 dias à frente existem porque a requisição pode ter data de solicitação futura; o ano para trás é o intervalo em que uma segunda mamografia da mesma paciente é suspeita.</p>
+<p>A busca pelo prontuário recua até a data da solicitação quando ela é anterior à janela — registro retroativo é o caso comum, e a requisição do pedido pode estar fora do último ano.</p>
+<h3>Por que a ordem importa</h3>
+<p>O prontuário é consultado <strong>antes</strong> da crítica de lacunas da anamnese. Vincular o que já existe não pode depender de a anamnese estar completa: o dado já está no SISCAN de qualquer jeito, e o que falta do nosso lado é só o carimbo.</p>
+<h3>O que isso conserta</h3>
+<p>As requisições criadas pelo laboratório, antes de existirem as colunas do carimbo, ficavam invisíveis no painel — a tela dizia que não havia requisição e ofereceria criar outra. Agora o próprio ato de abrir a geração encontra a requisição pelo prontuário e oferece vincular.</p>
 </main>
 </body>
 </html>

@@ -336,3 +336,43 @@ vinha acontecendo: cada sonda faz um login novo.
 
 É a segunda vez que a analogia entre os sistemas engana (a "sessão única herdada do SISREG" também
 era falsa no SER). **Medir, não deduzir.**
+
+
+## 10. Como perguntar "essa paciente já tem requisição?" (medido em 23/09/2026)
+
+Duas perguntas diferentes, que viram duas críticas antes de criar. Ferramenta:
+[`probe_duplicidade.py`](../probe_duplicidade.py).
+
+### O Status é obrigatório de verdade
+
+A tela marca `Status: *`, e o comportamento confirma: **sem status, a pesquisa responde
+"Selecione um Status" e devolve zero linhas**. Não é filtro ignorado em silêncio — é recusa. Por
+isso qualquer varredura tem de repetir a busca nos três status (`01` Requisitado, `02` Com
+Resultado, `03` Liberado). Perguntar só por "Requisitado" deixaria passar justamente a requisição
+que já tem resultado — a que mais importa não duplicar.
+
+### As duas perguntas
+
+| Pergunta | Filtro | O que fazer com a resposta |
+|---|---|---|
+| A requisição **deste pedido** já está lá? | `frm:numeroProntuario` = nosso AccessionNumber | É nossa: **não criar outra** — vincular, trazendo protocolo e nº do exame |
+| A paciente tem **alguma** requisição na janela? | `frm:cartaoSUS` = CNS | Não é nossa: **parar** e mandar resolver no SISCAN |
+
+**A janela:** `fim = hoje + 10 dias`, `início = fim − 1 ano`. Os 10 dias à frente existem porque a
+requisição pode ter data de solicitação futura; o ano para trás é o intervalo em que uma segunda
+mamografia da mesma paciente é suspeita.
+
+A busca pelo prontuário recua até a data da solicitação quando ela é anterior à janela — registro
+retroativo é o caso comum, e a requisição do pedido pode estar fora do último ano.
+
+### Por que a ordem importa
+
+O prontuário é consultado **antes** da crítica de lacunas da anamnese. Vincular o que já existe
+não pode depender de a anamnese estar completa: o dado já está no SISCAN de qualquer jeito, e o
+que falta do nosso lado é só o carimbo.
+
+### O que isso conserta
+
+As requisições criadas pelo laboratório, antes de existirem as colunas do carimbo, ficavam
+invisíveis no painel — a tela dizia que não havia requisição e ofereceria criar outra. Agora o
+próprio ato de abrir a geração encontra a requisição pelo prontuário e oferece vincular.
