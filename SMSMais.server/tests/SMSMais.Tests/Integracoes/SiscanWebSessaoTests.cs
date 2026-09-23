@@ -92,6 +92,55 @@ public class SiscanWebSessaoTests
     }
 
     /// <summary>
+    /// NEM TODO A4J RESPONDE PARCIAL — e confundir os dois derrubou a geração em produção
+    /// (23/09/2026). O botão "Novo Exame" é um A4J que NAVEGA: responde a tela inteira, sem
+    /// `Ajax-Update-Ids`.
+    ///
+    /// <para>Quem aplica o parcial cegamente não tem região nenhuma para substituir e devolve
+    /// <b>a página velha intacta</b>. O fluxo seguia na tela de Gerenciar Exame achando estar no
+    /// assistente — e, como aquela tela também tem um `frm:cartaoSUS` (o filtro de busca), o erro
+    /// só aparecia lá adiante, como "não consegui resolver o CNS", para TODOS os pacientes.</para>
+    /// </summary>
+    [Fact]
+    public void Resposta_a4j_de_navegacao_nao_e_parcial()
+    {
+        const string telaInteira = """
+            <html><body><form id="frm" action="/visao/exame/novoExame.jsf">
+              <input name="frm:cartaoSUS" /><input type="radio" name="frm:tipoExame" value="01" />
+            </form></body></html>
+            """;
+        const string parcialDeVerdade = """
+            <html><body>
+              <div id="frm:pnlExame">novo conteudo</div>
+              <meta name="Ajax-Update-Ids" content="frm:pnlExame" />
+            </body></html>
+            """;
+
+        SiscanHtml.EhRespostaParcial(SiscanHtml.Documento(telaInteira)).Should().BeFalse();
+        SiscanHtml.EhRespostaParcial(SiscanHtml.Documento(parcialDeVerdade)).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// A consequência direta do caso acima: aplicar um "parcial" sem regiões devolve a base
+    /// intacta. É por isso que quem chama precisa perguntar ANTES se a resposta é parcial.
+    /// </summary>
+    [Fact]
+    public void Aplicar_resposta_sem_regioes_devolve_a_base_intacta()
+    {
+        const string baseHtml = """
+            <html><body><form id="frm"><div id="frm:painel">tela VELHA</div></form></body></html>
+            """;
+        const string telaNova = """
+            <html><body><form id="frm"><div id="frm:painel">tela NOVA</div></form></body></html>
+            """;
+
+        var doc = SiscanHtml.Documento(baseHtml);
+        SiscanHtml.AplicarA4J(doc, SiscanHtml.Documento(telaNova));
+
+        doc.GetElementById("frm:painel")!.TextContent.Should().Be("tela VELHA");
+    }
+
+    /// <summary>
     /// O par disparador do A4J é lido do JavaScript da própria página. Fixar `frm:j_idNN` no
     /// código quebra quando o DATASUS recompila — e pode acertar o campo errado, que é pior.
     /// </summary>

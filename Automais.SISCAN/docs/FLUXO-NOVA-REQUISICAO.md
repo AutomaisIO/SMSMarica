@@ -376,3 +376,33 @@ que falta do nosso lado é só o carimbo.
 As requisições criadas pelo laboratório, antes de existirem as colunas do carimbo, ficavam
 invisíveis no painel — a tela dizia que não havia requisição e ofereceria criar outra. Agora o
 próprio ato de abrir a geração encontra a requisição pelo prontuário e oferece vincular.
+
+
+## 11. Nem todo A4J responde parcial (bug em produção, 23/09/2026)
+
+Custou um dia em produção com **todos os pacientes** falhando em "não consegui resolver o CNS".
+Medido ao vivo, na mesma sessão:
+
+| A4J | Resposta | `Ajax-Update-Ids` |
+|---|---|---|
+| `frm:botaoNovoExame` ("Novo Exame") | **tela inteira**, ~48 KB | **não tem** |
+| `onblur` de `frm:cartaoSUS` | parcial, ~27 KB | tem |
+
+O primeiro é um A4J que **navega**; o segundo é um A4J que **atualiza região**. Quem aplica o
+parcial cegamente, no primeiro caso, não encontra região nenhuma para substituir e devolve **a
+página anterior intacta** — sem erro, sem aviso, HTTP 200.
+
+Foi o que aconteceu: o fluxo seguia na tela de Gerenciar Exame achando estar no assistente. E,
+como **aquela tela também tem um campo `frm:cartaoSUS`** (é o filtro de busca), o código achava o
+campo, disparava o A4J e só descobria o problema no fim, quando `frm:nome` nunca vinha. Um erro na
+etapa 2 aparecendo como se fosse problema de cadastro da paciente.
+
+**Regra:** antes de aplicar um parcial, perguntar se ele é parcial (`Ajax-Update-Ids` ou
+`Ajax-Response`). Se não for, a resposta É a tela.
+
+**E o `<h1>` não serve de discriminador:** a resposta do Novo Exame continua com
+`<h1>GERENCIAR EXAME</h1>`. O que distingue as duas telas é a presença de `frm:tipoExame`, que só
+existe no assistente.
+
+O laboratório em Python nunca tropeçou nisso porque devolvia a resposta crua, sem mesclar — o que
+funcionava por acidente no caso da navegação e por desatenção no caso do parcial.

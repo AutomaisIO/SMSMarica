@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AngleSharp.Html.Dom;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -72,25 +73,22 @@ public sealed class SiscanRequisicaoService(
 
         var sessao = sessoes.Exigir(SessaoId());
 
-        // 1) A requisição DESTE pedido já está lá? Acontece quando ela nasceu fora do painel.
-        //    Não se cria outra — a tela oferece vincular, e os números vêm junto.
-        var nossa = await ProcurarPeloProntuarioAsync(sessao, caso, cancellationToken);
-        if (nossa is not null)
+        var critica = await CriticarAsync(sessao, caso, cancellationToken);
+
+        if (critica.Nossa is not null)
         {
             return new SiscanPreparoDto(
                 false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
                 caso.TipoMamografia, RotuloTipo(caso.TipoMamografia), [], null,
-                caso.SolicitanteDaFicha, [], [], EncontradaPeloProntuario: nossa);
+                caso.SolicitanteDaFicha, [], [], EncontradaPeloProntuario: critica.Nossa);
         }
 
-        // 2) A paciente já tem OUTRA requisição na janela? Aqui o sistema para.
-        var duplicidades = await ProcurarPorCnsAsync(sessao, caso, cancellationToken);
-        if (duplicidades.Count > 0)
+        if (critica.DeOutroPedido.Count > 0)
         {
             return new SiscanPreparoDto(
                 false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
                 caso.TipoMamografia, RotuloTipo(caso.TipoMamografia), [], null,
-                caso.SolicitanteDaFicha, [], [], Duplicidades: duplicidades);
+                caso.SolicitanteDaFicha, [], [], Duplicidades: critica.DeOutroPedido);
         }
 
         var percurso = await PercorrerAsync(sessao, caso, cancellationToken);
@@ -124,35 +122,32 @@ public sealed class SiscanRequisicaoService(
 
         var sessao = sessoes.Exigir(SessaoId());
 
-        // A requisição DESTE pedido já está lá? Vem ANTES da crítica de lacunas de propósito:
-        // vincular o que já existe não pode depender de a anamnese estar completa — o dado já
-        // está no SISCAN de qualquer jeito, e o que falta aqui é só o carimbo.
-        //
-        // Cobre dois casos: o POST que gravou e caiu antes de carimbar, e a requisição que nasceu
-        // fora do painel (foi o que aconteceu com as criadas pelo laboratório).
-        var nossa = await ProcurarPeloProntuarioAsync(sessao, caso, cancellationToken);
-        if (nossa is not null)
+        // A crítica vem ANTES do mapper de propósito: vincular o que já existe não pode depender
+        // de a anamnese estar completa — o dado já está no SISCAN de qualquer jeito, e o que falta
+        // do nosso lado é só o carimbo.
+        var critica = await CriticarAsync(sessao, caso, cancellationToken);
+
+        if (critica.Nossa is not null)
         {
             logger.LogWarning(
-                "SISCAN: requisição do accession {Accession} JÁ existia (protocolo {Protocolo}). "
-                + "Vinculando em vez de criar outra.", caso.Exame.AccessionNumber, nossa.Protocolo);
+                "SISCAN[{Accession}]: requisição JÁ existia (protocolo {Protocolo}). Vinculando "
+                + "em vez de criar outra.", caso.Exame.AccessionNumber, critica.Nossa.Protocolo);
 
             return await CarimbarAsync(
-                caso.Exame, nossa.Protocolo, nossa.NumeroExame, "(já existia no SISCAN)",
-                cancellationToken);
+                caso.Exame, critica.Nossa.Protocolo, critica.Nossa.NumeroExame,
+                "(já existia no SISCAN)", cancellationToken);
         }
 
-        // A paciente já tem OUTRA requisição na janela? O sistema não decide qual vale.
-        var duplicidades = await ProcurarPorCnsAsync(sessao, caso, cancellationToken);
-        if (duplicidades.Count > 0)
+        if (critica.DeOutroPedido.Count > 0)
         {
-            var lista = string.Join(" · ", duplicidades.Take(3).Select(
+            var lista = string.Join(" · ", critica.DeOutroPedido.Take(3).Select(
                 d => $"protocolo {d.Protocolo} ({d.Status}, {d.Unidade})"));
 
             throw new ConflitoException(
                 "siscan.paciente_ja_tem_requisicao",
-                $"Esta paciente já tem {duplicidades.Count} requisição(ões) de mamografia no "
-                + $"SISCAN no último ano: {lista}. Resolva lá qual delas vale antes de criar outra.");
+                $"Esta paciente já tem {critica.DeOutroPedido.Count} requisição(ões) de mamografia "
+                + $"no SISCAN no último ano: {lista}. Resolva lá qual delas vale antes de criar "
+                + "outra.");
         }
 
         var campos = SiscanRequisicaoMapper.Montar(
@@ -204,8 +199,22 @@ public sealed class SiscanRequisicaoService(
 
         // O Nº do Exame NÃO vem no modal. Sem a releitura, a médica ficaria com metade do que
         // precisa para achar o exame lá.
-        var naGrade = await ProcurarPeloProntuarioAsync(sessao, caso, cancellationToken);
-        var numeroExame = naGrade?.NumeroExame ?? string.Empty;
+        var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
+        if (caso.DataSolicitacao < de) de = caso.DataSolicitacao.AddDays(-1);
+
+        var naGrade = await PesquisarAsync(
+            sessao, de, ate,
+            new Dictionary<string, string> { ["frm:numeroProntuario"] = caso.Exame.AccessionNumber },
+            cancellationToken);
+
+        var numeroExame = naGrade.FirstOrDefault()?.NumeroExame ?? string.Empty;
+        if (numeroExame.Length == 0)
+        {
+            logger.LogWarning(
+                "SISCAN[{Accession}]: protocolo {Protocolo} criado, mas a releitura não achou a "
+                + "linha na grade — o Nº do Exame fica em branco até alguém reabrir.",
+                caso.Exame.AccessionNumber, protocolo);
+        }
 
         return await CarimbarAsync(caso.Exame, protocolo, numeroExame, responsavel.Nome, cancellationToken);
     }
@@ -217,13 +226,51 @@ public sealed class SiscanRequisicaoService(
     private async Task<Percurso> PercorrerAsync(
         ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
     {
-        var html = await sessao.AbrirPorMenuAsync(SiscanWebSessao.MenuGerenciarExame, cancellationToken);
+        var relogio = Stopwatch.StartNew();
 
-        html = await ClicarNovoExameAsync(sessao, html, cancellationToken);
-        html = await DigitarCartaoSusAsync(sessao, html, caso.Cns, cancellationToken);
-        html = await MarcarTipoExameAsync(sessao, html, cancellationToken);
-        html = await AvancarAsync(sessao, html, caso, cancellationToken);
-        html = await MarcarTipoMamografiaAsync(sessao, html, caso.TipoMamografia, cancellationToken);
+        async Task<string> Passo(string nome, Func<Task<string>> acao)
+        {
+            var antes = relogio.ElapsedMilliseconds;
+            var html = await acao();
+            var doc = SiscanHtml.Documento(html);
+
+            // O título é o que revela em QUE tela o fluxo está. Foi a falta dele no log que fez o
+            // bug do "Novo Exame" (resposta é tela inteira, não parcial) aparecer só lá na frente,
+            // como "não consegui resolver o CNS".
+            logger.LogInformation(
+                "SISCAN[{Accession}]: {Passo} — {Ms} ms · tela {Titulos} · form frm? {TemForm}",
+                caso.Exame.AccessionNumber, nome, relogio.ElapsedMilliseconds - antes,
+                string.Join(" | ", SiscanHtml.Titulos(doc).Take(2)),
+                doc.GetElementById("frm") is not null);
+
+            return html;
+        }
+
+        var html = await Passo("abrir GERENCIAR EXAME",
+            () => sessao.AbrirPorMenuAsync(SiscanWebSessao.MenuGerenciarExame, cancellationToken));
+
+        html = await Passo("clicar Novo Exame",
+            () => ClicarNovoExameAsync(sessao, html, cancellationToken));
+
+        var htmlNovoExame = html;
+        html = await Passo("digitar Cartão SUS",
+            () => DigitarCartaoSusAsync(sessao, htmlNovoExame, caso, cancellationToken));
+
+        var htmlCns = html;
+        html = await Passo("marcar tipo de exame",
+            () => MarcarTipoExameAsync(sessao, htmlCns, cancellationToken));
+
+        var htmlTipo = html;
+        html = await Passo("Avançar",
+            () => AvancarAsync(sessao, htmlTipo, caso, cancellationToken));
+
+        var htmlEtapa2 = html;
+        html = await Passo($"marcar tipo de mamografia {caso.TipoMamografia}",
+            () => MarcarTipoMamografiaAsync(sessao, htmlEtapa2, caso.TipoMamografia, cancellationToken));
+
+        logger.LogInformation(
+            "SISCAN[{Accession}]: percurso completo em {Ms} ms.",
+            caso.Exame.AccessionNumber, relogio.ElapsedMilliseconds);
 
         return new Percurso(html, SiscanHtml.Documento(html));
     }
@@ -244,10 +291,27 @@ public sealed class SiscanRequisicaoService(
             SiscanWebSessao.NavegacaoDaRequisicao);
     }
 
-    private static async Task<string> DigitarCartaoSusAsync(
-        ISiscanWebSessao sessao, string html, string cns, CancellationToken cancellationToken)
+    private async Task<string> DigitarCartaoSusAsync(
+        ISiscanWebSessao sessao, string html, Caso caso, CancellationToken cancellationToken)
     {
         var doc = SiscanHtml.Documento(html);
+
+        // Conferir a TELA, não só o campo: a tela de pesquisa do Gerenciar Exame também tem um
+        // `frm:cartaoSUS` (o filtro de busca). Sem esta checagem, estar na tela errada só aparece
+        // lá na frente, como "não consegui resolver o CNS" — foi o bug de 23/09/2026.
+        var titulos = SiscanHtml.Titulos(doc);
+        if (doc.QuerySelector("input[name='frm:tipoExame']") is null)
+        {
+            logger.LogWarning(
+                "SISCAN[{Accession}]: esperava a tela de Novo Exame e estou em {Titulos}.",
+                caso.Exame.AccessionNumber, string.Join(" | ", titulos));
+
+            throw new ValidacaoException(
+                "siscan.tela_inesperada",
+                "O SISCAN não abriu a tela de Novo Exame — o fluxo parou em "
+                + $"'{string.Join(" | ", titulos.Take(2))}'.");
+        }
+
         var campo = doc.QuerySelector("input[name='frm:cartaoSUS']")
                     ?? throw new ValidacaoException(
                         "siscan.tela_inesperada", "A tela de Novo Exame não trouxe o campo Cartão SUS.");
@@ -255,15 +319,27 @@ public sealed class SiscanRequisicaoService(
         // Só o `onblur` já traz o paciente do CADSUS inteiro — não é preciso clicar a lupa.
         var resultado = await sessao.SubmeterA4JAsync(
             html, SiscanHtml.FormPrincipal,
-            new Dictionary<string, string> { ["frm:cartaoSUS"] = cns },
+            new Dictionary<string, string> { ["frm:cartaoSUS"] = caso.Cns },
             SiscanHtml.ParametrosA4JDoElemento(campo), cancellationToken);
 
-        var nome = SiscanHtml.ValorDoCampo(SiscanHtml.Documento(resultado), "frm:nome");
+        var depois = SiscanHtml.Documento(resultado);
+        var nome = SiscanHtml.ValorDoCampo(depois, "frm:nome");
         if (string.IsNullOrWhiteSpace(nome))
         {
+            var mensagens = SiscanHtml.Mensagens(depois);
+            logger.LogWarning(
+                "SISCAN[{Accession}]: CNS não resolveu. tela={Titulos} · campo nome existe? {TemCampo} "
+                + "· cartaoSUS devolvido={Devolvido} · mensagens={Mensagens}",
+                caso.Exame.AccessionNumber, string.Join(" | ", SiscanHtml.Titulos(depois)),
+                depois.QuerySelector("[name='frm:nome']") is not null,
+                SiscanHtml.ValorDoCampo(depois, "frm:cartaoSUS"),
+                string.Join(" · ", mensagens.Take(3)));
+
             throw new ValidacaoException(
                 "siscan.paciente_nao_encontrado",
-                $"O CADSUS não encontrou o Cartão SUS {cns} pela tela do SISCAN.");
+                mensagens.Count > 0
+                    ? $"O SISCAN recusou o Cartão SUS: {string.Join(" · ", mensagens.Take(2))}"
+                    : $"O CADSUS não encontrou o Cartão SUS {caso.Cns} pela tela do SISCAN.");
         }
 
         return resultado;
@@ -546,49 +622,55 @@ public sealed class SiscanRequisicaoService(
         return achadas;
     }
 
+    /// <summary>O que a crítica de duplicidade achou antes de deixar criar.</summary>
+    private sealed record Critica(
+        RequisicaoEncontradaDto? Nossa, IReadOnlyList<RequisicaoEncontradaDto> DeOutroPedido);
+
     /// <summary>
-    /// A requisição DESTE pedido já está no SISCAN? Pergunta pelo Nº do Prontuário, onde gravamos
-    /// o nosso AccessionNumber.
+    /// Pergunta ao SISCAN se já existe requisição — primeiro pelo <b>Cartão SUS</b>, e só se achar
+    /// alguma é que pergunta pelo Nº do Prontuário para saber se é deste pedido.
     ///
-    /// <para>Responde "sim" também quando ela nasceu fora do painel — foi o que aconteceu com as
-    /// requisições criadas pelo laboratório antes de existir o carimbo. Nesse caso não se cria
-    /// outra: vincula-se esta.</para>
+    /// <para><b>Por que nesta ordem.</b> Cada pergunta custa uma varredura nos três status, e a
+    /// varredura custa segundos no SISCAN. No caminho comum — paciente sem nenhuma requisição —
+    /// a resposta da primeira já encerra o assunto, e a segunda nem acontece. Perguntar pelo
+    /// prontuário antes dobrava o custo de todo mundo para atender o caso raro.</para>
+    ///
+    /// <para><b>A janela pode ser alargada.</b> Quando a data de solicitação do pedido é anterior
+    /// ao ano da janela (registro retroativo), a busca recua até ela — senão a requisição DESTE
+    /// pedido ficaria fora do alcance e criaríamos uma segunda. O efeito colateral aceito: nesses
+    /// casos, uma requisição antiga de outro pedido também bloqueia e pede olho humano.</para>
     /// </summary>
-    private static async Task<RequisicaoEncontradaDto?> ProcurarPeloProntuarioAsync(
+    private async Task<Critica> CriticarAsync(
         ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
     {
+        var relogio = Stopwatch.StartNew();
         var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
-
-        // A data da solicitação pode ser bem anterior à janela (registro retroativo é o caso
-        // comum) — então a busca pelo NOSSO prontuário recua até ela.
         if (caso.DataSolicitacao < de) de = caso.DataSolicitacao.AddDays(-1);
 
-        var linhas = await PesquisarAsync(
-            sessao, de, ate,
-            new Dictionary<string, string> { ["frm:numeroProntuario"] = caso.Exame.AccessionNumber },
-            cancellationToken);
-
-        return linhas.Count == 0 ? null : Encontrada(linhas[0]);
-    }
-
-    /// <summary>
-    /// A paciente já tem requisição de mamografia na janela? Pergunta pelo Cartão SUS.
-    ///
-    /// <para>Aqui o sistema <b>não decide</b>: se achar, para e manda resolver no SISCAN. Criar a
-    /// segunda seria empurrar para a frente um problema que só uma pessoa sabe resolver — qual
-    /// das duas vale, e o que fazer com a outra.</para>
-    /// </summary>
-    private static async Task<List<RequisicaoEncontradaDto>> ProcurarPorCnsAsync(
-        ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
-    {
-        var (de, ate) = JanelaDeDuplicidade(DateOnly.FromDateTime(DateTime.Today));
-
-        var linhas = await PesquisarAsync(
+        var doPaciente = await PesquisarAsync(
             sessao, de, ate,
             new Dictionary<string, string> { ["frm:cartaoSUS"] = caso.Cns },
             cancellationToken);
 
-        return linhas.Select(Encontrada).ToList();
+        logger.LogInformation(
+            "SISCAN[{Accession}]: crítica por CNS em {De}..{Ate} — {Achadas} requisição(ões) · {Ms} ms",
+            caso.Exame.AccessionNumber, de, ate, doPaciente.Count, relogio.ElapsedMilliseconds);
+
+        if (doPaciente.Count == 0) return new Critica(null, []);
+
+        // Achou alguma: agora vale a pergunta cara — alguma delas é DESTE pedido?
+        var nossas = await PesquisarAsync(
+            sessao, de, ate,
+            new Dictionary<string, string> { ["frm:numeroProntuario"] = caso.Exame.AccessionNumber },
+            cancellationToken);
+
+        logger.LogInformation(
+            "SISCAN[{Accession}]: crítica por prontuário — {Achadas} · {Ms} ms",
+            caso.Exame.AccessionNumber, nossas.Count, relogio.ElapsedMilliseconds);
+
+        if (nossas.Count > 0) return new Critica(Encontrada(nossas[0]), []);
+
+        return new Critica(null, doPaciente.Select(Encontrada).ToList());
     }
 
     private static RequisicaoEncontradaDto Encontrada(SiscanHtml.LinhaExame l) =>

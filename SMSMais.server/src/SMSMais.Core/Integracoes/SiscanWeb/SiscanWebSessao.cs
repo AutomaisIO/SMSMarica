@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -221,13 +222,29 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
             foreach (var (k, v) in parametros) campos[k] = v;
             campos["AJAXREQUEST"] = "_viewRoot";
 
-            var parcial = await PostarCruAsync(
+            var resposta = await PostarCruAsync(
                 sessao, doc, formId, campos, ajax: true, cancellationToken);
+            var respostaDoc = SiscanHtml.Documento(resposta);
 
-            // Devolvemos a TELA com o parcial aplicado. Devolver o parcial cru seria entregar um
-            // documento sem <form id="frm"> — quem recebe conclui que a ação falhou, e quem o
-            // reposta perde tudo que está fora da região atualizada.
-            var aplicado = SiscanHtml.AplicarA4J(doc, SiscanHtml.Documento(parcial));
+            // NEM TODO A4J RESPONDE PARCIAL. Quando a resposta é uma tela inteira (o "Novo Exame"
+            // é assim: A4J que navega), aplicar o parcial não teria o que substituir e devolveria
+            // A PÁGINA VELHA intacta — o fluxo seguiria na tela errada sem nenhum erro. Ver
+            // SiscanHtml.EhRespostaParcial.
+            if (!SiscanHtml.EhRespostaParcial(respostaDoc))
+            {
+                logger.LogInformation(
+                    "SISCAN: A4J em {Form} respondeu TELA INTEIRA ({Bytes} bytes) — navegação, "
+                    + "não atualização de região.", formId, resposta.Length);
+                return resposta;
+            }
+
+            // Parcial de verdade: devolvemos a TELA com ele aplicado. Devolver o parcial cru seria
+            // entregar um documento sem <form id="frm"> — quem recebe conclui que a ação falhou, e
+            // quem o reposta perde tudo que está fora da região atualizada.
+            var aplicado = SiscanHtml.AplicarA4J(doc, respostaDoc);
+            logger.LogInformation(
+                "SISCAN: A4J em {Form} respondeu PARCIAL ({Bytes} bytes) — regiões aplicadas "
+                + "sobre a tela.", formId, resposta.Length);
             return aplicado.ToHtml();
         }
         finally
@@ -411,22 +428,42 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
                           $"O form '{formId}' veio sem `action`. Postar em caminho constante devolve "
                           + "tela diferente da que o navegador vê.");
 
+        var lista = campos.ToList();
         using var requisicao = new HttpRequestMessage(
             HttpMethod.Post, new Uri(sessao.BaseUri, destino))
         {
-            Content = new FormUrlEncodedContent(campos),
+            Content = new FormUrlEncodedContent(lista),
         };
         if (ajax) requisicao.Headers.Add("X-Requested-With", "XMLHttpRequest");
 
+        var relogio = Stopwatch.StartNew();
         using var resposta = await sessao.Http.SendAsync(requisicao, cancellationToken);
-        return await resposta.Content.ReadAsStringAsync(cancellationToken);
+        var texto = await resposta.Content.ReadAsStringAsync(cancellationToken);
+        relogio.Stop();
+
+        // Cada ida ao SISCAN custa segundos e o fluxo tem muitas — sem o tempo por requisição
+        // não dá para saber se está lento por causa deles ou de quantas vezes vamos lá.
+        logger.LogInformation(
+            "SISCAN: POST{Ajax} {Destino} — {Campos} campo(s) · HTTP {Status} · {Bytes} bytes · {Ms} ms",
+            ajax ? " A4J" : "", destino, lista.Count, (int)resposta.StatusCode, texto.Length,
+            relogio.ElapsedMilliseconds);
+
+        return texto;
     }
 
-    private static async Task<string> GetAsync(
+    private async Task<string> GetAsync(
         Sessao sessao, string caminho, CancellationToken cancellationToken)
     {
+        var relogio = Stopwatch.StartNew();
         using var resposta = await sessao.Http.GetAsync(new Uri(sessao.BaseUri, caminho), cancellationToken);
-        return await resposta.Content.ReadAsStringAsync(cancellationToken);
+        var texto = await resposta.Content.ReadAsStringAsync(cancellationToken);
+        relogio.Stop();
+
+        logger.LogInformation(
+            "SISCAN: GET {Caminho} — HTTP {Status} · {Bytes} bytes · {Ms} ms",
+            caminho, (int)resposta.StatusCode, texto.Length, relogio.ElapsedMilliseconds);
+
+        return texto;
     }
 
     private sealed record Credenciais(string Usuario, string Senha);

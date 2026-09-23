@@ -195,6 +195,17 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>O prontuário é consultado <strong>antes</strong> da crítica de lacunas da anamnese. Vincular o que já existe não pode depender de a anamnese estar completa: o dado já está no SISCAN de qualquer jeito, e o que falta do nosso lado é só o carimbo.</p>
 <h3>O que isso conserta</h3>
 <p>As requisições criadas pelo laboratório, antes de existirem as colunas do carimbo, ficavam invisíveis no painel — a tela dizia que não havia requisição e ofereceria criar outra. Agora o próprio ato de abrir a geração encontra a requisição pelo prontuário e oferece vincular.</p>
+<h2>11. Nem todo A4J responde parcial (bug em produção, 23/09/2026)</h2>
+<p>Custou um dia em produção com <strong>todos os pacientes</strong> falhando em "não consegui resolver o CNS". Medido ao vivo, na mesma sessão:</p>
+<div class="tw"><table><thead><tr><th>A4J</th><th>Resposta</th><th><code>Ajax-Update-Ids</code></th></tr></thead><tbody>
+<tr><td><code>frm:botaoNovoExame</code> ("Novo Exame")</td><td><strong>tela inteira</strong>, ~48 KB</td><td><strong>não tem</strong></td></tr>
+<tr><td><code>onblur</code> de <code>frm:cartaoSUS</code></td><td>parcial, ~27 KB</td><td>tem</td></tr>
+</tbody></table></div>
+<p>O primeiro é um A4J que <strong>navega</strong>; o segundo é um A4J que <strong>atualiza região</strong>. Quem aplica o parcial cegamente, no primeiro caso, não encontra região nenhuma para substituir e devolve <strong>a página anterior intacta</strong> — sem erro, sem aviso, HTTP 200.</p>
+<p>Foi o que aconteceu: o fluxo seguia na tela de Gerenciar Exame achando estar no assistente. E, como <strong>aquela tela também tem um campo <code>frm:cartaoSUS</code></strong> (é o filtro de busca), o código achava o campo, disparava o A4J e só descobria o problema no fim, quando <code>frm:nome</code> nunca vinha. Um erro na etapa 2 aparecendo como se fosse problema de cadastro da paciente.</p>
+<p><strong>Regra:</strong> antes de aplicar um parcial, perguntar se ele é parcial (<code>Ajax-Update-Ids</code> ou <code>Ajax-Response</code>). Se não for, a resposta É a tela.</p>
+<p><strong>E o <code>&lt;h1&gt;</code> não serve de discriminador:</strong> a resposta do Novo Exame continua com <code>&lt;h1&gt;GERENCIAR EXAME&lt;/h1&gt;</code>. O que distingue as duas telas é a presença de <code>frm:tipoExame</code>, que só existe no assistente.</p>
+<p>O laboratório em Python nunca tropeçou nisso porque devolvia a resposta crua, sem mesclar — o que funcionava por acidente no caso da navegação e por desatenção no caso do parcial.</p>
 </main>
 </body>
 </html>

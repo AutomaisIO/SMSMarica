@@ -95,6 +95,24 @@ public static partial class SiscanHtml
     }
 
     /// <summary>
+    /// A resposta é um PARCIAL do RichFaces, ou uma página inteira?
+    ///
+    /// <para><b>Nem todo A4J responde parcial.</b> Medido em 23/09/2026, depois de um bug em
+    /// produção: o botão "Novo Exame" é um <c>A4J.AJAX.Submit</c>, mas a resposta dele é a tela
+    /// nova inteira (48 KB, com <c>&lt;form id="frm"&gt;</c> e <b>sem</b> <c>Ajax-Update-Ids</c>) —
+    /// é navegação, não atualização de região. Já o A4J do Cartão SUS responde parcial de verdade.</para>
+    ///
+    /// <para>Quem aplica cegamente o parcial sobre a página anterior quebra no primeiro caso: sem
+    /// regiões a substituir, o resultado é <b>a página velha intacta</b>. Foi exatamente isso que
+    /// fez o fluxo seguir na tela de Gerenciar Exame achando que estava no assistente — e, como
+    /// aquela tela também tem um campo <c>frm:cartaoSUS</c> (o filtro de busca), o erro só
+    /// apareceu lá na frente, como "não consegui resolver o CNS", para todos os pacientes.</para>
+    /// </summary>
+    public static bool EhRespostaParcial(IHtmlDocument doc) =>
+        doc.QuerySelector("meta[name='Ajax-Update-Ids']") is not null
+        || doc.QuerySelector("meta[name='Ajax-Response']") is not null;
+
+    /// <summary>
     /// Aplica a resposta A4J sobre o documento da tela, como o RichFaces faz no navegador.
     ///
     /// <para><b>A resposta de um A4J não é a tela.</b> É só o que está listado em
