@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISCAN — como nasce uma requisição nova (mamografia)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>SISCAN — como nasce uma requisição nova (mamografia)</h1>
+<p>Medido contra o SISCAN real em <strong>22/09/2026</strong>, versão do alvo V2.19.1-RC08, conta do prestador <strong>CDT DR ALBERTO LUIS MACHADO BORGES (CNES 3132358)</strong>. Nenhuma requisição foi criada: a sonda vai até um clique antes do <strong>Salvar</strong> e para ali. <strong>Exceção documentada:</strong> uma única criação real, autorizada pelo Bernardo em 22/09/2026 — o resultado está na §8.</p>
+<p>&gt; <strong>PRODUÇÃO FEDERAL, pacientes reais de Maricá.</strong> O cliente nasce <code>somente_leitura=True</code>. &gt; A trava barra <code>salvar</code>, <code>encerrar</code>, <code>confirmar</code>, <code>incluir</code>, <code>liberar</code>, <code>alterar</code>; só a &gt; palavra <code>novo</code> foi liberada, e só porque <strong>[Novo Exame] apenas renderiza a tela</strong>. &gt; Criar requisição de verdade exige OK explícito do Bernardo, por ação.</p>
+<p>Ferramentas: <a href="../probe_nova_requisicao.py"><code>probe_nova_requisicao.py</code></a> (o caminho, passo a passo) e <a href="../mapear_requisicao_nova.py"><code>mapear_requisicao_nova.py</code></a> (varredura dos ramos condicionais). O fluxo em si vive em <a href="../siscan/requisicao.py"><code>siscan/requisicao.py</code></a>.</p>
+<p>``<code>bash python probe_nova_requisicao.py --parar-em 2                      # abre a tela python probe_nova_requisicao.py --cns &lt;CNS&gt;                       # + CADSUS pelo CNS python probe_nova_requisicao.py --cns &lt;CNS&gt; --unidade 35 \        --mamografia 02 --responsavel 3                            # até o Responsável </code>``</p>
+<h2>1. O caminho</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Onde</th><th>O que acontece</th></tr></thead><tbody>
+<tr><td>1</td><td>EXAME → <strong>GERENCIAR EXAME</strong></td><td>tela de pesquisa (<code>/visao/exame/pesquisarExame.jsf</code>)</td></tr>
+<tr><td>2</td><td>botão <strong>Novo Exame</strong> (<code>frm:botaoNovoExame</code>, A4J)</td><td>vai para <code>/visao/exame/novoExame.jsf</code> — <strong>etapa 1</strong></td></tr>
+<tr><td>3</td><td><strong>Cartão SUS</strong> (<code>frm:cartaoSUS</code>, A4J do <code>onblur</code>)</td><td>o CADSUS devolve o paciente inteiro</td></tr>
+<tr><td>4</td><td><strong>Tipo de exame</strong> (<code>frm:tipoExame</code>, A4J)</td><td>só então Unidade Requisitante ganha opções</td></tr>
+<tr><td>5</td><td><strong>Avançar</strong> (<code>frm:botaoAvancar</code>)</td><td>vai para <code>salvarRequisicaoMamografia.jsf</code> — <strong>etapa 2</strong></td></tr>
+<tr><td>6</td><td><strong>Tipo de mamografia</strong> (<code>frm:j_id242</code>, A4J)</td><td>só então o combo Responsável ganha opções</td></tr>
+<tr><td>7</td><td><strong>Responsável</strong> (<code>frm:responsavelColeta</code>, A4J)</td><td>o servidor deriva o <strong>Conselho</strong></td></tr>
+<tr><td>8</td><td><strong>Salvar</strong> (<code>frm:btSalvar</code>)</td><td><strong>cria a requisição</strong> e abre o modal do protocolo — ver §8</td></tr>
+</tbody></table></div>
+<p>O <code>&lt;h1&gt;</code> da etapa 2 é <code>SOLICITAR REQUISIÇÃO DO EXAME DE MAMOGRAFIA</code> — o mesmo da tela de alteração em modo editável (ver <code>APRENDIZADOS</code> §6b). A tela é a mesma; muda o caminho de chegada.</p>
+<h2>2. O CNS monta tudo — e basta o <code>onblur</code></h2>
+<p>Digitar o Cartão SUS e disparar o A4J do próprio campo (<code>ajaxSingle=frm:cartaoSUS</code>) já traz, <strong>sem clicar a lupa</strong> <code>frm:btnPesquisarCadSUS</code>:</p>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Estado</th></tr></thead><tbody>
+<tr><td><code>frm:cpf</code>, <code>frm:cpfPesquisado</code></td><td>preenchido, <strong>editável</strong></td></tr>
+<tr><td><code>frm:nome</code>, <code>frm:dataNascimento</code>, <code>frm:nacionalidade</code>, <code>frm:nomeMae</code>, <code>frm:racaCor</code></td><td>preenchido, <strong>DISABLED</strong></td></tr>
+<tr><td><code>frm:uf</code>, <code>frm:municipio</code>, <code>frm:tipoLogradouro</code>, <code>frm:nomeLogradouro</code>, <code>frm:numero</code>, <code>frm:bairro</code>, <code>frm:cep</code></td><td>preenchido, <strong>DISABLED</strong></td></tr>
+<tr><td><code>frm:sexo</code></td><td>preenchido (<code>Feminino</code>), editável no HTML</td></tr>
+<tr><td><code>frm:apelido</code>, <code>frm:escolaridade</code>, <code>frm:pontoReferencia</code></td><td><strong>vazios e editáveis</strong> — é o que o digitador acrescenta</td></tr>
+</tbody></table></div>
+<p>Junto vem, de brinde, <strong>o histórico de exames daquele paciente</strong> (<code>frm:listaExamePacientePaginada</code>, com link <em>Visualizar Requisição do Exame</em> por linha) e o botão <strong>Atualizar Dados do Paciente</strong>. Isso faz da tela de Novo Exame um caminho barato para <em>ler</em> o que o SISCAN sabe de um paciente pelo CNS — sem passar pela pesquisa com período obrigatório.</p>
+<p>Campo <code>disabled</code> <strong>não se reposta</strong> (o navegador não posta, e o SISCAN os deriva do CADSUS). Quem tentar "corrigir" nome ou endereço por POST está perdendo tempo: o servidor descarta.</p>
+<h2>3. A ordem é imposta pela tela, não é preferência</h2>
+<p>Dois combos nascem vazios e só são preenchidos por um A4J específico:</p>
+<ol>
+<li><strong>Unidade Requisitante</strong> (<code>frm:unidadeSaude2</code>) tem só <code>Selecionar</code> até o <strong>tipo de exame</strong></li>
+</ol>
+<p>   ser marcado. Depois: <strong>37 unidades</strong> de Maricá, com <code>value</code> = <strong>índice posicional</strong> e texto    <code>CNES - NOME</code>.</p>
+<ol>
+<li><strong>Responsável</strong> (<code>frm:responsavelColeta</code>) vem <code>&lt;select ...&gt;&lt;/select&gt;</code>, literalmente vazio, até</li>
+</ol>
+<p>   o <strong>tipo de mamografia</strong> ser marcado. <strong>Não é "qualquer A4J"</strong>: disparar o A4J de risco    elevado (<code>frm:j_id91</code>) deixa o combo vazio do mesmo jeito. Medido nos dois sentidos.</p>
+<h3>A lista de Responsável muda conforme diagnóstica × rastreamento</h3>
+<p>Medido na USF ELENIR UMBELINO (CNES 3055779), mesmo paciente, mesma sessão:</p>
+<div class="tw"><table><thead><tr><th>Tipo de mamografia</th><th>Responsáveis oferecidos</th></tr></thead><tbody>
+<tr><td>01 Diagnóstica</td><td>11</td></tr>
+<tr><td>02 Rastreamento</td><td>14 (os 11 + outros 3 profissionais)</td></tr>
+</tbody></table></div>
+<p>A leitura natural é que rastreamento aceita solicitante que diagnóstica não aceita (enfermagem) — <strong>não confirmado com a operação</strong>, fica como hipótese.</p>
+<p><strong>Armadilha séria:</strong> o <code>value</code> do <code>&lt;option&gt;</code> é <strong>posicional</strong>, e a posição muda entre as duas listas (o mesmo profissional é <code>8</code> na diagnóstica e <code>9</code> no rastreamento). Gravar o índice numa tabela nossa é gravar lixo. O texto traz <code>NOME - CNS</code>: <strong>resolver sempre pelo CNS do profissional</strong>, como já fazemos com unidade por CNES.</p>
+<h2>4. Conselho é derivado, como no laudo</h2>
+<p>Escolher o Responsável dispara A4J e o servidor devolve <code>frm:conselho</code> preenchido (no formato <code>CRM - &lt;número&gt;</code>, para o profissional escolhido) e <strong>DISABLED</strong>. Ou seja: conselho não se digita nem se reposta — ele é consequência do profissional. Isso fecha com o que já sabíamos da tela de alteração (<code>APRENDIZADOS</code> §3) e com a regra de que <strong>o responsável tem de sair certo na criação</strong>, porque depois não é alterável.</p>
+<h2>5. Armadilha nova: o radio que o A4J não devolve marcado</h2>
+<p>Clicar <strong>Avançar</strong> repostando só o que a tela mostrava responde:</p>
+<p>&gt; O campo Tipo de Exame deve ser informado.</p>
+<p>…<strong>mesmo com o tipo já empurrado pro bean pelo A4J</strong>, e ainda por cima a resposta mostra o radio marcado — o que faz parecer bug do scraper. O que acontece: o parcial do A4J não redevolve o <code>&lt;input type="radio" checked&gt;</code>, então quem reposta "o que leu" manda o radio vazio e o validador <code>required</code> reclama. No navegador não aparece porque a marca fica no DOM do cliente.</p>
+<p><strong>Regra:</strong> num submit completo, reenviar explicitamente todo valor que só foi para o bean por A4J. É prima da armadilha da data no Gerenciar Exame (<code>APRENDIZADOS</code> §4), mas ao contrário: lá faltava o round-trip A4J; aqui o round-trip existiu e falta o campo no POST.</p>
+<p>Para isso ficar visível, o cliente ganhou <code>aplicar_a4j(base, parcial)</code>: a resposta A4J <strong>não é a tela</strong> — é só o que está em <code>&lt;meta name="Ajax-Update-Ids"&gt;</code>. Quem lê a resposta crua não acha <code>&lt;form id="frm"&gt;</code> e conclui, errado, que a ação falhou.</p>
+<h2>6. A etapa 2 por dentro</h2>
+<p>Derivados e travados: <code>cartaoSUS</code>, <code>paciente</code>, <code>sexoFeminino</code>, <code>cnesPrestador</code> (3132358), <code>prestador</code>, <code>cnesUnidade</code>, <code>unidade</code>.</p>
+<p>Editáveis: <code>frm:prontuario</code> (Nº do Prontuário), <code>frm:localizacaoNodulo</code> (checkbox — <code>01</code> Sim Mama Direita, <code>02</code> Sim Mama Esquerda, <code>04</code> Não), <code>frm:mamasExaminadas</code> (<code>01</code> Sim, <code>02</code> Nunca foram examinadas anteriormente, <code>03</code> Não Sabe), e os condicionais já mapeados na tela de alteração, com os mesmos ids: <code>j_id91</code> risco elevado, <code>j_id105</code> fez mamografia, <code>j_id121</code> radioterapia (→ localização → ano por lado), <code>j_id151</code> cirurgia (26 campos de ano), <code>j_id242</code> tipo de mamografia.</p>
+<p>Obrigatórios marcados com <code>*</code> na etapa 2: <strong>Data da Solicitação</strong>, <strong>Responsável</strong>, <strong>Conselho</strong>.</p>
+<p>Rastreamento (<code>frm:tipoMamografiaRastreamento</code> — um dos três controles que <strong>não</strong> chamam o servidor, junto com <code>mamasExaminadas</code> e <code>localizacaoNodulo</code>): <code>01</code> População alvo · <code>02</code> População de risco elevado (história familiar) · <code>03</code> Paciente já tratado de câncer de mama.</p>
+<p>Diagnóstica abre 6 checkboxes: <code>achadosExameClinico</code>, <code>controleRadiologicoLesao</code>, <code>lesaoDiagnosticoCancer</code>, <code>avaliacaoRespostaQuimioterapia</code>, <code>revisaoMamografia</code>, <code>controleLesao</code> (cada um com um irmão <code>...Hidden</code> que o SISCAN manda com o valor <code>teste</code> — lixo de desenvolvimento do próprio SISCAN, não nosso).</p>
+<p>Depois do Salvar existe um modal <code>formModalExameSalvo</code> com <strong>PROTOCOLO DA REQUISIÇÃO</strong> e os botões <em>Novo Exame</em>, <em>Inserir Resultado</em>, <em>Imprimir</em>, <em>Voltar</em> — é de lá que sai o número do protocolo. Não foi exercitado.</p>
+<h2>6b. Ramos condicionais da tela de CRIAÇÃO (varridos, sem gravar)</h2>
+<p>Levantado por <a href="../mapear_requisicao_nova.py"><code>mapear_requisicao_nova.py</code></a>, ligando um valor por vez a partir do mesmo estado base e comparando os campos presentes no form. Bate com o que já tinha sido medido na tela de alteração — a tela é a mesma.</p>
+<div class="tw"><table><thead><tr><th>Pergunta</th><th>Resposta</th><th>Efeito</th></tr></thead><tbody>
+<tr><td>Apresenta risco elevado (<code>j_id91</code>)</td><td>01 / 02 / 03</td><td>não abre nem fecha nada, apesar de disparar A4J</td></tr>
+<tr><td>Mamas já examinadas (<code>mamasExaminadas</code>)</td><td>01 / 02 / 03</td><td><strong>não chama o servidor</strong> — só JS no cliente</td></tr>
+<tr><td>Achado no exame clínico (<code>localizacaoNodulo</code>)</td><td>01 / 02 / 04</td><td><strong>não chama o servidor</strong></td></tr>
+<tr><td>Fez mamografia alguma vez (<code>j_id105</code>)</td><td>Sim 01</td><td>abre <code>anoUltimaMamografia</code></td></tr>
+<tr><td>Fez radioterapia (<code>j_id121</code>)</td><td>Sim 01</td><td>abre a localização (<code>j_id128</code>, 3 radios)</td></tr>
+<tr><td>↳ Localização (<code>j_id128</code>)</td><td>01 Esquerda</td><td>abre <code>anoRadioterapiaEsquerda</code></td></tr>
+<tr><td></td><td>02 Direita</td><td>abre <code>anoRadioterapiaDireita</code></td></tr>
+<tr><td></td><td>03 Ambas</td><td>abre os dois</td></tr>
+<tr><td>Fez cirurgia de mama (<code>j_id151</code>)</td><td>Sim S</td><td>abre <strong>26</strong> campos de ano (13 tipos × 2 lados)</td></tr>
+<tr><td>Tipo de mamografia (<code>j_id242</code>)</td><td>01 Diagnóstica</td><td>abre 6 checkboxes de indicação (+ 6 irmãos <code>...Hidden</code>)</td></tr>
+<tr><td></td><td>02 Rastreamento</td><td>abre os 3 radios <code>tipoMamografiaRastreamento</code></td></tr>
+</tbody></table></div>
+<p><strong>Armadilha do próprio método</strong> (quase publiquei um mapa errado): <code>client.campos()</code> imita o navegador e <strong>ignora radio/checkbox não marcado</strong>. Com ele, "radioterapia = Sim" aparecia como <em>não abre nada</em> — porque o que abre é um grupo de radios desmarcados. O mapeador compara <strong>presença</strong> (<code>name=value</code> para radio/checkbox), não submissibilidade. Quem for escrever outra sonda de varredura: o mesmo vale para qualquer tela do SISCAN.</p>
+<h2>6c. De-para com uma ficha do SISREG — o que dá para preencher sozinho</h2>
+<p>Exercitado com uma solicitação real de MAMOGRAFIA BILATERAL (validado contra a tela, sem gravar). A ficha do SISREG (<code>smsmarica.solicitacao</code>, campo <code>raw_sisreg</code>, 38 posições separadas por <code>;</code>) resolve a identificação inteira; <strong>a anamnese não vem de lugar nenhum</strong>.</p>
+<div class="tw"><table><thead><tr><th>Campo do SISCAN</th><th>De onde sai</th></tr></thead><tbody>
+<tr><td><code>frm:cartaoSUS</code></td><td>CNS da ficha → e o CADSUS monta nome, nascimento, mãe, raça/cor e endereço</td></tr>
+<tr><td>Tipo de exame</td><td>procedimento da ficha (SIGTAP <code>0204030030</code> / SISREG <code>1305007</code> → Mamografia <code>01</code>)</td></tr>
+<tr><td>Unidade Requisitante</td><td><strong>CNES</strong> da unidade solicitante da ficha → <code>unidade_por_cnes()</code>, nunca o índice</td></tr>
+<tr><td>Tipo de mamografia</td><td><strong>pela idade</strong> — ver a régua abaixo. O CID da ficha (<code>Z12.3</code>) sugere, mas quem decide é a idade</td></tr>
+<tr><td>Responsável</td><td>operador solicitante da ficha; casar por <strong>CNS do profissional</strong> (<code>responsavel_por_cns()</code>)</td></tr>
+<tr><td>Data da Solicitação</td><td>data da solicitação da ficha</td></tr>
+<tr><td>Conselho</td><td>derivado pelo SISCAN a partir do Responsável</td></tr>
+</tbody></table></div>
+<h3>A régua do tipo de mamografia é a IDADE</h3>
+<p>Régua do CDT Maricá (Bernardo, 22/09/2026), em <code>tipo_mamografia_por_idade()</code>:</p>
+<div class="tw"><table><thead><tr><th>Idade na data de referência</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>&gt;= 36 anos</strong></td><td><code>02</code> Rastreamento</td></tr>
+<tr><td><strong>&lt; 36 anos</strong></td><td><code>01</code> Diagnóstica</td></tr>
+</tbody></table></div>
+<p>Não é o critério do INCA (50–69 para rastreamento populacional) — é a régua operacional daqui. Consequência que não é óbvia: como a lista do combo <strong>Responsável muda</strong> entre diagnóstica e rastreamento, <strong>a idade da paciente também decide quem pode assinar a requisição</strong>.</p>
+<p><strong>O que a ficha do SISREG NÃO responde — e são 5 obrigatórios:</strong> tem nódulo ou caroço na mama; apresenta risco elevado para câncer de mama; antes desta consulta teve as mamas examinadas por profissional; fez mamografia alguma vez (+ ano); fez radioterapia na mama ou no plastrão (+ lado + ano); fez cirurgia de mama (+ até 26 anos). Mais o Nº do Prontuário (opcional) e, no rastreamento, a população-alvo.</p>
+<p>É o mesmo diagnóstico que o de-para do laudo já tinha dado por outro caminho: <strong>são perguntas da paciente</strong>, e nenhuma ficha de regulação as carrega. Qualquer promessa de "gerar a requisição do SISCAN a partir do SISREG" tem de dizer quem responde essas seis — ou nasce com um formulário para alguém preencher.</p>
+<p><strong>De brinde:</strong> se o paciente não tem exame no SISCAN, o painel do CNS volta <strong>sem</strong> a tabela <code>listaExamePacientePaginada</code>. A ausência da tabela é, portanto, uma leitura barata de "esse CNS ainda não tem exame no SISCAN" — sem passar pela pesquisa com período obrigatório.</p>
+<h2>6d. O que a NOSSA anamnese já responde</h2>
+<p>Confrontado com <code>SMSMais.front/src/features/anamnese</code> (questionário <code>mamografia</code> v1, CDT Maricá — o formulário de papel digitalizado). Das 6 perguntas obrigatórias do SISCAN:</p>
+<div class="tw"><table><thead><tr><th>Pergunta obrigatória do SISCAN</th><th>Na nossa anamnese</th></tr></thead><tbody>
+<tr><td>TEM NÓDULO OU CAROÇO NA MAMA? (por lado)</td><td><strong>temos, e melhor</strong>: <code>queixas.sintomas.noduloPalpavel</code> é por mama (direita/esquerda), mais o diagrama com marcações e <code>avaliacaoClinica.alteracoesPalpaveis</code></td></tr>
+<tr><td>APRESENTA RISCO ELEVADO PARA CÂNCER DE MAMA?</td><td><strong>temos, com régua diferente</strong>: seção 5 tem 4 critérios objetivos + <code>classificacao</code> Baixo/Moderado/Alto. O SISCAN quer Sim/Não/Não sabe — <strong>falta decidir o de-para do "Moderado"</strong></td></tr>
+<tr><td>TEVE AS MAMAS EXAMINADAS POR PROFISSIONAL ANTES DESTA CONSULTA?</td><td><strong>não temos</strong> — nada equivalente</td></tr>
+<tr><td>FEZ MAMOGRAFIA ALGUMA VEZ? (+ <strong>ano</strong> da última)</td><td>temos o Sim/Não (<code>historicoClinico.jaRealizouMamografia</code>); o <strong>ano</strong> só se alguém escreveu na observação livre — não é campo</td></tr>
+<tr><td>FEZ RADIOTERAPIA NA MAMA OU NO PLASTRÃO? (+ lado + ano)</td><td><strong>não temos</strong> — "radioterapia" só existe no cadastro de tipos de tratamento (TFD), nada na anamnese</td></tr>
+<tr><td>FEZ CIRURGIA DE MAMA? (+ 13 tipos × 2 lados, com ano)</td><td>temos o Sim/Não (<code>jaRealizouCirurgiaMamaria</code>) e <code>possuiProteseMamaria</code> (→ inclusão de implantes); faltam <strong>tipo, lado e ano</strong> estruturados (o traço no diagrama dá o lado)</td></tr>
+<tr><td>População-alvo do rastreamento (01/02/03)</td><td><strong>derivável</strong> da seção 5: familiar 1º grau ou câncer antes dos 50 na família → <code>02</code>; histórico pessoal de câncer → <code>03</code>; senão <code>01</code></td></tr>
+</tbody></table></div>
+<p><strong>Placar: 2 respondidas, 2 parciais (falta o ano/estrutura), 2 ausentes.</strong></p>
+<p><strong>Resolvido em 22/09/2026 — anamnese v2.</strong> O questionário <code>mamografia</code> ganhou a versão 2, com o bloco <code>siscan</code>: mamas já examinadas antes, radioterapia (resposta → lado → ano por lado), ano da última mamografia e as cirurgias como lista de <code>tipo × lado × ano</code>. As chaves dos 13 tipos espelham o nome do campo deles (<code>biopsiaCirurgicaIncisional</code> → <code>frm:anoBiopsiaCirurgicaIncisionalDireita</code>), para o de-para ser conferível a olho. O backend não mudou: ele guarda o conteúdo como JSON opaco e só valida que é JSON com <code>versao &gt;= 1</code>. Anamnese v1 continua abrindo — o merge sobre o shape vazio deixa as perguntas novas em branco.</p>
+<p>E o contrário também vale — <strong>a nossa anamnese já responde o que o SISCAN pergunta no LAUDO</strong>: <code>aindaMenstrua</code> + data da última menstruação, <code>fazUsoHormonios</code> e <code>estaGestante</code> são exatamente as três perguntas que o <code>APRENDIZADOS</code> §3 apontou como estando "na tela errada" do SISCAN (ficam no laudo, preenchidas depois que a paciente foi embora). Nós já as colhemos com a paciente na frente.</p>
+<p>Colhemos ainda, e o SISCAN não pede: histórico familiar de câncer de <strong>ovário</strong>, ultrassonografia mamária prévia, tabagismo, anticoncepcional, nº de filhos, e os sintomas por mama (dor, secreção mamilar, alteração na pele, vermelhidão, retração, edema).</p>
+<p><strong>Conclusão para o produto:</strong> para gerar requisição no SISCAN a partir da nossa anamnese faltam <strong>três campos</strong> — "mamas já examinadas antes", "radioterapia na mama/plastrão (lado + ano)" e o <strong>ano</strong> da última mamografia/cirurgia —, mais uma decisão de negócio sobre como traduzir "Moderado" para o Sim/Não/Não sabe do risco elevado.</p>
+<h2>7. O que isso responde, e o que não responde</h2>
+<p><strong>Responde:</strong> criar requisição pela nossa plataforma é viável por HTTP, e o caro (identidade do paciente) sai de graça do CNS.</p>
+<p><strong>Não responde:</strong> a pergunta nº 1 do handoff — <em>quem digita no SISCAN as requisições das USF</em>. Agora ela tem uma pista forte: o combo Responsável é <strong>por unidade requisitante</strong>, e a conta do CDT enxerga as 37 unidades e os profissionais de cada uma. Ou seja, <strong>o CDT consegue criar requisição em nome de qualquer USF</strong> — o que explicaria requisições que a USF não consegue alterar depois. Confirmar com a operação antes de prometer qualquer coisa.</p>
+<p><strong>Também em aberto:</strong> se <code>Salvar</code> exige o Nº do Prontuário; o que o protocolo devolve; e se existe caminho de exclusão/refazimento quando o responsável sai errado.</p>
+<h2>8. O Salvar, medido (uma criação real — 22/09/2026)</h2>
+<p>Autorizada por ação. Caso: ficha SISREG de uma mamografia bilateral cuja anamnese já existia no nosso sistema (preenchida no dia do exame), unidade requisitante = a USF da ficha, responsável = a profissional que assinou a ficha. Ferramenta: <a href="../criar_requisicao.py"><code>criar_requisicao.py</code></a>, que <strong>por padrão é ensaio</strong> — imprime o POST exato e não envia; só <code>--confirmar</code> clica Salvar, e só então a trava libera a palavra <code>salvar</code>.</p>
+<h3>O que o Salvar devolve</h3>
+<p>Modal <code>formModalExameSalvo</code>, com o texto:</p>
+<p>&gt; PROTOCOLO DA REQUISIÇÃO — Registro salvo com sucesso! O número do protocolo gerado é &gt; <strong><code>00000141043026</code></strong></p>
+<p>E os botões <em>Imprimir</em>, <em>Novo Exame</em>, <em>Inserir Resultado</em>, <em>Voltar</em>.</p>
+<p>Três coisas que só a medição mostra:</p>
+<ol>
+<li><strong>O protocolo vem com zeros à esquerda, 14 posições</strong> (<code>00000141043026</code>), enquanto a grade do</li>
+</ol>
+<p>   Gerenciar Exame mostra o mesmo número <strong>sem</strong> eles (<code>141043026</code>). Quem guardar a string do modal    e comparar com a da grade não vai casar nada. Normalizar: guardar sem zeros, ou sempre com.</p>
+<ol>
+<li><strong>O Nº do Exame NÃO vem no modal.</strong> Ele é outro número (<code>141108550</code> neste caso) e só aparece</li>
+</ol>
+<p>   relendo a grade, embutido no id das ações. Se o carimbo precisa dos dois — e precisa, porque a    tela deles pesquisa por ambos —, <strong>a releitura é obrigatória</strong>, não é zelo.</p>
+<ol>
+<li><strong>A resposta do POST não traz erro nenhum quando dá certo</strong>, e "Registro salvo com sucesso"</li>
+</ol>
+<p>   está no HTML antes mesmo de existir requisição. A prova é a releitura.</p>
+<h3>A releitura pelo nosso próprio número funciona</h3>
+<p>Gravamos o <code>AccessionNumber</code> no <strong>Nº do Prontuário</strong> e a pesquisa por <code>Nº Prontuário</code> devolveu exatamente 1 linha, com paciente, CNS, protocolo, unidade requisitante e status <code>Requisitado</code>. A ponte de volta está de pé — é ela que resolve idempotência e reconciliação.</p>
+<h3>Quem cria, altera</h3>
+<p>A requisição recém-criada, aberta pela ação <em>Alterar/Visualizar</em>, veio com <code>&lt;h1&gt;SOLICITAR REQUISIÇÃO DO EXAME DE MAMOGRAFIA&lt;/h1&gt;</code> e botão <strong>Salvar</strong> — ou seja, <strong>modo editável</strong>. É evidência forte para a hipótese que estava aberta desde 07/08/2026: o que decide editável × travada não é o prazo, é <strong>ser de quem criou</strong>. Não é prova definitiva (só um caso, e recém-criado), mas é a primeira medição do lado "criado por nós".</p>
+<p>Todas as 8 respostas voltaram exatamente como enviadas, o prontuário persistiu e o conselho (<code>CRM - …</code>) veio derivado e disabled.</p>
+<h3>Outras coisas medidas de graça</h3>
+<ul>
+<li><strong>Data da Solicitação retroativa é aceita</strong>: gravamos a data da ficha do SISREG, três meses</li>
+</ul>
+<p>  atrás, sem reclamação. Útil, porque o caso real é justamente registrar no SISCAN um exame que   já aconteceu.</p>
+<ul>
+<li>*<em>Do modal dá para ir direto a </em>Inserir Resultado***, que é o caminho da médica para o laudo.</li>
+<li><strong>Não sabemos se o Nº do Prontuário é obrigatório</strong> — mandamos preenchido. Não testar isso em</li>
+</ul>
+<p>  produção só para saber.</p>
+</main>
+</body>
+</html>

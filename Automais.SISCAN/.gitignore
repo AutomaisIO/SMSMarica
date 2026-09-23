@@ -23,3 +23,6 @@ __pycache__/
 venv/
 .pytest_cache/
 .mypy_cache/
+
+# Casos de ensaio/criação — carregam PII de paciente.
+casos.py

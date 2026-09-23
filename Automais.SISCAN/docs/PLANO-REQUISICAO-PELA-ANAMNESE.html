@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gerar a requisição do SISCAN a partir da nossa anamnese</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Gerar a requisição do SISCAN a partir da nossa anamnese</h1>
+<p>Objetivo (Bernardo, 22/09/2026): de dentro da nossa <strong>Anamnese</strong>, preencher a etapa de requisição do SISCAN, <strong>gerar o número</strong> e <strong>carimbá-lo na anamnese</strong>, para a médica seguir com o laudo.</p>
+<p>O protocolo da tela está medido em <a href="./FLUXO-NOVA-REQUISICAO.md"><code>FLUXO-NOVA-REQUISICAO.md</code></a>. Este arquivo é o plano — o que foi decidido, o que falta e em que ordem.</p>
+<h2>1. Decisões tomadas (22/09/2026)</h2>
+<div class="tw"><table><thead><tr><th>Tema</th><th>Decisão</th></tr></thead><tbody>
+<tr><td>Em nome de quem nasce</td><td><strong>Da USF que pediu no SISREG</strong> — Unidade Requisitante = a unidade da ficha; Responsável = o profissional dela</td></tr>
+<tr><td>Gatilho</td><td><strong>Botão "Gerar Requisição SISCAN"</strong> na anamnese. Ao <strong>sair</strong> da anamnese, perguntar se quer gerar. Ao <strong>salvar</strong>, avisar que ainda não gerou</td></tr>
+<tr><td>Credencial</td><td><strong>Login e senha do SISCAN do próprio usuário</strong>, pedidos num modal com a cara do card de login do SISCAN. <strong>Não gravamos</strong> — a sessão do SISCAN vive presa ao ciclo de autenticação do SMSMais e morre com ele</td></tr>
+<tr><td>Risco elevado: "Moderado"</td><td>vira <strong>Sim</strong> no SISCAN (conservador: qualquer coisa acima de Baixo entra como risco elevado)</td></tr>
+<tr><td>Tipo de mamografia</td><td>pela idade: <strong>&gt;= 36 rastreamento, &lt; 36 diagnóstica</strong></td></tr>
+</tbody></table></div>
+<p>A decisão de credencial <strong>não é nova</strong>: é exatamente o modelo do <code>SerSessaoOperadorStore</code> (ADR-0059, fase 2; decidido em 18/08/2026 para o SER). Motivo escrito lá e que vale igual aqui: o sistema federal <strong>carimba quem fez</strong>, e escrever com uma credencial de sincronismo faria toda ação do município sair no nome da mesma pessoa — a trilha de auditoria passaria a mentir sobre a autoria. Clonar o padrão, não inventar outro.</p>
+<h2>2. ~~O bloqueio~~ RESOLVIDO em 22/09/2026 — o Salvar foi medido</h2>
+<p>Uma criação real, autorizada por ação em 22/09/2026, fechou a pergunta. Detalhe completo em <a href="./FLUXO-NOVA-REQUISICAO.md"><code>FLUXO-NOVA-REQUISICAO.md</code></a> §8. O que o desenho precisa saber:</p>
+<ul>
+<li>o modal devolve <strong>só o protocolo</strong>, e <strong>com zeros à esquerda em 14 posições</strong></li>
+</ul>
+<p>  (<code>00000141043026</code>) — a grade mostra o mesmo número sem eles (<code>141043026</code>);</p>
+<ul>
+<li>o <strong>Nº do Exame</strong> (<code>141108550</code>) <strong>não vem no modal</strong>: só relendo a grade. Como a tela deles</li>
+</ul>
+<p>  pesquisa pelos dois, <strong>a releitura entra no fluxo</strong>, não é opcional;</p>
+<ul>
+<li>a releitura pelo <strong>Nº do Prontuário = nosso AccessionNumber</strong> achou a requisição de primeira:</li>
+</ul>
+<p>  a ponte de idempotência funciona;</p>
+<ul>
+<li>a requisição criada por nós <strong>abre editável</strong> — evidência para "quem cria, altera";</li>
+<li><strong>data retroativa é aceita</strong> (gravamos a data da ficha, de três meses antes).</li>
+</ul>
+<p>Passo 1 da ordem de execução, portanto, está <strong>cumprido</strong>.</p>
+<h2>3. São DOIS números, e um terceiro campo que serve de ponte</h2>
+<p>Medido na grade do Gerenciar Exame (22/09/2026):</p>
+<div class="tw"><table><thead><tr><th>O quê</th><th>Exemplo</th><th>Onde aparece</th></tr></thead><tbody>
+<tr><td><strong>Protocolo</strong></td><td><code>140739031</code></td><td>coluna <em>Protocolo</em> da grade; pesquisável em <code>Nº Protocolo</code></td></tr>
+<tr><td><strong>Nº do Exame</strong></td><td><code>140804778</code></td><td>embutido no id das ações (<code>frm:listaExamePaginada:&lt;nº&gt;:j_idNNN</code>); pesquisável em <code>Nº Exame</code></td></tr>
+<tr><td><strong>Nº do Prontuário</strong></td><td>livre</td><td>campo da requisição <strong>e</strong> filtro da pesquisa</td></tr>
+</tbody></table></div>
+<p>São números <strong>diferentes</strong> para a mesma linha. Carimbar os dois.</p>
+<p>E o Nº do Prontuário resolve a <strong>idempotência</strong>: gravando ali o nosso <code>AccessionNumber</code>, o vínculo fica nos dois sentidos — nós guardamos o protocolo deles, eles guardam a nossa chave, pesquisável na tela deles. Antes de criar, procurar por esse prontuário: se já existe, não cria de novo. Sem isso, um POST que caia depois de gravar gera requisição duplicada para a mesma paciente, e o SISCAN não tem nada nosso para barrar.</p>
+<h2>4. O casamento do Responsável não tem chave — precisa de gente</h2>
+<p>O SISCAN identifica o profissional por <strong>CNS</strong> (<code>NOME - CNS</code> no combo). Nós não temos esse CNS: <code>fhir.practitioner</code> guarda CPF, conselho e nome; <code>smsmarica.solicitacao</code> guarda nome do solicitante, CPF às vezes, conselho nunca. Medido em 22/09/2026 sobre as mamografias desde 01/07/2026:</p>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>solicitações</td><td>2.294</td></tr>
+<tr><td>com nome do solicitante</td><td>100%</td></tr>
+<tr><td>com CPF</td><td>33%</td></tr>
+<tr><td>com nº de conselho</td><td><strong>0%</strong></td></tr>
+<tr><td>solicitantes distintos</td><td>344, em 33 unidades</td></tr>
+</tbody></table></div>
+<p>E o nome não bate na forma: a ficha traz <code>FERNANDA SOUZA</code>, o SISCAN traz <code>FERNANDA SOUZA LEITE</code>.</p>
+<p><strong>Desenho:</strong> a máquina <strong>sugere</strong> pelo melhor casamento de nome dentro da unidade (o combo tem 8–15 nomes), a <strong>pessoa confirma</strong> no modal, e o par (solicitante da ficha ↔ CNS do SISCAN) fica <strong>aprendido</strong> numa tabela de pareamento — não se pergunta de novo para o mesmo profissional. É o mesmo padrão do ADR-0055 (pareamento entre sistemas sugerido pela máquina, confirmado por pessoa).</p>
+<p>Caso de borda que o código tem de nomear em vez de esconder: <strong>o solicitante da ficha não existe no SISCAN daquela unidade</strong>. Aí não há o que adivinhar — a tela diz isso e pede uma escolha.</p>
+<h2>5. O que falta na anamnese (v2)</h2>
+<p>Três campos e uma conta, já levantados em <code>FLUXO-NOVA-REQUISICAO.md</code> §6d:</p>
+<ol>
+<li>"Antes desta consulta, teve as mamas examinadas por um profissional de saúde?" (Sim / Nunca / Não sabe)</li>
+<li>"Fez radioterapia na mama ou no plastrão?" (Sim / Não / Não sabe → lado → <strong>ano por lado</strong>)</li>
+<li><strong>Ano</strong> da última mamografia e da cirurgia (hoje é texto livre na observação)</li>
+</ol>
+<p>O resto já sai do que colhemos: nódulo por mama, risco elevado (com "Moderado" → Sim), população-alvo do rastreamento (derivada dos critérios de risco), cirurgia Sim/Não e prótese.</p>
+<h2>6. Ordem de execução</h2>
+<ol>
+<li><strong>Spike do Salvar</strong> — uma criação real, com OK por ação, para saber o que o modal devolve e se</li>
+</ol>
+<p>   o prontuário é exigido. Bloqueia todo o resto.</p>
+<ol>
+<li>✅ <strong>Anamnese v2</strong> — FEITO em 22/09/2026 (front apenas; o backend guarda JSON opaco).</li>
+</ol>
+<p>   Seção 7 "REQUISIÇÃO DO SISCAN" na tela, mesmo bloco na leitura do médico, <code>versao: 2</code>.    <strong>Pendente:</strong> a tela de Anamnese não tem artigo no Manual — dívida a propor/registrar.</p>
+<ol>
+<li>✅ <strong><code>Integracoes/SiscanWeb/</code></strong> — FEITO em 22/09/2026. <code>SiscanHtml</code> (campos como o navegador</li>
+</ol>
+<p>   monta, <code>AplicarA4J</code>, item de menu por rótulo, parâmetros A4J lidos do JS da página) e    <code>SiscanWebSessao</code> (login SHA-256, navegação por menu, trava de leitura, <strong><code>SubmeterEscritaAsync</code>    separado</strong> com <code>operacao</code> obrigatória no log). 7 testes de unidade sobre HTML fixo.</p>
+<ol>
+<li>✅ <strong><code>SiscanSessaoOperadorStore</code></strong> — FEITO. Chaveado pelo <code>jti</code>, validade de 8 h por</li>
+</ol>
+<p>   inatividade, valida a credencial contra o SISCAN na hora, <code>DELETE /siscan/sessao</code> no logout do    painel (ligado em <code>authStore.sair()</code>). Endpoints em <code>SiscanSessaoOperadorController</code>    (<code>GET/POST/DELETE /siscan/sessao</code>), permissão <code>SolicitacoesExame</code>.</p>
+<ol>
+<li>✅ <strong>Colunas</strong> em <code>exame_imagem</code> — FEITO. Migration <code>SiscanRequisicaoNoExameImagem</code></li>
+</ol>
+<p>   (<code>siscan_protocolo</code>, <code>siscan_numero_exame</code>, <code>siscan_requisicao_em</code>, <code>siscan_requisicao_por</code>,    <code>siscan_erro</code> + índice filtrado no protocolo). O contexto da anamnese passou a devolver os    dois números.</p>
+<ol>
+<li>✅ <strong>Front</strong> — FEITO. Botão <em>Gerar Requisição SISCAN</em>, modal de login do SISCAN, modal de</li>
+</ol>
+<p>   confirmação com o que será enviado + combo de responsável, carimbo no cabeçalho, e o aviso ao    salvar e ao sair quando ainda não há requisição. <strong>Artigo do Manual escrito</strong>    (<code>manual/conteudo/anamnese.tsx</code>) e o <code>?</code> posto no título da tela.</p>
+<ol>
+<li><strong>Pareamento de profissional</strong> — PENDENTE. Hoje a sugestão por nome é recalculada a cada</li>
+</ol>
+<p>   geração e não fica aprendida; quando o mesmo profissional for confirmado muitas vezes, vale a    tabela.</p>
+<h3>O serviço, como ficou</h3>
+<p><code>SiscanRequisicaoService</code> tem dois caminhos. <code>Preparar</code> percorre o assistente <strong>sem gravar</strong> e devolve o que será enviado, quem pode assinar e o que falta — é o que a tela mostra antes do "confirma?". <code>Gerar</code> é o único que escreve.</p>
+<p>Três decisões que valem registro:</p>
+<ul>
+<li><strong>Nenhum <code>j_idNN</code> fixo.</strong> Cada pergunta é resolvida pela <strong>legenda do fieldset</strong> (o texto que a</li>
+</ul>
+<p>  paciente lê, que é estável) e traduzida na hora do envio. Se uma legenda não for encontrada, a   geração <strong>falha dizendo que a tela mudou</strong> — postar num id chutado gravaria a resposta na   pergunta errada, e ninguém veria.</p>
+<ul>
+<li><strong>As condicionais são abertas antes.</strong> Ano da última mamografia, lado e ano da radioterapia e os</li>
+</ul>
+<p>  26 anos de cirurgia só existem depois do A4J do "Sim". Mandar o ano sem abrir a região é mandar   campo que o servidor não conhece — ele ignora, sem erro.</p>
+<ul>
+<li><strong>A releitura está dentro do fluxo</strong>, duas vezes: antes de criar (idempotência pelo prontuário)</li>
+</ul>
+<p>  e depois de criar (para pegar o Nº do Exame, que o modal não devolve).</p>
+<p><strong>Onde o Responsável é escolhido, e por quê ali.</strong> Medido em 22/09/2026: o combo do SISCAN só existe <strong>depois</strong> de percorrer o assistente inteiro para aquela paciente (CNS → tipo → unidade → Avançar → tipo de mamografia). Não há como listar os profissionais de uma unidade sem começar uma requisição. E não existe lista local que sirva: <code>sisreg_profissional_unidade</code> tem 686 nomes em 42 unidades, mas é quem tem <strong>agenda</strong> no SISREG — a profissional que assinou a ficha do nosso caso não está lá (a INOÁ II tem 15 no espelho, nenhuma delas). Logo, o seletor de Responsável <strong>vive no modal de "Gerar Requisição"</strong>, com a lista viva, e o escolhido é carimbado de volta em <code>siscan.responsavel</code> (nome + CNS). A anamnese mostra o que foi carimbado.</p>
+<h2>7. Riscos a medir antes de prometer</h2>
+<ul>
+<li><strong>Sessão única.</strong> No SISREG e no SER, um login novo derruba a sessão anterior daquele operador —</li>
+</ul>
+<p>  inclusive a do humano. <strong>No SISCAN não foi medido.</strong> Se valer o mesmo, o robô logando com a conta   de alguém derruba essa pessoa do sistema no meio do trabalho. Medir antes de liberar.</p>
+<ul>
+<li><strong>A conta do operador enxerga todas as unidades?</strong> A conta do laboratório (prestador CDT) vê as</li>
+</ul>
+<p>  37 do município. Contas de USF podem ver menos — o código precisa falhar dizendo <em>"a unidade da   ficha não está na lista deste operador"</em>, e não em silêncio.</p>
+<ul>
+<li><strong>Duplicata.</strong> Ver §3: o Nº do Prontuário é a âncora.</li>
+</ul>
+</main>
+</body>
+</html>
