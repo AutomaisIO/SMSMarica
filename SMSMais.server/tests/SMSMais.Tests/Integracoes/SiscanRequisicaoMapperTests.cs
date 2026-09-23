@@ -100,6 +100,44 @@ public class SiscanRequisicaoMapperTests
         data.Should().Be(new DateOnly(2026, 9, 23));
     }
 
+    /// <summary>
+    /// <b>Anamnese depois do exame nunca acontece</b> (regra do Bernardo, 23/09/2026, e os 818 de
+    /// 818 concordam). Um estudo com data POSTERIOR à anamnese não é um exame que demorou: é
+    /// problema de conciliação — o estudo foi associado ao pedido errado. Ali o DICOM perde a
+    /// confiança e vale a anamnese.
+    ///
+    /// <para>É o caso real 260824012: anamnese 25/08, estudo associado 22/09.</para>
+    /// </summary>
+    [Fact]
+    public void Estudo_posterior_a_anamnese_e_conciliacao_errada_entao_vale_a_anamnese()
+    {
+        var (data, origem) = SiscanRequisicaoService.DataDoExameDe(
+            dataEstudo: new DateTime(2026, 9, 22, 10, 0, 0),
+            anamnesePreenchidaEm: new DateTime(2026, 8, 25, 14, 0, 0, DateTimeKind.Utc),
+            realizadoEm: null,
+            agoraUtc: new DateTime(2026, 9, 25, 14, 0, 0, DateTimeKind.Utc));
+
+        data.Should().Be(new DateOnly(2026, 8, 25));
+        origem.Should().Be(SiscanRequisicaoService.OrigemDataDoExame.AnamnesePorqueDicomEhPosterior);
+    }
+
+    /// <summary>
+    /// O contrário é normal e o DICOM manda: anamnese digitada muito depois do exame acontece
+    /// (registro retroativo). É o caso real 260701056 — exame 02/06, anamnese 01/07.
+    /// </summary>
+    [Fact]
+    public void Anamnese_muito_depois_do_exame_e_normal_e_vale_o_dicom()
+    {
+        var (data, origem) = SiscanRequisicaoService.DataDoExameDe(
+            dataEstudo: new DateTime(2026, 6, 2, 9, 0, 0),
+            anamnesePreenchidaEm: new DateTime(2026, 7, 1, 14, 0, 0, DateTimeKind.Utc),
+            realizadoEm: null,
+            agoraUtc: new DateTime(2026, 9, 25, 14, 0, 0, DateTimeKind.Utc));
+
+        data.Should().Be(new DateOnly(2026, 6, 2));
+        origem.Should().Be(SiscanRequisicaoService.OrigemDataDoExame.Dicom);
+    }
+
     /// <summary>Sem DICOM e sem anamnese, sobra a detecção do estudo no PACS.</summary>
     [Fact]
     public void Sem_dicom_e_sem_anamnese_cai_na_deteccao_do_pacs()

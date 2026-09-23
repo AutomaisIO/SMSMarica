@@ -484,10 +484,25 @@ dias depois.
 818, nenhuma antes. Ou seja, ela não é preenchida "antes do exame, com a paciente na frente": é
 salva quando as imagens já saíram. Bom saber antes de supor qualquer coisa sobre o fluxo.
 
-**E não, não se usa "a data mais cedo".** Entre as duas divergentes, `260701056` (anamnese 29 dias
-depois) e `260824012` (anamnese 28 dias antes), a regra "mais cedo" acerta a primeira — que a
-regra atual já acerta, porque o DICOM vence — e **erra a segunda**, gravando 25/08, um dia em que
-nenhum exame aconteceu. Ela mudaria 1 registro em 872, para pior.
+**Anamnese depois do exame NUNCA acontece** — regra do Bernardo, 23/09/2026, e os 818 de 818
+concordam. Isso reclassifica os dois casos divergentes, e é o que decide a cascata:
+
+| Caso | Anamnese | Estudo associado | O que é | O que se grava |
+|---|---|---|---|---|
+| `260701056` | 01/07 | 02/06 | normal: anamnese digitada um mês depois (registro retroativo) | **02/06**, o DICOM |
+| `260824012` | 25/08 | 22/09 | **impossível**: estudo posterior à anamnese → conciliação errada | **25/08**, a anamnese |
+
+No segundo, o estudo pendurado naquele pedido provavelmente **não é o exame daquela paciente** —
+o PACS concilia por accession e órfão vai para a tela de gestão, mas associação errada acontece.
+Confiar no DICOM ali gravaria no Ministério a data de um exame que talvez seja de outra pessoa.
+Por isso, quando o estudo é posterior à anamnese, **o DICOM perde a confiança**, vale a anamnese, e
+**a tela avisa** — sem bloquear, porque quem olha o caso decide melhor que a regra.
+
+> Registro de uma volta que dei: antes de saber dessa regra, eu tinha documentado que usar "a data
+> mais cedo" seria pior justamente por causa do `260824012`, supondo que ali o exame tivesse
+> mesmo acontecido 28 dias depois. Supus errado. A cascata final chega ao mesmo resultado que "a
+> mais cedo" daria nesse caso — mas por um motivo que se sustenta, e que sabe dizer QUANDO
+> desconfiar do DICOM em vez de sempre pegar a menor data.
 
 Os degraus 3 e 4 viraram rede de segurança: gerar a requisição exige anamnese, então na prática
 não se chega neles.

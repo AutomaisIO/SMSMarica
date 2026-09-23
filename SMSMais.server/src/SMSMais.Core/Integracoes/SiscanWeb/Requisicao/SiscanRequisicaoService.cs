@@ -104,7 +104,7 @@ public sealed class SiscanRequisicaoService(
             false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
             caso.TipoMamografia, RotuloTipo(caso.TipoMamografia),
             responsaveis, sugerido?.Cns, caso.SolicitanteDaFicha,
-            Resumir(campos.Campos), campos.Lacunas);
+            Resumir(campos.Campos), campos.Lacunas, AvisoData: caso.AvisoData);
     }
 
     public async Task<SiscanRequisicaoDto> GerarAsync(
@@ -708,7 +708,7 @@ public sealed class SiscanRequisicaoService(
     private sealed record Caso(
         ExameImagem Exame, string Cns, string PacienteNome, string CnesUnidade, string UnidadeNome,
         DateOnly DataSolicitacao, DateOnly DataDoExame, string TipoMamografia,
-        string? ConteudoAnamnese, string? SolicitanteDaFicha);
+        string? ConteudoAnamnese, string? SolicitanteDaFicha, string? AvisoData);
 
     /// <summary>
     /// A data que vai no campo <b>"Data da Solicitação"</b> da requisição do SISCAN.
@@ -733,7 +733,21 @@ public sealed class SiscanRequisicaoService(
     /// </list>
     /// </summary>
     /// <summary>De onde a data saiu. Vai para o log, para a dúvida ser respondível depois.</summary>
-    public enum OrigemDataDoExame { Dicom, PreenchimentoDaAnamnese, DeteccaoNoPacs, HojeSemNadaMelhor }
+    public enum OrigemDataDoExame
+    {
+        Dicom,
+        PreenchimentoDaAnamnese,
+
+        /// <summary>
+        /// O estudo associado é POSTERIOR à anamnese — sequência que não existe na vida real.
+        /// Usa-se a anamnese, e a tela avisa: o provável é que o estudo esteja pendurado no
+        /// pedido errado.
+        /// </summary>
+        AnamnesePorqueDicomEhPosterior,
+
+        DeteccaoNoPacs,
+        HojeSemNadaMelhor,
+    }
 
     /// <summary>
     /// A cascata, isolada do logger para poder ser testada.
@@ -744,11 +758,12 @@ public sealed class SiscanRequisicaoService(
     /// de qualquer chute. (Detalhe medido, contra a intuição: no mesmo dia ela é salva SEMPRE
     /// depois do exame — 818 de 818 —, e não antes, com a paciente na frente.)</para>
     ///
-    /// <para><b>Por que não se usa "a data mais cedo".</b> Parece seguro e não é: entre os dois
-    /// casos divergentes, a regra "mais cedo" acerta aquele em que a anamnese veio depois — que
-    /// esta cascata já acerta, porque o DICOM vence — e <b>erra</b> o outro, gravando o dia da
-    /// anamnese num caso em que o exame aconteceu 28 dias depois. Mudaria 1 registro em 872, para
-    /// pior.</para>
+    /// <para><b>Anamnese depois do exame NUNCA acontece</b> (regra do Bernardo, 23/09/2026, e os
+    /// 818 de 818 concordam). Então um estudo com data POSTERIOR à anamnese não é um exame que
+    /// demorou: é <b>problema de conciliação</b> — o estudo foi associado ao pedido errado. Nesse
+    /// caso o DICOM perde a confiança e vale a anamnese, com aviso na tela. Acontece em 1 dos 872.
+    /// Confiar no DICOM ali gravaria no Ministério a data de um exame que talvez nem seja desta
+    /// paciente.</para>
     ///
     /// <para>Fuso, pela regra única da casa: <paramref name="dataEstudo"/> é <b>wall-clock local</b>
     /// (o DICOM, em <c>timestamp without time zone</c>) e se usa como está;
@@ -760,15 +775,26 @@ public sealed class SiscanRequisicaoService(
         DateTime? dataEstudo, DateTime? anamnesePreenchidaEm, DateTime? realizadoEm,
         DateTime agoraUtc)
     {
+        var daAnamnese = anamnesePreenchidaEm is { } quando
+            ? DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(quando))
+            : (DateOnly?)null;
+
         if (dataEstudo is { } estudo)
         {
-            return (DateOnly.FromDateTime(estudo), OrigemDataDoExame.Dicom);
+            var doAparelho = DateOnly.FromDateTime(estudo);
+
+            // Sequência impossível: a anamnese é salva DEPOIS do exame, sempre.
+            if (daAnamnese is { } anamneseEm && doAparelho > anamneseEm)
+            {
+                return (anamneseEm, OrigemDataDoExame.AnamnesePorqueDicomEhPosterior);
+            }
+
+            return (doAparelho, OrigemDataDoExame.Dicom);
         }
 
-        if (anamnesePreenchidaEm is { } anamnese)
+        if (daAnamnese is { } soAnamnese)
         {
-            return (DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(anamnese)),
-                    OrigemDataDoExame.PreenchimentoDaAnamnese);
+            return (soAnamnese, OrigemDataDoExame.PreenchimentoDaAnamnese);
         }
 
         if (realizadoEm is { } detectado)
@@ -781,7 +807,7 @@ public sealed class SiscanRequisicaoService(
                 OrigemDataDoExame.HojeSemNadaMelhor);
     }
 
-    private DateOnly ResolverDataDoExame(ExameImagem exame, Anamnese? anamnese)
+    private (DateOnly Data, string? Aviso) ResolverDataDoExame(ExameImagem exame, Anamnese? anamnese)
     {
         var (data, origem) = DataDoExameDe(
             exame.DataEstudo, anamnese?.CriadoEm, exame.RealizadoEm, DateTime.UtcNow);
@@ -790,7 +816,19 @@ public sealed class SiscanRequisicaoService(
             "SISCAN[{Accession}]: data do exame = {Data} ({Origem}).",
             exame.AccessionNumber, data, origem);
 
-        return data;
+        if (origem != OrigemDataDoExame.AnamnesePorqueDicomEhPosterior) return (data, null);
+
+        // Warning, não Information: é sinal de conciliação errada, e alguém precisa olhar.
+        logger.LogWarning(
+            "SISCAN[{Accession}]: o estudo associado é de {Estudo}, POSTERIOR à anamnese ({Data}). "
+            + "Sequência impossível — provável associação errada. Usando a data da anamnese.",
+            exame.AccessionNumber, exame.DataEstudo, data);
+
+        return (data, $"O exame associado a este pedido tem data posterior à anamnese "
+                      + $"({exame.DataEstudo:dd/MM/yyyy} contra {data:dd/MM/yyyy}), o que não "
+                      + "acontece na prática — a anamnese é preenchida depois do exame. Usamos a "
+                      + "data da anamnese; vale conferir se o estudo certo está associado a este "
+                      + "pedido.");
     }
 
     private async Task<Caso> CarregarAsync(Guid exameImagemId, CancellationToken cancellationToken)
@@ -838,14 +876,15 @@ public sealed class SiscanRequisicaoService(
         // até requisições antigas, criadas quando era ela que gravávamos. Pode ser nula.
         var dataDaFicha = solicitacao.DataSolicitacao
                           ?? DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
-        var dataDoExame = ResolverDataDoExame(exame, anamnese);
+        var (dataDoExame, avisoData) = ResolverDataDoExame(exame, anamnese);
 
         var tipo = SiscanRequisicaoMapper.TipoMamografiaPorIdade(
             nascimento, DateOnly.FromDateTime(DateTime.Today));
 
         return new Caso(
             exame, cns, paciente.Nome ?? string.Empty, unidade.Cnes!, unidade.Nome ?? string.Empty,
-            dataDaFicha, dataDoExame, tipo, anamnese?.ConteudoJson, solicitacao.SolicitanteNome);
+            dataDaFicha, dataDoExame, tipo, anamnese?.ConteudoJson, solicitacao.SolicitanteNome,
+            avisoData);
     }
 
     private async Task<SiscanRequisicaoDto> CarimbarAsync(

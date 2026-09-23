@@ -60,6 +60,12 @@ export type PreparoSiscan = {
    * das duas vale é decisão de gente, no SISCAN.
    */
   duplicidades: RequisicaoEncontrada[] | null;
+  /**
+   * Algo na data não fecha e a pessoa precisa saber ANTES de confirmar — hoje, o estudo associado
+   * ser posterior à anamnese, que é sequência impossível e cheira a conciliação errada. Avisa, não
+   * bloqueia: quem olha o caso decide melhor que a regra.
+   */
+  avisoData: string | null;
 };
 
 export type RequisicaoSiscan = {

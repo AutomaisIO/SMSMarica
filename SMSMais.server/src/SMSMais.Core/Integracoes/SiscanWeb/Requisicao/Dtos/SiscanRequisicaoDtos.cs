@@ -37,7 +37,13 @@ public sealed record SiscanPreparoDto(
     /// A paciente já tem requisição no período, e ela <b>não é deste pedido</b>. Aqui o sistema
     /// para: decidir qual das duas vale é trabalho de gente, no SISCAN.
     /// </summary>
-    IReadOnlyList<RequisicaoEncontradaDto>? Duplicidades = null);
+    IReadOnlyList<RequisicaoEncontradaDto>? Duplicidades = null,
+    /// <summary>
+    /// Algo na data não fecha e a pessoa precisa saber ANTES de confirmar — hoje, o estudo
+    /// associado ser posterior à anamnese, que é sequência impossível e cheira a conciliação
+    /// errada. Não bloqueia: informa, porque quem olha o caso decide melhor que a regra.
+    /// </summary>
+    string? AvisoData = null);
 
 /// <summary>
 /// Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade.
