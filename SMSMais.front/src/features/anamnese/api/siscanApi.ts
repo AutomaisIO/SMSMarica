@@ -116,8 +116,15 @@ export function useEntrarNoSiscan() {
 /**
  * Percorre o assistente do SISCAN e devolve o que será enviado. NÃO grava.
  *
- * `staleTime: 0` de propósito: cada preparo é uma ida real ao SISCAN e a lista de responsáveis
- * depende do tipo de mamografia — cachear traria a lista errada para a próxima paciente.
+ * <p><b>Nada de cache aqui — `gcTime: 0`.</b> Esta consulta alimenta a tela de conferência, cuja
+ * função é mostrar o que será afirmado sobre a paciente. Servir resposta guardada enquanto uma
+ * nova carrega é o comportamento padrão do React Query e, neste lugar, é mentira: em 23/09/2026
+ * alguém corrigiu o ano na anamnese, salvou, mandou gerar de novo e passou ~21 s olhando os
+ * valores ANTIGOS — o tempo que o preparo leva para ir ao SISCAN e voltar.</p>
+ *
+ * <p>Descartar ao fechar o modal faz cada abertura começar do zero: aparece o "consultando o
+ * SISCAN…" e o que se lê depois é o estado de agora. A lista de responsáveis também depende do
+ * tipo de mamografia, então cache aqui traria a lista errada para a próxima paciente.</p>
  */
 export function usePreparoSiscan(exameImagemId: string | undefined, habilitado: boolean) {
   return useQuery({
@@ -125,6 +132,7 @@ export function usePreparoSiscan(exameImagemId: string | undefined, habilitado: 
     queryFn: () => prepararRequisicaoSiscan(exameImagemId as string),
     enabled: Boolean(exameImagemId) && habilitado,
     staleTime: 0,
+    gcTime: 0,
     retry: false,
   });
 }

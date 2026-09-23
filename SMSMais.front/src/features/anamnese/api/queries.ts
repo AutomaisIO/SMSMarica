@@ -43,6 +43,9 @@ export function useSalvarAnamnese() {
       client.invalidateQueries({ queryKey: ['anamnese'] });
       // A lista de Solicitações pinta o botão Anamnese (temAnamnese) — refetch ao voltar.
       client.invalidateQueries({ queryKey: ['solicitacoes-exame', 'lista'] });
+      // O preparo do SISCAN monta "o que será enviado" a partir DESTA anamnese: se ela mudou, o
+      // que estava calculado virou passado. Sem isto, a tela de conferência mostra o anterior.
+      client.invalidateQueries({ queryKey: ['siscan'] });
     },
   });
 }
