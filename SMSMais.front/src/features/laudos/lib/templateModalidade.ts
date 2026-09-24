@@ -19,6 +19,9 @@ const TERMOS_POR_MODALIDADE: Record<string, string[]> = {
   // genérico demais para casar automaticamente e fica de fora de propósito.
   BMD: ['densitometria', 'dmo'],
   DXA: ['densitometria', 'dmo'],
+  // Raio-X: CR (placa/cassete) e DX (digital direto) são o mesmo laudo.
+  CR: ['raio-x', 'raio x', 'radiografia'],
+  DX: ['raio-x', 'raio x', 'radiografia'],
 };
 
 /** Minúsculas e sem acento, para o casamento não depender de como foi digitado. */

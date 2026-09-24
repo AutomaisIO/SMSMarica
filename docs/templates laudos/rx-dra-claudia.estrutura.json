@@ -1,0 +1,421 @@
+{
+  "versaoSchema": 1,
+  "calculadora": null,
+  "secoes": [
+    {
+      "id": "arcos-costais",
+      "titulo": "ARCOS COSTAIS",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "arc-sem-fratura",
+          "texto": "Não há evidência de fraturas desalinhadas nas incidências obtidas.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "torax",
+      "titulo": "TÓRAX",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "tx-pulmoes",
+          "texto": "Pulmões transparentes com desenho vascular normal.",
+          "birads": null
+        },
+        {
+          "id": "tx-diafragma",
+          "texto": "Diafragma convexo, seios costo-frênicos livres.",
+          "birads": null
+        },
+        {
+          "id": "tx-coracao",
+          "texto": "Coração e pedículo vascular de configuração e dimensões anatômicas.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "torax-internado",
+      "titulo": "TÓRAX INTERNADO",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "txi-pulmoes",
+          "texto": "Pulmões expandidos, sem sinais de lesões parenquimatosas.",
+          "birads": null
+        },
+        {
+          "id": "txi-volume",
+          "texto": "Volume cardíaco normal.",
+          "birads": null
+        },
+        {
+          "id": "txi-seios",
+          "texto": "Seios costo-frênicos laterais livres.",
+          "birads": null
+        },
+        {
+          "id": "txi-aorta",
+          "texto": "Aorta alongada.",
+          "birads": null
+        },
+        {
+          "id": "txi-aorta-ateromatosa",
+          "texto": "Aorta alongada e ateromatosa.",
+          "birads": null
+        },
+        {
+          "id": "txi-cateter",
+          "texto": "Cateter venoso profundo – {posicao}.",
+          "birads": null,
+          "campos": [
+            {
+              "chave": "posicao",
+              "tipo": "texto"
+            }
+          ]
+        },
+        {
+          "id": "txi-sonda",
+          "texto": "Sonda enteral.",
+          "birads": null
+        },
+        {
+          "id": "txi-monitor",
+          "texto": "Monitorização cardíaca.",
+          "birads": null
+        },
+        {
+          "id": "txi-esternorrafia",
+          "texto": "Esternorrafia.",
+          "birads": null
+        },
+        {
+          "id": "txi-clips",
+          "texto": "Clips metálicos no mediastino.",
+          "birads": null
+        },
+        {
+          "id": "txi-canula",
+          "texto": "Cânula traqueal.",
+          "birads": null
+        },
+        {
+          "id": "txi-tubo",
+          "texto": "Tubo traqueal.",
+          "birads": null
+        },
+        {
+          "id": "txi-dreno",
+          "texto": "Dreno torácico – {posicao}.",
+          "birads": null,
+          "campos": [
+            {
+              "chave": "posicao",
+              "tipo": "texto"
+            }
+          ]
+        },
+        {
+          "id": "txi-marcapasso",
+          "texto": "Presença de marcapasso.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "abdome-simples",
+      "titulo": "ABDOME SIMPLES",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "abd-sonda",
+          "texto": "Sonda com ponta na projeção {local}.",
+          "birads": null,
+          "campos": [
+            {
+              "chave": "local",
+              "tipo": "texto"
+            }
+          ]
+        },
+        {
+          "id": "abd-calculos",
+          "texto": "Ausência de cálculos ou calcificações patológicas.",
+          "birads": null
+        },
+        {
+          "id": "abd-meteorismo",
+          "texto": "Meteorismo intestinal dentro dos limites fisiológicos.",
+          "birads": null
+        },
+        {
+          "id": "abd-psoas",
+          "texto": "Psoas-ilíaco bem delineado nos dois lados.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "seios-face",
+      "titulo": "SEIOS DA FACE",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "sf-maxilares",
+          "texto": "Seios maxilares de transparência normal.",
+          "birads": null
+        },
+        {
+          "id": "sf-etmoidais",
+          "texto": "Células etmoidais transparentes, com septos intercelulares conservados.",
+          "birads": null
+        },
+        {
+          "id": "sf-frontal",
+          "texto": "Seio frontal assimétrico, de transparência normal e contornos regulares.",
+          "birads": null
+        },
+        {
+          "id": "sf-esp-laminar-bilat",
+          "texto": "Espessamento mucoso laminar nos seios maxilares.",
+          "birads": null
+        },
+        {
+          "id": "sf-esp-laminar-lado",
+          "texto": "Espessamento mucoso laminar no seio maxilar {lado}.",
+          "birads": null,
+          "campos": [
+            {
+              "chave": "lado",
+              "tipo": "opcao",
+              "opcoes": [
+                "direito",
+                "esquerdo"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sf-esp-bilat",
+          "texto": "Espessamento mucoso nos seios maxilares.",
+          "birads": null
+        },
+        {
+          "id": "sf-esp-lado",
+          "texto": "Espessamento mucoso no seio maxilar {lado}.",
+          "birads": null,
+          "campos": [
+            {
+              "chave": "lado",
+              "tipo": "opcao",
+              "opcoes": [
+                "direito",
+                "esquerdo"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sf-velamento",
+          "texto": "Velamento parcial das células etmoidais e do seio frontal.",
+          "birads": null
+        },
+        {
+          "id": "sf-cornetos",
+          "texto": "Hipertrofia dos cornetos nasais {lado}.",
+          "birads": null,
+          "campos": [
+            {
+              "chave": "lado",
+              "tipo": "opcao",
+              "opcoes": [
+                "direitos",
+                "esquerdos"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sf-septo",
+          "texto": "Desvio do septo nasal para {lado}.",
+          "birads": null,
+          "campos": [
+            {
+              "chave": "lado",
+              "tipo": "opcao",
+              "opcoes": [
+                "à direita",
+                "à esquerda"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ossos-articulacoes",
+      "titulo": "OSSOS E ARTICULAÇÕES",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "oa-estrutura",
+          "texto": "Estrutura óssea conservada, não se observando modificações da forma e dos contornos.",
+          "birads": null
+        },
+        {
+          "id": "oa-articular",
+          "texto": "Superfície e espaços articulares íntegros.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "cavum",
+      "titulo": "CAVUM",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "cav-normal",
+          "texto": "Coluna aérea do rinofaringe pérvia e ampla.",
+          "birads": null
+        },
+        {
+          "id": "cav-reducao-parcial",
+          "texto": "Aumento do volume das adenoides com redução parcial da coluna aérea do rinofaringe.",
+          "birads": null
+        },
+        {
+          "id": "cav-obstruindo",
+          "texto": "Aumento do volume das adenoides obstruindo a coluna aérea do rinofaringe.",
+          "birads": null
+        },
+        {
+          "id": "cav-reduzindo",
+          "texto": "Aumento do volume das adenoides, reduzindo a coluna aérea do rinofaringe.",
+          "birads": null
+        },
+        {
+          "id": "cav-sem-reduzir",
+          "texto": "Aumento do volume das adenoides, sem contudo reduzir significativamente a coluna aérea do rinofaringe.",
+          "birads": null
+        },
+        {
+          "id": "cav-amigdalas",
+          "texto": "Hipertrofia das amígdalas palatinas.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "coluna-cervical",
+      "titulo": "COLUNA CERVICAL",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "cc-corpos",
+          "texto": "Corpos vertebrais de contornos normais.",
+          "birads": null
+        },
+        {
+          "id": "cc-discos",
+          "texto": "Espaços discais de altura preservada.",
+          "birads": null
+        },
+        {
+          "id": "cc-interapofisarias",
+          "texto": "Articulações interapofisárias sem modificação apreciáveis.",
+          "birads": null
+        },
+        {
+          "id": "cc-uncovertebrais",
+          "texto": "Uncovertebrais sem alterações.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "coluna-dorsal",
+      "titulo": "COLUNA DORSAL",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "cd-eixo",
+          "texto": "Eixo dorsal normal.",
+          "birads": null
+        },
+        {
+          "id": "cd-corpos",
+          "texto": "Corpos vertebrais de forma e contornos anatômicos.",
+          "birads": null
+        },
+        {
+          "id": "cd-pediculos",
+          "texto": "Pedículos sem alterações.",
+          "birads": null
+        },
+        {
+          "id": "cd-discos",
+          "texto": "Espaços discais conservados.",
+          "birads": null
+        },
+        {
+          "id": "cd-costovertebrais",
+          "texto": "Articulações costo-vertebrais sem alterações apreciáveis.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "coluna-lombar",
+      "titulo": "COLUNA LOMBAR",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "cl-eixo",
+          "texto": "Eixo lombar normal.",
+          "birads": null
+        },
+        {
+          "id": "cl-corpos",
+          "texto": "Corpos vertebrais com contornos anatômicos.",
+          "birads": null
+        },
+        {
+          "id": "cl-pediculos",
+          "texto": "Pedículos sem alterações.",
+          "birads": null
+        },
+        {
+          "id": "cl-discos",
+          "texto": "Espaços discais de altura preservada.",
+          "birads": null
+        },
+        {
+          "id": "cl-interapofisarias",
+          "texto": "Articulações interapofisárias sem alterações evidentes.",
+          "birads": null
+        }
+      ]
+    },
+    {
+      "id": "cranio",
+      "titulo": "CRÂNIO",
+      "selecao": "multipla",
+      "itens": [
+        {
+          "id": "cr-calota",
+          "texto": "Calota craniana com densidade e espessura normais.",
+          "birads": null
+        },
+        {
+          "id": "cr-calcificacoes",
+          "texto": "Ausência de calcificações patológicas.",
+          "birads": null
+        }
+      ]
+    }
+  ]
+}
