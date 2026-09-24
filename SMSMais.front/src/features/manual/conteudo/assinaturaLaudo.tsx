@@ -133,9 +133,9 @@ export const artigoAssinaturaLaudo: Artigo = {
                   'O botão de assinar só aparece para o autor, com o laudo finalizado e o exame associado a um pedido.',
               },
               {
-                titulo: 'Clique no botão de assinar',
+                titulo: 'Clique em “Assinar e liberar”',
                 detalhe:
-                  'O nome muda com o seu modo: “Assinar”, “Assinar (VIDaaS nuvem)” ou “Carimbar e liberar”.',
+                  'É o mesmo botão nos três modos. O que muda é o que acontece depois do clique.',
               },
               {
                 titulo: 'Posicione o carimbo',

@@ -590,18 +590,9 @@ export function LaudoEditorPage() {
                 </span>
               ) : ehMedico && podeFinalizar && detalhe.data?.podeAssinar ? (
                 <Button onClick={aoAssinar} disabled={iniciarAssinatura.isPending}>
-                  {modoAssinatura === 'SemCertificado' ? (
-                    <Stamp className="mr-2 h-4 w-4" />
-                  ) : (
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                  )}
-                  {assinaturaFalhou
-                    ? 'Tentar de novo'
-                    : modoAssinatura === 'SemCertificado'
-                      ? 'Carimbar e liberar'
-                      : modoAssinatura === 'Nuvem'
-                        ? 'Assinar (VIDaaS nuvem)'
-                        : 'Assinar'}
+                  {/* Mesmo botão nos três modos: o que muda é o que acontece depois do clique. */}
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  {assinaturaFalhou ? 'Tentar de novo' : 'Assinar e liberar'}
                 </Button>
               ) : ehMedico && detalhe.data?.motivoBloqueioAssinatura ? (
                 <span
