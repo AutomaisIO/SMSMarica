@@ -2,8 +2,9 @@ namespace SMSMais.Data.Entities.Enums;
 
 /// <summary>
 /// Como o médico oficializa o laudo (ADR-0061). Configurado pelo administrador no cadastro
-/// do médico, na mesma aba da rubrica. Sem configuração = <see cref="Desktop"/>, que era o
-/// único caminho antes do ADR — assim nenhum médico já em uso muda de fluxo sozinho.
+/// do médico, na mesma aba da rubrica. Sem configuração = <see cref="SemCertificado"/>
+/// ("login e senha"): decisão de 24/09/2026 — a rede quase toda não tem certificado, e quem
+/// tem (a Dra. Claudia, única no assinador do computador) ficou gravada explicitamente.
 /// </summary>
 public enum ModoAssinaturaMedico
 {

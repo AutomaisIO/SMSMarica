@@ -38,11 +38,11 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h3>1. O modo é do médico, escolhido pelo administrador</h3>
 <p>Nova tabela <code>smsmarica.medico_config_assinatura</code> (<code>medico_id</code> PK, <code>modo</code>, auditoria), separada da rubrica (<code>assinatura_medico</code>): o administrador escolhe o modo antes ou depois de enviar a imagem, e remover a rubrica não apaga a escolha. Três valores (<code>ModoAssinaturaMedico</code>):</p>
 <div class="tw"><table><thead><tr><th>Modo</th><th>Como assina</th><th>O que o médico faz</th></tr></thead><tbody>
-<tr><td><code>Desktop</code> (padrão)</td><td>Agente local + loja do Windows (ADR-0015)</td><td>Confirma no VIDaaS Connect</td></tr>
+<tr><td><code>Desktop</code></td><td>Agente local + loja do Windows (ADR-0015)</td><td>Confirma no VIDaaS Connect</td></tr>
 <tr><td><code>Nuvem</code></td><td>API IntegraICP v3 (canal com clearance VIDaaS)</td><td>Aprova no app do celular</td></tr>
-<tr><td><code>SemCertificado</code></td><td>Carimbo desenhado pelo servidor, sem CMS</td><td>Nada além de posicionar o carimbo</td></tr>
+<tr><td><code>SemCertificado</code> (padrão, "login e senha")</td><td>Carimbo desenhado pelo servidor, sem CMS</td><td>Nada além de posicionar o carimbo</td></tr>
 </tbody></table></div>
-<p>Sem linha gravada vale <code>Desktop</code>, para nenhum médico em uso mudar de fluxo sozinho. O modo é <strong>gravado no job</strong> (<code>laudo_assinatura.modo</code>) no "iniciar": trocar no cadastro não muda job em curso.</p>
+<p>Sem linha gravada vale <code>SemCertificado</code> ("login e senha") — decisão de 24/09/2026: a rede quase toda não tem certificado. A Dra. Claudia, única no assinador do computador, foi gravada como <code>Desktop</code> no banco ANTES de o padrão mudar, para nunca cair no modo sem certificado. O modo é <strong>gravado no job</strong> (<code>laudo_assinatura.modo</code>) no "iniciar": trocar no cadastro não muda job em curso.</p>
 <p>Os três modos compartilham tudo o que já existia: rubrica obrigatória, exame associado a pedido, só o autor assina, carimbo posicionado pela médica sobre o PDF-base fixado (ADR-0049) e a <strong>conferência</strong> (<code>AguardandoAprovacao</code> → aprovar libera e avisa o paciente).</p>
 <h3>2. Nuvem pela IntegraICP, conferindo o RAW antes de embutir</h3>
 <p>Fluxo: "iniciar" gera PKCE (<code>code_verifier</code> cifrado com Data Protection no job) e um <code>state</code> opaco (só o hash fica no job) → a IntegraICP devolve a URL de autorização → o médico aprova no app → o navegador volta para <code>GET /assinatura/nuvem/retorno?state=…</code> → o servidor busca o certificado, monta a cadeia, chama o Assinador <code>preparar</code>, pede a assinatura RAW do hash e chama <code>concluir</code>. A trava de autoria (CPF do certificado == CPF do autor) é a mesma do agente.</p>
@@ -85,7 +85,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ul>
 <p>  credencial no retorno não é documentado; o controller aceita os nomes prováveis e, sem casar,   o primeiro valor com formato ULID (o mesmo critério do spike).</p>
 <h2>Reversão</h2>
-<p>Pôr todos os médicos em <code>Desktop</code> devolve o comportamento anterior, salvo o QR no rodapé. Para tirar o QR, <code>LaudoAssinaturaService.GerarPdfOficialAsync</code> volta a chamar <code>GerarAsync</code> no modo <code>PreparandoAssinatura</code>. As tabelas podem ficar.</p>
+<p>Voltar <code>AssinaturaMedicoService.ModoPadrao</code> para <code>Desktop</code> (ou gravar <code>Desktop</code> por médico) devolve o comportamento anterior, salvo o QR no rodapé. Para tirar o QR, <code>LaudoAssinaturaService.GerarPdfOficialAsync</code> volta a chamar <code>GerarAsync</code> no modo <code>PreparandoAssinatura</code>. As tabelas podem ficar.</p>
 </main>
 </body>
 </html>

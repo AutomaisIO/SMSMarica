@@ -28,11 +28,13 @@ remover a rubrica não apaga a escolha. Três valores (`ModoAssinaturaMedico`):
 
 | Modo | Como assina | O que o médico faz |
 |---|---|---|
-| `Desktop` (padrão) | Agente local + loja do Windows (ADR-0015) | Confirma no VIDaaS Connect |
+| `Desktop` | Agente local + loja do Windows (ADR-0015) | Confirma no VIDaaS Connect |
 | `Nuvem` | API IntegraICP v3 (canal com clearance VIDaaS) | Aprova no app do celular |
-| `SemCertificado` | Carimbo desenhado pelo servidor, sem CMS | Nada além de posicionar o carimbo |
+| `SemCertificado` (padrão, "login e senha") | Carimbo desenhado pelo servidor, sem CMS | Nada além de posicionar o carimbo |
 
-Sem linha gravada vale `Desktop`, para nenhum médico em uso mudar de fluxo sozinho. O modo é
+Sem linha gravada vale `SemCertificado` ("login e senha") — decisão de 24/09/2026: a rede quase
+toda não tem certificado. A Dra. Claudia, única no assinador do computador, foi gravada como
+`Desktop` no banco ANTES de o padrão mudar, para nunca cair no modo sem certificado. O modo é
 **gravado no job** (`laudo_assinatura.modo`) no "iniciar": trocar no cadastro não muda job em curso.
 
 Os três modos compartilham tudo o que já existia: rubrica obrigatória, exame associado a pedido,
@@ -118,6 +120,7 @@ conter só capa e imagens.
 
 ## Reversão
 
-Pôr todos os médicos em `Desktop` devolve o comportamento anterior, salvo o QR no rodapé. Para
+Voltar `AssinaturaMedicoService.ModoPadrao` para `Desktop` (ou gravar `Desktop` por médico)
+devolve o comportamento anterior, salvo o QR no rodapé. Para
 tirar o QR, `LaudoAssinaturaService.GerarPdfOficialAsync` volta a chamar `GerarAsync` no modo
 `PreparandoAssinatura`. As tabelas podem ficar.

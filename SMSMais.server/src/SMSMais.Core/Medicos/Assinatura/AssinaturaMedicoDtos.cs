@@ -18,7 +18,7 @@ public sealed record SalvarAssinaturaMedicoRequest(
 
 /// <summary>
 /// Modo de assinatura de laudo do médico (ADR-0061). <see cref="Configurado"/> = false quando
-/// ninguém escolheu ainda e vale o padrão (<see cref="ModoAssinaturaMedico.Desktop"/>).
+/// ninguém escolheu ainda e vale o padrão (<see cref="ModoAssinaturaMedico.SemCertificado"/>).
 /// </summary>
 public sealed record ModoAssinaturaMedicoDto(
     Guid MedicoId,

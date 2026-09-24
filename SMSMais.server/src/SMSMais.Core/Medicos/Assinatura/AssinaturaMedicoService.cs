@@ -67,12 +67,18 @@ public sealed class AssinaturaMedicoService(
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Modo de quem não tem escolha gravada: "login e senha" (sem certificado). Decisão de
+    /// 24/09/2026 — quem assina com certificado precisa ter o modo gravado no cadastro.
+    /// </summary>
+    public const ModoAssinaturaMedico ModoPadrao = ModoAssinaturaMedico.SemCertificado;
+
     public async Task<ModoAssinaturaMedicoDto> ObterModoAsync(Guid medicoId, CancellationToken cancellationToken = default)
     {
         var c = await db.ConfiguracoesAssinaturaMedico.AsNoTracking()
             .FirstOrDefaultAsync(x => x.MedicoId == medicoId, cancellationToken);
         return c is null
-            ? new ModoAssinaturaMedicoDto(medicoId, ModoAssinaturaMedico.Desktop, false, null)
+            ? new ModoAssinaturaMedicoDto(medicoId, ModoPadrao, false, null)
             : new ModoAssinaturaMedicoDto(medicoId, c.Modo, true, c.AtualizadoEm ?? c.CriadoEm);
     }
 

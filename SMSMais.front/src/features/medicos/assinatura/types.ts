@@ -47,7 +47,7 @@ export type ModoAssinaturaMedico = 'Desktop' | 'Nuvem' | 'SemCertificado';
 export type ModoAssinaturaMedicoDto = {
   medicoId: string;
   modo: ModoAssinaturaMedico;
-  /** false = ninguém escolheu ainda e vale o padrão (Desktop). */
+  /** false = ninguém escolheu ainda e vale o padrão (SemCertificado, "login e senha"). */
   configurado: boolean;
   atualizadoEm: string | null;
 };
@@ -71,8 +71,8 @@ export const MODOS_ASSINATURA: {
   },
   {
     id: 'SemCertificado',
-    rotulo: 'Sem certificado (só carimbo)',
+    rotulo: 'Login e senha (sem certificado)',
     descricao:
-      'O laudo sai com a rubrica e o QR de verificação, mas SEM assinatura digital ICP-Brasil. O próprio PDF declara isso.',
+      'O padrão. O médico assina com o próprio acesso ao sistema; o laudo sai com a rubrica e o QR de verificação, mas SEM certificado ICP-Brasil. O próprio PDF declara isso.',
   },
 ];

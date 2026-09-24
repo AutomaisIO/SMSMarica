@@ -89,7 +89,7 @@ export const artigoAssinaturaLaudo: Artigo = {
           <P>
             Cada médico assina de um jeito, conforme o certificado que tem. Quem escolhe é o
             administrador, no cadastro do médico, na aba <strong>Médico</strong>, em “Como este
-            médico assina o laudo”. Sem escolha, vale o assinador no computador.
+            médico assina o laudo”. Sem escolha, vale login e senha, sem certificado.
           </P>
           <ListaDefinicoes
             itens={[
@@ -104,9 +104,9 @@ export const artigoAssinaturaLaudo: Artigo = {
                   'O certificado é o VIDaaS em nuvem. Ao assinar, abre uma aba de autorização e o médico aprova no aplicativo VIDaaS do celular. Não precisa instalar nada no computador. O administrador da instituição precisa ter configurado a integração.',
               },
               {
-                termo: 'Sem certificado (só carimbo)',
+                termo: 'Login e senha (sem certificado) — o padrão',
                 descricao:
-                  'Para o médico que não tem certificado digital. O laudo sai com a rubrica, nome e CRM e com o QR Code, mas SEM assinatura digital. O rodapé do PDF e a página do QR Code dizem isso claramente.',
+                  'Para o médico que não tem certificado digital: assina com o próprio acesso ao sistema. O laudo sai com a rubrica, nome e CRM e com o QR Code, mas SEM assinatura digital. O rodapé do PDF e a página do QR Code dizem isso claramente.',
               },
             ]}
           />

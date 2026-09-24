@@ -13,7 +13,7 @@ public class ConfiguracaoAssinaturaMedico
     /// <summary>Id do Practitioner (hub FHIR) — chave primária, uma linha por médico.</summary>
     public Guid MedicoId { get; set; }
 
-    public ModoAssinaturaMedico Modo { get; set; } = ModoAssinaturaMedico.Desktop;
+    public ModoAssinaturaMedico Modo { get; set; } = ModoAssinaturaMedico.SemCertificado;
 
     // ---- Auditoria (ADR-0006) ----
     public DateTime CriadoEm { get; set; }

@@ -149,7 +149,7 @@ export function AssinaturaMedicoSecao({ medicoId }: Props) {
         </div>
         {modoAtual.data && !modoAtual.data.configurado ? (
           <p className="mt-1 text-xs text-gray-500">
-            Nenhum modo escolhido ainda — vale o padrão, <strong>Assinador no computador</strong>.
+            Nenhum modo escolhido ainda — vale o padrão, <strong>Login e senha (sem certificado)</strong>.
           </p>
         ) : null}
         {modoAtual.data?.modo === 'SemCertificado' ? (

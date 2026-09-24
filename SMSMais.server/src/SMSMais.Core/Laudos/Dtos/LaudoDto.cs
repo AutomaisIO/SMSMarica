@@ -41,7 +41,7 @@ public sealed record LaudoDto(
     bool MedicoTemRubrica = false,
     // ADR-0061: como o AUTOR oficializa (Desktop/Nuvem/SemCertificado) — decide o botão e a
     // mensagem de espera no painel — e se o documento oficial saiu só com carimbo.
-    ModoAssinaturaMedico ModoAssinatura = ModoAssinaturaMedico.Desktop,
+    ModoAssinaturaMedico ModoAssinatura = ModoAssinaturaMedico.SemCertificado,
     bool AssinaturaSemCertificado = false);
 
 public sealed record LaudoListItemDto(

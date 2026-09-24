@@ -18,7 +18,8 @@ public interface IAssinaturaMedicoService
 
     /// <summary>
     /// Modo de assinatura do médico (ADR-0061). Sem linha gravada devolve o padrão
-    /// <see cref="Data.Entities.Enums.ModoAssinaturaMedico.Desktop"/> com <c>Configurado = false</c>.
+    /// <see cref="Data.Entities.Enums.ModoAssinaturaMedico.SemCertificado"/> ("login e senha") com
+    /// <c>Configurado = false</c>.
     /// </summary>
     Task<ModoAssinaturaMedicoDto> ObterModoAsync(Guid medicoId, CancellationToken cancellationToken = default);
 
