@@ -153,25 +153,6 @@ export async function prepararRedeSisreg(payload: PrepararRedePayload): Promise<
   return data;
 }
 
-/** Telefones que recebem aviso quando o sincronismo falha (sisreg | ser | sernit). */
-export async function listarTelefonesNotificacao(provedor: string): Promise<string[]> {
-  const { data } = await http.get<string[]>(`/integracoes/${provedor}/notificacoes`);
-  return data;
-}
-
-export async function salvarTelefonesNotificacao(
-  provedor: string,
-  telefones: string[],
-): Promise<string[]> {
-  const { data } = await http.put<string[]>(`/integracoes/${provedor}/notificacoes`, { telefones });
-  return data;
-}
-
-export async function testarNotificacaoSincronismo(provedor: string): Promise<{ enviados: number }> {
-  const { data } = await http.post<{ enviados: number }>(`/integracoes/${provedor}/notificacoes/testar`);
-  return data;
-}
-
 /** Prévia da distribuição: a que horas a fila termina, antes de confirmar. */
 export async function preverAgendamentoSisreg(
   payload: PreverAgendamentoPayload,

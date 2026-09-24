@@ -18,6 +18,7 @@ namespace SMSMais.Core.Alertas;
 public sealed partial class AlertaPlataformaDespachante(
     SmsMaisDbContext db,
     IWhatsAppCliente whatsApp,
+    IAlertaDestinatarios destinatarios,
     IOptions<AlertaPlataformaOptions> opcoes,
     ILogger<AlertaPlataformaDespachante> logger)
 {
@@ -68,7 +69,7 @@ public sealed partial class AlertaPlataformaDespachante(
         };
         db.AlertaEnvios.Add(envio);
 
-        var telefones = await DestinatariosAsync(evento, ct);
+        var telefones = await destinatarios.ListarAtivosAsync(ct);
         if (telefones.Count == 0)
         {
             envio.Situacao = SituacaoAlertaEnvio.SemDestinatario;
@@ -130,20 +131,6 @@ public sealed partial class AlertaPlataformaDespachante(
         origem.UltimoTitulo = Limitar(evento.Titulo, 300);
         origem.UltimoDetalhe = evento.Detalhe;
         return origem;
-    }
-
-    private async Task<List<string>> DestinatariosAsync(EventoAlerta evento, CancellationToken ct)
-    {
-        var daPlataforma = await db.AlertaDestinatarios.AsNoTracking()
-            .Where(d => d.Ativo)
-            .Select(d => d.Telefone)
-            .ToListAsync(ct);
-
-        return [.. daPlataforma
-            .Concat(evento.TelefonesExtras)
-            .Select(SoDigitos)
-            .Where(t => t.Length >= 10)
-            .DistinctBy(UltimosDez)];
     }
 
     private Task<int> EnviadosHojeAsync(CancellationToken ct)
@@ -263,8 +250,6 @@ public sealed partial class AlertaPlataformaDespachante(
     }
 
     private static string Quando(DateTime utc) => FusoBrasilia.ParaExibicao(utc).ToString("dd/MM HH:mm");
-
-    private static string SoDigitos(string? v) => new([.. (v ?? string.Empty).Where(char.IsDigit)]);
 
     private static string UltimosDez(string telefone) => telefone.Length > 10 ? telefone[^10..] : telefone;
 

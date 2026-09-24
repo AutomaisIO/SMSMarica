@@ -325,6 +325,7 @@ public static class DependencyInjection
             configuration.GetSection(Alertas.AlertaPlataformaOptions.SecaoConfig));
         services.AddSingleton<Alertas.AlertaPlataformaFila>();
         services.AddSingleton<Alertas.IAlertaPlataforma>(sp => sp.GetRequiredService<Alertas.AlertaPlataformaFila>());
+        services.AddScoped<Alertas.IAlertaDestinatarios, Alertas.AlertaDestinatarios>();
         services.AddScoped<Alertas.AlertaPlataformaDespachante>();
         services.AddScoped<Alertas.IAlertaPlataformaService, Alertas.AlertaPlataformaService>();
         services.AddHostedService<Alertas.AlertaPlataformaWorker>();

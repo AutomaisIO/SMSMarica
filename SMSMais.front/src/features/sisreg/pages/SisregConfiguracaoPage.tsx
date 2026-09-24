@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Loader2, PlugZap, Settings2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BellRing, Loader2, PlugZap, Settings2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -14,7 +15,6 @@ import { FilaEsperaSecao } from '@/features/sisreg/components/FilaEsperaSecao';
 import { SincronismoAutomaticoSecao } from '@/features/sisreg/components/SincronismoAutomaticoSecao';
 import { SincronismoEscalasSecao } from '@/features/sisreg/components/SincronismoEscalasSecao';
 import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTudoSecao';
-import { TelefonesNotificacaoSecao } from '@/features/sisreg/components/TelefonesNotificacaoSecao';
 import type {
   AtualizarSisregConfiguracaoPayload,
   EscopoSisreg,
@@ -323,7 +323,20 @@ export function SisregConfiguracaoPage() {
 
       <FilaEsperaSecao />
 
-      <TelefonesNotificacaoSecao provedor="sisreg" rotulo="SISREG" podeEditar />
+      {/* Não há telefone de aviso por integração: a lista é uma só, em Avisos no celular. */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+          <BellRing className="h-5 w-5 text-primary-600" />
+          Avisos de falha do sincronismo
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          CAPTCHA, credencial derrubada e unidade com erro chegam no WhatsApp de quem está em{' '}
+          <Link to="/app/avisos-celular" className="font-medium text-primary-700 underline">
+            Sistema → Avisos no celular
+          </Link>
+          {' '}— a única lista de avisos de erro da plataforma. Cadastre ou tire telefones lá.
+        </p>
+      </section>
     </div>
   );
 }

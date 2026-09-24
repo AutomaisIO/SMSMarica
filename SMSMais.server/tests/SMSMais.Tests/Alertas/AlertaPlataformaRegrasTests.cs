@@ -37,6 +37,9 @@ public class AlertaPlataformaRegrasTests
     [InlineData("Microsoft.EntityFrameworkCore.Database.Command", false)]
     [InlineData("SMSMais.Core.Alertas.AlertaPlataformaWorker", false)]
     [InlineData("SMSMais.Core.Notificacoes.WhatsApp.WhatsAppCliente", false)]
+    // O webhook e os manipuladores das conversas ENTRAM: só o cliente de envio fica fora.
+    [InlineData("SMSMais.Core.Notificacoes.WhatsApp.WhatsAppWebhookService", true)]
+    [InlineData("SMSMais.Core.Notificacoes.WhatsApp.Manipuladores.VerificacaoCadastralWhatsAppHandler", true)]
     [InlineData("SMSMais.Api.Middleware.ExceptionHandlingMiddleware", false)]
     public void Captura_do_log_pega_a_plataforma_e_nao_o_proprio_caminho_do_aviso(string categoria, bool captura) =>
         AlertaCatalogo.CapturarDoLog(categoria).Should().Be(captura);
@@ -67,6 +70,16 @@ public class AlertaPlataformaRegrasTests
         const string corpo = """{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API."}}""";
 
         FalhaContaIa.Classificar(HttpStatusCode.BadRequest, corpo).Should().Contain("crédito");
+        FalhaContaIa.EhFalhaDeConta($"Anthropic retornou 400: {corpo}").Should().BeTrue();
+    }
+
+    /// <summary>22 a 24/09/2026: teto de gasto mensal; o robô ficou três dias mudo sem o aviso da conta.</summary>
+    [Fact]
+    public void Limite_de_gasto_da_conta_e_reconhecido_como_falha_de_conta()
+    {
+        const string corpo = """{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-10-01 at 00:00 UTC."}}""";
+
+        FalhaContaIa.Classificar(HttpStatusCode.BadRequest, corpo).Should().Contain("limite de gasto");
         FalhaContaIa.EhFalhaDeConta($"Anthropic retornou 400: {corpo}").Should().BeTrue();
     }
 

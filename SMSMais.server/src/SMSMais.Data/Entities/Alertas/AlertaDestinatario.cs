@@ -2,9 +2,9 @@ namespace SMSMais.Data.Entities.Alertas;
 
 /// <summary>
 /// Telefone que recebe no WhatsApp os avisos de erro da plataforma (robô parado, sincronismo que
-/// falhou, erro 500 novo…). Lista da instância inteira — diferente dos telefones por integração
-/// (<c>telefonesNotificacao</c> no <c>parametros_json</c> da credencial), que só recebem o que é
-/// daquela integração.
+/// falhou, erro 500 novo…). É a ÚNICA lista de aviso de erro/falha da instância: a que existia
+/// por integração (<c>telefonesNotificacao</c> na credencial) foi absorvida em 24/09/2026 pela
+/// migration <c>UnificarTelefonesAvisos</c>.
 /// </summary>
 public sealed class AlertaDestinatario
 {

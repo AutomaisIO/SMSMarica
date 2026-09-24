@@ -32,8 +32,8 @@ public static class AlertaCatalogo
             "O robô não conseguiu responder um cidadão: a IA recusou, o modelo deu erro ou a "
             + "tarefa esgotou as tentativas. Quem escreveu fica sem resposta até alguém assumir."),
         new(IaConta, "Conta da IA (Anthropic)", "IA",
-            "A Anthropic recusou a chamada por crédito esgotado, chave inválida ou falta de "
-            + "permissão. Para o robô, o treinamento, a distribuição de translados e a varredura "
+            "A Anthropic recusou a chamada por crédito esgotado, limite de gasto atingido, chave "
+            + "inválida ou falta de permissão. Para o robô, o treinamento, a distribuição de translados e a varredura "
             + "de contato negado de uma vez."),
         new(Erro500, "Erro não tratado na API (ERRO-XXXXXX)", "Sistema",
             "Primeira ocorrência de um erro 500 novo. Repetição do mesmo erro ainda em aberto "
@@ -43,11 +43,11 @@ public static class AlertaCatalogo
             + "restart do servidor."),
         new(Sincronismo("sisreg"), "Sincronismo SISREG", "Sincronismo",
             "CAPTCHA, credencial derrubada, unidade com erro e rodada do lote de mapeamento que "
-            + "terminou com pendência. Também recebem os telefones cadastrados na tela do SISREG."),
+            + "terminou com pendência."),
         new(Sincronismo("ser"), "Sincronismo SER", "Sincronismo",
-            "Falhas avisadas pelo motor do SER. Também recebem os telefones cadastrados na integração."),
+            "Falhas avisadas pelo motor do SER."),
         new(Sincronismo("sernit"), "Sincronismo SERNIT", "Sincronismo",
-            "Falhas avisadas pelo motor do SERNIT. Também recebem os telefones cadastrados na integração."),
+            "Falhas avisadas pelo motor do SERNIT."),
         new(Teste, "Mensagem de teste", "Sistema",
             "Disparada pelo botão \"Enviar teste\" desta tela."),
     ];
@@ -67,13 +67,17 @@ public static class AlertaCatalogo
     /// Categorias que NÃO passam pela captura: as que já avisam por conta própria (o middleware
     /// manda o ERRO-XXXXXX com código) e as que formam o próprio caminho do aviso — se o
     /// WhatsApp está quebrado, avisar pelo WhatsApp que ele quebrou só gera laço.
+    ///
+    /// <para>Do WhatsApp, só o CLIENTE de envio fica fora (é por ele que o aviso sai). Antes o
+    /// namespace inteiro ficava — e com ele o webhook e os manipuladores das conversas: erro no
+    /// fluxo que responde o cidadão não chegava a ninguém.</para>
     /// </summary>
     private static readonly string[] Excluidas =
     [
         "SMSMais.Core.Alertas",
         "SMSMais.Api.Alertas",
         "SMSMais.Api.Middleware.ExceptionHandlingMiddleware",
-        "SMSMais.Core.Notificacoes.WhatsApp",
+        "SMSMais.Core.Notificacoes.WhatsApp.WhatsAppCliente",
         "SMSMais.Core.Notificacoes.Sincronismo",
     ];
 

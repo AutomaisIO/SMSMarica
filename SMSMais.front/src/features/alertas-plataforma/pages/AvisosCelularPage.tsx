@@ -104,11 +104,9 @@ function EstadoTemplate({ t }: { t: AlertaTemplate }) {
 
 function Destinatarios({
   lista,
-  porIntegracao,
   podeEditar,
 }: {
   lista: AlertaDestinatario[];
-  porIntegracao: { provedor: string; telefones: string[] }[];
   podeEditar: boolean;
 }) {
   const adicionar = useAdicionarDestinatario();
@@ -233,14 +231,12 @@ function Destinatarios({
         </div>
       )}
 
-      {porIntegracao.length > 0 && (
-        <p className="mt-3 text-xs text-gray-500">
-          Também recebem os avisos do próprio sincronismo (cadastrados na integração):{' '}
-          {porIntegracao
-            .map((p) => `${p.provedor.toUpperCase()}: ${p.telefones.map(formatarTelefone).join(', ')}`)
-            .join(' · ')}
-        </p>
-      )}
+      {/* Lista ÚNICA: não existe mais telefone por integração. Mostrar a outra lista aqui foi o que
+          fez parecer cadastrado quem não recebia nada (24/09/2026). */}
+      <p className="mt-3 text-xs text-gray-500">
+        Esta é a única lista de avisos de erro e falha da plataforma: robô, sincronismos (SISREG,
+        SER, SERNIT), PACS, erros do sistema. Não há outra configuração em nenhuma tela.
+      </p>
     </Cartao>
   );
 }
@@ -434,7 +430,7 @@ export function AvisosCelularPage() {
       </header>
 
       <EstadoTemplate t={p.template} />
-      <Destinatarios lista={p.destinatarios} porIntegracao={p.telefonesPorIntegracao} podeEditar={podeEditar} />
+      <Destinatarios lista={p.destinatarios} podeEditar={podeEditar} />
       <OQueEReportado origens={p.origens} podeEditar={podeEditar} aoVerHistorico={setFiltro} />
       <Historico envios={p.envios} filtro={filtro} rotuloFiltro={rotuloFiltro} aoLimparFiltro={() => setFiltro(null)} />
     </div>

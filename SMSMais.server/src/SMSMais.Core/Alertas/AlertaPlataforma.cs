@@ -11,9 +11,6 @@ public sealed record EventoAlerta(string Chave, string Titulo, string Detalhe)
 
     public string? Grupo { get; init; }
 
-    /// <summary>Telefones que recebem além dos da plataforma (os da integração, no sincronismo).</summary>
-    public IReadOnlyList<string> TelefonesExtras { get; init; } = [];
-
     /// <summary>Ignora freio, silêncio e teto diário. Só para o botão de teste.</summary>
     public bool Forcar { get; init; }
 

@@ -16,6 +16,12 @@ public static class FalhaContaIa
         if (c.Contains("credit balance", StringComparison.OrdinalIgnoreCase)
             || c.Contains("billing", StringComparison.OrdinalIgnoreCase))
             return "O crédito da conta Anthropic acabou. Recarregue em console.anthropic.com → Billing.";
+        // 22/09/2026: "You have reached your specified API usage limits. You will regain access on
+        // 2026-10-01" — o teto de gasto mensal da conta. Não era reconhecido, e o robô ficou três
+        // dias mudo só com o aviso genérico de tarefa falhada.
+        if (EhLimiteDeUso(c))
+            return "A conta Anthropic atingiu o limite de gasto configurado. Aumente em "
+                + "console.anthropic.com → Settings → Limits (ou espere a data que a mensagem indica).";
         if (status == HttpStatusCode.Unauthorized || c.Contains("authentication_error", StringComparison.Ordinal))
             return "A chave da Anthropic foi recusada (inválida ou revogada). Troque em Configuração da IA.";
         if (status == HttpStatusCode.Forbidden || c.Contains("permission_error", StringComparison.Ordinal))
@@ -27,8 +33,12 @@ public static class FalhaContaIa
     public static bool EhFalhaDeConta(string? mensagem) =>
         mensagem is not null
         && (mensagem.Contains("credit balance", StringComparison.OrdinalIgnoreCase)
+            || EhLimiteDeUso(mensagem)
             || mensagem.Contains("authentication_error", StringComparison.Ordinal)
             || mensagem.Contains("permission_error", StringComparison.Ordinal));
+
+    private static bool EhLimiteDeUso(string texto) =>
+        texto.Contains("usage limit", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

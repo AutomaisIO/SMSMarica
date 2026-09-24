@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
-using SMSMais.Core.Notificacoes.Sincronismo;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Alertas;
@@ -21,8 +20,6 @@ public sealed record AlertaEnvioDto(
     Guid Id, string OrigemChave, string? OrigemRotulo, string Titulo, string Detalhe, DateTime CriadoEm,
     int Ocorrencias, SituacaoAlertaEnvio Situacao, string? Resultado);
 
-public sealed record TelefonesIntegracaoDto(string Provedor, IReadOnlyList<string> Telefones);
-
 /// <param name="TemplateAprovado">O template aparece como APROVADO no catálogo da Meta.</param>
 /// <param name="TemplateCorpo">Corpo aprovado (null enquanto não aprovado).</param>
 public sealed record AlertaTemplateDto(
@@ -31,7 +28,6 @@ public sealed record AlertaTemplateDto(
 
 public sealed record AlertaPainelDto(
     IReadOnlyList<AlertaDestinatarioDto> Destinatarios,
-    IReadOnlyList<TelefonesIntegracaoDto> TelefonesPorIntegracao,
     IReadOnlyList<AlertaOrigemDto> Origens,
     IReadOnlyList<AlertaEnvioDto> Envios,
     AlertaTemplateDto Template);
@@ -54,26 +50,16 @@ public interface IAlertaPlataformaService
 public sealed class AlertaPlataformaService(
     SmsMaisDbContext db,
     AlertaPlataformaDespachante despachante,
-    INotificadorSincronismo sincronismo,
     IWhatsAppCliente whatsApp,
     IOptions<AlertaPlataformaOptions> opcoes,
     IUsuarioAtualAccessor usuarioAtual) : IAlertaPlataformaService
 {
-    private static readonly string[] ProvedoresSincronismo = ["sisreg", "ser", "sernit"];
-
     public async Task<AlertaPainelDto> ObterPainelAsync(CancellationToken ct = default)
     {
         var destinatarios = await db.AlertaDestinatarios.AsNoTracking()
             .OrderBy(d => d.CriadoEm)
             .Select(d => new AlertaDestinatarioDto(d.Id, d.Telefone, d.Nome, d.Ativo, d.CriadoEm))
             .ToListAsync(ct);
-
-        var porIntegracao = new List<TelefonesIntegracaoDto>();
-        foreach (var provedor in ProvedoresSincronismo)
-        {
-            var tels = await sincronismo.ListarTelefonesAsync(provedor, ct);
-            if (tels.Count > 0) porIntegracao.Add(new TelefonesIntegracaoDto(provedor, tels));
-        }
 
         var linhas = await db.AlertaOrigens.AsNoTracking().ToListAsync(ct);
         var porChave = linhas.ToDictionary(o => o.Chave, StringComparer.Ordinal);
@@ -96,7 +82,7 @@ public sealed class AlertaPlataformaService(
         var template = new AlertaTemplateDto(
             op.Template, aprovado is not null, aprovado?.Corpo, aprovado?.Parametros, op.Parametros, op.TetoDiario);
 
-        return new AlertaPainelDto(destinatarios, porIntegracao, origens, envios, template);
+        return new AlertaPainelDto(destinatarios, origens, envios, template);
     }
 
     public async Task<IReadOnlyList<AlertaEnvioDto>> ListarEnviosAsync(

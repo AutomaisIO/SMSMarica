@@ -49,7 +49,6 @@ export type AlertaTemplate = {
 
 export type AlertaPainel = {
   destinatarios: AlertaDestinatario[];
-  telefonesPorIntegracao: { provedor: string; telefones: string[] }[];
   origens: AlertaOrigem[];
   envios: AlertaEnvio[];
   template: AlertaTemplate;

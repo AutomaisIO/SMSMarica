@@ -25,14 +25,11 @@ import {
   obterAgendamentoMapeamentoLote,
   obterConfiguracaoSisreg,
   alternarAgendamentoRede,
-  listarTelefonesNotificacao,
   obterStatusMapeamentoLote,
   prepararRedeSisreg,
   preverAgendamentoSisreg,
   salvarAgendamentoMapeamentoLote,
-  salvarTelefonesNotificacao,
   sincronizarMapeamentoLote,
-  testarNotificacaoSincronismo,
 } from '@/features/sisreg/api/sisregApi';
 import type {
   AtualizarSisregConfiguracaoPayload,
@@ -48,7 +45,6 @@ export const sisregKeys = {
   loteAgendamento: ['sisreg', 'lote', 'agendamento'] as const,
   loteExecucoes: ['sisreg', 'lote', 'execucoes'] as const,
   loteItens: (id: string) => ['sisreg', 'lote', 'execucoes', id, 'itens'] as const,
-  telefonesNotificacao: (provedor: string) => ['integracoes', provedor, 'notificacoes'] as const,
   escalasStatus: ['sisreg', 'escalas', 'status'] as const,
   escalasExecucoes: ['sisreg', 'escalas', 'execucoes'] as const,
   escalasAgendamento: ['sisreg', 'escalas', 'agendamento'] as const,
@@ -171,26 +167,6 @@ export function usePrepararRedeSisreg() {
     mutationFn: (payload: PrepararRedePayload) => prepararRedeSisreg(payload),
     onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.loteAgendamento }),
   });
-}
-
-export function useTelefonesNotificacao(provedor: string) {
-  return useQuery({
-    queryKey: sisregKeys.telefonesNotificacao(provedor),
-    queryFn: () => listarTelefonesNotificacao(provedor),
-  });
-}
-
-export function useSalvarTelefonesNotificacao(provedor: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (telefones: string[]) => salvarTelefonesNotificacao(provedor, telefones),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: sisregKeys.telefonesNotificacao(provedor) }),
-  });
-}
-
-export function useTestarNotificacaoSincronismo(provedor: string) {
-  return useMutation({ mutationFn: () => testarNotificacaoSincronismo(provedor) });
 }
 
 /**
