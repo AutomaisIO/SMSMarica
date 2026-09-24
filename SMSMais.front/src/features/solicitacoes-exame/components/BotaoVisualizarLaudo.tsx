@@ -1,30 +1,35 @@
 import { useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
-import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { abrirLaudoDoExame } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { cn } from '@/shared/lib/cn';
 
 /**
- * Botão (ícone) para abrir o laudo (PDF) em nova aba, para visualização/impressão
- * — o download fica a cargo do visualizador de PDF do navegador. Fica DESABILITADO
- * enquanto o laudo não estiver assinado digitalmente; o tooltip avisa o motivo.
+ * Botão (ícone) para abrir o laudo do exame (PDF) em nova aba, separado das imagens.
+ *
+ * Só sai o documento OFICIAL — assinado e aprovado pelo médico. Quem garante é o servidor
+ * (`/solicitacoes-exame/{id}/laudo-pdf` responde 409 antes disso); a tela só antecipa:
+ * - `assinado` informado (listagem): desabilitado enquanto o laudo não foi liberado;
+ * - `assinado` ausente (detalhe, que não carrega o laudo): clicável, e o servidor explica
+ *   se ainda não há laudo liberado.
  */
 export function BotaoVisualizarLaudo({
-  laudoId,
+  solicitacaoId,
   assinado,
 }: {
-  laudoId: string | null;
-  assinado: boolean;
+  solicitacaoId: string;
+  assinado?: boolean;
 }) {
   const [carregando, setCarregando] = useState(false);
-  const pronto = Boolean(laudoId) && assinado;
+  const bloqueado = assinado === false;
 
   async function abrir() {
-    if (!pronto || !laudoId || carregando) return;
+    if (bloqueado || carregando) return;
     setCarregando(true);
     try {
-      await abrirPdfLaudo(laudoId);
-    } catch {
-      alert('Não foi possível abrir o laudo.');
+      await abrirLaudoDoExame(solicitacaoId);
+    } catch (err) {
+      alert(extrairMensagemDeErro(err));
     } finally {
       setCarregando(false);
     }
@@ -34,16 +39,16 @@ export function BotaoVisualizarLaudo({
     <button
       type="button"
       onClick={abrir}
-      disabled={!pronto || carregando}
+      disabled={bloqueado || carregando}
       title={
-        pronto
-          ? 'Ver/imprimir laudo (PDF assinado)'
-          : 'Laudo ainda não está pronto — não foi assinado digitalmente'
+        bloqueado
+          ? 'Laudo ainda não liberado — fica disponível depois de assinado e aprovado pelo médico'
+          : 'Ver/imprimir o laudo (documento separado das imagens)'
       }
       aria-label="Ver laudo"
       className={cn(
         'inline-flex items-center rounded p-0.5 transition-colors',
-        pronto ? 'text-violet-600 hover:text-violet-800' : 'text-gray-300',
+        bloqueado ? 'text-gray-300' : 'text-violet-600 hover:text-violet-800',
         'disabled:cursor-not-allowed',
         carregando && 'opacity-60',
       )}

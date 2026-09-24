@@ -104,9 +104,30 @@ public sealed class SolicitacoesExameService(
         return enriquecido;
     }
 
-    /// <summary>Existe um laudo (última versão finalizada) ASSINADO para o estudo deste exame?
-    /// Study = o do próprio exame + os das associações ativas (precedência da associação).</summary>
-    private async Task<bool> ExameTemLaudoAssinadoAsync(Guid exameId, CancellationToken ct)
+    /// <summary>Existe um laudo (última versão finalizada) ASSINADO para o estudo deste exame?</summary>
+    private async Task<bool> ExameTemLaudoAssinadoAsync(Guid exameId, CancellationToken ct) =>
+        await LaudoOficialDoExameAsync(exameId, ct) is not null;
+
+    public async Task<byte[]?> ObterLaudoOficialPdfAsync(Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+    {
+        if (!await _db.ExamesImagem.AsNoTracking().AnyAsync(e => e.Id == solicitacaoExameId && e.ExcluidoEm == null, cancellationToken))
+            throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
+
+        var laudoId = await LaudoOficialDoExameAsync(solicitacaoExameId, cancellationToken);
+        if (laudoId is null) return null;
+
+        return await _db.LaudoAssinaturas.AsNoTracking()
+            .Where(a => a.LaudoId == laudoId && a.Status == StatusAssinatura.Concluida && a.PdfAssinado != null)
+            .Select(a => a.PdfAssinado)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Laudo OFICIAL do exame: a versão atual (maior versão finalizada) de um dos estudos do
+    /// exame que tenha assinatura concluída — mesma régua do botão "Ver laudo" da listagem.
+    /// Study = o do próprio exame + os das associações ativas. Null = não há laudo liberado.
+    /// </summary>
+    private async Task<Guid?> LaudoOficialDoExameAsync(Guid exameId, CancellationToken ct)
     {
         var studyProprio = await _db.ExamesImagem.AsNoTracking()
             .Where(e => e.Id == exameId).Select(e => e.StudyInstanceUID).FirstOrDefaultAsync(ct);
@@ -115,20 +136,20 @@ public sealed class SolicitacoesExameService(
             .Select(a => a.StudyInstanceUID).ToListAsync(ct);
         var studies = studyAssoc.Append(studyProprio ?? string.Empty)
             .Where(u => !string.IsNullOrWhiteSpace(u)).Distinct().ToArray();
-        if (studies.Length == 0) return false;
+        if (studies.Length == 0) return null;
 
         var laudos = await _db.Laudos.AsNoTracking()
             .Where(l => !l.Excluido && l.Status == StatusLaudo.Finalizado && studies.Contains(l.StudyInstanceUID))
             .Select(l => new { l.Id, l.StudyInstanceUID, l.Versao })
             .ToListAsync(ct);
-        if (laudos.Count == 0) return false;
+        if (laudos.Count == 0) return null;
 
         var atuais = laudos
             .GroupBy(l => l.StudyInstanceUID)
             .Select(g => g.OrderByDescending(x => x.Versao).First().Id)
             .ToArray();
         var assinados = await _assinaturas.Value.QuaisAssinadosAsync(atuais, ct);
-        return assinados.Count > 0;
+        return atuais.Where(assinados.Contains).Select(id => (Guid?)id).FirstOrDefault();
     }
 
     public async Task EnviarComunicacaoManualAsync(

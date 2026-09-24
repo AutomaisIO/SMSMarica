@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Cidadao;
+using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Cidadao.Dtos;
 using SMSMais.Core.Downloads;
 using SMSMais.Core.Exames;
@@ -135,8 +136,8 @@ public sealed class SolicitacoesExameController(
     }
 
     /// <summary>
-    /// PDF do EXAME COMPLETO: capa com os dados da solicitação, as imagens do PACS e,
-    /// por último, o laudo (quando finalizado) — tudo num único documento.
+    /// PDF do EXAME: capa com os dados da solicitação e as imagens do PACS. O laudo NÃO
+    /// entra — é documento à parte (<c>laudo-pdf</c>).
     /// </summary>
     [HttpGet("{id:guid}/exame-completo-pdf")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -152,8 +153,29 @@ public sealed class SolicitacoesExameController(
     }
 
     /// <summary>
+    /// Laudo do exame, separado das imagens: só o documento OFICIAL (assinado e aprovado pelo
+    /// médico). Antes disso responde 409 — rascunho ou laudo sem assinatura não saem pelo
+    /// menu de Solicitações. Não exige a permissão de Laudos: quem entrega o resultado ao
+    /// paciente trabalha aqui.
+    /// </summary>
+    [HttpGet("{id:guid}/laudo-pdf")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> LaudoPdf(Guid id, CancellationToken cancellationToken)
+    {
+        var pdf = await _service.ObterLaudoOficialPdfAsync(id, cancellationToken)
+            ?? throw new ConflitoException("laudo.nao_liberado",
+                "O laudo deste exame ainda não foi assinado e liberado pelo médico.");
+        Response.Headers.CacheControl = "private, no-store";
+        return File(pdf, "application/pdf", $"laudo-{id}.pdf");
+    }
+
+    /// <summary>
     /// Gera um link público de download (uso único, validade configurável) do exame
-    /// completo, para enviar ao paciente (ex.: WhatsApp). Retorna a URL e a expiração.
+    /// (capa + imagens, sem laudo), para enviar ao paciente. Retorna a URL e a expiração.
     /// </summary>
     [HttpPost("{id:guid}/link-download")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]

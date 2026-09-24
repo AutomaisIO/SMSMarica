@@ -59,6 +59,7 @@ import { VagaBadge } from '@/features/solicitacoes-exame/components/VagaBadge';
 import { ConfirmacaoBadge, canalConfirmacaoTexto } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
+import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
 import { BotaoLinkDownload } from '@/features/solicitacoes-exame/components/BotaoLinkDownload';
 import { BotaoLinkAcesso } from '@/features/solicitacoes-exame/components/BotaoLinkAcesso';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -214,6 +215,7 @@ export function SolicitacaoExameDetalhePage() {
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
                 <BotaoBaixarExameCompleto solicitacaoId={s.id} />
+                <BotaoVisualizarLaudo solicitacaoId={s.id} />
               </>
             )}
           </h1>

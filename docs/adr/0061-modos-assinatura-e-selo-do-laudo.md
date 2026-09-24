@@ -93,6 +93,15 @@ assinatura digital ICP-Brasil"). O QR fica à esquerda e termina antes do carimb
 exame, médico, data, titular do certificado, aviso de versão mais recente, e o botão de download
 (`GET /publico/laudos/{codigo}/pdf`, o PDF aprovado). Rate limit `verificacao-publica`, 30/min por IP.
 
+### 5. Laudo separado das imagens (decisão de 24/09/2026, mesmo dia)
+
+O PDF do exame (capa + imagens) deixa de anexar o laudo ao fim. A junção usava a versão
+on-demand **sem assinatura** mesmo quando já havia o PDF assinado, e fazia circular uma cópia sem
+validade. O laudo vira documento à parte e só sai oficial: no menu de Solicitações pelo novo
+`GET /solicitacoes-exame/{id}/laudo-pdf` (permissão de Solicitações, 409 antes da liberação), no
+app do cidadão (que já era assim) e pelo QR Code. O link público de download do exame passa a
+conter só capa e imagens.
+
 ## Consequências
 
 - **Migration** `ModosAssinaturaMedicoESeloLaudo`: duas tabelas novas e três colunas em

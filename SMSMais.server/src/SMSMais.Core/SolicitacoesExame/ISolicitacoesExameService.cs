@@ -21,6 +21,13 @@ public interface ISolicitacoesExameService
 
     Task<SolicitacaoExameDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// PDF OFICIAL do laudo do exame (o aprovado pelo médico, byte-estável). Null quando o
+    /// laudo ainda não foi liberado — rascunho, finalizado sem assinatura ou aguardando a
+    /// conferência nunca saem por aqui. Lança <c>NaoEncontradoException</c> se o exame não existe.
+    /// </summary>
+    Task<byte[]?> ObterLaudoOficialPdfAsync(Guid solicitacaoExameId, CancellationToken cancellationToken = default);
+
     Task<SolicitacaoExameDto?> ObterPorAccessionAsync(string accession, CancellationToken cancellationToken = default);
 
     Task<SolicitacaoExameDto?> ObterPorStudyAsync(string studyInstanceUID, CancellationToken cancellationToken = default);

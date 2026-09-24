@@ -1,8 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Tempo;
-using SMSMais.Core.Laudos;
-using SMSMais.Core.Laudos.Pdf;
 using SMSMais.Core.Pacientes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -11,10 +9,16 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.Exames;
 
 /// <summary>
-/// Gera o PDF do EXAME COMPLETO de uma solicitação: capa rica (dados do paciente,
-/// exame, solicitante), seguida das imagens do PACS e, por último, do laudo (quando
-/// finalizado). Capa+imagens são um QuestPDF; o laudo vem do renderer existente
-/// (intacto) e é concatenado via <see cref="PdfMerge"/>.
+/// Gera o PDF do EXAME de uma solicitação: capa rica (dados do paciente, exame,
+/// solicitante) seguida das imagens do PACS.
+///
+/// <para>
+/// <b>O laudo NÃO entra aqui</b> (decisão de 24/09/2026). Antes ele era concatenado ao fim,
+/// e na versão on-demand "sem assinatura" mesmo quando já havia o PDF assinado — o que fazia
+/// circular uma cópia sem validade junto das imagens. O laudo é documento à parte: sai só
+/// o oficial, e só depois de aprovado pelo médico (Solicitações → "Ver laudo", app do
+/// cidadão e QR Code do rodapé).
+/// </para>
 /// </summary>
 public interface IExameCompletoPdfService
 {
@@ -26,9 +30,7 @@ public sealed class ExameCompletoPdfService(
     Midias.IMidiasService midiasService,
     SmsMaisDbContext db,
     IExamePacsImagensReader imagensReader,
-    IPacientesService pacientes,
-    ILaudosService laudos,
-    ILaudoPdfRenderer laudoPdf) : IExameCompletoPdfService
+    IPacientesService pacientes) : IExameCompletoPdfService
 {
     /// <summary>Teto de imagens incluídas no PDF (trava de segurança).</summary>
     private const int MaxImagens = 300;
@@ -62,9 +64,6 @@ public sealed class ExameCompletoPdfService(
 
         var (nome, cpf, cns, nascimento) = await ResolverPacienteAsync(sol.Solicitacao!.PacienteId, cancellationToken);
 
-        var laudo = await laudos.ObterPorStudyAsync(sol.StudyInstanceUID, cancellationToken);
-        var incluiLaudo = laudo is { Status: StatusLaudo.Finalizado };
-
         var capa = new ExameCompletoCapa(
             PacienteNome: nome,
             PacienteCpf: cpf,
@@ -78,16 +77,10 @@ public sealed class ExameCompletoPdfService(
             RealizadoEm: FusoBrasilia.ParaExibicao(sol.RealizadoEm),
             SolicitadaEm: FusoBrasilia.ParaExibicao(sol.CriadoEm),
             SolicitanteNome: string.IsNullOrWhiteSpace(sol.Solicitacao!.SolicitanteNome) ? null : sol.Solicitacao!.SolicitanteNome,
-            IncluiLaudo: incluiLaudo,
             Justificativa: string.IsNullOrWhiteSpace(sol.Solicitacao!.Justificativa) ? null : sol.Solicitacao!.Justificativa,
             Observacoes: string.IsNullOrWhiteSpace(sol.Solicitacao!.Observacoes) ? null : sol.Solicitacao!.Observacoes);
 
-        var capaImagens = new ExameCompletoPdfDocument(capa, imagens, await IdentidadeVisualPdf.ResolverAsync(instituicaoService, midiasService, cancellationToken)).Gerar();
-
-        if (!incluiLaudo) return capaImagens;
-
-        var laudoBytes = await laudoPdf.GerarAsync(laudo!.Id, ModoRodapeLaudo.FinalizadoNaoAssinado, cancellationToken);
-        return PdfMerge.Concatenar(capaImagens, laudoBytes);
+        return new ExameCompletoPdfDocument(capa, imagens, await IdentidadeVisualPdf.ResolverAsync(instituicaoService, midiasService, cancellationToken)).Gerar();
     }
 
     private async Task<(string Nome, string? Cpf, string? Cns, DateOnly? Nascimento)> ResolverPacienteAsync(

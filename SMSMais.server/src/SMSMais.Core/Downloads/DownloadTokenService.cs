@@ -31,7 +31,7 @@ public sealed record DownloadLiberacaoDto(Guid? Liberacao, int TentativasRestant
 /// </summary>
 public interface IDownloadTokenService
 {
-    /// <summary>Gera um link de download do EXAME COMPLETO (capa+imagens+laudo) de uma solicitação.</summary>
+    /// <summary>Gera um link de download do EXAME (capa + imagens, sem laudo) de uma solicitação.</summary>
     Task<DownloadLinkDto> GerarExameCompletoAsync(Guid solicitacaoExameId, CancellationToken cancellationToken = default);
 
     /// <summary>Estado do token SEM consumir (para a página pública decidir baixar vs "expirou").</summary>

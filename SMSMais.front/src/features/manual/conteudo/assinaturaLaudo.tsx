@@ -49,6 +49,9 @@ export const artigoAssinaturaLaudo: Artigo = {
     'rubrica não cadastrada',
     'assinador não encontrado',
     'exame sem pedido associado',
+    'laudo junto com as imagens',
+    'imprimir laudo',
+    'solicitações',
   ],
   secoes: () => [
     {
@@ -179,6 +182,32 @@ export const artigoAssinaturaLaudo: Artigo = {
             Se fechar a janela sem decidir, o botão “Conferir e aprovar assinatura” fica no topo do
             laudo até você voltar.
           </P>
+        </>
+      ),
+    },
+    {
+      id: 'onde-aparece',
+      titulo: 'Onde o laudo aparece — e por que separado das imagens',
+      busca:
+        'solicitações ver laudo imagens exame pdf separado imprimir junto baixar exame completo capa',
+      conteudo: (
+        <>
+          <P>
+            Laudo e imagens são documentos diferentes. O PDF do exame, aberto pelo ícone de
+            download em <strong>Solicitações</strong>, traz a capa e as imagens — o laudo não vem
+            junto. Quem precisar dos dois imprime um e depois o outro.
+          </P>
+          <P>
+            O laudo só aparece <strong>depois de liberado</strong>: assinado (ou carimbado, para o
+            médico sem certificado) e aprovado na conferência. Antes disso, o ícone de laudo na
+            lista de Solicitações fica cinza, e no detalhe do pedido o sistema avisa que ainda não
+            há laudo liberado.
+          </P>
+          <Callout tipo="regra" titulo="Por que não junto">
+            Juntar o laudo às imagens fazia circular uma cópia sem validade: o PDF montado levava
+            a versão sem assinatura mesmo depois de o médico assinar. Separado, o único laudo que
+            sai é o oficial.
+          </Callout>
         </>
       ),
     },

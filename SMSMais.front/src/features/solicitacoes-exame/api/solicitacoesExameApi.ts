@@ -235,7 +235,39 @@ export async function gerarLinkAcesso(id: string): Promise<LinkDownload> {
 }
 
 /**
- * Abre, em nova aba, o PDF do exame completo (capa + imagens + laudo) para
+ * Abre, em nova aba, o laudo OFICIAL do exame (assinado e aprovado pelo médico), separado
+ * das imagens. Antes da liberação o servidor responde 409 com a explicação.
+ */
+export async function abrirLaudoDoExame(id: string): Promise<void> {
+  let resp;
+  try {
+    resp = await http.get(`/solicitacoes-exame/${id}/laudo-pdf`, { responseType: 'blob' });
+  } catch (err) {
+    // Com responseType 'blob' o ProblemDetails do 409 chega como Blob: lê o JSON para a
+    // pessoa ver o motivo real ("ainda não foi assinado e liberado") e não um código HTTP.
+    const dados = (err as { response?: { data?: unknown } })?.response?.data;
+    if (dados instanceof Blob) {
+      try {
+        const problema = JSON.parse(await dados.text()) as { detail?: string; title?: string };
+        throw new Error(problema.detail || problema.title || 'Não foi possível abrir o laudo.');
+      } catch (e) {
+        if (e instanceof Error && !(e instanceof SyntaxError)) throw e;
+      }
+    }
+    throw err;
+  }
+  const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+  const janela = window.open(url, `laudo-exame-${id}`);
+  if (!janela) {
+    alert('A janela do documento foi bloqueada pelo navegador. Libere os popups para este site.');
+    URL.revokeObjectURL(url);
+    return;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
+ * Abre, em nova aba, o PDF do exame (capa + imagens, SEM o laudo) para
  * visualização/impressão no navegador — o download fica a cargo do próprio
  * visualizador de PDF do browser. O endpoint exige bearer (popups não levam o
  * token do interceptor), então baixamos como blob e abrimos uma blob URL.

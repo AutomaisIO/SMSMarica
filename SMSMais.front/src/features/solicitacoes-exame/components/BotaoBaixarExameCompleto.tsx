@@ -4,9 +4,9 @@ import { abrirExameCompleto } from '@/features/solicitacoes-exame/api/solicitaco
 import { cn } from '@/shared/lib/cn';
 
 /**
- * Botão (ícone) para abrir o exame completo num PDF único (capa + imagens do PACS +
- * laudo) em nova aba, para visualização/impressão no navegador — o download é a
- * opção nativa do visualizador. Pode demorar (baixa as imagens do PACS).
+ * Botão (ícone) para abrir o exame num PDF (capa + imagens do PACS) em nova aba, para
+ * visualização/impressão no navegador — o download é a opção nativa do visualizador.
+ * Pode demorar (baixa as imagens do PACS). O laudo NÃO vem junto: é o botão "Ver laudo".
  */
 export function BotaoBaixarExameCompleto({ solicitacaoId }: { solicitacaoId: string }) {
   const [carregando, setCarregando] = useState(false);
@@ -17,7 +17,7 @@ export function BotaoBaixarExameCompleto({ solicitacaoId }: { solicitacaoId: str
     try {
       await abrirExameCompleto(solicitacaoId);
     } catch {
-      alert('Não foi possível gerar o PDF do exame completo. Verifique se as imagens já estão no PACS.');
+      alert('Não foi possível gerar o PDF das imagens do exame. Verifique se as imagens já estão no PACS.');
     } finally {
       setCarregando(false);
     }
@@ -28,8 +28,8 @@ export function BotaoBaixarExameCompleto({ solicitacaoId }: { solicitacaoId: str
       type="button"
       onClick={abrir}
       disabled={carregando}
-      title="Abrir exame completo (capa + imagens + laudo) para impressão/download"
-      aria-label="Abrir exame completo"
+      title="Abrir as imagens do exame (capa + imagens) para impressão/download — o laudo é separado"
+      aria-label="Abrir imagens do exame"
       className={cn(
         'inline-flex items-center rounded p-0.5 text-primary-600 transition-colors hover:text-primary-800',
         carregando && 'opacity-60',

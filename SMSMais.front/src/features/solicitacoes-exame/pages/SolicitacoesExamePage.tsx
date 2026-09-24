@@ -409,7 +409,7 @@ export function SolicitacoesExamePage() {
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
                 <BotaoBaixarExameCompleto solicitacaoId={s.id} />
-                <BotaoVisualizarLaudo laudoId={s.laudoId} assinado={s.laudoAssinado} />
+                <BotaoVisualizarLaudo solicitacaoId={s.id} assinado={s.laudoAssinado} />
               </>
             ) : null}
             {podeExcluir && s.status !== 'EmExecucao' && !realizadaOuLaudada ? (

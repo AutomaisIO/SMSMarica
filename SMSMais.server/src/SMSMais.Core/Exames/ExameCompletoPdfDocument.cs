@@ -19,7 +19,6 @@ public sealed record ExameCompletoCapa(
     DateTime? RealizadoEm,
     DateTime SolicitadaEm,
     string? SolicitanteNome,
-    bool IncluiLaudo,
     string? Justificativa,
     string? Observacoes);
 
@@ -137,7 +136,7 @@ public sealed class ExameCompletoPdfDocument(
                 t.DefaultTextStyle(s => s.FontSize(9).FontColor(Colors.Grey.Darken1));
                 t.Span("Conteúdo deste documento: ").SemiBold();
                 t.Span(imagens.Count > 0 ? $"capa, {imagens.Count} imagem(ns)" : "capa");
-                t.Span(capa.IncluiLaudo ? " e laudo médico." : ". Laudo ainda não disponível.");
+                t.Span(". O laudo médico é um documento separado.");
             });
 
             col.Item().PaddingTop(8).Text(
