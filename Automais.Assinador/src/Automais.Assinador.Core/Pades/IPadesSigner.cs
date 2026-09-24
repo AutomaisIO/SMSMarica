@@ -13,11 +13,4 @@ public interface IPadesSigner
     PreparacaoResultado Preparar(PreparacaoRequisicao requisicao);
 
     ConclusaoResultado Concluir(ConclusaoRequisicao requisicao);
-
-    /// <summary>
-    /// Estampa o carimbo como conteúdo da página, sem campo de assinatura e sem CMS — para o
-    /// médico que não tem certificado digital. Mesma página/retângulo do carimbo da
-    /// assinatura; a imagem mantém a proporção dentro do retângulo.
-    /// </summary>
-    byte[] Carimbar(byte[] pdf, byte[] carimboPng, CarimboPosicao? posicao);
 }

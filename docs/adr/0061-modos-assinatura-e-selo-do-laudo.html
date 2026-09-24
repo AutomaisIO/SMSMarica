@@ -40,7 +40,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <div class="tw"><table><thead><tr><th>Modo</th><th>Como assina</th><th>O que o médico faz</th></tr></thead><tbody>
 <tr><td><code>Desktop</code> (padrão)</td><td>Agente local + loja do Windows (ADR-0015)</td><td>Confirma no VIDaaS Connect</td></tr>
 <tr><td><code>Nuvem</code></td><td>API IntegraICP v3 (canal com clearance VIDaaS)</td><td>Aprova no app do celular</td></tr>
-<tr><td><code>SemCertificado</code></td><td>Carimbo estampado como conteúdo, sem CMS</td><td>Nada além de posicionar o carimbo</td></tr>
+<tr><td><code>SemCertificado</code></td><td>Carimbo desenhado pelo servidor, sem CMS</td><td>Nada além de posicionar o carimbo</td></tr>
 </tbody></table></div>
 <p>Sem linha gravada vale <code>Desktop</code>, para nenhum médico em uso mudar de fluxo sozinho. O modo é <strong>gravado no job</strong> (<code>laudo_assinatura.modo</code>) no "iniciar": trocar no cadastro não muda job em curso.</p>
 <p>Os três modos compartilham tudo o que já existia: rubrica obrigatória, exame associado a pedido, só o autor assina, carimbo posicionado pela médica sobre o PDF-base fixado (ADR-0049) e a <strong>conferência</strong> (<code>AguardandoAprovacao</code> → aprovar libera e avisa o paciente).</p>
@@ -58,7 +58,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>A cadeia vem do pacote oficial de ACs do ITI (<code>ACcompactado.zip</code>), baixado uma vez por processo: a credencial traz só o certificado do médico e a AC VALID RFB v5 não publica AIA.</p>
 <p>Configuração (variáveis de ambiente, nunca no repositório): <code>Assinatura__Nuvem__Canal</code> (vazio = modo desligado, e o painel explica o motivo), <code>Assinatura__Nuvem__CabecalhoAutenticacao</code> e <code>Assinatura__Nuvem__ValorAutenticacao</code> se o contrato exigir, <code>Assinatura__Nuvem__UrlPublicaApi</code> (senão usa <code>Publico__BaseUrl</code>).</p>
 <h3>3. Sem certificado: carimbo como conteúdo, e o documento diz isso</h3>
-<p>O <code>Automais.Assinador</code> ganha <code>POST /pdf/carimbar</code>: estampa a imagem do carimbo na página e no retângulo escolhidos, mantendo a proporção, <strong>sem campo de assinatura</strong>. O carimbo diz "Emitido em", não "Assinado em". O job grava <code>formato = CARIMBO_SEM_ICP</code>, que é o que distingue, depois de <code>Concluida</code>, um laudo assinado de um carimbado. O painel mostra <strong>Carimbado</strong> (âmbar), nunca <strong>Assinado</strong>.</p>
+<p>O carimbo é desenhado <strong>no próprio servidor</strong> (<code>CarimboPdf</code>, com o PDFsharp que o servidor já usa para juntar PDFs), sobre o PDF-base fixado, na página e no retângulo escolhidos, mantendo a proporção e <strong>sem campo de assinatura</strong>. O <code>Automais.Assinador</code> não participa: ele existe para assinar, e sem certificado não há o que assinar. O carimbo diz "Emitido em", não "Assinado em". O job grava <code>formato = CARIMBO_SEM_ICP</code>, que é o que distingue, depois de <code>Concluida</code>, um laudo assinado de um carimbado. O painel mostra <strong>Carimbado</strong> (âmbar), nunca <strong>Assinado</strong>.</p>
 <p>Para o resto do sistema (download, app do cidadão, aviso de laudo pronto) o carimbado é oficial: <code>Assinado</code> no DTO continua significando "tem documento oficial aprovado". Quem precisa distinguir lê <code>AssinaturaSemCertificado</code>.</p>
 <h3>4. Selo de verificação por QR Code</h3>
 <p>Nova tabela <code>smsmarica.laudo_verificacao</code> (<code>id</code> = código público, <code>laudo_id</code> único). O código é UUID <strong>v4</strong> — não o v7 da declaração de comparecimento — porque o laudo carrega dado clínico e o v7 expõe o instante de criação. O selo é criado ao gerar o PDF-base: o código precisa estar no PDF antes de a assinatura travar os bytes.</p>
@@ -70,11 +70,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ul>
 <p>  <code>laudo_assinatura</code>. Nada existente muda de valor.</p>
 <ul>
-<li><strong>Deploy em duas pontas:</strong> o <code>Automais.Assinador</code> precisa subir junto (endpoint <code>pdf/carimbar</code>),</li>
-</ul>
-<p>  senão o modo SemCertificado falha na hora de carimbar. Os outros modos não dependem dele.</p>
-<ul>
-<li><strong>O agente Windows não muda.</strong></li>
+<li><strong>Deploy só do servidor e do painel.</strong> O <code>Automais.Assinador</code> e o agente Windows não mudam.</li>
 <li><strong>Laudos já assinados não ganham QR.</strong> O PDF assinado é byte-estável; só documentos assinados</li>
 </ul>
 <p>  daqui em diante carregam o selo.</p>

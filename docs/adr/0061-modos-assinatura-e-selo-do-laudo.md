@@ -30,7 +30,7 @@ remover a rubrica não apaga a escolha. Três valores (`ModoAssinaturaMedico`):
 |---|---|---|
 | `Desktop` (padrão) | Agente local + loja do Windows (ADR-0015) | Confirma no VIDaaS Connect |
 | `Nuvem` | API IntegraICP v3 (canal com clearance VIDaaS) | Aprova no app do celular |
-| `SemCertificado` | Carimbo estampado como conteúdo, sem CMS | Nada além de posicionar o carimbo |
+| `SemCertificado` | Carimbo desenhado pelo servidor, sem CMS | Nada além de posicionar o carimbo |
 
 Sem linha gravada vale `Desktop`, para nenhum médico em uso mudar de fluxo sozinho. O modo é
 **gravado no job** (`laudo_assinatura.modo`) no "iniciar": trocar no cadastro não muda job em curso.
@@ -66,8 +66,10 @@ modo desligado, e o painel explica o motivo), `Assinatura__Nuvem__CabecalhoAuten
 
 ### 3. Sem certificado: carimbo como conteúdo, e o documento diz isso
 
-O `Automais.Assinador` ganha `POST /pdf/carimbar`: estampa a imagem do carimbo na página e no
-retângulo escolhidos, mantendo a proporção, **sem campo de assinatura**. O carimbo diz "Emitido em",
+O carimbo é desenhado **no próprio servidor** (`CarimboPdf`, com o PDFsharp que o servidor já usa
+para juntar PDFs), sobre o PDF-base fixado, na página e no retângulo escolhidos, mantendo a
+proporção e **sem campo de assinatura**. O `Automais.Assinador` não participa: ele existe para
+assinar, e sem certificado não há o que assinar. O carimbo diz "Emitido em",
 não "Assinado em". O job grava `formato = CARIMBO_SEM_ICP`, que é o que distingue, depois de
 `Concluida`, um laudo assinado de um carimbado. O painel mostra **Carimbado** (âmbar), nunca
 **Assinado**.
@@ -95,9 +97,7 @@ exame, médico, data, titular do certificado, aviso de versão mais recente, e o
 
 - **Migration** `ModosAssinaturaMedicoESeloLaudo`: duas tabelas novas e três colunas em
   `laudo_assinatura`. Nada existente muda de valor.
-- **Deploy em duas pontas:** o `Automais.Assinador` precisa subir junto (endpoint `pdf/carimbar`),
-  senão o modo SemCertificado falha na hora de carimbar. Os outros modos não dependem dele.
-- **O agente Windows não muda.**
+- **Deploy só do servidor e do painel.** O `Automais.Assinador` e o agente Windows não mudam.
 - **Laudos já assinados não ganham QR.** O PDF assinado é byte-estável; só documentos assinados
   daqui em diante carregam o selo.
 - **Médico-legal:** o laudo carimbado não tem validade jurídica plena (CFM 2.299/2021). A decisão

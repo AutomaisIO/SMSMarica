@@ -72,6 +72,27 @@ public class AssinaturaModosTests
         png.Take(4).Should().Equal(0x89, (byte)'P', (byte)'N', (byte)'G');
     }
 
+    [Fact]
+    public async Task Carimbo_sem_certificado_e_estampado_no_servidor_sem_campo_de_assinatura()
+    {
+        // O carimbo real (PNG 800×800 com fundo transparente) sobre o PDF oficial com selo.
+        var renderer = MontarRenderer(LaudoExemplo(StatusLaudo.Finalizado));
+        var baseOficial = await renderer.GerarOficialAsync(Guid.NewGuid(), SeloDeTeste(false));
+        var carimbo = new CarimboAssinaturaRenderer().Renderizar(new CarimboDados(
+            Rubrica: null, Formato: FormatoAssinaturaMedico.Quadrada,
+            Nome: "Dra. Teste", Crm: "123", UfCrm: "RJ", Rqe: null,
+            DataAssinatura: new DateTime(2026, 9, 24, 10, 0, 0), AssinaturaDigital: false));
+
+        var carimbado = CarimboPdf.Estampar(baseOficial, carimbo, new CarimboPosicaoPdf(1, 232, 28, 130, 130));
+
+        using var doc = PdfSharp.Pdf.IO.PdfReader.Open(new MemoryStream(carimbado), PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        doc.PageCount.Should().Be(1);
+        // Nenhum formulário/campo de assinatura: carimbado nunca se passa por assinado.
+        doc.Internals.Catalog.Elements.ContainsKey("/AcroForm").Should().BeFalse();
+        carimbado.Length.Should().BeGreaterThan(baseOficial.Length);
+        Despejar("laudo-oficial-carimbado.pdf", carimbado);
+    }
+
     // ---------------- IntegraICP: leitura tolerante ----------------
 
     [Theory]

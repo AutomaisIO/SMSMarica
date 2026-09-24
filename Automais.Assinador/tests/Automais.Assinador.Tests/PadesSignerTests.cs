@@ -64,33 +64,6 @@ public class PadesSignerTests
         Assert.Equal("Automais.Assinador", info.GetAuthor());
     }
 
-    /// <summary>
-    /// Carimbo sem certificado (médico sem ICP-Brasil): a imagem entra como conteúdo da
-    /// página escolhida e o PDF NÃO ganha campo de assinatura — ninguém pode confundir um
-    /// laudo carimbado com um assinado digitalmente.
-    /// </summary>
-    [Fact]
-    public void Carimbar_EstampaImagemNaPaginaSemCampoDeAssinatura()
-    {
-        var pdf = GerarPdfDeTeste();
-        // PNG 1×1 válido (o conteúdo da imagem não importa para a mecânica).
-        var png = Convert.FromBase64String(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
-
-        var carimbado = new PadesSigner().Carimbar(pdf, png, new CarimboPosicao(1, 400, 40, 120, 60));
-
-        using var doc = new PdfDocument(new PdfReader(new MemoryStream(carimbado)));
-        Assert.Empty(new SignatureUtil(doc).GetSignatureNames());
-
-        var xobjects = doc.GetPage(1).GetResources().GetResource(PdfName.XObject);
-        Assert.NotNull(xobjects);
-        Assert.NotEmpty(xobjects.KeySet());
-
-        var info = doc.GetDocumentInfo();
-        Assert.Contains("iText", info.GetProducer());
-        Assert.Equal("Automais.Assinador", info.GetCreator());
-    }
-
     private static byte[] GerarPdfDeTeste()
     {
         using var ms = new MemoryStream();

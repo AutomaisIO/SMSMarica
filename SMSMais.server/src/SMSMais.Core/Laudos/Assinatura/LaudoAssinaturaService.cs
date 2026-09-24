@@ -659,8 +659,9 @@ public sealed class LaudoAssinaturaService(
                 ?? throw new ConflitoException("assinatura.job_estado_invalido", "PDF-base não fixado.");
 
             var carimbo = await MontarCarimboAsync(laudo, rubrica, assinaturaDigital: false, ct);
-            var carimbado = await assinador.CarimbarAsync(
-                pdfBase, Convert.ToBase64String(carimbo), PosicaoDoJob(job), ct);
+            // Sem certificado não há o que assinar: o carimbo é desenhado aqui mesmo, sobre o
+            // PDF-base fixado, sem passar pelo Automais.Assinador.
+            var carimbado = CarimboPdf.Estampar(pdfBase, carimbo, PosicaoDoJob(job));
 
             job.PdfAssinado = carimbado;
             job.PdfHashSha256 = SHA256.HashData(carimbado);
