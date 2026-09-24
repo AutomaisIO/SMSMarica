@@ -32,8 +32,10 @@ public sealed class LaudosService(
     IConsultaStudyClient consultaStudy,
     Configuracao.ILaudoConfiguracaoService configuracao,
     IUsuarioAtualAccessor usuarioAtual,
-    ILogger<LaudosService> logger) : ILaudosService
+    ILogger<LaudosService> logger,
+    Microsoft.Extensions.Options.IOptions<Assinatura.Nuvem.IntegraIcpOptions> nuvemOptions) : ILaudosService
 {
+    private readonly bool _nuvemHabilitada = nuvemOptions.Value.Habilitado;
     private readonly SmsMaisDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
     // Lazy: quebra a dependência circular SolicitacoesExame → Assinatura → PdfRenderer
@@ -143,7 +145,11 @@ public sealed class LaudosService(
 
         var dtos = await EnriquecerAsync([.. lista.Select(LaudosMapper.ParaListItem)], cancellationToken);
         var assinados = await ResolverAssinadosAsync([.. dtos.Select(d => d.Id)], cancellationToken);
-        var comAssinatura = dtos.Select(d => assinados.Contains(d.Id) ? d with { Assinado = true } : d).ToList();
+        var comAssinatura = dtos
+            .Select(d => assinados.TryGetValue(d.Id, out var semCertificado)
+                ? d with { Assinado = true, AssinaturaSemCertificado = semCertificado }
+                : d)
+            .ToList();
         var comComunicacao = await EnriquecerComunicacoesAsync(comAssinatura, cancellationToken);
         var itens = await EnriquecerPedidoAsync([.. comComunicacao], cancellationToken);
         return new PaginaLaudosDto(itens, total, pagina, tamanho);
@@ -302,14 +308,20 @@ public sealed class LaudosService(
                 && !_db.ExameAssociacoes.Any(a => a.StudyInstanceUID == l.StudyInstanceUID && a.ExcluidoEm == null)));
     }
 
-    private async Task<HashSet<Guid>> ResolverAssinadosAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct)
+    /// <summary>
+    /// Laudos oficializados (assinatura Concluida) entre <paramref name="ids"/> → true quando
+    /// o documento oficial saiu só com carimbo, sem ICP-Brasil (ADR-0061).
+    /// </summary>
+    private async Task<Dictionary<Guid, bool>> ResolverAssinadosAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct)
     {
         if (ids.Count == 0) return [];
         var assinados = await _db.LaudoAssinaturas.AsNoTracking()
             .Where(a => ids.Contains(a.LaudoId) && a.Status == StatusAssinatura.Concluida)
-            .Select(a => a.LaudoId)
+            .Select(a => new { a.LaudoId, a.Formato })
             .ToListAsync(ct);
-        return [.. assinados];
+        return assinados
+            .GroupBy(a => a.LaudoId)
+            .ToDictionary(g => g.Key, g => Assinatura.LaudoAssinaturaService.EhCarimboSemCertificado(g.First().Formato));
     }
 
     public async Task<LaudoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -317,17 +329,22 @@ public sealed class LaudosService(
         var l = await CarregarCompletoAsync(id, asNoTracking: true, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
         var dto = await EnriquecerAsync(LaudosMapper.ParaDto(l), cancellationToken);
-        var assinado = await _db.LaudoAssinaturas.AsNoTracking()
-            .AnyAsync(a => a.LaudoId == id && a.Status == StatusAssinatura.Concluida, cancellationToken);
+        var oficial = await _db.LaudoAssinaturas.AsNoTracking()
+            .Where(a => a.LaudoId == id && a.Status == StatusAssinatura.Concluida)
+            .Select(a => new { a.Formato })
+            .FirstOrDefaultAsync(cancellationToken);
+        var assinado = oficial is not null;
 
-        var (temRubrica, podeAssinar, motivo) =
+        var (temRubrica, podeAssinar, motivo, modo) =
             await ResolverElegibilidadeAssinaturaAsync(l, assinado, cancellationToken);
         return dto with
         {
             Assinado = assinado,
+            AssinaturaSemCertificado = assinado && Assinatura.LaudoAssinaturaService.EhCarimboSemCertificado(oficial!.Formato),
             MedicoTemRubrica = temRubrica,
             PodeAssinar = podeAssinar,
             MotivoBloqueioAssinatura = motivo,
+            ModoAssinatura = modo,
         };
     }
 
@@ -338,10 +355,13 @@ public sealed class LaudosService(
     /// Medicos — permissão que o próprio médico não possui; o front nunca saberia
     /// consultá-la sozinho.
     /// </summary>
-    private async Task<(bool TemRubrica, bool PodeAssinar, string? Motivo)> ResolverElegibilidadeAssinaturaAsync(
+    private async Task<(bool TemRubrica, bool PodeAssinar, string? Motivo, ModoAssinaturaMedico Modo)> ResolverElegibilidadeAssinaturaAsync(
         Laudo l, bool assinado, CancellationToken ct)
     {
         var temRubrica = await _assinaturaMedico.ObterAsync(l.MedicoId, ct) is not null;
+        var modo = (await _assinaturaMedico.ObterModoAsync(l.MedicoId, ct)).Modo;
+        // Modo Nuvem sem canal IntegraICP configurado nesta instância: não adianta liberar o botão.
+        var nuvemIndisponivel = modo == ModoAssinaturaMedico.Nuvem && !_nuvemHabilitada;
 
         var ehAutor = false;
         if (_usuarioAtual.UsuarioId is { } usuarioId)
@@ -354,7 +374,7 @@ public sealed class LaudosService(
         var temAssociacao = await _associacao.ResolverVinculoAsync(l.StudyInstanceUID, ct) is not null;
 
         var finalizado = l.Status == StatusLaudo.Finalizado;
-        var podeAssinar = ehAutor && finalizado && !assinado && temRubrica && temAssociacao;
+        var podeAssinar = ehAutor && finalizado && !assinado && temRubrica && temAssociacao && !nuvemIndisponivel;
 
         string? motivo = null;
         if (ehAutor && finalizado && !assinado)
@@ -363,9 +383,11 @@ public sealed class LaudosService(
                 motivo = "Associe o exame a um pedido antes de assinar.";
             else if (!temRubrica)
                 motivo = "Rubrica não cadastrada — solicite ao administrador o cadastro da sua assinatura (imagem).";
+            else if (nuvemIndisponivel)
+                motivo = "Assinatura em nuvem não configurada nesta instância — peça ao administrador.";
         }
 
-        return (temRubrica, podeAssinar, motivo);
+        return (temRubrica, podeAssinar, motivo, modo);
     }
 
     public async Task<LaudoDto?> ObterPorStudyAsync(
@@ -430,7 +452,7 @@ public sealed class LaudosService(
 
         return [.. maisRecentes
             .Select(x => new LaudoPorStudyDto(
-                x.StudyInstanceUID, x.Id, x.Versao, x.Status, assinados.Contains(x.Id)))];
+                x.StudyInstanceUID, x.Id, x.Versao, x.Status, assinados.ContainsKey(x.Id)))];
     }
 
     public async Task<Guid> CadastrarAsync(

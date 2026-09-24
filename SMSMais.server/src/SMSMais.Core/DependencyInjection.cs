@@ -109,6 +109,21 @@ public static class DependencyInjection
                     client.DefaultRequestHeaders.Add("X-Assinador-Token", assinadorToken);
             });
 
+        // Modos de assinatura por médico + selo de verificação por QR (ADR-0061).
+        services.AddScoped<Laudos.Verificacao.ILaudoVerificacaoService, Laudos.Verificacao.LaudoVerificacaoService>();
+        services.Configure<Laudos.Assinatura.Nuvem.IntegraIcpOptions>(
+            configuration.GetSection(Laudos.Assinatura.Nuvem.IntegraIcpOptions.SecaoConfig));
+        var integraIcpBaseUrl = configuration["Assinatura:Nuvem:BaseUrl"] ?? "https://services.integraicp.com.br/";
+        services
+            .AddHttpClient<Laudos.Assinatura.Nuvem.IIntegraIcpClient, Laudos.Assinatura.Nuvem.IntegraIcpClient>(client =>
+            {
+                client.BaseAddress = new Uri(integraIcpBaseUrl.EndsWith('/') ? integraIcpBaseUrl : integraIcpBaseUrl + "/");
+                client.Timeout = TimeSpan.FromSeconds(60);
+            });
+        services.AddHttpClient(Laudos.Assinatura.Nuvem.CadeiaIcpBrasil.NomeHttpClient,
+            client => client.Timeout = TimeSpan.FromSeconds(30));
+        services.AddSingleton<Laudos.Assinatura.Nuvem.ICadeiaIcpBrasil, Laudos.Assinatura.Nuvem.CadeiaIcpBrasil>();
+
         // ---- Solicitação de Exames + Worklist + Notificações ----
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();

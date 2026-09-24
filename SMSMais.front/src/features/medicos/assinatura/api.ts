@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '@/shared/api/httpClient';
-import type { AssinaturaMedico, SalvarAssinaturaMedicoPayload } from '@/features/medicos/assinatura/types';
+import type {
+  AssinaturaMedico,
+  ModoAssinaturaMedico,
+  ModoAssinaturaMedicoDto,
+  SalvarAssinaturaMedicoPayload,
+} from '@/features/medicos/assinatura/types';
 
 async function obterAssinatura(medicoId: string): Promise<AssinaturaMedico | null> {
   const resp = await http.get<AssinaturaMedico | ''>(`/medicos/${medicoId}/assinatura`);
@@ -43,5 +48,31 @@ export function useRemoverAssinaturaMedico(medicoId: string) {
   return useMutation({
     mutationFn: () => removerAssinatura(medicoId),
     onSuccess: () => client.invalidateQueries({ queryKey: chave(medicoId) }),
+  });
+}
+
+// ---- Modo de assinatura de laudo (ADR-0061) ----
+
+const chaveModo = (medicoId: string) => ['medicos', medicoId, 'assinatura', 'modo'] as const;
+
+export function useModoAssinaturaMedico(medicoId: string | null) {
+  return useQuery({
+    queryKey: medicoId ? chaveModo(medicoId) : ['medicos', 'nenhum', 'assinatura', 'modo'],
+    queryFn: async () => {
+      const { data } = await http.get<ModoAssinaturaMedicoDto>(`/medicos/${medicoId}/assinatura/modo`);
+      return data;
+    },
+    enabled: Boolean(medicoId),
+  });
+}
+
+export function useDefinirModoAssinaturaMedico(medicoId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (modo: ModoAssinaturaMedico) => {
+      const { data } = await http.put<ModoAssinaturaMedicoDto>(`/medicos/${medicoId}/assinatura/modo`, { modo });
+      return data;
+    },
+    onSuccess: (data) => client.setQueryData(chaveModo(medicoId), data),
   });
 }

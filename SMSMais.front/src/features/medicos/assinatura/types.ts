@@ -40,3 +40,39 @@ export type SalvarAssinaturaMedicoPayload = {
   contentType: string;
   formato: FormatoAssinaturaMedico;
 };
+
+/** Como o médico oficializa o laudo (ADR-0061). */
+export type ModoAssinaturaMedico = 'Desktop' | 'Nuvem' | 'SemCertificado';
+
+export type ModoAssinaturaMedicoDto = {
+  medicoId: string;
+  modo: ModoAssinaturaMedico;
+  /** false = ninguém escolheu ainda e vale o padrão (Desktop). */
+  configurado: boolean;
+  atualizadoEm: string | null;
+};
+
+export const MODOS_ASSINATURA: {
+  id: ModoAssinaturaMedico;
+  rotulo: string;
+  descricao: string;
+}[] = [
+  {
+    id: 'Desktop',
+    rotulo: 'Assinador no computador',
+    descricao:
+      'Certificado ICP-Brasil instalado na máquina (VIDaaS Connect, token ou A1). Precisa do Automais Assinador instalado.',
+  },
+  {
+    id: 'Nuvem',
+    rotulo: 'VIDaaS em nuvem',
+    descricao:
+      'Certificado VIDaaS em nuvem. O médico aprova a assinatura no aplicativo do celular; nada instalado no computador.',
+  },
+  {
+    id: 'SemCertificado',
+    rotulo: 'Sem certificado (só carimbo)',
+    descricao:
+      'O laudo sai com a rubrica e o QR de verificação, mas SEM assinatura digital ICP-Brasil. O próprio PDF declara isso.',
+  },
+];

@@ -15,3 +15,16 @@ public sealed record SalvarAssinaturaMedicoRequest(
     string ImagemBase64,
     string ContentType,
     FormatoAssinaturaMedico Formato);
+
+/// <summary>
+/// Modo de assinatura de laudo do médico (ADR-0061). <see cref="Configurado"/> = false quando
+/// ninguém escolheu ainda e vale o padrão (<see cref="ModoAssinaturaMedico.Desktop"/>).
+/// </summary>
+public sealed record ModoAssinaturaMedicoDto(
+    Guid MedicoId,
+    ModoAssinaturaMedico Modo,
+    bool Configurado,
+    DateTime? AtualizadoEm);
+
+/// <summary>Payload da troca de modo de assinatura.</summary>
+public sealed record DefinirModoAssinaturaMedicoRequest(ModoAssinaturaMedico Modo);

@@ -15,4 +15,14 @@ public interface IAssinaturaMedicoService
 
     /// <summary>Remove (soft-delete) a rubrica do médico.</summary>
     Task RemoverAsync(Guid medicoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Modo de assinatura do médico (ADR-0061). Sem linha gravada devolve o padrão
+    /// <see cref="Data.Entities.Enums.ModoAssinaturaMedico.Desktop"/> com <c>Configurado = false</c>.
+    /// </summary>
+    Task<ModoAssinaturaMedicoDto> ObterModoAsync(Guid medicoId, CancellationToken cancellationToken = default);
+
+    /// <summary>Grava (upsert) o modo de assinatura do médico.</summary>
+    Task<ModoAssinaturaMedicoDto> DefinirModoAsync(
+        Guid medicoId, Data.Entities.Enums.ModoAssinaturaMedico modo, CancellationToken cancellationToken = default);
 }

@@ -38,7 +38,11 @@ public sealed record LaudoDto(
     // módulo Medicos (que o próprio médico não tem).
     bool PodeAssinar = false,
     string? MotivoBloqueioAssinatura = null,
-    bool MedicoTemRubrica = false);
+    bool MedicoTemRubrica = false,
+    // ADR-0061: como o AUTOR oficializa (Desktop/Nuvem/SemCertificado) — decide o botão e a
+    // mensagem de espera no painel — e se o documento oficial saiu só com carimbo.
+    ModoAssinaturaMedico ModoAssinatura = ModoAssinaturaMedico.Desktop,
+    bool AssinaturaSemCertificado = false);
 
 public sealed record LaudoListItemDto(
     Guid Id,
@@ -67,7 +71,9 @@ public sealed record LaudoListItemDto(
     string? CodigoSolicitacao = null,
     string? TipoExameNome = null,
     ModalidadeDicom? Modalidade = null,
-    string? UnidadeExecutanteNome = null);
+    string? UnidadeExecutanteNome = null,
+    // ADR-0061: liberado só com carimbo (médico sem certificado), sem ICP-Brasil.
+    bool AssinaturaSemCertificado = false);
 
 /// <summary>Página da listagem de laudos (paginação offset + total para os controles).</summary>
 public sealed record PaginaLaudosDto(

@@ -1,3 +1,5 @@
+using SMSMais.Data.Entities.Enums;
+
 namespace SMSMais.Core.Laudos.Assinatura.Dtos;
 
 /// <summary>Status da assinatura de um laudo (para o front fazer polling).</summary>
@@ -6,13 +8,25 @@ public sealed record AssinaturaStatusDto(
     string Status,
     DateTime? AssinadoEm,
     string? CertificadoTitular,
-    string? Formato);
+    string? Formato,
+    // Caminho do job (ADR-0061); null nos jobs anteriores ao ADR (todos Desktop).
+    ModoAssinaturaMedico? Modo = null);
 
 /// <summary>
-/// Resultado do "iniciar": id da assinatura + a chave de uso único que o front
-/// passa ao agente via <c>automais-assinador://...?chave=</c>.
+/// Resultado do "iniciar". O que o front faz em seguida depende do <see cref="Modo"/>
+/// (ADR-0061):
+/// <list type="bullet">
+/// <item><b>Desktop</b>: lança o agente com a <see cref="Chave"/> de uso único via
+/// <c>automais-assinador://...?chave=</c>.</item>
+/// <item><b>Nuvem</b>: abre a <see cref="UrlAutorizacao"/>, onde o médico aprova no app VIDaaS.</item>
+/// <item><b>SemCertificado</b>: nada — o carimbo já foi aplicado e o job está aguardando a conferência.</item>
+/// </list>
 /// </summary>
-public sealed record IniciarAssinaturaResultado(Guid AssinaturaId, string Chave);
+public sealed record IniciarAssinaturaResultado(
+    Guid AssinaturaId,
+    string? Chave,
+    ModoAssinaturaMedico Modo = ModoAssinaturaMedico.Desktop,
+    string? UrlAutorizacao = null);
 
 /// <summary>
 /// Posição do carimbo escolhida pela médica no painel (ADR-0049), em pontos PDF

@@ -36,6 +36,17 @@ public interface IAssinadorPdfPades
         byte[] transferState,
         byte[] assinaturaCliente,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Estampa o carimbo como CONTEÚDO do PDF, sem campo de assinatura e sem criptografia —
+    /// caminho do médico sem certificado (ADR-0061). Mesma posição/escala do carimbo da
+    /// assinatura, para o documento ter a mesma cara nos três modos.
+    /// </summary>
+    Task<byte[]> CarimbarAsync(
+        byte[] pdfOriginal,
+        string carimboPngBase64,
+        CarimboPosicaoPdf? posicao,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -44,7 +44,14 @@ export type Laudo = {
   motivoBloqueioAssinatura: string | null;
   /** O médico AUTOR tem rubrica de assinatura cadastrada. */
   medicoTemRubrica: boolean;
+  /** Como o AUTOR oficializa o laudo (ADR-0061) — decide o botão e a espera. */
+  modoAssinatura: ModoAssinaturaLaudo;
+  /** Documento oficial saiu só com carimbo, sem ICP-Brasil (médico sem certificado). */
+  assinaturaSemCertificado: boolean;
 };
+
+/** Caminho de oficialização do laudo, espelha o modo do médico (ADR-0061). */
+export type ModoAssinaturaLaudo = 'Desktop' | 'Nuvem' | 'SemCertificado';
 
 export type LaudoListItem = {
   id: string;
@@ -73,6 +80,8 @@ export type LaudoListItem = {
   tipoExameNome: string | null;
   modalidade: ModalidadeDicom | null;
   unidadeExecutanteNome: string | null;
+  /** Liberado só com carimbo, sem ICP-Brasil (ADR-0061). */
+  assinaturaSemCertificado: boolean;
 };
 
 export type StatusAssinatura =
@@ -91,12 +100,20 @@ export type AssinaturaStatus = {
   assinadoEm: string | null;
   certificadoTitular: string | null;
   formato: string | null;
+  /** Caminho do job; null nos jobs anteriores ao ADR-0061 (todos Desktop). */
+  modo: ModoAssinaturaLaudo | null;
 };
 
-/** Resposta do "iniciar": a chave de uso único que o front passa ao agente. */
+/**
+ * Resposta do "iniciar" (ADR-0061). Desktop: `chave` de uso único para o agente.
+ * Nuvem: `urlAutorizacao` onde o médico aprova no app VIDaaS. SemCertificado: nada — o
+ * carimbo já foi aplicado e o documento aguarda a conferência.
+ */
 export type IniciarAssinaturaResp = {
   assinaturaId: string;
-  chave: string;
+  chave: string | null;
+  modo: ModoAssinaturaLaudo;
+  urlAutorizacao: string | null;
 };
 
 /**

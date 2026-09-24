@@ -55,6 +55,20 @@ public sealed class AssinadorPdfHttpClient(
             resp.CpfTitular);
     }
 
+    public async Task<byte[]> CarimbarAsync(
+        byte[] pdfOriginal,
+        string carimboPngBase64,
+        CarimboPosicaoPdf? posicao,
+        CancellationToken cancellationToken = default)
+    {
+        var req = new CarimbarReq(
+            Convert.ToBase64String(pdfOriginal),
+            carimboPngBase64,
+            posicao is { } p ? new PosicaoReq(p.Pagina, p.X, p.Y, p.Largura, p.Altura) : null);
+        var resp = await EnviarAsync<CarimbarReq, CarimbarResp>("pdf/carimbar", req, cancellationToken);
+        return Convert.FromBase64String(resp.PdfBase64);
+    }
+
     private async Task<TResp> EnviarAsync<TReq, TResp>(string caminho, TReq corpo, CancellationToken ct)
     {
         HttpResponseMessage resp;
@@ -103,6 +117,10 @@ public sealed class AssinadorPdfHttpClient(
     private sealed record PosicaoReq(int Pagina, double X, double Y, double Largura, double Altura);
 
     private sealed record PrepararResp(string ToSignHashBase64, string AlgoritmoHash, string TransferStateBase64);
+
+    private sealed record CarimbarReq(string PdfBase64, string CarimboPngBase64, PosicaoReq? Posicao);
+
+    private sealed record CarimbarResp(string PdfBase64);
 
     private sealed record ConcluirReq(string TransferStateBase64, string RawSignatureBase64);
 

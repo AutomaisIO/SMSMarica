@@ -289,6 +289,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
+    // Selo do laudo (ADR-0061): página e PDF abertos pelo QR Code, sem login. O código é
+    // aleatório (UUID v4); o limite barra a varredura e o download em massa.
+    options.AddPolicy("verificacao-publica", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
     // Ouvidoria pública (ADR-0060): registrar e acompanhar por protocolo + código, sem login.
     // Particiona por IP; barra a varredura de protocolo/código e o registro em massa.
     options.AddPolicy("ouvidoria-publico", httpContext =>

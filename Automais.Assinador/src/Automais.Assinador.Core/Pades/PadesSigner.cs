@@ -9,6 +9,7 @@ using iText.Forms.Form.Element;
 using iText.IO.Image;
 using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
 using iText.Signatures;
 
 namespace Automais.Assinador.Core.Pades;
@@ -101,6 +102,45 @@ public sealed class PadesSigner : IPadesSigner
 
         var (titular, emissor, cpf) = ExtrairIdentidade(estado.Cadeia[0]);
         return new ConclusaoResultado(assinado, FormatoPades, titular, emissor, cpf);
+    }
+
+    public byte[] Carimbar(byte[] pdf, byte[] carimboPng, CarimboPosicao? posicao)
+    {
+        using var entrada = new MemoryStream(pdf);
+        using var saida = new MemoryStream();
+        using (var doc = new PdfDocument(new PdfReader(entrada), new PdfWriter(saida)))
+        {
+            // Mesmo branding dos PDFs assinados; o /Producer do iText (AGPL) fica intocado.
+            var info = doc.GetDocumentInfo();
+            info.SetCreator("Automais.Assinador");
+            info.SetAuthor("Automais.Assinador");
+
+            var total = doc.GetNumberOfPages();
+            var pagina = posicao is { } p ? Math.Clamp(p.Pagina, 1, total) : total;
+            var page = doc.GetPage(pagina);
+            var pageSize = page.GetPageSize();
+
+            const float lado = 130f;
+            var alvo = posicao is { } pos
+                ? ClampNaPagina(pos, pageSize)
+                : new Rectangle((pageSize.GetWidth() - lado) / 2f, 28f, lado, lado);
+
+            // O appearance do campo de assinatura encaixa a imagem mantendo a proporção; aqui
+            // faz o mesmo, centralizado no retângulo, para o carimbo ter a mesma cara nos modos.
+            var imagem = ImageDataFactory.Create(carimboPng);
+            var escala = Math.Min(alvo.GetWidth() / imagem.GetWidth(), alvo.GetHeight() / imagem.GetHeight());
+            var w = imagem.GetWidth() * escala;
+            var h = imagem.GetHeight() * escala;
+            var encaixe = new Rectangle(
+                alvo.GetX() + (alvo.GetWidth() - w) / 2f,
+                alvo.GetY() + (alvo.GetHeight() - h) / 2f,
+                w, h);
+
+            var canvas = new PdfCanvas(page.NewContentStreamAfter(), page.GetResources(), doc);
+            canvas.AddImageFittedIntoRectangle(imagem, encaixe, false);
+            canvas.Release();
+        }
+        return saida.ToArray();
     }
 
     // ----------------- Containers iText -----------------

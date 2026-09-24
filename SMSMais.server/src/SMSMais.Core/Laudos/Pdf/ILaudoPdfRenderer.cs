@@ -19,4 +19,15 @@ public interface ILaudoPdfRenderer
         Guid laudoId,
         ModoRodapeLaudo modo = ModoRodapeLaudo.FinalizadoNaoAssinado,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// PDF-base do documento OFICIAL (modo <see cref="ModoRodapeLaudo.PreparandoAssinatura"/>)
+    /// com o selo de verificação no rodapé: QR Code, endereço de conferência e a frase que diz
+    /// se o documento é assinado com ICP-Brasil ou só carimbado (ADR-0061). É este o PDF que
+    /// recebe o carimbo e, quando há certificado, a assinatura.
+    /// </summary>
+    Task<byte[]> GerarOficialAsync(
+        Guid laudoId,
+        Verificacao.SeloVerificacaoLaudo selo,
+        CancellationToken cancellationToken = default);
 }

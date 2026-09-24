@@ -3,6 +3,7 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Medicos.Assinatura;
 
@@ -64,6 +65,47 @@ public sealed class AssinaturaMedicoService(
         assinatura.ExcluidoPor = usuarioAtual.UsuarioId;
         assinatura.AtualizadoEm = agora;
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<ModoAssinaturaMedicoDto> ObterModoAsync(Guid medicoId, CancellationToken cancellationToken = default)
+    {
+        var c = await db.ConfiguracoesAssinaturaMedico.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.MedicoId == medicoId, cancellationToken);
+        return c is null
+            ? new ModoAssinaturaMedicoDto(medicoId, ModoAssinaturaMedico.Desktop, false, null)
+            : new ModoAssinaturaMedicoDto(medicoId, c.Modo, true, c.AtualizadoEm ?? c.CriadoEm);
+    }
+
+    public async Task<ModoAssinaturaMedicoDto> DefinirModoAsync(
+        Guid medicoId, ModoAssinaturaMedico modo, CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(modo))
+            throw new ValidacaoException("modo", "Modo de assinatura inválido.");
+
+        var agora = DateTime.UtcNow;
+        var usuarioId = usuarioAtual.UsuarioId;
+        var c = await db.ConfiguracoesAssinaturaMedico
+            .FirstOrDefaultAsync(x => x.MedicoId == medicoId, cancellationToken);
+        if (c is null)
+        {
+            c = new ConfiguracaoAssinaturaMedico
+            {
+                MedicoId = medicoId,
+                Modo = modo,
+                CriadoEm = agora,
+                CriadoPor = usuarioId,
+            };
+            db.ConfiguracoesAssinaturaMedico.Add(c);
+        }
+        else
+        {
+            c.Modo = modo;
+            c.AtualizadoEm = agora;
+            c.AtualizadoPor = usuarioId;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return new ModoAssinaturaMedicoDto(medicoId, c.Modo, true, c.AtualizadoEm ?? c.CriadoEm);
     }
 
     private static AssinaturaMedicoDto ParaDto(AssinaturaMedico a) => new(

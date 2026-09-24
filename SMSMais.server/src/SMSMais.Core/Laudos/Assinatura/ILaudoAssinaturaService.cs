@@ -20,7 +20,9 @@ public interface ILaudoAssinaturaService
     Task<byte[]> ObterPdfBaseAsync(Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Cria (ou reutiliza) o job e devolve a chave de uso único para o agente. A
+    /// Cria (ou reutiliza) o job conforme o modo do médico (ADR-0061): Desktop devolve a chave
+    /// de uso único para o agente; Nuvem devolve a URL de autorização; SemCertificado já
+    /// carimba e deixa o documento aguardando a conferência. A
     /// <paramref name="posicao"/> (ADR-0049) fixa onde o carimbo será aplicado; quando
     /// nula, mantém o padrão legado (rodapé da última página).
     /// </summary>
@@ -59,4 +61,14 @@ public interface ILaudoAssinaturaService
 
     /// <summary>Agente envia a assinatura crua; o servidor embute o CMS e conclui.</summary>
     Task ConcluirAsync(string chave, byte[] rawSignature, CancellationToken cancellationToken = default);
+
+    // ---- Fluxo em nuvem (retorno da IntegraICP, autenticado pelo state) ----
+
+    /// <summary>
+    /// Retorno da autorização em nuvem (ADR-0061): com a credencial aprovada pelo médico no
+    /// app, busca o certificado, prepara o PAdES, assina o hash na IntegraICP, confere a
+    /// assinatura com a chave pública e conclui (mesma trava de CPF do agente). Termina em
+    /// <c>AguardandoAprovacao</c>, como os outros modos.
+    /// </summary>
+    Task ConcluirNuvemAsync(string state, string credencialId, CancellationToken cancellationToken = default);
 }

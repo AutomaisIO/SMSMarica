@@ -1,3 +1,4 @@
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Download, Edit2, FileText, Loader2, Trash2 } from 'lucide-react';
@@ -194,7 +195,7 @@ export function LaudosListagemPage() {
       ordenar: (l) => (l.assinado ? 'Assinado' : l.status),
       render: (l) => (
         <span className="inline-flex items-center gap-1.5">
-          <StatusBadgeLaudo status={l.status} assinado={l.assinado} />
+          <StatusBadgeLaudo status={l.status} assinado={l.assinado} semCertificado={l.assinaturaSemCertificado} />
           {/* Checks do aviso "laudo pronto" enviado ao paciente pelo WhatsApp. */}
           <ChecksComunicacao chip={l.chipLaudoPronto} finalidade="LaudoPronto" />
         </span>
@@ -237,7 +238,11 @@ export function LaudosListagemPage() {
                   <button
                     type="button"
                     onClick={() => aoBaixarPdf(l.id)}
-                    title="Baixar o PDF assinado digitalmente (ICP-Brasil)"
+                    title={
+                      l.assinaturaSemCertificado
+                        ? 'Baixar o PDF liberado com carimbo (sem assinatura digital)'
+                        : 'Baixar o PDF assinado digitalmente (ICP-Brasil)'
+                    }
                     aria-label="Baixar PDF assinado"
                     className="inline-flex items-center rounded p-0.5 text-gray-500 transition-colors hover:text-gray-800"
                   >
@@ -276,6 +281,7 @@ export function LaudosListagemPage() {
           <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
             <FileText className="h-6 w-6 text-primary-600" />
             Laudos
+            <AjudaManual artigo="assinatura-laudo" />
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             Liste rascunhos e laudos emitidos para os exames do PACS.

@@ -13,7 +13,9 @@ public sealed record CarimboDados(
     string Crm,
     string UfCrm,
     string? Rqe,
-    DateTime DataAssinatura);
+    DateTime DataAssinatura,
+    // false = médico sem certificado (ADR-0061): o carimbo não pode dizer "Assinado em".
+    bool AssinaturaDigital = true);
 
 public interface ICarimboAssinaturaRenderer
 {
@@ -49,7 +51,8 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
         var rqe = string.IsNullOrWhiteSpace(dados.Rqe) ? null : $"RQE {dados.UfCrm}/{dados.Rqe!.Trim()}";
         // Data/hora já em horário de Brasília (o chamador converte via FusoBrasilia).
         var data = dados.DataAssinatura.ToString(
-            "'Assinado em 'dd/MM/yyyy' às 'HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            dados.AssinaturaDigital ? "'Assinado em 'dd/MM/yyyy' às 'HH:mm" : "'Emitido em 'dd/MM/yyyy' às 'HH:mm",
+            System.Globalization.CultureInfo.InvariantCulture);
 
         var documento = Document.Create(container =>
         {

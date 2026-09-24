@@ -52,10 +52,23 @@ public sealed class LaudoPdfRenderer(
     /// <summary>Classe que marca uma tabela como "de dados" (grade, cabeçalho, larguras).</summary>
     private const string ClasseTabelaDados = "laudo-tabela";
 
-    public async Task<byte[]> GerarAsync(
+    public Task<byte[]> GerarAsync(
         Guid laudoId,
         ModoRodapeLaudo modo = ModoRodapeLaudo.FinalizadoNaoAssinado,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        GerarInternoAsync(laudoId, modo, selo: null, cancellationToken);
+
+    public Task<byte[]> GerarOficialAsync(
+        Guid laudoId,
+        Verificacao.SeloVerificacaoLaudo selo,
+        CancellationToken cancellationToken = default) =>
+        GerarInternoAsync(laudoId, ModoRodapeLaudo.PreparandoAssinatura, selo, cancellationToken);
+
+    private async Task<byte[]> GerarInternoAsync(
+        Guid laudoId,
+        ModoRodapeLaudo modo,
+        Verificacao.SeloVerificacaoLaudo? selo,
+        CancellationToken cancellationToken)
     {
         var laudo = await _laudos.CarregarParaPdfAsync(laudoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), laudoId);
@@ -95,7 +108,8 @@ public sealed class LaudoPdfRenderer(
 
                 page.Header().Element(c => RenderHeader(c, temCabecalhoCustom, blocosCabecalho, imagens, inst));
                 page.Content().Element(c => RenderContent(c, laudo, efetivo, dadosCabecalho, blocos, imagens));
-                page.Footer().Element(c => RenderFooter(c, efetivo, emitidoEm, temRodapeCustom, blocosRodape, imagens));
+                page.Footer().Element(c => RenderFooter(c, efetivo, emitidoEm, temRodapeCustom, blocosRodape, imagens,
+                    efetivo == ModoRodapeLaudo.PreparandoAssinatura ? selo : null));
             });
         });
 
@@ -515,7 +529,7 @@ public sealed class LaudoPdfRenderer(
 
     // ------------------------ Footer ------------------------
 
-    private void RenderFooter(IContainer container, ModoRodapeLaudo modo, string emitidoEm, bool temRodapeCustom, IReadOnlyList<BlocoHtml> blocosRodape, IReadOnlyDictionary<string, byte[]> imagens)
+    private void RenderFooter(IContainer container, ModoRodapeLaudo modo, string emitidoEm, bool temRodapeCustom, IReadOnlyList<BlocoHtml> blocosRodape, IReadOnlyDictionary<string, byte[]> imagens, Verificacao.SeloVerificacaoLaudo? selo = null)
     {
         container.Column(c =>
         {
@@ -560,6 +574,38 @@ public sealed class LaudoPdfRenderer(
                         RenderBloco(r.Item(), bloco, imagens);
                     }
                 });
+            }
+
+            // Documento oficial com selo (ADR-0061): QR + frase à ESQUERDA e número de página
+            // à DIREITA, deixando o centro livre para o carimbo. A coluna de texto termina em
+            // ~227pt (margem 57 + QR 46 + 6 + 118): o carimbo padrão do painel começa em ~232pt.
+            if (selo is not null)
+            {
+                c.Item().PaddingTop(2).Row(row =>
+                {
+                    row.ConstantItem(46).Image(selo.QrPng).FitArea();
+                    row.ConstantItem(6);
+                    row.ConstantItem(118).AlignMiddle().Column(t =>
+                    {
+                        t.Spacing(1);
+                        t.Item().Text(selo.AssinaturaDigital
+                                ? "Documento assinado digitalmente com certificado ICP-Brasil."
+                                : "Documento emitido com carimbo do médico, SEM assinatura digital ICP-Brasil.")
+                            .FontSize(6.5f).SemiBold()
+                            .FontColor(selo.AssinaturaDigital ? Colors.Grey.Darken3 : Colors.Red.Darken3);
+                        t.Item().Text("Confira a autenticidade lendo o QR Code ou em:").FontSize(6);
+                        t.Item().Text(selo.Url).FontSize(5.5f).FontColor(Colors.Grey.Darken2);
+                    });
+                    row.RelativeItem();
+                    row.ConstantItem(70).AlignRight().AlignBottom().Text(t =>
+                    {
+                        t.Span("Página ").FontSize(8);
+                        t.CurrentPageNumber().FontSize(8);
+                        t.Span(" / ").FontSize(8);
+                        t.TotalPages().FontSize(8);
+                    });
+                });
+                return;
             }
 
             // No PDF-base de assinatura o número de página vai p/ a DIREITA, fora do

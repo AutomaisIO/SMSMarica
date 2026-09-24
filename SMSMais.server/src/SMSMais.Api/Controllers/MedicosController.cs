@@ -124,4 +124,25 @@ public sealed class MedicosController(
         await assinatura.RemoverAsync(id, cancellationToken);
         return NoContent();
     }
+
+    // ---- Modo de assinatura de laudo (ADR-0061) ----
+
+    /// <summary>
+    /// Como o médico oficializa o laudo: Desktop (agente + certificado na máquina), Nuvem
+    /// (VIDaaS pela IntegraICP) ou SemCertificado (só carimbo). Sem escolha gravada = Desktop.
+    /// </summary>
+    [HttpGet("{id:guid}/assinatura/modo")]
+    [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Consulta)]
+    [ProducesResponseType<ModoAssinaturaMedicoDto>(StatusCodes.Status200OK)]
+    public async Task<ModoAssinaturaMedicoDto> ObterModoAssinatura(Guid id, CancellationToken cancellationToken) =>
+        await assinatura.ObterModoAsync(id, cancellationToken);
+
+    /// <summary>Troca o modo de assinatura do médico. Não afeta assinatura já em andamento.</summary>
+    [HttpPut("{id:guid}/assinatura/modo")]
+    [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ModoAssinaturaMedicoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ModoAssinaturaMedicoDto> DefinirModoAssinatura(
+        Guid id, [FromBody] DefinirModoAssinaturaMedicoRequest request, CancellationToken cancellationToken) =>
+        await assinatura.DefinirModoAsync(id, request.Modo, cancellationToken);
 }

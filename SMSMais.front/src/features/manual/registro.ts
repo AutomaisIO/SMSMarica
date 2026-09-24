@@ -1,5 +1,6 @@
 import { BookOpen, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
+import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
@@ -45,6 +46,7 @@ export const GRUPOS: GrupoManual[] = [
 
 export const ARTIGOS: Artigo[] = [
   artigoAnamnese,
+  artigoAssinaturaLaudo,
   artigoConfirmacoes,
   artigoMensageria,
   artigoOuvidoria,

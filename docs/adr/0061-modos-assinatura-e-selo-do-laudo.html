@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0061 — Modos de assinatura por médico e selo de verificação do laudo</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0061 — Modos de assinatura por médico e selo de verificação do laudo</h1>
+<p><strong>Status:</strong> aceito (implementado em 24/09/2026; modo Nuvem pendente de validação com certificado real) <strong>Data:</strong> 2026-09-24 <strong>Relacionado:</strong> <a href="./0015-assinatura-laudos-agente-itext.md">ADR-0015</a> (agente + Assinador iText), <a href="./0049-assinatura-laudo-carimbo-posicionavel.md">ADR-0049</a> (carimbo posicionável, PDF-base fixado).</p>
+<h2>Contexto</h2>
+<p>Até aqui havia um caminho só para oficializar um laudo: o agente Windows (<code>Automais.Assinador.Agente</code>) assinando pelo certificado na loja do Windows (ADR-0015). A rede de médicos é mais variada:</p>
+<ul>
+<li>médicos com certificado na máquina (VIDaaS Connect, token A3, A1) — o caminho atual;</li>
+<li>médicos com <strong>VIDaaS em nuvem</strong> que não querem ou não podem instalar nada, e assinam pelo celular;</li>
+<li>médicos <strong>sem certificado digital</strong>, cujo laudo hoje fica parado em "Finalizado", sem nome do</li>
+</ul>
+<p>  médico, sem liberação e sem aviso ao paciente.</p>
+<p>Além disso, o laudo impresso não tinha como ser conferido por terceiros. A declaração de comparecimento já resolve isso com um QR Code que abre uma página pública de autenticidade.</p>
+<h2>Decisão</h2>
+<h3>1. O modo é do médico, escolhido pelo administrador</h3>
+<p>Nova tabela <code>smsmarica.medico_config_assinatura</code> (<code>medico_id</code> PK, <code>modo</code>, auditoria), separada da rubrica (<code>assinatura_medico</code>): o administrador escolhe o modo antes ou depois de enviar a imagem, e remover a rubrica não apaga a escolha. Três valores (<code>ModoAssinaturaMedico</code>):</p>
+<div class="tw"><table><thead><tr><th>Modo</th><th>Como assina</th><th>O que o médico faz</th></tr></thead><tbody>
+<tr><td><code>Desktop</code> (padrão)</td><td>Agente local + loja do Windows (ADR-0015)</td><td>Confirma no VIDaaS Connect</td></tr>
+<tr><td><code>Nuvem</code></td><td>API IntegraICP v3 (canal com clearance VIDaaS)</td><td>Aprova no app do celular</td></tr>
+<tr><td><code>SemCertificado</code></td><td>Carimbo estampado como conteúdo, sem CMS</td><td>Nada além de posicionar o carimbo</td></tr>
+</tbody></table></div>
+<p>Sem linha gravada vale <code>Desktop</code>, para nenhum médico em uso mudar de fluxo sozinho. O modo é <strong>gravado no job</strong> (<code>laudo_assinatura.modo</code>) no "iniciar": trocar no cadastro não muda job em curso.</p>
+<p>Os três modos compartilham tudo o que já existia: rubrica obrigatória, exame associado a pedido, só o autor assina, carimbo posicionado pela médica sobre o PDF-base fixado (ADR-0049) e a <strong>conferência</strong> (<code>AguardandoAprovacao</code> → aprovar libera e avisa o paciente).</p>
+<h3>2. Nuvem pela IntegraICP, conferindo o RAW antes de embutir</h3>
+<p>Fluxo: "iniciar" gera PKCE (<code>code_verifier</code> cifrado com Data Protection no job) e um <code>state</code> opaco (só o hash fica no job) → a IntegraICP devolve a URL de autorização → o médico aprova no app → o navegador volta para <code>GET /assinatura/nuvem/retorno?state=…</code> → o servidor busca o certificado, monta a cadeia, chama o Assinador <code>preparar</code>, pede a assinatura RAW do hash e chama <code>concluir</code>. A trava de autoria (CPF do certificado == CPF do autor) é a mesma do agente.</p>
+<p>Dois cuidados por causa do que o spike de 04/08/2026 não conseguiu fechar:</p>
+<ul>
+<li><strong>A semântica do RAW nunca foi exercitada com certificado real.</strong> Antes de embutir, o servidor</li>
+</ul>
+<p>  verifica a assinatura com a chave pública do certificado como RSASSA-PKCS1-v1_5 sobre SHA-256   (o que o CMS do iText exige). Se não conferir, o job falha com mensagem clara e nada é gravado —   nunca um PDF que abre mas é criptograficamente inválido.</p>
+<ul>
+<li><strong>A IntegraICP não valida a URL de retorno.</strong> O retorno só é aceito com o <code>state</code> que geramos,</li>
+</ul>
+<p>  que é de uso único e expira com o job (10 min).</p>
+<p>A cadeia vem do pacote oficial de ACs do ITI (<code>ACcompactado.zip</code>), baixado uma vez por processo: a credencial traz só o certificado do médico e a AC VALID RFB v5 não publica AIA.</p>
+<p>Configuração (variáveis de ambiente, nunca no repositório): <code>Assinatura__Nuvem__Canal</code> (vazio = modo desligado, e o painel explica o motivo), <code>Assinatura__Nuvem__CabecalhoAutenticacao</code> e <code>Assinatura__Nuvem__ValorAutenticacao</code> se o contrato exigir, <code>Assinatura__Nuvem__UrlPublicaApi</code> (senão usa <code>Publico__BaseUrl</code>).</p>
+<h3>3. Sem certificado: carimbo como conteúdo, e o documento diz isso</h3>
+<p>O <code>Automais.Assinador</code> ganha <code>POST /pdf/carimbar</code>: estampa a imagem do carimbo na página e no retângulo escolhidos, mantendo a proporção, <strong>sem campo de assinatura</strong>. O carimbo diz "Emitido em", não "Assinado em". O job grava <code>formato = CARIMBO_SEM_ICP</code>, que é o que distingue, depois de <code>Concluida</code>, um laudo assinado de um carimbado. O painel mostra <strong>Carimbado</strong> (âmbar), nunca <strong>Assinado</strong>.</p>
+<p>Para o resto do sistema (download, app do cidadão, aviso de laudo pronto) o carimbado é oficial: <code>Assinado</code> no DTO continua significando "tem documento oficial aprovado". Quem precisa distinguir lê <code>AssinaturaSemCertificado</code>.</p>
+<h3>4. Selo de verificação por QR Code</h3>
+<p>Nova tabela <code>smsmarica.laudo_verificacao</code> (<code>id</code> = código público, <code>laudo_id</code> único). O código é UUID <strong>v4</strong> — não o v7 da declaração de comparecimento — porque o laudo carrega dado clínico e o v7 expõe o instante de criação. O selo é criado ao gerar o PDF-base: o código precisa estar no PDF antes de a assinatura travar os bytes.</p>
+<p>O rodapé do documento oficial ganha o QR, o endereço de conferência e uma frase que depende do modo ("assinado digitalmente com certificado ICP-Brasil" ou "emitido com carimbo do médico, SEM assinatura digital ICP-Brasil"). O QR fica à esquerda e termina antes do carimbo padrão (centro).</p>
+<p><code>GET /publico/laudos/{codigo}</code> mostra se o laudo é válido, se é assinado ou carimbado, paciente, exame, médico, data, titular do certificado, aviso de versão mais recente, e o botão de download (<code>GET /publico/laudos/{codigo}/pdf</code>, o PDF aprovado). Rate limit <code>verificacao-publica</code>, 30/min por IP.</p>
+<h2>Consequências</h2>
+<ul>
+<li><strong>Migration</strong> <code>ModosAssinaturaMedicoESeloLaudo</code>: duas tabelas novas e três colunas em</li>
+</ul>
+<p>  <code>laudo_assinatura</code>. Nada existente muda de valor.</p>
+<ul>
+<li><strong>Deploy em duas pontas:</strong> o <code>Automais.Assinador</code> precisa subir junto (endpoint <code>pdf/carimbar</code>),</li>
+</ul>
+<p>  senão o modo SemCertificado falha na hora de carimbar. Os outros modos não dependem dele.</p>
+<ul>
+<li><strong>O agente Windows não muda.</strong></li>
+<li><strong>Laudos já assinados não ganham QR.</strong> O PDF assinado é byte-estável; só documentos assinados</li>
+</ul>
+<p>  daqui em diante carregam o selo.</p>
+<ul>
+<li><strong>Médico-legal:</strong> o laudo carimbado não tem validade jurídica plena (CFM 2.299/2021). A decisão</li>
+</ul>
+<p>  de oferecer o modo é da gestão; o sistema garante que ninguém confunda os dois — no PDF, no   painel e na página do QR.</p>
+<ul>
+<li><strong>Pendente:</strong> exercitar o modo Nuvem com um CPF real com VIDaaS ativo. O nome do parâmetro da</li>
+</ul>
+<p>  credencial no retorno não é documentado; o controller aceita os nomes prováveis e, sem casar,   o primeiro valor com formato ULID (o mesmo critério do spike).</p>
+<h2>Reversão</h2>
+<p>Pôr todos os médicos em <code>Desktop</code> devolve o comportamento anterior, salvo o QR no rodapé. Para tirar o QR, <code>LaudoAssinaturaService.GerarPdfOficialAsync</code> volta a chamar <code>GerarAsync</code> no modo <code>PreparandoAssinatura</code>. As tabelas podem ficar.</p>
+</main>
+</body>
+</html>

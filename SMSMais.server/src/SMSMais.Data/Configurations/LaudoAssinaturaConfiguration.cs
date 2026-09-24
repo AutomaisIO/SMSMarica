@@ -40,6 +40,9 @@ internal sealed class LaudoAssinaturaConfiguration : IEntityTypeConfiguration<La
         builder.Property(a => a.CertificadoTitular).HasColumnName("certificado_titular").HasMaxLength(256);
         builder.Property(a => a.CertificadoEmissor).HasColumnName("certificado_emissor").HasMaxLength(256);
         builder.Property(a => a.Formato).HasColumnName("formato").HasMaxLength(20);
+        builder.Property(a => a.Modo).HasColumnName("modo").HasConversion<int?>();
+        builder.Property(a => a.NuvemStateHash).HasColumnName("nuvem_state_hash").HasMaxLength(64);
+        builder.Property(a => a.NuvemCodeVerifier).HasColumnName("nuvem_code_verifier").HasColumnType("text");
         builder.Property(a => a.ComCarimboTempo).HasColumnName("com_carimbo_tempo").HasDefaultValue(false).IsRequired();
 
         builder.Property(a => a.AssinadoEm).HasColumnName("assinado_em");
@@ -69,5 +72,9 @@ internal sealed class LaudoAssinaturaConfiguration : IEntityTypeConfiguration<La
 
         // O agente reivindica o job pela chave (capability de uso único).
         builder.HasIndex(a => a.ChaveAgente);
+
+        // O retorno da IntegraICP (modo Nuvem, ADR-0061) acha o job pelo state.
+        builder.HasIndex(a => a.NuvemStateHash)
+            .HasFilter("nuvem_state_hash IS NOT NULL");
     }
 }

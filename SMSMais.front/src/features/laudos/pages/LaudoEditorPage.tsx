@@ -12,8 +12,10 @@ import {
   ScanLine,
   ShieldAlert,
   ShieldCheck,
+  Stamp,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useEhMedico, usePermissao } from '@/shared/auth/authStore';
 import { abrirJanelaSolta } from '@/shared/lib/janela';
 import { formatarWallClock } from '@/shared/lib/datas';
@@ -56,6 +58,14 @@ import {
   urlDownloadAssinador,
 } from '@/features/laudos/lib/assinatura';
 
+/** Rótulo curto do bloqueio da assinatura; o motivo completo vai no title. */
+function rotuloBloqueio(motivo: string): string {
+  if (motivo.startsWith('Rubrica')) return 'Rubrica não cadastrada';
+  if (motivo.startsWith('Associe')) return 'Exame sem pedido associado';
+  if (motivo.includes('nuvem')) return 'Assinatura em nuvem não configurada';
+  return 'Assinatura indisponível';
+}
+
 export function LaudoEditorPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -83,6 +93,9 @@ export function LaudoEditorPage() {
   const [agenteNaoEncontrado, setAgenteNaoEncontrado] = useState(false);
   // Posicionamento do carimbo (ADR-0049): abre antes de disparar o agente.
   const [posicionandoCarimbo, setPosicionandoCarimbo] = useState(false);
+  // Modo Nuvem (ADR-0061): URL de autorização no VIDaaS — fica à mão caso o navegador
+  // tenha bloqueado a aba aberta automaticamente.
+  const [urlNuvem, setUrlNuvem] = useState<string | null>(null);
   // Baseline (título/html/json/checklist) para detectar alterações não salvas.
   const [baseline, setBaseline] = useState(() =>
     JSON.stringify({ t: 'Laudo', h: '', j: '{}', r: null }),
@@ -177,6 +190,12 @@ export function LaudoEditorPage() {
   // Assinatura digital: faz polling enquanto o agente do médico assina.
   const statusAssinatura = useStatusAssinatura(ehNovo ? null : (id ?? null), finalizado);
   const assinado = (detalhe.data?.assinado ?? false) || statusAssinatura.data?.status === 'Concluida';
+  // Como o autor oficializa (ADR-0061): Desktop (agente), Nuvem (app VIDaaS) ou só carimbo.
+  const modoAssinatura = detalhe.data?.modoAssinatura ?? 'Desktop';
+  const semCertificado =
+    (detalhe.data?.assinaturaSemCertificado ?? false) ||
+    statusAssinatura.data?.formato === 'CARIMBO_SEM_ICP' ||
+    (!assinado && modoAssinatura === 'SemCertificado');
   const assinando =
     iniciarAssinatura.isPending ||
     statusAssinatura.data?.status === 'Iniciada' ||
@@ -353,17 +372,35 @@ export function LaudoEditorPage() {
     setPosicionandoCarimbo(true);
   }
 
-  // 2º passo: com a posição escolhida, inicia o job e lança o agente.
+  // 2º passo: com a posição escolhida, inicia o job e segue pelo caminho do modo (ADR-0061).
   async function aoConfirmarPosicao(posicao: CarimboPosicao) {
     if (!id) return;
     setErro(null);
+    setUrlNuvem(null);
+    // Nuvem: a aba da autorização precisa ser aberta AINDA no clique — depois do await o
+    // navegador trata como pop-up e bloqueia. Abre vazia agora e navega quando a URL chegar.
+    const janela = modoAssinatura === 'Nuvem' ? window.open('', '_blank') : null;
     try {
-      const { chave } = await iniciarAssinatura.mutateAsync({ id, posicao });
+      const r = await iniciarAssinatura.mutateAsync({ id, posicao });
       setPosicionandoCarimbo(false);
-      // Lança o agente via protocolo e arma o watchdog que detecta se ele não está instalado.
-      lancarAgenteAssinatura(chave);
-      setAguardandoAgente(true);
+      if (r.modo === 'Nuvem' && r.urlAutorizacao) {
+        setUrlNuvem(r.urlAutorizacao);
+        if (janela) {
+          janela.opener = null;
+          janela.location.href = r.urlAutorizacao;
+        }
+      } else {
+        janela?.close();
+        if (r.modo === 'Desktop' && r.chave) {
+          // Lança o agente via protocolo e arma o watchdog que detecta se ele não está instalado.
+          lancarAgenteAssinatura(r.chave);
+          setAguardandoAgente(true);
+        }
+        // SemCertificado: o carimbo já foi aplicado; o status vira AguardandoAprovacao e a
+        // conferência abre sozinha.
+      }
     } catch (e) {
+      janela?.close();
       setErro(extrairMensagemDeErro(e));
     }
   }
@@ -441,6 +478,7 @@ export function LaudoEditorPage() {
       {!ehNovo && id ? (
         <ModalConferenciaAssinatura
           laudoId={id}
+          semCertificado={semCertificado}
           aberto={aguardandoAprovacao && !conferenciaFechada}
           aoFechar={() => setConferenciaFechada(true)}
         />
@@ -468,8 +506,9 @@ export function LaudoEditorPage() {
             <FileText className="h-6 w-6 text-primary-600" />
             {ehNovo ? 'Novo laudo' : `Laudo (v${detalhe.data?.versao ?? '?'})`}
             {!ehNovo && detalhe.data ? (
-              <StatusBadgeLaudo status={detalhe.data.status} assinado={assinado} />
+              <StatusBadgeLaudo status={detalhe.data.status} assinado={assinado} semCertificado={semCertificado} />
             ) : null}
+            <AjudaManual artigo="assinatura-laudo" />
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -500,7 +539,15 @@ export function LaudoEditorPage() {
           ) : null}
           {!ehNovo && finalizado ? (
             <>
-              {assinado ? (
+              {assinado && semCertificado ? (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm font-medium text-amber-800"
+                  title="Liberado com o carimbo do médico, sem assinatura digital ICP-Brasil"
+                >
+                  <Stamp className="h-4 w-4" />
+                  Liberado com carimbo (sem certificado)
+                </span>
+              ) : assinado ? (
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-sm font-medium text-emerald-800">
                   <ShieldCheck className="h-4 w-4" />
                   Assinado digitalmente
@@ -508,17 +555,53 @@ export function LaudoEditorPage() {
               ) : ehMedico && aguardandoAprovacao ? (
                 <Button onClick={() => setConferenciaFechada(false)}>
                   <ShieldCheck className="mr-2 h-4 w-4" />
-                  Conferir e aprovar assinatura
+                  {semCertificado ? 'Conferir e liberar laudo' : 'Conferir e aprovar assinatura'}
                 </Button>
               ) : ehMedico && podeFinalizar && assinando && !agenteNaoEncontrado ? (
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm text-amber-800">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Aguardando autorização no seu agente (VIDaaS Connect)…
+                  {modoAssinatura === 'Nuvem' ? (
+                    <>
+                      Aguardando sua aprovação no aplicativo VIDaaS…
+                      {urlNuvem ? (
+                        <a
+                          href={urlNuvem}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-1 font-medium underline"
+                        >
+                          abrir autorização
+                        </a>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={aoAssinar}
+                        className="ml-2 font-medium underline"
+                        title="Gera uma nova autorização (a anterior deixa de valer)"
+                      >
+                        recomeçar
+                      </button>
+                    </>
+                  ) : modoAssinatura === 'SemCertificado' ? (
+                    'Aplicando o carimbo…'
+                  ) : (
+                    'Aguardando autorização no seu agente (VIDaaS Connect)…'
+                  )}
                 </span>
               ) : ehMedico && podeFinalizar && detalhe.data?.podeAssinar ? (
                 <Button onClick={aoAssinar} disabled={iniciarAssinatura.isPending}>
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  {assinaturaFalhou ? 'Tentar assinar de novo' : 'Assinar'}
+                  {modoAssinatura === 'SemCertificado' ? (
+                    <Stamp className="mr-2 h-4 w-4" />
+                  ) : (
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                  )}
+                  {assinaturaFalhou
+                    ? 'Tentar de novo'
+                    : modoAssinatura === 'SemCertificado'
+                      ? 'Carimbar e liberar'
+                      : modoAssinatura === 'Nuvem'
+                        ? 'Assinar (VIDaaS nuvem)'
+                        : 'Assinar'}
                 </Button>
               ) : ehMedico && detalhe.data?.motivoBloqueioAssinatura ? (
                 <span
@@ -526,10 +609,10 @@ export function LaudoEditorPage() {
                   title={detalhe.data.motivoBloqueioAssinatura}
                 >
                   <ShieldAlert className="h-4 w-4" />
-                  Rubrica não cadastrada
+                  {rotuloBloqueio(detalhe.data.motivoBloqueioAssinatura)}
                 </span>
               ) : null}
-              {ehMedico ? (
+              {ehMedico && modoAssinatura === 'Desktop' ? (
                 <a
                   href={urlDownloadAssinador}
                   className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -547,7 +630,11 @@ export function LaudoEditorPage() {
                 <Button
                   variante="outline"
                   onClick={() => baixarPdfLaudo(id!)}
-                  title="Baixar o PDF assinado digitalmente (ICP-Brasil)"
+                  title={
+                    semCertificado
+                      ? 'Baixar o PDF liberado com carimbo (sem assinatura digital)'
+                      : 'Baixar o PDF assinado digitalmente (ICP-Brasil)'
+                  }
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Baixar

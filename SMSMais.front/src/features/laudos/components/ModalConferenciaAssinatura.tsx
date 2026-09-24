@@ -16,9 +16,12 @@ export function ModalConferenciaAssinatura({
   laudoId,
   aberto,
   aoFechar,
+  semCertificado = false,
 }: {
   laudoId: string;
   aberto: boolean;
+  /** Documento carimbado sem ICP-Brasil (ADR-0061) — muda o título e o aviso. */
+  semCertificado?: boolean;
   /** Fecha só a JANELA (sem decidir) — o botão "Conferir e aprovar" da página reabre. */
   aoFechar: () => void;
 }) {
@@ -59,8 +62,12 @@ export function ModalConferenciaAssinatura({
     <Modal
       aberto={aberto}
       aoFechar={decidindo ? () => {} : aoFechar}
-      titulo="Confira o laudo assinado"
-      descricao="Verifique o conteúdo e o carimbo da assinatura. O paciente só é avisado depois da sua aprovação."
+      titulo={semCertificado ? 'Confira o laudo carimbado' : 'Confira o laudo assinado'}
+      descricao={
+        semCertificado
+          ? 'Verifique o conteúdo e o carimbo. Este laudo sai SEM assinatura digital ICP-Brasil. O paciente só é avisado depois da sua aprovação.'
+          : 'Verifique o conteúdo e o carimbo da assinatura. O paciente só é avisado depois da sua aprovação.'
+      }
       largura="lg"
     >
       <div className="space-y-3">

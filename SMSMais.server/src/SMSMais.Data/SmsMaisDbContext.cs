@@ -60,6 +60,8 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<ExameImagem> ExamesImagem => Set<ExameImagem>();
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();
     public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();
+    public DbSet<ConfiguracaoAssinaturaMedico> ConfiguracoesAssinaturaMedico => Set<ConfiguracaoAssinaturaMedico>();
+    public DbSet<LaudoVerificacao> LaudoVerificacoes => Set<LaudoVerificacao>();
     public DbSet<ExameAssociacao> ExameAssociacoes => Set<ExameAssociacao>();
     public DbSet<DeclaracaoComparecimentoVerificacao> DeclaracaoComparecimentoVerificacoes => Set<DeclaracaoComparecimentoVerificacao>();
     public DbSet<DownloadToken> DownloadTokens => Set<DownloadToken>();

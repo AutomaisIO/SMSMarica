@@ -72,6 +72,29 @@ public class LaudoAssinatura
     public double? CarimboLargura { get; set; }
     public double? CarimboAltura { get; set; }
 
+    // ---- Modo de assinatura (ADR-0061) ----
+
+    /// <summary>
+    /// Caminho usado neste job. Nulo nos jobs anteriores ao ADR-0061 (todos eram Desktop).
+    /// Gravado no "iniciar" a partir da configuração do médico, para que trocar o modo no
+    /// cadastro não mude um job já em andamento.
+    /// </summary>
+    public ModoAssinaturaMedico? Modo { get; set; }
+
+    /// <summary>
+    /// Modo Nuvem: SHA-256 (hex) do <c>state</c> opaco enviado à IntegraICP na URL de
+    /// retorno. O retorno só é aceito se trouxer o state que geramos — a IntegraICP não
+    /// valida a URL de retorno, então é o state que amarra o retorno a este job.
+    /// Transitório.
+    /// </summary>
+    public string? NuvemStateHash { get; set; }
+
+    /// <summary>
+    /// Modo Nuvem: <c>code_verifier</c> do PKCE, cifrado com Data Protection. Só ele prova à
+    /// IntegraICP que quem pede a credencial é quem abriu a autorização. Transitório.
+    /// </summary>
+    public string? NuvemCodeVerifier { get; set; }
+
     /// <summary>Thumbprint do certificado escolhido pelo agente (auditoria).</summary>
     public string? CertThumbprint { get; set; }
 

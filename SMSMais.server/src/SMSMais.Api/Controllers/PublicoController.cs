@@ -4,9 +4,11 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SMSMais.Core.Downloads;
 using SMSMais.Core.Institucional;
 using SMSMais.Core.Institucional.Dtos;
+using SMSMais.Core.Laudos.Verificacao;
 using SMSMais.Core.SolicitacoesExame.Declaracao;
 
 namespace SMSMais.Api.Controllers;
@@ -25,7 +27,8 @@ public sealed record ConfirmarCpfDownloadRequest(string Cpf);
 public sealed partial class PublicoController(
     IDeclaracaoComparecimentoService declaracao,
     IDownloadTokenService downloads,
-    IInstituicaoService instituicao) : ControllerBase
+    IInstituicaoService instituicao,
+    ILaudoVerificacaoService verificacaoLaudo) : ControllerBase
 {
 
     private static readonly CultureInfo PtBr = new("pt-BR");
@@ -107,6 +110,88 @@ public sealed partial class PublicoController(
         return Content(html, "text/html; charset=utf-8");
     }
 
+    // ---- Selo do laudo (ADR-0061) ----
+
+    /// <summary>
+    /// Página aberta pelo QR Code do rodapé do laudo: diz se o documento é válido, se é assinado
+    /// com ICP-Brasil ou só carimbado, e oferece o PDF oficial para baixar.
+    /// </summary>
+    [HttpGet("laudos/{codigo:guid}")]
+    [Produces("text/html")]
+    [EnableRateLimiting("verificacao-publica")]
+    public async Task<IActionResult> VerificarLaudo(Guid codigo, CancellationToken cancellationToken)
+    {
+        var dados = await verificacaoLaudo.VerificarAsync(codigo, cancellationToken);
+        var inst = await instituicao.ObterAsync(cancellationToken);
+        Response.Headers.CacheControl = "no-store";
+        var html = dados is null ? PaginaLaudoInexistente(inst) : PaginaLaudo(dados, codigo, inst);
+        return Content(html, "text/html; charset=utf-8");
+    }
+
+    /// <summary>PDF oficial do laudo (o aprovado pelo médico). 404 se não houver documento liberado.</summary>
+    [HttpGet("laudos/{codigo:guid}/pdf")]
+    [Produces("application/pdf")]
+    [EnableRateLimiting("verificacao-publica")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PdfLaudo(Guid codigo, CancellationToken cancellationToken)
+    {
+        var pdf = await verificacaoLaudo.ObterPdfOficialAsync(codigo, cancellationToken);
+        Response.Headers.CacheControl = "no-store";
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"laudo-{codigo.ToString()[..8]}.pdf");
+    }
+
+    private static string PaginaLaudo(LaudoVerificacaoPublicaDto d, Guid codigo, InstituicaoDto inst)
+    {
+        if (!d.Liberado)
+        {
+            return Pagina("""
+                <div class="selo selo-alerta">Laudo ainda não liberado</div>
+                <p class="sub">Este código existe, mas o laudo ainda não foi aprovado pelo médico.
+                Se você recebeu este documento impresso, ele não tem validade.</p>
+                """, inst);
+        }
+
+        var emitido = d.EmitidoEm is { } em ? Html(em.ToString("dd/MM/yyyy 'às' HH'h'mm", PtBr)) : "—";
+        var registro = string.IsNullOrWhiteSpace(d.MedicoRegistro) ? string.Empty : $" · {Html(d.MedicoRegistro)}";
+
+        var (selo, subtitulo) = d.AssinaturaDigital
+            ? ("""<div class="selo selo-ok">✓ Laudo válido</div>""",
+               $"Assinado digitalmente com certificado ICP-Brasil e emitido pela {Html(inst.NomeSecretaria)}.")
+            : ("""<div class="selo selo-ok">✓ Laudo válido — emitido com carimbo</div>""",
+               $"Emitido pela {Html(inst.NomeSecretaria)} com o carimbo do médico, sem assinatura digital ICP-Brasil.");
+
+        var linhaCertificado = d.AssinaturaDigital && !string.IsNullOrWhiteSpace(d.CertificadoTitular)
+            ? $"""<div class="row"><span class="rotulo">Certificado</span><span class="valor">{Html(d.CertificadoTitular!)}{(string.IsNullOrWhiteSpace(d.CertificadoEmissor) ? "" : $"<br><small>{Html(d.CertificadoEmissor!)}</small>")}</span></div>"""
+            : string.Empty;
+
+        var aviso = d.Substituido
+            ? """<div class="aviso">Existe uma versão mais recente deste laudo. Este documento foi substituído — procure a unidade para obter a versão atual.</div>"""
+            : string.Empty;
+
+        return Pagina($"""
+            {selo}
+            <p class="sub">{subtitulo}</p>
+            {aviso}
+            <div class="card">
+              <div class="row"><span class="rotulo">Paciente</span><span class="valor">{Html(d.PacienteNome)}</span></div>
+              <div class="row"><span class="rotulo">Exame</span><span class="valor">{Html(d.Exame)}</span></div>
+              <div class="row"><span class="rotulo">Médico</span><span class="valor">{Html(d.MedicoNome)}{registro}</span></div>
+              <div class="row"><span class="rotulo">{(d.AssinaturaDigital ? "Assinado em" : "Emitido em")}</span><span class="valor">{emitido}</span></div>
+              {linhaCertificado}
+            </div>
+            <a class="botao" href="{Html(codigo.ToString())}/pdf">Baixar o laudo (PDF)</a>
+            <p class="codigo">Código de autenticidade<br><b>{Html(codigo.ToString())}</b></p>
+            """, inst);
+    }
+
+    private static string PaginaLaudoInexistente(InstituicaoDto inst) =>
+        Pagina("""
+            <div class="selo selo-erro">Documento não encontrado</div>
+            <p class="sub">O código informado não corresponde a nenhum laudo emitido.
+            Verifique se o QR Code foi lido corretamente.</p>
+            """, inst);
+
     private static string PaginaValida(DeclaracaoVerificacaoDto d, Guid codigo, InstituicaoDto inst)
     {
         var nome = Html(d.Nome);
@@ -159,6 +244,12 @@ public sealed partial class PublicoController(
             .selo { text-align:center; font-weight:700; font-size:18px; padding:14px; border-radius:12px; }
             .selo-ok { background:#e8f6ec; color:#137333; border:1px solid #b7e1c3; }
             .selo-erro { background:#fdecec; color:#b3261e; border:1px solid #f3c0bd; }
+            .selo-alerta { background:#fff4e5; color:#8a4b00; border:1px solid #f5d29a; }
+            .aviso { background:#fff4e5; color:#8a4b00; border:1px solid #f5d29a; border-radius:10px;
+                     font-size:13px; padding:10px 12px; margin:0 0 14px; line-height:1.4; }
+            .botao { display:block; text-align:center; margin-top:18px; padding:14px; border-radius:12px;
+                     background:var(--marca); color:#fff; font-weight:700; text-decoration:none; }
+            .valor small { font-weight:400; color:#777; }
             .sub { color:#555; font-size:13px; text-align:center; margin:12px 4px 18px; line-height:1.5; }
             .card { background:#fff; border:1px solid #eee; border-radius:12px; padding:4px 16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
             .row { display:flex; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; }

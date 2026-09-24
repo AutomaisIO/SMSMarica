@@ -2,12 +2,16 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Inteligencia.Seguranca;
 using SMSMais.Core.Laudos.Assinatura.Dtos;
+using SMSMais.Core.Laudos.Assinatura.Nuvem;
 using SMSMais.Core.Laudos.Pdf;
+using SMSMais.Core.Laudos.Verificacao;
 using SMSMais.Core.Medicos;
 using SMSMais.Core.Medicos.Dtos;
 using SMSMais.Core.Medicos.Fhir;
@@ -28,10 +32,26 @@ public sealed class LaudoAssinaturaService(
     ICarimboAssinaturaRenderer carimboRenderer,
     // Lazy: quebra o ciclo Assinatura → Comunicacao → LoginLink → Solicitacoes → Assinatura.
     Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
+    ILaudoVerificacaoService verificacao,
+    IIntegraIcpClient integraIcp,
+    ICadeiaIcpBrasil cadeiaIcp,
+    IProtetorSegredos protetor,
+    IConfiguration configuration,
     ILogger<LaudoAssinaturaService> logger,
-    IOptions<AssinaturaOptions> options) : ILaudoAssinaturaService
+    IOptions<AssinaturaOptions> options,
+    IOptions<IntegraIcpOptions> nuvemOptions) : ILaudoAssinaturaService
 {
     private readonly AssinaturaOptions _opt = options.Value;
+    private readonly IntegraIcpOptions _nuvem = nuvemOptions.Value;
+
+    /// <summary>
+    /// Formato gravado no job quando o laudo sai só com carimbo, sem ICP-Brasil (ADR-0061).
+    /// É o que distingue, depois de Concluida, "assinado digitalmente" de "carimbado".
+    /// </summary>
+    public const string FormatoCarimboSemCertificado = "CARIMBO_SEM_ICP";
+
+    public static bool EhCarimboSemCertificado(string? formato) =>
+        string.Equals(formato, FormatoCarimboSemCertificado, StringComparison.Ordinal);
 
     // ---------------- Fluxo do médico ----------------
 
@@ -49,9 +69,10 @@ public sealed class LaudoAssinaturaService(
         if (laudo.MedicoId != medico.Id)
             throw new ConflitoException("assinatura.nao_e_autor", "Apenas o médico autor pode assinar o laudo.");
 
-        // Mesmo layout que será assinado (sem tarja/marca d'água) — a médica posiciona
-        // o carimbo sobre ele (ADR-0049).
-        return await pdf.GerarAsync(laudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
+        // Mesmo layout que será assinado (sem tarja/marca d'água, com o selo de verificação)
+        // — a médica posiciona o carimbo sobre ele (ADR-0049/0061).
+        var modo = (await assinaturaMedico.ObterModoAsync(medico.Id, cancellationToken)).Modo;
+        return await GerarPdfOficialAsync(laudoId, modo, cancellationToken);
     }
 
     public async Task<IniciarAssinaturaResultado> IniciarAsync(
@@ -94,58 +115,87 @@ public sealed class LaudoAssinaturaService(
         // recusa cedo (antes de criar o job). Quem cadastra a rubrica é o administrador.
         await GarantirMedicoTemRubricaAsync(medico.Id, cancellationToken);
 
+        // Modo do médico (ADR-0061), gravado no job: trocar no cadastro não muda job em curso.
+        var modo = (await assinaturaMedico.ObterModoAsync(medico.Id, cancellationToken)).Modo;
+        if (modo == ModoAssinaturaMedico.Nuvem && !_nuvem.Habilitado)
+            throw new ConflitoException("assinatura.nuvem_desligada",
+                "A assinatura em nuvem não está configurada nesta instância. Peça ao administrador para " +
+                "configurar o canal IntegraICP ou trocar o modo de assinatura do médico.");
+
         // Housekeeping: jobs pendentes com chave já vencida viram Cancelada (não reaproveita
-        // estado morto e dá uso ao enum Cancelada, em vez de acumular linhas órfãs).
+        // estado morto e dá uso ao enum Cancelada, em vez de acumular linhas órfãs). Pendente
+        // de OUTRO modo também é cancelado: o médico trocou de caminho.
         var agora = DateTime.UtcNow;
         foreach (var morto in existentes.Where(a =>
             a.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura
-            && a.ChaveExpiraEm is not null && a.ChaveExpiraEm < agora))
+            && ((a.ChaveExpiraEm is not null && a.ChaveExpiraEm < agora)
+                || (a.Modo ?? ModoAssinaturaMedico.Desktop) != modo)))
         {
             morto.Status = StatusAssinatura.Cancelada;
             morto.AtualizadoEm = agora;
             LimparTransitorios(morto);
         }
 
-        var chave = GerarChave();
-        var expira = agora.AddMinutes(_opt.ChaveExpiraMinutos);
-
         // PDF-base FIXADO (ADR-0049): renderiza UMA vez o layout exato que será assinado
         // e guarda no job. O "preparar" reutiliza esses bytes em vez de re-renderizar,
         // eliminando drift de paginação entre o que a médica posicionou e o que é assinado.
-        var pdfBase = await pdf.GerarAsync(laudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
+        // Leva o selo de verificação (QR) no rodapé — ADR-0061.
+        var pdfBase = await GerarPdfOficialAsync(laudoId, modo, cancellationToken);
         var pdfBaseHash = SHA256.HashData(pdfBase);
 
-        // Reutiliza um job pendente AINDA VÁLIDO (re-clicou "Assinar") com chave nova.
-        var pendente = existentes.FirstOrDefault(a =>
+        // Reutiliza um job pendente AINDA VÁLIDO do mesmo modo (re-clicou "Assinar").
+        var job = existentes.FirstOrDefault(a =>
             a.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura);
-        if (pendente is not null)
+        if (job is null)
         {
-            pendente.ChaveAgente = HashChave(chave);
-            pendente.ChaveExpiraEm = expira;
-            pendente.AtualizadoEm = agora;
-            AplicarBaseEPosicao(pendente, pdfBase, pdfBaseHash, posicao);
-            await db.SaveChangesAsync(cancellationToken);
-            return new IniciarAssinaturaResultado(pendente.Id, chave);
+            job = new LaudoAssinatura
+            {
+                Id = Guid.CreateVersion7(),
+                LaudoId = laudoId,
+                MedicoId = medico.Id,
+                Status = StatusAssinatura.Iniciada,
+                AssinadoPorUsuarioId = usuarioId,
+                CriadoEm = agora,
+            };
+            db.LaudoAssinaturas.Add(job);
         }
-
-        var job = new LaudoAssinatura
+        else
         {
-            Id = Guid.CreateVersion7(),
-            LaudoId = laudoId,
-            MedicoId = medico.Id,
-            Status = StatusAssinatura.Iniciada,
-            ChaveAgente = HashChave(chave),
-            ChaveExpiraEm = expira,
-            AssinadoPorUsuarioId = usuarioId,
-            CriadoEm = agora,
-        };
+            // Volta a Iniciada: a posição e o PDF-base mudaram, o hash antigo não vale mais.
+            job.Status = StatusAssinatura.Iniciada;
+            job.TransferState = null;
+            job.HashParaAssinar = null;
+            job.AtualizadoEm = agora;
+        }
+        job.Modo = modo;
         AplicarBaseEPosicao(job, pdfBase, pdfBaseHash, posicao);
-        db.LaudoAssinaturas.Add(job);
-        await db.SaveChangesAsync(cancellationToken);
-        logger.LogInformation(
-            "Assinatura: job {JobId} iniciado (laudo {LaudoId}, médico {MedicoId}, usuário {UsuarioId}). Aguardando o agente.",
-            job.Id, laudoId, medico.Id, usuarioId);
-        return new IniciarAssinaturaResultado(job.Id, chave);
+
+        switch (modo)
+        {
+            case ModoAssinaturaMedico.SemCertificado:
+                await db.SaveChangesAsync(cancellationToken);
+                logger.LogInformation(
+                    "Assinatura: job {JobId} iniciado SEM CERTIFICADO (laudo {LaudoId}, médico {MedicoId}, usuário {UsuarioId}). Carimbando.",
+                    job.Id, laudoId, medico.Id, usuarioId);
+                await CarimbarSemCertificadoAsync(job, cancellationToken);
+                return new IniciarAssinaturaResultado(job.Id, null, modo);
+
+            case ModoAssinaturaMedico.Nuvem:
+                var url = await AbrirAutorizacaoNuvemAsync(job, agora, cancellationToken);
+                return new IniciarAssinaturaResultado(job.Id, null, modo, url);
+
+            default:
+                var chave = GerarChave();
+                job.ChaveAgente = HashChave(chave);
+                job.ChaveExpiraEm = agora.AddMinutes(_opt.ChaveExpiraMinutos);
+                job.NuvemStateHash = null;
+                job.NuvemCodeVerifier = null;
+                await db.SaveChangesAsync(cancellationToken);
+                logger.LogInformation(
+                    "Assinatura: job {JobId} iniciado (laudo {LaudoId}, médico {MedicoId}, usuário {UsuarioId}). Aguardando o agente.",
+                    job.Id, laudoId, medico.Id, usuarioId);
+                return new IniciarAssinaturaResultado(job.Id, chave, modo);
+        }
     }
 
     public async Task<AssinaturaStatusDto> ObterStatusAsync(Guid laudoId, CancellationToken cancellationToken = default)
@@ -157,8 +207,19 @@ public sealed class LaudoAssinaturaService(
 
         return a is null
             ? new AssinaturaStatusDto(null, "NaoIniciada", null, null, null)
-            : new AssinaturaStatusDto(a.Id, a.Status.ToString(), a.AssinadoEm, a.CertificadoTitular, a.Formato);
+            : new AssinaturaStatusDto(a.Id, StatusVisivel(a).ToString(), a.AssinadoEm, a.CertificadoTitular, a.Formato, a.Modo);
     }
+
+    /// <summary>
+    /// Job pendente com a janela vencida (agente que não veio, aprovação no app que não
+    /// aconteceu) aparece como Falhou: o painel volta a oferecer "Tentar de novo" em vez de
+    /// esperar para sempre. O próximo "iniciar" o cancela de fato (housekeeping).
+    /// </summary>
+    private static StatusAssinatura StatusVisivel(LaudoAssinatura a) =>
+        a.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura
+        && a.ChaveExpiraEm is not null && a.ChaveExpiraEm < DateTime.UtcNow
+            ? StatusAssinatura.Falhou
+            : a.Status;
 
     public async Task<PdfDownloadDto> ObterPdfParaDownloadAsync(Guid laudoId, CancellationToken cancellationToken = default)
     {
@@ -223,6 +284,17 @@ public sealed class LaudoAssinaturaService(
         if (job.Status is not (StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura))
             throw new ConflitoException("assinatura.job_estado_invalido", "Job não está aguardando preparação.");
 
+        var prep = await PrepararJobAsync(job, cadeiaCertificado, cancellationToken);
+        return new PrepararJobResultadoDto(Convert.ToBase64String(prep.ToSignHash), prep.AlgoritmoHash);
+    }
+
+    /// <summary>
+    /// Prepara o PAdES do job com a cadeia do signatário (agente ou nuvem): carimbo + posição
+    /// no PDF-base fixado → hash a assinar. Deixa o job em AguardandoAssinatura.
+    /// </summary>
+    private async Task<PreparacaoAssinatura> PrepararJobAsync(
+        LaudoAssinatura job, IReadOnlyList<byte[]> cadeiaCertificado, CancellationToken cancellationToken)
+    {
         var laudo = await db.Laudos.AsNoTracking()
             .FirstOrDefaultAsync(l => l.Id == job.LaudoId && !l.Excluido, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), job.LaudoId);
@@ -241,40 +313,15 @@ public sealed class LaudoAssinaturaService(
         var pdfBase = job.PdfBaseFixado
             ?? await pdf.GerarAsync(job.LaudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
 
-        // Compõe o carimbo (rubrica do médico + identificação no quadrado virtual) → PNG.
-        var nome = laudo.MedicoNomeSnapshot ?? string.Empty;
-        var crm = laudo.MedicoCrmSnapshot ?? string.Empty;
-        var uf = laudo.MedicoUfCrmSnapshot ?? string.Empty;
-        var rqe = laudo.MedicoRqeSnapshot;
-
-        // Laudos finalizados ANTES do médico ter RQE cadastrado têm o snapshot nulo.
-        // Como o signatário é o próprio autor, busca o RQE atual do médico como fallback
-        // (não falsifica nada — é a credencial vigente). Falha não bloqueia a assinatura.
-        if (string.IsNullOrWhiteSpace(rqe))
-        {
-            try { rqe = (await medicos.ObterPorIdAsync(laudo.MedicoId, cancellationToken)).Rqe; }
-            catch (Exception ex) { logger.LogWarning(ex, "Não foi possível resolver o RQE atual do médico {Medico}.", laudo.MedicoId); }
-        }
-
-        var carimboPng = carimboRenderer.Renderizar(new CarimboDados(
-            Rubrica: DecodificarImagem(rubrica.ImagemBase64),
-            Formato: rubrica.Formato,
-            Nome: nome, Crm: crm, UfCrm: uf, Rqe: rqe,
-            // A assinatura criptográfica acontece segundos depois da preparação (o
-            // agente assina em seguida); este é o instante exibido no carimbo.
-            DataAssinatura: FusoBrasilia.ParaExibicao(DateTime.UtcNow)));
-
-        // Posição escolhida pela médica no "iniciar" (ADR-0049); nula = padrão legado.
-        var posicao = job.CarimboPagina is { } pag
-            && job.CarimboX is { } px && job.CarimboY is { } py
-            && job.CarimboLargura is { } pw && job.CarimboAltura is { } ph
-            ? new CarimboPosicaoPdf(pag, px, py, pw, ph)
-            : null;
-
+        var carimboPng = await MontarCarimboAsync(laudo, rubrica, assinaturaDigital: true, cancellationToken);
         var visual = new DadosVisualAssinatura(
-            nome, crm, uf, rqe, _opt.TextoCarimbo,
+            laudo.MedicoNomeSnapshot ?? string.Empty,
+            laudo.MedicoCrmSnapshot ?? string.Empty,
+            laudo.MedicoUfCrmSnapshot ?? string.Empty,
+            laudo.MedicoRqeSnapshot,
+            _opt.TextoCarimbo,
             CarimboPngBase64: Convert.ToBase64String(carimboPng),
-            Posicao: posicao);
+            Posicao: PosicaoDoJob(job));
 
         PreparacaoAssinatura prep;
         try
@@ -297,14 +344,24 @@ public sealed class LaudoAssinaturaService(
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "Assinatura: job {JobId} preparado (laudo {LaudoId}, {QtdCerts} cert(s) na cadeia, thumbprint {Thumbprint}, hash {Algo}). Aguardando assinatura do agente.",
-            job.Id, job.LaudoId, cadeiaCertificado.Count, job.CertThumbprint, prep.AlgoritmoHash);
-        return new PrepararJobResultadoDto(Convert.ToBase64String(prep.ToSignHash), prep.AlgoritmoHash);
+            "Assinatura: job {JobId} preparado (laudo {LaudoId}, modo {Modo}, {QtdCerts} cert(s) na cadeia, thumbprint {Thumbprint}, hash {Algo}).",
+            job.Id, job.LaudoId, job.Modo, cadeiaCertificado.Count, job.CertThumbprint, prep.AlgoritmoHash);
+        return prep;
     }
 
     public async Task ConcluirAsync(string chave, byte[] rawSignature, CancellationToken cancellationToken = default)
     {
         var job = await BuscarPorChaveAsync(chave, cancellationToken);
+        await ConcluirJobAsync(job, rawSignature, cancellationToken);
+    }
+
+    /// <summary>
+    /// Embute a assinatura crua no PAdES preparado, aplica a trava de autoria (CPF do
+    /// certificado == CPF do autor) e deixa o job aguardando a conferência do médico.
+    /// Comum ao agente (Desktop) e à nuvem.
+    /// </summary>
+    private async Task ConcluirJobAsync(LaudoAssinatura job, byte[] rawSignature, CancellationToken cancellationToken)
+    {
         if (job.Status != StatusAssinatura.AguardandoAssinatura || job.TransferState is null)
             throw new ConflitoException("assinatura.job_estado_invalido", "Job não está aguardando assinatura.");
         if (rawSignature is null || rawSignature.Length == 0)
@@ -472,7 +529,208 @@ public sealed class LaudoAssinaturaService(
             solicitacao.Solicitacao, FinalidadeComunicacao.LaudoPronto, ct);
     }
 
+    // ---------------- Fluxo em nuvem (IntegraICP, ADR-0061) ----------------
+
+    /// <summary>
+    /// Abre a autorização na IntegraICP para o CPF do autor e devolve a URL que o médico abre.
+    /// PKCE: o <c>code_verifier</c> fica cifrado no job; o <c>state</c> vai na URL de retorno e
+    /// só o hash dele é guardado — é ele que amarra o retorno a este job.
+    /// </summary>
+    private async Task<string> AbrirAutorizacaoNuvemAsync(LaudoAssinatura job, DateTime agora, CancellationToken ct)
+    {
+        var cpf = SoDigitos(await ResolverCpfMedicoAsync(job.MedicoId, ct));
+        if (cpf.Length != 11)
+            throw new ConflitoException("assinatura.autor_sem_cpf",
+                "O médico autor não tem CPF resolvível no hub FHIR; a assinatura em nuvem precisa do CPF.");
+
+        var verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
+        var challenge = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        var state = GerarChave();
+
+        job.ChaveAgente = null;
+        job.ChaveExpiraEm = agora.AddMinutes(_nuvem.JanelaAutorizacaoMinutos);
+        job.NuvemStateHash = HashChave(state);
+        job.NuvemCodeVerifier = protetor.Proteger(verifier);
+        await db.SaveChangesAsync(ct);
+
+        string url;
+        try
+        {
+            url = await integraIcp.IniciarAutorizacaoAsync(cpf, MontarUrlRetornoNuvem(state), challenge, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Assinatura: job {JobId} não conseguiu abrir a autorização em nuvem.", job.Id);
+            await MarcarFalhaAsync(job, ct);
+            throw;
+        }
+
+        logger.LogInformation(
+            "Assinatura: job {JobId} iniciado EM NUVEM (laudo {LaudoId}, médico {MedicoId}, cpf {Cpf}). Aguardando aprovação no app.",
+            job.Id, job.LaudoId, job.MedicoId, MascararCpf(cpf));
+        return url;
+    }
+
+    public async Task ConcluirNuvemAsync(string state, string credencialId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(state) || string.IsNullOrWhiteSpace(credencialId))
+            throw new ValidacaoException("assinatura.retorno_invalido", "Retorno da autorização incompleto.");
+
+        var hash = HashChave(state);
+        var job = await db.LaudoAssinaturas.FirstOrDefaultAsync(a => a.NuvemStateHash == hash, cancellationToken)
+            ?? throw new ValidacaoException("assinatura.retorno_invalido",
+                "Esta autorização não corresponde a nenhuma assinatura em andamento (já usada ou expirada).");
+
+        if (job.Status != StatusAssinatura.Iniciada || job.Modo != ModoAssinaturaMedico.Nuvem
+            || job.NuvemCodeVerifier is null)
+            throw new ConflitoException("assinatura.job_estado_invalido", "Esta assinatura não está aguardando autorização.");
+        if (job.ChaveExpiraEm is null || job.ChaveExpiraEm < DateTime.UtcNow)
+        {
+            await MarcarFalhaAsync(job, cancellationToken);
+            throw new ConflitoException("assinatura.autorizacao_expirada",
+                "A autorização demorou demais e expirou. Clique em Assinar de novo no painel.");
+        }
+
+        var verifier = protetor.Revelar(job.NuvemCodeVerifier);
+        try
+        {
+            var certificado = await integraIcp.ObterCertificadoAsync(credencialId, verifier, cancellationToken);
+            var cadeia = await cadeiaIcp.MontarAsync(certificado, cancellationToken);
+            var prep = await PrepararJobAsync(job, cadeia, cancellationToken);
+            var raw = await integraIcp.AssinarHashAsync(credencialId, verifier, prep.ToSignHash, cancellationToken);
+
+            // O RAW da IntegraICP nunca foi exercitado com certificado real (a doc só diz que
+            // "o hash é assinado diretamente"). O CMS do iText precisa de RSASSA-PKCS1-v1_5
+            // sobre DigestInfo(SHA-256) — o mesmo que o agente faz. Confere ANTES de embutir:
+            // se o provedor fizer outra coisa, falha aqui em vez de gerar um PDF que abre mas
+            // é criptograficamente inválido.
+            using var cert = X509CertificateLoader.LoadCertificate(certificado);
+            using var rsa = cert.GetRSAPublicKey();
+            if (rsa is null || !rsa.VerifyHash(prep.ToSignHash, raw, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1))
+            {
+                logger.LogError(
+                    "Assinatura: job {JobId} RECUSADO — a assinatura RAW da nuvem não confere como PKCS#1 v1.5/SHA-256 ({Bytes} bytes).",
+                    job.Id, raw.Length);
+                throw new ConflitoException("assinatura.nuvem_raw_incompativel",
+                    "O provedor devolveu uma assinatura em formato incompatível. Nada foi gravado. Avise o suporte.");
+            }
+
+            await ConcluirJobAsync(job, raw, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Qualquer etapa que falhe deixa o job morto: o médico recomeça pelo painel.
+            // (As travas de CPF do ConcluirJobAsync já marcam Falhou antes de lançar.)
+            logger.LogWarning(ex, "Assinatura: job {JobId} falhou no fluxo em nuvem.", job.Id);
+            if (job.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura)
+                await MarcarFalhaAsync(job, cancellationToken);
+            throw;
+        }
+    }
+
+    private string MontarUrlRetornoNuvem(string state)
+    {
+        var baseUrl = (string.IsNullOrWhiteSpace(_nuvem.UrlPublicaApi)
+                ? configuration["Publico:BaseUrl"] ?? "https://api.smsmarica.online"
+                : _nuvem.UrlPublicaApi).TrimEnd('/');
+        return $"{baseUrl}/assinatura/nuvem/retorno?state={Uri.EscapeDataString(state)}";
+    }
+
+    private static string Base64Url(byte[] bytes) =>
+        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    // ---------------- Sem certificado (ADR-0061) ----------------
+
+    /// <summary>
+    /// Médico sem certificado: estampa o carimbo ("Emitido em", não "Assinado em") no PDF-base
+    /// fixado, sem criptografia, e deixa o documento aguardando a conferência — a partir daí
+    /// o fluxo é o mesmo dos outros modos (aprovar oficializa e avisa o paciente).
+    /// </summary>
+    private async Task CarimbarSemCertificadoAsync(LaudoAssinatura job, CancellationToken ct)
+    {
+        try
+        {
+            var laudo = await db.Laudos.AsNoTracking()
+                .FirstOrDefaultAsync(l => l.Id == job.LaudoId && !l.Excluido, ct)
+                ?? throw new NaoEncontradoException(nameof(Laudo), job.LaudoId);
+            var rubrica = await assinaturaMedico.ObterAsync(job.MedicoId, ct)
+                ?? throw new ConflitoException("assinatura.medico_sem_rubrica", MensagemSemRubrica);
+            var pdfBase = job.PdfBaseFixado
+                ?? throw new ConflitoException("assinatura.job_estado_invalido", "PDF-base não fixado.");
+
+            var carimbo = await MontarCarimboAsync(laudo, rubrica, assinaturaDigital: false, ct);
+            var carimbado = await assinador.CarimbarAsync(
+                pdfBase, Convert.ToBase64String(carimbo), PosicaoDoJob(job), ct);
+
+            job.PdfAssinado = carimbado;
+            job.PdfHashSha256 = SHA256.HashData(carimbado);
+            job.Formato = FormatoCarimboSemCertificado;
+            job.AssinadoPorCpf = null;
+            job.CertificadoTitular = null;
+            job.CertificadoEmissor = null;
+            job.AssinadoEm = DateTime.UtcNow;
+            job.AtualizadoEm = job.AssinadoEm;
+            job.Status = StatusAssinatura.AguardandoAprovacao;
+            LimparTransitorios(job);
+            await db.SaveChangesAsync(ct);
+
+            logger.LogInformation(
+                "Assinatura: job {JobId} CARIMBADO sem certificado, AGUARDANDO APROVAÇÃO (laudo {LaudoId}, pdf {Bytes} bytes).",
+                job.Id, job.LaudoId, carimbado.Length);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Assinatura: job {JobId} falhou ao carimbar sem certificado.", job.Id);
+            await MarcarFalhaAsync(job, ct);
+            throw;
+        }
+    }
+
     // ---------------- helpers ----------------
+
+    /// <summary>PDF-base oficial com o selo (QR) — a frase do rodapé depende do modo.</summary>
+    private async Task<byte[]> GerarPdfOficialAsync(Guid laudoId, ModoAssinaturaMedico modo, CancellationToken ct)
+    {
+        var selo = await verificacao.ObterSeloAsync(
+            laudoId, assinaturaDigital: modo != ModoAssinaturaMedico.SemCertificado, ct);
+        return await pdf.GerarOficialAsync(laudoId, selo, ct);
+    }
+
+    /// <summary>Compõe o carimbo (rubrica + nome/CRM/RQE + data) em PNG.</summary>
+    private async Task<byte[]> MontarCarimboAsync(
+        Laudo laudo, Medicos.Assinatura.AssinaturaMedicoDto rubrica, bool assinaturaDigital, CancellationToken ct)
+    {
+        var rqe = laudo.MedicoRqeSnapshot;
+
+        // Laudos finalizados ANTES do médico ter RQE cadastrado têm o snapshot nulo.
+        // Como o signatário é o próprio autor, busca o RQE atual do médico como fallback
+        // (não falsifica nada — é a credencial vigente). Falha não bloqueia a assinatura.
+        if (string.IsNullOrWhiteSpace(rqe))
+        {
+            try { rqe = (await medicos.ObterPorIdAsync(laudo.MedicoId, ct)).Rqe; }
+            catch (Exception ex) { logger.LogWarning(ex, "Não foi possível resolver o RQE atual do médico {Medico}.", laudo.MedicoId); }
+        }
+
+        return carimboRenderer.Renderizar(new CarimboDados(
+            Rubrica: DecodificarImagem(rubrica.ImagemBase64),
+            Formato: rubrica.Formato,
+            Nome: laudo.MedicoNomeSnapshot ?? string.Empty,
+            Crm: laudo.MedicoCrmSnapshot ?? string.Empty,
+            UfCrm: laudo.MedicoUfCrmSnapshot ?? string.Empty,
+            Rqe: rqe,
+            // A assinatura criptográfica acontece segundos depois da preparação; este é o
+            // instante exibido no carimbo.
+            DataAssinatura: FusoBrasilia.ParaExibicao(DateTime.UtcNow),
+            AssinaturaDigital: assinaturaDigital));
+    }
+
+    /// <summary>Posição escolhida pela médica no "iniciar" (ADR-0049); nula = padrão legado.</summary>
+    private static CarimboPosicaoPdf? PosicaoDoJob(LaudoAssinatura job) =>
+        job.CarimboPagina is { } pag
+        && job.CarimboX is { } px && job.CarimboY is { } py
+        && job.CarimboLargura is { } pw && job.CarimboAltura is { } ph
+            ? new CarimboPosicaoPdf(pag, px, py, pw, ph)
+            : null;
 
     internal const string MensagemSemRubrica =
         "O médico não possui rubrica de assinatura cadastrada. Solicite ao administrador " +
@@ -521,6 +779,8 @@ public sealed class LaudoAssinaturaService(
         job.HashParaAssinar = null;
         job.ChaveAgente = null;
         job.ChaveExpiraEm = null;
+        job.NuvemStateHash = null;
+        job.NuvemCodeVerifier = null;
         // PDF-base fixado é pesado (bytea) e só serve entre iniciar→preparar; some ao
         // concluir/cancelar/falhar. A posição (carimbo_*) e o hash ficam para auditoria.
         job.PdfBaseFixado = null;
