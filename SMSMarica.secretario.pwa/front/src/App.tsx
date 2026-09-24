@@ -91,7 +91,7 @@ function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: Vi
         <SecaoMaternidade maternidade={unidade.maternidade} />
       </div>
     ) : (
-      <SemMaternidade nome={unidade.nome} />
+      <SemMaternidade unidade={unidade} />
     );
   }
 
@@ -150,8 +150,31 @@ function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: Vi
   );
 }
 
-/** A unidade escolhida não tem maternidade — dizer é melhor que sumir com a aba. */
-function SemMaternidade({ nome }: { nome: string }) {
+/**
+ * A unidade escolhida não tem maternidade — dizer é melhor que sumir com a aba.
+ *
+ * No Conde (e na Geral, cuja maternidade é a dele) a ausência tem outro motivo: o
+ * hospital passou do Salux para o Klinikos em agosto/2026 e o Klinikos dele não registra
+ * os partos de forma estruturada. "Não faz partos" seria falso ali.
+ */
+function SemMaternidade({ unidade }: { unidade: UnidadePainel }) {
+  if (unidade.id === 'conde' || unidade.id === 'geral') {
+    return (
+      <div className="flex flex-col items-center gap-3 py-20 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-painel text-grafite">
+          <Baby className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <p className="font-display text-[17px] font-bold text-tinta">Partos sem registro no sistema</p>
+        <p className="max-w-sm text-[13.5px] leading-relaxed text-grafite">
+          O Hospital Municipal Conde Modesto Leal passou a usar o Klinikos em agosto de 2026,
+          e os partos ainda não são registrados nele de forma que dê para contar. As
+          internações da obstetrícia aparecem em Leitos e internação.
+        </p>
+      </div>
+    );
+  }
+
+  const nome = unidade.nome;
   return (
     <div className="flex flex-col items-center gap-3 py-20 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-painel text-grafite">

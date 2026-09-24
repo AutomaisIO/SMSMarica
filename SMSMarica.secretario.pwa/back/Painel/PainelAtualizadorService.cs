@@ -52,6 +52,12 @@ public sealed class PainelAtualizadorService : BackgroundService
     private readonly ILogger<PainelAtualizadorService> _logger;
     private readonly ProxySqlFonte? _fonte;
 
+    /// <summary>
+    /// Conector do Conde: Klinikos (padrão) ou Salux. Os dois caminhos existem inteiros no
+    /// código — o do Salux não foi tocado; ver <see cref="PainelOpcoes.FonteConde"/>.
+    /// </summary>
+    private readonly bool _condeKlinikos;
+
     // Seções vivas de cada unidade REAL. A aba "geral" não tem estado próprio: é
     // recalculada a cada republicação a partir daqui.
     private readonly EstadoUnidade _conde = new();
@@ -69,6 +75,7 @@ public sealed class PainelAtualizadorService : BackgroundService
         _proxy = proxy.Value;
         _painel = painel.Value;
         _logger = logger;
+        _condeKlinikos = !string.Equals(_painel.FonteConde?.Trim(), FontesConde.Salux, StringComparison.OrdinalIgnoreCase);
 
         if (string.IsNullOrWhiteSpace(_proxy.Token))
         {
@@ -89,6 +96,8 @@ public sealed class PainelAtualizadorService : BackgroundService
         // Restart não recomeça do zero: as seções do snapshot persistido voltam a ser o
         // estado vivo de cada unidade até o primeiro ciclo bom substituí-las.
         SemearDoSnapshotPersistido();
+        _logger.LogInformation("Conector do Conde: {Conector}.",
+            _condeKlinikos ? $"Klinikos ({Unidades.BaseCondeKlinikos})" : $"Salux ({Unidades.BaseConde})");
 
         if (_fonte is null)
         {
@@ -149,7 +158,9 @@ public sealed class PainelAtualizadorService : BackgroundService
             estado.Atendimentos = unidade.Atendimentos;
             estado.Internacoes = unidade.Internacoes;
             estado.EsperaPorCor = EstaCompleta(unidade.EsperaPorCor) ? unidade.EsperaPorCor : null;
-            estado.Maternidade = unidade.Maternidade;
+            // O conector Klinikos do Conde não tem maternidade (ver ConsultasCondeKlinikos):
+            // herdar a do snapshot seria servir o livro de partos do Salux, parado em 08/08.
+            estado.Maternidade = _condeKlinikos && ReferenceEquals(estado, _conde) ? null : unidade.Maternidade;
             estado.Leitos = unidade.Leitos;
             estado.Diagnosticos = EstaCompleto(unidade.Diagnosticos) ? unidade.Diagnosticos : null;
         }
@@ -188,7 +199,19 @@ public sealed class PainelAtualizadorService : BackgroundService
     {
         var cronometro = Stopwatch.StartNew();
 
-        await AtualizarAsync(_conde, "rápido", ct, async token =>
+        if (_condeKlinikos)
+        {
+            await AtualizarAsync(_conde, "rápido", ct, async token =>
+            {
+                var b = Unidades.BaseCondeKlinikos;
+                var unidade = ConsultasCondeKlinikos.UnidadeConde;
+                var u1a = await ConsultarAsync(b, ConsultasUpa.U1AguardandoPorCor(unidade), token);
+                var u1b = await ConsultarAsync(b, ConsultasUpa.U1EmAtendimentoEHoje(unidade), token);
+                var k1c = await ConsultarAsync(b, ConsultasCondeKlinikos.K1InternadosEHoje(), token);
+                _conde.Agora = MontarAgoraCondeKlinikos(u1a, u1b, k1c);
+            });
+        }
+        else await AtualizarAsync(_conde, "rápido", ct, async token =>
         {
             var q1a = await ConsultarAsync(Unidades.BaseConde, ConsultasPainel.Q1AguardandoPorCor(HospitalHmcml), token);
             var q1b = await ConsultarAsync(Unidades.BaseConde, ConsultasPainel.Q1EmAtendimento(HospitalHmcml), token);
@@ -224,7 +247,9 @@ public sealed class PainelAtualizadorService : BackgroundService
     {
         var cronometro = Stopwatch.StartNew();
 
-        await AtualizarAsync(_conde, "lento", ct, token => ExecutarLentoCondeAsync(token));
+        await AtualizarAsync(_conde, "lento", ct, token => _condeKlinikos
+            ? ExecutarLentoCondeKlinikosAsync(token)
+            : ExecutarLentoCondeAsync(token));
         foreach (var (estado, baseSlug, unidade) in Upas())
         {
             await AtualizarAsync(estado, "lento", ct, token => ExecutarLentoUpaAsync(estado, baseSlug, unidade, token));
@@ -346,6 +371,86 @@ public sealed class PainelAtualizadorService : BackgroundService
     }
 
     /// <summary>
+    /// Ciclo lento do Conde pelo KLINIKOS — conector adicional ao Salux
+    /// (<see cref="ExecutarLentoCondeAsync"/>, intacto). Emergência pelas consultas das UPAs
+    /// (mesmo HIS) com o <c>unid_codigo</c> do Conde; internação, leitos e CID pelas consultas
+    /// próprias em <see cref="ConsultasCondeKlinikos"/>. Maternidade fica nula: os partos não
+    /// são registrados de forma estruturada nesta base.
+    /// </summary>
+    private async Task ExecutarLentoCondeKlinikosAsync(CancellationToken ct)
+    {
+        var hoje = FusoBrasilia.Agora();
+        var b = Unidades.BaseCondeKlinikos;
+        var unidade = ConsultasCondeKlinikos.UnidadeConde;
+
+        var totalMesAnterior = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniMesAnterior, ConsultasUpa.FimMesAnterior), ct);
+        var totalMesAtual = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual), ct);
+        var totalHoje = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniHoje, ConsultasUpa.FimHoje), ct);
+        var totalDiasCompletos = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimDiasCompletos), ct);
+
+        var serieAtendimentos = await ConsultarAsync(b, ConsultasUpa.U3SerieDiariaAtendimentos(unidade), ct);
+        var porHora = await ConsultarAsync(b, ConsultasUpa.U4PorHoraHoje(unidade), ct);
+
+        var intMesAnterior = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K5InternacoesPeriodo(ConsultasUpa.IniMesAnterior, ConsultasUpa.FimMesAnterior), ct);
+        var intMesAtual = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K5InternacoesPeriodo(ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual), ct);
+        var intHoje = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K5InternacoesPeriodo(ConsultasUpa.IniHoje, ConsultasUpa.FimHoje), ct);
+        var intDiasCompletos = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K5InternacoesPeriodo(ConsultasUpa.IniMesAtual, ConsultasUpa.FimDiasCompletos), ct);
+        var serieInternacoes = await ConsultarAsync(b, ConsultasCondeKlinikos.K5SerieDiariaInternacoes(), ct);
+
+        var esperaHoje = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniHoje, ConsultasUpa.FimHoje, "DATEADD(day,3,GETDATE())"), ct);
+        var esperaOntem = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniOntem, ConsultasUpa.FimOntem, "DATEADD(day,3,GETDATE())"), ct);
+        var esperaMesAtual = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual, "DATEADD(day,3,GETDATE())"), ct);
+        var esperaMesAnterior = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(
+                unidade, ConsultasUpa.IniMesAnterior, ConsultasUpa.FimMesAnterior,
+                $"DATEADD(day,3,{ConsultasUpa.FimMesAnterior})"), ct);
+
+        var setores = await ConsultarAsync(b, ConsultasCondeKlinikos.L1OcupacaoPorSetor(), ct);
+        var perfil = await ConsultarAsync(b, ConsultasCondeKlinikos.L2PerfilInternados(), ct);
+        var permanencia = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.L3Permanencia(ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual), ct);
+
+        var cidsHoje = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K8CidPorCor(ConsultasUpa.IniHoje, ConsultasUpa.FimHoje, TopCids), ct);
+        var cidsOntem = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K8CidPorCor(ConsultasUpa.IniOntem, ConsultasUpa.FimOntem, TopCids), ct);
+        var cidsMesAtual = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K8CidPorCor(ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual, TopCids), ct);
+        var cidsMesAnterior = await ConsultarAsync(b,
+            ConsultasCondeKlinikos.K8CidPorCor(ConsultasUpa.IniMesAnterior, ConsultasUpa.FimMesAnterior, TopCids), ct);
+
+        // Mesmo HIS das UPAs, mesma paleta (com laranja): normaliza as cores como UPA.
+        const string paleta = Unidades.IdUpa;
+
+        var carimbo = FusoBrasilia.Agora();
+        _conde.Leitos = MontarLeitosConde(hoje, carimbo, setores, perfil, permanencia);
+        _conde.Diagnosticos = new DiagnosticosSecao(carimbo, new DiagnosticosPeriodos(
+            LerDiagnosticos(cidsHoje, paleta), LerDiagnosticos(cidsOntem, paleta),
+            LerDiagnosticos(cidsMesAtual, paleta), LerDiagnosticos(cidsMesAnterior, paleta)), null);
+        _conde.Atendimentos = MontarAtendimentos(
+            hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
+        _conde.Internacoes = MontarInternacoes(
+            hoje, carimbo, intMesAnterior, intMesAtual, intHoje, intDiasCompletos, serieInternacoes);
+        _conde.Maternidade = null;
+        _conde.EsperaPorCor = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
+            MontarEsperaPeriodo(esperaHoje, paleta),
+            MontarEsperaPeriodo(esperaOntem, paleta),
+            MontarEsperaPeriodo(esperaMesAtual, paleta),
+            MontarEsperaPeriodo(esperaMesAnterior, paleta)));
+    }
+
+    /// <summary>
     /// Ciclo lento de UMA das UPAs. As duas rodam o mesmo HIS em instâncias separadas, então
     /// só mudam o slug da base e o <c>unid_codigo</c>.
     /// </summary>
@@ -454,8 +559,9 @@ public sealed class PainelAtualizadorService : BackgroundService
         var carimbo = FusoBrasilia.Agora();
 
         var conde = new UnidadePainel(
-            Unidades.IdConde, "Conde", Unidades.NomeConde, Unidades.FonteConde,
-            Unidades.CoresDe(Unidades.IdConde),
+            Unidades.IdConde, "Conde", Unidades.NomeConde,
+            _condeKlinikos ? Unidades.FonteCondeKlinikos : Unidades.FonteConde,
+            Unidades.CoresDoConde(_condeKlinikos),
             _conde.Agora, _conde.Atendimentos, _conde.Internacoes, _conde.EsperaPorCor, _conde.Maternidade,
             _conde.Leitos, _conde.Diagnosticos);
 
@@ -471,7 +577,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             _santaRita.Agora, _santaRita.Atendimentos, null, _santaRita.EsperaPorCor, null, _santaRita.Leitos, null);
 
         UnidadePainel[] reais = [conde, upa, santaRita];
-        var geral = MontarGeral(reais);
+        var geral = MontarGeral(reais, _condeKlinikos ? Unidades.FonteGeralKlinikos : Unidades.FonteGeral);
 
         var fontes = new[]
         {
@@ -502,12 +608,12 @@ public sealed class PainelAtualizadorService : BackgroundService
     /// escopo o que só existe no Conde (internações, maternidade). Um número de rede que
     /// na verdade é de uma unidade só precisa dizer isso na cara do usuário.
     /// </summary>
-    private static UnidadePainel MontarGeral(IReadOnlyList<UnidadePainel> reais)
+    private static UnidadePainel MontarGeral(IReadOnlyList<UnidadePainel> reais, string fonte)
     {
         var conde = reais.First(u => u.Id == Unidades.IdConde);
 
         return new UnidadePainel(
-            Unidades.IdGeral, "Geral", "Rede municipal de urgência", Unidades.FonteGeral,
+            Unidades.IdGeral, "Geral", "Rede municipal de urgência", fonte,
             Unidades.CoresDe(Unidades.IdGeral),
             Agora: SomarAgora([.. reais.Select(u => u.Agora).OfType<AgoraSecao>()]),
             Atendimentos: SomarAtendimentos([.. reais.Select(u => u.Atendimentos).OfType<AtendimentosSecao>()]),
@@ -688,6 +794,28 @@ public sealed class PainelAtualizadorService : BackgroundService
                 Escopo: null));
     }
 
+    /// <summary>
+    /// "Agora" do Conde pelo Klinikos: fila e em-atendimento no formato das UPAs (mesmo
+    /// HIS), mais o bloco de internados que só o Conde tem.
+    /// </summary>
+    private static AgoraSecao MontarAgoraCondeKlinikos(ResultadoConsulta u1a, ResultadoConsulta u1b, ResultadoConsulta k1c)
+    {
+        var agora = MontarAgoraUpa(u1a, u1b);
+        var linhaC = k1c.Linhas[0];
+
+        return agora with
+        {
+            Internados = new InternadosAgora(
+                Total: ComoInt(linhaC[0]),
+                Maternidade: ComoInt(linhaC[1]),
+                Ate17: ComoInt(linhaC[2]),
+                Adultos: ComoInt(linhaC[3]),
+                MediaDiasInternacao: ComoDoubleOuNulo(linhaC[4]),
+                InternacoesHoje: ComoInt(linhaC[6]),
+                Escopo: null),
+        };
+    }
+
     // ── Montagem das seções (UPA) ──────────────────────────────────────────────
 
     private static AgoraSecao MontarAgoraUpa(ResultadoConsulta u1a, ResultadoConsulta u1b)
@@ -742,7 +870,7 @@ public sealed class PainelAtualizadorService : BackgroundService
     /// Uma rodada da Q8 vira a lista por cor, na ordem clínica. Cores sem CID no período
     /// simplesmente não aparecem — lista vazia é melhor que cor vazia na tela.
     /// </summary>
-    private static List<DiagnosticosDaCor> LerDiagnosticos(ResultadoConsulta resultado)
+    private static List<DiagnosticosDaCor> LerDiagnosticos(ResultadoConsulta resultado, string paleta = Unidades.IdConde)
     {
         var porCor = new Dictionary<string, (int Total, List<CidRanking> Cids)>();
         // O total vem repetido em toda linha da mesma cor CRUA, então só pode ser somado
@@ -753,7 +881,7 @@ public sealed class PainelAtualizadorService : BackgroundService
         foreach (var linha in resultado.Linhas)
         {
             var corCrua = (linha[0] as string)?.Trim() ?? "";
-            var cor = NormalizarCor(corCrua, Unidades.IdConde);
+            var cor = NormalizarCor(corCrua, paleta);
             var qtd = ComoInt(linha[3]);
             var totalCor = ComoInt(linha[4]);
 

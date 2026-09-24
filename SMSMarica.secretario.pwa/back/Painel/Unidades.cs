@@ -30,8 +30,18 @@ public static class Unidades
     public const string FonteSantaRita = "HIS da UPA 24h Santa Rita";
     public const string FonteGeral = "Salux HIS (Conde Modesto Leal) + HIS das UPAs Maricá e Santa Rita";
 
+    /// <summary>Procedência do Conde quando o conector ativo é o Klinikos (ver <see cref="ConsultasCondeKlinikos"/>).</summary>
+    public const string FonteCondeKlinikos = "Klinikos — Hospital Municipal Conde Modesto Leal";
+    public const string FonteGeralKlinikos = "Klinikos (Conde Modesto Leal) + HIS das UPAs Maricá e Santa Rita";
+
     /// <summary>Slug da base do HMCML no cadastro do smsmarica (Oracle do Salux).</summary>
     public const string BaseConde = "salux-hcml";
+
+    /// <summary>
+    /// Slug do Klinikos do Conde (SQL Server, banco KLINIKOSNET, agente WSS ligado em
+    /// 24/09/2026). Conector ADICIONAL ao Salux — ver <see cref="PainelOpcoes.FonteConde"/>.
+    /// </summary>
+    public const string BaseCondeKlinikos = "conde-marica-sqlserver";
 
     /// <summary>Slugs das UPAs (SQL Server, alcançadas pelo agente WSS reverso).</summary>
     public const string BaseUpa = "upa24h-marica-sqlserver";
@@ -65,4 +75,11 @@ public static class Unidades
         IdConde => [Vermelho, Amarelo, Verde, Azul, SemClassificacao],
         _ => Cores,
     };
+
+    /// <summary>
+    /// Cores do Conde conforme o conector. O Klinikos do Conde USA laranja (473 + 47
+    /// classificações de 07/08 a 24/09/2026) — o "sem laranja" acima é do Manchester do Salux.
+    /// </summary>
+    public static IReadOnlyList<string> CoresDoConde(bool klinikos) =>
+        klinikos ? Cores : CoresDe(IdConde);
 }

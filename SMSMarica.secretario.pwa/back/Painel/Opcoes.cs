@@ -19,4 +19,18 @@ public sealed class PainelOpcoes
     public int IntervaloLentoSegundos { get; set; } = 600;
     public int TimeoutConsultaSegundos { get; set; } = 120;
     public string SnapshotPath { get; set; } = "snapshot-painel.json";
+
+    /// <summary>
+    /// De onde vêm os números do Conde: <c>klinikos</c> (padrão desde 24/09/2026 — o
+    /// hospital migrou em agosto e o Salux do hospital 1 parou em 08/08) ou <c>salux</c>
+    /// (o conector original, intacto). Os dois convivem no código; voltar é trocar
+    /// <c>Painel__FonteConde</c> no env e reiniciar.
+    /// </summary>
+    public string FonteConde { get; set; } = FontesConde.Klinikos;
+}
+
+public static class FontesConde
+{
+    public const string Klinikos = "klinikos";
+    public const string Salux = "salux";
 }

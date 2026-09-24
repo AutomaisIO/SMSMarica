@@ -71,6 +71,23 @@ public static class ConsultasUpa
     public const string FimDiasCompletos = "CAST(GETDATE() AS date)";
 
     /// <summary>
+    /// <c>risco_acolhimento</c> com UMA linha por <c>risaco_codigo</c>. Nas duas UPAs o
+    /// código é único e isto é a própria tabela; no Klinikos do Conde NÃO é — o
+    /// <c>0011</c> existe como Laranja no protocolo 0001 e como Vermelho no 0002 (medido em
+    /// 24/09/2026), e o join direto contaria cada boletim com esse código DUAS vezes. Vence
+    /// o protocolo mais novo: no Conde o 0002 é o vivo (0005–0011 desde 07/08; o 0001 só
+    /// apareceu em 17–18/09). <c>UPA_Classificacao_Risco</c> não carrega o protocolo, então
+    /// não há como desempatar pela classificação.
+    /// </summary>
+    public const string RiscoAcolhimento = """
+        (SELECT r.risaco_codigo, r.risaco_descricao, r.risaco_subdescricao
+           FROM (SELECT r0.*, ROW_NUMBER() OVER (PARTITION BY r0.risaco_codigo
+                                                  ORDER BY r0.proate_codigo DESC) AS rn_risco
+                   FROM risco_acolhimento r0) r
+          WHERE r.rn_risco = 1)
+        """;
+
+    /// <summary>
     /// Boletins da UPA numa janela. <c>spa_chegada</c> é a abertura do boletim — o
     /// equivalente do <c>BAA.dt_atendimento</c> do Salux.
     /// </summary>
@@ -149,7 +166,7 @@ public static class ConsultasUpa
                  END                                                      AS desde_classificacao
             FROM pa
             LEFT JOIN cl ON cl.spa_codigo = pa.spa_codigo AND cl.rn = 1
-            LEFT JOIN risco_acolhimento ra ON ra.risaco_codigo = cl.risaco_codigo
+            LEFT JOIN {RiscoAcolhimento} ra ON ra.risaco_codigo = cl.risaco_codigo
             LEFT JOIN am ON am.spa_codigo = pa.spa_codigo
            WHERE am.dt_med IS NULL
              -- EXISTS, não JOIN: a UPA_Fila tem reentradas do mesmo boletim (514 linhas
@@ -266,7 +283,7 @@ public static class ConsultasUpa
                  END                                                                   AS espera
             FROM pa
             LEFT JOIN cl ON cl.spa_codigo = pa.spa_codigo AND cl.rn = 1
-            LEFT JOIN risco_acolhimento ra ON ra.risaco_codigo = cl.risaco_codigo
+            LEFT JOIN {RiscoAcolhimento} ra ON ra.risaco_codigo = cl.risaco_codigo
             LEFT JOIN am ON am.spa_codigo = pa.spa_codigo
         ), p AS (
           SELECT e.cor, e.meta, e.ate_triagem, e.espera,
@@ -336,7 +353,7 @@ public static class ConsultasUpa
           FROM Pronto_Atendimento pa
           JOIN UPA_ACOLHIMENTO ac ON ac.spa_codigo = pa.spa_codigo AND ac.UNID_CODIGO = pa.unid_codigo
           JOIN UPA_Classificacao_Risco cr ON cr.aco_codigo = ac.ACO_CODIGO
-          JOIN risco_acolhimento ra ON ra.risaco_codigo = cr.risaco_codigo
+          JOIN {RiscoAcolhimento} ra ON ra.risaco_codigo = cr.risaco_codigo
          WHERE pa.unid_codigo = '{unidade}'
            AND pa.spa_chegada >= {ini} AND pa.spa_chegada < {fim}
         """;

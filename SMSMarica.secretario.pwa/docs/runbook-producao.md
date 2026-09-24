@@ -29,6 +29,28 @@ adiciona: **back** `SMSMarica.Secretario.Api` na porta **5090** (systemd
 
 ---
 
+## 0. Conector do Conde: Klinikos (padrão) ou Salux (24/09/2026)
+
+O Conde saiu do Salux para o Klinikos em agosto/2026 (Klinikos com boletins desde 07/08; o
+Salux do hospital 1 parou em 08/08). O painel tem **os dois conectores**, e a escolha é de
+configuração:
+
+| `Painel__FonteConde` | Base (slug do proxy) | Consultas |
+|---|---|---|
+| `klinikos` (padrão) | `conde-marica-sqlserver` (KLINIKOSNET, unid `0005`) | emergência = `ConsultasUpa`; internação/leitos/CID = `ConsultasCondeKlinikos` |
+| `salux` | `salux-hcml` (Oracle) | `ConsultasPainel` (intacto) |
+
+Voltar ao Salux: `Painel__FonteConde=salux` em `/etc/smsmarica-secretario/env` +
+`systemctl restart smsmarica-secretario`. O log do boot diz qual está ativo
+(`Conector do Conde: …`).
+
+**No Klinikos a Maternidade vem nula**: os partos não são registrados de forma estruturada
+naquela base (`recem_nascido`, `Dados_Parto`, `FichaAdmissaoRN` vazias). A aba mostra
+"Partos sem registro no sistema" no Conde e na Geral. As internações da obstetrícia
+continuam no bloco de internação (faixa "maternidade" = setor OBSTETRÍCIA).
+
+**Mês anterior de agosto/2026 no Conde fica parcial** (Klinikos só a partir de 07/08).
+
 ## 1. DNS
 
 Criar registro **A** no provedor de DNS do domínio `smsmarica.online`:
