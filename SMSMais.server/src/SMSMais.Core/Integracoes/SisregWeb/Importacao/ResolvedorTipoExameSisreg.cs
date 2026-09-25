@@ -49,8 +49,6 @@ public sealed class ResolvedorTipoExameSisreg(
     SmsMaisDbContext db,
     ILogger<ResolvedorTipoExameSisreg> logger) : IResolvedorTipoExameSisreg
 {
-    private const int TamanhoMaximoNome = 200;
-
     public async Task<Guid?> ResolverOuCriarAsync(
         string? nomeSisreg, string? codigoSisreg, string? codigoSigtap, CancellationToken ct)
     {
@@ -103,17 +101,12 @@ public sealed class ResolvedorTipoExameSisreg(
     }
 
     /// <summary>
-    /// Nome do SISREG na forma canônica: MAIÚSCULAS, sem espaço sobrando. O colapso de espaços
-    /// importa — o export traz "CONSULTA  EM CARDIOLOGIA - PEDIATRIA" com espaço duplo, e sem isto
-    /// a mesma coisa viraria dois tipos.
+    /// Nome do SISREG na forma canônica: MAIÚSCULAS, sem espaço sobrando. Delega para
+    /// <see cref="TiposExame.NomeTipoExame.Normalizar"/>, a regra única compartilhada com o cadastro
+    /// manual — os dois lados TÊM de produzir a mesma chave (ver a nota daquela classe). Mantido como
+    /// atalho porque a importação chama por este nome em vários pontos.
     /// </summary>
-    public static string NormalizarNome(string bruto)
-    {
-        var limpo = string.Join(' ', bruto.ToUpperInvariant()
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-
-        return limpo.Length > TamanhoMaximoNome ? limpo[..TamanhoMaximoNome] : limpo;
-    }
+    public static string NormalizarNome(string bruto) => TiposExame.NomeTipoExame.Normalizar(bruto);
 
     /// <summary>
     /// Preenche o que o tipo ainda não sabia — hoje, só o código do SISREG, que costuma chegar

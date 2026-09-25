@@ -53,9 +53,13 @@ public sealed class TiposExameService(SmsMaisDbContext db, IUsuarioAtualAccessor
 
     public async Task<Guid> CadastrarAsync(CadastrarTipoExameRequest request, CancellationToken cancellationToken = default)
     {
-        var nome = request.Nome.Trim();
+        // Nome canônico em MAIÚSCULAS — a MESMA regra da importação do SISREG (NomeTipoExame). Sem
+        // isto, um cadastro manual em caixa mista nunca casaria com a solicitação importada e nascia
+        // um tipo duplicado (ver a nota de NomeTipoExame). A checagem de duplicado é case-insensitive
+        // (upper × upper) para pegar também os registros legados em caixa mista.
+        var nome = NomeTipoExame.Normalizar(request.Nome);
 
-        if (await _db.TiposExame.AsNoTracking().AnyAsync(t => t.Nome == nome && t.ExcluidoEm == null, cancellationToken))
+        if (await _db.TiposExame.AsNoTracking().AnyAsync(t => t.Nome.ToUpper() == nome && t.ExcluidoEm == null, cancellationToken))
         {
             throw new ConflitoException("tipoExame.nome_duplicado", $"Já existe tipo de exame com o nome '{nome}'.");
         }
@@ -92,9 +96,9 @@ public sealed class TiposExameService(SmsMaisDbContext db, IUsuarioAtualAccessor
         var t = await _db.TiposExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(TipoExame), id);
 
-        var nome = request.Nome.Trim();
+        var nome = NomeTipoExame.Normalizar(request.Nome);
         if (nome != t.Nome &&
-            await _db.TiposExame.AsNoTracking().AnyAsync(x => x.Nome == nome && x.ExcluidoEm == null && x.Id != id, cancellationToken))
+            await _db.TiposExame.AsNoTracking().AnyAsync(x => x.Nome.ToUpper() == nome && x.ExcluidoEm == null && x.Id != id, cancellationToken))
         {
             throw new ConflitoException("tipoExame.nome_duplicado", $"Já existe tipo de exame com o nome '{nome}'.");
         }
