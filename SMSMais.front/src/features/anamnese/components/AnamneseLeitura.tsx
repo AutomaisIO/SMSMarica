@@ -138,6 +138,16 @@ export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaCont
                     {r.observacao.trim()}
                   </div>
                 ) : null}
+                {chave === 'jaRealizouCirurgiaMamaria' && siscan?.cirurgias?.length ? (
+                  <ul className="mt-1 space-y-0.5 rounded-md border border-gray-200 px-2.5 py-1.5">
+                    {siscan.cirurgias.map((c, i) => (
+                      <li key={i} className="text-xs text-gray-700">
+                        {ROTULOS_CIRURGIA[c.tipo]} · {c.lado === 'direita' ? 'D' : 'E'}
+                        {c.ano?.trim() ? ` · ${c.ano.trim()}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             );
           })}
@@ -210,6 +220,21 @@ export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaCont
               <span className="text-xs italic text-gray-400">não informada</span>
             )}
           </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+          <span className="text-sm text-gray-800">
+            Apresenta risco elevado para câncer de mama?{' '}
+            <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-700">
+              SISCAN
+            </span>
+          </span>
+          {siscan?.riscoElevado ? (
+            <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+              {ROTULOS_SIM_NAO_NAO_SABE[siscan.riscoElevado]}
+            </span>
+          ) : (
+            <span className="text-xs italic text-gray-400">não informado</span>
+          )}
         </div>
       </section>
 
@@ -289,19 +314,6 @@ export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaCont
                 <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
                   {siscan.anoUltimaMamografia.trim()}
                 </span>
-              </div>
-            ) : null}
-            {siscan.cirurgias?.length ? (
-              <div>
-                <span className="text-sm text-gray-800">Cirurgias de mama</span>
-                <ul className="mt-1 space-y-0.5">
-                  {siscan.cirurgias.map((c, i) => (
-                    <li key={i} className="text-xs text-gray-600">
-                      {ROTULOS_CIRURGIA[c.tipo]} · {c.lado === 'direita' ? 'direita' : 'esquerda'}
-                      {c.ano?.trim() ? ` · ${c.ano.trim()}` : ''}
-                    </li>
-                  ))}
-                </ul>
               </div>
             ) : null}
             {siscan.responsavel ? (

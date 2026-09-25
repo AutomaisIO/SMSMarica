@@ -26,7 +26,7 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-09-23',
+  atualizadoEm: '2026-09-25',
   palavrasChave: [
     'anamnese',
     'mamografia',
@@ -55,6 +55,15 @@ export const artigoAnamnese: Artigo = {
     'lançada à mão',
     'pareamento',
     'anamnese travada sem eu ter gerado',
+    'tipo de cirurgia',
+    'mastectomia',
+    'biópsia',
+    'quadrantectomia',
+    'data de atendimento',
+    'desconectou',
+    'sessão expirou',
+    'reconectar',
+    'GERENCIAR EXAME',
   ],
   secoes: () => [
     {
@@ -123,7 +132,7 @@ export const artigoAnamnese: Artigo = {
               {
                 termo: '3 · Histórico clínico',
                 descricao:
-                  'Dez perguntas de Sim/Não sobre o passado dela — mamografia e ultrassom anteriores, prótese, cirurgia, gestação, hormônios, tabagismo e histórico familiar. O "Sim" abre um campo de observação.',
+                  'Dez perguntas de Sim/Não sobre o passado dela — mamografia e ultrassom anteriores, prótese, cirurgia, gestação, hormônios, tabagismo e histórico familiar. O "Sim" abre um campo de observação. Em "Já realizou cirurgia mamária?" (ou prótese) o "Sim" abre também a tabela de cirurgias: tipo, mama direita e esquerda, e o ano.',
               },
               {
                 termo: '4 · Queixas referidas',
@@ -133,7 +142,7 @@ export const artigoAnamnese: Artigo = {
               {
                 termo: '5 · Avaliação de risco',
                 descricao:
-                  'Quatro critérios objetivos (familiar de 1º grau, câncer antes dos 50 na família, histórico pessoal, mutação genética) e a classificação Baixo, Moderado ou Alto.',
+                  'Quatro critérios objetivos (familiar de 1º grau, câncer antes dos 50 na família, histórico pessoal, mutação genética), a classificação Baixo, Moderado ou Alto e, abaixo, a pergunta do SISCAN "Apresenta risco elevado para câncer de mama?" do jeito que ela é lá.',
               },
               {
                 termo: '6 · Saúde reprodutiva',
@@ -143,7 +152,7 @@ export const artigoAnamnese: Artigo = {
               {
                 termo: '7 · Requisição do SISCAN',
                 descricao:
-                  'As perguntas que existem porque o SISCAN as exige — e que o formulário de papel não tinha. Ver a seção abaixo.',
+                  'As demais perguntas que existem porque o SISCAN as exige — e que o formulário de papel não tinha. Ver a seção abaixo.',
               },
             ]}
           />
@@ -159,31 +168,48 @@ export const artigoAnamnese: Artigo = {
       id: 'secao-siscan',
       titulo: 'Seção 7: o que o SISCAN exige a mais',
       busca:
-        'mamas examinadas antes radioterapia plastrão ano última mamografia cirurgia tipo lado implante prótese',
+        'mamas examinadas antes radioterapia plastrão ano última mamografia cirurgia tipo lado implante prótese tabela mastectomia biópsia risco elevado sim não não sabe quadro',
       conteudo: (
         <>
           <P>
-            A requisição do SISCAN tem seis perguntas obrigatórias. Quatro já estavam no nosso
-            questionário; três chegaram na seção 7 porque o papel não perguntava:
+            A requisição do SISCAN tem seis perguntas obrigatórias. Algumas já estavam no nosso
+            questionário; as que o papel não perguntava entraram onde fazem sentido:
           </P>
           <Lista>
             <Item>
-              <strong>Antes desta consulta, teve as mamas examinadas por um profissional de
-              saúde?</strong> — Sim, Nunca foram examinadas anteriormente, ou Não sabe.
+              <strong>Na seção 7:</strong> <em>Antes desta consulta, teve as mamas examinadas por um
+              profissional de saúde?</em> (Sim, Nunca foram examinadas anteriormente, ou Não sabe);{' '}
+              <em>Fez radioterapia na mama ou no plastrão?</em> (o “Sim” abre em qual mama, e a mama
+              abre o ano de cada lado); e o <em>ano da última mamografia</em>, que só aparece
+              quando a seção 3 disse que ela já fez.
             </Item>
             <Item>
-              <strong>Fez radioterapia na mama ou no plastrão?</strong> — o “Sim” abre em qual mama,
-              e a mama abre o ano de cada lado.
+              <strong>Na seção 3, as cirurgias:</strong> marcando Sim em “Já realizou cirurgia
+              mamária?” (ou em prótese), abre logo abaixo a tabela com os tipos de cirurgia do
+              SISCAN — biópsias, segmentectomia, mastectomia, reconstrução, implantes e os demais.
+              Marque a mama (D ou E) e escreva o ano.
             </Item>
             <Item>
-              <strong>Ano da última mamografia</strong> e <strong>as cirurgias</strong> (tipo, mama
-              e ano). Só aparecem quando a seção 3 já disse que houve — perguntar ano de coisa que
-              não aconteceu é ruído.
+              <strong>Na seção 5, o risco elevado:</strong> a pergunta do SISCAN, com as três
+              respostas dele e o quadro “Risco elevado são:” com o texto de lá.
             </Item>
           </Lista>
+          <Callout tipo="regra" titulo="Por que os tipos de cirurgia são os do SISCAN">
+            O formulário de papel falava em “retirada de nódulo”, “cirurgia plástica”… O SISCAN não
+            aceita esses nomes; aceita os dele. Perguntar do jeito do papel obrigaria alguém a
+            traduzir depois — e “retirada de nódulo” não tem par exato lá. Uma resposta só, no
+            formato que vai para o Ministério.
+          </Callout>
+          <Callout tipo="regra" titulo="Risco elevado: a pergunta do SISCAN vence">
+            A avaliação de risco da seção 5 continua — é a nossa régua. Mas quando a pergunta do
+            SISCAN é respondida, <strong>é ela que vai</strong> para a requisição: quem respondeu
+            olhando o quadro deles respondeu a pergunta certa. Só quando ela fica em branco o
+            sistema deduz pela nossa régua (Moderado ou Alto viram Sim, Baixo vira Não; sem
+            classificação, valem os quatro critérios; sem nada, “Não sabe”).
+          </Callout>
           <Sub>Por que responder aqui muda o que vai para o Ministério</Sub>
           <P>
-            Quando a seção 7 fica em branco, essas perguntas saem para o SISCAN como{' '}
+            Quando essas perguntas ficam em branco, elas saem para o SISCAN como{' '}
             <strong>“Não sabe”</strong>. Isso é honesto — é uma resposta do próprio SISCAN, e não um
             campo inventado —, mas é informação perdida justamente com a paciente ali. Responder
             leva segundos e é o que faz o dado federal valer alguma coisa.
@@ -199,7 +225,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'gerar-requisicao',
       titulo: 'Gerar a requisição no SISCAN',
-      busca: 'gerar requisição botão senha login entrar sessão confirmar salvar criar data da solicitação data do exame DICOM',
+      busca: 'gerar requisição botão senha login entrar sessão confirmar salvar criar data da solicitação data do exame data de atendimento DICOM desconectou sessão expirou reconectar inatividade GERENCIAR EXAME autocompletar',
       conteudo: (
         <>
           <P>
@@ -237,10 +263,24 @@ export const artigoAnamnese: Artigo = {
             <strong>data em que a anamnese foi preenchida</strong>, que é o mesmo dia em 99% das
             vezes. O que nunca vai ali é a data em que a unidade pediu o exame no SISREG, que
             costuma ser semanas ou meses antes.
+            <br />
+            O SISCAN não tem um campo separado de “data de atendimento”: a data do atendimento é
+            justamente esta. Na conferência ela aparece como{' '}
+            <strong>Data da Solicitação — vai a data do atendimento (exame)</strong>.
+          </Callout>
+          <Callout tipo="dica" titulo="O SISCAN desconecta por inatividade — e reconecta sozinho">
+            O SISCAN derruba a sessão depois de um tempo parado. O sistema percebe e entra de novo
+            por você, com a senha que você já deu. Se a queda acontecer no meio de uma operação,
+            aparece um aviso dizendo que <strong>nada foi gravado</strong> e o botão{' '}
+            <BotaoRef variante="outline">Tentar de novo</BotaoRef> — a segunda tentativa já sai
+            conectada. Se a sua sessão aqui tiver acabado (por exemplo, depois de muitas horas
+            parada), a tela pede o login do SISCAN de novo e, ao entrar, volta para a conferência.
           </Callout>
           <Callout tipo="lgpd" titulo="A sua senha do SISCAN não é guardada">
             Ela fica na memória do servidor presa à sua sessão e morre quando você sai do sistema.
-            Não existe tabela para ela, e ninguém além de você a usa.
+            Não existe tabela para ela, e ninguém além de você a usa. A tela de login do SISCAN
+            também não deixa o navegador guardar nem sugerir o seu e-mail e a sua senha — o
+            computador da recepção é de todo mundo.
           </Callout>
         </>
       ),
@@ -358,7 +398,7 @@ export const artigoAnamnese: Artigo = {
           <Sub>“Falta responder na anamnese”</Sub>
           <P>
             O modal mostra em amarelo o que impede a geração e o botão fica desabilitado. Feche,
-            responda na seção 3 ou 7, salve e volte.
+            responda na seção indicada (em geral a 3), salve e volte.
           </P>
 
           <Sub>Já existe requisição</Sub>
@@ -405,7 +445,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'dúvidas perguntas frequentes corrigir alterar depois errado responsável trocar',
+      busca: 'dúvidas perguntas frequentes corrigir alterar depois errado responsável trocar desconectou menu GERENCIAR EXAME não existe',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -417,7 +457,12 @@ export const artigoAnamnese: Artigo = {
             {
               termo: 'O exame já foi feito. Ainda dá para gerar a requisição?',
               descricao:
-                'Dá. A data da solicitação enviada é a do pedido original, e o SISCAN aceita data retroativa — o caso comum é justamente registrar um exame que já aconteceu.',
+                'Dá. O que vai no campo Data da Solicitação é a data em que o exame foi feito (não a do pedido no SISREG), e o SISCAN aceita data retroativa — o caso comum é justamente registrar um exame que já aconteceu.',
+            },
+            {
+              termo: 'Apareceu “O item de menu GERENCIAR EXAME não existe para esta conta”. E agora?',
+              descricao:
+                'Era a sessão do SISCAN que tinha caído por inatividade — a mensagem culpava a conta sem motivo. Desde 25/09/2026 o sistema reconecta sozinho nesse caso; se ainda aparecer, clique em Tentar de novo e, persistindo, abra um ticket.',
             },
             {
               termo: 'Preciso digitar minha senha do SISCAN toda vez?',
@@ -425,9 +470,9 @@ export const artigoAnamnese: Artigo = {
                 'Não. Uma vez por sessão. Ela vale enquanto você estiver no sistema e cai quando você sai.',
             },
             {
-              termo: 'A anamnese antiga, de antes da seção 7, ainda abre?',
+              termo: 'A anamnese antiga, de antes das perguntas do SISCAN, ainda abre?',
               descricao:
-                'Abre normalmente, com as perguntas novas em branco. Preencha antes de gerar a requisição, para não mandar “Não sabe” à toa.',
+                'Abre normalmente, com as perguntas novas em branco (seção 7, tabela de cirurgias e risco elevado do SISCAN). Preencha antes de gerar a requisição, para não mandar “Não sabe” à toa.',
             },
             {
               termo: 'Por que o conselho do responsável não aparece para eu preencher?',

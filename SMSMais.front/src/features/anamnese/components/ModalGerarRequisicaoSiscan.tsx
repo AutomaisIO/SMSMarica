@@ -5,6 +5,7 @@ import {
   usePreparoSiscan,
   type RequisicaoSiscan,
 } from '@/features/anamnese/api/siscanApi';
+import { perdeuSessaoSiscan } from '@/features/anamnese/lib/sessaoSiscan';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
@@ -29,14 +30,26 @@ export function ModalGerarRequisicaoSiscan({
   exameImagemId,
   aoFechar,
   aoGerar,
+  aoPerderSessao,
 }: {
   aberto: boolean;
   exameImagemId: string;
   aoFechar: () => void;
   aoGerar?: (resultado: RequisicaoSiscan) => void;
+  /**
+   * A sessão do operador no SISCAN não existe mais (API reiniciou, 8 h paradas, senha recusada
+   * ao relogar). Quem abriu o modal reabre o login e, autenticado, abre este de novo (#137).
+   */
+  aoPerderSessao?: () => void;
 }) {
   const preparo = usePreparoSiscan(exameImagemId, aberto);
   const gerar = useGerarRequisicaoSiscan(exameImagemId);
+
+  // Sessão perdida não é erro para mostrar em vermelho e fechar: é "entre de novo". Sem isto a
+  // pessoa lia a mensagem, fechava, e não sabia que bastava logar outra vez.
+  useEffect(() => {
+    if (aberto && preparo.isError && perdeuSessaoSiscan(preparo.error)) aoPerderSessao?.();
+  }, [aberto, preparo.isError, preparo.error, aoPerderSessao]);
 
   const [cnsEscolhido, setCnsEscolhido] = useState<string>('');
   const [erro, setErro] = useState<string | null>(null);
@@ -66,6 +79,11 @@ export function ModalGerarRequisicaoSiscan({
       setResultado(gerada);
       aoGerar?.(gerada);
     } catch (falha) {
+      // Nada foi gravado quando a sessão falta (o backend recusa antes do POST): relogar e voltar.
+      if (perdeuSessaoSiscan(falha) && aoPerderSessao) {
+        aoPerderSessao();
+        return;
+      }
       setErro(extrairMensagemDeErro(falha));
     }
   }
@@ -93,10 +111,12 @@ export function ModalGerarRequisicaoSiscan({
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {extrairMensagemDeErro(preparo.error)}
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Button variante="secundaria" onClick={aoFechar}>
               Fechar
             </Button>
+            {/* SISCAN que caiu por ociosidade reconecta sozinho na próxima tentativa. */}
+            <Button onClick={() => void preparo.refetch()}>Tentar de novo</Button>
           </div>
         </div>
       ) : resultado ? (

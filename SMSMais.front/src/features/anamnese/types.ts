@@ -175,8 +175,26 @@ export type ResponsavelSiscan = {
   cns: string;
 };
 
+/**
+ * O quadro "RISCO ELEVADO SÃO:" que o SISCAN mostra junto da pergunta — texto dele, sem
+ * adaptação: quem responde precisa ver a mesma régua que vale lá.
+ */
+export const RISCO_ELEVADO_SISCAN = [
+  'Mulheres com história familiar de, pelo menos, um parente de primeiro grau com diagnóstico de:',
+  '- Câncer de mama antes dos 50 anos de idade;',
+  '- Câncer de mama bilateral ou câncer de ovário em qualquer faixa etária;',
+  'Mulheres com história familiar de câncer de mama masculino;',
+  'Mulheres com diagnóstico histopatológico de lesão mamária proliferativa com atipia ou neoplasia lobular in situ;',
+  'Mulheres com história pessoal de câncer de mama;',
+] as const;
+
 /** Bloco v2 — respostas que existem só porque o SISCAN pede. */
 export type ComplementoSiscan = {
+  /**
+   * "Apresenta risco elevado para câncer de mama?" como o SISCAN pergunta (ticket #139).
+   * Convive com a avaliação de risco da seção 5; quando respondida, é ela que vai ao SISCAN.
+   */
+  riscoElevado: SimNaoNaoSabe | null;
   mamasExaminadasAntes: MamasExaminadasAntes | null;
   radioterapia: {
     resposta: SimNaoNaoSabe | null;
@@ -186,7 +204,7 @@ export type ComplementoSiscan = {
   };
   /** Ano da última mamografia — só aparece se a seção 3 disse que já fez. */
   anoUltimaMamografia: string;
-  /** Cirurgias relatadas — só aparecem se a seção 3 disse que já fez. */
+  /** Cirurgias relatadas — preenchidas na seção 3, logo abaixo de "Já realizou cirurgia mamária?". */
   cirurgias: CirurgiaMama[];
   responsavel: ResponsavelSiscan | null;
 };
@@ -268,6 +286,7 @@ export function conteudoVazio(): AnamneseMamografiaConteudo {
       numeroFilhos: null,
     },
     siscan: {
+      riscoElevado: null,
       mamasExaminadasAntes: null,
       radioterapia: { resposta: null, lado: null, anoDireita: '', anoEsquerda: '' },
       anoUltimaMamografia: '',
