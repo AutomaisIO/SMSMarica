@@ -78,7 +78,13 @@ public sealed class CidadaoLoginLinkService(
 
         var p = await pacientes.ObterPorIdAsync(sol.PacienteId, cancellationToken);
         var cpf = Digitos(p.Cpf);
-        if (cpf.Length != 11)
+        // O CPF só é necessário para o link que abre SESSÃO (ou que exige o CPF do titular). O link
+        // que só confirma presença (campanha, ADR-0062) nunca autentica: paciente sem CPF — o que o
+        // SISREG traz com frequência — recebe a mensagem mesmo assim, em vez de travar na fila.
+        var soConfirma = !abreSessao && !exigeConfirmacaoCpf;
+        if (cpf.Length != 11 && soConfirma)
+            cpf = string.Empty;
+        else if (cpf.Length != 11)
             throw new ConflitoException("magiclink.sem_cpf", "Paciente sem CPF válido para gerar o link de acesso.");
 
         var cfg = await configuracaoLaudo.ObterAsync(cancellationToken);
