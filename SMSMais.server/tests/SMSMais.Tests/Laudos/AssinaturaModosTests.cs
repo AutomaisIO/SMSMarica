@@ -149,6 +149,19 @@ public class AssinaturaModosTests
     }
 
     [Fact]
+    public void Le_a_assinatura_no_formato_real_do_signatures()
+    {
+        // SignaturesResult da doc v3: a assinatura vem em data.signatures[].signedContent.
+        using var doc = JsonDocument.Parse("""
+            {"data":{"requestId":"r","executionStatus":{"currentStatus":"COMPLETED_WITH_SUCCESS"},
+              "certificateInformation":{"encodedX509":"x"},
+              "signatures":[{"signatureId":"s","contentId":"laudo","contentDigest":"d","signedContent":"AQID"}]}}
+            """);
+        IntegraIcpClient.LerString(doc.RootElement, "signedContent").Should().Be("AQID");
+        IntegraIcpClient.LerString(doc.RootElement, "currentStatus").Should().Be("COMPLETED_WITH_SUCCESS");
+    }
+
+    [Fact]
     public void Resumo_de_erro_traz_code_e_message_sem_cpf()
     {
         IntegraIcpClient.ResumoErro("""{"error":{"code":400101,"message":"Invalid Channel"}}""")

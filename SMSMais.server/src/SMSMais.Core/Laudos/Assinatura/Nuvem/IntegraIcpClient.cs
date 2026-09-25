@@ -86,12 +86,26 @@ public sealed class IntegraIcpClient(
         string credencialId, string codeVerifier, byte[] hash, CancellationToken cancellationToken = default)
     {
         GarantirHabilitado();
+        // SignaturesRequest da doc v3: verificador em camelCase (secretData/secretType, ao
+        // contrário da query string das outras etapas) e o hash DENTRO de requests[].
+        // O formato antigo (tudo na raiz, secret_data) dava 400000 "Invalid Request" —
+        // conferido em produção em 25/09/2026 contra este formato, que passa da validação.
         var corpo = new Dictionary<string, object>
         {
             ["credentialId"] = credencialId,
-            ["contentDigest"] = Convert.ToBase64String(hash),
-            ["signaturePolicy"] = "RAW",
-            ["secret_data"] = codeVerifier,
+            ["secretType"] = "code_verifier",
+            ["secretData"] = codeVerifier,
+            ["requests"] = new[]
+            {
+                new Dictionary<string, string>
+                {
+                    ["contentId"] = "laudo",
+                    // Base64 padrão (não URL), como a doc exige.
+                    ["contentDigest"] = Convert.ToBase64String(hash),
+                    ["contentDescription"] = "Laudo",
+                    ["signaturePolicy"] = "RAW",
+                },
+            },
         };
         using var doc = await EnviarAsync(HttpMethod.Post, $"{Prefixo}/signatures", corpo, "signatures", cancellationToken);
 

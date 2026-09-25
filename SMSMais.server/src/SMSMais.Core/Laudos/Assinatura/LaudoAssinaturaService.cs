@@ -612,8 +612,8 @@ public sealed class LaudoAssinaturaService(
             if (rsa is null || !rsa.VerifyHash(prep.ToSignHash, raw, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1))
             {
                 logger.LogError(
-                    "Assinatura: job {JobId} RECUSADO — a assinatura RAW da nuvem não confere como PKCS#1 v1.5/SHA-256 ({Bytes} bytes).",
-                    job.Id, raw.Length);
+                    "Assinatura: job {JobId} RECUSADO — a assinatura RAW da nuvem não confere como PKCS#1 v1.5/SHA-256 ({Bytes} bytes; diagnóstico: {Diagnostico}).",
+                    job.Id, raw.Length, rsa is null ? "certificado sem chave RSA" : DiagnosticarRaw(rsa, raw, prep.ToSignHash));
                 throw new ConflitoException("assinatura.nuvem_raw_incompativel",
                     "O provedor devolveu uma assinatura em formato incompatível. Nada foi gravado. Avise o suporte.");
             }
@@ -630,6 +630,34 @@ public sealed class LaudoAssinaturaService(
             if (job.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura)
                 await MarcarFalhaAsync(job, cancellationToken);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Abre a assinatura RAW com a chave pública (s^e mod n) e diz o que o provedor assinou:
+    /// PSS, PKCS#1 sem DigestInfo (hash "puro") ou algo inesperado. Só metadados no retorno —
+    /// nada de chave nem de conteúdo. Serve para corrigir de primeira se o RAW não for o esperado.
+    /// </summary>
+    internal static string DiagnosticarRaw(RSA rsa, byte[] raw, byte[] hash)
+    {
+        try
+        {
+            if (rsa.VerifyHash(hash, raw, HashAlgorithmName.SHA256, RSASignaturePadding.Pss))
+                return "RSASSA-PSS/SHA-256";
+
+            var p = rsa.ExportParameters(false);
+            var n = new System.Numerics.BigInteger(p.Modulus, isUnsigned: true, isBigEndian: true);
+            var e = new System.Numerics.BigInteger(p.Exponent, isUnsigned: true, isBigEndian: true);
+            var s = new System.Numerics.BigInteger(raw, isUnsigned: true, isBigEndian: true);
+            var em = System.Numerics.BigInteger.ModPow(s, e, n).ToByteArray(isUnsigned: true, isBigEndian: true);
+            var terminaNoHash = em.Length >= hash.Length && em.AsSpan(em.Length - hash.Length).SequenceEqual(hash);
+            var comDigestInfo = Convert.ToHexString(em).Contains("3031300D060960864801650304020105000420", StringComparison.Ordinal);
+            var padding = em.Length > 0 && em[0] == 0x01 ? "PKCS#1 tipo 1" : $"primeiro byte 0x{(em.Length > 0 ? em[0] : 0):X2}";
+            return $"{padding}; termina no hash={terminaNoHash}; DigestInfo SHA-256={comDigestInfo}; modulo {p.Modulus!.Length * 8} bits";
+        }
+        catch (Exception ex)
+        {
+            return $"falha no diagnóstico ({ex.GetType().Name})";
         }
     }
 
