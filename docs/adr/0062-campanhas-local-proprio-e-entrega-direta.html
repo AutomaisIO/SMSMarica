@@ -46,21 +46,21 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>Encaixe:</strong> um agendamento é da campanha quando <code>unidade_executante_id</code> é a unidade da campanha e <code>data_agendada</code> cai no período. A consulta é única (<code>CampanhaResolver.VigenteAsync</code>) e é usada em todos os pontos que mostram o lugar.</p>
 <h3>2. O local da campanha substitui o da unidade em tudo o que o paciente vê</h3>
 <p>Vale para a mensagem, o card e o detalhe do exame no app (o telefone da unidade é omitido, porque não é o de quem atende), a tela de presença confirmada e a lista do robô ("meus agendamentos"). O painel interno continua mostrando a unidade do SISREG, que é o dado regulado.</p>
-<h3>3. Modelo próprio na Meta: <code>agendamento_campanha</code></h3>
-<p>Os modelos aprovados não têm variável para local nem endereço, e o <code>confirmacao_regulacao</code> afirma que eles "constam na sua guia", o que aqui é falso. O modelo novo tem 5 variáveis:</p>
+<h3>3. Modelo da campanha: <code>confirmar_agendamento_urlapp</code> (já aprovado)</h3>
+<p>Dos modelos aprovados, o <code>confirmacao_regulacao</code> não tem variável para local nem endereço e ainda afirma que eles "constam na sua guia", o que aqui é falso. O <code>confirmar_agendamento_urlapp</code> foi a confirmação até 08/07/2026, continua aprovado na WABA e tem as duas variáveis. Por isso é o modelo da campanha:</p>
+<p>&gt; 📆Olá <em>{{1}}</em>, você tem {{2}} de <em>{{3}}</em> agendado para o dia <em>{{4}}</em>, {{5}}📍, às <em>{{6}}</em>. &gt; <em>Endereço:</em> {{7}} — <em>É muito importante sua confirmação.</em></p>
 <div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th></tr></thead><tbody>
-<tr><td><code>{{1}}</code></td><td>tratamento</td></tr>
-<tr><td><code>{{2}}</code></td><td>procedimento</td></tr>
-<tr><td><code>{{3}}</code></td><td>data e hora</td></tr>
-<tr><td><code>{{4}}</code></td><td>local</td></tr>
-<tr><td><code>{{5}}</code></td><td>endereço</td></tr>
+<tr><td><code>{{1}}</code></td><td>primeiro nome</td></tr>
+<tr><td><code>{{2}}</code></td><td>"um exame"</td></tr>
+<tr><td><code>{{3}}</code></td><td>procedimento</td></tr>
+<tr><td><code>{{4}}</code></td><td>data</td></tr>
+<tr><td><code>{{5}}</code></td><td>"local: " + nome do local</td></tr>
+<tr><td><code>{{6}}</code></td><td>hora</td></tr>
+<tr><td><code>{{7}}</code></td><td>endereço</td></tr>
 </tbody></table></div>
-<p>O texto é neutro em gênero ("Você tem um agendamento") e avisa que o local vale "mesmo que a sua guia indique outro endereço". Os botões são:</p>
-<ul>
-<li>URL <code>/entrar/{token}</code>;</li>
-<li>"Não poderei ir" (payload <code>confirma:</code>, com o fluxo de cancelamento de sempre);</li>
-<li>"Não sou essa pessoa" (volta como texto e é casado pelo contexto; leva ao "você conhece…?" do ADR-0057).</li>
-</ul>
+<p>O {{5}} leva o rótulo "local: " porque o nome do local é livre, e um "na"/"no" fixo erraria a preposição.</p>
+<p>Os botões são URL <code>/entrar/{token}</code> e a resposta rápida "Não poderei ir" (payload <code>confirma:</code>, com o fluxo de cancelamento de sempre). O modelo <strong>não</strong> tem "Não sou essa pessoa": quem escrever isso cai na Central de Atendimento.</p>
+<p>Um modelo próprio (<code>agendamento_campanha</code>, com o aviso "mesmo que a sua guia indique outro endereço") foi submetido em 25/09/2026, mas a Meta ainda não o aprovou. Quando for aprovado, a troca é por configuração (<code>ComunicacaoPaciente:TemplateCampanha</code>) mais o mapeamento das variáveis em <code>MontarEnvio</code>.</p>
 <p>O lembrete para quem não respondeu repete esse mesmo modelo quando a entrega é direta.</p>
 <h3>4. Entrega direta é uma exceção ao ADR-0057, compensada no link</h3>
 <p>Com <code>exigir_conferencia_cadastral = false</code>, a mensagem sai <strong>já com os dados</strong>, sem desafio e sem exigir telefone verificado. O risco é o mesmo que o ADR-0057 combate: o número do cadastro pode não ser do paciente. A compensação é o <strong>link que só confirma</strong>:</p>
@@ -109,10 +109,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ul>
 <p>  do SISREG; sem isso, a lista fica vazia (a tela diz isso).</p>
 <ul>
-<li>Enquanto <code>agendamento_campanha</code> não for aprovado na Meta, o envio falha com o erro do modelo e fica</li>
-</ul>
-<p>  na fila de falhas, visível no alcance. Não há fallback para <code>confirmacao_regulacao</code>, porque ele   mandaria a paciente à Secretaria.</p>
-<ul>
+<li>Não há fallback para <code>confirmacao_regulacao</code>: ele mandaria a paciente à Secretaria.</li>
 <li>Se a Meta pedir mudança no texto, a <strong>ordem das variáveis</strong> é contrato com o código</li>
 </ul>
 <p>  (<code>ComunicacaoPacienteService.MontarEnvio</code>, <code>ConteudoLegivel</code>).</p>

@@ -46,25 +46,36 @@ Vale para a mensagem, o card e o detalhe do exame no app (o telefone da unidade 
 o de quem atende), a tela de presença confirmada e a lista do robô ("meus agendamentos"). O painel
 interno continua mostrando a unidade do SISREG, que é o dado regulado.
 
-### 3. Modelo próprio na Meta: `agendamento_campanha`
+### 3. Modelo da campanha: `confirmar_agendamento_urlapp` (já aprovado)
 
-Os modelos aprovados não têm variável para local nem endereço, e o `confirmacao_regulacao` afirma que
-eles "constam na sua guia", o que aqui é falso. O modelo novo tem 5 variáveis:
+Dos modelos aprovados, o `confirmacao_regulacao` não tem variável para local nem endereço e ainda
+afirma que eles "constam na sua guia", o que aqui é falso. O `confirmar_agendamento_urlapp` foi a
+confirmação até 08/07/2026, continua aprovado na WABA e tem as duas variáveis. Por isso é o modelo da
+campanha:
+
+> 📆Olá *{{1}}*, você tem {{2}} de *{{3}}* agendado para o dia *{{4}}*, {{5}}📍, às *{{6}}*.
+> *Endereço:* {{7}} — *É muito importante sua confirmação.*
 
 | Variável | Conteúdo |
 |---|---|
-| `{{1}}` | tratamento |
-| `{{2}}` | procedimento |
-| `{{3}}` | data e hora |
-| `{{4}}` | local |
-| `{{5}}` | endereço |
+| `{{1}}` | primeiro nome |
+| `{{2}}` | "um exame" |
+| `{{3}}` | procedimento |
+| `{{4}}` | data |
+| `{{5}}` | "local: " + nome do local |
+| `{{6}}` | hora |
+| `{{7}}` | endereço |
 
-O texto é neutro em gênero ("Você tem um agendamento") e avisa que o local vale "mesmo que a sua guia
-indique outro endereço". Os botões são:
+O {{5}} leva o rótulo "local: " porque o nome do local é livre, e um "na"/"no" fixo erraria a
+preposição.
 
-- URL `/entrar/{token}`;
-- "Não poderei ir" (payload `confirma:`, com o fluxo de cancelamento de sempre);
-- "Não sou essa pessoa" (volta como texto e é casado pelo contexto; leva ao "você conhece…?" do ADR-0057).
+Os botões são URL `/entrar/{token}` e a resposta rápida "Não poderei ir" (payload `confirma:`, com o
+fluxo de cancelamento de sempre). O modelo **não** tem "Não sou essa pessoa": quem escrever isso cai na
+Central de Atendimento.
+
+Um modelo próprio (`agendamento_campanha`, com o aviso "mesmo que a sua guia indique outro endereço")
+foi submetido em 25/09/2026, mas a Meta ainda não o aprovou. Quando for aprovado, a troca é por
+configuração (`ComunicacaoPaciente:TemplateCampanha`) mais o mapeamento das variáveis em `MontarEnvio`.
 
 O lembrete para quem não respondeu repete esse mesmo modelo quando a entrega é direta.
 
@@ -115,9 +126,7 @@ encerrar = Exclusão), com:
 
 - A campanha só alcança o que já foi **importado**. A unidade da campanha precisa estar na varredura
   do SISREG; sem isso, a lista fica vazia (a tela diz isso).
-- Enquanto `agendamento_campanha` não for aprovado na Meta, o envio falha com o erro do modelo e fica
-  na fila de falhas, visível no alcance. Não há fallback para `confirmacao_regulacao`, porque ele
-  mandaria a paciente à Secretaria.
+- Não há fallback para `confirmacao_regulacao`: ele mandaria a paciente à Secretaria.
 - Se a Meta pedir mudança no texto, a **ordem das variáveis** é contrato com o código
   (`ComunicacaoPacienteService.MontarEnvio`, `ConteudoLegivel`).
 - A exceção ao ADR-0057 é **por campanha e visível na tela** (selo "Entrega direta"), e não uma

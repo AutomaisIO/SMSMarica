@@ -910,20 +910,26 @@ public sealed class ComunicacaoPacienteService(
                     && !campanha.ExigirConferenciaCadastral));
         if (mensagemDeCampanha)
         {
+            // confirmar_agendamento_urlapp (aprovado na Meta; era a confirmação até 08/07/2026):
+            // "📆Olá *{{1}}*, você tem {{2}} de *{{3}}* agendado para o dia *{{4}}*, {{5}}📍, às
+            // *{{6}}*. *Endereço:* {{7}} *É muito importante sua confirmação.*"
+            // {{5}} leva o rótulo "local: " — o nome do local é livre e um "na"/"no" fixo erraria a
+            // preposição. Botões na ordem do modelo: URL (0) e "Não poderei ir" (1, payload confirma:).
             var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
             return (
                 opts.TemplateCampanha,
                 [
-                    Tratamento(nomePaciente, sexo),
+                    nome,
+                    tipo == TipoAgendamento.Consulta ? "uma consulta" : "um exame",
                     exame,
-                    $"{quando.ToString("dd/MM/yyyy", PtBr)} às {quando.ToString("HH:mm", PtBr)}h",
-                    campanha!.LocalNome,
+                    quando.ToString("dd/MM/yyyy", PtBr),
+                    $"local: {campanha!.LocalNome}",
+                    $"{quando.ToString("HH:mm", PtBr)}h",
                     campanha.LocalEndereco,
                 ],
                 [
                     url,
                     new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}"),
-                    new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"naosou:{s.Id}"),
                 ]);
         }
 
@@ -1077,12 +1083,10 @@ public sealed class ComunicacaoPacienteService(
     /// </summary>
     private static string? ConteudoLegivel(string template, ComunicacaoPacienteOptions opts, IReadOnlyList<string> p)
     {
-        if (template == opts.TemplateCampanha && p.Count == 5)
-            // Corpo do agendamento_campanha (ADR-0062), com {{1}}..{{5}}.
-            return $"Olá, {p[0]}! Aqui é o canal oficial do Alô Maricá, da Secretaria Municipal de Saúde.\n\n"
-                + $"Você tem um agendamento:\n*{p[1]}*\nData: {p[2]}\nLocal: *{p[3]}*\nEndereço: {p[4]}\n\n"
-                + "Atenção: o atendimento será neste local, mesmo que a sua guia indique outro endereço.\n"
-                + "Leve documento com foto, cartão SUS e a guia de solicitação.";
+        if (template == opts.TemplateCampanha && p.Count == 7)
+            // Corpo do confirmar_agendamento_urlapp (modelo da campanha, ADR-0062), com {{1}}..{{7}}.
+            return $"📆Olá *{p[0]}*, você tem {p[1]} de *{p[2]}* agendado para o dia *{p[3]}*, {p[4]}📍, "
+                + $"às *{p[5]}*.\n\n*Endereço:* {p[6]}\n\n*É muito importante sua confirmação.* 😊";
         if (template == opts.TemplateConfirmaAgendamento && p.Count == 7)
             // Corpo aprovado do confirmacao_regulacao (Complexo Regulador), com {{1}}..{{7}}.
             return $"Bom dia, {p[0]}. Este é o canal do *Alô Maricá* do Complexo Regulador do Município! "

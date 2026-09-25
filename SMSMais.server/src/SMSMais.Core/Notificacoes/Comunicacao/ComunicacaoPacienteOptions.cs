@@ -78,15 +78,14 @@ public sealed class ComunicacaoPacienteOptions
 
     /// <summary>
     /// Aviso de agendamento de CAMPANHA (ADR-0062) — já com os dados, e com o local e o endereço
-    /// da campanha no lugar dos da unidade do SISREG. Corpo: "Olá, {{1}}! … Você tem um
-    /// agendamento: *{{2}}* Data: {{3}} Local: *{{4}}* Endereço: {{5}} … mesmo que a sua guia
-    /// indique outro endereço."
-    ///   {{1}} = "Sra. Simone" · {{2}} = procedimento · {{3}} = "26/09/2026 às 08:00h"
-    ///   {{4}} = nome do local · {{5}} = endereço em uma linha
-    /// Botões na ordem: URL "Confirmar presença" (token), "Não poderei ir" (payload confirma:) e
-    /// "Não sou essa pessoa" (volta como texto; casado pelo contexto da mensagem).
+    /// da campanha no lugar dos da unidade do SISREG. Usa o <c>confirmar_agendamento_urlapp</c>
+    /// (aprovado; foi a confirmação até 08/07/2026): "📆Olá *{{1}}*, você tem {{2}} de *{{3}}*
+    /// agendado para o dia *{{4}}*, {{5}}📍, às *{{6}}*. *Endereço:* {{7}}".
+    ///   {{1}} = primeiro nome · {{2}} = "um exame" · {{3}} = procedimento · {{4}} = "26/09/2026"
+    ///   {{5}} = "local: Carreta da Mulher" · {{6}} = "08:00h" · {{7}} = endereço em uma linha
+    /// Botões: URL (token) e "Não poderei ir" (payload confirma:).
     /// </summary>
-    public string TemplateCampanha { get; set; } = "agendamento_campanha";
+    public string TemplateCampanha { get; set; } = "confirmar_agendamento_urlapp";
 
     /// <summary>
     /// Aviso de cancelamento. Corpo aprovado:
