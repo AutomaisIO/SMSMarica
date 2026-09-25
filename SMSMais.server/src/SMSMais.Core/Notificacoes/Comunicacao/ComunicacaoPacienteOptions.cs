@@ -77,6 +77,18 @@ public sealed class ComunicacaoPacienteOptions
     public string TemplateLembreteConfirmado { get; set; } = "agendamento_proximo";
 
     /// <summary>
+    /// Aviso de agendamento de CAMPANHA (ADR-0062) — já com os dados, e com o local e o endereço
+    /// da campanha no lugar dos da unidade do SISREG. Corpo: "Olá, {{1}}! … Você tem um
+    /// agendamento: *{{2}}* Data: {{3}} Local: *{{4}}* Endereço: {{5}} … mesmo que a sua guia
+    /// indique outro endereço."
+    ///   {{1}} = "Sra. Simone" · {{2}} = procedimento · {{3}} = "26/09/2026 às 08:00h"
+    ///   {{4}} = nome do local · {{5}} = endereço em uma linha
+    /// Botões na ordem: URL "Confirmar presença" (token), "Não poderei ir" (payload confirma:) e
+    /// "Não sou essa pessoa" (volta como texto; casado pelo contexto da mensagem).
+    /// </summary>
+    public string TemplateCampanha { get; set; } = "agendamento_campanha";
+
+    /// <summary>
     /// Aviso de cancelamento. Corpo aprovado:
     /// <code>
     /// Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.

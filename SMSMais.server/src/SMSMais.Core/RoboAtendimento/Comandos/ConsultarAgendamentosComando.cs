@@ -77,9 +77,17 @@ public sealed class ConsultarAgendamentosComando(
                     ? s.ExameImagem.TipoExame.Nome
                     : (s.EspecialidadeTexto ?? s.ProcedimentoTexto),
                 Unidade = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
+                s.UnidadeExecutanteId,
                 s.StatusConfirmacao,
             })
             .ToListAsync(ct);
+
+        // Campanha (ADR-0062): o local e o endereço da campanha valem sobre a unidade do SISREG —
+        // senão o robô mandaria a paciente da Carreta para a Secretaria.
+        var campanhas = new Dictionary<int, Notificacoes.Campanhas.CampanhaVigente?>();
+        for (var i = 0; i < futuros.Count; i++)
+            campanhas[i] = await Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
+                db, futuros[i].UnidadeExecutanteId, futuros[i].DataAgendada, ct);
 
         var linhasSer = await db.SerSolicitacoes.AsNoTracking()
             .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
@@ -107,10 +115,12 @@ public sealed class ConsultarAgendamentosComando(
                 + "horário — fora dele, não prometa atendente: oriente a retornar no horário de "
                 + "atendimento.");
 
-        var linhas = futuros.Select(f =>
+        var linhas = futuros.Select((f, i) =>
         {
             var quando = f.DataAgendada is { } d ? FusoBrasilia.ParaExibicao(d).ToString("dd/MM/yyyy 'às' HH:mm") : "sem data";
-            var onde = string.IsNullOrWhiteSpace(f.Unidade) ? string.Empty : $" — {f.Unidade}";
+            var onde = campanhas[i] is { } camp
+                ? $" — {camp.LocalNome} ({camp.LocalEndereco}; atendimento neste local, mesmo que a guia indique outro)"
+                : string.IsNullOrWhiteSpace(f.Unidade) ? string.Empty : $" — {f.Unidade}";
             var conf = f.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada ? " (já confirmado)" : string.Empty;
             return $"- {f.Procedimento ?? "atendimento"}: {quando}{onde}{conf}";
         });

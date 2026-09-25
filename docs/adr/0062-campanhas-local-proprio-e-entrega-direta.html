@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0062 — Campanhas: local próprio sobre a unidade do SISREG e entrega direta com link que só confirma</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0062 — Campanhas: local próprio sobre a unidade do SISREG e entrega direta com link que só confirma</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-09-25 <strong>Relacionado:</strong> <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (destinatário correto — esta decisão abre uma exceção controlada a ele) · <a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a> (Mensageria) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (SISREG só-leitura — mantido) · <a href="./0043-instancia-por-municipio.md">ADR-0043</a> (nada institucional em código)</p>
+<h2>Contexto</h2>
+<p>A Secretaria abriu uma campanha de um mês numa <strong>unidade móvel</strong> ("Carreta da Mulher": mamografia e ultrassons ginecológicos). A regulação agenda no SISREG com a <strong>Secretaria Municipal de Saúde</strong> (CNES 6886973) como unidade executante, porque a carreta não existe como unidade no SISREG. Só que a Secretaria não recebe paciente, e a carreta fica em outro endereço. Em 26/09/2026 eram 160 agendamentos num único dia.</p>
+<p>Três coisas do fluxo normal não servem aqui:</p>
+<ol>
+<li><strong>O lugar.</strong> Toda comunicação ao paciente (mensagem, card do app, tela de presença confirmada,</li>
+</ol>
+<p>   resposta do robô) usa o nome e o endereço da unidade executante. A guia impressa também diz    Secretaria. O paciente iria para o lugar errado.</p>
+<ol>
+<li><strong>A conferência.</strong> Número não verificado recebe primeiro a mensagem curta</li>
+</ol>
+<p>   (<code>confirmacao_exame</code>) e só vê os dados depois de informar os 4 dígitos do CPF e o nascimento. Em    20/09, 657 de 1.824 pacientes pararam nesse pedido. Numa campanha com prazo, a mensagem <strong>precisa    chegar</strong> com o lugar certo.</p>
+<ol>
+<li><strong>O disparo.</strong> O aviso automático depende das chaves de unidade e de procedimento, e a campanha</li>
+</ol>
+<p>   precisa de envio pelo botão, acompanhamento do alcance e reenvio a quem não respondeu.</p>
+<h2>Decisão</h2>
+<h3>1. Campanha é uma entidade própria (<code>smsmarica.campanha</code>)</h3>
+<p>Nome, <strong>unidade executante</strong> (FK <code>unidade</code>), <strong>início e fim</strong> (UTC), <strong>nome do local</strong> e <strong>endereço</strong> (uma linha, como vai na mensagem), e três chaves: <code>exigir_conferencia_cadastral</code>, <code>envio_automatico</code> e <code>ativa</code>. Tem auditoria e exclusão lógica. <strong>Duas campanhas ativas da mesma unidade não podem se sobrepor.</strong> Nada institucional em código ou migration: o nome e o endereço da carreta são dados cadastrados na tela.</p>
+<p><strong>Encaixe:</strong> um agendamento é da campanha quando <code>unidade_executante_id</code> é a unidade da campanha e <code>data_agendada</code> cai no período. A consulta é única (<code>CampanhaResolver.VigenteAsync</code>) e é usada em todos os pontos que mostram o lugar.</p>
+<h3>2. O local da campanha substitui o da unidade em tudo o que o paciente vê</h3>
+<p>Vale para a mensagem, o card e o detalhe do exame no app (o telefone da unidade é omitido, porque não é o de quem atende), a tela de presença confirmada e a lista do robô ("meus agendamentos"). O painel interno continua mostrando a unidade do SISREG, que é o dado regulado.</p>
+<h3>3. Modelo próprio na Meta: <code>agendamento_campanha</code></h3>
+<p>Os modelos aprovados não têm variável para local nem endereço, e o <code>confirmacao_regulacao</code> afirma que eles "constam na sua guia", o que aqui é falso. O modelo novo tem 5 variáveis:</p>
+<div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th></tr></thead><tbody>
+<tr><td><code>{{1}}</code></td><td>tratamento</td></tr>
+<tr><td><code>{{2}}</code></td><td>procedimento</td></tr>
+<tr><td><code>{{3}}</code></td><td>data e hora</td></tr>
+<tr><td><code>{{4}}</code></td><td>local</td></tr>
+<tr><td><code>{{5}}</code></td><td>endereço</td></tr>
+</tbody></table></div>
+<p>O texto é neutro em gênero ("Você tem um agendamento") e avisa que o local vale "mesmo que a sua guia indique outro endereço". Os botões são:</p>
+<ul>
+<li>URL <code>/entrar/{token}</code>;</li>
+<li>"Não poderei ir" (payload <code>confirma:</code>, com o fluxo de cancelamento de sempre);</li>
+<li>"Não sou essa pessoa" (volta como texto e é casado pelo contexto; leva ao "você conhece…?" do ADR-0057).</li>
+</ul>
+<p>O lembrete para quem não respondeu repete esse mesmo modelo quando a entrega é direta.</p>
+<h3>4. Entrega direta é uma exceção ao ADR-0057, compensada no link</h3>
+<p>Com <code>exigir_conferencia_cadastral = false</code>, a mensagem sai <strong>já com os dados</strong>, sem desafio e sem exigir telefone verificado. O risco é o mesmo que o ADR-0057 combate: o número do cadastro pode não ser do paciente. A compensação é o <strong>link que só confirma</strong>:</p>
+<ul>
+<li>o link é gerado com a janela de sessão já fechada (<code>sessao_ate_em = criado_em</code>);</li>
+<li>o clique registra a presença e mostra "presença confirmada", <strong>sem abrir o app</strong>;</li>
+<li>a sessão só abre quando o número é o <strong>telefone verificado</strong> do próprio paciente.</li>
+</ul>
+<p>Quem recebe por engano descobre a data e o local de um exame, que é o que a campanha aceita expor. Não descobre resultado, prontuário nem sessão.</p>
+<p>O que <strong>não</strong> muda:</p>
+<ul>
+<li>a guarda central de número negado (<code>WhatsAppCliente</code> com origem <code>Automatico</code>) continua barrando;</li>
+<li>pendência de número errado retém a mensagem;</li>
+<li>"Não sou essa pessoa" segue marcando o número.</li>
+</ul>
+<p>Com a chave <strong>ligada</strong>, vale o fluxo normal, e os dados só saem (no modelo da campanha) depois da identificação.</p>
+<h3>5. Envio</h3>
+<ul>
+<li><strong>Automático:</strong> com <code>envio_automatico</code>, a importação do SISREG enfileira todo agendamento futuro</li>
+</ul>
+<p>  da campanha, <strong>ignorando as chaves de unidade e procedimento</strong>. A campanha é a decisão explícita   que essas chaves representam.</p>
+<ul>
+<li><strong>Botão Enviar:</strong> enfileira o que ainda não recebeu nada e solta o que está empilhado esperando a</li>
+</ul>
+<p>  janela. Ignora a janela de horário, porque foi uma pessoa que clicou.</p>
+<ul>
+<li><strong>Reenviar a quem não respondeu:</strong> revoga os links anteriores, rearma a comunicação e deixa trilha</li>
+</ul>
+<p>  em <code>contato_registro</code>. Ficam de fora: sem celular, número negado e atendimento humano em curso.</p>
+<ul>
+<li>O ritmo continua sendo o do worker (vazão das Regras).</li>
+</ul>
+<h3>6. Tela</h3>
+<p>Aba <strong>Campanhas</strong> na Mensageria (módulo 38; criar = Inclusão, editar/enviar = Edição, encerrar = Exclusão), com:</p>
+<ul>
+<li>a lista e o formulário;</li>
+<li>os contadores do funil: agendados, sem mensagem, na fila, enviadas, entregues, lidas,</li>
+</ul>
+<p>  confirmaram, não vão, sem resposta, falhas, sem celular;</p>
+<ul>
+<li>a tabela filtrável do alcance, que se atualiza a cada 15 s.</li>
+</ul>
+<h2>Consequências</h2>
+<ul>
+<li>A campanha só alcança o que já foi <strong>importado</strong>. A unidade da campanha precisa estar na varredura</li>
+</ul>
+<p>  do SISREG; sem isso, a lista fica vazia (a tela diz isso).</p>
+<ul>
+<li>Enquanto <code>agendamento_campanha</code> não for aprovado na Meta, o envio falha com o erro do modelo e fica</li>
+</ul>
+<p>  na fila de falhas, visível no alcance. Não há fallback para <code>confirmacao_regulacao</code>, porque ele   mandaria a paciente à Secretaria.</p>
+<ul>
+<li>Se a Meta pedir mudança no texto, a <strong>ordem das variáveis</strong> é contrato com o código</li>
+</ul>
+<p>  (<code>ComunicacaoPacienteService.MontarEnvio</code>, <code>ConteudoLegivel</code>).</p>
+<ul>
+<li>A exceção ao ADR-0057 é <strong>por campanha e visível na tela</strong> (selo "Entrega direta"), e não uma</li>
+</ul>
+<p>  configuração global.</p>
+</main>
+</body>
+</html>

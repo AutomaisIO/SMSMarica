@@ -224,6 +224,8 @@ public static class DependencyInjection
             Notificacoes.Confirmacoes.ConfirmacoesEquipeService>();
         services.AddScoped<Notificacoes.Mensageria.IMensageriaConfiguracaoService,
             Notificacoes.Mensageria.MensageriaConfiguracaoService>();
+        // Campanhas (ADR-0062): local/endereço próprios sobre a unidade do SISREG + envio pelo botão.
+        services.AddScoped<Notificacoes.Campanhas.ICampanhaService, Notificacoes.Campanhas.CampanhaService>();
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoGestaoService,
             Notificacoes.Comunicacao.ComunicacaoGestaoService>();
         services.AddScoped<Notificacoes.Comunicacao.IContatoComprometidoService,

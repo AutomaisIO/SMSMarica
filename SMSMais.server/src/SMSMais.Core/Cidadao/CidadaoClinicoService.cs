@@ -232,9 +232,16 @@ public sealed class CidadaoClinicoService(
                     InicioEm = s.Solicitacao!.DataAgendada!.Value,
                     TipoExameNome = s.TipoExame != null ? s.TipoExame.Nome : null,
                     UnidadeNome = s.Solicitacao!.UnidadeExecutante != null ? s.Solicitacao!.UnidadeExecutante.Nome : null,
+                    s.Solicitacao!.UnidadeExecutanteId,
                     s.Solicitacao!.StatusConfirmacao,
                 })
                 .ToListAsync(cancellationToken);
+
+            // Campanha (ADR-0062): o card mostra o local da campanha no lugar da unidade do SISREG.
+            var locais = new Dictionary<Guid, string?>();
+            foreach (var s in solicitacoes)
+                locais[s.Id] = (await Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
+                    db, s.UnidadeExecutanteId, s.InicioEm, cancellationToken))?.LocalNome ?? s.UnidadeNome;
 
             resultado.AddRange(solicitacoes.Select(s => new AgendamentoResumoDto(
                 s.Id,
@@ -243,7 +250,7 @@ public sealed class CidadaoClinicoService(
                 "Exame",
                 s.TipoExameNome ?? "Exame",
                 null,
-                s.UnidadeNome,
+                locais[s.Id],
                 DescreverStatusConfirmacao(s.StatusConfirmacao),
                 SolicitacaoExameId: s.Id,
                 StatusConfirmacao: s.StatusConfirmacao.ToString(),
@@ -265,15 +272,20 @@ public sealed class CidadaoClinicoService(
         if (s is null || s.Solicitacao!.PacienteId != pacienteId) return null;
         var reg = s.Solicitacao!;
 
+        // Campanha (ADR-0062): o atendimento é no local da campanha, não na unidade do SISREG — o
+        // telefone da unidade também sai, porque não é o de quem atende.
+        var campanha = await Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
+            db, reg.UnidadeExecutanteId, reg.DataAgendada, cancellationToken);
+
         return new AgendamentoExameDetalheDto(
             s.Id,
             s.TipoExame?.Nome ?? "Exame",
             reg.DataAgendada,
             reg.DataSolicitacao,
             reg.DataRegulacao,
-            reg.UnidadeExecutante?.Nome,
-            FormatarEndereco(reg.UnidadeExecutante?.Endereco),
-            reg.UnidadeExecutante?.Telefone,
+            campanha?.LocalNome ?? reg.UnidadeExecutante?.Nome,
+            campanha?.LocalEndereco ?? FormatarEndereco(reg.UnidadeExecutante?.Endereco),
+            campanha is null ? reg.UnidadeExecutante?.Telefone : null,
             reg.UnidadeSolicitante?.Nome,
             string.IsNullOrWhiteSpace(reg.SolicitanteNome) ? null : reg.SolicitanteNome,
             s.AccessionNumber,

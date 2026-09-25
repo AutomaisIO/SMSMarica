@@ -284,3 +284,73 @@ export type PreviaLote = {
   reenviosAvisados: number;
   reenviosConfirmados: number;
 };
+
+// ---- Campanhas (ADR-0062) ----
+
+export type Campanha = {
+  id: string;
+  nome: string;
+  unidadeId: string;
+  unidadeNome: string | null;
+  inicioEm: string;
+  fimEm: string;
+  localNome: string;
+  localEndereco: string;
+  exigirConferenciaCadastral: boolean;
+  envioAutomatico: boolean;
+  ativa: boolean;
+  criadoEm: string;
+  atualizadoEm: string | null;
+};
+
+export type SalvarCampanha = {
+  nome: string;
+  unidadeId: string;
+  inicioEm: string;
+  fimEm: string;
+  localNome: string;
+  localEndereco: string;
+  exigirConferenciaCadastral: boolean;
+  envioAutomatico: boolean;
+  ativa: boolean;
+};
+
+/** Enum do backend viaja como string. */
+export type ModoEnvioCampanha = 'NaoEnviados' | 'NaoRespondidos';
+
+export type CampanhaAlcanceItem = {
+  solicitacaoId: string;
+  codigoSolicitacao: string | null;
+  pacienteNome: string | null;
+  dataAgendada: string | null;
+  procedimento: string | null;
+  comunicacaoId: string | null;
+  telefone: string | null;
+  statusComunicacao: string | null;
+  enviadoEm: string | null;
+  entregueEm: string | null;
+  lidoEm: string | null;
+  visualizadoEm: string | null;
+  motivoFalha: string | null;
+  statusConfirmacao: string;
+  confirmadoCanal: string | null;
+};
+
+export type CampanhaAlcanceTotais = {
+  agendados: number;
+  semMensagem: number;
+  naFila: number;
+  enviados: number;
+  entregues: number;
+  lidos: number;
+  confirmados: number;
+  naoVao: number;
+  semResposta: number;
+  falhas: number;
+  semTelefone: number;
+};
+
+export type CampanhaAlcance = {
+  totais: CampanhaAlcanceTotais;
+  itens: CampanhaAlcanceItem[];
+};

@@ -18,7 +18,7 @@ export const artigoMensageria: Artigo = {
   slug: 'mensageria',
   titulo: 'Mensageria',
   resumo:
-    'A gestão dos envios de WhatsApp ao paciente: o que saiu, chegou, falhou e por quê; o disparo em lote; e as regras que governam todo o automático.',
+    'A gestão dos envios de WhatsApp ao paciente: o que saiu, chegou, falhou e por quê; o disparo em lote; as campanhas; e as regras que governam todo o automático.',
   grupo: 'atendimento',
   icone: BellRing,
   rota: '/app/mensageria',
@@ -55,6 +55,16 @@ export const artigoMensageria: Artigo = {
     'cancelamentos do sisreg',
     'taxa de entrega',
     'taxa de leitura',
+    'campanha',
+    'campanhas',
+    'carreta',
+    'unidade móvel',
+    'local do atendimento',
+    'endereço da campanha',
+    'conferência de cpf',
+    'entrega direta',
+    'reenviar sem resposta',
+    'alcance',
   ],
   secoes: () => [
     {
@@ -308,6 +318,82 @@ export const artigoMensageria: Artigo = {
       ),
     },
     {
+      id: 'campanhas',
+      titulo: 'Campanhas: quando o atendimento é em outro lugar',
+      busca: 'campanha carreta unidade móvel local endereço secretaria período conferência cpf nascimento entrega direta enviar reenviar sem resposta alcance confirmaram não vão link só confirma',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Às vezes a regulação agenda no SISREG para uma unidade, mas o atendimento acontece em outro lugar —
+            o caso que criou esta aba foi uma unidade móvel agendada como <strong>Secretaria de Saúde</strong>. Sem
+            a campanha, o paciente veria o nome e o endereço da Secretaria e iria para o lugar errado.
+          </P>
+          <P>
+            Na aba <AbaRef>Campanhas</AbaRef> você cadastra o <strong>período</strong>, a <strong>unidade</strong> em
+            que o SISREG agenda e o <strong>nome do local</strong> e o <strong>endereço</strong> que o paciente deve
+            ver. Todo agendamento daquela unidade dentro do período passa a mostrar o local da campanha: na mensagem
+            de WhatsApp, na tela de presença confirmada, no card do app e na resposta do robô.
+          </P>
+          <Sub>As três chaves</Sub>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Conferir CPF e data de nascimento',
+                descricao:
+                  'Ligada, vale o fluxo normal: primeiro a mensagem curta, os dados só depois da identificação. Desligada é a entrega direta: a mensagem já sai com o procedimento, a data, o local e o endereço, sem conferir quem está do outro lado e sem exigir telefone verificado.',
+              },
+              {
+                termo: 'Avisar sozinho ao importar',
+                descricao:
+                  'Quem for importado do SISREG no período é avisado automaticamente, mesmo que a unidade e os procedimentos estejam com o aviso desligado. Desligada, a mensagem só sai pelo botão Enviar.',
+              },
+              {
+                termo: 'Campanha ativa',
+                descricao: 'Desligada, os agendamentos voltam a mostrar a unidade do SISREG e nada é enviado pela campanha.',
+              },
+            ]}
+          />
+          <Callout tipo="atencao" titulo="Na entrega direta, o link só confirma">
+            Como a mensagem sai sem conferir o destinatário, o botão <BotaoRef>Confirmar presença</BotaoRef> apenas
+            registra a presença — ele <strong>não abre o app</strong>. Só abre quando o número é o telefone verificado
+            do próprio paciente. Quem recebeu por engano consegue, no máximo, confirmar; ver dados, não.
+          </Callout>
+          <Passos
+            itens={[
+              {
+                titulo: 'Cadastre a campanha',
+                detalhe: 'Nome, unidade do SISREG, início e fim (hora de Brasília), local e endereço. Duas campanhas ativas da mesma unidade não podem se sobrepor.',
+              },
+              {
+                titulo: 'Confira se a agenda chegou',
+                detalhe:
+                  'A campanha só alcança agendamentos já importados do SISREG. Se a lista estiver vazia, a agenda da unidade ainda não foi sincronizada.',
+              },
+              {
+                titulo: 'Clique em Enviar',
+                detalhe:
+                  'Sai agora, mesmo fora do horário de envio, para quem ainda não recebeu nada. As mensagens entram na fila e escoam no ritmo configurado.',
+              },
+              {
+                titulo: 'Acompanhe o alcance',
+                detalhe:
+                  'Os contadores mostram quantos receberam, leram, confirmaram, não vão, não responderam ou falharam. Os filtros acima da tabela mostram quem está em cada situação; passe o mouse no selo de falha para ver o motivo.',
+              },
+              {
+                titulo: 'Reenvie a quem não respondeu',
+                detalhe:
+                  'Refaz a mensagem para quem recebeu e não disse nada. O link da mensagem anterior deixa de valer. Número marcado como errado, sem celular e atendimento em curso ficam de fora.',
+              },
+            ]}
+          />
+          <Callout tipo="dica" titulo="Por que alguém não aparece para reenviar">
+            Quem já confirmou ou avisou que não vai não recebe de novo. Quem tem o número marcado como de outra pessoa
+            também não — isso se resolve em Pendências de Cadastro, não aqui.
+          </Callout>
+        </div>
+      ),
+    },
+    {
       id: 'regras',
       titulo: 'Regras e parâmetros: o que governa o automático',
       busca: 'regras parâmetros janela de envio vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente',
@@ -455,7 +541,8 @@ export const artigoMensageria: Artigo = {
           </P>
           <P>
             <strong>Edição</strong> é o que libera agir: reenviar um envio, enviar teste de modelo, disparar lote,
-            salvar parâmetros e tarifas. Sem ela, os campos ficam travados e os botões simplesmente não aparecem —
+            salvar parâmetros e tarifas, editar uma campanha e usar Enviar/Reenviar nela. Criar campanha pede{' '}
+            <strong>Inclusão</strong> e encerrar pede <strong>Exclusão</strong>. Sem ela, os campos ficam travados e os botões simplesmente não aparecem —
             botão que some é proposital, para ninguém clicar no que vai ser recusado.
           </P>
           <Callout tipo="dica" titulo="Uma assimetria que confunde">

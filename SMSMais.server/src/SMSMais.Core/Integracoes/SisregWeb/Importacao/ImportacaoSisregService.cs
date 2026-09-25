@@ -1283,6 +1283,13 @@ public sealed class ImportacaoSisregService(
         if (m.DataHoraAtendimento is { } quando && ParaUtcBrasilia(quando) < DateTime.UtcNow)
             return false;
 
+        // Campanha (ADR-0062) com envio automático: tudo o que cai no período dela avisa, sem
+        // depender das chaves de unidade e procedimento — é para isso que a campanha foi criada.
+        if (m.DataHoraAtendimento is { } dataCampanha
+            && await SMSMais.Core.Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
+                db, unidadeExecutanteId, ParaUtcBrasilia(dataCampanha), ct) is { EnvioAutomatico: true })
+            return true;
+
         var daUnidade = await db.SisregVarreduraAgendas.AsNoTracking()
             .Where(a => a.UnidadeId == unidadeExecutanteId)
             .Select(a => (bool?)a.EnviarConfirmacao)

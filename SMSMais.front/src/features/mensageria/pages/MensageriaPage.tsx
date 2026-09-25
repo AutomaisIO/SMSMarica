@@ -2,6 +2,7 @@ import { MessageSquareText } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs } from '@/shared/ui/Tabs';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
+import { AbaCampanhas } from '@/features/mensageria/components/AbaCampanhas';
 import { AbaEnvios } from '@/features/mensageria/components/AbaEnvios';
 import { AbaLote } from '@/features/mensageria/components/AbaLote';
 import { AbaRegras } from '@/features/mensageria/components/AbaRegras';
@@ -9,7 +10,7 @@ import { AbaRespostas } from '@/features/mensageria/components/AbaRespostas';
 import { AbaTesteModelo } from '@/features/mensageria/components/AbaTesteModelo';
 import { AbaResumoDiario } from '@/features/mensageria/components/AbaResumoDiario';
 
-const ABAS = ['resumo', 'envios', 'respostas', 'lote', 'regras', 'teste'] as const;
+const ABAS = ['resumo', 'envios', 'respostas', 'lote', 'campanhas', 'regras', 'teste'] as const;
 
 /**
  * Mensageria (módulo 38): a gestão dos envios de WhatsApp ao paciente — o que saiu, chegou, falhou
@@ -30,7 +31,7 @@ export function MensageriaPage() {
             <AjudaManual artigo="mensageria" />
           </div>
           <p className="mt-1 text-sm text-gray-600">
-            Envios de WhatsApp ao paciente: qualidade da entrega dia a dia, falhas, respostas, disparo em lote e regras.
+            Envios de WhatsApp ao paciente: qualidade da entrega dia a dia, falhas, respostas, disparo em lote, campanhas e regras.
           </p>
         </div>
       </header>
@@ -42,6 +43,7 @@ export function MensageriaPage() {
           { id: 'envios', rotulo: 'Envios', conteudo: <AbaEnvios /> },
           { id: 'respostas', rotulo: 'Respostas dos pacientes', conteudo: <AbaRespostas /> },
           { id: 'lote', rotulo: 'Disparar lote', conteudo: <AbaLote /> },
+          { id: 'campanhas', rotulo: 'Campanhas', conteudo: <AbaCampanhas /> },
           { id: 'regras', rotulo: 'Regras e parâmetros', conteudo: <AbaRegras /> },
           { id: 'teste', rotulo: 'Testar modelo', conteudo: <AbaTesteModelo /> },
         ]}

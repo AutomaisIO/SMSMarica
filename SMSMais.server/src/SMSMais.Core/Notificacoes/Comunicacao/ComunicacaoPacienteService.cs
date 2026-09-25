@@ -546,9 +546,20 @@ public sealed class ComunicacaoPacienteService(
         // 20/09/2026) — e ela não expõe nada, é justamente o convite a se identificar.
         var lembreteDeQuemConfirmou = n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
             && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada;
+
+        // CAMPANHA (ADR-0062): o local e o endereço vêm dela, não da unidade do SISREG. Com a
+        // conferência desligada, a entrega é DIRETA — sem desafio e sem exigir número provado —
+        // porque o que importa na campanha é a mensagem chegar. Em troca, o link não abre o app
+        // (ver a geração do link abaixo).
+        var campanha = n.Finalidade is FinalidadeComunicacao.ConfirmacaoAgendamento
+                or FinalidadeComunicacao.LembreteAgendamento
+            ? await Campanhas.CampanhaResolver.VigenteAsync(db, s.UnidadeExecutanteId, s.DataAgendada, ct)
+            : null;
+        var entregaDireta = campanha is { ExigirConferenciaCadastral: false };
+
         var exigeVerificado = n.Finalidade is FinalidadeComunicacao.ExameLiberado
             or FinalidadeComunicacao.LaudoPronto
-            || lembreteDeQuemConfirmou;
+            || (lembreteDeQuemConfirmou && !entregaDireta);
 
         // Envio manual com "assumo o risco" (n.IgnorarVerificacaoTelefone): o operador decidiu
         // enviar o resultado mesmo sem número verificado — pula o gate e usa o melhor celular.
@@ -636,6 +647,7 @@ public sealed class ComunicacaoPacienteService(
                 && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente);
 
         if (repetePrimeiraMensagem
+            && !entregaDireta
             && !n.IgnorarVerificacaoTelefone
             && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
             && options.Value.VerificacaoCadastralHabilitada)
@@ -692,24 +704,30 @@ public sealed class ComunicacaoPacienteService(
         // O aviso de CANCELAMENTO não leva botão de link, e a conciliação acabou de revogar os
         // acessos da solicitação: gerar um link novo aqui reabriria a porta que ela fechou — e, para
         // paciente sem CPF, a geração falha e derrubava o aviso inteiro.
-        var tokenLink = Guid.Empty;
-        if (n.Finalidade != FinalidadeComunicacao.CancelamentoAgendamento)
-        {
-            var link = await loginLinks.GerarParaSolicitacaoAsync(
-                exameIdPublico, Destino(n.Finalidade, exameIdPublico), ExigeCpf(n.Finalidade), ct);
-            n.LoginLinkId = link.Token;
-            tokenLink = link.Token;
-        }
-
-        var opts = options.Value;
         // Aviso de cancelamento mostra o agendamento inteiro só para contato PROVADO; para os
         // demais é anônimo ("sua consulta foi cancelada") e o detalhe espera a identificação.
         var contatoVerificado = TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
             && TelefoneWhatsApp.MesmoNumero(paciente.TelefoneVerificado, n.Telefone);
 
+        var tokenLink = Guid.Empty;
+        if (n.Finalidade != FinalidadeComunicacao.CancelamentoAgendamento)
+        {
+            // Campanha para número que não é o verificado do paciente: o link só CONFIRMA a
+            // presença, não abre o app. A mensagem saiu sem conferir quem está do outro lado —
+            // quem a recebeu por engano consegue, no máximo, confirmar.
+            var abreSessao = campanha is null || contatoVerificado;
+            var link = await loginLinks.GerarParaSolicitacaoAsync(
+                exameIdPublico, Destino(n.Finalidade, exameIdPublico), ExigeCpf(n.Finalidade),
+                abreSessao, ct);
+            n.LoginLinkId = link.Token;
+            tokenLink = link.Token;
+        }
+
+        var opts = options.Value;
+
         var (template, parametros, botoes) = MontarEnvio(
             n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, tokenLink, opts,
-            contatoVerificado);
+            contatoVerificado, campanha);
 
         // O modelo aprovado manda na quantidade de variáveis: mandar a mais é erro 132000 na Meta
         // e a mensagem não sai. Corta pela declaração do catálogo (cacheado) e avisa quando o
@@ -873,13 +891,41 @@ public sealed class ComunicacaoPacienteService(
 
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
         FinalidadeComunicacao finalidade, TipoAgendamento tipo, Solicitacao s, string? nomePaciente,
-        Sexo sexo, Guid token, ComunicacaoPacienteOptions opts, bool contatoVerificado = false)
+        Sexo sexo, Guid token, ComunicacaoPacienteOptions opts, bool contatoVerificado = false,
+        Campanhas.CampanhaVigente? campanha = null)
     {
         var nome = PrimeiroNome(nomePaciente);
         // Nome do procedimento: exame de imagem tem TipoExame no satélite; consulta usa a
         // especialidade/procedimento em texto.
         var exame = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto ?? "exame";
         var url = new BotaoTemplateWhatsApp(TipoBotaoTemplate.Url, token.ToString());
+
+        // CAMPANHA (ADR-0062): a confirmação — e o lembrete de quem ainda não respondeu, que é a
+        // mesma mensagem repetida — sai no modelo da campanha, com o local e o endereço dela.
+        // Com a conferência ligada, só chega aqui depois do desafio (número já provado).
+        var mensagemDeCampanha = campanha is not null
+            && (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                || (finalidade == FinalidadeComunicacao.LembreteAgendamento
+                    && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada
+                    && !campanha.ExigirConferenciaCadastral));
+        if (mensagemDeCampanha)
+        {
+            var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
+            return (
+                opts.TemplateCampanha,
+                [
+                    Tratamento(nomePaciente, sexo),
+                    exame,
+                    $"{quando.ToString("dd/MM/yyyy", PtBr)} às {quando.ToString("HH:mm", PtBr)}h",
+                    campanha!.LocalNome,
+                    campanha.LocalEndereco,
+                ],
+                [
+                    url,
+                    new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}"),
+                    new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"naosou:{s.Id}"),
+                ]);
+        }
 
         switch (finalidade)
         {
@@ -1031,6 +1077,12 @@ public sealed class ComunicacaoPacienteService(
     /// </summary>
     private static string? ConteudoLegivel(string template, ComunicacaoPacienteOptions opts, IReadOnlyList<string> p)
     {
+        if (template == opts.TemplateCampanha && p.Count == 5)
+            // Corpo do agendamento_campanha (ADR-0062), com {{1}}..{{5}}.
+            return $"Olá, {p[0]}! Aqui é o canal oficial do Alô Maricá, da Secretaria Municipal de Saúde.\n\n"
+                + $"Você tem um agendamento:\n*{p[1]}*\nData: {p[2]}\nLocal: *{p[3]}*\nEndereço: {p[4]}\n\n"
+                + "Atenção: o atendimento será neste local, mesmo que a sua guia indique outro endereço.\n"
+                + "Leve documento com foto, cartão SUS e a guia de solicitação.";
         if (template == opts.TemplateConfirmaAgendamento && p.Count == 7)
             // Corpo aprovado do confirmacao_regulacao (Complexo Regulador), com {{1}}..{{7}}.
             return $"Bom dia, {p[0]}. Este é o canal do *Alô Maricá* do Complexo Regulador do Município! "

@@ -24,9 +24,11 @@ public interface ICidadaoLoginLinkService
     /// <paramref name="destino"/> troca a rota de chegada (default "/exames"). A validade
     /// respeita a config, mas nunca expira ANTES da DataAgendada (o botão "Confirmar" do
     /// WhatsApp precisa funcionar até o dia do exame; teto 30 dias).</summary>
+    /// <para><paramref name="abreSessao"/> = false gera um link que só CONFIRMA presença, desde o
+    /// primeiro clique (campanha para número não provado — ADR-0062).</para>
     Task<MagicLinkDto> GerarParaSolicitacaoAsync(
         Guid solicitacaoExameId, string? destino = null, bool exigeConfirmacaoCpf = false,
-        CancellationToken cancellationToken = default);
+        bool abreSessao = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Troca o token por sessão (uso único). <c>null</c> se inválido/usado/expirado.
@@ -58,7 +60,7 @@ public sealed class CidadaoLoginLinkService(
 
     public async Task<MagicLinkDto> GerarParaSolicitacaoAsync(
         Guid solicitacaoExameId, string? destino = null, bool exigeConfirmacaoCpf = false,
-        CancellationToken cancellationToken = default)
+        bool abreSessao = true, CancellationToken cancellationToken = default)
     {
         // O parâmetro pode ser o id PÚBLICO do exame de imagem (ExameImagem.Id) OU já o id da
         // solicitação (regulação SISREG, que NÃO tem ExameImagem). Traduz para o id da espinha.
@@ -100,7 +102,9 @@ public sealed class CidadaoLoginLinkService(
             // Entrar no app só nas primeiras 24h (decisão de 17/09/2026). Depois disso o link
             // continua servindo para CONFIRMAR a presença até o dia do exame, mas não autentica
             // mais ninguém: link repassado, ou o celular que passou de mão, não abre o prontuário.
-            SessaoAteEm = DateTime.UtcNow.Add(JanelaSessao),
+            // Sem sessão (campanha para número não provado): a janela já nasce fechada, e o
+            // primeiro clique cai direto no "só confirma".
+            SessaoAteEm = abreSessao ? DateTime.UtcNow.Add(JanelaSessao) : DateTime.UtcNow,
             ExpiraEm = DateTime.UtcNow.AddDays(dias),
             CriadoEm = DateTime.UtcNow,
             CriadoPor = usuarioAtual.UsuarioId,
@@ -150,7 +154,10 @@ public sealed class CidadaoLoginLinkService(
             s.ExameImagem?.Id ?? s.Id,
             s.ExameImagem?.TipoExame?.Nome ?? "Exame",
             s.DataAgendada,
-            s.UnidadeExecutante?.Nome,
+            // Campanha (ADR-0062): o paciente vê o local da campanha, não a unidade do SISREG.
+            (await Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
+                db, s.UnidadeExecutanteId, s.DataAgendada, cancellationToken))?.LocalNome
+                ?? s.UnidadeExecutante?.Nome,
             confirmadaAgora);
     }
 
