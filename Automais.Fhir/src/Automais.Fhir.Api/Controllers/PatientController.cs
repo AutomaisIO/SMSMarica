@@ -94,6 +94,41 @@ public sealed class PatientController(IPatientService service) : ControllerBase
     }
 
     /// <summary>
+    /// POST /fhir/Patient/{id}/$merge?source={outroId} — funde dois Patients que são a MESMA
+    /// pessoa. <c>{id}</c> é o SOBREVIVENTE; <c>source</c> é o absorvido.
+    ///
+    /// <para>O absorvido não é apagado: fica com <c>active=false</c> e <c>link[replaced-by]</c>
+    /// apontando para o sobrevivente, que por sua vez absorve as chaves (CNS antigo como
+    /// <c>old</c>, chaves de origem inteiras) e recebe todo o clínico de <c>fhir.*</c>.</para>
+    ///
+    /// <para><b>Não alcança <c>smsmarica.*</c></b> — laudo, solicitacao, tratamento, conversa e as
+    /// demais colunas com id de paciente pertencem a outra aplicação, não têm FK nenhuma, e ficam
+    /// apontando para o absorvido até serem repontadas por ela. Os números devolvidos aqui servem
+    /// para conferir essa segunda metade.</para>
+    /// </summary>
+    [HttpPost("{id}/$merge")]
+    public async Task<IActionResult> Fundir(string id, [FromQuery] string? source, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+            throw new RecursoInvalidoException("Informe ?source={id do Patient a ser absorvido}.");
+
+        var r = await service.FundirAsync(ParseId(id), ParseId(source), ct);
+
+        var p = new Parameters();
+        p.Add("sobrevivente", new ResourceReference($"Patient/{r.SobreviventeId}"));
+        p.Add("absorvido", new ResourceReference($"Patient/{r.AbsorvidoId}"));
+        p.Add("identifiersAbsorvidos", new Integer(r.IdentifiersAbsorvidos));
+        p.Add("encounter", new Integer(r.Encounters));
+        p.Add("condition", new Integer(r.Conditions));
+        p.Add("observation", new Integer(r.Observations));
+        p.Add("medicationRequest", new Integer(r.MedicationRequests));
+        p.Add("medicationAdministration", new Integer(r.MedicationAdministrations));
+        p.Add("documentReference", new Integer(r.DocumentReferences));
+        p.Add("totalRepontado", new Integer(r.TotalRepontado));
+        return FhirResponse.Recurso(p);
+    }
+
+    /// <summary>
     /// Search param <c>_id</c>: lista OR separada por vírgula; valor inválido é ignorado.
     /// Param presente sem nenhum id válido devolve lista vazia (searchset vazio), não
     /// null — senão a busca degeneraria para "sem filtro" (últimos 50).
