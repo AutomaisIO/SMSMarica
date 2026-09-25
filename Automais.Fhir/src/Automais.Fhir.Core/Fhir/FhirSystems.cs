@@ -44,6 +44,21 @@ public static class FhirSystems
     public const string SaluxBaa = "urn:salux:baa";
     public const string SaluxEdoc = "urn:salux:edoc";
 
+    // Prime Saúde (Eco Sistemas). O relatório *Pacientes Atendidos*, que é a via de ingestão do
+    // histórico, NÃO traz o id do atendimento nem o do paciente — só CNS, profissional e o
+    // fechamento do registro. Por isso o identifier do Encounter é uma CHAVE SINTÉTICA derivada
+    // de (unidade, fechamento, profissional, paciente) + ordinal, estável entre importações.
+    // Quando o atendimento vier pela extensão (que vê o `atendimentoId` real na tela do PEP),
+    // usar `PrimeAtendimentoId` — os dois convivem como identifiers do mesmo Encounter.
+    // Chave do paciente no Prime (o `Código` da grade de busca — um GUID). O relatório de
+    // atendidos NÃO traz, mas a busca de paciente sim, e sem ela um Patient vindo do Prime ficaria
+    // sem chave de origem: medido em 23/09/2026, Salux e Klinikos têm chave de origem em 100% dos
+    // pacientes, enquanto SISREG/implantação tem em 0% — e é por isso que reconciliar aquela carga
+    // depende de adivinhar por CPF/CNS em vez de simplesmente reler a chave.
+    public const string PrimePaciente = "urn:prime:paciente";
+    public const string PrimeAtendimento = "urn:prime:atendimento";
+    public const string PrimeAtendimentoId = "urn:prime:atendimento-id";
+
     // Estrutura física do hospital (Location — ADR-0025)
     public const string SaluxUnidade = "urn:salux:unidade";
     public const string SaluxQuarto = "urn:salux:quarto";

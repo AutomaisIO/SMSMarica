@@ -12,6 +12,9 @@ public static class MetaSources
     public const string Hub = Base + "smsmarica";
 
     public const string Salux = Base + "salux";
+
+    /// <summary>Prime Saúde (Eco Sistemas) — atenção especializada de Maricá.</summary>
+    public const string Prime = Base + "prime";
     public const string Esus = Base + "esus";
     public const string Pacs = Base + "pacs";
 }

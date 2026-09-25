@@ -217,6 +217,104 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         return bundle;
     }
 
+    public async Task<ResultadoFusao> FundirAsync(Guid sobreviventeId, Guid absorvidoId,
+        CancellationToken ct = default)
+    {
+        if (sobreviventeId == absorvidoId)
+            throw new RecursoInvalidoException("Sobrevivente e absorvido são o mesmo Patient.");
+
+        var rowS = await db.Patients.FirstOrDefaultAsync(p => p.Id == sobreviventeId && !p.IsDeleted, ct)
+                   ?? throw new RecursoNaoEncontradoException(TipoRecurso, sobreviventeId.ToString());
+        var rowA = await db.Patients.FirstOrDefaultAsync(p => p.Id == absorvidoId && !p.IsDeleted, ct)
+                   ?? throw new RecursoNaoEncontradoException(TipoRecurso, absorvidoId.ToString());
+
+        var sobrevivente = LerRecurso(rowS);
+        var absorvido = LerRecurso(rowA);
+
+        // Fundir duas vezes empilharia links e identifiers e tornaria o desfazer ambíguo.
+        if (absorvido.Link.Any(l => l.Type == Patient.LinkType.ReplacedBy))
+            throw new RecursoInvalidoException(
+                $"Patient/{absorvidoId} já foi fundido antes (tem link replaced-by).");
+        if (sobrevivente.Link.Any(l => l.Type == Patient.LinkType.ReplacedBy))
+            throw new RecursoInvalidoException(
+                $"Patient/{sobreviventeId} já foi absorvido por outro — não pode ser sobrevivente.");
+
+        // ---- 1. o sobrevivente absorve as chaves que não tinha
+        var absorvidos = 0;
+        foreach (var ident in absorvido.Identifier)
+        {
+            var mesmo = sobrevivente.Identifier.Any(x =>
+                x.System == ident.System &&
+                string.Equals(Digitos(x.Value), Digitos(ident.Value), StringComparison.Ordinal));
+            if (mesmo) continue;
+
+            var copia = (Identifier)ident.DeepCopy();
+            // O CNS que vem do absorvido não é o número que representa a pessoa hoje — entra como
+            // `old`, para o CnsOficial() não trocar o oficial do sobrevivente por ele. Continua
+            // valendo como chave de busca: TodosOsCns() o coloca em cns_todos.
+            if (copia.System == FhirSystems.Cns) copia.Use = Identifier.IdentifierUse.Old;
+            sobrevivente.Identifier.Add(copia);
+            absorvidos++;
+        }
+
+        // ---- 2. o vínculo, nos dois sentidos
+        sobrevivente.Link.Add(new Patient.LinkComponent
+        {
+            Other = new ResourceReference($"{TipoRecurso}/{absorvidoId}"),
+            Type = Patient.LinkType.Replaces,
+        });
+        absorvido.Link.Add(new Patient.LinkComponent
+        {
+            Other = new ResourceReference($"{TipoRecurso}/{sobreviventeId}"),
+            Type = Patient.LinkType.ReplacedBy,
+        });
+        // `active=false` e NÃO `is_deleted`: o registro tem de continuar legível para quem chegar
+        // pelo id antigo encontrar o ponteiro. Excluir logicamente devolveria 404 e quebraria
+        // link salvo, integração e o app do cidadão.
+        absorvido.Active = false;
+
+        var agora = clock.GetUtcNow();
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // ---- 3. repontar o clínico de fhir.* (ExecuteUpdate: não passa pelo change tracker, e
+        // por isso é feito ANTES do SaveChanges dos dois Patients — nenhuma dessas linhas está
+        // rastreada aqui, então não há estado obsoleto para conciliar depois).
+        var encounters = await db.Encounters.Where(e => e.PatientId == absorvidoId)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
+                                      .SetProperty(e => e.LastUpdated, agora), ct);
+        var conditions = await db.Conditions.Where(e => e.PatientId == absorvidoId)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
+                                      .SetProperty(e => e.LastUpdated, agora), ct);
+        var observations = await db.Observations.Where(e => e.PatientId == absorvidoId)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
+                                      .SetProperty(e => e.LastUpdated, agora), ct);
+        var medRequests = await db.MedicationRequests.Where(e => e.PatientId == absorvidoId)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
+                                      .SetProperty(e => e.LastUpdated, agora), ct);
+        var medAdmins = await db.MedicationAdministrations.Where(e => e.PatientId == absorvidoId)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
+                                      .SetProperty(e => e.LastUpdated, agora), ct);
+        var documentos = await db.DocumentReferences.Where(e => e.PatientId == absorvidoId)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
+                                      .SetProperty(e => e.LastUpdated, agora), ct);
+
+        // ---- 4. gravar os dois Patients
+        foreach (var (row, recurso) in new[] { (rowS, sobrevivente), (rowA, absorvido) })
+        {
+            var versao = row.VersionId + 1;
+            CarimbarMeta(recurso, row.Id, versao, agora, row.MetaSource);
+            row.VersionId = versao;
+            row.LastUpdated = agora;
+            ExtrairSearchParams(row, recurso);
+            row.Content = FhirJson.Serialize(recurso);
+        }
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return new ResultadoFusao(sobreviventeId, absorvidoId, absorvidos,
+            encounters, conditions, observations, medRequests, medAdmins, documentos);
+    }
+
     /// <summary>
     /// Lê o documento canônico da linha <b>garantindo que o recurso saia com id</b>.
     ///
