@@ -239,7 +239,14 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
             throw new RecursoInvalidoException(
                 $"Patient/{sobreviventeId} já foi absorvido por outro — não pode ser sobrevivente.");
 
-        // ---- 1. o sobrevivente absorve as chaves que não tinha
+        // ---- 1. as chaves MUDAM de dono (não são copiadas)
+        //
+        // Um identifier identifica uma PESSOA, e depois da fusão essa pessoa é o sobrevivente.
+        // Copiar deixaria os dois Patients com o mesmo CNS — que é exatamente a anomalia sendo
+        // consertada: a busca por aquele CNS passaria a devolver DOIS, e um conector fazendo
+        // "achar por CNS" pegaria o registro absorvido e penduraria dado novo nele.
+        // (Pego pelo teste `Sobrevivente_passa_a_ser_encontrado_pela_chave_do_absorvido`, que
+        // encontrava 2 quando o código copiava.)
         var absorvidos = 0;
         foreach (var ident in absorvido.Identifier)
         {
@@ -248,14 +255,17 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
                 string.Equals(Digitos(x.Value), Digitos(ident.Value), StringComparison.Ordinal));
             if (mesmo) continue;
 
-            var copia = (Identifier)ident.DeepCopy();
+            var movido = (Identifier)ident.DeepCopy();
             // O CNS que vem do absorvido não é o número que representa a pessoa hoje — entra como
             // `old`, para o CnsOficial() não trocar o oficial do sobrevivente por ele. Continua
             // valendo como chave de busca: TodosOsCns() o coloca em cns_todos.
-            if (copia.System == FhirSystems.Cns) copia.Use = Identifier.IdentifierUse.Old;
-            sobrevivente.Identifier.Add(copia);
+            if (movido.System == FhirSystems.Cns) movido.Use = Identifier.IdentifierUse.Old;
+            sobrevivente.Identifier.Add(movido);
             absorvidos++;
         }
+        // A lápide não guarda identificador: quem a procura, procura pelo id — e é o `link` que
+        // conta a história. Os números todos seguem no sobrevivente.
+        absorvido.Identifier.Clear();
 
         // ---- 2. o vínculo, nos dois sentidos
         sobrevivente.Link.Add(new Patient.LinkComponent
@@ -276,27 +286,13 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         var agora = clock.GetUtcNow();
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        // ---- 3. repontar o clínico de fhir.* (ExecuteUpdate: não passa pelo change tracker, e
-        // por isso é feito ANTES do SaveChanges dos dois Patients — nenhuma dessas linhas está
-        // rastreada aqui, então não há estado obsoleto para conciliar depois).
-        var encounters = await db.Encounters.Where(e => e.PatientId == absorvidoId)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
-                                      .SetProperty(e => e.LastUpdated, agora), ct);
-        var conditions = await db.Conditions.Where(e => e.PatientId == absorvidoId)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
-                                      .SetProperty(e => e.LastUpdated, agora), ct);
-        var observations = await db.Observations.Where(e => e.PatientId == absorvidoId)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
-                                      .SetProperty(e => e.LastUpdated, agora), ct);
-        var medRequests = await db.MedicationRequests.Where(e => e.PatientId == absorvidoId)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
-                                      .SetProperty(e => e.LastUpdated, agora), ct);
-        var medAdmins = await db.MedicationAdministrations.Where(e => e.PatientId == absorvidoId)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
-                                      .SetProperty(e => e.LastUpdated, agora), ct);
-        var documentos = await db.DocumentReferences.Where(e => e.PatientId == absorvidoId)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.PatientId, sobreviventeId)
-                                      .SetProperty(e => e.LastUpdated, agora), ct);
+        // ---- 3. repontar o clínico de fhir.*
+        var encounters = await ReapontarAsync("encounter", absorvidoId, sobreviventeId, agora, ct);
+        var conditions = await ReapontarAsync("condition", absorvidoId, sobreviventeId, agora, ct);
+        var observations = await ReapontarAsync("observation", absorvidoId, sobreviventeId, agora, ct);
+        var medRequests = await ReapontarAsync("medication_request", absorvidoId, sobreviventeId, agora, ct);
+        var medAdmins = await ReapontarAsync("medication_administration", absorvidoId, sobreviventeId, agora, ct);
+        var documentos = await ReapontarAsync("document_reference", absorvidoId, sobreviventeId, agora, ct);
 
         // ---- 4. gravar os dois Patients
         foreach (var (row, recurso) in new[] { (rowS, sobrevivente), (rowA, absorvido) })
@@ -313,6 +309,49 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
         return new ResultadoFusao(sobreviventeId, absorvidoId, absorvidos,
             encounters, conditions, observations, medRequests, medAdmins, documentos);
+    }
+
+    /// <summary>
+    /// Move os recursos clínicos de um paciente para outro — <b>na coluna E no documento</b>.
+    ///
+    /// <para>Repontar só a coluna <c>patient_id</c> não funciona, e falha em silêncio: a coluna é
+    /// search param, mas quem responde uma leitura é o <c>content</c>. Com só a coluna mexida, a
+    /// busca encontra o recurso no paciente novo e o <c>GET</c> devolve <c>subject</c> apontando
+    /// para o antigo — coluna e documento discordando, sem erro nenhum. Foi o que o teste
+    /// <c>Atendimento_do_absorvido_passa_para_o_sobrevivente</c> pegou.</para>
+    ///
+    /// <para>Todos os recursos clínicos daqui referenciam o paciente pelo mesmo caminho
+    /// (<c>subject.reference</c>), então uma forma de SQL serve para os seis. O nome da tabela vem
+    /// de lista fixa no chamador — nunca de entrada.</para>
+    /// </summary>
+    private static readonly string[] TabelasClinicas =
+        ["encounter", "condition", "observation",
+         "medication_request", "medication_administration", "document_reference"];
+
+    private async Task<int> ReapontarAsync(string tabela, Guid de, Guid para,
+        DateTimeOffset agora, CancellationToken ct)
+    {
+        // O nome da tabela entra na SQL por interpolação (não dá para parametrizar identificador),
+        // então a garantia é esta lista fechada — verificada aqui, não prometida num comentário.
+        if (!TabelasClinicas.Contains(tabela))
+            throw new ArgumentOutOfRangeException(nameof(tabela), tabela, "Tabela clínica desconhecida.");
+
+        // EF1002 suprimido: o único trecho interpolado é `tabela`, validado acima contra a lista
+        // fixa; todo valor vai como parâmetro.
+#pragma warning disable EF1002
+        // `ARRAY['subject','reference']` em vez de `'{subject,reference}'`: o ExecuteSqlRaw trata a
+        // SQL como *composite format string*, então chave literal vira placeholder inválido e
+        // estoura `FormatException` em tempo de execução — compila, e falha só ao rodar.
+        return await db.Database.ExecuteSqlRawAsync(
+            $$"""
+              UPDATE fhir.{{tabela}}
+                 SET patient_id   = {0},
+                     content      = jsonb_set(content, ARRAY['subject','reference'], to_jsonb({1}::text)),
+                     last_updated = {2}
+               WHERE patient_id = {3}
+              """,
+            [para, $"{TipoRecurso}/{para}", agora, de], ct);
+#pragma warning restore EF1002
     }
 
     /// <summary>
