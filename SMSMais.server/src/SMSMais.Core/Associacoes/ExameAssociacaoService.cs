@@ -80,6 +80,14 @@ public sealed class ExameAssociacaoService(
         if (await ResolverJaAssociadoAsync(uid, solicitacao.Id, pacienteId, cancellationToken) is { } jaFeito)
             return jaFeito;
 
+        // O estudo é o ORIGINAL de uma reescrita anterior? Então o que aparece dele na lista é a
+        // sobra: a nota de rejeição, ou instâncias que o equipamento mandou depois. Reescrever de
+        // novo criava uma cópia a cada clique (8 estudos para o accession 260811143 em 16–17/09).
+        // Para o mesmo exame, anexa ao estudo que já existe; para outro, é conflito.
+        if (origem == OrigemAssociacaoExame.Manual
+            && await AnexarSobraDeReescritaAsync(uid, solicitacao.Id, pacienteId, cancellationToken) is { } anexado)
+            return anexado;
+
         if (validarNoPacs && !await consultaStudy.StudyExistePorStudyUidAsync(uid, cancellationToken))
             throw new ConflitoException("associacao.study_inexistente", "Estudo não encontrado no PACS.");
 
@@ -157,6 +165,35 @@ public sealed class ExameAssociacaoService(
         logger.LogInformation(
             "Exame {Uid} associado à solicitação {Accession} (origem {Origem}).", uid, accession, origem);
         return await MontarDtoAsync(assoc, cancellationToken);
+    }
+
+    /// <summary>
+    /// Trata a associação de um estudo que já foi reescrito antes (é o <c>StudyInstanceUidOriginal</c>
+    /// de uma associação ativa). <c>null</c> = não é o caso, segue o fluxo normal.
+    /// </summary>
+    private async Task<ExameAssociacaoDto?> AnexarSobraDeReescritaAsync(
+        string uidOriginal, Guid exameImagemId, Guid pacienteId, CancellationToken ct)
+    {
+        // A mais antiga: antes desta correção o mesmo original podia ter sido reescrito várias vezes,
+        // e as reescritas seguintes eram as cópias parciais — a primeira é a que tem as imagens.
+        var anterior = await db.ExameAssociacoes
+            .Where(a => a.StudyInstanceUidOriginal == uidOriginal && a.ExcluidoEm == null)
+            .OrderBy(a => a.CriadoEm)
+            .FirstOrDefaultAsync(ct);
+        if (anterior is null) return null;
+
+        if (anterior.ExameImagemId != exameImagemId)
+            throw new ConflitoException("associacao.ja_associado",
+                "As imagens deste estudo já foram associadas a outra solicitação. Desassocie antes de reassociar.");
+
+        var identidade = await identidades.ObterAsync(exameImagemId, ct);
+        var anexo = await reescritor.AnexarAoEstudoAsync(uidOriginal, anterior.StudyInstanceUID, identidade, ct);
+        logger.LogInformation(
+            "Associação manual do original {Original}: {N} instância(s) anexada(s) a {Destino}, sem estudo novo.",
+            uidOriginal, anexo.InstanciasReescritas, anterior.StudyInstanceUID);
+
+        // Mesmo destino, mesma associação: o reparo idempotente cobre promoção e laudos.
+        return await ResolverJaAssociadoAsync(anterior.StudyInstanceUID, exameImagemId, pacienteId, ct);
     }
 
     /// <summary>

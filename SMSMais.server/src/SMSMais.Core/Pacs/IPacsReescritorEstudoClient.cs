@@ -40,6 +40,10 @@ public sealed record EstudoReescrito(
 /// gera UIDs novos (Study/Series/SOP), re-armazena por STOW-RS e então rejeita o original com
 /// <c>113038^DCM</c> ("Incorrect Modality Worklist Entry") e o apaga. UID novo é obrigatório: o
 /// antigo está colado ao estudo que está sendo removido.</para>
+///
+/// <para><b>Notas de rejeição (KO) nunca são copiadas.</b> A rejeição do original grava uma nota KOS
+/// (SOP Class <c>1.2.840.10008.5.1.4.1.1.88.59</c>) dentro dele; copiá-la para o estudo novo criava
+/// um "exame" só com KO. Estudo que só tem nota de rejeição é recusado — não há imagem a associar.</para>
 /// </summary>
 public interface IPacsReescritorEstudoClient
 {
@@ -55,6 +59,22 @@ public interface IPacsReescritorEstudoClient
     /// </summary>
     Task<EstudoReescrito> ReescreverIdentidadeAsync(
         string studyInstanceUID, IdentidadeDicom identidade, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Leva para um estudo JÁ reescrito as instâncias que chegaram ao original depois da primeira
+    /// reescrita, e rejeita o que sobrou no original.
+    ///
+    /// <para>Existe porque o equipamento às vezes manda o exame em partes (o densitômetro do CDT
+    /// manda OT/SR ao longo de minutos). A parte tardia caía no UID original, o original "voltava"
+    /// para a lista, alguém associava de novo e cada associação nascia uma cópia parcial — o
+    /// accession 260811143 chegou a 8 estudos no PACS em 16–17/09/2026. Anexar mantém UM estudo.</para>
+    ///
+    /// <para>Devolve <c>InstanciasReescritas = 0</c> quando o original não tem nada além de notas
+    /// de rejeição (nada a anexar) — não é erro: a associação já existe e está certa.</para>
+    /// </summary>
+    Task<EstudoReescrito> AnexarAoEstudoAsync(
+        string studyInstanceUIDOriginal, string studyInstanceUIDDestino, IdentidadeDicom identidade,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Rejeita (IOCM) e apaga o estudo — a opção "descartar" da correção de identidade.</summary>
     Task DescartarAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
