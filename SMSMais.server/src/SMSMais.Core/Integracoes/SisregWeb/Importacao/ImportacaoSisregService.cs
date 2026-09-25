@@ -473,6 +473,11 @@ public sealed class ImportacaoSisregService(
             }
         }
 
+        // Paciente que JÁ existia: o telefone do TXT era descartado, e o cadastro ficava só com o que
+        // outro sistema trouxe. Acrescenta o que faltar, marcado com a origem — nunca troca nem apaga.
+        if (!pacienteCriado)
+            await AcrescentarTelefonesDoTxtAsync(pacienteId, m.TelefonePaciente, passos, ct);
+
         // 4. Unidades. EXECUTORA = o tenant atual (contexto da unidade em que o operador importa) —
         //    atribuição explícita, resolvida uma vez para o arquivo. SOLICITANTE = por CNES do
         //    arquivo (cria se ainda não existir).
@@ -529,7 +534,9 @@ public sealed class ImportacaoSisregService(
             RawSisreg = m.LinhaRaw,
             TipoVaga = VagaDe(m.EhRetorno),
             CodigoSolicitacao = codigo,
-            Status = StatusSolicitacao.Solicitada,
+            // Solicitada = "ainda sem data firme". Linha de agenda com data JÁ é agendamento — gravar
+            // Solicitada fazia a ficha do paciente mostrar "Pendente" para horário marcado.
+            Status = m.DataHoraAtendimento is not null ? StatusSolicitacao.Agendada : StatusSolicitacao.Solicitada,
             Prioridade = PrioridadeSolicitacao.Eletiva,
             // O SISREG entrega hora LOCAL de Brasília (GMT-3) → UTC (+3h).
             DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null,
@@ -636,7 +643,13 @@ public sealed class ImportacaoSisregService(
                 : null);
 
         var alteracoes = ComparadorMarcacao.Comparar(antes, depois);
-        if (alteracoes.Count == 0) return 0;
+        if (alteracoes.Count == 0)
+        {
+            // Nada mudou no SISREG, mas a linha pode ter nascido Solicitada com data (bug antigo do
+            // importador). Corrige ao revê-la — não é alteração do SISREG, não vai para a trilha.
+            if (PromoverParaAgendada(alvo)) await db.SaveChangesAsync(ct);
+            return 0;
+        }
 
         var agora = DateTime.UtcNow;
         foreach (var alteracao in alteracoes)
@@ -669,6 +682,7 @@ public sealed class ImportacaoSisregService(
 
         alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg;
         if (VagaDe(m.EhRetorno) is { } tipoVaga) alvo.TipoVaga = tipoVaga;
+        PromoverParaAgendada(alvo);
         alvo.AtualizadoEm = agora;
         alvo.AtualizadoPor = UsuarioIdAtual;
 
@@ -691,6 +705,8 @@ public sealed class ImportacaoSisregService(
         // que já houver; se a fonte não trouxe RAW, ao menos carimba a origem.
         alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg ?? "sisreg";
         if (m.DataHoraAtendimento is { } dh) alvo.DataAgendada = ParaUtcBrasilia(dh);
+        // Só Solicitada → Agendada; Realizada/Cancelada (trabalho deste lado) ficam intocadas.
+        PromoverParaAgendada(alvo);
         if (m.DataSolicitacao is { } ds) alvo.DataSolicitacao = ds;
         if (m.DataRegulacao is { } dr) alvo.DataRegulacao = dr;
         if (unidadeSolicId is not null) alvo.UnidadeSolicitanteId = unidadeSolicId;
@@ -731,6 +747,17 @@ public sealed class ImportacaoSisregService(
         return new ImportacaoExecucaoResultado(
             alvo.CodigoSolicitacao ?? string.Empty, true, alvo.Id, string.Empty,
             null, false, solicCriada, false, passos, null);
+    }
+
+    /// <summary>
+    /// Solicitada com data agendada vira Agendada (o enum: Solicitada = "ainda sem data firme").
+    /// Só promove — nunca rebaixa nem toca em Realizada/Cancelada. Devolve se mudou.
+    /// </summary>
+    private static bool PromoverParaAgendada(Solicitacao s)
+    {
+        if (s.Status != StatusSolicitacao.Solicitada || s.DataAgendada is null) return false;
+        s.Status = StatusSolicitacao.Agendada;
+        return true;
     }
 
     /// <summary>Natureza da vaga normalizada (<see cref="MarcacaoSisreg.EhRetorno"/>) → enum
@@ -1513,6 +1540,38 @@ public sealed class ImportacaoSisregService(
         }
 
         return (celular, residencial);
+    }
+
+    /// <summary>Todos os números válidos (10–11 dígitos) da célula de telefone, sem repetir.</summary>
+    internal static IReadOnlyList<string> TelefonesDoTxt(string? telefone) =>
+        [.. (telefone ?? string.Empty).Split(SeparadoresDeTelefone, StringSplitOptions.RemoveEmptyEntries)
+            .Select(SoDigitos)
+            .Where(d => d.Length is 10 or 11)
+            .Distinct()];
+
+    /// <summary>
+    /// Acrescenta ao paciente existente os telefones do TXT que ele ainda não tem, marcados com
+    /// origem "sisreg" (<see cref="Pacientes.Fhir.PatientMergeFhir.ExtContatoOrigem"/>). Só append:
+    /// o principal/confirmado e os demais números ficam como estão. Falha do hub não derruba a
+    /// importação — o agendamento é o que importa aqui; o telefone volta na próxima linha.
+    /// </summary>
+    private async Task AcrescentarTelefonesDoTxtAsync(
+        Guid pacienteId, string? telefone, List<string> passos, CancellationToken ct)
+    {
+        foreach (var numero in TelefonesDoTxt(telefone))
+        {
+            try
+            {
+                var movel = numero.Length == 11 && numero[2] == '9';
+                var adicionou = await pacientes.AdicionarTelefoneAsync(pacienteId,
+                    new AdicionarTelefoneRequest(numero, movel ? "celular" : "residencial", Origem: "sisreg"), ct);
+                if (adicionou) passos.Add($"Telefone do SISREG acrescentado ao cadastro ({(movel ? "celular" : "fixo")}).");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                passos.Add($"⚠ Não foi possível acrescentar o telefone do SISREG ao cadastro: {ex.Message}");
+            }
+        }
     }
 
     /// <summary>Como o SISREG separa vários telefones na mesma célula.</summary>

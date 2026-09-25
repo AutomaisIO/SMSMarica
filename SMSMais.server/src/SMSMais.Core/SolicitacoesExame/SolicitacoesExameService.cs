@@ -790,7 +790,8 @@ public sealed class SolicitacoesExameService(
             CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao),
             ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao),
             Justificativa = NormalizaOpcional(request.Justificativa),
-            Status = StatusSolicitacao.Solicitada,
+            // Com data já é agendamento; sem data, Solicitada ("ainda sem data firme").
+            Status = request.DataAgendada is not null ? StatusSolicitacao.Agendada : StatusSolicitacao.Solicitada,
             Prioridade = request.Prioridade,
             Observacoes = NormalizaOpcional(request.Observacoes),
             DataSolicitacao = request.DataSolicitacao,
@@ -854,6 +855,9 @@ public sealed class SolicitacoesExameService(
         reg.Observacoes = NormalizaOpcional(request.Observacoes);
         reg.DataSolicitacao = request.DataSolicitacao;
         reg.DataAgendada = request.DataAgendada;
+        // Status acompanha a data enquanto a espinha está aberta (nunca mexe em Realizada/Cancelada).
+        if (reg.Status is StatusSolicitacao.Solicitada or StatusSolicitacao.Agendada)
+            reg.Status = reg.DataAgendada is not null ? StatusSolicitacao.Agendada : StatusSolicitacao.Solicitada;
         reg.AtualizadoEm = agora;
         reg.AtualizadoPor = _usuarioAtual.UsuarioId;
 

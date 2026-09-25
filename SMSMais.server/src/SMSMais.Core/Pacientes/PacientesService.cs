@@ -387,32 +387,48 @@ public sealed class PacientesService(
     private static string Mascarar(string cpf) =>
         cpf.Length == 11 ? $"***.***.{cpf[6..9]}-{cpf[9..]}" : "***";
 
-    public async Task AdicionarTelefoneAsync(
+    public async Task<bool> AdicionarTelefoneAsync(
         Guid id, AdicionarTelefoneRequest request, CancellationToken cancellationToken = default)
     {
         var numero = request.Numero?.Trim() ?? string.Empty;
         if (numero.Length == 0)
             throw new ValidacaoException("paciente.telefone_obrigatorio", "Informe o número do telefone.");
 
+        var origem = string.IsNullOrWhiteSpace(request.Origem) ? null : request.Origem.Trim().ToLowerInvariant();
+        var adicionou = false;
         await AtualizarComRetryAsync(id, patient =>
         {
             // Append em Patient.telecom nativo, sem tocar nos demais dados. Idempotente:
-            // se o mesmo número (comparando só dígitos) já estiver lá, não duplica.
+            // se o mesmo número (só dígitos, tolerando DDI) já estiver lá — inclusive aposentado
+            // ou negado —, não duplica nem ressuscita.
             var alvo = Digitos(numero);
             patient.Telecom ??= [];
             var jaExiste = alvo.Length > 0 && patient.Telecom.Any(t =>
-                t.System == ContactPoint.ContactPointSystem.Phone && Digitos(t.Value) == alvo);
-            if (jaExiste) return false;
+                t.System == ContactPoint.ContactPointSystem.Phone && MesmoNumero(Digitos(t.Value), alvo));
+            if (jaExiste) return adicionou = false;
 
-            patient.Telecom.Add(new ContactPoint
+            var novo = new ContactPoint
             {
                 System = ContactPoint.ContactPointSystem.Phone,
                 Value = numero,
                 Use = MapearUso(request.Tipo),
-            });
-            return true;
+            };
+            if (origem is not null)
+            {
+                novo.AddExtension(PatientMergeFhir.ExtContatoOrigem, new FhirString(origem));
+                novo.Period = new Period { StartElement = new FhirDateTime(DateTimeOffset.UtcNow) };
+            }
+            patient.Telecom.Add(novo);
+            return adicionou = true;
         }, cancellationToken);
+        return adicionou;
     }
+
+    /// <summary>Mesmo número tolerando DDI (um é sufixo do outro), com guarda de tamanho.</summary>
+    private static bool MesmoNumero(string a, string b) =>
+        a == b
+        || (a.Length >= 8 && b.Length >= 8
+            && (a.EndsWith(b, StringComparison.Ordinal) || b.EndsWith(a, StringComparison.Ordinal)));
 
     /// <summary>
     /// Read-modify-write com concorrência otimista: lê o Patient, aplica <paramref name="mutar"/> e grava

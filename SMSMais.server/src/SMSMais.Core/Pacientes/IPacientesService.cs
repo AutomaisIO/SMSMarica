@@ -96,7 +96,8 @@ public interface IPacientesService
     /// <c>Patient.telecom</c> nativo), sem substituir os existentes. Idempotente:
     /// se o número já constar, é no-op.
     /// </summary>
-    Task AdicionarTelefoneAsync(Guid id, AdicionarTelefoneRequest request, CancellationToken cancellationToken = default);
+    /// <returns>true se acrescentou; false se o número já constava (no-op).</returns>
+    Task<bool> AdicionarTelefoneAsync(Guid id, AdicionarTelefoneRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Atualiza SÓ a foto do paciente, preservando todo o resto (carrega o estado atual

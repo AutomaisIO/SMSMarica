@@ -207,6 +207,11 @@ public static class PatientMergeFhir
     /// verificação positiva posterior (OTP) limpa o marcador.</summary>
     public const string ExtContatoNegado = "urn:smsmarica:contato-negado";
 
+    /// <summary>De onde veio um telefone ACRESCENTADO por automação (valueString, ex.: "sisreg").
+    /// Junto vai <c>period.start</c> = quando entrou. Responde "quem pôs este número aqui" sem
+    /// precisar da trilha — o telecom do FHIR não tem campo de comentário.</summary>
+    public const string ExtContatoOrigem = "urn:smsmarica:contato-origem";
+
     /// <summary>Marcador (no Patient) das chaves de campo que o PAINEL editou — o import não as sobrescreve
     /// (ADR-0020 decisão #1: "painel vence no que editou"). Chaves: telefone,email,endereco,nomeSocial,estadoCivil,filiacao.</summary>
     public const string ExtCamposEditados = "urn:smsmarica:campos-editados";

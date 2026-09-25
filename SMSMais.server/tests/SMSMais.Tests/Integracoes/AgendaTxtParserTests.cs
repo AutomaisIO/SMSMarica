@@ -398,4 +398,12 @@ public class AgendaTxtParserTests
         celular.Should().Be(celularEsperado);
         residencial.Should().Be(residencialEsperado);
     }
+
+    [Fact]
+    public void TelefonesDoTxt_devolve_todos_os_validos_sem_repetir()
+    {
+        ImportacaoSisregService.TelefonesDoTxt("(21)2638-0022 / (21)99463-7743 / (21)99463-7743 / 123")
+            .Should().Equal("2126380022", "21994637743");
+        ImportacaoSisregService.TelefonesDoTxt(null).Should().BeEmpty();
+    }
 }

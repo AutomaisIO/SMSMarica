@@ -8,4 +8,6 @@ namespace SMSMais.Core.Pacientes.Dtos;
 public sealed record AdicionarTelefoneRequest(
     string Numero,
     /// <summary>"celular" (default), "residencial" ou "comercial".</summary>
-    string? Tipo = null);
+    string? Tipo = null,
+    /// <summary>Origem do número (ex.: "sisreg"), gravada no telecom. Null = sem marca.</summary>
+    string? Origem = null);
