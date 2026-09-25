@@ -594,8 +594,11 @@ public sealed class LaudoAssinaturaService(
         var verifier = protetor.Revelar(job.NuvemCodeVerifier);
         try
         {
+            logger.LogInformation("Assinatura: job {JobId} autorizado no app; buscando o certificado.", job.Id);
             var certificado = await integraIcp.ObterCertificadoAsync(credencialId, verifier, cancellationToken);
             var cadeia = await cadeiaIcp.MontarAsync(certificado, cancellationToken);
+            logger.LogInformation("Assinatura: job {JobId} com cadeia de {Certificados} certificado(s); preparando o PDF.",
+                job.Id, cadeia.Count);
             var prep = await PrepararJobAsync(job, cadeia, cancellationToken);
             var raw = await integraIcp.AssinarHashAsync(credencialId, verifier, prep.ToSignHash, cancellationToken);
 
@@ -615,6 +618,8 @@ public sealed class LaudoAssinaturaService(
                     "O provedor devolveu uma assinatura em formato incompatível. Nada foi gravado. Avise o suporte.");
             }
 
+            logger.LogInformation("Assinatura: job {JobId} — RAW da nuvem confere (PKCS#1 v1.5/SHA-256, {Bytes} bytes); embutindo.",
+                job.Id, raw.Length);
             await ConcluirJobAsync(job, raw, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

@@ -113,6 +113,31 @@ public class AssinaturaModosTests
     }
 
     [Fact]
+    public void Acha_a_url_no_formato_real_embrulhado_em_data()
+    {
+        // Formato visto em produção (25/09/2026), sem PII.
+        using var doc = JsonDocument.Parse("""
+            {"data":{"requestId":"01M3","channelName":"smsmarica.online",
+              "executionStatus":{"currentStatus":"PENDING_AUTHORIZATION"},
+              "clearances":[{"clearanceId":"01M3X","productName":"VIDaaS","providerName":"Valid",
+                "clearanceEndpoint":"https://services.exemplo/c/x/icp/v3/clearances/01M3X","clearanceType":"IDENTIFICATION"}]}}
+            """);
+        IntegraIcpClient.AcharUrlAutorizacao(doc.RootElement)
+            .Should().Be("https://services.exemplo/c/x/icp/v3/clearances/01M3X");
+    }
+
+    [Theory]
+    [InlineData("""{"encodedX509":"PEM"}""")]
+    [InlineData("""{"data":{"credentialId":"01M3","encodedX509":"PEM"}}""")]
+    [InlineData("""{"data":{"credential":{"encodedX509":"PEM"}}}""")]
+    [InlineData("""{"data":{"certificates":[{"encodedX509":"PEM"}]}}""")]
+    public void Le_o_campo_em_qualquer_nivel(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        IntegraIcpClient.LerString(doc.RootElement, "encodedX509").Should().Be("PEM");
+    }
+
+    [Fact]
     public void Decodifica_pem_com_e_sem_cabecalho()
     {
         var der = new byte[] { 0x30, 0x82, 0x01, 0x0a, 0x02, 0x03 };
@@ -121,6 +146,26 @@ public class AssinaturaModosTests
         IntegraIcpClient.DecodificarPem($"-----BEGIN CERTIFICATE-----\n{b64}\n-----END CERTIFICATE-----\n")
             .Should().Equal(der);
         IntegraIcpClient.DecodificarPem(b64).Should().Equal(der);
+    }
+
+    [Fact]
+    public void Resumo_de_erro_traz_code_e_message_sem_cpf()
+    {
+        IntegraIcpClient.ResumoErro("""{"error":{"code":400101,"message":"Invalid Channel"}}""")
+            .Should().Be("400101 Invalid Channel");
+        IntegraIcpClient.ResumoErro("""{"error":{"code":404,"message":"subject 89912345682 not found"}}""")
+            .Should().Be("404 subject *** not found");
+        IntegraIcpClient.ResumoErro("<html>").Should().Be("(corpo não-JSON)");
+    }
+
+    [Fact]
+    public void Decodifica_base64_padrao_e_base64url()
+    {
+        var bytes = new byte[] { 0xfb, 0xff, 0xfe, 0x01 };
+        var padrao = Convert.ToBase64String(bytes);                               // "+//+AQ=="
+        var url = padrao.TrimEnd('=').Replace('+', '-').Replace('/', '_');        // "-__-AQ"
+        IntegraIcpClient.DecodificarBase64(padrao).Should().Equal(bytes);
+        IntegraIcpClient.DecodificarBase64(url).Should().Equal(bytes);
     }
 
     // ---------------- helpers ----------------

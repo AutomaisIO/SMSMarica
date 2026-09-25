@@ -36,6 +36,11 @@ public sealed partial class AssinaturaNuvemController(
         var consulta = Request.Query;
         var state = consulta["state"].ToString();
         var credencial = AcharCredencial(consulta);
+        // Só nomes: o contrato do retorno não é documentado e é aqui que se descobre.
+        logger.LogInformation(
+            "Assinatura em nuvem: retorno recebido (parâmetros: {Parametros}; credencial pelo parâmetro {ParametroCredencial}).",
+            string.Join(", ", consulta.Keys),
+            credencial is null ? "(nenhum)" : consulta.FirstOrDefault(kv => kv.Value.ToString() == credencial).Key);
 
         if (consulta.ContainsKey("error"))
         {

@@ -48,6 +48,9 @@ public sealed class IntegraIcpClient(
         using var doc = await EnviarAsync(HttpMethod.Get, consulta, null, "authentications", cancellationToken);
 
         var url = AcharUrlAutorizacao(doc.RootElement);
+        logger.LogInformation("IntegraICP: authentications ok (status {Status}; url de autorização {Achou}; campos: {Campos}).",
+            LerString(doc.RootElement, "currentStatus") ?? "(sem status)", url is null ? "AUSENTE" : "encontrada",
+            Campos(doc.RootElement));
         if (url is not null) return url;
 
         var motivo = LerIndisponiveis(doc.RootElement);
@@ -65,10 +68,18 @@ public sealed class IntegraIcpClient(
                       $"?secret_data={Uri.EscapeDataString(codeVerifier)}";
         using var doc = await EnviarAsync(HttpMethod.Get, caminho, null, "credentials", cancellationToken);
 
-        var pem = LerString(doc.RootElement, "encodedX509")
-            ?? throw new ConflitoException("assinatura.nuvem_sem_certificado",
+        var pem = LerString(doc.RootElement, "encodedX509");
+        if (pem is null)
+        {
+            // Só os nomes dos campos: o valor traz o certificado (nome e CPF do médico).
+            logger.LogWarning("IntegraICP: /credentials sem encodedX509 (campos: {Campos}).", Campos(doc.RootElement));
+            throw new ConflitoException("assinatura.nuvem_sem_certificado",
                 "O provedor não devolveu o certificado da credencial autorizada.");
-        return DecodificarPem(pem);
+        }
+        var der = DecodificarPem(pem);
+        logger.LogInformation("IntegraICP: credentials ok (certificado {Bytes} bytes; campos: {Campos}).",
+            der.Length, Campos(doc.RootElement));
+        return der;
     }
 
     public async Task<byte[]> AssinarHashAsync(
@@ -86,10 +97,16 @@ public sealed class IntegraIcpClient(
 
         var assinatura = LerString(doc.RootElement, "signedContent");
         if (!string.IsNullOrWhiteSpace(assinatura))
-            return Convert.FromBase64String(assinatura);
+        {
+            var bytes = DecodificarBase64(assinatura);
+            logger.LogInformation("IntegraICP: signatures ok (assinatura {Bytes} bytes; campos: {Campos}).",
+                bytes.Length, Campos(doc.RootElement));
+            return bytes;
+        }
 
-        var status = LerString(doc.RootElement, "status") ?? "(sem status)";
-        logger.LogWarning("IntegraICP: /signatures sem signedContent (status {Status}).", status);
+        var status = LerString(doc.RootElement, "currentStatus") ?? LerString(doc.RootElement, "status") ?? "(sem status)";
+        logger.LogWarning("IntegraICP: /signatures sem signedContent (status {Status}; campos: {Campos}).",
+            status, Campos(doc.RootElement));
         throw new ConflitoException("assinatura.nuvem_sem_assinatura",
             $"O provedor não devolveu a assinatura (status {status}). Tente assinar de novo.");
     }
@@ -125,9 +142,10 @@ public sealed class IntegraIcpClient(
             var texto = await resp.Content.ReadAsStringAsync(ct);
             if (!resp.IsSuccessStatusCode)
             {
-                // Corpo de erro pode ecoar o CPF (subject_key): loga só o tamanho e o status.
-                logger.LogError("IntegraICP: etapa {Etapa} retornou {Status} ({Bytes} bytes de corpo).",
-                    etapa, (int)resp.StatusCode, texto.Length);
+                // Corpo de erro pode ecoar o CPF (subject_key): loga só code/message, com
+                // qualquer sequência longa de dígitos mascarada.
+                logger.LogError("IntegraICP: etapa {Etapa} retornou {Status} ({Bytes} bytes de corpo; erro {Erro}).",
+                    etapa, (int)resp.StatusCode, texto.Length, ResumoErro(texto));
                 throw new ConflitoException("assinatura.nuvem_erro",
                     $"O serviço de assinatura em nuvem recusou a etapa {etapa} ({(int)resp.StatusCode}).");
             }
@@ -160,6 +178,11 @@ public sealed class IntegraIcpClient(
     /// </summary>
     internal static string? AcharUrlAutorizacao(JsonElement raiz)
     {
+        // Formato real (25/09/2026): {"data": {"clearances": [...], ...}}.
+        if (raiz.ValueKind == JsonValueKind.Object && raiz.TryGetProperty("data", out var data)
+            && data.ValueKind == JsonValueKind.Object)
+            raiz = data;
+
         var itens = new List<JsonElement>();
         if (raiz.ValueKind == JsonValueKind.Array)
             itens.AddRange(raiz.EnumerateArray());
@@ -215,21 +238,86 @@ public sealed class IntegraIcpClient(
 
     private static string? LerIndisponiveis(JsonElement raiz)
     {
-        if (raiz.ValueKind != JsonValueKind.Object || !raiz.TryGetProperty("unavailables", out var u))
-            return null;
+        if (!AcharPropriedade(raiz, "unavailables", out var u)) return null;
         var texto = u.GetRawText();
         return texto.Length > 300 ? texto[..300] : texto;
     }
 
-    private static string? LerString(JsonElement raiz, string nome)
+    /// <summary>
+    /// String pelo nome do campo em qualquer nível. A API real embrulha a resposta em
+    /// <c>{"data": {...}}</c> (visto em produção em 25/09/2026) — ler só a raiz não acha nada.
+    /// </summary>
+    internal static string? LerString(JsonElement raiz, string nome) =>
+        AcharPropriedade(raiz, nome, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    /// <summary>Busca em largura: o nível mais raso ganha quando o nome se repete.</summary>
+    private static bool AcharPropriedade(JsonElement raiz, string nome, out JsonElement valor)
     {
-        if (raiz.ValueKind != JsonValueKind.Object) return null;
-        foreach (var p in raiz.EnumerateObject())
+        var fila = new Queue<JsonElement>();
+        fila.Enqueue(raiz);
+        while (fila.Count > 0)
         {
-            if (string.Equals(p.Name, nome, StringComparison.OrdinalIgnoreCase) && p.Value.ValueKind == JsonValueKind.String)
-                return p.Value.GetString();
+            var e = fila.Dequeue();
+            if (e.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var p in e.EnumerateObject())
+                {
+                    if (string.Equals(p.Name, nome, StringComparison.OrdinalIgnoreCase))
+                    {
+                        valor = p.Value;
+                        return true;
+                    }
+                }
+                foreach (var p in e.EnumerateObject()) fila.Enqueue(p.Value);
+            }
+            else if (e.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var i in e.EnumerateArray()) fila.Enqueue(i);
+            }
         }
-        return null;
+        valor = default;
+        return false;
+    }
+
+    /// <summary>
+    /// <c>code</c> + <c>message</c> do corpo de erro (formato real:
+    /// <c>{"error":{"code":400101,"message":"Invalid Channel"}}</c>), sem dígitos longos.
+    /// </summary>
+    internal static string ResumoErro(string corpo)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(corpo);
+            var code = AcharPropriedade(doc.RootElement, "code", out var c) ? c.ToString() : "?";
+            var msg = LerString(doc.RootElement, "message") ?? "(sem mensagem)";
+            if (msg.Length > 200) msg = msg[..200];
+            return System.Text.RegularExpressions.Regex.Replace($"{code} {msg}", @"\d{7,}", "***");
+        }
+        catch (JsonException)
+        {
+            return "(corpo não-JSON)";
+        }
+    }
+
+    /// <summary>Caminhos dos campos (sem valores) para diagnóstico em log.</summary>
+    private static string Campos(JsonElement raiz)
+    {
+        var nomes = new List<string>();
+        void Visitar(JsonElement e, string prefixo)
+        {
+            if (nomes.Count >= 40) return;
+            if (e.ValueKind == JsonValueKind.Object)
+                foreach (var p in e.EnumerateObject())
+                {
+                    var caminho = prefixo.Length == 0 ? p.Name : $"{prefixo}.{p.Name}";
+                    nomes.Add(caminho);
+                    Visitar(p.Value, caminho);
+                }
+            else if (e.ValueKind == JsonValueKind.Array && e.GetArrayLength() > 0)
+                Visitar(e[0], prefixo + "[0]");
+        }
+        Visitar(raiz, string.Empty);
+        return string.Join(", ", nomes);
     }
 
     /// <summary>Aceita PEM (com ou sem cabeçalho) ou base64 DER puro.</summary>
@@ -242,6 +330,13 @@ public sealed class IntegraIcpClient(
             if (l.Length == 0 || l.StartsWith("-----", StringComparison.Ordinal)) continue;
             corpo.Append(l);
         }
-        return Convert.FromBase64String(corpo.ToString());
+        return DecodificarBase64(corpo.ToString());
+    }
+
+    /// <summary>Base64 padrão ou base64url (a própria API usa base64url no PKCE).</summary>
+    internal static byte[] DecodificarBase64(string texto)
+    {
+        var s = texto.Trim().Replace('-', '+').Replace('_', '/');
+        return Convert.FromBase64String(s.PadRight(s.Length + (4 - s.Length % 4) % 4, '='));
     }
 }
