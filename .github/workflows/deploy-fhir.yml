@@ -152,7 +152,16 @@ jobs:
             Group=automais
             EnvironmentFile=/etc/automais-fhir/env
             Environment=ASPNETCORE_ENVIRONMENT=Production
-            Environment=ASPNETCORE_URLS=http://0.0.0.0:5081
+            # Bind em 127.0.0.1, NAO em 0.0.0.0. O Automais.Fhir nao tem autenticacao alguma, e o
+            # host nao tem firewall (`ufw` inativo, conferido em 24/09/2026): com 0.0.0.0 o hub
+            # clinico inteiro ficava aberto na internet para LEITURA E ESCRITA — 378 mil pacientes
+            # com CPF, CNS, endereco e telefone, mais atendimentos, diagnosticos e prescricoes.
+            # Medido de fora naquele dia: GET http://<ip>:5081/fhir/Patient respondia 200.
+            # O unico consumidor e o smsmarica-server, no MESMO host, por localhost — conferido em
+            # `ss -tn state established`: todas as conexoes vinham de 127.0.0.1.
+            # E a pendencia 2 do ADR-0043. Se um dia houver consumidor externo legitimo, ele entra
+            # por nginx com TLS e autenticacao — nunca reabrindo a porta.
+            Environment=ASPNETCORE_URLS=http://127.0.0.1:5081
             Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
 
             [Install]

@@ -136,21 +136,45 @@ gestor da instância, e existe exatamente uma. A `Unidade` continua sem relaçã
 
 ## Pendências abertas por esta decisão
 
-1. **`MetaSources.Base`** (`Automais.Fhir.Core/Fhir/MetaSources.cs`) é `https://smsmarica.saude.marica/source/`
-   fixo em código, gravado em `meta.source` de todo recurso e reconstruído em 19 arquivos. Vira
-   variável de ambiente **mantendo o valor atual como default** — mudá-lo em Maricá invalidaria a
-   proveniência já gravada.
-2. **`Automais.Fhir` escuta em `0.0.0.0:5081` sem autenticação alguma.** Uma segunda instância
-   replicaria a exposição. Mínimo para a nova: bind em `127.0.0.1`.
-3. **Termo de consentimento LGPD** (`Core/Cidadao/TermoConsentimento.cs`) tem o texto em `const` e
-   o SHA-256 é gravado em cada aceite. Ao virar template, o render para Maricá tem de sair
-   byte-idêntico ao texto atual, sob teste — senão os aceites existentes viram inválidos.
-4. **Seeds institucionais de Maricá** (`Api/Auth/SeedCabecalhoLaudo.cs`, `Api/Auth/DbSeeder.cs`)
-   rodam no startup e precisam ficar atrás de uma flag. As migrations de seed já aplicadas não
-   podem ser editadas — numa base nova elas semeiam dados do CDT, que o provisionamento remove.
-5. **`httpClient.ts` dos três fronts** cai em `https://api.smsmarica.online` quando
-   `VITE_API_BASE_URL` não vem. Um build sem env aponta silenciosamente para Maricá; tem de falhar
-   alto.
+> **Revisado em 25/09/2026, item por item.** Quatro das cinco já estavam resolvidas e a lista não
+> dizia — o que é perigoso nos dois sentidos: lista que não se atualiza deixa de ser lida, e foi
+> justamente assim que o item 2 ficou valendo em **produção** por meses (ver abaixo). Ao fechar
+> um item, marcar aqui.
+
+1. **ABERTA — `MetaSources.Base`** (`Automais.Fhir.Core/Fhir/MetaSources.cs`) é
+   `https://smsmarica.saude.marica/source/` fixo em código, gravado em `meta.source` de todo
+   recurso e reconstruído em 19 arquivos. Vira variável de ambiente **mantendo o valor atual como
+   default** — mudá-lo em Maricá invalidaria a proveniência já gravada.
+   *Conferido em 25/09/2026: segue `private const string Base` fixo.*
+
+2. ~~**`Automais.Fhir` escuta em `0.0.0.0:5081` sem autenticação alguma.**~~
+   **RESOLVIDA em 24/09/2026 — e não era hipótese: estava ABERTA NA INTERNET.** Medido naquele
+   dia: `ufw` inativo, serviço em `0.0.0.0:5081`, e `GET http://<ip>:5081/fhir/Patient` respondendo
+   **HTTP 200 sem token** de fora — 378.188 pacientes com CPF/CNS/endereço/telefone e todo o
+   clínico, com `POST`/`PUT`/`DELETE` disponíveis. O host está sob varredura automatizada contínua
+   (scanners de CVE e `GET /.env` no log do nginx). Corrigido: bind em `127.0.0.1` no unit **e** no
+   `deploy-fhir.yml` (que tinha `0.0.0.0` fixo e reabriria no próximo deploy).
+   Detalhes em `Automais.prime/docs/APRENDIZADOS.md` §33.
+
+3. ~~**Termo de consentimento LGPD** com o texto em `const`.~~ **RESOLVIDA.** Virou
+   `record TermoVigente(Texto, Hash)` montado por instância, com o texto de Maricá saindo
+   byte-idêntico ao 1.0 — os hashes já gravados seguem válidos.
+
+4. ~~**Seeds institucionais de Maricá** rodam no startup.~~ **RESOLVIDA.** Atrás da flag
+   `Seeds:ConteudoMarica` (padrão `false`), lida em `Program.cs` e passada como
+   `incluirConteudoMarica` ao `DbSeeder`.
+
+5. ~~**`httpClient.ts` cai em `api.smsmarica.online` sem a env.**~~ **RESOLVIDA.** Agora
+   **lança** em build de produção sem `VITE_API_BASE_URL`, em vez de subir calado apontando para
+   Maricá.
+
+### Achado adjacente, fora do escopo original deste ADR
+`smsmarica-server` escuta em **`0.0.0.0:5080`** no servidor de Maricá (conferido 25/09/2026),
+embora **todos** os workflows de deploy já especifiquem `127.0.0.1`. O unit é antigo: o deploy só
+o escreve `if [ ! -f "$UNIT_FILE" ]`, então correções de unit nos workflows **nunca alcançam
+servidor já provisionado**. Menos grave que o item 2 — a autenticação funciona (`/pacientes` →
+401) e o único bypass é o TLS, já que o nginx do `api.` não tem rate limit nem WAF —, mas é HTTP
+puro numa porta pública. Corrigir alinhando o unit ao que o workflow já manda.
 
 ## Alternativas rejeitadas
 
