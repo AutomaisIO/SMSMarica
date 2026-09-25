@@ -115,6 +115,9 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.LembreteDiasAntes = request.LembreteDiasAntes;
         c.LembreteHabilitado = request.LembreteHabilitado;
         c.ConciliacaoCancelamentoHabilitada = request.ConciliacaoCancelamentoHabilitada;
+        // Ligar vale daqui para frente: o instante da virada é o corte do que pode ser avisado.
+        if (request.AvisoCancelamentoHabilitado && !c.AvisoCancelamentoHabilitado)
+            c.AvisoCancelamentoLigadoEm = agora;
         c.AvisoCancelamentoHabilitado = request.AvisoCancelamentoHabilitado;
         c.ConciliacaoIntervaloMinutos = intervalo;
         c.ConciliacaoHoraInicio = horaInicio;
@@ -158,5 +161,6 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.ConciliacaoHoraInicio,
         c.ConciliacaoHoraFim,
         c.ConciliacaoHoraFechamento,
-        c.ConciliacaoUltimoDiaFechado);
+        c.ConciliacaoUltimoDiaFechado,
+        c.AvisoCancelamentoLigadoEm);
 }

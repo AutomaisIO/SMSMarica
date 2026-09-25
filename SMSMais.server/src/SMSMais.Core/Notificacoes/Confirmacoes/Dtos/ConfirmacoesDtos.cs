@@ -20,7 +20,9 @@ public sealed record ConfirmacaoConfiguracaoDto(
     int ConciliacaoHoraFim = 18,
     int ConciliacaoHoraFechamento = 7,
     /// <summary>Último dia cujo fechamento foi concluído — só leitura, quem grava é o motor.</summary>
-    DateOnly? ConciliacaoUltimoDiaFechado = null);
+    DateOnly? ConciliacaoUltimoDiaFechado = null,
+    /// <summary>Quando o aviso de cancelamento foi ligado — só leitura. O que é anterior não é avisado.</summary>
+    DateTime? AvisoCancelamentoLigadoEm = null);
 
 public sealed record SalvarConfirmacaoConfiguracaoRequest(
     string HoraInicioEnvio,

@@ -152,6 +152,8 @@ export type ConfirmacaoConfiguracao = {
   conciliacaoHoraFechamento: number;
   /** Último dia cujo fechamento concluiu. Só leitura: quem grava é o motor. */
   conciliacaoUltimoDiaFechado: string | null;
+  /** Quando o aviso de cancelamento foi ligado. Só leitura: o que é anterior não é avisado. */
+  avisoCancelamentoLigadoEm?: string | null;
 };
 
 export type SalvarConfirmacaoConfiguracao = Pick<

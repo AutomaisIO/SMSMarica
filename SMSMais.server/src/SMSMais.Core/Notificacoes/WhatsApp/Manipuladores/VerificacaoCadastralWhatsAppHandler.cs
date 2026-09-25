@@ -135,6 +135,16 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 if (await ComunicacaoDoDesafioAsync(ctx, telefone, ct) is { } alvoInteresse)
                 {
                     ctx.Consumido = true;
+                    if (alvoInteresse.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+                    {
+                        // Tocou no botão do AVISO DE CANCELAMENTO. Identificar-se aqui não leva a
+                        // nada — não há mensagem nova a liberar, e a liberação diria "já estou
+                        // enviando". O que a pessoa precisa é saber onde remarcar.
+                        await ResponderAsync(ctx,
+                            "Esse agendamento foi cancelado. Para saber mais e remarcar, procure o posto de "
+                            + "saúde onde o paciente tem cadastro.", ct);
+                        return;
+                    }
                     await PedirCpfAsync(ctx, telefone, alvoInteresse, ct);
                 }
                 return;
@@ -712,8 +722,12 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     {
         if (ctx.Mensagem.ContextoWaMessageId is { } wamid)
         {
+            // O aviso de cancelamento leva os mesmos botões da primeira mensagem. Sem casá-lo aqui,
+            // "Não sou essa pessoa" tocado nele se perdia (ia ao robô) e o número errado não era
+            // marcado — a denúncia que o ADR-0057 manda levar a sério.
             var porContexto = await db.ComunicacoesPaciente
-                .Where(n => n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                .Where(n => (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                        || n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
                     && n.MensagemWhatsApp != null && n.MensagemWhatsApp.WaMessageId == wamid)
                 .FirstOrDefaultAsync(ct);
             if (porContexto is not null) return porContexto;
@@ -753,6 +767,14 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         var alvo = await db.ComunicacoesPaciente.AsNoTracking().FirstOrDefaultAsync(n => n.Id == comunicacaoId, ct);
         if (alvo is null) return;
         var nome = PrimeiroNome((await ObterPacienteAsync(alvo.PacienteId, ct))?.NomeCompleto);
+        if (alvo.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+        {
+            // Aviso de cancelamento: não há o que liberar depois de uma identificação.
+            await ResponderAsync(ctx,
+                $"Tudo bem! O agendamento {(nome is null ? "do paciente" : $"de *{nome}*")} foi cancelado. "
+                + "Para saber mais e remarcar, procure o posto de saúde onde o paciente tem cadastro.", ct);
+            return;
+        }
         var deQuem = nome is null ? "do paciente" : $"de *{nome}*";
         await ResponderAsync(ctx,
             $"Tudo bem! Então envie os *4 primeiros dígitos do CPF* {deQuem} para continuar.", ct);

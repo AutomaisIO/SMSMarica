@@ -23,9 +23,11 @@ export const artigoMensageria: Artigo = {
   icone: BellRing,
   rota: '/app/mensageria',
   publico: 'Quem responde pelo canal: coordenação, regulação e quem configura o envio automático',
-  atualizadoEm: '2026-09-21',
+  atualizadoEm: '2026-09-25',
   palavrasChave: [
     'mensageria',
+    'aviso de cancelamento',
+    'cancelamento',
     'whatsapp',
     'envios',
     'entrega',
@@ -308,7 +310,7 @@ export const artigoMensageria: Artigo = {
     {
       id: 'regras',
       titulo: 'Regras e parâmetros: o que governa o automático',
-      busca: 'regras parâmetros janela de envio vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade',
+      busca: 'regras parâmetros janela de envio vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente',
       conteudo: (
         <div className="space-y-4">
           <Sub>Parâmetros de disparo</Sub>
@@ -351,6 +353,14 @@ export const artigoMensageria: Artigo = {
             Separados porque dá para conciliar a base por alguns dias, conferir os números, e só então começar a
             avisar. Ligar os dois no primeiro dia é apostar que o volume diário é o esperado.
           </P>
+          <Callout tipo="regra" titulo="Ligar o aviso vale daqui para frente">
+            Com o aviso <strong>desligado</strong>, o cancelamento trazido do SISREG entra na base, mas nenhuma
+            mensagem fica guardada para depois. Ao ligar, o sistema anota a hora: só cancelamentos feitos{' '}
+            <strong>depois</strong> dela são avisados — nada do que aconteceu enquanto estava desligado sai de uma
+            vez. Se algum aviso tinha ficado na fila de antes, ele aparece em Envios como falha, com o motivo "Aviso
+            retroativo", e não é enviado. O aviso segue o horário de envio (Parâmetros de disparo, acima) e não sai se
+            o horário do agendamento já passou.
+          </Callout>
           <P>Quatro campos governam o ritmo dessa leitura:</P>
           <ListaDefinicoes
             itens={[
@@ -383,7 +393,9 @@ export const artigoMensageria: Artigo = {
             A mensagem só sai quando <strong>as duas</strong> chaves estão ligadas: a da unidade executante, aqui
             nesta lista, e a do procedimento, que se escolhe na aba SISREG da própria unidade (o link{' '}
             <em>Escolher procedimentos</em> leva para lá). A coluna do meio mostra quantos procedimentos daquela
-            unidade estão marcados — "3 de 40" é o aviso ligado com quase nada passando.
+            unidade estão marcados — "3 de 40" é o aviso ligado com quase nada passando. Essas chaves governam a
+            confirmação e o lembrete. O aviso de cancelamento não passa por elas: quando está ligado, sai para
+            qualquer unidade.
           </P>
         </div>
       ),

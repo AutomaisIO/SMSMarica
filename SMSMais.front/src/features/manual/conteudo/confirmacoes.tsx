@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-09-22',
+  atualizadoEm: '2026-09-25',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
@@ -332,13 +332,16 @@ export const artigoConfirmacoes: Artigo = {
           <Callout tipo="dica" titulo="Cancelamento feito por outra pessoa no SISREG">
             A unidade executante, a solicitante e a regulação também cancelam — e isso não passa por esta tela. O
             sistema relê os cancelamentos do SISREG de tempos em tempos durante o expediente e traz para cá, liberando
-            a vaga e avisando o paciente. De quanto em quanto tempo, em que janela do dia e a que horas ele refaz a
+            a vaga e — com o aviso ligado — avisando o paciente no horário de envio, se o agendamento ainda não passou.
+            De quanto em quanto tempo, em que janela do dia e a que horas ele refaz a
             leitura do dia anterior ficam em <strong>Mensageria → Regras</strong>, em "Cancelamentos feitos no SISREG" —
             é o mesmo lugar onde se liga e se desliga.
           </Callout>
           <Callout tipo="dica" titulo="O paciente é avisado na hora">
             Assim que o cancelamento é confirmado, o aviso sai no WhatsApp — sem esperar rotina nenhuma. A mensagem diz
-            que o agendamento foi cancelado e <strong>não</strong> diz o motivo: isso é informação interna.
+            que o agendamento foi cancelado e <strong>não</strong> diz o motivo: isso é informação interna. Ele só
+            sai com o aviso ligado em <strong>Mensageria → Regras</strong> e se o horário do agendamento ainda não
+            passou; quando não sai, a própria janela diz que o paciente <strong>não</strong> foi avisado.
           </Callout>
         </div>
       ),

@@ -65,6 +65,16 @@ public class ConfirmacaoConfiguracao
     public bool AvisoCancelamentoHabilitado { get; set; }
 
     /// <summary>
+    /// Quando o aviso de cancelamento foi LIGADO pela última vez (transição desligado → ligado, gravada
+    /// pela tela). É o que faz "ligar vale daqui para frente" ser regra do código e não de
+    /// procedimento: aviso que entrou na fila antes disso, ou cancelamento feito no SISREG antes
+    /// disso e só conciliado depois, não é enviado — sai como "aviso retroativo".
+    /// <para>Nasceu em 25/09/2026, com 218 avisos parados de dias anteriores que não podiam sair de
+    /// uma vez quando a chave fosse ligada.</para>
+    /// </summary>
+    public DateTime? AvisoCancelamentoLigadoEm { get; set; }
+
+    /// <summary>
     /// Minutos entre passadas da conciliação. O padrão 10 saiu de medição: um dia útil tem 46–62
     /// cancelamentos, a listagem traz 20 por página, e o ciclo custa 1 a 3 requisições em ~1,5 s —
     /// 11 req/h no dia típico contra um teto de ~700/h. Mas é a operação que decide: apertar custa

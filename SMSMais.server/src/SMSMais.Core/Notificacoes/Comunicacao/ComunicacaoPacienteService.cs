@@ -22,8 +22,9 @@ namespace SMSMais.Core.Notificacoes.Comunicacao;
 public interface IComunicacaoPacienteService
 {
     /// <summary>Enfileira a comunicação (idempotente por solicitação × finalidade). Para
-    /// ConfirmacaoAgendamento exige DataAgendada futura (senão não faz nada). NÃO salva —
-    /// participa do SaveChanges do chamador.</summary>
+    /// ConfirmacaoAgendamento exige DataAgendada futura (senão não faz nada). CancelamentoAgendamento
+    /// só entra com o aviso ligado e para cancelamento posterior ao momento em que foi ligado.
+    /// NÃO salva — participa do SaveChanges do chamador.</summary>
     Task EnfileirarAsync(Solicitacao solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default);
 
     /// <summary>Processa UMA tentativa de envio. Nunca lança — falha vira backoff/estado terminal.</summary>
@@ -107,6 +108,22 @@ public sealed class ComunicacaoPacienteService(
             && (solicitacao.DataAgendada is not { } da || da <= DateTime.UtcNow))
             return;
 
+        // Aviso de cancelamento com a chave desligada NÃO entra na fila: desligado quer dizer "não
+        // avisar", e não "avisar depois". Antes de 25/09/2026 a conciliação com o SISREG enfileirava
+        // mesmo assim, e 217 avisos velhos se acumularam — ligar a chave soltaria todos de uma vez.
+        // Assim, ligar vale daqui para frente (o "Cancelar" da tela de Confirmações já era assim).
+        if (finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+        {
+            var regras = await RegrasAsync(ct);
+            if (!regras.AvisoCancelamentoHabilitado) return;
+
+            // Cancelamento feito no SISREG ANTES de o aviso ser ligado, e só conciliado depois (a
+            // releitura do fechamento alcança dias para trás): também é retroativo.
+            if (solicitacao.CanceladoEm is { } canceladoEm
+                && (regras.AvisoCancelamentoLigadoEm is not { } ligadoEm || canceladoEm < ligadoEm))
+                return;
+        }
+
         // Por enquanto só se confirma agendamento do SISREG (regra do menu Confirmações): o
         // cadastrado à mão na recepção não gera mensagem.
         if (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
@@ -158,6 +175,17 @@ public sealed class ComunicacaoPacienteService(
         try
         {
             await EnfileirarAsync(solicitacao, FinalidadeComunicacao.CancelamentoAgendamento, ct);
+
+            // Reserva: desde 25/09/2026 o enviador também manda avisos de cancelamento, e a linha
+            // nasce com ProximaTentativaEm = agora. Se ele a pegasse enquanto este caminho envia,
+            // sairiam duas mensagens e uma das pontas cairia em conflito de concorrência — o modal
+            // diria "não avisado" a quem recebeu duas. O envio daqui não depende desse horário.
+            foreach (var nova in db.ChangeTracker.Entries<ComunicacaoPaciente>()
+                         .Where(e => e.State == EntityState.Added
+                             && e.Entity.SolicitacaoId == solicitacao.Id
+                             && e.Entity.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento))
+                nova.Entity.ProximaTentativaEm = DateTime.UtcNow.AddMinutes(10);
+
             await db.SaveChangesAsync(ct);
 
             var comunicacao = await db.ComunicacoesPaciente
@@ -251,6 +279,23 @@ public sealed class ComunicacaoPacienteService(
                      && (s.DataAgendada is not { } dataAgendada || dataAgendada <= DateTime.UtcNow))
             {
                 Terminal(n, StatusComunicacao.Falha, "Exame sem data futura no momento do envio.");
+            }
+            else if (n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento
+                     && s.DataAgendada is { } dataCancelada && dataCancelada <= DateTime.UtcNow)
+            {
+                // Mesma régua da conciliação ("só avisa o que ainda ia acontecer"), agora no envio:
+                // o aviso que entrou na fila à noite e só pôde sair depois do horário do agendamento
+                // já não é notícia — confunde quem já foi (ou não foi).
+                Terminal(n, StatusComunicacao.Falha, "Agendamento já passou: aviso de cancelamento não enviado.");
+            }
+            else if (n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento
+                     && ((await RegrasAsync(ct)).AvisoCancelamentoLigadoEm is not { } ligadoEm
+                         || n.CriadoEm < ligadoEm))
+            {
+                // Entrou na fila antes de o aviso ser ligado (ou num período em que esteve
+                // desligado): ligar vale daqui para frente. Sem corte gravado, não arrisca.
+                Terminal(n, StatusComunicacao.Falha,
+                    "Aviso retroativo: entrou na fila antes de o aviso de cancelamento ser ligado.");
             }
             else if (n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
                      && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
@@ -644,9 +689,17 @@ public sealed class ComunicacaoPacienteService(
         // ancorado na ESPINHA (s.Id); o destino usa o id PÚBLICO do exame (ExameImagem.Id) para o
         // front achar o card em /exames.
         var exameIdPublico = s.ExameImagem?.Id ?? s.Id;
-        var link = await loginLinks.GerarParaSolicitacaoAsync(
-            exameIdPublico, Destino(n.Finalidade, exameIdPublico), ExigeCpf(n.Finalidade), ct);
-        n.LoginLinkId = link.Token;
+        // O aviso de CANCELAMENTO não leva botão de link, e a conciliação acabou de revogar os
+        // acessos da solicitação: gerar um link novo aqui reabriria a porta que ela fechou — e, para
+        // paciente sem CPF, a geração falha e derrubava o aviso inteiro.
+        var tokenLink = Guid.Empty;
+        if (n.Finalidade != FinalidadeComunicacao.CancelamentoAgendamento)
+        {
+            var link = await loginLinks.GerarParaSolicitacaoAsync(
+                exameIdPublico, Destino(n.Finalidade, exameIdPublico), ExigeCpf(n.Finalidade), ct);
+            n.LoginLinkId = link.Token;
+            tokenLink = link.Token;
+        }
 
         var opts = options.Value;
         // Aviso de cancelamento mostra o agendamento inteiro só para contato PROVADO; para os
@@ -655,7 +708,7 @@ public sealed class ComunicacaoPacienteService(
             && TelefoneWhatsApp.MesmoNumero(paciente.TelefoneVerificado, n.Telefone);
 
         var (template, parametros, botoes) = MontarEnvio(
-            n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, link.Token, opts,
+            n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, tokenLink, opts,
             contatoVerificado);
 
         // O modelo aprovado manda na quantidade de variáveis: mandar a mais é erro 132000 na Meta

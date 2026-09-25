@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarInstante } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
@@ -383,8 +384,15 @@ export function AbaRegras() {
               <span>
                 Avisar o paciente do cancelamento
                 <span className="block text-xs text-gray-500">
-                  A mensagem diz que foi cancelado e nada mais — o motivo registrado no SISREG é interno.
+                  A mensagem diz que foi cancelado e nada mais — o motivo registrado no SISREG é interno. Vale daqui
+                  para frente: o que foi cancelado com o aviso desligado não é avisado depois.
                 </span>
+                {cfg.data?.avisoCancelamentoHabilitado && cfg.data.avisoCancelamentoLigadoEm ? (
+                  <span className="block text-xs text-gray-500">
+                    Ligado em {formatarInstante(cfg.data.avisoCancelamentoLigadoEm)} — só cancelamentos feitos depois
+                    disso são avisados.
+                  </span>
+                ) : null}
               </span>
             </label>
           </div>
@@ -425,7 +433,8 @@ export function AbaRegras() {
           <h2 className="text-base font-semibold text-gray-900">Quem recebe o aviso</h2>
           <p className="mt-1 text-sm text-gray-600">
             A mensagem só sai quando a <strong>unidade executante</strong> está ligada <strong>e</strong> o procedimento
-            também está marcado para avisar (os procedimentos se escolhem na aba SISREG da unidade).
+            também está marcado para avisar (os procedimentos se escolhem na aba SISREG da unidade). Vale para a
+            confirmação e o lembrete; o aviso de cancelamento, quando ligado, sai para a rede toda.
           </p>
         </div>
         {alterarUnidade.isError ? <p className="text-sm text-red-700">{extrairMensagemDeErro(alterarUnidade.error)}</p> : null}

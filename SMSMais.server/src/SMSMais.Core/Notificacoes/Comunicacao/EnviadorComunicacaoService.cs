@@ -13,7 +13,9 @@ namespace SMSMais.Core.Notificacoes.Comunicacao;
 /// a cada N segundos pega comunicações Pendentes com <c>ProximaTentativaEm</c> vencida —
 /// somente das finalidades HABILITADAS (template aprovado na Meta) — e delega a
 /// <see cref="IComunicacaoPacienteService.ProcessarTentativaEnvioAsync"/>. Finalidade
-/// desabilitada acumula na fila e flui sozinha quando a chave liga.
+/// desabilitada acumula na fila e flui sozinha quando a chave liga — EXCETO o aviso de
+/// cancelamento: com a chave desligada ele nem entra na fila, e o que entrou antes de a chave ser
+/// ligada sai como "aviso retroativo", sem mensagem (ligar vale daqui para frente).
 /// </summary>
 public sealed class EnviadorComunicacaoService(
     IServiceScopeFactory scopeFactory,
@@ -61,21 +63,29 @@ public sealed class EnviadorComunicacaoService(
     }
 
     /// <param name="lembreteLigado">Chave de operação do lembrete (menu Confirmações).</param>
-    private FinalidadeComunicacao[] FinalidadesHabilitadas(bool lembreteLigado)
+    /// <param name="avisoCancelamentoLigado">Chave "Avisar o paciente do cancelamento" (Mensageria →
+    /// Regras). Até 25/09/2026 o aviso não estava nesta lista: o que a conciliação com o SISREG punha
+    /// na fila nunca saía, nem com a chave ligada — só o "Cancelar" da tela de Confirmações avisava,
+    /// porque envia na hora, sem passar por aqui.</param>
+    private FinalidadeComunicacao[] FinalidadesHabilitadas(bool lembreteLigado, bool avisoCancelamentoLigado)
     {
-        var lista = new List<FinalidadeComunicacao>(4);
+        var lista = new List<FinalidadeComunicacao>(5);
         if (_options.EnviarConfirmacaoAgendamento) lista.Add(FinalidadeComunicacao.ConfirmacaoAgendamento);
         if (_options.EnviarExameLiberado) lista.Add(FinalidadeComunicacao.ExameLiberado);
         if (_options.EnviarLaudoPronto) lista.Add(FinalidadeComunicacao.LaudoPronto);
         if (_options.EnviarLembreteAgendamento && lembreteLigado)
             lista.Add(FinalidadeComunicacao.LembreteAgendamento);
+        if (avisoCancelamentoLigado) lista.Add(FinalidadeComunicacao.CancelamentoAgendamento);
         return [.. lista];
     }
 
-    /// <summary>Mensagem sobre a AGENDA (confirmação e lembrete) respeita a janela de horário.
-    /// Resultado de exame e laudo não: são a resposta a algo que o paciente está esperando.</summary>
+    /// <summary>Mensagem sobre a AGENDA (confirmação, lembrete e aviso de cancelamento) respeita a
+    /// janela de horário. Resultado de exame e laudo não: são a resposta a algo que o paciente está
+    /// esperando. O cancelamento que a conciliação acha às 7h (releitura do dia anterior) espera a
+    /// janela abrir em vez de chegar de madrugada.</summary>
     private static bool EhSobreAgendamento(FinalidadeComunicacao f) =>
-        f is FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento;
+        f is FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento
+            or FinalidadeComunicacao.CancelamentoAgendamento;
 
     private async Task ExecutarUmaPassagemAsync(CancellationToken ct)
     {
@@ -91,7 +101,7 @@ public sealed class EnviadorComunicacaoService(
         var regras = await scope.ServiceProvider
             .GetRequiredService<Confirmacoes.IConfirmacaoConfiguracaoService>().ObterAsync(ct);
 
-        var habilitadas = FinalidadesHabilitadas(regras.LembreteHabilitado);
+        var habilitadas = FinalidadesHabilitadas(regras.LembreteHabilitado, regras.AvisoCancelamentoHabilitado);
         if (habilitadas.Length == 0) return;
         var max = Math.Clamp(regras.MaximoPorPassagem,
             1, Confirmacoes.ConfirmacaoConfiguracaoService.MaximoPorPassagemTeto);
