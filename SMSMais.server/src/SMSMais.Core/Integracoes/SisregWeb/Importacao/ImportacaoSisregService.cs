@@ -490,16 +490,18 @@ public sealed class ImportacaoSisregService(
             ? $"Unidade executante criada do cabeçalho: {exec.Nome}{CnesSufixo(exec.Cnes)}."
             : $"Unidade executante: {exec.Nome} (contexto atual).");
 
-        // 4b. O exame entra no escopo da unidade que o executa — automático, mas DESLIGADO. É a
-        //     contrapartida do tipo nascer sozinho: sem isto, procedimento novo ficaria fora do
-        //     escopo e o exame nunca chegaria ao aparelho, com o mesmo silêncio de antes. Ligar e
-        //     amarrar o equipamento continuam manuais (Unidades → Exames de imagem), e é a
-        //     associação desligada que alimenta a lista "Exames a configurar".
+        // 4b. O exame entra no escopo da unidade que o executa — automático. É a contrapartida do
+        //     tipo nascer sozinho: sem isto, procedimento novo ficaria fora do escopo e o exame
+        //     nunca chegaria ao aparelho. Nasce LIGADO se a unidade tem aparelho da modalidade
+        //     (ver EscopoExameUnidade.GarantirAsync); sem aparelho, desligado — e é esse par
+        //     desligado que alimenta a lista "Exames a configurar".
         if (tipoExameId is { } tipoParaEscopo)
         {
-            var (_, escopoCriado) = await escopoExameUnidade.GarantirAsync(tipoParaEscopo, unidadeExecId, ct);
+            var (escopo, escopoCriado) = await escopoExameUnidade.GarantirAsync(tipoParaEscopo, unidadeExecId, ct);
             if (escopoCriado)
-                passos.Add($"Exame adicionado ao escopo de {exec.Nome} — envio à worklist DESLIGADO até alguém configurar.");
+                passos.Add(escopo.EnviarParaWorklist
+                    ? $"Exame adicionado ao escopo de {exec.Nome} — envio à worklist LIGADO (a unidade tem aparelho da modalidade)."
+                    : $"Exame adicionado ao escopo de {exec.Nome} — envio à worklist DESLIGADO: a unidade não tem aparelho da modalidade.");
         }
 
         var (unidadeSolicId, solicCriada) = await ResolverOuCriarUnidadeAsync(m.CnesUnidadeSolicitante, m.NomeUnidadeSolicitante, ct);

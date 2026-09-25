@@ -110,6 +110,41 @@ public class EscopoExameUnidadeTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Tipo_novo_da_importacao_nasce_ligado_so_onde_ha_aparelho_da_modalidade()
+    {
+        // 15–18/09/2026: a importação criou 47 tipos RX DESLIGADOS no CDT, que tem o RX-CDT, e todo
+        // raio-X autorizado ali parou antes da worklist. Onde há aparelho, o par nasce ligado.
+        await using var db = fixture.CriarDbContext();
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid());
+        var tipo = await db.TiposExame.AsNoTracking().SingleAsync(t => t.Id == exame.TipoExameId);
+
+        Unidade NovaUnidade(string nome) => new()
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"{nome} {Guid.NewGuid().ToString("N")[..8]}",
+            CriadoEm = DateTime.UtcNow,
+        };
+        var comAparelho = NovaUnidade("COM APARELHO");
+        var semAparelho = NovaUnidade("SEM APARELHO");
+        db.Unidades.AddRange(comAparelho, semAparelho);
+        await db.SaveChangesAsync();
+        await EquipamentoAsync(db, comAparelho.Id, tipo.ModalidadeDicom, "AE-NOVO", "Aparelho");
+        // Aparelho de OUTRA modalidade não conta.
+        await EquipamentoAsync(db, semAparelho.Id,
+            tipo.ModalidadeDicom == ModalidadeDicom.US ? ModalidadeDicom.MG : ModalidadeDicom.US, "AE-OUTRO", "Outro");
+
+        var escopo = new EscopoExameUnidade(db);
+        var (ligado, criado1) = await escopo.GarantirAsync(tipo.Id, comAparelho.Id);
+        var (desligado, criado2) = await escopo.GarantirAsync(tipo.Id, semAparelho.Id);
+        await db.SaveChangesAsync();
+
+        Assert.True(criado1 && criado2);
+        Assert.True(ligado.EnviarParaWorklist);
+        Assert.False(desligado.EnviarParaWorklist);
+        Assert.Null(ligado.EquipamentoId);
+    }
+
+    [Fact]
     public async Task Equipamento_configurado_no_escopo_vence_a_deducao_por_modalidade()
     {
         // A razão de ser do campo: sem ele o destino sai do casamento

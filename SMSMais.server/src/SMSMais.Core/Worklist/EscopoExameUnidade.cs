@@ -29,9 +29,15 @@ public interface IEscopoExameUnidade
 
     /// <summary>
     /// Garante que o par (tipo, unidade) existe — idempotente. Chamado pela importação: procedimento
-    /// novo entra no escopo da unidade que o importou <b>automaticamente</b>, mas
-    /// <b>desligado e sem equipamento</b>, porque ligar é decisão de quem conhece a operação da
-    /// unidade e mandar item mal formado ao aparelho é pior do que não mandar.
+    /// novo entra no escopo da unidade que o importou <b>automaticamente</b>, sem equipamento fixo
+    /// (o destino sai da dedução por modalidade).
+    ///
+    /// <para><b>Nasce LIGADO quando a unidade tem aparelho da modalidade</b> (ativo, com AE). Até
+    /// 25/09/2026 nascia sempre desligado: a importação de 15–18/09 criou 47 tipos RX desligados no
+    /// CDT, que tem o RX-CDT, e todo raio-X autorizado ali parou antes da worklist (61 erros). A rede
+    /// é 100% ligada por padrão; desligar é que é a exceção. Sem aparelho da modalidade continua
+    /// desligado — ligar ali só faria o worker falhar em "Sem equipamento configurado", e o par
+    /// desligado é o que alimenta "Exames a configurar".</para>
     ///
     /// <para>Não sobrescreve nada: se o par já existe, devolve como está — inclusive quando alguém
     /// já o configurou. Também não faz <c>SaveChanges</c>; quem chama já está numa transação.</para>
@@ -93,12 +99,22 @@ internal sealed class EscopoExameUnidade(SmsMaisDbContext db) : IEscopoExameUnid
 
         if (existente is not null) return (existente, false);
 
+        var unidadeTemAparelho = await db.TiposExame
+            .Where(t => t.Id == tipoExameId)
+            .AnyAsync(t => db.Equipamentos.Any(e =>
+                e.UnidadeId == unidadeId
+                && e.ModalidadeDicom == t.ModalidadeDicom
+                && e.Ativo
+                && e.ExcluidoEm == null
+                && e.IdentificadorDicom != null
+                && e.IdentificadorDicom != ""), cancellationToken);
+
         var novo = new TipoExameUnidade
         {
             Id = Guid.CreateVersion7(),
             TipoExameId = tipoExameId,
             UnidadeId = unidadeId,
-            EnviarParaWorklist = false,
+            EnviarParaWorklist = unidadeTemAparelho,
             EquipamentoId = null,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
