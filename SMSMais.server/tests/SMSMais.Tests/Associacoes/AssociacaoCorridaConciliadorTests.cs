@@ -34,7 +34,7 @@ namespace SMSMais.Tests.Associacoes;
 [Collection(nameof(PostgresCollection))]
 public class AssociacaoCorridaConciliadorTests(PostgresFixture fixture)
 {
-    private static ExameAssociacaoService CriarService(
+    internal static ExameAssociacaoService CriarService(
         SmsMaisDbContext db, IPacsReescritorEstudoClient reescritor)
     {
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
