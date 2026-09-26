@@ -37,7 +37,9 @@ public class VerificarCadastroComandoTests(PostgresFixture fixture)
                 TelefoneVerificado: telefoneVerificado));
         var telefones = Substitute.For<ITelefoneValidacaoService>();
         return (new VerificarCadastroComando(db, pacientes, telefones,
-            SMSMais.Tests.Notificacoes.VerificacaoCadastralHandlerTests.Liberacao(db)), telefones);
+            SMSMais.Tests.Notificacoes.VerificacaoCadastralHandlerTests.Liberacao(db),
+            Substitute.For<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<VerificarCadastroComando>.Instance), telefones);
     }
 
     [Fact]
@@ -114,7 +116,9 @@ public class VerificarCadastroComandoTests(PostgresFixture fixture)
             new RoboComandoContexto(Guid.NewGuid(), pacienteId, null, _telefone, Args("0452")), default);
 
         Assert.True(r.Sucesso);
-        Assert.Contains("1 aviso(s) liberado(s)", r.Mensagem);
+        // O robô agora ENVIA na hora (não promete e espera o worker, cuja seleção é gated pelas
+        // chaves de operação) — a instrução ao modelo diz que os avisos JÁ saíram nesta conversa.
+        Assert.Contains("1 aviso(s) enviado(s) AGORA nesta conversa", r.Mensagem);
         await using var db2 = fixture.CriarDbContext();
         var depois = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.SingleAsync(
             db2.ComunicacoesPaciente, c => c.Id == retida.Id);

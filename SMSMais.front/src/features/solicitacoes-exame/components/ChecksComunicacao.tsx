@@ -5,6 +5,10 @@ const ROTULO: Record<string, string> = {
   ConfirmacaoAgendamento: 'Confirmação de agendamento',
   ExameLiberado: 'Aviso "exame liberado"',
   LaudoPronto: 'Aviso "laudo pronto"',
+  LembreteAgendamento: 'Lembrete de agendamento',
+  CancelamentoAgendamento: 'Aviso de cancelamento',
+  ReforcoConfirmacao: 'Reforço da confirmação',
+  OrientacaoPosto: 'Orientação ao posto',
 };
 
 /**
@@ -17,10 +21,11 @@ export function ChecksComunicacao({
   finalidade,
 }: {
   chip: ComunicacaoChip | null | undefined;
-  finalidade: 'ConfirmacaoAgendamento' | 'ExameLiberado' | 'LaudoPronto';
+  /// O histórico traz TODAS as finalidades — rótulo desconhecido cai no genérico, nunca no errado.
+  finalidade: string;
 }) {
   if (!chip) return null;
-  const rotulo = ROTULO[finalidade];
+  const rotulo = ROTULO[finalidade] ?? 'Comunicação ao paciente';
 
   if (chip.status === 'AguardandoCorrecaoContato') {
     return (

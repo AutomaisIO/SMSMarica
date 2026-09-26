@@ -517,8 +517,7 @@ public sealed class ComunicacaoPacienteService(
     internal const string PrefixoInterativoConfirmaSim = "confpres_sim:";
     internal const string PrefixoInterativoNaoPoderei = "confpres_nao:";
 
-    private static string Ultimos4(string? t)
-        => string.IsNullOrEmpty(t) ? "????" : t[^Math.Min(4, t.Length)..];
+    private static string Ultimos4(string? t) => TelefoneWhatsApp.Ultimos4(t);
 
     private Confirmacoes.Dtos.ConfirmacaoConfiguracaoDto? _regras;
 
@@ -1106,6 +1105,7 @@ public sealed class ComunicacaoPacienteService(
         // Modelo escolhido AGORA, pela leitura da principal e pelo catálogo de hoje.
         IReadOnlyList<TemplateWhatsApp> catalogo;
         try { catalogo = await whatsApp.ListarTemplatesAsync(ct); }
+        catch (OperationCanceledException) { throw; } // shutdown não é "catálogo indisponível"
         catch { catalogo = []; }
         var envio = Confirmacoes.ReguaReforcoConfirmacao.MontarEnvio(
             n.Finalidade, n.Tipo, Tratamento(paciente.NomeCompleto, paciente.Sexo),
@@ -1171,6 +1171,7 @@ public sealed class ComunicacaoPacienteService(
     {
         IReadOnlyList<TemplateWhatsApp> catalogo;
         try { catalogo = await whatsApp.ListarTemplatesAsync(ct); }
+        catch (OperationCanceledException) { throw; } // shutdown não é "catálogo indisponível"
         catch { return (parametros, null); }
 
         var modelo = catalogo.FirstOrDefault(t => string.Equals(t.Nome, template, StringComparison.OrdinalIgnoreCase));

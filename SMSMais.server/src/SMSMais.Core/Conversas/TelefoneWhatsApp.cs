@@ -100,6 +100,14 @@ public static class TelefoneWhatsApp
                 "O WhatsApp só alcança celular. Esse número parece ser fixo — informe um celular com DDD.");
     }
 
+    /// <summary>Últimos 4 dígitos, para LOG — nunca o número inteiro (LGPD). Régua única: os
+    /// serviços que mascaravam por conta própria delegam para cá.</summary>
+    public static string Ultimos4(string? telefone)
+    {
+        var d = new string([.. (telefone ?? string.Empty).Where(char.IsDigit)]);
+        return d.Length == 0 ? "????" : d.Length <= 4 ? d : d[^4..];
+    }
+
     /// <summary>Mesmo número tolerando DDI (um é sufixo do outro), com guarda de tamanho — a
     /// mesma régua do telecom FHIR. Aceita qualquer formatação; compara só os dígitos. Tolera
     /// também o NONO DÍGITO: um cadastro antigo "55 21 8626…" (12 dígitos) e o wa_id atual

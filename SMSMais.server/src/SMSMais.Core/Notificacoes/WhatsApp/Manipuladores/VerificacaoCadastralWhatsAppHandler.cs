@@ -1111,10 +1111,14 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                     : null;
                 if (principal is not null) return principal;
 
-                // O lembrete de quem não respondeu, quando a confirmação dele não está retida (ela
-                // falhou ou é de antes da primeira mensagem curta), fica ele mesmo esperando a
-                // identificação — e aí é ele o alvo.
-                return porContexto.Status == StatusComunicacao.AguardandoVerificacaoCadastral ? porContexto : null;
+                // Sem principal retida, o alvo é a própria mensagem tocada — EM QUALQUER status.
+                // Devolver null aqui era mudez dupla: "Não sou essa pessoa" tocado num aviso de
+                // cancelamento (ou num lembrete já lido) não registrava a denúncia do número
+                // errado (ADR-0057) e ninguém respondia, porque o robô descarta cliques de botão.
+                // Quem consome decide o que fazer com um alvo que não está mais esperando: a
+                // liberação diz "já enviado/atendente cuida/passou" e o cancelamento tem resposta
+                // própria.
+                return porContexto;
             }
         }
 
@@ -1289,14 +1293,52 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     }
 
     /// <summary>"Tentar de novo" da passagem: recomeça pelo CPF com o orçamento de diálogo zerado
-    /// (<c>TentativasErradas</c> fica — chance gasta é chance gasta).</summary>
+    /// (<c>TentativasErradas</c> fica — chance gasta é chance gasta). Botão velho, estado expirado
+    /// ou chances esgotadas RESPONDEM — o robô descarta cliques de botão, e devolver nada aqui
+    /// seria recriar o silêncio que este botão existe para acabar.</summary>
     private async Task TratarBotaoRecomecarAsync(ManipuladorContexto ctx, Guid estadoId, CancellationToken ct)
     {
         var estado = await db.VerificacoesCadastraisEstado.FirstOrDefaultAsync(e => e.Id == estadoId, ct);
-        if (estado is null) return;
-        if (estado.ExpiraEm <= DateTime.UtcNow) { db.VerificacoesCadastraisEstado.Remove(estado); return; }
-        if (estado.Etapa == EtapaVerificacaoCadastral.Esgotado) return; // sem chance nova por botão
+        if (estado is not null && estado.ExpiraEm <= DateTime.UtcNow)
+        {
+            db.VerificacoesCadastraisEstado.Remove(estado);
+            estado = null;
+        }
         ctx.Consumido = true;
+        if (estado is null)
+        {
+            // O diálogo daquele botão acabou. Se ainda há desafio pendente no número, recomeça
+            // nele; senão, explica — nunca silêncio.
+            var pendentes = await DesafiosPendentesDoTelefoneAsync(ctx.Conversa.TelefoneCanonical, ct);
+            if (pendentes.Count > 0)
+            {
+                var novo = new VerificacaoCadastralEstado
+                {
+                    Id = Guid.CreateVersion7(),
+                    TelefoneCanonical = ctx.Conversa.TelefoneCanonical,
+                    ComunicacaoPacienteId = pendentes[0].Id,
+                    Etapa = EtapaVerificacaoCadastral.AguardandoCpf,
+                    ExpiraEm = DateTime.UtcNow.Add(ValidadeEstado),
+                    CriadoEm = DateTime.UtcNow,
+                };
+                db.VerificacoesCadastraisEstado.Add(novo);
+                await RecomecarCicloAsync(ctx, novo, ct);
+                return;
+            }
+            await ResponderAsync(ctx,
+                "Essa conversa de identificação expirou e não há mais aviso pendente para este número. "
+                + "Se precisar de informações de um agendamento, procure o posto de saúde onde o paciente "
+                + "é atendido — ou escreva aqui o que precisa.", ct);
+            return;
+        }
+        if (estado.Etapa == EtapaVerificacaoCadastral.Esgotado)
+        {
+            // Sem chance nova por botão — mas com resposta.
+            await ResponderAsync(ctx,
+                "Como não consegui confirmar os dados por aqui, o caminho é o posto de saúde onde o "
+                + "paciente é atendido — lá conferem o cadastro e entregam a guia.", ct);
+            return;
+        }
         await RecomecarCicloAsync(ctx, estado, ct);
     }
 
@@ -1323,7 +1365,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         return char.ToUpperInvariant(p[0]) + p[1..];
     }
 
-    private static string Ultimos4(string s) => s.Length <= 4 ? s : s[^4..];
+    private static string Ultimos4(string s) => Conversas.TelefoneWhatsApp.Ultimos4(s);
 
     private static bool TentarExtrairId(string? valor, string prefixo, out Guid id)
     {

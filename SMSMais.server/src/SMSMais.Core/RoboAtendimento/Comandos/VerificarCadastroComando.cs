@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Telefones;
@@ -27,7 +28,9 @@ public sealed class VerificarCadastroComando(
     SmsMaisDbContext db,
     IPacientesService pacientes,
     ITelefoneValidacaoService telefones,
-    ILiberacaoAposIdentificacao liberacao) : IRoboComando
+    ILiberacaoAposIdentificacao liberacao,
+    IComunicacaoPacienteService comunicacoes,
+    ILogger<VerificarCadastroComando> logger) : IRoboComando
 {
     public ComandoRobo Comando => ComandoRobo.VerificarCadastro;
     public bool Idempotente => false;
@@ -66,6 +69,25 @@ public sealed class VerificarCadastroComando(
         var resultado = await liberacao.LiberarAsync(pacienteId, penduradaId: null, ct);
         await db.SaveChangesAsync(ct);
 
+        // ENVIO IMEDIATO, como na máquina do webhook: prometer "em seguida" e depender do worker
+        // reintroduzia o "confirma e não recebe nada" — a seleção do worker é gated pelas chaves
+        // de operação (um lembrete liberado com a chave do lembrete desligada nunca sairia).
+        // Primeiro os dados na própria conversa; senão o template; senão o worker retenta.
+        foreach (var liberadaId in resultado.LiberadasIds)
+        {
+            try
+            {
+                if (!await comunicacoes.EnviarDetalhesNaConversaAsync(liberadaId, ctx.TelefoneCanonical, ct))
+                    await comunicacoes.ProcessarTentativaEnvioAsync(liberadaId, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Falha ao enviar imediatamente a comunicação {Id} liberada pelo robô (conversa {Conversa}).",
+                    liberadaId, ctx.ConversaId);
+            }
+        }
+
         return new(true, InstrucaoAoModelo(resultado));
     }
 
@@ -73,8 +95,8 @@ public sealed class VerificarCadastroComando(
     internal static string InstrucaoAoModelo(LiberacaoResultado r)
     {
         if (r.Liberadas > 0)
-            return $"Identidade confirmada; {r.Liberadas} aviso(s) liberado(s) para envio. Diga que agora você vai "
-                + "enviar as informações do agendamento em seguida (a confirmação chega logo). Seja breve e cordial.";
+            return $"Identidade confirmada; {r.Liberadas} aviso(s) enviado(s) AGORA nesta conversa. Diga que as "
+                + "informações do agendamento acabaram de ser enviadas aqui mesmo. Seja breve e cordial.";
 
         var oQueDizer = r.Desfecho switch
         {

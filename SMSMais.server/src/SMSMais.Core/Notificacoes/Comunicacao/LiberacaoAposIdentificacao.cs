@@ -183,6 +183,14 @@ public sealed class LiberacaoAposIdentificacao(
             // O paciente acabou de se identificar e está esperando a resposta: sai mesmo fora do horário.
             vencedora.IgnorarJanelaHorario = true;
             vencedora.Tentativas = 0;
+            // Os recibos são do envio ANTERIOR (a primeira mensagem curta): sem zerá-los, a linha
+            // mostraria "lida" antes de "enviada" e um envio novo que falhasse ainda exibiria a
+            // entrega velha como se tivesse chegado.
+            vencedora.EnviadoEm = null;
+            vencedora.EntregueEm = null;
+            vencedora.LidoEm = null;
+            vencedora.VisualizadoEm = null;
+            vencedora.MensagemWhatsAppId = null;
             vencedora.AtualizadoEm = agora;
             liberadas.Add(vencedora.Id);
 

@@ -1110,7 +1110,7 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
               <div className="flex flex-wrap items-center gap-2">
                 <ChecksComunicacao
                   chip={{ status: c.status, visualizado: c.visualizadoEm != null, motivo: c.motivoFalha }}
-                  finalidade={c.finalidade === 'LaudoPronto' ? 'LaudoPronto' : 'ExameLiberado'}
+                  finalidade={c.finalidade}
                 />
                 <span className="font-medium text-gray-900">{rotuloFinalidade(c.finalidade)}</span>
                 {c.telefone ? <span className="text-xs text-gray-500">→ {c.telefone}</span> : null}

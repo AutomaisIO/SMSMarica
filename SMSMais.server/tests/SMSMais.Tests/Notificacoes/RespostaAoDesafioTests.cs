@@ -251,7 +251,7 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Resposta_ao_reforco_de_agendamento_que_nao_espera_mais_nada_nao_cai_no_outro_paciente()
+    public async Task Resposta_ao_reforco_de_agendamento_que_nao_espera_mais_nada_pergunta_pela_pessoa_certa()
     {
         await using var db = fixture.CriarDbContext();
         var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
@@ -268,13 +268,17 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
         var (_, wamidReforco) = await LinhaAsync(db, sJoana, FinalidadeComunicacao.ReforcoConfirmacao,
             StatusComunicacao.Entregue, enviadoEm: DateTime.UtcNow.AddHours(-2));
 
-        // "Não sou essa pessoa" no reforço da JOANA não pode virar "Você conhece Carla?".
+        // "Não sou essa pessoa" no reforço da JOANA pergunta sobre a JOANA — nunca sobre a Carla,
+        // e nunca em silêncio: mesmo com a principal já enviada, a denúncia de número errado tem
+        // de ser registrável (ADR-0057; antes o alvo virava null e o clique morria mudo).
         var ctx = Contexto(c.Conversa, "Não sou essa pessoa", respondendo: wamidReforco, botao: "Não sou essa pessoa");
         await c.Handler.TratarAsync(ctx, default);
         await db.SaveChangesAsync();
 
-        Assert.False(ctx.Consumido);
-        Assert.Empty(Respostas(c.Whats));
+        Assert.True(ctx.Consumido);
+        var resposta = Assert.Single(Respostas(c.Whats));
+        Assert.Contains("Joana", resposta);
+        Assert.DoesNotContain("Carla", resposta);
         Assert.Equal(principalCarla.Id, (await LerEstadoAsync(db))!.ComunicacaoPacienteId);
     }
 
