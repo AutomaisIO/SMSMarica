@@ -23,9 +23,13 @@ public interface ITelefoneValidacaoService
     /// <param name="vinculo">A que título este número atende o paciente (próprio, mãe/pai/responsável,
     /// outro parente). Fica gravado no cadastro — é a resposta de LGPD para "por que essa pessoa
     /// recebe o dado daquela".</param>
+    /// <param name="pacienteId">Registro exato a estampar, quando o chamador o conhece (a
+    /// verificação cadastral valida um paciente específico). Sem ele, a busca por CPF pega o
+    /// primeiro do bundle — com cadastro duplicado, pode ser a ficha errada.</param>
     Task MarcarValidadoAsync(string cpf, string numero, string origem, Guid? validadoPor,
         CancellationToken ct = default,
-        Data.Entities.Enums.VinculoContatoVerificado vinculo = Data.Entities.Enums.VinculoContatoVerificado.Proprio);
+        Data.Entities.Enums.VinculoContatoVerificado vinculo = Data.Entities.Enums.VinculoContatoVerificado.Proprio,
+        Guid? pacienteId = null);
 
     /// <summary>
     /// Lança <c>ConflitoException</c> se o número já é o contato CONFIRMADO de OUTRO CPF. Existe

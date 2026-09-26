@@ -51,9 +51,11 @@ public class VerificarCadastroComandoTests(PostgresFixture fixture)
             new RoboComandoContexto(Guid.NewGuid(), pacienteId, null, _telefone, Args("0452")), default);
 
         Assert.True(r.Sucesso);
+        // O carimbo leva o pacienteId conhecido: com CPF duplicado no hub, a estampa por CPF
+        // podia cair na ficha errada e o desafio renascia a cada agendamento.
         await telefones.Received(1).MarcarValidadoAsync(
             Cpf, _telefone, "robo-cadastral", null, Arg.Any<CancellationToken>(),
-            Arg.Any<SMSMais.Data.Entities.Enums.VinculoContatoVerificado>());
+            Arg.Any<SMSMais.Data.Entities.Enums.VinculoContatoVerificado>(), pacienteId);
     }
 
     [Fact]

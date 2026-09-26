@@ -31,6 +31,15 @@ public interface IComunicacaoPacienteService
     Task ProcessarTentativaEnvioAsync(Guid comunicacaoId, CancellationToken ct = default);
 
     /// <summary>
+    /// Envia os DADOS do agendamento como mensagem de SESSÃO (texto livre + botões de presença) no
+    /// número em que a pessoa acabou de se identificar — sem template e sem esperar a fila. A
+    /// janela de 24h está aberta por construção (a pessoa acabou de escrever). Persiste com
+    /// SaveChanges próprio. <c>false</c> = nada saiu nem foi gravado; o chamador cai no caminho de
+    /// template (<see cref="ProcessarTentativaEnvioAsync"/>). Nunca lança.
+    /// </summary>
+    Task<bool> EnviarDetalhesNaConversaAsync(Guid comunicacaoId, string telefoneDestino, CancellationToken ct = default);
+
+    /// <summary>
     /// Reenvio MANUAL (operador): REVOGA todos os magic links ativos da solicitação (e derruba
     /// as sessões do cidadão se algum link foi usado — quem recebeu errado perde o acesso) e
     /// reconstrói o envio do zero com os dados ATUAIS do paciente (telefone certo, link novo).
@@ -406,6 +415,110 @@ public sealed class ComunicacaoPacienteService(
 
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task<bool> EnviarDetalhesNaConversaAsync(
+        Guid comunicacaoId, string telefoneDestino, CancellationToken ct = default)
+    {
+        var n = await db.ComunicacoesPaciente
+            .Include(x => x.Solicitacao!).ThenInclude(s => s.ExameImagem!).ThenInclude(e => e.TipoExame)
+            .Include(x => x.Solicitacao!).ThenInclude(s => s.UnidadeExecutante)
+            .FirstOrDefaultAsync(x => x.Id == comunicacaoId, ct);
+        var s = n?.Solicitacao;
+        if (n is null || s is null || n.Status != StatusComunicacao.Pendente
+            || n.Finalidade is not (FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento)
+            || s.DataAgendada is not { } dataAgendada)
+            return false;
+
+        try
+        {
+            var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
+
+            // O número desta conversa foi provado AGORA pelo desafio — mas "negado" (quem atendeu
+            // disse que não conhece o paciente) continua valendo: ninguém prova identidade num
+            // número que o próprio dono denunciou sem a recepção rever (ADR-0057).
+            if (paciente.TelefoneNegado is { } negado && TelefoneWhatsApp.MesmoNumero(telefoneDestino, negado))
+                return false;
+
+            var campanha = await Campanhas.CampanhaResolver.VigenteAsync(db, s.UnidadeExecutanteId, s.DataAgendada, ct);
+            var exameIdPublico = s.ExameImagem?.Id ?? s.Id;
+            var link = await loginLinks.GerarParaSolicitacaoAsync(
+                exameIdPublico, Destino(n.Finalidade, exameIdPublico), ExigeCpf(n.Finalidade),
+                abreSessao: true, ct);
+
+            var quando = FusoBrasilia.ParaExibicao(dataAgendada);
+            var procedimento = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto;
+            var rotulo = s.Categoria == CategoriaSolicitacao.Consulta ? "Consulta" : "Exame";
+            var localNome = campanha?.LocalNome ?? s.UnidadeExecutante?.Nome;
+
+            var texto = $"Aqui estão as informações do agendamento de *{PrimeiroNome(paciente.NomeCompleto)}*:\n\n"
+                + (string.IsNullOrWhiteSpace(procedimento) ? string.Empty : $"{rotulo}: *{procedimento.Trim()}*\n")
+                + $"Data: *{quando.ToString("dd/MM/yyyy", PtBr)} às {quando.ToString("HH:mm", PtBr)}h*\n"
+                + (string.IsNullOrWhiteSpace(localNome) ? string.Empty : $"Local: *{localNome}*\n")
+                + (string.IsNullOrWhiteSpace(campanha?.LocalEndereco) ? string.Empty : $"Endereço: {campanha.LocalEndereco}\n")
+                + $"\n{WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler.LembreteGuia}\n\n"
+                + $"Comprovante e detalhes: {link.Url}";
+
+            // A pergunta de presença vai na MESMA mensagem (decisão do dono, 26/09/2026) — quem já
+            // respondeu por outro canal não é perguntado de novo.
+            EnvioWhatsAppResultado resultado;
+            if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
+            {
+                texto += "\n\nVocê confirma a presença?";
+                resultado = await whatsApp.EnviarInterativoBotoesAsync(
+                    telefoneDestino, texto,
+                    [
+                        new BotaoInterativoWhatsApp($"{PrefixoInterativoConfirmaSim}{s.Id}", "Sim, confirmo"),
+                        new BotaoInterativoWhatsApp($"{PrefixoInterativoNaoPoderei}{s.Id}", "Não poderei ir"),
+                    ],
+                    pacienteId: n.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+            }
+            else
+            {
+                texto += s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada
+                    ? "\n\nSua presença já está *confirmada* ✅"
+                    : string.Empty;
+                resultado = await whatsApp.EnviarTextoAsync(
+                    telefoneDestino, texto, pacienteId: n.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+            }
+
+            if (!resultado.Ok)
+            {
+                logger.LogWarning(
+                    "Detalhes do agendamento NÃO saíram na conversa (…{Fone4}, comunicação {Id}): {Erro}. "
+                    + "A comunicação segue Pendente para o caminho de template.",
+                    Ultimos4(telefoneDestino), n.Id, resultado.Erro);
+                return false;
+            }
+
+            n.Status = StatusComunicacao.Enviada;
+            n.EnviadoEm = DateTime.UtcNow;
+            n.MotivoFalha = null;
+            n.ProximaTentativaEm = null;
+            n.Telefone = telefoneDestino;
+            n.LoginLinkId = link.Token;
+            n.AtualizadoEm = DateTime.UtcNow;
+            if (resultado.WaMessageId is not null) n.MensagemWhatsAppId = await MensagemDoEnvioAsync(resultado, ct);
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Falhou o caminho de sessão: nada foi persistido — a comunicação segue Pendente e o
+            // chamador cai no template imediato (e, no pior caso, o worker retenta).
+            logger.LogWarning(ex,
+                "Falha ao enviar os detalhes do agendamento na conversa (…{Fone4}, comunicação {Id}).",
+                Ultimos4(telefoneDestino), comunicacaoId);
+            return false;
+        }
+    }
+
+    /// <summary>Botões interativos da mensagem de detalhes (sessão). Vivem aqui porque é este
+    /// serviço que os envia; quem os LÊ é o <see cref="WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler"/>.</summary>
+    internal const string PrefixoInterativoConfirmaSim = "confpres_sim:";
+    internal const string PrefixoInterativoNaoPoderei = "confpres_nao:";
+
+    private static string Ultimos4(string? t)
+        => string.IsNullOrEmpty(t) ? "????" : t[^Math.Min(4, t.Length)..];
 
     private Confirmacoes.Dtos.ConfirmacaoConfiguracaoDto? _regras;
 

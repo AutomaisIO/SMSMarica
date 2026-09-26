@@ -560,7 +560,7 @@ export const artigoMensageria: Artigo = {
       id: 'reforco-confirmacao',
       titulo: 'Quem não se identificou: reforço e orientação ao posto',
       busca:
-        'reforço não respondeu não se identificou procure o posto orientação ao posto vou ao posto quero mais informações não sou essa pessoa três dias 72 horas domingo limite por número lembrete dispensada cadastro confirmado identificação liberou frase',
+        'reforço não respondeu não se identificou procure o posto orientação ao posto vou ao posto quero mais informações não sou essa pessoa três dias 72 horas domingo limite por número lembrete dispensada cadastro confirmado identificação liberou frase na conversa sim confirmo não poderei ir aviso de segurança outro número verificado',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -604,7 +604,7 @@ export const artigoMensageria: Artigo = {
               {
                 termo: 'Quero mais informações',
                 descricao:
-                  'Começa a identificação: início do CPF, mês e ano de nascimento, nome. Quem tinha começado há mais de um dia e parado no meio recomeça do CPF — as tentativas erradas continuam contando. Quem já esgotou as tentativas recebe a orientação de ir ao posto, e não um novo pedido de CPF.',
+                  'Começa a identificação: início do CPF, mês e ano de nascimento, nome. Número que JÁ é o verificado do paciente pula o interrogatório: recebe os dados na própria conversa, na hora. Quem tinha começado há mais de um dia e parado no meio recomeça do CPF — as tentativas erradas continuam contando. Quem já esgotou as tentativas recebe a orientação de ir ao posto, e não um novo pedido de CPF. E quem toca sem ter aviso pendente recebe uma explicação — nunca silêncio.',
               },
               {
                 termo: 'Não sou essa pessoa',
@@ -647,8 +647,11 @@ export const artigoMensageria: Artigo = {
           <Sub>Depois que a pessoa se identifica: a frase diz o que aconteceu</Sub>
           <P>
             Ao concluir a identificação, o sistema libera o que estava retido daquele paciente — a confirmação e, se
-            houver, o lembrete — e a mensagem sai completa, com data, hora e local, mesmo fora da janela de horário
-            (a pessoa está na conversa). Se as duas eram do mesmo agendamento, sai uma só; a outra fica{' '}
+            houver, o lembrete — e os dados saem <strong>na própria conversa, na hora</strong>: uma mensagem com o
+            procedimento, a data, o local, o link do app e os botões <em>"Sim, confirmo"</em> /{' '}
+            <em>"Não poderei ir"</em>, sem passar pela fila (se esse envio de conversa falhar, sai o modelo completo
+            pelo caminho normal). Vale mesmo fora da janela de horário — a pessoa está na conversa. Se confirmação e
+            lembrete eram do mesmo agendamento, sai uma mensagem só; a outra fica{' '}
             <SeloRef cor="gray">Dispensada</SeloRef>. Antes de prometer, o sistema confere se a mensagem vai mesmo
             sair — e a frase que a pessoa lê depende do resultado:
           </P>
@@ -676,7 +679,7 @@ export const artigoMensageria: Artigo = {
               {
                 termo: 'O paciente tem outro número verificado',
                 descricao:
-                  'Avisa que as informações vão para o WhatsApp já cadastrado (mostra só o final do número) e que a troca de número se faz no posto, com documento.',
+                  'A pessoa venceu a verificação completa, então as informações saem na própria conversa. O número principal do cadastro NÃO muda sozinho (a troca se faz no posto, com documento) — e recebe um aviso de segurança dizendo que alguém confirmou os dados do paciente em outro número.',
               },
             ]}
           />

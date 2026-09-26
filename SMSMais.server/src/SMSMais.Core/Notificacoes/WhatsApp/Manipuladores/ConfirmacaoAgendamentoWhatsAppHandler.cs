@@ -54,6 +54,22 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             await TratarNaoPodereiAsync(ctx, idQuick, ct);
             return;
         }
+        // Botões INTERATIVOS da mensagem de DETALHES (sessão): quem acabou de se identificar recebe
+        // os dados do agendamento com "Sim, confirmo" / "Não poderei ir" na própria conversa.
+        if (TentarExtrairId(ctx.InterativoReplyId,
+                Comunicacao.ComunicacaoPacienteService.PrefixoInterativoConfirmaSim, out var idConfSim))
+        {
+            ctx.Consumido = true;
+            await TratarSegueConfirmadoAsync(ctx, idConfSim, ct);
+            return;
+        }
+        if (TentarExtrairId(ctx.InterativoReplyId,
+                Comunicacao.ComunicacaoPacienteService.PrefixoInterativoNaoPoderei, out var idConfNao))
+        {
+            ctx.Consumido = true;
+            await TratarNaoPodereiAsync(ctx, idConfNao, ct);
+            return;
+        }
         if (TentarExtrairId(ctx.InterativoReplyId, PrefixoCancelaNao, out var idNao))
         {
             ctx.Consumido = true;

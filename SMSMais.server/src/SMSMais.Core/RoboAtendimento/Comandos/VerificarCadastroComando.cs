@@ -58,7 +58,8 @@ public sealed class VerificarCadastroComando(
 
         // Marca o número da conversa como verificado para este paciente (também corrige o cadastro).
         if (!string.IsNullOrWhiteSpace(p.Cpf))
-            await telefones.MarcarValidadoAsync(p.Cpf!, ctx.TelefoneCanonical, "robo-cadastral", null, ct);
+            await telefones.MarcarValidadoAsync(p.Cpf!, ctx.TelefoneCanonical, "robo-cadastral", null, ct,
+                pacienteId: pacienteId);
 
         // Libera o que estava retido (confirmação e lembrete) — o robô não tem diálogo próprio,
         // então não há "pendurada": vale o que o paciente tem esperando identificação.

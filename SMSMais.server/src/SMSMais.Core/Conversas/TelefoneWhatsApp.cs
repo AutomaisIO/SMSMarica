@@ -101,13 +101,20 @@ public static class TelefoneWhatsApp
     }
 
     /// <summary>Mesmo número tolerando DDI (um é sufixo do outro), com guarda de tamanho — a
-    /// mesma régua do telecom FHIR. Aceita qualquer formatação; compara só os dígitos.</summary>
+    /// mesma régua do telecom FHIR. Aceita qualquer formatação; compara só os dígitos. Tolera
+    /// também o NONO DÍGITO: um cadastro antigo "55 21 8626…" (12 dígitos) e o wa_id atual
+    /// "55 21 98626…" (13) são o MESMO aparelho — sem a normalização, nenhum é sufixo do outro e
+    /// o carimbo de verificado era recusado para o próprio dono do número.</summary>
     public static bool MesmoNumero(string? a, string? b)
     {
         var da = new string([.. (a ?? string.Empty).Where(char.IsDigit)]);
         var db = new string([.. (b ?? string.Empty).Where(char.IsDigit)]);
-        return da.Length >= 8 && db.Length >= 8
-            && (da.EndsWith(db, StringComparison.Ordinal) || db.EndsWith(da, StringComparison.Ordinal));
+        if (da.Length < 8 || db.Length < 8) return false;
+        if (da.EndsWith(db, StringComparison.Ordinal) || db.EndsWith(da, StringComparison.Ordinal)) return true;
+        var na = NormalizarNonoDigito(da);
+        var nb = NormalizarNonoDigito(db);
+        return (na != da || nb != db)
+            && (na.EndsWith(nb, StringComparison.Ordinal) || nb.EndsWith(na, StringComparison.Ordinal));
     }
 }
 

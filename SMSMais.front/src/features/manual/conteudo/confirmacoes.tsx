@@ -443,7 +443,9 @@ export const artigoConfirmacoes: Artigo = {
         <div className="space-y-4">
           <P>
             Quando o número do cadastro não é verificado, a primeira mensagem só avisa que existe um agendamento — a
-            data e o local vão depois que a pessoa se identifica. Enquanto isso, o card mostra{' '}
+            data e o local vão depois que a pessoa se identifica, <strong>na própria conversa</strong>: uma mensagem
+            com os dados e os botões <em>"Sim, confirmo"</em> / <em>"Não poderei ir"</em> (a resposta aparece aqui
+            como confirmação ou cancelamento pelo WhatsApp, como sempre). Enquanto isso, o card mostra{' '}
             <SeloRef cor="alerta">Aguardando identificação</SeloRef>, e a ficha continua em{' '}
             <AbaRef>Não confirmados</AbaRef>.
           </P>

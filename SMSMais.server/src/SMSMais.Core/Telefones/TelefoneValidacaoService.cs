@@ -114,13 +114,13 @@ public sealed class TelefoneValidacaoService(
 
     public async Task MarcarValidadoAsync(
         string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default,
-        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio)
+        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio, Guid? pacienteId = null)
     {
         var cpfDig = CpfDigitos(cpf, lancar: false);
         var canon = Canonizar(numero);
         if (cpfDig.Length != 11 || canon.Length < 12) return;
         // Caminho silencioso (login do PWA): melhor esforço no FHIR — não pode travar o login.
-        await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, exigirFhir: false, ct, vinculo);
+        await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, exigirFhir: false, ct, vinculo, pacienteId);
     }
 
     public async Task<TelefoneValidadoDto> DefinirPrincipalAsync(
@@ -199,7 +199,7 @@ public sealed class TelefoneValidacaoService(
 
     private async Task<DateTime> MarcarValidadoInternoAsync(
         string cpfDig, string canon, string origem, Guid? por, bool exigirFhir, CancellationToken ct,
-        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio)
+        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio, Guid? pacienteId = null)
     {
         await GarantirNumeroLivreCanonAsync(cpfDig, canon, ct, vinculo);
 
@@ -209,7 +209,7 @@ public sealed class TelefoneValidacaoService(
         // aposentada). Quando exigido (OTP confirmado pelo operador/cidadão), falha ALTO se não
         // conseguir carimbar — validação sem carimbo seria invisível para todo o sistema.
         // Verificado é conceito de PACIENTE: sem Patient no hub não há o que validar.
-        var patientId = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct, vinculo);
+        var patientId = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct, vinculo, pacienteId);
         if (patientId is null && exigirFhir)
             throw new ValidacaoException(
                 "telefone.sem_paciente",
@@ -240,24 +240,43 @@ public sealed class TelefoneValidacaoService(
             ? new string([.. v.Where(char.IsDigit)])
             : null;
 
-    /// <summary>Carimba o marcador no telecom e devolve o id do Patient; null = não estampou.</summary>
+    /// <summary>
+    /// Carimba o marcador no telecom e devolve o id do Patient; null = não estampou. Com
+    /// <paramref name="pacienteId"/>, estampa NAQUELE registro (o chamador sabe exatamente quem se
+    /// identificou) — a busca por CPF pega o primeiro do bundle e, com cadastro duplicado, podia
+    /// carimbar a ficha errada: a comunicação seguinte lia a OUTRA e reabria o desafio para sempre.
+    /// Uma releitura de retentativa cobre o conflito de versão (outro writer no mesmo Patient, ex.:
+    /// o import do SISREG gravando telefone).
+    /// </summary>
     private async Task<Guid?> EstamparConfirmadoNoFhirAsync(
         string cpfDig, string canon, DateTime em, CancellationToken ct,
-        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio)
+        VinculoContatoVerificado vinculo = VinculoContatoVerificado.Proprio, Guid? pacienteId = null)
     {
-        try
+        for (var tentativa = 1; ; tentativa++)
         {
-            var patient = await ObterPatientPorCpfAsync(cpfDig, ct);
-            if (patient?.Id is null) return null;
-            PatientMergeFhir.MarcarTelefoneConfirmado(patient, canon, new DateTimeOffset(em, TimeSpan.Zero), vinculo);
-            var id = Guid.Parse(patient.Id);
-            await fhir.AtualizarAsync(id, patient, ct);
-            return id;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Falha ao estampar telefone confirmado no FHIR (CPF {Cpf}).", cpfDig);
-            return null;
+            try
+            {
+                var patient = pacienteId is { } pid ? await fhir.ObterAsync(pid, ct) : null;
+                // O id apontado precisa ser do MESMO CPF que passou no desafio — qualquer
+                // divergência (fusão de fichas no meio do caminho) volta para a busca por CPF.
+                if (patient?.Id is null || CpfDoPatient(patient) != cpfDig)
+                    patient = await ObterPatientPorCpfAsync(cpfDig, ct);
+                if (patient?.Id is null) return null;
+                PatientMergeFhir.MarcarTelefoneConfirmado(patient, canon, new DateTimeOffset(em, TimeSpan.Zero), vinculo);
+                var id = Guid.Parse(patient.Id);
+                await fhir.AtualizarAsync(id, patient, ct);
+                return id;
+            }
+            catch (Exception ex) when (tentativa == 1)
+            {
+                logger.LogInformation(ex,
+                    "Conflito ao estampar telefone confirmado no FHIR (CPF {Cpf}); relendo e tentando de novo.", cpfDig);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Falha ao estampar telefone confirmado no FHIR (CPF {Cpf}).", cpfDig);
+                return null;
+            }
         }
     }
 

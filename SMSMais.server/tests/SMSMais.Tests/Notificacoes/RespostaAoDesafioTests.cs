@@ -54,7 +54,9 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
         PacienteDtoFabrica.Criar(p.Id, p.Nome, cpf: p.Cpf, nascimento: new DateOnly(1980, 3, 15), sexo: Sexo.Feminino)
             with { TelefoneCelular = celular };
 
-    private sealed record Cenario(VerificacaoCadastralWhatsAppHandler Handler, IWhatsAppCliente Whats, Conversa Conversa);
+    private sealed record Cenario(
+        VerificacaoCadastralWhatsAppHandler Handler, IWhatsAppCliente Whats, Conversa Conversa,
+        IPacientesService Pacientes, IComunicacaoPacienteService Comunicacoes);
 
     private async Task<Cenario> CriarAsync(SmsMaisDbContext db, params Pessoa[] pessoas)
     {
@@ -85,13 +87,13 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
             db, new UsuarioAtualAccessorFake(), pacientes,
             Substitute.For<SMSMais.Core.Pacientes.Fhir.IPacienteFhirClient>(),
             NullLogger<SMSMais.Core.PendenciasCadastro.PendenciaCadastroService>.Instance);
+        var comunicacoes = Substitute.For<IComunicacaoPacienteService>();
         var handler = new VerificacaoCadastralWhatsAppHandler(
             db, whats, pacientes, Substitute.For<ITelefoneValidacaoService>(), pendencias,
-            new Lazy<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>(
-                () => Substitute.For<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>()),
+            new Lazy<IComunicacaoPacienteService>(() => comunicacoes),
             VerificacaoCadastralHandlerTests.Liberacao(db),
             NullLogger<VerificacaoCadastralWhatsAppHandler>.Instance);
-        return new Cenario(handler, whats, conversa);
+        return new Cenario(handler, whats, conversa, pacientes, comunicacoes);
     }
 
     /// <summary>Solicitação + uma comunicação retida esperando a identificação (a principal, ou o
@@ -573,6 +575,259 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
         Assert.Equal(StatusComunicacao.Falha, depois.Status);
         Assert.StartsWith("Identificação concluída em", depois.MotivoFalha);
     }
+
+    // ===================== (f) pedidos de 26/09: fluxo na conversa, nunca mudo =====================
+
+    [Fact]
+    public async Task Quero_mais_informacoes_de_numero_ja_verificado_entrega_direto_sem_interrogatorio()
+    {
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var c = await CriarAsync(db, joana);
+        var (_, principal) = await RetidaAsync(db, joana);
+        c.Pacientes.ObterPorIdAsync(joana.Id, Arg.Any<CancellationToken>())
+            .Returns(Dto(joana) with { TelefoneVerificado = _telefone });
+        c.Comunicacoes.EnviarDetalhesNaConversaAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var ctx = Contexto(c.Conversa, "Quero mais informações", botao: "Quero mais informações");
+        await c.Handler.TratarAsync(ctx, default);
+        await db.SaveChangesAsync();
+
+        Assert.True(ctx.Consumido);
+        await c.Comunicacoes.Received(1)
+            .EnviarDetalhesNaConversaAsync(principal.Id, _telefone, Arg.Any<CancellationToken>());
+        Assert.DoesNotContain(Respostas(c.Whats), r => r.Contains("4 primeiros"));
+    }
+
+    [Fact]
+    public async Task Quero_mais_informacoes_de_verificado_com_tudo_ja_enviado_explica_em_vez_de_reinterrogar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var c = await CriarAsync(db, joana);
+        // A principal já SAIU (nada retido); o clique vem do wamid dela (contexto).
+        var exame = await SeedSolicitacao.CriarAsync(db, joana.Id, dataAgendada: DateTime.UtcNow.AddDays(10));
+        var (_, wamid) = await LinhaAsync(db, exame.Solicitacao!, FinalidadeComunicacao.ConfirmacaoAgendamento,
+            StatusComunicacao.Enviada, enviadoEm: DateTime.UtcNow.AddHours(-1));
+        c.Pacientes.ObterPorIdAsync(joana.Id, Arg.Any<CancellationToken>())
+            .Returns(Dto(joana) with { TelefoneVerificado = _telefone });
+
+        var ctx = Contexto(c.Conversa, "Quero mais informações", respondendo: wamid, botao: "Quero mais informações");
+        await c.Handler.TratarAsync(ctx, default);
+        await db.SaveChangesAsync();
+
+        Assert.True(ctx.Consumido);
+        await c.Comunicacoes.DidNotReceiveWithAnyArgs()
+            .EnviarDetalhesNaConversaAsync(default, default!, default);
+        var resposta = Assert.Single(Respostas(c.Whats));
+        Assert.Contains("já foram enviadas", resposta);
+    }
+
+    [Fact]
+    public async Task Quero_mais_informacoes_sem_desafio_localizavel_responde_em_vez_de_calar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CriarAsync(db);
+
+        var ctx = Contexto(c.Conversa, "Quero mais informações", botao: "Quero mais informações");
+        await c.Handler.TratarAsync(ctx, default);
+        await db.SaveChangesAsync();
+
+        // Era o retorno MUDO do caso real de 26/09 11:12: o robô descarta cliques de botão e
+        // ninguém respondia. Consumido + resposta fixa.
+        Assert.True(ctx.Consumido);
+        var resposta = Assert.Single(Respostas(c.Whats));
+        Assert.Contains("Não encontrei um aviso pendente", resposta);
+    }
+
+    [Fact]
+    public async Task Quarta_mensagem_nao_entendida_passa_a_bola_com_botao_em_vez_de_silencio()
+    {
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var c = await CriarAsync(db, joana);
+        var (_, principal) = await RetidaAsync(db, joana);
+        var estado = await EstadoAsync(db, principal, EtapaVerificacaoCadastral.AguardandoNascimento,
+            pacienteId: joana.Id, cpfDigitos: "1112");
+        estado.Reorientacoes = 3; // as 3 reorientações já foram gastas
+        await db.SaveChangesAsync();
+
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "não sei o que mandar aqui"), default);
+        await db.SaveChangesAsync();
+
+        var passagem = Assert.Single(c.Whats.ReceivedCalls(),
+            x => x.GetMethodInfo().Name == nameof(IWhatsAppCliente.EnviarInterativoBotoesAsync));
+        var botoes = (IReadOnlyList<BotaoInterativoWhatsApp>)passagem.GetArguments()[2]!;
+        var botao = Assert.Single(botoes);
+        Assert.Equal($"vcad_recomecar:{estado.Id}", botao.Id);
+        Assert.Contains("equipe", (string)passagem.GetArguments()[1]!);
+
+        // A 5ª mensagem não entendida não repete a passagem (anti-loop com autoresponder)…
+        c.Whats.ClearReceivedCalls();
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "continuo sem entender"), default);
+        await db.SaveChangesAsync();
+        Assert.Empty(Respostas(c.Whats));
+
+        // …mas o botão "Tentar de novo" recomeça pelo CPF na hora.
+        await c.Handler.TratarAsync(
+            Contexto(c.Conversa, "Tentar de novo", interativo: $"vcad_recomecar:{estado.Id}"), default);
+        await db.SaveChangesAsync();
+        var recomeco = Assert.Single(Respostas(c.Whats));
+        Assert.Contains("4 primeiros dígitos", recomeco);
+        await using var db2 = fixture.CriarDbContext();
+        var depois = (await LerEstadoAsync(db2))!;
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoCpf, depois.Etapa);
+        Assert.Equal(0, depois.Reorientacoes);
+    }
+
+    [Fact]
+    public async Task Detalhes_do_agendamento_saem_na_conversa_com_botoes_de_presenca()
+    {
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var exame = await SeedSolicitacao.CriarAsync(db, joana.Id, dataAgendada: DateTime.UtcNow.AddDays(4));
+        var linha = new ComunicacaoPaciente
+        {
+            Id = Guid.CreateVersion7(),
+            Tipo = TipoAgendamento.Exame,
+            Finalidade = FinalidadeComunicacao.ConfirmacaoAgendamento,
+            SolicitacaoId = exame.SolicitacaoId,
+            PacienteId = joana.Id,
+            Telefone = _telefone,
+            Status = StatusComunicacao.Pendente,
+            ProximaTentativaEm = DateTime.UtcNow,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.ComunicacoesPaciente.Add(linha);
+        await db.SaveChangesAsync();
+
+        // O link precisa EXISTIR (FK de comunicacao_paciente.login_link_id) — em produção o
+        // GerarParaSolicitacaoAsync persiste; aqui o mock devolve um link real da bancada.
+        var linkReal = new CidadaoLoginLink
+        {
+            Id = Guid.CreateVersion7(),
+            PatientId = joana.Id,
+            Cpf = joana.Cpf,
+            SolicitacaoId = exame.SolicitacaoId,
+            ExpiraEm = DateTime.UtcNow.AddDays(3),
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.CidadaoLoginLinks.Add(linkReal);
+        await db.SaveChangesAsync();
+        var links = Substitute.For<ICidadaoLoginLinkService>();
+        links.GerarParaSolicitacaoAsync(default, default!, default, default)
+            .ReturnsForAnyArgs(new MagicLinkDto(linkReal.Id, "https://app.exemplo/entrar/x", linkReal.ExpiraEm));
+        var pacientes = Substitute.For<IPacientesService>();
+        pacientes.ObterPorIdAsync(joana.Id, Arg.Any<CancellationToken>()).Returns(Dto(joana));
+        var whats = Substitute.For<IWhatsAppCliente>();
+        whats.EnviarInterativoBotoesAsync(null!, null!, null!)
+            .ReturnsForAnyArgs(new EnvioWhatsAppResultado(true, $"wamid.SESSAO.{Guid.NewGuid():N}", null));
+        var regras = Substitute.For<IConfirmacaoConfiguracaoService>();
+        regras.ObterAsync(Arg.Any<CancellationToken>())
+            .Returns(new ConfirmacaoConfiguracaoDto("00:00", "00:00", 100, SomenteSisreg: false, true, null));
+        var espiao = new LoggerEspiao<ComunicacaoPacienteService>();
+        var servico = new ComunicacaoPacienteService(
+            db, pacientes, links, whats, Options.Create(new ComunicacaoPacienteOptions()),
+            new UsuarioAtualAccessorFake(), Substitute.For<IDispensaContatoService>(),
+            Substitute.For<IContatoComprometidoService>(), regras, espiao);
+
+        var saiu = await servico.EnviarDetalhesNaConversaAsync(linha.Id, _telefone);
+
+        Assert.True(saiu, string.Join("\n", espiao.Linhas));
+        var envio = Assert.Single(whats.ReceivedCalls(),
+            x => x.GetMethodInfo().Name == nameof(IWhatsAppCliente.EnviarInterativoBotoesAsync));
+        var texto = (string)envio.GetArguments()[1]!;
+        Assert.Contains("Aqui estão as informações", texto);
+        Assert.Contains(FusoBrasilia.ParaExibicao(exame.Solicitacao!.DataAgendada!.Value)
+            .ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR")), texto);
+        Assert.Contains("https://app.exemplo/entrar/x", texto);
+        Assert.Contains("Você confirma a presença?", texto);
+        var botoes = (IReadOnlyList<BotaoInterativoWhatsApp>)envio.GetArguments()[2]!;
+        Assert.Equal(2, botoes.Count);
+        Assert.Equal($"confpres_sim:{exame.SolicitacaoId}", botoes[0].Id);
+        Assert.Equal($"confpres_nao:{exame.SolicitacaoId}", botoes[1].Id);
+
+        await using var db2 = fixture.CriarDbContext();
+        var depois = await LerAsync(db2, linha.Id);
+        Assert.Equal(StatusComunicacao.Enviada, depois.Status);
+        Assert.Equal(_telefone, depois.Telefone);
+        Assert.NotNull(depois.EnviadoEm);
+    }
+
+    [Fact]
+    public async Task Detalhes_recusados_pelo_relay_deixam_a_comunicacao_pendente_para_o_template()
+    {
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var exame = await SeedSolicitacao.CriarAsync(db, joana.Id, dataAgendada: DateTime.UtcNow.AddDays(4));
+        var linha = new ComunicacaoPaciente
+        {
+            Id = Guid.CreateVersion7(),
+            Tipo = TipoAgendamento.Exame,
+            Finalidade = FinalidadeComunicacao.ConfirmacaoAgendamento,
+            SolicitacaoId = exame.SolicitacaoId,
+            PacienteId = joana.Id,
+            Telefone = _telefone,
+            Status = StatusComunicacao.Pendente,
+            ProximaTentativaEm = DateTime.UtcNow,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.ComunicacoesPaciente.Add(linha);
+        await db.SaveChangesAsync();
+
+        var links = Substitute.For<ICidadaoLoginLinkService>();
+        links.GerarParaSolicitacaoAsync(default, default!, default, default)
+            .ReturnsForAnyArgs(new MagicLinkDto(Guid.NewGuid(), "https://app.exemplo/entrar/x", DateTime.UtcNow.AddDays(3)));
+        var pacientes = Substitute.For<IPacientesService>();
+        pacientes.ObterPorIdAsync(joana.Id, Arg.Any<CancellationToken>()).Returns(Dto(joana));
+        var whats = Substitute.For<IWhatsAppCliente>();
+        whats.EnviarInterativoBotoesAsync(null!, null!, null!)
+            .ReturnsForAnyArgs(new EnvioWhatsAppResultado(false, null, "(131047) janela fechada"));
+        var regras = Substitute.For<IConfirmacaoConfiguracaoService>();
+        regras.ObterAsync(Arg.Any<CancellationToken>())
+            .Returns(new ConfirmacaoConfiguracaoDto("00:00", "00:00", 100, SomenteSisreg: false, true, null));
+        var servico = new ComunicacaoPacienteService(
+            db, pacientes, links, whats, Options.Create(new ComunicacaoPacienteOptions()),
+            new UsuarioAtualAccessorFake(), Substitute.For<IDispensaContatoService>(),
+            Substitute.For<IContatoComprometidoService>(), regras, NullLogger<ComunicacaoPacienteService>.Instance);
+
+        var saiu = await servico.EnviarDetalhesNaConversaAsync(linha.Id, _telefone);
+
+        Assert.False(saiu);
+        await using var db2 = fixture.CriarDbContext();
+        Assert.Equal(StatusComunicacao.Pendente, (await LerAsync(db2, linha.Id)).Status);
+    }
+}
+
+/// <summary>Captura o que o serviço logou — é onde a exceção engolida pelo "nunca lança" aparece
+/// quando um teste falha sem dizer por quê.</summary>
+internal sealed class LoggerEspiao<T> : Microsoft.Extensions.Logging.ILogger<T>
+{
+    public List<string> Linhas { get; } = [];
+    IDisposable? Microsoft.Extensions.Logging.ILogger.BeginScope<TState>(TState state) => null;
+    public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+    public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId,
+        TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        => Linhas.Add($"[{logLevel}] {formatter(state, exception)}{(exception is null ? "" : $" :: {exception}")}");
+}
+
+/// <summary>O carimbo de verificado era recusado para o PRÓPRIO aparelho quando o cadastro
+/// guardava o número no formato antigo, sem o nono dígito (12 × 13 dígitos: nenhum é sufixo
+/// do outro).</summary>
+public class MesmoNumeroTests
+{
+    [Fact]
+    public void Formato_antigo_sem_nono_digito_e_o_mesmo_aparelho()
+        => Assert.True(SMSMais.Core.Conversas.TelefoneWhatsApp.MesmoNumero("552186264019", "5521986264019"));
+
+    [Fact]
+    public void Numeros_diferentes_continuam_diferentes()
+        => Assert.False(SMSMais.Core.Conversas.TelefoneWhatsApp.MesmoNumero("5521986264018", "5521986264019"));
+
+    [Fact]
+    public void Formato_nacional_contra_wa_id_continua_casando()
+        => Assert.True(SMSMais.Core.Conversas.TelefoneWhatsApp.MesmoNumero("21986264019", "5521986264019"));
 }
 
 /// <summary>
@@ -601,14 +856,17 @@ public class FraseDepoisDaIdentificacaoTests
             Frase(new LiberacaoResultado(1, DesfechoLiberacao.Liberou, null, null, "1")));
 
     [Fact]
-    public void Com_outro_numero_verificado_diz_para_onde_vai()
+    public void Com_outro_numero_verificado_entrega_aqui_e_avisa_o_principal()
     {
+        // Decisão do dono (26/09/2026): o desafio completo vencido vale para receber AQUI; o
+        // número do cadastro não muda sozinho e recebe um aviso de segurança.
         var comOutro = Joana with { TelefoneVerificado = "5521999991234" };
         var frase = Frase(new LiberacaoResultado(1, DesfechoLiberacao.Liberou, null, null, "1"),
             trocariaVerificado: true, paciente: comOutro);
         Assert.Equal(
-            "Cadastro confirmado, obrigado! As informações vão para o WhatsApp já cadastrado de *Joana* (final …1234). "
-            + "Para trocar o número, procure o posto com documento.", frase);
+            "Perfeito, Joana! Cadastro confirmado. Já estou enviando as informações do agendamento aqui. "
+            + "O número principal cadastrado de *Joana* continua o mesmo e também recebe um aviso — "
+            + "para trocá-lo, procure o posto com documento.", frase);
     }
 
     [Fact]
