@@ -46,6 +46,7 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
     private sealed record Cenario(
         VerificacaoCadastralWhatsAppHandler Handler,
         IWhatsAppCliente Whats,
+        SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService Comunicacoes,
         ComunicacaoPaciente Comunicacao,
         Conversa Conversa,
         Guid PacienteId);
@@ -126,11 +127,13 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
             db, new UsuarioAtualAccessorFake(), pacientes,
             Substitute.For<SMSMais.Core.Pacientes.Fhir.IPacienteFhirClient>(),
             NullLogger<SMSMais.Core.PendenciasCadastro.PendenciaCadastroService>.Instance);
+        var comunicacoes = Substitute.For<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>();
         var handler = new VerificacaoCadastralWhatsAppHandler(
             db, whats, pacientes, Substitute.For<ITelefoneValidacaoService>(), pendencias,
+            new Lazy<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>(() => comunicacoes),
             NullLogger<VerificacaoCadastralWhatsAppHandler>.Instance);
 
-        return new Cenario(handler, whats, comunicacao, conversa, pacienteId);
+        return new Cenario(handler, whats, comunicacoes, comunicacao, conversa, pacienteId);
     }
 
     private async Task ResponderAsync(SmsMaisDbContext db, Cenario c, string texto)
@@ -172,6 +175,24 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
         Assert.Equal(StatusComunicacao.Pendente, depois.Status);
         Assert.True(depois.IgnorarVerificacaoTelefone); // envia mesmo se o carimbo FHIR falhar
         Assert.Null(await EstadoAsync(db));             // diálogo encerrado
+    }
+
+    [Fact]
+    public async Task Confirmacao_e_enviada_IMEDIATAMENTE_ao_concluir_a_verificacao()
+    {
+        // Regressão do "chegam em instantes" que nunca chegava: concluída a verificação, o envio das
+        // informações do agendamento acontece AGORA (inline), não depende do commit único do webhook
+        // (que reverte na corrida da IX_conversa) nem do worker.
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararAsync(db);
+
+        await ResponderAsync(db, c, "0452");            // dígitos do CPF
+        await ResponderAsync(db, c, "03/1980");         // mês/ano
+        await ResponderAsync(db, c, "sim");             // confirma o nome
+        await ResponderAsync(db, c, "sou a mãe dele");  // vínculo → conclui
+
+        await c.Comunicacoes.Received(1).ProcessarTentativaEnvioAsync(
+            c.Comunicacao.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]

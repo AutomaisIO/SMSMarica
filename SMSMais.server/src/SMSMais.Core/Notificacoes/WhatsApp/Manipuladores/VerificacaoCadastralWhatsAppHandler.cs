@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Conversas;
+using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Notificacoes.VerificacaoCadastral;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
@@ -43,6 +44,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     IPacientesService pacientes,
     ITelefoneValidacaoService telefones,
     PendenciasCadastro.IPendenciaCadastroService pendencias,
+    Lazy<IComunicacaoPacienteService> comunicacoes,
     ILogger<VerificacaoCadastralWhatsAppHandler> logger) : IManipuladorMensagemWhatsApp
 {
     private const string PrefixoSim = "vcad_sim:";
@@ -611,6 +613,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                     || (n.PacienteId == pacienteId && n.Status == StatusComunicacao.AguardandoVerificacaoCadastral))
                 && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
             .ToListAsync(ct);
+        var liberadas = new List<Data.Entities.ComunicacaoPaciente>();
         foreach (var n in retidas)
         {
             if (n.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue or StatusComunicacao.Lida)
@@ -624,6 +627,7 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             // O paciente acabou de se identificar e está esperando a resposta: sai mesmo fora do horário.
             n.IgnorarJanelaHorario = true;
             n.Tentativas = 0;
+            liberadas.Add(n);
         }
 
         db.VerificacoesCadastraisEstado.Remove(estado);
@@ -636,6 +640,29 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         await ResponderAsync(ctx,
             $"Perfeito{tratamento}! Cadastro confirmado. Já estou enviando as "
             + "informações do agendamento — chegam aqui em instantes.", ct);
+
+        // ENVIO IMEDIATO das informações do agendamento — o que o paciente acabou de destravar.
+        // Antes, só marcávamos Pendente e confiávamos no commit ÚNICO do webhook + no worker. Mas o
+        // webhook faz um só SaveChanges no fim, sem transação: quando ele falha (ex.: corrida na
+        // IX_conversa_telefone_canonical_canal) a liberação é REVERTIDA, a comunicação encalha em
+        // AguardandoVerificacaoCadastral e o paciente fica no "chegam em instantes" para sempre —
+        // enquanto o texto acima já foi para a Meta. Chamar ProcessarTentativaEnvioAsync aqui envia
+        // agora e PERSISTE com o SaveChanges próprio do serviço (ele trata a própria exceção e
+        // reagenda), tornando a promessa verdadeira e independente do commit final do webhook.
+        foreach (var n in liberadas)
+        {
+            try
+            {
+                await comunicacoes.Value.ProcessarTentativaEnvioAsync(n.Id, ct);
+            }
+            catch (Exception ex)
+            {
+                // Rede rara: se nem assim enviou, a comunicação continua Pendente e o worker retenta.
+                logger.LogError(ex,
+                    "Falha ao enviar imediatamente a confirmação {Id} após a verificação cadastral (…{Fone4}).",
+                    n.Id, Ultimos4(telefone));
+            }
+        }
 
         // Multi-paciente: há desafio pendente para OUTRA pessoa neste número? Emenda o próximo.
         var proximos = (await DesafiosPendentesDoTelefoneAsync(telefone, ct))
