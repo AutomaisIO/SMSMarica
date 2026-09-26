@@ -87,6 +87,8 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
             NullLogger<SMSMais.Core.PendenciasCadastro.PendenciaCadastroService>.Instance);
         var handler = new VerificacaoCadastralWhatsAppHandler(
             db, whats, pacientes, Substitute.For<ITelefoneValidacaoService>(), pendencias,
+            new Lazy<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>(
+                () => Substitute.For<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>()),
             VerificacaoCadastralHandlerTests.Liberacao(db),
             NullLogger<VerificacaoCadastralWhatsAppHandler>.Instance);
         return new Cenario(handler, whats, conversa);
