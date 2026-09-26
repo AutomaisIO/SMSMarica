@@ -3,7 +3,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { useResumoDiario, useRegrasUnidades } from '@/features/mensageria/api/queries';
-import { diaLegivel, hojeMais } from '@/features/mensageria/lib/rotulos';
+import { FINALIDADES, ROTULO_FINALIDADE, diaLegivel, hojeMais, rotuloFinalidade } from '@/features/mensageria/lib/rotulos';
 import type { DiaMensageria } from '@/features/mensageria/types';
 
 function nf(n: number): string {
@@ -69,9 +69,9 @@ export function AbaResumoDiario() {
         </div>
         <Select value={finalidade} onChange={(e) => setFinalidade(e.target.value)} aria-label="Finalidade">
           <option value="">Finalidade: todas</option>
-          <option value="ConfirmacaoAgendamento">Confirmação de agendamento</option>
-          <option value="ExameLiberado">Exame liberado</option>
-          <option value="LaudoPronto">Laudo pronto</option>
+          {FINALIDADES.map((f) => (
+            <option key={f} value={f}>{ROTULO_FINALIDADE[f]}</option>
+          ))}
         </Select>
         <Select value={unidadeId} onChange={(e) => setUnidadeId(e.target.value)} aria-label="Unidade" className="md:col-span-2">
           <option value="">Unidade executante: todas</option>
@@ -103,7 +103,12 @@ export function AbaResumoDiario() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Lista titulo="Falhas por erro (Meta)" itens={d.falhasPorErro} vazio="Nenhuma falha no período." />
-            <Lista titulo="Por finalidade" itens={d.porFinalidade} vazio="—" />
+            {/* O backend agrega pelo nome do enum; o rótulo é trabalho da tela, como no resto dela. */}
+            <Lista
+              titulo="Por finalidade"
+              itens={d.porFinalidade.map((i) => ({ ...i, erro: rotuloFinalidade(i.erro) }))}
+              vazio="—"
+            />
             <Lista titulo="Por unidade executante" itens={d.porUnidade} vazio="—" />
           </div>
 

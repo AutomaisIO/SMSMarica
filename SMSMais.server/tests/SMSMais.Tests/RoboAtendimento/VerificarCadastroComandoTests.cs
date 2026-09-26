@@ -36,7 +36,8 @@ public class VerificarCadastroComandoTests(PostgresFixture fixture)
                 null, null,
                 TelefoneVerificado: telefoneVerificado));
         var telefones = Substitute.For<ITelefoneValidacaoService>();
-        return (new VerificarCadastroComando(db, pacientes, telefones), telefones);
+        return (new VerificarCadastroComando(db, pacientes, telefones,
+            SMSMais.Tests.Notificacoes.VerificacaoCadastralHandlerTests.Liberacao(db)), telefones);
     }
 
     [Fact]
@@ -69,6 +70,56 @@ public class VerificarCadastroComandoTests(PostgresFixture fixture)
         Assert.Contains("posto de saúde", r.Mensagem);
         await telefones.DidNotReceiveWithAnyArgs().MarcarValidadoAsync(
             default!, default!, default!, default, default, default);
+    }
+
+    [Fact]
+    public async Task Sem_nada_retido_o_robo_nao_promete_envio()
+    {
+        // Era o "confirma e não manda nada": a ferramenta mandava o modelo dizer "vou enviar as
+        // informações" mesmo sem nenhuma comunicação liberada.
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var (comando, _) = Criar(db, pacienteId, telefoneVerificado: null);
+
+        var r = await comando.ExecutarAsync(
+            new RoboComandoContexto(Guid.NewGuid(), pacienteId, null, _telefone, Args("0452")), default);
+
+        Assert.True(r.Sucesso);
+        Assert.Contains("NÃO diga que vai enviar", r.Mensagem);
+    }
+
+    [Fact]
+    public async Task Com_confirmacao_retida_libera_pelo_mesmo_liberador_e_manda_dizer_que_vai_enviar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var exame = await SeedSolicitacao.CriarAsync(db, pacienteId, dataAgendada: DateTime.UtcNow.AddDays(10));
+        var retida = new SMSMais.Data.Entities.ComunicacaoPaciente
+        {
+            Id = Guid.CreateVersion7(),
+            Finalidade = SMSMais.Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento,
+            SolicitacaoId = exame.SolicitacaoId,
+            PacienteId = pacienteId,
+            Telefone = _telefone,
+            Status = SMSMais.Data.Entities.Enums.StatusComunicacao.AguardandoVerificacaoCadastral,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.ComunicacoesPaciente.Add(retida);
+        await db.SaveChangesAsync();
+        var (comando, _) = Criar(db, pacienteId, telefoneVerificado: null);
+
+        var r = await comando.ExecutarAsync(
+            new RoboComandoContexto(Guid.NewGuid(), pacienteId, null, _telefone, Args("0452")), default);
+
+        Assert.True(r.Sucesso);
+        Assert.Contains("1 aviso(s) liberado(s)", r.Mensagem);
+        await using var db2 = fixture.CriarDbContext();
+        var depois = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.SingleAsync(
+            db2.ComunicacoesPaciente, c => c.Id == retida.Id);
+        Assert.Equal(SMSMais.Data.Entities.Enums.StatusComunicacao.Pendente, depois.Status);
+        // As mesmas marcas da máquina de verificação: sai mesmo sem o carimbo do FHIR e fora do horário.
+        Assert.True(depois.IgnorarVerificacaoTelefone);
+        Assert.True(depois.IgnorarJanelaHorario);
     }
 
     [Fact]

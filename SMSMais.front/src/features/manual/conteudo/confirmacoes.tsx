@@ -57,6 +57,16 @@ export const artigoConfirmacoes: Artigo = {
     'quem cancelou',
     'quem confirmou',
     'ritmo',
+    'reforço',
+    'não respondeu',
+    'não se identificou',
+    'aguardando identificação',
+    'procure o posto',
+    'orientação ao posto',
+    'vou ao posto',
+    'lembrete',
+    'dispensada',
+    'cadastro confirmado',
   ],
   secoes: () => [
     {
@@ -137,7 +147,7 @@ export const artigoConfirmacoes: Artigo = {
     {
       id: 'card',
       titulo: 'Como ler um card',
-      busca: 'selo badge enviada entregue lida falhou na fila número negado verificado respondeu no zap',
+      busca: 'selo badge enviada entregue lida falhou na fila número negado aguardando identificação verificado respondeu no zap',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -154,6 +164,11 @@ export const artigoConfirmacoes: Artigo = {
               { termo: <SeloRef cor="sucesso">Lida ✓✓</SeloRef>, descricao: 'A pessoa abriu a conversa. Leu e não respondeu é um bom motivo para ligar.' },
               { termo: <SeloRef cor="erro">Falhou</SeloRef>, descricao: 'A entrega foi recusada. Passe o mouse no selo: a dica diz o motivo.' },
               { termo: <SeloRef cor="erro">Número negado</SeloRef>, descricao: 'Alguém já disse que aquele telefone não é do paciente.' },
+              {
+                termo: <SeloRef cor="alerta">Aguardando identificação</SeloRef>,
+                descricao:
+                  'O número não é verificado: a pessoa recebeu o aviso do agendamento e ainda não se identificou. A dica do selo diz se já foi reforço ou orientação ao posto (veja "Quem não se identificou pelo WhatsApp").',
+              },
               { termo: <SeloRef cor="gray">Atendida por pessoa</SeloRef>, descricao: 'Uma atendente assumiu a ficha, então o automático foi encerrado.' },
             ]}
           />
@@ -420,6 +435,53 @@ export const artigoConfirmacoes: Artigo = {
       ),
     },
     {
+      id: 'nao-se-identificou',
+      titulo: 'Quem não se identificou pelo WhatsApp',
+      busca:
+        'não se identificou não respondeu aguardando identificação reforço orientação ao posto procure o posto vou ao posto quero mais informações cadastro confirmado atendente já está cuidando dispensada lembrete',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Quando o número do cadastro não é verificado, a primeira mensagem só avisa que existe um agendamento — a
+            data e o local vão depois que a pessoa se identifica. Enquanto isso, o card mostra{' '}
+            <SeloRef cor="alerta">Aguardando identificação</SeloRef>, e a ficha continua em{' '}
+            <AbaRef>Não confirmados</AbaRef>.
+          </P>
+          <P>
+            Se a pessoa não se identifica, o sistema pode tentar mais duas vezes — quando essas chaves estão ligadas em{' '}
+            <strong>Mensageria → Regras</strong>: um <strong>reforço</strong> três dias depois e, por fim, a{' '}
+            <strong>orientação para procurar o posto</strong>, onde ela vê o dia, a hora e o local e retira a guia.
+            Depois disso o automático para de insistir. A dica do selo (passe o mouse) diz em que ponto a ficha está:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              { termo: '"Reforço enviado em …"', descricao: 'O segundo toque já foi; a pessoa ainda não se identificou.' },
+              {
+                termo: '"Orientado a procurar o posto em …"',
+                descricao: 'O último automático já foi. Daqui em diante, só a ligação alcança essa pessoa por iniciativa nossa.',
+              },
+              {
+                termo: '"Confirmou que vai ao posto (…)"',
+                descricao:
+                  'A pessoa tocou em "Vou ao posto". Isso não é confirmação de presença — ela disse que vai buscar a guia —, por isso a ficha segue em Não confirmados. Os automáticos daquele agendamento param, menos o aviso de cancelamento.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="Pegou a ficha, a régua para">
+            Atender, confirmar, mandar para pendente ou marcar contato errado encerra não só a primeira mensagem, mas
+            também o lembrete, o reforço e a orientação que ainda estavam para sair.
+          </Callout>
+          <Callout tipo="atencao" titulo="Se a pessoa se identificar depois que você pegou a ficha">
+            Ela recebe a resposta de que <strong>uma atendente da equipe já está cuidando</strong> do agendamento e vai
+            falar com ela por ali em horário de atendimento. É uma promessa feita em nome de quem está com a ficha:
+            fale com ela. Nos outros casos a frase também diz a verdade — que as informações estão chegando, que já
+            tinham sido enviadas, que o agendamento passou ou foi cancelado, ou que vão para outro número já
+            verificado. O sistema não diz mais que está enviando quando nada vai sair.
+          </Callout>
+        </div>
+      ),
+    },
+    {
       id: 'filtros',
       titulo: 'Achar uma ficha no meio de milhares',
       busca: 'busca filtro unidade envio automático paginação nome cpf cns número sisreg',
@@ -570,6 +632,11 @@ export const artigoConfirmacoes: Artigo = {
                 termo: 'Está pedindo a senha do SISREG',
                 descricao:
                   'É o esperado na primeira vez do dia. O cancelamento assina com o seu login de lá; a senha vale pela sua sessão e não fica guardada.',
+              },
+              {
+                termo: 'O paciente diz que vai buscar a guia no posto',
+                descricao:
+                  'Se ele tocou em "Vou ao posto", a dica do selo mostra isso e o automático já parou. A ficha continua em Não confirmados: ir ao posto não é confirmar presença. Se na ligação ele confirmar, use Confirmar como sempre.',
               },
               {
                 termo: 'A colega está com a ficha e ela saiu do plantão',

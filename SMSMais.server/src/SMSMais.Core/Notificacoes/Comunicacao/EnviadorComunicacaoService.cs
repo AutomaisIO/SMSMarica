@@ -62,30 +62,37 @@ public sealed class EnviadorComunicacaoService(
         }
     }
 
-    /// <param name="lembreteLigado">Chave de operação do lembrete (menu Confirmações).</param>
-    /// <param name="avisoCancelamentoLigado">Chave "Avisar o paciente do cancelamento" (Mensageria →
-    /// Regras). Até 25/09/2026 o aviso não estava nesta lista: o que a conciliação com o SISREG punha
-    /// na fila nunca saía, nem com a chave ligada — só o "Cancelar" da tela de Confirmações avisava,
-    /// porque envia na hora, sem passar por aqui.</param>
-    private FinalidadeComunicacao[] FinalidadesHabilitadas(bool lembreteLigado, bool avisoCancelamentoLigado)
+    /// <param name="regras">Chaves de operação (menu Confirmações/Mensageria): lembrete, aviso de
+    /// cancelamento e régua de reforço. Até 25/09/2026 o aviso de cancelamento não estava nesta
+    /// lista: o que a conciliação com o SISREG punha na fila nunca saía, nem com a chave ligada —
+    /// só o "Cancelar" da tela de Confirmações avisava, porque envia na hora, sem passar por aqui.</param>
+    private FinalidadeComunicacao[] FinalidadesHabilitadas(Confirmacoes.Dtos.ConfirmacaoConfiguracaoDto regras)
     {
-        var lista = new List<FinalidadeComunicacao>(5);
+        var lista = new List<FinalidadeComunicacao>(7);
         if (_options.EnviarConfirmacaoAgendamento) lista.Add(FinalidadeComunicacao.ConfirmacaoAgendamento);
         if (_options.EnviarExameLiberado) lista.Add(FinalidadeComunicacao.ExameLiberado);
         if (_options.EnviarLaudoPronto) lista.Add(FinalidadeComunicacao.LaudoPronto);
-        if (_options.EnviarLembreteAgendamento && lembreteLigado)
+        if (_options.EnviarLembreteAgendamento && regras.LembreteHabilitado)
             lista.Add(FinalidadeComunicacao.LembreteAgendamento);
-        if (avisoCancelamentoLigado) lista.Add(FinalidadeComunicacao.CancelamentoAgendamento);
+        if (regras.AvisoCancelamentoHabilitado) lista.Add(FinalidadeComunicacao.CancelamentoAgendamento);
+        // Régua de reforço: chave de operação E trava de código. Desligada, o que já está na fila
+        // espera — e, ao religar, passa pela reconferência do envio antes de sair.
+        if (_options.EnviarReforcoConfirmacao && regras.ReforcoConfirmacaoHabilitado)
+            lista.Add(FinalidadeComunicacao.ReforcoConfirmacao);
+        if (_options.EnviarOrientacaoPosto && regras.OrientacaoPostoHabilitada)
+            lista.Add(FinalidadeComunicacao.OrientacaoPosto);
         return [.. lista];
     }
 
-    /// <summary>Mensagem sobre a AGENDA (confirmação, lembrete e aviso de cancelamento) respeita a
-    /// janela de horário. Resultado de exame e laudo não: são a resposta a algo que o paciente está
-    /// esperando. O cancelamento que a conciliação acha às 7h (releitura do dia anterior) espera a
-    /// janela abrir em vez de chegar de madrugada.</summary>
+    /// <summary>Mensagem sobre a AGENDA (confirmação, lembrete, aviso de cancelamento e a régua de
+    /// reforço) respeita a janela de horário — a régua ainda mais: sem ela sairia às 22h; o
+    /// cancelamento que a conciliação acha às 7h (releitura do dia anterior) espera a janela abrir
+    /// em vez de chegar de madrugada. Resultado de exame e laudo não: são a resposta a algo que o
+    /// paciente está esperando. A régua é a mesma do envio
+    /// (<see cref="ComunicacaoPacienteService.EhSobreAgendamento"/>), para as duas pontas não
+    /// divergirem.</summary>
     private static bool EhSobreAgendamento(FinalidadeComunicacao f) =>
-        f is FinalidadeComunicacao.ConfirmacaoAgendamento or FinalidadeComunicacao.LembreteAgendamento
-            or FinalidadeComunicacao.CancelamentoAgendamento;
+        ComunicacaoPacienteService.EhSobreAgendamento(f);
 
     private async Task ExecutarUmaPassagemAsync(CancellationToken ct)
     {
@@ -101,7 +108,7 @@ public sealed class EnviadorComunicacaoService(
         var regras = await scope.ServiceProvider
             .GetRequiredService<Confirmacoes.IConfirmacaoConfiguracaoService>().ObterAsync(ct);
 
-        var habilitadas = FinalidadesHabilitadas(regras.LembreteHabilitado, regras.AvisoCancelamentoHabilitado);
+        var habilitadas = FinalidadesHabilitadas(regras);
         if (habilitadas.Length == 0) return;
         var max = Math.Clamp(regras.MaximoPorPassagem,
             1, Confirmacoes.ConfirmacaoConfiguracaoService.MaximoPorPassagemTeto);

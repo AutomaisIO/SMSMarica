@@ -28,9 +28,13 @@ public static class OrigemAgendamento
 {
     /// <summary>A solicitação veio do SISREG? (importação, varredura ou extensão; acervo antigo sem
     /// proveniência conta pelo RAW do TXT.)</summary>
-    public static bool EhDoSisreg(Solicitacao s) =>
-        s.FonteCriacao is FonteSolicitacao.ImportacaoSisreg or FonteSolicitacao.ExtensaoNavegador
-        || (s.FonteCriacao is null && s.RawSisreg is not null);
+    public static bool EhDoSisreg(Solicitacao s) => EhDoSisreg(s.FonteCriacao, s.RawSisreg is not null);
+
+    /// <summary>A mesma régua, para quem projetou só as colunas — trazer o RAW do TXT de cada
+    /// solicitação só para saber se ele existe pesa numa varredura de centenas de linhas.</summary>
+    public static bool EhDoSisreg(FonteSolicitacao? fonteCriacao, bool temRawSisreg) =>
+        fonteCriacao is FonteSolicitacao.ImportacaoSisreg or FonteSolicitacao.ExtensaoNavegador
+        || (fonteCriacao is null && temRawSisreg);
 }
 
 public sealed class ConfirmacaoConfiguracaoService(
@@ -119,6 +123,8 @@ public sealed class ConfirmacaoConfiguracaoService(
         if (request.AvisoCancelamentoHabilitado && !c.AvisoCancelamentoHabilitado)
             c.AvisoCancelamentoLigadoEm = agora;
         c.AvisoCancelamentoHabilitado = request.AvisoCancelamentoHabilitado;
+        c.ReforcoConfirmacaoHabilitado = request.ReforcoConfirmacaoHabilitado ?? c.ReforcoConfirmacaoHabilitado;
+        c.OrientacaoPostoHabilitada = request.OrientacaoPostoHabilitada ?? c.OrientacaoPostoHabilitada;
         c.ConciliacaoIntervaloMinutos = intervalo;
         c.ConciliacaoHoraInicio = horaInicio;
         c.ConciliacaoHoraFim = horaFim;
@@ -162,5 +168,7 @@ public sealed class ConfirmacaoConfiguracaoService(
         c.ConciliacaoHoraFim,
         c.ConciliacaoHoraFechamento,
         c.ConciliacaoUltimoDiaFechado,
-        c.AvisoCancelamentoLigadoEm);
+        c.AvisoCancelamentoLigadoEm,
+        c.ReforcoConfirmacaoHabilitado,
+        c.OrientacaoPostoHabilitada);
 }

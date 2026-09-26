@@ -130,6 +130,8 @@ export function AbaRegras() {
   const [lembreteHabilitado, setLembreteHabilitado] = useState(false);
   const [conciliacaoCancelamento, setConciliacaoCancelamento] = useState(false);
   const [avisoCancelamento, setAvisoCancelamento] = useState(false);
+  const [reforcoConfirmacao, setReforcoConfirmacao] = useState(false);
+  const [orientacaoPosto, setOrientacaoPosto] = useState(false);
   // Texto, não número: `Number('')` é 0, e um campo apagado para redigitar viraria "lê a cada 0
   // minutos, das 0h às 0h" na legenda e um 400 no salvar. Guardar o que foi digitado deixa o campo
   // vazio de verdade enquanto a pessoa redigita, e a conversão acontece num lugar só, na hora de
@@ -149,6 +151,8 @@ export function AbaRegras() {
     setLembreteHabilitado(cfg.data.lembreteHabilitado);
     setConciliacaoCancelamento(cfg.data.conciliacaoCancelamentoHabilitada);
     setAvisoCancelamento(cfg.data.avisoCancelamentoHabilitado);
+    setReforcoConfirmacao(cfg.data.reforcoConfirmacaoHabilitado);
+    setOrientacaoPosto(cfg.data.orientacaoPostoHabilitada);
     setConciliacaoIntervalo(String(cfg.data.conciliacaoIntervaloMinutos));
     setConciliacaoInicio(String(cfg.data.conciliacaoHoraInicio));
     setConciliacaoFim(String(cfg.data.conciliacaoHoraFim));
@@ -398,6 +402,55 @@ export function AbaRegras() {
           </div>
         </div>
 
+        {/*
+          Régua de quem não se identificou: dois interruptores, e não um, para dar para ligar a
+          orientação ao posto primeiro — ela é o toque que encerra a insistência, e é o que menos
+          arrisca incomodar. Os dois nascem desligados: ligar é decisão de operação, feita aqui.
+        */}
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900">Reforço da confirmação (quem não se identificou)</h3>
+          <p className="mt-0.5 text-xs text-gray-600">
+            Para quem recebeu a primeira mensagem da confirmação, num número ainda não verificado, e não se
+            identificou. Nenhuma das duas leva data, hora, unidade nem procedimento: o número ainda não provou ser
+            do paciente. Os dois nascem desligados.
+          </p>
+          <div className="mt-3 space-y-2">
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={reforcoConfirmacao}
+                onChange={(e) => setReforcoConfirmacao(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                Enviar o reforço
+                <span className="block text-xs text-gray-500">
+                  Três dias depois da primeira mensagem, se o número não escreveu nada desde então, um lembrete de
+                  que ainda falta a resposta — e não sai se o lembrete das vésperas já tiver ido.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={orientacaoPosto}
+                onChange={(e) => setOrientacaoPosto(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                Orientar a procurar o posto
+                <span className="block text-xs text-gray-500">
+                  O último automático para quem seguiu sem se identificar: o agendamento vale e a guia se retira no
+                  posto de saúde. Depois dela o sistema para de insistir — só volta a escrever se o agendamento for
+                  cancelado.
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
         {podeEditar ? (
           <div className="mt-4 flex items-center justify-end gap-3">
             {salvar.isError ? <span className="text-sm text-red-700">{extrairMensagemDeErro(salvar.error)}</span> : null}
@@ -415,6 +468,8 @@ export function AbaRegras() {
                   lembreteHabilitado,
                   conciliacaoCancelamentoHabilitada: conciliacaoCancelamento,
                   avisoCancelamentoHabilitado: avisoCancelamento,
+                  reforcoConfirmacaoHabilitado: reforcoConfirmacao,
+                  orientacaoPostoHabilitada: orientacaoPosto,
                   conciliacaoIntervaloMinutos: conciliacao.intervalo!,
                   conciliacaoHoraInicio: conciliacao.ini!,
                   conciliacaoHoraFim: conciliacao.f!,
@@ -450,6 +505,11 @@ export function AbaRegras() {
             Número <strong>ainda não verificado</strong>: primeiro pedimos os 4 primeiros dígitos do CPF, o mês/ano de
             nascimento e o nome. Quem responde <em>“Não sou essa pessoa”</em> e confirma que <em>não conhece</em> o
             paciente faz o número ficar marcado como <strong>inválido</strong> — nada mais é enviado para ele.
+          </li>
+          <li>
+            Quem não se identifica pode receber, se as chaves acima estiverem ligadas, um <strong>reforço</strong> três
+            dias depois e, por fim, a <strong>orientação de procurar o posto</strong> — que tem o botão{' '}
+            <em>“Vou ao posto”</em>: tocou, o sistema registra e não insiste mais por mensagem.
           </li>
           <li>
             Mensagem de confirmação com a data e a orientação de <strong>retirar a guia (ficha de solicitação) no posto</strong>{' '}

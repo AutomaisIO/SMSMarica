@@ -4424,6 +4424,18 @@ namespace SMSMais.Data.Migrations
                         .HasDefaultValue(100)
                         .HasColumnName("maximo_por_passagem");
 
+                    b.Property<bool>("OrientacaoPostoHabilitada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("orientacao_posto_habilitada");
+
+                    b.Property<bool>("ReforcoConfirmacaoHabilitado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("reforco_confirmacao_habilitado");
+
                     b.Property<bool>("SomenteSisreg")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

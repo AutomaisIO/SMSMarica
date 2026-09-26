@@ -52,4 +52,13 @@ public enum StatusComunicacao
     /// no circuito o sistema não tenta mais; o que já foi enviado fica como está.
     /// </summary>
     SubstituidaPorAtendente = 10,
+
+    /// <summary>
+    /// Terminal: a comunicação ficou COBERTA por outra da mesma solicitação e não precisa mais
+    /// sair. Não é falha — nada deu errado com o envio; ele só deixou de fazer sentido. Ex.: o
+    /// reforço da confirmação quando, antes de ele sair, o paciente se identificou por outro
+    /// caminho (a confirmação de verdade foi liberada) ou o telefone do cadastro mudou (a primeira
+    /// mensagem volta a sair, para o número novo). O motivo fica em <c>motivo_falha</c>.
+    /// </summary>
+    Dispensada = 11,
 }

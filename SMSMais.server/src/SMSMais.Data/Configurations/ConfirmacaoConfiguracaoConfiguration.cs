@@ -29,6 +29,12 @@ internal sealed class ConfirmacaoConfiguracaoConfiguration : IEntityTypeConfigur
         builder.Property(x => x.AvisoCancelamentoHabilitado)
             .HasColumnName("aviso_cancelamento_habilitado").HasDefaultValue(false).IsRequired();
         builder.Property(x => x.AvisoCancelamentoLigadoEm).HasColumnName("aviso_cancelamento_ligado_em");
+
+        // Régua de reforço da confirmação (24/09/2026): as duas nascem desligadas.
+        builder.Property(x => x.ReforcoConfirmacaoHabilitado)
+            .HasColumnName("reforco_confirmacao_habilitado").HasDefaultValue(false).IsRequired();
+        builder.Property(x => x.OrientacaoPostoHabilitada)
+            .HasColumnName("orientacao_posto_habilitada").HasDefaultValue(false).IsRequired();
         // ValueGeneratedNever nos quatro: o default de banco serve para a coluna NASCER povoada nas
         // linhas que já existiam, e só. Sem isso o EF trata a coluna como gerada e OMITE do INSERT
         // todo valor igual ao default do CLR — hora 0 sumiria do comando e o Postgres gravaria 8,

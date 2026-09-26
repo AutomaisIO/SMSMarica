@@ -103,8 +103,9 @@ public sealed class ComunicacaoPacienteService(
     public async Task EnfileirarAsync(
         Solicitacao solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default)
     {
-        // Confirmação só faz sentido antes do atendimento; as demais finalidades valem sempre.
-        if (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+        // Confirmação (e a régua que a reforça) só faz sentido antes do atendimento; as demais
+        // finalidades valem sempre.
+        if (EhDaConfirmacao(finalidade)
             && (solicitacao.DataAgendada is not { } da || da <= DateTime.UtcNow))
             return;
 
@@ -126,7 +127,7 @@ public sealed class ComunicacaoPacienteService(
 
         // Por enquanto só se confirma agendamento do SISREG (regra do menu Confirmações): o
         // cadastrado à mão na recepção não gera mensagem.
-        if (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+        if (EhDaConfirmacao(finalidade)
             && (await RegrasAsync(ct)).SomenteSisreg
             && !Confirmacoes.OrigemAgendamento.EhDoSisreg(solicitacao))
             return;
@@ -229,6 +230,92 @@ public sealed class ComunicacaoPacienteService(
         return realizadoEm is { } r && enviadoEm < r;
     }
 
+    /// <summary>
+    /// A confirmação e a régua que a reforça (reforço, orientação ao posto): falam de um
+    /// agendamento que ainda vai acontecer e que o paciente ainda não respondeu. Por isso dividem
+    /// as mesmas guardas — data futura, só SISREG, "já respondeu por outro canal".
+    /// </summary>
+    internal static bool EhDaConfirmacao(FinalidadeComunicacao f) =>
+        f is FinalidadeComunicacao.ConfirmacaoAgendamento
+            or FinalidadeComunicacao.ReforcoConfirmacao
+            or FinalidadeComunicacao.OrientacaoPosto;
+
+    /// <summary>
+    /// Mensagem sobre a AGENDA (confirmação, lembrete e a régua de reforço): respeita a janela de
+    /// horário e exige data futura. Resultado de exame e laudo não — são a resposta a algo que o
+    /// paciente está esperando. O cancelamento sai na hora (quem cancela está com o paciente).
+    /// </summary>
+    internal static bool EhSobreAgendamento(FinalidadeComunicacao f) =>
+        f is FinalidadeComunicacao.ConfirmacaoAgendamento
+            or FinalidadeComunicacao.LembreteAgendamento
+            or FinalidadeComunicacao.CancelamentoAgendamento
+            or FinalidadeComunicacao.ReforcoConfirmacao
+            or FinalidadeComunicacao.OrientacaoPosto;
+
+    /// <summary>Por que uma comunicação não pode sair — ver <see cref="MotivoQueImpedeEnvio"/>.</summary>
+    internal enum ImpedimentoEnvio
+    {
+        /// <summary>Solicitação excluída ou cancelada (exceto para o próprio aviso de cancelamento).</summary>
+        SolicitacaoEncerrada,
+        /// <summary>Mensagem sobre a agenda sem data futura.</summary>
+        SemDataFutura,
+        /// <summary>Lembrete de quem já avisou que não comparece.</summary>
+        AvisouQueNaoVai,
+        /// <summary>Confirmação de quem já respondeu por outro canal.</summary>
+        JaRespondeu,
+        /// <summary>Confirmação de agendamento que não veio do SISREG, com a regra "só SISREG" ligada.</summary>
+        SomenteSisreg,
+    }
+
+    internal sealed record Impedimento(ImpedimentoEnvio Tipo, string Motivo);
+
+    /// <summary>
+    /// As guardas que fazem uma comunicação perder o sentido ANTES de sair — a solicitação acabou,
+    /// a data passou, o paciente já respondeu, a regra "só SISREG". Ficam num lugar só porque duas
+    /// pontas precisam dar a mesma resposta: o envio (<see cref="ProcessarTentativaEnvioAsync"/>),
+    /// que encerra a linha com o motivo, e a liberação depois da identificação
+    /// (<see cref="LiberacaoAposIdentificacao"/>), que não pode prometer "chegam em instantes" para
+    /// uma mensagem que o envio vai barrar logo em seguida — foi o "confirma e não manda nada".
+    /// </summary>
+    /// <param name="somenteSisreg">A regra do menu Confirmações (só vale para a confirmação e a régua).</param>
+    /// <param name="dataMinimaUtc">Até quando a data do agendamento conta como passada: o envio usa
+    /// agora; a liberação dá uma folga (não se promete mensagem para um horário que já chegou).</param>
+    internal static Impedimento? MotivoQueImpedeEnvio(
+        FinalidadeComunicacao finalidade, Solicitacao? s, bool somenteSisreg, DateTime dataMinimaUtc)
+    {
+        // O aviso de CANCELAMENTO fala justamente de uma solicitação cancelada — sem esta
+        // exceção ele se autoencerraria aqui, calado, e ninguém descobriria tão cedo.
+        if (s is null || s.ExcluidoEm is not null
+            || (s.Status == StatusSolicitacao.Cancelada && finalidade != FinalidadeComunicacao.CancelamentoAgendamento))
+            return new(ImpedimentoEnvio.SolicitacaoEncerrada, "Solicitação excluída ou cancelada antes do envio.");
+
+        // Mesma régua da conciliação ("só avisa o que ainda ia acontecer"), agora no envio: o aviso
+        // de cancelamento que entrou na fila à noite e só pôde sair depois do horário do agendamento
+        // já não é notícia — confunde quem já foi (ou não foi). Sem data, o aviso ainda sai.
+        if (finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+            return s.DataAgendada is { } dataCancelada && dataCancelada <= dataMinimaUtc
+                ? new(ImpedimentoEnvio.SemDataFutura, "Agendamento já passou: aviso de cancelamento não enviado.")
+                : null;
+
+        if (EhSobreAgendamento(finalidade) && (s.DataAgendada is not { } dataAgendada || dataAgendada <= dataMinimaUtc))
+            return new(ImpedimentoEnvio.SemDataFutura, "Exame sem data futura no momento do envio.");
+
+        // Avisou que não vai depois de entrar na fila do lembrete: não se lembra quem já
+        // respondeu que não comparece.
+        if (finalidade == FinalidadeComunicacao.LembreteAgendamento
+            && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
+            return new(ImpedimentoEnvio.AvisouQueNaoVai, "Paciente avisou que não poderá comparecer.");
+
+        if (EhDaConfirmacao(finalidade) && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+            return new(ImpedimentoEnvio.JaRespondeu, "Paciente já respondeu por outro canal.");
+
+        if (EhDaConfirmacao(finalidade) && somenteSisreg && !Confirmacoes.OrigemAgendamento.EhDoSisreg(s))
+            return new(ImpedimentoEnvio.SomenteSisreg,
+                "Confirmação por WhatsApp está restrita a agendamentos do SISREG (menu Confirmações).");
+
+        return null;
+    }
+
     /// <summary>Zera a linha para um envio novo — mesmo saneamento do reenvio manual: telefone,
     /// link e recibos saem, porque todos se referem ao envio anterior.</summary>
     internal static void RearmarParaNovoEnvio(ComunicacaoPaciente n)
@@ -266,27 +353,13 @@ public sealed class ComunicacaoPacienteService(
         {
             var s = n.Solicitacao;
 
-            // O aviso de CANCELAMENTO fala justamente de uma solicitação cancelada — sem esta
-            // exceção ele se autoencerraria aqui, calado, e ninguém descobriria tão cedo.
-            if (s is null || s.ExcluidoEm is not null
-                || (s.Status == StatusSolicitacao.Cancelada
-                    && n.Finalidade != FinalidadeComunicacao.CancelamentoAgendamento))
+            // As guardas que tornam o envio sem sentido (solicitação encerrada, data passada, já
+            // respondeu, só SISREG) moram em MotivoQueImpedeEnvio: a liberação depois da
+            // identificação aplica a MESMA régua antes de prometer "chegam em instantes".
+            var somenteSisreg = s is not null && EhDaConfirmacao(n.Finalidade) && (await RegrasAsync(ct)).SomenteSisreg;
+            if (MotivoQueImpedeEnvio(n.Finalidade, s, somenteSisreg, DateTime.UtcNow) is { } impedimento)
             {
-                Terminal(n, StatusComunicacao.Falha, "Solicitação excluída ou cancelada antes do envio.");
-            }
-            else if (n.Finalidade is FinalidadeComunicacao.ConfirmacaoAgendamento
-                         or FinalidadeComunicacao.LembreteAgendamento
-                     && (s.DataAgendada is not { } dataAgendada || dataAgendada <= DateTime.UtcNow))
-            {
-                Terminal(n, StatusComunicacao.Falha, "Exame sem data futura no momento do envio.");
-            }
-            else if (n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento
-                     && s.DataAgendada is { } dataCancelada && dataCancelada <= DateTime.UtcNow)
-            {
-                // Mesma régua da conciliação ("só avisa o que ainda ia acontecer"), agora no envio:
-                // o aviso que entrou na fila à noite e só pôde sair depois do horário do agendamento
-                // já não é notícia — confunde quem já foi (ou não foi).
-                Terminal(n, StatusComunicacao.Falha, "Agendamento já passou: aviso de cancelamento não enviado.");
+                Terminal(n, StatusComunicacao.Falha, impedimento.Motivo);
             }
             else if (n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento
                      && ((await RegrasAsync(ct)).AvisoCancelamentoLigadoEm is not { } ligadoEm
@@ -297,27 +370,7 @@ public sealed class ComunicacaoPacienteService(
                 Terminal(n, StatusComunicacao.Falha,
                     "Aviso retroativo: entrou na fila antes de o aviso de cancelamento ser ligado.");
             }
-            else if (n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
-                     && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
-            {
-                // Avisou que não vai depois de entrar na fila do lembrete: não se lembra quem já
-                // respondeu que não comparece.
-                Terminal(n, StatusComunicacao.Falha, "Paciente avisou que não poderá comparecer.");
-            }
-            else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
-                     && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
-            {
-                Terminal(n, StatusComunicacao.Falha, "Paciente já respondeu por outro canal.");
-            }
-            else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
-                     && (await RegrasAsync(ct)).SomenteSisreg
-                     && !Confirmacoes.OrigemAgendamento.EhDoSisreg(s))
-            {
-                Terminal(n, StatusComunicacao.Falha,
-                    "Confirmação por WhatsApp está restrita a agendamentos do SISREG (menu Confirmações).");
-            }
-            else if (n.Finalidade is FinalidadeComunicacao.ConfirmacaoAgendamento
-                         or FinalidadeComunicacao.LembreteAgendamento
+            else if (EhSobreAgendamento(n.Finalidade)
                      && !n.IgnorarJanelaHorario
                      && await ForaDaJanelaAsync(ct) is { } abertura)
             {
@@ -327,9 +380,21 @@ public sealed class ComunicacaoPacienteService(
                 n.ProximaTentativaEm = abertura;
                 n.MotivoFalha = null;
             }
+            else if (Confirmacoes.ReguaReforcoConfirmacao.EhDaRegua(n.Finalidade)
+                     && !n.IgnorarJanelaHorario
+                     && Confirmacoes.ReguaReforcoConfirmacao.EhDomingo(DateTime.UtcNow))
+            {
+                // A régua não insiste no domingo. O que entrou na fila no sábado à noite espera a
+                // abertura da janela na segunda — também sem gastar tentativa.
+                n.Tentativas--;
+                n.ProximaTentativaEm = Confirmacoes.ReguaReforcoConfirmacao.ProximaAberturaForaDoDomingo(
+                    DateTime.UtcNow, TimeOnly.Parse((await RegrasAsync(ct)).HoraInicioEnvio));
+                n.MotivoFalha = null;
+            }
             else
             {
-                await EnviarAsync(n, s, ct);
+                // s não é nulo aqui: solicitação ausente é o primeiro impedimento de MotivoQueImpedeEnvio.
+                await EnviarAsync(n, s!, ct);
             }
         }
         catch (Exception ex)
@@ -516,6 +581,10 @@ public sealed class ComunicacaoPacienteService(
         FinalidadeComunicacao.ConfirmacaoAgendamento => "confirmação de agendamento",
         FinalidadeComunicacao.ExameLiberado => "exame liberado",
         FinalidadeComunicacao.LaudoPronto => "laudo pronto",
+        FinalidadeComunicacao.LembreteAgendamento => "lembrete de agendamento",
+        FinalidadeComunicacao.CancelamentoAgendamento => "aviso de cancelamento",
+        FinalidadeComunicacao.ReforcoConfirmacao => "reforço da confirmação",
+        FinalidadeComunicacao.OrientacaoPosto => "orientação ao posto",
         _ => f.ToString(),
     };
 
@@ -543,7 +612,8 @@ public sealed class ComunicacaoPacienteService(
         // provoca o contato (a resposta do paciente é o que permite verificar o número).
         // Lembrete de quem JÁ confirmou fala da data e do procedimento: só vai para contato provado.
         // Lembrete de quem NÃO respondeu é a própria mensagem original repetida (decisão de
-        // 20/09/2026) — e ela não expõe nada, é justamente o convite a se identificar.
+        // 20/09/2026) — e ela não expõe nada, é justamente o convite a se identificar. Para número
+        // já provado (ou liberado na identificação) sai a confirmação completa (ver MontarEnvio).
         var lembreteDeQuemConfirmou = n.Finalidade == FinalidadeComunicacao.LembreteAgendamento
             && s.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada;
 
@@ -630,6 +700,14 @@ public sealed class ComunicacaoPacienteService(
                 + "paciente). Corrija o cadastro em Pendências de Cadastro para liberar.";
             n.ProximaTentativaEm = null;
             await db.SaveChangesAsync(ct);
+            return;
+        }
+
+        // Régua de reforço (toques 2 e 3 da confirmação): ramo próprio, com reconferência — entre a
+        // fila e a saída a pessoa pode ter respondido, alguém pode ter assumido, o cadastro mudou.
+        if (Confirmacoes.ReguaReforcoConfirmacao.EhDaRegua(n.Finalidade))
+        {
+            await EnviarReguaAsync(n, s, paciente, ct);
             return;
         }
 
@@ -725,9 +803,13 @@ public sealed class ComunicacaoPacienteService(
 
         var opts = options.Value;
 
+        // IgnorarVerificacaoTelefone = quem está do outro lado acabou de se identificar (ou o
+        // operador assumiu o risco): para o conteúdo, vale como contato provado. Sem isto, o
+        // lembrete liberado na identificação saía de novo como a primeira mensagem curta — a
+        // pessoa confirmava os dados e recebia "seu exame foi agendado" outra vez.
         var (template, parametros, botoes) = MontarEnvio(
             n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, tokenLink, opts,
-            contatoVerificado, campanha);
+            contatoVerificado || n.IgnorarVerificacaoTelefone, campanha);
 
         // O modelo aprovado manda na quantidade de variáveis: mandar a mais é erro 132000 na Meta
         // e a mensagem não sai. Corta pela declaração do catálogo (cacheado) e avisa quando o
@@ -749,13 +831,28 @@ public sealed class ComunicacaoPacienteService(
             n.EnviadoEm = DateTime.UtcNow;
             n.MotivoFalha = null;
             n.ProximaTentativaEm = null; // recibos (entrega/leitura/falha) chegam pelo webhook
-            if (resultado.WaMessageId is { } wamid)
-                n.MensagemWhatsAppId = await db.MensagensWhatsApp.AsNoTracking()
-                    .Where(m => m.WaMessageId == wamid).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct);
+            if (resultado.WaMessageId is not null) n.MensagemWhatsAppId = await MensagemDoEnvioAsync(resultado, ct);
         }
+        else
+        {
+            await TratarEnvioRecusadoAsync(n, resultado, ct);
+        }
+    }
+
+    /// <summary>Id local da mensagem enviada (é por ela que os recibos da Meta acham a comunicação).</summary>
+    private async Task<Guid?> MensagemDoEnvioAsync(EnvioWhatsAppResultado resultado, CancellationToken ct)
+        => resultado.WaMessageId is { } wamid
+            ? await db.MensagensWhatsApp.AsNoTracking()
+                .Where(m => m.WaMessageId == wamid).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct)
+            : null;
+
+    /// <summary>O que fazer quando o WhatsApp não aceitou o envio — a mesma régua para toda finalidade.</summary>
+    private async Task TratarEnvioRecusadoAsync(
+        ComunicacaoPaciente n, EnvioWhatsAppResultado resultado, CancellationToken ct)
+    {
         // O Automais.Zap devolve "{message} (code {code})"; o formato antigo era "({code}) {message}".
         // Casar pelo codigo em ambos, senao numero inexistente volta para a fila em vez de falhar.
-        else if (resultado.Erro?.StartsWith(BloqueioEnvioWhatsApp.CodigoNumeroNegado, StringComparison.Ordinal) == true)
+        if (resultado.Erro?.StartsWith(BloqueioEnvioWhatsApp.CodigoNumeroNegado, StringComparison.Ordinal) == true)
         {
             // A guarda central barrou: fica retida com o motivo, sem gastar tentativa.
             n.Status = StatusComunicacao.AguardandoCorrecaoContato;
@@ -776,6 +873,179 @@ public sealed class ComunicacaoPacienteService(
         {
             ReagendarOuFalhar(n, resultado.Erro);
         }
+    }
+
+    /// <summary>
+    /// Envio de uma linha da régua de reforço (reforço ou orientação ao posto). Tudo o que a
+    /// colocou na fila é CONFERIDO DE NOVO — a régua é insistência, e insistência com informação
+    /// velha é pior que silêncio. Chegando aqui, o telefone já foi resolvido pelo cadastro (e o
+    /// negado já foi barrado); <c>n.Telefone</c> é o destino que o cadastro manda hoje.
+    ///
+    /// <para>O que pode acontecer, além de sair: a linha vira <see cref="StatusComunicacao.Dispensada"/>
+    /// (coberta pela própria principal, que andou ou volta a sair), <see cref="StatusComunicacao.SubstituidaPorAtendente"/>
+    /// (uma pessoa assumiu) ou espera o silêncio mínimo do número.</para>
+    /// </summary>
+    private async Task EnviarReguaAsync(
+        ComunicacaoPaciente n, Solicitacao s, Pacientes.Dtos.PacienteDto paciente, CancellationToken ct)
+    {
+        var agora = DateTime.UtcNow;
+        var opts = options.Value;
+        var ehReforco = n.Finalidade == FinalidadeComunicacao.ReforcoConfirmacao;
+        var superado = ehReforco
+            ? Confirmacoes.ReguaReforcoConfirmacao.PrefixoSuperadoReforco
+            : Confirmacoes.ReguaReforcoConfirmacao.PrefixoSuperadoOrientacao;
+
+        // Uma pessoa está com a solicitação (menu Confirmações): o automático não entra por cima.
+        if (await db.AtendimentosConfirmacao.AnyAsync(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null, ct))
+        {
+            Terminal(n, StatusComunicacao.SubstituidaPorAtendente, "Atendimento humano iniciado.");
+            return;
+        }
+
+        // A principal ainda espera o paciente se identificar? É ela que a régua reforça.
+        var principal = await db.ComunicacoesPaciente.FirstOrDefaultAsync(c =>
+            c.SolicitacaoId == s.Id && c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+        if (principal is null || principal.Status != StatusComunicacao.AguardandoVerificacaoCadastral
+            || principal.Telefone is null || principal.EnviadoEm is not { } principalEnviadaEm)
+        {
+            Terminal(n, StatusComunicacao.Dispensada,
+                $"{superado}: a primeira mensagem já não aguarda o paciente se identificar.");
+            return;
+        }
+        if (principal.MotivoFalha?.StartsWith(Confirmacoes.ReguaReforcoConfirmacao.CarimboVaiAoPosto,
+                StringComparison.Ordinal) == true)
+        {
+            Terminal(n, StatusComunicacao.Dispensada, $"{superado}: o paciente avisou que vai ao posto.");
+            return;
+        }
+
+        // Verificou o contato por outro caminho (recepção, app, outro agendamento): não se insiste
+        // em pedir identificação — libera a confirmação de verdade, com os dados do agendamento.
+        if (TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado))
+        {
+            principal.Status = StatusComunicacao.Pendente;
+            principal.ProximaTentativaEm = agora;
+            principal.IgnorarVerificacaoTelefone = true;
+            principal.Tentativas = 0;
+            principal.MotivoFalha = null;
+            principal.AtualizadoEm = agora;
+            Terminal(n, StatusComunicacao.Dispensada,
+                "O paciente verificou o contato por outro caminho: a confirmação com os dados do agendamento "
+                + "foi liberada no lugar desta mensagem.");
+            return;
+        }
+
+        // O telefone do cadastro mudou depois da primeira mensagem: reforçar no número velho é
+        // insistir com quem talvez nem seja o paciente. A primeira mensagem volta a sair — agora
+        // para o número novo — e a régua recomeça dela.
+        if (!TelefoneWhatsApp.MesmoNumero(n.Telefone, principal.Telefone))
+        {
+            var estadoAntigo = await Confirmacoes.ReguaReforcoConfirmacao.EstadoDoNumeroAsync(db, principal.Telefone, ct);
+            if (estadoAntigo is not null && estadoAntigo.ComunicacaoPacienteId == principal.Id
+                && estadoAntigo.Etapa == EtapaVerificacaoCadastral.AguardandoInteresse)
+                db.VerificacoesCadastraisEstado.Remove(estadoAntigo);
+            RearmarParaNovoEnvio(principal);
+            Terminal(n, StatusComunicacao.Dispensada,
+                "O telefone do cadastro mudou depois da primeira mensagem: ela volta a sair, para o número novo.");
+            return;
+        }
+
+        // O público de cada toque (ver ReguaReforcoConfirmacao): o reforço só para quem não mandou
+        // nada; a orientação também para quem começou a se identificar e parou há dias.
+        var houveEntrada = await Confirmacoes.ReguaReforcoConfirmacao.HouveEntradaDesdeAsync(
+            db, n.Telefone!, principalEnviadaEm, ct);
+        var estado = await Confirmacoes.ReguaReforcoConfirmacao.EstadoDoNumeroAsync(db, n.Telefone!, ct);
+        if (ehReforco)
+        {
+            if (!Confirmacoes.ReguaReforcoConfirmacao.ReforcoAlcanca(houveEntrada, estado))
+            {
+                Terminal(n, StatusComunicacao.Dispensada,
+                    $"{superado}: o número respondeu depois da primeira mensagem.");
+                return;
+            }
+            // O lembrete ocupa o lugar do reforço — dois "toques 2" é insistência dobrada.
+            if (await db.ComunicacoesPaciente.AnyAsync(c => c.SolicitacaoId == s.Id
+                    && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento && c.EnviadoEm != null, ct))
+            {
+                Terminal(n, StatusComunicacao.Dispensada, $"{superado}: o lembrete já cumpriu esse papel.");
+                return;
+            }
+        }
+        else if (!Confirmacoes.ReguaReforcoConfirmacao.OrientacaoAlcanca(
+                     houveEntrada, estado, principal.Id, principal.PacienteId, agora))
+        {
+            Terminal(n, StatusComunicacao.Dispensada,
+                $"{superado}: a conversa com o número andou depois da primeira mensagem.");
+            return;
+        }
+
+        // Silêncio mínimo por NÚMERO: outro automático de agendamento saiu para ele há pouco (outro
+        // paciente do mesmo número, um lote novo). Não é falha nem tentativa — espera e sai depois.
+        var ultimo = await Confirmacoes.ReguaReforcoConfirmacao.UltimoAutomaticoDoNumeroAsync(db, n.Telefone!, n.Id, ct);
+        if (ultimo is { } u && u > agora.AddHours(-opts.SilencioMinimoPorNumeroHoras))
+        {
+            n.Tentativas--;
+            n.ProximaTentativaEm = u.AddHours(opts.SilencioMinimoPorNumeroHoras);
+            n.MotivoFalha = "Aguardando o silêncio mínimo do número (outro aviso saiu para ele há pouco).";
+            return;
+        }
+
+        // Modelo escolhido AGORA, pela leitura da principal e pelo catálogo de hoje.
+        IReadOnlyList<TemplateWhatsApp> catalogo;
+        try { catalogo = await whatsApp.ListarTemplatesAsync(ct); }
+        catch { catalogo = []; }
+        var envio = Confirmacoes.ReguaReforcoConfirmacao.MontarEnvio(
+            n.Finalidade, n.Tipo, Tratamento(paciente.NomeCompleto, paciente.Sexo),
+            principalLida: principal.LidoEm is not null, catalogo, opts);
+
+        var (parametros, incompativel) = await AjustarAoModeloAsync(envio.Modelo, envio.Parametros, ct);
+        if (incompativel is not null)
+        {
+            Terminal(n, StatusComunicacao.Falha, incompativel);
+            return;
+        }
+
+        // O mesmo método da primeira mensagem: quick replies sem payload (a Meta devolve o texto do
+        // botão) e origem Automático — a guarda de contato negado vale aqui também.
+        var resultado = await whatsApp.EnviarTemplateAsync(
+            n.Telefone!, envio.Modelo, opts.Idioma, parametros,
+            pacienteId: n.PacienteId, conteudoLegivel: envio.ConteudoLegivel, ct: ct);
+        if (!resultado.Ok)
+        {
+            await TratarEnvioRecusadoAsync(n, resultado, ct);
+            return;
+        }
+
+        n.Status = StatusComunicacao.Enviada;
+        n.EnviadoEm = agora;
+        n.MotivoFalha = null;
+        n.ProximaTentativaEm = null;
+        if (resultado.WaMessageId is not null) n.MensagemWhatsAppId = await MensagemDoEnvioAsync(resultado, ct);
+
+        // O toque reabre a porta da identificação: o estado do número ganha mais uma semana, SEM
+        // mudar etapa nem contadores (quem parou no nascimento continua dali). A data de
+        // atualização também fica: é por ela que se sabe há quanto tempo o diálogo está parado.
+        // Sem estado, abre um esperando o "Quero mais informações", apontando para a PRINCIPAL.
+        if (estado is null)
+        {
+            db.VerificacoesCadastraisEstado.Add(new Data.Entities.Notificacoes.VerificacaoCadastralEstado
+            {
+                Id = Guid.CreateVersion7(),
+                TelefoneCanonical = TelefoneWhatsApp.Canonizar(principal.Telefone),
+                ComunicacaoPacienteId = principal.Id,
+                Etapa = EtapaVerificacaoCadastral.AguardandoInteresse,
+                ExpiraEm = agora.Add(Confirmacoes.ReguaReforcoConfirmacao.ValidadeEstado),
+                CriadoEm = agora,
+            });
+        }
+        else
+        {
+            estado.ExpiraEm = agora.Add(Confirmacoes.ReguaReforcoConfirmacao.ValidadeEstado);
+        }
+
+        // Na principal, o que aconteceu — é ela que a atendente vê na fila de Confirmações.
+        principal.MotivoFalha = Confirmacoes.ReguaReforcoConfirmacao.CarimboNaPrincipal(n.Finalidade, agora);
+        principal.AtualizadoEm = agora;
     }
 
     /// <summary>
@@ -983,10 +1253,10 @@ public sealed class ComunicacaoPacienteService(
             {
                 var oQue = tipo == TipoAgendamento.Consulta ? "Sua consulta" : "Seu exame";
 
-                // NÃO respondeu ainda: repete a mensagem ORIGINAL (curta, com "Quero mais
-                // informações") — decisão de 20/09/2026. Insistir com data e hora em quem nunca
-                // deu sinal não ajuda; o que falta é ela entrar na conversa.
-                if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
+                // NÃO respondeu ainda, para número NÃO provado: repete a mensagem ORIGINAL (curta,
+                // com "Quero mais informações") — decisão de 20/09/2026. Insistir com data e hora em
+                // quem nunca deu sinal não ajuda; o que falta é ela entrar na conversa.
+                if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada && !contatoVerificado)
                 {
                     return (
                         tipo == TipoAgendamento.Consulta
@@ -995,6 +1265,12 @@ public sealed class ComunicacaoPacienteService(
                         [Tratamento(nomePaciente, sexo)],
                         []);
                 }
+
+                // NÃO respondeu, mas o número está provado (ou a pessoa acabou de se identificar):
+                // a mensagem curta não serve — ela já sabe que há agendamento e quer os dados. Vai
+                // a confirmação completa, com data, guia e os botões de confirmar/não poderei ir.
+                if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
+                    return ConfirmacaoRegulacao(tipo, s, nome, exame, sexo, url, opts);
 
                 var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
                 return (
@@ -1020,30 +1296,40 @@ public sealed class ComunicacaoPacienteService(
             // "Falar com atendente" (2, payload atendente: — sem manipulador de propósito: a
             // resposta cai no módulo Conversas/Central de Atendimento).
             default:
-                var local = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
-                var (tratamento, assistido, pronome) = sexo switch
-                {
-                    Sexo.Masculino => ($"Sr. {nome}", "o Sr. é assistido", "o Sr."),
-                    Sexo.Feminino => ($"Sra. {nome}", "a Sra. é assistida", "a Sra."),
-                    _ => (nome, "você é assistido(a)", "você"),
-                };
-                return (
-                    opts.TemplateConfirmaAgendamento,
-                    [
-                        tratamento,
-                        tipo == TipoAgendamento.Consulta ? "A sua consulta" : "O seu exame",
-                        exame,
-                        $"{local.ToString("dd/MM/yyyy", PtBr)} às {local.ToString("HH:mm", PtBr)}h",
-                        assistido,
-                        tipo == TipoAgendamento.Consulta ? "da sua consulta" : "do seu exame",
-                        pronome,
-                    ],
-                    [
-                        url,
-                        new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}"),
-                        new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"atendente:{s.Id}"),
-                    ]);
+                return ConfirmacaoRegulacao(tipo, s, nome, exame, sexo, url, opts);
         }
+    }
+
+    /// <summary>A confirmação completa (<c>confirmacao_regulacao</c>): data, hora, onde retirar a
+    /// guia e os botões. Usada pela confirmação e pelo lembrete de quem não respondeu mas já está
+    /// com o número provado.</summary>
+    private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) ConfirmacaoRegulacao(
+        TipoAgendamento tipo, Solicitacao s, string nome, string exame, Sexo sexo, BotaoTemplateWhatsApp url,
+        ComunicacaoPacienteOptions opts)
+    {
+        var local = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
+        var (tratamento, assistido, pronome) = sexo switch
+        {
+            Sexo.Masculino => ($"Sr. {nome}", "o Sr. é assistido", "o Sr."),
+            Sexo.Feminino => ($"Sra. {nome}", "a Sra. é assistida", "a Sra."),
+            _ => (nome, "você é assistido(a)", "você"),
+        };
+        return (
+            opts.TemplateConfirmaAgendamento,
+            [
+                tratamento,
+                tipo == TipoAgendamento.Consulta ? "A sua consulta" : "O seu exame",
+                exame,
+                $"{local.ToString("dd/MM/yyyy", PtBr)} às {local.ToString("HH:mm", PtBr)}h",
+                assistido,
+                tipo == TipoAgendamento.Consulta ? "da sua consulta" : "do seu exame",
+                pronome,
+            ],
+            [
+                url,
+                new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}"),
+                new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"atendente:{s.Id}"),
+            ]);
     }
 
     /// <summary>Data em que o exame foi feito (DICOM → detecção → criação), formatada dd/MM/aaaa.</summary>

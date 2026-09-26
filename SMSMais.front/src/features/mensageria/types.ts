@@ -12,11 +12,30 @@ export type StatusNotificacao =
   /** Número marcado como inválido (quem atende disse que não conhece o paciente). */
   | 'AguardandoCorrecaoContato'
   /** Terminal: uma atendente entrou no circuito (menu Confirmações) antes de a mensagem sair. */
-  | 'SubstituidaPorAtendente';
+  | 'SubstituidaPorAtendente'
+  /**
+   * Terminal: coberta por outra comunicação da MESMA solicitação — o reforço que não saiu porque o
+   * paciente se identificou por outro caminho, o lembrete que perdeu para a confirmação liberada na
+   * identificação. Não é falha: o paciente recebeu (ou vai receber) a outra.
+   */
+  | 'Dispensada';
 
 export type StatusConfirmacao = 'Pendente' | 'Confirmada' | 'Cancelada';
 
-export type FinalidadeComunicacao = 'ConfirmacaoAgendamento' | 'ExameLiberado' | 'LaudoPronto';
+/**
+ * Espelha o enum do backend (viaja como STRING no JSON). Faltar um nome aqui não quebra a tela —
+ * o rótulo cai no nome cru —, mas quebra o filtro, que só oferece o que está listado.
+ */
+export type FinalidadeComunicacao =
+  | 'ConfirmacaoAgendamento'
+  | 'ExameLiberado'
+  | 'LaudoPronto'
+  | 'LembreteAgendamento'
+  | 'CancelamentoAgendamento'
+  /** Reforço para quem recebeu a primeira mensagem da confirmação e não se identificou. */
+  | 'ReforcoConfirmacao'
+  /** Último toque da régua: o agendamento vale, retire a guia no posto. Depois dele, nada automático. */
+  | 'OrientacaoPosto';
 
 export type NotificacaoFiltro = {
   status?: string;
@@ -142,6 +161,16 @@ export type ConfirmacaoConfiguracao = {
   conciliacaoCancelamentoHabilitada: boolean;
   /** Aviso ao paciente quando o agendamento é cancelado. O motivo NUNCA vai na mensagem. */
   avisoCancelamentoHabilitado: boolean;
+  /**
+   * Reforço (72h depois) para quem recebeu a primeira mensagem da confirmação e não se
+   * identificou. Nasce desligado.
+   */
+  reforcoConfirmacaoHabilitado: boolean;
+  /**
+   * Orientação para retirar a guia no posto — o último automático para quem não se identificou.
+   * Chave separada do reforço de propósito: dá para ligar esta antes. Nasce desligada.
+   */
+  orientacaoPostoHabilitada: boolean;
   /** De quantos em quantos minutos o motor relê o dia corrente (1 a 120). */
   conciliacaoIntervaloMinutos: number;
   /** Hora em que a leitura do dia começa (0–23). */
@@ -166,6 +195,8 @@ export type SalvarConfirmacaoConfiguracao = Pick<
   | 'lembreteHabilitado'
   | 'conciliacaoCancelamentoHabilitada'
   | 'avisoCancelamentoHabilitado'
+  | 'reforcoConfirmacaoHabilitado'
+  | 'orientacaoPostoHabilitada'
   | 'conciliacaoIntervaloMinutos'
   | 'conciliacaoHoraInicio'
   | 'conciliacaoHoraFim'

@@ -208,6 +208,22 @@ public static partial class InterpretadorRespostaCidadao
             or "nao conheco essa pessoa" or "nao conheco esta pessoa";
     }
 
+    // ---------- Vou ao posto ----------
+
+    /// <summary>
+    /// Botão "Vou ao posto" da orientação ao posto (<c>agendamento_procure_posto</c> — a Meta
+    /// devolve o TEXTO do botão) ou a mesma decisão escrita. Lista FECHADA de propósito: é a
+    /// resposta que encerra os automáticos daquele agendamento, então "vou" solto, "posto?" ou
+    /// "onde fica o posto" não podem cair aqui.
+    /// </summary>
+    public static bool EhVouAoPosto(string? texto)
+    {
+        var t = Normalizar(texto ?? string.Empty).Trim('!', '.', ' ');
+        return t is "vou ao posto" or "vou no posto" or "vou la no posto" or "vou ao posto de saude"
+            or "vou no posto de saude" or "vou procurar o posto" or "prefiro ir ao posto"
+            or "prefiro ir no posto" or "vou pessoalmente" or "eu vou ao posto" or "eu vou no posto";
+    }
+
     /// <summary>Botão "Prefiro falar com um atendente" do desafio cadastral (texto do botão).</summary>
     public static bool EhBotaoPrefiroAtendente(string? texto)
     {

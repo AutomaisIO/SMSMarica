@@ -77,6 +77,7 @@ public sealed class AtendimentoConfirmacaoService(
     Integracoes.SisregWeb.Cancelamento.ICancelamentoSisregService cancelamentoSisreg,
     Sisreg.Sessao.ISisregSessaoOperadorStore sessoesSisreg,
     Pacientes.Fhir.IPacienteFhirClient pacientesFhir,
+    Microsoft.Extensions.Options.IOptions<ComunicacaoPacienteOptions> opcoesComunicacao,
     ILogger<AtendimentoConfirmacaoService> logger) : IAtendimentoConfirmacaoService
 {
     /// <summary>Canal gravado na solicitação quando a resposta vem pela mão do atendente.</summary>
@@ -906,6 +907,28 @@ public sealed class AtendimentoConfirmacaoService(
             c.AtualizadoEm = agora;
         }
 
+        // O lembrete que a atendente parou junto volta com a confirmação — mas só o que nunca saiu
+        // (o que já foi entregue não se repete), e depois do silêncio mínimo do número: a
+        // confirmação acabou de ser rearmada para sair agora, e duas mensagens seguidas para um
+        // número recém-corrigido é o jeito mais rápido de ele bloquear a conta. Se a data chegar
+        // antes, a guarda de data futura do envio encerra o lembrete sozinha.
+        if (substituidas.Count > 0)
+        {
+            var lembretes = await db.ComunicacoesPaciente
+                .Where(c => c.SolicitacaoId == s.Id && c.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                    && c.Status == StatusComunicacao.SubstituidaPorAtendente && c.EnviadoEm == null)
+                .ToListAsync(ct);
+            foreach (var c in lembretes)
+            {
+                c.Status = StatusComunicacao.Pendente;
+                c.MotivoFalha = null;
+                c.Telefone = null;
+                c.Tentativas = 0;
+                c.ProximaTentativaEm = agora.AddHours(opcoesComunicacao.Value.SilencioMinimoPorNumeroHoras);
+                c.AtualizadoEm = agora;
+            }
+        }
+
         var ativo = await AtivoAsync(s.Id, ct);
         if (ativo is not null)
         {
@@ -1023,15 +1046,30 @@ public sealed class AtendimentoConfirmacaoService(
     }
 
     /// <summary>
+    /// O que insiste sobre o agendamento — a confirmação, o lembrete e a régua de reforço
+    /// (reforço, orientação ao posto). Quando uma pessoa entra no circuito, é tudo isso que para
+    /// (ADR-0059 §4): antes só a confirmação parava, e o lembrete ou o reforço saíam por cima da
+    /// atendente que já estava falando com o paciente.
+    /// </summary>
+    private static readonly FinalidadeComunicacao[] FinalidadesQueInsistem =
+    [
+        FinalidadeComunicacao.ConfirmacaoAgendamento,
+        FinalidadeComunicacao.LembreteAgendamento,
+        FinalidadeComunicacao.ReforcoConfirmacao,
+        FinalidadeComunicacao.OrientacaoPosto,
+    ];
+
+    /// <summary>
     /// Depois que uma pessoa entra no circuito o automático não tenta mais: o que ainda não saiu
     /// (na fila, em retry, retido esperando verificação) vira terminal. O que já foi enviado fica.
+    /// Vale para tudo o que insiste sobre o agendamento (<see cref="FinalidadesQueInsistem"/>).
     /// Com <paramref name="encerrarTudo"/> (cancelamento), também as outras finalidades pendentes.
     /// </summary>
     private async Task SubstituirEnvioAutomaticoAsync(Guid solicitacaoId, DateTime agora, CancellationToken ct, bool encerrarTudo = false)
     {
         var pendentes = await db.ComunicacoesPaciente
             .Where(c => c.SolicitacaoId == solicitacaoId
-                && (encerrarTudo || c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
+                && (encerrarTudo || FinalidadesQueInsistem.Contains(c.Finalidade))
                 && (c.Status == StatusComunicacao.Pendente
                     || c.Status == StatusComunicacao.AguardandoVerificacaoCadastral
                     || c.Status == StatusComunicacao.AguardandoCorrecaoContato

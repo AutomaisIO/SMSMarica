@@ -12,7 +12,8 @@ import type { Artigo } from '@/features/manual/tipos';
  *
  * A ordem segue a dúvida de quem aprende: o que é esta tela e o que NÃO é → como se lê o painel
  * do dia → onde se olha um envio específico → o que o paciente respondeu → como se dispara um
- * lote → as regras que governam tudo isso → quanto custa → quem pode o quê.
+ * lote → as regras que governam tudo isso → o que acontece com quem não se identifica → quanto
+ * custa → quem pode o quê.
  */
 export const artigoMensageria: Artigo = {
   slug: 'mensageria',
@@ -65,6 +66,18 @@ export const artigoMensageria: Artigo = {
     'entrega direta',
     'reenviar sem resposta',
     'alcance',
+    'reforço',
+    'reforço da confirmação',
+    'não respondeu',
+    'não se identificou',
+    'procure o posto',
+    'orientação ao posto',
+    'vou ao posto',
+    'quero mais informações',
+    'dispensada',
+    'cadastro confirmado',
+    'finalidade',
+    'aviso de cancelamento',
   ],
   secoes: () => [
     {
@@ -114,7 +127,7 @@ export const artigoMensageria: Artigo = {
               {
                 termo: <AbaRef>Regras e parâmetros</AbaRef>,
                 descricao:
-                  'O horário em que o automático pode falar, a vazão, o lembrete, a leitura dos cancelamentos feitos no SISREG, quais unidades avisam e as tarifas da Meta.',
+                  'O horário em que o automático pode falar, a vazão, o lembrete, a leitura dos cancelamentos feitos no SISREG, o reforço para quem não se identificou, quais unidades avisam e as tarifas da Meta.',
               },
               {
                 termo: <AbaRef>Testar modelo</AbaRef>,
@@ -137,8 +150,8 @@ export const artigoMensageria: Artigo = {
       conteudo: (
         <div className="space-y-4">
           <P>
-            O período padrão são os últimos 30 dias, e dá para filtrar por finalidade (confirmação de agendamento,
-            exame liberado, laudo pronto) e por unidade executante.
+            O período padrão são os últimos 30 dias, e dá para filtrar por finalidade (as mesmas da aba Envios,
+            explicadas logo abaixo) e por unidade executante.
           </P>
           <Callout tipo="atencao" titulo="A confusão que todo mundo comete aqui">
             <strong>Entraram</strong> e <strong>Saíram no dia</strong> não são a mesma conta e quase nunca batem.
@@ -180,7 +193,8 @@ export const artigoMensageria: Artigo = {
     {
       id: 'envios',
       titulo: 'Envios: achar uma mensagem e entender o que houve com ela',
-      busca: 'envios buscar sisreg accession telefone selo status detalhe linha do tempo reenviar erro meta magic link',
+      busca:
+        'envios buscar sisreg accession telefone selo status detalhe linha do tempo reenviar erro meta magic link finalidade confirmação reforço orientação ao posto lembrete aviso de cancelamento exame liberado laudo pronto dispensada',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -189,6 +203,36 @@ export const artigoMensageria: Artigo = {
             conteúdo exato que foi mandado, o erro que a Meta devolveu quando houve, a resposta do paciente e o
             estado do link de acesso.
           </P>
+          <Sub>As finalidades</Sub>
+          <P>
+            Cada linha é <strong>uma</strong> mensagem, e a coluna Finalidade diz qual. Um mesmo agendamento pode ter
+            várias linhas — a confirmação, depois um reforço, depois o lembrete —, cada uma com o seu envio.
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Confirmação de agendamento',
+                descricao:
+                  'A primeira mensagem, que nasce na importação. Para número verificado, já leva a data e o link. Para número não verificado, só avisa que há um agendamento, com os botões "Quero mais informações" e "Não sou essa pessoa" — os dados vêm depois que a pessoa se identifica.',
+              },
+              {
+                termo: 'Reforço da confirmação',
+                descricao:
+                  'Para quem recebeu a primeira mensagem num número não verificado e não se identificou. Sai três dias depois, sem dado do agendamento.',
+              },
+              {
+                termo: 'Orientação ao posto',
+                descricao:
+                  'O último toque para quem seguiu sem se identificar: o agendamento vale e a guia se retira no posto de saúde. Depois dele o sistema para de insistir.',
+              },
+              { termo: 'Lembrete de agendamento', descricao: 'A mensagem das vésperas, com texto diferente para quem já confirmou e para quem não respondeu.' },
+              {
+                termo: 'Aviso de cancelamento',
+                descricao: 'Diz ao paciente que o agendamento foi cancelado — nunca o motivo, que é informação interna.',
+              },
+              { termo: 'Exame liberado / Laudo pronto', descricao: 'Os avisos do resultado. Só vão para contato verificado.' },
+            ]}
+          />
           <Sub>Os selos da coluna Envio</Sub>
           <ListaDefinicoes
             itens={[
@@ -217,6 +261,11 @@ export const artigoMensageria: Artigo = {
               {
                 termo: <SeloRef cor="gray">Atendida por pessoa</SeloRef>,
                 descricao: 'Terminal: uma atendente assumiu a ficha em Confirmações antes de a mensagem sair.',
+              },
+              {
+                termo: <SeloRef cor="gray">Dispensada</SeloRef>,
+                descricao:
+                  'Terminal, e não é falha: outra mensagem do mesmo agendamento cobriu esta. Por exemplo, o reforço que não saiu porque o paciente se identificou por outro caminho, ou o lembrete que ficou de lado porque a confirmação foi liberada na identificação. O motivo aparece no detalhe.',
               },
             ]}
           />
@@ -396,7 +445,8 @@ export const artigoMensageria: Artigo = {
     {
       id: 'regras',
       titulo: 'Regras e parâmetros: o que governa o automático',
-      busca: 'regras parâmetros janela de envio vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente',
+      busca:
+        'regras parâmetros janela de envio vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente reforço orientação ao posto interruptor desligado',
       conteudo: (
         <div className="space-y-4">
           <Sub>Parâmetros de disparo</Sub>
@@ -474,6 +524,26 @@ export const artigoMensageria: Artigo = {
             assustar no meio da tarde, dá para afrouxar na hora.
           </Callout>
 
+          <Sub>Reforço da confirmação (quem não se identificou)</Sub>
+          <P>
+            Dois interruptores para quem recebeu a primeira mensagem num número não verificado e não se identificou.
+            Os dois <strong>nascem desligados</strong> e passam a valer sem reiniciar nada:
+          </P>
+          <Lista>
+            <Item>
+              <strong>Enviar o reforço</strong> — três dias depois da primeira mensagem, um lembrete de que ainda falta
+              a resposta.
+            </Item>
+            <Item>
+              <strong>Orientar a procurar o posto</strong> — o último automático: o agendamento vale e a guia se retira
+              no posto de saúde. Depois dele o sistema para de insistir.
+            </Item>
+          </Lista>
+          <P>
+            São separados para dar para ligar a orientação ao posto primeiro: ela é a que encerra a insistência. Quem
+            recebe o quê, e quando, está na seção seguinte.
+          </P>
+
           <Sub>Quem recebe o aviso</Sub>
           <P>
             A mensagem só sai quando <strong>as duas</strong> chaves estão ligadas: a da unidade executante, aqui
@@ -482,6 +552,138 @@ export const artigoMensageria: Artigo = {
             unidade estão marcados — "3 de 40" é o aviso ligado com quase nada passando. Essas chaves governam a
             confirmação e o lembrete. O aviso de cancelamento não passa por elas: quando está ligado, sai para
             qualquer unidade.
+          </P>
+        </div>
+      ),
+    },
+    {
+      id: 'reforco-confirmacao',
+      titulo: 'Quem não se identificou: reforço e orientação ao posto',
+      busca:
+        'reforço não respondeu não se identificou procure o posto orientação ao posto vou ao posto quero mais informações não sou essa pessoa três dias 72 horas domingo limite por número lembrete dispensada cadastro confirmado identificação liberou frase',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Número não verificado recebe primeiro só o aviso de que existe um agendamento; os dados vêm depois que a
+            pessoa se identifica. Muita gente não responde — lê e deixa para depois, ou nem abre. Para essas pessoas
+            há, no máximo, mais dois toques. Depois deles o sistema desiste de insistir por mensagem.
+          </P>
+          <Passos
+            itens={[
+              {
+                titulo: 'Primeira mensagem (confirmação de agendamento)',
+                detalhe:
+                  'Avisa que há um agendamento, sem data, hora nem local, com os botões "Quero mais informações" e "Não sou essa pessoa".',
+              },
+              {
+                titulo: 'Reforço, três dias depois',
+                detalhe:
+                  'Só se o número não escreveu nada desde a primeira mensagem, a pessoa não começou a se identificar, o agendamento está a pelo menos três dias e o lembrete das vésperas ainda não foi — o lembrete, quando vai, já conta como esse segundo toque.',
+              },
+              {
+                titulo: 'Orientação ao posto',
+                detalhe:
+                  'Para quem continua sem se identificar, ou começou e parou no meio há três dias ou mais. Sai três dias depois do reforço (ou do lembrete), ou quando faltam para o agendamento os dias do lembrete — o que vier primeiro, e nunca antes de três dias da primeira mensagem. O reforço não é pré-requisito. Não sai com menos de 24 horas para o agendamento, nem para quem já esgotou as tentativas de identificação: essa pessoa já recebeu a orientação do posto na própria conversa.',
+              },
+            ]}
+          />
+          <P>
+            O reforço tem dois textos: um para quem nem abriu a primeira mensagem e outro para quem abriu e não
+            respondeu. O primeiro só é usado depois que a Meta aprovar esse modelo; até lá, todos recebem o segundo,
+            que diz que a mensagem chegou e a resposta não — verdade nos dois casos.
+          </P>
+          <Callout tipo="lgpd" titulo="Nenhum dos dois leva dado do agendamento">
+            O reforço e a orientação dizem apenas se é um exame ou uma consulta. Nunca o nome do procedimento, a
+            especialidade, a data, a hora ou a unidade: o número ainda não provou ser do paciente, e é justamente por
+            isso que a pessoa está recebendo estas mensagens.
+          </Callout>
+
+          <Sub>O que cada botão faz</Sub>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Quero mais informações',
+                descricao:
+                  'Começa a identificação: início do CPF, mês e ano de nascimento, nome. Quem tinha começado há mais de um dia e parado no meio recomeça do CPF — as tentativas erradas continuam contando. Quem já esgotou as tentativas recebe a orientação de ir ao posto, e não um novo pedido de CPF.',
+              },
+              {
+                termo: 'Não sou essa pessoa',
+                descricao:
+                  'O caminho de sempre: pergunta se a pessoa conhece o paciente; "não conheço" marca o número como inválido para ele.',
+              },
+              {
+                termo: 'Vou ao posto (só na orientação)',
+                descricao:
+                  'Registra que a pessoa vai ao posto e encerra os automáticos daquele agendamento — só volta a sair mensagem se ele for cancelado. A resposta diz que no posto ela vê o dia, a hora e o local e retira a guia, levando documento com foto. Não mexe no cadastro nem abre pendência.',
+              },
+            ]}
+          />
+
+          <Sub>Os limites por número</Sub>
+          <Lista>
+            <Item>
+              Pelo menos <strong>48 horas</strong> entre dois automáticos para o mesmo número (confirmação, lembrete,
+              reforço ou orientação; o aviso de cancelamento não entra na conta).
+            </Item>
+            <Item>
+              No máximo <strong>um reforço a cada 7 dias</strong> e <strong>uma orientação a cada 20 dias</strong> por
+              número. Número que atende vários pacientes recebe uma mensagem só, não uma por paciente.
+            </Item>
+            <Item>
+              Nunca no <strong>domingo</strong>, e sempre dentro da janela de horário e da vazão de Parâmetros de
+              disparo.
+            </Item>
+            <Item>
+              Uma atendente pegar a ficha em Confirmações encerra também o lembrete, o reforço e a orientação que
+              estavam na fila.
+            </Item>
+          </Lista>
+          <Callout tipo="regra" titulo="Com o reforço ligado, o lembrete das vésperas dá lugar à régua">
+            Quem ainda está aguardando se identificar não recebe o lembrete das vésperas — o reforço e a orientação
+            ocupam esse lugar. Quem já recebeu a orientação ao posto também não. O lembrete de quem já confirmou não
+            muda.
+          </Callout>
+
+          <Sub>Depois que a pessoa se identifica: a frase diz o que aconteceu</Sub>
+          <P>
+            Ao concluir a identificação, o sistema libera o que estava retido daquele paciente — a confirmação e, se
+            houver, o lembrete — e a mensagem sai completa, com data, hora e local, mesmo fora da janela de horário
+            (a pessoa está na conversa). Se as duas eram do mesmo agendamento, sai uma só; a outra fica{' '}
+            <SeloRef cor="gray">Dispensada</SeloRef>. Antes de prometer, o sistema confere se a mensagem vai mesmo
+            sair — e a frase que a pessoa lê depende do resultado:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Liberou',
+                descricao: '"Cadastro confirmado. Já estou enviando as informações do agendamento — chegam aqui em instantes."',
+              },
+              {
+                termo: 'Uma atendente já assumiu',
+                descricao:
+                  'Diz que uma atendente da equipe já está cuidando do agendamento e fala com a pessoa por ali em horário de atendimento. É uma promessa: quem está com a ficha precisa cumprir.',
+              },
+              {
+                termo: 'O agendamento passou ou foi cancelado',
+                descricao:
+                  'Diz isso, com a data, e orienta procurar o posto de saúde para remarcar — ou escrever "atendente".',
+              },
+              {
+                termo: 'Já enviado, ou nada pendente',
+                descricao:
+                  'Aponta a mensagem com data e local que já está na conversa, ou diz que não há aviso pendente no momento.',
+              },
+              {
+                termo: 'O paciente tem outro número verificado',
+                descricao:
+                  'Avisa que as informações vão para o WhatsApp já cadastrado (mostra só o final do número) e que a troca de número se faz no posto, com documento.',
+              },
+            ]}
+          />
+          <P>
+            As que não saíram ficam com o motivo no detalhe do envio, começando por{' '}
+            <em>"Identificação concluída em …; não liberada:"</em> — é por onde se responde a quem diz que confirmou
+            o cadastro e não recebeu nada.
           </P>
         </div>
       ),
@@ -556,7 +758,8 @@ export const artigoMensageria: Artigo = {
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'faq dúvidas não saiu mensagem por que zerado empilhada fila número negado duplicada',
+      busca:
+        'faq dúvidas não saiu mensagem por que zerado empilhada fila número negado duplicada reforço não recebeu confirmou o cadastro não chegou nada',
       conteudo: (
         <div className="space-y-4">
           <ListaDefinicoes
@@ -580,6 +783,16 @@ export const artigoMensageria: Artigo = {
                 termo: '"O paciente diz que cancelou, mas continua na agenda do SISREG."',
                 descricao:
                   'Correto: a resposta do paciente vale aqui e solta a vaga nas nossas contas. Desmarcar no SISREG é ação de gente, pelo menu Confirmações.',
+              },
+              {
+                termo: '"Esse paciente não recebeu o reforço."',
+                descricao:
+                  'Confira, nesta ordem: a chave em Regras e parâmetros; se o número escreveu alguma coisa desde a primeira mensagem (aí a conversa está aberta e o caso é de gente, não de automático); se a pessoa começou a se identificar; se o agendamento está a menos de três dias; se o lembrete já foi; e se o mesmo número recebeu outro automático nas últimas 48 horas. Domingo também não sai.',
+              },
+              {
+                termo: '"A pessoa confirmou o cadastro e diz que não chegou nada."',
+                descricao:
+                  'Procure o telefone em Envios. A confirmação liberada aparece na fila ou já enviada; se nada saiu, o motivo está no detalhe ("não liberada: …") e a própria frase que a pessoa recebeu já disse por quê.',
               },
               {
                 termo: '"O custo está zerado em Estatísticas."',

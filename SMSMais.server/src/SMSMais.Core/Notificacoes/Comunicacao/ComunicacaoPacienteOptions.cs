@@ -42,6 +42,10 @@ public sealed class ComunicacaoPacienteOptions
         ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.jpg",
         // Escolha do Bernardo entre as quatro variações da arte (20/09/2026).
         ["agendamento_cancelado_anonimo"] = "https://app.smsmarica.online/mensagens/cancelamento-branco-invertido.jpg",
+        // Régua de reforço da confirmação (24/09/2026): a mesma arte que foi como amostra na Meta.
+        ["agendamento_aviso_pendente"] = "https://app.smsmarica.online/mensagens/aviso-pendente-vermelho.jpg",
+        ["agendamento_aguardando_resposta"] = "https://app.smsmarica.online/mensagens/confirmacao-pendente-branco.jpg",
+        ["agendamento_procure_posto"] = "https://app.smsmarica.online/mensagens/procure-posto-branco.jpg",
     };
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
@@ -111,6 +115,77 @@ public sealed class ComunicacaoPacienteOptions
     // A chave do aviso de cancelamento NÃO mora aqui: é decisão de operação e vive em
     // `confirmacao_configuracao.aviso_cancelamento_habilitado`, no menu Confirmações → Regras,
     // ao lado do lembrete. Chave de operação em arquivo obriga deploy para mudar de ideia.
+
+    // ---- Régua de reforço da confirmação (24/09/2026) ----
+    // Para quem recebeu a primeira mensagem (confirmacao_exame/confirmacao_consulta) e não se
+    // identificou. Os três modelos têm FOTO no cabeçalho (ver ImagensCabecalho) e quick replies
+    // sem payload — a Meta devolve o TEXTO do botão. Nenhum leva dado do agendamento: {{1}} é o
+    // tratamento e {{2}} é uma constante escolhida pelo tipo (exame × consulta), nunca o nome do
+    // procedimento, a data ou a unidade (ADR-0057: o número ainda não foi provado).
+    // As chaves de OPERAÇÃO moram no banco (reforco_confirmacao_habilitado e
+    // orientacao_posto_habilitada, menu Confirmações → Regras); aqui ficam as travas de código.
+
+    /// <summary>
+    /// Reforço para quem NÃO LEU a primeira mensagem: "A confirmação *{{2}}* continua pendente…"
+    /// ({{2}} = "do seu exame"/"da sua consulta"). Botões: <b>Quero mais informações</b> ·
+    /// <b>Não sou essa pessoa</b>.
+    /// <para>Em recurso na Meta em 24/09/2026. Só é usado quando aparece no catálogo do relay —
+    /// que só lista modelos APROVADOS; até lá, quem não leu recebe o
+    /// <see cref="TemplateReforcoLidaSemResposta"/>, cujo texto vale para os dois casos.</para>
+    /// </summary>
+    public string TemplateReforcoNaoLida { get; set; } = "agendamento_aviso_pendente";
+
+    /// <summary>
+    /// Reforço para quem leu (ou de quem não se sabe) e não respondeu: "Nossa mensagem sobre o seu
+    /// agendamento chegou, mas ainda não recebemos sua resposta…" ({{2}} = "sobre seu exame"/
+    /// "sobre sua consulta"). Botões: <b>Quero mais informações</b> · <b>Não sou essa pessoa</b>.
+    /// Aprovado na Meta.
+    /// </summary>
+    public string TemplateReforcoLidaSemResposta { get; set; } = "agendamento_aguardando_resposta";
+
+    /// <summary>
+    /// Orientação ao posto — a última da régua: "…não vamos mais insistir por mensagem… procure o
+    /// posto de saúde onde o paciente tem cadastro…" ({{2}} = "do seu exame"/"da sua consulta").
+    /// Botões: <b>Quero mais informações</b> · <b>Vou ao posto</b> · <b>Não sou essa pessoa</b>.
+    /// Aprovado na Meta.
+    /// </summary>
+    public string TemplateOrientacaoPosto { get; set; } = "agendamento_procure_posto";
+
+    /// <summary>Trava de código do reforço (molde de <see cref="EnviarLembreteAgendamento"/>): a
+    /// chave de operação é <c>reforco_confirmacao_habilitado</c>; esta desliga o recurso inteiro
+    /// sem mexer no banco.</summary>
+    public bool EnviarReforcoConfirmacao { get; set; } = true;
+
+    /// <summary>Trava de código da orientação ao posto. A chave de operação é
+    /// <c>orientacao_posto_habilitada</c>.</summary>
+    public bool EnviarOrientacaoPosto { get; set; } = true;
+
+    /// <summary>
+    /// Horas depois da primeira mensagem até o reforço — e também o mínimo antes da orientação ao
+    /// posto. Três dias: dá tempo de quem só olha o WhatsApp de vez em quando responder sozinho.
+    /// </summary>
+    public int ReforcoAposHoras { get; set; } = 72;
+
+    /// <summary>Horas depois do reforço (ou do lembrete, que ocupa o mesmo lugar) até a orientação
+    /// ao posto, quando a data do agendamento não chega antes.</summary>
+    public int OrientacaoAposReforcoHoras { get; set; } = 72;
+
+    /// <summary>
+    /// Silêncio mínimo POR NÚMERO: nenhum automático da régua sai para um número que recebeu
+    /// qualquer automático de agendamento (primeira mensagem, lembrete, reforço, orientação) há
+    /// menos disto. O aviso de cancelamento não conta — ele é notícia, não insistência.
+    /// <para>É por número, não por paciente: a mãe com três filhos agendados é uma pessoa só do
+    /// outro lado, e é ela quem bloqueia a conta.</para>
+    /// </summary>
+    public int SilencioMinimoPorNumeroHoras { get; set; } = 48;
+
+    /// <summary>No máximo um reforço por número a cada tantos dias — o número que atende vários
+    /// pacientes recebe um só; as demais primeiras mensagens do mesmo número ficam cobertas.</summary>
+    public int ReforcoPorNumeroDias { get; set; } = 7;
+
+    /// <summary>No máximo uma orientação ao posto por número a cada tantos dias. A orientação vale
+    /// para todos os agendamentos do número ("procure o posto onde o paciente tem cadastro").</summary>
+    public int OrientacaoPorNumeroDias { get; set; } = 20;
 
     /// <summary>OBSOLETO desde 20/09/2026: a primeira mensagem virou
     /// <see cref="TemplateConfirmacaoExame"/>/<see cref="TemplateConfirmacaoConsulta"/>, que não

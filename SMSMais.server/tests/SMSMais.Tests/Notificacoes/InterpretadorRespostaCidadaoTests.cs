@@ -55,6 +55,55 @@ public class InterpretadorRespostaCidadaoTests
     public void Reconhece_o_botao_nao_sou_essa_pessoa(string texto, bool esperado) =>
         Assert.Equal(esperado, InterpretadorRespostaCidadao.EhNaoSouEssaPessoa(texto));
 
+    // ---------- Vou ao posto ----------
+
+    [Theory]
+    [InlineData("Vou ao posto", true)]
+    [InlineData("vou no posto!", true)]
+    [InlineData("Vou lá no posto", true)]
+    [InlineData("Vou ao posto de saúde.", true)]
+    [InlineData("vou no posto de saude", true)]
+    [InlineData("vou procurar o posto", true)]
+    [InlineData("Prefiro ir ao posto", true)]
+    [InlineData("prefiro ir no posto", true)]
+    [InlineData("vou pessoalmente", true)]
+    [InlineData("Eu vou ao posto", true)]
+    [InlineData("eu vou no posto", true)]
+    [InlineData("vou", false)]
+    [InlineData("posto", false)]
+    [InlineData("onde fica o posto?", false)]
+    [InlineData("não vou ao posto", false)]
+    [InlineData("vou ao posto amanhã e depois?", false)]
+    public void Reconhece_o_botao_vou_ao_posto(string texto, bool esperado) =>
+        Assert.Equal(esperado, InterpretadorRespostaCidadao.EhVouAoPosto(texto));
+
+    // ---------- Rótulos APROVADOS dos botões dos modelos (tabela) ----------
+
+    /// <summary>
+    /// Os botões dos modelos aprovados na Meta são quick replies SEM payload: o que chega é o
+    /// TEXTO do rótulo, exatamente como está no modelo. Se alguém mexer no interpretador (ou o
+    /// rótulo mudar na Meta sem mudar aqui), o toque morre em silêncio — a pessoa aperta o botão
+    /// e nada acontece. Esta tabela é a trava: cada rótulo cai na SUA intenção e só nela.
+    /// </summary>
+    [Theory]
+    [InlineData("Quero mais informações", "QuerMaisInformacoes")]
+    [InlineData("Não sou essa pessoa", "NaoSouEssaPessoa")]
+    [InlineData("Não sou essa pessoa.", "NaoSouEssaPessoa")]
+    [InlineData("Vou ao posto", "VouAoPosto")]
+    public void Rotulo_aprovado_de_cada_botao_cai_na_sua_intencao_e_so_nela(string rotulo, string intencao)
+    {
+        var reconhecidas = new List<string>();
+        if (InterpretadorRespostaCidadao.QuerMaisInformacoes(rotulo)) reconhecidas.Add("QuerMaisInformacoes");
+        if (InterpretadorRespostaCidadao.EhNaoSouEssaPessoa(rotulo)) reconhecidas.Add("NaoSouEssaPessoa");
+        if (InterpretadorRespostaCidadao.EhVouAoPosto(rotulo)) reconhecidas.Add("VouAoPosto");
+        // Nenhum rótulo pode ser lido como pedido de atendente nem como resposta do lembrete.
+        if (InterpretadorRespostaCidadao.PedeAtendente(rotulo)) reconhecidas.Add("PedeAtendente");
+        if (InterpretadorRespostaCidadao.ConfirmaComparecimento(rotulo)) reconhecidas.Add("ConfirmaComparecimento");
+        if (InterpretadorRespostaCidadao.NaoPodereiIr(rotulo)) reconhecidas.Add("NaoPodereiIr");
+
+        Assert.Equal([intencao], reconhecidas);
+    }
+
     // ---------- CPF ----------
 
     [Theory]

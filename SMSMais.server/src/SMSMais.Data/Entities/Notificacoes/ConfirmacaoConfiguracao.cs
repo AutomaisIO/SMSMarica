@@ -75,6 +75,28 @@ public class ConfirmacaoConfiguracao
     public DateTime? AvisoCancelamentoLigadoEm { get; set; }
 
     /// <summary>
+    /// Liga o REFORÇO da confirmação: quem recebeu a primeira mensagem e, passados três dias, não
+    /// se identificou recebe uma segunda ("nossa mensagem chegou, mas ainda não recebemos sua
+    /// resposta") — sem dado nenhum do agendamento, como a primeira.
+    ///
+    /// <para>Nasce DESLIGADO. É decisão de operação: mandar a segunda mensagem para centenas de
+    /// números que não responderam a primeira é justamente o que pode custar a nota da conta na
+    /// Meta, e quem liga precisa estar olhando.</para>
+    /// </summary>
+    public bool ReforcoConfirmacaoHabilitado { get; set; }
+
+    /// <summary>
+    /// Liga a ORIENTAÇÃO AO POSTO — a última mensagem da régua ("não vamos mais insistir; a guia
+    /// está no posto onde o paciente tem cadastro"). Depois dela nenhum automático sobre o
+    /// agendamento sai.
+    ///
+    /// <para>Separada do reforço de propósito, e também nasce DESLIGADA: dá para ligar esta
+    /// primeiro — é a que encerra a insistência e a que ninguém reclama de receber — e só depois
+    /// o reforço, conferindo no painel quantos cada uma alcança por dia.</para>
+    /// </summary>
+    public bool OrientacaoPostoHabilitada { get; set; }
+
+    /// <summary>
     /// Minutos entre passadas da conciliação. O padrão 10 saiu de medição: um dia útil tem 46–62
     /// cancelamentos, a listagem traz 20 por página, e o ciclo custa 1 a 3 requisições em ~1,5 s —
     /// 11 req/h no dia típico contra um teto de ~700/h. Mas é a operação que decide: apertar custa

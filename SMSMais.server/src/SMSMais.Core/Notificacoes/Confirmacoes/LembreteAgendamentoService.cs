@@ -25,6 +25,10 @@ namespace SMSMais.Core.Notificacoes.Confirmacoes;
 ///
 /// <para>Só ENFILEIRA. Quem envia é o <see cref="EnviadorComunicacaoService"/>, com a mesma janela
 /// de horário, a mesma vazão e as mesmas regras de LGPD (contato negado, contato verificado).</para>
+///
+/// <para><b>Convive com a régua de reforço</b> (<see cref="ReforcoConfirmacaoService"/>): com o
+/// reforço ligado, quem ainda não se identificou fica com a régua; depois da orientação ao posto,
+/// ou do "Vou ao posto", nenhum lembrete sai — as duas mensagens prometem não insistir.</para>
 /// </summary>
 public interface ILembreteAgendamentoService
 {
@@ -69,6 +73,14 @@ public sealed class LembreteAgendamentoService(
             .GroupBy(x => x.UnidadeId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.Codigo).ToHashSet(StringComparer.Ordinal));
 
+        // A régua de reforço ligada ocupa o lugar do lembrete de quem ainda não se identificou
+        // (a principal parada em "aguardando verificação"): ela tem o toque 2 e o 3, com tetos por
+        // número — dois caminhos insistindo com a mesma pessoa é o que faz bloquear a conta. O
+        // lembrete de quem JÁ confirmou (agendamento_proximo) não muda. Só ocupa se a régua anda
+        // de fato (chave E trava): trava de código desligada com a chave ligada deixaria essa gente
+        // sem toque nenhum.
+        var reguaOcupa = cfg.ReforcoConfirmacaoHabilitado && options.Value.EnviarReforcoConfirmacao;
+
         // Quem já avisou que não vai fica de fora; quem confirmou e quem não respondeu entram —
         // com modelos diferentes (resolvidos no envio, pelo status daquele momento).
         var candidatos = await db.Solicitacoes
@@ -83,7 +95,24 @@ public sealed class LembreteAgendamentoService(
                 && !db.ComunicacoesPaciente.Any(c =>
                     c.SolicitacaoId == s.Id
                     && c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
-                    && c.EnviadoEm != null && c.EnviadoEm > silencio))
+                    && c.EnviadoEm != null && c.EnviadoEm > silencio)
+                // Já foi orientado a procurar o posto: a mensagem prometeu não insistir mais.
+                && !db.ComunicacoesPaciente.Any(c =>
+                    c.SolicitacaoId == s.Id
+                    && c.Finalidade == FinalidadeComunicacao.OrientacaoPosto
+                    && c.EnviadoEm != null)
+                // Tocou em "Vou ao posto": a resposta também prometeu não insistir.
+                && !db.ComunicacoesPaciente.Any(c =>
+                    c.SolicitacaoId == s.Id
+                    && c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                    && c.MotivoFalha != null
+                    && c.MotivoFalha.StartsWith(ReguaReforcoConfirmacao.CarimboVaiAoPosto))
+                && !(reguaOcupa
+                     && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada
+                     && db.ComunicacoesPaciente.Any(c =>
+                         c.SolicitacaoId == s.Id
+                         && c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                         && c.Status == StatusComunicacao.AguardandoVerificacaoCadastral)))
             .OrderBy(s => s.DataAgendada)
             .Take(MaximoPorPassagem)
             .ToListAsync(ct);

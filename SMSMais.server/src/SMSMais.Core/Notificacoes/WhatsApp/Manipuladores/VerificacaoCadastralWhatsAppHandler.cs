@@ -1,7 +1,10 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Conversas;
 using SMSMais.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Notificacoes.Confirmacoes;
 using SMSMais.Core.Notificacoes.VerificacaoCadastral;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
@@ -27,12 +30,19 @@ namespace SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 ///     → "Não conheço" marca o número como INVÁLIDO para aquele paciente (pendência de número
 ///       errado + carimbo no telefone do cadastro) e nada mais é enviado para ele sobre essa pessoa.
 ///
+///   "Vou ao posto" (botão da orientação ao posto) → carimbo na primeira mensagem, que encerra os
+///     automáticos daquele agendamento (régua e lembrete), e o diálogo fecha.
+///
+///   Os botões valem também quando tocados no lembrete, no reforço ou na orientação ao posto: a
+///   mensagem respondida leva à PRIMEIRA mensagem do mesmo agendamento.
+///
 ///   dígitos do CPF (≥4, sem pontuação) → mês/ano de nascimento (formatos tolerantes)
 ///     → confirmação do NOME (botões Sim/Não ou nome digitado)
-///     → marca o telefone verificado PARA AQUELE paciente e ENVIA a comunicação PENDURADA
-///       (a que o estado aponta — nada de procurar/deduzir), liberando também as demais
-///       retidas do mesmo paciente. Multi-paciente no mesmo número: valida um por vez e
-///       emenda o próximo desafio ao concluir.
+///     → marca o telefone verificado PARA AQUELE paciente e LIBERA a comunicação PENDURADA
+///       (a que o estado aponta — nada de procurar/deduzir) e as demais retidas do mesmo
+///       paciente (<see cref="ILiberacaoAposIdentificacao"/>); a frase final diz o que de fato
+///       aconteceu. Multi-paciente no mesmo número: valida um por vez e emenda o próximo desafio
+///       ao concluir.
 ///
 /// Responde em ~1s (inline no webhook, molde do <see cref="ConfirmacaoAgendamentoWhatsAppHandler"/>).
 /// "Prefiro falar com atendente" interrompe o interrogatório e deixa a conversa para a equipe.
@@ -45,8 +55,11 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     ITelefoneValidacaoService telefones,
     PendenciasCadastro.IPendenciaCadastroService pendencias,
     Lazy<IComunicacaoPacienteService> comunicacoes,
+    ILiberacaoAposIdentificacao liberacao,
     ILogger<VerificacaoCadastralWhatsAppHandler> logger) : IManipuladorMensagemWhatsApp
 {
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+
     private const string PrefixoSim = "vcad_sim:";
     private const string PrefixoNao = "vcad_nao:";
     private const string PrefixoTentarSim = "vcad_retry_sim:";
@@ -62,7 +75,6 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
     private const int MaxChances = 3;
     private const int MaxReorientacoes = 3; // mata loop com autoresponder/bot do outro lado
     private static readonly TimeSpan ValidadeEstado = TimeSpan.FromDays(7);
-    private static readonly TimeSpan JanelaDesafios = TimeSpan.FromDays(20);
 
     public int Ordem => 120; // depois da confirmação Sim/Não (110), antes do robô (1000)
 
@@ -157,6 +169,18 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 {
                     ctx.Consumido = true;
                     await PerguntarSeConhecePacienteAsync(ctx, alvo, ct);
+                }
+                return;
+            }
+            // "Vou ao posto" (botão da orientação ao posto): só vale se há uma primeira mensagem
+            // ainda esperando a pessoa — senão não há o que encerrar, e o texto segue para o robô.
+            if (InterpretadorRespostaCidadao.EhVouAoPosto(ctx.Texto))
+            {
+                if (await ComunicacaoDoDesafioAsync(ctx, telefone, ct) is { } alvoPosto
+                    && await PrincipalEsperandoAsync(alvoPosto, ct) is { } principal)
+                {
+                    ctx.Consumido = true;
+                    await RegistrarQueVaiAoPostoAsync(ctx, telefone, principal, alvoPosto, ct);
                 }
                 return;
             }
@@ -341,7 +365,11 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             $"Atenção: o CPF e a data de nascimento precisam ser {deQuem} — não os de quem está "
             + "escrevendo. Se você é parente ou responsável, informe os dados do paciente.", ct);
 
-        await whatsApp.EnviarInterativoBotoesAsync(
+        await PerguntarSeTentaDeNovoAsync(ctx, estado, ct);
+    }
+
+    private Task PerguntarSeTentaDeNovoAsync(ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct) =>
+        whatsApp.EnviarInterativoBotoesAsync(
             estado.TelefoneCanonical,
             "Deseja tentar novamente?",
             [
@@ -349,7 +377,6 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                 new BotaoInterativoWhatsApp($"{PrefixoTentarNao}{estado.Id}", "Não"),
             ],
             pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
-    }
 
     /// <param name="bloquear">Chances esgotadas/ambiguidade: marca <c>Esgotado</c> e MANTÉM o estado —
     /// apagá-lo faria o reenvio de dígitos recriar o diálogo com o contador zerado (tentativas
@@ -467,15 +494,19 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         estado.ComunicacaoPacienteId = escolhido.ComunicacaoId;
         estado.Etapa = EtapaVerificacaoCadastral.AguardandoNome;
 
-        await whatsApp.EnviarInterativoBotoesAsync(
+        await PerguntarNomeAsync(ctx, estado, escolhido.Paciente.NomeCompleto, ct);
+    }
+
+    private Task PerguntarNomeAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, string? nomeCompleto, CancellationToken ct) =>
+        whatsApp.EnviarInterativoBotoesAsync(
             estado.TelefoneCanonical,
-            $"Estamos quase lá! Confirme: o paciente é *{escolhido.Paciente.NomeCompleto?.Trim()}*?",
+            $"Estamos quase lá! Confirme: o paciente é *{nomeCompleto?.Trim()}*?",
             [
                 new BotaoInterativoWhatsApp($"{PrefixoSim}{estado.Id}", "Sim"),
                 new BotaoInterativoWhatsApp($"{PrefixoNao}{estado.Id}", "Não"),
             ],
             pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
-    }
 
     // ---------- etapa 3: confirmação do nome ----------
 
@@ -605,41 +636,19 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             }
         }
 
-        // Libera a comunicação PENDURADA + todas as retidas do MESMO paciente. IgnorarVerificacaoTelefone
-        // garante o envio mesmo se o carimbo FHIR falhar (anti-loop de desafio).
-        var agora = DateTime.UtcNow;
-        var retidas = await db.ComunicacoesPaciente
-            .Where(n => (n.Id == estado.ComunicacaoPacienteId
-                    || (n.PacienteId == pacienteId && n.Status == StatusComunicacao.AguardandoVerificacaoCadastral))
-                && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
-            .ToListAsync(ct);
-        var liberadas = new List<Data.Entities.ComunicacaoPaciente>();
-        foreach (var n in retidas)
-        {
-            if (n.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue or StatusComunicacao.Lida)
-                continue; // flag anti-reenvio: o que já saiu não sai de novo
-            if (n.Status == StatusComunicacao.SubstituidaPorAtendente)
-                continue; // uma pessoa já entrou no circuito (menu Confirmações): o automático não volta
-            n.Status = StatusComunicacao.Pendente;
-            n.ProximaTentativaEm = agora;
-            n.MotivoFalha = null;
-            n.IgnorarVerificacaoTelefone = true;
-            // O paciente acabou de se identificar e está esperando a resposta: sai mesmo fora do horário.
-            n.IgnorarJanelaHorario = true;
-            n.Tentativas = 0;
-            liberadas.Add(n);
-        }
+        // Libera a comunicação PENDURADA + as retidas do MESMO paciente (confirmação e lembrete),
+        // descartando antes o que não sairia — o mesmo liberador do robô. A frase abaixo é a do
+        // RESULTADO: "já estou enviando" só quando algo foi de fato para a fila.
+        var resultado = await liberacao.LiberarAsync(pacienteId, estado.ComunicacaoPacienteId, ct);
 
         db.VerificacoesCadastraisEstado.Remove(estado);
         logger.LogInformation(
-            "Verificação cadastral concluída para o paciente {Paciente} (…{Fone4}); {Qtd} comunicação(ões) liberada(s).",
-            pacienteId, Ultimos4(telefone), retidas.Count);
+            "Verificação cadastral concluída para o paciente {Paciente} (…{Fone4}); {Qtd} comunicação(ões) "
+            + "liberada(s); desfecho {Desfecho} ({Motivo}).",
+            pacienteId, Ultimos4(telefone), resultado.Liberadas, resultado.Desfecho, resultado.Motivo);
 
-        var nome = PrimeiroNome(paciente?.NomeCompleto);
-        var tratamento = vinculo == VinculoContatoVerificado.Proprio && nome is not null ? $", {nome}" : "";
         await ResponderAsync(ctx,
-            $"Perfeito{tratamento}! Cadastro confirmado. Já estou enviando as "
-            + "informações do agendamento — chegam aqui em instantes.", ct);
+            FraseDepoisDaIdentificacao(resultado, paciente, vinculo, telefone, trocariaVerificado), ct);
 
         // ENVIO IMEDIATO das informações do agendamento — o que o paciente acabou de destravar.
         // Antes, só marcávamos Pendente e confiávamos no commit ÚNICO do webhook + no worker. Mas o
@@ -649,18 +658,18 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         // enquanto o texto acima já foi para a Meta. Chamar ProcessarTentativaEnvioAsync aqui envia
         // agora e PERSISTE com o SaveChanges próprio do serviço (ele trata a própria exceção e
         // reagenda), tornando a promessa verdadeira e independente do commit final do webhook.
-        foreach (var n in liberadas)
+        foreach (var liberadaId in resultado.LiberadasIds)
         {
             try
             {
-                await comunicacoes.Value.ProcessarTentativaEnvioAsync(n.Id, ct);
+                await comunicacoes.Value.ProcessarTentativaEnvioAsync(liberadaId, ct);
             }
             catch (Exception ex)
             {
                 // Rede rara: se nem assim enviou, a comunicação continua Pendente e o worker retenta.
                 logger.LogError(ex,
                     "Falha ao enviar imediatamente a confirmação {Id} após a verificação cadastral (…{Fone4}).",
-                    n.Id, Ultimos4(telefone));
+                    liberadaId, Ultimos4(telefone));
             }
         }
 
@@ -686,6 +695,63 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         }
     }
 
+    /// <summary>
+    /// A frase depois do vínculo, escolhida pelo que a liberação FEZ — não pelo que se esperava
+    /// que fizesse. Antes era sempre "já estou enviando… chegam em instantes", e a pessoa ficava
+    /// esperando uma mensagem que não vinha. Nenhuma frase dá exemplo de formato: a pessoa já
+    /// terminou de responder.
+    /// </summary>
+    internal static string FraseDepoisDaIdentificacao(
+        LiberacaoResultado resultado, PacienteDto? paciente, VinculoContatoVerificado vinculo,
+        string telefone, bool trocariaVerificado)
+    {
+        var nome = PrimeiroNome(paciente?.NomeCompleto);
+        var perfeito = vinculo == VinculoContatoVerificado.Proprio && nome is not null ? $"Perfeito, {nome}!" : "Perfeito!";
+        var deQuem = nome is null ? "do paciente" : $"de *{nome}*";
+
+        // O paciente já tem OUTRO número provado: o que foi liberado sai para lá (ADR-0057), e é
+        // isso que a pessoa precisa saber — senão fica esperando aqui.
+        if (resultado.Liberadas > 0 && trocariaVerificado)
+        {
+            var final = Ultimos4(new string([.. (paciente?.TelefoneVerificado ?? string.Empty).Where(char.IsDigit)]));
+            return $"Cadastro confirmado, obrigado! As informações vão para o WhatsApp já cadastrado {deQuem} "
+                + $"(final …{final}). Para trocar o número, procure o posto com documento.";
+        }
+        if (resultado.Liberadas > 0)
+            return $"{perfeito} Cadastro confirmado. Já estou enviando as informações do agendamento — "
+                + "chegam aqui em instantes.";
+
+        switch (resultado.Desfecho)
+        {
+            case DesfechoLiberacao.AtendenteAssumiu:
+                return $"{perfeito} Cadastro confirmado. Sobre esse agendamento, uma atendente da nossa equipe já "
+                    + "está cuidando e fala com você por aqui em horário de atendimento.";
+
+            case DesfechoLiberacao.AgendamentoPassou or DesfechoLiberacao.AgendamentoCancelado:
+            {
+                // A data só é dita para quem provou ESTE número — com outro número verificado no
+                // cadastro, este aqui não recebe dado do agendamento.
+                var oQue = resultado.Desfecho == DesfechoLiberacao.AgendamentoCancelado
+                    ? "foi cancelado"
+                    : resultado.DataAgendadaUtc is { } data && !trocariaVerificado
+                        ? $"era no dia {FusoBrasilia.ParaExibicao(data).ToString("dd/MM", PtBr)} e já passou"
+                        : "já passou";
+                return $"Cadastro confirmado, obrigado! O agendamento {deQuem} {oQue}, então não tenho informação "
+                    + "nova para enviar. Se precisar remarcar, procure o posto de saúde onde o paciente é atendido "
+                    + "— ou escreva *atendente*.";
+            }
+
+            case DesfechoLiberacao.JaEnviado
+                when !trocariaVerificado && TelefoneWhatsApp.MesmoNumero(resultado.TelefoneDoEnvio, telefone):
+                return $"{perfeito} Cadastro confirmado. As informações desse agendamento já foram enviadas para "
+                    + "este número — é a mensagem com data e local, logo acima.";
+
+            default:
+                return $"{perfeito} Cadastro confirmado. No momento não há aviso pendente para "
+                    + $"{(nome is null ? "o paciente" : $"*{nome}*")}. Quando houver novidade, chega por aqui.";
+        }
+    }
+
     private async Task ConcluirComoNumeroErradoAsync(ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
     {
         db.VerificacoesCadastraisEstado.Remove(estado);
@@ -700,9 +766,21 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
     // ---------- "Quero mais informações" ----------
 
+    /// <summary>Diálogo em etapa adiantada parado há mais que isto: um novo "Quero mais
+    /// informações" recomeça pelo CPF em vez de retomar do meio. Um dia: quem volta depois disso já
+    /// não lembra em que pé parou (caso de 24/09 — nascimento pendente havia dias, e a pessoa
+    /// recebeu o pedido de CPF sem o diálogo ter sido reiniciado).</summary>
+    private static readonly TimeSpan DialogoParadoRecomeca = TimeSpan.FromHours(24);
+
     /// <summary>
     /// O toque em "Quero mais informações" é o que destrava o pedido do CPF. A primeira mensagem
     /// deliberadamente não pede nada: quando pedia, a pessoa não respondia — ia no outro botão.
+    ///
+    /// <para>O que se responde depende de onde o diálogo do número está: sem diálogo ou no começo,
+    /// pede o CPF; esgotado, orienta o posto (não reabre as chances); adiantado e parado há mais
+    /// de um dia, recomeça pelo CPF — as chances já gastas continuam contadas; adiantado e
+    /// recente, repete a pergunta da etapa em que está. Pedir o CPF a quem está no nascimento era
+    /// a contradição: a pessoa mandava o CPF e o sistema lia como nascimento errado.</para>
     /// </summary>
     private async Task PedirCpfAsync(
         ManipuladorContexto ctx, string telefone, Data.Entities.ComunicacaoPaciente alvo, CancellationToken ct)
@@ -726,9 +804,36 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         else if (estado.Etapa is EtapaVerificacaoCadastral.AguardandoInteresse
                  or EtapaVerificacaoCadastral.AguardandoCpf)
         {
-            // Diálogo já adiantado (nascimento, nome) não volta para trás por um toque repetido.
             estado.ComunicacaoPacienteId = alvo.Id;
             estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+            estado.Reorientacoes = 0;
+            estado.ExpiraEm = agora.Add(ValidadeEstado);
+            Tocar(estado);
+        }
+        else if (estado.Etapa == EtapaVerificacaoCadastral.Esgotado)
+        {
+            // As chances acabaram: um toque no botão não as devolve (seria o laço infinito de
+            // tentativas que o Esgotado existe para impedir). O caminho é o posto.
+            await ResponderAsync(ctx,
+                "Não consegui confirmar os dados por aqui nas tentativas anteriores. Para retirar a guia e "
+                + "ver o dia, a hora e o local, procure o posto de saúde onde o paciente tem cadastro, com um "
+                + "documento com foto.", ct);
+            return;
+        }
+        else if ((estado.AtualizadoEm ?? estado.CriadoEm) >= agora.Subtract(DialogoParadoRecomeca)
+                 && await RepetirPerguntaDaEtapaAsync(ctx, estado, ct))
+        {
+            // Diálogo recente em etapa adiantada: não volta para trás por um toque repetido.
+            return;
+        }
+        else
+        {
+            // Parado há mais de um dia: recomeça pelo CPF, no agendamento do toque — preservando
+            // as tentativas erradas (senão cada toque no botão daria três chances novas).
+            estado.ComunicacaoPacienteId = alvo.Id;
+            estado.Etapa = EtapaVerificacaoCadastral.AguardandoCpf;
+            estado.PacienteId = null;
+            estado.CpfDigitosInformados = null;
             estado.Reorientacoes = 0;
             estado.ExpiraEm = agora.Add(ValidadeEstado);
             Tocar(estado);
@@ -740,10 +845,134 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             + $"{(nome is null ? "do paciente" : $"de *{nome}*")}.", ct);
     }
 
+    /// <summary>Repete a pergunta da etapa em que o diálogo está, com o mesmo texto (e os mesmos
+    /// botões) de quando ela foi feita. False quando o estado não tem como perguntar — aí o
+    /// chamador recomeça pelo CPF.</summary>
+    private async Task<bool> RepetirPerguntaDaEtapaAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado, CancellationToken ct)
+    {
+        switch (estado.Etapa)
+        {
+            case EtapaVerificacaoCadastral.AguardandoNascimento:
+                await ResponderAsync(ctx,
+                    "Preciso do *mês e do ano de nascimento* do paciente para continuar.", ct);
+                return true;
+
+            case EtapaVerificacaoCadastral.AguardandoNome:
+                if (estado.PacienteId is not { } pacienteId
+                    || await ObterPacienteAsync(pacienteId, ct) is not { } paciente)
+                    return false;
+                await PerguntarNomeAsync(ctx, estado, paciente.NomeCompleto, ct);
+                return true;
+
+            case EtapaVerificacaoCadastral.AguardandoVinculo:
+                await PerguntarVinculoAsync(ctx, estado, ct);
+                return true;
+
+            case EtapaVerificacaoCadastral.AguardandoNovaTentativa:
+                await PerguntarSeTentaDeNovoAsync(ctx, estado, ct);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    // ---------- "Vou ao posto" ----------
+
+    /// <summary>
+    /// A primeira mensagem (finalidade 1) que o toque encerra: o próprio alvo, ou a principal da
+    /// mesma solicitação quando o alvo é o lembrete retido. Só enquanto ainda espera a pessoa se
+    /// identificar — depois disso não há automático a encerrar.
+    /// </summary>
+    private async Task<Data.Entities.ComunicacaoPaciente?> PrincipalEsperandoAsync(
+        Data.Entities.ComunicacaoPaciente alvo, CancellationToken ct)
+    {
+        var principal = alvo.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            ? alvo
+            : alvo.SolicitacaoId is { } sid
+                ? await db.ComunicacoesPaciente.FirstOrDefaultAsync(n =>
+                    n.SolicitacaoId == sid && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct)
+                : null;
+        return principal?.Status == StatusComunicacao.AguardandoVerificacaoCadastral ? principal : null;
+    }
+
+    /// <summary>
+    /// "Vou ao posto": a pessoa decidiu buscar a guia pessoalmente. Registra na principal (é o
+    /// carimbo que faz a régua e o lembrete não insistirem mais), fecha o diálogo de identificação
+    /// e confirma o combinado. Nada de pendência nem carimbo no cadastro — ir ao posto não diz
+    /// nada sobre o número.
+    /// </summary>
+    private async Task RegistrarQueVaiAoPostoAsync(
+        ManipuladorContexto ctx, string telefone, Data.Entities.ComunicacaoPaciente principal,
+        Data.Entities.ComunicacaoPaciente alvo, CancellationToken ct)
+    {
+        var agora = DateTime.UtcNow;
+        var dia = FusoBrasilia.ParaExibicao(agora).ToString("dd/MM", PtBr);
+        principal.MotivoFalha = $"{ReguaReforcoConfirmacao.CarimboVaiAoPosto} ({dia})";
+        principal.AtualizadoEm = agora;
+
+        // O que já estava na FILA sobre esse agendamento (lembrete, reforço, orientação) também não
+        // sai: a resposta promete "não vamos mais insistir". A régua confere o carimbo no envio,
+        // mas o lembrete não — sem isto, ele saía por cima da promessa. O aviso de cancelamento
+        // fica: é notícia, e a resposta promete avisar.
+        if (principal.SolicitacaoId is { } solicitacaoId)
+        {
+            var naFila = await db.ComunicacoesPaciente
+                .Where(c => c.SolicitacaoId == solicitacaoId && c.Status == StatusComunicacao.Pendente
+                    && (c.Finalidade == FinalidadeComunicacao.LembreteAgendamento
+                        || c.Finalidade == FinalidadeComunicacao.ReforcoConfirmacao
+                        || c.Finalidade == FinalidadeComunicacao.OrientacaoPosto))
+                .ToListAsync(ct);
+            foreach (var c in naFila)
+            {
+                c.Status = StatusComunicacao.Dispensada;
+                c.MotivoFalha = $"O paciente avisou que vai ao posto ({dia}).";
+                c.ProximaTentativaEm = null;
+                c.AtualizadoEm = agora;
+            }
+        }
+
+        var estado = await db.VerificacoesCadastraisEstado.FirstOrDefaultAsync(e => e.TelefoneCanonical == telefone, ct);
+        if (estado is not null
+            && (estado.ComunicacaoPacienteId == principal.Id || estado.ComunicacaoPacienteId == alvo.Id
+                || estado.PacienteId == principal.PacienteId))
+            db.VerificacoesCadastraisEstado.Remove(estado);
+
+        logger.LogInformation(
+            "Paciente {Paciente} (…{Fone4}) avisou que vai ao posto; automáticos da solicitação {Solicitacao} encerrados.",
+            principal.PacienteId, Ultimos4(telefone), principal.SolicitacaoId);
+        await ResponderAsync(ctx,
+            "Combinado! No posto de saúde onde o paciente tem cadastro você vê o dia, a hora e o local e já "
+            + "retira a guia — leve um documento com foto. Não vamos mais insistir por aqui. Se o agendamento "
+            + "for cancelado, avisamos por mensagem.", ct);
+    }
+
     // ---------- "Não sou essa pessoa." ----------
 
-    /// <summary>A comunicação de que trata o toque: a mensagem respondida (contexto) → o estado do
-    /// diálogo → o desafio pendente mais novo do número. Null = não há desafio para este número.</summary>
+    /// <summary>Mensagens que carregam os botões do desafio ("Quero mais informações", "Não sou
+    /// essa pessoa", "Vou ao posto"): a primeira mensagem, o lembrete de quem não respondeu, a
+    /// régua de reforço e o aviso de cancelamento (que leva os mesmos botões — sem casá-lo aqui,
+    /// "Não sou essa pessoa" tocado nele se perdia e o número errado não era marcado, ADR-0057).</summary>
+    private static readonly FinalidadeComunicacao[] FinalidadesComBotoesDoDesafio =
+    [
+        FinalidadeComunicacao.ConfirmacaoAgendamento,
+        FinalidadeComunicacao.LembreteAgendamento,
+        FinalidadeComunicacao.CancelamentoAgendamento,
+        FinalidadeComunicacao.ReforcoConfirmacao,
+        FinalidadeComunicacao.OrientacaoPosto,
+    ];
+
+    /// <summary>
+    /// A comunicação de que trata o toque: a mensagem respondida (contexto) → o estado do diálogo →
+    /// o desafio pendente mais novo do número. Null = não há desafio para este número.
+    ///
+    /// <para>Respondeu à primeira mensagem: é ela. Respondeu a um lembrete, reforço ou orientação:
+    /// é a PRINCIPAL da mesma solicitação (a que espera a identificação). Se a mensagem respondida é
+    /// conhecida mas o agendamento dela não espera mais nada, devolve null SEM cair no estado nem
+    /// nos pendentes do número — num número com dois pacientes, o fallback abriria o desafio (ou
+    /// carimbaria "não conheço") no paciente ERRADO.</para>
+    /// </summary>
     private async Task<Data.Entities.ComunicacaoPaciente?> ComunicacaoDoDesafioAsync(
         ManipuladorContexto ctx, string telefone, CancellationToken ct)
     {
@@ -753,11 +982,25 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             // "Não sou essa pessoa" tocado nele se perdia (ia ao robô) e o número errado não era
             // marcado — a denúncia que o ADR-0057 manda levar a sério.
             var porContexto = await db.ComunicacoesPaciente
-                .Where(n => (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
-                        || n.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
+                .Where(n => FinalidadesComBotoesDoDesafio.Contains(n.Finalidade)
                     && n.MensagemWhatsApp != null && n.MensagemWhatsApp.WaMessageId == wamid)
                 .FirstOrDefaultAsync(ct);
-            if (porContexto is not null) return porContexto;
+            if (porContexto is not null)
+            {
+                if (porContexto.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento) return porContexto;
+
+                var principal = porContexto.SolicitacaoId is { } sid
+                    ? await db.ComunicacoesPaciente.FirstOrDefaultAsync(n => n.SolicitacaoId == sid
+                        && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                        && n.Status == StatusComunicacao.AguardandoVerificacaoCadastral, ct)
+                    : null;
+                if (principal is not null) return principal;
+
+                // O lembrete de quem não respondeu, quando a confirmação dele não está retida (ela
+                // falhou ou é de antes da primeira mensagem curta), fica ele mesmo esperando a
+                // identificação — e aí é ele o alvo.
+                return porContexto.Status == StatusComunicacao.AguardandoVerificacaoCadastral ? porContexto : null;
+            }
         }
 
         var estado = await db.VerificacoesCadastraisEstado.AsNoTracking()
@@ -864,21 +1107,11 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
     private sealed record Candidato(Guid ComunicacaoId, Guid PacienteId, PacienteDto Paciente);
 
-    /// <summary>Comunicações com desafio pendente (status 8) deste telefone, mais novas primeiro.</summary>
-    private async Task<List<(Guid Id, Guid PacienteId)>> DesafiosPendentesDoTelefoneAsync(string telefone, CancellationToken ct)
-    {
-        var limite = DateTime.UtcNow.Subtract(JanelaDesafios);
-        var brutas = await db.ComunicacoesPaciente.AsNoTracking()
-            .Where(n => n.Status == StatusComunicacao.AguardandoVerificacaoCadastral
-                && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
-                && n.Telefone != null && n.CriadoEm >= limite)
-            .OrderByDescending(n => n.CriadoEm)
-            .Select(n => new { n.Id, n.PacienteId, n.Telefone })
-            .ToListAsync(ct);
-        return [.. brutas
-            .Where(n => TelefoneWhatsApp.Canonizar(n.Telefone!) == telefone)
-            .Select(n => (n.Id, n.PacienteId))];
-    }
+    /// <summary>Comunicações com desafio pendente (status 8) deste telefone, a do toque mais recente
+    /// primeiro. A janela conta do último toque da solicitação — ver <see cref="DesafiosCadastraisPendentes"/>,
+    /// a mesma régua que o robô usa.</summary>
+    private Task<List<(Guid Id, Guid PacienteId)>> DesafiosPendentesDoTelefoneAsync(string telefone, CancellationToken ct)
+        => DesafiosCadastraisPendentes.DoTelefoneAsync(db, telefone, ct);
 
     /// <summary>Candidatos à validação: pacientes dos desafios pendentes do telefone + o alvo do
     /// próprio estado (a comunicação pendurada pode já ter saído do status 8 — ex.: reparo).</summary>

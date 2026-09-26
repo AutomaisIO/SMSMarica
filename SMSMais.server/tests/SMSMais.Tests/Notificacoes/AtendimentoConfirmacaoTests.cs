@@ -57,6 +57,72 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
         Assert.Equal(atendente, evento.AtorUsuarioId);
     }
 
+    /// <summary>
+    /// ADR-0059 §4 — humano entrou, o automático para: não só a confirmação, mas TUDO o que insiste
+    /// sobre o agendamento — o lembrete e a régua de reforço (reforço e orientação ao posto). Antes,
+    /// o lembrete ou o reforço saíam por cima da atendente que já falava com o paciente. O que não
+    /// insiste (exame liberado) segue na fila.
+    /// </summary>
+    [Fact]
+    public async Task Atender_encerra_tambem_lembrete_reforco_e_orientacao_ao_posto_na_fila()
+    {
+        await using var db = fixture.CriarDbContext();
+        var atendente = await CriarUsuarioAsync(db);
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(6));
+        var s = exame.Solicitacao!;
+        var principal = await CriarComunicacaoAsync(db, s, StatusComunicacao.AguardandoVerificacaoCadastral, null);
+        var lembrete = await CriarComunicacaoAsync(db, s, StatusComunicacao.Pendente, DateTime.UtcNow,
+            finalidade: FinalidadeComunicacao.LembreteAgendamento);
+        var reforco = await CriarComunicacaoAsync(db, s, StatusComunicacao.Pendente, DateTime.UtcNow,
+            finalidade: FinalidadeComunicacao.ReforcoConfirmacao);
+        var orientacao = await CriarComunicacaoAsync(db, s, StatusComunicacao.Pendente, DateTime.UtcNow.AddHours(3),
+            finalidade: FinalidadeComunicacao.OrientacaoPosto);
+        var exameLiberado = await CriarComunicacaoAsync(db, s, StatusComunicacao.Pendente, DateTime.UtcNow,
+            finalidade: FinalidadeComunicacao.ExameLiberado);
+
+        await CriarServico(db, atendente).AtenderAsync(exame.SolicitacaoId);
+
+        await using var db2 = fixture.CriarDbContext();
+        var linhas = await db2.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.SolicitacaoId == exame.SolicitacaoId)
+            .ToDictionaryAsync(c => c.Id);
+        foreach (var id in new[] { principal.Id, lembrete.Id, reforco.Id, orientacao.Id })
+        {
+            Assert.Equal(StatusComunicacao.SubstituidaPorAtendente, linhas[id].Status);
+            Assert.Null(linhas[id].ProximaTentativaEm);
+        }
+        Assert.Equal(StatusComunicacao.Pendente, linhas[exameLiberado.Id].Status);
+    }
+
+    /// <summary>
+    /// Contato corrigido: a confirmação volta a valer com o número novo, e o lembrete que tinha sido
+    /// parado junto (sem nunca ter saído) volta também — depois do silêncio mínimo do número, para
+    /// não chegarem duas mensagens seguidas no número recém-corrigido.
+    /// </summary>
+    [Fact]
+    public async Task ContatoCorrigido_rearma_o_lembrete_que_nunca_saiu_depois_do_silencio_do_numero()
+    {
+        await using var db = fixture.CriarDbContext();
+        var atendente = await CriarUsuarioAsync(db);
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(6));
+        var s = exame.Solicitacao!;
+        var principal = await CriarComunicacaoAsync(db, s, StatusComunicacao.SubstituidaPorAtendente, null);
+        var lembrete = await CriarComunicacaoAsync(db, s, StatusComunicacao.SubstituidaPorAtendente, null,
+            finalidade: FinalidadeComunicacao.LembreteAgendamento);
+
+        var antes = DateTime.UtcNow;
+        await CriarServico(db, atendente).ContatoCorrigidoAsync(
+            exame.SolicitacaoId, new ContatoCorrigidoAtendimentoRequest("21999990000", null));
+
+        await using var db2 = fixture.CriarDbContext();
+        var p = await db2.ComunicacoesPaciente.AsNoTracking().SingleAsync(c => c.Id == principal.Id);
+        var l = await db2.ComunicacoesPaciente.AsNoTracking().SingleAsync(c => c.Id == lembrete.Id);
+        Assert.Equal(StatusComunicacao.Pendente, p.Status);
+        Assert.Equal(StatusComunicacao.Pendente, l.Status);
+        Assert.True(l.ProximaTentativaEm > p.ProximaTentativaEm);
+        Assert.True(l.ProximaTentativaEm >= antes.AddHours(new ComunicacaoPacienteOptions().SilencioMinimoPorNumeroHoras - 1));
+    }
+
     [Fact]
     public async Task Atender_o_que_esta_com_outra_pessoa_da_409_e_Assumir_troca_a_posse()
     {
@@ -383,6 +449,7 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
             db, new UsuarioAtualAccessorFake(usuarioId), resolver, configuracao, comunicacoes,
             pendencias ?? Substitute.For<IPendenciaCadastroService>(), sisreg, sessoes,
             fhir ?? Substitute.For<SMSMais.Core.Pacientes.Fhir.IPacienteFhirClient>(),
+            Microsoft.Extensions.Options.Options.Create(new ComunicacaoPacienteOptions()),
             NullLogger<AtendimentoConfirmacaoService>.Instance);
     }
 
@@ -403,13 +470,14 @@ public class AtendimentoConfirmacaoTests(PostgresFixture fixture)
     }
 
     private static async Task<ComunicacaoPaciente> CriarComunicacaoAsync(
-        SmsMaisDbContext db, Solicitacao s, StatusComunicacao status, DateTime? proximaTentativa, string? telefone = null)
+        SmsMaisDbContext db, Solicitacao s, StatusComunicacao status, DateTime? proximaTentativa, string? telefone = null,
+        FinalidadeComunicacao finalidade = FinalidadeComunicacao.ConfirmacaoAgendamento)
     {
         var c = new ComunicacaoPaciente
         {
             Id = Guid.CreateVersion7(),
             Tipo = TipoAgendamento.Exame,
-            Finalidade = FinalidadeComunicacao.ConfirmacaoAgendamento,
+            Finalidade = finalidade,
             SolicitacaoId = s.Id,
             PacienteId = s.PacienteId,
             Telefone = telefone,

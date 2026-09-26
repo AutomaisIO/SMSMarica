@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Alertas;
 using SMSMais.Core.Conversas;
+using SMSMais.Core.Notificacoes.VerificacaoCadastral;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -288,25 +289,22 @@ public sealed class RoboAtendimentoProcessador(
                     || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
     }
 
+    /// <summary>O paciente tem comunicação retida esperando identificação? Confirmação ou lembrete
+    /// de quem não respondeu (que repete a primeira mensagem e fica retido do mesmo jeito).</summary>
     private Task<bool> AguardandoVerificacaoCadastralAsync(Guid pacienteId, CancellationToken ct) =>
         db.ComunicacoesPaciente.AsNoTracking().AnyAsync(
             n => n.PacienteId == pacienteId
                 && n.Status == StatusComunicacao.AguardandoVerificacaoCadastral
-                && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+                && DesafiosCadastraisPendentes.Retidas.Contains(n.Finalidade), ct);
 
     /// <summary>Há desafio cadastral pendente para ESTE telefone? Cobre o caso (comum) do número
-    /// não amarrado a paciente. O telefone da comunicação é comparado em forma canônica.</summary>
+    /// não amarrado a paciente. A MESMA régua da máquina de verificação
+    /// (<see cref="DesafiosCadastraisPendentes"/>): a janela conta do último toque da solicitação
+    /// — lembrete, reforço e orientação ao posto reabrem a conversa de identificação.</summary>
     private async Task<bool> AguardandoVerificacaoCadastralPorTelefoneAsync(string telefoneCanonical, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(telefoneCanonical)) return false;
-        var limite = DateTime.UtcNow.AddDays(-20); // desafio antigo não conta
-        var fones = await db.ComunicacoesPaciente.AsNoTracking()
-            .Where(n => n.Status == StatusComunicacao.AguardandoVerificacaoCadastral
-                && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
-                && n.Telefone != null && n.CriadoEm >= limite)
-            .Select(n => n.Telefone!)
-            .ToListAsync(ct);
-        return fones.Any(t => TelefoneWhatsApp.Canonizar(t) == telefoneCanonical);
+        return (await DesafiosCadastraisPendentes.DoTelefoneAsync(db, telefoneCanonical, ct)).Count > 0;
     }
 
     /// <summary>Ferramentas do turno: o conjunto base (sempre) mais o que o assunto habilitou.</summary>

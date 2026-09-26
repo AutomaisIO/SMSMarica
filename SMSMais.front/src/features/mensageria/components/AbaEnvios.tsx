@@ -14,6 +14,7 @@ import { useNotificacaoDetalhe, useNotificacoes, useReenviarNotificacao } from '
 import {
   CLASSE_RESPOSTA,
   CLASSE_STATUS,
+  FINALIDADES,
   ROTULO_FINALIDADE,
   ROTULO_RESPOSTA,
   ROTULO_STATUS,
@@ -214,9 +215,9 @@ export function AbaEnvios() {
         </div>
         <Select value={finalidade} onChange={(e) => setFinalidade(e.target.value)} aria-label="Finalidade">
           <option value="">Finalidade: todas</option>
-          <option value="ConfirmacaoAgendamento">Confirmação de agendamento</option>
-          <option value="ExameLiberado">Exame liberado</option>
-          <option value="LaudoPronto">Laudo pronto</option>
+          {FINALIDADES.map((f) => (
+            <option key={f} value={f}>{ROTULO_FINALIDADE[f]}</option>
+          ))}
         </Select>
         <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status do envio">
           <option value="">Envio: todos</option>

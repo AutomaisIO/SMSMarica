@@ -1,4 +1,5 @@
 import type { ModalidadeDicom } from '@/features/tipos-exame/types';
+import type { FinalidadeComunicacao } from '@/features/mensageria/types';
 
 export type StatusSolicitacao =
   | 'Solicitada'
@@ -169,7 +170,9 @@ export type ComunicacaoChip = {
     | 'SemTelefoneValido'
     | 'AguardandoTelefoneVerificado'
     | 'AguardandoVerificacaoCadastral'
-    | 'AguardandoCorrecaoContato';
+    | 'AguardandoCorrecaoContato'
+    | 'SubstituidaPorAtendente'
+    | 'Dispensada';
   visualizado: boolean;
   motivo: string | null;
 };
@@ -178,7 +181,8 @@ export type ComunicacaoChip = {
 
 export type HistoricoComunicacao = {
   id: string;
-  finalidade: 'ConfirmacaoAgendamento' | 'ExameLiberado' | 'LaudoPronto';
+  /** Toda finalidade da solicitação aparece aqui — inclusive lembrete, cancelamento e a régua de reforço. */
+  finalidade: FinalidadeComunicacao;
   status: ComunicacaoChip['status'];
   telefone: string | null;
   tentativas: number;

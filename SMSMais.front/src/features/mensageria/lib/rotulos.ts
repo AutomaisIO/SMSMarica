@@ -14,6 +14,7 @@ export const ROTULO_STATUS: Record<StatusNotificacao, string> = {
   AguardandoVerificacaoCadastral: 'Aguardando o paciente se identificar',
   AguardandoCorrecaoContato: 'Número inválido (não é do paciente)',
   SubstituidaPorAtendente: 'Atendida por pessoa',
+  Dispensada: 'Dispensada',
 };
 
 export const CLASSE_STATUS: Record<StatusNotificacao, string> = {
@@ -27,6 +28,8 @@ export const CLASSE_STATUS: Record<StatusNotificacao, string> = {
   AguardandoVerificacaoCadastral: 'badge-warning',
   AguardandoCorrecaoContato: 'badge-danger',
   SubstituidaPorAtendente: 'badge-gray',
+  // Cinza como "Atendida por pessoa": terminal e sem erro — outra mensagem cobriu esta.
+  Dispensada: 'badge-gray',
 };
 
 export const ROTULO_RESPOSTA: Record<StatusConfirmacao, string> = {
@@ -51,11 +54,28 @@ export const ROTULO_CANAL: Record<string, string> = {
   sandbox: 'Sandbox',
 };
 
+/**
+ * A ordem aqui é a dos filtros (Envios, Resumo diário): primeiro as do agendamento — a confirmação
+ * seguida da régua de quem não se identificou (reforço, orientação ao posto), depois lembrete e
+ * cancelamento —, por fim as do resultado. Os filtros saem deste mapa para que finalidade nova no
+ * backend não precise ser lembrada em cada tela.
+ */
 export const ROTULO_FINALIDADE: Record<FinalidadeComunicacao, string> = {
   ConfirmacaoAgendamento: 'Confirmação de agendamento',
+  ReforcoConfirmacao: 'Reforço da confirmação',
+  OrientacaoPosto: 'Orientação ao posto',
+  LembreteAgendamento: 'Lembrete de agendamento',
+  CancelamentoAgendamento: 'Aviso de cancelamento',
   ExameLiberado: 'Exame liberado',
   LaudoPronto: 'Laudo pronto',
 };
+
+export const FINALIDADES = Object.keys(ROTULO_FINALIDADE) as FinalidadeComunicacao[];
+
+/** Rótulo de uma finalidade que chega como texto cru (listas agregadas do backend). */
+export function rotuloFinalidade(finalidade: string): string {
+  return ROTULO_FINALIDADE[finalidade as FinalidadeComunicacao] ?? finalidade;
+}
 
 export function rotuloCanal(canal: string | null | undefined): string {
   if (!canal) return '—';

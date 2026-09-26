@@ -34,7 +34,7 @@ const ETAPAS: Etapa[] = [
     icone: MessageCircle,
     resumo: 'Mensagem com link.',
     detalhe:
-      'O paciente recebe a mensagem com a data e um link para confirmar ou avisar que não vai. Às vésperas sai um lembrete — menos para quem acabou de ser avisado e para quem já disse que não vai.',
+      'Número verificado recebe a mensagem com a data e um link para confirmar ou avisar que não vai. Número não verificado recebe primeiro só o aviso de que há um agendamento, e os dados depois que a pessoa se identifica — quem não se identifica pode receber um reforço e, por fim, a orientação de retirar a guia no posto. Às vésperas sai um lembrete — menos para quem acabou de ser avisado e para quem já disse que não vai.',
   },
   {
     id: 'resposta',

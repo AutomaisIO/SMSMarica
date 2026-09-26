@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SMSMais.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Notificacoes.Confirmacoes;
+using SMSMais.Core.Notificacoes.Confirmacoes.Dtos;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMais.Core.Pacientes;
@@ -131,9 +134,19 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
         var handler = new VerificacaoCadastralWhatsAppHandler(
             db, whats, pacientes, Substitute.For<ITelefoneValidacaoService>(), pendencias,
             new Lazy<SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService>(() => comunicacoes),
-            NullLogger<VerificacaoCadastralWhatsAppHandler>.Instance);
+            Liberacao(db), NullLogger<VerificacaoCadastralWhatsAppHandler>.Instance);
 
         return new Cenario(handler, whats, comunicacoes, comunicacao, conversa, pacienteId);
+    }
+
+    /// <summary>O liberador de verdade, com "só SISREG" desligado: o seed não marca a solicitação
+    /// como vinda do SISREG, e o que está sob teste aqui é o diálogo, não essa regra.</summary>
+    internal static LiberacaoAposIdentificacao Liberacao(SmsMaisDbContext db)
+    {
+        var regras = Substitute.For<IConfirmacaoConfiguracaoService>();
+        regras.ObterAsync(Arg.Any<CancellationToken>())
+            .Returns(new ConfirmacaoConfiguracaoDto("08:00", "18:00", 100, SomenteSisreg: false, true, null));
+        return new LiberacaoAposIdentificacao(db, regras, NullLogger<LiberacaoAposIdentificacao>.Instance);
     }
 
     private async Task ResponderAsync(SmsMaisDbContext db, Cenario c, string texto)

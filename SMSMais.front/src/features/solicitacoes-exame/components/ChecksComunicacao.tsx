@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, CheckCheck, Clock3 } from 'lucide-react';
+import { AlertTriangle, Check, CheckCheck, CircleMinus, Clock3 } from 'lucide-react';
 import type { ComunicacaoChip } from '@/features/solicitacoes-exame/types';
 
 const ROTULO: Record<string, string> = {
@@ -39,6 +39,18 @@ export function ChecksComunicacao({
         className="inline-flex"
       >
         <Clock3 className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+      </span>
+    );
+  }
+  // Terminais sem erro: uma pessoa assumiu, ou outra mensagem da mesma solicitação cobriu esta.
+  // Sem este ramo cairiam no reloginho de "na fila" — que promete um envio que não vai acontecer.
+  if (chip.status === 'SubstituidaPorAtendente' || chip.status === 'Dispensada') {
+    return (
+      <span
+        title={`${rotulo}: ${chip.status === 'Dispensada' ? 'dispensada' : 'atendida por pessoa'}${chip.motivo ? ` — ${chip.motivo}` : ''}`}
+        className="inline-flex"
+      >
+        <CircleMinus className="h-3.5 w-3.5 shrink-0 text-gray-400" />
       </span>
     );
   }

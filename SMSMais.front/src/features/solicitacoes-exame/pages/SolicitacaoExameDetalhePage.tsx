@@ -53,6 +53,7 @@ import { RawSisregDisclosure } from '@/features/solicitacoes-exame/components/Ra
 import { SecaoSisreg } from '@/features/solicitacoes-exame/components/SecaoSisreg';
 import { Select } from '@/shared/ui/Select';
 import type { HistoricoComunicacao } from '@/features/solicitacoes-exame/types';
+import { rotuloFinalidade } from '@/features/mensageria/lib/rotulos';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { VagaBadge } from '@/features/solicitacoes-exame/components/VagaBadge';
@@ -1013,12 +1014,6 @@ function CardEnvioManual({ s }: { s: SolicitacaoExame }) {
   );
 }
 
-const ROTULO_FINALIDADE: Record<HistoricoComunicacao['finalidade'], string> = {
-  ConfirmacaoAgendamento: 'Confirmação de agendamento',
-  ExameLiberado: 'Exame liberado',
-  LaudoPronto: 'Laudo pronto',
-};
-
 const ROTULO_MEIO: Record<string, string> = {
   Ligacao: 'Ligação', WhatsApp: 'WhatsApp', Presencial: 'Presencial', Outro: 'Outro',
 };
@@ -1117,7 +1112,7 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
                   chip={{ status: c.status, visualizado: c.visualizadoEm != null, motivo: c.motivoFalha }}
                   finalidade={c.finalidade === 'LaudoPronto' ? 'LaudoPronto' : 'ExameLiberado'}
                 />
-                <span className="font-medium text-gray-900">{ROTULO_FINALIDADE[c.finalidade]}</span>
+                <span className="font-medium text-gray-900">{rotuloFinalidade(c.finalidade)}</span>
                 {c.telefone ? <span className="text-xs text-gray-500">→ {c.telefone}</span> : null}
                 {c.tentativas > 1 ? <span className="text-xs text-gray-500">({c.tentativas} tentativas)</span> : null}
                 {podeEditar && c.status !== 'Pendente' ? (
@@ -1166,7 +1161,7 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
         titulo="Reenviar comunicação"
         mensagem={
           paraReenviar
-            ? `Reenviar "${ROTULO_FINALIDADE[paraReenviar.finalidade]}"? Os links de acesso anteriores serão REVOGADOS ` +
+            ? `Reenviar "${rotuloFinalidade(paraReenviar.finalidade)}"? Os links de acesso anteriores serão REVOGADOS ` +
               `(quem os recebeu perde o acesso, inclusive sessões abertas) e a mensagem será reconstruída ` +
               `com o contato ATUAL do paciente${paraReenviar.telefone ? ` (envio anterior: ${paraReenviar.telefone})` : ''}.`
             : ''

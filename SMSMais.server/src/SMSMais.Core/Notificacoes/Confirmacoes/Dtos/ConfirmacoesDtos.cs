@@ -22,7 +22,11 @@ public sealed record ConfirmacaoConfiguracaoDto(
     /// <summary>Último dia cujo fechamento foi concluído — só leitura, quem grava é o motor.</summary>
     DateOnly? ConciliacaoUltimoDiaFechado = null,
     /// <summary>Quando o aviso de cancelamento foi ligado — só leitura. O que é anterior não é avisado.</summary>
-    DateTime? AvisoCancelamentoLigadoEm = null);
+    DateTime? AvisoCancelamentoLigadoEm = null,
+    /// <summary>Reforço para quem recebeu a primeira mensagem e não se identificou (toque 2).</summary>
+    bool ReforcoConfirmacaoHabilitado = false,
+    /// <summary>Orientação ao posto — a última mensagem da régua (toque 3, terminal).</summary>
+    bool OrientacaoPostoHabilitada = false);
 
 public sealed record SalvarConfirmacaoConfiguracaoRequest(
     string HoraInicioEnvio,
@@ -43,7 +47,14 @@ public sealed record SalvarConfirmacaoConfiguracaoRequest(
     int? ConciliacaoIntervaloMinutos = null,
     int? ConciliacaoHoraInicio = null,
     int? ConciliacaoHoraFim = null,
-    int? ConciliacaoHoraFechamento = null);
+    int? ConciliacaoHoraFechamento = null,
+    /// <summary>
+    /// Chaves da régua de reforço. <b>Anuláveis pelo mesmo motivo dos campos acima:</b> ausente =
+    /// manter o gravado. Uma aba com o bundle anterior a elas não as manda, e com default fixo
+    /// desligaria calada, no primeiro "salvar" da janela de horário, uma régua que alguém ligou.
+    /// </summary>
+    bool? ReforcoConfirmacaoHabilitado = null,
+    bool? OrientacaoPostoHabilitada = null);
 
 /// <summary>Fotografia da fila de confirmações (só a finalidade confirmação de agendamento).</summary>
 public sealed record ResumoFilaConfirmacaoDto(

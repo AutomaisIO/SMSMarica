@@ -202,6 +202,10 @@ public static class DependencyInjection
             configuration.GetSection(Notificacoes.Comunicacao.ComunicacaoPacienteOptions.SecaoConfig));
         services.AddScoped<Notificacoes.Comunicacao.IComunicacaoPacienteService,
             Notificacoes.Comunicacao.ComunicacaoPacienteService>();
+        // O que sai depois que o paciente se identifica — o mesmo para a máquina de verificação do
+        // WhatsApp e para a ferramenta VerificarCadastro do robô.
+        services.AddScoped<Notificacoes.Comunicacao.ILiberacaoAposIdentificacao,
+            Notificacoes.Comunicacao.LiberacaoAposIdentificacao>();
         // Menu Confirmações: regras de disparo (janela, vazão, só SISREG) + leituras da fila.
         // Régua do contato negado (guarda central de LGPD no WhatsAppCliente).
         services.AddScoped<PendenciasCadastro.IContatoNegadoService, PendenciasCadastro.ContatoNegadoService>();
@@ -217,6 +221,11 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.Confirmacoes.ILembreteAgendamentoService,
             Notificacoes.Confirmacoes.LembreteAgendamentoService>();
         services.AddHostedService<Notificacoes.Confirmacoes.LembreteAgendamentoWorker>();
+        // Régua de reforço da confirmação (reforço + orientação ao posto para quem não se
+        // identificou): enfileira; quem envia, com reconferência, é o EnviadorComunicacaoService.
+        services.AddScoped<Notificacoes.Confirmacoes.IReforcoConfirmacaoService,
+            Notificacoes.Confirmacoes.ReforcoConfirmacaoService>();
+        services.AddHostedService<Notificacoes.Confirmacoes.ReforcoConfirmacaoWorker>();
         services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
             Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
         // Aba Equipe (produção por atendente, lida da trilha) — módulo ConfirmacoesEquipe.
