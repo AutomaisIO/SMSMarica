@@ -175,7 +175,11 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         var s = await CarregarAsync(solicitacaoId, ct);
         if (s is null) return;
 
-        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+        // Só quem JÁ CANCELOU ouve "já registramos". Quem CONFIRMOU e avisa que não pode ir tem o
+        // direito de cancelar — confirmou pelo link e a vida mudou (caso real de 27/09: "Não
+        // poderei comparecer!" respondido com "sua presença já está confirmada ✅", e a vaga ficou
+        // presa). A pergunta em duas fases logo abaixo protege o toque acidental.
+        if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
         {
             await ResponderJaRegistradaAsync(ctx, s, ct);
             return;
@@ -228,7 +232,9 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         var s = await CarregarAsync(solicitacaoId, ct);
         if (s is null) return;
 
-        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+        // Cancelar vale também para quem tinha CONFIRMADO (é o espelho do caminho que já existia
+        // no outro sentido: "tinha avisado que não ia e agora diz que vai").
+        if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada)
         {
             await RemoverEstadoAsync(ctx.Conversa.TelefoneCanonical, ct);
             await ResponderJaRegistradaAsync(ctx, s, ct);

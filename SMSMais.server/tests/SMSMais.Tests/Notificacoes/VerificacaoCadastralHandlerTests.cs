@@ -146,7 +146,9 @@ public class VerificacaoCadastralHandlerTests(PostgresFixture fixture)
         var regras = Substitute.For<IConfirmacaoConfiguracaoService>();
         regras.ObterAsync(Arg.Any<CancellationToken>())
             .Returns(new ConfirmacaoConfiguracaoDto("08:00", "18:00", 100, SomenteSisreg: false, true, null));
-        return new LiberacaoAposIdentificacao(db, regras, NullLogger<LiberacaoAposIdentificacao>.Instance);
+        return new LiberacaoAposIdentificacao(db, regras,
+            Microsoft.Extensions.Options.Options.Create(new SMSMais.Core.Notificacoes.Comunicacao.ComunicacaoPacienteOptions()),
+            NullLogger<LiberacaoAposIdentificacao>.Instance);
     }
 
     private async Task ResponderAsync(SmsMaisDbContext db, Cenario c, string texto)

@@ -75,6 +75,62 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Quem_confirmou_ainda_pode_cancelar_pelo_whatsapp()
+    {
+        // Caso real de 27/09 (campanha da Carreta): confirmou pelo link, avisou "Não poderei
+        // comparecer!" e ouviu "sua presença já está confirmada ✅" — a vaga ficava presa e a
+        // unidade esperava alguém que avisou que não vai.
+        await using var db = fixture.CriarDbContext();
+        var (solic, _) = await SeedAsync(db);
+        var s0 = await db.Solicitacoes.SingleAsync(x => x.Id == solic.SolicitacaoId);
+        s0.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+        s0.ConfirmadoEm = DateTime.UtcNow.AddDays(-1);
+        s0.ConfirmadoCanal = "whatsapp-link";
+        await db.SaveChangesAsync();
+
+        var telefone = SeedSolicitacao.TelefoneAleatorio();
+        var whatsApp = CriarWhatsAppMock();
+        var handler = new ConfirmacaoAgendamentoWhatsAppHandler(db, whatsApp, NullLogger<ConfirmacaoAgendamentoWhatsAppHandler>.Instance);
+
+        // "Não poderei ir!" de quem está CONFIRMADA → pergunta em duas fases, não "já confirmada".
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, botaoPayload: $"confirma:{solic.SolicitacaoId}"), default);
+        await db.SaveChangesAsync();
+        await whatsApp.ReceivedWithAnyArgs(1).EnviarInterativoBotoesAsync(null!, null!, null!);
+
+        // "Quero cancelar" → cancela de verdade, mesmo tendo confirmado antes.
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, interativoReplyId: $"cancela_sim:{solic.SolicitacaoId}"), default);
+        await db.SaveChangesAsync();
+        var depois = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
+        Assert.Equal(StatusConfirmacaoAgendamento.Cancelada, depois.StatusConfirmacao);
+        Assert.NotNull(depois.ConfirmacaoCanceladaEm);
+    }
+
+    [Fact]
+    public async Task Quem_ja_cancelou_ouve_que_ja_esta_registrado_sem_nova_pergunta()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (solic, _) = await SeedAsync(db);
+        var s0 = await db.Solicitacoes.SingleAsync(x => x.Id == solic.SolicitacaoId);
+        s0.StatusConfirmacao = StatusConfirmacaoAgendamento.Cancelada;
+        s0.ConfirmacaoCanceladaEm = DateTime.UtcNow.AddDays(-1);
+        await db.SaveChangesAsync();
+
+        var telefone = SeedSolicitacao.TelefoneAleatorio();
+        var whatsApp = CriarWhatsAppMock();
+        var handler = new ConfirmacaoAgendamentoWhatsAppHandler(db, whatsApp, NullLogger<ConfirmacaoAgendamentoWhatsAppHandler>.Instance);
+
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, botaoPayload: $"confirma:{solic.SolicitacaoId}"), default);
+        await db.SaveChangesAsync();
+
+        await whatsApp.DidNotReceiveWithAnyArgs().EnviarInterativoBotoesAsync(null!, null!, null!);
+        var textos = whatsApp.ReceivedCalls()
+            .Where(c => c.GetMethodInfo().Name == nameof(IWhatsAppCliente.EnviarTextoAsync))
+            .Select(c => (string)c.GetArguments()[1]!)
+            .ToList();
+        Assert.Contains(textos, t => t.Contains("não vai", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task Fluxo_completo_quick_reply_ate_o_motivo_cancela_com_motivo()
     {
         await using var db = fixture.CriarDbContext();

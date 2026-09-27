@@ -113,7 +113,7 @@ export const artigoConfirmacoes: Artigo = {
               {
                 termo: <AbaRef>Confirmados</AbaRef>,
                 descricao:
-                  'Quem já disse que vem — pelo link, pelo botão do WhatsApp, pelo robô, pelo app, na recepção ou pela mão de uma atendente. Serve de conferência, e ainda dá para cancelar daqui se a pessoa mudar de ideia.',
+                  'Quem já disse que vem — pelo link, pelo botão do WhatsApp, pelo robô, pelo app, na recepção ou pela mão de uma atendente. Serve de conferência, e ainda dá para cancelar daqui se a pessoa mudar de ideia. A própria pessoa também consegue: um "não poderei ir" no WhatsApp vale mesmo depois de ter confirmado — o sistema pergunta "quer cancelar?" antes de valer.',
               },
               {
                 termo: <AbaRef>Contato errado</AbaRef>,

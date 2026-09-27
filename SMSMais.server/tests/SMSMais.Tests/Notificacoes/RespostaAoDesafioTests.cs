@@ -128,7 +128,7 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
     /// enviada (é pelo wamid dela que a resposta do cidadão chega como contexto).</summary>
     private async Task<(ComunicacaoPaciente Linha, string? Wamid)> LinhaAsync(
         SmsMaisDbContext db, Solicitacao s, FinalidadeComunicacao finalidade, StatusComunicacao status,
-        DateTime? enviadoEm = null)
+        DateTime? enviadoEm = null, string? template = null)
     {
         string? wamid = null;
         Guid? mensagemId = null;
@@ -142,6 +142,7 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
                 Telefone = _telefone,
                 Direcao = DirecaoMensagem.Saida,
                 Conteudo = "toque da régua",
+                Template = template,
                 Status = StatusMensagemWhatsApp.Entregue,
                 WaMessageId = wamid,
                 OcorridoEm = quando,
@@ -578,6 +579,47 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
         var depois = await LerAsync(db2, principal.Id);
         Assert.Equal(StatusComunicacao.Falha, depois.Status);
         Assert.StartsWith("Identificação concluída em", depois.MotivoFalha);
+    }
+
+    // ===================== (f2) envio CURTO não conta como "já enviado" =====================
+
+    [Fact]
+    public async Task Envio_curto_a_verificado_nao_vale_como_ja_enviado_e_a_linha_volta_a_sair()
+    {
+        // Caso real de 27/09: lembrete de contato verificado saiu como a primeira mensagem CURTA
+        // (código antigo), ficou Lida, e o "Quero mais informações" respondia "já foram enviadas —
+        // é a mensagem com data e local, logo acima" apontando para um texto sem dado nenhum.
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var exame = await SeedSolicitacao.CriarAsync(db, joana.Id, dataAgendada: DateTime.UtcNow.AddDays(2));
+        var (curta, _) = await LinhaAsync(db, exame.Solicitacao!, FinalidadeComunicacao.LembreteAgendamento,
+            StatusComunicacao.Lida, enviadoEm: DateTime.UtcNow.AddHours(-20), template: "confirmacao_exame");
+
+        var r = await VerificacaoCadastralHandlerTests.Liberacao(db).LiberarAsync(joana.Id, curta.Id);
+        await db.SaveChangesAsync();
+
+        Assert.Equal(1, r.Liberadas);
+        Assert.Equal(DesfechoLiberacao.Liberou, r.Desfecho);
+        await using var db2 = fixture.CriarDbContext();
+        var depois = await LerAsync(db2, curta.Id);
+        Assert.Equal(StatusComunicacao.Pendente, depois.Status);
+        Assert.Null(depois.LidoEm); // recibos eram do envio curto anterior
+    }
+
+    [Fact]
+    public async Task Envio_completo_continua_valendo_como_ja_enviado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var exame = await SeedSolicitacao.CriarAsync(db, joana.Id, dataAgendada: DateTime.UtcNow.AddDays(2));
+        var (completa, _) = await LinhaAsync(db, exame.Solicitacao!, FinalidadeComunicacao.ConfirmacaoAgendamento,
+            StatusComunicacao.Lida, enviadoEm: DateTime.UtcNow.AddHours(-20), template: "confirmacao_regulacao");
+
+        var r = await VerificacaoCadastralHandlerTests.Liberacao(db).LiberarAsync(joana.Id, completa.Id);
+        await db.SaveChangesAsync();
+
+        Assert.Equal(0, r.Liberadas);
+        Assert.Equal(DesfechoLiberacao.JaEnviado, r.Desfecho);
     }
 
     // ===================== (f) pedidos de 26/09: fluxo na conversa, nunca mudo =====================

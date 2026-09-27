@@ -65,6 +65,7 @@ public sealed record LiberacaoResultado(
 public sealed class LiberacaoAposIdentificacao(
     SmsMaisDbContext db,
     Confirmacoes.IConfirmacaoConfiguracaoService regras,
+    Microsoft.Extensions.Options.IOptions<ComunicacaoPacienteOptions> options,
     ILogger<LiberacaoAposIdentificacao> logger) : ILiberacaoAposIdentificacao
 {
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
@@ -100,6 +101,7 @@ public sealed class LiberacaoAposIdentificacao(
         // lembrete de quem não respondeu repete a primeira mensagem e fica retido do mesmo jeito.
         var candidatas = await db.ComunicacoesPaciente
             .Include(n => n.Solicitacao)
+            .Include(n => n.MensagemWhatsApp)
             .Where(n => n.PacienteId == pacienteId
                 && (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
                     || n.Finalidade == FinalidadeComunicacao.LembreteAgendamento)
@@ -124,9 +126,17 @@ public sealed class LiberacaoAposIdentificacao(
         {
             if (n.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue or StatusComunicacao.Lida)
             {
-                // Flag anti-reenvio: o que já saiu não sai de novo.
-                motivos[n.Id] = new(DesfechoLiberacao.JaEnviado, n.Solicitacao?.DataAgendada, n.Telefone);
-                continue;
+                // Anti-reenvio — mas só envio COM DADOS conta como "já enviado". Até 26/09 o
+                // lembrete de contato verificado saía como a PRIMEIRA MENSAGEM curta (sem data e
+                // sem local); tratar isso como entregue prendia a pessoa num "já foram enviadas —
+                // é a mensagem logo acima" apontando para um texto que não informa nada (caso real
+                // de 27/09, agendamento de segunda). Envio curto identificado → a linha volta a
+                // ser elegível e sai agora com os dados.
+                if (!EnvioFoiSemDados(n))
+                {
+                    motivos[n.Id] = new(DesfechoLiberacao.JaEnviado, n.Solicitacao?.DataAgendada, n.Telefone);
+                    continue;
+                }
             }
             if (n.Status == StatusComunicacao.SubstituidaPorAtendente)
             {
@@ -247,6 +257,17 @@ public sealed class LiberacaoAposIdentificacao(
                 => DesfechoLiberacao.AgendamentoPassou,
             _ => DesfechoLiberacao.NadaPendente,
         };
+
+    /// <summary>O que saiu foi a primeira mensagem CURTA (sem data/local)? Sem o vínculo com a
+    /// mensagem enviada não dá para afirmar — aí prevalece o anti-reenvio de sempre.</summary>
+    private bool EnvioFoiSemDados(ComunicacaoPaciente n)
+    {
+        var template = n.MensagemWhatsApp?.Template;
+        if (string.IsNullOrEmpty(template)) return false;
+        var opts = options.Value;
+        return string.Equals(template, opts.TemplateConfirmacaoExame, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(template, opts.TemplateConfirmacaoConsulta, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>Fim da linha para a comunicação: o motivo fica, e o worker não a pega mais.</summary>
     private static void Encerrar(ComunicacaoPaciente n, StatusComunicacao status, string motivo, DateTime agora)
