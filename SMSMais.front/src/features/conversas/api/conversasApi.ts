@@ -79,6 +79,11 @@ export async function encaminharConversaParaRobo(id: string): Promise<void> {
   await http.post(`/conversas/${id}/encaminhar-robo`, {});
 }
 
+/** Retomada pela IA: o robô resume o ponto da conversa e pergunta como a pessoa quer seguir. */
+export async function retomarConversaComRobo(id: string): Promise<void> {
+  await http.post(`/conversas/${id}/robo-retomar`, {});
+}
+
 /** Para o robô nesta conversa (bloqueio forte) e assume para o operador corrigir. */
 export async function pararRoboConversa(id: string): Promise<void> {
   await http.post(`/conversas/${id}/parar-robo`, {});

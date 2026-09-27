@@ -653,6 +653,70 @@ public sealed class ConversaService(
             ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, deUnidade, ct);
     }
 
+    /// <summary>Instrução do turno de retomada — o processador injeta no prompt do robô.</summary>
+    internal const string InstrucaoRetomada =
+        "RETOMADA PEDIDA PELA EQUIPE: esta conversa parou sem conclusão, e a mensagem atual é só o "
+        + "gatilho interno (ignore o texto dela). Usando o HISTÓRICO acima, faça um resumo simpático "
+        + "e curto (2 a 3 frases) do ponto em que a conversa parou e PERGUNTE como a pessoa quer "
+        + "seguir. Não repita saudação de template, não invente dado nenhum e não prometa nada que "
+        + "você não execute com as ferramentas deste turno.";
+
+    public async Task RetomarComRoboAsync(Guid conversaId, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
+        // O alvo típico é a conversa PARADA da fila (sem dono) — aí qualquer atendente pode pedir.
+        // Com dono, só o dono ou a supervisão mandam o robô entrar por cima.
+        if (conversa.OperadorResponsavelId is not null)
+            await ExigirPosseOuSupervisaoAsync(conversa, me, ct);
+
+        var roboAtivo = await db.RoboConfiguracoes.AsNoTracking().Select(c => (bool?)c.Ativo).FirstOrDefaultAsync(ct);
+        if (roboAtivo != true)
+            throw new ValidacaoException("robo", "O robô de atendimento está desligado; ligue-o antes de pedir a retomada.");
+        if (conversa.RoboBloqueado)
+            throw new ValidacaoException("robo",
+                "O robô está bloqueado nesta conversa (\"Parar robô\"). Devolva a conversa ao robô antes de pedir a retomada.");
+
+        var agora = DateTime.UtcNow;
+        if (conversa.JanelaExpiraEm is not { } janela || janela <= agora)
+            throw new ValidacaoException("janela",
+                "A janela de 24 horas está fechada — a Meta só aceita texto livre enquanto a última "
+                + "mensagem do cidadão tem menos de 24 horas. Sem janela, o caminho é o modelo aprovado (Mensageria).");
+
+        // Âncora da tarefa: a mensagem mais recente SEM tarefa (o índice único não deixa duas na
+        // mesma). O conteúdo dela não importa — a instrução extra manda o turno.
+        var ancora = await db.MensagensWhatsApp.AsNoTracking()
+            .Where(m => m.ConversaId == conversa.Id && m.TipoMensagem != TipoMensagem.NotaInterna
+                && !db.RoboTarefas.Any(t => t.MensagemWhatsAppId == m.Id))
+            .OrderByDescending(m => m.OcorridoEm)
+            .Select(m => (Guid?)m.Id)
+            .FirstOrDefaultAsync(ct);
+        if (ancora is null)
+            throw new ValidacaoException("robo", "O robô já tem tarefa registrada para as mensagens desta conversa — aguarde a resposta dele.");
+
+        conversa.RoboRearmadoEm = agora;     // a trava humano não cala a resposta que a equipe pediu
+        conversa.RoboInteracoesNaJanela = 0; // orçamento renovado para o robô conduzir a retomada
+        conversa.AtualizadoEm = agora;
+        conversa.AtualizadoPor = me;
+
+        var evento = NovoEvento(conversa.Id, TipoEventoConversa.EncaminhadaRobo, me, agora);
+        evento.Observacao = "Retomada pedida à IA: resumo do ponto da conversa + como seguir.";
+        db.ConversaEventos.Add(evento);
+
+        db.RoboTarefas.Add(new RoboAtendimentoTarefa
+        {
+            Id = Guid.CreateVersion7(),
+            ConversaId = conversa.Id,
+            MensagemWhatsAppId = ancora.Value,
+            PacienteId = conversa.PacienteId,
+            Status = StatusRoboTarefa.Pendente,
+            InstrucaoExtra = InstrucaoRetomada,
+            CriadoEm = agora,
+        });
+
+        await SalvarComTraducaoDeCorridaAsync(conversa, ct);
+    }
+
     public async Task EncaminharAsync(
         Guid conversaId, EncaminharConversaRequest request, CancellationToken ct = default)
     {

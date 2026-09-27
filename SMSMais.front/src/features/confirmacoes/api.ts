@@ -136,6 +136,57 @@ export function useAtosDaAtendente(usuarioId: string | null, de: string, ate: st
   });
 }
 
+/** Agendamento futuro de qualquer cadastro ligado ao telefone da conversa (janela do chat). */
+export type AgendamentoDoTelefone = {
+  solicitacaoId: string;
+  pacienteId: string;
+  pacienteNome: string | null;
+  codigoSolicitacao: string | null;
+  categoria: string;
+  procedimento: string | null;
+  unidadeExecutante: string | null;
+  dataAgendada: string | null;
+  statusConfirmacao: string;
+  emAtendimentoPorOutro: boolean;
+  atendenteNome: string | null;
+};
+
+export function useProximosDoTelefone(telefone: string, pacienteId: string | null, habilitado: boolean) {
+  return useQuery({
+    queryKey: [...raiz, 'proximos-do-telefone', telefone, pacienteId],
+    queryFn: async () =>
+      (
+        await http.get<AgendamentoDoTelefone[]>('/confirmacoes/atendimento/proximos-do-telefone', {
+          params: { telefone, pacienteId: pacienteId ?? undefined },
+        })
+      ).data,
+    enabled: habilitado && telefone.length > 0,
+  });
+}
+
+export function useResumoAgendamento(solicitacaoId: string | null) {
+  return useQuery({
+    queryKey: [...raiz, 'resumo', solicitacaoId],
+    queryFn: async () =>
+      (await http.get<AgendamentoDoTelefone>(`/confirmacoes/atendimento/${solicitacaoId}/resumo`)).data,
+    enabled: Boolean(solicitacaoId),
+  });
+}
+
+/**
+ * Abre (ou traz para a frente) a JANELA SOLTA de atendimento de um agendamento — o nome fixo faz
+ * o navegador reaproveitar sempre a MESMA janela: aberta atrás/abandonada, ela volta preenchida
+ * com o agendamento clicado.
+ */
+export function abrirJanelaAtendimento(solicitacaoId: string) {
+  const w = window.open(
+    `/confirmacoes/janela/${solicitacaoId}`,
+    'sms-janela-atendimento-confirmacao',
+    'width=560,height=760,resizable=yes,scrollbars=yes',
+  );
+  w?.focus();
+}
+
 type Acao =
   | { tipo: 'atender' | 'assumir' | 'liberar' }
   | { tipo: 'confirmar'; meio?: string; observacao?: string }

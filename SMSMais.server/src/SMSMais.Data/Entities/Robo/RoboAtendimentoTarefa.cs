@@ -26,6 +26,12 @@ public class RoboAtendimentoTarefa
 
     public StatusRoboTarefa Status { get; set; } = StatusRoboTarefa.Pendente;
 
+    /// <summary>
+    /// Instrução adicional injetada no prompt DESTE turno (ex.: retomada pedida pela equipe —
+    /// "resuma o ponto da conversa e pergunte como seguir"). Nula no fluxo normal.
+    /// </summary>
+    public string? InstrucaoExtra { get; set; }
+
     /// <summary>Sessão do motor de IA reusada pelos turnos da mesma janela.</summary>
     public string? SessionIdAiengine { get; set; }
 

@@ -209,6 +209,20 @@ public sealed class ConversasController(
         return NoContent();
     }
 
+    /// <summary>Retomada pela IA: o robô resume o ponto em que a conversa parou e pergunta como a
+    /// pessoa quer seguir — para reativar atendimentos que morreram sem resposta, dentro da janela
+    /// de 24h. A conversa não muda de dono.</summary>
+    [HttpPost("{id:guid}/robo-retomar")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RetomarComRobo(Guid id, CancellationToken ct)
+    {
+        await service.RetomarComRoboAsync(id, ct);
+        return NoContent();
+    }
+
     /// <summary>Encaminha a conversa para outro atendente (ele vira o responsável).</summary>
     [HttpPost("{id:guid}/encaminhar")]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]

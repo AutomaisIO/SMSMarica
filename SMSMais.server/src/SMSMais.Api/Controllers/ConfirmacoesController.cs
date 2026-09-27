@@ -105,6 +105,24 @@ public sealed class ConfirmacoesController(
         Guid pacienteId, CancellationToken ct) =>
         await atendimento.PendentesDoPacienteAsync(pacienteId, ct);
 
+    /// <summary>Agendamentos FUTUROS de todos os cadastros ligados ao telefone (o botão
+    /// "Agendamentos" do chat) — qualquer estado de confirmação.</summary>
+    [HttpGet("atendimento/proximos-do-telefone")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<AgendamentoDoTelefoneDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AgendamentoDoTelefoneDto>> ProximosDoTelefone(
+        [FromQuery] string telefone, [FromQuery] Guid? pacienteId, CancellationToken ct) =>
+        await atendimento.ProximosDoTelefoneAsync(telefone, pacienteId, ct);
+
+    /// <summary>Um agendamento pelo id, no formato da janela solta de confirmar/cancelar.</summary>
+    [HttpGet("atendimento/{solicitacaoId:guid}/resumo")]
+    [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AgendamentoDoTelefoneDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AgendamentoDoTelefoneDto>> ResumoDoAgendamento(
+        Guid solicitacaoId, CancellationToken ct) =>
+        await atendimento.ResumoDoAgendamentoAsync(solicitacaoId, ct) is { } dto ? Ok(dto) : NotFound();
+
     [HttpGet("atendimento/{solicitacaoId:guid}/historico")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<EventoAtendimentoDto>>(StatusCodes.Status200OK)]

@@ -108,6 +108,7 @@ import { PainelOuvidoriaPage } from '@/features/ouvidoria/pages/PainelOuvidoriaP
 import { ConfiguracaoOuvidoriaPage } from '@/features/ouvidoria/pages/ConfiguracaoOuvidoriaPage';
 import { MensageriaPage } from '@/features/mensageria/pages/MensageriaPage';
 import { ConfirmacoesPage } from '@/features/confirmacoes/pages/ConfirmacoesPage';
+import { JanelaAtendimentoPage } from '@/features/confirmacoes/pages/JanelaAtendimentoPage';
 import { ManualIndicePage } from '@/features/manual/pages/ManualIndicePage';
 import { ManualArtigoPage } from '@/features/manual/pages/ManualArtigoPage';
 import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/RespostasRapidasPage';
@@ -147,6 +148,8 @@ export function AppRouter() {
         <Route path="/exames-anteriores/janela" element={<ExamesAnterioresJanelaPage />} />
         {/* Central de Atendimento em janela separada do navegador (ticket #18). */}
         <Route path="/chat/janela" element={<ChatJanelaPage />} />
+        {/* Janela solta de confirmar/cancelar UM agendamento, aberta do chat. */}
+        <Route path="/confirmacoes/janela/:solicitacaoId" element={<JanelaAtendimentoPage />} />
       </Route>
 
       <Route element={<RotaProtegida />}>

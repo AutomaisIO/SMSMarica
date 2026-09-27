@@ -13,6 +13,7 @@ import {
 import { useAssinaturaConversa } from '@/features/conversas/hooks/useChatHub';
 import { ComposerMensagem } from '@/features/conversas/components/ComposerMensagem';
 import { ConfirmarAgendamentoChat } from '@/features/conversas/components/ConfirmarAgendamentoChat';
+import { RetomarComRoboChat } from '@/features/conversas/components/RetomarComRoboChat';
 import { EncaminharConversaDialog } from '@/features/conversas/components/EncaminharConversaDialog';
 import { TransferirConversaDialog } from '@/features/conversas/components/TransferirConversaDialog';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -131,6 +132,7 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   const podeSupervisao = useTemConsulta('ConversasSupervisao');
   // #133: confirmar agendamento direto do chat exige quem pode dar desfecho de confirmação.
   const podeConfirmar = usePermissao('Confirmacoes', 'Edicao');
+  const podeEditar = usePermissao('Conversas', 'Edicao');
   const assumir = useAssumirConversa();
   const marcarLida = useMarcarLida();
   const devolver = useDevolverConversa();
@@ -221,10 +223,16 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
 
           {conversa && (
             <div className="flex shrink-0 items-center gap-1.5">
-              {/* #133: confirmar agendamento do paciente sem sair da conversa. */}
-              {conversa.pacienteId && podeConfirmar && (
-                <ConfirmarAgendamentoChat pacienteId={conversa.pacienteId} />
+              {/* #133 (evoluído): agendamentos do NÚMERO — confirma/cancela na janela solta. */}
+              {podeConfirmar && (
+                <ConfirmarAgendamentoChat
+                  telefone={conversa.telefoneCanonical}
+                  pacienteId={conversa.pacienteId ?? null}
+                />
               )}
+
+              {/* Retomada pela IA: reativa conversa que morreu sem resposta (janela de 24h). */}
+              {podeEditar && <RetomarComRoboChat conversaId={conversa.id} />}
 
               {/* Chip de posse: quem atende esta conversa. */}
               {souDono ? (

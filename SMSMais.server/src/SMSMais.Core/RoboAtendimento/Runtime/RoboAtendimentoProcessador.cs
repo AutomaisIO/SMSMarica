@@ -101,6 +101,11 @@ public sealed class RoboAtendimentoProcessador(
         }
 
         var texto = mensagem.Conteudo ?? string.Empty;
+        // RETOMADA pedida pela equipe (botão na conversa): a tarefa não nasce de uma mensagem do
+        // cidadão — a âncora é só o gancho do índice único. A instrução extra manda o modelo
+        // resumir o ponto da conversa e perguntar como seguir; os guards de "mensagem recebida"
+        // não se aplicam.
+        var retomada = !string.IsNullOrWhiteSpace(tarefa.InstrucaoExtra);
 
         // AUTO-RESPOSTA de outro WhatsApp Business ("X agradece seu contato. Como podemos ajudar?",
         // "responderemos assim que possível"): não é gente. Responder dispara a auto-resposta do
@@ -108,7 +113,7 @@ public sealed class RoboAtendimentoProcessador(
         // 17 destas, de comércios e consultórios. A proteção tem de ser AQUI, antes do modelo:
         // na simulação, o Haiku só não caiu no laço por conta própria, desobedecendo a regra que
         // manda responder com pergunta.
-        if (PareceAutoResposta(texto))
+        if (!retomada && PareceAutoResposta(texto))
         {
             await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff,
                 "Auto-resposta de outro sistema detectada — não respondido.", ct);
@@ -183,10 +188,11 @@ public sealed class RoboAtendimentoProcessador(
             PacienteId: pacienteDaConversa,
             AssuntoId: assunto?.Id,
             Modelo: string.IsNullOrWhiteSpace(assunto?.Modelo) ? cfg.ModeloPadrao : assunto!.Modelo!,
-            InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp, pertoDoLimite, comandos.Length > 0),
+            InstrucaoSistema: RoboPrompt.MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp, pertoDoLimite, comandos.Length > 0)
+                + (retomada ? "\n\n" + tarefa.InstrucaoExtra : string.Empty),
             ComandosHabilitados: comandos,
             Historico: await CarregarHistoricoAsync(conversa.Id, tarefa.MensagemWhatsAppId, ct),
-            MensagemAtual: texto,
+            MensagemAtual: retomada ? "(gatilho interno: a equipe pediu para retomar esta conversa parada)" : texto,
             DentroDoHorario: dentroHorario);
 
         var resposta = await motor.ResponderAsync(entrada, ct);
@@ -199,7 +205,9 @@ public sealed class RoboAtendimentoProcessador(
         }
 
         // Máquina determinística assumiu o telefone enquanto a IA pensava? Não responder por cima.
-        if (await db.VerificacoesCadastraisEstado.AsNoTracking().AnyAsync(
+        // (Na RETOMADA o estado vivo costuma ser exatamente o diálogo abandonado que a equipe quer
+        // reativar — aí o robô entra por ordem explícita e convida a pessoa a continuar.)
+        if (!retomada && await db.VerificacoesCadastraisEstado.AsNoTracking().AnyAsync(
                 e => e.TelefoneCanonical == conversa.TelefoneCanonical && e.ExpiraEm > DateTime.UtcNow, ct))
         {
             await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Verificação cadastral determinística em andamento.", ct);

@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-09-25',
+  atualizadoEm: '2026-09-27',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
@@ -43,6 +43,8 @@ export const artigoConfirmacoes: Artigo = {
     'janela de leitura',
     'fechamento do dia anterior',
     'contato errado',
+    'janela solta',
+    'agendamentos do número',
     'número negado',
     'pendente',
     'telefone comprometido',
@@ -651,6 +653,34 @@ export const artigoConfirmacoes: Artigo = {
               },
             ]}
           />
+        </div>
+      ),
+    },
+    {
+      id: 'pelo-chat',
+      titulo: 'Pelo chat: o botão "Agendamentos" e a janela solta',
+      busca:
+        'chat conversa central de atendimento botão agendamentos janela solta popup confirmar cancelar pelo número família',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Quem atende a conversa no WhatsApp não precisa vir até esta tela: o cabeçalho do chat tem o
+            botão <BotaoRef>Agendamentos</BotaoRef>, que lista os <strong>próximos agendamentos do
+            número</strong> — de todos os cadastros que aquele telefone atende, porque o celular da
+            família fala por mais de um paciente.
+          </P>
+          <P>
+            Clicar num agendamento abre a <strong>janela solta de atendimento</strong> (uma janela
+            separada do navegador — e sempre a <em>mesma</em>: clicar em outro agendamento reaproveita a
+            janela aberta e a traz para a frente). Nela aparecem os dados do agendamento e as duas
+            decisões: <BotaoRef>Confirmar presença</BotaoRef> ou <BotaoRef>Não vai (cancelar)</BotaoRef>{' '}
+            com o motivo que a pessoa deu. O desfecho aparece na própria janela.
+          </P>
+          <Callout tipo="dica" titulo="O cancelamento pelo chat cai na aba Cancelamento">
+            É o mesmo caminho do botão do paciente: cancela localmente, libera a vaga por aqui e entra na
+            aba <AbaRef>Cancelamento</AbaRef> para a equipe tratar o SISREG — quem atende o chat não
+            precisa ter a senha do SISREG.
+          </Callout>
         </div>
       ),
     },

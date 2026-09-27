@@ -49,6 +49,14 @@ public interface IAtendimentoConfirmacaoService
     Task<IReadOnlyList<AtendenteConfirmacaoDto>> ListarAtendentesAsync(CancellationToken ct = default);
 
     /// <summary>Os agendamentos do paciente que ainda esperam confirmação — para confirmar direto do chat.</summary>
+    /// <summary>Agendamentos FUTUROS de todos os cadastros ligados ao telefone (qualquer estado de
+    /// confirmação — a janela decide entre confirmar e cancelar olhando o estado).</summary>
+    Task<IReadOnlyList<AgendamentoDoTelefoneDto>> ProximosDoTelefoneAsync(
+        string telefone, Guid? pacienteId = null, CancellationToken ct = default);
+
+    /// <summary>Um agendamento pelo id, no mesmo formato da lista — é o que a janela solta carrega.</summary>
+    Task<AgendamentoDoTelefoneDto?> ResumoDoAgendamentoAsync(Guid solicitacaoId, CancellationToken ct = default);
+
     Task<IReadOnlyList<AgendamentoPendentePacienteDto>> PendentesDoPacienteAsync(
         Guid pacienteId, CancellationToken ct = default);
 
@@ -337,6 +345,113 @@ public sealed class AtendimentoConfirmacaoService(
             .OrderBy(u => u.NomeCompleto)
             .Select(u => new AtendenteConfirmacaoDto(u.Id, u.NomeCompleto))
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AgendamentoDoTelefoneDto>> ProximosDoTelefoneAsync(
+        string telefone, Guid? pacienteId = null, CancellationToken ct = default)
+    {
+        var me = usuarioAtual.UsuarioId;
+        var hoje = FusoBrasilia.InicioDoDiaAtualEmUtc();
+
+        // Quem é "do número": todo paciente que recebeu comunicação nele no último ano (o telefone
+        // da família atende vários cadastros — caso Gilberto/Marilza), mais o paciente amarrado à
+        // conversa. As formas cobrem o nono dígito (cadastro antigo × wa_id atual).
+        var formas = ReguaReforcoConfirmacao.FormasDoNumero(telefone);
+        if (formas.Length == 0) return [];
+        var corte = DateTime.UtcNow.AddDays(-365);
+        var pacientesDoNumero = await db.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.Telefone != null && formas.Contains(c.Telefone) && c.CriadoEm >= corte)
+            .Select(c => c.PacienteId)
+            .Distinct()
+            .ToListAsync(ct);
+        if (pacienteId is { } daConversa && !pacientesDoNumero.Contains(daConversa))
+            pacientesDoNumero.Add(daConversa);
+        if (pacientesDoNumero.Count == 0) return [];
+
+        var cfg = await configuracao.ObterAsync(ct);
+        var q = db.Solicitacoes.AsNoTracking()
+            .Where(s => pacientesDoNumero.Contains(s.PacienteId)
+                && s.ExcluidoEm == null
+                && s.Status != StatusSolicitacao.Cancelada
+                && s.DataAgendada != null && s.DataAgendada >= hoje);
+        if (cfg.SomenteSisreg)
+            q = q.Where(s => s.FonteCriacao == FonteSolicitacao.ImportacaoSisreg
+                || s.FonteCriacao == FonteSolicitacao.ExtensaoNavegador
+                || (s.FonteCriacao == null && s.RawSisreg != null));
+
+        var linhas = await q
+            .OrderBy(s => s.DataAgendada)
+            .ThenBy(s => s.CodigoSolicitacao)
+            .Select(s => new
+            {
+                s.Id,
+                s.PacienteId,
+                s.CodigoSolicitacao,
+                Categoria = s.Categoria.ToString(),
+                Procedimento = s.ExameImagem != null && s.ExameImagem.TipoExame != null
+                    ? s.ExameImagem.TipoExame.Nome
+                    : s.EspecialidadeTexto ?? s.ProcedimentoTexto,
+                Unidade = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
+                s.DataAgendada,
+                Confirmacao = s.StatusConfirmacao.ToString(),
+                EmAtendimentoPorOutro = db.AtendimentosConfirmacao.Any(a => a.SolicitacaoId == s.Id
+                    && a.EncerradoEm == null
+                    && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento
+                    && a.AtendenteUsuarioId != me),
+                AtendenteNome = db.AtendimentosConfirmacao
+                    .Where(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null
+                        && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento)
+                    .Select(a => a.Atendente != null ? a.Atendente.NomeCompleto : "Atendente")
+                    .FirstOrDefault(),
+            })
+            .Take(30)
+            .ToListAsync(ct);
+
+        var nomes = await pacienteResolver.ResolverManyAsync(linhas.Select(l => l.PacienteId).Distinct(), ct);
+        return [.. linhas.Select(l => new AgendamentoDoTelefoneDto(
+            l.Id, l.PacienteId,
+            nomes.TryGetValue(l.PacienteId, out var p) ? p.Nome : null,
+            l.CodigoSolicitacao, l.Categoria, l.Procedimento, l.Unidade, l.DataAgendada,
+            l.Confirmacao, l.EmAtendimentoPorOutro, l.AtendenteNome))];
+    }
+
+    public async Task<AgendamentoDoTelefoneDto?> ResumoDoAgendamentoAsync(
+        Guid solicitacaoId, CancellationToken ct = default)
+    {
+        var me = usuarioAtual.UsuarioId;
+        var linha = await db.Solicitacoes.AsNoTracking()
+            .Where(s => s.Id == solicitacaoId && s.ExcluidoEm == null)
+            .Select(s => new
+            {
+                s.Id,
+                s.PacienteId,
+                s.CodigoSolicitacao,
+                Categoria = s.Categoria.ToString(),
+                Procedimento = s.ExameImagem != null && s.ExameImagem.TipoExame != null
+                    ? s.ExameImagem.TipoExame.Nome
+                    : s.EspecialidadeTexto ?? s.ProcedimentoTexto,
+                Unidade = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
+                s.DataAgendada,
+                Confirmacao = s.StatusConfirmacao.ToString(),
+                EmAtendimentoPorOutro = db.AtendimentosConfirmacao.Any(a => a.SolicitacaoId == s.Id
+                    && a.EncerradoEm == null
+                    && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento
+                    && a.AtendenteUsuarioId != me),
+                AtendenteNome = db.AtendimentosConfirmacao
+                    .Where(a => a.SolicitacaoId == s.Id && a.EncerradoEm == null
+                        && a.Situacao == SituacaoAtendimentoConfirmacao.EmAtendimento)
+                    .Select(a => a.Atendente != null ? a.Atendente.NomeCompleto : "Atendente")
+                    .FirstOrDefault(),
+            })
+            .FirstOrDefaultAsync(ct);
+        if (linha is null) return null;
+
+        var nomes = await pacienteResolver.ResolverManyAsync([linha.PacienteId], ct);
+        return new AgendamentoDoTelefoneDto(
+            linha.Id, linha.PacienteId,
+            nomes.TryGetValue(linha.PacienteId, out var p) ? p.Nome : null,
+            linha.CodigoSolicitacao, linha.Categoria, linha.Procedimento, linha.Unidade,
+            linha.DataAgendada, linha.Confirmacao, linha.EmAtendimentoPorOutro, linha.AtendenteNome);
     }
 
     public async Task<IReadOnlyList<AgendamentoPendentePacienteDto>> PendentesDoPacienteAsync(

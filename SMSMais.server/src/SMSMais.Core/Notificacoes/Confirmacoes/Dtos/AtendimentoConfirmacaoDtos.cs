@@ -145,6 +145,24 @@ public sealed record AcaoAtendimentoResultadoDto(
     string? SisregSituacao = null,
     bool PacienteAvisado = false);
 
+/// <summary>
+/// Agendamento futuro de QUALQUER cadastro ligado ao telefone da conversa (o número da família
+/// atende vários pacientes). Alimenta o botão "Agendamentos" do chat e a janela solta de
+/// confirmar/cancelar — por isso traz o paciente e o estado atual da confirmação.
+/// </summary>
+public sealed record AgendamentoDoTelefoneDto(
+    Guid SolicitacaoId,
+    Guid PacienteId,
+    string? PacienteNome,
+    string? CodigoSolicitacao,
+    string Categoria,
+    string? Procedimento,
+    string? UnidadeExecutante,
+    DateTime? DataAgendada,
+    string StatusConfirmacao,
+    bool EmAtendimentoPorOutro,
+    string? AtendenteNome);
+
 /// <summary>Evento da trilha do atendimento (detalhe).</summary>
 public sealed record EventoAtendimentoDto(
     string Tipo, Guid? AtorUsuarioId, string? AtorNome, Guid? DeUsuarioId, string? DeNome,

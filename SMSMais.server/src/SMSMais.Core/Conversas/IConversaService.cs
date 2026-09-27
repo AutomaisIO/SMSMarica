@@ -52,6 +52,14 @@ public interface IConversaService
     Task EncaminharParaRoboAsync(Guid conversaId, CancellationToken ct = default);
 
     /// <summary>
+    /// RETOMADA pela IA (botão na conversa): o robô manda um resumo do ponto em que a conversa
+    /// parou e pergunta como a pessoa quer seguir — para reativar, dentro da janela de 24h,
+    /// atendimentos que morreram sem resposta. Exige robô ligado, sem "Parar robô" e janela
+    /// aberta; a conversa NÃO muda de dono.
+    /// </summary>
+    Task RetomarComRoboAsync(Guid conversaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Para o robô nesta conversa (bloqueio forte, vence a virada de horário e persiste entre
     /// janelas até a conversa voltar ao robô). Assume para o operador se estiver sem dono.
     /// </summary>
