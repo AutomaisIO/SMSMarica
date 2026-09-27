@@ -717,6 +717,103 @@ public sealed class ConversaService(
         await SalvarComTraducaoDeCorridaAsync(conversa, ct);
     }
 
+    public async Task<RetomadaLargadasResultadoDto> RetomarLargadasComRoboAsync(
+        int lote, bool aplicar, CancellationToken ct = default)
+    {
+        ExigirUsuario();
+        lote = Math.Clamp(lote, 1, 200);
+
+        var roboAtivo = await db.RoboConfiguracoes.AsNoTracking().Select(c => (bool?)c.Ativo).FirstOrDefaultAsync(ct);
+        if (roboAtivo != true)
+            throw new ValidacaoException("robo", "O robô de atendimento está desligado; ligue-o antes da retomada em lote.");
+
+        var agora = DateTime.UtcNow;
+
+        // Largada = a ÚLTIMA palavra é do cidadão, a janela de 24h está aberta, ninguém bloqueou o
+        // robô e não há tarefa dele a caminho. Ordem: janela mais perto de fechar primeiro.
+        var brutas = await db.Conversas.AsNoTracking()
+            .Where(c => c.ExcluidoEm == null && !c.RoboBloqueado && c.JanelaExpiraEm > agora)
+            .Select(c => new
+            {
+                c.Id,
+                c.TelefoneCanonical,
+                c.PacienteId,
+                TemDono = c.OperadorResponsavelId != null,
+                Ultima = db.MensagensWhatsApp
+                    .Where(m => m.ConversaId == c.Id && m.TipoMensagem != TipoMensagem.NotaInterna)
+                    .OrderByDescending(m => m.OcorridoEm)
+                    .Select(m => new { m.Direcao, m.OcorridoEm, m.Conteudo })
+                    .FirstOrDefault(),
+                TemTarefaViva = db.RoboTarefas.Any(t => t.ConversaId == c.Id
+                    && (t.Status == StatusRoboTarefa.Pendente || t.Status == StatusRoboTarefa.Processando)),
+            })
+            .Where(x => x.Ultima != null && x.Ultima.Direcao == DirecaoMensagem.Entrada && !x.TemTarefaViva)
+            .OrderBy(x => x.Ultima!.OcorridoEm)
+            .Take(500)
+            .ToListAsync(ct);
+
+        var cortesias = 0;
+        var selecionadas = new List<LargadaDto>();
+        var pacientesPorConversa = new Dictionary<Guid, Guid?>();
+        foreach (var c in brutas)
+        {
+            if (Notificacoes.WhatsApp.Manipuladores.RoboAtendimentoWhatsAppHandler.EhCortesiaPura(c.Ultima!.Conteudo))
+            {
+                cortesias++;
+                continue;
+            }
+            if (selecionadas.Count >= lote) continue; // segue contando só as cortesias do total
+            selecionadas.Add(new LargadaDto(
+                c.Id, TelefoneWhatsApp.Ultimos4(c.TelefoneCanonical), c.TemDono,
+                c.Ultima.OcorridoEm, c.Ultima.Conteudo is { } t && t.Length > 90 ? t[..90] : c.Ultima.Conteudo));
+            pacientesPorConversa[c.Id] = c.PacienteId;
+        }
+
+        var criadas = 0;
+        var semAncora = 0;
+        if (aplicar && selecionadas.Count > 0)
+        {
+            foreach (var s in selecionadas)
+            {
+                // Âncora: a mensagem mais recente SEM tarefa (índice único de robo_tarefa).
+                var ancoraId = await db.MensagensWhatsApp.AsNoTracking()
+                    .Where(m => m.ConversaId == s.ConversaId && m.TipoMensagem != TipoMensagem.NotaInterna
+                        && !db.RoboTarefas.Any(t => t.MensagemWhatsAppId == m.Id))
+                    .OrderByDescending(m => m.OcorridoEm)
+                    .Select(m => (Guid?)m.Id)
+                    .FirstOrDefaultAsync(ct);
+                if (ancoraId is null)
+                {
+                    semAncora++;
+                    continue;
+                }
+                db.RoboTarefas.Add(new RoboAtendimentoTarefa
+                {
+                    Id = Guid.CreateVersion7(),
+                    ConversaId = s.ConversaId,
+                    MensagemWhatsAppId = ancoraId.Value,
+                    PacienteId = pacientesPorConversa.GetValueOrDefault(s.ConversaId),
+                    Status = StatusRoboTarefa.Pendente,
+                    InstrucaoExtra = InstrucaoRetomada,
+                    CriadoEm = agora,
+                });
+                criadas++;
+            }
+            await db.SaveChangesAsync(ct);
+
+            // Re-arma as conversas do lote: a trava humano não cala a resposta que a equipe pediu.
+            var ids = selecionadas.Select(s => s.ConversaId).ToList();
+            await db.Conversas.Where(cv => ids.Contains(cv.Id))
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(cv => cv.RoboRearmadoEm, agora)
+                    .SetProperty(cv => cv.RoboInteracoesNaJanela, 0)
+                    .SetProperty(cv => cv.AtualizadoEm, agora), ct);
+
+        }
+
+        return new RetomadaLargadasResultadoDto(brutas.Count, cortesias, semAncora, criadas, selecionadas);
+    }
+
     public async Task EncaminharAsync(
         Guid conversaId, EncaminharConversaRequest request, CancellationToken ct = default)
     {

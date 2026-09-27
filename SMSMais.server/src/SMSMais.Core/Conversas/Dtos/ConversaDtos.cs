@@ -154,3 +154,26 @@ public sealed record SituacaoContatoDto(
     DateTime? JanelaExpiraEm,
     bool PodeTextoLivre,
     bool ContatoNegado);
+
+/// <summary>Pedido da retomada em lote: quantas por vez e se é prévia (false) ou disparo (true).</summary>
+public sealed record RetomarLargadasRequest(int Lote = 50, bool Aplicar = false);
+
+/// <summary>Uma conversa "largada" candidata à retomada em lote (prévia e resultado).</summary>
+public sealed record LargadaDto(
+    Guid ConversaId,
+    string Fone4,
+    bool TemDono,
+    DateTime UltimaEntradaEm,
+    string? UltimoTexto);
+
+/// <param name="LargadasComJanela">Total com a última palavra do cidadão e janela de 24h aberta.</param>
+/// <param name="PuladasCortesia">Terminaram só em cortesia ("obrigado", "ok") — retomar seria estranho.</param>
+/// <param name="SemAncora">Sem mensagem livre para ancorar a tarefa (o robô já tratou todas).</param>
+/// <param name="Criadas">Tarefas de retomada criadas (0 na prévia).</param>
+/// <param name="Lote">As conversas deste lote, na ordem (janela mais perto de fechar primeiro).</param>
+public sealed record RetomadaLargadasResultadoDto(
+    int LargadasComJanela,
+    int PuladasCortesia,
+    int SemAncora,
+    int Criadas,
+    IReadOnlyList<LargadaDto> Lote);

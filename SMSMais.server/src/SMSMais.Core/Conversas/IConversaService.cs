@@ -60,6 +60,14 @@ public interface IConversaService
     Task RetomarComRoboAsync(Guid conversaId, CancellationToken ct = default);
 
     /// <summary>
+    /// Retomada EM LOTE das conversas "largadas" (última palavra é do cidadão, janela de 24h
+    /// aberta, sem tarefa do robô a caminho). Com <paramref name="aplicar"/> falso é a PRÉVIA:
+    /// conta e lista sem criar nada. Pula quem terminou só em cortesia ("obrigado", "ok").
+    /// </summary>
+    Task<Dtos.RetomadaLargadasResultadoDto> RetomarLargadasComRoboAsync(
+        int lote, bool aplicar, CancellationToken ct = default);
+
+    /// <summary>
     /// Para o robô nesta conversa (bloqueio forte, vence a virada de horário e persiste entre
     /// janelas até a conversa voltar ao robô). Assume para o operador se estiver sem dono.
     /// </summary>

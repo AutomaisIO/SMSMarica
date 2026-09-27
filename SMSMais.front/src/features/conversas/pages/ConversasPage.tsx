@@ -1,13 +1,17 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Bot, Plus } from 'lucide-react';
+import { usePermissao } from '@/shared/auth/authStore';
 import { ListaConversas } from '@/features/conversas/components/ListaConversas';
 import { ThreadMensagens } from '@/features/conversas/components/ThreadMensagens';
 import { NovaConversaDialog } from '@/features/conversas/components/NovaConversaDialog';
+import { RetomarLargadasDialog } from '@/features/conversas/components/RetomarLargadasDialog';
 import { PainelRespostasRapidas } from '@/features/respostas-rapidas/components/PainelRespostasRapidas';
 
 export function ConversasPage() {
   const [ativa, setAtiva] = useState<string | null>(null);
   const [nova, setNova] = useState(false);
+  const [largadas, setLargadas] = useState(false);
+  const supervisiona = usePermissao('ConversasSupervisao', 'Edicao');
 
   return (
     <div>
@@ -16,14 +20,28 @@ export function ConversasPage() {
           <h1 className="text-xl font-semibold text-gray-900">Central de Atendimento</h1>
           <p className="text-sm text-gray-500">Conversas de WhatsApp das suas unidades.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setNova(true)}
-          className="flex items-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
-        >
-          <Plus className="h-4 w-4" /> Nova conversa
-        </button>
+        <div className="flex items-center gap-2">
+          {supervisiona && (
+            <button
+              type="button"
+              onClick={() => setLargadas(true)}
+              title="O robô retoma em lote as conversas paradas com a última palavra do cidadão (janela de 24h)"
+              className="flex items-center gap-1.5 rounded-md border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100"
+            >
+              <Bot className="h-4 w-4" /> Retomar largadas
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setNova(true)}
+            className="flex items-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            <Plus className="h-4 w-4" /> Nova conversa
+          </button>
+        </div>
       </div>
+
+      {largadas && <RetomarLargadasDialog aoFechar={() => setLargadas(false)} />}
 
       <div className="flex h-[72vh] overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="w-80 shrink-0 border-r border-gray-200">

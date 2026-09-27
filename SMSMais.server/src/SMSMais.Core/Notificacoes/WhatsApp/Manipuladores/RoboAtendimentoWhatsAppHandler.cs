@@ -125,7 +125,7 @@ public sealed class RoboAtendimentoWhatsAppHandler(
     /// <summary>Mensagem que é SÓ cortesia/fecho (emojis, "ok", "obrigada", "confirmado, estarei
     /// lá") — sem conteúdo novo. Régua conservadora: qualquer palavra fora da lista já NÃO é
     /// cortesia pura e segue o fluxo normal.</summary>
-    private static bool EhCortesiaPura(string? texto)
+    internal static bool EhCortesiaPura(string? texto)
     {
         if (string.IsNullOrWhiteSpace(texto) || texto.Length > 60) return false;
         var norm = RoboAtendimento.Runtime.RoboClassificador.NormalizarTexto(texto);

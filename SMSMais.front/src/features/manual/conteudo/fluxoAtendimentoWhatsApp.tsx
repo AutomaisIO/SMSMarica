@@ -312,6 +312,12 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
             que parou</strong> e perguntar como a pessoa quer seguir — aproveitando a janela de 24h enquanto
             está aberta. A conversa não muda de dono, e as travas acima continuam valendo.
           </P>
+          <P>
+            A supervisão tem a versão <strong>em lote</strong>: o botão <BotaoRef>Retomar largadas</BotaoRef>{' '}
+            no topo da Central conta quantas conversas estão com a última palavra do cidadão e a janela
+            aberta, mostra a prévia do lote (quem terminou só em “obrigado/ok” fica de fora) e dispara as
+            retomadas de uma vez — o robô responde uma a uma pela fila normal.
+          </P>
         </div>
       ),
     },

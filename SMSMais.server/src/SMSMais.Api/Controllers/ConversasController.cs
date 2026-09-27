@@ -223,6 +223,16 @@ public sealed class ConversasController(
         return NoContent();
     }
 
+    /// <summary>Retomada EM LOTE das conversas largadas (supervisão): prévia com aplicar=false,
+    /// disparo com aplicar=true. O robô responde uma a uma pela fila normal.</summary>
+    [HttpPost("robo-retomar-largadas")]
+    [RequerPermissao(ModuloPermissao.ConversasSupervisao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RetomadaLargadasResultadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<RetomadaLargadasResultadoDto> RetomarLargadas(
+        [FromBody] RetomarLargadasRequest request, CancellationToken ct) =>
+        await service.RetomarLargadasComRoboAsync(request.Lote, request.Aplicar, ct);
+
     /// <summary>Encaminha a conversa para outro atendente (ele vira o responsável).</summary>
     [HttpPost("{id:guid}/encaminhar")]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
