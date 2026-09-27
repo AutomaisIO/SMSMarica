@@ -2,6 +2,7 @@ import { BookOpen, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
+import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
 import type { Artigo, GrupoManual } from '@/features/manual/tipos';
@@ -48,6 +49,7 @@ export const ARTIGOS: Artigo[] = [
   artigoAnamnese,
   artigoAssinaturaLaudo,
   artigoConfirmacoes,
+  artigoFluxoAtendimentoWhatsApp,
   artigoMensageria,
   artigoOuvidoria,
 ];
