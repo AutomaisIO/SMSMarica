@@ -731,6 +731,10 @@ public sealed class ConversaService(
 
         // Largada = a ÚLTIMA palavra é do cidadão, a janela de 24h está aberta, ninguém bloqueou o
         // robô e não há tarefa dele a caminho. Ordem: janela mais perto de fechar primeiro.
+        // A última mensagem é buscada por TELEFONE, nunca por ConversaId: as saídas da máquina
+        // (verificação, detalhes do agendamento, confirmação) são gravadas SEM ConversaId — medir
+        // por conversa faz gente plenamente atendida parecer largada (armadilha já documentada:
+        // superestima 3–5×), e a retomada atropelaria um atendimento que acabou de dar certo.
         var brutas = await db.Conversas.AsNoTracking()
             .Where(c => c.ExcluidoEm == null && !c.RoboBloqueado && c.JanelaExpiraEm > agora)
             .Select(c => new
@@ -740,7 +744,7 @@ public sealed class ConversaService(
                 c.PacienteId,
                 TemDono = c.OperadorResponsavelId != null,
                 Ultima = db.MensagensWhatsApp
-                    .Where(m => m.ConversaId == c.Id && m.TipoMensagem != TipoMensagem.NotaInterna)
+                    .Where(m => m.Telefone == c.TelefoneCanonical && m.TipoMensagem != TipoMensagem.NotaInterna)
                     .OrderByDescending(m => m.OcorridoEm)
                     .Select(m => new { m.Direcao, m.OcorridoEm, m.Conteudo })
                     .FirstOrDefault(),
