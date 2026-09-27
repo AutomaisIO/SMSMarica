@@ -440,7 +440,9 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
 
         Assert.Equal(EtapaVerificacaoCadastral.AguardandoNascimento, (await LerEstadoAsync(db))!.Etapa);
         var resposta = Assert.Single(Respostas(c.Whats));
-        Assert.Contains("mês e do ano de nascimento", resposta);
+        // Diz por que pede e que é a ÚLTIMA coisa que falta (caso Neildo, 26/09: o toque no meio
+        // do diálogo jogava a pessoa de volta para a primeira pergunta).
+        Assert.Contains("só falta o *mês e o ano de nascimento*", resposta);
         Assert.DoesNotContain("CPF", resposta);
     }
 

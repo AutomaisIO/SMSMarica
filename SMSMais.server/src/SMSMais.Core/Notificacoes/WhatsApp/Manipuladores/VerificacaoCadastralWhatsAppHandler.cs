@@ -969,9 +969,15 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         switch (estado.Etapa)
         {
             case EtapaVerificacaoCadastral.AguardandoNascimento:
+            {
+                // Diz POR QUE está pedindo e que é a última coisa que falta — quem tocou de novo em
+                // "Quero mais informações" está perguntando "cadê?", não recomeçando.
+                var nome = await PrimeiroNomeDoAlvoAsync(estado, ct);
                 await ResponderAsync(ctx,
-                    "Preciso do *mês e do ano de nascimento* do paciente para continuar.", ct);
+                    "Estamos quase lá! Para eu te enviar as informações, só falta o *mês e o ano de "
+                    + $"nascimento* {(nome is null ? "do paciente" : $"de *{nome}*")}.", ct);
                 return true;
+            }
 
             case EtapaVerificacaoCadastral.AguardandoNome:
                 if (estado.PacienteId is not { } pacienteId
