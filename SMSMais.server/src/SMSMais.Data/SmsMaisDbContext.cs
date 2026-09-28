@@ -140,6 +140,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SisregFilaPendente> SisregFilaPendentes => Set<SisregFilaPendente>();
 
     public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
+
+    /// <summary>Memória das tentativas de completar ficha sem CPF via CADSUS (uma por CNS).</summary>
+    public DbSet<CadsusCompletude> CadsusCompletudes => Set<CadsusCompletude>();
     public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
     public DbSet<SisregVarreduraExecucaoItem> SisregVarreduraExecucaoItens => Set<SisregVarreduraExecucaoItem>();
 

@@ -133,6 +133,20 @@ public sealed class SisregImportacaoController(
         => await importacao.ReprocessarPendenciasSigtapAsync(request.ProcedimentoTexto, cancellationToken);
 
     /// <summary>
+    /// Backfill das fichas que só têm CNS: consulta o CADSUS (porta configurada) e carimba o CPF —
+    /// ou reponta para o cadastro que já tinha o CPF. Lote pequeno e síncrono (a lista de ids vem
+    /// de quem chama; teto por chamada dentro do serviço). ESCRITA.
+    /// </summary>
+    [HttpPost("completar-fichas")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<SMSMais.Core.Integracoes.Cadastro.CompletarFichasResultadoDto>(StatusCodes.Status200OK)]
+    public async Task<SMSMais.Core.Integracoes.Cadastro.CompletarFichasResultadoDto> CompletarFichas(
+        [FromBody] SMSMais.Core.Integracoes.Cadastro.CompletarFichasRequest request,
+        [FromServices] SMSMais.Core.Integracoes.Cadastro.IBackfillFichaSemCpfService backfill,
+        CancellationToken cancellationToken)
+        => await backfill.CompletarAsync(request, cancellationToken);
+
+    /// <summary>
     /// "Resolver todas": revalida em lote, no servidor, todas as pendências que uma nova tentativa
     /// pode resolver — o mesmo "Validar" de uma linha, aplicado à fila inteira. Responde 202 na
     /// hora; o front acompanha por <c>GET .../status</c>. ESCRITA.

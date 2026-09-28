@@ -78,6 +78,13 @@ public interface IPacientesService
     Task DefinirCpfAsync(Guid id, string cpf, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Preenche a data de nascimento de um paciente que está <b>sem ela</b> (ficha incompleta de
+    /// importação — SER/implantação só trazem CNS). Nascimento já preenchido é dado consolidado e
+    /// NÃO é sobrescrito (mesma régua do nome): a chamada vira no-op, sem erro.
+    /// </summary>
+    Task CompletarNascimentoAsync(Guid id, DateOnly nascimento, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Traz para <paramref name="destinoId"/> os identificadores de um cadastro-sombra (aquele que
     /// a importação criou sem CPF) quando a recepção descobre que a pessoa já existia.
     ///

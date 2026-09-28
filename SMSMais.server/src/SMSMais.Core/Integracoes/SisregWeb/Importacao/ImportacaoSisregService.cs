@@ -99,6 +99,9 @@ public sealed class ImportacaoSisregService(
     // NÃO é o IConsultaCnsService (a porta do SISREG) direto: a porta é escolhida na configuração,
     // porque a do SISREG tem orçamento anti-robô e um lote grande a estoura sozinho.
     Cadastro.ICadastroPacienteService cadastro,
+    // Ficha achada por CNS sem CPF: completa pelo CADSUS (com teto e memória) em vez de reusar
+    // a metade — ver o caso Marcia (28/09/2026) no próprio serviço.
+    Cadastro.ICompletadorFichaSemCpf completadorFicha,
     IPacientesService pacientes,
     IGeradorIdentificadores geradorIds,
     IUsuarioAtualAccessor usuarioAtual,
@@ -368,10 +371,35 @@ public sealed class ImportacaoSisregService(
         }
         else if (await pacientes.ObterPorCnsAsync(m.CnsPaciente!, ct) is { } porCns)
         {
-            pacienteId = porCns.Id;
             pacienteCriado = false;
-            nomeResolvido = porCns.NomeCompleto;
-            passos.Add($"Paciente já cadastrado (CNS {Mascara(m.CnsPaciente)}) — reusa, sem consultar o SISREG.");
+            if (string.IsNullOrWhiteSpace(porCns.Cpf))
+            {
+                // Ficha SEM CPF não é ponto final: o desafio de verificação por WhatsApp pergunta
+                // um CPF que a ficha não tem e ninguém consegue responder (caso Marcia, 28/09/2026).
+                // O completador consulta o CADSUS (porta configurada, com teto e memória) e ou
+                // carimba o CPF aqui, ou descobre que a pessoa já existia noutra ficha e a usa.
+                var completo = await completadorFicha.CompletarAsync(porCns, m.CnsPaciente!, ct);
+                pacienteId = completo.PacienteId;
+                nomeResolvido = completo.Nome;
+                passos.Add($"Paciente já cadastrado (CNS {Mascara(m.CnsPaciente)}).");
+                if (completo.Passo is { } passoCompletude) passos.Add(passoCompletude);
+            }
+            else
+            {
+                pacienteId = porCns.Id;
+                nomeResolvido = porCns.NomeCompleto;
+                passos.Add($"Paciente já cadastrado (CNS {Mascara(m.CnsPaciente)}) — reusa, sem consultar o SISREG.");
+            }
+        }
+        else if (await completadorFicha.DestinoMemorizadoAsync(m.CnsPaciente!, ct) is { } memorizado)
+        {
+            // Este CNS já foi resolvido antes: o dono do CPF é conhecido e a consulta ao CADSUS
+            // não precisa se repetir (ela é o passo caro — e era paga de novo a cada varredura
+            // quando o dono não conseguia guardar o CNS por já ter outro).
+            pacienteId = memorizado.Id;
+            pacienteCriado = false;
+            nomeResolvido = memorizado.NomeCompleto;
+            passos.Add($"CNS {Mascara(m.CnsPaciente)} já resolvido para {memorizado.NomeCompleto} (memória do CADSUS) — sem consulta nova.");
         }
         else
         {
@@ -431,6 +459,11 @@ public sealed class ImportacaoSisregService(
                 pacienteCriado = false;
                 nomeResolvido = porCpf.NomeCompleto;
                 passos.Add("Paciente já cadastrado (por CPF) — reusa, sem alterar o nome.");
+
+                // O CNS vai junto (espelho da recepção): sem isso a próxima varredura não o acha
+                // por CNS e paga o CADSUS de novo — para sempre. Quando o dono já tem outro CNS,
+                // o absorver não mexe, e é a memória que passa a redirecionar.
+                await completadorFicha.RegistrarDonoDoCnsAsync(m.CnsPaciente!, porCpf, ct);
             }
             else
             {

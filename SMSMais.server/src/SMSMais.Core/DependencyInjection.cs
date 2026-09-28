@@ -366,6 +366,10 @@ public static class DependencyInjection
         // anti-robô (~500 req/h → CAPTCHA → unidade travada 24h) e um lote grande a estoura.
         services.AddScoped<Integracoes.Cadastro.ISerCadastroPacienteService, Integracoes.Cadastro.SerCadastroPacienteService>();
         services.AddScoped<Integracoes.Cadastro.ICadastroPacienteService, Integracoes.Cadastro.CadastroPacienteRoteador>();
+        // Ficha achada por CNS sem CPF: completa pelo CADSUS (teto por escopo + memória em
+        // cadsus_completude) — scoped pelo mesmo motivo do roteador: contador por lote.
+        services.AddScoped<Integracoes.Cadastro.ICompletadorFichaSemCpf, Integracoes.Cadastro.CompletadorFichaSemCpf>();
+        services.AddScoped<Integracoes.Cadastro.IBackfillFichaSemCpfService, Integracoes.Cadastro.BackfillFichaSemCpfService>();
 
         // Cache por EXECUÇÃO (scoped, morre com a varredura) + a pré-carga que o alimenta em
         // sessões paralelas do SER. Ver PreCargaCadastroSerService: a sessão do SER é stateful e

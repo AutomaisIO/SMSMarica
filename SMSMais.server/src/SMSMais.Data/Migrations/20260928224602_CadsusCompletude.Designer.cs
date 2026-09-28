@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMais.Data;
 namespace SMSMais.Data.Migrations
 {
     [DbContext(typeof(SmsMaisDbContext))]
-    partial class SmsMaisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928224602_CadsusCompletude")]
+    partial class CadsusCompletude
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4253,89 +4256,6 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("atendimento_confirmacao_evento", "smsmarica");
                 });
 
-            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.Campanha", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Ativa")
-                        .HasColumnType("boolean")
-                        .HasColumnName("ativa");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<Guid?>("AtualizadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("atualizado_por");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<Guid?>("CriadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("criado_por");
-
-                    b.Property<bool>("EnvioAutomatico")
-                        .HasColumnType("boolean")
-                        .HasColumnName("envio_automatico");
-
-                    b.Property<DateTime?>("ExcluidoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("excluido_em");
-
-                    b.Property<Guid?>("ExcluidoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("excluido_por");
-
-                    b.Property<bool>("ExigirConferenciaCadastral")
-                        .HasColumnType("boolean")
-                        .HasColumnName("exigir_conferencia_cadastral");
-
-                    b.Property<DateTime>("FimEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fim_em");
-
-                    b.Property<DateTime>("InicioEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("inicio_em");
-
-                    b.Property<string>("LocalEndereco")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("local_endereco");
-
-                    b.Property<string>("LocalNome")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("local_nome");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("nome");
-
-                    b.Property<Guid>("UnidadeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("unidade_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UnidadeId", "InicioEm", "FimEm")
-                        .HasDatabaseName("ix_campanha_unidade_periodo");
-
-                    b.ToTable("campanha", "smsmarica", t =>
-                        {
-                            t.HasCheckConstraint("ck_campanha_periodo", "fim_em > inicio_em");
-                        });
-                });
-
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.ConfirmacaoConfiguracao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4355,10 +4275,6 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("aviso_cancelamento_habilitado");
-
-                    b.Property<DateTime?>("AvisoCancelamentoLigadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("aviso_cancelamento_ligado_em");
 
                     b.Property<bool>("ConciliacaoCancelamentoHabilitada")
                         .ValueGeneratedOnAdd()
@@ -4423,18 +4339,6 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(100)
                         .HasColumnName("maximo_por_passagem");
-
-                    b.Property<bool>("OrientacaoPostoHabilitada")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("orientacao_posto_habilitada");
-
-                    b.Property<bool>("ReforcoConfirmacaoHabilitado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("reforco_confirmacao_habilitado");
 
                     b.Property<bool>("SomenteSisreg")
                         .ValueGeneratedOnAdd()
@@ -8175,11 +8079,6 @@ namespace SMSMais.Data.Migrations
                     b.Property<string>("Erro")
                         .HasColumnType("text")
                         .HasColumnName("erro");
-
-                    b.Property<string>("InstrucaoExtra")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("instrucao_extra");
 
                     b.Property<Guid>("MensagemWhatsAppId")
                         .HasColumnType("uuid")
@@ -12668,6 +12567,64 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("solicitacao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Telefonia.UsuarioSoftphone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("NomeExibicao")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("nome_exibicao");
+
+                    b.Property<string>("Ramal")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("ramal");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ramal")
+                        .IsUnique()
+                        .HasDatabaseName("ux_usuario_softphone_ramal");
+
+                    b.HasIndex("UsuarioId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_usuario_softphone_usuario");
+
+                    b.ToTable("usuario_softphone", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Tfd.RegistroFaturamento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -14305,17 +14262,6 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Atendimento");
                 });
 
-            modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.Campanha", b =>
-                {
-                    b.HasOne("SMSMais.Data.Entities.Unidade", "Unidade")
-                        .WithMany()
-                        .HasForeignKey("UnidadeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Unidade");
-                });
-
             modelBuilder.Entity("SMSMais.Data.Entities.Notificacoes.MensagemWhatsApp", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Conversas.Conversa", "Conversa")
@@ -15220,6 +15166,17 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("UnidadeExecutante");
 
                     b.Navigation("UnidadeSolicitante");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Telefonia.UsuarioSoftphone", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Tfd.RegistroFaturamento", b =>

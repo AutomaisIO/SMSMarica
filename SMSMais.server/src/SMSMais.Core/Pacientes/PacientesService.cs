@@ -359,6 +359,28 @@ public sealed class PacientesService(
         }
     }
 
+    public async Task CompletarNascimentoAsync(
+        Guid id, DateOnly nascimento, CancellationToken cancellationToken = default)
+    {
+        var alterou = false;
+        await AtualizarComRetryAsync(id, patient =>
+        {
+            // Só preenche o vazio: nascimento existente é dado consolidado e não se sobrescreve
+            // por automação (mesma régua do nome). No-op idempotente quando já há data.
+            if (!string.IsNullOrWhiteSpace(patient.BirthDate)) return false;
+            PatientMergeFhir.SetBirthDate(patient, nascimento);
+            alterou = true;
+            return true;
+        }, cancellationToken);
+
+        if (alterou)
+        {
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), "CompletouNascimento", "",
+                nascimento.ToString("yyyy-MM-dd"), cancellationToken);
+        }
+    }
+
     public async Task AbsorverIdentificadoresAsync(
         Guid destinoId, string? cns, string? telefone, CancellationToken cancellationToken = default)
     {
