@@ -1,0 +1,218 @@
+[
+ {
+  "slide": 4,
+  "gravidade": "incomoda",
+  "tipo": "erro-factual",
+  "onde": "Subtítulo do divisor, primeira frase: \"A Lei 13.460/2017 vale para o município desde 2019.\"",
+  "problema": "A data não fecha com o art. 25 da própria lei, que escalona a vigência a partir da publicação (27/06/2017): 360 dias para municípios com mais de 500 mil habitantes e 540 dias para os de 100.001 a 500.000. Niterói cai em uma dessas duas faixas (estimativa IBGE de 2017: ~497,9 mil; Censo 2022: 481,7 mil), o que leva a vigência a junho ou dezembro de 2018 — não a 2019. Num slide cuja tese é \"a lei já exige\", uma data errada é exatamente o ponto que um procurador da FMS vai contestar.",
+  "correcao": "Trocar \"desde 2019\" por \"desde 2018\" na primeira frase do subtítulo — nada mais. Fica: \"A Lei 13.460/2017 vale para o município desde 2018. Ela não pede um canal — pede protocolo, prazo, trilha, relatório e pesquisa de satisfação. Cada obrigação virou um comportamento do sistema.\" (2018 é seguro nas duas faixas possíveis para Niterói, junho ou dezembro, sem precisar citar o art. 25 no slide.) Editar em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\gerar_slides.py:45 e regerar; se não regerar, aplicar também em slides\\03-secao-lei.html:6 e apresentacao.html:177. Só usar \"regulamentada no município em 2019\" se existir ato normativo municipal de 2019 que se queira citar — e aí a frase sobre a lei federal continua tendo de dizer 2018."
+ },
+ {
+  "slide": 3,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Primeiro cartão branco, \"Entra por qualquer porta\" — fim do parágrafo",
+  "problema": "O texto enumera os canais e conclui \"Catorze canais\", mas a lista tem doze itens (balcão, telefone, WhatsApp, e-mail, carta, urna, site público, app do cidadão, busca ativa, Disque 136, Fala.BR e ouvidoria-geral). Os dois que faltam para chegar a catorze (Painel e Outro, pela ordem do cadastro) não aparecem. Quem contar na plateia vai achar que o número foi inflado — e este é o slide de visão geral.",
+  "correcao": "Dois toques na mesma frase, em slides/02-o-que-e.html (l. 22-23) e apresentacao.html (l. 112): trocar \"Fala.BR e ouvidoria-geral.\" por \"Fala.BR, ouvidoria-geral —\" e \"<b>Catorze canais</b>, um registro só.\" por \"<b>catorze canais no cadastro</b>, um registro só.\" Tirar o \"e\" desfaz a leitura de lista fechada e \"no cadastro\" ancora o número no cadastro, alinhado com o slide da tabela da lei. Não alongar a enumeração nem citar \"Painel\" e \"Outro\" — encompridaria o parágrafo sem ganho."
+ },
+ {
+  "slide": 5,
+  "gravidade": "incomoda",
+  "tipo": "alinhamento",
+  "onde": "Coluna do meio (\"2 · Os sistemas de referência\"), logo abaixo do parágrafo do ISO 10002",
+  "problema": "Sobra uma linha divisória órfã: o bloco do ISO 10002 é o último da coluna e mesmo assim carrega o mesmo border-bottom dos blocos anteriores. O traço fica pendurado sobre cerca de 190 px de vazio, separando conteúdo de nada, e chama atenção justamente para o buraco da coluna.",
+  "correcao": "Em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\04-fundamentos.html, linha 42 (o wrapper do bloco ISO 10002, terceiro da coluna 2), apagar apenas a declaração da borda: trocar `<div style=\"padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--s200)\">` por `<div style=\"padding-bottom:8px;margin-bottom:8px\">`. Nada mais muda — as linhas 28 e 35 (OuvidorSUS 3 e PN CGU 116) mantêm a borda, que é onde ela serve: entre blocos."
+ },
+ {
+  "slide": 3,
+  "gravidade": "incomoda",
+  "tipo": "espaco-vazio",
+  "onde": "Faixa dos quatro cartões brancos, terço inferior (aprox. y 590–750 de 720 px úteis)",
+  "problema": "Os quatro cartões brancos esticam até a altura da grade mas o texto para bem antes: cerca de um terço da altura de cada cartão fica vazio, formando uma faixa branca contínua entre o fim dos parágrafos e os três cartões escuros. É o maior vazio do lote e desequilibra a metade de cima do slide.",
+  "correcao": "Editar SOMENTE C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\02-o-que-e.html, duas trocas de token: (a) <div class=\"grade g4 cresce\"> passa a <div class=\"grade g4\">; (b) <div class=\"grade g3\" style=\"margin-top:18px\"> passa a <div class=\"grade g3\" style=\"margin-top:auto\">. Assim a faixa branca fica com a altura do conteudo, a faixa escura segue ancorada acima do rodape (preserva o ritmo atual do pe do slide) e a sobra de ~100 px vira o vao entre as duas faixas — ar aberto, que le como separacao de secao, em vez de ar preso dentro de caixa com borda. DESCARTAR a segunda alternativa proposta pelo revisor (subir corpo/entrelinha dos paragrafos): isso exigiria mexer em .b-texto (estilo.css:216), classe global usada pelos 29 slides do deck — conserta um e arrisca os outros — e 1-2 pt nao fechariam 100 px de qualquer modo. Nao tocar no estilo.css compartilhado."
+ },
+ {
+  "slide": 7,
+  "gravidade": "incomoda",
+  "tipo": "erro-factual",
+  "onde": "Nota de rodapé cinza, última linha do slide: \"Percentuais: Relatório Anual de Gestão da Ouvidoria-Geral do SUS (OuvSUS/MS), 2024 — 618.727 manifestações sobre serviços municipais.\"",
+  "problema": "618.727 NÃO é o universo desses percentuais. No relatório do OuvSUS 2024, 618.727 é o total de manifestações recebidas por TODAS as ouvidorias do SUS no ano (Gráfico 3). Os seis percentuais do slide vêm do Gráfico 17 (\"Serviços do SUS sob Gestão dos Municípios\"), cujo total é 436.004. Confere pela própria conta: 231.692 solicitações ÷ 53,14% = 436 mil, não 619 mil. É um erro verificável em 30 segundos por quem abrir o PDF — e este é o slide que sustenta a tese \"metade é pedido de acesso\".",
+  "correcao": "Em SMSMais.ouvidoria/apresentacao-niteroi/slides/05-tipologia.html, linha 72, trocar apenas o trecho final da nota. De: \"618.727 manifestacoes sobre servicos municipais.\" Para: \"436.004 manifestacoes sobre servicos do SUS sob gestao municipal.\" (uma troca de numero e quatro palavras; sem mexer em layout, fonte ou tamanho). O mesmo texto esta duplicado no arquivo montado apresentacao-niteroi/apresentacao.html, linha 366 — regerar os slides ou aplicar a mesma troca la, senao o PNG continua com o numero errado. Opcional, so se quiser preservar a escala total: acrescentar ao fim \" (de 618.727 no total do SUS em 2024)\" — cabe na linha, mas nao e necessario para corrigir o erro."
+ },
+ {
+  "slide": 8,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Linha-fina sob o título: \"São relatórios públicos de 2024 e 2025\" × 2º marcador da caixa branca (50,9% → 76,6%) e 3º marcador (23 assuntos e 1.897 itens).",
+  "problema": "A promessa de que todo número é de 2024/2025 é desmentida por dois itens do próprio slide: o salto de resolutividade 50,9% → 76,6% da SMS-SP é de 2015 → 2016 (fonte: smssp_ouvidoria_central_slides), e a árvore de 23 assuntos / 1.897 itens vem do Manual das Ouvidorias do SUS de 2014. Agrava que o 50,9%→76,6% vem logo abaixo do marcador que fala da migração de 2025, o que sugere que o ganho veio da migração — coisa que a fonte não diz.",
+  "correcao": "Duas edições, em SMSMais.ouvidoria/apresentacao-niteroi/slides/06-evidencia.html (espelhar em gerar_slides2.py, linhas 25 e 36, e regerar apresentacao.html/pdf/png):\n\n1) Linha 7 — tirar a data absoluta da linha-fina, sem perder a força:\n   DE: \"Nenhum número aqui é projeção. São relatórios públicos de 2024 e 2025 &mdash; e todos apontam...\"\n   PARA: \"Nenhum número aqui é projeção. São relatórios públicos oficiais, os mais recentes de 2024 e 2025 &mdash; e todos apontam...\"\n   (usar vírgula, não um segundo travessão: a frase já tem um &mdash; adiante)\n\n2) Linha 40 — datar o único número que será cutucado:\n   DE: \"saltou de <b>50,9% para 76,6%</b> depois que a rede de pontos de resposta foi estruturada\"\n   PARA: \"saltou de <b>50,9% (2015) para 76,6% (2016)</b> depois que a rede de pontos de resposta foi estruturada\"\n\nNão mexer no marcador dos \"23 assuntos e 1.897 itens\": com a linha-fina corrigida para \"relatórios públicos oficiais\", ele fica coberto sem poluir o texto com a data de 2014 — e a taxonomia continua vigente hoje.\n\nNota fora do escopo deste slide: o mesmo 50,9% -> 76,6% aparece sem data em gerar_slides3.py:29 (slide 21-diferenciais). Se for corrigir, corrigir lá também."
+ },
+ {
+  "slide": 8,
+  "gravidade": "incomoda",
+  "tipo": "legibilidade",
+  "onde": "As quatro etiquetas de fonte no pé dos cartões de KPI: \"OuvSUS/MS 2024\", \"OuvSUS/MS 2024\", \"Ouvidoria-Geral do Rio\", \"CGM Recife 2024\" (10,5px, cor --s400 #94a3b8).",
+  "problema": "Contraste 2,5:1 sobre branco, abaixo do mínimo de 4,5:1, em 10,5px. Num slide cujo argumento é \"nenhum número aqui é projeção\", a prova da procedência é o texto mais apagado da tela e desaparece na projeção. A do Rio ainda é a única sem ano, enquanto as outras três trazem — o padrão quebra.",
+  "correcao": "Em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\06-evidencia.html, nas linhas 16, 21, 26 e 31, trocar SO a cor — de `var(--s400)` para `var(--s500)` — mantendo `font-size:10.5px` e `margin-top:7px` intactos. Ou seja, cada uma das quatro linhas passa de:\n\n  <div class=\"r\" style=\"color:var(--s400);font-size:10.5px;margin-top:7px\">…</div>\n\npara:\n\n  <div class=\"r\" style=\"color:var(--s500);font-size:10.5px;margin-top:7px\">…</div>\n\nIsso leva o contraste de 2,56:1 para 4,76:1 (passa no AA) com zero risco de layout, e preserva a escada de hierarquia: numero (40px, #12202e) > achado (11,5px, 5,82:1) > procedencia (10,5px, 4,76:1) — a etiqueta continua menor e mais clara que o corpo. Nao mexer no tamanho e nao acrescentar ano ao rotulo do Rio. Depois, regerar a apresentacao (as mesmas quatro linhas aparecem compiladas em apresentacao.html, linhas 389, 394, 399 e 404 — nao editar la a mao)."
+ },
+ {
+  "slide": 11,
+  "gravidade": "incomoda",
+  "tipo": "erro-factual",
+  "onde": "Cartão \"Relógio 1 · do cidadão\", fim do parágrafo: \"…essa justificativa vai ao cidadão — como manda o art. 16, § único.\"",
+  "problema": "Citação legal trocada. Na Lei 13.460/2017 o prazo de 30 dias prorrogável \"de forma justificada uma única vez, por igual período\" está no CAPUT do art. 16. O parágrafo único do art. 16 trata justamente do outro relógio — os 20 dias (prorrogáveis uma vez) em que os agentes do órgão respondem à ouvidoria. A própria referência do repositório confirma (SMSMais.ouvidoria/referencias/01-marco-legal.md, linha 20: \"Art. 16 — prazo: decisão final em 30 dias… §único: agentes do órgão respondem à ouvidoria em 20 dias\"). Como a apresentação se sustenta no marco legal, citar o dispositivo errado no slide dos prazos é o tipo de erro que um ouvidor de carreira percebe na hora.",
+  "correcao": "Em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\09-prazos.html, linha 16 (card \"Relógio 1 · do cidadão\"): trocar \"como manda o art. 16, § único\" por \"como manda o art. 16, caput\". Uma palavra por duas, nada mais — sem acrescentar \"da Lei 13.460/2017\" (a lei já está nomeada na capa e nos slides 03 e 04) e sem mexer no card do Relógio 2, que é outro achado. Depois, re-renderizar slide-11.png."
+ },
+ {
+  "slide": 11,
+  "gravidade": "incomoda",
+  "tipo": "espaco-vazio",
+  "onde": "Fila inferior de quatro cartões (Suspender / Cobrar e escalonar / Devolver à área / Ver o atraso)",
+  "problema": "Os quatro cartões recebem a classe `cresce` (estilo.css: `.cresce { flex: 1 }`) e esticam até o rodapé: cada um tem ~440 px de altura contra ~170 px de texto. Sobram cerca de 270 px de branco dentro dos cartões — mais de um quarto da altura útil do slide — e o bloco parece ter perdido conteúdo.",
+  "correcao": "Menor conserto que o proposto: NAO remover `cresce` (removendo, a folga inteira desce para o pe do .corpo e a nota \"Todos os sete prazos sao configuraveis...\" sobe junto com os cartoes — dois elementos se deslocam e o buraco acima do rodape fica maior). Basta um atributo em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\09-prazos.html linha 24: trocar `<div class=\"grade g4 cresce\" style=\"margin-top:18px\">` por `<div class=\"grade g4 cresce\" style=\"margin-top:18px;align-items:start\">`. A trilha continua ocupando a altura (a nota fica onde esta), mas os cartoes abracam o texto (~225 px) e o branco sai de dentro das caixas, virando respiro de pagina. Opcional, para nao concentrar a folga num vao so: subir `margin-top:18px` para `36px`. Depois de editar, regerar: apresentacao.html:557 tem uma copia identica do markup (concatenacao feita por montar.py) — rodar montar.py + render.mjs para o PNG refletir."
+ },
+ {
+  "slide": 12,
+  "gravidade": "incomoda",
+  "tipo": "espaco-vazio",
+  "onde": "Cartões inferiores: o bloco escuro \"O trilho da denúncia\" e o bloco âmbar \"Quatro permissões separadas\"",
+  "problema": "Mesma causa dos slides 10 e 11 (`grade g-3-2 cresce`): os dois blocos esticam até o rodapé e o conteúdo termina por volta de 55–60% da altura. No bloco escuro isso vira um retângulo azul-marinho vazio de ~240 px de altura por quase metade da largura do slide — é o vazio mais chamativo do lote, porque a cor sólida o destaca.",
+  "correcao": "Uma linha só, em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\10-sigilo.html, linha 26:\n\nDE:   <div class=\"grade g-3-2 cresce\" style=\"margin-top:18px\">\nPARA: <div class=\"grade g-3-2\" style=\"margin-top:56px\">\n\n(remover `cresce` mata o vazio azul-marinho; o `margin-top:56px` absorve a folga que sobra como respiro entre a fila dos três níveis e a fila inferior, deixando 76 px de margem antes do rodapé. Não mexer no `font-size:11.5px` da tabela — com esta mudança ele não é mais necessário.)\n\nDepois: `python montar.py` e `node render.mjs` para regerar apresentacao.html/pdf e slides-png/slide-12.png.\n\nObservação: a mesma linha `cresce` aparece em 10 outros slides (01-hoje, 02-o-que-e, 04-fundamentos, 06-evidencia, 08-ciclo, 09-prazos, 21-diferenciais, 22-indicadores, 23-instancia, 24-implantacao). Corrigir só onde o conteúdo realmente não preenche — não sair removendo `cresce` de todos sem conferir cada render."
+ },
+ {
+  "slide": 16,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Barra de ações do cartão do protocolo 2026-004417, logo abaixo de \"Registrada em 12/09/2026...\"",
+  "problema": "A barra mostra 7 ações (Encaminhar à área, Pedir complementação, Responder ao cidadão, Prorrogar prazo, Cobrar a área, Escalonar, Arquivar). O CONTRATO.md lista 9 — faltam \"Responder pela área\" e \"Anotar\". Pior: o slide 17 mostra a MESMA tela desfocada ao fundo e lá aparecem as 9 ações, com \"Responder pela área\" como o botão laranja principal, perfeitamente legível apesar do blur. Em slides consecutivos a mesma barra aparece diferente. Além disso, a ação promovida a primária no 16 é \"Encaminhar à área\" numa manifestação cujo status já é \"Encaminhada à área\".",
+  "correcao": "Editar SO telas/conteudo/detalhe.html, bloco da barra de acoes (linhas 26-35), sem tocar em responder.html nem no CSS: (a) inserir <button class=\"btn btn-primary btn-sm\">Responder pela area</button> como PRIMEIRO botao; (b) trocar a classe do \"Encaminhar a area\" (que mantem o icone de aviao) de btn-primary para btn-ghost; (c) inserir <button class=\"btn btn-ghost btn-sm\">Anotar</button> imediatamente antes do \"Arquivar\". Resultado: 9 acoes na ordem do CONTRATO.md linha 212, com \"Responder pela area\" e \"Responder ao cidadao\" como os dois primarios - identico ao fundo do slide 17 e coerente com o status \"Encaminhada a area\". Regerar o slide 16. NAO trocar btn-ghost por btn-outline: a diferenca de estilo entre as duas telas e quase imperceptivel sob o blur e o visual sem borda do slide 16 (que e o hero, em foco) e mais limpo."
+ },
+ {
+  "slide": 16,
+  "gravidade": "incomoda",
+  "tipo": "legibilidade",
+  "onde": "Barra de ações — \"Pedir complementação\", \"Prorrogar prazo\", \"Cobrar a área\", \"Escalonar\"",
+  "problema": "Essas quatro ações usam a classe btn-ghost: sem borda e sem preenchimento, ficam indistinguíveis de texto corrido solto entre os botões sólidos. No projetor a barra lê como \"dois botões laranja, um vermelho e umas palavras jogadas no meio\". A mesma barra no fundo do slide 17 usa btn-outline (com borda), então nem o estilo é o mesmo entre os dois slides.",
+  "correcao": "Menor conserto possível — quatro trocas de classe em UM arquivo, `SMSMais.ouvidoria/apresentacao-niteroi/telas/conteudo/detalhe.html`, linhas 30, 32, 33 e 34: `btn btn-ghost btn-sm` → `btn btn-outline btn-sm` em \"Pedir complementação\", \"Prorrogar prazo\", \"Cobrar a área\" e \"Escalonar\".\n\nDois ajustes ao que o revisor propôs:\n\n(a) NÃO mexer na regra `.btn-ghost` do estilo.css. O ghost é usado corretamente em outro lugar — responder.html linha 114, o \"Cancelar\" do rodapé do modal (visível no slide 17 ao lado de \"Enviar resposta conclusiva\"). Ali ele está pareado 1:1 com um primário dentro de um diálogo e se lê bem. O conserto é local ao detalhe.html, não global no CSS.\n\n(b) Ignorar o \"(e nas duas que forem acrescentadas)\" — isso é escopo de outra mudança pendente. O conserto mínimo são as quatro linhas que existem hoje.\n\nDepois da edição, rerrenderizar o slide (gerar_telas.py / gerar_slides.py + render.mjs) para o PNG/PDF entregue refletir a troca — senão a correção não chega ao deck."
+ },
+ {
+  "slide": 18,
+  "gravidade": "bloqueia",
+  "tipo": "incoerencia",
+  "onde": "Menu lateral esquerdo, sob \"Ouvidoria\" — comparado com a legenda 2 do rodapé",
+  "problema": "O menu do Dr. Paulo Rezende (respondente da Policlínica do Fonseca) é IDÊNTICO ao da ouvidora Rita Menezes nos slides 19–22: ele vê \"Fila 150\", \"Registrar\", \"Pontos de resposta\", \"Assuntos\", \"Painel\" e \"Configuração\". Isso contradiz frontalmente o título do slide (\"A policlínica vê o caso\") e a legenda 2 (\"Cada ponto vê só o que lhe foi encaminhado\"): o badge 150 na Fila anuncia, na mesma tela, que ele enxerga a fila inteira do município. É o primeiro detalhe que a TI de Niterói vai apontar.",
+  "correcao": "Em C:/Projetos GIT/SMSMarica/SMSMais.ouvidoria/apresentacao-niteroi/telas/conteudo/meu-ponto.meta acrescentar uma chave (ex.: `menu_ouvidoria=Meu ponto`) e, em montar.py::montar_tela, quando ela existir, remover do grupo Ouvidoria todos os `<a class=\"item\">` cujo rotulo nao seja o listado — deixando so \"Meu ponto\" com o badge 21. Nada mais do _shell.html muda, e as demais telas continuam com o menu cheio. Ajuste em relacao a proposta do revisor: NAO manter \"Registrar\" — ele esta atras do mesmo modulo `Ouvidoria` que a Fila em menuConfig.ts, entao mante-lo reconstruiria a mesma contradicao em miniatura."
+ },
+ {
+  "slide": 18,
+  "gravidade": "incomoda",
+  "tipo": "espaco-vazio",
+  "onde": "Interior da moldura do navegador, abaixo da paginação (\"Mostrar 25 · 21 manifestações\")",
+  "problema": "Sobra uma faixa branca de cerca de 165 px (≈13% da altura da moldura) entre a paginação e a borda inferior do navegador. A tabela mostra só 6 linhas para \"21 manifestações\", e o slide fica com o peso todo em cima — diferente dos slides 19 a 22, que preenchem a moldura.",
+  "correcao": "Acrescentar EXATAMENTE 2 linhas ao `<tbody>` da tabela em `telas/conteudo/meu-ponto.html` (passando de 6 para 8 linhas), sem tocar em CSS: manter a classe `tab compacta` e o padding atual intactos, para preservar a paridade de densidade com `fila.html` (slide 14).\n\nPor que 2 e não 3: o passo de linha medido é ≈74 px e o vão a fechar é ≈166 px. Duas linhas fecham ≈148 px e deixam ≈56 px de respiro — próximo dos 38 px do slide 14. Três linhas somam ≈222 px, estouram o vão em ≈18 px e jogam a paginação sobre a borda inferior da moldura.\n\nAs 2 linhas seguem o padrão das existentes (mesma estrutura de `<td>`: mono / pill p-* / pill s-encaminhada / pill pr-* / t-ass com a1+a2 / unidade / pill pz-* / sub2), com unidade \"Policlínica do Fonseca\" e assuntos tirados do catálogo já exibido no painel do slide 19 e da tabela do CONTRATO.md (linhas 175–180) — protocolos na faixa 2026-0043xx/44xx, abaixo dos já usados, preservando a ordem decrescente da coluna.\n\nSugestão para uma das duas: fazê-la do tipo Denúncia (assunto \"Conduta de profissional\", manifestante pseudonimizado). A tabela hoje não tem nenhuma linha de Denúncia, enquanto a nota de rodapé 4 do slide afirma \"Em denúncia, o que chega aqui é o teor pseudonimizado\" — a linha nova passa a comprovar a legenda em vez de deixá-la só afirmada, fechando o espaço e ganhando conteúdo no mesmo gesto.\n\nFora de escopo deste achado (não corrigir aqui): \"Mostrar 25 · 21 manifestações\" com uma única página deveria listar as 21; o deck já convive com isso no slide 14 (6 linhas para 70). Acrescentar linhas caminha na direção certa e não agrava."
+ },
+ {
+  "slide": 19,
+  "gravidade": "incomoda",
+  "tipo": "legibilidade",
+  "onde": "Gráficos \"Por tipo\", \"Por status\" e \"Tempo até a resposta (faixas)\" — barras baixas",
+  "problema": "As barras têm piso de 4 px, e por isso valores bem diferentes viram barras idênticas: em \"Tempo até a resposta\", 17 e 4 aparecem exatamente do mesmo tamanho; em \"Por status\", 9, 7 e 3 são três barras iguais; em \"Por tipo\", 14 e 6 também. O gráfico passa a mentir sobre a proporção — justo no slide que existe para provar o rigor dos números. (Os totais, esses, fecham: Por tipo = 412, Por status = 412, faixas = 237, 216+21=237, 186+51=237, estoque 150 = 18+34+61+9+21+7.)",
+  "correcao": "Menor conserto: NÃO mexer na escala nem na altura dos painéis (não há a folga que o revisor supôs, e nenhuma mudança de layout é necessária). Basta baixar o piso de 4px para 2px e recalcular só as barras pequenas de forma linear, em `SMSMais.ouvidoria/apresentacao-niteroi/telas/conteudo/painel.html`:\n\n- \"Tempo até a resposta\" (escala 54/216): l.109 `4` → `height:2px` (o 17 fica em 4px e passa a ser o dobro do 4 — é o ganho que mais importa, painel de 3 barras e muito espaço vazio).\n- \"Por tipo\" (escala 46/214): l.67 `14` → `height:3px`; l.68 `6` → `height:2px`.\n- \"Por status\" (escala 50/183): l.78 `9` → `height:3px`; l.81 `7` → `height:2px`; l.84 `3` → `height:2px`.\n\nAs demais alturas já estão proporcionais e ficam como estão. Com isso 17≠4, 14≠6 e o 9 se destaca do 7/3. O 7 e o 3 permanecem juntos no piso de 2px — limite honesto de escala linear com piso, e preferível a virar fio de 1px invisível. Risco de layout zero: `.gbar` é `align-items:flex-end` e a coluna é `justify-content:flex-end`, então reduzir altura de barra só encurta a coluna."
+ },
+ {
+  "slide": 20,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Legenda 2 do rodapé (\"Prazo próprio por ponto: o TFD em 5 dias, o hospital em 15\") × coluna PRAZO PRÓPRIO da tabela",
+  "problema": "A legenda cita o TFD com 5 dias, mas não existe linha de TFD na tabela — o CONTRATO.md (linha 153) define o ponto \"TFD e Transporte Sanitário · Área central · 5 dias · 2 membros · 4 em aberto\", e ele não foi renderizado (assim como \"Comissão de Ética\"). O apresentador vai apontar para um exemplo que não está na tela; o \"hospital em 15\" está lá, o que torna a ausência mais visível.",
+  "correcao": "Acrescentar UMA linha (só a do TFD) ao final do `<tbody>` de C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\telas\\conteudo\\pontos-resposta.html, logo após a linha da \"Superintendência de Atenção Especializada\" — a tabela está em ordem alfabética e \"TFD...\" cai naturalmente no fim (S < T), então não é preciso reordenar nada. Cabe na folga de 62px (uma linha = 35px; o nome tem 26 caracteres e não quebra na coluna de 266px). NÃO incluir a \"Comissão de Ética\" nem alterar a legenda.\n\n      <tr>\n        <td class=\"c-forte\" style=\"font-weight:500\">TFD e Transporte Sanitário</td>\n        <td>Área central (secretaria)</td>\n        <td class=\"c-fraco\">—</td>\n        <td class=\"c-fraco\">5 dias</td>\n        <td class=\"c-fraco\">2 membros</td>\n        <td><span class=\"pill st-aberto\">4</span></td>\n        <td><span class=\"pill st-ativo\">Ativo</span></td>\n      </tr>\n\nDepois, regerar o slide 20 (montar.py/render.mjs) e conferir no PNG que a linha aparece inteira, sem corte na borda inferior da moldura."
+ },
+ {
+  "slide": 22,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Cartão \"Avisos ao cidadão\", dica cinza logo abaixo da caixa \"Texto do recibo\"",
+  "problema": "A dica diz \"Use {protocolo} e {prazo}; são substituídos no envio\", mas o próprio texto de exemplo na caixa usa três variáveis: \"Protocolo {protocolo}, código de acesso {codigo}. Prazo de resposta: {prazo}.\" O {codigo} não está documentado na dica — e ele é justamente o que o cidadão usa para consultar sem login.",
+  "correcao": "Trocar, nas DUAS ocorrências, `Use <span class=\"cod-sus\">{protocolo}</span> e <span class=\"cod-sus\">{prazo}</span>;` por `Use <span class=\"cod-sus\">{protocolo}</span>, <span class=\"cod-sus\">{codigo}</span> e <span class=\"cod-sus\">{prazo}</span>;` — em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\telas\\conteudo\\configuracao.html (linha 83) e em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\apresentacao.html (linha 2720), e re-renderizar slide-22.png. Nada mais muda."
+ },
+ {
+  "slide": 23,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Tela do cidadao, coluna da direita, primeiro evento da linha do tempo: \"Resposta conclusiva ao cidadao 19/09/2026 16:28\"",
+  "problema": "A data nao fecha com o cenario. O CONTRATO fixa hoje = 20/09/2026, e a manifestacao 2026-004417 esta \"Encaminhada a area\" com o ultimo evento \"Cobranca a area - hoje, 14:32\" (slide de detalhe) e com o operador escrevendo ESSA resposta agora (slide de responder). Uma resposta conclusiva datada de 19/09 16:28 acontece ANTES da cobranca interna de hoje e antes de a resposta ser escrita - a sequencia fica impossivel para quem acompanhou os slides anteriores.",
+  "correcao": "Em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\telas\\conteudo\\cidadao.html, linha 90, trocar \"19/09/2026 16:28\" por \"20/09/2026 16:28\" (mesma linha em apresentacao.html:2911 se não for regerar). Nada mais muda: 16:28 já é depois da cobrança das 14:32 e o comprimento do texto é idêntico."
+ },
+ {
+  "slide": 25,
+  "gravidade": "incomoda",
+  "tipo": "texto",
+  "onde": "Cartao inferior esquerdo \"Paciente e profissional vindos do hub FHIR\", 2a frase",
+  "problema": "\"o profissional citado e o Practitioner - e nunca aparece no prontuario por causa disso\": como esta escrito, o sujeito de \"nunca aparece\" e o profissional, o que inverte o sentido. O que se quer dizer e que a manifestacao nunca entra no prontuario do paciente.",
+  "correcao": "Explicitar o sujeito, trocando \"- e nunca aparece no prontuario por causa disso.\" por \"- e a manifestacao nunca entra no prontuario por causa disso.\" Aplicar nos tres arquivos onde a frase existe: C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\21-diferenciais.html (linha 26), C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\apresentacao.html (linha 3006) e C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\gerar_slides3.py (linha 33), e regerar slide-25.png."
+ },
+ {
+  "slide": 26,
+  "gravidade": "incomoda",
+  "tipo": "espaco-vazio",
+  "onde": "Cartao escuro \"O que hoje ninguem publica\", coluna da direita",
+  "problema": "O cartao vai ate a base do slide, mas o texto termina no primeiro terco: sobram cerca de 430 px de 690 px de altura (mais de 60% do cartao) como bloco escuro vazio - e o vazio chama mais atencao por ser a unica area escura do slide.",
+  "correcao": "Menor conserto: em C:/Projetos GIT/SMSMarica/SMSMais.ouvidoria/apresentacao-niteroi/slides/22-indicadores.html linha 38, remover a classe f1 do cartao escuro - de <div class=\"bloco escuro f1\" style=\"padding:14px 16px\"> para <div class=\"bloco escuro\" style=\"padding:14px 16px\">. O cartao passa a ter a altura do proprio conteudo e a coluna da direita termina acima da base da tabela (espaco claro, nao vazio escuro). Se preferir manter a base alinhada com a tabela, a alternativa - tambem util ao pedido de justificar a base legal - e manter o f1 e preencher com os itens do art. 15 da Lei 13.460 dentro do proprio cartao; nao mexer em estilo.css (.f1 e usado por outros slides)."
+ },
+ {
+  "slide": 28,
+  "gravidade": "incomoda",
+  "tipo": "espaco-vazio",
+  "onde": "Faixa inferior: cartao escuro \"O que precisa ser decidido - nao programado\" e cartao \"Uma ressalva honesta\"",
+  "problema": "Os dois cartoes ocupam toda a metade inferior do slide, mas o conteudo para no meio: no cartao escuro o texto termina a ~45% da altura (cerca de 300 px vazios) e no cartao da ressalva a ~55%. O bloco escuro vazio e o defeito mais visivel do slide.",
+  "correcao": "Uma edição só: em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\24-implantacao.html, remover a classe `cresce` da linha de baixo — `<div class=\"grade g-2-1 cresce\" style=\"margin-top:18px\">` vira `<div class=\"grade g-2-1\" style=\"margin-top:18px\">`. Sem `flex: 1` a linha deixa de esticar até o rodapé e passa a ter a altura do conteúdo mais alto (o cartão da ressalva, ~370 px): os dois cartões continuam com a MESMA altura (base alinhada, sem borda irregular), o vazio do cartão escuro cai de 315 px para ~80 px, e a sobra vira espaço branco normal entre os cartões e o rodapé. Não mexer em `estilo.css` (a classe `.cresce` é usada por outros slides)."
+ },
+ {
+  "slide": 23,
+  "gravidade": "bloqueia",
+  "tipo": "incoerencia",
+  "onde": "Pagina do cidadao (slide 23), linha do tempo 'Resposta conclusiva ao cidadao 19/09/2026 16:28' — contradiz slides 14, 16 e 17",
+  "problema": "A mesma manifestacao 2026-004417 aparece em dois estados incompativeis. No slide 23 ela ja foi respondida e encerrada em 19/09/2026 16:28. Nos slides 14 (fila) e 16 (detalhe) ela ainda esta 'Encaminhada a area' e o ultimo evento e uma 'Cobranca a area' de HOJE, 14:32 (o painel do slide 19 fecha o periodo em 20/09/2026) — ou seja, a ouvidoria estaria cobrando a area no dia seguinte ao caso ja ter sido respondido. E no slide 17 a resposta ainda esta sendo digitada no modal.",
+  "correcao": "No arquivo C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\telas\\conteudo\\cidadao.html, linha 90, trocar somente o dia do carimbo da resposta conclusiva: de \"19/09/2026 16:28\" para \"20/09/2026 16:28\". Manter a hora 16:28 (ja e posterior a cobranca das 14:32 do dia 20/09) e nao mexer em mais nada do slide 23 - os prazos \"Cidadao: 12/10/2026 - encerrada\", \"Area: 22/09/2026 - encerrada\", o encaminhamento de 15/09/2026 10:12 e a consulta marcada para 29/09/2026 continuam coerentes. A string tem a mesma largura, entao nao ha reflow. Depois, regerar slide-23.png."
+ },
+ {
+  "slide": 17,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Texto da resposta no modal (slide 17) vs. mesmo texto reproduzido na pagina do cidadao (slide 23)",
+  "problema": "E a mesma resposta conclusiva, escrita de dois jeitos. Slide 17: 'Leve documento com foto, cartao SUS e os exames que ja tiver. Se nao puder ir, avise pelo mesmo WhatsApp para a vaga nao se perder.' Slide 23: 'Leve documento com foto, cartao SUS e o pedido medico.' — o fim da frase muda e o aviso de cancelamento some. Como a apresentacao promete que o cidadao ve exatamente o que a ouvidoria escreveu, a divergencia e visivel.",
+  "correcao": "Trocar so o fim da frase no slide 23, mantendo a entrada curta. Em C:/Projetos GIT/SMSMarica/SMSMais.ouvidoria/apresentacao-niteroi/telas/conteudo/cidadao.html, linha 91 (evento \"Resposta conclusiva ao cidadao\"): substituir \"e o pedido medico.\" por \"e os exames que ja tiver.\" — texto final: \"Consulta de cardiologia adulto agendada para 29/09/2026, as 14h, na Policlinica de Especialidades Dr. Sylvio Picanco. Leve documento com foto, cartao SUS e os exames que ja tiver.\" Depois re-render (montar.py) para propagar a apresentacao.html (linha 2912 hoje) e ao PNG. Sao 5 caracteres a mais: pode passar de 2 para 3 linhas no cartao, o que cabe na folga atual (~2 linhas ate o rodape) — conferir o PNG regerado. OPCIONAL, so se depois de regerar ainda sobrar uma linha de folga dentro do cartao: acrescentar tambem \"Se nao puder ir, avise pelo mesmo WhatsApp para a vaga nao se perder.\" NAO copiar o texto integral do slide 17 nem truncar a partir do inicio (\"Senhor Marcelo, sobre o protocolo...\") — estoura o cartao e esconde a consulta marcada. O slide 17 nao muda."
+ },
+ {
+  "slide": 10,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Cartao 'Em triagem — Dia 1' (slide 10) vs. linha do tempo do slide 16 ('Triagem 15/09/2026 09:58', com registro em 12/09/2026)",
+  "problema": "O slide 10 afirma que os dias sao do caso de cardiologia encaminhado a Central de Regulacao — que e o 2026-004417 mostrado nos slides 14 a 17. Mas na tela real desse caso a triagem acontece em 15/09, tres dias depois do registro (12/09), e nao no Dia 1. O Dia 3 do slide 10 ('Encaminhada a area') bate com 15/09 10:12, o que confirma que o Dia 1 esta errado.",
+  "correcao": "Trocar apenas \"Dia 1\" por \"Dia 3\" no card \"Em triagem\" do slide 10 — uma palavra, em C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\slides\\08-ciclo.html (linha 20) e espelhado em gerar_slides2.py (linha 65, tupla (u'Em triagem', u'Dia 1', ...)) para que uma regeração não desfaça; depois rodar montar.py. Não mexer no slide 16: mover a triagem do mock para 13/09 abriria um vão de 2 dias entre triagem e encaminhamento que hoje não existe."
+ },
+ {
+  "slide": 10,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Subtitulo do slide 10 ('Os dias sao de um caso real da fila') vs. ressalva do slide 28 ('Os numeros das telas sao simulacao coerente, nao dado real' / 'Nao houve levantamento de campo em Niteroi')",
+  "problema": "Um slide vende o exemplo como caso real e o outro declara, com todas as letras, que nada ali e dado real. Como o slide 28 e justamente a ressalva de honestidade, a contradicao enfraquece os dois.",
+  "correcao": "Trocar uma palavra na linha fina do slide 10: \"de um caso real da fila\" -> \"de um caso tipico da fila\". Frase final: \"O caminho feliz tem sete paradas. Os dias sao de um caso tipico da fila: uma solicitacao de cardiologia encaminhada a Central de Regulacao.\"\n\nEditar na fonte (o HTML final e gerado):\n- C:/Projetos GIT/SMSMarica/SMSMais.ouvidoria/apresentacao-niteroi/gerar_slides2.py, linha 95\n- C:/Projetos GIT/SMSMarica/SMSMais.ouvidoria/apresentacao-niteroi/slides/08-ciclo.html, linha 7\n- C:/Projetos GIT/SMSMarica/SMSMais.ouvidoria/apresentacao-niteroi/apresentacao.html, linha 454 (sai sozinho se remontar; senao, mesma troca)\nDepois remontar/reexportar o PNG do slide 10. Nada mais muda — o slide 28 fica como esta."
+ },
+ {
+  "slide": 18,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Barra lateral do Dr. Paulo Rezende no slide 18 (Fila 150, Registrar, Pontos de resposta, Assuntos, Painel, Configuracao) vs. tabela de permissoes do slide 12 e legenda 2 do proprio slide 18",
+  "problema": "O slide 12 diz que o perfil 'Ponto de resposta' ve 'so o que foi encaminhado ao seu ponto', e a legenda do slide 18 repete que cada ponto ve so o que lhe foi encaminhado. Mesmo assim o menu do Dr. Paulo e identico ao da ouvidora Rita Menezes: mostra a Fila com 150, Registrar, Pontos de resposta, Assuntos, Painel e Configuracao. A tela contradiz o argumento de segregacao que e um dos pontos fortes da apresentacao.",
+  "correcao": "Não editar o slide: re-renderizar os PNGs. `slides-png/slide-18.png` está defasado de `apresentacao.html` (22:34:51 vs 22:43:34) e o corte de menu já existe no fonte (`telas/conteudo/meu-ponto.meta` com `apenas=Meu ponto` + filtro em `montar.py`). Rodar `python montar.py` e o render de PNG (`render.mjs`) para regerar `slides-png/` — e, como o PDF (`apresentacao.pdf`, 22:35:04) é da mesma leva antiga, regerá-lo junto. Depois conferir no slide 18 novo que a barra do Dr. Paulo mostra só \"Meu ponto 21\" sob Ouvidoria, sem o contador 150. Se o pipeline de PNG não puder rodar agora, é dívida de build, não de design — nada a mudar em `slides/94-tela-meu-ponto.html`."
+ },
+ {
+  "slide": 20,
+  "gravidade": "incomoda",
+  "tipo": "incoerencia",
+  "onde": "Tabela 'Pontos de resposta' (slide 20) — legenda 2 cita 'o TFD em 5 dias' e a tabela nao tem nenhuma linha de TFD",
+  "problema": "A legenda do proprio slide 20 e o slide 11 usam o TFD (5 dias) como exemplo de prazo proprio, e a fila do slide 14 traz a manifestacao 2026-004251 com ponto de resposta 'TFD e Transporte'. Mas na tabela de pontos de resposta esse ponto nao existe — o espectador que procurar nao acha.",
+  "correcao": "Uma linha, um arquivo, nada mais.\n\nARQUIVO: C:\\Projetos GIT\\SMSMarica\\SMSMais.ouvidoria\\apresentacao-niteroi\\telas\\conteudo\\pontos-resposta.html\n\nAcrescentar como ULTIMO <tr> do <tbody> (logo depois da linha \"Superintendencia de Atencao Especializada\", respeitando a ordem alfabetica ja em uso):\n\n      <tr>\n        <td class=\"c-forte\" style=\"font-weight:500\">TFD e Transporte</td>\n        <td>Área central (secretaria)</td>\n        <td class=\"c-fraco\">—</td>\n        <td class=\"c-fraco\">5 dias</td>\n        <td class=\"c-fraco\">2 membros</td>\n        <td><span class=\"pill st-aberto\">4</span></td>\n        <td><span class=\"pill st-ativo\">Ativo</span></td>\n      </tr>\n\nDepois: rodar montar.py (regenera apresentacao.html) e re-renderizar o slide 20 (render.mjs) para atualizar slides-png/slide-20.png e o PDF.\n\nPor que exatamente esses valores:\n- \"5 dias\" na coluna Prazo proprio e o unico valor obrigatorio — e o que a legenda 2 e o slide 11 prometem.\n- \"Área central (secretaria)\" mantem o ponto dentro dos \"tres tipos\" da legenda 1 e e coerente com a legenda 4 do slide 14 (\"a unidade, a Regulacao, a Farmacia\" — TFD e area central, nao unidade de saude), o que exige Unidade = \"—\".\n- \"2 membros\" e \"Em aberto = 4\" sao livres: nenhuma soma da tela fecha hoje (os 10 valores de Em aberto somam 127 e o badge da Fila e 150), entao nao inventar aritmetica nova; valor pequeno e plausivel basta.\n\nNAO mexer na legenda do slide 20 nem no slide 11. Trocar a legenda para citar um ponto que existe (ex.: \"a Central de Regulacao em 10 dias\") seria edicao menor em bytes, mas quebraria a frase repetida no slide 11 e deixaria o \"TFD e Transporte\" do slide 14 orfao — resolve um sintoma e cria outro."
+ }
+]

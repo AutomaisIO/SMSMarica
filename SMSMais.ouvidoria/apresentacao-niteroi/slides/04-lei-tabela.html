@@ -1,0 +1,33 @@
+<section class="slide" id="lei-tabela">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Conformidade</p>
+      <h1 class="titulo">Doze obrigações legais, <em>doze comportamentos do sistema</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+  <div class="corpo alto">
+    <table class="tabela-doc">
+      <thead><tr><th style="width:30%">O que a norma obriga</th><th style="width:19%">Norma</th><th>Como o módulo cumpre</th></tr></thead>
+      <tbody>
+        <tr><td>Nunca recusar; múltiplos canais; verbal reduzida a termo</td><td class="norma">L 13.460 arts. 10 §4º e 11</td><td>Quatro campos bastam para registrar &mdash; tipo, identificação, teor e canal. O cadastro de canal tem catorze opções.</td></tr>
+        <tr><td>CPF basta para identificar; vedado campo &ldquo;motivo&rdquo;</td><td class="norma">L 13.460 arts. 10 §2º e 10-A</td><td>Nome + CPF <i>ou</i> telefone. Não existe campo &ldquo;motivo&rdquo; em formulário nenhum do módulo.</td></tr>
+        <tr><td>Comprovante de recebimento e ciência da decisão</td><td class="norma">L 13.460 art. 12, II e V</td><td>Protocolo <span class="mono">AAAA-NNNNNN</span> + código de acesso de 8 caracteres (só o hash é guardado).</td></tr>
+        <tr><td>30 dias, prorrogáveis uma vez, com justificativa</td><td class="norma">L 13.460 art. 16, caput</td><td>Prazo calculado no registro; a segunda prorrogação é recusada. A justificativa vai ao cidadão.</td></tr>
+        <tr><td>Complementação suspende o prazo uma única vez</td><td class="norma">Dec. 9.492/2018; PN CGU 116 art. 25</td><td>Estado próprio, trava de uso único, contador de dias suspensos e arquivamento automático em 20 dias.</td></tr>
+        <tr><td>Resposta conclusiva com conteúdo mínimo por tipo</td><td class="norma">PN CGU 116/2024 arts. 28–30</td><td>A tela exibe o texto exigido para aquele tipo e só conclui com resolutividade e situação final coerentes.</td></tr>
+        <tr><td>Arquivamento só por motivo tipificado</td><td class="norma">PN CGU 116/2024 art. 31</td><td>Lista fechada de nove motivos; duplicidade exige citar o protocolo original.</td></tr>
+        <tr><td>Identificação do manifestante tem acesso restrito</td><td class="norma">L 13.460 art. 10 §7º; LAI art. 31</td><td>Três níveis (identificada, sigilosa, anônima). O ponto de resposta nunca recebe dados do manifestante.</td></tr>
+        <tr><td>Proteção do denunciante e log de acesso à identidade</td><td class="norma">Dec. 10.153/2019; Lei 13.608</td><td>Teor pseudonimizado obrigatório para encaminhar; cada revelação grava usuário, data, IP e justificativa.</td></tr>
+        <tr><td>Relatório de gestão anual publicado na íntegra</td><td class="norma">L 13.460 arts. 14 e 15</td><td>Volume, motivos, recorrentes e providências saem do painel, por período, unidade, tipo e assunto.</td></tr>
+        <tr><td>Pesquisa de satisfação ao menos anual, com ranking</td><td class="norma">L 13.460 art. 23 §§1º e 2º</td><td>Pesquisa pós-resposta e ranking público de reclamações, no módulo de Pesquisas já existente.</td></tr>
+        <tr><td>Dado de saúde é sensível; acesso por necessidade</td><td class="norma">LGPD arts. 11, 23 e 46</td><td>Quatro permissões separadas, <i>fail-closed</i>; retenção prevista em 5+5 anos (denúncia, 5+15).</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> Ouvidoria da Saúde &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">{{N}}</span>
+  </div>
+</section>

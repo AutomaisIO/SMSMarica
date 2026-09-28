@@ -1,0 +1,73 @@
+<section class="slide" id="consulta-inteligente">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Consulta inteligente</p>
+      <h1 class="titulo">Pergunte <em>em português</em></h1>
+      <p class="linha-fina">Sem relatório para pedir, sem planilha para esperar, sem saber onde o dado mora.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g-1-2 cresce">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Quem pergunta é o gestor</p>
+          <p class="b-texto">Não é um relatório pronto que alguém programou meses atrás. É a
+            pergunta de hoje, feita com as palavras de quem precisa decidir.</p>
+        </div>
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">A resposta vem com a conta à vista</p>
+          <p class="b-texto">Número, tabela ou gráfico — e o caminho que o sistema percorreu para
+            chegar ali, se alguém quiser conferir.</p>
+        </div>
+        <div class="bloco escuro">
+          <p class="b-olho" style="color:var(--nit-amarelo)">O que ela alcança</p>
+          <p class="b-texto">A fila, a agenda, os exames, o transporte e as conversas com o cidadão.
+            Cada base é liberada por permissão — quem não pode ver, não pergunta.</p>
+        </div>
+      </div>
+
+      <div class="chat">
+        <div class="chat-topo">
+          <span class="pt"></span>
+          <b>Consulta inteligente</b>
+          <span class="base">Base: Regulação</span>
+        </div>
+        <div class="fluxo-chat">
+          <div class="balao-eu">Quantas pessoas esperam mais de 90 dias por cardiologia, e em quais unidades?</div>
+
+          <div class="balao-ia">
+            <span class="passo-ia"><span class="giro"></span> consultando a fila…</span>
+            <p style="margin:0 0 2px">Hoje há <b>412 solicitações de cardiologia</b> na fila. Dessas,
+              <b>147 esperam mais de 90 dias</b> — concentradas em quatro unidades:</p>
+
+            <div class="viz-numero">
+              <span class="v">147<span class="u">pessoas</span></span>
+              <span class="t">acima de 90 dias</span>
+            </div>
+
+            <div class="grafico">
+              <p class="g-tit">Espera acima de 90 dias, por unidade solicitante</p>
+              <div class="barras">
+                <div class="col"><span class="val">58</span><div class="bar" style="height:76%"></div><span class="rot">Policlínica<br>Centro</span></div>
+                <div class="col"><span class="val">41</span><div class="bar" style="height:54%"></div><span class="rot">Policlínica<br>Icaraí</span></div>
+                <div class="col"><span class="val">29</span><div class="bar" style="height:38%"></div><span class="rot">UBS<br>Barreto</span></div>
+                <div class="col fraca"><span class="val">19</span><div class="bar" style="height:25%"></div><span class="rot">UBS<br>Engenhoca</span></div>
+              </div>
+            </div>
+
+            <p style="margin:9px 0 0">A espera média desse grupo é de <b>127 dias</b>. A Policlínica
+              do Centro sozinha responde por <b>39%</b> do total.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">{{N}}</span>
+  </div>
+</section>

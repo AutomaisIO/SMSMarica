@@ -64,13 +64,34 @@ namespace Automais.Pabx.Api.Migrations
                     b.Property<DateTime>("AtualizadoEm")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("CallLimit")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("CallerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Codecs")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Contexto")
+                        .IsRequired()
+                        .HasMaxLength(80)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Descricao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DonoId")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DonoSistema")
+                        .HasMaxLength(40)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Mac")
@@ -99,6 +120,11 @@ namespace Automais.Pabx.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("UnidadeId")
                         .HasColumnType("INTEGER");
 
@@ -112,6 +138,8 @@ namespace Automais.Pabx.Api.Migrations
                         .IsUnique();
 
                     b.HasIndex("UnidadeId");
+
+                    b.HasIndex("DonoSistema", "DonoId");
 
                     b.ToTable("ramal", (string)null);
                 });

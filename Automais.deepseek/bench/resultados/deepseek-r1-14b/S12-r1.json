@@ -1,0 +1,27 @@
+{
+ "cena": "S12",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 48.94,
+   "usage": {
+    "completion_tokens": 183,
+    "prompt_tokens": 3790,
+    "total_tokens": 3973,
+    "prompt_tokens_details": {
+     "cached_tokens": 3785
+    }
+   },
+   "texto_fora_de_tool": "\n\nOlá! Como posso ajudar você hoje?",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:50:48",
+ "latencia_total_s": 48.94
+}

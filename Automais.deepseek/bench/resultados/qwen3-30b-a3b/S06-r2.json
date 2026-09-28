@@ -1,0 +1,53 @@
+{
+ "cena": "S06",
+ "modelo": "qwen3-30b-a3b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 13.26,
+   "usage": {
+    "completion_tokens": 143,
+    "prompt_tokens": 4231,
+    "total_tokens": 4374,
+    "prompt_tokens_details": {
+     "cached_tokens": 4230
+    }
+   },
+   "texto_fora_de_tool": "Bom dia! Fico feliz em ajudar. Para conversar com um atendente humano, por favor, me confirme os quatro primeiros dígitos do seu CPF e o mês e ano de nascimento. Assim posso verificar seu cadastro e encaminhar da forma correta. \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados. \n\nEstou aqui para ajudar! 😊\n\n",
+   "tools": [
+    {
+     "nome": "encaminhar_para_humano",
+     "args": "{}"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "latencia_s": 22.3,
+   "usage": {
+    "completion_tokens": 212,
+    "prompt_tokens": 4396,
+    "total_tokens": 4608,
+    "prompt_tokens_details": {
+     "cached_tokens": 4352
+    }
+   },
+   "texto_fora_de_tool": "Estou encaminhando sua solicitação para um atendente humano. Em breve, você será atendido. \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados. \n\nObrigado! 😊\n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Estou encaminhando sua solicitação para um atendente humano. Em breve, você será atendido.\\n\\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados.\\n\\nObrigado! 😊\", \"handoff\": true, \"confianca\": 0.95, \"motivoHandoff\": \"Solicitação de atendimento humano\"}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Estou encaminhando sua solicitação para um atendente humano. Em breve, você será atendido.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados.\n\nObrigado! 😊",
+  "handoff": true,
+  "confianca": 0.95,
+  "motivoHandoff": "Solicitação de atendimento humano"
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T22:28:09",
+ "latencia_total_s": 35.56
+}

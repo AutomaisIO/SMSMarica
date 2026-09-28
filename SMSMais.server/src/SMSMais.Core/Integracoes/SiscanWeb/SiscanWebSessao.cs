@@ -151,6 +151,21 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
         {
             var sessao = await GarantirSessaoAsync(cancellationToken);
             var index = await GetAsync(sessao, CaminhoIndex, cancellationToken);
+
+            // Ticket #137: o SISCAN derruba a sessão por OCIOSIDADE e avisa com HTTP 200 + tela de
+            // login. Sem isto, o index "logado" era a tela de login, o menu não existia nela e a
+            // mensagem dizia que a CONTA não tinha o item — errado e sem saída. Toda operação
+            // começa aqui, a partir de uma página nova, então relogar e repetir é seguro. A
+            // senha já está em memória justamente para isso (SiscanSessaoOperadorStore).
+            if (EhTelaDeLogin(index))
+            {
+                logger.LogInformation("SISCAN: sessão expirada (tela de login no index) — relogando.");
+                Reiniciar();
+                sessao = await GarantirSessaoAsync(cancellationToken);
+                index = await GetAsync(sessao, CaminhoIndex, cancellationToken);
+                if (EhTelaDeLogin(index)) throw SessaoExpirou(escrita: false);
+            }
+
             var doc = SiscanHtml.Documento(index);
 
             var item = SiscanHtml.ItemDeMenu(doc, rotuloDoMenu)
@@ -191,7 +206,8 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
         try
         {
             var sessao = await GarantirSessaoAsync(cancellationToken);
-            return await PostarAsync(sessao, doc, formId, extras, cancellationToken);
+            return ConferirSessao(
+                await PostarAsync(sessao, doc, formId, extras, cancellationToken), escrita: false);
         }
         finally
         {
@@ -222,8 +238,9 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
             foreach (var (k, v) in parametros) campos[k] = v;
             campos["AJAXREQUEST"] = "_viewRoot";
 
-            var resposta = await PostarCruAsync(
-                sessao, doc, formId, campos, ajax: true, cancellationToken);
+            var resposta = ConferirSessao(
+                await PostarCruAsync(sessao, doc, formId, campos, ajax: true, cancellationToken),
+                escrita: false);
             var respostaDoc = SiscanHtml.Documento(resposta);
 
             // NEM TODO A4J RESPONDE PARCIAL. Quando a resposta é uma tela inteira (o "Novo Exame"
@@ -276,7 +293,11 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
         {
             var sessao = await GarantirSessaoAsync(cancellationToken);
             var campos = Combinar(SiscanHtml.CamposDoForm(doc, formId), extras);
-            return await PostarCruAsync(sessao, doc, formId, campos, ajax: false, cancellationToken);
+            // Escrita NUNCA é repetida sozinha: se a sessão caiu, o POST não foi processado (o
+            // SISCAN respondeu com o login), e quem decide refazer é a pessoa.
+            return ConferirSessao(
+                await PostarCruAsync(sessao, doc, formId, campos, ajax: false, cancellationToken),
+                escrita: true);
         }
         finally
         {
@@ -402,9 +423,31 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
     /// A resposta é a tela de login? É assim que o SISCAN avisa que a sessão morreu ou que a
     /// credencial não serve: HTTP 200 com o formulário de login no corpo, nunca 401.
     /// </summary>
-    private static bool EhTelaDeLogin(string html) =>
+    internal static bool EhTelaDeLogin(string html) =>
         html.Contains("id=\"formLogin\"", StringComparison.OrdinalIgnoreCase)
         || html.Contains("name=\"formLogin\"", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Resposta de um POST no meio do fluxo veio como tela de login: a sessão caiu entre uma tela e
+    /// outra. Repetir o POST não serve — o ViewState dele é da sessão morta, e o JSF responderia
+    /// "view expirada". Descarta a sessão (a próxima operação reloga sozinha, a partir do menu) e
+    /// avisa sem ambiguidade que nada foi gravado.
+    /// </summary>
+    private string ConferirSessao(string resposta, bool escrita)
+    {
+        if (!EhTelaDeLogin(resposta)) return resposta;
+        logger.LogWarning("SISCAN: sessão expirou no meio do fluxo ({Tipo}).", escrita ? "escrita" : "leitura");
+        Reiniciar();
+        throw SessaoExpirou(escrita);
+    }
+
+    private static ValidacaoException SessaoExpirou(bool escrita) => new(
+        "siscan.sessao_expirou",
+        escrita
+            ? "A sessão do SISCAN expirou no momento de salvar — a requisição NÃO foi criada. "
+              + "Gere de novo: a reconexão é automática."
+            : "A sessão do SISCAN expirou no meio da operação. Nada foi gravado — tente de novo: "
+              + "a reconexão é automática.");
 
     // ------------------------------------------------------------------ transporte
 

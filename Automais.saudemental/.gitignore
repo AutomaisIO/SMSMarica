@@ -1,0 +1,6 @@
+# Capturas HTML/JSON/XLS do Prime Saúde Mental: contêm dado de paciente. Nunca versionar.
+capturas/
+__pycache__/
+# Credencial do laboratório (o .env já é ignorado na raiz; reforço local).
+.env
+!.env.example

@@ -1,0 +1,27 @@
+{
+ "cena": "S02",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 58.8,
+   "usage": {
+    "completion_tokens": 266,
+    "prompt_tokens": 3202,
+    "total_tokens": 3468,
+    "prompt_tokens_details": {
+     "cached_tokens": 3201
+    }
+   },
+   "texto_fora_de_tool": "\n\nPara verificar os detalhes do seu agendamento, preciso confirmar a sua identidade. Por favor, envie os quatro primeiros dígitos do seu CPF.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:09:13",
+ "latencia_total_s": 58.8
+}

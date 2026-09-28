@@ -1,0 +1,33 @@
+{
+ "cena": "S06",
+ "modelo": "qwen3-4b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 61.37,
+   "usage": {
+    "completion_tokens": 550,
+    "prompt_tokens": 4231,
+    "total_tokens": 4781,
+    "prompt_tokens_details": {
+     "cached_tokens": 4230
+    }
+   },
+   "texto_fora_de_tool": "*Você deseja falar com um atendente humano? Estou aqui para ajudar com dúvidas ou solicitações administrativas. Pode me informar um pouco mais sobre o que precisa? Por exemplo, se é para confirmar um agendamento, buscar uma unidade ou algo diferente?*  \n\nAcesse [https://app.smsmarica.online](https://app.smsmarica.online) para ver seus exames, consultas e atendimentos realizados — lá também pode manter seus dados sempre atualizados.  \n\nSe precisar de um atendente humano, posso encaminhá-lo. Deseja continuar assim? 🙌  \n\n(Se quiser, posso verificar se há um agendamento ou unidade relacionada ao seu caso — basta me dizer mais sobre o que está procurando.)  \n\n*Atenção: não posso orientar sobre sintomas, dores ou problemas de saúde — isso deve ser feito por profissionais de saúde. Se estiver com alguma preocupação, por favor procure o posto onde você é atendido ou, em caso de emergência, a rede de urgência do município.*  \n\nObrigada pela sua mensagem! 🙏  \n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Bom dia! Você deseja falar com um atendente humano? Estou aqui para ajudar com dúvidas ou solicitações administrativas. Pode me informar um pouco mais sobre o que precisa? Por exemplo, se é para confirmar um agendamento, buscar uma unidade ou algo diferente?\\n\\nAcesse https://app.smsmarica.online para ver seus exames, consultas e atendimentos realizados — lá também pode manter seus dados sempre atualizados.\\n\\nSe precisar de um atendente humano, posso encaminhá-lo. Deseja continuar assim?\\n\\n(Se quiser, posso verificar se há um agendamento ou unidade relacionada ao seu caso — basta me dizer mais sobre o que está procurando.)\\n\\n*Atenção: não posso orientar sobre sintomas, dores ou problemas de saúde — isso deve ser feito por profissionais de saúde. Se estiver com alguma preocupação, por favor procure o posto onde você é atendido ou, em caso de emergência, a rede de urgência do município.*\\n\\nObrigada pela sua mensagem! 🙏\", \"handoff\": false, \"confianca\": 0.95}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Bom dia! Você deseja falar com um atendente humano? Estou aqui para ajudar com dúvidas ou solicitações administrativas. Pode me informar um pouco mais sobre o que precisa? Por exemplo, se é para confirmar um agendamento, buscar uma unidade ou algo diferente?\n\nAcesse https://app.smsmarica.online para ver seus exames, consultas e atendimentos realizados — lá também pode manter seus dados sempre atualizados.\n\nSe precisar de um atendente humano, posso encaminhá-lo. Deseja continuar assim?\n\n(Se quiser, posso verificar se há um agendamento ou unidade relacionada ao seu caso — basta me dizer mais sobre o que está procurando.)\n\n*Atenção: não posso orientar sobre sintomas, dores ou problemas de saúde — isso deve ser feito por profissionais de saúde. Se estiver com alguma preocupação, por favor procure o posto onde você é atendido ou, em caso de emergência, a rede de urgência do município.*\n\nObrigada pela sua mensagem! 🙏",
+  "handoff": false,
+  "confianca": 0.95
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T00:25:28",
+ "latencia_total_s": 61.37
+}

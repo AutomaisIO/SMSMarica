@@ -286,6 +286,26 @@ public class SiscanRequisicaoMapperTests
         campos[SiscanRequisicaoMapper.CampoRiscoElevado].Should().Equal(esperado);
     }
 
+    /// <summary>
+    /// Ticket #139: a pergunta do SISCAN respondida na anamnese vence a dedução — mesmo contra a
+    /// classificação (Alto) e os critérios, que continuam na ficha mas respondem outra pergunta.
+    /// </summary>
+    [Theory]
+    [InlineData("sim", "01")]
+    [InlineData("nao", "02")]
+    [InlineData("naoSabe", "03")]
+    public void Resposta_explicita_do_siscan_vence_a_deducao(string resposta, string esperado)
+    {
+        var campos = Agrupar(SiscanRequisicaoMapper.Montar(
+            Json(
+                risco: """{"classificacao":"Alto","familiar1GrauCancerMama":true}""",
+                historico: """{"jaRealizouCirurgiaMamaria":{"resposta":false}}""",
+                corpoSiscan: $$"""{"riscoElevado":"{{resposta}}"}"""),
+            Prontuario, Hoje, "02"));
+
+        campos[SiscanRequisicaoMapper.CampoRiscoElevado].Should().Equal(esperado);
+    }
+
     // ------------------------------------------------------------------ condicionais
 
     /// <summary>

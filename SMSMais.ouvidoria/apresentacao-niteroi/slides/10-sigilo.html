@@ -1,0 +1,58 @@
+<section class="slide" id="sigilo">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Sigilo e LGPD</p>
+      <h1 class="titulo">Três níveis de identidade, <em>um trilho isolado para a denúncia</em></h1>
+      <p class="linha-fina">Dado de saúde é dado sensível, e a identidade de quem denuncia é protegida por decreto. Aqui isso não é política escrita num manual: é comportamento do código.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+  <div class="corpo">
+    <div class="grade g3 cresce" style="gap:16px">
+      <div class="bloco">
+        <span class="pill s-registrada" style="align-self:flex-start;font-size:12px">Identificada</span>
+        <p class="b-texto" style="margin-top:9px">Nome, CPF e contato ficam visíveis <b>só para a ouvidoria</b>. O ponto de resposta recebe o caso sem saber de quem é. CPF basta para identificar &mdash; a lei proíbe exigir outro número.</p>
+      </div>
+      <div class="bloco">
+        <span class="pill id-restrita" style="align-self:flex-start;font-size:12px">Sigilosa</span>
+        <p class="b-texto" style="margin-top:9px">Os dados estão guardados, mas a tela mostra <b>&ldquo;restrito&rdquo; para todo mundo</b> &mdash; inclusive para quem tem a permissão de sigilo. A identidade só sai por uma ação explícita, com justificativa.</p>
+      </div>
+      <div class="bloco">
+        <span class="pill id-restrita" style="align-self:flex-start;font-size:12px">Anônima</span>
+        <p class="b-texto" style="margin-top:9px">Só em denúncia. Não gera código de acesso, não admite complementação, não recebe notificação e <b>não tem identidade a revelar</b>. O sistema conclui no ato da resposta.</p>
+      </div>
+    </div>
+    <div class="grade g-3-2" style="margin-top:18px">
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">O trilho da denúncia</p>
+        <div class="grade g2" style="gap:14px">
+          <ul class="lista">
+            <li style="color:rgba(255,255,255,.82)"><b style="color:#fff">Admissibilidade primeiro.</b> A denúncia só vai à apuração depois do juízo de autoria, materialidade e competência &mdash; com data e autor.</li>
+            <li style="color:rgba(255,255,255,.82)"><b style="color:#fff">Teor pseudonimizado.</b> A corregedoria nunca lê o texto original: lê a versão reescrita sem nada que identifique quem denunciou. Sem ela, o encaminhamento é bloqueado.</li>
+          </ul>
+          <ul class="lista">
+            <li style="color:rgba(255,255,255,.82)"><b style="color:#fff">Cada acesso vira linha.</b> Revelar identidade exige justificativa e grava usuário, data, IP e motivo numa tabela própria, que não se apaga.</li>
+            <li style="color:rgba(255,255,255,.82)"><b style="color:#fff">Reclassificou, perdeu.</b> Trocar o tipo de uma denúncia apaga a habilitação: o juízo era da denúncia, não do caso.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="bloco realce">
+        <p class="b-olho">Quatro permissões separadas</p>
+        <table class="tabela-doc" style="font-size:11.5px">
+          <tbody>
+            <tr><td>Ouvidoria</td><td>fila, triagem, encaminhamento e resposta</td></tr>
+            <tr><td>Gestão</td><td>catálogo, configuração, painel, escalonar</td></tr>
+            <tr><td>Sigilo</td><td>denúncia e identidade do manifestante</td></tr>
+            <tr><td>Ponto de resposta</td><td>só o que foi encaminhado ao seu ponto</td></tr>
+          </tbody>
+        </table>
+        <p class="b-texto" style="margin-top:10px;font-size:12px">Quem não tem sigilo <b>não enxerga denúncia nenhuma</b> &mdash; nem na busca. Sem usuário válido, o sistema nega tudo: <i>fail-closed</i>.</p>
+      </div>
+    </div>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> Ouvidoria da Saúde &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">{{N}}</span>
+  </div>
+</section>

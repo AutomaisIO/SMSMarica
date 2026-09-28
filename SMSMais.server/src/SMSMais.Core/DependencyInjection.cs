@@ -984,6 +984,12 @@ public static class DependencyInjection
         // Singleton: o cache de vetores de consulta só vale se sobreviver entre requisições.
         services.AddSingleton<Regulacao.Catalogo.CacheVetorConsulta>();
 
+        // ---- Telefonia: softphone dos usuários, ramal mantido no Automais.Pabx (VM de telefonia) ----
+        services.Configure<Telefonia.PabxOptions>(configuration.GetSection(Telefonia.PabxOptions.Secao));
+        services.AddHttpClient<Telefonia.IPabxCliente, Telefonia.PabxCliente>(client =>
+            client.Timeout = TimeSpan.FromSeconds(configuration.GetValue("Telefonia:Pabx:TimeoutSegundos", 15)));
+        services.AddScoped<Telefonia.ITelefoniaService, Telefonia.TelefoniaService>();
+
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;

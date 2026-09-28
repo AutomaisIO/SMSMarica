@@ -1,0 +1,27 @@
+{
+ "cena": "S11",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 68.68,
+   "usage": {
+    "completion_tokens": 290,
+    "prompt_tokens": 3941,
+    "total_tokens": 4231,
+    "prompt_tokens_details": {
+     "cached_tokens": 3940
+    }
+   },
+   "texto_fora_de_tool": "\n\nDesculpe ouvir que você está passando por essa situação complicada. Compreendo que estar à espera há tanto tempo e sentir que o acesso ao exame se tornou impossível é muito desanimador. Peço que você entre em contato com o posto de saúde onde você recebeu atendimento anterior para esclarecer a situação e verificar se há possibilidade de regularizar o encaminhamento. Lamentamos que você tenha perdido o documento de autorização, mas é importante que o setor responsável possa te orientar a partir daqui. Estou aqui se precisar de mais ajuda!",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:49:40",
+ "latencia_total_s": 68.68
+}

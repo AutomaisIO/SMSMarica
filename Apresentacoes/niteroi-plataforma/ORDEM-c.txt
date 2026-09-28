@@ -1,0 +1,9 @@
+c10-paciente.html
+c20-agendamentos.html
+c30-solicitacao.html
+c40-agenda.html
+c50-estrategia.html
+c60-ia.html
+c70-painel.html
+c80-confirmacoes.html
+c90-telefonia.html

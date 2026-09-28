@@ -347,4 +347,11 @@ public enum ModuloPermissao
     /// aparece. Só <c>Consulta</c>. Exige também <see cref="Confirmacoes"/> (a tela). Nasce
     /// desligado em todo perfil que não seja o Admin.</summary>
     ConfirmacoesEquipe = 75,
+
+    /// <summary>Telefonia: softphone dos usuários — habilitar, escolher o ramal e o nome de
+    /// exibição na edição do usuário. O ramal vive no Automais.Pabx (VM de telefonia); aqui só o
+    /// vínculo. <c>Consulta</c> = ver o ramal de um usuário e os números livres; <c>Edicao</c> =
+    /// habilitar/alterar; <c>Exclusao</c> = remover o softphone (libera o número). Usar o próprio
+    /// softphone NÃO exige este módulo — basta tê-lo habilitado.</summary>
+    Telefonia = 76,
 }

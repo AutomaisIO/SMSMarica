@@ -1,0 +1,19 @@
+import psycopg2
+BERNARDO="019dc264-7de1-78cc-b6ff-0be0c0e8b714"
+DADOS=[('681750922', '2026-07-31 12:55:00+00'), ('682700740', '2026-08-14 11:45:00+00'), ('646762435', '2026-08-20 13:30:00+00'), ('667848931', '2026-08-03 12:30:00+00'), ('671206355', '2026-07-09 12:00:00+00'), ('671872444', '2026-07-09 18:20:00+00'), ('672519952', '2026-07-23 17:00:00+00'), ('672520463', '2026-07-23 17:10:00+00'), ('672563938', '2026-07-23 11:30:00+00'), ('674479485', '2026-08-12 17:00:00+00'), ('674528839', '2026-08-12 16:45:00+00'), ('674529919', '2026-08-12 17:15:00+00'), ('674596037', '2026-08-12 17:30:00+00'), ('674612484', '2026-08-12 17:45:00+00'), ('674614815', '2026-08-12 18:00:00+00'), ('674655722', '2026-08-12 18:15:00+00'), ('674659366', '2026-08-12 18:30:00+00'), ('674790207', '2026-08-18 17:15:00+00'), ('675707586', '2026-07-21 16:40:00+00'), ('675825658', '2026-08-20 12:00:00+00'), ('676285113', '2026-07-16 12:15:00+00'), ('676631074', '2026-07-21 17:40:00+00'), ('678132038', '2026-07-29 18:00:00+00'), ('681490058', '2026-07-30 10:55:00+00'), ('682533263', '2026-08-11 18:15:00+00'), ('682741272', '2026-08-12 11:15:00+00'), ('682746208', '2026-08-20 14:30:00+00'), ('682761857', '2026-08-12 11:30:00+00'), ('682892754', '2026-08-12 12:00:00+00'), ('682893178', '2026-08-12 12:15:00+00'), ('682983583', '2026-08-12 12:45:00+00'), ('683220520', '2026-08-20 14:00:00+00'), ('683372871', '2026-08-12 13:15:00+00'), ('683407524', '2026-08-12 13:30:00+00'), ('683439645', '2026-08-12 13:45:00+00'), ('683442255', '2026-08-12 14:15:00+00'), ('683443686', '2026-08-12 14:30:00+00'), ('683444808', '2026-08-12 16:00:00+00'), ('683652821', '2026-08-12 16:15:00+00')]
+with open("/etc/smsmarica-server/env",encoding="utf-8") as fh:
+    cs=next(l.split("=",1)[1].strip() for l in fh if l.startswith("ConnectionStrings__DefaultDb="))
+m={k.strip().lower():v.strip() for k,v in (pp.split("=",1) for pp in cs.split(";") if "=" in pp)}
+conn=psycopg2.connect(host=m["host"],port=m.get("port",25060),dbname=m["database"],user=m.get("username") or m.get("user id"),password=m["password"],sslmode="require")
+cur=conn.cursor(); atualizadas=0; ja=0
+for cod,utc in DADOS:
+    cur.execute("""update smsmarica.solicitacao set data_agendada=%s, atualizado_em=now(), atualizado_por=%s
+      where codigo_solicitacao=%s and data_agendada is null and excluido_em is null""",(utc,BERNARDO,cod))
+    if cur.rowcount>0: atualizadas+=cur.rowcount
+    else: ja+=1
+conn.commit()
+print("UPDATE ok — solicitacoes atualizadas:",atualizadas," (sem efeito/ja tinha data:",ja,")")
+# confere quantas AINDA sem data (reais)
+cur.execute("select count(*) from smsmarica.solicitacao where data_agendada is null and excluido_em is null and codigo_solicitacao ~ '^[0-9]+$' and codigo_solicitacao<>'0000'")
+print("codigos reais AINDA sem data:",cur.fetchone()[0])
+conn.close()

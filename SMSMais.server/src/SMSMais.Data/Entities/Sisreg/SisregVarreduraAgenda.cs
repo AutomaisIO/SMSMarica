@@ -34,9 +34,11 @@ public class SisregVarreduraAgenda
     /// <para>Combina com <c>SisregProcedimentoProfissional.EnviarConfirmacao</c> por "E": desligar
     /// aqui corta tudo; ligado aqui, cada procedimento ainda precisa estar ligado.</para>
     ///
-    /// <para><b>Nasce DESLIGADO</b>, e unidade sem linha nesta tabela também não envia. É opt-in
-    /// deliberado: mensagem ao paciente só sai depois que alguém decidiu que deve sair, unidade a
-    /// unidade e procedimento a procedimento.</para>
+    /// <para><b>Nasce LIGADO</b> desde 20/09/2026 — o padrão da rede é 100% das unidades ativas,
+    /// sincronizando e notificando. Unidade <b>sem linha</b> nesta tabela continua não enviando:
+    /// não existir não é o mesmo que estar ligada. O que segura mensagem indevida não é mais o
+    /// silêncio por omissão, e sim as guardas do envio — agendamento com data no passado nunca
+    /// avisa, e backfill por período suprime o aviso por construção.</para>
     /// </summary>
     public bool EnviarConfirmacao { get; set; }
 

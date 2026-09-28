@@ -1,0 +1,34 @@
+{
+ "cena": "S01",
+ "modelo": "llama33-70b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 59.04,
+   "usage": {
+    "completion_tokens": 63,
+    "prompt_tokens": 4706,
+    "total_tokens": 4769,
+    "prompt_tokens_details": {
+     "cached_tokens": 4705
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Claro, para confirmar presen\", \"handoff\": true, \"confianca\": 0, \"motivoHandoff\": \"Paciente solicitou atendente humano\"}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Claro, para confirmar presen",
+  "handoff": true,
+  "confianca": 0,
+  "motivoHandoff": "Paciente solicitou atendente humano"
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T02:16:13",
+ "latencia_total_s": 59.04
+}

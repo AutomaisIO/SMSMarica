@@ -81,7 +81,9 @@ export type ModuloPermissao =
   | 'Ouvidoria'
   | 'OuvidoriaGestao'
   | 'OuvidoriaSigilo'
-  | 'OuvidoriaPontoResposta';
+  | 'OuvidoriaPontoResposta'
+  // Telefonia (76): softphone dos usuários — habilitar e escolher o ramal na edição do usuário.
+  | 'Telefonia';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

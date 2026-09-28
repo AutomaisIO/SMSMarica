@@ -1,0 +1,27 @@
+{
+ "cena": "S09",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 170.98,
+   "usage": {
+    "completion_tokens": 209,
+    "prompt_tokens": 3195,
+    "total_tokens": 3404,
+    "prompt_tokens_details": {
+     "cached_tokens": 215
+    }
+   },
+   "texto_fora_de_tool": "\n\nObrigada por avisar! Vou atualizar os seus dados. Primeiro, preciso confirmar a sua identidade. Qual são os quatros primeiros dígitos do seu CPF?",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:38:22",
+ "latencia_total_s": 170.98
+}

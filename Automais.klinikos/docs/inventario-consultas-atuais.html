@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventário: o que lemos hoje do Klinikos por SQL × onde isso sai pela web</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Inventário: o que lemos hoje do Klinikos por SQL × onde isso sai pela web</h1>
+<p>&gt; Escrito em 16/09/2026 a partir do código que roda hoje (<code>SMSMais.server</code> — &gt; <code>KlinikosImportacaoStrategy</code>; <code>SMSMarica.secretario.pwa</code> — <code>ConsultasUpa</code>) e do que foi &gt; <strong>medido</strong> contra <code>klinikosconde.smsmarica.online</code> neste laboratório (ver <code>APRENDIZADOS.md</code>, &gt; <code>sondagem-relatorios.md</code>, <code>mapa-endpoints.md</code>, <code>catalogo-relatorios.md</code>). Onde ainda não &gt; foi medido, está escrito "a medir".</p>
+<h2>0. Por que este documento existe</h2>
+<p>Hoje há <strong>dois consumidores</strong> dos bancos SQL Server do Klinikos, os dois pelo agente WSS reverso + proxy SQL interno (ADR-0014/0023):</p>
+<ol>
+<li><strong>Conector FHIR</strong> (<code>KlinikosImportacaoStrategy</code>): alimenta o hub com Patient, Practitioner,</li>
+</ol>
+<p>   Organization, Encounter, Condition, DocumentReference, MedicationRequest, Observation.</p>
+<ol>
+<li><strong>Painel do Secretário</strong> (<code>ConsultasUpa</code>): números ao vivo de UPA Maricá e Santa Rita.</li>
+</ol>
+<p>   <strong>O Conde não está no painel</strong> desde que migrou do Salux para o Klinikos — as consultas    Oracle (<code>ConsultasPainel</code>) morreram com o cutover.</p>
+<p>A decisão do operador (16/09) é <strong>desligar a leitura por banco</strong> e trazer <strong>Conde, UPA e Santa Rita</strong> pelo caminho "como usuário" (login web + relatórios/serviços), com requisições leves para não onerar o sistema do fornecedor. Este inventário diz, item a item, o que precisa sair de onde.</p>
+<h2>1. As três instâncias</h2>
+<div class="tw"><table><thead><tr><th>Unidade</th><th>Instância web</th><th><code>unid_codigo</code></th><th>Base SQL hoje (slug)</th><th>Estado</th></tr></thead><tbody>
+<tr><td>HMCML / Conde</td><td><code>klinikosconde.smsmarica.online</code></td><td><strong>0005</strong></td><td>(Salux <code>salux-hcml</code>, morto para o painel)</td><td><strong>medida neste laboratório</strong></td></tr>
+<tr><td>UPA 24h Maricá (CNES 7164440)</td><td><strong>a confirmar</strong> (<code>klinikosupa…</code>?)</td><td>0006</td><td><code>upa24h-marica-sqlserver</code></td><td>agente WSS</td></tr>
+<tr><td>UPA 24h Santa Rita</td><td><strong>a confirmar</strong></td><td>0007</td><td><code>santarita-marica-sqlserver</code></td><td>agente WSS</td></tr>
+</tbody></table></div>
+<p>Mesmo produto, mesmo build (<code>K.2024.09.2.1</code> no Conde — conferir nas outras). Tudo o que foi medido no Conde deve valer nas UPAs <strong>depois de confirmado lá</strong> (o SER-RJ × SERNIT ensinou que ids mudam entre builds). <code>par3</code>/<code>par1</code>=unidade nos relatórios é o <code>unid_codigo</code> da instância.</p>
+<h2>2. Conector FHIR — o que cada consulta SQL lê e a fonte web candidata</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Consulta SQL (hoje)</th><th>Colunas que o mapper usa</th><th>Fonte web candidata</th><th>Medido</th></tr></thead><tbody>
+<tr><td>1</td><td><code>unidade</code></td><td>código, nome, fantasia, sigla, <strong>CNES</strong>, telefone, e-mail</td><td>fixo por instância (1 linha por base); <code>Administracao/Tabelas/UnidHospitalar/*</code></td><td>a medir (tela)</td></tr>
+<tr><td>2</td><td><code>profissional</code> (integral, sem rowversion)</td><td>código, nome, CPF, CNS, conselho, CBO, ativo</td><td><code>Administracao/Tabelas/Profissional/Profissional.aspx</code> (grade RadGrid); rel. 788 <em>Profissionais sem CNS</em> (<code>rptView</code>, PDF)</td><td>a medir (grade exige postback)</td></tr>
+<tr><td>3</td><td><code>paciente</code> por <code>rv_atualizacao</code></td><td>código, nome, CPF, CNS, nascimento, sexo, mãe, pai, telefones, e-mail, óbito, responsável, raça</td><td><strong>Cadastro</strong>: rel. 390 <em>Cadastro no Estabelecimento de Saúde</em> (<code>ParamPaciente.aspx</code>), 21 <em>Prontuários Abertos</em>, 381 <em>Registros Abertos</em>, 488 <em>Origem Prontuário</em>; tela <code>Cadastro/Paciente/CadastroBasico.aspx</code> (por prontuário)</td><td><strong>em sondagem</strong> (<code>sondar_relatorios.py</code>)</td></tr>
+<tr><td>4</td><td><code>Pronto_Atendimento</code> por rowversion (boletim)</td><td>spa_codigo, pac_codigo, unid, chegada, dt_boletim, nome social, CNS, forma de chegada, risco</td><td><strong>407</strong> <em>Pacientes Registrados no Dia</em> → Nº Boletim, Prontuário, Paciente, Nasc/Idade, Clínica (XLS, 1 dia = 545 KB); <strong>667</strong> <em>Nominal por Classificação de Risco</em> → Nº Boletim, Paciente, Idade, Data/Hora Entrada, Clínica, Origem; 683 <em>Como Chegou</em></td><td><strong>medido</strong> (407, 667)</td></tr>
+<tr><td>5</td><td><code>UPA_Evolucao</code> (flag "teve atendimento", CID primário/secundário, tipo, texto)</td><td>spa, tipo, data, prof, CID</td><td><strong>815</strong> <em>Atendimento Nominal por CID</em>; 484 <em>Diagnósticos por Clínica</em> (estatístico); 830 <em>Evoluções de Multiprofissionais</em>; 791 <em>Boletim Atendimento Médico PDF</em> (por competência+paciente, <code>RptViewCompetencia.aspx</code>, pesado: 504)</td><td>484 medido (só totais); 815/830 em sondagem</td></tr>
+<tr><td>6</td><td><code>atendimento_ambulatorial</code> + <code>UPA_Atendimento_Medico</code> + <code>Tipo_Saida</code> (fechamento, desfecho, médico)</td><td>spa, data final, tipo de saída, prof</td><td><strong>65</strong> <em>Tipo de Saída, Sexo e Faixa Etária</em> (estatístico); <strong>834</strong> <em>Encerrados por evasão</em>; 520 <em>Remoções por destino</em>; 527 <em>Óbito/Chegou Cadáver</em>; 66 <em>Tempo de Permanência</em> (estatístico)</td><td>520/527/66 medidos (1 dia sem registro/só totais); 834 em sondagem</td></tr>
+<tr><td>7</td><td><code>UPA_Atendimento_Medico</code> narrativa (anamnese, exame físico, hipótese, conduta, observação)</td><td>texto livre por boletim</td><td><strong>791</strong> <em>Boletim Atendimento Médico PDF</em> (<code>RptViewCompetencia.aspx?parRel=489&amp;par1=MM/AAAA&amp;par2=&lt;paciente&gt;</code>) — PDF por paciente/competência; tela <code>UPA/AtendimentoMedico.aspx</code> (por boletim)</td><td>791 estourou (504) com par2 vazio — testar com paciente</td></tr>
+<tr><td>8</td><td><code>Item_Prescricao_Medicamento</code> + <code>Prescricao</code></td><td>insumo, quantidade, unidade, via, frequência, duração, SOS</td><td>tela <code>UPA/PrescricaoReceita.aspx</code> (por boletim); rel. 816 <em>Justificativa de Antibiótico</em>; <code>Share/Prescricao/PlanoTerapeutico.aspx</code></td><td>a medir — <strong>não há relatório nominal de prescrição no menu do UPA</strong></td></tr>
+<tr><td>9</td><td><code>TB_CID</code> (catálogo, 14.242)</td><td>código, nome</td><td><code>Administracao/Tabelas/Outras/Outras/CID.aspx</code> (grade) — ou <strong>não buscar</strong>: CID-10 é tabela pública, o hub já tem o nome</td><td>não precisa da web</td></tr>
+<tr><td>10</td><td><code>UPA_SinaisVitais</code></td><td>PA, pulso, temperatura, FR, HGT, SpO2, peso</td><td>tela <code>Share/UPAShare/RegistrosEnfermagem.aspx</code> (271 campos, por boletim); rel. 843 <em>Escalas BRADEN/FUGULIN/MORSE</em></td><td>a medir — sem relatório nominal no menu</td></tr>
+<tr><td>11</td><td><code>MIN_ACTIVE_ROWVERSION()</code> (ponteiro CDC)</td><td>—</td><td><strong>não existe na web</strong>. Marca incremental = <strong>data</strong> (chegada/registro) + reconciliação dos últimos N dias</td><td>decisão de projeto</td></tr>
+</tbody></table></div>
+<p><strong>Leitura honesta da tabela:</strong> boletim, chegada, CID, desfecho e classificação de risco <strong>saem por relatório</strong> (XLS, 1 GET). Narrativa médica, prescrição e sinais vitais <strong>não têm relatório nominal no menu do UPA</strong> — saem só por tela, boletim a boletim (postback com ViewState), o que é caro para o fornecedor e lento para nós. Ver §5.</p>
+<h2>3. Painel do Secretário — cada número e a fonte web</h2>
+<div class="tw"><table><thead><tr><th>Indicador (contrato do painel)</th><th>SQL hoje</th><th>Fonte web candidata</th><th>Medido</th></tr></thead><tbody>
+<tr><td><strong>U1a</strong> aguardando médico agora, por cor, T1/T2</td><td>boletins 12h sem <code>atendamb_datainicio</code>, na <code>UPA_Fila</code> não cancelada, cor da 1ª classificação</td><td><strong>629</strong> <em>Fila de Espera</em> (<code>rptView…parNum=1&amp;par1=unidDef</code>, sem parâmetro): Nº Boletim, Nome, Início Atendimento, Tempo, Clínica — <strong>sem cor</strong>; cor vem de <strong>667</strong> <em>Nominal por Classificação de Risco</em> (1 dia) cruzando pelo Nº Boletim; <strong>818</strong> <em>Tempo Médio da Classificação de Risco por Período</em></td><td>629 medido (PDF 37 p. / XLS 2.414 linhas — traz lixo de teste de 2025 e boletins de 600 h: <strong>a fila da web não filtra <code>DATA_CANCELAMENTO</code></strong>, filtrar por idade do boletim); 667 medido; 818 em sondagem</td></tr>
+<tr><td><strong>U1b</strong> em atendimento agora + atendimentos de hoje</td><td><code>dt_med</code> preenchido e <code>dt_fim</code> nulo; <code>COUNT</code> do dia</td><td><strong>631</strong> <em>Atendimentos em Andamento</em> (2 dias, todas as especialidades: Nº Boletim, Nome, Início, Tempo, Clínica, Profissional) — atenção: <strong>com 1 dia só veio vazio</strong>, com 15–16/09 veio 425 linhas (semântica do período a entender); total do dia = <strong>407</strong></td><td>medido</td></tr>
+<tr><td><strong>U2</strong> total no período</td><td><code>COUNT</code> por <code>spa_chegada</code></td><td>407 (contar linhas) ou <strong>56/57</strong> <em>Registro Diário/Mensal por Clínica</em> (só totais, XLS de 9–11 linhas — <strong>barato</strong>)</td><td>medido (56/57 são tabelas de totais)</td></tr>
+<tr><td><strong>U3</strong> série diária 35 dias</td><td><code>GROUP BY dia</code></td><td>57 <em>Registro Mensal por Clínica</em> (1 chamada/mês) ou 56 por dia</td><td>medido</td></tr>
+<tr><td><strong>U4</strong> por hora de hoje</td><td><code>DATEPART(hour)</code></td><td><strong>58</strong> <em>Registro por Hora de Urgência por Clínica</em> (<code>Relatorio.aspx?parrel=58&amp;origem=5</code>)</td><td>em sondagem</td></tr>
+<tr><td><strong>U6</strong> espera por cor (classificação → médico; média/mediana/p90; meta Manchester fixa)</td><td>CTEs sobre classificação + atendimento</td><td><strong>526</strong> <em>Atendimentos por Profissional</em> (<code>Relatorio.aspx?parrel=526&amp;origem=5</code>, XLS 1 dia = 937 linhas / 1,1 MB): <strong>No Boletim, Código (prof), Hora Atendimento, Nome, Classificação (cor), Idade, Sexo, Clínica</strong> — cruzado com <strong>667</strong> (Data/Hora Entrada por boletim) dá chegada → atendimento por cor, por boletim, e daí média/mediana/p90 do nosso lado. 818 <em>Tempo Médio</em> e 831/835 <strong>não servem</strong>: 818 dá 504 até com 1 semana; 831 <code>COMException</code> OLE DB; 835 <code>FormulaException</code> do Crystal (relatórios quebrados no vendor)</td><td><strong>medido</strong> (526, 667); 818/831/835 quebrados</td></tr>
+<tr><td><strong>L4</strong> leitos de observação (ocupação)</td><td><code>Leito.lei_status</code></td><td><strong>630</strong> <em>Pacientes em Observação</em> (<code>rptviewXls.aspx?parRel=630&amp;parNum=1&amp;par1=unidDef</code>, sem parâmetro, 166 KB): <strong>Nº Boletim, Nome, Início Atendimento, Tempo, Especialidade, Profissional, Espec. Obs., Profissional Obs., Leito</strong> — 210 linhas no Conde (é quem está em observação agora, com o leito); tela <code>Share/Leitos/MapaLeitos.aspx?Modulo=E</code> para o inventário de leitos</td><td><strong>medido</strong> (630)</td></tr>
+<tr><td><strong>L5</strong> fluxo para observação</td><td>subdescrição da classificação</td><td>667 (coluna Origem?) / 630</td><td>a medir</td></tr>
+<tr><td>internações / maternidade</td><td>nulas nas UPAs</td><td>Conde interna: <strong>100</strong> <em>Internações Diárias</em> (XLS: Prontuário-Nome, Nasc, Idade, Sexo, Hora, Município/Bairro, Local) — parNum=9</td><td>medido</td></tr>
+</tbody></table></div>
+<h2>4. Política de requisições (para não onerar o fornecedor)</h2>
+<p>Regras propostas, todas derivadas de medição:</p>
+<ol>
+<li><strong>Uma sessão por instância, persistida.</strong> Login derruba a sessão anterior do mesmo usuário</li>
+</ol>
+<p>   → usuário dedicado do conector e cookies guardados; relogar só quando <code>sessaoexpirada</code>.</p>
+<ol>
+<li><strong>Uma requisição por vez por sessão.</strong> O ASP.NET serializa a sessão; paralelizar só</li>
+</ol>
+<p>   enfileira e provoca 504 no nginx (medido). Concorrência real = uma sessão por instância.</p>
+<ol>
+<li><strong>Relatório em XLS, janela de 1 dia.</strong> 30 dias no 631 estourou o Crystal</li>
+</ol>
+<p>   (<code>OutOfMemoryException</code>) e deu 504 no XLS. 1 dia do 407 = 545 KB / ~2.000 linhas, poucos    segundos. Para carga inicial: 1 dia por chamada, com intervalo entre chamadas.</p>
+<ol>
+<li><strong>Preferir relatórios de totais quando o número basta.</strong> 56/57 (registro por clínica) têm</li>
+</ol>
+<p>   9–11 linhas; usar para U2/U3 em vez de somar o 407.</p>
+<ol>
+<li><strong>Cadência por indicador, não por tela.</strong> "Agora" (U1a/U1b/L4): 629 + 631 + 630 a cada</li>
+</ol>
+<p>   60–120 s — três GETs sem parâmetro/2 dias. "Dia" (U2/U4): 407/58 a cada 10–15 min.    "Mês" (U3/U6): 57/818 uma vez por hora. Carga do conector FHIR: 1× por dia, madrugada,    dia anterior + reconciliação de D-1..D-3.</p>
+<ol>
+<li><strong>Nada de varredura em produção.</strong> O <code>probe_mapa.py</code> (368 telas, 23 min) é ferramenta</li>
+</ol>
+<p>   de laboratório, uma vez. O conector só chama o que está na tabela do §3.</p>
+<ol>
+<li><strong>Cache do lado de cá.</strong> O painel já tem tick de 60 s; guardar o último XLS por</li>
+</ol>
+<p>   (instância, parrel, parâmetros) e só recalcular quando o tick vencer.</p>
+<ol>
+<li><strong>Sem ViewState fora do login/gate.</strong> Tudo que é relatório é GET; <code>.asmx</code> é JSON.</li>
+</ol>
+<p>   Telas com grade (profissional, cadastro por prontuário) ficam para o que não tem    relatório — e aí com postback mínimo (uma página por vez).</p>
+<h2>5. Plano de corte (desligar o banco, ligar a web) — <strong>nada disto foi executado</strong></h2>
+<p>Ordem sugerida; cada passo é uma ação em produção e só roda com OK explícito:</p>
+<ol>
+<li><strong>Conde no painel primeiro</strong> (é o que está parado): implementar em</li>
+</ol>
+<p>   <code>SMSMarica.secretario.pwa/back/Painel/</code> um <code>ConsultasKlinikosWeb</code> que produza o <strong>mesmo    contrato</strong> (<code>contrato-painel.json</code>) a partir de 629/631/630/407/56/57/58/818 via    <code>KlinikosSession</code> portado para .NET (login + gate + GET XLS + parser BIFF). Sem tocar nas    UPAs ainda.</p>
+<ol>
+<li><strong>Confirmar as instâncias web das UPAs</strong> (URL, usuário dedicado, <code>unid_codigo</code>) e repetir</li>
+</ol>
+<p>   <code>probe_login.py</code> + <code>sondar_relatorios.py</code> lá — só então trocar <code>ConsultasUpa</code> pelo mesmo    <code>ConsultasKlinikosWeb</code>.</p>
+<ol>
+<li><strong>Conector FHIR</strong>: nova <code>KlinikosWebImportacaoStrategy</code> para o que sai por relatório</li>
+</ol>
+<p>   (boletim/chegada/CID/desfecho/risco). Narrativa, prescrição e sinais vitais: <strong>decidir</strong>    (tela por boletim × pedir ao fornecedor um relatório/exportação × manter agente SQL só    para isso).</p>
+<ol>
+<li><strong>Desligar o agente WSS / slugs SQL</strong> por instância, depois que a web estiver alimentando</li>
+</ol>
+<p>   o mesmo contrato por ≥ 1 semana com conferência de números lado a lado.</p>
+<ol>
+<li><strong>"Quais e como as informações podem ser enviadas"</strong> (quando o nosso sistema atualizar o</li>
+</ol>
+<p>   deles): o único caminho de escrita medido é o mesmo da tela — postback WebForms com    ViewState + <code>__EVENTVALIDATION</code> — e os <code>.asmx</code> expostos são de leitura (<code>GetData</code>,    <code>GetProcedimento</code>) ou administrativos (<code>DeletarVinculo</code>). <strong>Não há API de escrita.</strong>    Escrever = replicar a tela (Registro.aspx tem 111 campos, 22 botões). Fica para depois,    com ADR próprio e trava invertida como no SER.</p>
+<h2>6. Sincronismo de cadastros — "quem foi cadastrado desde ontem" (medido)</h2>
+<p>Não há <code>rv_atualizacao</code> na web, mas o módulo Cadastro tem dois relatórios <strong>por data de criação do prontuário</strong>, os dois em XLS por GET (a tela só oferece PDF, mas o <code>rptviewXls</code> aceita os mesmos parâmetros):</p>
+<div class="tw"><table><thead><tr><th>Relatório</th><th>Endpoint (1 dia)</th><th>Colunas</th><th>Medido 15/09</th></tr></thead><tbody>
+<tr><td><strong>21</strong> <em>Prontuários Abertos</em> (<code>Cadastro/Relatorios/ProntuariosAbertos.aspx</code>)</td><td><code>rptviewXls.aspx?parRel=21&amp;parNum=4&amp;par1=ini&amp;par2=fim&amp;par3=0000&amp;par4=0005</code> (<code>par3</code> = clínica, <code>0000</code> = todas)</td><td><strong>Prontuário, Paciente, Clínica, Nascimento, Idade, Sexo, CNS</strong></td><td>37 prontuários novos no dia (rodapé do PDF: 765 abertos no período/total)</td></tr>
+<tr><td><strong>488</strong> <em>Origem Criação Prontuário</em> (<code>Cadastro/Relatorios/OrigemCriacaoProntuario.aspx</code>)</td><td><code>rptviewXls.aspx?parRel=488&amp;parNum=5&amp;par1=0005&amp;par2=&amp;par3=&amp;par4=ini&amp;par5=fim</code> (<code>par2/par3</code> = faixa de prontuário, alternativa às datas)</td><td><strong>Data Abertura, Código (boletim), Paciente, Prontuário, Setor de Origem</strong></td><td>7 linhas</td></tr>
+</tbody></table></div>
+<p>Os dois usam o controle de data <code>UCPesquisaData1$rdtpDataInicio/Fim</code> (RadDateTimePicker) — diferente do <code>ctlParam$rdpData<em></code> das telas genéricas. O 21 é a fonte do <strong>sincronismo de cadastro</strong>: prontuário (chave local), nascimento, sexo e <strong>CNS</strong>. Faltam CPF, mãe, telefone e endereço — só na tela <code>Cadastro/Paciente/CadastroBasico.aspx</code> (por prontuário, postback) ou num relatório que o fornecedor exporte. <strong>390</strong> </em>Cadastro no Estabelecimento de Saúde<em> (<code>ParamPaciente.aspx</code>) é tela de consulta por paciente (só <code>btnLimpar</code>/<code>imbVoltar</code>), não lista. <strong>381</strong> </em>Registros Abertos* exige clínica selecionada (<code>ddlClinica</code>) — testar por clínica.</p>
+<p>Para a <strong>UPA</strong> o 407 (registrados no dia: Nº Boletim + Prontuário + Paciente + Nasc/Idade) já cobre "paciente novo que apareceu"; o 21 completa com CNS e sexo.</p>
+</main>
+</body>
+</html>

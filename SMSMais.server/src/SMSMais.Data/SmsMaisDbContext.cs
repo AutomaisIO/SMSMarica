@@ -257,6 +257,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RespostaRapidaCampo> RespostaRapidaCampos => Set<RespostaRapidaCampo>();
     public DbSet<UsuarioUnidade> UsuarioUnidades => Set<UsuarioUnidade>();
 
+    // Softphone do usuário: vínculo com o ramal que vive no Automais.Pabx (VM de telefonia).
+    public DbSet<Entities.Telefonia.UsuarioSoftphone> UsuarioSoftphones => Set<Entities.Telefonia.UsuarioSoftphone>();
+
     // Comunicações ao paciente (fila WhatsApp: confirmação/exame liberado/laudo pronto),
     // estado da conversa de cancelamento e registro manual de contatos.
     public DbSet<ComunicacaoPaciente> ComunicacoesPaciente => Set<ComunicacaoPaciente>();

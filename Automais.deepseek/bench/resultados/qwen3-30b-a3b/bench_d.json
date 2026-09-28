@@ -1,0 +1,34 @@
+[
+ {
+  "concorrencia": 1,
+  "reqs": 16,
+  "p50_s": 1.8,
+  "p90_s": 3.3,
+  "max_s": 4.7,
+  "vazao_msgs_por_hora": 1626
+ },
+ {
+  "concorrencia": 2,
+  "reqs": 16,
+  "p50_s": 3.0,
+  "p90_s": 4.6,
+  "max_s": 7.6,
+  "vazao_msgs_por_hora": 2084
+ },
+ {
+  "concorrencia": 4,
+  "reqs": 16,
+  "p50_s": 5.0,
+  "p90_s": 8.0,
+  "max_s": 9.0,
+  "vazao_msgs_por_hora": 2409
+ },
+ {
+  "concorrencia": 8,
+  "reqs": 16,
+  "p50_s": 9.0,
+  "p90_s": 11.5,
+  "max_s": 12.6,
+  "vazao_msgs_por_hora": 2695
+ }
+]

@@ -1,0 +1,60 @@
+# ── Abertura
+00-capa.html
+02-o-que-faz.html
+03-integracao.html
+# ── Parte 1 · Atender e resolver
+04-secao-atender.html
+05-imagem.html
+b10-solicitacao.html
+b11-equipamentos.html
+b12-acervo.html
+06-laudo.html
+b13-modelos-laudo.html
+b14-entrega-laudo.html
+b15-correcao.html
+07-fila.html
+b20-ciclo-solicitacao.html
+b21-sistemas.html
+08-agenda.html
+b22-vagas.html
+b23-estrategias.html
+b24-alteracoes.html
+b25-operadores.html
+09-transporte.html
+# ── Parte 2 · Falar com o cidadão
+10-secao-cidadao.html
+11-app-cidadao.html
+12-whatsapp.html
+b30-confirmacoes.html
+b31-atendimento.html
+b32-robo.html
+b33-mensageria.html
+b34-satisfacao.html
+12b-telefonia.html
+13-ouvidoria.html
+b50-ouvidoria-det.html
+# ── Parte 3 · Enxergar a secretaria
+14-secao-gestao.html
+15-consulta-inteligente.html
+16-indicadores.html
+b51-estatisticas.html
+17-quem-fez.html
+b52-auditoria.html
+b53-erros-suporte.html
+b54-manual.html
+# ── Parte 4 · O dado por baixo
+b39-secao-dado.html
+b40-cidadao-unico.html
+b41-prontuarios.html
+b42-qualidade.html
+b43-cadastros-base.html
+# ── Parte 5 · Feito para a sua casa
+b70-secao-casa.html
+19-customizacao.html
+b60-permissoes.html
+b61-instituicao.html
+b62-seguranca.html
+20-implantacao.html
+b63-roteiro.html
+b64-ressalva.html
+21-fecho.html

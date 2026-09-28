@@ -19,13 +19,26 @@
     }
   }
 
+  // Reenvia mesmo sem mudança, como batimento: o service worker pode ter perdido a sessão
+  // (restauração atrasada, 401, extensão recarregada) e o painel continua logado. O background
+  // ignora a repetição da mesma sessão, então o custo é uma mensagem.
   let ultimo = '';
+  let ultimoEnvio = 0;
+  const BATIMENTO_MS = 60000;
   function sincronizar() {
     const sessao = lerSessao();
     const assinatura = sessao ? sessao.token : '';
-    if (assinatura === ultimo) return; // nada mudou
+    // Sem sessão só se envia na TRANSIÇÃO (logout de verdade): outros subdomínios
+    // (arquivos., secretario.) não têm a chave e, no batimento, deslogariam a extensão.
+    const mudou = assinatura !== ultimo;
+    if (!mudou && (!sessao || Date.now() - ultimoEnvio < BATIMENTO_MS)) return;
     ultimo = assinatura;
-    chrome.runtime.sendMessage({ tipo: 'auth', sessao }).catch(() => {});
+    ultimoEnvio = Date.now();
+    try {
+      chrome.runtime.sendMessage({ tipo: 'auth', sessao }).catch(() => {});
+    } catch {
+      /* extensão recarregada: este script ficou órfão; o novo é injetado pelo background */
+    }
   }
 
   sincronizar();

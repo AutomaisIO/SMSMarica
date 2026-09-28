@@ -1,0 +1,27 @@
+# Abertura
+00-capa.html
+02-o-que-faz.html
+03-integracao.html
+# Parte 1 — atender e resolver
+04-secao-atender.html
+05-imagem.html
+06-laudo.html
+07-fila.html
+08-agenda.html
+09-transporte.html
+# Parte 2 — falar com o cidadão
+10-secao-cidadao.html
+11-app-cidadao.html
+12-whatsapp.html
+12b-telefonia.html
+13-ouvidoria.html
+# Parte 3 — enxergar a secretaria
+14-secao-gestao.html
+15-consulta-inteligente.html
+16-indicadores.html
+17-quem-fez.html
+# Parte 4 — feito para a sua casa
+18-secao-casa.html
+19-customizacao.html
+20-implantacao.html
+21-fecho.html

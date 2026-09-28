@@ -312,6 +312,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+
+    // Credencial SIP do softphone: o navegador pede ao abrir e ao reconectar. Particiona pelo
+    // usuário (o endpoint é autenticado); barra laço de reconexão martelando a VM de telefonia.
+    options.AddPolicy("softphone-credencial", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst("sub")?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 // Atrás do nginx (proxy no mesmo host): sem isto, RemoteIpAddress é o loopback do proxy

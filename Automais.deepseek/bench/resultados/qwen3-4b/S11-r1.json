@@ -1,0 +1,33 @@
+{
+ "cena": "S11",
+ "modelo": "qwen3-4b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 124.19,
+   "usage": {
+    "completion_tokens": 490,
+    "prompt_tokens": 4963,
+    "total_tokens": 5453,
+    "prompt_tokens_details": {
+     "cached_tokens": 943
+    }
+   },
+   "texto_fora_de_tool": "Entendo sua frustração. A orientação é procurar o posto de saúde onde você é atendido para discutir sua situação. Lá, a equipe poderá avaliar o caso e verificar se há possibilidade de acompanhamento ou nova orientação. Em caso de urgência, procure a rede de saúde municipal.  \n\nVocê pode acessar seus exames e atendimentos no app [https://app.smsmarica.online](https://app.smsmarica.online), onde também pode manter os dados sempre atualizados.  \n\nSe precisar de apoio com isso, posso ajudar a orientar o local mais próximo — basta me informar seu bairro ou CEP.  \n\nAtenciosamente,  \nEquipe de Atendimento da Secretaria de Saúde. ✅  \n\n*Observação: Não é possível garantir acesso a exames com base apenas no tempo de espera. A avaliação da situação é feita pela equipe de saúde no posto de atendimento.*  \n\n[Com a orientação acima, a conversa não é encaminhada para atendente humano, pois já foi atendida com ação clara e adequada.]  \n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Entendo sua frustração. A orientação é procurar o posto de saúde onde você é atendido para discutir sua situação. Lá, a equipe poderá avaliar o caso e verificar se há possibilidade de acompanhamento ou nova orientação. Em caso de urgência, procure a rede de saúde municipal. \\n\\nVocê pode acessar seus exames e atendimentos no app [https://app.smsmarica.online](https://app.smsmarica.online), onde também pode manter os dados sempre atualizados. \\n\\nSe precisar de apoio com isso, posso ajudar a orientar o local mais próximo — basta me informar seu bairro ou CEP. \\n\\nAtenciosamente, \\nEquipe de Atendimento da Secretaria de Saúde. ✅ \\n\\n*Observação: Não é possível garantir acesso a exames com base apenas no tempo de espera. A avaliação da situação é feita pela equipe de saúde no posto de atendimento.*\", \"handoff\": false, \"confianca\": 0.95}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Entendo sua frustração. A orientação é procurar o posto de saúde onde você é atendido para discutir sua situação. Lá, a equipe poderá avaliar o caso e verificar se há possibilidade de acompanhamento ou nova orientação. Em caso de urgência, procure a rede de saúde municipal. \n\nVocê pode acessar seus exames e atendimentos no app [https://app.smsmarica.online](https://app.smsmarica.online), onde também pode manter os dados sempre atualizados. \n\nSe precisar de apoio com isso, posso ajudar a orientar o local mais próximo — basta me informar seu bairro ou CEP. \n\nAtenciosamente, \nEquipe de Atendimento da Secretaria de Saúde. ✅ \n\n*Observação: Não é possível garantir acesso a exames com base apenas no tempo de espera. A avaliação da situação é feita pela equipe de saúde no posto de atendimento.*",
+  "handoff": false,
+  "confianca": 0.95
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T00:43:23",
+ "latencia_total_s": 124.19
+}

@@ -20,7 +20,11 @@ import { AnexosExameSecao } from '@/features/anamnese/components/AnexosExameSeca
 import { DiagramaMamas } from '@/features/anamnese/components/DiagramaMamas';
 import { ModalGerarRequisicaoSiscan } from '@/features/anamnese/components/ModalGerarRequisicaoSiscan';
 import { ModalLoginSiscan } from '@/features/anamnese/components/ModalLoginSiscan';
-import { SecaoSiscan } from '@/features/anamnese/components/SecaoSiscan';
+import {
+  PerguntaRiscoElevadoSiscan,
+  SecaoSiscan,
+  TabelaCirurgiasSiscan,
+} from '@/features/anamnese/components/SecaoSiscan';
 import { useSessaoSiscan } from '@/features/anamnese/api/siscanApi';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Modal } from '@/shared/ui/Modal';
@@ -152,6 +156,10 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
     () => calcularIdade(contexto.data?.pacienteNascimento ?? null),
     [contexto.data?.pacienteNascimento],
   );
+  // Mesma régua do SISCAN (SiscanRequisicaoMapper): prótese também é cirurgia de mama.
+  const jaFezCirurgia =
+    conteudo.historicoClinico.jaRealizouCirurgiaMamaria.resposta === true ||
+    conteudo.historicoClinico.possuiProteseMamaria.resposta === true;
 
   // Persiste sem navegar (usado pelo botão Salvar e pelo "Salvar e sair" do guard).
   async function persistir() {
@@ -492,6 +500,17 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
                         className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1 text-xs"
                       />
                     ) : null}
+                    {/* #106: a tabela abre logo abaixo da pergunta. Prótese também conta — é a
+                        mesma régua que decide o "já fez cirurgia" enviado ao SISCAN. */}
+                    {chave === 'jaRealizouCirurgiaMamaria' && jaFezCirurgia ? (
+                      <TabelaCirurgiasSiscan
+                        cirurgias={conteudo.siscan.cirurgias}
+                        somenteLeitura={somenteLeitura}
+                        aoMudar={(cirurgias) =>
+                          setConteudo((c) => ({ ...c, siscan: { ...c.siscan, cirurgias } }))
+                        }
+                      />
+                    ) : null}
                   </div>
                 );
               })}
@@ -660,6 +679,17 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
               </div>
             </div>
           </fieldset>
+
+          {/* #139: a pergunta do SISCAN, como ela é lá — convive com a avaliação acima. */}
+          <div className="mt-4">
+            <PerguntaRiscoElevadoSiscan
+              valor={conteudo.siscan.riscoElevado}
+              somenteLeitura={somenteLeitura}
+              aoMudar={(riscoElevado) =>
+                setConteudo((c) => ({ ...c, siscan: { ...c.siscan, riscoElevado } }))
+              }
+            />
+          </div>
         </section>
 
         {/* 6. Saúde reprodutiva */}
@@ -835,10 +865,6 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           <SecaoSiscan
             valor={conteudo.siscan}
             jaFezMamografia={conteudo.historicoClinico.jaRealizouMamografia.resposta === true}
-            jaFezCirurgia={
-              conteudo.historicoClinico.jaRealizouCirurgiaMamaria.resposta === true ||
-              conteudo.historicoClinico.possuiProteseMamaria.resposta === true
-            }
             somenteLeitura={somenteLeitura}
             aoMudar={(mudanca) =>
               setConteudo((c) => ({ ...c, siscan: { ...c.siscan, ...mudanca } }))
@@ -894,6 +920,13 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           }
         }}
         aoGerar={() => contexto.refetch()}
+        // #137: sem sessão do operador no SISCAN, reabre o login; autenticado, o
+        // `aoAutenticar` do ModalLoginSiscan abre a geração de novo.
+        aoPerderSessao={() => {
+          setGerarSiscan(false);
+          void sessaoSiscan.refetch();
+          setLoginSiscan(true);
+        }}
       />
 
       {/* O aviso de que a requisição ainda não existe. Aparece ao salvar e ao sair, porque é

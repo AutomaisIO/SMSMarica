@@ -1,0 +1,50 @@
+S01-r1: 192.9s, 2 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S01-r2: 123.08s, 2 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S02-r1: 176.02s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S02-r2: 116.3s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S03-r1: 218.13s, 6 chamada(s), violacoes=['estourou_6_iteracoes']
+  -> —
+S03-r2: 68.16s, 1 chamada(s), violacoes=[]
+  -> Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a red
+S04-r1: 122.7s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S04-r2: 176.58s, 6 chamada(s), violacoes=['estourou_6_iteracoes']
+  -> —
+S05-r1: 196.88s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S05-r2: 123.33s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S06-r1: 145.61s, 2 chamada(s), violacoes=[]
+  -> Entendido! Estou encaminhando sua solicitação para um atendente humano que poderá ajudar com mais detalhes.
+
+Se precisar de mais orientação,
+S06-r2: 61.37s, 1 chamada(s), violacoes=[]
+  -> Bom dia! Você deseja falar com um atendente humano? Estou aqui para ajudar com dúvidas ou solicitações administrativas. Pode me informar um 
+S07-r1: 126.54s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S07-r2: 123.88s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S08-r1: 178.45s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S08-r2: 116.85s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S09-r1: 175.7s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S09-r2: 116.14s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S10-r1: 52.3s, 1 chamada(s), violacoes=[]
+  -> Obrigado pela mensagem. Estamos fora do horário de atendimento humano. Se precisar de orientação, você pode procurar o posto de saúde onde é
+S10-r2: 123.38s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S11-r1: 124.19s, 1 chamada(s), violacoes=[]
+  -> Entendo sua frustração. A orientação é procurar o posto de saúde onde você é atendido para discutir sua situação. Lá, a equipe poderá avalia
+S11-r2: 123.77s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S12-r1: 125.05s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S12-r2: 122.81s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —

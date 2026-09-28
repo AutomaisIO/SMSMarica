@@ -263,7 +263,9 @@ public sealed class VarreduraAgendaService(
         var agenda = await db.SisregVarreduraAgendas.FirstOrDefaultAsync(x => x.UnidadeId == unidade.Id, ct);
         if (agenda is null)
         {
-            agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id };
+            // Unidade entrando na rede agora: nasce AVISANDO. O PATCH abaixo ainda manda nela — quem
+            // quiser mudo desliga no mesmo salvamento —, mas o silêncio deixou de ser o padrão.
+            agenda = new SisregVarreduraAgenda { UnidadeId = unidade.Id, EnviarConfirmacao = true };
             db.SisregVarreduraAgendas.Add(agenda);
         }
 
@@ -1068,17 +1070,17 @@ public sealed class VarreduraAgendaService(
     /// de férias — e a habilitação dele junto.</para>
     ///
     /// <para><b>Decisão do operador é intocável:</b> <c>Habilitado</c> e <c>EnviarConfirmacao</c>
-    /// de linha existente nunca são alterados. Linha nova nasce desabilitada (o opt-in de sempre),
-    /// mas HERDA o <c>EnviarConfirmacao</c> das irmãs do mesmo código na unidade — senão um
-    /// profissional novo entraria mudo num procedimento cujo aviso já está ligado, e ninguém
-    /// perceberia.</para>
+    /// de linha existente nunca são alterados. Linha nova nasce <b>LIGADA nos dois eixos</b> — o
+    /// padrão da rede é sincronizar e avisar tudo —, com uma exceção: se o operador já desligou o
+    /// aviso daquele <b>código</b> na unidade, a linha nova nasce muda também. Senão o veto dele
+    /// vazaria pelo primeiro profissional novo que executasse o mesmo procedimento.</para>
     ///
     /// <para><b>Os pares "novos" são, em boa parte, os ITENS de dentro de um GRUPO já habilitado.</b>
     /// Conferido no CDT em 27/08/2026 contra o export real: o arquivo mostrou 33 profissionais e 82
     /// pares, dos quais 49 já estavam mapeados e 33 não — o mapeamento guarda o grupo
-    /// (<c>1402000</c>) e a agenda devolve o item (<c>1402077</c>). Eles entram desabilitados, então
-    /// não passam a custar requisição no modo por par; ganham nome e passam a existir na tela, que
-    /// é o que faltava para o operador decidir sobre o aviso ao paciente item a item.</para>
+    /// (<c>1402000</c>) e a agenda devolve o item (<c>1402077</c>). Eles ganham nome, passam a
+    /// existir na tela e já entram valendo — o que antes exigia o operador descer item a item para
+    /// ligar o aviso de cada um.</para>
     ///
     /// <para>Na mesma medição, 223 dos 272 pares mapeados NÃO tinham agenda na janela. É a prova
     /// concreta de por que a omissão não pode virar <c>Ausente</c>: apagaria 82% do mapeamento.</para>
@@ -1107,10 +1109,12 @@ public sealed class VarreduraAgendaService(
 
         var porCpf = existentes.ToDictionary(p => p.Cpf, StringComparer.Ordinal);
 
-        // Quem já avisa, por código, na unidade inteira — a régua que a linha nova herda.
-        var avisaPorCodigo = existentes
+        // Quem NÃO avisa, por código, na unidade inteira. O padrão virou AVISAR; esta lista existe
+        // só para o veto do operador sobreviver — um código que ele desligou não volta ligado
+        // porque apareceu sob outro médico.
+        var naoAvisaPorCodigo = existentes
             .SelectMany(p => p.Procedimentos)
-            .Where(x => x.EnviarConfirmacao)
+            .Where(x => !x.EnviarConfirmacao)
             .Select(x => x.Codigo)
             .ToHashSet(StringComparer.Ordinal);
 
@@ -1170,8 +1174,12 @@ public sealed class VarreduraAgendaService(
                         ProfissionalId = profissional.Id,
                         Codigo = porCodigo.Key,
                         Nome = porCodigo.First().ProcedimentoTexto ?? "(não informado)",
-                        Habilitado = false,
-                        EnviarConfirmacao = avisaPorCodigo.Contains(porCodigo.Key),
+                        // Nasce LIGADO, como o médico ao lado: procedimento que apareceu na agenda
+                        // está sendo executado de verdade nesta unidade, e o padrão da rede é
+                        // sincronizar e avisar tudo. O único freio é o veto explícito do operador
+                        // naquele código, preservado por `naoAvisaPorCodigo`.
+                        Habilitado = true,
+                        EnviarConfirmacao = !naoAvisaPorCodigo.Contains(porCodigo.Key),
                         Grupo = porCodigo.Key.EndsWith("000", StringComparison.Ordinal),
                         VistoEm = agora,
                     });

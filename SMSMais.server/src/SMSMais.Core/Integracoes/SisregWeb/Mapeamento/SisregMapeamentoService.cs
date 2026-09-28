@@ -159,7 +159,12 @@ public sealed class SisregMapeamentoService(
                     Id = Guid.NewGuid(),
                     UnidadeId = unidade.Id,
                     Cpf = cpf,
-                    Habilitado = false, // novo entra desligado: quem decide o custo da varredura é o operador
+                    // NASCE LIGADO. Entrava desligado quando habilitar decidia o custo da varredura
+                    // (uma requisição por par profissional × procedimento); essa razão morreu com a
+                    // exportação da unidade inteira numa requisição. Hoje "habilitado" só decide
+                    // quem sobe ao hub FHIR como Practitioner — e médico que o SISREG cadastrou na
+                    // unidade é exatamente quem deve estar lá. É a mesma régua da varredura diária.
+                    Habilitado = true,
                     CriadoEm = agora,
                     CriadoPor = usuarioId,
                 };
@@ -206,7 +211,17 @@ public sealed class SisregMapeamentoService(
 
             var procedimentos = SisregAjaxParser.LerLinhas(xmlProcedimentos);
             procedimentosEncontrados += procedimentos.Count;
-            procedimentosNovos += ReconciliarProcedimentos(profissional, procedimentos, agora);
+            // Quem NÃO avisa, por código, na unidade inteira — a única régua que o procedimento novo
+            // herda. O padrão é avisar; a herança existe só para não reabrir o que o operador
+            // desligou de propósito num código, quando ele reaparece sob outro profissional.
+            var naoAvisaPorCodigo = porCpf.Values
+                .SelectMany(p => p.Procedimentos)
+                .Where(x => !x.EnviarConfirmacao)
+                .Select(x => x.Codigo)
+                .ToHashSet(StringComparer.Ordinal);
+
+            procedimentosNovos += ReconciliarProcedimentos(
+                profissional, procedimentos, agora, naoAvisaPorCodigo);
             profissional.ProcedimentosVistosEm = agora;
 
             foreach (var procedimento in procedimentos)
@@ -537,7 +552,8 @@ public sealed class SisregMapeamentoService(
     /// antigo.</para>
     /// </summary>
     private int ReconciliarProcedimentos(
-        SisregProfissionalUnidade profissional, IReadOnlyList<SisregAjaxParser.Linha> doSisreg, DateTime agora)
+        SisregProfissionalUnidade profissional, IReadOnlyList<SisregAjaxParser.Linha> doSisreg, DateTime agora,
+        IReadOnlySet<string> naoAvisaPorCodigo)
     {
         var novos = 0;
         var vistos = new HashSet<string>(StringComparer.Ordinal);
@@ -555,7 +571,12 @@ public sealed class SisregMapeamentoService(
                     Id = Guid.NewGuid(),
                     ProfissionalId = profissional.Id,
                     Codigo = codigo,
-                    Habilitado = false,
+                    // Nasce LIGADO nos dois eixos — é o padrão da rede: unidade ligada, médico
+                    // ligado, procedimento ligado e avisando. Quem veta é o operador, e o veto
+                    // sobrevive porque só a linha NOVA nasce assim (a existente mantém o que tem)
+                    // e porque um código já desligado na unidade não volta ligado sob outro médico.
+                    Habilitado = true,
+                    EnviarConfirmacao = !naoAvisaPorCodigo.Contains(codigo),
                 };
                 profissional.Procedimentos.Add(procedimento);
                 db.SisregProcedimentosProfissional.Add(procedimento); // ver nota do método

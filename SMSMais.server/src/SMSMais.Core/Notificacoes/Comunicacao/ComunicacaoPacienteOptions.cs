@@ -42,6 +42,10 @@ public sealed class ComunicacaoPacienteOptions
         ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.jpg",
         // Escolha do Bernardo entre as quatro variações da arte (20/09/2026).
         ["agendamento_cancelado_anonimo"] = "https://app.smsmarica.online/mensagens/cancelamento-branco-invertido.jpg",
+        // Régua de reforço da confirmação (24/09/2026): a mesma arte que foi como amostra na Meta.
+        ["agendamento_aviso_pendente"] = "https://app.smsmarica.online/mensagens/aviso-pendente-vermelho.jpg",
+        ["agendamento_aguardando_resposta"] = "https://app.smsmarica.online/mensagens/confirmacao-pendente-branco.jpg",
+        ["agendamento_procure_posto"] = "https://app.smsmarica.online/mensagens/procure-posto-branco.jpg",
     };
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----

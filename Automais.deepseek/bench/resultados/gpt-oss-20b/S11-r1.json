@@ -1,0 +1,33 @@
+{
+ "cena": "S11",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 118.9,
+   "usage": {
+    "completion_tokens": 504,
+    "prompt_tokens": 4098,
+    "total_tokens": 4602,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Para verificar seu cadastro, poderia me informar os quatro primeiros dígitos do seu CPF?\",\"handoff\":false,\"confianca\":0.8}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Para verificar seu cadastro, poderia me informar os quatro primeiros dígitos do seu CPF?",
+  "handoff": false,
+  "confianca": 0.8
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:42:57",
+ "latencia_total_s": 118.9
+}

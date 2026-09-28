@@ -1,0 +1,60 @@
+<section class="slide" id="b-estatisticas">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Gestão · atendimento</p>
+      <h1 class="titulo">O retrato de quem <em>fala com o cidadão</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="painel-kpi" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi"><span class="rot">Mensagens no mês</span><span class="num">18.4<i>mil</i></span><span class="meta">72% enviadas pelo sistema</span></div>
+      <div class="kpi"><span class="rot">Entregues</span><span class="num verde">96,2<i>%</i></span><span class="meta">falha quase toda por número inválido</span></div>
+      <div class="kpi"><span class="rot">1ª resposta humana</span><span class="num">7<i>min</i></span><span class="meta">mediana, horário comercial</span></div>
+      <div class="kpi"><span class="rot">Resolvidas pelo robô</span><span class="num" style="color:var(--nit-laranja)">61<i>%</i></span><span class="meta">sem passar por pessoa</span></div>
+    </div>
+
+    <div class="grade g-3-2" style="margin-top:14px;flex:1;min-height:0">
+      <div class="grafico serie">
+        <p class="g-tit">Mensagens por dia — setembro</p>
+        <svg viewBox="0 0 600 170" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ee7219" stop-opacity=".55"/>
+              <stop offset="1" stop-color="#ee7219" stop-opacity=".04"/>
+            </linearGradient>
+          </defs>
+          <g stroke="#e2e8f0" stroke-width="1"><line x1="0" y1="42" x2="600" y2="42"/><line x1="0" y1="84" x2="600" y2="84"/><line x1="0" y1="126" x2="600" y2="126"/></g>
+          <polygon fill="url(#gArea)" points="0,170 0,118 30,104 60,110 90,96 120,150 150,152 180,92 210,84 240,90 270,70 300,148 330,150 360,66 390,58 420,72 450,62 480,140 510,146 540,48 570,54 600,40 600,170"/>
+          <polyline fill="none" stroke="#ee7219" stroke-width="3" stroke-linejoin="round" points="0,118 30,104 60,110 90,96 120,150 150,152 180,92 210,84 240,90 270,70 300,148 330,150 360,66 390,58 420,72 450,62 480,140 510,146 540,48 570,54 600,40"/>
+          <polyline fill="none" stroke="#1d1d1b" stroke-width="2" stroke-dasharray="5 4" points="0,150 30,146 60,148 90,142 120,160 150,161 180,138 210,134 240,136 270,128 300,158 330,159 360,124 390,120 420,126 450,122 480,156 510,157 540,112 570,116 600,108"/>
+        </svg>
+        <div class="eixo"><span>1</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
+        <p class="g-nota"><span style="display:inline-block;width:18px;height:3px;background:#ee7219;vertical-align:middle;margin-right:5px"></span>sistema &nbsp;
+          <span style="display:inline-block;width:18px;height:0;border-top:2px dashed #1d1d1b;vertical-align:middle;margin-right:5px"></span>atendentes &nbsp;·&nbsp;
+          Os vales são fins de semana. A tracejada não cresce junto com o volume — é o robô absorvendo o pico.</p>
+      </div>
+
+      <div class="grafico" style="display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <p class="g-tit">O que o cidadão mais procura</p>
+          <div class="ranking">
+            <div class="linha"><span class="rot">Confirmar consulta</span><span class="trilho"><span class="barra" style="width:100%"></span></span><span class="val">5.140</span></div>
+            <div class="linha"><span class="rot">Resultado de exame</span><span class="trilho"><span class="barra" style="width:71%"></span></span><span class="val">3.652</span></div>
+            <div class="linha"><span class="rot">Remarcar</span><span class="trilho"><span class="barra" style="width:48%"></span></span><span class="val">2.468</span></div>
+            <div class="linha"><span class="rot">Transporte</span><span class="trilho"><span class="barra fraca" style="width:31%"></span></span><span class="val">1.594</span></div>
+            <div class="linha"><span class="rot">Endereço</span><span class="trilho"><span class="barra fraca" style="width:22%"></span></span><span class="val">1.131</span></div>
+          </div>
+        </div>
+        <p class="g-nota">O topo da lista é o que a secretaria deveria informar <b>antes</b> de ser perguntada.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">{{N}}</span>
+  </div>
+</section>

@@ -224,4 +224,25 @@ public class SiscanWebSessaoTests
         SiscanHtml.FormDoItemDeMenu(doc, "j_id32:j_id64").Should().Be("j_id32");
         SiscanHtml.ItemDeMenu(doc, "TELA QUE NÃO EXISTE").Should().BeNull();
     }
+
+    /// <summary>
+    /// Ticket #137: é por aqui que se sabe que a sessão caiu por ociosidade — o SISCAN responde
+    /// HTTP 200 com o formulário de login, nunca 401. Tela logada não pode ser confundida com ele.
+    /// </summary>
+    [Theory]
+    [InlineData("""<html><body><form id="formLogin" action="/login.jsf"><input name="email"/></form></body></html>""", true)]
+    [InlineData("""<form name="formLogin" method="post"></form>""", true)]
+    [InlineData("""<html><body><form id="j_id32"><span class="rich-menu-item-label">GERENCIAR EXAME</span></form></body></html>""", false)]
+    public void Tela_de_login_denuncia_sessao_expirada(string html, bool esperado) =>
+        SiscanWebSessao.EhTelaDeLogin(html).Should().Be(esperado);
+
+    /// <summary>A prévia mostrava "frm:anoMastectomia…" como pergunta; agora é legível.</summary>
+    [Theory]
+    [InlineData("frm:anoMastectomiaPoupadoraPeleDireita", "Ano — Mastectomia poupadora pele (direita)")]
+    [InlineData("frm:anoRadioterapiaEsquerda", "Ano — Radioterapia (esquerda)")]
+    [InlineData("frm:anoUltimaMamografia", null)]
+    [InlineData("frm:prontuario", null)]
+    public void Campo_de_ano_ganha_rotulo_legivel(string campo, string? esperado) =>
+        SMSMais.Core.Integracoes.SiscanWeb.Requisicao.SiscanRequisicaoService.RotuloDeAno(campo)
+            .Should().Be(esperado);
 }

@@ -73,30 +73,12 @@ public sealed class GeradorConfigChanSip(
         sb.AppendLine("; ============================================================================");
         sb.AppendLine("; RAMAIS SMS MARICA - GERADO AUTOMATICAMENTE PELO AUTOMAIS.PABX");
         sb.AppendLine("; NAO EDITAR A MAO: qualquer alteracao manual e sobrescrita na proxima geracao.");
-        sb.AppendLine($"; Gerado em {agora} (Brasilia). Telefones chegam via WireGuard (10.200.<id>.x).");
+        sb.AppendLine($"; Gerado em {agora} (Brasilia). Aparelhos via WireGuard (10.200.<id>.x); softphones via WSS.");
         sb.AppendLine("; ============================================================================");
         sb.AppendLine();
 
         foreach (var ramal in ramais)
-        {
-            sb.Append('[').Append(ramal.Numero).AppendLine("]");
-            sb.Append("secret=").AppendLine(protetor.Unprotect(ramal.SecretCifrado));
-            sb.AppendLine("type=friend");
-            sb.AppendLine("qualify=yes");
-            sb.AppendLine("nat=force_rport,comedia");
-            sb.AppendLine("call-limit=1");
-            sb.AppendLine("host=dynamic");
-            sb.AppendLine("disallow=all");
-            sb.AppendLine("allow=alaw");
-            sb.AppendLine("allow=ulaw");
-            sb.AppendLine("allow=gsm");
-            sb.AppendLine("context=PLANO");
-            sb.Append("callerid=").AppendLine(string.IsNullOrWhiteSpace(ramal.CallerId) ? ramal.Numero : ramal.CallerId);
-            sb.AppendLine("canreinvite=no");
-            sb.AppendLine("rtptimeout=60");
-            sb.AppendLine("rtpholdtimeout=180");
-            sb.AppendLine();
-        }
+            sb.Append(BlocoSipChanSip.Gerar(ramal, protetor.Unprotect(ramal.SecretCifrado), _opcoes.WebRtc));
 
         return sb.ToString();
     }

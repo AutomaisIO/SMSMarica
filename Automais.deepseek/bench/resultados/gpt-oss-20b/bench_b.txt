@@ -1,0 +1,48 @@
+S01-r1: 120.33s, 1 chamada(s), violacoes=[]
+  -> Claro, vou encaminhá-lo(a) a um atendente humano. Por favor, aguarde um momento.
+S01-r2: 36.45s, 1 chamada(s), violacoes=[]
+  -> Para falar com um atendente, encaminho sua solicitação. Por favor, aguarde. Enquanto isso, acesse https://app.smsmarica.online para verifica
+S02-r1: 102.96s, 4 chamada(s), violacoes=[]
+  -> Desculpe, não encontrei nenhum agendamento futuro no nosso sistema. Por favor, verifique a sua guia no posto de saúde onde você costuma ser 
+S02-r2: 19.38s, 1 chamada(s), violacoes=[]
+  -> Boa noite! Para localizar sua consulta, poderia me informar os quatro primeiros dígitos do seu CPF?
+S03-r1: 129.07s, 1 chamada(s), violacoes=[]
+  -> Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a red
+S03-r2: 41.78s, 1 chamada(s), violacoes=[]
+  -> Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a red
+S04-r1: 12.74s, 1 chamada(s), violacoes=[]
+  -> Para confirmar a presença, preciso que me informe os quatro primeiros dígitos do seu CPF e o mês e ano de seu nascimento.
+S04-r2: 19.68s, 1 chamada(s), violacoes=[]
+  -> Para confirmar sua presença, preciso que me informe os quatro primeiros dígitos do seu CPF e seu mês e ano de nascimento.
+S05-r1: 86.65s, 1 chamada(s), violacoes=[]
+  -> Para confirmar sua identidade, poderia me enviar os quatro primeiros dígitos do seu CPF?
+S05-r2: 24.46s, 1 chamada(s), violacoes=[]
+  -> Para continuar, preciso confirmar sua identidade. Poderia me informar os 4 primeiros dígitos do CPF do paciente, por favor?
+S06-r1: 90.01s, 1 chamada(s), violacoes=[]
+  -> Claro, encaminhando para um atendente humano.
+S06-r2: 40.34s, 1 chamada(s), violacoes=[]
+  -> Claro, encaminhando para um atendente humano. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já
+S07-r1: 18.57s, 1 chamada(s), violacoes=[]
+  -> Claro, posso ajudar. Qual exame você gostaria de agendar?
+S07-r2: 14.19s, 1 chamada(s), violacoes=[]
+  -> Claro, posso ajudar. Você quer agendar um exame, uma consulta ou o seu cadastro?
+S08-r1: 98.49s, 1 chamada(s), violacoes=[]
+  -> Para saber o endereço, acesse o app e procure o posto onde está cadastrado. Se precisar, me informe o nome do posto ou bairro e eu verifico 
+S08-r2: 67.42s, 1 chamada(s), violacoes=[]
+  -> Por favor, informe os quatro primeiros dígitos do seu CPF.
+S09-r1: 92.88s, 1 chamada(s), violacoes=[]
+  -> Olá, Alessandra! Para confirmar o cadastro do paciente, poderia me informar os quatro primeiros dígitos do CPF, o mês e o ano de nascimento?
+S09-r2: 36.68s, 1 chamada(s), violacoes=[]
+  -> Olá! Para confirmar o agendamento, preciso dos quatro primeiros dígitos do CPF do paciente, por favor. Já anotamos seu novo número de contat
+S10-r1: 71.4s, 1 chamada(s), violacoes=[]
+  -> Obrigado por nos avisar. Se precisar, pode consultar seu histórico e agendamentos pelo app https://app.smsmarica.online ou voltar durante o 
+S10-r2: 36.26s, 1 chamada(s), violacoes=[]
+  -> Claro, como posso ajudar você hoje?
+S11-r1: 118.9s, 1 chamada(s), violacoes=[]
+  -> Para verificar seu cadastro, poderia me informar os quatro primeiros dígitos do seu CPF?
+S11-r2: 28.73s, 1 chamada(s), violacoes=[]
+  -> Para verificar seu cadastro, poderia me informar os quatro primeiros dígitos do seu CPF?
+S12-r1: 18.17s, 1 chamada(s), violacoes=[]
+  -> Para que eu possa confirmar seu cadastro, poderia me informar seu mês e ano de nascimento?
+S12-r2: 17.65s, 1 chamada(s), violacoes=[]
+  -> Qual o mês e ano de nascimento?

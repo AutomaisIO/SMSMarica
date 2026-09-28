@@ -141,10 +141,25 @@ jobs:
             $SUDO mkdir -p "$APP_DIR" "$ENV_DIR"
 
             # --- 5. Arquivo de ambiente (connection string e afins) ---
+            # O env do servidor é a FONTE DA VERDADE: o deploy só atualiza as linhas que ele
+            # controla e preserva o resto. Antes o tee recriava o arquivo do zero e toda
+            # variável posta à mão (ex.: Assinatura__Nuvem__Canal, 25/09/2026) sumia no
+            # próximo push. Nunca voltar a truncar este arquivo.
+            # Uso: definir_env NOME VALOR — substitui a linha NOME=... ou acrescenta no fim.
+            definir_env() {
+              local tmp
+              tmp=$(mktemp)
+              $SUDO touch "$ENV_FILE"
+              $SUDO cp -p "$ENV_FILE" "$ENV_FILE.bak-deploy"
+              $SUDO grep -v "^$1=" "$ENV_FILE" > "$tmp" || true
+              printf '%s=%s\n' "$1" "$2" >> "$tmp"
+              $SUDO tee "$ENV_FILE" < "$tmp" >/dev/null
+              rm -f "$tmp"
+            }
+
             if [ -n "${DB_CS:-}" ]; then
-              log "Atualizando $ENV_FILE com a connection string do secret DB_CONNECTION do environment..."
-              # tee escreve via sudo sem precisar abrir subshell com heredoc
-              printf 'ConnectionStrings__DefaultDb=%s\n' "$DB_CS" | $SUDO tee "$ENV_FILE" >/dev/null
+              log "Atualizando ConnectionStrings__DefaultDb em $ENV_FILE (demais linhas preservadas)..."
+              definir_env ConnectionStrings__DefaultDb "$DB_CS"
             elif [ ! -f "$ENV_FILE" ]; then
               log "AVISO: secret DB_CONNECTION do environment não setado e $ENV_FILE não existe."
               log "Criando env vazio — o serviço vai subir mas falhará ao conectar no banco."
@@ -155,11 +170,10 @@ jobs:
             fi
 
             # Chave interna do Agente IA: a API (5080) usa para falar com o motor (5085).
-            # Precisa ser reescrita aqui porque o tee acima recria o env do zero a cada deploy;
-            # sem isto o proxy /agente-ia responde 503 depois de qualquer publicação do server.
+            # Vem do secret; definir_env substitui a linha (não duplica a cada deploy).
             if [ -n "${AIENGINE_KEY:-}" ]; then
-              printf 'AgenteIa__InternalKey=%s\n' "$AIENGINE_KEY" | $SUDO tee -a "$ENV_FILE" >/dev/null
-              printf 'AgenteIa__BaseUrl=http://127.0.0.1:5085\n' | $SUDO tee -a "$ENV_FILE" >/dev/null
+              definir_env AgenteIa__InternalKey "$AIENGINE_KEY"
+              definir_env AgenteIa__BaseUrl "http://127.0.0.1:5085"
             else
               log "AVISO: secret AIENGINE_INTERNAL_KEY ausente — a tela do Agente IA responderá 503."
             fi

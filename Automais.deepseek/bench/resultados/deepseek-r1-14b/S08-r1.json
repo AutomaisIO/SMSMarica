@@ -1,0 +1,27 @@
+{
+ "cena": "S08",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 198.43,
+   "usage": {
+    "completion_tokens": 303,
+    "prompt_tokens": 3329,
+    "total_tokens": 3632,
+    "prompt_tokens_details": {
+     "cached_tokens": 215
+    }
+   },
+   "texto_fora_de_tool": "\n\nCaro(a),  \n\nO endereço do local do exame será informado no posto de saúde onde você é cadastrada(o). Por favor, retire a guia de agendamento lá e confirme o local do atendimento.  \n\nMantenha os dados do app sempre atualizados para acessar suas informações de exames, consultas e atendimentos.  \n\nAtenciosamente,  \n[Seu Nome]",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:33:44",
+ "latencia_total_s": 198.43
+}

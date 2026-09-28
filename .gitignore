@@ -58,3 +58,15 @@ node_modules/
 # Histórico de git é permanente — um `git rm` depois não desfaz. Exame vai para fora da árvore.
 docs/Exames/
 *.xcm
+
+# --- Protegido em 2026-09-28, ao conferir um "push de tudo" ---
+# O padrão `.env` não casa `.env.bak`: um Automais.prime/.env.bak com credencial REAL do Prime
+# (CPF + senha) chegou a ser commitado localmente e foi removido por amend antes do push.
+*.env.bak
+.env.bak
+# Relatório do Prime com 423 páginas de pacientes REAIS (nome, CNS, endereço, telefone,
+# diagnóstico — inclusive menores). Mesmo caso: commitado por engano, removido por amend.
+SMSMais.chrome/RelatorioPacientesAtendidosRPT.pdf
+# Bytecode Python em qualquer nível (a regra antiga só cobria docs/agente-sql).
+__pycache__/
+*.pyc

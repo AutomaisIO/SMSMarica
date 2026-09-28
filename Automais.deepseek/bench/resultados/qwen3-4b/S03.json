@@ -1,0 +1,33 @@
+{
+ "cena": "S03",
+ "modelo": "qwen3-4b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 203.37,
+   "usage": {
+    "completion_tokens": 430,
+    "prompt_tokens": 4504,
+    "total_tokens": 4934,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município.  \n\nPara emergência imediata, posso indicar a unidade de urgência mais próxima com base no bairro ou CEP de sua mãe. Se quiser, me diga o bairro ou CEP para eu localizar a unidade mais próxima.  \n\nDepois disso, encaminharei para um atendente humano que poderá orientar com mais precisão.  \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.  \n\n*handoff=true*  \n*motivoHandoff=urgência com pedido de cirurgia — necessita de avaliação clínica e orientação direta pela equipe de saúde*  \n*confianca=0.7*  \n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município.\\n\\nPara emergência imediata, posso indicar a unidade de urgência mais próxima com base no bairro ou CEP de sua mãe. Se quiser, me diga o bairro ou CEP para eu localizar a unidade mais próxima.\\n\\nDepois disso, encaminharei para um atendente humano que poderá orientar com mais precisão.\\n\\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.\", \"handoff\": true, \"confianca\": 0.7}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município.\n\nPara emergência imediata, posso indicar a unidade de urgência mais próxima com base no bairro ou CEP de sua mãe. Se quiser, me diga o bairro ou CEP para eu localizar a unidade mais próxima.\n\nDepois disso, encaminharei para um atendente humano que poderá orientar com mais precisão.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.",
+  "handoff": true,
+  "confianca": 0.7
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:00:57",
+ "latencia_total_s": 203.37
+}

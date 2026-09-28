@@ -1,0 +1,33 @@
+{
+ "cena": "S08",
+ "modelo": "qwen3-30b-a3b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 111.48,
+   "usage": {
+    "completion_tokens": 253,
+    "prompt_tokens": 4351,
+    "total_tokens": 4604,
+    "prompt_tokens_details": {
+     "cached_tokens": 217
+    }
+   },
+   "texto_fora_de_tool": "O endereço do atendimento será informado na guia que você retira no seu posto de saúde. Recomendo que procure o posto onde é cadastrada para confirmar o local do atendimento. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados. ✅\n\nSe precisar de ajuda com algo mais, é só chamar! 🙌\n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"O endereço do atendimento será informado na guia que você retira no seu posto de saúde. Recomendo que procure o posto onde é cadastrada para confirmar o local do atendimento. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados. ✅\\n\\nSe precisar de ajuda com algo mais, é só chamar! 🙌\", \"handoff\": false, \"confianca\": 0.9}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "O endereço do atendimento será informado na guia que você retira no seu posto de saúde. Recomendo que procure o posto onde é cadastrada para confirmar o local do atendimento. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados. ✅\n\nSe precisar de ajuda com algo mais, é só chamar! 🙌",
+  "handoff": false,
+  "confianca": 0.9
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T22:29:51",
+ "latencia_total_s": 111.48
+}

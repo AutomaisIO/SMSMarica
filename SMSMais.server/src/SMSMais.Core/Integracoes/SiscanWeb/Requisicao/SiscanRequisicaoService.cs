@@ -86,6 +86,21 @@ public sealed class SiscanRequisicaoService(
 
         var sessao = sessoes.Exigir(SessaoId());
 
+        // Preparar só LÊ o SISCAN: se a sessão caiu no meio do percurso (#137), a sessão já foi
+        // descartada e uma segunda passada começa pelo menu, relogando sozinha. Uma vez só.
+        try
+        {
+            return await PrepararNoSiscanAsync(sessao, caso, cancellationToken);
+        }
+        catch (ValidacaoException ex) when (ex.Erros.ContainsKey("siscan.sessao_expirou"))
+        {
+            return await PrepararNoSiscanAsync(sessao, caso, cancellationToken);
+        }
+    }
+
+    private async Task<SiscanPreparoDto> PrepararNoSiscanAsync(
+        ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
+    {
         var critica = await CriticarAsync(sessao, caso, cancellationToken);
 
         if (critica.Nossa is not null)
@@ -1027,12 +1042,45 @@ public sealed class SiscanRequisicaoService(
     private static string RotuloTipo(string tipo) =>
         tipo == SiscanRequisicaoMapper.Rastreamento ? "Rastreamento" : "Diagnóstica";
 
+    /// <summary>
+    /// <c>frm:anoMastectomiaPoupadoraPeleDireita</c> → "Ano — Mastectomia poupadora pele (direita)".
+    /// Os anos de cirurgia e radioterapia são campos gerados por tipo × lado; sem isto a prévia
+    /// mostrava o nome cru do campo como pergunta. Null = não é um desses.
+    /// </summary>
+    internal static string? RotuloDeAno(string campo)
+    {
+        const string prefixo = "frm:ano";
+        if (!campo.StartsWith(prefixo, StringComparison.Ordinal)
+            || campo == SiscanRequisicaoMapper.CampoAnoUltimaMamografia)
+            return null;
+
+        var nome = campo[prefixo.Length..];
+        string? lado = null;
+        foreach (var l in new[] { "Direita", "Esquerda" })
+        {
+            if (nome.EndsWith(l, StringComparison.Ordinal))
+            {
+                lado = l.ToLowerInvariant();
+                nome = nome[..^l.Length];
+                break;
+            }
+        }
+        if (nome.Length == 0) return null;
+
+        // CamelCase → palavras ("MastectomiaPoupadoraPele" → "Mastectomia poupadora pele").
+        var palavras = System.Text.RegularExpressions.Regex.Replace(nome, "(?<!^)([A-Z])", " $1").ToLowerInvariant();
+        var texto = char.ToUpperInvariant(palavras[0]) + palavras[1..];
+        return lado is null ? $"Ano — {texto}" : $"Ano — {texto} ({lado})";
+    }
+
     private static List<SiscanCampoEnvioDto> Resumir(List<KeyValuePair<string, string>> campos)
     {
         var rotulos = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [SiscanRequisicaoMapper.CampoProntuario] = "Nº do Prontuário (nosso pedido)",
-            [SiscanRequisicaoMapper.CampoDataSolicitacao] = "Data da Solicitação (a data do exame)",
+            // Ticket #138: o SISCAN não tem campo "data de atendimento" — a data do atendimento (o
+            // dia em que o exame foi feito) vai neste campo, e o rótulo diz isso com todas as letras.
+            [SiscanRequisicaoMapper.CampoDataSolicitacao] = "Data da Solicitação — vai a data do atendimento (exame)",
             [SiscanRequisicaoMapper.CampoTipoMamografia] = "Tipo de mamografia",
             [SiscanRequisicaoMapper.CampoNodulo] = "Tem nódulo ou caroço na mama?",
             [SiscanRequisicaoMapper.CampoRiscoElevado] = "Apresenta risco elevado?",
@@ -1053,7 +1101,7 @@ public sealed class SiscanRequisicaoService(
 
         return campos.Select(c =>
         {
-            var pergunta = rotulos.TryGetValue(c.Key, out var r) ? r : c.Key;
+            var pergunta = rotulos.TryGetValue(c.Key, out var r) ? r : RotuloDeAno(c.Key) ?? c.Key;
 
             var resposta = c.Key switch
             {

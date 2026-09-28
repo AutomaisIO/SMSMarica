@@ -1,0 +1,27 @@
+{
+ "cena": "S04",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 132.63,
+   "usage": {
+    "completion_tokens": 567,
+    "prompt_tokens": 3241,
+    "total_tokens": 3808,
+    "prompt_tokens_details": {
+     "cached_tokens": 3238
+    }
+   },
+   "texto_fora_de_tool": "\n\nOlá! Como posso ajudá-lo hoje?",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:16:11",
+ "latencia_total_s": 132.63
+}

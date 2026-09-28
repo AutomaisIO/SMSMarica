@@ -1,0 +1,48 @@
+S01-r1: 220.89s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S01-r2: 80.95s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S02-r1: 242.45s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S02-r2: 58.8s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S03-r1: 242.32s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S03-r2: 116.67s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S04-r1: 132.63s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S04-r2: 112.83s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S05-r1: 298.6s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S05-r2: 104.43s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S06-r1: 169.04s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S06-r2: 103.56s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S07-r1: 47.52s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S07-r2: 85.23s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S08-r1: 198.43s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S08-r2: 78.91s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S09-r1: 170.98s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S09-r2: 73.89s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S10-r1: 125.09s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S10-r2: 69.07s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S11-r1: 238.71s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S11-r2: 68.68s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S12-r1: 48.94s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S12-r2: 117.45s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —

@@ -1,0 +1,27 @@
+{
+ "cena": "S01",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 220.89,
+   "usage": {
+    "completion_tokens": 404,
+    "prompt_tokens": 3254,
+    "total_tokens": 3658,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "\n\nPara confirmar a sua consulta, por favor, informe os quatro primeiros dígitos do seu CPF, o mês e o ano de nascimento.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:00:08",
+ "latencia_total_s": 220.89
+}

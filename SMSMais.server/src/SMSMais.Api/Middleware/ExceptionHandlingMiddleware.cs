@@ -110,6 +110,16 @@ public sealed partial class ExceptionHandlingMiddleware(
                 "Armazenamento indisponível", $"{ex.Message} (código {reg.Codigo})",
                 type: ex.Codigo, codigoReferencia: reg.Codigo, jaReportado: reg.JaReportado);
         }
+        // VM de telefonia (Automais.Pabx) fora do ar ou não configurada: nada foi gravado do
+        // lado de cá. Mesmo tratamento do armazenamento — 503 com código de referência.
+        catch (TelefoniaIndisponivelException ex)
+        {
+            LogErroNaoTratado(_logger, ex, context.Request.Path);
+            var reg = await PersistirErroEObterCodigo(context, ex, StatusCodes.Status503ServiceUnavailable);
+            await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
+                "Telefonia indisponível", $"{ex.Message} (código {reg.Codigo})",
+                type: ex.Codigo, codigoReferencia: reg.Codigo, jaReportado: reg.JaReportado);
+        }
         // Cliente abortou a requisição (fechou a aba, viewer PACS cancelou o download de
         // frames): não é falha do sistema — não registra em registro_erro nem tenta
         // responder (a conexão já foi embora). Timeout interno com cliente ainda

@@ -17,7 +17,7 @@ import {
   type EnderecoForm,
 } from '@/shared/ui/FormularioEndereco';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { useAuth } from '@/shared/auth/authStore';
+import { useAuth, useTemConsulta } from '@/shared/auth/authStore';
 import {
   useAtualizarOverridesDoUsuario,
   useAtualizarPerfisDoUsuario,
@@ -30,6 +30,7 @@ import {
 } from '@/features/usuarios/api/queries';
 import { UnidadesSecao, type UnidadeSelecionada } from '@/features/usuarios/components/UnidadesSecao';
 import { paraMatriz } from '@/features/perfis/lib/acoes';
+import { SoftphoneSecao } from '@/features/telefonia/components/SoftphoneSecao';
 import type { MatrizEdicao } from '@/features/perfis/types';
 
 /** Dados para pré-preencher o cadastro de usuário — ex.: criar o login a partir de um
@@ -135,6 +136,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
   const detalhe = useUsuarioPorId(modo === 'editar' ? idUsuario ?? null : null);
   const permissoesUsuario = useUsuarioPermissoes(modo === 'editar' ? idUsuario ?? null : null);
   const unidadesUsuario = useUnidadesDoUsuario(modo === 'editar' ? idUsuario ?? null : null);
+  const veTelefonia = useTemConsulta('Telefonia');
 
   useEffect(() => {
     if (modo === 'editar' && unidadesUsuario.data) {
@@ -560,6 +562,16 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Prop
       conteudo: abaUnidades,
       badge: unidadesSelecionadas.length || undefined,
     },
+    // O softphone vai para a VM de telefonia na hora: só existe para usuário já cadastrado.
+    ...(modo === 'editar' && idUsuario && veTelefonia
+      ? [
+          {
+            id: 'softphone',
+            rotulo: 'Softphone',
+            conteudo: <SoftphoneSecao usuarioId={idUsuario} nomeSugerido={valores.nomeCompleto} />,
+          },
+        ]
+      : []),
   ];
 
   return (

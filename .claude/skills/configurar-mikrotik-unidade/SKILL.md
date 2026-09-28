@@ -815,6 +815,25 @@ Telefones seguem o padrão (`10.200.21.0/24` fixo). Obs.: Transporte Sanitário 
 no MESMO endereço (Rua das Gaivotas, 12 - Camburi) — avaliar na instalação dele se é a mesma
 LAN física (pode não caber um segundo MK de borda).
 
+🔄 **A unidade MUDOU DE ENDEREÇO em 09/09/2026 e o parágrafo acima está parcialmente
+superado** — ver `unidades-config/id21-tfd-eveo-090926.rsc`. **O MK é o mesmo** (MAC da
+etiqueta `04f41cd8e1d4` confere); mudaram o link e o cabeamento: a ether2 agora é um **4G
+temporário** (CPE `192.168.10.254`, era `192.168.0.1`), **ether1/ether3/ether4 sem link**, e
+a única porta viva do lado da unidade é a **ether5**, com um único host (AP `EX220V2` em
+`10.1.21.180`). O desenho de gateway+DHCP local continua; o que mudou é que **toda a internet
+passou a sair pelo túnel `wg-eveo`** (`10.203.0.31`, default `via 10.203.0.1`, NAT
+`out-interface=wg-eveo`, dhcp-client da ether2 em `default-route-distance=2`). ⚠️ O `endereco`
+no `unidades.csv` ainda é o antigo — a unidade mudou de lugar e o endereço novo não foi
+informado.
+
+⚠️ **Dois achados do levante do TFD que valem para qualquer unidade em link 4G/alternativo:**
+(a) **conferir se os forwarders do `/ip dns` respondem PELO LINK NOVO.** No TFD os dois
+(`8.8.8.8` e `9.9.9.9`) davam 100% de timeout no 4G enquanto `8.8.4.4`/`1.1.1.1`/`1.0.0.1`
+respondiam — e como o MK é o DNS da unidade inteira, isso era ausência de resolução para todo
+mundo, com o link "funcionando". O sintoma no MK é `/tool fetch` falhando com
+`resolving error`. (b) **PMTU 1480 obriga o `wg-eveo` a MTU 1380, não os 1420 padrão** — a
+regra `MTU_WG + 60 ≤ PMTU` fecharia em 1480 exatos, margem zero.
+
 **Pendências abertas:**
 
 - ❓ **id=1 Péricles — por que a gestão caiu em 29/07 continua sem explicação.** Voltou sozinho

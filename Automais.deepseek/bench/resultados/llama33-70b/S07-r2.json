@@ -1,0 +1,33 @@
+{
+ "cena": "S07",
+ "modelo": "llama33-70b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 69.44,
+   "usage": {
+    "completion_tokens": 73,
+    "prompt_tokens": 4973,
+    "total_tokens": 5046,
+    "prompt_tokens_details": {
+     "cached_tokens": 4972
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Para agendar um exame, por favor procure o posto de sa\\u00fade onde voc\\u00e9 \\u00e9 atendido.\", \"handoff\": false, \"confianca\": 1.0}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Para agendar um exame, por favor procure o posto de saúde onde vocé é atendido.",
+  "handoff": false,
+  "confianca": 1.0
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T02:53:51",
+ "latencia_total_s": 69.44
+}

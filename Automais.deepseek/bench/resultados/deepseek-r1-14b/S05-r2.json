@@ -1,0 +1,27 @@
+{
+ "cena": "S05",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 104.43,
+   "usage": {
+    "completion_tokens": 440,
+    "prompt_tokens": 3842,
+    "total_tokens": 4282,
+    "prompt_tokens_details": {
+     "cached_tokens": 3841
+    }
+   },
+   "texto_fora_de_tool": "\n\nDesculpe, mas não tenho acesso a informações pessoais sem que elas sejam fornecidas e confirmadas de forma segura. Se você mencionou seu nome em alguma mensagem anterior, por exemplo, isso pode ter sido armazenado no sistema de conversas, mas nunca compartilharei ou confirmarei dados pessoais sem a devida verificação.\n\nPara confirmar suas informações, preciso que você envie os 4 primeiros dígitos do CPF do paciente, por favor. Depois disso, vou pedir o mês e ano de nascimento para garantir que tudo esteja correto.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:25:15",
+ "latencia_total_s": 104.43
+}

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observar e agir no navegador a partir de algo instalado no Windows — estudo das opções</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Observar e agir no navegador a partir de algo instalado no Windows — estudo das opções</h1>
+<p><strong>Data:</strong> 20/09/2026 · <strong>Contexto:</strong> a extensão <code>SMSMais.chrome</code> (v0.4.0, em produção) observa o operador no SISREG e no Ecossistemas e manda ao hub. Ela é distribuída em modo desenvolvedor com um <code>.bat</code> de <code>git pull</code>. O Bernardo não quer depender da Chrome Web Store, precisa de <strong>auto-atualização</strong> a partir de algo <strong>instalado na máquina</strong>, e quer que a solução comece no navegador (ler e interceptar requisições, clicar, gerar modais e telas sobre a página) e depois cresça para o desktop. Este estudo cobre <strong>só a missão web</strong>. Resultado: PoC em <code>SMSMais.integrador/</code>.</p>
+<p>Fatos que pesam em qualquer opção:</p>
+<ul>
+<li><strong>SISREG tem sessão única por operador</strong>: qualquer login novo derruba o anterior; robô e humano</li>
+</ul>
+<p>  se derrubam. O backend fala com o SISREG por <code>HttpClient</code> puro com operador dedicado.</p>
+<ul>
+<li><strong>reCAPTCHA após ~700 requisições por sessão</strong>; relogar não resolve, só humano no navegador.</li>
+<li><strong>ADR-0059 fase 2</strong> (escrita no SISREG) foi desenhada como senha do operador em memória no</li>
+</ul>
+<p>  servidor + escrita com allowlist após spike.</p>
+<ul>
+<li>Já existe precedente de <strong>agente desktop + instalador WiX</strong> no monorepo</li>
+</ul>
+<p>  (<code>Automais.Assinador.Agente</code>, ADR-0015): protocolo <code>automais-assinador://</code>, efêmero, sem socket.</p>
+<h2>1. O que "sessão" significa</h2>
+<p>O SISREG identifica quem está logado por cookies. Cada programa tem o seu pote de cookies: o Chrome do operador, um app nosso, o Playwright, o <code>HttpClient</code> do servidor. Logar cria uma sessão nova para aquele operador e o SISREG <strong>derruba a anterior</strong> ("logon em outra estação de trabalho").</p>
+<div class="tw"><table><thead><tr><th>Termo</th><th>Significado prático</th></tr></thead><tbody>
+<tr><td><strong>A do operador</strong></td><td>A ferramenta trabalha dentro do Chrome que o operador já logou. Usa os cookies dele, não faz login, nada é derrubado. Cada requisição que ela dispara conta no orçamento anti-robô dele como um clique. (Extensão; <code>chrome.debugger</code>.)</td></tr>
+<tr><td><strong>Própria</strong></td><td>A ferramenta tem pote próprio e o operador loga <strong>nela</strong> (Chrome com perfil nosso, app WebView2). Se ele usa só a ferramenta para o SISREG, é a única sessão. Se abrir o SISREG também no Chrome normal, um derruba o outro.</td></tr>
+<tr><td><strong>Nova</strong></td><td>Playwright ou o servidor recebem a senha e fazem login. Nasce mais uma sessão do mesmo operador e a do navegador dele cai na hora (aviso (e) da ADR-0059). Só não colide se cada robô tiver login próprio.</td></tr>
+</tbody></table></div>
+<p>Consequência: <strong>tudo que age dentro do navegador do operador não tem problema de sessão</strong>; tudo que loga por fora tem.</p>
+<h2>2. As opções web</h2>
+<p>Colunas: <strong>Auto-atualiza sem loja</strong> (o que a máquina precisa para a versão nova aparecer sozinha) e <strong>Operador vê "monitorada"?</strong> (o que o Chrome mostra por conta própria, fora do selo que nós desenhamos e controlamos).</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Opção</th><th>Corpo resp.</th><th>Clicar/modais</th><th>Sessão</th><th>Auto-atualiza sem loja</th><th>Operador vê "monitorada"?</th><th>Sem admin</th></tr></thead><tbody>
+<tr><td>1</td><td>Extensão descompactada + agente que mantém a pasta; a extensão faz <code>chrome.runtime.reload()</code> ao ver versão nova</td><td>Parcial (hook fetch/XHR)</td><td>Sim</td><td>A do operador</td><td>Sim (agente)</td><td>Não; só o nosso selo. Modo dev ligado</td><td>Sim</td></tr>
+<tr><td>2</td><td>Extensão por <strong>política</strong> (<code>ExtensionInstallForcelist</code> + <code>update_url</code> nosso, CRX hospedado)</td><td>Parcial; ganha <code>webRequestBlocking</code></td><td>Sim</td><td>A do operador</td><td>Sim (o Chrome busca <code>update.xml</code> a cada ~5 h)</td><td>Não na aba; menu "Gerenciado pela sua organização"</td><td><strong>Não</strong>: política de máquina (HKLM) <strong>e</strong> PC gerenciado (domínio AD, Entra ID ou CBCM)</td></tr>
+<tr><td>3</td><td>Extensão + <strong><code>chrome.debugger</code></strong> (CDP de dentro da aba)</td><td><strong>Total</strong></td><td>Sim, + <code>Input.*</code></td><td>A do operador</td><td>Como 1/2</td><td><strong>Sim</strong>: barra amarela "começou a depurar" enquanto anexada (some com <code>--silent-debugger-extension-api</code> no atalho)</td><td>Sim</td></tr>
+<tr><td>4</td><td><strong>Agente lança o Chrome com CDP</strong> (perfil próprio)</td><td><strong>Total</strong> (+ <code>Fetch</code> altera)</td><td>Sim, + <code>Input.*</code></td><td>Própria</td><td>Sim (só o agente)</td><td>Sem barra (sem <code>--enable-automation</code>). É "outro Chrome" (sem favoritos/senhas do operador)</td><td>Sim</td></tr>
+<tr><td>5</td><td>Playwright/Puppeteer lançando o Chrome</td><td>Total</td><td>Sim (script)</td><td>Própria ou nova</td><td>Sim</td><td>Barra "controlado por software de teste" por padrão, removível. Também é outro Chrome</td><td>Sim</td></tr>
+<tr><td>6</td><td><strong>App WebView2</strong> (.NET WPF/WinForms), navegador nosso</td><td>Total, e altera (<code>WebResourceRequested</code>)</td><td>Sim, + telas nativas</td><td>Própria por operador</td><td>Sim (perUser + Velopack)</td><td>Nada do Chrome: é o nosso app. Operador tem que usar o app</td><td>Sim (perUser)</td></tr>
+<tr><td>7</td><td>Electron/Tauri (variante do 6)</td><td>Total</td><td>Sim</td><td>Própria</td><td>Sim</td><td>Nada</td><td>Sim</td></tr>
+<tr><td>8</td><td>Proxy local MITM (CA raiz + proxy por usuário)</td><td>Total; injeta em qualquer navegador</td><td>Só por injeção</td><td>A do operador</td><td>Sim</td><td>Nenhum aviso</td><td>Sim — <strong>descartar</strong> (CA em PC da Prefeitura é bandeira vermelha; LGPD; WAF do SISREG)</td></tr>
+</tbody></table></div>
+<h2>3. Instalar a extensão sem modo dev</h2>
+<p>Chrome no Windows só aceita extensão fora da loja por <strong>política de empresa</strong>:</p>
+<div class="tw"><table><thead><tr><th>Caminho</th><th>Situação</th></tr></thead><tbody>
+<tr><td>Registro "external extension"</td><td>Só aceita extensão <strong>da loja</strong> desde 2013</td></tr>
+<tr><td>Arrastar <code>.crx</code></td><td>Bloqueado fora da loja</td></tr>
+<tr><td>Flag <code>--load-extension</code> no atalho</td><td><strong>Removida do Chrome de marca no 137</strong> (2025); só em Chromium/Chrome for Testing. Edge: a conferir</td></tr>
+<tr><td><code>ExtensionInstallForcelist</code> + <code>update_url</code> nosso</td><td>Funciona, sem modo dev, auto-update pelo Chrome, extensão travada, <code>webRequestBlocking</code>. Exige HKLM (admin) <strong>e</strong> PC gerenciado</td></tr>
+<tr><td>Chrome Browser Cloud Management (CBCM)</td><td>Gratuito. Token de inscrição gravado uma vez em HKLM (admin) torna o Chrome "gerenciado" mesmo fora do domínio</td></tr>
+</tbody></table></div>
+<p><strong>Sem admin não existe caminho sem modo dev</strong> no Chrome de marca. E "configurar o Chrome sozinho" (ligar o toggle + carregar a pasta) não tem API: editar <code>Secure Preferences</code> é adulteração (HMAC por máquina/versão; Chrome restaura e desativa); automatizar a UI de <code>chrome://extensions</code> por UI Automation é viável uma vez por PC, mas frágil por idioma/versão.</p>
+<h2>4. Fusões possíveis entre app Windows e Chrome</h2>
+<div class="tw"><table><thead><tr><th>Fusão</th><th>O que é</th><th>Serve para</th></tr></thead><tbody>
+<tr><td><strong>Native Messaging</strong></td><td>Extensão fala com um <code>.exe</code> nosso por stdio (JSON). Registro em <code>HKCU\...\NativeMessagingHosts</code> (sem admin)</td><td>Ponte oficial: extensão é o olho na aba, o exe faz o que a aba não pode (arquivos, dispositivos, UIA, janelas nativas)</td></tr>
+<tr><td>Instalação por política</td><td>App grava HKLM/CBCM</td><td>Instalar, travar e atualizar a extensão sem loja</td></tr>
+<tr><td><strong>App lança o Chrome</strong> com flags (<code>--remote-debugging-pipe</code>, perfil dedicado)</td><td>Chrome vira motor; app fala CDP</td><td>Controle total; perfil separado</td></tr>
+<tr><td>WebView2</td><td>Chromium do Edge embutido no app</td><td>Fusão máxima, mas não é "o Chrome do operador"</td></tr>
+<tr><td>Protocolo customizado (<code>automais-*://</code>)</td><td>Chrome abre o exe com argumentos (padrão do Assinador)</td><td>Painel manda o PC fazer algo pontual</td></tr>
+<tr><td>UIA sobre a janela do Chrome</td><td>App lê a árvore de acessibilidade</td><td>Fraco para web (nome/papel/valor)</td></tr>
+</tbody></table></div>
+<h2>5. Caminho escolhido: agente lança o Chrome por CDP (opção 4)</h2>
+<p>Se o nosso agente lança o Chrome com depuração ligada, ele faz tudo que a extensão faz, <strong>sem extensão</strong>, sem modo dev, sem loja, sem admin, e só o agente atualiza:</p>
+<div class="tw"><table><thead><tr><th>O que a extensão faz</th><th>Como fica por CDP</th></tr></thead><tbody>
+<tr><td>Ver envio (URL + campos)</td><td><code>Network.requestWillBeSent</code> (+ corpo do POST)</td></tr>
+<tr><td>Ver corpo da resposta (hoje parcial)</td><td><code>Network.getResponseBody</code> — tudo, inclusive o AJAX do <code>autorizador</code></td></tr>
+<tr><td>Bloquear/alterar requisição</td><td><code>Fetch.enable</code> + <code>continueRequest</code>/<code>fulfillRequest</code></td></tr>
+<tr><td>Selo, blur, janela</td><td><code>Page.addScriptToEvaluateOnNewDocument</code> injeta o mesmo JS em toda página/iframe</td></tr>
+<tr><td>Clicar / preencher</td><td><code>Input.dispatchMouseEvent</code> / <code>Runtime.evaluate</code></td></tr>
+<tr><td>Mandar ao hub</td><td>O próprio agente (.NET, HTTPS), sem CSP/CORS</td></tr>
+<tr><td>Login no SMSMais</td><td>Script no painel lê <code>localStorage['smsmarica.auth']</code> e entrega pelo binding</td></tr>
+</tbody></table></div>
+<p><strong>Todas as abas, sem <code>--app</code></strong>: a conexão é do navegador inteiro. <code>Target.setDiscoverTargets</code> + <code>Target.setAutoAttach</code> (flatten) anexam toda aba, popup e iframe novos. Regra de LGPD: ligar a captura <strong>só nos hosts da lista de sítios</strong>; nas demais abas, nada.</p>
+<p>O que custa: <strong>perfil separado é obrigatório</strong> (Chrome ≥ 136 recusa depurar o perfil padrão), logo o operador abre o SISREG <strong>pelo ícone do SMSMais</strong> (sessão própria; abrir também no Chrome pessoal derruba uma das duas); se o agente morrer o Chrome fica cego (com PuppeteerSharp o Chrome cai junto); porta de depuração expõe a qualquer processo local (endurecer com pipe).</p>
+<p><strong>Decisão (20/09/2026):</strong> direção = agente por CDP, <strong>sem descartar a extensão</strong> (os dois canais convivem no mesmo endpoint), com PoC antes de qualquer ADR. PoC em <code>SMSMais.integrador/</code> (.NET 10 + PuppeteerSharp). A alternativa de <strong>escrever no SISREG pela sessão do operador</strong> (ordem nasce no servidor, agente executa na aba logada, captura o retorno e concilia — zero senha fora do navegador, zero sessão nova) é candidata para a fase 2 do ADR-0059 e precisa de ADR própria.</p>
+</main>
+</body>
+</html>

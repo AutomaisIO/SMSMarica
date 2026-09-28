@@ -1,0 +1,27 @@
+{
+ "cena": "S03",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 242.32,
+   "usage": {
+    "completion_tokens": 447,
+    "prompt_tokens": 3489,
+    "total_tokens": 3936,
+    "prompt_tokens_details": {
+     "cached_tokens": 215
+    }
+   },
+   "texto_fora_de_tool": "\n\nEntendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município. Pode me dizer o CEP ou o bairro onde você está para que eu possa indicar a unidade de urgência mais próxima?\n\nAcesse https://app.smsmarica.online para manter seus dados de saúde atualizados.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:10:12",
+ "latencia_total_s": 242.32
+}

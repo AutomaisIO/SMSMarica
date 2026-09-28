@@ -1,0 +1,27 @@
+{
+ "cena": "S10",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 125.09,
+   "usage": {
+    "completion_tokens": 491,
+    "prompt_tokens": 3827,
+    "total_tokens": 4318,
+    "prompt_tokens_details": {
+     "cached_tokens": 3785
+    }
+   },
+   "texto_fora_de_tool": "\n\nClaro, como posso ajudá-lo hoje? Se você tiver alguma dúvida ou precisar de informações sobre agendamentos, cadastros ou unidades de saúde, estou à disposição.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:42:27",
+ "latencia_total_s": 125.09
+}

@@ -1,0 +1,33 @@
+{
+ "cena": "S10",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 71.4,
+   "usage": {
+    "completion_tokens": 712,
+    "prompt_tokens": 3991,
+    "total_tokens": 4703,
+    "prompt_tokens_details": {
+     "cached_tokens": 3948
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Obrigado por nos avisar. Se precisar, pode consultar seu histórico e agendamentos pelo app https://app.smsmarica.online ou voltar durante o horário de atendimento. Estamos à disposição para ajudar.\",\"handoff\":false,\"confianca\":1}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Obrigado por nos avisar. Se precisar, pode consultar seu histórico e agendamentos pelo app https://app.smsmarica.online ou voltar durante o horário de atendimento. Estamos à disposição para ajudar.",
+  "handoff": false,
+  "confianca": 1
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:41:10",
+ "latencia_total_s": 71.4
+}

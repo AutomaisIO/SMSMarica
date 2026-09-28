@@ -1,0 +1,33 @@
+{
+ "cena": "S07",
+ "modelo": "qwen3-30b-a3b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 36.91,
+   "usage": {
+    "completion_tokens": 339,
+    "prompt_tokens": 4801,
+    "total_tokens": 5140,
+    "prompt_tokens_details": {
+     "cached_tokens": 4790
+    }
+   },
+   "texto_fora_de_tool": "Claro, posso ajudar. Para verificar seu agendamento, preciso confirmar sua identidade. Por favor, me informe os quatro primeiros dígitos do seu CPF e o mês e ano de nascimento. \n\nAlém disso, gostaria de lembrar que, por aqui, não é possível marcar ou remarcar exames. A orientação é procurar presencialmente o posto de saúde onde você é atendido para resolver esse tipo de solicitação. \n\nVocê poderia me passar os dados pedidos? Assim, posso verificar melhor. \n\nObrigado. \n\n[OBS: O texto acima é apenas para o contexto interno. A resposta final será enviada com a ferramenta responder_cidadao.] \n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Claro, posso ajudar. Para verificar seu agendamento, preciso confirmar sua identidade. Por favor, me informe os quatro primeiros dígitos do seu CPF e o mês e ano de nascimento. \\n\\nAlém disso, gostaria de lembrar que, por aqui, não é possível marcar ou remarcar exames. A orientação é procurar presencialmente o posto de saúde onde você é atendido para resolver esse tipo de solicitação.\\n\\nVocê poderia me passar os dados pedidos? Assim, posso verificar melhor.\\n\\nObrigado.\", \"handoff\": false, \"confianca\": 0.9}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Claro, posso ajudar. Para verificar seu agendamento, preciso confirmar sua identidade. Por favor, me informe os quatro primeiros dígitos do seu CPF e o mês e ano de nascimento. \n\nAlém disso, gostaria de lembrar que, por aqui, não é possível marcar ou remarcar exames. A orientação é procurar presencialmente o posto de saúde onde você é atendido para resolver esse tipo de solicitação.\n\nVocê poderia me passar os dados pedidos? Assim, posso verificar melhor.\n\nObrigado.",
+  "handoff": false,
+  "confianca": 0.9
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T22:28:45",
+ "latencia_total_s": 36.91
+}

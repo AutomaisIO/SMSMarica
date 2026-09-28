@@ -27,6 +27,12 @@ public sealed class PabxDbContext(DbContextOptions<PabxDbContext> options) : DbC
             e.Property(r => r.Mac).HasMaxLength(12).HasColumnName("mac");
             e.Property(r => r.Marca).HasConversion<string>().HasMaxLength(20);
             e.Property(r => r.Origem).HasConversion<string>().HasMaxLength(20);
+            e.Property(r => r.Tipo).HasConversion<string>().HasMaxLength(20);
+            e.Property(r => r.Contexto).HasMaxLength(80);
+            e.Property(r => r.Codecs).HasMaxLength(120);
+            e.Property(r => r.DonoSistema).HasMaxLength(40);
+            e.Property(r => r.DonoId).HasMaxLength(80);
+            e.HasIndex(r => new { r.DonoSistema, r.DonoId });
             e.HasOne(r => r.Unidade).WithMany(u => u.Ramais).HasForeignKey(r => r.UnidadeId);
         });
 

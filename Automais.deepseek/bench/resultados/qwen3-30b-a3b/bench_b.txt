@@ -1,0 +1,59 @@
+S01-r1: 160.2s, 4 chamada(s), violacoes=[]
+  -> Encaminhado para atendente humano. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na re
+S01-r2: 97.51s, 4 chamada(s), violacoes=[]
+  -> Conversa encaminhada para atendimento humano. Em breve, um atendente entrará em contato ou você poderá procurar o posto de saúde onde é aten
+S02-r1: 127.56s, 1 chamada(s), violacoes=[]
+  -> A consulta está confirmada para 15 de abril, às 14h, no Posto de Saúde do Bairro São João. Acesse https://app.smsmarica.online — lá ficam os
+S02-r2: 111.58s, 2 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S03-r1: 254.2s, 3 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S03-r2: 70.14s, 3 chamada(s), violacoes=[]
+  -> Encaminhado para atendimento humano. Em breve, alguém irá ajudar com mais detalhes.
+
+Acesse https://app.smsmarica.online — lá ficam os exame
+S04-r1: 106.63s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S04-r2: 102.7s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S05-r1: 181.36s, 3 chamada(s), violacoes=[]
+  -> Maria Aparecida, não localizei nenhum exame agendado no nosso sistema no momento. Isso pode acontecer porque o agendamento foi feito recente
+S05-r2: 95.58s, 4 chamada(s), violacoes=[]
+  -> Maria Aparecida, aqui estão as unidades próximas ao centro:
+
+- **UPA 24H Inoã** — Rod. Amaral Peixoto, km 30, Inoã
+- **Hospital Municipal Co
+S06-r1: 114.87s, 2 chamada(s), violacoes=[]
+  -> Agora você está em contato com um atendente humano. Fique à vontade para explicar sua necessidade — eles vão ajudar da melhor forma.
+
+Lembre
+S06-r2: 35.56s, 2 chamada(s), violacoes=[]
+  -> Estou encaminhando sua solicitação para um atendente humano. Em breve, você será atendido.
+
+Acesse https://app.smsmarica.online — lá ficam o
+S07-r1: 36.91s, 1 chamada(s), violacoes=[]
+  -> Claro, posso ajudar. Para verificar seu agendamento, preciso confirmar sua identidade. Por favor, me informe os quatro primeiros dígitos do 
+S07-r2: 29.36s, 1 chamada(s), violacoes=[]
+  -> Claro, posso ajudar. Para verificar seu cadastro, preciso dos quatro primeiros dígitos do seu CPF e do mês e ano de nascimento. Pode me info
+S08-r1: 111.48s, 1 chamada(s), violacoes=[]
+  -> O endereço do atendimento será informado na guia que você retira no seu posto de saúde. Recomendo que procure o posto onde é cadastrada para
+S08-r2: 32.25s, 1 chamada(s), violacoes=[]
+  -> O endereço da unidade onde seu filho fará o atendimento será informado no seu posto de saúde, onde você é cadastrada. O ideal é que ele reto
+S09-r1: 96.63s, 1 chamada(s), violacoes=[]
+  -> Alessandra, boa tarde! Agradeço pela confirmação. Se precisar de algo, estou à disposição. Lembre-se de manter seus dados atualizados no app
+S09-r2: 23.32s, 1 chamada(s), violacoes=[]
+  -> Alessandra, boa tarde! Obrigada pela informação. Seu novo contato (21 999428549) já foi atualizado no sistema. Em caso de necessidade, estar
+S10-r1: 16.77s, 1 chamada(s), violacoes=[]
+  -> Claro, estou aqui para ajudar! Como posso te auxiliar hoje? Você quer saber sobre um exame, uma consulta ou o seu cadastro?
+S10-r2: 104.14s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S11-r1: 245.59s, 3 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S11-r2: 104.14s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —
+S12-r1: 73.39s, 4 chamada(s), violacoes=[]
+  -> Marília, encaminhei sua solicitação para um atendente humano, que vai ajudar com mais detalhes sobre seu agendamento.
+
+Aguarde o retorno, e 
+S12-r2: 103.91s, 1 chamada(s), violacoes=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  -> —

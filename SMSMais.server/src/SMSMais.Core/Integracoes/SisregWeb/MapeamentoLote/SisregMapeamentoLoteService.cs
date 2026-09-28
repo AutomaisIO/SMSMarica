@@ -1044,10 +1044,12 @@ public sealed class SisregMapeamentoLoteService(
             // com todos os médicos e procedimentos habilitados, cada unidade custaria uma requisição
             // por par profissional × procedimento — centenas por unidade, por dia.
 
-            // WhatsApp DESLIGADO, como pedido: a carga inicial traz a agenda inteira e histórica de
-            // toda a rede de uma vez. Com o aviso ligado, isso viraria uma enxurrada de mensagens
-            // para pacientes de consultas que já aconteceram.
-            agenda.EnviarConfirmacao = false;
+            // WhatsApp LIGADO por padrão (20/09/2026). Ficava forçado em desligado por causa da
+            // enxurrada que a carga inicial provocaria — agenda histórica inteira entrando de uma
+            // vez, avisando gente de consulta que já passou. Esse risco não depende mais desta
+            // linha: a importação recusa avisar agendamento com data no passado, venha de varredura,
+            // de arquivo ou de pendência resolvida meses depois.
+            agenda.EnviarConfirmacao = request.EnviarConfirmacao;
 
             // RECALCULA o próximo disparo para o horário novo. Zerar sem recalcular é o mesmo que
             // não programar nada: o scheduler trata ProximoRunEm nulo como "não elegível" (de
@@ -1067,8 +1069,9 @@ public sealed class SisregMapeamentoLoteService(
 
         logger.LogInformation(
             "SISREG_PREPARAR_REDE: {Unidades} unidades programadas ({Intervalo} min entre elas), "
-            + "{Profs} profissionais e {Procs} procedimentos habilitados, WhatsApp desligado.",
-            unidades.Count, intervalo, totalProfs, totalProcs);
+            + "{Profs} profissionais e {Procs} procedimentos habilitados, WhatsApp {Zap}.",
+            unidades.Count, intervalo, totalProfs, totalProcs,
+            request.EnviarConfirmacao ? "ligado" : "desligado");
 
         return new PrepararRedeDto(
             unidades.Count, totalProfs, totalProcs,
@@ -1076,7 +1079,9 @@ public sealed class SisregMapeamentoLoteService(
             $"{unidades.Count} unidades programadas para sincronizar todo dia, de "
             + $"{detalhe[0].HoraLocal} a {detalhe[^1].HoraLocal}, com {intervalo} min entre elas. "
             + $"{totalProfs} profissionais e {totalProcs} procedimentos foram habilitados. "
-            + "O aviso por WhatsApp ficou DESLIGADO em todas.");
+            + (request.EnviarConfirmacao
+                ? "O aviso por WhatsApp ficou LIGADO em todas."
+                : "O aviso por WhatsApp ficou DESLIGADO em todas."));
     }
 
     public async Task<PreverAgendamentoDto> PreverAgendamentoAsync(

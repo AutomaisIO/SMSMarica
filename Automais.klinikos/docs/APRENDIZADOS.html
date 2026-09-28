@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klinikos — recon "como usuário" (laboratório Automais.klinikos/)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Klinikos — recon "como usuário" (laboratório <code>Automais.klinikos/</code>)</h1>
+<p>Espelha o <strong>método</strong> dos laboratórios <code>Automais.SER/</code> e <code>Automais.SERNIT/</code> (sondas <code>probe_*.py</code>, cliente httpx com Referer automático, trava de somente-leitura), mas o alvo e a pergunta são outros: <strong>quais endpoints a web do Klinikos usa</strong> para entregar os mesmos dados que hoje o conector lê direto do SQL Server (<code>KlinikosImportacaoStrategy</code>: unidades, profissionais, pacientes, boletins <code>Pronto_Atendimento</code>, desfechos, <code>UPA_Evolucao</code>, <code>UPA_Atendimento_Medico</code>, prescrição, <code>UPA_SinaisVitais</code>, <code>TB_CID</code>). A meta é substituir a leitura direta ao banco por acesso pela aplicação, com um usuário.</p>
+<p>Tudo abaixo foi <strong>medido</strong> contra <code>klinikosconde.smsmarica.online</code> (instância do <strong>Conde</strong>, HOSPITAL MUNICIPAL CONDE MODESTO LEAL, <code>unid_codigo</code> <strong>0005</strong>) em <strong>16/09/2026</strong>. Regra do SER vale aqui: <em>medir, nunca assumir</em>.</p>
+<p>&gt; <strong>O Conde já roda Klinikos.</strong> A memória do projeto (ago/2026) dizia que o Conde ainda era &gt; Salux e migraria "no futuro"; esta instância prova que migrou. Consequência imediata: as &gt; consultas Oracle do Painel do Secretário para o Conde estão mortas — é o item 1 do plano em &gt; <code>inventario-consultas-atuais.md</code>.</p>
+<p>Documentos irmãos: <code>inventario-consultas-atuais.md</code> (o que lemos hoje por SQL × fonte web + política de requisições + plano de corte), <code>sondagem-relatorios.md</code> (parâmetros e colunas de cada relatório sondado), <code>catalogo-relatorios.md</code> (268 relatórios/271 telas dos menus), <code>mapa-endpoints.md</code> (368 telas rastreadas).</p>
+<p>&gt; <strong>Somente leitura.</strong> A trava <code>guardar()</code> (em <code>klinikos/client.py</code>) recusa qualquer parâmetro &gt; de POST — e qualquer valor de <code>__EVENTTARGET</code> — com verbo de escrita. Login, gate de local e &gt; postbacks de pesquisa/relatório são POST e não alteram dado clínico. As únicas liberações &gt; pontuais são <code>LoginButton</code>, <code>btnConfirmarLogin</code> e <code>imbSalvar</code> do gate (grava só o cookie do &gt; local de atendimento).</p>
+<h2>1. Stack</h2>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Servidor</td><td>nginx na frente; <code>X-AspNet-Version: 4.0.30319</code>, <code>X-Powered-By: ASP.NET</code></td></tr>
+<tr><td>Camada web</td><td><strong>ASP.NET WebForms</strong> (<code>__VIEWSTATE</code>, <code>__VIEWSTATEGENERATOR</code>, <code>__EVENTVALIDATION</code>, <code>WebForm_DoPostBackWithOptions</code>), master page <code>aspnetForm</code></td></tr>
+<tr><td>Componentes</td><td><strong>Telerik 2011.3.1115.35</strong> (RadMenu, RadGrid, RadComboBox, RadDatePicker), Bootstrap 5, jQuery 3.7, SweetAlert2, select2, DataTables</td></tr>
+<tr><td>Relatórios</td><td><strong>Crystal Reports</strong> no servidor (<code>rptview.aspx</code> → PDF; <code>rptviewXls.aspx</code> → XLS BIFF)</td></tr>
+<tr><td>Build</td><td><strong><code>K.2024.09.2.1</code></strong> (rodapé da tela de login, <code>lblVersao</code>)</td></tr>
+<tr><td>Fornecedor</td><td>Eco Sistemas (<code>ecosistemas.com.br</code>)</td></tr>
+<tr><td>Raiz da app</td><td><code>/KlinikosNet/</code></td></tr>
+<tr><td>Sem Swagger</td><td>34 caminhos óbvios (<code>/swagger</code>, <code>/api</code>, <code>/odata</code>, <code>?WSDL</code>…) → 404/500. <strong>Não há API documentada.</strong></td></tr>
+</tbody></table></div>
+<h2>2. Sessão, login e gate — o que precisa de ViewState e o que não precisa</h2>
+<p><strong>Resposta curta para "depois do levantamento, precisaremos de ViewState?": não, só no login.</strong> Depois de autenticado, tudo que interessa é <strong>cookie + GET/JSON</strong>, sem manter ViewState nenhum.</p>
+<h3>2.1 Cookies</h3>
+<div class="tw"><table><thead><tr><th>Cookie</th><th>Quem põe</th><th>Papel</th></tr></thead><tbody>
+<tr><td><code>ASP.NET_SessionId</code></td><td>primeiro GET</td><td>sessão (HttpOnly, SameSite=Lax)</td></tr>
+<tr><td><code>eco-web-auth</code></td><td>POST de login</td><td><strong>Forms Authentication</strong> — é a credencial de verdade</td></tr>
+<tr><td><code>_codigo_unidade</code></td><td>gate do local</td><td>unidade corrente (<code>0005</code> = Conde nesta instância)</td></tr>
+<tr><td><code>_LOCAL_NAME</code></td><td>gate do local</td><td>nome do local de atendimento</td></tr>
+</tbody></table></div>
+<p>Sem cookie válido: <code>.aspx</code> protegido → 302 <code>Share/Erros/sessaoexpirada.aspx</code>; raiz → 302 <code>Login.aspx?ReturnUrl=…</code>.</p>
+<h3>2.2 Login (o ÚNICO passo que exige ler ViewState — e só o da própria tela)</h3>
+<p><code>GET /KlinikosNet/Login.aspx</code> → <code>POST</code> do <code>form1</code> com <code>__VIEWSTATE</code>, <code>__VIEWSTATEGENERATOR</code>, <code>__EVENTVALIDATION</code> (lidos da tela), <code>LoginView1$lgAcesso$UserName</code>, <code>LoginView1$lgAcesso$Password</code>, <code>LoginView1$lgAcesso$LoginButton=ENTRAR</code>.</p>
+<p><strong>Sessão única por usuário (confirmado):</strong> se o mesmo usuário já está logado em outra estação, o POST devolve a própria <code>Login.aspx</code> com <em>"O seu login está autenticado em outra estação. Caso efetue o login nesta estação, a autenticação na outra estação será desfeita. Confirma o login nesta estação?"</em> e dois submits: <code>btnConfirmarLogin=CONFIRMA</code> / <code>btnCancelarLogin=CANCELA</code>. Confirmar <strong>derruba a outra sessão</strong>. Consequências:</p>
+<ul>
+<li>o laboratório persiste os cookies em <code>capturas/sessao.json</code> e só reloga se expirou</li>
+</ul>
+<p>  (<code>KlinikosSession.entrar()</code>), para não derrubar o operador a cada sonda;</p>
+<ul>
+<li><strong>em produção o conector precisa de um usuário próprio</strong> (não pode dividir com uma pessoa).</li>
+</ul>
+<p>Login OK → 302 para <code>UPA/GravaCookie.aspx</code>.</p>
+<h3>2.3 Gate do local de atendimento (2 postbacks, uma vez por sessão)</h3>
+<p>Toda tela protegida redireciona para <code>UPA/GravaCookie.aspx</code> até escolher o local. Form: <code>ddlPortadeEntrada</code> (GUIDs: SUTURA, URGÊNCIA E EMERGÊNCIA, URGÊNCIA E EMERGÊNCIA 2, MATERNIDADE, PEDIATRIA, INTERNAÇÃO…), <code>ddlLocalFisico</code> (cascata), <code>ckbAcessoAdministrativo</code> e o ImageButton <code>imbSalvar</code>. Checkbox e porta têm <strong>AutoPostBack</strong> → o navegador faz 2 POSTs: (1) <code>__EVENTTARGET=…ckbAcessoAdministrativo</code> com o checkbox marcado; (2) <code>imbSalvar.x/.y</code>. Grava <code>_codigo_unidade</code> + <code>_LOCAL_NAME</code>.</p>
+<p>Armadilhas medidas:</p>
+<ul>
+<li><code>&lt;select&gt;</code> <strong>sem opções não vai no POST</strong> (o navegador também não manda). Mandar <code>""</code> dispara</li>
+</ul>
+<p>  <em>"Invalid postback or callback argument"</em> (event validation). <code>campos_todos()</code> já pula.</p>
+<ul>
+<li>ImageButton posta como <code>nome.x</code>/<code>nome.y</code>.</li>
+<li>No Git Bash, argumento começando com <code>/KlinikosNet/...</code> vira caminho Windows —</li>
+</ul>
+<p>  <code>export MSYS_NO_PATHCONV=1</code> antes de chamar as sondas.</p>
+<h3>2.4 ASP.NET serializa requisições da mesma sessão</h3>
+<p>Duas sondas na mesma sessão (varredura + relatório) enfileiram no lock de sessão do ASP.NET; com Crystal na frente, o nginx devolve <strong>504</strong> em ~60 s. Não é o endpoint que falhou — é fila. Rodar uma coisa por vez, ou aceitar latência.</p>
+<h2>3. Os endpoints que entregam dado — sem ViewState</h2>
+<h3>3.1 Relatórios: <code>Relatorios/rptview.aspx</code> e <code>Relatorios/rptviewXls.aspx</code> (GET)</h3>
+<p>Os botões <em>Imprimir</em>/<em>Excel</em> da tela de parâmetros (<code>Relatorios/ParametroRelatorio.aspx?parrel=N&amp;Modulo=X</code>) <strong>não devolvem o relatório</strong>: devolvem a tela com um <code>window.open</code> para</p>
+<p>``<code> Relatorios/rptview.aspx?parRel=631&amp;parNum=5&amp;par1=01/09/2026&amp;par2=30/09/2026&amp;par3=0005&amp;par4=0109&amp;par5=-1&amp;Modulo=UPA Relatorios/rptviewXls.aspx?parRel=631&amp;parNum=5&amp;par1=…&amp;par5=…&amp;Modulo=UPA </code>``</p>
+<p>Ou seja, <strong>o relatório é um GET com parâmetros posicionais</strong> (<code>parNum</code> = quantos; <code>par1..parN</code>). Para o 631: par1/par2 = período, <strong>par3 = unidade</strong> (<code>_codigo_unidade</code>), par4 = especialidade, par5 = profissional (<code>-1</code> = todos). Relatórios sem parâmetro usam <code>parNum=1&amp;par1=unidDef</code>.</p>
+<div class="tw"><table><thead><tr><th>Endpoint</th><th>Devolve</th><th>Medido</th></tr></thead><tbody>
+<tr><td><code>rptview.aspx?parRel=629&amp;parNum=1&amp;par1=unidDef</code> (Fila de Espera)</td><td><strong><code>application/pdf</code></strong> 1,8 MB, 37 páginas</td><td>colunas: Nº Boletim, Nome, Início Atendimento, Tempo, Clínica</td></tr>
+<tr><td><code>rptviewXls.aspx?parRel=629&amp;…</code></td><td><strong><code>application/vnd.ms-excel</code></strong> 375 KB, <strong>XLS binário (BIFF)</strong>, <code>filename=Relatorio.xls.xls</code></td><td>lê com <code>xlrd</code></td></tr>
+<tr><td><code>rptview.aspx?parRel=631&amp;…</code> (1 mês, Clínica Médica)</td><td>página <code>RptView</code> com <strong><code>System.OutOfMemoryException</code></strong> do Crystal</td><td>intervalo grande estoura o servidor</td></tr>
+<tr><td><code>rptviewXls.aspx?parRel=631&amp;…</code> (1 mês)</td><td><strong>504</strong> (nginx)</td><td>ver §2.4 — fila + Crystal</td></tr>
+</tbody></table></div>
+<p>Ordem de preferência para scraping: <strong>XLS (estruturado) &gt; PDF (texto posicional)</strong>. O PDF do 629 já mostrou lixo de teste (paciente "TESTE" com 10.968 h de espera desde 16/06/2025) — o relatório espelha o banco, inclusive o que ninguém limpa.</p>
+<p><strong>O layout <code>parN</code> muda de relatório para relatório</strong> — não dá para chutar; descobrir pelo <code>window.open</code> que a tela de parâmetros gera (é o que <code>probe_relatorio.py</code>/<code>sondar_relatorios.py</code> fazem). Medidos:</p>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tela</th><th><code>rptviewXls</code> gerado</th><th>XLS (1 dia)</th></tr></thead><tbody>
+<tr><td>631 Atendimentos em Andamento</td><td>ParametroRelatorio (datas, especialidade, profissional)</td><td>`parNum=5&amp;par1=ini&amp;par2=fim&amp;par3=0005&amp;par4=&lt;esp\</td><td>-1&gt;&amp;par5=&lt;prof\</td><td>-1&gt;`</td><td>15/09 só: vazio; 15–16/09 todas esp.: <strong>425 linhas</strong> — Nº Boletim, NOME, Início Atendimento, TEMPO, CLINICA, PROFISSIONAL</td></tr>
+<tr><td>407 Pacientes Registrados no Dia</td><td>ParametroRelatorio (datas)</td><td><code>parNum=4&amp;par1=0005&amp;par2=ini&amp;par3=fim&amp;par4=1</code></td><td>545 KB, ~2.000 linhas (cabeçalho repetido por registro) — Nº Boletim, Prontuario, Paciente, Dt. Nascimento/Idade, Clinica</td></tr>
+<tr><td>56 / 57 Registro Diário/Mensal por Clínica</td><td>idem</td><td>`parNum=4&amp;par1=0005&amp;par2&amp;par3&amp;par4=3\</td><td>1`</td><td>tabela de <strong>totais</strong> (9–11 linhas) — barato para contagem</td></tr>
+<tr><td>66 Tempo de Permanência</td><td>idem</td><td><code>parNum=4&amp;…&amp;par4=4</code></td><td>totais (16 linhas)</td></tr>
+<tr><td>484 / 518 / 519</td><td>idem</td><td><code>parNum=3</code> (ordem unidade×datas varia!)</td><td>totais</td></tr>
+<tr><td>100 Internações Diárias</td><td>ParametroRelatorio (tipo, datas, clínica, sexo)</td><td><code>parNum=9&amp;par1&amp;par2&amp;par3=&amp;par4=0005&amp;par5=N&amp;par6=N&amp;par7=&amp;par8=01=000000&amp;par9=1</code></td><td>Prontuário-Nome, D.Nasc, Idade, Sexo, Hora In, Município/Bairro, Local Internação</td></tr>
+<tr><td>667 Nominal por Classificação de Risco</td><td><code>UPA/Relatorios/Relatorio.aspx?parrel=667&amp;origem=5</code></td><td><code>rptviewXls.aspx?parNomeMaquina=&amp;parRel=667&amp;parNum=6&amp;par1&amp;par2&amp;par3=&amp;par4=0005&amp;par5=PAR&amp;par6=</code></td><td>629 linhas — Número do Boletim, Paciente, Idade, Data/Hora Entrada, Clínica, Origem</td></tr>
+<tr><td>763 Histórico Eventos da Fila</td><td>Relatorio.aspx</td><td><code>parNum=4&amp;par1&amp;par2&amp;par3=0005&amp;par4=1</code></td><td>101 linhas (cabeçalho a identificar)</td></tr>
+<tr><td>818 Tempo Médio da Classificação</td><td>Relatorio.aspx</td><td><code>parNum=2&amp;par1=ini&amp;par2=ini+7d</code></td><td><strong>504</strong> (Crystal pesado mesmo com 1 semana)</td></tr>
+<tr><td>791 Boletim Atendimento Médico PDF</td><td>ParametroRelatorio (competência + paciente + evento)</td><td><code>RptViewCompetencia.aspx?parRel=489&amp;parNum=2&amp;par1=MM/AAAA&amp;par2=&lt;paciente&gt;</code></td><td>504 com paciente vazio — é <strong>por paciente</strong></td></tr>
+<tr><td><strong>526</strong> Atendimentos por Profissional</td><td>Relatorio.aspx <code>?parrel=526&amp;origem=5</code></td><td><code>parNum=5&amp;par1=0005&amp;par2&amp;par3&amp;par4=5&amp;par5=</code></td><td><strong>937 linhas / 1,1 MB</strong> — No Boletim, Código, Hora Atendimento, Nome Paciente, <strong>Classificação</strong>, Idade, Sexo, Clínica</td></tr>
+<tr><td><strong>630</strong> Pacientes em Observação</td><td>link direto</td><td><code>rptviewXls.aspx?parRel=630&amp;parNum=1&amp;par1=unidDef</code></td><td>210 linhas — Nº Boletim, Nome, Início Atendimento, Tempo, Especialidade, Profissional, Espec. Obs., Profissional Obs., <strong>Leito</strong></td></tr>
+<tr><td><strong>21</strong> Prontuários Abertos (Cadastro)</td><td><code>Cadastro/Relatorios/ProntuariosAbertos.aspx</code> (só PDF na tela; XLS aceita os mesmos parâmetros)</td><td><code>parNum=4&amp;par1=ini&amp;par2=fim&amp;par3=0000&amp;par4=0005</code></td><td>37 linhas — Prontuário, Paciente, Clínica, Nascimento, Idade, Sexo, <strong>CNS</strong></td></tr>
+<tr><td><strong>488</strong> Origem Criação Prontuário (Cadastro)</td><td>idem</td><td><code>parNum=5&amp;par1=0005&amp;par2=&amp;par3=&amp;par4=ini&amp;par5=fim</code></td><td>7 linhas — Data Abertura, Código, Paciente, Prontuário, Setor de Origem</td></tr>
+<tr><td>65 / 711 / 66 / 56 / 57</td><td>estatísticos</td><td>ver <code>sondagem-relatorios.md</code></td><td>tabelas de totais (6–19 linhas): faixa etária × tipo de saída / classificação / permanência / clínica</td></tr>
+<tr><td>818 / 831 / 835</td><td>Relatorio.aspx</td><td>—</td><td><strong>quebrados no vendor</strong>: 504, <code>COMException</code> OLE DB, <code>FormulaException</code> do Crystal</td></tr>
+</tbody></table></div>
+<p>As telas do <strong>Cadastro</strong> usam <code>UCPesquisaData1$rdtpDataInicio/Fim</code> (RadDateTimePicker) e validam no cliente com SweetAlert ("Datas inicial e Final Obrigatórias", "Selecione uma clínica!", "Informe pelo menos, ou o intervalo de datas ou a faixa de Prontuário") — a sonda precisa preencher o campo certo, senão o POST volta a própria tela sem <code>window.open</code>.</p>
+<p>Os botões da tela de parâmetros: <code>ImageButton1</code> = <strong>Voltar</strong> (não é "visualizar"), <code>btnImprimirExcel</code>, <code>btnImprimir</code>. Na <code>Relatorio.aspx</code> do módulo: <code>imbVoltar</code>, <code>imbImprimirExcel</code>, <code>imbImprimir</code>, e os RadDatePickers ficam direto no conteúdo (<code>…contentCenterChild$rdpDataInicial</code>), sem o <code>ctlParam$</code>.</p>
+<p>Catálogo: <code>catalogo_relatorios.py</code> extraiu dos menus <strong>268 relatórios</strong> (84 via <code>ParametroRelatorio</code>, 61 via <code>Relatorios.aspx</code>, 120 com tela própria, 3 <code>rptView</code> diretos) — UPA 75, Internação 61, Ambulatório 53, Laboratório 25, Cadastro 15, Radiologia 14, Acesso 10, Centro Cirúrgico 10, Administração 3, eProntuário 2. Lista completa em <code>capturas/catalogo_menu.csv</code> (sem PII; pode virar doc).</p>
+<h3>3.2 WebServices <code>.asmx</code> — JSON com cookie, sem ViewState (confirmado)</h3>
+<p><code>WebServices/ComboExamesService.asmx</code> e <code>WebServices/ComboGrupoExameService.asmx</code> são fontes de RadComboBox (ASP.NET AJAX). <code>GET …/js</code> devolve o proxy com os <strong>nomes dos métodos</strong> (<code>GetData(context)</code>, <code>DeletarVinculo()</code>) — é o mais perto de um "swagger" que existe aqui. A página de ajuda (<code>.asmx</code> sem <code>/js</code>) e <code>?WSDL</code> respondem 500 (<code>RadComboBoxContext</code> não serializa) — não é bloqueio, é bug do vendor.</p>
+<p>Chamada direta que <strong>funcionou</strong> só com cookie:</p>
+<p>``<code> POST /KlinikosNet/WebServices/ComboExamesService.asmx/GetData Content-Type: application/json; X-Requested-With: XMLHttpRequest {"context":{"Text":"","NumberOfItems":0,"FilterString":"","ClientState":""}} → 200 {"d":{"__type":…,"Items":[…],"NumberOfItems":…,"EndOfItems":…}} </code>``</p>
+<p>São <strong>lookups</strong> (catálogo de exames/grupos), não dado clínico — mas provam o modelo: tudo que for <code>.asmx</code>/<code>.ashx</code> é consumível como API.</p>
+<h3>3.3 Telas (<code>.aspx</code>) — só para o que não sai por relatório</h3>
+<p>Rastreadas por <code>probe_mapa.py</code> (GET puro, pula URL com verbo de escrita/Logout/GravaCookie). Resultado da varredura completa (16/09, 23 min, uma sessão): <strong>368 páginas</strong> (260× 200, 6× 500, 2× 504, 1× 404), <strong>3 serviços <code>.asmx</code></strong> (<code>ComboExamesService.GetData</code>, <code>ComboGrupoExameService.GetData/DeletarVinculo</code>, <code>ComboProcedimentoService.GetProcedimento</code>), 16 scripts próprios (só webcam). <strong>Nenhum <code>.ashx</code>, nenhum WebMethod <code>.aspx/Metodo</code>, nenhum <code>$.ajax</code> para endpoint próprio</strong> — a aplicação é postback puro; o que não é relatório é ViewState. Tudo em <code>mapa-endpoints.md</code> (sem PII) e <code>capturas/mapa.json</code>.</p>
+<p>Os 500 são bugs do vendor que um GET já dispara: <code>Radiologia/Relatorios/Radiologicos.aspx?parrel=751</code> ("Input string was not in a correct format"), <code>UPA/PesquisaSatisfacao.aspx</code> e <code>Administracao/Tabelas/OrgRegional/*</code> (NullReference), <code>PostoEnfermagem/requisicaoexterna.aspx?Modulo=INTERNACAO</code> (<code>ddlEnfermaria</code> SelectedValue inválido), <code>Share/CheckOut/CheckOut.aspx?origem=3</code> (SQL "Incorrect syntax near 'e'").</p>
+<p>Ler grade de tela exige o postback do RadGrid (paginação) e aí sim ViewState — <strong>último recurso</strong>; preferir o relatório equivalente.</p>
+<h2>4. Mapa do módulo UPA (telas de dado clínico) — do menu, sem clicar</h2>
+<p><code>UPA/Registro.aspx</code> (boletim; <code>?emergencia=True</code>), <code>UPA/ClassificacaoDeRisco.aspx</code>, <code>UPA/AtendimentoMedico.aspx</code> (<code>?MultiProfissional=1</code>), <code>UPA/AtendimentoMedicoOdonto.aspx</code>, <code>UPA/PrescricaoReceita.aspx</code>, <code>UPA/Enfermagem.aspx</code>, <code>Share/UPAShare/RegistrosEnfermagem.aspx</code>, <code>Share/Leitos/ObservacaoLeito.aspx</code>, <code>Share/Leitos/MapaLeitos.aspx</code>, <code>Share/Prescricao/PlanoTerapeutico.aspx</code>, <code>Share/CheckOut/CheckOut.aspx?origem=5|3</code> (baixa de boletim; <code>origem=3</code> deu <strong>500 SQL "Incorrect syntax near 'e'"</strong>), <code>UPA/Remocao.aspx</code>, <code>UPA/AdmFila.aspx</code>, <code>UPA/Retaguarda.aspx</code>, <code>UPA/RegulacaoDeLeitos.aspx</code>, <code>UPA/AdmCompulsoria.aspx</code> (SINAN), <code>UPA/requisicaoexterna.aspx</code> (coleta de exames), <code>UPA/PesquisaSatisfacao.aspx</code> (500 NullReference).</p>
+<p>Relatórios do UPA que correspondem ao que o conector SQL lê hoje (candidatos a fonte):</p>
+<div class="tw"><table><thead><tr><th>Dado no conector SQL</th><th>Relatório candidato (parrel)</th></tr></thead><tbody>
+<tr><td>Boletins do dia / chegada</td><td>407 <em>Pacientes Registrados no Dia</em>; 56/57 <em>Registro Diário/Mensal por Clínica</em>; 691 <em>Registro Nominal por Ocorrência</em></td></tr>
+<tr><td>Em andamento / fila / observação</td><td>631 <em>Atendimentos em Andamento</em>; 629 <em>Fila de Espera</em>; 630 <em>Pacientes em Observação</em></td></tr>
+<tr><td>Desfecho / saída</td><td>65 <em>Tipo de Saída, Sexo e Faixa Etária</em>; 834 <em>Encerrados por evasão</em>; 520 <em>Remoções por destino</em>; 527 <em>Óbito/Chegou Cadáver</em></td></tr>
+<tr><td>CID</td><td>815 <em>Atendimento Nominal por CID</em>; 484 <em>Diagnósticos por Clínica</em></td></tr>
+<tr><td>Classificação de risco</td><td>667 <em>Nominal por Classificação de Risco</em>; 833 <em>Histórico de Classificação de Risco</em></td></tr>
+<tr><td>Evolução / multiprofissional</td><td>830 <em>Evoluções de Multiprofissionais</em>; 791 <em>Eventos Clínicos</em></td></tr>
+<tr><td>Profissional</td><td>526 <em>Atendimentos por Profissional</em>; 788 <em>Profissionais sem CNS</em></td></tr>
+<tr><td>Reentradas</td><td><em>Reentradas.aspx</em> (tela própria)</td></tr>
+</tbody></table></div>
+<p>Falta medir: colunas e parâmetros de cada um (posição <code>parN</code>), custo no Crystal por intervalo e <strong>qual deles carrega o <code>spa_codigo</code></strong> (nº do boletim) — é a chave que amarra tudo no conector.</p>
+<h2>5. Ferramentas deste laboratório</h2>
+<div class="tw"><table><thead><tr><th>Script</th><th>O que faz</th></tr></thead><tbody>
+<tr><td><code>klinikos/client.py</code></td><td>sessão httpx, login (+ confirmação de sessão única), gate do local, persistência de cookies, trava de leitura, <code>postback()</code></td></tr>
+<tr><td><code>probe_login.py</code></td><td>sonda 0: força login e retrata a home</td></tr>
+<tr><td><code>probe_tela.py &lt;url&gt;…</code></td><td>descreve uma tela: form, campos, alvos, scripts</td></tr>
+<tr><td><code>probe_mapa.py [--max N] [--so-modulo X]</code></td><td>rastreador GET de todas as telas → <code>capturas/mapa.json</code> + <code>capturas/mapa/</code></td></tr>
+<tr><td><code>catalogo_relatorios.py</code></td><td>catálogo dos 268 relatórios a partir dos menus → <code>capturas/catalogo_menu.csv</code></td></tr>
+<tr><td><code>probe_relatorio.py &lt;parrel&gt; …</code></td><td>replica a tela de parâmetros (postback de especialidade + botão) e mostra o <code>window.open</code></td></tr>
+<tr><td><code>probe_rptview.py "&lt;query&gt;"</code></td><td>chama <code>rptview</code>/<code>rptviewXls</code> direto e descreve PDF/XLS/HTML</td></tr>
+<tr><td>`sondar_relatorios.py &lt;parrel\</td><td>url&gt;…`</td><td>lote: campos da tela + <code>parN</code> gerado + colunas/linhas do XLS → <code>capturas/sondagem_relatorios.json</code></td></tr>
+<tr><td><code>gerar_sondagem_md.py</code> / <code>gerar_mapa_md.py</code></td><td><code>docs/sondagem-relatorios.md</code> e <code>docs/mapa-endpoints.md</code> a partir das capturas (sem PII)</td></tr>
+<tr><td><code>decodificar_viewstate.py</code></td><td>strings/URLs de um <code>__VIEWSTATE</code> (LOS base64, sem cifra)</td></tr>
+<tr><td><code>analisar_har.py</code></td><td>agrupa um HAR do DevTools por endpoint (para quando a extensão do Chrome voltar)</td></tr>
+</tbody></table></div>
+<h2>6. Próximos passos</h2>
+<ol>
+<li>Terminar a varredura completa (<code>capturas/mapa.log</code>) e gerar <code>docs/mapa-endpoints.md</code> sem PII.</li>
+<li>Para cada linha da tabela do §4: chamar <code>rptviewXls</code> com 1 dia, ler colunas com <code>xlrd</code>,</li>
+</ol>
+<p>   anotar <code>parN</code> e se traz <code>spa_codigo</code>.</p>
+<ol>
+<li>Medir custo: 1 dia × relatório × Crystal; definir janela segura (o 631 com 30 dias estoura).</li>
+<li>Decidir a marca incremental (não há <code>rowversion</code> na web): provavelmente data do boletim +</li>
+</ol>
+<p>   reconciliação diária dos últimos N dias.</p>
+<ol>
+<li>Usuário dedicado do conector (sessão única derruba quem compartilhar).</li>
+</ol>
+<h2>7. UPA/Santa Rita são build 2025 — DIVERGEM do Conde (medido 16/09/2026)</h2>
+<p>O Conde é <code>K.2024.09.2.1</code> (app <code>/KlinikosNet</code>); UPA e Santa Rita são <code>U.2025.06.1.26</code> (app <code>/UPA24H</code>). Não é só o caminho — o comportamento diverge em três camadas, e reusar o mapa do Conde FALHA:</p>
+<ol>
+<li><strong>Gate:</strong> a build 2025 exige <strong>porta → (AutoPostBack) → local físico → salvar</strong> e grava o</li>
+</ol>
+<p>   cookie <strong><code>_ID_VINCULO</code></strong> (+ <code>_LOCAL_NAME</code>). O "Acesso Administrativo" que basta no Conde    (grava <code>_codigo_unidade</code>) passa o gate mas <strong>não</strong> deixa os relatórios rodarem na UPA.</p>
+<ol>
+<li><strong>Parâmetros dos relatórios:</strong> o <code>rptviewXls</code> com o <code>parN</code> do Conde devolve</li>
+</ol>
+<p>   <code>SqlException: Procedure or function 'ksp_relatorio_Consolidado_...'</code> — o SP espera outros params.</p>
+<ol>
+<li><strong>Identidade do relatório:</strong> o <strong>mesmo <code>parrel=667</code> é OUTRO relatório</strong> na UPA — a tela</li>
+</ol>
+<p>   (<code>/UPA24H/UPA/Relatorios/Relatorio.aspx?parrel=667&amp;origem=5</code>) tem campos que o Conde não tem    (<strong>ddlOcorrencia, ddlClassificacaoRisco, ddlClinica, ddlProfissional, chkPPR, turno</strong>), e    Ocorrência/Classificação são <strong>obrigatórios</strong> ("Atenção!" se vazios). No Conde, 667 é o    nominal simples por classificação.</p>
+<p>Correção do item 2: o <code>parN</code> do Conde não dá "procedure not found" e sim <strong>timeout de comando SQL</strong> (<code>... asyncWrite, Boolean inRetry, SqlDataReader</code>) — o SP da build 2025 recebe params fora do formato. Com os params certos (abaixo) o SP roda.</p>
+<h3>7.1 A ESPINHA da build 2025 foi encontrada — tela 526 com seletor de modo <code>rblPadrao</code></h3>
+<p>Recon de 16–17/09/2026 (ver <a href="./espinha-upa-build2025.md"><code>espinha-upa-build2025.md</code></a>, documento dedicado). A espinha do Conde (407+667+526) foi <strong>consolidada</strong> na build 2025 numa <strong>única tela, o relatório 526</strong> (<code>/UPA24H/UPA/Relatorios/Relatorio.aspx?parrel=526&amp;origem=5</code>), com um rádio de modo <code>rblPadrao</code> (AutoPostBack) que gera <strong>relatórios subjacentes diferentes</strong>:</p>
+<div class="tw"><table><thead><tr><th>modo (<code>par8</code>)</th><th><code>parRel</code> de saída</th><th>espinha</th></tr></thead><tbody>
+<tr><td>1 Nominal</td><td><strong>751</strong></td><td>boletim + chegada + cor + clínica + cadastro</td></tr>
+<tr><td>2 Por CID</td><td><strong>752</strong></td><td>CID por boletim (o "526" da build 2025)</td></tr>
+<tr><td>3 Por Status BAM</td><td><strong>802</strong></td><td>desfecho / tipo de saída por boletim</td></tr>
+</tbody></table></div>
+<p>URL da build 2025 (XLS BIFF; <code>par5</code>/<code>par7</code> vazios = TODAS especialidades/profissionais): ``<code> /UPA24H/Relatorios/rptviewXls.aspx?parRel=751&amp;parNum=8&amp;par1=&lt;unid&gt;&amp;par2=&lt;ini&gt;&amp;par3=&lt;fim&gt;&amp;par4=5&amp;par5=&amp;par6=0023&amp;par7=&amp;par8=1 </code>`<code> </code>par1<code>=unid (</code>0006<code> UPA, </code>0007<code> Santa Rita), </code>par4<code>=5 origem, </code>par6<code>=</code>0023` turno dia inteiro.</p>
+<p><strong>Mecanismo (por que o POST na mão não gerava):</strong> a tela roda em <code>Sys.WebForms.PageRequestManager</code> e o botão Excel é <strong>RadAjaxManager</strong> (<code>AjaxNS.ARWO</code>); emular o POST só re-renderiza — o <code>Click</code> não dispara e a app não monta o <code>window.open</code>. O "Atenção!" era <strong>falso positivo</strong> (regex batia na definição de <code>SwAlerta2</code>, não numa chamada). O jeito à prova de versão: <strong>navegador real com o cookie injetado</strong> dirige a tela e captura a URL que a app gera.</p>
+<p><strong>Crystal vaza memória:</strong> 629/630 (PDF) iam no início da sessão; após ~18 requisições <strong>todo</strong> export virou <code>COMException (0x80041004): Not enough memory</code> (XLS e PDF). É saturação do servidor Crystal deles — recicla só no app pool. <strong>Caminho web tem de ser cirúrgico:</strong> 3 req/dia/unidade (751+752+802, período = o dia) + <code>backoff</code>. Por isso as <strong>colunas exatas</strong> de 751/752/802 ficaram pendentes de confirmar quando o servidor recuperar.</p>
+<p><strong>Santa Rita = paridade total:</strong> mesma build, mesmo app, mesma tela 526 com os mesmos modos; só mudam host (<code>starita24h</code>) e <code>par1=0007</code>.</p>
+<p><strong>Consequência:</strong> conector <strong>version-aware</strong> (perfil por build, auto-detectado pela string de versão da home ou escolhido no cadastro). Credenciais: <code>bruno.rocha</code>/<code>l.mello</code>/<code>123</code> valem <strong>só no Conde</strong>; na UPA/Santa Rita usa-se <code>leonardo.dantas</code> (loga de verdade nas duas).</p>
+</main>
+</body>
+</html>

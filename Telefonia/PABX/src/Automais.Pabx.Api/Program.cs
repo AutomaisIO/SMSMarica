@@ -1,6 +1,7 @@
 using Automais.Pabx.Api.Asterisk;
 using Automais.Pabx.Api.Asterisk.Ami;
 using Automais.Pabx.Api.Cdr;
+using Automais.Pabx.Api.Comandos;
 using Automais.Pabx.Api.Data;
 using Automais.Pabx.Api.Data.Seed;
 using Automais.Pabx.Api.Infra;
@@ -35,6 +36,7 @@ builder.Services.AddScoped<IGeradorConfigSip, GeradorConfigChanSip>();
 builder.Services.AddScoped<IProvisionamentoService, ProvisionamentoService>();
 builder.Services.AddScoped<IRamalService, RamalService>();
 builder.Services.AddScoped<IStatusService, StatusService>();
+builder.Services.AddScoped<IComandosAsterisk, ComandosAsterisk>();
 builder.Services.AddSingleton<ICdrService, CdrService>();
 
 builder.Services.AddControllers()

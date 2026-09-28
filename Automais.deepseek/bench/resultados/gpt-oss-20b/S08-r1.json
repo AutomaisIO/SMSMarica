@@ -1,0 +1,33 @@
+{
+ "cena": "S08",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 98.49,
+   "usage": {
+    "completion_tokens": 372,
+    "prompt_tokens": 3568,
+    "total_tokens": 3940,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Para saber o endereço, acesse o app e procure o posto onde está cadastrado. Se precisar, me informe o nome do posto ou bairro e eu verifico para você.\",\"handoff\":false,\"confianca\":0.8}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Para saber o endereço, acesse o app e procure o posto onde está cadastrado. Se precisar, me informe o nome do posto ou bairro e eu verifico para você.",
+  "handoff": false,
+  "confianca": 0.8
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:36:14",
+ "latencia_total_s": 98.49
+}

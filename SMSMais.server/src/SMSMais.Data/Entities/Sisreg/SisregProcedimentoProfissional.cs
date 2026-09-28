@@ -33,8 +33,11 @@ public class SisregProcedimentoProfissional
     /// (<c>SisregVarreduraAgenda.EnviarConfirmacao</c>): desligar lá corta tudo; ligado lá, cada
     /// procedimento ainda pode vetar o seu.
     ///
-    /// <para><b>Nasce DESLIGADO</b>, e procedimento fora do mapeamento também não envia. É opt-in
-    /// deliberado: mensagem ao paciente só sai depois que alguém decidiu que deve sair.</para>
+    /// <para><b>Nasce LIGADO</b> (padrão da rede desde 20/09/2026: unidade ativa, médico ativo,
+    /// procedimento sincronizando e avisando). Procedimento fora do mapeamento continua não
+    /// enviando — o aviso depende de a linha existir. O opt-in virou opt-out: quem cala um
+    /// procedimento é o operador, e esse veto se propaga às linhas novas do mesmo código na
+    /// unidade, em vez de ser reaberto pelo próximo profissional que o executar.</para>
     ///
     /// <para><b>É por unidade, não nacional</b> (ao contrário do de-para SIGTAP): quem decide se
     /// um exame merece aviso é a unidade que o executa. Como o mesmo procedimento pode aparecer

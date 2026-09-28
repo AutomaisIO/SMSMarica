@@ -1,0 +1,52 @@
+{
+ "cena": "S06",
+ "modelo": "qwen3-4b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 104.89,
+   "usage": {
+    "completion_tokens": 393,
+    "prompt_tokens": 4231,
+    "total_tokens": 4624,
+    "prompt_tokens_details": {
+     "cached_tokens": 217
+    }
+   },
+   "texto_fora_de_tool": "*Você está querendo falar com um atendente humano, correto?*  \n\nPara ajudar melhor, posso verificar se há algum agendamento ou orientação específica que você precise. Porém, como você vai ao posto na segunda-feira, é importante que você tenha o seu nome completo e os quatro primeiros dígitos do CPF para confirmarmos seu cadastro.  \n\nPode me passar esses dados?  \n\nDepois, posso orientar o posto mais próximo onde você já é atendido.  \n\nObrigada! 😊  \n\n---  \nAcesse [https://app.smsmarica.online](https://app.smsmarica.online) para acompanhar seus exames, consultas e atendimentos. Mantenha seus dados sempre atualizados. 📱✅  \n\n(Se precisar de mais ajuda, é só pedir!)  \n\n*Você está querendo falar com um atendente humano, correto?*  \nPara ajudar melhor, posso verificar se há algum agendamento ou orientação específica que você precise. Porém, como você vai ao posto na segunda-feira, é importante que você tenha o seu nome completo e os quatro primeiros dígitos do CPF para confirmarmos seu cadastro.  \n\nPode me passar esses dados?  \n\nDepois, posso orientar o posto mais próximo onde você já é atendido.  \n\nObrigada! 😊  \n\n---  \nAcesse [https://app.smsmarica.online](https://app.smsmarica.online) para acompanhar seus exames, consultas e atendimentos. Mantenha seus dados sempre atualizados. 📱✅  \n\n(Se precisar de mais ajuda, é só pedir!)  \n\n",
+   "tools": [
+    {
+     "nome": "encaminhar_para_humano",
+     "args": "{}"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "latencia_s": 40.72,
+   "usage": {
+    "completion_tokens": 299,
+    "prompt_tokens": 4644,
+    "total_tokens": 4943,
+    "prompt_tokens_details": {
+     "cached_tokens": 4388
+    }
+   },
+   "texto_fora_de_tool": "Entendido! Estou encaminhando sua solicitação para um atendente humano que poderá ajudar com mais detalhes.  \n\nSe precisar de mais orientação, é só perguntar.  \n\nAcesse [https://app.smsmarica.online](https://app.smsmarica.online) para acompanhar seus exames, consultas e atendimentos. Mantenha seus dados sempre atualizados. 📱✅  \n\nObrigada por utilizar nossos serviços! 😊  \n\n---  \nAcesse [https://app.smsmarica.online](https://app.smsmarica.online) para acompanhar seus exames, consultas e atendimentos. Mantenha seus dados sempre atualizados. 📱✅  \n\nObrigada por utilizar nossos serviços! 😊  \n\n\n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Entendido! Estou encaminhando sua solicitação para um atendente humano que poderá ajudar com mais detalhes.\\n\\nSe precisar de mais orientação, é só perguntar.\\n\\nAcesse https://app.smsmarica.online para acompanhar seus exames, consultas e atendimentos. Mantenha seus dados sempre atualizados. 📱✅\\n\\nObrigada por utilizar nossos serviços! 😊\", \"handoff\": false, \"confianca\": 1}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Entendido! Estou encaminhando sua solicitação para um atendente humano que poderá ajudar com mais detalhes.\n\nSe precisar de mais orientação, é só perguntar.\n\nAcesse https://app.smsmarica.online para acompanhar seus exames, consultas e atendimentos. Mantenha seus dados sempre atualizados. 📱✅\n\nObrigada por utilizar nossos serviços! 😊",
+  "handoff": false,
+  "confianca": 1
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T00:23:03",
+ "latencia_total_s": 145.61
+}

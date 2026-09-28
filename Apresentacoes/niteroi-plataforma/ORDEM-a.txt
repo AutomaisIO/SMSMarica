@@ -1,0 +1,31 @@
+# Abertura
+00-capa.html
+02-o-que-faz.html
+03-integracao.html
+# Parte 1 · Um cadastro só
+d01-secao-cadastro.html
+c10-paciente.html
+b40-cidadao-unico.html
+# Parte 2 · Atender e resolver
+d02-secao-atender.html
+07-fila.html
+c20-agendamentos.html
+11-app-cidadao.html
+c30-solicitacao.html
+06-laudo.html
+c40-agenda.html
+c50-estrategia.html
+# Parte 3 · Enxergar a secretaria
+d03-secao-enxergar.html
+c60-ia.html
+c70-painel.html
+# Parte 4 · Falar com o cidadão
+d04-secao-falar.html
+c80-confirmacoes.html
+12-whatsapp.html
+c90-telefonia.html
+# Parte 5 · Feito para a sua casa
+d05-secao-casa.html
+19-customizacao.html
+20-implantacao.html
+21-fecho.html

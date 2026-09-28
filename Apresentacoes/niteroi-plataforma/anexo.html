@@ -1,0 +1,2707 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>SMSMais — a plataforma · Niterói</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="deck">
+<section class="slide capa" id="capa">
+  <div class="cena-capa"><img src="assets/cenas/capa.jpg" alt=""></div>
+  <div class="selo-automais"><img src="assets/automais-offwhite.png" alt="Automais"></div>
+  <div class="conteudo">
+    <div class="logo-topo"><img src="assets/niteroi-saude.png" alt="Prefeitura de Niterói — Saúde"></div>
+    <h1>A plataforma<span>SMSMais</span></h1>
+    <div class="regua"></div>
+    <p class="sub">A camada que integra os sistemas que a secretaria já tem — prontuários, PACS,
+      regulação —, entrega ferramentas de gestão e põe o cidadão no celular. Sem trocar o que
+      já funciona.</p>
+    <div class="meta" style="margin-top:34px">
+      <div><b>Para</b>Fundação Municipal<br>de Saúde de Niterói</div>
+      <div><b>Assunto</b>A plataforma<br>completa</div>
+      <div><b>Padrões</b>FHIR R4 · DICOM<br>SIGTAP · ICP-Brasil</div>
+      <div><b>Apresentado por</b>Automais<br>Bernardo Almeida</div>
+    </div>
+  </div>
+  <div class="selo-produto">
+    <span class="sig">SMS<i>Mais</i></span>
+    <span style="border-left:1px solid var(--s300);padding-left:12px;line-height:1.4">Plataforma de gestão<br>da saúde municipal</span>
+  </div>
+</section>
+
+<section class="slide" id="o-que-faz">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Visão geral</p>
+      <h1 class="titulo">O que o SMSMais <em>faz</em></h1>
+      <p class="linha-fina">Seis frentes, num sistema só, com um cadastro só de cidadão.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g3 cresce">
+      <div class="bloco">
+        <div class="icone-quadro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>
+        </div>
+        <p class="b-titulo">Regulação e fila</p>
+        <ul class="lista">
+          <li>A fila de exames e consultas num lugar só</li>
+          <li>Quem pediu, para quem foi, há quanto tempo espera</li>
+          <li>Produção de cada operador</li>
+          <li>Simulação para planejar a oferta</li>
+        </ul>
+      </div>
+
+      <div class="bloco">
+        <div class="icone-quadro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M16 2v4"/></svg>
+        </div>
+        <p class="b-titulo">Agenda</p>
+        <ul class="lista">
+          <li>Vagas oferecidas × vagas ocupadas</li>
+          <li>Onde sobra e onde falta, por unidade</li>
+          <li>Remarcação avisada ao paciente</li>
+          <li>Agenda própria de médico e equipamento</li>
+        </ul>
+      </div>
+
+      <div class="bloco">
+        <div class="icone-quadro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16.5 12 11l3 3 5-5.5"/></svg>
+        </div>
+        <p class="b-titulo">Exames e laudos</p>
+        <ul class="lista">
+          <li>Imagem de qualquer aparelho, guardada num acervo só</li>
+          <li>Médico lauda dentro do sistema</li>
+          <li>Laudo sai assinado digitalmente</li>
+          <li>Paciente recebe no celular</li>
+        </ul>
+      </div>
+
+      <div class="bloco">
+        <div class="icone-quadro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg>
+        </div>
+        <p class="b-titulo">Contato com o cidadão</p>
+        <ul class="lista">
+          <li>App com consultas, exames e resultados</li>
+          <li>WhatsApp oficial da secretaria</li>
+          <li>Confirmação de consulta antes do dia</li>
+          <li>Atendimento humano e automático</li>
+        </ul>
+      </div>
+
+      <div class="bloco">
+        <div class="icone-quadro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>
+        </div>
+        <p class="b-titulo">Transporte de pacientes</p>
+        <ul class="lista">
+          <li>Tratamentos e quem precisa ir, quando</li>
+          <li>Rotas do dia e assentos da viagem</li>
+          <li>Frota e motoristas no mapa</li>
+          <li>Custo consolidado para faturar</li>
+        </ul>
+      </div>
+
+      <div class="bloco realce">
+        <div class="icone-quadro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+        </div>
+        <p class="b-titulo">Gestão da secretaria</p>
+        <ul class="lista">
+          <li>Perguntas em português, respondidas com número e gráfico</li>
+          <li>Indicadores e metas apurados sozinhos</li>
+          <li>Ouvidoria com protocolo, prazo e resposta</li>
+          <li>Registro de quem fez o quê</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">2</span>
+  </div>
+</section>
+
+<section class="slide" id="integracao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Integração</p>
+      <h1 class="titulo">Funciona com o que vocês <em>já têm</em></h1>
+      <p class="linha-fina">Nenhum sistema da casa precisa sair para o SMSMais entrar.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="grade g3">
+      <div class="bloco">
+        <p class="b-olho">Regulação</p>
+        <p class="b-titulo">SERNIT · SISREG · SER</p>
+        <p class="b-texto">As filas dos sistemas de regulação aparecem dentro do SMSMais, com a
+          situação de cada pedido e o histórico de quem mexeu.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Prontuários</p>
+        <p class="b-titulo">Os PEPs da rede</p>
+        <p class="b-texto">O histórico dos sistemas de prontuário que a rede usa hoje é lido e reunido
+          sob o mesmo cidadão — inclusive os mais antigos.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Imagem</p>
+        <p class="b-titulo">PACS e aparelhos</p>
+        <p class="b-texto">Os acervos de imagem existentes e os aparelhos de qualquer fabricante
+          continuam onde estão e passam a ser vistos num lugar só.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Bases nacionais</p>
+        <p class="b-titulo">CNES · CADSUS · SIGTAP</p>
+        <p class="b-texto">Unidades, cadastro do cidadão e tabela de procedimentos vêm das bases
+          oficiais, sem redigitação.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Comunicação</p>
+        <p class="b-titulo">WhatsApp oficial</p>
+        <p class="b-texto">O número oficial da secretaria, homologado, usado para avisar, confirmar e
+          atender.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Assinatura</p>
+        <p class="b-titulo">Certificado do médico</p>
+        <p class="b-texto">O laudo sai assinado com validade jurídica e pode ser conferido por quem
+          receber.</p>
+      </div>
+    </div>
+
+    <div class="bloco escuro" style="margin-top:16px">
+      <p class="b-titulo">A integração é parte da entrega — não um projeto à parte, nem uma conta à parte.</p>
+      <p class="b-texto">É o que fazemos há anos, e é o que nos diferencia de um sistema que só funciona
+        se tudo for dele. Sistema sem integração pronta? Também resolvemos — e sem depender de o
+        fornecedor querer ajudar.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">3</span>
+  </div>
+</section>
+
+<section class="slide secao foto-fundo" id="secao-atender">
+  <div class="fundo"><img src="assets/cenas/tecnica.jpg" alt=""></div>
+  <div class="conteudo">
+    <p class="numero">Parte 1</p>
+    <h2>Atender e resolver</h2>
+    <p class="sub">O caminho de quem precisa de um exame, de uma consulta ou de um transporte —
+      do pedido até o resultado na mão. É aqui que a fila anda ou para.</p>
+    <div class="regua"></div>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">4</span>
+  </div>
+</section>
+
+<section class="slide" id="imagem">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Exames e laudos</p>
+      <h1 class="titulo">Do pedido ao laudo <em>no celular do paciente</em></h1>
+      <p class="linha-fina">Um caminho só, do pedido até o resultado na mão de quem esperou.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g5 cresce">
+      <div class="bloco">
+        <p class="b-num">1</p>
+        <p class="b-titulo">Chega o pedido</p>
+        <p class="b-texto">Vem da regulação ou é aberto na unidade. Já nasce com paciente, procedimento
+          e unidade que vai executar.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-num">2</p>
+        <p class="b-titulo">O aparelho recebe a lista</p>
+        <p class="b-texto">Cada equipamento vê os pacientes do dia dele. A técnica não digita nome —
+          escolhe da lista, e o exame já sai vinculado.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-num">3</p>
+        <p class="b-titulo">A imagem fica guardada</p>
+        <p class="b-texto">Todo exame vai para o mesmo acervo, de qualquer aparelho e de qualquer
+          unidade, e abre no navegador sem instalar nada.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-num">4</p>
+        <p class="b-titulo">O médico lauda</p>
+        <p class="b-texto">Com a imagem ao lado e modelos prontos por tipo de exame. Assina com o
+          certificado dele, com validade jurídica.</p>
+      </div>
+      <div class="bloco realce">
+        <p class="b-num">5</p>
+        <p class="b-titulo">O paciente recebe</p>
+        <p class="b-texto">Laudo e imagens no celular, pelo app ou pelo WhatsApp da secretaria. Sem
+          voltar à unidade só para buscar papel.</p>
+      </div>
+    </div>
+
+    <div class="grade g3" style="margin-top:auto">
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">Qualquer aparelho</p>
+        <p class="b-texto">Raio-X, ultrassom, mamógrafo, tomógrafo — de qualquer fabricante. Aparelho
+          novo entra no sistema no mesmo dia em que é instalado.</p>
+      </div>
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">O acervo antigo entra</p>
+        <p class="b-texto">Os exames que já existem nos acervos de hoje são trazidos junto. O histórico
+          do paciente não recomeça do zero.</p>
+      </div>
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">Cada unidade vê o que é dela</p>
+        <p class="b-texto">O que a unidade pediu e o que ela executou. Nada de uma unidade abrir o
+          exame da outra sem motivo.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">5</span>
+  </div>
+</section>
+
+<section class="slide" id="b-solicitacao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Exames · o pedido</p>
+      <h1 class="titulo">De onde vem <em>o pedido</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="converge">
+      <div class="fontes">
+        <div class="fonte"><span class="pt"></span><b>Do sistema de regulação</b><span>importado, sem redigitar</span></div>
+        <div class="fonte"><span class="pt"></span><b>Da própria unidade</b><span>aberto na tela, com permissão</span></div>
+        <div class="fonte"><span class="pt"></span><b>Chegou duas vezes</b><span>reconhecido, não duplica</span></div>
+      </div>
+      <div class="funil"><svg viewBox="0 0 70 100" preserveAspectRatio="none" fill="none" stroke="#f6b687" stroke-width="2">
+        <path d="M 0 16.7 C 35 16.7, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 50.0 C 35 50.0, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 83.3 C 35 83.3, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+      </svg></div>
+      <div class="alvo"><p class="a-olho">Um pedido só</p><p class="a-tit">Já classificado e vinculado</p><p class="a-txt">Paciente, procedimento e unidade executante desde o nascimento. O procedimento diz se é imagem, laboratório, consulta ou método gráfico — e o sistema já sabe o que fazer com cada um.</p></div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">Por que isso importa</p>
+      <p class="b-texto" style="margin:0">A maior parte do trabalho perdido em serviço de imagem está em corrigir vínculo errado depois. Exame que nasce certo chega ao laudo sem retrabalho.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">6</span>
+  </div>
+</section>
+
+<section class="slide" id="b-equipamentos">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Exames · equipamentos</p>
+      <h1 class="titulo">Cada aparelho vê <em>só a lista dele</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;height:340px">
+      <div class="lado-texto">
+        <div class="mini-tela" style="flex:1">
+          <div class="mt-barra"><span class="bolas"><i></i><i></i><i></i></span><b>US-02 · Policlínica de Icaraí</b> · lista de trabalho de hoje</div>
+          <div class="mt-corpo">
+            <div class="mt-lin sel"><span class="av">JC</span><b>José Carlos Ribeiro</b> · US de abdome total<span class="dir">08h40 · <span class="pill s-triagem">aguardando</span></span></div>
+            <div class="mt-lin"><span class="av">LB</span><b>Luciana Barbosa Nunes</b> · US de tireoide<span class="dir">09h10 · <span class="pill s-triagem">aguardando</span></span></div>
+            <div class="mt-lin"><span class="av">AF</span><b>Antônio Ferreira da Silva</b> · US de vias urinárias<span class="dir">09h40 · <span class="pill s-concluida">feito</span></span></div>
+            <div class="mt-lin"><span class="av">SR</span><b>Sebastião Rocha Martins</b> · US de abdome total<span class="dir">10h20 · <span class="pill s-triagem">aguardando</span></span></div>
+            <div class="mt-lin"><span class="av">MG</span><b>Maria das Graças Souza</b> · US pélvico<span class="dir">11h00 · <span class="pill s-triagem">aguardando</span></span></div>
+            <div class="mt-lin"><span class="av">RN</span><b>Raimunda Nonata Freire</b> · US de mama<span class="dir">11h30 · <span class="pill s-triagem">aguardando</span></span></div>
+            <p style="font-size:10.5px;color:var(--s500);margin:10px 0 0">6 pacientes. Nada de outra unidade aparece aqui — nem por engano.</p>
+          </div>
+        </div>
+      </div>
+      <div class="boneco m" style="position:relative;height:262px;align-self:flex-end">
+        <img src="assets/bonecos/atendente.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;right:-6px;top:-92px;width:230px;font-size:12px">“Eu não digito nome. <b>Escolho da lista</b> — e o exame já sai vinculado.”</div>
+      </div>
+    </div>
+    <div class="grade g3" style="margin-top:14px;flex:none">
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Cadastro</p><p class="b-texto" style="margin:0">Aparelho instalado de manhã aparece na lista de trabalho à tarde.</p></div>
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Qualquer marca</p><p class="b-texto" style="margin:0">Raio-X, ultrassom, mamógrafo, tomógrafo — o padrão é o mesmo há décadas.</p></div>
+      <div class="bloco realce" style="padding:11px 14px"><p class="b-olho">Sem cadastro</p><p class="b-texto" style="margin:0"><b>O envio falha com aviso</b> — não em silêncio, que é o pior dos mundos.</p></div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">7</span>
+  </div>
+</section>
+
+<section class="slide" id="b-acervo">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Exames · acervo</p>
+      <h1 class="titulo">Um acervo, todas as unidades, <em>todos os aparelhos</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="grade g-1-2" style="flex:none;align-items:center">
+      <div>
+        <div class="numerao"><span class="n">1</span><span class="u">acervo</span></div>
+        <p class="numerao-legenda" style="font-size:13px">Exames de toda a rede no mesmo lugar, com a mesma busca. O médico vê o de hoje e os anteriores lado a lado, sem abrir outro sistema.</p>
+        <div class="checks" style="margin-top:12px">
+          <li><span class="ck">✓</span><span>Abre <b>no navegador</b>, de qualquer computador da rede</span></li>
+          <li><span class="ck">✓</span><span><b>O acervo antigo entra junto</b> — o histórico não recomeça do zero</span></li>
+          <li><span class="ck">✓</span><span>Cada unidade vê o que pediu e o que executou</span></li>
+        </div>
+      </div>
+      <div class="grafico" style="display:flex;flex-direction:column;justify-content:center">
+        <p class="g-tit">O que há no acervo, por tipo de exame</p>
+        <div class="rosca-bloco">
+          <div class="rosca" style="background:conic-gradient(var(--nit-laranja) 0 46%, var(--p400) 46% 77%, var(--p200) 77% 91%, var(--s300) 91% 100%)">
+            <span class="centro"><b>4</b><span>modalidades</span></span>
+          </div>
+          <div class="legenda-rosca">
+            <span class="li"><span class="pt" style="background:var(--nit-laranja)"></span> Raio-X <b>46%</b></span>
+            <span class="li"><span class="pt" style="background:var(--p400)"></span> Ultrassom <b>31%</b></span>
+            <span class="li"><span class="pt" style="background:var(--p200)"></span> Mamografia <b>14%</b></span>
+            <span class="li"><span class="pt" style="background:var(--s300)"></span> Tomografia <b>9%</b></span>
+          </div>
+        </div>
+        <p class="g-nota" style="margin-top:10px">Cenário ilustrativo. A composição real é a da rede — e aparece nesta mesma tela.</p>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">O que o paciente ganha</p>
+      <p class="b-texto" style="margin:0">Ele deixa de carregar envelope de radiografia entre unidades — e deixa de repetir exame porque o anterior se perdeu.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">8</span>
+  </div>
+</section>
+
+<section class="slide" id="laudo">
+  <div class="cena-foto esquerda estreita">
+    <img src="assets/cenas/medico.jpg" style="object-position:56% 42%" alt="">
+  </div>
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+
+  <div class="cabeca com-foto-esq recuada">
+    <div>
+      <p class="olho">Laudo</p>
+      <h1 class="titulo">O médico lauda <em>aqui dentro</em></h1>
+    </div>
+  </div>
+
+  <div class="corpo com-foto-esq recuada">
+    <div class="grade g2 cresce">
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Imagem e laudo na mesma tela</p>
+          <p class="b-texto">Sem trocar de programa e sem baixar nada. Abre no navegador, de
+            qualquer computador da rede.</p>
+        </div>
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Modelos por tipo de exame</p>
+          <p class="b-texto">O texto padrão já vem pronto e editável. O médico escreve o que é
+            daquele caso, não o que se repete em todos.</p>
+        </div>
+        <div class="bloco escuro">
+          <p class="b-olho" style="color:var(--nit-amarelo)">Assinado, não digitalizado</p>
+          <p class="b-texto">A assinatura é a do certificado do próprio médico, com validade
+            jurídica — e quem recebe o PDF consegue conferir se é autêntico.</p>
+        </div>
+      </div>
+
+      <div class="laudo">
+        <div class="l-topo">
+          <b>Laudo · Raio-X de tórax</b>
+          <span class="pac">Paciente 0042 · 18/09</span>
+        </div>
+        <div class="l-corpo">
+          <div class="negato">
+            <img src="assets/cenas/rx.jpg" alt="">
+            <span class="marca-uid">ACC 2026-4417 · PA</span>
+          </div>
+          <div class="l-texto">
+            <p class="l-sec">Técnica</p>
+            <p class="l-p">Radiografia de tórax em incidência <b>PA</b>, realizada em ortostase.</p>
+
+            <p class="l-sec">Achados</p>
+            <p class="l-p">Campos pulmonares <b>sem opacidades</b> focais. Seios costofrênicos
+              livres. Área cardíaca de dimensões normais. Estruturas ósseas preservadas.</p>
+
+            <p class="l-sec">Conclusão</p>
+            <p class="l-p"><b>Exame sem alterações significativas.</b></p>
+
+            <div class="assinatura">
+              <span class="escudo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              </span>
+              <span class="quem">
+                <b>Assinado digitalmente</b>
+                <span>Certificado ICP-Brasil · verificável pelo paciente</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape so-num">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">9</span>
+  </div>
+</section>
+
+<section class="slide" id="b-modelos-laudo">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Exames · laudo</p>
+      <h1 class="titulo">Modelos que o serviço <em>ajusta sozinho</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="antes-depois" style="flex:none">
+      <div class="col antes">
+        <p class="rot-ad">Laudo do zero</p>
+        <p class="frase">O médico digita técnica, achados normais e conclusão em todo exame — inclusive nos 80% que não têm nada.</p>
+        <p class="apoio">Cada laudo é um documento novo. O que se repete se digita de novo.</p>
+      </div>
+      <div class="meio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+      <div class="col depois">
+        <p class="rot-ad">Com modelo</p>
+        <p class="frase">O padrão já vem pronto. O médico escreve só o que é daquele caso.</p>
+        <p class="apoio">Raio-X de tórax tem um modelo; mamografia tem outro, com a classificação que o rastreamento exige.</p>
+      </div>
+    </div>
+    <div class="grade g3" style="margin-top:18px;flex:none">
+      <div class="bloco"><div class="numerao"><span class="n">−4</span><span class="u">min por laudo</span></div><p class="numerao-legenda">é o que um modelo tira de um exame sem alteração — a maioria deles.</p></div>
+      <div class="bloco"><p class="b-olho">Quem manda</p><p class="b-titulo">O serviço de imagem</p><p class="b-texto">Cria e ajusta os modelos na própria tela. Não depende de pedido a fornecedor.</p></div>
+      <div class="bloco realce"><p class="b-olho">Cabeçalho</p><p class="b-titulo">A marca da secretaria</p><p class="b-texto">Cabeçalho e rodapé valem para todos os laudos e mudam num lugar só.</p></div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">Laudo mais rápido é fila menor</p>
+      <p class="b-texto" style="margin:0">O gargalo do serviço de imagem raramente é o aparelho — é o tempo até o laudo sair. Minutos por exame viram dias de fila.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">10</span>
+  </div>
+</section>
+
+<section class="slide" id="b-entrega-laudo">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Exames · entrega</p>
+      <h1 class="titulo">O laudo chega <em>e pode ser conferido</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="trilho-wrap">
+      <div class="trilho-nos">
+        <div class="no "><div class="quem"><img src="assets/bonecos/medico.jpg" alt=""></div><div class="disco">1</div><p class="t">Sai assinado</p><p class="d">Com o certificado do próprio médico. Vale como documento.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">2</div><p class="t">Chega ao paciente</p><p class="d">App ou WhatsApp oficial, com aviso na hora em que fica pronto.</p></div>
+        <div class="no chave"><div class="quem"><img src="assets/bonecos/cidada.jpg" alt=""></div><div class="disco">3</div><p class="t">Ela abre no celular</p><p class="d">Laudo e imagens. Sem voltar à unidade para buscar papel.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">4</div><p class="t">Quem recebe confere</p><p class="d">Página pública: o PDF é autêntico e não foi alterado.</p></div>
+        <div class="no fim"><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">5</div><p class="t">Se precisar refazer</p><p class="d">Versão nova, registrada. A anterior não some — some a dúvida.</p></div>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">O que muda na rotina</p>
+      <p class="b-texto" style="margin:0">Some a fila de balcão para retirar resultado — que em muitas unidades é a maior fila do dia e não atende ninguém: só entrega papel.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">11</span>
+  </div>
+</section>
+
+<section class="slide" id="b-correcao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Exames · correção</p>
+      <h1 class="titulo">Quando o exame vai <em>para o paciente errado</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="com-boneco">
+      <div class="boneco m"><img src="assets/bonecos/medico.jpg" alt=""></div>
+      <div class="lado-texto">
+        <div class="linha-tempo">
+          <div class="passo"><div class="trilha"><span class="bola"></span><span class="fio"></span></div><div class="conteudo-passo"><p class="quando-tp">Dia 1 · 09h12</p><p class="tit-tp">A técnica seleciona o item errado da lista</p><p class="txt-tp">O paciente anterior. As imagens são arquivadas sob a pessoa errada. Acontece em todo serviço de imagem.</p></div></div>
+          <div class="passo"><div class="trilha"><span class="bola"></span><span class="fio"></span></div><div class="conteudo-passo"><p class="quando-tp">Dia 1 · 14h</p><p class="tit-tp">O laudo é assinado — no prontuário de quem não fez o exame</p><p class="txt-tp">É o tipo de erro que só aparece meses depois, quando alguém compara com a história clínica.</p></div></div>
+          <div class="passo"><div class="trilha"><span class="bola"></span><span class="fio"></span></div><div class="conteudo-passo"><p class="quando-tp">Dia 9 · a recepção percebe</p><p class="tit-tp">Uma tela corrige de quem é o estudo</p><p class="txt-tp">A imagem é reescrita no acervo, os rascunhos de laudo são descartados e <b>o link já enviado ao paciente é revogado</b>.</p></div></div>
+          <div class="passo pendente"><div class="trilha"><span class="bola"></span></div><div class="conteudo-passo"><p class="quando-tp">Registro</p><p class="tit-tp">Autor, data e motivo ficam gravados</p><p class="txt-tp">É permissão à parte, dada a um punhado de nomes — não a todo mundo que mexe com exame.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">12</span>
+  </div>
+</section>
+
+<section class="slide tela" id="tela-fila">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">A tela · Regulação</p>
+      <h1 class="titulo">Três sistemas, <em>uma fila só</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+  <div class="moldura">
+    <div class="barra-nav">
+      <div class="bolas"><i></i><i></i><i></i></div>
+      <div class="url"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>smsmais.saude.niteroi.rj.gov.br/app/regulacao/fila</div>
+    </div>
+    <div class="palco"><div class="app">
+  <aside class="app-side">
+    <div class="marca"><img src="assets/niteroi-saude.png" alt="Prefeitura de Niterói — Saúde"></div>
+    <div class="usuario">
+      <div class="av">RM</div>
+      <div>
+        <div class="n">Rita Menezes</div>
+        <div class="e">rita.menezes@saude.niteroi.rj.gov.br</div>
+      </div>
+    </div>
+    <nav>
+      <div class="grupo aberto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 12H3v9h8v-9Z"/><path d="M21 3h-8v18h8V3Z"/><path d="M11 3H3v5h8V3Z"/></svg>
+        <span>Regulação</span>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <a class="item ativo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+        <span>Fila da regulação</span><span class="cont">284</span>
+      </a>
+      <a class="item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M3 15h6"/><path d="M6 12v6"/></svg>
+        <span>Nova solicitação</span>
+      </a>
+      <a class="item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+        <span>Notificações</span><span class="cont">7</span>
+      </a>
+      <a class="item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16.5 12 11l3 3 5-5.5"/></svg>
+        <span>Estatísticas</span>
+      </a>
+      <div class="grupo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M16 2v4"/></svg>
+        <span>Agenda</span>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="grupo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span>Exames de imagem</span>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="grupo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg>
+        <span>Atendimento</span>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="grupo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        <span>Ouvidoria</span>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="grupo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>
+        <span>Transporte</span>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="grupo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+        <span>Inteligência</span>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="rodape-nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+        <span>Sair</span>
+      </div>
+    </nav>
+  </aside>
+  <div class="app-col">
+    <header class="app-top">
+      <div class="seletor-unidade">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+        <span>Todas as unidades</span>
+        <svg style="width:13px;height:13px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+        <span class="bola">7</span>
+      </div>
+      <div class="eu">
+        <div class="av">RM</div>
+        <div class="n">Rita Menezes</div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </header>
+    <main class="app-main">
+      <div class="app-wrap">
+        <div class="pg-cab">
+  <div>
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+      Fila da regulação
+      <span class="ajuda">?</span>
+    </h1>
+    <p class="sub">Solicitações de toda a rede, por prioridade e tempo de espera.</p>
+  </div>
+  <button class="btn btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    Nova solicitação
+  </button>
+</div>
+
+<div class="filtros mt14">
+  <div class="inp w56 placeholder">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <span>Protocolo, nome ou CPF</span>
+  </div>
+  <div class="inp w48"><span>Todos os procedimentos</span><svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+  <div class="inp w36"><span>Prioridade</span><svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+  <div class="inp w48"><span>Todas as unidades</span><svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+  <div class="inp w40"><span>Todos os sistemas</span><svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+</div>
+
+<div class="abas mt14">
+  <span class="aba ativa">Aguardando <span class="cont">284</span></span>
+  <span class="aba">Em análise <span class="cont">46</span></span>
+  <span class="aba">Pendência na ponta <span class="cont">31</span></span>
+  <span class="aba">Agendadas <span class="cont">612</span></span>
+  <span class="aba">Devolvidas <span class="cont">18</span></span>
+</div>
+
+<div class="tab-card mt10">
+  <table class="tab compacta">
+    <colgroup>
+      <col style="width:94px"><col style="width:144px"><col style="width:170px"><col style="width:134px">
+      <col style="width:74px"><col style="width:80px"><col style="width:108px"><col style="width:98px">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Solicitação</th><th>Paciente</th><th>Procedimento</th><th>Unidade solicitante</th>
+        <th>Prioridade</th><th>Sistema</th><th>Situação</th><th>Espera</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="mono">2026-018842</td>
+        <td>Raimunda Nonata Freire</td>
+        <td class="t-ass"><div class="a1">Consulta em cardiologia</div><div class="a2">0301010072</div></td>
+        <td>Policlínica do Centro</td>
+        <td><span class="pill pr-alta">Alta</span></td>
+        <td><span class="pill s-externo">SERNIT</span></td>
+        <td><span class="pill s-triagem">Aguardando</span></td>
+        <td><span class="pill pz-atraso">128 dias</span></td>
+      </tr>
+      <tr>
+        <td class="mono">2026-018791</td>
+        <td>José Carlos Ribeiro</td>
+        <td class="t-ass"><div class="a1">US de abdome total</div><div class="a2">0205020046</div></td>
+        <td>UBS Barreto</td>
+        <td><span class="pill pr-normal">Normal</span></td>
+        <td><span class="pill s-externo">SISREG</span></td>
+        <td><span class="pill s-triagem">Aguardando</span></td>
+        <td><span class="pill pz-vencendo">74 dias</span></td>
+      </tr>
+      <tr>
+        <td class="mono">2026-018774</td>
+        <td>Maria das Graças Souza</td>
+        <td class="t-ass"><div class="a1">Mamografia bilateral</div><div class="a2">0204030188</div></td>
+        <td>Policlínica de Icaraí</td>
+        <td><span class="pill pr-urgente">Urgente</span></td>
+        <td><span class="pill s-externo">SISREG</span></td>
+        <td><span class="pill s-resparea">Em análise</span></td>
+        <td><span class="pill pz-ok">6 dias</span></td>
+      </tr>
+      <tr>
+        <td class="mono">2026-018760</td>
+        <td>Antônio Ferreira da Silva</td>
+        <td class="t-ass"><div class="a1">Consulta em oftalmologia</div><div class="a2">0301010137</div></td>
+        <td>UBS Engenhoca</td>
+        <td><span class="pill pr-normal">Normal</span></td>
+        <td><span class="pill s-externo">SERNIT</span></td>
+        <td><span class="pill s-complementacao">Pendência</span></td>
+        <td><span class="pill pz-fim">suspenso</span></td>
+      </tr>
+      <tr>
+        <td class="mono">2026-018742</td>
+        <td>Luciana Barbosa Nunes</td>
+        <td class="t-ass"><div class="a1">Tomografia de crânio</div><div class="a2">0206010044</div></td>
+        <td>Hospital Municipal</td>
+        <td><span class="pill pr-alta">Alta</span></td>
+        <td><span class="pill s-externo">SER-RJ</span></td>
+        <td><span class="pill s-resparea">Em análise</span></td>
+        <td><span class="pill pz-ok">11 dias</span></td>
+      </tr>
+      <tr>
+        <td class="mono">2026-018715</td>
+        <td>Sebastião Rocha Martins</td>
+        <td class="t-ass"><div class="a1">Consulta em ortopedia</div><div class="a2">0301010200</div></td>
+        <td>Policlínica do Centro</td>
+        <td><span class="pill pr-normal">Normal</span></td>
+        <td><span class="pill s-externo">SERNIT</span></td>
+        <td><span class="pill s-triagem">Aguardando</span></td>
+        <td><span class="pill pz-atraso">96 dias</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="paginacao">
+  <div class="mostrar"><span>Mostrar</span><span class="inp" style="width:68px">25 <svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span>284 solicitações</span></div>
+  <div class="pgs">
+    <span class="pg">‹</span><span class="pg ativa">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">›</span>
+  </div>
+</div>
+
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+  </div>
+  <div class="legenda-fila">
+    <div class="item"><span class="n">1</span><span class="t"><b>A coluna “sistema”</b>: SERNIT, SISREG e SER lado a lado, na mesma fila.</span></div>
+    <div class="item"><span class="n">2</span><span class="t"><b>A espera em dias</b>, marcada quando passa do aceitável.</span></div>
+    <div class="item"><span class="n">3</span><span class="t"><b>Pendência na ponta</b> suspende o relógio — e aparece para quem tem que resolver.</span></div>
+    <div class="item"><span class="n">4</span><span class="t"><b>Cada unidade vê a sua</b>; a regulação vê a rede inteira.</span></div>
+  </div>
+  <div class="rodape"><span class="esq"></span><span class="num">13</span></div>
+</section>
+
+<section class="slide" id="b-ciclo">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Regulação · o ciclo</p>
+      <h1 class="titulo">O caminho de uma solicitação, <em>com a volta desenhada</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="trilho-wrap">
+      <div class="trilho-nos">
+        <div class="no">
+          <div class="quem"><img src="assets/bonecos/recepcionista.jpg" alt=""></div>
+          <div class="disco">1</div>
+          <p class="t">A unidade abre</p>
+          <p class="d">Paciente, procedimento, justificativa e anexos. As regras aparecem na hora.</p>
+        </div>
+        <div class="no">
+          <div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div>
+          <div class="disco">2</div>
+          <p class="t">Entra na fila</p>
+          <p class="d">Com prioridade e o relógio da espera contando.</p>
+        </div>
+        <div class="no chave">
+          <div class="quem"><img src="assets/bonecos/gestora.jpg" alt=""></div>
+          <div class="disco">3</div>
+          <p class="t">O regulador assume</p>
+          <p class="d">O caso passa a ter dono. Ninguém trabalha em cima do trabalho de outro.</p>
+        </div>
+        <div class="no">
+          <div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div>
+          <div class="disco">4</div>
+          <p class="t">Devolve ou aprova</p>
+          <p class="d">Completo, segue para a vaga. Incompleto, volta para quem pediu.</p>
+        </div>
+        <div class="no fim">
+          <div class="quem"><img src="assets/bonecos/cidada.jpg" alt=""></div>
+          <div class="disco">5</div>
+          <p class="t">Vaga marcada</p>
+          <p class="d">E o paciente avisado pelo canal que ele já usa.</p>
+        </div>
+      </div>
+      <div class="retorno baixo">
+        <svg viewBox="0 0 600 50" preserveAspectRatio="none" fill="none">
+          <path d="M 600 2 C 600 46, 0 46, 0 8" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 5"/>
+          <path d="M -9 18 L 0 4 L 9 18" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="rot-ret">faltou exame prévio? volta como pendência para quem pediu — sem sumir da fila</span>
+      </div>
+    </div>
+
+    <div class="bloco escuro" style="margin-top:58px;flex:none">
+      <p class="b-texto" style="margin:0">Todo sistema tem as cinco etapas. O que muda aqui é a <b>seta tracejada</b>:
+        devolver, reclassificar e recusar são atos com autor, data e o papel de quem fez —
+        a pergunta “por que este demorou?” tem resposta em vez de silêncio.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">14</span>
+  </div>
+</section>
+
+<section class="slide" id="b-sistemas">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Regulação · sistemas</p>
+      <h1 class="titulo">Três filas <em>uma visão</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="converge">
+      <div class="fontes">
+        <div class="fonte"><span class="pt"></span><b>SERNIT</b><span>o sistema da própria casa</span></div>
+        <div class="fonte"><span class="pt"></span><b>SISREG</b><span>nacional, com a agenda importada</span></div>
+        <div class="fonte"><span class="pt"></span><b>SER</b><span>estadual — o encaminhado não some</span></div>
+      </div>
+      <div class="funil"><svg viewBox="0 0 70 100" preserveAspectRatio="none" fill="none" stroke="#f6b687" stroke-width="2">
+        <path d="M 0 16.7 C 35 16.7, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 50.0 C 35 50.0, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 83.3 C 35 83.3, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+      </svg></div>
+      <div class="alvo"><p class="a-olho">O paciente é um só</p><p class="a-tit">A repetição aparece sozinha</p><p class="a-txt">Hoje, saber se alguém já foi encaminhado por outro caminho exige abrir três sistemas e comparar na mão. Reunidos, a vaga duplicada aparece — e vaga duplicada é vaga perdida.</p></div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">O que não muda</p>
+      <p class="b-texto" style="margin:0">Cada sistema continua sendo operado onde é. A plataforma lê a situação de cada pedido e o histórico de quem mexeu — não substitui nenhum deles.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">15</span>
+  </div>
+</section>
+
+<section class="slide" id="agenda">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Agenda</p>
+      <h1 class="titulo">Onde sobra e <em>onde falta</em></h1>
+      <p class="linha-fina">A vaga que ninguém usou e a fila que não anda costumam estar na mesma semana.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g2 cresce">
+      <div class="bloco">
+        <p class="b-olho">O que a agenda mostra</p>
+        <p class="b-titulo">Vaga oferecida × vaga ocupada</p>
+        <ul class="lista">
+          <li>Por unidade, por especialidade e por profissional</li>
+          <li>Quantas vagas foram abertas e quantas foram usadas</li>
+          <li>Onde a fila espera mais tempo pelo mesmo procedimento</li>
+          <li>Quanto da agenda do mês já está comprometido</li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">O que o sistema faz com isso</p>
+        <p class="b-titulo">Avisa e organiza</p>
+        <ul class="lista">
+          <li>Remarcação e troca de profissional viram aviso ao paciente</li>
+          <li>Vaga que sobrou aparece antes de virar falta</li>
+          <li>Agenda própria por médico, sala e equipamento</li>
+          <li>Simulação: “se eu abrir mais dois dias, a fila zera quando?”</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bloco escuro" style="margin-top:auto">
+      <p class="b-titulo">O gestor deixa de descobrir o problema pelo paciente</p>
+      <p class="b-texto">Hoje a notícia de que a agenda estourou costuma chegar pela reclamação de quem
+        não conseguiu marcar. Com a oferta e a ocupação lado a lado, ela chega antes — e dá para
+        remanejar enquanto ainda é remanejamento, não crise.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">16</span>
+  </div>
+</section>
+
+<section class="slide" id="b-vagas">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Agenda · vagas</p>
+      <h1 class="titulo">A oferta contra <em>a fila</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="grade g-3-2" style="flex:none;height:400px">
+      <div class="grafico" style="display:flex;flex-direction:column">
+        <p class="g-tit">Vagas abertas × usadas no mês, por especialidade</p>
+        <div class="duplas" style="flex:1;justify-content:center">
+          <div class="cat"><span class="rot">Cardiologia</span><span class="par"><span class="b oferta" style="width:58%"></span><span class="b uso" style="width:56%"></span></span><span class="val"><b>412 / 420</b>fila: 147</span></div>
+          <div class="cat"><span class="rot">Ortopedia</span><span class="par"><span class="b oferta" style="width:74%"></span><span class="b uso" style="width:70%"></span></span><span class="val"><b>521 / 540</b>fila: 96</span></div>
+          <div class="cat"><span class="rot">Oftalmologia</span><span class="par"><span class="b oferta" style="width:100%"></span><span class="b uso" style="width:61%"></span></span><span class="val"><b>446 / 730</b>fila: 12</span></div>
+          <div class="cat"><span class="rot">Dermatologia</span><span class="par"><span class="b oferta" style="width:48%"></span><span class="b uso" style="width:47%"></span></span><span class="val"><b>344 / 350</b>fila: 81</span></div>
+          <div class="cat"><span class="rot">Endocrinologia</span><span class="par"><span class="b oferta" style="width:36%"></span><span class="b uso" style="width:22%"></span></span><span class="val"><b>160 / 260</b>fila: 8</span></div>
+        </div>
+        <div class="legenda-mini"><span><i style="background:var(--p200)"></i>abertas</span><span><i style="background:var(--nit-laranja)"></i>usadas</span><span>· números de cenário</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco realce" style="flex:1"><p class="b-olho">Lê-se assim</p><p class="b-titulo">Oftalmologia sobra, cardiologia falta</p><p class="b-texto">284 vagas de oftalmo venceram vazias no mês; cardiologia usou 98% e ainda tem 147 na fila. Não é mais oferta que resolve — é <b>remanejar</b>.</p></div>
+        <div class="bloco escuro"><p class="b-olho" style="color:var(--nit-amarelo)">O que isso destrava</p><p class="b-texto">A notícia de que a agenda estourou deixa de chegar pela reclamação de quem não conseguiu marcar.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">17</span>
+  </div>
+</section>
+
+<section class="slide" id="b-estrategias">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Agenda · simulação</p>
+      <h1 class="titulo">“Se eu abrir mais dois dias, <em>a fila zera quando?”</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g-3-2" style="flex:1;min-height:0">
+      <div class="grafico serie">
+        <p class="g-tit">Fila de cardiologia, semanas à frente — dois cenários</p>
+        <svg viewBox="0 0 600 170" preserveAspectRatio="none">
+          <g stroke="#e2e8f0" stroke-width="1"><line x1="0" y1="42" x2="600" y2="42"/><line x1="0" y1="84" x2="600" y2="84"/><line x1="0" y1="126" x2="600" y2="126"/></g>
+          <polyline fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 5" points="0,20 100,34 200,50 300,68 400,88 500,110 600,134"/>
+          <polyline fill="none" stroke="#ee7219" stroke-width="3.5" stroke-linejoin="round" points="0,20 100,44 200,78 300,118 400,150 460,168"/>
+          <circle cx="460" cy="168" r="6" fill="#ee7219"/>
+        </svg>
+        <div class="eixo"><span>hoje</span><span>2 sem</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span></div>
+        <p class="g-nota"><span style="display:inline-block;width:18px;height:0;border-top:3px dashed #94a3b8;vertical-align:middle;margin-right:5px"></span>oferta atual: 12+ semanas &nbsp; <span style="display:inline-block;width:18px;height:3px;background:#ee7219;vertical-align:middle;margin-right:5px"></span>+2 dias de agenda: <b>zera na 9ª semana</b></p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco"><div class="numerao"><span class="n">9</span><span class="u">semanas</span></div><p class="numerao-legenda">em vez de “não sei”. A pergunta que hoje se responde no chute passa a ter conta.</p></div>
+        <div class="bloco realce" style="flex:1"><p class="b-olho">Só planejamento</p><p class="b-texto">A simulação <b>não marca nada e não altera agenda nenhuma</b>. Ela existe para decidir antes de mexer — e a decisão fica guardada com quem tomou.</p></div>
+      </div>
+    </div>
+    <div class="bloco" style="margin-top:16px;flex:none">
+      <p class="b-olho">Uma ressalva</p>
+      <p class="b-texto" style="margin:0">A simulação vale pela oferta que se informa. Ela não prevê falta de profissional nem aparelho quebrado — mostra o teto do que a oferta planejada alcança.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">18</span>
+  </div>
+</section>
+
+<section class="slide" id="b-alteracoes">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Agenda · mudanças</p>
+      <h1 class="titulo">Quando a agenda muda <em>depois de marcada</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;align-items:center;gap:26px">
+      <div class="lado-texto">
+        <div class="decisao">
+          <div class="caixa" style="grid-row:1;grid-column:1"><b>A importação percebe</b>remarcação, troca de profissional ou de procedimento</div>
+          <div class="liga h" style="grid-row:1;grid-column:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+          <div class="losango-wrap" style="grid-row:1;grid-column:3"><div class="losango"><span>Alguém já foi avisado?</span></div></div>
+          <div class="liga h" style="grid-row:1;grid-column:4"><span class="rotulo">NÃO</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+          <div class="caixa robo" style="grid-row:1;grid-column:5"><b>Entra na fila de tratamento</b>em vez de passar despercebida</div>
+          <div class="liga baixo" style="grid-row:2;grid-column:3"><span class="rotulo">SIM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div>
+          <div class="liga baixo" style="grid-row:2;grid-column:5"><span class="rotulo">A EQUIPE CONFIRMA</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div>
+          <div class="caixa" style="grid-row:3;grid-column:3"><b>Fica registrado</b>sem repetir o aviso</div>
+          <div class="caixa humano" style="grid-row:3;grid-column:5"><b>O paciente é avisado</b>pelo mesmo canal da confirmação</div>
+        </div>
+      </div>
+      <div class="boneco m" style="height:290px;position:relative;align-self:flex-end">
+        <img src="assets/bonecos/atendente.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;right:-6px;top:-92px;width:236px;font-size:12px">“Antes ele descobria <b>na porta</b> que o médico não vinha.”</div>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">Por que é mais que cortesia</p>
+      <p class="b-texto" style="margin:0">Paciente que viaja para uma consulta que mudou de dia perde diária, transporte e confiança. O terceiro é o mais caro de recuperar.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">19</span>
+  </div>
+</section>
+
+<section class="slide" id="b-operadores">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Regulação · equipe</p>
+      <h1 class="titulo">A produção de <em>quem opera</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="painel-kpi" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi"><span class="rot">Autorizadas no mês</span><span class="num">2.140</span><span class="meta">SISREG + SERNIT + SER</span></div>
+      <div class="kpi"><span class="rot">Devolvidas à ponta</span><span class="num">318</span><span class="meta">com pendência nomeada</span></div>
+      <div class="kpi"><span class="rot">Tempo médio na mão</span><span class="num">1,8<i>dia</i></span><span class="meta">de assumir a decidir</span></div>
+      <div class="kpi"><span class="rot">Paradas > 5 dias</span><span class="num alerta">41</span><span class="meta">é aqui que se olha primeiro</span></div>
+    </div>
+    <div class="grade g-3-2" style="margin-top:14px;flex:1;min-height:0">
+      <div class="grafico" style="display:flex;flex-direction:column">
+        <p class="g-tit">Solicitações decididas por operador — SISREG</p>
+        <div class="ranking" style="flex:1;justify-content:center">
+          <div class="linha"><span class="rot">Rita M.</span><span class="trilho"><span class="barra" style="width:100%"></span></span><span class="val">486</span></div>
+          <div class="linha"><span class="rot">Paulo R.</span><span class="trilho"><span class="barra" style="width:84%"></span></span><span class="val">409</span></div>
+          <div class="linha"><span class="rot">Carla S.</span><span class="trilho"><span class="barra" style="width:77%"></span></span><span class="val">372</span></div>
+          <div class="linha"><span class="rot">Marcos A.</span><span class="trilho"><span class="barra fraca" style="width:39%"></span></span><span class="val">188</span></div>
+          <div class="linha"><span class="rot">Denise L.</span><span class="trilho"><span class="barra fraca" style="width:21%"></span></span><span class="val">102</span></div>
+        </div>
+        <p class="g-nota">Denise entrou na equipe há três semanas. A leitura é <b>onde reforçar</b>, não quem cobrar.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco" style="flex:1"><p class="b-olho">Por sistema</p><p class="b-titulo">Equipes diferentes, leituras separadas</p><p class="b-texto">Quem cuida do SISREG não é quem cuida do SERNIT. Cada sistema tem a sua tela e a sua permissão.</p></div>
+        <div class="bloco escuro"><p class="b-olho" style="color:var(--nit-amarelo)">Quem enxerga</p><p class="b-texto">Permissão própria, desligada por padrão. Quem atende não precisa ver o ranking das colegas; quem coordena, precisa.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">20</span>
+  </div>
+</section>
+
+<section class="slide" id="transporte">
+  <div class="cena-foto esquerda"><img src="assets/cenas/transporte.jpg" style="object-position:50% 55%" alt=""></div>
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca com-foto-esq">
+    <div>
+      <p class="olho">Transporte de pacientes</p>
+      <h1 class="titulo">Quem vai, <em>a que custo</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo com-foto-esq">
+    <div class="grade g2 cresce">
+      <div class="bloco">
+        <p class="b-num">1</p>
+        <p class="b-titulo">Quem precisa ir</p>
+        <p class="b-texto">O tratamento do paciente diz para onde, com que frequência e até quando.
+          A lista do dia sai sozinha — ninguém monta na mão toda manhã.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-num">2</p>
+        <p class="b-titulo">A rota do dia</p>
+        <p class="b-texto">Veículo, motorista, assentos e quem senta em cada um. Acompanhante entra na
+          conta. Falta e remarcação ficam registradas.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-num">3</p>
+        <p class="b-titulo">A frota no mapa</p>
+        <p class="b-texto">Onde cada carro está, por onde passou e se chegou. O paciente pode
+          acompanhar pelo app em vez de ligar para a unidade.</p>
+      </div>
+      <div class="bloco realce">
+        <p class="b-num">4</p>
+        <p class="b-titulo">O custo fechado</p>
+        <p class="b-texto">Viagem, quilometragem e ocupação consolidados por período — o número que
+          sustenta o faturamento e a decisão de ampliar ou cortar rota.</p>
+      </div>
+    </div>
+
+    <div class="grade g2" style="margin-top:auto">
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">O que o paciente sente</p>
+        <p class="b-texto">Ele sabe se o carro vem, a que horas e se o lugar dele está garantido.
+          A avaliação da viagem volta para a secretaria.</p>
+      </div>
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">O que a secretaria ganha</p>
+        <p class="b-texto">Assento vazio e rota que não se justifica ficam visíveis. É a parte do
+          orçamento que mais some em planilha.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape so-num">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">21</span>
+  </div>
+</section>
+
+<section class="slide secao foto-fundo" id="secao-cidadao">
+  <div class="fundo"><img src="assets/cenas/atendente.jpg" alt=""></div>
+  <div class="conteudo">
+    <p class="numero">Parte 2</p>
+    <h2>Falar com o cidadão</h2>
+    <p class="sub">A secretaria já sabe o que o cidadão precisa saber: quando é a consulta, se o exame ficou pronto, se o transporte passa. Falta chegar até ele — no canal que ele já usa.</p>
+    <div class="regua"></div>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">22</span>
+  </div>
+</section>
+
+<section class="slide" id="app-cidadao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+
+  <div class="cena-foto">
+    <img src="assets/cenas/cidada.jpg" alt="">
+  </div>
+
+  <div class="celular" style="right:112px;bottom:64px">
+    <div class="tela">
+      <div class="topo">
+        <div class="lin"></div>
+        <b>Meus exames</b>
+        <span>Maria das Graças S.</span>
+      </div>
+      <div class="corpo-app">
+        <div class="cartao destaque">
+          <p class="et">Pronto</p>
+          <p class="tt">Raio-X de tórax</p>
+          <p class="sb">Policlínica Regional · 18/09</p>
+          <span class="selo">Laudo assinado</span>
+          <div class="botao">Ver resultado</div>
+        </div>
+        <div class="cartao">
+          <p class="et">Agendado</p>
+          <p class="tt">Cardiologia</p>
+          <p class="sb">12/10 · 14h20 · Centro</p>
+        </div>
+        <div class="cartao">
+          <p class="et">Transporte</p>
+          <p class="tt">Van passa 12h40</p>
+          <p class="sb">Ponto: Rua São Sebastião</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cabeca com-foto">
+    <div>
+      <p class="olho">App do cidadão</p>
+      <h1 class="titulo">Ela não precisa <em>ligar para a unidade</em></h1>
+    </div>
+  </div>
+
+  <div class="corpo com-foto">
+    <div class="grade g2 cresce">
+      <div class="bloco">
+        <p class="b-titulo">O que está marcado</p>
+        <p class="b-texto">Consulta e exame com data, hora e endereço. Se mudar, ela é avisada — não
+          descobre na porta.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-titulo">O resultado, quando sai</p>
+        <p class="b-texto">Laudo assinado e imagens no celular, com aviso na hora em que ficam
+          prontos.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-titulo">Se o carro vem</p>
+        <p class="b-texto">Dia da viagem, horário e acompanhamento do veículo do transporte
+          sanitário.</p>
+      </div>
+      <div class="bloco realce">
+        <p class="b-titulo">Falar com a secretaria</p>
+        <p class="b-texto">Pelo app ou pelo WhatsApp oficial — e quem atende já vê o histórico
+          dela.</p>
+      </div>
+    </div>
+
+    <div class="bloco escuro" style="margin-top:auto">
+      <p class="b-titulo">Quem não tem o app continua atendido</p>
+      <p class="b-texto">Tudo o que o app mostra, o WhatsApp oficial também avisa. Instala pelo
+        navegador, sem loja de aplicativos — e ninguém fica de fora por não instalar.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">23</span>
+  </div>
+</section>
+
+<section class="slide" id="whatsapp">
+  <div class="cena-foto esquerda estreita">
+    <img src="assets/cenas/atendente.jpg" style="object-position:48% 40%" alt="">
+  </div>
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+
+  <div class="cabeca com-foto-esq recuada">
+    <div>
+      <p class="olho">WhatsApp oficial</p>
+      <h1 class="titulo">A vaga <em>não morre calada</em></h1>
+    </div>
+  </div>
+
+  <div class="corpo com-foto-esq recuada">
+    <div class="grade g2 cresce">
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Confirma antes do dia</p>
+          <p class="b-texto">Quem não vai, avisa. A vaga volta para a fila a tempo de ser usada — em vez de virar falta.</p>
+        </div>
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Robô atende, pessoa assume</p>
+          <p class="b-texto">O automático resolve o simples. Quando a equipe entra na conversa, o robô para de tentar.</p>
+        </div>
+        <div class="bloco escuro">
+          <p class="b-olho" style="color:var(--nit-amarelo)">Número certo, pessoa certa</p>
+          <p class="b-texto">Se o telefone não é do paciente, vira pendência para a recepção corrigir — e nada mais sai para aquele número.</p>
+        </div>
+      </div>
+
+      <div class="zap">
+        <div class="aviso">Hoje</div>
+        <div class="bolha nossa">
+          Olá, Dona Terezinha! Aqui é a Saúde de Niterói. A senhora tem <b>consulta de cardiologia
+          marcada para 12/10, às 14h20</b>, na Policlínica do Centro.<br>Consegue comparecer?
+          <span class="hora">09:12 ✓✓</span>
+        </div>
+        <div class="botoes-zap">
+          <div class="botao-zap">Sim, vou</div>
+          <div class="botao-zap">Não vou poder</div>
+        </div>
+        <div class="bolha deles">
+          Vou sim, obrigada!
+          <span class="hora">09:31</span>
+        </div>
+        <div class="bolha nossa">
+          Perfeito. Leve documento com foto e o cartão do SUS. Se precisar do transporte sanitário,
+          responda <b>TRANSPORTE</b>.
+          <span class="hora">09:31 ✓✓</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape so-num">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">24</span>
+  </div>
+</section>
+
+<section class="slide" id="b-confirmacoes">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cidadão · confirmação</p>
+      <h1 class="titulo">De cada 100 agendados, <em>o que acontece</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;align-items:center">
+      <div class="lado-texto" style="gap:0">
+        <div class="proporcao">
+          <div class="segmentos">
+            <div class="seg" style="flex:62;background:var(--nit-verde)"><b>62</b><span>confirmaram</span></div>
+            <div class="seg" style="flex:14;background:var(--nit-laranja)"><b>14</b><span>não vão</span></div>
+            <div class="seg" style="flex:16;background:var(--p400)"><b>16</b><span>não responderam</span></div>
+            <div class="seg" style="flex:8;background:var(--s500)"><b>8</b><span>nº errado</span></div>
+          </div>
+          <div class="consequencias">
+            <div class="cons" style="flex:62"><div class="flecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div><p class="txt"><b>Saem da lista.</b> A equipe trabalha só o que sobrou.</p></div>
+            <div class="cons" style="flex:14"><div class="flecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div><p class="txt"><b>Vaga volta</b> a tempo de remarcar outra pessoa.</p></div>
+            <div class="cons" style="flex:16"><div class="flecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div><p class="txt"><b>Nova tentativa</b> no ritmo que a secretaria definiu.</p></div>
+            <div class="cons" style="flex:8"><div class="flecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div><p class="txt"><b>Pendência</b> para a recepção.</p></div>
+          </div>
+        </div>
+
+        <div class="grade g2" style="margin-top:22px">
+          <div class="bloco">
+            <div class="numerao"><span class="n">30</span><span class="u">ligações a menos</span></div>
+            <p class="numerao-legenda">para cada 100 agendados: 62 confirmaram e 8 nem tinham número certo. Sobram <b>30 contatos</b> que precisam de gente.</p>
+          </div>
+          <div class="bloco realce">
+            <div class="numerao"><span class="n">14</span><span class="u">vagas recuperadas</span></div>
+            <p class="numerao-legenda">quem avisou que não vai deixa a vaga livre <b>antes do dia</b> — e ela é oferecida a quem está na fila.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="boneco g" style="height:330px;align-self:flex-end;position:relative">
+        <img src="assets/bonecos/recepcionista.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;right:-6px;top:-92px;width:250px;font-size:12.5px">
+          “Chego e já sei <b>para quem eu preciso ligar de verdade</b>.”
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">25</span>
+  </div>
+</section>
+
+<section class="slide" id="b-atendimento">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cidadão · atendimento</p>
+      <h1 class="titulo">Quem atende <em>sabe com quem fala</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;height:340px">
+      <div class="lado-texto">
+        <div class="mini-tela" style="flex:1">
+          <div class="mt-barra"><span class="bolas"><i></i><i></i><i></i></span><b>Central de Atendimento</b> · Policlínica do Centro · 11 conversas abertas</div>
+          <div class="mt-corpo">
+            <div class="mt-lin sel"><span class="av">TA</span><b>Terezinha Alves Pinto</b> · quer saber do transporte<span class="dir"><span class="pill s-encaminhada">com Luana C.</span> · 2 min</span></div>
+            <div class="mt-lin"><span class="av">JC</span><b>José Carlos Ribeiro</b> · resultado do US saiu?<span class="dir"><span class="pill s-triagem">robô respondeu</span> · 5 min</span></div>
+            <div class="mt-lin"><span class="av">MG</span><b>Maria das Graças Souza</b> · remarcar mamografia<span class="dir"><span class="pill s-complementacao">sem dono</span> · 14 min</span></div>
+            <div class="mt-lin"><span class="av">AF</span><b>Antônio Ferreira da Silva</b> · endereço da UBS<span class="dir"><span class="pill s-concluida">resolvida</span> · 22 min</span></div>
+            <div class="mt-lin"><span class="av">LB</span><b>Luciana Barbosa Nunes</b> · transferida de Icaraí<span class="dir"><span class="pill s-encaminhada">com Rita M.</span> · 31 min</span></div>
+            <p style="font-size:10.5px;color:var(--s500);margin:10px 0 0">“Sem dono” há 14 minutos é o que a coordenação vê primeiro.</p>
+          </div>
+        </div>
+      </div>
+      <div class="boneco m" style="position:relative;height:262px;align-self:flex-end">
+        <img src="assets/bonecos/atendente.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;right:-6px;top:-92px;width:236px;font-size:12px">“Abro a conversa e o <b>histórico dela já está do lado</b>. Não pergunto de novo.”</div>
+      </div>
+    </div>
+    <div class="grade g3" style="margin-top:14px;flex:none">
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Fila por unidade</p><p class="b-texto" style="margin:0">Cada casa atende a sua — não uma caixa única onde ninguém se responsabiliza.</p></div>
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Posse</p><p class="b-texto" style="margin:0">A conversa tem dono enquanto está sendo atendida. Ninguém responde por cima.</p></div>
+      <div class="bloco realce" style="padding:11px 14px"><p class="b-olho">Supervisão</p><p class="b-texto" style="margin:0">Quem coordena vê todas e redistribui o que parou — permissão à parte.</p></div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">26</span>
+  </div>
+</section>
+
+<section class="slide" id="b-robo">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cidadão · automático</p>
+      <h1 class="titulo">Onde o robô responde <em>e onde ele sai da frente</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;align-items:center;gap:26px">
+      <div class="boneco m" style="height:300px;position:relative;align-self:flex-end">
+        <img src="assets/bonecos/cidada.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;left:78%;top:-4px;width:190px;font-size:12px">
+          “Oi, minha consulta do coração é que dia mesmo?”
+        </div>
+      </div>
+
+      <div class="lado-texto">
+        <div class="decisao">
+          <div class="caixa" style="grid-row:1;grid-column:1"><b>Mensagem chega</b>no WhatsApp oficial, a qualquer hora</div>
+          <div class="liga h" style="grid-row:1;grid-column:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+          <div class="losango-wrap" style="grid-row:1;grid-column:3"><div class="losango"><span>É um assunto que o robô atende?</span></div></div>
+          <div class="liga h" style="grid-row:1;grid-column:4"><span class="rotulo">SIM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+          <div class="caixa robo" style="grid-row:1;grid-column:5"><b>Responde na hora</b>“Cardiologia, 12/10 às 14h20, Policlínica do Centro.”</div>
+
+          <div class="liga baixo" style="grid-row:2;grid-column:3"><span class="rotulo">NÃO</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div>
+          <div class="liga baixo" style="grid-row:2;grid-column:5"><span class="rotulo" style="white-space:nowrap">PEDE CANCELAR / REMARCAR</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div>
+
+          <div class="caixa humano" style="grid-row:3;grid-column:3"><b>Fila humana</b>a equipe da unidade assume</div>
+          <div class="caixa humano" style="grid-row:3;grid-column:5"><b>Passa para pessoa</b>o robô informa; não decide</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grade g3" style="margin-top:22px;flex:none">
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Escopo</p><p class="b-texto" style="margin:0">A secretaria escolhe a lista de assuntos. Fora dela, ele não tenta.</p></div>
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Treino</p><p class="b-texto" style="margin:0">Corrigido pelo atendente a partir de conversas reais — não de manual.</p></div>
+      <div class="bloco realce" style="padding:11px 14px"><p class="b-olho">A regra</p><p class="b-texto" style="margin:0"><b>Humano entrou, robô para.</b> Nunca os dois na mesma conversa.</p></div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">27</span>
+  </div>
+</section>
+
+<section class="slide" id="b-mensageria">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cidadão · envios</p>
+      <h1 class="titulo">O que saiu, o que chegou, <em>o que falhou</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g2" style="flex:1;min-height:0">
+      <div class="grafico" style="display:flex;flex-direction:column;justify-content:center">
+        <p class="g-tit">Status de entrega — mês</p>
+        <div class="rosca-bloco">
+          <div class="rosca" style="background:conic-gradient(var(--nit-verde) 0 71%, var(--p400) 71% 96%, var(--nit-vermelho) 96% 100%)">
+            <span class="centro"><b>96%</b><span>entregues</span></span>
+          </div>
+          <div class="legenda-rosca">
+            <span class="li"><span class="pt" style="background:var(--nit-verde)"></span> Lida <b>71%</b></span>
+            <span class="li"><span class="pt" style="background:var(--p400)"></span> Entregue, não lida <b>25%</b></span>
+            <span class="li"><span class="pt" style="background:var(--nit-vermelho)"></span> Falhou <b>4%</b></span>
+          </div>
+        </div>
+        <p class="g-nota" style="margin-top:12px">Dos 4% que falham, quase tudo é número inválido — e cada um vira pendência de cadastro com nome.</p>
+      </div>
+      <div class="grafico" style="display:flex;flex-direction:column">
+        <p class="g-tit">Templates mais enviados</p>
+        <div class="ranking" style="flex:1;justify-content:center">
+          <div class="linha"><span class="rot">Confirmação de consulta</span><span class="trilho"><span class="barra" style="width:100%"></span></span><span class="val">7.210</span></div>
+          <div class="linha"><span class="rot">Exame pronto</span><span class="trilho"><span class="barra" style="width:52%"></span></span><span class="val">3.740</span></div>
+          <div class="linha"><span class="rot">Lembrete de véspera</span><span class="trilho"><span class="barra" style="width:44%"></span></span><span class="val">3.180</span></div>
+          <div class="linha"><span class="rot">Agenda mudou</span><span class="trilho"><span class="barra fraca" style="width:17%"></span></span><span class="val">1.226</span></div>
+          <div class="linha"><span class="rot">Transporte confirmado</span><span class="trilho"><span class="barra fraca" style="width:12%"></span></span><span class="val">864</span></div>
+        </div>
+        <p class="g-nota">Reenviar com o número corrigido não dispara de novo para quem já respondeu.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">28</span>
+  </div>
+</section>
+
+<section class="slide" id="b-satisfacao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cidadão · satisfação</p>
+      <h1 class="titulo">A avaliação que <em>vira indicador</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;align-items:flex-end;gap:24px">
+      <div class="boneco m" style="height:270px;position:relative">
+        <img src="assets/bonecos/cidada.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;left:78%;top:-4px;width:200px;font-size:12px">“Deram cinco estrelinhas pra eu apertar. Apertei.”</div>
+      </div>
+      <div class="lado-texto">
+        <div class="grade g-1-2" style="align-items:center">
+          <div>
+            <div class="numerao"><span class="n">4,6</span><span class="u">de 5</span></div>
+            <p class="numerao-legenda">média do mês, <b>1.912 respostas</b>. Enviada pelo mesmo canal, logo após o atendimento — enquanto a pessoa lembra.</p>
+          </div>
+          <div class="grafico">
+            <p class="g-tit">Distribuição das notas</p>
+            <div class="ranking">
+              <div class="linha"><span class="rot">★★★★★</span><span class="trilho"><span class="barra" style="width:100%"></span></span><span class="val">68%</span></div>
+              <div class="linha"><span class="rot">★★★★</span><span class="trilho"><span class="barra" style="width:31%"></span></span><span class="val">21%</span></div>
+              <div class="linha"><span class="rot">★★★</span><span class="trilho"><span class="barra fraca" style="width:9%"></span></span><span class="val">6%</span></div>
+              <div class="linha"><span class="rot">★★</span><span class="trilho"><span class="barra fraca" style="width:4%"></span></span><span class="val">3%</span></div>
+              <div class="linha"><span class="rot">★</span><span class="trilho"><span class="barra fraca" style="width:3%"></span></span><span class="val">2%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">Ligada a quê</p>
+      <p class="b-texto" style="margin:0">A resposta nasce amarrada à unidade e ao profissional avaliados — vira indicador por unidade e por período, inclusive o de satisfação que a Lei 13.460 exige da ouvidoria. Não é uma nota solta sobre “a saúde do município”.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">29</span>
+  </div>
+</section>
+
+<section class="slide" id="telefonia">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Telefonia</p>
+      <h1 class="titulo">Cada login é <em>um ramal</em></h1>
+      <p class="linha-fina">A ligação deixa de ser o único atendimento que não fica registrado em lugar nenhum.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g-1-2 cresce">
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Ligar e receber de onde estiver</p>
+          <p class="b-texto">Quem entra no sistema fica com o ramal ativo — no aparelho da mesa ou no próprio navegador.</p>
+        </div>
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">A ligação já chega com nome</p>
+          <p class="b-texto">O número identifica o paciente e o cadastro abre junto com a chamada — sem perguntar o que a secretaria já sabe.</p>
+        </div>
+        <div class="bloco escuro">
+          <p class="b-olho" style="color:var(--nit-amarelo)">Voz e texto no cadastro</p>
+          <p class="b-texto">Gravada e transcrita no histórico, ao lado das conversas de WhatsApp. Dá para procurar <b>pelo que foi dito</b>.</p>
+        </div>
+      </div>
+
+      <div class="chamadas">
+        <div class="c-topo">
+          <span class="av">TA</span>
+          <span>
+            <b>Terezinha Alves Pinto</b>
+            <span>Histórico de contatos · 3 chamadas, 8 mensagens</span>
+          </span>
+        </div>
+        <div class="c-corpo">
+          <div class="chamada aberta">
+            <div class="lin1">
+              <span class="seta-ch entra">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7v10h10"/><path d="M17 7 7 17"/></svg>
+              </span>
+              <span class="quando">Recebida · 21/09, 09h12 · 2min 41s</span>
+              <span class="quem">Ramal 2041 · Luana C.</span>
+            </div>
+            <div class="onda">
+              <i class="lido" style="height:66%"></i><i class="lido" style="height:42%"></i><i class="lido" style="height:74%"></i><i class="lido" style="height:26%"></i><i class="lido" style="height:34%"></i><i class="lido" style="height:90%"></i><i class="lido" style="height:34%"></i><i class="lido" style="height:66%"></i><i class="lido" style="height:26%"></i><i class="lido" style="height:90%"></i>
+              <i class="lido" style="height:50%"></i><i class="lido" style="height:26%"></i><i class="lido" style="height:34%"></i><i class="lido" style="height:74%"></i><i class="lido" style="height:74%"></i><i class="lido" style="height:34%"></i><i class="lido" style="height:50%"></i><i class="lido" style="height:34%"></i><i style="height:90%"></i><i style="height:74%"></i>
+              <i style="height:26%"></i><i style="height:34%"></i><i style="height:50%"></i><i style="height:26%"></i><i style="height:74%"></i><i style="height:26%"></i><i style="height:50%"></i><i style="height:26%"></i><i style="height:90%"></i><i style="height:42%"></i>
+              <i style="height:58%"></i><i style="height:74%"></i><i style="height:42%"></i><i style="height:90%"></i><i style="height:34%"></i><i style="height:58%"></i><i style="height:90%"></i><i style="height:42%"></i><i style="height:34%"></i><i style="height:50%"></i>
+              <i style="height:66%"></i><i style="height:34%"></i><i style="height:90%"></i><i style="height:34%"></i><i style="height:26%"></i><i style="height:50%"></i><i style="height:82%"></i><i style="height:90%"></i><i style="height:74%"></i><i style="height:66%"></i>
+              <i style="height:82%"></i><i style="height:82%"></i><i style="height:66%"></i><i style="height:58%"></i><i style="height:50%"></i><i style="height:42%"></i><i style="height:50%"></i><i style="height:34%"></i><i style="height:58%"></i><i style="height:90%"></i>
+              <i style="height:82%"></i><i style="height:66%"></i>
+              <span class="tempo">0:58 / 2:41</span>
+            </div>
+            <div class="transcricao">
+              <p class="fala dela"><b>Terezinha:</b> Moça, é sobre a consulta do coração, dia doze…</p>
+              <p class="fala"><b>Atendente:</b> Cardiologia, dia 12/10 às 14h20, na Policlínica do
+                Centro. A senhora confirmou pelo WhatsApp semana passada.</p>
+              <p class="fala dela"><b>Terezinha:</b> Isso. Só queria saber da condução.</p>
+            </div>
+          </div>
+
+          <div class="chamada">
+            <div class="lin1">
+              <span class="seta-ch sai">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17V7H7"/><path d="M7 17 17 7"/></svg>
+              </span>
+              <span class="quando">Feita · 14/09, 15h04 · 1min 12s</span>
+              <span class="quem">Ramal 2038 · Rita M.</span>
+            </div>
+          </div>
+
+          <div class="chamada">
+            <div class="lin1">
+              <span class="seta-ch entra">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7v10h10"/><path d="M17 7 7 17"/></svg>
+              </span>
+              <span class="quando">Recebida · 02/09, 10h33 · 3min 05s</span>
+              <span class="quem">Ramal 2041 · Luana C.</span>
+            </div>
+          </div>
+
+          <div class="chamada">
+            <div class="lin1">
+              <span class="seta-ch zap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg>
+              </span>
+              <span class="quando">WhatsApp · 15/09, 09h12 · confirmou a consulta</span>
+              <span class="quem">Automático</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bloco" style="margin-top:12px;flex:none">
+      <p class="b-texto" style="margin:0">
+        <span class="selo-roteiro" style="vertical-align:1px;margin-right:9px"><span class="pt"></span> No roteiro</span>
+        A telefonia IP das unidades, a central e a gestão de ramais <b>já operam hoje</b> — 31
+        unidades ligadas, com cada aparelho identificado pela própria unidade. O que entra no
+        roteiro é o ramal amarrado ao login e a gravação com transcrição dentro do cadastro do
+        paciente.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">30</span>
+  </div>
+</section>
+
+<section class="slide" id="ouvidoria">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Ouvidoria</p>
+      <h1 class="titulo">O módulo que vocês já conhecem, <em>no lugar dele</em></h1>
+      <p class="linha-fina">Apresentado na reunião anterior. Aqui só o resumo, e onde ele se encaixa no resto.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g4 cresce">
+      <div class="bloco">
+        <p class="b-titulo">Entra por qualquer porta</p>
+        <p class="b-texto">Balcão, telefone, WhatsApp, e-mail, site, app, Disque 136, Fala.BR — um
+          registro só, e todo mundo sai com protocolo.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-titulo">Vai a quem resolve</p>
+        <p class="b-texto">A policlínica, o hospital, a regulação, a farmácia. Cada área tem
+          responsável e prazo próprio.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-titulo">O relógio corre sozinho</p>
+        <p class="b-texto">Os prazos da lei são contados, cobrados e escalonados pelo sistema. Nada
+          vence no silêncio.</p>
+      </div>
+      <div class="bloco realce">
+        <p class="b-titulo">Vira relatório</p>
+        <p class="b-texto">O relatório anual e a pesquisa de satisfação que a Lei 13.460 exige saem
+          da própria base, prontos.</p>
+      </div>
+    </div>
+
+    <div class="grade g-3-2" style="margin-top:auto">
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">A diferença de estar junto</p>
+        <p class="b-texto">A reclamação sobre a fila de cardiologia já chega ligada ao pedido de
+          regulação real daquele cidadão. A ouvidoria não responde “encaminhamos ao setor” — ela vê o
+          pedido, a data e a situação, e responde o que aconteceu de verdade.</p>
+        <p class="b-texto">Metade das queixas de uma secretaria de saúde é sobre espera. Sem essa
+          ligação, a ouvidoria vira caixa de protocolo.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Denúncia</p>
+        <p class="b-titulo">Trilho separado</p>
+        <p class="b-texto">Sigilo e anonimato conforme a lei, com registro de cada acesso à
+          identidade e teor sem identificação para quem apura.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">31</span>
+  </div>
+</section>
+
+<section class="slide" id="b-ouvidoria-det">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Gestão · ouvidoria</p>
+      <h1 class="titulo">O que a lei cobra, <em>no lugar dele</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="trilho-wrap">
+      <div class="trilho-nos">
+        <div class="no "><div class="quem"><img src="assets/bonecos/cidada.jpg" alt=""></div><div class="disco">1</div><p class="t">Entra por qualquer porta</p><p class="d">Balcão, telefone, WhatsApp, site, app, Fala.BR. Sai com protocolo.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">2</div><p class="t">É triada</p><p class="d">Seis tipos oficiais, assunto do OuvidorSUS, prioridade. Denúncia corre em trilho próprio.</p></div>
+        <div class="no chave"><div class="quem"><img src="assets/bonecos/gestora.jpg" alt=""></div><div class="disco">3</div><p class="t">Vai a quem resolve</p><p class="d">A policlínica, o hospital, a regulação, a farmácia — com responsável e prazo.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">4</div><p class="t">O relógio cobra</p><p class="d">30 dias ao cidadão, prazo menor à área. Cobrança e escalonamento automáticos.</p></div>
+        <div class="no fim"><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">5</div><p class="t">Vira relatório</p><p class="d">O anual e a pesquisa de satisfação que a Lei 13.460 exige saem da base.</p></div>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">A diferença de estar junto</p>
+      <p class="b-texto" style="margin:0">A reclamação sobre a fila de cardiologia chega ligada ao pedido de regulação real daquele cidadão. A ouvidoria responde o que aconteceu — não “encaminhamos ao setor”.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">32</span>
+  </div>
+</section>
+
+<section class="slide secao foto-fundo" id="secao-gestao">
+  <div class="fundo"><img src="assets/cenas/gestora.jpg" alt=""></div>
+  <div class="conteudo">
+    <p class="numero">Parte 3</p>
+    <h2>Enxergar a secretaria</h2>
+    <p class="sub">Cada sistema dá o seu pedaço, e o gestor soma planilha. Aqui o número sai da própria base, na hora, por unidade e por período.</p>
+    <div class="regua"></div>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">33</span>
+  </div>
+</section>
+
+<section class="slide" id="consulta-inteligente">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Consulta inteligente</p>
+      <h1 class="titulo">Pergunte <em>em português</em></h1>
+      <p class="linha-fina">Sem relatório para pedir, sem planilha para esperar, sem saber onde o dado mora.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g-1-2 cresce">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Quem pergunta é o gestor</p>
+          <p class="b-texto">Não é um relatório pronto que alguém programou meses atrás. É a
+            pergunta de hoje, feita com as palavras de quem precisa decidir.</p>
+        </div>
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">A resposta vem com a conta à vista</p>
+          <p class="b-texto">Número, tabela ou gráfico — e o caminho que o sistema percorreu para
+            chegar ali, se alguém quiser conferir.</p>
+        </div>
+        <div class="bloco escuro">
+          <p class="b-olho" style="color:var(--nit-amarelo)">O que ela alcança</p>
+          <p class="b-texto">A fila, a agenda, os exames, o transporte e as conversas com o cidadão.
+            Cada base é liberada por permissão — quem não pode ver, não pergunta.</p>
+        </div>
+      </div>
+
+      <div class="chat">
+        <div class="chat-topo">
+          <span class="pt"></span>
+          <b>Consulta inteligente</b>
+          <span class="base">Base: Regulação</span>
+        </div>
+        <div class="fluxo-chat">
+          <div class="balao-eu">Quantas pessoas esperam mais de 90 dias por cardiologia, e em quais unidades?</div>
+
+          <div class="balao-ia">
+            <span class="passo-ia"><span class="giro"></span> consultando a fila…</span>
+            <p style="margin:0 0 2px">Hoje há <b>412 solicitações de cardiologia</b> na fila. Dessas,
+              <b>147 esperam mais de 90 dias</b> — concentradas em quatro unidades:</p>
+
+            <div class="viz-numero">
+              <span class="v">147<span class="u">pessoas</span></span>
+              <span class="t">acima de 90 dias</span>
+            </div>
+
+            <div class="grafico">
+              <p class="g-tit">Espera acima de 90 dias, por unidade solicitante</p>
+              <div class="barras">
+                <div class="col"><span class="val">58</span><div class="bar" style="height:76%"></div><span class="rot">Policlínica<br>Centro</span></div>
+                <div class="col"><span class="val">41</span><div class="bar" style="height:54%"></div><span class="rot">Policlínica<br>Icaraí</span></div>
+                <div class="col"><span class="val">29</span><div class="bar" style="height:38%"></div><span class="rot">UBS<br>Barreto</span></div>
+                <div class="col fraca"><span class="val">19</span><div class="bar" style="height:25%"></div><span class="rot">UBS<br>Engenhoca</span></div>
+              </div>
+            </div>
+
+            <p style="margin:9px 0 0">A espera média desse grupo é de <b>127 dias</b>. A Policlínica
+              do Centro sozinha responde por <b>39%</b> do total.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">34</span>
+  </div>
+</section>
+
+<section class="slide" id="indicadores">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Indicadores</p>
+      <h1 class="titulo">A meta apurada <em>sozinha</em></h1>
+      <p class="linha-fina">O número que hoje alguém monta em planilha no fim do mês sai da base, no dia em que se pedir.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="painel-kpi">
+      <div class="kpi">
+        <span class="rot">Atendimento no prazo</span>
+        <span class="num verde">92,4<i>%</i></span>
+        <span class="meta">meta ≥ 90% · <b class="ok">acima</b></span>
+      </div>
+      <div class="kpi">
+        <span class="rot">Tempo médio de resposta</span>
+        <span class="num">9,1<i>dias</i></span>
+        <span class="meta">meta &lt; 10 · <b class="ok">acima</b></span>
+      </div>
+      <div class="kpi">
+        <span class="rot">Estoque em aberto</span>
+        <span class="num alerta">14<i>%</i></span>
+        <span class="meta">meta ≤ 10% · <b class="ruim">abaixo</b></span>
+      </div>
+      <div class="kpi">
+        <span class="rot">Faltas em consulta</span>
+        <span class="num verde">7,8<i>%</i></span>
+        <span class="meta">era 19,2% antes da confirmação</span>
+      </div>
+    </div>
+
+    <div class="grade g2" style="margin-top:12px;flex:1;min-height:0">
+      <div class="grafico" style="display:flex;flex-direction:column">
+        <p class="g-tit">Faltas em consulta agendada, por mês</p>
+        <div class="barras" style="flex:1;height:auto">
+          <div class="col fraca"><span class="val">19,2</span><div class="bar" style="height:100%"></div><span class="rot">Abr</span></div>
+          <div class="col fraca"><span class="val">18,1</span><div class="bar" style="height:94%"></div><span class="rot">Mai</span></div>
+          <div class="col fraca"><span class="val">15,4</span><div class="bar" style="height:80%"></div><span class="rot">Jun</span></div>
+          <div class="col"><span class="val">12,7</span><div class="bar" style="height:66%"></div><span class="rot">Jul</span></div>
+          <div class="col"><span class="val">9,6</span><div class="bar" style="height:50%"></div><span class="rot">Ago</span></div>
+          <div class="col"><span class="val">7,8</span><div class="bar" style="height:41%"></div><span class="rot">Set</span></div>
+        </div>
+        <p class="g-nota">A queda começa no mês em que a confirmação por WhatsApp entra.</p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px;min-height:0">
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">A conta fica à vista</p>
+          <p class="b-texto">Cada indicador mostra a fórmula, o que entra e o que não entra. Quem
+            recebe o número consegue conferir de onde ele veio.</p>
+        </div>
+        <div class="bloco" style="flex:1">
+          <p class="b-titulo">Recortado como a gestão precisa</p>
+          <p class="b-texto">O mesmo indicador aberto por hospital, policlínica ou unidade básica,
+            no mês, no trimestre ou no intervalo que se escolher.</p>
+        </div>
+        <div class="bloco escuro">
+          <p class="b-olho" style="color:var(--nit-amarelo)">Serve para contrato</p>
+          <p class="b-texto">Onde há contrato de gestão com meta, o indicador deixa de ser planilha
+            entregue pelo prestador e passa a ser apurado na base da secretaria — por unidade e por
+            período.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">35</span>
+  </div>
+</section>
+
+<section class="slide" id="b-estatisticas">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Gestão · atendimento</p>
+      <h1 class="titulo">O retrato de quem <em>fala com o cidadão</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="painel-kpi" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi"><span class="rot">Mensagens no mês</span><span class="num">18.4<i>mil</i></span><span class="meta">72% enviadas pelo sistema</span></div>
+      <div class="kpi"><span class="rot">Entregues</span><span class="num verde">96,2<i>%</i></span><span class="meta">falha quase toda por número inválido</span></div>
+      <div class="kpi"><span class="rot">1ª resposta humana</span><span class="num">7<i>min</i></span><span class="meta">mediana, horário comercial</span></div>
+      <div class="kpi"><span class="rot">Resolvidas pelo robô</span><span class="num" style="color:var(--nit-laranja)">61<i>%</i></span><span class="meta">sem passar por pessoa</span></div>
+    </div>
+
+    <div class="grade g-3-2" style="margin-top:14px;flex:1;min-height:0">
+      <div class="grafico serie">
+        <p class="g-tit">Mensagens por dia — setembro</p>
+        <svg viewBox="0 0 600 170" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ee7219" stop-opacity=".55"/>
+              <stop offset="1" stop-color="#ee7219" stop-opacity=".04"/>
+            </linearGradient>
+          </defs>
+          <g stroke="#e2e8f0" stroke-width="1"><line x1="0" y1="42" x2="600" y2="42"/><line x1="0" y1="84" x2="600" y2="84"/><line x1="0" y1="126" x2="600" y2="126"/></g>
+          <polygon fill="url(#gArea)" points="0,170 0,118 30,104 60,110 90,96 120,150 150,152 180,92 210,84 240,90 270,70 300,148 330,150 360,66 390,58 420,72 450,62 480,140 510,146 540,48 570,54 600,40 600,170"/>
+          <polyline fill="none" stroke="#ee7219" stroke-width="3" stroke-linejoin="round" points="0,118 30,104 60,110 90,96 120,150 150,152 180,92 210,84 240,90 270,70 300,148 330,150 360,66 390,58 420,72 450,62 480,140 510,146 540,48 570,54 600,40"/>
+          <polyline fill="none" stroke="#1d1d1b" stroke-width="2" stroke-dasharray="5 4" points="0,150 30,146 60,148 90,142 120,160 150,161 180,138 210,134 240,136 270,128 300,158 330,159 360,124 390,120 420,126 450,122 480,156 510,157 540,112 570,116 600,108"/>
+        </svg>
+        <div class="eixo"><span>1</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
+        <p class="g-nota"><span style="display:inline-block;width:18px;height:3px;background:#ee7219;vertical-align:middle;margin-right:5px"></span>sistema &nbsp;
+          <span style="display:inline-block;width:18px;height:0;border-top:2px dashed #1d1d1b;vertical-align:middle;margin-right:5px"></span>atendentes &nbsp;·&nbsp;
+          Os vales são fins de semana. A tracejada não cresce junto com o volume — é o robô absorvendo o pico.</p>
+      </div>
+
+      <div class="grafico" style="display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <p class="g-tit">O que o cidadão mais procura</p>
+          <div class="ranking">
+            <div class="linha"><span class="rot">Confirmar consulta</span><span class="trilho"><span class="barra" style="width:100%"></span></span><span class="val">5.140</span></div>
+            <div class="linha"><span class="rot">Resultado de exame</span><span class="trilho"><span class="barra" style="width:71%"></span></span><span class="val">3.652</span></div>
+            <div class="linha"><span class="rot">Remarcar</span><span class="trilho"><span class="barra" style="width:48%"></span></span><span class="val">2.468</span></div>
+            <div class="linha"><span class="rot">Transporte</span><span class="trilho"><span class="barra fraca" style="width:31%"></span></span><span class="val">1.594</span></div>
+            <div class="linha"><span class="rot">Endereço</span><span class="trilho"><span class="barra fraca" style="width:22%"></span></span><span class="val">1.131</span></div>
+          </div>
+        </div>
+        <p class="g-nota">O topo da lista é o que a secretaria deveria informar <b>antes</b> de ser perguntada.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">36</span>
+  </div>
+</section>
+
+<section class="slide" id="quem-fez">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Confiança no sistema</p>
+      <h1 class="titulo">Quem fez o quê, <em>e o que fazer quando falha</em></h1>
+      <p class="linha-fina">Duas coisas que só aparecem depois de instalado — e é tarde para descobrir que não têm.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g3 cresce">
+      <div class="bloco">
+        <p class="b-olho">Registro</p>
+        <p class="b-titulo">Nada se apaga</p>
+        <p class="b-texto">Cada alteração fica gravada com autor, data e o que mudou. Correção é
+          registro novo, não borracha. Quando alguém pergunta “quem cancelou isso?”, tem resposta.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Falha</p>
+        <p class="b-titulo">O erro avisa antes do usuário</p>
+        <p class="b-texto">Quando algo quebra, o sistema registra e avisa a equipe técnica na hora. O
+          usuário recebe um código para informar — ninguém precisa descrever a tela de memória.</p>
+      </div>
+      <div class="bloco realce">
+        <p class="b-olho">Suporte</p>
+        <p class="b-titulo">Chamado dentro do sistema</p>
+        <p class="b-texto">Quem usa abre o pedido na própria tela, acompanha a resposta e sabe em que
+          pé está. Não se perde em grupo de mensagem.</p>
+      </div>
+    </div>
+
+    <div class="grade g2" style="margin-top:auto">
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">Cada um vê o que é dele</p>
+        <p class="b-texto">O acesso é montado por perfil: a recepção vê a recepção, a unidade vê a
+          unidade, a regulação vê a rede. Dado de saúde é dado sensível, e o sistema trata assim por
+          padrão — na dúvida, nega.</p>
+      </div>
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">O manual mora dentro do produto</p>
+        <p class="b-texto">Cada tela tem a sua explicação a um clique, com busca e passo a passo. O
+          treinamento não depende de lembrar o que foi dito na implantação.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">37</span>
+  </div>
+</section>
+
+<section class="slide" id="b-auditoria">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Gestão · confiança</p>
+      <h1 class="titulo">Quem fez o quê, <em>e quando</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="com-boneco">
+      <div class="lado-texto">
+        <div class="mini-tela" style="flex:1">
+          <div class="mt-barra"><span class="bolas"><i></i><i></i><i></i></span><b>Trilha · solicitação 2026-018842</b> · Raimunda Nonata Freire · cardiologia</div>
+          <div class="mt-corpo">
+            <div class="linha-tempo">
+              <div class="passo"><div class="trilha"><span class="bola"></span><span class="fio"></span></div><div class="conteudo-passo"><p class="quando-tp">18/05 · 10h04 · Policlínica do Centro</p><p class="tit-tp">Aberta por Carla S. (unidade solicitante)</p><p class="txt-tp">Com justificativa e ECG anexado.</p></div></div>
+              <div class="passo"><div class="trilha"><span class="bola"></span><span class="fio"></span></div><div class="conteudo-passo"><p class="quando-tp">20/05 · 15h31 · Regulação</p><p class="tit-tp">Assumida por Rita M. — prioridade Normal → Alta</p><p class="txt-tp">Motivo registrado: hipertensão e idade.</p></div></div>
+              <div class="passo"><div class="trilha"><span class="bola"></span><span class="fio"></span></div><div class="conteudo-passo"><p class="quando-tp">02/07 · 09h12 · Regulação</p><p class="tit-tp">Devolvida à unidade por Paulo R. — pendência: exame prévio vencido</p><p class="txt-tp">O relógio da espera fica suspenso enquanto a ponta resolve.</p></div></div>
+              <div class="passo pendente"><div class="trilha"><span class="bola"></span></div><div class="conteudo-passo"><p class="quando-tp">Hoje</p><p class="tit-tp">Aguardando vaga há 128 dias</p><p class="txt-tp">Cada linha acima tem autor, data e <b>o papel</b> de quem fez.</p></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="boneco m" style="height:290px;align-self:flex-end"><img src="assets/bonecos/gestora.jpg" alt=""></div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">Para que serve na prática</p>
+      <p class="b-texto" style="margin:0">Para responder auditoria e órgão de controle — e, principalmente, para encerrar a discussão interna sobre “quem cancelou isso”, que é o uso mais frequente. Ver também é ato: revelar identidade de denunciante ou abrir a chave de um agendamento fica registrado.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">38</span>
+  </div>
+</section>
+
+<section class="slide" id="b-erros-suporte">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Gestão · operação</p>
+      <h1 class="titulo">Quando alguma coisa <em>não funciona</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="trilho-wrap">
+      <div class="trilho-nos">
+        <div class="no "><div class="quem"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">1</div><p class="t">A tela falha</p><p class="d">Acontece em todo sistema. A diferença é o que vem nos dez minutos seguintes.</p></div>
+        <div class="no chave"><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">2</div><p class="t">O sistema avisa primeiro</p><p class="d">A falha é registrada e a equipe técnica recebe o aviso — antes de o usuário reclamar.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">3</div><p class="t">O usuário recebe um código</p><p class="d">ERRO-4YCCKQ. Em vez de descrever a tela de memória, informa o código.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">4</div><p class="t">O chamado nasce na tela</p><p class="d">Abre ali mesmo, acompanha a resposta e sabe em que pé está.</p></div>
+        <div class="no fim"><div class="quem"><img src="assets/bonecos/gestora.jpg" alt=""></div><div class="disco">5</div><p class="t">Reincidência aparece</p><p class="d">Erro já resolvido que volta gera registro novo — é assim que se descobre correção que não pegou.</p></div>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">Por que está neste material</p>
+      <p class="b-texto" style="margin:0">Nada disso aparece em demonstração. Só depois de instalado — quando é tarde para descobrir que não tem.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">39</span>
+  </div>
+</section>
+
+<section class="slide" id="b-manual">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Gestão · manual</p>
+      <h1 class="titulo">O manual mora <em>dentro do produto</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;height:330px">
+      <div class="lado-texto">
+        <div class="mini-tela" style="flex:1">
+          <div class="mt-barra"><span class="bolas"><i></i><i></i><i></i></span>smsmais.saude.niteroi.rj.gov.br/app/manual/<b>confirmacoes</b></div>
+          <div class="mt-corpo">
+            <div class="mt-cab"><b>Confirmações</b><span class="ajuda">?</span><span style="font-size:10px;color:var(--s500);margin-left:auto">buscar: <i>“número errado”</i> · 3 resultados</span></div>
+            <div class="mt-lin sel"><b>As quatro abas</b> · Não confirmados, Confirmados, Contato errado, Pendentes<span class="dir">artigo</span></div>
+            <div class="mt-lin"><b>O que fazer quando o número não é do paciente</b><span class="dir">seção</span></div>
+            <div class="mt-lin"><b>Simulação: assuma um caso e envie para pendente</b><span class="dir">clicável</span></div>
+            <div class="mt-lin"><b>Quem vê a aba Equipe</b> · permissão própria<span class="dir">seção</span></div>
+            <p style="font-size:10.5px;color:var(--s500);margin:10px 0 0">O “?” ao lado do título de cada tela leva ao artigo dela — não a um manual genérico de 200 páginas.</p>
+          </div>
+        </div>
+      </div>
+      <div class="boneco m" style="position:relative;height:252px;align-self:flex-end">
+        <img src="assets/bonecos/recepcionista.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;right:-6px;top:-92px;width:236px;font-size:12px">“A menina nova aprendeu sozinha. <b>Clicou no interrogação.</b>”</div>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">A regra</p>
+      <p class="b-texto" style="margin:0">Toda alteração que alguém vê ou faz é confrontada com o manual na mesma entrega. Manual desatualizado mente com ar de autoridade — e treinamento que depende de lembrar a implantação não sobrevive à primeira troca de equipe.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">40</span>
+  </div>
+</section>
+
+<section class="slide secao" id="b-secao-dado">
+  <img class="brasao-fantasma sangria" src="assets/niteroi-brasao-offwhite.png" alt="">
+  <div class="conteudo">
+    <p class="numero">Parte 4</p>
+    <h2>O dado por baixo</h2>
+    <p class="sub">Nada do que veio antes funciona se o mesmo cidadão for cinco pessoas diferentes. Esta parte é a fundação — e é a que menos aparece quando está bem feita.</p>
+    <div class="regua"></div>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">41</span>
+  </div>
+</section>
+
+<section class="slide" id="b-cidadao-unico">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cadastros · cidadão</p>
+      <h1 class="titulo">Cinco registros, <em>uma pessoa</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="converge">
+      <div class="fontes">
+        <div class="fonte"><span class="pt"></span><b>Prontuário da UBS</b><span>nome com abreviação</span></div>
+        <div class="fonte"><span class="pt"></span><b>Prontuário do hospital</b><span>data de nascimento digitada errada</span></div>
+        <div class="fonte"><span class="pt"></span><b>Sistema de regulação</b><span>só o CNS</span></div>
+        <div class="fonte"><span class="pt"></span><b>Base nacional</b><span>CPF e endereço antigo</span></div>
+        <div class="fonte"><span class="pt"></span><b>Recepção, ontem</b><span>telefone novo</span></div>
+      </div>
+      <div class="funil"><svg viewBox="0 0 70 100" preserveAspectRatio="none" fill="none" stroke="#f6b687" stroke-width="2">
+        <path d="M 0 10.0 C 35 10.0, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 30.0 C 35 30.0, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 50.0 C 35 50.0, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 70.0 C 35 70.0, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+        <path d="M 0 90.0 C 35 90.0, 35 50, 70 50" vector-effect="non-scaling-stroke"/>
+      </svg></div>
+      <div class="alvo"><p class="a-olho">Um cadastro só</p><p class="a-tit">O documento manda</p><p class="a-txt">CPF e cartão do SUS identificam a pessoa. Cada dado carrega de onde veio. Telefone novo entra sem apagar o antigo. Quem não tem CPF entra marcado, para a recepção resolver depois — sem travar o atendimento de hoje.</p></div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">O que isso destrava</p>
+      <p class="b-texto" style="margin:0">Só existe histórico do paciente se houver um paciente só. Toda a leitura de “o que já foi feito por esta pessoa” depende deste ponto — é por isso que ele vem antes dos outros.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">42</span>
+  </div>
+</section>
+
+<section class="slide" id="b-prontuarios">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cadastros · prontuários</p>
+      <h1 class="titulo">O histórico dos sistemas <em>que a rede já usa</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="trilho-wrap">
+      <div class="trilho-nos">
+        <div class="no "><div class="quem"><img src="assets/bonecos/medico.jpg" alt=""></div><div class="disco">1</div><p class="t">O prontuário continua</p><p class="d">Quem atende não muda de tela. A plataforma só lê.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">2</div><p class="t">Lê do jeito de cada um</p><p class="d">Cada produto guarda as coisas à sua maneira; o entendimento se escreve uma vez.</p></div>
+        <div class="no chave"><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">3</div><p class="t">Reúne sob o mesmo cidadão</p><p class="d">Atendimentos, exames e medicações de sistemas diferentes, na mesma linha do tempo.</p></div>
+        <div class="no "><div class="quem" style="visibility:hidden"><img src="assets/bonecos/recepcionista.jpg" alt=""></div><div class="disco">4</div><p class="t">Roda sozinho</p><p class="d">Leitura contínua, acompanhada: o que entrou, o que faltou, o que voltou a tentar.</p></div>
+        <div class="no fim"><div class="quem"><img src="assets/bonecos/gestora.jpg" alt=""></div><div class="disco">5</div><p class="t">O legado também</p><p class="d">Sistema aposentado ainda guarda muita história. É lido uma vez e incorporado.</p></div>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">O que não muda</p>
+      <p class="b-texto" style="margin:0">Nenhum prontuário sai de operação para a plataforma entrar. Ela lê o que ele registrou — não escreve nele e não altera a rotina de quem atende.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">43</span>
+  </div>
+</section>
+
+<section class="slide" id="b-qualidade">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cadastros · qualidade</p>
+      <h1 class="titulo">De cada 100 registros antigos, <em>o que entra</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="proporcao" style="flex:none">
+      <div class="segmentos">
+        <div class="seg" style="flex:91;background:var(--nit-verde)"><b>91</b><span>entram limpos</span></div>
+        <div class="seg" style="flex:6;background:var(--p400)"><b>6</b><span>divergência</span></div>
+        <div class="seg" style="flex:3;background:var(--s500)"><b>3</b><span>rejeitados</span></div>
+      </div>
+      <div class="consequencias">
+        <div class="cons" style="flex:91"><div class="flecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div><p class="txt"><b>Viram histórico do cidadão</b> — com a origem de cada dado registrada.</p></div>
+        <div class="cons" style="flex:6"><div class="flecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div><p class="txt"><b>Pessoa decide</b>, com as duas versões à vista. O sistema não escolhe sozinho qual nome é o verdadeiro.</p></div>
+        <div class="cons" style="flex:3"><div class="flecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div><p class="txt"><b>Ficam nomeados</b> numa lista: documento inválido, data impossível, registro sem pessoa.</p></div>
+      </div>
+    </div>
+    <div class="grade g2" style="margin-top:22px;flex:none">
+      <div class="bloco"><p class="b-olho">Divergência</p><p class="b-titulo">Quando as fontes discordam</p><p class="b-texto">Dois sistemas com nomes ou datas diferentes para o mesmo CPF: vira pendência para alguém arbitrar — não silêncio, não sobrescrita.</p></div>
+      <div class="bloco realce"><p class="b-olho">A ressalva honesta</p><p class="b-titulo">Nunca é instantâneo nem 100%</p><p class="b-texto">O que se promete é que <b>o que não entrou fica visível e nomeado</b> — não que tudo entra perfeito. Base antiga tem dado ruim; fingir que não tem é o que estraga a base nova.</p></div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">44</span>
+  </div>
+</section>
+
+<section class="slide" id="b-cadastros-base">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cadastros · rede</p>
+      <h1 class="titulo">Nomes diferentes, <em>exame igual</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="antes-depois" style="flex:none">
+      <div class="col antes">
+        <p class="rot-ad">Em cada sistema</p>
+        <p class="frase">“US ABDOME TOTAL” no SISREG · “Ultrassonografia de abdômen total” no SERNIT · “USG abd. total” no prontuário.</p>
+        <p class="apoio">Três nomes, três filas, três contagens que ninguém soma.</p>
+      </div>
+      <div class="meio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+      <div class="col depois">
+        <p class="rot-ad">No catálogo</p>
+        <p class="frase">Um procedimento só, com o nome que cada sistema usa pendurado nele.</p>
+        <p class="apoio">O pareamento é sugerido pela máquina e <b>confirmado por pessoa</b>. A fila passa a ser somável.</p>
+      </div>
+    </div>
+    <div class="grade g3" style="margin-top:20px;flex:none">
+      <div class="bloco"><p class="b-olho">Unidades</p><p class="b-titulo">Vêm do cadastro nacional</p><p class="b-texto">Código, nome e endereço do registro oficial. Unidade nova aparece sem digitação.</p></div>
+      <div class="bloco"><p class="b-olho">Profissionais</p><p class="b-titulo">Médicos e demais</p><p class="b-texto">Conselho, especialidade e onde atende — o que diz quem pode laudar e quem assina o quê.</p></div>
+      <div class="bloco"><p class="b-olho">Procedimentos</p><p class="b-titulo">A tabela oficial</p><p class="b-texto">O catálogo nacional, com o nome que cada sistema de regulação usa para o mesmo exame.</p></div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">45</span>
+  </div>
+</section>
+
+<section class="slide secao foto-fundo" id="b-secao-casa">
+  <div class="fundo"><img src="assets/cenas/capa.jpg" alt=""></div>
+  <div class="conteudo">
+    <p class="numero">Parte 5</p>
+    <h2>Feito para a sua casa</h2>
+    <p class="sub">Uma instância da FMS, com a marca de Niterói e as regras de Niterói. O que muda de município para município é cadastro, não programação.</p>
+    <div class="regua"></div>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">46</span>
+  </div>
+</section>
+
+<section class="slide" id="customizacao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Feito para a sua casa</p>
+      <h1 class="titulo">A sua marca, <em>as suas regras</em></h1>
+      <p class="linha-fina">O que muda de um município para outro é cadastro — não versão de sistema.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g4 cresce">
+      <div class="bloco">
+        <p class="b-titulo">Uma instância da FMS</p>
+        <p class="b-texto">Servidor, banco e endereço próprios. Os dados de Niterói não dividem lugar
+          com os de ninguém — e o que acontece em outro cliente não afeta esta casa.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-titulo">A identidade é de vocês</p>
+        <p class="b-texto">Nome, logo, cores e contatos vêm do cadastro. O sistema se pinta com a
+          marca de Niterói — inclusive no laudo em PDF e no app do cidadão.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-titulo">As listas são suas</p>
+        <p class="b-texto">Unidades, especialidades, tipos de exame, modelos de laudo, assuntos e
+          prazos: tudo editável por quem opera, sem chamar a gente.</p>
+      </div>
+      <div class="bloco realce">
+        <p class="b-titulo">Cada um enxerga o seu</p>
+        <p class="b-texto">O acesso é montado módulo a módulo e ação a ação. Um perfil para a
+          recepção, outro para a regulação, outro para a direção.</p>
+      </div>
+    </div>
+
+    <div class="grade g-2-1" style="margin-top:auto">
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">Módulo é escolha, não pacote</p>
+        <p class="b-texto">A secretaria liga o que vai usar. Quem só precisa de exames e laudos não
+          leva transporte de pacientes na frente; quem começa pela ouvidoria não precisa da regulação
+          no primeiro dia. O que estiver desligado não aparece no menu de ninguém.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">E depois</p>
+        <p class="b-titulo">Cresce por cadastro</p>
+        <p class="b-texto">Unidade nova, aparelho novo, módulo novo: entram pela configuração, com o
+          sistema no ar.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">47</span>
+  </div>
+</section>
+
+<section class="slide" id="b-permissoes">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Sua casa · acesso</p>
+      <h1 class="titulo">Cada um enxerga <em>o que é dele</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g-3-2" style="flex:1;min-height:0">
+      <div class="grafico" style="display:flex;flex-direction:column">
+        <p class="g-tit">Perfis × módulos — um recorte</p>
+        <table class="matriz" style="flex:1">
+          <thead><tr><th>Perfil</th><th>Regulação</th><th>Exames</th><th>Laudo</th><th>Atendimento</th><th>Ouvidoria</th><th>Indicadores</th><th>Auditoria</th></tr></thead>
+          <tbody>
+            <tr><td>Recepção da unidade</td><td><span class="parte">½</span></td><td><span class="ok">✓</span></td><td><span class="nao">–</span></td><td><span class="ok">✓</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td></tr>
+            <tr><td>Regulador</td><td><span class="ok">✓</span></td><td><span class="parte">½</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="parte">½</span></td><td><span class="nao">–</span></td></tr>
+            <tr><td>Médico radiologista</td><td><span class="nao">–</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td></tr>
+            <tr><td>Ouvidor</td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="nao">–</span></td><td><span class="ok">✓</span></td><td><span class="parte">½</span></td><td><span class="nao">–</span></td></tr>
+            <tr><td>Coordenação</td><td><span class="parte">½</span></td><td><span class="parte">½</span></td><td><span class="nao">–</span></td><td><span class="ok">✓</span></td><td><span class="parte">½</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td></tr>
+            <tr><td>Direção</td><td><span class="parte">½</span></td><td><span class="parte">½</span></td><td><span class="nao">–</span></td><td><span class="parte">½</span></td><td><span class="parte">½</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td></tr>
+          </tbody>
+        </table>
+        <p class="g-nota"><span class="ok" style="display:inline-block;width:14px;height:14px;line-height:14px;font-size:9px;border-radius:50%;background:#dcfce7;color:#15803d;text-align:center">✓</span> vê e faz &nbsp; <span style="display:inline-block;width:14px;height:14px;line-height:14px;font-size:8px;border-radius:50%;background:#fef3c7;color:#92400e;text-align:center">½</span> só consulta &nbsp; – não aparece no menu. Um recorte de 7 dos 75 módulos.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco" style="flex:1"><div class="numerao"><span class="n">75</span><span class="u">módulos × 4 ações</span></div><p class="numerao-legenda">ver, incluir, alterar, arquivar — combinados em perfis prontos que se aplicam a quem chega, sem remontar permissão por pessoa.</p><p class="b-olho" style="margin-top:14px">Por unidade</p><p class="b-texto" style="margin:0">Quem é da unidade vê a unidade; quem é da regulação vê a rede. Na dúvida, o sistema <b>nega</b>.</p></div>
+        <div class="bloco escuro"><p class="b-olho" style="color:var(--nit-amarelo)">Assuntos separados de propósito</p><p class="b-texto">Ver a produção das colegas, revelar identidade de denunciante, corrigir de quem é um exame e disparar mensagem ao cidadão são permissões próprias, desligadas por padrão. Não são graus do mesmo acesso — são pessoas diferentes.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">48</span>
+  </div>
+</section>
+
+<section class="slide" id="b-instituicao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Sua casa · identidade</p>
+      <h1 class="titulo">A marca vem do cadastro, <em>não do código</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="grade g-3-2" style="flex:none;align-items:stretch">
+      <div class="mini-tela">
+        <div class="mt-barra"><span class="bolas"><i></i><i></i><i></i></span><b>Sistema › Instituição</b></div>
+        <div class="mt-corpo">
+          <div class="mt-lin"><b>Nome</b><span class="dir">Fundação Municipal de Saúde de Niterói</span></div>
+          <div class="mt-lin"><b>Cor primária</b><span class="dir"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#ee7219;vertical-align:middle;margin-right:6px"></span>#EE7219</span></div>
+          <div class="mt-lin"><b>Logo</b><span class="dir"><img src="assets/niteroi-saude.png" style="height:22px;vertical-align:middle" alt=""></span></div>
+          <div class="mt-lin"><b>Domínio</b><span class="dir">smsmais.saude.niteroi.rj.gov.br</span></div>
+          <div class="mt-lin"><b>WhatsApp oficial</b><span class="dir">+55 21 •••• ••••</span></div>
+          <div class="mt-lin sel"><b>Encarregado de dados (LGPD)</b><span class="dir">lgpd@saude.niteroi.rj.gov.br</span></div>
+          <p style="font-size:10.5px;color:var(--s500);margin:10px 0 0">O que se salva aqui aparece no login, no PDF do laudo, na página pública de verificação e no app do cidadão.</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="bloco" style="flex:1"><p class="b-olho">Instância</p><p class="b-titulo">Servidor e banco próprios</p><p class="b-texto">Os dados de Niterói não dividem lugar com os de ninguém. O que acontece em outro cliente não afeta esta casa.</p></div>
+        <div class="bloco realce"><p class="b-olho">Por isso</p><p class="b-titulo">Trocar de município é cadastro</p><p class="b-texto">Este material inteiro está em laranja porque a cor veio deste campo. Nenhuma linha de código mudou.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">49</span>
+  </div>
+</section>
+
+<section class="slide" id="b-seguranca">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Sua casa · segurança</p>
+      <h1 class="titulo">Resultado de exame não vai <em>para telefone duvidoso</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="decisao" style="flex:none">
+      <div class="caixa" style="grid-row:1;grid-column:1"><b>Laudo ficou pronto</b>o sistema vai avisar a paciente</div>
+      <div class="liga h" style="grid-row:1;grid-column:2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+      <div class="losango-wrap" style="grid-row:1;grid-column:3"><div class="losango"><span>O número é dela? Ela autorizou?</span></div></div>
+      <div class="liga h" style="grid-row:1;grid-column:4"><span class="rotulo">SIM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></div>
+      <div class="caixa robo" style="grid-row:1;grid-column:5"><b>Envia</b>com o aceite registrado: data e versão do termo</div>
+      <div class="liga baixo" style="grid-row:2;grid-column:3"><span class="rotulo">NÃO / NÃO SEI</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div>
+      <div class="liga baixo" style="grid-row:2;grid-column:5"><span class="rotulo">SEMPRE</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></div>
+      <div class="caixa humano" style="grid-row:3;grid-column:3"><b>Não envia</b>vira pendência para a recepção confirmar o contato</div>
+      <div class="caixa" style="grid-row:3;grid-column:5"><b>Fica na trilha</b>quem viu, quem enviou, para qual número</div>
+    </div>
+    <div class="grade g3" style="margin-top:22px;flex:none">
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Acesso</p><p class="b-texto" style="margin:0">Mínimo necessário. O sistema nega por padrão e libera por decisão.</p></div>
+      <div class="bloco" style="padding:11px 14px"><p class="b-olho">Registro</p><p class="b-texto" style="margin:0">Acesso a dado sensível deixa rastro. Em incidente, dá para dizer o que foi exposto.</p></div>
+      <div class="bloco realce" style="padding:11px 14px"><p class="b-olho">Vínculo</p><p class="b-texto" style="margin:0">Mãe pelo filho, filha pelo pai: o vínculo declarado fica registrado — e o negado não recebe.</p></div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">50</span>
+  </div>
+</section>
+
+<section class="slide" id="implantacao">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Implantação</p>
+      <h1 class="titulo">Por onde <em>se começa</em></h1>
+      <p class="linha-fina">Não é tudo de uma vez. Escolhe-se a frente que mais dói e ela entra primeiro.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g4 cresce">
+      <div class="bloco">
+        <p class="b-num">1</p>
+        <p class="b-titulo">A instância no ar</p>
+        <p class="b-texto">Servidor, endereço e a identidade de Niterói. A rede de unidades entra pelo
+          cadastro nacional, sem digitação.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-num">2</p>
+        <p class="b-titulo">As integrações</p>
+        <p class="b-texto">Os sistemas que a casa já usa passam a conversar com a plataforma. É a
+          etapa que depende de acesso, não de desenvolvimento.</p>
+      </div>
+      <div class="bloco">
+        <p class="b-num">3</p>
+        <p class="b-titulo">Quem faz o quê</p>
+        <p class="b-texto">Perfis, responsáveis por área e prazos internos. É a decisão que mais pesa
+          no resultado — e é da casa, não nossa.</p>
+      </div>
+      <div class="bloco realce">
+        <p class="b-num">4</p>
+        <p class="b-titulo">Entrada em operação</p>
+        <p class="b-texto">Começa pela equipe, com treinamento e manual dentro do produto. O canal do
+          cidadão abre depois, quando a rede já responde.</p>
+      </div>
+    </div>
+
+    <div class="grade g2" style="margin-top:auto">
+      <div class="bloco escuro">
+        <p class="b-olho" style="color:var(--nit-amarelo)">O que precisa ser decidido</p>
+        <ul class="lista" style="margin-top:6px">
+          <li style="color:rgba(255,255,255,.82)">Por qual frente começar</li>
+          <li style="color:rgba(255,255,255,.82)">Quem responde por cada área e em quanto tempo</li>
+          <li style="color:rgba(255,255,255,.82)">Qual número de WhatsApp é o oficial da secretaria</li>
+          <li style="color:rgba(255,255,255,.82)">Quais sistemas entram na primeira rodada</li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <p class="b-olho">Uma ressalva honesta</p>
+        <p class="b-titulo">Isto ainda não é proposta</p>
+        <p class="b-texto">Este material mostra o que a plataforma faz. Prazo e preço só depois de
+          sentar com a equipe da FMS e entender o volume, os sistemas e o fluxo de hoje — não há
+          levantamento de campo em Niterói.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">51</span>
+  </div>
+</section>
+
+<section class="slide" id="b-roteiro">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Fecho · evolução</p>
+      <h1 class="titulo">O que está pronto <em>e o que está no roteiro</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="grade g2" style="flex:none">
+      <div class="bloco">
+        <p class="b-olho">Entregue — o que este material mostrou</p>
+        <ul class="checks" style="margin-top:8px">
+          <li><span class="ck">✓</span><span><b>Regulação e fila</b> — SERNIT, SISREG e SER lado a lado, com trilha</span></li>
+          <li><span class="ck">✓</span><span><b>Agenda</b> — oferta × ocupação, alterações avisadas, simulação</span></li>
+          <li><span class="ck">✓</span><span><b>Exames e laudos</b> — lista por aparelho, acervo único, laudo assinado no celular</span></li>
+          <li><span class="ck">✓</span><span><b>Contato com o cidadão</b> — app, WhatsApp oficial, confirmação, robô</span></li>
+          <li><span class="ck">✓</span><span><b>Transporte de pacientes</b>, <b>ouvidoria</b>, <b>indicadores</b>, consulta em português</span></li>
+          <li><span class="ck">✓</span><span><b>Telefonia IP</b> das unidades, central e gestão de ramais</span></li>
+        </ul>
+      </div>
+      <div class="bloco realce">
+        <p class="b-olho">No roteiro — marcado como roteiro</p>
+        <ul class="checks" style="margin-top:8px">
+          <li><span class="ck rot">→</span><span><b>Ramal por login</b> e a chamada gravada e transcrita dentro do cadastro do paciente. A telefonia já opera; falta amarrar ao cadastro.</span></li>
+          <li><span class="ck rot">→</span><span><b>Resultado laboratorial.</b> A solicitação já é classificada e regulada como as demais; guardar e exibir o resultado é o passo seguinte.</span></li>
+        </ul>
+        <p class="b-texto" style="margin-top:10px">Duas linhas. Curtas e verificáveis — e é por isso que estão escritas.</p>
+      </div>
+    </div>
+    <div class="bloco escuro" style="margin-top:16px;flex:none">
+      <p class="b-olho" style="color:var(--nit-amarelo)">Por que dizer isto em voz alta</p>
+      <p class="b-texto" style="margin:0">A régua deste material: o que roda aparece como entrega, o que falta aparece como roteiro — e nada aparece como os dois. Um material que só promete não deixa ninguém conferir nada depois.</p>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">52</span>
+  </div>
+</section>
+
+<section class="slide" id="b-ressalva">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Fecho · método</p>
+      <h1 class="titulo">Como este material <em>foi montado</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo centro">
+    <div class="com-boneco" style="flex:none;align-items:flex-end;gap:26px">
+      <div class="boneco g" style="height:300px;position:relative">
+        <img src="assets/bonecos/gestora.jpg" alt="">
+        <div class="balao-fala" style="position:absolute;left:80%;top:0;width:250px;font-size:12.5px">“Não houve levantamento de campo em Niterói. <b>O que está aqui é o produto</b>; o volume de vocês, eu ainda não conheço.”</div>
+      </div>
+      <div class="lado-texto" style="gap:11px">
+        <div class="bloco" style="flex:1"><p class="b-olho">As telas</p><p class="b-titulo">São o sistema real</p><p class="b-texto">Reproduzem o que o produto faz hoje, campo a campo. O que muda nelas é o cenário, não o comportamento.</p></div>
+        <div class="bloco" style="flex:1"><p class="b-olho">Os dados</p><p class="b-titulo">São cenário, não operação</p><p class="b-texto">Nomes de paciente, protocolos e números são fictícios e coerentes entre si — a mesma Terezinha atravessa a fila, o WhatsApp e a ligação. Nenhum dado real de paciente entrou aqui.</p></div>
+        <div class="bloco escuro"><p class="b-olho" style="color:var(--nit-amarelo)">O que vem depois</p><p class="b-texto">Uma conversa com a equipe para entender os sistemas de hoje e por qual frente faz sentido começar. Com isso, a proposta sai com número — e com o que dá para prometer.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">53</span>
+  </div>
+</section>
+
+<section class="slide secao" id="fecho">
+  <img class="brasao-fantasma sangria" src="assets/niteroi-brasao-offwhite.png" alt="">
+  <div class="conteudo" style="top:150px;transform:none;width:880px">
+    <p class="numero">Em uma frase</p>
+    <h2 style="font-size:52px">Vocês já têm os sistemas.<br>O que falta é o que <span style="color:var(--nit-amarelo)">liga</span> tudo<br>e entrega ao cidadão.</h2>
+    <div class="regua" style="margin-top:20px"></div>
+    <div style="display:flex;gap:44px;margin-top:24px">
+      <div style="max-width:300px">
+        <p style="font-family:var(--fonte-display);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72);margin:0 0 7px;font-weight:600">Próximo passo</p>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.93)">Uma conversa com
+          a equipe da FMS para entender os sistemas de hoje, o volume e por qual frente faz sentido
+          começar. Com isso, a proposta sai com prazo e número.</p>
+      </div>
+      <div style="max-width:300px">
+        <p style="font-family:var(--fonte-display);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72);margin:0 0 7px;font-weight:600">Demonstração</p>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.93)">A plataforma pode
+          ser aberta ao vivo, com a marca de Niterói, numa instância de avaliação — do pedido ao laudo
+          no celular.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pe-fecho">
+    <div class="casa">
+      <img src="assets/automais-offwhite.png" alt="Automais">
+      <span class="diz"><b>SMSMais</b> — plataforma de gestão da saúde municipal<br>
+        Automais Comércio e Serviço de Automação Ltda</span>
+    </div>
+    <div class="firma">
+      <img src="assets/assinatura-offwhite.png" alt="Bernardo Almeida">
+      <div class="nome">Bernardo Almeida</div>
+      <div class="contato">
+        <span>bernardo.almeida@automais.com</span><i>·</i><span>+55 21 97999-7000</span><i>·</i><span>automais.com</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">54</span>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

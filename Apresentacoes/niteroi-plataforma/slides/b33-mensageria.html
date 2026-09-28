@@ -1,0 +1,45 @@
+<section class="slide" id="b-mensageria">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Cidadão · envios</p>
+      <h1 class="titulo">O que saiu, o que chegou, <em>o que falhou</em></h1>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+
+  <div class="corpo">
+    <div class="grade g2" style="flex:1;min-height:0">
+      <div class="grafico" style="display:flex;flex-direction:column;justify-content:center">
+        <p class="g-tit">Status de entrega — mês</p>
+        <div class="rosca-bloco">
+          <div class="rosca" style="background:conic-gradient(var(--nit-verde) 0 71%, var(--p400) 71% 96%, var(--nit-vermelho) 96% 100%)">
+            <span class="centro"><b>96%</b><span>entregues</span></span>
+          </div>
+          <div class="legenda-rosca">
+            <span class="li"><span class="pt" style="background:var(--nit-verde)"></span> Lida <b>71%</b></span>
+            <span class="li"><span class="pt" style="background:var(--p400)"></span> Entregue, não lida <b>25%</b></span>
+            <span class="li"><span class="pt" style="background:var(--nit-vermelho)"></span> Falhou <b>4%</b></span>
+          </div>
+        </div>
+        <p class="g-nota" style="margin-top:12px">Dos 4% que falham, quase tudo é número inválido — e cada um vira pendência de cadastro com nome.</p>
+      </div>
+      <div class="grafico" style="display:flex;flex-direction:column">
+        <p class="g-tit">Templates mais enviados</p>
+        <div class="ranking" style="flex:1;justify-content:center">
+          <div class="linha"><span class="rot">Confirmação de consulta</span><span class="trilho"><span class="barra" style="width:100%"></span></span><span class="val">7.210</span></div>
+          <div class="linha"><span class="rot">Exame pronto</span><span class="trilho"><span class="barra" style="width:52%"></span></span><span class="val">3.740</span></div>
+          <div class="linha"><span class="rot">Lembrete de véspera</span><span class="trilho"><span class="barra" style="width:44%"></span></span><span class="val">3.180</span></div>
+          <div class="linha"><span class="rot">Agenda mudou</span><span class="trilho"><span class="barra fraca" style="width:17%"></span></span><span class="val">1.226</span></div>
+          <div class="linha"><span class="rot">Transporte confirmado</span><span class="trilho"><span class="barra fraca" style="width:12%"></span></span><span class="val">864</span></div>
+        </div>
+        <p class="g-nota">Reenviar com o número corrigido não dispara de novo para quem já respondeu.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> SMSMais &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">{{N}}</span>
+  </div>
+</section>

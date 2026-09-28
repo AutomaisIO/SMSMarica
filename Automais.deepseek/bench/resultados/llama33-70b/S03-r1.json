@@ -1,0 +1,34 @@
+{
+ "cena": "S03",
+ "modelo": "llama33-70b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 1048.17,
+   "usage": {
+    "completion_tokens": 168,
+    "prompt_tokens": 4679,
+    "total_tokens": 4847,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Entendo sua preocupação. Mas a nossa orienta\\u00e7\\u00e3o \\u00e9 sempre buscar o posto em que o paciente \\u00e9 atendido ou, em caso de emerg\\u00eancia, buscar a rede de urg\\u00eancia e emerg\\u00eancia do Munic\\u00edpio. Para ajudar a encontrar a unidade de urg\\u00eancia mais pr\\u00f3xima, posso perguntar o CEP ou o bairro da sua m\\u00e3e?\", \"handoff\": true, \"confianca\": 1.0, \"motivoHandoff\": \"saude\"}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município. Para ajudar a encontrar a unidade de urgência mais próxima, posso perguntar o CEP ou o bairro da sua mãe?",
+  "handoff": true,
+  "confianca": 1.0,
+  "motivoHandoff": "saude"
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T02:17:12",
+ "latencia_total_s": 1048.17
+}

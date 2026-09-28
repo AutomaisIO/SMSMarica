@@ -1,0 +1,27 @@
+{
+ "cena": "S02",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 242.45,
+   "usage": {
+    "completion_tokens": 483,
+    "prompt_tokens": 3202,
+    "total_tokens": 3685,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "\n\nBoa noite! Como posso ajudá-lo hoje? Se você está interessado em verificar suas consultas ou exames, pode acessar nossos serviços através do aplicativo destinado a isso. Lá você encontrará todas as informações necessárias de forma clara e organizada. Como posso ajudá-lo com isso?",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:05:10",
+ "latencia_total_s": 242.45
+}

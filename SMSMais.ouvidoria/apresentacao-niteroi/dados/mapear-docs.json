@@ -1,0 +1,287 @@
+{
+ "pitch": "O SMSMais Ouvidoria é o módulo que dá à secretaria de saúde o sistema que a Lei 13.460/2017 já exige dela desde 2019 — e que, na maioria dos municípios, hoje é planilha, e-mail e WhatsApp. Toda manifestação do cidadão entra por qualquer canal (balcão, telefone, WhatsApp, site, app, urna, QR na recepção) e sai com protocolo público, código de acesso, prazo contado e trilha completa do que foi feito. A ouvidoria não resolve nem investiga: ela encaminha ao ponto de resposta — a UBS, o hospital, a Regulação, a Farmácia —, cobra, valida a qualidade da resposta e devolve ao cidadão em linguagem simples. Denúncia corre num trilho isolado, pseudonimizada antes de ir à apuração, com log nominal e datado de cada acesso à identidade, como manda o Decreto 10.153/2019. E porque é módulo do SMSMais, e não um sistema avulso, a manifestação já nasce ligada à unidade pelo CNES, ao paciente e ao profissional do hub FHIR e à solicitação de regulação que a originou — que é de onde vem a maior parte das queixas de saúde. No fim do trimestre, o relatório por unidade com \"considerações do gestor\", o relatório anual publicável e o indicador contratual de resolubilidade saem prontos, sem ninguém consolidar nada à mão.",
+ "diferenciais": [
+  "É módulo do sistema de saúde, não um sistema de ouvidoria genérico: a manifestação nasce amarrada à unidade (CNES), ao paciente e ao profissional do hub FHIR e à solicitação de regulação de origem — não duplica cadastro nem exige o cidadão repetir o que já está no sistema.",
+  "Enxerga a Regulação. Mais da metade das manifestações municipais de saúde são solicitação de acesso (vaga, exame, medicamento) e a Central de Regulação já é o 2º alvo de reclamações em Maricá; o módulo vincula a manifestação ao pedido real (campo RegulacaoSolicitacaoId) e a Regulação é um ponto de resposta do tipo Área Central.",
+  "Taxonomia da saúde, compatível com o OuvidorSUS (árvore assunto→subassunto com CodigoOuvidorSus por nó), não uma lista de assuntos de prefeitura. Já vem semeada com os 22 assuntos do Manual das Ouvidorias do SUS (MS, 2014) e é editável pelo ouvidor, com marcadores locais.",
+  "Ponto de resposta por unidade é entidade de primeira classe, com titular, suplentes, login individual, prazo próprio e posse explícita — o padrão que sustenta a rede da SMS-SP (~2.000 pontos). O respondente enxerga só o que foi encaminhado ao seu ponto e nunca vê dados do manifestante.",
+  "Trilho de denúncia isolado de verdade: habilitação datada (gatilho antirretaliação), teor pseudonimizado editado antes do encaminhamento, permissão separada para sigilo (módulo 73) e tabela dedicada de acesso à identidade (usuário, data, IP, justificativa). A identidade só sai por ação explícita e registrada.",
+  "Dois relógios, não um: 30+30 do cidadão (uma prorrogação, com justificativa registrada e aviso) e 20/10/2 dias da área por prioridade, com complementação que suspende o prazo uma única vez e arquivamento automático — exatamente o desenho da PN CGU 116/2024, que um sistema de chamados genérico não implementa.",
+  "Notificação ao cidadão a cada etapa pelo mesmo WhatsApp oficial que já confirma consulta e exame (Automais.Zap + Mensageria), com a regra de destinatário correto: manifestação sigilosa nunca gera mensagem com teor.",
+  "Entrega whitelabel por instância: um droplet, um banco, um domínio por prefeitura (ADR-0043). Nada institucional em código — marca, canais, DPO e domínio público vêm do cadastro da instituição. Isolamento físico do dado, sem tenant compartilhado.",
+  "Alimenta contrato de gestão: o indicador 'Resolubilidade de Ouvidorias' já existe no módulo Indicadores do SMSMais (contrato do HMCML, meta ≥ 90%) e passa a ser apurado pela própria base, não por planilha do prestador.",
+  "Relatório trimestral por unidade com campo 'considerações do gestor', relatório anual publicável nos itens do art. 15 da Lei 13.460 e exportação para o Conselho Municipal de Saúde — não só um dashboard.",
+  "Interoperabilidade preparada sem depender dela: ProtocoloExterno + SistemaExterno em toda manifestação e códigos compatíveis com Fala.BR/OuvidorSUS, para receber o que o 136 encaminha e, se o município aderir, exportar no esquema da CGU.",
+  "Site público de ouvidoria sem login (registrar, acompanhar por protocolo + código, complementar, recorrer) já com os endpoints prontos na fase 1, com limitação de taxa por IP e comparação de código em tempo constante.",
+  "IA com rédea curta por decisão de projeto: só sugere tipo, assunto e unidade e minuta de resposta, sempre com override humano, guardando sugerido × enviado — e nunca sobre denúncia antes da pseudonimização (Guia de Transparência em IA do gov.br; LGPD art. 20)."
+ ],
+ "obrigacoes_legais": [
+  {
+   "obrigacao": "Nunca recusar manifestação; múltiplos canais; manifestação verbal reduzida a termo; papel digitalizado no ato",
+   "norma": "Lei 13.460/2017 arts. 10 §4º e 11; Decreto 9.492/2018 art. 16; PN CGU 116/2024 arts. 13, 17–19",
+   "como_o_modulo_atende": "Registro exige apenas tipo, identificação, teor (mín. 10 caracteres) e canal — nenhum outro campo bloqueia o cadastro. O campo Canal cobre painel, site público, app, WhatsApp, presencial, telefone, e-mail, carta, urna, busca ativa, 136, Fala.BR e ouvidoria-geral; o atendimento presencial/telefônico é digitado pelo técnico no mesmo sistema e o papel entra como anexo."
+  },
+  {
+   "obrigacao": "CPF basta para identificar o manifestante; vedada exigência de qualquer outro número e de campo 'motivo'",
+   "norma": "Lei 13.460/2017 arts. 10 §2º e 10-A (red. Leis 14.129/2021 e 14.534/2023); Decreto 9.492/2018 art. 14",
+   "como_o_modulo_atende": "O bloco do manifestante aceita nome + CPF ou telefone; não há campo de motivo em nenhum formulário. O CPF, quando informado, tenta resolver o paciente no hub FHIR em best-effort — sem nunca impedir o registro."
+  },
+  {
+   "obrigacao": "Comprovante de recebimento (protocolo) e ciência formal da decisão ao usuário",
+   "norma": "Lei 13.460/2017 art. 12, II e V",
+   "como_o_modulo_atende": "Protocolo legível AAAA-NNNNNN por sequência anual + código de acesso de 8 caracteres exibido uma única vez (só o hash SHA-256 é salvo). Recibo enviado pelo canal de entrada com protocolo, código e prazo, por texto configurável. A resposta conclusiva vira evento visível ao cidadão e dispara notificação."
+  },
+  {
+   "obrigacao": "Decisão final em 30 dias, prorrogável uma única vez por igual período, com justificativa; áreas internas respondem em 20+20",
+   "norma": "Lei 13.460/2017 art. 16 e §único; Decreto 9.492/2018 art. 18; PN CGU 116/2024 arts. 22 e 27",
+   "como_o_modulo_atende": "PrazoRespostaEm calculado no registro; prorrogação permitida uma só vez, exige justificativa de no mínimo 20 caracteres, que vai em evento visível ao cidadão e em notificação. Prazo da área por prioridade (Normal 20 / Alta 10 / Urgente 2 dias úteis), configurável por instância e sobreponível por ponto de resposta."
+  },
+  {
+   "obrigacao": "Complementação em 20 dias que suspende o prazo uma única vez e arquiva sem resposta conclusiva se não vier",
+   "norma": "Decreto 9.492/2018 art. 18 §§2º–5º; PN CGU 116/2024 art. 25",
+   "como_o_modulo_atende": "Estado AguardandoComplementacao com trava de uso único (ConflitoException na segunda tentativa), contador DiasSuspensos que devolve ao prazo o tempo parado, e rotina diária que arquiva com motivo tipificado SemComplementacao."
+  },
+  {
+   "obrigacao": "Encaminhamento a outro órgão imediatamente após a triagem e sem prorrogação",
+   "norma": "PN CGU 116/2024 art. 26",
+   "como_o_modulo_atende": "Estado EncaminhadaOutroOrgao com SistemaExterno e ProtocoloExterno; prorrogar é bloqueado nesse estado."
+  },
+  {
+   "obrigacao": "Resposta conclusiva com conteúdo mínimo por tipo, linguagem simples, e marcação resolvida/não resolvida (alterável)",
+   "norma": "PN CGU 116/2024 arts. 28–30; Decreto 9.492/2018 arts. 19–22",
+   "como_o_modulo_atende": "A conclusão exige Resolutividade e Situação Final coerente com o tipo (solicitação: atendida / não atendida + motivo / não localizado / faleceu; reclamação e denúncia: procede / não procede / inconclusiva). O conteúdo mínimo do art. 29 aparece como ajuda de campo na tela de resposta; a resolutividade pode ser alterada depois."
+  },
+  {
+   "obrigacao": "Arquivamento apenas por motivo tipificado, com duplicidade citando o protocolo original",
+   "norma": "PN CGU 116/2024 art. 31",
+   "como_o_modulo_atende": "Enum fechado de motivos (duplicidade, texto incompreensível, falta de urbanidade, imprópria, cópia para conhecimento, perda de objeto, sem complementação, sem elementos mínimos); duplicidade exige o texto com o protocolo original. A triagem ainda sugere possíveis duplicatas (mesmo CPF × assunto × unidade em 90 dias) — a decisão é humana."
+  },
+  {
+   "obrigacao": "Identificação do manifestante é informação pessoal com restrição de acesso; sigilo da fonte a pedido ou por natureza do assunto",
+   "norma": "Lei 13.460/2017 art. 10 §7º; LAI art. 31; Portaria de Consolidação GM/MS 1/2017 art. 115, VI",
+   "como_o_modulo_atende": "Três níveis de identificação (identificada, sigilosa, anônima). Em sigilosa o manifestante vem mascarado para todos no DTO; o ponto de resposta nunca recebe dados do manifestante em nenhum caso, porque o DTO de tramitação simplesmente não os carrega."
+  },
+  {
+   "obrigacao": "Proteção do denunciante: identidade restrita por 100 anos, pseudonimização antes de enviar à apuração, controle de acesso que registre nomes e datas, consentimento em 20 dias para compartilhar identidade, habilitação como gatilho antirretaliação, e a ouvidoria não investiga",
+   "norma": "Decreto 10.153/2019 arts. 4º, 6º (§§1º, 3º e 4º), 6º-C e 8º; Lei 13.608/2018 arts. 3º e 4º-A/B/C; PN CGU 116/2024 arts. 33–44 (em especial 34 e 39)",
+   "como_o_modulo_atende": "Campo TeorPseudonimizado obrigatório para encaminhar denúncia, editável só por quem tem o módulo de sigilo; HabilitadaEm datado após juízo de admissibilidade; tabela ouvidoria_acesso_identidade grava usuário, data, IP e justificativa a cada revelação, mais evento na trilha e registro na Auditoria. A denúncia só vai a ponto de resposta do tipo Apuração — o sistema não tem nenhuma função de diligência."
+  },
+  {
+   "obrigacao": "Relatório de gestão anual publicado na íntegra, com número de manifestações, motivos, pontos recorrentes e providências",
+   "norma": "Lei 13.460/2017 arts. 14 e 15; PN CGU 116/2024 art. 60",
+   "como_o_modulo_atende": "O painel já apura volume por tipo, status, canal, assunto e unidade, respondidas, dentro e fora do prazo, tempo médio total e da área, estoque e resolutividade no período. A geração do PDF do relatório anual e do trimestral por unidade, com 'considerações do gestor', está na fase 2."
+  },
+  {
+   "obrigacao": "Pesquisa de satisfação no mínimo anual, com resultado publicado integralmente e ranking de maior incidência de reclamação",
+   "norma": "Lei 13.460/2017 art. 23 §§1º e 2º; Decreto 7.508/2011 art. 37",
+   "como_o_modulo_atende": "O SMSMais já tem o módulo de Pesquisas de Satisfação e o gatilho pós-alta; a pesquisa pós-resposta (as três perguntas do Fala.BR mais comentário, uma por protocolo) e o ranking público entram na fase 2, reaproveitando essa base."
+  },
+  {
+   "obrigacao": "Dado de saúde é sensível; base legal é obrigação legal e política pública, não consentimento; acesso por necessidade de conhecer, auditabilidade e retenção documentada",
+   "norma": "LGPD arts. 5º II, 11 II 'a'/'b', 23 e 46; Guia de Boas Práticas da LGPD nas Ouvidorias Públicas (Rede Nacional/CGU, 2022); PN CGU 116/2024 art. 12",
+   "como_o_modulo_atende": "Permissões separadas por papel (técnico, ouvidor, sigilo, ponto de resposta), fail-closed; todo acesso a identidade em denúncia ou sigilosa é logado; retenção prevista em 5+5 anos para manifestações comuns e 5+15 para denúncias, com identidade do denunciante restrita por 100 anos — nunca expurgada, só restrita. Painéis e exportações trabalham em dado agregado ou pseudonimizado."
+  },
+  {
+   "obrigacao": "Município deve manter unidade de ouvidoria ou correição para receber relatos de irregularidade, com proteção integral ao denunciante",
+   "norma": "Lei 13.608/2018 arts. 4º-A, 4º-B e 4º-C",
+   "como_o_modulo_atende": "Tipo Denúncia e comunicação de irregularidade anônima, ouvidoria interna (servidores e colaboradores como manifestantes) e unidade apuratória cadastrável (corregedoria, comissão de ética, vigilância) como ponto de resposta do tipo Apuração."
+  },
+  {
+   "obrigacao": "Encaminhamento aos setores responsáveis em até 3 dias úteis e conclusão por prioridade, no âmbito do SUS",
+   "norma": "Portaria SGEP/MS nº 8/2007 (Regulamento do OuvidorSUS); Portaria de Consolidação GM/MS 1/2017 arts. 115 e 117",
+   "como_o_modulo_atende": "Prioridade (Normal, Alta, Urgente) definida na triagem antes do encaminhamento e refletida no prazo da área; cobrança e escalonamento por atraso registrados como eventos, com alerta ao ponto e ao ouvidor."
+  },
+  {
+   "obrigacao": "Gestores devem usar os dados da ouvidoria como ferramenta de gestão e alimentar o controle social",
+   "norma": "Portaria de Consolidação GM/MS 1/2017 arts. 117, VII e 118; Lei 8.142/1990",
+   "como_o_modulo_atende": "Painel por período, unidade, tipo e assunto; ranking de unidades e assuntos; recorrência e reincidência; exportação para o Conselho Municipal de Saúde e alimentação do indicador contratual de resolubilidade do contrato de gestão."
+  },
+  {
+   "obrigacao": "Carta de Serviços com prazo por serviço e como apresentar manifestação, e seção 'Ouvidoria' no portal com canais, relatórios e painel",
+   "norma": "Lei 13.460/2017 art. 7º; PN CGU 116/2024 art. 71",
+   "como_o_modulo_atende": "Página pública da ouvidoria no domínio da instância (ouvidoria.<domínio>), com canais, fluxo, relatórios e painel — o conteúdo institucional vem do cadastro da instituição, nunca de código. Fase 2."
+  },
+  {
+   "obrigacao": "Ato normativo do ente disciplinando a ouvidoria",
+   "norma": "Lei 13.460/2017 art. 17; Guia de Implantação de Ouvidorias do SUS (MS, 2ª ed., 2014)",
+   "como_o_modulo_atende": "O módulo funciona sem ele, mas a implantação inclui a minuta de portaria da secretaria instituindo o sistema como registro único da ouvidoria da saúde e nomeando pontos de resposta titulares e suplentes — no molde das Portarias SMS-SP 152/2026 e 870/2025 e do Decreto de Inajá-PE 006/2025."
+  }
+ ],
+ "tipologia": [
+  {
+   "tipo": "Solicitação",
+   "definicao": "Manifestação que contém um requerimento de atendimento ou de acesso a serviço: vaga de consulta, exame, cirurgia, medicamento, transporte.",
+   "providencia": "Atender. Nunca pode ser anônima nem sigilosa. É o tipo dominante numa ouvidoria municipal de saúde (53,1% das manifestações sobre serviços municipais no OuvidorSUS em 2024) e o que liga a ouvidoria à Regulação e à Farmácia — no SMSMais pode ser vinculada à solicitação de regulação real. Conclusão exige situação final estruturada: atendida, não atendida com motivo (vagas insuficientes, não coberto pelo SUS, não compareceu, fez particular, falta de recursos), não localizado ou faleceu."
+  },
+  {
+   "tipo": "Reclamação",
+   "definicao": "Insatisfação com a prestação do serviço ou com a conduta de agente público, sem requerimento de providência específica.",
+   "providencia": "Apurar. Vai ao ponto de resposta da unidade, que analisa o fato e informa as providências; a ouvidoria valida a resposta antes de devolver ao cidadão. Conclusão registra procede, não procede ou inconclusiva, mais a resolutividade. Admite sigilo."
+  },
+  {
+   "tipo": "Denúncia",
+   "definicao": "Comunicação de irregularidade ou ilícito cuja solução dependa da atuação de órgão apuratório.",
+   "providencia": "Apurar, em trilho isolado. Passa por juízo de admissibilidade (autoria, materialidade, competência, compreensão) com habilitação datada, é pseudonimizada antes de seguir para a unidade apuratória (corregedoria, comissão de ética, vigilância) e todo acesso à identidade do denunciante é logado com justificativa. A ouvidoria não investiga; a resposta ao cidadão informa o encaminhamento ou o arquivamento. Único tipo que admite anonimato."
+  },
+  {
+   "tipo": "Sugestão",
+   "definicao": "Proposta de aprimoramento de serviço, política ou rotina.",
+   "providencia": "Conhecer. A resposta traz a posição do gestor sobre adotar ou não e, se adotar, o prazo estimado (PN CGU 116/2024 art. 29). Admite sigilo."
+  },
+  {
+   "tipo": "Elogio",
+   "definicao": "Demonstração de satisfação com o serviço ou com o agente público.",
+   "providencia": "Conhecer. A resposta informa o encaminhamento do elogio ao agente e à sua chefia — prática que a SMS-SP transformou em programa de reconhecimento trimestral ('Gente que faz o SUS'). Admite sigilo."
+  },
+  {
+   "tipo": "Informação",
+   "definicao": "Pergunta sobre o serviço; quando respondida no ato pelo atendente, é 'disseminação' e não gera tramitação.",
+   "providencia": "Atender. Nunca anônima nem sigilosa. Não confundir com pedido de acesso à informação da LAI, que é outro fluxo, com prazo de 20+10 dias e recurso em 10 — o módulo reclassifica e avisa o cidadão quando for o caso."
+  },
+  {
+   "tipo": "Comunicação de irregularidade",
+   "definicao": "Denúncia obrigatoriamente anônima. Não é um sétimo tipo no banco: é a denúncia registrada com identificação Anônima, que por isso não recebe código de acesso nem acompanhamento pelo cidadão.",
+   "providencia": "Apurar se houver indícios mínimos de relevância, autoria e materialidade (Decreto 9.492/2018 art. 23 §2º; PN CGU 116/2024 art. 37). Não cabe pedido de complementação nem notificação; a resposta conclusiva é registrada e a manifestação já é concluída, porque não há a quem devolver."
+  }
+ ],
+ "indicadores": [
+  {
+   "nome": "Índice de resolubilidade",
+   "formula": "manifestações com resposta conclusiva marcada como Resolvida × 100 / manifestações recebidas no período",
+   "meta": "≥ 90% — é a meta do indicador contratual 'Resolubilidade de Ouvidorias' já vigente no contrato de gestão do HMCML em Maricá. Referências externas: 85% por trimestre no contrato do HEUE/SESA-ES (exigindo causa raiz com evidências) e 70% como piso sugerido pelo Manual do MS, que lembra: o indicador mede a rede, não a ouvidoria."
+  },
+  {
+   "nome": "Índice de atendimento aos prazos (PMR)",
+   "formula": "manifestações encerradas dentro do prazo legal × 100 / total encerradas no período",
+   "meta": "> 90% (meta oficial do Sistema Municipal de Ouvidoria do Rio de Janeiro, que fechou 2025 com 92%). Referência de que o indicador é sensível: na ARSAE-MG caiu de 93% para 78% em três anos."
+  },
+  {
+   "nome": "Tempo médio de resposta (TMA/TMR)",
+   "formula": "média(data da resposta conclusiva − data do registro), descontados os dias em que o prazo esteve suspenso por complementação; gravado por manifestação no campo DiasAteResposta",
+   "meta": "< 10 dias (meta do Rio; realizado 12 dias em 2025). Recife saiu de 99 dias em 2021 para 17 em 2024 — a curva de melhoria é o melhor argumento de implantação."
+  },
+  {
+   "nome": "Distribuição por faixa de prazo",
+   "formula": "% de manifestações concluídas em até 30 dias, de 31 a 60 dias e acima de 60 dias (função FaixaPrazo do módulo)",
+   "meta": "≥ 88% em até 30 dias e ≤ 3% acima de 60 — calibrado pelo realizado da SMSA-BH em 2024 (88,64% / 7,97% / 2,65%). A SESA-ES terminou 2024 com 623 manifestações acima de 60 dias, o passivo que essa faixa denuncia."
+  },
+  {
+   "nome": "Estoque (volume de manifestações em estoque)",
+   "formula": "manifestações em tratamento no fim do período × 100 / volume recebido nos últimos 30 dias",
+   "meta": "≤ 10% (meta do Rio). É o indicador que revela o problema real das ouvidorias municipais, que não é falta de canal e sim acúmulo: Maricá registrou 10,2% de 'atrasados' no 2º trimestre de 2025."
+  },
+  {
+   "nome": "Tempo médio da área (ponto de resposta)",
+   "formula": "média(data da resposta da área − data do encaminhamento), por ponto de resposta e por unidade",
+   "meta": "≤ 20 dias corridos em prioridade Normal, ≤ 10 em Alta e ≤ 2 dias úteis em Urgente — parâmetros configuráveis por instância. Referências: SMS-SP 20 dias à área e 2 dias úteis de trânsito; SES-RJ pede 10 dias; GDF 5 dias úteis."
+  },
+  {
+   "nome": "Percentual respondido",
+   "formula": "manifestações com resposta conclusiva × 100 / manifestações que exigiam resposta no período",
+   "meta": "≥ 95%. Realizado de referência: Recife 97% em 2024, Fortaleza 91,46% no 1º semestre de 2023, Manaus 97,46% de resolutividade em 2022-2025."
+  },
+  {
+   "nome": "Satisfação do usuário com o atendimento da ouvidoria",
+   "formula": "(muito satisfeito + satisfeito) × 100 / questionários efetivamente respondidos; alternativamente, escala de 5 pontos convertida em percentual como no painel Resolveu? da CGU (muito insatisfeito 0, insatisfeito 25, regular 50, satisfeito 75, muito satisfeito 100)",
+   "meta": "≥ 90% (meta contratual do HEUE/SESA-ES). Recife: 60% de satisfeitos com 10% de taxa de resposta à pesquisa."
+  },
+  {
+   "nome": "Resolutividade percebida pelo cidadão (demanda atendida)",
+   "formula": "respostas 'sim' à pergunta 'sua demanda foi resolvida?' × 100 / respondentes da pesquisa pós-resposta",
+   "meta": "Acompanhar o intervalo contra a resolutividade marcada pela ouvidoria — a distância entre as duas é o alerta de resposta formal que não resolveu. Referência: SMSA-BH 2024 registrou 60,93% de 'demanda atendida' contra 36,43% de 'gerou orientação'."
+  },
+  {
+   "nome": "Taxa de resposta à pesquisa de satisfação",
+   "formula": "pesquisas respondidas × 100 / pesquisas enviadas após resposta conclusiva",
+   "meta": "> 10% (patamar realizado em Recife). Pelo WhatsApp, canal principal do SMSMais, a expectativa é superior à do e-mail."
+  },
+  {
+   "nome": "Manifestações por 1.000 atendimentos da unidade",
+   "formula": "manifestações queixosas (reclamação + denúncia) da unidade × 1.000 / atendimentos realizados pela unidade no período",
+   "meta": "Sem meta absoluta: serve para comparar unidades de porte diferente e para o ranking. O contrato de Salto/SP usa a mesma razão em percentual sobre o total de atendimentos mensais; a ANS publica a equivalente no setor suplementar (TDO = 9,2 demandas por 1.000 beneficiários em 2018)."
+  },
+  {
+   "nome": "Reincidência do cidadão",
+   "formula": "nova manifestação do mesmo CPF sobre o mesmo assunto e a mesma unidade dentro de 90 dias após uma resposta conclusiva × 100 / manifestações concluídas no período",
+   "meta": "Menor possível; usado como alerta operacional. O módulo já detecta o padrão na triagem e mostra os protocolos anteriores para decisão humana (arquivar por duplicidade cita o protocolo original, PN CGU 116 art. 31, I)."
+  },
+  {
+   "nome": "Recorrência por unidade e por assunto",
+   "formula": "número de manifestações do mesmo assunto na mesma unidade dentro da janela do período, ordenado decrescente (ranking)",
+   "meta": "Alimentar o plano de ação trimestral: é o insumo das 'soluções coletivas a partir do conjunto de problemas individuais recorrentes' (PN CGU 116/2024 art. 4º, IV)."
+  },
+  {
+   "nome": "Taxa de retrabalho da área (devolução para reanálise)",
+   "formula": "respostas da área devolvidas pela ouvidoria para reanálise × 100 / respostas da área recebidas no período",
+   "meta": "Indicador de qualidade da resposta, no espírito do PAQ da SMS-SP (que audita qualidade do registro e da resposta). Quanto menor, melhor a maturidade do ponto de resposta."
+  },
+  {
+   "nome": "Tratamento de denúncias",
+   "formula": "denúncias encaminhadas a unidade apuratória × 100 / denúncias recebidas; e denúncias arquivadas por falta de elementos mínimos × 100 / denúncias recebidas",
+   "meta": "Sem meta de volume; a leitura é a proporção entre as duas e o tempo até a habilitação. Referência de composição: a SESA-ES fechou 2024 com 401 manifestações sigilosas e 1.563 anônimas em 13.146."
+  }
+ ],
+ "fase1_entregue": [
+  "Em produção desde 20/09/2026 (deploy ef2a6a4), nas instâncias de Maricá e da segunda instância do produto — verificado pela API: 36 rotas de ouvidoria no OpenAPI, catálogo de 22 assuntos semeado e 51 unidades disponíveis para o campo de local do fato.",
+  "Modelo de dados completo no schema smsmarica: 10 entidades (manifestação, evento, anexo, assunto, marcador, vínculo manifestação-marcador, ponto de resposta, membro do ponto, acesso à identidade e configuração), sequência de protocolo por ano e migration 20260920142356_Ouvidoria aplicada sem erro.",
+  "Manifestação com protocolo público AAAA-NNNNNN, código de acesso de 8 caracteres entregue uma única vez (só o hash SHA-256 fica no banco), três níveis de identificação e as regras de tipo já impostas na criação: solicitação e informação nunca anônimas, anônimo só em denúncia.",
+  "Máquina de 11 estados com trilha append-only: registrada, em triagem, encaminhada, aguardando complementação, respondida pela área, em validação, respondida, em recurso, concluída, arquivada e encaminhada a outro órgão. Cada transição é um evento com autor, data, de-para, texto e a marcação de visível ou não ao cidadão. Nenhum histórico é atualizado.",
+  "Os dois relógios funcionando: 30+30 do cidadão com prorrogação única e justificativa registrada; prazo da área por prioridade (20 / 10 / 2 dias úteis), configurável por instância e sobreponível por ponto de resposta; complementação de 20 dias que suspende o prazo uma só vez e o devolve na retomada; rotina diária que arquiva sem complementação e conclui as respondidas sem recurso.",
+  "Ponto de resposta como entidade própria, nos três tipos (unidade com CNES, área central e apuração), com titular, suplentes e prazo próprio; quem só tem o perfil de ponto de resposta enxerga apenas o que foi encaminhado ao seu ponto, sem nenhum dado do manifestante e com o teor pseudonimizado em denúncia.",
+  "Trilho de denúncia isolado: habilitação datada, teor pseudonimizado obrigatório para encaminhar, permissão separada de sigilo e tabela de acesso à identidade que grava usuário, data, IP e justificativa — com evento na trilha e registro na Auditoria a cada revelação. Por decisão de implementação, a sigilosa é mascarada para todos, inclusive para quem tem o módulo de sigilo: a identidade só sai por ação explícita e justificada.",
+  "Conclusão com resolutividade e situação final estruturada coerente com o tipo, motivo tipificado de arquivamento e motivo de não atendimento; DiasAteResposta e DiasAtraso gravados na conclusão.",
+  "Notificação ao cidadão pelo WhatsApp institucional nos momentos-chave (recibo com protocolo e prazo, encaminhamento, pedido de complementação, prorrogação, resposta conclusiva, arquivamento), com texto de recibo configurável e a regra de que manifestação sigilosa nunca leva teor nem assunto na mensagem.",
+  "API pública para o cidadão já entregue (/publico/ouvidoria): assuntos, unidades, registrar manifestação, acompanhar por protocolo + código, complementar e recorrer — com política de limitação de taxa por IP e comparação do código em tempo constante. O site público da fase 2 nasce sem tocar no backend.",
+  "Painel do ouvidor por período e unidade: total, por tipo, por status, por canal, por assunto, por unidade, respondidas, dentro e fora do prazo, tempo médio total e da área, estoque, resolvidas e não resolvidas e as faixas de prazo (até 30, 31 a 60, mais de 60).",
+  "Painel web completo na feature ouvidoria do SMSMais.front: fila com abas (triagem, em andamento, aguardando validação, atrasadas, recurso, concluídas), registro de manifestação, detalhe com linha do tempo e gaveta de ações, tela do meu ponto de resposta, pontos de resposta, assuntos, configuração e painel de indicadores — 8 páginas e 11 componentes, build sem erro.",
+  "Quatro permissões novas no controle de acesso (71 Ouvidoria, 72 Ouvidoria Gestão, 73 Ouvidoria Sigilo, 74 Ponto de Resposta), registradas no menu, nas rotas e na matriz de perfis, com verificação fail-closed no serviço.",
+  "54 testes automatizados aprovados contra Postgres real (prazos, protocolo, serviço e endpoints públicos), que pegaram e corrigiram dois defeitos reais antes da produção: um que quebraria toda ação após o registro e outro que fazia as rotinas diárias não persistirem.",
+  "Artigo do Manual do usuário dentro do próprio painel, com simulação clicável do fluxo da manifestação."
+ ],
+ "fase2_roadmap": [
+  "Site público de ouvidoria no domínio da própria instância (ouvidoria.<domínio>), no molde do PWA de Arquivos: registrar sem login, acompanhar por protocolo e código, complementar, recorrer e responder a pesquisa. Os endpoints já existem desde a fase 1.",
+  "Ouvidoria dentro do app do cidadão: o munícipe logado vê as próprias manifestações, sem digitar protocolo — o mesmo caminho que Fortaleza adotou ao embutir a ouvidoria no app de agendamento.",
+  "Pesquisa de satisfação pós-resposta, uma por protocolo, com as três perguntas do Fala.BR (demanda atendida, resposta fácil de compreender, satisfeito com o atendimento) mais comentário, disparada pelo canal de entrada e reaproveitando o módulo de Pesquisas de Satisfação já existente.",
+  "Captação por WhatsApp: a conversa no número da ouvidoria vira manifestação com protocolo automaticamente, por handler no roteador de mensagens, mais o template oficial de recibo para alcançar o cidadão fora da janela de 24 horas. O WhatsApp é canal de captação, nunca repositório.",
+  "Painéis completos e relatórios: trimestral por unidade com campo 'considerações do gestor' e plano de ação, relatório anual de gestão nos itens do art. 15 da Lei 13.460 pronto para publicação, e exportação para o Conselho Municipal de Saúde.",
+  "Painel público no estilo 'Resolveu?' e exportação de dados abertos pseudonimizados no esquema do dicionário do Fala.BR (data de registro, prazo, tipo, assunto, unidade, dias para resolução, dias de atraso, demanda atendida, satisfação).",
+  "Importação do Manual de Tipificação do OuvidorSUS 3 completo (árvore de 23 assuntos, 246, 897 e 1.897 subassuntos), preenchendo os códigos OuvidorSUS do catálogo para exportação sem retrabalho.",
+  "Fase 3, já desenhada no ADR-0060: ouvidoria ativa (QR na recepção e ao lado do leito, urna digital, itinerante, busca ativa com registro em até 24 horas), IA de sugestão de tipo, assunto, unidade e minuta de resposta sempre com override humano, integração com OuvidorSUS e Fala.BR como WebService Respondente, e mediação registrada."
+ ],
+ "numeros_de_referencia": [
+  "53,1% das manifestações sobre serviços municipais são solicitação de acesso — 231.692 de um total nacional de 618.727 manifestações; reclamação 29,8%, elogio 6,8%, denúncia 5,8%, informação 2,2%, comunicação de irregularidade 1,8%, sugestão 0,4%. Fonte: Relatório Anual de Gestão da Ouvidoria-Geral do SUS (OuvSUS/MS), 2024.",
+  "Canais de entrada no SUS em 2024: telefone de estados e municípios 30,36%, Disque Saúde 136 22,66%, presencial 20,10%, internet 14,36%, correios 3,14%, Fala.BR 2,76% (com problemas de integração declarados) e caixa de sugestões 0,95%. Fonte: Relatório Anual OuvSUS 2024.",
+  "Os temas municipais mais frequentes em 2024: ambulatório de média complexidade 38.486, rotinas e protocolos de unidade 11.452, oftalmologia 9.298, insatisfação com médico 8.162, ortopedia 7.958, demora no atendimento 7.108. Fonte: Relatório Anual OuvSUS 2024.",
+  "5,3 milhões de manifestações acumuladas no OuvidorSUS até abril de 2024, numa rede que chegou a 1.011 ouvidorias do SUS. Fontes: DATASUS/OuvSUS; estudo publicado na SciELO (Ciência & Saúde Coletiva) sobre a rede 2014–2018.",
+  "A SMS de São Paulo operou 10 anos no OuvidorSUS e migrou em setembro de 2025 para sistema municipal próprio, integrado ao SP156 (Portaria SMS.G 870/2025) — rede de 58 unidades descentralizadas e cerca de 1.900 pontos de resposta com login individual, 111 mil manifestações em 11 meses de 2024. Sistema próprio de secretaria é caminho já trilhado por capital. Fontes: Prefeitura de São Paulo; COSEMS-SP; legislação municipal de SP.",
+  "Resolutividade da rede de ouvidorias da SMS-SP: 50,9% em 2015, 76,6% em 2016, depois da estruturação da rede de pontos de resposta. Fonte: slides da Ouvidoria Central da SMS-SP.",
+  "Rio de Janeiro fechou 2025 com cerca de 258 mil manifestações, 92% respondidas no prazo e tempo médio de 12 dias, com 150 profissionais; metas oficiais do sistema: mais de 90% no prazo, menos de 10 dias de tempo médio e estoque de no máximo 10%. Fonte: Prefeitura do Rio de Janeiro / Ouvidoria-Geral do Município.",
+  "SMSA Belo Horizonte, 2024: 13.336 manifestações, 89,75% reclamações; 88,64% concluídas em até 30 dias, 7,97% entre 31 e 60, 2,65% acima de 60; 'demanda atendida' 60,93% e 'gerou orientação' 36,43%; 56,32% encaminhadas às 9 regionais. Serviços mais citados: consulta médica na ESF 24,12% e marcação de exame 5,73%. Fonte: Relatório de Serviços da Ouvidoria SMSA/PBH, jan–dez 2024.",
+  "Canais em Belo Horizonte, 2024: telefone 53,10%, OuvidorSUS 17,31%, portal 13,41%, app 12,84% e WhatsApp 0,15% — o telefone ainda domina onde o WhatsApp não é canal oficial. Fonte: Relatório SMSA/PBH 2024.",
+  "Recife, 2024: 42.192 manifestações, 97% respondidas, 75% dentro do prazo e tempo médio de resposta de 17 dias, depois de 99 dias em 2021, 45 em 2022 e 31 em 2023; a Saúde responde por 35% dos registros; 10% respondem à pesquisa de satisfação e 60% desses se declaram satisfeitos. Fonte: Relatório 2024 da Controladoria-Geral do Município do Recife.",
+  "SESA Espírito Santo, 2024: 13.146 manifestações, 76,9% respondidas em até 15 dias, mas 623 acima de 60 dias; 401 sigilosas, 1.563 anônimas e 10.681 identificadas. Fonte: Relatório Gerencial da Ouvidoria SESA-ES 2024.",
+  "Fortaleza, primeiro semestre de 2023: 17.018 manifestações e 91,46% tratadas, com 57 ouvidorias setoriais; a ouvidoria da saúde é oferecida dentro do app Mais Saúde Fortaleza, o mesmo de agendamento. Fonte: Ouvidoria/CGM Fortaleza.",
+  "Manaus, 2022 a 2025: 20.198 manifestações, das quais 11.938 exigiram resposta técnica, com resolutividade de 97,46%. Fonte: Prefeitura de Manaus / Semsa.",
+  "São Paulo estado respondeu 224.358 manifestações no OuvidorSUS em 2024, equivalente a 36,6% de todo o volume nacional. Fonte: SES-SP / dados abertos do Sistema Ouvidor SES-SP.",
+  "Hospital Tide Setubal (SMS-SP), 1º trimestre de 2024: 114 manifestações no trimestre, 46% presenciais e 45% por telefone, 73% reclamações — o perfil de uma unidade hospitalar, onde o balcão pesa mais que a internet. Fonte: relatório trimestral da Ouvidoria da unidade.",
+  "Maricá, relatórios trimestrais da Ouvidoria-Geral em 2025: 2º trimestre com 64,9% arquivados, 24,8% em andamento e 10,2% atrasados; 3º trimestre 82,05% / 12,67% / 5,28%; 4º trimestre 87,16% / 6,05% / 6,79%. Fonte: relatórios trimestrais publicados pela Prefeitura de Maricá.",
+  "Maricá, 4º trimestre de 2025: das 81 manifestações de saúde, 33 sobre UBS, 23 sobre a Central de Regulação, 8 sobre a Farmácia Judicial, 7 sobre o Ambulatório Péricles Siqueira e 5 sobre o Hospital Conde Modesto Leal — a regulação já é o segundo alvo de reclamações. Fonte: relatório do 4º trimestre de 2025 da Ouvidoria-Geral de Maricá.",
+  "O que Maricá não publica, e que o módulo passa a produzir automaticamente: tempo médio de resposta, percentual dentro do prazo legal, volume por canal, satisfação, resolutividade por unidade e relatório ao Conselho Municipal de Saúde. Além disso, 'atrasado' não é definido contra prazo legal e as categorias são criadas ad hoc, sem árvore padronizada. Fonte: análise dos três relatórios trimestrais de 2025.",
+  "O canal paralelo tem custo político: em audiência pública de 29/05/2026, um vereador exibiu 'uma mala com mais de mil denúncias' sobre falta de medicamentos e demora em marcação — queixas que nunca passaram pela Ouvidoria. Fonte: imprensa local (Notícia do Rio), citada no levantamento.",
+  "Referência de indicador contratual de OS: no HEUE/SESA-ES, 'Atenção ao Usuário' vale 25% da parte variável do contrato, com meta de 85% de resolução de reclamações por trimestre (exigindo causa raiz com evidências), primeira tratativa em até 7 dias úteis e 90% de satisfação. Fonte: Manual de Indicadores Qualitativos do HEUE, SESA-ES.",
+  "Na saúde suplementar, a ANS publica a Taxa de Demandas de Ouvidoria: 9,2 demandas por 1.000 beneficiários no setor, com prazo de resposta conclusiva de até 7 dias úteis pela RN 323/2013. É a referência do denominador 'por mil'. Fonte: Relatório de Ouvidorias da ANS, 2018.",
+  "O indicador de prazo é o mais sensível de todos: na ARSAE-MG, o índice de atendimento aos prazos caiu de 93% para 78% em três anos sem mudança de norma — o que justifica monitorar estoque e faixa de prazo, não só o total respondido. Fonte: artigo da Associação Brasileira de Ouvidores (ABO).",
+  "A Rede Nacional de Ouvidorias reunia 2.801 ouvidorias em abril de 2025; a adesão ao Fala.BR é voluntária, por órgão, com termo do dirigente máximo, e exige normativo próprio de ouvidoria e de LAI — o mesmo normativo que um sistema próprio também pede. Fonte: CGU, IN Conjunta OGU-SNAI/CGU nº 1/2025.",
+  "A árvore de tipificação nacional do SUS tem 23 assuntos, 246 subassuntos de nível 1, 897 de nível 2 e 1.897 de nível 3 — dimensão que mostra por que uma lista genérica de assuntos de prefeitura não serve para a saúde. Fonte: Fiocruz, sobre o Manual de Tipificação do OuvidorSUS."
+ ],
+ "argumento_niteroi": [
+  "A menção é uma só, e é uma premissa de produto registrada pelo próprio Bernardo em 20/09/2026, no README do módulo (§0, item 2): 'O alvo é secretaria de saúde, não ouvidoria-geral de prefeitura. Primeiro cliente fora de Maricá: Niterói (Fundação Municipal de Saúde, aparentemente sem sistema; processo manual). Depois, outras SMS.'",
+  "A qualificação registrada sobre Niterói é exatamente essa: Fundação Municipal de Saúde, aparentemente sem sistema de ouvidoria, processo manual. O 'aparentemente' é do documento — não houve levantamento de campo sobre Niterói, e isso é uma lacuna a fechar antes de qualquer proposta formal (canais atuais, volume, base normativa local, se há ouvidor do SUS cadastrado no MS, se a saúde responde pela ouvidoria-geral do município).",
+  "Na mesma premissa está o argumento de venda que o documento julga decisivo para ganhar de um sistema genérico de ouvidoria: taxonomia do OuvidorSUS, ponto de resposta por unidade identificado por CNES, vínculo com a regulação e a fila, paciente e profissional vindos do hub FHIR, indicador contratual de organização social e relatório ao Conselho Municipal de Saúde. É a lista textual de diferenciais que o README associa ao caso Niterói.",
+  "A entrega para Niterói não exige nenhum fork nem adaptação de código: pelo ADR-0043 o SMSMais é entregue como uma instância por município — droplet, banco e domínio próprios, isolamento físico do dado, sem tenant compartilhado. Marca, nome da secretaria, cores, canais, número de WhatsApp, DPO e o domínio do site público vêm do cadastro da instituição, lido pela API; nada institucional vive em código ou em migration. O front é build único.",
+  "O site público de ouvidoria da fase 2 já nasce endereçado ao domínio da instância (ouvidoria.<domínio do cliente>), no mesmo molde do PWA de Arquivos — em Maricá ouvidoria.smsmarica.online, em Niterói o domínio da Fundação. O módulo não carrega nenhuma referência a Maricá no que o cidadão vê.",
+  "O precedente que sustenta a proposta a uma secretaria, e não à ouvidoria-geral da prefeitura, é a SMS de São Paulo: ficou 10 anos no OuvidorSUS e migrou em 2025 para sistema próprio da saúde, com rede de 58 unidades e cerca de 1.900 pontos de resposta. Sistema municipal próprio de secretaria de saúde é caminho já trilhado por capital.",
+  "O documento registra uma ressalva relevante para o desenho institucional em Niterói: não está confirmado se uma secretaria municipal isolada pode aderir ao Fala.BR sem a prefeitura. Como a adesão ao Fala.BR e ao OuvidorSUS exige normativo próprio de ouvidoria — o mesmo normativo que um sistema próprio também pede —, a portaria da secretaria instituindo o registro único é trabalho comum aos dois caminhos e faz parte da implantação (moldes: Portarias SMS-SP 152/2026 e 870/2025, Decreto de Inajá-PE 006/2025).",
+  "Há ainda um ponto de relacionamento já existente entre as duas cidades, que não está nos documentos da ouvidoria mas consta do monorepo e serve de porta de entrada comercial: Niterói opera o SER em regulacao.niteroi.rj.gov.br/ser (build 2024-01-01-NITEROI) e Maricá já tem conta dentro do SER de Niterói, com laboratório de reconhecimento próprio no repositório (Automais.SERNIT). Usar isso na apresentação exige checagem com o Bernardo, porque é contexto de regulação, não do levantamento de ouvidoria."
+ ]
+}

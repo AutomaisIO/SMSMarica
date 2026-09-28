@@ -21,6 +21,62 @@ public sealed class AsteriskOptions
     public string SipServerParaTelefones { get; set; } = "10.201.0.1";
 
     public AmiOptions Ami { get; set; } = new();
+
+    // Listas começam vazias de propósito: o binder de configuração ACRESCENTA ao default em vez
+    // de substituir, e o appsettings.json é quem define os valores.
+
+    /// <summary>Contextos do dialplan que a API aceita atribuir a um ramal.</summary>
+    public List<string> ContextosPermitidos { get; set; } = [];
+
+    /// <summary>Codecs que a API aceita configurar (nomes do Asterisk).</summary>
+    public List<string> CodecsPermitidos { get; set; } = [];
+
+    /// <summary>Faixa de numeração por tipo. Faixa zerada = sem restrição.</summary>
+    // Físicos seguem a numeração que já existe no servidor (<grupo 2 díg><seq>, 10xx–31xx), sem
+    // faixa fixa: a colisão é barrada pelo inventário + sip_custom.conf. Softphones ficam num bloco
+    // próprio ainda vazio (auditoria de 23/09/2026: nenhum 6xxx nem padrão de dialplan 6).
+    public FaixaOptions FaixaFisico { get; set; } = new();
+
+    public FaixaOptions FaixaSoftphone { get; set; } = new() { Inicio = 6000, Fim = 6999 };
+
+    public WebRtcOptions WebRtc { get; set; } = new();
+
+    public FaixaOptions Faixa(Data.Entities.TipoRamal tipo) =>
+        tipo == Data.Entities.TipoRamal.Softphone ? FaixaSoftphone : FaixaFisico;
+}
+
+public sealed class FaixaOptions
+{
+    public int Inicio { get; set; }
+    public int Fim { get; set; }
+
+    public bool Restrita => Inicio > 0 && Fim >= Inicio;
+    public bool Contem(int numero) => !Restrita || (numero >= Inicio && numero <= Fim);
+}
+
+/// <summary>Parâmetros do softphone no navegador (SIP sobre WebSocket seguro).</summary>
+public sealed class WebRtcOptions
+{
+    /// <summary>URL do WebSocket SIP que o navegador abre (nginx → http.conf do Asterisk).</summary>
+    public string WssUrl { get; set; } = "wss://telefonia.smsmarica.online/ws";
+
+    /// <summary>Domínio SIP usado na URI (sip:ramal@dominio).</summary>
+    public string Dominio { get; set; } = "telefonia.smsmarica.online";
+
+    /// <summary>Certificado e chave para o DTLS da mídia (chan_sip dtlscertfile/dtlsprivatekey).</summary>
+    public string DtlsCertFile { get; set; } = "/etc/asterisk/keys/asterisk.pem";
+
+    public string DtlsPrivateKey { get; set; } = "/etc/asterisk/keys/asterisk.key";
+
+    /// <summary>Servidores STUN/TURN entregues ao navegador junto da credencial.</summary>
+    public List<IceServerOptions> IceServers { get; set; } = [];
+}
+
+public sealed class IceServerOptions
+{
+    public string Urls { get; set; } = "";
+    public string? Username { get; set; }
+    public string? Credential { get; set; }
 }
 
 public sealed class AmiOptions

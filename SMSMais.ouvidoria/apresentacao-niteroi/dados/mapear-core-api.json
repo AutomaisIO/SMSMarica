@@ -1,0 +1,590 @@
+{
+ "services": [
+  {
+   "nome": "IOuvidoriaManifestacaoService / OuvidoriaManifestacaoService (SMSMais.Core/Ouvidoria/OuvidoriaManifestacaoService.cs, 1290 linhas)",
+   "responsabilidade": "Maquina de estados da manifestacao. Toda transicao grava um OuvidoriaEvento append-only e carimba UltimaAtividadeEm/AtualizadoEm. Decide a visibilidade (escopo por permissao + pertencimento a ponto de resposta), calcula prazos, mascara manifestante, monta a lista de AcoesPermitidas por status+perfil e roda as 2 rotinas automaticas. Dependencias: SmsMaisDbContext, IUsuarioAtualAccessor, IIdentidadeService (permissoes resolvidas), IAuditoriaService, IPacientesService (resolve PatientId pelo CPF, best-effort), IOuvidoriaCatalogoService, OuvidoriaNotificador, ILogger.",
+   "metodos": [
+    "ListarAsync(filtro) - fila paginada (padrao 50, teto 200), ordenada por UltimaAtividadeEm desc",
+    "ObterResumoAsync() - contadores das abas no mesmo escopo da lista",
+    "ObterAsync(id) - detalhe com trilha, anexos, possiveis duplicatas e acoes permitidas; fora do escopo = 404",
+    "RegistrarAsync(request) - devolve o codigo de acesso UMA unica vez; funciona sem usuario autenticado",
+    "TriarAsync / EncaminharAsync",
+    "PedirComplementacaoAsync / ComplementarAsync",
+    "ResponderAreaAsync / DevolverParaReanaliseAsync",
+    "ResponderCidadaoAsync (intermediaria ou conclusiva)",
+    "ProrrogarAsync / CobrarAsync / EscalonarAsync",
+    "RegistrarRecursoAsync / ConcluirAsync / ArquivarAsync / EncaminharExternoAsync",
+    "HabilitarDenunciaAsync / AtualizarTeorPseudonimizadoAsync / AnotarAsync",
+    "RevelarIdentidadeAsync(id, justificativa) - grava acesso + evento + auditoria",
+    "ArquivarSemComplementacaoAsync() e ConcluirRespondidasSemRecursoAsync() - rotinas, devolvem quantas",
+    "ObterPainelAsync(de, ate, unidadeId) - indicadores do periodo"
+   ]
+  },
+  {
+   "nome": "IOuvidoriaCatalogoService / OuvidoriaCatalogoService (339 linhas)",
+   "responsabilidade": "Catalogo do modulo: pontos de resposta (com membros e contagem de pendentes), assuntos (arvore de 2 niveis), marcadores e a configuracao singleton de prazos. Seed idempotente dos 22 assuntos + configuracao roda na primeira leitura, NUNCA em migration (ADR-0043).",
+   "metodos": [
+    "GarantirCatalogoBaseAsync() - semeia assuntos + configuracao se nao existirem",
+    "ListarPontosRespostaAsync / ObterPontoRespostaAsync / CriarPontoRespostaAsync / AtualizarPontoRespostaAsync (membros SUBSTITUEM o conjunto)",
+    "PontosDoUsuarioAsync(usuarioId) - ids dos pontos ATIVOS de que o usuario e membro (base do 'meu ponto')",
+    "ListarAssuntosAsync / CriarAssuntoAsync / AtualizarAssuntoAsync (2 niveis; nome unico por nivel; assunto nao pode ser pai de si mesmo)",
+    "ListarMarcadoresAsync / CriarMarcadorAsync / AtualizarMarcadorAsync (nome unico)",
+    "ObterConfiguracaoAsync / SalvarConfiguracaoAsync"
+   ]
+  },
+  {
+   "nome": "OuvidoriaCatalogoBase (interno, 106 linhas)",
+   "responsabilidade": "Seed idempotente: os 22 assuntos do Manual de Ouvidoria do SUS (MS 2014) em ordem, e a configuracao singleton (Id fixo 77777777-0000-0000-0000-000000000002) com os defaults. Nenhum ponto de resposta e semeado (e cadastro do ouvidor). Trata corrida de criacao concorrente (DbUpdateException -> detach / releitura).",
+   "metodos": [
+    "GarantirAssuntosAsync(db, ct)",
+    "GarantirConfiguracaoAsync(db, ct) - devolve a config rastreada, criando com defaults se nao existir"
+   ]
+  },
+  {
+   "nome": "IOuvidoriaPublicoService / OuvidoriaPublicoService (108 linhas)",
+   "responsabilidade": "Canal publico sem login: registrar e acompanhar por protocolo + codigo de acesso. Delega ao service de manifestacao. Localiza por protocolo normalizado e confere o codigo em tempo constante; qualquer falha (protocolo inexistente, codigo errado, manifestacao anonima sem hash) devolve o MESMO 404, sem dizer qual dos dois errou.",
+   "metodos": [
+    "ListarAssuntosAsync() - so assuntos ativos",
+    "ListarUnidadesAsync() - unidades ativas e NAO externas",
+    "RegistrarAsync() - forca Canal=SitePublico, Origem=Cidadao, Resumo/Subassunto/Anexos vazios",
+    "AcompanharAsync(protocolo, codigo) - status, prazo, se prorrogada, resposta conclusiva, resolutividade, PodeComplementar, PodeRecorrer e SO os eventos VisivelAoCidadao",
+    "ComplementarAsync(protocolo, codigo, texto)",
+    "RecorrerAsync(protocolo, codigo, texto)"
+   ]
+  },
+  {
+   "nome": "OuvidoriaNotificador (137 linhas)",
+   "responsabilidade": "Avisos ao manifestante por WhatsApp, BEST-EFFORT. So notifica se config.NotificarPorWhatsApp E a manifestacao nao e anonima E ha telefone. Falha apenas loga Warning e nunca lanca (a transicao ja foi gravada). ADR-0057 (destinatario correto) e aplicado dentro do IWhatsAppCliente; envio marcado OrigemEnvioWhatsApp.Automatico. Em Sigilosa o texto nunca traz teor nem assunto - so protocolo e etapa.",
+   "metodos": [
+    "RegistroAsync - protocolo + codigo de acesso (unica vez) + prazo; usa config.TextoRecibo com {protocolo}/{codigo}/{prazo} ou o texto padrao",
+    "EncaminhamentoAsync - sem nomear pessoas nem unidade",
+    "PedidoComplementacaoAsync - em sigilosa omite o texto do pedido",
+    "ProrrogacaoAsync",
+    "RespostaConclusivaAsync - em sigilosa manda consultar no acompanhamento em vez do texto",
+    "ArquivamentoAsync"
+   ]
+  },
+  {
+   "nome": "OuvidoriaRotinasService (BackgroundService, 53 linhas)",
+   "responsabilidade": "Motor das rotinas automaticas. Primeira execucao 2 minutos apos subir, depois a cada 6 HORAS, em escopo proprio (IServiceScopeFactory). Sem usuario no contexto o service age como SISTEMA (ve tudo). Falha de um ciclo so loga Error e nao derruba o motor.",
+   "metodos": [
+    "ExecuteAsync - chama ArquivarSemComplementacaoAsync() e depois ConcluirRespondidasSemRecursoAsync(); loga Information quando alguma > 0"
+   ]
+  },
+  {
+   "nome": "OuvidoriaPrazos (estatico puro, 62 linhas)",
+   "responsabilidade": "Calculo de prazos sem banco e sem relogio proprio. Hoje() = UTC convertido para Brasilia (regra unica de fuso do repo). Dias uteis = seg-sex, SEM tabela de feriados (fase 1).",
+   "metodos": [
+    "Hoje() / DataDe(utc)",
+    "PrazoCidadao(registro, dias) = registro + N dias CORRIDOS",
+    "PrazoArea(hoje, prioridade, config, prazoDoPonto) - Urgente = dias uteis; Alta = PrazoAreaAltaDias; Normal = prazo do ponto senao PrazoAreaDias",
+    "DiasAtraso(prazo, hoje) - nunca negativo",
+    "FaixaPrazo(dias) - ate30 | 31a60 | mais60",
+    "AdicionarDiasUteis(inicio, n) - pula sabado e domingo"
+   ]
+  },
+  {
+   "nome": "OuvidoriaProtocolo (estatico, 49 linhas)",
+   "responsabilidade": "Protocolo publico e codigo de acesso. Alfabeto sem 0/O/1/I porque o cidadao dita por telefone. Gera com RandomNumberGenerator (nunca Random); so o SHA-256 vai ao banco; comparacao em tempo constante (FixedTimeEquals).",
+   "metodos": [
+    "GerarCodigoAcesso() - 8 caracteres",
+    "Hash(codigo) - SHA-256 hex minusculo (64 chars) do codigo normalizado",
+    "Confere(codigo, hash) - tempo constante; hash nulo (anonima) NUNCA confere",
+    "Formatar(ano, seq) = AAAA-NNNNNN",
+    "Normalizar(protocolo) - trim + maiusculas",
+    "NormalizarCodigo(codigo) - remove espacos e hifens, maiusculas"
+   ]
+  },
+  {
+   "nome": "Validators (FluentValidation, 216 linhas)",
+   "responsabilidade": "Validacao de FORMA dos requests (o que depende de estado fica no service e sai como ValidacaoException/ConflitoException). Teor 10..10.000 caracteres; Resumo <=200; CPF 11 digitos; telefone 10..13 digitos; CNS 15 digitos; e-mail valido <=200; TextoRequest piso comum >=5 caracteres (prorrogacao >=20 e identidade >=15 sao reforcados no service); resposta conclusiva >=20 caracteres + Resolutividade + SituacaoFinal; arquivamento por Duplicidade exige texto; PrazoDias 1..365; ponto tipo Unidade exige UnidadeId; configuracao: prazos 1..365 e PrazoAreaUrgenteDiasUteis 1..60, TextoRecibo <=2000.",
+   "metodos": [
+    "ManifestanteValidator, ReferidoValidator, AnexoRefValidator",
+    "RegistrarManifestacaoValidator, RegistrarManifestacaoPublicaValidator",
+    "TriarValidator, EncaminharValidator, TextoValidator, TextoComAnexosValidator",
+    "ResponderCidadaoValidator, ArquivarValidator, EncaminharExternoValidator",
+    "SalvarPontoRespostaValidator, SalvarAssuntoValidator, SalvarMarcadorValidator, OuvidoriaConfiguracaoValidator"
+   ]
+  }
+ ],
+ "maquina_estados": [
+  {
+   "de": "(inexistente)",
+   "para": "Registrada",
+   "acao": "RegistrarAsync - POST /ouvidoria/manifestacoes ou POST /publico/ouvidoria/manifestacoes",
+   "quem": "Ouvidoria.Inclusao (painel) OU qualquer cidadao sem login (canal publico; CriadoPor nulo, autor \"Cidadao\")",
+   "regra": "Anonima SO e admitida em Denuncia. Solicitacao e Informacao exigem Identificada E (CPF de 11 digitos OU nome + telefone com >=10 digitos). Gera protocolo AAAA-NNNNNN pela sequence smsmarica.ouvidoria_protocolo_seq; gera codigo de acesso de 8 chars (nulo se anonima) e grava so o SHA-256. Prioridade inicial Normal. PrazoRespostaEm = hoje + PrazoCidadaoDias. Valida assunto/subassunto (o subassunto tem de pertencer ao assunto)/unidade/regulacaoSolicitacaoId. Resolve o PatientId pelo CPF (best-effort, falha so loga Warning). Evento Registro VISIVEL ao cidadao; anexos visiveis. Notifica por WhatsApp."
+  },
+  {
+   "de": "Registrada | EmTriagem",
+   "para": "EmTriagem",
+   "acao": "TriarAsync - POST /ouvidoria/manifestacoes/{id}/triagem",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "Todos os campos opcionais; so o que vier preenchido muda. Mudar o Tipo revalida a regra de identificacao; se o tipo anterior era Denuncia, a habilitacao e PERDIDA (HabilitadaEm/Por = null) e o evento Reclassificacao fica visivel ao cidadao. Mudar Prioridade recalcula PrazoAreaEm SO se ainda nao foi encaminhada (antes disso o prazo da area e mera previsao). ResponsavelId tem de ser usuario existente nao excluido. MarcadorIds SUBSTITUEM todo o conjunto e todos precisam existir. Evento Triagem INTERNO listando as mudancas."
+  },
+  {
+   "de": "Registrada | EmTriagem | RespondidaPelaArea | EmValidacao | EmRecurso",
+   "para": "Encaminhada",
+   "acao": "EncaminharAsync - POST /ouvidoria/manifestacoes/{id}/encaminhar",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "O ponto tem de existir, nao estar excluido e estar ATIVO (senao ConflitoException ouvidoria.ponto_inativo). Se Tipo=Denuncia: (a) exige HabilitadaEm != null (ouvidoria.denuncia_nao_habilitada); (b) o ponto TEM de ser do tipo Apuracao (ouvidoria.denuncia_ponto_invalido); (c) o TeorPseudonimizado e obrigatorio - a unidade apuratoria nunca ve o teor original. PrazoAreaEm = PrazoDias informado (1..365) se vier, senao calculo por prioridade/prazo do ponto. Grava EncaminhadaEm. Evento Encaminhamento VISIVEL ao cidadao, preso ao ponto; o Texto opcional vira Anotacao INTERNA presa ao ponto (para a area ver). Notifica."
+  },
+  {
+   "de": "Registrada | EmTriagem | Encaminhada | RespondidaPelaArea | EmValidacao | EmRecurso (todos os abertos menos AguardandoComplementacao)",
+   "para": "AguardandoComplementacao",
+   "acao": "PedirComplementacaoAsync - POST /ouvidoria/manifestacoes/{id}/pedir-complementacao",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "Proibido em anonima (ouvidoria.anonima_sem_contato - nao ha contato). SO UMA VEZ por manifestacao (flag ComplementacaoUsada; ouvidoria.complementacao_unica, PN CGU 116 art. 27). SUSPENDE o relogio: grava SuspensaEm e ComplementacaoSolicitadaEm = agora. Evento PedidoComplementacao VISIVEL. Notifica (em sigilosa o texto do pedido e omitido)."
+  },
+  {
+   "de": "AguardandoComplementacao",
+   "para": "EmTriagem",
+   "acao": "ComplementarAsync - POST /ouvidoria/manifestacoes/{id}/complementar (painel) ou POST /publico/ouvidoria/manifestacoes/{protocolo}/complementar (cidadao)",
+   "quem": "Ouvidoria.Edicao OU o proprio cidadao pelo canal publico com protocolo + codigo",
+   "regra": "RETOMA o relogio: soma os dias parados a DiasSuspensos E empurra PrazoRespostaEm na mesma quantidade (os dias parados nao contam contra a ouvidoria); zera SuspensaEm. Evento Complementacao VISIVEL, com anexos visiveis."
+  },
+  {
+   "de": "Encaminhada",
+   "para": "RespondidaPelaArea",
+   "acao": "ResponderAreaAsync - POST /ouvidoria/manifestacoes/{id}/responder-area",
+   "quem": "Membro do ponto (OuvidoriaPontoResposta.Edicao) OU tecnico da ouvidoria (Ouvidoria.Edicao)",
+   "regra": "Quem NAO tem Ouvidoria.Edicao so responde por ponto de que e membro E ao qual a manifestacao esta encaminhada - fora disso 404 (nao vaza a existencia). Evento RespostaArea NAO VISIVEL ao cidadao; os anexos tambem entram como nao visiveis. O evento fica preso ao PontoRespostaId."
+  },
+  {
+   "de": "RespondidaPelaArea | EmValidacao",
+   "para": "Encaminhada",
+   "acao": "DevolverParaReanaliseAsync - POST /ouvidoria/manifestacoes/{id}/devolver-area",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "A resposta da area nao serviu. Novo prazo da area = METADE do prazo original concedido, com MINIMO de 2 dias (original = PrazoAreaEm - EncaminhadaEm, ou PrazoAreaDias se faltar dado). EncaminhadaEm e renovado para agora. Evento DevolucaoParaReanalise INTERNO, preso ao ponto."
+  },
+  {
+   "de": "EmTriagem | Encaminhada | RespondidaPelaArea | EmValidacao | EmRecurso",
+   "para": "(mesmo status - nao muda)",
+   "acao": "ResponderCidadaoAsync com Conclusiva=false - POST /ouvidoria/manifestacoes/{id}/responder-cidadao",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "Resposta intermediaria: evento RespostaIntermediaria VISIVEL ao cidadao, texto >=5 caracteres, sem mudar status nem relogios."
+  },
+  {
+   "de": "EmTriagem | Encaminhada | RespondidaPelaArea | EmValidacao | EmRecurso",
+   "para": "Respondida",
+   "acao": "ResponderCidadaoAsync com Conclusiva=true - POST /ouvidoria/manifestacoes/{id}/responder-cidadao",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "Texto >=20 caracteres. Exige Resolutividade (Resolvida|NaoResolvida) e SituacaoFinal COERENTE com o tipo: Solicitacao -> Atendida|NaoAtendida|NaoLocalizado|Faleceu; Reclamacao e Denuncia -> Procede|NaoProcede|Inconclusiva; Sugestao|Elogio|Informacao -> so Atendida. SituacaoFinal=NaoAtendida exige MotivoNaoAtendimento. Grava RespostaConclusiva, RespondidaEm, DiasAteResposta = dias corridos desde o registro MENOS DiasSuspensos, e DiasAtraso = dias alem do PrazoRespostaEm. Evento RespostaConclusiva VISIVEL. Notifica (em sigilosa manda consultar no acompanhamento em vez de repetir o texto)."
+  },
+  {
+   "de": "Respondida",
+   "para": "Concluida",
+   "acao": "(automatico dentro de ResponderCidadaoAsync conclusiva, quando Identificacao=Anonima)",
+   "quem": "Sistema, no mesmo ato do tecnico",
+   "regra": "Anonima nao tem acompanhamento nem recurso: a resposta fica registrada e a manifestacao ja conclui, com evento Conclusao visivel (\"Concluida: manifestacao anonima, sem canal de retorno.\")."
+  },
+  {
+   "de": "Respondida",
+   "para": "EmRecurso",
+   "acao": "RegistrarRecursoAsync - POST /ouvidoria/manifestacoes/{id}/recurso (painel) ou POST /publico/ouvidoria/manifestacoes/{protocolo}/recurso (cidadao)",
+   "quem": "Ouvidoria.Edicao OU o proprio cidadao pelo canal publico com protocolo + codigo",
+   "regra": "SO a partir de Respondida e SO UMA VEZ - checa se ja existe evento do tipo Recurso (ouvidoria.recurso_unico). Evento Recurso VISIVEL."
+  },
+  {
+   "de": "Respondida",
+   "para": "Concluida",
+   "acao": "ConcluirAsync - POST /ouvidoria/manifestacoes/{id}/concluir",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "Grava ConcluidaEm; evento Conclusao VISIVEL. So a partir de Respondida."
+  },
+  {
+   "de": "Qualquer status NAO final (isto e, exceto Concluida, Arquivada, EncaminhadaOutroOrgao)",
+   "para": "Arquivada",
+   "acao": "ArquivarAsync - POST /ouvidoria/manifestacoes/{id}/arquivar",
+   "quem": "Ouvidoria.EXCLUSAO (nao ha DELETE: arquivar e estado final com motivo)",
+   "regra": "Motivo obrigatorio (Duplicidade, TextoIncompreensivel, FaltaUrbanidade, Impropria, CopiaConhecimento, PerdaObjeto, SemComplementacao, SemElementosMinimos, Outro - PN CGU 116 arts. 28-30). Duplicidade EXIGE o Texto com o protocolo da manifestacao original. Limpa SuspensaEm. Evento Arquivamento VISIVEL + o texto opcional como Anotacao INTERNA. Notifica."
+  },
+  {
+   "de": "Qualquer status NAO final",
+   "para": "EncaminhadaOutroOrgao",
+   "acao": "EncaminharExternoAsync - POST /ouvidoria/manifestacoes/{id}/encaminhar-externo",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "SistemaExterno obrigatorio (<=40 chars), ProtocoloExterno opcional (<=60). Limpa SuspensaEm. Evento EncaminhamentoExterno VISIVEL (\"o assunto nao e de competencia desta ouvidoria\") + Anotacao INTERNA com o texto. Depois disso a prorrogacao fica vedada."
+  },
+  {
+   "de": "Qualquer status ABERTO (Registrada, EmTriagem, Encaminhada, AguardandoComplementacao, RespondidaPelaArea, EmValidacao, EmRecurso)",
+   "para": "(mesmo status)",
+   "acao": "ProrrogarAsync - POST /ouvidoria/manifestacoes/{id}/prorrogar",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "UMA UNICA VEZ (ProrrogadoEm nao nulo bloqueia - ouvidoria.prorrogacao_unica, Lei 13.460 art. 16 par. 1). VEDADA se o status for EncaminhadaOutroOrgao (ouvidoria.prorrogacao_vedada_externo). Justificativa EXPRESSA de no minimo 20 caracteres. PrazoRespostaEm += ProrrogacaoDias. Evento Prorrogacao VISIVEL com a justificativa e o novo prazo. Notifica."
+  },
+  {
+   "de": "Encaminhada",
+   "para": "(mesmo status)",
+   "acao": "CobrarAsync - POST /ouvidoria/manifestacoes/{id}/cobrar",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "So faz sentido com a area em posse: exige status Encaminhada. Corpo OPCIONAL - sem texto grava a cobranca padrao citando o PrazoAreaEm. Evento Cobranca INTERNO, preso ao ponto."
+  },
+  {
+   "de": "Qualquer status NAO final",
+   "para": "(mesmo status)",
+   "acao": "EscalonarAsync - POST /ouvidoria/manifestacoes/{id}/escalonar",
+   "quem": "OuvidoriaGESTAO.Edicao (unica acao de manifestacao que sai do modulo Ouvidoria)",
+   "regra": "Evento Escalonamento INTERNO, preso ao ponto. Nao muda status."
+  },
+  {
+   "de": "Denuncia em qualquer status NAO final",
+   "para": "(mesmo status, agora habilitada)",
+   "acao": "HabilitarDenunciaAsync - POST /ouvidoria/manifestacoes/{id}/habilitar",
+   "quem": "OuvidoriaSIGILO.Inclusao",
+   "regra": "Juizo de admissibilidade (autoria, materialidade, competencia). So tipo Denuncia (ouvidoria.nao_denuncia) e so uma vez (ouvidoria.denuncia_ja_habilitada). Grava HabilitadaEm/HabilitadaPor. Evento Habilitacao INTERNO. E PRE-REQUISITO do encaminhamento de denuncia."
+  },
+  {
+   "de": "(qualquer status)",
+   "para": "(mesmo status)",
+   "acao": "AtualizarTeorPseudonimizadoAsync - PUT /ouvidoria/manifestacoes/{id}/teor-pseudonimizado",
+   "quem": "OuvidoriaSIGILO.Edicao",
+   "regra": "Sem restricao de status. Grava o teor sem nada que identifique o manifestante - e ele que vai a unidade apuratoria. Evento Anotacao INTERNO (\"Teor pseudonimizado atualizado.\")."
+  },
+  {
+   "de": "(qualquer status)",
+   "para": "(mesmo status)",
+   "acao": "AnotarAsync - POST /ouvidoria/manifestacoes/{id}/anotar",
+   "quem": "Ouvidoria.Edicao",
+   "regra": "Sem restricao de status (inclusive finais). Evento Anotacao INTERNO."
+  },
+  {
+   "de": "(qualquer status)",
+   "para": "(mesmo status)",
+   "acao": "RevelarIdentidadeAsync - POST /ouvidoria/manifestacoes/{id}/identidade",
+   "quem": "OuvidoriaSIGILO.Consulta + usuario autenticado (token de servico sem usuario e recusado)",
+   "regra": "Justificativa OBRIGATORIA de no minimo 15 caracteres. Anonima nao tem identidade a revelar (ouvidoria.anonima_sem_identidade). Grava linha em ouvidoria_acesso_identidade (manifestacao, usuario, justificativa, IP, data) + evento AcessoIdentidade INTERNO + registro no IAuditoriaService (acao RevelarIdentidade). So entao devolve nome/CPF/telefone/e-mail/PatientId."
+  },
+  {
+   "de": "AguardandoComplementacao ha mais de ComplementacaoDias",
+   "para": "Arquivada (motivo SemComplementacao)",
+   "acao": "ArquivarSemComplementacaoAsync - rotina automatica de 6 em 6 horas",
+   "quem": "Sistema (autor \"Sistema\", AutorId nulo)",
+   "regra": "Corte por ComplementacaoSolicitadaEm < agora - ComplementacaoDias. Limpa SuspensaEm. Evento Arquivamento VISIVEL (\"as informacoes complementares nao chegaram em N dias\"). Notifica cada uma por WhatsApp depois do SaveChanges."
+  },
+  {
+   "de": "Respondida ha mais de ArquivamentoAutomaticoDias, sem recurso",
+   "para": "Concluida",
+   "acao": "ConcluirRespondidasSemRecursoAsync - rotina automatica de 6 em 6 horas",
+   "quem": "Sistema (autor \"Sistema\")",
+   "regra": "Corte por RespondidaEm < agora - ArquivamentoAutomaticoDias. O recurso ja teria tirado a manifestacao de Respondida, entao o filtro por status basta. Evento Conclusao VISIVEL (\"Concluida automaticamente: N dias apos a resposta, sem recurso.\"). NAO notifica."
+  },
+  {
+   "de": "EmValidacao",
+   "para": "(nenhuma acao LEVA a este status na fase 1)",
+   "acao": "(observacao fiel ao codigo)",
+   "quem": "-",
+   "regra": "OuvidoriaStatus.EmValidacao existe no enum e e ACEITO como estado de ORIGEM em encaminhar, devolver-area e responder-cidadao, conta na aba \"AguardandoValidacao\" do resumo e do filtro, e e visivel ao ponto de resposta - mas NENHUM metodo do service atribui esse status. O mesmo vale para o tipo de evento OuvidoriaTipoEvento.Reabertura (20), declarado e nunca emitido."
+  }
+ ],
+ "prazos": [
+  "Prazo ao CIDADAO: 30 dias CORRIDOS (config.PrazoCidadaoDias, default 30), contados do registro. PrazoRespostaEm = data do registro + 30. Base legal citada no codigo: Lei 13.460/2017 art. 16.",
+  "PRORROGACAO: +30 dias (config.ProrrogacaoDias, default 30), UMA UNICA VEZ por manifestacao, com justificativa expressa de no minimo 20 caracteres (Lei 13.460 art. 16 par. 1). Segunda tentativa = ConflitoException ouvidoria.prorrogacao_unica. Vedada em EncaminhadaOutroOrgao. Logo, o teto ao cidadao e 30+30 = 60 dias, mais os dias suspensos.",
+  "Prazo da AREA, prioridade NORMAL: 20 dias corridos (config.PrazoAreaDias, default 20) - ou o PrazoDias proprio do ponto de resposta, quando cadastrado, que tem precedencia.",
+  "Prazo da AREA, prioridade ALTA: 10 dias corridos (config.PrazoAreaAltaDias, default 10). Ignora o prazo proprio do ponto.",
+  "Prazo da AREA, prioridade URGENTE: 2 DIAS UTEIS (config.PrazoAreaUrgenteDiasUteis, default 2), somados pulando sabado e domingo. Ignora o prazo proprio do ponto.",
+  "O prazo da area pode ser SOBREPOSTO no encaminhamento por EncaminharRequest.PrazoDias (1..365 dias corridos a partir de hoje), que vence qualquer calculo.",
+  "Antes do encaminhamento, mudar a prioridade na triagem RECALCULA PrazoAreaEm (ainda e so previsao). Depois de encaminhada (EncaminhadaEm != null), mudar prioridade NAO mexe no prazo ja concedido.",
+  "DEVOLUCAO PARA REANALISE: o novo prazo da area e METADE do prazo original concedido (PrazoAreaEm - EncaminhadaEm), com MINIMO de 2 dias; se faltar dado, cai em PrazoAreaDias/2. Conta a partir de hoje e renova EncaminhadaEm.",
+  "COMPLEMENTACAO: o cidadao tem 20 dias (config.ComplementacaoDias, default 20) para responder. Pedir complementacao SUSPENDE o relogio do cidadao (SuspensaEm); quando a complementacao chega, os dias parados sao somados a DiasSuspensos E empurram PrazoRespostaEm na mesma medida - os dias parados nao contam contra a ouvidoria. A complementacao so pode ser pedida UMA VEZ (PN CGU 116 art. 27) e nunca em manifestacao anonima.",
+  "AUTO-ARQUIVO: passados os 20 dias sem complementacao, a rotina arquiva com motivo SemComplementacao e avisa o cidadao.",
+  "CONCLUSAO AUTOMATICA: 30 dias (config.ArquivamentoAutomaticoDias, default 30) apos a resposta conclusiva sem recurso, a rotina move Respondida -> Concluida. E tambem o prazo anunciado ao cidadao para recorrer na mensagem de WhatsApp.",
+  "FERIADOS: NAO ha tabela de feriados na fase 1 - explicito em OuvidoriaPrazos: 'Dias uteis = seg-sex, sem feriados (fase 1)'. O unico calculo em dias uteis e o da prioridade Urgente; todos os demais sao dias corridos.",
+  "FUSO: 'hoje' e sempre a data de Brasilia derivada do UTC (FusoBrasilia.ParaExibicao), e as datas de filtro do painel/lista sao convertidas de Brasilia para UTC (InicioUtc) na comparacao. Regra unica de fuso do repositorio.",
+  "ATRASO: DiasAtraso = max(0, hoje - PrazoRespostaEm); enquanto ABERTA e calculado ao vivo, depois de respondida/fechada usa o valor congelado no ato da resposta. 'AreaAtrasada' = status Encaminhada com PrazoAreaEm < hoje.",
+  "DiasAteResposta (indicador) = dias corridos entre o registro e a resposta conclusiva MENOS DiasSuspensos. Faixas do painel: ate30 | 31a60 | mais60.",
+  "Limites de configuracao aceitos: todos os prazos em dias 1..365; PrazoAreaUrgenteDiasUteis 1..60; TextoRecibo <=2000 caracteres."
+ ],
+ "protocolo": "PROTOCOLO PUBLICO: formato AAAA-NNNNNN (OuvidoriaProtocolo.Formatar(ano, seq) => $\"{ano}-{seq:D6}\"), onde AAAA e o ano corrente no fuso de Brasilia e NNNNNN e o proximo valor da sequence do Postgres smsmarica.ouvidoria_protocolo_seq, lida por SqlQueryRaw(\"SELECT nextval(...)\") e formatada com 6 digitos (sem reinicio anual: a sequence e global, o ano so entra no prefixo). E o que o cidadao guarda para acompanhar. Na entrada e normalizado com trim + MAIUSCULAS (Normalizar) antes da busca; a busca da fila usa Contains sobre o protocolo normalizado. || CODIGO DE ACESSO: 8 caracteres (TamanhoCodigo = 8) sorteados de um alfabeto de 32 simbolos SEM 0/O/1/I - \"ABCDEFGHJKLMNPQRSTUVWXYZ23456789\" - justamente porque o cidadao dita o codigo por telefone. Gerado com System.Security.Cryptography.RandomNumberGenerator.GetBytes (NUNCA Random), indexando o alfabeto por b % 32. E entregue UMA UNICA VEZ, no retorno do registro (ManifestacaoCriadaDto.CodigoAcesso) - nos dois canais, painel e site - e NUNCA mais: no banco fica somente CodigoAcessoHash = SHA-256 do codigo normalizado, em hexadecimal minusculo de 64 caracteres. Manifestacao ANONIMA nao recebe codigo (CodigoAcesso nulo, CodigoAcessoHash nulo) - e sem hash o Confere() sempre devolve false, ou seja, anonima nunca tem acompanhamento. || CONFERENCIA: NormalizarCodigo remove espacos e hifens e passa a maiusculas (o cidadao digita como quiser); a comparacao e feita com CryptographicOperations.FixedTimeEquals (tempo constante) contra o hash gravado. Protocolo inexistente, manifestacao excluida, codigo errado ou manifestacao anonima produzem todos exatamente o MESMO NaoEncontradoException/404 - por desenho, nao se diz qual dos dois errou.",
+ "endpoints": [
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/manifestacoes",
+   "o_que_faz": "Fila paginada com filtros: Status[] (multiplo), Tipo, UnidadeId, PontoRespostaId, Prioridade, Atrasadas, AguardandoValidacao, Busca, De, Ate, Pagina (1), Tamanho (padrao 50, teto 200). Ordena por UltimaAtividadeEm desc. A visibilidade e recortada no service; o manifestante vem nulo quando restrito.",
+   "permissao": "Consulta em Ouvidoria OU OuvidoriaPontoResposta (RequerQualquerPermissao)"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/manifestacoes/resumo",
+   "o_que_faz": "Contadores das abas no MESMO escopo da lista: Registradas, EmTriagem, Encaminhadas, AguardandoComplementacao, AguardandoValidacao (RespondidaPelaArea + EmValidacao), Atrasadas, AreaAtrasadas, EmRecurso e MeuPonto (encaminhadas aos pontos de que o usuario e membro).",
+   "permissao": "Consulta em Ouvidoria OU OuvidoriaPontoResposta"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}",
+   "o_que_faz": "Detalhe completo: classificacao, relogios, manifestante (ou nulo + IdentidadeRestrita=true), referido, envolvido, marcadores, trilha de eventos filtrada, anexos filtrados, possiveis duplicatas e AcoesPermitidas. Fora do escopo do usuario devolve 404.",
+   "permissao": "Consulta em Ouvidoria OU OuvidoriaPontoResposta"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes",
+   "o_que_faz": "Registra a manifestacao pelo painel. 201 Created com Id, Protocolo, CodigoAcesso (SO aqui, uma unica vez) e PrazoRespostaEm.",
+   "permissao": "Ouvidoria.Inclusao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/triagem",
+   "o_que_faz": "Tria: tipo, assunto/subassunto, prioridade, unidade, resumo, responsavel, vinculo com regulacao e marcadores. 204.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/encaminhar",
+   "o_que_faz": "Encaminha ao ponto de resposta (PontoRespostaId, PrazoDias opcional, Texto de orientacao opcional, TeorPseudonimizado opcional). 204.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/pedir-complementacao",
+   "o_que_faz": "Pede informacoes complementares ao cidadao e SUSPENDE o relogio. 204.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/complementar",
+   "o_que_faz": "Registra a complementacao recebida (texto + anexos) e RETOMA o relogio, devolvendo a manifestacao a EmTriagem. 204.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/responder-area",
+   "o_que_faz": "A area responde a ouvidoria (texto + anexos), resposta NAO visivel ao cidadao. 204 / 404 / 409.",
+   "permissao": "Edicao em OuvidoriaPontoResposta OU Ouvidoria (RequerQualquerPermissao)"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/devolver-area",
+   "o_que_faz": "Devolve a resposta da area para reanalise com metade do prazo (minimo 2 dias). 204.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/responder-cidadao",
+   "o_que_faz": "Resposta ao cidadao: Conclusiva=false gera resposta intermediaria sem mudar status; Conclusiva=true fecha em Respondida exigindo Resolutividade e SituacaoFinal. 204 / 400 / 409.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/prorrogar",
+   "o_que_faz": "Prorroga o prazo ao cidadao uma unica vez; o Texto e a justificativa (>=20 caracteres). 204 / 400 / 409.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/cobrar",
+   "o_que_faz": "Cobra a resposta da area (so em Encaminhada). Corpo OPCIONAL (EmptyBodyBehavior.Allow); sem texto grava a cobranca padrao com o prazo. 204.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/escalonar",
+   "o_que_faz": "Escalona a manifestacao (evento interno preso ao ponto), sem mudar status. 204.",
+   "permissao": "OuvidoriaGestao.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/recurso",
+   "o_que_faz": "Registra o recurso do cidadao: Respondida -> EmRecurso, uma unica vez. 204 / 409.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/concluir",
+   "o_que_faz": "Conclui a manifestacao respondida. 204 / 409.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/arquivar",
+   "o_que_faz": "Arquiva com motivo (Duplicidade exige o protocolo original no texto). 204 / 400 / 409.",
+   "permissao": "Ouvidoria.EXCLUSAO"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/encaminhar-externo",
+   "o_que_faz": "Encaminha a outro orgao (SistemaExterno + ProtocoloExterno opcional + Texto). Estado final EncaminhadaOutroOrgao. 204 / 409.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/habilitar",
+   "o_que_faz": "Juizo de admissibilidade da denuncia (autoria, materialidade, competencia). Pre-requisito para encaminhar denuncia. 204 / 409.",
+   "permissao": "OuvidoriaSigilo.Inclusao"
+  },
+  {
+   "metodo": "PUT",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/teor-pseudonimizado",
+   "o_que_faz": "Grava/atualiza o teor sem nada que identifique o manifestante - e o unico texto que a unidade apuratoria ve em denuncia. 204.",
+   "permissao": "OuvidoriaSigilo.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/anotar",
+   "o_que_faz": "Anotacao interna na trilha, em qualquer status. 204.",
+   "permissao": "Ouvidoria.Edicao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/manifestacoes/{id:guid}/identidade",
+   "o_que_faz": "Revela nome/CPF/telefone/e-mail/PatientId do manifestante sigiloso ou de denuncia. O Texto e a justificativa (>=15 caracteres); o acesso fica registrado (Decreto 10.153 art. 6 par. 3). 200 com ManifestanteDto / 400 / 409.",
+   "permissao": "OuvidoriaSigilo.Consulta"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/anexos",
+   "o_que_faz": "Sobe um arquivo (multipart, limite 6 MB por RequestSizeLimit) e devolve a MidiaDto para referenciar em registro/complementacao/resposta da area (pasta 'ouvidoria'). 201 / 400 / 403.",
+   "permissao": "Checagem MANUAL no controller (os atributos so combinam modulos com a MESMA acao): Ouvidoria.Inclusao OU OuvidoriaPontoResposta.Edicao. Token de servico (X-API-Key) tem acesso pleno."
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/pontos-resposta",
+   "o_que_faz": "Lista os pontos de resposta (ativos e inativos, exceto excluidos) com membros, unidade e contagem de Pendentes (encaminhadas ainda sem resposta).",
+   "permissao": "Consulta em Ouvidoria OU OuvidoriaGestao"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/pontos-resposta/{id:guid}",
+   "o_que_faz": "Detalhe de um ponto de resposta. 200 / 404.",
+   "permissao": "Consulta em Ouvidoria OU OuvidoriaGestao"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/pontos-resposta",
+   "o_que_faz": "Cria ponto de resposta (Unidade | AreaCentral | Apuracao), com membros e prazo proprio. Uma unidade so pode ter UM ponto. 201 / 400 / 409.",
+   "permissao": "OuvidoriaGestao.Inclusao"
+  },
+  {
+   "metodo": "PUT",
+   "rota": "/ouvidoria/pontos-resposta/{id:guid}",
+   "o_que_faz": "Atualiza o ponto e SUBSTITUI o conjunto de membros pelo enviado. 204 / 404 / 409.",
+   "permissao": "OuvidoriaGestao.Edicao"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/assuntos",
+   "o_que_faz": "Arvore plana de assuntos e subassuntos (inclusive inativos), ordenada por pai/ordem/nome. Dispara o seed idempotente dos 22 assuntos na primeira leitura.",
+   "permissao": "SEM atributo de permissao - qualquer usuario AUTENTICADO"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/assuntos",
+   "o_que_faz": "Cria assunto ou subassunto (catalogo de 2 niveis; nome unico dentro do nivel). 201 / 409.",
+   "permissao": "OuvidoriaGestao.Inclusao"
+  },
+  {
+   "metodo": "PUT",
+   "rota": "/ouvidoria/assuntos/{id:guid}",
+   "o_que_faz": "Atualiza assunto (nao pode ser pai de si mesmo; subassunto nao pode ter filhos). 204 / 404.",
+   "permissao": "OuvidoriaGestao.Edicao"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/marcadores",
+   "o_que_faz": "Lista os marcadores ordenados por nome.",
+   "permissao": "SEM atributo de permissao - qualquer usuario AUTENTICADO"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/ouvidoria/marcadores",
+   "o_que_faz": "Cria marcador (nome unico). 201 / 409.",
+   "permissao": "OuvidoriaGestao.Inclusao"
+  },
+  {
+   "metodo": "PUT",
+   "rota": "/ouvidoria/marcadores/{id:guid}",
+   "o_que_faz": "Atualiza marcador (nome unico). 204 / 404.",
+   "permissao": "OuvidoriaGestao.Edicao"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/configuracao",
+   "o_que_faz": "Le a configuracao singleton: PrazoCidadaoDias, ProrrogacaoDias, PrazoAreaDias, PrazoAreaAltaDias, PrazoAreaUrgenteDiasUteis, ComplementacaoDias, ArquivamentoAutomaticoDias, NotificarPorWhatsApp, TextoRecibo.",
+   "permissao": "Consulta em Ouvidoria OU OuvidoriaGestao"
+  },
+  {
+   "metodo": "PUT",
+   "rota": "/ouvidoria/configuracao",
+   "o_que_faz": "Salva a configuracao singleton (carimba AtualizadoEm/AtualizadoPor). 204.",
+   "permissao": "OuvidoriaGestao.Edicao"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/ouvidoria/painel",
+   "o_que_faz": "Indicadores do periodo (query: de, ate, unidadeId; padrao ultimos 30 dias, datas no fuso da instancia): Total, PorTipo, PorStatus, PorCanal, PorAssunto, PorUnidade, Respondidas, NoPrazo, ForaPrazo, TempoMedioDias, TempoMedioAreaDias (1o Encaminhamento -> 1a RespostaArea posterior), Estoque (em aberto), Resolvidas, NaoResolvidas e FaixasPrazo (ate30 | 31a60 | mais60). ATENCAO: o painel NAO aplica o escopo de visibilidade - conta sobre toda a base do periodo.",
+   "permissao": "OuvidoriaGestao.Consulta"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/publico/ouvidoria/assuntos",
+   "o_que_faz": "Assuntos ATIVOS (id, nome, paiId) para o formulario publico. Cache-Control public, max-age=300.",
+   "permissao": "PUBLICO (AllowAnonymous) + rate limit ouvidoria-publico"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/publico/ouvidoria/unidades",
+   "o_que_faz": "Unidades ativas e NAO externas (id, nome). Cache-Control public, max-age=300.",
+   "permissao": "PUBLICO (AllowAnonymous) + rate limit ouvidoria-publico"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/publico/ouvidoria/manifestacoes",
+   "o_que_faz": "Registro pelo site, sem login. Canal e Origem sao FIXOS (SitePublico / Cidadao); Resumo, Subassunto, ProtocoloExterno, SistemaExterno, RegulacaoSolicitacaoId e Anexos nao sao aceitos. 201 com Protocolo + CodigoAcesso (unica vez).",
+   "permissao": "PUBLICO (AllowAnonymous) + rate limit ouvidoria-publico"
+  },
+  {
+   "metodo": "GET",
+   "rota": "/publico/ouvidoria/manifestacoes/{protocolo}?codigo=XXXXXXXX",
+   "o_que_faz": "Acompanhamento: protocolo, tipo, status, RegistradaEm, PrazoRespostaEm, se foi prorrogada, RespostaConclusiva, Resolutividade, PodeComplementar, PodeRecorrer e SO os eventos VisivelAoCidadao (tipo, texto, data - sem nome de autor). 200 / 404.",
+   "permissao": "PUBLICO - autenticacao pelo par protocolo + codigo de acesso"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/publico/ouvidoria/manifestacoes/{protocolo}/complementar?codigo=XXXXXXXX",
+   "o_que_faz": "O cidadao envia a complementacao pedida (so em AguardandoComplementacao); retoma o relogio. 204 / 404 / 409.",
+   "permissao": "PUBLICO - protocolo + codigo"
+  },
+  {
+   "metodo": "POST",
+   "rota": "/publico/ouvidoria/manifestacoes/{protocolo}/recurso?codigo=XXXXXXXX",
+   "o_que_faz": "O cidadao recorre da resposta conclusiva (so em Respondida, uma unica vez). 204 / 404 / 409.",
+   "permissao": "PUBLICO - protocolo + codigo"
+  }
+ ],
+ "endpoints_publicos": [
+  "GET /publico/ouvidoria/assuntos - assuntos ativos para o formulario (cache 5 min)",
+  "GET /publico/ouvidoria/unidades - unidades ativas e nao externas (cache 5 min)",
+  "POST /publico/ouvidoria/manifestacoes - registra sem login; canal SitePublico e origem Cidadao sao fixos; devolve o codigo de acesso uma unica vez",
+  "GET /publico/ouvidoria/manifestacoes/{protocolo}?codigo= - acompanhamento com so os eventos visiveis ao cidadao",
+  "POST /publico/ouvidoria/manifestacoes/{protocolo}/complementar?codigo= - complementacao do cidadao",
+  "POST /publico/ouvidoria/manifestacoes/{protocolo}/recurso?codigo= - recurso do cidadao",
+  "Todo o controller e [AllowAnonymous] + [EnableRateLimiting(\"ouvidoria-publico\")]: janela fixa de 20 requisicoes por minuto POR IP, QueueLimit 0 (Program.cs). Objetivo declarado: barrar a varredura de protocolo/codigo e o registro em massa.",
+  "O IP real vem do ForwardedHeaders confiando SOMENTE no nginx local (loopback v4/v6), para o particionamento do rate limit e o registro de acesso nao caírem no 127.0.0.1 do proxy.",
+  "Protocolo inexistente, codigo errado, manifestacao excluida ou anonima devolvem todos o MESMO 404 - nao se distingue qual dos dois errou.",
+  "Os endpoints GET /ouvidoria/assuntos e GET /ouvidoria/marcadores nao sao anonimos, mas estao SEM atributo de permissao: bastam credenciais validas (qualquer usuario autenticado)."
+ ],
+ "regras_lgpd_sigilo": [
+  "QUATRO MODULOS DE PERMISSAO ORTOGONAIS (ADR-0060): Ouvidoria = 71 (fila e trabalho), OuvidoriaGestao = 72 (catalogo, configuracao, painel, escalonar), OuvidoriaSigilo = 73 (denuncia e identidade), OuvidoriaPontoResposta = 74 (quem responde pela area). Sao quatro e nao um porque AcoesPermissao so tem 4 flags e elas ja sao consumidas pelo trabalho normal; 'quem pode ver a identidade de um manifestante sigiloso' e 'quem responde pela unidade sem ver o manifestante' nao sao graus da mesma escala.",
+  "ESCOPO DE LEITURA (AplicarEscopo): sistema (rotina, sem usuario) e ouvidoria COM sigilo veem tudo; ouvidoria SEM sigilo NAO ve denuncia nenhuma, salvo as encaminhadas a um ponto de que ela seja membro; quem nao e da ouvidoria (so membro de ponto) ve apenas o que foi encaminhado aos seus pontos ATIVOS e apenas nos status Encaminhada, RespondidaPelaArea, EmValidacao, Respondida e Concluida. Quem nao ve nada recebe pagina vazia / resumo zerado, e o detalhe fora do escopo devolve 404 - nunca 403 - para nao vazar a existencia do registro.",
+  "MASCARAMENTO DO MANIFESTANTE: identidade SIGILOSA e SEMPRE restrita (o nome sai nulo da lista e do detalhe, e ManifestanteDto vem nulo com IdentidadeRestrita=true); DENUNCIA e restrita para quem nao tem OuvidoriaSigilo. Quem enxerga 'em modo ponto de resposta' nunca recebe manifestante, nem referido, nem TeorPseudonimizado separado - e nunca as possiveis duplicatas (que sao cruzadas por CPF).",
+  "PSEUDONIMIZACAO EM DENUNCIA: a unidade apuratoria NUNCA ve o Teor original - o detalhe entrega TeorPseudonimizado no lugar do Teor quando o leitor esta em modo ponto e o tipo e Denuncia. Por isso o encaminhamento de denuncia EXIGE TeorPseudonimizado preenchido, e so quem tem OuvidoriaSigilo.Edicao pode edita-lo.",
+  "DENUNCIA SO VAI A PONTO DE APURACAO e so depois do juizo de admissibilidade (HabilitarDenunciaAsync, OuvidoriaSigilo.Inclusao). Reclassificar uma denuncia para outro tipo na triagem APAGA a habilitacao - o juizo era da denuncia.",
+  "QUEBRA DE SIGILO LOGADA (Decreto 10.153/2019 art. 6 par. 3): RevelarIdentidadeAsync exige OuvidoriaSigilo.Consulta, usuario autenticado e justificativa de no minimo 15 caracteres; grava uma linha append-only em ouvidoria_acesso_identidade (manifestacao, usuario, justificativa, IP, data) MAIS um evento AcessoIdentidade na trilha MAIS um registro no IAuditoriaService com acao 'RevelarIdentidade'. So depois de gravar tudo e que os dados voltam.",
+  "ANONIMA NAO TEM IDENTIDADE: nao gera codigo de acesso, nao tem acompanhamento, nao recebe notificacao, nao admite pedido de complementacao (ouvidoria.anonima_sem_contato), nao admite revelacao (ouvidoria.anonima_sem_identidade) e conclui automaticamente ao receber a resposta conclusiva. Anonimato so e admitido em DENUNCIA.",
+  "BUSCA QUE NAO VAZA: na fila, nome e CPF so entram no LIKE quando a manifestacao e Identificada E (o usuario tem sigilo OU o tipo nao e denuncia); quem nao e da ouvidoria so busca por protocolo e resumo. Sem isso, a busca por nome revelaria a existencia de uma sigilosa.",
+  "TRILHA COM VISIBILIDADE POR EVENTO: cada OuvidoriaEvento carrega VisivelAoCidadao e (quando cabe) PontoRespostaId. O ponto de resposta ve apenas os eventos visiveis ao cidadao mais os do proprio ponto; os anexos seguem a mesma regra (visiveis ao cidadao ou presos a um evento que ele ve). Resposta da area, triagem, cobranca, escalonamento, habilitacao, anotacao e acesso a identidade sao INTERNOS. O acompanhamento publico retorna somente eventos VisivelAoCidadao, e sem nome de autor.",
+  "TRILHA APPEND-ONLY: nenhum evento e alterado ou apagado; o Teor original nunca e editado (a correcao vira evento). Nao ha DELETE de manifestacao - 'arquivar' e estado final com motivo, sob Ouvidoria.Exclusao; a exclusao no banco e logica (ExcluidoEm) e toda consulta filtra por ExcluidoEm == null.",
+  "NOTIFICACAO COM SIGILO: o OuvidoriaNotificador so envia se a instancia notifica, a manifestacao nao e anonima e ha telefone. Em manifestacao SIGILOSA o texto nunca traz teor nem assunto - o pedido de complementacao vai sem o detalhe e a resposta conclusiva manda consultar no acompanhamento em vez de repetir o texto. Nenhuma mensagem nomeia pessoas nem a unidade. O envio e best-effort: falha so loga Warning e nunca derruba a transicao ja gravada. ADR-0057 (destinatario correto) e aplicado dentro do IWhatsAppCliente.",
+  "FAIL-CLOSED: se o usuario sumiu entre o token e a consulta de permissoes (NaoEncontradoException), o contexto fica sem nenhuma permissao e o usuario nao ve nada. Sem usuario no contexto (rotina de background) o service age como SISTEMA e ve tudo - por isso as rotinas rodam em escopo proprio.",
+  "AS ACOES SAO DERIVADAS, NAO CHUTADAS: o detalhe devolve AcoesPermitidas ja cruzando status atual x permissoes x modo ponto x membro do ponto x se ja houve recurso - o front nao precisa (nem deve) reimplementar a regra."
+ ],
+ "rotinas_automaticas": [
+  "OuvidoriaRotinasService e um BackgroundService (.NET IHostedService). Primeira execucao 2 MINUTOS apos a aplicacao subir; depois, ciclo a cada 6 HORAS (TimeSpan.FromHours(6)).",
+  "Cada ciclo abre um escopo proprio (IServiceScopeFactory.CreateAsyncScope) e resolve um IOuvidoriaManifestacaoService novo. Como nao ha usuario no contexto, o service age como SISTEMA (ve tudo, autor 'Sistema', AutorId e AtualizadoPor nulos).",
+  "Passo 1 - ArquivarSemComplementacaoAsync: busca as manifestacoes nao excluidas em AguardandoComplementacao com ComplementacaoSolicitadaEm anterior a (agora - ComplementacaoDias, default 20 dias); move cada uma para Arquivada com MotivoArquivamento = SemComplementacao, limpa SuspensaEm e grava evento Arquivamento VISIVEL ao cidadao. Depois do SaveChanges, notifica cada manifestante por WhatsApp. Devolve a contagem. Consulta RASTREADA de proposito (o Base() normal e AsNoTracking).",
+  "Passo 2 - ConcluirRespondidasSemRecursoAsync: busca as nao excluidas em Respondida com RespondidaEm anterior a (agora - ArquivamentoAutomaticoDias, default 30 dias) e conclui cada uma (ConcluidaEm + evento Conclusao VISIVEL, texto 'Concluida automaticamente: N dias apos a resposta, sem recurso.'). O recurso ja teria tirado a manifestacao de Respondida, entao o filtro por status basta. NAO notifica. Devolve a contagem.",
+  "So loga Information quando alguma das duas contagens e maior que zero.",
+  "Falha de um ciclo NAO derruba o motor: a excecao e capturada, vai como LogError e o proximo ciclo tenta de novo. Cancelamento (shutdown) sai em silencio.",
+  "Alem do BackgroundService, ha rotinas SOB DEMANDA disparadas por leitura: GarantirCatalogoBaseAsync semeia os 22 assuntos do Manual do SUS (MS 2014) e a configuracao singleton na primeira chamada de ListarAssuntos/ObterConfiguracao/RegistrarAsync - idempotente e NUNCA em migration (ADR-0043), tratando corrida concorrente por DbUpdateException.",
+  "Ha ainda um calculo automatico embutido na resposta conclusiva (DiasAteResposta, DiasAtraso congelados) e a conclusao automatica imediata de manifestacao ANONIMA no ato da resposta - nao sao rotinas de fundo, mas acontecem sem acao humana adicional."
+ ]
+}

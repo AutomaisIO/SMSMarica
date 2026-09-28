@@ -120,7 +120,18 @@ public sealed record PrepararRedeRequest(
     int IntervaloMinutos = 10,
     string HoraInicialLocal = "18:00",
     int DiasAFrente = 21,
-    bool Habilitar = true);
+    bool Habilitar = true,
+
+    /// <summary>
+    /// Liga o aviso ao paciente (gatilho mestre da unidade). <b>Padrão ligado</b> desde 20/09/2026:
+    /// a rede opera com tudo sincronizando e notificando.
+    ///
+    /// <para>Ficava forçado em <c>false</c> porque a preparação acompanhava a carga inicial, que
+    /// traz a agenda histórica inteira de uma vez — com o aviso ligado, isso viraria uma enxurrada
+    /// de mensagens sobre consultas já ocorridas. O risco acabou por construção: a importação não
+    /// avisa agendamento com data no passado, venha por onde vier.</para>
+    /// </summary>
+    bool EnviarConfirmacao = true);
 
 /// <summary>O que a preparação deixou pronto.</summary>
 public sealed record PrepararRedeDto(

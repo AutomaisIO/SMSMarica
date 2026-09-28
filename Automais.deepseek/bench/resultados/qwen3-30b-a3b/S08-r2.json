@@ -1,0 +1,33 @@
+{
+ "cena": "S08",
+ "modelo": "qwen3-30b-a3b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 32.25,
+   "usage": {
+    "completion_tokens": 338,
+    "prompt_tokens": 4351,
+    "total_tokens": 4689,
+    "prompt_tokens_details": {
+     "cached_tokens": 4350
+    }
+   },
+   "texto_fora_de_tool": "O endereço da unidade onde seu filho fará o atendimento será informado no seu posto de saúde, onde você é cadastrada. O ideal é que ele retorne a guia lá, para confirmar o local e a hora. Caso precise de ajuda para localizar o seu posto, posso consultar por bairro — é só me dizer onde você mora.  \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados.  \n\nSe precisar de mais orientação, posso ajudar. Tem algum outro detalhe que gostaria de saber?  \n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"O endereço da unidade onde seu filho fará o atendimento será informado no seu posto de saúde, onde você é cadastrada. O ideal é que ele retorne a guia lá, para confirmar o local e a hora. Caso precise de ajuda para localizar o seu posto, posso consultar por bairro — é só me dizer onde você mora.\\n\\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados.\\n\\nSe precisar de mais orientação, posso ajudar. Tem algum outro detalhe que gostaria de saber?\", \"handoff\": false, \"confianca\": 0.9}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "O endereço da unidade onde seu filho fará o atendimento será informado no seu posto de saúde, onde você é cadastrada. O ideal é que ele retorne a guia lá, para confirmar o local e a hora. Caso precise de ajuda para localizar o seu posto, posso consultar por bairro — é só me dizer onde você mora.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados.\n\nSe precisar de mais orientação, posso ajudar. Tem algum outro detalhe que gostaria de saber?",
+  "handoff": false,
+  "confianca": 0.9
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T22:31:42",
+ "latencia_total_s": 32.25
+}

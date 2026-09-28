@@ -1,0 +1,90 @@
+{
+ "cena": "S12",
+ "modelo": "qwen3-30b-a3b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 14.92,
+   "usage": {
+    "completion_tokens": 113,
+    "prompt_tokens": 4798,
+    "total_tokens": 4911,
+    "prompt_tokens_details": {
+     "cached_tokens": 4789
+    }
+   },
+   "texto_fora_de_tool": "Para confirmar sua identidade, por favor, me informe o mês e o ano de nascimento. Também, caso queira verificar agendamentos, preciso dos quatro primeiros dígitos do CPF — todos de uma vez. Me responda com os dados.  \n\nAguardo sua resposta.  \n",
+   "tools": [
+    {
+     "nome": "consultar_cadastro",
+     "args": "{\"cpf\": \"0568\", \"mesNascimento\": 12, \"anoNascimento\": 1985}"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "latencia_s": 13.47,
+   "usage": {
+    "completion_tokens": 95,
+    "prompt_tokens": 4938,
+    "total_tokens": 5033,
+    "prompt_tokens_details": {
+     "cached_tokens": 4865
+    }
+   },
+   "texto_fora_de_tool": "Claro, Marília. Como posso ajudar hoje? Você quer saber sobre algum agendamento, exame, cadastro ou outra informação relacionada à sua saúde?  \n\nEstou aqui para ajudar com informações administrativas.  \n\n",
+   "tools": [
+    {
+     "nome": "consultar_agendamentos",
+     "args": "{\"cpf\": \"0568\", \"mesNascimento\": 12, \"anoNascimento\": 1985}"
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "latencia_s": 19.87,
+   "usage": {
+    "completion_tokens": 124,
+    "prompt_tokens": 5147,
+    "total_tokens": 5271,
+    "prompt_tokens_details": {
+     "cached_tokens": 4986
+    }
+   },
+   "texto_fora_de_tool": "Claro, Marília.  \n\nNão localizei agendamentos futuros no nosso sistema, mas isso não significa que não haja nenhum — pode ser que o agendamento tenha sido feito agora pela equipe ou ainda não tenha chegado aqui.  \n\nRecomendo que você confira a guia no posto de saúde onde é atendida. Se precisar, pode procurar um atendente humano para confirmar.  \n\nPosso ajudar com mais alguma coisa?  \n\n",
+   "tools": [
+    {
+     "nome": "encaminhar_para_humano",
+     "args": "{}"
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "latencia_s": 25.13,
+   "usage": {
+    "completion_tokens": 223,
+    "prompt_tokens": 5293,
+    "total_tokens": 5516,
+    "prompt_tokens_details": {
+     "cached_tokens": 5249
+    }
+   },
+   "texto_fora_de_tool": "Marília, encaminhei sua solicitação para um atendente humano, que vai ajudar com mais detalhes sobre seu agendamento.  \n\nAguarde o retorno, e lembre-se de acessar o app https://app.smsmarica.online para acompanhar seus exames, consultas e atendimentos na rede municipal.  \n\nEstou aqui se precisar de mais alguma coisa.  \n\nAté logo!  \n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Marília, encaminhei sua solicitação para um atendente humano, que vai ajudar com mais detalhes sobre seu agendamento.\\n\\nAguarde o retorno, e lembre-se de acessar o app https://app.smsmarica.online para acompanhar seus exames, consultas e atendimentos na rede municipal.\\n\\nEstou aqui se precisar de mais alguma coisa.\\n\\nAté logo!\", \"handoff\": true, \"confianca\": 0.95}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Marília, encaminhei sua solicitação para um atendente humano, que vai ajudar com mais detalhes sobre seu agendamento.\n\nAguarde o retorno, e lembre-se de acessar o app https://app.smsmarica.online para acompanhar seus exames, consultas e atendimentos na rede municipal.\n\nEstou aqui se precisar de mais alguma coisa.\n\nAté logo!",
+  "handoff": true,
+  "confianca": 0.95
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T22:42:05",
+ "latencia_total_s": 73.39
+}

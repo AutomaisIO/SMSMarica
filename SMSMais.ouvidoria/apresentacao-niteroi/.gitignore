@@ -1,0 +1,9 @@
+node_modules/
+slides-png/
+__pycache__/
+package-lock.json
+prova*.html
+prova*.pdf
+apresentacao.html
+marca/
+*- Copia.pdf

@@ -1,0 +1,33 @@
+{
+ "cena": "S10",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 36.26,
+   "usage": {
+    "completion_tokens": 375,
+    "prompt_tokens": 3991,
+    "total_tokens": 4366,
+    "prompt_tokens_details": {
+     "cached_tokens": 3986
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Claro, como posso ajudar você hoje?\",\"handoff\":false,\"confianca\":0.5}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Claro, como posso ajudar você hoje?",
+  "handoff": false,
+  "confianca": 0.5
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:42:21",
+ "latencia_total_s": 36.26
+}

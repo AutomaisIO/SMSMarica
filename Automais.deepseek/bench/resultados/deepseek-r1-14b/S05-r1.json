@@ -1,0 +1,27 @@
+{
+ "cena": "S05",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 298.6,
+   "usage": {
+    "completion_tokens": 579,
+    "prompt_tokens": 3842,
+    "total_tokens": 4421,
+    "prompt_tokens_details": {
+     "cached_tokens": 215
+    }
+   },
+   "texto_fora_de_tool": "\n\nDesculpe se pareceu que eu tinha acesso à sua informação pessoal! Na verdade, eu não sei o seu nome ou qualquer outra informação a menos que você me compartilhe. Eu só sei o que você me diz.\n\nPara confirmar a sua identidade e ajudar você com o exame, por favor, me envie os quatro primeiros dígitos do CPF do paciente, por gentileza.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:20:16",
+ "latencia_total_s": 298.6
+}

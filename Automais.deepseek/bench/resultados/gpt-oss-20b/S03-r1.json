@@ -1,0 +1,33 @@
+{
+ "cena": "S03",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 129.07,
+   "usage": {
+    "completion_tokens": 592,
+    "prompt_tokens": 3697,
+    "total_tokens": 4289,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município. Você pode me informar seu CEP ou bairro para que eu indique a unidade de urgência mais próxima?\",\"handoff\":false,\"confianca\":0.8}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município. Você pode me informar seu CEP ou bairro para que eu indique a unidade de urgência mais próxima?",
+  "handoff": false,
+  "confianca": 0.8
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:28:17",
+ "latencia_total_s": 129.07
+}

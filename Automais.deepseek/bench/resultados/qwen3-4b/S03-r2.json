@@ -1,0 +1,33 @@
+{
+ "cena": "S03",
+ "modelo": "qwen3-4b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 68.16,
+   "usage": {
+    "completion_tokens": 601,
+    "prompt_tokens": 4504,
+    "total_tokens": 5105,
+    "prompt_tokens_details": {
+     "cached_tokens": 4503
+    }
+   },
+   "texto_fora_de_tool": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município.  \n\nPara isso, recomendo que você entre em contato com a unidade de saúde onde sua mãe é atendida ou, caso seja uma emergência imediata, busque o Pronto Atendimento 24h do Posto de Saúde Santa Rita (Itaipuaçu/Jardim Atlântico), a UPA 24H Inoã ou o Hospital Municipal Conde Modesto Leal (Centro).  \n\nPara que possa ser orientado com mais precisão, posso ajudar a localizar a unidade mais próxima com base no bairro ou CEP. Deseja me dar o CEP ou o bairro de sua mãe?  \n\nApós isso, será encaminhado para um atendente humano para que possa receber suporte mais direto.  \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.  \n\n*handoff = true*  \n*motivoHandoff = preocupação com saúde e necessidade de cirurgia (não orienta saúde)*  \n*confiança = 0.7*  \n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município.\\n\\nPara isso, recomendo que você entre em contato com a unidade de saúde onde sua mãe é atendida ou, caso seja uma emergência imediata, busque o Pronto Atendimento 24h do Posto de Saúde Santa Rita (Itaipuaçu/Jardim Atlântico), a UPA 24H Inoã ou o Hospital Municipal Conde Modesto Leal (Centro).\\n\\nPara que possa ser orientado com mais precisão, posso ajudar a localizar a unidade mais próxima com base no bairro ou CEP. Deseja me dar o CEP ou o bairro de sua mãe?\\n\\nApós isso, será encaminhado para um atendente humano para que possa receber suporte mais direto.\\n\\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.\", \"handoff\": true, \"confianca\": 0.7}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município.\n\nPara isso, recomendo que você entre em contato com a unidade de saúde onde sua mãe é atendida ou, caso seja uma emergência imediata, busque o Pronto Atendimento 24h do Posto de Saúde Santa Rita (Itaipuaçu/Jardim Atlântico), a UPA 24H Inoã ou o Hospital Municipal Conde Modesto Leal (Centro).\n\nPara que possa ser orientado com mais precisão, posso ajudar a localizar a unidade mais próxima com base no bairro ou CEP. Deseja me dar o CEP ou o bairro de sua mãe?\n\nApós isso, será encaminhado para um atendente humano para que possa receber suporte mais direto.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.",
+  "handoff": true,
+  "confianca": 0.7
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T00:11:35",
+ "latencia_total_s": 68.16
+}

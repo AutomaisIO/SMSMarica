@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sincronismo cirúrgico Conde/UPA/Santa Rita pela web — o que é lote, o que é um-a-um, e o custo medido</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Sincronismo cirúrgico Conde/UPA/Santa Rita pela web — o que é lote, o que é um-a-um, e o custo medido</h1>
+<p>&gt; Medido em 16/09/2026 contra o Conde (<code>klinikosconde</code>, unid 0005). O objetivo é o do operador: &gt; <strong>ser cirúrgico nas requisições</strong> (não onerar o Klinikos) e trocar o sincronismo hoje feito por &gt; SQL (rowversion) por leitura "como usuário". Nada aqui foi escrito no hub.</p>
+<h2>1. O que sai em LOTE (1 requisição) × o que é UM-A-UM</h2>
+<div class="tw"><table><thead><tr><th>Dado do conector FHIR</th><th>Em lote pela web?</th><th>Fonte</th></tr></thead><tbody>
+<tr><td>Boletim / chegada / prontuário</td><td><strong>Sim</strong></td><td>407 (registrados/dia), 667 (nominal por risco)</td></tr>
+<tr><td>Atendido + hora + classificação + clínica</td><td><strong>Sim</strong></td><td>526 (atendidos por profissional/dia)</td></tr>
+<tr><td>CID por boletim</td><td><strong>Sim</strong></td><td>815 (Atendimento Nominal por CID)</td></tr>
+<tr><td>Desfecho / evasão / óbito / remoção</td><td><strong>Sim</strong> (nominal ou totais)</td><td>65, 834, 520, 527</td></tr>
+<tr><td>Em observação + leito</td><td><strong>Sim</strong></td><td>630</td></tr>
+<tr><td>Cadastro novo (prontuário, nasc, sexo, CNS)</td><td><strong>Sim</strong></td><td>21 (Prontuários Abertos), 488 (Origem)</td></tr>
+<tr><td><strong>Narrativa médica</strong> (anamnese, exame físico, hipótese, conduta)</td><td><strong>NÃO</strong></td><td>tela <code>AtendimentoMedico.aspx</code> (por boletim); 791 PDF por paciente/competência (mês inteiro dá 504)</td></tr>
+<tr><td><strong>Prescrição</strong> (medicamento, dose, via)</td><td><strong>NÃO</strong></td><td>tela <code>PrescricaoReceita.aspx</code> (por boletim)</td></tr>
+<tr><td><strong>Sinais vitais</strong></td><td><strong>NÃO</strong></td><td>tela <code>Enfermagem.aspx</code> / <code>RegistrosEnfermagem.aspx</code> (por boletim)</td></tr>
+</tbody></table></div>
+<p><strong>Confirmado varrendo o catálogo inteiro (268 relatórios):</strong> prescrição, sinais vitais e a narrativa completa <strong>não têm relatório nominal em lote</strong>. Só existem por boletim (tela) ou, para a narrativa, o PDF 791 por paciente. Resposta direta à pergunta: <strong>sim, essa camada profunda é um-a-um</strong> (ou, na melhor das hipóteses, um-a-um por paciente via 791, não por boletim).</p>
+<h2>2. Custo medido (Conde, 1 dia, ~1.000 boletins/dia)</h2>
+<p>Relatórios de lote, por chamada (Crystal no servidor deles):</p>
+<div class="tw"><table><thead><tr><th>Relatório</th><th>Tamanho</th><th>Tempo</th></tr></thead><tbody>
+<tr><td>630 em observação (sem data)</td><td>162 KB</td><td><strong>10–13 s</strong></td></tr>
+<tr><td>407 registrados no dia</td><td>532 KB</td><td><strong>23–30 s</strong></td></tr>
+<tr><td>526 atendidos no dia (nominal + classificação)</td><td>1,1 MB</td><td><strong>~60 s</strong> (no limite do 504 do nginx)</td></tr>
+</tbody></table></div>
+<p>Telas por boletim: GET da tela = ~1–1,5 s, <strong>mas</strong> ela abre a fila/busca (RadGrid) e <strong>ignora o boletim na query string</strong> — abrir um boletim específico exige <strong>postback de busca + seleção na grade</strong> (2+ requisições), e a narrativa/prescrição/vitais estão em <strong>abas separadas</strong> (mais postbacks). Estimativa realista: <strong>3–6 requisições por boletim</strong>. As telas de atendimento são de <strong>escrita</strong> (charting) — abrir um boletim nelas em produção é arriscado; o caminho de leitura é a tela "Histórico do Paciente" (<code>ResumoProntuario.aspx</code>) ou o PDF 791.</p>
+<p><strong>Conta do "um-a-um para todos":</strong> Conde ~1.000 boletins/dia × 3–6 req = <strong>3.000–6.000 requisições/dia só para o Conde</strong>, mais UPA e Santa Rita. É exatamente o volume a evitar.</p>
+<h2>3. Desenho do sincronismo cirúrgico (proposto — nada implementado)</h2>
+<p>Substitui o CDC por rowversion (que não existe na web) por um <strong>delta de fechados</strong>:</p>
+<ol>
+<li><strong>Marca incremental = último boletim fechado visto.</strong> Não há rowversion; a chave é o</li>
+</ol>
+<p>   <code>spa_codigo</code> (Nº Boletim) + data.</p>
+<ol>
+<li><strong>1 requisição de lote por unidade por ciclo</strong> para listar os boletins do período recente</li>
+</ol>
+<p>   (ex.: 526 ou 407 do dia; para "agora", 630). Diff contra o que o hub já tem (<code>identifier</code>    <code>urn:klinikos:boletim</code>). Custo: ~1 relatório/unidade/ciclo (25–60 s), fora de pico.</p>
+<ol>
+<li><strong>A espinha (Encounter, chegada, CID, desfecho, classificação, cadastro) entra desse lote</strong> —</li>
+</ol>
+<p>   sem tocar tela. É o que devolve o Conde ao hub e ao Painel do Secretário.</p>
+<ol>
+<li><strong>A camada profunda (narrativa/prescrição/vitais) é sob demanda e cirúrgica</strong>, não a mangueira</li>
+</ol>
+<p>   inteira. Regras possíveis (a decidir):    - só para boletins com desfecho relevante (internação, óbito, remoção), não para toda alta;    - só quando outro sistema/clínico pedir aquele paciente (pull on-demand);    - preferir <strong>791 por paciente/competência</strong> (1 GET traz vários boletins do mesmo paciente)      a abrir tela por boletim;    - o resto: pedir <strong>exportação ao fornecedor</strong> (Eco Sistemas).</p>
+<ol>
+<li><strong>Medir sempre:</strong> cada ciclo registra nº de requisições, bytes e tempo por unidade; se um</li>
+</ol>
+<p>   relatório passar de ~60 s (borda do 504), recuar a janela (1 dia, não semana/mês).</p>
+<ol>
+<li><strong>Uma sessão por unidade, uma requisição por vez</strong> (o ASP.NET serializa a sessão; paralelizar</li>
+</ol>
+<p>   dá 504). Concorrência real = 3 sessões (uma por unidade), não mais.</p>
+<h2>3b. Medições de custo e vazão (Conde, 16/09/2026) — feito</h2>
+<p><strong>Vazão (quantos fecham por hora)</strong> — coluna "Hora Atendimento" do relatório 526, dia 15/09:</p>
+<ul>
+<li><strong>831 atendimentos no dia</strong>, média <strong>~36/hora</strong>, <strong>pico ~65–71/hora</strong> entre 08h e 15h,</li>
+</ul>
+<p>  madrugada &lt; 12/hora. Ou seja, o job horário de "fechados" processa ~36 boletins no caso médio   e ~70 no pico — por unidade.</p>
+<p><strong>Custo dos relatórios de lote</strong> (cronometrado, 2 execuções cada):</p>
+<div class="tw"><table><thead><tr><th>Relatório</th><th>Tamanho</th><th>Tempo</th><th>Uso</th></tr></thead><tbody>
+<tr><td>630 em observação</td><td>162 KB</td><td>10–13 s</td><td>painel "agora"</td></tr>
+<tr><td>407 registrados/dia</td><td>532 KB</td><td>23–30 s</td><td>delta de registrados</td></tr>
+<tr><td>526 atendidos/dia</td><td>1,1 MB</td><td>~60 s</td><td>delta de fechados (no limite do 504)</td></tr>
+</tbody></table></div>
+<p><strong>Custo do "um-a-um" (camada profunda)</strong> — não sai barato: a tela de boletim faz GET ~1–1,5 s mas <strong>ignora o boletim na URL</strong> (abre a fila em grade) e a narrativa/prescrição/vitais estão em abas → <strong>postback de busca + seleção + abas</strong>. O PDF por paciente (791) seria 1 GET, mas o <code>par2</code> é o <strong>código interno do paciente</strong> e o combo o resolve por <strong>callback de postback</strong> (não é webservice) — some GetData → 1 lookup + 1 GET por paciente/competência. Estimativa por boletim: <strong>2–4 requisições e ~5–10 s</strong>. Não fechei o número exato de propósito, para não martelar a produção deles; fica para o harness (§4), rodado pontualmente.</p>
+<p><strong>Conta da estratégia proposta</strong> (por unidade):</p>
+<div class="tw"><table><thead><tr><th>Job</th><th>Cadência</th><th>Requisições</th><th>Tempo de servidor deles</th></tr></thead><tbody>
+<tr><td>Painel "agora" (630 + 631)</td><td>10 min</td><td>~2 relatórios</td><td>~25–45 s</td></tr>
+<tr><td>Delta de fechados (526 ou 407)</td><td>1 h</td><td>1 relatório</td><td>~25–60 s</td></tr>
+<tr><td>Profundo um-a-um</td><td>quando fecha</td><td>~36/h × 2–4 = <strong>~70–150 req/h</strong> (pico ~140–280)</td><td>~3–6 min/h (pico ~12 min/h)</td></tr>
+</tbody></table></div>
+<p>O peso está no <strong>um-a-um</strong>. Por isso ele tem de ser <strong>cirúrgico</strong>: não a mangueira inteira, e sim os boletins que importam (ver §3.4). O painel e a espinha são baratos.</p>
+<h2>3c. Veredito sobre a sua estratégia</h2>
+<p>Faz sentido e bate com o medido:</p>
+<ul>
+<li><strong>Painel a cada 10 min:</strong> ok, é leve (630 é o mais barato; 631 para "em andamento"). Uma</li>
+</ul>
+<p>  sessão por unidade, sequencial.</p>
+<ul>
+<li><strong>Fechados de hora em hora:</strong> ok — 1 relatório/unidade/hora pega os ~36 (pico ~70) que</li>
+</ul>
+<p>  fecharam. O diff é por <code>spa_codigo</code> contra o hub.</p>
+<ul>
+<li><strong>Profundo só quando fechou, um-a-um:</strong> ok, mas é a parte cara. Recomendo <strong>teto por ciclo</strong></li>
+</ul>
+<p>  (processar no máximo N/hora e deixar fila para o próximo) e <strong>priorizar</strong> (internação/óbito/   remoção primeiro; alta simples pode esperar ou nem puxar narrativa). E medir sempre, recuando   se passar de ~60 s/relatório ou se a fila do profundo crescer.</p>
+<h2>3c-bis. Por que o "rápido" do painel é pesado — e por que ele NÃO deve existir</h2>
+<p>Medido no Conde em 16/09:</p>
+<div class="tw"><table><thead><tr><th>Fonte</th><th>Saída</th><th>Tempo</th><th>O que é</th></tr></thead><tbody>
+<tr><td>631 em andamento (relatório)</td><td>4 KB</td><td>3,0 s</td><td>Crystal (vazio no dia)</td></tr>
+<tr><td>56 registro diário por clínica (<strong>só totais</strong>)</td><td>99 KB</td><td><strong>14,6 s</strong></td><td>Crystal</td></tr>
+<tr><td>630 em observação (relatório)</td><td>162 KB</td><td>13,7 s</td><td>Crystal</td></tr>
+<tr><td><strong>AdmFila.aspx (tela viva da fila)</strong></td><td>288 KB</td><td><strong>0,8 s</strong></td><td>página ASP.NET normal</td></tr>
+</tbody></table></div>
+<p>A lição: <strong>o peso é o Crystal Reports, não o dado.</strong> Um relatório de <strong>totais</strong> de 9 linhas (56 = 99 KB) leva os mesmos ~14 s que um nominal de 162 KB — porque o custo é o motor de relatório (carrega a definição <code>.rpt</code>, roda o formula engine, renderiza XLS/PDF e segura o lock da sessão ASP.NET), não a consulta. Prova: a <strong>tela viva</strong> da fila (<code>AdmFila.aspx</code>), que lê o banco deles direto e pinta uma grade, responde em <strong>0,8 s</strong> — 17× mais rápida que qualquer relatório. Mas essa é a via interna <em>deles</em>, exatamente a que estamos abandonando.</p>
+<p><strong>Tem caminho fora do Crystal? Sim, mas não serve para nós.</strong> Testado em 16/09:</p>
+<ul>
+<li>A <code>AdmFila.aspx</code> (página viva) carrega em <strong>0,8 s</strong> — prova que o dado é barato; o Crystal é o</li>
+</ul>
+<p>  overhead. <strong>Mas</strong> o grid vem <strong>vazio</strong> no HTML: as linhas entram depois por um <strong>callback AJAX   do RadGrid</strong> (filtro <code>ddlFilter</code>), que é um <strong>postback de ViewState por página</strong>, específico   de porta/fila, e nas tentativas voltou sem linhas. É frágil (quebra a cada build), dá só a   <strong>fila viva "agora"</strong> (não histórico) e ainda é PII na tela.</p>
+<ul>
+<li><strong>Não existe API de dados</strong> (a varredura das 368 telas não achou <code>.ashx</code>, WebMethod nem JSON</li>
+</ul>
+<p>  próprio — só relatórios Crystal, páginas ASP.NET inteiras e os combos de lookup).</p>
+<p>Ou seja, para <strong>puxar dado da origem</strong> só há dois caminhos reais: (a) <strong>relatório Crystal</strong> (lento ~14–60 s, mas é um GET autocontido e estável) ou (b) <strong>dirigir o RadGrid das telas vivas</strong> (rápido ~0,8 s, mas postback frágil, por página, e só "agora"). Para <strong>ingestão</strong> vale o (a), com cadência gentil. Para o <strong>painel</strong> não vale nenhum — o dado já está no hub.</p>
+<p><strong>Conclusão (princípio do operador, 16/09):</strong> <em>acesso direto ao banco acabou; a origem passa a ser lida "como usuário", com parcimônia, só para <strong>ingestão</strong>. Histórico, tempo médio, "agora", dashboard — tudo isso a gente <strong>deduz do nosso próprio hub</strong>, porque o dado já está em casa. A carga sai do sistema de origem e vem para o nosso, que é nosso para escalar.</em></p>
+<p>Portanto <strong>o painel do Secretário não deve chamar o Klinikos.</strong> Nada de poll de relatório a cada 10 min (seriam ~14 s de Crystal × 3 unidades × 144 vezes/dia — absurdo em cima do fornecedor). O painel lê o <strong>hub</strong>:</p>
+<ul>
+<li>"aguardando por cor", "em atendimento", "atendidos hoje", "tempo classificação → atendimento"</li>
+</ul>
+<p>  saem de <code>fhir.encounter</code> (chegada, classificação/cor, início e fim do atendimento) — sub-segundo,   de graça, sem tocar o Klinikos.</p>
+<ul>
+<li>O "instantâneo" vira "na última sincronização" (~a cadência da via rápida). Para um painel</li>
+</ul>
+<p>  executivo isso basta, e a frescura é o <strong>único</strong> botão a girar — não um poll novo.</p>
+<p>&gt; <strong>A confirmar (banco de prod estava fora agora):</strong> que o <code>fhir.encounter</code> da UPA já carrega &gt; <strong>cor da classificação</strong> e os <strong>carimbos de início/fim do atendimento</strong>. Se algum não estiver, &gt; não é bloqueio: a via rápida ingere pelos relatórios nominais que já os trazem (667 = boletim + &gt; Data/Hora Entrada + risco; 526 = boletim + hora + classificação). Ou seja, o painel continua &gt; derivado do hub; só garantimos que a via rápida grava esses campos.</p>
+<h2>3d. Arquitetura acordada (16/09/2026): via rápida barata + fila lenta do profundo</h2>
+<p>Duas trilhas independentes por unidade (Conde, UPA, Santa Rita), desacoplando <strong>chegada</strong> de <strong>processamento</strong> — o fornecedor nunca leva rajada:</p>
+<h3>Via rápida (barata, janela curta, alta frequência)</h3>
+<ul>
+<li><strong>Painel "agora"</strong> a cada <strong>10 min</strong>: <code>630</code> (observação) + <code>631</code> (em andamento). ~25–45 s/ciclo.</li>
+<li><strong>Espinha / delta de fechados</strong> a cada <strong>~15 min</strong>: <code>407</code> (~25 s; <strong>não</strong> o <code>526</code>, que raspa o</li>
+</ul>
+<p>  504). Janela <strong>curta e rolante</strong> (o dia corrente, re-lido). Diff por <code>spa_codigo</code>   (<code>urn:klinikos:boletim</code>) contra o hub → só o que é novo entra. Como roda toda hora curta, cada   ciclo traz <strong>poucas linhas novas</strong> (~9/15min no médio, ~18 no pico) — nada acumula.</p>
+<ul>
+<li>Tudo que sai do lote (Encounter, chegada, desfecho, classificação/cor, <strong>CID</strong>, cadastro) é</li>
+</ul>
+<p>  gravado <strong>aqui</strong>, idempotente por <code>spa_codigo</code>. É o que devolve o Conde ao hub e ao painel.</p>
+<ul>
+<li><strong>Conjunto mínimo da via rápida</strong> (medido 16/09):</li>
+<li><strong>667</strong> (~14 s): Nº Boletim + <strong>Data/Hora Entrada (chegada)</strong> + <strong>cor</strong> + clínica → "esperando</li>
+</ul>
+<p>    por cor" e tempo de espera.   - <strong>631</strong> (~3–14 s): Nº Boletim + <strong>Início Atendimento</strong> + tempo + clínica + profissional → "em     atendimento" e tempo de atendimento.   - <strong>526</strong> (~60 s, <strong>1×/hora</strong>): traz <strong>CID + procedimentos + hora do atendimento</strong> por boletim     em lote (agrupado por profissional) — é o que resgata o CID sem abrir tela (o 815 dedicado     está quebrado). <strong>A cor vem do 667</strong>, não do 526 (a coluna Classificação do 526 veio vazia).     Pesado, então <strong>horário</strong>, não a cada 10 min.</p>
+<ul>
+<li>Assim a espinha inteira (jornada + cor + CID) sai de <strong>relatório</strong>, e o <strong>deep</strong> fica só com o</li>
+</ul>
+<p>  que não existe em relatório nenhum: <strong>narrativa, prescrição e sinais vitais</strong>.</p>
+<h3>Fila lenta (o profundo, um-a-um, sem pressa)</h3>
+<ul>
+<li>Camada profunda = <strong>narrativa médica + prescrição + sinais vitais</strong> (o CID saiu daqui: vem em</li>
+</ul>
+<p>  lote pelo 526 — ver §3d espinha). Só o que não existe em relatório nenhum fica na fila.</p>
+<ul>
+<li>Ao ver um boletim <strong>fechado</strong> sem camada profunda no hub, <strong>enfileira</strong> <code>spa_codigo</code> (+ unidade</li>
+</ul>
+<p>  + chave do paciente + prioridade) numa <strong>tabela durável</strong> em <code>smsmarica</code> (não em memória).</p>
+<ul>
+<li>Um <strong>drenador</strong> de fundo puxa a fila a <strong>taxa fixa e gentil</strong> (ex.: 1 boletim a cada N s,</li>
+</ul>
+<p>  teto de M/hora por unidade), <strong>um por vez</strong>, respeitando 1 sessão/unidade e 1 requisição/vez.   "Sem pressa" = rate-limit + backoff; nunca esvazia em rajada.</p>
+<ul>
+<li><strong>Prioridade:</strong> internação / óbito / remoção antes de alta simples. Alta simples pode nem puxar</li>
+</ul>
+<p>  narrativa (decisão de produto).</p>
+<ul>
+<li><strong>Idempotente e resiliente:</strong> cada item faz upsert por <code>spa_codigo</code>; falha volta pra fila com</li>
+</ul>
+<p>  backoff; a fila pode acumular sem dor — ela existe justamente para absorver o pico e drenar no   vale da madrugada.</p>
+<ul>
+<li><strong>Guarda-custo:</strong> cada ciclo registra nº de requisições, bytes e segundos; alarme se um</li>
+</ul>
+<p>  relatório passar de ~55 s (borda do 504) ou se a profundidade da fila crescer sem drenar.</p>
+<h3>Marca incremental (não há rowversion na web)</h3>
+<ul>
+<li>Via rápida: <code>spa_codigo</code> já visto (o diff é a marca).</li>
+<li>Fila: estado por item (enfileirado / em processo / concluído / falho+tentativas).</li>
+</ul>
+<h3>Painel do Secretário: 0 chamadas ao Klinikos</h3>
+<p>Lê o <strong>hub</strong>, não a origem. O painel é a <strong>frente do hospital ao vivo</strong>: quantos esperando e há quanto tempo, quantos por cor (vermelho/amarelo/verde…), quantos em atendimento e o tempo em curso. Tudo isso são <strong>encounters recentes</strong> no hub:</p>
+<ul>
+<li><strong>esperando por cor</strong> = boletim do dia com cor (do 667) e <strong>sem</strong> Início Atendimento; tempo =</li>
+</ul>
+<p>  agora − chegada.</p>
+<ul>
+<li><strong>em atendimento</strong> = com Início Atendimento (do 631) e sem fim; tempo = agora − início.</li>
+<li><strong>atendidos / desfecho</strong> = com fim (do 526/desfecho).</li>
+</ul>
+<p>Ou seja, o painel <strong>não faz requisição própria ao Klinikos</strong> — ele consome o que a via rápida já ingeriu (667 + 631, e 526 de hora em hora). A <strong>mesma</strong> ingestão serve o painel, a análise do passado e o backfill do hub. A "frescura" do painel = cadência da via rápida (~10 min para 667/631). Isso apaga o poll de 10 min ao Klinikos do plano antigo — era Crystal caro para um número que o hub já tem.</p>
+<h2>3e. Desonerar ao máximo a origem — checklist</h2>
+<p>O objetivo é <strong>transferir a carga do sistema do fornecedor para o nosso</strong>. Regras:</p>
+<ol>
+<li><strong>Painel: zero requisições à origem</strong> — derivado do hub.</li>
+<li><strong>Nunca usar relatório de "estatística/totais" para o que o hub calcula</strong> — Crystal cobra</li>
+</ol>
+<p>   ~14 s até para 9 linhas. Se precisar de agregado, agrega <strong>no nosso banco</strong>.</p>
+<ol>
+<li><strong>Via rápida: 1 relatório leve por unidade por ciclo</strong> (407 ~25 s / 667 ~14 s). O 526 (~50 s)</li>
+</ol>
+<p>   fica fora da via rápida — não por 504 (o nginx é nosso, timeout ajustável), mas por <strong>carga</strong>:    é CPU de Crystal no app deles, então roda raro e na madrugada. Janela curta e rolante → poucas    linhas novas por ciclo.</p>
+<ol>
+<li>**Preferir relatório NOMINAL (linhas cruas que a gente ingere) a relatório que faz a origem</li>
+</ol>
+<p>   computar** — a conta é nossa, não deles.</p>
+<ol>
+<li><strong>Deep na fila lenta</strong>, taxa gentil, teto/hora, drenar na madrugada (vale de ~&lt;12/h).</li>
+<li><strong>Uma sessão por unidade, uma requisição por vez</strong> (a sessão ASP.NET serializa; paralelismo</li>
+</ol>
+<p>   só gera 504).</p>
+<ol>
+<li><strong>Cache do último resultado por (unidade, relatório, janela)</strong>; só re-puxa na cadência.</li>
+<li><strong>Recuo automático:</strong> se um relatório passar de ~55 s, encurtar a janela; se a fila do deep</li>
+</ol>
+<p>   crescer, baixar a taxa de chegada (janela ainda mais curta), não subir a de saída.</p>
+<ol>
+<li><strong>Tudo medido por ciclo</strong> (req, bytes, s) — a régua de "estamos onerando?" é objetiva.</li>
+</ol>
+<p>O norte: a origem é lida o <strong>mínimo</strong> necessário para <strong>trazer o dado uma vez</strong>; tudo o que é consulta, histórico, indicador e dashboard roda <strong>em casa</strong>, sobre o hub.</p>
+<h2>3f. Crystal onera o SERVIDOR deles; "tela" é a própria aplicação (leve)</h2>
+<p>A preocupação do operador está certa e casa com o medido:</p>
+<ul>
+<li><strong>Relatório Crystal = carga no servidor do fornecedor.</strong> Os ~14 s não são rede: é CPU/memória/IO</li>
+</ul>
+<p>  deles — carrega a definição <code>.rpt</code>, roda o formula/grouping engine, sobe uma sessão de   relatório, renderiza XLS/PDF e <strong>segura o lock da sessão ASP.NET o tempo todo</strong>. Um totalzinho   de 9 linhas (rel. 56) custou os mesmos 14 s: o custo é o <strong>motor</strong>, não o dado. Bater nisso a   cada 10 min × 3 unidades é peso real no servidor deles.</p>
+<ul>
+<li><strong>"Tela" = a aplicação normal servindo uma página</strong> (um SELECT + render de grade). Medido:</li>
+</ul>
+<p>  <code>AdmFila</code> 0,8 s contra ~14 s do Crystal — <strong>~17× menos tempo de servidor</strong> por request, e solta   o lock da sessão em ~1 s em vez de segurar 14–60 s (muito mais gentil com concorrência).</p>
+<p><strong>Consequência de projeto:</strong></p>
+<ol>
+<li><strong>Deep pela fila: preferir a TELA de leitura (<code>ResumoProntuario</code>) ao 791 (Crystal).</strong> Mesmo</li>
+</ol>
+<p>   sendo vários requests por boletim, cada um é leve (~1 s de app) e não acende o motor de    relatório. O 791 (PDF) é o oposto: 1 request, mas Crystal — evitar no volume.</p>
+<ol>
+<li><strong>Crystal só onde não há alternativa barata:</strong> a <strong>lista diária de fechados</strong> (espinha) —</li>
+</ol>
+<p>   aí é <strong>1 relatório leve por unidade por ciclo</strong> (407), não um poll. Uma batida de Crystal por    ciclo é aceitável; dezenas não.</p>
+<ol>
+<li><strong>"Leve por request" ≠ "leve no total":</strong> o deep é milhares de postbacks/dia se for a</li>
+</ol>
+<p>   mangueira inteira. Por isso continua <strong>fila com teto e prioridade</strong> — o que torna o    slow-drain viável é justamente cada request ser leve e espalhado no tempo, sem rajada.</p>
+<ol>
+<li><strong>ViewState tem custo:</strong> cada postback de tela carrega ~280 KB de ViewState (banda + desserial.</li>
+</ol>
+<p>   deles). Baratíssimo perto do Crystal, mas não zero — mais um motivo para o deep ser cirúrgico.</p>
+<p>Regra prática: <strong>para o servidor deles, uma tela ≪ um relatório.</strong> Onde der para trocar Crystal por tela (o deep), troca. Onde o Crystal for inevitável (a lista de fechados), use <strong>uma vez por ciclo, janela curta</strong>, nunca em poll curto.</p>
+<p>Isso satisfaz o pedido: <strong>janela curta</strong> (nada acumula na via rápida), <strong>traz o barato sempre</strong>, e o <strong>profundo vira fila drenada um-a-um sem pressa</strong>, com o custo por boletim (§3b: ~2–4 req, ~5–10 s) diluído no tempo em vez de concentrado.</p>
+<h2>3g. Não dá para janela menor que "um dia" — então o botão é a CADÊNCIA</h2>
+<p>Testado em 16/09: o <code>526</code> <strong>ignora a hora</strong> nos parâmetros — passar <code>15/09/2026 08:00–10:00</code> devolveu os <strong>mesmos 831 boletins em ~50 s</strong>, idêntico ao dia inteiro. Os parâmetros são <strong>data (dia), não datetime</strong>; qualquer hora é descartada. O mesmo vale para os outros relatórios de período (a tela só oferece RadDatePicker de data). O custo do Crystal é fixo por render (~14–60 s) independente de quantas linhas — encurtar a janela <strong>não</strong> baixaria o custo mesmo que desse.</p>
+<p><strong>Consequência:</strong> como não dá para estreitar a <strong>janela</strong>, o que a gente regula é a <strong>cadência</strong> e o <strong>lado de cá</strong>:</p>
+<ol>
+<li><strong>Diff por <code>spa_codigo</code> (nosso lado):</strong> puxa o dia inteiro no ciclo, mas só <strong>ingere os novos</strong>.</li>
+</ol>
+<p>   O relatório custa o mesmo; nossa gravação é que fica incremental.</p>
+<ol>
+<li><strong>Cadência por peso do relatório, não por janela:</strong></li>
+</ol>
+<ul>
+<li><strong>667 + 631</strong> (leves, ~14 s): frequentes (~10–15 min) — é a frente do hospital.</li>
+<li><strong>526 (CID, ~50 s de CPU Crystal):</strong> <strong>raro</strong> — não mais por 504 (o nginx é nosso, timeout</li>
+</ul>
+<p>     ajustável; ver §3g), e sim por <strong>carga</strong> no app deles. CID/procedimento é <strong>enriquecimento</strong>, não é      ao vivo — então roda <strong>1×/dia de madrugada</strong> (dia anterior fechado), quando é mais rápido e      não disputa com o pico. Se precisar de CID mais fresco, no máximo a cada poucas horas, com      retry/backoff no 504.</p>
+<ol>
+<li><strong>"Agora" usa relatório de estado, não de período:</strong> 629/630/631 são retratos do instante</li>
+</ol>
+<p>   (fila/observação/andamento), naturalmente pequenos — não crescem como o 526 do dia.</p>
+<p>Ou seja: janela mínima é o dia; a economia vem de <strong>puxar o pesado poucas vezes</strong> (e no vale) e <strong>derivar o resto em casa</strong>.</p>
+<h3>E o medo dos 60s do 526? Não dá para trocar por relatórios leves somados</h3>
+<p>Verificado em 16/09:</p>
+<ul>
+<li><strong>526 não fatia:</strong> o único filtro é <strong>profissional (1.308 opções)</strong> — não há por clínica nem</li>
+</ul>
+<p>  especialidade. Fatiar seria 1.308 chamadas, pior.</p>
+<ul>
+<li><strong>Não há relatório de CID por boletim mais leve:</strong> o terso (815) está <strong>quebrado</strong>; os demais</li>
+</ul>
+<p>  de CID são só <strong>totais</strong>. Para CID de <em>todos</em> os boletins, a origem só oferece o 526 inteiro.</p>
+<p>Como o 526 é inevitável e pesado, o medo do 504 se resolve pelo <strong>quando</strong>, não pelo <strong>qual</strong>:</p>
+<ol>
+<li><strong>526 na madrugada, 1×/dia, do dia anterior fechado.</strong> CID não é "ao vivo" (o painel usa</li>
+</ol>
+<p>   667/631, sem CID). Às 3h o servidor deles está ocioso → os ~50s tendem a ~20–30s e o 504 quase    some. Se der 504, retry com backoff; atrasar enriquecimento não machuca.</p>
+<ol>
+<li><strong>CID de carona no deep</strong> para o subconjunto cirúrgico: o CID está na <strong>mesma tela</strong> do</li>
+</ol>
+<p>   atendimento (narrativa/prescrição/vitais), então todo boletim que a fila lenta já abrir (    internação, óbito, priorizados) <strong>traz o CID junto, de graça</strong>. O 526 noturno cobre o resto    (a massa de altas simples), garantindo Condition em todo Encounter.</p>
+<p>&gt; <strong>Correção (operador, 16/09): o nginx é NOSSO.</strong> O timeout de 60s que gerava o 504 é ajustável &gt; por nós (<code>proxy_read_timeout</code>/<code>proxy_send_timeout</code> no reverse proxy). Ou seja, <strong>o 504 deixa de &gt; ser parede</strong> — o 526 completa os ~50s sem cortar. <strong>Atenção:</strong> subir o timeout <strong>não acelera</strong> o &gt; relatório; os ~50s são o <strong>Crystal na CPU do servidor de aplicação</strong> atrás do nginx. Então o &gt; 526 continua pesado <em>para aquele servidor</em> e ainda vale rodá-lo <strong>raro e na madrugada</strong> — mas &gt; agora por <strong>carga</strong>, não por medo de falhar. Sem o 504, cai a urgência de fatiar/substituir: &gt; podemos rodar o 526 inteiro quando precisarmos, com retry só por precaução.</p>
+<h2>4. Custo do deep — medido em 16/09 (<code>medir_custo_boletim.py</code>)</h2>
+<p>O que <strong>ficou medido</strong> (sobre a tela de leitura <code>ResumoProntuario</code>, 5 prontuários reais):</p>
+<ul>
+<li><strong>Cada request é leve e não-Crystal:</strong> shell ~0,5 s + um postback ~0,5 s; ~4 requisições e</li>
+</ul>
+<p>  <strong>~1,1 s</strong> por prontuário só para abrir a tela e tentar carregar. Confirma "tela ≪ relatório".</p>
+<p>O que <strong>resistiu à medição</strong> (e é em si a descoberta): <strong>carregar o prontuário não é um postback simples.</strong> O campo do prontuário é <code>readonly</code> e a carga só acontece pelo <strong>popup de busca</strong> (<code>rwinConsultaOrigem</code> → consultar paciente → selecionar), que devolve o prontuário ao pai e só então monta a <strong>árvore</strong> de atendimentos (cada nó expande por outro postback). Setar o campo e disparar <code>imbPesquisar</code>/árvore <strong>não</strong> carregou (nome/CID vieram vazios). Além disso, os prontuários de teste (do relatório 21 = "abertos") são recém-cadastrados, sem atendimento.</p>
+<p><strong>Estimativa realista do deep por paciente</strong> (não um número cravado): shell + popup de busca + seleção + expansão de N nós = <strong>~4–8 requisições, ~3–6 s</strong>, dominado por round-trips (não Crystal), <strong>mais a fragilidade</strong> de dirigir popup + árvore, que quebra a cada mudança de build deles.</p>
+<p><strong>Conclusão que isso reforça:</strong> raspar o deep por tela é <strong>caro em passos e frágil</strong>. Portanto:</p>
+<ol>
+<li>A <strong>fila lenta</strong> do deep tem de ser <strong>pequena/cirúrgica</strong> (só desfecho relevante), não a massa.</li>
+<li>Para cobertura <strong>completa</strong> de narrativa/prescrição/vitais, o caminho robusto é **exportação do</li>
+</ol>
+<p>   fornecedor** (Eco Sistemas), não o scraping de tela. Vale pedir.</p>
+<ol>
+<li>O que <strong>não</strong> depende disso já está resolvido barato: jornada+cor+CID pelos relatórios</li>
+</ol>
+<p>   (667/631/526), e o painel pelo hub.</p>
+<p>&gt; <strong>Nota de método:</strong> parei de forçar o popup para não martelar a produção do fornecedor &gt; (guardrail). O número exato do deep sai quando (a) tivermos um prontuário com atendimento &gt; confirmado e (b) decidirmos dirigir o popup — ou, melhor, quando o fornecedor expuser a &gt; exportação e o scraping deixar de ser necessário.</p>
+<h2>4a. Validação de paridade SQL × Web (o teste de aceite antes de substituir)</h2>
+<p>Antes de o conector web <strong>substituir</strong> o SQL, provar que ele entrega <strong>os mesmos dados no mesmo formato</strong>. O método (ideia do operador):</p>
+<ol>
+<li><strong>Escolher a bancada nas UPAs, não no Conde.</strong> As UPAs já estão no hub via SQL — então dá para</li>
+</ol>
+<p>   comparar. O Conde não tem SQL no hub (é a lacuna), então serve só de validação estrutural depois.</p>
+<ol>
+<li><strong>Amostra:</strong> N boletins (<code>spa_codigo</code>) de um dia de uma UPA que o hub já tem via</li>
+</ol>
+<p>   <code>meta.source=…/klinikos/upa24h-…</code>.</p>
+<ol>
+<li><strong>Rodar a estratégia web</strong> para os MESMOS boletins/dia e montar os recursos FHIR.</li>
+<li><strong>Diff campo a campo</strong> contra o que está no hub (vindo do SQL): Encounter (period, class,</li>
+</ol>
+<p>   status, discharge), Condition (CID), Observation (vitais), Patient (identidade). Relatório de    paridade: igual / diferente / ausente, por campo.</p>
+<p><strong>O critério é o RESULTADO FINAL CONVERGIDO, não o meio do caminho.</strong> É esperado (e ok) que os campos cheguem em tempos diferentes — a espinha primeiro, o deep depois pela fila. O aceite é: <strong>depois que a espinha E o deep já rodaram para o boletim, o recurso FHIR do web = o do SQL.</strong> A diferença legítima é <em>quando</em> cada campo aparece, nunca o <em>conteúdo</em> final. Então o diff se faz sobre o <strong>estado convergido</strong>: rodar, para os N boletins da amostra, espinha + deep até o fim, e só então comparar. Tem de bater no final: Encounter (period, class, status, discharge), Condition (CID), Observation (vitais), DocumentReference (narrativa), MedicationRequest (prescrição), Patient.</p>
+<p><strong>Deltas de formato a normalizar até o final bater (o teste revela, a gente reconcilia):</strong></p>
+<ul>
+<li><strong>CID código × texto — o de-para.</strong> O SQL traz <strong>código+nome</strong> (de <code>TB_CID</code>); o 526 (e as telas)</li>
+</ul>
+<p>  trazem o <strong>texto</strong> do diagnóstico, e às vezes <strong>sem o código</strong>. Onde não vier o código, é   obrigatório um <strong>de-para texto→CID</strong> para preencher o <code>Condition.code</code> no mesmo formato do SQL   (senão o diff acusa "diferente" só por formato). O de-para: normaliza o texto (maiúsculas, sem   acento, sem o sufixo entre colchetes) e casa contra <code>TB_CID</code> (que o hub/o conector já conhece);   o que não casar entra numa lista de exceções para tratamento manual — nunca inventar código.</p>
+<ul>
+<li><strong>Precisão de hora:</strong> SQL tem timestamp exato; o relatório web dá <code>HH:MM</code>. Definir tolerância</li>
+</ul>
+<p>  (casar por minuto) ou buscar o segundo na tela do deep. Onde a fonte web genuinamente não tem o   segundo, é limite da fonte, não erro — fica <strong>documentado</strong> como tolerância aceita.</p>
+<ul>
+<li><strong>Vitais/narrativa:</strong> vêm pelo deep; no estado convergido têm de existir e casar valor a valor.</li>
+</ul>
+<p>Ou seja, o alvo é <strong>equivalência eventual</strong>: mesmo conteúdo final, ordem de chegada diferente. O relatório de paridade é o <strong>critério de aceite</strong> para ligar a substituição das UPAs e define o contrato de formato (o que casa exato, o que casa com tolerância) antes de confiar no web para o Conde, onde não há SQL para comparar.</p>
+<h2>4b. Harness de custo por boletim (pronto para rodar pontualmente)</h2>
+<p>Falta o número que decide o item 4: <strong>quantas requisições e quantos segundos custa puxar a camada profunda de UM boletim</strong> pelo caminho de leitura (<code>ResumoProntuario.aspx</code> por prontuário, ou 791 por paciente). Isso exige abrir a tela de um paciente real (PII → fica em <code>capturas/</code>, gitignored) na produção do fornecedor. Proposta: <code>medir_custo_boletim.py</code> que roda numa amostra pequena (3–5 boletins reais tirados do 407), cronometra o ciclo completo e grava <strong>só os agregados</strong> (req/boletim, s/boletim) — sem dado de paciente no doc. <strong>Não rodo sem seu OK</strong>, porque bate em tela de paciente na produção deles e você pediu para não onerar.</p>
+<p>&gt; Popular o hub e mudar o conector são ações de produção + carga em massa — só com OK por passo &gt; ([[feedback_producao_confirmar_antes]], [[feedback_carga_massa_verificar_pela_api]]).</p>
+</main>
+</body>
+</html>

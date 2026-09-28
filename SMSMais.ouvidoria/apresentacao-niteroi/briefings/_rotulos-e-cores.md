@@ -1,0 +1,214 @@
+# Rótulos dos enums (lib/rotulos.ts)
+
+- ROTULO_TIPO.Solicitacao = Solicitação
+- ROTULO_TIPO.Reclamacao = Reclamação
+- ROTULO_TIPO.Denuncia = Denúncia
+- ROTULO_TIPO.Sugestao = Sugestão
+- ROTULO_TIPO.Elogio = Elogio
+- ROTULO_TIPO.Informacao = Informação
+- (ordem do array TIPOS: Solicitacao, Reclamacao, Denuncia, Sugestao, Elogio, Informacao)
+- ROTULO_IDENTIFICACAO.Identificada = Identificada
+- ROTULO_IDENTIFICACAO.Sigilosa = Sigilosa (identidade restrita à ouvidoria)
+- ROTULO_IDENTIFICACAO.Anonima = Anônima (sem acompanhamento)
+- (ordem do array IDENTIFICACOES: Identificada, Sigilosa, Anonima)
+- ROTULO_CANAL.Painel = Painel (registro interno)
+- ROTULO_CANAL.SitePublico = Site público
+- ROTULO_CANAL.AppCidadao = App do cidadão
+- ROTULO_CANAL.WhatsApp = WhatsApp
+- ROTULO_CANAL.Presencial = Presencial
+- ROTULO_CANAL.Telefone = Telefone
+- ROTULO_CANAL.Email = E-mail
+- ROTULO_CANAL.Carta = Carta
+- ROTULO_CANAL.Urna = Urna
+- ROTULO_CANAL.BuscaAtiva = Busca ativa
+- ROTULO_CANAL.Disque136 = Disque 136
+- ROTULO_CANAL.FalaBr = Fala.BR
+- ROTULO_CANAL.OuvidoriaGeral = Ouvidoria-geral do município
+- ROTULO_CANAL.Outro = Outro
+- (ordem do array CANAIS, que é a ordem do <select>: Painel, Presencial, Telefone, WhatsApp, Email, Carta, Urna, BuscaAtiva, SitePublico, AppCidadao, Disque136, FalaBr, OuvidoriaGeral, Outro)
+- ROTULO_ORIGEM.Cidadao = Cidadão
+- ROTULO_ORIGEM.OuvidoriaAtiva = Ouvidoria ativa
+- ROTULO_ORIGEM.DeOficio = De ofício
+- ROTULO_ORIGEM.Coletiva = Coletiva
+- (ordem do array ORIGENS: Cidadao, OuvidoriaAtiva, DeOficio, Coletiva)
+- ROTULO_PRIORIDADE.Normal = Normal
+- ROTULO_PRIORIDADE.Alta = Alta
+- ROTULO_PRIORIDADE.Urgente = Urgente
+- (ordem do array PRIORIDADES: Normal, Alta, Urgente)
+- ROTULO_STATUS.Registrada = Registrada
+- ROTULO_STATUS.EmTriagem = Em triagem
+- ROTULO_STATUS.Encaminhada = Encaminhada à área
+- ROTULO_STATUS.AguardandoComplementacao = Aguardando complementação
+- ROTULO_STATUS.RespondidaPelaArea = Respondida pela área
+- ROTULO_STATUS.EmValidacao = Em validação
+- ROTULO_STATUS.Respondida = Respondida ao cidadão
+- ROTULO_STATUS.EmRecurso = Em recurso
+- ROTULO_STATUS.Concluida = Concluída
+- ROTULO_STATUS.Arquivada = Arquivada
+- ROTULO_STATUS.EncaminhadaOutroOrgao = Encaminhada a outro órgão
+- (ordem do array STATUS: Registrada, EmTriagem, Encaminhada, AguardandoComplementacao, RespondidaPelaArea, EmValidacao, Respondida, EmRecurso, Concluida, Arquivada, EncaminhadaOutroOrgao)
+- ROTULO_RESOLUTIVIDADE.Resolvida = Resolvida
+- ROTULO_RESOLUTIVIDADE.NaoResolvida = Não resolvida
+- ROTULO_SITUACAO_FINAL.Atendida = Atendida
+- ROTULO_SITUACAO_FINAL.NaoAtendida = Não atendida
+- ROTULO_SITUACAO_FINAL.NaoLocalizado = Cidadão não localizado
+- ROTULO_SITUACAO_FINAL.Faleceu = Cidadão faleceu
+- ROTULO_SITUACAO_FINAL.Procede = Procede
+- ROTULO_SITUACAO_FINAL.NaoProcede = Não procede
+- ROTULO_SITUACAO_FINAL.Inconclusiva = Inconclusiva
+- (situacoesFinaisPorTipo — Solicitacao: Atendida, NaoAtendida, NaoLocalizado, Faleceu | Reclamacao e Denuncia: Procede, NaoProcede, Inconclusiva | demais tipos: Atendida)
+- ROTULO_MOTIVO_NAO_ATENDIMENTO.FaltaRecursos = Falta de recursos
+- ROTULO_MOTIVO_NAO_ATENDIMENTO.NaoCobertoSus = Não coberto pelo SUS
+- ROTULO_MOTIVO_NAO_ATENDIMENTO.FezParticular = Cidadão fez pelo particular
+- ROTULO_MOTIVO_NAO_ATENDIMENTO.VagasInsuficientes = Vagas insuficientes
+- ROTULO_MOTIVO_NAO_ATENDIMENTO.NaoCompareceu = Cidadão não compareceu
+- ROTULO_MOTIVO_NAO_ATENDIMENTO.Outro = Outro
+- (ordem do array MOTIVOS_NAO_ATENDIMENTO: FaltaRecursos, NaoCobertoSus, FezParticular, VagasInsuficientes, NaoCompareceu, Outro)
+- ROTULO_MOTIVO_ARQUIVAMENTO.Duplicidade = Duplicidade (já existe manifestação igual)
+- ROTULO_MOTIVO_ARQUIVAMENTO.TextoIncompreensivel = Texto incompreensível
+- ROTULO_MOTIVO_ARQUIVAMENTO.FaltaUrbanidade = Falta de urbanidade
+- ROTULO_MOTIVO_ARQUIVAMENTO.Impropria = Imprópria (não é assunto de ouvidoria)
+- ROTULO_MOTIVO_ARQUIVAMENTO.CopiaConhecimento = Cópia para conhecimento
+- ROTULO_MOTIVO_ARQUIVAMENTO.PerdaObjeto = Perda de objeto
+- ROTULO_MOTIVO_ARQUIVAMENTO.SemComplementacao = Sem complementação no prazo
+- ROTULO_MOTIVO_ARQUIVAMENTO.SemElementosMinimos = Sem elementos mínimos
+- ROTULO_MOTIVO_ARQUIVAMENTO.Outro = Outro
+- (ordem do array MOTIVOS_ARQUIVAMENTO: Duplicidade, TextoIncompreensivel, FaltaUrbanidade, Impropria, CopiaConhecimento, PerdaObjeto, SemComplementacao, SemElementosMinimos, Outro)
+- ROTULO_TIPO_EVENTO.Registro = Registro
+- ROTULO_TIPO_EVENTO.Triagem = Triagem
+- ROTULO_TIPO_EVENTO.Reclassificacao = Reclassificação
+- ROTULO_TIPO_EVENTO.Encaminhamento = Encaminhamento
+- ROTULO_TIPO_EVENTO.PedidoComplementacao = Pedido de complementação
+- ROTULO_TIPO_EVENTO.Complementacao = Complementação recebida
+- ROTULO_TIPO_EVENTO.RespostaArea = Resposta da área
+- ROTULO_TIPO_EVENTO.DevolucaoParaReanalise = Devolvida à área para reanálise
+- ROTULO_TIPO_EVENTO.RespostaIntermediaria = Resposta intermediária ao cidadão
+- ROTULO_TIPO_EVENTO.RespostaConclusiva = Resposta conclusiva ao cidadão
+- ROTULO_TIPO_EVENTO.Prorrogacao = Prorrogação
+- ROTULO_TIPO_EVENTO.Cobranca = Cobrança à área
+- ROTULO_TIPO_EVENTO.Escalonamento = Escalonamento
+- ROTULO_TIPO_EVENTO.Recurso = Recurso do cidadão
+- ROTULO_TIPO_EVENTO.Conclusao = Conclusão
+- ROTULO_TIPO_EVENTO.Arquivamento = Arquivamento
+- ROTULO_TIPO_EVENTO.EncaminhamentoExterno = Encaminhamento a outro órgão
+- ROTULO_TIPO_EVENTO.Anotacao = Anotação interna
+- ROTULO_TIPO_EVENTO.Habilitacao = Denúncia habilitada para apuração
+- ROTULO_TIPO_EVENTO.Reabertura = Reabertura
+- ROTULO_TIPO_EVENTO.AcessoIdentidade = Acesso à identidade do manifestante
+- ROTULO_TIPO_PONTO.Unidade = Unidade de saúde
+- ROTULO_TIPO_PONTO.AreaCentral = Área central (secretaria)
+- ROTULO_TIPO_PONTO.Apuracao = Unidade apuratória (denúncias)
+- (ordem do array TIPOS_PONTO: Unidade, AreaCentral, Apuracao)
+- ROTULO_FAIXA_PRAZO.ate30 = Até 30 dias
+- ROTULO_FAIXA_PRAZO['31a60'] = 31 a 60 dias
+- ROTULO_FAIXA_PRAZO.mais60 = Mais de 60 dias
+- ROTULO_ACAO.triar = Triar
+- ROTULO_ACAO.encaminhar = Encaminhar à área
+- ROTULO_ACAO.pedirComplementacao = Pedir complementação
+- ROTULO_ACAO.complementar = Registrar complementação
+- ROTULO_ACAO.responderArea = Responder pela área
+- ROTULO_ACAO.devolverArea = Devolver à área
+- ROTULO_ACAO.responderCidadao = Responder ao cidadão
+- ROTULO_ACAO.prorrogar = Prorrogar prazo
+- ROTULO_ACAO.cobrar = Cobrar a área
+- ROTULO_ACAO.escalonar = Escalonar
+- ROTULO_ACAO.recurso = Registrar recurso
+- ROTULO_ACAO.concluir = Concluir
+- ROTULO_ACAO.arquivar = Arquivar
+- ROTULO_ACAO.encaminharExterno = Encaminhar a outro órgão
+- ROTULO_ACAO.habilitar = Habilitar denúncia
+- ROTULO_ACAO.editarTeorPseudonimizado = Editar teor pseudonimizado
+- ROTULO_ACAO.anotar = Anotar
+- DICA_TIPO.Solicitacao = Pedido de atendimento, exame, medicamento, transporte… Sempre identificada.
+- DICA_TIPO.Reclamacao = Insatisfação com um serviço ou atendimento prestado.
+- DICA_TIPO.Denuncia = Relato de irregularidade ou ilícito. Pode ser sigilosa ou anônima.
+- DICA_TIPO.Sugestao = Ideia para melhorar um serviço.
+- DICA_TIPO.Elogio = Reconhecimento a um serviço ou profissional.
+- DICA_TIPO.Informacao = Pedido de informação sobre serviços, horários, fluxos. Sempre identificada.
+- ajudaConteudoMinimo.Elogio = Informe que o elogio foi encaminhado ao agente público elogiado e à chefia imediata dele.
+- ajudaConteudoMinimo.Reclamacao = Apresente a análise do fato relatado e as providências adotadas (ou por que não foram).
+- ajudaConteudoMinimo.Solicitacao = Informe a providência adotada ou, se ainda não foi possível, a possibilidade, a forma e o meio de atendimento.
+- ajudaConteudoMinimo.Sugestao = Informe a posição do gestor sobre a sugestão (acatada, em estudo, não acatada e por quê) e, se for adotar, o prazo estimado.
+- ajudaConteudoMinimo.Denuncia = Informe se a denúncia foi encaminhada à unidade apuratória competente ou arquivada — e, no arquivamento, o motivo.
+- ajudaConteudoMinimo.Informacao = Dê a informação pedida, de forma clara e completa. Se não for possível, explique o motivo e onde obtê-la.
+- Abas da fila (id → rótulo): triagem → Triagem; andamento → Em andamento; validacao → Aguardando validação; atrasadas → Atrasadas; recurso → Recurso; concluidas → Concluídas
+- Recortes de Meu ponto (id → rótulo): pendentes → Aguardando minha área; respondidas → Respondidas pela área; todas → Todas do meu ponto
+- Ícones lucide por tipo (ICONE_TIPO): Solicitacao=FileQuestion, Reclamacao=MessageSquareWarning, Denuncia=AlertOctagon, Sugestao=Lightbulb, Elogio=Sparkles, Informacao=FileQuestion
+- Ícones lucide da linha do tempo (ICONE): Registro=FilePlus2, Triagem=ClipboardList, Reclassificacao=Tags, Encaminhamento=Send, PedidoComplementacao=MessageCircle, Complementacao=MessageSquareReply, RespostaArea=Reply, DevolucaoParaReanalise=Undo2, RespostaIntermediaria=MessageCircle, RespostaConclusiva=CheckCircle2, Prorrogacao=TimerReset, Cobranca=BellRing, Escalonamento=AlertTriangle, Recurso=Gavel, Conclusao=CheckCircle2, Arquivamento=Archive, EncaminhamentoExterno=ArrowRightLeft, Anotacao=StickyNote, Habilitacao=ShieldAlert, Reabertura=RotateCcw, AcessoIdentidade=KeyRound
+
+# Classes de cor por estado (badges.tsx)
+
+- BASE (badges.tsx, todas as pílulas de tipo/status/prioridade/identificação) = inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap
+- CLASSE_STATUS.Registrada = bg-slate-100 text-slate-700 ring-slate-600/20
+- CLASSE_STATUS.EmTriagem = bg-sky-50 text-sky-700 ring-sky-600/20
+- CLASSE_STATUS.Encaminhada = bg-blue-50 text-blue-700 ring-blue-600/20
+- CLASSE_STATUS.AguardandoComplementacao = bg-amber-50 text-amber-700 ring-amber-600/20
+- CLASSE_STATUS.RespondidaPelaArea = bg-indigo-50 text-indigo-700 ring-indigo-600/20
+- CLASSE_STATUS.EmValidacao = bg-violet-50 text-violet-700 ring-violet-600/20
+- CLASSE_STATUS.Respondida = bg-green-50 text-green-700 ring-green-600/20
+- CLASSE_STATUS.EmRecurso = bg-orange-50 text-orange-700 ring-orange-600/20
+- CLASSE_STATUS.Concluida = bg-emerald-50 text-emerald-800 ring-emerald-600/20
+- CLASSE_STATUS.Arquivada = bg-gray-100 text-gray-600 ring-gray-500/20
+- CLASSE_STATUS.EncaminhadaOutroOrgao = bg-stone-100 text-stone-700 ring-stone-500/20
+- CLASSE_PRIORIDADE.Normal = bg-slate-100 text-slate-700 ring-slate-600/20
+- CLASSE_PRIORIDADE.Alta = bg-orange-50 text-orange-700 ring-orange-600/20
+- CLASSE_PRIORIDADE.Urgente = bg-red-50 text-red-700 ring-red-600/20
+- CLASSE_TIPO.Solicitacao = bg-blue-50 text-blue-700 ring-blue-600/20
+- CLASSE_TIPO.Reclamacao = bg-amber-50 text-amber-800 ring-amber-600/20
+- CLASSE_TIPO.Denuncia = bg-red-50 text-red-700 ring-red-600/20
+- CLASSE_TIPO.Sugestao = bg-teal-50 text-teal-700 ring-teal-600/20
+- CLASSE_TIPO.Elogio = bg-green-50 text-green-700 ring-green-600/20
+- CLASSE_TIPO.Informacao = bg-slate-100 text-slate-700 ring-slate-600/20
+- IdentificacaoBadge (Sigilosa e Anônima; não renderiza nada quando Identificada) = bg-purple-50 text-purple-700 ring-purple-600/20
+- PrazoChip BASE = inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset
+- PrazoChip no prazo (> 5 dias) = bg-green-50 text-green-700 ring-green-600/20
+- PrazoChip vencendo (0 a 5 dias) = bg-amber-50 text-amber-800 ring-amber-600/20
+- PrazoChip atrasada (dias < 0) = bg-red-50 text-red-700 ring-red-600/20
+- PrazoChip encerrada (status final ou Respondida) = bg-slate-100 text-slate-600 ring-slate-500/20
+- PrazoChip sem prazo = <span class="text-xs text-slate-400">—</span>
+- Linha da tabela atrasada e não respondida (classeLinha) = bg-red-50/40 hover:bg-red-50
+- LinhaDoTempo COR.RespostaConclusiva = bg-green-100 text-green-700
+- LinhaDoTempo COR.Conclusao = bg-green-100 text-green-700
+- LinhaDoTempo COR.Arquivamento = bg-gray-200 text-gray-600
+- LinhaDoTempo COR.Cobranca = bg-amber-100 text-amber-700
+- LinhaDoTempo COR.Escalonamento = bg-orange-100 text-orange-700
+- LinhaDoTempo COR.Recurso = bg-orange-100 text-orange-700
+- LinhaDoTempo COR.Habilitacao = bg-red-100 text-red-700
+- LinhaDoTempo COR.AcessoIdentidade = bg-purple-100 text-purple-700
+- LinhaDoTempo COR (padrão, todos os demais eventos) = bg-slate-100 text-slate-600
+- LinhaDoTempo círculo do ícone = absolute -left-[1.95rem] flex h-7 w-7 items-center justify-center rounded-full ring-4 ring-white
+- LinhaDoTempo pílula "visível ao cidadão" = bg-sky-50 text-sky-700 (inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium)
+- LinhaDoTempo pílula "interno" = bg-slate-100 text-slate-500
+- StatusBadge "Ativo" = badge badge-success → inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium + bg-emerald-100 text-emerald-700
+- StatusBadge "Inativo" = badge badge-gray → bg-gray-100 text-gray-700
+- Coluna "Em aberto" (pontos de resposta, pendentes > 0) = inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20
+- Coluna "Em aberto" (pendentes = 0) = text-xs text-slate-400
+- Botão Titular (modal de ponto, ativo) = bg-amber-50 text-amber-800 ring-amber-600/30
+- Botão Membro (modal de ponto, não titular) = bg-white text-slate-500 ring-slate-300 hover:bg-slate-50
+- Marcador selecionado na triagem = border-red-300 bg-red-50 text-red-700 (rounded-full border px-2.5 py-1 text-xs)
+- Marcador não selecionado na triagem = border-slate-200 bg-white text-slate-600 hover:bg-slate-50
+- Marcador ativo na tela de Assuntos = border-slate-300 bg-white text-slate-800 hover:bg-slate-50 (rounded-full border px-3 py-1 text-sm)
+- Marcador inativo na tela de Assuntos = border-slate-200 bg-slate-50 text-slate-400 line-through
+- Marcador no detalhe (Classificação) = rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700
+- Código OuvidorSUS (pílula mono) = rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600
+- Faixa de ERRO (padrão do módulo) = rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700
+- Faixa de ALERTA âmbar (duplicidade, revelar identidade, encaminhar externo, denúncia não habilitada no modal) = rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800
+- Faixa VERMELHA de denúncia não habilitada (cabeçalho do detalhe) = rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800
+- Faixa VERDE de sucesso (modal de protocolo) = rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800
+- Cartão "Resposta conclusiva ao cidadão" = rounded-xl border border-green-200 bg-green-50 p-4; título text-sm font-semibold text-green-800; corpo text-sm text-green-900
+- Cartão "Arquivada" = rounded-xl border border-gray-200 bg-gray-50 p-4; título text-sm font-semibold text-gray-700; corpo text-sm text-gray-700
+- Cartão/Bloco padrão = rounded-xl border border-slate-200 bg-white p-4 shadow-sm; título text-sm font-semibold text-slate-700
+- Cabeçalho da manifestação = rounded-xl border border-slate-200 bg-white p-5 shadow-sm
+- Tabela (card) = rounded-lg border border-gray-200 bg-white shadow-sm; thead bg-gray-50; th px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500; td px-4 py-3 text-sm text-gray-700; tbody divide-y divide-gray-100; linha hover:bg-gray-50
+- Aba ativa (Tabs) = border-red-600 text-red-700; aba inativa = border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300; badge contador da aba = ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700
+- Paginação: página atual = border-red-700 bg-red-700 font-semibold text-white; demais = border-slate-300 bg-white hover:bg-slate-50
+- Botão primário (.btn .btn-primary) = gradiente da marca (var(--theme-gradient-start/mid/end)) com text-white, px-4 py-2 text-sm font-medium, rounded-md
+- Botão outline (.btn-outline) = text-primary-700 hover:bg-primary-50, fundo transparente, borda 1px var(--theme-primary)
+- Botão ghost (.btn-ghost) = text-gray-700 hover:bg-gray-100, fundo transparente, borda transparente
+- Botão danger (.btn-danger, usado só em Arquivar) = bg-error-500 text-white hover:bg-error-600
+- Botão pequeno (.btn-sm) = padding 0.375rem 0.75rem; font-size 0.8125rem; gap 0.375rem
+- Ícones dos títulos de página (h1) = h-5 w-5 text-red-600 (Megaphone, FilePlus2, Inbox, BarChart3, Network, Tags, Settings2)
+- Gráficos do Painel: barra = #b91c1c (raio 3, sem animação); grade = #e5e7eb (strokeDasharray 3 3); cursor do tooltip = #f8fafc; eixos em fontSize 11
+- Cartão do Painel: valor padrão text-slate-900; destaque "bom" text-green-700; destaque "ruim" text-red-700; rótulo text-xs font-medium uppercase tracking-wide text-slate-500; detalhe text-xs text-slate-500
+- Campo <Campo>: rótulo .label (block text-sm font-medium mb-1, cor var(--theme-text-muted)); asterisco de obrigatório text-red-500; dica mt-1 text-xs text-gray-500; erro mt-1 text-xs text-error-600
+- Input/Textarea (.input) = borda 1px var(--theme-border), radius md, fundo var(--theme-surface), padding 0.5rem 1rem, foco focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20

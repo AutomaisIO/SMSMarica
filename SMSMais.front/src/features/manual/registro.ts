@@ -4,6 +4,7 @@ import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaud
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
+import { artigoSoftphone } from '@/features/manual/conteudo/softphone';
 import type { Artigo, GrupoManual } from '@/features/manual/tipos';
 
 /**
@@ -50,6 +51,7 @@ export const ARTIGOS: Artigo[] = [
   artigoConfirmacoes,
   artigoMensageria,
   artigoOuvidoria,
+  artigoSoftphone,
 ];
 
 /** Ícone de fallback quando um grupo ainda não foi declarado. */

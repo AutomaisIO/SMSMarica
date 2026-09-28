@@ -1,0 +1,27 @@
+{
+ "cena": "S03",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 116.67,
+   "usage": {
+    "completion_tokens": 501,
+    "prompt_tokens": 3489,
+    "total_tokens": 3990,
+    "prompt_tokens_details": {
+     "cached_tokens": 3488
+    }
+   },
+   "texto_fora_de_tool": "\n\n**Resposta:**\n\n*Entendo sua preocupação.* \n\n*Orientamos que você procure o posto de saúde onde sua mãe é atendida ou, em caso de emergência, utilize a rede de urgência e emergência do município. Se for urgente, você pode buscar a UPA 24h Inoã, o Hospital Municipal Conde Modesto Leal no Centro ou o Pronto Atendimento 24h do Posto de Saúde Santa Rita, localizado em Itaipuaçu/Jardim Atlântico.*\n\n*Para mais informações, acesse o aplicativo https://app.smsmarica.online e verifique os dados atualizados.*\n\n*Se preferir, podemos encaminhar para um atendente humano que poderá ajudar. Diga se deseja continuar.*",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:14:14",
+ "latencia_total_s": 116.67
+}

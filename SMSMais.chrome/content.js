@@ -1,26 +1,49 @@
-// Roda em TODOS os frames do SISREG.
+// Roda em TODOS os frames dos sítios observados (SISREG, Prime/Eco).
 //  - Qualquer frame: ao carregar, copia o HTML da tela e manda ao service worker
 //    (é o RETORNO das operações — o webRequest só vê o envio). Também repassa os
-//    corpos de AJAX que o capture-hook interceptou neste frame.
+//    corpos de AJAX e as interações que o capture-hook interceptou neste frame.
 //  - Só o frame de cima: desenha o selo discreto do SMSMarica com o LED de status
-//    e o blur que bloqueia o SISREG enquanto o SMSMarica não estiver conectado.
+//    e o blur que bloqueia o site enquanto o SMSMarica não estiver conectado.
 
 (() => {
   const NOTOPO = window === window.top;
 
   // ---------------------------------------------------- captura (todos os frames)
-  function capturarTela() {
+  const TETO_HTML = 4_000_000;
+  let profundo = false; // sítio em captura PROFUNDA (config.js: `tudo`)
+  let ultimoDigest = null; // evita reenviar a MESMA tela (a captura roda mais de uma vez)
+
+  // Digest barato (FNV-1a de 32 bits) só para comparar telas entre si — não é segurança.
+  function digest(s) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return `${h.toString(16)}:${s.length}`;
+  }
+
+  function capturarTela(motivo) {
     try {
       const html = document.documentElement?.outerHTML ?? '';
+      const d = digest(html);
+      if (d === ultimoDigest) return; // nada mudou desde a última captura
+      ultimoDigest = d;
       chrome.runtime.sendMessage({
         tipo: 'resposta',
         dados: {
           caminho: location.pathname,
           url: location.href,
+          busca: location.search || null,
           titulo: document.title || null,
+          motivo: motivo ?? 'carga',
           formularios: document.forms.length,
           campos: document.querySelectorAll('input,select,textarea').length,
-          html: html.slice(0, 2_000_000),
+          // Quando corta, vai MARCADO: um pedaço de tela analisado como se fosse o todo
+          // leva a conclusão errada.
+          truncado: html.length > TETO_HTML,
+          tamanhoOriginal: html.length,
+          html: html.slice(0, TETO_HTML),
         },
       }).catch(() => {});
     } catch {
@@ -28,19 +51,70 @@
     }
   }
   // document_end já garante o DOM; um atraso pega telas que montam via JS.
-  capturarTela();
-  setTimeout(capturarTela, 1200);
+  capturarTela('carga');
+  setTimeout(() => capturarTela('carga-tardia'), 1200);
 
-  // Corpos de AJAX vindos do mundo da página (capture-hook), só deste frame.
+  // Mensagens do mundo da página (capture-hook), só deste frame: corpos de AJAX e o que o
+  // operador fez (clique, postback, troca de URL).
+  // Recaptura com freio: uma grade do Telerik repinta em rajada, e sem piso de intervalo
+  // isso vira uma tela de centenas de KB por segundo na fila. O digest já corta a duplicata
+  // exata; o piso corta a enxurrada de telas quase iguais.
+  const PISO_RECAPTURA_MS = 5000;
+  let recapturaAgendada = null;
+  let ultimaRecaptura = 0;
+  function recapturarEmBreve(motivo) {
+    if (!profundo) return;
+    const espera = Math.max(900, ultimaRecaptura + PISO_RECAPTURA_MS - Date.now());
+    clearTimeout(recapturaAgendada);
+    recapturaAgendada = setTimeout(() => {
+      ultimaRecaptura = Date.now();
+      capturarTela(motivo);
+    }, espera);
+  }
+
   window.addEventListener('message', (e) => {
     if (e.source !== window || !e.data?.__smsmaisHook) return;
-    const { tipo, ...dados } = e.data;
-    chrome.runtime.sendMessage({ tipo: 'ajax', dados }).catch(() => {});
+    const { __smsmaisHook, tipo, ...dados } = e.data;
+    chrome.runtime.sendMessage({ tipo: tipo === 'interacao' ? 'interacao' : 'ajax', dados }).catch(() => {});
+    // AJAX do Telerik reescreve a tela sem recarregar: o webRequest vê a requisição, mas a
+    // TELA resultante só existe no DOM. Recaptura depois que o eco do DOM assenta.
+    // No PC do MÉDICO queremos também a tela depois do AJAX — é ali que anamnese, diagnóstico
+    // e prescrição aparecem renderizados, e é justamente o que nunca capturamos. O digest corta
+    // duplicata exata e o piso de 5 s corta a rajada, então o custo fica controlado.
+    if (tipo === 'ajax' || dados.acao === 'navegacao' || dados.acao === 'postback') {
+      recapturarEmBreve(tipo === 'ajax' ? 'pos-ajax' : `pos-${dados.acao}`);
+    }
   });
+
+  // Todo frame pergunta o estado uma vez, só para saber se este sítio é captura profunda.
+  chrome.runtime
+    .sendMessage({ tipo: 'estado' })
+    .then((estado) => {
+      const meu = (estado?.sitios || []).find((s) => s.host === location.host);
+      if (meu?.tudo && meu.modo !== 'minimo') profundo = true;
+    })
+    .catch(() => {});
 
   // Operador do SISREG (barra "Operador:/Perfil:/Unidade:"). Depois do login o topo vira um
   // frameset SEM corpo de texto, então a barra fica em ALGUM frame — por isso lemos em todos.
+  //
+  // No Prime a barra não existe, e por isso `payload.operador` vinha VAZIO em TODAS as capturas
+  // do Prime (visto em 23/09/2026 na conferência: sem operador não dá para cruzar o que a
+  // extensão capturou com o relatório de atendidos por profissional, só por contagem).
+  // O Prime expõe quem está logado **só no gate de unidade** (`/Prime/login.aspx`, depois do
+  // POST de login): `#LoginView1_LoginName1` traz o CPF e `LoginView1$ddlUnidade` a unidade
+  // escolhida. Lemos ali e o background segura pelo resto da sessão da aba.
   function lerOperador() {
+    const doPrime = document.querySelector('#LoginView1_LoginName1');
+    if (doPrime) {
+      const cpf = (doPrime.textContent || '').replace(/\D/g, '');
+      const sel = document.querySelector('select[name="LoginView1$ddlUnidade"]');
+      const unidade = sel && sel.value !== '-1'
+        ? { id: sel.value, nome: sel.options[sel.selectedIndex]?.text?.trim() || null }
+        : null;
+      if (cpf) chrome.runtime.sendMessage({ tipo: 'operador', operador: cpf, unidade }).catch(() => {});
+      return;
+    }
     const txt = document.body?.innerText ?? '';
     const m = txt.match(/Operador\s*:\s*([^\n\r]+)/i);
     if (!m) return;
@@ -50,6 +124,11 @@
   lerOperador();
   setTimeout(lerOperador, 1500);
   setTimeout(lerOperador, 4000);
+  // No gate do Prime a unidade só é escolhida DEPOIS da carga — os três disparos acima pegariam
+  // o select ainda em "-1". Reler quando o operador escolhe.
+  document.addEventListener('change', (e) => {
+    if (e.target?.name === 'LoginView1$ddlUnidade') lerOperador();
+  }, true);
 
   if (!NOTOPO) return; // o resto é só do frame de cima
 
@@ -123,8 +202,8 @@
       <div class="cartao">
         <img data-ref="logoBlur" hidden>
         <h2 data-ref="tituloBlur">SMSMarica</h2>
-        <p>Para usar o SISREG, entre primeiro no <b data-ref="nomeBlur">SMSMarica</b>.
-           As operações feitas no SISREG são registradas.</p>
+        <p>Para usar o <b data-ref="sistemaBlur">sistema</b>, entre primeiro no
+           <b data-ref="nomeBlur">SMSMarica</b>. As operações feitas aqui são registradas.</p>
         <button data-ref="entrar">Entrar no SMSMarica</button>
         <div class="estado" data-ref="estadoBlur"></div>
       </div>
@@ -170,13 +249,18 @@
     $('[data-ref=estadoBlur]').textContent = estado.pendentes
       ? `${estado.pendentes} captura(s) aguardando envio`
       : '';
-    // Blur só nos sítios marcados com blur (ex.: SISREG). Ecossistemas = captura passiva.
+    // Blur nos sítios marcados com blur: é ele que GARANTE que há sessão do SMSMarica para
+    // enviar. Sem login, a captura só enche a fila e nada chega ao hub.
+    $('[data-ref=sistemaBlur]').textContent = meuSitio?.label ?? 'sistema';
     capa.classList.toggle('mostra', !estado.auth && !!meuSitio?.blur);
     // Cabeçalho da janela de tráfego, honesto por modo.
     $('[data-ref=devcab]').innerHTML =
       meuSitio?.modo === 'minimo'
         ? 'Enviado ao SMSMarica <b>— só o comando + o nº da solicitação</b> (sem dados do paciente)'
-        : `Modo análise — tráfego bruto para o log${meuSitio ? ` (${meuSitio.label})` : ''}`;
+        : `Modo análise — <b>tudo que vai e volta</b> é registrado para estudo${meuSitio ? ` (${meuSitio.label})` : ''}`;
+    // A janela só fica aberta sozinha no modo mínimo, onde ela É a prova de que só sai comando
+    // + número. No modo análise ela é ruído para quem está trabalhando: abre no clique do selo.
+    if (meuSitio?.modo === 'minimo') dev.classList.add('mostra');
   }
 
   $('[data-ref=entrar]').addEventListener('click', () => {
@@ -185,7 +269,6 @@
 
   // Clique no selo abre/fecha a janela do que é enviado ao SMSMarica (transparência).
   $('.selo').addEventListener('click', () => dev.classList.toggle('mostra'));
-  dev.classList.add('mostra'); // já visível — mostra que só sai comando + número
 
   // Uma linha na janela de tráfego: "→ agendou · solicitação NNNN".
   function addTrafego(item) {
@@ -201,11 +284,34 @@
 
   function addLinha(item) {
     const li = document.createElement('li');
+    const alvo = item.conhecido ? `${item.nome} — ${item.caminho}` : item.caminho;
+    const redir = item.redirecionamentos?.length ? ` ↷${item.redirecionamentos.length}` : '';
     li.innerHTML =
       `<span class="met">${item.metodo}</span>` +
-      `<span class="cam">${item.nome} — ${item.caminho}</span>` +
+      `<span class="cam">${alvo}</span>` +
       (item.evento ? `<span class="ev">${item.evento}</span>` : '') +
-      `<span>${item.status ?? '…'}</span>`;
+      `<span>${item.status ?? '…'}${redir}</span>`;
+    lista.prepend(li);
+    while (lista.children.length > 100) lista.lastChild.remove();
+  }
+
+  // Evento de negócio reconhecido (Prime): "ACOLHEU · agenda 80c607c7".
+  const ROTULOS = {
+    'paciente-criado': 'CRIOU',
+    'paciente-agendado': 'AGENDOU',
+    'paciente-acolhido': 'ACOLHEU',
+    'paciente-desagendado': 'DESAGENDOU',
+  };
+  function addNegocio(item) {
+    const li = document.createElement('li');
+    const id = item.agendaId ?? item.pacienteId ?? '';
+    const alvo = item.agendaId ? 'agenda' : item.pacienteId ? 'paciente' : '';
+    li.innerHTML =
+      `<span class="cmd">${ROTULOS[item.evento] ?? item.evento}</span>` +
+      `<span class="cam">${alvo} <b>${String(id).slice(0, 8) || '—'}</b>` +
+      (item.idAusente ? ' <i>(sem id)</i>' : '') +
+      '</span>' +
+      `<span class="hora">${new Date(item.quando).toLocaleTimeString('pt-BR')}</span>`;
     lista.prepend(li);
     while (lista.children.length > 100) lista.lastChild.remove();
   }
@@ -214,6 +320,7 @@
     if (msg.tipo === 'estado') pintar(msg.estado);
     if (msg.tipo === 'requisicao') addLinha(msg.item); // modo análise (raw)
     if (msg.tipo === 'trafego') addTrafego(msg.item); // modo mínimo (comando + número)
+    if (msg.tipo === 'negocio') addNegocio(msg.item); // operação reconhecida
   });
   chrome.runtime.sendMessage({ tipo: 'estado' }).then((estado) => estado && pintar(estado)).catch(() => {});
 

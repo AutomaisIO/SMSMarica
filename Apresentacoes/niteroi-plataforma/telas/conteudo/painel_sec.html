@@ -1,0 +1,82 @@
+<div class="pg-cab">
+  <div>
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+      Painel da secretaria
+      <span class="ajuda">?</span>
+    </h1>
+    <p class="sub"><span class="vivo"><i></i> ao vivo</span> · atualizado há 12 segundos · terça, 24/09 · 15h41</p>
+  </div>
+  <div class="filtros" style="margin:0">
+    <div class="inp w40"><span>Rede inteira</span><svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+  </div>
+</div>
+
+<div class="kpi-linha mt14">
+  <div class="kp"><span class="r">Atendimentos hoje</span><span class="v">3.412</span><span class="d">+8% vs. terça passada</span></div>
+  <div class="kp"><span class="r">Pessoas em espera agora</span><span class="v al">188</span><span class="d">em 14 unidades</span></div>
+  <div class="kp"><span class="r">Exames aguardando laudo</span><span class="v">231</span><span class="d">média: 1,8 dia</span></div>
+  <div class="kp"><span class="r">Conversas abertas</span><span class="v">64</span><span class="d">7 sem atendente</span></div>
+</div>
+
+<div class="painel-grid mt10">
+  <div class="cx">
+    <p class="cx-tit">Atendimentos por hora — hoje</p>
+    <div class="serie" style="height:118px">
+      <svg viewBox="0 0 600 118" preserveAspectRatio="none">
+        <defs><linearGradient id="pg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ee7219" stop-opacity=".5"/><stop offset="1" stop-color="#ee7219" stop-opacity=".04"/></linearGradient></defs>
+        <g stroke="#e2e8f0" stroke-width="1"><line x1="0" y1="30" x2="600" y2="30"/><line x1="0" y1="60" x2="600" y2="60"/><line x1="0" y1="90" x2="600" y2="90"/></g>
+        <polygon fill="url(#pg1)" points="0,118 0,96 60,74 120,44 180,36 240,52 300,80 360,50 420,38 480,44 540,62 600,88 600,118"/>
+        <polyline fill="none" stroke="#ee7219" stroke-width="3" stroke-linejoin="round" points="0,96 60,74 120,44 180,36 240,52 300,80 360,50 420,38 480,44 540,62 600,88"/>
+      </svg>
+      <div class="eixo"><span>7h</span><span>9h</span><span>11h</span><span>13h</span><span>15h</span><span>17h</span><span>19h</span></div>
+    </div>
+  </div>
+
+  <div class="cx">
+    <p class="cx-tit">Unidades com mais gente esperando <span class="cx-nota">agora</span></p>
+    <div class="ranking">
+      <div class="linha"><span class="rot">UPA Centro</span><span class="trilho"><span class="barra" style="width:100%"></span></span><span class="val">47</span></div>
+      <div class="linha"><span class="rot">Policl. do Centro</span><span class="trilho"><span class="barra" style="width:68%"></span></span><span class="val">32</span></div>
+      <div class="linha"><span class="rot">UPA Barreto</span><span class="trilho"><span class="barra" style="width:57%"></span></span><span class="val">27</span></div>
+      <div class="linha"><span class="rot">Policl. de Icaraí</span><span class="trilho"><span class="barra fraca" style="width:40%"></span></span><span class="val">19</span></div>
+      <div class="linha"><span class="rot">UBS Engenhoca</span><span class="trilho"><span class="barra fraca" style="width:26%"></span></span><span class="val">12</span></div>
+    </div>
+  </div>
+
+  <div class="cx">
+    <p class="cx-tit">Composição do atendimento</p>
+    <div class="rosca-bloco" style="gap:12px">
+      <div class="rosca" style="width:96px;height:96px;background:conic-gradient(var(--nit-laranja) 0 44%, var(--p400) 44% 71%, var(--p200) 71% 88%, var(--s300) 88% 100%)">
+        <span class="centro"><b style="font-size:20px">44%</b><span style="font-size:7.5px">atenção básica</span></span>
+      </div>
+      <div class="legenda-rosca">
+        <span class="li"><span class="pt" style="background:var(--nit-laranja)"></span> Atenção básica <b>44%</b></span>
+        <span class="li"><span class="pt" style="background:var(--p400)"></span> Especializada <b>27%</b></span>
+        <span class="li"><span class="pt" style="background:var(--p200)"></span> Urgência <b>17%</b></span>
+        <span class="li"><span class="pt" style="background:var(--s300)"></span> Imagem <b>12%</b></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="painel-grid mt10" style="grid-template-columns:1.3fr 1fr">
+  <div class="cx">
+    <p class="cx-tit">Precisa de olho agora</p>
+    <div class="alertas">
+      <div class="al"><span class="ai vermelho">!</span><span><b>UPA Centro</b> com 47 pessoas em espera — o dobro da média de terça.</span></div>
+      <div class="al"><span class="ai laranja">!</span><span><b>7 conversas sem atendente</b> há mais de 15 minutos.</span></div>
+      <div class="al"><span class="ai laranja">!</span><span><b>41 solicitações paradas</b> há mais de 5 dias na regulação.</span></div>
+      <div class="al"><span class="ai cinza">·</span><span>Mamógrafo da Policlínica de Icaraí <b>sem exame há 2h</b>.</span></div>
+    </div>
+  </div>
+  <div class="cx">
+    <p class="cx-tit">Contato com o cidadão — hoje</p>
+    <div class="mini-num">
+      <div class="mn"><b>612</b><span>mensagens enviadas</span></div>
+      <div class="mn"><b>96,4%</b><span>entregues</span></div>
+      <div class="mn"><b>148</b><span>confirmações</span></div>
+      <div class="mn"><b>73</b><span>ligações atendidas</span></div>
+    </div>
+  </div>
+</div>

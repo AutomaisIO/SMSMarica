@@ -1,0 +1,33 @@
+{
+ "cena": "S10",
+ "modelo": "qwen3-30b-a3b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 16.77,
+   "usage": {
+    "completion_tokens": 126,
+    "prompt_tokens": 4835,
+    "total_tokens": 4961,
+    "prompt_tokens_details": {
+     "cached_tokens": 4789
+    }
+   },
+   "texto_fora_de_tool": "Claro, estou aqui para ajudar! Como posso te auxiliar hoje? Você quer saber sobre um exame, uma consulta ou o seu cadastro? 😊\n\n*(Aguardo a resposta para seguir com a orientação correta)*. \n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Claro, estou aqui para ajudar! Como posso te auxiliar hoje? Você quer saber sobre um exame, uma consulta ou o seu cadastro?\", \"handoff\": false, \"confianca\": 0.95}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Claro, estou aqui para ajudar! Como posso te auxiliar hoje? Você quer saber sobre um exame, uma consulta ou o seu cadastro?",
+  "handoff": false,
+  "confianca": 0.95
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T22:34:14",
+ "latencia_total_s": 16.77
+}

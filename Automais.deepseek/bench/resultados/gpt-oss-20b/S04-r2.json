@@ -1,0 +1,33 @@
+{
+ "cena": "S04",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 19.68,
+   "usage": {
+    "completion_tokens": 198,
+    "prompt_tokens": 3626,
+    "total_tokens": 3824,
+    "prompt_tokens_details": {
+     "cached_tokens": 3625
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Para confirmar sua presença, preciso que me informe os quatro primeiros dígitos do seu CPF e seu mês e ano de nascimento.\",\"handoff\":false,\"confianca\":0.5}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Para confirmar sua presença, preciso que me informe os quatro primeiros dígitos do seu CPF e seu mês e ano de nascimento.",
+  "handoff": false,
+  "confianca": 0.5
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:31:20",
+ "latencia_total_s": 19.68
+}

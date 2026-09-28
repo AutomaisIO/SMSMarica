@@ -1,0 +1,144 @@
+{
+ "cores": [
+  {
+   "nome": "Laranja Niterói (cor dominante da assinatura atual)",
+   "hex": "#EE7219",
+   "uso": "Wordmark \"Niterói\", \"PREFEITURA DE\" e \"AVANÇAR\" do logo atual. É a cor-assinatura da gestão 2025+. Confirmada por amostragem de pixel nos PNGs oficiais (#E87010/#EE7219) e pela paleta do manual (R238 G114 B25 / C0 M65 Y95 K0).",
+   "fonte": "Manual de marca oficial (PDF) + amostragem do pmnlogo.png do site oficial"
+  },
+  {
+   "nome": "Azul Niterói",
+   "hex": "#1F7EC2",
+   "uso": "Campo do escudo do brasão (baía/Araribóia) e cor de apoio institucional. R31 G126 B194 / C82 M42 Y0 K0.",
+   "fonte": "Manual de marca oficial (PDF), página \"Paleta de cores\""
+  },
+  {
+   "nome": "Verde Niterói",
+   "hex": "#009547",
+   "uso": "Quartel verde do brasão e cor de apoio. R0 G149 B71 / C83 M13 Y91 K1.",
+   "fonte": "Manual de marca oficial (PDF), página \"Paleta de cores\""
+  },
+  {
+   "nome": "Vermelho Niterói",
+   "hex": "#DF2027",
+   "uso": "Quartéis vermelhos do escudo e a fita/listel do brasão. R223 G32 B39 / C4 M96 Y87 K0.",
+   "fonte": "Manual de marca oficial (PDF), página \"Paleta de cores\""
+  },
+  {
+   "nome": "Amarelo",
+   "hex": "#FCE102",
+   "uso": "Coroa mural e coroa do brasão; cor de destaque. R252 G225 B2 / C4 M6 Y92 K0.",
+   "fonte": "Manual de marca oficial (PDF), página \"Paleta de cores\""
+  },
+  {
+   "nome": "Amarelo-ouro",
+   "hex": "#F6C315",
+   "uso": "Sombreado/variação do amarelo no brasão. R246 G195 B21 / C4 M24 Y92 K0.",
+   "fonte": "Manual de marca oficial (PDF), página \"Paleta de cores\""
+  },
+  {
+   "nome": "Preto institucional",
+   "hex": "#1D1D1B",
+   "uso": "Tipografia em versão PB e no lockup \"PREFEITURA DE NITERÓI | SECRETARIA DE SAÚDE\". R29 G29 B27 / K100. Não é preto puro.",
+   "fonte": "Manual de marca oficial (PDF), página \"Paleta de cores\""
+  },
+  {
+   "nome": "Branco",
+   "hex": "#FFFFFF",
+   "uso": "Fundo padrão da versão principal positiva; versão negativa do logo sobre fundo escuro.",
+   "fonte": "Manual de marca oficial (PDF), páginas de versões"
+  }
+ ],
+ "elementos_graficos": [
+  "BRASÃO DE ARMAS DE NITERÓI (sempre à esquerda do wordmark, nunca isolado no logo institucional): coroa mural dourada de 5 torres no topo; escudo esquartelado com bordadura vermelha — quartel 1 (vermelho) com feixe/raios brancos, quartel 2 (branco) com o monograma 'IHS' e cruz em vermelho, quartel 3 (verde) com coroa dourada, quartel 4 (vermelho) com roda dentada e caduceu; ponta em azul com a figura do índio Araribóia (dourada) sobre a baía. Listel/fita vermelha na base com as datas 1573 (esquerda) e 1835 (direita), a palavra NITERÓI ao centro e 1819 embaixo.",
+  "WORDMARK 'Niterói': lettering geométrico arredondado, caixa-baixa, muito pesado, em laranja #EE7219. Traço distintivo: um MACRON (barra horizontal) sobre o 'o' final em vez do acento agudo — grafado visualmente como 'Niterōi'. É a assinatura tipográfica da marca.",
+  "LINHA SUPERIOR 'PREFEITURA DE' em caixa-alta, peso leve, muito espaçada (tracking largo), alinhada à esquerda do wordmark, em laranja.",
+  "ASSINATURA DE GOVERNO na base, alinhada à direita do wordmark: 'TEMPO DE AVANÇAR' — 'TEMPO DE' em peso leve/cinza-laranja e 'AVANÇAR' em peso black laranja. Esta é a assinatura VIGENTE (gestão 2025+). A assinatura anterior era 'O FUTURO É AGORA' (campanha dos 450 anos, adotada em janeiro/2024) — o manual PDF publicado ainda traz essa versão; o site e o portal da Saúde já usam 'TEMPO DE AVANÇAR'.",
+  "LOCKUP DE SECRETARIA (co-branding): brasão + 'PREFEITURA DE NITERÓI' em duas linhas, caixa-alta, preto, separado por uma LINHA VERTICAL FINA do nome da pasta — 'SECRETARIA DE SAÚDE' em duas linhas, caixa-alta, peso mais leve. É o padrão de assinatura conjunta usado pela Saúde.",
+  "ÁREA DE RESPIRO definida no manual: todas as bordas devem ter a ALTURA DA LETRA 'N' como margem mínima de aplicação.",
+  "REDUÇÃO MÁXIMA: versão horizontal 4 cm de largura; versão vertical 3 cm de largura (altura proporcional).",
+  "USOS PROIBIDOS explicitados no manual: mudar cores, mudar proporções, aplicar distorções.",
+  "NÃO HÁ ondas, gradientes ou silhueta do MAC na marca atual. A marca é chapada (flat), sem gradiente. Referências ao MAC em notícias dizem respeito a versões antigas da logomarca (2013), não à atual."
+ ],
+ "logos": [
+  {
+   "descricao": "Logo institucional ATUAL da Prefeitura de Niterói — brasão colorido + wordmark laranja 'PREFEITURA DE Niterói' + assinatura de governo 'TEMPO DE AVANÇAR'. Fundo TRANSPARENTE. 400x159 px, RGBA. É a maior versão disponível deste arquivo no portal oficial. Baixado e conferido visualmente.",
+   "url": "https://niteroi.rj.gov.br/wp-content/uploads/2025/06/pmnlogo.png",
+   "formato": "PNG (RGBA, transparente, 400x159)",
+   "confianca": "ALTA — HTTP 200 verificado, arquivo baixado (104.649 bytes) e inspecionado visualmente. É a mesma família do logo do cabeçalho do portal oficial."
+  },
+  {
+   "descricao": "Mesma marca, versão do cabeçalho do site oficial (a que aparece no <img> do header de niteroi.rj.gov.br). 200x79 px, transparente. Baixa resolução — usar só como fallback.",
+   "url": "https://niteroi.rj.gov.br/wp-content/uploads/2025/06/pmnlogo-2.png",
+   "formato": "PNG (RGBA, transparente, 200x79)",
+   "confianca": "ALTA — HTTP 200 verificado, é o src literal do header de https://niteroi.rj.gov.br/"
+  },
+  {
+   "descricao": "Variante intermediária do mesmo logo, 300x119 px, transparente.",
+   "url": "https://niteroi.rj.gov.br/wp-content/uploads/2025/06/pmnlogo-1.png",
+   "formato": "PNG (RGBA, transparente, 300x119)",
+   "confianca": "ALTA — HTTP 200 verificado (89.233 bytes)"
+  },
+  {
+   "descricao": "LOCKUP DA SAÚDE — 'PREFEITURA DE NITERÓI | SECRETARIA DE SAÚDE' com brasão colorido à esquerda, tipografia PRETA, separador vertical. Fundo BRANCO (JPEG, sem transparência). 1538x405 px — é o arquivo de MAIOR RESOLUÇÃO encontrado e o mais adequado para cabeçalho de apresentação. Baixado e inspecionado.",
+   "url": "https://saude.niteroi.rj.gov.br/wp-content/uploads/2024/08/logo-pref-corte.jpg",
+   "formato": "JPEG (RGB, fundo branco, 1538x405)",
+   "confianca": "ALTA — HTTP 200 verificado (79.085 bytes), baixado e inspecionado visualmente. Usado no cabeçalho do portal saude.niteroi.rj.gov.br."
+  },
+  {
+   "descricao": "Mesma lockup da Saúde na variante 1024x270 servida pelo WordPress do portal da Saúde.",
+   "url": "https://saude.niteroi.rj.gov.br/wp-content/uploads/2024/08/logo-pref-corte-1024x270.jpg",
+   "formato": "JPEG (RGB, fundo branco, 1024x270)",
+   "confianca": "ALTA — HTTP 200 verificado (32.265 bytes)"
+  },
+  {
+   "descricao": "Selo/marca usada pela FMS em 2025 — brasão + 'PREFEITURA DE Niterói / TEMPO DE AVANÇAR' em laranja, fundo transparente. Hospedado no domínio da Saúde. 300x90 px (baixa resolução — preferir pmnlogo.png para o mesmo desenho).",
+   "url": "https://saude.niteroi.rj.gov.br/wp-content/uploads/2024/08/fmslogo2025.png",
+   "formato": "PNG (RGBA, transparente, 300x90)",
+   "confianca": "ALTA — HTTP 200 verificado (19.918 bytes), baixado e inspecionado"
+  },
+  {
+   "descricao": "BRASÃO ISOLADO de Niterói (coroa mural, escudo esquartelado, Araribóia, fita 1573/1835/NITERÓI/1819), fundo transparente, 270x270 px. Serve como ícone/favicon/marca d'água de slide.",
+   "url": "https://saude.niteroi.rj.gov.br/wp-content/uploads/2024/08/cropped-logo-sem-fundo-e1723581004826-270x270.png",
+   "formato": "PNG (RGBA, transparente, 270x270)",
+   "confianca": "ALTA — HTTP 200 verificado, baixado e inspecionado visualmente. Variantes 32x32, 180x180 e 192x192 também existem (mesmo prefixo, trocar o sufixo)."
+  },
+  {
+   "descricao": "MANUAL DE MARCA OFICIAL vigente — 'MODERNIZAÇÃO DA MARCA/CONCEITO', 15 páginas: versões (horizontal/vertical, positiva/negativa/PB, fundo claro/escuro), área de respiro, paleta de cores com RGB+CMYK, tipografia, redução máxima e usos proibidos. É a FONTE das cores e da tipografia listadas abaixo.",
+   "url": "https://www.niteroi.rj.gov.br/wp-content/uploads/arquivos/manual%20marca%20prefeitura%20niteroi.pdf",
+   "formato": "PDF (5,4 MB, 15 páginas)",
+   "confianca": "ALTA — HTTP 200 verificado, baixado e texto extraído com sucesso"
+  },
+  {
+   "descricao": "Manual de marca ANTERIOR (Manual_Niteroi_2021.pdf), 23 páginas, todo em imagem (sem texto extraível). Referência histórica — NÃO usar para as cores atuais.",
+   "url": "https://www.niteroi.rj.gov.br/wp-content/uploads/arquivos/Manual_Niteroi_2021.pdf",
+   "formato": "PDF (9,2 MB, 23 páginas, raster)",
+   "confianca": "ALTA quanto à URL (HTTP 200, 9.153.735 bytes); BAIXA quanto à utilidade — é a marca antiga"
+  },
+  {
+   "descricao": "Página oficial 'Manual da marca' do portal. O botão de download aponta para um Google Drive ('novo-logo-niteroi-horizontal-positivo'), que NÃO é uma URL de arquivo direto — exige interação do navegador e pode exigir login. Registro aqui só para rastreabilidade; não usar como fonte de arquivo.",
+   "url": "https://niteroi.rj.gov.br/manualdamarca/",
+   "formato": "HTML (página); destino é Google Drive, não arquivo direto",
+   "confianca": "MÉDIA — a página existe (HTTP 200), mas o ativo fica atrás de um link do Google Drive (https://drive.google.com/file/d/1xjXMYim3fgYFR3W3enn-8RBn8B6BPrWK/view), que NÃO testei como download direto e não deve ser embutido numa apresentação"
+  }
+ ],
+ "observacoes": [
+  "CORREÇÃO IMPORTANTE À PREMISSA DO PEDIDO: a marca da cidade de Niterói NÃO é azul e verde. A assinatura vigente é LARANJA (#EE7219) — wordmark 'Niterói' laranja + 'TEMPO DE AVANÇAR'. Azul, verde, vermelho e amarelo aparecem, mas dentro do BRASÃO e como cores de apoio da paleta institucional. Uma apresentação feita em azul/verde não ficaria com a identidade de Niterói.",
+  "NÃO ENCONTREI NENHUM ARQUIVO SVG OFICIAL. Todo o material servido pelos domínios niteroi.rj.gov.br e saude.niteroi.rj.gov.br é PNG/JPEG raster. O brandfetch.com/niteroi.rj.gov.br (que prometia SVG) devolveu HTTP 403 e é terceiro não-oficial — não confiar nele como fonte oficial.",
+  "LIMITE DE RESOLUÇÃO: o maior arquivo oficial do logo com transparência é 400x159 px (pmnlogo.png). Para slide em tela cheia isso estoura. O maior arquivo em boa resolução é o lockup da Saúde (1538x405), mas em JPEG com FUNDO BRANCO — se a apresentação tiver fundo colorido, vai aparecer o retângulo branco. Duas saídas: (a) usar o lockup só sobre fundo branco; (b) recortar o fundo do JPEG (é branco puro, o recorte é trivial) ou vetorizar.",
+  "NOME DO ÓRGÃO — há duas denominações convivendo e isso é real, não erro: 'Secretaria Municipal de Saúde' (a pasta, o setor de governo) e 'Fundação Municipal de Saúde de Niterói' (a entidade jurídica que executa o SUS, sigla FMS, CNPJ 32.556.060/0001-81). O site usa o título 'Secretaria Municipal de Saúde – Fundação Municipal de Saúde' e assina o rodapé como 'Fundação Municipal de Saúde de Niterói'. O logo impresso diz 'PREFEITURA DE NITERÓI | SECRETARIA DE SAÚDE'.",
+  "DEFASAGEM ENTRE MANUAL E PRÁTICA: o manual PDF publicado no portal ainda traz a assinatura 'O FUTURO É AGORA' (adotada em janeiro/2024, campanha dos 450 anos). Os sites oficiais já usam 'TEMPO DE AVANÇAR' (gestão 2025+). Para material novo, seguir 'TEMPO DE AVANÇAR' — é o que está no ar. As cores e a tipografia do manual continuam válidas (o laranja #EE7219 confere pixel a pixel com o logo novo).",
+  "TIPOGRAFIA É PAGA: Gotham (Hoefler&Co) é licenciada e provavelmente não está instalada na máquina. Substitutas gratuitas próximas, em ordem de fidelidade: Montserrat (Google Fonts — a mais próxima do Gotham em proporção e forma do 'o'), Poppins, Inter. O wordmark 'Niterói' em si NÃO é Gotham — é um lettering customizado com macron sobre o 'o'; não tente reproduzi-lo com fonte, use o arquivo de imagem.",
+  "ARQUIVOS JÁ BAIXADOS E CONFERIDOS localmente em C:\\Users\\berna\\AppData\\Local\\Temp\\claude\\C--Projetos-GIT-SMSMarica\\1420d22d-b776-46ad-98b8-1a5675a6cdda\\scratchpad\\niteroi\\ — pmnlogo.png (400x159 transparente), pmnlogo-2.png, pmnlogo-1.png, fmslogo2025.png, logo-pref-corte.jpg (1538x405, o melhor para cabeçalho), brasao-fav.png (270x270 brasão isolado), manual-novo.pdf, manual2021.pdf. Podem ser usados direto na montagem da apresentação sem baixar de novo.",
+  "RESSALVA DE USO: são marcas oficiais de ente público de outro município. Numa apresentação comercial do módulo Ouvidoria para Niterói isso é uso legítimo de demonstração, mas vale deixar explícito no material que se trata de simulação/proposta e que os dados das telas de estatística são fictícios — sobretudo porque o pedido é para inventar uma tela de estatísticas."
+ ],
+ "orgao_saude": "Fundação Municipal de Saúde de Niterói (FMS) — entidade executora do SUS no município, CNPJ 32.556.060/0001-81. Convive com a denominação \"Secretaria Municipal de Saúde\" (a pasta de governo); o portal oficial saude.niteroi.rj.gov.br se intitula \"Secretaria Municipal de Saúde – Fundação Municipal de Saúde\" e assina o rodapé como \"Fundação Municipal de Saúde de Niterói\". A ASSINATURA GRÁFICA impressa no logo oficial, porém, é \"PREFEITURA DE NITERÓI | SECRETARIA DE SAÚDE\" (lockup com brasão + separador vertical). Para o cabeçalho da apresentação, usar exatamente esse lockup; para citações institucionais em texto, usar \"Fundação Municipal de Saúde de Niterói (FMS)\".",
+ "tipografia": [
+  "Gotham Black — fonte oficial para títulos e destaques (definida na página 'Tipografia' do manual de marca). Fonte comercial da Hoefler&Co, licença paga.",
+  "Gotham Book — fonte oficial para texto corrido e linhas de apoio (mesma página do manual).",
+  "Substituta livre recomendada: Montserrat (Google Fonts) — geometria e proporção muito próximas do Gotham; usar Montserrat ExtraBold/Black para títulos e Montserrat Regular/Medium para corpo.",
+  "Substitutas alternativas: Poppins (mais circular) ou Inter (mais neutra, melhor legibilidade em tabela e dashboard).",
+  "O wordmark 'Niterói' NÃO é composto em Gotham — é lettering desenhado sob medida, com macron sobre o 'o' final. Nunca recompor por fonte; usar o arquivo PNG.",
+  "Padrão de caixa observado na marca: 'PREFEITURA DE' e 'SECRETARIA DE SAÚDE' sempre em CAIXA-ALTA com tracking largo; a assinatura 'TEMPO DE AVANÇAR' também em caixa-alta, com contraste de peso entre 'TEMPO DE' (leve) e 'AVANÇAR' (black)."
+ ]
+}

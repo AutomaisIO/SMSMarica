@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>O que cada relatório Crystal do Klinikos entrega (medido, Conde 15–16/09/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>O que cada relatório Crystal do Klinikos entrega (medido, Conde 15–16/09/2026)</h1>
+<p>&gt; Colunas medidas lendo os XLS gerados (instância do Conde, <code>unid_codigo</code> 0005, 1 dia). &gt; <code>lin/dia</code> = linhas de dado num dia. Tempo = cronometrado nesta sessão (vazio = não cronometrado &gt; isolado, mas todo Crystal fica na faixa de ~14–60 s). Nenhum dado de paciente aqui, só os &gt; nomes das colunas.</p>
+<h2>A. Relatórios NOMINAIS (uma linha por boletim/paciente — é o que dá para ingerir)</h2>
+<div class="tw"><table><thead><tr><th>parrel</th><th>Relatório</th><th>lin/dia</th><th>tempo</th><th>Colunas de dado</th><th>Serve no hub para</th></tr></thead><tbody>
+<tr><td><strong>407</strong></td><td>Pacientes Registrados no Dia</td><td>1.317</td><td>23–30 s</td><td>Nº Boletim, Prontuário, Paciente, Dt. Nascimento/Idade, Clínica</td><td>Encounter (chegada) + cadastro básico; <strong>fonte da via rápida</strong></td></tr>
+<tr><td><strong>667</strong></td><td>Nominal por Classificação de Risco</td><td>623</td><td>~14 s</td><td>Nº Boletim, Paciente, Idade, <strong>Data/Hora Entrada</strong>, Clínica, <strong>Origem</strong></td><td>chegada + <strong>cor/risco</strong> + como chegou</td></tr>
+<tr><td><strong>526</strong></td><td>Atendimentos por Profissional</td><td>831/dia</td><td><strong>~60 s (1,1 MB)</strong></td><td>Nº Boletim, Código (prontuário/atend.), <strong>Hora Atendimento</strong>, Nome, Idade, Sexo, Clínica, <strong>+ sub-linha <code>CID:</code> e <code>PROCEDIMENTOS:</code> por boletim</strong>; agrupado por <strong>Profissional</strong>. (coluna "Classificação" existe mas veio <strong>vazia</strong> — cor vem do 667)</td><td>início do atendimento + <strong>CID</strong> + procedimentos + profissional (o mais pesado)</td></tr>
+<tr><td><strong>629</strong></td><td>Fila de Espera</td><td>1.169</td><td>~10 s (PDF)</td><td>Nº Boletim, Nome, Início Atendimento, <strong>Tempo</strong>, Clínica</td><td>fila viva "agora" (mas melhor derivar do hub)</td></tr>
+<tr><td><strong>630</strong></td><td>Pacientes em Observação</td><td>210</td><td>10–13 s</td><td>Nº Boletim, Nome, Início Atendimento, Tempo, Especialidade, Profissional, Espec. Obs., Prof. Obs., <strong>Leito</strong></td><td>quem está em observação + leito</td></tr>
+<tr><td><strong>631</strong></td><td>Atendimentos em Andamento</td><td>204</td><td>3 s (varia)</td><td>Nº Boletim, Nome, Início Atendimento, Tempo, Clínica, Profissional</td><td>em atendimento "agora"</td></tr>
+<tr><td><strong>763</strong></td><td>Histórico de Eventos da Fila</td><td>73</td><td>~13 s</td><td>Profissional Resp. Evento, Data Evento, <strong>Evento Ocorrido</strong>, Justificativa</td><td>trilha de eventos da fila</td></tr>
+<tr><td><strong>100</strong></td><td>Internações Diárias</td><td>60</td><td>~14 s</td><td>Prontuário-Nome, D.Nasc, Idade, Sexo, Hora In, Município/Bairro, <strong>Local Internação</strong></td><td>Encounter de internação (Conde)</td></tr>
+<tr><td><strong>802</strong></td><td>Óbito por Locais de Internação</td><td>—</td><td>~14 s</td><td>Nº Boletim, Paciente, Idade, Data/Hora Entrada, <strong>Data/Hora Óbito</strong>, Local Internação</td><td>desfecho óbito</td></tr>
+<tr><td><strong>21</strong></td><td>Prontuários Abertos (Cadastro)</td><td>37</td><td>~14 s</td><td>Prontuário, Paciente, Clínica, Nascimento, Idade, Sexo, <strong>CNS</strong></td><td><strong>sincronismo de cadastro</strong> (novos + CNS)</td></tr>
+<tr><td><strong>488</strong></td><td>Origem Criação Prontuário (Cadastro)</td><td>7</td><td>~14 s</td><td>Data Abertura, Código, Paciente, Prontuário, Setor de Origem</td><td>origem do cadastro</td></tr>
+</tbody></table></div>
+<h2>B. Relatórios ESTATÍSTICOS (só totais — a origem faz a conta; <strong>nós faríamos no hub</strong>)</h2>
+<div class="tw"><table><thead><tr><th>parrel</th><th>Relatório</th><th>Colunas de dado</th></tr></thead><tbody>
+<tr><td>56</td><td>Registro Diário de Urgência por Clínica</td><td>Clínica, Total, e faixas etárias (&lt; 1, 1 a 4, 5 a 9, 10 a 14, 15 a 19, 20 a 29, 30 a 39, …)</td></tr>
+<tr><td>57</td><td>Registro Mensal de Urgência por Clínica</td><td>Mês, Total, mesmas faixas etárias</td></tr>
+<tr><td>66</td><td>Urgência por Tempo de Permanência</td><td>Tempo de Permanência, Total, <strong>Altas, Óbitos, Internações, Outros</strong></td></tr>
+<tr><td>65</td><td>Tipo de Saída, Sexo e Faixa Etária</td><td>por faixa etária (&lt; 1 ano … 60+), cruzado com tipo de saída e sexo</td></tr>
+<tr><td>711</td><td>Classificação de Risco, Sexo e Faixa Etária</td><td>por faixa etária, cruzado com cor e sexo</td></tr>
+<tr><td>484 / 518 / 519</td><td>Diagnósticos por Clínica / Faixa Etária / Registros por Clínica</td><td>totais (vieram 0 linhas no dia amostrado)</td></tr>
+</tbody></table></div>
+<p>&gt; <strong>Regra:</strong> os do grupo B a gente <strong>não puxa</strong> — o hub calcula o mesmo agregado sobre os dados &gt; nominais do grupo A. Puxar estatística é pagar ~14 s de Crystal por uma conta que é nossa.</p>
+<h2>C. Fora do Crystal (por tela / não em relatório)</h2>
+<div class="tw"><table><thead><tr><th>Dado</th><th>Onde</th><th>Custo</th></tr></thead><tbody>
+<tr><td>Narrativa médica (anamnese, exame físico, hipótese, conduta)</td><td>tela <code>AtendimentoMedico</code>; 791 PDF por paciente (Crystal, lento)</td><td>tela ~1 s/req, vários req/boletim</td></tr>
+<tr><td>Prescrição (medicamento, dose, via)</td><td>tela <code>PrescricaoReceita</code></td><td>idem</td></tr>
+<tr><td>Sinais vitais</td><td>tela <code>Enfermagem</code> / <code>RegistrosEnfermagem</code></td><td>idem</td></tr>
+<tr><td>Histórico do paciente (leitura)</td><td>tela <code>ResumoProntuario</code></td><td>tela ~1 s/req</td></tr>
+</tbody></table></div>
+<h2>D. CID (diagnóstico) — não sai em lote na web</h2>
+<p>Medido em 16/09: o <strong>único relatório nominal de CID por boletim (815 "Atendimento Nominal por CID") NÃO renderiza</strong> — é da família "Consolidado" bugada no Crystal deles (vizinhas 831, 835, 818 deram COMException / FormulaException / 504). Os relatórios de CID que funcionam (484, 542, 543, 544, 546, 547) são <strong>só totais</strong> (por clínica/sexo/faixa), não amarram CID a boletim. Nenhum dos nominais leves (407, 667, 526, 631) traz CID.</p>
+<p><strong>Correção (medido no XLS do 526):</strong> o CID <strong>sai, sim, em lote</strong> — o relatório <strong>526</strong> traz, sob cada boletim, uma sub-linha <code>CID: &lt;descrição&gt;</code> e <code>PROCEDIMENTOS: &lt;...&gt;</code>. Ou seja, o CID <strong>volta para a espinha</strong>, via 526, <strong>sem precisar abrir tela</strong>. O custo é o 526 ser o relatório mais pesado (~60 s / 1,1 MB), mas é <strong>1 requisição por unidade por hora</strong> que traz CID + cor + hora do atendimento + procedimentos de TODOS os boletins — muito mais barato que puxar CID de N boletins um a um. O 815 (dedicado a CID) continua quebrado, mas o 526 o substitui.</p>
+<p><strong>Só narrativa, prescrição e sinais vitais permanecem no deep</strong> (esses de fato não saem em nenhum relatório).</p>
+<h2>E. Armadilhas de parsing (dry-run 16/09) — para o parser .NET ter teste</h2>
+<ul>
+<li><strong>Chave do boletim precisa ser normalizada (zero-pad para 12).</strong> No <strong>407</strong> o Nº Boletim vem</li>
+</ul>
+<p>  como <strong>número</strong> e perde o zero à esquerda (<code>52609150001</code>, 11 díg.); no <strong>667</strong> vem como <strong>texto</strong>   (<code>052609150001</code>, 12 díg.). Sem padronizar, o JOIN 407×667 dá <strong>zero overlap</strong> (medido). Regra:   <code>spa_codigo</code> = string, <code>PadLeft(12,'0')</code>, sempre.</p>
+<ul>
+<li><strong>Cor no 667 é cabeçalho de GRUPO, não coluna.</strong> As linhas de boletim ficam sob uma linha-título</li>
+</ul>
+<p>  da cor (Verde/Amarelo/…); o parser tem de <strong>rastrear a cor corrente</strong> ao varrer, não procurar   uma coluna "Classificação".</p>
+<ul>
+<li><strong>XLS é BIFF com células mescladas</strong> — índice de coluna não alinha linha a linha; achar o</li>
+</ul>
+<p>  cabeçalho pelo rótulo e ler por rótulo, não por índice fixo.</p>
+<h2>Como ler a tabela</h2>
+<ul>
+<li><strong>CID: ver seção D</strong> — não é bulk na web; entra no deep.</li>
+<li><strong>A via rápida usa o 407</strong> (mais leve e completo por boletim) e complementa cor/hora com 667/526</li>
+</ul>
+<p>  quando o hub precisar.</p>
+<ul>
+<li><strong>631/629/630</strong> são "agora" — úteis para conferência, mas o painel deriva do hub, não deles.</li>
+</ul>
+</main>
+</body>
+</html>

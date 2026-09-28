@@ -99,7 +99,7 @@ public static class SiscanRequisicaoMapper
         campos.Add(new(CampoTipoMamografia, tipoMamografia));
 
         MontarNodulo(queixas, campos);
-        campos.Add(new(CampoRiscoElevado, RiscoElevado(risco)));
+        campos.Add(new(CampoRiscoElevado, RiscoElevado(risco, siscan)));
         campos.Add(new(CampoMamasExaminadas, MamasExaminadas(siscan)));
         MontarMamografiaAnterior(historico, siscan, campos);
         MontarRadioterapia(siscan, campos);
@@ -137,9 +137,21 @@ public static class SiscanRequisicaoMapper
     /// Sabe. Decisão do Bernardo (22/09/2026): <b>Moderado vira Sim</b> — acima de Baixo entra
     /// como risco elevado. Quando a classificação não foi preenchida, valem os quatro critérios
     /// objetivos; se nem eles foram respondidos, é "Não Sabe".</para>
+    ///
+    /// <para><b>Resposta explícita vence</b> (ticket #139, 25/09/2026): a anamnese passou a fazer
+    /// a pergunta do SISCAN como ela é lá (<c>siscan.riscoElevado</c>). Quem respondeu olhando o
+    /// quadro "risco elevado são" do SISCAN respondeu a pergunta certa — a dedução acima só vale
+    /// quando ela ficou em branco (inclusive toda anamnese anterior).</para>
     /// </summary>
-    private static string RiscoElevado(JsonElement risco)
+    private static string RiscoElevado(JsonElement risco, JsonElement siscan)
     {
+        switch (Texto(siscan, "riscoElevado"))
+        {
+            case "sim": return Sim;
+            case "nao": return Nao;
+            case "naoSabe": return NaoSabe;
+        }
+
         var classificacao = Texto(risco, "classificacao");
         if (classificacao is "Alto" or "Moderado") return Sim;
         if (classificacao == "Baixo") return Nao;

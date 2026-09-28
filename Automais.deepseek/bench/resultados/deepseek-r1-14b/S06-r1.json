@@ -1,0 +1,27 @@
+{
+ "cena": "S06",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 169.04,
+   "usage": {
+    "completion_tokens": 189,
+    "prompt_tokens": 3223,
+    "total_tokens": 3412,
+    "prompt_tokens_details": {
+     "cached_tokens": 215
+    }
+   },
+   "texto_fora_de_tool": "\n\nBom dia! Você quer falar com um atendente humano ou posso ajudar com alguma outra coisa?",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:26:59",
+ "latencia_total_s": 169.04
+}

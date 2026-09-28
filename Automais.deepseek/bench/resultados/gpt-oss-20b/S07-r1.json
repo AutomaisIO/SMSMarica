@@ -1,0 +1,33 @@
+{
+ "cena": "S07",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 18.57,
+   "usage": {
+    "completion_tokens": 180,
+    "prompt_tokens": 3962,
+    "total_tokens": 4142,
+    "prompt_tokens_details": {
+     "cached_tokens": 3953
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Claro, posso ajudar. Qual exame você gostaria de agendar?\",\"handoff\":false,\"confianca\":0.8}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Claro, posso ajudar. Qual exame você gostaria de agendar?",
+  "handoff": false,
+  "confianca": 0.8
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:35:41",
+ "latencia_total_s": 18.57
+}

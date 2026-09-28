@@ -1,0 +1,114 @@
+
+######## gpt-oss-20b
+
+[S01] viol=[]
+  seq: responder_cidadao({"texto":"Para falar com um atendente, encaminho sua solicitação. Por favor, aguarde. Enquanto isso, acesse https://app.smsmarica.)
+  final: {"texto": "Para falar com um atendente, encaminho sua solicitação. Por favor, aguarde. Enquanto isso, acesse https://app.smsmarica.online para verificar seus exames, consultas e atendimentos na rede municipal e mantenha seus dados sempre atualizados.", "handoff": true, "confianca": 0.5}
+
+[S02] viol=[]
+  seq: responder_cidadao({"texto":"Boa noite! Para localizar sua consulta, poderia me informar os quatro primeiros dígitos do seu CPF?","handoff":false,"co)
+  final: {"texto": "Boa noite! Para localizar sua consulta, poderia me informar os quatro primeiros dígitos do seu CPF?", "handoff": false, "confianca": 0.9}
+
+[S03] viol=[]
+  seq: responder_cidadao({"texto":"Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emer)
+  final: {"texto": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município. Se precisar de atendimento imediato, poderia me informar seu CEP ou bairro? Assim eu consigo indicar a unidade de urgência mais próxima.\n\nPara consultar seus exames, consultas e atendimentos já realizados na rede municipal, acesse https://app.smsmarica.onl
+
+[S04] viol=[]
+  seq: responder_cidadao({"texto":"Para confirmar sua presença, preciso que me informe os quatro primeiros dígitos do seu CPF e seu mês e ano de nascimento)
+  final: {"texto": "Para confirmar sua presença, preciso que me informe os quatro primeiros dígitos do seu CPF e seu mês e ano de nascimento.", "handoff": false, "confianca": 0.5}
+
+[S05] viol=[]
+  seq: responder_cidadao({"texto":"Para continuar, preciso confirmar sua identidade. Poderia me informar os 4 primeiros dígitos do CPF do paciente, por fav)
+  final: {"texto": "Para continuar, preciso confirmar sua identidade. Poderia me informar os 4 primeiros dígitos do CPF do paciente, por favor?", "handoff": false, "confianca": 0.5}
+
+[S06] viol=[]
+  seq: responder_cidadao({"texto":"Claro, encaminhando para um atendente humano. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e aten)
+  final: {"texto": "Claro, encaminhando para um atendente humano. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados.", "handoff": true, "confianca": 0.5}
+
+[S07] viol=[]
+  seq: responder_cidadao({"texto":"Claro, posso ajudar. Você quer agendar um exame, uma consulta ou o seu cadastro?","handoff":false,"confianca":0.7})
+  final: {"texto": "Claro, posso ajudar. Você quer agendar um exame, uma consulta ou o seu cadastro?", "handoff": false, "confianca": 0.7}
+
+[S08] viol=[]
+  seq: responder_cidadao({"texto":"Por favor, informe os quatro primeiros dígitos do seu CPF.","handoff":false,"confianca":0.5})
+  final: {"texto": "Por favor, informe os quatro primeiros dígitos do seu CPF.", "handoff": false, "confianca": 0.5}
+
+[S09] viol=[]
+  seq: responder_cidadao({"texto":"Olá! Para confirmar o agendamento, preciso dos quatro primeiros dígitos do CPF do paciente, por favor. Já anotamos seu n)
+  final: {"texto": "Olá! Para confirmar o agendamento, preciso dos quatro primeiros dígitos do CPF do paciente, por favor. Já anotamos seu novo número de contato: (21) 99942‑8549.", "handoff": false, "confianca": 0.9}
+
+[S10] viol=[]
+  seq: responder_cidadao({"texto":"Claro, como posso ajudar você hoje?","handoff":false,"confianca":0.5})
+  final: {"texto": "Claro, como posso ajudar você hoje?", "handoff": false, "confianca": 0.5}
+
+[S11] viol=[]
+  seq: responder_cidadao({"texto":"Para verificar seu cadastro, poderia me informar os quatro primeiros dígitos do seu CPF?","handoff":false,"confianca":0.)
+  final: {"texto": "Para verificar seu cadastro, poderia me informar os quatro primeiros dígitos do seu CPF?", "handoff": false, "confianca": 0.5}
+
+[S12] viol=[]
+  seq: responder_cidadao({"texto":"Qual o mês e ano de nascimento?","handoff":false,"confianca":0.0})
+  final: {"texto": "Qual o mês e ano de nascimento?", "handoff": false, "confianca": 0.0}
+
+######## qwen3-30b-a3b
+
+[S01] viol=[]
+  seq: consultar_cadastro({"cpf": "1234", "mesNascimento": 5, "anoNascimento": 1980}) -> consultar_agendamentos({"cpf": "1234", "mesNascimento": 5, "anoNascimento": 1980}) -> encaminhar_para_humano({}) -> responder_cidadao({"texto": "Conversa encaminhada para atendimento humano. Em breve, um atendente entrará em contato ou você poderá procurar o posto)
+  final: {"texto": "Conversa encaminhada para atendimento humano. Em breve, um atendente entrará em contato ou você poderá procurar o posto de saúde onde é atendido para confirmar seu agendamento. Lembre-se de que o atendimento é apenas administrativo — se estiver com sintomas, dor ou qualquer problema de saúde, procure o posto onde é atendido ou vá para a urgência, caso seja emergência. Acesse https://app.smsmarica.online — lá ficam os exames, consultas 
+
+[S02] viol=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  seq: consultar_agendamentos({"cpf": "1234", "mesNascimento": 5, "anoNascimento": 1980})
+  final: {"texto": null, "handoff": null, "confianca": null}
+
+[S03] viol=[]
+  seq: consultar_unidades({"termo": "bairro"}) -> encaminhar_para_humano({}) -> responder_cidadao({"texto": "Encaminhado para atendimento humano. Em breve, alguém irá ajudar com mais detalhes.\n\nAcesse https://app.smsmarica.onl)
+  final: {"texto": "Encaminhado para atendimento humano. Em breve, alguém irá ajudar com mais detalhes.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados. 🙏.\n\nFique atento(a) ao seu WhatsApp. Até breve. 😊.", "handoff": true, "confianca": 0.95}
+
+[S04] viol=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  seq: (nenhuma)
+  final: {"texto": null, "handoff": null, "confianca": null}
+
+[S05] viol=[]
+  seq: consultar_cadastro({"cpf": "1234", "mesNascimento": 5, "anoNascimento": 1990}) -> consultar_agendamentos({"cpf": "1234", "mesNascimento": 5, "anoNascimento": 1990}) -> consultar_unidades({"termo": "centro"}) -> responder_cidadao({"texto": "Maria Aparecida, aqui estão as unidades próximas ao centro:\n\n- **UPA 24H Inoã** — Rod. Amaral Peixoto, km 30, Inoã\n-)
+  final: {"texto": "Maria Aparecida, aqui estão as unidades próximas ao centro:\n\n- **UPA 24H Inoã** — Rod. Amaral Peixoto, km 30, Inoã\n- **Hospital Municipal Conde Modesto Leal** — R. Clímaco Pereira 241, Centro\n- **PS Santa Rita (PA 24h)** — Av. Carlos Mariguella s/n, Jardim Atlântico, Itaipuaçu\n\nSe precisar de mais ajuda, é só me chamar. E lembre-se: acesse https://app.smsmarica.online para ver seus exames e atendimentos anteriores.\n\nTenha um ót
+
+[S06] viol=[]
+  seq: encaminhar_para_humano({}) -> responder_cidadao({"texto": "Estou encaminhando sua solicitação para um atendente humano. Em breve, você será atendido.\n\nAcesse https://app.smsmar)
+  final: {"texto": "Estou encaminhando sua solicitação para um atendente humano. Em breve, você será atendido.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os dados sempre atualizados.\n\nObrigado! 😊", "handoff": true, "confianca": 0.95}
+
+[S07] viol=[]
+  seq: responder_cidadao({"texto": "Claro, posso ajudar. Para verificar seu cadastro, preciso dos quatro primeiros dígitos do seu CPF e do mês e ano de nas)
+  final: {"texto": "Claro, posso ajudar. Para verificar seu cadastro, preciso dos quatro primeiros dígitos do seu CPF e do mês e ano de nascimento. Pode me informar? Além disso, você quer agendar um exame específico? (como sangue, raio X, etc.)\n\nSó para lembrar: a marcação de exames é feita presencialmente no posto de saúde onde você é atendido. Posso te orientar sobre como fazer isso, se precisar.\n\nPor enquanto, me diga os dados para confirmar sua id
+
+[S08] viol=[]
+  seq: responder_cidadao({"texto": "O endereço da unidade onde seu filho fará o atendimento será informado no seu posto de saúde, onde você é cadastrada. O)
+  final: {"texto": "O endereço da unidade onde seu filho fará o atendimento será informado no seu posto de saúde, onde você é cadastrada. O ideal é que ele retorne a guia lá, para confirmar o local e a hora. Caso precise de ajuda para localizar o seu posto, posso consultar por bairro — é só me dizer onde você mora.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que você já teve na rede municipal; peça para manter os 
+
+[S09] viol=[]
+  seq: responder_cidadao({"texto": "Alessandra, boa tarde! Obrigada pela informação. Seu novo contato (21 999428549) já foi atualizado no sistema. Em caso )
+  final: {"texto": "Alessandra, boa tarde! Obrigada pela informação. Seu novo contato (21 999428549) já foi atualizado no sistema. Em caso de necessidade, estaremos em contato.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que seu filho já teve na rede municipal. Mantenha os dados sempre atualizados.\n\nTenha um ótimo dia!", "handoff": false, "confianca": 0.95}
+
+[S10] viol=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  seq: (nenhuma)
+  final: {"texto": null, "handoff": null, "confianca": null}
+
+[S11] viol=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  seq: (nenhuma)
+  final: {"texto": null, "handoff": null, "confianca": null}
+
+[S12] viol=['nenhuma_tool_chamada (tool_choice=required ignorado)', 'terminou_sem_responder_cidadao']
+  seq: (nenhuma)
+  final: {"texto": null, "handoff": null, "confianca": null}
+
+######## llama33-70b
+
+[S01] viol=[]
+  seq: responder_cidadao({"texto": "Claro, para confirmar presen", "handoff": true, "confianca": 0, "motivoHandoff": "Paciente solicitou atendente humano"})
+  final: {"texto": "Claro, para confirmar presen", "handoff": true, "confianca": 0}
+
+[S03] viol=[]
+  seq: responder_cidadao({"texto": "Entendo sua preocupação. Mas a nossa orientação \u00e9 sempre buscar o posto em que o paciente \u00e9 atendido ou, em c)
+  final: {"texto": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município. É importante procurar atendimento médico o mais rápido possível. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; por favor, mantenha os dados sempre atualizados.", "handoff": true, "confia
+
+[S07] viol=[]
+  seq: responder_cidadao({"texto": "Para agendar um exame, por favor procure o posto de sa\u00fade onde voc\u00e9 \u00e9 atendido.", "handoff": false, "con)
+  final: {"texto": "Para agendar um exame, por favor procure o posto de saúde onde vocé é atendido.", "handoff": false, "confianca": 1.0}

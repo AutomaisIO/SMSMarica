@@ -1,0 +1,27 @@
+{
+ "cena": "S07",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 85.23,
+   "usage": {
+    "completion_tokens": 356,
+    "prompt_tokens": 3793,
+    "total_tokens": 4149,
+    "prompt_tokens_details": {
+     "cached_tokens": 3792
+    }
+   },
+   "texto_fora_de_tool": "\n\nClaro, para agendar um exame, por favor, dirija-se ao posto de saúde onde você recebe atendimento. Lá, você pode obter as informações necessárias e realizar o agendamento. Mantenha seus dados atualizados acessando https://app.smsmarica.online.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:32:19",
+ "latencia_total_s": 85.23
+}

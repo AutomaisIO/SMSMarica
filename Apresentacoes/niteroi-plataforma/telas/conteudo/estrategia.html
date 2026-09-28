@@ -1,0 +1,49 @@
+<div class="pg-cab">
+  <div>
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      Estratégia · Cardiologia adulto
+      <span class="ajuda">?</span>
+    </h1>
+    <p class="sub">Simulação contra a fila real — nada aqui escreve no sistema de regulação.</p>
+  </div>
+  <button class="btn btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+    Simular
+  </button>
+</div>
+
+<div class="est-grid mt14">
+  <div class="cx">
+    <p class="cx-tit">O que posso mexer</p>
+    <div class="ctrl"><span class="ck">Unidades executantes</span><span class="cv2">3 <i>→</i> <b>4</b></span></div>
+    <div class="ctrl"><span class="ck">Profissionais na escala</span><span class="cv2">5 <i>→</i> <b>6</b></span></div>
+    <div class="ctrl"><span class="ck">Dias de agenda por semana</span><span class="cv2">3 <i>→</i> <b>5</b></span></div>
+    <div class="ctrl"><span class="ck">Vagas por turno</span><span class="cv2">12 <i>→</i> <b>12</b></span></div>
+    <div class="ctrl travado"><span class="ck">Fila atual <span class="pill s-externo">trava</span></span><span class="cv2"><b>147</b></span></div>
+    <div class="ctrl travado"><span class="ck">Entrada semanal <span class="pill s-externo">trava</span></span><span class="cv2"><b>22/sem</b></span></div>
+    <p class="cx-pe">O que está <b>travado</b> é contrato: o simulador não inventa demanda nem reduz fila por decreto.</p>
+  </div>
+
+  <div class="cx">
+    <p class="cx-tit">Projeção da fila</p>
+    <div class="serie" style="height:150px">
+      <svg viewBox="0 0 600 150" preserveAspectRatio="none">
+        <g stroke="#e2e8f0" stroke-width="1"><line x1="0" y1="37" x2="600" y2="37"/><line x1="0" y1="74" x2="600" y2="74"/><line x1="0" y1="111" x2="600" y2="111"/></g>
+        <polyline fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 5" points="0,18 100,31 200,45 300,61 400,79 500,99 600,121"/>
+        <polyline fill="none" stroke="#ee7219" stroke-width="3.5" stroke-linejoin="round" points="0,18 100,40 200,70 300,106 420,144"/>
+        <circle cx="420" cy="144" r="6" fill="#ee7219"/>
+      </svg>
+      <div class="eixo"><span>hoje</span><span>2 sem</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span></div>
+    </div>
+    <div class="res-linha">
+      <div class="res"><span class="r">Com a oferta de hoje</span><span class="v">12+ <i>semanas</i></span></div>
+      <div class="res destaque"><span class="r">Com a simulação</span><span class="v">9 <i>semanas</i></span></div>
+      <div class="res"><span class="r">Vagas a mais / semana</span><span class="v">+48</span></div>
+    </div>
+    <div class="aviso-tela mt10">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>
+      <span>Estratégia salva fica no nosso banco para consulta. <b>“Aplicada” é anotação humana</b> — nada é escrito no SISREG.</span>
+    </div>
+  </div>
+</div>

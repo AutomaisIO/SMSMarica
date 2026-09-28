@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lacunas da transição Salux → Klinikos no hub FHIR (medido 16/09/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Lacunas da transição Salux → Klinikos no hub FHIR (medido 16/09/2026)</h1>
+<p>&gt; Tudo abaixo foi <strong>medido</strong>: os volumes do hub vêm de <code>SELECT</code> no Postgres de produção &gt; (<code>fhir.encounter</code>, read-only) e os volumes do Klinikos vêm dos relatórios web deste &gt; laboratório (instância do Conde, <code>unid_codigo</code> 0005). Nenhum dado de paciente entrou no &gt; documento. <strong>Nada foi escrito no hub</strong> — isto é diagnóstico, não carga.</p>
+<h2>1. Retrato do hub por origem (<code>fhir.encounter.meta.source</code>)</h2>
+<div class="tw"><table><thead><tr><th>Origem (<code>meta.source</code>)</th><th>Encounters</th><th>Primeiro</th><th>Último</th></tr></thead><tbody>
+<tr><td><code>…/salux/salux-hcml</code></td><td>1.160.635</td><td>2021-02-09</td><td><strong>2026-08-21</strong></td></tr>
+<tr><td><code>…/klinikos/upa24h-marica-sqlserver</code></td><td>196.275</td><td>2025-04-07</td><td>2026-09-16 (hoje)</td></tr>
+<tr><td><code>…/klinikos/santarita-marica-sqlserver</code></td><td>123.626</td><td>2006-07-06</td><td>2026-09-16 (hoje)</td></tr>
+<tr><td><code>…/salux</code> (legado, quase vazio)</td><td>120</td><td>2021-01-07</td><td>2024-09-16</td></tr>
+</tbody></table></div>
+<p>A base Salux <code>salux-hcml</code> serve <strong>3 hospitais</strong> (o identifier <code>urn:salux:baa</code> = <code>salux-hcml:&lt;CD_HOSPITAL&gt;-&lt;ano&gt;-&lt;n&gt;</code>): <strong>1 = Conde (HMCML)</strong>, <strong>2 = UPA Inoã</strong>, <strong>3 = Santa Rita</strong>. Quebrando por hospital:</p>
+<div class="tw"><table><thead><tr><th>CD_HOSPITAL</th><th>Unidade</th><th>Encounters (Salux)</th><th>Último no Salux</th></tr></thead><tbody>
+<tr><td>1</td><td>Conde / HMCML</td><td>721.939</td><td><strong>2026-08-21</strong> (real: 06–07/08)</td></tr>
+<tr><td>2</td><td>UPA Inoã</td><td>268.145</td><td>2025-04-07</td></tr>
+<tr><td>3</td><td>Santa Rita</td><td>163.620</td><td>2025-04-08</td></tr>
+</tbody></table></div>
+<h2>2. UPA Inoã e Santa Rita — <strong>sem lacuna</strong> (corrige memória antiga)</h2>
+<p>A migração aconteceu em <strong>07–08/04/2025</strong> e o conector Klinikos <strong>pegou no mesmo dia</strong>:</p>
+<ul>
+<li>UPA Inoã: Salux termina <code>2025-04-07 16:13</code>, Klinikos <code>upa24h</code> começa <code>2025-04-07 13:52</code>.</li>
+<li>Santa Rita: Salux termina <code>2025-04-08 06:48</code>, Klinikos <code>santarita</code> já vinha de 2006.</li>
+</ul>
+<p>E os dois conectores Klinikos estão <strong>correntes até hoje</strong> (último encounter 16/09/2026). Ou seja, o motor do Klinikos das UPAs está <strong>LIGADO</strong> — a nota de memória "hub cego nas UPAs desde abr/2025 / motor OFF" está <strong>desatualizada</strong> e foi corrigida.</p>
+<p>&gt; <strong>Ponta a investigar (não é lacuna, é possível DUPLICAÇÃO):</strong> Santa Rita tem no Klinikos &gt; história desde <strong>2006</strong>, enquanto o Salux tem Santa Rita de 2021 a abr/2025. O intervalo &gt; 2021–2025 pode estar nas DUAS origens. Isso é dedup por identidade, não buraco de dado — &gt; tratar com o <code>UpsertCanonicoPep</code> (âncora CPF/CNS), não com nova carga.</p>
+<h2>3. Conde (HMCML) — <strong>a lacuna real, e ela cresce</strong></h2>
+<p>Sequência medida:</p>
+<div class="tw"><table><thead><tr><th>Data</th><th>Salux-Conde no hub</th><th>Klinikos-Conde (web, relatório 407)</th></tr></thead><tbody>
+<tr><td>até 06/08/2026</td><td>~500–670 boletins/dia (normal)</td><td><strong>nada</strong> (02–03/08 "Nenhum registro")</td></tr>
+<tr><td><strong>04/08/2026</strong></td><td>ainda ativo</td><td><strong>começa</strong> (cutover)</td></tr>
+<tr><td>05–06/08</td><td>ativo (overlap)</td><td>ativo (759+/dia em 15/08)</td></tr>
+<tr><td>07/08/2026</td><td><strong>135</strong> (dia parcial — colapsa)</td><td>ativo</td></tr>
+<tr><td>08/08 → 20/08</td><td><strong>0</strong></td><td>ativo</td></tr>
+<tr><td>21/08/2026</td><td><strong>1</strong> registro solto (straggler)</td><td>ativo</td></tr>
+<tr><td>22/08 → hoje</td><td><strong>0</strong></td><td>ativo (922 em 05/09, 1.317 em 15/09)</td></tr>
+</tbody></table></div>
+<p><strong>Conclusões:</strong></p>
+<ul>
+<li><strong>Conde migrou para o Klinikos em 04/08/2026</strong> (primeiro boletim em <code>klinikosconde</code>).</li>
+<li><strong>O sync do Salux-Conde morreu em 07/08/2026</strong> (colapso de 659→135→0; o "21/08" é lixo).</li>
+<li><strong>Desde ~08/08/2026 o hub não tem NENHUM atendimento do Conde.</strong> São ~40 dias e contando, a</li>
+</ul>
+<p>  <strong>~700–1.300 boletins/dia</strong> → estimativa de <strong>~35.000+ boletins do Conde fora do hub</strong>, mais   toda a clínica pendurada neles (evolução, CID, prescrição, sinais vitais, desfecho).</p>
+<ul>
+<li><strong>Não existe conector para o Conde-Klinikos.</strong> O <code>KlinikosImportacaoStrategy</code> só conhece os</li>
+</ul>
+<p>  slugs SQL <code>upa24h-marica-sqlserver</code> e <code>santarita-marica-sqlserver</code>. <code>klinikosconde</code> é outro   servidor/base (o operador confirmou: os três são servers e bases distintos, só sincronizam   login e cadastro) e <strong>ninguém o lê</strong>. A lacuna é estrutural, não um ponteiro travado.</p>
+<h2>4. Como preencher o buraco do Conde — opções (nenhuma executada)</h2>
+<p>O que o hub precisa por boletim do Conde: Encounter (chegada/desfecho), Condition (CID), DocumentReference (narrativa), MedicationRequest (prescrição), Observation (sinais vitais) — o mesmo conjunto que o conector SQL das UPAs monta.</p>
+<div class="tw"><table><thead><tr><th>Caminho</th><th>O que entrega</th><th>Custo / risco</th></tr></thead><tbody>
+<tr><td><strong>A. Conector SQL do Conde</strong> (novo slug <code>klinikosconde-*</code>, se houver rota de banco)</td><td>Tudo, com rowversion e a mesma qualidade das UPAs</td><td>Precisa de acesso ao banco do Conde — vai <strong>contra</strong> a direção de sair do banco; pode não existir rota</td></tr>
+<tr><td><strong>B. Ingestão pelos relatórios web</strong> (este laboratório)</td><td>Boletim, chegada, CID (815), classificação (667/526), desfecho (65), observação (630), cadastro (21) — tudo por XLS/1 GET</td><td>Alinhado à direção "como usuário"; <strong>lossy</strong>: narrativa médica, prescrição e sinais vitais <strong>não têm relatório nominal</strong> no menu (só tela por boletim). Ver <code>inventario-consultas-atuais.md §2</code></td></tr>
+<tr><td><strong>C. Pedir exportação ao fornecedor</strong> (Eco Sistemas)</td><td>O que faltar de B</td><td>Depende de terceiro</td></tr>
+</tbody></table></div>
+<p><strong>Recomendação:</strong> o buraco tem duas camadas. (1) A <strong>espinha</strong> (Encounter+chegada+CID+desfecho+ classificação+cadastro) é backfillável <strong>já</strong> pelos relatórios web do Conde, dia a dia, sem tocar banco — é o que dá o Conde de volta ao Painel do Secretário e ao hub no nível de jornada. (2) A <strong>profundidade</strong> (narrativa, prescrição, sinais vitais por boletim) não sai por relatório e exige decisão: tela por boletim (caro), conector SQL do Conde (contra a direção) ou exportação do fornecedor.</p>
+<h2>5. Ordem sugerida (cada passo é ação de produção — só com OK explícito)</h2>
+<ol>
+<li><strong>Confirmar</strong> com o operador se existe rota de banco para o Conde-Klinikos (decide A vs B).</li>
+<li><strong>Espinha do Conde no hub via web</strong> (opção B): backfill 08/08→hoje, 1 dia por chamada,</li>
+</ol>
+<p>   XLS, madrugada; depois incremento diário. Verificar a carga <strong>pela API do hub</strong> (regra:    carga em massa se confere pela API, não pelo "salvou"). Idempotência por <code>spa_codigo</code>    (identifier <code>urn:klinikos:boletim</code>), como as UPAs.</p>
+<ol>
+<li><strong>Conde no Painel do Secretário</strong> em paralelo (não depende do hub) — relatórios 629/631/630/</li>
+</ol>
+<p>   407/56/57/526/667.</p>
+<ol>
+<li><strong>Profundidade</strong>: decidir o caminho da narrativa/prescrição/vitais.</li>
+<li>Só então avaliar desligar o agente SQL das UPAs (o motor delas está LIGADO e corrente —</li>
+</ol>
+<p>   não desligar antes de a web cobrir o mesmo por ≥ 1 semana com números conferidos).</p>
+<p>&gt; <strong>Bloqueio deliberado:</strong> este documento é diagnóstico. Popular o hub é escrita em produção e &gt; carga em massa — não roda sem OK por ação ([[feedback_producao_confirmar_antes]], &gt; [[feedback_carga_massa_verificar_pela_api]]).</p>
+</main>
+</body>
+</html>

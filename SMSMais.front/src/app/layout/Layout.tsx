@@ -17,6 +17,7 @@ import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { ModalTicketRespondido } from '@/features/tickets/components/ModalTicketRespondido';
+import { SoftphoneDock } from '@/features/telefonia/components/SoftphoneDock';
 
 export function Layout() {
   const [colapsado, setColapsado] = useState(false);
@@ -122,6 +123,9 @@ export function Layout() {
 
       {/* Chat flutuante global (só aparece para quem tem o módulo Conversas). */}
       <ChatWidget />
+
+      {/* Softphone flutuante (só para quem tem softphone habilitado e ativo). */}
+      <SoftphoneDock />
 
       {/* Modal global: avisa o autor quando a equipe responde/conclui um ticket dele. */}
       <ModalTicketRespondido />

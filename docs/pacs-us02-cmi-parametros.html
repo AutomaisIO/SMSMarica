@@ -1,0 +1,106 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Ultrassom 02 — CMI · Parâmetros DICOM</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font: 11pt/1.35 "Segoe UI", system-ui, sans-serif;
+    color: #111; margin: 0;
+  }
+  header { border-bottom: 3px solid #c62828; padding-bottom: 8px; margin-bottom: 14px; }
+  h1 { font-size: 20pt; margin: 0; }
+  header .sub { font-size: 10pt; color: #555; margin-top: 2px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+  section { break-inside: avoid; }
+  h2 {
+    font-size: 9pt; text-transform: uppercase; letter-spacing: .09em;
+    color: #c62828; margin: 0 0 5px; padding-bottom: 3px; border-bottom: 1px solid #e0e0e0;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 3px 0; vertical-align: baseline; }
+  td.k { color: #555; white-space: nowrap; padding-right: 10px; width: 43%; }
+  td.v { font-family: Consolas, "Courier New", monospace; font-weight: 700; font-size: 11.5pt; }
+  .full { grid-column: 1 / -1; }
+  .nota {
+    margin-top: 14px; padding: 9px 12px; background: #fdf3f3;
+    border-left: 3px solid #c62828; font-size: 10pt;
+  }
+  .nota b { color: #c62828; }
+  footer { margin-top: 14px; font-size: 8.5pt; color: #888; text-align: right; }
+</style>
+
+<header>
+  <h1>Ultrassom 02 &middot; CMI</h1>
+  <div class="sub">Parâmetros DICOM &mdash; PACS da SMS Maricá &middot; Centro Materno Infantil</div>
+</header>
+
+<div class="grid">
+  <section>
+    <h2>Servidor (PACS)</h2>
+    <table>
+      <tr><td class="k">IP</td><td class="v">104.236.203.40</td></tr>
+      <tr><td class="k">Hostname</td><td class="v" style="font-size:10pt">pacs.marica.automais.cloud</td></tr>
+      <tr><td class="k">Porta DICOM</td><td class="v">11112</td></tr>
+      <tr><td class="k">Porta TLS (opcional)</td><td class="v">2762</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Aparelho (configuração local)</h2>
+    <table>
+      <tr><td class="k">AE Title (Calling AE)</td><td class="v">US02-CMI</td></tr>
+      <tr><td class="k">Station Name</td><td class="v">US02-CMI</td></tr>
+      <tr><td class="k">Modalidade</td><td class="v">US</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Envio de imagem &mdash; C-STORE</h2>
+    <table>
+      <tr><td class="k">Called AE</td><td class="v">PACS-CDT</td></tr>
+      <tr><td class="k">Host</td><td class="v">104.236.203.40</td></tr>
+      <tr><td class="k">Porta</td><td class="v">11112</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Worklist &mdash; MWL</h2>
+    <table>
+      <tr><td class="k">Called AE</td><td class="v">WORK-US02-CMI</td></tr>
+      <tr><td class="k">Host</td><td class="v">104.236.203.40</td></tr>
+      <tr><td class="k">Porta</td><td class="v">11112</td></tr>
+    </table>
+  </section>
+
+  <section class="full">
+    <h2>MPPS (se o aparelho suportar)</h2>
+    <table>
+      <tr>
+        <td class="k" style="width:21.5%">Called AE</td>
+        <td class="v">WORK-US02-CMI &nbsp;&middot;&nbsp; 104.236.203.40 &nbsp;&middot;&nbsp; 11112</td>
+      </tr>
+    </table>
+  </section>
+
+  <section class="full">
+    <h2>Filtro da worklist no aparelho</h2>
+    <table>
+      <tr>
+        <td class="k" style="width:21.5%">Scheduled Station AE Title</td>
+        <td class="v">US02-CMI</td>
+      </tr>
+      <tr><td class="k">Modality</td><td class="v">US</td></tr>
+    </table>
+  </section>
+</div>
+
+<div class="nota">
+  <b>Imagem e worklist usam a MESMA porta (11112).</b> O que muda é só o <b>Called AE</b>:
+  <code>PACS-CDT</code> para imagem, <code>WORK-US02-CMI</code> para worklist.
+  Não aponte a worklist para <code>PACS-CDT</code> &mdash; esse AE não responde MWL.<br>
+  <b>Não altere o ultrassom que já está em uso no CMI</b> (AE <code>US_CMI</code>).<br>
+  Liberar no firewall a <b>saída</b> TCP para <code>104.236.203.40:11112</code>.
+</div>
+
+<footer>Automais &middot; 09/09/2026 &middot; dúvidas: equipe Automais</footer>

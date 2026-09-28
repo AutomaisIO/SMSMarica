@@ -1,0 +1,27 @@
+{
+ "cena": "S11",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 238.71,
+   "usage": {
+    "completion_tokens": 464,
+    "prompt_tokens": 3941,
+    "total_tokens": 4405,
+    "prompt_tokens_details": {
+     "cached_tokens": 941
+    }
+   },
+   "texto_fora_de_tool": "\n\n*Prezado(a),*\n\n*Peço que disculpe a demora na resposta. Compreendo a sua frustração com o tempo de espera e lamentamos que a situação tenha se tornado impossível para você.*\n\n*Para resolver o problema, oriento que procure o posto de saúde onde você é atendido. Lá, será possível esclarecer as providências necessárias.*\n\n*Você pode também acessar o [app](https://app.smsmarica.online) para verificar os seus exames, consultas e atendimentos. Mantenha os dados sempre atualizados.*\n\n*Caso precise de ajuda adicional, pode pedir para falar com um atendente humano.* \n\n*Desculpe pelo transtorno e obrigado por nos contactar.* \n\n*Atenciosamente,*  \n*Equipe de Atendimento*",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:45:41",
+ "latencia_total_s": 238.71
+}

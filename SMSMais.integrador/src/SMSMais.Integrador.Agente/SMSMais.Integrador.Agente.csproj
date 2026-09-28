@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Windows: lê o registro (App Paths) para achar o Chrome/Edge instalado. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>SMSMais.Integrador.Agente</RootNamespace>
+    <AssemblyName>smsmais-integrador</AssemblyName>
+    <Version>0.1.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Cliente CDP puro .NET: lança o Chrome instalado e fala com ele pela porta de depuração. -->
+    <PackageReference Include="PuppeteerSharp" Version="25.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- O script injetado em toda página (selo, blur, janela, captura da tela, sessão do painel). -->
+    <EmbeddedResource Include="Ui\pagina.js" LogicalName="pagina.js" />
+  </ItemGroup>
+
+</Project>

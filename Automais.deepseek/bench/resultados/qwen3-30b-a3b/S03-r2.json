@@ -1,0 +1,72 @@
+{
+ "cena": "S03",
+ "modelo": "qwen3-30b-a3b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 17.48,
+   "usage": {
+    "completion_tokens": 177,
+    "prompt_tokens": 4504,
+    "total_tokens": 4681,
+    "prompt_tokens_details": {
+     "cached_tokens": 4503
+    }
+   },
+   "texto_fora_de_tool": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município.\n\nPara ajudar melhor, me informe o bairro onde sua mãe está agora, por favor. Assim posso indicar a unidade de urgência mais próxima.  \n\nDepois disso, encaminharei para atendimento humano.  \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.  \n\nAguarde meu retorno com a unidade mais próxima.  \n",
+   "tools": [
+    {
+     "nome": "consultar_unidades",
+     "args": "{\"termo\": \"bairro\"}"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "latencia_s": 25.18,
+   "usage": {
+    "completion_tokens": 222,
+    "prompt_tokens": 4780,
+    "total_tokens": 5002,
+    "prompt_tokens_details": {
+     "cached_tokens": 4657
+    }
+   },
+   "texto_fora_de_tool": "Sua mãe precisa procurar imediatamente uma unidade de urgência. As unidades disponíveis 24h no município são:\n\n- **UPA 24H Inoã** – Rod. Amaral Peixoto, km 30, Inoã  \n- **Hospital Municipal Conde Modesto Leal** – R. Clímaco Pereira 241, Centro  \n- **Pronto Atendimento 24h do Posto de Saúde Santa Rita** – Av. Carlos Mariguella s/n, Jardim Atlântico, Itaipuaçu  \n\nAcesse o local mais próximo com base no seu bairro.  \n\nEncaminhando para atendimento humano para orientações adicionais.  \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.  \n\n",
+   "tools": [
+    {
+     "nome": "encaminhar_para_humano",
+     "args": "{}"
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "latencia_s": 27.48,
+   "usage": {
+    "completion_tokens": 238,
+    "prompt_tokens": 5024,
+    "total_tokens": 5262,
+    "prompt_tokens_details": {
+     "cached_tokens": 4980
+    }
+   },
+   "texto_fora_de_tool": "Encaminhado para atendimento humano. Em breve, alguém irá ajudar com mais detalhes.  \n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados. 🙏.  \n\nFique atento(a) ao seu WhatsApp. Até breve. 😊.  \n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Encaminhado para atendimento humano. Em breve, alguém irá ajudar com mais detalhes.\\n\\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados. 🙏.\\n\\nFique atento(a) ao seu WhatsApp. Até breve. 😊.\", \"handoff\": true, \"confianca\": 0.95, \"motivoHandoff\": \"Encaminhamento para atendimento humano por urgência médica.\"}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Encaminhado para atendimento humano. Em breve, alguém irá ajudar com mais detalhes.\n\nAcesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados. 🙏.\n\nFique atento(a) ao seu WhatsApp. Até breve. 😊.",
+  "handoff": true,
+  "confianca": 0.95,
+  "motivoHandoff": "Encaminhamento para atendimento humano por urgência médica."
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T22:16:58",
+ "latencia_total_s": 70.14
+}

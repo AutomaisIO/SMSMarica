@@ -1,0 +1,90 @@
+{
+ "cena": "S02",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 72.94,
+   "usage": {
+    "completion_tokens": 96,
+    "prompt_tokens": 3457,
+    "total_tokens": 3553,
+    "prompt_tokens_details": {
+     "cached_tokens": 0
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "consultar_cadastro",
+     "args": "{\"cpf\":\"1234\",\"mesNascimento\":0,\"anoNascimento\":0}"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "latencia_s": 7.92,
+   "usage": {
+    "completion_tokens": 61,
+    "prompt_tokens": 3587,
+    "total_tokens": 3648,
+    "prompt_tokens_details": {
+     "cached_tokens": 3522
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "consultar_cadastro",
+     "args": "{\"cpf\":\"1234\",\"mesNascimento\":5,\"anoNascimento\":1990}"
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "latencia_s": 7.18,
+   "usage": {
+    "completion_tokens": 45,
+    "prompt_tokens": 3683,
+    "total_tokens": 3728,
+    "prompt_tokens_details": {
+     "cached_tokens": 3617
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "consultar_agendamentos",
+     "args": "{\"cpf\":\"1234\",\"mesNascimento\":5,\"anoNascimento\":1990}"
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "latencia_s": 14.92,
+   "usage": {
+    "completion_tokens": 114,
+    "prompt_tokens": 3837,
+    "total_tokens": 3951,
+    "prompt_tokens_details": {
+     "cached_tokens": 3696
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Desculpe, não encontrei nenhum agendamento futuro no nosso sistema. Por favor, verifique a sua guia no posto de saúde onde você costuma ser atendido e, se precisar de mais ajuda, procure um atendente dentro do horário de atendimento. \\n\\nAcesse https://app.smsmarica.online para consultar seus exames, consultas e atendimentos já realizados e mantenha seus dados atualizados.\",\"handoff\":true,\"confianca\":0.5}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Desculpe, não encontrei nenhum agendamento futuro no nosso sistema. Por favor, verifique a sua guia no posto de saúde onde você costuma ser atendido e, se precisar de mais ajuda, procure um atendente dentro do horário de atendimento. \n\nAcesse https://app.smsmarica.online para consultar seus exames, consultas e atendimentos já realizados e mantenha seus dados atualizados.",
+  "handoff": true,
+  "confianca": 0.5
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:26:14",
+ "latencia_total_s": 102.96
+}

@@ -8,6 +8,14 @@
 # Uso:  bash publicar.sh
 set -e
 
+# O destino é um repositório PÚBLICO. Se o config.js estiver com a credencial do piloto
+# preenchida (uso local, máquina do consultório), publicar vazaria usuário e senha.
+if grep -qE "PILOTO:\s*\{\s*email:\s*'[^']+'" config.js; then
+  echo "ABORTADO: config.js está com CONFIG.PILOTO preenchido (credencial)." >&2
+  echo "          Esvazie antes de publicar — o repo de destino é público." >&2
+  exit 1
+fi
+
 AQUI="$(cd "$(dirname "$0")" && pwd)"
 PUB="${TMPDIR:-/tmp}/smsmais-extensao-sisreg-pub"
 REPO="https://github.com/SMSMais/extensao-sisreg.git"
@@ -18,7 +26,7 @@ else
   git clone "$REPO" "$PUB"
 fi
 
-for f in manifest.json config.js endpoints.js background.js capture-hook.js content.js auth-content.js popup.html popup.js; do
+for f in manifest.json config.js endpoints.js prime.js background.js capture-hook.js content.js auth-content.js prime-whatsapp.js popup.html popup.js; do
   cp "$AQUI/$f" "$PUB/$f"
 done
 

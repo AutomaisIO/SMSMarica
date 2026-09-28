@@ -1,0 +1,33 @@
+{
+ "cena": "S10",
+ "modelo": "qwen3-4b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 52.3,
+   "usage": {
+    "completion_tokens": 403,
+    "prompt_tokens": 4835,
+    "total_tokens": 5238,
+    "prompt_tokens_details": {
+     "cached_tokens": 4789
+    }
+   },
+   "texto_fora_de_tool": "Obrigado pela mensagem. Estamos fora do horário de atendimento humano. Se precisar de orientação, você pode procurar o posto de saúde onde é atendido, no horário de funcionamento. Acesse [https://app.smsmarica.online](https://app.smsmarica.online) para ver seus exames, consultas e atendimentos anteriores. Mantenha os dados atualizados para ter acesso rápido. 😊\n\nSe precisar de mais ajuda, pode voltar quando estiver dentro do horário de atendimento. Até então, continue cuidando da saúde! 🌿  \n*Atendimento humano disponível de segunda a sexta, das 9h às 18h.*  \n**Atenção: não há suporte por WhatsApp fora desse horário.**  \n*Obrigado por aguardar.*  \n\n",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Obrigado pela mensagem. Estamos fora do horário de atendimento humano. Se precisar de orientação, você pode procurar o posto de saúde onde é atendido, no horário de funcionamento. Acesse [https://app.smsmarica.online](https://app.smsmarica.online) para ver seus exames, consultas e atendimentos anteriores. Mantenha os dados atualizados para ter acesso rápido. 😊\\n\\nSe precisar de mais ajuda, pode voltar quando estiver dentro do horário de atendimento. Até então, continue cuidando da saúde! 🌿\\n\\n*Atendimento humano disponível de segunda a sexta, das 9h às 18h.*\\n**Atenção: não há suporte por WhatsApp fora desse horário.**\\n*Obrigado por aguardar.*\", \"handoff\": false, \"confianca\": 1}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Obrigado pela mensagem. Estamos fora do horário de atendimento humano. Se precisar de orientação, você pode procurar o posto de saúde onde é atendido, no horário de funcionamento. Acesse [https://app.smsmarica.online](https://app.smsmarica.online) para ver seus exames, consultas e atendimentos anteriores. Mantenha os dados atualizados para ter acesso rápido. 😊\n\nSe precisar de mais ajuda, pode voltar quando estiver dentro do horário de atendimento. Até então, continue cuidando da saúde! 🌿\n\n*Atendimento humano disponível de segunda a sexta, das 9h às 18h.*\n**Atenção: não há suporte por WhatsApp fora desse horário.**\n*Obrigado por aguardar.*",
+  "handoff": false,
+  "confianca": 1
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T00:40:27",
+ "latencia_total_s": 52.3
+}

@@ -1,0 +1,34 @@
+{
+ "cena": "S03",
+ "modelo": "llama33-70b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 193.64,
+   "usage": {
+    "completion_tokens": 203,
+    "prompt_tokens": 4679,
+    "total_tokens": 4882,
+    "prompt_tokens_details": {
+     "cached_tokens": 4678
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\": \"Entendo sua preocupação. Mas a nossa orientação \\u00e9 sempre buscar o posto em que o paciente \\u00e9 atendido ou, em caso de emerg\\u00eancia, buscar a rede de urg\\u00eancia e emerg\\u00eancia do Munic\\u00edpio. \\u00c9 importante procurar atendimento m\\u00e9dico o mais r\\u00e1pido poss\\u00edvel. Acesse https://app.smsmarica.online \\u2014 l\\u00e1 ficam os exames, consultas e atendimentos que ela j\\u00e1 teve na rede municipal; por favor, mantenha os dados sempre atualizados.\", \"handoff\": true, \"confianca\": 1.0, \"motivoHandoff\": \"saude\"}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Entendo sua preocupação. Mas a nossa orientação é sempre buscar o posto em que o paciente é atendido ou, em caso de emergência, buscar a rede de urgência e emergência do Município. É importante procurar atendimento médico o mais rápido possível. Acesse https://app.smsmarica.online — lá ficam os exames, consultas e atendimentos que ela já teve na rede municipal; por favor, mantenha os dados sempre atualizados.",
+  "handoff": true,
+  "confianca": 1.0,
+  "motivoHandoff": "saude"
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-27T02:34:40",
+ "latencia_total_s": 193.64
+}

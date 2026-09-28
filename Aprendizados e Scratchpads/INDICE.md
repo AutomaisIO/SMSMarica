@@ -166,9 +166,143 @@ não-ajax faz o A4J devolver a tela errada), `probe_busca_id.py`, `probe_carry.p
 
 ---
 
-## 6. `Automais.SISCAN` — sem scripts na raiz
+## 5b. `Automais.klinikos` — 10 scripts, **nenhum commitado** (criado 16/09/2026)
 
-Só `siscan/`, `docs/` e `capturas/`. O estado está em `docs/CONTINUACAO.md`.
+Laboratório de recon do **Klinikos** (HIS da Eco Sistemas: Conde, UPA Maricá e Santa Rita) pelo
+caminho "como usuário" — login web + relatórios + `.asmx` — para **substituir a leitura direta do
+SQL Server** (`KlinikosImportacaoStrategy` e `ConsultasUpa` do Painel do Secretário). Método do
+SER/SERNIT; alvo e perguntas próprios. Tudo medido contra `klinikosconde.smsmarica.online`.
+
+**Leia primeiro:** `docs/APRENDIZADOS.md` (stack, login com sessão única, gate do local, o que
+precisa de ViewState — só o login — e o que não precisa), `docs/inventario-consultas-atuais.md`
+(cada consulta SQL de hoje × fonte web candidata + política de requisições + plano de corte),
+`docs/sondagem-relatorios.md` (parâmetros `parN` e colunas do XLS de cada relatório sondado),
+`docs/catalogo-relatorios.md` (268 relatórios/271 telas dos menus), `docs/mapa-endpoints.md`
+(368 telas rastreadas: campos, botões, endpoints).
+
+`klinikos/client.py` (sessão, login + confirmação, gate, cookies persistidos, trava de leitura,
+`postback()`) → `probe_login.py` (0) → `probe_tela.py <url>` (1, descreve uma tela) →
+`probe_mapa.py` (2, rastreador GET de todas as telas) → `catalogo_relatorios.py` (3, menus →
+CSV) → `probe_relatorio.py <parrel>` (4, replica a tela de parâmetros e captura o `window.open`)
+→ `probe_rptview.py "<query>"` (5, GET direto do `rptview`/`rptviewXls`, descreve PDF/XLS) →
+`sondar_relatorios.py <parrel|url>…` (6, lote: campos + `parN` + colunas do XLS)
+
+**Utilitários:** `decodificar_viewstate.py` (strings/URLs de um `__VIEWSTATE`), `analisar_har.py`
+(agrupa um HAR do DevTools por endpoint), `gerar_mapa_md.py` e `gerar_sondagem_md.py` (capturas → `docs/*.md` sem PII).
+
+**Regras locais:** `export MSYS_NO_PATHCONV=1` antes de passar `/KlinikosNet/...` como argumento
+no Git Bash; **uma sonda por vez** (o ASP.NET serializa a sessão e o Crystal dá 504 na fila);
+relatório sempre com **1 dia** (30 dias estoura o Crystal); `capturas/` tem PII e é gitignored;
+o usuário do laboratório derruba a sessão web de quem estiver logado com ele.
+
+---
+
+## 5c. `Automais.prime` — 19 scripts, **nenhum commitado** (criado 16/09/2026)
+
+Recon do **Prime Saúde** (Eco Sistemas, `marica.ecosistemas.com.br/Prime`, hospedado pela Eco).
+**Já respondido:** apesar da raiz `AtencaoBasica/`, o Prime em uso é o da **atenção
+especializada**. CDT, CMI, Reabilitação, Ambulatório Péricles, SAE, CEOs e Melhor em Casa somam
+4.658 atendimentos (~2.600 pacientes por CNS) por semana. As 25 USFs têm **zero** de 2018 a hoje. A especializada entrou
+em 2025. Não há conector do SMSMais lendo o Prime.
+
+**Leia primeiro:** `docs/APRENDIZADOS.md` (login `formLogin`, gate de unidade sem `ddlPerfil`,
+relatório = GET `*RPT.aspx?...&extensao=CSV&unidades=<GUID>`, 31 `.asmx`) e
+`docs/mapa-endpoints.md` (123 telas).
+
+`prime/client.py` → `probe_login.py` → `probe_tela.py <url>` → `probe_mapa.py` (+
+`gerar_mapa_md.py`) → `sondar_atividade.py DD/MM/AAAA DD/MM/AAAA [guid…]` (atendidos por
+unidade, só contagens). `probe_atendidos.py` = tentativa por postback que revelou o `window.open`.
+
+**Escrita por API (§15–17):** `probe_cadastro_direto.py` cadastra paciente em **1 POST** —
+`prime/combos.py` resolve os códigos internos pelos `.asmx` e `prime/tipos_logradouro.py` faz o
+de-para CadWeb→Prime. Os postbacks **não** são necessários quando os códigos já estão resolvidos.
+
+**Ingestão do clínico (§19–20):** `prime/relatorio_csv.py` remonta o CSV **malformado** do Prime
+(sem aspas, com LF dentro dos campos — `DictReader` desalinha em silêncio) e `prime/atendidos.py`
+normaliza em atendimento. `backfill_atendidos.py INI FIM [--seco]` varre dia × unidade para
+NDJSON; `conferir_noite.py [dia]` cruza relatório × capturas da extensão e sai com código ≠ 0 se
+houver alerta. **O horário de término é o `DataRegistro`** — `DataInicio`/`DataFim` trazem
+`00:00:00` em 100%. 1.093 atendimentos/dia em 8 unidades; USF zerada é normal (é Klinikos).
+
+**Hub FHIR (§21):** `prime/cns.py` valida o DV do CNS e `prime/unidades.py` faz o de-para
+GUID→CNES; `preparar_hub.py` monta Encounter+Condition em arquivo **sem gravar nada**;
+`criar_unidades_faltantes.py` criou CEREST e Odontomóvel no `smsmarica.unidade` (51→53, 23/09/2026)
+com CNES do cadastro nacional — **`0209724` precisa do zero à esquerda**, a API do CNES serializa
+como inteiro e todas as nossas são de 7 dígitos. Achados que
+mudam decisão: **96,2% dos CNS do Prime são provisórios — e o nosso hub é 99,3%**, então a régua é
+DV válido, não série (exigir definitivo importaria 362 de 243.330); casar por `cns_todos` sobe de
+72,8% para 93,5% (~7.900 duplicatas evitadas); e **`procedure`/`service_request` não existem no
+schema `fhir`**, então o SIGTAP (100% preenchido) não tem onde pousar sem criar o recurso.
+
+**Regras locais:** sessão única (a primeira sonda derrubou a sessão aberta da conta); uma sonda
+por vez; `capturas/` tem PII e é gitignored. CSV de atendidos: registro = CRLF (LF solto dentro;
+contar linhas infla ~3×). "Consultar Cadweb" existe e foi **descartado**; e-SUS no Prime só exporta
+fichas. Estado e abertos: `docs/APRENDIZADOS.md` §8.
+
+## 5d. `Automais.saudemental` — 6 scripts, **nenhum commitado** (criado 16/09/2026)
+
+**Prime Saúde Mental** (`/SaudeMental`, build `2025.08.0.18`, marca inclui TEA): outro produto no
+mesmo host da Eco, com a mesma conta do Prime. **Já respondido:** é o sistema dos **3 CAPS**
+(Gilberto desde 27/05/2025, AD desde 16/06/2025, Infanto-Juvenil desde 01/07/2025). Todos estão
+ativos (568/166/174 atendimentos em 09–15/09/2026).
+
+**Leia primeiro:** `docs/APRENDIZADOS.md`. Relatórios = uma tela com 47 ImageButtons → POST cria
+instância do **Telerik Reporting 7.2** → GET `Telerik.ReportViewer.axd?instanceID=…&optype=Export&ExportFormat=CSV`.
+**Armadilha:** a data só vale com o `…_dateInput_ClientState` JSON. Sem ele, vem o histórico
+inteiro (30 MB/31 s) sem erro. **CPF/CNS:** relatório `imbDocumentacaoUsuarios` por CAPS (96–100% com documento, DV válido); atendimentos ligam por nome (210/211).
+
+`saudemental/client.py` → `probe_login.py` → `probe_tela.py` → `probe_mapa.py` (+
+`gerar_mapa_md.py`) → `probe_relatorio.py <imb> <rdpIni> <rdpFim> ini fim [CSV|PDF]` →
+`sondar_atividade.py ini fim` (atendimentos por CAPS, troca a unidade pelo gate), `sondar_desfechos.py ini fim [guid]` (perfil sem PII dos desfechos). **Prime e Saúde Mental dividem a sessão única da conta: nunca alternar os dois labs.** **Use XLS** (o CSV do
+Telerik omite o detalhe). Estado e abertos: `docs/APRENDIZADOS.md` §8.
+
+---
+
+## 6. `Automais.SISCAN` — 8 ferramentas na raiz
+
+⚠️ **Os `.py` e os `.md` do lab foram perdidos** (sobrou o `__pycache__`; as capturas e os
+`docs/*.html` continuam lá). `siscan/client.py` e `siscan/exame.py` foram **reconstruídos** em
+22/09/2026 a partir do bytecode + `docs/APRENDIZADOS.html` e reconferidos contra o SISCAN real.
+Continuam perdidos: `mapear_formulario.py`, `probe_modais.py`, `probe_variacoes.py`,
+`probe_requisicao.py`, `probe_menu.py`, `teste_edicao_requisicao.py`,
+`teste_troca_responsavel.py`, e os `.md` de `docs/`.
+
+**Pacote:** `siscan/client.py` (login SHA-256, menu, `post_form`, `post_a4j`, `aplicar_a4j`,
+trava de escrita com allowlist), `siscan/exame.py` (GERENCIAR EXAME: filtro, grade, ações),
+`siscan/requisicao.py` (**criar requisição**: Novo Exame → CNS → tipo → unidade → Avançar →
+tipo de mamografia → Responsável), `siscan/inspecao.py` (relatório legível de uma tela).
+
+**Sondas e ferramentas:**
+`probe_nova_requisicao.py --cns <CNS> [--unidade N --mamografia 01|02 --responsavel N]` — vai até
+**um clique antes do Salvar** e para · `criar_requisicao.py` (só grava com `--confirmar`; os casos
+vivem em `casos.py`, gitignored por ter PII) · `conferir_requisicao.py` · `probe_duplicidade.py
+--cns` (a paciente já tem requisição?) · `probe_sessao_unica.py` (**medido: o SISCAN aceita duas
+sessões simultâneas**) · `mapear_requisicao_nova.py`.
+
+**Backfill das requisições lançadas à mão** (23/09/2026, tudo somente leitura menos o último):
+`espelho_requisicoes.py --de --ate --saida` varre GERENCIAR EXAME e devolve **todas** as linhas —
+a grade tem coluna **Cartão SUS**, e é isso que permite cruzar com as nossas anamneses sem abrir
+requisição nenhuma · `probe_leitura_lote.py` mediu o ciclo de leitura em massa ·
+`backfill_siscan.py --espelho --saida` cruza com o banco (CNS + mesmo dia + única dos dois lados),
+abre cada requisição e monta o relatório · `aplicar_backfill.py --relatorio --desfazer
+[--confirmar]` é o **único que escreve** (em produção, e gera o desfazer antes).
+
+**Três medidas que fazem a varredura ser barata:** `frm:tamanhoPagina` aceita **300** por página
+(padrão 10); o rodapé traz o total real, então **partir a janela de datas ao meio** substitui
+paginar (o datascroller RichFaces exigiria engenharia reversa); e o `frm:botaoVoltar` da tela da
+requisição **devolve a grade com os resultados** — abrir custa 0,2 s e voltar 0,2 s, contra os
+14–32 s de um clique de menu. Ler 551 requisições leva minutos, não horas.
+**`frm:prontuario` vazio = requisição digitada à mão**; com o nosso accession = saiu daqui.
+
+O fluxo, as armadilhas e o que ficou em aberto estão em `docs/FLUXO-NOVA-REQUISICAO.md`, e o plano
+de gerar a requisição a partir da nossa anamnese em `docs/PLANO-REQUISICAO-PELA-ANAMNESE.md`.
+Estado geral: `docs/CONTINUACAO.html`.
+
+**O que o CNS resolve:** o `onblur` de `frm:cartaoSUS` traz do CADSUS nome, nascimento, mãe,
+raça/cor e endereço (todos disabled) **e o histórico de exames do paciente** — caminho barato
+de leitura por CNS. **Ordem imposta:** tipo de exame popula Unidade Requisitante; tipo de
+mamografia popula Responsável (e a lista muda entre diagnóstica e rastreamento — o `value` é
+posicional, **resolver pelo CNS do profissional**).
 
 ---
 

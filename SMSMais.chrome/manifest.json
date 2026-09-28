@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SMSMais — Ponte de Sistemas",
-  "version": "0.4.0",
-  "description": "Observa os sistemas do município e registra no SMSMais (hub). No SISREG envia só o comando + o nº da solicitação (sem dados do paciente); uma janela mostra tudo que é enviado.",
+  "version": "0.10.0",
+  "description": "Observa os sistemas do município e registra no SMSMais (hub). No SISREG envia só o comando + o nº da solicitação (sem dados do paciente); no Prime (Eco) captura tudo que vai e volta para análise. Uma janela mostra o que é enviado.",
   "action": {
     "default_title": "SMSMais — Ponte de Sistemas",
     "default_popup": "popup.html"
@@ -11,7 +11,15 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["webRequest", "storage", "alarms", "tabs"],
+  "permissions": [
+    "webRequest",
+    "storage",
+    "unlimitedStorage",
+    "alarms",
+    "scripting",
+    "tabs",
+    "downloads"
+  ],
   "host_permissions": [
     "https://sisregiii.saude.gov.br/*",
     "http://sisregiii.saude.gov.br/*",
@@ -28,7 +36,9 @@
         "http://sisregiii.saude.gov.br/*",
         "https://marica.ecosistemas.com.br/*"
       ],
-      "js": ["capture-hook.js"],
+      "js": [
+        "capture-hook.js"
+      ],
       "run_at": "document_start",
       "all_frames": true,
       "world": "MAIN"
@@ -39,7 +49,9 @@
         "http://sisregiii.saude.gov.br/*",
         "https://marica.ecosistemas.com.br/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_end",
       "all_frames": true
     },
@@ -48,7 +60,18 @@
         "https://smsmarica.online/*",
         "https://*.smsmarica.online/*"
       ],
-      "js": ["auth-content.js"],
+      "js": [
+        "auth-content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://marica.ecosistemas.com.br/*"
+      ],
+      "js": [
+        "prime-whatsapp.js"
+      ],
       "run_at": "document_idle"
     }
   ]

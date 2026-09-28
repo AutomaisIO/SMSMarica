@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klinikos — catálogo de relatórios e telas (dos menus, sem clicar)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Klinikos — catálogo de relatórios e telas (dos menus, sem clicar)</h1>
+<p>&gt; Gerado por <code>catalogo_relatorios.py</code> a partir das homes dos 10 módulos (<code>capturas/modulo_*.html</code>, 16/09/2026, instância do Conde). 539 URLs únicas: <strong>268 relatórios</strong> e 271 telas. Só rótulo de menu e URL — sem PII.</p>
+<p>Tipos: <code>parametro</code> = <code>Relatorios/ParametroRelatorio.aspx?parrel=N&amp;Modulo=X</code> (tela genérica de parâmetros; o relatório sai por <code>rptview(Xls).aspx?parRel=N&amp;parNum=K&amp;par1..parK</code>); <code>relatorio</code> = <code>&lt;Modulo&gt;/Relatorios/Relatorio(s).aspx?parrel=N&amp;origem=K</code> (tela própria do módulo, mesmo mecanismo); <code>rptview</code> = link direto <code>rptView.aspx?parrel=N&amp;parNum=1&amp;par1=unidDef</code> (sem parâmetro); <code>rel-proprio</code> = página própria com grade/filtros.</p>
+<h2>Relatórios por módulo</h2>
+<h3>Acesso (10)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td>657</td><td>relatorio</td><td>&gt; Relatórios &gt; Ambulância</td><td>Como Chegou</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=657</code></td></tr>
+<tr><td>655</td><td>relatorio</td><td>&gt; Relatórios &gt; Ambulância</td><td>Motivo de Chegada Diário</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=655</code></td></tr>
+<tr><td>656</td><td>relatorio</td><td>&gt; Relatórios &gt; Ambulância</td><td>Motivo de Saída Diário</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=656</code></td></tr>
+<tr><td>620</td><td>relatorio</td><td>&gt; Relatórios &gt; Ambulância</td><td>Movimento Diário</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=620</code></td></tr>
+<tr><td>652</td><td>relatorio</td><td>&gt; Relatórios &gt; Ambulância</td><td>Tipo Viatura Diário</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=652</code></td></tr>
+<tr><td>654</td><td>relatorio</td><td>&gt; Relatórios &gt; Ambulância</td><td>Unidade de Destino Diário</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=654</code></td></tr>
+<tr><td>653</td><td>relatorio</td><td>&gt; Relatórios &gt; Ambulância</td><td>Unidade de Origem Diário</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=653</code></td></tr>
+<tr><td>714</td><td>relatorio</td><td>&gt; Relatórios &gt; Visitante</td><td>Controle de acompanhantes por paciente</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=714</code></td></tr>
+<tr><td>712</td><td>relatorio</td><td>&gt; Relatórios &gt; Visitante</td><td>Controle de visitantes por paciente</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=712</code></td></tr>
+<tr><td>713</td><td>relatorio</td><td>&gt; Relatórios &gt; Visitante</td><td>Estatística de visitantes</td><td><code>/KlinikosNet/Acesso/Relatorios/Relatorios.aspx?parRel=713</code></td></tr>
+</tbody></table></div>
+<h3>Administracao (3)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios</td><td>Configuração de Cabeçalho</td><td><code>/KlinikosNet/Administracao/Relatorios/ConfiguraCabecalho.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios</td><td>Configuração de Impressora de Pulseiras</td><td><code>/KlinikosNet/Administracao/Relatorios/ConfiguraImpressaoPulseira.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios</td><td>Configuração de Relatórios</td><td><code>/KlinikosNet/Administracao/Relatorios/ConfiguraRelatorio.aspx</code></td></tr>
+</tbody></table></div>
+<h3>Ambulatorio (53)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório</td><td>Exames</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/Exames.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Exames</td><td>Marcação de Exames</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/Exames.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Exames</td><td>Marcação de Exames agrupados</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/Exames.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Exames</td><td>Marcação de Exames por Grupo, Data e Hora</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/ExameGrupo.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Agenda de Consultas</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Agenda do Profissional de Saúde</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Agendas Disponíveis e Marcadas</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=8</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Boleto Consulta/Exame</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Cartão Municipal Paciente</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=7</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Dados Pacientes Agendados</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=2</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Ficha de Identificação do Paciente</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=6</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Fila de Espera</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=2</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Histórico de Marcação (Clínica)</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=4</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Histórico de Marcação (Usuário)</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=3</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Histórico do Paciente</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/MarcacaoConsulta.aspx?id=5</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Marcação de Consulta por Especialidade Clínica</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Movimentação Diária</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=3</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Notificação Compulsória</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=8</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Ordem de Prontuário</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=5</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Paciente Novo</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=7</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Paciente com Consulta Marcada para o mesmo Dia</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=4</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Ambulatório &gt; Marcação de Consulta</td><td>Resumo Diário de Agendas</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/OutrosRelatorios.aspx?id=6</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckIn</td><td>Pacientes Ausentes</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=10</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; GeoEstatísticos</td><td>Geo-Estatístico Diário por Município e Bairro</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/GeoEstatisticos.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; GeoEstatísticos</td><td>Geo-Estatístico por Município, Bairro e Clínica</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/GeoEstatisticos.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; GeoEstatísticos</td><td>Geo-Estatístico por Município, Bairro e Faixa Etária</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/GeoEstatisticos.aspx?id=2</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; GeoEstatísticos</td><td>Geo-Estatístico por Município, Bairro e Grupo Diagnóstico</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/GeoEstatisticos.aspx?id=3</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; GeoEstatísticos</td><td>Geo-Estatístico por Período, Município, Bairro e Clínica</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/GeoEstatisticos.aspx?id=5</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Atendimentos Ambulatoriais Pendentes Realizados</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/Producao.aspx?id=5</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Procedimentos por Clínica</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/CheckOut.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Procedimentos por Profissional</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/CheckOut.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Produção Clínica Hora</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/Producao.aspx?id=2</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Produção Clínica Mensal</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/Producao.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Produção Clínica Mensal por Profissional</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/Producao.aspx?id=3</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Produção Diária por Clínica</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/Producao.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Produção Grupo Diagnóstico, Sexo e Faixa Etária</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/Producao.aspx?id=4</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; CheckOut &gt; Produção</td><td>Produção por tipo de saída</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/CheckIn/Producao.aspx?id=6</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Agenda Futura de Consulta</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=12</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Agendas Diária por Turnos</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Bloqueio de Agenda</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=14</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Geo Agendas Especialidade</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=6</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Geo Agendas Faixa Etária</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=7</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Geo Agendas Sexo</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=8</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Geo Agendas Turno</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=5</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Ocorrências de Agendas</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=17</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Pacientes Agendados</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=9</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Produção Usuários 1a Vez</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=15</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Produção Usuários Subsequente</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=16</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Produção de Usuários</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=11</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Ranking por Profissionais</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=3</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Turnos por Especialidade</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=2</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Turnos por Profissionais</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pedidos e Agendas</td><td>Utilização de Agendas</td><td><code>/KlinikosNet/Ambulatorio/Relatorios/Central/PedidosAgendas.aspx?id=4</code></td></tr>
+</tbody></table></div>
+<h3>Cadastro (15)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td>390</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Cadastro no Estabelecimento de Saúde</td><td><code>/KlinikosNet/Cadastro/Relatorios/ParamPaciente.aspx?parrel=390</code></td></tr>
+<tr><td>296</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Cartão Paciente</td><td><code>/KlinikosNet/Cadastro/Relatorios/CartaoPaciente.aspx?parrel=296</code></td></tr>
+<tr><td>462</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Hist. Movimento Prontuário</td><td><code>/KlinikosNet/Cadastro/Relatorios/HistorioMovPront.aspx?parrel=462&amp;codPar=1</code></td></tr>
+<tr><td>18</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Homônimos</td><td><code>/KlinikosNet/Cadastro/Relatorios/ListaHomonimos.aspx?parrel=18</code></td></tr>
+<tr><td>664</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Nominal Prontuários Inativos</td><td><code>/KlinikosNet/Cadastro/Relatorios/NominalProntuarioInativos.aspx?parrel=664</code></td></tr>
+<tr><td>418</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Nominal por Prontuário</td><td><code>/KlinikosNet/Cadastro/Relatorios/NominalProntuario.aspx?parrel=418</code></td></tr>
+<tr><td>99</td><td>parametro</td><td>&gt; Relatórios &gt; Operacionais</td><td>Notificação Compulsória (Ficha)</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=99&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>123</td><td>parametro</td><td>&gt; Relatórios &gt; Operacionais</td><td>Notificação Compulsória (Relação)</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=123&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>488</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Origem Prontuário</td><td><code>/KlinikosNet/Cadastro/Relatorios/OrigemCriacaoProntuario.aspx?parrel=488</code></td></tr>
+<tr><td>731</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Pacientes com CEP Inválido</td><td><code>/KlinikosNet/Cadastro/Relatorios/CepInvalido.aspx?parrel=731</code></td></tr>
+<tr><td>21</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Prontuários Abertos</td><td><code>/KlinikosNet/Cadastro/Relatorios/ProntuariosAbertos.aspx?parrel=21</code></td></tr>
+<tr><td>19</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Prontuários Repetidos</td><td><code>/KlinikosNet/Cadastro/Relatorios/ProntuariosRepetidos.aspx?parrel=19</code></td></tr>
+<tr><td>463</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Prontuários dias excedidos</td><td><code>/KlinikosNet/Cadastro/Relatorios/MovProntExcedido.aspx?parrel=463&amp;codPar=1</code></td></tr>
+<tr><td>381</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Registros Abertos</td><td><code>/KlinikosNet/Cadastro/Relatorios/RegistrosAbertos.aspx?parrel=381</code></td></tr>
+<tr><td>695</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Operacionais</td><td>Óbitos Geral</td><td><code>/KlinikosNet/Cadastro/Relatorios/ObitosGeral.aspx?parrel=695</code></td></tr>
+</tbody></table></div>
+<h3>CentroCirurgico (10)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios</td><td>Estatísticos</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Estatisticas.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Cirúrgicos</td><td>Anotação Cirurgia</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Cirurgico.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Cirúrgicos</td><td>Cirurgias Realizadas</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Cirurgico.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Estatísticos</td><td>Cirurgias por Profissionais</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Estatisticas.aspx?id=2</code></td></tr>
+<tr><td>802</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticos</td><td>Relatório de Óbito por Locais de Internação</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=802</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Estatísticos</td><td>Utilização de Materiais</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Estatisticas.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Estatísticos</td><td>Utilização de Salas</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Estatisticas.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Preparação</td><td>Atendida e Não Atendida</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Preparacao.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Preparação</td><td>Mapa Cirúrgico</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/Preparacao.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pré-Operatório</td><td>Pré-Operatório Completo</td><td><code>/KlinikosNet/CentroCirurgico/Relatorios/PreCirurgico.aspx?id=0</code></td></tr>
+</tbody></table></div>
+<h3>Internacao (61)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td>447</td><td>parametro</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Censo - Pacientes Internados</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=447&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>46</td><td>parametro</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Censo Hospitalar - Diário</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=46&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>261</td><td>parametro</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Grade de Ocupação de Leitos</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=261&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>321</td><td>parametro</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Internações Fora do Censo</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=321&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>514</td><td>parametro</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Leitos Operacionais</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=514&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>102</td><td>parametro</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Mapa Diário - Leitos</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=102&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>104</td><td>parametro</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Movimentação Diária</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=104&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>322</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Censo Diário</td><td>Ocorrências na Internação</td><td><code>/KlinikosNet/Internacao/Relatorios/MovimentacoesPaciente.aspx?parrel=322&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>293</td><td>parametro</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Diagnóstico por Município / Bairro</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=293&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>92</td><td>parametro</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Diário</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=92&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>720</td><td>relatorio</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Ficha de Notificação Compulsória</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=720&amp;origem=0&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>95</td><td>parametro</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Mensal</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=95&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>103</td><td>parametro</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Morbidade Hospitalar</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=103&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>399</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Por CID</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioDiagnosticoCID.aspx?parrel=399</code></td></tr>
+<tr><td>400</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Por CID e Município</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioDiagnosticoCIDMunicipioBairro.aspx?parrel=400</code></td></tr>
+<tr><td>243</td><td>parametro</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Por Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=243&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>93</td><td>parametro</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Por Frequência</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=93&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>529</td><td>relatorio</td><td>&gt; Relatórios &gt; Diagnósticos</td><td>Relatório de Notificações Compulsórias</td><td><code>/KlinikosNet/Internacao/Relatorios/Relatorio.aspx?parrel=529&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>90</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Boletim Movimento Hospitalar</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=90&amp;Modulo=INTERNACAO&amp;Clinica=S</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Dispositivos / Bundle</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioDispositivosBundle.aspx?</code></td></tr>
+<tr><td>50</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Diária - Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=50&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>94</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Diária/Mensal - Leitos de Apoio</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=94&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>283</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Estatística Anual - Internações</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=283&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>282</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Estatística Anual - Mortalidade</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=282&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>281</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Estatística Anual - Ocupação</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=281&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>723</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Indicadores Hospitalares</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=723&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>51</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Mensal - Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=51&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>105</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Movimentação do Censo</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=105&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>122</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Quantidade de Óbitos</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=122&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>249</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Conta Paciente</td><td><code>/KlinikosNet/Internacao/Relatorios/ContaPaciente.aspx?parrel=249&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>101</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Internados no Dia</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=101&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>100</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Internação Diaria</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=100&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>320</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Internação com Alta no mesmo Dia</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=320&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>294</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Internação de Adolescentes</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=294&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>106</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Movimentações do Paciente</td><td><code>/KlinikosNet/Internacao/Relatorios/MovimentacoesPaciente.aspx?parrel=106&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>118</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Ped. Pendentes X Realizados</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=118&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>802</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Relatório de Óbito por Locais de Internação</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=802&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>125</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Saídas Diárias</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=125&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Saídas por Ordem Alfabética</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioSaidaOrdemAlfabetica.aspx?</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Situação dos Leitos</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioLeitos.aspx?</code></td></tr>
+<tr><td>404</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Tempo de Permanência Clínica/Leito</td><td><code>/KlinikosNet/Internacao/Relatorios/InternacaoAltaPermanenciaClinicaLeito.aspx?parrel=404</code></td></tr>
+<tr><td>107</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Óbitos Diários</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=107&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>108</td><td>parametro</td><td>&gt; Relatórios &gt; Internações e Altas</td><td>Óbitos por Municipio</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=108&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>109</td><td>parametro</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Alfabético</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=109&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>110</td><td>parametro</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Clínica do Paciente</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=110&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>111</td><td>parametro</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Diagnósticos</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=111&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>112</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Faixa Etária</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioInternadosFaixaEtaria.aspx?parrel=112</code></td></tr>
+<tr><td>113</td><td>parametro</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Fora de Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=113&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>114</td><td>relatorio</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Localização Física</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=114&amp;origem=4</code></td></tr>
+<tr><td>115</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Município e Bairro</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioInternadosMunicipioBairro.aspx?parrel=115</code></td></tr>
+<tr><td>747</td><td>parametro</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Pendências e Observações</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=747&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>116</td><td>parametro</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Procedimentos</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=116&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>117</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Pacientes Internados</td><td>Tempo de Permanência</td><td><code>/KlinikosNet/Internacao/Relatorios/RelatorioInternadosTempoPermanencia.aspx?parrel=117</code></td></tr>
+<tr><td>119</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Diários</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=119&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>96</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Mensais</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=96&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>120</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Por Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=120&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>121</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Por Frequência</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=121&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>295</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Procedimento Município/Bairro</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=295&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>823</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Produção de Fisioterapia por procedimento e profissional</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=823&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>408</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Reinternação</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=408&amp;Modulo=INTERNACAO</code></td></tr>
+<tr><td>477</td><td>parametro</td><td>&gt; Relatórios &gt; Procedimentos e Outros</td><td>Tempo Médio</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=477&amp;Modulo=INTERNACAO</code></td></tr>
+</tbody></table></div>
+<h3>Laboratorio (25)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios</td><td>Laudos</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Laudo.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório</td><td>Cadastrais</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Cadastrais.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Envio para Laboratório Externo</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=11</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Notific. compulsória</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=7</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Pacientes Atendidos Analítico</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=10</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Pacientes Atendidos Sintético</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=9</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Por Clínica</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Por Destino</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=3</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Por Exame/Ano</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=6</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Por Município</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=2</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Por Seção</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=4</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Por Seção/Equipamento</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=5</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Por Seção/Unid. Solicit.</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Estatísticos</td><td>Prod. Laudos por Operador</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=8</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Amostras Excluídas</td><td><code>/KlinikosNet/Laboratorio/Relatorios/AmostrasExcluidas.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Coleta de Exame</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=8</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Exames Pendentes</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=1</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Exames por Município</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=6</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Faturamento de Exames</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=7</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Guia de Remessa para o Lab Externo</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Estatisticos.aspx?id=12</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Mapa de Trabalho</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=3</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Movimentação Diária</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=2</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Notificação Compulsória</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=4</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Promessa de Entrega</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=0</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Laboratório &gt; Operacionais</td><td>Unidade Solicitante</td><td><code>/KlinikosNet/Laboratorio/Relatorios/Operacionais.aspx?id=5</code></td></tr>
+</tbody></table></div>
+<h3>Radiologia (14)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td>174</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Clínica e Exame</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=174&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>697</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Estatística Analítico Unidade Referenciada</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=697&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>696</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Estatística Consolidado Unidade Referenciada</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=696&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>176</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Estatística de Produção</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=176&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>179</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Por Hora</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=179&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>188</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Produção Diária de Exame</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=188&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>784</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Quantitativo Exames de Imagem e Radiologia</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=784&amp;origem=0</code></td></tr>
+<tr><td>804</td><td>parametro</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Relatório Mensal de Exames</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=804&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>751</td><td>rel-proprio</td><td>&gt; Relatórios &gt; Estatísticas</td><td>Relatório de Laudos por Profissional</td><td><code>/KlinikosNet/Radiologia/Relatorios/Radiologicos.aspx?parrel=751&amp;origem=0</code></td></tr>
+<tr><td>479</td><td>parametro</td><td>&gt; Relatórios &gt; Exame Radiológico</td><td>Agenda Radiológica Aberta</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=479&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>171</td><td>parametro</td><td>&gt; Relatórios &gt; Exame Radiológico</td><td>Consumo de Filmes</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=171&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>481</td><td>parametro</td><td>&gt; Relatórios &gt; Exame Radiológico</td><td>Pedido e Agenda</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=481&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>480</td><td>parametro</td><td>&gt; Relatórios &gt; Exame Radiológico</td><td>Pedido e Agenda - Sintético</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=480&amp;Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>182</td><td>parametro</td><td>&gt; Relatórios &gt; Exame Radiológico</td><td>Técnicos e Filmes</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=182&amp;Modulo=RADIOLOGIA</code></td></tr>
+</tbody></table></div>
+<h3>UPA (75)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td>791</td><td>parametro</td><td>&gt; Gestão</td><td>Eventos Clínicos</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=791&amp;Modulo=UPA</code></td></tr>
+<tr><td>788</td><td>rptview</td><td>&gt; Gestão</td><td>Profissionais sem CNS</td><td><code>/KlinikosNet/Relatorios/rptView.aspx?parrel=788&amp;parNum=1&amp;par1=unidDef</code></td></tr>
+<tr><td>815</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Atendimento Nominal por CID</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=815&amp;origem=5</code></td></tr>
+<tr><td>834</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Atendimentos encerrados por evasão</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=834&amp;origem=0</code></td></tr>
+<tr><td>550</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Censo Diário da Urgência e Emergência</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=550&amp;origem=3</code></td></tr>
+<tr><td>711</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Classificação de Risco, Sexo e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=711&amp;origem=0</code></td></tr>
+<tr><td>683</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Como Chegou</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=683&amp;origem=0</code></td></tr>
+<tr><td>843</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Escalas BRADEN, FUGULIN e MORSE</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=843&amp;origem=0</code></td></tr>
+<tr><td>720</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Ficha de Notificação Compulsória</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=720&amp;origem=0</code></td></tr>
+<tr><td>763</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Historico Eventos da Fila</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=763&amp;origem=0</code></td></tr>
+<tr><td>833</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Histórico de Classificação de Risco</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=833&amp;origem=0</code></td></tr>
+<tr><td>527</td><td>parametro</td><td>&gt; Relatórios &gt; Consolidado</td><td>Nominal de Óbito/Chegou Cadáver</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=527&amp;Modulo=UPA</code></td></tr>
+<tr><td>667</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Nominal por Classificação de Risco</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=667&amp;origem=5</code></td></tr>
+<tr><td>831</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Pacientes Atendidos Por Clinica e Risco</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=831&amp;origem=5&amp;Modulo=UPA</code></td></tr>
+<tr><td>483</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Produção Diária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=483&amp;origem=0</code></td></tr>
+<tr><td>823</td><td>parametro</td><td>&gt; Relatórios &gt; Consolidado</td><td>Produção de Fisioterapia por procedimento e profissional</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=823&amp;Modulo=UPA</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Reentradas</td><td><code>/KlinikosNet/UPA/Relatorios/Reentradas.aspx</code></td></tr>
+<tr><td>816</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Relatório Justificativa de Antibiótico</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=816&amp;origem=0</code></td></tr>
+<tr><td>529</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Relatório de Notificações Compulsórias</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=529&amp;origem=0</code></td></tr>
+<tr><td>762</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Relatório de Pesquisa de Satisfacão</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=762&amp;origem=0</code></td></tr>
+<tr><td>520</td><td>parametro</td><td>&gt; Relatórios &gt; Consolidado</td><td>Remoções por destino</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=520&amp;Modulo=UPA</code></td></tr>
+<tr><td>835</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Resumo Atendimento</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=835&amp;origem=5&amp;Modulo=UPA</code></td></tr>
+<tr><td>818</td><td>relatorio</td><td>&gt; Relatórios &gt; Consolidado</td><td>Tempo Médio da Classificação de Risco por Período</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=818&amp;origem=0</code></td></tr>
+<tr><td>542</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Atendimento CID e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=542&amp;origem=3</code></td></tr>
+<tr><td>544</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Atendimento CID e Sexo</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=544&amp;origem=3</code></td></tr>
+<tr><td>526</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Atendimentos por Profissional</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=526&amp;origem=3</code></td></tr>
+<tr><td>539</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Estatísticas de Emergência</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=539&amp;origem=3</code></td></tr>
+<tr><td>546</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Estatísticas de Emergência por CID</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=546&amp;origem=3</code></td></tr>
+<tr><td>54</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Grupo Diagnóstico, Sexo e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=54&amp;origem=3</code></td></tr>
+<tr><td>541</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Percentual Internações Emergência</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=541&amp;origem=3</code></td></tr>
+<tr><td>85</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Tipo de Saída, Sexo e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=85&amp;origem=3</code></td></tr>
+<tr><td>75</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Estatísticos</td><td>Óbito por Grupo Diag, Sexo e Tempo Permanêcia</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=75&amp;origem=3</code></td></tr>
+<tr><td>388</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Geo-Estatístico</td><td>Atend. Emergência Diagnóstico, Município e Bairro</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=388&amp;origem=3</code></td></tr>
+<tr><td>72</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Geo-Estatístico</td><td>Atend. Emergência Município, Bairro e Clínica</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=72&amp;origem=3</code></td></tr>
+<tr><td>74</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Geo-Estatístico</td><td>Registro Emergência Município, Bairro e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=74&amp;origem=3</code></td></tr>
+<tr><td>677</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Registro</td><td>Bol. Pendentes x Realizados</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=677&amp;origem=3</code></td></tr>
+<tr><td>70</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Registro</td><td>Registro Mensal de Emergência por Clínica</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=70&amp;origem=3</code></td></tr>
+<tr><td>690</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Registro</td><td>Registro Nominal por Ocorrência - Emergência</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=690&amp;origem=3</code></td></tr>
+<tr><td>71</td><td>relatorio</td><td>&gt; Relatórios &gt; Emergência &gt; Registro</td><td>Registro por Hora de Emergência por Clínica</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=71&amp;origem=3</code></td></tr>
+<tr><td>802</td><td>parametro</td><td>&gt; Relatórios &gt; Internação</td><td>Relatório de Óbito por Locais de Internação</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=802&amp;Modulo=UPA</code></td></tr>
+<tr><td>100</td><td>parametro</td><td>&gt; Relatórios &gt; Internação &gt; Relatório de Internação</td><td>Relatório de Internações Diarias</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=100&amp;Modulo=UPA</code></td></tr>
+<tr><td>543</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Atendimento CID e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=543&amp;origem=5</code></td></tr>
+<tr><td>66</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Atendimento de Urgência por Tempo de Permanência</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=66&amp;Modulo=UPA</code></td></tr>
+<tr><td>518</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Atendimentos por Faixa Etária</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=518&amp;Modulo=UPA</code></td></tr>
+<tr><td>829</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Atendimentos por MultiProfissional</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=829&amp;origem=5</code></td></tr>
+<tr><td>526</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Atendimentos por Profissional</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=526&amp;origem=5</code></td></tr>
+<tr><td>63</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Diagnóstico, Sexo e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=63&amp;origem=5</code></td></tr>
+<tr><td>602</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Diagnósticos mais atendidos - Urgência</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=602&amp;Modulo=UPA&amp;origem=5</code></td></tr>
+<tr><td>484</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Diagnósticos por Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=484&amp;Modulo=UPA</code></td></tr>
+<tr><td>540</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Estatísticas Mensal da Urgência</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=540&amp;origem=5</code></td></tr>
+<tr><td>547</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Estatísticas da Urgência por CID</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=547&amp;origem=5</code></td></tr>
+<tr><td>523</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Pacientes sem certidão de nascimento</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=523&amp;Modulo=UPA</code></td></tr>
+<tr><td>524</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Procedimentos Odontológicos Diário</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=524&amp;Modulo=UPA</code></td></tr>
+<tr><td>525</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Procedimentos Odontológicos Mensal</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=525&amp;Modulo=UPA</code></td></tr>
+<tr><td>519</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Registros por Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=519&amp;Modulo=UPA</code></td></tr>
+<tr><td>830</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Relatório Evoluções de Multiprofissionais</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=830&amp;origem=5</code></td></tr>
+<tr><td>65</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Tipo de Saída, Sexo e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=65&amp;origem=5</code></td></tr>
+<tr><td>68</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Estatísticos</td><td>Óbito por Grupo Diag, Sexo e Tempo Permanêcia</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=68&amp;origem=5</code></td></tr>
+<tr><td>61</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Geo-Estatístico</td><td>Atend. Urgência Município, Bairro e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=61&amp;origem=5</code></td></tr>
+<tr><td>631</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Atendimentos em Andamento</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=631&amp;Modulo=UPA</code></td></tr>
+<tr><td>678</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Bol. Pendentes x Realizados</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=678&amp;origem=5</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Devolução / Descarte</td><td><code>/KlinikosNet/PostoEnfermagem/Relatorios/DevolucaoDescarte.aspx</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Estorno de Boletins de Atendimento Médico</td><td><code>/KlinikosNet/UPA/Relatorios/RelatorioEstornoBAM.aspx</code></td></tr>
+<tr><td>629</td><td>rptview</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Fila de Espera</td><td><code>/KlinikosNet/Relatorios/rptView.aspx?parrel=629&amp;parNum=1&amp;par1=unidDef</code></td></tr>
+<tr><td></td><td>rel-proprio</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Medicamento Não Padronizado x Sem Saldo</td><td><code>/KlinikosNet/UPA/Relatorios/MedicamentoSaldoGrupo.aspx</code></td></tr>
+<tr><td>630</td><td>rptview</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Pacientes em Observação</td><td><code>/KlinikosNet/Relatorios/rptView.aspx?parrel=630&amp;parNum=1&amp;par1=unidDef</code></td></tr>
+<tr><td>693</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Pedidos de Exames</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=693&amp;Modulo=UPA</code></td></tr>
+<tr><td>56</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Registro Diário de Urgência por Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=56&amp;Modulo=UPA</code></td></tr>
+<tr><td>57</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Registro Mensal de Urgência por Clínica</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=57&amp;Modulo=UPA</code></td></tr>
+<tr><td>691</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Registro Nominal por Ocorrência-Urgência</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=691&amp;origem=5</code></td></tr>
+<tr><td>58</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Registro por Hora de Urgência por Clínica</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=58&amp;origem=5</code></td></tr>
+<tr><td>801</td><td>relatorio</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Registro por Hora de Urgência por Clínica e Faixa Etária</td><td><code>/KlinikosNet/UPA/Relatorios/Relatorio.aspx?parrel=801&amp;origem=5</code></td></tr>
+<tr><td>407</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Relatório de Pacientes Registrados no Dia</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=407&amp;Modulo=UPA</code></td></tr>
+<tr><td>727</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Relatório de encaminhamento do cidadão</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=727&amp;Modulo=UPA</code></td></tr>
+<tr><td>716</td><td>parametro</td><td>&gt; Relatórios &gt; Urgência &gt; Registro</td><td>Relatório de orientação ao cidadão</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=716&amp;Modulo=UPA</code></td></tr>
+</tbody></table></div>
+<h3>eProntuario (2)</h3>
+<div class="tw"><table><thead><tr><th>parrel</th><th>tipo</th><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td>816</td><td>parametro</td><td>&gt; Relatórios</td><td>Relatório Justificativa de Antibiótico</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=816&amp;Modulo=PEP</code></td></tr>
+<tr><td>802</td><td>parametro</td><td>&gt; Relatórios</td><td>Relatório de Óbito por Locais de Internação</td><td><code>/KlinikosNet/Relatorios/ParametroRelatorio.aspx?parrel=802&amp;Modulo=PEP</code></td></tr>
+</tbody></table></div>
+<h2>Telas por módulo</h2>
+<h3>Acesso (15)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td></td><td><code>/KlinikosNet/Acesso/Default.aspx</code></td></tr>
+<tr><td></td><td>Administração do Sistema</td><td><code>../Administracao/Default.aspx?mod=001</code></td></tr>
+<tr><td></td><td>Ambulatório</td><td><code>../Ambulatorio/Default.aspx?mod=002</code></td></tr>
+<tr><td></td><td>Cadastro</td><td><code>../Cadastro/Default.aspx?mod=004</code></td></tr>
+<tr><td></td><td>Centro Cirúrgico</td><td><code>../CentroCirurgico/Default.aspx?mod=005</code></td></tr>
+<tr><td></td><td>Internação</td><td><code>../Internacao/Default.aspx?mod=009</code></td></tr>
+<tr><td></td><td>Laboratório</td><td><code>../Laboratorio/Default.aspx?mod=010</code></td></tr>
+<tr><td></td><td>PEP</td><td><code>../eProntuario/Default.aspx?mod=012</code></td></tr>
+<tr><td></td><td>Radiologia</td><td><code>../Radiologia/Default.aspx?mod=016</code></td></tr>
+<tr><td></td><td>Recepção e Portaria</td><td><code>Default.aspx?mod=013</code></td></tr>
+<tr><td></td><td>Restrições</td><td><code>/KlinikosNet/Acesso/RestricaoDeVisitante.aspx</code></td></tr>
+<tr><td></td><td>Urgência e Emergência</td><td><code>../UPA/Default.aspx?mod=014</code></td></tr>
+<tr><td></td><td>Visitante</td><td><code>/KlinikosNet/Acesso/VisitanteAcompanhante.aspx</code></td></tr>
+<tr><td>&gt; Ambulancia</td><td>Chegada</td><td><code>/KlinikosNet/Acesso/AmbEntrada.aspx</code></td></tr>
+<tr><td>&gt; Ambulancia</td><td>Saída</td><td><code>/KlinikosNet/Acesso/AmbSaida.aspx</code></td></tr>
+</tbody></table></div>
+<h3>Administracao (67)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td>Administração do Sistema</td><td><code>Default.aspx?mod=001</code></td></tr>
+<tr><td></td><td>Parâmetros</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeIII/Parametros.aspx</code></td></tr>
+<tr><td></td><td>Recepção e Portaria</td><td><code>../Acesso/Default.aspx?mod=013</code></td></tr>
+<tr><td>&gt; Ferramentas</td><td>Parâmetros de Integração</td><td><code>/KlinikosNet/Administracao/admsys/ParametrosIntegracao.aspx</code></td></tr>
+<tr><td>&gt; Ferramentas &gt; Auditoria</td><td>Alterações</td><td><code>/KlinikosNet/Administracao/Auditoria/ConsultaAudit.aspx</code></td></tr>
+<tr><td>&gt; Ferramentas &gt; Auditoria</td><td>Emissão de Relatório</td><td><code>/KlinikosNet/Administracao/Auditoria/AuditReport.aspx</code></td></tr>
+<tr><td>&gt; Importação/Exportação &gt; Exportação</td><td>CNS</td><td><code>/KlinikosNet/Administracao/Importacao/Exportacoes.aspx?Tipo=CNS</code></td></tr>
+<tr><td>&gt; Importação/Exportação &gt; Exportação</td><td>Hiperdia</td><td><code>/KlinikosNet/Administracao/Importacao/Exportacoes.aspx?Tipo=Hiperdia</code></td></tr>
+<tr><td>&gt; Importação/Exportação &gt; Exportação</td><td>SISPrenatal</td><td><code>/KlinikosNet/Administracao/Importacao/Exportacoes.aspx?Tipo=SISPrenatal</code></td></tr>
+<tr><td>&gt; Importação/Exportação &gt; Importação</td><td>CNES</td><td><code>/KlinikosNet/Administracao/Importacao/ImportacaoExportacaoHiperdia.aspx</code></td></tr>
+<tr><td>&gt; Importação/Exportação &gt; Importação</td><td>CNS</td><td><code>/KlinikosNet/Administracao/Importacao/ImportacaoExportacaoCNS.aspx</code></td></tr>
+<tr><td>&gt; Importação/Exportação &gt; Importação</td><td>SIGTAP</td><td><code>/KlinikosNet/Administracao/Importacao/ImportacaoDatasus.aspx</code></td></tr>
+<tr><td>&gt; Paciente Rede</td><td>Avaliação Cadastro Permanente</td><td><code>/KlinikosNet/Administracao/tabelas/PacienteRede/PacientePermanenteRede.aspx</code></td></tr>
+<tr><td>&gt; Paciente Rede</td><td>Homologação de Cadastro</td><td><code>/KlinikosNet/Administracao/tabelas/PacienteRede/AtualizaPacienteHomonimoRede.aspx</code></td></tr>
+<tr><td>&gt; Paciente Rede</td><td>Obrigatoriedade do Cadastro</td><td><code>/KlinikosNet/Administracao/tabelas/PacienteRede/ObrigatoriedadeCadastroUnidade.aspx</code></td></tr>
+<tr><td>&gt; Paciente Rede</td><td>Política do Cadastro</td><td><code>/KlinikosNet/Administracao/tabelas/PacienteRede/ParametroCadastroUnidade.aspx</code></td></tr>
+<tr><td>&gt; Relatórios</td><td>Configuração de Impressora</td><td><code>/KlinikosNet/Share/Impressora/LaudoRede.aspx</code></td></tr>
+<tr><td>&gt; Segurança</td><td>Grupo</td><td><code>/KlinikosNet/Administracao/Acesso/GrupoAcesso.aspx</code></td></tr>
+<tr><td>&gt; Segurança</td><td>Usuário</td><td><code>/KlinikosNet/Administracao/Acesso/Usuario.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Org. Regional</td><td>GER</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgRegional/GerenciaRegional.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Org. Regional</td><td>Macro/Micro</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgRegional/MacroRegiao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Organização Hospitalar</td><td>Enfermaria</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/Enfermaria.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Organização Hospitalar</td><td>Leito</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/Leito.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Organização Hospitalar</td><td>Natureza da Atividade</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/Divisao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Organização Hospitalar</td><td>Posto de Enfermagem</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/PostoEnfermagem.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Organização Hospitalar &gt; Setor</td><td>Classificação da Atividade</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/Setor/SetorClassificacao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Organização Hospitalar &gt; Setor</td><td>Integração com Stok</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/Setor/SetorStok.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Organização Hospitalar &gt; Setor</td><td>Setores/Execução da Atividade</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/Setor/SetorUnidade.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>CID</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/CID.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Como Chegou</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/ComoChegouUnidade.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Declaração</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/Declaracao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Estado do Paciente</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/EstadoPaciente.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Exames de Rede</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/ExamesRede.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Feriado</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/Feriado.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Modelo de Classificação de Risco</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/ProtocoloAcolhimento.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Notificação Compulsória - CID 10</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/CID10.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Pendência</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/Pendencia.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Procedimento</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/Procedimento.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Protocolo de Prescrição</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/PrescricaoPadrao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Seção</td><td><code>/KlinikosNet/Administracao/Tabelas/OrgHospitalar/Secao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Unidade de Referência</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/UnidadeReferencia.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Visitante e Acompanhante</td><td><code>/KlinikosNet/Administracao/Tabelas/Outras/Outras/VisitanteAcompanhante.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Profissional</td><td>Lotação do Profissional</td><td><code>/KlinikosNet/Administracao/Tabelas/Profissional/Lotacao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Profissional</td><td>Profissional</td><td><code>/KlinikosNet/Administracao/Tabelas/Profissional/Profissional.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Profissional</td><td>Tipo de Profissional</td><td><code>/KlinikosNet/Administracao/Tabelas/Profissional/ConfiguracaoTipoProfissional.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar I</td><td>Básico</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeI/Basico.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar I</td><td>Complementar</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeI/BasicoComplementar.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar I</td><td>Endereço Complementar</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeI/EndComplementar.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar I</td><td>Identificação</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeI/Identificacao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar I</td><td>Infraestrutura de Comunicação e Informática</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeI/InfraComInf.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar I</td><td>Quimio-Rádio</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeI/QuimioRadio.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Diálise I</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/DialiseI.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Diálise II</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/DialiseII.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Equipamentos I</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/EquipamentosI.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Equipamentos II</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/EquipamentosII.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Equipamentos III</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/EquipamentosIII.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Equipamentos IV</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/EquipamentosIV.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Hemoterapia I</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/HemoterapiaI.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Hemoterapia II</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/HemoterapiaII.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Residência</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/Residencia.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Vínculo Cooperativo</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/VinculoCooperativo.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar II</td><td>Vínculo Profissional</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeII/VinculoProfissional.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar III</td><td>Leitos</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeIII/Leitos.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar III</td><td>Mantenedora</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeIII/Mantenedora.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar III</td><td>Módulo Conjunto</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeIII/Instalacoes.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar III</td><td>Procedimentos x Serviço/Classificação</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeIII/ProcedimentoServicoClassificacao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Unidade Hospitalar &gt; Unidade Hospitalar III</td><td>Serviço Referência</td><td><code>/KlinikosNet/Administracao/Tabelas/UnidHospitalar/UnidadeIII/UnidadeServicoReferencia.aspx</code></td></tr>
+</tbody></table></div>
+<h3>Ambulatorio (31)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td></td><td><code>/KlinikosNet/Ambulatorio/Default.aspx</code></td></tr>
+<tr><td></td><td>Alta Administrativa</td><td><code>/KlinikosNet/Ambulatorio/AltaAdministrativa.aspx</code></td></tr>
+<tr><td></td><td>Ambulatório</td><td><code>Default.aspx?mod=002</code></td></tr>
+<tr><td></td><td>Autorização</td><td><code>/KlinikosNet/Ambulatorio/Autorizacao.aspx</code></td></tr>
+<tr><td></td><td>Cadastro</td><td><code>/KlinikosNet/Cadastro/Paciente/CadastroBasico.aspx</code></td></tr>
+<tr><td></td><td>Consulta Encaminhamentos à Regulação</td><td><code>/KlinikosNet/Ambulatorio/ConsultaSolicitacoesSer.aspx</code></td></tr>
+<tr><td></td><td>Encaixe</td><td><code>/KlinikosNet/Ambulatorio/Encaixe.aspx</code></td></tr>
+<tr><td></td><td>Reagendamento</td><td><code>/KlinikosNet/Ambulatorio/Reagendamento.aspx</code></td></tr>
+<tr><td>&gt; Agendamento</td><td>Atendimento</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/AtenderChamada.aspx</code></td></tr>
+<tr><td>&gt; Agendamento</td><td>CheckIn</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/CheckInLista.aspx</code></td></tr>
+<tr><td>&gt; Agendamento</td><td>CheckOut</td><td><code>/KlinikosNet/Share/CheckOut/CheckOut.aspx</code></td></tr>
+<tr><td>&gt; Agendamento</td><td>CheckOut Exame</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/CheckOutExame.aspx</code></td></tr>
+<tr><td>&gt; Agendamento</td><td>Consulta</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/AgendaConsulta.aspx</code></td></tr>
+<tr><td>&gt; Agendamento</td><td>Fila de Espera</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/FilaEspera.aspx</code></td></tr>
+<tr><td>&gt; Agendamento &gt; Exame</td><td>Exame Diagnose</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/PedidoExame.aspx?TipoExame=9</code></td></tr>
+<tr><td>&gt; Agendamento &gt; Exame</td><td>Exame Laboratorial</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/PedidoExame.aspx?TipoExame=7</code></td></tr>
+<tr><td>&gt; Agendamento &gt; Exame</td><td>Exame Radiológico</td><td><code>/KlinikosNet/Ambulatorio/Agendamento/PedidoExame.aspx?TipoExame=8</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda</td><td>Bloqueia/Exclui</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/BloqueiaExclui.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda</td><td>Copia Agenda</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/CopiaParametrosAgenda.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda</td><td>Desbloquear</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/Desbloqueia.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda</td><td>Gera Agenda</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/ParametrosAgenda.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda</td><td>Permissão</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/Permissao.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Clinica de Referência</td><td><code>/KlinikosNet/Ambulatorio/OutrasTabelas/ClinicaReferencia.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Correlação Especialidade Interconsulta</td><td><code>/KlinikosNet/Ambulatorio/OutrasTabelas/EspecialidadeInterconsulta.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Correlação Especialidade SER2 x Klinikos</td><td><code>/KlinikosNet/Administracao/admsys/ParametroEspecialidadeSER2.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Exames de Diagnose</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/Exames/Diagnose.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Motivo de Autorização</td><td><code>/KlinikosNet/Ambulatorio/OutrasTabelas/MotivoAutorizacao.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Motivo de Bloqueio</td><td><code>/KlinikosNet/Ambulatorio/OutrasTabelas/MotivoBloqueio.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Parâmetro Usa Check-in</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/Parametros.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Profissional de Referência</td><td><code>/KlinikosNet/Ambulatorio/OutrasTabelas/ProfissionalReferencia.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros de Agenda &gt; Tabelas</td><td>Texto Padrão</td><td><code>/KlinikosNet/Ambulatorio/ParametrosAgenda/TextoPadrao.aspx</code></td></tr>
+</tbody></table></div>
+<h3>Cadastro (10)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td></td><td><code>/KlinikosNet/Cadastro/Default.aspx</code></td></tr>
+<tr><td></td><td>Cadastro</td><td><code>Default.aspx?mod=004</code></td></tr>
+<tr><td></td><td>Cadastro Incompleto</td><td><code>/KlinikosNet/Cadastro/CadastroIncompleto.aspx</code></td></tr>
+<tr><td></td><td>Histórico do Paciente</td><td><code>/KlinikosNet/Cadastro/ResumoProntuario.aspx</code></td></tr>
+<tr><td></td><td>Movimentação</td><td><code>/KlinikosNet/Cadastro/MovProntuario.aspx</code></td></tr>
+<tr><td></td><td>Unificação de Prontuário</td><td><code>/KlinikosNet/Cadastro/Homonimos/AtualizaCadastroPaciente.aspx</code></td></tr>
+<tr><td>&gt; Cadastro &gt; Cadastro Completo</td><td>Dados do CNS</td><td><code>/KlinikosNet/Cadastro/Paciente/DadosCNS.aspx</code></td></tr>
+<tr><td>&gt; Cadastro &gt; Cadastro Completo</td><td>Família</td><td><code>/KlinikosNet/Cadastro/Paciente/Familia.aspx</code></td></tr>
+<tr><td>&gt; Cadastro &gt; Cadastro Completo</td><td>Informações Complementares</td><td><code>/KlinikosNet/Cadastro/Paciente/InformacoesComplementares.aspx</code></td></tr>
+<tr><td>&gt; Cadastro &gt; Cadastro Completo</td><td>Obituário</td><td><code>/KlinikosNet/Cadastro/Paciente/Obituario.aspx</code></td></tr>
+</tbody></table></div>
+<h3>CentroCirurgico (32)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td></td><td><code>/KlinikosNet/CentroCirurgico/Default.aspx</code></td></tr>
+<tr><td></td><td>Centro Cirúrgico</td><td><code>Default.aspx?mod=005</code></td></tr>
+<tr><td></td><td>Cirurgia</td><td><code>/KlinikosNet/CentroCirurgico/Cirurgia.aspx</code></td></tr>
+<tr><td></td><td>Registro de Parto</td><td><code>/KlinikosNet/CentroCirurgico/RegistroDeParto.aspx</code></td></tr>
+<tr><td>&gt; Pré-Anestésico</td><td>Avaliação</td><td><code>/KlinikosNet/CentroCirurgico/PreAnestesico/Avaliacao.aspx</code></td></tr>
+<tr><td>&gt; Pré-Anestésico</td><td>Exames</td><td><code>/KlinikosNet/CentroCirurgico/PreAnestesico/Exames.aspx</code></td></tr>
+<tr><td>&gt; Solicitação</td><td>Agenda Cirúrgica</td><td><code>/KlinikosNet/CentroCirurgico/Solicitacao/AgendaCirurgica.aspx</code></td></tr>
+<tr><td>&gt; Solicitação</td><td>Equipamento Cirúrgico</td><td><code>/KlinikosNet/CentroCirurgico/Solicitacao/EquipamentoCirurgico.aspx</code></td></tr>
+<tr><td>&gt; Solicitação</td><td>Equipe Cirúrgica</td><td><code>/KlinikosNet/CentroCirurgico/Solicitacao/EquipeCirurgica.aspx</code></td></tr>
+<tr><td>&gt; Solicitação</td><td>Material Cirúrgico</td><td><code>/KlinikosNet/CentroCirurgico/Solicitacao/MaterialCirurgico.aspx</code></td></tr>
+<tr><td>&gt; Solicitação</td><td>Pedido</td><td><code>/KlinikosNet/CentroCirurgico/Solicitacao/Pedido.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Cancelamento</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Outras/Cancelamento.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Contaminação</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Outras/Contaminacao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Kit Cirúrgico</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Outras/KitCirurgico.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Kit Material</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Outras/KitMaterial.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Outras</td><td>Parâmetros</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Outras/Parametros.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pré-Anestésico</td><td>Exames</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PreAnestesico/Exames.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pré-Anestésico</td><td>Item</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PreAnestesico/Item.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pré-Anestésico</td><td>Tipo</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PreAnestesico/Tipo.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pós-Anestésico</td><td>Categoria Cirúrgica</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PosAnestesico/Categoria.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pós-Anestésico</td><td>Mobilidade</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PosAnestesico/Mobilidade.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pós-Anestésico</td><td>Nível de Circulação</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PosAnestesico/Circulacao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pós-Anestésico</td><td>Nível de Coloração</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PosAnestesico/Coloracao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pós-Anestésico</td><td>Nível de Consciência</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PosAnestesico/Consciencia.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Pós-Anestésico</td><td>Nível de Respiração</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/PosAnestesico/Respiracao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Solicitação</td><td>Centro Cirúrgico</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Solicitacao/CentroCirurgico.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Solicitação</td><td>Classe Cirúrgica</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Solicitacao/Classe.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Solicitação</td><td>Função</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Solicitacao/Funcao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Solicitação</td><td>Material</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Solicitacao/Material.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Solicitação</td><td>Porte Cirúrgico</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Solicitacao/Porte.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Solicitação</td><td>Sala Cirúrgica</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Solicitacao/SalaCirurgica.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Solicitação</td><td>Tipo de Anestesia</td><td><code>/KlinikosNet/CentroCirurgico/Tabelas/Solicitacao/Tipo.aspx</code></td></tr>
+</tbody></table></div>
+<h3>Internacao (14)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td></td><td><code>/KlinikosNet/Internacao/Default.aspx</code></td></tr>
+<tr><td></td><td>Entrega de Pertences</td><td><code>/KlinikosNet/Internacao/EntregaPertences.aspx</code></td></tr>
+<tr><td></td><td>Internação</td><td><code>Default.aspx?mod=009</code></td></tr>
+<tr><td>&gt; Cegonha</td><td>Controle de Preenchimento</td><td><code>/KlinikosNet/Internacao/Cegonha/ControlePreenchimento.aspx</code></td></tr>
+<tr><td>&gt; Cegonha</td><td>Formulário</td><td><code>/KlinikosNet/Internacao/Cegonha/CentroObstetrico.aspx</code></td></tr>
+<tr><td>&gt; Internação</td><td>Clínica Atual</td><td><code>/KlinikosNet/Internacao/ClinicaAtual.aspx</code></td></tr>
+<tr><td>&gt; Internação</td><td>Hospital/Dia</td><td><code>/KlinikosNet/Internacao/HospitalDia.aspx</code></td></tr>
+<tr><td>&gt; Internação</td><td>Informações</td><td><code>/KlinikosNet/Internacao/Informacoes.aspx</code></td></tr>
+<tr><td>&gt; Internação</td><td>Internação e Alta</td><td><code>/KlinikosNet/Internacao/Internacao.aspx</code></td></tr>
+<tr><td>&gt; Internação</td><td>Procedimentos</td><td><code>/KlinikosNet/Internacao/Procedimentos.aspx</code></td></tr>
+<tr><td>&gt; Leitos</td><td>Mapa de Leitos</td><td><code>/KlinikosNet/Share/Leitos/MapaLeitos.aspx</code></td></tr>
+<tr><td>&gt; Leitos</td><td>Reprocessamento de Censo</td><td><code>/KlinikosNet/Internacao/Leitos/ReprocessamentoDoCenso.aspx</code></td></tr>
+<tr><td>&gt; Pedidos Internação</td><td>Pedido</td><td><code>/KlinikosNet/Share/PedidoInternacao/PedidoInternacao.aspx</code></td></tr>
+<tr><td>&gt; Pedidos Internação</td><td>Solicitação de Internação</td><td><code>/KlinikosNet/Share/PedidoInternacao/SolicitacaoInternacao.aspx</code></td></tr>
+</tbody></table></div>
+<h3>Laboratorio (37)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td></td><td><code>/KlinikosNet/Laboratorio/Default.aspx</code></td></tr>
+<tr><td></td><td>Laboratório</td><td><code>Default.aspx?mod=010</code></td></tr>
+<tr><td></td><td>Movimentar Laboratório Externo</td><td><code>/KlinikosNet/Laboratorio/MovimentacaoExame.aspx</code></td></tr>
+<tr><td></td><td>Requisição</td><td><code>/KlinikosNet/Laboratorio/Requisicao.aspx</code></td></tr>
+<tr><td>&gt; Monitoração</td><td>Exames</td><td><code>/KlinikosNet/Laboratorio/Monitoracao/Exames.aspx</code></td></tr>
+<tr><td>&gt; Monitoração</td><td>Exames em Andamento</td><td><code>/KlinikosNet/Laboratorio/Monitoracao/ExamesAndamento.aspx</code></td></tr>
+<tr><td>&gt; Monitoração</td><td>Log Geração de Laudos</td><td><code>/KlinikosNet/Laboratorio/Monitoracao/GeracaoLaudoLog.aspx</code></td></tr>
+<tr><td>&gt; Paciente Referenciado</td><td>Cadastro</td><td><code>/KlinikosNet/Share/PacienteExterno.aspx?Modulo=7</code></td></tr>
+<tr><td>&gt; Parâmetros</td><td>Fórmulas</td><td><code>/KlinikosNet/Laboratorio/Parametros/Formulas.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros</td><td>Integrar Exames Laboratoriais</td><td><code>/KlinikosNet/Laboratorio/Parametros/Servico.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros</td><td>Laboratório</td><td><code>/KlinikosNet/Laboratorio/Parametros/Laboratorio.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros &gt; Impressora</td><td>Código de Barras</td><td><code>/KlinikosNet/Laboratorio/Parametros/CodigoBarras.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros &gt; Impressora</td><td>Vinculação/Desvinculação</td><td><code>/KlinikosNet/Laboratorio/Parametros/Vinculacao.aspx</code></td></tr>
+<tr><td>&gt; Resultado</td><td>Gerar Mapa</td><td><code>/KlinikosNet/Laboratorio/Resultado/GerarMapa.aspx</code></td></tr>
+<tr><td>&gt; Resultado</td><td>Lançar</td><td><code>/KlinikosNet/Laboratorio/Resultado/Lancar.aspx</code></td></tr>
+<tr><td>&gt; Resultado</td><td>Liberação</td><td><code>/KlinikosNet/Laboratorio/Resultado/Liberacao.aspx</code></td></tr>
+<tr><td>&gt; Resultado</td><td>Ver Mapa</td><td><code>/KlinikosNet/Laboratorio/Resultado/VerMapa.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Configurações</td><td>Equipamento</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Configuracoes/Equipamento.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Configurações</td><td>Fabricante</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Configuracoes/Fabricante.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Configurações</td><td>Material</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Configuracoes/Material.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Configurações</td><td>Método</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Configuracoes/Metodo.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Configurações</td><td>Pacote de Exames</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Configuracoes/PacoteExames.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Configurações</td><td>Unidade de Medida</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Configuracoes/UnidadeMedida.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Exames</td><td>Elemento</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Exames/Elemento.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Exames</td><td>Equipamento/Exame</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Exames/EquipamentoExame.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Exames</td><td>Exame/Elemento</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Exames/ExameElemento.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Exames</td><td>Exames</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Exames/Exame.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Exames</td><td>Texto Padrão</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Exames/TextoPadrao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Laboratório &gt; Exames</td><td>Valor Referência</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Laboratorio/Exames/ValorReferencia.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Destino</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Sistema/Destino.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Layout Mapa</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Sistema/LayoutMapa.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Local Coleta</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Sistema/LocalColeta.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Motivo de Exclusão Requisição</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Sistema/MotivoExclusao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Pacote</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Sistema/Pacote.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Profissional Solicitante</td><td><code>/KlinikosNet/Share/ProfissionalSolicitante.aspx?Modulo=LABORATORIO</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Seção/Usuário</td><td><code>/KlinikosNet/Laboratorio/Tabelas/Sistema/SecaoUsuario.aspx</code></td></tr>
+<tr><td>&gt; Tabelas &gt; Sistema</td><td>Unidade Solicitante</td><td><code>/KlinikosNet/Share/UnidadeSolicitante.aspx?Modulo=LABORATORIO</code></td></tr>
+</tbody></table></div>
+<h3>Radiologia (15)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td></td><td><code>/KlinikosNet/Radiologia/Default.aspx</code></td></tr>
+<tr><td></td><td>Entrega</td><td><code>/KlinikosNet/Radiologia/Entrega.aspx</code></td></tr>
+<tr><td></td><td>Laudos</td><td><code>/KlinikosNet/Radiologia/Laudos.aspx</code></td></tr>
+<tr><td></td><td>Paciente Referenciado</td><td><code>/KlinikosNet/share/PacienteExterno.aspx?Modulo=8</code></td></tr>
+<tr><td></td><td>Radiologia</td><td><code>Default.aspx?mod=016</code></td></tr>
+<tr><td></td><td>Solicitações</td><td><code>/KlinikosNet/Radiologia/Solicitacoes.aspx</code></td></tr>
+<tr><td>&gt; Parâmetros</td><td>Integrar Exames de Imagem</td><td><code>/KlinikosNet/Radiologia/Parametros/Servico.aspx</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Equipamentos</td><td><code>/KlinikosNet/Radiologia/Tabelas/Equipamentos.aspx</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Exames</td><td><code>/KlinikosNet/Radiologia/Tabelas/Exames.aspx</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Filmes</td><td><code>/KlinikosNet/Radiologia/Tabelas/Filmes.aspx</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Grupo de Exames / Usuário</td><td><code>/KlinikosNet/Radiologia/Tabelas/GrupoExamesUsuario.aspx</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Grupos de Exames</td><td><code>/KlinikosNet/Radiologia/Tabelas/GrupoExames.aspx</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Profissional Solicitante</td><td><code>/KlinikosNet/Share/ProfissionalSolicitante.aspx?Modulo=RADIOLOGIA</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Texto Padrão</td><td><code>/KlinikosNet/Radiologia/Tabelas/TextoPadrao.aspx</code></td></tr>
+<tr><td>&gt; Tabelas</td><td>Unidade Solicitante</td><td><code>/KlinikosNet/Share/UnidadeSolicitante.aspx?Modulo=RADIOLOGIA</code></td></tr>
+</tbody></table></div>
+<h3>UPA (33)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td>Assistente Social</td><td><code>/KlinikosNet/UPA/ServicoSocial.aspx</code></td></tr>
+<tr><td></td><td>Multiprofissional / Evolução</td><td><code>/KlinikosNet/UPA/AtendimentoMedico.aspx?MultiProfissional=1</code></td></tr>
+<tr><td></td><td>Remoção</td><td><code>/KlinikosNet/UPA/Remocao.aspx</code></td></tr>
+<tr><td></td><td>Urgência e Emergência</td><td><code>Default.aspx?mod=014</code></td></tr>
+<tr><td>&gt; Administração</td><td>Cadastro Básico do Profissional</td><td><code>/KlinikosNet/UPA/CadastroBasicoProfissional.aspx</code></td></tr>
+<tr><td>&gt; Administração</td><td>Contingência</td><td><code>/KlinikosNet/UPA/Retaguarda.aspx</code></td></tr>
+<tr><td>&gt; Administração</td><td>Entrega de Pertences</td><td><code>/KlinikosNet/UPA/EntregaPertences.aspx</code></td></tr>
+<tr><td>&gt; Administração</td><td>Fila</td><td><code>/KlinikosNet/UPA/AdmFila.aspx</code></td></tr>
+<tr><td>&gt; Administração</td><td>Monitoração de Exames</td><td><code>/KlinikosNet/UPA/RequisicaoExternaAdmin.aspx</code></td></tr>
+<tr><td>&gt; Administração</td><td>Regulação de Leitos</td><td><code>/KlinikosNet/UPA/RegulacaoDeLeitos.aspx</code></td></tr>
+<tr><td>&gt; Administração</td><td>SINAN</td><td><code>/KlinikosNet/UPA/AdmCompulsoria.aspx?Acesso=Administracao</code></td></tr>
+<tr><td>&gt; Administração &gt; Gestão de Qualidade</td><td>Pesquisa Satisfação dos Usuários</td><td><code>/KlinikosNet/UPA/PesquisaSatisfacao.aspx</code></td></tr>
+<tr><td>&gt; Administração &gt; Gestão de Qualidade</td><td>Plano de Educação Permanente</td><td><code>/KlinikosNet/UPA/EducacaoPermanente.aspx</code></td></tr>
+<tr><td>&gt; Administração &gt; Gestão de Qualidade</td><td>Resolubilidade da Ouvidoria</td><td><code>/KlinikosNet/UPA/Ouvidoria.aspx</code></td></tr>
+<tr><td>&gt; Administração &gt; Gestão de Qualidade</td><td>Índice de Satisfação dos Usuários com a Unidade de Saúde</td><td><code>/KlinikosNet/UPA/IndiceSatisfacaoUsuarios.aspx</code></td></tr>
+<tr><td>&gt; Administração &gt; Indicadores</td><td>Parâmetros</td><td><code>/KlinikosNet/UPA/ParametroIndicadorSerieHistorica.aspx</code></td></tr>
+<tr><td>&gt; Administração &gt; Indicadores</td><td>Reprocessar Indicadores</td><td><code>/KlinikosNet/UPA/IndicadorDesempenhoReprocessamento.aspx</code></td></tr>
+<tr><td>&gt; Administração &gt; Indicadores</td><td>Série Histórica</td><td><code>/KlinikosNet/UPA/IndicadorDesempenhoSerieHistorica.aspx</code></td></tr>
+<tr><td>&gt; Atendimento</td><td>Médico</td><td><code>/KlinikosNet/UPA/AtendimentoMedico.aspx</code></td></tr>
+<tr><td>&gt; Atendimento</td><td>Odontologia</td><td><code>/KlinikosNet/UPA/AtendimentoMedicoOdonto.aspx?Odontologia=True</code></td></tr>
+<tr><td>&gt; Atendimento</td><td>Prescrição / Receita Favorita</td><td><code>/KlinikosNet/UPA/PrescricaoReceita.aspx</code></td></tr>
+<tr><td>&gt; Atendimento</td><td>SINAN</td><td><code>/KlinikosNet/UPA/AdmCompulsoria.aspx?Acesso=Atendimento</code></td></tr>
+<tr><td>&gt; Baixa de Boletim</td><td>Emergência</td><td><code>/KlinikosNet/Share/CheckOut/CheckOut.aspx?origem=3</code></td></tr>
+<tr><td>&gt; Baixa de Boletim</td><td>Urgência</td><td><code>/KlinikosNet/Share/CheckOut/CheckOut.aspx?origem=5</code></td></tr>
+<tr><td>&gt; Fisioterapia</td><td>Registros de Fisioterapia</td><td><code>/KlinikosNet/Share/Fisioterapia/RegistrosdeFisioterapia.aspx?Modulo=SPA</code></td></tr>
+<tr><td>&gt; Leitos</td><td>Mapa de Leitos</td><td><code>/KlinikosNet/Share/Leitos/MapaLeitos.aspx?Modulo=E</code></td></tr>
+<tr><td>&gt; Posto de Enfermagem</td><td>Coleta de Exames</td><td><code>/KlinikosNet/UPA/requisicaoexterna.aspx</code></td></tr>
+<tr><td>&gt; Posto de Enfermagem</td><td>Pedidos do Posto</td><td><code>/KlinikosNet/PostoEnfermagem/Pedido.aspx</code></td></tr>
+<tr><td>&gt; Posto de Enfermagem</td><td>Plano Terapêutico</td><td><code>/KlinikosNet/Share/Prescricao/PlanoTerapeutico.aspx</code></td></tr>
+<tr><td>&gt; Posto de Enfermagem</td><td>Registros de Enfermagem</td><td><code>/KlinikosNet/UPA/Enfermagem.aspx</code></td></tr>
+<tr><td>&gt; Pré-Atendimento</td><td>Classificação de Risco</td><td><code>/KlinikosNet/UPA/ClassificacaoDeRisco.aspx</code></td></tr>
+<tr><td>&gt; Pré-Atendimento</td><td>Emergência</td><td><code>/KlinikosNet/UPA/Registro.aspx?emergencia=True</code></td></tr>
+<tr><td>&gt; Pré-Atendimento</td><td>Urgência</td><td><code>/KlinikosNet/UPA/Registro.aspx</code></td></tr>
+</tbody></table></div>
+<h3>eProntuario (17)</h3>
+<div class="tw"><table><thead><tr><th>caminho no menu</th><th>rótulo</th><th>URL</th></tr></thead><tbody>
+<tr><td></td><td>PEP</td><td><code>Default.aspx?mod=012</code></td></tr>
+<tr><td>&gt; Ambulatório</td><td>Triagem / Pré-Consulta</td><td><code>/KlinikosNet/eProntuario/ConsultaDeEnfermagem.aspx?window=true</code></td></tr>
+<tr><td>&gt; Ambulatório &gt; Consulta</td><td>Iniciar Consulta</td><td><code>/KlinikosNet/eProntuario/AtendimentoMedico.aspx?window=true</code></td></tr>
+<tr><td>&gt; Ambulatório &gt; Consulta</td><td>Prescrição / Receita Favorita</td><td><code>/KlinikosNet/UPA/PrescricaoReceita.aspx?ambulatorio=true</code></td></tr>
+<tr><td>&gt; Internação</td><td>Assistente Social</td><td><code>/KlinikosNet/eProntuario/Internacao/ServicoSocial.aspx?window=true</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Coleta de Exames</td><td><code>/KlinikosNet/PostoEnfermagem/requisicaoexterna.aspx?Modulo=INTERNACAO</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Consulta Pedidos do Posto</td><td><code>/KlinikosNet/PostoEnfermagem/ConsultaPedidoPosto.aspx</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Devolução/Descarte do Posto</td><td><code>/KlinikosNet/PostoEnfermagem/DevolucaoDescartePosto.aspx</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Dispositivos/Bundles</td><td><code>/KlinikosNet/PostoEnfermagem/Bundle.aspx?Modulo=PEP</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Mapa de Leitos</td><td><code>/KlinikosNet/Share/Leitos/ObservacaoLeito.aspx</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Pedidos do Posto</td><td><code>/KlinikosNet/PostoEnfermagem/Pedido.aspx?Modulo=PEP</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Plano Terapêutico</td><td><code>/KlinikosNet/Share/Prescricao/PlanoTerapeutico.aspx?Modulo=PEP</code></td></tr>
+<tr><td>&gt; Internação &gt; Enfermagem</td><td>Registros de Enfermagem</td><td><code>/KlinikosNet/PostoEnfermagem/FilaEnfermagemPEPWindow.aspx?Modulo=PEP</code></td></tr>
+<tr><td>&gt; Internação &gt; Fisioterapia</td><td>Registros de Fisioterapia</td><td><code>/KlinikosNet/Share/Fisioterapia/RegistrosdeFisioterapia.aspx?Modulo=PEP</code></td></tr>
+<tr><td>&gt; Internação &gt; Médico</td><td>Atendimento</td><td><code>/KlinikosNet/eProntuario/Internacao/Admissao.aspx?window=true</code></td></tr>
+<tr><td>&gt; Internação &gt; Médico</td><td>Evolução Multiprofissional</td><td><code>/KlinikosNet/eProntuario/Internacao/Admissao.aspx?MultiProfissional=1</code></td></tr>
+<tr><td>&gt; Internação &gt; Médico</td><td>Prescrição / Receita Favorita</td><td><code>/KlinikosNet/UPA/PrescricaoReceita.aspx?Internacao=true</code></td></tr>
+</tbody></table></div>
+</main>
+</body>
+</html>

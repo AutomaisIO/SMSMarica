@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prime Saúde — recon "como usuário" (laboratório Automais.prime/)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Prime Saúde — recon "como usuário" (laboratório <code>Automais.prime/</code>)</h1>
+<p>Mesmo <strong>método</strong> do laboratório <code>Automais.klinikos/</code> (mesmo fornecedor, Eco Sistemas): sondas <code>probe_*.py</code>, cliente httpx com Referer automático, trava de somente-leitura, sessão persistida. Alvo: <code>https://marica.ecosistemas.com.br/Prime/</code>. Tudo abaixo foi <strong>medido em 16/09/2026</strong>.</p>
+<p>&gt; <strong>Somente leitura.</strong> A trava <code>guardar()</code> (<code>prime/client.py</code>) recusa nome de parâmetro de POST &gt; e <code>__EVENTTARGET</code> com verbo de escrita. Liberados pontualmente: <code>LoginButton</code> e &gt; <code>btnConfirmarLogin</code>. Hidden <code>*_ClientState</code> <strong>vazio</strong> do Telerik não é ação e passa.</p>
+<h2>0. Resposta curta: o Prime em uso é a atenção ESPECIALIZADA</h2>
+<p>O Prime é o "Prime Saúde", e a raiz pós-login se chama <code>AtencaoBasica/</code> (cookie <code>.Eco.SL.AtencaoBasica_ASPXAUTH_niteroi</code>). Esse nome é da <strong>linha de produto do fornecedor</strong>, não do uso em Maricá. O relatório <em>Pacientes Atendidos</em> por unidade diz quem usa de verdade:</p>
+<div class="tw"><table><thead><tr><th>Unidade</th><th>09–15/09/2026 (atendimentos / pacientes por CNS)</th><th>ago/2026</th><th>2025</th><th>2023–2024</th></tr></thead><tbody>
+<tr><td>CDT Dr. Alberto Luis Machado Borges</td><td>1.210 / 715</td><td></td><td></td><td></td></tr>
+<tr><td>Centro de Reabilitação Ambulatorial e Domiciliar</td><td>1.039 / 546</td><td></td><td></td><td></td></tr>
+<tr><td>Centro Materno Infantil</td><td>741 / 410</td><td></td><td></td><td></td></tr>
+<tr><td>Ambulatório Péricles Siqueira Ferreira</td><td>516 / 369</td><td></td><td></td><td></td></tr>
+<tr><td>SAE (Serviço de Atendimento Especializado)</td><td>381 / 118</td><td></td><td></td><td></td></tr>
+<tr><td>CEO Itaipuaçu</td><td>317 / 257</td><td></td><td></td><td></td></tr>
+<tr><td>Melhor em Casa</td><td>315 / 91</td><td></td><td></td><td></td></tr>
+<tr><td>CEO Boqueirão</td><td>127 / 120</td><td>559</td><td>4.107</td><td><strong>0</strong></td></tr>
+<tr><td>Odontomóvel</td><td>12 / 11</td><td></td><td></td><td></td></tr>
+<tr><td>CEREST</td><td>0</td><td></td><td></td><td></td></tr>
+<tr><td><strong>25 USFs</strong> (todas)</td><td><strong>0</strong></td><td></td><td></td><td></td></tr>
+<tr><td><strong>Total</strong></td><td><strong>4.658 / ~2.600</strong></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<p>&gt; <strong>Correção (16/09, mesma sessão):</strong> a primeira versão desta tabela contava <strong>linhas físicas</strong> &gt; do CSV e deu ~14,8 mil na semana. O CSV tem quebras de linha dentro do campo de procedimentos &gt; (ver §3.1), e o número certo é <strong>4.658 registros</strong>. As conclusões (USFs zeradas, especializada &gt; desde 2025) não mudam.</p>
+<ul>
+<li><strong>As 25 USFs estão cadastradas, mas não têm atendimento no Prime.</strong> A USF Central e a USF</li>
+</ul>
+<p>  Bambuí têm zero atendimentos de 2018 a 08/2026, em janelas anuais. Janelas longas funcionam: o   controle com o CEO Boqueirão devolve 4.107 atendimentos em 2025. As USFs atendem em outro   sistema.</p>
+<ul>
+<li><strong>A especializada começou a usar o Prime em 2025.</strong> O CEO Boqueirão tem zero em 2023 e 2024.</li>
+<li>O Prime não é lido hoje por nenhum conector do SMSMais. É <strong>fonte nova</strong>, não substituição.</li>
+</ul>
+<p>Sonda: <code>sondar_atividade.py DD/MM/AAAA DD/MM/AAAA [guid…]</code> (só contagens; CSVs em <code>capturas/</code>).</p>
+<h2>1. Stack</h2>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Servidor</td><td>nginx/1.18.0 (Ubuntu), <code>X-AspNet-Version: 4.0.30319</code>, <strong>hospedado pela Eco</strong> (não em <code>*.smsmarica.online</code>)</td></tr>
+<tr><td>Camada web</td><td>ASP.NET WebForms, Telerik (RadComboBox, RadDatePicker, RadWindow, RadSplitter), jQuery 3.7, select2, SweetAlert2</td></tr>
+<tr><td>Build</td><td><code>2024.03.1.63</code> (<code>lblVersao</code> do login)</td></tr>
+<tr><td>Raiz</td><td><code>/Prime/</code> (home pós-login <code>/Prime/AtencaoBasica/Default.aspx</code>)</td></tr>
+<tr><td>Irmão</td><td><code>/SaudeMental/</code> = <strong>Prime Saúde Mental</strong>, outro produto (build <code>2025.08.0.18</code>) → <code>Automais.saudemental/</code></td></tr>
+</tbody></table></div>
+<h2>2. Login e gate de unidade</h2>
+<ol>
+<li><code>GET /Prime/login.aspx</code> → form <strong><code>formLogin</code></strong> (Klinikos: <code>form1</code>) com os mesmos campos</li>
+</ol>
+<p>   <code>LoginView1$lgAcesso$UserName/Password/LoginButton=ENTRAR</code>.</p>
+<ol>
+<li><strong>Sessão única por usuário</strong>, igual ao Klinikos: se o usuário está logado em outra estação,</li>
+</ol>
+<p>   volta <code>btnConfirmarLogin</code>. Confirmar <strong>derruba a outra sessão</strong>. Isso aconteceu na primeira    sonda, porque a conta estava aberta num navegador. Um conector precisa de usuário próprio.</p>
+<ol>
+<li>Login OK → a própria <code>Login.aspx</code> com <strong>gate</strong>: <code>LoginView1$ddlPerfil</code> (CBO; com um perfil só,</li>
+</ol>
+<p>   <code>pnlPerfil</code> vem <code>display:none</code>) e <code>LoginView1$ddlUnidade</code> (GUID de 35 unidades), ambos    AutoPostBack.    - <strong>Armadilha medida:</strong> mandar <code>ddlPerfil=-1</code> ou fazer postback do perfil faz a tela voltar      igual, <strong>sem erro</strong>.    - O que passa é <strong>um</strong> POST com <code>__EVENTTARGET=LoginView1$ddlUnidade</code> e <strong>sem</strong> o campo      <code>ddlPerfil</code> no corpo → 302 para <code>AtencaoBasica/Default.aspx</code>.</p>
+<ol>
+<li>Cookies: <code>ASP.NET_SessionId</code> + <code>.Eco.SL.AtencaoBasica_ASPXAUTH_niteroi</code> (forms auth). A</li>
+</ol>
+<p>   unidade escolhida fica na sessão e aparece nas telas como <code>hidUnidadeId</code>.</p>
+<h2>3. Relatórios: GET direto, sem ViewState, com <code>unidades=&lt;GUID&gt;</code></h2>
+<p>O botão "Gerar relatório" (PDF/XLS/CSV) <strong>não devolve o arquivo</strong>. A tela responde com um <code>btnGerarRelatorio…_ClientClick(...)</code> que faz <code>window.open</code> para uma página <code>*RPT.aspx</code> com os parâmetros na query. Exemplo medido:</p>
+<p>``<code> GET /Prime/Relatorios/RelatorioPacientesAtendidosRPT.aspx     ?dataInicio=09/09/2026&amp;dataFim=15/09/2026&amp;funcao=&amp;prof=&amp;idGrupoPrioritario=     &amp;extensao=CSV&amp;unidades=&lt;GUID da unidade&gt; → 200 text/csv; charset=utf-8  (0,1 s) </code>``</p>
+<ul>
+<li><strong><code>unidades</code> aceita o GUID de qualquer unidade da lista do gate.</strong> Não é preciso trocar a</li>
+</ul>
+<p>  unidade da sessão para ler outra.</p>
+<ul>
+<li><code>extensao=CSV</code> devolve texto separado por <code>;</code> com cabeçalho. É melhor que o XLS BIFF do Klinikos.</li>
+<li>Colunas e formato do <em>Pacientes Atendidos</em>: §3.1 (22 campos; **cuidado com as quebras de linha</li>
+</ul>
+<p>  dentro do registro**).</p>
+<ul>
+<li>Um ano inteiro de uma unidade (4.107 atendimentos, CEO Boqueirão 2025) volta sem 504. O custo</li>
+</ul>
+<p>  é bem menor que o do Crystal no Klinikos. Ainda assim, uma requisição por vez.</p>
+<ul>
+<li>Chamados <strong>sem</strong> parâmetro, os <code>*RPT.aspx</code> dão 500 ("Input string was not in a correct</li>
+</ul>
+<p>  format"). É a varredura que chama assim, não é bloqueio. Os 21 RPT vistos estão em   <code>mapa-endpoints.md</code> e todos seguem o mesmo padrão: <em>Atendimento em Aberto, Diagnóstico,   Famílias, Indivíduos por Equipe, Pacientes Faltantes, Imunização por Ciclo de Vida, Testes   Rápidos, Saúde Bucal, Coletas, Consolidado Território, Remédio em Casa…</em></p>
+<h3>3.1 O que vem no CSV de <em>Pacientes Atendidos</em> (perfil de 4.658 registros, 09–15/09/2026)</h3>
+<p><strong>Formato (armadilha):</strong> separador <code>;</code>, <strong>sem aspas</strong>, cada registro termina com <code>;</code> + <strong>CRLF</strong>, mas os campos <code>Procedimentos</code>/<code>Cod_Procedimentos</code>/<code>ExamesSolicitados</code> têm <strong>LF solto</strong> dentro. Um leitor CSV comum desalinha tudo (sexo vira "Espontanea", CNS vira data). Ler assim: separar registros por CRLF (<code>\r\n</code>), descartar o campo vazio final e esperar <strong>22 campos</strong>.</p>
+<p>Um registro = <strong>um atendimento</strong> (paciente × profissional × data).</p>
+<div class="tw"><table><thead><tr><th>Coluna</th><th>Preenchida</th><th>Conteúdo medido</th></tr></thead><tbody>
+<tr><td><code>pac_nome</code></td><td>100%</td><td>nome</td></tr>
+<tr><td><code>pac_usarNomeSocialAtendimentos</code> / <code>pac_nomeSocial</code></td><td>100% / 0,1%</td><td>sempre <code>False</code>; nome social em 4 registros</td></tr>
+<tr><td><code>pac_sexo</code></td><td>100%</td><td>F 2.764 · M 1.885 · I 9</td></tr>
+<tr><td><code>Data_Nasc</code> / <code>idade</code></td><td>100%</td><td><code>dd/mm/aaaa 00:00:00</code> / anos</td></tr>
+<tr><td><code>CNS</code></td><td><strong>97,5%</strong></td><td>15 dígitos; 1º dígito 7 (4.311) ou 8 (231); <strong>~2.600 pacientes distintos</strong>. <strong>Não há CPF.</strong></td></tr>
+<tr><td><code>FuncaoAtendimento</code></td><td>100%</td><td>Procedimento 1.421 · Fisioterapeuta 475 · Saúde Bucal 468 · Enfermagem 381 · Fono 219 · Escuta Inicial 159 · Psicólogo 145 · Cardiologista 134 · Médica 124 · Neuro 102 · GO 91 · Oftalmo 83 · Otorrino 81 · Endócrino 80…</td></tr>
+<tr><td><code>prof_nome</code></td><td>100%</td><td>nome do profissional, <strong>sem CNS/CBO/conselho</strong></td></tr>
+<tr><td><code>Diagnosticos</code></td><td>66%</td><td>lista <code>CID - descrição</code> separada por vírgula; 686 CIDs distintos (top Z01, I10, F840, K02, M545, I64)</td></tr>
+<tr><td><code>Procedimentos</code></td><td>100%</td><td><code>&lt;procedimento&gt;, NOME&lt;/procedimento&gt;…</code> (pseudo-XML)</td></tr>
+<tr><td><code>Cod_Procedimentos</code></td><td>100%</td><td><code>&lt;procedimento&gt;  &lt;SIGTAP 10 díg&gt; - NOME - Quantidade: N&lt;/procedimento&gt;</code>; <strong>168 SIGTAP distintos</strong>, 8.549 ocorrências (top 0301010048, 0301010072, 0301100039)</td></tr>
+<tr><td><code>TeveExamesSolicitados</code> / <code>ExamesSolicitados</code></td><td>70% / 6,7%</td><td><code>S/N</code> (vazio quando a função é "Procedimento"); exames em <strong>texto livre</strong>, um por linha, sem código</td></tr>
+<tr><td><code>TeveMedicamentosPrescritos</code> / <code>MedicamentosPrescritos</code></td><td>70% / 0,3%</td><td><code>S/N</code>; texto livre (<code>princípio ativo dose</code>), 12 registros</td></tr>
+<tr><td><code>Demanda</code></td><td>100%</td><td>Espontanea 4.222 · Programada 436</td></tr>
+<tr><td><code>DataRegistro</code> / <code>DataInicio</code> / <code>DataFim</code></td><td>100%</td><td><code>dd/mm/aaaa hh:mm:ss</code> (registro com hora; início/fim só a data)</td></tr>
+<tr><td><code>Duracao</code></td><td>100%</td><td><code>1h 18min 11s</code></td></tr>
+<tr><td><code>EnderecoTelefone</code></td><td>100%</td><td>texto único <code>LOGRADOURO, Nº, BAIRRO, MUNICÍPIO-UF, CEP: 99999999 - Tel: 99999999999</code></td></tr>
+</tbody></table></div>
+<p><strong>Leitura para o hub:</strong> dá para montar Encounter (data, função/especialidade, demanda, duração), Condition (CID), Procedure (SIGTAP + quantidade) e Patient (nome, sexo, nascimento, <strong>CNS</strong>, endereço, telefone). <strong>A âncora é o CNS</strong>, porque não há CPF. Practitioner só por nome. Exames e medicamentos são texto livre e raros.</p>
+<h2>4. Serviços <code>.asmx</code>: JSON com cookie (31 serviços)</h2>
+<p>Ao contrário do Klinikos (3 <code>.asmx</code>), o Prime expõe <strong>31</strong> serviços em <code>/Prime/Services/</code>. O proxy <code>/js</code> lista os métodos. Os que mais interessam:</p>
+<div class="tw"><table><thead><tr><th>Serviço</th><th>Métodos</th></tr></thead><tbody>
+<tr><td><code>ComboPacienteService</code></td><td><code>GetData</code>, <code>GetDataByFonema</code>, <code>GetDataByFonemaNaUnidade</code>, <code>GetDataSQL</code></td></tr>
+<tr><td><code>ComboProfissionalPorUnidadeService</code></td><td>12 métodos (lotação ativa, CBO médico/enfermeiro, EMAD/EMAP, agenda…)</td></tr>
+<tr><td><code>ComboProfissionalService</code></td><td><code>GetData</code>, <code>GetDataSQL</code></td></tr>
+<tr><td><code>UCComboEquipeService</code></td><td><code>GetAllEquipes</code>, <code>GetData_ESF_EAP</code>, <code>GetEquipesAtencaoDomiciliar</code>…</td></tr>
+<tr><td><code>ComboUnidadeService</code></td><td><code>GetUnidades</code></td></tr>
+<tr><td><code>UCComboCidService</code> / <code>UCComboCIAP2Service</code> / <code>UCComboCboService</code></td><td>catálogos</td></tr>
+<tr><td><code>ComboExamesService</code></td><td>7 métodos de catálogo de exames</td></tr>
+</tbody></table></div>
+<p>A chamada JSON direta (padrão RadComboBox <code>{"context":{…}}</code>) <strong>ainda não foi feita</strong>; é o próximo passo. <code>GetDataSQL</code> merece cuidado: o nome sugere SQL montado no servidor, então só leitura e só com o contexto que a tela manda.</p>
+<h2>4b. Integração com o SUS: "Consultar Cadweb" no cadastro do paciente (medido, DESCARTADO)</h2>
+<p>O Prime diz ter integração com o SUS. Medido em 16/09/2026, lendo só o HTML das telas (GET, nada clicado):</p>
+<ul>
+<li><strong>e-SUS / SIAPS</strong> (<code>Faturamento/ExportacaoEsus3.aspx</code>, "Geração de Arquivos e-SUS / Siaps"):</li>
+</ul>
+<p>  gera os arquivos das fichas (Atendimento Individual, Domiciliar…) <strong>para enviar</strong> ao e-SUS. É   saída de produção, <strong>não consulta paciente</strong>.</p>
+<ul>
+<li><strong>Consulta de paciente no CADSUS</strong>: fica em <strong><code>Paciente/CadastroPaciente.aspx</code></strong> (controle</li>
+</ul>
+<p>  <code>UCNovoCadastroPaciente1</code>), no botão <strong><code>btnConsultarCadweb</code></strong> ("Consultar Cadweb", RadButton com   postback). Ele usa o CPF (<code>txtCPF</code>) e o CNS (<code>RadTextBoxCNS</code>) digitados e abre a janela   <strong><code>rwinConsultaCadweb</code></strong>, um <strong>comparador Prime × Cadweb</strong> com duas colunas de resultado, <em>por CPF</em> e   <em>por CNS</em>, para os campos <strong>Nome, Nome da Mãe, Nome do Pai, Data de Nascimento, CPF, CNS e Sexo</strong>   (<code>radio&lt;Campo&gt;Prime</code> / <code>radio&lt;Campo&gt;Cadweb_porCPF</code> / <code>_porCNS</code>). Sem resultado, mostra   <code>txtInfoConsultaCadweb</code> = "Não foi encontrado paciente no CadWeb a partir da busca por…".</p>
+<ul>
+<li><strong>O que grava:</strong> a consulta em si só preenche a janela. Gravar é outro botão</li>
+</ul>
+<p>  (<code>btnAtualizarCadastroPacienteCadweb</code> → copia os campos escolhidos para o form), seguido de salvar   o paciente. <strong>Nenhum dos dois pode ser acionado pelo laboratório.</strong></p>
+<ul>
+<li>O Saúde Mental <strong>não</strong> tem esse botão: no cadastro dele, CPF e CNS só passam por validação de</li>
+</ul>
+<p>  dígito no navegador.</p>
+<p><strong>Descartado (decisão do operador, 16/09/2026):</strong> o SMSMais já consulta o CADSUS pelos próprios caminhos (SISREG <code>cadweb50</code> / proxy de CPF), então o "Consultar Cadweb" do Prime <strong>não será testado nem usado</strong>. Fica registrado só para ninguém redescobrir.</p>
+<h2>5. Varredura (<code>probe_mapa.py</code>, GET puro)</h2>
+<p>123 páginas em 95 s: 102 respostas 200 e 21 respostas 500 (os RPT sem parâmetro). Nenhum <code>.ashx</code>, nenhum WebMethod, nenhum <code>$.ajax</code> próprio. Pula: logout, senha, carga, sincronização, importação, exportação, migração, fechamento e unificação. Resumo sem PII em <code>docs/mapa-endpoints.md</code>.</p>
+<p>Fora da varredura, abertas à mão por GET (só renderizam o form, nada clicado): <code>Faturamento/ExportacaoEsus3.aspx</code> e <code>Paciente/CadastroPaciente.aspx</code> (§4b). O cadastro de paciente <strong>não</strong> é <code>Paciente/Paciente.aspx</code> (404): os links relativos do menu apontam para <code>CadastroPaciente.aspx</code> e <code>AtencaoBasica/ChamadaPaciente.aspx</code>.</p>
+<h2>6. Ferramentas</h2>
+<div class="tw"><table><thead><tr><th>Script</th><th>O que faz</th></tr></thead><tbody>
+<tr><td><code>prime/client.py</code></td><td>sessão httpx, login (+ confirmação de sessão única), gate de unidade, cookies persistidos, trava de leitura</td></tr>
+<tr><td><code>probe_login.py</code></td><td>força login e retrata a página pós-login (gate)</td></tr>
+<tr><td><code>probe_tela.py &lt;url&gt;…</code></td><td>descreve uma tela: form, campos, alvos, scripts</td></tr>
+<tr><td><code>probe_mapa.py [--max N]</code></td><td>rastreador GET → <code>capturas/mapa.json</code></td></tr>
+<tr><td><code>gerar_mapa_md.py</code></td><td><code>docs/mapa-endpoints.md</code> sem PII</td></tr>
+<tr><td><code>probe_atendidos.py</code></td><td>primeira tentativa por postback; mostrou o <code>window.open</code> do RPT</td></tr>
+<tr><td><code>sondar_origem_sisreg.py &lt;guid&gt; ini fim</code></td><td>agenda da recepção + <em>Pacientes Agendados</em> (CSV): distribuições de origem/tipo de demanda, URLs de ação</td></tr>
+<tr><td><code>sondar_codigo_sisreg.py &lt;csv_agendados&gt; &lt;unidade_id_hub&gt; [max]</code></td><td>cruza agendados × <code>smsmarica.solicitacao</code> (CNS+unidade+data) e procura o código/chave SISREG exatos no Prime</td></tr>
+<tr><td><code>classificar_origem.py &lt;csv_agendados&gt; &lt;unidade_id_hub&gt; DD/MM/AAAA(hoje)</code></td><td>classifica cada agendamento pela origem SISREG (regras §10.1) só com o banco do hub</td></tr>
+<tr><td><code>sondar_custos.py &lt;guid&gt; DD/MM/AAAA [max_logs]</code></td><td>custo e cobertura do pipeline chegada/início/atendido/falta (§12)</td></tr>
+<tr><td><code>sondar_atividade.py DD/MM/AAAA DD/MM/AAAA [guid…]</code></td><td>atendimentos do <em>Pacientes Atendidos</em> por unidade × janela (só contagens). Conta <strong>registros por CRLF</strong>; a versão inicial contava linhas e inflava ~3×, corrigido em 16/09</td></tr>
+</tbody></table></div>
+<h2>7. Cuidados (valem para qualquer próxima sessão)</h2>
+<ul>
+<li><strong>Sessão única.</strong> A primeira sonda derrubou a sessão aberta da conta <code>11777653738</code> (usuária da</li>
+</ul>
+<p>  SMS). O operador avisou a dona da conta para não usá-la durante o laboratório. Conector de   verdade = <strong>usuário dedicado</strong>.</p>
+<ul>
+<li><strong>Uma requisição por vez</strong> e <code>sleep</code> entre unidades. O servidor é da Eco, não nosso.</li>
+<li><strong><code>capturas/</code> tem PII</strong> (nome, CNS, endereço, telefone) e é gitignored. Relatório para humano sai</li>
+</ul>
+<p>  com contagens e formas, nunca valores.</p>
+<ul>
+<li><strong>Busca de paciente por nome</strong> (<code>ComboPacienteService.*</code>) foi barrada pela política de</li>
+</ul>
+<p>  permissões na sessão de 16/09. Não contornar; se precisar, pedir OK explícito.</p>
+<ul>
+<li><strong>Cadweb</strong> do Prime: descartado (§4b). Não acionar.</li>
+</ul>
+<h2>8. Estado em 16/09/2026 e próximos passos</h2>
+<p><strong>Fechado:</strong> quem usa o Prime (especializada, desde 2025; USFs zeradas) · login/gate · relatório por GET com <code>unidades=&lt;GUID&gt;</code> · formato e colunas do <em>Pacientes Atendidos</em> · 31 <code>.asmx</code> mapeados · integração SUS (e-SUS só exporta; Cadweb descartado). Nada commitado, nada em produção mudou.</p>
+<p><strong>Aberto:</strong></p>
+<ol>
+<li>Sondar os outros RPT úteis para a especializada: <em>Atendimento em Aberto</em>, <em>Diagnósticos</em>,</li>
+</ol>
+<p>   <em>Pacientes Agendados/Faltantes</em>, <em>Encaminhamentos Especializados</em>.</p>
+<ol>
+<li>Chamar por JSON os serviços <strong>que não são busca de paciente</strong> (profissional por unidade,</li>
+</ol>
+<p>   equipes, unidades) para saber se trazem CNS/CBO do profissional.</p>
+<ol>
+<li>Decidir se o Prime entra no hub FHIR como PEP da especializada (âncora CNS). Isso exige ADR e</li>
+</ol>
+<p>   é escrita em produção, então só com OK.</p>
+<h2>9. Modelo clínico × urgência e emergência (UPA, Conde, Santa Rita no Klinikos)</h2>
+<p>Medido em 16/09/2026 pelos relatórios; as telas de atendimento clínico (PEP/SOAP) <strong>não</strong> foram abertas, porque abrem a partir da agenda com o id de um atendimento real.</p>
+<div class="tw"><table><thead><tr><th>Conceito</th><th>Urgência (Klinikos)</th><th>Prime (especializada)</th><th>Prime Saúde Mental (CAPS)</th></tr></thead><tbody>
+<tr><td>Unidade do registro</td><td><strong>Boletim</strong> (<code>spa_codigo</code>): um episódio por chegada</td><td><strong>Atendimento</strong> agendado ou espontâneo (sem boletim)</td><td><strong>Atendimento</strong> dentro de um acompanhamento longitudinal (prontuário + PTS)</td></tr>
+<tr><td>Chegada/fila</td><td>chegada, classificação de risco (cor), fila, tempos</td><td>agenda (programada 9%, espontânea 91% na amostra), <code>DataRegistro</code> com hora</td><td>agenda, acolhimento, convivência</td></tr>
+<tr><td>Duração</td><td>chegada → atendimento → saída</td><td><code>DataInicio</code>/<code>DataFim</code> (só data) + <code>Duracao</code></td><td>data e hora do atendimento</td></tr>
+<tr><td>Diagnóstico</td><td>CID primário/secundário por evolução</td><td>CID por atendimento (66%), lista</td><td>CID do <strong>usuário</strong> (capítulo F, 88%), estável; relatório CID/CIAP</td></tr>
+<tr><td>Procedimento</td><td>(produção)</td><td><strong>SIGTAP + quantidade</strong> por atendimento</td><td>categoria RAAS (sem código SIGTAP no relatório)</td></tr>
+<tr><td>Prescrição</td><td>estruturada (item, via, frequência, duração)</td><td>só texto livre e raro (<code>MedicamentosPrescritos</code> 0,3%) + programa <strong>Remédio em Casa</strong> (entregas/receitas)</td><td><strong>não há</strong> tela nem relatório de prescrição</td></tr>
+<tr><td>Exames</td><td>coleta/requisição</td><td>texto livre (<code>ExamesSolicitados</code> 6,7%)</td><td>relatório <em>Solicitação de Exames</em> (usuário, data, exame, profissional)</td></tr>
+<tr><td>Sinais vitais</td><td>registros de enfermagem</td><td>não encontrado</td><td>não encontrado</td></tr>
+<tr><td>Narrativa</td><td>anamnese, exame físico, conduta (por boletim)</td><td>módulo PEP (<code>Pep/…</code>), sem relatório nominal</td><td><strong>SOAP</strong> (<code>RelatorioImpressaoSOAP.aspx?qId=</code>), só impressão por atendimento</td></tr>
+<tr><td>"Alta"/desfecho</td><td><strong>tipo de saída do boletim</strong> (alta, óbito, evasão, remoção, internação)</td><td><strong>não existe</strong> alta: o atendimento só termina (<code>DataFim</code>)</td><td><strong>desfecho do acompanhamento</strong>: <em>Destinos</em> (Alta, Alta a Pedido, Alta Após Insucesso da Busca Ativa, Alta por Falta, Continuidade Atenção Básica, Continuidade Outro CAPS, Óbito), <em>Motivo da Saída</em>, <em>Óbito</em> (data/hora/fonte), situação do usuário, prontuário Ativo/Arquivado</td></tr>
+<tr><td>Internação/leito</td><td>observação, leito, internação</td><td>não</td><td>acolhimento em leito (CAPS III): <em>Internação</em> (tipo, local, início/fim, motivo), <em>Permanência em Leito</em></td></tr>
+<tr><td>Identidade</td><td>cadastro com CPF/CNS</td><td><strong>CNS</strong> no próprio relatório (sem CPF)</td><td>CPF/CNS só no relatório <em>Documentação dos Usuários</em>; liga por nome</td></tr>
+</tbody></table></div>
+<p><strong>Leitura para o hub FHIR:</strong> urgência = <code>Encounter</code> por boletim (class EMER) com <code>hospitalization.dischargeDisposition</code>. Especializada = <code>Encounter</code> ambulatorial (AMB) por atendimento + <code>Procedure</code> SIGTAP + <code>Condition</code>, sem desfecho de alta. CAPS = dois níveis: <code>EpisodeOfCare</code> (acompanhamento: início pelo acolhimento, fim pelo <em>Destino</em>/alta) contendo <code>Encounter</code>s (atendimentos, tipo RAAS) + <code>Condition</code> do usuário. Prescrição estruturada só existe na urgência.</p>
+<p><strong>Cuidado de sessão (medido nesta análise):</strong> Prime e Saúde Mental <strong>compartilham a sessão única</strong> da conta. Logar num derruba a sessão do outro (e de quem estiver usando a conta). Duas sondas seguidas, uma em cada sistema, derrubaram-se mutuamente. Nunca alternar os dois labs na mesma conta; conector = usuário dedicado por sistema.</p>
+<h2>10. Origem SISREG: o Prime não sabe, o hub sabe (cruzamento medido 16/09/2026)</h2>
+<p><strong>O "Espontânea" do Prime não é a origem real.</strong> No <em>Pacientes Atendidos</em>, 91% vem como <code>Demanda=Espontanea</code>. Na agenda da recepção, "Tipo da Demanda"=DE, "Tipo de Agendamento"="Outro", "Procedência"="Encaminhamento Interno (Sem necessidade de retorno)". No <em>Pacientes Agendados</em>, <code>OrigemAgenda</code>="Unidade" (100%). O Prime não enxerga o SISREG.</p>
+<p><strong>Cruzamento com o hub</strong> (<code>sondar_codigo_sisreg.py</code> + <code>fhir.patient</code> × <code>smsmarica.solicitacao</code>, só SELECT). Amostra de 100 agendamentos do <strong>CDT</strong>, 09–15/09/2026, casados por <strong>CNS + unidade executante (CDT, CNES 3132358) + data</strong>:</p>
+<div class="tw"><table><thead><tr><th>Resultado</th><th>Agendamentos</th></tr></thead><tbody>
+<tr><td>Solicitação SISREG no CDT, <strong>mesma data</strong></td><td><strong>86</strong></td></tr>
+<tr><td>Solicitação SISREG no CDT, até 3 dias de diferença</td><td>4</td></tr>
+<tr><td>Solicitação SISREG no CDT, outra data</td><td>8</td></tr>
+<tr><td>SISREG só em outra unidade</td><td>1</td></tr>
+<tr><td>CNS fora do hub</td><td>1</td></tr>
+</tbody></table></div>
+<p>Correspondência coerente entre a "Função de Atendimento" do Prime e o procedimento SISREG: Cardiologista ↔ OCI Avaliação Cardiológica (13), Procedimento ↔ Mamografia (8) / Holter (8) / MAPA (4), Otorrino ↔ Consulta em Otorrino (8), Ortopedista ↔ OCI Ortopedia (7), Fono ↔ Audiometria (4). "Procedimento" e "Consulta Médica" do Prime escondem <strong>exames</strong> regulados.</p>
+<p><strong>O código do SISREG não está no Prime</strong> (teste objetivo, por string exata):</p>
+<ul>
+<li>os <code>codigo_solicitacao</code>/<code>chave_confirmacao</code> dos 88 pares casados <strong>não aparecem</strong> em nenhum CSV</li>
+</ul>
+<p>  baixado do Prime (Atendidos, Agendados);</p>
+<ul>
+<li>em 8 telas <code>Agendamento/DetalhesLogAgenda.aspx?AgendaId=</code>, também não. O log só tem eventos do</li>
+</ul>
+<p>  sistema (Agendar, Acolhimento realizado, Atendimento iniciado, Desagendar) com descrição   automática;</p>
+<ul>
+<li>a grade da agenda, o relatório de agendados e o cadastro do paciente <strong>não têm campo</strong> de</li>
+</ul>
+<p>  chave, código ou solicitação SISREG.</p>
+<ul>
+<li><strong>Não verificado:</strong> texto livre dentro do atendimento (Motivo da Procura, <code>MotivoConsulta.aspx</code>,</li>
+</ul>
+<p>  evolução/PEP). Só se vê abrindo um atendimento real (§11).</p>
+<p><strong>Consequência:</strong> a ligação Prime → SISREG se faz <strong>do nosso lado</strong>, por CNS + unidade + data (86% exata, 98% em ±7 dias na amostra), e não por código. Isso dá ao hub o que o Prime não tem: origem regulada, procedimento SIGTAP/SISREG e código da solicitação, e permite fechar o ciclo "agendado no SISREG → compareceu no Prime → CID/SIGTAP".</p>
+<p><strong>Armadilha medida:</strong> <code>RelatorioPacientesAgendadosRPT</code> <strong>corta em 100 linhas por chamada</strong>, mesmo com um único dia (CDT tem mais de 100 por dia). Para cobertura total, fatiar por profissional (<code>prof_codigo</code>) ou função (<code>idfuncaoatendimento</code>). O cruzamento acima é <strong>amostra</strong>. Péricles, CMI e Reabilitação devolveram 0 agendados no mesmo período (atendem sem essa agenda).</p>
+<h3>10.1 Os 14% que não casam (amostra de 100) na mesma data: retorno, enfermagem, unidade divergente (medido)</h3>
+<p>Pergunta do operador: se toda primeira consulta passa pelo SISREG, quem fica de fora deve ser retorno. Medido nos 14 agendamentos da amostra (CDT, 09–15/09) que não casaram por CNS + CDT + mesma data, olhando o <strong>histórico SISREG do paciente no hub</strong> (<code>smsmarica.solicitacao</code>, que tem o CDT de 2019 a 12/2026, 250.786 solicitações):</p>
+<div class="tw"><table><thead><tr><th>Grupo</th><th>Casos</th><th>O que o SISREG mostra</th><th>Leitura</th></tr></thead><tbody>
+<tr><td>Consulta c/ <strong>Otorrino</strong></td><td>4</td><td>consulta de Otorrino <strong>no CDT 2, 2, 8 e 14 dias antes</strong></td><td><strong>retorno</strong> da consulta regulada</td></tr>
+<tr><td><strong>Procedimento</strong></td><td>1</td><td>USG pélvica <strong>no CDT 1 dia antes</strong></td><td>atendido no dia seguinte (atraso/remarcação)</td></tr>
+<tr><td>Consulta c/ <strong>Ortopedista</strong></td><td>3</td><td>(a) OCI ortopedia <strong>na mesma data</strong>, mas SISREG diz executante <strong>Péricles</strong>; (b) ortopedia no Péricles 105 dias antes; (c) nada de ortopedia</td><td>(a) <strong>unidade divergente</strong> SISREG × Prime; (b) retorno vindo de outra unidade; (c) sem regulação</td></tr>
+<tr><td><strong>Consulta de Enfermagem</strong></td><td>6</td><td>nenhum procedimento compatível (histórico de nutrição, cardio, exames de anos atrás)</td><td><strong>não regulado</strong>: enfermagem é atendimento interno do CDT</td></tr>
+</tbody></table></div>
+<p><strong>Resultado:</strong> excluindo a enfermagem (não regulada), <strong>93 de 94</strong> agendamentos têm origem SISREG identificável: 86 na mesma data, 4 retornos, 1 no dia seguinte, 1 com unidade divergente e 1 retorno de outra unidade. Só <strong>1</strong> (ortopedia) não tem nada no SISREG.</p>
+<p><strong>Regras de casamento para o conector</strong> (em ordem; a primeira que casa vence):</p>
+<ol>
+<li>CNS + unidade executante + <strong>mesma data</strong> → "atendimento da solicitação X";</li>
+<li>CNS + <strong>mesma data</strong> em <strong>outra unidade executante</strong>, mesma especialidade → casa e marca</li>
+</ol>
+<p>   "unidade divergente" (o SISREG diz uma, o paciente foi atendido noutra);</p>
+<ol>
+<li>CNS + unidade + data <strong>±3 dias</strong>, mesma especialidade/procedimento → casa como "atendido fora da</li>
+</ol>
+<p>   data agendada";</p>
+<ol>
+<li>CNS + <strong>mesma especialidade</strong> com solicitação atendida <strong>nos 180 dias anteriores</strong> (qualquer</li>
+</ol>
+<p>   unidade) → <strong>retorno</strong> vinculado à solicitação de origem (não é nova solicitação);</p>
+<ol>
+<li>função <strong>não regulada</strong> (Consulta de Enfermagem; lista a medir por unidade) → ignora, não casa;</li>
+<li>o resto → "sem regulação": revisão humana.</li>
+</ol>
+<p>Compatibilidade de especialidade = de-para "Função de Atendimento" do Prime ↔ <code>procedimento_texto</code>/ <code>especialidade_texto</code> do SISREG (ex.: Otorrino ↔ CONSULTA EM OTORRINOLARINGOLOGIA; Ortopedista ↔ OCI/CONSULTA EM ORTOPEDIA; Cardiologista ↔ OCI AVALIAÇÃO CARDIOLÓGICA). "Procedimento" e "Consulta Médica" do Prime não dizem a especialidade, então o casamento é por data e o procedimento vem do SISREG.</p>
+<p>Limites: amostra de 100 agendamentos de uma unidade e uma semana. A regra do retorno (180 dias) e a lista de funções não reguladas precisam ser medidas no dia inteiro (174+) e em outras unidades.</p>
+<h3>10.2 CDT completo, 09–25/09/2026: <code>OrigemAgenda</code>="Unidade" não é retorno (medido)</h3>
+<p>Coleta: <em>Pacientes Agendados</em> fatiado pelos 64 profissionais (<code>GetDataForRelProducao</code>) × 13 dias = 832 chamadas, 71 s, nenhuma fatia no teto. Resultado: <strong>1.403 agendamentos, 1.288 pacientes</strong>. A agenda do Prime só tem data até <strong>18/09</strong> (16/09: 167, 17/09: 142, 18/09: 1), ou seja, a recepção lança a agenda perto da data.</p>
+<ul>
+<li><strong><code>OrigemAgenda</code>="Unidade" em 1.403 de 1.403</strong>, inclusive nas consultas reguladas na mesma data.</li>
+</ul>
+<p>  "Unidade" = <strong>agenda lançada pela própria unidade</strong> (o CDT não é "integrado com a regulação" no   cadastro de unidades). <strong>Não</strong> distingue primeira vez de retorno. Isso só sai pelo cruzamento.</p>
+<p>Classificação (<code>classificar_origem.py</code>, regras de §10.1):</p>
+<div class="tw"><table><thead><tr><th>Classe</th><th>Agendamentos</th><th>%</th></tr></thead><tbody>
+<tr><td>1 SISREG mesma data, mesma unidade</td><td>1.178</td><td>84,0</td></tr>
+<tr><td>2 SISREG mesma data, outra unidade executante</td><td>7</td><td>0,5</td></tr>
+<tr><td>3 SISREG mesma unidade, ±3 dias</td><td>28</td><td>2,0</td></tr>
+<tr><td>4 <strong>retorno</strong> (SISREG na mesma unidade nos 180 dias anteriores)</td><td>56</td><td>4,0</td></tr>
+<tr><td>5 função não regulada (Consulta de Enfermagem)</td><td>107</td><td>7,6</td></tr>
+<tr><td>6 SISREG só antigo (&gt;180d), futuro ou de outra unidade</td><td>10</td><td>0,7</td></tr>
+<tr><td>7 nada no SISREG / CNS fora do hub</td><td>17</td><td>1,2</td></tr>
+</tbody></table></div>
+<ul>
+<li><strong>Origem SISREG explicada (1–4): 1.269 = 90,4% do total; 97,9% dos reguláveis</strong> (tirando a</li>
+</ul>
+<p>  enfermagem). Resíduo real: 27 (1,9%).</p>
+<ul>
+<li><strong>Futuro (17–18/09): 138 de 143 (96,5%) já casam na mesma data.</strong> A recepção lança no Prime o que</li>
+</ul>
+<p>  o SISREG agendou.</p>
+<ul>
+<li><strong>Retorno se concentra onde o especialista acompanha:</strong> Otorrino 28 retornos + 15 ±3 dias em 153;</li>
+</ul>
+<p>  Dermatologia 5 em 9; Ginecologia 4 em 30. Fono (64/64), Urologia (6/6), Oncologia e "Consulta   Médica" (181/185, que no CDT são exames de imagem) são quase 100% mesma data.</p>
+<ul>
+<li>"Procedimento" (358) = exames regulados: 338 mesma data.</li>
+</ul>
+<h3>10.3 Não há importação do TXT do SISREG: a recepção digita (medido)</h3>
+<p>Hipótese do operador: o Prime teria um menu que importa o TXT do SISREG. Medido de três formas:</p>
+<ol>
+<li><strong>Menu</strong> (perfil Gerente; HTML de 123 telas): importações só de <strong>XML do CNES</strong></li>
+</ol>
+<p>   (<code>importacao/ImportarCnes.aspx</code>), <strong>Cadastro Voluntário</strong> (<code>Cadastro_Voluntario/ImportacaoCadastroVoluntario.aspx</code>,    que é pesquisa de cidadãos cadastrados entre datas + auditoria, <strong>sem upload</strong>) e <strong>Carga do Prime    Mobile</strong>. Nada de SISREG ou regulação. Ressalva: o menu da recepção pode ser outro.</p>
+<ol>
+<li><strong>15 caminhos plausíveis</strong> (<code>Agendamento/ImportacaoSisreg.aspx</code>, <code>Sisreg/Importacao.aspx</code>,</li>
+</ol>
+<p>   <code>importacao/ImportarSisreg.aspx</code>…) → <strong>todos 404</strong>.</p>
+<ol>
+<li><strong>A digitação deixa rastro</strong> (<code>datahoraagenda_registro</code> × <code>prof_agendou</code>, 1.391 agendamentos do</li>
+</ol>
+<p>   CDT 09–25/09): uma importação criaria centenas no mesmo segundo pelo mesmo usuário. Medido:    - máximo <strong>1 agendamento por segundo e 2 por minuto</strong> por usuário; nenhum minuto com 5 ou mais;    - intervalo entre registros consecutivos do mesmo usuário: p10 58 s, <strong>mediana 188 s (~3 min)</strong>, p90 19 min;    - <strong>6 usuários</strong>; 2 fazem 82% (617 e 525);    - registrado <strong>0 a 2 dias antes</strong> da data da agenda (mediana 1, máximo 7), em horário comercial      (7h–16h, pico 15h), 180–230 por dia útil.</p>
+<p><strong>Conclusão:</strong> a agenda regulada do CDT é <strong>digitada à mão</strong>, um por um, ~3 min cada, por duas pessoas, na véspera, a partir do que o SISREG agendou. É o retrabalho que o SMSMais pode eliminar: o hub já tem a agenda SISREG do CDT (<code>smsmarica.solicitacao</code>, até 12/2026).</p>
+<h2>11. PEP / SOAP: pendente</h2>
+<ul>
+<li><strong>Prime:</strong> o atendimento clínico abre a partir da agenda por <code>Pep/IniciarAtendimentoDigitador.aspx?pacienteid=</code></li>
+</ul>
+<p>  e <code>AtencaoBasica/ChamadaPaciente.aspx?atendimentoid=</code>, e o acolhimento por   <code>MotivoConsulta.aspx?acolhimentoid=</code>. "Iniciar" e "Chamar" <strong>executam ação</strong> (criam atendimento,   chamam no painel) e <strong>não</strong> podem ser abertos por sonda. Nenhuma tela de <em>leitura</em> do PEP foi   achada nas capturas.</p>
+<ul>
+<li><strong>Saúde Mental:</strong> <code>Relatorios/RelatorioImpressaoSOAP.aspx?qId=&lt;id&gt;</code> é a impressão do SOAP (leitura),</li>
+</ul>
+<p>  linkada a partir da lista de famílias/pacientes (<code>SOAP.aspx</code>). Precisa de um id real.</p>
+<ul>
+<li>Caminho seguro proposto: um operador abre <strong>um</strong> atendimento no navegador com o DevTools gravando</li>
+</ul>
+<p>  (HAR), ou por Claude in Chrome na sessão dele. Depois <code>analisar_har.py</code> (do lab Klinikos) extrai as   telas de leitura e seus parâmetros, sem clicar em ação.</p>
+<h2>12. Caminho barato para marcar nas <em>Solicitações</em> (chegada, início, atendido, falta), com custo medido</h2>
+<p>Objetivo do operador: no SMSMais, em Solicitações, marcar que o paciente regulado <strong>chegou</strong>, a <strong>hora em que foi atendido</strong>, <strong>faltou</strong> etc., a partir do Prime. Medido no <strong>CDT, dia 15/09/2026</strong>, uma sessão só (<code>sondar_custos.py</code>).</p>
+<p><strong>Semântica dos horários (medida, não presumida):</strong></p>
+<ul>
+<li><em>Pacientes Atendidos</em> <code>DataRegistro</code> <strong>não</strong> é a hora do atendimento: é a digitação, às vezes dias</li>
+</ul>
+<p>  depois (atendimento de 09/09 registrado em 11/09). <code>Duracao</code> mediana de 1 min, <code>DataInicio/DataFim</code> só   com a data. Serve para <strong>data do atendimento + CID + SIGTAP</strong>, não para relógio.</p>
+<ul>
+<li><strong>O relógio real está no log do agendamento</strong> (<code>Agendamento/DetalhesLogAgenda.aspx?AgendaId=</code>):</li>
+</ul>
+<p>  eventos com <code>dd/mm/aaaa hh:mm:ss</code>: <strong>"Acolhimento realizado" = chegada</strong>, <strong>"Atendimento Iniciado" =   início</strong>, além de "Agendar"/"Desagendar". Em 30 logs do dia: 26 com chegada e 17 com início.</p>
+<p><strong>Pipeline por unidade × dia:</strong></p>
+<div class="tw"><table><thead><tr><th>Passo</th><th>Endpoint</th><th>Custo medido</th><th>Entrega</th></tr></thead><tbody>
+<tr><td>1. Profissionais</td><td><code>Services/ComboProfissionalPorUnidadeService.asmx/GetDataForRelProducao</code> <code>{"context":{"Text":"","NumberOfItems":0,"UnidadeId":&lt;guid&gt;}}</code></td><td>0,1 s, 1 chamada</td><td>64 profissionais (CDT). <strong>Não</strong> usar <code>…PorEsquipe…GetData</code>/<code>…PorUnidade…GetData</code> (10; cobrem 0–34)</td></tr>
+<tr><td>2. Agendados por profissional</td><td><code>RelatorioPacientesAgendadosRPT.aspx?prof_codigo=&lt;id&gt;&amp;dtInicio=dia&amp;dtFim=dia&amp;extensao=CSV&amp;unidades=&lt;guid&gt;</code></td><td>~0,05 s × 64</td><td><strong>174 agendamentos distintos</strong>, nenhuma fatia no teto de 100. <code>agendaid</code>, <code>datahoraagenda</code>, <code>cns_numero</code>, profissional, função</td></tr>
+<tr><td>3. Log de cada agendamento</td><td><code>Agendamento/DetalhesLogAgenda.aspx?AgendaId=&lt;agendaid&gt;</code></td><td>0,05 s, 18 KB × N</td><td>chegada e início com hora</td></tr>
+<tr><td>4. Atendidos do dia</td><td><code>RelatorioPacientesAtendidosRPT.aspx</code></td><td>0,25 s, 142 KB</td><td>245 registros: CID, SIGTAP, função (fecha o "atendido")</td></tr>
+<tr><td>5. Em aberto</td><td><code>RelatorioAtendimentoEmAbertoRPT.aspx?…&amp;extensao=CSV</code></td><td>0,09 s</td><td>quem iniciou e não fechou (<code>DataInicio</code>, profissional, CBO, classificação)</td></tr>
+<tr><td>6. Faltantes</td><td><code>RelatorioPacientesFaltantesRPT.aspx?…&amp;grupoPrioritario=0</code></td><td>0,03 s</td><td><strong>CNS + CPF</strong>, <code>Situacao</code>, <code>UsuarioRegistroFalta</code>. Com <code>grupoPrioritario</code> vazio dá <strong>500</strong></td></tr>
+</tbody></table></div>
+<p><strong>Custo total de rede, CDT, 1 dia:</strong> ~65 chamadas de lista (~3 s) + ~175 logs (~9 s) + 3 relatórios (&lt;0,5 s) = <strong>~12–15 s de rede, ~250 requisições</strong>. Com 0,2 s de pausa entre chamadas, ~1 min por unidade/dia. Incremental durante o dia: reler só os logs dos agendamentos <strong>ainda sem "Atendimento Iniciado"</strong> (o log é pequeno).</p>
+<p><strong>Ligação com a Solicitação:</strong> agendamento Prime (CNS + unidade + dia) → <code>smsmarica.solicitacao</code> (paciente por <code>fhir.patient.cns/cns_todos</code>, <code>unidade_executante_id</code>, <code>data_agendada</code>). Amostra CDT: 86% casa na mesma data (§10). Casamento ambíguo (mais de uma solicitação no dia) vai para revisão.</p>
+<p><strong>Pendências antes de construir:</strong> usuário dedicado (sessão única, §7); confirmar que o Faltantes com <code>grupoPrioritario=0</code> não filtra grupo; medir outras unidades (Péricles, CMI e Reabilitação não usam essa agenda); escrita nas Solicitações é produção e precisa de OK e desenho (ADR/feature).</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+ "cena": "S04",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 112.83,
+   "usage": {
+    "completion_tokens": 498,
+    "prompt_tokens": 3241,
+    "total_tokens": 3739,
+    "prompt_tokens_details": {
+     "cached_tokens": 3240
+    }
+   },
+   "texto_fora_de_tool": "\n\n*Prezado(a),*\n\n*Para confirmar a sua presença, por favor, envie os quatro primeiros dígitos do seu CPF e o mês e ano do seu nascimento. Isso ajuda a garantir que a informação esteja correta.*\n\n*Caso tenha dúvida ou precise de mais ajuda, estamos aqui para lhe auxiliar!* 😊\n\n*Att.,*  \n*Equipe de Atendimento da Secretaria de Saúde*",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:18:23",
+ "latencia_total_s": 112.83
+}

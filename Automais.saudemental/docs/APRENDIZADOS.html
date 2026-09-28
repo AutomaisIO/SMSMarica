@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prime Saúde Mental — recon "como usuário" (laboratório Automais.saudemental/)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Prime Saúde Mental — recon "como usuário" (laboratório <code>Automais.saudemental/</code>)</h1>
+<p>Laboratório irmão de <code>Automais.prime/</code> e <code>Automais.klinikos/</code> (Eco Sistemas; mesmo método: sondas <code>probe_*.py</code>, httpx com Referer, trava de somente-leitura, sessão persistida). Alvo: <code>https://marica.ecosistemas.com.br/SaudeMental/</code>. Tudo abaixo foi <strong>medido em 16/09/2026</strong> com a mesma conta do Prime (autorizado pelo operador; a usuária dona da conta foi avisada).</p>
+<p>&gt; <strong>Somente leitura.</strong> <code>saudemental/client.py</code> é cópia do cliente do Prime, com a mesma trava. &gt; Os relatórios são disparados por ImageButton (<code>imb&lt;Nome&gt;.x/.y</code>) e nenhum nome deles tem verbo &gt; de escrita.</p>
+<h2>0. Resposta curta</h2>
+<ul>
+<li><strong>É outro produto</strong>, não o Prime: "Prime Saúde Mental", build <code>2025.08.0.18</code> (o Prime é</li>
+</ul>
+<p>  <code>2024.03.1.63</code>), marca própria mais <strong>Prime TEA</strong>. Reaproveita a mesma base de código (a home   também fica em <code>AtencaoBasica/Default.aspx</code>), mas a aplicação é separada.</p>
+<ul>
+<li><strong>É o sistema dos CAPS de Maricá, e está em uso diário:</strong></li>
+</ul>
+<div class="tw"><table><thead><tr><th>CAPS (gate)</th><th>1º atendimento</th><th>01/01/2018–31/08/2025</th><th>09–15/09/2026</th></tr></thead><tbody>
+<tr><td>C.A Psicossocial Gilberto Silva dos Santos (CNES 7321716)</td><td><strong>27/05/2025</strong></td><td>3.194</td><td>568</td></tr>
+<tr><td>CAPS AD Gláucia Pereira de Oliveira</td><td><strong>16/06/2025</strong></td><td>1.450</td><td>166</td></tr>
+<tr><td>CAPS Infanto-Juvenil de Maricá</td><td><strong>01/07/2025</strong></td><td>489</td><td>174</td></tr>
+</tbody></table></div>
+<p>  O Gilberto soma 26.090 atendimentos de 27/05/2025 a 16/09/2026, entre 1,2 e 2,5 mil por mês. O   Painel da Unidade também mostra as refeições servidas na semana (café, almoço, lanche e jantar).</p>
+<ul>
+<li>A tela de relatórios tem relatórios do <strong>CEDTEA</strong> (TEA), mas essa conta só enxerga os 3 CAPS.</li>
+</ul>
+<p>  Se existe unidade TEA no sistema, ela está fora do escopo desta conta.</p>
+<ul>
+<li>Nenhum conector do SMSMais lê este sistema. É fonte nova.</li>
+</ul>
+<h2>1. Login e gate</h2>
+<div class="tw"><table><thead><tr><th></th><th>Prime</th><th>Prime Saúde Mental</th></tr></thead><tbody>
+<tr><td>Form</td><td><code>formLogin</code>, <code>LoginView1$lgAcesso$…</code></td><td>igual</td></tr>
+<tr><td>Cookie de auth</td><td><code>.Eco.SL.AtencaoBasica_ASPXAUTH_niteroi</code></td><td><code>.Eco.SL.AtencaoBasica_ASPXAUTH</code></td></tr>
+<tr><td>Gate</td><td><code>ddlPerfil</code> (oculto) + <code>ddlUnidade</code> (35)</td><td><strong>só <code>ddlUnidade</code></strong> (3 CAPS)</td></tr>
+<tr><td>Home</td><td><code>AtencaoBasica/Default.aspx</code></td><td>igual</td></tr>
+</tbody></table></div>
+<ul>
+<li>O login desta vez <strong>não</strong> pediu confirmação de outra estação (a conta estava livre).</li>
+<li><strong>Trocar de CAPS sem relogar:</strong> um <code>GET login.aspx</code> com a sessão autenticada devolve o gate, e o</li>
+</ul>
+<p>  POST de <code>ddlUnidade</code> troca a unidade. É o que <code>sondar_atividade.py</code> faz. Diferente do Prime, os   relatórios daqui <strong>não</strong> recebem a unidade por parâmetro: usam a unidade da sessão   (<code>hidUnidadeId</code>).</p>
+<h2>2. Relatórios: tela única + Telerik Reporting 7.2 (≠ Prime, ≠ Klinikos)</h2>
+<p><code>Relatorios/RelatoriosSaudeMental.aspx</code> concentra <strong>47 relatórios</strong>. Cada um é um ImageButton com os próprios filtros: <code>imbAtendimentosRealizados</code>, <code>imbAtendimentosCancelados</code>, <code>imbAgendamentos</code>, <code>imbUsuariosCadastrados</code>, <code>imbObito</code>, <code>imbAbandono</code>, <code>imbInternacao</code>, <code>imbOcupacaoLeito</code>, <code>imbPermanenciaLeito</code>, <code>imbRaas</code>, <code>imbProducaoProfissional</code>, <code>imbProducaoProcedimento</code>, <code>imbProcedimentosPaciente</code>, <code>imbDiarioConvivencia</code>, <code>imbListaFrequencia</code>, <code>imbVisitas</code>, <code>imbMatriciamentoAcaoInstitucional</code>, <code>imbUsuariosPorDroga</code>, <code>imbSolicitacaoExames</code>, <code>imbBuscaAtiva</code>, <code>imbCoberturaEsf</code>, <code>imbRefeicao</code>, <code>imageButtonDiagnostico</code> (CID-10/CIAP-2), <code>imgRelatorioCedteaAndamento</code>/<code>EncerradosTea</code> e outros. A tela capturada está em <code>capturas/mapa/</code>.</p>
+<p><strong>Como o dado sai (medido):</strong></p>
+<ol>
+<li>O <strong>POST</strong> da tela com <code>ctl00$DefaultContent$imb&lt;Nome&gt;.x/.y</code> e os filtros devolve a mesma tela</li>
+</ol>
+<p>   (1,1 MB) com um <strong>Telerik ReportViewer</strong> (<code>Telerik.ReportViewer.axd</code>, versão <code>7.2.13.1016</code>)    inicializado com um <strong><code>instanceID</code></strong> de 32 hex. O relatório fica em memória na sessão.</p>
+<ol>
+<li>O <strong>GET</strong> de <code>/SaudeMental/Telerik.ReportViewer.axd?instanceID=&lt;id&gt;&amp;optype=Export&amp;ExportFormat=CSV</code></li>
+</ol>
+<p>   devolve o arquivo (<code>CSV</code> text/plain, <code>XLS</code> application/vnd.ms-excel, <code>PDF</code>).    - <code>optype=Report</code> (página HTML do visualizador) respondeu <strong>500</strong> fora do navegador. Não serve      como pré-visualização barata.</p>
+<p><strong>Armadilha medida: data do RadDateInput.</strong> Mandar só <code>rdp…Inicio</code> e <code>rdp…Inicio$dateInput</code> é <strong>ignorado sem erro</strong>. O relatório sai com <code>Período:  a &lt;hoje&gt;</code>, isto é, o <strong>histórico inteiro</strong>: 30 MB, 31 s, 26.090 linhas num único CAPS. Um conector com esse erro martelaria o fornecedor. O que funciona é mandar também o hidden <strong><code>ctl00_DefaultContent_rdp…_dateInput_ClientState</code></strong> com JSON <code>{"validationText":"AAAA-MM-DD-00-00-00","valueAsString":"AAAA-MM-DD-00-00-00",…}</code>. Com isso, 1 semana = 650 KB em 0,1 s. <strong>Sempre conferir o "Período" impresso no arquivo exportado.</strong></p>
+<p><strong>CSV não serve: use XLS.</strong> O export CSV do Telerik <strong>omite a grade de detalhe</strong>. Traz só título, rodapé e totais por dia/tipo (<code>textBox3</code>, <code>txtPeriodo</code>, <code>txtDataInicioGroup</code>, <code>ppr_numero…</code>) repetidos em cada linha: são 41 colunas e <strong>nenhuma</strong> tem paciente, hora ou profissional. O <strong><code>ExportFormat=XLS</code></strong> (BIFF, <code>xlrd</code>, 2 s/semana) traz a grade inteira. <code>PDF</code> também traz, mas custa 28 s por semana; evitar.</p>
+<h3>2.1 O que cada relatório entrega (medido no CAPS Gilberto, XLS)</h3>
+<p><strong>Atendimentos Realizados</strong> (<code>imbAtendimentosRealizados</code>), 09–15/09/2026: <strong>568 atendimentos, 211 prontuários, 35 profissionais.</strong> Um cabeçalho de colunas por relatório, um bloco por dia com totais por tipo.</p>
+<div class="tw"><table><thead><tr><th>Coluna</th><th>Preenchida</th><th>Conteúdo</th></tr></thead><tbody>
+<tr><td>Prontuário</td><td>100%</td><td>19 dígitos = <code>330270</code> (IBGE Maricá) + <code>003</code> (unidade) + <code>AAMMDD</code> (abertura) + sequencial 4. Aberturas desde 05/2025</td></tr>
+<tr><td>Situação Usuário</td><td>94%</td><td>Atualizado 372 · Em Avaliação 114 · Pendente 43 · Cancelado 2 · Óbito 1</td></tr>
+<tr><td>Nome</td><td>100%</td><td>nome</td></tr>
+<tr><td>Idade</td><td>100%</td><td>anos (18–79 no CAPS adulto, mediana 44)</td></tr>
+<tr><td>Data de Atendimento / Hora</td><td>100%</td><td><strong>o mesmo serial de data Excel com hora</strong> nas duas colunas; picos 9h e 12h/16h</td></tr>
+<tr><td>Profissional Atendimento</td><td>100%</td><td>nome, sem CNS/CBO</td></tr>
+<tr><td>Tipo Atendimento</td><td>100%</td><td>Individual 273 · Convivência 241 · Inicial ao Paciente 24 · Familiar 22 · Atenção à Crise 7 · Noturno 1</td></tr>
+<tr><td>Situação Atendimento</td><td>100%</td><td>Encerrado 547 · Em Atendimento 20 · Cancelado 1</td></tr>
+<tr><td>Diagnóstico</td><td>88%</td><td><code>CID - descrição</code>, <strong>só capítulo F</strong> (top F99, F20, F200, F29, F31). É o diagnóstico do usuário, estável na semana (só 1 paciente com 2 diferentes)</td></tr>
+</tbody></table></div>
+<p><strong>Usuários Cadastrados</strong> (<code>imbUsuariosCadastrados</code>, <code>rdpInicioCadastrados/Fim</code>), 01–15/09: 37 cadastros. Colunas: Cadastro (data), Usuário (nome), Tel. Usuário, Tel. Resp., Sexo, Idade, <strong>Raça/Cor</strong>, <strong>Gênero</strong> (62% preenchido), <strong>Moradia</strong> (Própria/Alugada/<strong>Situação de Rua</strong>/Cedida), <strong>Origem do Usuário</strong> (Demanda Espontânea, Urgência/Emergência, UBS, CAPS, Outros), <strong>Situação do PTS</strong> (Em Avaliação/Concluído), Prontuário (<strong>Ativo/Arquivado</strong>, não o número), Bairro.</p>
+<p><strong>RAAS</strong> (<code>imbRaas</code>, <code>rdpDataInicioRaas/Fim</code>), 01–15/09: <strong>~1.000 registros</strong>, colunas Profissional (<code>código - nome</code>), Data, Usuário, Procedimento (categoria RAAS: Atendimento Individual/Grupo/Familiar, Acolhimento Diurno/Noturno, Situação à Crise, Práticas Expressivas/Corporais, Reabilitação Psicossocial, Visita Domiciliar, Contratualidade no Território, Moradores em SRT, Terceiro Turno) + totais por categoria. <strong>Sem código SIGTAP e sem CNS</strong>, apesar do nome.</p>
+<h3>2.2 Identificação do paciente: CPF e CNS saem pela "Documentação dos Usuários"</h3>
+<p>Os relatórios <strong>operacionais</strong> (Atendimentos, Cadastrados, RAAS) <strong>não</strong> trazem documento. Isso levou a uma conclusão errada na primeira análise ("não há CPF/CNS"), corrigida na mesma sessão. O cadastro guarda os documentos:</p>
+<ul>
+<li><strong>Tela de cadastro</strong> <code>Paciente/PacienteEdit.aspx</code>: <code>rblCPF</code>/<code>rblCNS</code> (tem/não tem),</li>
+</ul>
+<p>  <code>RadTextBoxCNS</code> + <code>RadGridCNS</code> (<strong>mais de um CNS por paciente</strong>) e o questionário "Documentos"   (<code>UCQuestionarioContainerDocumentos</code>): CPF (<code>Q33P12</code>), RG com complemento/UF/emissão/órgão,   certidão (formato antigo e novo), CTPS, título de eleitor. Também <code>txtCpfResponsavel</code> e   <code>txtCpfAcompanhante</code>.</p>
+<ul>
+<li><strong>Grade de pesquisa de usuários</strong> (<code>RegistroConvivenciaList</code>): colunas Código Mitra, Nome, Nome</li>
+</ul>
+<p>  da Mãe, Sexo, Nascimento, Prontuário, <strong>CPF, NIS, DNV, CNS, Certidão</strong>, Situação. Só preenche   depois de uma busca.</p>
+<ul>
+<li><strong>Relatório <code>imbDocumentacaoUsuarios</code></strong> (filtro "Todos", sem data), <strong>escopo = CAPS da sessão</strong>.</li>
+</ul>
+<p>  Colunas: <strong>Usuário, Nascimento, CPF, CNS</strong>, CTPS/Série/UF/Emissão, Certidão/Livro/Folha,   RG/UF/Emissão/Órgão, Título de Eleitor. O XLS sai em 4–11 s.</p>
+<div class="tw"><table><thead><tr><th>CAPS</th><th>Usuários</th><th>CPF</th><th>CNS</th><th>CPF ou CNS</th><th>Nenhum</th></tr></thead><tbody>
+<tr><td>Gilberto (adulto)</td><td>2.075</td><td>1.792 (86%)</td><td>1.349 (65%)</td><td>1.993</td><td>82</td></tr>
+<tr><td>Infanto-Juvenil</td><td>1.131</td><td>601 (53%)</td><td>1.130 (99%)</td><td>1.131</td><td>0</td></tr>
+<tr><td>AD</td><td>984</td><td>768 (78%)</td><td>655 (66%)</td><td>900</td><td>84</td></tr>
+</tbody></table></div>
+<p><strong>Todos os CPF e CNS preenchidos passam no dígito verificador.</strong> O CPF vem com 11 dígitos, sem máscara; o CNS começa com 7 ou 8 (provisório), com alguns 1 ou 2 (definitivo). O IJ tem CPF baixo e CNS quase total, o que é esperado para crianças. Só 11 nomes do Gilberto aparecem também no IJ, o que confirma que o cadastro é por unidade.</p>
+<p><strong>Ligação atendimento → documento:</strong> o relatório de documentos <strong>não traz o prontuário</strong>. A chave é <strong>nome normalizado</strong> (+ nascimento/idade para desempate). Medido na semana 09–15/09 do Gilberto: 211 pacientes atendidos, <strong>210 casam com exatamente 1 usuário, 0 homônimos, 1 não achado; 202 saem com CPF ou CNS</strong>. Para conector, conferir idade × nascimento e mandar homônimo para revisão, nunca casar no chute (regra de dedup do hub).</p>
+<p>Ainda não testado: busca JSON <code>ComboPacienteService.GetDataByFonema_MultiUnidade</code> (exige <code>IdUnidade</code> no contexto; a chamada foi barrada pela política de permissões desta sessão). Com o relatório de documentos, deixou de ser necessária.</p>
+<h2>3. Serviços <code>.asmx</code> (24)</h2>
+<p>Mesma família do Prime, com variações "multiunidade":</p>
+<div class="tw"><table><thead><tr><th>Serviço</th><th>Métodos</th></tr></thead><tbody>
+<tr><td><code>ComboPacienteService</code></td><td><code>GetDataByFonema_MultiUnidade</code>, <code>GetDataByOrigemPaciente</code></td></tr>
+<tr><td><code>ConsultaPacienteService</code></td><td><code>GetDiference</code></td></tr>
+<tr><td><code>ComboProfissionalPorUnidadeService</code></td><td>10 (inclui <code>GetProfissionalGeracaoAgenda_MultiUnidade</code>, <code>GetDataPorProcedimentoCBO</code>)</td></tr>
+<tr><td><code>ComboBeneficioService</code>, <code>ComboRaca</code>, <code>ComboOrgaoEmissor</code>, <code>ComboPaisService</code>, <code>ComboUFService</code></td><td>cadastro</td></tr>
+<tr><td><code>UCComboCidService</code>, <code>UCComboCIAP2Service</code>, <code>UCComboCapituloCid10Service</code>, <code>UCComboCboService</code></td><td>catálogos</td></tr>
+</tbody></table></div>
+<p>Chamada JSON direta ainda não testada.</p>
+<h2>4. Varredura (<code>probe_mapa.py</code>)</h2>
+<p>41 páginas em 35 s: 33 respostas 200, 6 respostas 404 (links quebrados do menu) e 2 respostas 500 (<code>MapaLeitosRegistroSaida?Id=</code> e <code>RelatorioImpressaoSOAP?qId=</code>, sem id). Scripts próprios: só webcam. Módulos no menu: Recepção/Cadastro, Acolhimento/Acompanhamento, <strong>Projeto Terapêutico Singular</strong>, Convivência e Frequência, Atividade em Grupo, Visita, <strong>Mapa de Leitos</strong>, Ações Institucionais, Matriciamento, Notificação Compulsória, <strong>Serviço Residencial Terapêutico</strong> (SRT), Faturamento RAAS/BPA. Resumo sem PII em <code>mapa-endpoints.md</code>.</p>
+<p>&gt; A varredura abriu (GET) <code>Srt/MoradorEdit.aspx?id=…</code>. GET de WebForms só renderiza o form, nada &gt; foi gravado. Mesmo assim, <code>edit</code> entrou na lista de caminhos que <code>probe_mapa.py</code> pula.</p>
+<h2>5. Ferramentas</h2>
+<div class="tw"><table><thead><tr><th>Script</th><th>O que faz</th></tr></thead><tbody>
+<tr><td><code>saudemental/client.py</code></td><td>sessão, login, gate só de unidade, cookies persistidos, trava de leitura</td></tr>
+<tr><td><code>probe_login.py</code></td><td>força login e retrata o gate</td></tr>
+<tr><td><code>probe_tela.py &lt;url&gt;…</code></td><td>descreve uma tela</td></tr>
+<tr><td><code>probe_mapa.py</code> / <code>gerar_mapa_md.py</code></td><td>varredura GET → <code>capturas/mapa.json</code> → <code>docs/mapa-endpoints.md</code></td></tr>
+<tr><td>`probe_relatorio.py &lt;imb&gt; &lt;rdpIni&gt; &lt;rdpFim&gt; DD/MM/AAAA DD/MM/AAAA [CSV\</td><td>XLS\</td><td>PDF]`</td><td>clica um relatório (datas com o <code>_dateInput_ClientState</code>), pega o <code>instanceID</code> e exporta. <strong>Use XLS</strong>; para relatório sem data, passe <code>"" ""</code> nos campos</td></tr>
+<tr><td><code>sondar_desfechos.py DD/MM/AAAA DD/MM/AAAA [guid]</code></td><td>perfil sem PII dos relatórios de desfecho (Destinos, Abandono, Óbito, Internação, Permanência, Cancelados, Exames, Procedimentos)</td></tr>
+<tr><td><code>sondar_atividade.py DD/MM/AAAA DD/MM/AAAA</code></td><td><em>Atendimentos Realizados</em> por CAPS (troca de unidade pelo gate): contagem + 1ª/última data. Usa CSV, que basta para <strong>contar</strong> (1 linha por atendimento), mas não para ler o detalhe</td></tr>
+</tbody></table></div>
+<h2>6. Integração com o SUS</h2>
+<p>Não há. O cadastro do Saúde Mental só valida o dígito de CPF e CNS no navegador. O "Consultar Cadweb" existe só no <strong>Prime</strong> (<code>Automais.prime/docs/APRENDIZADOS.md</code> §4b) e foi <strong>descartado</strong> pelo operador, porque o SMSMais já tem caminho próprio para o CADSUS.</p>
+<h2>7. Cuidados</h2>
+<ul>
+<li><strong>Mesma conta do Prime</strong> (<code>11777653738</code>), com OK do operador e aviso à dona da conta. Sessão</li>
+</ul>
+<p>  única: conector de verdade = usuário dedicado.</p>
+<ul>
+<li><strong>Datas sem <code>_dateInput_ClientState</code> = histórico inteiro</strong> (30 MB por CAPS). Nunca rodar</li>
+</ul>
+<p>  relatório com período sem conferir o "Período" do arquivo.</p>
+<ul>
+<li><strong>PDF custa ~28 s por semana</strong>; XLS ~2 s. Uma requisição por vez, e troca de CAPS pelo gate.</li>
+<li><strong><code>capturas/</code> tem PII sensível</strong> (saúde mental: CID F, situação de rua, documentos). É</li>
+</ul>
+<p>  gitignored; relatório para humano só com contagens e formas.</p>
+<ul>
+<li><strong>Busca de paciente por nome</strong> (<code>ComboPacienteService</code>) foi barrada pela política de permissões;</li>
+</ul>
+<p>  não contornar. <code>edit</code> está na lista de caminhos que a varredura pula.</p>
+<h2>8. Estado em 16/09/2026 e próximos passos</h2>
+<p><strong>Fechado:</strong> produto (Prime Saúde Mental, 3 CAPS, uso desde mai–jul/2025) · login/gate/troca de CAPS · relatórios via Telerik (POST → <code>instanceID</code> → export XLS) · armadilha das datas · colunas de Atendimentos, Cadastrados e RAAS · <strong>CPF/CNS pela Documentação dos Usuários</strong> (~96%, DV válido) e ligação por nome (210/211) · 24 <code>.asmx</code> mapeados · integração SUS (não há). Nada commitado, nada em produção mudou.</p>
+<p><strong>Aberto:</strong></p>
+<ol>
+<li>Sondar óbito, abandono, internação, ocupação de leito e o relatório de diagnóstico CID/CIAP.</li>
+<li>Perguntar ao operador se o CEDTEA/TEA roda neste sistema com outra conta.</li>
+<li>Decidir se os CAPS entram no hub FHIR (âncora CPF/CNS via Documentação + nome). Isso exige ADR,</li>
+</ol>
+<p>   OK e cuidado LGPD redobrado (dado de saúde mental).</p>
+<h2>9. Modelo clínico × urgência e emergência (UPA, Conde, Santa Rita no Klinikos)</h2>
+<p>Medido em 16/09/2026 pelos relatórios; as telas de atendimento clínico (PEP/SOAP) <strong>não</strong> foram abertas, porque abrem a partir da agenda com o id de um atendimento real.</p>
+<div class="tw"><table><thead><tr><th>Conceito</th><th>Urgência (Klinikos)</th><th>Prime (especializada)</th><th>Prime Saúde Mental (CAPS)</th></tr></thead><tbody>
+<tr><td>Unidade do registro</td><td><strong>Boletim</strong> (<code>spa_codigo</code>): um episódio por chegada</td><td><strong>Atendimento</strong> agendado ou espontâneo (sem boletim)</td><td><strong>Atendimento</strong> dentro de um acompanhamento longitudinal (prontuário + PTS)</td></tr>
+<tr><td>Chegada/fila</td><td>chegada, classificação de risco (cor), fila, tempos</td><td>agenda (programada 9%, espontânea 91% na amostra), <code>DataRegistro</code> com hora</td><td>agenda, acolhimento, convivência</td></tr>
+<tr><td>Duração</td><td>chegada → atendimento → saída</td><td><code>DataInicio</code>/<code>DataFim</code> (só data) + <code>Duracao</code></td><td>data e hora do atendimento</td></tr>
+<tr><td>Diagnóstico</td><td>CID primário/secundário por evolução</td><td>CID por atendimento (66%), lista</td><td>CID do <strong>usuário</strong> (capítulo F, 88%), estável; relatório CID/CIAP</td></tr>
+<tr><td>Procedimento</td><td>(produção)</td><td><strong>SIGTAP + quantidade</strong> por atendimento</td><td>categoria RAAS (sem código SIGTAP no relatório)</td></tr>
+<tr><td>Prescrição</td><td>estruturada (item, via, frequência, duração)</td><td>só texto livre e raro (<code>MedicamentosPrescritos</code> 0,3%) + programa <strong>Remédio em Casa</strong> (entregas/receitas)</td><td><strong>não há</strong> tela nem relatório de prescrição</td></tr>
+<tr><td>Exames</td><td>coleta/requisição</td><td>texto livre (<code>ExamesSolicitados</code> 6,7%)</td><td>relatório <em>Solicitação de Exames</em> (usuário, data, exame, profissional)</td></tr>
+<tr><td>Sinais vitais</td><td>registros de enfermagem</td><td>não encontrado</td><td>não encontrado</td></tr>
+<tr><td>Narrativa</td><td>anamnese, exame físico, conduta (por boletim)</td><td>módulo PEP (<code>Pep/…</code>), sem relatório nominal</td><td><strong>SOAP</strong> (<code>RelatorioImpressaoSOAP.aspx?qId=</code>), só impressão por atendimento</td></tr>
+<tr><td>"Alta"/desfecho</td><td><strong>tipo de saída do boletim</strong> (alta, óbito, evasão, remoção, internação)</td><td><strong>não existe</strong> alta: o atendimento só termina (<code>DataFim</code>)</td><td><strong>desfecho do acompanhamento</strong>: <em>Destinos</em> (Alta, Alta a Pedido, Alta Após Insucesso da Busca Ativa, Alta por Falta, Continuidade Atenção Básica, Continuidade Outro CAPS, Óbito), <em>Motivo da Saída</em>, <em>Óbito</em> (data/hora/fonte), situação do usuário, prontuário Ativo/Arquivado</td></tr>
+<tr><td>Internação/leito</td><td>observação, leito, internação</td><td>não</td><td>acolhimento em leito (CAPS III): <em>Internação</em> (tipo, local, início/fim, motivo), <em>Permanência em Leito</em></td></tr>
+<tr><td>Identidade</td><td>cadastro com CPF/CNS</td><td><strong>CNS</strong> no próprio relatório (sem CPF)</td><td>CPF/CNS só no relatório <em>Documentação dos Usuários</em>; liga por nome</td></tr>
+</tbody></table></div>
+<p><strong>Leitura para o hub FHIR:</strong> urgência = <code>Encounter</code> por boletim (class EMER) com <code>hospitalization.dischargeDisposition</code>. Especializada = <code>Encounter</code> ambulatorial (AMB) por atendimento + <code>Procedure</code> SIGTAP + <code>Condition</code>, sem desfecho de alta. CAPS = dois níveis: <code>EpisodeOfCare</code> (acompanhamento: início pelo acolhimento, fim pelo <em>Destino</em>/alta) contendo <code>Encounter</code>s (atendimentos, tipo RAAS) + <code>Condition</code> do usuário. Prescrição estruturada só existe na urgência.</p>
+<p><strong>Cuidado de sessão (medido nesta análise):</strong> Prime e Saúde Mental <strong>compartilham a sessão única</strong> da conta. Logar num derruba a sessão do outro (e de quem estiver usando a conta). Duas sondas seguidas, uma em cada sistema, derrubaram-se mutuamente. Nunca alternar os dois labs na mesma conta; conector = usuário dedicado por sistema.</p>
+</main>
+</body>
+</html>

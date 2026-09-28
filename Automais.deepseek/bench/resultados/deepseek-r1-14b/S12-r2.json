@@ -1,0 +1,27 @@
+{
+ "cena": "S12",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 117.45,
+   "usage": {
+    "completion_tokens": 495,
+    "prompt_tokens": 3790,
+    "total_tokens": 4285,
+    "prompt_tokens_details": {
+     "cached_tokens": 3789
+    }
+   },
+   "texto_fora_de_tool": "\n\nClaro, estou aqui para ajudar. Como posso lhe auxiliar hoje? Se você tiver uma pergunta sobre um exame, uma consulta, seu cadastro ou precisar de informações sobre uma unidade de saúde, estou à disposição. Como posso ajudar? 😊",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:51:37",
+ "latencia_total_s": 117.45
+}

@@ -1,0 +1,85 @@
+<section class="slide" id="ciclo">
+  <div class="fita-marca"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="cabeca">
+    <div>
+      <p class="olho">Máquina de estados</p>
+      <h1 class="titulo">Onze estados, <em>vinte e um tipos de evento</em>, nenhum atalho</h1>
+      <p class="linha-fina">O caminho feliz tem sete paradas. Os dias são de um caso típico da fila: uma solicitação de cardiologia encaminhada à Central de Regulação.</p>
+    </div>
+    <div class="marca-canto"><img src="assets/niteroi-saude.png" alt=""></div>
+  </div>
+  <div class="corpo">
+    <div class="grade" style="grid-template-columns:repeat(7,1fr);gap:11px">
+        <div class="bloco" style="padding:12px 13px;position:relative">
+          <span class="pill s-registrada" style="font-size:11px">Registrada</span>
+          <p style="margin:8px 0 0;font-family:var(--fonte-display);font-size:19px;font-weight:700;color:var(--nit-laranja);line-height:1">Dia 0</p>
+          <p class="b-texto" style="font-size:11.5px;margin-top:5px">Protocolo e código de acesso. Recibo pelo canal de entrada.</p>
+        </div>
+        <div class="bloco" style="padding:12px 13px;position:relative">
+          <span class="pill s-triagem" style="font-size:11px">Em triagem</span>
+          <p style="margin:8px 0 0;font-family:var(--fonte-display);font-size:19px;font-weight:700;color:var(--nit-laranja);line-height:1">Dia 1</p>
+          <p class="b-texto" style="font-size:11.5px;margin-top:5px">Tipo, assunto, unidade, prioridade, marcadores. Desmembra, funde, arquiva duplicata.</p>
+        </div>
+        <div class="bloco" style="padding:12px 13px;position:relative">
+          <span class="pill s-encaminhada" style="font-size:11px">Encaminhada à área</span>
+          <p style="margin:8px 0 0;font-family:var(--fonte-display);font-size:19px;font-weight:700;color:var(--nit-laranja);line-height:1">Dia 3</p>
+          <p class="b-texto" style="font-size:11.5px;margin-top:5px">Vai ao ponto de resposta com prazo próprio. Denúncia só vai pseudonimizada.</p>
+        </div>
+        <div class="bloco" style="padding:12px 13px;position:relative">
+          <span class="pill s-resparea" style="font-size:11px">Respondida pela área</span>
+          <p style="margin:8px 0 0;font-family:var(--fonte-display);font-size:19px;font-weight:700;color:var(--nit-laranja);line-height:1">Dia 18</p>
+          <p class="b-texto" style="font-size:11.5px;margin-top:5px">A unidade responde. A ouvidoria cobra e escalona enquanto não vem.</p>
+        </div>
+        <div class="bloco" style="padding:12px 13px;position:relative">
+          <span class="pill s-validacao" style="font-size:11px">Em validação</span>
+          <p style="margin:8px 0 0;font-family:var(--fonte-display);font-size:19px;font-weight:700;color:var(--nit-laranja);line-height:1">Dia 19</p>
+          <p class="b-texto" style="font-size:11.5px;margin-top:5px">A ouvidoria lê. Resposta vaga volta à área com metade do prazo.</p>
+        </div>
+        <div class="bloco" style="padding:12px 13px;position:relative">
+          <span class="pill s-respondida" style="font-size:11px">Respondida ao cidadão</span>
+          <p style="margin:8px 0 0;font-family:var(--fonte-display);font-size:19px;font-weight:700;color:var(--nit-laranja);line-height:1">Dia 21</p>
+          <p class="b-texto" style="font-size:11.5px;margin-top:5px">Conteúdo mínimo do tipo, linguagem simples, resolutividade e situação final.</p>
+        </div>
+        <div class="bloco" style="padding:12px 13px;position:relative">
+          <span class="pill s-concluida" style="font-size:11px">Concluída</span>
+          <p style="margin:8px 0 0;font-family:var(--fonte-display);font-size:19px;font-weight:700;color:var(--nit-laranja);line-height:1">Dia 51</p>
+          <p class="b-texto" style="font-size:11.5px;margin-top:5px">Trinta dias sem recurso e o sistema conclui sozinho.</p>
+        </div>
+    </div>
+    <div class="grade g2 cresce" style="margin-top:18px">
+      <div class="bloco">
+        <p class="b-olho">Quando sai do trilho</p>
+        <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:9px">
+          <span class="tag contorno" style="flex:none;min-width:auto">Aguardando complementação</span>
+          <span style="font-size:12px;line-height:1.42;color:var(--tinta-fraca)">Falta dado do cidadão. <b>Suspende o relógio</b>, vale uma vez só, e em 20 dias sem resposta o sistema arquiva.</span>
+        </div>
+        <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:9px">
+          <span class="tag contorno" style="flex:none;min-width:auto">Em recurso</span>
+          <span style="font-size:12px;line-height:1.42;color:var(--tinta-fraca)">O cidadão discorda. Volta a tramitar; pode ser reencaminhada e respondida de novo. Uma vez.</span>
+        </div>
+        <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:9px">
+          <span class="tag contorno" style="flex:none;min-width:auto">Arquivada</span>
+          <span style="font-size:12px;line-height:1.42;color:var(--tinta-fraca)">Um dos nove motivos tipificados. Duplicidade cita o protocolo original.</span>
+        </div>
+        <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:9px">
+          <span class="tag contorno" style="flex:none;min-width:auto">Encaminhada a outro órgão</span>
+          <span style="font-size:12px;line-height:1.42;color:var(--tinta-fraca)">Não é saúde municipal. Registra órgão e protocolo de destino &mdash; e <b>não admite prorrogação</b>.</span>
+        </div>
+      </div>
+      <div class="bloco realce">
+        <p class="b-olho">O que o sistema faz sozinho</p>
+        <ul class="lista">
+          <li><b>Arquiva</b> a manifestação parada em complementação há mais de 20 dias, e avisa o cidadão.</li>
+          <li><b>Conclui</b> a que foi respondida há 30 dias e não teve recurso.</li>
+          <li><b>Recalcula</b> o prazo quando a prioridade muda na triagem &mdash; e <b>congela</b> o prazo já concedido depois do encaminhamento.</li>
+          <li><b>Devolve metade</b> do prazo original à área quando a resposta volta para reanálise (mínimo de 2 dias).</li>
+          <li>Roda de <b>6 em 6 horas</b>; se um ciclo falha, o próximo tenta de novo.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="rodape">
+    <span class="esq"><span class="ponto"></span> Ouvidoria da Saúde &middot; Fundação Municipal de Saúde de Niterói</span>
+    <span class="num">{{N}}</span>
+  </div>
+</section>

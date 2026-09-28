@@ -1,0 +1,4 @@
+{'concorrencia': 1, 'reqs': 16, 'p50_s': 2.2, 'p90_s': 5.2, 'max_s': 6.4, 'vazao_msgs_por_hora': 1265}
+{'concorrencia': 2, 'reqs': 16, 'p50_s': 2.7, 'p90_s': 5.8, 'max_s': 7.0, 'vazao_msgs_por_hora': 2149}
+{'concorrencia': 4, 'reqs': 16, 'p50_s': 4.5, 'p90_s': 8.2, 'max_s': 10.4, 'vazao_msgs_por_hora': 2338}
+{'concorrencia': 8, 'reqs': 16, 'p50_s': 8.0, 'p90_s': 14.4, 'max_s': 17.4, 'vazao_msgs_por_hora': 2226}

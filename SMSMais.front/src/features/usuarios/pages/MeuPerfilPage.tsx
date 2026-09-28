@@ -12,6 +12,7 @@ import {
 } from '@/shared/ui/FormularioEndereco';
 import { UploadFoto } from '@/shared/ui/UploadFoto';
 import { useAtualizarMinhaConta, useMeuPerfil } from '@/features/usuarios/api/queries';
+import { MeuSoftphoneCartao } from '@/features/telefonia/components/MeuSoftphoneCartao';
 
 function formatarCpf(cpf: string | null | undefined): string {
   if (!cpf) return '—';
@@ -166,6 +167,8 @@ export function MeuPerfilPage() {
           </Button>
         </div>
       </form>
+
+      <MeuSoftphoneCartao />
     </div>
   );
 }

@@ -4,11 +4,11 @@ namespace SMSMais.Data.Entities.Sisreg;
 /// Profissional executante de uma unidade, como o SISREG o conhece — a "verdade" do
 /// mapeamento. Alimentado pelo AJAX <c>PROFISSIONAIS_POR_UPS</c> ao atualizar o mapeamento.
 ///
-/// <para><b>Para que serve:</b> a agenda do SISREG só pode ser consultada informando
-/// unidade + profissional + procedimento (os três são obrigatórios no servidor). Materializar
-/// a agenda é varrer esse produto cartesiano — e a maioria dos profissionais da lista não tem
-/// agenda nenhuma. O <see cref="Habilitado"/> existe para a varredura não gastar requisição
-/// com quem não interessa (o SISREG passa a exigir CAPTCHA por volume).</para>
+/// <para><b>Para que serve:</b> nasceu como régua de custo — a agenda exigia unidade +
+/// profissional + procedimento, varrer era percorrer o produto cartesiano, e o
+/// <see cref="Habilitado"/> impedia gastar requisição com quem não interessava (o SISREG exige
+/// CAPTCHA por volume). Essa razão acabou quando a exportação passou a devolver a unidade inteira
+/// numa requisição: hoje o campo só decide quem sobe ao hub FHIR, e por isso o padrão é LIGADO.</para>
 ///
 /// <para><b>Divisão de responsabilidade:</b> a identidade do profissional é sincronizada para
 /// o hub FHIR (<c>Practitioner</c>, identificado por CPF) — ver <see cref="PractitionerId"/>.
@@ -28,7 +28,12 @@ public class SisregProfissionalUnidade
     /// <summary>Nome como o SISREG o exibe (caixa alta, sem acento normalizado).</summary>
     public string Nome { get; set; } = string.Empty;
 
-    /// <summary>Entra na varredura de agenda. Desligado = a varredura pula o profissional inteiro.</summary>
+    /// <summary>
+    /// Entra na operação da unidade — hoje é o que decide quem sobe ao hub FHIR como
+    /// <c>Practitioner</c>. <b>Nasce LIGADO</b> (padrão da rede desde 20/09/2026): a varredura lê a
+    /// unidade inteira numa requisição, então habilitar deixou de comprar economia e só decidiria,
+    /// de graça, quem fica fora da identidade clínica.
+    /// </summary>
     public bool Habilitado { get; set; }
 
     /// <summary>

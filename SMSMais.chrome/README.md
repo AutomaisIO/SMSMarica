@@ -1,4 +1,4 @@
-# SMSMais · Ponte SISREG — extensão Chrome
+# SMSMais · Ponte de Sistemas — extensão Chrome
 
 Registra no SMSMais as operações que o usuário faz no SISREG, para **antecipar** o que hoje só
 chega pela varredura diária. Nesta fase de piloto o objetivo é **capturar tudo** (envio e retorno)
@@ -88,8 +88,63 @@ com a nossa API. A senha do SMSMarica só é digitada no nosso site; a extensão
   em outra estação de trabalho".
 - O iframe principal é `id="f_main"` **com `name="f_principal"`**.
 
-## Pendente (backend)
+## Sítios observados (config.js → `SITIOS`)
 
-A rota `POST /extensao/sisreg/capturas` **ainda não existe** — é o próximo passo (tabela nova,
-permissão nova e a habilitação de descompressão do corpo no servidor). Enquanto isso, o LED do
-piloto fica vermelho e as capturas ficam só na memória da extensão.
+| Sítio | Host | Modo | Blur |
+|---|---|---|---|
+| SISREG | `sisregiii.saude.gov.br` | `minimo` — só o comando + o nº da solicitação | sim |
+| Prime (Eco) | `marica.ecosistemas.com.br` | `analise` + `tudo` — **tudo que vai e volta** | sim |
+
+O **blur é o que garante o envio**: sem sessão do SMSMarica o site fica bloqueado, então não há
+como o operador trabalhar horas capturando para uma fila que nunca sobe.
+
+### O que a captura profunda (`tudo`) acrescenta
+
+Pensada para ASP.NET WebForms/Telerik, onde toda operação vira o mesmo POST para a mesma `.aspx`:
+
+- **cabeçalhos** de ida e de volta (`Content-Type`, `Content-Disposition`, `X-Requested-With`);
+  `Cookie`/`Authorization` vão como `<omitido>`;
+- **cadeia de 302** — invisível para a página e decisiva no gate de unidade do Prime;
+- **`__doPostBack`** (qual controle disparou, com que argumento) e o **clique** que o originou —
+  sem isso, duas operações diferentes ficam indistinguíveis no acervo;
+- **tela recapturada** depois que o AJAX reescreve o DOM (com digest, para não repetir a mesma);
+- **downloads** de relatório (`*RPT.aspx`): URL com todos os parâmetros, nome, tipo e tamanho.
+
+**O conteúdo do arquivo baixado NÃO é capturado** — pegá-lo exigiria refazer a requisição, e a
+regra de ouro é não disparar nada contra o sistema observado.
+
+## Eventos de negócio (Prime) — `prime.js`
+
+Capturar tudo serve para aprender; **operar** precisa de evento nomeado. O sítio com
+`verbos: 'prime'` no `config.js` passa a emitir, ao lado da matéria bruta, uma linha por
+operação reconhecida:
+
+| Evento | Como é reconhecido | Chaves |
+|---|---|---|
+| `paciente-criado` | `__EVENTTARGET` termina em `rbSalvar`, em `CadastroPaciente.aspx` | `pacienteId` (vem da RESPOSTA), `unidadeId` |
+| `paciente-agendado` | campo `rbSalvarAgendamento` presente no corpo | `agendaId`, `pacienteId`, `unidadeId` |
+| `paciente-acolhido` | `__EVENTARGUMENT = Acolher\|<guid>` | `agendaId`, `unidadeId` |
+| `paciente-desagendado` | `__EVENTARGUMENT = Desagendar\|<guid>` | `agendaId`, `unidadeId` |
+
+Detalhes que não são óbvios e custaram medição:
+
+- **O `pacienteId` do cadastro não existe no envio.** Ele nasce na resposta (`hidPacienteId` no
+  corpo do `__ASYNCPOST`). O evento fica *aguardando* até 30 s; se o id não vier, sai assim mesmo
+  com `idAusente: true` — perder a operação seria pior, e o rótulo impede lê-la como completa.
+- **O agendamento não carrega o paciente.** Quem o amarra é o `SELECIONAR_PACIENTE|<guid>` que
+  veio antes, guardado por aba. Por isso a seleção é rastreada mesmo sem virar evento.
+- **`Acolher` NÃO recebe `pacienteId`.** Ele age sobre a linha da grade, não sobre o paciente
+  selecionado na tela; deduzir um seria inventar. O `agendaId` é a chave — e é o mesmo do
+  `paciente-agendado`.
+- **Acento só está certo no corpo do XHR.** O Chrome entrega o corpo urlencoded do `webRequest`
+  já decodificado como UTF-8, e o Prime é latin-1. O reconhecedor relê o corpo copiado no
+  `send()`, testando UTF-8 e caindo para latin-1 quando o resultado tem U+FFFD.
+
+Os três campos `evento`, `etapa` e `escrita` são **colunas** no hub (a de evento é indexada),
+então consultar operação não exige cavar o jsonb.
+
+## Backend
+
+`POST /extensao/sisreg/capturas` (autenticado, sem permissão de módulo) grava em
+`smsmarica.sisreg_captura_navegador` — `payload` jsonb + `conteudo` text. A origem fica em
+`payload->>'sitio'`, então dá para separar o acervo do Prime do acervo do SISREG.

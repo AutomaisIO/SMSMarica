@@ -1,0 +1,33 @@
+{
+ "cena": "S01",
+ "modelo": "gpt-oss-20b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 36.45,
+   "usage": {
+    "completion_tokens": 376,
+    "prompt_tokens": 3637,
+    "total_tokens": 4013,
+    "prompt_tokens_details": {
+     "cached_tokens": 3636
+    }
+   },
+   "texto_fora_de_tool": "",
+   "tools": [
+    {
+     "nome": "responder_cidadao",
+     "args": "{\"texto\":\"Para falar com um atendente, encaminho sua solicitação. Por favor, aguarde. Enquanto isso, acesse https://app.smsmarica.online para verificar seus exames, consultas e atendimentos na rede municipal e mantenha seus dados sempre atualizados.\",\"handoff\":true,\"confianca\":0.5}"
+    }
+   ]
+  }
+ ],
+ "resposta_final": {
+  "texto": "Para falar com um atendente, encaminho sua solicitação. Por favor, aguarde. Enquanto isso, acesse https://app.smsmarica.online para verificar seus exames, consultas e atendimentos na rede municipal e mantenha seus dados sempre atualizados.",
+  "handoff": true,
+  "confianca": 0.5
+ },
+ "violacoes": [],
+ "iniciado_em": "2026-09-26T21:25:38",
+ "latencia_total_s": 36.45
+}

@@ -90,6 +90,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'OuvidoriaGestao', rotulo: 'Ouvidoria — gestão (painel, configuração, pontos de resposta, assuntos, escalonar)' },
   { id: 'OuvidoriaSigilo', rotulo: 'Ouvidoria — sigilo (ver denúncias, revelar identidade com justificativa registrada, habilitar denúncia)' },
   { id: 'OuvidoriaPontoResposta', rotulo: 'Ouvidoria — ponto de resposta (responder pela unidade/área, sem ver o manifestante)' },
+  { id: 'Telefonia', rotulo: 'Telefonia — softphone dos usuários (habilitar, escolher ramal e nome na edição do usuário)' },
   { id: 'NotificacoesAgendamento', rotulo: 'Mensageria — gestão dos envios de WhatsApp (resumo diário, falhas, lote, regras)' },
   { id: 'RespostasRapidas', rotulo: 'Mensagens prontas do chat (cadastro)' },
   { id: 'Estatistica', rotulo: 'Estatísticas de atendimento (retrato WhatsApp)' },
@@ -247,5 +248,12 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
     Inclusao: '— (sem efeito)',
     Edicao: 'Responder pela área (com anexos)',
     Exclusao: '— (sem efeito)',
+  },
+  // Usar o próprio softphone não exige o módulo: basta ele estar habilitado para o usuário.
+  Telefonia: {
+    Consulta: 'Ver o ramal de softphone de um usuário e os números livres',
+    Inclusao: '— (sem efeito)',
+    Edicao: 'Habilitar o softphone, escolher o ramal e o nome de exibição, ligar/desligar',
+    Exclusao: 'Remover o softphone de um usuário (libera o número)',
   },
 };

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Espinha da UPA / Santa Rita — build 2025 (U.2025.06.1.26)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Espinha da UPA / Santa Rita — build 2025 (<code>U.2025.06.1.26</code>)</h1>
+<p><strong>Medido em 16–17/09/2026, SOMENTE LEITURA.</strong> Este documento levanta a UPA e a Santa Rita ao nível do Conde: quais relatórios dão a <strong>espinha</strong> (por boletim: chegada, cor da classificação de risco, clínica, CID e desfecho) e os <strong>parâmetros corretos</strong> da build 2025 — que <strong>não</strong> são os do Conde. Serve de base para o conector <code>KlinikosWeb</code> ser <em>version-aware</em> (perfil por build).</p>
+<p>Companheiro de <a href="./dados-crystal.md"><code>dados-crystal.md</code></a> (espinha do Conde 2024) e da §7 de <a href="./APRENDIZADOS.md"><code>APRENDIZADOS.md</code></a> (as três camadas que divergem).</p>
+<hr>
+<h2>1. Onde vive a espinha na build 2025: a tela 526 com seletor de modo</h2>
+<p>No Conde (2024) a espinha se espalhava por relatórios distintos: 407 (cadastro), 667 (chegada+cor), 526 (CID por boletim). Na build 2025 ela foi <strong>consolidada numa única tela</strong> — o relatório <strong>526</strong> (<code>/UPA24H/UPA/Relatorios/Relatorio.aspx?parrel=526&amp;origem=5</code>, rótulo "Atendimentos por Profissional") — que ganhou um <strong>rádio de modo</strong> <code>rblPadrao</code> com quatro opções:</p>
+<div class="tw"><table><thead><tr><th><code>rblPadrao</code> (par8)</th><th>Modo</th><th>O que entrega</th></tr></thead><tbody>
+<tr><td>0</td><td><strong>Padrao</strong></td><td>totais por profissional (não é nominal)</td></tr>
+<tr><td>1</td><td><strong>Nominal</strong></td><td><strong>lista por boletim</strong>: chegada, cor, clínica, cadastro básico</td></tr>
+<tr><td>2</td><td><strong>Por CID</strong></td><td><strong>CID por boletim</strong> (equivalente do 526 do Conde)</td></tr>
+<tr><td>3</td><td><strong>Por Status BAM</strong></td><td><strong>desfecho / tipo de saída por boletim</strong> (status do Boletim de Atendimento Médico)</td></tr>
+</tbody></table></div>
+<p>Trocar o modo é um <strong>AutoPostBack</strong> que reconfigura a tela; ao imprimir, a mesma tela 526 gera um <strong>relatório subjacente diferente</strong> para cada modo. Ou seja: um <code>parrel</code> de tela → três <code>parRel</code> de saída.</p>
+<h2>2. As três URLs da espinha (parâmetros CONFIRMADos da build 2025)</h2>
+<p>Capturadas dirigindo a tela num navegador real (a app monta o <code>window.open</code> do lado servidor — ver §4). Endpoint: <code>/UPA24H/Relatorios/rptviewXls.aspx</code> (XLS BIFF) — ou <code>rptview.aspx</code> (PDF), mesmos params.</p>
+<p>```</p>
+<h1>Nominal (chegada + cor + clínica + cadastro) — o "667+407" da build 2025</h1>
+<p>rptviewXls.aspx?parNomeMaquina=&amp;parRel=751&amp;parNum=8&amp;par1=&lt;unid&gt;&amp;par2=&lt;dd/mm/aaaa&gt;&amp;par3=&lt;dd/mm/aaaa&gt;&amp;par4=5&amp;par5=&lt;esp|vazio&gt;&amp;par6=0023&amp;par7=&lt;prof|vazio&gt;&amp;par8=1</p>
+<h1>Por CID (CID por boletim) — o "526" da build 2025</h1>
+<p>rptviewXls.aspx?parNomeMaquina=&amp;parRel=752&amp;parNum=8&amp;par1=&lt;unid&gt;&amp;par2=&lt;ini&gt;&amp;par3=&lt;fim&gt;&amp;par4=5&amp;par5=&lt;esp|vazio&gt;&amp;par6=0023&amp;par7=&lt;prof|vazio&gt;&amp;par8=2</p>
+<h1>Por Status BAM (desfecho / tipo de saída por boletim)</h1>
+<p>rptviewXls.aspx?parNomeMaquina=&amp;parRel=802&amp;parNum=9&amp;par1=&lt;unid&gt;&amp;par2=&lt;ini&gt;&amp;par3=&lt;fim&gt;&amp;par4=5&amp;par5=&lt;esp|vazio&gt;&amp;par6=0023&amp;par7=&lt;prof|vazio&gt;&amp;par8=3&amp;par9=0 ```</p>
+<p>Significado dos parâmetros posicionais (medido):</p>
+<div class="tw"><table><thead><tr><th>par</th><th>valor</th><th>significado</th></tr></thead><tbody>
+<tr><td>par1</td><td><code>0006</code> UPA / <code>0007</code> Santa Rita</td><td><strong>unidade</strong></td></tr>
+<tr><td>par2 / par3</td><td><code>dd/mm/aaaa</code></td><td>período (início / fim) — pode ser o mesmo dia</td></tr>
+<tr><td>par4</td><td><code>5</code></td><td>origem = Urgência (o <code>origem=5</code> da tela)</td></tr>
+<tr><td>par5</td><td>vazio = <strong>todas</strong></td><td>especialidade/clínica (código, ex. <code>1428</code> Clínica Médica)</td></tr>
+<tr><td>par6</td><td><code>0023</code></td><td>turno = hora início <code>00</code> + hora fim <code>23</code> (dia inteiro)</td></tr>
+<tr><td>par7</td><td>vazio = <strong>todos</strong></td><td>profissional (código)</td></tr>
+<tr><td>par8</td><td><code>1</code>/<code>2</code>/<code>3</code></td><td><strong>modo</strong> <code>rblPadrao</code> (Nominal / Por CID / Por Status BAM)</td></tr>
+<tr><td>par9</td><td><code>0</code> (só no 802)</td><td>flag do Status BAM</td></tr>
+<tr><td>parRel</td><td><code>751</code>/<code>752</code>/<code>802</code></td><td>relatório subjacente por modo</td></tr>
+</tbody></table></div>
+<p><strong>Deixar <code>par5</code> e <code>par7</code> vazios = TODAS as especialidades e TODOS os profissionais</strong> → é o nominal do dia inteiro, sem filtro obrigatório de valor único. É exatamente o que a espinha precisa.</p>
+<h2>3. Cobertura da espinha (o que cada relatório dá vs. o que a espinha exige)</h2>
+<div class="tw"><table><thead><tr><th>Necessidade da espinha</th><th>Conde 2024</th><th>UPA/Santa Rita build 2025</th></tr></thead><tbody>
+<tr><td>chegada (Data/Hora Entrada)</td><td>667</td><td><strong>751</strong> (Nominal)</td></tr>
+<tr><td>cor (classificação de risco)</td><td>667 (group header)</td><td><strong>751</strong> (Nominal)</td></tr>
+<tr><td>clínica</td><td>667 / 407</td><td><strong>751</strong> (Nominal)</td></tr>
+<tr><td>cadastro básico (boletim, paciente, nasc.)</td><td>407</td><td><strong>751</strong> (Nominal)</td></tr>
+<tr><td><strong>CID por boletim</strong></td><td>526 (subrows)</td><td><strong>752</strong> (Por CID)</td></tr>
+<tr><td><strong>desfecho / tipo de saída</strong></td><td>(a mapear no Conde)</td><td><strong>802</strong> (Por Status BAM)</td></tr>
+</tbody></table></div>
+<p>As <strong>colunas exatas</strong> de 751/752/802 ficaram <strong>pendentes</strong> — ver §5 (Crystal esgotou a memória durante o recon). Pela paridade com o 526 do Conde, esperam-se em 751/752: <code>Nº Boletim</code>, <code>Código</code>, <code>Hora Atendimento</code>, <code>Nome</code>, <code>Classificação</code>, <code>Idade</code>, <code>Sexo</code>, <code>Clínica</code> (+ <code>CID</code> no 752); e no 802 o <code>Status</code>/tipo de saída por boletim. <strong>Confirmar quando o servidor de relatório recuperar</strong> e fixar o <code>de-para</code> de colunas → FHIR Encounter (chegada=<code>period.start</code>, cor=<code>priority</code>, clínica=<code>type</code>, saída=<code>period.end</code>/<code>hospitalization.dischargeDisposition</code>, CID=<code>Condition</code>).</p>
+<h2>4. Por que o caminho do Conde não funciona aqui (mecanismo)</h2>
+<ul>
+<li><strong>A tela usa <code>Sys.WebForms.PageRequestManager</code></strong> (postbacks assíncronos parciais). O botão</li>
+</ul>
+<p>  "Imprimir Excel" é um <strong>RadAjaxManager</strong> (<code>onclick=AjaxNS.ARWO(new WebForm_PostBackOptions(...))</code>),   não um postback comum. Um POST cheio "na mão" só <strong>re-renderiza</strong> o painel: o evento <code>Click</code> do   <code>ImageButton</code> não dispara pela emulação, então a app <strong>não monta o <code>window.open</code></strong> e <strong>não</strong>   aparece alerta. (O "Atenção!" que víamos era <strong>falso positivo</strong> — o regex batia na <em>definição</em> da   função <code>SwAlerta2</code>, não numa chamada.)</p>
+<ul>
+<li><strong>O jeito robusto e à prova de versão</strong> é deixar a <strong>JS da própria app</strong> montar a URL: injeta-se o</li>
+</ul>
+<p>  cookie autenticado num navegador real, dirige-se a tela (modo → especialidade → datas → Imprimir)   e <strong>captura-se a requisição <code>rptviewXls</code></strong> que a app gera. Foi assim que os params acima saíram.</p>
+<ul>
+<li><strong><code>parN</code> do Conde → timeout de SQL:</strong> chamar <code>rptviewXls</code> do 667/526 com o <code>parN</code> do Conde</li>
+</ul>
+<p>  devolve <code>SqlException</code> de <strong>timeout de comando</strong> (<code>... asyncWrite, Boolean inRetry, SqlDataReader</code>),   porque o SP da build 2025 recebe params fora do formato e faz plano ruim. Com os params da §2 o SP   roda certo (chega até o Crystal).</p>
+<ul>
+<li><strong>667 na build 2025 é OUTRO relatório:</strong> exige <strong>Ocorrência + Classificação de Risco</strong></li>
+</ul>
+<p>  obrigatórios (drill-down), não é o nominal simples do Conde. Não serve de espinha.</p>
+<ul>
+<li>Relatórios <strong>cross-tab de totais</strong> (65 Tipo de Saída, 543/542 CID por faixa etária, 85) só têm</li>
+</ul>
+<p>  datas, mas são <strong>totais por faixa etária — não amarram a boletim</strong>. Não são a espinha.</p>
+<h2>5. Obstáculo em aberto: Crystal vaza memória e satura sob volume</h2>
+<p>No início da sessão, 629/630 (PDF, snapshot) responderam normal. Após ~18 requisições de relatório no recon, <strong>todo</strong> export passou a devolver <code>COMException (0x80041004): Not enough memory for operation</code> no <code>ReportSourceClass.Export</code> — XLS e PDF, com e sem filtro, em UPA e (esperado) Santa Rita. É <strong>vazamento de memória do servidor Crystal deles</strong>, que só recicla no <em>app pool</em> (minutos/horas), não em segundos.</p>
+<p><strong>Consequência operacional (casa com "não onerar o sistema"):</strong> o caminho web tem de ser <strong>cirúrgico</strong> — poucas requisições, <code>backoff</code> no OOM, e de preferência em janela de baixo uso. Para a espinha diária isso é barato: <strong>3 requisições por dia por unidade</strong> (751+752+802, período = o dia, <code>par5</code>/<code>par7</code> vazios). O <em>deep</em> por paciente entra em <strong>fila, um a um, sem pressa</strong>.</p>
+<h2>6. Santa Rita = paridade total com a UPA</h2>
+<p>Mesma build (<code>U.2025.06.1.26</code>), mesmo app (<code>/UPA24H</code>), mesmo gate (porta+local → <code>_ID_VINCULO</code>), mesma tela 526 com os mesmos modos <code>rblPadrao</code> (Padrao/Nominal/Por CID/Por Status BAM). <strong>Só mudam host e unidade:</strong> <code>starita24h.smsmarica.online</code>, <code>par1=0007</code>. As URLs da §2 valem trocando <code>par1</code>. Login <code>leonardo.dantas</code> entra de verdade nas duas.</p>
+<h2>7. Credenciais e gate (resumo operacional)</h2>
+<ul>
+<li><strong>Login:</strong> <code>leonardo.dantas</code> / (senha no <code>.env</code>) — vale UPA <strong>e</strong> Santa Rita. <code>bruno.rocha</code> /</li>
+</ul>
+<p>  <code>l.mello</code> / <code>123</code> valem <strong>só no Conde</strong>.</p>
+<ul>
+<li><strong>Gate (1× por sessão):</strong> <code>porta de entrada</code> (AutoPostBack) → <code>local físico</code> → salvar. Grava</li>
+</ul>
+<p>  <code>_ID_VINCULO</code> + <code>_LOCAL_NAME</code>. Sem isso os relatórios não engatam. <code>paridade_upa.gate_porta_local()</code>   já faz.</p>
+<ul>
+<li><strong>Guarda de aba:</strong> a primeira visita a uma tela de relatório pode cair em <code>ErroGuia.aspx</code></li>
+</ul>
+<p>  ("feche a guia atual"). Visitar <code>/UPA24H/Default.aspx</code> uma vez destrava.</p>
+<h2>8. Próximos passos</h2>
+<ol>
+<li><strong>Confirmar colunas</strong> de 751/752/802 quando o Crystal recuperar (uma requisição de cada, dia</li>
+</ol>
+<p>   único) e fixar o <code>de-para</code> → FHIR.</p>
+<ol>
+<li><strong>Perfil de build no conector:</strong> <code>KlinikosWeb</code> detecta a versão (Conde <code>K.2024</code> vs UPA/STA</li>
+</ol>
+<p>   <code>U.2025</code>) e escolhe o mapa de relatórios/params. Auto-detecção pela string de versão da home ou    escolha explícita no cadastro da instância (dropdown "versão").</p>
+<ol>
+<li><strong>Paridade web × SQL</strong> na UPA: com 751 lendo boletim+chegada+cor, rodar <code>paridade_upa.py</code></li>
+</ol>
+<p>   (ajustado para 751) contra o que o conector SQL já colocou no hub — critério de aceite.</p>
+</main>
+</body>
+</html>

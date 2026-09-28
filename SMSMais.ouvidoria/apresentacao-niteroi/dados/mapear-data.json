@@ -1,0 +1,434 @@
+{
+ "entidades": [
+  {
+   "nome": "OuvidoriaManifestacao",
+   "tabela": "smsmarica.ouvidoria_manifestacao",
+   "proposito": "Uma linha por protocolo de manifestacao (solicitacao, reclamacao, denuncia, sugestao, elogio ou informacao): guarda classificacao, contexto, manifestante, relogios de prazo e conclusao — o historico fica nos eventos.",
+   "colunas": [
+    "id (uuid, PK)",
+    "protocolo (varchar(11), obrigatorio, UNICO) — formato AAAA-NNNNNN, ano + sequencia ouvidoria_protocolo_seq",
+    "codigo_acesso_hash (varchar(64), nulo) — SHA-256 do codigo de acesso de 8 caracteres entregue uma unica vez; NULO quando anonima",
+    "tipo (int, obrigatorio) — OuvidoriaTipo",
+    "identificacao (int, obrigatorio) — OuvidoriaIdentificacao",
+    "canal (int, obrigatorio) — OuvidoriaCanal",
+    "origem (int, obrigatorio) — OuvidoriaOrigem",
+    "prioridade (int, obrigatorio, default Normal) — OuvidoriaPrioridade",
+    "status (int, obrigatorio, default Registrada) — OuvidoriaStatus",
+    "assunto_id (uuid, nulo) — FK ouvidoria_assunto (1o nivel)",
+    "subassunto_id (uuid, nulo) — FK ouvidoria_assunto (2o nivel)",
+    "resumo (varchar(200), nulo) — resumo curto da fila, preenchido na triagem",
+    "teor (text, obrigatorio) — texto integral do cidadao; nunca editado, correcao vira evento",
+    "teor_pseudonimizado (text, nulo) — versao sem nada que identifique o manifestante; e ISTO que vai a unidade apuratoria na denuncia; obrigatorio para encaminhar denuncia",
+    "unidade_id (uuid, nulo) — FK smsmarica.unidade; unidade a que a manifestacao se refere (nao e escopo de acesso: a ouvidoria e transversal)",
+    "ponto_resposta_id (uuid, nulo) — FK ouvidoria_ponto_resposta; ponto atual",
+    "regulacao_solicitacao_id (uuid, nulo) — FK regulacao_solicitacao; a ouvidoria nao abre pedido de regulacao, so aponta para um",
+    "protocolo_externo (varchar(60), nulo) — numero em Fala.BR, Ouvidoria Geral, 136",
+    "sistema_externo (varchar(40), nulo)",
+    "data_fato (date, nulo)",
+    "local_fato (varchar(200), nulo)",
+    "manifestante_nome (varchar(200), nulo)",
+    "manifestante_cpf (varchar(11), nulo, indexado)",
+    "manifestante_telefone (varchar(20), nulo)",
+    "manifestante_email (varchar(200), nulo)",
+    "manifestante_patient_id (uuid, nulo) — Patient FHIR, sem FK fisica (hub autonomo)",
+    "referido_patient_id (uuid, nulo) — paciente em favor de quem se manifesta",
+    "referido_nome (varchar(200), nulo)",
+    "referido_cpf (varchar(11), nulo)",
+    "referido_cns (varchar(15), nulo)",
+    "envolvido_practitioner_id (uuid, nulo) — Practitioner FHIR citado, sem FK fisica",
+    "envolvido_descricao (varchar(300), nulo) — descricao livre quando nao ha Practitioner",
+    "registrada_em (timestamptz, obrigatorio)",
+    "prazo_resposta_em (date, obrigatorio) — prazo ao cidadao (30 dias, +30 na prorrogacao, + dias suspensos)",
+    "prorrogado_em (timestamptz, nulo) — so uma prorrogacao: nao nulo = nao pode prorrogar de novo",
+    "prorrogacao_justificativa (text, nulo)",
+    "prazo_area_em (date, nulo) — prazo da area para responder a ouvidoria",
+    "encaminhada_em (timestamptz, nulo)",
+    "complementacao_solicitada_em (timestamptz, nulo)",
+    "complementacao_usada (bool, obrigatorio, default false) — complementacao so pode ser pedida uma vez (PN CGU 116 art. 27)",
+    "suspensa_em (timestamptz, nulo) — inicio da suspensao do relogio; nulo = relogio correndo",
+    "dias_suspensos (int, obrigatorio, default 0)",
+    "respondida_em (timestamptz, nulo)",
+    "concluida_em (timestamptz, nulo)",
+    "dias_ate_resposta (int, nulo) — dias corridos do registro a resposta conclusiva, ja sem dias_suspensos",
+    "dias_atraso (int, nulo) — dias alem do prazo_resposta_em (0 = no prazo)",
+    "ultima_atividade_em (timestamptz, obrigatorio) — ordena a fila",
+    "resolutividade (int, nulo) — OuvidoriaResolutividade",
+    "situacao_final (int, nulo) — OuvidoriaSituacaoFinal",
+    "motivo_nao_atendimento (int, nulo) — OuvidoriaMotivoNaoAtendimento",
+    "motivo_arquivamento (int, nulo) — OuvidoriaMotivoArquivamento",
+    "resposta_conclusiva (text, nulo) — copia do evento RespostaConclusiva para leitura rapida",
+    "habilitada_em (timestamptz, nulo) — juizo de admissibilidade da denuncia (PN CGU 116 art. 33)",
+    "habilitada_por (uuid, nulo)",
+    "responsavel_id (uuid, nulo) — tecnico da ouvidoria, sem FK fisica",
+    "criado_em / criado_por / atualizado_em / atualizado_por / excluido_em / excluido_por (auditoria ADR-0006)",
+    "xmin (xid) — concorrencia otimista"
+   ],
+   "relacoes": [
+    "Assunto: N:1 ouvidoria_assunto por assunto_id (Restrict)",
+    "Subassunto: N:1 ouvidoria_assunto por subassunto_id (Restrict)",
+    "Unidade: N:1 smsmarica.unidade (Restrict)",
+    "PontoResposta: N:1 ouvidoria_ponto_resposta (Restrict)",
+    "RegulacaoSolicitacao: N:1 sem navegacao, por regulacao_solicitacao_id (Restrict)",
+    "Eventos: 1:N ouvidoria_evento (Cascade)",
+    "Anexos: 1:N ouvidoria_anexo (Cascade)",
+    "Marcadores: 1:N ouvidoria_manifestacao_marcador (Cascade)",
+    "ouvidoria_acesso_identidade referencia esta tabela (Cascade)",
+    "Indices: protocolo UNICO; status; unidade_id; ponto_resposta_id; prazo_resposta_em; manifestante_cpf; (tipo, registrada_em); alem dos indices de FK assunto_id, subassunto_id, regulacao_solicitacao_id"
+   ]
+  },
+  {
+   "nome": "OuvidoriaEvento",
+   "tabela": "smsmarica.ouvidoria_evento",
+   "proposito": "Trilha append-only da manifestacao (nunca UPDATE nem DELETE — correcao e evento novo); dela saem o acompanhamento do cidadao e o historico interno.",
+   "colunas": [
+    "id (uuid, PK)",
+    "manifestacao_id (uuid, obrigatorio)",
+    "tipo (int, obrigatorio) — OuvidoriaTipoEvento",
+    "status_anterior (int, nulo) — OuvidoriaStatus; nulo em anotacao, cobranca etc.",
+    "status_novo (int, nulo) — OuvidoriaStatus",
+    "autor_id (uuid, nulo) — nulo em acao do cidadao pelo canal publico ou rotina automatica",
+    "autor_nome (varchar(200), nulo) — desnormalizado: o historico nao muda se o usuario for renomeado ou excluido",
+    "ponto_resposta_id (uuid, nulo) — filtro do \"meu ponto\"",
+    "texto (text, nulo)",
+    "visivel_ao_cidadao (bool, obrigatorio, default false) — decidido por EVENTO, nao pelo tipo",
+    "criado_em (timestamptz, obrigatorio)"
+   ],
+   "relacoes": [
+    "Manifestacao: N:1 ouvidoria_manifestacao (Cascade, configurado do lado da manifestacao)",
+    "PontoResposta: N:1 ouvidoria_ponto_resposta sem navegacao (Restrict)",
+    "ouvidoria_anexo.evento_id aponta para ca (Cascade)",
+    "Indices: (manifestacao_id, criado_em); ponto_resposta_id"
+   ]
+  },
+  {
+   "nome": "OuvidoriaAnexo",
+   "tabela": "smsmarica.ouvidoria_anexo",
+   "proposito": "Referencia a um arquivo da manifestacao (foto, documento, comprovante) cujo binario vive em smsmarica.midia, opcionalmente preso ao evento que o trouxe.",
+   "colunas": [
+    "id (uuid, PK)",
+    "manifestacao_id (uuid, obrigatorio)",
+    "evento_id (uuid, nulo) — nulo = anexo do registro",
+    "midia_id (uuid, obrigatorio) — FK smsmarica.midia",
+    "nome_arquivo (varchar(300), obrigatorio)",
+    "visivel_ao_cidadao (bool, obrigatorio, default false) — anexo da area e interno por padrao",
+    "criado_em (timestamptz, obrigatorio)"
+   ],
+   "relacoes": [
+    "Manifestacao: N:1 ouvidoria_manifestacao (Cascade)",
+    "Evento: N:1 ouvidoria_evento sem navegacao (Cascade — anexo preso a um evento cai junto com ele)",
+    "Midia: N:1 smsmarica.midia sem navegacao (Restrict)",
+    "Indices: manifestacao_id; evento_id; midia_id"
+   ]
+  },
+  {
+   "nome": "OuvidoriaAssunto",
+   "tabela": "smsmarica.ouvidoria_assunto",
+   "proposito": "Assunto da manifestacao em dois niveis (assunto -> subassunto) via auto-relacao PaiId; os 22 assuntos do Manual do MS 2014 sao semeados pelo service na primeira leitura, nunca em migration.",
+   "colunas": [
+    "id (uuid, PK)",
+    "pai_id (uuid, nulo) — nulo = 1o nivel",
+    "nome (varchar(200), obrigatorio)",
+    "codigo_ouvidor_sus (varchar(20), nulo) — reservado para a exportacao futura (fase 3)",
+    "ordem (int, obrigatorio, default 0) — ordem de exibicao dentro do mesmo pai",
+    "ativo (bool, obrigatorio, default true)"
+   ],
+   "relacoes": [
+    "Pai: auto-relacao N:1 ouvidoria_assunto (Restrict)",
+    "Referenciada por ouvidoria_manifestacao.assunto_id e .subassunto_id",
+    "Indice UNICO (pai_id, nome)"
+   ]
+  },
+  {
+   "nome": "OuvidoriaMarcador",
+   "tabela": "smsmarica.ouvidoria_marcador",
+   "proposito": "Etiqueta livre da ouvidoria (\"recorrente\", \"imprensa\", \"MP\") para agrupar manifestacoes fora da classificacao oficial; desativa-se em vez de excluir.",
+   "colunas": [
+    "id (uuid, PK)",
+    "nome (varchar(80), obrigatorio, UNICO)",
+    "ativo (bool, obrigatorio, default true)"
+   ],
+   "relacoes": [
+    "N:N com ouvidoria_manifestacao via ouvidoria_manifestacao_marcador (Cascade)",
+    "Indice UNICO nome"
+   ]
+  },
+  {
+   "nome": "OuvidoriaManifestacaoMarcador",
+   "tabela": "smsmarica.ouvidoria_manifestacao_marcador",
+   "proposito": "Tabela de ligacao N:N entre manifestacao e marcador.",
+   "colunas": [
+    "manifestacao_id (uuid) — parte da PK composta",
+    "marcador_id (uuid) — parte da PK composta"
+   ],
+   "relacoes": [
+    "PK composta (manifestacao_id, marcador_id)",
+    "Manifestacao: N:1 ouvidoria_manifestacao (Cascade)",
+    "Marcador: N:1 ouvidoria_marcador (Cascade)",
+    "Indice marcador_id"
+   ]
+  },
+  {
+   "nome": "OuvidoriaPontoResposta",
+   "tabela": "smsmarica.ouvidoria_ponto_resposta",
+   "proposito": "Quem responde pela manifestacao depois do encaminhamento: uma unidade de saude, uma area central (Regulacao, Farmacia...) ou uma unidade apuratoria.",
+   "colunas": [
+    "id (uuid, PK)",
+    "nome (varchar(200), obrigatorio)",
+    "tipo (int, obrigatorio) — OuvidoriaTipoPontoResposta",
+    "unidade_id (uuid, nulo) — obrigatoria quando Tipo = Unidade; uma unidade tem no maximo um ponto",
+    "prazo_dias (int, nulo) — prazo proprio para responder a ouvidoria; nulo = usa o da configuracao por prioridade",
+    "ativo (bool, obrigatorio, default true)",
+    "criado_em / criado_por / atualizado_em / atualizado_por / excluido_em / excluido_por (auditoria ADR-0006)",
+    "xmin (xid) — concorrencia otimista"
+   ],
+   "relacoes": [
+    "Unidade: N:1 smsmarica.unidade (Restrict)",
+    "Membros: 1:N ouvidoria_ponto_resposta_membro (Cascade)",
+    "Referenciado por ouvidoria_manifestacao.ponto_resposta_id e ouvidoria_evento.ponto_resposta_id (Restrict)",
+    "Indice UNICO FILTRADO em unidade_id com filtro \"unidade_id IS NOT NULL\""
+   ]
+  },
+  {
+   "nome": "OuvidoriaPontoRespostaMembro",
+   "tabela": "smsmarica.ouvidoria_ponto_resposta_membro",
+   "proposito": "Usuario que responde por um ponto de resposta — e este pertencimento que da a quem tem OuvidoriaPontoResposta o direito de ver as manifestacoes encaminhadas ao ponto.",
+   "colunas": [
+    "id (uuid, PK)",
+    "ponto_resposta_id (uuid, obrigatorio)",
+    "usuario_id (uuid, obrigatorio) — FK smsmarica.usuario",
+    "titular (bool, obrigatorio, default false) — titular recebe a cobranca primeiro; os demais sao suplentes",
+    "criado_em (timestamptz, obrigatorio)"
+   ],
+   "relacoes": [
+    "PontoResposta: N:1 ouvidoria_ponto_resposta (Cascade)",
+    "Usuario: N:1 smsmarica.usuario sem navegacao (Restrict)",
+    "Indice UNICO (ponto_resposta_id, usuario_id); indice usuario_id"
+   ]
+  },
+  {
+   "nome": "OuvidoriaAcessoIdentidade",
+   "tabela": "smsmarica.ouvidoria_acesso_identidade",
+   "proposito": "Registro append-only de cada revelacao da identidade de um manifestante sigiloso (Decreto 10.153/2019 art. 6o §3o): justificativa obrigatoria e IP do usuario que revelou.",
+   "colunas": [
+    "id (uuid, PK)",
+    "manifestacao_id (uuid, obrigatorio)",
+    "usuario_id (uuid, obrigatorio) — quem revelou; FK smsmarica.usuario",
+    "justificativa (varchar(500), obrigatorio)",
+    "ip (varchar(45), nulo) — IPv4 ou IPv6 (45 caracteres cobrem IPv6 mapeado); vem do IUsuarioAtualAccessor",
+    "criado_em (timestamptz, obrigatorio)"
+   ],
+   "relacoes": [
+    "Manifestacao: N:1 ouvidoria_manifestacao (Cascade)",
+    "Usuario: N:1 smsmarica.usuario sem navegacao (Restrict)",
+    "Indices: (manifestacao_id, criado_em); usuario_id"
+   ]
+  },
+  {
+   "nome": "OuvidoriaConfiguracao",
+   "tabela": "smsmarica.ouvidoria_configuracao",
+   "proposito": "Singleton de configuracao do modulo: prazos, arquivamento automatico e notificacao; linha unica com Id fixo 77777777-0000-0000-0000-000000000002 criada sob demanda pelo service (nunca em migration, ADR-0043).",
+   "colunas": [
+    "id (uuid, PK) — fixo 77777777-0000-0000-0000-000000000002",
+    "prazo_cidadao_dias (int, obrigatorio, default 30) — Lei 13.460 art. 16",
+    "prorrogacao_dias (int, obrigatorio, default 30) — dias acrescidos na unica prorrogacao permitida",
+    "prazo_area_dias (int, obrigatorio, default 20) — prioridade Normal",
+    "prazo_area_alta_dias (int, obrigatorio, default 10) — prioridade Alta",
+    "prazo_area_urgente_dias_uteis (int, obrigatorio, default 2) — prioridade Urgente, em dias uteis (seg-sex)",
+    "complementacao_dias (int, obrigatorio, default 20) — dias que o cidadao tem para complementar antes do arquivamento automatico",
+    "arquivamento_automatico_dias (int, obrigatorio, default 30) — dias apos a resposta conclusiva sem recurso ate a conclusao automatica",
+    "notificar_por_whatsapp (bool, obrigatorio, default true)",
+    "texto_recibo (text, nulo) — mensagem com o protocolo; {protocolo} e {prazo} sao substituidos; nulo = texto padrao do notificador",
+    "atualizado_em (timestamptz, nulo) / atualizado_por (uuid, nulo)"
+   ],
+   "relacoes": [
+    "Sem FKs — tabela isolada, linha unica"
+   ]
+  }
+ ],
+ "enums": [
+  {
+   "nome": "OuvidoriaTipo",
+   "valores": [
+    "Solicitacao = 1",
+    "Reclamacao = 2",
+    "Denuncia = 3",
+    "Sugestao = 4",
+    "Elogio = 5",
+    "Informacao = 6"
+   ],
+   "observacao": "Lei 13.460/2017 + Manual de Ouvidoria do SUS (MS 2014). Define as regras de identificacao: solicitacao e informacao nunca sao sigilosas nem anonimas; anonimato so em denuncia."
+  },
+  {
+   "nome": "OuvidoriaIdentificacao",
+   "valores": [
+    "Identificada = 1",
+    "Sigilosa = 2",
+    "Anonima = 3"
+   ],
+   "observacao": "Sigilosa = a ouvidoria conhece a identidade mas ela fica restrita (Decreto 10.153/2019). Anonima = ninguem conhece: sem codigo de acesso e sem resposta ao cidadao."
+  },
+  {
+   "nome": "OuvidoriaCanal",
+   "valores": [
+    "Painel = 1",
+    "SitePublico = 2",
+    "AppCidadao = 3",
+    "WhatsApp = 4",
+    "Presencial = 5",
+    "Telefone = 6",
+    "Email = 7",
+    "Carta = 8",
+    "Urna = 9",
+    "BuscaAtiva = 10",
+    "Disque136 = 11",
+    "FalaBr = 12",
+    "OuvidoriaGeral = 13",
+    "Outro = 99"
+   ],
+   "observacao": "Canal por onde a manifestacao chegou; Outro = 99 e a valvula de escape."
+  },
+  {
+   "nome": "OuvidoriaOrigem",
+   "valores": [
+    "Cidadao = 1",
+    "OuvidoriaAtiva = 2",
+    "DeOficio = 3",
+    "Coletiva = 4"
+   ],
+   "observacao": "Quem deu origem: o cidadao, a ouvidoria ativa (busca), de oficio ou coletiva."
+  },
+  {
+   "nome": "OuvidoriaPrioridade",
+   "valores": [
+    "Normal = 1",
+    "Alta = 2",
+    "Urgente = 3"
+   ],
+   "observacao": "Define o prazo da area (D-4): Normal 20 dias, Alta 10 dias, Urgente 2 dias uteis."
+  },
+  {
+   "nome": "OuvidoriaStatus",
+   "valores": [
+    "Registrada = 1",
+    "EmTriagem = 2",
+    "Encaminhada = 3",
+    "AguardandoComplementacao = 4",
+    "RespondidaPelaArea = 5",
+    "EmValidacao = 6",
+    "Respondida = 7",
+    "EmRecurso = 8",
+    "Concluida = 9",
+    "Arquivada = 10",
+    "EncaminhadaOutroOrgao = 11"
+   ],
+   "observacao": "Maquina de estados da manifestacao. Estados finais: Concluida, Arquivada e EncaminhadaOutroOrgao. Cada transicao gera um OuvidoriaTipoEvento."
+  },
+  {
+   "nome": "OuvidoriaResolutividade",
+   "valores": [
+    "Resolvida = 1",
+    "NaoResolvida = 2"
+   ],
+   "observacao": "Declarada na resposta conclusiva; indicador do OuvidorSUS."
+  },
+  {
+   "nome": "OuvidoriaSituacaoFinal",
+   "valores": [
+    "Atendida = 1",
+    "NaoAtendida = 2",
+    "NaoLocalizado = 3",
+    "Faleceu = 4",
+    "Procede = 5",
+    "NaoProcede = 6",
+    "Inconclusiva = 7"
+   ],
+   "observacao": "Coerente com o tipo: solicitacao -> Atendida/NaoAtendida/NaoLocalizado/Faleceu; reclamacao e denuncia -> Procede/NaoProcede/Inconclusiva; demais -> Atendida."
+  },
+  {
+   "nome": "OuvidoriaMotivoNaoAtendimento",
+   "valores": [
+    "FaltaRecursos = 1",
+    "NaoCobertoSus = 2",
+    "FezParticular = 3",
+    "VagasInsuficientes = 4",
+    "NaoCompareceu = 5",
+    "Outro = 99"
+   ],
+   "observacao": "Obrigatorio quando SituacaoFinal = NaoAtendida."
+  },
+  {
+   "nome": "OuvidoriaMotivoArquivamento",
+   "valores": [
+    "Duplicidade = 1",
+    "TextoIncompreensivel = 2",
+    "FaltaUrbanidade = 3",
+    "Impropria = 4",
+    "CopiaConhecimento = 5",
+    "PerdaObjeto = 6",
+    "SemComplementacao = 7",
+    "SemElementosMinimos = 8",
+    "Outro = 99"
+   ],
+   "observacao": "PN CGU 116, arts. 28-30. Duplicidade exige o protocolo original no texto."
+  },
+  {
+   "nome": "OuvidoriaTipoEvento",
+   "valores": [
+    "Registro = 1",
+    "Triagem = 2",
+    "Reclassificacao = 3",
+    "Encaminhamento = 4",
+    "PedidoComplementacao = 5",
+    "Complementacao = 6",
+    "RespostaArea = 7",
+    "DevolucaoParaReanalise = 8",
+    "RespostaIntermediaria = 9",
+    "RespostaConclusiva = 10",
+    "Prorrogacao = 11",
+    "Cobranca = 12",
+    "Escalonamento = 13",
+    "Recurso = 14",
+    "Conclusao = 15",
+    "Arquivamento = 16",
+    "EncaminhamentoExterno = 17",
+    "Anotacao = 18",
+    "Habilitacao = 19",
+    "Reabertura = 20",
+    "AcessoIdentidade = 21"
+   ],
+   "observacao": "Tipo de cada linha da trilha append-only (ouvidoria_evento). O que e visivel ao cidadao e decidido por evento (visivel_ao_cidadao), nao pelo tipo."
+  },
+  {
+   "nome": "OuvidoriaTipoPontoResposta",
+   "valores": [
+    "Unidade = 1",
+    "AreaCentral = 2",
+    "Apuracao = 3"
+   ],
+   "observacao": "Natureza do ponto: unidade de saude, area central da secretaria (Regulacao, Farmacia...) ou unidade apuratoria (corregedoria, comissao de etica — D-6), unica que recebe denuncia habilitada."
+  }
+ ],
+ "migration": "20260920142356_Ouvidoria — cria a sequencia smsmarica.ouvidoria_protocolo_seq e 10 tabelas no schema smsmarica, nesta ordem: ouvidoria_assunto, ouvidoria_configuracao, ouvidoria_marcador, ouvidoria_ponto_resposta, ouvidoria_manifestacao, ouvidoria_acesso_identidade, ouvidoria_evento, ouvidoria_manifestacao_marcador, ouvidoria_ponto_resposta_membro e ouvidoria_anexo. Nao ha nenhuma CHECK constraint nem migrationBuilder.Sql() — so PKs, FKs e indices. Indices unicos: IX_ouvidoria_manifestacao_protocolo (protocolo), IX_ouvidoria_assunto_pai_id_nome (pai_id, nome), IX_ouvidoria_marcador_nome (nome), IX_ouvidoria_ponto_resposta_unidade_id (unidade_id, com filtro parcial \\\"unidade_id IS NOT NULL\\\") e IX_ouvidoria_ponto_resposta_membro_ponto_resposta_id_usuario_id (ponto_resposta_id, usuario_id). Demais indices: manifestacao (status, unidade_id, ponto_resposta_id, prazo_resposta_em, manifestante_cpf, tipo+registrada_em, assunto_id, subassunto_id, regulacao_solicitacao_id), evento (manifestacao_id+criado_em, ponto_resposta_id), anexo (manifestacao_id, evento_id, midia_id), acesso_identidade (manifestacao_id+criado_em, usuario_id), manifestacao_marcador (marcador_id), ponto_resposta_membro (usuario_id). FKs externas ao modulo: unidade, midia, usuario e regulacao_solicitacao — todas Restrict; as internas de filho para manifestacao/evento/ponto/marcador sao Cascade. Nao ha seed de dado nenhum na migration (assuntos e configuracao singleton sao semeados pelo service sob demanda, ADR-0043). A sequencia e declarada tambem em SmsMaisDbContext.OnModelCreating: modelBuilder.HasSequence&lt;long&gt;(\\\"ouvidoria_protocolo_seq\\\", SchemaPadrao).StartsAt(1).IncrementsBy(1).",
+ "permissoes": [
+  "Ouvidoria = 71 — Trabalho da ouvidoria: fila e detalhe das manifestacoes (manifestante mascarado quando sigilosa; denuncias inteiras so com OuvidoriaSigilo). Consulta = ver fila/detalhe; Inclusao = registrar manifestacao; Edicao = triar, encaminhar, pedir complementacao, validar, responder ao cidadao, prorrogar, cobrar, recurso, concluir; Exclusao = arquivar (nao ha DELETE — arquivar e estado final com motivo).",
+  "OuvidoriaGestao = 72 — Gestao do modulo: painel e indicadores, cadastro de pontos de resposta, assuntos, marcadores e configuracao de prazos. Consulta = painel/indicadores e configuracao; Inclusao = criar pontos de resposta, assuntos, marcadores; Edicao = editar os mesmos + configuracao + escalonar manifestacao; Exclusao = desativar.",
+  "OuvidoriaSigilo = 73 — Sigilo (Decreto 10.153/2019): ver denuncias e revelar a identidade de manifestante sigiloso; cada revelacao exige justificativa e e gravada em ouvidoria_acesso_identidade. Consulta = ver denuncias e revelar identidade; Inclusao = habilitar denuncia (juizo de admissibilidade); Edicao = editar o teor pseudonimizado que vai a apuracao; Exclusao nao e usada.",
+  "OuvidoriaPontoResposta = 74 — O servidor da unidade/area/apuracao que responde pelas manifestacoes encaminhadas aos pontos de que e membro (ouvidoria_ponto_resposta_membro), sem nunca ver dados do manifestante e, em denuncia, so o teor pseudonimizado. Consulta = ver as encaminhadas aos seus pontos; Edicao = responder pela area; Inclusao e Exclusao nao sao usadas."
+ ],
+ "observacoes": [
+  "Sao quatro modulos de permissao e nao um porque AcoesPermissao so tem 4 flags (Consulta/Inclusao/Edicao/Exclusao) e elas ja sao consumidas pelo trabalho normal da ouvidoria; sigilo e ponto de resposta sao eixos ORTOGONAIS — pessoas diferentes com recortes diferentes. Gestao tambem sai porque o tecnico que tria nao e quem cadastra a corregedoria como ponto de apuracao.",
+  "Todas as 10 tabelas ficam no schema smsmarica (negocio, pt-BR). Nada do modulo vai para o schema fhir; a ligacao com o hub FHIR e por Guid solto sem FK fisica (manifestante_patient_id, referido_patient_id, envolvido_practitioner_id).",
+  "O protocolo publico e AAAA-NNNNNN (varchar(11)), ano + sequencia smsmarica.ouvidoria_protocolo_seq; o codigo de acesso de 8 caracteres e entregue uma unica vez ao cidadao e so o SHA-256 fica guardado (codigo_acesso_hash), nulo quando anonima.",
+  "ouvidoria_evento e ouvidoria_acesso_identidade sao append-only por contrato de dominio (nunca UPDATE nem DELETE — correcao e evento novo); a imutabilidade nao e imposta por constraint no banco.",
+  "A visibilidade ao cidadao e decidida por linha (visivel_ao_cidadao em evento e em anexo), nao pelo tipo do evento: um encaminhamento e visivel mas sem nomear pessoas, a resposta da area nao e (o cidadao recebe a da ouvidoria).",
+  "Em denuncia, o ponto de resposta nunca ve o campo teor — recebe teor_pseudonimizado, que so quem tem OuvidoriaSigilo edita e que e obrigatorio para encaminhar.",
+  "unidade_id da manifestacao e contexto (a unidade a que o fato se refere), NAO escopo de acesso: a ouvidoria e transversal e nao entra no recorte X-Unidade-Id.",
+  "Concorrencia otimista via xmin (xid) so em ouvidoria_manifestacao e ouvidoria_ponto_resposta; as demais tabelas nao tem RowVersion.",
+  "Auditoria completa ADR-0006 (criado/atualizado/excluido em+por) so em ouvidoria_manifestacao e ouvidoria_ponto_resposta; configuracao tem apenas atualizado_em/atualizado_por; evento, anexo, membro e acesso_identidade tem so criado_em.",
+  "Os relogios de prazo sao suspensiveis: suspensa_em marca o inicio da suspensao por pedido de complementacao, dias_suspensos acumula o total e e somado ao prazo e descontado de dias_ate_resposta — a complementacao nao conta contra a ouvidoria. complementacao_usada garante o pedido uma unica vez (PN CGU 116 art. 27) e prorrogado_em nao nulo bloqueia a segunda prorrogacao.",
+  "codigo_ouvidor_sus em ouvidoria_assunto esta reservado para a exportacao ao OuvidorSUS na fase 3 — ainda nao e usado.",
+  "autor_nome no evento e desnormalizado de proposito: o historico nao pode mudar se o usuario for renomeado ou excluido.",
+  "A configuracao singleton (Id fixo 77777777-0000-0000-0000-000000000002) e os 22 assuntos do Manual do MS 2014 sao criados pelo service sob demanda, nunca por migration (ADR-0043: nada institucional em migration).",
+  "O binario dos anexos nao fica aqui: vive em smsmarica.midia e ouvidoria_anexo guarda so a referencia."
+ ]
+}

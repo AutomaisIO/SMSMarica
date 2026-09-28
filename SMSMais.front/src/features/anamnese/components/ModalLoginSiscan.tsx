@@ -61,7 +61,9 @@ export function ModalLoginSiscan({
 
   return (
     <Modal aberto={aberto} aoFechar={aoFechar} titulo="Entrar no SISCAN" largura="sm">
-      <form onSubmit={aoEnviar} className="space-y-4">
+      {/* Computador compartilhado na recepção (#137): o navegador não deve guardar nem oferecer
+          o usuário e a senha do SISCAN de uma pessoa para a próxima. */}
+      <form onSubmit={aoEnviar} autoComplete="off" className="space-y-4">
         <div className="rounded-md bg-teal-50 px-3 py-2 text-xs text-teal-900">
           <p className="flex items-start gap-2">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
@@ -76,7 +78,7 @@ export function ModalLoginSiscan({
           E-mail do SISCAN
           <Input
             type="email"
-            autoComplete="username"
+            autoComplete="off"
             value={usuario}
             onChange={(e) => setUsuario(e.target.value)}
             placeholder="seu.email@exemplo.gov.br"
@@ -90,7 +92,7 @@ export function ModalLoginSiscan({
           Senha
           <Input
             type="password"
-            autoComplete="current-password"
+            autoComplete="new-password"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
             required

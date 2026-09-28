@@ -43,5 +43,12 @@ export const ETAPAS = {
   EXCLUIR_PREPARO: { evento: 'preparo', escrita: true },
 };
 
-// Campos que NUNCA saem do navegador nem aparecem no painel.
+// Campos que NUNCA saem do navegador nem aparecem no painel. Nomes exatos do SISREG.
 export const CAMPOS_SENSIVEIS = new Set(['senha', 'senha_256']);
+
+// Nome de campo sigiloso por PADRAO — indispensavel em sistema que nao conhecemos. Medido no
+// Prime (21/09/2026): a tela de agenda carrega campos ocultos `hidSER2Login`, `hidSER2Senha`,
+// `hidSER2Token`, `hidCadecoSenha`, `hidCadecoToken` e os manda em TODO postback. Vieram vazios
+// na sessao observada, mas preenchidos seriam a senha de OUTRO sistema entrando no acervo em
+// texto claro. Mascarar por nome custa nada e nao depende de a gente ter previsto o campo.
+export const PADRAO_CAMPO_SIGILOSO = /senha|password|passwd|pwd|token|secret|credencial/i;

@@ -20,6 +20,10 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         {
             await EscreverProblema(context, StatusCodes.Status409Conflict, "Conflito", ex.Message, ex.Codigo);
         }
+        catch (ServicoIndisponivelException ex)
+        {
+            await EscreverProblema(context, StatusCodes.Status503ServiceUnavailable, "Serviço indisponível", ex.Message);
+        }
         catch (ValidacaoException ex)
         {
             var problema = new ValidationProblemDetails(ex.Erros)

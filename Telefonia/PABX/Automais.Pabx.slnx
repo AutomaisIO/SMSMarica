@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Automais.Pabx.Api/Automais.Pabx.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Automais.Pabx.Tests/Automais.Pabx.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -1,0 +1,27 @@
+{
+ "cena": "S08",
+ "modelo": "deepseek-r1-14b",
+ "chamadas": [
+  {
+   "n": 1,
+   "latencia_s": 78.91,
+   "usage": {
+    "completion_tokens": 341,
+    "prompt_tokens": 3329,
+    "total_tokens": 3670,
+    "prompt_tokens_details": {
+     "cached_tokens": 3328
+    }
+   },
+   "texto_fora_de_tool": "\n\nVocê pode retirar a guia de agendamento no posto de saúde onde você está cadastrada. Lá, você também receberá informações sobre o local do atendimento. Por favor, mantenha seus dados atualizados no aplicativo para ter acesso a todas as suas informações de exames e consultas.",
+   "tools": []
+  }
+ ],
+ "resposta_final": null,
+ "violacoes": [
+  "nenhuma_tool_chamada (tool_choice=required ignorado)",
+  "terminou_sem_responder_cidadao"
+ ],
+ "iniciado_em": "2026-09-26T23:37:03",
+ "latencia_total_s": 78.91
+}
