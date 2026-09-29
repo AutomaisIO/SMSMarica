@@ -39,7 +39,8 @@ public class CompletadorFichaSemCpfTests(PostgresFixture fixture)
 
     private ConsultaCnsRespostaDto Cadsus(string cpf) => new(
         Cns: Cns, Cpf: cpf, Nome: "FULANA DE TESTE",
-        Sexo: "Feminino", DataNascimento: new DateOnly(1970, 1, 22), NomeMae: null);
+        Sexo: "Feminino", DataNascimento: new DateOnly(1970, 1, 22),
+        NomeMae: "MARIA GENITORA DE TESTE", NomePai: "JOSE GENITOR DE TESTE");
 
     private sealed record Cenario(
         CompletadorFichaSemCpf Completador,
@@ -87,6 +88,8 @@ public class CompletadorFichaSemCpfTests(PostgresFixture fixture)
         await c.Pacientes.Received(1).DefinirCpfAsync(ficha.Id, CpfValido, Arg.Any<CancellationToken>());
         await c.Pacientes.Received(1).CompletarNascimentoAsync(
             ficha.Id, new DateOnly(1970, 1, 22), Arg.Any<CancellationToken>());
+        await c.Pacientes.Received(1).CompletarFiliacaoAsync(
+            ficha.Id, "MARIA GENITORA DE TESTE", "JOSE GENITOR DE TESTE", Arg.Any<CancellationToken>());
 
         await db.SaveChangesAsync(); // a memória viaja na transação do importador
         var memoria = await db.CadsusCompletudes.FindAsync(Cns);
@@ -160,6 +163,8 @@ public class CompletadorFichaSemCpfTests(PostgresFixture fixture)
         Assert.Contains("nascimento foi completado", r.Passo);
         await c.Pacientes.Received(1).CompletarNascimentoAsync(
             ficha.Id, new DateOnly(1970, 1, 22), Arg.Any<CancellationToken>());
+        await c.Pacientes.Received(1).CompletarFiliacaoAsync(
+            ficha.Id, "MARIA GENITORA DE TESTE", "JOSE GENITOR DE TESTE", Arg.Any<CancellationToken>());
         await db.SaveChangesAsync();
         Assert.Equal(DesfechoCadsusCompletude.SemCpf, (await db.CadsusCompletudes.FindAsync(Cns))!.Desfecho);
     }

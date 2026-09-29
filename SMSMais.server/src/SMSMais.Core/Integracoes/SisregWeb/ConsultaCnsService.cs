@@ -72,6 +72,7 @@ public sealed class ConsultaCnsService(ISisregWebSessao sessao) : IConsultaCnsSe
             Nome: registro.Nome,
             Sexo: registro.Sexo,
             DataNascimento: registro.DataNascimento,
-            NomeMae: registro.NomeMae);
+            NomeMae: registro.NomeMae,
+            NomePai: registro.NomePai);
     }
 }

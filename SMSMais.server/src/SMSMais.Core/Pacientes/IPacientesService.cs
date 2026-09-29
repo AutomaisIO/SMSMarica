@@ -85,6 +85,13 @@ public interface IPacientesService
     Task CompletarNascimentoAsync(Guid id, DateOnly nascimento, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Preenche mãe e/ou pai de um paciente que está <b>sem eles</b>. Filiação é o desempate de
+    /// homônimo — toda importação tenta trazê-la (decisão de 29/09/2026). Valor existente NÃO é
+    /// sobrescrito (mesma régua do nome); vazio de ambos os lados é no-op.
+    /// </summary>
+    Task CompletarFiliacaoAsync(Guid id, string? nomeMae, string? nomePai, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Traz para <paramref name="destinoId"/> os identificadores de um cadastro-sombra (aquele que
     /// a importação criou sem CPF) quando a recepção descobre que a pessoa já existia.
     ///

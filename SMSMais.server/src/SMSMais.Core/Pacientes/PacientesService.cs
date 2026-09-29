@@ -381,6 +381,43 @@ public sealed class PacientesService(
         }
     }
 
+    public async Task CompletarFiliacaoAsync(
+        Guid id, string? nomeMae, string? nomePai, CancellationToken cancellationToken = default)
+    {
+        var mae = string.IsNullOrWhiteSpace(nomeMae) ? null : nomeMae.Trim();
+        var pai = string.IsNullOrWhiteSpace(nomePai) ? null : nomePai.Trim();
+        if (mae is null && pai is null) return;
+
+        var completou = new List<string>(2);
+        await AtualizarComRetryAsync(id, patient =>
+        {
+            // Só preenche o vazio: filiação existente é dado consolidado e não se sobrescreve
+            // por automação (mesma régua do nome). É o desempate de homônimo — por isso toda
+            // importação tenta trazê-la (decisão de 29/09/2026).
+            var mudou = false;
+            if (mae is not null && string.IsNullOrWhiteSpace(PacienteFhirMapper.ContatoNome(patient, "MTH")))
+            {
+                PatientMergeFhir.UpsertContato(patient, "MTH", mae);
+                completou.Add($"mãe: {mae}");
+                mudou = true;
+            }
+            if (pai is not null && string.IsNullOrWhiteSpace(PacienteFhirMapper.ContatoNome(patient, "FTH")))
+            {
+                PatientMergeFhir.UpsertContato(patient, "FTH", pai);
+                completou.Add($"pai: {pai}");
+                mudou = true;
+            }
+            return mudou;
+        }, cancellationToken);
+
+        if (completou.Count > 0)
+        {
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), "CompletouFiliacao", "",
+                string.Join(" | ", completou), cancellationToken);
+        }
+    }
+
     public async Task AbsorverIdentificadoresAsync(
         Guid destinoId, string? cns, string? telefone, CancellationToken cancellationToken = default)
     {

@@ -366,7 +366,9 @@ internal static class PacienteFhirMapper
         _ => null,
     };
 
-    private static string? ContatoNome(Patient p, string code) =>
+    /// <summary>Nome do contato de parentesco (MTH/FTH...) — público para quem completa
+    /// filiação sem sobrescrever (CompletarFiliacaoAsync).</summary>
+    public static string? ContatoNome(Patient p, string code) =>
         p.Contact?.FirstOrDefault(c => c.Relationship != null
             && c.Relationship.Any(r => r.Coding != null && r.Coding.Any(cd => cd.Code == code)))?.Name?.Text;
 

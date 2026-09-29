@@ -114,6 +114,8 @@ public sealed class CompletadorFichaSemCpf(
             // Medido em 29/09/2026: 281 de 425 fichas caíram aqui no primeiro backfill.
             if (cadsus.DataNascimento is { } nascimentoSemCpf)
                 await pacientes.CompletarNascimentoAsync(porCns.Id, nascimentoSemCpf, ct);
+            // Filiação também: é o desempate de homônimo (decisão de 29/09/2026).
+            await pacientes.CompletarFiliacaoAsync(porCns.Id, cadsus.NomeMae, cadsus.NomePai, ct);
             await MemorizarAsync(memoria, digitos, DesfechoCadsusCompletude.SemCpf, null, ct);
             return manter with { Passo = "Ficha sem CPF: o CADSUS também não tem CPF para este CNS — segue sem CPF (a recepção informa), mas o nascimento foi completado quando havia." };
         }
@@ -126,6 +128,7 @@ public sealed class CompletadorFichaSemCpf(
                 await pacientes.DefinirCpfAsync(porCns.Id, cpf, ct);
                 if (cadsus.DataNascimento is { } nascimento)
                     await pacientes.CompletarNascimentoAsync(porCns.Id, nascimento, ct);
+                await pacientes.CompletarFiliacaoAsync(porCns.Id, cadsus.NomeMae, cadsus.NomePai, ct);
                 await MemorizarAsync(memoria, digitos, DesfechoCadsusCompletude.CpfCarimbado, null, ct);
                 return manter with { Passo = "Ficha estava sem CPF — completada pelo CADSUS (CPF carimbado; duplicata evitada na origem)." };
             }
@@ -135,6 +138,7 @@ public sealed class CompletadorFichaSemCpf(
             await RegistrarDonoAsync(memoria, digitos, dono, porCns, ct);
             if (cadsus.DataNascimento is { } nasc2)
                 await pacientes.CompletarNascimentoAsync(dono.Id, nasc2, ct);
+            await pacientes.CompletarFiliacaoAsync(dono.Id, cadsus.NomeMae, cadsus.NomePai, ct);
             return new CompletudeResultado(dono.Id, dono.NomeCompleto,
                 $"Ficha sem CPF era metade de um cadastro que já existia: o CADSUS confirmou o CPF de "
                 + $"{dono.NomeCompleto} — a marcação usa esse cadastro e o CNS foi absorvido por ele. "

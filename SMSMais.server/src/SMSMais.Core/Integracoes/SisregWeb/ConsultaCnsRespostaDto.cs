@@ -13,4 +13,7 @@ public sealed record ConsultaCnsRespostaDto(
     /// <summary>Sexo canônico ("Masculino"/"Feminino") quando o CADSUS informa; null caso contrário.</summary>
     string? Sexo,
     DateOnly? DataNascimento,
-    string? NomeMae);
+    string? NomeMae,
+    /// <summary>Nome do pai — a ficha do cadweb50 traz; o painel do SER não. Filiação é o
+    /// desempate de homônimo, então toda importação tenta trazê-la (decisão de 29/09/2026).</summary>
+    string? NomePai = null);

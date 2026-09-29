@@ -492,6 +492,7 @@ public sealed class ImportacaoSisregService(
                     Rg: null,
                     Sexo: cadsus.Sexo == "Masculino" ? Sexo.Masculino : cadsus.Sexo == "Feminino" ? Sexo.Feminino : Sexo.NaoInformado,
                     NomeDaMae: cadsus.NomeMae,
+                    NomeDoPai: cadsus.NomePai,
                     Endereco: endereco,
                     TelefoneCelular: celular,
                     TelefoneResidencial: residencial), ct);
