@@ -703,6 +703,7 @@ function ModalCancelarSim({
   aoCancelar: (motivo: string, meio: string) => void;
 }) {
   const [motivo, setMotivo] = useState('');
+  const [motivoParaPaciente, setMotivoParaPaciente] = useState('');
   const [meio, setMeio] = useState(MEIOS[0]);
   const [etapa, setEtapa] = useState<'formulario' | 'cancelando' | 'desfecho'>('formulario');
 
@@ -751,7 +752,7 @@ function ModalCancelarSim({
       <div className="space-y-3">
         <Cabecalho ficha={ficha} />
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-gray-700">Motivo</span>
+          <span className="font-medium text-gray-700">Motivo do cancelamento (SISREG)</span>
           <Input
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
@@ -759,6 +760,20 @@ function ModalCancelarSim({
             autoFocus
             disabled={cancelando}
           />
+          <span className="text-xs text-gray-500">Justificativa interna — fica registrada na ficha do SISREG.</span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-gray-700">Motivo para informar ao paciente</span>
+          <Input
+            value={motivoParaPaciente}
+            onChange={(e) => setMotivoParaPaciente(e.target.value)}
+            placeholder="ex.: o exame será remarcado pela Secretaria, sem necessidade de novo pedido"
+            disabled={cancelando}
+          />
+          <span className="text-xs text-gray-500">
+            É o que o paciente recebe se perguntar por quê — pelo robô do WhatsApp e pelo botão
+            &ldquo;Quero mais informações&rdquo; do aviso. Vazio, a resposta é a orientação genérica de procurar o posto.
+          </span>
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-700">Como falou com o paciente</span>

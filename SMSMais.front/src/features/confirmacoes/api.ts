@@ -190,7 +190,7 @@ export function abrirJanelaAtendimento(solicitacaoId: string) {
 type Acao =
   | { tipo: 'atender' | 'assumir' | 'liberar' }
   | { tipo: 'confirmar'; meio?: string; observacao?: string }
-  | { tipo: 'cancelar'; motivo: string; meio?: string }
+  | { tipo: 'cancelar'; motivo: string; meio?: string; motivoParaPaciente?: string }
   | { tipo: 'pendente'; motivo: string }
   | { tipo: 'contato-errado'; observacao?: string }
   | { tipo: 'transferir'; paraUsuarioId: string; observacao?: string }

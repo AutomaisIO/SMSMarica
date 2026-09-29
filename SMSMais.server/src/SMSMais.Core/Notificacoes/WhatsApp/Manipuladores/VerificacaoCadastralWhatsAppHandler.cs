@@ -159,11 +159,14 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
                     if (alvoInteresse.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
                     {
                         // Tocou no botão do AVISO DE CANCELAMENTO. Identificar-se aqui não leva a
-                        // nada — não há mensagem nova a liberar, e a liberação diria "já estou
-                        // enviando". O que a pessoa precisa é saber onde remarcar.
+                        // nada — não há mensagem nova a liberar. O que a pessoa quer saber é POR QUE
+                        // cancelou: se a atendente registrou o motivo para o paciente, é ele que sai;
+                        // sem motivo registrado, vale a orientação genérica de procurar o posto.
                         await ResponderAsync(ctx,
-                            "Esse agendamento foi cancelado. Para saber mais e remarcar, procure o posto de "
-                            + "saúde onde o paciente tem cadastro.", ct);
+                            await MotivoCancelamentoParaPacienteAsync(alvoInteresse.SolicitacaoId, ct) is { } porQue
+                                ? $"Esse agendamento foi cancelado. {porQue}"
+                                : "Esse agendamento foi cancelado. Para saber mais e remarcar, procure o posto de "
+                                  + "saúde onde o paciente tem cadastro.", ct);
                         return;
                     }
                     // Número JÁ PROVADO para o paciente deste aviso: sem interrogatório — os dados
@@ -1139,6 +1142,21 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             : await db.ComunicacoesPaciente.FirstOrDefaultAsync(n => n.Id == pendentes[0].Id, ct);
     }
 
+    /// <summary>
+    /// O motivo do cancelamento REDIGIDO PARA o paciente (o campo próprio do modal de cancelar),
+    /// ou null quando não foi registrado. É deliberadamente o texto que a atendente escreveu para
+    /// ser dito — nunca a justificativa interna que foi ao SISREG.
+    /// </summary>
+    private async Task<string?> MotivoCancelamentoParaPacienteAsync(Guid? solicitacaoId, CancellationToken ct)
+    {
+        if (solicitacaoId is not { } sid) return null;
+        var motivo = await db.Solicitacoes.AsNoTracking()
+            .Where(s => s.Id == sid)
+            .Select(s => s.MotivoCancelamentoParaPaciente)
+            .FirstOrDefaultAsync(ct);
+        return string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim();
+    }
+
     /// <summary>Confirma ANTES de marcar: tocar no botão errado não pode inutilizar o número de
     /// um paciente. A pergunta usa o primeiro nome que o próprio template já mostrou.</summary>
     private async Task PerguntarSeConhecePacienteAsync(
@@ -1164,10 +1182,14 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         var nome = PrimeiroNome((await ObterPacienteAsync(alvo.PacienteId, ct))?.NomeCompleto);
         if (alvo.Finalidade == FinalidadeComunicacao.CancelamentoAgendamento)
         {
-            // Aviso de cancelamento: não há o que liberar depois de uma identificação.
+            // Aviso de cancelamento: não há o que liberar depois de uma identificação — mas o
+            // motivo registrado para o paciente, quando existe, responde o "por quê" aqui também.
+            var deQuemCancelado = nome is null ? "do paciente" : $"de *{nome}*";
             await ResponderAsync(ctx,
-                $"Tudo bem! O agendamento {(nome is null ? "do paciente" : $"de *{nome}*")} foi cancelado. "
-                + "Para saber mais e remarcar, procure o posto de saúde onde o paciente tem cadastro.", ct);
+                await MotivoCancelamentoParaPacienteAsync(alvo.SolicitacaoId, ct) is { } porQue
+                    ? $"Tudo bem! O agendamento {deQuemCancelado} foi cancelado. {porQue}"
+                    : $"Tudo bem! O agendamento {deQuemCancelado} foi cancelado. "
+                      + "Para saber mais e remarcar, procure o posto de saúde onde o paciente tem cadastro.", ct);
             return;
         }
         var deQuem = nome is null ? "do paciente" : $"de *{nome}*";

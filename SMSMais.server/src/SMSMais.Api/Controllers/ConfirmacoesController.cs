@@ -56,7 +56,8 @@ public sealed class ConfirmacoesController(
     // ---- Atendimento humano (as 4 abas do menu) ----
 
     /// <summary>Uma das quatro filas: NaoConfirmados | Confirmados | ContatoErrado | Pendentes.
-    /// <paramref name="envio"/> filtra pela situação do envio automático (status ou "NaoEnviada").</summary>
+    /// <paramref name="envio"/> filtra pela situação do envio automático (status ou "NaoEnviada");
+    /// <paramref name="soCampanhas"/> restringe a agendamentos cobertos por campanha ativa (ADR-0062).</summary>
     [HttpGet("atendimento")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<PaginaAtendimentoDto>(StatusCodes.Status200OK)]
@@ -67,8 +68,9 @@ public sealed class ConfirmacoesController(
         [FromQuery] string? envio = null,
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanho = 50,
+        [FromQuery] bool soCampanhas = false,
         CancellationToken ct = default) =>
-        await atendimento.ListarAsync(aba, texto, unidadeId, envio, pagina, tamanho, ct);
+        await atendimento.ListarAsync(aba, texto, unidadeId, envio, pagina, tamanho, soCampanhas, ct);
 
     [HttpGet("atendimento/resumo")]
     [RequerPermissao(ModuloPermissao.Confirmacoes, AcoesPermissao.Consulta)]

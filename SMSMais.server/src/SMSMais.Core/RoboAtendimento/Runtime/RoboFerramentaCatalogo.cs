@@ -118,14 +118,16 @@ public static class RoboFerramentaCatalogo
 
             [ComandoRobo.ConsultarStatusAgendamento] = new(
                 "consultar_agendamentos",
-                "Consulta os agendamentos FUTUROS do paciente, em DUAS FASES. FASE 1: chame PRIMEIRO "
-                + "SEM NENHUM parâmetro, ANTES de pedir qualquer dado à pessoa — a resposta diz se "
-                + "EXISTE agendamento e o que fazer. Só peça CPF/nascimento se a fase 1 mandar: dado "
-                + "pessoal só se pede quando HÁ informação para entregar. FASE 2: com os QUATRO "
-                + "primeiros dígitos do CPF e o mês/ano de nascimento, confere a identidade e lista "
-                + "(procedimento, data e unidade). Use SEMPRE esta ferramenta antes de falar qualquer "
-                + "coisa sobre agendamento — inclusive para dizer que NÃO há: nunca afirme ausência "
-                + "sem ter consultado.",
+                "Consulta os agendamentos FUTUROS do paciente E os cancelamentos recentes, em DUAS "
+                + "FASES. FASE 1: chame PRIMEIRO SEM NENHUM parâmetro, ANTES de pedir qualquer dado à "
+                + "pessoa — a resposta diz se EXISTE agendamento e o que fazer. Só peça CPF/nascimento "
+                + "se a fase 1 mandar: dado pessoal só se pede quando HÁ informação para entregar. "
+                + "FASE 2: com os QUATRO primeiros dígitos do CPF e o mês/ano de nascimento, confere a "
+                + "identidade e lista (procedimento, data e unidade; cancelados vêm com o motivo "
+                + "registrado para informar ao paciente). Use SEMPRE esta ferramenta antes de falar "
+                + "qualquer coisa sobre agendamento — inclusive para dizer que NÃO há, e SEMPRE que "
+                + "perguntarem POR QUE um agendamento foi cancelado: o motivo se LÊ daqui, nunca se "
+                + "inventa. Nunca afirme ausência sem ter consultado.",
                 new
                 {
                     type = "object",

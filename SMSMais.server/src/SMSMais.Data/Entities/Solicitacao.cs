@@ -176,6 +176,14 @@ public class Solicitacao
     public Guid? CanceladoPorUsuarioId { get; set; }
     public string? MotivoCancelamento { get; set; }
 
+    /// <summary>
+    /// Motivo do cancelamento redigido PARA o paciente — o que o robô responde quando a pessoa
+    /// pergunta "por que cancelou?" e o que sai no "Quero mais informações" do aviso. Não confundir
+    /// com <see cref="MotivoCancelamentoPaciente"/> (as palavras DO paciente ao pedir cancelamento)
+    /// nem com <see cref="MotivoCancelamento"/> (a justificativa interna, que vai ao SISREG).
+    /// </summary>
+    public string? MotivoCancelamentoParaPaciente { get; set; }
+
     // ---- Satélite de execução (0..1) ----
 
     /// <summary>Execução de imagem (PACS), quando a categoria é <see cref="CategoriaSolicitacao.Imagem"/>.

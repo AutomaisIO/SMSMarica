@@ -72,6 +72,8 @@ export type SolicitacaoAtendimento = {
   motivoTelefoneComprometido: MotivoTelefoneComprometido | null;
   /** Mensagens já perdidas por esse mesmo motivo. */
   tentativasPerdidas: number;
+  /** Nome da campanha vigente para a unidade × data (ADR-0062) — destaque no card. */
+  campanhaNome: string | null;
 };
 
 export type PaginaAtendimento = {
@@ -127,6 +129,8 @@ export type FiltroAtendimento = {
   texto?: string;
   unidadeId?: string;
   envio?: string;
+  /** Só agendamentos cobertos por campanha ativa (ADR-0062) — para trabalhar um mutirão de uma vez. */
+  soCampanhas?: boolean;
   pagina?: number;
   tamanho?: number;
 };

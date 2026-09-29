@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-09-27',
+  atualizadoEm: '2026-09-29',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
@@ -50,6 +50,14 @@ export const artigoConfirmacoes: Artigo = {
     'telefone comprometido',
     'fila de cancelamento',
     'pedido de cancelamento',
+    'motivo do cancelamento',
+    'motivo para o paciente',
+    'quero mais informações',
+    'por que cancelou',
+    'campanha',
+    'somente campanhas',
+    'carreta',
+    'mutirão',
     'atendente',
     'fila',
     'equipe',
@@ -301,7 +309,7 @@ export const artigoConfirmacoes: Artigo = {
                   </>
                 ),
                 detalhe:
-                  'Motivo obrigatório. A vaga volta a contar aqui na hora e o paciente sai das filas — mas ainda falta o SISREG (leia a seção seguinte).',
+                  'São dois motivos: o do SISREG (obrigatório, justificativa interna que assina a ficha lá) e o motivo para informar ao paciente (opcional — é o que o robô responde quando ele perguntar por quê). A vaga volta a contar aqui na hora e o paciente sai das filas — mas ainda falta o SISREG (leia a seção seguinte).',
               },
             ]}
           />
@@ -316,7 +324,7 @@ export const artigoConfirmacoes: Artigo = {
       id: 'cancelamento-sisreg',
       titulo: 'Cancelar: como funciona nos dois sistemas',
       busca:
-        'cancelar sisreg senha login operador assina vaga aviso paciente conciliação cadência intervalo de quanto em quanto tempo janela horário fechamento dia anterior motor configurar cancelando demora travou não aconteceu nada resultado desfecho três linhas conferir',
+        'cancelar sisreg senha login operador assina vaga aviso paciente conciliação cadência intervalo de quanto em quanto tempo janela horário fechamento dia anterior motor configurar cancelando demora travou não aconteceu nada resultado desfecho três linhas conferir dois motivos motivo para o paciente por que cancelou quero mais informações robô responde',
       conteudo: (
         <div className="space-y-4">
           <P>Este é o ponto que mais gera confusão, então vale ler com calma. Ao cancelar aqui, na mesma hora:</P>
@@ -356,9 +364,19 @@ export const artigoConfirmacoes: Artigo = {
           </Callout>
           <Callout tipo="dica" titulo="O paciente é avisado na hora">
             Assim que o cancelamento é confirmado, o aviso sai no WhatsApp — sem esperar rotina nenhuma. A mensagem diz
-            que o agendamento foi cancelado e <strong>não</strong> diz o motivo: isso é informação interna. Ele só
+            que o agendamento foi cancelado e não carrega motivo nenhum. Ele só
             sai com o aviso ligado em <strong>Mensageria → Regras</strong> e se o horário do agendamento ainda não
             passou; quando não sai, a própria janela diz que o paciente <strong>não</strong> foi avisado.
+          </Callout>
+          <Callout tipo="dica" titulo="Os dois motivos: um para o SISREG, outro para o paciente">
+            A janela de cancelar tem <strong>duas</strong> caixas de motivo, porque são dois leitores diferentes. O{' '}
+            <strong>motivo do cancelamento (SISREG)</strong> é obrigatório: é a justificativa interna, registrada na
+            ficha de lá, lida por gente da regulação — e nunca sai para o paciente. O{' '}
+            <strong>motivo para informar ao paciente</strong> é o texto que ele recebe quando pergunta{' '}
+            <q>por que foi cancelado?</q>: o robô do WhatsApp responde com essas palavras, e o botão{' '}
+            <q>Quero mais informações</q> do próprio aviso também. Escreva-o como quem fala com a pessoa — ex.:{' '}
+            <q>o exame será remarcado pela Secretaria, sem necessidade de novo pedido</q>. Se ficar vazio, quem
+            perguntar recebe só a orientação genérica de procurar o posto.
           </Callout>
         </div>
       ),
@@ -366,7 +384,8 @@ export const artigoConfirmacoes: Artigo = {
     {
       id: 'fila-de-cancelamento',
       titulo: 'A fila de Cancelamento: por que ninguém cancela por texto',
-      busca: 'cancelamento fila robô whatsapp app pedido motivo conversa contexto triagem',
+      busca:
+        'cancelamento fila robô whatsapp app pedido motivo conversa contexto triagem unidade filtro campanha somente campanhas carreta mutirão selo no card',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -394,6 +413,14 @@ export const artigoConfirmacoes: Artigo = {
             Cada ficha parada aqui é um horário que continua bloqueado para alguém que não vai aparecer. Trabalhar esta
             fila é o que devolve a vaga para a fila de espera a tempo.
           </Callout>
+          <Sub>Trabalhando por unidade ou por campanha</Sub>
+          <P>
+            Os filtros do topo valem em todas as abas: o seletor de <strong>unidade</strong> restringe à unidade
+            executante, e o <strong>Somente campanhas</strong> deixa só os agendamentos cobertos por uma campanha
+            ativa — é o recorte para trabalhar um mutirão inteiro de uma vez, como a Carreta da Mulher. Todo card de
+            agendamento que pertence a uma campanha carrega um selo roxo com o nome dela: é o aviso de que o paciente
+            é atendido <strong>no local da campanha</strong>, não no endereço da unidade que aparece na guia do SISREG.
+          </P>
         </div>
       ),
     },

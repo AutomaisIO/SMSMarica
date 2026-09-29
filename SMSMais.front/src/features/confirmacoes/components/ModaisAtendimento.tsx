@@ -65,7 +65,13 @@ export function ModalConfirmar({ item, ocupado, erro, aoFechar, aoConfirmar }: B
 }
 
 /**
- * Cancelamento. Pede o motivo e o meio, e nada mais.
+ * Cancelamento. Pede os DOIS motivos e o meio, e nada mais.
+ *
+ * <para>São dois textos porque são dois leitores: o primeiro justifica a ficha no SISREG (gente
+ * da regulação, fora do nosso sistema); o segundo é o que o PACIENTE ouve — o robô responde com
+ * ele quando perguntarem "por que cancelou?", e o botão "Quero mais informações" do aviso também.
+ * Um texto só servia mal aos dois: ou vazava jargão interno para o paciente, ou empobrecia a
+ * justificativa oficial.</para>
  *
  * <para>Já teve um aviso aqui explicando que o SISREG precisava ser cancelado à parte. Saiu: quem
  * clica é sempre uma pessoa, que sabe o que está fazendo, e texto a mais em modal de ação vira
@@ -74,13 +80,14 @@ export function ModalConfirmar({ item, ocupado, erro, aoFechar, aoConfirmar }: B
 export function ModalCancelar({ item, ocupado, erro, resultado, aoFechar, aoCancelar }: Base & {
   /** Preenchido quando o cancelamento terminou — o modal vira a prestação de contas. */
   resultado: AcaoResultado | null;
-  aoCancelar: (motivo: string, meio: string) => void;
+  aoCancelar: (motivo: string, meio: string, motivoParaPaciente: string) => void;
 }) {
   // Quem veio da aba Cancelamento já disse por que — repetir isso à mão é trabalho à toa, e
   // digitado de novo o motivo perde as palavras da pessoa, que é o que vale numa auditoria.
   const pediuPeloZap = item.statusConfirmacao === 'Cancelada';
   const [motivo, setMotivo] = useState(
     pediuPeloZap && item.motivoCancelamentoPaciente ? item.motivoCancelamentoPaciente : '');
+  const [motivoParaPaciente, setMotivoParaPaciente] = useState('');
   const [meio, setMeio] = useState(pediuPeloZap ? 'WhatsApp' : 'Ligacao');
 
   if (resultado) {
@@ -96,8 +103,22 @@ export function ModalCancelar({ item, ocupado, erro, resultado, aoFechar, aoCanc
       <div className="space-y-3">
         <Cabecalho item={item} />
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-gray-700">Motivo</span>
+          <span className="font-medium text-gray-700">Motivo do cancelamento (SISREG)</span>
           <Input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="ex.: paciente pediu, vai fazer particular" autoFocus disabled={ocupado} />
+          <span className="text-xs text-gray-500">Justificativa interna — fica registrada na ficha do SISREG.</span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-gray-700">Motivo para informar ao paciente</span>
+          <Input
+            value={motivoParaPaciente}
+            onChange={(e) => setMotivoParaPaciente(e.target.value)}
+            placeholder="ex.: o exame será remarcado pela Secretaria, sem necessidade de novo pedido"
+            disabled={ocupado}
+          />
+          <span className="text-xs text-gray-500">
+            É o que o paciente recebe se perguntar por quê — pelo robô do WhatsApp e pelo botão
+            &ldquo;Quero mais informações&rdquo; do aviso. Vazio, a resposta é a orientação genérica de procurar o posto.
+          </span>
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-700">Como falou com o paciente</span>
@@ -116,7 +137,7 @@ export function ModalCancelar({ item, ocupado, erro, resultado, aoFechar, aoCanc
         <Erro erro={erro} />
         <div className="flex justify-end gap-2">
           <Button variante="outline" onClick={aoFechar} disabled={ocupado}>Voltar</Button>
-          <Button variante="danger" disabled={ocupado || motivo.trim().length === 0} onClick={() => aoCancelar(motivo.trim(), meio)}>
+          <Button variante="danger" disabled={ocupado || motivo.trim().length === 0} onClick={() => aoCancelar(motivo.trim(), meio, motivoParaPaciente.trim())}>
             {ocupado ? <Loader2 className="mr-1 size-4 animate-spin" /> : null}
             {ocupado ? 'Cancelando…' : 'Confirmo o cancelamento'}
           </Button>

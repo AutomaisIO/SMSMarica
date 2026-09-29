@@ -81,6 +81,7 @@ export function ConfirmacoesPage() {
   const [texto, setTexto] = useState('');
   const [unidadeId, setUnidadeId] = useState('');
   const [envio, setEnvio] = useState('');
+  const [soCampanhas, setSoCampanhas] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState<number>(50);
   const [modal, setModal] = useState<ModalAberto>(null);
@@ -91,7 +92,7 @@ export function ConfirmacoesPage() {
   const sessaoSisreg = useSessaoSisregObrigatoria();
   const textoDeb = useDebounce(texto);
 
-  useEffect(() => setPagina(1), [aba, textoDeb, unidadeId, envio, tamanho]);
+  useEffect(() => setPagina(1), [aba, textoDeb, unidadeId, envio, soCampanhas, tamanho]);
 
   const resumo = useResumoAbas();
   const motivos = useMotivosTelefoneComprometido(aba === 'TelefoneComprometido');
@@ -101,6 +102,7 @@ export function ConfirmacoesPage() {
     texto: textoDeb.trim() || undefined,
     unidadeId: unidadeId || undefined,
     envio: envio || undefined,
+    soCampanhas: soCampanhas || undefined,
     pagina,
     tamanho,
   });
@@ -160,6 +162,18 @@ export function ConfirmacoesPage() {
             <option key={s} value={s}>{ROTULO_STATUS[s]}</option>
           ))}
         </Select>
+        <label
+          className="flex items-center gap-2 text-sm text-gray-700 md:col-span-5"
+          title="Só agendamentos cobertos por uma campanha ativa (unidade × período) — para trabalhar um mutirão de uma vez, ex.: Carreta da Mulher."
+        >
+          <input
+            type="checkbox"
+            checked={soCampanhas}
+            onChange={(e) => setSoCampanhas(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+          />
+          Somente campanhas
+        </label>
       </div>
 
       {aba === 'TelefoneComprometido' && motivos.data ? (
@@ -267,11 +281,14 @@ export function ConfirmacoesPage() {
         <ModalCancelar
           item={modal.item} ocupado={acao.isPending} erro={acao.error} aoFechar={fecharModal}
           resultado={resultadoCancelamento}
-          aoCancelar={(motivo, meio) => {
+          aoCancelar={(motivo, meio, motivoParaPaciente) => {
             // O cancelamento vai ao SISREG assinado pela atendente. Sem sessão lá, o modal de
             // senha aparece e a ação é retomada sozinha — ela não redigita o motivo.
             const cancelar = () =>
-              acao.mutate({ solicitacaoId: modal.item.solicitacaoId, acao: { tipo: 'cancelar', motivo, meio } }, {
+              acao.mutate({
+                solicitacaoId: modal.item.solicitacaoId,
+                acao: { tipo: 'cancelar', motivo, meio, motivoParaPaciente: motivoParaPaciente || undefined },
+              }, {
                 // NÃO fecha: o modal vira o desfecho. Fechar aqui e dizer o resultado num toast
                 // fazia a tela apagar tudo no exato instante em que tinha algo a contar — e o
                 // toast morre em quatro segundos, no canto oposto ao que a pessoa olhava.

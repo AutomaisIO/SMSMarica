@@ -28,6 +28,10 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 /// Cobre as TRÊS fontes: solicitações locais (SISREG) por data futura, e os espelhos SER e SERNIT
 /// (regulação estadual/Niterói) por situação Agendada — lá a data vem em TEXTO ("Agendado para"),
 /// então é exibida como está, sem filtro por data.
+///
+/// Também devolve os CANCELADOS recentes com o motivo que a atendente registrou PARA o paciente
+/// (regra perene, 29/09/2026): "por que cancelou?" se responde lendo esse motivo, nunca
+/// inventando nem mandando a pessoa "perguntar no posto" quando a resposta está registrada.
 /// </summary>
 public sealed class ConsultarAgendamentosComando(
     SmsMaisDbContext db,
@@ -35,6 +39,10 @@ public sealed class ConsultarAgendamentosComando(
     PendenciasCadastro.IContatoNegadoService contatosNegados) : IRoboComando
 {
     private const int Maximo = 5;
+
+    /// <summary>Até quando um cancelamento ainda interessa na conversa: quem pergunta "por que
+    /// cancelou?" pergunta de algo recente — 60 dias cobrem o aviso e a dúvida que vem depois.</summary>
+    private const int JanelaCanceladosDias = 60;
 
     public ComandoRobo Comando => ComandoRobo.ConsultarStatusAgendamento;
     public bool Idempotente => false;
@@ -67,6 +75,9 @@ public sealed class ConsultarAgendamentosComando(
         var agora = DateTime.UtcNow;
         var futuros = await db.Solicitacoes.AsNoTracking()
             .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+                // Cancelado não é agendamento de pé: listá-lo como ativo fazia o robô
+                // "confirmar" uma vaga que a equipe acabara de derrubar.
+                && s.Status != StatusSolicitacao.Cancelada
                 && s.DataAgendada != null && s.DataAgendada >= agora)
             .OrderBy(s => s.DataAgendada)
             .Take(Maximo)
@@ -79,6 +90,26 @@ public sealed class ConsultarAgendamentosComando(
                 Unidade = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
                 s.UnidadeExecutanteId,
                 s.StatusConfirmacao,
+            })
+            .ToListAsync(ct);
+
+        // Cancelados recentes, com o motivo REDIGIDO PARA o paciente (campo próprio do modal de
+        // cancelar). Regra perene: quando a pessoa pergunta por que cancelou, o robô LÊ esse
+        // motivo — não manda "perguntar no posto" se a resposta está registrada.
+        var cancelados = await db.Solicitacoes.AsNoTracking()
+            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+                && s.Status == StatusSolicitacao.Cancelada
+                && s.CanceladoEm != null && s.CanceladoEm >= agora.AddDays(-JanelaCanceladosDias))
+            .OrderByDescending(s => s.CanceladoEm)
+            .Take(Maximo)
+            .Select(s => new
+            {
+                s.DataAgendada,
+                s.CanceladoEm,
+                Procedimento = s.ExameImagem != null && s.ExameImagem.TipoExame != null
+                    ? s.ExameImagem.TipoExame.Nome
+                    : (s.EspecialidadeTexto ?? s.ProcedimentoTexto),
+                s.MotivoCancelamentoParaPaciente,
             })
             .ToListAsync(ct);
 
@@ -104,7 +135,7 @@ public sealed class ConsultarAgendamentosComando(
             .Select(s => new { s.Recurso, s.AgendadoParaTexto, s.UnidadeExecutora })
             .ToListAsync(ct);
 
-        if (futuros.Count == 0 && linhasSer.Count == 0 && linhasSernit.Count == 0)
+        if (futuros.Count == 0 && linhasSer.Count == 0 && linhasSernit.Count == 0 && cancelados.Count == 0)
             return new(false,
                 "NÃO localizei agendamento futuro NO NOSSO SISTEMA — o que NÃO quer dizer que não exista: "
                 + "marcação feita agora pela equipe ou pela regulação pode ainda não ter chegado aqui. "
@@ -123,10 +154,32 @@ public sealed class ConsultarAgendamentosComando(
                 : string.IsNullOrWhiteSpace(f.Unidade) ? string.Empty : $" — {f.Unidade}";
             var conf = f.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada ? " (já confirmado)" : string.Empty;
             return $"- {f.Procedimento ?? "atendimento"}: {quando}{onde}{conf}";
-        });
+        }).ToList();
+
+        // Regra PERENE (decisão do dono, 29/09/2026): perguntou "por que cancelou?", o robô lê o
+        // motivo que a atendente registrou PARA o paciente — nunca inventa um, nunca manda
+        // "perguntar no posto" quando a resposta está aqui.
+        var linhasCancelados = cancelados.Select(c =>
+        {
+            var estava = c.DataAgendada is { } d
+                ? $" que estava marcado para {FusoBrasilia.ParaExibicao(d):dd/MM/yyyy 'às' HH:mm}" : string.Empty;
+            var porQue = string.IsNullOrWhiteSpace(c.MotivoCancelamentoParaPaciente)
+                ? "sem motivo registrado para informar"
+                : $"motivo registrado para informar ao paciente: \"{c.MotivoCancelamentoParaPaciente}\"";
+            return $"- CANCELADO: {c.Procedimento ?? "atendimento"}{estava} — {porQue}";
+        }).ToList();
+
+        var resposta = string.Join("\n", linhas);
+        if (linhasCancelados.Count > 0)
+            resposta += (linhas.Count > 0 ? "\n\n" : string.Empty)
+                + "Cancelados recentemente:\n" + string.Join("\n", linhasCancelados)
+                + "\n\nSe a pessoa perguntar POR QUE foi cancelado, responda com o motivo registrado "
+                + "acima, nas palavras registradas. Se estiver \"sem motivo registrado para informar\", "
+                + "diga que a unidade de saúde pode detalhar — NUNCA invente um motivo. Cancelamento "
+                + "não se desfaz por aqui: para remarcar, o posto onde a pessoa é atendida orienta.";
 
         return new(true,
-            string.Join("\n", linhas)
+            resposta
             + "\n\nInforme esses dados à pessoa. Lembre que a guia é retirada no posto onde ela é atendida. "
             + "NÃO invente nada além do que está acima.");
     }
@@ -153,7 +206,14 @@ public sealed class ConsultarAgendamentosComando(
         var agora = DateTime.UtcNow;
         var existe = await db.Solicitacoes.AsNoTracking().AnyAsync(
             s => candidatos.Contains(s.PacienteId)
-                && s.ExcluidoEm == null && s.DataAgendada != null && s.DataAgendada >= agora, ct)
+                && s.ExcluidoEm == null && s.DataAgendada != null && s.DataAgendada >= agora
+                && s.Status != StatusSolicitacao.Cancelada, ct)
+            // Cancelamento recente também é informação a entregar: quem recebeu o aviso e pergunta
+            // "por quê?" tem resposta registrada — sem isto a fase 1 mandava embora sem ela.
+            || await db.Solicitacoes.AsNoTracking().AnyAsync(
+                s => candidatos.Contains(s.PacienteId) && s.ExcluidoEm == null
+                    && s.Status == StatusSolicitacao.Cancelada
+                    && s.CanceladoEm != null && s.CanceladoEm >= agora.AddDays(-JanelaCanceladosDias), ct)
             || await db.SerSolicitacoes.AsNoTracking().AnyAsync(
                 s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
                     && s.ExcluidoEm == null && s.Situacao == Data.Entities.Ser.SituacaoSer.Agendada, ct)
@@ -171,10 +231,10 @@ public sealed class ConsultarAgendamentosComando(
                 + "NUNCA diga que o exame não foi ou não será marcado — apenas que ainda não chegou aqui.");
 
         return new(true,
-            "HÁ agendamento futuro registrado para este contato. NÃO revele nada ainda: para informar, "
-            + "peça os *4 primeiros dígitos do CPF* do paciente (todos de uma vez) e, depois que a "
-            + "pessoa responder, o mês e ano de nascimento — então chame esta ferramenta de novo com "
-            + "os dados.");
+            "HÁ agendamento futuro (ou cancelamento recente) registrado para este contato. NÃO revele "
+            + "nada ainda: para informar, peça os *4 primeiros dígitos do CPF* do paciente (todos de "
+            + "uma vez) e, depois que a pessoa responder, o mês e ano de nascimento — então chame esta "
+            + "ferramenta de novo com os dados.");
     }
 
     /// <summary>Confere a identidade e devolve o paciente. Aceita o paciente da conversa e, quando o
