@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Megaphone, Pencil, Plus, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante, paraInputLocalDeUtc, paraUtcDeLocal } from '@/shared/lib/datas';
@@ -9,6 +10,8 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { BotaoWhatsAppPaciente } from '@/features/conversas/components/BotaoWhatsAppPaciente';
 import { listarUnidades } from '@/features/unidades/api/unidadesApi';
 import {
   useAlcanceCampanha,
@@ -143,33 +146,52 @@ function DetalheCampanha({
   const alcance = useAlcanceCampanha(campanha.id);
   const enviar = useEnviarCampanha();
   const excluir = useExcluirCampanha();
+  const navigate = useNavigate();
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [limite, setLimite] = useState<number>(100);
   const [confirmarEnvio, setConfirmarEnvio] = useState<ModoEnvioCampanha | null>(null);
   const [resultadoEnvio, setResultadoEnvio] = useState<string | null>(null);
 
   const t = alcance.data?.totais;
-  const itens = useMemo(
+  const filtrados = useMemo(
     () => (alcance.data?.itens ?? []).filter(FILTROS.find((f) => f.id === filtro)!.aplica),
     [alcance.data, filtro],
   );
+  // Limite de exibição: a lista vem inteira do servidor; a ordenação da Tabela vale sobre o que
+  // está na tela, então o corte é aplicado antes dela.
+  const itens = useMemo(() => filtrados.slice(0, limite), [filtrados, limite]);
 
   const colunas: Coluna<CampanhaAlcanceItem>[] = [
-    { chave: 'data', cabecalho: 'Agendado para', render: (i) => formatarInstante(i.dataAgendada) },
+    {
+      chave: 'data',
+      cabecalho: 'Agendado para',
+      render: (i) => formatarInstante(i.dataAgendada),
+      ordenar: (i) => i.dataAgendada,
+    },
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
+      ordenar: (i) => i.pacienteNome,
       render: (i) => (
         <div>
-          <div className="font-medium text-gray-900">{i.pacienteNome ?? '—'}</div>
+          <div className="flex items-center gap-1">
+            <NomePacienteComResumo
+              pacienteId={i.pacienteId}
+              nome={i.pacienteNome ?? '—'}
+              classNameNome="font-medium text-gray-900"
+            />
+            <BotaoWhatsAppPaciente pacienteId={i.pacienteId} />
+          </div>
           <div className="text-xs text-gray-500">{i.codigoSolicitacao ? `SISREG ${i.codigoSolicitacao}` : ''}</div>
         </div>
       ),
     },
-    { chave: 'procedimento', cabecalho: 'Procedimento', render: (i) => i.procedimento ?? '—' },
-    { chave: 'telefone', cabecalho: 'Telefone', render: (i) => i.telefone ?? '—' },
+    { chave: 'procedimento', cabecalho: 'Procedimento', render: (i) => i.procedimento ?? '—', ordenar: (i) => i.procedimento },
+    { chave: 'telefone', cabecalho: 'Telefone', render: (i) => i.telefone ?? '—', ordenar: (i) => i.telefone },
     {
       chave: 'mensagem',
       cabecalho: 'Mensagem',
+      ordenar: (i) => (i.statusComunicacao ? ROTULO_STATUS[i.statusComunicacao as StatusNotificacao] ?? i.statusComunicacao : null),
       render: (i) =>
         i.statusComunicacao ? (
           <span
@@ -185,6 +207,7 @@ function DetalheCampanha({
     {
       chave: 'resposta',
       cabecalho: 'Resposta',
+      ordenar: (i) => ROTULO_RESPOSTA[i.statusConfirmacao as StatusConfirmacao] ?? i.statusConfirmacao,
       render: (i) => (
         <span className={`badge ${CLASSE_RESPOSTA[i.statusConfirmacao as StatusConfirmacao] ?? 'badge-gray'}`}>
           {ROTULO_RESPOSTA[i.statusConfirmacao as StatusConfirmacao] ?? i.statusConfirmacao}
@@ -286,7 +309,7 @@ function DetalheCampanha({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {FILTROS.map((f) => (
           <button
             key={f.id}
@@ -299,6 +322,13 @@ function DetalheCampanha({
             {f.rotulo} ({(alcance.data?.itens ?? []).filter(f.aplica).length})
           </button>
         ))}
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-gray-600">
+          Mostrar
+          <Select value={String(limite)} onChange={(e) => setLimite(Number(e.target.value))} aria-label="Limite de linhas na tela" className="!w-auto !py-1 text-xs">
+            {[100, 200, 500].map((n) => <option key={n} value={n}>{n}</option>)}
+          </Select>
+          {filtrados.length > limite ? `de ${filtrados.length}` : `(${filtrados.length})`}
+        </span>
       </div>
 
       <Tabela
@@ -306,6 +336,8 @@ function DetalheCampanha({
         dados={itens}
         chaveLinha={(i) => i.solicitacaoId}
         carregando={alcance.isLoading}
+        aoClicarLinha={(i) => navigate(i.exameId ? `/app/solicitacoes-exame/${i.exameId}` : `/app/consultas/${i.solicitacaoId}`)}
+        dicaLinha="Clique para abrir a solicitação do SISREG"
         vazio="Nenhum agendamento nesta situação. Se a campanha acabou de ser criada, confira se a agenda da unidade já foi importada do SISREG."
       />
 

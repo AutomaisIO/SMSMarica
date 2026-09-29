@@ -351,6 +351,9 @@ export type ModoEnvioCampanha = 'NaoEnviados' | 'NaoRespondidos';
 
 export type CampanhaAlcanceItem = {
   solicitacaoId: string;
+  pacienteId: string;
+  /** Execução de imagem, quando houver — é a rota da ficha da solicitação. */
+  exameId: string | null;
   codigoSolicitacao: string | null;
   pacienteNome: string | null;
   dataAgendada: string | null;

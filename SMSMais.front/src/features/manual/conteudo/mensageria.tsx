@@ -24,7 +24,7 @@ export const artigoMensageria: Artigo = {
   icone: BellRing,
   rota: '/app/mensageria',
   publico: 'Quem responde pelo canal: coordenação, regulação e quem configura o envio automático',
-  atualizadoEm: '2026-09-25',
+  atualizadoEm: '2026-09-29',
   palavrasChave: [
     'mensageria',
     'aviso de cancelamento',
@@ -369,7 +369,7 @@ export const artigoMensageria: Artigo = {
     {
       id: 'campanhas',
       titulo: 'Campanhas: quando o atendimento é em outro lugar',
-      busca: 'campanha carreta unidade móvel local endereço secretaria período conferência cpf nascimento entrega direta enviar reenviar sem resposta alcance confirmaram não vão link só confirma',
+      busca: 'campanha carreta unidade móvel local endereço secretaria período conferência cpf nascimento entrega direta enviar reenviar sem resposta alcance confirmaram não vão link só confirma ordenar coluna limite 100 200 500 bonequinho resumo zap whatsapp abrir solicitação procedimento desmarcado silenciar tomografia',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -394,7 +394,7 @@ export const artigoMensageria: Artigo = {
               {
                 termo: 'Avisar sozinho ao importar',
                 descricao:
-                  'Quem for importado do SISREG no período é avisado automaticamente, mesmo que a unidade e os procedimentos estejam com o aviso desligado. Desligada, a mensagem só sai pelo botão Enviar.',
+                  'Quem for importado do SISREG no período é avisado automaticamente, mesmo com a chave da unidade desligada e mesmo para procedimento fora do mapeamento. A exceção é o procedimento explicitamente DESMARCADO no mapeamento da unidade (aviso desligado em todas as linhas dele): esse fica fora da campanha — do automático e do botão Enviar. É o que permite, num mutirão, silenciar só um exame (ex.: tomografia) e manter o resto. Desligada a chave, a mensagem só sai pelo botão Enviar.',
               },
               {
                 termo: 'Campanha ativa',
@@ -426,7 +426,7 @@ export const artigoMensageria: Artigo = {
               {
                 titulo: 'Acompanhe o alcance',
                 detalhe:
-                  'Os contadores mostram quantos receberam, leram, confirmaram, não vão, não responderam ou falharam. Os filtros acima da tabela mostram quem está em cada situação; passe o mouse no selo de falha para ver o motivo.',
+                  'Os contadores mostram quantos receberam, leram, confirmaram, não vão, não responderam ou falharam. Os filtros acima da tabela mostram quem está em cada situação; passe o mouse no selo de falha para ver o motivo. Dá para ordenar clicando no cabeçalho de qualquer coluna e escolher quantas linhas aparecem (100, 200 ou 500). Ao lado do nome ficam o resumo do paciente (o bonequinho) e o atalho do WhatsApp; clicar na linha abre a solicitação do SISREG.',
               },
               {
                 titulo: 'Reenvie a quem não respondeu',

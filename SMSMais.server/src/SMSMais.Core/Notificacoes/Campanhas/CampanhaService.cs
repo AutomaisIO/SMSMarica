@@ -54,6 +54,9 @@ public sealed record EnvioCampanhaResultadoDto(int Enfileirados);
 
 public sealed record CampanhaAlcanceItemDto(
     Guid SolicitacaoId,
+    Guid PacienteId,
+    // Execução de imagem, quando houver — é a rota da ficha da solicitação na tela.
+    Guid? ExameId,
     string? CodigoSolicitacao,
     string? PacienteNome,
     DateTime? DataAgendada,
@@ -241,6 +244,8 @@ public sealed class CampanhaService(
             comunicacoesPorSolicitacao.TryGetValue(s.Id, out var n);
             return new CampanhaAlcanceItemDto(
                 s.Id,
+                s.PacienteId,
+                s.ExameImagem?.Id,
                 s.CodigoSolicitacao,
                 nomes.TryGetValue(s.PacienteId, out var p) ? p.Nome : null,
                 s.DataAgendada,
