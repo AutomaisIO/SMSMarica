@@ -181,10 +181,68 @@ public sealed class GraphMetaClientTests
                   "example": { "header_text": ["UBS Centro"] } },
                 { "type": "BODY", "text": "Sua unidade estara fechada." }
               ]
+            },
+            {
+              "id": "4", "name": "lembrete_consulta", "language": "pt_BR",
+              "category": "UTILITY", "status": "APPROVED",
+              "components": [
+                { "type": "BODY", "text": "Sua consulta e amanha." },
+                { "type": "FOOTER", "text": "Secretaria de Saude" },
+                { "type": "BUTTONS", "buttons": [
+                  { "type": "URL", "text": "Ver agendamento", "url": "https://smsmarica.online/a/{{1}}",
+                    "example": ["https://smsmarica.online/a/abc123"] },
+                  { "type": "PHONE_NUMBER", "text": "Ligar para a unidade", "phone_number": "+552137315313" },
+                  { "type": "COPY_CODE", "example": "CHAVE42" }
+                ] }
+              ]
             }
           ]
         }
         """;
+
+    [Fact]
+    public async Task ListarTemplates_le_os_botoes_na_ordem_com_destino()
+    {
+        var (cliente, _) = Montar((HttpStatusCode.OK, RespostaTemplates));
+
+        var r = await cliente.ListarTemplatesAsync("2099272540984687");
+
+        var lembrete = r.Valor!.Single(t => t.Nome == "lembrete_consulta");
+        lembrete.Rodape.Should().Be("Secretaria de Saude");
+
+        // A ordem e o "index" do componente de botao no envio: nao pode ser reordenada.
+        lembrete.Botoes.Select(b => b.Tipo).Should().Equal("URL", "PHONE_NUMBER", "COPY_CODE");
+
+        var link = lembrete.Botoes[0];
+        link.Texto.Should().Be("Ver agendamento");
+        link.Url.Should().Be("https://smsmarica.online/a/{{1}}");
+        link.Parametros.Should().Be(1, "URL com variavel exige o sufixo em cada envio");
+        link.Exemplo.Should().Be("https://smsmarica.online/a/abc123");
+
+        lembrete.Botoes[1].Telefone.Should().Be("+552137315313");
+        lembrete.Botoes[1].Parametros.Should().Be(0);
+
+        // No codigo de oferta o exemplo vem como texto solto, nao como lista.
+        lembrete.Botoes[2].Exemplo.Should().Be("CHAVE42");
+        lembrete.Botoes[2].Texto.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ListarTemplates_resposta_rapida_vem_so_com_texto_e_sem_botao_fica_vazio()
+    {
+        var (cliente, _) = Montar((HttpStatusCode.OK, RespostaTemplates));
+
+        var r = await cliente.ListarTemplatesAsync("2099272540984687");
+
+        var exame = r.Valor!.Single(t => t.Nome == "confirmacao_exame");
+        var botao = exame.Botoes.Should().ContainSingle().Subject;
+        botao.Tipo.Should().Be("QUICK_REPLY");
+        botao.Texto.Should().Be("Nao sou essa pessoa");
+        botao.Url.Should().BeNull();
+        exame.Rodape.Should().BeNull();
+
+        r.Valor!.Single(t => t.Nome == "laudo_disponivel").Botoes.Should().BeEmpty();
+    }
 
     [Fact]
     public async Task ListarTemplates_diz_que_o_modelo_tem_FOTO_no_cabecalho()

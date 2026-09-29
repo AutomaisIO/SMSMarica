@@ -25,8 +25,38 @@
         .tpl .balao {
             background: #fff; border-radius: 3px 12px 12px 12px; padding: 9px 11px 7px;
             box-shadow: 0 1px 1px rgba(0,0,0,.12); font-size: 13px; color: #111B21;
-            max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.45;
+            max-width: 100%; overflow-wrap: anywhere; line-height: 1.45;
         }
+        /* Só o texto respeita as quebras do modelo — a indentação do Razor em volta não. */
+        .tpl .balao .texto { display: block; white-space: pre-wrap; }
+        .tpl .balao .titulo-topo { display: block; font-weight: 700; margin-bottom: 4px; white-space: pre-wrap; }
+        .tpl .balao .rodape-tpl { display: block; font-size: 12px; color: #8696A0; margin-top: 5px; white-space: pre-wrap; }
+        .tpl .balao .doc-topo {
+            display: block; background: #F0F2F5; border-radius: 4px; padding: 14px 10px; margin: -2px 0 7px;
+            font-size: 12px; font-weight: 600; color: #54656F; text-align: center;
+        }
+        .tpl .balao.com-botoes { border-radius: 3px 12px 0 0; }
+
+        /* Botões como o WhatsApp desenha: faixas brancas coladas no balão, texto azul ao centro. */
+        .tpl .botoes-tpl {
+            display: grid; gap: 1px; background: #E9EDEF; border-top: 1px solid #E9EDEF;
+            border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 1px 1px rgba(0,0,0,.12);
+        }
+        .tpl .botao-tpl {
+            background: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 9px 10px; font-size: 13px; font-weight: 500; color: #027EB5; text-align: center;
+            overflow-wrap: anywhere;
+        }
+        .tpl .botao-tpl svg {
+            width: 14px; height: 14px; flex: none;
+            fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .tpl .botoes-info { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 11.5px; color: var(--suave); }
+        .tpl .botoes-info li { overflow-wrap: anywhere; }
+        .tpl .botoes-info code { font-size: 11px; }
+        .tpl .botoes-info mark { background: rgba(8, 153, 184, .14); color: var(--ciano-forte); border-radius: 4px; padding: 0 3px; font-weight: 600; }
+        .tpl .botoes-info .aviso-var { color: var(--fraco); }
+        .tpl .dados .link-exemplo { font-size: 11.5px; }
         .tpl .balao mark { background: rgba(8, 153, 184, .14); color: var(--ciano-forte); border-radius: 4px; padding: 0 3px; font-weight: 600; }
         .tpl .balao .hora { display: block; text-align: right; font-size: 10.5px; color: #8696A0; margin-top: 4px; }
         .tpl .dados { padding: 12px 14px 13px; display: grid; gap: 7px; border-top: 1px solid var(--borda-suave); }
@@ -45,6 +75,9 @@
             display: block; border: 1px dashed var(--erro); border-radius: 4px; color: var(--erro);
             font-size: 11.5px; padding: 12px 8px; text-align: center; margin: -2px 0 7px;
         }
+        /* O exemplo aprovado na Meta aparece, mas com o aviso colado: ele não vai no envio. */
+        .tpl .balao .arte-topo.exemplo-meta { margin-bottom: 0; border-radius: 4px 4px 0 0; }
+        .tpl .balao .arte-falta.sob-exemplo { border-top: 0; border-radius: 0 0 4px 4px; padding: 6px 8px; }
         .tpl .escolha-arte { display: flex; gap: 6px; align-items: center; margin-left: 0 !important; }
         .tpl .escolha-arte select { font-size: 11.5px; padding: 4px 6px; min-width: 0; flex: 1; }
         .tpl .escolha-arte button { padding: 4px 10px; font-size: 11.5px; }
@@ -106,22 +139,63 @@ else
                 @{
                     var exigeArte = t.Cabecalho?.ExigeMidia == true;
                     Model.Artes.TryGetValue(t.Nome, out var arteEscolhida);
+                    var exemploMeta = TemplatesModel.ExemploDeMidia(t.Cabecalho);
+                    var botoesComDestino = t.Botoes.Where(b => b.Url is not null || b.Telefone is not null || b.Exemplo is not null).ToList();
                 }
                 <div class="conversa">
-                    <div class="balao">
+                    <div class="balao @(t.Botoes.Count > 0 ? "com-botoes" : "")">
                         @if (exigeArte)
                         {
                             @if (arteEscolhida is not null)
                             {
                                 <img class="arte-topo" src="@arteEscolhida.Caminho" alt="Arte de @t.Nome" loading="lazy" />
                             }
+                            else if (exemploMeta is not null && t.Cabecalho!.Formato is "IMAGE" or "VIDEO")
+                            {
+                                @if (t.Cabecalho.Formato == "IMAGE")
+                                {
+                                    <img class="arte-topo exemplo-meta" src="@exemploMeta" alt="Exemplo aprovado de @t.Nome" loading="lazy" referrerpolicy="no-referrer" />
+                                }
+                                else
+                                {
+                                    <video class="arte-topo exemplo-meta" src="@exemploMeta" muted controls preload="metadata" referrerpolicy="no-referrer"></video>
+                                }
+                                <span class="arte-falta sob-exemplo">Exemplo aprovado na Meta — não vai no envio. Escolha a arte abaixo.</span>
+                            }
+                            else if (t.Cabecalho!.Formato == "DOCUMENT")
+                            {
+                                <span class="doc-topo">Documento no topo</span>
+                                <span class="arte-falta">Sem arquivo — este modelo não envia assim</span>
+                            }
                             else
                             {
                                 <span class="arte-falta">Sem arte — este modelo não envia assim</span>
                             }
                         }
-                        @Model.CorpoMarcado(t.Corpo)<span class="hora">@(DateTime.Now.ToString("HH:mm"))</span>
+                        else if (t.Cabecalho is { Formato: "TEXT", Texto: not null })
+                        {
+                            <span class="titulo-topo">@Model.CorpoMarcado(t.Cabecalho.Texto)</span>
+                        }
+                        else if (t.Cabecalho is { Formato: "LOCATION" })
+                        {
+                            <span class="doc-topo">Localização no topo</span>
+                        }
+                        <span class="texto">@Model.CorpoMarcado(t.Corpo)</span>
+                        @if (!string.IsNullOrWhiteSpace(t.Rodape))
+                        {
+                            <span class="rodape-tpl">@t.Rodape</span>
+                        }
+                        <span class="hora">@(DateTime.Now.ToString("HH:mm"))</span>
                     </div>
+                    @if (t.Botoes.Count > 0)
+                    {
+                        <div class="botoes-tpl">
+                            @foreach (var b in t.Botoes)
+                            {
+                                <span class="botao-tpl" title="@TemplatesModel.RotuloBotao(b.Tipo)">@TemplatesModel.IconeBotao(b.Tipo)@(b.Texto ?? TemplatesModel.RotuloBotao(b.Tipo))</span>
+                            }
+                        </div>
+                    }
                 </div>
                 <div class="dados">
                     <div class="nome-linha">
@@ -133,6 +207,10 @@ else
                     <div class="meta-linha">
                         <span>@t.Idioma</span> · <span>@(t.Categoria switch { "UTILITY" => "utilidade", "MARKETING" => "marketing", "AUTHENTICATION" => "autenticação", _ => t.Categoria.ToLowerInvariant() })</span>
                         · <span>@t.Parametros variáve@(t.Parametros == 1 ? "l" : "is")</span>
+                        @if (t.Botoes.Count > 0)
+                        {
+                            <text>· <span>@t.Botoes.Count botão@(t.Botoes.Count == 1 ? "" : "ões")</span></text>
+                        }
                         <form method="post" asp-page-handler="Excluir"
                               onsubmit="return confirm('Excluir este template? A Meta apaga o nome em TODOS os idiomas, e quem usa esse nome para de conseguir enviar.');">
                             <input type="hidden" name="id" value="@Model.Alvo.Id" />
@@ -160,6 +238,33 @@ else
                                 Nenhuma arte publicada. Suba a primeira em <a href="/admin/midias">Artes</a>.
                             </div>
                         }
+                        @if (arteEscolhida is not null && exemploMeta is not null)
+                        {
+                            <a class="link-exemplo" href="@exemploMeta" target="_blank" rel="noopener noreferrer">Ver o exemplo aprovado na Meta</a>
+                        }
+                    }
+                    @if (botoesComDestino.Count > 0)
+                    {
+                        <ul class="botoes-info">
+                            @foreach (var b in botoesComDestino)
+                            {
+                                <li>
+                                    @TemplatesModel.RotuloBotao(b.Tipo) <strong>@b.Texto</strong> →
+                                    @if (b.Url is not null)
+                                    {
+                                        <code>@Model.CorpoMarcado(b.Url)</code>
+                                        @if (b.Parametros > 0)
+                                        {
+                                            <span class="aviso-var">— o final do link vai em cada envio@(b.Exemplo is null ? "" : $" (ex.: {b.Exemplo})")</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <code>@(b.Telefone ?? b.Exemplo)</code>
+                                    }
+                                </li>
+                            }
+                        </ul>
                     }
                     @if (!string.IsNullOrEmpty(t.MotivoRejeicao) && t.MotivoRejeicao != "NONE")
                     {

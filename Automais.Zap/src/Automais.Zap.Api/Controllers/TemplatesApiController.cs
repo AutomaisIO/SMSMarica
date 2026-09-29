@@ -72,6 +72,18 @@ public sealed class TemplatesApiController(
                         // Meta e não serve para reenviar.
                         arte = artesDoWaba.TryGetValue(t.Nome, out var arte) ? Absoluta(arte.Caminho) : null,
                     },
+                    rodape = t.Rodape,
+                    // Na ordem aprovada: a posição é o "index" do componente de botão no envio.
+                    // URL com variável (parametros > 0) exige o sufixo em cada mensagem.
+                    botoes = t.Botoes.Select(b => new
+                    {
+                        tipo = b.Tipo,
+                        texto = b.Texto,
+                        url = b.Url,
+                        telefone = b.Telefone,
+                        parametros = b.Parametros,
+                        exemplo = b.Exemplo,
+                    }),
                     waba_id = w.WabaId,
                 });
             }

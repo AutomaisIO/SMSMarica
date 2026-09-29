@@ -225,7 +225,9 @@ public sealed partial class GraphMetaClient(
         foreach (var t in Dados(r.Valor!))
         {
             string? corpo = null;
+            string? rodape = null;
             var exemplos = new List<string>();
+            var botoes = new List<BotaoTemplateMeta>();
             CabecalhoTemplateMeta? cabecalho = null;
             if (t.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
             {
@@ -239,6 +241,18 @@ public sealed partial class GraphMetaClient(
                     if (tipo == "HEADER")
                     {
                         cabecalho = LerCabecalho(c);
+                        continue;
+                    }
+
+                    if (tipo == "FOOTER")
+                    {
+                        rodape = Texto(c, "text");
+                        continue;
+                    }
+
+                    if (tipo == "BUTTONS")
+                    {
+                        botoes.AddRange(LerBotoes(c));
                         continue;
                     }
 
@@ -274,7 +288,11 @@ public sealed partial class GraphMetaClient(
                 parametros,
                 Texto(t, "rejected_reason"),
                 exemplos,
-                cabecalho));
+                cabecalho,
+                rodape)
+            {
+                Botoes = botoes,
+            });
         }
 
         return ResultadoMeta<IReadOnlyList<TemplateMeta>>.Ok(
@@ -306,6 +324,40 @@ public sealed partial class GraphMetaClient(
 
         var parametros = texto is null ? 0 : RegexVariavel().Matches(texto).Count;
         return new CabecalhoTemplateMeta(formato, texto, parametros, exemplo);
+    }
+
+    /// <summary>
+    /// Le o componente BUTTONS. O <c>example</c> vem como lista no botao de URL e como texto
+    /// solto no de codigo de oferta — os dois viram o primeiro valor.
+    /// </summary>
+    private static IEnumerable<BotaoTemplateMeta> LerBotoes(JsonElement c)
+    {
+        if (!c.TryGetProperty("buttons", out var lista) || lista.ValueKind != JsonValueKind.Array) yield break;
+
+        foreach (var b in lista.EnumerateArray())
+        {
+            var url = Texto(b, "url");
+
+            string? exemplo = null;
+            if (b.TryGetProperty("example", out var ex))
+            {
+                exemplo = ex.ValueKind switch
+                {
+                    JsonValueKind.String => ex.GetString(),
+                    JsonValueKind.Array when ex.GetArrayLength() > 0 && ex[0].ValueKind == JsonValueKind.String
+                        => ex[0].GetString(),
+                    _ => null,
+                };
+            }
+
+            yield return new BotaoTemplateMeta(
+                (Texto(b, "type") ?? "?").ToUpperInvariant(),
+                Texto(b, "text"),
+                url,
+                Texto(b, "phone_number"),
+                url is null ? 0 : RegexVariavel().Matches(url).Count,
+                exemplo);
+        }
     }
 
     public async Task<ResultadoMeta<string>> CriarTemplateAsync(string wabaId, NovoTemplate template, CancellationToken ct = default)

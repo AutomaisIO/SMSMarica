@@ -122,6 +122,39 @@ public sealed partial class TemplatesModel(
         return new HtmlString(sw.ToString());
     }
 
+    /// <summary>
+    /// A mídia aprovada no cabeçalho (o <c>header_handle</c> que a Meta devolve), só quando é
+    /// um endereço https. Serve para mostrar o que foi aprovado — não é a arte que vai no envio.
+    /// </summary>
+    public static string? ExemploDeMidia(CabecalhoTemplateMeta? cabecalho)
+        => cabecalho is { ExigeMidia: true, Exemplo: { } ex }
+           && ex.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            ? ex
+            : null;
+
+    public static string RotuloBotao(string tipo) => tipo switch
+    {
+        "QUICK_REPLY" => "Resposta rápida",
+        "URL" => "Link",
+        "PHONE_NUMBER" => "Ligar",
+        "VOICE_CALL" => "Ligar pelo WhatsApp",
+        "COPY_CODE" => "Copiar código",
+        "OTP" => "Código de acesso",
+        "FLOW" => "Formulário (Flow)",
+        "CATALOG" or "MPM" => "Catálogo",
+        _ => tipo.ToLowerInvariant(),
+    };
+
+    /// <summary>Ícone do botão como o WhatsApp mostra ao lado do texto (traço, herda a cor).</summary>
+    public static IHtmlContent IconeBotao(string tipo) => new HtmlString(tipo switch
+    {
+        "URL" => """<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>""",
+        "PHONE_NUMBER" or "VOICE_CALL" => """<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>""",
+        "COPY_CODE" or "OTP" => """<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>""",
+        "QUICK_REPLY" => """<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>""",
+        _ => "",
+    });
+
     private async Task<List<Data.Entities.Waba>> WabasDeAsync(Guid tenantId, CancellationToken ct)
         => await db.Wabas.AsNoTracking()
             .Where(w => w.TenantId == tenantId)

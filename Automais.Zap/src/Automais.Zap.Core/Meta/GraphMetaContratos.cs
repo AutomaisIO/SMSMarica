@@ -107,6 +107,18 @@ public sealed record CabecalhoTemplateMeta(string Formato, string? Texto, int Pa
     public bool ExigeMidia => Formato is "IMAGE" or "VIDEO" or "DOCUMENT";
 }
 
+/// <summary>
+/// Um botão do modelo, como foi aprovado.
+///
+/// <para><see cref="Tipo"/> é o da Meta: QUICK_REPLY, URL, PHONE_NUMBER, COPY_CODE, OTP, FLOW…
+/// Resposta rápida é só texto; URL e telefone levam o destino. <b>URL com variável</b> exige o
+/// sufixo em cada envio (componente <c>button</c> com o <c>index</c> dele) — é o que
+/// <see cref="Parametros"/> sinaliza.</para>
+/// </summary>
+/// <param name="Exemplo">O exemplo aprovado (URL completa ou código de oferta). Só amostra.</param>
+public sealed record BotaoTemplateMeta(
+    string Tipo, string? Texto, string? Url, string? Telefone, int Parametros, string? Exemplo);
+
 public sealed record TemplateMeta(
     string Id,
     string Nome,
@@ -117,7 +129,12 @@ public sealed record TemplateMeta(
     int Parametros,
     string? MotivoRejeicao,
     IReadOnlyList<string> Exemplos,
-    CabecalhoTemplateMeta? Cabecalho = null);
+    CabecalhoTemplateMeta? Cabecalho = null,
+    string? Rodape = null)
+{
+    /// <summary>Botões na ordem aprovada — a mesma do <c>index</c> que o envio usa.</summary>
+    public IReadOnlyList<BotaoTemplateMeta> Botoes { get; init; } = [];
+}
 
 /// <summary>Dados mínimos para submeter um template à aprovação da Meta.</summary>
 public sealed record NovoTemplate(
