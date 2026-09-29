@@ -131,21 +131,38 @@ public static class CampanhaResolver
     /// envio automático continua ignorando a chave da unidade e cobrindo procedimento fora do
     /// mapeamento, mas um procedimento explicitamente desmarcado passa a ser respeitado, no
     /// automático da importação e no botão "Enviar".
+    ///
+    /// <para>Casa por CÓDIGO quando ele veio (varredura/TXT) e por NOME quando não veio — a
+    /// importação pontual (<c>cons_agendas</c>) não informa <c>pa</c> por linha, só o nome, e o
+    /// nome do SISREG é o eixo do catálogo. Sem o fallback, a TC importada pelo botão pontual
+    /// nasceria "sem código" e furaria o silêncio.</para>
     /// </summary>
     public static async Task<bool> ProcedimentoSilenciadoAsync(
-        SmsMaisDbContext db, Guid unidadeId, string? codigoSisreg, CancellationToken ct = default)
+        SmsMaisDbContext db, Guid unidadeId, string? codigoSisreg, string? nomeProcedimento = null,
+        CancellationToken ct = default)
     {
         var codigo = (codigoSisreg ?? string.Empty).Trim();
-        if (codigo.Length == 0) return false; // sem código não há chave a respeitar
 
         var linhas = await db.SisregProcedimentosProfissional.AsNoTracking()
-            .Where(pp => pp.Codigo == codigo && db.SisregProfissionaisUnidade
+            .Where(pp => db.SisregProfissionaisUnidade
                 .Any(pu => pu.Id == pp.ProfissionalId && pu.UnidadeId == unidadeId))
-            .Select(pp => pp.EnviarConfirmacao)
+            .Select(pp => new { pp.Codigo, pp.Nome, pp.EnviarConfirmacao })
             .ToListAsync(ct);
 
-        return linhas.Count > 0 && linhas.All(enviar => !enviar);
+        var doProcedimento = codigo.Length > 0
+            ? linhas.Where(l => l.Codigo.Trim() == codigo).ToList()
+            : NormalizarNome(nomeProcedimento) is { Length: > 0 } nome
+                ? linhas.Where(l => NormalizarNome(l.Nome) == nome).ToList()
+                : [];
+
+        return doProcedimento.Count > 0 && doProcedimento.All(l => !l.EnviarConfirmacao);
     }
+
+    /// <summary>Nome do SISREG comparável: sem espaços duplicados (o TXT os traz) e sem caixa.</summary>
+    internal static string NormalizarNome(string? nome) =>
+        string.Join(' ', (nome ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .ToUpperInvariant();
 }
 
 public sealed class CampanhaService(
@@ -274,9 +291,12 @@ public sealed class CampanhaService(
 
         // Procedimento explicitamente DESMARCADO no mapeamento da unidade fica fora — mesma regra
         // do envio automático da importação (mutirão 29/09/2026: TC sem aviso, o resto segue).
-        var silenciados = await CodigosSilenciadosAsync(c.UnidadeId, ct);
+        // Sem código (linha que entrou pela importação pontual), o casamento é pelo nome.
+        var (codigosSilenciados, nomesSilenciados) = await SilenciadosAsync(c.UnidadeId, ct);
         solicitacoes = solicitacoes
-            .Where(s => s.ProcedimentoCodigoSisreg is not { } cod || !silenciados.Contains(cod.Trim()))
+            .Where(s => s.ProcedimentoCodigoSisreg is { } cod && cod.Trim().Length > 0
+                ? !codigosSilenciados.Contains(cod.Trim())
+                : !nomesSilenciados.Contains(CampanhaResolver.NormalizarNome(s.ProcedimentoTexto)))
             .ToList();
         var ids = solicitacoes.Select(s => s.Id).ToList();
 
@@ -351,23 +371,32 @@ public sealed class CampanhaService(
         return new EnvioCampanhaResultadoDto(enfileirados);
     }
 
-    /// <summary>Códigos SISREG da unidade cujo aviso está desligado em TODAS as linhas do
-    /// mapeamento — o conjunto que o botão "Enviar" pula (ver <see
+    /// <summary>Códigos e NOMES (normalizados) da unidade cujo aviso está desligado em TODAS as
+    /// linhas do mapeamento — o conjunto que o botão "Enviar" pula (ver <see
     /// cref="CampanhaResolver.ProcedimentoSilenciadoAsync"/> para a mesma regra, item a item, no
-    /// envio automático da importação).</summary>
-    private async Task<HashSet<string>> CodigosSilenciadosAsync(Guid unidadeId, CancellationToken ct)
+    /// envio automático da importação). O nome cobre a linha importada sem código (pontual).</summary>
+    private async Task<(HashSet<string> Codigos, HashSet<string> Nomes)> SilenciadosAsync(
+        Guid unidadeId, CancellationToken ct)
     {
         var linhas = await db.SisregProcedimentosProfissional.AsNoTracking()
             .Where(pp => db.SisregProfissionaisUnidade
                 .Any(pu => pu.Id == pp.ProfissionalId && pu.UnidadeId == unidadeId))
-            .Select(pp => new { pp.Codigo, pp.EnviarConfirmacao })
+            .Select(pp => new { pp.Codigo, pp.Nome, pp.EnviarConfirmacao })
             .ToListAsync(ct);
 
-        return linhas
+        var codigos = linhas
             .GroupBy(l => l.Codigo.Trim(), StringComparer.Ordinal)
             .Where(g => g.All(l => !l.EnviarConfirmacao))
             .Select(g => g.Key)
             .ToHashSet(StringComparer.Ordinal);
+
+        var nomes = linhas
+            .GroupBy(l => CampanhaResolver.NormalizarNome(l.Nome), StringComparer.Ordinal)
+            .Where(g => g.Key.Length > 0 && g.All(l => !l.EnviarConfirmacao))
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return (codigos, nomes);
     }
 
     /// <summary>Agendamentos que a campanha cobre: unidade executante + período, não excluídos.</summary>

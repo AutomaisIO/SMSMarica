@@ -64,5 +64,17 @@ public class CampanhaProcedimentoSilenciadoTests(PostgresFixture fixture)
 
         // O mapeamento é POR UNIDADE: a mesma TC desmarcada aqui não silencia outra unidade.
         Assert.False(await CampanhaResolver.ProcedimentoSilenciadoAsync(db, outraUnidadeId, "3500019"));
+
+        // SEM código (linha da importação pontual, que o cons_agendas devolve só com o nome):
+        // casa pelo NOME, tolerando os espaços duplicados que o TXT do SISREG traz.
+        Assert.True(await CampanhaResolver.ProcedimentoSilenciadoAsync(
+            db, unidadeId, null, "TOMOGRAFIA COMPUTADORIZADA DO ABDOMEN  TOTAL"));
+        Assert.True(await CampanhaResolver.ProcedimentoSilenciadoAsync(
+            db, unidadeId, null, "tomografia computadorizada do abdomen total"));
+        Assert.False(await CampanhaResolver.ProcedimentoSilenciadoAsync(
+            db, unidadeId, null, "ULTRA-SONOGRAFIA DE MAMAS BILATERAL"));
+        Assert.False(await CampanhaResolver.ProcedimentoSilenciadoAsync(
+            db, unidadeId, null, "PROCEDIMENTO QUE NAO EXISTE NO MAPEAMENTO"));
+        Assert.False(await CampanhaResolver.ProcedimentoSilenciadoAsync(db, unidadeId, null, null));
     }
 }

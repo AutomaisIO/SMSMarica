@@ -1325,7 +1325,7 @@ public sealed class ImportacaoSisregService(
             && await SMSMais.Core.Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
                 db, unidadeExecutanteId, ParaUtcBrasilia(dataCampanha), ct) is { EnvioAutomatico: true })
             return !await SMSMais.Core.Notificacoes.Campanhas.CampanhaResolver.ProcedimentoSilenciadoAsync(
-                db, unidadeExecutanteId, m.CodigoProcedimentoSisreg, ct);
+                db, unidadeExecutanteId, m.CodigoProcedimentoSisreg, m.ProcedimentoTexto, ct);
 
         var daUnidade = await db.SisregVarreduraAgendas.AsNoTracking()
             .Where(a => a.UnidadeId == unidadeExecutanteId)
