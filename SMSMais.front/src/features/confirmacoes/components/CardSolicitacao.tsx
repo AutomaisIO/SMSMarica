@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, Clock, Hand, MessagesSquare, PhoneOff, Undo2, UserRound, X } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, Clock, Hand, Megaphone, MessagesSquare, PhoneOff, Undo2, UserRound, X } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
@@ -141,6 +141,14 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
             </Link>
           </div>
           <div className="text-xs text-gray-600">{item.unidadeExecutante ?? '—'}{item.codigoSolicitacao ? ` · SISREG ${item.codigoSolicitacao}` : ''}</div>
+          {item.campanhaNome ? (
+            <span
+              className="inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-800"
+              title="Este agendamento faz parte de uma campanha — o paciente é atendido no local da campanha, não na unidade do SISREG."
+            >
+              <Megaphone className="h-3 w-3" /> Campanha: {item.campanhaNome}
+            </span>
+          ) : null}
         </div>
 
         {/* Situação */}

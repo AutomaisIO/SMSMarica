@@ -106,7 +106,7 @@ public interface ICampanhaService
 /// e a importação precisam dele e o serviço da campanha depende do de comunicação.
 /// </summary>
 public sealed record CampanhaVigente(
-    Guid Id, string LocalNome, string LocalEndereco, bool ExigirConferenciaCadastral, bool EnvioAutomatico);
+    Guid Id, string Nome, string LocalNome, string LocalEndereco, bool ExigirConferenciaCadastral, bool EnvioAutomatico);
 
 public static class CampanhaResolver
 {
@@ -120,7 +120,7 @@ public static class CampanhaResolver
                 && c.InicioEm <= quando && c.FimEm >= quando)
             .OrderByDescending(c => c.InicioEm)
             .Select(c => new CampanhaVigente(
-                c.Id, c.LocalNome, c.LocalEndereco, c.ExigirConferenciaCadastral, c.EnvioAutomatico))
+                c.Id, c.Nome, c.LocalNome, c.LocalEndereco, c.ExigirConferenciaCadastral, c.EnvioAutomatico))
             .FirstOrDefaultAsync(ct);
     }
 }

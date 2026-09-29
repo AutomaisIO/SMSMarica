@@ -80,6 +80,8 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
         builder.Property(s => s.CanceladoEm).HasColumnName("cancelado_em");
         builder.Property(s => s.CanceladoPorUsuarioId).HasColumnName("cancelado_por_usuario_id");
         builder.Property(s => s.MotivoCancelamento).HasColumnName("motivo_cancelamento").HasMaxLength(500);
+        builder.Property(s => s.MotivoCancelamentoParaPaciente)
+            .HasColumnName("motivo_cancelamento_para_paciente").HasMaxLength(500);
 
         builder.Property(s => s.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(s => s.CriadoPor).HasColumnName("criado_por");

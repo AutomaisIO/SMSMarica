@@ -33,7 +33,7 @@ public interface IAtendimentoConfirmacaoService
 {
     Task<PaginaAtendimentoDto> ListarAsync(
         AbaAtendimentoConfirmacao aba, string? texto, Guid? unidadeId, string? envio,
-        int pagina, int tamanho, CancellationToken ct = default);
+        int pagina, int tamanho, bool soCampanhas = false, CancellationToken ct = default);
 
     Task<ResumoAbasAtendimentoDto> ResumoAsync(CancellationToken ct = default);
 
@@ -95,13 +95,20 @@ public sealed class AtendimentoConfirmacaoService(
 
     public async Task<PaginaAtendimentoDto> ListarAsync(
         AbaAtendimentoConfirmacao aba, string? texto, Guid? unidadeId, string? envio,
-        int pagina, int tamanho, CancellationToken ct = default)
+        int pagina, int tamanho, bool soCampanhas = false, CancellationToken ct = default)
     {
         var me = usuarioAtual.UsuarioId;
         var agora = DateTime.UtcNow;
         var query = await QueryDaAbaAsync(aba, ct);
 
         if (unidadeId is { } u) query = query.Where(s => s.UnidadeExecutanteId == u);
+
+        // "Somente campanhas" (ADR-0062): agendamentos cuja unidade × data caem numa campanha
+        // ativa — é o recorte para trabalhar um mutirão (ex.: Carreta da Mulher) de uma vez.
+        if (soCampanhas)
+            query = query.Where(s => s.DataAgendada != null && db.Campanhas.Any(c =>
+                c.Ativa && c.ExcluidoEm == null && c.UnidadeId == s.UnidadeExecutanteId
+                && c.InicioEm <= s.DataAgendada && c.FimEm >= s.DataAgendada));
 
         if (!string.IsNullOrWhiteSpace(envio))
         {
@@ -171,6 +178,19 @@ public sealed class AtendimentoConfirmacaoService(
         var pacienteIds = linhas.Select(l => l.PacienteId).Distinct().ToList();
         var resumos = await pacienteResolver.ResolverManyAsync(pacienteIds, ct);
 
+        // Campanha por card (ADR-0062): as campanhas ativas são poucas — uma leitura e o casamento
+        // unidade × período resolve a página inteira em memória.
+        var campanhasAtivas = await db.Campanhas.AsNoTracking()
+            .Where(c => c.Ativa && c.ExcluidoEm == null)
+            .Select(c => new { c.UnidadeId, c.InicioEm, c.FimEm, c.Nome })
+            .ToListAsync(ct);
+        string? CampanhaDe(Guid unidade, DateTime? quando) => quando is not { } q ? null
+            : campanhasAtivas
+                .Where(c => c.UnidadeId == unidade && c.InicioEm <= q && c.FimEm >= q)
+                .OrderByDescending(c => c.InicioEm)
+                .Select(c => c.Nome)
+                .FirstOrDefault();
+
         var negados = await db.PendenciasCadastro.AsNoTracking()
             .Where(p => p.Status == StatusPendenciaCadastro.Aberta && p.PacienteId != null && pacienteIds.Contains(p.PacienteId.Value))
             .Select(p => p.PacienteId!.Value)
@@ -223,7 +243,8 @@ public sealed class AtendimentoConfirmacaoService(
                     l.Atendimento.Situacao.ToString(), l.Atendimento.Motivo, l.Atendimento.IniciadoEm,
                     l.Atendimento.AtualizadoEm, l.Atendimento.AtendenteUsuarioId == me),
                 comprometidos.TryGetValue(l.PacienteId, out var cc) ? cc.Motivo.ToString() : null,
-                cc?.Ocorrencias ?? 0);
+                cc?.Ocorrencias ?? 0,
+                CampanhaDe(l.UnidadeExecutanteId, l.DataAgendada));
         }).ToList();
 
         return new PaginaAtendimentoDto(itens, total, pagina, tamanho);
@@ -839,6 +860,12 @@ public sealed class AtendimentoConfirmacaoService(
             throw new ValidacaoException("atendimento.motivo_obrigatorio", "Informe o motivo do cancelamento.");
         if (motivo.Length > 500) motivo = motivo[..500];
 
+        // O motivo PARA o paciente é outro texto: o interno justifica no SISREG; este é o que o
+        // robô responde quando a pessoa pergunta "por quê?" e o que o "Quero mais informações" do
+        // aviso entrega. Opcional — sem ele valem as respostas genéricas.
+        var motivoParaPaciente = (request.MotivoParaPaciente ?? string.Empty).Trim();
+        if (motivoParaPaciente.Length > 500) motivoParaPaciente = motivoParaPaciente[..500];
+
         var s = await CarregarSolicitacaoAsync(solicitacaoId, ct);
 
         // ---- SISREG PRIMEIRO. Nada muda aqui enquanto lá não confirmar. ----
@@ -869,6 +896,7 @@ public sealed class AtendimentoConfirmacaoService(
         s.CanceladoEm = agora;
         s.CanceladoPorUsuarioId = me;
         s.MotivoCancelamento = motivo;
+        s.MotivoCancelamentoParaPaciente = motivoParaPaciente.Length > 0 ? motivoParaPaciente : null;
         s.StatusConfirmacao = StatusConfirmacaoAgendamento.Cancelada;
         s.ConfirmacaoCanceladaEm = agora;
         s.ConfirmadoCanal = CanalAtendente;
@@ -892,7 +920,11 @@ public sealed class AtendimentoConfirmacaoService(
 
         ativo.Motivo = motivo;
         Encerrar(ativo, SituacaoAtendimentoConfirmacao.Cancelado, me, agora);
-        AddEvento(ativo, TipoEventoAtendimentoConfirmacao.Cancelado, me, agora, observacao: motivo);
+        // A trilha guarda os DOIS textos: o que assinou o cancelamento e o que o paciente ouvirá.
+        AddEvento(ativo, TipoEventoAtendimentoConfirmacao.Cancelado, me, agora,
+            observacao: motivoParaPaciente.Length > 0
+                ? $"{motivo} · Ao paciente: {motivoParaPaciente}"
+                : motivo);
         if (noSisreg is { } feito)
             AddEvento(ativo, TipoEventoAtendimentoConfirmacao.CanceladoNoSisreg, me, agora,
                 observacao: $"{feito.Resultado}: {feito.SituacaoDepois}");

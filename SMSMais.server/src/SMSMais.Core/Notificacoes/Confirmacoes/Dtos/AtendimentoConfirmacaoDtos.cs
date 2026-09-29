@@ -81,7 +81,10 @@ public sealed record SolicitacaoAtendimentoDto(
     /// <summary>Por que o canal não alcança (<c>SemCelular</c>/<c>NaoEhWhatsApp</c>), quando é o caso.</summary>
     string? MotivoTelefoneComprometido = null,
     /// <summary>Quantas mensagens já se perderam por esse mesmo motivo — mede a urgência.</summary>
-    int TentativasPerdidas = 0);
+    int TentativasPerdidas = 0,
+    /// <summary>Nome da campanha vigente para esta unidade e data (ADR-0062), quando houver —
+    /// destaque no card para a atendente saber que está mexendo numa campanha (ex.: Carreta).</summary>
+    string? CampanhaNome = null);
 
 public sealed record PaginaAtendimentoDto(
     IReadOnlyList<SolicitacaoAtendimentoDto> Itens, int Total, int Pagina, int Tamanho);
@@ -126,7 +129,12 @@ public sealed record AgendamentoPendentePacienteDto(
     string? AtendenteNome);
 
 public sealed record ConfirmarAtendimentoRequest(string? Meio, string? Observacao);
-public sealed record CancelarAtendimentoRequest(string Motivo, string? Meio);
+
+/// <param name="Motivo">Justificativa interna — é a que assina o cancelamento no SISREG.</param>
+/// <param name="MotivoParaPaciente">O que dizer AO paciente quando ele perguntar por quê — o robô
+/// e o botão "Quero mais informações" do aviso leem daqui. Opcional: sem ele, a resposta é a
+/// orientação genérica de procurar o posto.</param>
+public sealed record CancelarAtendimentoRequest(string Motivo, string? Meio, string? MotivoParaPaciente = null);
 public sealed record PendenteAtendimentoRequest(string Motivo);
 public sealed record ContatoErradoAtendimentoRequest(string? Observacao);
 public sealed record TransferirAtendimentoRequest(Guid ParaUsuarioId, string? Observacao);

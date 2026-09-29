@@ -1357,7 +1357,10 @@ public sealed class ComunicacaoPacienteService(
                 // Verificado: o agendamento inteiro de uma vez.
                 //   "sua consulta de Otorrinolaringologia marcada para o dia 22/12/2026 às 14:00h
                 //    foi cancelada"
-                // O MOTIVO não entra aqui e não entra em lugar nenhum que o paciente veja.
+                // O MOTIVO não entra no template (modelo aprovado é fixo). O que o paciente pode
+                // receber é o MotivoCancelamentoParaPaciente — redigido para ele no modal de
+                // cancelar — quando PERGUNTA: botão "Quero mais informações" e robô leem de lá.
+                // A justificativa interna (MotivoCancelamento) continua nunca saindo.
                 return (opts.TemplateCancelamento,
                     [Tratamento(nomePaciente, sexo), $"{oQue} de {exame}{Marcada(s, tipo)} {cancelado}"],
                     []);
