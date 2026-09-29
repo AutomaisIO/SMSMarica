@@ -123,6 +123,29 @@ public static class CampanhaResolver
                 c.Id, c.Nome, c.LocalNome, c.LocalEndereco, c.ExigirConferenciaCadastral, c.EnvioAutomatico))
             .FirstOrDefaultAsync(ct);
     }
+
+    /// <summary>
+    /// O procedimento está SILENCIADO para campanha nesta unidade? Verdadeiro quando ele está
+    /// mapeado (há linha dele no mapeamento da unidade) e NENHUMA linha está com o aviso por
+    /// WhatsApp ligado — é o "desmarcar só tomografia" do mutirão (29/09/2026): a campanha em
+    /// envio automático continua ignorando a chave da unidade e cobrindo procedimento fora do
+    /// mapeamento, mas um procedimento explicitamente desmarcado passa a ser respeitado, no
+    /// automático da importação e no botão "Enviar".
+    /// </summary>
+    public static async Task<bool> ProcedimentoSilenciadoAsync(
+        SmsMaisDbContext db, Guid unidadeId, string? codigoSisreg, CancellationToken ct = default)
+    {
+        var codigo = (codigoSisreg ?? string.Empty).Trim();
+        if (codigo.Length == 0) return false; // sem código não há chave a respeitar
+
+        var linhas = await db.SisregProcedimentosProfissional.AsNoTracking()
+            .Where(pp => pp.Codigo == codigo && db.SisregProfissionaisUnidade
+                .Any(pu => pu.Id == pp.ProfissionalId && pu.UnidadeId == unidadeId))
+            .Select(pp => pp.EnviarConfirmacao)
+            .ToListAsync(ct);
+
+        return linhas.Count > 0 && linhas.All(enviar => !enviar);
+    }
 }
 
 public sealed class CampanhaService(
@@ -248,6 +271,13 @@ public sealed class CampanhaService(
         var solicitacoes = await QuerySolicitacoes(c)
             .Where(s => s.DataAgendada > agora && s.Status != StatusSolicitacao.Cancelada)
             .ToListAsync(ct);
+
+        // Procedimento explicitamente DESMARCADO no mapeamento da unidade fica fora — mesma regra
+        // do envio automático da importação (mutirão 29/09/2026: TC sem aviso, o resto segue).
+        var silenciados = await CodigosSilenciadosAsync(c.UnidadeId, ct);
+        solicitacoes = solicitacoes
+            .Where(s => s.ProcedimentoCodigoSisreg is not { } cod || !silenciados.Contains(cod.Trim()))
+            .ToList();
         var ids = solicitacoes.Select(s => s.Id).ToList();
 
         var existentes = await db.ComunicacoesPaciente
@@ -319,6 +349,25 @@ public sealed class CampanhaService(
 
         await db.SaveChangesAsync(ct);
         return new EnvioCampanhaResultadoDto(enfileirados);
+    }
+
+    /// <summary>Códigos SISREG da unidade cujo aviso está desligado em TODAS as linhas do
+    /// mapeamento — o conjunto que o botão "Enviar" pula (ver <see
+    /// cref="CampanhaResolver.ProcedimentoSilenciadoAsync"/> para a mesma regra, item a item, no
+    /// envio automático da importação).</summary>
+    private async Task<HashSet<string>> CodigosSilenciadosAsync(Guid unidadeId, CancellationToken ct)
+    {
+        var linhas = await db.SisregProcedimentosProfissional.AsNoTracking()
+            .Where(pp => db.SisregProfissionaisUnidade
+                .Any(pu => pu.Id == pp.ProfissionalId && pu.UnidadeId == unidadeId))
+            .Select(pp => new { pp.Codigo, pp.EnviarConfirmacao })
+            .ToListAsync(ct);
+
+        return linhas
+            .GroupBy(l => l.Codigo.Trim(), StringComparer.Ordinal)
+            .Where(g => g.All(l => !l.EnviarConfirmacao))
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     /// <summary>Agendamentos que a campanha cobre: unidade executante + período, não excluídos.</summary>

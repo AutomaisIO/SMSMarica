@@ -1317,11 +1317,15 @@ public sealed class ImportacaoSisregService(
             return false;
 
         // Campanha (ADR-0062) com envio automático: tudo o que cai no período dela avisa, sem
-        // depender das chaves de unidade e procedimento — é para isso que a campanha foi criada.
+        // depender da chave da unidade nem de o procedimento estar mapeado — é para isso que a
+        // campanha foi criada. A EXCEÇÃO (29/09/2026, mutirão da Carreta) é o procedimento
+        // explicitamente DESMARCADO no mapeamento da unidade: desmarcar só tomografia e manter o
+        // resto automático precisa ser possível, senão a campanha vira tudo-ou-nada.
         if (m.DataHoraAtendimento is { } dataCampanha
             && await SMSMais.Core.Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
                 db, unidadeExecutanteId, ParaUtcBrasilia(dataCampanha), ct) is { EnvioAutomatico: true })
-            return true;
+            return !await SMSMais.Core.Notificacoes.Campanhas.CampanhaResolver.ProcedimentoSilenciadoAsync(
+                db, unidadeExecutanteId, m.CodigoProcedimentoSisreg, ct);
 
         var daUnidade = await db.SisregVarreduraAgendas.AsNoTracking()
             .Where(a => a.UnidadeId == unidadeExecutanteId)
