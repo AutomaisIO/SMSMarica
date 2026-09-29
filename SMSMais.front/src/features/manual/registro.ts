@@ -6,6 +6,7 @@ import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxo
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
 import { artigoUnidadesAtendimento } from '@/features/manual/conteudo/unidadesAtendimento';
+import { artigoVeiculos } from '@/features/manual/conteudo/veiculos';
 import type { Artigo, GrupoManual } from '@/features/manual/tipos';
 
 /**
@@ -60,6 +61,7 @@ export const ARTIGOS: Artigo[] = [
   artigoMensageria,
   artigoOuvidoria,
   artigoUnidadesAtendimento,
+  artigoVeiculos,
 ];
 
 /** Ícone de fallback quando um grupo ainda não foi declarado. */

@@ -26,6 +26,8 @@ import { MapaDeAssentosAlocavel } from '@/features/translados/components/MapaDeA
 import { ModalEscolherSessao } from '@/features/translados/components/ModalEscolherSessao';
 import type { AlocacaoDto, SessaoElegivel, StatusRota } from '@/features/translados/types';
 import { useVeiculoPorId } from '@/features/veiculos/api/queries';
+import { IlustracaoVeiculo } from '@/features/veiculos/components/IlustracaoVeiculo';
+import { veiculoAdaptado } from '@/features/veiculos/lib/desenhoVeiculo';
 
 function formatarData(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -249,6 +251,22 @@ export function TransladoDetalhePage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-4 rounded-lg bg-gradient-to-b from-gray-50 to-white p-3">
+              <IlustracaoVeiculo
+                tipo={veiculo.data.tipo}
+                modelo={veiculo.data.modelo}
+                fabricante={veiculo.data.fabricante}
+                cor={veiculo.data.cor}
+                adaptado={veiculoAdaptado(veiculo.data.modelo, veiculo.data.fileiras)}
+                className="w-40 shrink-0"
+              />
+              <div className="min-w-0">
+                <div className="text-lg font-semibold tracking-wide text-gray-900">{veiculo.data.placa}</div>
+                <div className="text-sm text-gray-600">
+                  {veiculo.data.fabricante} {veiculo.data.modelo} · {veiculo.data.cor}
+                </div>
+              </div>
+            </div>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">
                 Mapa de assentos · {r.alocacoes.length}/{veiculo.data.fileiras.reduce((acc, f) => acc + f.assentos.filter((a) => a.tipo !== 'Motorista' && !a.bloqueado).length, 0)} ocupados

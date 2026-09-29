@@ -2,11 +2,17 @@ import { useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { MapaDeAssentos, type LinhaLayout } from '@/features/veiculos/components/MapaDeAssentos';
 import { useVeiculoPorId } from '@/features/veiculos/api/queries';
 import { ROTULOS_TIPO_VEICULO } from '@/features/veiculos/types';
+import {
+  AmostraCorVeiculo,
+  IlustracaoVeiculo,
+} from '@/features/veiculos/components/IlustracaoVeiculo';
+import { escolherDesenho, veiculoAdaptado } from '@/features/veiculos/lib/desenhoVeiculo';
 import { useListarRotas } from '@/features/translados/api/queries';
 import type { RotaDiariaListItem, StatusRota } from '@/features/translados/types';
 
@@ -29,11 +35,22 @@ const CORES_STATUS: Record<StatusRota, string> = {
   Cancelada: 'bg-gray-100 text-gray-700 border-gray-200',
 };
 
-function Dado({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
+function Dado({
+  rotulo,
+  valor,
+  antes,
+}: {
+  rotulo: string;
+  valor?: string | null;
+  antes?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{rotulo}</span>
-      <span className="text-sm text-gray-900">{valor || <span className="text-gray-400">—</span>}</span>
+      <span className="flex items-center gap-1.5 text-sm text-gray-900">
+        {antes}
+        {valor || <span className="text-gray-400">—</span>}
+      </span>
     </div>
   );
 }
@@ -47,6 +64,7 @@ export function VeiculoDetalhePage() {
   const translados = useListarRotas({ veiculoId: id });
 
   const v = detalhe.data;
+  const desenho = v ? escolherDesenho(v.tipo, v.modelo, v.fabricante) : null;
 
   const linhas: LinhaLayout[] = useMemo(
     () =>
@@ -112,6 +130,7 @@ export function VeiculoDetalhePage() {
                 {v?.placa ?? 'Carregando…'}
               </h1>
               {v ? <StatusBadge ativo={v.ativo} /> : null}
+              <AjudaManual artigo="veiculos" />
             </div>
             {v ? (
               <p className="text-sm text-gray-500">
@@ -132,16 +151,29 @@ export function VeiculoDetalhePage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Layout de assentos</h2>
-            <MapaDeAssentos linhas={linhas} />
+            <MapaDeAssentos linhas={linhas} cor={v.cor} />
           </section>
           <aside className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Informações</h2>
+            <figure className="mb-5 rounded-lg bg-gradient-to-b from-gray-50 to-white px-2 pb-2 pt-3">
+              <IlustracaoVeiculo
+                tipo={v.tipo}
+                modelo={v.modelo}
+                fabricante={v.fabricante}
+                cor={v.cor}
+                adaptado={veiculoAdaptado(v.modelo, v.fileiras)}
+                className="w-full"
+              />
+              <figcaption className="mt-1 text-center text-[11px] text-gray-500">
+                {desenho?.fiel ? `Desenho do ${desenho.nome}` : `Desenho genérico · ${desenho?.nome}`}
+              </figcaption>
+            </figure>
             <div className="grid grid-cols-1 gap-4">
               <Dado rotulo="Placa" valor={v.placa} />
               <Dado rotulo="Tipo" valor={ROTULOS_TIPO_VEICULO[v.tipo] ?? v.tipo} />
               <Dado rotulo="Fabricante" valor={v.fabricante} />
               <Dado rotulo="Modelo" valor={v.modelo} />
-              <Dado rotulo="Cor" valor={v.cor} />
+              <Dado rotulo="Cor" valor={v.cor} antes={<AmostraCorVeiculo cor={v.cor} />} />
               <Dado rotulo="Cadastrado em" valor={new Date(v.criadoEm).toLocaleString('pt-BR')} />
             </div>
           </aside>

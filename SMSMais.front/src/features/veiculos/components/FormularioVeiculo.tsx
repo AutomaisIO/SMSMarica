@@ -26,6 +26,9 @@ import {
   MapaDeAssentos,
   type LinhaLayout,
 } from '@/features/veiculos/components/MapaDeAssentos';
+import { IlustracaoVeiculo } from '@/features/veiculos/components/IlustracaoVeiculo';
+import { SeletorCorVeiculo } from '@/features/veiculos/components/SeletorCorVeiculo';
+import { escolherDesenho, modeloAdaptado } from '@/features/veiculos/lib/desenhoVeiculo';
 
 type Props = {
   modo: 'criar' | 'editar';
@@ -175,6 +178,10 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
   }
 
   const totalAssentos = linhas.reduce((acc, l) => acc + l.assentos.length, 0);
+  const desenho = escolherDesenho(valores.tipo, valores.modelo, valores.fabricante);
+  const adaptado =
+    modeloAdaptado(valores.modelo) ||
+    linhas.some((l) => l.assentos.some((a) => a.tipo === TIPOS_ASSENTO.Cadeirante && !a.bloqueado));
 
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
@@ -257,66 +264,80 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Campo label="Placa" htmlFor="placa" erro={erros.placa} required>
-          <Input
-            id="placa"
-            value={valores.placa}
-            onChange={(e) => set('placa', e.target.value.toUpperCase())}
-            maxLength={10}
-            required
-            placeholder="ABC1D23"
-            disabled={modo === 'editar'}
-            readOnly={modo === 'editar'}
-          />
-        </Campo>
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_15rem]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Campo label="Placa" htmlFor="placa" erro={erros.placa} required>
+            <Input
+              id="placa"
+              value={valores.placa}
+              onChange={(e) => set('placa', e.target.value.toUpperCase())}
+              maxLength={10}
+              required
+              placeholder="ABC1D23"
+              disabled={modo === 'editar'}
+              readOnly={modo === 'editar'}
+            />
+          </Campo>
 
-        <Campo label="Tipo" htmlFor="tipo" erro={erros.tipo}>
-          <Select
-            id="tipo"
-            value={valores.tipo}
-            onChange={(e) => set('tipo', e.target.value as TipoVeiculo)}
-          >
-            {Object.values(TIPOS_VEICULO).map((t) => (
-              <option key={t} value={t}>
-                {ROTULOS_TIPO_VEICULO[t]}
-              </option>
-            ))}
-          </Select>
-        </Campo>
+          <Campo label="Tipo" htmlFor="tipo" erro={erros.tipo}>
+            <Select
+              id="tipo"
+              value={valores.tipo}
+              onChange={(e) => set('tipo', e.target.value as TipoVeiculo)}
+            >
+              {Object.values(TIPOS_VEICULO).map((t) => (
+                <option key={t} value={t}>
+                  {ROTULOS_TIPO_VEICULO[t]}
+                </option>
+              ))}
+            </Select>
+          </Campo>
 
-        <Campo label="Fabricante" htmlFor="fabricante" erro={erros.fabricante}>
-          <Input
-            id="fabricante"
-            value={valores.fabricante}
-            onChange={(e) => set('fabricante', e.target.value)}
-            maxLength={80}
-            required
-            placeholder="Mercedes-Benz, Renault…"
-          />
-        </Campo>
+          <Campo label="Fabricante" htmlFor="fabricante" erro={erros.fabricante}>
+            <Input
+              id="fabricante"
+              value={valores.fabricante}
+              onChange={(e) => set('fabricante', e.target.value)}
+              maxLength={80}
+              required
+              placeholder="Mercedes-Benz, Renault…"
+            />
+          </Campo>
 
-        <Campo label="Modelo" htmlFor="modelo" erro={erros.modelo}>
-          <Input
-            id="modelo"
-            value={valores.modelo}
-            onChange={(e) => set('modelo', e.target.value)}
-            maxLength={100}
-            required
-            placeholder="Sprinter, Master…"
-          />
-        </Campo>
+          <Campo label="Modelo" htmlFor="modelo" erro={erros.modelo}>
+            <Input
+              id="modelo"
+              value={valores.modelo}
+              onChange={(e) => set('modelo', e.target.value)}
+              maxLength={100}
+              required
+              placeholder="Sprinter, Master…"
+            />
+          </Campo>
 
-        <Campo label="Cor" htmlFor="cor" erro={erros.cor}>
-          <Input
-            id="cor"
-            value={valores.cor}
-            onChange={(e) => set('cor', e.target.value)}
-            maxLength={40}
-            required
-            placeholder="Branco, Prata…"
+          <Campo label="Cor" htmlFor="cor" erro={erros.cor} className="sm:col-span-2">
+            <SeletorCorVeiculo id="cor" valor={valores.cor} aoMudar={(v) => set('cor', v)} />
+          </Campo>
+        </div>
+
+        <aside className="flex flex-col items-center justify-center gap-3 rounded-lg border border-gray-200 bg-gradient-to-b from-gray-50 to-white p-4">
+          <IlustracaoVeiculo
+            tipo={valores.tipo}
+            modelo={valores.modelo}
+            fabricante={valores.fabricante}
+            cor={valores.cor}
+            adaptado={adaptado}
+            className="w-full"
           />
-        </Campo>
+          <div className="text-center">
+            <div className="text-sm font-medium text-gray-900">
+              {[valores.fabricante, valores.modelo].filter(Boolean).join(' ') || 'Pré-visualização'}
+            </div>
+            <div className="text-xs text-gray-500">
+              {desenho.fiel ? `Desenho do ${desenho.nome}` : `Desenho genérico · ${desenho.nome}`}
+            </div>
+          </div>
+        </aside>
       </section>
 
       {modo === 'criar' ? (
@@ -403,6 +424,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <MapaDeAssentos
                 linhas={linhas}
+                cor={valores.cor}
                 onClickAssento={({ fileiraOrdem, numero }) =>
                   rotacionarAssento(fileiraOrdem, numero)
                 }
@@ -470,6 +492,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <MapaDeAssentos
                   linhas={linhas}
+                  cor={valores.cor}
                   onClickAssento={({ fileiraOrdem, numero }) => rotacionarAssento(fileiraOrdem, numero)}
                 />
               </div>

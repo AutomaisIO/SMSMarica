@@ -6,6 +6,13 @@ import {
   TIPOS_ASSENTO,
   type TipoAssento,
 } from '@/features/veiculos/types';
+import {
+  clarear,
+  contornoDaCor,
+  escurecer,
+  misturar,
+  resolverCorVeiculo,
+} from '@/features/veiculos/lib/corVeiculo';
 
 export type CelulaAssento = {
   /** Número sequencial dentro da fileira (1..N). */
@@ -47,6 +54,11 @@ type Props = {
   destacado?: { fileiraOrdem: number; numero: number } | null;
   /** Maior nº de assentos em uma fileira. Se não informado, calculado. */
   colunas?: number;
+  /**
+   * Cor do veículo (texto do cadastro). Se informada, o mapa é desenhado dentro da carroceria
+   * vista de cima, pintada nessa cor — o mesmo carro da lista, reconhecível na hora de alocar.
+   */
+  cor?: string;
   className?: string;
 };
 
@@ -85,6 +97,7 @@ export function MapaDeAssentos({
   renderAssento,
   destacado,
   colunas,
+  cor,
   className,
 }: Props) {
   const totalColunas = useMemo(() => {
@@ -98,70 +111,82 @@ export function MapaDeAssentos({
   );
 
   const clicavel = Boolean(onClickAssento);
+  const pintura = cor === undefined ? null : resolverCorVeiculo(cor).hex;
 
   return (
     <div className={cn('flex flex-col items-center gap-3', className)}>
-      <FrenteDoVeiculo colunas={totalColunas} />
+      <div
+        className={cn('flex w-full flex-col gap-3', pintura && 'rounded-[1.75rem] border-[3px] px-2 pb-2')}
+        style={
+          pintura
+            ? { borderColor: contornoDaCor(pintura), backgroundColor: misturar(pintura, '#ffffff', 0.9) }
+            : undefined
+        }
+      >
+        {pintura ? <Capo cor={pintura} /> : <FrenteDoVeiculo colunas={totalColunas} />}
 
-      <div className="flex w-full flex-col gap-2">
-        {linhasOrdenadas.map((linha) => (
-          <div key={linha.ordem} className="flex items-center gap-2">
-            <span className="w-6 shrink-0 text-center text-xs font-semibold text-gray-500">
-              F{linha.ordem}
-            </span>
-            <div
-              className="grid flex-1 gap-2"
-              style={{ gridTemplateColumns: `repeat(${totalColunas}, minmax(0, 1fr))` }}
-            >
-              {Array.from({ length: totalColunas }).map((_, colIdx) => {
-                const assento = linha.assentos[colIdx];
-                if (!assento) {
-                  return <div key={`vazio-${colIdx}`} className="h-12" />;
-                }
-                const cor = assento.bloqueado ? COR_BLOQUEADO : CORES[assento.tipo];
-                const destacadoAqui =
-                  destacado?.fileiraOrdem === linha.ordem &&
-                  destacado?.numero === assento.numero;
-                const conteudoCustom =
-                  renderAssento?.({
-                    fileiraOrdem: linha.ordem,
-                    numero: assento.numero,
-                    tipo: assento.tipo,
-                  }) ?? null;
-                const Icone = cor.icone;
-                return (
-                  <button
-                    key={assento.numero}
-                    type="button"
-                    disabled={!clicavel}
-                    onClick={() =>
-                      onClickAssento?.({
-                        fileiraOrdem: linha.ordem,
-                        numero: assento.numero,
-                      })
-                    }
-                    title={`${ROTULOS_TIPO_ASSENTO[assento.tipo]} — F${linha.ordem}·${assento.numero}`}
-                    className={cn(
-                      'flex h-12 w-full flex-col items-center justify-center rounded-md border-2 text-[10px] font-semibold leading-tight transition',
-                      cor.base,
-                      clicavel && cor.hover,
-                      clicavel && 'cursor-pointer',
-                      !clicavel && 'cursor-default',
-                      destacadoAqui && 'ring-2 ring-offset-1 ring-red-500',
-                    )}
-                  >
-                    {conteudoCustom ?? (
-                      <>
-                        <Icone className="h-3.5 w-3.5" />
-                        <span>{assento.numero}</span>
-                      </>
-                    )}
-                  </button>
-                );
-              })}
+        <div className="flex w-full flex-col gap-2">
+          {linhasOrdenadas.map((linha) => (
+            <div key={linha.ordem} className="flex items-center gap-2">
+              <span className="w-6 shrink-0 text-center text-xs font-semibold text-gray-500">
+                F{linha.ordem}
+              </span>
+              <div
+                className="grid flex-1 gap-2"
+                style={{ gridTemplateColumns: `repeat(${totalColunas}, minmax(0, 1fr))` }}
+              >
+                {Array.from({ length: totalColunas }).map((_, colIdx) => {
+                  const assento = linha.assentos[colIdx];
+                  if (!assento) {
+                    return <div key={`vazio-${colIdx}`} className="h-12" />;
+                  }
+                  const estilo = assento.bloqueado ? COR_BLOQUEADO : CORES[assento.tipo];
+                  const destacadoAqui =
+                    destacado?.fileiraOrdem === linha.ordem &&
+                    destacado?.numero === assento.numero;
+                  const conteudoCustom =
+                    renderAssento?.({
+                      fileiraOrdem: linha.ordem,
+                      numero: assento.numero,
+                      tipo: assento.tipo,
+                    }) ?? null;
+                  const Icone = estilo.icone;
+                  return (
+                    <button
+                      key={assento.numero}
+                      type="button"
+                      disabled={!clicavel}
+                      onClick={() =>
+                        onClickAssento?.({
+                          fileiraOrdem: linha.ordem,
+                          numero: assento.numero,
+                        })
+                      }
+                      title={`${ROTULOS_TIPO_ASSENTO[assento.tipo]} — F${linha.ordem}·${assento.numero}`}
+                      className={cn(
+                        'flex h-12 w-full flex-col items-center justify-center rounded-md border-2 text-[10px] font-semibold leading-tight transition',
+                        estilo.base,
+                        clicavel && estilo.hover,
+                        clicavel && 'cursor-pointer',
+                        !clicavel && 'cursor-default',
+                        destacadoAqui && 'ring-2 ring-offset-1 ring-red-500',
+                      )}
+                    >
+                      {conteudoCustom ?? (
+                        <>
+                          <Icone className="h-3.5 w-3.5" />
+                          <span>{assento.numero}</span>
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {pintura ? <Traseira cor={pintura} /> : null}
       </div>
 
       <Legenda />
@@ -183,6 +208,45 @@ function FrenteDoVeiculo({ colunas }: { colunas: number }) {
           Frente do veículo
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Capô visto de cima, na cor do veículo, com para-brisa e faróis. */
+function Capo({ cor }: { cor: string }) {
+  const escuroNoClaro = contornoDaCor(cor);
+  return (
+    <div
+      className="relative -mx-2 flex h-11 flex-col justify-end overflow-hidden rounded-t-[1.5rem] border-b-[3px]"
+      style={{
+        background: `linear-gradient(180deg, ${clarear(cor, 0.25)}, ${cor} 55%, ${escurecer(cor, 0.12)})`,
+        borderColor: escuroNoClaro,
+      }}
+    >
+      <span className="absolute left-4 top-1.5 h-1.5 w-5 rounded-full border border-gray-400 bg-amber-50" />
+      <span className="absolute right-4 top-1.5 h-1.5 w-5 rounded-full border border-gray-400 bg-amber-50" />
+      <div
+        className="mx-5 flex h-4 items-center justify-center rounded-t-lg text-[9px] font-semibold uppercase tracking-wide text-white/80"
+        style={{ background: 'linear-gradient(180deg, #5b6b7d, #1e2833)' }}
+      >
+        Frente do veículo
+      </div>
+    </div>
+  );
+}
+
+/** Traseira vista de cima: faixa na cor do veículo com as lanternas. */
+function Traseira({ cor }: { cor: string }) {
+  return (
+    <div
+      className="relative -mx-2 -mb-2 h-4 rounded-b-[1.5rem] border-t-[3px]"
+      style={{
+        background: `linear-gradient(180deg, ${cor}, ${escurecer(cor, 0.15)})`,
+        borderColor: contornoDaCor(cor),
+      }}
+    >
+      <span className="absolute left-3 top-1 h-1.5 w-4 rounded-sm bg-red-600" />
+      <span className="absolute right-3 top-1 h-1.5 w-4 rounded-sm bg-red-600" />
     </div>
   );
 }

@@ -99,6 +99,7 @@ export function MapaDeAssentosAlocavel({
     <MapaDeAssentos
       className={className}
       linhas={linhas}
+      cor={veiculo.cor}
       onClickAssento={somenteLeitura ? undefined : aoClicar}
       renderAssento={(assento) => {
         const assentoId = idsPorPosicao.get(`${assento.fileiraOrdem}:${assento.numero}`);

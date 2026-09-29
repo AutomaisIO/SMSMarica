@@ -6,6 +6,7 @@ import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Modal } from '@/shared/ui/Modal';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
@@ -13,6 +14,10 @@ import {
   useListarVeiculos,
 } from '@/features/veiculos/api/queries';
 import { FormularioVeiculo } from '@/features/veiculos/components/FormularioVeiculo';
+import {
+  AmostraCorVeiculo,
+  IlustracaoVeiculo,
+} from '@/features/veiculos/components/IlustracaoVeiculo';
 import { ROTULOS_TIPO_VEICULO, type VeiculoListItem } from '@/features/veiculos/types';
 
 type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
@@ -46,10 +51,28 @@ export function VeiculosPage() {
       chave: 'descricao',
       cabecalho: 'Veículo',
       render: (v) => (
-        <span>
-          {v.fabricante} {v.modelo}
-          <span className="ml-1 text-xs text-gray-500">· {v.cor}</span>
-        </span>
+        <button
+          type="button"
+          onClick={() => navigate(`/app/veiculos/${v.id}`)}
+          className="flex items-center gap-3 text-left"
+        >
+          <IlustracaoVeiculo
+            tipo={v.tipo}
+            modelo={v.modelo}
+            fabricante={v.fabricante}
+            cor={v.cor}
+            className="w-24 shrink-0"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm text-gray-900">
+              {v.fabricante} {v.modelo}
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <AmostraCorVeiculo cor={v.cor} />
+              {v.cor}
+            </span>
+          </span>
+        </button>
       ),
     },
     { chave: 'status', cabecalho: 'Status', render: (v) => <StatusBadge ativo={v.ativo} /> },
@@ -90,7 +113,10 @@ export function VeiculosPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Veículos</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold text-gray-900">Veículos</h1>
+            <AjudaManual artigo="veiculos" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">
             Frota utilizada para translado. Cada veículo tem layout de assentos por fileira.
           </p>
