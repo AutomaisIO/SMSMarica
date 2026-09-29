@@ -6,16 +6,10 @@ import {
   TIPOS_ASSENTO,
   type TipoAssento,
 } from '@/features/veiculos/types';
-import {
-  clarear,
-  contornoDaCor,
-  escurecer,
-  misturar,
-  resolverCorVeiculo,
-} from '@/features/veiculos/lib/corVeiculo';
+import { montarPlanta, type VeiculoPlanta } from '@/features/veiculos/lib/plantaVeiculo';
 
 export type CelulaAssento = {
-  /** Número sequencial dentro da fileira (1..N). */
+  /** Número sequencial dentro da fileira (1..N), da esquerda (lado do motorista) para a direita. */
   numero: number;
   /** Tipo atual do assento. */
   tipo: TipoAssento;
@@ -37,6 +31,8 @@ type AssentoRender = {
 type Props = {
   /** Layout do veículo, fileiras ordenadas da frente para trás. */
   linhas: LinhaLayout[];
+  /** Veículo dono do layout: o modelo escolhe a planta, a cor pinta a carroceria. */
+  veiculo: VeiculoPlanta;
   /**
    * Se definido, clicar no assento chama `onClickAssento` com as coordenadas.
    * Use para marcar tipo, alocar paciente etc. Se ausente, mapa é somente leitura.
@@ -52,13 +48,6 @@ type Props = {
    * Assento destacado — útil para destacar uma seleção ou o assento sob o cursor.
    */
   destacado?: { fileiraOrdem: number; numero: number } | null;
-  /** Maior nº de assentos em uma fileira. Se não informado, calculado. */
-  colunas?: number;
-  /**
-   * Cor do veículo (texto do cadastro). Se informada, o mapa é desenhado dentro da carroceria
-   * vista de cima, pintada nessa cor — o mesmo carro da lista, reconhecível na hora de alocar.
-   */
-  cor?: string;
   className?: string;
 };
 
@@ -91,162 +80,104 @@ const COR_BLOQUEADO = {
   icone: Lock,
 };
 
+const pct = (valor: number, origem: number, total: number) => `${((valor - origem) / total) * 100}%`;
+
+/**
+ * Mapa de assentos desenhado na PLANTA do veículo: vista de cima, frente à direita, teto tirado.
+ * Cada banco fica onde fica no carro de verdade (ver `plantaVeiculo.ts`); o encosto é a borda
+ * grossa, do lado de trás. Os bancos são botões por cima do desenho.
+ */
 export function MapaDeAssentos({
   linhas,
+  veiculo,
   onClickAssento,
   renderAssento,
   destacado,
-  colunas,
-  cor,
   className,
 }: Props) {
-  const totalColunas = useMemo(() => {
-    if (colunas && colunas > 0) return colunas;
-    return Math.max(1, ...linhas.map((l) => l.assentos.length));
-  }, [colunas, linhas]);
-
-  const linhasOrdenadas = useMemo(
-    () => [...linhas].sort((a, b) => a.ordem - b.ordem),
-    [linhas],
+  const { tipo, modelo, fabricante, cor } = veiculo;
+  const planta = useMemo(
+    () => montarPlanta({ tipo, modelo, fabricante, cor }, linhas),
+    [tipo, modelo, fabricante, cor, linhas],
   );
-
+  const [vx, vy, vw, vh] = planta.caixa;
   const clicavel = Boolean(onClickAssento);
-  const pintura = cor === undefined ? null : resolverCorVeiculo(cor).hex;
+  // Largura na tela proporcional ao comprimento real: um Onix não fica do tamanho de uma Sprinter.
+  // O mínimo só evita banco ilegível; abaixo dele a planta rola — e rola a partir da frente.
+  const largura = {
+    minWidth: `${Math.round(planta.comprimento * 40)}px`,
+    maxWidth: `${Math.round(planta.comprimento * 150)}px`,
+  };
 
   return (
-    <div className={cn('flex flex-col items-center gap-3', className)}>
-      <div
-        className={cn('flex w-full flex-col gap-3', pintura && 'rounded-[1.75rem] border-[3px] px-2 pb-2')}
-        style={
-          pintura
-            ? { borderColor: contornoDaCor(pintura), backgroundColor: misturar(pintura, '#ffffff', 0.9) }
-            : undefined
-        }
-      >
-        {pintura ? <Capo cor={pintura} /> : <FrenteDoVeiculo colunas={totalColunas} />}
-
-        <div className="flex w-full flex-col gap-2">
-          {linhasOrdenadas.map((linha) => (
-            <div key={linha.ordem} className="flex items-center gap-2">
-              <span className="w-6 shrink-0 text-center text-xs font-semibold text-gray-500">
-                F{linha.ordem}
-              </span>
-              <div
-                className="grid flex-1 gap-2"
-                style={{ gridTemplateColumns: `repeat(${totalColunas}, minmax(0, 1fr))` }}
+    <div className={cn('flex flex-col gap-3', className)}>
+      <div className="w-full overflow-x-auto pb-1" dir="rtl">
+        <div className="mx-auto" style={largura} dir="ltr">
+          <div className="relative" style={{ aspectRatio: `${vw} / ${vh}` }}>
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 [&>svg]:h-full [&>svg]:w-full"
+              // SVG montado só com números e cores calculadas — nenhum texto do cadastro.
+              dangerouslySetInnerHTML={{ __html: planta.svg }}
+            />
+            {planta.assentos.map((a) => {
+              const estilo = a.bloqueado ? COR_BLOQUEADO : CORES[a.tipo];
+              const destacadoAqui =
+                destacado?.fileiraOrdem === a.fileiraOrdem && destacado?.numero === a.numero;
+              const conteudoCustom =
+                renderAssento?.({ fileiraOrdem: a.fileiraOrdem, numero: a.numero, tipo: a.tipo }) ?? null;
+              const Icone = estilo.icone;
+              const rotulo = `${a.bloqueado ? 'Bloqueado' : ROTULOS_TIPO_ASSENTO[a.tipo]} — F${a.fileiraOrdem}·${a.numero}`;
+              return (
+                <button
+                  key={`${a.fileiraOrdem}-${a.numero}`}
+                  type="button"
+                  disabled={!clicavel}
+                  onClick={() => onClickAssento?.({ fileiraOrdem: a.fileiraOrdem, numero: a.numero })}
+                  title={rotulo}
+                  aria-label={rotulo}
+                  className={cn(
+                    'absolute flex flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[28%] border-2 border-l-[5px] text-[10px] font-semibold leading-none shadow-sm transition',
+                    estilo.base,
+                    clicavel && estilo.hover,
+                    clicavel ? 'cursor-pointer' : 'cursor-default',
+                    destacadoAqui && 'ring-2 ring-red-500 ring-offset-1',
+                  )}
+                  style={{
+                    left: pct(a.cx - a.profundidade / 2, vx, vw),
+                    top: pct(a.cy - a.largura / 2, vy, vh),
+                    width: pct(a.profundidade, 0, vw),
+                    height: pct(a.largura, 0, vh),
+                  }}
+                >
+                  {conteudoCustom ?? (
+                    <>
+                      <Icone className="h-3 w-3 shrink-0" />
+                      <span>{a.numero}</span>
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="relative h-4 text-[10px] font-semibold text-gray-500">
+            {planta.fileiras.map((f) => (
+              <span
+                key={f.ordem}
+                className="absolute -translate-x-1/2"
+                style={{ left: pct(f.cx, vx, vw) }}
               >
-                {Array.from({ length: totalColunas }).map((_, colIdx) => {
-                  const assento = linha.assentos[colIdx];
-                  if (!assento) {
-                    return <div key={`vazio-${colIdx}`} className="h-12" />;
-                  }
-                  const estilo = assento.bloqueado ? COR_BLOQUEADO : CORES[assento.tipo];
-                  const destacadoAqui =
-                    destacado?.fileiraOrdem === linha.ordem &&
-                    destacado?.numero === assento.numero;
-                  const conteudoCustom =
-                    renderAssento?.({
-                      fileiraOrdem: linha.ordem,
-                      numero: assento.numero,
-                      tipo: assento.tipo,
-                    }) ?? null;
-                  const Icone = estilo.icone;
-                  return (
-                    <button
-                      key={assento.numero}
-                      type="button"
-                      disabled={!clicavel}
-                      onClick={() =>
-                        onClickAssento?.({
-                          fileiraOrdem: linha.ordem,
-                          numero: assento.numero,
-                        })
-                      }
-                      title={`${ROTULOS_TIPO_ASSENTO[assento.tipo]} — F${linha.ordem}·${assento.numero}`}
-                      className={cn(
-                        'flex h-12 w-full flex-col items-center justify-center rounded-md border-2 text-[10px] font-semibold leading-tight transition',
-                        estilo.base,
-                        clicavel && estilo.hover,
-                        clicavel && 'cursor-pointer',
-                        !clicavel && 'cursor-default',
-                        destacadoAqui && 'ring-2 ring-offset-1 ring-red-500',
-                      )}
-                    >
-                      {conteudoCustom ?? (
-                        <>
-                          <Icone className="h-3.5 w-3.5" />
-                          <span>{assento.numero}</span>
-                        </>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                F{f.ordem}
+              </span>
+            ))}
+            <span className="absolute right-0 top-0 font-medium uppercase tracking-wide text-gray-400">
+              frente ›
+            </span>
+          </div>
         </div>
-
-        {pintura ? <Traseira cor={pintura} /> : null}
       </div>
 
       <Legenda />
-    </div>
-  );
-}
-
-function FrenteDoVeiculo({ colunas }: { colunas: number }) {
-  return (
-    <div className="flex w-full items-center gap-2">
-      <span className="w-6" />
-      <div
-        className="grid flex-1"
-        style={{ gridTemplateColumns: `repeat(${colunas}, minmax(0, 1fr))` }}
-      >
-        <div
-          className="col-span-full flex h-6 items-center justify-center rounded-t-2xl border-2 border-b-0 border-gray-300 bg-gray-50 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
-        >
-          Frente do veículo
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Capô visto de cima, na cor do veículo, com para-brisa e faróis. */
-function Capo({ cor }: { cor: string }) {
-  const escuroNoClaro = contornoDaCor(cor);
-  return (
-    <div
-      className="relative -mx-2 flex h-11 flex-col justify-end overflow-hidden rounded-t-[1.5rem] border-b-[3px]"
-      style={{
-        background: `linear-gradient(180deg, ${clarear(cor, 0.25)}, ${cor} 55%, ${escurecer(cor, 0.12)})`,
-        borderColor: escuroNoClaro,
-      }}
-    >
-      <span className="absolute left-4 top-1.5 h-1.5 w-5 rounded-full border border-gray-400 bg-amber-50" />
-      <span className="absolute right-4 top-1.5 h-1.5 w-5 rounded-full border border-gray-400 bg-amber-50" />
-      <div
-        className="mx-5 flex h-4 items-center justify-center rounded-t-lg text-[9px] font-semibold uppercase tracking-wide text-white/80"
-        style={{ background: 'linear-gradient(180deg, #5b6b7d, #1e2833)' }}
-      >
-        Frente do veículo
-      </div>
-    </div>
-  );
-}
-
-/** Traseira vista de cima: faixa na cor do veículo com as lanternas. */
-function Traseira({ cor }: { cor: string }) {
-  return (
-    <div
-      className="relative -mx-2 -mb-2 h-4 rounded-b-[1.5rem] border-t-[3px]"
-      style={{
-        background: `linear-gradient(180deg, ${cor}, ${escurecer(cor, 0.15)})`,
-        borderColor: contornoDaCor(cor),
-      }}
-    >
-      <span className="absolute left-3 top-1 h-1.5 w-4 rounded-sm bg-red-600" />
-      <span className="absolute right-3 top-1 h-1.5 w-4 rounded-sm bg-red-600" />
     </div>
   );
 }

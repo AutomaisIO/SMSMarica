@@ -151,7 +151,7 @@ export function VeiculoDetalhePage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Layout de assentos</h2>
-            <MapaDeAssentos linhas={linhas} cor={v.cor} />
+            <MapaDeAssentos linhas={linhas} veiculo={v} />
           </section>
           <aside className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Informações</h2>

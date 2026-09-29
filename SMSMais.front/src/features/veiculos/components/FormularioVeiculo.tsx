@@ -258,6 +258,75 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
 
   const pendente = cadastrar.isPending || atualizar.isPending || atualizarLayout.isPending;
 
+  // Planta em cima (largura toda: é o veículo visto de cima, frente à direita) e as fileiras embaixo.
+  const editorLayout = (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <MapaDeAssentos
+          linhas={linhas}
+          veiculo={valores}
+          onClickAssento={({ fileiraOrdem, numero }) => rotacionarAssento(fileiraOrdem, numero)}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {linhas.map((l) => (
+          <div
+            key={l.ordem}
+            className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2"
+          >
+            <div className="flex items-center gap-2 text-sm">
+              <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-gray-100 text-xs font-semibold text-gray-700">
+                F{l.ordem}
+              </span>
+              <span className="text-gray-700">{l.assentos.length} assento(s)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                tamanho="sm"
+                variante="outline"
+                onClick={() => ajustarAssentos(l.ordem, -1)}
+                disabled={l.assentos.length <= 1}
+                aria-label={`Remover assento da fileira ${l.ordem}`}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                tamanho="sm"
+                variante="outline"
+                onClick={() => ajustarAssentos(l.ordem, +1)}
+                disabled={l.assentos.length >= 10}
+                aria-label={`Adicionar assento à fileira ${l.ordem}`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                tamanho="sm"
+                variante="ghost"
+                onClick={() => removerFileira(l.ordem)}
+                disabled={linhas.length <= 1}
+                className="text-red-600 hover:bg-red-50"
+              >
+                Excluir
+              </Button>
+            </div>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variante="outline"
+          onClick={adicionarFileira}
+          disabled={linhas.length >= 30}
+          className="w-full sm:col-span-2"
+        >
+          <Plus className="h-4 w-4" /> Adicionar fileira
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <form onSubmit={aoEnviar} className="space-y-6">
       {modo === 'editar' && detalhe.isFetching ? (
@@ -346,8 +415,8 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Layout dos assentos</h3>
               <p className="text-xs text-gray-600">
-                Adicione fileiras e ajuste quantos assentos cada uma tem. Clique num assento
-                para alternar entre Passageiro → Motorista → Acompanhante → Cadeirante.
+                F1 é a fileira da frente. Ajuste quantos assentos cada fileira tem e clique num
+                assento para alternar entre Passageiro → Motorista → Acompanhante → Cadeirante → Bloqueado.
               </p>
             </div>
             <div className="text-xs text-gray-500">
@@ -361,76 +430,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="space-y-2">
-              {linhas.map((l) => (
-                <div
-                  key={l.ordem}
-                  className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2"
-                >
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-gray-100 text-xs font-semibold text-gray-700">
-                      F{l.ordem}
-                    </span>
-                    <span className="text-gray-700">
-                      {l.assentos.length} assento(s)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      tamanho="sm"
-                      variante="outline"
-                      onClick={() => ajustarAssentos(l.ordem, -1)}
-                      disabled={l.assentos.length <= 1}
-                      aria-label={`Remover assento da fileira ${l.ordem}`}
-                    >
-                      <Minus className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      tamanho="sm"
-                      variante="outline"
-                      onClick={() => ajustarAssentos(l.ordem, +1)}
-                      disabled={l.assentos.length >= 10}
-                      aria-label={`Adicionar assento à fileira ${l.ordem}`}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      tamanho="sm"
-                      variante="ghost"
-                      onClick={() => removerFileira(l.ordem)}
-                      disabled={linhas.length <= 1}
-                      className="text-red-600 hover:bg-red-50"
-                    >
-                      Excluir
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variante="outline"
-                onClick={adicionarFileira}
-                disabled={linhas.length >= 30}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4" /> Adicionar fileira
-              </Button>
-            </div>
-
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <MapaDeAssentos
-                linhas={linhas}
-                cor={valores.cor}
-                onClickAssento={({ fileiraOrdem, numero }) =>
-                  rotacionarAssento(fileiraOrdem, numero)
-                }
-              />
-            </div>
-          </div>
+          {editorLayout}
         </section>
       ) : (
         <section className="space-y-4">
@@ -438,7 +438,8 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Layout dos assentos</h3>
               <p className="text-xs text-gray-600">
-                Clique num assento para alternar entre Passageiro → Motorista → Acompanhante → Cadeirante → Bloqueado.
+                F1 é a fileira da frente. Ajuste quantos assentos cada fileira tem e clique num
+                assento para alternar entre Passageiro → Motorista → Acompanhante → Cadeirante → Bloqueado.
               </p>
             </div>
             <div className="text-xs text-gray-500">
@@ -449,54 +450,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
           {detalhe.isFetching ? (
             <div className="text-sm text-gray-400">Carregando layout…</div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="space-y-2">
-                {linhas.map((l) => (
-                  <div
-                    key={l.ordem}
-                    className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2"
-                  >
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-gray-100 text-xs font-semibold text-gray-700">
-                        F{l.ordem}
-                      </span>
-                      <span className="text-gray-700">{l.assentos.length} assento(s)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button type="button" tamanho="sm" variante="outline"
-                        onClick={() => ajustarAssentos(l.ordem, -1)}
-                        disabled={l.assentos.length <= 1}
-                        aria-label={`Remover assento da fileira ${l.ordem}`}>
-                        <Minus className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button type="button" tamanho="sm" variante="outline"
-                        onClick={() => ajustarAssentos(l.ordem, +1)}
-                        disabled={l.assentos.length >= 10}
-                        aria-label={`Adicionar assento à fileira ${l.ordem}`}>
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button type="button" tamanho="sm" variante="ghost"
-                        onClick={() => removerFileira(l.ordem)}
-                        disabled={linhas.length <= 1}
-                        className="text-red-600 hover:bg-red-50">
-                        Excluir
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                <Button type="button" variante="outline" onClick={adicionarFileira}
-                  disabled={linhas.length >= 30} className="w-full">
-                  <Plus className="h-4 w-4" /> Adicionar fileira
-                </Button>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <MapaDeAssentos
-                  linhas={linhas}
-                  cor={valores.cor}
-                  onClickAssento={({ fileiraOrdem, numero }) => rotacionarAssento(fileiraOrdem, numero)}
-                />
-              </div>
-            </div>
+            editorLayout
           )}
         </section>
       )}

@@ -2,29 +2,52 @@ import { useState } from 'react';
 import { Select } from '@/shared/ui/Select';
 import { TelaSimulada } from '@/features/manual/components/TelaSimulada';
 import { IlustracaoVeiculo } from '@/features/veiculos/components/IlustracaoVeiculo';
+import { MapaDeAssentos, type LinhaLayout } from '@/features/veiculos/components/MapaDeAssentos';
 import { SeletorCorVeiculo } from '@/features/veiculos/components/SeletorCorVeiculo';
 import { escolherDesenho } from '@/features/veiculos/lib/desenhoVeiculo';
 import { ROTULOS_TIPO_VEICULO, type TipoVeiculo } from '@/features/veiculos/types';
 
-type Exemplo = { rotulo: string; tipo: TipoVeiculo; fabricante: string; modelo: string };
+type Layout = 'carro5' | 'spin7' | 'van16' | 'van15' | 'amb' | 'micro';
+
+type Exemplo = { rotulo: string; tipo: TipoVeiculo; fabricante: string; modelo: string; layout: Layout };
+
+type TipoSim = LinhaLayout['assentos'][number]['tipo'];
+const M: TipoSim = 'Motorista';
+const P: TipoSim = 'Passageiro';
+const A: TipoSim = 'Acompanhante';
+const C: TipoSim = 'Cadeirante';
+
+const fileiras = (...linhas: TipoSim[][]): LinhaLayout[] =>
+  linhas.map((tipos, i) => ({ ordem: i + 1, assentos: tipos.map((tipo, j) => ({ numero: j + 1, tipo })) }));
+
+// Layouts típicos de cada veículo — só para a simulação.
+const LAYOUTS: Record<Layout, LinhaLayout[]> = {
+  carro5: fileiras([M, P], [P, P, P]),
+  spin7: fileiras([M, P], [P, P, P], [P, P]),
+  van16: fileiras([M, P, P], [P, P, P], [P, P, P], [P, P, P], [A, P, P], [P, P, P, P]),
+  van15: fileiras([M, P, P], [P, P, P], [C, P], [P, P, P], [P, P, P, P]),
+  amb: fileiras([M, P, P], [A, C]),
+  micro: fileiras([M], [P, P, P, P], [P, P, P, P], [P, P, P, P], [P, P, P, P], [P, P, P, P], [P, P, P, P, P]),
+};
 
 // Os modelos da frota (desenho próprio) e alguns que caem no genérico — para a pessoa ver a
 // diferença entre "Desenho do …" e "Desenho genérico · …".
 const EXEMPLOS: Exemplo[] = [
-  { rotulo: 'Chevrolet Onix', tipo: 'Carro', fabricante: 'Chevrolet', modelo: 'Onix' },
-  { rotulo: 'Volkswagen Polo', tipo: 'Carro', fabricante: 'Volkswagen', modelo: 'Polo' },
-  { rotulo: 'Chevrolet Spin', tipo: 'Carro', fabricante: 'Chevrolet', modelo: 'Spin' },
-  { rotulo: 'Mercedes-Benz Sprinter', tipo: 'Van', fabricante: 'Mercedes-Benz', modelo: 'Sprinter' },
-  { rotulo: 'Renault Master adaptada', tipo: 'Van', fabricante: 'Renault', modelo: 'Master adaptada' },
-  { rotulo: 'Renault Master (ambulância)', tipo: 'Ambulancia', fabricante: 'Renault', modelo: 'Master' },
-  { rotulo: 'Jeep Renegade (genérico)', tipo: 'Carro', fabricante: 'Jeep', modelo: 'Renegade' },
-  { rotulo: 'Fiat Strada (genérico)', tipo: 'Carro', fabricante: 'Fiat', modelo: 'Strada' },
-  { rotulo: 'Volare W9 (genérico)', tipo: 'MicroOnibus', fabricante: 'Volare', modelo: 'W9' },
+  { rotulo: 'Chevrolet Onix', tipo: 'Carro', fabricante: 'Chevrolet', modelo: 'Onix', layout: 'carro5' },
+  { rotulo: 'Volkswagen Polo', tipo: 'Carro', fabricante: 'Volkswagen', modelo: 'Polo', layout: 'carro5' },
+  { rotulo: 'Chevrolet Spin', tipo: 'Carro', fabricante: 'Chevrolet', modelo: 'Spin', layout: 'spin7' },
+  { rotulo: 'Mercedes-Benz Sprinter', tipo: 'Van', fabricante: 'Mercedes-Benz', modelo: 'Sprinter', layout: 'van16' },
+  { rotulo: 'Renault Master adaptada', tipo: 'Van', fabricante: 'Renault', modelo: 'Master adaptada', layout: 'van15' },
+  { rotulo: 'Renault Master (ambulância)', tipo: 'Ambulancia', fabricante: 'Renault', modelo: 'Master', layout: 'amb' },
+  { rotulo: 'Jeep Renegade (genérico)', tipo: 'Carro', fabricante: 'Jeep', modelo: 'Renegade', layout: 'carro5' },
+  { rotulo: 'Fiat Strada (genérico)', tipo: 'Carro', fabricante: 'Fiat', modelo: 'Strada', layout: 'carro5' },
+  { rotulo: 'Volare W9 (genérico)', tipo: 'MicroOnibus', fabricante: 'Volare', modelo: 'W9', layout: 'micro' },
 ];
 
 /**
  * A paleta de cor do cadastro de veículos, de mentira: escolhe o modelo, clica na cor, o desenho
- * repinta. Usa os MESMOS componentes da tela real — se o desenho mudar lá, muda aqui junto.
+ * de lado e a planta vista de cima repintam. Usa os MESMOS componentes da tela real — se o
+ * desenho mudar lá, muda aqui junto.
  */
 export function SimulacaoDesenhoVeiculo() {
   const [indice, setIndice] = useState(3);
@@ -73,6 +96,12 @@ export function SimulacaoDesenhoVeiculo() {
           <span className="text-center text-xs text-gray-500">
             {desenho.fiel ? `Desenho do ${desenho.nome}` : `Desenho genérico · ${desenho.nome}`}
           </span>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 md:col-span-2">
+          <MapaDeAssentos
+            linhas={LAYOUTS[ex.layout]}
+            veiculo={{ tipo: ex.tipo, modelo: ex.modelo, fabricante: ex.fabricante, cor }}
+          />
         </div>
       </div>
     </TelaSimulada>

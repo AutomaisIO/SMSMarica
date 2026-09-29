@@ -52,6 +52,11 @@ export const artigoVeiculos: Artigo = {
     'assento',
     'fileira',
     'layout',
+    'planta',
+    'vista de cima',
+    'corredor',
+    'porta corrediça',
+    'volante',
     'motorista',
     'acompanhante',
     'bloqueado',
@@ -188,6 +193,10 @@ export const artigoVeiculos: Artigo = {
             ]}
           />
           <Sub>Experimente</Sub>
+          <P>
+            A simulação mostra o desenho de lado e a planta vista de cima, com um layout típico de
+            cada modelo.
+          </P>
           <SimulacaoDesenhoVeiculo />
         </>
       ),
@@ -195,13 +204,39 @@ export const artigoVeiculos: Artigo = {
     {
       id: 'assentos',
       titulo: 'O layout de assentos',
-      busca: 'layout assentos fileira F1 frente adicionar fileira excluir fileira passageiro motorista acompanhante cadeirante bloqueado alternar clicar limite 30 fileiras 10 assentos',
+      busca: 'layout assentos fileira F1 frente adicionar fileira excluir fileira passageiro motorista acompanhante cadeirante bloqueado alternar clicar limite 30 fileiras 10 assentos planta vista de cima corredor porta corrediça volante encosto proporção',
       conteudo: (
         <>
           <P>
-            O layout é desenhado dentro da carroceria vista de cima, na cor do veículo, com a frente
-            no alto: <strong>F1</strong> é a fileira do motorista e as seguintes vão para trás. Cada
-            fileira tem de 1 a 10 assentos, e o veículo tem de 1 a 30 fileiras.
+            O layout aparece na <strong>planta do veículo</strong>: o carro visto de cima, com o
+            teto tirado, na cor cadastrada e com a <strong>frente à direita</strong>. O lado de cima
+            do desenho é o lado do motorista. Cada banco fica onde fica no veículo de verdade, nas
+            medidas do modelo: <strong>F1</strong> é a fileira do motorista (com o volante à
+            frente) e as seguintes vão para trás; o assento 1 de cada fileira é o do lado do
+            motorista. A borda grossa de cada banco é o encosto.
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Carro (Onix, Polo, Spin…)',
+                descricao:
+                  'Dois bancos na frente com o console no meio; atrás, o banco inteiriço. A terceira fileira da Spin fica sobre o eixo traseiro.',
+              },
+              {
+                termo: 'Van (Sprinter, Master)',
+                descricao:
+                  'Na cabine, motorista e banco duplo. Nas fileiras de trás, 3 assentos viram 2 + corredor + 1, com o corredor do lado da porta corrediça (a faixa tracejada na parede); 4 assentos ocupam a largura toda, como o último banco.',
+              },
+              {
+                termo: 'Micro-ônibus e ônibus',
+                descricao: 'Motorista sozinho na frente, porta à direita, e fileiras 2 + corredor + 2.',
+              },
+            ]}
+          />
+          <P>
+            Cada fileira tem de 1 a 10 assentos, e o veículo tem de 1 a 30 fileiras. Se o layout
+            tiver mais fileiras do que cabem no veículo, a planta aproxima as fileiras em vez de
+            esconder alguma — é o aviso de que o cadastro está maior que o carro.
           </P>
           <P>
             Os botões − e + de cada fileira tiram e põem assentos;{' '}
@@ -249,9 +284,9 @@ export const artigoVeiculos: Artigo = {
       busca: 'translado alocar paciente assento livre sessão elegível mapa de assentos cor do veículo placa',
       conteudo: (
         <P>
-          No detalhe do translado, o topo do mapa de assentos mostra o desenho do veículo da rota com
-          a placa, e o mapa aparece dentro da carroceria na cor dele — para quem aloca conferir que
-          está montando o carro certo. Ao escolher uma sessão elegível, os assentos livres piscam;
+          No detalhe do translado, o topo mostra o desenho do veículo da rota com a placa, e logo
+          abaixo a planta dele, vista de cima, na cor do carro — para quem aloca conferir que está
+          montando o veículo certo e escolher o lugar como escolheria olhando o carro. Ao escolher uma sessão elegível, os assentos livres piscam;
           os de <strong>Motorista</strong> e os bloqueados não aceitam paciente.
         </P>
       ),
