@@ -173,7 +173,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     {
       id: 'identificacao',
       titulo: 'A identificação, passo a passo',
-      busca: 'interrogatório chances erros reorientação recomeço tentar de novo esgotado posto',
+      busca: 'interrogatório chances erros reorientação recomeço tentar de novo esgotado posto cadastro sem cpf só cns nascimento incompleto',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -188,6 +188,14 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
               { termo: '4 · Vínculo', descricao: '"Sou o paciente / Sou responsável / Outro parente" — fica gravado no cadastro: é a resposta de LGPD para "por que essa pessoa recebe o dado daquela".' },
             ]}
           />
+          <P>
+            <strong>E se o cadastro não tem CPF?</strong> Fichas vindas de outros sistemas às vezes chegam
+            só com o CNS. Nesse caso o desafio <strong>não pergunta o que não pode conferir</strong>: pula
+            direto para o mês/ano de nascimento (e o nome, na etapa seguinte) — e a resposta de CPF que a
+            pessoa mandar <strong>não gasta chance</strong>, porque o dado que falta é do sistema, não dela.
+            Se a ficha também não tem nascimento, o robô diz com franqueza que o cadastro está incompleto e
+            orienta o posto — sem queimar tentativas num desafio impossível.
+          </P>
           <Sub>O que acontece quando a conversa engasga</Sub>
           <Lista>
             <Item>

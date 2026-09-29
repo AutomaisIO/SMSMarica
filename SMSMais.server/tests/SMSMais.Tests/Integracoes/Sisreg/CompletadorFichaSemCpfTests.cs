@@ -144,6 +144,27 @@ public class CompletadorFichaSemCpfTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Sem_cpf_valido_no_cadsus_ainda_completa_o_nascimento()
+    {
+        // 281 de 425 fichas caíram em "SemCpf" no primeiro backfill (29/09/2026) — mas a ficha
+        // do CADSUS traz o nascimento, e ele sozinho torna o desafio do WhatsApp respondível.
+        await using var db = fixture.CriarDbContext();
+        var c = Criar(db);
+        var ficha = Ficha();
+        c.Cadastro.ConsultarPorCnsAsync(Cns, Arg.Any<CancellationToken>())
+            .Returns(Cadsus(cpf: string.Empty));
+
+        var r = await c.Completador.CompletarAsync(ficha, Cns);
+
+        Assert.Equal(ficha.Id, r.PacienteId);
+        Assert.Contains("nascimento foi completado", r.Passo);
+        await c.Pacientes.Received(1).CompletarNascimentoAsync(
+            ficha.Id, new DateOnly(1970, 1, 22), Arg.Any<CancellationToken>());
+        await db.SaveChangesAsync();
+        Assert.Equal(DesfechoCadsusCompletude.SemCpf, (await db.CadsusCompletudes.FindAsync(Cns))!.Desfecho);
+    }
+
+    [Fact]
     public async Task Cns_fora_do_cadsus_memoriza_e_nao_repergunta_no_mesmo_dia()
     {
         await using var db = fixture.CriarDbContext();

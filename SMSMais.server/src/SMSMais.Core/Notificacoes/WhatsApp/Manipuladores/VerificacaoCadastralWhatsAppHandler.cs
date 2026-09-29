@@ -354,6 +354,12 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
         estado.Reorientacoes = 0;
         Tocar(estado);
 
+        // Recomeçar também não pode recomeçar pelo impossível (ficha só-CNS).
+        var candidatosRecomeco = await CandidatosDoTelefoneAsync(estado, ct);
+        if (candidatosRecomeco.Count > 0
+            && await RedirecionarSeCpfImpossivelAsync(ctx, estado, candidatosRecomeco, ct))
+            return;
+
         var nome = await PrimeiroNomeDoAlvoAsync(estado, ct);
         var restantes = Math.Max(0, MaxChances - estado.TentativasErradas);
         await ResponderAsync(ctx,
@@ -425,6 +431,49 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             + "cadastro.", ct);
     }
 
+    /// <summary>
+    /// O desafio só pergunta o que o cadastro consegue responder. Quando NENHUM candidato tem CPF
+    /// (fichas do SER/implantação vêm só com CNS), perguntar CPF é um beco impossível — a pessoa
+    /// certa queima as chances respondendo certo (caso Marcia, 28/09/2026). Aqui o desafio é
+    /// redirecionado para o nascimento (+ nome na etapa seguinte); sem nascimento também, encerra
+    /// com honestidade. Retorna true quando tratou (o chamador não pergunta CPF).
+    /// </summary>
+    private async Task<bool> RedirecionarSeCpfImpossivelAsync(
+        ManipuladorContexto ctx, VerificacaoCadastralEstado estado,
+        IReadOnlyList<Candidato> candidatos, CancellationToken ct)
+    {
+        if (candidatos.Any(c => !string.IsNullOrWhiteSpace(c.Paciente.Cpf))) return false;
+
+        if (candidatos.Any(c => c.Paciente.DataNascimento is not null))
+        {
+            estado.Etapa = EtapaVerificacaoCadastral.AguardandoNascimento;
+            estado.CpfDigitosInformados = null;
+            Tocar(estado);
+            var quem = await PrimeiroNomeDoAlvoAsync(estado, ct);
+            await ResponderAsync(ctx,
+                $"O cadastro {(quem is null ? "do paciente" : $"de *{quem}*")} está sem CPF aqui no "
+                + "sistema — vamos pelo caminho que dá: me informe o *mês e o ano de nascimento* "
+                + "do paciente.", ct);
+            return true;
+        }
+
+        // Sem CPF e sem nascimento: não existe desafio possível. Encerrar SEM queimar tentativa e
+        // SEM prometer ação que não acontece — quem completa o cadastro é o posto.
+        estado.Etapa = EtapaVerificacaoCadastral.AguardandoNovaTentativa;
+        estado.PacienteId = null;
+        estado.CpfDigitosInformados = null;
+        Tocar(estado);
+        logger.LogWarning(
+            "Desafio impossível no telefone …{Fone4}: nenhum candidato tem CPF nem nascimento no cadastro.",
+            Ultimos4(estado.TelefoneCanonical));
+        await ResponderAsync(ctx,
+            "O cadastro do paciente está incompleto aqui no sistema (sem CPF e sem data de "
+            + "nascimento), e sem esses dados não consigo validar com segurança por aqui. Procure o "
+            + "posto de saúde onde o paciente é atendido, com um documento com foto, para atualizar "
+            + "o cadastro — lá mesmo você já retira a guia com dia, hora e local.", ct);
+        return true;
+    }
+
     /// <summary>Primeiro nome do paciente da comunicação PENDURADA (o mesmo que foi ao template).</summary>
     private async Task<string?> PrimeiroNomeDoAlvoAsync(VerificacaoCadastralEstado estado, CancellationToken ct)
     {
@@ -457,6 +506,13 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
 
         if (casam.Count == 0)
         {
+            // NENHUM candidato tem CPF gravado? Então a pergunta era impossível de acertar (caso
+            // Marcia, 28/09/2026: respondeu o próprio CPF, correto, contra um campo vazio e queimou
+            // as chances). O dado que falta é NOSSO, não dela — não conta tentativa, e o desafio
+            // segue pelo que o cadastro tem.
+            if (candidatos.Count > 0 && await RedirecionarSeCpfImpossivelAsync(ctx, estado, candidatos, ct))
+                return;
+
             await FalharCicloAsync(ctx, estado, "Esse início de CPF", ct);
             return;
         }
@@ -956,6 +1012,12 @@ public sealed class VerificacaoCadastralWhatsAppHandler(
             estado.ExpiraEm = agora.Add(ValidadeEstado);
             Tocar(estado);
         }
+
+        // A primeira pergunta tem de ser respondível: ficha só-CNS não tem CPF para conferir.
+        var candidatosEntrada = await CandidatosDoTelefoneAsync(estado, ct);
+        if (candidatosEntrada.Count > 0
+            && await RedirecionarSeCpfImpossivelAsync(ctx, estado, candidatosEntrada, ct))
+            return;
 
         var nome = PrimeiroNome((await ObterPacienteAsync(alvo.PacienteId, ct))?.NomeCompleto);
         await ResponderAsync(ctx,

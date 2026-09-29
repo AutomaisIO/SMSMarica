@@ -109,8 +109,13 @@ public sealed class CompletadorFichaSemCpf(
         var cpf = CpfBr.EhValido(cadsus.Cpf) ? CpfBr.SoDigitos(cadsus.Cpf) : null;
         if (cpf is null)
         {
+            // Sem CPF válido a ficha do CADSUS ainda costuma trazer o NASCIMENTO — e ele sozinho
+            // já torna o desafio de verificação por WhatsApp respondível (nascimento + nome).
+            // Medido em 29/09/2026: 281 de 425 fichas caíram aqui no primeiro backfill.
+            if (cadsus.DataNascimento is { } nascimentoSemCpf)
+                await pacientes.CompletarNascimentoAsync(porCns.Id, nascimentoSemCpf, ct);
             await MemorizarAsync(memoria, digitos, DesfechoCadsusCompletude.SemCpf, null, ct);
-            return manter with { Passo = "Ficha sem CPF: o CADSUS também não tem CPF para este CNS — segue incompleta (a recepção informa)." };
+            return manter with { Passo = "Ficha sem CPF: o CADSUS também não tem CPF para este CNS — segue sem CPF (a recepção informa), mas o nascimento foi completado quando havia." };
         }
 
         try

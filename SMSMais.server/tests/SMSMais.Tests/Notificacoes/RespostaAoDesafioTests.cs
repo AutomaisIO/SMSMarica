@@ -846,7 +846,87 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
         await using var db2 = fixture.CriarDbContext();
         Assert.Equal(StatusComunicacao.Pendente, (await LerAsync(db2, linha.Id)).Status);
     }
+
+    // ===================== (h) desafio impossível: cadastro sem CPF =====================
+    // Caso Marcia (28/09/2026): a ficha do SER só tinha CNS. O desafio pedia os 4 primeiros
+    // dígitos de um CPF que o cadastro NÃO TINHA — a paciente respondeu o próprio CPF, correto,
+    // e queimou as 3 chances contra um campo vazio.
+
+    [Fact]
+    public async Task Cadastro_sem_cpf_nao_queima_tentativa_e_o_desafio_segue_pelo_nascimento()
+    {
+        await using var db = fixture.CriarDbContext();
+        var marcia = NovaPessoa("MARCIA DA SILVA", "");
+        var c = await CriarAsync(db, marcia);
+        var (_, retida) = await RetidaAsync(db, marcia);
+        await EstadoAsync(db, retida, EtapaVerificacaoCadastral.AguardandoCpf);
+
+        // Ela responde um início de CPF (o dela, correto — mas o cadastro não tem com o que comparar).
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "0106"), default);
+        await db.SaveChangesAsync();
+
+        var estado = (await LerEstadoAsync(db))!;
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoNascimento, estado.Etapa);
+        Assert.Equal(0, estado.TentativasErradas); // o dado que falta é nosso, não dela
+        var resposta = Assert.Single(Respostas(c.Whats));
+        Assert.Contains("sem CPF aqui no", resposta);
+        Assert.Contains("mês e o ano de nascimento", resposta);
+
+        // E o nascimento certo valida: segue para a etapa do nome.
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "03/1980"), default);
+        await db.SaveChangesAsync();
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoNome, (await LerEstadoAsync(db))!.Etapa);
+    }
+
+    [Fact]
+    public async Task Cadastro_sem_cpf_e_sem_nascimento_encerra_com_honestidade_sem_queimar_chance()
+    {
+        await using var db = fixture.CriarDbContext();
+        var marcia = NovaPessoa("MARCIA DA SILVA", "");
+        var c = await CriarAsync(db, marcia);
+        // A ficha não tem NEM nascimento: não existe pergunta possível.
+        c.Pacientes.ObterPorIdAsync(marcia.Id, Arg.Any<CancellationToken>())
+            .Returns(Dto(marcia) with { Cpf = string.Empty, DataNascimento = null });
+        var (_, retida) = await RetidaAsync(db, marcia);
+        await EstadoAsync(db, retida, EtapaVerificacaoCadastral.AguardandoCpf);
+
+        await c.Handler.TratarAsync(Contexto(c.Conversa, "0106"), default);
+        await db.SaveChangesAsync();
+
+        var estado = (await LerEstadoAsync(db))!;
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoNovaTentativa, estado.Etapa);
+        Assert.Equal(0, estado.TentativasErradas);
+        var resposta = Assert.Single(Respostas(c.Whats));
+        Assert.Contains("incompleto", resposta);
+        Assert.Contains("posto de saúde", resposta);
+        // Honestidade: não promete providência que não acontece.
+        Assert.DoesNotContain("equipe", resposta);
+    }
+
+    [Fact]
+    public async Task Toque_no_botao_num_cadastro_sem_cpf_ja_comeca_pelo_nascimento()
+    {
+        await using var db = fixture.CriarDbContext();
+        var marcia = NovaPessoa("MARCIA DA SILVA", "");
+        var c = await CriarAsync(db, marcia);
+        var (s, retida) = await RetidaAsync(db, marcia);
+        await EstadoAsync(db, retida, EtapaVerificacaoCadastral.AguardandoInteresse);
+        var (_, wamid) = await LinhaAsync(db, s, FinalidadeComunicacao.ReforcoConfirmacao,
+            StatusComunicacao.Entregue, enviadoEm: DateTime.UtcNow.AddHours(-2));
+
+        var ctx = Contexto(c.Conversa, "Quero mais informações",
+            respondendo: wamid, botao: "Quero mais informações");
+        await c.Handler.TratarAsync(ctx, default);
+        await db.SaveChangesAsync();
+
+        var estado = (await LerEstadoAsync(db))!;
+        Assert.Equal(EtapaVerificacaoCadastral.AguardandoNascimento, estado.Etapa);
+        var resposta = Assert.Single(Respostas(c.Whats));
+        Assert.Contains("mês e o ano de nascimento", resposta);
+        Assert.DoesNotContain("CPF*", resposta); // não pergunta o que não pode conferir
+    }
 }
+
 
 /// <summary>Captura o que o serviço logou — é onde a exceção engolida pelo "nunca lança" aparece
 /// quando um teste falha sem dizer por quê.</summary>
