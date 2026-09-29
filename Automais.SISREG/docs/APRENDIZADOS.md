@@ -475,6 +475,23 @@ Cada registro do `cons_agendas` traz o suficiente para o pipeline de import ordi
 paciente é enriquecido no downstream (CNS→CADSUS) e o eixo é o nome. `expo_solicitacoes`/CSV
 continua sendo a fonte de **carga em massa** (após as 15h).
 
+### ⚠️ Duas armadilhas medidas em PRODUÇÃO (29/09/2026, mutirão da Carreta)
+
+1. **O `pa` de ITEM devolve vazio para modalidades com GRUPO.** Na Secretaria (CNES 6886973),
+   `cpf` da profissional + `pa=1402005` (US transvaginal, item) → "nenhum resultado", com dezenas
+   de agendamentos na janela. Com o **GRUPO** (`1402000` para US, `3500000` para TC) a mesma
+   consulta devolve as linhas. Histeroscopia (`0803304`) e mamografia (`1305007`) respondem pelo
+   próprio código — nessas o código de agenda é o item. **Regra prática: tente o grupo (`XXX0000`)
+   primeiro; item só quando não há grupo.** Consequência no produto: o botão "Importar" da tela de
+   mapeamento manda o código da LINHA (item) — para US/TC ele consulta vazio e conclui "nenhum
+   agendamento no período" com ar de verdade.
+2. **A paginação trunca em 50 em silêncio.** Três consultas independentes (histeroscopia, grupo
+   US, grupo TC, janela de 28 dias) devolveram exatamente 50 linhas com `requisicoes=1`, contra
+   **512 não-TC / 411 TC futuros ativos** na base (vindos do TXT completo da madrugada) —
+   `ConsAgendasParser.TotalPaginas` não está enxergando o rodapé de mais páginas nesse cenário.
+   Como `cmbOrdenacao=1` ordena por data, o que vem é o **delta mais próximo** — útil para o dia,
+   mas "50 exatos" deve ser lido como CORTE, não como total. Ticket aberto para o fix.
+
 ## 📅 `cons_escalas` — GRADE DE HORÁRIOS DA REDE INTEIRA ✅ (2026-09-04)
 
 **Uma requisição traz toda a agenda ofertada do município.** É a fonte da estrutura de
