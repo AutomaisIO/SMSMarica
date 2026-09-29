@@ -12725,9 +12725,9 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tipo_tratamento_id");
 
-                    b.Property<Guid>("UnidadeId")
+                    b.Property<Guid>("UnidadeAtendimentoId")
                         .HasColumnType("uuid")
-                        .HasColumnName("unidade_id");
+                        .HasColumnName("unidade_atendimento_id");
 
                     b.Property<decimal>("Unidades")
                         .HasColumnType("numeric(10,2)")
@@ -13293,13 +13293,17 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("paciente_id");
 
+                    b.Property<int?>("TempoMedioMinutos")
+                        .HasColumnType("integer")
+                        .HasColumnName("tempo_medio_minutos");
+
                     b.Property<Guid?>("TipoTratamentoId")
                         .HasColumnType("uuid")
                         .HasColumnName("tipo_tratamento_id");
 
-                    b.Property<Guid>("UnidadeId")
+                    b.Property<Guid>("UnidadeAtendimentoId")
                         .HasColumnType("uuid")
-                        .HasColumnName("unidade_id");
+                        .HasColumnName("unidade_atendimento_id");
 
                     b.HasKey("Id");
 
@@ -13309,7 +13313,7 @@ namespace SMSMais.Data.Migrations
 
                     b.HasIndex("TipoTratamentoId");
 
-                    b.HasIndex("UnidadeId");
+                    b.HasIndex("UnidadeAtendimentoId");
 
                     b.ToTable("tratamento", "smsmarica");
                 });
@@ -13369,6 +13373,64 @@ namespace SMSMais.Data.Migrations
                         .HasFilter("cnes IS NOT NULL");
 
                     b.ToTable("unidade", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.UnidadeAtendimento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<bool>("Externa")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("externa");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Observacoes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacoes");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("telefone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ativo");
+
+                    b.ToTable("unidade_atendimento", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.UnidadePesquisaConfig", b =>
@@ -15317,15 +15379,15 @@ namespace SMSMais.Data.Migrations
                         .HasForeignKey("TipoTratamentoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("SMSMais.Data.Entities.Unidade", "Unidade")
+                    b.HasOne("SMSMais.Data.Entities.UnidadeAtendimento", "UnidadeAtendimento")
                         .WithMany()
-                        .HasForeignKey("UnidadeId")
+                        .HasForeignKey("UnidadeAtendimentoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("TipoTratamento");
 
-                    b.Navigation("Unidade");
+                    b.Navigation("UnidadeAtendimento");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Unidade", b =>
@@ -15407,6 +15469,92 @@ namespace SMSMais.Data.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("UnidadeId");
+                        });
+
+                    b.Navigation("Endereco");
+
+                    b.Navigation("Gps");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.UnidadeAtendimento", b =>
+                {
+                    b.OwnsOne("SMSMais.Data.Entities.Endereco", "Endereco", b1 =>
+                        {
+                            b1.Property<Guid>("UnidadeAtendimentoId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Bairro")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_bairro");
+
+                            b1.Property<string>("Cep")
+                                .IsRequired()
+                                .HasMaxLength(8)
+                                .HasColumnType("character varying(8)")
+                                .HasColumnName("endereco_cep");
+
+                            b1.Property<string>("Cidade")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_cidade");
+
+                            b1.Property<string>("Complemento")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_complemento");
+
+                            b1.Property<string>("Logradouro")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("endereco_logradouro");
+
+                            b1.Property<string>("Numero")
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasColumnName("endereco_numero");
+
+                            b1.Property<string>("PontoReferencia")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("endereco_ponto_referencia");
+
+                            b1.Property<string>("Uf")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("character varying(2)")
+                                .HasColumnName("endereco_uf");
+
+                            b1.HasKey("UnidadeAtendimentoId");
+
+                            b1.ToTable("unidade_atendimento", "smsmarica");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UnidadeAtendimentoId");
+                        });
+
+                    b.OwnsOne("SMSMais.Data.Entities.Gps", "Gps", b1 =>
+                        {
+                            b1.Property<Guid>("UnidadeAtendimentoId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<double>("Latitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("latitude");
+
+                            b1.Property<double>("Longitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("longitude");
+
+                            b1.HasKey("UnidadeAtendimentoId");
+
+                            b1.ToTable("unidade_atendimento", "smsmarica");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UnidadeAtendimentoId");
                         });
 
                     b.Navigation("Endereco");

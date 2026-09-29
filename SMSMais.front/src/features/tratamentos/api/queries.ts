@@ -8,6 +8,7 @@ import {
   confirmarSessao,
   encerrarTratamento,
   expandirPeriodicidade,
+  listarOpcoesUnidadesAtendimento,
   listarTiposTratamento,
   listarTratamentos,
   obterTratamentoPorId,
@@ -23,21 +24,26 @@ import type {
 
 export type FiltrosTratamentosHook = {
   pacienteId?: string;
-  unidadeId?: string;
+  unidadeAtendimentoId?: string;
 };
 
 export const tratamentosKeys = {
   raiz: ['tratamentos'] as const,
   lista: (f: FiltrosTratamentosHook = {}) =>
-    ['tratamentos', 'lista', f.pacienteId ?? null, f.unidadeId ?? null] as const,
+    ['tratamentos', 'lista', f.pacienteId ?? null, f.unidadeAtendimentoId ?? null] as const,
   detalhe: (id: string) => ['tratamentos', 'detalhe', id] as const,
   tipos: () => ['tratamentos', 'tipos'] as const,
+  unidadesAtendimento: () => ['tratamentos', 'unidades-atendimento'] as const,
 };
 
-export function useListarTratamentos(filtros: FiltrosTratamentosHook = {}) {
+export function useListarTratamentos(
+  filtros: FiltrosTratamentosHook = {},
+  opcoes: { habilitado?: boolean } = {},
+) {
   return useQuery({
     queryKey: tratamentosKeys.lista(filtros),
     queryFn: () => listarTratamentos(filtros),
+    enabled: opcoes.habilitado ?? true,
   });
 }
 
@@ -57,6 +63,15 @@ export function useTiposTratamento() {
     queryKey: tratamentosKeys.tipos(),
     queryFn: listarTiposTratamento,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Destinos (unidades de atendimento ativas) para o seletor do tratamento. */
+export function useOpcoesUnidadesAtendimento() {
+  return useQuery({
+    queryKey: tratamentosKeys.unidadesAtendimento(),
+    queryFn: listarOpcoesUnidadesAtendimento,
+    staleTime: 60 * 1000,
   });
 }
 

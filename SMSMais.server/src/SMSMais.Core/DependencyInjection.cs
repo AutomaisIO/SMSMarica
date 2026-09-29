@@ -28,6 +28,7 @@ using SMSMais.Core.TiposTratamento;
 using SMSMais.Core.Translado;
 using SMSMais.Core.Tratamentos;
 using SMSMais.Core.Unidades;
+using SMSMais.Core.UnidadesAtendimento;
 using SMSMais.Core.Veiculos;
 using SMSMais.Core.Worklist;
 using SMSMais.Core.Worklist.Background;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<Erros.IRegistroErroService, Erros.RegistroErroService>();
         services.AddScoped<ITratamentosService, TratamentosService>();
         services.AddScoped<IUnidadesService, UnidadesService>();
+        services.AddScoped<IUnidadesAtendimentoService, UnidadesAtendimentoService>();
         services.AddScoped<IVeiculosService, VeiculosService>();
         services.AddScoped<IMotoristasService, MotoristasService>();
         services.AddScoped<IMedicosService, MedicosService>();

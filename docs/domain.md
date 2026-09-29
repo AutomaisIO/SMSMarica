@@ -8,8 +8,9 @@ Este documento descreve **conceitos** e **invariantes**, não tabelas. A forma f
 |-------|-----------|
 | **Paciente** | Cidadão cadastrado no programa de transporte sanitário. Tem GPS de residência, documentos (idealmente equivalentes a CNS), contatos. |
 | **Acompanhante** | Pessoa autorizada a viajar com o paciente. Pode ter perfil próprio ou ser apenas cadastro atrelado. |
-| **Unidade** | Local de saúde que realiza o tratamento. Tem GPS confiável. |
-| **Tratamento** | Associação paciente ↔ unidade com uma cadência (**periodicidade**). |
+| **Unidade** | Unidade de saúde da rede (CNES/SISREG): equipamentos, usuários que entram por ela, perfis, integrações. **Não** é o destino do transporte. |
+| **Unidade de atendimento** | Destino do transporte: onde o paciente faz o tratamento (clínica, hospital de referência), quase sempre fora do município (TFD). Cadastro manual e próprio do transporte — nome (sempre em maiúsculas), endereço e **ponto no mapa obrigatório**, que é o fim da rota da van. Sem SISREG, equipamentos, login ou perfil. |
+| **Tratamento** | Associação paciente ↔ unidade de atendimento com uma cadência (**periodicidade**) e o **tempo médio** que o paciente fica lá (base para prever a volta). |
 | **Periodicidade** | Regra temporal do tratamento: "todo dia por N sessões", "a cada 2 dias", "1×/semana", etc. |
 | **Sessão de translado** | Ocorrência concreta gerada pela periodicidade. Cada sessão vira demanda de translado: ida até a unidade + retorno. |
 | **Veículo** | Ônibus/van com layout de assentos não-uniforme (cada fileira declara quantos assentos tem). |
@@ -39,7 +40,7 @@ erDiagram
 
   PACIENTE ||--o{ ACOMPANHANTE : "pode ter"
   PACIENTE ||--o{ TRATAMENTO : "possui"
-  UNIDADE  ||--o{ TRATAMENTO : "realiza"
+  UNIDADE_ATENDIMENTO ||--o{ TRATAMENTO : "é destino de"
   TRATAMENTO ||--|| PERIODICIDADE : "define"
   TRATAMENTO ||--o{ SESSAO_TRANSLADO : "gera"
 
@@ -71,6 +72,8 @@ Estes são os pontos onde a regra de negócio "machuca" — o modelo e os use ca
 
 ### Tratamento e Periodicidade
 
+- O destino é uma **unidade de atendimento ativa** e o **tempo médio** (1 min a 24 h) é obrigatório. Trocar o destino vale para as próximas rotas geradas; rota já montada não se refaz.
+- Unidade de atendimento com tratamento ativo **não pode ser desativada** — a rota continuaria indo a um destino fora das opções.
 - A periodicidade é **imutável depois de gerar sessões**. Alterar cadência = encerrar tratamento + criar novo.
 - Sessões passadas (já executadas) **nunca** são regeneradas.
 - Cancelamento de tratamento cancela sessões futuras não alocadas; sessões alocadas precisam de ação explícita do operador.
@@ -110,7 +113,7 @@ sequenceDiagram
   participant Mot as Motorista (app)
   participant Cid as Cidadão (app)
 
-  Op->>API: cria Tratamento (paciente, unidade, periodicidade)
+  Op->>API: cria Tratamento (paciente, unidade de atendimento, tempo médio, periodicidade)
   API->>Trat: Tratamento.Criar()
   Trat-->>Trat: gera SessoesDeTranslado futuras
   Trat--)Trans: evento "SessaoCriada" (Outbox)

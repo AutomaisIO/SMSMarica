@@ -52,6 +52,9 @@ import { TratamentoFormPage } from '@/features/tratamentos/pages/TratamentoFormP
 import { TratamentosPage } from '@/features/tratamentos/pages/TratamentosPage';
 import { UnidadeDetalhePage } from '@/features/unidades/pages/UnidadeDetalhePage';
 import { UnidadeFormPage } from '@/features/unidades/pages/UnidadeFormPage';
+import { UnidadesAtendimentoPage } from '@/features/unidades-atendimento/pages/UnidadesAtendimentoPage';
+import { UnidadeAtendimentoFormPage } from '@/features/unidades-atendimento/pages/UnidadeAtendimentoFormPage';
+import { UnidadeAtendimentoDetalhePage } from '@/features/unidades-atendimento/pages/UnidadeAtendimentoDetalhePage';
 import { UnidadesPage } from '@/features/unidades/pages/UnidadesPage';
 import { AlterarMinhaSenhaPage } from '@/features/usuarios/pages/AlterarMinhaSenhaPage';
 import { MeuPerfilPage } from '@/features/usuarios/pages/MeuPerfilPage';
@@ -177,6 +180,12 @@ export function AppRouter() {
           <Route path="alterar-senha" element={<AlterarMinhaSenhaPage />} />
           <Route path="tipos-tratamento" element={<TiposTratamentoPage />} />
           <Route path="perfis" element={<PerfisPage />} />
+          <Route element={<RotaComModulo modulo="UnidadesAtendimento" rotulo="Unidades de atendimento" />}>
+            <Route path="unidades-atendimento" element={<UnidadesAtendimentoPage />} />
+            <Route path="unidades-atendimento/novo" element={<UnidadeAtendimentoFormPage />} />
+            <Route path="unidades-atendimento/:id" element={<UnidadeAtendimentoDetalhePage />} />
+            <Route path="unidades-atendimento/:id/editar" element={<UnidadeAtendimentoFormPage />} />
+          </Route>
           <Route path="tratamentos" element={<TratamentosPage />} />
           <Route path="tratamentos/novo" element={<TratamentoFormPage />} />
           <Route path="tratamentos/:id" element={<TratamentoDetalhePage />} />

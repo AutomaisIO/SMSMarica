@@ -18,7 +18,7 @@ public class RegistroFaturamento
     public Guid? MotoristaId { get; set; }
     public Guid? VeiculoId { get; set; }
     public Guid? TipoTratamentoId { get; set; }
-    public Guid UnidadeId { get; set; }
+    public Guid UnidadeAtendimentoId { get; set; }   // destino do transporte
 
     public int Competencia { get; set; }         // AAAAMM
     public DateOnly Data { get; set; }

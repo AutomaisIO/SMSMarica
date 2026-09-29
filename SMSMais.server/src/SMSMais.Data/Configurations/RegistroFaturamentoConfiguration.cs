@@ -17,7 +17,7 @@ internal sealed class RegistroFaturamentoConfiguration : IEntityTypeConfiguratio
         builder.Property(r => r.MotoristaId).HasColumnName("motorista_id");
         builder.Property(r => r.VeiculoId).HasColumnName("veiculo_id");
         builder.Property(r => r.TipoTratamentoId).HasColumnName("tipo_tratamento_id");
-        builder.Property(r => r.UnidadeId).HasColumnName("unidade_id").IsRequired();
+        builder.Property(r => r.UnidadeAtendimentoId).HasColumnName("unidade_atendimento_id").IsRequired();
         builder.Property(r => r.Competencia).HasColumnName("competencia").IsRequired();
         builder.Property(r => r.Data).HasColumnName("data").IsRequired();
         builder.Property(r => r.KmComPaciente).HasColumnName("km_com_paciente").HasColumnType("numeric(10,2)").IsRequired();

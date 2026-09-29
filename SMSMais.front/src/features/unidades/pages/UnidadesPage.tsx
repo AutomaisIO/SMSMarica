@@ -67,7 +67,7 @@ export function UnidadesPage() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Unidades</h1>
-          <p className="mt-1 text-sm text-gray-600">Locais de saúde que realizam tratamentos.</p>
+          <p className="mt-1 text-sm text-gray-600">Unidades de saúde do município (CNES/SISREG): equipamentos, usuários e integrações. Destinos do transporte ficam em Transporte Pacientes → Unidades de Atendimento.</p>
         </div>
         <Button onClick={() => navigate('/app/unidades/novo')}>
           <Plus className="w-4 h-4" />
@@ -95,7 +95,7 @@ export function UnidadesPage() {
         titulo="Excluir unidade"
         mensagem={
           paraDesativar
-            ? `Excluir "${paraDesativar.nome}"? A unidade some das listagens; histórico de tratamentos é preservado.`
+            ? `Excluir "${paraDesativar.nome}"? A unidade some das listagens; o histórico é preservado.`
             : ''
         }
         destrutivo

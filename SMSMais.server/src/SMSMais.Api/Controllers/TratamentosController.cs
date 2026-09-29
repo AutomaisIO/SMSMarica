@@ -2,13 +2,17 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Tratamentos;
 using SMSMais.Core.Tratamentos.Dtos;
+using SMSMais.Core.UnidadesAtendimento;
+using SMSMais.Core.UnidadesAtendimento.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
 
 [ApiController]
 [Route("tratamentos")]
-public sealed class TratamentosController(ITratamentosService service) : ControllerBase
+public sealed class TratamentosController(
+    ITratamentosService service,
+    IUnidadesAtendimentoService unidadesAtendimento) : ControllerBase
 {
     private readonly ITratamentosService _service = service;
 
@@ -17,11 +21,11 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     [ProducesResponseType<IReadOnlyList<TratamentoListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<TratamentoListItemDto>> Listar(
         [FromQuery] Guid? pacienteId,
-        [FromQuery] Guid? unidadeId,
+        [FromQuery] Guid? unidadeAtendimentoId,
         CancellationToken cancellationToken)
     {
         if (pacienteId is { } pid) return await _service.ListarPorPacienteAsync(pid, cancellationToken);
-        if (unidadeId is { } uid) return await _service.ListarPorUnidadeAsync(uid, cancellationToken);
+        if (unidadeAtendimentoId is { } uid) return await _service.ListarPorUnidadeAtendimentoAsync(uid, cancellationToken);
         return await _service.ListarAsync(cancellationToken);
     }
 
@@ -30,6 +34,17 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     [ProducesResponseType<IReadOnlyList<TipoTratamentoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<TipoTratamentoDto>> ListarTipos(CancellationToken cancellationToken) =>
         await _service.ListarTiposAsync(cancellationToken);
+
+    /// <summary>
+    /// Destinos disponíveis (unidades de atendimento ativas) para o seletor do tratamento. Fica sob
+    /// a permissão de Tratamentos — como os tipos acima — para quem cadastra tratamento não
+    /// precisar do módulo que mantém o cadastro das unidades.
+    /// </summary>
+    [HttpGet("unidades-atendimento")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<UnidadeAtendimentoOpcaoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<UnidadeAtendimentoOpcaoDto>> ListarUnidadesAtendimento(CancellationToken cancellationToken) =>
+        await unidadesAtendimento.ListarOpcoesAsync(cancellationToken);
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Consulta)]

@@ -48,6 +48,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'TiposTratamento', rotulo: 'Tipos de tratamento' },
   { id: 'Perfis', rotulo: 'Perfis' },
   { id: 'Tratamentos', rotulo: 'Tratamentos' },
+  { id: 'UnidadesAtendimento', rotulo: 'Unidades de atendimento — destinos do transporte (endereço e ponto no mapa)' },
   { id: 'Translados', rotulo: 'Translados' },
   { id: 'Rastreamento', rotulo: 'Rastreamento' },
   { id: 'Avaliacoes', rotulo: 'Avaliações' },
@@ -198,6 +199,14 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   },
   ConfirmacoesEquipe: {
     Consulta: 'Ver a aba Equipe: o que cada atendente fez, tempos e ritmo',
+  },
+  // Quem só cadastra tratamento NÃO precisa deste módulo: o seletor de destino vem da permissão de
+  // Tratamentos. Aqui é quem mantém o cadastro dos destinos.
+  UnidadesAtendimento: {
+    Consulta: 'Ver as unidades de atendimento, o mapa e os tratamentos de cada uma',
+    Inclusao: 'Cadastrar unidade de atendimento',
+    Edicao: 'Editar endereço e ponto no mapa; reativar',
+    Exclusao: 'Desativar (recusado enquanto houver tratamento ativo indo para lá)',
   },
   NotificacoesAgendamento: {
     Consulta: 'Ver resumo diário, envios, respostas e regras da mensageria',

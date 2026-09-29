@@ -43,10 +43,10 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
         return await EnriquecerAsync([.. tratamentos.Select(ParaListItem)], cancellationToken);
     }
 
-    public async Task<IReadOnlyList<TratamentoListItemDto>> ListarPorUnidadeAsync(Guid unidadeId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TratamentoListItemDto>> ListarPorUnidadeAtendimentoAsync(Guid unidadeAtendimentoId, CancellationToken cancellationToken = default)
     {
         var tratamentos = await QueryListarBase()
-            .Where(t => t.UnidadeId == unidadeId)
+            .Where(t => t.UnidadeAtendimentoId == unidadeAtendimentoId)
             .OrderByDescending(t => t.Ativo)
             .ThenByDescending(t => t.CriadoEm)
             .ToListAsync(cancellationToken);
@@ -57,7 +57,7 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
     public async Task<TratamentoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var t = await _db.Tratamentos.AsNoTracking()
-            .Include(x => x.Unidade)
+            .Include(x => x.UnidadeAtendimento)
             .Include(x => x.TipoTratamento)
             .Include(x => x.Periodicidade)
             .Include(x => x.Sessoes)
@@ -98,10 +98,7 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
     public async Task<Guid> CadastrarAsync(CadastrarTratamentoRequest request, CancellationToken cancellationToken = default)
     {
         // PacienteId referencia o hub FHIR — validação de existência fica a cargo do hub.
-        if (!await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == request.UnidadeId, cancellationToken))
-        {
-            throw new NaoEncontradoException(nameof(Unidade), request.UnidadeId);
-        }
+        await GarantirDestinoAtivoAsync(request.UnidadeAtendimentoId, cancellationToken);
 
         if (request.TipoTratamentoId is { } tipoId &&
             !await _db.TiposTratamento.AsNoTracking().AnyAsync(x => x.Id == tipoId, cancellationToken))
@@ -141,12 +138,13 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
         {
             Id = tratamentoId,
             PacienteId = request.PacienteId,
-            UnidadeId = request.UnidadeId,
+            UnidadeAtendimentoId = request.UnidadeAtendimentoId,
             TipoTratamentoId = request.TipoTratamentoId,
             Descricao = request.Descricao.Trim(),
             CodigoSusLiberacao = string.IsNullOrWhiteSpace(request.CodigoSusLiberacao) ? null : request.CodigoSusLiberacao.Trim(),
             Observacoes = string.IsNullOrWhiteSpace(request.Observacoes) ? null : request.Observacoes.Trim(),
             HoraPrevistaBusca = request.HoraPrevistaBusca,
+            TempoMedioMinutos = request.TempoMedioMinutos,
             Ativo = true,
             CriadoEm = agora,
             Periodicidade = new Periodicidade
@@ -192,11 +190,19 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
             throw new NaoEncontradoException(nameof(TipoTratamento), tipoId);
         }
 
+        // Trocar o destino vale para as próximas rotas geradas; as já montadas não se refazem sozinhas.
+        if (request.UnidadeAtendimentoId != t.UnidadeAtendimentoId)
+        {
+            await GarantirDestinoAtivoAsync(request.UnidadeAtendimentoId, cancellationToken);
+            t.UnidadeAtendimentoId = request.UnidadeAtendimentoId;
+        }
+
         t.Descricao = request.Descricao.Trim();
         t.TipoTratamentoId = request.TipoTratamentoId;
         t.CodigoSusLiberacao = string.IsNullOrWhiteSpace(request.CodigoSusLiberacao) ? null : request.CodigoSusLiberacao.Trim();
         t.Observacoes = string.IsNullOrWhiteSpace(request.Observacoes) ? null : request.Observacoes.Trim();
         t.HoraPrevistaBusca = request.HoraPrevistaBusca;
+        t.TempoMedioMinutos = request.TempoMedioMinutos;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -310,6 +316,22 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
         }
     }
 
+    /// <summary>Destino inexistente é 404; inativo é recusado — foi tirado das opções de propósito.</summary>
+    private async Task GarantirDestinoAtivoAsync(Guid unidadeAtendimentoId, CancellationToken ct)
+    {
+        var ativo = await _db.UnidadesAtendimento.AsNoTracking()
+            .Where(u => u.Id == unidadeAtendimentoId)
+            .Select(u => (bool?)u.Ativo)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NaoEncontradoException(nameof(UnidadeAtendimento), unidadeAtendimentoId);
+
+        if (!ativo)
+        {
+            throw new ConflitoException("tratamento.destino_inativo",
+                "A unidade de atendimento escolhida está desativada. Reative-a ou escolha outro destino.");
+        }
+    }
+
     private static void GarantirEditavel(SessaoDeTratamento s)
     {
         // Regra: sessão realizada é imutável (datas e horários previstos
@@ -322,7 +344,7 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
     }
 
     private IQueryable<Tratamento> QueryListarBase() => _db.Tratamentos.AsNoTracking()
-        .Include(t => t.Unidade)
+        .Include(t => t.UnidadeAtendimento)
         .Include(t => t.TipoTratamento)
         .Include(t => t.Sessoes);
 
@@ -338,10 +360,11 @@ public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver re
             t.Id,
             t.PacienteId,
             string.Empty,
-            t.UnidadeId,
-            t.Unidade?.Nome ?? string.Empty,
+            t.UnidadeAtendimentoId,
+            t.UnidadeAtendimento?.Nome ?? string.Empty,
             t.TipoTratamento?.Nome,
             t.Descricao,
+            t.TempoMedioMinutos,
             proxima,
             t.Sessoes.Count,
             realizadas,

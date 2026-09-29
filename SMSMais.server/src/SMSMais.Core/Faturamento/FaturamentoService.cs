@@ -27,7 +27,7 @@ public sealed class FaturamentoService(
         var trat = sessao.Tratamento
             ?? throw new ConflitoException("sessao.sem_tratamento", "Sessão sem tratamento associado.");
 
-        var unidade = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(u => u.Id == trat.UnidadeId, ct);
+        var unidade = await db.UnidadesAtendimento.AsNoTracking().FirstOrDefaultAsync(u => u.Id == trat.UnidadeAtendimentoId, ct);
         var (valorPorUnidade, kmPorUnidade, codigoSigtap) = await ObterContextoConfigAsync(ct);
 
         decimal km = 0;
@@ -66,7 +66,7 @@ public sealed class FaturamentoService(
         reg.MotoristaId = sessao.MotoristaIdaId ?? sessao.MotoristaVoltaId;
         reg.VeiculoId = sessao.VeiculoIdaId ?? sessao.VeiculoVoltaId;
         reg.TipoTratamentoId = trat.TipoTratamentoId;
-        reg.UnidadeId = trat.UnidadeId;
+        reg.UnidadeAtendimentoId = trat.UnidadeAtendimentoId;
         reg.Competencia = (dataRef.Year * 100) + dataRef.Month;
         reg.Data = dataRef;
         reg.KmComPaciente = km;
@@ -86,15 +86,15 @@ public sealed class FaturamentoService(
     {
         var regs = await Filtrar(competencia, de, ate).OrderByDescending(r => r.Data).ToListAsync(ct);
         var nomes = await pacienteResolver.ResolverManyAsync(regs.Select(r => r.PacienteId), ct);
-        var unidadeIds = regs.Select(r => r.UnidadeId).Distinct().ToList();
-        var unidades = await db.Unidades.AsNoTracking()
+        var unidadeIds = regs.Select(r => r.UnidadeAtendimentoId).Distinct().ToList();
+        var unidades = await db.UnidadesAtendimento.AsNoTracking()
             .Where(u => unidadeIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.Nome, ct);
 
         return [.. regs.Select(r => MapDto(
             r,
             nomes.TryGetValue(r.PacienteId, out var p) ? p.Nome : string.Empty,
-            unidades.GetValueOrDefault(r.UnidadeId, string.Empty)))];
+            unidades.GetValueOrDefault(r.UnidadeAtendimentoId, string.Empty)))];
     }
 
     public async Task<ResumoFaturamentoDto> ResumoAsync(
@@ -107,7 +107,7 @@ public sealed class FaturamentoService(
             DimensaoFaturamento.Motorista => r => r.MotoristaId,
             DimensaoFaturamento.Veiculo => r => r.VeiculoId,
             DimensaoFaturamento.TipoTratamento => r => r.TipoTratamentoId,
-            DimensaoFaturamento.Unidade => r => r.UnidadeId,
+            DimensaoFaturamento.Unidade => r => r.UnidadeAtendimentoId,
             _ => r => r.PacienteId,
         };
 
@@ -180,7 +180,7 @@ public sealed class FaturamentoService(
                 return await db.TiposTratamento.AsNoTracking().Where(t => ids.Contains(t.Id))
                     .ToDictionaryAsync(t => t.Id, t => t.Nome, ct);
             case DimensaoFaturamento.Unidade:
-                return await db.Unidades.AsNoTracking().Where(u => ids.Contains(u.Id))
+                return await db.UnidadesAtendimento.AsNoTracking().Where(u => ids.Contains(u.Id))
                     .ToDictionaryAsync(u => u.Id, u => u.Nome, ct);
             default: // Paciente — resolve no hub FHIR
                 var nomes = await pacienteResolver.ResolverManyAsync(ids, ct);
@@ -209,7 +209,7 @@ public sealed class FaturamentoService(
 
     private static RegistroFaturamentoDto MapDto(RegistroFaturamento r, string pacienteNome, string unidadeNome) => new(
         r.Id, r.SessaoId, r.PacienteId, pacienteNome, r.MotoristaId, r.VeiculoId, r.TipoTratamentoId,
-        r.UnidadeId, unidadeNome, r.Competencia, r.Data, r.KmComPaciente, r.Unidades, r.ValorUnitario,
+        r.UnidadeAtendimentoId, unidadeNome, r.Competencia, r.Data, r.KmComPaciente, r.Unidades, r.ValorUnitario,
         r.ValorTotal, r.CodigoSigtap, r.Status);
 
 }

@@ -1,10 +1,11 @@
-import { BookOpen, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
+import { BookOpen, Bus, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
+import { artigoUnidadesAtendimento } from '@/features/manual/conteudo/unidadesAtendimento';
 import type { Artigo, GrupoManual } from '@/features/manual/tipos';
 
 /**
@@ -38,6 +39,12 @@ export const GRUPOS: GrupoManual[] = [
     icone: Stethoscope,
   },
   {
+    id: 'transporte',
+    titulo: 'Transporte de Pacientes',
+    descricao: 'Destinos, tratamentos, rotas da van e acompanhamento da frota.',
+    icone: Bus,
+  },
+  {
     id: 'sistema',
     titulo: 'Sistema',
     descricao: 'Perfis, permissões, identidade da instituição e configuração.',
@@ -52,6 +59,7 @@ export const ARTIGOS: Artigo[] = [
   artigoFluxoAtendimentoWhatsApp,
   artigoMensageria,
   artigoOuvidoria,
+  artigoUnidadesAtendimento,
 ];
 
 /** Ícone de fallback quando um grupo ainda não foi declarado. */

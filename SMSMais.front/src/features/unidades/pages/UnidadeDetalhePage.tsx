@@ -7,7 +7,6 @@ import { usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { MapaSeletor } from '@/shared/ui/MapaSeletor';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
-import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/queries';
 import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
@@ -17,9 +16,6 @@ import { PesquisaSatisfacaoAba } from '@/features/pesquisa-satisfacao/components
 import { MapeamentoSisregSecao } from '@/features/sisreg-mapeamento/components/MapeamentoSisregSecao';
 import { SincronismoSisregSecao } from '@/features/sisreg-mapeamento/components/SincronismoSisregSecao';
 import { useListarEquipamentos } from '@/features/equipamentos/api/queries';
-import { useListarTratamentos } from '@/features/tratamentos/api/queries';
-import type { TratamentoListItem } from '@/features/tratamentos/types';
-import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
 
 function Dado({ rotulo, valor }: { rotulo: string; valor?: ReactNode }) {
   return (
@@ -60,7 +56,6 @@ export function UnidadeDetalhePage() {
   const id = params.id ?? '';
 
   const detalhe = useUnidadePorId(id || null);
-  const tratamentos = useListarTratamentos({ unidadeId: id });
   const usuariosDaUnidade = useUsuariosDaUnidade(id || null);
   const equipamentosDaUnidade = useListarEquipamentos(id || undefined, false);
   const podeGerirSisreg = useTemConsulta('SisregMapeamento');
@@ -70,76 +65,9 @@ export function UnidadeDetalhePage() {
 
   const u = detalhe.data;
 
-  const colunas: Coluna<TratamentoListItem>[] = [
-    {
-      chave: 'paciente',
-      cabecalho: 'Paciente',
-      render: (t) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/app/tratamentos/${t.id}`)}
-          className="text-left font-medium text-red-700 hover:underline"
-        >
-          {t.pacienteNome}
-        </button>
-      ),
-    },
-    {
-      chave: 'tipo',
-      cabecalho: 'Tipo',
-      render: (t) => t.tipoTratamentoNome ?? t.descricao,
-    },
-    {
-      chave: 'proxima',
-      cabecalho: 'Próxima sessão',
-      render: (t) => (t.proximaSessao ? formatarDataBr(t.proximaSessao) : '—'),
-    },
-    {
-      chave: 'progresso',
-      cabecalho: 'Progresso',
-      render: (t) => (
-        <span className="text-xs text-gray-600">
-          {t.sessoesRealizadas}/{t.totalSessoes}
-        </span>
-      ),
-    },
-    {
-      chave: 'status',
-      cabecalho: 'Status',
-      render: (t) => <StatusBadge ativo={t.ativo} />,
-    },
-  ];
-
-  const abaTratamentos = (
-    <div className="space-y-3">
-      {tratamentos.isError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {extrairMensagemDeErro(tratamentos.error)}
-        </div>
-      ) : null}
-      <Tabela
-        colunas={colunas}
-        dados={tratamentos.data ?? []}
-        chaveLinha={(t) => t.id}
-        carregando={tratamentos.isLoading}
-        vazio={
-          !tratamentos.isLoading && (tratamentos.data?.length ?? 0) === 0
-            ? 'Nenhum tratamento cadastrado nesta unidade.'
-            : undefined
-        }
-      />
-    </div>
-  );
-
   const podeVerPesquisa = useTemConsulta('PesquisaSatisfacao');
 
   const abas: Aba[] = [
-    {
-      id: 'tratamentos',
-      rotulo: 'Tratamentos',
-      conteudo: abaTratamentos,
-      badge: tratamentos.data?.length || undefined,
-    },
     {
       id: 'equipamentos',
       rotulo: 'Equipamentos',
@@ -273,7 +201,7 @@ export function UnidadeDetalhePage() {
       ) : null}
 
       <section>
-        <Tabs abas={abas} inicial="tratamentos" />
+        <Tabs abas={abas} inicial="equipamentos" />
       </section>
     </div>
   );

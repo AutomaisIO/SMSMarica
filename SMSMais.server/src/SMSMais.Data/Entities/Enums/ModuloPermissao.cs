@@ -347,4 +347,11 @@ public enum ModuloPermissao
     /// aparece. Só <c>Consulta</c>. Exige também <see cref="Confirmacoes"/> (a tela). Nasce
     /// desligado em todo perfil que não seja o Admin.</summary>
     ConfirmacoesEquipe = 75,
+
+    /// <summary>Transporte de Pacientes: cadastro das UNIDADES DE ATENDIMENTO — os destinos da van
+    /// (clínica, hospital de referência), com endereço e coordenada usados no cálculo da rota.
+    /// Cadastro manual e próprio do transporte, separado de <see cref="Unidades"/> (a unidade de
+    /// saúde do SISREG/CNES). Quem só cadastra tratamento escolhe o destino pela lista de
+    /// <see cref="Tratamentos"/>, sem precisar deste módulo.</summary>
+    UnidadesAtendimento = 76,
 }

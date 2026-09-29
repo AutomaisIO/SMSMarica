@@ -9,17 +9,18 @@ import type {
   TipoTratamento,
   Tratamento,
   TratamentoListItem,
+  UnidadeAtendimentoOpcao,
 } from '@/features/tratamentos/types';
 
 export type FiltrosTratamentos = {
   pacienteId?: string;
-  unidadeId?: string;
+  unidadeAtendimentoId?: string;
 };
 
 export async function listarTratamentos(filtros: FiltrosTratamentos = {}): Promise<TratamentoListItem[]> {
   const params: Record<string, string> = {};
   if (filtros.pacienteId) params.pacienteId = filtros.pacienteId;
-  if (filtros.unidadeId) params.unidadeId = filtros.unidadeId;
+  if (filtros.unidadeAtendimentoId) params.unidadeAtendimentoId = filtros.unidadeAtendimentoId;
   const { data } = await http.get<TratamentoListItem[]>('/tratamentos', {
     params: Object.keys(params).length ? params : undefined,
   });
@@ -28,6 +29,12 @@ export async function listarTratamentos(filtros: FiltrosTratamentos = {}): Promi
 
 export async function listarTiposTratamento(): Promise<TipoTratamento[]> {
   const { data } = await http.get<TipoTratamento[]>('/tratamentos/tipos');
+  return data;
+}
+
+/** Destinos ativos — sob a permissão de Tratamentos, sem exigir o módulo do cadastro das unidades. */
+export async function listarOpcoesUnidadesAtendimento(): Promise<UnidadeAtendimentoOpcao[]> {
+  const { data } = await http.get<UnidadeAtendimentoOpcao[]>('/tratamentos/unidades-atendimento');
   return data;
 }
 

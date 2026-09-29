@@ -17,6 +17,7 @@ import {
   DownloadCloud,
   DatabaseZap,
   HeartPulse,
+  Hospital,
   Hourglass,
   FileCog,
   FileSignature,
@@ -131,7 +132,8 @@ export const SECOES: SecaoMenu[] = [
     titulo: 'Transporte Pacientes',
     icone: Wrench,
     itens: [
-      { rotulo: 'Tratamentos', to: '/app/tratamentos', icone: CalendarClock, modulo: 'Tratamentos', descricao: 'Periodicidade paciente ↔ unidade.' },
+      { rotulo: 'Unidades de Atendimento', to: '/app/unidades-atendimento', icone: Hospital, modulo: 'UnidadesAtendimento', descricao: 'Destinos do transporte: endereço e ponto no mapa para o cálculo da rota.' },
+      { rotulo: 'Tratamentos', to: '/app/tratamentos', icone: CalendarClock, modulo: 'Tratamentos', descricao: 'Paciente ↔ unidade de atendimento: periodicidade e tempo médio.' },
       { rotulo: 'Translados', to: '/app/translados', icone: Route, modulo: 'Translados', descricao: 'Rotas diárias e alocação de assentos.' },
       { rotulo: 'Mapa da frota', to: '/app/rastreamento/mapa', icone: Map, modulo: 'Rastreamento', descricao: 'Posição dos veículos no mapa.' },
       { rotulo: 'Rastreamento', to: '/app/rastreamento', icone: Activity, modulo: 'Rastreamento', end: true, descricao: 'GPS e geofences.' },

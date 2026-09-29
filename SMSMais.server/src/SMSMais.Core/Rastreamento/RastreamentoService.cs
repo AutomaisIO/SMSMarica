@@ -193,7 +193,7 @@ public sealed class RastreamentoService(
         var dados = await (
             from s in _db.Sessoes.AsNoTracking()
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join u in _db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
+            join u in _db.UnidadesAtendimento.AsNoTracking() on t.UnidadeAtendimentoId equals u.Id
             where s.Status == StatusSessao.AguardandoRetorno && u.Externa
             orderby s.DataPrevista
             select new

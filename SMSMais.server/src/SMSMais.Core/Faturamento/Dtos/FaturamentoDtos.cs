@@ -9,6 +9,7 @@ public enum DimensaoFaturamento
     Motorista = 2,
     Veiculo = 3,
     TipoTratamento = 4,
+    /// <summary>Unidade de atendimento (destino do transporte).</summary>
     Unidade = 5,
 }
 
@@ -20,8 +21,8 @@ public sealed record RegistroFaturamentoDto(
     Guid? MotoristaId,
     Guid? VeiculoId,
     Guid? TipoTratamentoId,
-    Guid UnidadeId,
-    string UnidadeNome,
+    Guid UnidadeAtendimentoId,
+    string UnidadeAtendimentoNome,
     int Competencia,
     DateOnly Data,
     decimal KmComPaciente,

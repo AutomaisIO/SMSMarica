@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, CalendarPlus, CheckCircle2, Pencil, Trash2, XCircle } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, CheckCircle2, FilePen, Pencil, Trash2, XCircle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Input } from '@/shared/ui/Input';
@@ -14,7 +15,9 @@ import {
   useTratamentoPorId,
 } from '@/features/tratamentos/api/queries';
 // useAtualizarSessao é consumido pelo EditorSessao (mesma arquivo).
+import { EditorDadosTratamento } from '@/features/tratamentos/components/EditorDadosTratamento';
 import { PainelConfirmacao } from '@/features/tratamentos/components/PainelConfirmacao';
+import { formatarDuracao } from '@/features/tratamentos/lib/tempoMedio';
 import {
   statusSessaoDeNumero,
   type Sessao,
@@ -48,6 +51,8 @@ export function TratamentoDetalhePage() {
   const [paraCancelar, setParaCancelar] = useState<Sessao | null>(null);
   const [sessaoConfirmando, setSessaoConfirmando] = useState<Sessao | null>(null);
   const [sessaoEditando, setSessaoEditando] = useState<Sessao | null>(null);
+  const [editandoDados, setEditandoDados] = useState(false);
+  const podeEditar = usePermissao('Tratamentos', 'Edicao');
   const [novaData, setNovaData] = useState('');
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
@@ -177,33 +182,41 @@ export function TratamentoDetalhePage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={() => navigate('/app/tratamentos')}
-          className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
-          aria-label="Voltar"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {t.tipoTratamentoNome ? `${t.tipoTratamentoNome} — ` : ''}{t.descricao}
-          </h1>
-          <p className="text-sm text-gray-600">
-            Paciente <strong>{t.pacienteNome}</strong> · Unidade <strong>{t.unidadeNome}</strong>
-            {t.codigoSusLiberacao ? (
-              <> · SUS <code className="text-xs">{t.codigoSusLiberacao}</code></>
-            ) : null}
-          </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/app/tratamentos')}
+            className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+            aria-label="Voltar"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {t.tipoTratamentoNome ? `${t.tipoTratamentoNome} — ` : ''}{t.descricao}
+            </h1>
+            <p className="text-sm text-gray-600">
+              Paciente <strong>{t.pacienteNome}</strong> · Unidade de atendimento <strong>{t.unidadeAtendimentoNome}</strong>
+              {t.codigoSusLiberacao ? (
+                <> · SUS <code className="text-xs">{t.codigoSusLiberacao}</code></>
+              ) : null}
+            </p>
+          </div>
         </div>
+        {t.ativo && podeEditar ? (
+          <Button variante="outline" onClick={() => setEditandoDados(true)}>
+            <FilePen className="mr-1.5 h-4 w-4" /> Editar dados
+          </Button>
+        ) : null}
       </header>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <Card rotulo="Total de sessões" valor={String(sessoes.length)} />
         <Card rotulo="Realizadas" valor={String(realizadas)} tom="success" />
         <Card rotulo="Canceladas" valor={String(canceladas)} tom="muted" />
         <Card rotulo="Horário padrão" valor={t.horaPrevistaBusca ?? '—'} />
+        <Card rotulo="Tempo médio" valor={formatarDuracao(t.tempoMedioMinutos)} />
       </div>
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -256,6 +269,18 @@ export function TratamentoDetalhePage() {
             sessao={sessaoConfirmando}
             aoConcluir={() => setSessaoConfirmando(null)}
           />
+        ) : null}
+      </Modal>
+
+      <Modal
+        aberto={editandoDados}
+        aoFechar={() => setEditandoDados(false)}
+        titulo="Editar dados do tratamento"
+        descricao="Destino, tempo médio e dados gerais. A periodicidade se ajusta sessão a sessão."
+        largura="lg"
+      >
+        {editandoDados ? (
+          <EditorDadosTratamento tratamento={t} aoConcluir={() => setEditandoDados(false)} />
         ) : null}
       </Modal>
 

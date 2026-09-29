@@ -176,7 +176,7 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
         var query =
             from s in _db.Sessoes.AsNoTracking()
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join u in _db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
+            join u in _db.UnidadesAtendimento.AsNoTracking() on t.UnidadeAtendimentoId equals u.Id
             where t.Ativo
                 && (s.Status == StatusSessao.Pendente || s.Status == StatusSessao.Confirmada)
                 && s.DataPrevista <= dataRota
@@ -347,7 +347,7 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
             join fileira in _db.Fileiras.AsNoTracking() on assento.FileiraId equals fileira.Id
             join s in _db.Sessoes.AsNoTracking() on a.SessaoId equals s.Id
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join u in _db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
+            join u in _db.UnidadesAtendimento.AsNoTracking() on t.UnidadeAtendimentoId equals u.Id
             where a.RotaDiariaId == rotaId
             orderby fileira.Ordem, assento.Numero
             select new AlocacaoDto(

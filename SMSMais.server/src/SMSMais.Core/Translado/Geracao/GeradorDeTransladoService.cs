@@ -30,7 +30,7 @@ public sealed class GeradorDeTransladoService(
         var rows = await (
             from s in db.Sessoes.AsNoTracking()
             join t in db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join u in db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
+            join u in db.UnidadesAtendimento.AsNoTracking() on t.UnidadeAtendimentoId equals u.Id
             where t.Ativo
                 && (s.Status == StatusSessao.Pendente || s.Status == StatusSessao.Confirmada)
                 && s.DataPrevista <= data
@@ -40,7 +40,7 @@ public sealed class GeradorDeTransladoService(
             {
                 s.Id,
                 t.PacienteId,
-                t.UnidadeId,
+                UnidadeId = u.Id,
                 UnidadeNome = u.Nome,
                 Lat = (double?)u.Gps!.Latitude,
                 Lng = (double?)u.Gps!.Longitude,
@@ -76,7 +76,7 @@ public sealed class GeradorDeTransladoService(
             if (pinfo.Origem is null || destino is null)
             {
                 naoAlocadas.Add(new SessaoNaoAlocadaDto(r.Id, r.PacienteId, pinfo.Nome, r.UnidadeId, r.UnidadeNome,
-                    pinfo.Origem is null ? "Sem geolocalização do paciente (revisar endereço)" : "Unidade de destino sem coordenada"));
+                    pinfo.Origem is null ? "Sem geolocalização do paciente (revisar endereço)" : "Unidade de atendimento sem coordenada (revisar o cadastro)"));
                 continue;
             }
             candidatos.Add(new Candidato(r.Id, r.PacienteId, pinfo.Nome, r.UnidadeId, r.UnidadeNome, pinfo.Origem, destino, r.Acomp));
@@ -364,8 +364,8 @@ public sealed class GeradorDeTransladoService(
         geradoPor = p.Otimizado ? "google-routes-v1" : "heuristica-haversine-v1",
         distribuidoPor = p.Justificativa is null ? "heuristica" : "claude",
         justificativaIa = p.Justificativa,
-        unidadeId = p.UnidadeId,
-        unidade = p.UnidadeNome,
+        unidadeAtendimentoId = p.UnidadeId,
+        unidadeAtendimento = p.UnidadeNome,
         distanciaMetros = p.DistanciaMetros,
         duracaoSegundos = p.DuracaoSeg,
         paradas = p.Ordenado.Select((c, i) => new

@@ -10,8 +10,8 @@ export type AlocacaoDto = {
   tratamentoId: string;
   pacienteId: string;
   pacienteNome: string;
-  unidadeId: string;
-  unidadeNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
   horaPrevistaBusca: string | null;
   assentoId: string;
   fileiraOrdem: number;
@@ -24,8 +24,8 @@ export type SessaoElegivel = {
   tratamentoId: string;
   pacienteId: string;
   pacienteNome: string;
-  unidadeId: string;
-  unidadeNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
   dataPrevista: string;
   horaPrevistaBusca: string | null;
   status: 'Pendente' | 'Confirmada';
@@ -100,8 +100,8 @@ export type RotaGerada = {
   veiculoPlaca: string;
   motoristaId: string;
   motoristaNome: string;
-  unidadeId: string;
-  unidadeNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
   qtdPacientes: number;
   distanciaTotalMetros: number;
   duracaoEstimadaSegundos: number;
@@ -112,8 +112,8 @@ export type SessaoNaoAlocada = {
   sessaoId: string;
   pacienteId: string;
   pacienteNome: string;
-  unidadeId: string;
-  unidadeNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
   motivo: string;
 };
 

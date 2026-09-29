@@ -25,6 +25,8 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<TipoTratamento> TiposTratamento => Set<TipoTratamento>();
     public DbSet<Periodicidade> Periodicidades => Set<Periodicidade>();
     public DbSet<SessaoDeTratamento> Sessoes => Set<SessaoDeTratamento>();
+    /// <summary>Destinos do Transporte de Pacientes (cadastro manual, separado de <see cref="Unidades"/>).</summary>
+    public DbSet<UnidadeAtendimento> UnidadesAtendimento => Set<UnidadeAtendimento>();
     public DbSet<Unidade> Unidades => Set<Unidade>();
     /// <summary>Identidade da instituição desta instância (singleton) — ADR-0043.</summary>
     public DbSet<Instituicao> Instituicoes => Set<Instituicao>();

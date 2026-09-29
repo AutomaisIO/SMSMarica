@@ -134,7 +134,7 @@ function Item({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-gray-900">{sessao.pacienteNome}</p>
-            <p className="truncate text-xs text-gray-500">{sessao.unidadeNome}</p>
+            <p className="truncate text-xs text-gray-500">{sessao.unidadeAtendimentoNome}</p>
           </div>
           {sessao.vencida ? (
             <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">

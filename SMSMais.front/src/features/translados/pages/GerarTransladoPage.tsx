@@ -170,7 +170,7 @@ function Resultado({ resultado, aoAbrirLista }: { resultado: ResultadoGeracao; a
                 <Bus className="h-5 w-5 text-primary-600" />
                 <div>
                   <div className="font-medium text-gray-900">{r.veiculoPlaca} · {r.motoristaNome}</div>
-                  <div className="text-xs text-gray-500">Destino: {r.unidadeNome}</div>
+                  <div className="text-xs text-gray-500">Destino: {r.unidadeAtendimentoNome}</div>
                 </div>
               </div>
               <div className="text-right text-xs text-gray-500">
@@ -207,7 +207,7 @@ function Resultado({ resultado, aoAbrirLista }: { resultado: ResultadoGeracao; a
               <li key={s.sessaoId} className="flex flex-wrap items-center gap-x-2 text-sm text-gray-700">
                 <MapPin className="h-3.5 w-3.5 text-amber-600" />
                 <span className="font-medium">{s.pacienteNome}</span>
-                <span className="text-gray-500">({s.unidadeNome})</span>
+                <span className="text-gray-500">({s.unidadeAtendimentoNome})</span>
                 <span className="text-amber-700">— {s.motivo}</span>
               </li>
             ))}

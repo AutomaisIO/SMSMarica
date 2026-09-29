@@ -37,10 +37,11 @@ export type TratamentoListItem = {
   id: string;
   pacienteId: string;
   pacienteNome: string;
-  unidadeId: string;
-  unidadeNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
   tipoTratamentoNome: string | null;
   descricao: string;
+  tempoMedioMinutos: number | null;
   proximaSessao: string | null;
   totalSessoes: number;
   sessoesRealizadas: number;
@@ -86,14 +87,15 @@ export type Tratamento = {
   id: string;
   pacienteId: string;
   pacienteNome: string;
-  unidadeId: string;
-  unidadeNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
   tipoTratamentoId: string | null;
   tipoTratamentoNome: string | null;
   descricao: string;
   codigoSusLiberacao: string | null;
   observacoes: string | null;
   horaPrevistaBusca: string | null;
+  tempoMedioMinutos: number | null;
   ativo: boolean;
   criadoEm: string;
   encerradoEm: string | null;
@@ -109,14 +111,25 @@ export type ExpandirPeriodicidadePayload = {
   quantidadeSessoes: number;
 };
 
+/** Destino disponível no seletor do tratamento (unidades de atendimento ativas). */
+export type UnidadeAtendimentoOpcao = {
+  id: string;
+  nome: string;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  temCoordenada: boolean;
+};
+
 export type CadastrarTratamentoPayload = {
   pacienteId: string;
-  unidadeId: string;
+  unidadeAtendimentoId: string;
   tipoTratamentoId: string | null;
   descricao: string;
   codigoSusLiberacao: string | null;
   observacoes: string | null;
   horaPrevistaBusca: string | null;
+  tempoMedioMinutos: number;
   periodicidade: {
     tipo: number;
     intervaloDias: number | null;
@@ -129,10 +142,12 @@ export type CadastrarTratamentoPayload = {
 
 export type AtualizarTratamentoPayload = {
   descricao: string;
+  unidadeAtendimentoId: string;
   tipoTratamentoId: string | null;
   codigoSusLiberacao: string | null;
   observacoes: string | null;
   horaPrevistaBusca: string | null;
+  tempoMedioMinutos: number;
 };
 
 export type AdicionarSessaoPayload = {

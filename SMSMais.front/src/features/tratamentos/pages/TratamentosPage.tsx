@@ -12,6 +12,7 @@ import {
 } from '@/features/tratamentos/api/queries';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
+import { formatarDuracao } from '@/features/tratamentos/lib/tempoMedio';
 
 export function TratamentosPage() {
   const navigate = useNavigate();
@@ -29,7 +30,8 @@ export function TratamentosPage() {
       cabecalho: 'Tipo',
       render: (t) => t.tipoTratamentoNome ?? t.descricao,
     },
-    { chave: 'unidade', cabecalho: 'Unidade', render: (t) => t.unidadeNome },
+    { chave: 'unidade', cabecalho: 'Unidade de atendimento', render: (t) => t.unidadeAtendimentoNome },
+    { chave: 'tempo', cabecalho: 'Tempo médio', render: (t) => formatarDuracao(t.tempoMedioMinutos) },
     {
       chave: 'proxima',
       cabecalho: 'Próxima sessão',
@@ -80,7 +82,7 @@ export function TratamentosPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Tratamentos</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Associação paciente ↔ unidade com periodicidade e calendário de sessões.
+            Paciente ↔ unidade de atendimento (destino), com tempo médio, periodicidade e calendário de sessões.
           </p>
         </div>
         <Button onClick={() => navigate('/app/tratamentos/novo')}>

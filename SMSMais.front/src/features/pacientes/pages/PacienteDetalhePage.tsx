@@ -1140,7 +1140,7 @@ export function PacienteDetalhePage() {
         </button>
       ),
     },
-    { chave: 'unidade', cabecalho: 'Unidade', render: (t) => t.unidadeNome },
+    { chave: 'unidade', cabecalho: 'Unidade de atendimento', render: (t) => t.unidadeAtendimentoNome },
     {
       chave: 'proxima',
       cabecalho: 'Próxima sessão',

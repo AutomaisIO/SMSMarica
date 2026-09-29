@@ -9,9 +9,10 @@ public sealed class CadastrarTratamentoValidator : AbstractValidator<CadastrarTr
     public CadastrarTratamentoValidator()
     {
         RuleFor(t => t.PacienteId).NotEmpty();
-        RuleFor(t => t.UnidadeId).NotEmpty();
+        RuleFor(t => t.UnidadeAtendimentoId).NotEmpty().WithMessage("Escolha a unidade de atendimento (destino).");
         RuleFor(t => t.Descricao).NotEmpty().MaximumLength(500);
         RuleFor(t => t.CodigoSusLiberacao).MaximumLength(60);
+        RuleFor(t => t.TempoMedioMinutos).TempoMedioValido();
         RuleFor(t => t.Periodicidade).NotNull().SetValidator(new CadastrarPeriodicidadeValidator());
     }
 }
@@ -41,9 +42,21 @@ public sealed class AtualizarTratamentoValidator : AbstractValidator<AtualizarTr
 {
     public AtualizarTratamentoValidator()
     {
+        RuleFor(t => t.UnidadeAtendimentoId).NotEmpty().WithMessage("Escolha a unidade de atendimento (destino).");
         RuleFor(t => t.Descricao).NotEmpty().MaximumLength(500);
         RuleFor(t => t.CodigoSusLiberacao).MaximumLength(60);
+        RuleFor(t => t.TempoMedioMinutos).TempoMedioValido();
     }
+}
+
+internal static class TempoMedioRegra
+{
+    /// <summary>Tempo médio é obrigatório e cabe num dia (1 min a 24 h) — é a base da previsão
+    /// de volta na rota.</summary>
+    public static IRuleBuilderOptions<T, int?> TempoMedioValido<T>(this IRuleBuilder<T, int?> regra) =>
+        regra
+            .NotNull().WithMessage("Informe o tempo médio do tratamento.")
+            .InclusiveBetween(1, 24 * 60).WithMessage("Tempo médio deve ficar entre 1 minuto e 24 horas.");
 }
 
 public sealed class AtualizarSessaoValidator : AbstractValidator<AtualizarSessaoRequest>

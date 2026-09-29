@@ -13,20 +13,21 @@ internal sealed class TratamentoConfiguration : IEntityTypeConfiguration<Tratame
 
         builder.Property(t => t.Id).HasColumnName("id");
         builder.Property(t => t.PacienteId).HasColumnName("paciente_id").IsRequired();
-        builder.Property(t => t.UnidadeId).HasColumnName("unidade_id").IsRequired();
+        builder.Property(t => t.UnidadeAtendimentoId).HasColumnName("unidade_atendimento_id").IsRequired();
         builder.Property(t => t.TipoTratamentoId).HasColumnName("tipo_tratamento_id");
         builder.Property(t => t.Descricao).HasColumnName("descricao").HasMaxLength(500).IsRequired();
         builder.Property(t => t.CodigoSusLiberacao).HasColumnName("codigo_sus_liberacao").HasMaxLength(60);
         builder.Property(t => t.Observacoes).HasColumnName("observacoes");
         builder.Property(t => t.HoraPrevistaBusca).HasColumnName("hora_prevista_busca");
+        builder.Property(t => t.TempoMedioMinutos).HasColumnName("tempo_medio_minutos");
         builder.Property(t => t.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(t => t.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(t => t.EncerradoEm).HasColumnName("encerrado_em");
 
         // PacienteId referencia fhir.patient (hub FHIR) — sem FK local.
-        builder.HasOne(t => t.Unidade)
+        builder.HasOne(t => t.UnidadeAtendimento)
             .WithMany()
-            .HasForeignKey(t => t.UnidadeId)
+            .HasForeignKey(t => t.UnidadeAtendimentoId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(t => t.TipoTratamento)

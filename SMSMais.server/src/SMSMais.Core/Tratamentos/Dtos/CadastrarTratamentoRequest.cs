@@ -4,12 +4,14 @@ namespace SMSMais.Core.Tratamentos.Dtos;
 
 public sealed record CadastrarTratamentoRequest(
     Guid PacienteId,
-    Guid UnidadeId,
+    Guid UnidadeAtendimentoId,
     Guid? TipoTratamentoId,
     string Descricao,
     string? CodigoSusLiberacao,
     string? Observacoes,
     TimeOnly? HoraPrevistaBusca,
+    /// <summary>Tempo médio que o paciente fica no tratamento, em minutos.</summary>
+    int? TempoMedioMinutos,
     CadastrarPeriodicidadeRequest Periodicidade,
     /// <summary>
     /// Datas reais a gravar. Normalmente são geradas pelo algoritmo de expansão

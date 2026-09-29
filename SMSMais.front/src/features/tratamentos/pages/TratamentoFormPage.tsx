@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, CalendarPlus, Check, Loader2, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { BuscaPaciente } from '@/shared/ui/BuscaPaciente';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
-import { useListarUnidades } from '@/features/unidades/api/queries';
+import { usePermissao } from '@/shared/auth/authStore';
 import {
   useCadastrarTratamento,
+  useOpcoesUnidadesAtendimento,
   useTiposTratamento,
 } from '@/features/tratamentos/api/queries';
+import { CampoTempoMedio } from '@/features/tratamentos/components/CampoTempoMedio';
+import { formatarDuracao, paraMinutos } from '@/features/tratamentos/lib/tempoMedio';
 import {
   DIAS_SEMANA,
   LIMITE_SESSOES,
@@ -30,7 +33,8 @@ type Passo = 'paciente' | 'dados' | 'periodicidade' | 'revisao';
 
 export function TratamentoFormPage() {
   const navigate = useNavigate();
-  const unidades = useListarUnidades();
+  const destinos = useOpcoesUnidadesAtendimento();
+  const podeCadastrarDestino = usePermissao('UnidadesAtendimento', 'Inclusao');
   const tipos = useTiposTratamento();
   const cadastrar = useCadastrarTratamento();
 
@@ -38,12 +42,15 @@ export function TratamentoFormPage() {
   const [paciente, setPaciente] = useState<PacienteListItem | null>(null);
   const [dados, setDados] = useState({
     tipoTratamentoId: '',
-    unidadeId: '',
+    unidadeAtendimentoId: '',
     descricao: '',
     codigoSusLiberacao: '',
     horaPrevistaBusca: '',
+    tempoMedioHoras: '',
+    tempoMedioMinutos: '',
     observacoes: '',
   });
+  const tempoMedio = paraMinutos(dados.tempoMedioHoras, dados.tempoMedioMinutos);
   const [regra, setRegra] = useState<RegraPeriodicidade>({
     tipo: 'SemanaDiasFixos',
     intervaloDias: null,
@@ -98,17 +105,18 @@ export function TratamentoFormPage() {
   }
 
   async function confirmar() {
-    if (!paciente) return;
+    if (!paciente || tempoMedio == null) return;
     setErroGlobal(null);
     try {
       const id = await cadastrar.mutateAsync({
         pacienteId: paciente.id,
-        unidadeId: dados.unidadeId,
+        unidadeAtendimentoId: dados.unidadeAtendimentoId,
         tipoTratamentoId: dados.tipoTratamentoId || null,
         descricao: dados.descricao.trim(),
         codigoSusLiberacao: dados.codigoSusLiberacao.trim() || null,
         observacoes: dados.observacoes.trim() || null,
         horaPrevistaBusca: dados.horaPrevistaBusca || null,
+        tempoMedioMinutos: tempoMedio,
         periodicidade: {
           tipo: TIPO_PERIODICIDADE_VALOR[regra.tipo],
           intervaloDias: regra.intervaloDias,
@@ -126,7 +134,8 @@ export function TratamentoFormPage() {
 
   const podeAvancarDados =
     paciente &&
-    dados.unidadeId &&
+    dados.unidadeAtendimentoId &&
+    tempoMedio != null &&
     dados.descricao.trim().length > 0;
 
   const podeConfirmar =
@@ -134,7 +143,12 @@ export function TratamentoFormPage() {
     datasExpansao.length > 0 &&
     datasExpansao.length <= LIMITE_SESSOES;
 
-  const unidadesAtivas = (unidades.data ?? []).filter((u) => u.ativo);
+  const opcoesDestino = destinos.data ?? [];
+  const destinoEscolhido = opcoesDestino.find((u) => u.id === dados.unidadeAtendimentoId);
+  const tempoInvalido =
+    (dados.tempoMedioHoras !== '' || dados.tempoMedioMinutos !== '') && tempoMedio == null
+      ? 'Entre 1 minuto e 24 horas (minutos de 0 a 59).'
+      : undefined;
 
   return (
     <div className="space-y-6">
@@ -188,15 +202,43 @@ export function TratamentoFormPage() {
                 ))}
               </Select>
             </Campo>
-            <Campo label="Unidade de atendimento" htmlFor="unidade">
+            <Campo
+              label="Unidade de atendimento (destino)"
+              htmlFor="unidade"
+              required
+              erro={
+                destinoEscolhido && !destinoEscolhido.temCoordenada
+                  ? 'Esta unidade está sem ponto no mapa — a rota não terá destino até alguém marcar.'
+                  : undefined
+              }
+              dica={
+                !destinos.isLoading && opcoesDestino.length === 0 ? (
+                  <>
+                    Nenhuma unidade de atendimento cadastrada.{' '}
+                    {podeCadastrarDestino ? (
+                      <Link to="/app/unidades-atendimento/novo" className="text-red-700 hover:underline">
+                        Cadastrar agora
+                      </Link>
+                    ) : (
+                      'Peça a quem cuida do cadastro de destinos.'
+                    )}
+                  </>
+                ) : (
+                  'Onde o paciente faz o tratamento — o fim da rota da van.'
+                )
+              }
+            >
               <Select
                 id="unidade"
-                value={dados.unidadeId}
-                onChange={(e) => setDados((d) => ({ ...d, unidadeId: e.target.value }))}
+                value={dados.unidadeAtendimentoId}
+                onChange={(e) => setDados((d) => ({ ...d, unidadeAtendimentoId: e.target.value }))}
               >
-                <option value="">— Selecione —</option>
-                {unidadesAtivas.map((u) => (
-                  <option key={u.id} value={u.id}>{u.nome}</option>
+                <option value="">{destinos.isLoading ? 'Carregando…' : '— Selecione —'}</option>
+                {opcoesDestino.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                    {u.cidade ? ` — ${u.cidade}${u.uf ? `/${u.uf}` : ''}` : ''}
+                  </option>
                 ))}
               </Select>
             </Campo>
@@ -226,6 +268,12 @@ export function TratamentoFormPage() {
                 onChange={(e) => setDados((d) => ({ ...d, horaPrevistaBusca: e.target.value }))}
               />
             </Campo>
+            <CampoTempoMedio
+              horas={dados.tempoMedioHoras}
+              minutos={dados.tempoMedioMinutos}
+              aoMudar={(v) => setDados((d) => ({ ...d, tempoMedioHoras: v.horas, tempoMedioMinutos: v.minutos }))}
+              erro={tempoInvalido}
+            />
             <Campo label="Observações" htmlFor="obs" className="md:col-span-2">
               <textarea
                 id="obs"
@@ -398,11 +446,12 @@ export function TratamentoFormPage() {
           <h2 className="mb-4 text-base font-medium text-gray-900">4. Confirmação</h2>
           <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Item rotulo="Paciente" valor={paciente?.nomeCompleto ?? '—'} />
-            <Item rotulo="Unidade" valor={unidadesAtivas.find((u) => u.id === dados.unidadeId)?.nome ?? '—'} />
+            <Item rotulo="Unidade de atendimento" valor={destinoEscolhido?.nome ?? '—'} />
             <Item rotulo="Tipo" valor={tipos.data?.find((t) => t.id === dados.tipoTratamentoId)?.nome ?? '—'} />
             <Item rotulo="Código SUS" valor={dados.codigoSusLiberacao || '—'} />
             <Item rotulo="Descrição" valor={dados.descricao} />
             <Item rotulo="Horário previsto" valor={dados.horaPrevistaBusca || '—'} />
+            <Item rotulo="Tempo médio no tratamento" valor={formatarDuracao(tempoMedio)} />
             <Item rotulo="Total de sessões" valor={String(datasExpansao.length)} />
           </dl>
 

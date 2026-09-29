@@ -15,15 +15,15 @@ public sealed record RotaGeradaDto(
     string VeiculoPlaca,
     Guid MotoristaId,
     string MotoristaNome,
-    Guid UnidadeId,
-    string UnidadeNome,
+    Guid UnidadeAtendimentoId,
+    string UnidadeAtendimentoNome,
     int QtdPacientes,
     int DistanciaTotalMetros,
     int DuracaoEstimadaSegundos,
     IReadOnlyList<ParadaGeradaDto> Paradas);
 
 public sealed record SessaoNaoAlocadaDto(
-    Guid SessaoId, Guid PacienteId, string PacienteNome, Guid UnidadeId, string UnidadeNome, string Motivo);
+    Guid SessaoId, Guid PacienteId, string PacienteNome, Guid UnidadeAtendimentoId, string UnidadeAtendimentoNome, string Motivo);
 
 public sealed record ResultadoGeracaoDto(
     DateOnly Data,

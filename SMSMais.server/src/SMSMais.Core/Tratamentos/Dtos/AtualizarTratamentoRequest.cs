@@ -7,10 +7,12 @@ namespace SMSMais.Core.Tratamentos.Dtos;
 /// </summary>
 public sealed record AtualizarTratamentoRequest(
     string Descricao,
+    Guid UnidadeAtendimentoId,
     Guid? TipoTratamentoId,
     string? CodigoSusLiberacao,
     string? Observacoes,
-    TimeOnly? HoraPrevistaBusca);
+    TimeOnly? HoraPrevistaBusca,
+    int? TempoMedioMinutos);
 
 /// <summary>
 /// Alterações permitidas em uma sessão: data prevista, horários previstos,

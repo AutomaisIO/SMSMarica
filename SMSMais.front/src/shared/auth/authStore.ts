@@ -81,7 +81,9 @@ export type ModuloPermissao =
   | 'Ouvidoria'
   | 'OuvidoriaGestao'
   | 'OuvidoriaSigilo'
-  | 'OuvidoriaPontoResposta';
+  | 'OuvidoriaPontoResposta'
+  // Transporte de Pacientes (76): cadastro das unidades de atendimento (destinos da van).
+  | 'UnidadesAtendimento';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

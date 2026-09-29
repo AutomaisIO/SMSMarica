@@ -16,8 +16,8 @@ export type RegistroFaturamento = {
   motoristaId: string | null;
   veiculoId: string | null;
   tipoTratamentoId: string | null;
-  unidadeId: string;
-  unidadeNome: string;
+  unidadeAtendimentoId: string;
+  unidadeAtendimentoNome: string;
   competencia: number;
   data: string;
   kmComPaciente: number;

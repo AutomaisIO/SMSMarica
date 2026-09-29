@@ -18,7 +18,7 @@ const DIMENSOES: { id: DimensaoFaturamento; rotulo: string }[] = [
   { id: 'Motorista', rotulo: 'Motorista' },
   { id: 'Veiculo', rotulo: 'Veículo' },
   { id: 'TipoTratamento', rotulo: 'Tipo de tratamento' },
-  { id: 'Unidade', rotulo: 'Unidade' },
+  { id: 'Unidade', rotulo: 'Unidade de atendimento' },
 ];
 
 const STATUS_FAT: Record<string, { rotulo: string; cor: string }> = {
@@ -151,7 +151,7 @@ export function FaturamentoPage() {
               <tr>
                 <th className="px-4 py-2">Data</th>
                 <th className="px-4 py-2">Paciente</th>
-                <th className="px-4 py-2">Unidade</th>
+                <th className="px-4 py-2">Unidade de atendimento</th>
                 <th className="px-4 py-2 text-right">Km</th>
                 <th className="px-4 py-2 text-right">Unid.</th>
                 <th className="px-4 py-2 text-right">Valor</th>
@@ -171,7 +171,7 @@ export function FaturamentoPage() {
                     <tr key={r.id}>
                       <td className="px-4 py-2 text-gray-600">{dataBr(r.data)}</td>
                       <td className="px-4 py-2 text-gray-900">{r.pacienteNome}</td>
-                      <td className="px-4 py-2 text-gray-600">{r.unidadeNome}</td>
+                      <td className="px-4 py-2 text-gray-600">{r.unidadeAtendimentoNome}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{num(r.kmComPaciente, 1)}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{num(r.unidades)}</td>
                       <td className="px-4 py-2 text-right font-medium text-gray-900">{brl(r.valorTotal)}</td>
