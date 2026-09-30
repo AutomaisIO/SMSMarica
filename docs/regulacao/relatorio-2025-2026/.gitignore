@@ -1,0 +1,5 @@
+# Saídas: dados.json, HTML e PDF listam IDs de solicitação (judicializadas) — ficam fora do git.
+# Regenerar: python gerar_dados.py && python montar.py && node render.mjs
+dados.json
+*.html
+*.pdf

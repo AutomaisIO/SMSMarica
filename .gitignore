@@ -58,3 +58,6 @@ node_modules/
 # Histórico de git é permanente — um `git rm` depois não desfaz. Exame vai para fora da árvore.
 docs/Exames/
 *.xcm
+
+# Permissões locais do Claude Code: guardam comandos inteiros (com credenciais). Nunca versionar.
+.claude/settings.local.json
