@@ -82,7 +82,15 @@ public sealed class SernitLeitorService(
     {
         for (var tentativa = 1; ; tentativa++)
         {
-            if (string.IsNullOrEmpty(_htmlForm)) await PrepararAsync(cancellationToken);
+            // SEMPRE reabre a tela antes de pesquisar (GET fresco, como o lab). Medido em 30/09/2026: pesquisar
+            // a partir do form absorvido da resposta anterior faz o SERNIT devolver, na PÁGINA 1, a página 1 da
+            // PESQUISA ANTERIOR (as páginas 2..N já vêm da nova). Depois de uma janela capada, a página 1 da
+            // janela menor seguinte nunca era lida: o espelho tinha 1.349 de 1.511 solicitações (31 'Em fila'
+            // faltando, todas na página 1 de janelas pós-corte). Custa 1 GET por pesquisa.
+            _htmlForm = string.Empty;
+            _htmlDados = string.Empty;
+            _ultimoViewState = null;
+            await PrepararAsync(cancellationToken);
 
             var doc = SernitHtmlParser.Documento(_htmlForm);
             if (SernitHtmlParser.BotaoPesquisar(doc) is null)

@@ -327,3 +327,20 @@ A tela de pesquisa tem o checkbox **"Somente com mandado judicial"** (`form0:j_i
 resolver pelo `<strong>` irmão). Com ele ligado, **todas as 7 situações voltam vazias** para a conta de
 Maricá; controle sem o filtro no mesmo login: EM_FILA = 412, CHEGADA_CONFIRMADA = 118. Ou seja,
 zero judicial no SERNIT é real, não defeito da busca.
+
+## 9. A varredura perdia a PÁGINA 1 das janelas pós-corte (achado e corrigido em 30/09/2026)
+
+Sintoma: o SERNIT informava 1.511 solicitações de Maricá (soma dos totais por situação,
+`probe_totais.py`) e o espelho tinha 1.349; toda varredura diária "achava" ~1.171. As 31 'Em fila'
+faltantes estavam TODAS na página 1 de duas janelas (13/04/2025–05/01/2026 e 06/01–13/03/2026) —
+páginas 2..N completas (`probe_diag_varredura.py` + diagnósticos em scratchpad).
+
+Causa (reproduzida no lab): pesquisar a partir do **form absorvido da resposta anterior** faz o SERNIT
+devolver, na página 1, a página 1 da **pesquisa anterior**; as páginas 2..N já vêm da nova. A varredura
+adaptativa sempre pesquisa uma janela menor logo depois de uma capada, com o form da resposta capada —
+então a página 1 dessas janelas nunca era lida. O lab não tinha o problema porque faz GET fresco da
+tela antes de cada pesquisa.
+
+Correção: `SernitLeitorService.PesquisarAsync` reabre a tela (GET) antes de TODA pesquisa (+1
+requisição por janela). Teste de regressão: `SernitLeitorServiceTests` (falha sem a correção com os IDs
+da pesquisa anterior). Depois do deploy, uma varredura Diária recupera as faltantes.
