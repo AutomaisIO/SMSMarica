@@ -412,8 +412,9 @@ export function AbaEsusSgConfiguracao() {
         )}
 
         <p className="mt-3 text-xs text-slate-500">
-          A <strong>carga inicial</strong> lê a fila inteira e os agendados de todo o histórico, mês a
-          mês desde 2015 — leva dezenas de minutos e retoma sozinha se o serviço reiniciar. A{' '}
+          A <strong>carga inicial</strong> lê a fila inteira e os agendados de todo o histórico desde
+          2015, em fatias de um ano, e aplica pedido a pedido — leva alguns minutos e retoma sozinha se
+          o serviço reiniciar. A{' '}
           <strong>diária</strong> lê a fila e os agendados de uma janela móvel (45 dias para trás, 400
           para a frente) e detecta quem saiu da fila. <strong>Só a fila</strong> atualiza posição,
           prioridade e pendência sem ler agendados.
