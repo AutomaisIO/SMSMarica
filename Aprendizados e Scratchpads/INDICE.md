@@ -113,6 +113,8 @@ Motor em `sisreg/client.py` (`SisregClient`: priming + login + sessão). Aprendi
 | `sonda_export_amplo.py` | o `expo_solicitacoes` aceita recorte mais amplo que um par? **Sim** — `cpf=0`+`procedimento=0` traz a unidade inteira em 1 requisição (272 → 1) |
 | `sonda_dias_faltantes.py` | uma faixa de datas existe mesmo, ou o SISREG erra? Achou erro **determinístico**: `alert(...)` com HTTP 200 e 504 |
 | `sonda_fila_gerenciador.py` | dá para tirar a fila de espera do `gerenciador_solicitacao`? |
+| `coletar_serie_indicadores.py` | coleta em SÉRIE (vários meses) para o relatório de indicadores: PPI, total de canceladas, devolvidas/negadas/canceladas-antes por unidade, lista oficial de faltas por semana e motivos de um mês. Retomável (`capturas/indicadores/serie/progresso.json`), ≤300 req/h, reloga quando o robô de prod derruba, para em CAPTCHA. Guarda só código/datas/procedimento/unidade/justificativa |
+| `sonda_indicadores.py` | de onde saem os **indicadores de regulação** (30/09/2026)? Subcomandos `faltas` (`rel_amb_faltas_sol.pl` = absenteísmo oficial; `--lista` traz a semana inteira em 1 req), `ppi` (`cons_ppi_cotas`), `canceladas` (`cons_marcacao_cancelada`, período C/M/S), `devolvidas` e `situacao` 3/4/6 (**exigem `--unidade`**: rede inteira estoura ~65 s). ⚠️ usa o operador do robô de prod — derruba a sessão dele; só com OK |
 | `recon_escalas.py`, `recon_fila_espera.py`, `recon_menu.py` | reconhecimento de tela |
 | `teste_consagendas_dia.py`, `teste_export_cmi.py` | validação pontual (não commitados) |
 
@@ -123,6 +125,15 @@ Motor em `sisreg/client.py` (`SisregClient`: priming + login + sessão). Aprendi
 ## 4. `Automais.SER` — 31 scripts
 
 Motor em `ser/`. É onde está a maior massa de **sondas de tela JSF/RichFaces**.
+
+⚠️ **Achado em 30/09/2026: `ser/` só tem `__pycache__/*.pyc` — o código-fonte do motor sumiu e nunca
+foi commitado.** Toda sonda que faz `from ser import ...` está quebrada; as que se autocontêm (httpx
+direto, como `probe_historico.py` e `sonda_judicial.py`) funcionam. O motor de verdade vive no .NET
+(`Core/Integracoes/SerWeb`).
+
+**Indicadores (30/09/2026):** `sonda_judicial.py` — lista as solicitações **com mandado judicial**
+por situação (checkbox "Somente com mandado judicial"; a grade não mostra o martelo). 169 no total,
+todas já em `ser_solicitacao`. Módulo Internação mapeado em `docs/ser.md §12` (fora do escopo).
 
 **Identidade e divergências** (a frente que achou paciente trocado)
 | script | o que faz |
@@ -157,7 +168,10 @@ para entender o sistema:
 `probe_login.py` (0) → `probe_pesquisa.py` (1) → `probe_grade.py` (2) → `probe_historico.py` (3) →
 `probe_menu_acao.py` (4) → `probe_fatiar.py` (5) → `probe_editar.py` (6) →
 `probe_followup.py` (7, **mapa apenas, nunca envia**) → `probe_nova.py` (8) →
-`probe_campos_dinamicos.py` (9) → `probe_cid.py` (10)
+`probe_campos_dinamicos.py` (9) → `probe_cid.py` (10) → `probe_judicial.py` (11, mandado judicial por
+situação com busca de CONTROLE — zero em 30/09/2026) → `probe_totais.py` (12, total REAL por
+situação para conferir o espelho `sernit_solicitacao`; não rodar com a varredura do servidor viva) →
+`probe_diag_varredura.py` (13, paginação × data final — levou ao achado da página 1 perdida, §9 do APRENDIZADOS)
 
 **Diagnóstico:** `probe_diag_editar.py`, `probe_diag_xrw.py` (o `X-Requested-With` num submit
 não-ajax faz o A4J devolver a tela errada), `probe_busca_id.py`, `probe_carry.py`, `probe_fix.py`,
