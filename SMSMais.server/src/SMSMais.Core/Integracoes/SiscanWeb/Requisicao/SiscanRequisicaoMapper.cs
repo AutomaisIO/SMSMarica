@@ -14,6 +14,14 @@ public sealed record LacunaAnamnese(string Campo, string Pergunta);
 public sealed record CorrecaoAnoUltimaMamografia(int AnoDeclarado, int AnoNoSiscan);
 
 /// <summary>
+/// A paciente estava sem Raça/Cor no CADSUS, o SISCAN pediu, e quem gerou informou — é
+/// autodeclaração, perguntada à paciente. Etnia só quando Indígena.
+/// </summary>
+public sealed record RacaCorInformada(
+    string Codigo, string Rotulo, string? EtniaCodigo, string? EtniaRotulo,
+    string? InformadaPor, DateTime InformadaEm);
+
+/// <summary>
 /// A requisição saiu por outra unidade que não a do pedido, porque a do pedido não está entre as
 /// unidades requisitantes que a conta do SISCAN do operador enxerga — e ele escolheu esta.
 /// </summary>
@@ -61,6 +69,15 @@ public static class SiscanRequisicaoMapper
     public const string CampoProntuario = "frm:prontuario";
     public const string CampoAnoUltimaMamografia = "frm:anoUltimaMamografia";
     public const string CampoResponsavel = "frm:responsavelColeta";
+
+    /// <summary>
+    /// Só existe quando o CADSUS NÃO tem a Raça/Cor da paciente: o SISCAN troca o campo travado
+    /// <c>frm:racaCor</c> por este combo (medido em 30/09/2026). Nome estável, não é <c>j_idNN</c>.
+    /// </summary>
+    public const string CampoRacaCor = "frm:cmbRacaCor";
+
+    /// <summary>Aparece quando a Raça/Cor escolhida é Indígena (475 etnias).</summary>
+    public const string CampoEtnia = "frm:cmbEtnia";
 
     public const string Sim = "01";
     public const string Nao = "02";
@@ -272,6 +289,24 @@ public static class SiscanRequisicaoMapper
                 ["nomeDoPedido"] = unidade.NomeDoPedido,
                 ["escolhidaPor"] = unidade.EscolhidaPor,
                 ["escolhidaEm"] = unidade.EscolhidaEm.ToString("O", CultureInfo.InvariantCulture),
+            };
+        });
+
+    /// <summary>
+    /// Registra na anamnese (<c>siscan.racaCorInformada</c>) a Raça/Cor que foi ao SISCAN porque
+    /// faltava no CADSUS — o código e o texto deles, a etnia quando Indígena, quem informou e quando.
+    /// </summary>
+    public static string AnotarRacaCorNoConteudo(string? conteudoJson, RacaCorInformada raca) =>
+        NoBlocoSiscan(conteudoJson, siscan =>
+        {
+            siscan["racaCorInformada"] = new JsonObject
+            {
+                ["codigo"] = raca.Codigo,
+                ["rotulo"] = raca.Rotulo,
+                ["etniaCodigo"] = raca.EtniaCodigo,
+                ["etniaRotulo"] = raca.EtniaRotulo,
+                ["informadaPor"] = raca.InformadaPor,
+                ["informadaEm"] = raca.InformadaEm.ToString("O", CultureInfo.InvariantCulture),
             };
         });
 

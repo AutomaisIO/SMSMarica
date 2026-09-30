@@ -269,6 +269,8 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
   const dataEscolha = unidadeEscolhida?.escolhidaEm
     ? formatarInstanteData(unidadeEscolhida.escolhidaEm)
     : null;
+  // Idem: a Raça/Cor que faltava no CADSUS e foi informada ao gerar.
+  const racaInformada = conteudo.siscan.racaCorInformada;
 
   return (
     <div className={`mx-auto max-w-5xl space-y-6 pb-10 ${janela ? 'min-h-screen bg-gray-50 p-6' : ''}`}>
@@ -327,6 +329,19 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
                   {dataEscolha ? ` em ${dataEscolha}` : ''}: a unidade do pedido,{' '}
                   {unidadeEscolhida.nomeDoPedido} (CNES {unidadeEscolhida.cnesDoPedido}), não
                   estava na conta do SISCAN.
+                </span>
+              ) : null}
+              {racaInformada ? (
+                /* O CADSUS não tinha a Raça/Cor, o SISCAN pediu, e ela foi informada aqui. */
+                <span className="basis-full text-xs text-amber-800">
+                  Raça/Cor informada ao SISCAN: <strong>{racaInformada.rotulo}</strong>
+                  {racaInformada.etniaRotulo ? ` · etnia ${racaInformada.etniaRotulo}` : ''}{' '}
+                  (autodeclarada — faltava no cadastro nacional)
+                  {racaInformada.informadaPor ? `, por ${racaInformada.informadaPor}` : ''}
+                  {racaInformada.informadaEm
+                    ? ` em ${formatarInstanteData(racaInformada.informadaEm)}`
+                    : ''}
+                  .
                 </span>
               ) : null}
             </div>

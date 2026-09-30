@@ -330,6 +330,40 @@ public class SiscanWebSessaoTests
     public void Mensagem_cita_rotulo_por_palavra_inteira(string mensagem, string rotulo, bool esperado) =>
         SiscanHtml.MencionaRotulo(mensagem, rotulo).Should().Be(esperado);
 
+    /// <summary>
+    /// Paciente SEM Raça/Cor no CADSUS — medido em 30/09/2026 (sonda <c>probe_raca_cor.py</c>): o
+    /// campo travado dá lugar ao combo editável <c>frm:cmbRacaCor</c>. O "Selecione…" fica de fora.
+    /// </summary>
+    [Fact]
+    public void Combo_de_raca_cor_editavel_traz_as_opcoes_do_siscan()
+    {
+        var doc = SiscanHtml.Documento("""
+            <form id="frm"><select id="frm:cmbRacaCor" name="frm:cmbRacaCor" size="1"
+              onchange="A4J.AJAX.Submit('frm',event,{'similarityGroupingId':'frm:j_id83','control':this,'parameters':{'frm:j_id83':'frm:j_id83','ajaxSingle':'frm:cmbRacaCor'} } )">
+              <option value="0" selected="selected">Selecione...</option>
+              <option value="1">BRANCA</option><option value="2">PRETA</option>
+              <option value="3">PARDA</option><option value="4">AMARELA</option>
+              <option value="5">INDIGENA</option>
+            </select></form>
+            """);
+
+        SiscanHtml.ComboEditavel(doc, "frm:cmbRacaCor").Should().Equal(
+            new SiscanHtml.OpcaoSiscan("1", "BRANCA"), new SiscanHtml.OpcaoSiscan("2", "PRETA"),
+            new SiscanHtml.OpcaoSiscan("3", "PARDA"), new SiscanHtml.OpcaoSiscan("4", "AMARELA"),
+            new SiscanHtml.OpcaoSiscan("5", "INDIGENA"));
+        SiscanHtml.ParametrosA4JDoElemento(doc.QuerySelector("select"))
+            .Should().ContainKey("ajaxSingle").WhoseValue.Should().Be("frm:cmbRacaCor");
+    }
+
+    /// <summary>Paciente COM Raça/Cor: o campo é input travado, e não há combo a oferecer.</summary>
+    [Theory]
+    [InlineData("""<input id="frm:racaCor" type="text" name="frm:racaCor" value="PARDA" class="form-txt pessoaCadsus" disabled="disabled" />""")]
+    [InlineData("""<select name="frm:cmbRacaCor" disabled="disabled"><option value="0">Selecione...</option><option value="1">BRANCA</option></select>""")]
+    [InlineData("""<select name="frm:cmbRacaCor"><option value="0">Selecione...</option></select>""")]
+    public void Sem_combo_editavel_nao_ha_raca_a_pedir(string html) =>
+        SiscanHtml.ComboEditavel(SiscanHtml.Documento($"<form id=\"frm\">{html}</form>"), "frm:cmbRacaCor")
+            .Should().BeNull();
+
     /// <summary>A prévia mostrava "frm:anoMastectomia…" como pergunta; agora é legível.</summary>
     [Theory]
     [InlineData("frm:anoMastectomiaPoupadoraPeleDireita", "Ano — Mastectomia poupadora pele (direita)")]

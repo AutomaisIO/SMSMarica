@@ -26,13 +26,19 @@ public sealed class SiscanRequisicaoController(ISiscanRequisicaoService servico)
     /// Só quando a unidade do pedido não está na conta do SISCAN (o preparo devolveu
     /// <c>unidadesDisponiveis</c>): a unidade escolhida no lugar dela.
     /// </param>
+    /// <param name="racaCor">
+    /// Só quando o SISCAN pediu (o preparo devolveu <c>racaCorOpcoes</c>): o código escolhido.
+    /// </param>
+    /// <param name="etnia">Só com Raça/Cor Indígena (o preparo devolveu <c>etniaOpcoes</c>).</param>
     [HttpGet("{exameImagemId:guid}")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
     [ProducesResponseType<SiscanPreparoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public Task<SiscanPreparoDto> Preparar(
-        Guid exameImagemId, [FromQuery] string? cnesUnidade, CancellationToken cancellationToken) =>
-        servico.PrepararAsync(exameImagemId, cnesUnidade, cancellationToken);
+        Guid exameImagemId, [FromQuery] string? cnesUnidade, [FromQuery] string? racaCor,
+        [FromQuery] string? etnia, CancellationToken cancellationToken) =>
+        servico.PrepararAsync(
+            exameImagemId, new EscolhasSiscan(cnesUnidade, racaCor, etnia), cancellationToken);
 
     /// <summary>Cria a requisição no SISCAN e carimba protocolo e nº do exame no nosso pedido.</summary>
     [HttpPost("{exameImagemId:guid}")]

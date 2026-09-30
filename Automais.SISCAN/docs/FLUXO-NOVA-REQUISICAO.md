@@ -59,25 +59,38 @@ pelo CNS — sem passar pela pesquisa com período obrigatório.
 Campo `disabled` **não se reposta** (o navegador não posta, e o SISCAN os deriva do CADSUS).
 Quem tentar "corrigir" nome ou endereço por POST está perdendo tempo: o servidor descarta.
 
-### Quando o CADSUS vem sem um desses campos (Raça/Cor, 30/09/2026)
+### Quando o CADSUS vem sem Raça/Cor (medido em 30/09/2026)
 
-Recebido em produção: o **Avançar** recusou por **Raça/Cor** — a paciente estava sem esse dado no
-CADSUS. Não há combo a oferecer: o campo é `disabled` e o SISCAN manda corrigir **no CADSUSWEB**. A
-própria tela tem, logo abaixo dos dados, o bloco *ATUALIZAR CADASTRO NO CADSUSWEB* com dois links:
+> **Correção de uma afirmação errada minha.** Na primeira versão desta seção eu escrevi que "não há
+> combo a oferecer: o campo é `disabled` e o SISCAN manda corrigir no CADSUSWEB". Concluí isso de
+> capturas que **só tinham pacientes COM Raça/Cor** — nunca tinha visto o caso sem. O Bernardo
+> disse que na tela dava para escolher; a sonda `probe_raca_cor.py` confirmou que ele estava certo.
 
-- **"Atualizar Dados do Paciente"** (A4J, `title` estável, id `j_idNN`) — *"traz os dados atualizados
-  do paciente de acordo com o que se encontra no CADSUSWEB"*;
-- **"Corrigir/Atualizar Dados do Paciente"** → `https://cadastro.saude.gov.br/novocartao/?…
-  usuarioSelecionado=<CNS>&URL_INTEGRACAO_RETORNO=/visao/integracao/cadSUSNovoExame.jsf` — *"ao
-  retornar ao SISCAN, os dados já virão atualizados"*.
+Paciente **sem** Raça/Cor no CADSUS (medido com a paciente da solicitação 688531779):
 
-O que o painel faz: lê os obrigatórios `pessoaCadsus` (`SiscanHtml.CamposObrigatoriosDoCadsus` —
-o rótulo de Raça/Cor é `<label id="frm:lblRacaCor">`, **sem `for`**), e, se o Avançar é recusado
-citando um deles (ou recusado sem mensagem com um deles vazio), responde
-`siscan.cadastro_cadsus_incompleto` dizendo qual campo e com o link do CADSUSWEB.
+- **Logo depois do CNS**, o input travado `frm:racaCor` **não vem**; no lugar dele vem
+  `<select name="frm:cmbRacaCor">` **editável**, com A4J no `onchange` (`ajaxSingle=frm:cmbRacaCor`):
+  `0` Selecione… · `1` BRANCA · `2` PRETA · `3` PARDA · `4` AMARELA · `5` INDIGENA.
+- Sem escolher, o Avançar volta para a mesma tela com **"O campo Raça Cor deve ser informado."**
+- **INDIGENA** (`5`): o A4J re-renderiza `frm:pnlEtnia` (regiões `j_id42, frm:pnlEtnia, frm:j_id240,
+  formModalPesquisarCpf:msgsPesquisaCpf`) e aparece `<select name="frm:cmbEtnia">` com **475 etnias**
+  (+ Selecione…), sem A4J próprio.
+- **O A4J do combo não re-renderiza o próprio combo** — o parcial não devolve a opção marcada.
+  Mesma armadilha do tipo de exame: o valor tem de ir **de novo** no POST do Avançar.
+- A sonda **nunca avançou com uma raça escolhida por ela**: se o SISCAN gravar o dado da paciente
+  nesse passo, seria informação falsa sobre uma pessoa real. Só disparou o A4J de `5` para ver a
+  etnia. O Avançar com raça escolhida é medido na primeira geração real.
 
-**Ainda não medido:** se, depois de corrigir no CADSUSWEB, só redigitar o CNS já traz o dado novo
-ou se é preciso o A4J "Atualizar Dados do Paciente". O log do próximo caso responde.
+O que o painel faz: se `frm:cmbRacaCor` está editável, o preparo **para antes do Avançar** e devolve
+as opções (`racaCorOpcoes`); o operador escolhe — é **autodeclaração**, perguntada à paciente — e
+confirma; o preparo refaz com `?racaCor=` (e `?etnia=` se Indígena), dispara o A4J do combo e manda o
+valor no POST do Avançar. Ao gerar, grava `siscan.racaCorInformada` na anamnese (tarja "Enviada ao
+SISCAN").
+
+Os **outros** campos do CADSUS (nome da mãe, endereço…) ainda não foram medidos no caso vazio. Até
+lá, a recusa que cita um deles responde `siscan.cadastro_cadsus_incompleto` com o link do CADSUSWEB
+(a tela do SISCAN tem, abaixo dos dados, o bloco *ATUALIZAR CADASTRO NO CADSUSWEB*: "Atualizar
+Dados do Paciente" por A4J e "Corrigir/Atualizar" → `cadastro.saude.gov.br/novocartao/`).
 
 **Toda recusa agora deixa rastro** (antes, recusa no preparo virava só um 400 no log de acesso,
 sem a mensagem deles): `SISCAN[<accession>]: RECUSA no passo <Avançar|Salvar> — <mensagem>` no

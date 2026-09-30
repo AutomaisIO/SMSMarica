@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Building2,
@@ -11,6 +11,7 @@ import {
 import {
   useGerarRequisicaoSiscan,
   usePreparoSiscan,
+  type OpcaoSiscan,
   type RequisicaoSiscan,
   type UnidadeSiscan,
 } from '@/features/anamnese/api/siscanApi';
@@ -47,8 +48,13 @@ const URL_CADSUSWEB = 'https://cadastro.saude.gov.br/novocartao/';
  * consulta. Confirmar refaz o preparo com a unidade (os responsáveis são por unidade); a
  * requisição só nasce no "Gerar requisição", e a escolha fica registrada na anamnese.</p>
  *
- * <p><b>Recusa por dado do CADSUS.</b> Raça/Cor, nome da mãe e endereço vêm do CADSUS e são
- * travados no SISCAN — não há o que escolher aqui. A tela diz qual campo e leva ao CADSUSWEB.</p>
+ * <p><b>Raça/Cor que falta no CADSUS.</b> O SISCAN troca o campo travado por um combo e não
+ * avança sem ele (medido em 30/09/2026). O modal mostra as opções DELE, a pessoa escolhe
+ * perguntando à paciente (é autodeclaração) e confirma; Indígena pede também a etnia. Vai para o
+ * SISCAN e fica registrado na anamnese.</p>
+ *
+ * <p><b>Outros dados do CADSUS</b> (nome da mãe, endereço…) o painel ainda não preenche: a recusa
+ * diz qual campo e leva ao CADSUSWEB.</p>
  */
 export function ModalGerarRequisicaoSiscan({
   aberto,
@@ -69,9 +75,20 @@ export function ModalGerarRequisicaoSiscan({
 }) {
   // Só preenchida quando a unidade do pedido não está na conta do SISCAN e a pessoa escolheu outra.
   const [cnesUnidade, setCnesUnidade] = useState<string>('');
-  // Escolhida no combo e ainda NÃO confirmada: nada é consultado até a pessoa confirmar.
-  const [unidadePendente, setUnidadePendente] = useState<UnidadeSiscan | null>(null);
-  const preparo = usePreparoSiscan(exameImagemId, aberto, cnesUnidade || undefined);
+  // Só preenchidas quando a paciente está sem Raça/Cor no CADSUS e o SISCAN pediu.
+  const [racaCor, setRacaCor] = useState<string>('');
+  const [etnia, setEtnia] = useState<string>('');
+  // Escolhido num combo e ainda NÃO confirmado: nada é consultado até a pessoa confirmar.
+  const [pendente, setPendente] = useState<Pendente | null>(null);
+  const escolhas = useMemo(
+    () => ({
+      cnesUnidade: cnesUnidade || undefined,
+      racaCor: racaCor || undefined,
+      etnia: etnia || undefined,
+    }),
+    [cnesUnidade, racaCor, etnia],
+  );
+  const preparo = usePreparoSiscan(exameImagemId, aberto, escolhas);
   const gerar = useGerarRequisicaoSiscan(exameImagemId);
 
   // Sessão perdida não é erro para mostrar em vermelho e fechar: é "entre de novo". Sem isto a
@@ -100,16 +117,34 @@ export function ModalGerarRequisicaoSiscan({
       setErroCadsus(false);
       setResultado(null);
       setCnesUnidade('');
-      setUnidadePendente(null);
+      setRacaCor('');
+      setEtnia('');
+      setPendente(null);
     }
   }, [aberto]);
 
-  function escolherUnidade(cnes: string) {
-    // Outra unidade, outra lista de responsáveis: o escolhido da lista anterior não vale mais.
+  /** Toda escolha refaz a conferência — o responsável escolhido antes pode não valer mais. */
+  function antesDeEscolher() {
     setCnsEscolhido('');
     setErro(null);
     setErroCadsus(false);
-    setCnesUnidade(cnes);
+  }
+
+  function aplicarPendente(p: Pendente) {
+    antesDeEscolher();
+    if (p.tipo === 'unidade') setCnesUnidade(p.unidade.cnes);
+    if (p.tipo === 'raca') {
+      setRacaCor(p.opcao.codigo);
+      setEtnia(''); // trocou a raça: a etnia (só de Indígena) não vale mais
+    }
+    if (p.tipo === 'etnia') setEtnia(p.opcao.codigo);
+  }
+
+  function refazerEscolhas() {
+    antesDeEscolher();
+    setCnesUnidade('');
+    setRacaCor('');
+    setEtnia('');
   }
 
   async function confirmar(vinculo = false) {
@@ -117,10 +152,7 @@ export function ModalGerarRequisicaoSiscan({
     setErroCadsus(false);
     setFoiVinculo(vinculo);
     try {
-      const gerada = await gerar.mutateAsync({
-        cnsResponsavel: cnsEscolhido,
-        cnesUnidade: cnesUnidade || undefined,
-      });
+      const gerada = await gerar.mutateAsync({ cnsResponsavel: cnsEscolhido, ...escolhas });
       setResultado(gerada);
       aoGerar?.(gerada);
     } catch (falha) {
@@ -142,6 +174,14 @@ export function ModalGerarRequisicaoSiscan({
   // A unidade do pedido não está na conta: sem escolher outra, não há responsável nem Gerar.
   const precisaUnidade = unidadesDisponiveis.length > 0;
   const faltaUnidade = precisaUnidade && !dados?.unidadeEscolhida;
+  // A paciente sem Raça/Cor no CADSUS: sem informar (e a etnia, se Indígena), o SISCAN não avança.
+  const opcoesRaca = dados?.racaCorOpcoes ?? [];
+  const opcoesEtnia = dados?.etniaOpcoes ?? [];
+  const precisaRaca = opcoesRaca.length > 0;
+  const faltaRaca =
+    precisaRaca &&
+    (!dados?.racaCorEscolhida || (opcoesEtnia.length > 0 && !dados?.etniaEscolhida));
+  const temEscolha = Boolean(cnesUnidade || racaCor || etnia);
 
   return (
     <Modal
@@ -154,8 +194,8 @@ export function ModalGerarRequisicaoSiscan({
       {preparo.isPending ? (
         <div className="flex items-center justify-center py-10 text-gray-500">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          {cnesUnidade
-            ? 'Buscando no SISCAN os responsáveis da unidade escolhida…'
+          {temEscolha
+            ? 'Refazendo a conferência no SISCAN com o que você escolheu…'
             : 'Consultando o SISCAN…'}
         </div>
       ) : preparo.isError ? (
@@ -171,9 +211,9 @@ export function ModalGerarRequisicaoSiscan({
             <Button variante="secundaria" onClick={aoFechar}>
               Fechar
             </Button>
-            {cnesUnidade ? (
-              <Button variante="secundaria" onClick={() => escolherUnidade('')}>
-                Escolher outra unidade
+            {temEscolha ? (
+              <Button variante="secundaria" onClick={refazerEscolhas}>
+                Refazer as escolhas
               </Button>
             ) : null}
             {/* SISCAN que caiu por ociosidade reconecta sozinho na próxima tentativa. */}
@@ -217,6 +257,20 @@ export function ModalGerarRequisicaoSiscan({
                   A unidade do pedido, {resultado.unidadeEscolhida.nomeDoPedido} (CNES{' '}
                   {resultado.unidadeEscolhida.cnesDoPedido}), não está na sua conta do SISCAN. A
                   troca ficou registrada na anamnese.
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {resultado.racaCor ? (
+            <div className="flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+              <div className="text-sm text-sky-900">
+                <p className="font-semibold">
+                  Raça/Cor informada ao SISCAN: {resultado.racaCor.rotulo}
+                  {resultado.racaCor.etniaRotulo ? ` · etnia ${resultado.racaCor.etniaRotulo}` : ''}
+                </p>
+                <p className="mt-1">
+                  Faltava no cadastro nacional da paciente (CADSUS). Ficou registrado na anamnese.
                 </p>
               </div>
             </div>
@@ -404,7 +458,7 @@ export function ModalGerarRequisicaoSiscan({
                   onChange={(e) => {
                     // Não consulta nada ainda: abre a confirmação. Cancelar mantém a anterior.
                     const u = unidadesDisponiveis.find((x) => x.cnes === e.target.value);
-                    if (u) setUnidadePendente(u);
+                    if (u) setPendente({ tipo: 'unidade', unidade: u });
                   }}
                   className="mt-1 w-full rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm text-gray-900"
                 >
@@ -417,6 +471,17 @@ export function ModalGerarRequisicaoSiscan({
                 </select>
               </label>
             </div>
+          ) : null}
+
+          {precisaRaca ? (
+            <BlocoRacaCor
+              opcoesRaca={opcoesRaca}
+              racaCor={racaCor}
+              opcoesEtnia={opcoesEtnia}
+              etnia={etnia}
+              aoEscolherRaca={(o) => setPendente({ tipo: 'raca', opcao: o })}
+              aoEscolherEtnia={(o) => setPendente({ tipo: 'etnia', opcao: o })}
+            />
           ) : null}
 
           {dados.avisoData ? (
@@ -448,7 +513,7 @@ export function ModalGerarRequisicaoSiscan({
               <select
                 value={cnsEscolhido}
                 onChange={(e) => setCnsEscolhido(e.target.value)}
-                disabled={faltaUnidade}
+                disabled={faltaUnidade || faltaRaca}
                 className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm disabled:bg-gray-100"
               >
                 <option value="">Selecione…</option>
@@ -460,7 +525,9 @@ export function ModalGerarRequisicaoSiscan({
               </select>
             </label>
             <p className="mt-1 text-xs text-gray-500">
-              {faltaUnidade
+              {faltaRaca
+                ? 'Informe primeiro a Raça/Cor — sem ela o SISCAN não avança para a lista de responsáveis.'
+                : faltaUnidade
                 ? 'Escolha primeiro a unidade — a lista de responsáveis do SISCAN é por unidade.'
                 : dados.responsaveis.length === 0
                 ? 'O SISCAN não ofereceu nenhum profissional para esta unidade e este tipo de mamografia.'
@@ -512,7 +579,7 @@ export function ModalGerarRequisicaoSiscan({
               </Button>
               <Button
                 onClick={() => confirmar()}
-                disabled={gerar.isPending || temLacunas || faltaUnidade || !cnsEscolhido}
+                disabled={gerar.isPending || temLacunas || faltaUnidade || faltaRaca || !cnsEscolhido}
               >
                 {gerar.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -527,27 +594,151 @@ export function ModalGerarRequisicaoSiscan({
       ) : null}
 
       <ConfirmDialog
-        aberto={unidadePendente !== null}
-        titulo="Enviar por outra unidade?"
-        mensagem={
-          unidadePendente
-            ? `A requisição vai sair no SISCAN em nome de ${unidadePendente.nome} (CNES ${unidadePendente.cnes}), e não da unidade do pedido${dados ? `, ${dados.unidadeNome}` : ''}. Ao confirmar, o sistema só busca no SISCAN os responsáveis desta unidade para você conferir — nada é gravado até você clicar em "Gerar requisição".`
-            : ''
-        }
-        rotuloConfirmar="Usar esta unidade"
+        aberto={pendente !== null}
+        titulo={pendente ? TITULO_PENDENTE[pendente.tipo] : ''}
+        mensagem={pendente ? mensagemPendente(pendente, dados?.unidadeNome) : ''}
+        rotuloConfirmar={pendente ? CONFIRMAR_PENDENTE[pendente.tipo] : 'Confirmar'}
         aoConfirmar={() => {
-          if (unidadePendente) escolherUnidade(unidadePendente.cnes);
-          setUnidadePendente(null);
+          if (pendente) aplicarPendente(pendente);
+          setPendente(null);
         }}
-        aoCancelar={() => setUnidadePendente(null)}
+        aoCancelar={() => setPendente(null)}
       />
     </Modal>
   );
 }
 
+/** Uma escolha feita num combo e ainda à espera da confirmação. */
+type Pendente =
+  | { tipo: 'unidade'; unidade: UnidadeSiscan }
+  | { tipo: 'raca'; opcao: OpcaoSiscan }
+  | { tipo: 'etnia'; opcao: OpcaoSiscan };
+
+const TITULO_PENDENTE: Record<Pendente['tipo'], string> = {
+  unidade: 'Enviar por outra unidade?',
+  raca: 'Informar a Raça/Cor?',
+  etnia: 'Informar a etnia?',
+};
+
+const CONFIRMAR_PENDENTE: Record<Pendente['tipo'], string> = {
+  unidade: 'Usar esta unidade',
+  raca: 'Informar esta Raça/Cor',
+  etnia: 'Informar esta etnia',
+};
+
+const NADA_GRAVADO =
+  'Ao confirmar, o sistema só refaz a conferência no SISCAN — nada é gravado até você clicar em "Gerar requisição".';
+
+function mensagemPendente(p: Pendente, unidadeDoPedido: string | undefined): string {
+  if (p.tipo === 'unidade') {
+    return `A requisição vai sair no SISCAN em nome de ${p.unidade.nome} (CNES ${p.unidade.cnes}), e não da unidade do pedido${unidadeDoPedido ? `, ${unidadeDoPedido}` : ''}. ${NADA_GRAVADO}`;
+  }
+  if (p.tipo === 'raca') {
+    return `${p.opcao.rotulo} vai para o SISCAN como a Raça/Cor da paciente. É autodeclarada: confirme que foi ela quem disse. ${NADA_GRAVADO}`;
+  }
+  return `${p.opcao.rotulo} vai para o SISCAN como a etnia da paciente, declarada por ela. ${NADA_GRAVADO}`;
+}
+
 /**
- * Recusa por dado que vem do CADSUS. Não há combo possível: o SISCAN trava o campo e descarta o
- * que for postado nele. O que resolve é corrigir o cadastro nacional — e gerar de novo.
+ * A paciente sem Raça/Cor no CADSUS: as opções são as do SISCAN (o código é o dele). Indígena
+ * abre a etnia — 475 opções, por isso com filtro.
+ */
+function BlocoRacaCor({
+  opcoesRaca,
+  racaCor,
+  opcoesEtnia,
+  etnia,
+  aoEscolherRaca,
+  aoEscolherEtnia,
+}: {
+  opcoesRaca: OpcaoSiscan[];
+  racaCor: string;
+  opcoesEtnia: OpcaoSiscan[];
+  etnia: string;
+  aoEscolherRaca: (o: OpcaoSiscan) => void;
+  aoEscolherEtnia: (o: OpcaoSiscan) => void;
+}) {
+  const [filtro, setFiltro] = useState('');
+  const etniasVisiveis = useMemo(() => {
+    const f = semAcento(filtro.trim());
+    const lista = f ? opcoesEtnia.filter((o) => semAcento(o.rotulo).includes(f)) : opcoesEtnia;
+    // A escolhida continua na lista mesmo fora do filtro — senão o combo "perde" a seleção.
+    const escolhida = opcoesEtnia.find((o) => o.codigo === etnia);
+    return escolhida && !lista.includes(escolhida) ? [escolhida, ...lista] : lista;
+  }, [filtro, opcoesEtnia, etnia]);
+
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+      <p className="flex items-start gap-2 font-semibold">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        A paciente está sem Raça/Cor no cadastro nacional
+      </p>
+      <p className="mt-1">
+        O SISCAN pede que ela seja informada aqui. É <strong>autodeclarada</strong>: pergunte à
+        paciente. O que for escolhido vai para o SISCAN e fica registrado na anamnese.
+      </p>
+      <label className="mt-2 block font-medium">
+        Raça/Cor
+        <select
+          value={racaCor}
+          onChange={(e) => {
+            const o = opcoesRaca.find((x) => x.codigo === e.target.value);
+            if (o) aoEscolherRaca(o);
+          }}
+          className="mt-1 w-full rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+        >
+          <option value="">Selecione…</option>
+          {opcoesRaca.map((o) => (
+            <option key={o.codigo} value={o.codigo}>
+              {o.rotulo}
+            </option>
+          ))}
+        </select>
+      </label>
+      {opcoesEtnia.length > 0 ? (
+        <div className="mt-2">
+          <label className="block font-medium">
+            Etnia
+            <input
+              type="text"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Digite parte do nome para filtrar…"
+              className="mt-1 w-full rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+            />
+          </label>
+          <select
+            value={etnia}
+            onChange={(e) => {
+              const o = opcoesEtnia.find((x) => x.codigo === e.target.value);
+              if (o) aoEscolherEtnia(o);
+            }}
+            aria-label="Etnia"
+            className="mt-1 w-full rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+          >
+            <option value="">
+              {etniasVisiveis.length === 0 ? 'Nenhuma etnia com esse nome' : 'Selecione…'}
+            </option>
+            {etniasVisiveis.map((o) => (
+              <option key={o.codigo} value={o.codigo}>
+                {o.rotulo}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function semAcento(t: string): string {
+  return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+
+/**
+ * Recusa por outro dado que vem do CADSUS (nome da mãe, endereço…) — Raça/Cor não cai aqui, tem
+ * combo próprio. O painel ainda não preenche esses campos: o que resolve é corrigir o cadastro
+ * nacional e gerar de novo.
  */
 function AvisoCadastroCadsus({ mensagem }: { mensagem: string }) {
   return (

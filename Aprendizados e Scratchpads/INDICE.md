@@ -166,9 +166,23 @@ não-ajax faz o A4J devolver a tela errada), `probe_busca_id.py`, `probe_carry.p
 
 ---
 
-## 6. `Automais.SISCAN` — sem scripts na raiz
+## 6. `Automais.SISCAN` — 12 scripts
 
-Só `siscan/`, `docs/` e `capturas/`. O estado está em `docs/CONTINUACAO.md`.
+Protocolo em `docs/FLUXO-NOVA-REQUISICAO.md`; pacote em `siscan/`; `capturas/` e `casos.py` são
+gitignored (PII). ⚠️ A credencial do `.env` é de um **radiologista real** e sessão única no SISCAN
+ainda não tem resultado registrado — sondar só com OK do Bernardo.
+
+**Sondas (somente leitura):** `probe_nova_requisicao.py` (o fluxo Novo Exame → Avançar →
+Responsável, para antes do Salvar), `probe_raca_cor.py` (como a tela trata paciente **sem Raça/Cor**
+no CADSUS — para no Avançar e imprime só estrutura), `probe_duplicidade.py` ("essa paciente já tem
+requisição?"), `probe_leitura_lote.py` (ler muitas requisições sem pagar o menu),
+`probe_sessao_unica.py` (o mesmo login derruba a sessão anterior?), `mapear_requisicao_nova.py`
+(varre os ramos condicionais da tela de criação), `conferir_requisicao.py` (relê uma requisição
+nossa)
+
+**Escrita / backfill (PRODUÇÃO):** `criar_requisicao.py` (CRIA requisição — OK por ação; casos em
+`casos.py`), `espelho_requisicoes.py` (espelho das requisições lançadas à mão),
+`backfill_siscan.py` → `aplicar_backfill.py` (pareamento das 547 anamneses de 23/09/2026)
 
 ---
 

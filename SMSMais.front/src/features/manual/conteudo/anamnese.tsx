@@ -78,6 +78,9 @@ export const artigoAnamnese: Artigo = {
     'CADSUSWEB',
     'cadastro nacional',
     'nome da mãe',
+    'autodeclarada',
+    'etnia',
+    'indígena',
   ],
   secoes: () => [
     {
@@ -369,7 +372,8 @@ export const artigoAnamnese: Artigo = {
         + 'duplicidade já tem requisição vincular ao pedido prontuário cartão SUS um ano erro falta responder '
         + 'ano da última mamografia corrigido último exame realizado no SUS ano inferior declarado '
         + 'unidade requisitante não está na conta escolher unidade CNES enviar pela unidade secretaria '
-        + 'confirmar unidade raça cor raça/cor CADSUS CADSUSWEB cadastro nacional nome da mãe endereço recusou',
+        + 'confirmar unidade raça cor raça/cor CADSUS CADSUSWEB cadastro nacional nome da mãe endereço recusou '
+        + 'autodeclarada branca preta parda amarela indígena etnia sem raça',
       conteudo: (
         <>
           <Sub>Rastreamento ou diagnóstica — quem decide é a idade</Sub>
@@ -425,18 +429,28 @@ export const artigoAnamnese: Artigo = {
             para não deixar a paciente sem requisição; não é atalho.
           </Callout>
 
-          <Sub>“Falta um dado no cadastro nacional da paciente (CADSUS)”</Sub>
+          <Sub>“A paciente está sem Raça/Cor no cadastro nacional”</Sub>
           <P>
-            Nome da mãe, <strong>Raça/Cor</strong>, data de nascimento e endereço não são
-            digitados no SISCAN: ele puxa do <strong>CADSUS</strong>, o cadastro nacional, e deixa
-            esses campos travados. Quando falta um deles, o SISCAN recusa. Não existe lista para
-            escolher, nem lá nem aqui: o que for mandado para um campo travado é descartado.
+            Os dados da paciente (nome da mãe, Raça/Cor, nascimento, endereço) vêm do{' '}
+            <strong>CADSUS</strong>, o cadastro nacional. Quando falta a <strong>Raça/Cor</strong>,
+            o SISCAN pede que ela seja informada na hora — e o modal mostra a mesma lista dele:
+            Branca, Preta, Parda, Amarela ou Indígena. <strong>Indígena</strong> abre também a{' '}
+            <strong>etnia</strong>, com um campo para filtrar pelo nome.
           </P>
           <P>
-            Por isso o modal diz qual campo faltou e oferece o botão{' '}
-            <BotaoRef variante="outline">Abrir o CADSUSWEB</BotaoRef>. Corrija o cadastro da
-            paciente lá e abra de novo o “Gerar requisição”: o SISCAN já traz o dado atualizado.
-            Até ali, <strong>nada foi gravado</strong> no SISCAN.
+            Raça/Cor é <strong>autodeclarada</strong>: pergunte à paciente, não deduza. Ao escolher,
+            abre uma confirmação; só depois dela o sistema refaz a conferência no SISCAN — e nada é
+            gravado até <BotaoRef>Gerar requisição</BotaoRef>. O que foi informado aparece na tarja
+            “Enviada ao SISCAN” da anamnese, com quem informou e quando.
+          </P>
+
+          <Sub>“Falta um dado no cadastro nacional da paciente (CADSUS)”</Sub>
+          <P>
+            Se o SISCAN recusar por outro dado que vem do CADSUS (nome da mãe, endereço…), o painel
+            ainda não preenche esse campo. O modal diz qual foi e oferece o botão{' '}
+            <BotaoRef variante="outline">Abrir o CADSUSWEB</BotaoRef>: corrija o cadastro da
+            paciente lá e abra de novo o “Gerar requisição”. Até ali, <strong>nada foi
+            gravado</strong> no SISCAN.
           </P>
           <Callout tipo="dica" titulo="Toda recusa do SISCAN fica registrada">
             Quando o SISCAN recusa, a mensagem dele fica guardada no pedido e no registro do sistema,

@@ -427,6 +427,29 @@ public static partial class SiscanHtml
             .Select(o => new UnidadeRequisitante(o.Valor, o.Match.Groups[1].Value, o.Match.Groups[2].Value))
             .ToList();
 
+    /// <summary>Uma opção de combo do SISCAN: o <c>value</c> que se posta e o texto que se lê.</summary>
+    public sealed record OpcaoSiscan(string Valor, string Texto);
+
+    /// <summary>
+    /// As opções de um combo <b>editável</b> — sem o "Selecione…" (<c>value="0"</c>). Null quando o
+    /// combo não está na tela ou vem <c>disabled</c>.
+    ///
+    /// <para>É o que detecta a paciente sem Raça/Cor no CADSUS: medido em 30/09/2026, o campo
+    /// travado <c>frm:racaCor</c> dá lugar ao combo <c>frm:cmbRacaCor</c> (1 BRANCA · 2 PRETA ·
+    /// 3 PARDA · 4 AMARELA · 5 INDIGENA), e INDIGENA abre <c>frm:cmbEtnia</c> (475 etnias).</para>
+    /// </summary>
+    public static List<OpcaoSiscan>? ComboEditavel(IHtmlDocument doc, string name)
+    {
+        var combo = doc.QuerySelector($"select[name='{name}']");
+        if (combo is null || combo.HasAttribute("disabled")) return null;
+
+        var opcoes = Opcoes(doc, name)
+            .Where(o => o.Valor is not ("" or "0") && o.Texto.Length > 0)
+            .Select(o => new OpcaoSiscan(o.Valor, o.Texto))
+            .ToList();
+        return opcoes.Count > 0 ? opcoes : null;
+    }
+
     /// <summary>Um campo obrigatório que o SISCAN preenche a partir do CADSUS, e que ele trava.</summary>
     /// <param name="Rotulo">O texto que a pessoa lê na tela ("Raça/Cor").</param>
     /// <param name="Vazio">O CADSUS não trouxe nada para ele.</param>
@@ -436,9 +459,10 @@ public static partial class SiscanHtml
     /// Os campos obrigatórios da paciente que vêm do CADSUS — classe <c>pessoaCadsus</c> com o
     /// asterisco de obrigatório no rótulo (nome da mãe, raça/cor, endereço…).
     ///
-    /// <para><b>Eles não são editáveis no SISCAN</b> (<c>disabled</c>, e campo disabled não se
-    /// reposta). A própria tela manda corrigir no CADSUSWEB ("CLIQUE AQUI PARA CORRIGIR/ATUALIZAR
-    /// DADOS DO PACIENTE NO CADSUSWEB"). Serve para explicar a recusa, não para preencher.</para>
+    /// <para>Vindos preenchidos, são <c>disabled</c> (e campo disabled não se reposta). Vazios, nem
+    /// sempre: a Raça/Cor vazia vira combo editável (<see cref="ComboEditavel"/>, medido em
+    /// 30/09/2026) — e os outros ainda não foram medidos nesse caso. Serve para registrar e explicar
+    /// a recusa, não para preencher.</para>
     ///
     /// <para>O rótulo é o do mesmo bloco do campo, e não por <c>for</c>: o de Raça/Cor é
     /// <c>&lt;label id="frm:lblRacaCor"&gt;</c>, sem <c>for</c>.</para>

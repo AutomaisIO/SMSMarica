@@ -24,8 +24,8 @@ function codigosDoErro(erro: unknown): string[] {
 }
 
 /**
- * O SISCAN recusou por um dado da paciente que vem do CADSUS (Raça/Cor, nome da mãe, endereço…).
- * Esses campos são travados lá: a correção é no CADSUSWEB, e a tela oferece o link.
+ * O SISCAN recusou por um dado da paciente que vem do CADSUS (nome da mãe, endereço…) e que o
+ * painel ainda não preenche — a tela oferece o link do CADSUSWEB. (Raça/Cor tem combo próprio.)
  */
 export function recusaPorCadastroCadsus(erro: unknown): boolean {
   return codigosDoErro(erro).includes('siscan.cadastro_cadsus_incompleto');

@@ -648,6 +648,46 @@ public class SiscanRequisicaoMapperTests
         mensagem.Should().Contain("Os campos Raça/Cor, Nome da Mãe vêm do cadastro nacional");
     }
 
+    // ------------------------------------------------ raça/cor pedida pelo SISCAN
+
+    private static readonly List<SMSMais.Core.Integracoes.SiscanWeb.SiscanHtml.OpcaoSiscan> Racas =
+    [
+        new("1", "BRANCA"), new("2", "PRETA"), new("3", "PARDA"), new("4", "AMARELA"), new("5", "INDIGENA"),
+    ];
+
+    [Fact]
+    public void Raca_cor_escolhida_e_sempre_uma_das_opcoes_do_siscan()
+    {
+        SiscanRequisicaoService.OpcaoEscolhida(Racas, null, "siscan.raca_cor_invalida", "Raça/Cor")
+            .Should().BeNull();
+        SiscanRequisicaoService.OpcaoEscolhida(Racas, " 3 ", "siscan.raca_cor_invalida", "Raça/Cor")
+            .Should().Be(new SMSMais.Core.Integracoes.SiscanWeb.SiscanHtml.OpcaoSiscan("3", "PARDA"));
+
+        var inventada = () => SiscanRequisicaoService.OpcaoEscolhida(
+            Racas, "99", "siscan.raca_cor_invalida", "Raça/Cor");
+        inventada.Should().Throw<SMSMais.Core.Common.Excecoes.ValidacaoException>()
+            .Which.Erros.Should().ContainKey("siscan.raca_cor_invalida");
+    }
+
+    [Fact]
+    public void Raca_cor_informada_fica_registrada_na_anamnese()
+    {
+        var raca = new RacaCorInformada(
+            "5", "INDIGENA", "444", "XAVANTE (A'UWE, AKWE, AWEN, AKWEN)", "Operadora Exemplo",
+            new DateTime(2026, 9, 30, 15, 0, 0, DateTimeKind.Utc));
+
+        var json = System.Text.Json.Nodes.JsonNode.Parse(
+            SiscanRequisicaoMapper.AnotarRacaCorNoConteudo("""{"siscan":{"riscoElevado":"nao"}}""", raca))!;
+        var bloco = json["siscan"]!["racaCorInformada"]!;
+
+        bloco["codigo"]!.GetValue<string>().Should().Be("5");
+        bloco["rotulo"]!.GetValue<string>().Should().Be("INDIGENA");
+        bloco["etniaCodigo"]!.GetValue<string>().Should().Be("444");
+        bloco["etniaRotulo"]!.GetValue<string>().Should().StartWith("XAVANTE");
+        bloco["informadaPor"]!.GetValue<string>().Should().Be("Operadora Exemplo");
+        json["siscan"]!["riscoElevado"]!.GetValue<string>().Should().Be("nao");
+    }
+
     /// <summary>JSON quebrado não pode derrubar a geração com stack trace — vira "não sabe".</summary>
     [Fact]
     public void Conteudo_invalido_nao_explode()

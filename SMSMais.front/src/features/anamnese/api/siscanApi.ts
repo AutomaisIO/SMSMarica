@@ -28,6 +28,15 @@ export type CampoEnvioSiscan = { pergunta: string; resposta: string };
 /** Uma unidade requisitante que a conta do SISCAN enxerga. O CNES é a chave. */
 export type UnidadeSiscan = { cnes: string; nome: string };
 
+/** Uma opção de combo do SISCAN (Raça/Cor, Etnia). O código é o DELES. */
+export type OpcaoSiscan = { codigo: string; rotulo: string };
+
+/**
+ * O que a pessoa escolheu quando o SISCAN pediu: a unidade (a do pedido fora da conta) e a
+ * Raça/Cor — com a etnia, se Indígena — quando o CADSUS não tem.
+ */
+export type EscolhasSiscan = { cnesUnidade?: string; racaCor?: string; etnia?: string };
+
 export type LacunaAnamnese = { campo: string; pergunta: string };
 
 /** Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade. */
@@ -76,6 +85,15 @@ export type PreparoSiscan = {
   unidadesDisponiveis: UnidadeSiscan[] | null;
   /** A escolhida no lugar da do pedido, quando o preparo foi pedido com uma. */
   unidadeEscolhida: UnidadeSiscan | null;
+  /**
+   * A paciente está SEM Raça/Cor no CADSUS e o SISCAN pede que seja informada — as opções são as
+   * da tela dele. Null = o CADSUS já tem.
+   */
+  racaCorOpcoes: OpcaoSiscan[] | null;
+  racaCorEscolhida: OpcaoSiscan | null;
+  /** Raça/Cor Indígena: o SISCAN pede também a etnia. */
+  etniaOpcoes: OpcaoSiscan[] | null;
+  etniaEscolhida: OpcaoSiscan | null;
 };
 
 /**
@@ -100,6 +118,16 @@ export type UnidadeRequisitanteEscolhida = {
   escolhidaEm: string;
 };
 
+/** A Raça/Cor que faltava no CADSUS e foi informada no SISCAN — registrada na anamnese. */
+export type RacaCorInformada = {
+  codigo: string;
+  rotulo: string;
+  etniaCodigo: string | null;
+  etniaRotulo: string | null;
+  informadaPor: string | null;
+  informadaEm: string;
+};
+
 export type RequisicaoSiscan = {
   protocolo: string;
   numeroExame: string;
@@ -107,12 +135,20 @@ export type RequisicaoSiscan = {
   responsavelNome: string;
   correcaoAnoUltimaMamografia: CorrecaoAnoUltimaMamografia | null;
   unidadeEscolhida: UnidadeRequisitanteEscolhida | null;
+  racaCor: RacaCorInformada | null;
 };
 
 export const siscanKeys = {
   sessao: ['siscan', 'sessao'] as const,
-  preparo: (exameImagemId: string, cnesUnidade: string) =>
-    ['siscan', 'preparo', exameImagemId, cnesUnidade] as const,
+  preparo: (exameImagemId: string, escolhas: EscolhasSiscan) =>
+    [
+      'siscan',
+      'preparo',
+      exameImagemId,
+      escolhas.cnesUnidade ?? '',
+      escolhas.racaCor ?? '',
+      escolhas.etnia ?? '',
+    ] as const,
 };
 
 export async function obterSessaoSiscan(): Promise<SessaoSiscan> {
@@ -123,14 +159,20 @@ export async function entrarNoSiscan(usuario: string, senha: string): Promise<Se
   return (await http.post<SessaoSiscan>('/siscan/sessao', { usuario, senha })).data;
 }
 
-/** `cnesUnidade` só quando a unidade do pedido não está na conta e o operador escolheu outra. */
+/** Só vai o que foi escolhido — parâmetro vazio seria lido como "escolheu vazio". */
+function soPreenchidas(escolhas: EscolhasSiscan): EscolhasSiscan {
+  return Object.fromEntries(
+    Object.entries(escolhas).filter(([, v]) => typeof v === 'string' && v.length > 0),
+  ) as EscolhasSiscan;
+}
+
 export async function prepararRequisicaoSiscan(
   exameImagemId: string,
-  cnesUnidade?: string,
+  escolhas: EscolhasSiscan = {},
 ): Promise<PreparoSiscan> {
   return (
     await http.get<PreparoSiscan>(`/siscan/requisicao/${exameImagemId}`, {
-      params: cnesUnidade ? { cnesUnidade } : undefined,
+      params: soPreenchidas(escolhas),
     })
   ).data;
 }
@@ -138,11 +180,14 @@ export async function prepararRequisicaoSiscan(
 export async function gerarRequisicaoSiscan(
   exameImagemId: string,
   cnsResponsavel: string,
-  cnesUnidade?: string,
+  escolhas: EscolhasSiscan = {},
 ): Promise<RequisicaoSiscan> {
+  const e = soPreenchidas(escolhas);
   return (await http.post<RequisicaoSiscan>(`/siscan/requisicao/${exameImagemId}`, {
     cnsResponsavel,
-    cnesUnidade: cnesUnidade || null,
+    cnesUnidade: e.cnesUnidade ?? null,
+    racaCor: e.racaCor ?? null,
+    etnia: e.etnia ?? null,
   })).data;
 }
 
@@ -180,13 +225,13 @@ export function useEntrarNoSiscan() {
 export function usePreparoSiscan(
   exameImagemId: string | undefined,
   habilitado: boolean,
-  cnesUnidade?: string,
+  escolhas: EscolhasSiscan = {},
 ) {
   return useQuery({
-    // A unidade entra na chave: trocar a unidade é outro preparo (a lista de responsáveis é por
-    // unidade), nunca o anterior servido de cache.
-    queryKey: siscanKeys.preparo(exameImagemId ?? '', cnesUnidade ?? ''),
-    queryFn: () => prepararRequisicaoSiscan(exameImagemId as string, cnesUnidade),
+    // As escolhas entram na chave: trocar a unidade ou a Raça/Cor é outro preparo (a lista de
+    // responsáveis é por unidade), nunca o anterior servido de cache.
+    queryKey: siscanKeys.preparo(exameImagemId ?? '', escolhas),
+    queryFn: () => prepararRequisicaoSiscan(exameImagemId as string, escolhas),
     enabled: Boolean(exameImagemId) && habilitado,
     staleTime: 0,
     gcTime: 0,
@@ -197,8 +242,8 @@ export function usePreparoSiscan(
 export function useGerarRequisicaoSiscan(exameImagemId: string | undefined) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ cnsResponsavel, cnesUnidade }: { cnsResponsavel: string; cnesUnidade?: string }) =>
-      gerarRequisicaoSiscan(exameImagemId as string, cnsResponsavel, cnesUnidade),
+    mutationFn: ({ cnsResponsavel, ...escolhas }: { cnsResponsavel: string } & EscolhasSiscan) =>
+      gerarRequisicaoSiscan(exameImagemId as string, cnsResponsavel, escolhas),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['anamnese'] });
       client.invalidateQueries({ queryKey: ['siscan'] });

@@ -57,18 +57,28 @@ python probe_nova_requisicao.py --cns &lt;CNS&gt; --unidade 35 \
 </tbody></table></div>
 <p>Junto vem, de brinde, <strong>o histórico de exames daquele paciente</strong> (<code>frm:listaExamePacientePaginada</code>, com link <em>Visualizar Requisição do Exame</em> por linha) e o botão <strong>Atualizar Dados do Paciente</strong>. Isso faz da tela de Novo Exame um caminho barato para <em>ler</em> o que o SISCAN sabe de um paciente pelo CNS — sem passar pela pesquisa com período obrigatório.</p>
 <p>Campo <code>disabled</code> <strong>não se reposta</strong> (o navegador não posta, e o SISCAN os deriva do CADSUS). Quem tentar "corrigir" nome ou endereço por POST está perdendo tempo: o servidor descarta.</p>
-<h3>Quando o CADSUS vem sem um desses campos (Raça/Cor, 30/09/2026)</h3>
-<p>Recebido em produção: o <strong>Avançar</strong> recusou por <strong>Raça/Cor</strong> — a paciente estava sem esse dado no CADSUS. Não há combo a oferecer: o campo é <code>disabled</code> e o SISCAN manda corrigir <strong>no CADSUSWEB</strong>. A própria tela tem, logo abaixo dos dados, o bloco <em>ATUALIZAR CADASTRO NO CADSUSWEB</em> com dois links:</p>
+<h3>Quando o CADSUS vem sem Raça/Cor (medido em 30/09/2026)</h3>
+<p>&gt; <strong>Correção de uma afirmação errada minha.</strong> Na primeira versão desta seção eu escrevi que "não há &gt; combo a oferecer: o campo é <code>disabled</code> e o SISCAN manda corrigir no CADSUSWEB". Concluí isso de &gt; capturas que <strong>só tinham pacientes COM Raça/Cor</strong> — nunca tinha visto o caso sem. O Bernardo &gt; disse que na tela dava para escolher; a sonda <code>probe_raca_cor.py</code> confirmou que ele estava certo.</p>
+<p>Paciente <strong>sem</strong> Raça/Cor no CADSUS (medido com a paciente da solicitação 688531779):</p>
 <ul>
-<li><strong>"Atualizar Dados do Paciente"</strong> (A4J, <code>title</code> estável, id <code>j_idNN</code>) — *"traz os dados atualizados</li>
+<li><strong>Logo depois do CNS</strong>, o input travado <code>frm:racaCor</code> <strong>não vem</strong>; no lugar dele vem</li>
 </ul>
-<p>  do paciente de acordo com o que se encontra no CADSUSWEB"*;</p>
+<p>  <code>&lt;select name="frm:cmbRacaCor"&gt;</code> <strong>editável</strong>, com A4J no <code>onchange</code> (<code>ajaxSingle=frm:cmbRacaCor</code>):   <code>0</code> Selecione… · <code>1</code> BRANCA · <code>2</code> PRETA · <code>3</code> PARDA · <code>4</code> AMARELA · <code>5</code> INDIGENA.</p>
 <ul>
-<li><strong>"Corrigir/Atualizar Dados do Paciente"</strong> → `https://cadastro.saude.gov.br/novocartao/?…</li>
+<li>Sem escolher, o Avançar volta para a mesma tela com <strong>"O campo Raça Cor deve ser informado."</strong></li>
+<li><strong>INDIGENA</strong> (<code>5</code>): o A4J re-renderiza <code>frm:pnlEtnia</code> (regiões `j_id42, frm:pnlEtnia, frm:j_id240,</li>
 </ul>
-<p>  usuarioSelecionado=&lt;CNS&gt;&amp;URL_INTEGRACAO_RETORNO=/visao/integracao/cadSUSNovoExame.jsf` — <em>"ao   retornar ao SISCAN, os dados já virão atualizados"</em>.</p>
-<p>O que o painel faz: lê os obrigatórios <code>pessoaCadsus</code> (<code>SiscanHtml.CamposObrigatoriosDoCadsus</code> — o rótulo de Raça/Cor é <code>&lt;label id="frm:lblRacaCor"&gt;</code>, <strong>sem <code>for</code></strong>), e, se o Avançar é recusado citando um deles (ou recusado sem mensagem com um deles vazio), responde <code>siscan.cadastro_cadsus_incompleto</code> dizendo qual campo e com o link do CADSUSWEB.</p>
-<p><strong>Ainda não medido:</strong> se, depois de corrigir no CADSUSWEB, só redigitar o CNS já traz o dado novo ou se é preciso o A4J "Atualizar Dados do Paciente". O log do próximo caso responde.</p>
+<p>  formModalPesquisarCpf:msgsPesquisaCpf<code>) e aparece </code>&lt;select name="frm:cmbEtnia"&gt;` com <strong>475 etnias</strong>   (+ Selecione…), sem A4J próprio.</p>
+<ul>
+<li><strong>O A4J do combo não re-renderiza o próprio combo</strong> — o parcial não devolve a opção marcada.</li>
+</ul>
+<p>  Mesma armadilha do tipo de exame: o valor tem de ir <strong>de novo</strong> no POST do Avançar.</p>
+<ul>
+<li>A sonda <strong>nunca avançou com uma raça escolhida por ela</strong>: se o SISCAN gravar o dado da paciente</li>
+</ul>
+<p>  nesse passo, seria informação falsa sobre uma pessoa real. Só disparou o A4J de <code>5</code> para ver a   etnia. O Avançar com raça escolhida é medido na primeira geração real.</p>
+<p>O que o painel faz: se <code>frm:cmbRacaCor</code> está editável, o preparo <strong>para antes do Avançar</strong> e devolve as opções (<code>racaCorOpcoes</code>); o operador escolhe — é <strong>autodeclaração</strong>, perguntada à paciente — e confirma; o preparo refaz com <code>?racaCor=</code> (e <code>?etnia=</code> se Indígena), dispara o A4J do combo e manda o valor no POST do Avançar. Ao gerar, grava <code>siscan.racaCorInformada</code> na anamnese (tarja "Enviada ao SISCAN").</p>
+<p>Os <strong>outros</strong> campos do CADSUS (nome da mãe, endereço…) ainda não foram medidos no caso vazio. Até lá, a recusa que cita um deles responde <code>siscan.cadastro_cadsus_incompleto</code> com o link do CADSUSWEB (a tela do SISCAN tem, abaixo dos dados, o bloco <em>ATUALIZAR CADASTRO NO CADSUSWEB</em>: "Atualizar Dados do Paciente" por A4J e "Corrigir/Atualizar" → <code>cadastro.saude.gov.br/novocartao/</code>).</p>
 <p><strong>Toda recusa agora deixa rastro</strong> (antes, recusa no preparo virava só um 400 no log de acesso, sem a mensagem deles): <code>SISCAN[&lt;accession&gt;]: RECUSA no passo &lt;Avançar|Salvar&gt; — &lt;mensagem&gt;</code> no journal, e a mesma frase em <code>exame_imagem.siscan_erro</code> (a última; limpa quando a requisição sai). Campo obrigatório do CADSUS vazio também é logado logo após o CNS, recuse o SISCAN ou não.</p>
 <h2>3. A ordem é imposta pela tela, não é preferência</h2>
 <p>Dois combos nascem vazios e só são preenchidos por um A4J específico:</p>

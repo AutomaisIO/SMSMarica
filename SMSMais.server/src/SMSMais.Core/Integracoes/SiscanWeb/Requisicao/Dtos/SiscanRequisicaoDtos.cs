@@ -10,6 +10,15 @@ public sealed record SiscanResponsavelDto(string Indice, string Nome, string Cns
 /// <summary>Uma unidade requisitante que a conta do SISCAN enxerga. O CNES é a chave.</summary>
 public sealed record SiscanUnidadeDto(string Cnes, string Nome);
 
+/// <summary>Uma opção de combo do SISCAN (Raça/Cor, Etnia) — o código é o <c>value</c> DELES.</summary>
+public sealed record SiscanOpcaoDto(string Codigo, string Rotulo);
+
+/// <summary>
+/// O que o operador escolheu no modal quando o SISCAN pediu: a unidade (quando a do pedido não está
+/// na conta) e a Raça/Cor — com a etnia, se Indígena — quando o CADSUS não tem.
+/// </summary>
+public sealed record EscolhasSiscan(string? CnesUnidade = null, string? RacaCor = null, string? Etnia = null);
+
 /// <summary>Uma resposta que vai para o SISCAN, com o rótulo para a tela conferir antes de mandar.</summary>
 public sealed record SiscanCampoEnvioDto(string Pergunta, string Resposta);
 
@@ -54,7 +63,17 @@ public sealed record SiscanPreparoDto(
     /// </summary>
     IReadOnlyList<SiscanUnidadeDto>? UnidadesDisponiveis = null,
     /// <summary>A unidade escolhida no lugar da do pedido, quando o preparo foi pedido com uma.</summary>
-    SiscanUnidadeDto? UnidadeEscolhida = null);
+    SiscanUnidadeDto? UnidadeEscolhida = null,
+    /// <summary>
+    /// A paciente está SEM Raça/Cor no CADSUS e o SISCAN pede que seja informada — estas são as
+    /// opções da tela deles. Null = o CADSUS já tem, e o SISCAN não pergunta.
+    /// </summary>
+    IReadOnlyList<SiscanOpcaoDto>? RacaCorOpcoes = null,
+    /// <summary>A Raça/Cor escolhida, quando o preparo foi pedido com uma.</summary>
+    SiscanOpcaoDto? RacaCorEscolhida = null,
+    /// <summary>Raça/Cor Indígena: o SISCAN pede também a etnia. Estas são as opções dele.</summary>
+    IReadOnlyList<SiscanOpcaoDto>? EtniaOpcoes = null,
+    SiscanOpcaoDto? EtniaEscolhida = null);
 
 /// <summary>
 /// Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade.
@@ -70,7 +89,12 @@ public sealed record RequisicaoEncontradaDto(
 /// Só quando a unidade do pedido não está na conta do SISCAN: o CNES da unidade que o operador
 /// escolheu no lugar dela. Com a do pedido disponível, o servidor recusa outra.
 /// </param>
-public sealed record SiscanGerarRequest(string CnsResponsavel, string? CnesUnidade = null);
+/// <param name="RacaCor">
+/// Só quando o SISCAN pediu (paciente sem Raça/Cor no CADSUS): o código DELES, escolhido no modal.
+/// </param>
+/// <param name="Etnia">Só com Raça/Cor Indígena.</param>
+public sealed record SiscanGerarRequest(
+    string CnsResponsavel, string? CnesUnidade = null, string? RacaCor = null, string? Etnia = null);
 
 /// <summary>O que ficou carimbado no nosso exame depois de gerar.</summary>
 public sealed record SiscanRequisicaoDto(
@@ -81,4 +105,6 @@ public sealed record SiscanRequisicaoDto(
     /// </summary>
     CorrecaoAnoUltimaMamografia? CorrecaoAnoUltimaMamografia = null,
     /// <summary>Foi enviada por outra unidade que não a do pedido — e isso ficou na anamnese.</summary>
-    UnidadeRequisitanteEscolhida? UnidadeEscolhida = null);
+    UnidadeRequisitanteEscolhida? UnidadeEscolhida = null,
+    /// <summary>A Raça/Cor que faltava no CADSUS foi informada no SISCAN — e isso ficou na anamnese.</summary>
+    RacaCorInformada? RacaCor = null);

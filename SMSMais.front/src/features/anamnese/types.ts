@@ -213,6 +213,18 @@ export type ComplementoSiscan = {
    * A requisição saiu por outra unidade, porque a do pedido não está na conta do SISCAN de quem
    * gerou. Escrito só pelo servidor, ao gerar; a tarja da anamnese mostra.
    */
+  /**
+   * A Raça/Cor que faltava no CADSUS e foi informada ao SISCAN ao gerar (autodeclarada; etnia só se
+   * Indígena). Escrito só pelo servidor; a tarja da anamnese mostra.
+   */
+  racaCorInformada?: {
+    codigo: string;
+    rotulo: string;
+    etniaCodigo: string | null;
+    etniaRotulo: string | null;
+    informadaPor: string | null;
+    informadaEm: string;
+  };
   unidadeRequisitanteEscolhida?: {
     cnes: string;
     nome: string;
