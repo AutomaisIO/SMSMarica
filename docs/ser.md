@@ -540,3 +540,35 @@ SER aplica máscara ao gravar (`21987654321` volta `(21) 98765-4321`), e compara
 `Automais.SER/` (Python) continua como bancada de recon — é onde se investiga tela
 nova antes de portar. Não roda em produção. `.env`, `credenciais_ser.txt` e
 `capturas/` são gitignored (credencial e PII).
+
+## 12. Indicadores de regulação — o que o SER entrega (sondado 30/09/2026, só leitura)
+
+**Mandado judicial (ambulatorial).** A tela de Solicitação tem o checkbox **"Somente com mandado
+judicial"** (`form0:j_id87` nesta build — resolver pelo `<strong>` irmão; a grade NÃO mostra ícone
+nem coluna de judicial, só o filtro separa). Por situação: EM_FILA 0, PENDENTE 0, AGENDADA 12,
+CHEGADA_NAO_CONFIRMADA 21, CANCELADA 10, CHEGADA_CONFIRMADA 103 (5 páginas = teto de 100 → fatiar
+por ano de solicitação via `form0:dtInicialSolicitacaoInputDate`/`dtFinal…`), ALTA 23 — **169, e os
+169 já estão em `ser_solicitacao`** (33 com solicitação nos últimos 12 meses). Falta só a marcação:
+uma pesquisa extra por situação na varredura basta. A tela também filtra por **Data da
+Consulta/Exame** e **Data de Agendamento** (`form0:dtInicialConsultaExameInputDate`,
+`form0:dtInicialAgendamentoInputDate`).
+
+**Módulo Internação (`goModulo('internacao')`) abre com a credencial de Maricá.** Os outros módulos
+da home são `oncologia`, `neonatal` e `ostomizados`. Telas úteis:
+- `/ser/pages/internacao/historico/historico-solicitacoes-pesquisar.seam` — filtros Município do
+  Paciente (`form0:municipio`, MARICA = `40`), Situação (Em fila, Regulado, Chegada Confirmada/Não
+  Confirmada, Internado, Aguardando confirmação, Pendente, Reservado, Alta, Cancelada, Negado),
+  Especialidade, Solicitação Vermelha, Tipo de Leito, Data da Solicitação. Teto **500** (avisa).
+  **Exportar para Excel** (`form0:btnExport`, POST comum do form0 sem `AJAXREQUEST`) devolve `.xls`
+  com Id, Destino, Data da Solicitação, CNS, Paciente, Município, CID, Procedimento, **Motivo**,
+  Situação. Fatiando por semana: **set/2025 = 725 solicitações de internação de pacientes de
+  Maricá** (Cancelada 201, Chegada Confirmada 136, Alta 131, Chegada Não Confirmada 86, Em fila 71,
+  Aprovado 60…). Custo ≈ 3 req por semana.
+- `/ser/pages/internacao/solicitacao/internacao-pesquisar.seam` — fila de internação (Tipo de leito,
+  Urgência/Eletiva/Cirurgia Eletiva, situação) com motivos de cancelamento/recusa de reserva.
+- `/ser/pages/internacao/consulta/consumo-contrato.seam` — Contratado × Consumido × Saldo por
+  contrato, mas os combos vêm só com "-- TODOS --" e a pesquisa volta vazia: Maricá não é
+  contratante no SER.
+
+Armadilha de laboratório: no Git Bash, `/ser/pages/...` passado como argumento vira caminho do
+Windows e o balanceador responde **503 "No server is available"** — usar `MSYS_NO_PATHCONV=1`.

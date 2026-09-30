@@ -320,3 +320,10 @@ e reversível)** e **FollowUP (mapeado, não enviado)**. Falta:
    por `(fonte, codigo_externo)` porque os IDs colidem com SER-RJ/SISREG. **Atenção:** editar
    telefone exige CPF no cadastro (§5.4) — pacientes sem CPF não podem ter contato corrigido pela
    tela até que o CPF entre.
+
+## 8. Indicadores — mandado judicial (sondado 30/09/2026)
+
+A tela de pesquisa tem o checkbox **"Somente com mandado judicial"** (`form0:j_id66` nesta build —
+resolver pelo `<strong>` irmão). Com ele ligado, **todas as 7 situações voltam vazias** para a conta de
+Maricá; controle sem o filtro no mesmo login: EM_FILA = 412, CHEGADA_CONFIRMADA = 118. Ou seja,
+zero judicial no SERNIT é real, não defeito da busca.

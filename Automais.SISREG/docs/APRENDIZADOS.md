@@ -975,3 +975,51 @@ linha significa cancelar o exame de outra pessoa. Pelo código só existe uma li
 
 O `alert('Preencha a Data Inicial.')` na resposta **não é o desfecho**: é a função de validação
 que vem no JavaScript de toda página dessa tela.
+
+## 📊 Telas para INDICADORES DE REGULAÇÃO (sondado 30/09/2026, PROGRAMADOR-BERNARDO, ~28 requisições)
+
+Motivo: demanda de indicadores (série mensal de 12 meses — vagas, absenteísmo, canceladas/devolvidas,
+internações, judicializadas). Sondas em scratchpad de sessão (não versionadas). O que ficou medido:
+
+| Tela | O que é | Custo | Veredito |
+|---|---|---|---|
+| `rel_amb_faltas_sol.pl` (GET) | **"Consulta de Absenteismo por Unidade de Saude"** — lista de faltas; filtros unidade solicitante/executante, CNS, procedimento, `data1`/`data2` (período de EXECUÇÃO, ≤ 31 dias, não futuro) | **1 req/mês, ~50 s** | ✅ 10 linhas/página e rodapé `Mostrando Página de N` → total ≈ N×10. Jan/26 = 505 pág (~5.050), ago/26 = 470 (~4.700). |
+| `cons_ppi_cotas` (POST `ETAPA=EXIBIR_PPI`, `tipo` 2=exec/1=solic, `exec`/`solic`=IBGE 330270, `mes`, `ano`) | **Consulta de PPI** por procedimento: PPI Total, Usada, Saldo, `detalharCotaUnidade(pa)` | 1 req/competência, 0,5 s | ✅ 215 procedimentos; total 562.519 IGUAL em set/25 e ago/26 (números redondos = teto configurado?), usada ~15–16 mil/mês ≈ marcações reguladas. **Confirmar com a regulação se isto é "contratualizado".** |
+| `cons_marcacao_cancelada` com `tp_periodo=M` | canceladas pela data da MARCAÇÃO | 1 req lê o total `PESQUISADAS (N)` | ✅ jan/26 = 1.224; `tp_periodo=C` ago/26 = 2.368. Cabeçalho: Código, Data/Hora da Marcação, Procedimento, Profissional, Usuário, **Justificativa**, Operador, Data/Hora Cancelamento. |
+| `gerenciador_solicitacao` situações 12/11/10/3/4 | falta / confirmado / ag. cancelado / cancelada / devolvida | — | ⛔ **o servidor derruba a conexão (~65 s, WinError 10054) até com janela de 1 dia e `qtd_itens_pag=10`**. Não insistir: só a situação 1 responde. |
+| `cons_negados_reg` (`etapa=LISTAR_SOLICITACOES`, `tp_periodo=dev`) | devolvidas pelo regulador | — | ⛔ mesma queda (~67 s) com 7 dias e com 1 dia. |
+| `autorizador_aih` | fila de Autorização de Internação do regulador | 1 req | ℹ️ existe para a central, fila atual **zerada** (Urgente 0, Eletiva 0, Mudança Proc. 0, Proc. Especiais 0). |
+
+**Absenteísmo — o que o TXT já dá:** a coluna 34 (0-based) do `expo_solicitacoes` é
+`CONFIRMADO`/`PENDENTE` (confirmação de chegada pela executante; não existe `FALTA` no TXT). Os 10
+códigos da 1ª página do relatório de faltas de jan/26 e de ago/26 estão todos na nossa base como
+`PENDENTE` + vaga 1ª vez (col. 8 = `0`). Nossa dedução "PENDENTE de 1ª vez depois da data" dá 5.453
+em jan/26 contra ~5.050 do relatório (+8%). **Armadilha:** o `raw_sisreg` só é regravado quando muda
+data/executante/procedimento (`ImportacaoSisregService` ~l.719) e a varredura só lê o futuro — a
+confirmação fica congelada em PENDENTE (ago/26 = 44% confirmados, set/26 = 0,8%).
+
+**Canceladas NÃO estão na nossa base:** 0 dos 20 códigos da 1ª página de canceladas de jan/26
+existem em `smsmarica.solicitacao` — o `expo_solicitacoes` não traz marcação cancelada. Cancelamento
+antigo só vem desta tela.
+
+**Armadilha do Git Bash:** argumento que começa com `/` (`/cgi-bin/...`, `/ser/pages/...`) é
+convertido para caminho do Windows. Rodar sondas com `MSYS_NO_PATHCONV=1`.
+
+### Rodada 4 (30/09/2026) — o que destrava absenteísmo e devolvidas/negadas
+
+- **A "queda de conexão" é tempo, não bloqueio.** Toda falha morreu em 65–67 s (o relatório de
+  absenteísmo, que leva ~50 s, passa). Consulta da REDE INTEIRA estoura o limite do proxy; com
+  **filtro de unidade solicitante** as mesmas telas respondem em **0,2–1,5 s**:
+  `cons_negados_reg` (`unidade_adm`=CNES, `tp_periodo=dev`, 31 dias) e `gerenciador_solicitacao`
+  sit 4 (`SOL/DEV/REG`) e sit 6 (`SOL/NEG/REG`) com `cnes_solicitante`. Teste: USF Bambuí 2266865,
+  ago/26 → 42 devolvidas na tela do regulador; gerenciador 15 devolvidas + 9 negadas. As listagens
+  NÃO trazem o motivo (só a ficha, 1 req cada). Custo de 12 meses: ~44 unidades × 12 × situação.
+- **`rel_amb_faltas_sol.pl` com `imprimir_lista=1` devolve a lista INTEIRA numa página**: 01–07/01/26
+  = 774 códigos em 38 s (412 KB). Janela semanal é segura (~5 req/mês).
+- **Conciliação da semana 01–07/01/26:** os 774 da lista oficial estão TODOS na nossa base como
+  `PENDENTE` (col. 34); nenhum `CONFIRMADO`, nenhum fora da base. Nosso PENDENTE da semana = 1.130 →
+  356 que o SISREG não conta como falta, concentrados em ERNESTO CHE GUEVARA (205), CMI (59) e
+  AMBULATÓRIO PÉRICLES (57). Motivo ainda não sabido (a sonda por executante resolve com 1 req).
+- **A extensão já captura a decisão do regulador**: `autorizador` etapa `APLICAR` com `status`
+  A/N/D, `co_solicitacao` e `dsjustificativa` — de 15/09 a 30/09: 771 A, 35 N (negada), 13 D
+  (devolvida). Fonte grátis de negada/devolvida COM MOTIVO daqui para frente (só de quem usa a extensão).
