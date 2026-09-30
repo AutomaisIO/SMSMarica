@@ -36,6 +36,9 @@ public sealed class PainelInicioService(
     private const int JanelaConfirmadosDias = JanelasPainel.ConfirmadosDias;
 
     /// <summary>Estados em que a EQUIPE ainda não agiu — o que mantém a linha nas raias.</summary>
+    /// <remarks>A raia Cancelados depende do índice parcial <c>ix_solicitacao_cancelados_em_aberto</c>
+    /// (migration IndicesConsultasLentas), que repete este predicado. Mudou aqui, muda lá — senão
+    /// o índice deixa de ser usado em silêncio e a raia volta a varrer a tabela inteira.</remarks>
     private static readonly StatusSolicitacao[] EmAberto =
         [StatusSolicitacao.Solicitada, StatusSolicitacao.Agendada];
 
