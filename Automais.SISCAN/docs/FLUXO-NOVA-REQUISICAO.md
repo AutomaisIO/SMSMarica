@@ -178,11 +178,29 @@ resolve a identificação inteira; **a anamnese não vem de lugar nenhum**.
 |-----------------|-------------|
 | `frm:cartaoSUS` | CNS da ficha → e o CADSUS monta nome, nascimento, mãe, raça/cor e endereço |
 | Tipo de exame | procedimento da ficha (SIGTAP `0204030030` / SISREG `1305007` → Mamografia `01`) |
-| Unidade Requisitante | **CNES** da unidade solicitante da ficha → `unidade_por_cnes()`, nunca o índice |
+| Unidade Requisitante | **CNES** da unidade solicitante da ficha → `unidade_por_cnes()`, nunca o índice. Fora da conta → o operador escolhe (abaixo) |
 | Tipo de mamografia | **pela idade** — ver a régua abaixo. O CID da ficha (`Z12.3`) sugere, mas quem decide é a idade |
 | Responsável | operador solicitante da ficha; casar por **CNS do profissional** (`responsavel_por_cns()`) |
 | Data da Solicitação | **a data em que o EXAME foi feito** (DICOM → preenchimento da anamnese), não a da ficha — ver §13 |
 | Conselho | derivado pelo SISCAN a partir do Responsável |
+
+### Quando a unidade do pedido não está na conta do SISCAN
+
+Cada conta enxerga a **sua** lista de unidades requisitantes (37 na conta do CDT). Recebido em
+produção: *"A unidade XXXXXXX não está entre as unidades requisitantes que esta conta do SISCAN
+enxerga"* — até 30/09/2026 isso era erro sem saída.
+
+**Regra (Bernardo, 30/09/2026):** nesse caso a tela mostra a lista da conta e o **operador escolhe**
+por qual unidade enviar; a escolha fica registrada na anamnese (`siscan.unidadeRequisitanteEscolhida`:
+unidade escolhida, unidade do pedido, quem, quando) e aparece na tarja "Enviada ao SISCAN".
+
+- A lista sai do próprio combo, depois do A4J do tipo de exame (`SiscanHtml.UnidadesRequisitantes`).
+  O preparo **para antes do Avançar** e devolve a lista; o preparo seguinte já vem com o CNES
+  escolhido (`?cnesUnidade=`), porque o **Responsável é por unidade** — sem unidade, sem lista.
+- Com a unidade do pedido **na** conta, o servidor recusa outra (`siscan.unidade_do_pedido_disponivel`):
+  a troca é exceção, não atalho.
+- Não é invenção nossa: o backfill de 23/09 mostrou que, digitando à mão, a unidade já lançava pela
+  "SECRETARIA MUNICIPAL DE SAUDE DE MARICA" no lugar da USF.
 
 ### A régua do tipo de mamografia é a IDADE
 
@@ -535,9 +553,34 @@ Ou seja: `frm:anoUltimaMamografia` não é campo livre. O SISCAN guarda, por pac
 
 Consequência para nós: esse número vem da nossa anamnese (seção 7), preenchido pelo que a paciente
 lembra — e a paciente pode lembrar de um exame mais antigo que o último registrado no Ministério.
-Não dá para pré-validar do nosso lado: não sabemos o ano que eles têm. O certo é o que já é feito
-— deixar a mensagem deles chegar inteira até quem preencheu, para corrigir na anamnese e gerar de
-novo.
+
+> **Correção de uma afirmação errada minha (30/09/2026).** Eu tinha escrito aqui que "não dá para
+> pré-validar do nosso lado: não sabemos o ano que eles têm". **Sabemos — a própria tela diz.** O
+> Bernardo apontou: logo acima da pergunta aparece a frase
+> *"O último exame realizado no SUS foi em 2022."* Estava nas capturas desde 07/08
+> (`11-amp.html`, `12-amostra.html`, `14-amp.html`…) e eu não tinha lido.
+
+Onde ela mora, medido nas capturas:
+
+```html
+<div id="frm:ultimaMamografia">
+  <div class="grid-12-12 espacamento"><label class="form-lbl">
+    O &uacute;ltimo exame realizado no SUS foi em 2021.</label></div>
+  <fieldset><legend>QUANDO FEZ A &Uacute;LTIMA MAMOGRAFIA?</legend> … frm:anoUltimaMamografia …
+```
+
+- A região `frm:ultimaMamografia` só é renderizada pelo A4J do **"Fez mamografia alguma vez? — Sim"**
+  (o mesmo que abre o campo do ano). No assistente, isso é `AbrirCondicionaisAsync`.
+- A frase só existe quando **há** exame anterior no SUS. Paciente sem histórico: a região abre sem
+  ela (`12-map-j_id105-01.html`).
+- O `id` da região é nome estável, não `j_idNN`.
+
+**A regra (decisão do Bernardo, 30/09/2026):** se o ano declarado é **menor** que o do SISCAN, o
+declarado está errado — vai o ano do SISCAN, a anamnese é corrigida junto (no mesmo `SaveChanges`
+do protocolo, porque o protocolo congela a anamnese) e o modal do desfecho avisa "2018 → 2022".
+O declarado fica guardado em `siscan.anoUltimaMamografiaDeclarado`. Ano igual ou maior passa como
+está (pode ter feito outra fora do SUS); ano em branco não é "declarado errado" e não é inventado.
+Código: `SiscanHtml.AnoDoUltimoExameNoSus` + `SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia`.
 
 
 ## 15. Armadilha de análise: `at time zone` duas vezes inverte o sinal

@@ -25,6 +25,9 @@ export type ResponsavelSiscan = {
 
 export type CampoEnvioSiscan = { pergunta: string; resposta: string };
 
+/** Uma unidade requisitante que a conta do SISCAN enxerga. O CNES é a chave. */
+export type UnidadeSiscan = { cnes: string; nome: string };
+
 export type LacunaAnamnese = { campo: string; pergunta: string };
 
 /** Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade. */
@@ -66,6 +69,35 @@ export type PreparoSiscan = {
    * bloqueia: quem olha o caso decide melhor que a regra.
    */
   avisoData: string | null;
+  /**
+   * A unidade do pedido NÃO está entre as unidades requisitantes que a conta do SISCAN do operador
+   * enxerga: esta é a lista delas, para escolher por qual enviar. Null = a do pedido está lá.
+   */
+  unidadesDisponiveis: UnidadeSiscan[] | null;
+  /** A escolhida no lugar da do pedido, quando o preparo foi pedido com uma. */
+  unidadeEscolhida: UnidadeSiscan | null;
+};
+
+/**
+ * O ano da última mamografia da anamnese era ANTERIOR ao que o SISCAN já tem da paciente — e ele
+ * recusa isso no Salvar. Foi para lá o ano dele, e a anamnese foi corrigida junto.
+ */
+export type CorrecaoAnoUltimaMamografia = {
+  anoDeclarado: number;
+  anoNoSiscan: number;
+};
+
+/**
+ * A requisição saiu por outra unidade, porque a do pedido não está na conta do SISCAN — e isso
+ * ficou registrado na anamnese (`siscan.unidadeRequisitanteEscolhida`).
+ */
+export type UnidadeRequisitanteEscolhida = {
+  cnes: string;
+  nome: string;
+  cnesDoPedido: string;
+  nomeDoPedido: string;
+  escolhidaPor: string | null;
+  escolhidaEm: string;
 };
 
 export type RequisicaoSiscan = {
@@ -73,11 +105,14 @@ export type RequisicaoSiscan = {
   numeroExame: string;
   geradaEm: string;
   responsavelNome: string;
+  correcaoAnoUltimaMamografia: CorrecaoAnoUltimaMamografia | null;
+  unidadeEscolhida: UnidadeRequisitanteEscolhida | null;
 };
 
 export const siscanKeys = {
   sessao: ['siscan', 'sessao'] as const,
-  preparo: (exameImagemId: string) => ['siscan', 'preparo', exameImagemId] as const,
+  preparo: (exameImagemId: string, cnesUnidade: string) =>
+    ['siscan', 'preparo', exameImagemId, cnesUnidade] as const,
 };
 
 export async function obterSessaoSiscan(): Promise<SessaoSiscan> {
@@ -88,16 +123,26 @@ export async function entrarNoSiscan(usuario: string, senha: string): Promise<Se
   return (await http.post<SessaoSiscan>('/siscan/sessao', { usuario, senha })).data;
 }
 
-export async function prepararRequisicaoSiscan(exameImagemId: string): Promise<PreparoSiscan> {
-  return (await http.get<PreparoSiscan>(`/siscan/requisicao/${exameImagemId}`)).data;
+/** `cnesUnidade` só quando a unidade do pedido não está na conta e o operador escolheu outra. */
+export async function prepararRequisicaoSiscan(
+  exameImagemId: string,
+  cnesUnidade?: string,
+): Promise<PreparoSiscan> {
+  return (
+    await http.get<PreparoSiscan>(`/siscan/requisicao/${exameImagemId}`, {
+      params: cnesUnidade ? { cnesUnidade } : undefined,
+    })
+  ).data;
 }
 
 export async function gerarRequisicaoSiscan(
   exameImagemId: string,
   cnsResponsavel: string,
+  cnesUnidade?: string,
 ): Promise<RequisicaoSiscan> {
   return (await http.post<RequisicaoSiscan>(`/siscan/requisicao/${exameImagemId}`, {
     cnsResponsavel,
+    cnesUnidade: cnesUnidade || null,
   })).data;
 }
 
@@ -132,10 +177,16 @@ export function useEntrarNoSiscan() {
  * SISCAN…" e o que se lê depois é o estado de agora. A lista de responsáveis também depende do
  * tipo de mamografia, então cache aqui traria a lista errada para a próxima paciente.</p>
  */
-export function usePreparoSiscan(exameImagemId: string | undefined, habilitado: boolean) {
+export function usePreparoSiscan(
+  exameImagemId: string | undefined,
+  habilitado: boolean,
+  cnesUnidade?: string,
+) {
   return useQuery({
-    queryKey: siscanKeys.preparo(exameImagemId ?? ''),
-    queryFn: () => prepararRequisicaoSiscan(exameImagemId as string),
+    // A unidade entra na chave: trocar a unidade é outro preparo (a lista de responsáveis é por
+    // unidade), nunca o anterior servido de cache.
+    queryKey: siscanKeys.preparo(exameImagemId ?? '', cnesUnidade ?? ''),
+    queryFn: () => prepararRequisicaoSiscan(exameImagemId as string, cnesUnidade),
     enabled: Boolean(exameImagemId) && habilitado,
     staleTime: 0,
     gcTime: 0,
@@ -146,8 +197,8 @@ export function usePreparoSiscan(exameImagemId: string | undefined, habilitado: 
 export function useGerarRequisicaoSiscan(exameImagemId: string | undefined) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (cnsResponsavel: string) =>
-      gerarRequisicaoSiscan(exameImagemId as string, cnsResponsavel),
+    mutationFn: ({ cnsResponsavel, cnesUnidade }: { cnsResponsavel: string; cnesUnidade?: string }) =>
+      gerarRequisicaoSiscan(exameImagemId as string, cnsResponsavel, cnesUnidade),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['anamnese'] });
       client.invalidateQueries({ queryKey: ['siscan'] });

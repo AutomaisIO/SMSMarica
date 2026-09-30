@@ -204,6 +204,23 @@ export type ComplementoSiscan = {
   };
   /** Ano da última mamografia — só aparece se a seção 3 disse que já fez. */
   anoUltimaMamografia: string;
+  /**
+   * O ano que a paciente declarou, quando ele era anterior ao que o SISCAN já tinha e foi
+   * corrigido ao gerar a requisição. Escrito só pelo servidor; a tela nunca preenche.
+   */
+  anoUltimaMamografiaDeclarado?: string;
+  /**
+   * A requisição saiu por outra unidade, porque a do pedido não está na conta do SISCAN de quem
+   * gerou. Escrito só pelo servidor, ao gerar; a tarja da anamnese mostra.
+   */
+  unidadeRequisitanteEscolhida?: {
+    cnes: string;
+    nome: string;
+    cnesDoPedido: string;
+    nomeDoPedido: string;
+    escolhidaPor: string | null;
+    escolhidaEm: string;
+  };
   /** Cirurgias relatadas — preenchidas na seção 3, logo abaixo de "Já realizou cirurgia mamária?". */
   cirurgias: CirurgiaMama[];
   responsavel: ResponsavelSiscan | null;

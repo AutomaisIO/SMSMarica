@@ -27,6 +27,7 @@ import {
 } from '@/features/anamnese/components/SecaoSiscan';
 import { useSessaoSiscan } from '@/features/anamnese/api/siscanApi';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
+import { formatarInstanteData } from '@/shared/lib/datas';
 import { Modal } from '@/shared/ui/Modal';
 import {
   CRITERIOS_RISCO,
@@ -263,6 +264,11 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
 
   const ctx = contexto.data;
   const somenteLeitura = !podeEditar;
+  // Gravado pelo servidor ao gerar a requisição por outra unidade (a do pedido fora da conta).
+  const unidadeEscolhida = conteudo.siscan.unidadeRequisitanteEscolhida;
+  const dataEscolha = unidadeEscolhida?.escolhidaEm
+    ? formatarInstanteData(unidadeEscolhida.escolhidaEm)
+    : null;
 
   return (
     <div className={`mx-auto max-w-5xl space-y-6 pb-10 ${janela ? 'min-h-screen bg-gray-50 p-6' : ''}`}>
@@ -311,6 +317,18 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
               <span className="text-xs text-teal-800">
                 Somente leitura — a correção é feita na própria requisição do SISCAN.
               </span>
+              {unidadeEscolhida ? (
+                /* Saiu por outra unidade: quem abrir a requisição no SISCAN vai ver outro nome, e
+                   precisa achar aqui o porquê. */
+                <span className="basis-full text-xs text-amber-800">
+                  Enviada pela unidade <strong>{unidadeEscolhida.nome}</strong> (CNES{' '}
+                  {unidadeEscolhida.cnes}), escolhida
+                  {unidadeEscolhida.escolhidaPor ? ` por ${unidadeEscolhida.escolhidaPor}` : ''}
+                  {dataEscolha ? ` em ${dataEscolha}` : ''}: a unidade do pedido,{' '}
+                  {unidadeEscolhida.nomeDoPedido} (CNES {unidadeEscolhida.cnesDoPedido}), não
+                  estava na conta do SISCAN.
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>

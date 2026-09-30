@@ -1,10 +1,25 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace SMSMais.Core.Integracoes.SiscanWeb.Requisicao;
 
 /// <summary>Uma resposta que falta na anamnese e que o SISCAN exige — a tela mostra e pede.</summary>
 public sealed record LacunaAnamnese(string Campo, string Pergunta);
+
+/// <summary>
+/// O ano da última mamografia que a anamnese declarou era ANTERIOR ao que o SISCAN já tem
+/// registrado para a paciente — e foi trocado pelo dele antes de gravar.
+/// </summary>
+public sealed record CorrecaoAnoUltimaMamografia(int AnoDeclarado, int AnoNoSiscan);
+
+/// <summary>
+/// A requisição saiu por outra unidade que não a do pedido, porque a do pedido não está entre as
+/// unidades requisitantes que a conta do SISCAN do operador enxerga — e ele escolheu esta.
+/// </summary>
+public sealed record UnidadeRequisitanteEscolhida(
+    string Cnes, string Nome, string CnesDoPedido, string NomeDoPedido,
+    string? EscolhidaPor, DateTime EscolhidaEm);
 
 /// <summary>
 /// O que vai no POST do Salvar, já pronto, mais o que faltou.
@@ -195,6 +210,92 @@ public static class SiscanRequisicaoMapper
         {
             campos.Add(new(CampoAnoUltimaMamografia, ano.Trim()));
         }
+    }
+
+    /// <summary>
+    /// Sobe o ano da última mamografia para o que o SISCAN já tem, quando o declarado é anterior.
+    ///
+    /// <para><b>Por quê.</b> O SISCAN recusa o Salvar com <i>"Não é permitido informar no campo
+    /// 'Quando fez a última mamografia?' um ano inferior ao da última mamografia cadastrada"</i>. O
+    /// ano da anamnese é o que a paciente lembra, e ela pode lembrar de um exame mais antigo; o do
+    /// SISCAN é exame registrado no SUS. Se lá consta 2022, "a última foi em 2018" está errado —
+    /// decisão do Bernardo (30/09/2026): corrige, grava a correção na anamnese, envia e avisa.</para>
+    ///
+    /// <para>Só age sobre ano <b>declarado</b> e <b>menor</b>. Ano igual ou maior passa como está (a
+    /// paciente pode ter feito outra depois, fora do SUS); ano em branco ou ilegível não é
+    /// "declarado errado", e fica para a validação do próprio SISCAN.</para>
+    /// </summary>
+    /// <returns>A correção aplicada em <paramref name="campos"/>, ou null se nada mudou.</returns>
+    public static CorrecaoAnoUltimaMamografia? CorrigirAnoUltimaMamografia(
+        List<KeyValuePair<string, string>> campos, int? anoNoSiscan)
+    {
+        if (anoNoSiscan is not { } doSiscan) return null;
+
+        var i = campos.FindIndex(c => c.Key == CampoAnoUltimaMamografia);
+        if (i < 0) return null;
+
+        if (!int.TryParse(campos[i].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var declarado)
+            || declarado >= doSiscan)
+        {
+            return null;
+        }
+
+        campos[i] = new(CampoAnoUltimaMamografia, doSiscan.ToString(CultureInfo.InvariantCulture));
+        return new CorrecaoAnoUltimaMamografia(declarado, doSiscan);
+    }
+
+    /// <summary>
+    /// A mesma correção, no JSON da anamnese: <c>siscan.anoUltimaMamografia</c> passa a ser o ano
+    /// que foi ao SISCAN, e <c>siscan.anoUltimaMamografiaDeclarado</c> guarda o que a paciente
+    /// disse. O resto do documento fica intocado.
+    /// </summary>
+    public static string AplicarCorrecaoNoConteudo(string? conteudoJson, CorrecaoAnoUltimaMamografia correcao) =>
+        NoBlocoSiscan(conteudoJson, siscan =>
+        {
+            siscan["anoUltimaMamografia"] = correcao.AnoNoSiscan.ToString(CultureInfo.InvariantCulture);
+            siscan["anoUltimaMamografiaDeclarado"] = correcao.AnoDeclarado.ToString(CultureInfo.InvariantCulture);
+        });
+
+    /// <summary>
+    /// Registra na anamnese (<c>siscan.unidadeRequisitanteEscolhida</c>) que a requisição saiu por
+    /// outra unidade, qual era a do pedido, quem escolheu e quando — é o que a tarja da anamnese
+    /// mostra, para ninguém estranhar depois o nome de outra unidade na requisição do Ministério.
+    /// </summary>
+    public static string AnotarUnidadeNoConteudo(string? conteudoJson, UnidadeRequisitanteEscolhida unidade) =>
+        NoBlocoSiscan(conteudoJson, siscan =>
+        {
+            siscan["unidadeRequisitanteEscolhida"] = new JsonObject
+            {
+                ["cnes"] = unidade.Cnes,
+                ["nome"] = unidade.Nome,
+                ["cnesDoPedido"] = unidade.CnesDoPedido,
+                ["nomeDoPedido"] = unidade.NomeDoPedido,
+                ["escolhidaPor"] = unidade.EscolhidaPor,
+                ["escolhidaEm"] = unidade.EscolhidaEm.ToString("O", CultureInfo.InvariantCulture),
+            };
+        });
+
+    /// <summary>Abre o bloco <c>siscan</c> (criando se faltar), aplica e devolve o documento inteiro.</summary>
+    private static string NoBlocoSiscan(string? conteudoJson, Action<JsonObject> aplicar)
+    {
+        JsonObject raiz;
+        try
+        {
+            raiz = JsonNode.Parse(conteudoJson ?? "{}") as JsonObject ?? [];
+        }
+        catch (JsonException)
+        {
+            raiz = [];
+        }
+
+        if (raiz["siscan"] is not JsonObject siscan)
+        {
+            siscan = [];
+            raiz["siscan"] = siscan;
+        }
+
+        aplicar(siscan);
+        return raiz.ToJsonString();
     }
 
     /// <summary>

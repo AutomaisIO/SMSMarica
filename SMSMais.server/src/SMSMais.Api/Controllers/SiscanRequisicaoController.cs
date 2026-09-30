@@ -22,12 +22,17 @@ namespace SMSMais.Api.Controllers;
 public sealed class SiscanRequisicaoController(ISiscanRequisicaoService servico) : ControllerBase
 {
     /// <summary>O que será enviado, quem pode assinar e o que falta. NÃO grava.</summary>
+    /// <param name="cnesUnidade">
+    /// Só quando a unidade do pedido não está na conta do SISCAN (o preparo devolveu
+    /// <c>unidadesDisponiveis</c>): a unidade escolhida no lugar dela.
+    /// </param>
     [HttpGet("{exameImagemId:guid}")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
     [ProducesResponseType<SiscanPreparoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public Task<SiscanPreparoDto> Preparar(Guid exameImagemId, CancellationToken cancellationToken) =>
-        servico.PrepararAsync(exameImagemId, cancellationToken);
+    public Task<SiscanPreparoDto> Preparar(
+        Guid exameImagemId, [FromQuery] string? cnesUnidade, CancellationToken cancellationToken) =>
+        servico.PrepararAsync(exameImagemId, cnesUnidade, cancellationToken);
 
     /// <summary>Cria a requisição no SISCAN e carimba protocolo e nº do exame no nosso pedido.</summary>
     [HttpPost("{exameImagemId:guid}")]

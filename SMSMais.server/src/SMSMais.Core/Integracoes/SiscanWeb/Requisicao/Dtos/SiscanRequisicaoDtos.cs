@@ -7,6 +7,9 @@ namespace SMSMais.Core.Integracoes.SiscanWeb.Requisicao.Dtos;
 /// </param>
 public sealed record SiscanResponsavelDto(string Indice, string Nome, string Cns);
 
+/// <summary>Uma unidade requisitante que a conta do SISCAN enxerga. O CNES é a chave.</summary>
+public sealed record SiscanUnidadeDto(string Cnes, string Nome);
+
 /// <summary>Uma resposta que vai para o SISCAN, com o rótulo para a tela conferir antes de mandar.</summary>
 public sealed record SiscanCampoEnvioDto(string Pergunta, string Resposta);
 
@@ -43,7 +46,15 @@ public sealed record SiscanPreparoDto(
     /// associado ser posterior à anamnese, que é sequência impossível e cheira a conciliação
     /// errada. Não bloqueia: informa, porque quem olha o caso decide melhor que a regra.
     /// </summary>
-    string? AvisoData = null);
+    string? AvisoData = null,
+    /// <summary>
+    /// A unidade do pedido NÃO está entre as unidades requisitantes que a conta do SISCAN do
+    /// operador enxerga. Esta é a lista delas, para ele escolher por qual enviar — enquanto não
+    /// escolher, não há responsáveis (a lista deles é por unidade). Null = a do pedido está lá.
+    /// </summary>
+    IReadOnlyList<SiscanUnidadeDto>? UnidadesDisponiveis = null,
+    /// <summary>A unidade escolhida no lugar da do pedido, quando o preparo foi pedido com uma.</summary>
+    SiscanUnidadeDto? UnidadeEscolhida = null);
 
 /// <summary>
 /// Uma requisição que já existe no SISCAN e apareceu na crítica de duplicidade.
@@ -55,8 +66,19 @@ public sealed record RequisicaoEncontradaDto(
     string Protocolo, string NumeroExame, string Datas, string Unidade, string Status);
 
 /// <summary>Quem assina. Vem por CNS porque o índice do combo não é estável.</summary>
-public sealed record SiscanGerarRequest(string CnsResponsavel);
+/// <param name="CnesUnidade">
+/// Só quando a unidade do pedido não está na conta do SISCAN: o CNES da unidade que o operador
+/// escolheu no lugar dela. Com a do pedido disponível, o servidor recusa outra.
+/// </param>
+public sealed record SiscanGerarRequest(string CnsResponsavel, string? CnesUnidade = null);
 
 /// <summary>O que ficou carimbado no nosso exame depois de gerar.</summary>
 public sealed record SiscanRequisicaoDto(
-    string Protocolo, string NumeroExame, DateTime GeradaEm, string ResponsavelNome);
+    string Protocolo, string NumeroExame, DateTime GeradaEm, string ResponsavelNome,
+    /// <summary>
+    /// O ano da última mamografia da anamnese era anterior ao que o SISCAN já tinha — foi
+    /// corrigido lá e aqui. A tela avisa no próprio modal do desfecho.
+    /// </summary>
+    CorrecaoAnoUltimaMamografia? CorrecaoAnoUltimaMamografia = null,
+    /// <summary>Foi enviada por outra unidade que não a do pedido — e isso ficou na anamnese.</summary>
+    UnidadeRequisitanteEscolhida? UnidadeEscolhida = null);

@@ -236,6 +236,66 @@ public class SiscanWebSessaoTests
     public void Tela_de_login_denuncia_sessao_expirada(string html, bool esperado) =>
         SiscanWebSessao.EhTelaDeLogin(html).Should().Be(esperado);
 
+    /// <summary>
+    /// A frase que o SISCAN mostra acima de "Quando fez a última mamografia?" — recorte da tela real
+    /// (captura de 23/09/2026), com a entidade HTML e a quebra de linha que vêm dela.
+    /// </summary>
+    [Fact]
+    public void Ano_do_ultimo_exame_no_sus_sai_da_frase_da_tela()
+    {
+        var doc = SiscanHtml.Documento("""
+            <form id="frm"><div id="frm:ultimaMamografia">
+              <div class="grid-12-12 espacamento"><label class="form-lbl">
+            O &uacute;ltimo exame realizado no SUS foi em 2022.</label></div>
+              <fieldset><legend>QUANDO FEZ A &Uacute;LTIMA MAMOGRAFIA?</legend>
+                <input id="frm:anoUltimaMamografia" name="frm:anoUltimaMamografia" value="" />
+              </fieldset>
+            </div></form>
+            """);
+
+        SiscanHtml.AnoDoUltimoExameNoSus(doc).Should().Be(2022);
+    }
+
+    /// <summary>
+    /// Paciente sem exame anterior no SUS: a região abre sem a frase (captura
+    /// <c>12-map-j_id105-01</c>). E ano fora da região não é este número.
+    /// </summary>
+    [Theory]
+    [InlineData("""<div id="frm:ultimaMamografia"><fieldset><legend>QUANDO FEZ A ÚLTIMA MAMOGRAFIA?</legend><input name="frm:anoUltimaMamografia"/></fieldset></div>""")]
+    [InlineData("""<p>O último exame realizado no SUS foi em 2022.</p><div id="frm:ultimaMamografia"></div>""")]
+    [InlineData("""<form id="frm"></form>""")]
+    public void Sem_a_frase_na_regiao_nao_ha_ano(string html) =>
+        SiscanHtml.AnoDoUltimoExameNoSus(SiscanHtml.Documento(html)).Should().BeNull();
+
+    /// <summary>
+    /// O combo "Unidade Requisitante" — recorte da captura <c>07-tipo-exame.html</c>. O "Selecionar"
+    /// fica de fora, e o CNES é separado do nome porque é ele a chave (o value é posicional).
+    /// </summary>
+    [Fact]
+    public void Unidades_requisitantes_saem_do_combo_com_cnes_e_nome()
+    {
+        var doc = SiscanHtml.Documento("""
+            <form id="frm"><select id="frm:unidadeSaude2" name="frm:unidadeSaude2" size="1">
+              <option value="0" selected="selected">Selecionar</option>
+              <option value="1">2266741 - AMBULATORIO PERICLES SIQUEIRA FERREIRA</option>
+              <option value="8">6886973 - SECRETARIA MUNICIPAL DE SAUDE DE MARICA</option>
+              <option value="35">3055779 - USF ELENIR UMBELINO DE MELLO ENFERMEIRA BILLU</option>
+            </select></form>
+            """);
+
+        SiscanHtml.UnidadesRequisitantes(doc).Should().Equal(
+            new SiscanHtml.UnidadeRequisitante("1", "2266741", "AMBULATORIO PERICLES SIQUEIRA FERREIRA"),
+            new SiscanHtml.UnidadeRequisitante("8", "6886973", "SECRETARIA MUNICIPAL DE SAUDE DE MARICA"),
+            new SiscanHtml.UnidadeRequisitante("35", "3055779", "USF ELENIR UMBELINO DE MELLO ENFERMEIRA BILLU"));
+    }
+
+    /// <summary>Antes do A4J do tipo de exame o combo só tem o "Selecionar": lista vazia.</summary>
+    [Fact]
+    public void Combo_de_unidades_ainda_vazio_nao_inventa_unidade() =>
+        SiscanHtml.UnidadesRequisitantes(SiscanHtml.Documento(
+            """<select name="frm:unidadeSaude2"><option value="0">Selecionar</option></select>"""))
+            .Should().BeEmpty();
+
     /// <summary>A prévia mostrava "frm:anoMastectomia…" como pergunta; agora é legível.</summary>
     [Theory]
     [InlineData("frm:anoMastectomiaPoupadoraPeleDireita", "Ano — Mastectomia poupadora pele (direita)")]

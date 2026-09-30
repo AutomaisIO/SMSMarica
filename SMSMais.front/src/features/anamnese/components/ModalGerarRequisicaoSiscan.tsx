@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileCheck2, Link2, Loader2 } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, FileCheck2, Link2, Loader2 } from 'lucide-react';
 import {
   useGerarRequisicaoSiscan,
   usePreparoSiscan,
@@ -24,6 +24,11 @@ import { Modal } from '@/shared/ui/Modal';
  *
  * <p><b>O desfecho fica no modal</b>, não num toast de quatro segundos: o número do protocolo é o
  * que a médica vai usar para laudar.</p>
+ *
+ * <p><b>Unidade fora da conta.</b> Quando a unidade do pedido não está entre as unidades
+ * requisitantes que a conta do SISCAN do operador enxerga, o preparo devolve a lista delas e o
+ * operador escolhe por qual enviar. Escolher refaz o preparo com a unidade — os responsáveis são
+ * por unidade — e a escolha fica registrada na anamnese.</p>
  */
 export function ModalGerarRequisicaoSiscan({
   aberto,
@@ -42,7 +47,9 @@ export function ModalGerarRequisicaoSiscan({
    */
   aoPerderSessao?: () => void;
 }) {
-  const preparo = usePreparoSiscan(exameImagemId, aberto);
+  // Só preenchida quando a unidade do pedido não está na conta do SISCAN e a pessoa escolheu outra.
+  const [cnesUnidade, setCnesUnidade] = useState<string>('');
+  const preparo = usePreparoSiscan(exameImagemId, aberto, cnesUnidade || undefined);
   const gerar = useGerarRequisicaoSiscan(exameImagemId);
 
   // Sessão perdida não é erro para mostrar em vermelho e fechar: é "entre de novo". Sem isto a
@@ -68,14 +75,25 @@ export function ModalGerarRequisicaoSiscan({
     if (aberto) {
       setErro(null);
       setResultado(null);
+      setCnesUnidade('');
     }
   }, [aberto]);
+
+  function escolherUnidade(cnes: string) {
+    // Outra unidade, outra lista de responsáveis: o escolhido da lista anterior não vale mais.
+    setCnsEscolhido('');
+    setErro(null);
+    setCnesUnidade(cnes);
+  }
 
   async function confirmar(vinculo = false) {
     setErro(null);
     setFoiVinculo(vinculo);
     try {
-      const gerada = await gerar.mutateAsync(cnsEscolhido);
+      const gerada = await gerar.mutateAsync({
+        cnsResponsavel: cnsEscolhido,
+        cnesUnidade: cnesUnidade || undefined,
+      });
       setResultado(gerada);
       aoGerar?.(gerada);
     } catch (falha) {
@@ -92,6 +110,10 @@ export function ModalGerarRequisicaoSiscan({
   const temLacunas = (dados?.lacunas.length ?? 0) > 0;
   const jaLa = dados?.encontradaPeloProntuario ?? null;
   const duplicidades = dados?.duplicidades ?? [];
+  const unidadesDisponiveis = dados?.unidadesDisponiveis ?? [];
+  // A unidade do pedido não está na conta: sem escolher outra, não há responsável nem Gerar.
+  const precisaUnidade = unidadesDisponiveis.length > 0;
+  const faltaUnidade = precisaUnidade && !dados?.unidadeEscolhida;
 
   return (
     <Modal
@@ -104,7 +126,9 @@ export function ModalGerarRequisicaoSiscan({
       {preparo.isPending ? (
         <div className="flex items-center justify-center py-10 text-gray-500">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Consultando o SISCAN…
+          {cnesUnidade
+            ? 'Buscando no SISCAN os responsáveis da unidade escolhida…'
+            : 'Consultando o SISCAN…'}
         </div>
       ) : preparo.isError ? (
         <div className="space-y-3">
@@ -115,6 +139,11 @@ export function ModalGerarRequisicaoSiscan({
             <Button variante="secundaria" onClick={aoFechar}>
               Fechar
             </Button>
+            {cnesUnidade ? (
+              <Button variante="secundaria" onClick={() => escolherUnidade('')}>
+                Escolher outra unidade
+              </Button>
+            ) : null}
             {/* SISCAN que caiu por ociosidade reconecta sozinho na próxima tentativa. */}
             <Button onClick={() => void preparo.refetch()}>Tentar de novo</Button>
           </div>
@@ -145,6 +174,47 @@ export function ModalGerarRequisicaoSiscan({
               </p>
             </div>
           </div>
+          {resultado.unidadeEscolhida ? (
+            <div className="flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-3">
+              <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+              <div className="text-sm text-sky-900">
+                <p className="font-semibold">
+                  Enviada pela unidade {resultado.unidadeEscolhida.nome}
+                </p>
+                <p className="mt-1">
+                  A unidade do pedido, {resultado.unidadeEscolhida.nomeDoPedido} (CNES{' '}
+                  {resultado.unidadeEscolhida.cnesDoPedido}), não está na sua conta do SISCAN. A
+                  troca ficou registrada na anamnese.
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {resultado.correcaoAnoUltimaMamografia ? (
+            /* Mudamos uma resposta da anamnese sem a pessoa ter clicado nela: isso tem que ficar
+               à vista aqui, no desfecho, e não num toast que some. */
+            <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div className="text-sm text-amber-900">
+                <p className="font-semibold">
+                  Corrigimos o ano da última mamografia:{' '}
+                  {resultado.correcaoAnoUltimaMamografia.anoDeclarado} →{' '}
+                  {resultado.correcaoAnoUltimaMamografia.anoNoSiscan}
+                </p>
+                <p className="mt-1">
+                  A anamnese dizia{' '}
+                  <strong>{resultado.correcaoAnoUltimaMamografia.anoDeclarado}</strong>, mas o
+                  SISCAN já tem mamografia desta paciente no SUS em{' '}
+                  <strong>{resultado.correcaoAnoUltimaMamografia.anoNoSiscan}</strong> — e ele não
+                  aceita ano anterior ao que tem registrado. O ano informado estava errado.
+                </p>
+                <p className="mt-1">
+                  Já corrigimos a anamnese para{' '}
+                  {resultado.correcaoAnoUltimaMamografia.anoNoSiscan} e enviamos{' '}
+                  {resultado.correcaoAnoUltimaMamografia.anoNoSiscan} ao SISCAN.
+                </p>
+              </div>
+            </div>
+          ) : null}
           <div className="flex justify-end">
             <Button onClick={aoFechar}>Fechar</Button>
           </div>
@@ -265,7 +335,9 @@ export function ModalGerarRequisicaoSiscan({
               <dd className="font-medium text-gray-900">{dados.pacienteNome}</dd>
             </div>
             <div className="flex justify-between gap-3 sm:block">
-              <dt className="text-gray-500">Unidade requisitante</dt>
+              <dt className="text-gray-500">
+                {precisaUnidade ? 'Unidade do pedido' : 'Unidade requisitante'}
+              </dt>
               <dd className="font-medium text-gray-900">
                 {dados.unidadeNome}{' '}
                 <span className="font-mono text-xs text-gray-500">CNES {dados.cnesUnidade}</span>
@@ -279,6 +351,37 @@ export function ModalGerarRequisicaoSiscan({
               </dd>
             </div>
           </dl>
+
+          {precisaUnidade ? (
+            /* A unidade do pedido não está entre as que a conta do SISCAN enxerga. Antes, isto era
+               um erro sem saída; agora a pessoa escolhe por qual unidade enviar, e fica registrado. */
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+              <p className="flex items-start gap-2 font-semibold">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                A unidade do pedido não está na sua conta do SISCAN
+              </p>
+              <p className="mt-1">
+                {dados.unidadeNome} (CNES {dados.cnesUnidade}) não está entre as unidades
+                requisitantes que a sua conta do SISCAN enxerga. Escolha por qual unidade enviar — a
+                escolha fica registrada na anamnese.
+              </p>
+              <label className="mt-2 block font-medium">
+                Enviar pela unidade
+                <select
+                  value={cnesUnidade}
+                  onChange={(e) => escolherUnidade(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+                >
+                  <option value="">Selecione…</option>
+                  {unidadesDisponiveis.map((u) => (
+                    <option key={u.cnes} value={u.cnes}>
+                      {u.nome} — CNES {u.cnes}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
 
           {dados.avisoData ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -309,7 +412,8 @@ export function ModalGerarRequisicaoSiscan({
               <select
                 value={cnsEscolhido}
                 onChange={(e) => setCnsEscolhido(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                disabled={faltaUnidade}
+                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm disabled:bg-gray-100"
               >
                 <option value="">Selecione…</option>
                 {dados.responsaveis.map((r) => (
@@ -320,7 +424,9 @@ export function ModalGerarRequisicaoSiscan({
               </select>
             </label>
             <p className="mt-1 text-xs text-gray-500">
-              {dados.responsaveis.length === 0
+              {faltaUnidade
+                ? 'Escolha primeiro a unidade — a lista de responsáveis do SISCAN é por unidade.'
+                : dados.responsaveis.length === 0
                 ? 'O SISCAN não ofereceu nenhum profissional para esta unidade e este tipo de mamografia.'
                 : dados.nomeSolicitanteDaFicha
                   ? `Quem pediu o exame no SISREG foi ${dados.nomeSolicitanteDaFicha}. A lista é do SISCAN e muda entre diagnóstica e rastreamento — confira o nome antes de confirmar.`
@@ -366,7 +472,7 @@ export function ModalGerarRequisicaoSiscan({
               </Button>
               <Button
                 onClick={() => confirmar()}
-                disabled={gerar.isPending || temLacunas || !cnsEscolhido}
+                disabled={gerar.isPending || temLacunas || faltaUnidade || !cnsEscolhido}
               >
                 {gerar.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

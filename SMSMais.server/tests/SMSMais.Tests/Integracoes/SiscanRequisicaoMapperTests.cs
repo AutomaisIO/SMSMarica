@@ -434,6 +434,156 @@ public class SiscanRequisicaoMapperTests
         campos.Should().NotContainKey(SiscanRequisicaoMapper.CampoAnoUltimaMamografia);
     }
 
+    // --------------------------------------------- ano da última mamografia × SISCAN
+
+    private static List<KeyValuePair<string, string>> ComAno(string ano) =>
+    [
+        new(SiscanRequisicaoMapper.CampoFezMamografia, SiscanRequisicaoMapper.Sim),
+        new(SiscanRequisicaoMapper.CampoAnoUltimaMamografia, ano),
+    ];
+
+    /// <summary>
+    /// A paciente lembrou de 2018, mas o SISCAN já tem exame dela em 2022 — e recusa "ano inferior
+    /// ao da última mamografia cadastrada". O que vai é 2022, e a correção volta para avisar.
+    /// </summary>
+    [Fact]
+    public void Ano_declarado_anterior_ao_do_siscan_sobe_para_o_dele()
+    {
+        var campos = ComAno("2018");
+
+        var correcao = SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia(campos, 2022);
+
+        correcao.Should().Be(new CorrecaoAnoUltimaMamografia(2018, 2022));
+        campos.Should().ContainSingle(c => c.Key == SiscanRequisicaoMapper.CampoAnoUltimaMamografia)
+            .Which.Value.Should().Be("2022");
+    }
+
+    /// <summary>Igual ou depois do SUS passa como está: pode ter feito outra fora do SUS.</summary>
+    [Theory]
+    [InlineData("2022")]
+    [InlineData("2025")]
+    public void Ano_declarado_igual_ou_posterior_nao_muda(string ano)
+    {
+        var campos = ComAno(ano);
+
+        SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia(campos, 2022).Should().BeNull();
+        campos[1].Value.Should().Be(ano);
+    }
+
+    /// <summary>Sem exame anterior no SUS a tela não traz a frase — não há contra o que corrigir.</summary>
+    [Fact]
+    public void Sem_ano_no_siscan_nao_mexe()
+    {
+        var campos = ComAno("2018");
+
+        SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia(campos, null).Should().BeNull();
+        campos[1].Value.Should().Be("2018");
+    }
+
+    /// <summary>Ano em branco não é "declarado errado": não se inventa o campo.</summary>
+    [Fact]
+    public void Sem_ano_declarado_nao_inventa()
+    {
+        List<KeyValuePair<string, string>> campos =
+            [new(SiscanRequisicaoMapper.CampoFezMamografia, SiscanRequisicaoMapper.Nao)];
+
+        SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia(campos, 2022).Should().BeNull();
+        campos.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Correcao_na_anamnese_troca_o_ano_guarda_o_declarado_e_preserva_o_resto()
+    {
+        var conteudo = """
+            {"historicoClinico":{"jaRealizouMamografia":{"resposta":true}},
+             "siscan":{"anoUltimaMamografia":"2018","riscoElevado":"nao"}}
+            """;
+
+        var corrigido = System.Text.Json.Nodes.JsonNode.Parse(
+            SiscanRequisicaoMapper.AplicarCorrecaoNoConteudo(conteudo, new(2018, 2022)))!;
+
+        corrigido["siscan"]!["anoUltimaMamografia"]!.GetValue<string>().Should().Be("2022");
+        corrigido["siscan"]!["anoUltimaMamografiaDeclarado"]!.GetValue<string>().Should().Be("2018");
+        corrigido["siscan"]!["riscoElevado"]!.GetValue<string>().Should().Be("nao");
+        corrigido["historicoClinico"]!["jaRealizouMamografia"]!["resposta"]!.GetValue<bool>().Should().BeTrue();
+    }
+
+    // ------------------------------------------------ unidade requisitante escolhida
+
+    private static readonly List<SMSMais.Core.Integracoes.SiscanWeb.SiscanHtml.UnidadeRequisitante> DaConta =
+    [
+        new("1", "2266741", "AMBULATORIO PERICLES SIQUEIRA FERREIRA"),
+        new("8", "6886973", "SECRETARIA MUNICIPAL DE SAUDE DE MARICA"),
+        new("14", "2266881", "UNIDADE DE SAUDE DA FAMILIA CENTRAL"),
+    ];
+
+    /// <summary>O caso normal: a unidade do pedido está na conta e é por ela que sai.</summary>
+    [Fact]
+    public void Unidade_do_pedido_na_conta_e_a_que_vai()
+    {
+        SiscanRequisicaoService.UnidadeParaEnviar(DaConta, "2266881", null)!
+            .Valor.Should().Be("14");
+        SiscanRequisicaoService.UnidadeParaEnviar(DaConta, "2266881", "2266881")!
+            .Valor.Should().Be("14");
+    }
+
+    /// <summary>Com a do pedido disponível, o servidor recusa outra — a escolha é só para quando falta.</summary>
+    [Fact]
+    public void Com_a_do_pedido_na_conta_outra_e_recusada()
+    {
+        var acao = () => SiscanRequisicaoService.UnidadeParaEnviar(DaConta, "2266881", "6886973");
+
+        acao.Should().Throw<SMSMais.Core.Common.Excecoes.ValidacaoException>()
+            .Which.Erros.Should().ContainKey("siscan.unidade_do_pedido_disponivel");
+    }
+
+    /// <summary>Fora da conta e sem escolha: null — a tela mostra a lista em vez de dar erro.</summary>
+    [Fact]
+    public void Fora_da_conta_sem_escolha_devolve_null()
+    {
+        SiscanRequisicaoService.UnidadeParaEnviar(DaConta, "9999999", null).Should().BeNull();
+        SiscanRequisicaoService.UnidadeParaEnviar(DaConta, "9999999", "  ").Should().BeNull();
+    }
+
+    [Fact]
+    public void Fora_da_conta_vai_pela_escolhida()
+    {
+        SiscanRequisicaoService.UnidadeParaEnviar(DaConta, "9999999", " 6886973 ")!
+            .Should().Be(DaConta[1]);
+    }
+
+    /// <summary>Escolheu uma que não está na lista (a conta mudou, ou chamada forjada): recusa.</summary>
+    [Fact]
+    public void Escolhida_fora_da_lista_e_recusada()
+    {
+        var acao = () => SiscanRequisicaoService.UnidadeParaEnviar(DaConta, "9999999", "1234567");
+
+        acao.Should().Throw<SMSMais.Core.Common.Excecoes.ValidacaoException>()
+            .Which.Erros.Should().ContainKey("siscan.unidade_indisponivel");
+    }
+
+    [Fact]
+    public void Unidade_escolhida_fica_registrada_na_anamnese_sem_mexer_no_resto()
+    {
+        var conteudo = """{"siscan":{"anoUltimaMamografia":"2022","riscoElevado":"nao"},"queixas":{}}""";
+        var unidade = new UnidadeRequisitanteEscolhida(
+            "6886973", "SECRETARIA MUNICIPAL DE SAUDE DE MARICA", "9999999", "USF EXEMPLO",
+            "Operadora Exemplo", new DateTime(2026, 9, 30, 14, 0, 0, DateTimeKind.Utc));
+
+        var json = System.Text.Json.Nodes.JsonNode.Parse(
+            SiscanRequisicaoMapper.AnotarUnidadeNoConteudo(conteudo, unidade))!;
+        var bloco = json["siscan"]!["unidadeRequisitanteEscolhida"]!;
+
+        bloco["cnes"]!.GetValue<string>().Should().Be("6886973");
+        bloco["nome"]!.GetValue<string>().Should().Be("SECRETARIA MUNICIPAL DE SAUDE DE MARICA");
+        bloco["cnesDoPedido"]!.GetValue<string>().Should().Be("9999999");
+        bloco["nomeDoPedido"]!.GetValue<string>().Should().Be("USF EXEMPLO");
+        bloco["escolhidaPor"]!.GetValue<string>().Should().Be("Operadora Exemplo");
+        bloco["escolhidaEm"]!.GetValue<string>().Should().StartWith("2026-09-30T14:00:00");
+        json["siscan"]!["anoUltimaMamografia"]!.GetValue<string>().Should().Be("2022");
+        json["siscan"]!["riscoElevado"]!.GetValue<string>().Should().Be("nao");
+    }
+
     /// <summary>JSON quebrado não pode derrubar a geração com stack trace — vira "não sabe".</summary>
     [Fact]
     public void Conteudo_invalido_nao_explode()

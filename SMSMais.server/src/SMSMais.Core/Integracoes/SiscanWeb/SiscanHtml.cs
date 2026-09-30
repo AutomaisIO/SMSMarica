@@ -406,6 +406,51 @@ public static partial class SiscanHtml
         return normalizado.Length == 0 ? null : normalizado;
     }
 
+    /// <summary>Uma opção do combo "Unidade Requisitante".</summary>
+    /// <param name="Valor">
+    /// O <c>value</c> do option — <b>posicional</b>, só vale para a tela em que foi lido. Nunca guardar.
+    /// </param>
+    public sealed record UnidadeRequisitante(string Valor, string Cnes, string Nome);
+
+    [GeneratedRegex(@"^\s*(\d{7})\s*-\s*(.+?)\s*$")]
+    private static partial Regex RegexOpcaoUnidade();
+
+    /// <summary>
+    /// As unidades requisitantes que a conta logada enxerga (<c>frm:unidadeSaude2</c>). O texto de
+    /// cada opção é <c>"2266741 - AMBULATORIO PERICLES SIQUEIRA FERREIRA"</c> — o CNES é a chave. O
+    /// combo só tem opções depois do A4J do tipo de exame; antes, só o "Selecionar".
+    /// </summary>
+    public static List<UnidadeRequisitante> UnidadesRequisitantes(IHtmlDocument doc) =>
+        Opcoes(doc, "frm:unidadeSaude2")
+            .Select(o => (o.Valor, Match: RegexOpcaoUnidade().Match(o.Texto)))
+            .Where(o => o.Match.Success && o.Valor != "0")
+            .Select(o => new UnidadeRequisitante(o.Valor, o.Match.Groups[1].Value, o.Match.Groups[2].Value))
+            .ToList();
+
+    [GeneratedRegex(@"ULTIMO EXAME REALIZADO NO SUS FOI EM\s*(\d{4})")]
+    private static partial Regex RegexUltimoExameNoSus();
+
+    /// <summary>
+    /// O ano da última mamografia que o SISCAN <b>já tem</b> para a paciente — é o que ele usa para
+    /// recusar "ano inferior ao da última mamografia cadastrada".
+    ///
+    /// <para>A tela avisa, em texto, logo acima da pergunta: <i>"O último exame realizado no SUS foi
+    /// em 2022."</i> (<c>&lt;label class="form-lbl"&gt;</c> dentro de <c>frm:ultimaMamografia</c>).
+    /// A região só é renderizada depois do A4J do "Fez mamografia alguma vez? — Sim", e a frase só
+    /// aparece quando existe exame anterior no SUS. Null nos dois casos em que não há o que ler.</para>
+    ///
+    /// <para>Lido só dentro da região, de propósito: um ano solto em outra parte da tela não é este
+    /// número.</para>
+    /// </summary>
+    public static int? AnoDoUltimoExameNoSus(IHtmlDocument doc)
+    {
+        var regiao = doc.GetElementById("frm:ultimaMamografia");
+        if (regiao is null) return null;
+
+        var m = RegexUltimoExameNoSus().Match(Simplificar(regiao.TextContent));
+        return m.Success ? int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : null;
+    }
+
     /// <summary>Título da tela — é o <c>&lt;h1&gt;</c> que revela em que modo ela abriu.</summary>
     public static List<string> Titulos(IHtmlDocument doc) =>
         doc.QuerySelectorAll("h1")

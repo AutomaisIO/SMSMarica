@@ -16,7 +16,12 @@ namespace SMSMais.Core.Integracoes.SiscanWeb.Requisicao;
 public interface ISiscanRequisicaoService
 {
     /// <summary>Percorre o assistente até a lista de responsáveis, SEM gravar nada.</summary>
-    Task<SiscanPreparoDto> PrepararAsync(Guid exameImagemId, CancellationToken cancellationToken);
+    /// <param name="cnesUnidade">
+    /// Só quando a unidade do pedido não está na conta do SISCAN: a que o operador escolheu no
+    /// lugar dela. É ela que decide a lista de responsáveis.
+    /// </param>
+    Task<SiscanPreparoDto> PrepararAsync(
+        Guid exameImagemId, string? cnesUnidade, CancellationToken cancellationToken);
 
     /// <summary>Gera a requisição e carimba os números no exame. ESCREVE em produção federal.</summary>
     Task<SiscanRequisicaoDto> GerarAsync(
@@ -60,7 +65,7 @@ public sealed class SiscanRequisicaoService(
     ];
 
     public async Task<SiscanPreparoDto> PrepararAsync(
-        Guid exameImagemId, CancellationToken cancellationToken)
+        Guid exameImagemId, string? cnesUnidade, CancellationToken cancellationToken)
     {
         var caso = await CarregarAsync(exameImagemId, cancellationToken);
 
@@ -90,16 +95,16 @@ public sealed class SiscanRequisicaoService(
         // descartada e uma segunda passada começa pelo menu, relogando sozinha. Uma vez só.
         try
         {
-            return await PrepararNoSiscanAsync(sessao, caso, cancellationToken);
+            return await PrepararNoSiscanAsync(sessao, caso, cnesUnidade, cancellationToken);
         }
         catch (ValidacaoException ex) when (ex.Erros.ContainsKey("siscan.sessao_expirou"))
         {
-            return await PrepararNoSiscanAsync(sessao, caso, cancellationToken);
+            return await PrepararNoSiscanAsync(sessao, caso, cnesUnidade, cancellationToken);
         }
     }
 
     private async Task<SiscanPreparoDto> PrepararNoSiscanAsync(
-        ISiscanWebSessao sessao, Caso caso, CancellationToken cancellationToken)
+        ISiscanWebSessao sessao, Caso caso, string? cnesUnidade, CancellationToken cancellationToken)
     {
         var critica = await CriticarAsync(sessao, caso, cancellationToken);
 
@@ -119,10 +124,26 @@ public sealed class SiscanRequisicaoService(
                 caso.SolicitanteDaFicha, [], [], Duplicidades: critica.DeOutroPedido);
         }
 
-        var percurso = await PercorrerAsync(sessao, caso, critica.Html, cancellationToken);
+        var percurso = await PercorrerAsync(sessao, caso, critica.Html, cnesUnidade, cancellationToken);
 
         var campos = SiscanRequisicaoMapper.Montar(
             caso.ConteudoAnamnese, caso.Exame.AccessionNumber, caso.DataDoExame, caso.TipoMamografia);
+
+        // A unidade do pedido não está na conta: a lista vai para a tela escolher. Sem unidade não
+        // há Avançar, e sem Avançar não há responsáveis — eles chegam no preparo seguinte, já
+        // pedido com a unidade escolhida.
+        var disponiveis = percurso.DoPedidoNaConta
+            ? null
+            : percurso.DaConta.Select(u => new SiscanUnidadeDto(u.Cnes, u.Nome)).ToList();
+
+        if (percurso.Unidade is null)
+        {
+            return new SiscanPreparoDto(
+                false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
+                caso.TipoMamografia, RotuloTipo(caso.TipoMamografia), [], null,
+                caso.SolicitanteDaFicha, Resumir(campos.Campos), campos.Lacunas,
+                AvisoData: caso.AvisoData, UnidadesDisponiveis: disponiveis);
+        }
 
         var responsaveis = Responsaveis(percurso.Doc);
         var sugerido = Sugerir(responsaveis, caso.SolicitanteDaFicha);
@@ -131,7 +152,11 @@ public sealed class SiscanRequisicaoService(
             false, null, null, caso.PacienteNome, caso.CnesUnidade, caso.UnidadeNome,
             caso.TipoMamografia, RotuloTipo(caso.TipoMamografia),
             responsaveis, sugerido?.Cns, caso.SolicitanteDaFicha,
-            Resumir(campos.Campos), campos.Lacunas, AvisoData: caso.AvisoData);
+            Resumir(campos.Campos), campos.Lacunas, AvisoData: caso.AvisoData,
+            UnidadesDisponiveis: disponiveis,
+            UnidadeEscolhida: percurso.DoPedidoNaConta
+                ? null
+                : new SiscanUnidadeDto(percurso.Unidade.Cnes, percurso.Unidade.Nome));
     }
 
     public async Task<SiscanRequisicaoDto> GerarAsync(
@@ -189,7 +214,24 @@ public sealed class SiscanRequisicaoService(
                 + string.Join(" · ", campos.Lacunas.Select(l => l.Pergunta)));
         }
 
-        var percurso = await PercorrerAsync(sessao, caso, critica.Html, cancellationToken);
+        var percurso = await PercorrerAsync(
+            sessao, caso, critica.Html, corpo.CnesUnidade, cancellationToken);
+
+        if (percurso.Unidade is null)
+        {
+            throw new ValidacaoException(
+                "siscan.unidade_fora_da_conta",
+                $"A unidade do pedido ({caso.UnidadeNome}, CNES {caso.CnesUnidade}) não está entre as "
+                + "unidades requisitantes que a sua conta do SISCAN enxerga. Escolha no modal por "
+                + "qual unidade enviar.");
+        }
+
+        // Saiu por outra unidade: fica registrado na anamnese, junto com o protocolo.
+        var unidadeEscolhida = percurso.DoPedidoNaConta
+            ? null
+            : new UnidadeRequisitanteEscolhida(
+                percurso.Unidade.Cnes, percurso.Unidade.Nome, caso.CnesUnidade, caso.UnidadeNome,
+                await NomeDoOperadorAsync(cancellationToken), DateTime.UtcNow);
 
         var responsaveis = Responsaveis(percurso.Doc);
         var responsavel = responsaveis.FirstOrDefault(r => r.Cns == corpo.CnsResponsavel?.Trim())
@@ -202,6 +244,21 @@ public sealed class SiscanRequisicaoService(
         html = await AbrirCondicionaisAsync(sessao, html, campos.Campos, cancellationToken);
 
         var doc = SiscanHtml.Documento(html);
+
+        // O "Sim" do fez-mamografia acabou de abrir a região, e com ela a frase "O último exame
+        // realizado no SUS foi em AAAA". Declarar ano anterior a esse é recusado no Salvar — então
+        // corrige aqui, antes, e a anamnese é corrigida junto no carimbo.
+        var correcaoAno = SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia(
+            campos.Campos, SiscanHtml.AnoDoUltimoExameNoSus(doc));
+        if (correcaoAno is not null)
+        {
+            logger.LogWarning(
+                "SISCAN[{Accession}]: anamnese declarou a última mamografia em {Declarado}, mas o "
+                + "SISCAN já tem exame em {NoSiscan}. Enviando {NoSiscan} e corrigindo a anamnese.",
+                caso.Exame.AccessionNumber, correcaoAno.AnoDeclarado, correcaoAno.AnoNoSiscan,
+                correcaoAno.AnoNoSiscan);
+        }
+
         var envio = TraduzirParaATela(doc, campos.Campos);
         envio.Add(new KeyValuePair<string, string>(
             SiscanRequisicaoMapper.CampoResponsavel, responsavel.Indice));
@@ -245,15 +302,26 @@ public sealed class SiscanRequisicaoService(
                 caso.Exame.AccessionNumber, protocolo);
         }
 
-        return await CarimbarAsync(caso.Exame, protocolo, numeroExame, responsavel.Nome, cancellationToken);
+        return await CarimbarAsync(
+            caso.Exame, protocolo, numeroExame, responsavel.Nome, cancellationToken,
+            correcaoAno, unidadeEscolhida);
     }
 
     // ------------------------------------------------------------------ percurso
 
-    private sealed record Percurso(string Html, IHtmlDocument Doc);
+    /// <param name="Unidade">
+    /// Por onde a requisição sai. <b>Null = o percurso parou antes do Avançar</b>: a unidade do
+    /// pedido não está na conta e ninguém escolheu outra. <c>Html</c> é então a tela do tipo de
+    /// exame, sem responsáveis.
+    /// </param>
+    /// <param name="DaConta">As unidades requisitantes que a conta enxerga.</param>
+    /// <param name="DoPedidoNaConta">A unidade do pedido está entre elas (o caso normal).</param>
+    private sealed record Percurso(
+        string Html, IHtmlDocument Doc, SiscanHtml.UnidadeRequisitante? Unidade,
+        IReadOnlyList<SiscanHtml.UnidadeRequisitante> DaConta, bool DoPedidoNaConta);
 
     private async Task<Percurso> PercorrerAsync(
-        ISiscanWebSessao sessao, Caso caso, string? htmlAberto,
+        ISiscanWebSessao sessao, Caso caso, string? htmlAberto, string? cnesEscolhido,
         CancellationToken cancellationToken)
     {
         var relogio = Stopwatch.StartNew();
@@ -292,9 +360,29 @@ public sealed class SiscanRequisicaoService(
         html = await Passo("marcar tipo de exame",
             () => MarcarTipoExameAsync(sessao, htmlCns, cancellationToken));
 
+        var daConta = SiscanHtml.UnidadesRequisitantes(SiscanHtml.Documento(html));
+        var doPedidoNaConta = daConta.Any(u => u.Cnes == caso.CnesUnidade);
+        var unidade = UnidadeParaEnviar(daConta, caso.CnesUnidade, cnesEscolhido);
+        if (unidade is null)
+        {
+            logger.LogWarning(
+                "SISCAN[{Accession}]: a unidade do pedido (CNES {Cnes}) não está entre as {Total} "
+                + "unidades requisitantes desta conta — a tela vai oferecer a escolha.",
+                caso.Exame.AccessionNumber, caso.CnesUnidade, daConta.Count);
+            return new Percurso(html, SiscanHtml.Documento(html), null, daConta, false);
+        }
+
+        if (!doPedidoNaConta)
+        {
+            logger.LogWarning(
+                "SISCAN[{Accession}]: unidade do pedido (CNES {CnesPedido}) fora da conta; enviando "
+                + "pela escolhida pelo operador: CNES {Cnes} {Nome}.",
+                caso.Exame.AccessionNumber, caso.CnesUnidade, unidade.Cnes, unidade.Nome);
+        }
+
         var htmlTipo = html;
         html = await Passo("Avançar",
-            () => AvancarAsync(sessao, htmlTipo, caso, cancellationToken));
+            () => AvancarAsync(sessao, htmlTipo, unidade, cancellationToken));
 
         var htmlEtapa2 = html;
         html = await Passo($"marcar tipo de mamografia {caso.TipoMamografia}",
@@ -304,7 +392,7 @@ public sealed class SiscanRequisicaoService(
             "SISCAN[{Accession}]: percurso completo em {Ms} ms.",
             caso.Exame.AccessionNumber, relogio.ElapsedMilliseconds);
 
-        return new Percurso(html, SiscanHtml.Documento(html));
+        return new Percurso(html, SiscanHtml.Documento(html), unidade, daConta, doPedidoNaConta);
     }
 
     private static async Task<string> ClicarNovoExameAsync(
@@ -391,23 +479,52 @@ public sealed class SiscanRequisicaoService(
             SiscanHtml.ParametrosA4JDoElemento(radio), cancellationToken);
     }
 
-    private static async Task<string> AvancarAsync(
-        ISiscanWebSessao sessao, string html, Caso caso, CancellationToken cancellationToken)
+    /// <summary>
+    /// Por qual unidade a requisição sai — sempre pelo CNES, nunca pelo índice (o <c>value</c> do
+    /// option é posicional).
+    ///
+    /// <para><b>A do pedido, sempre que ela estiver na conta.</b> Outra só entra quando a do pedido
+    /// NÃO está entre as unidades que a conta do SISCAN do operador enxerga, e aí é escolha dele —
+    /// decisão do Bernardo (30/09/2026), registrada na anamnese. Na prática é o que a unidade já
+    /// fazia à mão: o backfill de 23/09 mostrou requisições lançadas pela "SECRETARIA MUNICIPAL DE
+    /// SAUDE DE MARICA" no lugar da USF.</para>
+    /// </summary>
+    /// <returns>Null quando a do pedido não está na conta e ninguém escolheu — a tela pergunta.</returns>
+    public static SiscanHtml.UnidadeRequisitante? UnidadeParaEnviar(
+        IReadOnlyList<SiscanHtml.UnidadeRequisitante> daConta, string cnesDoPedido, string? cnesEscolhido)
     {
-        var doc = SiscanHtml.Documento(html);
+        var escolhido = string.IsNullOrWhiteSpace(cnesEscolhido) ? null : cnesEscolhido.Trim();
 
-        // Unidade pelo CNES, nunca pelo índice: o `value` do option é posicional.
-        var opcao = SiscanHtml.Opcoes(doc, "frm:unidadeSaude2")
-            .FirstOrDefault(o => o.Texto.StartsWith(caso.CnesUnidade, StringComparison.Ordinal));
-
-        if (string.IsNullOrEmpty(opcao.Valor))
+        var doPedido = daConta.FirstOrDefault(u => u.Cnes == cnesDoPedido);
+        if (doPedido is not null)
         {
-            throw new ValidacaoException(
-                "siscan.unidade_indisponivel",
-                $"A unidade CNES {caso.CnesUnidade} ({caso.UnidadeNome}) não está entre as unidades "
-                + "requisitantes que esta conta do SISCAN enxerga.");
+            // Tela é conveniência, servidor é regra: com a do pedido disponível, trocar de unidade
+            // seria mandar ao Ministério um pedido em nome de outra unidade, sem motivo.
+            if (escolhido is not null && escolhido != cnesDoPedido)
+            {
+                throw new ValidacaoException(
+                    "siscan.unidade_do_pedido_disponivel",
+                    $"A unidade do pedido (CNES {cnesDoPedido}) está na sua conta do SISCAN — a "
+                    + "requisição sai por ela. Outra unidade só pode ser escolhida quando a do "
+                    + "pedido não está disponível.");
+            }
+
+            return doPedido;
         }
 
+        if (escolhido is null) return null;
+
+        return daConta.FirstOrDefault(u => u.Cnes == escolhido)
+               ?? throw new ValidacaoException(
+                   "siscan.unidade_indisponivel",
+                   $"A unidade CNES {escolhido} não está entre as unidades requisitantes que a sua "
+                   + "conta do SISCAN enxerga. Escolha de novo na lista.");
+    }
+
+    private static async Task<string> AvancarAsync(
+        ISiscanWebSessao sessao, string html, SiscanHtml.UnidadeRequisitante unidade,
+        CancellationToken cancellationToken)
+    {
         var extras = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             // O tipo de exame VAI DE NOVO, mesmo já tendo ido pro bean pelo A4J: o parcial não
@@ -415,7 +532,7 @@ public sealed class SiscanRequisicaoService(
             // ser informado" — mostrando o radio marcado na resposta, o que confunde ainda mais.
             ["frm:tipoExame"] = "01",
             ["frm:prestadorServico2"] = "0",
-            ["frm:unidadeSaude2"] = opcao.Valor,
+            ["frm:unidadeSaude2"] = unidade.Valor,
             ["frm:botaoAvancar"] = "frm:botaoAvancar",
         };
 
@@ -793,9 +910,9 @@ public sealed class SiscanRequisicaoService(
     ///
     /// <para><b>É a data em que o exame foi FEITO, não a da ficha do SISREG</b> (decisão do
     /// Bernardo, 23/09/2026). A diferença não é acadêmica: no caso 260903032 a ficha é de 23/07 e
-    /// o exame aconteceu em 23/09 — dois meses. Além de ser o que o SISCAN espera, a data do exame
-    /// é mais recente, o que evita a recusa deles de "ano inferior ao da última mamografia
-    /// cadastrada".</para>
+    /// o exame aconteceu em 23/09 — dois meses. (A recusa "ano inferior ao da última mamografia
+    /// cadastrada" NÃO tem a ver com esta data: é do campo do ano da última mamografia — ver
+    /// <see cref="SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia"/>.)</para>
     ///
     /// <para>A cascata, e o porquê de cada degrau (medido sobre os 871 exames com anamnese):</para>
     /// <list type="number">
@@ -969,9 +1086,20 @@ public sealed class SiscanRequisicaoService(
             avisoData);
     }
 
+    /// <param name="correcaoAno">
+    /// Quando o ano da última mamografia foi corrigido para o do SISCAN, a anamnese é corrigida
+    /// <b>no mesmo SaveChanges</b> do protocolo. Não é detalhe: o protocolo congela a anamnese, e
+    /// gravar os dois separados podia deixar a nossa dizendo 2018 e a do Ministério 2022 — duas
+    /// verdades, e a nossa já sem como ser editada.
+    /// </param>
+    /// <param name="unidadeEscolhida">
+    /// A requisição saiu por outra unidade que não a do pedido: também vai para a anamnese no mesmo
+    /// SaveChanges, pelo mesmo motivo — depois do protocolo ela não se edita mais.
+    /// </param>
     private async Task<SiscanRequisicaoDto> CarimbarAsync(
         ExameImagem exame, string protocolo, string numeroExame, string responsavelNome,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, CorrecaoAnoUltimaMamografia? correcaoAno = null,
+        UnidadeRequisitanteEscolhida? unidadeEscolhida = null)
     {
         var agora = DateTime.UtcNow;
         exame.SiscanProtocolo = protocolo;
@@ -982,6 +1110,11 @@ public sealed class SiscanRequisicaoService(
         exame.AtualizadoEm = agora;
         exame.AtualizadoPor = usuarioAtual.UsuarioId;
 
+        if (correcaoAno is not null || unidadeEscolhida is not null)
+        {
+            await AnotarNaAnamneseAsync(exame, correcaoAno, unidadeEscolhida, agora, cancellationToken);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogWarning(
@@ -989,8 +1122,44 @@ public sealed class SiscanRequisicaoService(
             + "{Accession} por {Usuario}.",
             protocolo, numeroExame, exame.AccessionNumber, usuarioAtual.UsuarioId);
 
-        return new SiscanRequisicaoDto(protocolo, numeroExame, agora, responsavelNome);
+        return new SiscanRequisicaoDto(
+            protocolo, numeroExame, agora, responsavelNome, correcaoAno, unidadeEscolhida);
     }
+
+    /// <summary>
+    /// O que o envio mudou ou decidiu, escrito na anamnese:
+    /// <list type="bullet">
+    ///   <item>o ano da última mamografia trocado pelo que foi ao SISCAN, guardando o declarado
+    ///     (<c>siscan.anoUltimaMamografiaDeclarado</c>) — a leitura mostra os dois, para ninguém
+    ///     achar que a enfermeira anotou 2022;</item>
+    ///   <item>a unidade pela qual a requisição saiu, quando não foi a do pedido
+    ///     (<c>siscan.unidadeRequisitanteEscolhida</c>) — a tarja da anamnese mostra.</item>
+    /// </list>
+    /// </summary>
+    private async Task AnotarNaAnamneseAsync(
+        ExameImagem exame, CorrecaoAnoUltimaMamografia? correcao,
+        UnidadeRequisitanteEscolhida? unidade, DateTime agora, CancellationToken cancellationToken)
+    {
+        var anamnese = await db.Anamneses
+            .FirstOrDefaultAsync(a => a.ExameImagemId == exame.Id && a.ExcluidoEm == null, cancellationToken);
+        if (anamnese is null) return;
+
+        var conteudo = anamnese.ConteudoJson;
+        if (correcao is not null) conteudo = SiscanRequisicaoMapper.AplicarCorrecaoNoConteudo(conteudo, correcao);
+        if (unidade is not null) conteudo = SiscanRequisicaoMapper.AnotarUnidadeNoConteudo(conteudo, unidade);
+
+        anamnese.ConteudoJson = conteudo;
+        anamnese.AtualizadoEm = agora;
+        anamnese.AtualizadoPor = usuarioAtual.UsuarioId;
+    }
+
+    private async Task<string?> NomeDoOperadorAsync(CancellationToken cancellationToken) =>
+        usuarioAtual.UsuarioId is not { } id
+            ? null
+            : await db.Usuarios.AsNoTracking()
+                .Where(u => u.Id == id)
+                .Select(u => u.NomeCompleto)
+                .FirstOrDefaultAsync(cancellationToken);
 
     private async Task RegistrarErroAsync(
         ExameImagem exame, string motivo, CancellationToken cancellationToken)

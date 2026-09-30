@@ -311,8 +311,15 @@ export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaCont
             {siscan.anoUltimaMamografia?.trim() ? (
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm text-gray-800">Ano da última mamografia</span>
-                <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
-                  {siscan.anoUltimaMamografia.trim()}
+                <span className="text-right">
+                  <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-700">
+                    {siscan.anoUltimaMamografia.trim()}
+                  </span>
+                  {siscan.anoUltimaMamografiaDeclarado?.trim() ? (
+                    <span className="mt-0.5 block text-xs text-amber-700">
+                      corrigido pelo SISCAN — declarado {siscan.anoUltimaMamografiaDeclarado.trim()}
+                    </span>
+                  ) : null}
                 </span>
               </div>
             ) : null}

@@ -19,6 +19,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -27,7 +30,10 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Medido contra o SISCAN real em <strong>22/09/2026</strong>, versão do alvo V2.19.1-RC08, conta do prestador <strong>CDT DR ALBERTO LUIS MACHADO BORGES (CNES 3132358)</strong>. Nenhuma requisição foi criada: a sonda vai até um clique antes do <strong>Salvar</strong> e para ali. <strong>Exceção documentada:</strong> uma única criação real, autorizada pelo Bernardo em 22/09/2026 — o resultado está na §8.</p>
 <p>&gt; <strong>PRODUÇÃO FEDERAL, pacientes reais de Maricá.</strong> O cliente nasce <code>somente_leitura=True</code>. &gt; A trava barra <code>salvar</code>, <code>encerrar</code>, <code>confirmar</code>, <code>incluir</code>, <code>liberar</code>, <code>alterar</code>; só a &gt; palavra <code>novo</code> foi liberada, e só porque <strong>[Novo Exame] apenas renderiza a tela</strong>. &gt; Criar requisição de verdade exige OK explícito do Bernardo, por ação.</p>
 <p>Ferramentas: <a href="../probe_nova_requisicao.py"><code>probe_nova_requisicao.py</code></a> (o caminho, passo a passo) e <a href="../mapear_requisicao_nova.py"><code>mapear_requisicao_nova.py</code></a> (varredura dos ramos condicionais). O fluxo em si vive em <a href="../siscan/requisicao.py"><code>siscan/requisicao.py</code></a>.</p>
-<p>``<code>bash python probe_nova_requisicao.py --parar-em 2                      # abre a tela python probe_nova_requisicao.py --cns &lt;CNS&gt;                       # + CADSUS pelo CNS python probe_nova_requisicao.py --cns &lt;CNS&gt; --unidade 35 \        --mamografia 02 --responsavel 3                            # até o Responsável </code>``</p>
+<pre><code>python probe_nova_requisicao.py --parar-em 2                      # abre a tela
+python probe_nova_requisicao.py --cns &lt;CNS&gt;                       # + CADSUS pelo CNS
+python probe_nova_requisicao.py --cns &lt;CNS&gt; --unidade 35 \
+       --mamografia 02 --responsavel 3                            # até o Responsável</code></pre>
 <h2>1. O caminho</h2>
 <div class="tw"><table><thead><tr><th>#</th><th>Onde</th><th>O que acontece</th></tr></thead><tbody>
 <tr><td>1</td><td>EXAME → <strong>GERENCIAR EXAME</strong></td><td>tela de pesquisa (<code>/visao/exame/pesquisarExame.jsf</code>)</td></tr>
@@ -105,12 +111,27 @@ li{margin:3px 0}p,li{max-width:75ch}
 <div class="tw"><table><thead><tr><th>Campo do SISCAN</th><th>De onde sai</th></tr></thead><tbody>
 <tr><td><code>frm:cartaoSUS</code></td><td>CNS da ficha → e o CADSUS monta nome, nascimento, mãe, raça/cor e endereço</td></tr>
 <tr><td>Tipo de exame</td><td>procedimento da ficha (SIGTAP <code>0204030030</code> / SISREG <code>1305007</code> → Mamografia <code>01</code>)</td></tr>
-<tr><td>Unidade Requisitante</td><td><strong>CNES</strong> da unidade solicitante da ficha → <code>unidade_por_cnes()</code>, nunca o índice</td></tr>
+<tr><td>Unidade Requisitante</td><td><strong>CNES</strong> da unidade solicitante da ficha → <code>unidade_por_cnes()</code>, nunca o índice. Fora da conta → o operador escolhe (abaixo)</td></tr>
 <tr><td>Tipo de mamografia</td><td><strong>pela idade</strong> — ver a régua abaixo. O CID da ficha (<code>Z12.3</code>) sugere, mas quem decide é a idade</td></tr>
 <tr><td>Responsável</td><td>operador solicitante da ficha; casar por <strong>CNS do profissional</strong> (<code>responsavel_por_cns()</code>)</td></tr>
 <tr><td>Data da Solicitação</td><td><strong>a data em que o EXAME foi feito</strong> (DICOM → preenchimento da anamnese), não a da ficha — ver §13</td></tr>
 <tr><td>Conselho</td><td>derivado pelo SISCAN a partir do Responsável</td></tr>
 </tbody></table></div>
+<h3>Quando a unidade do pedido não está na conta do SISCAN</h3>
+<p>Cada conta enxerga a <strong>sua</strong> lista de unidades requisitantes (37 na conta do CDT). Recebido em produção: <em>"A unidade XXXXXXX não está entre as unidades requisitantes que esta conta do SISCAN enxerga"</em> — até 30/09/2026 isso era erro sem saída.</p>
+<p><strong>Regra (Bernardo, 30/09/2026):</strong> nesse caso a tela mostra a lista da conta e o <strong>operador escolhe</strong> por qual unidade enviar; a escolha fica registrada na anamnese (<code>siscan.unidadeRequisitanteEscolhida</code>: unidade escolhida, unidade do pedido, quem, quando) e aparece na tarja "Enviada ao SISCAN".</p>
+<ul>
+<li>A lista sai do próprio combo, depois do A4J do tipo de exame (<code>SiscanHtml.UnidadesRequisitantes</code>).</li>
+</ul>
+<p>  O preparo <strong>para antes do Avançar</strong> e devolve a lista; o preparo seguinte já vem com o CNES   escolhido (<code>?cnesUnidade=</code>), porque o <strong>Responsável é por unidade</strong> — sem unidade, sem lista.</p>
+<ul>
+<li>Com a unidade do pedido <strong>na</strong> conta, o servidor recusa outra (<code>siscan.unidade_do_pedido_disponivel</code>):</li>
+</ul>
+<p>  a troca é exceção, não atalho.</p>
+<ul>
+<li>Não é invenção nossa: o backfill de 23/09 mostrou que, digitando à mão, a unidade já lançava pela</li>
+</ul>
+<p>  "SECRETARIA MUNICIPAL DE SAUDE DE MARICA" no lugar da USF.</p>
 <h3>A régua do tipo de mamografia é a IDADE</h3>
 <p>Régua do CDT Maricá (Bernardo, 22/09/2026), em <code>tipo_mamografia_por_idade()</code>:</p>
 <div class="tw"><table><thead><tr><th>Idade na data de referência</th><th>Tipo</th></tr></thead><tbody>
@@ -259,13 +280,35 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Recebido em produção em 23/09/2026, ao salvar:</p>
 <p>&gt; Não é permitido informar no campo "Quando fez a última mamografia?" um ano inferior ao da última &gt; mamografia cadastrada.</p>
 <p>Ou seja: <code>frm:anoUltimaMamografia</code> não é campo livre. O SISCAN guarda, por paciente, o ano da última mamografia que conhece, e <strong>recusa um ano menor que esse</strong>.</p>
-<p>Consequência para nós: esse número vem da nossa anamnese (seção 7), preenchido pelo que a paciente lembra — e a paciente pode lembrar de um exame mais antigo que o último registrado no Ministério. Não dá para pré-validar do nosso lado: não sabemos o ano que eles têm. O certo é o que já é feito — deixar a mensagem deles chegar inteira até quem preencheu, para corrigir na anamnese e gerar de novo.</p>
+<p>Consequência para nós: esse número vem da nossa anamnese (seção 7), preenchido pelo que a paciente lembra — e a paciente pode lembrar de um exame mais antigo que o último registrado no Ministério.</p>
+<p>&gt; <strong>Correção de uma afirmação errada minha (30/09/2026).</strong> Eu tinha escrito aqui que "não dá para &gt; pré-validar do nosso lado: não sabemos o ano que eles têm". <strong>Sabemos — a própria tela diz.</strong> O &gt; Bernardo apontou: logo acima da pergunta aparece a frase &gt; <em>"O último exame realizado no SUS foi em 2022."</em> Estava nas capturas desde 07/08 &gt; (<code>11-amp.html</code>, <code>12-amostra.html</code>, <code>14-amp.html</code>…) e eu não tinha lido.</p>
+<p>Onde ela mora, medido nas capturas:</p>
+<pre><code>&lt;div id="frm:ultimaMamografia"&gt;
+  &lt;div class="grid-12-12 espacamento"&gt;&lt;label class="form-lbl"&gt;
+    O &amp;uacute;ltimo exame realizado no SUS foi em 2021.&lt;/label&gt;&lt;/div&gt;
+  &lt;fieldset&gt;&lt;legend&gt;QUANDO FEZ A &amp;Uacute;LTIMA MAMOGRAFIA?&lt;/legend&gt; … frm:anoUltimaMamografia …</code></pre>
+<ul>
+<li>A região <code>frm:ultimaMamografia</code> só é renderizada pelo A4J do <strong>"Fez mamografia alguma vez? — Sim"</strong></li>
+</ul>
+<p>  (o mesmo que abre o campo do ano). No assistente, isso é <code>AbrirCondicionaisAsync</code>.</p>
+<ul>
+<li>A frase só existe quando <strong>há</strong> exame anterior no SUS. Paciente sem histórico: a região abre sem</li>
+</ul>
+<p>  ela (<code>12-map-j_id105-01.html</code>).</p>
+<ul>
+<li>O <code>id</code> da região é nome estável, não <code>j_idNN</code>.</li>
+</ul>
+<p><strong>A regra (decisão do Bernardo, 30/09/2026):</strong> se o ano declarado é <strong>menor</strong> que o do SISCAN, o declarado está errado — vai o ano do SISCAN, a anamnese é corrigida junto (no mesmo <code>SaveChanges</code> do protocolo, porque o protocolo congela a anamnese) e o modal do desfecho avisa "2018 → 2022". O declarado fica guardado em <code>siscan.anoUltimaMamografiaDeclarado</code>. Ano igual ou maior passa como está (pode ter feito outra fora do SUS); ano em branco não é "declarado errado" e não é inventado. Código: <code>SiscanHtml.AnoDoUltimoExameNoSus</code> + <code>SiscanRequisicaoMapper.CorrigirAnoUltimaMamografia</code>.</p>
 <h2>15. Armadilha de análise: <code>at time zone</code> duas vezes inverte o sinal</h2>
 <p>Queimei uma conclusão inteira com isto em 23/09/2026. Para ler um <code>timestamptz</code> em horário de Brasília numa consulta de análise:</p>
-<p>```sql -- ERRADO: converte duas vezes, resultado UTC+3 (6 horas de erro) criado_em at time zone 'UTC' at time zone 'America/Sao_Paulo'</p>
-<p>-- CERTO: timestamptz -&gt; timestamp local criado_em at time zone 'America/Sao_Paulo' ```</p>
+<pre><code>-- ERRADO: converte duas vezes, resultado UTC+3 (6 horas de erro)
+criado_em at time zone 'UTC' at time zone 'America/Sao_Paulo'
+
+-- CERTO: timestamptz -&gt; timestamp local
+criado_em at time zone 'America/Sao_Paulo'</code></pre>
 <p>Prova rápida, para quem duvidar na hora:</p>
-<p>``<code>sql select (timestamptz '2026-09-23 12:00:00+00') at time zone 'America/Sao_Paulo';           -- 09:00 ✅ select (timestamptz '2026-09-23 12:00:00+00') at time zone 'UTC' at time zone 'America/Sao_Paulo'; -- 15:00 ❌ </code>``</p>
+<pre><code>select (timestamptz '2026-09-23 12:00:00+00') at time zone 'America/Sao_Paulo';           -- 09:00 ✅
+select (timestamptz '2026-09-23 12:00:00+00') at time zone 'UTC' at time zone 'America/Sao_Paulo'; -- 15:00 ❌</code></pre>
 <p>O primeiro <code>at time zone 'UTC'</code> já transforma o instante em <code>timestamp</code> sem fuso; o segundo então <strong>interpreta</strong> aquilo como hora de São Paulo e converte de volta, somando 3 em vez de subtrair.</p>
 <p><strong>Sintoma:</strong> comparações de dia que parecem boas demais — foi um "818 de 818" perfeito que me fez desconfiar e conferir. Número redondo demais em dado de produção é sinal, não prêmio.</p>
 </main>

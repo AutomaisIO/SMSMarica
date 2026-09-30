@@ -26,7 +26,7 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-09-25',
+  atualizadoEm: '2026-09-30',
   palavrasChave: [
     'anamnese',
     'mamografia',
@@ -64,6 +64,14 @@ export const artigoAnamnese: Artigo = {
     'sessão expirou',
     'reconectar',
     'GERENCIAR EXAME',
+    'ano da última mamografia',
+    'último exame realizado no SUS',
+    'ano inferior',
+    'ano corrigido',
+    'unidade requisitante',
+    'unidade não está na conta',
+    'escolher unidade',
+    'CNES',
   ],
   secoes: () => [
     {
@@ -252,7 +260,7 @@ export const artigoAnamnese: Artigo = {
               {
                 titulo: 'Confirmar',
                 detalhe:
-                  'A requisição nasce no SISCAN em nome da unidade que solicitou o exame, e os números voltam carimbados no pedido.',
+                  'A requisição nasce no SISCAN em nome da unidade que solicitou o exame (ou da que você escolheu, quando a do pedido não está na sua conta do SISCAN), e os números voltam carimbados no pedido.',
               },
             ]}
           />
@@ -352,7 +360,9 @@ export const artigoAnamnese: Artigo = {
       titulo: 'Os casos chatos',
       busca:
         'rastreamento diagnóstica idade 36 anos responsável não aparece lista vazia duplicada '
-        + 'duplicidade já tem requisição vincular ao pedido prontuário cartão SUS um ano erro falta responder',
+        + 'duplicidade já tem requisição vincular ao pedido prontuário cartão SUS um ano erro falta responder '
+        + 'ano da última mamografia corrigido último exame realizado no SUS ano inferior declarado '
+        + 'unidade requisitante não está na conta escolher unidade CNES enviar pela unidade secretaria',
       conteudo: (
         <>
           <Sub>Rastreamento ou diagnóstica — quem decide é a idade</Sub>
@@ -387,12 +397,46 @@ export const artigoAnamnese: Artigo = {
             só quem conhece o caso sabe resolver.
           </Callout>
 
+          <Sub>“A unidade do pedido não está na sua conta do SISCAN”</Sub>
+          <P>
+            Cada conta do SISCAN enxerga uma lista própria de <strong>unidades requisitantes</strong>.
+            Quando a unidade que pediu o exame não está nela, o modal mostra essa lista e pergunta{' '}
+            <strong>por qual unidade enviar</strong>. Escolhida a unidade, o sistema busca no SISCAN
+            os responsáveis dela — a lista de quem pode assinar é por unidade — e aí dá para gerar.
+          </P>
+          <P>
+            A escolha fica <strong>registrada na anamnese</strong>: a tarja “Enviada ao SISCAN” passa
+            a dizer por qual unidade a requisição saiu, quem escolheu, quando, e qual era a unidade
+            do pedido. Assim, quem abrir a requisição lá e vir outro nome acha aqui o porquê.
+          </P>
+          <Callout tipo="regra" titulo="Só quando a do pedido não está disponível">
+            Se a unidade do pedido está na sua conta, a requisição sai por ela — o sistema não
+            oferece a troca, e recusa se alguém tentar. Enviar em nome de outra unidade é exceção,
+            para não deixar a paciente sem requisição; não é atalho.
+          </Callout>
+
           <Sub>O responsável não está na lista</Sub>
           <P>
             A lista é a do SISCAN daquela unidade, não a nossa. Se quem pediu o exame não aparece,
             é porque essa pessoa não está cadastrada no SISCAN naquela unidade para aquele tipo de
             mamografia — e não há o que adivinhar. Escolha outro profissional da lista ou trate o
             cadastro lá.
+          </P>
+
+          <Sub>“Corrigimos o ano da última mamografia”</Sub>
+          <P>
+            O SISCAN guarda o ano da última mamografia que a paciente fez pelo SUS e{' '}
+            <strong>não aceita</strong> um ano anterior a esse — antes, a requisição voltava com
+            erro. Ao gerar, o sistema lê o que o próprio SISCAN mostra (“O último exame realizado no
+            SUS foi em …”) e compara com a anamnese. Se a paciente disse 2018 e lá consta 2022,{' '}
+            <strong>vai 2022</strong>, a anamnese é corrigida para 2022 junto, e o modal do
+            resultado avisa em amarelo o que foi trocado.
+          </P>
+          <P>
+            Na leitura da anamnese, o ano aparece com a nota{' '}
+            <em>“corrigido pelo SISCAN — declarado 2018”</em>: ninguém precisa achar que foi
+            anotado errado aqui. Ano igual ou mais recente que o do SISCAN vai como está — ela pode
+            ter feito outra depois, fora do SUS.
           </P>
 
           <Sub>“Falta responder na anamnese”</Sub>
