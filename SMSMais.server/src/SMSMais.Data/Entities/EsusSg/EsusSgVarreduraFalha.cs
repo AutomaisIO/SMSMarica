@@ -3,7 +3,7 @@ namespace SMSMais.Data.Entities.EsusSg;
 /// <summary>Natureza da falha — separa "não fechou a conta" de "quebrou".</summary>
 public enum TipoFalhaEsusSg
 {
-    /// <summary>O mês de agendados (ou a fila) não fechou lido = declarado.</summary>
+    /// <summary>A fatia de agendados (ou a fila) não fechou únicos = declarado.</summary>
     ContagemNaoFechou = 1,
 
     ErroFila = 2,

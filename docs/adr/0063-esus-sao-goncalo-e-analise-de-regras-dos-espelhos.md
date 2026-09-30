@@ -50,7 +50,7 @@ no SER, no SERNIT ou no ESUS nunca era conferido.
   regulação (`MapaSituacaoExterna.DeEsusSg` devolve nulo) nem na ficha do paciente (situação própria
   "Saiu da fila").
 - A saída só é declarada quando a leitura **fechou a conta** (únicos = declarado) na fila daquele tipo
-  e em todos os meses de agendados. Falha de leitura nunca vira "saiu da fila". A rodada com falha
+  e em todas as fatias de agendados. Falha de leitura nunca vira "saiu da fila". A rodada com falha
   termina como `Parcial`, nunca como `Concluída`.
 - A trilha é **montada**. O ESUS não mostra histórico por pedido à conta de Maricá. Os eventos saem
   dos marcos com data e autor das listas (inclusão na fila pelo servidor de Maricá, cada sessão
@@ -58,9 +58,13 @@ no SER, no SERNIT ou no ESUS nunca era conferido.
   reagendamento, resposta do paciente, saída). Evento de diferença carrega a data em que a varredura
   percebeu, e diz isso. A tabela de eventos usa os **mesmos nomes de coluna** do `sernit_evento`, e as
   estatísticas de operadores funcionam só com o prefixo novo.
-- Motor igual ao do SERNIT: fila de capacidade 1, runner que retoma na subida pelo cursor (mês de
-  agendados), agendador diário configurável na tela. A **carga inicial** lê todo o histórico mês a
-  mês desde 2015. A **diária** lê a fila inteira e os agendados de 45 dias atrás a 400 dias à frente.
+- Motor igual ao do SERNIT: fila de capacidade 1, runner que retoma na subida, agendador diário
+  configurável na tela. A **carga inicial** lê todo o histórico desde 2015; a **diária** lê a fila
+  inteira e os agendados de 45 dias atrás a 400 dias à frente. Os agendados da janela são lidos
+  **inteiros** (fatias de um ano, página de 1000) e só então aplicados, **agrupados por pedido**: um
+  tratamento com sessões em meses diferentes precisa ter todas à vista para que a "próxima sessão"
+  e a detecção de remarcação saiam certas. Aplicar mês a mês, na primeira versão, sobrescrevia a
+  próxima sessão com a do último mês lido. A retomada relê a janela (é barato e idempotente).
   A janela à frente é larga para que um pedido agendado para daqui a meses não seja dado como sumido.
 - Catálogo: o combo "procedimentos reguláveis por solicitante" do próprio ESUS (14 exames medidos)
   vira origem do catálogo canônico com `Sistema = EsusSg`. É o que dá procedimento canônico aos pedidos

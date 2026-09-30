@@ -33,7 +33,8 @@ public interface IEsusSgSincronizacaoService
 /// <list type="number">
 /// <item><b>Fila</b> — a fila inteira de exame e de consulta (650 linhas em ~7 páginas). Posição,
 /// prioridade e pendência vêm daqui.</item>
-/// <item><b>Agendados</b> — mês a mês na janela de DATA DO AGENDAMENTO, com cursor por mês (a carga
+/// <item><b>Agendados</b> — a janela de DATA DO AGENDAMENTO inteira, lida em fatias de até um ano e
+/// aplicada agrupada por pedido (a carga
 /// inicial lê de 2015 em diante: 4.924 exames de 2019 a 2026 medidos).</item>
 /// <item><b>Saídas</b> — quem estava na fila e não aparece em nenhuma das duas listas vira
 /// <see cref="SituacaoEsusSg.SaiuDaFila"/>. <b>Só</b> quando a fila daquele tipo fechou lido =
@@ -76,7 +77,7 @@ public sealed class EsusSgSincronizacaoService(
             execucao.Retomadas++;
             execucao.RetomadaEm = DateTime.UtcNow;
             logger.LogInformation(
-                "ESUS SG: retomando execução {Execucao} na fase {Fase} (retomada nº {N}); cursor mês={Mes}.",
+                "ESUS SG: retomando execução {Execucao} na fase {Fase} (retomada nº {N}); agendados lidos até {Mes}.",
                 execucao.Id, execucao.Fase, execucao.Retomadas, execucao.CursorMes);
         }
         else
@@ -289,19 +290,23 @@ public sealed class EsusSgSincronizacaoService(
 
     // ------------------------------------------------------------------ agendados
 
+    /// <summary>
+    /// Lê a janela INTEIRA de agendados em fatias de até um ano (página de 1000: 2019 inteiro, 1.405
+    /// linhas, veio em 4,3 s) e só então aplica, agrupando por pedido. Aplicar mês a mês estava errado:
+    /// um tratamento com sessões em outubro e novembro tinha a "próxima sessão" sobrescrita pelo
+    /// último mês lido, e ainda gerava um reagendamento que não houve. Retomada relê a janela — é
+    /// barato e idempotente; <see cref="EsusSgVarreduraExecucao.CursorMes"/> só marca o progresso.
+    /// </summary>
     private async Task<bool> VarrerAgendadosAsync(EsusSgVarreduraExecucao execucao, CancellationToken cancellationToken)
     {
-        var primeiroMes = new DateOnly(execucao.JanelaInicio.Year, execucao.JanelaInicio.Month, 1);
-        var mes = execucao.CursorMes is { } cursor && cursor > primeiroMes ? cursor : primeiroMes;
-        var completo = execucao.MesesIncompletos == 0;
+        var completo = true;
+        var porTipo = Tipos.ToDictionary(t => t, _ => new List<EsusSgLinhaAgendado>());
 
-        for (; mes <= execucao.JanelaFim; mes = mes.AddMonths(1))
+        for (var de = execucao.JanelaInicio; de <= execucao.JanelaFim;)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            var de = mes < execucao.JanelaInicio ? execucao.JanelaInicio : mes;
-            var ultimoDia = mes.AddMonths(1).AddDays(-1);
-            var ate = ultimoDia > execucao.JanelaFim ? execucao.JanelaFim : ultimoDia;
+            var fimDaFatia = de.AddYears(1).AddDays(-1);
+            var ate = fimDaFatia > execucao.JanelaFim ? execucao.JanelaFim : fimDaFatia;
 
             foreach (var tipo in Tipos)
             {
@@ -312,7 +317,7 @@ public sealed class EsusSgSincronizacaoService(
                 }
                 catch (EsusSgRespostaErroException ex)
                 {
-                    db.EsusSgVarreduraFalhas.Add(NovaFalha(execucao, TipoFalhaEsusSg.ErroAgendados, tipo, mes, ex.Message, null));
+                    db.EsusSgVarreduraFalhas.Add(NovaFalha(execucao, TipoFalhaEsusSg.ErroAgendados, tipo, de, ex.Message, null));
                     execucao.MesesIncompletos++;
                     completo = false;
                     continue;
@@ -320,26 +325,33 @@ public sealed class EsusSgSincronizacaoService(
 
                 execucao.Requisicoes += leitura.Requisicoes;
                 execucao.AgendadosLidos += leitura.Linhas.Count;
+                porTipo[tipo].AddRange(leitura.Linhas);
                 if (!leitura.Completa)
                 {
-                    db.EsusSgVarreduraFalhas.Add(NovaFalha(execucao, TipoFalhaEsusSg.ContagemNaoFechou, tipo, mes,
-                        $"Agendados de {tipo} em {mes:MM/yyyy}: lido {leitura.Linhas.Count} ≠ declarado {leitura.Declarado}.", null));
+                    db.EsusSgVarreduraFalhas.Add(NovaFalha(execucao, TipoFalhaEsusSg.ContagemNaoFechou, tipo, de,
+                        $"Agendados de {tipo} de {de:dd/MM/yyyy} a {ate:dd/MM/yyyy}: {leitura.Linhas.Count} únicos ≠ "
+                        + $"declarado {leitura.Declarado}.", null));
                     execucao.MesesIncompletos++;
                     completo = false;
                 }
-
-                foreach (var lote in leitura.Linhas.Chunk(TamanhoLote))
-                {
-                    await AplicarAgendadosAsync(execucao, tipo, lote, cancellationToken);
-                }
             }
 
-            // Cursor e lote na mesma gravação: a retomada recomeça do mês seguinte, nunca pula.
-            execucao.CursorMes = mes.AddMonths(1);
+            execucao.CursorMes = ate.AddDays(1);
             execucao.UltimoSinalEm = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
+            de = ate.AddDays(1);
         }
 
+        // Aplica por PEDIDO: cada lote leva pedidos inteiros (todas as sessões da janela juntas).
+        foreach (var tipo in Tipos)
+        {
+            foreach (var lote in porTipo[tipo].GroupBy(l => l.IdEsusSg, StringComparer.Ordinal).Chunk(TamanhoLote))
+            {
+                await AplicarAgendadosAsync(execucao, tipo, [.. lote.SelectMany(g => g)], cancellationToken);
+                execucao.UltimoSinalEm = DateTime.UtcNow;
+            }
+        }
+        await db.SaveChangesAsync(cancellationToken);
         return completo;
     }
 
@@ -378,6 +390,7 @@ public sealed class EsusSgSincronizacaoService(
 
             var situacaoAnterior = atual.Situacao;
             var dataAnterior = atual.DataHoraAgendadaTexto ?? atual.DataAgendada?.ToString("dd/MM/yyyy");
+            var diaAnterior = atual.DataAgendada;
             var respostaAnterior = atual.NotificacaoResposta;
             var retrato = RetratoDoPaciente(atual);
 
@@ -392,10 +405,12 @@ public sealed class EsusSgSincronizacaoService(
             {
                 MudarSituacao(execucao, atual, situacaoAnterior, SituacaoEsusSg.Agendada, agora);
             }
-            else if (!string.IsNullOrWhiteSpace(dataAnterior) && !datasDoPedido.Contains(dataAnterior))
+            else if (!string.IsNullOrWhiteSpace(dataAnterior) && !datasDoPedido.Contains(dataAnterior)
+                     && diaAnterior is { } dia && dia >= execucao.JanelaInicio && dia <= execucao.JanelaFim)
             {
-                // Remarcação de verdade: a data que tínhamos SUMIU do conjunto de sessões do pedido.
-                // (A troca do principal da sessão 1 para a 2, quando a 1 passa, não é remarcação.)
+                // Remarcação de verdade: a data que tínhamos SUMIU do conjunto de sessões do pedido —
+                // e só dá para afirmar isso se ela caía DENTRO da janela lida. (A troca do principal
+                // da sessão 1 para a 2, quando a 1 passa, não é remarcação.)
                 var dataNova = TextoData(principal);
                 RegistrarGatilho(execucao, atual, TipoGatilhoEsusSg.MudancaAgendamento,
                     $"{dataNova}@{agora:yyyyMMddHHmmss}", SituacaoEsusSg.Agendada, SituacaoEsusSg.Agendada,

@@ -69,15 +69,15 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <ul>
 <li>A saída só é declarada quando a leitura <strong>fechou a conta</strong> (únicos = declarado) na fila daquele tipo</li>
 </ul>
-<p>  e em todos os meses de agendados. Falha de leitura nunca vira "saiu da fila". A rodada com falha   termina como <code>Parcial</code>, nunca como <code>Concluída</code>.</p>
+<p>  e em todas as fatias de agendados. Falha de leitura nunca vira "saiu da fila". A rodada com falha   termina como <code>Parcial</code>, nunca como <code>Concluída</code>.</p>
 <ul>
 <li>A trilha é <strong>montada</strong>. O ESUS não mostra histórico por pedido à conta de Maricá. Os eventos saem</li>
 </ul>
 <p>  dos marcos com data e autor das listas (inclusão na fila pelo servidor de Maricá, cada sessão   agendada pelo servidor de São Gonçalo) e das diferenças entre rodadas (prioridade, pendência,   reagendamento, resposta do paciente, saída). Evento de diferença carrega a data em que a varredura   percebeu, e diz isso. A tabela de eventos usa os <strong>mesmos nomes de coluna</strong> do <code>sernit_evento</code>, e as   estatísticas de operadores funcionam só com o prefixo novo.</p>
 <ul>
-<li>Motor igual ao do SERNIT: fila de capacidade 1, runner que retoma na subida pelo cursor (mês de</li>
+<li>Motor igual ao do SERNIT: fila de capacidade 1, runner que retoma na subida, agendador diário</li>
 </ul>
-<p>  agendados), agendador diário configurável na tela. A <strong>carga inicial</strong> lê todo o histórico mês a   mês desde 2015. A <strong>diária</strong> lê a fila inteira e os agendados de 45 dias atrás a 400 dias à frente.   A janela à frente é larga para que um pedido agendado para daqui a meses não seja dado como sumido.</p>
+<p>  configurável na tela. A <strong>carga inicial</strong> lê todo o histórico desde 2015; a <strong>diária</strong> lê a fila   inteira e os agendados de 45 dias atrás a 400 dias à frente. Os agendados da janela são lidos   <strong>inteiros</strong> (fatias de um ano, página de 1000) e só então aplicados, <strong>agrupados por pedido</strong>: um   tratamento com sessões em meses diferentes precisa ter todas à vista para que a "próxima sessão"   e a detecção de remarcação saiam certas. Aplicar mês a mês, na primeira versão, sobrescrevia a   próxima sessão com a do último mês lido. A retomada relê a janela (é barato e idempotente).   A janela à frente é larga para que um pedido agendado para daqui a meses não seja dado como sumido.</p>
 <ul>
 <li>Catálogo: o combo "procedimentos reguláveis por solicitante" do próprio ESUS (14 exames medidos)</li>
 </ul>

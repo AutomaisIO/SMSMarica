@@ -115,8 +115,8 @@ public sealed class EsusSgConfiguracaoController(
         [FromQuery] int limite = 20, CancellationToken cancellationToken = default) =>
         motor.ListarExecucoesAsync(limite, cancellationToken);
 
-    /// <summary>Enfileira uma rodada (202). A carga inicial lê TODO o histórico de agendados, mês a
-    /// mês desde 2015 — leva dezenas de minutos e é retomável se o serviço reiniciar.</summary>
+    /// <summary>Enfileira uma rodada (202). A carga inicial lê TODO o histórico de agendados desde
+    /// 2015, em fatias de um ano — alguns minutos, e é retomável se o serviço reiniciar.</summary>
     [HttpPost("varreduras")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status202Accepted)]

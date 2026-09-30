@@ -49,7 +49,7 @@ const ROTULO_STATUS: Record<StatusVarreduraEsusSg, string> = {
 
 /**
  * "Parcial" é âmbar tracejado e com ícone — tem de saltar aos olhos ao lado de "Concluída": é a
- * rodada que DECLAROU cobertura incompleta (um mês de agendados não fechou a conta lido =
+ * rodada que DECLAROU cobertura incompleta (uma fatia de agendados não fechou a conta lido =
  * declarado, ou uma fila não pôde ser lida).
  */
 const CLASSE_STATUS: Record<StatusVarreduraEsusSg, string> = {
@@ -65,12 +65,12 @@ const CLASSE_STATUS: Record<StatusVarreduraEsusSg, string> = {
 
 const DICA_STATUS: Partial<Record<StatusVarreduraEsusSg, string>> = {
   Parcial:
-    'Cobertura incompleta, declarada: algum mês de agendados não fechou a conta (lido ≠ declarado pelo ESUS) ou uma fila não pôde ser lida. Rode de novo.',
+    'Cobertura incompleta, declarada: alguma fatia de agendados não fechou a conta (lido ≠ declarado pelo ESUS) ou uma fila não pôde ser lida. Rode de novo.',
   Interrompida: 'Parada por queda do serviço — retoma sozinha pelo cursor.',
 };
 
 const ROTULO_MODO: Record<ModoVarreduraEsusSg, string> = {
-  CargaInicial: 'Carga inicial — todo o histórico (mês a mês desde 2015; dezenas de minutos)',
+  CargaInicial: 'Carga inicial — todo o histórico desde 2015 (em fatias de um ano; alguns minutos)',
   Diaria: 'Diária — fila + agendados de 45 dias atrás a 400 dias à frente',
   SomenteFila: 'Só a fila',
 };
@@ -94,7 +94,7 @@ function descreverFase(x: ExecucaoEsusSg): string {
     case 'Fila':
       return 'Fila · lendo a fila de regulação';
     case 'Agendados':
-      return x.cursorMes ? `Agendados · mês ${mesAno(x.cursorMes)}` : 'Agendados · começando';
+      return x.cursorMes ? `Agendados · lidos até ${mesAno(x.cursorMes)}` : 'Agendados · começando';
     case 'Finalizada':
       return 'Finalizada';
     default:
@@ -292,7 +292,7 @@ export function AbaEsusSgConfiguracao() {
           // > 0 = meses de agendados que NÃO fecharam a conta. Precisa gritar.
           <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
             <AlertTriangle className="size-3.5" />
-            {x.mesesIncompletos} mês(es) incompleto(s)
+            {x.mesesIncompletos} fatia(s) incompleta(s)
           </span>
         ) : (
           <span className="text-xs text-slate-500">completa</span>

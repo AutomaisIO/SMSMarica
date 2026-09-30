@@ -5,7 +5,7 @@ namespace SMSMais.Data.Entities.EsusSg;
 /// <summary>Modo da rodada do motor do ESUS SG.</summary>
 public enum ModoVarreduraEsusSg
 {
-    /// <summary><b>Carga inicial:</b> a fila inteira + os agendados de TODO o histórico, mês a mês
+    /// <summary><b>Carga inicial:</b> a fila inteira + os agendados de TODO o histórico, em fatias de um ano
     /// (medido: 4.924 exames agendados de 2019 a 2026).</summary>
     CargaInicial = 1,
 
@@ -32,7 +32,7 @@ public enum StatusVarreduraEsusSg
     EmExecucao = 2,
     Concluida = 3,
 
-    /// <summary>Cobertura incompleta, declarada (um mês de agendados não fechou a conta
+    /// <summary>Cobertura incompleta, declarada (uma fatia de agendados não fechou a conta
     /// lido = declarado, ou uma fila não pôde ser lida).</summary>
     Parcial = 4,
 
@@ -77,7 +77,7 @@ public class EsusSgVarreduraExecucao
     // ---- Ponteiro de retomada ----
     public FaseVarreduraEsusSg Fase { get; set; } = FaseVarreduraEsusSg.Fila;
 
-    /// <summary>Primeiro dia do próximo mês de agendados a ler (fase de agendados).</summary>
+    /// <summary>Até onde os agendados já foram lidos (marca de progresso; a retomada relê a janela).</summary>
     public DateOnly? CursorMes { get; set; }
 
     public int Retomadas { get; set; }

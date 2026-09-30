@@ -64,7 +64,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
     'só a fila',
     'parcial',
     'cobertura incompleta',
-    'meses incompletos',
+    'fatias incompletas',
     'retomada',
     'interrompida',
     'credencial',
@@ -354,7 +354,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
       id: 'varredura',
       titulo: 'Como a varredura funciona (carga inicial × diária)',
       busca:
-        'varredura carga inicial todo histórico mês a mês 2015 dezenas de minutos diária janela 45 dias atrás 400 dias frente só a fila detecta saída retomável cursor retomada interrompida sinal',
+        'varredura carga inicial todo histórico fatias de um ano 2015 alguns minutos diária janela 45 dias atrás 400 dias frente só a fila detecta saída retomável cursor retomada interrompida sinal',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -362,7 +362,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
               {
                 termo: 'Carga inicial',
                 descricao:
-                  'A fila inteira e os agendados de TODO o histórico, mês a mês desde 2015. Leva dezenas de minutos. É para a primeira vez (ou para refazer a base).',
+                  'A fila inteira e os agendados de TODO o histórico desde 2015, lidos em fatias de um ano e aplicados pedido a pedido (um tratamento com várias sessões fica com todas). Leva alguns minutos. É para a primeira vez (ou para refazer a base).',
               },
               {
                 termo: 'Diária',
@@ -391,14 +391,15 @@ export const artigoEsusSaoGoncalo: Artigo = {
     {
       id: 'parcial',
       titulo: 'Por que existe a rodada “Parcial”',
-      busca: 'parcial concluída cobertura incompleta meses incompletos lido declarado contagem não fechou fila não lida rodar de novo',
+      busca: 'parcial concluída cobertura incompleta fatias incompletas lido declarado contagem não fechou fila não lida rodar de novo',
       conteudo: (
         <>
           <P>
-            Para cada mês de agendados, o ESUS diz quantos registros existem, e a varredura confere se
-            leu todos. Quando algum mês <strong>não fecha a conta</strong> (lido ≠ declarado), ou uma
-            fila não pôde ser lida, a rodada termina como <SeloRef cor="alerta">Parcial</SeloRef> — e
-            não como Concluída —, com a coluna Cobertura dizendo quantos meses ficaram incompletos.
+            Para cada fatia de agendados (até um ano), o ESUS diz quantos registros existem, e a
+            varredura confere se leu todos. Quando alguma fatia <strong>não fecha a conta</strong>
+            (lido ≠ declarado), ou uma fila não pôde ser lida, a rodada termina como{' '}
+            <SeloRef cor="alerta">Parcial</SeloRef> — e não como Concluída —, com a coluna Cobertura
+            dizendo quantas fatias ficaram incompletas.
           </P>
           <Callout tipo="regra" titulo="Declarado, não escondido">
             Uma rodada parcial avisa que a cobertura ficou incompleta em vez de fingir que leu tudo.
