@@ -275,7 +275,7 @@ public sealed class SiscanRequisicaoService(
         {
             var mensagens = SiscanHtml.Mensagens(respostaDoc);
             var motivo = mensagens.Count > 0 ? string.Join(" · ", mensagens.Take(3)) : "sem mensagem";
-            await RegistrarErroAsync(caso.Exame, motivo, cancellationToken);
+            await RegistrarRecusaAsync(caso, "Salvar", motivo, cancellationToken);
 
             throw new ValidacaoException(
                 "siscan.requisicao_nao_confirmada",
@@ -356,6 +356,17 @@ public sealed class SiscanRequisicaoService(
         html = await Passo("digitar Cartão SUS",
             () => DigitarCartaoSusAsync(sessao, htmlNovoExame, caso, cancellationToken));
 
+        // O CADSUS monta a paciente e o SISCAN trava esses campos. Vazio aqui quase sempre vira
+        // recusa no Avançar — e registrar já é o que permite mapear o caso depois.
+        var semNoCadsus = SiscanHtml.CamposObrigatoriosDoCadsus(SiscanHtml.Documento(html))
+            .Where(c => c.Vazio).Select(c => c.Rotulo).ToList();
+        if (semNoCadsus.Count > 0)
+        {
+            logger.LogWarning(
+                "SISCAN[{Accession}]: o CADSUS veio sem {Campos} — campos obrigatórios e travados no SISCAN.",
+                caso.Exame.AccessionNumber, string.Join(", ", semNoCadsus));
+        }
+
         var htmlCns = html;
         html = await Passo("marcar tipo de exame",
             () => MarcarTipoExameAsync(sessao, htmlCns, cancellationToken));
@@ -375,14 +386,30 @@ public sealed class SiscanRequisicaoService(
         if (!doPedidoNaConta)
         {
             logger.LogWarning(
-                "SISCAN[{Accession}]: unidade do pedido (CNES {CnesPedido}) fora da conta; enviando "
-                + "pela escolhida pelo operador: CNES {Cnes} {Nome}.",
+                "SISCAN[{Accession}]: unidade do pedido (CNES {CnesPedido}) fora da conta; usando a "
+                + "escolhida pelo operador: CNES {Cnes} {Nome}.",
                 caso.Exame.AccessionNumber, caso.CnesUnidade, unidade.Cnes, unidade.Nome);
         }
 
         var htmlTipo = html;
         html = await Passo("Avançar",
             () => AvancarAsync(sessao, htmlTipo, unidade, cancellationToken));
+
+        var docAvancar = SiscanHtml.Documento(html);
+        var titulosAvancar = SiscanHtml.Titulos(docAvancar);
+        if (!titulosAvancar.Any(t => t.Contains("SOLICITAR", StringComparison.OrdinalIgnoreCase)))
+        {
+            // Recusa no Avançar acontece no PREPARO, que não grava nada no SISCAN — mas a mensagem
+            // deles precisa ficar registrada: foi assim que a recusa por Raça/Cor de 30/09/2026
+            // passou sem deixar rastro além de um 400.
+            var (codigo, mensagem) = ExplicarRecusaNoAvancar(
+                SiscanHtml.Mensagens(docAvancar),
+                SiscanHtml.CamposObrigatoriosDoCadsus(SiscanHtml.Documento(htmlTipo)),
+                titulosAvancar);
+
+            await RegistrarRecusaAsync(caso, "Avançar", mensagem, cancellationToken);
+            throw new ValidacaoException(codigo, mensagem);
+        }
 
         var htmlEtapa2 = html;
         html = await Passo($"marcar tipo de mamografia {caso.TipoMamografia}",
@@ -536,21 +563,56 @@ public sealed class SiscanRequisicaoService(
             ["frm:botaoAvancar"] = "frm:botaoAvancar",
         };
 
-        var resultado = await sessao.SubmeterFormAsync(
+        // Se a tela seguinte abriu é o percurso quem confere — é ele que registra a recusa.
+        return await sessao.SubmeterFormAsync(
             html, SiscanHtml.FormPrincipal, extras, cancellationToken,
             SiscanWebSessao.NavegacaoDaRequisicao);
+    }
 
-        var titulos = SiscanHtml.Titulos(SiscanHtml.Documento(resultado));
-        if (!titulos.Any(t => t.Contains("SOLICITAR", StringComparison.OrdinalIgnoreCase)))
+    /// <summary>
+    /// Traduz a recusa do Avançar em algo que a pessoa consegue resolver.
+    ///
+    /// <para><b>O caso que motivou</b> (30/09/2026): o SISCAN recusou por <b>Raça/Cor</b>. Esse
+    /// dado, como nome da mãe e endereço, vem do CADSUS e fica <b>travado</b> na tela deles — não
+    /// há como escolher lá, e o que postássemos seria descartado. A própria tela manda corrigir no
+    /// CADSUSWEB. Então a resposta útil não é um combo: é dizer qual campo, de onde ele vem e onde
+    /// se corrige.</para>
+    ///
+    /// <para>Culpa-se o CADSUS só com evidência: campo citado na mensagem do SISCAN, ou — quando
+    /// ele recusa sem dizer nada — campo obrigatório que veio vazio. Mensagem que não cita campo do
+    /// CADSUS segue como recusa genérica, com o texto deles inteiro.</para>
+    /// </summary>
+    public static (string Codigo, string Mensagem) ExplicarRecusaNoAvancar(
+        IReadOnlyList<string> mensagens, IReadOnlyList<SiscanHtml.CampoCadsus> doCadsus,
+        IReadOnlyList<string> titulos)
+    {
+        var textoDeles = mensagens.Count > 0 ? string.Join(" · ", mensagens.Take(3)) : null;
+
+        var culpados = doCadsus
+            .Where(c => mensagens.Any(m => SiscanHtml.MencionaRotulo(m, c.Rotulo)))
+            .Select(c => c.Rotulo)
+            .Distinct()
+            .ToList();
+        if (culpados.Count == 0 && mensagens.Count == 0)
         {
-            var mensagens = SiscanHtml.Mensagens(SiscanHtml.Documento(resultado));
-            throw new ValidacaoException(
-                "siscan.avancar_recusado",
-                "O SISCAN não abriu a tela da requisição. "
-                + (mensagens.Count > 0 ? string.Join(" · ", mensagens.Take(2)) : $"Tela: {string.Join(", ", titulos)}"));
+            culpados = doCadsus.Where(c => c.Vazio).Select(c => c.Rotulo).Distinct().ToList();
         }
 
-        return resultado;
+        if (culpados.Count == 0)
+        {
+            return ("siscan.avancar_recusado",
+                "O SISCAN não abriu a tela da requisição. "
+                + (textoDeles ?? $"Tela: {string.Join(", ", titulos)}"));
+        }
+
+        var varios = culpados.Count > 1;
+        return ("siscan.cadastro_cadsus_incompleto",
+            (textoDeles is null ? string.Empty : $"O SISCAN recusou: {textoDeles}. ")
+            + $"{(varios ? "Os campos" : "O campo")} {string.Join(", ", culpados)} "
+            + $"{(varios ? "vêm" : "vem")} do cadastro nacional da paciente (CADSUSWEB) e "
+            + $"{(varios ? "ficam travados" : "fica travado")} no SISCAN — não dá para preencher lá nem "
+            + "por aqui. Corrija o cadastro dela no CADSUSWEB e gere de novo: o SISCAN traz o dado "
+            + "atualizado.");
     }
 
     private static async Task<string> MarcarTipoMamografiaAsync(
@@ -1160,6 +1222,31 @@ public sealed class SiscanRequisicaoService(
                 .Where(u => u.Id == id)
                 .Select(u => u.NomeCompleto)
                 .FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>
+    /// Toda recusa do SISCAN deixa rastro em dois lugares: o log (com o passo) e o próprio pedido
+    /// (<c>siscan_erro</c>, a última recusa — limpa quando a requisição sai). Sem isto, recusa no
+    /// preparo virava só um 400 no log de acesso, sem a mensagem deles.
+    /// </summary>
+    private async Task RegistrarRecusaAsync(
+        Caso caso, string passo, string motivo, CancellationToken cancellationToken)
+    {
+        logger.LogWarning(
+            "SISCAN[{Accession}]: RECUSA no passo {Passo} — {Motivo}",
+            caso.Exame.AccessionNumber, passo, motivo);
+
+        // Gravar é o rastro, não o assunto: se falhar, a mensagem do SISCAN ainda tem de chegar a
+        // quem está na tela — em vez de virar um 500 que a esconde.
+        try
+        {
+            await RegistrarErroAsync(caso.Exame, $"{passo}: {motivo}", cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            logger.LogWarning(e, "SISCAN[{Accession}]: não consegui gravar a recusa no pedido.",
+                caso.Exame.AccessionNumber);
+        }
+    }
 
     private async Task RegistrarErroAsync(
         ExameImagem exame, string motivo, CancellationToken cancellationToken)

@@ -57,6 +57,19 @@ python probe_nova_requisicao.py --cns &lt;CNS&gt; --unidade 35 \
 </tbody></table></div>
 <p>Junto vem, de brinde, <strong>o histórico de exames daquele paciente</strong> (<code>frm:listaExamePacientePaginada</code>, com link <em>Visualizar Requisição do Exame</em> por linha) e o botão <strong>Atualizar Dados do Paciente</strong>. Isso faz da tela de Novo Exame um caminho barato para <em>ler</em> o que o SISCAN sabe de um paciente pelo CNS — sem passar pela pesquisa com período obrigatório.</p>
 <p>Campo <code>disabled</code> <strong>não se reposta</strong> (o navegador não posta, e o SISCAN os deriva do CADSUS). Quem tentar "corrigir" nome ou endereço por POST está perdendo tempo: o servidor descarta.</p>
+<h3>Quando o CADSUS vem sem um desses campos (Raça/Cor, 30/09/2026)</h3>
+<p>Recebido em produção: o <strong>Avançar</strong> recusou por <strong>Raça/Cor</strong> — a paciente estava sem esse dado no CADSUS. Não há combo a oferecer: o campo é <code>disabled</code> e o SISCAN manda corrigir <strong>no CADSUSWEB</strong>. A própria tela tem, logo abaixo dos dados, o bloco <em>ATUALIZAR CADASTRO NO CADSUSWEB</em> com dois links:</p>
+<ul>
+<li><strong>"Atualizar Dados do Paciente"</strong> (A4J, <code>title</code> estável, id <code>j_idNN</code>) — *"traz os dados atualizados</li>
+</ul>
+<p>  do paciente de acordo com o que se encontra no CADSUSWEB"*;</p>
+<ul>
+<li><strong>"Corrigir/Atualizar Dados do Paciente"</strong> → `https://cadastro.saude.gov.br/novocartao/?…</li>
+</ul>
+<p>  usuarioSelecionado=&lt;CNS&gt;&amp;URL_INTEGRACAO_RETORNO=/visao/integracao/cadSUSNovoExame.jsf` — <em>"ao   retornar ao SISCAN, os dados já virão atualizados"</em>.</p>
+<p>O que o painel faz: lê os obrigatórios <code>pessoaCadsus</code> (<code>SiscanHtml.CamposObrigatoriosDoCadsus</code> — o rótulo de Raça/Cor é <code>&lt;label id="frm:lblRacaCor"&gt;</code>, <strong>sem <code>for</code></strong>), e, se o Avançar é recusado citando um deles (ou recusado sem mensagem com um deles vazio), responde <code>siscan.cadastro_cadsus_incompleto</code> dizendo qual campo e com o link do CADSUSWEB.</p>
+<p><strong>Ainda não medido:</strong> se, depois de corrigir no CADSUSWEB, só redigitar o CNS já traz o dado novo ou se é preciso o A4J "Atualizar Dados do Paciente". O log do próximo caso responde.</p>
+<p><strong>Toda recusa agora deixa rastro</strong> (antes, recusa no preparo virava só um 400 no log de acesso, sem a mensagem deles): <code>SISCAN[&lt;accession&gt;]: RECUSA no passo &lt;Avançar|Salvar&gt; — &lt;mensagem&gt;</code> no journal, e a mesma frase em <code>exame_imagem.siscan_erro</code> (a última; limpa quando a requisição sai). Campo obrigatório do CADSUS vazio também é logado logo após o CNS, recuse o SISCAN ou não.</p>
 <h2>3. A ordem é imposta pela tela, não é preferência</h2>
 <p>Dois combos nascem vazios e só são preenchidos por um A4J específico:</p>
 <ol>

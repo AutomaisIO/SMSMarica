@@ -59,6 +59,31 @@ pelo CNS — sem passar pela pesquisa com período obrigatório.
 Campo `disabled` **não se reposta** (o navegador não posta, e o SISCAN os deriva do CADSUS).
 Quem tentar "corrigir" nome ou endereço por POST está perdendo tempo: o servidor descarta.
 
+### Quando o CADSUS vem sem um desses campos (Raça/Cor, 30/09/2026)
+
+Recebido em produção: o **Avançar** recusou por **Raça/Cor** — a paciente estava sem esse dado no
+CADSUS. Não há combo a oferecer: o campo é `disabled` e o SISCAN manda corrigir **no CADSUSWEB**. A
+própria tela tem, logo abaixo dos dados, o bloco *ATUALIZAR CADASTRO NO CADSUSWEB* com dois links:
+
+- **"Atualizar Dados do Paciente"** (A4J, `title` estável, id `j_idNN`) — *"traz os dados atualizados
+  do paciente de acordo com o que se encontra no CADSUSWEB"*;
+- **"Corrigir/Atualizar Dados do Paciente"** → `https://cadastro.saude.gov.br/novocartao/?…
+  usuarioSelecionado=<CNS>&URL_INTEGRACAO_RETORNO=/visao/integracao/cadSUSNovoExame.jsf` — *"ao
+  retornar ao SISCAN, os dados já virão atualizados"*.
+
+O que o painel faz: lê os obrigatórios `pessoaCadsus` (`SiscanHtml.CamposObrigatoriosDoCadsus` —
+o rótulo de Raça/Cor é `<label id="frm:lblRacaCor">`, **sem `for`**), e, se o Avançar é recusado
+citando um deles (ou recusado sem mensagem com um deles vazio), responde
+`siscan.cadastro_cadsus_incompleto` dizendo qual campo e com o link do CADSUSWEB.
+
+**Ainda não medido:** se, depois de corrigir no CADSUSWEB, só redigitar o CNS já traz o dado novo
+ou se é preciso o A4J "Atualizar Dados do Paciente". O log do próximo caso responde.
+
+**Toda recusa agora deixa rastro** (antes, recusa no preparo virava só um 400 no log de acesso,
+sem a mensagem deles): `SISCAN[<accession>]: RECUSA no passo <Avançar|Salvar> — <mensagem>` no
+journal, e a mesma frase em `exame_imagem.siscan_erro` (a última; limpa quando a requisição sai).
+Campo obrigatório do CADSUS vazio também é logado logo após o CNS, recuse o SISCAN ou não.
+
 ## 3. A ordem é imposta pela tela, não é preferência
 
 Dois combos nascem vazios e só são preenchidos por um A4J específico:

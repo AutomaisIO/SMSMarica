@@ -427,6 +427,60 @@ public static partial class SiscanHtml
             .Select(o => new UnidadeRequisitante(o.Valor, o.Match.Groups[1].Value, o.Match.Groups[2].Value))
             .ToList();
 
+    /// <summary>Um campo obrigatório que o SISCAN preenche a partir do CADSUS, e que ele trava.</summary>
+    /// <param name="Rotulo">O texto que a pessoa lê na tela ("Raça/Cor").</param>
+    /// <param name="Vazio">O CADSUS não trouxe nada para ele.</param>
+    public sealed record CampoCadsus(string Nome, string Rotulo, bool Vazio);
+
+    /// <summary>
+    /// Os campos obrigatórios da paciente que vêm do CADSUS — classe <c>pessoaCadsus</c> com o
+    /// asterisco de obrigatório no rótulo (nome da mãe, raça/cor, endereço…).
+    ///
+    /// <para><b>Eles não são editáveis no SISCAN</b> (<c>disabled</c>, e campo disabled não se
+    /// reposta). A própria tela manda corrigir no CADSUSWEB ("CLIQUE AQUI PARA CORRIGIR/ATUALIZAR
+    /// DADOS DO PACIENTE NO CADSUSWEB"). Serve para explicar a recusa, não para preencher.</para>
+    ///
+    /// <para>O rótulo é o do mesmo bloco do campo, e não por <c>for</c>: o de Raça/Cor é
+    /// <c>&lt;label id="frm:lblRacaCor"&gt;</c>, sem <c>for</c>.</para>
+    /// </summary>
+    public static List<CampoCadsus> CamposObrigatoriosDoCadsus(IHtmlDocument doc)
+    {
+        var campos = new List<CampoCadsus>();
+        foreach (var input in doc.QuerySelectorAll("input.pessoaCadsus").OfType<IHtmlInputElement>())
+        {
+            var label = input.ParentElement?.QuerySelector("label");
+            var obrigatorio = label?.QuerySelector("em.form-req");
+            if (label is null || obrigatorio is null) continue;
+
+            var rotulo = (label.TextContent ?? string.Empty)
+                .Replace(obrigatorio.TextContent ?? string.Empty, string.Empty, StringComparison.Ordinal)
+                .Trim().TrimEnd(':').Trim();
+            if (rotulo.Length == 0) continue;
+
+            campos.Add(new CampoCadsus(
+                input.Name ?? string.Empty, rotulo, string.IsNullOrWhiteSpace(input.Value)));
+        }
+
+        return campos;
+    }
+
+    /// <summary>
+    /// A mensagem cita o rótulo? Por palavra inteira, sem acento e sem pontuação — "Raça/Cor",
+    /// "RACA COR" e "raça/cor" são o mesmo; "UF" não casa dentro de "SUFICIENTE".
+    /// </summary>
+    public static bool MencionaRotulo(string mensagem, string rotulo)
+    {
+        var alvo = Palavras(rotulo);
+        return alvo.Length > 0 && $" {Palavras(mensagem)} ".Contains($" {alvo} ", StringComparison.Ordinal);
+    }
+
+    private static string Palavras(string texto) =>
+        string.Join(' ', RegexNaoAlfanumerico().Split(Simplificar(texto))
+            .Where(p => p.Length > 0));
+
+    [GeneratedRegex(@"[^A-Z0-9]+")]
+    private static partial Regex RegexNaoAlfanumerico();
+
     [GeneratedRegex(@"ULTIMO EXAME REALIZADO NO SUS FOI EM\s*(\d{4})")]
     private static partial Regex RegexUltimoExameNoSus();
 

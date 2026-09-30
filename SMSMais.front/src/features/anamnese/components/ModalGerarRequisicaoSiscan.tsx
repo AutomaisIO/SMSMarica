@@ -1,14 +1,30 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Building2, CheckCircle2, FileCheck2, Link2, Loader2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  ExternalLink,
+  FileCheck2,
+  Link2,
+  Loader2,
+} from 'lucide-react';
 import {
   useGerarRequisicaoSiscan,
   usePreparoSiscan,
   type RequisicaoSiscan,
+  type UnidadeSiscan,
 } from '@/features/anamnese/api/siscanApi';
-import { perdeuSessaoSiscan } from '@/features/anamnese/lib/sessaoSiscan';
+import { perdeuSessaoSiscan, recusaPorCadastroCadsus } from '@/features/anamnese/lib/sessaoSiscan';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Modal } from '@/shared/ui/Modal';
+
+/**
+ * Onde se corrige o cadastro nacional da paciente. É o mesmo destino do botão "Corrigir/Atualizar
+ * dados do paciente no CADSUSWEB" da tela do SISCAN.
+ */
+const URL_CADSUSWEB = 'https://cadastro.saude.gov.br/novocartao/';
 
 /**
  * Gerar a requisição do exame no SISCAN, a partir da anamnese.
@@ -27,8 +43,12 @@ import { Modal } from '@/shared/ui/Modal';
  *
  * <p><b>Unidade fora da conta.</b> Quando a unidade do pedido não está entre as unidades
  * requisitantes que a conta do SISCAN do operador enxerga, o preparo devolve a lista delas e o
- * operador escolhe por qual enviar. Escolher refaz o preparo com a unidade — os responsáveis são
- * por unidade — e a escolha fica registrada na anamnese.</p>
+ * operador escolhe por qual enviar — e <b>confirma</b> a escolha num diálogo antes de qualquer
+ * consulta. Confirmar refaz o preparo com a unidade (os responsáveis são por unidade); a
+ * requisição só nasce no "Gerar requisição", e a escolha fica registrada na anamnese.</p>
+ *
+ * <p><b>Recusa por dado do CADSUS.</b> Raça/Cor, nome da mãe e endereço vêm do CADSUS e são
+ * travados no SISCAN — não há o que escolher aqui. A tela diz qual campo e leva ao CADSUSWEB.</p>
  */
 export function ModalGerarRequisicaoSiscan({
   aberto,
@@ -49,6 +69,8 @@ export function ModalGerarRequisicaoSiscan({
 }) {
   // Só preenchida quando a unidade do pedido não está na conta do SISCAN e a pessoa escolheu outra.
   const [cnesUnidade, setCnesUnidade] = useState<string>('');
+  // Escolhida no combo e ainda NÃO confirmada: nada é consultado até a pessoa confirmar.
+  const [unidadePendente, setUnidadePendente] = useState<UnidadeSiscan | null>(null);
   const preparo = usePreparoSiscan(exameImagemId, aberto, cnesUnidade || undefined);
   const gerar = useGerarRequisicaoSiscan(exameImagemId);
 
@@ -60,6 +82,7 @@ export function ModalGerarRequisicaoSiscan({
 
   const [cnsEscolhido, setCnsEscolhido] = useState<string>('');
   const [erro, setErro] = useState<string | null>(null);
+  const [erroCadsus, setErroCadsus] = useState(false);
   const [resultado, setResultado] = useState<RequisicaoSiscan | null>(null);
   // Vincular e criar terminam no mesmo POST (o backend decide), mas o que a pessoa fez é
   // diferente — e a tela não pode dizer "criada" quando ela só trouxe o que já existia.
@@ -74,8 +97,10 @@ export function ModalGerarRequisicaoSiscan({
   useEffect(() => {
     if (aberto) {
       setErro(null);
+      setErroCadsus(false);
       setResultado(null);
       setCnesUnidade('');
+      setUnidadePendente(null);
     }
   }, [aberto]);
 
@@ -83,11 +108,13 @@ export function ModalGerarRequisicaoSiscan({
     // Outra unidade, outra lista de responsáveis: o escolhido da lista anterior não vale mais.
     setCnsEscolhido('');
     setErro(null);
+    setErroCadsus(false);
     setCnesUnidade(cnes);
   }
 
   async function confirmar(vinculo = false) {
     setErro(null);
+    setErroCadsus(false);
     setFoiVinculo(vinculo);
     try {
       const gerada = await gerar.mutateAsync({
@@ -103,6 +130,7 @@ export function ModalGerarRequisicaoSiscan({
         return;
       }
       setErro(extrairMensagemDeErro(falha));
+      setErroCadsus(recusaPorCadastroCadsus(falha));
     }
   }
 
@@ -132,9 +160,13 @@ export function ModalGerarRequisicaoSiscan({
         </div>
       ) : preparo.isError ? (
         <div className="space-y-3">
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {extrairMensagemDeErro(preparo.error)}
-          </div>
+          {recusaPorCadastroCadsus(preparo.error) ? (
+            <AvisoCadastroCadsus mensagem={extrairMensagemDeErro(preparo.error)} />
+          ) : (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {extrairMensagemDeErro(preparo.error)}
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button variante="secundaria" onClick={aoFechar}>
               Fechar
@@ -369,7 +401,11 @@ export function ModalGerarRequisicaoSiscan({
                 Enviar pela unidade
                 <select
                   value={cnesUnidade}
-                  onChange={(e) => escolherUnidade(e.target.value)}
+                  onChange={(e) => {
+                    // Não consulta nada ainda: abre a confirmação. Cancelar mantém a anterior.
+                    const u = unidadesDisponiveis.find((x) => x.cnes === e.target.value);
+                    if (u) setUnidadePendente(u);
+                  }}
                   className="mt-1 w-full rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm text-gray-900"
                 >
                   <option value="">Selecione…</option>
@@ -457,9 +493,13 @@ export function ModalGerarRequisicaoSiscan({
           </div>
 
           {erro ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {erro}
-            </div>
+            erroCadsus ? (
+              <AvisoCadastroCadsus mensagem={erro} />
+            ) : (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {erro}
+              </div>
+            )
           ) : null}
 
           <div className="flex items-center justify-between gap-3">
@@ -485,6 +525,51 @@ export function ModalGerarRequisicaoSiscan({
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        aberto={unidadePendente !== null}
+        titulo="Enviar por outra unidade?"
+        mensagem={
+          unidadePendente
+            ? `A requisição vai sair no SISCAN em nome de ${unidadePendente.nome} (CNES ${unidadePendente.cnes}), e não da unidade do pedido${dados ? `, ${dados.unidadeNome}` : ''}. Ao confirmar, o sistema só busca no SISCAN os responsáveis desta unidade para você conferir — nada é gravado até você clicar em "Gerar requisição".`
+            : ''
+        }
+        rotuloConfirmar="Usar esta unidade"
+        aoConfirmar={() => {
+          if (unidadePendente) escolherUnidade(unidadePendente.cnes);
+          setUnidadePendente(null);
+        }}
+        aoCancelar={() => setUnidadePendente(null)}
+      />
     </Modal>
+  );
+}
+
+/**
+ * Recusa por dado que vem do CADSUS. Não há combo possível: o SISCAN trava o campo e descarta o
+ * que for postado nele. O que resolve é corrigir o cadastro nacional — e gerar de novo.
+ */
+function AvisoCadastroCadsus({ mensagem }: { mensagem: string }) {
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+      <p className="flex items-start gap-2 font-semibold">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        Falta um dado no cadastro nacional da paciente (CADSUS)
+      </p>
+      <p className="mt-1">{mensagem}</p>
+      <p className="mt-2 text-xs">
+        Nada foi gravado no SISCAN. Depois de corrigir no CADSUSWEB, abra de novo o “Gerar
+        requisição”.
+      </p>
+      <a
+        href={URL_CADSUSWEB}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100"
+      >
+        <ExternalLink className="h-4 w-4" />
+        Abrir o CADSUSWEB
+      </a>
+    </div>
   );
 }

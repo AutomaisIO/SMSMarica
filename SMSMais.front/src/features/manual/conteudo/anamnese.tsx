@@ -72,6 +72,12 @@ export const artigoAnamnese: Artigo = {
     'unidade não está na conta',
     'escolher unidade',
     'CNES',
+    'raça/cor',
+    'raça cor',
+    'CADSUS',
+    'CADSUSWEB',
+    'cadastro nacional',
+    'nome da mãe',
   ],
   secoes: () => [
     {
@@ -362,7 +368,8 @@ export const artigoAnamnese: Artigo = {
         'rastreamento diagnóstica idade 36 anos responsável não aparece lista vazia duplicada '
         + 'duplicidade já tem requisição vincular ao pedido prontuário cartão SUS um ano erro falta responder '
         + 'ano da última mamografia corrigido último exame realizado no SUS ano inferior declarado '
-        + 'unidade requisitante não está na conta escolher unidade CNES enviar pela unidade secretaria',
+        + 'unidade requisitante não está na conta escolher unidade CNES enviar pela unidade secretaria '
+        + 'confirmar unidade raça cor raça/cor CADSUS CADSUSWEB cadastro nacional nome da mãe endereço recusou',
       conteudo: (
         <>
           <Sub>Rastreamento ou diagnóstica — quem decide é a idade</Sub>
@@ -401,8 +408,11 @@ export const artigoAnamnese: Artigo = {
           <P>
             Cada conta do SISCAN enxerga uma lista própria de <strong>unidades requisitantes</strong>.
             Quando a unidade que pediu o exame não está nela, o modal mostra essa lista e pergunta{' '}
-            <strong>por qual unidade enviar</strong>. Escolhida a unidade, o sistema busca no SISCAN
-            os responsáveis dela — a lista de quem pode assinar é por unidade — e aí dá para gerar.
+            <strong>por qual unidade enviar</strong>. Ao escolher, abre uma confirmação dizendo em
+            nome de qual unidade a requisição vai sair. Só depois de você confirmar o sistema busca
+            no SISCAN os responsáveis dela (a lista de quem pode assinar é por unidade). Nada é
+            gravado nessa hora: a requisição só nasce quando você clica em{' '}
+            <BotaoRef>Gerar requisição</BotaoRef>.
           </P>
           <P>
             A escolha fica <strong>registrada na anamnese</strong>: a tarja “Enviada ao SISCAN” passa
@@ -413,6 +423,25 @@ export const artigoAnamnese: Artigo = {
             Se a unidade do pedido está na sua conta, a requisição sai por ela — o sistema não
             oferece a troca, e recusa se alguém tentar. Enviar em nome de outra unidade é exceção,
             para não deixar a paciente sem requisição; não é atalho.
+          </Callout>
+
+          <Sub>“Falta um dado no cadastro nacional da paciente (CADSUS)”</Sub>
+          <P>
+            Nome da mãe, <strong>Raça/Cor</strong>, data de nascimento e endereço não são
+            digitados no SISCAN: ele puxa do <strong>CADSUS</strong>, o cadastro nacional, e deixa
+            esses campos travados. Quando falta um deles, o SISCAN recusa. Não existe lista para
+            escolher, nem lá nem aqui: o que for mandado para um campo travado é descartado.
+          </P>
+          <P>
+            Por isso o modal diz qual campo faltou e oferece o botão{' '}
+            <BotaoRef variante="outline">Abrir o CADSUSWEB</BotaoRef>. Corrija o cadastro da
+            paciente lá e abra de novo o “Gerar requisição”: o SISCAN já traz o dado atualizado.
+            Até ali, <strong>nada foi gravado</strong> no SISCAN.
+          </P>
+          <Callout tipo="dica" titulo="Toda recusa do SISCAN fica registrada">
+            Quando o SISCAN recusa, a mensagem dele fica guardada no pedido e no registro do sistema,
+            com o passo em que aconteceu. É o que permite à equipe de suporte entender o caso sem
+            precisar repetir o erro.
           </Callout>
 
           <Sub>O responsável não está na lista</Sub>

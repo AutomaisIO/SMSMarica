@@ -296,6 +296,40 @@ public class SiscanWebSessaoTests
             """<select name="frm:unidadeSaude2"><option value="0">Selecionar</option></select>"""))
             .Should().BeEmpty();
 
+    /// <summary>
+    /// Os campos da paciente que o SISCAN puxa do CADSUS e trava — recorte da captura
+    /// <c>05-novo-exame.html</c>. Raça/Cor tem rótulo por <c>id</c>, sem <c>for</c>; Apelido é do
+    /// CADSUS mas não é obrigatório, e fica de fora.
+    /// </summary>
+    [Fact]
+    public void Campos_obrigatorios_do_cadsus_com_rotulo_e_vazio()
+    {
+        var doc = SiscanHtml.Documento("""
+            <form id="frm">
+              <div class="grid-6-12-alt"><label for="frm:apelido" class="form-lbl ">Apelido</label><input id="frm:apelido" type="text" name="frm:apelido" class="form-txt pessoaCadsus" /></div>
+              <div class="grid-6-12-alt"><label for="frm:nomeMae" class="form-lbl">
+            Nome da M&atilde;e
+                <em class="form-req">*</em></label><input id="frm:nomeMae" type="text" name="frm:nomeMae" value="MAE EXEMPLO" class="form-txt pessoaCadsus" disabled="disabled" /></div>
+              <div class="grid-6-12-alt"><label id="frm:lblRacaCor" class="form-lbl">
+            Ra&ccedil;a/Cor:
+                <em class="form-req">*</em></label><input id="frm:racaCor" type="text" name="frm:racaCor" class="form-txt pessoaCadsus" disabled="disabled" /></div>
+            </form>
+            """);
+
+        SiscanHtml.CamposObrigatoriosDoCadsus(doc).Should().Equal(
+            new SiscanHtml.CampoCadsus("frm:nomeMae", "Nome da Mãe", false),
+            new SiscanHtml.CampoCadsus("frm:racaCor", "Raça/Cor", true));
+    }
+
+    [Theory]
+    [InlineData("O campo Raça/Cor é obrigatório.", "Raça/Cor", true)]
+    [InlineData("RACA COR NAO INFORMADA", "Raça/Cor", true)]
+    [InlineData("O campo UF deve ser informado", "UF", true)]
+    [InlineData("Informação insuficiente", "UF", false)]
+    [InlineData("O campo Tipo de Exame deve ser informado", "Raça/Cor", false)]
+    public void Mensagem_cita_rotulo_por_palavra_inteira(string mensagem, string rotulo, bool esperado) =>
+        SiscanHtml.MencionaRotulo(mensagem, rotulo).Should().Be(esperado);
+
     /// <summary>A prévia mostrava "frm:anoMastectomia…" como pergunta; agora é legível.</summary>
     [Theory]
     [InlineData("frm:anoMastectomiaPoupadoraPeleDireita", "Ano — Mastectomia poupadora pele (direita)")]

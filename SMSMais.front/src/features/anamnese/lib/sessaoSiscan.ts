@@ -23,6 +23,14 @@ function codigosDoErro(erro: unknown): string[] {
   return dados?.errors ? Object.keys(dados.errors) : [];
 }
 
+/**
+ * O SISCAN recusou por um dado da paciente que vem do CADSUS (Raça/Cor, nome da mãe, endereço…).
+ * Esses campos são travados lá: a correção é no CADSUSWEB, e a tela oferece o link.
+ */
+export function recusaPorCadastroCadsus(erro: unknown): boolean {
+  return codigosDoErro(erro).includes('siscan.cadastro_cadsus_incompleto');
+}
+
 /** A falha pede um novo login no SISCAN (e não uma nova tentativa)? */
 export function perdeuSessaoSiscan(erro: unknown): boolean {
   return codigosDoErro(erro).some((c) => CODIGOS_SEM_SESSAO.includes(c));

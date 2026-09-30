@@ -584,6 +584,70 @@ public class SiscanRequisicaoMapperTests
         json["siscan"]!["riscoElevado"]!.GetValue<string>().Should().Be("nao");
     }
 
+    // ------------------------------------------------ recusa no Avançar
+
+    private static readonly List<SMSMais.Core.Integracoes.SiscanWeb.SiscanHtml.CampoCadsus> CadsusSemRaca =
+    [
+        new("frm:nomeMae", "Nome da Mãe", false),
+        new("frm:racaCor", "Raça/Cor", true),
+    ];
+
+    /// <summary>
+    /// O caso de 30/09/2026: o SISCAN recusou por Raça/Cor. A resposta diz qual campo, que ele
+    /// vem do CADSUS e onde se corrige — e leva o texto deles junto.
+    /// </summary>
+    [Fact]
+    public void Recusa_que_cita_campo_do_cadsus_manda_corrigir_no_cadsusweb()
+    {
+        var (codigo, mensagem) = SiscanRequisicaoService.ExplicarRecusaNoAvancar(
+            ["O campo Raça/Cor é obrigatório."], CadsusSemRaca, ["NOVO EXAME"]);
+
+        codigo.Should().Be("siscan.cadastro_cadsus_incompleto");
+        mensagem.Should().Contain("O campo Raça/Cor é obrigatório.")
+            .And.Contain("O campo Raça/Cor vem do cadastro nacional")
+            .And.Contain("CADSUSWEB")
+            .And.NotContain("Nome da Mãe");
+    }
+
+    /// <summary>Recusa muda (sem mensagem) com campo do CADSUS vazio: o vazio é a evidência.</summary>
+    [Fact]
+    public void Recusa_sem_mensagem_culpa_o_campo_vazio()
+    {
+        var (codigo, mensagem) = SiscanRequisicaoService.ExplicarRecusaNoAvancar(
+            [], CadsusSemRaca, ["NOVO EXAME"]);
+
+        codigo.Should().Be("siscan.cadastro_cadsus_incompleto");
+        mensagem.Should().StartWith("O campo Raça/Cor vem do cadastro nacional");
+    }
+
+    /// <summary>
+    /// Mensagem que não cita campo do CADSUS não é culpa do CADSUS, mesmo havendo campo vazio —
+    /// mandar a pessoa ao CADSUSWEB por engano é pior que mostrar o texto deles.
+    /// </summary>
+    [Fact]
+    public void Recusa_por_outro_motivo_nao_culpa_o_cadsus()
+    {
+        var (codigo, mensagem) = SiscanRequisicaoService.ExplicarRecusaNoAvancar(
+            ["O campo Tipo de Exame deve ser informado"], CadsusSemRaca, ["NOVO EXAME"]);
+
+        codigo.Should().Be("siscan.avancar_recusado");
+        mensagem.Should().Contain("O campo Tipo de Exame deve ser informado").And.NotContain("CADSUS");
+    }
+
+    /// <summary>Raça/Cor preenchida com valor que o SISCAN não aceita: citada na mensagem, vale igual.</summary>
+    [Fact]
+    public void Campo_do_cadsus_citado_mesmo_preenchido_conta()
+    {
+        List<SMSMais.Core.Integracoes.SiscanWeb.SiscanHtml.CampoCadsus> preenchidos =
+            [new("frm:racaCor", "Raça/Cor", false), new("frm:nomeMae", "Nome da Mãe", false)];
+
+        var (codigo, mensagem) = SiscanRequisicaoService.ExplicarRecusaNoAvancar(
+            ["Raça/Cor inválida", "Nome da Mãe incompleto"], preenchidos, []);
+
+        codigo.Should().Be("siscan.cadastro_cadsus_incompleto");
+        mensagem.Should().Contain("Os campos Raça/Cor, Nome da Mãe vêm do cadastro nacional");
+    }
+
     /// <summary>JSON quebrado não pode derrubar a geração com stack trace — vira "não sabe".</summary>
     [Fact]
     public void Conteudo_invalido_nao_explode()
