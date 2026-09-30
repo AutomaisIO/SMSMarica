@@ -1,3 +1,4 @@
+using SMSMais.Core.Integracoes.EsusSgWeb;
 using SMSMais.Core.Integracoes.SerWeb;
 using SMSMais.Core.Integracoes.SernitWeb;
 
@@ -8,6 +9,10 @@ public enum FonteEstatisticaExterna
 {
     Ser = 1,
     Sernit = 2,
+
+    /// <summary>ESUS de São Gonçalo (ADR-0063): trilha montada em <c>esussg_evento</c> com os mesmos
+    /// nomes de coluna — quem incluiu na fila (Maricá) e quem agendou (São Gonçalo).</summary>
+    EsusSg = 3,
 }
 
 /// <summary>
@@ -22,6 +27,7 @@ public static class FonteEstatisticaExternaExtensoes
     {
         FonteEstatisticaExterna.Ser => "ser",
         FonteEstatisticaExterna.Sernit => "sernit",
+        FonteEstatisticaExterna.EsusSg => "esussg",
         _ => throw new ArgumentOutOfRangeException(nameof(fonte), fonte, null),
     };
 
@@ -29,6 +35,7 @@ public static class FonteEstatisticaExternaExtensoes
     {
         FonteEstatisticaExterna.Ser => SerWebSessao.Provedor,
         FonteEstatisticaExterna.Sernit => SernitWebSessao.Provedor,
+        FonteEstatisticaExterna.EsusSg => EsusSgSessao.Provedor,
         _ => throw new ArgumentOutOfRangeException(nameof(fonte), fonte, null),
     };
 
@@ -36,6 +43,7 @@ public static class FonteEstatisticaExternaExtensoes
     {
         FonteEstatisticaExterna.Ser => "SER",
         FonteEstatisticaExterna.Sernit => "SERNIT",
+        FonteEstatisticaExterna.EsusSg => "ESUS São Gonçalo",
         _ => throw new ArgumentOutOfRangeException(nameof(fonte), fonte, null),
     };
 }

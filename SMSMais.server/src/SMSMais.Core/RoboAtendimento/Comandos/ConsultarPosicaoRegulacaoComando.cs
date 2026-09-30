@@ -2,13 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Pacientes;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.Sernit;
 
 namespace SMSMais.Core.RoboAtendimento.Comandos;
 
 /// <summary>
-/// Consulta a POSIÇÃO de um agendamento na regulação (espelhos SER/Estado e SERNIT/Niterói),
+/// Consulta a POSIÇÃO de um agendamento na regulação (espelhos SER/Estado, SERNIT/Niterói e ESUS de
+/// São Gonçalo),
 /// localizando por CPF. Devolve dado MINIMIZADO: em regra só "em fila"; se cancelada, sinaliza
 /// que um atendente vai contatar. NUNCA expõe dados internos (datas, unidade, procedimento,
 /// solicitante, prioridade).
@@ -43,11 +45,16 @@ public sealed class ConsultarPosicaoRegulacaoComando(SmsMaisDbContext db, IPacie
 
         var cancelada =
             await db.SerSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.Situacao == SituacaoSer.Cancelada, ct)
-            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.Situacao == SituacaoSernit.Cancelada, ct);
+            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.Situacao == SituacaoSernit.Cancelada, ct)
+            // ESUS SG (ADR-0063): "saiu da fila" tem motivo invisível — mesmo tratamento do
+            // cancelado: um atendente entra em contato, o robô não especula.
+            || await db.EsusSgSolicitacoes.AsNoTracking().AnyAsync(
+                s => s.Cpf == p.Cpf && s.ExcluidoEm == null && s.Situacao == SituacaoEsusSg.SaiuDaFila, ct);
 
         var existe = cancelada
             || await db.SerSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf, ct)
-            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf, ct);
+            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf, ct)
+            || await db.EsusSgSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.ExcluidoEm == null, ct);
 
         if (!existe)
             return new(false,

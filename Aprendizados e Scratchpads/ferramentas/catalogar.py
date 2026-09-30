@@ -19,7 +19,8 @@ import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
 INDICE = pathlib.Path(__file__).resolve().parent.parent / "INDICE.md"
-PASTAS = ["Automais.SISREG", "Automais.SER", "Automais.SERNIT", "Automais.SISCAN", "Salux/scripts"]
+PASTAS = ["Automais.SISREG", "Automais.SER", "Automais.SERNIT", "Automais.SISCAN",
+          "Automais.esus_saocongalo", "Salux/scripts"]
 
 
 def rastreados() -> set[str]:

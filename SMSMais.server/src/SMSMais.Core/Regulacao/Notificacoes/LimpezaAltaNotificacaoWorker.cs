@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SMSMais.Core.EsusSg;
 using SMSMais.Core.Ser;
 using SMSMais.Core.Sernit;
 
@@ -55,12 +56,16 @@ public sealed class LimpezaAltaNotificacaoWorker(
                     .LimparAltasAntigasAsync(stoppingToken);
                 var sernit = await escopo.ServiceProvider.GetRequiredService<ISernitNotificacaoService>()
                     .LimparAltasAntigasAsync(stoppingToken);
+                // ESUS SG não tem "Alta": o fim de ciclo que vira ruído é a saída da fila (ADR-0063).
+                var esusSg = await escopo.ServiceProvider.GetRequiredService<IEsusSgNotificacaoService>()
+                    .LimparSaidasAntigasAsync(stoppingToken);
 
-                if (ser + sernit > 0)
+                if (ser + sernit + esusSg > 0)
                 {
                     logger.LogInformation(
-                        "Notificações: {Ser} Alta(s) do SER e {Sernit} do SERNIT limpas automaticamente.",
-                        ser, sernit);
+                        "Notificações: {Ser} Alta(s) do SER, {Sernit} do SERNIT e {EsusSg} saída(s) da fila "
+                        + "do ESUS SG limpas automaticamente.",
+                        ser, sernit, esusSg);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

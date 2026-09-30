@@ -67,7 +67,11 @@ export function Layout() {
         hidratarTabela(p.largurasTabela);
         hidratarModalidades({ modalidades: p.examesModalidades, tipos: p.examesTipos });
         hidratarSistemasOcultos(p.regulacaoSistemasOcultos);
-        hidratarTecnicos({ ser: p.notificacoesSerTecnicos, sernit: p.notificacoesSernitTecnicos });
+        hidratarTecnicos({
+          ser: p.notificacoesSerTecnicos,
+          sernit: p.notificacoesSernitTecnicos,
+          esussg: p.notificacoesEsusSgTecnicos,
+        });
         // Bip do chat persistido no usuário (ticket #127): aplica o silêncio salvo. Só
         // seta o estado — NÃO re-persiste (evita gravar de volta na hidratação).
         useChat.getState().setSom(!(p.bipChatSilenciado ?? false));

@@ -5,6 +5,11 @@
  * Os campos espelham as colunas da grade do SER de propósito, para o operador reconhecer a tela.
  */
 
+import type {
+  AnaliseRegrasDetalhe,
+  AnaliseRegrasResumo,
+  VereditoAnaliseRegras,
+} from '@/shared/regulacao/analiseRegras/tipos';
 import type { CategoriaFollowUp } from '@/shared/regulacao/categoriasFollowUp';
 import type { EventoResumoExterno, TipoEventoExterno } from '@/shared/regulacao/eventosExternos';
 
@@ -75,6 +80,8 @@ export type SolicitacaoSerLista = {
   /** Solicitações em Alta não têm histórico no SER — o menu não oferece o item. */
   historicoIndisponivel: boolean;
   diasNaFila: number | null;
+  /** Veredito da análise automática das regras de elegibilidade (ADR-0063 §4). Null = ainda não analisado. */
+  analise?: AnaliseRegrasResumo | null;
 };
 
 export type EventoSer = {
@@ -110,10 +117,14 @@ export type SolicitacaoSerDetalhe = {
   telefoneWhatsapp: string | null;
   telefoneContato: string | null;
   eventos: EventoSer[];
+  /** Análise das regras com cada regra avaliada (ADR-0063 §4). */
+  analise?: AnaliseRegrasDetalhe | null;
 };
 
 export type BuscaSerFiltro = {
   situacao?: SituacaoSer;
+  /** Só pedidos com este veredito da análise de regras. */
+  veredito?: VereditoAnaliseRegras;
   tipo?: TipoRecursoSer;
   /** Busca livre: nome, CPF, CNS, ID do SER e recurso. */
   termo?: string;

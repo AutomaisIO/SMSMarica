@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, History, Phone, User } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
+import { PainelAnaliseRegras } from '@/shared/regulacao/analiseRegras/PainelAnaliseRegras';
 import { useSolicitacaoSernit } from '@/features/sernit/api/queries';
 import { SituacaoSernitBadge } from '@/features/sernit/components/SituacaoSernitBadge';
 import { PainelFollowUpSernit } from '@/features/sernit/components/PainelFollowUpSernit';
@@ -257,6 +258,9 @@ export function SernitSolicitacaoDetalhePage() {
               <Linha rotulo="Histórico lido em" valor={dataHora(r.historicoLidoEm)} />
             </dl>
           </div>
+
+          {/* Parecer da análise automática das regras (ADR-0063 §4) — nada vai ao SERNIT. */}
+          {id && <PainelAnaliseRegras sistema="sernit" espelhoId={id} analise={detalhe.analise} />}
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">

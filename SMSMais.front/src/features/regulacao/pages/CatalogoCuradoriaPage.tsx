@@ -20,6 +20,7 @@ const ROTULO_SISTEMA: Record<string, string> = {
   Ser: 'SER',
   Sernit: 'SERNIT',
   Esus: 'eSUS',
+  EsusSg: 'ESUS São Gonçalo',
 };
 
 /**

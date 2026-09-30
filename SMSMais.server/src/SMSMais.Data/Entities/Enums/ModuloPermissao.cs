@@ -354,4 +354,16 @@ public enum ModuloPermissao
     /// saúde do SISREG/CNES). Quem só cadastra tratamento escolhe o destino pela lista de
     /// <see cref="Tratamentos"/>, sem precisar deste módulo.</summary>
     UnidadesAtendimento = 76,
+
+    /// <summary>Regulação — <b>ESUS de São Gonçalo</b> (ADR-0063): o espelho da fila e dos
+    /// agendamentos que Maricá tem no ESUS de SG (PPI). <c>Consulta</c> = ver fila, agendados,
+    /// detalhe e notificações. Só leitura nesta entrega: <c>Edicao</c> fica reservada para quando
+    /// a escrita no ESUS for mapeada e autorizada. Configuração do motor usa
+    /// <see cref="RegulacaoConfiguracao"/>.</summary>
+    RegulacaoEsusSg = 77,
+
+    /// <summary>Estatísticas de operadores do ESUS de São Gonçalo (quem incluiu na fila, quem
+    /// agendou), lidas da trilha <c>esussg_evento</c>. Irmão de <see cref="EstatisticaSer"/> e
+    /// <see cref="EstatisticaSernit"/>. Só <c>Consulta</c>.</summary>
+    EstatisticaEsusSg = 78,
 }

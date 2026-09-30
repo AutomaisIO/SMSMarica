@@ -247,7 +247,8 @@ export type PacienteExistencia = {
 
 // ---- Agendamentos (aba do cadastro) ----
 
-export type OrigemAgendamento = 'Ser' | 'Sernit' | 'Sisreg' | 'Local';
+/** `EsusSg` = ESUS de São Gonçalo (ADR-0063), PPI de exame do município em SG. */
+export type OrigemAgendamento = 'Ser' | 'Sernit' | 'Sisreg' | 'Local' | 'EsusSg';
 
 export type SituacaoAgendamentoPaciente =
   | 'EmFila'
@@ -258,7 +259,10 @@ export type SituacaoAgendamentoPaciente =
   | 'ChegadaNaoConfirmada'
   | 'Faltou'
   | 'Cancelado'
-  | 'Concluido';
+  | 'Concluido'
+  /** Saiu da fila sem agendamento visível (ESUS SG) — terminal, mas NÃO é cancelado: o motivo
+   * não é informado à conta do município. */
+  | 'SaiuDaFila';
 
 export type AgendamentoPacienteItem = {
   id: string;

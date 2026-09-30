@@ -14,6 +14,7 @@ const ROTULO_SISTEMA: Record<string, string> = {
   Ser: 'SER',
   Sernit: 'SERNIT',
   Esus: 'e-SUS',
+  EsusSg: 'ESUS São Gonçalo',
 };
 
 const formatar = new Intl.NumberFormat('pt-BR');

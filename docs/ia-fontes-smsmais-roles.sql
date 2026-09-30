@@ -72,13 +72,25 @@ GRANT SELECT (id, sernit_solicitacao_id, data_evento, evento, estado_anterior, e
 GRANT SELECT (id, tipo, valor, rotulo, ambulatorio_estadual) ON smsmarica.ser_catalogo_recurso TO ia_regulacao;
 GRANT SELECT (id, tipo, valor, rotulo) ON smsmarica.sernit_catalogo_recurso TO ia_regulacao;
 
+-- ESUS de São Gonçalo (ADR-0063) — o produto ESUS, não o e-SUS do governo.
+GRANT SELECT ON smsmarica.esussg_solicitacao TO ia_regulacao;
+GRANT SELECT (id, esussg_solicitacao_id, data_evento, evento, tipo_evento, estado_anterior, estado_atual,
+  unidade_executora, usuario, lotacao_evento, observacao, capturado_em)
+  ON smsmarica.esussg_evento TO ia_regulacao;
+GRANT SELECT (id, tipo, valor, rotulo, ativo) ON smsmarica.esussg_catalogo_recurso TO ia_regulacao;
+-- Análise automática das regras sobre os pedidos dos espelhos (SER, SERNIT, ESUS SG).
+GRANT SELECT (id, sistema, espelho_id, numero_externo, procedimento_id, paciente_id, veredito, bloqueios,
+  ressalvas, avisos, perguntas_pendentes, documentos_pendentes, resumo, analisado_em)
+  ON smsmarica.regulacao_analise_espelho TO ia_regulacao;
+
 GRANT SELECT (id, nome_canonico, tipo, procedimento_sigtap_id, ativo)
   ON smsmarica.regulacao_procedimento TO ia_regulacao;
 GRANT SELECT (id, procedimento_id, sistema, chave_externa, rotulo_externo, ramo, vinculo, ativo)
   ON smsmarica.regulacao_procedimento_origem TO ia_regulacao;
 GRANT SELECT (id, numero_local, fluxo, unidade_solicitante_id, unidade_em_nome_de_id, paciente_id,
   paciente_cpf, paciente_cns, paciente_nome, procedimento_id, sistema_destino, status, status_motivo,
-  numero_externo, enviado_em, solicitacao_id, ser_solicitacao_id, sernit_solicitacao_id, observacoes,
+  numero_externo, enviado_em, solicitacao_id, ser_solicitacao_id, sernit_solicitacao_id, esussg_solicitacao_id,
+  observacoes,
   criado_em, atualizado_em, excluido_em)
   ON smsmarica.regulacao_solicitacao TO ia_regulacao;
 GRANT SELECT (id, solicitacao_id, tipo, status_anterior, status_novo, usuario_nome, papel, criado_em)

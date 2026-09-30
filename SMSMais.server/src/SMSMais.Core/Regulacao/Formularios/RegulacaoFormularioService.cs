@@ -158,7 +158,8 @@ public sealed class RegulacaoFormularioService(
     {
         var origens = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
             .Where(o => o.ProcedimentoId == procedimentoId && o.Ativo
-                && (o.Sistema == SistemaRegulacao.Ser || o.Sistema == SistemaRegulacao.Sernit))
+                && (o.Sistema == SistemaRegulacao.Ser || o.Sistema == SistemaRegulacao.Sernit
+                    || o.Sistema == SistemaRegulacao.EsusSg))
             .Select(o => new { o.Sistema, o.ChaveExterna, o.Ramo })
             .ToListAsync(ct);
 
@@ -166,12 +167,16 @@ public sealed class RegulacaoFormularioService(
         {
             throw new ValidacaoException(
                 "procedimento",
-                "Este procedimento não tem oferta no SER nem no SERNIT — não há formulário externo para ele.");
+                "Este procedimento não tem oferta no SER, no SERNIT nem no ESUS de São Gonçalo — não há "
+                + "formulário externo para ele.");
         }
 
         var brutos = new List<CampoBruto>();
         foreach (var o in origens)
         {
+            // ESUS SG (ADR-0063): o formulário de inclusão na fila do ESUS não foi mapeado (a
+            // integração é só leitura) — o pedido segue com os campos canônicos, sem bloco dinâmico.
+            if (o.Sistema == SistemaRegulacao.EsusSg) continue;
             brutos.AddRange(o.Sistema == SistemaRegulacao.Ser
                 ? await LerCamposSerAsync(o.ChaveExterna, o.Ramo, ct)
                 : await LerCamposSernitAsync(o.ChaveExterna, ct));

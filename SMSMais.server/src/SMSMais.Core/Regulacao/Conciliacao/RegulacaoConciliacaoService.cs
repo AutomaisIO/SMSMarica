@@ -16,6 +16,9 @@ public interface IRegulacaoConciliacaoService
     Task<int> ConciliarSernitAsync(IReadOnlyCollection<string> idsSernit, CancellationToken ct);
 
     Task<int> ConciliarSisregAsync(IReadOnlyCollection<string> codigosSolicitacao, CancellationToken ct);
+
+    /// <summary>ESUS de São Gonçalo: o número externo é o <c>fil_id</c> (ADR-0063).</summary>
+    Task<int> ConciliarEsusSgAsync(IReadOnlyCollection<string> idsEsusSg, CancellationToken ct);
 }
 
 /// <summary>
@@ -57,6 +60,16 @@ public sealed class RegulacaoConciliacaoService(
                 .Select(x => new EspelhoLido(x.IdSernit, x.Id, MapaSituacaoExterna.DeSernit(x.Situacao)))
                 .ToListAsync(c),
             (s, espelho) => s.SernitSolicitacaoId = espelho,
+            ct);
+
+    public Task<int> ConciliarEsusSgAsync(IReadOnlyCollection<string> idsEsusSg, CancellationToken ct) =>
+        ConciliarAsync(
+            SistemaRegulacao.EsusSg, idsEsusSg,
+            async (numeros, c) => await db.EsusSgSolicitacoes.AsNoTracking()
+                .Where(x => numeros.Contains(x.IdEsusSg) && x.ExcluidoEm == null)
+                .Select(x => new EspelhoLido(x.IdEsusSg, x.Id, MapaSituacaoExterna.DeEsusSg(x.Situacao)))
+                .ToListAsync(c),
+            (s, espelho) => s.EsusSgSolicitacaoId = espelho,
             ct);
 
     public Task<int> ConciliarSisregAsync(
@@ -109,7 +122,8 @@ public sealed class RegulacaoConciliacaoService(
 
                 // A FK é o vínculo permanente: uma vez ligada, a tela do caso alcança o espelho
                 // sem procurar por número de novo.
-                if (s.SolicitacaoId is null && s.SerSolicitacaoId is null && s.SernitSolicitacaoId is null)
+                if (s.SolicitacaoId is null && s.SerSolicitacaoId is null && s.SernitSolicitacaoId is null
+                    && s.EsusSgSolicitacaoId is null)
                 {
                     ligar(s, espelho.EspelhoId);
                     mudou = true;

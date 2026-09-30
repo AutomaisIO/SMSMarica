@@ -1,9 +1,11 @@
-import { BookOpen, Bus, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
+import { BookOpen, Bus, ClipboardCheck, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
+import { artigoAnaliseRegrasEspelho } from '@/features/manual/conteudo/analiseRegrasEspelho';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendimentosTransporte';
 import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
+import { artigoEsusSaoGoncalo } from '@/features/manual/conteudo/esusSaoGoncalo';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
@@ -44,6 +46,13 @@ export const GRUPOS: GrupoManual[] = [
     icone: Stethoscope,
   },
   {
+    id: 'regulacao',
+    titulo: 'Regulação',
+    descricao:
+      'Solicitações, as filas espelhadas dos sistemas de regulação (SER, SERNIT, ESUS São Gonçalo) e as regras de elegibilidade.',
+    icone: ClipboardCheck,
+  },
+  {
     id: 'transporte',
     titulo: 'Transporte de Pacientes',
     descricao: 'Atendimentos, destinos, tipos de tratamento, frota e rotas da van.',
@@ -58,11 +67,13 @@ export const GRUPOS: GrupoManual[] = [
 ];
 
 export const ARTIGOS: Artigo[] = [
+  artigoAnaliseRegrasEspelho,
   artigoAnamnese,
   artigoAssinaturaLaudo,
   artigoAtendimentosTransporte,
   artigoAvisosConexao,
   artigoConfirmacoes,
+  artigoEsusSaoGoncalo,
   artigoFluxoAtendimentoWhatsApp,
   artigoMensageria,
   artigoMotoristas,

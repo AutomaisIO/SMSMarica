@@ -23,7 +23,8 @@ internal sealed class RegulacaoSolicitacaoConfiguration
             t.HasCheckConstraint(
                 "ck_regulacao_solicitacao_um_espelho",
                 "((solicitacao_id IS NOT NULL)::int + (ser_solicitacao_id IS NOT NULL)::int"
-                + " + (sernit_solicitacao_id IS NOT NULL)::int) <= 1");
+                + " + (sernit_solicitacao_id IS NOT NULL)::int"
+                + " + (esussg_solicitacao_id IS NOT NULL)::int) <= 1");
         });
         builder.HasKey(x => x.Id);
 
@@ -66,6 +67,7 @@ internal sealed class RegulacaoSolicitacaoConfiguration
         builder.Property(x => x.SolicitacaoId).HasColumnName("solicitacao_id");
         builder.Property(x => x.SerSolicitacaoId).HasColumnName("ser_solicitacao_id");
         builder.Property(x => x.SernitSolicitacaoId).HasColumnName("sernit_solicitacao_id");
+        builder.Property(x => x.EsusSgSolicitacaoId).HasColumnName("esussg_solicitacao_id");
         builder.Property(x => x.SisregEditavelAte).HasColumnName("sisreg_editavel_ate");
         builder.Property(x => x.OrigemLegadoId).HasColumnName("origem_legado_id");
         builder.Property(x => x.Observacoes).HasColumnName("observacoes").HasMaxLength(4000);
@@ -121,6 +123,9 @@ internal sealed class RegulacaoSolicitacaoConfiguration
         builder.HasIndex(x => x.SernitSolicitacaoId)
             .IsUnique().HasFilter("sernit_solicitacao_id IS NOT NULL")
             .HasDatabaseName("ux_regulacao_solicitacao_espelho_sernit");
+        builder.HasIndex(x => x.EsusSgSolicitacaoId)
+            .IsUnique().HasFilter("esussg_solicitacao_id IS NOT NULL")
+            .HasDatabaseName("ux_regulacao_solicitacao_espelho_esussg");
 
         // Um rascunho legado vira UMA solicitação. A idempotência do migrador é conferida em
         // código, mas dois cliques simultâneos passariam pela conferência juntos — a trava real

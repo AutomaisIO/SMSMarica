@@ -12,8 +12,14 @@ public enum SistemaRegulacao
     /// <summary>SER de Niterói.</summary>
     Sernit = 3,
 
-    /// <summary>Reservado: ainda não há origem eSUS no catálogo.</summary>
+    /// <summary>Reservado para o <b>e-SUS do governo</b> (Ministério). Não confundir com
+    /// <see cref="EsusSg"/>, que é outro produto.</summary>
     Esus = 4,
+
+    /// <summary><b>ESUS de São Gonçalo</b> ("Novo Esus", saogoncalo.esusmais.com.br) — sistema de
+    /// regulação municipal de SG, onde Maricá é unidade solicitante da PPI. É o produto ESUS, não
+    /// o e-SUS do governo (<see cref="Esus"/>). Espelho em <c>esussg_*</c> (ADR-0063).</summary>
+    EsusSg = 5,
 }
 
 /// <summary>Natureza do procedimento canônico.</summary>

@@ -5,7 +5,21 @@
  * `select` "voltar sozinho" na tela, porque o valor do option nunca casa com o do estado.
  */
 
-export type SistemaRegulacao = 'Sisreg' | 'Ser' | 'Sernit' | 'Esus';
+/**
+ * `Esus` fica reservado para o e-SUS do GOVERNO (Ministério). `EsusSg` é outro produto: o ESUS de
+ * São Gonçalo (saogoncalo.esusmais.com.br), onde o município é unidade solicitante da PPI
+ * (ADR-0063). Não confundir os dois.
+ */
+export type SistemaRegulacao = 'Sisreg' | 'Ser' | 'Sernit' | 'Esus' | 'EsusSg';
+
+/** Rótulo curto de cada sistema regulador (chips, listas). */
+export const ROTULO_SISTEMA_REGULACAO: Record<SistemaRegulacao, string> = {
+  Sisreg: 'SISREG',
+  Ser: 'SER',
+  Sernit: 'SERNIT',
+  Esus: 'e-SUS',
+  EsusSg: 'ESUS São Gonçalo',
+};
 
 export type TipoProcedimentoRegulacao = 'Consulta' | 'Exame' | 'Cirurgia' | 'Outro';
 
@@ -32,6 +46,8 @@ export type ExisteExterno = {
   ser: boolean;
   serAmbulatorioEstadual: boolean;
   sernit: boolean;
+  /** Existe no ESUS de São Gonçalo (ADR-0063). Opcional: o backend manda `false` por padrão. */
+  esusSg?: boolean;
 };
 
 export type RegulacaoProcedimentoItem = {

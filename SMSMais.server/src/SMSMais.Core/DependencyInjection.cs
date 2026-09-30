@@ -631,6 +631,37 @@ public static class DependencyInjection
         services.AddSingleton<Sernit.Background.ISernitCatalogoSyncFila, Sernit.Background.SernitCatalogoSyncFila>();
         services.AddHostedService<Sernit.Background.SernitCatalogoSyncRunner>();
 
+        // ---- ESUS de São Gonçalo (ADR-0063) — o produto ESUS, NÃO o e-SUS do governo ----
+        // JSON (APIs :8001 + :9001), SOMENTE LEITURA pela trava de ação. Sessão única (login duplo).
+        services.AddSingleton<Integracoes.EsusSgWeb.IEsusSgSessao, Integracoes.EsusSgWeb.EsusSgSessao>();
+        services.AddScoped<Integracoes.EsusSgWeb.IEsusSgLeitorService, Integracoes.EsusSgWeb.EsusSgLeitorService>();
+        services.AddScoped<
+            Integracoes.EsusSgWeb.Varredura.IEsusSgSincronizacaoService,
+            Integracoes.EsusSgWeb.Varredura.EsusSgSincronizacaoService>();
+        services.AddSingleton<
+            Integracoes.EsusSgWeb.Varredura.Background.IVarreduraEsusSgFila,
+            Integracoes.EsusSgWeb.Varredura.Background.VarreduraEsusSgFila>();
+        services.AddHostedService<Integracoes.EsusSgWeb.Varredura.Background.VarreduraEsusSgRunner>();
+        services.Configure<Integracoes.EsusSgWeb.Varredura.Background.VarreduraEsusSgOpcoes>(
+            configuration.GetSection(Integracoes.EsusSgWeb.Varredura.Background.VarreduraEsusSgOpcoes.Secao));
+        services.AddHostedService<Integracoes.EsusSgWeb.Varredura.Background.VarreduraEsusSgScheduler>();
+        services.AddScoped<EsusSg.IEsusSgVarreduraConfigService, EsusSg.EsusSgVarreduraConfigService>();
+        services.AddScoped<EsusSg.IEsusSgMotorService, EsusSg.EsusSgMotorService>();
+        services.AddScoped<EsusSg.IEsusSgConsultaService, EsusSg.EsusSgConsultaService>();
+        services.AddScoped<EsusSg.IEsusSgCatalogoSyncService, EsusSg.EsusSgCatalogoSyncService>();
+        services.AddScoped<EsusSg.IEsusSgNotificacaoService, EsusSg.EsusSgNotificacaoService>();
+        services.AddScoped<EsusSg.Pacientes.IEsusSgConciliacaoPacienteService,
+            EsusSg.Pacientes.EsusSgConciliacaoPacienteService>();
+        services.AddHostedService<EsusSg.Pacientes.EsusSgConciliacaoPacienteRunner>();
+
+        // Análise automática das regras de elegibilidade sobre os pedidos que CHEGAM dos espelhos
+        // (SER, SERNIT, ESUS SG) — ADR-0063 §4. Parecer ao lado; não escreve no sistema externo.
+        services.AddScoped<Regulacao.AnaliseRegras.IAnaliseRegrasEspelhoService,
+            Regulacao.AnaliseRegras.AnaliseRegrasEspelhoService>();
+        services.Configure<Regulacao.AnaliseRegras.AnaliseRegrasEspelhoOpcoes>(
+            configuration.GetSection(Regulacao.AnaliseRegras.AnaliseRegrasEspelhoOpcoes.Secao));
+        services.AddHostedService<Regulacao.AnaliseRegras.AnaliseRegrasEspelhoWorker>();
+
         // Importação de agendamentos → Solicitacao. A leitura do SISREG é a varredura da agenda
         // do executante (cons_agendas); o scraper de cons_marcados_reg foi aposentado por mirar a
         // visão do solicitante e custar 1 requisição de ficha POR agendamento — sozinho estouraria

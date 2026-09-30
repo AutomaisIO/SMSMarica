@@ -2075,6 +2075,682 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("estudo_anotacao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgCatalogoRecurso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<string>("Rotulo")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("rotulo");
+
+                    b.Property<DateTime>("SincronizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sincronizado_em");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Tipo", "Valor")
+                        .IsUnique()
+                        .HasDatabaseName("ux_esussg_catalogo_recurso");
+
+                    b.ToTable("esussg_catalogo_recurso", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgEvento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CapturadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("capturado_em");
+
+                    b.Property<string>("CentralRegulacao")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("central_regulacao");
+
+                    b.Property<DateTime>("DataEvento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_evento");
+
+                    b.Property<string>("EstadoAnterior")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("estado_anterior");
+
+                    b.Property<string>("EstadoAtual")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("estado_atual");
+
+                    b.Property<Guid>("EsusSgSolicitacaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("esussg_solicitacao_id");
+
+                    b.Property<string>("Evento")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("evento");
+
+                    b.Property<string>("FollowUpCategoria")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("followup_categoria");
+
+                    b.Property<string>("FollowUpRegrasHash")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("followup_regras_hash");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("ip");
+
+                    b.Property<string>("LotacaoEvento")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("lotacao_evento");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("text")
+                        .HasColumnName("observacao");
+
+                    b.Property<int>("TipoEvento")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo_evento");
+
+                    b.Property<string>("UnidadeExecutora")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("unidade_executora");
+
+                    b.Property<string>("Usuario")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("usuario");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EsusSgSolicitacaoId", "DataEvento")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_esussg_evento_solicitacao_data");
+
+                    b.HasIndex("Usuario", "DataEvento")
+                        .HasDatabaseName("ix_esussg_evento_usuario_data");
+
+                    b.HasIndex("EsusSgSolicitacaoId", "DataEvento", "Evento")
+                        .IsUnique()
+                        .HasDatabaseName("ux_esussg_evento_solicitacao_data_evento");
+
+                    b.ToTable("esussg_evento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgGatilho", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChaveEvento")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("chave_evento");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid>("EsusSgSolicitacaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("esussg_solicitacao_id");
+
+                    b.Property<string>("IdEsusSg")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("id_esussg");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime?>("ProcessadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processado_em");
+
+                    b.Property<string>("ProcessadoPor")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("processado_por");
+
+                    b.Property<int?>("SituacaoAnterior")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao_anterior");
+
+                    b.Property<int?>("SituacaoAtual")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao_atual");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Tipo", "CriadoEm")
+                        .HasDatabaseName("ix_esussg_gatilho_pendente")
+                        .HasFilter("processado_em IS NULL");
+
+                    b.HasIndex("EsusSgSolicitacaoId", "Tipo", "ChaveEvento")
+                        .IsUnique()
+                        .HasDatabaseName("ux_esussg_gatilho_solicitacao_tipo_chave");
+
+                    b.ToTable("esussg_gatilho", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgSolicitacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool?>("AgendadoTfd")
+                        .HasColumnType("boolean")
+                        .HasColumnName("agendado_tfd");
+
+                    b.Property<DateOnly?>("AgendamentoCadastradoEm")
+                        .HasColumnType("date")
+                        .HasColumnName("agendamento_cadastrado_em");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<string>("Bairro")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("bairro");
+
+                    b.Property<string>("Celular")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("celular");
+
+                    b.Property<string>("CnesExecutora")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("cnes_executora");
+
+                    b.Property<string>("Cns")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("cns");
+
+                    b.Property<string>("CodigoInterno")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("codigo_interno");
+
+                    b.Property<bool?>("ComprovanteImpresso")
+                        .HasColumnType("boolean")
+                        .HasColumnName("comprovante_impresso");
+
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateOnly?>("DataAgendada")
+                        .HasColumnType("date")
+                        .HasColumnName("data_agendada");
+
+                    b.Property<DateOnly?>("DataEntradaFila")
+                        .HasColumnType("date")
+                        .HasColumnName("data_entrada_fila");
+
+                    b.Property<string>("DataHoraAgendadaTexto")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("data_hora_agendada_texto");
+
+                    b.Property<DateOnly?>("DataNascimento")
+                        .HasColumnType("date")
+                        .HasColumnName("data_nascimento");
+
+                    b.Property<DateOnly?>("DataSaidaFila")
+                        .HasColumnType("date")
+                        .HasColumnName("data_saida_fila");
+
+                    b.Property<DateOnly?>("DataSolicitacao")
+                        .HasColumnType("date")
+                        .HasColumnName("data_solicitacao");
+
+                    b.Property<int>("EventosCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("eventos_count");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("IdEsusSg")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("id_esussg");
+
+                    b.Property<string>("Local")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("local");
+
+                    b.Property<string>("MunicipioPaciente")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("municipio_paciente");
+
+                    b.Property<string>("NomeMae")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome_mae");
+
+                    b.Property<string>("NotificacaoEntrega")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("notificacao_entrega");
+
+                    b.Property<string>("NotificacaoResposta")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("notificacao_resposta");
+
+                    b.Property<string>("NotificacaoTipo")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("notificacao_tipo");
+
+                    b.Property<int?>("OrdemEntrada")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem_entrada");
+
+                    b.Property<DateTime?>("PacienteConciliarEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paciente_conciliar_em");
+
+                    b.Property<Guid?>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<string>("PacienteNome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("paciente_nome");
+
+                    b.Property<string>("Pendencia")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("pendencia");
+
+                    b.Property<string>("PessoaIdEsus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("pessoa_id_esus");
+
+                    b.Property<int?>("PosicaoFila")
+                        .HasColumnType("integer")
+                        .HasColumnName("posicao_fila");
+
+                    b.Property<string>("Prioridade")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("prioridade");
+
+                    b.Property<string>("PrioridadeCor")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("prioridade_cor");
+
+                    b.Property<string>("ProfissionalSolicitante")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("profissional_solicitante");
+
+                    b.Property<string>("Recurso")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("recurso");
+
+                    b.Property<string>("Regulador")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("regulador");
+
+                    b.Property<string>("Setor")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("setor");
+
+                    b.Property<string>("Sexo")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("sexo");
+
+                    b.Property<DateTime>("SincronizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sincronizado_em");
+
+                    b.Property<int>("Situacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao");
+
+                    b.Property<int?>("SituacaoAnterior")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao_anterior");
+
+                    b.Property<DateTime?>("SituacaoMudouEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("situacao_mudou_em");
+
+                    b.Property<string>("Subprocedimentos")
+                        .HasColumnType("text")
+                        .HasColumnName("subprocedimentos");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("telefone");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<DateTime?>("UltimoEventoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_evento_em");
+
+                    b.Property<string>("UnidadeExecutora")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("unidade_executora");
+
+                    b.Property<string>("UnidadeSolicitante")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("unidade_solicitante");
+
+                    b.Property<string>("UsuarioAgendamento")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("usuario_agendamento");
+
+                    b.Property<string>("UsuarioInclusao")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("usuario_inclusao");
+
+                    b.Property<DateTime?>("VistoNaFilaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("visto_na_fila_em");
+
+                    b.Property<DateTime?>("VistoNosAgendadosEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("visto_nos_agendados_em");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Cns")
+                        .HasDatabaseName("ix_esussg_solicitacao_cns");
+
+                    b.HasIndex("Cpf")
+                        .HasDatabaseName("ix_esussg_solicitacao_cpf");
+
+                    b.HasIndex("DataAgendada")
+                        .HasDatabaseName("ix_esussg_solicitacao_data_agendada");
+
+                    b.HasIndex("PacienteConciliarEm")
+                        .HasDatabaseName("ix_esussg_solicitacao_paciente_conciliar")
+                        .HasFilter("paciente_conciliar_em IS NOT NULL");
+
+                    b.HasIndex("PacienteId")
+                        .HasDatabaseName("ix_esussg_solicitacao_paciente_id")
+                        .HasFilter("paciente_id IS NOT NULL AND excluido_em IS NULL");
+
+                    b.HasIndex("Situacao", "DataEntradaFila")
+                        .HasDatabaseName("ix_esussg_solicitacao_situacao_entrada");
+
+                    b.HasIndex("Tipo", "IdEsusSg")
+                        .IsUnique()
+                        .HasDatabaseName("ux_esussg_solicitacao_tipo_id")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.ToTable("esussg_solicitacao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgVarreduraExecucao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AgendadosLidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("agendados_lidos");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("CriadoPorNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("criado_por_nome");
+
+                    b.Property<DateOnly?>("CursorMes")
+                        .HasColumnType("date")
+                        .HasColumnName("cursor_mes");
+
+                    b.Property<int>("Disparo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("disparo");
+
+                    b.Property<int?>("DuracaoSegundos")
+                        .HasColumnType("integer")
+                        .HasColumnName("duracao_segundos");
+
+                    b.Property<int>("EventosNovos")
+                        .HasColumnType("integer")
+                        .HasColumnName("eventos_novos");
+
+                    b.Property<int>("Fase")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("fase");
+
+                    b.Property<DateTime?>("FinalizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finalizado_em");
+
+                    b.Property<int>("GatilhosGerados")
+                        .HasColumnType("integer")
+                        .HasColumnName("gatilhos_gerados");
+
+                    b.Property<DateTime>("IniciadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("iniciado_em");
+
+                    b.Property<DateOnly>("JanelaFim")
+                        .HasColumnType("date")
+                        .HasColumnName("janela_fim");
+
+                    b.Property<DateOnly>("JanelaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("janela_inicio");
+
+                    b.Property<string>("MensagemErro")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("mensagem_erro");
+
+                    b.Property<int>("MesesIncompletos")
+                        .HasColumnType("integer")
+                        .HasColumnName("meses_incompletos");
+
+                    b.Property<int>("Modo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2)
+                        .HasColumnName("modo");
+
+                    b.Property<int>("MudancasSituacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("mudancas_situacao");
+
+                    b.Property<int>("NaFila")
+                        .HasColumnType("integer")
+                        .HasColumnName("na_fila");
+
+                    b.Property<int>("Requisicoes")
+                        .HasColumnType("integer")
+                        .HasColumnName("requisicoes");
+
+                    b.Property<DateTime?>("RetomadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retomada_em");
+
+                    b.Property<int>("Retomadas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("retomadas");
+
+                    b.Property<int>("SaidasDaFila")
+                        .HasColumnType("integer")
+                        .HasColumnName("saidas_da_fila");
+
+                    b.Property<int>("SolicitacoesAtualizadas")
+                        .HasColumnType("integer")
+                        .HasColumnName("solicitacoes_atualizadas");
+
+                    b.Property<int>("SolicitacoesNovas")
+                        .HasColumnType("integer")
+                        .HasColumnName("solicitacoes_novas");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UltimoSinalEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_sinal_em");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IniciadoEm")
+                        .IsDescending()
+                        .HasDatabaseName("ix_esussg_varredura_execucao_iniciado");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_esussg_varredura_execucao_status");
+
+                    b.ToTable("esussg_varredura_execucao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgVarreduraFalha", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Detalhe")
+                        .HasColumnType("text")
+                        .HasColumnName("detalhe");
+
+                    b.Property<Guid>("ExecucaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execucao_id");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("mensagem");
+
+                    b.Property<DateOnly?>("Mes")
+                        .HasColumnType("date")
+                        .HasColumnName("mes");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<int?>("TipoRecurso")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo_recurso");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecucaoId", "Tipo")
+                        .HasDatabaseName("ix_esussg_varredura_falha_execucao_tipo");
+
+                    b.ToTable("esussg_varredura_falha", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.EventoChegada", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6774,6 +7450,97 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("registro_erro", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoAnaliseEspelho", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AlertasJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("alertas_json");
+
+                    b.Property<DateTime>("AnalisadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("analisado_em");
+
+                    b.Property<int>("Avisos")
+                        .HasColumnType("integer")
+                        .HasColumnName("avisos");
+
+                    b.Property<int>("Bloqueios")
+                        .HasColumnType("integer")
+                        .HasColumnName("bloqueios");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<int>("DocumentosPendentes")
+                        .HasColumnType("integer")
+                        .HasColumnName("documentos_pendentes");
+
+                    b.Property<string>("EntradaHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("entrada_hash");
+
+                    b.Property<Guid>("EspelhoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("espelho_id");
+
+                    b.Property<string>("NumeroExterno")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("numero_externo");
+
+                    b.Property<Guid?>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<int>("PerguntasPendentes")
+                        .HasColumnType("integer")
+                        .HasColumnName("perguntas_pendentes");
+
+                    b.Property<Guid?>("ProcedimentoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("procedimento_id");
+
+                    b.Property<int>("Ressalvas")
+                        .HasColumnType("integer")
+                        .HasColumnName("ressalvas");
+
+                    b.Property<string>("Resumo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("resumo");
+
+                    b.Property<int>("Sistema")
+                        .HasColumnType("integer")
+                        .HasColumnName("sistema");
+
+                    b.Property<int>("Veredito")
+                        .HasColumnType("integer")
+                        .HasColumnName("veredito");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcedimentoId");
+
+                    b.HasIndex("Sistema", "EspelhoId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_regulacao_analise_espelho_sistema_espelho");
+
+                    b.HasIndex("Sistema", "Veredito")
+                        .HasDatabaseName("ix_regulacao_analise_espelho_sistema_veredito");
+
+                    b.ToTable("regulacao_analise_espelho", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoConfiguracao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7229,6 +7996,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("embedding_hash");
 
+                    b.Property<Guid?>("EsusSgCatalogoRecursoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("esussg_catalogo_recurso_id");
+
                     b.Property<Guid>("ProcedimentoId")
                         .HasColumnType("uuid")
                         .HasColumnName("procedimento_id");
@@ -7273,6 +8044,8 @@ namespace SMSMais.Data.Migrations
                         .HasColumnName("vinculo");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EsusSgCatalogoRecursoId");
 
                     b.HasIndex("ProcedimentoId")
                         .HasDatabaseName("ix_regulacao_proc_origem_procedimento");
@@ -7499,6 +8272,10 @@ namespace SMSMais.Data.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("envio_assistido");
 
+                    b.Property<Guid?>("EsusSgSolicitacaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("esussg_solicitacao_id");
+
                     b.Property<DateTime?>("ExcluidoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("excluido_em");
@@ -7618,6 +8395,11 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("AgenteResponsavelId")
                         .HasDatabaseName("ix_regulacao_solicitacao_agente");
 
+                    b.HasIndex("EsusSgSolicitacaoId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_regulacao_solicitacao_espelho_esussg")
+                        .HasFilter("esussg_solicitacao_id IS NOT NULL");
+
                     b.HasIndex("ExcluidoEm")
                         .HasDatabaseName("ix_regulacao_solicitacao_excluido_em");
 
@@ -7673,7 +8455,7 @@ namespace SMSMais.Data.Migrations
                         {
                             t.HasCheckConstraint("ck_regulacao_solicitacao_nar", "(fluxo = 3) = (unidade_em_nome_de_id IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_regulacao_solicitacao_um_espelho", "((solicitacao_id IS NOT NULL)::int + (ser_solicitacao_id IS NOT NULL)::int + (sernit_solicitacao_id IS NOT NULL)::int) <= 1");
+                            t.HasCheckConstraint("ck_regulacao_solicitacao_um_espelho", "((solicitacao_id IS NOT NULL)::int + (ser_solicitacao_id IS NOT NULL)::int + (sernit_solicitacao_id IS NOT NULL)::int + (esussg_solicitacao_id IS NOT NULL)::int) <= 1");
                         });
                 });
 
@@ -14175,6 +14957,39 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgEvento", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.EsusSg.EsusSgSolicitacao", "EsusSgSolicitacao")
+                        .WithMany("Eventos")
+                        .HasForeignKey("EsusSgSolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EsusSgSolicitacao");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgGatilho", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.EsusSg.EsusSgSolicitacao", "EsusSgSolicitacao")
+                        .WithMany()
+                        .HasForeignKey("EsusSgSolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EsusSgSolicitacao");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgVarreduraFalha", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.EsusSg.EsusSgVarreduraExecucao", "Execucao")
+                        .WithMany()
+                        .HasForeignKey("ExecucaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Execucao");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.EventoChegada", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Geofence", "Geofence")
@@ -14821,6 +15636,14 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Motorista");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoAnaliseEspelho", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Regulacao.RegulacaoProcedimento", null)
+                        .WithMany()
+                        .HasForeignKey("ProcedimentoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoEvento", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Regulacao.RegulacaoSolicitacao", "Solicitacao")
@@ -14891,6 +15714,11 @@ namespace SMSMais.Data.Migrations
 
             modelBuilder.Entity("SMSMais.Data.Entities.Regulacao.RegulacaoProcedimentoOrigem", b =>
                 {
+                    b.HasOne("SMSMais.Data.Entities.EsusSg.EsusSgCatalogoRecurso", null)
+                        .WithMany()
+                        .HasForeignKey("EsusSgCatalogoRecursoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SMSMais.Data.Entities.Regulacao.RegulacaoProcedimento", "Procedimento")
                         .WithMany("Origens")
                         .HasForeignKey("ProcedimentoId")
@@ -15887,6 +16715,11 @@ namespace SMSMais.Data.Migrations
             modelBuilder.Entity("SMSMais.Data.Entities.EstrategiasFila.EstrategiaFila", b =>
                 {
                     b.Navigation("Rodadas");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.EsusSg.EsusSgSolicitacao", b =>
+                {
+                    b.Navigation("Eventos");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Fileira", b =>

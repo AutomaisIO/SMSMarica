@@ -55,6 +55,11 @@ public static class ProvedoresIntegracao
         // SERNIT — SER de Niterói (regulacao.niteroi.rj.gov.br), mesma stack, instância própria.
         // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
         ["sernit"] = "SERNIT — SER de Niterói",
+        // ESUS de São Gonçalo ("Novo Esus", saogoncalo.esusmais.com.br) — o produto ESUS, NÃO o
+        // e-SUS do governo. JSON (APIs :8001 + :9001), SOMENTE LEITURA (ADR-0063).
+        // clientId=usuário, clientSecret=senha, parametrosJson={cliente, apiUrl, legadoUrl}.
+        // Cadastrada pela aba ESUS SG de Regulação → Configuração, não por esta tela.
+        ["esussg"] = "ESUS — São Gonçalo",
         // NB: o conector web do Klinikos NÃO é um provedor de credencial de serviço (não é
         // integração tipo Google/Spaces). É uma FONTE DE PRONTUÁRIO — configurada em
         // "Importar Prontuários → Fontes/Conectores" como uma IaFonte (Tipo=KlinikosWeb), com

@@ -47,6 +47,18 @@ public sealed class SernitController(ISernitConsultaService consulta) : Controll
     public Task<SernitSolicitacaoDetalheDto> Obter(Guid id, CancellationToken cancellationToken) =>
         consulta.ObterAsync(id, cancellationToken);
 
+    /// <summary>Refaz agora a análise de regras deste pedido (ADR-0063 §4). Só recalcula o NOSSO
+    /// parecer — não escreve nada no SERNIT.</summary>
+    [HttpPost("{id:guid}/analise/reanalisar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.Regulacao.AnaliseRegras.Dtos.AnaliseRegrasDetalheDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SMSMais.Core.Regulacao.AnaliseRegras.Dtos.AnaliseRegrasDetalheDto>> Reanalisar(
+        Guid id,
+        [FromServices] SMSMais.Core.Regulacao.AnaliseRegras.IAnaliseRegrasEspelhoService analise,
+        CancellationToken cancellationToken) =>
+        await analise.ReanalisarAsync(SistemaRegulacao.Sernit, id, cancellationToken) is { } d ? d : NotFound();
+
     /// <summary>Registra um FollowUP na solicitação — <b>escreve no SERNIT</b>. Assinado pelo
     /// operador (exige a sessão de <c>/regulacao/sernit/sessao</c>); só retorna sucesso depois de
     /// RELER o histórico e achar o evento lá.</summary>

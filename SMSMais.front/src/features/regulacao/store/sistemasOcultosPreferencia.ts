@@ -22,6 +22,7 @@ export const SISTEMAS_REGULADORES: { valor: SistemaRegulacao; rotulo: string }[]
   { valor: 'Sisreg', rotulo: 'SISREG' },
   { valor: 'Ser', rotulo: 'SER' },
   { valor: 'Sernit', rotulo: 'SERNIT' },
+  { valor: 'EsusSg', rotulo: 'ESUS São Gonçalo' },
 ];
 
 function carregar(): SistemaRegulacao[] {

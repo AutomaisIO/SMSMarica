@@ -6,6 +6,11 @@
  * tem) e com `idSernit` no lugar de `idSer`.
  */
 
+import type {
+  AnaliseRegrasDetalhe,
+  AnaliseRegrasResumo,
+  VereditoAnaliseRegras,
+} from '@/shared/regulacao/analiseRegras/tipos';
 import type { CategoriaFollowUp } from '@/shared/regulacao/categoriasFollowUp';
 import type { EventoResumoExterno, TipoEventoExterno } from '@/shared/regulacao/eventosExternos';
 
@@ -70,6 +75,8 @@ export type SolicitacaoSernitLista = {
   eventosCount: number;
   historicoIndisponivel: boolean;
   diasNaFila: number | null;
+  /** Veredito da análise automática das regras de elegibilidade (ADR-0063 §4). Null = ainda não analisado. */
+  analise?: AnaliseRegrasResumo | null;
 };
 
 export type EventoSernit = {
@@ -104,10 +111,14 @@ export type SolicitacaoSernitDetalhe = {
   telefoneWhatsapp: string | null;
   telefoneContato: string | null;
   eventos: EventoSernit[];
+  /** Análise das regras com cada regra avaliada (ADR-0063 §4). */
+  analise?: AnaliseRegrasDetalhe | null;
 };
 
 export type BuscaSernitFiltro = {
   situacao?: SituacaoSernit;
+  /** Só pedidos com este veredito da análise de regras. */
+  veredito?: VereditoAnaliseRegras;
   tipo?: TipoRecursoSernit;
   termo?: string;
   dataSolicitacaoInicio?: string;

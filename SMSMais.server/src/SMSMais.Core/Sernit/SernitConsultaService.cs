@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Sernit.Dtos;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Sernit;
 
 namespace SMSMais.Core.Sernit;
@@ -19,7 +20,9 @@ public interface ISernitConsultaService
     Task<IReadOnlyList<SernitResumoSituacaoDto>> ResumoPorSituacaoAsync(CancellationToken cancellationToken);
 }
 
-public sealed class SernitConsultaService(SmsMaisDbContext db) : ISernitConsultaService
+public sealed class SernitConsultaService(
+    SmsMaisDbContext db,
+    Regulacao.AnaliseRegras.IAnaliseRegrasEspelhoService analise) : ISernitConsultaService
 {
     private const int TamanhoMaximo = 200;
 
@@ -33,6 +36,13 @@ public sealed class SernitConsultaService(SmsMaisDbContext db) : ISernitConsulta
         if (filtro.DataSolicitacaoInicio is { } di) consulta = consulta.Where(x => x.DataSolicitacao >= di);
         if (filtro.DataSolicitacaoFim is { } df) consulta = consulta.Where(x => x.DataSolicitacao <= df);
         if (filtro.MudouDesde is { } desde) consulta = consulta.Where(x => x.SituacaoMudouEm >= desde);
+        if (filtro.Veredito is { } veredito)
+        {
+            var comVeredito = db.RegulacaoAnalisesEspelho
+                .Where(a => a.Sistema == SistemaRegulacao.Sernit && a.Veredito == veredito)
+                .Select(a => a.EspelhoId);
+            consulta = consulta.Where(x => comVeredito.Contains(x.Id));
+        }
 
         if (!string.IsNullOrWhiteSpace(filtro.Termo))
         {
@@ -58,7 +68,10 @@ public sealed class SernitConsultaService(SmsMaisDbContext db) : ISernitConsulta
             .Take(tamanho)
             .ToListAsync(cancellationToken);
 
-        return new SernitBuscaResultadoDto(itens.Select(ParaLista).ToList(), total, pagina, tamanho);
+        var resumos = await analise.ResumosAsync(SistemaRegulacao.Sernit, itens.Select(i => i.Id).ToList(), cancellationToken);
+        return new SernitBuscaResultadoDto(
+            itens.Select(i => ParaLista(i) with { Analise = resumos.GetValueOrDefault(i.Id) }).ToList(),
+            total, pagina, tamanho);
     }
 
     public async Task<SernitSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken cancellationToken)
@@ -77,12 +90,14 @@ public sealed class SernitConsultaService(SmsMaisDbContext db) : ISernitConsulta
                 e.CentralRegulacao, e.UnidadeExecutora, e.Usuario, e.LotacaoEvento, e.Ip, e.Observacao))
             .ToListAsync(cancellationToken);
 
+        var detalheAnalise = await analise.ObterDetalheAsync(SistemaRegulacao.Sernit, id, cancellationToken);
         return new SernitSolicitacaoDetalheDto(
-            ParaLista(s),
+            ParaLista(s) with { Analise = detalheAnalise?.Resumo },
             s.NomeMae, s.Sexo, s.DataNascimento, s.Etnia, s.Cep, s.Uf, s.MunicipioPaciente,
             s.Bairro, s.TipoLogradouro, s.Logradouro, s.Numero, s.Complemento,
             s.TelefoneResidencial, s.TelefoneWhatsapp, s.TelefoneContato,
-            eventos);
+            eventos,
+            detalheAnalise);
     }
 
     public async Task<IReadOnlyList<SernitResumoSituacaoDto>> ResumoPorSituacaoAsync(

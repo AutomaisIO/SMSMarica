@@ -346,6 +346,47 @@ export const SECOES: SecaoMenu[] = [
         ],
       },
       {
+        // 2º nível: ESUS de São Gonçalo (ADR-0063) — o produto ESUS, não o e-SUS do governo.
+        // Espelho só leitura: sem "Nova solicitação" (a inclusão é feita no próprio ESUS).
+        rotulo: 'ESUS SG',
+        to: '/app/regulacao/esussg',
+        icone: ClipboardList,
+        modulo: 'RegulacaoEsusSg',
+        descricao: 'ESUS de São Gonçalo (PPI): fila, agendados, notificações e configuração — só leitura.',
+        subItens: [
+          {
+            rotulo: 'Fila',
+            to: '/app/regulacao/esussg',
+            icone: ClipboardList,
+            modulo: 'RegulacaoEsusSg',
+            end: true,
+            descricao: 'Pedidos do município no ESUS São Gonçalo: fila, agendados e saídas da fila.',
+          },
+          {
+            rotulo: 'Notificações',
+            to: '/app/regulacao/esussg/notificacoes',
+            icone: BellRing,
+            modulo: 'RegulacaoEsusSg',
+            descricao: 'Movimentações do ESUS São Gonçalo que ainda não foram vistas.',
+          },
+          {
+            // Módulo próprio (78), desligado por padrão.
+            rotulo: 'Estatísticas',
+            to: '/app/regulacao/esussg/estatisticas',
+            icone: BarChart3,
+            modulo: 'EstatisticaEsusSg',
+            descricao: 'Quem incluiu na fila e quem agendou no ESUS São Gonçalo.',
+          },
+          {
+            rotulo: 'Configuração',
+            to: '/app/regulacao/esussg/configuracao',
+            icone: Settings2,
+            modulo: 'RegulacaoConfiguracao',
+            descricao: 'Credencial e motor de atualização do ESUS São Gonçalo.',
+          },
+        ],
+      },
+      {
         // 2º nível: SISREG III (regulação federal). Trazido para dentro de Regulação.
         rotulo: 'SISREG',
         to: '/app/sisreg',

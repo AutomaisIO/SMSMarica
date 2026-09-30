@@ -50,6 +50,18 @@ public sealed class SerController(ISerConsultaService consulta) : ControllerBase
     public Task<SerSolicitacaoDetalheDto> Obter(Guid id, CancellationToken cancellationToken) =>
         consulta.ObterAsync(id, cancellationToken);
 
+    /// <summary>Refaz agora a análise de regras deste pedido (ADR-0063 §4). Só recalcula o NOSSO
+    /// parecer — não escreve nada no SER.</summary>
+    [HttpPost("{id:guid}/analise/reanalisar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SMSMais.Core.Regulacao.AnaliseRegras.Dtos.AnaliseRegrasDetalheDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SMSMais.Core.Regulacao.AnaliseRegras.Dtos.AnaliseRegrasDetalheDto>> Reanalisar(
+        Guid id,
+        [FromServices] SMSMais.Core.Regulacao.AnaliseRegras.IAnaliseRegrasEspelhoService analise,
+        CancellationToken cancellationToken) =>
+        await analise.ReanalisarAsync(SistemaRegulacao.Ser, id, cancellationToken) is { } d ? d : NotFound();
+
     /// <summary>
     /// Registra um FollowUP na solicitação — <b>escreve no SER</b> (docs/ser.md §9).
     ///

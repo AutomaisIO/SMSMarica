@@ -31,7 +31,7 @@ public sealed record ExecutanteInternoDto(
 /// Em quais sistemas externos o procedimento existe. Os dois ramos do SER aparecem separados
 /// porque mudam o formulário e as regras do mesmo recurso.
 /// </summary>
-public sealed record ExisteExternoDto(bool Ser, bool SerAmbulatorioEstadual, bool Sernit);
+public sealed record ExisteExternoDto(bool Ser, bool SerAmbulatorioEstadual, bool Sernit, bool EsusSg = false);
 
 public sealed record RegulacaoProcedimentoItemDto(
     Guid Id,

@@ -1,7 +1,7 @@
 export type { Periodo } from '@/shared/lib/estatisticasPeriodo';
 
 /** Qual fila espelhada a tela lê. Vai para a URL da API e para os textos. */
-export type FonteExterna = 'ser' | 'sernit';
+export type FonteExterna = 'ser' | 'sernit' | 'esussg';
 
 /** Um nome que já apareceu como "Usuário" na trilha de eventos do SER/SERNIT. */
 export type OperadorExterno = {

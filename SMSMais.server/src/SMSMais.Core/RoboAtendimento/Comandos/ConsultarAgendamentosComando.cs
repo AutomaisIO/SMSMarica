@@ -135,7 +135,20 @@ public sealed class ConsultarAgendamentosComando(
             .Select(s => new { s.Recurso, s.AgendadoParaTexto, s.UnidadeExecutora })
             .ToListAsync(ct);
 
-        if (futuros.Count == 0 && linhasSer.Count == 0 && linhasSernit.Count == 0 && cancelados.Count == 0)
+        // ESUS de São Gonçalo (ADR-0063): PPI de exame de Maricá em SG. Diferente do SER/SERNIT, o
+        // espelho tem data, hora e unidade exatas — então ENTRA na resposta (só o que é futuro).
+        var hojeBr = FusoBrasilia.HojeEmBrasilia();
+        var linhasEsusSg = await db.EsusSgSolicitacoes.AsNoTracking()
+            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
+                && s.Situacao == Data.Entities.EsusSg.SituacaoEsusSg.Agendada
+                && s.DataAgendada != null && s.DataAgendada >= hojeBr)
+            .OrderBy(s => s.DataAgendada)
+            .Take(Maximo)
+            .Select(s => new { s.Recurso, s.DataAgendada, s.DataHoraAgendadaTexto, s.UnidadeExecutora })
+            .ToListAsync(ct);
+
+        if (futuros.Count == 0 && linhasSer.Count == 0 && linhasSernit.Count == 0 && linhasEsusSg.Count == 0
+            && cancelados.Count == 0)
             return new(false,
                 "NÃO localizei agendamento futuro NO NOSSO SISTEMA — o que NÃO quer dizer que não exista: "
                 + "marcação feita agora pela equipe ou pela regulação pode ainda não ter chegado aqui. "
@@ -155,6 +168,15 @@ public sealed class ConsultarAgendamentosComando(
             var conf = f.StatusConfirmacao == StatusConfirmacaoAgendamento.Confirmada ? " (já confirmado)" : string.Empty;
             return $"- {f.Procedimento ?? "atendimento"}: {quando}{onde}{conf}";
         }).ToList();
+
+        linhas.AddRange(linhasEsusSg.Select(e =>
+        {
+            var quando = DescreverDataEsusSg(e.DataHoraAgendadaTexto, e.DataAgendada);
+            var onde = string.IsNullOrWhiteSpace(e.UnidadeExecutora)
+                ? " — em São Gonçalo"
+                : $" — {e.UnidadeExecutora} (São Gonçalo)";
+            return $"- {e.Recurso}: {quando}{onde} (marcado pela regulação de São Gonçalo)";
+        }));
 
         // Regra PERENE (decisão do dono, 29/09/2026): perguntou "por que cancelou?", o robô lê o
         // motivo que a atendente registrou PARA o paciente — nunca inventa um, nunca manda
@@ -204,6 +226,7 @@ public sealed class ConsultarAgendamentosComando(
                 + "quando houver novidade, a Secretaria entra em contato por aqui. Encerre com cordialidade.");
 
         var agora = DateTime.UtcNow;
+        var hojeBrasilia = FusoBrasilia.HojeEmBrasilia();
         var existe = await db.Solicitacoes.AsNoTracking().AnyAsync(
             s => candidatos.Contains(s.PacienteId)
                 && s.ExcluidoEm == null && s.DataAgendada != null && s.DataAgendada >= agora
@@ -219,7 +242,11 @@ public sealed class ConsultarAgendamentosComando(
                     && s.ExcluidoEm == null && s.Situacao == Data.Entities.Ser.SituacaoSer.Agendada, ct)
             || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(
                 s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
-                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.Sernit.SituacaoSernit.Agendada, ct);
+                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.Sernit.SituacaoSernit.Agendada, ct)
+            || await db.EsusSgSolicitacoes.AsNoTracking().AnyAsync(
+                s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
+                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.EsusSg.SituacaoEsusSg.Agendada
+                    && s.DataAgendada != null && s.DataAgendada >= hojeBrasilia, ct);
 
         if (!existe)
             return new(true,
@@ -268,5 +295,16 @@ public sealed class ConsultarAgendamentosComando(
             if (!await contatosNegados.BloqueadoAsync(ctx.TelefoneCanonical, p.Id, ct))
                 lista.Add(p);
         return lista;
+    }
+
+    /// <summary>"06/10/2026 13:15:00" (hora local de Brasília, como o ESUS formata) → "06/10/2026 às 13:15".</summary>
+    private static string DescreverDataEsusSg(string? dataHoraTexto, DateOnly? data)
+    {
+        if (DateTime.TryParseExact(dataHoraTexto?.Trim(), ["dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy HH:mm"],
+                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dh))
+        {
+            return dh.ToString("dd/MM/yyyy 'às' HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        return data is { } d ? d.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture) : "sem data";
     }
 }

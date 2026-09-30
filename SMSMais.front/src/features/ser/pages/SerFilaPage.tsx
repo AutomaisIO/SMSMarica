@@ -6,6 +6,9 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { BadgeAnaliseRegras } from '@/shared/regulacao/analiseRegras/BadgeAnaliseRegras';
+import { ChipsVeredito, OpcoesVeredito } from '@/shared/regulacao/analiseRegras/FiltroVeredito';
+import type { VereditoAnaliseRegras } from '@/shared/regulacao/analiseRegras/tipos';
 import { useBuscaSer, useResumoSer } from '@/features/ser/api/queries';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -37,6 +40,8 @@ export function SerFilaPage() {
   const navegar = useNavigate();
 
   const [situacao, setSituacao] = useState<SituacaoSer | ''>('EmFila');
+  // Veredito da análise automática das regras (ADR-0063 §4) — recorte a mais, sobre a situação.
+  const [veredito, setVeredito] = useState<VereditoAnaliseRegras | ''>('');
   const [termo, setTermo] = useState('');
   const [termoAplicado, setTermoAplicado] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -44,11 +49,12 @@ export function SerFilaPage() {
   const filtro = useMemo<BuscaSerFiltro>(
     () => ({
       situacao: situacao || undefined,
+      veredito: veredito || undefined,
       termo: termoAplicado || undefined,
       pagina,
       tamanho: TAMANHO_PAGINA,
     }),
-    [situacao, termoAplicado, pagina],
+    [situacao, veredito, termoAplicado, pagina],
   );
 
   const { data: resultado, isLoading } = useBuscaSer(filtro);
@@ -63,6 +69,11 @@ export function SerFilaPage() {
 
   function trocarSituacao(nova: SituacaoSer | '') {
     setSituacao(nova);
+    setPagina(1);
+  }
+
+  function trocarVeredito(novo: VereditoAnaliseRegras | '') {
+    setVeredito(novo);
     setPagina(1);
   }
 
@@ -156,6 +167,13 @@ export function SerFilaPage() {
       ),
     },
     {
+      chave: 'analise',
+      cabecalho: 'Análise das regras',
+      className: 'w-36',
+      ordenar: (s) => s.analise?.veredito ?? '',
+      render: (s) => <BadgeAnaliseRegras analise={s.analise} />,
+    },
+    {
       chave: 'historico',
       cabecalho: 'Histórico',
       className: 'w-28',
@@ -221,6 +239,9 @@ export function SerFilaPage() {
         </div>
       )}
 
+      {/* O resumo do SER/SERNIT não conta por veredito — os chips aparecem sem número. */}
+      <ChipsVeredito valor={veredito} aoMudar={trocarVeredito} />
+
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <Campo label="Situação" htmlFor="ser-situacao" className="w-56">
           <Select
@@ -234,6 +255,16 @@ export function SerFilaPage() {
                 {ROTULO_SITUACAO[s]}
               </option>
             ))}
+          </Select>
+        </Campo>
+
+        <Campo label="Análise das regras" htmlFor="ser-veredito" className="w-44">
+          <Select
+            id="ser-veredito"
+            value={veredito}
+            onChange={(e) => trocarVeredito(e.target.value as VereditoAnaliseRegras | '')}
+          >
+            <OpcoesVeredito />
           </Select>
         </Campo>
 

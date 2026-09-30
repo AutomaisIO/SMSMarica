@@ -1,5 +1,6 @@
-using SMSMais.Data.Entities.Regulacao;
+using SMSMais.Core.Regulacao.AnaliseRegras.Dtos;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Core.Ser.Dtos;
@@ -34,7 +35,9 @@ public sealed record SerSolicitacaoListaDto(
     bool HistoricoIndisponivel,
     /// <summary>Quantos dias a solicitação está esperando desde que foi criada no SER. É a
     /// pergunta que a regulação faz, e calculá-la no servidor evita que cada tela repita a conta.</summary>
-    int? DiasNaFila);
+    int? DiasNaFila,
+    /// <summary>Análise automática das regras (ADR-0063 §4). Nulo = ainda não analisado.</summary>
+    AnaliseRegrasResumoDto? Analise = null);
 
 /// <summary>Detalhe completo de uma solicitação, com os dados que só existem no histórico.</summary>
 public sealed record SerSolicitacaoDetalheDto(
@@ -54,7 +57,8 @@ public sealed record SerSolicitacaoDetalheDto(
     string? TelefoneResidencial,
     string? TelefoneWhatsapp,
     string? TelefoneContato,
-    IReadOnlyList<SerEventoDto> Eventos);
+    IReadOnlyList<SerEventoDto> Eventos,
+    AnaliseRegrasDetalheDto? Analise = null);
 
 /// <summary>Um evento da trilha, como o SER mostra.</summary>
 public sealed record SerEventoDto(
@@ -74,6 +78,8 @@ public sealed record SerEventoDto(
 public sealed record SerBuscaFiltroDto
 {
     public SituacaoSer? Situacao { get; init; }
+    /// <summary>Só os pedidos com este veredito da análise de regras.</summary>
+    public VereditoAnaliseRegras? Veredito { get; init; }
     public TipoRecursoSer? Tipo { get; init; }
 
     /// <summary>Busca livre: casa contra nome do paciente, CPF, CNS, ID do SER e recurso.</summary>

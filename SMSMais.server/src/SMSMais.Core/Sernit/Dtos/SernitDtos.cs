@@ -1,4 +1,6 @@
+using SMSMais.Core.Regulacao.AnaliseRegras.Dtos;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Sernit;
 
 namespace SMSMais.Core.Sernit.Dtos;
@@ -27,7 +29,9 @@ public sealed record SernitSolicitacaoListaDto(
     DateTime? HistoricoLidoEm,
     int EventosCount,
     bool HistoricoIndisponivel,
-    int? DiasNaFila);
+    int? DiasNaFila,
+    /// <summary>Análise automática das regras (ADR-0063 §4). Nulo = ainda não analisado.</summary>
+    AnaliseRegrasResumoDto? Analise = null);
 
 /// <summary>Detalhe completo, com os dados que só existem no histórico.</summary>
 public sealed record SernitSolicitacaoDetalheDto(
@@ -47,7 +51,8 @@ public sealed record SernitSolicitacaoDetalheDto(
     string? TelefoneResidencial,
     string? TelefoneWhatsapp,
     string? TelefoneContato,
-    IReadOnlyList<SernitEventoDto> Eventos);
+    IReadOnlyList<SernitEventoDto> Eventos,
+    AnaliseRegrasDetalheDto? Analise = null);
 
 /// <summary>Um evento da trilha, como o SERNIT mostra.</summary>
 public sealed record SernitEventoDto(
@@ -67,6 +72,8 @@ public sealed record SernitEventoDto(
 public sealed record SernitBuscaFiltroDto
 {
     public SituacaoSernit? Situacao { get; init; }
+    /// <summary>Só os pedidos com este veredito da análise de regras.</summary>
+    public VereditoAnaliseRegras? Veredito { get; init; }
     public TipoRecursoSernit? Tipo { get; init; }
     public string? Termo { get; init; }
     public DateOnly? DataSolicitacaoInicio { get; init; }

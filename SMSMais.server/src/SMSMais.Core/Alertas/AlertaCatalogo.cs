@@ -48,6 +48,8 @@ public static class AlertaCatalogo
             "Falhas avisadas pelo motor do SER."),
         new(Sincronismo("sernit"), "Sincronismo SERNIT", "Sincronismo",
             "Falhas avisadas pelo motor do SERNIT."),
+        new(Sincronismo("esussg"), "Sincronismo ESUS SG", "Sincronismo",
+            "Falhas avisadas pelo motor do ESUS de São Gonçalo."),
         new(Teste, "Mensagem de teste", "Sistema",
             "Disparada pelo botão \"Enviar teste\" desta tela."),
     ];
@@ -108,6 +110,7 @@ public static class AlertaCatalogo
         if (c.Contains(".SisregWeb.", StringComparison.Ordinal) || c.Contains(".Sisreg", StringComparison.Ordinal))
             return "Sincronismo SISREG";
         if (c.Contains(".Sernit", StringComparison.Ordinal)) return "Sincronismo SERNIT";
+        if (c.Contains(".EsusSg", StringComparison.Ordinal)) return "Sincronismo ESUS SG";
         if (c.Contains(".SerWeb.", StringComparison.Ordinal) || c.Contains(".Ser.", StringComparison.Ordinal))
             return "Sincronismo SER";
         if (c.Contains(".Pep.", StringComparison.Ordinal)) return "Sincronismo PEP";

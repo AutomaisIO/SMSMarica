@@ -7,6 +7,7 @@ using SMSMais.Data.Entities.Integracoes;
 using SMSMais.Data.Entities.Pep;
 using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
+using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
 using SMSMais.Data.Entities.Geo;
@@ -194,6 +195,14 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SernitSolicitacaoRascunho> SernitSolicitacaoRascunhos => Set<SernitSolicitacaoRascunho>();
     public DbSet<SernitRascunhoAnexo> SernitRascunhoAnexos => Set<SernitRascunhoAnexo>();
 
+    // ---- ESUS de São Gonçalo (ADR-0063) — espelho da fila e dos agendados de Maricá ----
+    public DbSet<EsusSgSolicitacao> EsusSgSolicitacoes => Set<EsusSgSolicitacao>();
+    public DbSet<EsusSgEvento> EsusSgEventos => Set<EsusSgEvento>();
+    public DbSet<EsusSgGatilho> EsusSgGatilhos => Set<EsusSgGatilho>();
+    public DbSet<EsusSgVarreduraExecucao> EsusSgVarreduraExecucoes => Set<EsusSgVarreduraExecucao>();
+    public DbSet<EsusSgVarreduraFalha> EsusSgVarreduraFalhas => Set<EsusSgVarreduraFalha>();
+    public DbSet<EsusSgCatalogoRecurso> EsusSgCatalogoRecursos => Set<EsusSgCatalogoRecurso>();
+
     // Catálogo canônico de procedimentos da Regulação (ADR-0052): reúne, sob um procedimento
     // que o solicitante reconhece, as origens equivalentes do SISREG, do SER e do SERNIT.
     public DbSet<RegulacaoProcedimento> RegulacaoProcedimentos => Set<RegulacaoProcedimento>();
@@ -208,6 +217,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RegulacaoSolicitacaoDestino> RegulacaoSolicitacaoDestinos => Set<RegulacaoSolicitacaoDestino>();
     public DbSet<RegulacaoEventoVisto> RegulacaoEventosVistos => Set<RegulacaoEventoVisto>();
     public DbSet<RegulacaoRegra> RegulacaoRegras => Set<RegulacaoRegra>();
+    public DbSet<RegulacaoAnaliseEspelho> RegulacaoAnalisesEspelho => Set<RegulacaoAnaliseEspelho>();
     public DbSet<RegulacaoSolicitacaoRespostaRegra> RegulacaoSolicitacaoRespostasRegra =>
         Set<RegulacaoSolicitacaoRespostaRegra>();
 

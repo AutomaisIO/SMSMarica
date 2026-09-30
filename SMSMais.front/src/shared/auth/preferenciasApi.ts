@@ -38,6 +38,8 @@ export type PreferenciasUi = {
   notificacoesSerTecnicos?: string[];
   /** Técnicos reguladores marcados no filtro das Notificações do SERNIT. Vazio = todos. */
   notificacoesSernitTecnicos?: string[];
+  /** Técnicos marcados no filtro das Notificações do ESUS de São Gonçalo (quem incluiu na fila). */
+  notificacoesEsusSgTecnicos?: string[];
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -54,6 +56,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     bipChatSilenciado: data?.bipChatSilenciado ?? undefined,
     notificacoesSerTecnicos: data?.notificacoesSerTecnicos ?? undefined,
     notificacoesSernitTecnicos: data?.notificacoesSernitTecnicos ?? undefined,
+    notificacoesEsusSgTecnicos: data?.notificacoesEsusSgTecnicos ?? undefined,
   };
 }
 

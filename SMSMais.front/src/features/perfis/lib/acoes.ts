@@ -100,6 +100,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'EstatisticaSisreg', rotulo: 'Estatísticas — SISREG (operadores autorizadores: equipe, individual e rankings)' },
   { id: 'EstatisticaSer', rotulo: 'Estatísticas — SER (operadores da fila do Estado: equipe, individual e rankings)' },
   { id: 'EstatisticaSernit', rotulo: 'Estatísticas — SERNIT (operadores da fila de Niterói: equipe, individual e rankings)' },
+  { id: 'EstatisticaEsusSg', rotulo: 'Estatísticas — ESUS São Gonçalo (quem incluiu na fila e quem agendou: equipe, individual e rankings)' },
   { id: 'Sandbox', rotulo: 'Sandbox de testes (QA)' },
   { id: 'Consultas', rotulo: 'Consultas reguladas (SISREG)' },
   { id: 'MapeamentoSigtap', rotulo: 'Mapeamento SIGTAP → tipo de exame' },
@@ -115,7 +116,10 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'RegulacaoAgendamento', rotulo: 'Regulação — agendamento (visão do município no painel)' },
   { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (Edição = registrar FollowUP no SER)' },
   { id: 'RegulacaoSernit', rotulo: 'Regulação — SERNIT: fila de Niterói (Edição = FollowUP/telefones no SERNIT)' },
-  { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais, motor do SER/SERNIT, catálogo e regras)' },
+  // ESUS de São Gonçalo (77, ADR-0063): só leitura nesta entrega — só a Consulta vale. Edição fica
+  // reservada para quando a escrita no ESUS for mapeada e autorizada.
+  { id: 'RegulacaoEsusSg', rotulo: 'Regulação — ESUS São Gonçalo: fila e agendados da PPI (só Consulta; a integração é só leitura)' },
+  { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais, motor do SER/SERNIT/ESUS São Gonçalo, catálogo e regras)' },
   { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
   { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },
   { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },
@@ -225,6 +229,17 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   },
   EstatisticaSernit: {
     Consulta: 'Ver as estatísticas dos operadores do SERNIT',
+  },
+  EstatisticaEsusSg: {
+    Consulta: 'Ver as estatísticas dos operadores do ESUS São Gonçalo',
+  },
+  // Só a Consulta vale: a integração com o ESUS é só leitura. "Visto" nas notificações é marca
+  // nossa e também usa a Consulta.
+  RegulacaoEsusSg: {
+    Consulta: 'Ver fila, agendados, detalhe e notificações do ESUS São Gonçalo (e marcar como visto)',
+    Inclusao: '— (sem efeito: integração só leitura)',
+    Edicao: '— (sem efeito: reservado para quando a escrita no ESUS for autorizada)',
+    Exclusao: '— (sem efeito)',
   },
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',

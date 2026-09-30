@@ -206,7 +206,8 @@ public sealed class RegulacaoProcedimentoBuscaService(
         new(
             Ser: origens.Any(o => o.Sistema == SistemaRegulacao.Ser),
             SerAmbulatorioEstadual: origens.Any(o => o.Sistema == SistemaRegulacao.Ser && o.Ramo == "AE"),
-            Sernit: origens.Any(o => o.Sistema == SistemaRegulacao.Sernit));
+            Sernit: origens.Any(o => o.Sistema == SistemaRegulacao.Sernit),
+            EsusSg: origens.Any(o => o.Sistema == SistemaRegulacao.EsusSg));
 
     private async Task<IReadOnlyList<ExecutanteInternoDto>> CarregarExecutantesAsync(
         IReadOnlyList<RegulacaoOrigemDto> origens, CancellationToken ct)

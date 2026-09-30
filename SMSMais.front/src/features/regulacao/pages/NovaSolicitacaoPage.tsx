@@ -26,6 +26,7 @@ import { PassoPaciente } from '../components/wizard/PassoPaciente';
 import { PassoRegras } from '../components/wizard/PassoRegras';
 import { ExamesInternosSugeridos } from '../components/ExamesInternosSugeridos';
 import type { FluxoRegulacao } from '../tiposSolicitacao';
+import { ROTULO_SISTEMA_REGULACAO } from '../types';
 import type { PacienteResumoRegulacao, RegulacaoProcedimentoItem } from '../types';
 
 type Passo = 'procedimento' | 'destino' | 'paciente' | 'regras' | 'formulario' | 'revisao';
@@ -79,7 +80,10 @@ export function NovaSolicitacaoPage() {
   const pendencias = usePendencias(passo === 'revisao' ? solicitacaoId : null);
 
   const temInterno = (procedimento?.executantesInternos.length ?? 0) > 0;
-  const temExterno = !!procedimento?.existeExterno.ser || !!procedimento?.existeExterno.sernit;
+  const temExterno =
+    !!procedimento?.existeExterno.ser ||
+    !!procedimento?.existeExterno.sernit ||
+    !!procedimento?.existeExterno.esusSg;
 
   /**
    * Com oferta interna, o normal é resolver dentro do município — o Externo só aparece quando a
@@ -97,6 +101,9 @@ export function NovaSolicitacaoPage() {
     const lista: { valor: string; rotulo: string }[] = [];
     if (procedimento?.existeExterno.ser) lista.push({ valor: 'Ser', rotulo: 'SER (SES-RJ)' });
     if (procedimento?.existeExterno.sernit) lista.push({ valor: 'Sernit', rotulo: 'SERNIT (Niterói)' });
+    // ESUS de São Gonçalo (ADR-0063): a integração é só leitura — o pedido segue com os campos
+    // canônicos (sem bloco dinâmico) e é incluído na tela do próprio ESUS.
+    if (procedimento?.existeExterno.esusSg) lista.push({ valor: 'EsusSg', rotulo: 'ESUS São Gonçalo' });
     return lista;
   }, [procedimento]);
 
@@ -267,7 +274,13 @@ export function NovaSolicitacaoPage() {
               {(formulario.data?.campos ?? []).map((c) => (
                 <div key={c.chave} className="min-w-72">
                   <CampoDinamico
-                    sistema={destino === 'Sernit' ? 'SERNIT' : 'SER'}
+                    // O ESUS SG não tem bloco dinâmico: com ele de destino, os campos que
+                    // aparecem vêm do SER/SERNIT — o sistema do aviso é o da origem do campo.
+                    sistema={
+                      destino === 'Sernit' || (destino !== 'Ser' && c.origens[0] === 'Sernit')
+                        ? 'SERNIT'
+                        : 'SER'
+                    }
                     c={{
                       numero: c.chave,
                       campo: c.chave,
@@ -281,7 +294,7 @@ export function NovaSolicitacaoPage() {
                   />
                   {c.origens.length === 1 && fluxo === 'Externo' ? (
                     <p className="mt-0.5 text-[11px] text-slate-400">
-                      exigido só pelo {c.origens[0] === 'Ser' ? 'SER' : 'SERNIT'}
+                      exigido só pelo {ROTULO_SISTEMA_REGULACAO[c.origens[0]]}
                     </p>
                   ) : null}
                 </div>

@@ -103,6 +103,7 @@ export function FilaRegulacaoPage() {
             <option value="Sisreg">SISREG</option>
             <option value="Ser">SER (SES-RJ)</option>
             <option value="Sernit">SERNIT (Niterói)</option>
+            <option value="EsusSg">ESUS São Gonçalo</option>
           </Select>
         </Campo>
       </div>

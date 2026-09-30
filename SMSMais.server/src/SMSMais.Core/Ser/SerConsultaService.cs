@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Ser.Dtos;
 using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Core.Ser;
@@ -21,7 +22,9 @@ public interface ISerConsultaService
     Task<IReadOnlyList<SerResumoSituacaoDto>> ResumoPorSituacaoAsync(CancellationToken cancellationToken);
 }
 
-public sealed class SerConsultaService(SmsMaisDbContext db) : ISerConsultaService
+public sealed class SerConsultaService(
+    SmsMaisDbContext db,
+    Regulacao.AnaliseRegras.IAnaliseRegrasEspelhoService analise) : ISerConsultaService
 {
     private const int TamanhoMaximo = 200;
 
@@ -35,6 +38,13 @@ public sealed class SerConsultaService(SmsMaisDbContext db) : ISerConsultaServic
         if (filtro.DataSolicitacaoInicio is { } di) consulta = consulta.Where(x => x.DataSolicitacao >= di);
         if (filtro.DataSolicitacaoFim is { } df) consulta = consulta.Where(x => x.DataSolicitacao <= df);
         if (filtro.MudouDesde is { } desde) consulta = consulta.Where(x => x.SituacaoMudouEm >= desde);
+        if (filtro.Veredito is { } veredito)
+        {
+            var comVeredito = db.RegulacaoAnalisesEspelho
+                .Where(a => a.Sistema == SistemaRegulacao.Ser && a.Veredito == veredito)
+                .Select(a => a.EspelhoId);
+            consulta = consulta.Where(x => comVeredito.Contains(x.Id));
+        }
 
         if (!string.IsNullOrWhiteSpace(filtro.Termo))
         {
@@ -61,8 +71,10 @@ public sealed class SerConsultaService(SmsMaisDbContext db) : ISerConsultaServic
             .Take(tamanho)
             .ToListAsync(cancellationToken);
 
+        var resumos = await analise.ResumosAsync(SistemaRegulacao.Ser, itens.Select(i => i.Id).ToList(), cancellationToken);
         return new SerBuscaResultadoDto(
-            itens.Select(ParaLista).ToList(), total, pagina, tamanho);
+            itens.Select(i => ParaLista(i) with { Analise = resumos.GetValueOrDefault(i.Id) }).ToList(),
+            total, pagina, tamanho);
     }
 
     public async Task<SerSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken cancellationToken)
@@ -82,12 +94,14 @@ public sealed class SerConsultaService(SmsMaisDbContext db) : ISerConsultaServic
                 e.CentralRegulacao, e.UnidadeExecutora, e.Usuario, e.LotacaoEvento, e.Ip, e.Observacao))
             .ToListAsync(cancellationToken);
 
+        var detalheAnalise = await analise.ObterDetalheAsync(SistemaRegulacao.Ser, id, cancellationToken);
         return new SerSolicitacaoDetalheDto(
-            ParaLista(s),
+            ParaLista(s) with { Analise = detalheAnalise?.Resumo },
             s.NomeMae, s.Sexo, s.DataNascimento, s.Etnia, s.Cep, s.Uf, s.MunicipioPaciente,
             s.Bairro, s.TipoLogradouro, s.Logradouro, s.Numero, s.Complemento,
             s.TelefoneResidencial, s.TelefoneWhatsapp, s.TelefoneContato,
-            eventos);
+            eventos,
+            detalheAnalise);
     }
 
     public async Task<IReadOnlyList<SerResumoSituacaoDto>> ResumoPorSituacaoAsync(

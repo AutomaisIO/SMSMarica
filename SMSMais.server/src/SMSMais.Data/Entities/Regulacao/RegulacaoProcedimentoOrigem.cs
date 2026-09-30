@@ -47,6 +47,7 @@ public sealed class RegulacaoProcedimentoOrigem
     public Guid? SisregProcedimentoSigtapId { get; set; }
     public Guid? SerCatalogoRecursoId { get; set; }
     public Guid? SernitCatalogoRecursoId { get; set; }
+    public Guid? EsusSgCatalogoRecursoId { get; set; }
 
     /// <summary>Embedding do rótulo (vector(1024), mesmo provedor do módulo de IA).</summary>
     public Vector? Embedding { get; set; }

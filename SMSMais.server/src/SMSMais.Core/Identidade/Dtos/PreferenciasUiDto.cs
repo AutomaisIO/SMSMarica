@@ -16,6 +16,7 @@ namespace SMSMais.Core.Identidade.Dtos;
 /// <param name="BipChatSilenciado">Bip sonoro de mensagem nova da Central de Atendimento silenciado? Persistido no usuário (ticket #127): silenciou, continua silenciado entre sessões/máquinas até a própria pessoa reativar. Ausente/false = bip ligado (padrão de conta nova). Substitui o comportamento só-de-sessão do ticket #44.</param>
 /// <param name="NotificacoesSerTecnicos">Técnicos reguladores (chave = nome normalizado de quem incluiu a solicitação) marcados no filtro das Notificações do SER. Salvo no usuário: quem filtra "o que é meu" não quer refazer a seleção a cada login. Lista vazia = todos.</param>
 /// <param name="NotificacoesSernitTecnicos">O mesmo para as Notificações do SERNIT — separado do SER porque os nomes e as filas são de sistemas diferentes.</param>
+/// <param name="NotificacoesEsusSgTecnicos">O mesmo para as Notificações do ESUS de São Gonçalo (técnico = quem incluiu na fila do ESUS).</param>
 public sealed record PreferenciasUiDto(
     Dictionary<string, string>? MenuDefaults,
     int? AlturaComposerChat = null,
@@ -27,4 +28,5 @@ public sealed record PreferenciasUiDto(
     List<string>? RegulacaoSistemasOcultos = null,
     bool? BipChatSilenciado = null,
     List<string>? NotificacoesSerTecnicos = null,
-    List<string>? NotificacoesSernitTecnicos = null);
+    List<string>? NotificacoesSernitTecnicos = null,
+    List<string>? NotificacoesEsusSgTecnicos = null);

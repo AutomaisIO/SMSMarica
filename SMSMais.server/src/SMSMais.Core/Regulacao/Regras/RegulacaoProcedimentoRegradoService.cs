@@ -60,7 +60,7 @@ public sealed class RegulacaoProcedimentoRegradoService(
     {
         limite = Math.Clamp(limite, 1, 500);
         var pedidos = sistemas.Count == 0
-            ? [SistemaRegulacao.Sisreg, SistemaRegulacao.Ser, SistemaRegulacao.Sernit]
+            ? [SistemaRegulacao.Sisreg, SistemaRegulacao.Ser, SistemaRegulacao.Sernit, SistemaRegulacao.EsusSg]
             : sistemas.Distinct().ToArray();
 
         // Topo de cada sistema, separado: unir antes de cortar deixaria o SERNIT de fora.
@@ -131,6 +131,7 @@ public sealed class RegulacaoProcedimentoRegradoService(
             SistemaRegulacao.Sisreg => await TopSisregAsync(limite, ct),
             SistemaRegulacao.Ser => await TopPorRotuloAsync(sistema, limite, ct),
             SistemaRegulacao.Sernit => await TopPorRotuloAsync(sistema, limite, ct),
+            SistemaRegulacao.EsusSg => await TopPorRotuloAsync(sistema, limite, ct),
             _ => [],
         };
 
@@ -171,15 +172,22 @@ public sealed class RegulacaoProcedimentoRegradoService(
     private async Task<IReadOnlyList<(Guid, int)>> TopPorRotuloAsync(
         SistemaRegulacao sistema, int limite, CancellationToken ct)
     {
-        var demanda = sistema == SistemaRegulacao.Ser
-            ? await db.SerSolicitacoes.AsNoTracking()
+        var demanda = sistema switch
+        {
+            SistemaRegulacao.Ser => await db.SerSolicitacoes.AsNoTracking()
                 .GroupBy(s => s.Recurso)
                 .Select(g => new { Rotulo = g.Key, N = g.Count() })
-                .ToListAsync(ct)
-            : await db.SernitSolicitacoes.AsNoTracking()
+                .ToListAsync(ct),
+            SistemaRegulacao.EsusSg => await db.EsusSgSolicitacoes.AsNoTracking()
+                .Where(s => s.ExcluidoEm == null)
                 .GroupBy(s => s.Recurso)
                 .Select(g => new { Rotulo = g.Key, N = g.Count() })
-                .ToListAsync(ct);
+                .ToListAsync(ct),
+            _ => await db.SernitSolicitacoes.AsNoTracking()
+                .GroupBy(s => s.Recurso)
+                .Select(g => new { Rotulo = g.Key, N = g.Count() })
+                .ToListAsync(ct),
+        };
 
         var origens = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
             .Where(o => o.Sistema == sistema)

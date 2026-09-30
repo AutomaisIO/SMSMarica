@@ -85,6 +85,10 @@ import { SernitNovaSolicitacaoPage } from '@/features/sernit/pages/SernitNovaSol
 import { SernitFilaPage } from '@/features/sernit/pages/SernitFilaPage';
 import { SernitSolicitacaoDetalhePage } from '@/features/sernit/pages/SernitSolicitacaoDetalhePage';
 import RegulacaoSernitConfiguracaoPage from '@/features/sernit/pages/RegulacaoSernitConfiguracaoPage';
+import { EsusSgFilaPage } from '@/features/esussg/pages/EsusSgFilaPage';
+import { EsusSgNotificacoesPage } from '@/features/esussg/pages/EsusSgNotificacoesPage';
+import { EsusSgSolicitacaoDetalhePage } from '@/features/esussg/pages/EsusSgSolicitacaoDetalhePage';
+import RegulacaoEsusSgConfiguracaoPage from '@/features/esussg/pages/RegulacaoEsusSgConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
 import { FontesProntuarioPage } from '@/features/pep-sincronizacao/pages/FontesProntuarioPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
@@ -271,6 +275,23 @@ export function AppRouter() {
           </Route>
           <Route element={<RotaComModulo modulo="EstatisticaSernit" rotulo="Estatísticas — SERNIT" />}>
             <Route path="regulacao/sernit/estatisticas" element={<RegulacaoEstatisticasPage fonte="sernit" />} />
+          </Route>
+          {/* ESUS de São Gonçalo (ADR-0063) — espelho só leitura. Cada rota com o gate do seu
+              módulo: a fila, o detalhe e as notificações pedem RegulacaoEsusSg (77); a
+              configuração, RegulacaoConfiguracao; as estatísticas, EstatisticaEsusSg (78). As
+              rotas literais vêm antes de `:id` só por legibilidade — o router ranqueia sozinho. */}
+          <Route element={<RotaComModulo modulo="RegulacaoEsusSg" rotulo="Regulação — ESUS São Gonçalo" />}>
+            <Route path="regulacao/esussg" element={<EsusSgFilaPage />} />
+            <Route path="regulacao/esussg/notificacoes" element={<EsusSgNotificacoesPage />} />
+            <Route path="regulacao/esussg/:id" element={<EsusSgSolicitacaoDetalhePage />} />
+          </Route>
+          <Route
+            element={<RotaComModulo modulo="RegulacaoConfiguracao" rotulo="Regulação — Configuração" />}
+          >
+            <Route path="regulacao/esussg/configuracao" element={<RegulacaoEsusSgConfiguracaoPage />} />
+          </Route>
+          <Route element={<RotaComModulo modulo="EstatisticaEsusSg" rotulo="Estatísticas — ESUS São Gonçalo" />}>
+            <Route path="regulacao/esussg/estatisticas" element={<RegulacaoEstatisticasPage fonte="esussg" />} />
           </Route>
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />

@@ -61,6 +61,8 @@ export type ModuloPermissao =
   | 'RegulacaoAgendamento'
   | 'RegulacaoConfiguracao'
   | 'RegulacaoSernit'
+  // ESUS de São Gonçalo (77, ADR-0063): espelho só leitura da fila e dos agendados.
+  | 'RegulacaoEsusSg'
   | 'RoboAtendimento'
   | 'AjusteCadastro'
   | 'AlteracoesAgenda'
@@ -76,6 +78,7 @@ export type ModuloPermissao =
   | 'EstatisticaSisreg'
   | 'EstatisticaSer'
   | 'EstatisticaSernit'
+  | 'EstatisticaEsusSg'
   // Ouvidoria (71–74, ADR-0060): trabalho da ouvidoria, gestão, sigilo (ver identidade/denúncias)
   // e ponto de resposta (quem responde pela unidade/área, sem ver o manifestante).
   | 'Ouvidoria'

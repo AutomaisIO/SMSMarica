@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0063 — ESUS de São Gonçalo como fonte de regulação e análise automática das regras sobre os pedidos que chegam</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0063 — ESUS de São Gonçalo como fonte de regulação e análise automática das regras sobre os pedidos que chegam</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-09-30 <strong>Relacionado:</strong> <a href="./0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> (SER como segunda fonte — este é o terceiro irmão) · <a href="./0052-fila-pre-regulacao-e-agente-regulador.md">ADR-0052</a> (solicitação da regulação ligada a espelhos por FK) · <a href="./0055-catalogo-canonico-e-embeddings.md">ADR-0055</a> (catálogo canônico) · <a href="./0041-identidade-incompleta-no-hub.md">ADR-0041</a> (sem CPF entra marcado) · <a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a> (um registro por fonte) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (só leitura)</p>
+<h2>Contexto</h2>
+<p>Maricá manda pacientes para exames em São Gonçalo pela PPI (retina, glaucoma, catarata, estrabismo, pterígio, YAG, auditiva e outros). Quem inclui esses pedidos é a própria equipe de Maricá, direto no sistema de regulação de São Gonçalo: o <strong>ESUS</strong> (<code>saogoncalo.esusmais.com.br</code>). O nome confunde: <strong>não é o e-SUS do governo</strong> (o e-SUS APS do Ministério). É o produto ESUS da empresa esusmais, que São Gonçalo usa como sistema municipal de regulação. Maricá entra nele como uma "unidade solicitante".</p>
+<p>Medido no laboratório (<code>Automais.esus_saocongalo/</code>, 30/09/2026):</p>
+<ul>
+<li>A conta de Maricá vê a <strong>fila de regulação</strong> (650 pedidos de exame; consulta vazia) e os **pacientes</li>
+</ul>
+<p>  agendados pela fila<strong> (4.924 agendamentos de exame de 2019 a 2026). A tela de </strong>excluídos de exame é   negada** ("Usuário não possui permissão").</p>
+<ul>
+<li>Não há HTML para raspar: o front é um SPA que fala JSON com dois backends (Node/GraphQL em <code>:8001</code>,</li>
+</ul>
+<p>  PHP legado em <code>:9001</code>). Login duplo, um token por backend.</p>
+<ul>
+<li>Um pedido (<code>fil_id</code>) pode ter <strong>várias sessões agendadas</strong> (<code>eap_id</code> diferentes). Fila e agendados</li>
+</ul>
+<p>  são conjuntos disjuntos com a mesma chave: agendado, o pedido sai da fila.</p>
+<ul>
+<li>O "total" que o ESUS declara conta registros únicos, mas o offset/limite conta linhas brutas, e a</li>
+</ul>
+<p>  lista de agendados repete linhas. Paginar até "offset ≥ total" <strong>perdeu agendamentos</strong>.</p>
+<ul>
+<li>A mediana de espera na fila de exame passava de <strong>900 dias</strong>. O próprio ESUS avisou por</li>
+</ul>
+<p>  WhatsApp/SMS só 4 dos 64 agendados do período medido.</p>
+<p>Ao mesmo tempo, o pedido do Bernardo foi "analisar as novas solicitações com as regras". O levantamento mostrou que as regras de elegibilidade (plano 03, <code>regulacao_regra</code>) <strong>só rodavam no assistente de Nova Solicitação</strong>, para pedidos criados dentro do SMSMais. O que alguém incluía direto no SER, no SERNIT ou no ESUS nunca era conferido.</p>
+<h2>Decisão</h2>
+<h3>1. ESUS SG é o terceiro irmão do SER, no mesmo desenho</h3>
+<ul>
+<li>Espelho próprio em <code>smsmarica.esussg_*</code> (<code>solicitacao</code>, <code>evento</code>, <code>gatilho</code>, <code>varredura_execucao</code>,</li>
+</ul>
+<p>  <code>varredura_falha</code>, <code>catalogo_recurso</code>), <strong>uma linha por pedido para todas as situações</strong>.   Chave natural (tipo, <code>fil_id</code>).</p>
+<ul>
+<li><code>SistemaRegulacao.EsusSg = 5</code>. O valor <code>Esus = 4</code> continua <strong>reservado ao e-SUS do governo</strong>: são</li>
+</ul>
+<p>  produtos diferentes e não compartilham identificador.</p>
+<ul>
+<li>Situações derivadas do que a conta vê: <code>EmFila</code>, <code>Pendente</code> (pendência ativa), <code>Agendada</code> e</li>
+</ul>
+<p>  <strong><code>SaiuDaFila</code></strong>. A última marca quem não está mais em nenhuma das duas listas. O motivo   (exclusão, cancelamento, transferência) não é visível, então <strong>não</strong> vira "cancelada" nem na   regulação (<code>MapaSituacaoExterna.DeEsusSg</code> devolve nulo) nem na ficha do paciente (situação própria   "Saiu da fila").</p>
+<ul>
+<li>A saída só é declarada quando a leitura <strong>fechou a conta</strong> (únicos = declarado) na fila daquele tipo</li>
+</ul>
+<p>  e em todos os meses de agendados. Falha de leitura nunca vira "saiu da fila". A rodada com falha   termina como <code>Parcial</code>, nunca como <code>Concluída</code>.</p>
+<ul>
+<li>A trilha é <strong>montada</strong>. O ESUS não mostra histórico por pedido à conta de Maricá. Os eventos saem</li>
+</ul>
+<p>  dos marcos com data e autor das listas (inclusão na fila pelo servidor de Maricá, cada sessão   agendada pelo servidor de São Gonçalo) e das diferenças entre rodadas (prioridade, pendência,   reagendamento, resposta do paciente, saída). Evento de diferença carrega a data em que a varredura   percebeu, e diz isso. A tabela de eventos usa os <strong>mesmos nomes de coluna</strong> do <code>sernit_evento</code>, e as   estatísticas de operadores funcionam só com o prefixo novo.</p>
+<ul>
+<li>Motor igual ao do SERNIT: fila de capacidade 1, runner que retoma na subida pelo cursor (mês de</li>
+</ul>
+<p>  agendados), agendador diário configurável na tela. A <strong>carga inicial</strong> lê todo o histórico mês a   mês desde 2015. A <strong>diária</strong> lê a fila inteira e os agendados de 45 dias atrás a 400 dias à frente.   A janela à frente é larga para que um pedido agendado para daqui a meses não seja dado como sumido.</p>
+<ul>
+<li>Catálogo: o combo "procedimentos reguláveis por solicitante" do próprio ESUS (14 exames medidos)</li>
+</ul>
+<p>  vira origem do catálogo canônico com <code>Sistema = EsusSg</code>. É o que dá procedimento canônico aos pedidos   do SG e deixa as regras alcançá-los. O ESUS entra como destino no assistente, sem formulário   dinâmico: a inclusão no ESUS não foi mapeada.</p>
+<ul>
+<li>Paciente: conciliação com o hub FHIR pelo upsert canônico, âncora no CPF válido e, sem ele, no CNS</li>
+</ul>
+<p>  com a marca de identidade incompleta. Um registro por fonte (<code>meta.source</code> <code>esussg-saogoncalo</code>).</p>
+<ul>
+<li><strong>Só leitura.</strong> A trava recusa toda ação do legado que não comece por verbo de leitura, e também a</li>
+</ul>
+<p>  que embute escrita. Conferido contra as 736 ações que o front conhece. <code>obter-comprovante-*</code> também   é recusada: gerar o comprovante pode carimbar "comprovante impresso" no SG. Não há porta de   escrita. O usuário de Maricá <strong>tem</strong> permissão de agendar e excluir no SG; usar isso exige novo OK   e novo desenho.</p>
+<ul>
+<li>Módulos de permissão <code>RegulacaoEsusSg = 77</code> (só <code>Consulta</code> nesta entrega) e <code>EstatisticaEsusSg = 78</code>.</li>
+</ul>
+<p>  A configuração do motor usa <code>RegulacaoConfiguracao</code>, como SER/SERNIT.</p>
+<ul>
+<li>O paciente vê: a ficha lista os agendamentos do ESUS SG, e o robô do WhatsApp informa o agendamento</li>
+</ul>
+<p>  futuro com data, hora e unidade de São Gonçalo. Na "posição na regulação" o robô segue a regra   minimizada de sempre, e "saiu da fila" tem o mesmo tratamento do cancelado (um atendente entra em   contato).</p>
+<h3>2. Análise automática das regras sobre os pedidos que CHEGAM (SER, SERNIT e ESUS SG)</h3>
+<ul>
+<li>Um worker, a cada 10 minutos, passa os pedidos <strong>em aberto</strong> (em fila ou pendentes) dos três espelhos</li>
+</ul>
+<p>  pelo <strong>mesmo avaliador puro</strong> do assistente (<code>AvaliadorElegibilidade</code>), com o <strong>mesmo critério de   regras</strong>: regras ativas do procedimento canônico; regra com sistema só vale para aquele sistema.   Entra o que o espelho sabe: nascimento, sexo, CPF e CID (o ESUS não traz CID).</p>
+<ul>
+<li>O pedido chega ao procedimento canônico pelo <strong>rótulo</strong> da origem do mesmo sistema. O espelho guarda</li>
+</ul>
+<p>  só o texto do recurso, e a chave é normalizada como no resto da regulação (<code>ChaveRotulo</code>).</p>
+<ul>
+<li>Veredito por pedido, em <code>regulacao_analise_espelho</code>: <code>Bloqueado</code>, <code>AConferir</code>, <code>ComRessalva</code>, <code>Apto</code>,</li>
+</ul>
+<p>  <code>SemRegras</code> e <code>SemProcedimento</code>. <code>AConferir</code> significa: há uma regra que bloqueia e depende de   pergunta ou documento, e só uma pessoa responde isso. Guarda as regras avaliadas com resultado e   motivo.</p>
+<ul>
+<li>Reanálise <strong>por hash</strong> da entrada (dado do pedido + versão das regras + idade em anos): regra editada</li>
+</ul>
+<p>  na tela é pega na passada seguinte, sem gatilho. A idade entra em anos, e o pedido volta à análise no   aniversário, não todo dia.</p>
+<ul>
+<li>É um <strong>parecer ao lado</strong>. Não muda o pedido, não muda a situação e não escreve nada no sistema</li>
+</ul>
+<p>  externo.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Maricá passa a enxergar, no próprio SMSMais, a fila e os agendamentos que tem em São Gonçalo:</li>
+</ul>
+<p>  posição, prioridade, espera, próxima sessão, unidade. A informação chega à ficha e ao robô.</p>
+<ul>
+<li>A análise só é útil para os procedimentos que <strong>têm regra</strong>. As 574 regras em produção (CRECE/REUNI)</li>
+</ul>
+<p>  estão todas presas a destinos do SER. Os procedimentos do SG (retina, glaucoma, auditiva…) começam   como <code>SemRegras</code> até alguém cadastrar regras para eles na tela de Regras de elegibilidade.</p>
+<ul>
+<li>O servidor não impõe <code>BloqueiaEnvio</code> no envio à fila (achado do levantamento, já existente). Continua</li>
+</ul>
+<p>  só no front, e fica anotado aqui como dívida.</p>
+<ul>
+<li>No robô, o SER e o SERNIT usam os agendados só para não dizer "não encontrei". Eles não entram na</li>
+</ul>
+<p>  resposta. O ESUS entra. Igualar os três é decisão separada.</p>
+<ul>
+<li>Escrita no ESUS (incluir na fila, observação) fica para quando for mapeada, autorizada por ação e</li>
+</ul>
+<p>  com o mesmo <code>IEscritaExternaGate</code> do SER/SERNIT.</p>
+</main>
+</body>
+</html>

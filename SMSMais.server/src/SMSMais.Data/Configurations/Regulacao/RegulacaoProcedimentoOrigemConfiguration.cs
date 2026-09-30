@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
+using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
 
@@ -26,6 +27,7 @@ internal sealed class RegulacaoProcedimentoOrigemConfiguration
         builder.Property(x => x.SisregProcedimentoSigtapId).HasColumnName("sisreg_procedimento_sigtap_id");
         builder.Property(x => x.SerCatalogoRecursoId).HasColumnName("ser_catalogo_recurso_id");
         builder.Property(x => x.SernitCatalogoRecursoId).HasColumnName("sernit_catalogo_recurso_id");
+        builder.Property(x => x.EsusSgCatalogoRecursoId).HasColumnName("esussg_catalogo_recurso_id");
 
         builder.Property(x => x.Embedding).HasColumnName("embedding").HasColumnType("vector(1024)");
         builder.Property(x => x.EmbeddingHash).HasColumnName("embedding_hash").HasMaxLength(64);
@@ -60,6 +62,11 @@ internal sealed class RegulacaoProcedimentoOrigemConfiguration
         builder.HasOne<SernitCatalogoRecurso>()
             .WithMany()
             .HasForeignKey(x => x.SernitCatalogoRecursoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<EsusSgCatalogoRecurso>()
+            .WithMany()
+            .HasForeignKey(x => x.EsusSgCatalogoRecursoId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(x => x.ProcedimentoId)

@@ -14,6 +14,9 @@ public enum OrigemAgendamentoPaciente
 
     /// <summary>Regulação de Niterói (SERNIT), espelho <c>sernit_solicitacao</c> (ADR-0042).</summary>
     Sernit = 4,
+
+    /// <summary>ESUS de São Gonçalo (ADR-0063) — PPI de exame de Maricá em SG.</summary>
+    EsusSg = 5,
 }
 
 /// <summary>
@@ -55,6 +58,10 @@ public enum SituacaoAgendamentoPaciente
 
     /// <summary>Concluído / alta.</summary>
     Concluido = 9,
+
+    /// <summary>Saiu da fila do sistema de origem sem agendamento visível — o motivo não é
+    /// informado (ESUS SG: a conta de Maricá não vê exclusões). Terminal, mas NÃO é "cancelado".</summary>
+    SaiuDaFila = 10,
 }
 
 /// <summary>Uma linha da aba "Agendamentos" do paciente, já normalizada entre as fontes.</summary>

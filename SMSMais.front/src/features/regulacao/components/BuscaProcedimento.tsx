@@ -20,6 +20,7 @@ const ROTULO_SISTEMA: Record<string, string> = {
   Ser: 'SER',
   Sernit: 'SERNIT',
   Esus: 'eSUS',
+  EsusSg: 'ESUS São Gonçalo',
 };
 
 /**
@@ -161,7 +162,7 @@ export function BuscaProcedimento({ value, onChange, tipo, autoFocus }: Props) {
 /** As duas linhas que respondem "onde isso é feito?" — Interno (com vagas) e Externo. */
 function LinhaOferta({ item }: { item: RegulacaoProcedimentoItem }) {
   const { executantesInternos: internos, existeExterno: externo } = item;
-  const temExterno = externo.ser || externo.sernit;
+  const temExterno = externo.ser || externo.sernit || !!externo.esusSg;
 
   return (
     <div className="mt-1 space-y-0.5 text-xs">
@@ -190,6 +191,7 @@ function LinhaOferta({ item }: { item: RegulacaoProcedimentoItem }) {
             {[
               externo.ser ? (externo.serAmbulatorioEstadual ? 'SER (amb. estadual)' : 'SER') : null,
               externo.sernit ? 'SERNIT' : null,
+              externo.esusSg ? 'ESUS São Gonçalo' : null,
             ]
               .filter(Boolean)
               .join(' · ')}

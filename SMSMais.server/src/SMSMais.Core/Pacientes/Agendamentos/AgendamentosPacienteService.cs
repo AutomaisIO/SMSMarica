@@ -6,6 +6,7 @@ using SMSMais.Core.Pacientes.Agendamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
+using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Sernit;
 
 namespace SMSMais.Core.Pacientes.Agendamentos;
@@ -24,6 +25,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         var itens = new List<AgendamentoPacienteItemDto>();
         itens.AddRange(await LerSerAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerSernitAsync(pacienteId, cancellationToken));
+        itens.AddRange(await LerEsusSgAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerSisregAsync(pacienteId, cancellationToken));
         // A agenda local do municipio foi removida em 05/09/2026 (ver CidadaoClinicoService):
         // tinha 3 linhas de teste e um modelo incompativel com a grade do SISREG. Sobra o que o
@@ -49,7 +51,8 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         or SituacaoAgendamentoPaciente.ChegadaNaoConfirmada
         or SituacaoAgendamentoPaciente.Faltou
         or SituacaoAgendamentoPaciente.Cancelado
-        or SituacaoAgendamentoPaciente.Concluido;
+        or SituacaoAgendamentoPaciente.Concluido
+        or SituacaoAgendamentoPaciente.SaiuDaFila;
 
     private static bool EhHistorico(AgendamentoPacienteItemDto i, DateTime hojeLocal)
     {
@@ -173,6 +176,62 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         _ => SituacaoAgendamentoPaciente.Pendente,
     };
 
+    // ---- ESUS de São Gonçalo (ADR-0063) — PPI de exame de Maricá em SG ----
+
+    private async Task<IEnumerable<AgendamentoPacienteItemDto>> LerEsusSgAsync(
+        Guid pacienteId, CancellationToken cancellationToken)
+    {
+        var linhas = await db.EsusSgSolicitacoes.AsNoTracking()
+            .Where(x => x.PacienteId == pacienteId && x.ExcluidoEm == null)
+            .Select(x => new
+            {
+                x.Id,
+                x.IdEsusSg,
+                x.Tipo,
+                x.Recurso,
+                x.UnidadeExecutora,
+                x.DataAgendada,
+                x.DataHoraAgendadaTexto,
+                x.DataSolicitacao,
+                x.DataEntradaFila,
+                x.Situacao,
+            })
+            .ToListAsync(cancellationToken);
+
+        return linhas.Select(l =>
+        {
+            // "06/10/2026 13:15:00" é hora LOCAL de Brasília — fica wall-clock, como no SER.
+            var temHora = DateTime.TryParseExact(l.DataHoraAgendadaTexto?.Trim(),
+                ["dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy HH:mm"], CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var dataHora);
+            DateTime? data = temHora ? dataHora : l.DataAgendada?.ToDateTime(TimeOnly.MinValue);
+            var situacao = MapearEsusSg(l.Situacao);
+            return new AgendamentoPacienteItemDto(
+                l.Id,
+                OrigemAgendamentoPaciente.EsusSg,
+                l.Tipo == TipoRecursoEsusSg.Consulta ? "Consulta" : "Exame",
+                NormalizarTexto(l.Recurso),
+                l.UnidadeExecutora,
+                situacao == SituacaoAgendamentoPaciente.Agendado ? data : null,
+                temHora && situacao == SituacaoAgendamentoPaciente.Agendado,
+                l.DataSolicitacao ?? l.DataEntradaFila,
+                situacao,
+                DescreverSituacao(situacao),
+                l.Situacao.ToString(),
+                l.IdEsusSg,
+                l.Id); // detalhe ESUS SG abre pelo id da própria esussg_solicitacao
+        });
+    }
+
+    private static SituacaoAgendamentoPaciente MapearEsusSg(SituacaoEsusSg s) => s switch
+    {
+        SituacaoEsusSg.EmFila => SituacaoAgendamentoPaciente.EmFila,
+        SituacaoEsusSg.Pendente => SituacaoAgendamentoPaciente.Pendente,
+        SituacaoEsusSg.Agendada => SituacaoAgendamentoPaciente.Agendado,
+        SituacaoEsusSg.SaiuDaFila => SituacaoAgendamentoPaciente.SaiuDaFila,
+        _ => SituacaoAgendamentoPaciente.Pendente,
+    };
+
     // ---- SISREG / regulação municipal (solicitacao) ----
 
     private async Task<IEnumerable<AgendamentoPacienteItemDto>> LerSisregAsync(
@@ -246,6 +305,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         SituacaoAgendamentoPaciente.Faltou => "Faltou",
         SituacaoAgendamentoPaciente.Cancelado => "Cancelado",
         SituacaoAgendamentoPaciente.Concluido => "Concluído",
+        SituacaoAgendamentoPaciente.SaiuDaFila => "Saiu da fila",
         _ => s.ToString(),
     };
 

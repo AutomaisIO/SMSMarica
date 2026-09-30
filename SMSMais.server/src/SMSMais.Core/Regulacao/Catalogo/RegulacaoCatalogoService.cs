@@ -14,6 +14,7 @@ using SMSMais.Core.Inteligencia.Provedores;
 using SMSMais.Core.Regulacao.Catalogo.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Regulacao;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.Sernit;
@@ -141,7 +142,8 @@ public sealed class RegulacaoCatalogoService(
         TipoProcedimentoRegulacao Tipo,
         Guid? SisregId,
         Guid? SerId,
-        Guid? SernitId);
+        Guid? SernitId,
+        Guid? EsusSgId = null);
 
     private async Task<List<OrigemDesejada>> LerOrigensDosSistemasAsync(CancellationToken ct)
     {
@@ -177,6 +179,20 @@ public sealed class RegulacaoCatalogoService(
             r.Tipo == TipoRecursoSernit.Exame ? TipoProcedimentoRegulacao.Exame : TipoProcedimentoRegulacao.Consulta,
             null, null, r.Id)));
 
+        // ESUS de São Gonçalo (ADR-0063): o combo "reguláveis por solicitante". Só os ATIVOS —
+        // procedimento que saiu do combo deixa de ser ofertado e a origem é inativada abaixo.
+        var esusSg = await db.EsusSgCatalogoRecursos.AsNoTracking()
+            .Where(r => r.Ativo)
+            .Select(r => new { r.Id, r.Tipo, r.Valor, r.Rotulo })
+            .ToListAsync(ct);
+        lista.AddRange(esusSg.Select(r => new OrigemDesejada(
+            SistemaRegulacao.EsusSg,
+            $"{(int)r.Tipo}|{r.Valor}",
+            r.Rotulo,
+            null,
+            r.Tipo == TipoRecursoEsusSg.Exame ? TipoProcedimentoRegulacao.Exame : TipoProcedimentoRegulacao.Consulta,
+            null, null, null, r.Id)));
+
         // Chave duplicada na origem seria bug do espelho, mas o unique do banco derrubaria o
         // sync inteiro — melhor ficar com a primeira e registrar.
         var vistas = new HashSet<(SistemaRegulacao, string)>();
@@ -194,6 +210,7 @@ public sealed class RegulacaoCatalogoService(
         origem.SisregProcedimentoSigtapId = d.SisregId;
         origem.SerCatalogoRecursoId = d.SerId;
         origem.SernitCatalogoRecursoId = d.SernitId;
+        origem.EsusSgCatalogoRecursoId = d.EsusSgId;
     }
 
     /// <summary>

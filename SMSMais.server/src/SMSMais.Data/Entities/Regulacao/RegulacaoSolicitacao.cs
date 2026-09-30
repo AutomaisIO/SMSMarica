@@ -92,6 +92,7 @@ public sealed class RegulacaoSolicitacao
     public Guid? SolicitacaoId { get; set; }
     public Guid? SerSolicitacaoId { get; set; }
     public Guid? SernitSolicitacaoId { get; set; }
+    public Guid? EsusSgSolicitacaoId { get; set; }
 
     /// <summary>Fim da janela de edição no SISREG, quando existir (a confirmar no spike b).</summary>
     public DateTime? SisregEditavelAte { get; set; }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { usePermissao } from '@/shared/auth/authStore';
 import { PRESETS } from '@/shared/lib/estatisticasPeriodo';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Input } from '@/shared/ui/Input';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { ConfiguracaoOperadoresAba } from '../components/ConfiguracaoOperadoresAba';
@@ -83,6 +84,8 @@ export function RegulacaoEstatisticasPage({ fonte }: { fonte: FonteExterna }) {
         <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
           <BarChart3 className="h-6 w-6 text-primary-600" />
           Estatísticas do {info.sigla}
+          {/* Só o ESUS SG tem artigo no manual por enquanto; o "?" some sozinho sem artigo. */}
+          {fonte === 'esussg' && <AjudaManual artigo="esus-sao-goncalo" secao="estatisticas" />}
         </h1>
         <p className="mt-1 max-w-4xl text-sm text-gray-600">
           O trabalho dos operadores no {info.nome} — da equipe e de cada pessoa. Conta cada evento da
@@ -90,6 +93,7 @@ export function RegulacaoEstatisticasPage({ fonte }: { fonte: FonteExterna }) {
           foi registrado (relógio de Brasília). Agendamentos, cancelamentos, pendências e FollowUPs
           aparecem separados; o resto entra só no total de ações.
         </p>
+        {info.nota && <p className="mt-1 max-w-4xl text-sm text-amber-800">{info.nota}</p>}
       </header>
 
       {aba !== 'configuracao' ? (

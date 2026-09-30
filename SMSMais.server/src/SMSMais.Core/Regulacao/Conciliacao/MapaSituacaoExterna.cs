@@ -1,4 +1,5 @@
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.Sernit;
 
@@ -41,6 +42,16 @@ public static class MapaSituacaoExterna
             => StatusRegulacao.Agendada,
         SituacaoSernit.Alta => StatusRegulacao.Concluida,
         SituacaoSernit.Cancelada => StatusRegulacao.Cancelada,
+        _ => null,
+    };
+
+    /// <summary>ESUS de São Gonçalo (ADR-0063). <see cref="SituacaoEsusSg.SaiuDaFila"/> NÃO vira
+    /// cancelada: a conta de Maricá não vê o motivo (exclusão, cancelamento, transferência) — mudar
+    /// o caso para "cancelado" seria afirmar o que ninguém mediu. Fica como está, e a trilha mostra.</summary>
+    public static StatusRegulacao? DeEsusSg(SituacaoEsusSg situacao) => situacao switch
+    {
+        SituacaoEsusSg.EmFila or SituacaoEsusSg.Pendente => StatusRegulacao.EmFilaExterna,
+        SituacaoEsusSg.Agendada => StatusRegulacao.Agendada,
         _ => null,
     };
 
