@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SMSMais.Core.Integracoes.SisregWeb;
 using SMSMais.Core.Integracoes.SisregWeb.Cancelamento;
+using SMSMais.Core.Integracoes.SisregWeb.Indicadores;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -59,6 +60,7 @@ public class ConciliacaoCancelamentosTests(PostgresFixture fixture)
         SmsMaisDbContext db, ISisregWebSessao sessao, IComunicacaoPacienteService? comunicacoes = null) =>
         new(sessao, db,
             comunicacoes ?? Substitute.For<IComunicacaoPacienteService>(),
+            new ArmazemIndicadoresSisreg(db),
             NullLogger<ConciliacaoCancelamentosSisregService>.Instance);
 
     [Fact]
@@ -125,6 +127,33 @@ public class ConciliacaoCancelamentosTests(PostgresFixture fixture)
         Assert.NotEqual(
             StatusSolicitacao.Cancelada,
             (await db2.Solicitacoes.SingleAsync(x => x.Id == exame.SolicitacaoId)).Status);
+        // Leitura incompleta também não alimenta os indicadores.
+        Assert.False(await db2.SisregMarcacoesCanceladas.AnyAsync(c => c.CodigoSolicitacao == codigo));
+    }
+
+    /// <summary>
+    /// Os motivos das canceladas nos Indicadores de Regulação vêm da conciliação: toda linha lida numa
+    /// passada completa é gravada (inclusive de quem não está na nossa base), e reler o dia não duplica.
+    /// Dia encerrado grava também o total declarado do dia.
+    /// </summary>
+    [Fact]
+    public async Task Leitura_completa_grava_as_linhas_para_os_indicadores_sem_duplicar()
+    {
+        var codigo = $"9{Random.Shared.NextInt64(100_000_000, 999_999_999)}";
+        var sessao = new SessaoFake(_ => Pagina(1, 1, (codigo, "paciente desistiu", "123THAIS-EX")));
+        var dia = new DateOnly(2026, 9, 18);
+
+        await using (var db = fixture.CriarDbContext()) await Criar(db, sessao).ConciliarDiaAsync(dia);
+        await using (var db = fixture.CriarDbContext()) await Criar(db, sessao).ConciliarDiaAsync(dia);
+
+        await using var ver = fixture.CriarDbContext();
+        var linha = Assert.Single(await ver.SisregMarcacoesCanceladas.Where(c => c.CodigoSolicitacao == codigo).ToListAsync());
+        Assert.Equal("paciente desistiu", linha.Justificativa);
+        Assert.Equal(new DateTime(2026, 9, 18, 14, 24, 54, DateTimeKind.Utc), linha.CanceladoEm);
+        var janela = await ver.SisregIndicadorColetas.SingleAsync(c =>
+            c.Coletor == SMSMais.Data.Entities.Sisreg.ColetorIndicadorSisreg.Canceladas
+            && c.JanelaInicio == dia && c.Escopo == PlanoColetaIndicadores.EscopoDia);
+        Assert.Equal(SMSMais.Data.Entities.Sisreg.StatusColetaIndicador.Concluida, janela.Status);
     }
 
     /// <summary>

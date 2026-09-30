@@ -701,6 +701,21 @@ public static class DependencyInjection
         services.AddSingleton<Integracoes.SisregWeb.Fila.Background.FilaPendenteEstadoVivo>();
         services.AddHostedService<Integracoes.SisregWeb.Fila.Background.FilaPendenteScheduler>();
 
+        // Coletor dos Indicadores de Regulação (faltas oficiais, PPI, canceladas do mês, desfechos por
+        // unidade). NASCE DESLIGADO (Configuração do SISREG → Indicadores): um passo por tick, teto
+        // próprio de 150 requisições/hora, 01:20–18:00, cede a vez a qualquer motor vivo e para um dia
+        // inteiro no CAPTCHA. O armazém também é usado pela conciliação, que grava os motivos do dia.
+        services.Configure<Integracoes.SisregWeb.Indicadores.ColetaIndicadoresOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.Indicadores.ColetaIndicadoresOpcoes.Secao));
+        services.AddScoped<
+            Integracoes.SisregWeb.Indicadores.IArmazemIndicadoresSisreg,
+            Integracoes.SisregWeb.Indicadores.ArmazemIndicadoresSisreg>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Indicadores.IColetaIndicadoresSisregService,
+            Integracoes.SisregWeb.Indicadores.ColetaIndicadoresSisregService>();
+        services.AddSingleton<Integracoes.SisregWeb.Indicadores.Background.ColetaIndicadoresEstadoVivo>();
+        services.AddHostedService<Integracoes.SisregWeb.Indicadores.Background.ColetaIndicadoresScheduler>();
+
         // Ofertas: o que abriu (agenda nova + vaga liberada). Só leitura sobre o que os motores
         // acima já trouxeram — não tem fila, runner nem acesso ao SISREG.
         services.AddScoped<

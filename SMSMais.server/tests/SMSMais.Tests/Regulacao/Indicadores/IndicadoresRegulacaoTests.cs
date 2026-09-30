@@ -134,4 +134,37 @@ public class IndicadoresRegulacaoTests
         pdf.Length.Should().BeGreaterThan(10_000);
         System.Text.Encoding.ASCII.GetString(pdf, 0, 5).Should().Be("%PDF-");
     }
+
+    /// <summary>
+    /// A amostra do SISREG tem ~o mesmo tanto de linhas em todo mês. Juntar o ano daria o mesmo peso a um mês
+    /// de 2.400 e a um de 1.200 cancelamentos; cada mês tem de pesar pelo seu total oficial.
+    /// </summary>
+    [Fact]
+    public void Motivos_por_amostra_pesam_cada_mes_pelo_seu_total()
+    {
+        var linhas = Enumerable.Repeat(("2025-01", "Óbito"), 50)
+            .Concat(Enumerable.Repeat(("2025-01", "Outros"), 50))
+            .Concat(Enumerable.Repeat(("2025-02", "Óbito"), 100))
+            .ToList();
+        var total = new Dictionary<string, int> { ["2025-01"] = 2400, ["2025-02"] = 1200 };
+
+        var e = IndicadoresSisregCalculo.EstimarMotivos(linhas, total);
+
+        e.Amostra.Should().BeTrue();
+        // Óbito: 50×24 + 100×12 = 2.400 de 3.600 estimados → 66,7% (juntando o ano seria 75%).
+        e.Percentual[(2025, "Óbito")].Should().Be(66.7m);
+        e.Percentual[(2025, "Outros")].Should().Be(33.3m);
+        e.TotalAno[2025].Should().Be(3600);
+        e.Categorias.Should().StartWith("Óbito");
+    }
+
+    [Fact]
+    public void Motivos_lidos_inteiros_nao_sao_amostra()
+    {
+        var linhas = new[] { ("2026-09", "Óbito"), ("2026-09", "Duplicidade") };
+        var e = IndicadoresSisregCalculo.EstimarMotivos(linhas, new Dictionary<string, int> { ["2026-09"] = 2 });
+
+        e.Amostra.Should().BeFalse();
+        e.Lidas[(2026, "Óbito")].Should().Be(1);
+    }
 }

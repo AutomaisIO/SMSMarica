@@ -502,3 +502,49 @@ export type FilaAgendamento = {
   /** HH:mm, horário de Brasília. */
   horaLocal: string;
 };
+
+/** Coletor dos Indicadores de Regulação (Configuração do SISREG). */
+export type ColetorIndicadorSisreg = 'Faltas' | 'Canceladas' | 'Desfechos' | 'Ppi';
+
+export type EsperaColetaIndicadores =
+  | 'Desligada'
+  | 'ChaveMestraDesligada'
+  | 'PausadaPorCaptcha'
+  | 'ForaDoHorario'
+  | 'OutroMotorUsandoASessao'
+  | 'TetoDoColetor'
+  | 'OrcamentoGlobalCurto';
+
+export type ResumoColetorIndicador = {
+  coletor: ColetorIndicadorSisreg;
+  pendentes: number;
+  emAndamento: number;
+  concluidas: number;
+  falhas: number;
+  ultimaLeituraEm: string | null;
+};
+
+export type FalhaColetaIndicador = {
+  coletor: ColetorIndicadorSisreg;
+  inicio: string;
+  fim: string;
+  escopo: string;
+  tentativas: number;
+  erro: string | null;
+  tentadaEm: string | null;
+};
+
+export type ColetaIndicadoresStatus = {
+  ativa: boolean;
+  /** Pausa por CAPTCHA (UTC). Nulo = sem pausa. */
+  pausadaAte: string | null;
+  chaveMestraLigada: boolean;
+  /** Por que não está lendo agora (nulo = lendo ou sem nada a fazer). */
+  espera: EsperaColetaIndicadores | null;
+  trabalhoAtual: string | null;
+  requisicoesNaUltimaHora: number;
+  tetoPorHora: number;
+  ultimoPassoEm: string | null;
+  coletores: ResumoColetorIndicador[];
+  ultimasFalhas: FalhaColetaIndicador[];
+};

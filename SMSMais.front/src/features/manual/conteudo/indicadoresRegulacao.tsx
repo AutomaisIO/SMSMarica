@@ -212,7 +212,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
       id: 'indicadores',
       titulo: 'O que cada indicador quer dizer',
       busca:
-        'vagas ofertadas escalas cotas PPI ocupação vagas utilizadas agendamentos absenteísmo faltas chegada confirmada regulados consultas exames fila solicitações registradas atendidas canceladas marcações desfeitas devolvidas negadas excluídas espera mediana 90% quem ainda aguarda especialidade procedimento recurso judicial mandado',
+        'vagas ofertadas escalas cotas PPI ocupação vagas utilizadas agendamentos absenteísmo faltas chegada confirmada regulados consultas exames fila solicitações registradas atendidas canceladas marcações desfeitas devolvidas negadas excluídas espera mediana 90% quem ainda aguarda especialidade procedimento recurso judicial mandado martelo varredura diária conferência fase mandado judicial',
       conteudo: (
         <>
           <Sub>Vagas disponibilizadas e utilizadas</Sub>
@@ -286,6 +286,12 @@ export const artigoIndicadoresRegulacao: Artigo = {
             As solicitações marcadas como mandado judicial no próprio sistema, pela data do pedido: quantas
             foram agendadas, a mediana e os extremos de dias até agendar, e a lista delas (sem dado pessoal).
           </P>
+          <P>
+            No SER e no SERNIT a grade não mostra o martelo: a marcação vem da <strong>varredura diária</strong>,
+            que ao final refaz a pesquisa com o filtro "Somente com mandado judicial" (fase{' '}
+            <strong>Mandado judicial</strong> na lista de execuções da Configuração). A marcação só é acrescentada,
+            nunca retirada; se a conferência de uma noite ficar incompleta, vale a da noite anterior.
+          </P>
         </>
       ),
     },
@@ -317,6 +323,43 @@ export const artigoIndicadoresRegulacao: Artigo = {
               },
             ]}
           />
+        </>
+      ),
+    },
+    {
+      id: 'sisreg-atualizacao',
+      titulo: 'Como os números oficiais do SISREG se atualizam',
+      busca:
+        'coleta SISREG faltas absenteísmo oficial 30 dias PPI cotas canceladas motivos amostra estimativa conciliação devolvidas negadas unidade configuração ligar coletor',
+      conteudo: (
+        <>
+          <P>
+            Faltas, cotas PPI, marcações canceladas e devolvidas/negadas não estão na agenda espelhada: vêm de
+            telas próprias do SISREG. O passado (jan/2025 a ago/2026) foi carregado de uma vez; daqui para
+            frente quem mantém é o <strong>coletor</strong>, ligado em SISREG → Configuração → “Indicadores de
+            Regulação — coleta no SISREG” (nasce desligado).
+          </P>
+          <Lista>
+            <Item>
+              <strong>Faltas</strong>: cada semana só é lida quando completa 30 dias — antes disso a lista ainda
+              encolhe, porque as unidades confirmam chegadas com atraso. Por isso o último mês aparece como
+              Indisponível no absenteísmo até ~30 dias depois de fechar.
+            </Item>
+            <Item>
+              <strong>Cotas PPI</strong>: a competência fechada é lida a partir do dia 5 do mês seguinte.
+            </Item>
+            <Item>
+              <strong>Canceladas e motivos</strong>: o total de cada mês é o que o SISREG declara. Daqui para
+              frente, a conciliação de cancelamentos, que já lê o SISREG todo dia, grava cada cancelamento com a
+              justificativa. Nos meses passados os motivos vêm de uma <strong>amostra</strong> (6 páginas
+              espalhadas por mês): a tabela mostra o % estimado de cada motivo — cada mês pesando pelo seu total —
+              e a estimativa em número, sempre somando o total oficial do ano.
+            </Item>
+            <Item>
+              <strong>Devolvidas, negadas e canceladas antes de agendar</strong>: lidas unidade por unidade e
+              relidas por cerca de três meses, porque um pedido de um mês pode ser devolvido meses depois.
+            </Item>
+          </Lista>
         </>
       ),
     },
@@ -375,7 +418,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
               {
                 termo: 'SISREG',
                 descricao:
-                  'A justificativa vem de uma AMOSTRA da lista de marcações canceladas (algumas páginas espalhadas por mês) — a lista inteira não é lida. Quando a amostra não cobre quase tudo, a tabela mostra o % de cada categoria na amostra e a “Estimativa” = esse % × o total oficial de canceladas do ano. É estimativa, não contagem.',
+                  'Nos meses passados a justificativa vem de uma AMOSTRA da lista de marcações canceladas (6 páginas espalhadas por mês); daqui para frente, da conciliação diária, que grava todos. Quando as linhas lidas não cobrem quase tudo, a tabela mostra o % estimado de cada categoria — cada mês pesando pelo seu total oficial, para um mês cheio não valer o mesmo que um mês fraco — e a “Estimativa” = esse % × o total oficial de canceladas do ano. É estimativa, não contagem.',
               },
               {
                 termo: 'SER e SERNIT',

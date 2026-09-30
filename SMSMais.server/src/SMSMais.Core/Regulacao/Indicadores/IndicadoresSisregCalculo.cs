@@ -196,7 +196,8 @@ internal static class IndicadoresSisregCalculo
             """, ct, ini, fim);
         var excTot = p.Meses.ToDictionary(m => m, m => exc.Values.Sum(c => c.GetValueOrDefault(m)));
         var unidadesLidas = (await sql.LinhasAsync("""
-            select count(distinct escopo) from smsmarica.sisreg_indicador_coleta where coletor = 3 and status = 3
+            select count(distinct escopo) from smsmarica.sisreg_indicador_coleta
+            where coletor = 3 and status = 3 and escopo ~ '^[0-9]{7}$'
             """, ct))[0][0];
         var temDesfechos = exc.Count > 0;
         var seloDesf = temDesfechos ? SeloIndicador.Oficial : SeloIndicador.Indisponivel;
@@ -239,15 +240,29 @@ internal static class IndicadoresSisregCalculo
             "SISREG III — Sistema Nacional de Regulação (Ministério da Saúde)", p.Meses, agora, cobertura, secoes);
     }
 
-    /// <summary>Total oficial por mês: soma do total DECLARADO pela tela nas janelas mensais concluídas; sem
-    /// coleta mensal, conta as linhas gravadas (a conciliação diária grava todas).</summary>
+    /// <summary>Total oficial por mês: o total DECLARADO pela tela — da janela mensal (coletor/carga) ou, sem
+    /// ela, a soma dos dias fechados pela conciliação diária, só quando TODOS os dias do mês fecharam (mês
+    /// com buraco não tem total oficial). Sem declarado, conta as linhas gravadas.</summary>
     private static async Task<Dictionary<string, int>> CanceladasPorMesAsync(Sql sql, DateOnly ini, DateOnly fim, CancellationToken ct)
     {
         var declarado = await sql.PorMesAsync("""
-            select to_char(janela_inicio,'YYYY-MM'), sum(linhas) from smsmarica.sisreg_indicador_coleta
-            where coletor = 2 and status = 3 and linhas is not null and janela_inicio between @p0 and @p1
-              and date_trunc('month', janela_inicio) = date_trunc('month', janela_fim)
-            group by 1
+            with c as (
+                select janela_inicio, janela_fim, linhas from smsmarica.sisreg_indicador_coleta
+                where coletor = 2 and status = 3 and linhas is not null and janela_inicio between @p0 and @p1
+                  and escopo <> 'amostra' -- a amostra de motivos conta o que LEU, não o total do mês
+                  and date_trunc('month', janela_inicio) = date_trunc('month', janela_fim)),
+            mensal as (
+                select date_trunc('month', janela_inicio)::date m, max(linhas) n from c
+                where janela_inicio = date_trunc('month', janela_inicio)::date
+                  and janela_fim = (date_trunc('month', janela_inicio) + interval '1 month - 1 day')::date
+                group by 1),
+            diario as (
+                select date_trunc('month', janela_inicio)::date m, sum(linhas) n, count(distinct janela_inicio) dias
+                from c where janela_inicio = janela_fim group by 1)
+            select to_char(coalesce(mensal.m, diario.m),'YYYY-MM'), coalesce(mensal.n, diario.n)::int
+            from mensal full join diario on diario.m = mensal.m
+            where mensal.m is not null
+               or diario.dias = extract(day from (diario.m + interval '1 month - 1 day'))
             """, ct, ini, fim);
         var linhas = await sql.PorMesAsync($"""
             select to_char((cancelado_em at time zone '{Fuso}')::date,'YYYY-MM'), count(*) from smsmarica.sisreg_marcacao_cancelada
@@ -259,49 +274,94 @@ internal static class IndicadoresSisregCalculo
     }
 
     /// <summary>Motivos por categoria e ano. Quando as linhas lidas são uma AMOSTRA (bem menos que o total
-    /// oficial), mostra % da amostra e a estimativa = % × total do ano.</summary>
+    /// oficial), mostra o % estimado e a estimativa = % × total oficial do ano (ver <see cref="EstimarMotivos"/>).</summary>
     private static async Task<TabelaIndicadorDto?> MotivosAsync(
         Sql sql, DateOnly ini, DateOnly fim, IReadOnlyDictionary<string, int> totalPorMes, CancellationToken ct)
     {
         var linhas = await sql.LinhasAsync($"""
-            select extract(year from (cancelado_em at time zone '{Fuso}'))::int, coalesce(justificativa,'')
+            select to_char((cancelado_em at time zone '{Fuso}')::date,'YYYY-MM'), coalesce(justificativa,'')
             from smsmarica.sisreg_marcacao_cancelada
             where (cancelado_em at time zone '{Fuso}')::date between @p0 and @p1
             """, ct, ini, fim);
         if (linhas.Count == 0) return null;
 
-        var porAno = linhas.GroupBy(l => Convert.ToInt32(l[0], CultureInfo.InvariantCulture))
-            .ToDictionary(g => g.Key, g => g.GroupBy(l => MotivoCancelamento.Categoria((string?)l[1]))
-                .ToDictionary(c => c.Key, c => c.Count()));
-        var anos = porAno.Keys.OrderBy(a => a).ToList();
-        var lidasAno = anos.ToDictionary(a => a, a => porAno[a].Values.Sum());
-        var totalAno = anos.ToDictionary(a => a, a => totalPorMes.Where(kv => kv.Key.StartsWith(a.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)).Sum(kv => kv.Value));
-        var amostra = anos.Any(a => totalAno[a] > 0 && lidasAno[a] < 0.9 * totalAno[a]);
-
-        var categorias = porAno.Values.SelectMany(c => c).GroupBy(kv => kv.Key)
-            .OrderByDescending(g => g.Sum(kv => kv.Value)).Select(g => g.Key).ToList();
+        var e = EstimarMotivos(
+            linhas.Select(l => ((string)l[0]!, MotivoCancelamento.Categoria((string?)l[1]))), totalPorMes);
+        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
         var colunas = new List<string> { "Motivo" };
-        foreach (var a in anos) colunas.AddRange(amostra ? new[] { $"% {a}", $"Estimativa {a}" } : new[] { $"{a}" });
-        var corpo = categorias.Select(cat =>
+        foreach (var a in e.Anos) colunas.AddRange(e.Amostra ? new[] { $"% {a}", $"Estimativa {a}" } : new[] { $"{a}" });
+        var corpo = e.Categorias.Select(cat =>
         {
             var l = new List<string?> { cat };
-            foreach (var a in anos)
+            foreach (var a in e.Anos)
             {
-                var n = porAno[a].GetValueOrDefault(cat);
-                if (amostra)
+                if (e.Amostra)
                 {
-                    var pct = lidasAno[a] > 0 ? 100m * n / lidasAno[a] : 0;
-                    l.Add(pct.ToString("0.0", CultureInfo.GetCultureInfo("pt-BR")) + "%");
-                    l.Add(Formatar.Numero(Math.Round(pct * totalAno[a] / 100m)));
+                    var pct = e.Percentual.GetValueOrDefault((a, cat));
+                    l.Add(pct.ToString("0.0", ptBr) + "%");
+                    l.Add(Formatar.Numero(Math.Round(pct * e.TotalAno.GetValueOrDefault(a) / 100m)));
                 }
-                else l.Add(Formatar.Numero(n));
+                else l.Add(Formatar.Numero(e.Lidas.GetValueOrDefault((a, cat))));
             }
             return (IReadOnlyList<string?>)l;
         }).ToList();
-        var nota = amostra
-            ? $"Justificativa registrada no cancelamento, agrupada por categoria (texto livre não reproduzido). AMOSTRA de {lidasAno.Values.Sum():N0} cancelamentos; estimativa = % da amostra × total oficial de canceladas do ano."
+        var nota = e.Amostra
+            ? $"Justificativa registrada no cancelamento, agrupada por categoria (texto livre não reproduzido). AMOSTRA de {e.LidasTotal:N0} cancelamentos, lidos em páginas espalhadas de cada mês; o % de cada mês pesa pelo total oficial de canceladas daquele mês; estimativa = % × total oficial do ano."
             : "Justificativa registrada no cancelamento, agrupada por categoria (texto livre não reproduzido).";
         return new TabelaIndicadorDto("Motivos das marcações canceladas no SISREG", colunas, corpo, nota);
+    }
+
+    /// <summary>Resultado de <see cref="EstimarMotivos"/>: % por (ano, categoria), linhas lidas e totais oficiais.</summary>
+    internal sealed record EstimativaMotivos(
+        IReadOnlyList<int> Anos,
+        IReadOnlyList<string> Categorias,
+        bool Amostra,
+        IReadOnlyDictionary<(int Ano, string Categoria), decimal> Percentual,
+        IReadOnlyDictionary<(int Ano, string Categoria), int> Lidas,
+        IReadOnlyDictionary<int, int> TotalAno,
+        int LidasTotal);
+
+    /// <summary>
+    /// Motivos por ano a partir de linhas que podem ser AMOSTRA. A amostra do SISREG é de páginas espalhadas
+    /// (≈ o mesmo tanto de linhas em todo mês), então juntar o ano inteiro daria o mesmo peso a um mês de
+    /// 1.200 e a um de 2.400 cancelamentos — e um mês lido INTEIRO no meio de meses amostrados engoliria o
+    /// ano. Aqui cada mês pesa pelo seu total oficial: estimativa do mês = contagem da categoria ÷ linhas
+    /// lidas no mês × total oficial do mês; o % do ano é a soma dessas estimativas sobre a soma delas.
+    /// </summary>
+    internal static EstimativaMotivos EstimarMotivos(
+        IEnumerable<(string Mes, string Categoria)> linhas, IReadOnlyDictionary<string, int> totalPorMes)
+    {
+        var porMes = linhas.GroupBy(l => l.Mes)
+            .ToDictionary(g => g.Key, g => g.GroupBy(l => l.Categoria).ToDictionary(c => c.Key, c => c.Count()));
+        static int Ano(string mes) => int.Parse(mes[..4], CultureInfo.InvariantCulture);
+
+        var estimada = new Dictionary<(int, string), decimal>();
+        var lidas = new Dictionary<(int, string), int>();
+        var amostra = false;
+        foreach (var (mes, cats) in porMes)
+        {
+            var n = cats.Values.Sum();
+            var total = totalPorMes.GetValueOrDefault(mes);
+            if (total > 0 && n < 0.9 * total) amostra = true;
+            var peso = total > n ? (decimal)total / n : 1m;
+            foreach (var (cat, c) in cats)
+            {
+                var k = (Ano(mes), cat);
+                estimada[k] = estimada.GetValueOrDefault(k) + c * peso;
+                lidas[k] = lidas.GetValueOrDefault(k) + c;
+            }
+        }
+
+        var anos = porMes.Keys.Select(Ano).Distinct().Order().ToList();
+        var somaAno = anos.ToDictionary(a => a, a => estimada.Where(kv => kv.Key.Item1 == a).Sum(kv => kv.Value));
+        var percentual = estimada.ToDictionary(kv => kv.Key,
+            kv => somaAno[kv.Key.Item1] > 0 ? Math.Round(100m * kv.Value / somaAno[kv.Key.Item1], 1) : 0m);
+        var totalAno = anos.ToDictionary(a => a, a => totalPorMes
+            .Where(kv => kv.Key.StartsWith(a.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
+            .Sum(kv => kv.Value));
+        var categorias = estimada.GroupBy(kv => kv.Key.Item2)
+            .OrderByDescending(g => g.Sum(kv => kv.Value)).Select(g => g.Key).ToList();
+        return new EstimativaMotivos(anos, categorias, amostra, percentual, lidas, totalAno, lidas.Values.Sum());
     }
 
     private static async Task<SecaoIndicadorDto> EsperaAsync(Sql sql, Series f, PeriodoIndicadores p, CancellationToken ct)

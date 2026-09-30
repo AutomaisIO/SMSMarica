@@ -1,4 +1,5 @@
 import type {
+  ColetaIndicadoresStatus,
   DatasDaOferta,
   FilaAgendamento,
   FilaCargaStatus,
@@ -281,5 +282,30 @@ export async function obterAgendamentoFila(): Promise<FilaAgendamento> {
 
 export async function salvarAgendamentoFila(payload: FilaAgendamento): Promise<FilaAgendamento> {
   const { data } = await http.put<FilaAgendamento>('/sisreg/fila/agendamento', payload);
+  return data;
+}
+
+// ------------------------------------------------------------ coletor dos Indicadores de Regulação
+
+/** Situação do coletor que mantém as tabelas dos Indicadores de Regulação. */
+export async function obterStatusColetaIndicadores(): Promise<ColetaIndicadoresStatus> {
+  const { data } = await http.get<ColetaIndicadoresStatus>('/sisreg/indicadores/coleta/status');
+  return data;
+}
+
+export async function salvarColetaIndicadores(ativa: boolean): Promise<ColetaIndicadoresStatus> {
+  const { data } = await http.put<ColetaIndicadoresStatus>('/sisreg/indicadores/coleta/configuracao', { ativa });
+  return data;
+}
+
+/** Tira a pausa de CAPTCHA — só depois de alguém resolver o CAPTCHA no navegador. */
+export async function retomarColetaIndicadores(): Promise<ColetaIndicadoresStatus> {
+  const { data } = await http.post<ColetaIndicadoresStatus>('/sisreg/indicadores/coleta/retomar');
+  return data;
+}
+
+/** Janelas em falha voltam a pendente, com as tentativas zeradas. */
+export async function rearmarColetaIndicadores(): Promise<ColetaIndicadoresStatus> {
+  const { data } = await http.post<ColetaIndicadoresStatus>('/sisreg/indicadores/coleta/rearmar');
   return data;
 }

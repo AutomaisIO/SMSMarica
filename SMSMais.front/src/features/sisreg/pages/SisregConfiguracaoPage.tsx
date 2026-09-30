@@ -12,6 +12,7 @@ import {
   useConfiguracaoSisreg,
 } from '@/features/sisreg/api/queries';
 import { FilaEsperaSecao } from '@/features/sisreg/components/FilaEsperaSecao';
+import { IndicadoresColetaSecao } from '@/features/sisreg/components/IndicadoresColetaSecao';
 import { SincronismoAutomaticoSecao } from '@/features/sisreg/components/SincronismoAutomaticoSecao';
 import { SincronismoEscalasSecao } from '@/features/sisreg/components/SincronismoEscalasSecao';
 import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTudoSecao';
@@ -322,6 +323,8 @@ export function SisregConfiguracaoPage() {
       <SincronismoEscalasSecao />
 
       <FilaEsperaSecao />
+
+      <IndicadoresColetaSecao />
 
       {/* Não há telefone de aviso por integração: a lista é uma só, em Avisos no celular. */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

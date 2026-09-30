@@ -1,12 +1,12 @@
 using System.Globalization;
-using System.Net;
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Integracoes.SisregWeb.Indicadores;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMais.Core.Integracoes.SisregWeb.Cancelamento;
 
@@ -52,10 +52,11 @@ public interface IConciliacaoCancelamentosSisregService
 /// "faltou uma linha" quer dizer "um cancelamento se perdeu" — e foi exatamente o que aconteceu na
 /// primeira versão do coletor do laboratório, em silêncio.</para>
 /// </summary>
-public sealed partial class ConciliacaoCancelamentosSisregService(
+public sealed class ConciliacaoCancelamentosSisregService(
     ISisregWebSessao sessao,
     SmsMaisDbContext db,
     IComunicacaoPacienteService comunicacoes,
+    IArmazemIndicadoresSisreg indicadores,
     ILogger<ConciliacaoCancelamentosSisregService> logger) : IConciliacaoCancelamentosSisregService
 {
     private const string Tela = "/cgi-bin/cons_marcacao_cancelada";
@@ -69,12 +70,14 @@ public sealed partial class ConciliacaoCancelamentosSisregService(
     public async Task<ConciliacaoCancelamentosDto> ConciliarDiaAsync(
         DateOnly dia, CancellationToken ct = default)
     {
-        var (linhas, requisicoes, aviso) = await LerDiaAsync(dia, ct);
+        var (linhas, brutas, declaradas, requisicoes, aviso) = await LerDiaAsync(dia, ct);
         if (aviso is not null)
         {
             logger.LogWarning("SISREG_CONCILIACAO_INCOMPLETA: {Aviso}", aviso);
             return new(linhas.Count, 0, 0, 0, requisicoes, aviso);
         }
+
+        await GravarParaIndicadoresAsync(dia, brutas, declaradas, ct);
         if (linhas.Count == 0) return new(0, 0, 0, 0, requisicoes, null);
 
         var codigos = linhas.Select(l => l.Codigo).ToList();
@@ -142,6 +145,33 @@ public sealed partial class ConciliacaoCancelamentosSisregService(
     }
 
     /// <summary>
+    /// Os Indicadores de Regulação (motivos das canceladas) vêm DAQUI daqui para frente: a leitura
+    /// completa do dia grava todas as linhas (upsert — reler o dia não duplica) e, para dia já
+    /// encerrado, o total DECLARADO pela tela vira a janela do dia (escopo "dia"). Falha aqui não pode
+    /// derrubar a conciliação, que é o que protege o paciente.
+    /// </summary>
+    private async Task GravarParaIndicadoresAsync(
+        DateOnly dia, IReadOnlyList<MarcacaoCanceladaLidaSisreg> brutas, int? declaradas, CancellationToken ct)
+    {
+        try
+        {
+            if (brutas.Count > 0) await indicadores.GravarCanceladasAsync(brutas, ct);
+
+            var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+            if (dia < hoje)
+            {
+                await indicadores.RegistrarJanelaConcluidaAsync(
+                    ColetorIndicadorSisreg.Canceladas, dia, dia, PlanoColetaIndicadores.EscopoDia,
+                    declaradas ?? brutas.Count, ct);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "SISREG_CONCILIACAO: {Dia} conciliado, mas as linhas não foram gravadas para os indicadores.", dia);
+        }
+    }
+
+    /// <summary>
     /// O motivo guardado na trilha: a justificativa do SISREG e o operador que cancelou.
     /// <b>Interno.</b> A mensagem ao paciente diz que foi cancelado e nada mais.
     /// </summary>
@@ -153,11 +183,12 @@ public sealed partial class ConciliacaoCancelamentosSisregService(
         return texto.Length <= 500 ? texto : texto[..500];
     }
 
-    private async Task<(List<CancelamentoLidoSisreg> Linhas, int Requisicoes, string? Aviso)> LerDiaAsync(
-        DateOnly dia, CancellationToken ct)
+    private async Task<(List<CancelamentoLidoSisreg> Linhas, List<MarcacaoCanceladaLidaSisreg> Brutas, int? Declaradas,
+        int Requisicoes, string? Aviso)> LerDiaAsync(DateOnly dia, CancellationToken ct)
     {
         var data = dia.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
         var vistos = new Dictionary<string, CancelamentoLidoSisreg>(StringComparer.Ordinal);
+        var todas = new List<MarcacaoCanceladaLidaSisreg>();
         var brutas = 0;
         var requisicoes = 0;
         int? declaradas = null, paginas = null;
@@ -177,11 +208,13 @@ public sealed partial class ConciliacaoCancelamentosSisregService(
             }, ct);
             requisicoes++;
 
-            if (pagina == 0) (declaradas, paginas) = TotalDeclarado(html);
+            if (pagina == 0) (declaradas, paginas) = IndicadoresSisregHtmlParser.TotalCanceladas(html);
 
-            var lidas = Linhas(html);
+            var lidas = IndicadoresSisregHtmlParser.Canceladas(html);
             brutas += lidas.Count;
-            foreach (var l in lidas) vistos.TryAdd(l.Codigo, l);
+            todas.AddRange(lidas);
+            foreach (var l in lidas)
+                vistos.TryAdd(l.Codigo, new CancelamentoLidoSisreg(l.Codigo, l.CanceladoEm, l.Justificativa, l.Operador));
 
             if (paginas is { } p && pagina + 1 >= p) break;
             if (paginas is null && lidas.Count == 0) break;
@@ -193,68 +226,6 @@ public sealed partial class ConciliacaoCancelamentosSisregService(
             ? $"a tela declarou {n} linha(s) em {paginas} página(s) e foram lidas {brutas}"
             : null;
 
-        return (vistos.Values.ToList(), requisicoes, aviso);
+        return (vistos.Values.ToList(), todas, declaradas, requisicoes, aviso);
     }
-
-    /// <summary>(linhas, páginas) declaradas pela própria tela.</summary>
-    private static (int? Linhas, int? Paginas) TotalDeclarado(string html)
-    {
-        var texto = WebUtility.HtmlDecode(TagRegex().Replace(html, " "));
-        var n = PesquisadasRegex().Match(texto);
-        var p = ExibirPaginaRegex().Matches(html);
-        return (n.Success ? int.Parse(n.Groups[1].Value, CultureInfo.InvariantCulture) : null,
-            p.Count > 0 ? p.Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)).Max() : null);
-    }
-
-    /// <summary>
-    /// As 9 colunas da linha: código, data e hora de execução, procedimento, profissional,
-    /// paciente, justificativa, operador e o instante do cancelamento.
-    /// </summary>
-    private static List<CancelamentoLidoSisreg> Linhas(string html)
-    {
-        var fora = new List<CancelamentoLidoSisreg>();
-        foreach (Match tr in LinhaRegex().Matches(html))
-        {
-            var celulas = CelulaRegex().Matches(tr.Groups[1].Value)
-                .Select(td => EspacosRegex().Replace(WebUtility.HtmlDecode(TagRegex().Replace(td.Groups[1].Value, " ")), " ").Trim())
-                .ToList();
-
-            if (celulas.Count < 9 || !CodigoRegex().IsMatch(celulas[0])) continue;
-
-            fora.Add(new CancelamentoLidoSisreg(
-                celulas[0],
-                Quando(celulas[8]),
-                celulas[6],
-                celulas[7]));
-        }
-        return fora;
-    }
-
-    /// <summary>"18.09.2026 11:24:54" (Brasília) → instante UTC.</summary>
-    private static DateTime? Quando(string texto) =>
-        DateTime.TryParseExact(texto.Trim(), "dd.MM.yyyy HH:mm:ss",
-            CultureInfo.InvariantCulture, DateTimeStyles.None, out var local)
-            ? FusoBrasilia.DeBrasiliaParaUtc(local)
-            : null;
-
-    [GeneratedRegex(@"<tr[^>]*>(.*?)</tr>", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
-    private static partial Regex LinhaRegex();
-
-    [GeneratedRegex(@"<td[^>]*>(.*?)</td>", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
-    private static partial Regex CelulaRegex();
-
-    [GeneratedRegex(@"<[^>]+>")]
-    private static partial Regex TagRegex();
-
-    [GeneratedRegex(@"\s+")]
-    private static partial Regex EspacosRegex();
-
-    [GeneratedRegex(@"^\d{6,}$")]
-    private static partial Regex CodigoRegex();
-
-    [GeneratedRegex(@"PESQUISADAS?\s*\((\d+)\)", RegexOptions.IgnoreCase)]
-    private static partial Regex PesquisadasRegex();
-
-    [GeneratedRegex(@"exibirPagina\(\s*[^,]+,\s*(\d+)\s*\)")]
-    private static partial Regex ExibirPaginaRegex();
 }

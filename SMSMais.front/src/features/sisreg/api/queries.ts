@@ -30,9 +30,14 @@ import {
   preverAgendamentoSisreg,
   salvarAgendamentoMapeamentoLote,
   sincronizarMapeamentoLote,
+  obterStatusColetaIndicadores,
+  rearmarColetaIndicadores,
+  retomarColetaIndicadores,
+  salvarColetaIndicadores,
 } from '@/features/sisreg/api/sisregApi';
 import type {
   AtualizarSisregConfiguracaoPayload,
+  ColetaIndicadoresStatus,
   SalvarEscalasAgendamento,
   PrepararRedePayload,
   PreverAgendamentoPayload,
@@ -54,6 +59,7 @@ export const sisregKeys = {
   filaStatus: ['sisreg', 'ofertas', 'fila-status'] as const,
   filaStatusConfig: ['sisreg', 'fila', 'status'] as const,
   filaAgendamento: ['sisreg', 'fila', 'agendamento'] as const,
+  coletaIndicadores: ['sisreg', 'indicadores', 'coleta'] as const,
   datasDaOferta: (codigo: string) => ['sisreg', 'ofertas', 'datas', codigo] as const,
   ocupacaoDoDia: (codigo: string, unidadeId: string, data: string, agendaLocal: boolean) =>
     ['sisreg', 'ofertas', 'ocupacao', codigo, unidadeId, data, agendaLocal] as const,
@@ -339,4 +345,33 @@ export function useSalvarAgendamentoFila() {
     mutationFn: salvarAgendamentoFila,
     onSuccess: () => client.invalidateQueries({ queryKey: sisregKeys.filaAgendamento }),
   });
+}
+
+/** Coletor dos Indicadores de Regulação: acompanha de perto só enquanto há leitura em curso. */
+export function useStatusColetaIndicadores() {
+  return useQuery({
+    queryKey: sisregKeys.coletaIndicadores,
+    queryFn: obterStatusColetaIndicadores,
+    refetchInterval: (query) => (query.state.data?.trabalhoAtual ? 15000 : 60000),
+  });
+}
+
+function useAcaoColetaIndicadores<T>(acao: (arg: T) => Promise<ColetaIndicadoresStatus>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: acao,
+    onSuccess: (dados) => client.setQueryData(sisregKeys.coletaIndicadores, dados),
+  });
+}
+
+export function useSalvarColetaIndicadores() {
+  return useAcaoColetaIndicadores((ativa: boolean) => salvarColetaIndicadores(ativa));
+}
+
+export function useRetomarColetaIndicadores() {
+  return useAcaoColetaIndicadores<void>(() => retomarColetaIndicadores());
+}
+
+export function useRearmarColetaIndicadores() {
+  return useAcaoColetaIndicadores<void>(() => rearmarColetaIndicadores());
 }
