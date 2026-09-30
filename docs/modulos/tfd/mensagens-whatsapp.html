@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transporte de Pacientes — modelos de mensagem do WhatsApp</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>Transporte de Pacientes — modelos de mensagem do WhatsApp</h1>
+<p>Seis modelos cadastrados e <strong>aprovados</strong> na Meta em 29/09/2026 (WABA da Secretaria de Saúde de Maricá): três momentos do transporte, cada um em duas versões — <strong>completa</strong> (número já verificado) e <strong>sem dados do paciente</strong> (número ainda não verificado). O envio automático ainda não está ligado no sistema; este documento é a referência do que foi cadastrado, para a implementação.</p>
+<h2>Situação na Meta</h2>
+<div class="tw"><table><thead><tr><th>Modelo</th><th>Status</th><th>Arte cadastrada</th><th>Rodapé</th></tr></thead><tbody>
+<tr><td><code>transporte_agendado_anonimo</code></td><td>aprovado</td><td>vermelha</td><td>sim</td></tr>
+<tr><td><code>transporte_agendado</code></td><td>aprovado</td><td>branca</td><td>sim</td></tr>
+<tr><td><code>transporte_horario_anonimo</code></td><td>aprovado</td><td>vermelha</td><td>não</td></tr>
+<tr><td><code>transporte_horario</code></td><td>aprovado</td><td>branca</td><td>sim</td></tr>
+<tr><td><code>transporte_cancelado_anonimo</code></td><td>aprovado</td><td>branca</td><td>sim</td></tr>
+<tr><td><code>transporte_cancelado</code></td><td>aprovado</td><td>vermelha</td><td>sim</td></tr>
+</tbody></table></div>
+<p>Todos: categoria <strong>Utilidade</strong>, idioma <strong>Português (BR)</strong>, cabeçalho de <strong>imagem</strong>, botões de <strong>resposta rápida</strong>. Rodapé (quando há): <code>Para mais informações acesse: https://app.smsmarica.online</code>.</p>
+<h2>Quem recebe o quê</h2>
+<div class="tw"><table><thead><tr><th>Momento</th><th>Número verificado</th><th>Número não verificado</th></tr></thead><tbody>
+<tr><td>Transporte agendado</td><td><code>transporte_agendado</code></td><td><code>transporte_agendado_anonimo</code></td></tr>
+<tr><td>Véspera — horário definido</td><td><code>transporte_horario</code></td><td><code>transporte_horario_anonimo</code></td></tr>
+<tr><td>Transporte cancelado pela Secretaria</td><td><code>transporte_cancelado</code></td><td><code>transporte_cancelado_anonimo</code></td></tr>
+</tbody></table></div>
+<ul>
+<li><strong>Sem dados do paciente</strong> segue a mesma regra das consultas e exames (<a href="../../adr/0057-destinatario-correto-e-contato-negado.md">ADR-0057</a>): o número ainda não foi provado, então a mensagem diz só que existe um transporte — sem tratamento, data, unidade ou horário. O toque em <strong>Quero mais informações</strong> abre a verificação (4 primeiros dígitos do CPF + nascimento); verificado, a pessoa recebe os dados completos e os botões de confirmar e cancelar.</li>
+<li><strong>Em todos os casos a confirmação é pedida.</strong> Nas versões completas de agendamento e véspera, pelos botões <em>Sim!</em> / <em>Não! Não quero o transporte</em>; no cancelamento, por <em>Estou ciente</em> (a equipe sabe que a pessoa viu e não vai ficar esperando o carro na porta).</li>
+<li><code>{{1}}</code> é sempre o tratamento com o primeiro nome, como nos outros modelos: <strong>"Sr. João"</strong> / <strong>"Sra. Maria"</strong>. Nenhuma variável pode conter quebra de linha (a Meta recusa o envio).</li>
+</ul>
+<hr>
+<h2>1. <code>transporte_agendado_anonimo</code> — agendado, sem dados do paciente</h2>
+<p>Quando o transporte é marcado e o número <strong>não</strong> é verificado. <strong>Aprovado.</strong></p>
+<p><strong>Cabeçalho (imagem):</strong> <code>transporte-agendado-vermelho.jpg</code></p>
+<p><strong>Corpo:</strong></p>
+<pre><code>Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+*Seu transporte foi agendado!* 🚐
+
+Um dia antes da viagem, enviaremos por aqui o horário previsto para o carro buscar você.
+
+Para ver os detalhes e confirmar se você vai utilizar o transporte, toque em *Quero mais informações*.</code></pre>
+<p><strong>Rodapé:</strong> <code>Para mais informações acesse: https://app.smsmarica.online</code></p>
+<div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th><th>Exemplo</th></tr></thead><tbody>
+<tr><td><code>{{1}}</code></td><td>Tratamento + primeiro nome</td><td>Sr. João</td></tr>
+</tbody></table></div>
+<p><strong>Botões (resposta rápida):</strong> <code>Quero mais informações</code> · <code>Não sou essa pessoa</code></p>
+<hr>
+<h2>2. <code>transporte_agendado</code> — agendado, completo</h2>
+<p>Quando o transporte é marcado e o número <strong>é</strong> verificado (ou logo depois que a pessoa se verifica). <strong>Aprovado.</strong></p>
+<p><strong>Cabeçalho (imagem):</strong> <code>transporte-agendado-branco.jpg</code></p>
+<p><strong>Corpo:</strong></p>
+<pre><code>Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+Seu transporte para realizar *{{2}}* na unidade *{{3}}*, em *{{4}}*, está agendado para *{{5}}*. 🚐
+
+Um dia antes da viagem, enviaremos por aqui o horário previsto para o carro buscar você e a previsão de retorno.
+
+Você vai utilizar o transporte? Toque em um dos botões abaixo.</code></pre>
+<p><strong>Rodapé:</strong> <code>Para mais informações acesse: https://app.smsmarica.online</code></p>
+<div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th><th>Exemplo</th></tr></thead><tbody>
+<tr><td><code>{{1}}</code></td><td>Tratamento + primeiro nome</td><td>Sr. João</td></tr>
+<tr><td><code>{{2}}</code></td><td>Tratamento / atendimento</td><td>Consulta em Oftalmologia</td></tr>
+<tr><td><code>{{3}}</code></td><td>Unidade de atendimento (destino)</td><td>HOSPITAL DO OLHO</td></tr>
+<tr><td><code>{{4}}</code></td><td>Cidade da unidade</td><td>Rio de Janeiro</td></tr>
+<tr><td><code>{{5}}</code></td><td>Data (com dia da semana)</td><td>quinta-feira, 02/10/2026</td></tr>
+</tbody></table></div>
+<p><strong>Botões (resposta rápida):</strong> <code>Sim! Confirmo a utilização</code> · <code>Não! Não quero o transporte</code></p>
+<hr>
+<h2>3. <code>transporte_horario_anonimo</code> — véspera, sem dados do paciente</h2>
+<p>Um dia antes, com a rota gerada, quando o número <strong>ainda não</strong> é verificado. <strong>Aprovado.</strong></p>
+<p><strong>Cabeçalho (imagem):</strong> <code>transporte-horario-vermelho.jpg</code></p>
+<p><strong>Corpo:</strong></p>
+<pre><code>Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+*O horário do seu transporte já está definido!* 🚐
+
+Para ver a previsão de busca e de retorno e confirmar se você vai utilizar o transporte, toque em *Quero mais informações*.</code></pre>
+<p><strong>Rodapé:</strong> nenhum.</p>
+<div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th><th>Exemplo</th></tr></thead><tbody>
+<tr><td><code>{{1}}</code></td><td>Tratamento + primeiro nome</td><td>Sra. Maria</td></tr>
+</tbody></table></div>
+<p><strong>Botões (resposta rápida):</strong> <code>Quero mais informações</code> · <code>Não sou essa pessoa</code></p>
+<hr>
+<h2>4. <code>transporte_horario</code> — véspera, completo</h2>
+<p>Um dia antes, com a rota gerada, para número verificado. <strong>Aprovado.</strong></p>
+<p><strong>Cabeçalho (imagem):</strong> <code>transporte-horario-branco.jpg</code></p>
+<p><strong>Corpo:</strong></p>
+<pre><code>Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+Estas são as informações do seu transporte de *{{2}}* para realizar *{{3}}* na unidade *{{4}}*, em *{{5}}*:
+
+🚐 A previsão do carro buscar você é às *{{6}}*.
+⏱️ O tempo estimado do trajeto até o local do atendimento é de aproximadamente *{{7}}*.
+🏠 O horário previsto para o retorno até sua residência é às *{{8}}*.
+🚘 Veículo: *{{9}}*.
+🧑‍✈️Motorista: *{{10}}*.
+
+Lembramos que este é um *transporte comunitário*: os horários de chegada e de retorno consideram outras pessoas que também dependem deste serviço gratuito da Prefeitura de Maricá.
+
+Você vai utilizar o transporte? Toque em um dos botões abaixo.</code></pre>
+<p><strong>Rodapé:</strong> <code>Para mais informações acesse: https://app.smsmarica.online</code></p>
+<div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th><th>Exemplo cadastrado</th></tr></thead><tbody>
+<tr><td><code>{{1}}</code></td><td>Tratamento + primeiro nome</td><td>Sra. Maria</td></tr>
+<tr><td><code>{{2}}</code></td><td>Data (com dia da semana)</td><td>quinta-feira, 02/10/2026</td></tr>
+<tr><td><code>{{3}}</code></td><td>Tratamento / atendimento</td><td>Consulta em Oftalmologia</td></tr>
+<tr><td><code>{{4}}</code></td><td>Unidade de atendimento (destino)</td><td>HOSPITAL DO OLHO</td></tr>
+<tr><td><code>{{5}}</code></td><td>Cidade da unidade</td><td>Rio de Janeiro</td></tr>
+<tr><td><code>{{6}}</code></td><td>Horário previsto de busca</td><td>09:30h</td></tr>
+<tr><td><code>{{7}}</code></td><td>Tempo estimado do trajeto</td><td>1:30h</td></tr>
+<tr><td><code>{{8}}</code></td><td>Horário previsto de retorno à residência</td><td>16:00h</td></tr>
+<tr><td><code>{{9}}</code></td><td>Veículo (modelo, cor, placa)</td><td>Van Sprinter branca, placa ABC1D23</td></tr>
+<tr><td><code>{{10}}</code></td><td>Nome do motorista</td><td>José Vicente</td></tr>
+</tbody></table></div>
+<p><strong>Botões (resposta rápida):</strong> <code>Sim! Quero o transporte</code> · <code>Não! Não quero o transporte</code></p>
+<hr>
+<h2>5. <code>transporte_cancelado_anonimo</code> — cancelado, sem dados do paciente</h2>
+<p>Quando a Secretaria cancela o transporte e o número <strong>não</strong> é verificado. <strong>Aprovado.</strong></p>
+<p><strong>Cabeçalho (imagem):</strong> <code>transporte-cancelado-branco.jpg</code></p>
+<p><strong>Corpo:</strong></p>
+<pre><code>Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+Comunicamos que *o seu transporte foi cancelado*. Pedimos desculpas pelo transtorno.
+
+Para ver os detalhes, toque em *Quero mais informações*.</code></pre>
+<p><strong>Rodapé:</strong> <code>Para mais informações acesse: https://app.smsmarica.online</code></p>
+<div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th><th>Exemplo</th></tr></thead><tbody>
+<tr><td><code>{{1}}</code></td><td>Tratamento + primeiro nome</td><td>Sr. João</td></tr>
+</tbody></table></div>
+<p><strong>Botões (resposta rápida):</strong> <code>Quero mais informações</code> · <code>Não sou essa pessoa</code></p>
+<hr>
+<h2>6. <code>transporte_cancelado</code> — cancelado, completo</h2>
+<p>Quando a Secretaria cancela o transporte e o número <strong>é</strong> verificado. <strong>Aprovado.</strong></p>
+<p><strong>Cabeçalho (imagem):</strong> <code>transporte-cancelado-vermelho.jpg</code></p>
+<p><strong>Corpo:</strong></p>
+<pre><code>Olá *{{1}}*, esse é o canal oficial do *Alô Maricá* da Secretaria Municipal de Saúde.
+
+Comunicamos que o seu transporte de *{{2}}* para realizar *{{3}}* na unidade *{{4}}*, em *{{5}}*, foi *cancelado*. Pedimos desculpas pelo transtorno.</code></pre>
+<p><strong>Rodapé:</strong> <code>Para mais informações acesse: https://app.smsmarica.online</code></p>
+<div class="tw"><table><thead><tr><th>Variável</th><th>Conteúdo</th><th>Exemplo</th></tr></thead><tbody>
+<tr><td><code>{{1}}</code></td><td>Tratamento + primeiro nome</td><td>Sra. Maria</td></tr>
+<tr><td><code>{{2}}</code></td><td>Data (com dia da semana)</td><td>quinta-feira, 02/10/2026</td></tr>
+<tr><td><code>{{3}}</code></td><td>Tratamento / atendimento</td><td>Consulta em Oftalmologia</td></tr>
+<tr><td><code>{{4}}</code></td><td>Unidade de atendimento (destino)</td><td>HOSPITAL DO OLHO</td></tr>
+<tr><td><code>{{5}}</code></td><td>Cidade da unidade</td><td>Rio de Janeiro</td></tr>
+</tbody></table></div>
+<p><strong>Botões (resposta rápida):</strong> <code>Estou ciente</code> · <code>Quero mais informações</code></p>
+<hr>
+<h2>Artes do cabeçalho</h2>
+<p>Ficam em <code>SMSMais.cidadao.pwa/public/mensagens/</code>, junto das artes das consultas e exames (mesma personagem, mesma logo, mesma fonte). JPEG, 90–100 KB cada. Cada momento tem versão vermelha e branca; a tabela do início diz qual foi usada no cadastro de cada modelo.</p>
+<p>⚠️ <strong>A arte do cadastro é só amostra.</strong> Modelo com foto no cabeçalho exige a imagem em <strong>cada envio</strong> (sem ela a Meta recusa com <code>(#132012)</code>), e o paciente vê a imagem que foi <strong>enviada</strong>, não a do cadastro. A cor que chega ao celular é decidida no envio — dá para padronizar sem recadastrar.</p>
+<p><strong>Transporte agendado</strong> — <code>transporte-agendado-vermelho.jpg</code> · <code>transporte-agendado-branco.jpg</code></p>
+<p><img alt="Transporte agendado, vermelho" src="../../../SMSMais.cidadao.pwa/public/mensagens/transporte-agendado-vermelho.jpg"> <img alt="Transporte agendado, branco" src="../../../SMSMais.cidadao.pwa/public/mensagens/transporte-agendado-branco.jpg"></p>
+<p><strong>Véspera — horário</strong> — <code>transporte-horario-vermelho.jpg</code> · <code>transporte-horario-branco.jpg</code></p>
+<p><img alt="Horário do transporte, vermelho" src="../../../SMSMais.cidadao.pwa/public/mensagens/transporte-horario-vermelho.jpg"> <img alt="Horário do transporte, branco" src="../../../SMSMais.cidadao.pwa/public/mensagens/transporte-horario-branco.jpg"></p>
+<p><strong>Transporte cancelado</strong> — <code>transporte-cancelado-vermelho.jpg</code> · <code>transporte-cancelado-branco.jpg</code></p>
+<p><img alt="Transporte cancelado, vermelho" src="../../../SMSMais.cidadao.pwa/public/mensagens/transporte-cancelado-vermelho.jpg"> <img alt="Transporte cancelado, branco" src="../../../SMSMais.cidadao.pwa/public/mensagens/transporte-cancelado-branco.jpg"></p>
+<h2>Escolhas de texto</h2>
+<ul>
+<li><strong>"agendado", não "confirmado", na primeira mensagem.</strong> "Seu transporte está confirmado" seguido de "confirme se vai utilizar" leva a pessoa a achar que não precisa responder. "Agendado" pede a confirmação com naturalidade — é o mesmo desenho do "Seu exame foi agendado!".</li>
+<li><strong>"local do atendimento" em vez de "exame/consulta".</strong> O transporte leva também para hemodiálise, radioterapia e fisioterapia, que não são nem exame nem consulta.</li>
+<li><strong>Veículo e motorista na véspera</strong> (<code>{{9}}</code>, <code>{{10}}</code>): ajudam a pessoa a reconhecer o carro e quem vai buscá-la.</li>
+<li><strong>Formato da duração</strong> (<code>{{7}}</code>): o exemplo cadastrado foi "1:30h"; o formato real é decidido no envio. "1:30h" pode ser lido como horário (uma e meia); "1h30min" não tem essa ambiguidade.</li>
+</ul>
+<h2>Para a implementação</h2>
+<ul>
+<li><strong>A imagem de cada modelo tem de estar no mapa <code>ComunicacaoPaciente:ImagensCabecalho</code></strong> (appsettings). O catálogo do relay (<code>GET /comunicacoes-paciente/modelos</code>) não informa o cabeçalho de nenhum modelo hoje — os de consulta e exame só funcionam porque estão nesse mapa. Sem a entrada, o envio volta <code>(#132012)</code>.</li>
+<li><strong>De onde vem cada dado:</strong> busca = <code>SessaoDeTratamento.HoraPrevistaBusca</code> / <code>Alocacao.EtaPrevisto</code> (o atendimento não tem horário: vem do arranjo do carro); trajeto = duração da rota até a unidade; retorno = chegada + <code>TipoTratamento.TempoMedioMinutos</code> (o tempo médio é do tipo) + trajeto de volta; unidade e cidade = <code>UnidadeAtendimento</code>; veículo = <code>Veiculo</code> (modelo, cor, placa); motorista = <code>RotaDiaria.Motorista</code>; acompanhantes = <code>SessaoDeTratamento.Acompanhantes</code> (lista do paciente).</li>
+<li><strong>Botões chegam como TEXTO</strong> (resposta rápida sem payload), casados pelo contexto da mensagem respondida:</li>
+<li><em>Sim! Confirmo a utilização</em> (agendado) e <em>Sim! Quero o transporte</em> (véspera) → confirma o transporte;</li>
+<li><em>Não! Não quero o transporte</em> → pede a dupla checagem, como nas confirmações ("Você quer CANCELAR o transporte do dia …?" · <em>Quero cancelar</em> / <em>Não quero cancelar</em>). Cancelar o <strong>transporte</strong> não cancela a consulta nem o tratamento, e a resposta tem de dizer isso;</li>
+<li><em>Estou ciente</em> → registra que a pessoa viu o cancelamento;</li>
+<li><em>Quero mais informações</em> e <em>Não sou essa pessoa</em> → a máquina de verificação cadastral das consultas e exames, sabendo que o aviso é de transporte. Em <code>transporte_cancelado</code> o número já é verificado: o toque em <em>Quero mais informações</em> entrega os detalhes direto (o comportamento que a máquina já tem para número verificado).</li>
+<li><strong>Atendimento recorrente</strong> (hemodiálise três vezes por semana, ou contínuo): falta decidir se o "agendado" sai a cada sessão ou uma vez por atendimento. O <code>{{5}}</code> aceita as duas formas — "sexta-feira, 02/10/2026" ou "segundas, quartas e sextas, a partir de 05/10/2026".</li>
+</ul>
+</main>
+</body>
+</html>

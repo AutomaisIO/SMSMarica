@@ -9,6 +9,7 @@ function inline(s) {
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2">')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 }
 
@@ -21,6 +22,16 @@ function md2body(md) {
     const l = lines[i];
     if (/^\s*$/.test(l)) { closeList(); i++; continue; }
     if (/^---+\s*$/.test(l)) { closeList(); out.push("<hr>"); i++; continue; }
+    if (/^```/.test(l)) {
+      // bloco de código: conteúdo literal, quebras de linha preservadas
+      closeList();
+      const buf = [];
+      i++;
+      while (i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i]); i++; }
+      i++;
+      out.push(`<pre><code>${esc(buf.join("\n"))}</code></pre>`);
+      continue;
+    }
     const h = l.match(/^(#{1,6})\s+(.*)$/);
     if (h) { closeList(); const n = h[1].length; out.push(`<h${n}>${inline(h[2])}</h${n}>`); i++; continue; }
     if (/^\|/.test(l)) {
@@ -44,7 +55,7 @@ function md2body(md) {
     closeList();
     // parágrafo (agrega linhas seguidas)
     const par = [l];
-    while (i + 1 < lines.length && !/^\s*$/.test(lines[i + 1]) && !/^(#|\||[-*]\s|\d+\.\s|---)/.test(lines[i + 1])) { i++; par.push(lines[i]); }
+    while (i + 1 < lines.length && !/^\s*$/.test(lines[i + 1]) && !/^(#|\||[-*]\s|\d+\.\s|---|```)/.test(lines[i + 1])) { i++; par.push(lines[i]); }
     out.push(`<p>${inline(par.join(" "))}</p>`); i++;
   }
   closeList();
@@ -66,6 +77,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 `;
 
 for (const f of process.argv.slice(2)) {
