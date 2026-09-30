@@ -404,6 +404,14 @@ public sealed class SerExportLeitor(
                 + "Solicitação.");
         }
 
+        if (filtro.MandadoJudicial)
+        {
+            // O filtro de mandado judicial foi medido na tela de Solicitação (docs/ser.md §12). Ignorá-lo
+            // aqui devolveria a fila inteira como se fosse "só judiciais".
+            throw new InvalidOperationException(
+                "O filtro de mandado judicial é lido pela tela de Solicitação do SER, não pela de Histórico.");
+        }
+
         var campos = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [campoSituacao] = SerCodigos.Codigo(filtro.Situacao),

@@ -254,7 +254,7 @@ public sealed partial class SerWebSessao(
 
             var campos = SerHtmlParser.CamposDoForm(doc, formId, comoNavegador);
             campos[formId] = formId;
-            foreach (var (k, v) in extras) campos[k] = v;
+            SerHtmlParser.AplicarExtras(campos, extras);
 
             // ViewState: o fresco vence. A resposta de paginação é parcial (traz a grade sem
             // form nenhum), então quem pagina passa o ViewState lido da última resposta.

@@ -62,6 +62,8 @@ function descreverFase(x: ExecucaoSer): string {
       return x.historicosPendentes > 0
         ? `Histórico · faltam ${x.historicosPendentes}`
         : 'Histórico · terminando';
+    case 'Judicial':
+      return 'Mandado judicial · conferindo';
     case 'Finalizada':
       return 'Finalizada';
     default:

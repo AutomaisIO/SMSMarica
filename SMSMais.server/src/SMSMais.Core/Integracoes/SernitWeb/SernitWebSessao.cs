@@ -209,7 +209,7 @@ public sealed partial class SernitWebSessao(
 
             var campos = SernitHtmlParser.CamposDoForm(doc, formId, comoNavegador);
             campos[formId] = formId;
-            foreach (var (k, v) in extras) campos[k] = v;
+            SernitHtmlParser.AplicarExtras(campos, extras);
 
             var vs = viewState
                      ?? SernitHtmlParser.ViewStateDoForm(doc, formId)

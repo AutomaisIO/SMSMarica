@@ -316,6 +316,55 @@ public static partial class SerHtmlParser
         return null;
     }
 
+    /// <summary>
+    /// Valor especial em <c>extras</c>: o campo <b>sai do POST</b> em vez de ir com valor. Para
+    /// checkbox, "ir vazio" não é "desmarcado" — o JSF trata a chave presente como marcada. É o que
+    /// garante que um filtro desligado não vaze de um form que o renderizou ligado.
+    /// </summary>
+    public const string RemoverDoPost = "\u0000remover-do-post";
+
+    /// <summary>Junta os campos do form com os <c>extras</c> — o extra vence, e
+    /// <see cref="RemoverDoPost"/> tira a chave.</summary>
+    internal static void AplicarExtras(Dictionary<string, string> campos, IReadOnlyDictionary<string, string> extras)
+    {
+        foreach (var (k, v) in extras)
+        {
+            if (v == RemoverDoPost) campos.Remove(k);
+            else campos[k] = v;
+        }
+    }
+
+    /// <summary>
+    /// <c>name</c> do checkbox <b>"Somente com mandado judicial"</b> da tela de Solicitação, ou
+    /// <c>null</c>. O <c>j_id</c> é posicional (<c>form0:j_id87</c> em 30/09/2026) — o que é estável é
+    /// o rótulo, um <c>&lt;strong&gt;</c> logo depois do checkbox. O primeiro rótulo depois de um
+    /// checkbox é o dele: se não for o de mandado, aquele checkbox deixa de ser candidato (senão o
+    /// rótulo de um checkbox posterior, escrito ANTES dele, casaria com o anterior).
+    /// </summary>
+    public static string? CheckboxMandadoJudicial(IHtmlDocument doc, string formId)
+    {
+        if (doc.GetElementById(formId) is not IHtmlFormElement form) return null;
+
+        string? candidato = null;
+        foreach (var el in form.QuerySelectorAll("input, strong, label"))
+        {
+            if (el is IHtmlInputElement input)
+            {
+                var tipo = (input.Type ?? "text").ToLowerInvariant();
+                if (tipo == "hidden") continue;
+                candidato = tipo == "checkbox" && !string.IsNullOrEmpty(input.Name) ? input.Name : null;
+                continue;
+            }
+
+            if (candidato is null) continue;
+            if (NormalizarRotulo(el.TextContent).Contains("mandado judicial", StringComparison.Ordinal))
+                return candidato;
+            candidato = null;
+        }
+
+        return null;
+    }
+
     /// <summary>Id do link "Exportar", localizado pelo <c>title</c> — nunca pelo <c>j_id</c>.</summary>
     public static string? BotaoExportar(IHtmlDocument doc)
     {

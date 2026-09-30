@@ -156,7 +156,8 @@ public class SerSolicitacao
     public bool HistoricoIndisponivel { get; set; }
 
     /// <summary>A solicitação tem MANDADO JUDICIAL. A grade não mostra — só o filtro "Somente com
-    /// mandado judicial" da pesquisa separa; a fase Judicial da varredura marca e desmarca.</summary>
+    /// mandado judicial" da pesquisa separa; a fase Judicial da varredura marca (nunca desmarca: mandado não some, e uma leitura incompleta
+    /// apagaria a marcação de quem tem).</summary>
     public bool MandadoJudicial { get; set; }
 
     /// <summary>Última vez que a fase Judicial conferiu esta solicitação (nulo = nunca).</summary>

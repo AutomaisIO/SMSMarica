@@ -126,6 +126,21 @@ public sealed class SernitLeitorService(
 
             if (filtro.Tipo is { } tipo) extras[CampoTipo] = SernitCodigos.Codigo(tipo);
 
+            // Mandado judicial: checkbox achado pelo rótulo (j_id muda). Ligado sem checkbox na tela falha
+            // alto — uma pesquisa "judicial" que volta a fila inteira marcaria todo mundo. Desligado, a
+            // chave SAI do POST (checkbox vazio ainda liga o filtro): nada de vazar do form anterior.
+            var campoJudicial = SernitHtmlParser.CheckboxMandadoJudicial(doc, SernitHtmlParser.FormPesquisa);
+            if (filtro.MandadoJudicial)
+            {
+                extras[campoJudicial ?? throw new InvalidOperationException(
+                    "Não encontrei o checkbox \"Somente com mandado judicial\" na tela do SERNIT. Sem ele "
+                    + "a pesquisa traria todas as solicitações. Nada foi lido.")] = "on";
+            }
+            else if (campoJudicial is not null)
+            {
+                extras[campoJudicial] = SernitHtmlParser.RemoverDoPost;
+            }
+
             // SEMPRE seta os campos opcionais (valor OU vazio). É a correção da regressão da carga
             // inicial: a resposta do GRADE vem como página completa com as DATAS do fatiamento
             // preenchidas, e o Absorver a guarda como _htmlForm. Sem limpar, a busca por ID seguinte

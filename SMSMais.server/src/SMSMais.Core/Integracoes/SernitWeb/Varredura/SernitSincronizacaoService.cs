@@ -110,7 +110,16 @@ public sealed class SernitSincronizacaoService(
         {
             var precisamHistorico = new List<(string IdSernit, SituacaoSernit Situacao, string Motivo)>();
 
-            if (execucao.Fase != FaseVarreduraSernit.Historico)
+            // Retomada na fase Judicial: grade e histórico já terminaram.
+            var retomandoJudicial = execucao.Fase == FaseVarreduraSernit.Judicial;
+
+            if (retomandoJudicial)
+            {
+                logger.LogInformation(
+                    "SERNIT: retomando {Execucao} direto na fase Judicial — grade e histórico já feitos.",
+                    execucao.Id);
+            }
+            else if (execucao.Fase != FaseVarreduraSernit.Historico)
             {
                 execucao.Fase = FaseVarreduraSernit.Grade;
                 await VarrerGradeAsync(execucao, alvo, inicio, fim, precisamHistorico, cancellationToken);
@@ -122,7 +131,7 @@ public sealed class SernitSincronizacaoService(
                     execucao.Id);
             }
 
-            if (modo != ModoVarreduraSernit.SomenteGrade)
+            if (modo != ModoVarreduraSernit.SomenteGrade && !retomandoJudicial)
             {
                 execucao.Fase = FaseVarreduraSernit.Historico;
                 execucao.UltimoSinalEm = DateTime.UtcNow;
@@ -130,8 +139,17 @@ public sealed class SernitSincronizacaoService(
                 await AplicarHistoricosAsync(execucao, modo, precisamHistorico, cancellationToken);
             }
 
+            var judicialCompleto = true;
+            if (RodaFaseJudicial(modo, alvo))
+            {
+                execucao.Fase = FaseVarreduraSernit.Judicial;
+                execucao.UltimoSinalEm = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                judicialCompleto = await MarcarMandadoJudicialAsync(execucao, cancellationToken);
+            }
+
             execucao.Fase = FaseVarreduraSernit.Finalizada;
-            execucao.Status = execucao.FatiasTruncadas > 0
+            execucao.Status = execucao.FatiasTruncadas > 0 || !judicialCompleto
                 ? StatusVarreduraSernit.Parcial
                 : StatusVarreduraSernit.Concluida;
         }
@@ -225,7 +243,8 @@ public sealed class SernitSincronizacaoService(
         }
     }
 
-    private void RegistrarTruncadas(SernitVarreduraExecucao execucao, ResultadoVarreduraSernit resultado)
+    private void RegistrarTruncadas(
+        SernitVarreduraExecucao execucao, ResultadoVarreduraSernit resultado, string prefixo = "")
     {
         foreach (var fatia in resultado.Truncadas)
         {
@@ -240,12 +259,86 @@ public sealed class SernitSincronizacaoService(
                 FatiaFim = fatia.Dia,
                 TipoRecurso = fatia.Tipo,
                 Mensagem =
-                    $"Mais de 100 registros em {fatia.Dia:dd/MM/yyyy} ({fatia.Situacao}"
+                    $"{prefixo}Mais de 100 registros em {fatia.Dia:dd/MM/yyyy} ({fatia.Situacao}"
                     + (fatia.Tipo is { } t ? $", {t}" : string.Empty)
                     + "). A tela de Solicitação do SERNIT não devolve além de 100 — há registros NÃO lidos.",
                 CriadoEm = DateTime.UtcNow,
             });
         }
+    }
+
+    // ------------------------------------------------------------------ mandado judicial
+
+    /// <summary>A fase Judicial roda nas varreduras de base inteira (diária e carga inicial).</summary>
+    private static bool RodaFaseJudicial(ModoVarreduraSernit modo, IReadOnlyList<SituacaoSernit> alvo) =>
+        modo != ModoVarreduraSernit.SomenteGrade && TodasSituacoes.All(alvo.Contains);
+
+    /// <summary>
+    /// Fase Judicial: relê o SERNIT com o filtro "Somente com mandado judicial" e marca no espelho.
+    /// <b>Só marca, nunca desmarca</b> (mandado não some); <b>"verificado em" só com leitura
+    /// completa</b> — com fatia truncada ou erro fica o carimbo anterior e a rodada sai Parcial. Falha
+    /// aqui não derruba a rodada: grade e histórico já estão gravados.
+    /// </summary>
+    private async Task<bool> MarcarMandadoJudicialAsync(
+        SernitVarreduraExecucao execucao, CancellationToken cancellationToken)
+    {
+        const string Prefixo = "Mandado judicial: ";
+        LeituraMandadoJudicialSernit leitura;
+        try
+        {
+            leitura = await MandadoJudicialSernit.LerAsync(
+                varredor, TodasSituacoes, FusoBrasilia.HojeEmBrasilia().AddDays(1), cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "SERNIT: fase Judicial falhou em {Execucao} — mandado não conferido nesta rodada.",
+                execucao.Id);
+            db.SernitVarreduraFalhas.Add(new SernitVarreduraFalha
+            {
+                Id = Guid.NewGuid(),
+                ExecucaoId = execucao.Id,
+                Tipo = TipoFalhaSernit.ErroGrade,
+                Mensagem = Truncar(Prefixo + ex.Message, 1000),
+                CriadoEm = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            return false;
+        }
+
+        execucao.Buscas += leitura.Resultado.Buscas;
+        execucao.Paginas += leitura.Resultado.Paginas;
+        RegistrarTruncadas(execucao, leitura.Resultado, Prefixo);
+
+        var ids = leitura.Ids.ToList();
+        var noEspelho = 0;
+        var marcadasAgora = 0;
+        if (ids.Count > 0)
+        {
+            noEspelho = await db.SernitSolicitacoes
+                .CountAsync(x => x.ExcluidoEm == null && ids.Contains(x.IdSernit), cancellationToken);
+            marcadasAgora = await db.SernitSolicitacoes
+                .Where(x => x.ExcluidoEm == null && !x.MandadoJudicial && ids.Contains(x.IdSernit))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.MandadoJudicial, true), cancellationToken);
+        }
+
+        if (leitura.Completa)
+        {
+            var agora = DateTime.UtcNow;
+            await db.SernitSolicitacoes
+                .Where(x => x.ExcluidoEm == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.MandadoJudicialVerificadoEm, agora), cancellationToken);
+        }
+
+        execucao.UltimoSinalEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "SERNIT: fase Judicial de {Execucao} — {Lidos} com mandado no SERNIT, {NoEspelho} no espelho, "
+            + "{Novas} marcadas agora; {Carimbo}.",
+            execucao.Id, ids.Count, noEspelho, marcadasAgora,
+            leitura.Completa ? "base carimbada como verificada" : "leitura INCOMPLETA, sem carimbo");
+
+        return leitura.Completa;
     }
 
     private async Task AplicarGradeAsync(

@@ -116,8 +116,17 @@ public sealed class SerSincronizacaoService(
             // ---- fase 1: grade (todas as situações) ----
             var precisamHistorico = new List<(string IdSer, SituacaoSer Situacao, string Motivo)>();
 
+            // Retomada na fase Judicial: grade e histórico já terminaram — refazer seria horas à toa.
+            var retomandoJudicial = execucao.Fase == FaseVarreduraSer.Judicial;
+
             // Retomada: a fase de histórico já começou, então a grade inteira está feita.
-            if (execucao.Fase != FaseVarreduraSer.Historico)
+            if (retomandoJudicial)
+            {
+                logger.LogInformation(
+                    "SER: retomando {Execucao} direto na fase Judicial — grade e histórico já feitos.",
+                    execucao.Id);
+            }
+            else if (execucao.Fase != FaseVarreduraSer.Historico)
             {
                 execucao.Fase = FaseVarreduraSer.Grade;
                 await VarrerGradeAsync(
@@ -131,7 +140,7 @@ public sealed class SerSincronizacaoService(
             }
 
             // ---- fase 2: histórico ----
-            if (modo != ModoVarreduraSer.SomenteGrade)
+            if (modo != ModoVarreduraSer.SomenteGrade && !retomandoJudicial)
             {
                 execucao.Fase = FaseVarreduraSer.Historico;
                 execucao.UltimoSinalEm = DateTime.UtcNow;
@@ -139,8 +148,18 @@ public sealed class SerSincronizacaoService(
                 await AplicarHistoricosAsync(execucao, modo, precisamHistorico, cancellationToken);
             }
 
+            // ---- fase 3: mandado judicial ----
+            var judicialCompleto = true;
+            if (RodaFaseJudicial(modo, alvo))
+            {
+                execucao.Fase = FaseVarreduraSer.Judicial;
+                execucao.UltimoSinalEm = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                judicialCompleto = await MarcarMandadoJudicialAsync(execucao, cancellationToken);
+            }
+
             execucao.Fase = FaseVarreduraSer.Finalizada;
-            execucao.Status = execucao.FatiasTruncadas > 0
+            execucao.Status = execucao.FatiasTruncadas > 0 || !judicialCompleto
                 ? StatusVarreduraSer.Parcial
                 : StatusVarreduraSer.Concluida;
         }
@@ -263,7 +282,8 @@ public sealed class SerSincronizacaoService(
     /// <summary>Fatia que estourou o teto = registros NÃO lidos. Fica declarada, e a rodada vira
     /// Parcial em vez de Concluída.</summary>
     private void RegistrarTruncadas(
-        SerVarreduraExecucao execucao, ResultadoVarreduraSer resultado, ISerExportLeitor leitor)
+        SerVarreduraExecucao execucao, ResultadoVarreduraSer resultado, ISerExportLeitor leitor,
+        string prefixo = "")
     {
         var teto = leitor.TetoPorLote;
         var tela = leitor.Tela;
@@ -281,12 +301,92 @@ public sealed class SerSincronizacaoService(
                 FatiaFim = fatia.Dia,
                 TipoRecurso = fatia.Tipo,
                 Mensagem =
-                    $"Mais de {teto} registros em {fatia.Dia:dd/MM/yyyy} ({fatia.Situacao}"
+                    $"{prefixo}Mais de {teto} registros em {fatia.Dia:dd/MM/yyyy} ({fatia.Situacao}"
                     + (fatia.Tipo is { } t ? $", {t}" : string.Empty)
                     + $"). A tela {tela} do SER não devolve além disso — há registros NÃO lidos.",
                 CriadoEm = DateTime.UtcNow,
             });
         }
+    }
+
+    // ------------------------------------------------------------------ mandado judicial
+
+    /// <summary>A fase Judicial roda nas varreduras de base inteira (diária e carga inicial). Recorte
+    /// de situações ou "somente grade" é pedido pontual — conferir mandado ali seria custo sem dono.</summary>
+    private static bool RodaFaseJudicial(ModoVarreduraSer modo, IReadOnlyList<SituacaoSer> alvo) =>
+        modo != ModoVarreduraSer.SomenteGrade && TodasSituacoes.All(alvo.Contains);
+
+    /// <summary>
+    /// Fase Judicial: relê o SER com o filtro "Somente com mandado judicial" e marca no espelho.
+    ///
+    /// <para><b>Só marca, nunca desmarca</b>: mandado não some, e uma leitura que deixasse alguém de
+    /// fora (sessão caída no meio, teto) apagaria a marcação de quem tem. <b>"Verificado em" só com
+    /// leitura completa</b>: é o carimbo que a tela de Indicadores usa para dizer que o número é
+    /// oficial — com fatia truncada ou erro, fica o carimbo anterior e a rodada sai Parcial.</para>
+    ///
+    /// <para>Falha aqui NÃO derruba a rodada: grade e histórico já estão gravados. Fica registrada
+    /// em <c>ser_varredura_falha</c> e a rodada termina Parcial.</para>
+    /// </summary>
+    private async Task<bool> MarcarMandadoJudicialAsync(
+        SerVarreduraExecucao execucao, CancellationToken cancellationToken)
+    {
+        const string Prefixo = "Mandado judicial: ";
+        LeituraMandadoJudicialSer leitura;
+        try
+        {
+            leitura = await MandadoJudicialSer.LerAsync(
+                exportSolicitacaoLeitor, varredorExport, TodasSituacoes,
+                FusoBrasilia.HojeEmBrasilia().AddDays(1), cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "SER: fase Judicial falhou em {Execucao} — mandado não conferido nesta rodada.",
+                execucao.Id);
+            db.SerVarreduraFalhas.Add(new SerVarreduraFalha
+            {
+                Id = Guid.NewGuid(),
+                ExecucaoId = execucao.Id,
+                Tipo = TipoFalhaSer.ErroGrade,
+                Mensagem = Truncar(Prefixo + ex.Message, 1000),
+                CriadoEm = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            return false;
+        }
+
+        execucao.Buscas += leitura.Resultado.Buscas;
+        RegistrarTruncadas(execucao, leitura.Resultado, exportSolicitacaoLeitor, Prefixo);
+
+        var ids = leitura.Ids.ToList();
+        var noEspelho = 0;
+        var marcadasAgora = 0;
+        if (ids.Count > 0)
+        {
+            noEspelho = await db.SerSolicitacoes
+                .CountAsync(x => x.ExcluidoEm == null && ids.Contains(x.IdSer), cancellationToken);
+            marcadasAgora = await db.SerSolicitacoes
+                .Where(x => x.ExcluidoEm == null && !x.MandadoJudicial && ids.Contains(x.IdSer))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.MandadoJudicial, true), cancellationToken);
+        }
+
+        if (leitura.Completa)
+        {
+            var agora = DateTime.UtcNow;
+            await db.SerSolicitacoes
+                .Where(x => x.ExcluidoEm == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.MandadoJudicialVerificadoEm, agora), cancellationToken);
+        }
+
+        execucao.UltimoSinalEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "SER: fase Judicial de {Execucao} — {Lidos} com mandado no SER, {NoEspelho} no espelho, "
+            + "{Novas} marcadas agora; {Carimbo}.",
+            execucao.Id, ids.Count, noEspelho, marcadasAgora,
+            leitura.Completa ? "base carimbada como verificada" : "leitura INCOMPLETA, sem carimbo");
+
+        return leitura.Completa;
     }
 
     private async Task AplicarGradeAsync(

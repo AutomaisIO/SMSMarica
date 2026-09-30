@@ -46,6 +46,9 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
     /// telas: a de Histórico para as seis situações que ela oferece, e a de Solicitação para ALTA,
     /// que só existe lá. A lógica de janela é a mesma; o que muda é o teto e como cada tela avisa
     /// que cortou — uma por escrito, a outra só devolvendo o lote cheio.</para>
+    ///
+    /// <para><paramref name="mandadoJudicial"/>: a mesma janela adaptativa, só com o filtro "Somente com
+    /// mandado judicial" ligado (fase Judicial; só a tela de Solicitação tem o filtro).</para>
     /// </summary>
     public async Task<ResultadoVarreduraSer> VarrerAsync(
         ISerExportLeitor leitor,
@@ -54,7 +57,8 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
         DateOnly fim,
         AplicarLoteSer aplicar,
         CancellationToken cancellationToken,
-        ResultadoVarreduraSer? acumulado = null)
+        ResultadoVarreduraSer? acumulado = null,
+        bool mandadoJudicial = false)
     {
         var resultado = acumulado ?? new ResultadoVarreduraSer();
 
@@ -70,7 +74,7 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
             cancellationToken.ThrowIfCancellationRequested();
 
             var janelaFim = Menor(fim, cursor.AddDays(passo - 1));
-            var lote = await ExportarAsync(leitor, situacao, cursor, janelaFim, null, resultado, cancellationToken);
+            var lote = await ExportarAsync(leitor, situacao, cursor, janelaFim, null, mandadoJudicial, resultado, cancellationToken);
 
             if (lote.Truncado)
             {
@@ -92,7 +96,7 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
                 }
 
                 // Um único dia estoura o teto: só resta fatiar por Tipo.
-                await VarrerDiaPorTipoAsync(leitor, situacao, cursor, aplicar, resultado, cancellationToken);
+                await VarrerDiaPorTipoAsync(leitor, situacao, cursor, aplicar, mandadoJudicial, resultado, cancellationToken);
                 cursor = cursor.AddDays(1);
                 passo = 1;
                 await aplicar([], cursor, cancellationToken);
@@ -128,6 +132,7 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
         SituacaoSer situacao,
         DateOnly dia,
         AplicarLoteSer aplicar,
+        bool mandadoJudicial,
         ResultadoVarreduraSer resultado,
         CancellationToken cancellationToken)
     {
@@ -137,7 +142,7 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
 
         foreach (var tipo in new[] { TipoRecursoSer.Consulta, TipoRecursoSer.Exame })
         {
-            var lote = await ExportarAsync(leitor, situacao, dia, dia, tipo, resultado, cancellationToken);
+            var lote = await ExportarAsync(leitor, situacao, dia, dia, tipo, mandadoJudicial, resultado, cancellationToken);
 
             // O lote é aplicado mesmo truncado: o que foi lido é real e vale espelhar. O que se
             // perde fica declarado na fatia truncada abaixo.
@@ -159,6 +164,7 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
         DateOnly inicio,
         DateOnly fim,
         TipoRecursoSer? tipo,
+        bool mandadoJudicial,
         ResultadoVarreduraSer resultado,
         CancellationToken cancellationToken)
     {
@@ -169,6 +175,7 @@ public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
                 Tipo = tipo,
                 DataSolicitacaoInicio = inicio,
                 DataSolicitacaoFim = fim,
+                MandadoJudicial = mandadoJudicial,
             },
             cancellationToken);
 

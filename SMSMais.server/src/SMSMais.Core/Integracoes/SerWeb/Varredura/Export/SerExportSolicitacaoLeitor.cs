@@ -199,7 +199,7 @@ public sealed class SerExportSolicitacaoLeitor(
             "SER/export-solicitacao: {Situacao}{Tipo} {Inicio:dd/MM/yyyy}..{Fim:dd/MM/yyyy} → "
             + "{Linhas} linhas{Corte}.",
             filtro.Situacao,
-            filtro.Tipo is { } t ? $"/{t}" : string.Empty,
+            (filtro.Tipo is { } t ? $"/{t}" : string.Empty) + (filtro.MandadoJudicial ? " [mandado judicial]" : string.Empty),
             filtro.DataSolicitacaoInicio, filtro.DataSolicitacaoFim,
             linhas.Count,
             truncado ? $" (LOTE CHEIO — teto de {TetoPorLote}, pode haver mais)" : string.Empty);
@@ -243,6 +243,21 @@ public sealed class SerExportSolicitacaoLeitor(
         // de Histórico esse mesmo combo é decorativo. Como o corte por Tipo é o último recurso da
         // bisecção quando um dia sozinho estoura, essa diferença é o que a torna confiável aqui.
         if (filtro.Tipo is { } tipo) campos[CampoTipo] = SerCodigos.Codigo(tipo);
+
+        // Mandado judicial: o checkbox é achado pelo rótulo (j_id muda). Ligado sem checkbox na tela
+        // falha alto — uma pesquisa "judicial" que volta a fila inteira marcaria todo mundo. Desligado,
+        // a chave SAI do POST: checkbox vazio ainda liga o filtro no JSF.
+        var campoJudicial = SerHtmlParser.CheckboxMandadoJudicial(doc, SerHtmlParser.FormPesquisa);
+        if (filtro.MandadoJudicial)
+        {
+            campos[campoJudicial ?? throw new InvalidOperationException(
+                "Não encontrei o checkbox \"Somente com mandado judicial\" na tela de Solicitação do SER. "
+                + "Sem ele a pesquisa traria todas as solicitações. Nada foi lido.")] = "on";
+        }
+        else if (campoJudicial is not null)
+        {
+            campos[campoJudicial] = SerHtmlParser.RemoverDoPost;
+        }
 
         // `UnidadeSolicitante` é ignorado de propósito: esta tela não tem o campo, e o recorte de
         // Maricá vem da credencial do operador — provado pelas colunas Solicitante e Município

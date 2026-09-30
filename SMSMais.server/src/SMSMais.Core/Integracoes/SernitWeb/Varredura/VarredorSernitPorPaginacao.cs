@@ -21,6 +21,8 @@ public delegate Task AplicarLoteSernit(
 /// capada, parte a janela ao meio e refaz SEM avançar; quando cabe, lê todas as páginas, aplica o
 /// lote e avança. Um único dia que ainda estoure é fatiado por Tipo; o que nem assim couber vira
 /// <see cref="FatiaTruncadaSernit"/> — registros declarados como NÃO lidos.</para>
+///
+/// <para>A fase Judicial usa o mesmo laço com o filtro "Somente com mandado judicial" ligado.</para>
 /// </summary>
 public sealed class VarredorSernitPorPaginacao(
     ISernitLeitorService leitor,
@@ -35,7 +37,8 @@ public sealed class VarredorSernitPorPaginacao(
         DateOnly fim,
         AplicarLoteSernit aplicar,
         CancellationToken cancellationToken,
-        ResultadoVarreduraSernit? acumulado = null)
+        ResultadoVarreduraSernit? acumulado = null,
+        bool mandadoJudicial = false)
     {
         var resultado = acumulado ?? new ResultadoVarreduraSernit();
         var folgaParaCrescer = Teto / 2;
@@ -50,7 +53,7 @@ public sealed class VarredorSernitPorPaginacao(
 
             var janelaFim = Menor(fim, cursor.AddDays(passo - 1));
             var pg = await leitor.PesquisarAsync(
-                Filtro(situacao, null, cursor, janelaFim), cancellationToken);
+                Filtro(situacao, null, cursor, janelaFim, mandadoJudicial), cancellationToken);
             resultado.Buscas++;
 
             if (pg.Capada)
@@ -69,7 +72,7 @@ public sealed class VarredorSernitPorPaginacao(
                 }
 
                 // Um único dia estoura o teto: só resta fatiar por Tipo.
-                await VarrerDiaPorTipoAsync(situacao, cursor, aplicar, resultado, cancellationToken);
+                await VarrerDiaPorTipoAsync(situacao, cursor, aplicar, mandadoJudicial, resultado, cancellationToken);
                 cursor = cursor.AddDays(1);
                 passo = 1;
                 await aplicar([], cursor, cancellationToken);
@@ -96,6 +99,7 @@ public sealed class VarredorSernitPorPaginacao(
         SituacaoSernit situacao,
         DateOnly dia,
         AplicarLoteSernit aplicar,
+        bool mandadoJudicial,
         ResultadoVarreduraSernit resultado,
         CancellationToken cancellationToken)
     {
@@ -105,7 +109,7 @@ public sealed class VarredorSernitPorPaginacao(
 
         foreach (var tipo in new[] { TipoRecursoSernit.Consulta, TipoRecursoSernit.Exame })
         {
-            var pg = await leitor.PesquisarAsync(Filtro(situacao, tipo, dia, dia), cancellationToken);
+            var pg = await leitor.PesquisarAsync(Filtro(situacao, tipo, dia, dia, mandadoJudicial), cancellationToken);
             resultado.Buscas++;
 
             var linhas = await LerTodasPaginasAsync(pg, resultado, cancellationToken);
@@ -148,12 +152,13 @@ public sealed class VarredorSernitPorPaginacao(
     }
 
     private static SernitFiltroPesquisa Filtro(
-        SituacaoSernit situacao, TipoRecursoSernit? tipo, DateOnly inicio, DateOnly fim) => new()
+        SituacaoSernit situacao, TipoRecursoSernit? tipo, DateOnly inicio, DateOnly fim, bool mandadoJudicial) => new()
     {
         Situacao = situacao,
         Tipo = tipo,
         DataSolicitacaoInicio = inicio,
         DataSolicitacaoFim = fim,
+        MandadoJudicial = mandadoJudicial,
     };
 
     private static int DiasEntre(DateOnly inicio, DateOnly fim) =>

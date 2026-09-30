@@ -265,6 +265,54 @@ public static partial class SernitHtmlParser
         return null;
     }
 
+    /// <summary>
+    /// Valor especial em <c>extras</c>: o campo <b>sai do POST</b> em vez de ir com valor. Checkbox
+    /// "vazio" não é desmarcado — a chave presente liga o filtro. É o que impede o filtro de mandado
+    /// judicial de vazar para uma pesquisa comum a partir de um form que o renderizou ligado.
+    /// </summary>
+    public const string RemoverDoPost = "\u0000remover-do-post";
+
+    /// <summary>Junta os campos do form com os <c>extras</c> — o extra vence, e
+    /// <see cref="RemoverDoPost"/> tira a chave.</summary>
+    internal static void AplicarExtras(Dictionary<string, string> campos, IReadOnlyDictionary<string, string> extras)
+    {
+        foreach (var (k, v) in extras)
+        {
+            if (v == RemoverDoPost) campos.Remove(k);
+            else campos[k] = v;
+        }
+    }
+
+    /// <summary>
+    /// <c>name</c> do checkbox <b>"Somente com mandado judicial"</b>, ou <c>null</c>. O <c>j_id</c> muda
+    /// (<c>form0:j_id66</c> em 30/09/2026); o estável é o rótulo — um <c>&lt;strong&gt;</c> logo depois
+    /// do checkbox. O primeiro rótulo depois de um checkbox é o dele: se não for o de mandado, aquele
+    /// checkbox deixa de ser candidato.
+    /// </summary>
+    public static string? CheckboxMandadoJudicial(IHtmlDocument doc, string formId)
+    {
+        if (doc.GetElementById(formId) is not IHtmlFormElement form) return null;
+
+        string? candidato = null;
+        foreach (var el in form.QuerySelectorAll("input, strong, label"))
+        {
+            if (el is IHtmlInputElement input)
+            {
+                var tipo = (input.Type ?? "text").ToLowerInvariant();
+                if (tipo == "hidden") continue;
+                candidato = tipo == "checkbox" && !string.IsNullOrEmpty(input.Name) ? input.Name : null;
+                continue;
+            }
+
+            if (candidato is null) continue;
+            if (NormalizarRotulo(el.TextContent).Contains("mandado judicial", StringComparison.Ordinal))
+                return candidato;
+            candidato = null;
+        }
+
+        return null;
+    }
+
     // ------------------------------------------------------------------ suggestionbox (CID)
 
     /// <summary>Localiza o <c>rich:suggestionbox</c> amarrado a um campo, lendo os ids do script

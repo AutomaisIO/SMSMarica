@@ -52,7 +52,7 @@ export type StatusVarreduraSer =
   | 'Interrompida';
 
 /** Em que ponto a rodada está. Grade = espelho da fila; Historico = trilha de eventos. */
-export type FaseVarreduraSer = 'Grade' | 'Historico' | 'Finalizada';
+export type FaseVarreduraSer = 'Grade' | 'Historico' | 'Judicial' | 'Finalizada';
 
 export type SolicitacaoSerLista = {
   id: string;

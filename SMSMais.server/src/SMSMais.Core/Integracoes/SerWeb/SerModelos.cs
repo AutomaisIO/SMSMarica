@@ -125,6 +125,13 @@ public sealed record SerFiltroExport
     /// esconderia gente que é nossa.</para>
     /// </summary>
     public string? UnidadeSolicitante { get; init; } = "GESTOR SMS MARICA";
+
+    /// <summary>
+    /// Só solicitações <b>com mandado judicial</b> (checkbox "Somente com mandado judicial"). Existe
+    /// só na tela de Solicitação — a grade não mostra o martelo, então este filtro é a única forma de
+    /// separar (docs/ser.md §12). Falso = a chave SAI do POST, nunca vai vazia.
+    /// </summary>
+    public bool MandadoJudicial { get; init; }
 }
 
 /// <summary>Um lote exportado: as linhas da planilha + se o SER avisou que cortou em 500.</summary>

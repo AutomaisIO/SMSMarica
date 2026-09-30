@@ -86,6 +86,10 @@ public sealed record SernitFiltroPesquisa
     public string? Nome { get; init; }
     public string? Cns { get; init; }
     public string? IdSolicitacao { get; init; }
+
+    /// <summary>Só solicitações <b>com mandado judicial</b> (checkbox "Somente com mandado judicial" —
+    /// a grade não mostra, só o filtro separa). Falso = a chave SAI do POST, nunca vai vazia.</summary>
+    public bool MandadoJudicial { get; init; }
 }
 
 /// <summary>

@@ -49,7 +49,7 @@ export type StatusVarreduraSernit =
   | 'Cancelada'
   | 'Interrompida';
 
-export type FaseVarreduraSernit = 'Grade' | 'Historico' | 'Finalizada';
+export type FaseVarreduraSernit = 'Grade' | 'Historico' | 'Judicial' | 'Finalizada';
 
 export type SolicitacaoSernitLista = {
   id: string;
