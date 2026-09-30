@@ -55,6 +55,10 @@ internal sealed class SernitSolicitacaoConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.EventosCount).HasColumnName("eventos_count").IsRequired();
         builder.Property(x => x.UltimoEventoEm).HasColumnName("ultimo_evento_em");
         builder.Property(x => x.HistoricoIndisponivel).HasColumnName("historico_indisponivel").IsRequired();
+        builder.Property(x => x.MandadoJudicial).HasColumnName("mandado_judicial").IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.MandadoJudicialVerificadoEm).HasColumnName("mandado_judicial_verificado_em");
+        builder.HasIndex(x => x.MandadoJudicial).HasFilter("mandado_judicial")
+            .HasDatabaseName("ix_sernit_solicitacao_mandado_judicial");
         builder.Property(x => x.SituacaoMudouEm).HasColumnName("situacao_mudou_em");
         builder.Property(x => x.SituacaoAnterior).HasColumnName("situacao_anterior");
 

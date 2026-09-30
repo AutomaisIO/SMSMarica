@@ -366,4 +366,10 @@ public enum ModuloPermissao
     /// agendou), lidas da trilha <c>esussg_evento</c>. Irmão de <see cref="EstatisticaSer"/> e
     /// <see cref="EstatisticaSernit"/>. Só <c>Consulta</c>.</summary>
     EstatisticaEsusSg = 78,
+
+    /// <summary>Indicadores de Regulação (série mensal de vagas, absenteísmo, regulados, fila, desfechos
+    /// com motivo, espera e judicializadas) nas telas de SISREG, SER e SERNIT, com exportação em PDF.
+    /// Um módulo só para os três sistemas (decisão do Bernardo, 30/09/2026). Só <c>Consulta</c>. A
+    /// configuração dos coletores do SISREG fica em <see cref="SisregConfiguracao"/>.</summary>
+    IndicadoresRegulacao = 79,
 }

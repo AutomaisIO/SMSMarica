@@ -23,6 +23,7 @@ import {
   FileSignature,
   FileText,
   FlaskConical,
+  Gauge,
   Image as ImageIcon,
   Inbox,
   LifeBuoy,
@@ -290,6 +291,14 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Trabalho dos operadores no SER: equipe, individual e rankings.',
           },
           {
+            // Módulo 79 — um só para os quatro sistemas.
+            rotulo: 'Indicadores',
+            to: '/app/regulacao/indicadores/ser',
+            icone: Gauge,
+            modulo: 'IndicadoresRegulacao',
+            descricao: 'Série mensal do SER: agendamentos, absenteísmo, fila, cancelamentos, espera e judicial.',
+          },
+          {
             rotulo: 'Configuração',
             to: '/app/regulacao/configuracao',
             icone: Settings2,
@@ -337,6 +346,13 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Trabalho dos operadores no SERNIT: equipe, individual e rankings.',
           },
           {
+            rotulo: 'Indicadores',
+            to: '/app/regulacao/indicadores/sernit',
+            icone: Gauge,
+            modulo: 'IndicadoresRegulacao',
+            descricao: 'Série mensal do SERNIT: agendamentos, absenteísmo, fila, cancelamentos, espera e judicial.',
+          },
+          {
             rotulo: 'Configuração',
             to: '/app/regulacao/sernit/configuracao',
             icone: Settings2,
@@ -376,6 +392,13 @@ export const SECOES: SecaoMenu[] = [
             icone: BarChart3,
             modulo: 'EstatisticaEsusSg',
             descricao: 'Quem incluiu na fila e quem agendou no ESUS São Gonçalo.',
+          },
+          {
+            rotulo: 'Indicadores',
+            to: '/app/regulacao/indicadores/esussg',
+            icone: Gauge,
+            modulo: 'IndicadoresRegulacao',
+            descricao: 'Série mensal do ESUS São Gonçalo: agendamentos, fila, espera e judicial.',
           },
           {
             rotulo: 'Configuração',
@@ -419,6 +442,13 @@ export const SECOES: SecaoMenu[] = [
             icone: BarChart3,
             modulo: 'EstatisticaSisreg',
             descricao: 'Trabalho dos operadores da regulação: equipe, individual e rankings.',
+          },
+          {
+            rotulo: 'Indicadores',
+            to: '/app/regulacao/indicadores/sisreg',
+            icone: Gauge,
+            modulo: 'IndicadoresRegulacao',
+            descricao: 'Série mensal do SISREG: vagas, absenteísmo, regulados, fila, cancelamentos, espera.',
           },
           {
             rotulo: 'Configuração',

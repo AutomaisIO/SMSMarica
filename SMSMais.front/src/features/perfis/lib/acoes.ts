@@ -101,6 +101,8 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'EstatisticaSer', rotulo: 'Estatísticas — SER (operadores da fila do Estado: equipe, individual e rankings)' },
   { id: 'EstatisticaSernit', rotulo: 'Estatísticas — SERNIT (operadores da fila de Niterói: equipe, individual e rankings)' },
   { id: 'EstatisticaEsusSg', rotulo: 'Estatísticas — ESUS São Gonçalo (quem incluiu na fila e quem agendou: equipe, individual e rankings)' },
+  // Um módulo só para os quatro sistemas (79): é o retrato da regulação, não a produção de ninguém.
+  { id: 'IndicadoresRegulacao', rotulo: 'Indicadores de Regulação (SISREG, SER, SERNIT, ESUS SG)' },
   { id: 'Sandbox', rotulo: 'Sandbox de testes (QA)' },
   { id: 'Consultas', rotulo: 'Consultas reguladas (SISREG)' },
   { id: 'MapeamentoSigtap', rotulo: 'Mapeamento SIGTAP → tipo de exame' },
@@ -232,6 +234,10 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   },
   EstatisticaEsusSg: {
     Consulta: 'Ver as estatísticas dos operadores do ESUS São Gonçalo',
+  },
+  // Só a Consulta vale: a tela é leitura, e o PDF é a mesma leitura em outro formato.
+  IndicadoresRegulacao: {
+    Consulta: 'Ver os indicadores e exportar o PDF',
   },
   // Só a Consulta vale: a integração com o ESUS é só leitura. "Visto" nas notificações é marca
   // nossa e também usa a Consulta.

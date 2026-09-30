@@ -129,6 +129,13 @@ public class SernitSolicitacao
     /// <see cref="SituacaoSernit.Alta"/>). Marcado para o motor não reler todo dia.</summary>
     public bool HistoricoIndisponivel { get; set; }
 
+    /// <summary>A solicitação tem MANDADO JUDICIAL. A grade não mostra — só o filtro "Somente com
+    /// mandado judicial" da pesquisa separa; a fase Judicial da varredura marca e desmarca.</summary>
+    public bool MandadoJudicial { get; set; }
+
+    /// <summary>Última vez que a fase Judicial conferiu esta solicitação (nulo = nunca).</summary>
+    public DateTime? MandadoJudicialVerificadoEm { get; set; }
+
     public DateTime? SituacaoMudouEm { get; set; }
     public SituacaoSernit? SituacaoAnterior { get; set; }
 

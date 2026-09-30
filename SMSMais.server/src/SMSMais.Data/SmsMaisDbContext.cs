@@ -143,6 +143,11 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
 
     /// <summary>Quem pediu no SISREG e ainda NAO foi agendado — a fila de espera de verdade.</summary>
     public DbSet<SisregFilaPendente> SisregFilaPendentes => Set<SisregFilaPendente>();
+    public DbSet<SisregFaltaOficial> SisregFaltasOficiais => Set<SisregFaltaOficial>();
+    public DbSet<SisregMarcacaoCancelada> SisregMarcacoesCanceladas => Set<SisregMarcacaoCancelada>();
+    public DbSet<SisregSolicitacaoDesfecho> SisregSolicitacaoDesfechos => Set<SisregSolicitacaoDesfecho>();
+    public DbSet<SisregPpiCota> SisregPpiCotas => Set<SisregPpiCota>();
+    public DbSet<SisregIndicadorColeta> SisregIndicadorColetas => Set<SisregIndicadorColeta>();
 
     public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
 

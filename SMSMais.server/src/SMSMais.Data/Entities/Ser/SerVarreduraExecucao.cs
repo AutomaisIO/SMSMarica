@@ -146,6 +146,9 @@ public enum FaseVarreduraSer
 
     /// <summary>Nada mais a fazer.</summary>
     Finalizada = 3,
+
+    /// <summary>Marcando as solicitações com mandado judicial (filtro da pesquisa). Acrescentada depois — nunca renumerar.</summary>
+    Judicial = 4,
 }
 
 /// <summary>Estado de uma varredura do SER.</summary>

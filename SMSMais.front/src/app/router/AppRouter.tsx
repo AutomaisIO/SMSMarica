@@ -68,6 +68,7 @@ import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { SisregEstatisticasPage } from '@/features/sisreg-estatisticas/pages/SisregEstatisticasPage';
 import { RegulacaoEstatisticasPage } from '@/features/regulacao-estatisticas/pages/RegulacaoEstatisticasPage';
+import { IndicadoresRegulacaoPage } from '@/features/regulacao-indicadores/pages/IndicadoresRegulacaoPage';
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
 import { SerNotificacoesPage } from '@/features/ser/pages/SerNotificacoesPage';
 import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoPage';
@@ -297,6 +298,25 @@ export function AppRouter() {
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
           <Route element={<RotaComModulo modulo="EstatisticaSisreg" rotulo="Estatísticas — SISREG" />}>
             <Route path="sisreg/estatisticas" element={<SisregEstatisticasPage />} />
+          </Route>
+          {/* Indicadores de Regulação (79): a série mensal de cada sistema — um módulo só para os
+              quatro, só Consulta (que também libera o PDF). `/regulacao/indicadores` sozinho é o
+              destino do "Abrir a tela" do manual: cai no SISREG. */}
+          <Route element={<RotaComModulo modulo="IndicadoresRegulacao" rotulo="Indicadores — SISREG" />}>
+            <Route
+              path="regulacao/indicadores"
+              element={<Navigate to="/app/regulacao/indicadores/sisreg" replace />}
+            />
+            <Route path="regulacao/indicadores/sisreg" element={<IndicadoresRegulacaoPage fonte="sisreg" />} />
+          </Route>
+          <Route element={<RotaComModulo modulo="IndicadoresRegulacao" rotulo="Indicadores — SER" />}>
+            <Route path="regulacao/indicadores/ser" element={<IndicadoresRegulacaoPage fonte="ser" />} />
+          </Route>
+          <Route element={<RotaComModulo modulo="IndicadoresRegulacao" rotulo="Indicadores — SERNIT" />}>
+            <Route path="regulacao/indicadores/sernit" element={<IndicadoresRegulacaoPage fonte="sernit" />} />
+          </Route>
+          <Route element={<RotaComModulo modulo="IndicadoresRegulacao" rotulo="Indicadores — ESUS São Gonçalo" />}>
+            <Route path="regulacao/indicadores/esussg" element={<IndicadoresRegulacaoPage fonte="esussg" />} />
           </Route>
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />

@@ -155,6 +155,13 @@ public class SerSolicitacao
     /// </summary>
     public bool HistoricoIndisponivel { get; set; }
 
+    /// <summary>A solicitação tem MANDADO JUDICIAL. A grade não mostra — só o filtro "Somente com
+    /// mandado judicial" da pesquisa separa; a fase Judicial da varredura marca e desmarca.</summary>
+    public bool MandadoJudicial { get; set; }
+
+    /// <summary>Última vez que a fase Judicial conferiu esta solicitação (nulo = nunca).</summary>
+    public DateTime? MandadoJudicialVerificadoEm { get; set; }
+
     /// <summary>Quando a situação mudou pela última vez (base do "o que mudou hoje").</summary>
     public DateTime? SituacaoMudouEm { get; set; }
 

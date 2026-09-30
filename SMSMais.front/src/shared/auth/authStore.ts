@@ -79,6 +79,9 @@ export type ModuloPermissao =
   | 'EstatisticaSer'
   | 'EstatisticaSernit'
   | 'EstatisticaEsusSg'
+  // Indicadores de Regulação (79): série mensal de SISREG, SER, SERNIT e ESUS SG — um módulo só,
+  // só Consulta (a tela e o PDF).
+  | 'IndicadoresRegulacao'
   // Ouvidoria (71–74, ADR-0060): trabalho da ouvidoria, gestão, sigilo (ver identidade/denúncias)
   // e ponto de resposta (quem responde pela unidade/área, sem ver o manifestante).
   | 'Ouvidoria'

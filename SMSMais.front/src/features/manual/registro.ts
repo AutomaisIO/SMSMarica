@@ -7,6 +7,7 @@ import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoEsusSaoGoncalo } from '@/features/manual/conteudo/esusSaoGoncalo';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
+import { artigoIndicadoresRegulacao } from '@/features/manual/conteudo/indicadoresRegulacao';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
@@ -49,7 +50,7 @@ export const GRUPOS: GrupoManual[] = [
     id: 'regulacao',
     titulo: 'Regulação',
     descricao:
-      'Solicitações, as filas espelhadas dos sistemas de regulação (SER, SERNIT, ESUS São Gonçalo) e as regras de elegibilidade.',
+      'Solicitações, as filas espelhadas dos sistemas de regulação (SER, SERNIT, ESUS São Gonçalo), as regras de elegibilidade e os indicadores mensais de cada sistema.',
     icone: ClipboardCheck,
   },
   {
@@ -75,6 +76,7 @@ export const ARTIGOS: Artigo[] = [
   artigoConfirmacoes,
   artigoEsusSaoGoncalo,
   artigoFluxoAtendimentoWhatsApp,
+  artigoIndicadoresRegulacao,
   artigoMensageria,
   artigoMotoristas,
   artigoOuvidoria,

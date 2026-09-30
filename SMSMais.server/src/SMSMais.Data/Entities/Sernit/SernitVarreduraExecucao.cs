@@ -22,6 +22,9 @@ public enum FaseVarreduraSernit
     Grade = 1,
     Historico = 2,
     Finalizada = 3,
+
+    /// <summary>Marcando as solicitações com mandado judicial (filtro da pesquisa). Acrescentada depois — nunca renumerar.</summary>
+    Judicial = 4,
 }
 
 /// <summary>Estado de uma varredura do SERNIT.</summary>

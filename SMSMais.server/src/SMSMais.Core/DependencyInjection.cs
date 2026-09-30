@@ -714,6 +714,11 @@ public static class DependencyInjection
         services.AddScoped<
             Regulacao.Estatisticas.IEstatisticasOperadoresExternosService,
             Regulacao.Estatisticas.EstatisticasOperadoresExternosService>();
+        // Indicadores de Regulação (30/09/2026): série mensal por sistema (SISREG, SER, SERNIT, ESUS SG),
+        // só leitura sobre o nosso banco, com cache de 10 min.
+        services.AddScoped<
+            Regulacao.Indicadores.IIndicadoresRegulacaoService,
+            Regulacao.Indicadores.IndicadoresRegulacaoService>();
 
         // Histórico da agenda: anda para trás, uma fatia por tick, dirigido pela cobertura gravada
         // em sisreg_varredura_agenda. Sem fila e sem runner de propósito — não há execução longa a
