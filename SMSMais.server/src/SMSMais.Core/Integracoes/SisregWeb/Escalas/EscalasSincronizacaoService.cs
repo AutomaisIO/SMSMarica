@@ -75,10 +75,10 @@ public sealed class EscalasSincronizacaoService(
     IOptions<EscalasSincronizacaoOpcoes> opcoes,
     IOptions<SisregOrcamentoOpcoes> orcamentoOpcoes,
     Regulacao.Catalogo.IRegulacaoCatalogoService catalogoRegulacao,
+    Institucional.IInstituicaoService instituicao,
     ILogger<EscalasSincronizacaoService> logger) : IEscalasSincronizacaoService
 {
     private const string Caminho = "/cgi-bin/cons_escalas";
-    private const string Ibge = "330270";
 
     /// <summary>Chaves no <c>ParametrosJson</c> da credencial <c>sisreg</c> — o mesmo lugar onde o
     /// lote de mapeamento guarda o dele. Prefixadas para não colidirem.</summary>
@@ -309,6 +309,7 @@ public sealed class EscalasSincronizacaoService(
         SisregEscalaSincronizacaoExecucao execucao, ProgressoEscalas progresso, CancellationToken ct)
     {
         progresso.Fase = ProgressoEscalas.FaseBaixando;
+        var ibge = await IbgeDoMunicipioAsync(ct);
 
         // Filtros TODOS vazios = a rede inteira e o histórico completo, em uma requisição.
         // Ver a nota da classe sobre por que não se filtra por status.
@@ -323,7 +324,7 @@ public sealed class EscalasSincronizacaoService(
             ["dataFinal"] = string.Empty,
             ["qtd_itens_pag"] = "50",
             ["pagina"] = "0",
-            ["ibge"] = Ibge,
+            ["ibge"] = ibge,
             ["ordenacao"] = string.Empty,
             ["clas_lista"] = "ASC",
             ["coluna"] = string.Empty,
@@ -699,6 +700,21 @@ public sealed class EscalasSincronizacaoService(
         }
 
         return t.ToString("HH:mm", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// O SISREG identifica o município pelo IBGE de 6 dígitos (sem o verificador). Vem da instituição
+    /// desta instância (Configuração → Instituição), nunca do código (ADR-0043): sem cadastro, a
+    /// sincronização falha dizendo o que falta, em vez de baixar as escalas de outro município.
+    /// </summary>
+    private async Task<string> IbgeDoMunicipioAsync(CancellationToken ct)
+    {
+        var inst = await instituicao.ObterAsync(ct);
+        return inst.CodigoIbge is { Length: >= 6 } codigo
+            ? codigo[..6]
+            : throw new InvalidOperationException(
+                "Código IBGE do município não cadastrado em Configuração → Instituição. Sem ele o SISREG "
+                + "não sabe de qual município são as escalas.");
     }
 
     private async Task<JsonObject?> LerParametrosAsync(CancellationToken cancellationToken)

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Institucional;
+using SMSMais.Core.Institucional.Dtos;
 using SMSMais.Core.Regulacao.Catalogo;
 using SMSMais.Core.Regulacao.Catalogo.Dtos;
 using SMSMais.Core.Integracoes.SisregWeb;
@@ -95,7 +97,8 @@ public class EscalasSincronizacaoTests(PostgresFixture fixture)
     private static string Codigo() => Random.Shared.Next(100_000_000, 999_999_999).ToString();
 
     private static EscalasSincronizacaoService Servico(
-        SmsMaisDbContext db, ISisregWebSessao sessao, EscalasSincronizacaoEstadoVivo estado) =>
+        SmsMaisDbContext db, ISisregWebSessao sessao, EscalasSincronizacaoEstadoVivo estado,
+        string? codigoIbge = "3302700") =>
         new(db,
             sessao,
             new EscalasSincronizacaoFila(),
@@ -109,7 +112,19 @@ public class EscalasSincronizacaoTests(PostgresFixture fixture)
             Options.Create(new EscalasSincronizacaoOpcoes()),
             Options.Create(new SisregOrcamentoOpcoes()),
             new CatalogoRegulacaoNulo(),
+            new InstituicaoFake(codigoIbge),
             NullLogger<EscalasSincronizacaoService>.Instance);
+
+    /// <summary>Instituição desta instância com só o IBGE preenchido — o resto não é lido aqui.</summary>
+    private sealed class InstituicaoFake(string? codigoIbge) : IInstituicaoService
+    {
+        public Task<InstituicaoDto> ObterAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(IInstituicaoService.ObterPadrao() with { CodigoIbge = codigoIbge });
+
+        public Task<InstituicaoDto> SalvarAsync(
+            Guid usuarioId, SalvarInstituicaoRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
 
     /// <summary>
     /// O sincronismo de escalas dispara o catálogo canônico da regulação no fim, por carona de
@@ -326,6 +341,31 @@ public class EscalasSincronizacaoTests(PostgresFixture fixture)
         Assert.Equal(string.Empty, sessao.CamposDoUltimoPost["status"]);
         Assert.Equal(string.Empty, sessao.CamposDoUltimoPost["ups"]);
         Assert.Equal(string.Empty, sessao.CamposDoUltimoPost["cpf"]);
+        // O município vem da instituição (6 dígitos, sem o verificador) — nunca do código.
+        Assert.Equal("330270", sessao.CamposDoUltimoPost["ibge"]);
+    }
+
+    /// <summary>
+    /// Instância sem o IBGE cadastrado em Configuração → Instituição: a sincronização falha dizendo o
+    /// que falta, <b>sem</b> ir ao SISREG — baixar as escalas "de município nenhum" (ou de outro) seria
+    /// pior do que não baixar.
+    /// </summary>
+    [Fact]
+    public async Task Sem_IBGE_na_instituicao_falha_sem_consultar_o_sisreg()
+    {
+        await using var db = fixture.CriarDbContext();
+        var sessao = new SessaoFake(Arquivo());
+        var servico = Servico(db, sessao, new EscalasSincronizacaoEstadoVivo(), codigoIbge: null);
+
+        var aceita = await servico.IniciarAsync(CancellationToken.None);
+        await servico.ExecutarAsync(
+            new EscalasSincronizacaoJob(DisparoSincronizacao.Manual, null, null), CancellationToken.None);
+
+        Assert.Equal(0, sessao.Chamadas);
+        var execucao = await db.SisregEscalaSincronizacaoExecucoes.AsNoTracking()
+            .SingleAsync(e => e.Id == aceita.ExecucaoId);
+        Assert.Equal(StatusVarredura.Erro, execucao.Status);
+        Assert.Contains("IBGE", execucao.MensagemErro);
     }
 
     [Theory]

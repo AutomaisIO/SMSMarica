@@ -108,7 +108,7 @@ export function InstituicaoPage() {
           <Campo rotulo="CNPJ">
             <input className="input" value={form.cnpj ?? ''} onChange={(e) => set('cnpj', vazioNulo(e.target.value))} />
           </Campo>
-          <Campo rotulo="Código IBGE do município" ajuda="7 dígitos. Usado por integrações federais.">
+          <Campo rotulo="Código IBGE do município" ajuda="7 dígitos. Usado por integrações federais — o SISREG lê as escalas e as cotas PPI por ele; sem o código, essas leituras param.">
             <input
               className="input"
               value={form.codigoIbge ?? ''}
