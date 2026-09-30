@@ -332,9 +332,22 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<OuvidoriaAcessoIdentidade> OuvidoriaAcessosIdentidade => Set<OuvidoriaAcessoIdentidade>();
     public DbSet<OuvidoriaConfiguracao> OuvidoriaConfiguracoes => Set<OuvidoriaConfiguracao>();
 
+    /// <summary>
+    /// Mapeamento de <c>smsmarica.f_unaccent(text)</c> — wrapper IMMUTABLE da <c>unaccent</c>,
+    /// traduzível só em consulta EF (chamar em C# lança). Existe porque a <c>unaccent(text)</c> da
+    /// extensão é STABLE e um índice de expressão exige IMMUTABLE. A busca de Conversas usa
+    /// <c>f_unaccent(conteudo) ILIKE …</c>, atendida pelo GIN trigram
+    /// <c>ix_whatsapp_mensagem_conteudo_trgm</c> (migration ConversasBuscaTrgm). É a mesma função
+    /// que o Automais.Fhir mapeia (<c>FhirDbContext.FUnaccent</c>) para a busca de paciente.
+    /// </summary>
+    public static string FUnaccent(string input) =>
+        throw new NotSupportedException("f_unaccent só é traduzível em consultas EF.");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);
+        modelBuilder.HasDbFunction(typeof(SmsMaisDbContext).GetMethod(nameof(FUnaccent))!)
+            .HasName("f_unaccent").HasSchema(SchemaPadrao);
         modelBuilder.HasPostgresExtension("smsmarica", "vector"); // pgvector — embeddings do módulo IA
         modelBuilder.HasPostgresExtension("unaccent"); // busca acento-insensível (chat/#45); instalada no schema public
         modelBuilder.HasSequence<long>("ouvidoria_protocolo_seq", SchemaPadrao).StartsAt(1).IncrementsBy(1); // Ouvidoria (ADR-0060): protocolo AAAA-NNNNNN

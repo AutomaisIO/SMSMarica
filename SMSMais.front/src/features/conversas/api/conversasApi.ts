@@ -12,9 +12,14 @@ import type {
   UnidadeDestino,
 } from '@/features/conversas/types';
 
-export async function listarConversas(aba: AbaConversas, busca?: string): Promise<ConversaListItem[]> {
+export async function listarConversas(
+  aba: AbaConversas,
+  busca?: string,
+  signal?: AbortSignal,
+): Promise<ConversaListItem[]> {
   const { data } = await http.get<ConversaListItem[]>('/conversas', {
     params: { aba, busca: busca?.trim() || undefined },
+    signal,
   });
   return data;
 }

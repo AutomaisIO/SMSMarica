@@ -60,7 +60,10 @@ export function useBuscarContatos(termo: string) {
 export function useListarConversas(aba: AbaConversas, busca?: string) {
   return useQuery({
     queryKey: conversasKeys.lista(aba, busca),
-    queryFn: () => listarConversas(aba, busca),
+    // `signal`: busca trocada/abandonada é abortada no browser, e o ASP.NET repassa o
+    // cancelamento até o Postgres — a consulta velha não fica rodando no banco (30/09/2026:
+    // eram ~10 buscas de ~20 s empilhadas).
+    queryFn: ({ signal }) => listarConversas(aba, busca, signal),
     // Fallback: o SignalR invalida em tempo real; o poll cobre reconexão/queda do socket.
     refetchInterval: 30_000,
   });

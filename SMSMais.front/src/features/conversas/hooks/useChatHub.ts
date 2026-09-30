@@ -43,6 +43,9 @@ const conversasAssinadas = new Set<string>();
  */
 const ESPERAS_RECONEXAO_MS = [0, 2_000, 5_000, 10_000, 15_000];
 
+/** Teto de recarga da lista de conversas disparada por eventos do SignalR (ver invalidarLista). */
+const INTERVALO_LISTA_MS = 3_000;
+
 function esperaReconexao(tentativasAnteriores: number): number {
   return ESPERAS_RECONEXAO_MS[Math.min(tentativasAnteriores, ESPERAS_RECONEXAO_MS.length - 1)];
 }
@@ -108,9 +111,29 @@ export function useChatHub(habilitado: boolean) {
       .build();
     connAtual = conn;
 
-    const invalidarLista = () => {
+    // A lista é refeita no máximo uma vez a cada INTERVALO_LISTA_MS: cada mensagem de QUALQUER
+    // conversa chega a TODO operador conectado, e sem esse teto uma rajada virava uma consulta
+    // por mensagem × operador (30/09/2026: ~10 listagens pesadas empilhadas no banco). O
+    // primeiro evento recarrega na hora; os seguintes dentro da janela viram UMA recarga no fim
+    // dela. A thread aberta (mensagens/detalhe) continua imediata — ver invalidarConversa.
+    let ultimaListaEm = 0;
+    let timerLista: ReturnType<typeof setTimeout> | undefined;
+    const recarregarLista = () => {
+      ultimaListaEm = Date.now();
       queryClient.invalidateQueries({ queryKey: ['conversas', 'lista'] });
       queryClient.invalidateQueries({ queryKey: ['conversas', 'resumo'] });
+    };
+    const invalidarLista = () => {
+      const espera = INTERVALO_LISTA_MS - (Date.now() - ultimaListaEm);
+      if (espera <= 0) {
+        recarregarLista();
+        return;
+      }
+      if (timerLista) return; // já tem uma recarga marcada para o fim da janela
+      timerLista = setTimeout(() => {
+        timerLista = undefined;
+        recarregarLista();
+      }, espera);
     };
     const invalidarConversa = (evt: ConversaEventoRealtime) => {
       invalidarLista();
@@ -205,6 +228,7 @@ export function useChatHub(habilitado: boolean) {
     return () => {
       encerrado = true;
       clearTimeout(timerInicio);
+      clearTimeout(timerLista);
       if (connAtual === conn) connAtual = null;
       conn.stop().catch(() => {});
     };

@@ -367,23 +367,26 @@ public sealed class ConversaService(
                 }
             }
 
-            // Busca insensível a ACENTO e a maiúsculas: unaccent() (extensão) normaliza os dois
-            // lados e o ILIKE cuida do case. Campos cobertos: telefone (substring; + variante só
-            // de dígitos quando a pessoa digita com máscara/separadores), nome do contato (perfil
-            // do WhatsApp), paciente vinculado (via hub) e — novidade do #45 — o CONTEÚDO das
-            // mensagens da conversa, por EXISTS correlacionado em tfd_mensagem_whatsapp. Escala
-            // atual (~10 mil mensagens) dispensa índice full-text; se crescer, indexar depois.
+            // Busca insensível a ACENTO e a maiúsculas: f_unaccent() normaliza os dois lados e o
+            // ILIKE cuida do case. Campos cobertos: telefone (substring; + variante só de dígitos
+            // quando a pessoa digita com máscara/separadores), nome do contato (perfil do
+            // WhatsApp), paciente vinculado (via hub) e o CONTEÚDO das mensagens da conversa (#45),
+            // por EXISTS correlacionado em whatsapp_mensagem.
+            // É f_unaccent (IMMUTABLE, indexável) e não EF.Functions.Unaccent (STABLE): em 30/09/2026
+            // a tabela tinha ~200 mil mensagens e a busca aplicava unaccent() em todas, a cada
+            // tecla, ~20 s por requisição e ~10 delas empilhadas. Com f_unaccent o EXISTS usa o
+            // GIN trigram ix_whatsapp_mensagem_conteudo_trgm (migration ConversasBuscaTrgm).
             var padrao = $"%{termo}%";
             var digitos = new string([.. termo.Where(char.IsDigit)]);
             var padraoDigitos = digitos.Length >= 3 ? $"%{digitos}%" : null;
             query = query.Where(c =>
                 EF.Functions.ILike(c.TelefoneCanonical, padrao)
                 || (padraoDigitos != null && EF.Functions.ILike(c.TelefoneCanonical, padraoDigitos))
-                || (c.NomeContato != null && EF.Functions.ILike(EF.Functions.Unaccent(c.NomeContato), EF.Functions.Unaccent(padrao)))
+                || (c.NomeContato != null && EF.Functions.ILike(SmsMaisDbContext.FUnaccent(c.NomeContato), SmsMaisDbContext.FUnaccent(padrao)))
                 || (c.PacienteId != null && idsPacientes.Contains(c.PacienteId.Value))
                 || db.MensagensWhatsApp.Any(m => m.ConversaId == c.Id
                     && m.Conteudo != null
-                    && EF.Functions.ILike(EF.Functions.Unaccent(m.Conteudo), EF.Functions.Unaccent(padrao))));
+                    && EF.Functions.ILike(SmsMaisDbContext.FUnaccent(m.Conteudo), SmsMaisDbContext.FUnaccent(padrao))));
         }
 
         var itens = await query

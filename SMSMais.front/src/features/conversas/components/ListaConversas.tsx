@@ -4,6 +4,7 @@ import { useListarConversas, useResumoConversas } from '@/features/conversas/api
 import { useAuth } from '@/shared/auth/authStore';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { ROTULO_ASSUNTO, type AbaConversas } from '@/features/conversas/types';
+import { useDebounce } from '@/features/conversas/lib/useDebounce';
 
 type Props = {
   conversaAtivaId: string | null;
@@ -30,12 +31,19 @@ function formatarHora(iso: string | null): string {
     : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
+// A busca só vai ao servidor depois de uma pausa na digitação e a partir de 3 caracteres: cada
+// ida procura também no conteúdo de todas as mensagens, e menos de 3 letras não filtra nada útil.
+const ESPERA_BUSCA_MS = 400;
+const MINIMO_BUSCA = 3;
+
 export function ListaConversas({ conversaAtivaId, onSelecionar }: Props) {
   const [aba, setAba] = useState<AbaConversas>('Unidade');
   const [busca, setBusca] = useState('');
   const usuarioId = useAuth((s) => s.usuario?.id ?? null);
 
-  const { data: conversas, isLoading } = useListarConversas(aba, busca);
+  const buscaEstavel = useDebounce(busca.trim(), ESPERA_BUSCA_MS);
+  const buscaEfetiva = buscaEstavel.length >= MINIMO_BUSCA ? buscaEstavel : '';
+  const { data: conversas, isLoading } = useListarConversas(aba, buscaEfetiva);
   // Badge por aba: contadores do endpoint leve (o total global vem do useTotalNaoLidas).
   const { data: resumo } = useResumoConversas(true);
   const badgeAba: Partial<Record<AbaConversas, number>> = {

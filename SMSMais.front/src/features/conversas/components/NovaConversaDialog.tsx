@@ -6,6 +6,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarNomeProprio, primeiroNomeProprio } from '@/shared/lib/nomes';
 import { ModalNumeroNegado } from '@/features/conversas/components/ModalNumeroNegado';
 import { ROTULO_ASSUNTO, type AssuntoConversa, type ContatoConversa } from '@/features/conversas/types';
+import { useDebounce } from '@/features/conversas/lib/useDebounce';
 
 type Props = {
   onFechar: () => void;
@@ -28,15 +29,6 @@ type Props = {
 };
 
 const ASSUNTOS: AssuntoConversa[] = ['Tfd', 'MarcacaoConsulta', 'Duvida', 'Atendente', 'Outro'];
-
-function useDebounce<T>(valor: T, ms = 300): T {
-  const [d, setD] = useState(valor);
-  useEffect(() => {
-    const t = setTimeout(() => setD(valor), ms);
-    return () => clearTimeout(t);
-  }, [valor, ms]);
-  return d;
-}
 
 function cpfFmt(cpf: string | null): string {
   const d = (cpf ?? '').replace(/\D/g, '');
