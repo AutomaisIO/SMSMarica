@@ -2,6 +2,7 @@ import { BookOpen, Bus, Folder, MessageCircle, Settings2, Stethoscope } from 'lu
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendimentosTransporte';
+import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
@@ -60,6 +61,7 @@ export const ARTIGOS: Artigo[] = [
   artigoAnamnese,
   artigoAssinaturaLaudo,
   artigoAtendimentosTransporte,
+  artigoAvisosConexao,
   artigoConfirmacoes,
   artigoFluxoAtendimentoWhatsApp,
   artigoMensageria,

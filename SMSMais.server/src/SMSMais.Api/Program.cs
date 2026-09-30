@@ -39,6 +39,12 @@ builder.Host.UseSerilog((ctx, services, cfg) => cfg
     .WriteTo.Sink(new SMSMais.Api.Alertas.AlertaSerilogSink(
         services.GetRequiredService<SMSMais.Core.Alertas.IAlertaPlataforma>())));
 
+// Teto do desligamento: quanto o stop espera requisições em curso e serviços de fundo antes de
+// sair. O padrão do .NET (30s) era todo tempo de API fora do ar a cada deploy — o painel inteiro
+// mostrava "Não foi possível conectar" nesse intervalo (medido em 30/09/2026: 40–48s por deploy).
+// 10s cobrem uma requisição normal; o que passa disso seria cortado de qualquer jeito.
+builder.Services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromSeconds(10));
+
 builder.Services.AddControllers(o =>
 {
     // [Authorize] global: tudo exige token, exceto endpoints com [AllowAnonymous].

@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { obterToken, obterUnidadeAtivaId, useAuth } from '@/shared/auth/authStore';
 import { notificar } from '@/shared/ui/Notificacoes';
+import { configurarSondaConexao, reportarFalhaDeConexao, type CausaQueda } from '@/shared/api/conexao';
 
 const envBase = import.meta.env.VITE_API_BASE_URL?.trim();
 
@@ -22,6 +23,8 @@ export const http = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
 });
+
+configurarSondaConexao(baseURL);
 
 /**
  * URL absoluta do backend — para passar a processos externos (ex.: o agente de
@@ -59,14 +62,56 @@ function avisarErroUnico(mensagem: string) {
   notificar(mensagem, 'erro');
 }
 
+/** Leitura (GET/HEAD/OPTIONS) não muda nada no servidor; o resto é ação do usuário. */
+function ehLeitura(erro: AxiosError): boolean {
+  const metodo = (erro.config?.method ?? 'get').toLowerCase();
+  return metodo === 'get' || metodo === 'head' || metodo === 'options';
+}
+
+/**
+ * Falha que é de CONEXÃO, não de negócio: sem resposta nenhuma, ou o 503 que o nginx devolve no
+ * lugar do 502 quando a API está fora (error_page do vhost, marcado com `servidorIndisponivel`).
+ * O 503 do próprio backend (armazenamento indisponível) traz código de referência e NÃO entra aqui.
+ */
+function causaDeQueda(erro: AxiosError): CausaQueda | null {
+  if (!erro.response) return 'servidor';
+  const dados = erro.response.data as ProblemaApi | undefined;
+  if (erro.response.status === 503 && dados?.servidorIndisponivel) return 'reiniciando';
+  return null;
+}
+
+const MENSAGEM_ACAO_SEM_CONEXAO: Record<CausaQueda, string> = {
+  internet: 'Sem internet neste computador — a ação não foi enviada. Tente de novo quando a conexão voltar.',
+  reiniciando: 'O sistema está sendo atualizado agora — a ação pode não ter sido gravada. Confira e tente de novo em alguns segundos.',
+  servidor: 'Não foi possível falar com o servidor — a ação pode não ter sido gravada. Confira e tente de novo.',
+};
+
 // Interceptor global de resposta:
 // - 401: token inválido/expirado → limpa sessão e vai pro login (login nunca cai aqui).
-// - >=500 ou erro de rede: SEMPRE avisa o usuário (rede de segurança contra 500 silencioso),
-//   com o código de referência quando houver. Erros de negócio (4xx) NÃO são notificados
-//   aqui — cada tela os trata inline.
+// - Cancelamento (o próprio painel abortou a busca anterior, ou a tela fechou): silêncio — não é
+//   falha. Era a origem de ~400 avisos falsos por dia na tela de Solicitações de Exame.
+// - Queda de conexão: LEITURA não avisa na hora — abre a verificação pelo /health (conexao.ts),
+//   que só mostra a faixa se a queda passar de 15s e refaz as consultas na volta. AÇÃO do usuário
+//   (salvar, excluir…) avisa na hora: a pessoa precisa saber que talvez não tenha gravado.
+// - >=500: SEMPRE avisa o usuário (rede de segurança contra 500 silencioso), com o código de
+//   referência quando houver. Erros de negócio (4xx) NÃO são notificados aqui — cada tela os
+//   trata inline.
 http.interceptors.response.use(
   (r) => r,
   (erro: AxiosError) => {
+    if (axios.isCancel(erro)) return Promise.reject(erro);
+
+    const queda = causaDeQueda(erro);
+    if (queda) {
+      reportarFalhaDeConexao(queda);
+      // O login mostra o erro na própria tela; "a ação pode não ter sido gravada" não cabe lá.
+      if (!ehLeitura(erro) && !(erro.config?.url ?? '').includes('/identidade/login')) {
+        const causa: CausaQueda = navigator.onLine === false ? 'internet' : queda;
+        avisarErroUnico(MENSAGEM_ACAO_SEM_CONEXAO[causa]);
+      }
+      return Promise.reject(erro);
+    }
+
     const status = erro.response?.status;
     if (status === 401) {
       const url = erro.config?.url ?? '';
@@ -84,9 +129,6 @@ http.interceptors.response.use(
       const msg = extrairMensagemDeErro(erro);
       // Dedup: o backend reusa o código quando o erro é idêntico a um já registrado.
       avisarErroUnico(dados?.jaReportado ? `Erro já reportado. ${msg}` : msg);
-    } else if (!erro.response) {
-      // Sem resposta = rede/timeout/CORS/servidor fora. Não expõe infra.
-      avisarErroUnico('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
     }
     return Promise.reject(erro);
   },
@@ -102,6 +144,8 @@ export type ProblemaApi = {
   codigoReferencia?: string;
   /** true quando o backend deduplicou: erro idêntico já registrado antes. */
   jaReportado?: boolean;
+  /** true no 503 que o NGINX devolve quando a API está fora (reiniciando) — não é erro do backend. */
+  servidorIndisponivel?: boolean;
 };
 
 /** Código de referência do erro (500/503), se o backend o informou. */
@@ -114,7 +158,16 @@ export function extrairCodigoReferencia(erro: unknown): string | null {
 }
 
 export function extrairMensagemDeErro(erro: unknown): string {
+  if (axios.isCancel(erro)) return 'Operação cancelada.';
   if (erro instanceof AxiosError) {
+    // Sem resposta, o `message` do axios é "Network Error" — em inglês e sem dizer o que fazer.
+    const queda = causaDeQueda(erro);
+    if (queda === 'reiniciando') return 'O sistema está sendo atualizado. Tente de novo em alguns segundos.';
+    if (queda) {
+      return navigator.onLine === false
+        ? 'Sem internet neste computador. Tente de novo quando a conexão voltar.'
+        : 'Não foi possível falar com o servidor. Tente de novo em instantes.';
+    }
     const dados = erro.response?.data as ProblemaApi | undefined;
     if (dados?.errors) {
       const msgs = Object.values(dados.errors).flat().filter(Boolean);

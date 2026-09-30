@@ -36,6 +36,17 @@ function tocarBip() {
 let connAtual: HubConnection | null = null;
 const conversasAssinadas = new Set<string>();
 
+/**
+ * Esperas entre tentativas de (re)conexão — a última se repete para sempre. O padrão do SignalR
+ * (0/2/10/30s) DESISTE em ~42s, e um deploy deixava a API fora 40–48s (medido em 30/09/2026): o
+ * tempo real morria calado até o F5, sem bip nem alerta, com o poll de 30s disfarçando.
+ */
+const ESPERAS_RECONEXAO_MS = [0, 2_000, 5_000, 10_000, 15_000];
+
+function esperaReconexao(tentativasAnteriores: number): number {
+  return ESPERAS_RECONEXAO_MS[Math.min(tentativasAnteriores, ESPERAS_RECONEXAO_MS.length - 1)];
+}
+
 function invocarSeguro(metodo: 'AssinarConversa' | 'DesassinarConversa', conversaId: string) {
   if (connAtual?.state === HubConnectionState.Connected) {
     connAtual.invoke(metodo, conversaId).catch(() => {
@@ -91,7 +102,9 @@ export function useChatHub(habilitado: boolean) {
         accessTokenFactory: () => obterToken() ?? '',
         withCredentials: false,
       })
-      .withAutomaticReconnect()
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: (ctx) => esperaReconexao(ctx.previousRetryCount),
+      })
       .build();
     connAtual = conn;
 
@@ -163,11 +176,35 @@ export function useChatHub(habilitado: boolean) {
       reassinar(); // grupos são por conexão — se perdem na queda do socket
     });
 
-    conn.start().then(reassinar).catch(() => {
-      /* Se o socket falhar, o refetchInterval das queries mantém a tela viva. */
+    // A reconexão automática só cobre QUEDA de uma conexão que chegou a abrir. Se o primeiro
+    // start falhar (painel aberto durante um deploy) ou a conexão fechar de vez, quem tenta de
+    // novo é este laço — antes o socket ficava morto até o F5. Enquanto isso, o refetchInterval
+    // das queries mantém a tela viva.
+    let encerrado = false;
+    let tentativasInicio = 0;
+    let timerInicio: ReturnType<typeof setTimeout> | undefined;
+    const iniciar = () => {
+      conn
+        .start()
+        .then(() => {
+          tentativasInicio = 0;
+          reassinar();
+        })
+        .catch(() => {
+          if (encerrado) return;
+          timerInicio = setTimeout(iniciar, Math.max(2_000, esperaReconexao(tentativasInicio++)));
+        });
+    };
+    conn.onclose(() => {
+      if (encerrado) return;
+      queryClient.invalidateQueries({ queryKey: ['conversas'] });
+      timerInicio = setTimeout(iniciar, 2_000);
     });
+    iniciar();
 
     return () => {
+      encerrado = true;
+      clearTimeout(timerInicio);
       if (connAtual === conn) connAtual = null;
       conn.stop().catch(() => {});
     };

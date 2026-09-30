@@ -32,6 +32,21 @@ nginx serve `smsmarica.online` (painel), `app.smsmarica.online` (PWA cidadão),
 `arquivos.smsmarica.online` e `api.smsmarica.online` (proxy → 5080). **Vhosts e certificados
 existem só no servidor, nunca no git** — se mexer (só o admin), documente.
 
+**API fora = 503 com CORS, não 502** (desde 30/09/2026). O vhost `api.smsmarica.online` tem
+`error_page 502 504 = @api_indisponivel`: com a 5080 fora (deploy, reinício), o nginx responde
+503 JSON `{"servidorIndisponivel":true,…}` com `Access-Control-Allow-Origin: *`, e 204 no
+preflight OPTIONS. Sem isso o 502 saía sem CORS e o navegador o via como "falha de rede". O
+painel lê a marca e mostra "O sistema está sendo atualizado" (`SMSMais.front/src/shared/api/conexao.ts`).
+Consequências: no access log, a API fora aparece como **503** (não mais 502). O 503 do próprio
+backend passa intacto (`proxy_intercept_errors` off). Backup antes da mudança em
+`/root/backup-nginx/`. Ao recriar o vhost (instância nova, certbot), **repita o bloco**.
+
+**Deploy derruba a API** (stop + start). Até 30/09/2026 eram 40–48s por deploy: o stop esperava
+30s (teto padrão do .NET) pelos WebSockets dos agentes SQL, que não ouviam a parada. Agora o
+endpoint dos agentes fecha na parada e o teto é 10s (`HostOptions.ShutdownTimeout` em
+`Program.cs`); a partida leva ~10s. Para medir: `journalctl -u smsmarica-server`
+(Stopping → Stopped → Started) e as rajadas de 503 no `/var/log/nginx/api.smsmarica.access.log`.
+
 **PostgreSQL gerenciado na DigitalOcean**, porta 25060, database `defaultdb`, cluster
 **compartilhado com outros produtos da Prefeitura**. Schemas `smsmarica` e `fhir` no mesmo
 banco. Query pesada aqui afeta sistemas que não são seus — conexão e regras na skill

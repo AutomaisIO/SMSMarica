@@ -26,7 +26,8 @@ public static class AgenteSqlEndpoint
     }
 
     private static async Task HandleAsync(
-        HttpContext ctx, IAgenteSqlRegistry registry, SmsMaisDbContext db, ILoggerFactory logs)
+        HttpContext ctx, IAgenteSqlRegistry registry, SmsMaisDbContext db, ILoggerFactory logs,
+        IHostApplicationLifetime ciclo)
     {
         var log = logs.CreateLogger("AgenteSql");
 
@@ -77,16 +78,22 @@ public static class AgenteSqlEndpoint
 
         using var registro = registry.Registrar(agente, Enviar);
 
+        // Parar o serviço também encerra o laço. Só com o RequestAborted, o Kestrel esperava a
+        // conexão até o teto de desligamento (30s): medido em 30/09/2026, os agentes caíam sempre
+        // no 30º segundo do stop, e esse era o maior pedaço dos ~45s de API fora a cada deploy.
+        using var fim = CancellationTokenSource.CreateLinkedTokenSource(
+            ctx.RequestAborted, ciclo.ApplicationStopping);
+
         var buffer = new byte[64 * 1024];
         var acumulado = new List<byte>();
         try
         {
-            while (ws.State == WebSocketState.Open && !ctx.RequestAborted.IsCancellationRequested)
+            while (ws.State == WebSocketState.Open && !fim.IsCancellationRequested)
             {
                 WebSocketReceiveResult recebido;
                 try
                 {
-                    recebido = await ws.ReceiveAsync(buffer, ctx.RequestAborted);
+                    recebido = await ws.ReceiveAsync(buffer, fim.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -120,6 +127,22 @@ public static class AgenteSqlEndpoint
         }
         finally
         {
+            // Na parada, fecha com 1001 (going away) em vez de só largar o socket: o agente lê o
+            // fechamento limpo e redisca assim que o serviço novo estiver no ar.
+            if (ciclo.ApplicationStopping.IsCancellationRequested && ws.State == WebSocketState.Open)
+            {
+                try
+                {
+                    using var prazo = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    await ws.CloseOutputAsync(
+                        WebSocketCloseStatus.EndpointUnavailable, "servidor reiniciando", prazo.Token);
+                }
+                catch (Exception ex) when (ex is WebSocketException or OperationCanceledException)
+                {
+                    // Melhor esforço: o socket cai de qualquer jeito quando o processo sair.
+                }
+            }
+
             log.LogInformation("Agente '{Agente}' desconectado.", agente);
         }
     }
