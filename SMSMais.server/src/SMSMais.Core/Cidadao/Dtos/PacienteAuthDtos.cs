@@ -138,14 +138,18 @@ public sealed record AgendamentoExameDetalheDto(
 /// <summary>Chave de acesso (confirmação do SISREG) entregue ao paciente no dia do exame.</summary>
 public sealed record ChaveAcessoCidadaoDto(string Chave, string CodigoSolicitacao);
 
-/// <summary>Consulta ou exame agendado (futuro) do paciente, projetado para o app.
+/// <summary>Consulta ou exame do paciente, projetado para o app.
 /// Exames importados do SISREG entram como SolicitacaoExame: <c>SolicitacaoExameId</c>
 /// preenchido + <c>StatusConfirmacao</c> ("Pendente"|"Confirmada"|"Cancelada") habilitam os
-/// botões Confirmar/Não poderei ir no card (<c>PodeResponder</c>).</summary>
+/// botões Confirmar/Não poderei ir no card (<c>PodeResponder</c>).
+/// <para>Da regulação externa (SER, SERNIT, ESUS de São Gonçalo) entram os pedidos
+/// <b>na fila</b> (<c>NaFila</c>, sem data — <c>InicioEm</c> nulo) e os <b>agendados com data
+/// futura</b>. Na fila é só "na fila": nunca motivo de pendência, posição ou previsão.
+/// <c>Origem</c> diz, em linguagem do cidadão, quem regula ("regulação estadual (SER)").</para></summary>
 public sealed record AgendamentoResumoDto(
     Guid Id,
-    DateTime InicioEm,
-    DateTime FimEm,
+    DateTime? InicioEm,
+    DateTime? FimEm,
     string Tipo,
     string Titulo,
     string? Profissional,
@@ -153,4 +157,6 @@ public sealed record AgendamentoResumoDto(
     string Status,
     Guid? SolicitacaoExameId = null,
     string? StatusConfirmacao = null,
-    bool PodeResponder = false);
+    bool PodeResponder = false,
+    string? Origem = null,
+    bool NaFila = false);

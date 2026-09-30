@@ -17,7 +17,7 @@ public static class ComandoRoboCatalogo
         // catálogo sem handler nenhum). Voltou com handler de verdade — foi a falta dela que fez o
         // robô afirmar "não há agendamento" sem consultar nada.
         new(ComandoRobo.ConsultarStatusAgendamento, "Consultar agendamentos do paciente",
-            "Duas fases: primeiro SÓ diz se existe agendamento (sem pedir dado); com identidade conferida, lista procedimento, data e unidade — e os cancelados recentes com o motivo registrado para informar ao paciente.", false),
+            "Duas fases: primeiro SÓ diz se existe agendamento (sem pedir dado); com identidade conferida, lista procedimento, data e unidade (SISREG, SER, SERNIT e ESUS de São Gonçalo), os pedidos que estão NA FILA da regulação (só \"na fila\", nunca motivo de pendência) e os cancelados recentes com o motivo registrado para informar ao paciente.", false),
         new(ComandoRobo.ConfirmarPresenca, "Confirmar presença",
             "Marca a presença confirmada pelo paciente.", true),
         new(ComandoRobo.IniciarCancelamento, "Iniciar cancelamento",
@@ -32,7 +32,7 @@ public static class ComandoRoboCatalogo
             "Consulta a situação do exame/laudo recente. Só libera após confirmar nome + 4 primeiros dígitos do CPF.",
             false),
         new(ComandoRobo.ConsultarPosicaoRegulacao, "Consultar posição na regulação",
-            "Situação de agendamento na regulação (SER/SISREG/SERNIT). Devolve dado minimizado (em regra só \"em fila\").",
+            "Situação do pedido na regulação (SER, SERNIT, ESUS de São Gonçalo). Devolve dado minimizado: \"na fila\" ou \"já agendado\" — nunca motivo de pendência, posição ou previsão.",
             false),
         new(ComandoRobo.ConsultarCadastro, "Conferir identidade no cadastro",
             "Confere 4 primeiros dígitos do CPF + mês/ano de nascimento e devolve o nome. Sem este comando, o robô não pode pedir dado pessoal.",

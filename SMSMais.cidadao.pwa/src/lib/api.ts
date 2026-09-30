@@ -98,8 +98,9 @@ export type PesquisaPublica = {
 };
 export type Agendamento = {
   id: string;
-  inicioEm: string;
-  fimEm: string;
+  // Nulo quando o pedido ainda está NA FILA da regulação (sem data).
+  inicioEm: string | null;
+  fimEm: string | null;
   tipo: 'Consulta' | 'Exame';
   titulo: string;
   profissional: string | null;
@@ -109,6 +110,10 @@ export type Agendamento = {
   solicitacaoExameId: string | null;
   statusConfirmacao: 'Pendente' | 'Confirmada' | 'Cancelada' | null;
   podeResponder: boolean;
+  // Pedido da regulação externa (SER, SERNIT, ESUS SG): quem marcou, em linguagem do paciente.
+  origem?: string | null;
+  // Na fila da regulação: só "está na fila" — nunca motivo de pendência, posição ou previsão.
+  naFila?: boolean;
 };
 
 export type AgendamentoExameDetalhe = {

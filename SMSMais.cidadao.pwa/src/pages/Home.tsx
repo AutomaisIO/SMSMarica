@@ -18,8 +18,8 @@ import { formatarCpf } from '@/components/AppShell';
 import { Avatar } from '@/components/ui';
 
 const ATALHOS = [
-  { to: '/agendados/consultas', label: 'Consultas', desc: 'Agendadas', icon: CalendarClock, tom: 'lagoa' },
-  { to: '/agendados/exames', label: 'Exames', desc: 'Agendados', icon: CalendarPlus, tom: 'lagoa' },
+  { to: '/agendados/consultas', label: 'Consultas', desc: 'Agendadas e na fila', icon: CalendarClock, tom: 'lagoa' },
+  { to: '/agendados/exames', label: 'Exames', desc: 'Agendados e na fila', icon: CalendarPlus, tom: 'lagoa' },
   { to: '/atendimentos', label: 'Atendimentos', desc: 'Suas consultas', icon: Stethoscope, tom: 'lagoa' },
   { to: '/exames', label: 'Exames', desc: 'Resultados', icon: FlaskConical, tom: 'lagoa' },
   { to: '/chat', label: 'Chat', desc: 'Fale com a Saúde', icon: MessageCircle, tom: 'marica' },
@@ -32,7 +32,8 @@ export function Home() {
   const carregar = usePerfil((s) => s.carregar);
   // Badge: exames agendados que ainda PRECISAM de atenção — cancelados e já confirmados
   // (inclusive presencialmente na recepção) saem da conta; o card continua na lista.
-  // Some sozinho quando o exame passa (o backend só devolve futuros).
+  // Some sozinho quando o exame passa (o backend só devolve futuros). Só conta exame do SISREG
+  // (com solicitação): pedido da regulação externa não tem confirmação a responder.
   const [examesAgendados, setExamesAgendados] = useState(0);
 
   useEffect(() => {
@@ -46,7 +47,12 @@ export function Home() {
       .then((l) => {
         if (!vivo) return;
         setExamesAgendados(
-          l.filter((a) => a.statusConfirmacao !== 'Cancelada' && a.statusConfirmacao !== 'Confirmada').length,
+          l.filter(
+            (a) =>
+              a.solicitacaoExameId != null &&
+              a.statusConfirmacao !== 'Cancelada' &&
+              a.statusConfirmacao !== 'Confirmada',
+          ).length,
         );
       })
       .catch(() => {});

@@ -46,6 +46,38 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
 
     /// <summary>Situações que encerram o ciclo — vão sempre para o histórico, mesmo com data
     /// futura (ex.: um agendamento cancelado que ainda não passou).</summary>
+    public async Task<IReadOnlyList<AgendamentoPacienteItemDto>> RegulacaoParaPacienteAsync(
+        Guid pacienteId, CancellationToken cancellationToken = default)
+    {
+        var hojeLocal = FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date;
+        var itens = new List<AgendamentoPacienteItemDto>();
+        itens.AddRange(await LerSerAsync(pacienteId, cancellationToken));
+        itens.AddRange(await LerSernitAsync(pacienteId, cancellationToken));
+        itens.AddRange(await LerEsusSgAsync(pacienteId, cancellationToken));
+
+        return itens
+            .Where(i => !EhHistorico(i, hojeLocal))
+            .Where(i => i.Situacao is SituacaoAgendamentoPaciente.EmFila or SituacaoAgendamentoPaciente.Pendente
+                || (i.Situacao is SituacaoAgendamentoPaciente.Agendado or SituacaoAgendamentoPaciente.Confirmado
+                    && i.DataHora is not null))
+            // Pendência vira "na fila": o motivo nunca sai para o paciente.
+            .Select(i => i.Situacao == SituacaoAgendamentoPaciente.Pendente
+                ? i with { Situacao = SituacaoAgendamentoPaciente.EmFila, SituacaoDescricao = DescreverSituacao(SituacaoAgendamentoPaciente.EmFila), SituacaoOrigem = null }
+                : i)
+            .OrderBy(i => i.DataHora is null ? 1 : 0)
+            .ThenBy(i => i.DataHora)
+            .ToList();
+    }
+
+    /// <summary>Como o paciente entende quem marcou/regula o pedido (nunca a sigla crua sozinha).</summary>
+    public static string DescreverRegulacaoParaPaciente(OrigemAgendamentoPaciente origem) => origem switch
+    {
+        OrigemAgendamentoPaciente.Ser => "regulação estadual (SER)",
+        OrigemAgendamentoPaciente.Sernit => "regulação de Niterói",
+        OrigemAgendamentoPaciente.EsusSg => "regulação de São Gonçalo",
+        _ => "regulação",
+    };
+
     private static bool EhTerminal(SituacaoAgendamentoPaciente s) => s is
         SituacaoAgendamentoPaciente.Compareceu
         or SituacaoAgendamentoPaciente.ChegadaNaoConfirmada

@@ -22,7 +22,8 @@ public sealed class CidadaoClinicoService(
     ILaudosService laudos,
     ILaudoAssinaturaService assinatura,
     IExameImagensPdfService imagensPdf,
-    IChaveConfirmacaoSisregService chaves) : ICidadaoClinicoService
+    IChaveConfirmacaoSisregService chaves,
+    Pacientes.Agendamentos.IAgendamentosPacienteService agendamentosPaciente) : ICidadaoClinicoService
 {
     public async Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(
         Guid pacienteId, CancellationToken cancellationToken = default)
@@ -255,9 +256,41 @@ public sealed class CidadaoClinicoService(
                 SolicitacaoExameId: s.Id,
                 StatusConfirmacao: s.StatusConfirmacao.ToString(),
                 PodeResponder: s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)));
-            resultado.Sort((a, b) => a.InicioEm.CompareTo(b.InicioEm));
         }
 
+        // Regulação externa (SER, SERNIT, ESUS de São Gonçalo): pedido NA FILA aparece como "Na fila"
+        // (sem data, sem motivo de pendência — regra do Bernardo, 30/09/2026) e o AGENDADO aparece
+        // com data e local. A mesma leitura alimenta o robô do WhatsApp.
+        foreach (var r in await agendamentosPaciente.RegulacaoParaPacienteAsync(pacienteId, cancellationToken))
+        {
+            var ehExame = string.Equals(r.Tipo, "Exame", StringComparison.OrdinalIgnoreCase);
+            if (filtro == "exame" && !ehExame) continue;
+            if (filtro == "consulta" && ehExame) continue;
+
+            var naFila = r.Situacao == Pacientes.Agendamentos.Dtos.SituacaoAgendamentoPaciente.EmFila;
+            // DataHora da regulação é hora LOCAL de Brasília (wall-clock): vai em UTC como as do SISREG.
+            DateTime? inicio = naFila || r.DataHora is null ? null : FusoBrasilia.DeBrasiliaParaUtc(r.DataHora.Value);
+            resultado.Add(new AgendamentoResumoDto(
+                r.Id,
+                inicio,
+                inicio,
+                ehExame ? "Exame" : "Consulta",
+                r.Descricao,
+                null,
+                naFila ? null : r.Unidade,
+                naFila ? "Na fila" : "Agendado",
+                Origem: Pacientes.Agendamentos.AgendamentosPacienteService.DescreverRegulacaoParaPaciente(r.Origem),
+                NaFila: naFila));
+        }
+
+        // Agendados por data (os mais próximos primeiro); os pedidos na fila, sem data, vêm depois.
+        resultado.Sort((a, b) => (a.InicioEm, b.InicioEm) switch
+        {
+            (null, null) => string.CompareOrdinal(a.Titulo, b.Titulo),
+            (null, _) => 1,
+            (_, null) => -1,
+            var (x, y) => x!.Value.CompareTo(y!.Value),
+        });
         return resultado;
     }
 

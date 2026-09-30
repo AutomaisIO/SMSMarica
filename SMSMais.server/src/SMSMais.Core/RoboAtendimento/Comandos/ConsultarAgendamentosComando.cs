@@ -25,9 +25,11 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 /// Quando não encontra, a mensagem deixa explícito que isso significa "não localizei no NOSSO
 /// sistema", não "não existe": a base é uma visão parcial e a importação da regulação é assíncrona.
 ///
-/// Cobre as TRÊS fontes: solicitações locais (SISREG) por data futura, e os espelhos SER e SERNIT
-/// (regulação estadual/Niterói) por situação Agendada — lá a data vem em TEXTO ("Agendado para"),
-/// então é exibida como está, sem filtro por data.
+/// Cobre as fontes: solicitações locais (SISREG) por data futura, e a regulação externa — SER,
+/// SERNIT e ESUS de São Gonçalo — pela leitura compartilhada com o app do cidadão
+/// (<c>RegulacaoParaPacienteAsync</c>): agendados com data futura (data, hora e local) e pedidos
+/// NA FILA. Regra do Bernardo (30/09/2026): na fila diz-se só "está na fila" — nunca o motivo da
+/// pendência, a posição, a prioridade ou previsão.
 ///
 /// Também devolve os CANCELADOS recentes com o motivo que a atendente registrou PARA o paciente
 /// (regra perene, 29/09/2026): "por que cancelou?" se responde lendo esse motivo, nunca
@@ -36,7 +38,8 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 public sealed class ConsultarAgendamentosComando(
     SmsMaisDbContext db,
     IPacientesService pacientes,
-    PendenciasCadastro.IContatoNegadoService contatosNegados) : IRoboComando
+    PendenciasCadastro.IContatoNegadoService contatosNegados,
+    Pacientes.Agendamentos.IAgendamentosPacienteService agendamentosPaciente) : IRoboComando
 {
     private const int Maximo = 5;
 
@@ -120,35 +123,19 @@ public sealed class ConsultarAgendamentosComando(
             campanhas[i] = await Notificacoes.Campanhas.CampanhaResolver.VigenteAsync(
                 db, futuros[i].UnidadeExecutanteId, futuros[i].DataAgendada, ct);
 
-        var linhasSer = await db.SerSolicitacoes.AsNoTracking()
-            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
-                && s.Situacao == Data.Entities.Ser.SituacaoSer.Agendada)
-            .OrderByDescending(s => s.AtualizadoEm ?? s.CriadoEm)
-            .Take(Maximo)
-            .Select(s => new { s.Recurso, s.AgendadoParaTexto, s.UnidadeExecutora })
-            .ToListAsync(ct);
-        var linhasSernit = await db.SernitSolicitacoes.AsNoTracking()
-            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
-                && s.Situacao == Data.Entities.Sernit.SituacaoSernit.Agendada)
-            .OrderByDescending(s => s.AtualizadoEm ?? s.CriadoEm)
-            .Take(Maximo)
-            .Select(s => new { s.Recurso, s.AgendadoParaTexto, s.UnidadeExecutora })
-            .ToListAsync(ct);
+        // Regulação externa — SER, SERNIT e ESUS de São Gonçalo — pela MESMA leitura do app do
+        // cidadão: pedidos NA FILA (em fila ou pendentes, sem distinção) e agendados com data futura.
+        // Regra do Bernardo (30/09/2026): na fila é "está na fila" e nada mais — nunca o motivo da
+        // pendência, a posição, a prioridade ou previsão.
+        var regulacao = await agendamentosPaciente.RegulacaoParaPacienteAsync(alvo.Value, ct);
+        var regulacaoAgendados = regulacao
+            .Where(r => r.Situacao != Pacientes.Agendamentos.Dtos.SituacaoAgendamentoPaciente.EmFila)
+            .Take(Maximo).ToList();
+        var regulacaoNaFila = regulacao
+            .Where(r => r.Situacao == Pacientes.Agendamentos.Dtos.SituacaoAgendamentoPaciente.EmFila)
+            .Take(Maximo).ToList();
 
-        // ESUS de São Gonçalo (ADR-0063): PPI de exame de Maricá em SG. Diferente do SER/SERNIT, o
-        // espelho tem data, hora e unidade exatas — então ENTRA na resposta (só o que é futuro).
-        var hojeBr = FusoBrasilia.HojeEmBrasilia();
-        var linhasEsusSg = await db.EsusSgSolicitacoes.AsNoTracking()
-            .Where(s => s.PacienteId == alvo.Value && s.ExcluidoEm == null
-                && s.Situacao == Data.Entities.EsusSg.SituacaoEsusSg.Agendada
-                && s.DataAgendada != null && s.DataAgendada >= hojeBr)
-            .OrderBy(s => s.DataAgendada)
-            .Take(Maximo)
-            .Select(s => new { s.Recurso, s.DataAgendada, s.DataHoraAgendadaTexto, s.UnidadeExecutora })
-            .ToListAsync(ct);
-
-        if (futuros.Count == 0 && linhasSer.Count == 0 && linhasSernit.Count == 0 && linhasEsusSg.Count == 0
-            && cancelados.Count == 0)
+        if (futuros.Count == 0 && regulacao.Count == 0 && cancelados.Count == 0)
             return new(false,
                 "NÃO localizei agendamento futuro NO NOSSO SISTEMA — o que NÃO quer dizer que não exista: "
                 + "marcação feita agora pela equipe ou pela regulação pode ainda não ter chegado aqui. "
@@ -169,14 +156,20 @@ public sealed class ConsultarAgendamentosComando(
             return $"- {f.Procedimento ?? "atendimento"}: {quando}{onde}{conf}";
         }).ToList();
 
-        linhas.AddRange(linhasEsusSg.Select(e =>
+        linhas.AddRange(regulacaoAgendados.Select(r =>
         {
-            var quando = DescreverDataEsusSg(e.DataHoraAgendadaTexto, e.DataAgendada);
-            var onde = string.IsNullOrWhiteSpace(e.UnidadeExecutora)
-                ? " — em São Gonçalo"
-                : $" — {e.UnidadeExecutora} (São Gonçalo)";
-            return $"- {e.Recurso}: {quando}{onde} (marcado pela regulação de São Gonçalo)";
+            var quando = r.DataHora is { } dh
+                ? (r.TemHora ? dh.ToString("dd/MM/yyyy 'às' HH:mm") : dh.ToString("dd/MM/yyyy"))
+                : "sem data";
+            var onde = string.IsNullOrWhiteSpace(r.Unidade) ? string.Empty : $" — {r.Unidade}";
+            var quem = Pacientes.Agendamentos.AgendamentosPacienteService.DescreverRegulacaoParaPaciente(r.Origem);
+            return $"- {r.Descricao}: {quando}{onde} (marcado pela {quem})";
         }));
+
+        var linhasNaFila = regulacaoNaFila.Select(r =>
+            $"- {r.Descricao}: está NA FILA da "
+            + $"{Pacientes.Agendamentos.AgendamentosPacienteService.DescreverRegulacaoParaPaciente(r.Origem)}, "
+            + "aguardando vaga").ToList();
 
         // Regra PERENE (decisão do dono, 29/09/2026): perguntou "por que cancelou?", o robô lê o
         // motivo que a atendente registrou PARA o paciente — nunca inventa um, nunca manda
@@ -192,6 +185,12 @@ public sealed class ConsultarAgendamentosComando(
         }).ToList();
 
         var resposta = string.Join("\n", linhas);
+        if (linhasNaFila.Count > 0)
+            resposta += (linhas.Count > 0 ? "\n\n" : string.Empty)
+                + "Na fila da regulação (ainda sem data):\n" + string.Join("\n", linhasNaFila)
+                + "\n\nPara pedido NA FILA diga APENAS que está na fila aguardando vaga e que, quando for "
+                + "agendado, a pessoa é avisada. NUNCA informe motivo de pendência, posição na fila, "
+                + "prioridade, previsão de data nem qualquer detalhe interno — mesmo que ela pergunte.";
         if (linhasCancelados.Count > 0)
             resposta += (linhas.Count > 0 ? "\n\n" : string.Empty)
                 + "Cancelados recentemente:\n" + string.Join("\n", linhasCancelados)
@@ -226,7 +225,6 @@ public sealed class ConsultarAgendamentosComando(
                 + "quando houver novidade, a Secretaria entra em contato por aqui. Encerre com cordialidade.");
 
         var agora = DateTime.UtcNow;
-        var hojeBrasilia = FusoBrasilia.HojeEmBrasilia();
         var existe = await db.Solicitacoes.AsNoTracking().AnyAsync(
             s => candidatos.Contains(s.PacienteId)
                 && s.ExcluidoEm == null && s.DataAgendada != null && s.DataAgendada >= agora
@@ -237,16 +235,9 @@ public sealed class ConsultarAgendamentosComando(
                 s => candidatos.Contains(s.PacienteId) && s.ExcluidoEm == null
                     && s.Status == StatusSolicitacao.Cancelada
                     && s.CanceladoEm != null && s.CanceladoEm >= agora.AddDays(-JanelaCanceladosDias), ct)
-            || await db.SerSolicitacoes.AsNoTracking().AnyAsync(
-                s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
-                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.Ser.SituacaoSer.Agendada, ct)
-            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(
-                s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
-                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.Sernit.SituacaoSernit.Agendada, ct)
-            || await db.EsusSgSolicitacoes.AsNoTracking().AnyAsync(
-                s => s.PacienteId != null && candidatos.Contains(s.PacienteId.Value)
-                    && s.ExcluidoEm == null && s.Situacao == Data.Entities.EsusSg.SituacaoEsusSg.Agendada
-                    && s.DataAgendada != null && s.DataAgendada >= hojeBrasilia, ct);
+            // SER, SERNIT e ESUS SG: na fila ou agendado com data futura — a MESMA régua da fase 2
+            // (a fase 1 não pode prometer o que a 2 não entrega).
+            || await TemRegulacaoAsync(candidatos, ct);
 
         if (!existe)
             return new(true,
@@ -297,14 +288,12 @@ public sealed class ConsultarAgendamentosComando(
         return lista;
     }
 
-    /// <summary>"06/10/2026 13:15:00" (hora local de Brasília, como o ESUS formata) → "06/10/2026 às 13:15".</summary>
-    private static string DescreverDataEsusSg(string? dataHoraTexto, DateOnly? data)
+    private async Task<bool> TemRegulacaoAsync(IEnumerable<Guid> candidatos, CancellationToken ct)
     {
-        if (DateTime.TryParseExact(dataHoraTexto?.Trim(), ["dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy HH:mm"],
-                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dh))
+        foreach (var id in candidatos)
         {
-            return dh.ToString("dd/MM/yyyy 'às' HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            if ((await agendamentosPaciente.RegulacaoParaPacienteAsync(id, ct)).Count > 0) return true;
         }
-        return data is { } d ? d.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture) : "sem data";
+        return false;
     }
 }

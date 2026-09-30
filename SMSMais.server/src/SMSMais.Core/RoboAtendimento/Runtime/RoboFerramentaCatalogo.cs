@@ -101,8 +101,10 @@ public static class RoboFerramentaCatalogo
 
             [ComandoRobo.ConsultarPosicaoRegulacao] = new(
                 "consultar_posicao_regulacao",
-                "Situação do pedido na regulação (SER/SISREG/SERNIT). Devolve dado MINIMIZADO — em "
-                + "regra só \"em fila\". Se o número não for verificado, o comando pede identidade: "
+                "Situação do pedido na regulação externa (SER estadual, SERNIT de Niterói e ESUS de São "
+                + "Gonçalo). Devolve dado MINIMIZADO: \"na fila\" ou \"já agendado\" — NUNCA motivo de "
+                + "pendência, posição, prioridade ou previsão. Data e local do agendado: use "
+                + "consultar_agendamentos. Se o número não for verificado, o comando pede identidade: "
                 + "colete os 4 primeiros dígitos do CPF e o mês/ano de nascimento e chame de novo.",
                 new
                 {
@@ -123,8 +125,10 @@ public static class RoboFerramentaCatalogo
                 + "pessoa — a resposta diz se EXISTE agendamento e o que fazer. Só peça CPF/nascimento "
                 + "se a fase 1 mandar: dado pessoal só se pede quando HÁ informação para entregar. "
                 + "FASE 2: com os QUATRO primeiros dígitos do CPF e o mês/ano de nascimento, confere a "
-                + "identidade e lista (procedimento, data e unidade; cancelados vêm com o motivo "
-                + "registrado para informar ao paciente). Use SEMPRE esta ferramenta antes de falar "
+                + "identidade e lista (procedimento, data e unidade — inclusive o que a regulação SER, "
+                + "SERNIT e ESUS de São Gonçalo marcou; pedidos que estão NA FILA vêm só como \"na fila\", "
+                + "e é só isso que se diz sobre eles, nunca motivo de pendência; cancelados vêm com o "
+                + "motivo registrado para informar ao paciente). Use SEMPRE esta ferramenta antes de falar "
                 + "qualquer coisa sobre agendamento — inclusive para dizer que NÃO há, e SEMPRE que "
                 + "perguntarem POR QUE um agendamento foi cancelado: o motivo se LÊ daqui, nunca se "
                 + "inventa. Nunca afirme ausência sem ter consultado.",

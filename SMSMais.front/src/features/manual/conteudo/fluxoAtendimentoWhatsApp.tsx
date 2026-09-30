@@ -56,7 +56,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
   grupo: 'atendimento',
   icone: Workflow,
   publico: 'Toda a equipe que atende pelo WhatsApp — e quem precisa explicar o sistema para alguém',
-  atualizadoEm: '2026-09-27',
+  atualizadoEm: '2026-09-30',
   palavrasChave: [
     'fluxo',
     'lógica',
@@ -88,6 +88,13 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     'silêncio',
     'quando o robô responde',
     'quando o robô cala',
+    'na fila',
+    'regulação',
+    'ser',
+    'sernit',
+    'esus',
+    'motivo de pendência',
+    'app do cidadão',
   ],
   secoes: () => [
     {
@@ -297,7 +304,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     {
       id: 'robo-ia',
       titulo: 'Quando o robô (IA) entra — e quando ele cala',
-      busca: 'robô ia atendente virtual entra cala trava humano expediente parar robô teto interações retomada resumo',
+      busca: 'robô ia atendente virtual entra cala trava humano expediente parar robô teto interações retomada resumo regulação ser sernit esus são gonçalo na fila pendência motivo app do cidadão',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -313,6 +320,24 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
               { termo: 'Guardrails', descricao: 'Nunca revela agendamento antes da identidade, nunca pede CPF completo, nunca promete ação que não executou com ferramenta, nunca inventa canais que não existem.' },
             ]}
           />
+          <Sub>Pedidos da regulação (SER, SERNIT, ESUS de São Gonçalo)</Sub>
+          <P>
+            Se a pessoa perguntar, o robô responde também sobre os pedidos que estão na regulação do Estado
+            (SER), de Niterói (SERNIT) e de São Gonçalo (ESUS). Depois de confirmar a identidade, a regra é
+            curta:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              { termo: 'Agendado', descricao: 'Informa data, hora e local, e diz qual regulação marcou.' },
+              { termo: 'Na fila (ou pendente)', descricao: 'Diz APENAS que está na fila aguardando vaga e que a pessoa é avisada quando for agendado. Pendente também sai como "na fila".' },
+              { termo: 'Nunca', descricao: 'O motivo da pendência, a posição na fila, a prioridade ou uma previsão de data — mesmo que a pessoa insista. Pedido cancelado ou que saiu da fila vai para uma atendente, sem motivo.' },
+            ]}
+          />
+          <P>
+            O app do cidadão segue a mesma regra: em <strong>Consultas</strong> e <strong>Exames</strong> o
+            pedido aparece como <strong>Na fila</strong> (sem data) ou <strong>Agendado</strong> (com data,
+            local e quem marcou).
+          </P>
           <Sub>Retomada pedida pela equipe</Sub>
           <P>
             Conversa que morreu sem resposta (erro antigo, atendente que não voltou)? O botão{' '}

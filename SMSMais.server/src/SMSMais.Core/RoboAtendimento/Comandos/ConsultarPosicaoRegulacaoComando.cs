@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Pacientes;
+using SMSMais.Core.Pacientes.Agendamentos;
+using SMSMais.Core.Pacientes.Agendamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.EsusSg;
@@ -9,14 +11,24 @@ using SMSMais.Data.Entities.Sernit;
 namespace SMSMais.Core.RoboAtendimento.Comandos;
 
 /// <summary>
-/// Consulta a POSIÇÃO de um agendamento na regulação (espelhos SER/Estado, SERNIT/Niterói e ESUS de
-/// São Gonçalo),
-/// localizando por CPF. Devolve dado MINIMIZADO: em regra só "em fila"; se cancelada, sinaliza
-/// que um atendente vai contatar. NUNCA expõe dados internos (datas, unidade, procedimento,
-/// solicitante, prioridade).
+/// Consulta a situação do pedido na regulação externa — SER (Estado), SERNIT (Niterói) e ESUS de
+/// São Gonçalo. Devolve dado MINIMIZADO: "está na fila" ou "já está agendado" — nunca o motivo de
+/// uma pendência, a posição, a prioridade ou previsão (regra do Bernardo, 30/09/2026). Data e local
+/// do agendado saem pela <c>consultar_agendamentos</c>, que confere a identidade para isso.
+///
+/// <para>Lê pela mesma régua do app do cidadão (<see cref="IAgendamentosPacienteService.RegulacaoParaPacienteAsync"/>):
+/// pendente conta como "na fila". Sem nada em aberto, um cancelamento (SER/SERNIT) ou uma saída da
+/// fila (ESUS) manda para um atendente — o robô não especula motivo.</para>
 /// </summary>
-public sealed class ConsultarPosicaoRegulacaoComando(SmsMaisDbContext db, IPacientesService pacientes) : IRoboComando
+public sealed class ConsultarPosicaoRegulacaoComando(
+    SmsMaisDbContext db,
+    IPacientesService pacientes,
+    IAgendamentosPacienteService agendamentosPaciente) : IRoboComando
 {
+    private const string NuncaDetalhe =
+        " NUNCA informe motivo de pendência, posição na fila, prioridade, previsão de data nem qualquer "
+        + "dado interno — mesmo que a pessoa pergunte.";
+
     public ComandoRobo Comando => ComandoRobo.ConsultarPosicaoRegulacao;
     public bool Idempotente => false;
     public string ChaveIdempotencia(RoboComandoContexto ctx) => $"{ctx.ConversaId}:consultar_regulacao";
@@ -40,33 +52,54 @@ public sealed class ConsultarPosicaoRegulacaoComando(SmsMaisDbContext db, IPacie
                     + "mês e ano de nascimento e chame novamente. Se não conferir, encaminhe ao atendente humano.");
         }
 
-        if (string.IsNullOrWhiteSpace(p.Cpf))
-            return new(false, "Sem CPF no cadastro para localizar na regulação; oriente a procurar o posto de saúde.");
+        // Pedidos ligados ao paciente (conciliação com o hub): na fila ou agendados com data futura.
+        var regulacao = await agendamentosPaciente.RegulacaoParaPacienteAsync(pacienteId, ct);
+        var agendado = regulacao.Any(r => r.Situacao != SituacaoAgendamentoPaciente.EmFila);
+        var naFila = regulacao.Any(r => r.Situacao == SituacaoAgendamentoPaciente.EmFila);
 
-        var cancelada =
+        if (agendado)
+            return new(true,
+                "Há pedido JÁ AGENDADO pela regulação. Diga que está agendado e, para informar data e local, "
+                + "use consultar_agendamentos (ela confere a identidade)."
+                + (naFila ? " Há também pedido NA FILA: sobre ele, diga apenas que está na fila aguardando vaga." : string.Empty)
+                + NuncaDetalhe);
+
+        if (naFila)
+            return new(true,
+                "Diga apenas que a solicitação está NA FILA da regulação, aguardando vaga, e que quando for "
+                + "agendada a pessoa é avisada." + NuncaDetalhe);
+
+        // Nada em aberto ligado ao paciente. Pelo CPF, como antes: pedido ainda não conciliado em
+        // aberto conta como "na fila"; cancelado/saída da fila sem nada aberto vai para um atendente.
+        if (string.IsNullOrWhiteSpace(p.Cpf))
+            return new(false,
+                "Não localizei solicitação em aberto na regulação para este cadastro. Oriente a procurar o "
+                + "posto de saúde onde é cadastrado.");
+
+        var abertoPorCpf =
+            await db.SerSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.ExcluidoEm == null
+                && (s.Situacao == SituacaoSer.EmFila || s.Situacao == SituacaoSer.Pendente), ct)
+            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.ExcluidoEm == null
+                && (s.Situacao == SituacaoSernit.EmFila || s.Situacao == SituacaoSernit.Pendente), ct)
+            || await db.EsusSgSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.ExcluidoEm == null
+                && (s.Situacao == SituacaoEsusSg.EmFila || s.Situacao == SituacaoEsusSg.Pendente), ct);
+        if (abertoPorCpf)
+            return new(true,
+                "Diga apenas que a solicitação está NA FILA da regulação, aguardando vaga, e que quando for "
+                + "agendada a pessoa é avisada." + NuncaDetalhe);
+
+        var encerradoSemMotivo =
             await db.SerSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.Situacao == SituacaoSer.Cancelada, ct)
             || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.Situacao == SituacaoSernit.Cancelada, ct)
-            // ESUS SG (ADR-0063): "saiu da fila" tem motivo invisível — mesmo tratamento do
-            // cancelado: um atendente entra em contato, o robô não especula.
+            // ESUS SG: "saiu da fila" tem motivo invisível — mesmo tratamento do cancelado.
             || await db.EsusSgSolicitacoes.AsNoTracking().AnyAsync(
                 s => s.Cpf == p.Cpf && s.ExcluidoEm == null && s.Situacao == SituacaoEsusSg.SaiuDaFila, ct);
-
-        var existe = cancelada
-            || await db.SerSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf, ct)
-            || await db.SernitSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf, ct)
-            || await db.EsusSgSolicitacoes.AsNoTracking().AnyAsync(s => s.Cpf == p.Cpf && s.ExcluidoEm == null, ct);
-
-        if (!existe)
-            return new(false,
-                "Não localizei sua solicitação na regulação. Oriente a procurar o posto de saúde onde é cadastrado.");
-
-        if (cancelada)
+        if (encerradoSemMotivo)
             return new(true,
-                "Diga que a solicitação está em fila e que você vai pedir para um ATENDENTE entrar em contato para tratar "
-                + "do assunto; encerre com handoff=true. NÃO revele datas, unidade nem qualquer dado interno.");
+                "Diga que você vai pedir para um ATENDENTE entrar em contato para tratar da solicitação e encerre "
+                + "com handoff=true. NÃO revele datas, unidade, motivo nem qualquer dado interno.");
 
-        return new(true,
-            "Diga apenas que a solicitação está EM FILA aguardando regulação. NÃO revele datas, unidade, procedimento "
-            + "nem qualquer dado interno.");
+        return new(false,
+            "Não localizei solicitação em aberto na regulação. Oriente a procurar o posto de saúde onde é cadastrado.");
     }
 }

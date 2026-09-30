@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Hourglass,
+  Landmark,
   MapPin,
   Stethoscope,
   X,
@@ -21,11 +23,11 @@ export function ConsultasAgendadas() {
   return (
     <Lista
       eyebrow="Agenda"
-      titulo="Consultas agendadas"
+      titulo="Consultas"
       carregar={() => api.agendamentos('consulta')}
       emptyIcon={CalendarClock}
-      emptyTitulo="Nenhuma consulta agendada"
-      emptyDescricao="Suas próximas consultas marcadas vão aparecer aqui com data, profissional e local."
+      emptyTitulo="Nenhuma consulta agendada ou na fila"
+      emptyDescricao="Suas próximas consultas marcadas vão aparecer aqui com data, profissional e local — e as que estão na fila da regulação também."
       renderItem={(a) => <AgendamentoCard agendamento={a} />}
     />
   );
@@ -61,11 +63,11 @@ export function ExamesAgendados() {
       <Lista
         key={versao}
         eyebrow="Agenda"
-        titulo="Exames agendados"
+        titulo="Exames"
         carregar={() => api.agendamentos('exame')}
         emptyIcon={CalendarPlus}
-        emptyTitulo="Nenhum exame agendado"
-        emptyDescricao="Seus próximos exames marcados vão aparecer aqui com data, tipo e local."
+        emptyTitulo="Nenhum exame agendado ou na fila"
+        emptyDescricao="Seus próximos exames marcados vão aparecer aqui com data, tipo e local — e os que estão na fila da regulação também."
         renderItem={(a) => (
           <AgendamentoCard
             agendamento={a}
@@ -143,10 +145,17 @@ function AgendamentoCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate font-display font-semibold text-tinta">{a.titulo}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-tinta-mute">
-              <Clock className="h-4 w-4 shrink-0" />
-              {formatarDataHora(a.inicioEm)}
-            </p>
+            {a.inicioEm ? (
+              <p className="mt-0.5 flex items-center gap-1.5 text-sm text-tinta-mute">
+                <Clock className="h-4 w-4 shrink-0" />
+                {formatarDataHora(a.inicioEm)}
+              </p>
+            ) : (
+              <p className="mt-0.5 flex items-center gap-1.5 text-sm text-tinta-mute">
+                <Hourglass className="h-4 w-4 shrink-0" />
+                Ainda sem data
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <EtiquetaAgendamento agendamento={a} />
@@ -166,6 +175,20 @@ function AgendamentoCard({
               <MapPin className="h-4 w-4 shrink-0" />
               <span className="truncate">{a.unidade}</span>
             </p>
+          )}
+          {/* Na fila: só "está na fila" — nunca motivo de pendência, posição ou previsão. */}
+          {a.naFila ? (
+            <p className="leading-snug">
+              Está na fila {a.origem ? `da ${a.origem}` : 'da regulação'}, aguardando vaga. Quando for agendado,
+              aparece aqui com data e local.
+            </p>
+          ) : (
+            a.origem && (
+              <p className="flex items-center gap-1.5">
+                <Landmark className="h-4 w-4 shrink-0" />
+                <span className="truncate">Marcado pela {a.origem}</span>
+              </p>
+            )
           )}
         </div>
       </button>
