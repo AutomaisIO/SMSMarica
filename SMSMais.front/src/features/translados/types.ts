@@ -1,3 +1,5 @@
+import type { Necessidades } from '@/features/tratamentos/types';
+
 export const STATUS_ROTA = ['Planejada', 'EmAndamento', 'Concluida', 'Cancelada'] as const;
 export type StatusRota = (typeof STATUS_ROTA)[number];
 
@@ -30,6 +32,10 @@ export type SessaoElegivel = {
   horaPrevistaBusca: string | null;
   status: 'Pendente' | 'Confirmada';
   vencida: boolean;
+  /** Condição do paciente registrada no atendimento — só leitura; o gerador ainda não usa. */
+  necessidades: Necessidades;
+  acompanhantesPrevistos: number;
+  limiteAcompanhantes: number;
 };
 
 export type RotaDiariaListItem = {
@@ -92,6 +98,9 @@ export type ParadaGerada = {
   pacienteId: string;
   pacienteNome: string;
   comAcompanhante: boolean;
+  necessidades: Necessidades | null;
+  acompanhantesPrevistos: number;
+  limiteAcompanhantes: number;
 };
 
 export type RotaGerada = {

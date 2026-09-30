@@ -6,25 +6,28 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { useListarMotoristas } from '@/features/motoristas/api/queries';
 import { useConfirmarSessao } from '@/features/tratamentos/api/queries';
+import { SeletorAcompanhantesSessao } from '@/features/tratamentos/components/SeletorAcompanhantesSessao';
 import { useQuery } from '@tanstack/react-query';
 import { listarVeiculos } from '@/features/veiculos/api/veiculosApi';
 import type { Sessao } from '@/features/tratamentos/types';
 
 type Props = {
   tratamentoId: string;
+  pacienteId: string;
+  /** Limite de acompanhantes do atendimento (1, ou 2 com liberação). */
+  limiteAcompanhantes: number;
   sessao: Sessao;
   aoConcluir: () => void;
 };
 
-export function PainelConfirmacao({ tratamentoId, sessao, aoConcluir }: Props) {
+export function PainelConfirmacao({ tratamentoId, pacienteId, limiteAcompanhantes, sessao, aoConcluir }: Props) {
   const motoristas = useListarMotoristas();
   const veiculos = useQuery({ queryKey: ['veiculos', 'lista'], queryFn: listarVeiculos });
   const confirmar = useConfirmarSessao();
   const [erro, setErro] = useState<string | null>(null);
   const [realizada, setRealizada] = useState<boolean>(sessao.status !== 'NaoRealizada' && sessao.status !== 5);
+  const [acompanhanteIds, setAcompanhanteIds] = useState<string[]>(sessao.acompanhantes.map((a) => a.id));
   const [f, setF] = useState({
-    nomeAcompanhante: sessao.nomeAcompanhante ?? '',
-    parentescoAcompanhante: sessao.parentescoAcompanhante ?? '',
     motoristaIdaId: sessao.motoristaIdaId ?? '',
     veiculoIdaId: sessao.veiculoIdaId ?? '',
     horaSaidaResidencia: sessao.horaSaidaResidencia ?? '',
@@ -49,8 +52,7 @@ export function PainelConfirmacao({ tratamentoId, sessao, aoConcluir }: Props) {
         sessaoId: sessao.id,
         payload: {
           realizada,
-          nomeAcompanhante: f.nomeAcompanhante || null,
-          parentescoAcompanhante: f.parentescoAcompanhante || null,
+          acompanhanteIds,
           motoristaIdaId: f.motoristaIdaId || null,
           veiculoIdaId: f.veiculoIdaId || null,
           horaSaidaResidencia: f.horaSaidaResidencia || null,
@@ -106,23 +108,18 @@ export function PainelConfirmacao({ tratamentoId, sessao, aoConcluir }: Props) {
 
       {realizada ? (
         <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Campo label="Nome do acompanhante" htmlFor="acompNome">
-              <Input
-                id="acompNome"
-                value={f.nomeAcompanhante}
-                onChange={(e) => setF((s) => ({ ...s, nomeAcompanhante: e.target.value }))}
-              />
-            </Campo>
-            <Campo label="Parentesco" htmlFor="acompParente">
-              <Input
-                id="acompParente"
-                value={f.parentescoAcompanhante}
-                onChange={(e) => setF((s) => ({ ...s, parentescoAcompanhante: e.target.value }))}
-                placeholder="Mãe, Filho, Cônjuge…"
-              />
-            </Campo>
-          </div>
+          <SeletorAcompanhantesSessao
+            pacienteId={pacienteId}
+            limite={limiteAcompanhantes}
+            selecionados={acompanhanteIds}
+            aoMudar={setAcompanhanteIds}
+          />
+          {sessao.nomeAcompanhante ? (
+            <p className="text-xs text-gray-500">
+              Registro antigo desta sessão: {sessao.nomeAcompanhante}
+              {sessao.parentescoAcompanhante ? ` (${sessao.parentescoAcompanhante})` : ''}.
+            </p>
+          ) : null}
 
           <h3 className="mt-4 text-sm font-semibold text-gray-900">Ida</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -277,6 +277,21 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
+    // Consulta de CPF de acompanhante pelo app do cidadão: dado de outra pessoa (e a consulta da
+    // Receita é paga). Cota por paciente — o sub do token —, não por IP (rede móvel compartilha IP).
+    options.AddPolicy("acompanhante-cidadao", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value
+                ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromDays(1),
+                QueueLimit = 0,
+            }));
+
     // Defesa em profundidade nos endpoints anônimos do PWA de anexos (o token É a
     // autorização). Particiona por IP; barra brute-force de token / abuso de upload.
     options.AddPolicy("anexos-sessao", httpContext =>

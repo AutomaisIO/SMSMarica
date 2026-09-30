@@ -47,6 +47,8 @@ public static class DependencyInjection
         services.AddScoped<Auditoria.IAuditoriaService, Auditoria.AuditoriaService>();
         services.AddScoped<Erros.IRegistroErroService, Erros.RegistroErroService>();
         services.AddScoped<ITratamentosService, TratamentosService>();
+        services.AddScoped<Acompanhantes.IAcompanhantesService, Acompanhantes.AcompanhantesService>();
+        services.AddHostedService<RenovacaoAtendimentosContinuosWorker>();
         services.AddScoped<IUnidadesService, UnidadesService>();
         services.AddScoped<IUnidadesAtendimentoService, UnidadesAtendimentoService>();
         services.AddScoped<IVeiculosService, VeiculosService>();

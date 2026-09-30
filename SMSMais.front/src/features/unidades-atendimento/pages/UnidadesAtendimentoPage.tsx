@@ -86,7 +86,7 @@ export function UnidadesAtendimentoPage() {
     },
     {
       chave: 'tratamentos',
-      cabecalho: 'Tratamentos ativos',
+      cabecalho: 'Atendimentos ativos',
       className: 'text-right',
       ordenar: (u) => u.tratamentosAtivos,
       render: (u) => <span className="tabular-nums">{u.tratamentosAtivos}</span>,
@@ -110,7 +110,7 @@ export function UnidadesAtendimentoPage() {
               disabled={u.tratamentosAtivos > 0}
               title={
                 u.tratamentosAtivos > 0
-                  ? 'Há tratamento ativo indo para esta unidade. Encerre-o ou troque o destino antes de desativar.'
+                  ? 'Há atendimento ativo indo para esta unidade. Encerre-o ou troque o destino antes de desativar.'
                   : undefined
               }
               className="disabled:cursor-not-allowed disabled:opacity-50"
@@ -162,7 +162,7 @@ export function UnidadesAtendimentoPage() {
               <AjudaManual artigo="unidades-atendimento" />
             </div>
             <p className="mt-1 text-sm text-gray-600">
-              Destinos do transporte: onde o paciente faz o tratamento. O endereço e o ponto no mapa são o
+              Destinos do transporte: onde o paciente é atendido. O endereço e o ponto no mapa são o
               fim da rota calculada para a van.
             </p>
           </div>
@@ -214,11 +214,11 @@ export function UnidadesAtendimentoPage() {
         chaveLinha={(u) => u.id}
         carregando={lista.isLoading}
         aoClicarLinha={(u) => navigate(`/app/unidades-atendimento/${u.id}`)}
-        dicaLinha="Clique para ver endereço, mapa e tratamentos"
+        dicaLinha="Clique para ver endereço, mapa e atendimentos"
         vazio={
           busca.trim()
             ? 'Nenhuma unidade de atendimento com esse termo.'
-            : 'Nenhuma unidade de atendimento cadastrada ainda. Cadastre os destinos antes dos tratamentos.'
+            : 'Nenhuma unidade de atendimento cadastrada ainda. Cadastre os destinos antes dos atendimentos.'
         }
       />
 
@@ -227,7 +227,7 @@ export function UnidadesAtendimentoPage() {
         titulo="Desativar unidade de atendimento"
         mensagem={
           paraDesativar
-            ? `Desativar "${paraDesativar.nome}"? Ela sai das opções de destino do tratamento; o histórico é preservado e dá para reativar depois.`
+            ? `Desativar "${paraDesativar.nome}"? Ela sai das opções de destino do atendimento; o histórico é preservado e dá para reativar depois.`
             : ''
         }
         destrutivo

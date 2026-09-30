@@ -1,22 +1,22 @@
 namespace SMSMais.Core.Tratamentos.Dtos;
 
 /// <summary>
-/// Ajustes editáveis no tratamento cadastrado. Periodicidade é imutável;
-/// para mudar cadência, edite as sessões individualmente (ou encerre e
-/// recadastre).
+/// Ajustes no atendimento cadastrado: dados, condição do paciente e regra de acompanhantes. A
+/// agenda muda à parte (<c>PUT /tratamentos/{id}/agenda</c>), que refaz as sessões futuras.
 /// </summary>
 public sealed record AtualizarTratamentoRequest(
     string Descricao,
     Guid UnidadeAtendimentoId,
     Guid? TipoTratamentoId,
-    string? CodigoSusLiberacao,
     string? Observacoes,
-    TimeOnly? HoraPrevistaBusca,
-    int? TempoMedioMinutos);
+    NecessidadesRequest Necessidades,
+    RegraAcompanhantesRequest Acompanhantes);
+
+/// <summary>Quem vai acompanhar o paciente numa viagem (ids da lista de acompanhantes dele).</summary>
+public sealed record DefinirAcompanhantesSessaoRequest(IReadOnlyList<Guid> AcompanhanteIds);
 
 /// <summary>
-/// Alterações permitidas em uma sessão: data prevista, horários previstos,
-/// status (ex: cancelar sessão futura).
+/// Alterações permitidas em uma sessão: data prevista, horários previstos, observações.
 /// </summary>
 public sealed record AtualizarSessaoRequest(
     DateOnly DataPrevista,
@@ -25,7 +25,7 @@ public sealed record AtualizarSessaoRequest(
     string? Observacoes);
 
 /// <summary>
-/// Adiciona uma nova sessão (data) a um tratamento existente.
+/// Adiciona uma nova sessão (data) a um atendimento existente.
 /// </summary>
 public sealed record AdicionarSessaoRequest(
     DateOnly DataPrevista,
@@ -33,14 +33,13 @@ public sealed record AdicionarSessaoRequest(
     TimeOnly? HoraPrevistaRetorno);
 
 /// <summary>
-/// Confirmação de realização de uma sessão. Campos opcionais suportam
-/// preenchimento incremental; obrigatório ao menos um dos horários para
-/// virar status Realizada. Enviar realizada=false marca NaoRealizada.
+/// Confirmação de realização de uma sessão. Campos opcionais suportam preenchimento incremental.
+/// Enviar realizada=false marca NaoRealizada. <paramref name="AcompanhanteIds"/> registra quem foi
+/// de fato (nulo = mantém a escolha feita antes da viagem).
 /// </summary>
 public sealed record ConfirmarSessaoRequest(
     bool Realizada,
-    string? NomeAcompanhante,
-    string? ParentescoAcompanhante,
+    IReadOnlyList<Guid>? AcompanhanteIds,
     Guid? MotoristaIdaId,
     Guid? VeiculoIdaId,
     TimeOnly? HoraSaidaResidencia,

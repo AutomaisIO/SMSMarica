@@ -38,7 +38,11 @@ export function useCadastrarTipoTratamento() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (payload: CadastrarTipoTratamentoPayload) => cadastrarTipoTratamento(payload),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['tiposTratamento'] }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['tiposTratamento'] });
+      // O atendimento lê os tipos (e o tempo médio) por outra chave — sem isto, fica 5 min velho.
+      client.invalidateQueries({ queryKey: ['tratamentos', 'tipos'] });
+    },
   });
 }
 
@@ -47,7 +51,11 @@ export function useAtualizarTipoTratamento() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: AtualizarTipoTratamentoPayload }) =>
       atualizarTipoTratamento(id, payload),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['tiposTratamento'] }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['tiposTratamento'] });
+      // O atendimento lê os tipos (e o tempo médio) por outra chave — sem isto, fica 5 min velho.
+      client.invalidateQueries({ queryKey: ['tratamentos', 'tipos'] });
+    },
   });
 }
 
@@ -55,6 +63,10 @@ export function useDesativarTipoTratamento() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => desativarTipoTratamento(id),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['tiposTratamento'] }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['tiposTratamento'] });
+      // O atendimento lê os tipos (e o tempo médio) por outra chave — sem isto, fica 5 min velho.
+      client.invalidateQueries({ queryKey: ['tratamentos', 'tipos'] });
+    },
   });
 }

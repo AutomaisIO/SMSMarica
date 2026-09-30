@@ -4,8 +4,9 @@ import type {
   AtualizarSessaoPayload,
   AtualizarTratamentoPayload,
   CadastrarTratamentoPayload,
+  AgendaPayload,
   ConfirmarSessaoPayload,
-  ExpandirPeriodicidadePayload,
+  PreviaAgenda,
   TipoTratamento,
   Tratamento,
   TratamentoListItem,
@@ -43,9 +44,20 @@ export async function obterTratamentoPorId(id: string): Promise<Tratamento> {
   return data;
 }
 
-export async function expandirPeriodicidade(payload: ExpandirPeriodicidadePayload): Promise<string[]> {
-  const { data } = await http.post<string[]>('/tratamentos/periodicidade/expandir', payload);
+/** As datas que a agenda geraria — o servidor é a única fonte das datas. */
+export async function preverAgenda(payload: AgendaPayload): Promise<PreviaAgenda> {
+  const { data } = await http.post<PreviaAgenda>('/tratamentos/agenda/previa', payload);
   return data;
+}
+
+/** Troca a agenda a partir da data de início nova (hoje ou depois). */
+export async function alterarAgenda(id: string, payload: AgendaPayload): Promise<void> {
+  await http.put(`/tratamentos/${id}/agenda`, payload);
+}
+
+/** Quem vai acompanhar o paciente nesta viagem (da lista dele, até o limite). */
+export async function definirAcompanhantesSessao(id: string, sessaoId: string, acompanhanteIds: string[]): Promise<void> {
+  await http.put(`/tratamentos/${id}/sessoes/${sessaoId}/acompanhantes`, { acompanhanteIds });
 }
 
 export async function cadastrarTratamento(payload: CadastrarTratamentoPayload): Promise<string> {

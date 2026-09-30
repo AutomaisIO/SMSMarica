@@ -1,6 +1,5 @@
 using FluentValidation;
 using SMSMais.Core.Tratamentos.Dtos;
-using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Tratamentos.Validators;
 
@@ -10,31 +9,11 @@ public sealed class CadastrarTratamentoValidator : AbstractValidator<CadastrarTr
     {
         RuleFor(t => t.PacienteId).NotEmpty();
         RuleFor(t => t.UnidadeAtendimentoId).NotEmpty().WithMessage("Escolha a unidade de atendimento (destino).");
+        RuleFor(t => t.TipoTratamentoId).NotEmpty().WithMessage("Escolha o tipo de tratamento — é dele que vem o tempo médio.");
         RuleFor(t => t.Descricao).NotEmpty().MaximumLength(500);
-        RuleFor(t => t.CodigoSusLiberacao).MaximumLength(60);
-        RuleFor(t => t.TempoMedioMinutos).TempoMedioValido();
-        RuleFor(t => t.Periodicidade).NotNull().SetValidator(new CadastrarPeriodicidadeValidator());
-    }
-}
-
-public sealed class CadastrarPeriodicidadeValidator : AbstractValidator<CadastrarPeriodicidadeRequest>
-{
-    public CadastrarPeriodicidadeValidator()
-    {
-        RuleFor(p => p.Tipo).IsInEnum();
-        RuleFor(p => p.QuantidadeSessoes).InclusiveBetween(1, 365);
-
-        When(p => p.Tipo == TipoPeriodicidade.IntervaloDias, () =>
-            RuleFor(p => p.IntervaloDias)
-                .NotNull()
-                .InclusiveBetween(1, 365)
-                .WithMessage("IntervaloDias é obrigatório quando Tipo = IntervaloDias."));
-
-        When(p => p.Tipo == TipoPeriodicidade.SemanaDiasFixos, () =>
-            RuleFor(p => p.DiasSemanaMascara)
-                .NotNull()
-                .InclusiveBetween(1, 127)
-                .WithMessage("DiasSemanaMascara é obrigatório quando Tipo = SemanaDiasFixos (bitmask 1-127)."));
+        RuleFor(t => t.Agenda).NotNull().SetValidator(new AgendaValidator());
+        RuleFor(t => t.Necessidades).NotNull().SetValidator(new NecessidadesValidator());
+        RuleFor(t => t.Acompanhantes).NotNull().SetValidator(new RegraAcompanhantesValidator());
     }
 }
 
@@ -43,20 +22,66 @@ public sealed class AtualizarTratamentoValidator : AbstractValidator<AtualizarTr
     public AtualizarTratamentoValidator()
     {
         RuleFor(t => t.UnidadeAtendimentoId).NotEmpty().WithMessage("Escolha a unidade de atendimento (destino).");
+        RuleFor(t => t.TipoTratamentoId).NotEmpty().WithMessage("Escolha o tipo de tratamento — é dele que vem o tempo médio.");
         RuleFor(t => t.Descricao).NotEmpty().MaximumLength(500);
-        RuleFor(t => t.CodigoSusLiberacao).MaximumLength(60);
-        RuleFor(t => t.TempoMedioMinutos).TempoMedioValido();
+        RuleFor(t => t.Necessidades).NotNull().SetValidator(new NecessidadesValidator());
+        RuleFor(t => t.Acompanhantes).NotNull().SetValidator(new RegraAcompanhantesValidator());
     }
 }
 
-internal static class TempoMedioRegra
+/// <summary>Vale para o cadastro, para a troca de agenda e para a prévia.</summary>
+public sealed class AgendaValidator : AbstractValidator<AgendaRequest>
 {
-    /// <summary>Tempo médio é obrigatório e cabe num dia (1 min a 24 h) — é a base da previsão
-    /// de volta na rota.</summary>
-    public static IRuleBuilderOptions<T, int?> TempoMedioValido<T>(this IRuleBuilder<T, int?> regra) =>
-        regra
-            .NotNull().WithMessage("Informe o tempo médio do tratamento.")
-            .InclusiveBetween(1, 24 * 60).WithMessage("Tempo médio deve ficar entre 1 minuto e 24 horas.");
+    public AgendaValidator()
+    {
+        RuleFor(a => a.DataInicio).NotEmpty().WithMessage("Informe a data de início.");
+        RuleFor(a => a.DiasSemanaMascara)
+            .Must(AgendaDeSessoes.MascaraValida)
+            .WithMessage("Marque ao menos um dia da semana.");
+        When(a => !a.Continuo, () =>
+            RuleFor(a => a.QuantidadeSessoes)
+                .NotNull().WithMessage("Informe o número de sessões ou marque contínuo.")
+                .InclusiveBetween(1, AgendaDeSessoes.LimiteDeSessoes)
+                .WithMessage($"O número de sessões vai de 1 a {AgendaDeSessoes.LimiteDeSessoes}."));
+    }
+}
+
+public sealed class NecessidadesValidator : AbstractValidator<NecessidadesRequest>
+{
+    public NecessidadesValidator()
+    {
+        RuleFor(n => n.Mobilidade).IsInEnum();
+        RuleFor(n => n.AjudaDescricao).MaximumLength(500);
+        When(n => n.NecessitaAjuda, () =>
+            RuleFor(n => n.AjudaDescricao)
+                .NotEmpty()
+                .WithMessage("Descreva a ajuda de que o paciente precisa."));
+    }
+}
+
+public sealed class RegraAcompanhantesValidator : AbstractValidator<RegraAcompanhantesRequest>
+{
+    public RegraAcompanhantesValidator()
+    {
+        RuleFor(r => r.Quantidade).InclusiveBetween(1, 2)
+            .WithMessage("O atendimento permite 1 acompanhante, ou 2 com liberação.");
+        RuleFor(r => r.JustificativaSegundo).MaximumLength(500);
+        When(r => r.Quantidade == 2, () =>
+            RuleFor(r => r.JustificativaSegundo)
+                .NotEmpty()
+                .WithMessage("O segundo acompanhante precisa de liberação: escreva a justificativa."));
+    }
+}
+
+public sealed class DefinirAcompanhantesSessaoValidator : AbstractValidator<DefinirAcompanhantesSessaoRequest>
+{
+    public DefinirAcompanhantesSessaoValidator()
+    {
+        RuleFor(r => r.AcompanhanteIds).NotNull();
+        RuleFor(r => r.AcompanhanteIds.Count).LessThanOrEqualTo(2)
+            .When(r => r.AcompanhanteIds is not null)
+            .WithMessage("No máximo 2 acompanhantes por viagem.");
+    }
 }
 
 public sealed class AtualizarSessaoValidator : AbstractValidator<AtualizarSessaoRequest>
@@ -79,21 +104,13 @@ public sealed class ConfirmarSessaoValidator : AbstractValidator<ConfirmarSessao
 {
     public ConfirmarSessaoValidator()
     {
-        RuleFor(s => s.NomeAcompanhante).MaximumLength(200);
-        RuleFor(s => s.ParentescoAcompanhante).MaximumLength(60);
         RuleFor(s => s.MotivoNaoRealizacao).MaximumLength(500);
+        RuleFor(s => s.AcompanhanteIds!.Count).LessThanOrEqualTo(2)
+            .When(s => s.AcompanhanteIds is not null)
+            .WithMessage("No máximo 2 acompanhantes por viagem.");
         When(s => !s.Realizada, () =>
             RuleFor(s => s.MotivoNaoRealizacao)
                 .NotEmpty()
                 .WithMessage("Informe o motivo da não realização."));
-    }
-}
-
-public sealed class ExpandirPeriodicidadeValidator : AbstractValidator<ExpandirPeriodicidadeRequest>
-{
-    public ExpandirPeriodicidadeValidator()
-    {
-        RuleFor(p => p.Tipo).IsInEnum();
-        RuleFor(p => p.QuantidadeSessoes).InclusiveBetween(1, 365);
     }
 }

@@ -1,6 +1,6 @@
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
-import { formatarDuracao, paraMinutos } from '@/features/tratamentos/lib/tempoMedio';
+import { formatarDuracao, paraMinutos } from '@/shared/lib/tempoMedio';
 
 type Props = {
   horas: string;

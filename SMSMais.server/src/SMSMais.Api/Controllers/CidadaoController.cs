@@ -2,21 +2,26 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SMSMais.Api.Auth;
+using SMSMais.Core.Acompanhantes;
+using SMSMais.Core.Acompanhantes.Dtos;
 using SMSMais.Core.Atendimentos;
 using SMSMais.Core.Cidadao;
 using SMSMais.Core.Cidadao.Dtos;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Telefones;
 using SMSMais.Core.Telefones.Dtos;
+using SMSMais.Core.Tratamentos;
+using SMSMais.Core.Tratamentos.Dtos;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
 
 /// <summary>
 /// Área autenticada do app do cidadão (token <c>tipo=cidadao</c>, single-device).
 /// O paciente só enxerga/edita os próprios dados — o id vem do <c>sub</c> do token,
-/// nunca do corpo/rota. Os endpoints clínicos hoje são stub (lista vazia); o
-/// preenchimento virá das fontes numa próxima leva.
+/// nunca do corpo/rota.
 /// </summary>
 [ApiController]
 [Route("auth/paciente")]
@@ -28,7 +33,9 @@ public sealed class CidadaoController(
     ICidadaoSessaoService sessoes,
     IConsentimentoCidadaoService consentimentos,
     ICidadaoClinicoService clinico,
-    ITelefoneValidacaoService telefones) : ControllerBase
+    ITelefoneValidacaoService telefones,
+    ITratamentosService transporte,
+    IAcompanhantesService acompanhantes) : ControllerBase
 {
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
     [HttpGet("consentimento")]
@@ -98,11 +105,70 @@ public sealed class CidadaoController(
         return NoContent();
     }
 
-    // --- Stubs clínicos: shape estável, lista vazia por enquanto. ---
+    // --- Transporte de Pacientes: viagens e acompanhantes do próprio paciente ---
 
+    /// <summary>Próximas viagens do paciente no Transporte de Pacientes (atendimentos ativos).</summary>
     [HttpGet("meus-translados")]
-    public ActionResult<IEnumerable<TransladoResumoDto>> MeusTranslados() =>
-        Ok(Array.Empty<TransladoResumoDto>());
+    [ProducesResponseType<IReadOnlyList<ViagemTransporteDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ViagemTransporteDto>> MeusTranslados(CancellationToken ct) =>
+        await transporte.ListarProximasViagensAsync(PacienteId(), cancellationToken: ct);
+
+    [HttpGet("me/acompanhantes")]
+    [ProducesResponseType<IReadOnlyList<AcompanhanteCidadaoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AcompanhanteCidadaoDto>> MeusAcompanhantes(CancellationToken ct) =>
+        [.. (await acompanhantes.ListarDoPacienteAsync(PacienteId(), ct)).Select(AcompanhanteCidadaoDto.De)];
+
+    /// <summary>Confere CPF + nascimento e devolve o nome para o paciente confirmar antes de
+    /// cadastrar. Tem cota própria: é consulta de dado de outra pessoa (e a da Receita é paga).</summary>
+    [HttpPost("me/acompanhantes/consulta")]
+    [EnableRateLimiting("acompanhante-cidadao")]
+    [ProducesResponseType<AcompanhanteConsultaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<AcompanhanteConsultaDto> ConsultarAcompanhante(
+        [FromBody] ConsultarAcompanhanteRequest req, CancellationToken ct)
+    {
+        GarantirSessaoPorCodigo();
+        return await acompanhantes.ConsultarAsync(PacienteId(), req, ct);
+    }
+
+    [HttpPost("me/acompanhantes")]
+    [EnableRateLimiting("acompanhante-cidadao")]
+    [ProducesResponseType<AcompanhanteCidadaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<AcompanhanteCidadaoDto> AdicionarAcompanhante(
+        [FromBody] AdicionarAcompanhanteRequest req, CancellationToken ct)
+    {
+        GarantirSessaoPorCodigo();
+        return AcompanhanteCidadaoDto.De(
+            await acompanhantes.AdicionarAsync(PacienteId(), req, OrigemCadastroAcompanhante.App, ct));
+    }
+
+    /// <summary>O paciente só tira quem ele mesmo cadastrou pelo app.</summary>
+    [HttpDelete("me/acompanhantes/{acompanhanteId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RemoverAcompanhante(Guid acompanhanteId, CancellationToken ct)
+    {
+        GarantirSessaoPorCodigo();
+        await acompanhantes.RemoverAsync(PacienteId(), acompanhanteId, OrigemCadastroAcompanhante.App, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Mesma regra da troca de telefone: sessão aberta em 1 clique pelo link do WhatsApp só lê. O
+    /// link pode ter chegado a outra pessoa, e quem entra na lista de acompanhantes viaja com o
+    /// paciente. Para mexer, entrar com o código enviado por WhatsApp.
+    /// </summary>
+    private void GarantirSessaoPorCodigo()
+    {
+        if (string.Equals(User.FindFirst("canal")?.Value, "magic-link", StringComparison.Ordinal))
+            throw new SMSMais.Core.Common.Excecoes.ConflitoException(
+                "acompanhante.sessao_por_link",
+                "Para cadastrar ou tirar acompanhante, entre no aplicativo com o código enviado por WhatsApp.");
+    }
 
     /// <summary>
     /// Histórico de atendimentos do cidadão, lido do hub FHIR (Encounter + Condition).

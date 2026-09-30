@@ -16,7 +16,7 @@ public sealed class TiposTratamentoService(SmsMaisDbContext db) : ITiposTratamen
         if (somenteAtivos) query = query.Where(t => t.Ativo);
         var lista = await query
             .OrderBy(t => t.Nome)
-            .Select(t => new TipoTratamentoListItemDto(t.Id, t.Nome, t.Codigo, t.Ativo))
+            .Select(t => new TipoTratamentoListItemDto(t.Id, t.Nome, t.Codigo, t.TempoMedioMinutos, t.Ativo))
             .ToListAsync(cancellationToken);
         return lista;
     }
@@ -26,7 +26,7 @@ public sealed class TiposTratamentoService(SmsMaisDbContext db) : ITiposTratamen
         var t = await _db.TiposTratamento.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(EntidadeTipoTratamento), id);
-        return new TipoTratamentoDto(t.Id, t.Nome, t.Codigo, t.Ativo, t.CriadoEm);
+        return new TipoTratamentoDto(t.Id, t.Nome, t.Codigo, t.TempoMedioMinutos, t.Ativo, t.CriadoEm);
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarTipoTratamentoRequest request, CancellationToken cancellationToken = default)
@@ -42,6 +42,7 @@ public sealed class TiposTratamentoService(SmsMaisDbContext db) : ITiposTratamen
             Id = Guid.CreateVersion7(),
             Nome = request.Nome.Trim(),
             Codigo = codigo,
+            TempoMedioMinutos = request.TempoMedioMinutos,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
         };
@@ -65,6 +66,7 @@ public sealed class TiposTratamentoService(SmsMaisDbContext db) : ITiposTratamen
 
         t.Nome = request.Nome.Trim();
         t.Codigo = codigo;
+        t.TempoMedioMinutos = request.TempoMedioMinutos;
         t.Ativo = request.Ativo;
         await _db.SaveChangesAsync(cancellationToken);
     }

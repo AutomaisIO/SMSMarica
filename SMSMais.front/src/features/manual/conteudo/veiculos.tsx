@@ -19,7 +19,7 @@ export const artigoVeiculos: Artigo = {
   titulo: 'Veículos (frota, cor e assentos)',
   resumo:
     'O cadastro da frota do transporte: placa, modelo, a cor que pinta o desenho do carro e o layout de assentos usado para alocar pacientes.',
-  grupo: 'cadastros',
+  grupo: 'transporte',
   icone: Bus,
   rota: '/app/veiculos',
   publico: 'Quem cadastra a frota e monta os translados do transporte de pacientes',
@@ -97,7 +97,7 @@ export const artigoVeiculos: Artigo = {
               {
                 titulo: (
                   <>
-                    Em <strong>Cadastros → Veículos</strong>, clique em{' '}
+                    Em <strong>Transporte Pacientes → Veículos</strong>, clique em{' '}
                     <BotaoRef>Novo veículo</BotaoRef>.
                   </>
                 ),

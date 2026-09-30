@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import type { SessaoElegivel } from '@/features/translados/types';
+import { ChipsNecessidades } from '@/features/tratamentos/components/ChipsNecessidades';
 
 type Props = {
   sessoes: SessaoElegivel[];
@@ -148,6 +149,12 @@ function Item({
             {hora}
           </div>
         ) : null}
+        <div className="mt-1">
+          <ChipsNecessidades
+            necessidades={sessao.necessidades}
+            acompanhantes={{ previstos: sessao.acompanhantesPrevistos, limite: sessao.limiteAcompanhantes }}
+          />
+        </div>
       </button>
     </li>
   );

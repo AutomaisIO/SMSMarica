@@ -7,12 +7,13 @@ Este documento descreve **conceitos** e **invariantes**, não tabelas. A forma f
 | Termo | Definição |
 |-------|-----------|
 | **Paciente** | Cidadão cadastrado no programa de transporte sanitário. Tem GPS de residência, documentos (idealmente equivalentes a CNS), contatos. |
-| **Acompanhante** | Pessoa autorizada a viajar com o paciente. Pode ter perfil próprio ou ser apenas cadastro atrelado. |
+| **Acompanhante** | Pessoa que pode viajar com o paciente no transporte. A lista é **do paciente** (vale para todos os atendimentos dele) e fica no `smsmarica` — o domínio de transporte é operacional. Entra pelo par **CPF + data de nascimento**, e o nome é conferido (base de pacientes ou consulta de CPF), nunca digitado. Se a pessoa também é paciente, guarda-se o vínculo; nunca se cria paciente só por ser acompanhante. |
 | **Unidade** | Unidade de saúde da rede (CNES/SISREG): equipamentos, usuários que entram por ela, perfis, integrações. **Não** é o destino do transporte. |
 | **Unidade de atendimento** | Destino do transporte: onde o paciente faz o tratamento (clínica, hospital de referência), quase sempre fora do município (TFD). Cadastro manual e próprio do transporte — nome (sempre em maiúsculas), endereço e **ponto no mapa obrigatório**, que é o fim da rota da van. Sem SISREG, equipamentos, login ou perfil. |
-| **Tratamento** | Associação paciente ↔ unidade de atendimento com uma cadência (**periodicidade**) e o **tempo médio** que o paciente fica lá (base para prever a volta). |
-| **Periodicidade** | Regra temporal do tratamento: "todo dia por N sessões", "a cada 2 dias", "1×/semana", etc. |
-| **Sessão de translado** | Ocorrência concreta gerada pela periodicidade. Cada sessão vira demanda de translado: ida até a unidade + retorno. |
+| **Atendimento** (código: `Tratamento`) | Associação paciente ↔ unidade de atendimento, com **tipo de tratamento** (obrigatório), **agenda**, **condição do paciente** para a viagem (mobilidade, carro alto, isolamento, oxigênio, ajuda) e o **limite de acompanhantes** por viagem (1 por direito; 2 só com liberação justificada). Na tela se chama "Atendimento"; no código e no banco segue `tratamento`. |
+| **Tipo de tratamento** | Catálogo do transporte (Hemodiálise, Radioterapia…). Carrega o **tempo médio** que o paciente fica no tratamento — base para prever a volta; o atendimento não tem tempo próprio. |
+| **Agenda do atendimento** | Dias da semana (bitmask, bit 0 = domingo) a partir de uma data de início, com **N sessões** (até 365) **ou contínuo**. Contínuo gera de mês em mês: as sessões existem sempre até o fim do mês seguinte, e a renovação diária para quando o atendimento é encerrado ou há óbito no cadastro. |
+| **Sessão de translado** | Ocorrência concreta gerada pela agenda (só a data; o horário de busca vem da rota). Cada sessão vira demanda de translado: ida até a unidade + retorno. Guarda quem vai acompanhar naquela viagem. |
 | **Veículo** | Ônibus/van com layout de assentos não-uniforme (cada fileira declara quantos assentos tem). |
 | **Fileira** | Linha de assentos de um veículo. |
 | **Assento** | Posição marcada em uma fileira, alocável a paciente ou acompanhante. |
@@ -39,10 +40,11 @@ erDiagram
   USUARIO }o--o{ PERFIL        : "RBAC (N:N)"
 
   PACIENTE ||--o{ ACOMPANHANTE : "pode ter"
-  PACIENTE ||--o{ TRATAMENTO : "possui"
+  PACIENTE ||--o{ TRATAMENTO : "possui (atendimento)"
   UNIDADE_ATENDIMENTO ||--o{ TRATAMENTO : "é destino de"
-  TRATAMENTO ||--|| PERIODICIDADE : "define"
-  TRATAMENTO ||--o{ SESSAO_TRANSLADO : "gera"
+  TIPO_TRATAMENTO ||--o{ TRATAMENTO : "classifica (tempo médio)"
+  TRATAMENTO ||--o{ SESSAO_TRANSLADO : "gera (agenda)"
+  SESSAO_TRANSLADO }o--o{ ACOMPANHANTE : "leva (até o limite)"
 
   VEICULO ||--o{ FILEIRA : "tem"
   FILEIRA ||--o{ ASSENTO : "tem"
@@ -70,13 +72,16 @@ Estes são os pontos onde a regra de negócio "machuca" — o modelo e os use ca
 - Paciente não pode ser removido se houver sessão futura pendente (apenas desativado).
 - Endereço residencial exige GPS. Sem GPS não há alocação — pelo menos não automática.
 
-### Tratamento e Periodicidade
+### Atendimento (Tratamento) e agenda
 
-- O destino é uma **unidade de atendimento ativa** e o **tempo médio** (1 min a 24 h) é obrigatório. Trocar o destino vale para as próximas rotas geradas; rota já montada não se refaz.
-- Unidade de atendimento com tratamento ativo **não pode ser desativada** — a rota continuaria indo a um destino fora das opções.
-- A periodicidade é **imutável depois de gerar sessões**. Alterar cadência = encerrar tratamento + criar novo.
+- O destino é uma **unidade de atendimento ativa** e o **tipo de tratamento** é obrigatório (é dele que vem o tempo médio, 1 min a 24 h). Trocar o destino vale para as próximas rotas geradas; rota já montada não se refaz.
+- Unidade de atendimento com atendimento ativo **não pode ser desativada** — a rota continuaria indo a um destino fora das opções.
+- **Trocar a agenda** vale de uma data em diante (hoje ou depois): só as sessões **pendentes e sem rota** daquele dia em diante são refeitas; realizadas, confirmadas e alocadas ficam. No modo N, o total é do atendimento inteiro — as que ficaram contam.
 - Sessões passadas (já executadas) **nunca** são regeneradas.
-- Cancelamento de tratamento cancela sessões futuras não alocadas; sessões alocadas precisam de ação explícita do operador.
+- **Contínuo nunca é infinito**: horizonte = fim do mês seguinte; a renovação é idempotente e para com o atendimento encerrado ou com óbito no cadastro.
+- **Encerrar** cancela as sessões futuras não alocadas; sessões alocadas precisam de ação explícita do operador.
+- **Acompanhantes**: no máximo o limite do atendimento por viagem (1; 2 só com justificativa, carimbando quem liberou e quando), e só gente da lista do paciente. Acompanhante escolhido para viagem futura não sai da lista; pelo app o paciente só tira quem ele mesmo cadastrou.
+- A **condição do paciente** é registro para quem monta a rota; o gerador automático ainda não escolhe veículo por ela.
 
 ### Veículo / Assento
 
@@ -88,7 +93,7 @@ Estes são os pontos onde a regra de negócio "machuca" — o modelo e os use ca
 ### Alocação
 
 - Só ocorre para sessões **futuras** (com tolerância configurável para "o dia de hoje").
-- Acompanhante ocupa **1 assento**.
+- Cada acompanhante ocupa **1 assento** (o gerador automático ainda reserva no máximo 1 por sessão).
 - Alterar alocação após o motorista iniciar a rota: permitido, mas gera evento auditável.
 
 ### Rastreamento
@@ -102,7 +107,7 @@ Estes são os pontos onde a regra de negócio "machuca" — o modelo e os use ca
 - Paciente só avalia **após** a sessão concluída (evento de chegada no retorno + tempo mínimo).
 - Uma avaliação por sessão. Edição permitida por janela configurável.
 
-## 4. Fluxo-chave: Periodicidade → Sessão → Alocação → Translado
+## 4. Fluxo-chave: Agenda → Sessão → Alocação → Translado
 
 ```mermaid
 sequenceDiagram
@@ -113,7 +118,7 @@ sequenceDiagram
   participant Mot as Motorista (app)
   participant Cid as Cidadão (app)
 
-  Op->>API: cria Tratamento (paciente, unidade de atendimento, tempo médio, periodicidade)
+  Op->>API: cria Atendimento (paciente, unidade de atendimento, tipo, agenda, condição, acompanhantes)
   API->>Trat: Tratamento.Criar()
   Trat-->>Trat: gera SessoesDeTranslado futuras
   Trat--)Trans: evento "SessaoCriada" (Outbox)

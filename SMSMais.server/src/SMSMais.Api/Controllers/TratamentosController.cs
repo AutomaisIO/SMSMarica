@@ -54,14 +54,14 @@ public sealed class TratamentosController(
         await _service.ObterPorIdAsync(id, cancellationToken);
 
     /// <summary>
-    /// Expande uma regra de periodicidade em uma lista de datas — usado
-    /// pela prévia do wizard de cadastro, antes de persistir.
+    /// As datas que a agenda (dias da semana + N sessões ou contínuo) geraria — a prévia do
+    /// cadastro e da troca de agenda. O servidor é a única fonte das datas.
     /// </summary>
-    [HttpPost("periodicidade/expandir")]
+    [HttpPost("agenda/previa")]
     [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Consulta)]
-    [ProducesResponseType<IReadOnlyList<DateOnly>>(StatusCodes.Status200OK)]
-    public ActionResult<IReadOnlyList<DateOnly>> Expandir([FromBody] ExpandirPeriodicidadeRequest request) =>
-        Ok(_service.ExpandirPeriodicidade(request));
+    [ProducesResponseType<PreviaAgendaDto>(StatusCodes.Status200OK)]
+    public ActionResult<PreviaAgendaDto> PreverAgenda([FromBody] AgendaRequest request) =>
+        Ok(_service.PreverAgenda(request));
 
     [HttpPost]
     [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Inclusao)]
@@ -87,6 +87,25 @@ public sealed class TratamentosController(
         CancellationToken cancellationToken)
     {
         await _service.AtualizarAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Troca a agenda a partir da data de início da agenda nova: refaz as sessões pendentes e sem
+    /// rota daquele dia em diante. Realizadas, confirmadas e alocadas ficam.
+    /// </summary>
+    [HttpPut("{id:guid}/agenda")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AlterarAgenda(
+        Guid id,
+        [FromBody] AgendaRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AlterarAgendaAsync(id, request, cancellationToken);
         return NoContent();
     }
 
@@ -145,9 +164,26 @@ public sealed class TratamentosController(
         return NoContent();
     }
 
+    /// <summary>Quem vai acompanhar o paciente nesta viagem (da lista dele, até o limite do atendimento).</summary>
+    [HttpPut("{id:guid}/sessoes/{sessaoId:guid}/acompanhantes")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DefinirAcompanhantesDaSessao(
+        Guid id,
+        Guid sessaoId,
+        [FromBody] DefinirAcompanhantesSessaoRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.DefinirAcompanhantesDaSessaoAsync(id, sessaoId, request, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>
     /// Confirma realização (ou não realização) de uma sessão — registra
-    /// acompanhante, horários, motorista e veículo de ida/volta.
+    /// quem acompanhou, horários, motorista e veículo de ida/volta.
     /// </summary>
     [HttpPost("{id:guid}/sessoes/{sessaoId:guid}/confirmar")]
     [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]

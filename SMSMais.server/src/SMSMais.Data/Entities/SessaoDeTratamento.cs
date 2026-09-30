@@ -3,10 +3,10 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Data.Entities;
 
 /// <summary>
-/// Sessão programada de um tratamento. Nasce no cadastro do tratamento
-/// (data prevista + horário previsto de busca). Vira um translado físico
-/// quando for alocada em uma RotaDiaria. Campos de realização (opção B)
-/// guardam o que aconteceu de fato — podem divergir do planejado.
+/// Sessão programada de um tratamento. Nasce da agenda do atendimento (dias da semana + N sessões
+/// ou contínuo), só com a data — o horário de busca vem da rota. Vira um translado físico quando
+/// for alocada em uma RotaDiaria. Campos de realização (opção B) guardam o que aconteceu de fato —
+/// podem divergir do planejado.
 /// </summary>
 public class SessaoDeTratamento
 {
@@ -23,6 +23,9 @@ public class SessaoDeTratamento
     // Realização (preenchidos quando o gestor confirma)
     public DateTime? RealizadaEm { get; set; }
     public Guid? ConfirmadaPorUsuarioId { get; set; }
+
+    /// <summary>Texto livre de antes da lista de acompanhantes — só histórico. Quem vai numa
+    /// viagem agora é <see cref="Acompanhantes"/>.</summary>
     public string? NomeAcompanhante { get; set; }
     public string? ParentescoAcompanhante { get; set; }
 
@@ -50,4 +53,7 @@ public class SessaoDeTratamento
     public DateTime? AtualizadoEm { get; set; }
 
     public Tratamento? Tratamento { get; set; }
+
+    /// <summary>Quem vai acompanhar nesta viagem (da lista do paciente, até o limite do atendimento).</summary>
+    public List<SessaoAcompanhante> Acompanhantes { get; set; } = [];
 }

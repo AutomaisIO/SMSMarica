@@ -1,3 +1,5 @@
+using SMSMais.Core.Tratamentos.Dtos;
+
 namespace SMSMais.Core.Translado.Geracao.Dtos;
 
 /// <summary>
@@ -7,7 +9,17 @@ namespace SMSMais.Core.Translado.Geracao.Dtos;
 /// </summary>
 public sealed record GerarTransladoRequest(DateOnly Data, bool Confirmar = false, bool UsarIa = true);
 
-public sealed record ParadaGeradaDto(int Ordem, Guid SessaoId, Guid PacienteId, string PacienteNome, bool ComAcompanhante);
+/// <summary>Uma parada da rota gerada. <paramref name="Necessidades"/> e os acompanhantes vêm do
+/// atendimento só para leitura de quem confere a rota — a distribuição ainda não os considera.</summary>
+public sealed record ParadaGeradaDto(
+    int Ordem,
+    Guid SessaoId,
+    Guid PacienteId,
+    string PacienteNome,
+    bool ComAcompanhante,
+    NecessidadesDto? Necessidades,
+    int AcompanhantesPrevistos,
+    int LimiteAcompanhantes);
 
 public sealed record RotaGeradaDto(
     Guid? RotaId,

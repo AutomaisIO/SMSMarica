@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Translado.Dtos;
+using SMSMais.Core.Tratamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -196,17 +197,30 @@ public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacien
                 s.DataPrevista,
                 s.HoraPrevistaBusca,
                 s.Status,
+                t.Mobilidade,
+                t.DificuldadeVeiculoAlto,
+                t.Isolamento,
+                t.UsaOxigenio,
+                t.NecessitaAjuda,
+                t.AjudaDescricao,
+                AcompanhantesEscolhidos = s.Acompanhantes.Count,
+                s.AcompanhanteEsperado,
+                t.QuantidadeAcompanhantes,
             };
 
         var lista = await query.ToListAsync(cancellationToken);
 
+        // Necessidades e acompanhantes vão só para quem monta a rota ler — o gerador ainda não usa.
         var dtos = lista.Select(x => new SessaoElegivelDto(
             x.Id, x.TratamentoId,
             x.PacienteId, x.PacienteNome,
             x.UnidadeId, x.UnidadeNome,
             x.DataPrevista, x.HoraPrevistaBusca,
             x.Status,
-            x.DataPrevista < dataRota)).ToList();
+            x.DataPrevista < dataRota,
+            new NecessidadesDto(x.Mobilidade, x.DificuldadeVeiculoAlto, x.Isolamento, x.UsaOxigenio, x.NecessitaAjuda, x.AjudaDescricao),
+            x.AcompanhantesEscolhidos > 0 ? x.AcompanhantesEscolhidos : (x.AcompanhanteEsperado == true ? 1 : 0),
+            x.QuantidadeAcompanhantes)).ToList();
 
         // Resolve o nome do paciente pela key (PacienteId = id do Patient no hub FHIR).
         var nomes = await _pacienteResolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), cancellationToken);

@@ -18,6 +18,7 @@ internal sealed class TipoTratamentoConfiguration : IEntityTypeConfiguration<Tip
         builder.Property(t => t.Id).HasColumnName("id");
         builder.Property(t => t.Nome).HasColumnName("nome").HasMaxLength(120).IsRequired();
         builder.Property(t => t.Codigo).HasColumnName("codigo").HasMaxLength(60).IsRequired();
+        builder.Property(t => t.TempoMedioMinutos).HasColumnName("tempo_medio_minutos");
         builder.Property(t => t.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(t => t.CriadoEm).HasColumnName("criado_em").IsRequired();
 

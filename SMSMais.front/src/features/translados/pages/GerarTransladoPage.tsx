@@ -17,6 +17,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { useGerarTranslado } from '@/features/translados/api/queries';
 import type { ResultadoGeracao } from '@/features/translados/types';
+import { ChipsNecessidades } from '@/features/tratamentos/components/ChipsNecessidades';
 
 function dataLocalHoje(): string {
   const d = new Date();
@@ -186,9 +187,13 @@ function Resultado({ resultado, aoAbrirLista }: { resultado: ResultadoGeracao; a
                     {p.ordem}
                   </span>
                   <span>{p.pacienteNome}</span>
-                  {p.comAcompanhante ? (
-                    <span className="rounded-full bg-amber-50 px-1.5 text-[10px] font-medium text-amber-700">+ acompanhante</span>
-                  ) : null}
+                  <ChipsNecessidades
+                    necessidades={p.necessidades}
+                    acompanhantes={{
+                      previstos: p.acompanhantesPrevistos || (p.comAcompanhante ? 1 : 0),
+                      limite: p.limiteAcompanhantes,
+                    }}
+                  />
                 </li>
               ))}
             </ol>

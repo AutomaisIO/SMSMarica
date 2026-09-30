@@ -164,7 +164,7 @@ export function FormularioUnidadeAtendimento({ modo, idUnidade, aoConcluir }: Pr
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Campo label="Nome" htmlFor="ua-nome" erro={erros.nome} required className="md:col-span-2"
-          dica="Sempre em MAIÚSCULAS — é o que aparece no tratamento e na rota.">
+          dica="Sempre em MAIÚSCULAS — é o que aparece no atendimento e na rota.">
           <Input
             id="ua-nome"
             value={valores.nome}

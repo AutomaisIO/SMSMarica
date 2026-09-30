@@ -1,10 +1,12 @@
 import { BookOpen, Bus, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
+import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendimentosTransporte';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
+import { artigoTiposTratamento } from '@/features/manual/conteudo/tiposTratamento';
 import { artigoUnidadesAtendimento } from '@/features/manual/conteudo/unidadesAtendimento';
 import { artigoVeiculos } from '@/features/manual/conteudo/veiculos';
 import type { Artigo, GrupoManual } from '@/features/manual/tipos';
@@ -42,7 +44,7 @@ export const GRUPOS: GrupoManual[] = [
   {
     id: 'transporte',
     titulo: 'Transporte de Pacientes',
-    descricao: 'Destinos, tratamentos, rotas da van e acompanhamento da frota.',
+    descricao: 'Atendimentos, destinos, tipos de tratamento, frota e rotas da van.',
     icone: Bus,
   },
   {
@@ -56,10 +58,12 @@ export const GRUPOS: GrupoManual[] = [
 export const ARTIGOS: Artigo[] = [
   artigoAnamnese,
   artigoAssinaturaLaudo,
+  artigoAtendimentosTransporte,
   artigoConfirmacoes,
   artigoFluxoAtendimentoWhatsApp,
   artigoMensageria,
   artigoOuvidoria,
+  artigoTiposTratamento,
   artigoUnidadesAtendimento,
   artigoVeiculos,
 ];

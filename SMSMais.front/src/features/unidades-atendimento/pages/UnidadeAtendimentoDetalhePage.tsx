@@ -11,8 +11,8 @@ import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useUnidadeAtendimento } from '@/features/unidades-atendimento/api/queries';
 import { enderecoEmLinha } from '@/features/unidades-atendimento/lib/formatar';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
-import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
-import { formatarDuracao } from '@/features/tratamentos/lib/tempoMedio';
+import { formatarDataBr } from '@/features/tratamentos/lib/agenda';
+import { formatarDuracao } from '@/shared/lib/tempoMedio';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
 
 export function UnidadeAtendimentoDetalhePage() {
@@ -109,7 +109,7 @@ export function UnidadeAtendimentoDetalhePage() {
             }
           />
           <Dado rotulo="Observações para o motorista" valor={u.observacoes} />
-          <Dado rotulo="Tratamentos ativos" valor={String(u.tratamentosAtivos)} />
+          <Dado rotulo="Atendimentos ativos" valor={String(u.tratamentosAtivos)} />
         </section>
 
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2">
@@ -126,7 +126,7 @@ export function UnidadeAtendimentoDetalhePage() {
 
       {podeVerTratamentos ? (
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-3 text-base font-semibold text-gray-900">Tratamentos com destino nesta unidade</h2>
+          <h2 className="mb-3 text-base font-semibold text-gray-900">Atendimentos com destino nesta unidade</h2>
           {tratamentos.isError ? (
             <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {extrairMensagemDeErro(tratamentos.error)}
@@ -138,8 +138,8 @@ export function UnidadeAtendimentoDetalhePage() {
             chaveLinha={(t) => t.id}
             carregando={tratamentos.isLoading}
             aoClicarLinha={(t) => navigate(`/app/tratamentos/${t.id}`)}
-            dicaLinha="Abrir o tratamento"
-            vazio="Nenhum tratamento aponta para esta unidade."
+            dicaLinha="Abrir o atendimento"
+            vazio="Nenhum atendimento aponta para esta unidade."
           />
         </section>
       ) : null}

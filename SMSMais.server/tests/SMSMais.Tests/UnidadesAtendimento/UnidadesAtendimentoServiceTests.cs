@@ -13,13 +13,14 @@ using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
+using SMSMais.Tests.Tratamentos;
 
 namespace SMSMais.Tests.UnidadesAtendimento;
 
 /// <summary>
 /// Unidade de atendimento é o DESTINO do transporte: a coordenada dela é o fim da rota da van.
 /// Por isso nenhuma entra sem ponto no mapa, e nenhuma sai de cena com tratamento ativo indo para
-/// lá. O tratamento passa a apontar para ela (e carrega o tempo médio que o paciente fica lá).
+/// lá. O atendimento aponta para ela; o tempo médio que o paciente fica lá vem do tipo de tratamento.
 /// </summary>
 [Collection(nameof(PostgresCollection))]
 public class UnidadesAtendimentoServiceTests(PostgresFixture fixture)
@@ -33,13 +34,10 @@ public class UnidadesAtendimentoServiceTests(PostgresFixture fixture)
     private static UnidadesAtendimentoService Servico(SmsMaisDbContext db, IGeocodificadorService? geo = null) =>
         new(db, geo ?? Substitute.For<IGeocodificadorService>(), new UsuarioAtualAccessorFake(Guid.NewGuid()));
 
-    private static TratamentosService ServicoTratamentos(SmsMaisDbContext db) =>
-        new(db, Substitute.For<IPacienteResolver>(), Substitute.For<IFaturamentoService>());
+    private static TratamentosService ServicoTratamentos(SmsMaisDbContext db) => TransporteFabrica.Servico(db);
 
-    private static CadastrarTratamentoRequest NovoTratamento(Guid destinoId, int tempoMedio = 240) => new(
-        Guid.NewGuid(), destinoId, null, "Hemodiálise", null, null, new TimeOnly(6, 0), tempoMedio,
-        new CadastrarPeriodicidadeRequest(TipoPeriodicidade.Manual, null, null, new DateOnly(2026, 10, 5), 1),
-        [new DateOnly(2026, 10, 5)]);
+    private static async Task<CadastrarTratamentoRequest> NovoTratamentoAsync(SmsMaisDbContext db, Guid destinoId, int tempoMedio = 240) =>
+        TransporteFabrica.Novo(destinoId, await TransporteFabrica.NovoTipoAsync(db, tempoMedio));
 
     [Fact]
     public async Task Pin_do_mapa_vale_sem_geocodificar_nome_vira_maiusculas_e_cep_so_digitos()
@@ -100,13 +98,13 @@ public class UnidadesAtendimentoServiceTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Tratamento_grava_destino_e_tempo_medio_e_aparece_na_lista_da_unidade()
+    public async Task Atendimento_grava_destino_mostra_o_tempo_do_tipo_e_aparece_na_lista_da_unidade()
     {
         await using var db = fixture.CriarDbContext();
         var destinoId = await Servico(db).CadastrarAsync(new SalvarUnidadeAtendimentoRequest(
             NomeUnico("Nefro"), Endereco(), null, null, -22.9, -43.1));
 
-        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(NovoTratamento(destinoId, tempoMedio: 270));
+        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(await NovoTratamentoAsync(db, destinoId, tempoMedio: 270));
 
         var dto = await ServicoTratamentos(db).ObterPorIdAsync(tratamentoId);
         Assert.Equal(destinoId, dto.UnidadeAtendimentoId);
@@ -129,7 +127,7 @@ public class UnidadesAtendimentoServiceTests(PostgresFixture fixture)
         var servico = Servico(db);
         var destinoId = await servico.CadastrarAsync(new SalvarUnidadeAtendimentoRequest(
             NomeUnico("Destino ocupado"), Endereco(), null, null, -22.9, -43.1));
-        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(NovoTratamento(destinoId));
+        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(await NovoTratamentoAsync(db, destinoId));
 
         await Assert.ThrowsAsync<ConflitoException>(() => servico.DesativarAsync(destinoId));
 
@@ -150,16 +148,18 @@ public class UnidadesAtendimentoServiceTests(PostgresFixture fixture)
         var inativoId = await servico.CadastrarAsync(new SalvarUnidadeAtendimentoRequest(
             NomeUnico("Inativo"), Endereco(), null, null, -22.9, -43.1));
         await servico.DesativarAsync(inativoId);
+        var tipoId = await TransporteFabrica.NovoTipoAsync(db);
 
-        await Assert.ThrowsAsync<ConflitoException>(() => ServicoTratamentos(db).CadastrarAsync(NovoTratamento(inativoId)));
+        await Assert.ThrowsAsync<ConflitoException>(() => ServicoTratamentos(db).CadastrarAsync(TransporteFabrica.Novo(inativoId, tipoId)));
 
-        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(NovoTratamento(ativoId));
+        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(TransporteFabrica.Novo(ativoId, tipoId));
         await Assert.ThrowsAsync<ConflitoException>(() => ServicoTratamentos(db).AtualizarAsync(tratamentoId,
-            new AtualizarTratamentoRequest("Hemodiálise", inativoId, null, null, null, null, 240)));
+            new AtualizarTratamentoRequest("Hemodiálise", inativoId, tipoId, null,
+                TransporteFabrica.SemNecessidades, TransporteFabrica.UmAcompanhante)));
     }
 
     [Fact]
-    public async Task Editar_troca_destino_e_tempo_medio()
+    public async Task Editar_troca_destino_e_tipo_e_o_tempo_medio_acompanha_o_tipo()
     {
         await using var db = fixture.CriarDbContext();
         var servico = Servico(db);
@@ -167,14 +167,16 @@ public class UnidadesAtendimentoServiceTests(PostgresFixture fixture)
             NomeUnico("Antigo"), Endereco(), null, null, -22.9, -43.1));
         var novoId = await servico.CadastrarAsync(new SalvarUnidadeAtendimentoRequest(
             NomeUnico("Novo"), Endereco(), null, null, -22.8, -43.2));
-        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(NovoTratamento(origemId, tempoMedio: 240));
+        var tratamentoId = await ServicoTratamentos(db).CadastrarAsync(await NovoTratamentoAsync(db, origemId, tempoMedio: 240));
+        var outroTipo = await TransporteFabrica.NovoTipoAsync(db, tempoMedio: 210);
 
         await ServicoTratamentos(db).AtualizarAsync(tratamentoId,
-            new AtualizarTratamentoRequest("Hemodiálise", novoId, null, null, null, new TimeOnly(5, 30), 210));
+            new AtualizarTratamentoRequest("Hemodiálise", novoId, outroTipo, null,
+                TransporteFabrica.SemNecessidades, TransporteFabrica.UmAcompanhante));
 
         await using var leitura = fixture.CriarDbContext();
         var salvo = await leitura.Tratamentos.AsNoTracking().SingleAsync(t => t.Id == tratamentoId);
         Assert.Equal(novoId, salvo.UnidadeAtendimentoId);
-        Assert.Equal(210, salvo.TempoMedioMinutos);
+        Assert.Equal(210, (await ServicoTratamentos(leitura).ObterPorIdAsync(tratamentoId)).TempoMedioMinutos);
     }
 }

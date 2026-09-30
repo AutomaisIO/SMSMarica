@@ -78,9 +78,8 @@ public sealed record AtualizarContatoCidadaoRequest(
 
 public sealed record AtualizarFotoCidadaoRequest(string? FotoBase64);
 
-// --- Resumos clínicos do app (shapes estáveis p/ a PWA). Translados/exames/laudos
-// ainda são stub; atendimentos já vêm do hub FHIR (Encounter + Condition + documentos). ---
-public sealed record TransladoResumoDto(Guid Id, string Data, string Destino, string Status);
+// --- Resumos clínicos do app (shapes estáveis p/ a PWA). Atendimentos vêm do hub FHIR
+// (Encounter + Condition + documentos); as viagens do transporte, de ITratamentosService. ---
 public sealed record AtendimentoResumoDto(
     Guid Id,
     DateTime Data,

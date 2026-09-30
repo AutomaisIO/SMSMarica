@@ -1,40 +1,44 @@
-import { useMemo, useState } from 'react';
-import { ArrowLeft, CalendarPlus, Check, Loader2, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { hojeSP } from '@/shared/lib/datas';
+import { descreverDias } from '@/shared/lib/diasSemana';
+import { formatarDuracao } from '@/shared/lib/tempoMedio';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { BuscaPaciente } from '@/shared/ui/BuscaPaciente';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { usePermissao } from '@/shared/auth/authStore';
+import { ListaAcompanhantes } from '@/features/acompanhantes/components/ListaAcompanhantes';
 import {
   useCadastrarTratamento,
   useOpcoesUnidadesAtendimento,
+  usePreviaAgenda,
   useTiposTratamento,
 } from '@/features/tratamentos/api/queries';
-import { CampoTempoMedio } from '@/features/tratamentos/components/CampoTempoMedio';
-import { formatarDuracao, paraMinutos } from '@/features/tratamentos/lib/tempoMedio';
+import { CampoLimiteAcompanhantes } from '@/features/tratamentos/components/CampoLimiteAcompanhantes';
+import { CamposAgenda } from '@/features/tratamentos/components/CamposAgenda';
+import { CamposNecessidades } from '@/features/tratamentos/components/CamposNecessidades';
+import { ChipsNecessidades } from '@/features/tratamentos/components/ChipsNecessidades';
+import { formatarDataBr, paraAgendaPayload, type EstadoAgenda } from '@/features/tratamentos/lib/agenda';
+import { necessidadesValidas, paraNecessidadesPayload } from '@/features/tratamentos/lib/necessidades';
 import {
-  DIAS_SEMANA,
-  LIMITE_SESSOES,
-  diaSemanaCurto,
-  expandir,
-  formatarDataBr,
-  type RegraPeriodicidade,
-} from '@/features/tratamentos/lib/expansor';
-import {
-  TIPO_PERIODICIDADE_VALOR,
-  type TipoPeriodicidade,
+  SEM_NECESSIDADES,
+  type Necessidades,
+  type RegraAcompanhantesPayload,
 } from '@/features/tratamentos/types';
 import type { PacienteListItem } from '@/features/pacientes/types';
 
-type Passo = 'paciente' | 'dados' | 'periodicidade' | 'revisao';
+type Passo = 'paciente' | 'dados' | 'condicao' | 'agenda' | 'revisao';
 
 export function TratamentoFormPage() {
   const navigate = useNavigate();
   const destinos = useOpcoesUnidadesAtendimento();
   const podeCadastrarDestino = usePermissao('UnidadesAtendimento', 'Inclusao');
+  const podeEditarAcompanhantes = usePermissao('Tratamentos', 'Edicao');
   const tipos = useTiposTratamento();
   const cadastrar = useCadastrarTratamento();
 
@@ -44,111 +48,59 @@ export function TratamentoFormPage() {
     tipoTratamentoId: '',
     unidadeAtendimentoId: '',
     descricao: '',
-    codigoSusLiberacao: '',
-    horaPrevistaBusca: '',
-    tempoMedioHoras: '',
-    tempoMedioMinutos: '',
     observacoes: '',
   });
-  const tempoMedio = paraMinutos(dados.tempoMedioHoras, dados.tempoMedioMinutos);
-  const [regra, setRegra] = useState<RegraPeriodicidade>({
-    tipo: 'SemanaDiasFixos',
-    intervaloDias: null,
-    diasSemanaMascara: (1 << 1) | (1 << 3), // Segunda + Quarta
-    dataInicio: '',
-    quantidadeSessoes: 12,
+  const [necessidades, setNecessidades] = useState<Necessidades>(SEM_NECESSIDADES);
+  const [regraAcompanhantes, setRegraAcompanhantes] = useState<RegraAcompanhantesPayload>({
+    quantidade: 1,
+    justificativaSegundo: null,
   });
-  const [datasOverride, setDatasOverride] = useState<string[] | null>(null);
-  const [dataManual, setDataManual] = useState('');
+  const [agenda, setAgenda] = useState<EstadoAgenda>({
+    dataInicio: hojeSP(),
+    diasSemanaMascara: (1 << 1) | (1 << 3) | (1 << 5), // Seg, Qua e Sex
+    continuo: false,
+    quantidade: '12',
+  });
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
 
-  const datasExpansao = useMemo(() => {
-    if (datasOverride) return datasOverride;
-    if (regra.tipo === 'Manual') return [];
-    return expandir(regra);
-  }, [regra, datasOverride]);
+  const agendaPayload = paraAgendaPayload(agenda);
+  const previa = usePreviaAgenda(agendaPayload);
+  const totalPrevisto = agendaPayload ? (previa.data?.datas.length ?? 0) : 0;
 
-  function reset() {
-    setDatasOverride(null);
-  }
+  const opcoesDestino = destinos.data ?? [];
+  const destinoEscolhido = opcoesDestino.find((u) => u.id === dados.unidadeAtendimentoId);
+  const tipoEscolhido = (tipos.data ?? []).find((t) => t.id === dados.tipoTratamentoId);
 
-  function setTipo(tipo: TipoPeriodicidade) {
-    reset();
-    setRegra((r) => ({
-      ...r,
-      tipo,
-      intervaloDias: tipo === 'IntervaloDias' ? (r.intervaloDias ?? 2) : null,
-      diasSemanaMascara: tipo === 'SemanaDiasFixos' ? (r.diasSemanaMascara ?? (1 << 1)) : null,
-    }));
-  }
-
-  function alternarDiaSemana(bit: number) {
-    reset();
-    setRegra((r) => ({
-      ...r,
-      diasSemanaMascara: ((r.diasSemanaMascara ?? 0) ^ bit) || null,
-    }));
-  }
-
-  function removerData(iso: string) {
-    setDatasOverride((cur) => (cur ?? datasExpansao).filter((d) => d !== iso));
-  }
-
-  function adicionarDataManual() {
-    if (!dataManual) return;
-    setDatasOverride((cur) => {
-      const base = cur ?? datasExpansao;
-      if (base.includes(dataManual)) return base;
-      return [...base, dataManual].sort();
-    });
-    setDataManual('');
-  }
+  const podeAvancarDados =
+    Boolean(paciente) &&
+    Boolean(dados.tipoTratamentoId) &&
+    Boolean(dados.unidadeAtendimentoId) &&
+    dados.descricao.trim().length > 0;
+  const condicaoOk =
+    necessidadesValidas(necessidades) &&
+    (regraAcompanhantes.quantidade === 1 || Boolean(regraAcompanhantes.justificativaSegundo?.trim()));
+  const agendaOk = agendaPayload !== null && totalPrevisto > 0;
+  const podeConfirmar = podeAvancarDados && condicaoOk && agendaOk;
 
   async function confirmar() {
-    if (!paciente || tempoMedio == null) return;
+    if (!paciente || !agendaPayload) return;
     setErroGlobal(null);
     try {
       const id = await cadastrar.mutateAsync({
         pacienteId: paciente.id,
         unidadeAtendimentoId: dados.unidadeAtendimentoId,
-        tipoTratamentoId: dados.tipoTratamentoId || null,
+        tipoTratamentoId: dados.tipoTratamentoId,
         descricao: dados.descricao.trim(),
-        codigoSusLiberacao: dados.codigoSusLiberacao.trim() || null,
         observacoes: dados.observacoes.trim() || null,
-        horaPrevistaBusca: dados.horaPrevistaBusca || null,
-        tempoMedioMinutos: tempoMedio,
-        periodicidade: {
-          tipo: TIPO_PERIODICIDADE_VALOR[regra.tipo],
-          intervaloDias: regra.intervaloDias,
-          diasSemanaMascara: regra.diasSemanaMascara,
-          dataInicio: regra.dataInicio,
-          quantidadeSessoes: datasExpansao.length || regra.quantidadeSessoes,
-        },
-        datas: datasExpansao,
+        agenda: agendaPayload,
+        necessidades: paraNecessidadesPayload(necessidades),
+        acompanhantes: regraAcompanhantes,
       });
       navigate(`/app/tratamentos/${id}`, { replace: true });
     } catch (e) {
       setErroGlobal(extrairMensagemDeErro(e));
     }
   }
-
-  const podeAvancarDados =
-    paciente &&
-    dados.unidadeAtendimentoId &&
-    tempoMedio != null &&
-    dados.descricao.trim().length > 0;
-
-  const podeConfirmar =
-    podeAvancarDados &&
-    datasExpansao.length > 0 &&
-    datasExpansao.length <= LIMITE_SESSOES;
-
-  const opcoesDestino = destinos.data ?? [];
-  const destinoEscolhido = opcoesDestino.find((u) => u.id === dados.unidadeAtendimentoId);
-  const tempoInvalido =
-    (dados.tempoMedioHoras !== '' || dados.tempoMedioMinutos !== '') && tempoMedio == null
-      ? 'Entre 1 minuto e 24 horas (minutos de 0 a 59).'
-      : undefined;
 
   return (
     <div className="space-y-6">
@@ -162,14 +114,17 @@ export function TratamentoFormPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Novo tratamento</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold text-gray-900">Novo atendimento</h1>
+            <AjudaManual artigo="atendimentos-transporte" secao="cadastrar" />
+          </div>
           <p className="text-sm text-gray-600">
             {paciente ? `Paciente: ${paciente.nomeCompleto}` : 'Selecione o paciente para começar.'}
           </p>
         </div>
       </header>
 
-      <BarraPassos passo={passo} paciente={paciente} dadosOk={Boolean(podeAvancarDados)} />
+      <BarraPassos passo={passo} />
 
       {passo === 'paciente' ? (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -188,9 +143,23 @@ export function TratamentoFormPage() {
 
       {passo === 'dados' ? (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-base font-medium text-gray-900">2. Dados do tratamento</h2>
+          <h2 className="mb-4 text-base font-medium text-gray-900">2. Dados do atendimento</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Campo label="Tipo de tratamento" htmlFor="tipo">
+            <Campo
+              label="Tipo de tratamento"
+              htmlFor="tipo"
+              required
+              erro={
+                tipoEscolhido && tipoEscolhido.tempoMedioMinutos == null
+                  ? 'Este tipo ainda não tem tempo médio. Dá para seguir, mas peça a quem cuida de Tipos de tratamento para preencher.'
+                  : undefined
+              }
+              dica={
+                tipoEscolhido?.tempoMedioMinutos != null
+                  ? `Tempo médio do tipo: ${formatarDuracao(tipoEscolhido.tempoMedioMinutos)} (da chegada à liberação).`
+                  : 'O tempo médio vem do tipo de tratamento.'
+              }
+            >
               <Select
                 id="tipo"
                 value={dados.tipoTratamentoId}
@@ -224,7 +193,7 @@ export function TratamentoFormPage() {
                     )}
                   </>
                 ) : (
-                  'Onde o paciente faz o tratamento — o fim da rota da van.'
+                  'Onde o paciente é atendido — o fim da rota da van.'
                 )
               }
             >
@@ -242,38 +211,16 @@ export function TratamentoFormPage() {
                 ))}
               </Select>
             </Campo>
-            <Campo label="Descrição" htmlFor="descricao" className="md:col-span-2"
-              dica="Texto curto que identifica esse tratamento (aparece nas listagens).">
+            <Campo label="Descrição" htmlFor="descricao" required className="md:col-span-2"
+              dica="Texto curto que identifica esse atendimento (aparece nas listagens).">
               <Input
                 id="descricao"
                 value={dados.descricao}
+                maxLength={500}
                 onChange={(e) => setDados((d) => ({ ...d, descricao: e.target.value }))}
                 placeholder="Ex: Hemodiálise — 3x/sem"
               />
             </Campo>
-            <Campo label="Código SUS de liberação" htmlFor="codigoSus"
-              dica="APAC/AIH ou equivalente.">
-              <Input
-                id="codigoSus"
-                value={dados.codigoSusLiberacao}
-                onChange={(e) => setDados((d) => ({ ...d, codigoSusLiberacao: e.target.value }))}
-              />
-            </Campo>
-            <Campo label="Horário previsto da busca" htmlFor="hora"
-              dica="Padrão herdado por cada sessão (pode ser ajustado depois).">
-              <Input
-                id="hora"
-                type="time"
-                value={dados.horaPrevistaBusca}
-                onChange={(e) => setDados((d) => ({ ...d, horaPrevistaBusca: e.target.value }))}
-              />
-            </Campo>
-            <CampoTempoMedio
-              horas={dados.tempoMedioHoras}
-              minutos={dados.tempoMedioMinutos}
-              aoMudar={(v) => setDados((d) => ({ ...d, tempoMedioHoras: v.horas, tempoMedioMinutos: v.minutos }))}
-              erro={tempoInvalido}
-            />
             <Campo label="Observações" htmlFor="obs" className="md:col-span-2">
               <textarea
                 id="obs"
@@ -285,189 +232,85 @@ export function TratamentoFormPage() {
           </div>
           <div className="mt-6 flex justify-between">
             <Button variante="ghost" onClick={() => setPasso('paciente')}>Voltar</Button>
-            <Button disabled={!podeAvancarDados} onClick={() => setPasso('periodicidade')}>
-              Avançar
-            </Button>
+            <Button disabled={!podeAvancarDados} onClick={() => setPasso('condicao')}>Avançar</Button>
           </div>
         </div>
       ) : null}
 
-      {passo === 'periodicidade' ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-base font-medium text-gray-900">3. Periodicidade e datas</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Campo label="Tipo de periodicidade" htmlFor="tipoPer">
-              <Select
-                id="tipoPer"
-                value={regra.tipo}
-                onChange={(e) => setTipo(e.target.value as TipoPeriodicidade)}
-              >
-                <option value="Diaria">Diária (1x por dia consecutivo)</option>
-                <option value="SemanaDiasFixos">Semanal — dias fixos da semana</option>
-                <option value="IntervaloDias">A cada N dias</option>
-                <option value="Manual">Manual — lançar datas individualmente</option>
-              </Select>
-            </Campo>
-            <Campo label="Data de início" htmlFor="inicio">
-              <Input
-                id="inicio"
-                type="date"
-                value={regra.dataInicio}
-                onChange={(e) => {
-                  reset();
-                  setRegra((r) => ({ ...r, dataInicio: e.target.value }));
-                }}
-              />
-            </Campo>
-            <Campo label="Número de sessões" htmlFor="qtd">
-              <Input
-                id="qtd"
-                type="number"
-                min={1}
-                max={LIMITE_SESSOES}
-                value={regra.quantidadeSessoes}
-                onChange={(e) => {
-                  reset();
-                  setRegra((r) => ({ ...r, quantidadeSessoes: Number(e.target.value) || 0 }));
-                }}
-                disabled={regra.tipo === 'Manual'}
-              />
-            </Campo>
-            {regra.tipo === 'IntervaloDias' ? (
-              <Campo label="Intervalo (dias)" htmlFor="intervalo">
-                <Input
-                  id="intervalo"
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={regra.intervaloDias ?? ''}
-                  onChange={(e) => {
-                    reset();
-                    setRegra((r) => ({ ...r, intervaloDias: Number(e.target.value) || null }));
-                  }}
-                />
-              </Campo>
-            ) : null}
-            {regra.tipo === 'SemanaDiasFixos' ? (
-              <Campo label="Dias da semana" htmlFor="dias" className="md:col-span-2">
-                <div className="flex flex-wrap gap-2">
-                  {DIAS_SEMANA.map((d) => {
-                    const selecionado = ((regra.diasSemanaMascara ?? 0) & d.bit) !== 0;
-                    return (
-                      <button
-                        key={d.bit}
-                        type="button"
-                        onClick={() => alternarDiaSemana(d.bit)}
-                        className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                          selecionado
-                            ? 'border-red-600 bg-red-50 text-red-700'
-                            : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {d.curto}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Campo>
-            ) : null}
+      {passo === 'condicao' && paciente ? (
+        <div className="space-y-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <div>
+            <h2 className="mb-1 text-base font-medium text-gray-900">3. Condição do paciente e acompanhantes</h2>
+            <p className="mb-4 text-sm text-gray-600">
+              Para quem monta a rota escolher o veículo e os lugares. Marque só o que se aplica.
+            </p>
+            <CamposNecessidades valor={necessidades} aoMudar={setNecessidades} />
           </div>
-
-          <div className="mt-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Prévia das sessões ({datasExpansao.length})
-              </h3>
-              {datasOverride ? (
-                <button
-                  type="button"
-                  className="text-xs text-red-700 hover:underline"
-                  onClick={reset}
-                >
-                  Restaurar datas calculadas
-                </button>
-              ) : null}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Input
-                type="date"
-                value={dataManual}
-                onChange={(e) => setDataManual(e.target.value)}
-                className="max-w-xs"
-              />
-              <Button variante="outline" onClick={adicionarDataManual} disabled={!dataManual}>
-                <CalendarPlus className="mr-1.5 h-4 w-4" /> Adicionar data
-              </Button>
-            </div>
-
-            {datasExpansao.length > 0 ? (
-              <ul className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-                {datasExpansao.map((d) => (
-                  <li
-                    key={d}
-                    className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                  >
-                    <span>
-                      <strong>{formatarDataBr(d)}</strong>
-                      <span className="ml-1 text-xs text-gray-500">{diaSemanaCurto(d)}</span>
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={`Remover ${d}`}
-                      onClick={() => removerData(d)}
-                      className="text-red-700 hover:text-red-900"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm text-gray-500">
-                {regra.tipo === 'Manual'
-                  ? 'Adicione as datas manualmente acima.'
-                  : 'Preencha data de início e periodicidade para gerar a prévia.'}
-              </p>
-            )}
+          <div className="border-t border-gray-100 pt-5">
+            <CampoLimiteAcompanhantes valor={regraAcompanhantes} aoMudar={setRegraAcompanhantes} />
           </div>
-
-          <div className="mt-6 flex justify-between">
+          <div className="border-t border-gray-100 pt-5">
+            <ListaAcompanhantes pacienteId={paciente.id} podeEditar={podeEditarAcompanhantes} />
+          </div>
+          <div className="flex justify-between">
             <Button variante="ghost" onClick={() => setPasso('dados')}>Voltar</Button>
-            <Button onClick={() => setPasso('revisao')} disabled={datasExpansao.length === 0}>
-              Avançar
-            </Button>
+            <Button disabled={!condicaoOk} onClick={() => setPasso('agenda')}>Avançar</Button>
+          </div>
+        </div>
+      ) : null}
+
+      {passo === 'agenda' ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-base font-medium text-gray-900">4. Agenda</h2>
+          <CamposAgenda valor={agenda} aoMudar={setAgenda} />
+          <div className="mt-6 flex justify-between">
+            <Button variante="ghost" onClick={() => setPasso('condicao')}>Voltar</Button>
+            <Button onClick={() => setPasso('revisao')} disabled={!agendaOk}>Avançar</Button>
           </div>
         </div>
       ) : null}
 
       {passo === 'revisao' ? (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-base font-medium text-gray-900">4. Confirmação</h2>
+          <h2 className="mb-4 text-base font-medium text-gray-900">5. Confirmação</h2>
           <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Item rotulo="Paciente" valor={paciente?.nomeCompleto ?? '—'} />
             <Item rotulo="Unidade de atendimento" valor={destinoEscolhido?.nome ?? '—'} />
-            <Item rotulo="Tipo" valor={tipos.data?.find((t) => t.id === dados.tipoTratamentoId)?.nome ?? '—'} />
-            <Item rotulo="Código SUS" valor={dados.codigoSusLiberacao || '—'} />
+            <Item rotulo="Tipo" valor={tipoEscolhido?.nome ?? '—'} />
+            <Item rotulo="Tempo médio (do tipo)" valor={formatarDuracao(tipoEscolhido?.tempoMedioMinutos)} />
             <Item rotulo="Descrição" valor={dados.descricao} />
-            <Item rotulo="Horário previsto" valor={dados.horaPrevistaBusca || '—'} />
-            <Item rotulo="Tempo médio no tratamento" valor={formatarDuracao(tempoMedio)} />
-            <Item rotulo="Total de sessões" valor={String(datasExpansao.length)} />
+            <Item
+              rotulo="Agenda"
+              valor={`${descreverDias(agenda.diasSemanaMascara)} a partir de ${formatarDataBr(agenda.dataInicio)} · ${
+                agenda.continuo ? 'contínuo (renova todo mês)' : `${agenda.quantidade} sessões`
+              }`}
+            />
+            <Item rotulo="Sessões criadas agora" valor={String(totalPrevisto)} />
+            <Item
+              rotulo="Acompanhantes por viagem"
+              valor={regraAcompanhantes.quantidade === 2 ? '2 (liberado com justificativa)' : '1'}
+            />
+            <div className="md:col-span-2">
+              <dt className="text-xs uppercase tracking-wide text-gray-500">Condição do paciente</dt>
+              <dd className="mt-1">
+                <ChipsNecessidades necessidades={necessidades} mostrarVazio />
+              </dd>
+            </div>
           </dl>
 
           {erroGlobal ? (
-            <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {erroGlobal}
             </div>
           ) : null}
 
           <div className="mt-6 flex justify-between">
-            <Button variante="ghost" onClick={() => setPasso('periodicidade')}>Voltar</Button>
+            <Button variante="ghost" onClick={() => setPasso('agenda')}>Voltar</Button>
             <Button onClick={confirmar} disabled={!podeConfirmar || cadastrar.isPending}>
               {cadastrar.isPending ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando…</>
               ) : (
-                <><Check className="mr-2 h-4 w-4" /> Cadastrar tratamento</>
+                <><Check className="mr-2 h-4 w-4" /> Cadastrar atendimento</>
               )}
             </Button>
           </div>
@@ -477,32 +320,29 @@ export function TratamentoFormPage() {
   );
 }
 
-function BarraPassos({ passo, paciente, dadosOk }: { passo: Passo; paciente: PacienteListItem | null; dadosOk: boolean }) {
-  const estados = [
-    { id: 'paciente', label: 'Paciente', done: Boolean(paciente) },
-    { id: 'dados', label: 'Dados', done: dadosOk && passo !== 'dados' },
-    { id: 'periodicidade', label: 'Periodicidade', done: passo === 'revisao' },
-    { id: 'revisao', label: 'Confirmação', done: false },
-  ];
+const PASSOS: { id: Passo; label: string }[] = [
+  { id: 'paciente', label: 'Paciente' },
+  { id: 'dados', label: 'Dados' },
+  { id: 'condicao', label: 'Condição e acompanhantes' },
+  { id: 'agenda', label: 'Agenda' },
+  { id: 'revisao', label: 'Confirmação' },
+];
+
+function BarraPassos({ passo }: { passo: Passo }) {
+  const atual = PASSOS.findIndex((p) => p.id === passo);
   return (
-    <ol className="flex items-center gap-4 text-sm">
-      {estados.map((e, i) => (
+    <ol className="flex flex-wrap items-center gap-4 text-sm">
+      {PASSOS.map((e, i) => (
         <li key={e.id} className="flex items-center gap-2">
           <span
             className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-              passo === e.id
-                ? 'bg-red-600 text-white'
-                : e.done
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-200 text-gray-600'
+              i === atual ? 'bg-red-600 text-white' : i < atual ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
             }`}
           >
             {i + 1}
           </span>
-          <span className={passo === e.id ? 'font-medium text-gray-900' : 'text-gray-500'}>
-            {e.label}
-          </span>
-          {i < estados.length - 1 ? <span className="text-gray-300">›</span> : null}
+          <span className={i === atual ? 'font-medium text-gray-900' : 'text-gray-500'}>{e.label}</span>
+          {i < PASSOS.length - 1 ? <span className="text-gray-300">›</span> : null}
         </li>
       ))}
     </ol>

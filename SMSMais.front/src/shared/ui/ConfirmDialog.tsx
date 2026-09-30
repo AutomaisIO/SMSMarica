@@ -10,6 +10,8 @@ type Props = {
   rotuloCancelar?: string;
   destrutivo?: boolean;
   carregando?: boolean;
+  /** Falha do ato confirmado — aparece aqui dentro, onde a pessoa está olhando. */
+  erro?: string | null;
   aoConfirmar: () => void;
   aoCancelar: () => void;
 };
@@ -22,6 +24,7 @@ export function ConfirmDialog({
   rotuloCancelar = 'Cancelar',
   destrutivo = false,
   carregando = false,
+  erro,
   aoConfirmar,
   aoCancelar,
 }: Props) {
@@ -34,6 +37,11 @@ export function ConfirmDialog({
           </div>
           <p className="text-sm text-gray-700">{mensagem}</p>
         </div>
+        {erro ? (
+          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {erro}
+          </div>
+        ) : null}
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button type="button" variante="ghost" onClick={aoCancelar} disabled={carregando}>
             {rotuloCancelar}

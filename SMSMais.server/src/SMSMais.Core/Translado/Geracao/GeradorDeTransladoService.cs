@@ -6,6 +6,7 @@ using SMSMais.Core.Geo.Google;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Translado.Geracao.Dtos;
 using SMSMais.Core.Translado.Geracao.IA;
+using SMSMais.Core.Tratamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -45,7 +46,22 @@ public sealed class GeradorDeTransladoService(
                 Lat = (double?)u.Gps!.Latitude,
                 Lng = (double?)u.Gps!.Longitude,
                 Acomp = s.AcompanhanteEsperado == true,
+                t.Mobilidade,
+                t.DificuldadeVeiculoAlto,
+                t.Isolamento,
+                t.UsaOxigenio,
+                t.NecessitaAjuda,
+                t.AjudaDescricao,
+                AcompEscolhidos = s.Acompanhantes.Count,
+                LimiteAcomp = t.QuantidadeAcompanhantes,
             }).ToListAsync(ct);
+
+        // Condição do paciente e acompanhantes só seguem para a tela — a distribuição ainda não os usa.
+        var leituraPorSessao = rows.ToDictionary(
+            r => r.Id,
+            r => (Necessidades: new NecessidadesDto(r.Mobilidade, r.DificuldadeVeiculoAlto, r.Isolamento, r.UsaOxigenio, r.NecessitaAjuda, r.AjudaDescricao),
+                  Previstos: r.AcompEscolhidos > 0 ? r.AcompEscolhidos : (r.Acomp ? 1 : 0),
+                  Limite: r.LimiteAcomp));
 
         var naoAlocadas = new List<SessaoNaoAlocadaDto>();
         var candidatos = new List<Candidato>();
@@ -265,7 +281,12 @@ public sealed class GeradorDeTransladoService(
             }
 
             var paradas = p.Ordenado
-                .Select((c, idx) => new ParadaGeradaDto(idx + 1, c.SessaoId, c.PacienteId, c.Nome, c.ComAcompanhante))
+                .Select((c, idx) =>
+                {
+                    var leitura = leituraPorSessao.GetValueOrDefault(c.SessaoId);
+                    return new ParadaGeradaDto(idx + 1, c.SessaoId, c.PacienteId, c.Nome, c.ComAcompanhante,
+                        leitura.Necessidades, leitura.Previstos, leitura.Limite);
+                })
                 .ToList();
 
             rotasDto.Add(new RotaGeradaDto(

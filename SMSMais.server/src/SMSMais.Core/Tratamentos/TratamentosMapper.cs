@@ -16,6 +16,10 @@ internal static class TratamentosMapper
         s.Id, s.TratamentoId, s.DataPrevista,
         s.HoraPrevistaBusca, s.HoraPrevistaRetorno, s.Status,
         s.RealizadaEm, s.NomeAcompanhante, s.ParentescoAcompanhante,
+        [.. s.Acompanhantes
+            .Where(x => x.Acompanhante is not null)
+            .OrderBy(x => x.Acompanhante!.Nome)
+            .Select(x => new AcompanhanteDaSessaoDto(x.AcompanhanteId, x.Acompanhante!.Nome, x.Acompanhante.Parentesco))],
         s.MotoristaIdaId, s.VeiculoIdaId, s.HoraSaidaResidencia, s.HoraChegadaUnidade,
         s.MotoristaVoltaId, s.VeiculoVoltaId, s.HoraSaidaUnidade, s.HoraChegadaResidencia,
         s.MotivoNaoRealizacao, s.Observacoes,
@@ -24,35 +28,41 @@ internal static class TratamentosMapper
         alocacao?.FileiraOrdem,
         alocacao?.NumeroAssento);
 
+    public static AgendaDto ParaAgendaDto(Tratamento t) =>
+        new(t.DataInicio, t.DiasSemanaMascara, t.QuantidadeSessoes, t.Continuo, t.SessoesGeradasAte);
+
+    public static NecessidadesDto ParaNecessidadesDto(Tratamento t) =>
+        new(t.Mobilidade, t.DificuldadeVeiculoAlto, t.Isolamento, t.UsaOxigenio, t.NecessitaAjuda, t.AjudaDescricao);
+
     public static TratamentoDto ParaDto(
         Tratamento t,
-        IReadOnlyDictionary<Guid, AlocacaoAtiva> alocacoesPorSessao) => new(
+        IReadOnlyDictionary<Guid, AlocacaoAtiva> alocacoesPorSessao,
+        string? liberadoPorNome) => new(
         t.Id,
         t.PacienteId,
-        // Nome do paciente resolve via hub FHIR (GET /pacientes/{PacienteId}). TODO embutir.
+        // Nome do paciente resolve via hub FHIR; o service embute depois.
         string.Empty,
         t.UnidadeAtendimentoId,
         t.UnidadeAtendimento?.Nome ?? string.Empty,
+        t.UnidadeAtendimento?.Endereco?.Cidade,
         t.TipoTratamentoId,
         t.TipoTratamento?.Nome,
+        t.TipoTratamento?.TempoMedioMinutos,
         t.Descricao,
-        t.CodigoSusLiberacao,
         t.Observacoes,
-        t.HoraPrevistaBusca,
-        t.TempoMedioMinutos,
+        ParaAgendaDto(t),
+        ParaNecessidadesDto(t),
+        new RegraAcompanhantesDto(
+            t.QuantidadeAcompanhantes,
+            t.SegundoAcompanhanteJustificativa,
+            liberadoPorNome,
+            t.SegundoAcompanhanteLiberadoEm),
         t.Ativo,
         t.CriadoEm,
         t.EncerradoEm,
-        t.Periodicidade is null ? null : new PeriodicidadeDto(
-            t.Periodicidade.Id,
-            t.Periodicidade.Tipo,
-            t.Periodicidade.IntervaloDias,
-            t.Periodicidade.DiasSemanaMascara,
-            t.Periodicidade.DataInicio,
-            t.Periodicidade.QuantidadeSessoes),
         [.. t.Sessoes.OrderBy(s => s.DataPrevista).Select(s =>
             ParaSessaoDto(s, alocacoesPorSessao.GetValueOrDefault(s.Id)))]);
 
     public static TipoTratamentoDto ParaTipoDto(TipoTratamento t) =>
-        new(t.Id, t.Nome, t.Codigo, t.Ativo);
+        new(t.Id, t.Nome, t.Codigo, t.TempoMedioMinutos, t.Ativo);
 }

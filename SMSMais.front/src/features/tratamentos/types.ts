@@ -1,15 +1,13 @@
-export const TIPOS_PERIODICIDADE = ['Diaria', 'IntervaloDias', 'SemanaDiasFixos', 'Manual'] as const;
-export type TipoPeriodicidade = (typeof TIPOS_PERIODICIDADE)[number];
+import type { Parentesco } from '@/features/acompanhantes/types';
 
-// Números do enum no backend (persistido como int).
-export const TIPO_PERIODICIDADE_VALOR: Record<TipoPeriodicidade, number> = {
-  Diaria: 1,
-  IntervaloDias: 2,
-  SemanaDiasFixos: 3,
-  Manual: 4,
-};
-
-export const STATUS_SESSAO = ['Pendente', 'Confirmada', 'Realizada', 'Cancelada', 'NaoRealizada'] as const;
+export const STATUS_SESSAO = [
+  'Pendente',
+  'Confirmada',
+  'Realizada',
+  'Cancelada',
+  'NaoRealizada',
+  'AguardandoRetorno',
+] as const;
 export type StatusSessao = (typeof STATUS_SESSAO)[number];
 
 export const STATUS_SESSAO_VALOR: Record<StatusSessao, number> = {
@@ -18,6 +16,7 @@ export const STATUS_SESSAO_VALOR: Record<StatusSessao, number> = {
   Realizada: 3,
   Cancelada: 4,
   NaoRealizada: 5,
+  AguardandoRetorno: 6,
 };
 
 export function statusSessaoDeNumero(n: number | StatusSessao): StatusSessao {
@@ -26,10 +25,87 @@ export function statusSessaoDeNumero(n: number | StatusSessao): StatusSessao {
   return (entry?.[0] as StatusSessao) ?? 'Pendente';
 }
 
+// ---- Condição do paciente para a viagem
+
+export const MOBILIDADES = [
+  'Independente',
+  'CadeiranteTransfereParaBanco',
+  'CadeiranteVeiculoAdaptado',
+  'Maca',
+] as const;
+export type Mobilidade = (typeof MOBILIDADES)[number];
+
+export const ROTULO_MOBILIDADE: Record<Mobilidade, string> = {
+  Independente: 'Anda e senta sem ajuda especial',
+  CadeiranteTransfereParaBanco: 'Cadeirante — passa para o banco (a cadeira dobra e vai guardada)',
+  CadeiranteVeiculoAdaptado: 'Cadeirante — viaja na cadeira (só em veículo adaptado)',
+  Maca: 'Viaja deitado (maca)',
+};
+
+export type Necessidades = {
+  mobilidade: Mobilidade;
+  dificuldadeVeiculoAlto: boolean;
+  /** Imunodeficiente: viaja só com o próprio acompanhante (veículo exclusivo). */
+  isolamento: boolean;
+  usaOxigenio: boolean;
+  necessitaAjuda: boolean;
+  ajudaDescricao: string | null;
+};
+
+export const SEM_NECESSIDADES: Necessidades = {
+  mobilidade: 'Independente',
+  dificuldadeVeiculoAlto: false,
+  isolamento: false,
+  usaOxigenio: false,
+  necessitaAjuda: false,
+  ajudaDescricao: null,
+};
+
+// ---- Agenda: dias da semana + N sessões ou contínuo
+
+export type AgendaPayload = {
+  dataInicio: string;
+  /** bit 0 = domingo … bit 6 = sábado */
+  diasSemanaMascara: number;
+  quantidadeSessoes: number | null;
+  continuo: boolean;
+};
+
+export type Agenda = AgendaPayload & {
+  /** Até quando as sessões já foram geradas (no contínuo, o horizonte que a renovação estende). */
+  sessoesGeradasAte: string | null;
+};
+
+export type PreviaAgenda = {
+  datas: string[];
+  geradasAte: string | null;
+};
+
+// ---- Acompanhantes: 1 por direito, 2 com liberação
+
+export type RegraAcompanhantesPayload = {
+  quantidade: 1 | 2;
+  justificativaSegundo: string | null;
+};
+
+export type RegraAcompanhantes = {
+  quantidade: number;
+  justificativaSegundo: string | null;
+  liberadoPorNome: string | null;
+  liberadoEm: string | null;
+};
+
+export type AcompanhanteDaSessao = {
+  id: string;
+  nome: string;
+  parentesco: Parentesco | null;
+};
+
 export type TipoTratamento = {
   id: string;
   nome: string;
   codigo: string;
+  tempoMedioMinutos: number | null;
   ativo: boolean;
 };
 
@@ -41,20 +117,14 @@ export type TratamentoListItem = {
   unidadeAtendimentoNome: string;
   tipoTratamentoNome: string | null;
   descricao: string;
+  /** Do tipo de tratamento. */
   tempoMedioMinutos: number | null;
+  diasSemanaMascara: number;
+  continuo: boolean;
   proximaSessao: string | null;
   totalSessoes: number;
   sessoesRealizadas: number;
   ativo: boolean;
-};
-
-export type Periodicidade = {
-  id: string;
-  tipo: TipoPeriodicidade | number;
-  intervaloDias: number | null;
-  diasSemanaMascara: number | null;
-  dataInicio: string;
-  quantidadeSessoes: number;
 };
 
 export type Sessao = {
@@ -65,8 +135,10 @@ export type Sessao = {
   horaPrevistaRetorno: string | null;
   status: StatusSessao | number;
   realizadaEm: string | null;
+  /** Texto livre de antes da lista de acompanhantes — só histórico. */
   nomeAcompanhante: string | null;
   parentescoAcompanhante: string | null;
+  acompanhantes: AcompanhanteDaSessao[];
   motoristaIdaId: string | null;
   veiculoIdaId: string | null;
   horaSaidaResidencia: string | null;
@@ -89,29 +161,23 @@ export type Tratamento = {
   pacienteNome: string;
   unidadeAtendimentoId: string;
   unidadeAtendimentoNome: string;
+  unidadeAtendimentoCidade: string | null;
   tipoTratamentoId: string | null;
   tipoTratamentoNome: string | null;
-  descricao: string;
-  codigoSusLiberacao: string | null;
-  observacoes: string | null;
-  horaPrevistaBusca: string | null;
+  /** Do tipo de tratamento. */
   tempoMedioMinutos: number | null;
+  descricao: string;
+  observacoes: string | null;
+  agenda: Agenda;
+  necessidades: Necessidades;
+  acompanhantes: RegraAcompanhantes;
   ativo: boolean;
   criadoEm: string;
   encerradoEm: string | null;
-  periodicidade: Periodicidade | null;
   sessoes: Sessao[];
 };
 
-export type ExpandirPeriodicidadePayload = {
-  tipo: number;
-  intervaloDias: number | null;
-  diasSemanaMascara: number | null;
-  dataInicio: string;
-  quantidadeSessoes: number;
-};
-
-/** Destino disponível no seletor do tratamento (unidades de atendimento ativas). */
+/** Destino disponível no seletor do atendimento (unidades de atendimento ativas). */
 export type UnidadeAtendimentoOpcao = {
   id: string;
   nome: string;
@@ -124,30 +190,21 @@ export type UnidadeAtendimentoOpcao = {
 export type CadastrarTratamentoPayload = {
   pacienteId: string;
   unidadeAtendimentoId: string;
-  tipoTratamentoId: string | null;
+  tipoTratamentoId: string;
   descricao: string;
-  codigoSusLiberacao: string | null;
   observacoes: string | null;
-  horaPrevistaBusca: string | null;
-  tempoMedioMinutos: number;
-  periodicidade: {
-    tipo: number;
-    intervaloDias: number | null;
-    diasSemanaMascara: number | null;
-    dataInicio: string;
-    quantidadeSessoes: number;
-  };
-  datas: string[];
+  agenda: AgendaPayload;
+  necessidades: Necessidades;
+  acompanhantes: RegraAcompanhantesPayload;
 };
 
 export type AtualizarTratamentoPayload = {
   descricao: string;
   unidadeAtendimentoId: string;
-  tipoTratamentoId: string | null;
-  codigoSusLiberacao: string | null;
+  tipoTratamentoId: string;
   observacoes: string | null;
-  horaPrevistaBusca: string | null;
-  tempoMedioMinutos: number;
+  necessidades: Necessidades;
+  acompanhantes: RegraAcompanhantesPayload;
 };
 
 export type AdicionarSessaoPayload = {
@@ -165,8 +222,8 @@ export type AtualizarSessaoPayload = {
 
 export type ConfirmarSessaoPayload = {
   realizada: boolean;
-  nomeAcompanhante: string | null;
-  parentescoAcompanhante: string | null;
+  /** Quem acompanhou de fato; null = mantém a escolha feita antes da viagem. */
+  acompanhanteIds: string[] | null;
   motoristaIdaId: string | null;
   veiculoIdaId: string | null;
   horaSaidaResidencia: string | null;

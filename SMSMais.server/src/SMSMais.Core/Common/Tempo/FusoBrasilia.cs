@@ -16,6 +16,9 @@ public static class FusoBrasilia
     /// <inheritdoc cref="ParaExibicao(DateTime)"/>
     public static DateTime? ParaExibicao(DateTime? utc) => utc?.AddHours(OffsetHoras);
 
+    /// <summary>Data de hoje em Brasília. <c>DateTime.UtcNow</c> vira o dia às 21h daqui.</summary>
+    public static DateOnly HojeEmBrasilia() => DateOnly.FromDateTime(ParaExibicao(DateTime.UtcNow));
+
     /// <summary>
     /// Início do dia corrente de Brasília, expresso como instante UTC — para comparar com
     /// colunas "timestamp with time zone" (ex.: <c>solicitacao.data_agendada</c>). Usar

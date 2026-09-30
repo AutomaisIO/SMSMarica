@@ -22,7 +22,45 @@ export type AtualizarContato = {
   telefoneResidencial: string | null;
 };
 
-export type Translado = { id: string; data: string; destino: string; status: string };
+/** Uma viagem do Transporte de Pacientes (sessão do atendimento). */
+export type ViagemTransporte = {
+  sessaoId: string;
+  data: string;
+  destino: string;
+  cidade: string | null;
+  tipoTratamento: string | null;
+  /** Pendente | Confirmada | Realizada | Cancelada | NaoRealizada | AguardandoRetorno */
+  status: string;
+  /** "HH:mm:ss" quando a rota já definiu; senão, informado na véspera. */
+  horaBusca: string | null;
+  acompanhantes: string[];
+  limiteAcompanhantes: number;
+};
+
+export const PARENTESCOS: { valor: string; rotulo: string }[] = [
+  { valor: 'Mae', rotulo: 'Mãe' },
+  { valor: 'Pai', rotulo: 'Pai' },
+  { valor: 'Filho', rotulo: 'Filho(a)' },
+  { valor: 'Conjuge', rotulo: 'Cônjuge' },
+  { valor: 'Irmao', rotulo: 'Irmão(ã)' },
+  { valor: 'OutroParente', rotulo: 'Outro parente' },
+  { valor: 'Cuidador', rotulo: 'Cuidador(a)' },
+  { valor: 'Outro', rotulo: 'Outro' },
+];
+
+/** Pessoa que pode acompanhar o paciente no transporte. */
+export type AcompanhanteCidadao = {
+  id: string;
+  cpf: string;
+  nome: string;
+  dataNascimento: string;
+  parentesco: string | null;
+  telefone: string | null;
+  /** Painel = cadastrado pela equipe; App = pelo próprio paciente. */
+  origem: 'Painel' | 'App';
+};
+
+export type ConsultaAcompanhante = { cpf: string; nome: string; dataNascimento: string; jaCadastrado: boolean };
 export type DocumentoAtendimento = {
   id: string;
   tipo: string;
@@ -139,7 +177,20 @@ export const api = {
     http.post(`/auth/paciente/atendimentos/${encounterId}/pesquisa`, { respostas }),
   translados: () =>
     comCacheLocal('translados', () =>
-      http.get<Translado[]>('/auth/paciente/meus-translados').then((r) => r.data)),
+      http.get<ViagemTransporte[]>('/auth/paciente/meus-translados').then((r) => r.data)),
+  acompanhantes: () =>
+    comCacheLocal('acompanhantes', () =>
+      http.get<AcompanhanteCidadao[]>('/auth/paciente/me/acompanhantes').then((r) => r.data)),
+  /** Confere CPF + nascimento e traz o nome para confirmar. Tem cota diária. */
+  consultarAcompanhante: (cpf: string, dataNascimento: string) =>
+    http
+      .post<ConsultaAcompanhante>('/auth/paciente/me/acompanhantes/consulta', { cpf, dataNascimento })
+      .then((r) => r.data),
+  adicionarAcompanhante: (cpf: string, dataNascimento: string, parentesco: string | null) =>
+    http
+      .post<AcompanhanteCidadao>('/auth/paciente/me/acompanhantes', { cpf, dataNascimento, parentesco, telefone: null })
+      .then((r) => r.data),
+  removerAcompanhante: (id: string) => http.delete(`/auth/paciente/me/acompanhantes/${id}`),
   atendimentos: () =>
     comCacheLocal('atendimentos', () =>
       http.get<Atendimento[]>('/auth/paciente/atendimentos').then((r) => r.data)),

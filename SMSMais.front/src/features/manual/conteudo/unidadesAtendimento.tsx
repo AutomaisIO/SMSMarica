@@ -1,16 +1,16 @@
 import { Hospital } from 'lucide-react';
 import { Callout } from '@/features/manual/components/Callout';
-import { Item, Lista, ListaDefinicoes, P, Sub } from '@/features/manual/components/Prosa';
+import { ListaDefinicoes, P, Sub } from '@/features/manual/components/Prosa';
 import { Passos } from '@/features/manual/components/Passos';
 import { BotaoRef, SeloRef } from '@/features/manual/components/Referencia';
 import type { Artigo } from '@/features/manual/tipos';
 
 /**
- * Artigo das Unidades de Atendimento — os destinos do Transporte de Pacientes — e do que elas
- * mudaram no tratamento (destino + tempo médio).
+ * Artigo das Unidades de Atendimento — os destinos do Transporte de Pacientes — e do destino no
+ * atendimento.
  *
  * Conferido no código: `features/unidades-atendimento` (lista, formulário, detalhe),
- * `features/tratamentos` (TratamentoFormPage, EditorDadosTratamento, CampoTempoMedio) e no backend
+ * `features/tratamentos` (TratamentoFormPage, EditorDadosTratamento) e no backend
  * (`UnidadesAtendimentoService`, `SalvarUnidadeAtendimentoValidator`, `TratamentosService`
  * — GarantirDestinoAtivoAsync —, `GeradorDeTransladoService`).
  */
@@ -18,11 +18,11 @@ export const artigoUnidadesAtendimento: Artigo = {
   slug: 'unidades-atendimento',
   titulo: 'Unidades de Atendimento (destinos do transporte)',
   resumo:
-    'O cadastro dos lugares para onde a van leva o paciente: nome, endereço e o ponto no mapa que fecha a rota — e o tempo médio que o paciente fica lá.',
+    'O cadastro dos lugares para onde a van leva o paciente: nome, endereço e o ponto no mapa que fecha a rota.',
   grupo: 'transporte',
   icone: Hospital,
   rota: '/app/unidades-atendimento',
-  publico: 'Quem organiza o transporte de pacientes e cadastra os tratamentos',
+  publico: 'Quem organiza o transporte de pacientes e cadastra os atendimentos',
   atualizadoEm: '2026-09-29',
   palavrasChave: [
     'unidade de atendimento',
@@ -45,8 +45,7 @@ export const artigoUnidadesAtendimento: Artigo = {
     'rota',
     'van',
     'motorista',
-    'tempo médio',
-    'duração do tratamento',
+    'atendimento',
     'tratamento',
     'desativar',
     'reativar',
@@ -72,9 +71,9 @@ export const artigoUnidadesAtendimento: Artigo = {
             quem organiza o transporte. Por isso ela não aparece na escolha de unidade do login nem
             na atribuição de perfis.
           </P>
-          <Callout tipo="dica" titulo="Cadastre antes do tratamento">
-            O tratamento pede a unidade de atendimento. Se o destino ainda não existe, cadastre-o
-            primeiro — o formulário do tratamento traz um atalho quando a lista está vazia.
+          <Callout tipo="dica" titulo="Cadastre antes do atendimento">
+            O atendimento pede a unidade de atendimento. Se o destino ainda não existe, cadastre-o
+            primeiro — o formulário do atendimento traz um atalho quando a lista está vazia.
           </Callout>
         </>
       ),
@@ -135,7 +134,7 @@ export const artigoUnidadesAtendimento: Artigo = {
           <P>
             Não dá para ter duas unidades ativas com o mesmo nome — maiúsculas, minúsculas e espaços
             a mais não contam como diferença. Isso evita que o mesmo lugar apareça duas vezes na
-            lista do tratamento.
+            lista do atendimento.
           </P>
         </>
       ),
@@ -143,7 +142,7 @@ export const artigoUnidadesAtendimento: Artigo = {
     {
       id: 'lista',
       titulo: 'Como ler a lista',
-      busca: 'lista buscar mostrar desativadas sem coordenada no mapa tratamentos ativos fora do município',
+      busca: 'lista buscar mostrar desativadas sem coordenada no mapa atendimentos ativos fora do município',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -168,48 +167,43 @@ export const artigoUnidadesAtendimento: Artigo = {
                 ),
               },
               {
-                termo: 'Tratamentos ativos',
-                descricao: 'Quantos tratamentos em andamento vão para lá.',
+                termo: 'Atendimentos ativos',
+                descricao: 'Quantos atendimentos em andamento vão para lá.',
               },
             ]}
           />
           <P>
             A busca procura em nome, bairro, cidade e rua, sem ligar para acento. Por padrão só as
             ativas aparecem; marque <strong>Mostrar desativadas</strong> para ver as outras. Clicar
-            na linha abre o detalhe: endereço, o mapa e a lista dos tratamentos com destino ali.
+            na linha abre o detalhe: endereço, o mapa e a lista dos atendimentos com destino ali.
           </P>
         </>
       ),
     },
     {
       id: 'no-tratamento',
-      titulo: 'No tratamento: destino e tempo médio',
-      busca: 'tratamento destino tempo médio horas minutos editar dados trocar destino próximas rotas volta retorno',
+      titulo: 'No atendimento: o destino',
+      busca: 'atendimento tratamento destino editar dados trocar destino próximas rotas tempo médio tipo',
       conteudo: (
         <>
           <P>
-            Ao cadastrar um tratamento, dois campos passaram a ser obrigatórios na etapa de dados:
+            Ao cadastrar um atendimento (<strong>Transporte Pacientes → Atendimentos</strong>), a{' '}
+            <strong>unidade de atendimento</strong> é obrigatória e é escolhida entre as ativas deste
+            cadastro. É para onde a van vai.
           </P>
-          <Lista>
-            <Item>
-              <strong>Unidade de atendimento (destino)</strong> — escolhida entre as ativas deste
-              cadastro. É para onde a van vai.
-            </Item>
-            <Item>
-              <strong>Tempo médio no tratamento</strong> — em horas e minutos, da chegada à
-              liberação do paciente (ex.: hemodiálise ≈ 4h00). É a base para prever a volta no
-              cálculo da rota. Aceita de 1 minuto a 24 horas.
-            </Item>
-          </Lista>
+          <P>
+            O tempo médio que o paciente fica lá não é da unidade nem do atendimento: é do{' '}
+            <strong>tipo de tratamento</strong> (veja o artigo Tipos de tratamento e tempo médio).
+          </P>
           <Sub>Mudar depois</Sub>
           <P>
-            No detalhe do tratamento, <BotaoRef variante="outline">Editar dados</BotaoRef> troca o
-            destino, o tempo médio e os dados gerais. A troca de destino vale para as{' '}
-            <strong>próximas</strong> rotas geradas; uma rota já montada não se refaz sozinha.
+            No detalhe do atendimento, <BotaoRef variante="outline">Editar dados</BotaoRef> troca o
+            destino. A troca vale para as <strong>próximas</strong> rotas geradas; uma rota já montada
+            não se refaz sozinha.
           </P>
-          <Callout tipo="atencao" titulo="Tratamento encerrado não se edita">
-            Depois de encerrado, o tratamento fica como estava. Para um novo ciclo, cadastre um
-            tratamento novo.
+          <Callout tipo="atencao" titulo="Atendimento encerrado não se edita">
+            Depois de encerrado, o atendimento fica como estava. Para um novo ciclo, cadastre um
+            atendimento novo.
           </Callout>
         </>
       ),
@@ -217,18 +211,18 @@ export const artigoUnidadesAtendimento: Artigo = {
     {
       id: 'desativar',
       titulo: 'Desativar e reativar',
-      busca: 'desativar excluir reativar tratamento ativo recusado histórico',
+      busca: 'desativar excluir reativar atendimento ativo recusado histórico',
       conteudo: (
         <>
           <P>
             <BotaoRef variante="ghost">Desativar</BotaoRef> tira a unidade das opções de destino do
-            tratamento. Nada é apagado: os tratamentos antigos continuam mostrando o destino que
+            atendimento. Nada é apagado: os atendimentos antigos continuam mostrando o destino que
             tinham, e <BotaoRef variante="ghost">Reativar</BotaoRef> devolve a unidade à lista.
           </P>
-          <Callout tipo="regra" titulo="Com tratamento ativo, não desativa">
-            Enquanto houver tratamento em andamento indo para a unidade, o botão fica apagado. Sem
+          <Callout tipo="regra" titulo="Com atendimento ativo, não desativa">
+            Enquanto houver atendimento em andamento indo para a unidade, o botão fica apagado. Sem
             essa trava, a rota continuaria indo a um destino que ninguém mais enxerga. Encerre os
-            tratamentos ou troque o destino deles antes.
+            atendimentos ou troque o destino deles antes.
           </Callout>
         </>
       ),
@@ -236,7 +230,7 @@ export const artigoUnidadesAtendimento: Artigo = {
     {
       id: 'quem-pode',
       titulo: 'Quem pode o quê',
-      busca: 'permissão perfil módulo unidades de atendimento tratamentos consulta inclusão edição exclusão',
+      busca: 'permissão perfil módulo unidades de atendimento atendimentos consulta inclusão edição exclusão',
       conteudo: (
         <>
           <P>
@@ -245,15 +239,15 @@ export const artigoUnidadesAtendimento: Artigo = {
           </P>
           <ListaDefinicoes
             itens={[
-              { termo: 'Consulta', descricao: 'Ver a lista, o mapa e os tratamentos de cada unidade.' },
+              { termo: 'Consulta', descricao: 'Ver a lista, o mapa e os atendimentos de cada unidade.' },
               { termo: 'Inclusão', descricao: 'Cadastrar unidade de atendimento.' },
               { termo: 'Edição', descricao: 'Editar endereço e ponto no mapa; reativar.' },
               { termo: 'Exclusão', descricao: 'Desativar.' },
             ]}
           />
           <P>
-            Quem só cadastra tratamento <strong>não precisa</strong> dessa permissão: a lista de
-            destinos do formulário vem junto com a permissão de Tratamentos.
+            Quem só cadastra atendimento <strong>não precisa</strong> dessa permissão: a lista de
+            destinos do formulário vem junto com a permissão de Atendimentos do transporte.
           </P>
         </>
       ),
@@ -261,12 +255,12 @@ export const artigoUnidadesAtendimento: Artigo = {
     {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'não aparece no tratamento localizar errado pin errado nome maiúsculas cadastros unidades',
+      busca: 'não aparece no atendimento localizar errado pin errado nome maiúsculas cadastros unidades',
       conteudo: (
         <ListaDefinicoes
           itens={[
             {
-              termo: 'A unidade não aparece na lista do tratamento.',
+              termo: 'A unidade não aparece na lista do atendimento.',
               descricao:
                 'Ela está desativada. Abra Unidades de Atendimento, marque "Mostrar desativadas" e reative.',
             },

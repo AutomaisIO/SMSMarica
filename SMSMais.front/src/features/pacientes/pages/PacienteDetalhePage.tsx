@@ -51,8 +51,9 @@ import type {
   Paciente,
   SituacaoAgendamentoPaciente,
 } from '@/features/pacientes/types';
+import { ListaAcompanhantes } from '@/features/acompanhantes/components/ListaAcompanhantes';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
-import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
+import { formatarDataBr } from '@/features/tratamentos/lib/agenda';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
 
 function campo(label: string, valor?: ReactNode) {
@@ -974,7 +975,7 @@ function ResumoPaciente({
         />
         <CartaoKpi
           icone={<ListChecks className="h-4 w-4" />}
-          rotulo="Tratamentos"
+          rotulo="Transporte"
           valor={tratamentosAtivos}
           sub={qtdTratamentos > 0 ? `${qtdTratamentos} no total` : 'Nenhum cadastrado'}
           onClick={() => irPara('tratamentos')}
@@ -1118,6 +1119,7 @@ export function PacienteDetalhePage() {
   const id = params.id ?? '';
   const detalhe = usePacientePorId(id || null);
   const tratamentos = useListarTratamentos({ pacienteId: id });
+  const podeEditarTransporte = usePermissao('Tratamentos', 'Edicao');
   const atendimentos = useAtendimentosPaciente(id || null);
   const [vista, setVista] = useState<Vista>('resumo');
 
@@ -1151,7 +1153,7 @@ export function PacienteDetalhePage() {
       cabecalho: 'Progresso',
       render: (t) => (
         <span className="text-xs text-gray-600">
-          {t.sessoesRealizadas}/{t.totalSessoes}
+          {t.continuo ? `contínuo · ${t.sessoesRealizadas} realizadas` : `${t.sessoesRealizadas}/${t.totalSessoes}`}
         </span>
       ),
     },
@@ -1183,7 +1185,7 @@ export function PacienteDetalhePage() {
     { id: 'resumo', rotulo: 'Resumo' },
     { id: 'atendimentos', rotulo: 'Atendimentos', badge: stats.total },
     { id: 'agendamentos', rotulo: 'Agendamentos' },
-    { id: 'tratamentos', rotulo: 'Tratamentos', badge: listaTratamentos.length },
+    { id: 'tratamentos', rotulo: 'Transporte', badge: listaTratamentos.length },
     { id: 'exames', rotulo: 'Exames anexados' },
     { id: 'conversas', rotulo: 'Conversas' },
     { id: 'acessos', rotulo: 'Histórico de Acesso' },
@@ -1294,13 +1296,13 @@ export function PacienteDetalhePage() {
             <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                  <ListChecks className="h-4 w-4" /> Tratamentos do paciente
+                  <ListChecks className="h-4 w-4" /> Atendimentos do transporte
                   <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
                     {listaTratamentos.length}
                   </span>
                 </h2>
                 <Button variante="outline" tamanho="sm" onClick={() => navigate('/app/tratamentos/novo')}>
-                  Novo tratamento
+                  Novo atendimento
                 </Button>
               </div>
               <Tabela
@@ -1310,10 +1312,13 @@ export function PacienteDetalhePage() {
                 carregando={tratamentos.isLoading}
                 vazio={
                   !tratamentos.isLoading && listaTratamentos.length === 0
-                    ? 'Nenhum tratamento cadastrado para este paciente.'
+                    ? 'Nenhum atendimento do transporte para este paciente.'
                     : undefined
                 }
               />
+              <div className="mt-6 border-t border-gray-100 pt-5">
+                <ListaAcompanhantes pacienteId={id} podeEditar={podeEditarTransporte} />
+              </div>
             </section>
           ) : null}
 

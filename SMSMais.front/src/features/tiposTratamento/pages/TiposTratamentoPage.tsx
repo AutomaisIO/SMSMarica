@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarDuracao } from '@/shared/lib/tempoMedio';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -26,6 +28,16 @@ export function TiposTratamentoPage() {
   const colunas: Coluna<TipoTratamentoListItem>[] = [
     { chave: 'nome', cabecalho: 'Nome', render: (t) => <span className="text-gray-900">{t.nome}</span> },
     { chave: 'codigo', cabecalho: 'Código', render: (t) => <code className="text-xs text-gray-600">{t.codigo}</code> },
+    {
+      chave: 'tempo',
+      cabecalho: 'Tempo médio',
+      render: (t) =>
+        t.tempoMedioMinutos != null ? (
+          formatarDuracao(t.tempoMedioMinutos)
+        ) : (
+          <span className="text-xs font-medium text-amber-700">não informado</span>
+        ),
+    },
     { chave: 'status', cabecalho: 'Status', render: (t) => <StatusBadge ativo={t.ativo} /> },
     {
       chave: 'acoes',
@@ -61,9 +73,12 @@ export function TiposTratamentoPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Tipos de tratamento</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold text-gray-900">Tipos de tratamento</h1>
+            <AjudaManual artigo="tipos-tratamento" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">
-            Catálogo usado pelos tratamentos (Hemodiálise, Radioterapia, etc.).
+            Catálogo do transporte (Hemodiálise, Radioterapia…) — e o tempo médio que o paciente fica em cada um.
           </p>
         </div>
         <Button onClick={() => setEstado({ tipo: 'criar' })}>
@@ -105,12 +120,13 @@ export function TiposTratamentoPage() {
         titulo="Excluir tipo de tratamento"
         mensagem={
           paraDesativar
-            ? `Excluir "${paraDesativar.nome}"? Tratamentos existentes que apontam para este tipo continuarão referenciando-o.`
+            ? `Excluir "${paraDesativar.nome}"? Atendimentos existentes que apontam para este tipo continuam com ele; novos não podem escolhê-lo.`
             : ''
         }
         destrutivo
         rotuloConfirmar="Excluir"
         carregando={desativar.isPending}
+        erro={erroAcao}
         aoConfirmar={confirmarDesativar}
         aoCancelar={() => {
           setParaDesativar(null);
@@ -118,11 +134,6 @@ export function TiposTratamentoPage() {
         }}
       />
 
-      {erroAcao ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {erroAcao}
-        </div>
-      ) : null}
     </div>
   );
 }

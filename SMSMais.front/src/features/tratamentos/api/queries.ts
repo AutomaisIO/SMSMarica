@@ -1,25 +1,27 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   adicionarSessao,
+  alterarAgenda,
   atualizarSessao,
   atualizarTratamento,
   cadastrarTratamento,
   cancelarSessao,
   confirmarSessao,
+  definirAcompanhantesSessao,
   encerrarTratamento,
-  expandirPeriodicidade,
   listarOpcoesUnidadesAtendimento,
   listarTiposTratamento,
   listarTratamentos,
   obterTratamentoPorId,
+  preverAgenda,
 } from '@/features/tratamentos/api/tratamentosApi';
 import type {
   AdicionarSessaoPayload,
+  AgendaPayload,
   AtualizarSessaoPayload,
   AtualizarTratamentoPayload,
   CadastrarTratamentoPayload,
   ConfirmarSessaoPayload,
-  ExpandirPeriodicidadePayload,
 } from '@/features/tratamentos/types';
 
 export type FiltrosTratamentosHook = {
@@ -75,9 +77,36 @@ export function useOpcoesUnidadesAtendimento() {
   });
 }
 
-export function useExpandirPeriodicidade() {
+/** Prévia das datas da agenda; só pergunta ao servidor quando a regra está completa. */
+export function usePreviaAgenda(agenda: AgendaPayload | null) {
+  return useQuery({
+    queryKey: ['tratamentos', 'previa', agenda] as const,
+    queryFn: () => preverAgenda(agenda!),
+    enabled: agenda !== null,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useAlterarAgenda() {
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: (payload: ExpandirPeriodicidadePayload) => expandirPeriodicidade(payload),
+    mutationFn: ({ id, payload }: { id: string; payload: AgendaPayload }) => alterarAgenda(id, payload),
+    onSuccess: (_d, vars) => {
+      client.invalidateQueries({ queryKey: tratamentosKeys.detalhe(vars.id) });
+      client.invalidateQueries({ queryKey: tratamentosKeys.raiz });
+    },
+  });
+}
+
+export function useDefinirAcompanhantesSessao() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, sessaoId, acompanhanteIds }: { id: string; sessaoId: string; acompanhanteIds: string[] }) =>
+      definirAcompanhantesSessao(id, sessaoId, acompanhanteIds),
+    onSuccess: (_d, vars) => {
+      client.invalidateQueries({ queryKey: tratamentosKeys.detalhe(vars.id) });
+    },
   });
 }
 

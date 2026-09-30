@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarDuracao } from '@/shared/lib/tempoMedio';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -9,9 +10,10 @@ import {
   useOpcoesUnidadesAtendimento,
   useTiposTratamento,
 } from '@/features/tratamentos/api/queries';
-import { CampoTempoMedio } from '@/features/tratamentos/components/CampoTempoMedio';
-import { deMinutos, paraMinutos } from '@/features/tratamentos/lib/tempoMedio';
-import type { Tratamento } from '@/features/tratamentos/types';
+import { CampoLimiteAcompanhantes } from '@/features/tratamentos/components/CampoLimiteAcompanhantes';
+import { CamposNecessidades } from '@/features/tratamentos/components/CamposNecessidades';
+import { necessidadesValidas, paraNecessidadesPayload } from '@/features/tratamentos/lib/necessidades';
+import type { Necessidades, RegraAcompanhantesPayload, Tratamento } from '@/features/tratamentos/types';
 
 type Props = {
   tratamento: Tratamento;
@@ -19,34 +21,39 @@ type Props = {
 };
 
 /**
- * Edita os dados do tratamento (não a periodicidade — essa se ajusta sessão a sessão). Trocar o
- * destino vale para as próximas rotas geradas; rota já montada não se refaz sozinha.
+ * Edita os dados do atendimento, a condição do paciente e o limite de acompanhantes (a agenda se
+ * troca à parte). Trocar o destino vale para as próximas rotas geradas; rota já montada não se
+ * refaz sozinha.
  */
 export function EditorDadosTratamento({ tratamento: t, aoConcluir }: Props) {
   const atualizar = useAtualizarTratamento();
   const destinos = useOpcoesUnidadesAtendimento();
   const tipos = useTiposTratamento();
-  const tempoInicial = deMinutos(t.tempoMedioMinutos);
   const [dados, setDados] = useState({
     descricao: t.descricao,
     unidadeAtendimentoId: t.unidadeAtendimentoId,
     tipoTratamentoId: t.tipoTratamentoId ?? '',
-    codigoSusLiberacao: t.codigoSusLiberacao ?? '',
-    horaPrevistaBusca: t.horaPrevistaBusca?.slice(0, 5) ?? '',
-    tempoMedioHoras: tempoInicial.horas,
-    tempoMedioMinutos: tempoInicial.minutos,
     observacoes: t.observacoes ?? '',
+  });
+  const [necessidades, setNecessidades] = useState<Necessidades>(t.necessidades);
+  const [regra, setRegra] = useState<RegraAcompanhantesPayload>({
+    quantidade: t.acompanhantes.quantidade === 2 ? 2 : 1,
+    justificativaSegundo: t.acompanhantes.justificativaSegundo,
   });
   const [erro, setErro] = useState<string | null>(null);
 
-  const tempoMedio = paraMinutos(dados.tempoMedioHoras, dados.tempoMedioMinutos);
   const opcoes = destinos.data ?? [];
   // O destino atual pode ter sido desativado depois — continua aparecendo para não sumir do select.
   const destinoAtualForaDaLista = !opcoes.some((u) => u.id === t.unidadeAtendimentoId);
-  const podeSalvar = dados.descricao.trim().length > 0 && Boolean(dados.unidadeAtendimentoId) && tempoMedio != null;
+  const tipoEscolhido = (tipos.data ?? []).find((tp) => tp.id === dados.tipoTratamentoId);
+  const podeSalvar =
+    dados.descricao.trim().length > 0 &&
+    Boolean(dados.unidadeAtendimentoId) &&
+    Boolean(dados.tipoTratamentoId) &&
+    necessidadesValidas(necessidades) &&
+    (regra.quantidade === 1 || Boolean(regra.justificativaSegundo?.trim()));
 
   async function salvar() {
-    if (tempoMedio == null) return;
     setErro(null);
     try {
       await atualizar.mutateAsync({
@@ -54,11 +61,10 @@ export function EditorDadosTratamento({ tratamento: t, aoConcluir }: Props) {
         payload: {
           descricao: dados.descricao.trim(),
           unidadeAtendimentoId: dados.unidadeAtendimentoId,
-          tipoTratamentoId: dados.tipoTratamentoId || null,
-          codigoSusLiberacao: dados.codigoSusLiberacao.trim() || null,
+          tipoTratamentoId: dados.tipoTratamentoId,
           observacoes: dados.observacoes.trim() || null,
-          horaPrevistaBusca: dados.horaPrevistaBusca || null,
-          tempoMedioMinutos: tempoMedio,
+          necessidades: paraNecessidadesPayload(necessidades),
+          acompanhantes: regra,
         },
       });
       aoConcluir();
@@ -68,7 +74,7 @@ export function EditorDadosTratamento({ tratamento: t, aoConcluir }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Campo label="Unidade de atendimento (destino)" htmlFor="ed-destino" required className="md:col-span-2">
           <Select
@@ -87,7 +93,16 @@ export function EditorDadosTratamento({ tratamento: t, aoConcluir }: Props) {
             ))}
           </Select>
         </Campo>
-        <Campo label="Tipo de tratamento" htmlFor="ed-tipo">
+        <Campo
+          label="Tipo de tratamento"
+          htmlFor="ed-tipo"
+          required
+          dica={
+            tipoEscolhido
+              ? `Tempo médio do tipo: ${formatarDuracao(tipoEscolhido.tempoMedioMinutos)}.`
+              : 'O tempo médio vem do tipo.'
+          }
+        >
           <Select
             id="ed-tipo"
             value={dados.tipoTratamentoId}
@@ -99,13 +114,7 @@ export function EditorDadosTratamento({ tratamento: t, aoConcluir }: Props) {
             ))}
           </Select>
         </Campo>
-        <CampoTempoMedio
-          horas={dados.tempoMedioHoras}
-          minutos={dados.tempoMedioMinutos}
-          aoMudar={(v) => setDados((d) => ({ ...d, tempoMedioHoras: v.horas, tempoMedioMinutos: v.minutos }))}
-          erro={tempoMedio == null ? 'Entre 1 minuto e 24 horas (minutos de 0 a 59).' : undefined}
-        />
-        <Campo label="Descrição" htmlFor="ed-descricao" required className="md:col-span-2">
+        <Campo label="Descrição" htmlFor="ed-descricao" required>
           <Input
             id="ed-descricao"
             value={dados.descricao}
@@ -113,35 +122,25 @@ export function EditorDadosTratamento({ tratamento: t, aoConcluir }: Props) {
             maxLength={500}
           />
         </Campo>
-        <Campo label="Código SUS de liberação" htmlFor="ed-sus">
-          <Input
-            id="ed-sus"
-            value={dados.codigoSusLiberacao}
-            onChange={(e) => setDados((d) => ({ ...d, codigoSusLiberacao: e.target.value }))}
-            maxLength={60}
-          />
-        </Campo>
-        <Campo label="Horário previsto da busca" htmlFor="ed-hora"
-          dica="Vale para sessões novas; as já criadas mantêm o horário delas.">
-          <Input
-            id="ed-hora"
-            type="time"
-            value={dados.horaPrevistaBusca}
-            onChange={(e) => setDados((d) => ({ ...d, horaPrevistaBusca: e.target.value }))}
-          />
-        </Campo>
         <Campo label="Observações" htmlFor="ed-obs" className="md:col-span-2">
           <textarea
             id="ed-obs"
-            className="input min-h-[80px]"
+            className="input min-h-[70px]"
             value={dados.observacoes}
             onChange={(e) => setDados((d) => ({ ...d, observacoes: e.target.value }))}
           />
         </Campo>
       </div>
 
+      <div className="border-t border-gray-100 pt-4">
+        <CamposNecessidades valor={necessidades} aoMudar={setNecessidades} />
+      </div>
+      <div className="border-t border-gray-100 pt-4">
+        <CampoLimiteAcompanhantes valor={regra} aoMudar={setRegra} liberadoPorNome={t.acompanhantes.liberadoPorNome} />
+      </div>
+
       {erro ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
+        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
       ) : null}
 
       <div className="flex justify-end gap-2">
