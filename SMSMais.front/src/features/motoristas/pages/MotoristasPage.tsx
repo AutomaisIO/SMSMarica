@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Avatar } from '@/shared/ui/Avatar';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
@@ -80,7 +81,10 @@ export function MotoristasPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Motoristas</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold text-gray-900">Motoristas</h1>
+            <AjudaManual artigo="motoristas" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">Agentes de transporte sanitário.</p>
         </div>
         <Button onClick={() => setEstado({ tipo: 'criar' })}>

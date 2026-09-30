@@ -12,7 +12,7 @@ type Props = {
 
 /**
  * Tempo médio que o paciente fica no tratamento (da chegada à liberação). Entra como horas +
- * minutos e vai ao backend em minutos — é a base para prever a volta no cálculo da rota.
+ * minutos e vai ao backend em minutos. É o número de onde sai a previsão da volta.
  */
 export function CampoTempoMedio({ horas, minutos, aoMudar, erro, className }: Props) {
   const total = paraMinutos(horas, minutos);
@@ -26,7 +26,7 @@ export function CampoTempoMedio({ horas, minutos, aoMudar, erro, className }: Pr
       dica={
         total != null
           ? `= ${formatarDuracao(total)} da chegada à liberação do paciente. Ex.: hemodiálise ≈ 4h00.`
-          : 'Da chegada à liberação do paciente — usado para prever a volta. Ex.: hemodiálise ≈ 4h00.'
+          : 'Da chegada à liberação do paciente. Ex.: hemodiálise ≈ 4h00.'
       }
     >
       <div className="flex items-center gap-2">

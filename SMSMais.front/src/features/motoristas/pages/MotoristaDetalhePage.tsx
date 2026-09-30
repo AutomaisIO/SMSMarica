@@ -3,6 +3,7 @@ import { ArrowLeft, Pencil } from 'lucide-react';
 import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
@@ -104,6 +105,7 @@ export function MotoristaDetalhePage() {
                 {m?.nomeCompleto ?? 'Carregando…'}
               </h1>
               {m ? <StatusBadge ativo={m.usuarioAtivo} /> : null}
+              <AjudaManual artigo="motoristas" secao="lista-detalhe" />
             </div>
             {m ? <p className="text-sm text-gray-500">CPF {formatarCpf(m.cpf)}</p> : null}
           </div>

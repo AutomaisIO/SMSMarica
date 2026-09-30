@@ -23,7 +23,7 @@ export const artigoVeiculos: Artigo = {
   icone: Bus,
   rota: '/app/veiculos',
   publico: 'Quem cadastra a frota e monta os translados do transporte de pacientes',
-  atualizadoEm: '2026-09-29',
+  atualizadoEm: '2026-09-30',
   palavrasChave: [
     'veículo',
     'frota',
@@ -47,6 +47,10 @@ export const artigoVeiculos: Artigo = {
     'Sprinter',
     'Master',
     'adaptada',
+    'veículo adaptado',
+    'condição do paciente',
+    'carro alto',
+    'veículo exclusivo',
     'cadeirante',
     'acessibilidade',
     'assento',
@@ -281,14 +285,40 @@ export const artigoVeiculos: Artigo = {
     {
       id: 'no-translado',
       titulo: 'Na hora de alocar paciente',
-      busca: 'translado alocar paciente assento livre sessão elegível mapa de assentos cor do veículo placa',
+      busca: 'translado alocar paciente assento livre sessão elegível mapa de assentos cor do veículo placa condição do paciente cadeirante veículo adaptado carro alto exclusivo etiquetas',
       conteudo: (
-        <P>
-          No detalhe do translado, o topo mostra o desenho do veículo da rota com a placa, e logo
-          abaixo a planta dele, vista de cima, na cor do carro — para quem aloca conferir que está
-          montando o veículo certo e escolher o lugar como escolheria olhando o carro. Ao escolher uma sessão elegível, os assentos livres piscam;
-          os de <strong>Motorista</strong> e os bloqueados não aceitam paciente.
-        </P>
+        <>
+          <P>
+            No detalhe do translado, o topo mostra o desenho do veículo da rota com a placa, e logo
+            abaixo a planta dele, vista de cima, na cor do carro — para quem aloca conferir que está
+            montando o veículo certo e escolher o lugar como escolheria olhando o carro. Ao escolher uma sessão elegível, os assentos livres piscam;
+            os de <strong>Motorista</strong> e os bloqueados não aceitam paciente.
+          </P>
+          <P>
+            Cada sessão elegível traz, em etiquetas, a condição do paciente registrada no
+            atendimento. É com elas que se escolhe o veículo certo:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Cadeirante — veículo adaptado',
+                descricao: (
+                  <>
+                    O paciente viaja na própria cadeira: só vai em veículo com lugar do tipo{' '}
+                    <strong>Cadeirante</strong> no layout.
+                  </>
+                ),
+              },
+              { termo: 'Cadeirante (passa para o banco)', descricao: 'Senta num banco comum; a cadeira dobrada vai guardada.' },
+              { termo: 'Evitar veículo alto', descricao: 'Não consegue subir em van ou micro-ônibus — prefira um carro.' },
+              { termo: 'Veículo exclusivo', descricao: 'Imunodeficiente: viaja só com o próprio acompanhante.' },
+            ]}
+          />
+          <Callout tipo="atencao" titulo="A geração automática ainda não olha a condição">
+            Por enquanto, quem escolhe o veículo pela condição do paciente é quem monta a rota.
+            Confira as etiquetas antes de confirmar a rota gerada.
+          </Callout>
+        </>
       ),
     },
     {

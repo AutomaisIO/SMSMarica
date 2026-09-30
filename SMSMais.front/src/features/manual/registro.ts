@@ -5,6 +5,7 @@ import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendim
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
+import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
 import { artigoTiposTratamento } from '@/features/manual/conteudo/tiposTratamento';
 import { artigoUnidadesAtendimento } from '@/features/manual/conteudo/unidadesAtendimento';
@@ -62,6 +63,7 @@ export const ARTIGOS: Artigo[] = [
   artigoConfirmacoes,
   artigoFluxoAtendimentoWhatsApp,
   artigoMensageria,
+  artigoMotoristas,
   artigoOuvidoria,
   artigoTiposTratamento,
   artigoUnidadesAtendimento,
