@@ -222,7 +222,7 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
         Guid id, [FromBody] IniciarAssinaturaRequest? request, CancellationToken cancellationToken)
     {
         var usuarioId = ExtrairUsuarioId();
-        return await _assinatura.IniciarAsync(id, usuarioId, request?.Posicao, cancellationToken);
+        return await _assinatura.IniciarAsync(id, usuarioId, request?.Posicao, request?.SessaoNuvem, cancellationToken);
     }
 
     /// <summary>Status da assinatura do laudo (para o front fazer polling após "Assinar").</summary>
@@ -267,6 +267,29 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
         return NoContent();
     }
 
+    /// <summary>
+    /// Sessão VIDaaS deste login (ADR-0061 §2.1): com ela ativa, "Assinar" no modo Nuvem não passa
+    /// pelo aplicativo. Amarrada ao login — sair e entrar de novo pede aprovação outra vez.
+    /// </summary>
+    [HttpGet("assinatura/nuvem/sessao")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SessaoNuvemDto>(StatusCodes.Status200OK)]
+    public async Task<SessaoNuvemDto> SessaoNuvem(CancellationToken cancellationToken) =>
+        await _assinatura.ObterSessaoNuvemAsync(ExtrairUsuarioId(), cancellationToken);
+
+    /// <summary>
+    /// Encerra a sessão VIDaaS deste login. O painel chama no logout — sair do SMSMais é sair de
+    /// lá — e no botão "encerrar" do editor de laudo.
+    /// </summary>
+    [HttpDelete("assinatura/nuvem/sessao")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> EncerrarSessaoNuvem(CancellationToken cancellationToken)
+    {
+        await _assinatura.EncerrarSessaoNuvemAsync(ExtrairUsuarioId(), cancellationToken);
+        return NoContent();
+    }
+
     private Guid ExtrairUsuarioId()
     {
         var sub = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -278,5 +301,6 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
 /// <summary>
 /// Corpo do "iniciar assinatura": posição do carimbo escolhida pela médica (ADR-0049).
 /// Opcional — sem corpo/posição, mantém o padrão legado (rodapé da última página).
+/// <see cref="SessaoNuvem"/>: resposta ao modal "Manter a autorização?" do modo Nuvem.
 /// </summary>
-public sealed record IniciarAssinaturaRequest(CarimboPosicaoDto? Posicao);
+public sealed record IniciarAssinaturaRequest(CarimboPosicaoDto? Posicao, EscolhaSessaoNuvemDto? SessaoNuvem = null);

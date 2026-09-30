@@ -18,7 +18,9 @@ public sealed record AssinaturaStatusDto(
 /// <list type="bullet">
 /// <item><b>Desktop</b>: lança o agente com a <see cref="Chave"/> de uso único via
 /// <c>automais-assinador://...?chave=</c>.</item>
-/// <item><b>Nuvem</b>: abre a <see cref="UrlAutorizacao"/>, onde o médico aprova no app VIDaaS.</item>
+/// <item><b>Nuvem</b>: abre a <see cref="UrlAutorizacao"/>, onde o médico aprova no app VIDaaS.
+/// Sem URL = assinou pela sessão VIDaaS já aprovada (ADR-0061 §2.1) e o job já está
+/// aguardando a conferência.</item>
 /// <item><b>SemCertificado</b>: nada — o carimbo já foi aplicado e o job está aguardando a conferência.</item>
 /// </list>
 /// </summary>
@@ -27,6 +29,24 @@ public sealed record IniciarAssinaturaResultado(
     string? Chave,
     ModoAssinaturaMedico Modo = ModoAssinaturaMedico.Desktop,
     string? UrlAutorizacao = null);
+
+/// <summary>
+/// Sessão VIDaaS do médico logado (ADR-0061 §2.1). <see cref="DuracaoSegundos"/> é a validade
+/// que uma autorização nova terá — o painel usa para avisar antes de o médico aprovar.
+/// </summary>
+public sealed record SessaoNuvemDto(
+    bool Ativa,
+    DateTime? AutorizadaEm,
+    DateTime? ExpiraEm,
+    int DuracaoSegundos,
+    // Perguntar = o painel mostra o modal "Manter a autorização?" antes de ir ao app.
+    PreferenciaSessaoNuvem Preferencia = PreferenciaSessaoNuvem.Perguntar);
+
+/// <summary>
+/// Resposta do médico ao modal "Manter a autorização?" (ADR-0061 §2.1), enviada no "iniciar".
+/// <see cref="NaoPerguntarDeNovo"/> grava a resposta como preferência dele.
+/// </summary>
+public sealed record EscolhaSessaoNuvemDto(bool Manter, bool NaoPerguntarDeNovo);
 
 /// <summary>
 /// Posição do carimbo escolhida pela médica no painel (ADR-0049), em pontos PDF

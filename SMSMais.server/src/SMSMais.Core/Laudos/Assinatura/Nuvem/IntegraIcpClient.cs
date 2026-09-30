@@ -29,12 +29,18 @@ public sealed class IntegraIcpClient(
 {
     private readonly IntegraIcpOptions _opt = options.Value;
 
+    /// <summary>Credencial expirada, revogada ou com verificador recusado (HTTP 403/404).</summary>
+    public const string CodigoCredencialInvalida = "assinatura.nuvem_credencial_invalida";
+
     private string Prefixo => $"c/{Uri.EscapeDataString(_opt.Canal ?? string.Empty)}/icp/v3";
 
     public async Task<string> IniciarAutorizacaoAsync(
-        string cpf, string urlRetorno, string codeChallenge, CancellationToken cancellationToken = default)
+        string cpf, string urlRetorno, string codeChallenge, int credencialVidaSegundos,
+        CancellationToken cancellationToken = default)
     {
         GarantirHabilitado();
+        var vida = Math.Clamp(credencialVidaSegundos,
+            IntegraIcpOptions.CredencialVidaMinimaSegundos, IntegraIcpOptions.CredencialVidaMaximaSegundos);
         var consulta = new StringBuilder($"{Prefixo}/authentications")
             .Append("?subject_key=").Append(Uri.EscapeDataString(cpf))
             .Append("&callback_uri=").Append(Uri.EscapeDataString(urlRetorno))
@@ -42,7 +48,7 @@ public sealed class IntegraIcpClient(
             .Append("&secret_method=S256")
             // Sem clearance_lifetime o PSC devolve expiração igual ao pedido (achado do spike).
             .Append("&clearance_lifetime=").Append(_opt.AutorizacaoVidaSegundos)
-            .Append("&credential_lifetime=").Append(_opt.CredencialVidaSegundos)
+            .Append("&credential_lifetime=").Append(vida)
             .ToString();
 
         using var doc = await EnviarAsync(HttpMethod.Get, consulta, null, "authentications", cancellationToken);
@@ -160,6 +166,13 @@ public sealed class IntegraIcpClient(
                 // qualquer sequência longa de dígitos mascarada.
                 logger.LogError("IntegraICP: etapa {Etapa} retornou {Status} ({Bytes} bytes de corpo; erro {Erro}).",
                     etapa, (int)resp.StatusCode, texto.Length, ResumoErro(texto));
+                // 403 (PKCE inválido ou credencial expirada) e 404 (credencial inexistente) nas
+                // etapas que usam a credencial = a autorização acabou. Código próprio para a
+                // sessão VIDaaS cair para uma aprovação nova em vez de falhar o laudo.
+                if (etapa is "credentials" or "signatures"
+                    && resp.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.NotFound)
+                    throw new ConflitoException(CodigoCredencialInvalida,
+                        "A autorização do certificado em nuvem expirou ou não é mais aceita pelo provedor.");
                 throw new ConflitoException("assinatura.nuvem_erro",
                     $"O serviço de assinatura em nuvem recusou a etapa {etapa} ({(int)resp.StatusCode}).");
             }

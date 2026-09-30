@@ -31,10 +31,29 @@ public sealed class IntegraIcpOptions
     public string? UrlPublicaApi { get; set; }
 
     /// <summary>
-    /// Vida da credencial emitida (segundos). Curta de propósito: credencial viva permite ao
-    /// servidor assinar em nome do médico sem novo consentimento (a API aceita até 168h).
+    /// TETO da vida da credencial emitida (segundos) = da sessão VIDaaS do médico (ADR-0061
+    /// §2.1). A vida pedida ao provedor é o que resta da sessão de login no SMSMais, limitado a
+    /// este teto — a sessão VIDaaS nunca sobrevive ao login. Enquanto ela vale, o médico assina
+    /// laudo após laudo sem voltar ao aplicativo, sempre pelo próprio clique em Assinar e com a
+    /// conferência de cada documento. A API recusa acima de 168 h; valores fora de
+    /// [<see cref="CredencialVidaMinimaSegundos"/>, <see cref="CredencialVidaMaximaSegundos"/>]
+    /// são trazidos para dentro.
     /// </summary>
-    public int CredencialVidaSegundos { get; set; } = 900;
+    public int CredencialVidaSegundos { get; set; } = 12 * 3600;
+
+    public const int CredencialVidaMinimaSegundos = 300;
+
+    /// <summary>
+    /// Vida da credencial quando o médico NÃO mantém a autorização: só o bastante para o laudo
+    /// da vez (a assinatura acontece segundos depois do retorno). 15 min é o valor que rodou em
+    /// produção antes da sessão.
+    /// </summary>
+    public const int CredencialVidaUmLaudoSegundos = 900;
+    public const int CredencialVidaMaximaSegundos = 168 * 3600;
+
+    /// <summary><see cref="CredencialVidaSegundos"/> dentro do que a API aceita.</summary>
+    public int CredencialVidaEfetivaSegundos =>
+        Math.Clamp(CredencialVidaSegundos, CredencialVidaMinimaSegundos, CredencialVidaMaximaSegundos);
 
     /// <summary>Vida da autorização pendente (segundos) — sem ela o PSC devolve expiração imediata.</summary>
     public int AutorizacaoVidaSegundos { get; set; } = 600;

@@ -4,6 +4,7 @@ import {
   atualizarLaudo,
   cadastrarLaudo,
   criarNovaVersaoLaudo,
+  encerrarSessaoNuvem,
   excluirLaudo,
   finalizarLaudo,
   iniciarAssinatura,
@@ -11,6 +12,7 @@ import {
   listarLaudos,
   listarLaudosPorStudies,
   obterLaudo,
+  obterSessaoNuvem,
   obterStatusAssinatura,
   rejeitarAssinatura,
 } from '@/features/laudos/api/laudosApi';
@@ -18,6 +20,7 @@ import type {
   AtualizarLaudoPayload,
   CadastrarLaudoPayload,
   CarimboPosicao,
+  EscolhaSessaoNuvem,
   FiltroLaudos,
   FinalizarLaudoPayload,
 } from '@/features/laudos/types';
@@ -142,12 +145,35 @@ export function useStatusAssinatura(id: string | null, ativo: boolean) {
 export function useIniciarAssinatura() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (v: { id: string; posicao?: CarimboPosicao }) =>
-      iniciarAssinatura(v.id, v.posicao),
+    mutationFn: (v: { id: string; posicao?: CarimboPosicao; sessaoNuvem?: EscolhaSessaoNuvem }) =>
+      iniciarAssinatura(v.id, v.posicao, v.sessaoNuvem),
     onSuccess: (_d, v) => {
       client.invalidateQueries({ queryKey: assinaturaKey(v.id) });
       client.invalidateQueries({ queryKey: laudosKeys.porId(v.id) });
+      client.invalidateQueries({ queryKey: sessaoNuvemKey });
     },
+  });
+}
+
+// ---- Autorização VIDaaS mantida (ADR-0061 §2.1) ----
+
+export const sessaoNuvemKey = ['laudos', 'assinatura', 'sessao-nuvem'] as const;
+
+/** Autorização VIDaaS deste login + preferência do médico. Só para quem assina em nuvem. */
+export function useSessaoAssinaturaNuvem(ativo: boolean) {
+  return useQuery({
+    queryKey: sessaoNuvemKey,
+    queryFn: obterSessaoNuvem,
+    enabled: ativo,
+  });
+}
+
+/** Encerra a autorização mantida: o próximo laudo volta a pedir aprovação no app. */
+export function useEncerrarSessaoNuvem() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: encerrarSessaoNuvem,
+    onSuccess: () => client.invalidateQueries({ queryKey: sessaoNuvemKey }),
   });
 }
 

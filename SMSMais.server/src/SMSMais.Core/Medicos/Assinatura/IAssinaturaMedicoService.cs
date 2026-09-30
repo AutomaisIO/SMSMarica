@@ -26,4 +26,12 @@ public interface IAssinaturaMedicoService
     /// <summary>Grava (upsert) o modo de assinatura do médico.</summary>
     Task<ModoAssinaturaMedicoDto> DefinirModoAsync(
         Guid medicoId, Data.Entities.Enums.ModoAssinaturaMedico modo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Grava (upsert) o que fazer com a autorização do VIDaaS no modo Nuvem (ADR-0061 §2.1).
+    /// Chamado pelo administrador no cadastro e pelo próprio médico ao marcar "Não perguntar de
+    /// novo" no modal da assinatura.
+    /// </summary>
+    Task<ModoAssinaturaMedicoDto> DefinirSessaoNuvemAsync(
+        Guid medicoId, Data.Entities.Enums.PreferenciaSessaoNuvem preferencia, CancellationToken cancellationToken = default);
 }

@@ -50,7 +50,34 @@ export type ModoAssinaturaMedicoDto = {
   /** false = ninguém escolheu ainda e vale o padrão (SemCertificado, "login e senha"). */
   configurado: boolean;
   atualizadoEm: string | null;
+  /** Modo Nuvem: o que fazer com a autorização do VIDaaS (ADR-0061 §2.1). */
+  sessaoNuvem: PreferenciaSessaoNuvem;
 };
+
+/** Modo Nuvem: manter a autorização do VIDaaS até sair, perguntar ou aprovar cada laudo. */
+export type PreferenciaSessaoNuvem = 'Perguntar' | 'Manter' | 'CadaLaudo';
+
+export const PREFERENCIAS_SESSAO_NUVEM: {
+  id: PreferenciaSessaoNuvem;
+  rotulo: string;
+  descricao: string;
+}[] = [
+  {
+    id: 'Perguntar',
+    rotulo: 'Perguntar ao assinar',
+    descricao: 'O padrão. No primeiro laudo de cada acesso, o médico escolhe.',
+  },
+  {
+    id: 'Manter',
+    rotulo: 'Manter até sair',
+    descricao: 'Aprova no app uma vez e assina os demais laudos sem o celular, até sair do sistema.',
+  },
+  {
+    id: 'CadaLaudo',
+    rotulo: 'Aprovar cada laudo',
+    descricao: 'Cada assinatura pede aprovação no app.',
+  },
+];
 
 export const MODOS_ASSINATURA: {
   id: ModoAssinaturaMedico;

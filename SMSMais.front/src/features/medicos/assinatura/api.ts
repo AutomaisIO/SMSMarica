@@ -4,6 +4,7 @@ import type {
   AssinaturaMedico,
   ModoAssinaturaMedico,
   ModoAssinaturaMedicoDto,
+  PreferenciaSessaoNuvem,
   SalvarAssinaturaMedicoPayload,
 } from '@/features/medicos/assinatura/types';
 
@@ -71,6 +72,21 @@ export function useDefinirModoAssinaturaMedico(medicoId: string) {
   return useMutation({
     mutationFn: async (modo: ModoAssinaturaMedico) => {
       const { data } = await http.put<ModoAssinaturaMedicoDto>(`/medicos/${medicoId}/assinatura/modo`, { modo });
+      return data;
+    },
+    onSuccess: (data) => client.setQueryData(chaveModo(medicoId), data),
+  });
+}
+
+/** Modo Nuvem: manter a autorização do VIDaaS, perguntar ou aprovar cada laudo (ADR-0061 §2.1). */
+export function useDefinirSessaoNuvemMedico(medicoId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (sessaoNuvem: PreferenciaSessaoNuvem) => {
+      const { data } = await http.put<ModoAssinaturaMedicoDto>(
+        `/medicos/${medicoId}/assinatura/sessao-nuvem`,
+        { sessaoNuvem },
+      );
       return data;
     },
     onSuccess: (data) => client.setQueryData(chaveModo(medicoId), data),

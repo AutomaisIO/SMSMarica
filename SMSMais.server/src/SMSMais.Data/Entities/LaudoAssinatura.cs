@@ -95,6 +95,26 @@ public class LaudoAssinatura
     /// </summary>
     public string? NuvemCodeVerifier { get; set; }
 
+    /// <summary>
+    /// Modo Nuvem: sessão VIDaaS usada nesta assinatura (ADR-0061 §2.1). Nulo quando a
+    /// assinatura saiu de uma aprovação feita para ela mesma. Permanente — é a trilha de
+    /// quais documentos foram assinados sem nova volta ao aplicativo.
+    /// </summary>
+    public Guid? NuvemSessaoId { get; set; }
+
+    /// <summary>
+    /// Modo Nuvem: fim da sessão VIDaaS pedida ao provedor (o que restava do login, limitado ao
+    /// teto). Guardado no "iniciar" porque o retorno da autorização é anônimo e é nele que a
+    /// sessão nasce. Transitório.
+    /// </summary>
+    public DateTime? NuvemSessaoExpiraEm { get; set; }
+
+    /// <summary>
+    /// Sessão de login no SMSMais (o <c>jti</c> do token) que disparou a assinatura. Amarra a
+    /// sessão VIDaaS ao login e fica como trilha.
+    /// </summary>
+    public string? SessaoLoginId { get; set; }
+
     /// <summary>Thumbprint do certificado escolhido pelo agente (auditoria).</summary>
     public string? CertThumbprint { get; set; }
 

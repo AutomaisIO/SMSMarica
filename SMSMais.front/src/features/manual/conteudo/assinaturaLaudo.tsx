@@ -9,7 +9,7 @@ import type { Artigo } from '@/features/manual/tipos';
  * Artigo da assinatura e liberação do laudo (ADR-0015, ADR-0049, ADR-0061).
  *
  * Conferido no código: `features/laudos` (LaudoEditorPage, ModalPosicionarCarimbo,
- * ModalConferenciaAssinatura, StatusBadgeLaudo), `features/medicos/assinatura`
+ * ModalConferenciaAssinatura, ModalManterAutorizacao, StatusBadgeLaudo), `features/medicos/assinatura`
  * (AssinaturaMedicoSecao) e no backend (`LaudoAssinaturaService`, `LaudosService`
  * — elegibilidade —, `LaudoVerificacaoService`, `PublicoController`).
  */
@@ -22,7 +22,7 @@ export const artigoAssinaturaLaudo: Artigo = {
   icone: FileText,
   rota: '/app/laudos',
   publico: 'Médicos que laudam e o administrador que cadastra os médicos',
-  atualizadoEm: '2026-09-24',
+  atualizadoEm: '2026-09-30',
   palavrasChave: [
     'assinar',
     'assinatura',
@@ -32,6 +32,13 @@ export const artigoAssinaturaLaudo: Artigo = {
     'VIDaaS',
     'nuvem',
     'aplicativo',
+    'celular toda vez',
+    'manter autorização',
+    'autorização mantida',
+    'sessão do VIDaaS',
+    'não perguntar de novo',
+    'aprovar cada laudo',
+    'encerrar autorização',
     'Automais Assinador',
     'agente',
     'sem certificado',
@@ -101,7 +108,7 @@ export const artigoAssinaturaLaudo: Artigo = {
               {
                 termo: 'VIDaaS em nuvem',
                 descricao:
-                  'O certificado é o VIDaaS em nuvem. Ao assinar, abre uma aba de autorização e o médico aprova no aplicativo VIDaaS do celular. Não precisa instalar nada no computador. O administrador da instituição precisa ter configurado a integração.',
+                  'O certificado é o VIDaaS em nuvem. Ao assinar, abre uma aba de autorização e o médico aprova no aplicativo VIDaaS do celular — uma vez por acesso, se mantiver a autorização (veja abaixo). Não precisa instalar nada no computador. O administrador da instituição precisa ter configurado a integração.',
               },
               {
                 termo: 'Login e senha (sem certificado) — o padrão',
@@ -145,7 +152,7 @@ export const artigoAssinaturaLaudo: Artigo = {
               {
                 titulo: 'Autorize',
                 detalhe:
-                  'No computador, confirme no VIDaaS Connect. Na nuvem, aprove no aplicativo do celular. Sem certificado, não há nada a autorizar.',
+                  'No computador, confirme no VIDaaS Connect. Na nuvem, aprove no aplicativo do celular — ou nada, se a autorização estiver mantida. Sem certificado, não há nada a autorizar.',
               },
               {
                 titulo: 'Confira e aprove',
@@ -154,6 +161,52 @@ export const artigoAssinaturaLaudo: Artigo = {
               },
             ]}
           />
+        </>
+      ),
+    },
+    {
+      id: 'autorizacao-mantida',
+      titulo: 'VIDaaS em nuvem: aprovar uma vez e assinar vários',
+      busca:
+        'manter autorização até sair só este laudo não perguntar de novo celular toda vez sessão vidaas encerrar autorizado até aprovar cada laudo',
+      conteudo: (
+        <>
+          <P>
+            No modo VIDaaS em nuvem, a aprovação no celular pode valer para os laudos seguintes.
+            No primeiro laudo do acesso, antes de ir ao aplicativo, o painel pergunta:
+          </P>
+          <Lista>
+            <Item>
+              <BotaoRef variante="primaria">Manter até sair</BotaoRef> — você aprova no app agora e
+              assina os próximos laudos sem o celular, até sair do sistema.
+            </Item>
+            <Item>
+              <BotaoRef variante="outline">Só este laudo</BotaoRef> — a aprovação vale só para este
+              laudo. No próximo, o painel pergunta de novo.
+            </Item>
+            <Item>
+              <strong>Não perguntar de novo</strong> — guarda a resposta, qualquer que seja. Daí em
+              diante o painel não pergunta mais.
+            </Item>
+          </Lista>
+          <P>
+            Enquanto a autorização vale, o laudo mostra{' '}
+            <SeloRef cor="sucesso">VIDaaS autorizado até 19:30</SeloRef> com o link{' '}
+            <strong>encerrar</strong>. Ela acaba quando você sai do sistema, quando clica em
+            encerrar, quando o seu acesso vence, ou se o VIDaaS deixar de aceitá-la — nesse caso o
+            painel simplesmente pede o celular de novo.
+          </P>
+          <Callout tipo="regra" titulo="Cada laudo continua sendo seu">
+            A autorização só dispensa o celular. Nenhum laudo é assinado sem o seu clique em
+            “Assinar e liberar”, e cada um passa pela conferência antes de ser liberado. Ela vale só
+            neste acesso: entrar em outro computador, ou sair e entrar de novo, pede aprovação no
+            app outra vez.
+          </Callout>
+          <P>
+            Para mudar a resposta guardada, peça ao administrador: no cadastro do médico, em
+            “Autorização no VIDaaS”, as opções são <strong>Perguntar ao assinar</strong> (o
+            padrão), <strong>Manter até sair</strong> e <strong>Aprovar cada laudo</strong>.
+          </P>
         </>
       ),
     },
@@ -274,6 +327,11 @@ export const artigoAssinaturaLaudo: Artigo = {
                 'No modo computador, o painel esperou o Automais Assinador e ele não respondeu. Instale pelo botão “Baixar Assinador” e tente de novo.',
             },
             {
+              termo: 'Pediu o celular de novo',
+              descricao:
+                'A autorização mantida acabou: você saiu do sistema, clicou em encerrar, entrou por outro computador, o acesso venceu ou o VIDaaS deixou de aceitá-la. Aprove no app e ela volta a valer.',
+            },
+            {
               termo: '“Tentar de novo” depois de esperar',
               descricao:
                 'A autorização tem prazo: poucos minutos no computador, dez minutos na nuvem. Passou do prazo, o painel oferece começar outra vez.',
@@ -295,6 +353,10 @@ export const artigoAssinaturaLaudo: Artigo = {
           <Item>
             <strong>Escolher o modo e cadastrar a rubrica</strong>: quem tem permissão de edição em
             Médicos, normalmente o administrador. O médico não troca o próprio modo.
+          </Item>
+          <Item>
+            <strong>Manter ou não a autorização do VIDaaS</strong>: o próprio médico, no aviso que
+            aparece ao assinar; o administrador troca depois, no cadastro do médico.
           </Item>
           <Item>
             <strong>Conferir pelo QR Code</strong>: qualquer pessoa com o código, sem login.

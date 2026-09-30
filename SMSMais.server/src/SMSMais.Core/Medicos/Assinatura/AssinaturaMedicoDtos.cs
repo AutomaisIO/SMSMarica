@@ -24,7 +24,12 @@ public sealed record ModoAssinaturaMedicoDto(
     Guid MedicoId,
     ModoAssinaturaMedico Modo,
     bool Configurado,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+    // Modo Nuvem: o que fazer com a autorização do VIDaaS (ADR-0061 §2.1).
+    PreferenciaSessaoNuvem SessaoNuvem = PreferenciaSessaoNuvem.Perguntar);
 
 /// <summary>Payload da troca de modo de assinatura.</summary>
 public sealed record DefinirModoAssinaturaMedicoRequest(ModoAssinaturaMedico Modo);
+
+/// <summary>Payload da troca da preferência de autorização do VIDaaS (modo Nuvem).</summary>
+public sealed record DefinirSessaoNuvemMedicoRequest(PreferenciaSessaoNuvem SessaoNuvem);

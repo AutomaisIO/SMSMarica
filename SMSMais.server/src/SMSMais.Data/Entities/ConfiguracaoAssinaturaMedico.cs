@@ -15,6 +15,9 @@ public class ConfiguracaoAssinaturaMedico
 
     public ModoAssinaturaMedico Modo { get; set; } = ModoAssinaturaMedico.SemCertificado;
 
+    /// <summary>Modo Nuvem: manter a autorização do VIDaaS até sair, perguntar ou aprovar cada laudo.</summary>
+    public PreferenciaSessaoNuvem SessaoNuvem { get; set; } = PreferenciaSessaoNuvem.Perguntar;
+
     // ---- Auditoria (ADR-0006) ----
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }

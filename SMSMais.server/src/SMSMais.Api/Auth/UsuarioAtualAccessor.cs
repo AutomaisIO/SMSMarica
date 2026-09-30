@@ -40,6 +40,19 @@ internal sealed class UsuarioAtualAccessor(IHttpContextAccessor http) : IUsuario
         }
     }
 
+    public DateTime? SessaoExpiraEm
+    {
+        get
+        {
+            var user = _http.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated != true) return null;
+            var exp = user.FindFirstValue(JwtRegisteredClaimNames.Exp);
+            return long.TryParse(exp, out var segundos)
+                ? DateTimeOffset.FromUnixTimeSeconds(segundos).UtcDateTime
+                : null;
+        }
+    }
+
     public string? Ip
     {
         get

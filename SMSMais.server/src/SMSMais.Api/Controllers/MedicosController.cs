@@ -145,4 +145,16 @@ public sealed class MedicosController(
     public async Task<ModoAssinaturaMedicoDto> DefinirModoAssinatura(
         Guid id, [FromBody] DefinirModoAssinaturaMedicoRequest request, CancellationToken cancellationToken) =>
         await assinatura.DefinirModoAsync(id, request.Modo, cancellationToken);
+
+    /// <summary>
+    /// Modo Nuvem: manter a autorização do VIDaaS até sair, perguntar a cada acesso ou aprovar
+    /// cada laudo no app (ADR-0061 §2.1).
+    /// </summary>
+    [HttpPut("{id:guid}/assinatura/sessao-nuvem")]
+    [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ModoAssinaturaMedicoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ModoAssinaturaMedicoDto> DefinirSessaoNuvem(
+        Guid id, [FromBody] DefinirSessaoNuvemMedicoRequest request, CancellationToken cancellationToken) =>
+        await assinatura.DefinirSessaoNuvemAsync(id, request.SessaoNuvem, cancellationToken);
 }

@@ -43,6 +43,9 @@ internal sealed class LaudoAssinaturaConfiguration : IEntityTypeConfiguration<La
         builder.Property(a => a.Modo).HasColumnName("modo").HasConversion<int?>();
         builder.Property(a => a.NuvemStateHash).HasColumnName("nuvem_state_hash").HasMaxLength(64);
         builder.Property(a => a.NuvemCodeVerifier).HasColumnName("nuvem_code_verifier").HasColumnType("text");
+        builder.Property(a => a.NuvemSessaoId).HasColumnName("nuvem_sessao_id");
+        builder.Property(a => a.NuvemSessaoExpiraEm).HasColumnName("nuvem_sessao_expira_em");
+        builder.Property(a => a.SessaoLoginId).HasColumnName("sessao_login_id").HasMaxLength(64);
         builder.Property(a => a.ComCarimboTempo).HasColumnName("com_carimbo_tempo").HasDefaultValue(false).IsRequired();
 
         builder.Property(a => a.AssinadoEm).HasColumnName("assinado_em");
@@ -72,6 +75,12 @@ internal sealed class LaudoAssinaturaConfiguration : IEntityTypeConfiguration<La
 
         // O agente reivindica o job pela chave (capability de uso único).
         builder.HasIndex(a => a.ChaveAgente);
+
+        // Sessão VIDaaS que assinou (ADR-0061 §2.1). Sessão nunca é apagada: Restrict.
+        builder.HasOne<SessaoAssinaturaNuvem>()
+            .WithMany()
+            .HasForeignKey(a => a.NuvemSessaoId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // O retorno da IntegraICP (modo Nuvem, ADR-0061) acha o job pelo state.
         builder.HasIndex(a => a.NuvemStateHash)

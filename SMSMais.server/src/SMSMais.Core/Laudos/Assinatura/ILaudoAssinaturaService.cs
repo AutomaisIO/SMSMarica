@@ -24,10 +24,13 @@ public interface ILaudoAssinaturaService
     /// de uso único para o agente; Nuvem devolve a URL de autorização; SemCertificado já
     /// carimba e deixa o documento aguardando a conferência. A
     /// <paramref name="posicao"/> (ADR-0049) fixa onde o carimbo será aplicado; quando
-    /// nula, mantém o padrão legado (rodapé da última página).
+    /// nula, mantém o padrão legado (rodapé da última página). No modo Nuvem,
+    /// <paramref name="sessaoNuvem"/> é a resposta ao modal "Manter a autorização?" — só vale
+    /// quando a preferência do médico é perguntar (ADR-0061 §2.1).
     /// </summary>
     Task<IniciarAssinaturaResultado> IniciarAsync(
-        Guid laudoId, Guid usuarioId, CarimboPosicaoDto? posicao, CancellationToken cancellationToken = default);
+        Guid laudoId, Guid usuarioId, CarimboPosicaoDto? posicao, EscolhaSessaoNuvemDto? sessaoNuvem = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Status da assinatura mais recente do laudo (para polling no front).</summary>
     Task<AssinaturaStatusDto> ObterStatusAsync(Guid laudoId, CancellationToken cancellationToken = default);
@@ -68,7 +71,19 @@ public interface ILaudoAssinaturaService
     /// Retorno da autorização em nuvem (ADR-0061): com a credencial aprovada pelo médico no
     /// app, busca o certificado, prepara o PAdES, assina o hash na IntegraICP, confere a
     /// assinatura com a chave pública e conclui (mesma trava de CPF do agente). Termina em
-    /// <c>AguardandoAprovacao</c>, como os outros modos.
+    /// <c>AguardandoAprovacao</c>, como os outros modos. Depois da primeira assinatura, a
+    /// credencial vira a sessão VIDaaS do médico (ADR-0061 §2.1).
     /// </summary>
     Task ConcluirNuvemAsync(string state, string credencialId, CancellationToken cancellationToken = default);
+
+    // ---- Sessão VIDaaS do médico logado (ADR-0061 §2.1) ----
+
+    /// <summary>
+    /// Se o médico logado tem autorização VIDaaS ainda válida — com ela, "Assinar" não passa
+    /// pelo aplicativo. Usuário que não é médico recebe "inativa".
+    /// </summary>
+    Task<SessaoNuvemDto> ObterSessaoNuvemAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+
+    /// <summary>Encerra a sessão VIDaaS do médico logado: a próxima assinatura pede aprovação no app.</summary>
+    Task EncerrarSessaoNuvemAsync(Guid usuarioId, CancellationToken cancellationToken = default);
 }

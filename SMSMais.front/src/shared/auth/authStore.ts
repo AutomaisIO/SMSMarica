@@ -238,11 +238,12 @@ export const useAuth = create<AuthState>((set, get) => ({
     // memória do servidor amarrada a ESTA sessão (o `jti` do token), e "sair" tem de significar
     // sair de todas — senão a credencial pessoal dele no sistema do Estado (ou de Niterói)
     // continuaria viva por horas.
-    const { token } = get();
+    const { token, usuario } = get();
     if (token) {
       void encerrarSessaoDeEscritaNoSer(token);
       void encerrarSessaoDeEscritaNoSernit(token);
       void encerrarSessaoNoSiscan(token);
+      if (usuario?.papelAtual === 'Medico') void encerrarAutorizacaoVidaas(token);
     }
 
     localStorage.removeItem(CHAVE_STORAGE);
@@ -349,5 +350,22 @@ async function encerrarSessaoNoSiscan(token: string): Promise<void> {
   } catch {
     // Sair do sistema não pode falhar porque o SISCAN (ou a rede) não respondeu. A sessão órfã
     // ainda cai sozinha pela validade por inatividade do servidor.
+  }
+}
+
+/**
+ * Igual às de cima, para a autorização VIDaaS mantida do médico (ADR-0061 §2.1): sair do painel
+ * tem de derrubar a autorização junto. Se esta chamada falhar, a autorização já não serve a
+ * nenhum outro login e vence junto com o token.
+ */
+async function encerrarAutorizacaoVidaas(token: string): Promise<void> {
+  try {
+    await axios.delete('/laudos/assinatura/nuvem/sessao', {
+      baseURL: http.defaults.baseURL,
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000,
+    });
+  } catch {
+    // Sair do sistema não pode falhar por isso.
   }
 }

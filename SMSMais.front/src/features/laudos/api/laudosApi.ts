@@ -4,6 +4,7 @@ import type {
   AtualizarLaudoPayload,
   CadastrarLaudoPayload,
   CarimboPosicao,
+  EscolhaSessaoNuvem,
   FiltroLaudos,
   FinalizarLaudoPayload,
   IniciarAssinaturaResp,
@@ -11,6 +12,7 @@ import type {
   LaudoHistoricoItem,
   LaudoPorStudy,
   PaginaLaudos,
+  SessaoAssinaturaNuvem,
 } from '@/features/laudos/types';
 
 export async function listarLaudos(filtro: FiltroLaudos, signal?: AbortSignal): Promise<PaginaLaudos> {
@@ -80,12 +82,24 @@ export async function excluirLaudo(id: string): Promise<void> {
 export async function iniciarAssinatura(
   id: string,
   posicao?: CarimboPosicao,
+  sessaoNuvem?: EscolhaSessaoNuvem,
 ): Promise<IniciarAssinaturaResp> {
-  const { data } = await http.post<IniciarAssinaturaResp>(
-    `/laudos/${id}/assinatura/iniciar`,
-    posicao ? { posicao } : {},
-  );
+  const { data } = await http.post<IniciarAssinaturaResp>(`/laudos/${id}/assinatura/iniciar`, {
+    ...(posicao ? { posicao } : {}),
+    ...(sessaoNuvem ? { sessaoNuvem } : {}),
+  });
   return data;
+}
+
+/** Autorização VIDaaS deste login (ADR-0061 §2.1) + a preferência do médico. */
+export async function obterSessaoNuvem(): Promise<SessaoAssinaturaNuvem> {
+  const { data } = await http.get<SessaoAssinaturaNuvem>('/laudos/assinatura/nuvem/sessao');
+  return data;
+}
+
+/** Encerra a autorização VIDaaS deste login: o próximo laudo volta a pedir o app. */
+export async function encerrarSessaoNuvem(): Promise<void> {
+  await http.delete('/laudos/assinatura/nuvem/sessao');
 }
 
 /** PDF-base (mesmo layout que será assinado) para posicionar o carimbo (ADR-0049). */

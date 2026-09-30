@@ -36,6 +36,8 @@ public sealed class LaudoAssinaturaService(
     IIntegraIcpClient integraIcp,
     ICadeiaIcpBrasil cadeiaIcp,
     IProtetorSegredos protetor,
+    // Sessão de login (jti + expiração): a sessão VIDaaS vive e morre com ela (ADR-0061 §2.1).
+    Identidade.IUsuarioAtualAccessor usuarioAtual,
     IConfiguration configuration,
     ILogger<LaudoAssinaturaService> logger,
     IOptions<AssinaturaOptions> options,
@@ -76,7 +78,8 @@ public sealed class LaudoAssinaturaService(
     }
 
     public async Task<IniciarAssinaturaResultado> IniciarAsync(
-        Guid laudoId, Guid usuarioId, CarimboPosicaoDto? posicao, CancellationToken cancellationToken = default)
+        Guid laudoId, Guid usuarioId, CarimboPosicaoDto? posicao, EscolhaSessaoNuvemDto? sessaoNuvem = null,
+        CancellationToken cancellationToken = default)
     {
         ValidarPosicao(posicao);
 
@@ -116,7 +119,8 @@ public sealed class LaudoAssinaturaService(
         await GarantirMedicoTemRubricaAsync(medico.Id, cancellationToken);
 
         // Modo do médico (ADR-0061), gravado no job: trocar no cadastro não muda job em curso.
-        var modo = (await assinaturaMedico.ObterModoAsync(medico.Id, cancellationToken)).Modo;
+        var configMedico = await assinaturaMedico.ObterModoAsync(medico.Id, cancellationToken);
+        var modo = configMedico.Modo;
         if (modo == ModoAssinaturaMedico.Nuvem && !_nuvem.Habilitado)
             throw new ConflitoException("assinatura.nuvem_desligada",
                 "A assinatura em nuvem não está configurada nesta instância. Peça ao administrador para " +
@@ -165,9 +169,11 @@ public sealed class LaudoAssinaturaService(
             job.Status = StatusAssinatura.Iniciada;
             job.TransferState = null;
             job.HashParaAssinar = null;
+            job.NuvemSessaoId = null;
             job.AtualizadoEm = agora;
         }
         job.Modo = modo;
+        job.SessaoLoginId = usuarioAtual.SessaoId;
         AplicarBaseEPosicao(job, pdfBase, pdfBaseHash, posicao);
 
         switch (modo)
@@ -181,7 +187,20 @@ public sealed class LaudoAssinaturaService(
                 return new IniciarAssinaturaResultado(job.Id, null, modo);
 
             case ModoAssinaturaMedico.Nuvem:
-                var url = await AbrirAutorizacaoNuvemAsync(job, agora, cancellationToken);
+                // Sessão VIDaaS viva (ADR-0061 §2.1): assina já, sem voltar ao aplicativo.
+                // Quem escolheu aprovar cada laudo não usa sessão, nem uma que tenha sobrado.
+                var sessaoRecusada = false;
+                if (configMedico.SessaoNuvem != PreferenciaSessaoNuvem.CadaLaudo)
+                {
+                    var (assinou, recusada) = await AssinarComSessaoNuvemAsync(job, agora, cancellationToken);
+                    if (assinou) return new IniciarAssinaturaResultado(job.Id, null, modo);
+                    sessaoRecusada = recusada;
+                }
+                // Sessão que o provedor derrubou no meio: o médico já tinha escolhido manter, e o
+                // painel nem perguntou (achava que a sessão estava ativa) — a nova aprovação mantém.
+                var manter = sessaoRecusada
+                    || await DecidirManterSessaoNuvemAsync(medico.Id, configMedico.SessaoNuvem, sessaoNuvem, cancellationToken);
+                var url = await AbrirAutorizacaoNuvemAsync(job, agora, manter, cancellationToken);
                 return new IniciarAssinaturaResultado(job.Id, null, modo, url);
 
             default:
@@ -536,7 +555,8 @@ public sealed class LaudoAssinaturaService(
     /// PKCE: o <c>code_verifier</c> fica cifrado no job; o <c>state</c> vai na URL de retorno e
     /// só o hash dele é guardado — é ele que amarra o retorno a este job.
     /// </summary>
-    private async Task<string> AbrirAutorizacaoNuvemAsync(LaudoAssinatura job, DateTime agora, CancellationToken ct)
+    private async Task<string> AbrirAutorizacaoNuvemAsync(
+        LaudoAssinatura job, DateTime agora, bool manterSessao, CancellationToken ct)
     {
         var cpf = SoDigitos(await ResolverCpfMedicoAsync(job.MedicoId, ct));
         if (cpf.Length != 11)
@@ -546,17 +566,23 @@ public sealed class LaudoAssinaturaService(
         var verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
         var challenge = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
         var state = GerarChave();
+        // Mantendo a autorização, a credencial vale o que resta do login (ADR-0061 §2.1): a
+        // sessão VIDaaS nunca sobrevive à sessão no SMSMais. Sem manter (ou sem login
+        // identificado), vale só o bastante para este laudo e não vira sessão.
+        manterSessao &= job.SessaoLoginId is { Length: > 0 };
+        var vida = manterSessao ? VidaSessaoNuvemSegundos(agora) : IntegraIcpOptions.CredencialVidaUmLaudoSegundos;
 
         job.ChaveAgente = null;
         job.ChaveExpiraEm = agora.AddMinutes(_nuvem.JanelaAutorizacaoMinutos);
         job.NuvemStateHash = HashChave(state);
         job.NuvemCodeVerifier = protetor.Proteger(verifier);
+        job.NuvemSessaoExpiraEm = manterSessao ? agora.AddSeconds(vida) : null;
         await db.SaveChangesAsync(ct);
 
         string url;
         try
         {
-            url = await integraIcp.IniciarAutorizacaoAsync(cpf, MontarUrlRetornoNuvem(state), challenge, ct);
+            url = await integraIcp.IniciarAutorizacaoAsync(cpf, MontarUrlRetornoNuvem(state), challenge, vida, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -566,9 +592,31 @@ public sealed class LaudoAssinaturaService(
         }
 
         logger.LogInformation(
-            "Assinatura: job {JobId} iniciado EM NUVEM (laudo {LaudoId}, médico {MedicoId}, cpf {Cpf}). Aguardando aprovação no app.",
-            job.Id, job.LaudoId, job.MedicoId, MascararCpf(cpf));
+            "Assinatura: job {JobId} iniciado EM NUVEM (laudo {LaudoId}, médico {MedicoId}, cpf {Cpf}, {Vida}s, {Tipo}). Aguardando aprovação no app.",
+            job.Id, job.LaudoId, job.MedicoId, MascararCpf(cpf), vida, manterSessao ? "mantém a autorização" : "só este laudo");
         return url;
+    }
+
+    /// <summary>
+    /// Mantém a autorização como sessão? A preferência do médico decide; em "perguntar", vale a
+    /// resposta ao modal (sem resposta = só este laudo). "Não perguntar de novo" grava a resposta
+    /// como a nova preferência dele.
+    /// </summary>
+    private async Task<bool> DecidirManterSessaoNuvemAsync(
+        Guid medicoId, PreferenciaSessaoNuvem preferencia, EscolhaSessaoNuvemDto? escolha, CancellationToken ct)
+    {
+        if (preferencia != PreferenciaSessaoNuvem.Perguntar)
+            return preferencia == PreferenciaSessaoNuvem.Manter;
+
+        var manter = escolha?.Manter ?? false;
+        if (escolha?.NaoPerguntarDeNovo == true)
+        {
+            var nova = manter ? PreferenciaSessaoNuvem.Manter : PreferenciaSessaoNuvem.CadaLaudo;
+            await assinaturaMedico.DefinirSessaoNuvemAsync(medicoId, nova, ct);
+            logger.LogInformation("Assinatura: médico {MedicoId} escolheu {Preferencia} e não quer mais ser perguntado.",
+                medicoId, nova);
+        }
+        return manter;
     }
 
     public async Task ConcluirNuvemAsync(string state, string credencialId, CancellationToken cancellationToken = default)
@@ -591,36 +639,17 @@ public sealed class LaudoAssinaturaService(
                 "A autorização demorou demais e expirou. Clique em Assinar de novo no painel.");
         }
 
-        var verifier = protetor.Revelar(job.NuvemCodeVerifier);
+        // Cópias: o ConcluirJobAsync limpa os transitórios do job, e é com eles que a sessão nasce.
+        var verifierCifrado = job.NuvemCodeVerifier;
+        var sessaoExpiraEm = job.NuvemSessaoExpiraEm;
+        var verifier = protetor.Revelar(verifierCifrado);
+        var autorizadaEm = DateTime.UtcNow;
+        byte[] certificado;
         try
         {
             logger.LogInformation("Assinatura: job {JobId} autorizado no app; buscando o certificado.", job.Id);
-            var certificado = await integraIcp.ObterCertificadoAsync(credencialId, verifier, cancellationToken);
-            var cadeia = await cadeiaIcp.MontarAsync(certificado, cancellationToken);
-            logger.LogInformation("Assinatura: job {JobId} com cadeia de {Certificados} certificado(s); preparando o PDF.",
-                job.Id, cadeia.Count);
-            var prep = await PrepararJobAsync(job, cadeia, cancellationToken);
-            var raw = await integraIcp.AssinarHashAsync(credencialId, verifier, prep.ToSignHash, cancellationToken);
-
-            // O RAW da IntegraICP nunca foi exercitado com certificado real (a doc só diz que
-            // "o hash é assinado diretamente"). O CMS do iText precisa de RSASSA-PKCS1-v1_5
-            // sobre DigestInfo(SHA-256) — o mesmo que o agente faz. Confere ANTES de embutir:
-            // se o provedor fizer outra coisa, falha aqui em vez de gerar um PDF que abre mas
-            // é criptograficamente inválido.
-            using var cert = X509CertificateLoader.LoadCertificate(certificado);
-            using var rsa = cert.GetRSAPublicKey();
-            if (rsa is null || !rsa.VerifyHash(prep.ToSignHash, raw, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1))
-            {
-                logger.LogError(
-                    "Assinatura: job {JobId} RECUSADO — a assinatura RAW da nuvem não confere como PKCS#1 v1.5/SHA-256 ({Bytes} bytes; diagnóstico: {Diagnostico}).",
-                    job.Id, raw.Length, rsa is null ? "certificado sem chave RSA" : DiagnosticarRaw(rsa, raw, prep.ToSignHash));
-                throw new ConflitoException("assinatura.nuvem_raw_incompativel",
-                    "O provedor devolveu uma assinatura em formato incompatível. Nada foi gravado. Avise o suporte.");
-            }
-
-            logger.LogInformation("Assinatura: job {JobId} — RAW da nuvem confere (PKCS#1 v1.5/SHA-256, {Bytes} bytes); embutindo.",
-                job.Id, raw.Length);
-            await ConcluirJobAsync(job, raw, cancellationToken);
+            certificado = await integraIcp.ObterCertificadoAsync(credencialId, verifier, cancellationToken);
+            await AssinarComCredencialNuvemAsync(job, credencialId, verifier, certificado, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -631,6 +660,259 @@ public sealed class LaudoAssinaturaService(
                 await MarcarFalhaAsync(job, cancellationToken);
             throw;
         }
+
+        // Só agora, com a primeira assinatura já aprovada pela trava de autoria, a credencial
+        // vira sessão — amarrada ao login que clicou em Assinar. Sem login identificado não há
+        // sessão (cada laudo pede aprovação, como antes). Falhar aqui não desfaz a assinatura.
+        if (job.SessaoLoginId is not { Length: > 0 } sessaoLogin || sessaoExpiraEm is null)
+            return;
+        try
+        {
+            await AbrirSessaoNuvemAsync(
+                job, sessaoLogin, credencialId, verifierCifrado, certificado, autorizadaEm, sessaoExpiraEm.Value,
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Assinatura: job {JobId} assinado, mas a sessão em nuvem não foi guardada.", job.Id);
+        }
+    }
+
+    /// <summary>
+    /// Certificado → cadeia → PAdES preparado → assinatura RAW do hash → conferência do RAW →
+    /// embute. Comum à autorização recém-aprovada e à sessão VIDaaS. Não trata falhas: cada
+    /// chamador decide o que fazer com o job.
+    /// </summary>
+    private async Task AssinarComCredencialNuvemAsync(
+        LaudoAssinatura job, string credencialId, string verifier, byte[] certificado, CancellationToken ct)
+    {
+        var cadeia = await cadeiaIcp.MontarAsync(certificado, ct);
+        logger.LogInformation("Assinatura: job {JobId} com cadeia de {Certificados} certificado(s); preparando o PDF.",
+            job.Id, cadeia.Count);
+        var prep = await PrepararJobAsync(job, cadeia, ct);
+        var raw = await integraIcp.AssinarHashAsync(credencialId, verifier, prep.ToSignHash, ct);
+
+        // O CMS do iText precisa de RSASSA-PKCS1-v1_5 sobre DigestInfo(SHA-256) — o mesmo que
+        // o agente faz (validado com certificado real em 25/09/2026). Confere ANTES de embutir:
+        // se o provedor fizer outra coisa, falha aqui em vez de gerar um PDF que abre mas é
+        // criptograficamente inválido.
+        using var cert = X509CertificateLoader.LoadCertificate(certificado);
+        using var rsa = cert.GetRSAPublicKey();
+        if (rsa is null || !rsa.VerifyHash(prep.ToSignHash, raw, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1))
+        {
+            logger.LogError(
+                "Assinatura: job {JobId} RECUSADO — a assinatura RAW da nuvem não confere como PKCS#1 v1.5/SHA-256 ({Bytes} bytes; diagnóstico: {Diagnostico}).",
+                job.Id, raw.Length, rsa is null ? "certificado sem chave RSA" : DiagnosticarRaw(rsa, raw, prep.ToSignHash));
+            throw new ConflitoException("assinatura.nuvem_raw_incompativel",
+                "O provedor devolveu uma assinatura em formato incompatível. Nada foi gravado. Avise o suporte.");
+        }
+
+        logger.LogInformation("Assinatura: job {JobId} — RAW da nuvem confere (PKCS#1 v1.5/SHA-256, {Bytes} bytes); embutindo.",
+            job.Id, raw.Length);
+        await ConcluirJobAsync(job, raw, ct);
+    }
+
+    // ---------------- Sessão VIDaaS (ADR-0061 §2.1) ----------------
+
+    /// <summary>
+    /// Folga antes do fim da sessão: não começa uma assinatura que o provedor pode recusar no
+    /// meio (a validade é contada do nosso lado, a partir do retorno da autorização).
+    /// </summary>
+    internal static readonly TimeSpan FolgaSessaoNuvem = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Validade de uma autorização nova: o que resta da sessão de login no SMSMais, limitado ao
+    /// teto configurado (e ao mínimo que a API aceita).
+    /// </summary>
+    private int VidaSessaoNuvemSegundos(DateTime agora)
+    {
+        var teto = _nuvem.CredencialVidaEfetivaSegundos;
+        var restante = usuarioAtual.SessaoExpiraEm is { } fim ? (int)Math.Floor((fim - agora).TotalSeconds) : teto;
+        return Math.Clamp(Math.Min(teto, restante),
+            IntegraIcpOptions.CredencialVidaMinimaSegundos, IntegraIcpOptions.CredencialVidaMaximaSegundos);
+    }
+
+    /// <summary>
+    /// Assina o job com a sessão VIDaaS aberta DESTE login, sem nova aprovação no aplicativo.
+    /// Sem assinar quando não há sessão utilizável (nenhuma, de outro login, vencida ou recusada
+    /// pelo provedor — este último caso sinalizado) — o job fica em <c>Iniciada</c> e o chamador
+    /// abre uma autorização nova. Qualquer outra falha marca o job como falho e propaga, como no retorno da autorização.
+    /// </summary>
+    private async Task<(bool Assinou, bool SessaoRecusada)> AssinarComSessaoNuvemAsync(
+        LaudoAssinatura job, DateTime agora, CancellationToken ct)
+    {
+        if (job.SessaoLoginId is not { Length: > 0 } sessaoLogin) return (false, false);
+        var sessao = await SessaoNuvemAbertaAsync(job.MedicoId, sessaoLogin, agora, ct);
+        if (sessao?.CodeVerifier is null) return (false, false);
+
+        // Sem state/verifier próprios: o retorno de uma autorização antiga não acha mais este job.
+        job.ChaveAgente = null;
+        job.NuvemStateHash = null;
+        job.NuvemCodeVerifier = null;
+        job.NuvemSessaoExpiraEm = null;
+        job.ChaveExpiraEm = agora.AddMinutes(_nuvem.JanelaAutorizacaoMinutos);
+        job.NuvemSessaoId = sessao.Id;
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Assinatura: job {JobId} EM NUVEM pela sessão {SessaoId} (laudo {LaudoId}, médico {MedicoId}, sessão até {ExpiraEm:o}) — sem nova aprovação no app.",
+            job.Id, sessao.Id, job.LaudoId, job.MedicoId, sessao.ExpiraEm);
+
+        var verifier = protetor.Revelar(sessao.CodeVerifier);
+        try
+        {
+            var certificado = await integraIcp.ObterCertificadoAsync(sessao.CredencialId, verifier, ct);
+            await AssinarComCredencialNuvemAsync(job, sessao.CredencialId, verifier, certificado, ct);
+            return (true, false);
+        }
+        catch (ConflitoException ex) when (ex.Codigo == IntegraIcpClient.CodigoCredencialInvalida)
+        {
+            // O provedor encerrou a credencial antes do previsto (revogada no app, relógio
+            // diferente...). Não é falha do laudo: encerra a sessão e o job volta a esperar
+            // uma autorização nova.
+            logger.LogInformation(
+                "Assinatura: sessão em nuvem {SessaoId} recusada pelo provedor; pedindo nova aprovação (job {JobId}).",
+                sessao.Id, job.Id);
+            EncerrarSessao(sessao, "recusada pelo provedor", null);
+            job.Status = StatusAssinatura.Iniciada;
+            job.TransferState = null;
+            job.HashParaAssinar = null;
+            job.NuvemSessaoId = null;
+            job.AtualizadoEm = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return (false, true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Assinatura: job {JobId} falhou assinando pela sessão em nuvem {SessaoId}.", job.Id, sessao.Id);
+            // Problema de identidade ou de formato não se resolve tentando de novo com a mesma
+            // credencial: a sessão acaba e a próxima assinatura passa pelo aplicativo.
+            // Rede/timeout/Assinador fora mantêm a sessão.
+            if (ex is ValidacaoException || ex is ConflitoException { Codigo: "assinatura.nuvem_raw_incompativel" or "assinatura.autor_sem_cpf" })
+                EncerrarSessao(sessao, "falha na assinatura", null);
+            if (job.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura)
+                await MarcarFalhaAsync(job, ct);
+            else
+                await db.SaveChangesAsync(ct);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Sessão aberta e ainda utilizável do médico NESTE login. A que venceu é encerrada aqui
+    /// mesmo (o verificador some junto) e o retorno é nulo.
+    /// </summary>
+    private async Task<SessaoAssinaturaNuvem?> SessaoNuvemAbertaAsync(
+        Guid medicoId, string sessaoLogin, DateTime agora, CancellationToken ct)
+    {
+        var sessao = await db.SessoesAssinaturaNuvem
+            .FirstOrDefaultAsync(s => s.SessaoLoginId == sessaoLogin && s.MedicoId == medicoId && s.EncerradaEm == null, ct);
+        if (sessao is null) return null;
+        if (SessaoUtilizavel(sessao, agora)) return sessao;
+
+        EncerrarSessao(sessao, "expirada", null);
+        await db.SaveChangesAsync(ct);
+        return null;
+    }
+
+    private static bool SessaoUtilizavel(SessaoAssinaturaNuvem s, DateTime agora) =>
+        s.EncerradaEm is null && s.CodeVerifier is not null && s.ExpiraEm - FolgaSessaoNuvem > agora;
+
+    /// <summary>
+    /// Guarda a credencial recém-aprovada como sessão do médico neste login, encerrando a
+    /// anterior do mesmo login e as vencidas de logins que acabaram sem logout (aba fechada,
+    /// token expirado) — o verificador delas não fica guardado à toa. Chamado só depois de a
+    /// primeira assinatura passar pela trava de autoria (CPF do certificado == CPF do autor):
+    /// credencial de outra pessoa nunca vira sessão.
+    /// </summary>
+    private async Task AbrirSessaoNuvemAsync(
+        LaudoAssinatura job, string sessaoLogin, string credencialId, string verifierCifrado, byte[] certificado,
+        DateTime autorizadaEm, DateTime expiraEm, CancellationToken ct)
+    {
+        var agora = DateTime.UtcNow;
+        var anteriores = await db.SessoesAssinaturaNuvem
+            .Where(s => s.MedicoId == job.MedicoId && s.EncerradaEm == null
+                        && (s.SessaoLoginId == sessaoLogin || s.ExpiraEm <= agora))
+            .ToListAsync(ct);
+        foreach (var anterior in anteriores)
+            EncerrarSessao(anterior, anterior.SessaoLoginId == sessaoLogin ? "substituída" : "expirada", null);
+        // Grava o encerramento antes do INSERT: o índice único de sessão aberta por login é
+        // checado comando a comando.
+        if (anteriores.Count > 0) await db.SaveChangesAsync(ct);
+
+        var sessao = new SessaoAssinaturaNuvem
+        {
+            Id = Guid.CreateVersion7(),
+            MedicoId = job.MedicoId,
+            SessaoLoginId = sessaoLogin,
+            CredencialId = credencialId,
+            CodeVerifier = verifierCifrado,
+            CertThumbprint = ThumbprintDe(certificado),
+            AutorizadaEm = autorizadaEm,
+            ExpiraEm = expiraEm,
+            AutorizadaPorUsuarioId = job.AssinadoPorUsuarioId,
+        };
+        db.SessoesAssinaturaNuvem.Add(sessao);
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Assinatura: sessão em nuvem {SessaoId} aberta para o médico {MedicoId} até {ExpiraEm:o} (job {JobId}).",
+            sessao.Id, job.MedicoId, sessao.ExpiraEm, job.Id);
+    }
+
+    /// <summary>Encerra a sessão e apaga o verificador — sem ele a credencial não assina mais.</summary>
+    private static void EncerrarSessao(SessaoAssinaturaNuvem sessao, string motivo, Guid? usuarioId)
+    {
+        sessao.EncerradaEm = DateTime.UtcNow;
+        sessao.MotivoEncerramento = motivo;
+        sessao.EncerradaPorUsuarioId = usuarioId;
+        sessao.CodeVerifier = null;
+    }
+
+    // O jti é de um login só, e um login é de um usuário só: a sessão se acha pelo login. O
+    // encerrar nem resolve o médico no hub — o logout fica barato para qualquer usuário.
+
+    public async Task<SessaoNuvemDto> ObterSessaoNuvemAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    {
+        var agora = DateTime.UtcNow;
+        var duracao = VidaSessaoNuvemSegundos(agora);
+
+        // A preferência é do médico (perguntar / manter / cada laudo): o painel decide por ela se
+        // mostra o modal. Usuário sem papel de médico recebe o padrão.
+        var preferencia = PreferenciaSessaoNuvem.Perguntar;
+        try
+        {
+            var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
+            preferencia = (await assinaturaMedico.ObterModoAsync(medico.Id, cancellationToken)).SessaoNuvem;
+        }
+        catch (ConflitoException)
+        {
+        }
+
+        if (usuarioAtual.SessaoId is not { Length: > 0 } sessaoLogin)
+            return new SessaoNuvemDto(false, null, null, duracao, preferencia);
+
+        // Só leitura: a vencida aparece como inativa e é encerrada no próximo "Assinar".
+        var sessao = await db.SessoesAssinaturaNuvem.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SessaoLoginId == sessaoLogin && s.AutorizadaPorUsuarioId == usuarioId
+                                      && s.EncerradaEm == null, cancellationToken);
+        return sessao is not null && SessaoUtilizavel(sessao, agora) && preferencia != PreferenciaSessaoNuvem.CadaLaudo
+            ? new SessaoNuvemDto(true, sessao.AutorizadaEm, sessao.ExpiraEm, duracao, preferencia)
+            : new SessaoNuvemDto(false, null, null, duracao, preferencia);
+    }
+
+    public async Task EncerrarSessaoNuvemAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    {
+        if (usuarioAtual.SessaoId is not { Length: > 0 } sessaoLogin) return;
+        var abertas = await db.SessoesAssinaturaNuvem
+            .Where(s => s.SessaoLoginId == sessaoLogin && s.EncerradaEm == null)
+            .ToListAsync(cancellationToken);
+        if (abertas.Count == 0) return;
+
+        foreach (var s in abertas) EncerrarSessao(s, "encerrada pelo usuário", usuarioId);
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Assinatura: sessão em nuvem {SessaoId} encerrada pelo usuário {UsuarioId} (logout ou painel).",
+            abertas[0].Id, usuarioId);
     }
 
     /// <summary>
@@ -815,6 +1097,7 @@ public sealed class LaudoAssinaturaService(
         job.ChaveExpiraEm = null;
         job.NuvemStateHash = null;
         job.NuvemCodeVerifier = null;
+        job.NuvemSessaoExpiraEm = null;
         // PDF-base fixado é pesado (bytea) e só serve entre iniciar→preparar; some ao
         // concluir/cancelar/falhar. A posição (carimbo_*) e o hash ficam para auditoria.
         job.PdfBaseFixado = null;

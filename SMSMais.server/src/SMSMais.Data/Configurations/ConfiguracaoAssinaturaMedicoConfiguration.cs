@@ -13,6 +13,7 @@ internal sealed class ConfiguracaoAssinaturaMedicoConfiguration : IEntityTypeCon
 
         builder.Property(c => c.MedicoId).HasColumnName("medico_id").ValueGeneratedNever();
         builder.Property(c => c.Modo).HasColumnName("modo").HasConversion<int>().IsRequired();
+        builder.Property(c => c.SessaoNuvem).HasColumnName("sessao_nuvem").HasConversion<int>().IsRequired();
 
         builder.Property(c => c.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(c => c.CriadoPor).HasColumnName("criado_por");

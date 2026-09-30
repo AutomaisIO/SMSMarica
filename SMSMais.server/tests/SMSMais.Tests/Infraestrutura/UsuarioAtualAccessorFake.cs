@@ -11,8 +11,11 @@ public sealed class UsuarioAtualAccessorFake(
     Guid? usuarioId = null,
     Guid? unidadeAtivaId = null,
     string? ip = null,
-    string? sessaoId = null) : IUsuarioAtualAccessor
+    string? sessaoId = null,
+    DateTime? sessaoExpiraEm = null) : IUsuarioAtualAccessor
 {
+    public DateTime? SessaoExpiraEm { get; } = sessaoExpiraEm;
+
     public Guid? UsuarioId { get; } = usuarioId;
     public Guid? UnidadeAtivaId { get; } = unidadeAtivaId;
     public string? Ip { get; } = ip;

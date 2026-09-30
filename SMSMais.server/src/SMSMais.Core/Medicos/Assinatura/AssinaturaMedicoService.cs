@@ -79,8 +79,44 @@ public sealed class AssinaturaMedicoService(
             .FirstOrDefaultAsync(x => x.MedicoId == medicoId, cancellationToken);
         return c is null
             ? new ModoAssinaturaMedicoDto(medicoId, ModoPadrao, false, null)
-            : new ModoAssinaturaMedicoDto(medicoId, c.Modo, true, c.AtualizadoEm ?? c.CriadoEm);
+            : ParaDto(c);
     }
+
+    public async Task<ModoAssinaturaMedicoDto> DefinirSessaoNuvemAsync(
+        Guid medicoId, PreferenciaSessaoNuvem preferencia, CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(preferencia))
+            throw new ValidacaoException("sessaoNuvem", "Preferência de autorização inválida.");
+
+        var agora = DateTime.UtcNow;
+        var usuarioId = usuarioAtual.UsuarioId;
+        var c = await db.ConfiguracoesAssinaturaMedico
+            .FirstOrDefaultAsync(x => x.MedicoId == medicoId, cancellationToken);
+        if (c is null)
+        {
+            c = new ConfiguracaoAssinaturaMedico
+            {
+                MedicoId = medicoId,
+                Modo = ModoPadrao,
+                SessaoNuvem = preferencia,
+                CriadoEm = agora,
+                CriadoPor = usuarioId,
+            };
+            db.ConfiguracoesAssinaturaMedico.Add(c);
+        }
+        else
+        {
+            c.SessaoNuvem = preferencia;
+            c.AtualizadoEm = agora;
+            c.AtualizadoPor = usuarioId;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return ParaDto(c);
+    }
+
+    private static ModoAssinaturaMedicoDto ParaDto(ConfiguracaoAssinaturaMedico c) =>
+        new(c.MedicoId, c.Modo, true, c.AtualizadoEm ?? c.CriadoEm, c.SessaoNuvem);
 
     public async Task<ModoAssinaturaMedicoDto> DefinirModoAsync(
         Guid medicoId, ModoAssinaturaMedico modo, CancellationToken cancellationToken = default)
@@ -111,7 +147,7 @@ public sealed class AssinaturaMedicoService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return new ModoAssinaturaMedicoDto(medicoId, c.Modo, true, c.AtualizadoEm ?? c.CriadoEm);
+        return ParaDto(c);
     }
 
     private static AssinaturaMedicoDto ParaDto(AssinaturaMedico a) => new(

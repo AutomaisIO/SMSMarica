@@ -105,9 +105,31 @@ export type AssinaturaStatus = {
 };
 
 /**
+ * O que fazer com a autorização do VIDaaS (ADR-0061 §2.1). `Perguntar` = o painel mostra o
+ * modal "Manter a autorização?" no primeiro laudo de cada acesso.
+ */
+export type PreferenciaSessaoNuvem = 'Perguntar' | 'Manter' | 'CadaLaudo';
+
+/**
+ * Autorização VIDaaS deste login (ADR-0061 §2.1). Ativa = "Assinar" não passa pelo app.
+ * `duracaoSegundos` = quanto valeria uma autorização nova (o que resta do login).
+ */
+export type SessaoAssinaturaNuvem = {
+  ativa: boolean;
+  autorizadaEm: string | null;
+  expiraEm: string | null;
+  duracaoSegundos: number;
+  preferencia: PreferenciaSessaoNuvem;
+};
+
+/** Resposta ao modal "Manter a autorização?", enviada no "iniciar". */
+export type EscolhaSessaoNuvem = { manter: boolean; naoPerguntarDeNovo: boolean };
+
+/**
  * Resposta do "iniciar" (ADR-0061). Desktop: `chave` de uso único para o agente.
- * Nuvem: `urlAutorizacao` onde o médico aprova no app VIDaaS. SemCertificado: nada — o
- * carimbo já foi aplicado e o documento aguarda a conferência.
+ * Nuvem: `urlAutorizacao` onde o médico aprova no app VIDaaS — sem ela, já assinou pela
+ * autorização mantida. SemCertificado: nada — o carimbo já foi aplicado e o documento aguarda
+ * a conferência.
  */
 export type IniciarAssinaturaResp = {
   assinaturaId: string;

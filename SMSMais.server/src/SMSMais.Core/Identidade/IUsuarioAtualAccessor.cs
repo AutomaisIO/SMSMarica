@@ -33,4 +33,10 @@ public interface IUsuarioAtualAccessor
     /// aparenta valer.</para>
     /// </summary>
     string? SessaoId { get; }
+
+    /// <summary>
+    /// Quando a sessão (o token) expira — o <c>exp</c> do JWT, em UTC. Serve para o estado
+    /// amarrado à sessão não durar mais que ela (ex.: a sessão VIDaaS do médico, ADR-0061 §2.1).
+    /// </summary>
+    DateTime? SessaoExpiraEm { get; }
 }

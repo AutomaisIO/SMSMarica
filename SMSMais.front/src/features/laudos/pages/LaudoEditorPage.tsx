@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  KeyRound,
   Loader2,
   RefreshCw,
   Save,
@@ -18,7 +19,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useEhMedico, usePermissao } from '@/shared/auth/authStore';
 import { abrirJanelaSolta } from '@/shared/lib/janela';
-import { formatarWallClock } from '@/shared/lib/datas';
+import { formatarInstante, formatarWallClock } from '@/shared/lib/datas';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -37,12 +38,15 @@ import {
   useCriarNovaVersao,
   useFinalizarLaudo,
   laudosKeys,
+  useEncerrarSessaoNuvem,
   useIniciarAssinatura,
   useLaudoPorId,
+  useSessaoAssinaturaNuvem,
   useStatusAssinatura,
 } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { ModalConferenciaAssinatura } from '@/features/laudos/components/ModalConferenciaAssinatura';
+import { ModalManterAutorizacao } from '@/features/laudos/components/ModalManterAutorizacao';
 import { ModalPosicionarCarimbo } from '@/features/laudos/components/ModalPosicionarCarimbo';
 import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import { PainelChecklist } from '@/features/laudos/checklist/PainelChecklist';
@@ -51,7 +55,7 @@ import { obterTemplate } from '@/features/laudo-templates/api/laudoTemplatesApi'
 import { templateDaModalidade } from '@/features/laudos/lib/templateModalidade';
 import { coletarContribuicoes, gerarHtmlLaudo } from '@/features/laudos/checklist/gerarTexto';
 import type { EstruturaChecklist, RespostasChecklist } from '@/features/laudos/checklist/types';
-import type { CarimboPosicao, ChecklistLaudoInput } from '@/features/laudos/types';
+import type { CarimboPosicao, ChecklistLaudoInput, EscolhaSessaoNuvem } from '@/features/laudos/types';
 import {
   TIMEOUT_AGENTE_SEGUNDOS,
   lancarAgenteAssinatura,
@@ -96,6 +100,8 @@ export function LaudoEditorPage() {
   // Modo Nuvem (ADR-0061): URL de autorização no VIDaaS — fica à mão caso o navegador
   // tenha bloqueado a aba aberta automaticamente.
   const [urlNuvem, setUrlNuvem] = useState<string | null>(null);
+  // Modo Nuvem em "perguntar": posição já escolhida, esperando a resposta ao "Manter a autorização?".
+  const [posicaoAguardandoEscolha, setPosicaoAguardandoEscolha] = useState<CarimboPosicao | null>(null);
   // Baseline (título/html/json/checklist) para detectar alterações não salvas.
   const [baseline, setBaseline] = useState(() =>
     JSON.stringify({ t: 'Laudo', h: '', j: '{}', r: null }),
@@ -192,6 +198,10 @@ export function LaudoEditorPage() {
   const assinado = (detalhe.data?.assinado ?? false) || statusAssinatura.data?.status === 'Concluida';
   // Como o autor oficializa (ADR-0061): Desktop (agente), Nuvem (app VIDaaS) ou só carimbo.
   const modoAssinatura = detalhe.data?.modoAssinatura ?? 'Desktop';
+  // Autorização VIDaaS mantida neste login (ADR-0061 §2.1): com ela, "Assinar" não vai ao app.
+  const sessaoNuvem = useSessaoAssinaturaNuvem(finalizado && ehMedico && modoAssinatura === 'Nuvem');
+  const autorizacaoMantida = sessaoNuvem.data?.ativa === true;
+  const encerrarSessaoNuvem = useEncerrarSessaoNuvem();
   const semCertificado =
     (detalhe.data?.assinaturaSemCertificado ?? false) ||
     statusAssinatura.data?.formato === 'CARIMBO_SEM_ICP' ||
@@ -222,6 +232,11 @@ export function LaudoEditorPage() {
   useEffect(() => {
     if (aguardandoAprovacao) setConferenciaFechada(false);
   }, [aguardandoAprovacao]);
+  // Assinou pelo app: se a autorização foi mantida, ela acabou de nascer no servidor.
+  const refetchSessaoNuvem = sessaoNuvem.refetch;
+  useEffect(() => {
+    if (aguardandoAprovacao && ehMedico && modoAssinatura === 'Nuvem') void refetchSessaoNuvem();
+  }, [aguardandoAprovacao, ehMedico, modoAssinatura, refetchSessaoNuvem]);
   useEffect(() => {
     if (agenteReivindicou) {
       setAguardandoAgente(false);
@@ -372,18 +387,32 @@ export function LaudoEditorPage() {
     setPosicionandoCarimbo(true);
   }
 
-  // 2º passo: com a posição escolhida, inicia o job e segue pelo caminho do modo (ADR-0061).
-  async function aoConfirmarPosicao(posicao: CarimboPosicao) {
+  // 2º passo: com a posição escolhida, segue pelo caminho do modo (ADR-0061). Nuvem sem
+  // autorização mantida e em "perguntar": antes de ir ao app, o modal "Manter a autorização?".
+  function aoConfirmarPosicao(posicao: CarimboPosicao) {
+    const perguntar = (sessaoNuvem.data?.preferencia ?? 'Perguntar') === 'Perguntar';
+    if (modoAssinatura === 'Nuvem' && !autorizacaoMantida && perguntar) {
+      setPosicionandoCarimbo(false);
+      setPosicaoAguardandoEscolha(posicao);
+      return;
+    }
+    void iniciarComPosicao(posicao);
+  }
+
+  async function iniciarComPosicao(posicao: CarimboPosicao, escolha?: EscolhaSessaoNuvem) {
     if (!id) return;
     setErro(null);
     setUrlNuvem(null);
-    // Nuvem: a aba da autorização precisa ser aberta AINDA no clique — depois do await o
-    // navegador trata como pop-up e bloqueia. Abre vazia agora e navega quando a URL chegar.
-    const janela = modoAssinatura === 'Nuvem' ? window.open('', '_blank') : null;
+    // Nuvem indo ao app: a aba da autorização precisa ser aberta AINDA no clique — depois do
+    // await o navegador trata como pop-up e bloqueia. Abre vazia agora e navega quando a URL
+    // chegar. Com autorização mantida não abre nada: assina direto.
+    const janela = modoAssinatura === 'Nuvem' && !autorizacaoMantida ? window.open('', '_blank') : null;
     try {
-      const r = await iniciarAssinatura.mutateAsync({ id, posicao });
+      const r = await iniciarAssinatura.mutateAsync({ id, posicao, sessaoNuvem: escolha });
       setPosicionandoCarimbo(false);
+      setPosicaoAguardandoEscolha(null);
       if (r.modo === 'Nuvem' && r.urlAutorizacao) {
+        // Sem aba aberta (a autorização mantida caiu no provedor), fica o link "abrir autorização".
         setUrlNuvem(r.urlAutorizacao);
         if (janela) {
           janela.opener = null;
@@ -396,11 +425,12 @@ export function LaudoEditorPage() {
           lancarAgenteAssinatura(r.chave);
           setAguardandoAgente(true);
         }
-        // SemCertificado: o carimbo já foi aplicado; o status vira AguardandoAprovacao e a
-        // conferência abre sozinha.
+        // SemCertificado e Nuvem com autorização mantida: já assinou; o status vira
+        // AguardandoAprovacao e a conferência abre sozinha.
       }
     } catch (e) {
       janela?.close();
+      setPosicaoAguardandoEscolha(null);
       setErro(extrairMensagemDeErro(e));
     }
   }
@@ -483,6 +513,14 @@ export function LaudoEditorPage() {
           aoFechar={() => setConferenciaFechada(true)}
         />
       ) : null}
+      <ModalManterAutorizacao
+        aberto={posicaoAguardandoEscolha !== null}
+        enviando={iniciarAssinatura.isPending}
+        aoCancelar={() => setPosicaoAguardandoEscolha(null)}
+        aoResponder={(escolha) => {
+          if (posicaoAguardandoEscolha) void iniciarComPosicao(posicaoAguardandoEscolha, escolha);
+        }}
+      />
       {!ehNovo && id ? (
         <ModalPosicionarCarimbo
           laudoId={id}
@@ -560,7 +598,9 @@ export function LaudoEditorPage() {
               ) : ehMedico && podeFinalizar && assinando && !agenteNaoEncontrado ? (
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm text-amber-800">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {modoAssinatura === 'Nuvem' ? (
+                  {modoAssinatura === 'Nuvem' && autorizacaoMantida && !urlNuvem ? (
+                    'Assinando com a autorização mantida…'
+                  ) : modoAssinatura === 'Nuvem' ? (
                     <>
                       Aguardando sua aprovação no aplicativo VIDaaS…
                       {urlNuvem ? (
@@ -601,6 +641,23 @@ export function LaudoEditorPage() {
                 >
                   <ShieldAlert className="h-4 w-4" />
                   {rotuloBloqueio(detalhe.data.motivoBloqueioAssinatura)}
+                </span>
+              ) : null}
+              {ehMedico && modoAssinatura === 'Nuvem' && autorizacaoMantida ? (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-sm text-emerald-800"
+                  title="Enquanto valer, Assinar não pede o celular. Acaba ao sair do sistema."
+                >
+                  <KeyRound className="h-4 w-4" />
+                  VIDaaS autorizado até {formatarInstante(sessaoNuvem.data?.expiraEm, { timeStyle: 'short' })}
+                  <button
+                    type="button"
+                    onClick={() => encerrarSessaoNuvem.mutate()}
+                    disabled={encerrarSessaoNuvem.isPending}
+                    className="ml-1 font-medium underline"
+                  >
+                    encerrar
+                  </button>
                 </span>
               ) : null}
               {ehMedico && modoAssinatura === 'Desktop' ? (

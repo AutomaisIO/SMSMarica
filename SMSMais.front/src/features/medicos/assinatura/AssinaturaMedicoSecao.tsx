@@ -8,12 +8,15 @@ import { Modal } from '@/shared/ui/Modal';
 import {
   FORMATOS_ASSINATURA,
   MODOS_ASSINATURA,
+  PREFERENCIAS_SESSAO_NUVEM,
   type FormatoAssinaturaMedico,
   type ModoAssinaturaMedico,
+  type PreferenciaSessaoNuvem,
 } from '@/features/medicos/assinatura/types';
 import {
   useAssinaturaMedico,
   useDefinirModoAssinaturaMedico,
+  useDefinirSessaoNuvemMedico,
   useModoAssinaturaMedico,
   useRemoverAssinaturaMedico,
   useSalvarAssinaturaMedico,
@@ -37,6 +40,7 @@ export function AssinaturaMedicoSecao({ medicoId }: Props) {
   const remover = useRemoverAssinaturaMedico(medicoId);
   const modoAtual = useModoAssinaturaMedico(medicoId);
   const definirModo = useDefinirModoAssinaturaMedico(medicoId);
+  const definirSessaoNuvem = useDefinirSessaoNuvemMedico(medicoId);
   const [erroModo, setErroModo] = useState<string | null>(null);
 
   async function escolherModo(modo: ModoAssinaturaMedico) {
@@ -44,6 +48,16 @@ export function AssinaturaMedicoSecao({ medicoId }: Props) {
     setErroModo(null);
     try {
       await definirModo.mutateAsync(modo);
+    } catch (err) {
+      setErroModo(extrairMensagemDeErro(err));
+    }
+  }
+
+  async function escolherSessaoNuvem(preferencia: PreferenciaSessaoNuvem) {
+    if (preferencia === modoAtual.data?.sessaoNuvem) return;
+    setErroModo(null);
+    try {
+      await definirSessaoNuvem.mutateAsync(preferencia);
     } catch (err) {
       setErroModo(extrairMensagemDeErro(err));
     }
@@ -159,9 +173,40 @@ export function AssinaturaMedicoSecao({ medicoId }: Props) {
           </p>
         ) : null}
         {modoAtual.data?.modo === 'Nuvem' ? (
-          <p className="mt-1 text-xs text-gray-500">
-            O CPF do cadastro precisa ser o mesmo do certificado VIDaaS do médico.
-          </p>
+          <>
+            <p className="mt-1 text-xs text-gray-500">
+              O CPF do cadastro precisa ser o mesmo do certificado VIDaaS do médico.
+            </p>
+            {/* Autorização mantida (ADR-0061 §2.1) — o médico também escolhe no próprio modal. */}
+            <span className="mt-3 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              Autorização no VIDaaS
+            </span>
+            <div className="mt-1 grid gap-2 sm:grid-cols-3">
+              {PREFERENCIAS_SESSAO_NUVEM.map((p) => {
+                const ativo = modoAtual.data?.sessaoNuvem === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => escolherSessaoNuvem(p.id)}
+                    disabled={definirSessaoNuvem.isPending}
+                    aria-pressed={ativo}
+                    className={`rounded-md border px-3 py-2 text-left text-xs disabled:opacity-60 ${
+                      ativo
+                        ? 'border-primary-400 bg-primary-50 text-primary-700 ring-1 ring-primary-300'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1 font-medium">
+                      {ativo ? <Check className="h-3.5 w-3.5" /> : null}
+                      {p.rotulo}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-gray-500">{p.descricao}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
         ) : null}
         {erroModo ? <p className="mt-1 text-xs text-red-700">{erroModo}</p> : null}
       </div>

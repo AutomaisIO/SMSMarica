@@ -1,7 +1,8 @@
 # ADR-0061 — Modos de assinatura por médico e selo de verificação do laudo
 
-**Status:** aceito (implementado em 24/09/2026; modo Nuvem pendente de validação com certificado real)
-**Data:** 2026-09-24
+**Status:** aceito (implementado em 24/09/2026; modo Nuvem validado com certificado real em 25/09/2026;
+§2.1 — autorização mantida — em 30/09/2026)
+**Data:** 2026-09-24 (revisto em 2026-09-30)
 **Relacionado:** [ADR-0015](./0015-assinatura-laudos-agente-itext.md) (agente + Assinador iText),
 [ADR-0049](./0049-assinatura-laudo-carimbo-posicionavel.md) (carimbo posicionável, PDF-base fixado).
 
@@ -64,7 +65,47 @@ a credencial traz só o certificado do médico e a AC VALID RFB v5 não publica 
 Configuração (variáveis de ambiente, nunca no repositório): `Assinatura__Nuvem__Canal` (vazio =
 modo desligado, e o painel explica o motivo), `Assinatura__Nuvem__CabecalhoAutenticacao` e
 `Assinatura__Nuvem__ValorAutenticacao` se o contrato exigir, `Assinatura__Nuvem__UrlPublicaApi`
-(senão usa `Publico__BaseUrl`).
+(senão usa `Publico__BaseUrl`), `Assinatura__Nuvem__CredencialVidaSegundos` (teto da autorização
+mantida, §2.1; padrão 12 h).
+
+### 2.1 Autorização mantida: aprovar no app uma vez por acesso (30/09/2026)
+
+Até aqui cada laudo pedia uma aprovação nova no celular: o "iniciar" gerava um PKCE novo e a
+credencial era descartada depois de uma assinatura. A IntegraICP permite mais: a credencial vale
+para vários `POST /signatures` até o `credential_lifetime` pedido (máximo 168 h), e o VIDaaS mostra
+essa validade ao médico na hora de aprovar.
+
+**Decisão.** A credencial aprovada pode virar uma **sessão VIDaaS** (`smsmarica.assinatura_nuvem_sessao`:
+`credencial_id`, `code_verifier` cifrado com Data Protection, validade, motivo de encerramento),
+**amarrada à sessão de login no SMSMais** — o `jti` do token, a mesma régua das sessões de escrita
+do SISREG/SER/SISCAN:
+
+- só é usada por requisições do **mesmo login**; outro computador, ou sair e entrar, pede o app de novo;
+- vale o que **resta do login** (limitado ao teto `CredencialVidaSegundos`) — é esse o
+  `credential_lifetime` enviado, então o provedor nunca guarda autorização mais longa que o login;
+- o **logout do painel** encerra (`DELETE /laudos/assinatura/nuvem/sessao`); encerrar apaga o
+  `code_verifier`, e sem ele a credencial não assina mais, mesmo viva no provedor;
+- só nasce **depois de a primeira assinatura passar pela trava de autoria** (CPF do certificado ==
+  CPF do autor): credencial de outra pessoa nunca vira sessão;
+- se o provedor recusar a credencial antes do previsto (403/404), a sessão é encerrada e o mesmo
+  "Assinar" cai numa aprovação nova — não é falha do laudo.
+
+Com a sessão viva, "Assinar" assina na própria requisição e o laudo vai direto para a
+conferência. Nada muda no que protege o documento: só o autor logado dispara cada assinatura, e
+cada uma passa pela conferência antes de ser liberada. `laudo_assinatura.nuvem_sessao_id` registra
+quais documentos saíram de uma sessão (sem nova volta ao app) e `sessao_login_id`, de qual login.
+
+**Quem escolhe.** Preferência por médico, em `medico_config_assinatura.sessao_nuvem`
+(`PreferenciaSessaoNuvem`):
+
+| Valor | Rótulo | Efeito |
+|---|---|---|
+| `Perguntar` (padrão) | Perguntar ao assinar | No primeiro laudo do acesso, o modal "Manter a autorização do VIDaaS?" — **Manter até sair** / **Só este laudo** + "Não perguntar de novo" |
+| `Manter` | Manter até sair | Autorização vira sessão sem perguntar |
+| `CadaLaudo` | Aprovar cada laudo | Credencial de 15 min, sem sessão (o comportamento anterior); sessão que tenha sobrado é ignorada |
+
+"Não perguntar de novo" grava a resposta dada — manter vira `Manter`, só este laudo vira
+`CadaLaudo`. O administrador troca depois no cadastro do médico ("Autorização no VIDaaS").
 
 ### 3. Sem certificado: carimbo como conteúdo, e o documento diz isso
 
@@ -114,9 +155,15 @@ conter só capa e imagens.
 - **Médico-legal:** o laudo carimbado não tem validade jurídica plena (CFM 2.299/2021). A decisão
   de oferecer o modo é da gestão; o sistema garante que ninguém confunda os dois — no PDF, no
   painel e na página do QR.
-- **Pendente:** exercitar o modo Nuvem com um CPF real com VIDaaS ativo. O nome do parâmetro da
-  credencial no retorno não é documentado; o controller aceita os nomes prováveis e, sem casar,
-  o primeiro valor com formato ULID (o mesmo critério do spike).
+- ~~Pendente: exercitar o modo Nuvem com um CPF real~~ — validado em 25/09/2026 (RAW =
+  PKCS#1 v1.5 sobre DigestInfo SHA-256; o `code` do retorno é o `credentialId`).
+- **§2.1:** migrations `SessaoAssinaturaNuvem` (tabela + três colunas em `laudo_assinatura`) e
+  `PreferenciaSessaoNuvemMedico` (coluna `sessao_nuvem`, padrão `Perguntar`). Aditivas. O
+  `IUsuarioAtualAccessor` ganha `SessaoExpiraEm` (o `exp` do token).
+- **Pendente (§2.1):** confirmar com o certificado real que o VIDaaS aceita um segundo
+  `POST /signatures` na mesma credencial sem pedir o app de novo. Se pedir, o `/signatures` volta
+  sem `signedContent` e o laudo falha com mensagem clara — o caminho de "Aprovar cada laudo"
+  continua disponível.
 
 ## Reversão
 
