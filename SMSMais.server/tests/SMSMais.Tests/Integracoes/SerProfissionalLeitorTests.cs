@@ -14,7 +14,7 @@ public class SerProfissionalLeitorTests
     private const string Pagina = """
         <form id="form0" action="/ser/pages/cadastro/profissionalSaude/profissional-pesquisar.seam">
           <input type="text" name="form0:nome" value="" />
-          <input type="submit" id="form0:j_id36" name="form0:j_id36" value="Pesquisar" />
+          <input type="submit" name="form0:j_id36" value="Pesquisar" class="botao" />
           <table id="form0:listagem"><tbody id="form0:listagem:tb">
             <tr>
               <td id="form0:listagem:20:j_id40"><a href="#">Editar</a></td>

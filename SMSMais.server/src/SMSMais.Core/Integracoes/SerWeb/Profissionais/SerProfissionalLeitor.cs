@@ -95,12 +95,18 @@ public sealed partial class SerProfissionalLeitor(
 
     // ------------------------------------------------------------------ parsing (testável)
 
+    /// <summary>
+    /// O <c>name</c> do botão Pesquisar. Nesta tela o submit vem SÓ com <c>name</c>, sem
+    /// <c>id</c> (<c>&lt;input type="submit" name="form0:j_id36" value="Pesquisar"&gt;</c>) — procurar
+    /// pelo id derrubou a primeira importação em produção (01/10/2026).
+    /// </summary>
     internal static string? BotaoPesquisar(IHtmlDocument doc) =>
         doc.QuerySelectorAll("input[type='submit']")
+            .Select(e => (Nome: e.GetAttribute("name") ?? e.Id ?? string.Empty, Valor: e.GetAttribute("value")?.Trim()))
             .FirstOrDefault(e =>
-                (e.Id ?? string.Empty).StartsWith("form0:", StringComparison.Ordinal)
-                && string.Equals(e.GetAttribute("value")?.Trim(), "Pesquisar", StringComparison.Ordinal))
-            ?.Id;
+                e.Nome.StartsWith("form0:", StringComparison.Ordinal)
+                && string.Equals(e.Valor, "Pesquisar", StringComparison.Ordinal))
+            .Nome is { Length: > 0 } nome ? nome : null;
 
     /// <summary>
     /// Linhas de <c>form0:listagem</c>: Ação | CPF | Documento | Tipo | Nome | Ativo. O índice
