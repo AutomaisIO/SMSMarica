@@ -1,4 +1,4 @@
-import { BookOpen, Bus, ClipboardCheck, Folder, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
+import { BookOpen, Bus, ClipboardCheck, Folder, LifeBuoy, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
 import { artigoAnaliseRegrasEspelho } from '@/features/manual/conteudo/analiseRegrasEspelho';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
@@ -13,6 +13,8 @@ import { artigoIndicadoresRegulacao } from '@/features/manual/conteudo/indicador
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
+import { artigoTickets } from '@/features/manual/conteudo/tickets';
+import { artigoTicketsGestao } from '@/features/manual/conteudo/ticketsGestao';
 import { artigoTiposTratamento } from '@/features/manual/conteudo/tiposTratamento';
 import { artigoUnidadesAtendimento } from '@/features/manual/conteudo/unidadesAtendimento';
 import { artigoVeiculos } from '@/features/manual/conteudo/veiculos';
@@ -62,6 +64,12 @@ export const GRUPOS: GrupoManual[] = [
     icone: Bus,
   },
   {
+    id: 'suporte',
+    titulo: 'Suporte',
+    descricao: 'Pedir ajuda à equipe que mantém o sistema e, para a equipe, triar e responder os tickets.',
+    icone: LifeBuoy,
+  },
+  {
     id: 'sistema',
     titulo: 'Sistema',
     descricao: 'Perfis, permissões, identidade da instituição e configuração.',
@@ -84,6 +92,8 @@ export const ARTIGOS: Artigo[] = [
   artigoMensageria,
   artigoMotoristas,
   artigoOuvidoria,
+  artigoTickets,
+  artigoTicketsGestao,
   artigoTiposTratamento,
   artigoUnidadesAtendimento,
   artigoVeiculos,

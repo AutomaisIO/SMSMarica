@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BellDot, Check, LifeBuoy, MessageSquare, Plus } from 'lucide-react';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { notificar } from '@/shared/ui/Notificacoes';
@@ -93,6 +94,7 @@ export function MeusTicketsPage() {
           <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
             <LifeBuoy className="h-5 w-5 text-red-600" />
             Meus Tickets
+            <AjudaManual artigo="tickets" />
           </h1>
           <p className="text-sm text-slate-500">Acompanhe seus bugs, mudanças, sugestões e dúvidas.</p>
         </div>

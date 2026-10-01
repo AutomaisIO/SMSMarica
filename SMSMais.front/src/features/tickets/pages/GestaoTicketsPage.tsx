@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bot, CheckCheck, Inbox, MessageSquare, Settings2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
@@ -119,6 +120,7 @@ export function GestaoTicketsPage() {
           <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
             <Inbox className="h-5 w-5 text-red-600" />
             Gestão de Tickets
+            <AjudaManual artigo="tickets-gestao" />
           </h1>
           <p className="text-sm text-slate-500">Veja, responda e triê todos os tickets de suporte.</p>
         </div>
