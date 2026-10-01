@@ -19,6 +19,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -28,7 +31,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>&gt; <strong>Nada foi criado no SER.</strong> A sonda só troca aba e combos, que apenas re-renderizam a view. &gt; O botão <code>Gravar</code> (<code>form0:j_id313</code>) nunca foi acionado — e a trava da sonda recusa qualquer &gt; parâmetro com verbo de escrita.</p>
 <h2>1. Como se chega lá</h2>
 <p>Mesma tela da fila (<code>solicitar-consulta-pesquisar.seam</code>), aba <strong>Editar</strong>. A troca de aba é <code>_JSFFormSubmit</code> — <strong>POST comum</strong>, sem <code>AJAXREQUEST</code>, mandando os campos do form mais:</p>
-<p>``<code> form0:editar_server_submit = form0:editar_server_submit </code>``</p>
+<pre><code>form0:editar_server_submit = form0:editar_server_submit</code></pre>
 <h2>2. O formulário tem duas partes</h2>
 <p>Um <strong>bloco fixo</strong>, igual para todo pedido, e um <strong>bloco dinâmico</strong> (<code>form0:camposDinamicos</code>) que muda conforme o Recurso escolhido. É o bloco dinâmico que responde à pergunta "por que oncologia pede campos diferentes".</p>
 <h3>2.1 Bloco fixo</h3>
@@ -39,9 +42,9 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Recurso (autocomplete)</td><td><code>form0:suggRecurso</code></td><td>suggestionbox</td><td></td></tr>
 <tr><td>CNS do paciente</td><td><code>form0:numeroCADSUS</code></td><td>text</td><td></td></tr>
 <tr><td>Médico solicitante identificado?</td><td><code>form0:booleanMedicoSolicitanteIdentificado_radio</code></td><td>radio S/N</td><td></td></tr>
-<tr><td>Médico responsável</td><td><code>form0:medicoResp</code></td><td>select (876 opções)</td><td></td></tr>
-<tr><td>Telefone do médico</td><td><code>form0:telefoneCelularMedico</code></td><td>text</td><td></td></tr>
-<tr><td>Especialidade do médico</td><td><code>form0:especialidadeMedico</code></td><td>text</td><td></td></tr>
+<tr><td>Médico responsável</td><td><code>form0:medicoResp</code></td><td>select (~927 opções — <strong>value é índice de view</strong>, §2.1.2)</td><td></td></tr>
+<tr><td>Telefone do médico</td><td><code>form0:telefoneCelularMedico</code></td><td>text <strong>desabilitado</strong> — preenchido pelo médico</td><td></td></tr>
+<tr><td>Especialidade do médico</td><td><code>form0:especialidadeMedico</code></td><td>text <strong>desabilitado</strong> — preenchido pelo médico</td><td></td></tr>
 <tr><td>Classificação de Risco</td><td><code>form0:classificacao_risco</code></td><td>select (Prioridade 1–4)</td><td>sim</td></tr>
 <tr><td>Hipótese</td><td><code>form0:procedimento</code></td><td><strong>suggestionbox de CID</strong> (não é texto — §2.1.3)</td><td>sim</td></tr>
 <tr><td>Mandado Judicial</td><td><code>form0:naturezaSolicitacaoMandato_radio</code></td><td>radio S/N</td><td></td></tr>
@@ -71,6 +74,21 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>O <code>suggUnidadeOrigem</code> é um <code>rich:suggestionbox</code> — mesmo protocolo do Solicitante descrito em <a href="./ser.md"><code>ser.md</code> §4.3</a>: fetch com <code>inputvalue</code> + <code>ajaxSingle</code>, depois <code>onselect</code> gravando o índice em <code>form0:j_id264_selection</code>, que é <strong>transitório</strong>. O <code>j_id264</code> sai do <code>Richfaces.onAvailable</code> da própria página, nunca chumbado.</p>
 <p>&gt; <strong>Armadilha do vocabulário (custou um dia, 20/08/2026):</strong> o combo de Tipo só aceita <code>CONSULTA</code> &gt; e <code>EXAME</code>. O nosso domínio chama isso de <code>Consulta</code>/<code>Exame</code> (o enum <code>TipoRecursoSer</code>, que é o &gt; que a tela manda). Passar o valor do nosso lado direto ao SER <strong>não dá erro</strong>: ele não aplica a &gt; troca e devolve a view intacta — o combo de recurso vem vazio, o recurso não amarra, e o &gt; autocomplete de CID responde "Nenhum CID encontrado" para qualquer termo, inclusive para um &gt; código que aquele recurso aceita. A conversão está em <code>SerNovaSolicitacaoService.TipoParaOSer</code>, &gt; no <code>PrepararAsync</code>, com teste de regressão.</p>
 <p>&gt; Estado em 20/08/2026: a tela de nova solicitação manipula <strong>três</strong> dos treze nomes JSF do bloco &gt; fixo (<code>classificacao_risco</code>, <code>medicoResp</code> e, desde hoje, <code>procedimento</code> — a Hipótese, §2.1.3). &gt; Os três radios e os cinco campos condicionais ainda não estão implementados — pedido montado &gt; hoje seria recusado por falta de médico e de unidade de origem. É pendência conhecida, anterior &gt; a ligar o envio.</p>
+<h4>2.1.2 O médico: o value do combo NÃO é identificador</h4>
+<p>Medido em 01/10/2026 (<code>Automais.SER/probe_profissional_saude.py</code>, só leitura):</p>
+<ul>
+<li>O <code>value</code> de <code>form0:medicoResp</code> é o índice do <strong>EntityConverter do Seam</strong> — vale só para aquela</li>
+</ul>
+<p>  view. Numa captura era 0..872 contíguo; em outra, 0..924 fora de ordem. <strong>Nunca guardar o   value</strong>: guardar o NOME e resolver o índice pelo texto na hora do envio. Há ~49 nomes repetidos   no combo (homônimos ou cadastro duplicado).</p>
+<ul>
+<li>O combo = os profissionais <strong>ativos com lotação no município</strong> (Cadastro → Profissionais).</li>
+<li>Escolher o médico dispara A4J (<code>ajaxSingle=form0:medicoResp</code>) que preenche</li>
+</ul>
+<p>  <code>especialidadeMedico</code> com o <code>toString()</code> de uma List Java (<code>[CLÍNICA GERAL]</code>) — só as   especialidades da lotação no município — e o telefone. Os dois inputs vêm desabilitados: não são   campos para preencher.</p>
+<ul>
+<li>O radio <code>booleanMedicoSolicitanteIdentificado_radio</code> nasce em <code>true</code>.</li>
+</ul>
+<p>O cadastro do profissional (Cadastro → Profissionais) é estadual e único por CPF, com N lotações (Unidade × Especialidade × CBO × Ativo); a nossa conta só lota em "GESTOR SMS MARICA". O link "Editar" da pesquisa responde HTTP 500 — a ficha abre pela aba "Adicionar Novo" + busca por CPF. A especialidade da lotação é um combo de 115 opções cujo value também é índice posicional (e há rótulos repetidos); o CBO é suggestionbox que só busca por nome.</p>
 <h4>2.1.3 A Hipótese é uma caixa de CID — e a lista é do RECURSO</h4>
 <p>Medido em 20/08/2026 (<code>Automais.SER/probe_cid.py</code>), depois que a nossa tela de nova solicitação apareceu com a Hipótese como campo de texto e sem listar CID nenhum. A tabela de §2.1 dizia <code>text</code>; está errada. <code>form0:procedimento</code> é um <code>rich:suggestionbox</code> (o input tem <code>alt="Digite o nome ou o código"</code>), e o SER guarda a hipótese pelo <strong>CID escolhido</strong>, não pelo texto — foi por isso que a edição de 10/08/2026 respondeu "salva com sucesso" e voltou vazia.</p>
 <p><strong>Sem Recurso escolhido, não existe CID nenhum.</strong> Qualquer termo — inclusive o código exato — devolve a linha "Nenhum CID encontrado":</p>
@@ -117,7 +135,12 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>A busca casa código e descrição</strong>, sem exigir acento: <code>hipert</code> traz <code>E05</code>, <code>G932</code>, <code>I10</code>… O SER corta em <strong>500 linhas</strong> por busca (um termo de uma letra volta com exatamente 500); a nossa resposta marca <code>truncado</code> para a tela pedir um termo mais específico em vez de fingir que aquilo é tudo. É também o que obriga a cópia a enumerar por prefixo de dois caracteres, que cabe folgado (<code>A0</code> → 68, <code>M5</code> → 32, <code>Z9</code> → 90) — e a refinar com um terceiro caractere qualquer prefixo que volte no teto, em vez de aceitar uma lista incompleta com cara de completa.</p>
 <p>&gt; O dado do SER é irregular no acento — "Diarréia" tem, "Hipertensao" não. O espelho guarda uma &gt; coluna <code>busca</code> sem acento e normaliza o termo digitado do mesmo jeito (<code>SerCidBusca</code>), para que &gt; "hipertensão" ache "Hipertensao". Isso não amplia o que é oferecido: o conjunto continua sendo &gt; exatamente o que o SER devolveu.</p>
 <p><strong>A linha da tabela tem três células, e a que importa é a primeira</strong>, que vem com <code>style="display: none"</code>:</p>
-<p>``<code>html &lt;tr class="rich-sb-int richfaces_suggestionEntry"&gt;   &lt;td style="display: none;"&gt;(A09 ) Diarréia e gastroenterite de origem infecciosa presumível&lt;/td&gt;   &lt;td class="rich-sb-cell-padding"&gt;A09&lt;/td&gt;   &lt;td class="rich-sb-cell-padding"&gt;Diarréia e gastroenterite de origem infecciosa presumível&lt;/td&gt; &lt;/tr&gt; &lt;tr id="form0:j_id226:0NothingLabel" style="display: none;"&gt;&lt;td&gt;Nenhum CID encontrado&lt;/td&gt;&lt;/tr&gt; </code>``</p>
+<pre><code>&lt;tr class="rich-sb-int richfaces_suggestionEntry"&gt;
+  &lt;td style="display: none;"&gt;(A09 ) Diarréia e gastroenterite de origem infecciosa presumível&lt;/td&gt;
+  &lt;td class="rich-sb-cell-padding"&gt;A09&lt;/td&gt;
+  &lt;td class="rich-sb-cell-padding"&gt;Diarréia e gastroenterite de origem infecciosa presumível&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr id="form0:j_id226:0NothingLabel" style="display: none;"&gt;&lt;td&gt;Nenhum CID encontrado&lt;/td&gt;&lt;/tr&gt;</code></pre>
 <p>É a coluna oculta — <code>(A09 ) …</code>, código preenchido com espaço até 4 caracteres, entre parênteses, mais a descrição — que o navegador escreve no campo, e é ela que o pedido leva de volta em <code>form0:procedimento</code>. Guardar só o código, ou só a descrição, dá pedido sem hipótese. E a <code>NothingLabel</code> vem escondida em <strong>toda</strong> resposta, inclusive nas que têm resultado: descarte pela forma da linha (uma célula só), nunca pelo texto da mensagem.</p>
 <p>&gt; Para o envio, vale a regra do §2.1 do <code>probe_criar_solicitacao.py</code>: são <strong>as duas coisas</strong> — &gt; a amarração A4J (fetch + <code>onselect</code> com o índice no <code>_selection</code>) <strong>e</strong> o texto no campo. O &gt; <code>onselect</code> responde <code>Ajax-Update-Ids</code> vazio; a escolha mora só na conversa Seam. Nossa tela hoje &gt; faz apenas o fetch (é consulta); a amarração entra junto com o envio.</p>
 <h3>2.2 Bloco dinâmico</h3>
@@ -133,7 +156,10 @@ li{margin:3px 0}p,li{max-width:75ch}
 </tbody></table></div>
 <p><strong>Data</strong> (§ regressão 10/08): o <code>rich:calendar</code> embute um <code>&lt;script&gt;</code> com a localização inteira do calendário <em>dentro</em> do container — ler o texto cru transforma o rótulo em <code>"Data da coleta da biópsia://&lt;![CDATA[ Richfaces.Calendar.addLocale('pt'…"</code>. E o valor não viaja no id base: vai no input irmão terminado em <code>InputDate</code>. <code>InputCurrentDate</code> existe no mesmo componente e <strong>não</strong> é o campo.</p>
 <p><strong>Escolha</strong> (radio e checkbox): não são <code>&lt;select&gt;</code> — são uma tabela com <strong>um <code>&lt;input&gt;</code> por opção</strong>, todos com o mesmo <code>name</code>, e o texto de cada opção num <code>&lt;label for="&lt;id da opção&gt;"&gt;</code>:</p>
-<p>``<code>html &lt;span&gt;&lt;label&gt;Grupo Sanguineo:&lt;/label&gt;&lt;/span&gt;          &lt;!-- rótulo do CAMPO: sem </code>for<code> --&gt; &lt;table class="radioButton" id="form0:dinamico_id_379"&gt;   &lt;td&gt;&lt;input id="form0:dinamico_id_379:0" name="form0:dinamico_id_379" type="radio" value="Tipo A"/&gt;       &lt;label for="form0:dinamico_id_379:0"&gt;Tipo A&lt;/label&gt;&lt;/td&gt;   &lt;!-- rótulo da OPÇÃO: com </code>for<code> --&gt; </code>``</p>
+<pre><code>&lt;span&gt;&lt;label&gt;Grupo Sanguineo:&lt;/label&gt;&lt;/span&gt;          &lt;!-- rótulo do CAMPO: sem `for` --&gt;
+&lt;table class="radioButton" id="form0:dinamico_id_379"&gt;
+  &lt;td&gt;&lt;input id="form0:dinamico_id_379:0" name="form0:dinamico_id_379" type="radio" value="Tipo A"/&gt;
+      &lt;label for="form0:dinamico_id_379:0"&gt;Tipo A&lt;/label&gt;&lt;/td&gt;   &lt;!-- rótulo da OPÇÃO: com `for` --&gt;</code></pre>
 <p>&gt; Medido em 22 containers reais: <strong>o rótulo do campo nunca tem <code>for</code>; o das opções sempre tem.</strong> &gt; É essa assimetria que separa os dois — por isso o <code>&lt;label for&gt;</code> só é descartado em grupo de &gt; marcação, nunca num campo comum.</p>
 <p><code>value</code> é o texto em si ("Tipo A", "Diabetes"), não um código. E <strong>checkbox é múltipla escolha</strong>: o JSF posta o mesmo nome uma vez por marcado (<code>…id_594=Diabetes&amp;…id_594=Depressão</code>). Como o rascunho guarda par nome→valor, os valores viajam juntos separados por <code>\n</code> e se desdobram no envio — contrato em <code>SerValorMultiplo</code>.</p>
 <h2>2.3 Anexar arquivo — como o upload funciona</h2>
@@ -147,7 +173,11 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Limites declarados</td><td><code>maxFileBatchSize: 2</code>, <code>noDuplicate: true</code></td></tr>
 </tbody></table></div>
 <p><strong>O envio dos bytes não usa o <code>action</code> do form.</strong> O RichFaces reescreve o <code>action</code> na hora e submete num iframe escondido — um POST <code>multipart/form-data</code> por arquivo, para:</p>
-<p>``<code> /ser/pages/consultas-exames/solicitacao/solicitar-consulta-editar.seam   ?_richfaces_upload_uid=&lt;uid aleatório&gt;   &amp;formAnexar:upload=formAnexar:upload   &amp;_richfaces_upload_file_indicator=true   &amp;AJAXREQUEST=_viewRoot </code>``</p>
+<pre><code>/ser/pages/consultas-exames/solicitacao/solicitar-consulta-editar.seam
+  ?_richfaces_upload_uid=&lt;uid aleatório&gt;
+  &amp;formAnexar:upload=formAnexar:upload
+  &amp;_richfaces_upload_file_indicator=true
+  &amp;AJAXREQUEST=_viewRoot</code></pre>
 <p>Antes de submeter, o componente <strong>desabilita todos os outros <code>input[type=file]</code></strong> do form, para que vá exatamente um arquivo por requisição. O progresso e o cancelamento andam por fora, num A4J paralelo com <code>_richfaces_file_upload_action</code> + <code>_richfaces_upload_uid</code>.</p>
 <p>Há um caminho alternativo por <strong>Flash</strong> (<code>FileUploadComponent.swf</code>), que monta a mesma URL mas embute <code>;jsessionid=</code> no caminho e acrescenta <code>_richfaces_size</code> e <code>_richfaces_send_http_error</code>. Para isso, <strong>o <code>JSESSIONID</code> é impresso em texto claro no HTML da página</strong>, como argumento do construtor do componente — o plugin não enxerga cookie. É observação de segurança do alvo, não algo que a gente use.</p>
 <p>Os anexos já enviados aparecem em <code>form0:anexoList</code>, com as colunas <strong>Data, Nome do Arquivo, Usuário e Ação</strong>.</p>

@@ -3,6 +3,7 @@ import { BellRing, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { useTemConsulta } from '@/shared/auth/authStore';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { formatarInstante } from '@/shared/lib/datas';
@@ -129,7 +130,10 @@ export function NotificacoesRegulacaoPage() {
       <header className="flex flex-wrap items-center gap-3">
         <BellRing className="size-6 text-red-700" />
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Notificações da regulação</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold text-slate-900">Notificações da regulação</h1>
+            <AjudaManual artigo="regulacao-solicitacoes" secao="notificacoes" />
+          </div>
           <p className="text-sm text-slate-600">
             Movimentações das solicitações que ainda não foram vistas.
           </p>

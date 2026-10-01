@@ -28,10 +28,22 @@ public sealed record CriarRegulacaoSolicitacaoRequest(
     SistemaRegulacao? SistemaDestino,
     string? Observacoes);
 
+/// <param name="Fluxo">Só a unidade, com a solicitação em rascunho ou devolvida.</param>
+/// <param name="ProcedimentoId">
+/// Só a unidade, com a solicitação em rascunho ou devolvida. O agente troca pelo
+/// <c>trocar-procedimento</c>, que é outro momento do caso.
+/// </param>
+/// <param name="PacienteId">
+/// Só a unidade, com a solicitação em rascunho ou devolvida. Mandar o MESMO paciente relê a
+/// identidade — é assim que o CPF informado depois chega à solicitação.
+/// </param>
 public sealed record AtualizarRegulacaoSolicitacaoRequest(
     SistemaRegulacao? SistemaDestino,
     JsonElement? Formulario,
-    string? Observacoes);
+    string? Observacoes,
+    FluxoRegulacao? Fluxo = null,
+    Guid? ProcedimentoId = null,
+    Guid? PacienteId = null);
 
 public sealed record RegulacaoSolicitacaoDetalheDto(
     Guid Id,
@@ -72,6 +84,12 @@ public sealed record RegistrarEnvioRequest(
 /// Só as que este usuário abriu. Vale para o agente, que enxerga tudo e às vezes quer ver o
 /// próprio trabalho.
 /// </param>
+/// <param name="FilaDoMunicipio">
+/// A tela "Fila da regulação": para o agente (módulo 48), o município inteiro quando nenhuma
+/// unidade está escolhida no topo, ou a unidade escolhida. Sem ela — a tela "Solicitações" — a fila
+/// é a das unidades do usuário pela cascata normal, <b>para o agente também</b>. Para quem não é
+/// agente não amplia nada.
+/// </param>
 public sealed record RegulacaoSolicitacaoFiltro(
     StatusRegulacao[]? Status = null,
     FluxoRegulacao? Fluxo = null,
@@ -81,6 +99,7 @@ public sealed record RegulacaoSolicitacaoFiltro(
     Guid? AgenteId = null,
     string? Busca = null,
     bool SoMinhas = false,
+    bool FilaDoMunicipio = false,
     int Pagina = 1,
     int Tamanho = 25);
 
@@ -105,7 +124,10 @@ public sealed record PaginaSolicitacoesRegulacaoDto(
     int Total, IReadOnlyList<RegulacaoSolicitacaoListaDto> Itens);
 
 /// <param name="PorStatus">Contagem por status — alimenta as abas da fila e o badge da sidebar.</param>
-/// <param name="VeTodasUnidades">Se este usuário está enxergando o município inteiro (módulo 48).</param>
+/// <param name="VeTodasUnidades">
+/// Se a fila pedida cobre o município inteiro: o agente na "Fila da regulação", ou quem tem
+/// acesso global sem unidade escolhida no topo.
+/// </param>
 public sealed record RegulacaoResumoFilaDto(
     IReadOnlyDictionary<StatusRegulacao, int> PorStatus, bool VeTodasUnidades);
 
@@ -114,8 +136,10 @@ public interface IRegulacaoSolicitacaoService
     Task<PaginaSolicitacoesRegulacaoDto> ListarAsync(
         RegulacaoSolicitacaoFiltro filtro, CancellationToken ct);
 
-    /// <summary>Contagem por status, no escopo do usuário.</summary>
-    Task<RegulacaoResumoFilaDto> ResumoAsync(CancellationToken ct);
+    /// <summary>
+    /// Contagem por status, no escopo da fila pedida (<see cref="RegulacaoSolicitacaoFiltro.FilaDoMunicipio"/>).
+    /// </summary>
+    Task<RegulacaoResumoFilaDto> ResumoAsync(bool filaDoMunicipio, CancellationToken ct);
 
     Task<RegulacaoSolicitacaoDetalheDto> CriarAsync(
         CriarRegulacaoSolicitacaoRequest req, CancellationToken ct);
@@ -194,7 +218,8 @@ public sealed class RegulacaoSolicitacaoService(
     public async Task<PaginaSolicitacoesRegulacaoDto> ListarAsync(
         RegulacaoSolicitacaoFiltro filtro, CancellationToken ct)
     {
-        var consulta = await ConsultaNoEscopoAsync(ct);
+        var escopo = await EscopoDaFilaAsync(filtro.FilaDoMunicipio, ct);
+        var consulta = ConsultaNoEscopo(escopo);
         if (consulta is null) return new PaginaSolicitacoesRegulacaoDto(0, []);
 
         if (filtro.Status is { Length: > 0 } status) consulta = consulta.Where(s => status.Contains(s.Status));
@@ -265,10 +290,11 @@ public sealed class RegulacaoSolicitacaoService(
         return new PaginaSolicitacoesRegulacaoDto(total, comAgente);
     }
 
-    public async Task<RegulacaoResumoFilaDto> ResumoAsync(CancellationToken ct)
+    public async Task<RegulacaoResumoFilaDto> ResumoAsync(bool filaDoMunicipio, CancellationToken ct)
     {
-        var veTudo = await escopoRegulacao.EhAgenteAsync(ct);
-        var consulta = await ConsultaNoEscopoAsync(ct);
+        var escopo = await EscopoDaFilaAsync(filaDoMunicipio, ct);
+        var veTudo = escopo.VeTudo;
+        var consulta = ConsultaNoEscopo(escopo);
         if (consulta is null)
         {
             return new RegulacaoResumoFilaDto(new Dictionary<StatusRegulacao, int>(), veTudo);
@@ -394,20 +420,101 @@ public sealed class RegulacaoSolicitacaoService(
                     : $"Uma solicitação em {s.Status} não é editável pela unidade solicitante.");
         }
 
-        if (req.SistemaDestino is not null)
+        var diff = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+        // Procedimento, fluxo e paciente: na mão da unidade, "todo e qualquer dado" enquanto a
+        // solicitação é dela — rascunho ou devolvida (pedido do Bernardo, 01/10/2026). O agente
+        // tem o "Trocar procedimento", que é outro momento do caso e não mexe em paciente.
+        var mexeNaEstrutura = req.Fluxo is not null || req.ProcedimentoId is not null || req.PacienteId is not null;
+        if (mexeNaEstrutura && ajusteDoAgente)
+        {
+            throw new ConflitoException(
+                "regulacao.solicitacao.estrutura_da_unidade",
+                "Fluxo, procedimento e paciente mudam pela unidade, com a solicitação devolvida. "
+                + "Para trocar o procedimento, use \"Trocar procedimento\".");
+        }
+
+        var pacienteTrocou = false;
+        if (req.PacienteId is { } pacienteId)
+        {
+            var (nome, cpf, cns) = await LerIdentidadePacienteAsync(pacienteId, ct);
+            if (pacienteId != s.PacienteId)
+            {
+                diff["paciente"] = new { de = s.PacienteNome, para = nome };
+                pacienteTrocou = true;
+            }
+            else if (cpf != s.PacienteCpf)
+            {
+                diff["pacienteCpf"] = new { de = s.PacienteCpf, para = cpf };
+            }
+
+            s.PacienteId = pacienteId;
+            s.PacienteNome = nome;
+            s.PacienteCpf = cpf;
+            s.PacienteCns = cns;
+        }
+
+        var novoFluxo = req.Fluxo ?? s.Fluxo;
+        var novoProcedimento = req.ProcedimentoId ?? s.ProcedimentoId;
+        var fluxoTrocou = novoFluxo != s.Fluxo;
+        var procedimentoTrocou = novoProcedimento != s.ProcedimentoId;
+
+        if (fluxoTrocou || procedimentoTrocou)
+        {
+            if (novoFluxo == FluxoRegulacao.Nar && s.UnidadeEmNomeDeId is null)
+            {
+                throw new ValidacaoException(
+                    "fluxo", "O NAR precisa da unidade em nome de quem a solicitação é aberta — abra uma nova solicitação NAR.");
+            }
+
+            var procedimento = await db.RegulacaoProcedimentos.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == novoProcedimento && p.Ativo, ct)
+                ?? throw new NaoEncontradoException("Procedimento canônico da regulação", novoProcedimento);
+            await ExigirDestinoPermitidoAsync(novoFluxo, novoProcedimento, ct);
+
+            if (procedimentoTrocou)
+            {
+                diff["procedimento"] = new { de = await NomeDoProcedimentoAsync(s.ProcedimentoId, ct), para = procedimento.NomeCanonico };
+            }
+            if (fluxoTrocou)
+            {
+                diff["fluxo"] = new { de = s.Fluxo.ToString(), para = novoFluxo.ToString() };
+
+                // Mesma regra da abertura: o NAR é sempre SISREG; nos demais o destino vem da tela.
+                var destino = novoFluxo == FluxoRegulacao.Nar ? SistemaRegulacao.Sisreg : req.SistemaDestino;
+                if (destino != s.SistemaDestino)
+                {
+                    diff["destino"] = new { de = s.SistemaDestino?.ToString(), para = destino?.ToString() };
+                }
+                s.SistemaDestino = destino;
+                if (novoFluxo != FluxoRegulacao.Nar) s.UnidadeEmNomeDeId = null;
+            }
+
+            var (_, descartadas) = await AplicarFormularioAsync(s, novoProcedimento, novoFluxo, ct);
+            foreach (var (chave, valor) in descartadas) diff[chave] = valor;
+        }
+
+        if (!fluxoTrocou && req.SistemaDestino is not null)
         {
             if (s.Fluxo == FluxoRegulacao.Nar && req.SistemaDestino != SistemaRegulacao.Sisreg)
             {
                 throw new ValidacaoException("sistemaDestino", "O NAR sempre termina no SISREG.");
             }
+            if (req.SistemaDestino != s.SistemaDestino)
+            {
+                diff["destino"] = new { de = s.SistemaDestino?.ToString(), para = req.SistemaDestino.ToString() };
+            }
             s.SistemaDestino = req.SistemaDestino;
         }
 
-        IReadOnlyDictionary<string, object?>? diff = null;
         if (req.Formulario is { } f)
         {
             // O diff sai ANTES da sobrescrita — depois dela, o valor anterior já não existe.
-            diff = eventos.Diferenca(LerCanonico(s.FormularioJson), f);
+            var doFormulario = eventos.Diferenca(LerCanonico(s.FormularioJson), f);
+            if (doFormulario is not null)
+            {
+                foreach (var (chave, valor) in doFormulario) diff[chave] = valor;
+            }
 
             // O formulário é guardado por sistema: `canonico` é o que a tela preenche, e a
             // tradução para `ser`/`sernit`/`sisreg` acontece no envio, com a versão gravada.
@@ -421,7 +528,7 @@ public sealed class RegulacaoSolicitacaoService(
 
         // Sem diff não há evento: "editou" sem dizer o quê polui a linha do tempo e esconde as
         // edições que importam. Salvar duas vezes a mesma coisa não vira duas linhas.
-        if (diff is not null)
+        if (diff.Count > 0)
         {
             await eventos.RegistrarAsync(
                 id,
@@ -431,6 +538,10 @@ public sealed class RegulacaoSolicitacaoService(
         }
 
         await db.SaveChangesAsync(ct);
+
+        // Depois da gravação porque as duas têm o próprio SaveChanges.
+        if (procedimentoTrocou) await exigencias.DispensarCaixinhasDeOutroProcedimentoAsync(id, novoProcedimento, ct);
+        if (pacienteTrocou) await exigencias.DescartarExamesInternosAsync(id, ct);
 
         return await ObterAsync(id, ct);
     }
@@ -724,20 +835,43 @@ public sealed class RegulacaoSolicitacaoService(
             .FirstOrDefaultAsync(p => p.Id == procedimentoId && p.Ativo, ct)
             ?? throw new NaoEncontradoException("Procedimento canônico da regulação", procedimentoId);
 
-        var anterior = await db.RegulacaoProcedimentos.AsNoTracking()
-            .Where(p => p.Id == s.ProcedimentoId)
-            .Select(p => p.NomeCanonico)
-            .FirstOrDefaultAsync(ct) ?? "(procedimento removido)";
+        var anterior = await NomeDoProcedimentoAsync(s.ProcedimentoId, ct);
+        var (preservadas, descartadas) = await AplicarFormularioAsync(s, procedimentoId, s.Fluxo, ct);
 
-        // Trocar o procedimento troca o formulário: o novo pode pedir campos que o antigo não
-        // pedia, e vice-versa. Regerar a versão é o que mantém a solicitação legível como ela
-        // será preenchida daqui em diante.
-        var formulario = await formularios.ObterOuGerarAsync(procedimentoId, s.Fluxo, ct);
+        s.AtualizadoEm = DateTime.UtcNow;
+        s.AtualizadoPor = usuarioAtual.UsuarioId;
 
-        // As respostas cuja chave sobrevive no formulário novo são preservadas; as demais caem.
-        // Descartar tudo faria o agente redigitar o que já estava certo; preservar tudo deixaria
-        // resposta órfã de campo que não existe mais. O que cai vai para o diff — é o registro de
-        // que aquela informação foi perdida na troca, e não simplesmente esquecida.
+        await eventos.RegistrarAsync(
+            id, TipoEventoRegulacao.TrocaProcedimento, PapelEventoRegulacao.Agente, ct,
+            diff: descartadas.Count > 0 ? descartadas : null,
+            detalhe: new
+            {
+                de = anterior,
+                para = novo.NomeCanonico,
+                respostasPreservadas = preservadas,
+                respostasDescartadas = descartadas.Count,
+            });
+
+        await db.SaveChangesAsync(ct);
+        await exigencias.DispensarCaixinhasDeOutroProcedimentoAsync(id, procedimentoId, ct);
+        return await ObterAsync(id, ct);
+    }
+
+    /// <summary>
+    /// Troca o procedimento e/ou o fluxo da solicitação e, com eles, o formulário — o novo pode
+    /// pedir campos que o antigo não pedia, e vice-versa. Usado pelo "Trocar procedimento" do
+    /// agente e pela edição da unidade. <b>Não grava</b>: quem chama decide quando.
+    ///
+    /// <para>As respostas cuja chave sobrevive no formulário novo são preservadas; as demais caem.
+    /// Descartar tudo faria redigitar o que já estava certo; preservar tudo deixaria resposta órfã
+    /// de campo que não existe mais. O que cai volta como diff — é o registro de que aquela
+    /// informação foi perdida na troca, e não simplesmente esquecida.</para>
+    /// </summary>
+    private async Task<(int Preservadas, Dictionary<string, object?> Descartadas)> AplicarFormularioAsync(
+        RegulacaoSolicitacao s, Guid procedimentoId, FluxoRegulacao fluxo, CancellationToken ct)
+    {
+        var formulario = await formularios.ObterOuGerarAsync(procedimentoId, fluxo, ct);
+
         var canonicoAntes = LerCanonico(s.FormularioJson);
         var chavesNovas = formulario.Campos.Select(c => c.Chave).ToHashSet(StringComparer.Ordinal);
 
@@ -757,44 +891,61 @@ public sealed class RegulacaoSolicitacaoService(
         }
 
         s.ProcedimentoId = procedimentoId;
+        s.Fluxo = fluxo;
         s.FormularioVersaoId = formulario.VersaoId;
         s.FormularioJson = JsonSerializer.Serialize(new { canonico = preservadas });
 
-        // Os destinos avaliados valiam para o procedimento ANTIGO. O motor de regras é do
-        // incremento 4; até lá, apagar é mais honesto do que deixar um veredito que já não se
-        // refere ao que está na ficha.
+        // Os destinos avaliados valiam para o procedimento/fluxo ANTIGO. Apagar é mais honesto do
+        // que deixar um veredito que já não se refere ao que está na ficha — a próxima avaliação
+        // das regras grava o novo.
         var destinos = await db.RegulacaoSolicitacaoDestinos
-            .Where(d => d.SolicitacaoId == id).ToListAsync(ct);
+            .Where(d => d.SolicitacaoId == s.Id).ToListAsync(ct);
         if (destinos.Count > 0) db.RegulacaoSolicitacaoDestinos.RemoveRange(destinos);
 
-        s.AtualizadoEm = DateTime.UtcNow;
-        s.AtualizadoPor = usuarioAtual.UsuarioId;
-
-        await eventos.RegistrarAsync(
-            id, TipoEventoRegulacao.TrocaProcedimento, PapelEventoRegulacao.Agente, ct,
-            diff: descartadas.Count > 0 ? descartadas : null,
-            detalhe: new
-            {
-                de = anterior,
-                para = novo.NomeCanonico,
-                respostasPreservadas = preservadas.Count,
-                respostasDescartadas = descartadas.Count,
-            });
-
-        await db.SaveChangesAsync(ct);
-        return await ObterAsync(id, ct);
+        return (preservadas.Count, descartadas);
     }
 
+    private async Task<string> NomeDoProcedimentoAsync(Guid procedimentoId, CancellationToken ct) =>
+        await db.RegulacaoProcedimentos.AsNoTracking()
+            .Where(p => p.Id == procedimentoId)
+            .Select(p => p.NomeCanonico)
+            .FirstOrDefaultAsync(ct) ?? "(procedimento removido)";
+
     // ---------------------------------------------------------------- apoio
+
+    /// <summary>
+    /// O escopo da LISTA, que não é o do detalhe.
+    ///
+    /// <para>A fila do município é do agente: lá ele parte de tudo. Fora dela — a tela
+    /// "Solicitações" —, a fila é a da unidade escolhida no topo, para o agente também: pré-regulação,
+    /// em análise, devolvidas e encerradas são assunto da unidade solicitante, e ver as do município
+    /// inteiro ali misturava a fila da unidade com a triagem (pedido do Bernardo, 01/10/2026).</para>
+    ///
+    /// <para>O detalhe continua no escopo de <b>permissão</b> (<see cref="IRegulacaoEscopo"/>): o
+    /// agente abre qualquer caso, inclusive vindo de uma notificação.</para>
+    /// </summary>
+    private async Task<EscopoUnidadeResultado> EscopoDaFilaAsync(bool filaDoMunicipio, CancellationToken ct)
+    {
+        if (filaDoMunicipio && await escopoRegulacao.EhAgenteAsync(ct))
+        {
+            // A fila do agente também segue a unidade escolhida no topo (pedido do Bernardo,
+            // 01/10/2026): com uma escolhida, é a dela — de pré-regulação a encerradas; sem nenhuma
+            // ("todas"), o município. Para o agente isto é filtro, não permissão: ele escolhe
+            // qualquer unidade, e o detalhe continua aberto a todas.
+            return usuarioAtual.UnidadeAtivaId is { } ativa
+                ? EscopoUnidadeResultado.Uma(ativa)
+                : EscopoUnidadeResultado.Tudo;
+        }
+        return await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
+    }
 
     /// <summary>
     /// A consulta base já filtrada pelo escopo. <c>null</c> significa <b>sem acesso a unidade
     /// nenhuma</b> — e quem chama devolve conjunto vazio, em vez de deixar um `Contains` sobre
     /// array vazio decidir isso por acidente (ADR-0037, fail-closed).
     /// </summary>
-    private async Task<IQueryable<RegulacaoSolicitacao>?> ConsultaNoEscopoAsync(CancellationToken ct)
+    private IQueryable<RegulacaoSolicitacao>? ConsultaNoEscopo(EscopoUnidadeResultado escopo)
     {
-        var escopo = await escopoRegulacao.ResolverAsync(ct);
         if (escopo.SemAcesso) return null;
 
         var consulta = db.RegulacaoSolicitacoes.AsNoTracking()
@@ -802,6 +953,13 @@ public sealed class RegulacaoSolicitacaoService(
             .Include(s => s.UnidadeSolicitante)
             .Include(s => s.UnidadeEmNomeDe)
             .Where(s => s.ExcluidoEm == null);
+
+        // Rascunho é de quem o abriu — em qualquer fila, para qualquer papel. A mesma regra do
+        // detalhe (`RegulacaoEscopo.RascunhoVisivel`), escrita como filtro de banco.
+        if (usuarioAtual.UsuarioId is { } eu)
+        {
+            consulta = consulta.Where(s => s.Status != StatusRegulacao.Rascunho || s.CriadoPorUsuarioId == eu);
+        }
 
         if (escopo.VeTudo) return consulta;
 
@@ -892,15 +1050,13 @@ public sealed class RegulacaoSolicitacaoService(
     }
 
     /// <summary>
-    /// Carrega respeitando o escopo por unidade. <b>Fail-closed</b>: fora do escopo devolve
-    /// "não encontrado", e não "sem permissão" — dizer que existe já é vazar informação de que
-    /// aquele paciente tem solicitação.
+    /// Carrega respeitando o escopo por unidade e o rascunho de quem o abriu. <b>Fail-closed</b>:
+    /// fora do alcance devolve "não encontrado", e não "sem permissão" — dizer que existe já é
+    /// vazar informação de que aquele paciente tem solicitação.
     /// </summary>
     private async Task<RegulacaoSolicitacao> CarregarNoEscopoAsync(
         Guid id, CancellationToken ct, bool rastrear = false)
     {
-        var escopo = await escopoRegulacao.ResolverAsync(ct);
-
         var consulta = rastrear
             ? db.RegulacaoSolicitacoes.AsQueryable()
             : db.RegulacaoSolicitacoes.AsNoTracking();
@@ -908,11 +1064,7 @@ public sealed class RegulacaoSolicitacaoService(
         var s = await consulta.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, ct)
             ?? throw new NaoEncontradoException("Solicitação da regulação", id);
 
-        if (!escopo.VeTudo && !escopo.Unidades.Contains(s.UnidadeSolicitanteId))
-        {
-            throw new NaoEncontradoException("Solicitação da regulação", id);
-        }
-
+        await escopoRegulacao.ExigirAlcanceAsync(s, ct);
         return s;
     }
 

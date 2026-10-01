@@ -15,6 +15,32 @@ using SMSMais.Data.Entities.Regulacao;
 
 namespace SMSMais.Core.Regulacao.Regras;
 
+/// <summary>
+/// O que a solicitação respondeu a uma regra, como ficou gravado — inclusive o que foi deduzido.
+/// É a leitura do agente regulador: <b>não reavalia nada</b>, só mostra o veredito guardado.
+/// </summary>
+/// <param name="Opcoes">Pergunta de lista: todas as opções da versão respondida.</param>
+/// <param name="OpcoesMarcadas">Pergunta de lista: o que o solicitante marcou.</param>
+/// <param name="Vigente">
+/// A regra respondida ainda vale. Falso = ela foi substituída depois (nova versão, desativada ou
+/// trocada por uma pergunta de lista): a resposta fica como história, mas não decide mais nada.
+/// </param>
+public sealed record RespostaRegraRegistradaDto(
+    Guid RegraId,
+    int Versao,
+    TipoRegraRegulacao Tipo,
+    SeveridadeRegraRegulacao Severidade,
+    SistemaRegulacao? Sistema,
+    string Descricao,
+    string? Pergunta,
+    RespostaRegraRegulacao Resposta,
+    ResultadoRegraRegulacao Resultado,
+    string? Motivo,
+    IReadOnlyList<string> Opcoes,
+    IReadOnlyList<string> OpcoesMarcadas,
+    DateTime RespondidoEm,
+    bool Vigente);
+
 public interface IRegulacaoElegibilidadeService
 {
     /// <summary>Avalia e <b>persiste</b> o resultado: respostas deduzidas, destinos e caixinhas.</summary>
@@ -22,6 +48,19 @@ public interface IRegulacaoElegibilidadeService
 
     Task<AvaliacaoElegibilidadeDto> ResponderAsync(
         Guid solicitacaoId, IReadOnlyDictionary<Guid, RespostaRegraRegulacao> respostas, CancellationToken ct);
+
+    /// <param name="opcoesMarcadas">
+    /// Pergunta de lista: as opções marcadas, por regra. Obrigatório quando a resposta a uma
+    /// pergunta de lista é "Sim" — é isso que diz ao regulador qual condição vale.
+    /// </param>
+    Task<AvaliacaoElegibilidadeDto> ResponderAsync(
+        Guid solicitacaoId,
+        IReadOnlyDictionary<Guid, RespostaRegraRegulacao> respostas,
+        IReadOnlyDictionary<Guid, IReadOnlyList<string>>? opcoesMarcadas,
+        CancellationToken ct);
+
+    /// <summary>O que já foi respondido e deduzido, sem reavaliar — a leitura do agente.</summary>
+    Task<IReadOnlyList<RespostaRegraRegistradaDto>> RespostasAsync(Guid solicitacaoId, CancellationToken ct);
 
     /// <summary>Exames do próprio SMSMais que servem para aquela caixinha.</summary>
     Task<IReadOnlyList<ExameParaRegras>> ExamesInternosAsync(
@@ -56,17 +95,48 @@ public sealed class RegulacaoElegibilidadeService(
     IUsuarioAtualAccessor usuarioAtual) : IRegulacaoElegibilidadeService
 {
     public Task<AvaliacaoElegibilidadeDto> AvaliarAsync(Guid solicitacaoId, CancellationToken ct) =>
-        AvaliarInternoAsync(solicitacaoId, null, ct);
+        AvaliarInternoAsync(solicitacaoId, null, null, ct);
 
     public Task<AvaliacaoElegibilidadeDto> ResponderAsync(
         Guid solicitacaoId,
         IReadOnlyDictionary<Guid, RespostaRegraRegulacao> respostas,
         CancellationToken ct) =>
-        AvaliarInternoAsync(solicitacaoId, respostas, ct);
+        AvaliarInternoAsync(solicitacaoId, respostas, null, ct);
+
+    public Task<AvaliacaoElegibilidadeDto> ResponderAsync(
+        Guid solicitacaoId,
+        IReadOnlyDictionary<Guid, RespostaRegraRegulacao> respostas,
+        IReadOnlyDictionary<Guid, IReadOnlyList<string>>? opcoesMarcadas,
+        CancellationToken ct) =>
+        AvaliarInternoAsync(solicitacaoId, respostas, opcoesMarcadas, ct);
+
+    public async Task<IReadOnlyList<RespostaRegraRegistradaDto>> RespostasAsync(
+        Guid solicitacaoId, CancellationToken ct)
+    {
+        await CarregarAsync(solicitacaoId, ct);
+
+        // `IgnoreQueryFilters`: a resposta aponta para a versão que o solicitante viu, e essa
+        // versão pode ter sido excluída depois — ela continua explicando o veredito.
+        var linhas = await db.RegulacaoSolicitacaoRespostasRegra.AsNoTracking()
+            .Where(r => r.SolicitacaoId == solicitacaoId)
+            .Join(db.RegulacaoRegras.IgnoreQueryFilters().AsNoTracking(),
+                r => r.RegraId, g => g.Id, (r, g) => new { Resposta = r, Regra = g })
+            .ToListAsync(ct);
+
+        return [.. linhas
+            .OrderBy(x => x.Regra.Ordem).ThenBy(x => x.Regra.Descricao)
+            .Select(x => new RespostaRegraRegistradaDto(
+                x.Regra.Id, x.Resposta.RegraVersao, x.Regra.Tipo, x.Regra.Severidade, x.Regra.Sistema,
+                x.Regra.Descricao, x.Regra.Pergunta, x.Resposta.Resposta, x.Resposta.Resultado,
+                x.Resposta.ValorDeduzido, AvaliadorElegibilidade.OpcoesDa(x.Regra),
+                ListaJson(x.Resposta.OpcoesMarcadasJson), x.Resposta.RespondidoEm,
+                x.Regra.Ativo && x.Regra.ExcluidoEm == null))];
+    }
 
     private async Task<AvaliacaoElegibilidadeDto> AvaliarInternoAsync(
         Guid solicitacaoId,
         IReadOnlyDictionary<Guid, RespostaRegraRegulacao>? novasRespostas,
+        IReadOnlyDictionary<Guid, IReadOnlyList<string>>? novasOpcoes,
         CancellationToken ct)
     {
         var s = await CarregarAsync(solicitacaoId, ct);
@@ -80,21 +150,86 @@ public sealed class RegulacaoElegibilidadeService(
 
         // As respostas já dadas continuam valendo; as novas entram por cima. Sem isso, responder
         // uma pergunta apagaria as anteriores e o solicitante recomeçaria o questionário.
-        var respostas = await db.RegulacaoSolicitacaoRespostasRegra.AsNoTracking()
+        var gravadas = await db.RegulacaoSolicitacaoRespostasRegra.AsNoTracking()
             .Where(r => r.SolicitacaoId == solicitacaoId && r.Resposta != RespostaRegraRegulacao.Deduzido)
-            .ToDictionaryAsync(r => r.RegraId, r => r.Resposta, ct);
+            .Select(r => new { r.RegraId, r.Resposta, r.OpcoesMarcadasJson })
+            .ToListAsync(ct);
+        var respostas = gravadas.ToDictionary(r => r.RegraId, r => r.Resposta);
+        var opcoes = gravadas
+            .Where(r => r.OpcoesMarcadasJson is not null)
+            .ToDictionary(r => r.RegraId, r => ListaJson(r.OpcoesMarcadasJson));
 
         if (novasRespostas is not null)
         {
-            foreach (var (regraId, resposta) in novasRespostas) respostas[regraId] = resposta;
+            var porId = regras.ToDictionary(r => r.Id);
+            foreach (var (regraId, resposta) in novasRespostas)
+            {
+                respostas[regraId] = resposta;
+                opcoes.Remove(regraId);
+
+                if (porId.TryGetValue(regraId, out var regra)
+                    && OpcoesValidas(regra, resposta, novasOpcoes?.GetValueOrDefault(regraId)) is { } marcadas)
+                {
+                    opcoes[regraId] = marcadas;
+                }
+            }
         }
 
         var avaliacao = AvaliadorElegibilidade.Avaliar(
             regras, paciente, cid, respostas, exames, candidatos,
             DateOnly.FromDateTime(DateTime.UtcNow), config.NaoSeiPadrao);
 
-        await PersistirAsync(s, regras, avaliacao, respostas, ct);
+        await PersistirAsync(s, regras, avaliacao, respostas, opcoes, ct);
         return avaliacao;
+    }
+
+    /// <summary>
+    /// As opções que valem para esta resposta. Só a pergunta de lista respondida com "Sim" guarda
+    /// opções — e nela marcar ao menos uma é obrigatório: um "Sim" sem dizer qual condição é
+    /// exatamente a informação que a lista existe para não perder.
+    /// </summary>
+    private static IReadOnlyList<string>? OpcoesValidas(
+        RegulacaoRegra regra, RespostaRegraRegulacao resposta, IReadOnlyList<string>? marcadas)
+    {
+        var disponiveis = AvaliadorElegibilidade.OpcoesDa(regra);
+        if (disponiveis.Count == 0 || resposta != RespostaRegraRegulacao.Sim) return null;
+
+        var escolhidas = (marcadas ?? [])
+            .Where(o => !string.IsNullOrWhiteSpace(o))
+            .Select(o => o.Trim())
+            .Distinct()
+            .ToList();
+
+        if (escolhidas.Count == 0)
+        {
+            throw new ValidacaoException(
+                "opcoes", $"Marque ao menos uma opção em \"{regra.Pergunta ?? regra.Descricao}\".");
+        }
+
+        var estranha = escolhidas.FirstOrDefault(o => !disponiveis.Contains(o));
+        if (estranha is not null)
+        {
+            // A regra mudou de versão entre abrir a tela e salvar, ou a opção veio digitada:
+            // gravar texto que a regra não tem quebraria a leitura do regulador.
+            throw new ValidacaoException(
+                "opcoes", $"\"{estranha}\" não é uma opção desta pergunta. Recarregue a tela.");
+        }
+
+        // Na ordem da regra, não na ordem do clique: é como o regulador lê a lista.
+        return [.. disponiveis.Where(escolhidas.Contains)];
+    }
+
+    private static IReadOnlyList<string> ListaJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     public async Task<IReadOnlyList<ExameParaRegras>> ExamesInternosAsync(
@@ -182,15 +317,11 @@ public sealed class RegulacaoElegibilidadeService(
 
     private async Task<RegulacaoSolicitacao> CarregarAsync(Guid id, CancellationToken ct)
     {
-        var escopo = await escopoRegulacao.ResolverAsync(ct);
         var s = await db.RegulacaoSolicitacoes.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, ct)
             ?? throw new NaoEncontradoException("Solicitação da regulação", id);
 
-        if (!escopo.VeTudo && !escopo.Unidades.Contains(s.UnidadeSolicitanteId))
-        {
-            throw new NaoEncontradoException("Solicitação da regulação", id);
-        }
+        await escopoRegulacao.ExigirAlcanceAsync(s, ct);
         return s;
     }
 
@@ -293,6 +424,7 @@ public sealed class RegulacaoElegibilidadeService(
         IReadOnlyList<RegulacaoRegra> regras,
         AvaliacaoElegibilidadeDto avaliacao,
         IReadOnlyDictionary<Guid, RespostaRegraRegulacao> respostas,
+        IReadOnlyDictionary<Guid, IReadOnlyList<string>> opcoes,
         CancellationToken ct)
     {
         var agora = DateTime.UtcNow;
@@ -308,6 +440,9 @@ public sealed class RegulacaoElegibilidadeService(
             if (!porId.TryGetValue(avaliada.RegraId, out var regra)) continue;
 
             var resposta = respostas.GetValueOrDefault(avaliada.RegraId, RespostaRegraRegulacao.Deduzido);
+            var marcadas = opcoes.TryGetValue(avaliada.RegraId, out var o) && o.Count > 0
+                ? JsonSerializer.Serialize(o)
+                : null;
 
             if (existentes.TryGetValue(avaliada.RegraId, out var linha))
             {
@@ -315,6 +450,7 @@ public sealed class RegulacaoElegibilidadeService(
                 linha.Resposta = resposta;
                 linha.Resultado = avaliada.Resultado;
                 linha.ValorDeduzido = avaliada.Motivo;
+                linha.OpcoesMarcadasJson = marcadas;
                 linha.RespondidoEm = agora;
                 linha.RespondidoPor = usuarioId;
                 continue;
@@ -329,6 +465,7 @@ public sealed class RegulacaoElegibilidadeService(
                 Resposta = resposta,
                 Resultado = avaliada.Resultado,
                 ValorDeduzido = avaliada.Motivo,
+                OpcoesMarcadasJson = marcadas,
                 RespondidoEm = agora,
                 RespondidoPor = usuarioId,
             });

@@ -135,6 +135,34 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Queixa_resultado_e_observacoes_sao_sempre_obrigatorios()
+    {
+        await using var db = fixture.CriarDbContext();
+        var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
+        var (servico, ser, sernit) = Montar(db);
+
+        // Opcionais nos DOIS sistemas — e mesmo assim exigidos (pedido do Bernardo, 01/10/2026).
+        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<SerCampoDinamicoDto>>([
+                CampoSer("1", "form0:d1", "Queixa Principal", "textarea", false),
+                CampoSer("2", "form0:d2", "Resultado de Exames", "textarea", false),
+                CampoSer("3", "form0:d3", "Observações", "textarea", false),
+            ]);
+        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([
+                CampoSernit("9", "form0:x9", "Observação", "textarea", false),
+                CampoSernit("10", "form0:x10",
+                    "Principais Resultados de Provas Diagnósticas (Resultados de Exames Realizados)", "textarea", false),
+            ]);
+
+        var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
+
+        f.Campos.Where(c => c.Chave is "queixa_principal" or "resultado_de_exames" or "observacoes"
+                || c.Chave.StartsWith("principais_resultados", StringComparison.Ordinal))
+            .Should().HaveCount(4).And.OnlyContain(c => c.Obrigatorio);
+    }
+
+    [Fact]
     public async Task Observacao_e_observacoes_sao_o_mesmo_campo()
     {
         await using var db = fixture.CriarDbContext();
@@ -151,7 +179,7 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         // Sem a tabela de sinônimos, o par VIDEOLARINGOSCOPIA do spike c fica com zero campo
         // em comum e a união duplica tudo.
         f.Campos.Should().ContainSingle(c => c.Chave == "observacoes");
-        f.Campos.Single().Origens.Should().HaveCount(2);
+        f.Campos.Single(c => c.Chave == "observacoes").Origens.Should().HaveCount(2);
     }
 
     [Fact]
@@ -240,8 +268,74 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         // Preenchido com espaço em branco não conta como preenchido.
         var canonico = JsonDocument.Parse("""{"queixa_principal":"   "}""").RootElement;
 
+        // O bloco fixo também é obrigatório — o SER não grava sem ele.
         servico.ObrigatoriosFaltando(f, canonico)
-            .Should().BeEquivalentTo(["queixa_principal", "resultado_de_exames"]);
+            .Should().BeEquivalentTo([
+                "queixa_principal", "resultado_de_exames",
+                RegulacaoFormularioService.ChaveMedicoSolicitante,
+                RegulacaoFormularioService.ChaveClassificacaoRisco,
+                RegulacaoFormularioService.ChaveHipoteseCid,
+            ]);
+    }
+
+    [Fact]
+    public async Task Bloco_fixo_entra_antes_do_dinamico_e_e_todo_obrigatorio()
+    {
+        await using var db = fixture.CriarDbContext();
+        var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
+        var (servico, ser, sernit) = Montar(db);
+
+        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<SerCampoDinamicoDto>>([CampoSer("1", "form0:d1", "Queixa Principal", "textarea", true)]);
+        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([]);
+
+        var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
+
+        // Faltavam na tela de Solicitações (01/10/2026): o catálogo de campos só tem o bloco
+        // dinâmico, e o SER exige o bloco fixo. Na ordem da tela do SER; a unidade de origem não
+        // é campo — é fixa e vai pelo mapa.
+        // Especialidade e telefone do médico não entram: o SER os preenche a partir do médico.
+        f.Campos.Take(3).Select(c => c.Chave).Should().Equal(
+            RegulacaoFormularioService.ChaveMedicoSolicitante,
+            RegulacaoFormularioService.ChaveClassificacaoRisco,
+            RegulacaoFormularioService.ChaveHipoteseCid);
+        f.Campos.Take(3).Should().OnlyContain(c => c.Obrigatorio);
+        f.Campos.Single(c => c.Chave == RegulacaoFormularioService.ChaveMedicoSolicitante).Tipo
+            .Should().Be("select", "o médico é escolhido da lista do próprio sistema");
+
+        var risco = f.Campos.Single(c => c.Chave == RegulacaoFormularioService.ChaveClassificacaoRisco);
+        risco.Tipo.Should().Be("select");
+        risco.Obrigatorio.Should().BeTrue();
+        risco.Origens.Should().BeEquivalentTo([SistemaRegulacao.Ser, SistemaRegulacao.Sernit]);
+
+        // A Hipótese NÃO é texto: é a caixa de CID do recurso (ser-criar-solicitacao.md §2.1.3).
+        var hipotese = f.Campos.Single(c => c.Chave == RegulacaoFormularioService.ChaveHipoteseCid);
+        hipotese.Tipo.Should().Be("cid");
+        hipotese.Obrigatorio.Should().BeTrue();
+
+        var canonico = JsonDocument.Parse("""
+            {
+              "hipotese_cid": "(A09 ) Diarréia e gastroenterite de origem infecciosa presumível",
+              "medico_solicitante": "FULANO DE TAL (EXEMPLO)"
+            }
+            """).RootElement;
+        foreach (var sistema in new[] { SistemaRegulacao.Ser, SistemaRegulacao.Sernit })
+        {
+            var traduzido = await servico.TraduzirAsync(f.VersaoId, sistema, canonico, CancellationToken.None);
+            // O texto inteiro, com a coluna oculta "(A09 ) …" — só o código dá pedido sem hipótese.
+            traduzido["form0:procedimento"].Should().StartWith("(A09 ) Diarr");
+
+            // Médico pelo "Sim", escolhido da lista do sistema — e guardado pelo NOME: o value do
+            // combo é índice de view do Seam e muda a cada abertura.
+            traduzido["form0:booleanMedicoSolicitanteIdentificado_radio"].Should().Be("true");
+            traduzido["form0:medicoResp"].Should().Be("FULANO DE TAL (EXEMPLO)");
+            traduzido.Should().NotContainKey("form0:especialidadeMedico");
+
+            // Unidade de origem pelo "Não" + o texto fixo, sem depender do que a tela mandou.
+            traduzido["form0:unidadeDeOrigemIdentificada_radio"].Should().Be("false");
+            traduzido["form0:unidadeNaoIdentificada"].Should().Be(RegulacaoFormularioService.UnidadeOrigemTexto);
+        }
     }
 
     [Fact]

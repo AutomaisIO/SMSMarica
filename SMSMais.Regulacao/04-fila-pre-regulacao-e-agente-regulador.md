@@ -95,7 +95,7 @@ solicitacao_id, tipo (enum: `Criacao`, `Edicao`, `Anexo`, `RespostaRegra`, `Envi
 
 | Endpoint | Módulo · ação | Escopo |
 |---|---|---|
-| `GET /regulacao/solicitacoes`, `GET …/{id}`, `GET …/{id}/eventos` | 47 Consulta | `unidade_solicitante ∈ EscopoUnidade`; com 48 ⇒ tudo + filtros (fluxo, procedimento, unidade solicitante, unidade executora, sistema, status, agente) |
+| `GET /regulacao/solicitacoes`, `GET …/{id}`, `GET …/{id}/eventos` | 47 Consulta | `unidade_solicitante ∈ EscopoUnidade` (a unidade escolhida no topo), **para o agente também** na tela "Solicitações"; com 48 **e** `filaDoMunicipio=true` ("Fila da regulação") ⇒ a unidade escolhida no topo, ou tudo com "todas" + filtros (fluxo, procedimento, unidade solicitante, unidade executora, sistema, status, agente). Detalhe/eventos: com 48 ⇒ qualquer caso. **Rascunho, em qualquer porta, só para quem o abriu** (01/10/2026 — ver PROGRESSO, Desvios) |
 | `POST /regulacao/solicitacoes`, `PUT …/{id}`, anexos, respostas | 47 Inclusão / Edição | escopo |
 | `POST …/{id}/enviar-fila`, `DELETE …/{id}` | 47 Edição / Exclusão | escopo |
 | `POST …/{id}/assumir`, `…/ajustar`, `…/devolver`, `…/registrar-envio`, `…/enviar-sistema`, `…/ok-interno`, `…/trocar-procedimento` | 48 Edição | global |

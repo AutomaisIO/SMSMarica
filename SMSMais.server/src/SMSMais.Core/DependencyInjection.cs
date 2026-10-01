@@ -539,6 +539,12 @@ public static class DependencyInjection
         services.AddSingleton<Ser.Background.ISerCatalogoSyncFila, Ser.Background.SerCatalogoSyncFila>();
         services.AddHostedService<Ser.Background.SerCatalogoSyncRunner>();
 
+        // Profissionais do SER — espelho à parte do nosso cadastro de Médicos (ADR-0065).
+        services.AddScoped<Integracoes.SerWeb.Profissionais.ISerProfissionalLeitor, Integracoes.SerWeb.Profissionais.SerProfissionalLeitor>();
+        services.AddScoped<Ser.Profissionais.ISerProfissionalService, Ser.Profissionais.SerProfissionalService>();
+        services.AddSingleton<Ser.Background.ISerProfissionalImportacaoFila, Ser.Background.SerProfissionalImportacaoFila>();
+        services.AddHostedService<Ser.Background.SerProfissionalImportacaoRunner>();
+
         // Rascunhos: pedidos montados e guardados aqui, com anexos, até serem autorizados.
         services.AddScoped<Ser.ISerRascunhoService, Ser.SerRascunhoService>();
 
@@ -1047,6 +1053,7 @@ public static class DependencyInjection
         services.AddScoped<Regulacao.Anexos.IRegulacaoExigenciaService, Regulacao.Anexos.RegulacaoExigenciaService>();
         services.AddScoped<Regulacao.Pacientes.IRegulacaoPacienteService, Regulacao.Pacientes.RegulacaoPacienteService>();
         services.AddScoped<Regulacao.Formularios.IRegulacaoFormularioService, Regulacao.Formularios.RegulacaoFormularioService>();
+        services.AddScoped<Regulacao.Formularios.IRegulacaoCidService, Regulacao.Formularios.RegulacaoCidService>();
         services.AddScoped<Regulacao.Comum.IRegulacaoEscopo, Regulacao.Comum.RegulacaoEscopo>();
         services.AddScoped<Regulacao.Conciliacao.IRegulacaoConciliacaoService, Regulacao.Conciliacao.RegulacaoConciliacaoService>();
         services.AddScoped<Regulacao.Notificacoes.IRegulacaoNotificacaoService, Regulacao.Notificacoes.RegulacaoNotificacaoService>();

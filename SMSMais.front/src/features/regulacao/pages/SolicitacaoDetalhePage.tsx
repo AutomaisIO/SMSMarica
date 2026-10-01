@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { ArrowLeft, Ban, CheckCircle2, Hash, Undo2 } from 'lucide-react';
+import { ArrowLeft, Ban, CheckCircle2, Hash, PencilLine, Undo2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { useTemConsulta } from '@/shared/auth/authStore';
+import { usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { formatarInstante } from '@/shared/lib/datas';
 
 import { LinhaDoTempo } from '../components/LinhaDoTempo';
 import { ModalRegistrarEnvio } from '../components/ModalRegistrarEnvio';
+import { RespostasRegras } from '../components/RespostasRegras';
 import { ROTULO_FLUXO, StatusRegulacaoBadge } from '../components/StatusRegulacaoBadge';
 import {
   useAssumirSolicitacao,
@@ -33,6 +34,7 @@ export function SolicitacaoDetalhePage() {
   const { id = '' } = useParams();
   const navegar = useNavigate();
   const ehAgente = useTemConsulta('RegulacaoTriagem');
+  const podeEditarModulo = usePermissao('Regulacao', 'Edicao');
 
   const solicitacao = useSolicitacao(id);
   const eventos = useEventosSolicitacao(id);
@@ -83,6 +85,8 @@ export function SolicitacaoDetalhePage() {
 
   const podeAgente = ehAgente && ['PendenteRegulacao', 'EmAnalise', 'Devolvida'].includes(s.status);
   const podeCancelar = ['Rascunho', 'PendenteRegulacao'].includes(s.status);
+  // Enquanto é da unidade, ela edita tudo — procedimento, destino, paciente, formulário e anexos.
+  const podeEditar = podeEditarModulo && ['Rascunho', 'Devolvida'].includes(s.status);
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -136,6 +140,13 @@ export function SolicitacaoDetalhePage() {
       {erro && <p className="rounded bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
 
       <div className="flex flex-wrap gap-2">
+        {podeEditar && (
+          <Button onClick={() => navegar(`/app/regulacao/solicitacoes/${s.id}/editar`)}>
+            <PencilLine className="size-4" />
+            {s.status === 'Devolvida' ? 'Corrigir e reenviar' : 'Continuar rascunho'}
+          </Button>
+        )}
+
         {podeAgente && s.status === 'PendenteRegulacao' && (
           <Button
             // 409 quando outro agente chegou primeiro — a mensagem do backend já diz isso.
@@ -208,6 +219,8 @@ export function SolicitacaoDetalhePage() {
           </Button>
         )}
       </div>
+
+      <RespostasRegras solicitacaoId={id} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Linha do tempo</h2>

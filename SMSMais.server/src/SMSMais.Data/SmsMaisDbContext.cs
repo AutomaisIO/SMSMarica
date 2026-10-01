@@ -184,6 +184,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SerCatalogoCidLista> SerCatalogoCidListas => Set<SerCatalogoCidLista>();
     public DbSet<SerCatalogoCid> SerCatalogoCids => Set<SerCatalogoCid>();
 
+    // Profissionais do SER (Cadastro → Profissionais), espelho à parte do nosso cadastro (ADR-0065).
+    public DbSet<SerProfissional> SerProfissionais => Set<SerProfissional>();
+
     // Pedidos montados na nossa base, esperando autorização para ir ao SER.
     public DbSet<SerSolicitacaoRascunho> SerSolicitacaoRascunhos => Set<SerSolicitacaoRascunho>();
     public DbSet<SerRascunhoAnexo> SerRascunhoAnexos => Set<SerRascunhoAnexo>();

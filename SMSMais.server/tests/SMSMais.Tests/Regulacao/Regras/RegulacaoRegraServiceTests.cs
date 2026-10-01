@@ -253,4 +253,50 @@ public class RegulacaoRegraServiceTests(PostgresFixture fixture)
         var acao = () => Servico(db).CriarAsync(vazia, CancellationToken.None);
         await acao.Should().ThrowAsync<ValidacaoException>();
     }
+
+    private static SalvarRegulacaoRegraRequest PerguntaDeLista(Guid procedimentoId, params string[] opcoes) =>
+        new(procedimentoId, null, SistemaRegulacao.Ser, TipoRegraRegulacao.NaoDedutivel,
+            SeveridadeRegraRegulacao.Bloqueia, "Pacientes portadores das seguintes condições", "REUNI p.36",
+            null, null, null, false, null, null, "Portador de alguma das condições?",
+            RespostaRegraRegulacao.Nao, null, null, null, null, true, 0, opcoes);
+
+    [Fact]
+    public async Task Pergunta_de_lista_guarda_as_opcoes_limpas()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (procedimentoId, _) = await CatalogoAsync(db);
+
+        var criada = await Servico(db).CriarAsync(
+            PerguntaDeLista(procedimentoId, " Genitália ambígua ", "", "Doenças Raras"), CancellationToken.None);
+
+        criada.Opcoes.Should().Equal("Genitália ambígua", "Doenças Raras");
+    }
+
+    [Fact]
+    public async Task Lista_com_uma_opcao_so_ou_repetida_e_recusada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (procedimentoId, _) = await CatalogoAsync(db);
+
+        var uma = () => Servico(db).CriarAsync(PerguntaDeLista(procedimentoId, "Doenças Raras"), CancellationToken.None);
+        await uma.Should().ThrowAsync<ValidacaoException>();
+
+        var repetida = () => Servico(db).CriarAsync(
+            PerguntaDeLista(procedimentoId, "Doenças Raras", "doenças raras"), CancellationToken.None);
+        await repetida.Should().ThrowAsync<ValidacaoException>();
+    }
+
+    [Fact]
+    public async Task Opcoes_em_regra_que_nao_e_pergunta_sao_recusadas()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (procedimentoId, _) = await CatalogoAsync(db);
+
+        var dedutivel = PerguntaDeLista(procedimentoId, "A", "B") with
+        {
+            Tipo = TipoRegraRegulacao.Dedutivel, IdadeMaxAnos = 18, Pergunta = null, RespostaBloqueia = null,
+        };
+        var acao = () => Servico(db).CriarAsync(dedutivel, CancellationToken.None);
+        await acao.Should().ThrowAsync<ValidacaoException>();
+    }
 }

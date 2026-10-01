@@ -33,7 +33,8 @@ public sealed record SalvarRegulacaoRegraRequest(
     Guid? TipoExameId,
     int? ValidadeDias,
     bool Obrigatorio,
-    int Ordem);
+    int Ordem,
+    string[]? Opcoes = null);
 
 public sealed record RegulacaoRegraDto(
     Guid Id,
@@ -60,7 +61,9 @@ public sealed record RegulacaoRegraDto(
     int Ordem,
     int Versao,
     bool Ativo,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    /// <summary>Pergunta de lista: as opções. Vazio = pergunta simples de Sim/Não.</summary>
+    string[] Opcoes);
 
 /// <param name="SemRecurso">Linhas cujo recurso não casou com o catálogo — vão para curadoria.</param>
 public sealed record ImportacaoRegrasResultadoDto(
@@ -448,6 +451,32 @@ public sealed class RegulacaoRegraService(
                 throw new ValidacaoException("documentoRotulo", "Regra documental precisa do nome do documento.");
         }
 
+        var opcoes = LimparOpcoes(req.Opcoes);
+        if (opcoes.Length > 0)
+        {
+            if (req.Tipo != TipoRegraRegulacao.NaoDedutivel)
+            {
+                throw new ValidacaoException("opcoes", "Só pergunta (regra não dedutível) tem lista de opções.");
+            }
+
+            // Uma opção só não é lista: é a pergunta simples escrita de outro jeito.
+            if (opcoes.Length < 2)
+            {
+                throw new ValidacaoException(
+                    "opcoes", "A lista precisa de ao menos duas opções. Com uma, use a pergunta simples.");
+            }
+
+            if (opcoes.Distinct(StringComparer.OrdinalIgnoreCase).Count() != opcoes.Length)
+            {
+                throw new ValidacaoException("opcoes", "Há opção repetida na lista.");
+            }
+
+            if (opcoes.Any(o => o.Length > 500))
+            {
+                throw new ValidacaoException("opcoes", "Cada opção cabe em até 500 caracteres.");
+            }
+        }
+
         if (req.IdadeMinAnos is { } min && req.IdadeMaxAnos is { } max && min > max)
         {
             throw new ValidacaoException("idade", "A idade mínima não pode ser maior que a máxima.");
@@ -477,6 +506,7 @@ public sealed class RegulacaoRegraService(
         r.Pergunta = req.Pergunta?.Trim();
         r.RespostaBloqueia = req.RespostaBloqueia;
         r.NaoSeiVira = req.NaoSeiVira;
+        r.OpcoesJson = req.Tipo == TipoRegraRegulacao.NaoDedutivel ? Json(LimparOpcoes(req.Opcoes)) : null;
         r.DocumentoRotulo = req.DocumentoRotulo?.Trim();
         r.TipoExameId = req.TipoExameId;
         r.ValidadeDias = req.ValidadeDias;
@@ -484,6 +514,10 @@ public sealed class RegulacaoRegraService(
         r.Ordem = req.Ordem;
         return r;
     }
+
+    /// <summary>Uma opção por item, sem vazios — o formulário manda o que a pessoa digitou.</summary>
+    private static string[] LimparOpcoes(string[]? opcoes) =>
+        [.. (opcoes ?? []).Where(o => !string.IsNullOrWhiteSpace(o)).Select(o => o.Trim())];
 
     private static string? Json(string[]? valores) =>
         valores is null || valores.Length == 0 ? null : JsonSerializer.Serialize(valores);
@@ -511,5 +545,6 @@ public sealed class RegulacaoRegraService(
             r.Descricao, r.Fonte, r.IdadeMinAnos, r.IdadeMaxAnos, r.Sexo, r.ExigeCpf,
             DeJson(r.CidsPermitidosJson), DeJson(r.CidsExcluidosJson),
             r.Pergunta, r.RespostaBloqueia, r.NaoSeiVira, r.DocumentoRotulo, r.TipoExameId,
-            r.ValidadeDias, r.Obrigatorio, r.Ordem, r.Versao, r.Ativo, r.CriadoEm);
+            r.ValidadeDias, r.Obrigatorio, r.Ordem, r.Versao, r.Ativo, r.CriadoEm,
+            DeJson(r.OpcoesJson));
 }

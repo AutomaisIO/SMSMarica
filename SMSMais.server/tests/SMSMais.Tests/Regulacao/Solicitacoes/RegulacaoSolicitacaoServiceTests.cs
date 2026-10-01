@@ -56,7 +56,6 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         // — o que é o comportamento certo e é exercitado de verdade aqui.
         var acessor = new UsuarioAtualAccessorFake(usuarioId, unidadeAtiva);
         var config = new RegulacaoConfiguracaoService(db, new MemoryCache(new MemoryCacheOptions()), acessor);
-        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor);
         var pacientes = Substitute.For<IPacientesService>();
         var form = Substitute.For<IRegulacaoFormularioService>();
 
@@ -85,6 +84,7 @@ public class RegulacaoSolicitacaoServiceTests(PostgresFixture fixture)
         identidade.ObterPermissoesResolvidasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new PermissoesResolvidasDto(Herdadas: [], Overrides: [], Resolvidas: []));
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
+        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo);
 
         return (
             new RegulacaoSolicitacaoService(

@@ -22,7 +22,7 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
   grupo: 'regulacao',
   icone: ListChecks,
   publico: 'Quem regula ou acompanha as filas do SER, do SERNIT e do ESUS São Gonçalo',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-01',
   palavrasChave: [
     'análise',
     'análise das regras',
@@ -146,7 +146,7 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
     {
       id: 'onde-aparece',
       titulo: 'Onde aparece',
-      busca: 'fila coluna análise das regras chip filtro veredito detalhe painel regras avaliadas motivo perguntas documentos analisado em tooltip',
+      busca: 'fila coluna análise das regras chip filtro veredito detalhe painel regras avaliadas motivo perguntas documentos analisado em tooltip lista condições basta uma',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -166,6 +166,11 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
           <P>
             “Indefinido” numa regra quer dizer que falta dado para decidir — sem data de nascimento,
             sem CID, pergunta sem resposta.
+          </P>
+          <P>
+            Pergunta de lista (“portadores das seguintes condições: …”) aparece com as condições embaixo,
+            sob <strong>Basta uma destas</strong>: o pedido atende se o paciente tiver qualquer uma — confira
+            no encaminhamento qual é.
           </P>
         </>
       ),
@@ -195,13 +200,19 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
     {
       id: 'editar-regras',
       titulo: 'Onde as regras são editadas',
-      busca: 'editar regras regulação regras de elegibilidade curadoria importação catálogo pareamento procedimento canônico configuração',
+      busca: 'editar regras regulação regras de elegibilidade curadoria importação catálogo pareamento procedimento canônico configuração pergunta de lista opções somam',
       conteudo: (
         <>
           <P>
             As regras moram em <strong>Regulação → Solicitações → Regras de elegibilidade</strong>
             (permissão Regulação — Configuração). É a mesma régua do assistente de Nova Solicitação:
             editou lá, vale aqui na passada seguinte.
+          </P>
+          <P>
+            As regras ativas de um procedimento <strong>se somam</strong>: o pedido precisa passar em todas.
+            Por isso condições alternativas do manual (“basta ter uma destas”) se cadastram como{' '}
+            <strong>uma pergunta de lista</strong> — no formulário da regra, uma opção por linha em
+            “Opções da lista”. Cadastradas como perguntas separadas, cada “não” barraria o pedido.
           </P>
           <P>
             O veredito <strong>Sem procedimento</strong> se resolve no catálogo canônico: parear o

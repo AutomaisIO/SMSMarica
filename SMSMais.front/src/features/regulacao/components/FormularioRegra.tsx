@@ -25,6 +25,10 @@ import type {
  * dedutível olha o cadastro do paciente, não-dedutível pergunta ao solicitante e precisa saber
  * qual resposta barra, documental pede anexo. Mostrar os três conjuntos ao mesmo tempo faria
  * parecer que dá para combinar — e não dá.</p>
+ *
+ * <p><b>Pergunta de lista:</b> quando o manual traz condições alternativas ("portadores das
+ * seguintes condições: …"), as condições vão como opções de UMA pergunta — basta o paciente ter
+ * uma. Cadastrar cada condição como pergunta própria soma tudo com E e trava o procedimento.</p>
  */
 export function FormularioRegra({
   procedimentoId,
@@ -40,6 +44,7 @@ export function FormularioRegra({
   const [fonte, setFonte] = useState('');
   const [pergunta, setPergunta] = useState('');
   const [respostaBloqueia, setRespostaBloqueia] = useState<RespostaRegraRegulacao>('Nao');
+  const [opcoesTexto, setOpcoesTexto] = useState('');
   const [documentoRotulo, setDocumentoRotulo] = useState('');
   const [validadeDias, setValidadeDias] = useState('');
   const [idadeMin, setIdadeMin] = useState('');
@@ -50,6 +55,11 @@ export function FormularioRegra({
   const [erro, setErro] = useState<string | null>(null);
 
   const numero = (v: string) => (v.trim() === '' ? null : Number(v));
+  const opcoes = opcoesTexto
+    .split('\n')
+    .map((o) => o.trim())
+    .filter((o) => o.length > 0);
+  const ehLista = tipo === 'NaoDedutivel' && opcoes.length > 0;
 
   async function salvar() {
     setErro(null);
@@ -78,6 +88,7 @@ export function FormularioRegra({
         validadeDias: tipo === 'Documental' ? numero(validadeDias) : null,
         obrigatorio,
         ordem: 0,
+        opcoes: ehLista ? opcoes : null,
       };
       aoCriar(await criarRegra(payload));
     } catch (e) {
@@ -123,16 +134,35 @@ export function FormularioRegra({
             <Input value={pergunta} onChange={(e) => setPergunta(e.target.value)} maxLength={500} />
           </Campo>
           <Campo
+            rotulo="Opções da lista (uma por linha)"
+            ajuda="Para condições alternativas do manual — basta o paciente ter uma. Em branco, a pergunta é de sim/não."
+          >
+            <textarea
+              value={opcoesTexto}
+              onChange={(e) => setOpcoesTexto(e.target.value)}
+              rows={4}
+              className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none"
+            />
+          </Campo>
+          <Campo
             rotulo="Qual resposta barra"
-            ajuda="Critério de inclusão barra quem responde “não”; critério de exclusão barra quem responde “sim”."
+            ajuda={
+              ehLista
+                ? 'Inclusão: barra quem marca “Nenhuma destas”. Exclusão: barra quem marca alguma opção.'
+                : 'Critério de inclusão barra quem responde “não”; critério de exclusão barra quem responde “sim”.'
+            }
           >
             <select
               value={respostaBloqueia}
               onChange={(e) => setRespostaBloqueia(e.target.value as RespostaRegraRegulacao)}
               className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none"
             >
-              <option value="Nao">Não — é critério de inclusão</option>
-              <option value="Sim">Sim — é critério de exclusão</option>
+              <option value="Nao">
+                {ehLista ? '“Nenhuma destas” — é critério de inclusão' : 'Não — é critério de inclusão'}
+              </option>
+              <option value="Sim">
+                {ehLista ? 'Marcar alguma — é critério de exclusão' : 'Sim — é critério de exclusão'}
+              </option>
             </select>
           </Campo>
         </>

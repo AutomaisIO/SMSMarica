@@ -72,6 +72,7 @@ import { IndicadoresRegulacaoPage } from '@/features/regulacao-indicadores/pages
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
 import { SerNotificacoesPage } from '@/features/ser/pages/SerNotificacoesPage';
 import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoPage';
+import { SerMedicosPage } from '@/features/ser/pages/SerMedicosPage';
 import { SerFilaPage } from '@/features/ser/pages/SerFilaPage';
 import { SerSolicitacaoDetalhePage } from '@/features/ser/pages/SerSolicitacaoDetalhePage';
 import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfiguracaoPage';
@@ -240,6 +241,7 @@ export function AppRouter() {
           <Route path="regulacao/ser" element={<SerFilaPage />} />
           <Route path="regulacao/notificacoes" element={<SerNotificacoesPage />} />
           <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />
+          <Route path="regulacao/ser/medicos" element={<SerMedicosPage />} />
           <Route path="regulacao/ser/:id" element={<SerSolicitacaoDetalhePage />} />
           <Route path="regulacao/configuracao" element={<RegulacaoConfiguracaoPage />} />
           {/* Regulação → Solicitações (ADR-0052): abertura pela unidade solicitante.
@@ -248,6 +250,9 @@ export function AppRouter() {
           <Route element={<RotaComModulo modulo="Regulacao" rotulo="Regulação — Solicitações" />}>
             <Route path="regulacao/solicitacoes" element={<MinhaFilaPage />} />
             <Route path="regulacao/solicitacoes/nova" element={<NovaSolicitacaoPage />} />
+            {/* O mesmo assistente, aberto numa solicitação que ainda é da unidade (rascunho ou
+                devolvida): tudo editável, anexos inclusive. */}
+            <Route path="regulacao/solicitacoes/:id/editar" element={<NovaSolicitacaoPage />} />
             <Route
               path="regulacao/solicitacoes/notificacoes"
               element={<NotificacoesRegulacaoPage />}

@@ -68,7 +68,7 @@ public class RegulacaoElegibilidadeServiceTests(PostgresFixture fixture)
             .Returns(new PermissoesResolvidasDto([], [], []));
 
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
-        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor);
+        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo);
 
         return new RegulacaoElegibilidadeService(
             db, escopo, config, exigencias, pacientes, clinico, acessor);
@@ -299,5 +299,102 @@ public class RegulacaoElegibilidadeServiceTests(PostgresFixture fixture)
 
         r.DestinosPermitidos.Should().BeEmpty("C50.4 casa por prefixo com o excluído C50");
         r.BloqueiaEnvio.Should().BeTrue();
+    }
+
+    // ---------------------------------------------------------------- pergunta de lista
+
+    private static readonly string[] Condicoes = ["Genitália ambígua", "Fraturas Patológicas", "Doenças Raras"];
+
+    private static async Task<RegulacaoRegra> ListaAsync(SmsMaisDbContext db, Guid procedimentoId)
+    {
+        var regra = NovaRegra(
+            procedimentoId, TipoRegraRegulacao.NaoDedutivel,
+            pergunta: "Portador de alguma das condições?", respostaBloqueia: RespostaRegraRegulacao.Nao);
+        regra.OpcoesJson = JsonSerializer.Serialize(Condicoes);
+        db.RegulacaoRegras.Add(regra);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        return regra;
+    }
+
+    private static Dictionary<Guid, RespostaRegraRegulacao> Resposta(Guid regraId, RespostaRegraRegulacao r) =>
+        new() { [regraId] = r };
+
+    [Fact]
+    public async Task Lista_grava_as_opcoes_marcadas_na_ordem_da_regra_e_elas_sobrevivem_a_reavaliacao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var regra = await ListaAsync(db, c.ProcedimentoId);
+
+        var avaliacao = await Montar(db, c).ResponderAsync(
+            c.SolicitacaoId,
+            Resposta(regra.Id, RespostaRegraRegulacao.Sim),
+            new Dictionary<Guid, IReadOnlyList<string>> { [regra.Id] = ["Doenças Raras", "Genitália ambígua"] },
+            CancellationToken.None);
+
+        avaliacao.BloqueiaEnvio.Should().BeFalse();
+
+        // Reavaliar (o GET da tela faz isso a cada visita) não pode apagar o que foi marcado.
+        db.ChangeTracker.Clear();
+        await Montar(db, c).AvaliarAsync(c.SolicitacaoId, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var lida = (await Montar(db, c).RespostasAsync(c.SolicitacaoId, CancellationToken.None))
+            .Single(r => r.RegraId == regra.Id);
+        lida.Resposta.Should().Be(RespostaRegraRegulacao.Sim);
+        lida.OpcoesMarcadas.Should().Equal("Genitália ambígua", "Doenças Raras");
+        lida.Opcoes.Should().Equal(Condicoes);
+    }
+
+    [Fact]
+    public async Task Lista_respondida_sim_sem_marcar_nada_e_recusada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var regra = await ListaAsync(db, c.ProcedimentoId);
+
+        // "Sim" sem dizer qual condição é justamente a informação que a lista existe para não perder.
+        var acao = () => Montar(db, c).ResponderAsync(
+            c.SolicitacaoId, Resposta(regra.Id, RespostaRegraRegulacao.Sim), null, CancellationToken.None);
+        await acao.Should().ThrowAsync<ValidacaoException>();
+    }
+
+    [Fact]
+    public async Task Lista_recusa_opcao_que_a_regra_nao_tem()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var regra = await ListaAsync(db, c.ProcedimentoId);
+
+        var acao = () => Montar(db, c).ResponderAsync(
+            c.SolicitacaoId,
+            Resposta(regra.Id, RespostaRegraRegulacao.Sim),
+            new Dictionary<Guid, IReadOnlyList<string>> { [regra.Id] = ["Inventada"] },
+            CancellationToken.None);
+        await acao.Should().ThrowAsync<ValidacaoException>();
+    }
+
+    [Fact]
+    public async Task Trocar_para_nenhuma_destas_apaga_as_opcoes_e_bloqueia()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var regra = await ListaAsync(db, c.ProcedimentoId);
+
+        await Montar(db, c).ResponderAsync(
+            c.SolicitacaoId,
+            Resposta(regra.Id, RespostaRegraRegulacao.Sim),
+            new Dictionary<Guid, IReadOnlyList<string>> { [regra.Id] = ["Doenças Raras"] },
+            CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var nenhuma = await Montar(db, c).ResponderAsync(
+            c.SolicitacaoId, Resposta(regra.Id, RespostaRegraRegulacao.Nao), null, CancellationToken.None);
+        nenhuma.DestinosPermitidos.Should().BeEmpty();
+
+        var gravada = await db.RegulacaoSolicitacaoRespostasRegra.AsNoTracking()
+            .FirstAsync(r => r.SolicitacaoId == c.SolicitacaoId && r.RegraId == regra.Id);
+        gravada.OpcoesMarcadasJson.Should().BeNull("uma opção marcada ao lado de \"nenhuma\" mentiria");
     }
 }

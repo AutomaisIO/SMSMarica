@@ -1,0 +1,3435 @@
+{
+ "gerado_de": "regras_prod.json (exportação de 01/10/2026, 574 regras ativas)",
+ "itens": [
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Cirurgia Bariátrica (Adulto)",
+   "motivo": "cabeçalho (\"Conforme preconiza a Portaria…, abaixo\") sem critério",
+   "regras_esperadas": [
+    {
+     "id": "e7e83329-83fc-4fcb-821d-56ff9bd28ff3",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "Ambulatório 1ª vez - Cirurgia Bariátrica (Adulto)",
+   "motivo": "são critérios de EXCLUSÃO gravados como documento obrigatório — viraram pergunta que barra no \"Sim\"",
+   "campos": {
+    "tipo": 2,
+    "pergunta": "Algum destes critérios de exclusão se aplica ao paciente?",
+    "resposta_bloqueia": 1,
+    "documento_rotulo": null
+   },
+   "regras_esperadas": [
+    {
+     "id": "4171219c-3535-4f1b-b0e2-8dc6699a4259",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "Ambulatório 1ª vez - Cirurgia Bariátrica (Adulto)",
+   "motivo": "comprovação de epífises só vale para 16–18 anos; obrigatória para todos travava adulto",
+   "campos": {
+    "obrigatorio": false
+   },
+   "regras_esperadas": [
+    {
+     "id": "a938e852-5fbd-481c-9ef7-610973c1ff3a",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Alterações no coagulograma em exames subsequentes",
+    "Anemia e icterícia com aumento de bilirrubina indireta",
+    "Anemia normocítica e normocrômica EXCLUÍDAS doenças crônicas como Insuficiência Renal, diabetes mellitus, colagenoses e hepatopatias",
+    "Atipias linfocitárias na ausência de quadro viral agudo",
+    "Esplenomegalia (no adulto, depois de afastada doença hepática de qualquer etiologia)",
+    "Hemoglobina sérica < 9 g/dl, de padrão macrocítico",
+    "Leucometria global < ou = 3000/mm³",
+    "Neutrófilos < ou = 1200/mm³",
+    "Síndromes hemorrágicas: hematomas, equimoses, epistaxes, metrorragia (quando isolada deve ser avaliada ginecológica) com plaquetas < 75.000 e/ou TAP ou PTT alterados"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "REUNI p.33 · REUNI p.35",
+   "regras_esperadas": [
+    {
+     "id": "864c1192-162a-49d3-a2ca-4449ff52183e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d9487b14-f4ac-400e-9a57-2f3bebf03a43",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "47d3c639-4c8f-4da7-924e-2bdd75ede6b6",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9b9093f7-db09-43ac-bc66-eead2b06f2e0",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "19c67ecc-9a7c-45d5-adbd-3c529b164559",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c7baa3ea-bb47-4dc2-ac5d-d31a8439459c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3db0cd64-7c98-4569-a9dd-464c91aa65ce",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "bdfc2bbc-5535-4c69-8b75-c6a9052b8a86",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "b11b0c7b-ea41-4ef7-ae82-38c0113a0379",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3c0d473f-b586-4563-b1d7-1e5ecb5f3c17",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ca049194-5938-4cca-93dd-a933428a4bdb",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e37923fc-350f-4d95-9ed1-f1537e834676",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "83c3f7ec-4dff-4ce7-b0ee-a4665a6a1a2f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "42a7d9e5-8e48-4fbe-b5f9-8ad15e1db2d0",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8767fb4f-0954-4a68-96e7-c36e08b302fe",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "1aeefdac-c58e-435e-a388-8d8d8ffaf84f",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"/ Agendamento\"",
+   "regras_esperadas": [
+    {
+     "id": "5772d58d-5b8f-43a5-8176-2e778d7700d1",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"/ Agendamento\"",
+   "regras_esperadas": [
+    {
+     "id": "ede52375-8bf0-4360-8c3f-33ba2a6e3029",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"/ Agendamento\"",
+   "regras_esperadas": [
+    {
+     "id": "3785d026-fcf6-4b0d-8f8a-2e1c004406b1",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"/ Agendamento\"",
+   "regras_esperadas": [
+    {
+     "id": "017df45d-8ce1-4a7c-b7c0-1a9789833336",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"/ Agendamento\"",
+   "regras_esperadas": [
+    {
+     "id": "3a31b99a-f58f-4870-9078-f3bdec3c8c77",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"Inserir no SER\" sem documento",
+   "regras_esperadas": [
+    {
+     "id": "61cdcad6-2a77-4ff4-b91a-adab231ec2c9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"Inserir no SER\" sem documento",
+   "regras_esperadas": [
+    {
+     "id": "f9b9c282-d9e6-432f-b8db-d5f10407d88a",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"Inserir no SER\" sem documento",
+   "regras_esperadas": [
+    {
+     "id": "2badc2ad-72c1-4c57-8f9b-62c1c4a6b821",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "caco \"Inserir no SER\" sem documento",
+   "regras_esperadas": [
+    {
+     "id": "8858e168-cd2b-4209-bc44-61b9d5d6a983",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "documento duplicado",
+   "regras_esperadas": [
+    {
+     "id": "43c2598f-fe51-4038-b6ac-9558598d87ef",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "documento duplicado",
+   "regras_esperadas": [
+    {
+     "id": "53dce630-67aa-42ee-af31-1c1e68ea2c06",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "documento duplicado",
+   "regras_esperadas": [
+    {
+     "id": "70d79f2a-884e-40f4-8bf4-24a536b8ac7d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "documento duplicado",
+   "regras_esperadas": [
+    {
+     "id": "6620c396-9f17-46f3-9c32-fcfcc9244279",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "duplicata do encaminhamento médico (já existe a regra global)",
+   "regras_esperadas": [
+    {
+     "id": "c0e430a8-a2c7-48f2-96bb-6277c0c24054",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "duplicata do encaminhamento médico (já existe a regra global)",
+   "regras_esperadas": [
+    {
+     "id": "b93dbce1-c374-4eb4-85fe-2453f20757b1",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "duplicata do encaminhamento médico (já existe a regra global)",
+   "regras_esperadas": [
+    {
+     "id": "539a16ef-f1d3-41f1-9b71-29bacb433072",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "duplicata do encaminhamento médico (já existe a regra global)",
+   "regras_esperadas": [
+    {
+     "id": "e5042055-20b9-4f03-89c9-c04906dd5b5f",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Adulto)",
+   "motivo": "duplicata do encaminhamento médico (já existe a regra global)",
+   "regras_esperadas": [
+    {
+     "id": "c6957ec1-1d33-44a6-b61a-c4451ab0b332",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "Ambulatório 1ª vez - Hematologia (Oncologia)",
+   "descricao": "Critérios de inclusão/agendamento (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Dor óssea, com eletroforese de proteínas séricas, evidenciando Gamopatia Monoclonal (casos de Mieloma múltiplo)",
+    "Bicitopenia após afastar todas as causas clínicas (hipotireoidismo, doenças hepáticas, uso de medicamentos, esplenomegalia com doença hepática)",
+    "Citopenias + manifestações clínicas suspeitas de leucemia aguda (fadiga generalizada, fraqueza, palidez, equimose, petéquias, sangramentos, infecções recorrentes)",
+    "Citopenias + linfonodomegalia e esplenomegalia não explicada por quadro infeccioso agudo",
+    "Presença de blastos/promielócitos no sangue periférico",
+    "Paciente com febre + neutropenia (< 1500 /μL)",
+    "Bicitopenia/pancitopenia com alterações hematológicas graves: Hemoglobina < 7 g/dl e/ou Neutrófilos < 500 cels/μL e/ou Plaquetas < 50 mil cels/mm³",
+    "Trombocitose: isolada > 600.000/mm³ em 3 exames c/ intervalo < 1 mês; ou acompanhada de leucocitose e aumento do hematócrito; ou associada a sintomas vasomotores, sangramento ou trombose (após avaliação em serviço de urgência/emergência); ou associada a leucocitose ou policitemia — excluir trombocitose persistente por causas secundárias (quadro infeccioso atual, anemia ferropriva, esplenectomia/asplenia, trauma/cirurgia recente)",
+    "Leucocitose com desvio à esquerda em ausência de infecção: com manifestações clínicas suspeitas de leucemia aguda; ou presença de blastos e promielócitos no sangue periférico; ou leucostase (sintomas respiratórios, neurológicos, priapismo com hiperleucocitose) ou leucócitos > 100 mil cels/mm³",
+    "Policitemia: suspeita de Policitemia vera (Hb > 16,0 g/dl em mulheres e > 16,5 g/dl em homens) com sintomas sugestivos (prurido após o banho, gota, trombose venosa ou arterial prévia, sangramento, esplenomegalia); ou policitemia persistente após repetir o hemograma em 1 mês e excluir causas secundárias (DPOC, tabagismo, hepatocarcinoma, carcinoma renal)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "REUNI p.20",
+   "regras_esperadas": [
+    {
+     "id": "ba7146b9-8866-4100-8825-c8c288bd032b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "eb59818f-ce11-451a-a804-1b442cd3503d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "36ab06c7-8ff1-42d2-bc93-48118527a29a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7d00ce8b-7947-44d2-9707-bf2584e63e57",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "Ambulatório 1ª vez - Hematologia Pediátrica (Oncologia)",
+   "descricao": "Critérios de inclusão/agendamento (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Bicitopenia após afastar todas as causas clínicas (hipotireoidismo, doenças hepáticas, uso de medicamentos, esplenomegalia com doença hepática)",
+    "Citopenias com manifestações clínicas suspeitas de leucemia aguda (fadiga generalizada, fraqueza, palidez, equimose, petéquias, sangramentos, infecções recorrentes)",
+    "Citopenias com linfonodomegalia e esplenomegalia não explicada por quadro infeccioso agudo",
+    "Presença de blastos/promielócitos no sangue periférico",
+    "Paciente com febre + neutropenia (< 1500 /μL)",
+    "Bicitopenia/pancitopenia com alterações hematológicas graves: Hemoglobina < 7 g/dl e/ou Neutrófilos < 500 cels/μL e/ou Plaquetas < 50 mil cels/mm³",
+    "Trombocitose: isolada > 600.000/mm³ em 3 exames c/ intervalo < 1 mês; ou acompanhada de leucocitose e aumento do hematócrito; ou associada a sintomas vasomotores, sangramento ou trombose (após avaliação em serviço de urgência/emergência); ou associada a leucocitose ou policitemia — excluir trombocitose persistente por causas secundárias (quadro infeccioso atual, anemia ferropriva, esplenectomia/asplenia, trauma/cirurgia recente)",
+    "Leucocitose com desvio à esquerda em ausência de infecção: com manifestações clínicas suspeitas de leucemia aguda; ou presença de blastos e promielócitos no sangue periférico"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "REUNI p.22",
+   "regras_esperadas": [
+    {
+     "id": "a1c2067a-cacf-45ca-a10f-42a331f9e59c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "33de5332-b7af-47ab-9632-357d8bc10f0a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ab219522-fa95-4b53-b284-5547d9d25ba8",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ceeb19b0-68e4-42c9-beed-6e338b20e4c5",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "descricao": "Gestantes que apresentarem (basta uma condição)",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Cardiopatias",
+    "Colagenoses",
+    "Doenças Hematológicas",
+    "Hemopatias",
+    "Nefropatias",
+    "Neuropatias",
+    "Patologias malignas",
+    "Tireoideopatias",
+    "Pneumopatias",
+    "Gestantes Transplantadas",
+    "Patologias uterinas",
+    "Incompetência Istmo cervical",
+    "Gemelar (sem comorbidades até 28 semanas): somente gestação gemelar mono/monoamniótico ou com corionicidade desconhecida até 16 semanas",
+    "Alo imunização materna, sem comorbidades em qualquer idade gestacional (resultado de COOMBS indireto +)",
+    "Peso maior que 140Kg (incluir peso e altura na solicitação)",
+    "H.P.P. de natimorto, neomorto, prematuridade, malformação fetal",
+    "H.P.P. de trombose venosa profunda",
+    "H. P. Familiar de cromossomopatias"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "REUNI p.31",
+   "regras_esperadas": [
+    {
+     "id": "7c5a539e-5ad1-439c-9cd7-5474e72865ba",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "51645662-92d6-415e-856f-3152349a2e52",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "44faffc3-7add-41e1-84fa-fd349a08c65e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3c09be07-a99c-40ec-870b-0575b3af7ccc",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "14f40de9-d542-4f37-8010-d566ac68116f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "4a6f014b-277b-4999-9b17-eb6a50ded78d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "752e28a1-52a5-4dd5-8c32-3e20aaba559e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9620656a-1b48-4021-98a1-ae3b29abd29d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9da518df-912c-4884-8b73-332e2c32d344",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d8760db9-899c-4d11-bfe0-eaf98cc6cf29",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fb43f646-a208-47e7-8d1a-5dd727978e07",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "73ae7d3a-78c0-4508-9c50-20afc44275b0",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "2886d1c1-1228-4290-a2b2-30ac0dd8f804",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "dd3d693f-1ff6-4eb5-a96c-c759850d1105",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f7f64374-179d-4804-9659-0117be849b14",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7c6f7188-32c9-430d-8ec1-4e8176a7d614",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "87d7a6d1-f160-47d7-8d2a-b1628b54253a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f260a268-5f2a-49b0-ac05-3bc69e148d30",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "cabeçalho da seção \"Aconselhamento em Malformação Fetal\" (outro recurso)",
+   "regras_esperadas": [
+    {
+     "id": "11581195-65a5-440e-9285-2a0b8fad8d31",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "228d4bcb-e036-46b9-bb22-aa76a2dedefd",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "dc9a5a44-520f-404e-bf8a-2d0dceb49f27",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "a8cffc4f-c1b8-41d8-bcf5-2d3ccabc66d2",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "a60eb596-e91e-41c9-a27b-30f358d8b42a",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "04be924e-4646-4acd-bdfc-de223ba25326",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "189d4740-296e-4ec5-817c-e04c06f05a1d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "3836b07f-7e1c-4b70-9c44-212ca5da40d8",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "042b5ae7-8369-4770-b5ad-bcd215275344",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "condição da seção \"Aconselhamento em Malformação Fetal\" — outro recurso, que caiu neste procedimento",
+   "regras_esperadas": [
+    {
+     "id": "a099cdac-bc09-41d3-97fc-fe34da568705",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "exclusão da seção \"Aconselhamento em Malformação Fetal\" — barrava gestante de alto risco entre 32 e 36 semanas",
+   "regras_esperadas": [
+    {
+     "id": "611a8cdf-845b-47f2-a89e-e15d6014a36f",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "exclusão da seção \"Aconselhamento em Malformação Fetal\" (outro recurso)",
+   "regras_esperadas": [
+    {
+     "id": "ca63efaa-55c1-4d60-bab6-debeb0dd50d4",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "Ambulatório 1ª vez - Pré Natal de Alto Risco Estratégico",
+   "motivo": "texto corrompido na extração (\"Bolsa rota ACONSELHAMENTO EM MALFORMAÇÃO FETAL\" — RUNBOOK §2)",
+   "campos": {
+    "descricao": "Bolsa rota",
+    "pergunta": "Bolsa rota"
+   },
+   "regras_esperadas": [
+    {
+     "id": "8d12e717-923d-4048-8769-3bcbcea67ade",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "Ambulatório 1ª vez em Cardiologia Estudo Eletrofisiológico / Ablação",
+   "motivo": "\"Informar modo ventilatório\" é instrução do encaminhamento, não pergunta de sim/não — vira informativa",
+   "campos": {
+    "tipo": 4,
+    "pergunta": null,
+    "resposta_bloqueia": null
+   },
+   "regras_esperadas": [
+    {
+     "id": "61fe6349-f570-46b2-8813-4ab8bd9fdb5d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "Ambulatório 1ª vez em Genética Médica - Adulto",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Pacientes com Aborto de Repetição: História de 03 abortos espontâneos ou mais de primeiro trimestre previamente investigados das causas infecciosas, materna, imunológicas, metabólicas e placentária",
+    "Pacientes com necessidade de Aconselhamento Genético, com história pessoal ou familiar de condição de causa genética e/ou malformação congênita, excluindo câncer familiar"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "REUNI p.36",
+   "regras_esperadas": [
+    {
+     "id": "94f72a34-140f-47a7-9f6f-fcdf3e67af03",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c5e1756b-5ecc-4fed-ae3c-f63b0827864c",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "Ambulatório 1ª vez em Genética Médica - Pediatria",
+   "descricao": "Pacientes portadores das seguintes condições",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Dismorfias, Anomalia Congênita e/ou Malformação Congênita",
+    "Genitália ambígua",
+    "Fraturas Patológicas",
+    "Osteogênese imperfeita",
+    "Síndromes com Malformações Congênitas que acometem Múltiplos Sistemas",
+    "Doenças do desenvolvimento para uma investigação de uma síndrome genética",
+    "Deficiência Intelectual e/ou Autismo SINDRÔMICO",
+    "Síndromes com malformações congênitas associadas ao Nanismo",
+    "Erros Inatos do Metabolismo (Aminoácido; Carboidratos; Glicosaminoglicano)",
+    "Suspeita de bebês com síndrome de Down",
+    "Anomalia Cromossômica Constitucional",
+    "Doenças Raras"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "REUNI p.36",
+   "regras_esperadas": [
+    {
+     "id": "1ae1a969-027c-4b3a-9643-b82a29a2d72f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "bb8149d2-744e-4d85-9964-bb6026cdd4a8",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "4da8aa97-0b13-4a72-8d75-476c0c9b66c1",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a1740730-732a-4bf0-8961-4817144e4c6b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "4d4e4870-c3bc-4de9-8209-0fb03f1e28e4",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8f62afe5-c5a7-42d6-ba0a-bc37423b1a95",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5360f9d3-007b-4de7-83d3-fc7cc3d61f17",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ee0727b0-2e40-49c9-b058-c879b728362a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d24e81e3-1ac3-4d01-8465-b79f8927ef9c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "93bcad84-cfc8-4546-8aea-31ec3f27df91",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "6a2dc4e8-545b-4a16-ba6d-ea64b6e621c1",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "18a4f1de-f72a-4a28-a3f0-c7cc81d89923",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório 1ª vez em Genética Médica - Pediatria",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "e9960874-fcdd-483c-b54a-0e45c57d8b02",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "Ambulatório 1ª vez em Genética Médica - Pediatria",
+   "motivo": "\"0 a 19 anos incompletos\" = no máximo 18; a regra tinha 19 e deixava passar quem já fez 19",
+   "campos": {
+    "idade_max_anos": 18
+   },
+   "regras_esperadas": [
+    {
+     "id": "07533079-ffbb-403a-9fbe-c558618f93f4",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório de 1ª vez - Hormonização - Saúde - Trans",
+   "motivo": "caco \"Inserir no SER de forma clara e detalhada\"",
+   "regras_esperadas": [
+    {
+     "id": "851fcb7d-6328-4482-963e-fb2c3e058d15",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "Ambulatório de 1ª vez - Hormonização - Saúde - Trans",
+   "motivo": "duplicata do encaminhamento médico",
+   "regras_esperadas": [
+    {
+     "id": "40b4f956-e615-4e39-84e0-1bf2de941400",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ALERGOLOGIA - PEDIATRIA",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Asma brônquica persistente de crianças entre 2 a 12 anos",
+    "Rinite alérgica persistente de crianças entre 2 a 12 anos",
+    "Asma grave - crises frequentes (mais de cinco por ano)",
+    "Internações - atendimento de emergência",
+    "Prejuízo na Escola - dificuldades em exercícios e esportes",
+    "Lactentes sibilante - até 2 anos de idade",
+    "Sinusites frequentes",
+    "Dermatite atópica moderada a grave",
+    "Dermatite atópica grave com infecção secundária, grande extensão e prejuízo estético",
+    "Urticária crônica e angioedema com mais de 6 semanas de duração",
+    "Urticária e angioedema agudos e crônicos com fator etiológico desconhecido",
+    "Alergia alimentar",
+    "Anafilaxia",
+    "Dermatite de contato extensa e sem etiologia definida",
+    "Alergia alimentar com reações sistêmicas graves",
+    "Reações adversas a drogas com sintomas sistêmicos graves",
+    "Reação grave a picada de inseto com reação sistêmica ou reaccao local importante ou infecções secundárias e cicatrizes",
+    "Imunodeficiência primária- suspeita se tiver: Pneumonia de repetição (mais de 2 no último ano); infecções de repetição (mais de 8 no último ano)",
+    "Otite, sinusite e etc. com abscessos de repetição",
+    "Reações adversas a BCG",
+    "Monilíase oral por mais de 2 meses (sapinho)",
+    "História de imunodeficiência familiar",
+    "Infecções sistêmicas graves (sepse, meningite, etc.)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.12",
+   "regras_esperadas": [
+    {
+     "id": "8da76396-d795-48d0-bb2a-f1c8a6b49791",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d0ce6e23-f251-4dbf-933a-057d74c3c8df",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7319efd4-9a6b-411e-aee2-9a511796c111",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "54e7f0ae-7c55-4052-a762-ac1bc48929a9",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8763c9c4-b137-4436-907e-f8ad1c7118da",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "db388894-9f3b-4014-8ad6-73a0c53322de",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "91876bb4-7705-4750-a367-3d62f2ed3f3c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9483907b-cc00-4a25-908e-6d5a7c6512bd",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a5126032-08f6-4836-a49f-290c0b0e04b3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0085978a-24c5-4f56-b893-e4f69c5344e2",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "6b221508-2df3-4f28-b9f8-aec0121d3c42",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "780d9914-7ad6-4efc-893c-32a69f728177",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "be05714a-10d7-4a61-98e8-0bad7745ff00",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "32754c39-a058-4e7c-80af-cd572404f64a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "30ce490c-94e1-479b-afde-01033b3fbf89",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "61ac2f55-def9-4648-9bce-d2fe59b4905a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "dc83d57d-c550-4984-8005-eb0d6bcf4398",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "61095acf-6334-49cf-993c-442f7d11c3ea",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7358ee1e-a795-4a3d-b474-e1565e6baa0a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "da95e3c9-4348-482b-bf4f-2c4a906ceb08",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f84a2f81-13a9-4d4b-be23-a47c51952358",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e651cd7f-70ad-496c-9468-755a7717fb8a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "554b23ee-3dec-4438-9666-e987555b281b",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ANGIOLOGIA",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Doença arterial periférica",
+    "Claudicação intermitente",
+    "Ausência de pulsos arteriais",
+    "Varizes essenciais ou IVC (sem úlcera)",
+    "Linfedema (edema linfático)",
+    "Elefantíase",
+    "Angiodisplasia (má formação vascular)",
+    "Síndrome do desfiladeiro cérvico-torácico",
+    "Artrite de Takayuasu",
+    "Doença de Behcet"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.13",
+   "regras_esperadas": [
+    {
+     "id": "6f395cb0-f976-4d48-ab1e-36cb5cc1b6bf",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f38fa750-fd83-467e-858c-78709255c08e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d58a0534-b0d0-4205-9ed1-6d18b3ad24c5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "1450777d-ea11-43e5-9ad9-b578d54f6aa1",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5224c8c3-7127-4a32-a63a-b43c3b9d14e7",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e0b2325a-cd7e-4466-8516-1f1bb4edf95a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "304862c6-d109-45ba-b5a0-3dd5d5be52c3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ad8688c8-e7da-4bc6-b71d-9ae0ad972905",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ac6bebff-3f2e-4d04-85fe-6fd283c65ea2",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "b8a05773-edb6-4130-8f70-073a0c8bd2a7",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM CARDIOLOGIA - PEDIATRIA",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Investigação diagnóstica de “Sopro Cardíaco”",
+    "Investigação de Cianose. Investigação de arritmia cardíaca detectada através do exame cardiovascular anormal e/ou eletrocardiograma suspeito",
+    "Investigação diagnóstica de Síncope",
+    "Investigação diagnóstica de Insuficiência Cardíaca",
+    "Investigação de dor torácica na infância e na adolescência",
+    "Avaliação cardiológica nas síndromes genéticas, com diagnóstico confirmado",
+    "Casos suspeitos de Doenças Reumáticas"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.14",
+   "regras_esperadas": [
+    {
+     "id": "46d7cfff-1881-4636-ae6e-12a7a6aaa3b5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "b24b0a9e-c4ee-4b76-b90f-635b44ddf87a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "61384c50-8872-4ab7-b517-4c76a3ed6baf",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e2396fb3-ebe1-4408-86cd-24280160e6bf",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "132ebab2-d626-4520-92a6-eb59b1b59e01",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "288d741d-751b-460c-969f-33cd2b11d2df",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "6f53a7de-1547-45be-a6b3-344a76e08c27",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - ESOFAGO",
+   "descricao": "Pacientes que apresentem determinadas patologias, como",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Doença do refluxo gastroesofágico",
+    "Úlceras, Acalasia e Divertículos",
+    "Não respondem satisfatoriamente ao tratamento clínico, inclusive, aqueles com manifestações atípicas cujo refluxo foi devidamente comprovado",
+    "Esôfago de barret, Esteatose, Úlcera e sangramento esofágico",
+    "Outra condição do mesmo grupo (descrever no encaminhamento)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.50",
+   "regras_esperadas": [
+    {
+     "id": "e920a58d-0a7b-49dc-ba4b-c427ca023013",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "195dac4f-38d1-47e0-815d-c1a5de0765a8",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0fe046cb-54c4-4570-9c57-7cdbf9f15df4",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5c637886-0718-4c4f-906f-c07ef5cf3684",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f9443402-3d35-4fad-8003-1b7bdd035993",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - ESOFAGO",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "9446fa42-efa3-4adf-aa07-b8633012ad0e",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - ESOFAGO",
+   "motivo": "instrução (\"observar se há necessidade de exames do prestador\"), não requisito",
+   "regras_esperadas": [
+    {
+     "id": "6ee7a896-b32a-47ee-a145-687c7ef4fccd",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - PANCREAS",
+   "motivo": "instrução (\"observar se há necessidade de exames do prestador\"), não requisito",
+   "regras_esperadas": [
+    {
+     "id": "67dba3b7-6cf3-456f-978c-ee2bd25c5d43",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - PARTES MOLES",
+   "motivo": "instrução (\"observar se há necessidade de exames do prestador\"), não requisito",
+   "regras_esperadas": [
+    {
+     "id": "3baed1ea-c5fa-400b-8dec-fc914176caca",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - VESICULA",
+   "descricao": "Pacientes que apresentem determinadas patologias, como",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Colelitíase na vigência de sintomas ou assintomáticos com história prévia de complicações (colecistite, colangite e/ou pancreatite)",
+    "Coledocolitíase",
+    "Cisto de Colédoco",
+    "Pólipo de vesícula",
+    "Outra patologia cirúrgica de vesícula (descrever no encaminhamento)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.52",
+   "regras_esperadas": [
+    {
+     "id": "81281e1c-a93f-4238-9b99-40a3f71b4925",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "cdcafeae-b014-4651-bd8e-72867ddf0ce3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "61da334a-a278-4b93-9123-5e51b110a13b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "588abc20-22ff-4f87-bf24-717570f0155e",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - VESICULA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "d92b5aae-e745-4b2d-b731-1b66a033438e",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM CIRURGIA GERAL - VESICULA",
+   "motivo": "instrução (\"observar se há necessidade de exames do prestador\"), não requisito",
+   "regras_esperadas": [
+    {
+     "id": "bb76f16d-97de-4598-b58d-1913af291d6d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM DERMATOLOGIA",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Pacientes portadores de dermatoses inflamatórias, como psoríase, vitiligo, acne e hidradenite",
+    "Pacientes portadores de dermatoses infecciosas (bacterianas - virais - fúngicas e outras)",
+    "Pacientes portadores de dermatoses de causa imunológica e autoimunes",
+    "Pacientes portadores de dermatoses alérgicas (Ex.: dermatite atópica)",
+    "Pacientes com Carcinoma Basocelular, Carcinoma Espinocelular e Melanoma",
+    "Pacientes em Tratamento para Hanseníase com quadros reacionais hansênicos de difícil controle: Reações adversas às drogas utilizadas na poliquimioterapia",
+    "Pacientes em alta terapêutica (PQT): Quadros reacionais pós-tratamento de difícil controle e suspeita de recidiva",
+    "Hemangioma Plano Cavernoso e Tuberoso",
+    "Malformações vasculares, arteriovenosas, capilares",
+    "Síndromes: Sturge-Weber, Kasabatt-Merritt, Nevus Azul, Osler-Rendu-Weber, Klippel-Trenanay e Mafucci",
+    "Dermatoses pediátricas",
+    "Casos suspeitos de difícil confirmação",
+    "Doenças sexualmente transmissíveis",
+    "Genodermatoses",
+    "Tumores cutâneos benignos e malignos",
+    "Pacientes com queixas de imperfeições na pele"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.16 · CRECE p.17",
+   "regras_esperadas": [
+    {
+     "id": "79e10c65-12ac-4606-9a94-5900679066e9",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "cd0ce36a-b6df-40c3-ab6d-d51a7a293c99",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "41ac689e-5b08-437c-8074-3f7df5b31e45",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8a89b7e4-283a-4571-a37e-0b0f4e0d1ba6",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d6437ac7-7935-438d-b9cb-2572cf099ba3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a2ea388e-e422-491e-9d6b-be4dc974aebf",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "4481d8a1-34ab-42c2-a295-8a02de1ff7cc",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "6701e2d0-f4c0-42b8-a34a-dd98df878ee5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fea77222-f59f-43c1-a82e-f9e934c5e3c9",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ca72ffff-39d0-426a-841b-98734207832e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c88e2425-026a-4141-a050-12c9747fa934",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "247cdfd5-d4e9-4657-8f9b-9f9deaad6058",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "725b308a-a216-4a68-8bc4-1aa47bb03f3b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5d4428d2-118f-45d3-8136-f4a0835a091d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "379fc6b1-6e25-4055-9502-bf088abd6df7",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "664fed52-b3f2-4baa-98f9-246e46a75be9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM DERMATOLOGIA",
+   "motivo": "item da seção \"Biópsia de pele\" — outro recurso do SER (CONSULTA EM DERMATOLOGIA - BIOPSIA DE PELE)",
+   "regras_esperadas": [
+    {
+     "id": "27239798-2086-484c-9f4b-c77b49f18c70",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM DERMATOLOGIA",
+   "motivo": "item da seção \"Biópsia de pele\" — outro recurso do SER (CONSULTA EM DERMATOLOGIA - BIOPSIA DE PELE)",
+   "regras_esperadas": [
+    {
+     "id": "ea310663-bc10-4c6a-bbb3-1b0f74a29eb8",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM DERMATOLOGIA",
+   "motivo": "item da seção \"Biópsia de pele\" — outro recurso do SER (CONSULTA EM DERMATOLOGIA - BIOPSIA DE PELE)",
+   "regras_esperadas": [
+    {
+     "id": "dabc0027-6ccf-4f75-8a4e-fb142b545f2d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM DERMATOLOGIA",
+   "motivo": "item da seção \"Biópsia de pele\" — outro recurso do SER (CONSULTA EM DERMATOLOGIA - BIOPSIA DE PELE)",
+   "regras_esperadas": [
+    {
+     "id": "2691c0aa-6767-418f-9ef4-94c5d31c2c48",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM DERMATOLOGIA - PEQUENOS PROCEDIMENTOS",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Pacientes portadores de doenças dermatológicas para esclarecimento diagnóstico (inclusive com necessidade de biópsia)",
+    "Realização de procedimentos cirúrgicos como eletrocoagulação de pequenas lesões e cauterização química"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.17",
+   "regras_esperadas": [
+    {
+     "id": "c4f9b238-3ef5-4d17-82c6-40873171bbb9",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fc2ed12a-8dbc-4297-857b-d22f21453db2",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - DOENCAS DO OVARIO",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Amenorreia primária ou secundária – Pacientes sem menarca após os 13 anos ou sem menstruação por mais de 3 meses já avaliados pela Ginecologia",
+    "Hipogonadismo – Pacientes com deficiência dos hormônios femininos",
+    "Hirsutismo - Aumento dos pelos corporais (face, tórax, abdome, etc.)",
+    "Infertilidade",
+    "Reposição hormonal feminina pós-menopausa",
+    "Síndrome dos ovários policísticos"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.19",
+   "regras_esperadas": [
+    {
+     "id": "c5e3383d-6d75-4439-a481-271fab4299b6",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a439bbcb-31d8-457d-b98e-96ebd8779af5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "bfbe8441-b763-492d-8116-878db5cd2165",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f48cb812-7cd9-4dbc-b235-53ca44b5d372",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "809f26ac-743c-44aa-89e6-b86754a24db5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3aecbbda-0b4c-4082-af5d-37cff8279097",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - DOENCAS OSTEOMETABOLICAS",
+   "descricao": "Pacientes apresentando",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Hiperparatireoidismo",
+    "Hipoparatireoidismo/Pseudohipoparatireoidismo – níveis de cálcio reduzidos",
+    "Hipercalcemias (Exceto ligadas a doença renal ou malignidade)",
+    "Nefrolitíase de repetição (bilateral)",
+    "Osteoporose (Densitometria óssea com T score maior que -2,5 desvios padrão, com ou sem fratura prévia",
+    "Doença de Paget",
+    "Osteogênese Imperfeita",
+    "Raquitismo e Osteomalacia"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.21",
+   "regras_esperadas": [
+    {
+     "id": "14817a4a-39fd-4163-a1a2-0f8ee83e9e82",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8a40b6c8-69ef-432e-9220-090d9b5f0a77",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "748e486d-8e08-427a-8529-e3b024900ec0",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e3870f0e-5f1e-4e95-b6af-2953df74777c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "11a7a7cb-37e6-4e73-a5d7-04d4c4f9d894",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a5a28d03-9136-4121-9ad8-fed0e697ed4b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "13dffbdd-22cf-42f6-b429-ddd25a4468dc",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c5e366fc-4f17-4160-9344-34899469cf32",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - DOENCAS OSTEOMETABOLICAS",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "da4f33c5-6054-4299-8531-ba83d88aec2d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - HIPOFISE/ADRENAL",
+   "descricao": "Critérios de inclusão — Hipófise ou Supra-renal (basta um)",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Hipófise — Hiperprolactinemia: Galactorréia e/ou amenorréia com história de o prolactina elevada",
+    "Hipófise — Síndrome de Cushing: Níveis de cortisol elevados ou investigação de hipercortisolismo em pacientes com clínica sugestiva (estrias violáceas, o hipertensão arterial, diabetes mellitus, osteoporose, etc.)",
+    "Hipófise — Pan-hipopituitarismo: Investigação de deficiência de hormônios hipofisários (cortisol baixo, amenorreia, níveis de testosterona reduzidos, etc.)",
+    "Hipófise — Acromegalia: Níveis elevados de IGF-1 e hormônio de crescimento com alterações em face e extremidades",
+    "Hipófise — Incidentalomahipofisário ou sela vazia: massas ou cistos ou aspecto de sela vazia na região da sela turca em exames de imagem",
+    "Hipófise — História de apoplexia hipofisária",
+    "Hipófise — Diabetes insípidus: produção de urina e sede excessivas, afastadas outras causas comuns de poliúria ( Diabetes Mellitus)",
+    "Hipófise — Pós-operatório de cirurgia hipofisária",
+    "Supra-renal — Insuficiência Adrenal: fraqueza, níveis de sódio reduzidos, eosinófilos aumentados, hipotensão",
+    "Supra-renal — Hiperplasia Adrenal Congênita",
+    "Supra-renal — Investigação de massas adrenais",
+    "Supra-renal — Hiperaldosteronismo",
+    "Supra-renal — Hipertensão arterial em uso de 4 anti-hipertensivos ou 3 anti- hipertensivos sem controle, podendo estar associado a hipocalemia",
+    "Supra-renal — Feocromocitoma",
+    "Supra-renal — Hipertensão em paroxismos, cefaleia, palpitações, etc"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.19",
+   "regras_esperadas": [
+    {
+     "id": "a43689e3-5068-46fc-8afe-a0b6696a2bfe",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8162c066-e475-433b-8b62-96899fc9dc6e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3f1f1c65-7080-4598-840c-664ea5e59d5d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e90258f8-9e2f-449e-bf2f-45c99607bf73",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d178fbfd-c546-42df-91cc-4e4510413ebc",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "71c9dd40-2732-4e2e-a0ef-d31d00c33f25",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a9a74f26-8def-42dc-9d07-c8aa23dc1900",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e357e8c9-2cf4-4474-8ed8-eaeb12f871ca",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d356284d-0846-4aeb-916f-605f27890716",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a3b08824-0841-4c09-ab09-86f4e1628ea2",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "965dc86e-c720-4916-8ad1-122a1de057c3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "201c682a-e90f-48dc-9cbb-db24716ab949",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9cb87c0d-e48b-4bae-927d-14a06bf91c91",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d752d1b0-f94c-4d7b-ae40-14cd83ea2c5e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fbc911ce-bf7a-4034-8bb9-93af22a8b344",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - HIPOFISE/ADRENAL",
+   "motivo": "cabeçalho solto (\"SUPRA RENAL\")",
+   "regras_esperadas": [
+    {
+     "id": "07ee5d09-192f-463b-97ce-3a6f0e485a0a",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - HIPOFISE/ADRENAL",
+   "motivo": "caco (\"SUPRA RENAL: Observar os\")",
+   "regras_esperadas": [
+    {
+     "id": "4a09264c-8d93-4ea0-ad1a-c1747dd2cefa",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - PEDIATRICA DIABETES",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Diabete Mellitus Tipo 1",
+    "Diabete Mellitus Tipo 2",
+    "Diabete Mellitus Pós-Transplante",
+    "Glicemia de Jejum alterada (glicemia > 99mg/dl)",
+    "Intolerância a Glicose (com teste oral de intolerância a glicose alterado TOTG alterado)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.21",
+   "regras_esperadas": [
+    {
+     "id": "c7fad7c8-55af-4d65-bedd-c8d568d54d37",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "db00ebc5-0790-4e87-899e-57b34edc6b49",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0e8084d1-ba7a-4da8-b952-aa29bd0b782f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "374dc54f-c6c2-45d9-bf4d-1804b02c9911",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8c6e1247-c39c-448e-ad8b-3499dae2f834",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - SINDROME METABOLICA",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Paciente com Hipertensão Arterial, Diabetes, Obesidade (IMC < 35) e níveis de colesterol elevados",
+    "Pacientes com Distúrbios Endócrinos"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.21",
+   "regras_esperadas": [
+    {
+     "id": "df8f184b-5651-4f5d-9b3b-827c9103b028",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "256cf2a5-ef8b-402c-ab93-8eb74fc365e9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - TIREOIDE",
+   "descricao": "Pacientes apresentando as seguintes alterações",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Tireoidite aguda (bacteriana/fúngica) e subaguda confirmadas",
+    "Hipertireoidismo (doença de graves - bócio nodular tóxico) sem tratamento, Bócio uni ou multinodular atóxico com nódulos: hipoecóicos maiores de 1 cm; isoecóico, mistos e hiperecóico > - 1 - 5 cm; císticos acima de 3 cm",
+    "Nódulos maiores que 01 cm. (Obs.: levar exames para consulta, caso tenha)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.22",
+   "regras_esperadas": [
+    {
+     "id": "226c5568-6e9c-4fe8-8118-b0a74599fb10",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3122a5f7-1f8f-4dcd-a576-1e0bc7d7fbec",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0a05f310-7330-41ff-a471-49b510d3223c",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - TIREOIDE",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "e93abaee-5970-4e63-a6dd-8ec6e38853b9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM ENDOCRINOLOGIA - TIREOIDE",
+   "motivo": "cabeçalho da lista de exclusões (\"Investigação de disfunção tireoidiana:\") — os itens dela continuam como exclusão",
+   "regras_esperadas": [
+    {
+     "id": "34aa61d1-2a84-49df-b638-72b0ff178347",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM FISIATRIA",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Pacientes acima de 60 anos",
+    "Cervicalgias",
+    "Ombro doloroso",
+    "Tendinopatias de Quervain",
+    "Dedo em Gatilho",
+    "Esporão de calcâneo",
+    "Paralisia facial periférica",
+    "Lombalgia de origem vertebral",
+    "Artrose",
+    "Gonalgia"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.23",
+   "regras_esperadas": [
+    {
+     "id": "08d5494b-226a-4530-96d2-d0ad08a04098",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e82f95ba-4837-4b3d-9be3-6cbde926e7d7",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8c3659db-b0c9-4ee0-beb3-140b4031cfc2",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8e46b430-4a83-49ab-9ded-95210b1dc024",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7d670823-0999-4536-828a-da883d0ab2a5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "feba57e3-08cc-4465-bdc2-3f1ca2cf6c4e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "03fca9e6-7ff5-4545-94df-52fa1a88fa0d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a76a78e2-21da-4033-8dbf-1acf7cea72fd",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM FISIATRIA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "ae84a2a3-3aad-4849-a16f-787bf68e187e",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "descricao": "Critérios de inclusão — Geral ou Doença Inflamatória Intestinal (basta um)",
+   "pergunta": "O paciente se enquadra em ao menos um dos critérios abaixo?",
+   "opcoes": [
+    "Epigastralgia refratária ao uso de inibidor de bomba de prótons",
+    "Úlcera péptica que persiste após controle endoscópico (realizado 8 a 12 semanas após início do tratamento) e/ou complicada (passado de hemorragia e/ou estenose)",
+    "Doença do Refluxo Gastroesofágico (DRGE) com manifestações típicas e/ou associada à hérnia hiatal e refratária ao tratamento otimizado por 3 meses",
+    "DRGE com esofagite grau C ou D de Los Angeles e/ou complicada com úlcera",
+    "Estenose péptica e/ou esôfago de Barrett",
+    "Queixas otorrinolaringológicas (pigarro, rouquidão, globus cervical, faringite de repetição) com investigação inicial sugestiva de DRGE e de difícil tratamento",
+    "Queixas respiratórias (tosse crônica, asma de início recente, pneumonias de Repetição, fibrose pulmonar idiopática) cuja investigação inicial sugira DRGE",
+    "Esofagites infeciosas",
+    "Esofagites secundárias a doenças dermatológicas",
+    "Pancreatite crônica",
+    "Lesões nodulares ou císticas do pâncreas",
+    "Fibrose cística",
+    "Diarréia crônica (> 4 semanas com exame parasitológico negativo)",
+    "Constipação sem melhora após 12 semanas de tratamento na Atenção Primária em Saúde",
+    "Doença celíaca",
+    "Colite microscópica",
+    "Pólipos de cólon, exceto: pólipos hiperplásicos menores do que 10 mm localizados no reto ou sigmoide - 1 a 2 adenomas tubulares menores do que 10 mm",
+    "Tumores neuroendócrinos gastrointestinais",
+    "Sangramento gastrointestinal/anemia ferropriva de origem obscura - Doenças do peritônio",
+    "DII, maiores de 18 anos — Doença de Crohn (CID K50.0 e K50.1)",
+    "DII, maiores de 18 anos — Retocolite Ulcerativa (CID K51.1)",
+    "DII, maiores de 18 anos — Colite Indeterminada (CID K50.8)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.24 · CRECE p.25",
+   "regras_esperadas": [
+    {
+     "id": "1c6e9571-6bc5-42ee-ada4-3b7acada52d3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5db30938-5035-493d-a268-fece38883942",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "df27d9db-fc21-468d-ae4e-f8ebc6d2cfc7",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "47539c64-4776-4648-845d-b7bb4502ce80",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7cca50e6-9984-4ac0-915d-6f3a5874a776",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "921463f9-a3dc-4fd7-9ea7-14e20efc96c3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "6baa5f70-cc0a-4909-b8bb-9c3dc182fdc7",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "6335127b-2f42-4ff6-b4e9-7dd48e4da7f5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0545b7e8-5a7f-45a3-9b19-2e882c90ad2d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "20595571-273f-447f-8cda-fac02b0533c6",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fa97416d-bbe6-43d6-b3a8-1ee1c277e186",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "99a9a6fb-c6c9-4ee0-a201-77a57970f811",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "bb6c25be-3d12-43ab-b858-866315d0f67e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9b83ced3-8a2f-4da5-b666-7d16c4e71261",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "4ee970ec-d062-4fdc-9dc0-da5c8f055837",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "cd58d622-018c-40d8-ba77-bef499d3ac43",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "29a76b86-4c80-408b-af79-e0a06c02f08e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3708cb5d-6a66-442f-990c-439636a04942",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f2107220-c834-4fe1-b761-23f82a55279b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ce80fc47-64fa-4a0c-9fe0-78721d9ca164",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "cab6a4e5-0775-4c4d-84be-3268f130d5a6",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a37e2d9a-09a8-4711-afd8-90fee3889178",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "296b48c1-cda6-4b7a-a0fc-cbaaa2598127",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d8a83269-197b-4751-96e3-147926dde20a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "450ed419-aa19-4bc8-ab9b-e1292f318085",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "2e549c6d-9b62-48d2-93e5-a865a7fd77e5",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "6e943ef4-e91d-42d6-a4f5-7f4a98fe6cf9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "af36cdd7-3c7c-4f07-b5a3-368e8472e944",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "979d5665-2f71-452b-ba0c-2c85d0a9a81f",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "3709b54c-6620-4169-b6e4-13f819c0f339",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "6aea6ff7-adc6-4f9b-98ad-bdbd98d7c424",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "93b8cd58-9efd-494d-b946-6061b1731840",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "ab1e18e4-f043-4ba5-8f55-476e18789293",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "8d1ead79-a5b3-4ee6-9b37-42befbad1dbe",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "a2f52c56-241b-47dc-811e-5e270f455f93",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "4df122f2-194c-4768-97c3-24dc45f72edf",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "69e7c89f-37a8-4ca2-80ac-b595335224a8",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "30cdd810-6d3e-4ced-aa71-aaabcfdc738f",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "836a12df-f0f8-489a-a4b5-38fb592ac6da",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "3dc13720-826b-4510-be27-d183fbafb317",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "9cf760e2-55f0-49a2-8b2e-0ee5a34caee7",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "critério da seção PEDIATRIA — a Gastro Pediátrica tem recurso próprio no SER",
+   "regras_esperadas": [
+    {
+     "id": "82f5b3d4-21fb-42ff-a6b0-79ed4d5f149d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "cabeçalho solto",
+   "regras_esperadas": [
+    {
+     "id": "857e76bb-4952-44c6-9d06-4471f6d8a65a",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "cabeçalho solto",
+   "regras_esperadas": [
+    {
+     "id": "f8d5dcef-88ae-4bd0-9d4e-94bad3bcc1ba",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "cabeçalho solto (\"Icterícia\")",
+   "regras_esperadas": [
+    {
+     "id": "1f6b275e-cd03-4ca1-b9d0-c38a1c4a00e4",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "cabeçalho solto (\"Refluxo gastroesofágico\")",
+   "regras_esperadas": [
+    {
+     "id": "c5e4057a-dda5-409f-8e6f-9d1530beb9c6",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA",
+   "motivo": "duplicata do encaminhamento médico",
+   "regras_esperadas": [
+    {
+     "id": "62f705e8-fe35-4b19-aa66-ff073142d88a",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA - GASTROSTOMIA - INTERNADOS",
+   "motivo": "duplicata do encaminhamento médico",
+   "regras_esperadas": [
+    {
+     "id": "542b3f6e-9fbe-4c55-8003-93d374856e15",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA - HEPATOLOGIA",
+   "descricao": "Pacientes que apresentam as seguintes alterações",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Hepatites agudas",
+    "Hepatite B Crônica",
+    "Hepatite autoimune",
+    "Síndromes colestáticas crônicas",
+    "Doença gordurosa não alcoólica-hepática",
+    "Esquistossomose hepatoesplênica",
+    "Hepatopatias a esclarecer"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.26",
+   "regras_esperadas": [
+    {
+     "id": "39a79863-57a6-4afc-b586-6df420c33397",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e9433aac-c167-4c41-aae8-2c9e99d5e3ee",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a6b0bb8f-6fc1-489c-a6f7-59da8c461683",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0f066e52-4ca9-4b00-90e9-cb65b41e89f1",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fa0f8cd9-c13e-4682-a184-9bd5d1313fdd",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "b69792ae-b251-44a5-b145-ed0f0fc62d78",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "ceb1693e-5924-4deb-9cd0-a473221dba97",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GASTROENTEROLOGIA - HEPATOLOGIA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "11eab52b-eedc-4b41-88b9-121e9e6b492e",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM GINECOLOGIA - CIRURGIA DE BAIXO E MEDIO RISCO",
+   "descricao": "Pacientes com indicação cirúrgica para resolução das seguintes patologias",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Miomatose uterina",
+    "Massas anexiais benignas",
+    "Sangramento uterino anormal",
+    "Adenomiose"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.27",
+   "regras_esperadas": [
+    {
+     "id": "72090ea2-f6db-4fb2-bae8-a5f744fd96a3",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "2abc044e-746c-4467-913f-932bee3ccfaf",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "55b27c80-24e6-4d59-a1c0-5bf920f10861",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "93ed8878-a08d-4a66-b5dd-97a9d0f835ae",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GINECOLOGIA - CIRURGIA DE BAIXO E MEDIO RISCO",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "b5cb47ac-6199-4d9d-a413-e985a9176b2f",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM GINECOLOGIA - ENDOCRINOLOGIA",
+   "descricao": "Pacientes apresentando as seguintes patologias",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Síndrome do Ovário Policístico",
+    "Puberdade precoce e tardia",
+    "Hiperprolactinemia/Galactorréia",
+    "Síndrome do climatério",
+    "Menopausa precoce e tardia",
+    "Ginecologia da adolescência (a partir de 11 anos de idade)",
+    "Irregularidade menstrual"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.29",
+   "regras_esperadas": [
+    {
+     "id": "65f89cc5-aa49-4965-bc9a-701bae4dc23a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5396f621-73bd-46a9-bde4-b83fd7016278",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "27eb83c5-5cc9-47cd-bf2b-16f90caddc9f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c7f2de00-a64b-4ba4-8d70-2a0825d7dbdd",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "39cbb366-d6e6-417b-8d7d-c13dafb0065f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e5078cd3-ebf7-47e7-8dbd-39f4282de9c9",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "019058f0-0484-4eca-9e8d-a2c7e97c5f8b",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GINECOLOGIA - ENDOCRINOLOGIA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "74e76f60-b870-4db8-844b-c69dfcefaab1",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GINECOLOGIA - UROGINECOLOGIA",
+   "motivo": "caco de \"Observar os critérios do prestador\"",
+   "regras_esperadas": [
+    {
+     "id": "093dcdc1-5e97-427d-9288-3852c532f284",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM GINECOLOGIA INFERTILIDADE",
+   "descricao": "Pacientes apresentando as seguintes condições",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Casais com diagnóstico de infertilidade conjugal para investigação da etiologia ou para proposta de tratamentos com base em diagnósticos previamente realizados",
+    "História de infertilidade (primária ou secundária) há mais de 1 ano se mulher com menos de 35 anos, ou 6 meses se mais de 35 anos"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.30",
+   "regras_esperadas": [
+    {
+     "id": "e7f6aab3-9a2b-44eb-999c-457eff26120a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "32b7330d-9531-40e0-a5bf-92f72577fd6c",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GINECOLOGIA INFERTILIDADE",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "92d44812-7835-42e7-8059-9d6885b7f168",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM GINECOLOGIA URODINAMICA",
+   "descricao": "Indicações do Estudo Urodinâmico",
+   "pergunta": "O paciente tem ao menos uma das indicações abaixo?",
+   "opcoes": [
+    "Antes de qualquer tratamento cirúrgico para incontinência urinária de esforço (IUE)",
+    "Insucesso em cirurgia prévia para IUE",
+    "Insucesso no tratamento medicamentoso da incontinência Urinária"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.31",
+   "regras_esperadas": [
+    {
+     "id": "95a971d9-ef78-4425-9809-a32284dc7c9f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d230672b-5ce1-420a-a3a1-b4c8b913991b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "dd21384c-ab86-4bf7-8394-597fed609457",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM GINECOLOGIA URODINAMICA",
+   "motivo": "cabeçalho solto (\"do Estudo Urodinâmico\")",
+   "regras_esperadas": [
+    {
+     "id": "a8473496-fa8d-4455-b10a-64dfe289c033",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM HEPATOLOGIA - HEPATITE CRONICA C",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Pacientes portadores de Hepatite C Crônica, sem cirrose hepática descompensada",
+    "Hepatite C Aguda"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.31",
+   "regras_esperadas": [
+    {
+     "id": "3c360ca4-444f-4581-93aa-b9fa38380fdb",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "42b4eab6-46b6-4a5f-91f1-36fe39785670",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEFROLOGIA - GERAL",
+   "motivo": "caco de \"Observar os critérios do prestador\"",
+   "regras_esperadas": [
+    {
+     "id": "fc73d1e6-4899-476f-ad89-a55799bc27a4",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEFROLOGIA - GERAL",
+   "motivo": "caco de \"Observar os critérios do prestador\"",
+   "regras_esperadas": [
+    {
+     "id": "2bc53223-cb32-434d-aadc-81ee87a26193",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM NEUROLOGIA",
+   "descricao": "Critérios de inclusão (basta um)",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Doença de Parkinson (CID G20)",
+    "Paralisia supranuclear progressiva",
+    "Síndrome Corticobasal (SCB)",
+    "Tremor essencial",
+    "Distonias",
+    "Mioclonia",
+    "Doença de Huntington (DHQ)",
+    "Epilepsia",
+    "Esclerose múltipla",
+    "Miastenia gravis.e outras miopatias",
+    "Paralisia facial periférica",
+    "Hidrocefalia",
+    "Cisticercose",
+    "Síndromes demenciais",
+    "Coreias",
+    "Ataxia",
+    "Tique",
+    "Cefaléia",
+    "Desmaios"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.32",
+   "regras_esperadas": [
+    {
+     "id": "19fd6c11-d3e9-4663-87eb-0473c3d3a32f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "53f86686-a5bb-4b31-a6fc-a63234e010fe",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c6713b14-0665-4d9a-9330-8701f113805a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c7b71a24-2f6e-420e-ba3f-2e04d72028ae",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "80fe7d45-b609-4876-a4e2-a4e19116b4fc",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "8f4cd46a-5e36-490d-ba43-c6c14bf88ddc",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0c3ec964-b1f9-4bcd-8ef8-436afa8c577c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e73d050d-5186-44cc-915b-625e14fce168",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "183e09b2-e58c-409e-a99d-216a2917a40e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c62972fa-0003-48ff-8359-f934d45bd14f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f761ee66-df37-45f3-b2fc-2587deb11dc1",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fc1fe96b-bf8e-4d6d-95db-a47dab41668d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f1b28a83-8f0a-4c47-93e0-beb250410af7",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "883d8fde-d0d3-4fec-b854-7b168087c919",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7b0d58bc-7227-4527-963c-c5e01b1dd8d9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA",
+   "motivo": "caco de \"Observar os critérios do prestador\"",
+   "regras_esperadas": [
+    {
+     "id": "33887969-8b11-4cc7-9ccf-0c58b65e2724",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA",
+   "motivo": "caco de \"Observar os critérios do prestador\"",
+   "regras_esperadas": [
+    {
+     "id": "6cb19252-865d-47a0-9a0b-ea4e6d3accda",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA",
+   "motivo": "cabeçalho (\"problemas neurológicos… tais como\")",
+   "regras_esperadas": [
+    {
+     "id": "af6fc840-0272-43d4-869b-0bc8269f3626",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA",
+   "motivo": "cabeçalho (\"síndromes clínicas… tais como\")",
+   "regras_esperadas": [
+    {
+     "id": "f7ea3095-9797-4cd8-9fec-59b21168f960",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA",
+   "motivo": "regra da GINECOLOGIA (cirurgia de pelve) que caiu na Neurologia",
+   "regras_esperadas": [
+    {
+     "id": "2980c292-91b7-43bf-a385-39d9fa9cd3fd",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA",
+   "motivo": "regra da GINECOLOGIA (cirurgia do trato genital) que caiu na Neurologia",
+   "regras_esperadas": [
+    {
+     "id": "015bb6f5-b388-41e5-b2e7-9d047767335d",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM NEUROLOGIA - ESCLEROSE MULTIPLA",
+   "descricao": "Pacientes que apresentem suspeita de patologia desmielinizante, como",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Esclerose múltipla",
+    "Neuromielite Óptica (NMO)",
+    "Encefalomielite aguda disseminada (ADEM)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.34",
+   "regras_esperadas": [
+    {
+     "id": "810bb933-6085-49b5-b1f3-14c77a22539d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0237eafc-484e-4c2b-b036-e9627b9bdee9",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fb40ff6f-4581-46a8-ad0f-4ec2d7afcee3",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA - ESCLEROSE MULTIPLA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "f342fb49-34da-461a-a73f-b3c941409569",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM NEUROLOGIA - ESCLEROSE MULTIPLA",
+   "motivo": "caco de \"Observar os critérios do prestador\"",
+   "regras_esperadas": [
+    {
+     "id": "5026e7a8-28c3-4f1c-a98f-2ec2df45ccb9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ODONTOLOGIA - CIRURGIA ORAL MENOR",
+   "descricao": "Pacientes que apresentam necessidade cirúrgica para tratamento das seguintes condições",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Cirurgia de sisos",
+    "Dentes inclusos, retidos ou impactados",
+    "Dentes supranumerários",
+    "Remoção de cistos e corpos estranhos",
+    "Excisão de cálculo salivar",
+    "Hiperplasias ou regularização de rebordo",
+    "Frenectomias"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.47",
+   "regras_esperadas": [
+    {
+     "id": "73f48280-c9c8-4fc0-b4ee-4494d40a2b7e",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c06232a3-dd16-45a9-9574-f039a113989f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c45973f6-d4c0-470d-8140-ebdcf4a1711b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9d0d86f0-fe34-4936-89e9-50cac38b9c29",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "590b70e6-8ba3-4f09-b0ef-a2e3c9bc7686",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "90a511af-5dc0-49cd-b0b5-1d3442d50734",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d973fd72-29a3-4e37-a72e-43339e27b469",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM ODONTOLOGIA - CIRURGIA ORAL MENOR",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "c1fcc0ef-da40-49e1-9084-2f06791ddd51",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "CONSULTA EM ODONTOLOGIA - ENDODONTIA",
+   "motivo": "regra condicional (só para siso) — como pergunta, o \"Não\" barrava todo tratamento de canal",
+   "campos": {
+    "tipo": 4,
+    "pergunta": null,
+    "resposta_bloqueia": null
+   },
+   "regras_esperadas": [
+    {
+     "id": "2924c50c-0556-4f4b-b2a6-799946667cc3",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM ODONTOLOGIA - ESTOMATOLOGIA",
+   "descricao": "Pacientes que apresentam necessidade de diagnóstico e biópsia para as seguintes lesões na região maxilofacial",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Lesões que não cicatrizam em 15 dias na cavidade oral",
+    "Doenças da língua, lábio e da mucosa oral",
+    "Leucoplasia e outras afecções do epitélio oral",
+    "Líquen plano, Estomatites e lesões correlatas",
+    "Hiperplasia irritativa da mucosa oral",
+    "Cistos da região bucal",
+    "Tumefação, massa ou tumoração não especificadas na cavidade oral",
+    "Doença de glândulas salivares",
+    "Xerostomia, queimação e ardência bucal",
+    "Halitose"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.48",
+   "regras_esperadas": [
+    {
+     "id": "b2079604-1559-4a02-bafb-b8e1ef45bfd2",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "66af6982-427e-450f-8c2d-75a855e6ef22",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fd7733aa-2f6c-4c0b-a5fb-884e83c96039",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "3f54aec6-43e2-4bb8-bb1a-57f5f9914562",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5e4afe37-9ade-4cf9-b76e-11478677bf3a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "a1cdaa75-38e8-44ea-9563-f799fbd104fc",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "52a4eda5-7537-4356-9570-4ca163a5ead4",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "77fcb9ac-52a6-46f1-92a2-218148873c6d",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "17f1dfe0-35e0-4d97-bd5c-fbb9275b1d5f",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "d887bf8a-86f2-4dc2-8935-c5295266d386",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM ODONTOLOGIA - ESTOMATOLOGIA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "976a7498-f77a-4830-8485-073be8964205",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM PNEUMOLOGIA - TUBERCULOSE COMPLICADA",
+   "descricao": "Pacientes apresentando os seguintes casos",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Tuberculose Extrapulmonar",
+    "Tuberculose com intolerância ao esquema básico com indicação para tratamento alternativo",
+    "Tuberculose com evolução desfavorável ao esquema básico",
+    "Micobactéria Não-tuberculosa"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.41",
+   "regras_esperadas": [
+    {
+     "id": "5fee91fc-7ffb-4805-bc1e-01d0f04415f5",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "654acc2a-b09f-4648-8b84-67a175ea725a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "9f742f1d-d586-4c44-a84e-2fc9eeabd88b",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "23b6a67a-6e51-430a-bf02-0443f77e44d0",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM PNEUMOLOGIA - TUBERCULOSE COMPLICADA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "888ddeba-5bf4-472d-bc71-92d27ffa8367",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM REUMATOLOGIA GERAL",
+   "descricao": "Pacientes que apresentem determinadas patologias, como",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Doenças Autoimunes (Suspeita ou Confirmadas)",
+    "Lupus Sistêmico",
+    "Colagenoses",
+    "Artrite Reumatoide",
+    "Dermatomiosite",
+    "Esclerodermia",
+    "Síndrome de Sjogren",
+    "Outra condição do mesmo grupo (descrever no encaminhamento)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.42",
+   "regras_esperadas": [
+    {
+     "id": "7ae2b67b-011e-41ec-ba18-68d2c4461940",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "5fef7404-65b6-40d3-a5f9-f03996b9e8cf",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "7c2f8992-f8e7-4af0-ac75-cf76128349ea",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "c4e711a8-8573-426c-9f8d-70bbd33adda9",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "e48dc9e9-ed9b-4924-80fb-7c57b918bdd6",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "615b3e58-fd29-4534-ae34-cd0d866a0e90",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "bd5800f3-b75c-44ac-bbb6-fa9eb2955358",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "6bfa8604-c52f-48dd-97e6-838b53cdde89",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM REUMATOLOGIA GERAL",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "8284c438-823d-4e18-ab60-8f49b27fd88e",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "CONSULTA EM UROLOGIA - LITIASE",
+   "motivo": "texto cortado no meio (\"…: observar os\") pela frase do prestador",
+   "campos": {
+    "descricao": "Pacientes que apresentem cálculo renal",
+    "pergunta": "Pacientes que apresentem cálculo renal"
+   },
+   "regras_esperadas": [
+    {
+     "id": "47053bbc-c138-435c-833d-941ec8c158e7",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM UROLOGIA DISFUNCAO MICCIONAL - PEDIATRIA",
+   "descricao": "Pacientes que apresentem determinadas patologias, como",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Bexiga neurogênica",
+    "Quadro suspeito ou confirmado de enurese, incontinência urinária, infecção urinária de repetição, sem resposta aos tratamentos convencionais",
+    "Outra condição do mesmo grupo (descrever no encaminhamento)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.45",
+   "regras_esperadas": [
+    {
+     "id": "e88155da-cc4c-47c6-bf5a-f8594bd14a7c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "b8611bf8-a196-4e1f-86dc-c1dc9d24086c",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "fc3995b6-ceb3-4c2a-bb43-c56d7e3dde63",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM UROLOGIA DISFUNCAO MICCIONAL - PEDIATRIA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "533a8733-35f8-40ed-a99b-a9f9bf05acd6",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM UROLOGIA GINECOLOGIA",
+   "descricao": "Pacientes que apresentem determinadas patologias, como",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Incontinência urinária",
+    "Prolapso vaginal",
+    "Prolapso genital",
+    "Outra condição do mesmo grupo (descrever no encaminhamento)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.45",
+   "regras_esperadas": [
+    {
+     "id": "e4828021-4b7d-4e42-a3bc-3cecd613d5ad",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "638519b4-560e-4da9-ad90-12463589c4ad",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f739d7cd-f5a2-4e94-8d50-5803affbccfe",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "34d8b096-912d-42a6-a375-f9eb618e1981",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM UROLOGIA GINECOLOGIA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "a243dfca-3ae8-4552-bb1b-f461b5ca6a78",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "lista",
+   "procedimento": "CONSULTA EM UROLOGIA PEDIATRICA",
+   "descricao": "Pacientes que apresentem determinadas patologias, como",
+   "pergunta": "O paciente tem ao menos uma das condições abaixo?",
+   "opcoes": [
+    "Anomalias congênitas urogenitais",
+    "Patologias obstrutivas das vias urinárias",
+    "Criptorquidia",
+    "Enurese noturna",
+    "Distúrbios de diferenciação sexual (genitália ambígua)",
+    "Bexiga neurogênica",
+    "Incontinência urinária",
+    "Outra condição do mesmo grupo (descrever no encaminhamento)"
+   ],
+   "resposta_bloqueia": "Nao",
+   "fonte": "CRECE p.44",
+   "regras_esperadas": [
+    {
+     "id": "a9112a6f-e0c2-49e9-9a99-624354c0b099",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "2159ed03-c3d3-4c35-849a-663a5f5039c8",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "dc25b01f-6066-4169-8edc-61bd999a4a65",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "cdb02373-f0a8-4fbf-bac6-0b97526040d8",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "97e41358-3a6d-4b33-a18c-ba024c3f78de",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "dd168c77-252d-4225-bcf7-947f55ebb33a",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "0c08a7b7-26ae-4106-9e49-db4b355b0df0",
+     "versao": 1,
+     "ativo": true
+    },
+    {
+     "id": "f0bc880e-b84b-4391-a63c-4641f61476d9",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "desativar",
+   "procedimento": "CONSULTA EM UROLOGIA PEDIATRICA",
+   "motivo": "cabeçalho solto da lista",
+   "regras_esperadas": [
+    {
+     "id": "d1a2eedb-4ebe-4a23-a78f-e4bd15716a49",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "Cateterismo Cardíaco (Internados)",
+   "motivo": "\"HT<27 e Hb<9,0 não poderão realizar o exame\" é exclusão: barrava quem respondia \"Não\"",
+   "campos": {
+    "pergunta": "O paciente tem HT < 27 e Hb < 9,0?",
+    "resposta_bloqueia": 1
+   },
+   "regras_esperadas": [
+    {
+     "id": "59ece322-d175-4c42-9d93-f6664899b15a",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  },
+  {
+   "tipo": "versao",
+   "procedimento": "Cateterismo Cardíaco (Internados)",
+   "motivo": "orientação condicional (avaliação do nefrologista) — \"Não\" barrava quem não tem insuficiência renal",
+   "campos": {
+    "tipo": 4,
+    "pergunta": null,
+    "resposta_bloqueia": null
+   },
+   "regras_esperadas": [
+    {
+     "id": "86480e7d-61a9-4847-8753-7d16a5642b42",
+     "versao": 1,
+     "ativo": true
+    }
+   ]
+  }
+ ]
+}

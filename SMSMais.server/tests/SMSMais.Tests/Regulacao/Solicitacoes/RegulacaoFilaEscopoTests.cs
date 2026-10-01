@@ -58,7 +58,6 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
     {
         var acessor = new UsuarioAtualAccessorFake(usuarioId, unidadeAtiva);
         var config = new RegulacaoConfiguracaoService(db, new MemoryCache(new MemoryCacheOptions()), acessor);
-        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor);
         pacientes ??= Substitute.For<IPacientesService>();
 
         var form = Substitute.For<IRegulacaoFormularioService>();
@@ -87,6 +86,7 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
                     : []));
 
         var escopo = new RegulacaoEscopo(db, acessor, identidade);
+        var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo);
         var eventos = new RegulacaoEventoService(db, acessor);
 
         return new RegulacaoSolicitacaoService(
@@ -201,10 +201,188 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
         var servico = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
 
         var pagina = await servico.ListarAsync(
-            new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId), CancellationToken.None);
+            new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId, FilaDoMunicipio: true),
+            CancellationToken.None);
 
         var ids = pagina.Itens.Select(i => i.Id).ToList();
         ids.Should().Contain(c.SolicitacaoA).And.Contain(c.SolicitacaoB);
+    }
+
+    [Fact]
+    public async Task Na_fila_da_unidade_o_agente_ve_so_a_unidade_escolhida_no_topo()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+
+        // Agente lotado na unidade A, com ela escolhida no topo. Na tela "Solicitações" a fila é a
+        // da unidade — pré-regulação, em análise, devolvidas e encerradas das outras unidades não
+        // aparecem ali; elas são da "Fila da regulação".
+        db.UsuarioUnidades.Add(new UsuarioUnidade
+        {
+            UsuarioId = c.Agente, UnidadeId = c.UnidadeA, Principal = true, CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+        var servico = Montar(db, c.Agente, c.UnidadeA, c.VersaoId, ehAgente: true);
+
+        var daUnidade = await servico.ListarAsync(
+            new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId), CancellationToken.None);
+        daUnidade.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoA).And.NotContain(c.SolicitacaoB);
+
+        // A fila do agente também segue a unidade do topo: com a A escolhida, é a da A.
+        var filaDoAgente = await servico.ListarAsync(
+            new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId, FilaDoMunicipio: true),
+            CancellationToken.None);
+        filaDoAgente.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoA).And.NotContain(c.SolicitacaoB);
+
+        // "Todas" no topo (nenhuma unidade escolhida): o município.
+        var semUnidade = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        var doMunicipio = await semUnidade.ListarAsync(
+            new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId, FilaDoMunicipio: true),
+            CancellationToken.None);
+        doMunicipio.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoA).And.Contain(c.SolicitacaoB);
+
+        // A fila é filtro, não permissão: o agente escolhe a unidade B no topo mesmo sem vínculo
+        // com ela, e o detalhe segue aberto a qualquer caso.
+        var naB = Montar(db, c.Agente, c.UnidadeB, c.VersaoId, ehAgente: true);
+        var filaDaB = await naB.ListarAsync(
+            new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId, FilaDoMunicipio: true),
+            CancellationToken.None);
+        filaDaB.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoB).And.NotContain(c.SolicitacaoA);
+        var detalhe = await servico.ObterAsync(c.SolicitacaoB, CancellationToken.None);
+        detalhe.Id.Should().Be(c.SolicitacaoB);
+    }
+
+    [Fact]
+    public async Task Pedir_a_fila_do_municipio_sem_ser_agente_nao_amplia_nada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var servico = Montar(db, c.UsuarioA, c.UnidadeA, c.VersaoId, ehAgente: false);
+
+        var pagina = await servico.ListarAsync(
+            new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId, FilaDoMunicipio: true),
+            CancellationToken.None);
+
+        pagina.Itens.Select(i => i.Id).Should().NotContain(c.SolicitacaoB);
+    }
+
+    [Fact]
+    public async Task Rascunho_so_aparece_para_quem_o_abriu()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+
+        // Um colega na MESMA unidade e o agente: nenhum dos dois vê o rascunho do usuário A.
+        var colega = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            NomeCompleto = "COLEGA DA A",
+            Email = $"{Guid.NewGuid():N}@teste.local",
+            SenhaHash = "x",
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.Usuarios.Add(colega);
+        await db.SaveChangesAsync();
+        db.UsuarioUnidades.Add(new UsuarioUnidade
+        {
+            UsuarioId = colega.Id, UnidadeId = c.UnidadeA, Principal = true, CriadoEm = DateTime.UtcNow,
+        });
+        await db.RegulacaoSolicitacoes.Where(s => s.Id == c.SolicitacaoA)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.Status, StatusRegulacao.Rascunho));
+        await db.SaveChangesAsync();
+
+        var filtro = new RegulacaoSolicitacaoFiltro(ProcedimentoId: c.ProcedimentoId, FilaDoMunicipio: true);
+
+        var doAutor = await Montar(db, c.UsuarioA, c.UnidadeA, c.VersaoId, ehAgente: false)
+            .ListarAsync(filtro, CancellationToken.None);
+        doAutor.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoA);
+
+        var servicoDoColega = Montar(db, colega.Id, c.UnidadeA, c.VersaoId, ehAgente: false);
+        var doColega = await servicoDoColega.ListarAsync(filtro, CancellationToken.None);
+        doColega.Itens.Select(i => i.Id).Should().NotContain(c.SolicitacaoA,
+            "rascunho é trabalho em andamento de uma pessoa, não da unidade");
+
+        var resumoDoColega = await servicoDoColega.ResumoAsync(false, CancellationToken.None);
+        resumoDoColega.PorStatus.GetValueOrDefault(StatusRegulacao.Rascunho).Should().Be(0);
+
+        var servicoDoAgente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        var doAgente = await servicoDoAgente.ListarAsync(filtro, CancellationToken.None);
+        doAgente.Itens.Select(i => i.Id).Should().NotContain(c.SolicitacaoA);
+
+        // Nem pela porta do detalhe, nem pela da linha do tempo.
+        var detalheDoColega = () => servicoDoColega.ObterAsync(c.SolicitacaoA, CancellationToken.None);
+        await detalheDoColega.Should().ThrowAsync<NaoEncontradoException>();
+        var trilhaDoAgente = () => servicoDoAgente.EventosAsync(c.SolicitacaoA, CancellationToken.None);
+        await trilhaDoAgente.Should().ThrowAsync<NaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task Devolvida_a_unidade_troca_procedimento_e_paciente_e_reenvia()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+
+        var outro = new RegulacaoProcedimento
+        {
+            Id = Guid.CreateVersion7(),
+            NomeCanonico = $"PROC CORRIGIDO {Sufixo()}",
+            NomeNormalizado = "PROC CORRIGIDO",
+            Tipo = TipoProcedimentoRegulacao.Consulta,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.RegulacaoProcedimentos.Add(outro);
+        await db.SaveChangesAsync();
+
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.DevolverAsync(c.SolicitacaoA, "Paciente e procedimento errados.", CancellationToken.None);
+
+        var novoPaciente = Guid.NewGuid();
+        var pacientes = Substitute.For<IPacientesService>();
+        pacientes.ObterPorIdAsync(novoPaciente, Arg.Any<CancellationToken>())
+            .Returns(PacienteDtoFabrica.Criar(novoPaciente, "PACIENTE CERTO", "11144477735", null));
+        var ponta = Montar(db, c.UsuarioA, c.UnidadeA, c.VersaoId, ehAgente: false, pacientes: pacientes);
+
+        var depois = await ponta.AtualizarAsync(
+            c.SolicitacaoA,
+            new AtualizarRegulacaoSolicitacaoRequest(
+                SistemaRegulacao.Sernit, null, null, ProcedimentoId: outro.Id, PacienteId: novoPaciente),
+            CancellationToken.None);
+
+        depois.Status.Should().Be(StatusRegulacao.Devolvida);
+        depois.ProcedimentoId.Should().Be(outro.Id);
+        depois.PacienteId.Should().Be(novoPaciente);
+        depois.PacienteNome.Should().Be("PACIENTE CERTO");
+        depois.PacienteCpf.Should().Be("11144477735");
+        depois.SistemaDestino.Should().Be(SistemaRegulacao.Sernit);
+
+        // A correção fica na trilha, dita: quem era, quem passou a ser.
+        var edicao = (await ponta.EventosAsync(c.SolicitacaoA, CancellationToken.None))
+            .Should().ContainSingle(e => e.Tipo == TipoEventoRegulacao.Edicao).Subject;
+        edicao.Papel.Should().Be(PapelEventoRegulacao.Solicitante);
+        edicao.Diff!.Value.TryGetProperty("paciente", out _).Should().BeTrue();
+        edicao.Diff!.Value.TryGetProperty("procedimento", out _).Should().BeTrue();
+
+        var reenviada = await ponta.EnviarParaFilaAsync(c.SolicitacaoA, CancellationToken.None);
+        reenviada.Status.Should().Be(StatusRegulacao.PendenteRegulacao);
+    }
+
+    [Fact]
+    public async Task O_agente_nao_troca_paciente_pela_edicao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var acao = () => agente.AtualizarAsync(
+            c.SolicitacaoA,
+            new AtualizarRegulacaoSolicitacaoRequest(null, null, null, PacienteId: Guid.NewGuid()),
+            CancellationToken.None);
+
+        var erro = await acao.Should().ThrowAsync<ConflitoException>();
+        erro.Which.Codigo.Should().Be("regulacao.solicitacao.estrutura_da_unidade");
     }
 
     [Fact]
@@ -264,12 +442,14 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
         // passou na bancada: lá os números já estão altos de execuções anteriores, e o código
         // exigia 3 dígitos para considerar número. Num município novo, a solicitação 7 é a 7.
         var porNumero = await servico.ListarAsync(
-            new RegulacaoSolicitacaoFiltro(Busca: numero.ToString()), CancellationToken.None);
+            new RegulacaoSolicitacaoFiltro(Busca: numero.ToString(), FilaDoMunicipio: true),
+            CancellationToken.None);
         porNumero.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoA);
 
         // Busca por nome é case-insensitive: quem digita no balcão não usa caixa alta.
         var porNome = await servico.ListarAsync(
-            new RegulacaoSolicitacaoFiltro(Busca: nome.ToLowerInvariant()), CancellationToken.None);
+            new RegulacaoSolicitacaoFiltro(Busca: nome.ToLowerInvariant(), FilaDoMunicipio: true),
+            CancellationToken.None);
         porNome.Itens.Select(i => i.Id).Should().Contain(c.SolicitacaoA);
     }
 
@@ -537,9 +717,9 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
         var c = await CenarioAsync(db);
 
         var daPonta = await Montar(db, c.UsuarioA, c.UnidadeA, c.VersaoId, ehAgente: false)
-            .ResumoAsync(CancellationToken.None);
+            .ResumoAsync(false, CancellationToken.None);
         var doAgente = await Montar(db, c.Agente, null, c.VersaoId, ehAgente: true)
-            .ResumoAsync(CancellationToken.None);
+            .ResumoAsync(true, CancellationToken.None);
 
         daPonta.VeTodasUnidades.Should().BeFalse();
         doAgente.VeTodasUnidades.Should().BeTrue();

@@ -24,8 +24,15 @@ public sealed record RegraAvaliadaDto(
     /// <summary>Por que deu isso — é o texto que a tela mostra ao lado da regra.</summary>
     string? Motivo);
 
+/// <param name="Opcoes">
+/// Pergunta de lista: as opções para marcar. Nulo = pergunta simples de Sim/Não.
+/// </param>
 public sealed record PerguntaPendenteDto(
-    Guid RegraId, string Pergunta, SistemaRegulacao? Sistema, SeveridadeRegraRegulacao Severidade);
+    Guid RegraId,
+    string Pergunta,
+    SistemaRegulacao? Sistema,
+    SeveridadeRegraRegulacao Severidade,
+    IReadOnlyList<string>? Opcoes = null);
 
 public sealed record DocumentoPendenteDto(
     Guid RegraId,
@@ -101,8 +108,10 @@ public static class AvaliadorElegibilidade
                 && resultado == ResultadoRegraRegulacao.Indefinido
                 && !respostas.ContainsKey(regra.Id))
             {
+                var opcoes = OpcoesDa(regra);
                 perguntas.Add(new PerguntaPendenteDto(
-                    regra.Id, regra.Pergunta ?? regra.Descricao, regra.Sistema, regra.Severidade));
+                    regra.Id, regra.Pergunta ?? regra.Descricao, regra.Sistema, regra.Severidade,
+                    opcoes.Count > 0 ? opcoes : null));
 
                 // "Não sei" que vira pendência trava o envio; a regra sem resposta nenhuma
                 // também — mas só quando ela é capaz de bloquear. Pergunta de aviso não segura
@@ -235,10 +244,26 @@ public static class AvaliadorElegibilidade
                 : (ResultadoRegraRegulacao.Indefinido, "Respondido \"não sei\" — precisa ser esclarecido.");
         }
 
-        return resposta == r.RespostaBloqueia
-            ? (Falha(r), $"Respondido \"{resposta}\".")
-            : (ResultadoRegraRegulacao.Atende, null);
+        if (resposta != r.RespostaBloqueia) return (ResultadoRegraRegulacao.Atende, null);
+
+        // Na lista, "Sim" é ter marcado alguma opção e "Não" é "nenhuma destas" — o motivo diz
+        // isso com as palavras que o solicitante viu na tela.
+        if (OpcoesDa(r).Count > 0)
+        {
+            return (Falha(r), resposta == RespostaRegraRegulacao.Nao
+                ? "Respondido \"nenhuma destas\"."
+                : "Marcou uma das opções da lista.");
+        }
+
+        return (Falha(r), $"Respondido \"{resposta}\".");
     }
+
+    /// <summary>
+    /// As opções de uma pergunta de lista. Vazia = pergunta simples. JSON torto conta como
+    /// pergunta simples: a regra continua perguntando, só sem a lista.
+    /// </summary>
+    public static IReadOnlyList<string> OpcoesDa(RegulacaoRegra r) =>
+        [.. Lista(r.OpcoesJson).Where(o => !string.IsNullOrWhiteSpace(o)).Select(o => o.Trim())];
 
     /// <summary>O que a severidade faz quando a regra não é atendida.</summary>
     private static ResultadoRegraRegulacao Falha(RegulacaoRegra r) => r.Severidade switch

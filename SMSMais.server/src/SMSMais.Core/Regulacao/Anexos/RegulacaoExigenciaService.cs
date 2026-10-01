@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Identidade;
+using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -68,6 +69,20 @@ public interface IRegulacaoExigenciaService
     Task RemoverArquivoAsync(Guid solicitacaoId, Guid arquivoId, CancellationToken ct);
 
     Task<ConteudoArquivoDto> ObterConteudoAsync(Guid solicitacaoId, Guid arquivoId, CancellationToken ct);
+
+    /// <summary>
+    /// A unidade trocou o procedimento: as caixinhas das regras do procedimento ANTIGO deixam de
+    /// ser obrigatórias. Não somem — os arquivos nelas continuam visíveis e na trilha —, mas uma
+    /// regra que já não vale para o pedido não pode travar o envio para sempre.
+    /// </summary>
+    Task DispensarCaixinhasDeOutroProcedimentoAsync(Guid solicitacaoId, Guid procedimentoId, CancellationToken ct);
+
+    /// <summary>
+    /// A unidade trocou o paciente: os PDFs de exame/laudo que o SMSMais anexou eram do paciente
+    /// ANTERIOR e saem (mesmo tratamento do "remover" da tela). Mandar o laudo de uma pessoa no
+    /// pedido de outra é o erro que isto existe para impedir. Devolve quantos saíram.
+    /// </summary>
+    Task<int> DescartarExamesInternosAsync(Guid solicitacaoId, CancellationToken ct);
 }
 
 /// <inheritdoc cref="IRegulacaoExigenciaService"/>
@@ -75,12 +90,17 @@ public sealed class RegulacaoExigenciaService(
     SmsMaisDbContext db,
     IArquivoExigenciaStore store,
     IRegulacaoConfiguracaoService configuracao,
-    IUsuarioAtualAccessor usuarioAtual) : IRegulacaoExigenciaService
+    IUsuarioAtualAccessor usuarioAtual,
+    IRegulacaoEscopo escopoRegulacao) : IRegulacaoExigenciaService
 {
     private const string TituloAnexosGerais = "Anexos gerais";
 
     public async Task<IReadOnlyList<ExigenciaDto>> ListarAsync(Guid solicitacaoId, CancellationToken ct)
     {
+        // Sem esta conferência, quem tinha o módulo listava (e baixava) os anexos de qualquer
+        // solicitação do município pelo id — inclusive de rascunho alheio.
+        await ExigirSolicitacaoAsync(solicitacaoId, ct, rastrear: false);
+
         var exigencias = await db.RegulacaoSolicitacaoExigencias.AsNoTracking()
             .Where(e => e.SolicitacaoId == solicitacaoId)
             .Include(e => e.Arquivos)
@@ -326,11 +346,78 @@ public sealed class RegulacaoExigenciaService(
         return new ConteudoArquivoDto(conteudo, arquivo.ContentType, arquivo.Nome);
     }
 
+    public async Task DispensarCaixinhasDeOutroProcedimentoAsync(
+        Guid solicitacaoId, Guid procedimentoId, CancellationToken ct)
+    {
+        var regrasDoProcedimento = db.RegulacaoRegras
+            .Where(r => r.ProcedimentoId == procedimentoId)
+            .Select(r => r.Id);
+
+        var foraDoProcedimento = await db.RegulacaoSolicitacaoExigencias
+            .Where(e => e.SolicitacaoId == solicitacaoId
+                && e.RegraId != null
+                && e.Obrigatoria
+                && !regrasDoProcedimento.Contains(e.RegraId.Value))
+            .ToListAsync(ct);
+        if (foraDoProcedimento.Count == 0) return;
+
+        foreach (var e in foraDoProcedimento) e.Obrigatoria = false;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> DescartarExamesInternosAsync(Guid solicitacaoId, CancellationToken ct)
+    {
+        var arquivos = await db.RegulacaoExigenciaArquivos
+            .Include(a => a.Exigencia!).ThenInclude(e => e.Arquivos)
+            .Where(a => a.Exigencia!.SolicitacaoId == solicitacaoId
+                && a.Origem == OrigemArquivoExigencia.ExameInterno
+                && a.Situacao == SituacaoArquivoExigencia.Atual
+                // O que já foi ao sistema de regulação é prova do que foi mandado — não sai.
+                && a.EnviadoAoSistemaEm == null)
+            .ToListAsync(ct);
+        if (arquivos.Count == 0) return 0;
+
+        foreach (var arquivo in arquivos)
+        {
+            arquivo.Situacao = SituacaoArquivoExigencia.Removido;
+            await store.ExcluirAsync(arquivo.ChaveArmazenamento, ct);
+
+            var exigencia = arquivo.Exigencia!;
+            exigencia.ExameInternoExameImagemId = null;
+            exigencia.ExameInternoLaudoId = null;
+            exigencia.ValidadoExamePor = null;
+            exigencia.ValidadoExameEm = null;
+
+            var sobrou = exigencia.Arquivos.Any(a => a.Situacao == SituacaoArquivoExigencia.Atual);
+            if (!sobrou && exigencia.Situacao == SituacaoExigenciaRegulacao.Atendida)
+            {
+                exigencia.Situacao = SituacaoExigenciaRegulacao.Pendente;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        return arquivos.Count;
+    }
+
     // ---------------------------------------------------------------- apoio
 
-    private async Task<RegulacaoSolicitacao> ExigirSolicitacaoAsync(Guid id, CancellationToken ct) =>
-        await db.RegulacaoSolicitacoes.FirstOrDefaultAsync(s => s.Id == id && s.ExcluidoEm == null, ct)
-        ?? throw new NaoEncontradoException("Solicitação da regulação", id);
+    /// <summary>
+    /// Carrega a solicitação e confere o alcance de quem pede (unidade no escopo; rascunho só de
+    /// quem o abriu). Fora do alcance é "não encontrado", como no detalhe.
+    /// </summary>
+    private async Task<RegulacaoSolicitacao> ExigirSolicitacaoAsync(
+        Guid id, CancellationToken ct, bool rastrear = true)
+    {
+        var consulta = rastrear
+            ? db.RegulacaoSolicitacoes.AsQueryable()
+            : db.RegulacaoSolicitacoes.AsNoTracking();
+
+        var s = await consulta.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("Solicitação da regulação", id);
+
+        await escopoRegulacao.ExigirAlcanceAsync(s, ct);
+        return s;
+    }
 
     private async Task<RegulacaoSolicitacaoExigencia> ExigirExigenciaAsync(
         Guid solicitacaoId, Guid exigenciaId, CancellationToken ct) =>

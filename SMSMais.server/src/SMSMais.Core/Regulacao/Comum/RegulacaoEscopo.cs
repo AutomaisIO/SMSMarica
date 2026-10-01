@@ -3,6 +3,7 @@ using SMSMais.Core.Common.Unidades;
 using SMSMais.Core.Identidade;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Regulacao;
 
 namespace SMSMais.Core.Regulacao.Comum;
 
@@ -32,6 +33,13 @@ public interface IRegulacaoEscopo
     /// por atributo nenhum.
     /// </summary>
     Task ExigirAgenteAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Recusa, como "não encontrado", a solicitação que o usuário atual não alcança: unidade fora
+    /// do escopo, ou <b>rascunho de outra pessoa</b>. É a mesma pergunta para o detalhe, a linha
+    /// do tempo, as regras e os anexos — e mora aqui para as quatro portas não divergirem.
+    /// </summary>
+    Task ExigirAlcanceAsync(RegulacaoSolicitacao s, CancellationToken ct);
 }
 
 /// <inheritdoc cref="IRegulacaoEscopo"/>
@@ -74,4 +82,28 @@ public sealed class RegulacaoEscopo(
                 "Esta ação é do agente regulador (módulo Regulação — Agente regulador).");
         }
     }
+
+    public async Task ExigirAlcanceAsync(RegulacaoSolicitacao s, CancellationToken ct)
+    {
+        // Rascunho é trabalho em andamento de uma pessoa: nem o colega da mesma unidade nem o
+        // agente o enxergam. "Não encontrado" e não "sem permissão" — dizer que existe já vaza
+        // que aquele paciente tem um pedido sendo montado.
+        if (!RascunhoVisivel(s.Status, s.CriadoPorUsuarioId, usuarioAtual.UsuarioId))
+        {
+            throw new NaoEncontradoException("Solicitação da regulação", s.Id);
+        }
+
+        var escopo = await ResolverAsync(ct);
+        if (!escopo.VeTudo && !escopo.Unidades.Contains(s.UnidadeSolicitanteId))
+        {
+            throw new NaoEncontradoException("Solicitação da regulação", s.Id);
+        }
+    }
+
+    /// <summary>
+    /// Rascunho só para quem o abriu. Sem usuário no contexto (job, importação) não há a quem
+    /// restringir — mesma porta aberta do <see cref="EscopoUnidade"/>.
+    /// </summary>
+    public static bool RascunhoVisivel(StatusRegulacao status, Guid criadoPor, Guid? usuarioId) =>
+        status != StatusRegulacao.Rascunho || usuarioId is null || criadoPor == usuarioId;
 }

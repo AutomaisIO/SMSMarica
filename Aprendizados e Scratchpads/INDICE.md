@@ -162,6 +162,20 @@ credencial funcionam** — é a base da pré-carga paralela)
 **Outras:** `probe_historico.py`, `probe_historico_por_id.py`, `probe_solicitante.py`,
 `probe_export_solicitacao.py`, `probe_ambulatorio_estadual.py`, `probe_sisreg_detalhe.py`
 
+**Cadastro de Profissionais (01/10/2026, só leitura):** `probe_profissional_saude.py` — menu
+Cadastro → Profissionais (módulo ambulatorial). Passos `inicio | pesquisar | pagina | novo |
+buscacpf | cbo | listas`. Respondeu: pesquisa lista ~930 profissionais com lotação na unidade
+(20/pág.); o link "Editar" da linha dá **HTTP 500 até no navegador** — a ficha se abre pela aba
+"Adicionar Novo" + onblur do CPF (`form0:aplicInicial2` → `supBuscaCpfNovo`), que traz nome,
+telefone e as lotações de TODAS as unidades do Estado; especialidade (115) e `medicoResp` da
+solicitação usam **índice posicional do Seam** no `value`, não código; CBO é suggestionbox (~128,
+6 dígitos). Sessão em cookies reaproveitados (`capturas/profissional/sessao.json`, apagar depois).
+Passos `exportar` (filtro vazio, 47 páginas → `listagem_completa.json`, 930 registros) e `amostra`
+(onblur de CPF de N registros → `amostra_fichas.json`; **a aba precisa ser reaberta a cada CPF** —
+o 2º onblur na mesma view volta vazio). Qualidade medida 01/10: só **4,6%** com CPF (metade com DV
+inválido), Documento em 49,5% (CRM 427, formatos variados), 20% dos nomes abreviados/suspeitos;
+o form "Adicionar Novo" **não tem campo de CRM/Documento** e a validação JS está toda comentada.
+
 ---
 
 ## 5. `Automais.SERNIT` — 18 scripts, **nenhum commitado**

@@ -171,9 +171,26 @@ Acrescentar o aparelho às tabelas de `docs/pacs.md` (§8 e §9.1).
 - **Não repontar o backend** para um AE com label: `Pacs:Dcm4chee:WorklistBaseUrl` tem que
   continuar no `WORKLIST` sem label, que enxerga tudo.
 - **Receber a worklist não garante iniciar o exame.** O Fuji falha com erro 31027
-  (`JJ1017V3CodeMapping` vazia). Console que não mostra a descrição do estudo costuma precisar de
-  `(0040,0008) ScheduledProtocolCodeSequence`, que hoje não emitimos — medido no Konica
-  ImagePilot em 09/09/2026, que descarta `(0032,1060)` e `(0040,0007)`.
+  (`JJ1017V3CodeMapping` vazia).
+- **Aparelho que PEDE o campo pode descartá-lo.** O Konica ImagePilot do RX-CDT pede no C-FIND os
+  quatro campos de descrição — `(0032,1060)`, `(0040,0007)` e o Code Meaning de `(0032,1064)` e de
+  `(0040,0008)` — e **não usa nenhum**: em 30/09/2026 um item-régua com os quatro preenchidos
+  chegou com "Descrição do estudo" vazia, e as imagens que ele devolve não trazem descrição em
+  lugar nenhum (nem `0008,1030`, nem `0040,0275`). A hipótese antiga ("falta o `0040,0008`") caiu.
+  **Mas ele preenche a descrição com o NOME DO EXAME DO PRÓPRIO MENU** ("RX MAO", "RX JOELHO",
+  "RX COLUNA LOMBAR") quando o técnico cadastra à mão e escolhe o exame na lista do console — são
+  exatamente os estudos que chegam sem accession e depois são associados à mão na plataforma.
+  **Esgotado do nosso lado (30/09, 4 itens de teste):** nomes EXATOS do cardápio em cada um dos 4
+  campos (também como Code Value) e o próprio tag como valor em TODOS os outros campos de texto que
+  ele pede (`0032,1033`, `0038,0050/0300/0400/0500`, `0032,1070`, `0040,0011`, médicos) — linha nova,
+  "Descrição do estudo" vazia. O console **não liga essa coluna a campo nenhum da worklist** como está
+  configurado: é o técnico da Konica que precisa mapear (de preferência para `0032,1060`) ou montar a
+  tabela exame↔código, com códigos que ele define e nós passamos a mandar.
+- **O console agrupa itens do mesmo paciente numa linha só** da "Lista de doentes" (Acesso nº
+  "A, B, C") e, na prática, a linha fica com o que tinha quando nasceu. Para testar, **um paciente de
+  teste novo a cada rodada** (ID e issuer próprios, ex. `TESTEWL01`/`SMSTESTE`), e apagar no fim:
+  `DELETE /aets/WORKLIST/rs/patients/{ID}%5E%5E%5E{issuer}` depois do item. O técnico no local não
+  sabe excluir linhas — não conte com isso.
 - **Instalar o aparelho 2 pode desconfigurar o aparelho 1.** Em 11/09/2026, na visita para
   instalar o `US02-CMI`, o técnico mexeu também no `US_CMI` que já funcionava: o Called AE da
   worklist virou `WORK-US-CMI` (antes tentou `WORK-US01-CMI` e `WORK-USG-CMI`, e por um tempo o
@@ -206,6 +223,30 @@ grep -h "A-ASSOCIATE-RJ" $LOGD/server.log | grep -v "ANY-SCP<-" | cut -c1-230 | 
 Depois conferir o lado do servidor: `GET /aets/<AE>/rs/mwlitems` e as **datas** dos itens
 (`00400002`) — console filtrando "hoje" mostra vazio se só há itens de outros dias. `ANY-SCP<-ECHOSCU`,
 `<-CENSYS`, `<-FINDSCU` são varreduras da internet, ruído.
+
+## Diagnóstico: "a descrição não aparece no aparelho"
+
+Três provas, nesta ordem — cada uma elimina um lado:
+
+1. **O item tem a descrição?** `GET /aets/WORKLIST/rs/mwlitems?ScheduledProcedureStepSequence.ScheduledStationAETitle=<AE>&includefield=all`
+   (pelo droplet; a 8080 não responde do Windows). Se `00321060`/`00400007` estão lá, o nosso lado está certo.
+2. **Que campos o aparelho pede?** O log do dcm4chee imprime o C-FIND-RQ mas **corta o dataset
+   com "..."**. Capturar só a ida (sem PHI) e decodificar com pydicom:
+   ```bash
+   timeout 25 tcpdump -i any -s 0 -w /tmp/cfind.pcap 'src host <IP da unidade> and dst port 11112'
+   ```
+   O aparelho consulta a cada ~10 s (Konica), então 25 s bastam. Link-type do `any` é SLL2 (276):
+   cabeçalho de 20 bytes antes do IP. Juntar os PDUs `P-DATA-TF` (tipo 4), ficar só com os PDVs
+   de dataset (bit 0 do message-control = 0) e ler com
+   `pydicom.filereader.read_dataset(BytesIO(b), is_implicit_VR=True, is_little_endian=True)`.
+3. **Qual campo ele mostra, e quantos caracteres cabem?** Item de teste, com OK do operador, no
+   cadastro-cobaia, com data de hoje, pondo em cada campo pedido uma régua com letra própria:
+   `A-04-07-10-…-64` (cada número é a posição do próprio último caractere). O técnico diz a letra
+   que aparece e o último número inteiro visível. Apagar o item logo depois
+   (`DELETE /aets/WORKLIST/rs/mwlitems/{StudyUID}/{SPS ID}`) e pedir que ele remova a linha da
+   lista local do console, se chegou a importar. Por fim, conferir o que o aparelho **devolve** nas
+   imagens (`/studies/{uid}/metadata`: `00081030`, `00400275`, `00321060`) — é isso que diz se ele
+   usou o campo ou só o pediu.
 
 ## Memórias relacionadas
 

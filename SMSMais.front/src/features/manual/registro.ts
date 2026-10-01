@@ -14,6 +14,8 @@ import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
 import { artigoOuvidoria } from '@/features/manual/conteudo/ouvidoria';
 import { artigoPacientes } from '@/features/manual/conteudo/pacientes';
+import { artigoRegulacaoSolicitacoes } from '@/features/manual/conteudo/regulacaoSolicitacoes';
+import { artigoSerMedicos } from '@/features/manual/conteudo/serMedicos';
 import { artigoTickets } from '@/features/manual/conteudo/tickets';
 import { artigoTicketsGestao } from '@/features/manual/conteudo/ticketsGestao';
 import { artigoTiposTratamento } from '@/features/manual/conteudo/tiposTratamento';
@@ -94,6 +96,8 @@ export const ARTIGOS: Artigo[] = [
   artigoMotoristas,
   artigoOuvidoria,
   artigoPacientes,
+  artigoRegulacaoSolicitacoes,
+  artigoSerMedicos,
   artigoTickets,
   artigoTicketsGestao,
   artigoTiposTratamento,

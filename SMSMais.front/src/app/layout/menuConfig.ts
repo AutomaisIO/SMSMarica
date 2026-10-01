@@ -284,6 +284,14 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Movimentações do SER que ainda não foram vistas.',
           },
           {
+            // ADR-0065: espelho dos profissionais do SER, à parte do nosso cadastro de Médicos.
+            rotulo: 'Médicos',
+            to: '/app/regulacao/ser/medicos',
+            icone: Stethoscope,
+            modulo: 'RegulacaoSer',
+            descricao: 'Os médicos como estão no SER e a ligação com o nosso cadastro.',
+          },
+          {
             // Módulo próprio (69), desligado por padrão: é a produção de cada operador do Estado.
             rotulo: 'Estatísticas',
             to: '/app/regulacao/ser/estatisticas',

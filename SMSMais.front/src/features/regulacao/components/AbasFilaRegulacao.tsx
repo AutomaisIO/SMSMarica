@@ -12,10 +12,13 @@ export type AbaFila = {
   id: string;
   rotulo: string;
   status: StatusRegulacao[];
+  /** Aparece ao passar o mouse na aba. */
+  dica?: string;
 };
 
 export const ABAS_FILA: AbaFila[] = [
-  { id: 'rascunhos', rotulo: 'Rascunhos', status: ['Rascunho'] },
+  // Rascunho é de quem o abriu: nem o colega da unidade nem o agente o veem (o backend filtra).
+  { id: 'rascunhos', rotulo: 'Rascunhos', status: ['Rascunho'], dica: 'Só os que você abriu' },
   { id: 'pre', rotulo: 'Pré-regulação', status: ['PendenteRegulacao'] },
   { id: 'analise', rotulo: 'Em análise', status: ['EmAnalise'] },
   { id: 'devolvidas', rotulo: 'Devolvidas', status: ['Devolvida'] },
@@ -51,6 +54,7 @@ export function AbasFilaRegulacao({
           <button
             key={aba.id}
             type="button"
+            title={aba.dica}
             onClick={() => aoTrocar(aba.id)}
             className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${
               selecionada

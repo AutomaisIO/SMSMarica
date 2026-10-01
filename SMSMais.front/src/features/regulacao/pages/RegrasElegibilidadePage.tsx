@@ -230,11 +230,26 @@ function LinhaRegra({
             {regra.fonte && <span>{regra.fonte}</span>}
           </div>
 
-          {regra.pergunta && (
+          {regra.pergunta && regra.opcoes.length === 0 && (
             <p className="mt-1 text-xs text-slate-600">
               Pergunta: “{regra.pergunta}” — barra quando a resposta é{' '}
               <strong>{regra.respostaBloqueia === 'Nao' ? 'não' : 'sim'}</strong>
             </p>
+          )}
+          {regra.pergunta && regra.opcoes.length > 0 && (
+            <div className="mt-1 text-xs text-slate-600">
+              <p>
+                Lista: “{regra.pergunta}” — barra quando{' '}
+                <strong>
+                  {regra.respostaBloqueia === 'Nao' ? 'marcam “Nenhuma destas”' : 'marcam alguma opção'}
+                </strong>
+              </p>
+              <ul className="mt-0.5 list-inside list-disc pl-1">
+                {regra.opcoes.map((o) => (
+                  <li key={o}>{o}</li>
+                ))}
+              </ul>
+            </div>
           )}
           {regra.documentoRotulo && (
             <p className="mt-1 text-xs text-slate-600">Documento: {regra.documentoRotulo}</p>

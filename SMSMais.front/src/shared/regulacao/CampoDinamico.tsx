@@ -1,6 +1,7 @@
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
+import { SelectComBusca } from '@/shared/ui/SelectComBusca';
 
 import {
   paraBr,
@@ -83,8 +84,9 @@ export function CampoDinamico({ c, valor, desabilitado, onChange, sistema }: Pro
 
   // Escolha SEM opção nenhuma = catálogo copiado antes da correção de 10/08/2026. Não deixo isso
   // virar caixa de texto em silêncio: o sistema só aceita os valores da lista dele, e o pedido
-  // voltaria recusado com o campo aparentemente preenchido na tela.
-  if ((c.tipo === 'radio' || c.tipo === 'checkbox') && !c.opcoes?.length) {
+  // voltaria recusado com o campo aparentemente preenchido na tela. O `select` entra pelo mesmo
+  // motivo: a Classificação de risco do bloco fixo sai da lista copiada do catálogo.
+  if ((c.tipo === 'radio' || c.tipo === 'checkbox' || c.tipo === 'select') && !c.opcoes?.length) {
     return (
       <Campo label={rotulo} htmlFor={id} className="min-w-72">
         <Input id={id} value={valor} disabled onChange={() => {}} />
@@ -115,6 +117,21 @@ export function CampoDinamico({ c, valor, desabilitado, onChange, sistema }: Pro
               </label>
             ))}
           </div>
+        </Campo>
+      );
+    }
+
+    // Lista longa (os médicos do SER passam de 800): select nativo não deixa procurar.
+    if (c.opcoes.length > 30) {
+      return (
+        <Campo label={rotulo} htmlFor={id} className="min-w-96">
+          <SelectComBusca
+            id={id}
+            opcoes={c.opcoes}
+            valor={valor}
+            desabilitado={desabilitado}
+            onChange={onChange}
+          />
         </Campo>
       );
     }

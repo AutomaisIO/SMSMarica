@@ -4,7 +4,7 @@ import { AlertTriangle, Ban, CircleCheck, Info } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 
 import { useElegibilidade, useResponderRegras } from '../../api/solicitacoesQueries';
-import type { RespostaRegraRegulacao } from '../../tiposSolicitacao';
+import type { PerguntaPendente, RespostaRegraRegulacao } from '../../tiposSolicitacao';
 
 /**
  * As regras do manual, aplicadas a este pedido (plano 03).
@@ -13,11 +13,16 @@ import type { RespostaRegraRegulacao } from '../../tiposSolicitacao';
  * decide se vale a pena continuar; depois <b>o que precisa ser respondido</b>; e por último o
  * texto informativo, que o manual traz e ninguém responde — 83% das regras extraídas são desse
  * tipo, e afogar a pergunta no meio delas faria o solicitante desistir de ler.</p>
+ *
+ * <p><b>Pergunta de lista</b> ("portadores das seguintes condições: …") vira caixas de marcar:
+ * basta uma. Marcar é o "Sim" — e as marcadas vão junto, porque é por elas que o regulador sabe
+ * qual condição justifica o pedido; "Nenhuma destas" é o "Não".</p>
  */
 export function PassoRegras({ solicitacaoId }: { solicitacaoId: string | null }) {
   const avaliacao = useElegibilidade(solicitacaoId);
   const responder = useResponderRegras();
   const [rascunho, setRascunho] = useState<Record<string, RespostaRegraRegulacao>>({});
+  const [marcadas, setMarcadas] = useState<Record<string, string[]>>({});
 
   if (!solicitacaoId) {
     return <p className="text-sm text-slate-500">Escolha o paciente para o sistema conferir as regras.</p>;
@@ -33,8 +38,29 @@ export function PassoRegras({ solicitacaoId }: { solicitacaoId: string | null })
 
   async function salvarRespostas() {
     if (!solicitacaoId || Object.keys(rascunho).length === 0) return;
-    await responder.mutateAsync({ id: solicitacaoId, respostas: rascunho });
+    // Só a lista respondida "Sim" leva opções — "Nenhuma destas" e "Não sei" não marcam nada.
+    const opcoes = Object.fromEntries(
+      Object.entries(marcadas).filter(([regraId, lista]) => rascunho[regraId] === 'Sim' && lista.length > 0),
+    );
+    await responder.mutateAsync({ id: solicitacaoId, respostas: rascunho, opcoes });
     setRascunho({});
+    setMarcadas({});
+  }
+
+  function alternarOpcao(p: PerguntaPendente, opcao: string) {
+    const atuais = marcadas[p.regraId] ?? [];
+    const proximas = atuais.includes(opcao) ? atuais.filter((o) => o !== opcao) : [...atuais, opcao];
+    setMarcadas((m) => ({ ...m, [p.regraId]: proximas }));
+    setRascunho((r) => {
+      const { [p.regraId]: _anterior, ...resto } = r;
+      // Marcar alguma é o "Sim"; desmarcar a última deixa a pergunta sem resposta de novo.
+      return proximas.length > 0 ? { ...resto, [p.regraId]: 'Sim' } : resto;
+    });
+  }
+
+  function responderSemOpcao(p: PerguntaPendente, resposta: RespostaRegraRegulacao) {
+    setMarcadas((m) => ({ ...m, [p.regraId]: [] }));
+    setRascunho((r) => ({ ...r, [p.regraId]: resposta }));
   }
 
   return (
@@ -82,7 +108,42 @@ export function PassoRegras({ solicitacaoId }: { solicitacaoId: string | null })
           </p>
 
           <ul className="space-y-3">
-            {a.perguntasPendentes.map((p) => (
+            {a.perguntasPendentes.map((p) =>
+              p.opcoes && p.opcoes.length > 0 ? (
+                <li key={p.regraId} className="border-b border-slate-100 pb-3 last:border-0">
+                  <p className="text-sm text-slate-900">{p.pergunta}</p>
+                  <p className="text-xs text-slate-500">Marque as que se aplicam — basta uma.</p>
+                  <div className="mt-1.5 space-y-1">
+                    {p.opcoes.map((opcao) => (
+                      <label key={opcao} className="flex cursor-pointer items-start gap-2 text-sm text-slate-800">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 size-4 shrink-0 accent-red-600"
+                          checked={(marcadas[p.regraId] ?? []).includes(opcao)}
+                          onChange={() => alternarOpcao(p, opcao)}
+                        />
+                        <span>{opcao}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    {(['Nao', 'NaoSei'] as const).map((opcao) => (
+                      <button
+                        key={opcao}
+                        type="button"
+                        onClick={() => responderSemOpcao(p, opcao)}
+                        className={`rounded border px-3 py-1 text-sm ${
+                          rascunho[p.regraId] === opcao
+                            ? 'border-red-600 bg-red-600 text-white'
+                            : 'border-slate-300 text-slate-700 hover:border-slate-400'
+                        }`}
+                      >
+                        {opcao === 'NaoSei' ? 'Não sei' : 'Nenhuma destas'}
+                      </button>
+                    ))}
+                  </div>
+                </li>
+              ) : (
               <li key={p.regraId} className="border-b border-slate-100 pb-3 last:border-0">
                 <p className="text-sm text-slate-900">{p.pergunta}</p>
                 <div className="mt-1.5 flex gap-2">
@@ -102,7 +163,8 @@ export function PassoRegras({ solicitacaoId }: { solicitacaoId: string | null })
                   ))}
                 </div>
               </li>
-            ))}
+              ),
+            )}
           </ul>
 
           <Button

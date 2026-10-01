@@ -32,9 +32,9 @@ oncologia pede campos diferentes".
 | Recurso (autocomplete) | `form0:suggRecurso` | suggestionbox |  |
 | CNS do paciente | `form0:numeroCADSUS` | text |  |
 | Médico solicitante identificado? | `form0:booleanMedicoSolicitanteIdentificado_radio` | radio S/N |  |
-| Médico responsável | `form0:medicoResp` | select (876 opções) |  |
-| Telefone do médico | `form0:telefoneCelularMedico` | text |  |
-| Especialidade do médico | `form0:especialidadeMedico` | text |  |
+| Médico responsável | `form0:medicoResp` | select (~927 opções — **value é índice de view**, §2.1.2) |  |
+| Telefone do médico | `form0:telefoneCelularMedico` | text **desabilitado** — preenchido pelo médico |  |
+| Especialidade do médico | `form0:especialidadeMedico` | text **desabilitado** — preenchido pelo médico |  |
 | Classificação de Risco | `form0:classificacao_risco` | select (Prioridade 1–4) | sim |
 | Hipótese | `form0:procedimento` | **suggestionbox de CID** (não é texto — §2.1.3) | sim |
 | Mandado Judicial | `form0:naturezaSolicitacaoMandato_radio` | radio S/N |  |
@@ -108,6 +108,27 @@ O `suggUnidadeOrigem` é um `rich:suggestionbox` — mesmo protocolo do Solicita
 > Os três radios e os cinco campos condicionais ainda não estão implementados — pedido montado
 > hoje seria recusado por falta de médico e de unidade de origem. É pendência conhecida, anterior
 > a ligar o envio.
+
+#### 2.1.2 O médico: o value do combo NÃO é identificador
+
+Medido em 01/10/2026 (`Automais.SER/probe_profissional_saude.py`, só leitura):
+
+- O `value` de `form0:medicoResp` é o índice do **EntityConverter do Seam** — vale só para aquela
+  view. Numa captura era 0..872 contíguo; em outra, 0..924 fora de ordem. **Nunca guardar o
+  value**: guardar o NOME e resolver o índice pelo texto na hora do envio. Há ~49 nomes repetidos
+  no combo (homônimos ou cadastro duplicado).
+- O combo = os profissionais **ativos com lotação no município** (Cadastro → Profissionais).
+- Escolher o médico dispara A4J (`ajaxSingle=form0:medicoResp`) que preenche
+  `especialidadeMedico` com o `toString()` de uma List Java (`[CLÍNICA GERAL]`) — só as
+  especialidades da lotação no município — e o telefone. Os dois inputs vêm desabilitados: não são
+  campos para preencher.
+- O radio `booleanMedicoSolicitanteIdentificado_radio` nasce em `true`.
+
+O cadastro do profissional (Cadastro → Profissionais) é estadual e único por CPF, com N lotações
+(Unidade × Especialidade × CBO × Ativo); a nossa conta só lota em "GESTOR SMS MARICA". O link
+"Editar" da pesquisa responde HTTP 500 — a ficha abre pela aba "Adicionar Novo" + busca por CPF.
+A especialidade da lotação é um combo de 115 opções cujo value também é índice posicional (e há
+rótulos repetidos); o CBO é suggestionbox que só busca por nome.
 
 #### 2.1.3 A Hipótese é uma caixa de CID — e a lista é do RECURSO
 

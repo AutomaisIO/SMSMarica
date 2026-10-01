@@ -173,13 +173,21 @@ export type FiltroSolicitacoesRegulacao = {
   busca?: string;
   /** Só as que eu abri — vale sobretudo para o agente, que enxerga tudo. */
   soMinhas?: boolean;
+  /**
+   * A "Fila da regulação": para o agente, o município inteiro. Sem isto a fila é a da unidade
+   * escolhida no topo — para o agente também. Para quem não é agente não amplia nada.
+   */
+  filaDoMunicipio?: boolean;
   pagina?: number;
   tamanho?: number;
 };
 
 export type ResumoFilaRegulacao = {
   porStatus: Partial<Record<StatusRegulacao, number>>;
-  /** `true` = está vendo o município inteiro (módulo 48), não só a própria unidade. */
+  /**
+   * `true` = a fila pedida cobre o município inteiro (o agente na "Fila da regulação", ou quem tem
+   * acesso global sem unidade escolhida no topo).
+   */
   veTodasUnidades: boolean;
 };
 
@@ -234,6 +242,32 @@ export type PerguntaPendente = {
   pergunta: string;
   sistema: SistemaRegulacao | null;
   severidade: SeveridadeRegraRegulacao;
+  /**
+   * Pergunta de lista: as opções para marcar. Nulo = pergunta simples de Sim/Não. Marcar ao
+   * menos uma é o "Sim"; "Nenhuma destas" é o "Não".
+   */
+  opcoes?: string[] | null;
+};
+
+/** O que a solicitação respondeu a uma regra, como ficou gravado — a leitura do agente. */
+export type RespostaRegraRegistrada = {
+  regraId: string;
+  versao: number;
+  tipo: TipoRegraRegulacao;
+  severidade: SeveridadeRegraRegulacao;
+  sistema: SistemaRegulacao | null;
+  descricao: string;
+  pergunta: string | null;
+  resposta: RespostaRegraRegulacao;
+  resultado: ResultadoRegraRegulacao;
+  motivo: string | null;
+  /** Pergunta de lista: todas as opções da versão respondida. */
+  opcoes: string[];
+  /** Pergunta de lista: o que o solicitante marcou. */
+  opcoesMarcadas: string[];
+  respondidoEm: string;
+  /** A regra ainda vale. Falso = foi substituída depois; a resposta fica só como história. */
+  vigente: boolean;
 };
 
 export type ExameParaRegras = {
@@ -305,6 +339,8 @@ export type SalvarRegra = {
   validadeDias: number | null;
   obrigatorio: boolean;
   ordem: number;
+  /** Pergunta de lista: as opções. Nulo/vazio = pergunta simples. */
+  opcoes: string[] | null;
 };
 
 export type RegraElegibilidade = {
@@ -334,6 +370,8 @@ export type RegraElegibilidade = {
   versao: number;
   ativo: boolean;
   criadoEm: string;
+  /** Pergunta de lista: as opções. Vazio = pergunta simples. */
+  opcoes: string[];
 };
 
 export type ImportacaoRegrasResultado = {

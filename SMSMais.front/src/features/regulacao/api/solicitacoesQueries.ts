@@ -17,6 +17,7 @@ import {
   obterResumoNotificacoesRegulacao,
   recusarSolicitacao,
   responderRegras,
+  listarRespostasRegras,
   usarExameInterno,
   registrarEnvioSolicitacao,
   atualizarSolicitacao,
@@ -134,11 +135,11 @@ export function useSolicitacoes(filtro: FiltroSolicitacoesRegulacao) {
  * Contagem por status. Alimenta as abas da fila, e é também por aqui que a tela sabe se está
  * vendo o município inteiro ou só a própria unidade.
  */
-export function useResumoFilaRegulacao() {
+export function useResumoFilaRegulacao(filaDoMunicipio = false) {
   const podeVer = useTemConsulta('Regulacao');
   return useQuery({
-    queryKey: [...raiz, 'resumo'],
-    queryFn: obterResumoFila,
+    queryKey: [...raiz, 'resumo', filaDoMunicipio],
+    queryFn: () => obterResumoFila(filaDoMunicipio),
     enabled: podeVer,
     staleTime: 15_000,
     refetchInterval: 60_000,
@@ -257,10 +258,26 @@ export function useElegibilidade(id: string | null) {
 export function useResponderRegras() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, respostas }: { id: string; respostas: Record<string, RespostaRegraRegulacao> }) =>
-      responderRegras(id, respostas),
+    mutationFn: ({
+      id,
+      respostas,
+      opcoes,
+    }: {
+      id: string;
+      respostas: Record<string, RespostaRegraRegulacao>;
+      opcoes?: Record<string, string[]>;
+    }) => responderRegras(id, respostas, opcoes),
     // Responder muda destinos e caixinhas: invalida a raiz inteira, não só a avaliação.
     onSuccess: () => void qc.invalidateQueries({ queryKey: raiz }),
+  });
+}
+
+/** As respostas gravadas, sem reavaliar — o que o agente lê no detalhe da solicitação. */
+export function useRespostasRegras(id: string | null) {
+  return useQuery({
+    queryKey: [...raiz, id, 'respostas-regras'],
+    queryFn: () => listarRespostasRegras(id!),
+    enabled: !!id,
   });
 }
 

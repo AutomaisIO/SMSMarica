@@ -24,8 +24,9 @@ public sealed class RegulacaoSolicitacoesController(
     IRegulacaoElegibilidadeService elegibilidade) : ControllerBase
 {
     /// <summary>
-    /// A fila. Quem tem só o módulo 47 vê as solicitações das suas unidades; quem tem o 48 (agente
-    /// regulador) vê o município inteiro — a ampliação é do serviço, não deste atributo.
+    /// A fila. Por padrão é a da unidade escolhida no topo — para todos, agente inclusive. Com
+    /// <c>filaDoMunicipio=true</c>, quem tem o 48 (agente regulador) vê o município inteiro; a
+    /// ampliação é do serviço, não deste atributo. Rascunho, em qualquer fila, só de quem o abriu.
     /// </summary>
     [HttpGet]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
@@ -38,8 +39,9 @@ public sealed class RegulacaoSolicitacoesController(
     [HttpGet("resumo")]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
     [ProducesResponseType<RegulacaoResumoFilaDto>(StatusCodes.Status200OK)]
-    public Task<RegulacaoResumoFilaDto> Resumo(CancellationToken cancellationToken) =>
-        servico.ResumoAsync(cancellationToken);
+    public Task<RegulacaoResumoFilaDto> Resumo(
+        [FromQuery] bool filaDoMunicipio, CancellationToken cancellationToken) =>
+        servico.ResumoAsync(filaDoMunicipio, cancellationToken);
 
     /// <summary>
     /// A história do caso: quem fez o quê, de qual estado para qual, com o que mudou. Passa pelo
@@ -182,13 +184,26 @@ public sealed class RegulacaoSolicitacoesController(
     public Task<AvaliacaoElegibilidadeDto> Elegibilidade(Guid id, CancellationToken cancellationToken) =>
         elegibilidade.AvaliarAsync(id, cancellationToken);
 
-    /// <summary>Responde o questionário e reavalia na mesma chamada.</summary>
+    /// <summary>
+    /// Responde o questionário e reavalia na mesma chamada. Pergunta de lista respondida "Sim"
+    /// leva as opções marcadas em <c>opcoes</c>.
+    /// </summary>
     [HttpPut("{id:guid}/respostas")]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
     [ProducesResponseType<AvaliacaoElegibilidadeDto>(StatusCodes.Status200OK)]
     public Task<AvaliacaoElegibilidadeDto> Responder(
         Guid id, [FromBody] ResponderRegrasRequest req, CancellationToken cancellationToken) =>
-        elegibilidade.ResponderAsync(id, req.Respostas, cancellationToken);
+        elegibilidade.ResponderAsync(id, req.Respostas, req.Opcoes, cancellationToken);
+
+    /// <summary>
+    /// O que o solicitante respondeu e o que o sistema deduziu, como ficou gravado — sem
+    /// reavaliar. É a leitura do agente: o GET de elegibilidade reavalia e regrava.
+    /// </summary>
+    [HttpGet("{id:guid}/respostas")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<RespostaRegraRegistradaDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<RespostaRegraRegistradaDto>> Respostas(Guid id, CancellationToken cancellationToken) =>
+        elegibilidade.RespostasAsync(id, cancellationToken);
 
     /// <summary>Exames que o próprio SMSMais já tem e servem para aquela caixinha.</summary>
     [HttpGet("{id:guid}/exigencias/{exigenciaId:guid}/exames-internos")]
@@ -212,8 +227,10 @@ public sealed class RegulacaoSolicitacoesController(
 
     public sealed record UsarExameInternoRequest(Guid ExameId, Guid? LaudoId);
 
+    /// <param name="Opcoes">Pergunta de lista: as opções marcadas, por regra.</param>
     public sealed record ResponderRegrasRequest(
-        IReadOnlyDictionary<Guid, RespostaRegraRegulacao> Respostas);
+        IReadOnlyDictionary<Guid, RespostaRegraRegulacao> Respostas,
+        IReadOnlyDictionary<Guid, IReadOnlyList<string>>? Opcoes = null);
 
     public sealed record TrocarProcedimentoRequest(Guid ProcedimentoId);
 

@@ -8450,6 +8450,10 @@ namespace SMSMais.Data.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("obrigatorio");
 
+                    b.Property<string>("OpcoesJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("opcoes_json");
+
                     b.Property<int>("Ordem")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -8860,6 +8864,10 @@ namespace SMSMais.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("OpcoesMarcadasJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("opcoes_marcadas_json");
 
                     b.Property<Guid>("RegraId")
                         .HasColumnType("uuid")
@@ -10302,6 +10310,102 @@ namespace SMSMais.Data.Migrations
                         .HasDatabaseName("ux_ser_gatilho_solicitacao_tipo_chave");
 
                     b.ToTable("ser_gatilho", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Ser.SerProfissional", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
+                    b.Property<string>("Chave")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("chave");
+
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
+                    b.Property<string>("Documento")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("documento");
+
+                    b.Property<DateTime?>("LigadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ligado_em");
+
+                    b.Property<Guid?>("LigadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ligado_por");
+
+                    b.Property<Guid?>("MedicoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medico_id");
+
+                    b.Property<string>("MedicoNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("medico_nome");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("NomeNormalizado")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome_normalizado");
+
+                    b.Property<int>("Ocorrencias")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("ocorrencias");
+
+                    b.Property<bool>("PresenteNoSer")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("presente_no_ser");
+
+                    b.Property<DateTime>("PrimeiraLeituraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("primeira_leitura_em");
+
+                    b.Property<string>("TipoDocumento")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo_documento");
+
+                    b.Property<DateTime>("UltimaLeituraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultima_leitura_em");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Chave")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ser_profissional_chave");
+
+                    b.HasIndex("Cpf")
+                        .HasDatabaseName("ix_ser_profissional_cpf");
+
+                    b.HasIndex("MedicoId")
+                        .HasDatabaseName("ix_ser_profissional_medico");
+
+                    b.ToTable("ser_profissional", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Ser.SerRascunhoAnexo", b =>

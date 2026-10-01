@@ -202,6 +202,15 @@ export function PainelAnaliseRegras({
                         pode travar
                       </span>
                     )}
+                    {/* Lista do manual: basta o paciente ter uma das condições. */}
+                    {p.opcoes && p.opcoes.length > 0 && (
+                      <ul className="w-full list-inside list-disc pl-1 text-xs text-slate-600">
+                        <li className="list-none text-slate-500">Basta uma destas:</li>
+                        {p.opcoes.map((o) => (
+                          <li key={o}>{o}</li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>

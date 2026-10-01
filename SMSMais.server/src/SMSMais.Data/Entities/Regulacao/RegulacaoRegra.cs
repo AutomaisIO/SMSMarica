@@ -70,6 +70,18 @@ public sealed class RegulacaoRegra
     /// </summary>
     public RespostaRegraRegulacao? RespostaBloqueia { get; set; }
 
+    /// <summary>
+    /// As opções de uma pergunta <b>de lista</b> (<c>["Genitália ambígua", "Doenças Raras"]</c>).
+    /// Nulo = pergunta simples de Sim/Não.
+    ///
+    /// <para>Existe porque o manual escreve critério alternativo como lista ("portadores das
+    /// seguintes condições: …"): basta uma. Cada item virando pergunta própria somava tudo com
+    /// E — e a criança precisaria ter Down, genitália ambígua e fratura patológica ao mesmo
+    /// tempo. Na lista, "Sim" é marcar ao menos uma opção e "Não" é "nenhuma destas"; qual dos
+    /// dois barra continua em <see cref="RespostaBloqueia"/>.</para>
+    /// </summary>
+    public string? OpcoesJson { get; set; }
+
     /// <summary>O que fazer com "não sei". Nulo = o padrão da configuração do módulo.</summary>
     public NaoSeiViraRegulacao? NaoSeiVira { get; set; }
 
@@ -119,6 +131,13 @@ public sealed class RegulacaoSolicitacaoRespostaRegra
     public int RegraVersao { get; set; }
 
     public RespostaRegraRegulacao Resposta { get; set; }
+
+    /// <summary>
+    /// Em pergunta de lista, as opções que o solicitante marcou — o texto, como estava na versão
+    /// da regra respondida. É o que o regulador lê para saber <b>qual</b> condição justifica o
+    /// pedido; um "Sim" sozinho perderia isso.
+    /// </summary>
+    public string? OpcoesMarcadasJson { get; set; }
 
     /// <summary>O dado que sustentou a dedução (<c>"idade=31"</c>) — a conta que o sistema fez.</summary>
     public string? ValorDeduzido { get; set; }

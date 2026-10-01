@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0065 — Médicos do SER num espelho à parte do nosso cadastro; envio de médico novo ao SER só com autorização</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0065 — Médicos do SER num espelho à parte do nosso cadastro; envio de médico novo ao SER só com autorização</h1>
+<p><strong>Status:</strong> proposto (fases de leitura implementadas localmente em 2026-10-01; envio NÃO implementado) · <strong>Data:</strong> 2026-10-01 <strong>Relacionado:</strong> <a href="./0052-fila-pre-regulacao-e-agente-regulador.md">ADR-0052</a> (solicitação de regulação; D-11 — nada da Regulação escreve no SER) · <a href="./0007-schema-fhir-separado.md">ADR-0007</a> (profissional clínico é <code>Practitioner</code> no FHIR) · <a href="../ser-criar-solicitacao.md"><code>docs/ser-criar-solicitacao.md</code></a> §2.1.2</p>
+<h2>Contexto</h2>
+<p>A solicitação ao SER exige o <strong>médico solicitante</strong>, escolhido do combo <code>form0:medicoResp</code> — a lista dos profissionais ativos <strong>com lotação no município</strong> no cadastro do próprio SER (Cadastro → Profissionais). Médico que não está lá não pode ser solicitante. Pedido do Bernardo (01/10/2026): listar os médicos do SER, cadastrar pela nossa plataforma o que falta, e decidir se o cadastro do SER fica separado do nosso ou se fazemos um backfill para melhorá-lo.</p>
+<p>Medido em 01/10/2026, só leitura (<code>Automais.SER/probe_profissional_saude.py</code>):</p>
+<p><strong>O cadastro do SER</strong></p>
+<ul>
+<li>É <strong>estadual e único por CPF</strong>, com N <strong>lotações</strong> (unidade × especialidade × CBO × ativo). A</li>
+</ul>
+<p>  nossa conta só lota em "GESTOR SMS MARICA". Um profissional da amostra tinha 16 lotações.</p>
+<ul>
+<li>A pesquisa com filtro vazio devolve <strong>930</strong> (47 páginas de 20) — o universo ligado ao município.</li>
+<li><strong>Qualidade ruim:</strong></li>
+<li>CPF em <strong>4,6%</strong>, e só 2,5% com dígito verificador válido;</li>
+<li><strong>metade (50,4%) só tem o nome</strong>;</li>
+<li>CRM em 45,9%, em formato livre e sem UF;</li>
+<li>54 grupos de nomes duplicados;</li>
+<li>20% de nomes abreviados ou suspeitos.</li>
+<li>O SER <strong>não valida o DV</strong>: o CPF 111.111.111-11 existe lá.</li>
+<li><strong>Não há identificador estável exposto:</strong></li>
+<li>o link "Editar" da pesquisa responde <strong>HTTP 500</strong> (também no navegador);</li>
+<li>o <code>value</code> de <code>medicoResp</code> e o da especialidade da lotação são <strong>índices de view do Seam</strong>,</li>
+</ul>
+<p>    que mudam a cada abertura.</p>
+<ul>
+<li><strong>Formulário de inclusão:</strong> CPF (com busca no <code>onblur</code>), nome, telefone e lotação</li>
+</ul>
+<p>  (especialidade, entre 115 opções, + CBO por sugestão). Não tem CRM, documento nem tipo. A   validação JavaScript está <strong>comentada</strong>; o que o servidor exige no Gravar só um Gravar revela.</p>
+<ul>
+<li>Escolher o médico na solicitação <strong>preenche sozinho</strong> especialidade e telefone, a partir da</li>
+</ul>
+<p>  lotação no município.</p>
+<p><strong>O nosso cadastro</strong></p>
+<ul>
+<li>1.639 médicos (<code>fhir.practitioner</code>).</li>
+<li>CPF válido em 99,9%, CRM em 99,9% (78,8% com UF) e especialidade em 88,5%.</li>
+</ul>
+<p><strong>O cruzamento</strong></p>
+<ul>
+<li>Só <strong>177</strong> do SER casam com algum nosso, e só <strong>74 com segurança</strong> (por CPF ou CRM); 81% não</li>
+</ul>
+<p>  casam com nada.</p>
+<ul>
+<li><strong>1.532</strong> médicos nossos não estão no SER.</li>
+</ul>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Espelho à parte.</strong></li>
+</ol>
+<ul>
+<li><code>smsmarica.ser_profissional</code> guarda o profissional <strong>como o SER mostra</strong>, sem corrigir nem</li>
+</ul>
+<p>     completar.    - Nada daqui entra no nosso cadastro de Médicos, e nada do nosso cadastro é copiado para cá.    - Chave natural: o CPF quando existe; senão, documento + tipo + nome normalizado.    - Linhas repetidas no SER viram uma só, com a contagem de ocorrências.    - Quem sai da pesquisa fica marcado "saiu do SER" e <strong>não é apagado</strong>.</p>
+<ol>
+<li><strong>Ligação com o nosso médico por uma pessoa.</strong></li>
+</ol>
+<ul>
+<li>A coluna <code>medico_id</code> (Practitioner, sem FK) é preenchida <strong>só por confirmação humana</strong> na tela.</li>
+<li>A máquina pode <strong>sugerir</strong> (por CPF; por CRM com e sem o prefixo "52"), nunca ligar sozinha.</li>
+</ul>
+<p>     O SER tem homônimos e nomes abreviados demais para casar por nome.</p>
+<ol>
+<li><strong>Sem backfill.</strong></li>
+</ol>
+<ul>
+<li>A maior falta do SER (CPF em 95%) não se corrige pela tela: o CPF é a chave do formulário, e</li>
+</ul>
+<p>     informá-lo num cadastro antigo cria <strong>outro</strong> cadastro.    - Não existe edição: o "Editar" dá 500, e o formulário não tem CRM.    - O ganho seria em no máximo 74 registros confiáveis.</p>
+<ol>
+<li><strong>A solicitação guarda o NOME do médico</strong>, nunca o <code>value</code> do combo. O envio resolve o índice</li>
+</ol>
+<p>   pelo texto na hora. Especialidade e telefone não são campos nossos.</p>
+<ol>
+<li><strong>Importação só lendo.</strong></li>
+</ol>
+<ul>
+<li>"Importar do SER" percorre a pesquisa com o filtro vazio, pela sessão de sincronismo, e só</li>
+</ul>
+<p>     passa pela trava de somente-leitura (<code>SubmeterFormAsync</code>).    - Roda em fila de fundo (capacidade 1). A tela acompanha pelo resumo.    - Leitura que volta com menos da metade do que havia é tratada como <strong>parcial</strong> e não altera      nada.</p>
+<ol>
+<li><strong>Envio de médico novo ao SER — desenhado, desligado.</strong> É a primeira escrita no cadastro do</li>
+</ol>
+<p>   Estado e uma exceção ao D-11 do ADR-0052. Só liga com OK explícito do Bernardo, depois de:    - <strong>(a)</strong> um ensaio do Gravar autorizado, para medir o que o servidor exige;    - <strong>(b)</strong> a tabela de <strong>especialidades do SER</strong> à parte, com rótulo e ordem (o value é      posicional e há rótulos repetidos), e a de <strong>CBO</strong>;    - <strong>(c)</strong> o fluxo:      1. buscar o CPF;      2. se o profissional existe no Estado, só <strong>acrescentar a lotação</strong> de Maricá;      3. se não existe, nome + telefone + lotação;      4. Gravar.      - Ao final, <strong>reler a ficha</strong> para provar o resultado; "salvo com sucesso" não é prova.    - Usa <code>SubmeterEscritaAsync</code> com a credencial do operador (autoria no SER), nunca a de      sincronismo.</p>
+<p>SISREG e ESUS ficam de fora por ora:</p>
+<ul>
+<li>no SISREG, os profissionais vêm do CNES por unidade (<code>PROFISSIONAIS_POR_UPS</code>) e não há</li>
+</ul>
+<p>  cadastro pelo município;</p>
+<ul>
+<li>no ESUS de São Gonçalo não achamos cadastro de profissional entre os endpoints mapeados.</li>
+</ul>
+<h2>Consequências</h2>
+<ul>
+<li><strong>Nova tela, Regulação → SER → Médicos</strong> (módulo RegulacaoSer): resumo, filtros, "Importar do</li>
+</ul>
+<p>  SER", "Ligar a médico nosso" / "Desligar". O artigo do manual é <code>ser-medicos</code>.</p>
+<ul>
+<li>O lixo do SER fica contido no espelho e na lista do formulário. O nosso cadastro não muda.</li>
+<li><strong>"Médico não está na lista"</strong> continua se resolvendo no SER, até o envio ser liberado.</li>
+<li><strong>Quando liberar o envio</strong>, a ligação confirmada evita duplicar no Estado um médico que já</li>
+</ul>
+<p>  está lá.</p>
+</main>
+</body>
+</html>

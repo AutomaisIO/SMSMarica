@@ -13,6 +13,7 @@ import type {
   ExameParaRegras,
   PendenciaEnvio,
   RespostaRegraRegulacao,
+  RespostaRegraRegistrada,
   ResumoFilaRegulacao,
   SolicitacaoRegulacao,
 } from '../tiposSolicitacao';
@@ -33,6 +34,11 @@ export type AtualizarSolicitacaoPayload = {
   sistemaDestino?: string | null;
   formulario?: Record<string, unknown> | null;
   observacoes?: string | null;
+  /** Fluxo, procedimento e paciente: só a unidade, com a solicitação em rascunho ou devolvida. */
+  fluxo?: FluxoRegulacao | null;
+  procedimentoId?: string | null;
+  /** Mandar o MESMO paciente relê a identidade — é assim que o CPF informado depois chega aqui. */
+  pacienteId?: string | null;
 };
 
 export async function criarSolicitacao(p: CriarSolicitacaoPayload): Promise<SolicitacaoRegulacao> {
@@ -97,8 +103,9 @@ export async function removerArquivo(solicitacaoId: string, arquivoId: string): 
 // ---------------------------------------------------------------- fila (plano 04)
 
 /**
- * A fila. Quem tem só o módulo 47 recebe as solicitações das suas unidades; quem tem o 48 recebe
- * o município inteiro — a decisão é do backend, a tela não escolhe.
+ * A fila. Por padrão é a da unidade escolhida no topo, para todos. `filaDoMunicipio` pede o
+ * município inteiro — e o backend só atende quem tem o 48. Rascunho, em qualquer fila, só de quem
+ * o abriu.
  */
 export async function listarSolicitacoes(
   filtro: FiltroSolicitacoesRegulacao,
@@ -111,8 +118,10 @@ export async function listarSolicitacoes(
   return data;
 }
 
-export async function obterResumoFila(): Promise<ResumoFilaRegulacao> {
-  const { data } = await http.get<ResumoFilaRegulacao>(`${base}/resumo`);
+export async function obterResumoFila(filaDoMunicipio: boolean): Promise<ResumoFilaRegulacao> {
+  const { data } = await http.get<ResumoFilaRegulacao>(`${base}/resumo`, {
+    params: { filaDoMunicipio },
+  });
   return data;
 }
 
@@ -190,11 +199,22 @@ export async function obterElegibilidade(id: string): Promise<AvaliacaoElegibili
   return data;
 }
 
+/** `opcoes`: nas perguntas de lista respondidas "Sim", as opções marcadas, por regra. */
 export async function responderRegras(
   id: string,
   respostas: Record<string, RespostaRegraRegulacao>,
+  opcoes?: Record<string, string[]>,
 ): Promise<AvaliacaoElegibilidade> {
-  const { data } = await http.put<AvaliacaoElegibilidade>(`${base}/${id}/respostas`, { respostas });
+  const { data } = await http.put<AvaliacaoElegibilidade>(`${base}/${id}/respostas`, {
+    respostas,
+    opcoes: opcoes ?? null,
+  });
+  return data;
+}
+
+/** O que foi respondido e deduzido, como ficou gravado — não reavalia (o GET de elegibilidade reavalia). */
+export async function listarRespostasRegras(id: string): Promise<RespostaRegraRegistrada[]> {
+  const { data } = await http.get<RespostaRegraRegistrada[]>(`${base}/${id}/respostas`);
   return data;
 }
 

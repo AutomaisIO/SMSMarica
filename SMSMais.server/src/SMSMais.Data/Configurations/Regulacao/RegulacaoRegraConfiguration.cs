@@ -35,6 +35,7 @@ internal sealed class RegulacaoRegraConfiguration : IEntityTypeConfiguration<Reg
         builder.Property(x => x.Pergunta).HasColumnName("pergunta").HasMaxLength(500);
         builder.Property(x => x.RespostaBloqueia).HasColumnName("resposta_bloqueia");
         builder.Property(x => x.NaoSeiVira).HasColumnName("nao_sei_vira");
+        builder.Property(x => x.OpcoesJson).HasColumnName("opcoes_json").HasColumnType("jsonb");
 
         builder.Property(x => x.DocumentoRotulo).HasColumnName("documento_rotulo").HasMaxLength(200);
         builder.Property(x => x.TipoExameId).HasColumnName("tipo_exame_id");
@@ -83,6 +84,7 @@ internal sealed class RegulacaoSolicitacaoRespostaRegraConfiguration
         builder.Property(x => x.RegraVersao).HasColumnName("regra_versao").IsRequired();
         builder.Property(x => x.Resposta).HasColumnName("resposta").IsRequired();
         builder.Property(x => x.ValorDeduzido).HasColumnName("valor_deduzido").HasMaxLength(200);
+        builder.Property(x => x.OpcoesMarcadasJson).HasColumnName("opcoes_marcadas_json").HasColumnType("jsonb");
         builder.Property(x => x.Resultado).HasColumnName("resultado").IsRequired();
         builder.Property(x => x.RespondidoPor).HasColumnName("respondido_por");
         builder.Property(x => x.RespondidoEm).HasColumnName("respondido_em").IsRequired();

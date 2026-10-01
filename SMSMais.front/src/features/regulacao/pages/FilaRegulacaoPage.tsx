@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { ClipboardCheck, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import { useAuth } from '@/shared/auth/authStore';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -14,7 +16,7 @@ import type { FluxoRegulacao } from '../tiposSolicitacao';
 import type { SistemaRegulacao } from '../types';
 
 /**
- * A fila do agente regulador — o município inteiro (plano 04).
+ * A fila do agente regulador (plano 04) — o município inteiro, ou a unidade escolhida no topo.
  *
  * <p>A rota é gateada por `RegulacaoTriagem` (48); a ampliação do escopo é do backend. Esta tela
  * acrescenta o que só faz sentido para quem vê tudo: filtrar por fluxo e por sistema de destino,
@@ -31,12 +33,18 @@ export function FilaRegulacaoPage() {
   const [fluxo, setFluxo] = useState<FluxoRegulacao | ''>('');
   const [sistema, setSistema] = useState<SistemaRegulacao | ''>('');
 
-  const resumo = useResumoFilaRegulacao();
+  // Fila do agente: o município inteiro com "todas" no topo, ou a unidade escolhida lá — o backend
+  // só amplia para quem tem o 48. Rascunhos, mesmo aqui, são só os do próprio agente.
+  const resumo = useResumoFilaRegulacao(true);
+  const unidades = useAuth((s) => s.unidades);
+  const unidadeAtivaId = useAuth((s) => s.unidadeAtivaId);
+  const unidadeAtiva = unidades.find((u) => u.id === unidadeAtivaId) ?? null;
 
   const status = useMemo(() => ABAS_FILA.find((a) => a.id === aba)?.status ?? [], [aba]);
 
   const filtro = useMemo(
     () => ({
+      filaDoMunicipio: true,
       status,
       busca: buscaAplicada || undefined,
       fluxo: fluxo || undefined,
@@ -57,9 +65,16 @@ export function FilaRegulacaoPage() {
       <header className="flex flex-wrap items-center gap-3">
         <ClipboardCheck className="size-6 text-red-700" />
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Fila da regulação</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold text-slate-900">Fila da regulação</h1>
+            <AjudaManual artigo="regulacao-solicitacoes" secao="detalhe" />
+          </div>
           <p className="text-sm text-slate-600">
-            Todas as unidades do município. Clique numa solicitação para ver o caso inteiro.
+            {resumo.data?.veTodasUnidades
+              ? 'Todas as unidades do município.'
+              : unidadeAtiva
+                ? unidadeAtiva.nome
+                : 'Unidade escolhida no topo.'}
           </p>
         </div>
       </header>
@@ -111,9 +126,15 @@ export function FilaRegulacaoPage() {
       <TabelaSolicitacoes
         dados={pagina.data?.itens ?? []}
         carregando={pagina.isLoading}
-        mostrarUnidade
+        mostrarUnidade={resumo.data?.veTodasUnidades ?? true}
         mostrarAgente
-        aoAbrir={(s) => navegar(`/app/regulacao/solicitacoes/${s.id}`)}
+        aoAbrir={(s) =>
+          navegar(
+            s.status === 'Rascunho'
+              ? `/app/regulacao/solicitacoes/${s.id}/editar`
+              : `/app/regulacao/solicitacoes/${s.id}`,
+          )
+        }
         vazio="Nenhuma solicitação nesta situação com os filtros atuais."
       />
 

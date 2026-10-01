@@ -281,4 +281,72 @@ public class AvaliadorElegibilidadeTests
         acao.Should().NotThrow();
         Avaliar([regra], cid: "I10").DestinosPermitidos.Should().HaveCount(2);
     }
+
+    // ---------------------------------------------------------------- pergunta de lista
+
+    private static RegulacaoRegra Lista(RespostaRegraRegulacao bloqueia, params string[] opcoes)
+    {
+        var r = Regra(TipoRegraRegulacao.NaoDedutivel,
+            pergunta: "Portador de alguma das condições?", respostaBloqueia: bloqueia);
+        r.OpcoesJson = JsonSerializer.Serialize(opcoes);
+        return r;
+    }
+
+    [Fact]
+    public void Lista_pendente_leva_as_opcoes_para_a_tela()
+    {
+        var regra = Lista(RespostaRegraRegulacao.Nao, "Genitália ambígua", "Doenças Raras");
+
+        Avaliar([regra]).PerguntasPendentes.Should().ContainSingle()
+            .Which.Opcoes.Should().Equal("Genitália ambígua", "Doenças Raras");
+    }
+
+    [Fact]
+    public void Pergunta_simples_nao_tem_opcoes()
+    {
+        Avaliar([Regra(TipoRegraRegulacao.NaoDedutivel, pergunta: "Tem laudo?",
+                respostaBloqueia: RespostaRegraRegulacao.Nao)])
+            .PerguntasPendentes.Should().ContainSingle()
+            .Which.Opcoes.Should().BeNull();
+    }
+
+    [Fact]
+    public void Lista_de_inclusao_basta_uma_condicao_e_nenhuma_bloqueia()
+    {
+        // O caso que motivou a lista: doze condições alternativas do manual de genética, que como
+        // doze perguntas somadas com E exigiam que a criança tivesse todas.
+        var regra = Lista(RespostaRegraRegulacao.Nao, "Genitália ambígua", "Doenças Raras");
+
+        var marcou = Avaliar([regra],
+            respostas: new Dictionary<Guid, RespostaRegraRegulacao> { [regra.Id] = RespostaRegraRegulacao.Sim });
+        marcou.BloqueiaEnvio.Should().BeFalse();
+        marcou.Regras.Single().Resultado.Should().Be(ResultadoRegraRegulacao.Atende);
+
+        var nenhuma = Avaliar([regra],
+            respostas: new Dictionary<Guid, RespostaRegraRegulacao> { [regra.Id] = RespostaRegraRegulacao.Nao });
+        nenhuma.DestinosPermitidos.Should().BeEmpty();
+        nenhuma.Regras.Single().Motivo.Should().Be("Respondido \"nenhuma destas\".");
+    }
+
+    [Fact]
+    public void Lista_de_exclusao_bloqueia_quando_alguma_e_marcada()
+    {
+        var regra = Lista(RespostaRegraRegulacao.Sim, "Gestante", "Marca-passo");
+
+        var r = Avaliar([regra],
+            respostas: new Dictionary<Guid, RespostaRegraRegulacao> { [regra.Id] = RespostaRegraRegulacao.Sim });
+
+        r.DestinosPermitidos.Should().BeEmpty();
+        r.Regras.Single().Motivo.Should().Be("Marcou uma das opções da lista.");
+    }
+
+    [Fact]
+    public void Idade_maxima_e_inclusiva_19_anos_incompletos_e_maximo_18()
+    {
+        // "0 a 19 anos incompletos" se cadastra como máximo 18: quem fez 19 já está fora.
+        var regra = Regra(TipoRegraRegulacao.Dedutivel, idadeMin: 0, idadeMax: 18);
+
+        Avaliar([regra], Paciente(idade: 18)).DestinosPermitidos.Should().HaveCount(2);
+        Avaliar([regra], Paciente(idade: 19)).DestinosPermitidos.Should().BeEmpty();
+    }
 }

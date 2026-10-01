@@ -4,8 +4,12 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
+using NSubstitute;
+
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Identidade;
 using SMSMais.Core.Regulacao.Anexos;
+using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -56,7 +60,11 @@ public class RegulacaoExigenciaServiceTests(PostgresFixture fixture)
         var store = new StoreFake();
         var config = new RegulacaoConfiguracaoService(
             db, new MemoryCache(new MemoryCacheOptions()), new UsuarioAtualAccessorFake());
-        return (new RegulacaoExigenciaService(db, store, config, new UsuarioAtualAccessorFake()), store);
+        // Sem usuário no contexto o escopo é "tudo" (como num job) e nunca consulta a identidade:
+        // estes testes são das regras de anexo, não do alcance.
+        var acessor = new UsuarioAtualAccessorFake();
+        var escopo = new RegulacaoEscopo(db, acessor, Substitute.For<IIdentidadeService>());
+        return (new RegulacaoExigenciaService(db, store, config, acessor, escopo), store);
     }
 
     private static byte[] Bytes(int tamanho) => Encoding.UTF8.GetBytes(new string('x', tamanho));

@@ -80,6 +80,20 @@ public sealed class RegulacaoFormularioService(
         ["observacao"] = "observacoes",
     };
 
+    /// <summary>
+    /// Campos dinâmicos que exigimos SEMPRE, mesmo quando o catálogo do recurso diz opcional
+    /// (pedido do Bernardo, 01/10/2026): são o que o regulador lê para decidir. Medido no
+    /// catálogo de produção nessa data — Observações vinha opcional em 16 recursos do SER e 56 do
+    /// SERNIT, e o SERNIT escreve o resultado de exames de outro jeito em 53 recursos, opcional.
+    /// </summary>
+    private static readonly HashSet<string> SempreObrigatorios = new(StringComparer.Ordinal)
+    {
+        "queixa_principal",
+        "resultado_de_exames",
+        "principais_resultados_de_provas_diagnosticas_resultados_de_exames_realizados",
+        "observacoes",
+    };
+
     private static readonly JsonSerializerOptions JsonCompacto = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -95,7 +109,14 @@ public sealed class RegulacaoFormularioService(
             : MontarInterno();
 
         var definicao = JsonSerializer.Serialize(campos, JsonCompacto);
-        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{esquema}|{definicao}")));
+
+        // Os valores fixos do mapa entram no hash: trocar um deles (a unidade de origem, por
+        // exemplo) não muda nenhum campo, e sem isto a versão antiga seria reaproveitada.
+        var constantes = string.Join('|', mapa
+            .Where(m => m.Transformacao?.StartsWith(PrefixoConstante, StringComparison.Ordinal) == true)
+            .Select(m => $"{m.Sistema}:{m.NomeNativo}={m.Transformacao}"));
+        var assinatura = constantes.Length == 0 ? $"{esquema}|{definicao}" : $"{esquema}|{definicao}|{constantes}";
+        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(assinatura)));
 
         // Mesmo conjunto de campos ⇒ mesma linha. Sem isto, cada abertura de solicitação criaria
         // uma versão nova idêntica e o histórico viraria ruído.
@@ -182,7 +203,131 @@ public sealed class RegulacaoFormularioService(
                 : await LerCamposSernitAsync(o.ChaveExterna, ct));
         }
 
-        return Unir(brutos);
+        var sistemasDoBloco = origens.Select(o => o.Sistema)
+            .Where(s => s is SistemaRegulacao.Ser or SistemaRegulacao.Sernit).Distinct().ToList();
+
+        foreach (var sistema in sistemasDoBloco)
+        {
+            brutos.AddRange(await CamposFixosAsync(sistema, ct));
+        }
+
+        var (campos, mapa) = Unir(brutos);
+
+        // O que é decisão nossa, e não de quem pede, não vira campo na tela: vira linha no mapa
+        // com o valor fixo. Médico vai pelo "Sim" (escolhido da lista do próprio sistema);
+        // unidade de origem pelo "Não" + texto livre — a central reguladora do município não é
+        // uma unidade que o SER sugira (ser-criar-solicitacao.md §2.1, "Os três radios").
+        foreach (var sistema in sistemasDoBloco)
+        {
+            mapa.Add(new EntradaMapa(
+                "medico_solicitante_identificado", sistema,
+                "form0:booleanMedicoSolicitanteIdentificado_radio", $"{PrefixoConstante}true"));
+            mapa.Add(new EntradaMapa(
+                "unidade_origem_identificada", sistema,
+                "form0:unidadeDeOrigemIdentificada_radio", $"{PrefixoConstante}false"));
+            mapa.Add(new EntradaMapa(
+                "unidade_origem", sistema,
+                "form0:unidadeNaoIdentificada", $"{PrefixoConstante}{UnidadeOrigemTexto}"));
+        }
+
+        return (campos, mapa);
+    }
+
+    /// <summary>
+    /// Transformação de linha do mapa que não lê o canônico: o nome nativo recebe sempre o valor
+    /// depois do prefixo.
+    /// </summary>
+    private const string PrefixoConstante = "constante:";
+
+    /// <summary>
+    /// Médico solicitante escolhido da lista do próprio sistema (combo <c>medicoResp</c>, ~927
+    /// no SER) — o caminho "Médico solicitante identificado? Sim". Guarda o <b>nome</b>.
+    ///
+    /// <para>Especialidade e telefone do médico NÃO são campos: o SER os preenche sozinho ao
+    /// escolher o médico (inputs desabilitados, vindos da lotação dele no município — medido em
+    /// 01/10/2026, <c>Automais.SER/probe_profissional_saude.py</c>).</para>
+    /// </summary>
+    public const string ChaveMedicoSolicitante = "medico_solicitante";
+
+    /// <summary>
+    /// O texto de "Unidade de origem" (radio "Não") — a central reguladora que pede.
+    ///
+    /// <para><b>Fixo no código POR ORA, por decisão do Bernardo (01/10/2026)</b>, contra a regra
+    /// de nada institucional em código (ADR-0043): quando outra instância usar o SER/SERNIT, isto
+    /// vira configuração da Regulação.</para>
+    /// </summary>
+    public const string UnidadeOrigemTexto = "CREGMARICA";
+
+    /// <summary>Chave canônica da Classificação de risco do bloco fixo do SER/SERNIT.</summary>
+    public const string ChaveClassificacaoRisco = "classificacao_risco";
+
+    /// <summary>
+    /// Chave canônica da Hipótese do bloco fixo. O valor é o texto do jeito que o SER escreve no
+    /// campo — <c>(A09 ) Diarréia…</c> —, escolhido da lista de CID do recurso.
+    /// </summary>
+    public const string ChaveHipoteseCid = "hipotese_cid";
+
+    /// <summary>
+    /// O bloco <b>fixo</b> do SER/SERNIT — igual para todo recurso, e por isso fora do catálogo de
+    /// campos dinâmicos que <see cref="LerCamposSerAsync"/> lê. Sem ele, a solicitação chegava à
+    /// pré-regulação sem médico solicitante, Classificação de risco e Hipótese, que os dois
+    /// sistemas exigem (docs/ser-criar-solicitacao.md §2.1). A unidade de origem não é campo: é
+    /// fixa (<see cref="UnidadeOrigemTexto"/>) e vai pelo mapa.
+    ///
+    /// <para>A Hipótese é do tipo <c>cid</c>: no SER ela não é texto, é a caixa de CID do RECURSO
+    /// (§2.1.3) — a tela busca em <c>GET regulacao/solicitacoes/formulario/cids</c>. Os nomes
+    /// nativos são os mesmos nos dois sistemas (a mesma aplicação JSF).</para>
+    ///
+    /// <para>As listas (médicos, classificação de risco) são as copiadas do sistema pelo sync do
+    /// catálogo. O médico de um sistema só vale nele: a união por rótulo marca a origem de cada
+    /// opção, e a tela mostra só as do destino escolhido.</para>
+    /// </summary>
+    private async Task<List<CampoBruto>> CamposFixosAsync(SistemaRegulacao sistema, CancellationToken ct)
+    {
+        var riscos = await ListaAsync(sistema, "classificacao_risco", ct);
+        // O value do combo de médico é o índice do EntityConverter do Seam — muda a cada view
+        // (medido em 01/10/2026: 0..872 numa captura, fora de ordem em outra). Guardar o índice
+        // mandaria OUTRO médico; o valor é o nome, e o envio resolve o índice pelo texto na hora.
+        // Nome repetido no combo (homônimo ou cadastro duplicado) vira uma opção só.
+        var medicos = (await ListaAsync(sistema, "medico", ct))
+            .Select(m => m.Rotulo.Trim())
+            .Where(nome => nome.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .Select(nome => (nome, nome))
+            .ToList();
+
+        // Ordem negativa: o bloco fixo vem antes do dinâmico, na ordem da tela do SER.
+        return
+        [
+            new CampoBruto(
+                ChaveMedicoSolicitante, "Médico solicitante", "select", true, medicos,
+                sistema, "form0:medicoResp", -6),
+            new CampoBruto(
+                ChaveClassificacaoRisco, "Classificação de risco", "select", true, riscos,
+                sistema, "form0:classificacao_risco", -3),
+            new CampoBruto(
+                ChaveHipoteseCid, "Hipótese (CID)", "cid", true, [],
+                sistema, "form0:procedimento", -2),
+        ];
+    }
+
+    /// <summary>Uma lista copiada do bloco fixo (<c>medico</c>, <c>classificacao_risco</c>).</summary>
+    private async Task<List<(string Valor, string Rotulo)>> ListaAsync(
+        SistemaRegulacao sistema, string lista, CancellationToken ct)
+    {
+        var linhas = sistema == SistemaRegulacao.Ser
+            ? await db.SerCatalogoListas.AsNoTracking()
+                .Where(l => l.Lista == lista)
+                .OrderBy(l => l.Ordem)
+                .Select(l => new { l.Valor, l.Rotulo })
+                .ToListAsync(ct)
+            : await db.SernitCatalogoListas.AsNoTracking()
+                .Where(l => l.Lista == lista)
+                .OrderBy(l => l.Ordem)
+                .Select(l => new { l.Valor, l.Rotulo })
+                .ToListAsync(ct);
+
+        return [.. linhas.Select(l => (l.Valor, l.Rotulo))];
     }
 
     private async Task<List<CampoBruto>> LerCamposSerAsync(string chaveExterna, string? ramo, CancellationToken ct)
@@ -231,7 +376,8 @@ public sealed class RegulacaoFormularioService(
                 {
                     var chave = $"{b.Chave}_{b.Sistema.ToString().ToLowerInvariant()}";
                     campos.Add(new CampoFormularioDto(
-                        chave, $"{b.Rotulo} ({b.Sistema})", b.Tipo, b.Obrigatorio,
+                        chave, $"{b.Rotulo} ({b.Sistema})", b.Tipo,
+                        b.Obrigatorio || SempreObrigatorios.Contains(b.Chave),
                         Opcoes(b), [b.Sistema], campos.Count));
                     mapa.Add(new EntradaMapa(chave, b.Sistema, b.NomeNativo, TransformacaoDe(b.Tipo)));
                 }
@@ -245,7 +391,7 @@ public sealed class RegulacaoFormularioService(
             // Obrigatoriedade é OU: exigir é o lado seguro. No spike c a única divergência
             // medida foi "Observações" (obrigatório no SER, opcional no SERNIT), e o SERNIT
             // aceita o campo preenchido sem reclamar.
-            var obrigatorio = grupo.Any(b => b.Obrigatorio);
+            var obrigatorio = grupo.Any(b => b.Obrigatorio) || SempreObrigatorios.Contains(primeiro.Chave);
 
             campos.Add(new CampoFormularioDto(
                 primeiro.Chave, primeiro.Rotulo, primeiro.Tipo, obrigatorio,
@@ -373,6 +519,12 @@ public sealed class RegulacaoFormularioService(
 
         foreach (var m in mapa)
         {
+            if (m.Transformacao?.StartsWith(PrefixoConstante, StringComparison.Ordinal) == true)
+            {
+                saida[m.NomeNativo] = m.Transformacao[PrefixoConstante.Length..];
+                continue;
+            }
+
             if (!canonico.TryGetProperty(m.ChaveCanonica, out var valor)) continue;
 
             var texto = ComoTexto(valor);
