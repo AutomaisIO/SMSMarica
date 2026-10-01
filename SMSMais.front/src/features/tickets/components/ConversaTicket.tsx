@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Lock, Send } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
@@ -19,6 +19,7 @@ export function ConversaTicket({ ticketId, gestao, comentarios }: Props) {
   const [interno, setInterno] = useState(false);
   const [anexos, setAnexos] = useState<AnexoRef[]>([]);
   const comentar = useComentar(ticketId, gestao);
+  const caixaRef = useRef<HTMLDivElement>(null);
 
   async function enviar() {
     if (!texto.trim()) return;
@@ -66,7 +67,7 @@ export function ConversaTicket({ ticketId, gestao, comentarios }: Props) {
         </ul>
       )}
 
-      <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+      <div ref={caixaRef} className="space-y-2 rounded-lg border border-slate-200 p-3">
         <textarea
           value={texto}
           rows={3}
@@ -75,7 +76,7 @@ export function ConversaTicket({ ticketId, gestao, comentarios }: Props) {
           onChange={(e) => setTexto(e.target.value)}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
         />
-        <AnexosInput anexos={anexos} aoMudar={setAnexos} disabled={comentar.isPending} />
+        <AnexosInput anexos={anexos} aoMudar={setAnexos} disabled={comentar.isPending} escopoColar={caixaRef} />
         <div className="flex items-center justify-between">
           {gestao ? (
             <label className="flex items-center gap-2 text-sm text-slate-600">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -34,6 +34,7 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
   const [erro, setErro] = useState<string | null>(null);
   const [criadoId, setCriadoId] = useState<string | null>(null);
   const abrir = useAbrirTicket();
+  const formRef = useRef<HTMLDivElement>(null);
 
   function reiniciar() {
     setTipo('Bug');
@@ -85,7 +86,7 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
           </div>
         </div>
       ) : (
-      <div className="space-y-4">
+      <div ref={formRef} className="space-y-4">
         <Campo label="O que você quer fazer?" htmlFor="tk-tipo" required dica={DICA_TIPO[tipo]}>
           <Select id="tk-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TicketTipo)}>
             {TIPOS.map((t) => (
@@ -116,8 +117,8 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
           />
         </Campo>
 
-        <Campo label="Anexos (opcional)" htmlFor="tk-anexos" dica="Prints ajudam muito a entender o problema.">
-          <AnexosInput anexos={anexos} aoMudar={setAnexos} disabled={abrir.isPending} />
+        <Campo label="Anexos (opcional)" htmlFor="tk-anexos" dica="Prints ajudam muito a entender o problema. Tirou um print (Win+Shift+S)? É só colar com Ctrl+V.">
+          <AnexosInput anexos={anexos} aoMudar={setAnexos} disabled={abrir.isPending} escopoColar={formRef} />
         </Campo>
 
         {erro && <p className="text-sm text-red-600">{erro}</p>}
