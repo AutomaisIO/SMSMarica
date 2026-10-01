@@ -12,8 +12,9 @@
       const o = JSON.parse(bruto);
       if (!o?.token || !o?.expiraEm) return null;
       if (new Date(o.expiraEm).getTime() < Date.now()) return null;
-      // Só o necessário — nada de permissões/unidades.
-      return { token: o.token, expiraEm: o.expiraEm, usuario: o.usuario ?? null };
+      // Só o necessário — nada de permissões/unidades, nem o nome da pessoa: a extensão não o
+      // mostra (quem logou no painel não é necessariamente quem está operando).
+      return { token: o.token, expiraEm: o.expiraEm };
     } catch {
       return null;
     }

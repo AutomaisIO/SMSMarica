@@ -19,6 +19,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -30,11 +33,12 @@ li{margin:3px 0}p,li{max-width:75ch}
 <ol>
 <li><strong>Bloqueia o SISREG (blur) até o SMSMarica estar conectado.</strong> A extensão "acha" a sessão do</li>
 </ol>
-<p>   painel <code>smsmarica.online</code> já aberta/logada no navegador; se não houver, o modal pede o login    (o login é feito <strong>no nosso site</strong>, nunca dentro da página do SISREG).</p>
+<p>   painel <code>smsmarica.online</code> já aberta/logada no navegador; se não houver, o modal pede o login    (o login é feito <strong>no nosso site</strong>, nunca dentro da página do SISREG).    A sessão fica guardada na extensão (<code>storage.local</code>) até vencer (8 h), até o logout no painel    ou até um 401 da API — sobrevive a recarregar a página, a recarregar/atualizar a extensão e a    reiniciar o navegador (antes ficava no <code>storage.session</code>, que se apaga nesses casos, e o    operador via "Sem sessão no SMSMarica" toda hora). Ao recarregar/atualizar a extensão, ela    religa a ponte (<code>auth-content.js</code>) nas abas do painel já abertas (permissão <code>scripting</code>), para    um login novo chegar sem F5.</p>
 <ol>
 <li><strong>Selo discreto</strong> no canto, com a marca do SMSMarica e um <strong>LED</strong> de status:</li>
 </ol>
 <p>   | LED | Significado |    |---|---|    | cinza | sem sessão no SMSMarica |    | verde | conectado |    | âmbar piscando | enviando capturas |    | verde com halo | acabou de registrar |    | vermelho | SMSMarica fora de alcance (as capturas ficam guardadas) |</p>
+<p>   O selo <strong>não mostra nome de pessoa</strong> (v0.5.35): quem entrou no painel — ou quem autorizou o    computador — não é necessariamente quem está operando. A extensão guarda da sessão só o token    e o vencimento; o nome não chega às páginas, nem ao popup, e sessões guardadas por versões    antigas perdem o nome na primeira leitura.</p>
 <ol>
 <li><strong>Captura</strong> cada operação: o <strong>envio</strong> (URL + campos do formulário, com <code>etapa</code> e o evento de</li>
 </ol>
@@ -42,7 +46,88 @@ li{margin:3px 0}p,li{max-width:75ch}
 <ol>
 <li><strong>Envia em lote</strong> (comprimido) para a nossa API, autenticando com o <strong>mesmo login</strong> do painel.</li>
 </ol>
-<p>O que o usuário final vê é só o selo com o LED. A lista de requisições existe para depuração e fica escondida: <strong>alt+clique no selo</strong> abre/fecha.</p>
+<p>O que o usuário final vê é o selo com o LED. A janela do que é enviado (tráfego) liga e desliga pelo <strong>clique no selo</strong>, pelo <strong>×</strong> da própria janela ou, no Prime, pelo menu <strong>☰ → Mostrar/Ocultar o tráfego enviado</strong> — a escolha fica <strong>guardada por site</strong>. Padrão: visível no SISREG (transparência: só sai comando + nº) e oculta no Prime (lá o modo análise enche a lista a cada leitura).</p>
+<h2>Agenda SISREG → Prime (v0.5.0)</h2>
+<p>A agenda do Prime é <strong>mensal por profissional</strong> e era montada à mão pela recepção — por isso não bate com o SISREG (medido em 30/09/2026 no CDT). A partir de agora a referência é o SISREG: o SMSMarica já tem as escalas (<code>/agenda/*</code>), e a extensão as transforma nos compromissos do Prime.</p>
+<p><strong>Onde:</strong> no Prime, o selo do canto ganha um <strong>☰</strong> → <em>Agenda SISREG → Prime</em>. Abre um painel à direita (fica aberto entre as telas do Prime até ser fechado). O cabeçalho do painel mostra a <strong>versão</strong> do código que está rodando naquela página. <strong>Recarregar a extensão não troca o código das páginas já abertas</strong> — o painel e a página do Prime seguem na versão antiga até um <strong>F5</strong> (30/09: um teste rodou a 0.5.21 com a 0.5.22 instalada). Quando a extensão é atualizada por baixo (o atualizador troca os arquivos e ela se recarrega sozinha), o painel velho <strong>não age</strong>: no primeiro clique, <strong>recarrega a página</strong>. O mesmo quando a <strong>sessão do Prime cai</strong> (a leitura cai em <code>…/sessaoexpirada</code> ou <code>/login.aspx</code>): a página recarrega e o próprio Prime leva à entrada. Com a janela de um compromisso aberta, pergunta antes (<em>Recarregar agora</em>), porque o que não foi salvo nela se perde.</p>
+<p><strong>Unidade:</strong> é <strong>sempre</strong> a do cabeçalho do Prime (casada pelo nome com a unidade das escalas do SISREG). Não se escolhe nem se troca no painel: trocou a unidade no Prime, o painel acompanha e volta ao começo. Unidade do Prime sem escala no SISREG aparece como tal e para ali.</p>
+<p><strong>Tela 1 — Situação do mês.</strong> Escolha o mês e clique <em>Comparar SISREG × Prime</em>. O painel lê quem tem escala no SISREG na unidade do cabeçalho do Prime (nossa API, ≈30 s) e as agendas daquele mês no Prime (tela <em>Consultar Agenda</em>: pesquisa + abrir cada agenda para ver o profissional de cada compromisso, ≈2 s por agenda — outubro do CDT, 28 agendas, levou 50 s). Mostra:</p>
+<ul>
+<li><strong>Sem agenda no Prime</strong> — com vagas e marcados no SISREG; quem já tem paciente marcado vem</li>
+</ul>
+<p>  primeiro. Botão <strong>Cadastrar</strong>.</p>
+<ul>
+<li><strong>Já têm agenda no Prime</strong> — com o título da(s) agenda(s). Botão <strong>Conferir</strong>.</li>
+<li><strong>Só no Prime</strong> — agenda interna ou profissional sem escala no SISREG no mês (nada a fazer).</li>
+</ul>
+<p>A leitura refaz a pesquisa da tela <em>Consultar Agenda</em>: se ela estiver aberta em outra aba, clique Pesquisar de novo lá. O botão <strong>Atualizar</strong> relê o Prime (e <strong>Atualizar tudo</strong>, também o SISREG).</p>
+<p><strong>Fidelidade ao SISREG (regra do Bernardo, 30/09/2026):</strong> o Prime espelha a escala do SISREG como ela está — horário e vagas vêm do SISREG e <strong>não se editam no painel</strong> (ex.: ECG 08:00–08:20 com 20 vagas de 1 min fica exatamente assim). Se estiver errado, o ajuste é <strong>no SISREG</strong>; o painel mostra de novo depois da próxima leitura. No cartão só se escolhe o que o SISREG não tem: o tipo do Prime e os extras (encaixes).</p>
+<p><strong>Tela 2 — Cadastro guiado (um profissional, um compromisso por vez):</strong></p>
+<ol>
+<li>Um cartão por compromisso do SISREG, <strong>objetivo</strong>: dias · horário · vagas, o procedimento e um</li>
+</ol>
+<p>   selo — <strong>No Prime</strong> (com selos das <strong>datas cadastradas</strong>) ou <strong>Não está no Prime</strong> (com tipo,    extras e o botão). Dias em que a escala não vale aparecem como selos vermelhos. O tipo vem    pré-preenchido: procedimento de consulta (CONSULTA… ou OCI…) → <strong>Consulta</strong>; o resto (exame) →    <strong>Sala de Procedimento</strong>.</p>
+<p>   A conferência é <strong>por dia da semana</strong>: o dia está no Prime quando um compromisso do mesmo    profissional naquele dia contém o horário do SISREG. Se só parte dos dias está, o selo diz    <strong>Falta seg, ter, qua</strong> e o botão preenche <strong>só esses dias</strong> — os outros duplicariam o que já    existe. Caso real (Alberto, OUT/2026): o SISREG tem ECG seg–qui 08:00–08:20, e o Prime tem um    bloco <em>qui 08:00–12:00</em> feito à mão; criar seg–qui sobreporia as quintas. Quando o dia está    coberto por um bloco <strong>maior</strong> que o do SISREG, ou de <strong>outro tipo</strong> (ex.: exame cadastrado como    "Consulta"), o cartão mostra <strong>no Prime como qui 08:00–12:00 · Consulta</strong> — é a divergência à    vista; quem corrige é o SISREG ou o Prime, não a extensão. Nos    dias que faltam, compromisso do Prime que cruza o horário sem conter aparece em vermelho como    <strong>sobrepõe no Prime</strong>.</p>
+<p>   Os selos de data <strong>levam à agenda do Prime</strong> que tem aquele compromisso e o calendário até a    <strong>semana da data</strong> (pelas setas, com o horário destacado por 2 s) — se a agenda já está na tela,    só muda a semana; se não, abre a agenda e muda a semana quando ela carregar (até 1 min depois    do clique). O "no Prime como" só abre a agenda. Nenhum dos dois abre ou cria compromisso. Com a    janela de um compromisso aberta, não saem da tela (o que não foi salvo se perderia).    O selo clicado <strong>gira</strong> (e o cursor do painel vira "carregando") do clique até o Prime terminar    — inclusive depois da troca de página; um segundo clique no meio é ignorado. Se a semana da data    <strong>já está</strong> no calendário, um aviso pequeno junto do ponteiro diz "15/10 já está na tela" (e o    horário pisca em azul) e some sozinho.</p>
+<p>   <strong>Erro vai para um modal</strong>, no meio da tela, e sai do cartão (ex.: <em>"O Prime não oferece    "&amp;lt;profissional&amp;gt;" para o tipo "Sala de Procedimento" nesta unidade. O cadastro do profissional    no Prime precisa liberar esse tipo."</em>) — fecha no <strong>Entendi</strong>, no Esc ou clicando fora. As    <strong>confirmações</strong> também vão ao modal, com os botões: <em>Outra agenda aberta no Prime (…). Trocar    perde o que não foi salvo nela</em> → <strong>Cancelar</strong> / <strong>Trocar para a agenda de …</strong>; e a data da janela    diferente → <strong>Usar dd/mm mesmo assim</strong>. Só a escolha da <strong>função</strong> (um seletor) fica no cartão.    Nada de sugerir nomes parecidos.</p>
+<p>   <strong>Trabalho em curso nunca entra no meio do conteúdo</strong> (empurrava os cartões e sumia): há uma    barra fina animada na borda do cabeçalho e, quando há o que dizer (ex.: leitura do SISREG), um    aviso escuro flutuante no rodapé do painel, por cima.</p>
+<ol>
+<li>Para cada cartão: <em>Abrir e preencher no Prime</em>. A extensão faz o caminho todo:</li>
+</ol>
+<ul>
+<li>leva a tela até a agenda do profissional no mês — a que já existe no Prime (pelo endereço lido</li>
+</ul>
+<p>     na Consultar Agenda) ou, se não existe, a <strong>Nova Agenda</strong> com o período do mês, <strong>Enviar</strong>      clicado e o título preenchido (o Enviar só monta o calendário; não grava);    - vai até a semana do primeiro dia válido (pelas setas do calendário), faz o "Novo Evento" no      horário, abre o compromisso provisório e preenche a janela.</p>
+<p>   Quando precisa trocar de página, o painel guarda o passo e <strong>continua sozinho</strong> quando a página    nova carrega (uma vez só, e só nos 3 minutos seguintes). Se outra agenda estiver aberta, ele    avisa e oferece trocar — o que não foi salvo nela se perde.</p>
+<ol>
+<li>Confira a janela e clique <strong>Salvar</strong> nela. O operador não marca nada à mão: quem diz se está</li>
+</ol>
+<p>   cadastrado é o Prime. Compromisso que já está no Prime em todos os dias mostra <strong>No Prime</strong> e    fica sem o botão de preencher (evita cadastro em dobro).    Se cancelar a janela, o provisório fica no calendário: apague-o (botão direito → Excluir) ou    saia sem salvar.</p>
+<ol>
+<li><strong>São dois "Salvar"</strong> (30/09: o operador salvou só a janela e o cartão "não atualizava"): o da</li>
+</ol>
+<p>   <strong>janela</strong> só põe o compromisso no calendário — o cartão passa a <strong>Falta salvar a agenda</strong>; o    <strong>Salvar da agenda</strong> (embaixo, no rodapé) é que grava. A extensão percebe o clique em qualquer    "Salvar" do Prime; depois do da agenda, espera o Prime terminar e relê a agenda do profissional    sozinha — o cartão vira <strong>No Prime</strong>. No fim, <strong>Salvar</strong> no rodapé da agenda do Prime. Nos 30 minutos seguintes a cada preenchimento,    o painel reconfere sozinho a agenda do profissional a cada carga de página (o Salvar do rodapé    recarrega); ou clique <strong>Atualizar</strong>.</p>
+<p><strong>Quem grava é o operador.</strong> A extensão preenche os campos da janela (tipo, profissional, função, horário, vagas, extras, repetição semanal) e mostra o que ficou; ela <strong>não</strong> clica em Salvar, Excluir nem Enviar. O único botão que ela aciona é o <em>Adicionar</em> do profissional dentro da janela (põe o nome na grade da janela; não grava). Isso muda a regra de ouro <strong>só para o Prime</strong>: lá a extensão escreve nos campos da tela; no SISREG continua só observando.</p>
+<p><strong>Arquivos:</strong> <code>prime-agenda.js</code> (painel, mundo isolado) e <code>prime-agenda-main.js</code> (mundo da página: os controles do Prime são Telerik e só aceitam valor pelo <code>$find</code> — escrever no <code>&lt;input&gt;</code> não atualiza o <code><em>_ClientState</code>). Os dados passam pelo service worker (<code>api-get</code>, só <code>GET /agenda/</em></code>), porque a página do Prime não pode chamar a nossa API (CORS).</p>
+<p><strong>Armadilhas da tela (medidas em 30/09/2026):</strong></p>
+<ul>
+<li>A repetição do compromisso fica presa ao mês da agenda: <em>Encerra em</em> aceita no máximo o dia 1º do</li>
+</ul>
+<p>  mês seguinte, e esse dia não entra (outubro inteiro = encerra em 01/11).</p>
+<ul>
+<li>A lista de profissionais da janela <strong>depende do tipo</strong> (Consulta, Sala de Procedimento…); a de</li>
+</ul>
+<p>  funções depende do profissional. Por isso a ordem é tipo → profissional → função → Adicionar.</p>
+<ul>
+<li><strong>"Novo Evento" não abre janela:</strong> cria no calendário um compromisso PROVISÓRIO ("Consulta",</li>
+</ul>
+<p>  1 hora), que só vai ao banco no <strong>Salvar do rodapé</strong> (medido: a Consultar Agenda não o mostra antes   disso; sair da tela sem salvar o descarta). Para editar, duplo clique nele — por isso a janela vem   como "Edit" mesmo num compromisso novo.</p>
+<ul>
+<li><strong>Ações do Telerik rodam "fora da pilha" da extensão</strong> (<code>foraDaPilha</code>: <code>setTimeout</code> + <code>function</code></li>
+</ul>
+<p>  comum). O handler do "Tipo" da janela percorre a pilha com <code>fn.caller</code>; com função async/arrow nossa   na pilha, o Chrome lança <em>"'caller', 'callee', and 'arguments' properties may not be accessed on   strict mode functions"</em>. Trocar o Tipo <strong>limpa o profissional</strong> — por isso a ordem é tipo →   profissional → função → Adicionar.</p>
+<ul>
+<li><strong>"Adicionar" sem profissional abre um <code>alert</code> nativo</strong> ("Informe o profissional") que trava a</li>
+</ul>
+<p>  página até alguém clicar OK. A extensão só clica com profissional e função escolhidos.</p>
+<ul>
+<li>A grade de profissionais da janela tem uma 1ª coluna <strong>oculta</strong> ("Código"): ler pelo cabeçalho.</li>
+<li><strong>A busca do combo de profissionais devolve só a 1ª página de quem contém o texto</strong> (30/09: com</li>
+</ul>
+<p>  "ANA LUCIA BAPTISTA PEDROZA DE ALBUQUERQUE" vieram LUCIANA, TATIANA… e não ela). A extensão tenta   o nome inteiro e depois as palavras mais longas do nome (ALBUQUERQUE, BAPTISTA…) até achar o nome   exato. Se o profissional já tem outro compromisso no Prime no mês, o <strong>nome</strong> vai escrito como o   Prime escreve. O <strong>tipo NÃO</strong> se copia do Prime (a 0.5.27 copiava e trouxe o erro do cadastro à   mão: a colposcopia da Dra. Ana Lucia estava como "Consulta"); vem do procedimento do SISREG ou da   escolha do operador no cartão.</p>
+<ul>
+<li><strong>Trocar de semana só pelas setas do calendário.</strong> Mudar a data por script (<code>set_selectedDate</code>)</li>
+</ul>
+<p>  troca a tela, mas o servidor fica na semana anterior e o "Novo Evento" cai no dia errado (pedido   08/10, nasceu 01/10).</p>
+<ul>
+<li>O Prime guarda o estado da tela na sessão: não abra a mesma agenda em duas abas.</li>
+<li><strong>Erro de dentro do Telerik</strong> volta ao cartão como <em>"Erro do Prime ao &amp;lt;passo&amp;gt;: …"</em> (escolher</li>
+</ul>
+<p>  o tipo, buscar/escolher o profissional, buscar/escolher a função, adicionar, ir até a semana,   criar o "Novo Evento", abrir o compromisso…), e a pilha completa vai ao console da página com a   marca <code>[SMSMais agenda]</code>.</p>
+<ul>
+<li>*<em>"Novo Evento" quebra com </em>"Cannot read properties of undefined (reading 'get_index')"***</li>
+</ul>
+<p>  quando o botão direito não foi dado numa célula da <strong>grade</strong> de horários. <strong>Causa medida   (30/09):</strong> o <code>getTimeSlotFromDomElement</code> do Telerik devolve um "horário" para <strong>qualquer</strong> <code>td</code>   do calendário (calcula pela linha/coluna do <code>td</code> na tabela em que ele está). O calendário da   semana tem 179 <code>td</code>, mas a grade (<code>table.rsContentTable</code>) tem só 126 (18 horários × 7 dias); o   resto é o <strong>mini-calendário escondido do cabeçalho</strong> (o seletor de data, 6 × 7), a linha "dia   inteiro" e <code>td</code> de layout. O cabeçalho vem antes no HTML, então a busca pegava um dia do   mini-calendário sempre que o horário caía nas linhas que ele tem (08:30 a 11:00): o botão direito   ia numa célula 31 × 27 escondida atrás do título da semana, o menu não abria e o "Novo Evento"   quebrava. A quinta 13:00 funcionava porque o mini-calendário não tem linha para ela. Quatro   versões (0.5.21 a 0.5.25) tentaram afastar o que estava "por cima" (painel, seta, camadas) até   o diagnóstico do cartão mostrar a célula (<code>célula=261,256 31x27</code>, <code>camadas=H2&gt;rsHeader…</code>).   <strong>Correção (0.5.26):</strong> só contam os <code>td</code> da grade (<code>rsContentTable</code>; sem essa classe, a maior   tabela fora do cabeçalho, do mini-calendário e do "dia inteiro"), conferidos pelo próprio   Telerik (<code>slot.get_domElement()</code> tem que ser o <code>td</code>), e o clique voltou a ser o validado no Prime   real: só o evento <code>contextmenu</code> na célula. O selo de data também passou a destacar a célula   certa (antes, das 08:30 às 11:00, destacava a célula escondida).</p>
 <h2>Decisões desta fase</h2>
 <ul>
 <li><strong>API fora do ar → o SISREG continua liberado</strong> (o blur exige o login, não a API). As capturas</li>
@@ -58,7 +143,37 @@ li{margin:3px 0}p,li{max-width:75ch}
 <li><strong>Carregar sem compactação</strong> → escolher a pasta <code>SMSMais.chrome/</code>.</li>
 <li>Fixar o ícone na barra.</li>
 </ol>
-<p>Ao editar arquivos: <strong>↻</strong> no card da extensão; para o painel/blur (<code>content.js</code>), dar <strong>F5</strong> na aba do SISREG também.</p>
+<p>Ao editar arquivos: suba a versão no <code>manifest.json</code> e a extensão <strong>se recarrega sozinha</strong> em até 30 s (ver abaixo) — ou <strong>↻</strong> no card, para não esperar. Para o painel/blur (<code>content.js</code>), dar <strong>F5</strong> na aba do SISREG também.</p>
+<h2>Recarga automática (v0.5.33)</h2>
+<p>A extensão vigia a própria pasta: a cada batimento (30 s) ela lê o <code>manifest.json</code> <strong>do disco</strong> e, se a versão de lá é diferente da que está rodando, envia o que ainda tem guardado e chama <code>chrome.runtime.reload()</code> — o <strong>↻</strong> sem ninguém clicar. É assim que o atualizador dos PCs (<code>SMSMais.atualizador/</code>) entrega uma versão nova: ele troca os arquivos da pasta, deixa o <code>manifest.json</code> <strong>por último</strong>, e a extensão faz o resto.</p>
+<p>Medido em 01/10/2026 (Chrome 154, extensão carregada sem compactação):</p>
+<ul>
+<li>a troca dos arquivos virou extensão recarregada em 5 a 18 s (o teto é o batimento, 30 s), e o</li>
+</ul>
+<p>  manifest novo <strong>é relido</strong> (a versão mostrada em <code>chrome://extensions</code> muda);</p>
+<ul>
+<li><strong>o "Modo do desenvolvedor" tem de ficar ligado.</strong> Com ele desligado o Chrome <strong>desativa</strong> a</li>
+</ul>
+<p>  extensão na hora (e a recarga a deixa desativada). O atualizador percebe isso e avisa;</p>
+<ul>
+<li>recarregar a extensão não troca o código das páginas <strong>já abertas</strong>: continua valendo o <strong>F5</strong></li>
+</ul>
+<p>  nelas (o selo do SISREG fica parado e o painel do Prime avisa que a extensão foi atualizada).</p>
+<p>Isto vale também na máquina de desenvolvimento: subir a versão no <code>manifest.json</code> recarrega a extensão sozinha — convém subir a versão <strong>depois</strong> de terminar os outros arquivos.</p>
+<h2>Publicar para os computadores (ADR-0064)</h2>
+<p>Mexer nesta pasta <strong>não entrega nada a ninguém</strong>. Os computadores recebem o que foi publicado na plataforma, primeiro no canal de teste e depois em produção:</p>
+<ol>
+<li><code>bash empacotar.sh</code> → <code>../SMSMais.atualizador/dist/extensao-&lt;versão&gt;.zip</code>. Entram só os arquivos</li>
+</ol>
+<p>   da extensão; o script confere o manifest e recusa pacote com arquivo faltando.</p>
+<ol>
+<li>No painel, <strong>Sistema → Extensão Chrome → Versões → Publicar versão</strong>. A versão é lida do</li>
+</ol>
+<p>   manifest do pacote e entra em <strong>teste</strong>.</p>
+<ol>
+<li>Conferir num computador marcado como de teste; depois, <strong>Pôr em produção</strong>.</li>
+</ol>
+<p>Os computadores baixam e recarregam sozinhos, pelo atualizador (<code>SMSMais.atualizador/</code>). O repositório público e o <code>publicar.sh</code> são o caminho antigo, anterior a essa decisão.</p>
 <h2>Configurar (antes de testar)</h2>
 <p><code>config.js</code>:</p>
 <ul>
@@ -74,6 +189,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td><code>capture-hook.js</code></td><td>roda no mundo da página (todos os frames) para copiar as respostas de fetch/XHR</td></tr>
 <tr><td><code>content.js</code></td><td>roda em todos os frames: captura o HTML da tela; no frame de cima desenha o selo e o blur</td></tr>
 <tr><td><code>auth-content.js</code></td><td>roda em <code>smsmarica.online</code>: lê a sessão do painel e entrega ao cérebro</td></tr>
+<tr><td><code>prime-agenda.js</code></td><td>só no Prime: painel "Agenda SISREG → Prime" (proposta a partir do SISREG)</td></tr>
+<tr><td><code>prime-agenda-main.js</code></td><td>só no Prime, mundo da página: preenche a janela do compromisso (Telerik)</td></tr>
 <tr><td><code>popup.*</code></td><td>status rápido ao clicar no ícone</td></tr>
 </tbody></table></div>
 <h3>Por que o envio sai do "cérebro", e não da página</h3>

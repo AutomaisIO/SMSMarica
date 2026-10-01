@@ -18,11 +18,20 @@ else
   git clone "$REPO" "$PUB"
 fi
 
-for f in manifest.json config.js endpoints.js background.js capture-hook.js content.js auth-content.js popup.html popup.js; do
+VER=$(grep -o '"version"[^,]*' "$AQUI/manifest.json" | head -1 | grep -o '[0-9][0-9.]*')
+PUBVER=$(grep -o '"version"[^,]*' "$PUB/manifest.json" 2>/dev/null | head -1 | grep -o '[0-9][0-9.]*' || true)
+
+# Nunca rebaixar: em 30/09/2026 o repo público estava na v0.9.0 (vinda de outro branch) e o main
+# na v0.4.0 — publicar daqui apagaria o que os PCs da recepção usam.
+if [ -n "$PUBVER" ] && [ "$(printf '%s\n%s\n' "$PUBVER" "$VER" | sort -V | tail -1)" != "$VER" ]; then
+  echo "ABORTADO: o público está na v$PUBVER e esta pasta na v$VER (seria rebaixar)." >&2
+  echo "          Junte as duas versões antes de publicar." >&2
+  exit 1
+fi
+
+for f in manifest.json config.js endpoints.js background.js capture-hook.js content.js auth-content.js popup.html popup.js prime-agenda.js prime-agenda-main.js; do
   cp "$AQUI/$f" "$PUB/$f"
 done
-
-VER=$(grep -o '"version"[^,]*' "$AQUI/manifest.json" | head -1 | grep -o '[0-9][0-9.]*')
 git -C "$PUB" add -A
 if git -C "$PUB" commit -q -m "Extensão v$VER"; then
   git -C "$PUB" push

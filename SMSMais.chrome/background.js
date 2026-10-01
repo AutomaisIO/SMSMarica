@@ -66,7 +66,7 @@ const buffer = []; // capturas ainda não confirmadas pela API
 const MAX_BUFFER = 5000; // teto de segurança se a API ficar fora
 const pendentesReq = new Map(); // requestId -> item (aguardando status)
 const operadorPorAba = new Map(); // tabId -> operador do SISREG logado (carimba as capturas)
-let sessao = null; // { token, expiraEm, usuario }
+let sessao = null; // { token, expiraEm }
 let marca = CONFIG.MARCA_PADRAO;
 let enviando = false;
 let ultimoEnvioOk = 0;
@@ -86,17 +86,40 @@ function autenticado() {
   return Boolean(sessao?.token) && new Date(sessao.expiraEm).getTime() > Date.now();
 }
 
+// A sessão fica no storage.local (e não no .session): o .session é apagado a cada recarga da
+// extensão (toda atualização de versão) e a cada reinício do navegador, e o painel já aberto não
+// reenvia o login sozinho — o operador via "Sem sessão no SMSMarica" toda hora (30/09/2026).
+// Exposição igual à do próprio painel, que guarda o mesmo token no localStorage; vale até vencer
+// (8 h), sai no logout do painel e em qualquer 401 da API.
+//
+// Guarda-se só o token e o vencimento — nunca o nome de quem logou no painel, que não é
+// necessariamente quem está operando o computador (01/10/2026).
+const soCredencial = (s) => (s?.token && s?.expiraEm ? { token: s.token, expiraEm: s.expiraEm } : null);
+
 async function definirSessao(nova) {
-  sessao = nova;
-  await chrome.storage.session.set({ sessao: nova });
+  sessao = soCredencial(nova);
+  await chrome.storage.local.set({ sessao });
   await difundirEstado();
   buscarMarca(); // aproveita para (re)carregar a marca da nossa API
 }
 
 async function restaurar() {
-  const r = await chrome.storage.session.get(['sessao', 'marca']);
-  if (r.sessao) sessao = r.sessao;
-  if (r.marca) marca = r.marca;
+  const [l, s] = await Promise.all([chrome.storage.local.get('sessao'), chrome.storage.session.get('marca')]);
+  if (l.sessao && new Date(l.sessao.expiraEm).getTime() > Date.now()) {
+    sessao = soCredencial(l.sessao);
+    // Sessão guardada por versão antiga ainda traz o nome: regrava sem ele.
+    if (l.sessao.usuario) await chrome.storage.local.set({ sessao });
+  }
+  if (s.marca) marca = s.marca;
+}
+
+// Recarregar/atualizar a extensão desliga o auth-content.js das abas do painel já abertas (ele só
+// volta quando a aba recarrega). Reinjeta nelas, para um login novo no painel chegar aqui sem F5.
+async function religarPainelAberto() {
+  const abas = await chrome.tabs.query({ url: [`${CONFIG.PAINEL_ORIGIN}/*`] }).catch(() => []);
+  for (const aba of abas) {
+    chrome.scripting.executeScript({ target: { tabId: aba.id }, files: ['auth-content.js'] }).catch(() => {});
+  }
 }
 
 // ------------------------------------------------------------------- a marca
@@ -125,11 +148,13 @@ function estadoAtual() {
   else if (ultimaFalha) estado = 'offline';
   else if (Date.now() - ultimoEnvioOk < 1500) estado = 'recebido';
   else estado = 'conectado';
+  // O nome de quem entrou no painel NÃO vai para as páginas (regra do Bernardo, 01/10/2026): a
+  // sessão guardada é de quem logou naquele navegador — muitas vezes quem instalou a extensão —
+  // e não de quem está operando. Mostrá-lo no selo atribuía o trabalho à pessoa errada.
   return {
     auth: autenticado(),
     estado,
     pendentes: buffer.length,
-    usuario: sessao?.usuario?.nome ?? sessao?.usuario?.nomeCompleto ?? null,
     marca,
     painelOrigin: CONFIG.PAINEL_ORIGIN,
     sitios: SITIOS, // o content usa para saber o rótulo e se este site tem blur
@@ -328,9 +353,44 @@ async function conferirVersaoNoDisco() {
   }
 }
 
+// ------------------------------------------------- leitura da API (assistente de agenda)
+// O assistente "Agenda SISREG → Prime" (prime-agenda.js) precisa das escalas que o SMSMarica já
+// tem. A página do Prime não pode chamar a nossa API (CORS), então o pedido passa por aqui, com o
+// login do painel. Só GET, e só as rotas da agenda regulada — nada de escrita por este atalho.
+const ROTAS_LEITURA = ['/agenda/'];
+
+async function lerApi(caminho) {
+  if (typeof caminho !== 'string' || !ROTAS_LEITURA.some((p) => caminho.startsWith(p))) {
+    return { ok: false, erro: 'Rota não permitida para a extensão.' };
+  }
+  if (!sessao) await restaurar(); // o service worker pode ter acabado de acordar
+  if (!autenticado()) return { ok: false, status: 401, erro: 'Sem sessão no SMSMarica: entre no painel.' };
+  try {
+    const resp = await fetch(`${CONFIG.API_BASE}${caminho}`, {
+      headers: { Authorization: `Bearer ${sessao.token}` },
+    });
+    if (resp.status === 401) {
+      await definirSessao(null);
+      return { ok: false, status: 401, erro: 'A sessão do SMSMarica venceu: entre no painel de novo.' };
+    }
+    if (resp.status === 403) {
+      return { ok: false, status: 403, erro: 'Seu usuário do SMSMarica não tem acesso ao módulo Agenda.' };
+    }
+    if (!resp.ok) return { ok: false, status: resp.status, erro: `A API respondeu ${resp.status}.` };
+    return { ok: true, dados: await resp.json() };
+  } catch (e) {
+    return { ok: false, erro: `SMSMarica fora de alcance (${e?.message ?? e}).` };
+  }
+}
+
 // ------------------------------------------------------------------- mensagens
 chrome.runtime.onMessage.addListener((msg, sender, responder) => {
   const tabId = msg.tabId ?? sender.tab?.id;
+
+  if (msg.tipo === 'api-get') {
+    lerApi(msg.caminho).then(responder);
+    return true; // resposta assíncrona
+  }
 
   if (msg.tipo === 'auth') {
     // Vem do content script em smsmarica.online.
@@ -339,7 +399,9 @@ chrome.runtime.onMessage.addListener((msg, sender, responder) => {
     return;
   }
   if (msg.tipo === 'estado') {
-    responder(estadoAtual());
+    // O service worker pode ter acabado de acordar (recarga da página): responder antes de ler a
+    // sessão guardada dizia "sem sessão" por engano.
+    (sessao ? Promise.resolve() : restaurar()).then(() => responder(estadoAtual()));
     return true;
   }
   if (msg.tipo === 'resposta' || msg.tipo === 'ajax') {
@@ -384,6 +446,7 @@ chrome.tabs.onRemoved.addListener((tabId) => operadorPorAba.delete(tabId));
 
 chrome.runtime.onInstalled.addListener(() => {
   buscarMarca();
+  religarPainelAberto();
 });
 chrome.runtime.onStartup.addListener(() => {
   restaurar().then(buscarMarca);

@@ -18,6 +18,5 @@ chrome.runtime.sendMessage({ tipo: 'estado' }, (estado) => {
   el.className = estado.auth ? 'ok' : 'nao';
   el.textContent =
     (TEXTOS[estado.estado] ?? '') +
-    (estado.usuario ? ` (${estado.usuario})` : '') +
     (estado.pendentes ? ` · ${estado.pendentes} na fila` : '');
 });

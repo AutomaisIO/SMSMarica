@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SMSMais — Ponte de Sistemas",
-  "version": "0.4.0",
-  "description": "Observa os sistemas do município e registra no SMSMais (hub). No SISREG envia só o comando + o nº da solicitação (sem dados do paciente); uma janela mostra tudo que é enviado.",
+  "version": "0.5.35",
+  "description": "Observa os sistemas do município e registra no SMSMais (hub). No SISREG envia só o comando + o nº da solicitação (sem dados do paciente); uma janela mostra tudo que é enviado. No Prime, ajuda o operador a montar a agenda do mês a partir das escalas do SISREG.",
   "action": {
     "default_title": "SMSMais — Ponte de Sistemas",
     "default_popup": "popup.html"
@@ -11,7 +11,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["webRequest", "storage", "alarms", "tabs"],
+  "permissions": ["webRequest", "storage", "alarms", "tabs", "scripting"],
   "host_permissions": [
     "https://sisregiii.saude.gov.br/*",
     "http://sisregiii.saude.gov.br/*",
@@ -42,6 +42,17 @@
       "js": ["content.js"],
       "run_at": "document_end",
       "all_frames": true
+    },
+    {
+      "matches": ["https://marica.ecosistemas.com.br/Prime/*"],
+      "js": ["prime-agenda-main.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://marica.ecosistemas.com.br/Prime/*"],
+      "js": ["prime-agenda.js"],
+      "run_at": "document_idle"
     },
     {
       "matches": [
