@@ -362,7 +362,32 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Add(IPAddress.IPv6Loopback);  // ::1
 });
 
+// Instância de ENSAIO (ex.: uma segunda API apontada para outro banco, para medir telas reais na
+// migração DO→EVEO): Workers:Desligados=true tira as rotinas de fundo do SMSMais — varreduras de
+// SISREG/SER/SERNIT, robô, envios de WhatsApp, sincronizações. Sem isso, a instância de teste
+// mandaria mensagem de verdade e mexeria em sistemas externos a partir da cópia. Só saem os hosted
+// services do próprio SMSMais (namespace SMSMais.*); os do ASP.NET (servidor web, health checks,
+// Data Protection) ficam. Nunca ligar em produção: desliga o produto inteiro em silêncio.
+var rotinasDesligadas = new List<string>();
+if (builder.Configuration.GetValue("Workers:Desligados", false))
+{
+    var nossas = builder.Services
+        .Where(d => d.ServiceType == typeof(IHostedService)
+                    && (d.ImplementationType?.Namespace?.StartsWith("SMSMais", StringComparison.Ordinal) ?? false))
+        .ToList();
+    foreach (var d in nossas)
+    {
+        builder.Services.Remove(d);
+        rotinasDesligadas.Add(d.ImplementationType!.Name);
+    }
+}
+
 var app = builder.Build();
+
+if (rotinasDesligadas.Count > 0)
+    app.Logger.LogWarning(
+        "Workers:Desligados — {Quantidade} rotinas de fundo NÃO vão rodar nesta instância: {Rotinas}",
+        rotinasDesligadas.Count, string.Join(", ", rotinasDesligadas));
 
 // Discriminador efetivo do Data Protection. É ele que entra na derivação da chave: se mudar,
 // nada do que já foi cifrado decifra. Logado no startup para poder ser fixado em configuração
