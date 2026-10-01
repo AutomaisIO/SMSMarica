@@ -148,8 +148,17 @@ export function SerMedicosPage() {
         </Button>
       </form>
 
-      <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-        <table className="w-full text-sm">
+      {/* Enquanto a página nova não chega, a anterior continua na tela (placeholderData) — sem
+          este aviso, quem pagina fica sem saber se o clique pegou. */}
+      <div className="relative overflow-x-auto rounded-md border border-slate-200 bg-white">
+        {lista.isFetching ? (
+          <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-10">
+            <span className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 shadow">
+              <Loader2 className="size-4 animate-spin" /> Carregando…
+            </span>
+          </div>
+        ) : null}
+        <table className={`w-full text-sm transition-opacity ${lista.isFetching ? 'opacity-50' : ''}`}>
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
               <th className="px-3 py-2">Nome no SER</th>
