@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Archive, ArchiveRestore, ArrowLeft, Bot, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { usePermissao } from '@/shared/auth/authStore';
+import { useAuth, usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -37,6 +37,7 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
   const excluir = useExcluirTicket();
   const [confirmarExcluir, setConfirmarExcluir] = useState(false);
   const queryClient = useQueryClient();
+  const meuId = useAuth((s) => s.usuario?.id);
 
   // Abrir o ticket já reconhece (autor) / marca visto (gestão) no backend — reatualiza os
   // resumos/badges para a bandeira e os contadores baixarem na hora. Ticket #42.
@@ -53,6 +54,9 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
   if (isError || !ticket) return <p className="p-6 text-sm text-red-600">Ticket não encontrado.</p>;
 
   const arquivado = gestao ? ticket.arquivadoPeloAdmin : ticket.arquivadoPeloAutor;
+  // Fora da gestão, só o autor arquiva (o servidor recusa os demais). Com a visibilidade
+  // "Por unidade"/"Público", o ticket de outra pessoa aparece aqui só para leitura.
+  const podeArquivar = gestao || (!!meuId && ticket.autorId === meuId);
   // Gestão: o autor já visualizou/reconheceu a última resposta?
   const autorReconheceu =
     !!ticket.respostaReconhecidaEm &&
@@ -107,17 +111,19 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button variante="outline" tamanho="sm" onClick={alternarArquivo} disabled={arquivar.isPending}>
-            {arquivado ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-            {arquivado ? 'Desarquivar' : 'Arquivar'}
-          </Button>
-          {gestao && (
-            <Button variante="danger" tamanho="sm" onClick={() => setConfirmarExcluir(true)}>
-              <Trash2 className="h-4 w-4" /> Excluir
+        {podeArquivar && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variante="outline" tamanho="sm" onClick={alternarArquivo} disabled={arquivar.isPending}>
+              {arquivado ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              {arquivado ? 'Desarquivar' : 'Arquivar'}
             </Button>
-          )}
-        </div>
+            {gestao && (
+              <Button variante="danger" tamanho="sm" onClick={() => setConfirmarExcluir(true)}>
+                <Trash2 className="h-4 w-4" /> Excluir
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Retorno da equipe (visível ao autor) */}
