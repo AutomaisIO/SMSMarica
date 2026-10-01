@@ -3,6 +3,7 @@ import { Loader2, Search, UserPlus } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import { Select } from '@/shared/ui/Select';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { DadosPessoaisCampos } from '@/shared/ui/DadosPessoaisCampos';
 import { SegurancaSecao } from '@/shared/ui/SegurancaSecao';
@@ -30,6 +31,11 @@ import {
   atualizarMotoristaSchema,
   cadastrarMotoristaSchema,
 } from '@/features/motoristas/schemas/motoristaSchema';
+import {
+  CATEGORIAS_CNH,
+  REGIMES_CONTRATACAO,
+  type RegimeContratacao,
+} from '@/features/motoristas/types';
 import { paraMatriz } from '@/features/perfis/lib/acoes';
 import type { MatrizEdicao } from '@/features/perfis/types';
 
@@ -41,6 +47,10 @@ type Valores = {
   dataNascimento: string;
   email: string;
   cnh: string;
+  /** '' = não informada. */
+  categoriaCnh: string;
+  /** '' = não informado. */
+  regimeContratacao: RegimeContratacao | '';
   telefone: string;
   endereco: EnderecoForm;
   fotoBase64: string | null;
@@ -52,6 +62,8 @@ const INICIAL: Valores = {
   dataNascimento: '',
   email: '',
   cnh: '',
+  categoriaCnh: '',
+  regimeContratacao: '',
   telefone: '',
   endereco: enderecoVazio,
   fotoBase64: null,
@@ -97,6 +109,8 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         dataNascimento: detalhe.data.dataNascimento ?? '',
         email: '',
         cnh: detalhe.data.cnh,
+        categoriaCnh: detalhe.data.categoriaCnh ?? '',
+        regimeContratacao: detalhe.data.regimeContratacao ?? '',
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
         endereco: e
@@ -230,7 +244,12 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         return;
       }
       try {
-        await promover.mutateAsync({ usuarioId: promocao.usuarioId, cnh });
+        await promover.mutateAsync({
+          usuarioId: promocao.usuarioId,
+          cnh,
+          categoriaCnh: valores.categoriaCnh || null,
+          regimeContratacao: valores.regimeContratacao || null,
+        });
         await aplicarPermissoes(promocao.usuarioId);
         aoConcluir();
       } catch (erro) {
@@ -255,6 +274,8 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
 
     const base = {
       cnh: valores.cnh.trim(),
+      categoriaCnh: valores.categoriaCnh || null,
+      regimeContratacao: valores.regimeContratacao || null,
       telefone: valores.telefone,
       endereco: enderecoPayload,
       fotoBase64: valores.fotoBase64,
@@ -312,6 +333,41 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
   const pendente =
     cadastrar.isPending || atualizar.isPending || promover.isPending
     || salvarPerfis.isPending || salvarOverrides.isPending;
+
+  const camposCategoriaERegime = (
+    <>
+      <Campo label="Categoria da CNH" htmlFor="categoriaCnh">
+        <Select
+          id="categoriaCnh"
+          value={valores.categoriaCnh}
+          onChange={(e) => setCampo('categoriaCnh', e.target.value)}
+          disabled={pendente}
+        >
+          <option value="">Não informada</option>
+          {CATEGORIAS_CNH.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+      </Campo>
+      <Campo label="Regime de contratação" htmlFor="regimeContratacao">
+        <Select
+          id="regimeContratacao"
+          value={valores.regimeContratacao}
+          onChange={(e) => setCampo('regimeContratacao', e.target.value as RegimeContratacao | '')}
+          disabled={pendente}
+        >
+          <option value="">Não informado</option>
+          {(Object.keys(REGIMES_CONTRATACAO) as RegimeContratacao[]).map((r) => (
+            <option key={r} value={r}>
+              {REGIMES_CONTRATACAO[r]}
+            </option>
+          ))}
+        </Select>
+      </Campo>
+    </>
+  );
 
   // Passo 1: gate CPF + nascimento (somente modo criar).
   if (modo === 'criar' && !passoCpfConcluido) {
@@ -397,15 +453,18 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           </div>
         </div>
 
-        <Campo label="CNH" htmlFor="cnh" erro={erros.cnh} required>
-          <Input
-            id="cnh"
-            value={valores.cnh}
-            onChange={(e) => setCampo('cnh', e.target.value)}
-            required
-            autoFocus
-          />
-        </Campo>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Campo label="CNH" htmlFor="cnh" erro={erros.cnh} required>
+            <Input
+              id="cnh"
+              value={valores.cnh}
+              onChange={(e) => setCampo('cnh', e.target.value)}
+              required
+              autoFocus
+            />
+          </Campo>
+          {camposCategoriaERegime}
+        </div>
 
         {erroGlobal ? (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -463,7 +522,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
   );
 
   const abaMotorista = (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Campo label="CNH" htmlFor="cnh" erro={erros.cnh} required>
         <Input
           id="cnh"
@@ -472,6 +531,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           required
         />
       </Campo>
+      {camposCategoriaERegime}
     </div>
   );
 

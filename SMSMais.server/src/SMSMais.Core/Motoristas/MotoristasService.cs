@@ -76,6 +76,8 @@ public sealed class MotoristasService(SmsMaisDbContext db, IUsuarioAtualAccessor
             Id = Guid.CreateVersion7(),
             UsuarioId = usuario.Id,
             Cnh = cnh,
+            CategoriaCnh = NormalizarCategoria(request.CategoriaCnh),
+            RegimeContratacao = request.RegimeContratacao,
             CriadoEm = agora,
             CriadoPor = atualId,
         };
@@ -121,6 +123,8 @@ public sealed class MotoristasService(SmsMaisDbContext db, IUsuarioAtualAccessor
             Id = Guid.CreateVersion7(),
             UsuarioId = usuario.Id,
             Cnh = cnh,
+            CategoriaCnh = NormalizarCategoria(request.CategoriaCnh),
+            RegimeContratacao = request.RegimeContratacao,
             CriadoEm = agora,
             CriadoPor = atualId,
         };
@@ -153,6 +157,8 @@ public sealed class MotoristasService(SmsMaisDbContext db, IUsuarioAtualAccessor
         var atualId = _atual.UsuarioId;
 
         m.Cnh = cnh;
+        m.CategoriaCnh = NormalizarCategoria(request.CategoriaCnh);
+        m.RegimeContratacao = request.RegimeContratacao;
         m.AtualizadoEm = agora;
         m.AtualizadoPor = atualId;
 
@@ -190,6 +196,9 @@ public sealed class MotoristasService(SmsMaisDbContext db, IUsuarioAtualAccessor
 
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    private static string? NormalizarCategoria(string? categoria) =>
+        string.IsNullOrWhiteSpace(categoria) ? null : categoria.Trim().ToUpperInvariant();
 
     private static string? DetectarPapel(Usuario u)
     {

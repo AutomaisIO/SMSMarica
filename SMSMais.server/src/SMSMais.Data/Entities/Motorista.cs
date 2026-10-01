@@ -1,3 +1,5 @@
+using SMSMais.Data.Entities.Enums;
+
 namespace SMSMais.Data.Entities;
 
 /// <summary>
@@ -11,6 +13,12 @@ public class Motorista
     public Guid UsuarioId { get; set; }
     public Usuario Usuario { get; set; } = null!;
     public string Cnh { get; set; } = string.Empty;
+
+    /// <summary>Categoria da CNH (A, B, C, D, E ou combinação AB/AC/AD/AE). Nulo = não informada.</summary>
+    public string? CategoriaCnh { get; set; }
+
+    /// <summary>CLT ou RPA. Nulo = não informado.</summary>
+    public RegimeContratacao? RegimeContratacao { get; set; }
 
     // Auditoria (sem flag Ativo — Usuario.Ativo trata acesso; ExcluidoEm trata exclusão).
     public DateTime CriadoEm { get; set; }

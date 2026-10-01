@@ -15,7 +15,7 @@ import {
   useListarMotoristas,
 } from '@/features/motoristas/api/queries';
 import { FormularioMotorista } from '@/features/motoristas/components/FormularioMotorista';
-import type { MotoristaListItem } from '@/features/motoristas/types';
+import { REGIMES_CONTRATACAO, type MotoristaListItem } from '@/features/motoristas/types';
 
 type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
 
@@ -45,6 +45,12 @@ export function MotoristasPage() {
       ),
     },
     { chave: 'cpf', cabecalho: 'CPF', render: (m) => m.cpf },
+    { chave: 'categoriaCnh', cabecalho: 'Categoria', render: (m) => m.categoriaCnh ?? '—' },
+    {
+      chave: 'regime',
+      cabecalho: 'Regime',
+      render: (m) => (m.regimeContratacao ? REGIMES_CONTRATACAO[m.regimeContratacao] : '—'),
+    },
     { chave: 'status', cabecalho: 'Status', render: (m) => <StatusBadge ativo={m.usuarioAtivo} /> },
     {
       chave: 'acoes',

@@ -12,7 +12,8 @@ import type { Artigo } from '@/features/manual/tipos';
  * FormularioMotorista — passo do CPF + nascimento, promoção de usuário existente, abas Dados
  * pessoais / Motorista / Permissões), `shared/ui/SegurancaSecao`, `features/translados`
  * (TransladoFormPage filtra motorista ativo), `features/tratamentos/components/PainelConfirmacao` e
- * no backend (`MotoristasService` — CNH única, papel único, exclusão lógica que leva a conta junto —,
+ * no backend (`MotoristasService` — CNH única, papel único, exclusão lógica que leva a conta junto,
+ * categoria da CNH e regime CLT/RPA opcionais (`CategoriasCnh` no validador) —,
  * `MotoristasController`, `GeradorDeTransladoService`).
  */
 export const artigoMotoristas: Artigo = {
@@ -24,12 +25,17 @@ export const artigoMotoristas: Artigo = {
   icone: Truck,
   rota: '/app/motoristas',
   publico: 'Quem organiza o transporte de pacientes e cadastra a equipe',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-01',
   palavrasChave: [
     'motorista',
     'agente de transporte sanitário',
     'condutor',
     'CNH',
+    'categoria da CNH',
+    'habilitação',
+    'regime de contratação',
+    'CLT',
+    'RPA',
     'CPF',
     'data de nascimento',
     'cadastrar motorista',
@@ -70,7 +76,7 @@ export const artigoMotoristas: Artigo = {
     {
       id: 'cadastrar',
       titulo: 'Cadastrar um motorista',
-      busca: 'novo motorista cadastrar cpf data de nascimento continuar nome conferido cnh dados pessoais permissões abas',
+      busca: 'novo motorista cadastrar cpf data de nascimento continuar nome conferido cnh categoria habilitação regime de contratação clt rpa dados pessoais permissões abas',
       conteudo: (
         <>
           <Passos
@@ -102,10 +108,12 @@ export const artigoMotoristas: Artigo = {
               {
                 titulo: (
                   <>
-                    Na aba <AbaRef>Motorista</AbaRef>, informe a CNH.
+                    Na aba <AbaRef>Motorista</AbaRef>, informe a CNH, a categoria da habilitação e
+                    o regime de contratação.
                   </>
                 ),
-                detalhe: 'Obrigatória, e não pode repetir a de outro motorista.',
+                detalhe:
+                  'A CNH é obrigatória e não pode repetir a de outro motorista. Categoria (A, B, C, D, E, AB, AC, AD ou AE) e regime (CLT ou RPA) podem ficar como “Não informado” e ser completados depois.'
               },
               {
                 titulo: (
@@ -119,7 +127,7 @@ export const artigoMotoristas: Artigo = {
           />
           <Callout tipo="regra" titulo="CPF que já está no sistema">
             Se o CPF já é de um usuário sem papel, o formulário vira{' '}
-            <strong>Promover usuário existente a motorista</strong>: só se informa a CNH, e os dados
+            <strong>Promover usuário existente a motorista</strong>: só se informam a CNH, a categoria e o regime, e os dados
             pessoais continuam os que ele já tinha. Se o CPF já é de um motorista, ou de alguém com
             outro papel (médico, por exemplo), o cadastro é recusado — cada pessoa tem um papel só.
           </Callout>
@@ -159,13 +167,15 @@ export const artigoMotoristas: Artigo = {
     {
       id: 'lista-detalhe',
       titulo: 'Lista e detalhe',
-      busca: 'lista nome foto cpf status ativo inativo detalhe cnh telefone translados recentes editar na lista',
+      busca: 'lista nome foto cpf categoria cnh regime clt rpa status ativo inativo detalhe telefone translados recentes editar na lista',
       conteudo: (
         <>
           <ListaDefinicoes
             itens={[
               { termo: 'Nome', descricao: 'Com a foto. Clicar abre o detalhe.' },
               { termo: 'CPF', descricao: 'O documento conferido no cadastro.' },
+              { termo: 'Categoria', descricao: 'A categoria da CNH. “—” quando não foi informada.' },
+              { termo: 'Regime', descricao: 'CLT ou RPA. “—” quando não foi informado.' },
               {
                 termo: 'Status',
                 descricao: (
@@ -179,7 +189,8 @@ export const artigoMotoristas: Artigo = {
             ]}
           />
           <P>
-            O detalhe mostra CPF, CNH, telefone, a data do cadastro e os{' '}
+            O detalhe mostra CPF, CNH, categoria da CNH, regime de contratação, telefone, a data do
+            cadastro e os{' '}
             <strong>translados recentes</strong> daquele motorista. Para mudar dados, use{' '}
             <BotaoRef variante="outline">Editar na lista</BotaoRef>.
           </P>
@@ -238,7 +249,7 @@ export const artigoMotoristas: Artigo = {
             itens={[
               { termo: 'Consulta', descricao: 'Ver a lista e o detalhe.' },
               { termo: 'Inclusão', descricao: 'Cadastrar motorista e promover usuário existente.' },
-              { termo: 'Edição', descricao: 'Editar dados, CNH, senha e permissões.' },
+              { termo: 'Edição', descricao: 'Editar dados, CNH, categoria, regime, senha e permissões.' },
               { termo: 'Exclusão', descricao: 'Excluir.' },
             ]}
           />

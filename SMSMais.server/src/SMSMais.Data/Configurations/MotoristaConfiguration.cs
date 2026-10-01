@@ -14,6 +14,8 @@ internal sealed class MotoristaConfiguration : IEntityTypeConfiguration<Motorist
         builder.Property(m => m.Id).HasColumnName("id");
         builder.Property(m => m.UsuarioId).HasColumnName("usuario_id").IsRequired();
         builder.Property(m => m.Cnh).HasColumnName("cnh").HasMaxLength(11).IsRequired();
+        builder.Property(m => m.CategoriaCnh).HasColumnName("categoria_cnh").HasMaxLength(2);
+        builder.Property(m => m.RegimeContratacao).HasColumnName("regime_contratacao").HasConversion<int?>();
 
         // Auditoria
         builder.Property(m => m.CriadoEm).HasColumnName("criado_em").IsRequired();

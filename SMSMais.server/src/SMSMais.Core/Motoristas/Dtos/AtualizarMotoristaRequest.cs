@@ -1,4 +1,5 @@
 using SMSMais.Core.Common.Dtos;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Motoristas.Dtos;
 
@@ -10,4 +11,6 @@ public sealed record AtualizarMotoristaRequest(
     string Cnh,
     string? Telefone,
     EnderecoDto? Endereco,
-    string? FotoBase64 = null);
+    string? FotoBase64 = null,
+    string? CategoriaCnh = null,
+    RegimeContratacao? RegimeContratacao = null);

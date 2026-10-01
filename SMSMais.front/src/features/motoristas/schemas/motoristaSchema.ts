@@ -39,6 +39,12 @@ const baseAtualizacao = {
     .string()
     .optional()
     .transform((v) => (v && v.trim().length > 0 ? v : undefined)),
+  categoriaCnh: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => (v && v.trim().length > 0 ? v : null)),
+  regimeContratacao: z.enum(['Clt', 'Rpa']).nullable().optional(),
   endereco: enderecoSchema,
   fotoBase64: z.string().nullable().optional(),
 };

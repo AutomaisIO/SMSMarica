@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useMotoristaPorId } from '@/features/motoristas/api/queries';
+import { REGIMES_CONTRATACAO } from '@/features/motoristas/types';
 import { useListarRotas } from '@/features/translados/api/queries';
 import type { RotaDiariaListItem, StatusRota } from '@/features/translados/types';
 
@@ -126,6 +127,11 @@ export function MotoristaDetalhePage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Dado rotulo="CPF" valor={formatarCpf(m.cpf)} />
             <Dado rotulo="CNH" valor={m.cnh} />
+            <Dado rotulo="Categoria da CNH" valor={m.categoriaCnh ?? undefined} />
+            <Dado
+              rotulo="Regime de contratação"
+              valor={m.regimeContratacao ? REGIMES_CONTRATACAO[m.regimeContratacao] : undefined}
+            />
             <Dado rotulo="Telefone" valor={m.telefone ? <TelefoneCopiavel numero={m.telefone} /> : undefined} />
             <Dado rotulo="Cadastrado em" valor={new Date(m.criadoEm).toLocaleString('pt-BR')} />
           </div>
