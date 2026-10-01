@@ -105,6 +105,8 @@ public sealed class VarreduraAgendaService(
     // orçamento anti-robô.
     Mapeamento.ISisregMapeamentoService mapeamento,
     Cadastro.IPreCargaCadastroSerService preCarga,
+    // A chegada do paciente (confirmada/pendente) dos dias que já passaram — ver ConferirChegadasAsync.
+    IChegadasSisregService chegadas,
     IVarreduraSisregFila fila,
     VarreduraSisregEstadoVivo estadoVivo,
     Importacao.Background.SisregImportacaoEstadoVivo importacaoEstadoVivo,
@@ -697,7 +699,9 @@ public sealed class VarreduraAgendaService(
 
         try
         {
-            await VarrerAsync(execucao, unidade, agenda, progresso, cts.Token);
+            // Período explícito (backfill manual, fatia do histórico) é quem suprime o aviso — o que
+            // sobra é a corrida diária, a única que relê os últimos dias atrás das chegadas.
+            await VarrerAsync(execucao, unidade, agenda, progresso, diaria: !job.SuprimirConfirmacao, cts.Token);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested && !ct.IsCancellationRequested)
         {
@@ -772,6 +776,7 @@ public sealed class VarreduraAgendaService(
         Unidade unidade,
         SisregVarreduraAgenda? agenda,
         ProgressoVarredura progresso,
+        bool diaria,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(unidade.Cnes))
@@ -790,7 +795,7 @@ public sealed class VarreduraAgendaService(
         // A agenda da unidade inteira em UMA requisição é o único caminho (ver
         // SisregVarreduraAgenda): além de custar 1 acesso em vez de um por par profissional ×
         // procedimento, ela devolve o mapeamento de graça — cada linha diz quem executa o quê.
-        await VarrerUnidadeInteiraAsync(execucao, unidade, agenda, cnes, progresso, ct);
+        await VarrerUnidadeInteiraAsync(execucao, unidade, agenda, cnes, progresso, diaria, ct);
     }
 
     /// <summary>
@@ -814,6 +819,7 @@ public sealed class VarreduraAgendaService(
         SisregVarreduraAgenda? agenda,
         string cnes,
         ProgressoVarredura progresso,
+        bool diaria,
         CancellationToken ct)
     {
         progresso.ProfissionalAtual = "(unidade inteira)";
@@ -970,6 +976,10 @@ public sealed class VarreduraAgendaService(
             await SalvarProgressoAsync(execucao, progresso, ct);
         }
 
+        // Por último, e só com o que sobrou de orçamento: a agenda de hoje em diante já entrou.
+        var resumoChegadas = await ConferirChegadasAsync(
+            execucao, unidade, cnes, novas, relerDiasPassados: diaria && naoLidas.Count == 0, progresso, ct);
+
         // O detalhe por par, reconstituído do próprio arquivo. Os contadores de válido/inválido são
         // da importação inteira, então não se pode reparti-los por grupo sem inventar número: o
         // item guarda o que É dele — quantos registros daquele par vieram. Requisições ficam em 0
@@ -996,6 +1006,7 @@ public sealed class VarreduraAgendaService(
                 JaExistiam = 0,
                 Observacao = primeiro
                     ? $"Agenda da unidade inteira em {progresso.Requisicoes} requisição(ões)."
+                      + (resumoChegadas is null ? string.Empty : $" {resumoChegadas}")
                     : null,
             });
             primeiro = false;
@@ -1050,6 +1061,105 @@ public sealed class VarreduraAgendaService(
             + "agendamentos, {Validos} importados, {Invalidos} pendências.",
             unidade.Nome, progresso.Requisicoes, progresso.RegistrosEncontrados,
             progresso.Validos, progresso.Invalidos);
+    }
+
+    /// <summary>
+    /// O paciente veio? Relê os últimos <see cref="VarreduraSisregOpcoes.DiasDeChegada"/> dias da
+    /// agenda da unidade e grava só a confirmação de chegada (coluna 34 do arquivo).
+    ///
+    /// <para><b>Por que aqui, na corrida diária da unidade.</b> Ela já está com a sessão aberta, já
+    /// sabe exportar a agenda e já roda toda noite — a chegada é a mesma pergunta feita para trás.
+    /// Antes ninguém a fazia: a janela começava em hoje, e o que a unidade confirmava depois do
+    /// atendimento nunca voltava para cá.</para>
+    ///
+    /// <para><b>O que NÃO faz com o passado:</b> não importa, não reconcilia data, não procura
+    /// ausente, não avisa paciente. As linhas lidas aqui só passam pelo
+    /// <see cref="IChegadasSisregService"/>.</para>
+    ///
+    /// <para><b>Nunca derruba a varredura.</b> A agenda de hoje em diante já foi importada quando
+    /// isto roda; falha aqui vira aviso no log e a corrida fecha como fecharia. A exceção é o
+    /// CAPTCHA, que sobe de propósito: o operador está bloqueado e a unidade precisa pausar.</para>
+    /// </summary>
+    /// <param name="lidasNaJanela">O que a corrida já leu — o dia de hoje vem daqui, sem custo.</param>
+    /// <param name="relerDiasPassados">False no backfill por período (a janela é a que foi pedida)
+    /// e na noite em que o SISREG já falhou fatias: não é hora de gastar mais requisição.</param>
+    /// <returns>Resumo para o rastro da execução, ou null se não havia chegada a gravar.</returns>
+    private async Task<string?> ConferirChegadasAsync(
+        SisregVarreduraExecucao execucao,
+        Unidade unidade,
+        string cnes,
+        IReadOnlyList<MarcacaoSisreg> lidasNaJanela,
+        bool relerDiasPassados,
+        ProgressoVarredura progresso,
+        CancellationToken ct)
+    {
+        var hoje = HojeBrasilia();
+        var lidas = new List<MarcacaoSisreg>(lidasNaJanela);
+        var requisicoesAntes = progresso.Requisicoes;
+        var naoLidas = new List<(DateOnly Inicio, DateOnly Fim)>();
+
+        try
+        {
+            if (relerDiasPassados && _opcoes.DiasDeChegada > 0)
+            {
+                var volume = await chegadas.VolumePorDiaAsync(
+                    unidade.Id, hoje.AddDays(-_opcoes.DiasDeChegada), hoje.AddDays(-1), ct);
+
+                // Só os dias em que temos agendamento: chegada só se grava em solicitação que existe
+                // aqui, então reler dia vazio seria pagar requisição por linha que não casa com nada.
+                if (volume.Count > 0)
+                {
+                    var fatias = ChegadasSisregService.FatiarPorVolume(
+                        volume.Keys.Min(), volume.Keys.Max(), volume, _opcoes.AlvoDeRegistrosPorFatiaDeChegada);
+
+                    for (var i = 0; i < fatias.Count; i++)
+                    {
+                        ct.ThrowIfCancellationRequested();
+
+                        if (orcamento.Restante(_orcamentoOpcoes.TetoAutomatico) < RespiroDeRequisicoes)
+                        {
+                            naoLidas.AddRange(fatias.Skip(i));
+                            logger.LogWarning(
+                                "SISREG_CHEGADAS_ORCAMENTO: {Unidade} — orçamento anti-robô no fim; "
+                                + "{Faltaram} fatia(s) de chegadas ficam para a próxima corrida.",
+                                unidade.Nome, fatias.Count - i);
+                            break;
+                        }
+
+                        var (inicio, fim) = fatias[i];
+                        progresso.ProcedimentoAtual =
+                            $"conferindo chegadas de {inicio:dd/MM/yyyy} a {fim:dd/MM/yyyy} (fatia {i + 1} de {fatias.Count})";
+                        await SalvarProgressoAsync(execucao, progresso, ct);
+
+                        lidas.AddRange(await ExportarComTetoAsync(
+                            cnes, inicio, fim, SemFiltro, SemFiltro, $"{unidade.Nome} (chegadas)",
+                            progresso, naoLidas, ct));
+                    }
+                }
+            }
+
+            var gravadas = await chegadas.GravarAsync(lidas, hoje, ct);
+            var requisicoes = progresso.Requisicoes - requisicoesAntes;
+            if (gravadas.Lidas == 0 && requisicoes == 0) return null;
+
+            logger.LogInformation(
+                "SISREG_CHEGADAS: {Unidade} — {Confirmadas} confirmada(s) e {Pendentes} pendente(s) em "
+                + "{Lidas} agendamento(s) já passados; {Atualizadas} solicitação(ões) regravada(s), "
+                + "{Req} requisição(ões), {NaoLidas} faixa(s) não lida(s).",
+                unidade.Nome, gravadas.Confirmadas, gravadas.Pendentes, gravadas.Lidas, gravadas.Atualizadas,
+                requisicoes, naoLidas.Count);
+
+            return $"Chegadas: {gravadas.Confirmadas} confirmada(s) e {gravadas.Pendentes} pendente(s) "
+                + $"em {requisicoes} requisição(ões)"
+                + (naoLidas.Count > 0 ? $"; {naoLidas.Count} faixa(s) de data não lida(s)." : ".");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && !SisregWebSessao.EhCaptcha(ex))
+        {
+            logger.LogWarning(ex,
+                "SISREG_CHEGADAS_FALHA: {Unidade} — não foi possível conferir as chegadas nesta corrida. "
+                + "A agenda foi importada normalmente; as chegadas ficam para a próxima.", unidade.Nome);
+            return null;
+        }
     }
 
     /// <summary>

@@ -12,6 +12,7 @@ import type { ColetorIndicadorSisreg, EsperaColetaIndicadores } from '@/features
 
 const NOME_COLETOR: Record<ColetorIndicadorSisreg, string> = {
   Faltas: 'Faltas (absenteísmo oficial)',
+  FaltasRecentes: 'Faltas das últimas semanas (ficha do paciente)',
   Canceladas: 'Marcações canceladas do mês',
   Desfechos: 'Devolvidas, negadas e canceladas antes de agendar',
   Ppi: 'Cotas PPI',
@@ -76,11 +77,18 @@ export function IndicadoresColetaSecao() {
         </h2>
         <p className="mt-1 max-w-3xl text-xs text-gray-600">
           Mantém em dia o que a tela <strong>Regulação → SISREG → Indicadores</strong> precisa e a
-          agenda espelhada não traz: a <strong>lista oficial de faltas</strong> (lida quando a semana
-          já tem 30 dias, depois que as unidades confirmaram as chegadas), as <strong>cotas PPI</strong>{' '}
+          agenda espelhada não traz: a <strong>lista oficial de faltas</strong> (os agendamentos em
+          que a unidade registrou falta; lida quando a semana já tem 30 dias, depois que as unidades
+          terminaram de apontar), as <strong>cotas PPI</strong>{' '}
           do mês fechado, as <strong>marcações canceladas</strong> do mês e as solicitações{' '}
           <strong>devolvidas, negadas e canceladas antes de agendar</strong>, unidade por unidade. O
           passado (jan/2025 a ago/2026) já foi carregado; o coletor cuida só dos últimos meses.
+        </p>
+        <p className="mt-1 max-w-3xl text-xs text-gray-600">
+          A mesma lista de faltas é lida também das <strong>semanas com menos de 30 dias</strong>, de
+          hora em hora (rede inteira, cerca de 10 requisições por rodada). Essa leitura não entra no
+          indicador — a unidade ainda está apontando — e serve à ficha do paciente, onde a falta já
+          registrada aparece na hora e o agendamento sem apontamento aparece como “Em aberto”.
         </p>
         <p className="mt-1 max-w-3xl text-xs text-gray-500">
           Anda devagar de propósito: uma requisição a cada 30 segundos, no máximo 150 por hora, só
@@ -187,7 +195,8 @@ export function IndicadoresColetaSecao() {
                 ))}
               </ul>
               <p className="mt-2 text-red-700">
-                Falhas são tentadas de novo sozinhas no dia seguinte, até 6 vezes.
+                Falhas são tentadas de novo sozinhas no dia seguinte, até 6 vezes — as das últimas
+                semanas, na rodada da hora seguinte.
               </p>
               <Button
                 variante="outline"

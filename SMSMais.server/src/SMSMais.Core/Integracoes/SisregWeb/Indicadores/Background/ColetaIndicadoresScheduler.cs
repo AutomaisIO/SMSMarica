@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -245,7 +246,14 @@ public sealed class ColetaIndicadoresScheduler(
         switch (item.Coletor)
         {
             case ColetorIndicadorSisreg.Faltas:
-                return new TrabalhoFaltas(item, fracao);
+                // Enquanto a semana era nova, quem gravava a janela era a leitura provisória.
+                var provisoria = await scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>()
+                    .SisregIndicadorColetas.AnyAsync(
+                        c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes
+                             && c.JanelaInicio <= item.Fim && c.JanelaFim >= item.Inicio, ct);
+                return new TrabalhoFaltas(item, fracao, substituiProvisoria: provisoria);
+            case ColetorIndicadorSisreg.FaltasRecentes:
+                return new TrabalhoFaltas(item, fracao, recentes: true);
             case ColetorIndicadorSisreg.Canceladas when item.Escopo == PlanoColetaIndicadores.EscopoAmostra:
                 return new TrabalhoCanceladasAmostra(item, Math.Max(2, _opcoes.PaginasDaAmostra));
             case ColetorIndicadorSisreg.Canceladas:

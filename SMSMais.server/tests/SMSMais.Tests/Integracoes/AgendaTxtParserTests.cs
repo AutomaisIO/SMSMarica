@@ -57,6 +57,26 @@ public class AgendaTxtParserTests
         m.EhRetorno.Should().BeFalse();                      // coluna 8 = "0" → 1ª vez
     }
 
+    [Fact]
+    public void ChegadaConfirmada_le_a_coluna_34_da_linha_guardada()
+    {
+        var pendente = Linha("670119011");
+
+        AgendaTxtParser.ChegadaConfirmada(pendente).Should().BeFalse();
+        AgendaTxtParser.ChegadaConfirmada(pendente.Replace(";PENDENTE;", ";CONFIRMADO;")).Should().BeTrue();
+
+        // Fora do layout de 38 campos (envelope JSON da Consulta de Agendas, marcador "sisreg") não se afirma nada.
+        AgendaTxtParser.ChegadaConfirmada("""{"origem":"cons_agendas","situacao":"Agendamento/Confirmado/Executante"}""")
+            .Should().BeNull();
+        AgendaTxtParser.ChegadaConfirmada("sisreg").Should().BeNull();
+        AgendaTxtParser.ChegadaConfirmada(null).Should().BeNull();
+
+        // A varredura lê a mesma coluna pela marcação — é o que ela grava dos dias que já passaram.
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;2\n" + pendente + "\n"
+                  + Linha("670121358").Replace(";PENDENTE;", ";CONFIRMADO;");
+        AgendaTxtParser.Parse(txt).Marcacoes.Select(m => m.ChegadaConfirmada).Should().Equal(false, true);
+    }
+
     [Theory]
     [InlineData("1", true)]    // RETORNO
     [InlineData("0", false)]   // 1ª vez

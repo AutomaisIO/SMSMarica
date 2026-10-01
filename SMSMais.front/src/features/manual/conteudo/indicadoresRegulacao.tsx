@@ -22,7 +22,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
   icone: Gauge,
   rota: '/app/regulacao/indicadores',
   publico: 'Quem acompanha e presta contas da regulação: gestão, coordenação e controle',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-01',
   palavrasChave: [
     'indicadores',
     'indicadores de regulação',
@@ -234,10 +234,11 @@ export const artigoIndicadoresRegulacao: Artigo = {
           <Sub>Absenteísmo</Sub>
           <Lista>
             <Item>
-              <strong>SISREG</strong>: faltas da consulta de absenteísmo do próprio SISREG (chegada não
-              confirmada pela unidade executante), casadas com os agendamentos do mês. A linha “Faltas sem
-              agendamento correspondente” é auditoria: falta oficial cujo agendamento não está na base (em
-              geral, remarcado).
+              <strong>SISREG</strong>: faltas da consulta de absenteísmo do próprio SISREG — os agendamentos
+              em que a unidade executante <strong>registrou falta</strong> —, casadas com os agendamentos do
+              mês. Agendamento que a unidade deixou <strong>em aberto</strong> (não apontou chegada nem
+              falta) não conta como falta. A linha “Faltas sem agendamento correspondente” é auditoria:
+              falta oficial cujo agendamento não está na base (em geral, remarcado).
             </Item>
             <Item>
               <strong>SER e SERNIT</strong>: o registro de chegada que a unidade executora faz (“Chegada no
@@ -259,7 +260,8 @@ export const artigoIndicadoresRegulacao: Artigo = {
           <Sub>Atendidas, canceladas e excluídas</Sub>
           <Lista>
             <Item>
-              <strong>SISREG</strong>: atendidas (agendamentos − faltas), marcações canceladas (pela data do
+              <strong>SISREG</strong>: atendidas (agendamentos − faltas — o número inclui os agendamentos que
+              a unidade deixou em aberto, sem apontar chegada nem falta), marcações canceladas (pela data do
               cancelamento) e solicitações excluídas da fila sem agendamento — devolvidas, negadas ou
               canceladas antes do agendamento (pela data da solicitação).
             </Item>
@@ -330,7 +332,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
       id: 'sisreg-atualizacao',
       titulo: 'Como os números oficiais do SISREG se atualizam',
       busca:
-        'coleta SISREG faltas absenteísmo oficial 30 dias PPI cotas canceladas motivos amostra estimativa conciliação devolvidas negadas unidade configuração ligar coletor',
+        'coleta SISREG faltas absenteísmo oficial 30 dias faltas recentes hora em hora em aberto sem apontamento ficha do paciente PPI cotas canceladas motivos amostra estimativa conciliação devolvidas negadas unidade configuração ligar coletor',
       conteudo: (
         <>
           <P>
@@ -341,9 +343,13 @@ export const artigoIndicadoresRegulacao: Artigo = {
           </P>
           <Lista>
             <Item>
-              <strong>Faltas</strong>: cada semana só é lida quando completa 30 dias — antes disso a lista ainda
-              encolhe, porque as unidades confirmam chegadas com atraso. Por isso o último mês aparece como
-              Indisponível no absenteísmo até ~30 dias depois de fechar.
+              <strong>Faltas</strong>: para o indicador, cada semana só vale quando completa 30 dias — antes
+              disso a lista ainda muda, porque as unidades apontam (e corrigem) as faltas com atraso. Por
+              isso o último mês aparece como Indisponível no absenteísmo até ~30 dias depois de fechar. A
+              mesma lista é lida também das semanas mais novas, de hora em hora, mas só para a ficha do
+              paciente (aba Agendamentos): lá a falta já registrada aparece na hora, e o agendamento sem
+              apontamento aparece como “Em aberto”. Essa leitura adiantada <strong>não entra</strong> no
+              absenteísmo.
             </Item>
             <Item>
               <strong>Cotas PPI</strong>: a competência fechada é lida a partir do dia 5 do mês seguinte.

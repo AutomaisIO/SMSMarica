@@ -2,15 +2,24 @@ namespace SMSMais.Data.Entities.Sisreg;
 
 /// <summary>
 /// Uma falta OFICIAL do SISREG — linha da "Consulta de Absenteísmo por Unidade de Saúde"
-/// (<c>rel_amb_faltas_sol.pl</c>): agendamento cuja chegada a unidade executante não confirmou.
+/// (<c>rel_amb_faltas_sol.pl</c>): agendamento em que a unidade executante <b>registrou falta</b>
+/// (situação <c>Agendamento/Falta/Executante</c>).
 ///
-/// <para>É a fonte do indicador de absenteísmo. O "PENDENTE" do Arquivo de Agendamentos (coluna 34)
-/// é parecido mas não é igual: congela no dia da importação e inclui unidades que o SISREG não conta
-/// como falta (medido em 30/09/2026: +8% em jan/2026). Guardamos SÓ código, data, procedimento e
-/// unidade — nome, endereço e telefone que a lista traz ficam fora.</para>
+/// <para><b>Não é "quem não foi confirmado".</b> O SISREG tem três estados para o agendamento que já
+/// passou — Confirmado, Falta e Pendente de confirmação (a unidade não apontou nada) — e esta lista
+/// traz só o segundo. Conferido em 01/10/2026 contra a tela de agenda do CDT capturada em 25/07: das
+/// 156 "Falta", 155 estão aqui; das 108 "Pendente", só 4 (apontadas como falta depois), e 104
+/// seguiam pendentes seis semanas mais tarde. Por isso o "PENDENTE" do Arquivo de Agendamentos
+/// (coluna 34), que junta falta e pendente, é sempre maior que a lista — e a sobra é agendamento
+/// EM ABERTO, não falta.</para>
 ///
-/// <para>A lista ENCOLHE quando a unidade confirma a chegada depois: uma janela relida por completo
-/// substitui o que havia nela (com trava de encolhimento no coletor).</para>
+/// <para>É a fonte do indicador de absenteísmo. Guardamos SÓ código, data, procedimento e unidade —
+/// nome, endereço e telefone que a lista traz ficam fora.</para>
+///
+/// <para>A lista muda depois do dia: a unidade aponta falta com atraso e, mais raramente, troca uma
+/// falta por chegada confirmada. Uma janela relida por completo substitui o que havia nela. As
+/// semanas com menos de 30 dias são relidas pelo coletor
+/// <see cref="ColetorIndicadorSisreg.FaltasRecentes"/>.</para>
 /// </summary>
 public class SisregFaltaOficial
 {
@@ -114,6 +123,15 @@ public enum ColetorIndicadorSisreg
     Canceladas = 2,
     Desfechos = 3,
     Ppi = 4,
+
+    /// <summary>
+    /// A MESMA lista de faltas, lida cedo e relida de hora em hora, das semanas que ainda não têm
+    /// idade para o número oficial. Cursor separado de <see cref="Faltas"/> de propósito: o indicador
+    /// de absenteísmo só considera coberto o que <see cref="Faltas"/> leu, porque nas primeiras
+    /// semanas a unidade ainda está apontando — lida cedo, a lista está incompleta. Serve à ficha do
+    /// paciente, onde a falta que a unidade já registrou aparece sem esperar os 30 dias.
+    /// </summary>
+    FaltasRecentes = 5,
 }
 
 public enum StatusColetaIndicador

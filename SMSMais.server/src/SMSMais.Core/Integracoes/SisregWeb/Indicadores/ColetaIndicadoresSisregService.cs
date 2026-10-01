@@ -119,6 +119,45 @@ public sealed class ColetaIndicadoresSisregService(
             if (!coberta && !Existe(ColetorIndicadorSisreg.Faltas, s.Inicio, "")) Criar(ColetorIndicadorSisreg.Faltas, s.Inicio, s.Fim, "");
         }
 
+        // --- faltas recentes: a mesma lista, das semanas novas demais para o oficial ------------------
+        // Rotina, não carga: cada janela volta a pendente quando a última tentativa envelhece, e a
+        // contagem de tentativas recomeça — o teto existe para janela que nunca fecha, e esta fecha e
+        // reabre de propósito. A semana corrente cresce um dia por dia; o fim acompanha.
+        if (_opcoes.MinutosParaRelerFaltasRecentes > 0)
+        {
+            var vencida = agora.AddMinutes(-_opcoes.MinutosParaRelerFaltasRecentes);
+            foreach (var s in PlanoColetaIndicadores.SemanasRecentesDeFaltas(hoje, _opcoes.DiasParaFaltas))
+            {
+                var item = existentes.FirstOrDefault(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes
+                                                          && c.JanelaInicio == s.Inicio && c.Escopo == "");
+                if (item is null)
+                {
+                    Criar(ColetorIndicadorSisreg.FaltasRecentes, s.Inicio, s.Fim, "");
+                    continue;
+                }
+                if (item.Status == StatusColetaIndicador.EmAndamento) continue;
+                if (item.JanelaFim != s.Fim || item.IniciadoEm is null || item.IniciadoEm < vencida)
+                {
+                    item.JanelaFim = s.Fim;
+                    item.Status = StatusColetaIndicador.Pendente;
+                    item.Tentativas = 0;
+                }
+            }
+        }
+
+        // Semana que já ganhou a leitura oficial não precisa mais da recente: a oficial passa a ser
+        // quem diz que aquele período foi lido.
+        foreach (var provisoria in existentes
+                     .Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes
+                                 && existentes.Any(o => o.Coletor == ColetorIndicadorSisreg.Faltas
+                                                        && o.Status == StatusColetaIndicador.Concluida
+                                                        && o.JanelaInicio <= c.JanelaInicio && o.JanelaFim >= c.JanelaFim))
+                     .ToList())
+        {
+            db.SisregIndicadorColetas.Remove(provisoria);
+            existentes.Remove(provisoria);
+        }
+
         // --- PPI: competência fechada sem cotas gravadas --------------------------------------------
         foreach (var comp in PlanoColetaIndicadores.CompetenciasDePpi(hoje, _opcoes.MesesRecentes, _opcoes.DiaDaPpi))
         {
@@ -210,7 +249,7 @@ public sealed class ColetaIndicadoresSisregService(
             .Where(c => c.Status == StatusColetaIndicador.Pendente && c.Tentativas < _opcoes.MaximoTentativas)
             .OrderBy(c => c.Coletor == ColetorIndicadorSisreg.Ppi ? 0
                 : c.Escopo == TrabalhoUnidades.Escopo ? 1
-                : c.Coletor == ColetorIndicadorSisreg.Faltas ? 2
+                : c.Coletor == ColetorIndicadorSisreg.Faltas || c.Coletor == ColetorIndicadorSisreg.FaltasRecentes ? 2
                 : c.Coletor == ColetorIndicadorSisreg.Desfechos ? 3
                 : c.Escopo == PlanoColetaIndicadores.EscopoAmostra ? 4 : 5)
             .ThenBy(c => c.JanelaInicio)

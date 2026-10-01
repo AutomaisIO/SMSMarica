@@ -423,6 +423,9 @@ public static class DependencyInjection
         services.AddScoped<
             Integracoes.SisregWeb.Varredura.IVarreduraAgendaService,
             Integracoes.SisregWeb.Varredura.VarreduraAgendaService>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Varredura.IChegadasSisregService,
+            Integracoes.SisregWeb.Varredura.ChegadasSisregService>();
 
         // Import PONTUAL (botão por procedimento na tela de mapeamento): consulta o cons_agendas
         // direto (não bloqueado por horário, ao contrário do expo) para o "não dá para esperar as

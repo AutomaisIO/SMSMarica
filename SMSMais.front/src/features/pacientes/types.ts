@@ -262,7 +262,11 @@ export type SituacaoAgendamentoPaciente =
   | 'Concluido'
   /** Saiu da fila sem agendamento visível (ESUS SG) — terminal, mas NÃO é cancelado: o motivo
    * não é informado à conta do município. */
-  | 'SaiuDaFila';
+  | 'SaiuDaFila'
+  /** Já passou e a fonte não informou chegada nem falta. */
+  | 'SemRegistroDeChegada'
+  /** SISREG: já passou e a unidade executante ainda não apontou se o paciente veio ou faltou. */
+  | 'EmAberto';
 
 export type AgendamentoPacienteItem = {
   id: string;

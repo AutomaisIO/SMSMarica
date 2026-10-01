@@ -83,6 +83,89 @@ public class ColetaIndicadoresCursorTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// As semanas recentes de faltas são ROTINA: fecham, e voltam a pendente quando a leitura envelhece
+    /// (é o "de hora em hora"), com as tentativas zeradas. A semana corrente cresce um dia por dia. E
+    /// quando a semana ganha a leitura oficial, a provisória sai de cena.
+    /// </summary>
+    [Fact]
+    public async Task Faltas_recentes_sao_relidas_quando_envelhecem_e_somem_quando_a_oficial_fecha()
+    {
+        await using var db = fixture.CriarDbContext();
+        await LimparAsync(db);
+        var hoje = new DateOnly(2031, 6, 10);
+
+        await Criar(db).PlanejarAsync(hoje, default);
+
+        // Limite = 11/05: de 09–16/05 até a semana corrente, cortada em ontem (09/06).
+        var recentes = await db.SisregIndicadorColetas.AsNoTracking()
+            .Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio >= InicioDoTeste)
+            .OrderBy(c => c.JanelaInicio).ToListAsync();
+        DateOnly[] inicios =
+            [new(2031, 5, 9), new(2031, 5, 17), new(2031, 5, 24), new(2031, 6, 1), new(2031, 6, 9)];
+        Assert.Equal(inicios, recentes.Select(c => c.JanelaInicio));
+        Assert.Equal(new DateOnly(2031, 6, 9), recentes[^1].JanelaFim);
+
+        // Todas lidas agora há pouco, menos uma lida há duas horas.
+        var velha = recentes[1].Id;
+        await db.SisregIndicadorColetas.Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio >= InicioDoTeste)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(c => c.Status, StatusColetaIndicador.Concluida)
+                .SetProperty(c => c.Tentativas, 3)
+                .SetProperty(c => c.IniciadoEm, DateTime.UtcNow)
+                .SetProperty(c => c.LidoEm, DateTime.UtcNow));
+        await db.SisregIndicadorColetas.Where(c => c.Id == velha)
+            .ExecuteUpdateAsync(u => u.SetProperty(c => c.IniciadoEm, DateTime.UtcNow.AddHours(-2)));
+
+        await using (var db2 = fixture.CriarDbContext()) await Criar(db2).PlanejarAsync(hoje, default);
+
+        await using (var ver = fixture.CriarDbContext())
+        {
+            var depois = await ver.SisregIndicadorColetas
+                .Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio >= InicioDoTeste).ToListAsync();
+            var rearmada = Assert.Single(depois, c => c.Status == StatusColetaIndicador.Pendente);
+            Assert.Equal(velha, rearmada.Id);
+            Assert.Equal(0, rearmada.Tentativas);
+        }
+
+        // No dia seguinte a semana corrente ganha o dia 10 — e volta a pendente mesmo recém-lida, porque
+        // a leitura que existe não cobre o dia novo.
+        await using (var db3 = fixture.CriarDbContext()) await Criar(db3).PlanejarAsync(hoje.AddDays(1), default);
+        await using (var ver = fixture.CriarDbContext())
+        {
+            var corrente = await ver.SisregIndicadorColetas.SingleAsync(c =>
+                c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio == new DateOnly(2031, 6, 9));
+            Assert.Equal(new DateOnly(2031, 6, 10), corrente.JanelaFim);
+            Assert.Equal(StatusColetaIndicador.Pendente, corrente.Status);
+        }
+
+        // Em 16/06 a semana 09–16/05 completa 30 dias e entra no plano OFICIAL. Enquanto a oficial não
+        // fecha, a provisória continua lá (é ela que ainda cobre a semana)…
+        var dia30 = new DateOnly(2031, 6, 16);
+        await using (var db4 = fixture.CriarDbContext()) await Criar(db4).PlanejarAsync(dia30, default);
+        await using (var ver = fixture.CriarDbContext())
+        {
+            Assert.True(await ver.SisregIndicadorColetas.AnyAsync(c =>
+                c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio == new DateOnly(2031, 5, 9)));
+
+            var oficial = await ver.SisregIndicadorColetas.SingleAsync(c =>
+                c.Coletor == ColetorIndicadorSisreg.Faltas && c.JanelaInicio == new DateOnly(2031, 5, 9));
+            oficial.Status = StatusColetaIndicador.Concluida;
+            oficial.LidoEm = DateTime.UtcNow;
+            await ver.SaveChangesAsync();
+        }
+
+        // …e some no plano seguinte ao fechamento da oficial.
+        await using (var db5 = fixture.CriarDbContext()) await Criar(db5).PlanejarAsync(dia30, default);
+        await using (var ver = fixture.CriarDbContext())
+        {
+            Assert.False(await ver.SisregIndicadorColetas.AnyAsync(c =>
+                c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio == new DateOnly(2031, 5, 9)));
+        }
+
+        await LimparAsync(db);
+    }
+
+    /// <summary>
     /// Mês passado com o total declarado (a carga de 30/09) e sem as linhas: ganha uma AMOSTRA de motivos —
     /// uma vez só, e sem tocar na janela do total. Mês que já tem as linhas não ganha.
     /// </summary>

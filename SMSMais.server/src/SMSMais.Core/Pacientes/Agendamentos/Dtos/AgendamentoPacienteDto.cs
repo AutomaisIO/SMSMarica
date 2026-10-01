@@ -24,11 +24,13 @@ public enum OrigemAgendamentoPaciente
 /// (SER: EmFila..Alta; SISREG: Solicitada..Cancelada; agenda local: Agendado..Faltou); aqui
 /// elas são reduzidas a um conjunto único para a aba do paciente.
 ///
-/// <para><b>Limitação de dado conhecida:</b> "compareceu/faltou" só existe de verdade no SER
-/// (<c>ChegadaConfirmada</c>) e na agenda local (<c>Faltou</c>/<c>Realizado</c>). O SISREG não
-/// entrega comparecimento consultável (ADR-0040), então uma solicitação do SISREG nunca vira
-/// <see cref="Faltou"/> — no máximo <see cref="Compareceu"/> quando a recepção registrou a
-/// chegada presencial (<c>AutorizadoEm</c>).</para>
+/// <para><b>De onde vem "compareceu/faltou":</b> no SER/SERNIT, da situação de chegada
+/// (<c>ChegadaConfirmada</c>/<c>ChegadaNaoConfirmada</c>). No SISREG a unidade executante aponta um
+/// de TRÊS estados, e os três chegam aqui separados: confirmou a chegada (ou a recepção registrou
+/// aqui, <c>AutorizadoEm</c>) → <see cref="Compareceu"/>; registrou falta — é o que a lista de
+/// absenteísmo (<c>sisreg_falta</c>) contém → <see cref="Faltou"/>; não apontou nada →
+/// <see cref="EmAberto"/>, que NÃO é falta. Quando ninguém foi olhar depois do dia (ou a fonte não
+/// informa, como o ESUS SG), fica <see cref="SemRegistroDeChegada"/>.</para>
 /// </summary>
 public enum SituacaoAgendamentoPaciente
 {
@@ -62,6 +64,16 @@ public enum SituacaoAgendamentoPaciente
     /// <summary>Saiu da fila do sistema de origem sem agendamento visível — o motivo não é
     /// informado (ESUS SG: a conta de Maricá não vê exclusões). Terminal, mas NÃO é "cancelado".</summary>
     SaiuDaFila = 10,
+
+    /// <summary>O agendamento já passou e a fonte não informou chegada nem falta. Substitui o
+    /// "Agendado" de quem ficou no passado — "agendado" numa data vencida não diz nada.</summary>
+    SemRegistroDeChegada = 11,
+
+    /// <summary>SISREG: o agendamento já passou e a unidade executante ainda não apontou o resultado
+    /// — nem confirmou a chegada, nem registrou falta ("Pendente de confirmação" na tela do SISREG).
+    /// Não diz nada sobre o paciente: medido no CDT, 104 de 108 pendentes seguiam pendentes seis
+    /// semanas depois. Difere de <see cref="SemRegistroDeChegada"/> porque aqui alguém FOI olhar.</summary>
+    EmAberto = 12,
 }
 
 /// <summary>Uma linha da aba "Agendamentos" do paciente, já normalizada entre as fontes.</summary>
@@ -78,7 +90,8 @@ public enum SituacaoAgendamentoPaciente
 /// em…" em vez de "sem data". <c>null</c> para a agenda local (não tem esse eixo).</param>
 /// <param name="Situacao">Situação normalizada.</param>
 /// <param name="SituacaoDescricao">Rótulo pronto para a UI.</param>
-/// <param name="SituacaoOrigem">Situação crua da fonte (para tooltip/auditoria).</param>
+/// <param name="SituacaoOrigem">Situação crua da fonte (para tooltip/auditoria). No comparecimento do
+/// SISREG, é a PROVA: "chegada registrada na recepção", "lista oficial de faltas do SISREG"…</param>
 /// <param name="NumeroSolicitacao">Número da solicitação na origem — o "ID Solicitação" do SER,
 /// ou o código SISREG da nossa <c>solicitacao</c>. <c>null</c> na agenda local.</param>
 /// <param name="DetalheId">Id para abrir o detalhe (modal) da linha. SER: id da

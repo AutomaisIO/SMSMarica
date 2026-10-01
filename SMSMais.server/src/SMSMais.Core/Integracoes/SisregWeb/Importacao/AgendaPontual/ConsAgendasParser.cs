@@ -147,6 +147,38 @@ public static partial class ConsAgendasParser
         return saida;
     }
 
+    /// <summary>
+    /// O que a unidade executante registrou da chegada, lido do envelope JSON que o <see cref="Parse"/>
+    /// guarda em <c>Solicitacao.RawSisreg</c>: <c>true</c> = <c>Agendamento/Confirmado/Executante</c>,
+    /// <c>false</c> = <c>Agendamento/Falta/Executante</c>, <c>null</c> = pendente de confirmação, outro
+    /// formato de RAW (linha do TXT) ou envelope ilegível.
+    /// </summary>
+    public static bool? ChegadaNoEnvelope(string? raw)
+    {
+        if (raw is null || !raw.AsSpan().TrimStart().StartsWith("{")) return null;
+
+        string? situacao;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            situacao = doc.RootElement.TryGetProperty("situacao", out var s) && s.ValueKind == JsonValueKind.String
+                ? s.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        // Por segmento, e não por "contém": "Pendente Confirmação" também contém "CONFIRMA".
+        foreach (var parte in Normalizar(situacao ?? string.Empty).Split('/', StringSplitOptions.TrimEntries))
+        {
+            if (parte == "CONFIRMADO") return true;
+            if (parte == "FALTA") return false;
+        }
+        return null;
+    }
+
     /// <summary>"UNIDADE X (6289851)" → (nome, cnes). Sem parênteses, devolve o nome inteiro.</summary>
     private static (string? Nome, string? Cnes) Unidade(string valor)
     {

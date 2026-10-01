@@ -108,7 +108,7 @@ internal static class IndicadoresSisregCalculo
         var temFaltas = fTot.Count > 0;
         var atendidas = p.Meses.Where(m => fCas.ContainsKey(m) && util.ContainsKey(m)).ToDictionary(m => m, m => util[m] - fCas[m]);
         secoes.Add(new SecaoIndicadorDto("absenteismo", "Absenteísmo",
-            "Faltas pela Consulta de Absenteísmo por Unidade de Saúde do SISREG (agendamentos cuja chegada não foi confirmada pela unidade executante), casadas com os agendamentos do mês.",
+            "Faltas pela Consulta de Absenteísmo por Unidade de Saúde do SISREG (agendamentos em que a unidade executante registrou falta), casadas com os agendamentos do mês. Agendamento em que a unidade não apontou nem chegada nem falta não entra como falta.",
             false,
             [
                 f.Serie("Agendamentos no mês", util, SeloIndicador.Parcial),

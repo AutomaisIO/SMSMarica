@@ -37,6 +37,32 @@ public static class PlanoColetaIndicadores
         return fora;
     }
 
+    /// <summary>
+    /// Semanas de faltas ainda NOVAS demais para o número oficial: do corte que contém
+    /// <c>hoje − diasParaFaltas</c> até ontem (a semana corrente vem cortada em ontem — o SISREG não
+    /// aceita data futura, e o dia de hoje ainda está acontecendo). São o complemento exato de
+    /// <see cref="SemanasDeFaltas"/>: a semana sai daqui no dia em que entra lá.
+    /// </summary>
+    public static List<JanelaColeta> SemanasRecentesDeFaltas(DateOnly hoje, int diasParaFaltas)
+    {
+        var limite = hoje.AddDays(-diasParaFaltas);
+        var ontem = hoje.AddDays(-1);
+        var fora = new List<JanelaColeta>();
+        var primeiroMes = new DateOnly(limite.Year, limite.Month, 1);
+        for (var mes = primeiroMes; mes <= ontem; mes = mes.AddMonths(1))
+        {
+            var ultimo = mes.AddMonths(1).AddDays(-1).Day;
+            foreach (var (i, f) in new[] { (1, 8), (9, 16), (17, 23), (24, ultimo) })
+            {
+                var inicio = new DateOnly(mes.Year, mes.Month, i);
+                var fim = new DateOnly(mes.Year, mes.Month, f);
+                if (fim <= limite || inicio > ontem) continue;
+                fora.Add(new JanelaColeta(inicio, fim > ontem ? ontem : fim));
+            }
+        }
+        return fora;
+    }
+
     /// <summary>Os <paramref name="quantos"/> meses fechados anteriores a hoje (primeiro dia de cada), do mais antigo ao mais novo.</summary>
     public static List<DateOnly> MesesFechados(DateOnly hoje, int quantos) =>
         MesesAte(hoje, quantos, incluirMesCorrente: false);

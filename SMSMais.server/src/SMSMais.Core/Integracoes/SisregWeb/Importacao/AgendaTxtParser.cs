@@ -68,6 +68,9 @@ public static class AgendaTxtParser
     private const int CodigoIbgeResidencia = 23;
     private const int CnesUnidadeSolicitante = 26;
     private const int NomeUnidadeSolicitante = 27;
+    /// <summary>Coluna 34: confirmação de CHEGADA pela unidade executante — <c>CONFIRMADO</c> ou
+    /// <c>PENDENTE</c>. Não existe "FALTA" no arquivo: falta só vem da lista oficial de absenteísmo.</summary>
+    private const int ConfirmacaoChegada = 34;
     private const int Cid = 35;
     private const int CpfMedico = 36;
     private const int NomeMedico = 37;
@@ -226,11 +229,37 @@ public static class AgendaTxtParser
                 CpfProfissionalExecutante: Digitos(c[CpfProfissionalExecutante]) is { Length: 11 } cpfExec ? cpfExec : null,
                 NomeProfissionalExecutante: LimparNulo(c[NomeProfissionalExecutante]),
                 CodigoProcedimentoSisreg: LimparNulo(c[CodigoProcedimentoSisreg]),
-                EhRetorno: FlagRetorno(c[VagaFlag])));
+                EhRetorno: FlagRetorno(c[VagaFlag]),
+                ChegadaConfirmada: Chegada(c[ConfirmacaoChegada])));
         }
 
         return new Resultado(cab, marcacoes, rejeitadas);
     }
+
+    /// <summary>
+    /// A unidade executante confirmou a chegada do paciente? Lê a coluna 34 de UMA linha de dados
+    /// (a que fica guardada em <c>Solicitacao.RawSisreg</c>): <c>true</c> = CONFIRMADO,
+    /// <c>false</c> = PENDENTE, <c>null</c> = a linha não é do layout de 38 campos ou traz outro valor.
+    ///
+    /// <para><b>PENDENTE não quer dizer falta:</b> a linha guardada só é regravada quando muda
+    /// data/executante/procedimento, então costuma ficar congelada no que valia ANTES do dia do
+    /// atendimento. Só o CONFIRMADO é prova.</para>
+    /// </summary>
+    public static bool? ChegadaConfirmada(string? linha)
+    {
+        if (string.IsNullOrWhiteSpace(linha)) return null;
+        var c = linha.Split(';');
+        if (c.Length < TotalCampos || !SoDigitosNaoVazio(c[CodigoSolicitacao])) return null;
+        return Chegada(c[ConfirmacaoChegada]);
+    }
+
+    /// <summary>Coluna 34: "CONFIRMADO" → true, "PENDENTE" → false, qualquer outro → desconhecido.</summary>
+    private static bool? Chegada(string? s) => (s ?? string.Empty).Trim().ToUpperInvariant() switch
+    {
+        "CONFIRMADO" => true,
+        "PENDENTE" => false,
+        _ => null,
+    };
 
     /// <summary>Coluna 8 do TXT: "1" → retorno, "0" → 1ª vez, vazio/qualquer outro → desconhecido.</summary>
     private static bool? FlagRetorno(string? s) => (s ?? string.Empty).Trim() switch

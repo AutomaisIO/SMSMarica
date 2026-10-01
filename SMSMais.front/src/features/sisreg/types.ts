@@ -504,7 +504,8 @@ export type FilaAgendamento = {
 };
 
 /** Coletor dos Indicadores de Regulação (Configuração do SISREG). */
-export type ColetorIndicadorSisreg = 'Faltas' | 'Canceladas' | 'Desfechos' | 'Ppi';
+/** `FaltasRecentes` = a lista de faltas das semanas com menos de 30 dias, relida de hora em hora. */
+export type ColetorIndicadorSisreg = 'Faltas' | 'Canceladas' | 'Desfechos' | 'Ppi' | 'FaltasRecentes';
 
 export type EsperaColetaIndicadores =
   | 'Desligada'

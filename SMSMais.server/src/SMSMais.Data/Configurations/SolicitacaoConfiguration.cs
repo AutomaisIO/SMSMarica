@@ -50,6 +50,11 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
         // manual e origem sem o dado ficam null. int como os demais enums desta entidade.
         builder.Property(s => s.TipoVaga).HasColumnName("tipo_vaga").HasConversion<int>();
 
+        // Chegada confirmada pela executante no SISREG — relida pela varredura diária. Sem índice de
+        // propósito: quem lê parte do paciente ou da data, e a coluna é reescrita toda noite.
+        builder.Property(s => s.ChegadaConfirmadaSisreg).HasColumnName("chegada_confirmada_sisreg");
+        builder.Property(s => s.ChegadaSisregLidaEm).HasColumnName("chegada_sisreg_lida_em");
+
         // 10 basta para o formato do CID-10 com subcategoria (ex.: "C50.9"); a origem manda so o
         // codigo, sem descricao.
         builder.Property(s => s.CidCodigo).HasColumnName("cid_codigo").HasMaxLength(10);

@@ -62,6 +62,26 @@ public sealed class VarreduraSisregOpcoes
     /// <summary>Intervalo do tick do scheduler, em segundos.</summary>
     public int TickSegundos { get; set; } = 60;
 
+    /// <summary>
+    /// Quantos dias PARA TRÁS a varredura diária relê, só para saber se a unidade confirmou a chegada
+    /// do paciente (<c>Solicitacao.ChegadaConfirmadaSisreg</c>). <c>0</c> desliga.
+    ///
+    /// <para>31 porque as unidades confirmam com atraso: em 01/10/2026 agosto estava com 47% de
+    /// confirmados lido com 8–38 dias de idade, contra ~63% nos meses já assentados. É o mesmo prazo
+    /// que o coletor espera para ler a lista oficial de faltas.</para>
+    ///
+    /// <para><b>Custa requisição do orçamento anti-robô</b>: uma por fatia de até
+    /// <see cref="AlvoDeRegistrosPorFatiaDeChegada"/> agendamentos — estimado em 55–60 por noite na
+    /// rede inteira (36 unidades, ~19 mil agendamentos em 31 dias).</para>
+    /// </summary>
+    public int DiasDeChegada { get; set; } = 31;
+
+    /// <summary>
+    /// Tamanho-alvo de cada fatia da releitura de chegadas, em agendamentos. Abaixo do teto de 700 do
+    /// SISREG com folga, porque o volume vem do NOSSO banco e pode estar abaixo do real.
+    /// </summary>
+    public int AlvoDeRegistrosPorFatiaDeChegada { get; set; } = 550;
+
     /// <summary>Teto de dias à frente. O SISREG recusa intervalo maior que 31 dias.</summary>
     public const int MaxDiasAFrente = 30;
 }

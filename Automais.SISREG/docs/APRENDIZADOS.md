@@ -1023,3 +1023,65 @@ convertido para caminho do Windows. Rodar sondas com `MSYS_NO_PATHCONV=1`.
 - **A extensão já captura a decisão do regulador**: `autorizador` etapa `APLICAR` com `status`
   A/N/D, `co_solicitacao` e `dsjustificativa` — de 15/09 a 30/09: 771 A, 35 N (negada), 13 D
   (devolvida). Fonte grátis de negada/devolvida COM MOTIVO daqui para frente (só de quem usa a extensão).
+
+### Rodada 5 (01/10/2026) — "o paciente veio?": a chegada congela, e o que mantém em dia
+
+Medido em PROD (só leitura), agendamentos de 2026 que já passaram, por mês da data agendada:
+
+| mês | agendadas | col. 34 = CONFIRMADO | na lista oficial de faltas |
+|---|---|---|---|
+| jan–jul | 15–20 mil | 61–65% | ~27% |
+| ago | 14.150 | 47% | 4.671 |
+| **set** | 18.518 | **172 (0,9%)** | 0 (lista só lida aos 30 dias) |
+
+- **A chegada congelava.** O `raw_sisreg` só é regravado quando muda data/executante/procedimento
+  (`ReconciliarAsync`) e a varredura lia de HOJE para a frente — a col. 34 ficava no "PENDENTE" de
+  antes do atendimento. O passado até ~ago só está bom porque a carga do histórico (08/09) leu depois
+  do fato. Agosto com 47% (lido com 8–38 dias de idade) contra ~63% dos meses assentados = as
+  unidades confirmam com semanas de atraso; por isso a releitura olha **31 dias** para trás.
+- **Custo real da exportação da unidade:** 43 unidades, 220–260 requisições por noite para 20–28 mil
+  agendamentos. Unidade com 2.624 agendamentos em 30 dias = 13 requisições, porque
+  `ExportarComTetoAsync` parte a fatia toda vez que o total declarado é ≥ 700 — **inclusive no recorte
+  da unidade inteira, onde o teto de 700 não se aplica** (medido em 27/08: 3.286 linhas numa resposta,
+  cabeçalho batendo). A assinatura do corte silencioso é total == 700 exatos; partir com total > 700
+  joga fora uma resposta completa. Não mexi nisso (motor de produção, uma medição só) — mas é onde
+  está a maior economia de requisição da varredura. Para a releitura de chegadas a saída foi fatiar
+  ANTES, pelo volume que já está no banco (`ChegadasSisregService.FatiarPorVolume`, alvo 550).
+- **O SISREG tem TRÊS estados para o agendamento que já passou, e a unidade executante é quem
+  escolhe:** `Agendamento/Confirmado/Executante` (compareceu), `Agendamento/Falta/Executante` (a
+  unidade registrou falta — ação `Falta` do `cons_agendas`, situação 12 do gerenciador) e
+  `Agendamento/Pendente Confirmação/Executante` (**em aberto**: a unidade não apontou nada). Prova:
+  `capturas/agenda_3132358_01072026_31082026.csv`, a agenda do CDT lida da tela em 25/07/2026 — nos
+  685 agendamentos de 01–24/07 havia 421 confirmados, 156 faltas e **108 pendentes**, os três no
+  mesmo dia (ex.: 03/07, com 22 dias de idade: 24 / 11 / 10).
+- **A lista de absenteísmo (`rel_amb_faltas_sol.pl`) é a marcação EXPLÍCITA de falta, não "quem não
+  foi confirmado".** Cruzando a captura de 25/07 com a lista lida em 30/09: das 156 "Falta", 155
+  estão na lista (1 virou confirmado depois); das 108 "Pendente", só 4 (apontadas como falta
+  depois) — e **104 seguiam pendentes seis semanas mais tarde**. Pendente não vira falta sozinho.
+  Isto corrige o que estava escrito aqui e no código até 01/10 ("agendamento cuja chegada a unidade
+  não confirmou", "a lista encolhe conforme as unidades confirmam"): a lista MUDA nas primeiras
+  semanas porque a unidade aponta com atraso, e o sentido predominante é crescer.
+- **A coluna 34 do TXT junta falta e pendente:** só existe `CONFIRMADO` e `PENDENTE`. É por isso que
+  "PENDENTE − lista" nunca fechava (os 356 de 01–07/01, os +8% de jan/26): a sobra é agendamento em
+  aberto. Jan–jul/2026, 122 mil agendamentos: **63,1% confirmados, 26,3% falta, 10,6% em aberto**
+  (1ª vez: 62,7 / 28,3 / 9,0; retorno: 65,6 / 14,3 / 20,1). É comportamento de UNIDADE: Centro de
+  Radiologia, Radiocenter e CRAD apontam quase tudo (cerca de 1% em aberto entre os não confirmados); CMI
+  deixa em aberto 85% do que não confirma; USF Mumbuca e USF Milton dos Santos não apontam nada
+  (0 confirmados, 0 faltas). **Consequência para o indicador:** "Atendidos = agendamentos − faltas"
+  conta os em aberto como atendidos — superestima em ~10 pontos.
+- **Leitura da lista de faltas:** `rel_amb_faltas_sol.pl` aceita janela recente (até ontem); cada
+  janela são 2 requisições (paginada + `imprimir_lista=1`, a prova de leitura completa), ~5 janelas
+  para 30 dias, rede inteira. O coletor oficial espera 30 dias (apontamento tardio) e a leitura
+  adiantada tem cursor próprio (`ColetorIndicadorSisreg.FaltasRecentes`), fora do indicador.
+- **O que entrou no produto** (ficha do paciente → aba Agendamentos): varredura diária de cada unidade
+  relê os últimos 31 dias só para a chegada (`Solicitacao.ChegadaConfirmadaSisreg`,
+  `Sisreg:Varredura:DiasDeChegada`); coletor relê a lista de faltas das semanas recentes de hora em
+  hora (`Sisreg:Indicadores:MinutosParaRelerFaltasRecentes`). Na ficha: Compareceu (confirmado),
+  Faltou (está na lista de faltas, em qualquer idade), **Em aberto** (nem um nem outro, e alguém
+  olhou depois do dia) e Sem registro de chegada (ninguém olhou). Para recuperar um período antigo de uma
+  vez, subir `DiasDeChegada` por uma noite — a fatia respeita o limite de 31 dias sozinha.
+- **SER e SERNIT não precisam de nada disso:** a varredura noturna relê a base INTEIRA, as 7
+  situações (SER ~70 min, SERNIT ~3–6 min); toda linha do espelho tinha `sincronizado_em` da
+  madrugada. "Agendada" com data passada lá é o próprio SER sem registro de chegada (set/26: 69 de
+  306). **ESUS SG não informa chegada** nas duas listas lidas (4.934 agendadas no passado); a única
+  pista não sondada é `controller-exame-paciente-exames-2/buscar-historico-de-exames-agendados`.

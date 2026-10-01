@@ -197,6 +197,31 @@ public class ColetaIndicadoresSisregTests
     }
 
     [Fact]
+    public void Semanas_recentes_de_faltas_sao_o_complemento_das_oficiais_e_param_em_ontem()
+    {
+        var hoje = new DateOnly(2031, 3, 20);
+
+        var recentes = PlanoColetaIndicadores.SemanasRecentesDeFaltas(hoje, diasParaFaltas: 30);
+
+        // Limite = 18/02: o corte 17–23/02 ainda é novo; a semana corrente (17–23/03) vem cortada em ontem.
+        recentes.Should().Equal(
+            new JanelaColeta(new DateOnly(2031, 2, 17), new DateOnly(2031, 2, 23)),
+            new JanelaColeta(new DateOnly(2031, 2, 24), new DateOnly(2031, 2, 28)),
+            new JanelaColeta(new DateOnly(2031, 3, 1), new DateOnly(2031, 3, 8)),
+            new JanelaColeta(new DateOnly(2031, 3, 9), new DateOnly(2031, 3, 16)),
+            new JanelaColeta(new DateOnly(2031, 3, 17), new DateOnly(2031, 3, 19)));
+
+        // Nenhuma semana nos dois planos ao mesmo tempo: a oficial começa onde a recente termina.
+        var oficiais = PlanoColetaIndicadores.SemanasDeFaltas(hoje, mesesRecentes: 3, diasParaFaltas: 30);
+        oficiais.Select(o => o.Inicio).Should().NotIntersectWith(recentes.Select(r => r.Inicio));
+        oficiais.Max(o => o.Fim).AddDays(1).Should().Be(recentes[0].Inicio);
+
+        // No dia 1º não existe "ontem" no mês corrente: nada do mês novo entra.
+        PlanoColetaIndicadores.SemanasRecentesDeFaltas(new DateOnly(2031, 4, 1), 30)
+            .Should().OnlyContain(j => j.Fim <= new DateOnly(2031, 3, 31));
+    }
+
+    [Fact]
     public void Ppi_da_competencia_so_depois_do_dia_de_corte_do_mes_seguinte()
     {
         PlanoColetaIndicadores.CompetenciasDePpi(new DateOnly(2031, 3, 4), 2, 5)
@@ -320,6 +345,33 @@ public class ColetaIndicadoresSisregTests
         r.Desfecho.Should().Be(DesfechoPasso.Falha);
         r.Mensagem.Should().Contain("encolheu");
         armazem.FaltasSubstituidas.Should().BeNull();
+    }
+
+    /// <summary>
+    /// A lista das semanas recentes ainda muda (a unidade aponta e corrige com atraso). Se a trava de
+    /// encolhimento valesse, a janela ficaria presa no retrato antigo e quem a unidade já trocou de
+    /// falta para chegada confirmada continuaria aparecendo como falta.
+    /// </summary>
+    [Theory]
+    [InlineData(true, false)]   // releitura horária da semana recente
+    [InlineData(false, true)]   // leitura oficial por cima do que a recente gravou
+    public async Task Faltas_recentes_encolhem_sem_a_trava_mas_com_a_mesma_prova(bool recentes, bool substituiProvisoria)
+    {
+        var armazem = new ArmazemFalso { FaltasGravadas = 100 };
+        var t = new TrabalhoFaltas(Item(ColetorIndicadorSisreg.FaltasRecentes), 0.7, recentes, substituiProvisoria);
+        var sessao = new SessaoRoteirizada(Faltas(paginas: 2, linhas: 10), Faltas(paginas: null, linhas: 15));
+
+        await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default);
+        (await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default)).Should().Be(ResultadoPasso.Concluida(15));
+        armazem.FaltasSubstituidas.Should().Be(15);
+
+        // A prova de leitura completa continua valendo: lista que não cabe na paginação não grava.
+        var semProva = new ArmazemFalso { FaltasGravadas = 100 };
+        var t2 = new TrabalhoFaltas(Item(ColetorIndicadorSisreg.FaltasRecentes), 0.7, recentes, substituiProvisoria);
+        var cortada = new SessaoRoteirizada(Faltas(paginas: 2, linhas: 10), Faltas(paginas: null, linhas: 25));
+        await TrabalhoColeta.ExecutarAsync(t2, cortada, semProva, default);
+        (await TrabalhoColeta.ExecutarAsync(t2, cortada, semProva, default)).Desfecho.Should().Be(DesfechoPasso.Falha);
+        semProva.FaltasSubstituidas.Should().BeNull();
     }
 
     [Fact]

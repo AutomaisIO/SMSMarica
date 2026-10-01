@@ -135,6 +135,26 @@ public class Solicitacao
     /// </summary>
     public TipoVaga? TipoVaga { get; set; }
 
+    /// <summary>
+    /// A unidade executante confirmou a CHEGADA do paciente no SISREG? <c>true</c> = CONFIRMADO,
+    /// <c>false</c> = lido depois do dia do atendimento e ainda PENDENTE, <c>null</c> = nunca relido
+    /// depois do atendimento (não se sabe).
+    ///
+    /// <para><b>Por que coluna própria e não o <see cref="RawSisreg"/>:</b> a linha guardada só é
+    /// regravada quando muda data/executante/procedimento, e a varredura lia só de hoje para a frente
+    /// — a chegada ficava congelada no "pendente" de antes do atendimento (medido em 01/10/2026:
+    /// setembro com 0,9% de confirmados, contra ~63% nos meses lidos depois). Quem mantém isto em dia
+    /// é a varredura diária da unidade, que relê os últimos dias só para a chegada.</para>
+    ///
+    /// <para><b>Pendente não é falta.</b> Falta é a lista oficial de absenteísmo
+    /// (<c>sisreg_falta</c>); aqui só se sabe que a unidade ainda não confirmou.</para>
+    /// </summary>
+    public bool? ChegadaConfirmadaSisreg { get; set; }
+
+    /// <summary>Última vez que a chegada foi lida no SISREG (UTC). Só vale como informação sobre o
+    /// atendimento quando é posterior ao dia agendado.</summary>
+    public DateTime? ChegadaSisregLidaEm { get; set; }
+
     public string? Justificativa { get; set; }
     public string? Observacoes { get; set; }
 

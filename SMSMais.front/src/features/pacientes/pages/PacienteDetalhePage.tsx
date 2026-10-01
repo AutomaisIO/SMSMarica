@@ -618,6 +618,19 @@ const SITUACAO_AGENDAMENTO_CLASSE: Record<SituacaoAgendamentoPaciente, string> =
   Concluido: 'bg-green-100 text-green-700',
   // Cinza tracejado, e não o cinza do Cancelado: não sabemos se foi cancelado.
   SaiuDaFila: 'border border-dashed border-gray-300 bg-white text-gray-600',
+  SemRegistroDeChegada: 'bg-gray-100 text-gray-600',
+  // Âmbar no contorno: pendência da UNIDADE (não apontou o resultado), não ausência do paciente.
+  EmAberto: 'border border-amber-300 bg-white text-amber-800',
+};
+
+/** Explicação do selo quando ele não é a situação crua da origem. */
+const SITUACAO_AGENDAMENTO_DICA: Partial<Record<SituacaoAgendamentoPaciente, string>> = {
+  SaiuDaFila:
+    'Não consta mais na fila nem nos agendados do sistema de origem; o motivo não é informado.',
+  SemRegistroDeChegada:
+    'A data já passou e o sistema de origem não informou se o paciente compareceu ou faltou.',
+  EmAberto:
+    'A unidade executante ainda não apontou no SISREG se o paciente compareceu ou faltou. Não é falta.',
 };
 
 function soData(iso: string): string | null {
@@ -696,11 +709,8 @@ function colunasAgendamento(): Coluna<AgendamentoPacienteItem>[] {
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-medium ${SITUACAO_AGENDAMENTO_CLASSE[a.situacao] ?? 'bg-gray-100 text-gray-600'}`}
           title={
-            a.situacao === 'SaiuDaFila'
-              ? 'Não consta mais na fila nem nos agendados do sistema de origem; o motivo não é informado.'
-              : a.situacaoOrigem
-                ? `Origem: ${a.situacaoOrigem}`
-                : undefined
+            SITUACAO_AGENDAMENTO_DICA[a.situacao] ??
+            (a.situacaoOrigem ? `Origem: ${a.situacaoOrigem}` : undefined)
           }
         >
           {/* O rótulo vem do backend; "Saiu da fila" é garantido aqui para nunca virar "Cancelado". */}
@@ -796,8 +806,12 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
 
       <p className="text-xs text-gray-400">
         Fontes: SER (regulação estadual), SERNIT (regulação de Niterói), ESUS de São Gonçalo (PPI)
-        e SISREG (regulação municipal), além da agenda própria. O comparecimento (compareceu/faltou)
-        vem do SER/SERNIT e da agenda local; do SISREG e do ESUS SG mostramos o agendamento e a data.
+        e SISREG (regulação municipal), além da agenda própria. No histórico, “Compareceu” e “Faltou”
+        só aparecem com registro da unidade executante: chegada confirmada (ou registrada pela
+        recepção) e falta apontada. No SISREG, “Em aberto” é o agendamento que já passou e a unidade
+        ainda não apontou o resultado — não é falta. As faltas são relidas de hora em hora e as
+        chegadas, toda noite. “Sem registro de chegada” é quando a origem não informou nada — sempre
+        o caso do ESUS SG. Passe o mouse no selo para ver de onde veio e quando foi lido.
         No ESUS SG, “Saiu da fila” quer dizer que o pedido não consta mais na fila nem nos agendados
         — o motivo não é informado, e não é o mesmo que cancelado. Clique numa linha do SER, do
         SERNIT, do ESUS SG ou de exame de imagem para abrir o detalhe.

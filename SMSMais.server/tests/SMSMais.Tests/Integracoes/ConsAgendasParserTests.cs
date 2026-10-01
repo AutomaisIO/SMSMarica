@@ -104,6 +104,23 @@ public class ConsAgendasParserTests
     }
 
     [Fact]
+    public void ChegadaNoEnvelope_le_a_situacao_guardada_no_raw()
+    {
+        var registros = ConsAgendasParser.Parse(ResultadoHtml, Ctx);
+
+        // "Pendente Confirmação" contém "confirma" mas NÃO é chegada confirmada.
+        ConsAgendasParser.ChegadaNoEnvelope(registros[0].LinhaRaw).Should().BeNull();
+        ConsAgendasParser.ChegadaNoEnvelope(registros[1].LinhaRaw).Should().BeTrue();
+        ConsAgendasParser.ChegadaNoEnvelope("""{"origem":"cons_agendas","situacao":"Agendamento/Falta/Executante"}""")
+            .Should().BeFalse();
+
+        // Outro formato de RAW (linha do TXT), envelope quebrado ou vazio: sem resposta, sem exceção.
+        ConsAgendasParser.ChegadaNoEnvelope("670119011;1305007;0204030030").Should().BeNull();
+        ConsAgendasParser.ChegadaNoEnvelope("{quebrado").Should().BeNull();
+        ConsAgendasParser.ChegadaNoEnvelope(null).Should().BeNull();
+    }
+
+    [Fact]
     public void TotalPaginas_le_o_rodape() =>
         ConsAgendasParser.TotalPaginas(ResultadoHtml).Should().Be(1);
 

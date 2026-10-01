@@ -79,4 +79,12 @@ public sealed record MarcacaoSisreg(
 
     /// <summary>Código do procedimento no SISREG (o <c>pa</c>, 7 dígitos). É a chave do de-para
     /// que resolve o <see cref="CodigoSigtap"/>.</summary>
-    string? CodigoProcedimentoSisreg = null);
+    string? CodigoProcedimentoSisreg = null,
+
+    /// <summary>
+    /// A unidade executante confirmou a chegada? <c>true</c> = CONFIRMADO, <c>false</c> = PENDENTE,
+    /// <c>null</c> = a fonte não disse. No TXT é a coluna 34; na tela de agenda sai de
+    /// <see cref="SituacaoAgendamento"/>. Só tem sentido para atendimento que já passou — é o que a
+    /// varredura grava em <c>Solicitacao.ChegadaConfirmadaSisreg</c>.
+    /// </summary>
+    bool? ChegadaConfirmada = null);

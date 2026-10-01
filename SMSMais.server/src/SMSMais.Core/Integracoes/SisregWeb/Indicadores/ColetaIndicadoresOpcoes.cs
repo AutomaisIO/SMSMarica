@@ -30,10 +30,24 @@ public sealed class ColetaIndicadoresOpcoes
     public string HoraFim { get; set; } = "18:00";
 
     /// <summary>
-    /// Idade mínima de uma semana para a lista de faltas ser lida. A lista encolhe enquanto as
-    /// unidades confirmam a chegada com atraso — ler cedo mostraria como falta quem foi atendido.
+    /// Idade mínima de uma semana para a lista de faltas valer como número OFICIAL. A lista é a
+    /// marcação de falta feita pela unidade executante, e as unidades apontam (e corrigem) com atraso
+    /// — lida cedo, ela ainda não é o retrato final da semana.
     /// </summary>
     public int DiasParaFaltas { get; set; } = 30;
+
+    /// <summary>
+    /// De quanto em quanto tempo a lista de faltas das semanas RECENTES (mais novas que
+    /// <see cref="DiasParaFaltas"/>) é relida, em minutos. <c>0</c> desliga.
+    ///
+    /// <para>É o que mantém a ficha do paciente em dia durante o expediente: a lista é da rede
+    /// inteira, uma janela por semana (~5 janelas, 2 requisições cada), e muda conforme as unidades
+    /// apontam as faltas. 50 e não 60 porque o plano roda de hora em hora — com 60, um minuto de
+    /// atraso empurraria a releitura para a hora seguinte.</para>
+    ///
+    /// <para>Não entra no indicador de absenteísmo: esse só lê o que o coletor oficial gravou.</para>
+    /// </summary>
+    public int MinutosParaRelerFaltasRecentes { get; set; } = 50;
 
     /// <summary>Quantos meses fechados para trás o coletor mantém em dia. O passado mais antigo já foi carregado.</summary>
     public int MesesRecentes { get; set; } = 3;

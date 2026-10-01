@@ -2,12 +2,15 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Integracoes.SisregWeb.Importacao;
+using SMSMais.Core.Integracoes.SisregWeb.Importacao.AgendaPontual;
 using SMSMais.Core.Pacientes.Agendamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Sernit;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMais.Core.Pacientes.Agendamentos;
 
@@ -26,7 +29,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         itens.AddRange(await LerSerAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerSernitAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerEsusSgAsync(pacienteId, cancellationToken));
-        itens.AddRange(await LerSisregAsync(pacienteId, cancellationToken));
+        itens.AddRange(await LerSisregAsync(pacienteId, DateOnly.FromDateTime(hojeLocal), cancellationToken));
         // A agenda local do municipio foi removida em 05/09/2026 (ver CidadaoClinicoService):
         // tinha 3 linhas de teste e um modelo incompativel com a grade do SISREG. Sobra o que o
         // cidadao realmente tem marcado — o que veio da regulacao.
@@ -37,6 +40,16 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
             .ToList();
 
         var historico = itens.Where(i => EhHistorico(i, hojeLocal))
+            // "Agendado" numa data que já passou não responde o que o operador quer saber (veio ou
+            // não veio?). Quem chegou até aqui sem prova de chegada nem de falta diz isso com todas
+            // as letras, em vez de parecer um agendamento ainda por acontecer.
+            .Select(i => i.Situacao is SituacaoAgendamentoPaciente.Agendado or SituacaoAgendamentoPaciente.Confirmado
+                ? i with
+                {
+                    Situacao = SituacaoAgendamentoPaciente.SemRegistroDeChegada,
+                    SituacaoDescricao = DescreverSituacao(SituacaoAgendamentoPaciente.SemRegistroDeChegada),
+                }
+                : i)
             .OrderBy(i => i.DataHora is null ? 1 : 0)
             .ThenByDescending(i => i.DataHora)
             .ToList();
@@ -84,7 +97,9 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         or SituacaoAgendamentoPaciente.Faltou
         or SituacaoAgendamentoPaciente.Cancelado
         or SituacaoAgendamentoPaciente.Concluido
-        or SituacaoAgendamentoPaciente.SaiuDaFila;
+        or SituacaoAgendamentoPaciente.SaiuDaFila
+        or SituacaoAgendamentoPaciente.SemRegistroDeChegada
+        or SituacaoAgendamentoPaciente.EmAberto;
 
     private static bool EhHistorico(AgendamentoPacienteItemDto i, DateTime hojeLocal)
     {
@@ -267,7 +282,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
     // ---- SISREG / regulação municipal (solicitacao) ----
 
     private async Task<IEnumerable<AgendamentoPacienteItemDto>> LerSisregAsync(
-        Guid pacienteId, CancellationToken cancellationToken)
+        Guid pacienteId, DateOnly hoje, CancellationToken cancellationToken)
     {
         var linhas = await db.Solicitacoes.AsNoTracking()
             .Where(s => s.PacienteId == pacienteId && s.ExcluidoEm == null)
@@ -283,21 +298,119 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
                 s.DataSolicitacao,
                 s.Status,
                 s.AutorizadoEm,
+                s.RawSisreg,
+                s.ChegadaConfirmadaSisreg,
+                s.ChegadaSisregLidaEm,
                 // O detalhe (GET /solicitacoes-exame/{id}) resolve pelo id do satélite de imagem —
                 // existe só para exame de imagem; consulta/gráfico/outros ficam sem modal.
                 ExameImagemId = s.ExameImagem != null ? (Guid?)s.ExameImagem.Id : null,
             })
             .ToListAsync(cancellationToken);
 
+        // Comparecimento só se discute de quem segue "Agendada" e tem código de verdade no SISREG:
+        // é pelo código que a lista oficial de faltas casa ('0000' é o marcador de pedido sem código).
+        var codigos = linhas
+            .Where(l => l.Status == StatusSolicitacao.Agendada && l.AutorizadoEm is null
+                && !string.IsNullOrWhiteSpace(l.CodigoSolicitacao) && l.CodigoSolicitacao != "0000")
+            .Select(l => l.CodigoSolicitacao!)
+            .Distinct()
+            .ToList();
+
+        // O SISREG tem TRÊS estados para um agendamento que já passou, e a unidade executante é quem
+        // escolhe: Confirmado, Falta, ou Pendente de confirmação (ainda não apontou nada). Conferido
+        // em 01/10/2026 contra a tela de agenda do CDT capturada em 25/07 (685 agendamentos passados):
+        //   - 155 das 156 "Falta" estão na lista de absenteísmo; das 108 "Pendente", só 4 (as que a
+        //     unidade apontou como falta DEPOIS) — a lista é a marcação explícita de falta, não
+        //     "quem não foi confirmado";
+        //   - 104 das 108 "Pendente" seguiam pendentes seis semanas depois: pendente não vira falta
+        //     sozinho. É "a unidade não disse", e não pode aparecer como ausência do paciente.
+        // O Arquivo de Agendamentos (coluna 34) só separa CONFIRMADO do resto — falta e pendente saem
+        // os dois como "PENDENTE" —, por isso a falta só vem da lista.
+        //
+        // Código + DIA: o mesmo código pode faltar, ser remarcado e comparecer na data nova.
+        var faltas = new Dictionary<(string Codigo, DateOnly Dia), DateTime>();
+        var janelasLidas = new List<(DateOnly Inicio, DateOnly Fim)>();
+        if (codigos.Count > 0)
+        {
+            faltas = (await db.SisregFaltasOficiais.AsNoTracking()
+                    .Where(f => codigos.Contains(f.CodigoSolicitacao))
+                    .Select(f => new { f.CodigoSolicitacao, f.DataExecucao, f.LidoEm })
+                    .ToListAsync(cancellationToken))
+                .ToDictionary(f => (f.CodigoSolicitacao, f.DataExecucao), f => f.LidoEm);
+
+            // "Não está na lista de faltas" só significa algo nos dias em que a lista foi LIDA — pela
+            // leitura das semanas recentes (de hora em hora) ou pela que alimenta o indicador (30 dias).
+            janelasLidas = (await db.SisregIndicadorColetas.AsNoTracking()
+                    .Where(c => (c.Coletor == ColetorIndicadorSisreg.Faltas
+                                 || c.Coletor == ColetorIndicadorSisreg.FaltasRecentes)
+                        && c.Status == StatusColetaIndicador.Concluida && c.JanelaInicio < hoje)
+                    .Select(c => new { c.JanelaInicio, c.JanelaFim })
+                    .ToListAsync(cancellationToken))
+                .Select(c => (c.JanelaInicio, c.JanelaFim))
+                .ToList();
+        }
+
         return linhas.Select(l =>
         {
-            // AutorizadoEm = a recepção registrou a chegada presencial (comparecimento).
-            var situacao = l.AutorizadoEm is not null
-                ? SituacaoAgendamentoPaciente.Compareceu
-                : MapearSisreg(l.Status);
             var data = l.DataAgendada is { } d
                 ? DateTime.SpecifyKind(FusoBrasilia.ParaExibicao(d), DateTimeKind.Unspecified)
                 : (DateTime?)null;
+
+            var situacao = MapearSisreg(l.Status);
+            var prova = l.Status.ToString();
+            if (l.AutorizadoEm is not null)
+            {
+                // AutorizadoEm = a recepção registrou a chegada presencial (comparecimento).
+                situacao = SituacaoAgendamentoPaciente.Compareceu;
+                prova = "chegada registrada na recepção";
+            }
+            else if (l.Status == StatusSolicitacao.Agendada && data is { } dataHora
+                && DateOnly.FromDateTime(dataHora) is var dia && dia <= hoje)
+            {
+                // A coluna relida pela varredura manda; sem ela, vale o CONFIRMADO da linha guardada
+                // (histórico carregado depois do fato). O "pendente" da linha guardada não vale nada:
+                // costuma ser de ANTES do atendimento.
+                var confirmada = l.ChegadaConfirmadaSisreg
+                    ?? (AgendaTxtParser.ChegadaConfirmada(l.RawSisreg) == true ? true : (bool?)null);
+                // Envelope da Consulta de Agendas: a tela traz os três estados por extenso.
+                var naTela = ConsAgendasParser.ChegadaNoEnvelope(l.RawSisreg);
+
+                var temCodigo = l.CodigoSolicitacao is { } c && codigos.Contains(c);
+
+                if (confirmada == true || naTela == true)
+                {
+                    situacao = SituacaoAgendamentoPaciente.Compareceu;
+                    prova = "chegada confirmada pela unidade executante no SISREG";
+                }
+                else if (temCodigo && faltas.TryGetValue((l.CodigoSolicitacao!, dia), out var faltaLidaEm))
+                {
+                    situacao = SituacaoAgendamentoPaciente.Faltou;
+                    prova = "falta registrada pela unidade executante no SISREG (lista de faltas lida em "
+                        + $"{FusoBrasilia.ParaExibicao(faltaLidaEm):dd/MM/yyyy})";
+                }
+                else if (naTela == false)
+                {
+                    situacao = SituacaoAgendamentoPaciente.Faltou;
+                    prova = "falta registrada pela unidade executante no SISREG";
+                }
+                else if (dia < hoje)
+                {
+                    // Nem confirmado nem falta. Só se afirma "em aberto" quando alguém foi olhar DEPOIS
+                    // do dia: a lista de faltas daquele dia foi lida, ou a varredura releu a chegada.
+                    var listaLida = temCodigo && janelasLidas.Any(j => dia >= j.Inicio && dia <= j.Fim);
+                    var chegadaRelida = l.ChegadaConfirmadaSisreg == false && l.ChegadaSisregLidaEm is { } lida
+                        && DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(lida)) > dia;
+                    if (listaLida || chegadaRelida)
+                    {
+                        situacao = SituacaoAgendamentoPaciente.EmAberto;
+                        prova = chegadaRelida
+                            ? "sem apontamento da unidade no SISREG em "
+                              + $"{FusoBrasilia.ParaExibicao(l.ChegadaSisregLidaEm!.Value):dd/MM/yyyy}"
+                            : "sem apontamento da unidade no SISREG";
+                    }
+                }
+            }
+
             return new AgendamentoPacienteItemDto(
                 l.Id,
                 OrigemAgendamentoPaciente.Sisreg,
@@ -309,7 +422,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
                 l.DataSolicitacao,
                 situacao,
                 DescreverSituacao(situacao),
-                l.Status.ToString(),
+                prova,
                 l.CodigoSolicitacao,
                 l.ExameImagemId);
         });
@@ -338,6 +451,8 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         SituacaoAgendamentoPaciente.Cancelado => "Cancelado",
         SituacaoAgendamentoPaciente.Concluido => "Concluído",
         SituacaoAgendamentoPaciente.SaiuDaFila => "Saiu da fila",
+        SituacaoAgendamentoPaciente.SemRegistroDeChegada => "Sem registro de chegada",
+        SituacaoAgendamentoPaciente.EmAberto => "Em aberto",
         _ => s.ToString(),
     };
 

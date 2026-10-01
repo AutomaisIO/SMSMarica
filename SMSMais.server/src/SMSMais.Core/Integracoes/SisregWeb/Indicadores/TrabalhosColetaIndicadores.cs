@@ -76,13 +76,24 @@ public abstract class TrabalhoColeta(ItemColeta item)
 /// Lista oficial de faltas de uma janela (<c>rel_amb_faltas_sol.pl</c>). Dois passos: a consulta
 /// paginada diz quantas páginas de 10 existem; a lista inteira (<c>imprimir_lista=1</c>) tem de caber
 /// nesse número. Só então a janela é substituída.
+///
+/// <para><paramref name="recentes"/>: semana ainda nova, relida de hora em hora
+/// (<see cref="ColetorIndicadorSisreg.FaltasRecentes"/>). A prova de leitura completa é a mesma, mas a
+/// trava de encolhimento NÃO se aplica: nas primeiras semanas a unidade ainda aponta e corrige, e uma
+/// releitura recusada por "encolheu" deixaria como falta quem a unidade já trocou para confirmado.</para>
+///
+/// <para><paramref name="substituiProvisoria"/>: leitura OFICIAL de uma semana que vinha sendo lida
+/// como recente. O que está gravado é a lista provisória — se ela ficou velha (coletor pausado por
+/// dias), a oficial vem bem menor, e a trava a recusaria para sempre.</para>
 /// </summary>
-public sealed class TrabalhoFaltas(ItemColeta item, double fracaoMinima) : TrabalhoColeta(item)
+public sealed class TrabalhoFaltas(
+    ItemColeta item, double fracaoMinima, bool recentes = false, bool substituiProvisoria = false) : TrabalhoColeta(item)
 {
     public const string Tela = "/cgi-bin/rel_amb_faltas_sol.pl";
     private int? _paginas;
 
-    public override string Descricao => $"faltas {Br(Item.Inicio)} a {Br(Item.Fim)}";
+    public override string Descricao =>
+        $"faltas {(recentes ? "recentes " : string.Empty)}{Br(Item.Inicio)} a {Br(Item.Fim)}";
 
     public override async Task<ResultadoPasso> PassoAsync(
         ISisregWebSessao sessao, IArmazemIndicadoresSisreg armazem, CancellationToken ct)
@@ -115,8 +126,11 @@ public sealed class TrabalhoFaltas(ItemColeta item, double fracaoMinima) : Traba
 
         var anteriores = await armazem.ContarFaltasAsync(Item.Inicio, Item.Fim, ct);
         var unicas = faltas.Select(f => (f.Codigo, f.DataExecucao)).Distinct().Count();
-        if (SubstituicaoDeJanela.Recusar(anteriores, unicas, provaDeLeituraCompleta: true, fracaoMinima) is { } motivo)
+        if (!recentes && !substituiProvisoria
+            && SubstituicaoDeJanela.Recusar(anteriores, unicas, provaDeLeituraCompleta: true, fracaoMinima) is { } motivo)
+        {
             return ResultadoPasso.Falha(motivo);
+        }
 
         await armazem.SubstituirFaltasAsync(Item.Inicio, Item.Fim, faltas, ct);
         return ResultadoPasso.Concluida(unicas);
