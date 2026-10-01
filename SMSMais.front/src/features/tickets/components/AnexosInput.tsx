@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ClipboardPaste, ImagePlus, Loader2, X } from 'lucide-react';
+import { ImagePlus, Loader2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { VisualizadorImagem } from '@/shared/ui/VisualizadorImagem';
@@ -19,9 +19,6 @@ type Props = {
   escopoColar?: React.RefObject<HTMLElement | null>;
 };
 
-/** Imagem vista na área de transferência, ainda não anexada nem dispensada. */
-type Sugestao = { arquivo: File; url: string; assinatura: string };
-
 /** Print colado chega como "image.png" — dá um nome que diga o que é. */
 function nomearPrint(tipo: string): string {
   const ext = tipo.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
@@ -30,47 +27,18 @@ function nomearPrint(tipo: string): string {
   return `print-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`;
 }
 
-/** Identifica a mesma imagem entre leituras da área de transferência (não sugerir duas vezes). */
-async function assinar(blob: Blob): Promise<string> {
-  try {
-    const hash = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
-    return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return `${blob.type}:${blob.size}`; // crypto.subtle só existe em HTTPS/localhost
-  }
-}
-
 function ehCampoDeTexto(el: EventTarget | null): boolean {
   return el instanceof HTMLElement && (el.isContentEditable || el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement);
 }
 
-/** Lê a imagem da área de transferência — `null` se não há imagem ou o navegador não deixa. */
-async function lerImagemDaAreaDeTransferencia(): Promise<File | null> {
-  const itens = await navigator.clipboard.read();
-  for (const item of itens) {
-    const tipo = item.types.find((t) => t.startsWith('image/'));
-    if (tipo) {
-      const blob = await item.getType(tipo);
-      return new File([blob], nomearPrint(tipo), { type: tipo });
-    }
-  }
-  return null;
-}
-
-const podeLerAreaDeTransferencia = typeof navigator !== 'undefined' && !!navigator.clipboard?.read;
-
 /**
  * Seleciona imagens (prints), envia ao backend e mantém a lista de referências.
- * Aceita também Ctrl+V de imagem e, quando o navegador já deu permissão, sugere sozinho o print
- * que está na área de transferência (inclusive ao voltar para a aba depois de tirar o print).
+ * Aceita também Ctrl+V de imagem (o print tirado com Win+Shift+S) — sem pedir permissão ao navegador.
  */
 export function AnexosInput({ anexos, aoMudar, disabled, escopoColar }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const blocoRef = useRef<HTMLDivElement>(null);
   const [enviando, setEnviando] = useState(false);
-  const [sugestao, setSugestao] = useState<Sugestao | null>(null);
-  // Imagens já anexadas ou dispensadas nesta tela — não voltam como sugestão.
-  const vistas = useRef(new Set<string>());
   // A lista mais recente, para o Ctrl+V (listener de documento) não anexar sobre uma lista velha.
   const anexosRef = useRef(anexos);
   anexosRef.current = anexos;
@@ -92,7 +60,6 @@ export function AnexosInput({ anexos, aoMudar, disabled, escopoColar }: Props) {
           }
           try {
             const ref = await enviarAnexo(arq);
-            vistas.current.add(await assinar(arq));
             atuais = [...atuais, ref];
             aoMudar(atuais);
           } catch (erro) {
@@ -137,67 +104,11 @@ export function AnexosInput({ anexos, aoMudar, disabled, escopoColar }: Props) {
       // Copiar do Word/Excel traz texto E imagem: dentro de um campo de texto, quem cola quer o texto.
       if (dados.types.includes('text/plain') && ehCampoDeTexto(e.target)) return;
       e.preventDefault();
-      setSugestao(null);
       void enviarArquivos(imagens.map((f) => new File([f], nomearPrint(f.type), { type: f.type })));
     }
     document.addEventListener('paste', aoColar);
     return () => document.removeEventListener('paste', aoColar);
   }, [ocupado, escopoColar, enviarArquivos]);
-
-  // ---- Sugestão automática (só quando a permissão de leitura já foi dada; nunca pede sozinha) ----
-  const verificarAreaDeTransferencia = useCallback(async (pedirPermissao: boolean) => {
-    if (!podeLerAreaDeTransferencia) return;
-    try {
-      if (!pedirPermissao) {
-        const estado = await navigator.permissions?.query({ name: 'clipboard-read' as PermissionName });
-        if (estado?.state !== 'granted' || !document.hasFocus()) return;
-      }
-      const arquivo = await lerImagemDaAreaDeTransferencia();
-      if (!arquivo) {
-        if (pedirPermissao) notificar('Não há imagem na área de transferência. Tire o print (Win+Shift+S) e tente de novo.', 'info');
-        return;
-      }
-      const assinatura = await assinar(arquivo);
-      if (vistas.current.has(assinatura)) {
-        if (pedirPermissao) notificar('Essa imagem já foi anexada.', 'info');
-        return;
-      }
-      if (pedirPermissao) {
-        // Clique explícito em "Colar print": anexa direto, sem perguntar de novo.
-        await enviarArquivos([arquivo]);
-        return;
-      }
-      setSugestao((atual) => {
-        if (atual?.assinatura === assinatura) return atual;
-        return { arquivo, url: URL.createObjectURL(arquivo), assinatura };
-      });
-    } catch {
-      if (pedirPermissao) notificar('O navegador não deixou ler a área de transferência. Use Ctrl+V.', 'info');
-    }
-  }, [enviarArquivos]);
-
-  useEffect(() => {
-    if (ocupado) return;
-    void verificarAreaDeTransferencia(false);
-    const aoFocar = () => void verificarAreaDeTransferencia(false);
-    window.addEventListener('focus', aoFocar);
-    return () => window.removeEventListener('focus', aoFocar);
-  }, [ocupado, verificarAreaDeTransferencia]);
-
-  useEffect(() => () => { if (sugestao) URL.revokeObjectURL(sugestao.url); }, [sugestao]);
-
-  function aceitarSugestao() {
-    if (!sugestao) return;
-    const { arquivo } = sugestao;
-    setSugestao(null);
-    void enviarArquivos([arquivo]);
-  }
-
-  function dispensarSugestao() {
-    if (!sugestao) return;
-    vistas.current.add(sugestao.assinatura);
-    setSugestao(null);
-  }
 
   return (
     <div ref={blocoRef} className="space-y-2">
@@ -220,30 +131,8 @@ export function AnexosInput({ anexos, aoMudar, disabled, escopoColar }: Props) {
           {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
           {enviando ? 'Enviando…' : 'Anexar imagem'}
         </Button>
-        {podeLerAreaDeTransferencia && (
-          <Button
-            type="button"
-            variante="outline"
-            tamanho="sm"
-            disabled={ocupado}
-            onClick={() => void verificarAreaDeTransferencia(true)}
-            title="Anexa a imagem que está na área de transferência (o print que você acabou de tirar)"
-          >
-            <ClipboardPaste className="h-4 w-4" />
-            Colar print
-          </Button>
-        )}
         <span className="text-xs text-slate-400">ou cole com Ctrl+V</span>
       </div>
-
-      {sugestao && !ocupado && (
-        <div className="flex items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 p-2">
-          <img src={sugestao.url} alt="Imagem na área de transferência" className="h-14 w-14 rounded object-cover ring-1 ring-sky-200" />
-          <p className="flex-1 text-sm text-sky-900">Há uma imagem na área de transferência. Anexar?</p>
-          <Button type="button" tamanho="sm" onClick={aceitarSugestao}>Anexar</Button>
-          <Button type="button" tamanho="sm" variante="ghost" onClick={dispensarSugestao}>Agora não</Button>
-        </div>
-      )}
 
       {anexos.length > 0 && (
         <div className="flex flex-wrap gap-2">
