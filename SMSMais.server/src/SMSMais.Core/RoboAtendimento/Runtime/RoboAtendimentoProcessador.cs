@@ -28,6 +28,7 @@ public sealed class RoboAtendimentoProcessador(
     ILogger<RoboAtendimentoProcessador> logger) : IRoboAtendimentoProcessador
 {
     private const int MaxTentativas = 3;
+    private const int MaxReaplicacoesConversa = 3;
     private const int HistoricoTurnos = 12;
 
     public async Task ProcessarAsync(Guid tarefaId, CancellationToken ct)
@@ -48,10 +49,17 @@ public sealed class RoboAtendimentoProcessador(
             // certo — aqui fica o resto (modelo fora, erro de ferramenta, banco…).
             if (!FalhaContaIa.EhFalhaDeConta(ex.Message))
             {
+                // Reivindicada (Processando) = a resposta pode já ter saído; não haverá nova tentativa
+                // (ver ReagendarOuFalharAsync). Dizer "tentativa 1 de 3" aí era prometer o que não vem.
+                // OriginalValue = o último status GRAVADO: no save final o status em memória já virou
+                // Concluida/HandOff, mas no banco ela continua Processando.
+                var situacao = db.Entry(tarefa).Property(t => t.Status).OriginalValue == StatusRoboTarefa.Processando
+                    ? "falhou depois de reivindicada — a resposta pode já ter sido enviada; não será repetida"
+                    : $"tentativa {tarefa.Tentativas + 1} de {MaxTentativas}";
                 alerta.Reportar(new EventoAlerta(
                     AlertaCatalogo.RoboFalha,
                     "O robô não conseguiu responder",
-                    $"Tarefa {tarefaId} (tentativa {tarefa.Tentativas + 1} de {MaxTentativas}).\n\n"
+                    $"Tarefa {tarefaId} ({situacao}).\n\n"
                     + $"{ex.GetType().Name}: {ex.Message}"));
             }
 
@@ -149,15 +157,26 @@ public sealed class RoboAtendimentoProcessador(
                         ? "No momento estamos fora do horário de atendimento. Retorne o contato em "
                           + "horário comercial que a nossa equipe segue com você por aqui."
                         : "A partir daqui um atendente da nossa equipe continua com você por aqui.";
+                MensagemRoboEnviada? avisoEnviado = null;
                 try
                 {
-                    await EnviarComoRoboAsync(conversa, SanitizarWhatsApp(aviso), cfg.NomeExibicao, ct);
-                    conversa.RoboInteracoesNaJanela += 1; // fecha o assunto: daqui pra frente, silêncio
-                    conversa.AtualizadoEm = DateTime.UtcNow;
+                    avisoEnviado = await EnviarComoRoboAsync(conversa, SanitizarWhatsApp(aviso), cfg.NomeExibicao, ct);
                 }
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex, "Falha ao avisar o cidadão do hand-off na conversa {Conversa}.", conversa.Id);
+                }
+
+                if (avisoEnviado is { } av)
+                {
+                    await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Limite de interações atingido.", ct,
+                        conversa, c =>
+                        {
+                            MarcarUltimaMensagem(c, av);
+                            c.RoboInteracoesNaJanela += 1; // fecha o assunto: daqui pra frente, silêncio
+                            c.AtualizadoEm = DateTime.UtcNow;
+                        });
+                    return;
                 }
             }
             await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Limite de interações atingido.", ct);
@@ -217,14 +236,12 @@ public sealed class RoboAtendimentoProcessador(
         // Reivindica a tarefa (Processando) e COMMITA antes de enviar. Se o save final falhar por
         // corrida, ela não volta a Pendente e o worker não re-envia — evita mensagem duplicada.
         tarefa.Status = StatusRoboTarefa.Processando;
+        tarefa.AtualizadoEm = DateTime.UtcNow; // sem isso, a tarefa que falha daqui em diante fica com atualizado_em nulo
         await db.SaveChangesAsync(ct);
 
+        MensagemRoboEnviada? enviada = null;
         if (!string.IsNullOrWhiteSpace(resposta.Texto))
-            await EnviarComoRoboAsync(conversa, SanitizarWhatsApp(resposta.Texto), cfg.NomeExibicao, ct);
-
-        conversa.RoboAssuntoId = assunto?.Id ?? conversa.RoboAssuntoId;
-        conversa.RoboInteracoesNaJanela += 1;
-        conversa.AtualizadoEm = DateTime.UtcNow;
+            enviada = await EnviarComoRoboAsync(conversa, SanitizarWhatsApp(resposta.Texto), cfg.NomeExibicao, ct);
 
         // Hand-off por BAIXA CONFIANÇA. `LimiarConfianca` existia na entidade e na tela desde o
         // início, mas nunca era comparado — a proteção que se supunha ativa nunca funcionou.
@@ -245,7 +262,14 @@ public sealed class RoboAtendimentoProcessador(
         tarefa.Status = resposta.HandOff || poucaConfianca ? StatusRoboTarefa.HandOff : StatusRoboTarefa.Concluida;
         tarefa.AtualizadoEm = DateTime.UtcNow;
 
-        await db.SaveChangesAsync(ct);
+        await SalvarAplicandoNaConversaAsync(conversa, c =>
+        {
+            if (enviada is { } e)
+                MarcarUltimaMensagem(c, e);
+            c.RoboAssuntoId = assunto?.Id ?? c.RoboAssuntoId;
+            c.RoboInteracoesNaJanela += 1;
+            c.AtualizadoEm = DateTime.UtcNow;
+        }, ct);
 
         await notificador.MensagemEnviadaAsync(new ConversaEventoRealtime(
             conversa.Id, conversa.OperadorResponsavelId, conversa.UnidadeId,
@@ -253,8 +277,13 @@ public sealed class RoboAtendimentoProcessador(
             conversa.NaoLidas, conversa.UltimaMensagemEm), ct);
     }
 
-    /// <summary>Envia texto como robô SEM virar dono da conversa (não faz claim, não zera NaoLidas).</summary>
-    private async Task EnviarComoRoboAsync(Data.Entities.Conversas.Conversa conversa, string texto, string nomeRobo, CancellationToken ct)
+    /// <summary>
+    /// Envia texto como robô SEM virar dono da conversa (não faz claim, não zera NaoLidas). Não mexe
+    /// na conversa: devolve quando e o quê foi enviado, e quem salva aplica via
+    /// <see cref="MarcarUltimaMensagem"/> — dentro de <see cref="SalvarAplicandoNaConversaAsync"/>,
+    /// para sobreviver à corrida com o webhook.
+    /// </summary>
+    private async Task<MensagemRoboEnviada> EnviarComoRoboAsync(Data.Entities.Conversas.Conversa conversa, string texto, string nomeRobo, CancellationToken ct)
     {
         // O robô só fala porque o cidadão escreveu. O que ele NÃO pode é revelar dado de paciente
         // cujo contato foi negado — isso é barrado antes, na resolução do paciente da conversa.
@@ -276,11 +305,55 @@ public sealed class RoboAtendimentoProcessador(
             }
         }
 
-        var agora = DateTime.UtcNow;
-        conversa.UltimaMensagemEm = agora;
-        conversa.UltimaMensagemDirecao = DirecaoMensagem.Saida;
-        conversa.UltimaMensagemPreview = Truncar(texto);
         // NÃO zera NaoLidas: o robô "ler" não é o operador ler.
+        return new MensagemRoboEnviada(DateTime.UtcNow, Truncar(texto));
+    }
+
+    private sealed record MensagemRoboEnviada(DateTime Em, string Preview);
+
+    /// <summary>A resposta do robô vira a "última mensagem" só se for a mais nova: se o cidadão já
+    /// escreveu de novo depois dela, a conversa continua mostrando a mensagem dele (que ainda espera
+    /// resposta), em vez de parecer respondida.</summary>
+    private static void MarcarUltimaMensagem(Data.Entities.Conversas.Conversa c, MensagemRoboEnviada e)
+    {
+        if (c.UltimaMensagemEm is { } ultima && ultima > e.Em)
+            return;
+        c.UltimaMensagemEm = e.Em;
+        c.UltimaMensagemDirecao = DirecaoMensagem.Saida;
+        c.UltimaMensagemPreview = e.Preview;
+    }
+
+    /// <summary>
+    /// Aplica as mudanças do robô na conversa e salva tudo o que estiver pendente (tarefa, vínculo da
+    /// mensagem). A conversa tem trava otimista (<c>xmin</c>): enquanto a IA pensa (~15 s), o webhook
+    /// grava a próxima mensagem do cidadão na MESMA linha, e o UPDATE do robô afetava 0 linhas —
+    /// DbUpdateConcurrencyException. Perdia-se o save inteiro: tarefa presa em Processando (a conversa
+    /// sumia das largadas), resposta enviada sem vínculo com a conversa, contador de interações
+    /// subcontado. Medido em 01/10/2026: 325 tarefas em 234 conversas desde 26/08, 96% com mensagem do
+    /// cidadão nos 60 s seguintes. Aqui, na corrida, relê a conversa e reaplica por cima do estado
+    /// atual — a trava continua valendo para o resto (posse da conversa, ADR-0047).
+    /// </summary>
+    private async Task SalvarAplicandoNaConversaAsync(
+        Data.Entities.Conversas.Conversa conversa, Action<Data.Entities.Conversas.Conversa> aplicar, CancellationToken ct)
+    {
+        aplicar(conversa);
+        for (var tentativa = 1; ; tentativa++)
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex) when (tentativa < MaxReaplicacoesConversa
+                && ex.Entries.All(e => e.Entity is Data.Entities.Conversas.Conversa c && c.Id == conversa.Id))
+            {
+                logger.LogInformation(
+                    "Conversa {Conversa} mudou enquanto o robô respondia — relendo e reaplicando (tentativa {Tentativa}).",
+                    conversa.Id, tentativa);
+                await db.Entry(conversa).ReloadAsync(ct);
+                aplicar(conversa);
+            }
+        }
     }
 
     private async Task<bool> HumanoNaJanelaAsync(Guid conversaId, DateTime ancora, CancellationToken ct)
@@ -365,12 +438,16 @@ public sealed class RoboAtendimentoProcessador(
     private static string SanitizarWhatsApp(string texto) =>
         System.Text.RegularExpressions.Regex.Replace(texto, @"\*{2,}", "*");
 
-    private async Task FinalizarAsync(RoboAtendimentoTarefa tarefa, StatusRoboTarefa status, string nota, CancellationToken ct)
+    private async Task FinalizarAsync(RoboAtendimentoTarefa tarefa, StatusRoboTarefa status, string nota, CancellationToken ct,
+        Data.Entities.Conversas.Conversa? conversa = null, Action<Data.Entities.Conversas.Conversa>? naConversa = null)
     {
         tarefa.Status = status;
         tarefa.Erro = status is StatusRoboTarefa.Falha ? nota : tarefa.Erro;
         tarefa.AtualizadoEm = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
+        if (conversa is not null && naConversa is not null)
+            await SalvarAplicandoNaConversaAsync(conversa, naConversa, ct);
+        else
+            await db.SaveChangesAsync(ct);
     }
 
     private async Task ReagendarOuFalharAsync(RoboAtendimentoTarefa tarefa, string erro, CancellationToken ct)
@@ -378,7 +455,21 @@ public sealed class RoboAtendimentoProcessador(
         // Recarrega o estado limpo (o SaveChanges pode ter falhado no meio).
         db.ChangeTracker.Clear();
         var t = await db.RoboTarefas.FirstOrDefaultAsync(x => x.Id == tarefa.Id, ct);
-        if (t is null || t.Status != StatusRoboTarefa.Pendente) return;
+        if (t is null) return;
+
+        // Falhou DEPOIS de reivindicar (e possivelmente de enviar): não repete — mandaria a mesma
+        // resposta duas vezes —, mas também não fica "viva" para sempre. Presa em Processando, ela
+        // tirava a conversa da lista de largadas (TemTarefaViva) e a equipe nunca a via.
+        if (t.Status == StatusRoboTarefa.Processando)
+        {
+            t.Status = StatusRoboTarefa.Falha;
+            t.Erro = Truncar(erro);
+            t.AtualizadoEm = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+
+        if (t.Status != StatusRoboTarefa.Pendente) return;
 
         t.Tentativas += 1;
         t.Erro = Truncar(erro);
