@@ -89,7 +89,10 @@ export type ModuloPermissao =
   | 'OuvidoriaSigilo'
   | 'OuvidoriaPontoResposta'
   // Transporte de Pacientes (76): cadastro das unidades de atendimento (destinos da van).
-  | 'UnidadesAtendimento';
+  | 'UnidadesAtendimento'
+  // Extensão do Chrome distribuída pela plataforma (80, ADR-0064): computadores autorizados e
+  // versões publicadas. Baixar o instalador e autorizar o próprio computador NÃO pedem módulo.
+  | 'ExtensaoNavegador';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

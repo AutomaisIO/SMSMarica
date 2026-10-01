@@ -90,6 +90,9 @@ public static class DependencyInjection
         services.AddScoped<Extensao.IExtensaoCapturaService, Extensao.ExtensaoCapturaService>();
         // Processa as ações observadas (fase 1: cancelamento) e aplica na base.
         services.AddScoped<Extensao.IProcessadorCapturasSisreg, Extensao.ProcessadorCapturasSisreg>();
+        // Distribuição da extensão e do atualizador pela plataforma (ADR-0064): instalador pelo
+        // painel, autorização de computador, versões publicadas por canal.
+        services.AddScoped<Extensao.Distribuicao.IExtensaoDistribuicaoService, Extensao.Distribuicao.ExtensaoDistribuicaoService>();
 
 
         // ---- Assinatura digital de laudos (PAdES via Automais.Assinador) ----

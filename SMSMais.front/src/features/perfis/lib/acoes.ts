@@ -82,6 +82,9 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Faturamento', rotulo: 'Faturamento (TFD/SUS)' },
   { id: 'Auditoria', rotulo: 'Auditoria (trilha do sistema)' },
   { id: 'Erros', rotulo: 'Erros do sistema (diagnóstico)' },
+  // Extensão do Chrome (80, ADR-0064): só a ADMINISTRAÇÃO pede módulo. Baixar o instalador e
+  // autorizar o próprio computador ficam abertos a qualquer usuário logado.
+  { id: 'ExtensaoNavegador', rotulo: 'Extensão Chrome — computadores autorizados e versões publicadas' },
   { id: 'Conversas', rotulo: 'Central de Atendimento (chat)' },
   { id: 'ConversasSupervisao', rotulo: 'Atendimento — supervisão (ver todas as unidades)' },
   { id: 'Ticket', rotulo: 'Suporte — gestão de tickets (ver/responder todos)' },
@@ -250,6 +253,13 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   Instituicao: {
     Consulta: 'Ver a identidade da instituição',
     Edicao: 'Alterar nome, marca, domínios e contatos legais (afeta telas públicas)',
+  },
+  // Extensão do Chrome (ADR-0064). "Edição" é o que faz uma versão chegar a todos os computadores.
+  ExtensaoNavegador: {
+    Consulta: 'Ver os computadores autorizados e as versões publicadas',
+    Inclusao: 'Publicar versão (entra no canal de teste)',
+    Edicao: 'Pôr versão em produção, trocar o canal de um computador e ligar/desligar a publicação por API',
+    Exclusao: 'Retirar versão e revogar computador',
   },
   // Ouvidoria (ADR-0060, plano §1.5). "Exclusão" aqui é ARQUIVAR — não apaga nada (trilha append-only).
   Ouvidoria: {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Building2, Check, ChevronDown, KeyRound, LifeBuoy, LogOut, Menu, User as UserIcon, Volume2, VolumeX } from 'lucide-react';
+import { Bell, Building2, Check, ChevronDown, KeyRound, LifeBuoy, LogOut, Menu, Puzzle, User as UserIcon, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth/authStore';
@@ -70,6 +70,12 @@ export function Header({ onToggleMobileSidebar }: Props) {
   function abrirAlterarSenha() {
     setAberto(false);
     navigate('/app/alterar-senha');
+  }
+
+  // Aberto a qualquer usuário logado: é por aqui que se baixa o instalador da extensão (ADR-0064).
+  function abrirExtensaoChrome() {
+    setAberto(false);
+    navigate('/app/extensao');
   }
 
   const iniciais = (usuario?.nome ?? 'U').slice(0, 2).toUpperCase();
@@ -217,6 +223,14 @@ export function Header({ onToggleMobileSidebar }: Props) {
                 >
                   <KeyRound className="w-4 h-4" />
                   Alterar senha
+                </button>
+                <button
+                  type="button"
+                  onClick={abrirExtensaoChrome}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <Puzzle className="w-4 h-4" />
+                  Extensão Chrome
                 </button>
                 <div className="my-1 border-t border-gray-200" />
                 <button

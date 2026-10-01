@@ -98,6 +98,9 @@ import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { InstituicaoPage } from '@/features/instituicao/pages/InstituicaoPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
+import { AutorizarComputadorPage } from '@/features/extensao-navegador/pages/AutorizarComputadorPage';
+import { ExtensaoChromePage } from '@/features/extensao-navegador/pages/ExtensaoChromePage';
+import { ExtensaoGerenciarPage } from '@/features/extensao-navegador/pages/ExtensaoGerenciarPage';
 import { AvisosCelularPage } from '@/features/alertas-plataforma/pages/AvisosCelularPage';
 import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
 import { EstatisticasPage } from '@/features/estatisticas/pages/EstatisticasPage';
@@ -327,6 +330,14 @@ export function AppRouter() {
           <Route path="instituicao" element={<InstituicaoPage />} />
           <Route path="erros" element={<ErrosPage />} />
           <Route path="avisos-celular" element={<AvisosCelularPage />} />
+          {/* Extensão do Chrome (ADR-0064). Baixar o instalador e autorizar um computador são de
+              qualquer usuário logado; o código da autorização vai NO CAMINHO porque a ida ao login
+              guarda só o pathname. O gerenciador pede o módulo. */}
+          <Route path="extensao" element={<ExtensaoChromePage />} />
+          <Route path="extensao/autorizar/:codigo" element={<AutorizarComputadorPage />} />
+          <Route element={<RotaComModulo modulo="ExtensaoNavegador" rotulo="Extensão Chrome — computadores e versões" />}>
+            <Route path="extensao/gerenciar" element={<ExtensaoGerenciarPage />} />
+          </Route>
           <Route path="conversas" element={<ConversasPage />} />
           <Route element={<RotaComModulo modulo="NotificacoesAgendamento" rotulo="Mensageria" />}>
             <Route path="mensageria" element={<MensageriaPage />} />

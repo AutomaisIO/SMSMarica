@@ -333,6 +333,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+
+    // Distribuição da extensão (ADR-0064): rotas que o computador chama sem o login do painel —
+    // pedir autorização, trocar o código pelo token, consultar versão e baixar pacote. Particiona
+    // por IP. O teto é folgado de propósito: os PCs de uma unidade inteira saem pelo MESMO IP,
+    // cada um consulta a cada 10 min e, no Configurar, de 3 em 3 segundos.
+    options.AddPolicy(SMSMais.Api.Controllers.ExtensaoDistribuicaoController.PoliticaDeLimite, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 240,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 // Atrás do nginx (proxy no mesmo host): sem isto, RemoteIpAddress é o loopback do proxy

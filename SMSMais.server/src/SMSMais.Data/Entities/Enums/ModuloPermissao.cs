@@ -372,4 +372,12 @@ public enum ModuloPermissao
     /// Um módulo só para os três sistemas (decisão do Bernardo, 30/09/2026). Só <c>Consulta</c>. A
     /// configuração dos coletores do SISREG fica em <see cref="SisregConfiguracao"/>.</summary>
     IndicadoresRegulacao = 79,
+
+    /// <summary>Administração da extensão do Chrome distribuída pela plataforma (ADR-0064): os
+    /// computadores autorizados (com o inventário que cada um informa) e as versões publicadas da
+    /// extensão e do atualizador. <c>Consulta</c> = ver; <c>Inclusao</c> = publicar versão;
+    /// <c>Edicao</c> = promover versão e trocar o canal de um computador; <c>Exclusao</c> = retirar
+    /// versão e revogar computador. Baixar o instalador e autorizar o próprio computador NÃO pedem
+    /// este módulo: basta estar logado (mesma regra do envio das capturas).</summary>
+    ExtensaoNavegador = 80,
 }

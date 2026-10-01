@@ -37,6 +37,7 @@ import {
   Megaphone,
   MessageCircle,
   Network,
+  Puzzle,
   Route,
   ScanLine,
   ScrollText,
@@ -824,6 +825,13 @@ export const SECOES: SecaoMenu[] = [
         icone: BellRing,
         modulo: 'Erros',
         descricao: 'Quem recebe no WhatsApp os erros da plataforma, o que é reportado e o que já saiu.',
+      },
+      {
+        rotulo: 'Extensão Chrome',
+        to: '/app/extensao/gerenciar',
+        icone: Puzzle,
+        modulo: 'ExtensaoNavegador',
+        descricao: 'Computadores com a extensão, versões publicadas da extensão e do atualizador, e o que está em produção.',
       },
       {
         rotulo: 'Sandbox (QA)',

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0064 — Extensão do Chrome distribuída pela plataforma, com atualizador próprio nos computadores</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0064 — Extensão do Chrome distribuída pela plataforma, com atualizador próprio nos computadores</h1>
+<p><strong>Status:</strong> proposto (implementado localmente em 2026-10-01; falta deploy) · <strong>Data:</strong> 2026-10-01 <strong>Relacionado:</strong> <a href="./0043-instancia-por-municipio.md">ADR-0043</a> (uma instância por município; nada institucional em código) · <a href="./0046-rename-smsmais.md">ADR-0046</a> (carve-outs de nome) · <a href="./0019-anexos-exame-pwa-qr-armazenamento.md">ADR-0019</a> (token próprio para quem não tem login)</p>
+<h2>Contexto</h2>
+<p>A extensão do Chrome (<code>SMSMais.chrome/</code>) é carregada <strong>sem compactação</strong>, em modo desenvolvedor, nos computadores da recepção. Até aqui a distribuição era um repositório <strong>público</strong> no GitHub mais um <code>.bat</code> em cada PC (<code>git pull</code>), e depois alguém clicava em ↻ no <code>chrome://extensions</code>. Três problemas:</p>
+<ul>
+<li><strong>O código da extensão ficava exposto</strong> num repositório público.</li>
+<li><strong>Atualizar dependia de gente</strong> em cada computador, e de ter Git instalado.</li>
+<li><strong>Não havia fronteira entre desenvolver e entregar</strong>: a pasta de desenvolvimento sobe de versão</li>
+</ul>
+<p>  várias vezes por hora; o que os PCs recebem tem de ser uma decisão.</p>
+<p>Pedido do Bernardo (30/09 e 01/10/2026), em ordem: um programa que se atualize sozinho e atualize a extensão, recarregando-a sem clique; que instale <strong>sem administrador</strong> e abra no logon; com o conteúdo da extensão <strong>só para quem está autenticado na plataforma</strong>; distinguindo dev de produção, no programa e na extensão; <strong>tudo hospedado no nosso servidor</strong> (nada no GitHub), com um botão "Extensão Chrome" no painel; ícone do "+" da Automais na bandeja; pasta comum a todos os usuários do PC; e, em Sistema, um gerenciador de versões — com uma API para publicar por script, como opção da tela.</p>
+<p>Medido antes de decidir (Chrome for Testing 154):</p>
+<ul>
+<li><code>chrome.runtime.reload()</code> numa extensão sem compactação **relê tudo do disco, inclusive o</li>
+</ul>
+<p>  manifest**; e <code>fetch</code> do próprio <code>manifest.json</code> devolve o que está no disco. Logo a extensão   consegue perceber sozinha que foi trocada.</p>
+<ul>
+<li>Com o <strong>modo desenvolvedor desligado</strong>, o Chrome <strong>desativa</strong> a extensão sem compactação.</li>
+<li>O estado da extensão é legível, sem falar com o Chrome, no <code>Secure Preferences</code> do perfil.</li>
+<li>Não há como um programa <strong>sem administrador</strong> instalar extensão no Chrome: o "Carregar sem</li>
+</ul>
+<p>  compactação" continua manual, uma vez por perfil.</p>
+<h2>Decisão</h2>
+<h3>1. Um atualizador genérico nos computadores (<code>SMSMais.atualizador/</code>)</h3>
+<p>Programa em Rust, um executável de ≈650 KB sem dependências, <strong>igual para todo município</strong>. Instala em <code>C:\SMSMais\</code> (pasta comum, criável por usuário comum), abre no logon pela chave <code>Run</code> do usuário, e fica na bandeja com o "+" da Automais. Nada institucional dentro dele: o endereço da plataforma e o token chegam por configuração (<code>config.json</code>), o token cifrado por DPAPI de <strong>máquina</strong>.</p>
+<p>A cada 10 minutos ele pergunta à plataforma a versão publicada; se mudou, baixa o pacote, troca os arquivos da pasta (troca atômica por arquivo, <code>manifest.json</code> <strong>por último</strong>) e a própria extensão se recarrega. Ele também se atualiza (SHA-256 conferido, executável novo ensaiado antes da troca) e avisa quando o Chrome está aberto sem a extensão em ordem.</p>
+<h3>2. Quem recarrega a extensão é a extensão</h3>
+<p><code>background.js</code> compara, a cada batimento (30 s), a versão do <code>manifest.json</code> do disco com a que está rodando, e chama <code>chrome.runtime.reload()</code>. Não há canal entre o atualizador e o Chrome: o sinal é o próprio arquivo. Vale também na máquina de desenvolvimento.</p>
+<h3>3. A plataforma hospeda tudo, e só entrega a computador autorizado</h3>
+<p>Quatro tabelas em <code>smsmarica</code>: <code>extensao_pacote</code> (o arquivo, em <code>bytea</code>), <code>extensao_dispositivo</code>, <code>extensao_ativacao</code> e <code>extensao_chave_publicacao</code>. Rotas em <code>/extensao</code> (<code>ExtensaoDistribuicaoController</code>).</p>
+<ul>
+<li><strong>Autorização é de pessoa logada, para um computador.</strong> O computador recebe um <strong>token próprio</strong></li>
+</ul>
+<p>  (só o hash fica no banco), revogável na tela. Não se digita senha no atualizador.   - Pelo <strong>instalador</strong>: o botão "Extensão Chrome" do painel entrega o executável com um rabicho no     fim do arquivo — <code>\n#SMSMAIS-INSTALADOR:{"api","codigo"}</code> —, onde <code>codigo</code> é um código de     ativação <strong>já autorizado por quem baixou</strong>, de uso único, válido por 1 hora. A pessoa baixa,     executa e o computador fica ligado. O atualizador se instala <strong>sem</strong> o rabicho.   - Pelo <strong>Configurar</strong>: o atualizador pede um código, abre <code>/app/extensao/autorizar/&lt;código&gt;</code> no     navegador, e alguém logado autoriza (10 minutos). O código vai no <strong>caminho</strong> da URL porque a     ida ao login guarda só o pathname.</p>
+<ul>
+<li><strong>Baixar o instalador e autorizar um computador não pedem módulo</strong> — basta estar logado, mesma</li>
+</ul>
+<p>  regra do envio das capturas. A <strong>administração</strong> pede o módulo novo <code>ExtensaoNavegador = 80</code>.</p>
+<ul>
+<li>A cada consulta o computador informa o próprio estado (versão da extensão, do atualizador e a</li>
+</ul>
+<p>  situação no Chrome): é o <strong>inventário</strong> da tela de computadores.</p>
+<h3>4. Dev × produção: publicar é um ato, em dois canais</h3>
+<p>O que está na pasta de desenvolvimento não chega a computador nenhum. Só chega o que foi <strong>publicado</strong> (<code>extensao_pacote</code>), e a versão publicada nasce no canal de <strong>teste</strong>; <strong>promovida</strong>, vai para todos.</p>
+<ul>
+<li>O <strong>canal é atributo do computador na plataforma</strong> (troca-se na tela, sem tocar o PC). Computador</li>
+</ul>
+<p>  de teste recebe a mais nova publicada; de produção, a mais nova promovida.</p>
+<ul>
+<li><strong>Computador não rebaixa.</strong> Por isso não se publica versão igual ou menor que a última (inclusive</li>
+</ul>
+<p>  as retiradas), e o conserto de versão ruim é publicar uma maior. "Retirar" só tira de circulação.</p>
+<ul>
+<li><strong>O pacote é conferido ao publicar com as mesmas regras do atualizador</strong> (manifest válido,</li>
+</ul>
+<p>  arquivos que ele manda carregar presentes, caminho que não sai da pasta). Um pacote que o   computador recusaria não chega a ser anunciado.</p>
+<ul>
+<li>O instalador é sempre o atualizador <strong>em produção</strong>.</li>
+</ul>
+<h3>5. API de publicação é opção da tela, com chave de uso restrito</h3>
+<p>Publicar pelo painel é o caminho normal. Quem administra pode <strong>ligar</strong> a publicação por API gerando uma chave (<code>X-Chave-Publicacao</code>), mostrada uma única vez, uma ativa por vez. Ela serve só para listar, publicar e promover (<code>/extensao/publicacao/*</code>) — <strong>não</strong> é um API Token do sistema e não abre mais nada. O que entra por ela fica marcado ("pela API").</p>
+<h2>Consequências</h2>
+<ul>
+<li><strong>O repositório público <code>SMSMais/extensao-sisreg</code> e o <code>publicar.sh</code> deixam de ser o caminho.</strong></li>
+</ul>
+<p>  A migração dos PCs que já têm a extensão: instalar o atualizador pelo painel (ele adota a pasta   <code>C:\SMSMais\extensao-sisreg</code> que o <code>.bat</code> criou, sem refazer o "Carregar sem compactação") e   carregar uma última vez uma versão ≥ 0.5.33 (a que sabe se recarregar).</p>
+<ul>
+<li><strong>O modo desenvolvedor passa a ser condição de funcionamento vigiada</strong>: o atualizador avisa na</li>
+</ul>
+<p>  bandeja e a tela de computadores mostra em vermelho.</p>
+<ul>
+<li><strong>Extensão publicada com service worker quebrado não se recarrega mais sozinha.</strong> A correção</li>
+</ul>
+<p>  chega ao disco, mas só entra no próximo ↻ manual ou quando o Chrome reabrir. Daí o canal de teste.</p>
+<ul>
+<li><strong>Pasta comum</strong> = qualquer usuário do Windows daquele PC altera o que os outros usam. É o mesmo</li>
+</ul>
+<p>  risco que já existia em <code>C:\SMSMais\extensao-sisreg</code>.</p>
+<ul>
+<li><strong>Executável sem assinatura digital</strong>: o Windows pode pedir confirmação ao executar o arquivo</li>
+</ul>
+<p>  baixado. Com assinatura, o rabicho do instalador precisa de outro transporte (o nome do arquivo),   porque acrescentar bytes invalida a assinatura.</p>
+<ul>
+<li>O perfil Admin ganha o módulo 80 pelo seeder (roda com <code>AutoMigrate</code>); perfis próprios precisam</li>
+</ul>
+<p>  ser marcados na tela de Perfis.</p>
+<ul>
+<li>Banco: os pacotes ficam em <code>bytea</code> (≈50 KB a extensão, ≈650 KB o atualizador, uma linha por</li>
+</ul>
+<p>  versão). A consulta de versão usa cache de 30 s em memória.</p>
+<h2>Alternativas consideradas</h2>
+<ul>
+<li><strong>Chrome Web Store / política corporativa</strong>: a loja expõe e demora; política exige administrador</li>
+</ul>
+<p>  e máquina gerenciada. Recusadas (ver <code>docs/automacao-navegador-opcoes.md</code>).</p>
+<ul>
+<li><strong>Manter o GitHub público só para o executável</strong>: foi o primeiro desenho; trocado pelo pedido de</li>
+</ul>
+<p>  hospedar tudo no servidor — fica uma origem só, com um controle de acesso só.</p>
+<ul>
+<li><strong>Native Messaging</strong> (a extensão entrega o pacote ao programa): dispensaria o token do</li>
+</ul>
+<p>  computador, mas faz a atualização depender de a extensão estar viva — uma versão quebrada nunca   mais se consertaria.</p>
+<ul>
+<li><strong>API Token do sistema para publicar</strong>: abre a API inteira. A chave própria faz uma coisa só.</li>
+<li><strong>C# com AOT</strong> no lugar de Rust: funcionaria; Rust deu o executável menor, sem runtime e sem</li>
+</ul>
+<p>  Visual C++ Redistributable nos PCs.</p>
+<h2>Como foi verificado (01/10/2026)</h2>
+<ul>
+<li>Atualizador: 29 testes; ensaio de ponta a ponta numa raiz isolada (instalar, autorizar, baixar,</li>
+</ul>
+<p>  canais, auto-atualização com recusas, revogação, modo desenvolvedor desligado, desinstalar).</p>
+<ul>
+<li>Backend: 29 testes contra Postgres real (bancada), rodados duas vezes seguidas.</li>
+<li><strong>O atualizador real contra a API real</strong> (subida localmente com <code>Workers:Desligados</code>, apontada</li>
+</ul>
+<p>  para a bancada): instalador baixado como usuário logado, autorização pelo rabicho e pelo   Configurar, publicação e promoção pela API de publicação, troca de canal, auto-atualização,   revogação.</p>
+<ul>
+<li>Painel: as três telas navegadas num navegador de teste, publicando e promovendo pela tela.</li>
+<li><strong>Não verificado</strong>: PC real da recepção (antivírus, proxy, disco trancado) e dois usuários do</li>
+</ul>
+<p>  Windows logados ao mesmo tempo.</p>
+</main>
+</body>
+</html>

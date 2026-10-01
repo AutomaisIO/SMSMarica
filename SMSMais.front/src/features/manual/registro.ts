@@ -6,6 +6,8 @@ import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendim
 import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoEsusSaoGoncalo } from '@/features/manual/conteudo/esusSaoGoncalo';
+import { artigoExtensaoChrome } from '@/features/manual/conteudo/extensaoChrome';
+import { artigoExtensaoChromeGerenciar } from '@/features/manual/conteudo/extensaoChromeGerenciar';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoIndicadoresRegulacao } from '@/features/manual/conteudo/indicadoresRegulacao';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
@@ -75,6 +77,8 @@ export const ARTIGOS: Artigo[] = [
   artigoAvisosConexao,
   artigoConfirmacoes,
   artigoEsusSaoGoncalo,
+  artigoExtensaoChrome,
+  artigoExtensaoChromeGerenciar,
   artigoFluxoAtendimentoWhatsApp,
   artigoIndicadoresRegulacao,
   artigoMensageria,
