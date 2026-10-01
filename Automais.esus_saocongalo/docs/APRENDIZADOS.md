@@ -167,6 +167,35 @@ Payloads exatos em `esus/telas.py`. Todas no legado (`:9001`), `POST {"arrFormDa
     fila só se descobre por diferença entre duas leituras.
 14. **Os `namespaces` do login-light não mudam o acesso a dado** (lista vazia = lista mínima = 215).
 
+### 5.2 Comparecimento: o ESUS SABE (01/10/2026)
+
+O que dizíamos até aqui ("o ESUS não informa comparecimento") estava errado — valia só para as duas
+listas que lemos. A informação existe na tela **Histórico de Atendimentos do Paciente**, a que a conta
+de Maricá tem acesso (`cadastro.prontuario.historicoGeralPaciente`). `probe_historico_paciente.py`,
+somente leitura, 10 pacientes:
+
+1. `pacientes/controller-paciente/buscar-historico-geral-paciente` — corpo
+   `{"arrFiltro": {pes_id, mod_id: null, periodoInicial, periodoFinal, rdg_regulacao: null,
+   limiteInicio, limiteFim}}` (**`arrFiltro`, não `arrFormData`**). Uma linha por pedido
+   (`id_fila`, `id` = id(s) do exame, às vezes `"78090,78093"`), módulo 33 = EXAMES. Não traz o status.
+2. `pacientes/controller-paciente/buscar-detalhes-historico-exame-paciente` — `{"idExame": id}`, sem
+   `arrFormData`. Devolve a **trilha do exame**, uma linha por evento (`tlg_nome`: AGENDADO, ALTERADO,
+   EXCLUÍDO, Transferência, **EFETIVADO**, **NÃO EFETIVADO**, ALTERADO NA EFETIVAÇÃO, MODIFICADO PARA EM
+   ABERTO), com `efl_id_exames_efetivacao` (**2 = efetivado, 3 = não efetivado, 1 = em aberto** — os
+   mesmos três estados do SISREG), `data_efetivacao` e `motivo_nao_efetivacao` ("Não Compareceu").
+   Também traz `fil_id` — é por ele que se casa com o espelho `esussg_solicitacao`.
+3. `buscar-detalhes-historico-exame-efetivacao-paciente` voltou **vazio** nos casos testados; não usar.
+
+Medido: VISATTO (retina) efetiva com regularidade (efetivado no dia ou em até 2 semanas; um "Não
+Compareceu"); Oftalmoclínica efetivou 5 dias depois; os agendamentos de 2019 no CMDI de SG nunca foram
+efetivados (campo vazio = a unidade nunca apontou, como o "em aberto" do SISREG). A efetivação chega
+com atraso, então releitura dos últimos ~31 dias vale aqui também.
+
+**Custo para produção:** 1 requisição por paciente (histórico) + 1 por exame. Os agendados de Maricá no
+SG são poucos (64 num trimestre em 30/09), então reler os que passaram nos últimos 31 dias custa
+dezenas de requisições por noite. Não implementado — a ficha segue mostrando "Sem registro de chegada"
+para o ESUS SG até a varredura passar a ler esse detalhe.
+
 ## 6. Trava de somente-leitura
 
 Três portas, três regras (código em `esus/client.py`):
@@ -191,6 +220,7 @@ Três portas, três regras (código em `esus/client.py`):
 | `probe_fila.py` | sonda 1 — fila de exame (padrão) ou `--consulta`; agregados + lista nominal em `capturas/` |
 | `probe_agendados.py` | sonda 2 — agendados pela fila (`--de/--ate`, `--consulta`); agendamentos únicos = declarado, e quantos pedidos; agregados + lista em `capturas/` |
 | `catalogar_endpoints.py` | lê o bundle público e gera `docs/ENDPOINTS.md` (736 ações do legado, REST, 312 queries, 108 mutations); `--filtro <regex>` para procurar |
+| `probe_historico_paciente.py` | sonda 3 — comparecimento pelo histórico do paciente (§5.2); `--pes <json>` com `[{pes_id, unidade, data}]`, senão amostra da captura de 2019 |
 
 As listas nominais (nome, CPF, CNS, telefone) vão para `capturas/` (gitignored) ou para `--saida`
 fora da árvore — **nunca** para o repositório.
@@ -199,9 +229,8 @@ fora da árvore — **nunca** para o repositório.
 
 - **Excluídos da fila** — `exames2/controller-paciente-excluidos-fila-exames/buscar` (o usuário
   tem `pacientesExcluidosFilaConsulta.exibir`; para exame, conferir).
-- **Histórico por pessoa** — `exames2/controller-fila-exame/buscar-filas-por-pessoa` e
-  `controller-exame-paciente-exames-2/buscar-historico-de-exames-agendados`: responde "esse
-  paciente já foi atendido no SG?".
+- ~~**Histórico por pessoa**~~ — respondido em §5.2 (01/10/2026): sim, pelo detalhe do exame no
+  histórico do paciente.
 - **Agendamento por dia / escala** (`exame2.agendamentoPorDia`, `escala`) — capacidade ofertada
   a Maricá por unidade executante.
 - **Cruzamento com o hub**: CPF (517/655) e CNS (653/655) contra `fhir.patient`, e o CNES no nome

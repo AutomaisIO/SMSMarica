@@ -182,7 +182,7 @@ não-ajax faz o A4J devolver a tela errada), `probe_busca_id.py`, `probe_carry.p
 
 ---
 
-## 5b. `Automais.esus_saocongalo` — ESUS de São Gonçalo ("Novo Esus"), 4 scripts
+## 5b. `Automais.esus_saocongalo` — ESUS de São Gonçalo ("Novo Esus"), 5 scripts
 
 Aberto em 30/09/2026. **ESUS é o produto da esusmais.com.br, NÃO o e-SUS do governo.** Virou a
 integração de produção do [ADR-0063](../docs/adr/0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md)
@@ -198,6 +198,7 @@ paginar: o total conta únicos, o offset conta linhas brutas); mapa de endpoints
 | `probe_fila.py` | o que Maricá tem na fila do SG? **~650 em exame** (retina/glaucoma/auditiva, mediana de 924 dias de espera), **0 em consulta** |
 | `probe_agendados.py` | quando/onde vão ser atendidos? 2019 inteiro: **1.352 agendamentos em 1.289 pedidos** (um pedido tem várias sessões); o SG quase não notifica (4 de 64 num período) |
 | `catalogar_endpoints.py` | o que o front sabe chamar? 736 ações do legado, 312 queries, 108 mutations — regex com barra **opcional** (sem ela achava só 164) |
+| `probe_historico_paciente.py` | o ESUS sabe se o paciente **compareceu**? **Sim** (01/10/2026): o detalhe do exame no histórico do paciente traz `efl_id_exames_efetivacao` 2 = EFETIVADO / 3 = NÃO EFETIVADO (`motivo_nao_efetivacao` "Não Compareceu") / 1 = EM ABERTO, com `data_efetivacao`. 1 req por paciente + 1 por exame. A lista de agendados NÃO traz |
 
 ---
 

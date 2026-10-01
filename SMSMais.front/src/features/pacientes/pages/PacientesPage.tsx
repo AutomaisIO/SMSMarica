@@ -3,6 +3,7 @@ import { AlertTriangle, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Avatar } from '@/shared/ui/Avatar';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
@@ -131,7 +132,10 @@ export function PacientesPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Pacientes</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-gray-900">Pacientes</h1>
+            <AjudaManual artigo="pacientes" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">
             Sem busca, exibe os <strong>10 últimos cadastros</strong>. Para procurar, digite{' '}
             <strong>nome</strong> (qualquer parte, separadas por espaço) ou <strong>CPF</strong>{' '}

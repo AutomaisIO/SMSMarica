@@ -15,6 +15,7 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
@@ -1251,6 +1252,7 @@ export function PacienteDetalhePage() {
               </h1>
               {p ? <NomePacienteComResumo pacienteId={p.id} /> : null}
               {p ? <StatusBadge ativo={p.ativo} /> : null}
+              <AjudaManual artigo="pacientes" secao={vista === 'agendamentos' ? 'selos' : undefined} />
             </div>
             {p ? (
               <p className="text-sm text-gray-500">

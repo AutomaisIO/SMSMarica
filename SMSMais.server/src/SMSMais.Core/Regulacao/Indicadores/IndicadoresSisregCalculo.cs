@@ -106,7 +106,41 @@ internal static class IndicadoresSisregCalculo
             fCas[m] = Convert.ToInt32(l[2], CultureInfo.InvariantCulture);
         }
         var temFaltas = fTot.Count > 0;
-        var atendidas = p.Meses.Where(m => fCas.ContainsKey(m) && util.ContainsKey(m)).ToDictionary(m => m, m => util[m] - fCas[m]);
+
+        // O SISREG tem TRÊS desfechos para o agendamento que passou, todos apontados pela unidade
+        // executante: chegada confirmada, falta registrada, ou nada (pendente de confirmação = em
+        // aberto). "Agendamentos − faltas" contava o em aberto como atendido (~10% dos agendamentos em
+        // jan–jul/2026; ver reference SisregFaltaOficial). Confirmado = recepção registrou, ou a coluna
+        // relida pela varredura diz CONFIRMADO, ou — sem releitura — a linha guardada diz CONFIRMADO.
+        var chegadas = await sql.LinhasAsync($"""
+            select to_char(x.dia,'YYYY-MM'), count(*) filter (where x.conf), count(*) filter (where not x.conf and x.falta)
+            from (
+                select (s.data_agendada at time zone '{Fuso}')::date dia,
+                       (s.autorizado_em is not null
+                        or coalesce(s.chegada_confirmada_sisreg,
+                                    upper(trim(split_part(s.raw_sisreg, ';', 35))) = 'CONFIRMADO')) conf,
+                       exists (select 1 from smsmarica.sisreg_falta f
+                               where f.codigo_solicitacao = s.codigo_solicitacao
+                                 and f.data_execucao = (s.data_agendada at time zone '{Fuso}')::date) falta
+                {Base} and s.cancelado_em is null and s.data_agendada is not null
+                  and (s.data_agendada at time zone '{Fuso}')::date between @p0 and @p1) x
+            group by 1
+            """, ct, ini, fim);
+        var confirmados = new Dictionary<string, int>(); var faltaSemConf = new Dictionary<string, int>();
+        foreach (var l in chegadas)
+        {
+            var m = (string)l[0]!;
+            confirmados[m] = Convert.ToInt32(l[1], CultureInfo.InvariantCulture);
+            faltaSemConf[m] = Convert.ToInt32(l[2], CultureInfo.InvariantCulture);
+        }
+        // Em aberto só nos meses com a lista de faltas lida por inteiro — sem ela, falta e em aberto
+        // não se separam.
+        var emAberto = p.Meses.Where(m => fCas.ContainsKey(m) && util.ContainsKey(m))
+            .ToDictionary(m => m, m => Math.Max(0, util[m] - confirmados.GetValueOrDefault(m) - faltaSemConf.GetValueOrDefault(m)));
+        const string NotaConfirmados =
+            "Chegada confirmada pela unidade executante no SISREG (ou registrada pela recepção). Os meses mais recentes sobem conforme a varredura diária relê a chegada dos últimos 31 dias.";
+        const string NotaEmAberto =
+            "Agendamento que já passou e a unidade não apontou nem chegada nem falta (\"pendente de confirmação\" no SISREG). Não é falta.";
         secoes.Add(new SecaoIndicadorDto("absenteismo", "Absenteísmo",
             "Faltas pela Consulta de Absenteísmo por Unidade de Saúde do SISREG (agendamentos em que a unidade executante registrou falta), casadas com os agendamentos do mês. Agendamento em que a unidade não apontou nem chegada nem falta não entra como falta.",
             false,
@@ -117,7 +151,9 @@ internal static class IndicadoresSisregCalculo
                 f.Serie("Absenteísmo", f.Pct(fCas, util), temFaltas ? SeloIndicador.Calculado : SeloIndicador.Indisponivel,
                     "Faltas casadas com os agendamentos (mesmo código e mesma data) ÷ agendamentos do mês.",
                     FormatoIndicador.Percentual, destaque: true, anual: f.PctAnual(fCas, util)),
-                f.Serie("Atendidos (agendamentos − faltas)", atendidas, temFaltas ? SeloIndicador.Calculado : SeloIndicador.Indisponivel),
+                f.Serie("Comparecimento confirmado", confirmados, SeloIndicador.Parcial, NotaConfirmados),
+                f.Serie("Em aberto (sem apontamento da unidade)", emAberto,
+                    temFaltas ? SeloIndicador.Calculado : SeloIndicador.Indisponivel, NotaEmAberto),
                 f.Serie("Faltas sem agendamento correspondente na base", fTot.ToDictionary(kv => kv.Key, kv => kv.Value - fCas[kv.Key]),
                     SeloIndicador.Calculado, "Linha de auditoria: falta oficial cujo agendamento não está na base espelhada (em geral, remarcado ou de unidade fora da varredura)."),
             ],
@@ -204,10 +240,10 @@ internal static class IndicadoresSisregCalculo
         var rotSit = new Dictionary<string, string> { ["4"] = "devolvidas pelo regulador", ["6"] = "negadas pelo regulador", ["3"] = "canceladas antes do agendamento" };
         var motivos = await MotivosAsync(sql, ini, fim, canc, ct);
         secoes.Add(new SecaoIndicadorDto("desfechos", "Atendidas, canceladas e excluídas",
-            "Desfecho das solicitações: atendidas (agendamento cumprido), marcações canceladas (pela data do cancelamento) e solicitações excluídas da fila sem agendamento (pela data da solicitação).",
+            "Desfecho das solicitações: atendidas (chegada confirmada pela unidade), marcações canceladas (pela data do cancelamento) e solicitações excluídas da fila sem agendamento (pela data da solicitação). Agendamento em aberto — a unidade não apontou nada — não conta como atendido.",
             false,
             [
-                f.Serie("Atendidas (agendamentos − faltas)", atendidas, temFaltas ? SeloIndicador.Calculado : SeloIndicador.Indisponivel, destaque: true),
+                f.Serie("Atendidas (chegada confirmada)", confirmados, SeloIndicador.Parcial, NotaConfirmados, destaque: true),
                 f.Serie("Marcações canceladas", canc, canc.Count > 0 ? SeloIndicador.Oficial : SeloIndicador.Indisponivel,
                     "Consulta de Marcações Canceladas do SISREG, pela data do cancelamento.", destaque: true),
                 f.Serie("Excluídas da fila sem agendamento", excTot, seloDesf,

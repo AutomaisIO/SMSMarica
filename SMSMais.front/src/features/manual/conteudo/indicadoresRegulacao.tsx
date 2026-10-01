@@ -236,9 +236,12 @@ export const artigoIndicadoresRegulacao: Artigo = {
             <Item>
               <strong>SISREG</strong>: faltas da consulta de absenteísmo do próprio SISREG — os agendamentos
               em que a unidade executante <strong>registrou falta</strong> —, casadas com os agendamentos do
-              mês. Agendamento que a unidade deixou <strong>em aberto</strong> (não apontou chegada nem
-              falta) não conta como falta. A linha “Faltas sem agendamento correspondente” é auditoria:
-              falta oficial cujo agendamento não está na base (em geral, remarcado).
+              mês. Os agendamentos do mês se dividem em três: <strong>comparecimento confirmado</strong>,{' '}
+              <strong>faltas</strong> e <strong>em aberto</strong> (a unidade não apontou chegada nem falta —
+              não conta como falta nem como atendido). O em aberto só aparece nos meses com a lista de faltas
+              completa; o confirmado dos meses mais recentes sobe conforme a varredura diária relê as chegadas.
+              A linha “Faltas sem agendamento correspondente” é auditoria: falta oficial cujo agendamento não
+              está na base (em geral, remarcado).
             </Item>
             <Item>
               <strong>SER e SERNIT</strong>: o registro de chegada que a unidade executora faz (“Chegada no
@@ -260,9 +263,9 @@ export const artigoIndicadoresRegulacao: Artigo = {
           <Sub>Atendidas, canceladas e excluídas</Sub>
           <Lista>
             <Item>
-              <strong>SISREG</strong>: atendidas (agendamentos − faltas — o número inclui os agendamentos que
-              a unidade deixou em aberto, sem apontar chegada nem falta), marcações canceladas (pela data do
-              cancelamento) e solicitações excluídas da fila sem agendamento — devolvidas, negadas ou
+              <strong>SISREG</strong>: atendidas (chegada confirmada pela unidade executante ou registrada pela
+              recepção — o agendamento que a unidade deixou em aberto não conta), marcações canceladas (pela
+              data do cancelamento) e solicitações excluídas da fila sem agendamento — devolvidas, negadas ou
               canceladas antes do agendamento (pela data da solicitação).
             </Item>
             <Item>
