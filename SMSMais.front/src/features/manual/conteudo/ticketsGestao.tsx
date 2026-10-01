@@ -92,7 +92,7 @@ export const artigoTicketsGestao: Artigo = {
                   'Ticket ainda Aberto ou Em análise que a equipe já respondeu ao autor. Serve para não responder duas vezes.',
               },
               {
-                termo: <SeloRef cor="info">Enviado à IA</SeloRef>,
+                termo: <SeloRef cor="violeta">Enviado à IA</SeloRef>,
                 descricao: 'Já foi encaminhado ao Agente IA (veja abaixo).',
               },
             ]}
@@ -189,7 +189,7 @@ export const artigoTicketsGestao: Artigo = {
                   <>
                     Depois do primeiro envio, o botão vira{' '}
                     <BotaoRef variante="outline">Acompanhar no Agente IA</BotaoRef> e a linha ganha
-                    o selo <SeloRef cor="info">Enviado à IA</SeloRef>.
+                    o selo <SeloRef cor="violeta">Enviado à IA</SeloRef>.
                   </>
                 ),
               },

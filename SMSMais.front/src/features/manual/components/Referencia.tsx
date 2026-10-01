@@ -42,7 +42,7 @@ export function SeloRef({
   cor = 'gray',
 }: {
   children: ReactNode;
-  cor?: 'gray' | 'info' | 'sucesso' | 'alerta' | 'erro';
+  cor?: 'gray' | 'info' | 'sucesso' | 'alerta' | 'erro' | 'violeta';
 }) {
   return (
     <span
@@ -53,6 +53,7 @@ export function SeloRef({
         cor === 'sucesso' && 'bg-emerald-100 text-emerald-700',
         cor === 'alerta' && 'bg-amber-100 text-amber-800',
         cor === 'erro' && 'bg-red-100 text-red-700',
+        cor === 'violeta' && 'bg-violet-100 text-violet-700',
       )}
     >
       {children}
