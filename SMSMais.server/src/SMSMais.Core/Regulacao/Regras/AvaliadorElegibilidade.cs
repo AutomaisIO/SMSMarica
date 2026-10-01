@@ -32,7 +32,7 @@ public sealed record PerguntaPendenteDto(
     string Pergunta,
     SistemaRegulacao? Sistema,
     SeveridadeRegraRegulacao Severidade,
-    IReadOnlyList<string>? Opcoes = null);
+    IReadOnlyList<OpcaoLista>? Opcoes = null);
 
 public sealed record DocumentoPendenteDto(
     Guid RegraId,
@@ -259,11 +259,10 @@ public static class AvaliadorElegibilidade
     }
 
     /// <summary>
-    /// As opções de uma pergunta de lista. Vazia = pergunta simples. JSON torto conta como
-    /// pergunta simples: a regra continua perguntando, só sem a lista.
+    /// As opções de uma pergunta de lista (formato versionado em <see cref="OpcoesLista"/>). Vazia =
+    /// pergunta simples. JSON torto conta como pergunta simples: a regra continua perguntando.
     /// </summary>
-    public static IReadOnlyList<string> OpcoesDa(RegulacaoRegra r) =>
-        [.. Lista(r.OpcoesJson).Where(o => !string.IsNullOrWhiteSpace(o)).Select(o => o.Trim())];
+    public static IReadOnlyList<OpcaoLista> OpcoesDa(RegulacaoRegra r) => OpcoesLista.LerDaRegra(r.OpcoesJson);
 
     /// <summary>O que a severidade faz quando a regra não é atendida.</summary>
     private static ResultadoRegraRegulacao Falha(RegulacaoRegra r) => r.Severidade switch

@@ -255,4 +255,80 @@ public class RegulacaoCatalogoSyncTests(PostgresFixture fixture)
         orfao.Should().NotBeNull();
         orfao!.Ativo.Should().BeFalse();
     }
+
+    // ------------------------------------------------------------ combo posicional (01/10/2026)
+
+    [Fact]
+    public async Task Numero_do_combo_que_desliza_nao_leva_a_origem_para_outro_procedimento()
+    {
+        // O que aconteceu em produção em 22/09 e 30/09: a SES acrescentou recursos e os `value`
+        // do combo deslizaram. A sincronização do espelho grava o rótulo novo no número antigo —
+        // aqui, os dois recursos trocam de número entre si.
+        await using var db = fixture.CriarDbContext();
+        var rotuloA = $"GENETICA TESTE {Sufixo()}";
+        var rotuloB = $"CARDIOLOGIA TESTE {Sufixo()}";
+        var a = await RecursoSerAsync(db, rotuloA);
+        var b = await RecursoSerAsync(db, rotuloB);
+
+        var (servico, _) = Servico(db);
+        await servico.SincronizarAsync(CancellationToken.None);
+
+        var antes = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
+            .Where(o => o.SerCatalogoRecursoId == a.Id || o.SerCatalogoRecursoId == b.Id)
+            .ToDictionaryAsync(o => o.RotuloExterno, o => o.ProcedimentoId);
+
+        var ra = await db.SerCatalogoRecursos.FirstAsync(x => x.Id == a.Id);
+        var rb = await db.SerCatalogoRecursos.FirstAsync(x => x.Id == b.Id);
+        (ra.Rotulo, rb.Rotulo) = (rotuloB, rotuloA);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await servico.SincronizarAsync(CancellationToken.None);
+
+        var depois = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
+            .Include(o => o.Procedimento)
+            .Where(o => o.Sistema == SistemaRegulacao.Ser && (o.RotuloExterno == rotuloA || o.RotuloExterno == rotuloB))
+            .ToListAsync();
+
+        depois.Should().HaveCount(2, "nenhuma origem nova: os dois recursos continuam os mesmos");
+        foreach (var o in depois)
+        {
+            o.ProcedimentoId.Should().Be(antes[o.RotuloExterno], "a origem acompanha o recurso, não o número");
+            o.Procedimento!.NomeCanonico.Should().Be(o.RotuloExterno);
+            o.Ativo.Should().BeTrue();
+        }
+
+        // A chave segue o número de HOJE — é ela que monta o formulário e viaja no envio.
+        depois.Single(o => o.RotuloExterno == rotuloA).ChaveExterna.Should().EndWith($"|{b.Valor}|NAO_AE");
+    }
+
+    [Fact]
+    public async Task Recurso_novo_no_numero_de_um_que_saiu_ganha_procedimento_proprio()
+    {
+        await using var db = fixture.CriarDbContext();
+        var rotuloVelho = $"SAIU DO COMBO TESTE {Sufixo()}";
+        var rotuloNovo = $"ENTROU NO COMBO TESTE {Sufixo()}";
+        var r = await RecursoSerAsync(db, rotuloVelho);
+
+        var (servico, _) = Servico(db);
+        await servico.SincronizarAsync(CancellationToken.None);
+        var velha = await db.RegulacaoProcedimentoOrigens.AsNoTracking().FirstAsync(o => o.SerCatalogoRecursoId == r.Id);
+
+        var linha = await db.SerCatalogoRecursos.FirstAsync(x => x.Id == r.Id);
+        linha.Rotulo = rotuloNovo;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await servico.SincronizarAsync(CancellationToken.None);
+
+        var antiga = await db.RegulacaoProcedimentoOrigens.AsNoTracking().FirstAsync(o => o.Id == velha.Id);
+        antiga.Ativo.Should().BeFalse("o recurso dela saiu do combo");
+        antiga.RotuloExterno.Should().Be(rotuloVelho, "antes, a origem era RENOMEADA para o recurso que chegou");
+
+        var nova = await db.RegulacaoProcedimentoOrigens.AsNoTracking().Include(o => o.Procedimento)
+            .FirstAsync(o => o.Sistema == SistemaRegulacao.Ser && o.RotuloExterno == rotuloNovo);
+        nova.Ativo.Should().BeTrue();
+        nova.ProcedimentoId.Should().NotBe(velha.ProcedimentoId);
+        nova.Procedimento!.NomeCanonico.Should().Be(rotuloNovo);
+    }
 }

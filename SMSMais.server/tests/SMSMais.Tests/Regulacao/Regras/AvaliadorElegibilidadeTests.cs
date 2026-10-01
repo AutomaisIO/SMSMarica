@@ -298,7 +298,7 @@ public class AvaliadorElegibilidadeTests
         var regra = Lista(RespostaRegraRegulacao.Nao, "Genitália ambígua", "Doenças Raras");
 
         Avaliar([regra]).PerguntasPendentes.Should().ContainSingle()
-            .Which.Opcoes.Should().Equal("Genitália ambígua", "Doenças Raras");
+            .Which.Opcoes!.Select(o => o.Texto).Should().Equal("Genitália ambígua", "Doenças Raras");
     }
 
     [Fact]

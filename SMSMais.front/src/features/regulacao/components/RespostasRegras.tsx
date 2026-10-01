@@ -75,7 +75,7 @@ function ListaRespostas({ itens }: { itens: RespostaRegraRegistrada[] }) {
               {r.opcoesMarcadas.length > 0 && (
                 <ul className="mt-0.5 list-inside list-disc text-xs text-slate-700">
                   {r.opcoesMarcadas.map((o) => (
-                    <li key={o}>{o}</li>
+                    <li key={o.id}>{o.texto}</li>
                   ))}
                 </ul>
               )}

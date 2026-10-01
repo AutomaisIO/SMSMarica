@@ -199,7 +199,7 @@ export async function obterElegibilidade(id: string): Promise<AvaliacaoElegibili
   return data;
 }
 
-/** `opcoes`: nas perguntas de lista respondidas "Sim", as opções marcadas, por regra. */
+/** `opcoes`: nas perguntas de lista respondidas "Sim", os ids das opções marcadas, por regra. */
 export async function responderRegras(
   id: string,
   respostas: Record<string, RespostaRegraRegulacao>,

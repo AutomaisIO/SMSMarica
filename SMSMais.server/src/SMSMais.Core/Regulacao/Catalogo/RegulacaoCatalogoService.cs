@@ -12,6 +12,7 @@ using SMSMais.Core.Identidade;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura.Sigtap;
 using SMSMais.Core.Inteligencia.Provedores;
 using SMSMais.Core.Regulacao.Catalogo.Dtos;
+using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.EsusSg;
@@ -51,9 +52,14 @@ public sealed class RegulacaoCatalogoService(
         var existentes = await db.RegulacaoProcedimentoOrigens
             .Include(o => o.Procedimento)
             .ToListAsync(ct);
-        var porChave = existentes.ToDictionary(o => (o.Sistema, o.ChaveExterna));
 
         var agora = DateTime.UtcNow;
+
+        // Antes de casar por chave, devolve a cada origem dos combos posicionais a chave que o
+        // recurso dela tem HOJE — ver `RealinharPosicionaisAsync`.
+        await RealinharPosicionaisAsync(desejadas, existentes, agora, ct);
+        var porChave = existentes.ToDictionary(o => (o.Sistema, o.ChaveExterna));
+
         var usuario = usuarioAtual.UsuarioId;
         int novas = 0, canonicosNovos = 0;
 
@@ -132,6 +138,93 @@ public sealed class RegulacaoCatalogoService(
             novas, desativadas, canonicosNovos, gerados, semEmbedding, sugestoes);
     }
 
+    // ---------------------------------------------------------------- combos posicionais
+
+    /// <summary>
+    /// Sistemas cuja chave externa é o <c>value</c> de um combo — <b>posição, não identidade</b>.
+    /// O SISREG fica de fora: a chave dele é o código SIGTAP, que não muda.
+    /// </summary>
+    private static readonly SistemaRegulacao[] Posicionais =
+        [SistemaRegulacao.Ser, SistemaRegulacao.Sernit, SistemaRegulacao.EsusSg];
+
+    /// <summary>Quem o recurso É, independente do número que o combo deu a ele hoje.</summary>
+    private static string Identidade(SistemaRegulacao sistema, string? ramo, string chave, string rotulo) =>
+        $"{(int)sistema}|{ramo}|{chave.Split('|')[0]}|{ChaveRotulo.Normalizar(rotulo)}";
+
+    /// <summary>
+    /// Realinha as origens dos combos posicionais pelo RÓTULO antes do casamento por chave.
+    ///
+    /// <para><b>Por que existe:</b> o <c>value</c> do combo do SER desliza quando a SES acrescenta
+    /// um recurso (medido em 22/09 e 30/09/2026: 1030 → 1067). Casando por chave, a origem que
+    /// tinha o número 1032 era RENOMEADA para o recurso que passou a ocupar o 1032 — e continuava
+    /// ligada ao procedimento antigo. Foram 320 origens do SER e 54 do SERNIT ligadas ao
+    /// procedimento errado: o formulário de "Genética Pediátrica" saía com os campos de
+    /// "Cardiologia - Hipertensão Arterial Resistente".</para>
+    ///
+    /// <para>Aqui a origem acompanha o recurso dela (mesmo sistema, ramo, tipo e rótulo) para a
+    /// chave nova. Quem ocupa uma chave que agora é de outro recurso e não tem para onde ir — o
+    /// recurso dela saiu do combo — vira lápide: inativa, com a chave liberada. O laço principal
+    /// então cria procedimento novo para o recurso novo, em vez de renomear o velho.</para>
+    ///
+    /// <para>Duas gravações porque a troca de chaves entre origens esbarraria no índice único
+    /// <c>(sistema, chave_externa)</c> no meio do caminho.</para>
+    /// </summary>
+    private async Task RealinharPosicionaisAsync(
+        List<OrigemDesejada> desejadas, List<RegulacaoProcedimentoOrigem> existentes,
+        DateTime agora, CancellationToken ct)
+    {
+        var desejadasPos = desejadas.Where(d => Posicionais.Contains(d.Sistema)).ToList();
+        if (desejadasPos.Count == 0) return;
+
+        // A ativa primeiro e a confirmada por pessoa antes da automática: se o mesmo rótulo tiver
+        // duas origens, quem fica com o recurso é a que alguém já validou.
+        var porIdentidade = new Dictionary<string, RegulacaoProcedimentoOrigem>(StringComparer.Ordinal);
+        foreach (var o in existentes
+                     .Where(o => Posicionais.Contains(o.Sistema) && !o.ChaveExterna.StartsWith('~'))
+                     .OrderByDescending(o => o.Ativo)
+                     .ThenByDescending(o => o.ConfirmadoEm.HasValue)
+                     .ThenBy(o => o.CriadoEm))
+        {
+            porIdentidade.TryAdd(Identidade(o.Sistema, o.Ramo, o.ChaveExterna, o.RotuloExterno), o);
+        }
+
+        var destino = new Dictionary<RegulacaoProcedimentoOrigem, string>();
+        var donas = new HashSet<RegulacaoProcedimentoOrigem>();
+        foreach (var d in desejadasPos)
+        {
+            if (!porIdentidade.TryGetValue(Identidade(d.Sistema, d.Ramo, d.ChaveExterna, d.Rotulo), out var dona)
+                || !donas.Add(dona))
+            {
+                continue;
+            }
+            if (dona.ChaveExterna != d.ChaveExterna) destino[dona] = d.ChaveExterna;
+        }
+
+        var chavesDesejadas = desejadasPos.Select(d => (d.Sistema, d.ChaveExterna)).ToHashSet();
+        var lapides = existentes
+            .Where(o => Posicionais.Contains(o.Sistema) && !donas.Contains(o)
+                        && chavesDesejadas.Contains((o.Sistema, o.ChaveExterna)))
+            .ToList();
+
+        if (destino.Count == 0 && lapides.Count == 0) return;
+
+        foreach (var o in destino.Keys.Concat(lapides))
+        {
+            o.ChaveExterna = $"~{o.Id:N}";
+            o.AtualizadoEm = agora;
+        }
+        foreach (var o in lapides) o.Ativo = false;
+        await db.SaveChangesAsync(ct);
+
+        foreach (var (o, chave) in destino) o.ChaveExterna = chave;
+        await db.SaveChangesAsync(ct);
+
+        log.LogInformation(
+            "Catálogo da regulação: {Movidas} origem(ns) acompanharam o recurso para o número novo; "
+            + "{Lapides} ficaram sem recurso no combo e foram inativadas.",
+            destino.Count, lapides.Count);
+    }
+
     // ---------------------------------------------------------------- origens
 
     private sealed record OrigemDesejada(
@@ -156,9 +249,17 @@ public sealed class RegulacaoCatalogoService(
             SistemaRegulacao.Sisreg, p.Codigo, p.Nome, null,
             TipoDoNomeSisreg(p.Nome), p.Id, null, null)));
 
-        var ser = await db.SerCatalogoRecursos.AsNoTracking()
-            .Select(r => new { r.Id, r.Tipo, r.Valor, r.Rotulo, r.AmbulatorioEstadual })
+        // Só o que estava no combo na ÚLTIMA listagem de cada (tipo, ramo). O espelho guarda os
+        // números que saíram (é como se enxerga o que saiu do ar), mas o SER renumera o combo
+        // inteiro — em 30/09/2026 os números iam de 1038 em diante, e as linhas de agosto (988 a
+        // 1037) ficaram com rótulos velhos. Lidas como vivas, viravam origens duplicadas.
+        var serTodos = await db.SerCatalogoRecursos.AsNoTracking()
+            .Select(r => new { r.Id, r.Tipo, r.Valor, r.Rotulo, r.AmbulatorioEstadual, r.SincronizadoEm })
             .ToListAsync(ct);
+        var ser = serTodos
+            .GroupBy(r => (r.Tipo, r.AmbulatorioEstadual))
+            .SelectMany(g => SoDaUltimaListagem(g, r => r.SincronizadoEm))
+            .ToList();
         lista.AddRange(ser.Select(r => new OrigemDesejada(
             SistemaRegulacao.Ser,
             // O ramo entra na chave: o mesmo `valor` existe nos dois com formulários diferentes.
@@ -168,9 +269,13 @@ public sealed class RegulacaoCatalogoService(
             r.Tipo == TipoRecursoSer.Exame ? TipoProcedimentoRegulacao.Exame : TipoProcedimentoRegulacao.Consulta,
             null, r.Id, null)));
 
-        var sernit = await db.SernitCatalogoRecursos.AsNoTracking()
-            .Select(r => new { r.Id, r.Tipo, r.Valor, r.Rotulo })
+        var sernitTodos = await db.SernitCatalogoRecursos.AsNoTracking()
+            .Select(r => new { r.Id, r.Tipo, r.Valor, r.Rotulo, r.SincronizadoEm })
             .ToListAsync(ct);
+        var sernit = sernitTodos
+            .GroupBy(r => r.Tipo)
+            .SelectMany(g => SoDaUltimaListagem(g, r => r.SincronizadoEm))
+            .ToList();
         lista.AddRange(sernit.Select(r => new OrigemDesejada(
             SistemaRegulacao.Sernit,
             $"{(int)r.Tipo}|{r.Valor}",
@@ -203,6 +308,20 @@ public sealed class RegulacaoCatalogoService(
             else log.LogWarning("Chave duplicada no catálogo de origem: {Sistema} {Chave}", d.Sistema, d.ChaveExterna);
         }
         return unicas;
+    }
+
+    /// <summary>
+    /// As linhas da última listagem de um combo. A sincronização do espelho carimba com a MESMA
+    /// hora todas as linhas que vieram na listagem; o que ficou de uma listagem anterior tem hora
+    /// mais velha. A folga de uma hora cobre dados de antes de 01/10/2026, quando a leitura dos
+    /// campos ainda reescrevia o carimbo alguns minutos depois da listagem.
+    /// </summary>
+    private static IEnumerable<T> SoDaUltimaListagem<T>(IEnumerable<T> grupo, Func<T, DateTime> carimbo)
+    {
+        var linhas = grupo.ToList();
+        if (linhas.Count == 0) return [];
+        var ultima = linhas.Max(carimbo);
+        return linhas.Where(l => carimbo(l) >= ultima.AddHours(-1));
     }
 
     private static void LigarEspelho(RegulacaoProcedimentoOrigem origem, OrigemDesejada d)

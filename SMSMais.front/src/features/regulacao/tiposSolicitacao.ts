@@ -237,6 +237,12 @@ export type RegraAvaliada = {
   motivo: string | null;
 };
 
+/**
+ * Uma opção de pergunta de lista. O `id` é a identidade (é ele que vai na resposta); o `texto`
+ * é o que a pessoa lê. Espelha `OpcaoLista` (formato versionado no backend, `OpcoesLista`).
+ */
+export type OpcaoLista = { id: string; texto: string };
+
 export type PerguntaPendente = {
   regraId: string;
   pergunta: string;
@@ -246,7 +252,7 @@ export type PerguntaPendente = {
    * Pergunta de lista: as opções para marcar. Nulo = pergunta simples de Sim/Não. Marcar ao
    * menos uma é o "Sim"; "Nenhuma destas" é o "Não".
    */
-  opcoes?: string[] | null;
+  opcoes?: OpcaoLista[] | null;
 };
 
 /** O que a solicitação respondeu a uma regra, como ficou gravado — a leitura do agente. */
@@ -262,9 +268,9 @@ export type RespostaRegraRegistrada = {
   resultado: ResultadoRegraRegulacao;
   motivo: string | null;
   /** Pergunta de lista: todas as opções da versão respondida. */
-  opcoes: string[];
+  opcoes: OpcaoLista[];
   /** Pergunta de lista: o que o solicitante marcou. */
-  opcoesMarcadas: string[];
+  opcoesMarcadas: OpcaoLista[];
   respondidoEm: string;
   /** A regra ainda vale. Falso = foi substituída depois; a resposta fica só como história. */
   vigente: boolean;

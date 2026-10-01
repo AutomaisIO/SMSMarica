@@ -55,7 +55,7 @@ public sealed class SernitCatalogoSyncService(
             recursos += await SalvarRecursosAsync(tipo, doSernit, agora, cancellationToken);
 
             var pendentes = await db.SernitCatalogoRecursos
-                .Where(r => r.Tipo == tipo && (refazerTudo || !r.CamposLidos))
+                .Where(r => r.Tipo == tipo && r.SincronizadoEm >= agora.AddSeconds(-1) && (refazerTudo || !r.CamposLidos))
                 .OrderBy(r => r.Valor)
                 .ToListAsync(cancellationToken);
 
@@ -72,7 +72,7 @@ public sealed class SernitCatalogoSyncService(
                     campos += await SalvarCamposAsync(recurso, lidos, cancellationToken);
 
                     recurso.CamposLidos = true;
-                    recurso.SincronizadoEm = DateTime.UtcNow;
+                    // `SincronizadoEm` fica com a hora da listagem — ver SerCatalogoSyncService.
                     await db.SaveChangesAsync(cancellationToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -258,6 +258,14 @@ public sealed class SernitCatalogoSyncService(
         {
             if (existentes.TryGetValue(o.Valor, out var atual))
             {
+                // Mesmo caso do SER: o `value` do combo é posicional. Rótulo diferente no mesmo
+                // número é outro recurso — campos e lista de CID do anterior não servem mais.
+                if (!string.Equals(atual.Rotulo, o.Rotulo, StringComparison.Ordinal))
+                {
+                    atual.CamposLidos = false;
+                    atual.CidListaId = null;
+                    atual.CidAssinatura = null;
+                }
                 atual.Rotulo = o.Rotulo;
                 atual.SincronizadoEm = agora;
                 continue;

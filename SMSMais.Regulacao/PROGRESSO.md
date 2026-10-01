@@ -247,6 +247,8 @@ Estado medido em produção em 06/09/2026 (só leitura): **2 rascunhos do SER** 
 | 07/09/2026 | `fecharTelasAntigas: true` | Bernardo | corte às **17:04:08Z**; escrita nos rascunhos SER/SERNIT responde **410**, leitura segue 200 |
 | 07/09/2026 | Push de `748cc68` (4.6) e `102f193`…`7f1f1e8` (parser + formulário + runbook) | Bernardo ("pode commitar e dploy em prod", "seguir com as recomendações") | 4 deploys, todos verdes; OpenAPI de prod em 549 rotas |
 | 07/09/2026 | `importar_regras_manuais.py --gravar` — INSERT de 574 regras em `regulacao_regra` | Bernardo (comando digitado por ele) | **574 gravadas, 0 ativas, 72 procedimentos**. Conferido: nenhuma descrição com aspa solta ou truncada, nenhuma fonte fora de CRECE/REUNI |
+| 01/10/2026 | Push `be78b0a` com a migration `PerguntaDeListaNasRegras` (colunas `opcoes_json` / `opcoes_marcadas_json`; criadas antes na réplica EVEO pela sessão integradora) | Bernardo ("as frentes sobem juntas") | deploy server + front ok |
+| 01/10/2026 | `converter_listas.py --gravar` — regras do manual viram perguntas de lista (`conversao-listas/plano.json`) | Bernardo ("pode aplicar a conversão das regras") | **574 → 232 ativas**, 36 listas, 9 versões, 387 desligadas (nada apagado); log `conversao-listas/log-20261001-171159.json` |
 | 08/09/2026 | `ativar_regras.py --ativar` — **as 574 regras ligadas** | Bernardo ("quero que ative todas as regras", risco já apontado duas vezes) | 574 ativas. Impacto medido: **1 procedimento intransitável** (Gastroenterologia), 1 com janela de um ano só (Alergologia Pediatria), 1 sexo inferido errado (Hematologia Oncologia). Média de 5,8 perguntas por procedimento |
 
 ## Desvios do plano

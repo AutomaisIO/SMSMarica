@@ -343,8 +343,9 @@ public class RegulacaoElegibilidadeServiceTests(PostgresFixture fixture)
         var lida = (await Montar(db, c).RespostasAsync(c.SolicitacaoId, CancellationToken.None))
             .Single(r => r.RegraId == regra.Id);
         lida.Resposta.Should().Be(RespostaRegraRegulacao.Sim);
-        lida.OpcoesMarcadas.Should().Equal("Genitália ambígua", "Doenças Raras");
-        lida.Opcoes.Should().Equal(Condicoes);
+        lida.OpcoesMarcadas.Select(o => o.Texto).Should().Equal("Genitália ambígua", "Doenças Raras");
+        lida.OpcoesMarcadas.Select(o => o.Id).Should().Equal("o1", "o3");
+        lida.Opcoes.Select(o => o.Texto).Should().Equal(Condicoes);
     }
 
     [Fact]

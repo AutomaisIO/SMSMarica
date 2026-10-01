@@ -115,14 +115,14 @@ export function PassoRegras({ solicitacaoId }: { solicitacaoId: string | null })
                   <p className="text-xs text-slate-500">Marque as que se aplicam — basta uma.</p>
                   <div className="mt-1.5 space-y-1">
                     {p.opcoes.map((opcao) => (
-                      <label key={opcao} className="flex cursor-pointer items-start gap-2 text-sm text-slate-800">
+                      <label key={opcao.id} className="flex cursor-pointer items-start gap-2 text-sm text-slate-800">
                         <input
                           type="checkbox"
                           className="mt-0.5 size-4 shrink-0 accent-red-600"
-                          checked={(marcadas[p.regraId] ?? []).includes(opcao)}
-                          onChange={() => alternarOpcao(p, opcao)}
+                          checked={(marcadas[p.regraId] ?? []).includes(opcao.id)}
+                          onChange={() => alternarOpcao(p, opcao.id)}
                         />
-                        <span>{opcao}</span>
+                        <span>{opcao.texto}</span>
                       </label>
                     ))}
                   </div>

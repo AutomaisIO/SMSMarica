@@ -76,6 +76,9 @@ public sealed class SerCatalogoSyncService(
             // explícita (o catálogo muda pouco, e cada recurso custa uma requisição).
             var pendentes = await db.SerCatalogoRecursos
                 .Where(r => r.Tipo == tipo && r.AmbulatorioEstadual == ramo
+                            // Só o que está no combo AGORA: número que sumiu da listagem não existe
+                            // mais no SER, e pedir os campos dele leria outro recurso ou nada.
+                            && r.SincronizadoEm >= agora.AddSeconds(-1) // o Postgres guarda em µs; o .NET tem 100 ns
                             && (refazerTudo || !r.CamposLidos))
                 .OrderBy(r => r.Valor)
                 .ToListAsync(cancellationToken);
@@ -95,7 +98,9 @@ public sealed class SerCatalogoSyncService(
                     campos += await SalvarCamposAsync(recurso, lidos, cancellationToken);
 
                     recurso.CamposLidos = true;
-                    recurso.SincronizadoEm = DateTime.UtcNow;
+                    // `SincronizadoEm` NÃO muda aqui: ele é a hora da LISTAGEM em que o recurso
+                    // apareceu, e é por ela que o catálogo canônico separa o que está no combo hoje
+                    // do que ficou para trás quando o SER renumerou (RegulacaoCatalogoService).
                     // Grava recurso a recurso: uma queda no meio de 200 leituras não pode jogar
                     // fora o que já foi lido.
                     await db.SaveChangesAsync(cancellationToken);
@@ -329,8 +334,17 @@ public sealed class SerCatalogoSyncService(
         {
             if (existentes.TryGetValue(o.Valor, out var atual))
             {
-                // Rótulo pode mudar sem o recurso mudar de identidade; campos não são invalidados
-                // por isso — quem decide relê é o `refazerTudo`.
+                // O `value` do combo do SER é POSICIONAL, não identidade: quando a SES acrescenta um
+                // recurso, os números de todos os que vêm depois deslizam (medido em 22/09 e 30/09/2026:
+                // 1030 → 1067, +37). Rótulo diferente no mesmo número é OUTRO recurso — os campos e a
+                // lista de CID lidos eram do anterior. Invalidar faz a passada abaixo reler na hora;
+                // manter fazia o formulário de "Genética Pediátrica" sair com os campos de outro recurso.
+                if (!string.Equals(atual.Rotulo, o.Rotulo, StringComparison.Ordinal))
+                {
+                    atual.CamposLidos = false;
+                    atual.CidListaId = null;
+                    atual.CidAssinatura = null;
+                }
                 atual.Rotulo = o.Rotulo;
                 atual.SincronizadoEm = agora;
                 continue;

@@ -36,8 +36,8 @@ public sealed record RespostaRegraRegistradaDto(
     RespostaRegraRegulacao Resposta,
     ResultadoRegraRegulacao Resultado,
     string? Motivo,
-    IReadOnlyList<string> Opcoes,
-    IReadOnlyList<string> OpcoesMarcadas,
+    IReadOnlyList<OpcaoLista> Opcoes,
+    IReadOnlyList<OpcaoLista> OpcoesMarcadas,
     DateTime RespondidoEm,
     bool Vigente);
 
@@ -129,7 +129,7 @@ public sealed class RegulacaoElegibilidadeService(
                 x.Regra.Id, x.Resposta.RegraVersao, x.Regra.Tipo, x.Regra.Severidade, x.Regra.Sistema,
                 x.Regra.Descricao, x.Regra.Pergunta, x.Resposta.Resposta, x.Resposta.Resultado,
                 x.Resposta.ValorDeduzido, AvaliadorElegibilidade.OpcoesDa(x.Regra),
-                ListaJson(x.Resposta.OpcoesMarcadasJson), x.Resposta.RespondidoEm,
+                OpcoesLista.LerDaResposta(x.Resposta.OpcoesMarcadasJson), x.Resposta.RespondidoEm,
                 x.Regra.Ativo && x.Regra.ExcluidoEm == null))];
     }
 
@@ -157,7 +157,7 @@ public sealed class RegulacaoElegibilidadeService(
         var respostas = gravadas.ToDictionary(r => r.RegraId, r => r.Resposta);
         var opcoes = gravadas
             .Where(r => r.OpcoesMarcadasJson is not null)
-            .ToDictionary(r => r.RegraId, r => ListaJson(r.OpcoesMarcadasJson));
+            .ToDictionary(r => r.RegraId, r => OpcoesLista.LerDaResposta(r.OpcoesMarcadasJson));
 
         if (novasRespostas is not null)
         {
@@ -187,8 +187,11 @@ public sealed class RegulacaoElegibilidadeService(
     /// As opções que valem para esta resposta. Só a pergunta de lista respondida com "Sim" guarda
     /// opções — e nela marcar ao menos uma é obrigatório: um "Sim" sem dizer qual condição é
     /// exatamente a informação que a lista existe para não perder.
+    ///
+    /// <para>A tela manda o <c>id</c> da opção; o texto também é aceito, para quem estava com a tela
+    /// aberta antes do envelope versionado (01/10/2026).</para>
     /// </summary>
-    private static IReadOnlyList<string>? OpcoesValidas(
+    private static IReadOnlyList<OpcaoLista>? OpcoesValidas(
         RegulacaoRegra regra, RespostaRegraRegulacao resposta, IReadOnlyList<string>? marcadas)
     {
         var disponiveis = AvaliadorElegibilidade.OpcoesDa(regra);
@@ -206,7 +209,10 @@ public sealed class RegulacaoElegibilidadeService(
                 "opcoes", $"Marque ao menos uma opção em \"{regra.Pergunta ?? regra.Descricao}\".");
         }
 
-        var estranha = escolhidas.FirstOrDefault(o => !disponiveis.Contains(o));
+        OpcaoLista? Achar(string o) =>
+            disponiveis.FirstOrDefault(d => d.Id == o) ?? disponiveis.FirstOrDefault(d => d.Texto == o);
+
+        var estranha = escolhidas.FirstOrDefault(o => Achar(o) is null);
         if (estranha is not null)
         {
             // A regra mudou de versão entre abrir a tela e salvar, ou a opção veio digitada:
@@ -216,20 +222,8 @@ public sealed class RegulacaoElegibilidadeService(
         }
 
         // Na ordem da regra, não na ordem do clique: é como o regulador lê a lista.
-        return [.. disponiveis.Where(escolhidas.Contains)];
-    }
-
-    private static IReadOnlyList<string> ListaJson(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return [];
-        try
-        {
-            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
+        var ids = escolhidas.Select(o => Achar(o)!.Id).ToHashSet();
+        return [.. disponiveis.Where(d => ids.Contains(d.Id))];
     }
 
     public async Task<IReadOnlyList<ExameParaRegras>> ExamesInternosAsync(
@@ -424,7 +418,7 @@ public sealed class RegulacaoElegibilidadeService(
         IReadOnlyList<RegulacaoRegra> regras,
         AvaliacaoElegibilidadeDto avaliacao,
         IReadOnlyDictionary<Guid, RespostaRegraRegulacao> respostas,
-        IReadOnlyDictionary<Guid, IReadOnlyList<string>> opcoes,
+        IReadOnlyDictionary<Guid, IReadOnlyList<OpcaoLista>> opcoes,
         CancellationToken ct)
     {
         var agora = DateTime.UtcNow;
@@ -440,8 +434,8 @@ public sealed class RegulacaoElegibilidadeService(
             if (!porId.TryGetValue(avaliada.RegraId, out var regra)) continue;
 
             var resposta = respostas.GetValueOrDefault(avaliada.RegraId, RespostaRegraRegulacao.Deduzido);
-            var marcadas = opcoes.TryGetValue(avaliada.RegraId, out var o) && o.Count > 0
-                ? JsonSerializer.Serialize(o)
+            var marcadas = opcoes.TryGetValue(avaliada.RegraId, out var o)
+                ? OpcoesLista.GravarDaResposta(o)
                 : null;
 
             if (existentes.TryGetValue(avaliada.RegraId, out var linha))

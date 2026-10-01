@@ -506,7 +506,7 @@ public sealed class RegulacaoRegraService(
         r.Pergunta = req.Pergunta?.Trim();
         r.RespostaBloqueia = req.RespostaBloqueia;
         r.NaoSeiVira = req.NaoSeiVira;
-        r.OpcoesJson = req.Tipo == TipoRegraRegulacao.NaoDedutivel ? Json(LimparOpcoes(req.Opcoes)) : null;
+        r.OpcoesJson = req.Tipo == TipoRegraRegulacao.NaoDedutivel ? OpcoesLista.GravarDaRegra(LimparOpcoes(req.Opcoes)) : null;
         r.DocumentoRotulo = req.DocumentoRotulo?.Trim();
         r.TipoExameId = req.TipoExameId;
         r.ValidadeDias = req.ValidadeDias;
@@ -546,5 +546,5 @@ public sealed class RegulacaoRegraService(
             DeJson(r.CidsPermitidosJson), DeJson(r.CidsExcluidosJson),
             r.Pergunta, r.RespostaBloqueia, r.NaoSeiVira, r.DocumentoRotulo, r.TipoExameId,
             r.ValidadeDias, r.Obrigatorio, r.Ordem, r.Versao, r.Ativo, r.CriadoEm,
-            DeJson(r.OpcoesJson));
+            [.. OpcoesLista.LerDaRegra(r.OpcoesJson).Select(o => o.Texto)]);
 }

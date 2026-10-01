@@ -207,7 +207,7 @@ export function PainelAnaliseRegras({
                       <ul className="w-full list-inside list-disc pl-1 text-xs text-slate-600">
                         <li className="list-none text-slate-500">Basta uma destas:</li>
                         {p.opcoes.map((o) => (
-                          <li key={o}>{o}</li>
+                          <li key={o.id}>{o.texto}</li>
                         ))}
                       </ul>
                     )}
