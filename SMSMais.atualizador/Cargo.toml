@@ -1,0 +1,42 @@
+[package]
+name = "smsmais-atualizador"
+version = "0.1.0"
+edition = "2021"
+description = "Mantém a extensão SMSMais do Chrome (e a si mesmo) atualizada a partir do repositório público de distribuição."
+publish = false
+
+[dependencies]
+serde_json = "1.0.151"
+sha2 = "0.11.0"
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Networking_WinInet",
+    "Win32_Security",
+    "Win32_Security_Cryptography",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_RemoteDesktop",
+    "Win32_System_IO",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+
+# Executável pequeno: fica residente em todo PC da recepção e é baixado de novo a cada versão.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[build-dependencies]
+winresource = "0.1.31"

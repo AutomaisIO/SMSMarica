@@ -1,0 +1,4 @@
+# CRT estático: o executável não depende do Visual C++ Redistributable (vcruntime140.dll), que os
+# PCs da recepção podem não ter — e instalar exigiria administrador.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

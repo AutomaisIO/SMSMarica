@@ -304,8 +304,29 @@ function talvezEnviar() {
 
 chrome.alarms.create('enviar', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((a) => {
-  if (a.name === 'enviar') enviarLote();
+  if (a.name !== 'enviar') return;
+  enviarLote();
+  conferirVersaoNoDisco();
 });
+
+// ----------------------------------------------------------- recarga automática
+// O atualizador do PC troca os arquivos desta pasta e termina pelo manifest.json. A extensão
+// carregada sem compactação lê os arquivos do disco a cada pedido, então buscar o próprio
+// manifest mostra a versão que está NO DISCO. Diferente da que está rodando: a extensão envia o
+// que ainda tem guardado e se recarrega sozinha — o ↻ do chrome://extensions sem ninguém clicar
+// (medido em 01/10/2026 no Chrome 154: até 30 s depois da troca, e o manifest novo é relido).
+// Exige o "Modo do desenvolvedor" ligado: com ele desligado o Chrome desativa a extensão.
+async function conferirVersaoNoDisco() {
+  try {
+    const resp = await fetch(chrome.runtime.getURL('manifest.json'), { cache: 'no-store' });
+    const noDisco = (await resp.json()).version;
+    if (!noDisco || noDisco === chrome.runtime.getManifest().version) return;
+    await enviarLote().catch(() => {});
+    chrome.runtime.reload();
+  } catch {
+    /* manifest no meio da troca: o próximo batimento confere de novo */
+  }
+}
 
 // ------------------------------------------------------------------- mensagens
 chrome.runtime.onMessage.addListener((msg, sender, responder) => {

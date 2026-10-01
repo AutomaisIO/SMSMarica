@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMSMais · Atualizador</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>SMSMais · Atualizador</h1>
+<p>Programa pequeno (≈650 KB, um executável só, sem dependência nenhuma) que fica residente no PC e mantém a <strong>extensão do Chrome</strong> — e a si mesmo — em dia. Ícone <strong>"+"</strong> perto do relógio.</p>
+<ul>
+<li><strong>Não pede administrador</strong>: instala na pasta comum <code>C:\SMSMais\</code>, abre sozinho a cada logon pela</li>
+</ul>
+<p>  chave <code>Run</code> do próprio usuário, nunca abre o UAC.</p>
+<ul>
+<li><strong>Genérico</strong>: o executável é igual para todo município. O que é de cada instalação (endereço da</li>
+</ul>
+<p>  plataforma, token do computador) fica no <code>config.json</code>.</p>
+<ul>
+<li><strong>Tudo hospedado na plataforma</strong>: o instalador, o conteúdo da extensão e as versões novas do</li>
+</ul>
+<p>  atualizador saem da API da plataforma, e só para computador autorizado. Nada em repositório   público.</p>
+<p>&gt; Estado em 01/10/2026: programa, API e telas do painel <strong>prontos e ensaiados juntos</strong>, localmente &gt; (o atualizador de verdade contra a API de verdade). <strong>Nada foi commitado nem publicado em &gt; produção.</strong> A decisão está no <a href="../docs/adr/0064-extensao-chrome-distribuida-pela-plataforma.md">ADR-0064</a>.</p>
+<h2>Como a pessoa usa</h2>
+<ol>
+<li>No painel, logada, clica em <strong>Extensão Chrome</strong> e baixa o instalador.</li>
+<li>Executa. O instalador já chega sabendo o endereço da plataforma e com um código de autorização</li>
+</ol>
+<p>   de uso único (emitido para quem clicou): <strong>não se digita nada</strong>. Ele se instala, autoriza o    computador e baixa a extensão para <code>C:\SMSMais\extensao</code>.</p>
+<ol>
+<li><strong>Só na primeira vez</strong>, no Chrome: <code>chrome://extensions</code> → ligar <strong>Modo do desenvolvedor</strong> →</li>
+</ol>
+<p>   <strong>Carregar sem compactação</strong> → escolher <code>C:\SMSMais\extensao</code>. A janela do atualizador mostra    esses passos e abre a pasta.</p>
+<p>Daí em diante é sozinho: a cada 10 minutos o atualizador pergunta à plataforma a versão publicada; se mudou, baixa, troca os arquivos e a extensão <strong>se recarrega sozinha</strong> em até 30 s. Um aviso do Windows sai do ícone ("Extensão atualizada — v…") pedindo o F5 nas páginas abertas.</p>
+<p>Em PC que já tem a pasta do <code>.bat</code> antigo (<code>C:\SMSMais\extensao-sisreg</code>), o atualizador <strong>continua nela</strong> — o Chrome já carrega de lá, não precisa "Carregar sem compactação" de novo.</p>
+<h2>O ícone na bandeja</h2>
+<p>Clique (qualquer botão) abre o menu: a versão do atualizador, a situação da extensão, <strong>Verificar agora</strong>, <strong>Abrir a pasta da extensão</strong>, <strong>Abrir o registro</strong>, <strong>Configurar…</strong> e <strong>Sair</strong>.</p>
+<p>No Windows 11 o ícone nasce dentro dos "ícones ocultos" (a setinha <strong>^</strong>). Para deixá-lo sempre à vista, arraste-o para a barra — é do Windows, o programa não consegue fazer isso sozinho.</p>
+<p>O atualizador também avisa quando <strong>o Chrome está aberto sem a extensão em ordem</strong>: não carregada, desativada, ou com o modo desenvolvedor desligado (sem ele o Chrome desativa a extensão). Ele não fala com o Chrome: só <strong>lê</strong> o arquivo <code>Secure Preferences</code> do perfil.</p>
+<h2>Dev × publicado (canais)</h2>
+<p>O que está na árvore de desenvolvimento <strong>não chega a PC nenhum</strong>. Só chega o que foi <strong>publicado na plataforma</strong>, e em dois canais:</p>
+<div class="tw"><table><thead><tr><th>Canal</th><th>Quem recebe</th></tr></thead><tbody>
+<tr><td><code>teste</code></td><td>só os computadores que a plataforma marcou como de teste</td></tr>
+<tr><td><code>prod</code></td><td>todos</td></tr>
+</tbody></table></div>
+<p>O canal é um <strong>atributo do computador na plataforma</strong> (muda-se no painel, sem encostar no PC). Computador em <code>teste</code> recebe a mais nova entre <code>teste</code> e <code>prod</code>. Vale igual para a extensão e para o próprio atualizador: publica-se em <code>teste</code>, confere-se num PC de teste, promove-se a <code>prod</code>.</p>
+<p>Nunca se rebaixa: versão igual ou menor que a instalada não é atualização.</p>
+<h2>Publicar uma versão</h2>
+<p>Tudo pelo painel, em <strong>Sistema → Extensão Chrome → Versões</strong> (módulo de permissão <code>ExtensaoNavegador</code>):</p>
+<ol>
+<li><strong>Gerar o arquivo.</strong></li>
+</ol>
+<ul>
+<li>Extensão: <code>bash SMSMais.chrome/empacotar.sh</code> → <code>SMSMais.atualizador/dist/extensao-&lt;versão&gt;.zip</code></li>
+</ul>
+<p>     (a versão é a do <code>manifest.json</code>; o script recusa pacote com arquivo faltando).    - Atualizador: subir a versão no <code>Cargo.toml</code>, <code>cargo build --release</code> →      <code>target/release/smsmais-atualizador.exe</code>.</p>
+<ol>
+<li><strong>Publicar versão</strong> na tela (o atualizador pede a versão; a da extensão é lida do pacote). Entra</li>
+</ol>
+<p>   em <strong>teste</strong>.</p>
+<ol>
+<li>Conferir num computador de teste (aba Computadores → <em>Passar para teste</em>; no PC, <em>Verificar agora</em>).</li>
+<li><strong>Pôr em produção.</strong> Na primeira publicação do atualizador é preciso promover logo: o</li>
+</ol>
+<p>   instalador que o painel entrega é o atualizador em produção.</p>
+<p><strong>Por script (opcional):</strong> na aba <em>Publicação por API</em> gera-se uma chave que só publica e promove.</p>
+<pre><code>curl -X POST $API/extensao/publicacao/pacotes -H "X-Chave-Publicacao: $CHAVE" \
+  -F artefato=Extensao -F arquivo=@SMSMais.atualizador/dist/extensao-0.5.33.zip
+curl -X POST $API/extensao/publicacao/pacotes -H "X-Chave-Publicacao: $CHAVE" \
+  -F artefato=Atualizador -F versao=0.1.0 -F arquivo=@SMSMais.atualizador/target/release/smsmais-atualizador.exe
+curl -X POST $API/extensao/publicacao/pacotes/&lt;id&gt;/promover -H "X-Chave-Publicacao: $CHAVE"</code></pre>
+<h2>Onde as coisas ficam</h2>
+<pre><code>C:\SMSMais\
+  atualizador\
+    smsmais-atualizador.exe   o programa instalado (sem o rabicho do instalador)
+    config.json               pasta_extensao, plataforma_api, token_protegido, intervalo_minutos
+    estado.json               arquivos que ele pôs na pasta da extensão; canal informado pela plataforma
+    atualizador.log           registro (roda aos 512 KB)
+  extensao\                   a pasta que o Chrome carrega</code></pre>
+<ul>
+<li>A pasta é <strong>comum a todos os usuários do PC</strong>: uma instalação, uma autorização e uma extensão</li>
+</ul>
+<p>  por computador. Cada usuário do Windows só precisa executar o instalador uma vez (para o início   automático dele) e fazer o "Carregar sem compactação" no Chrome dele.</p>
+<ul>
+<li>Se o disco estiver trancado (não deixa criar <code>C:\SMSMais</code>), cai em <code>%LOCALAPPDATA%\SMSMais</code>.</li>
+<li>O <strong>token</strong> fica no <code>config.json</code> <strong>cifrado pelo Windows para este computador</strong> (DPAPI, escopo</li>
+</ul>
+<p>  de máquina): qualquer usuário daquele PC usa; copiado para outro PC, não abre.</p>
+<ul>
+<li>O <code>config.json</code> é relido a cada ciclo — mudar o arquivo vale sem reiniciar.</li>
+</ul>
+<h2>Linha de comando</h2>
+<pre><code>smsmais-atualizador                     duplo clique: instala; já instalado, fica residente
+smsmais-atualizador --instalar [--pasta DIR] [--silencioso]
+smsmais-atualizador --configurar [ENDERECO] [--sem-navegador]
+smsmais-atualizador --agora             pede ao residente para conferir agora
+smsmais-atualizador --uma-vez           confere e atualiza neste processo, e sai
+smsmais-atualizador --status
+smsmais-atualizador --desinstalar
+smsmais-atualizador --versao</code></pre>
+<p><code>--configurar</code> é o caminho para quando o instalador não veio do painel (ou o código venceu): o atualizador pede um código à API, abre a página do painel e espera alguém logado clicar em autorizar. Aceita o endereço do painel ou o da API, com ou sem <code>https://</code>.</p>
+<h2>Contrato com a plataforma</h2>
+<p>O que o atualizador usa da API (<code>ExtensaoDistribuicaoController</code>, no <code>SMSMais.server</code>; as rotas de administração e de publicação estão no ADR-0064 e no OpenAPI):</p>
+<div class="tw"><table><thead><tr><th>Rota</th><th>Quem chama</th><th>O que faz</th></tr></thead><tbody>
+<tr><td><code>GET /publico/instituicao</code></td><td>atualizador</td><td>confirma que o endereço é a plataforma e dá o nome</td></tr>
+<tr><td><code>GET /extensao/instalador</code> (botão <strong>Extensão Chrome</strong> do painel)</td><td>pessoa logada</td><td>devolve o executável + o <strong>rabicho</strong> (abaixo)</td></tr>
+<tr><td><code>POST /extensao/dispositivos/ativacoes</code> <code>{computador, versaoAtualizador}</code></td><td>atualizador</td><td><code>200 {codigo, urlAutorizar, expiraEmSegundos, intervaloSegundos}</code></td></tr>
+<tr><td>página <code>/app/extensao/autorizar/&lt;código&gt;</code> (o <code>urlAutorizar</code>)</td><td>pessoa logada</td><td>"Autorizar este computador"</td></tr>
+<tr><td><code>POST /extensao/dispositivos/ativacoes/token</code> <code>{codigo, computador, versaoAtualizador}</code></td><td>atualizador</td><td><code>200 {token}</code> · <code>202</code> aguardando · <code>410</code> recusada, usada ou vencida</td></tr>
+<tr><td><code>GET /extensao/versao?instalada=&amp;atualizador=&amp;chrome=</code></td><td>atualizador (Bearer)</td><td><code>{version, canal}</code> — e recebe o <strong>inventário</strong> do PC</td></tr>
+<tr><td><code>GET /extensao/pacote</code></td><td>atualizador (Bearer)</td><td><code>.zip</code> da extensão</td></tr>
+<tr><td><code>GET /extensao/atualizador/versao</code></td><td>atualizador (Bearer)</td><td><code>{versao, sha256}</code></td></tr>
+<tr><td><code>GET /extensao/atualizador/pacote</code></td><td>atualizador (Bearer)</td><td>o executável (sem rabicho)</td></tr>
+</tbody></table></div>
+<ul>
+<li><strong>Bearer</strong> = o token do computador. <code>401</code>/<code>403</code> = computador revogado: o atualizador avisa e</li>
+</ul>
+<p>  pede o Configurar de novo.</p>
+<ul>
+<li><strong>Rabicho do instalador</strong>: o servidor acrescenta ao fim do executável</li>
+</ul>
+<p>  <code>\n#SMSMAIS-INSTALADOR:{"api":"https://api…","codigo":"…"}</code>. O <code>codigo</code> é um código de ativação   já autorizado (quem baixou estava logado), de <strong>uso único</strong> e validade curta. Ao instalar, o   atualizador troca o código pelo token e grava o executável <strong>sem</strong> o rabicho.</p>
+<ul>
+<li><strong>Inventário</strong>: a cada consulta o PC diz a versão da extensão instalada, a do atualizador e a</li>
+</ul>
+<p>  situação no Chrome (<code>carregada</code>, <code>nao-carregada</code>, <code>desativada</code>, <code>modo-dev-desligado</code>, <code>fechado</code>,   <code>sem-perfil</code>). É o que permite ao painel mostrar "PC tal está com o Chrome aberto sem a extensão".</p>
+<ul>
+<li><strong>Pacote da extensão</strong>: um <code>.zip</code> com os arquivos (pode ter uma pasta de cima, como o "Download</li>
+</ul>
+<p>  ZIP" do GitHub). O atualizador ignora <code>.bat</code>, <code>.exe</code>, <code>.cmd</code>, <code>.ps1</code> e o que começa com ponto, e   <strong>recusa</strong> o pacote que não se sustenta: sem <code>manifest.json</code>, manifest inválido, arquivo que o   manifest manda carregar e não veio, caminho que sai da pasta.</p>
+<ul>
+<li>Só <code>https</code> (HTTP puro só para <code>127.0.0.1</code>/<code>localhost</code>, que é o ensaio).</li>
+</ul>
+<h2>Garantias</h2>
+<ul>
+<li><strong>Troca atômica por arquivo</strong> (grava ao lado e renomeia) e <code>manifest.json</code> <strong>por último</strong>: o</li>
+</ul>
+<p>  Chrome nunca lê arquivo pela metade, e a extensão só recarrega com tudo no lugar.</p>
+<ul>
+<li><strong>Só apaga o que ele mesmo pôs</strong>: arquivo que saiu de uma versão para a outra some; arquivo</li>
+</ul>
+<p>  alheio na pasta não é tocado.</p>
+<ul>
+<li><strong>Auto-atualização conferida</strong>: SHA-256 do publicado, e o executável novo tem de abrir nesta</li>
+</ul>
+<p>  máquina e responder a versão anunciada antes de virar o oficial. Falhou qualquer coisa, fica o   que estava.</p>
+<ul>
+<li><strong>Um residente por sessão</strong>; com dois usuários logados ao mesmo tempo, só um troca os arquivos</li>
+</ul>
+<p>  por vez, e o outro renasce do executável novo quando percebe que o disco mudou.</p>
+<ul>
+<li><strong>Rede do Windows</strong> (WinINet): respeita o proxy e os certificados do PC, como o navegador.</li>
+<li>Erro repetido vira <strong>uma</strong> linha no registro (PC sem internet por horas não enche o log).</li>
+</ul>
+<h2>Limites conhecidos</h2>
+<ul>
+<li><strong>O "Modo do desenvolvedor" do Chrome tem de ficar ligado.</strong> Desligado, o Chrome desativa a</li>
+</ul>
+<p>  extensão sem compactação. O atualizador avisa, mas não consegue religar.</p>
+<ul>
+<li><strong>O "Carregar sem compactação" é manual, uma vez por perfil do Chrome.</strong> Não há como um programa</li>
+</ul>
+<p>  sem administrador instalar extensão no Chrome.</p>
+<ul>
+<li><strong>Páginas já abertas</strong> seguem com o código antigo até o F5 (limite do Chrome).</li>
+<li><strong>Extensão publicada com o service worker quebrado não se recarrega mais sozinha</strong> (quem vigia a</li>
+</ul>
+<p>  versão é o service worker). O atualizador entrega a correção no disco, e ela entra no próximo   ↻ manual ou quando o Chrome reabrir.</p>
+<ul>
+<li><strong>Executável sem assinatura digital</strong>: ao executar um arquivo baixado pelo navegador, o Windows</li>
+</ul>
+<p>  pode mostrar "O Windows protegeu o computador" (Mais informações → Executar assim mesmo). Um   certificado de assinatura de código resolve — e, com assinatura, o rabicho do instalador precisa   de outro transporte (o nome do arquivo, por exemplo), porque acrescentar bytes invalida a   assinatura.</p>
+<ul>
+<li><strong>Pasta comum</strong> = qualquer usuário do PC consegue alterar o executável e a extensão que os</li>
+</ul>
+<p>  outros usam. É o mesmo que já valia para <code>C:\SMSMais\extensao-sisreg</code>; em PC com usuários que   não confiam uns nos outros, não serve.</p>
+<h2>Compilar</h2>
+<pre><code>cd SMSMais.atualizador
+cargo test                    # 29 testes
+cargo build --release         # target/release/smsmais-atualizador.exe
+python recursos/gerar-icone.py &lt;logo-automais.png&gt;   # só se o ícone mudar (precisa do Pillow)</code></pre>
+<p>Rust (toolchain <code>x86_64-pc-windows-msvc</code>) com as ferramentas de build do Visual Studio. O CRT é estático: o executável não precisa do Visual C++ Redistributable. A versão é a do <code>Cargo.toml</code>.</p>
+<div class="tw"><table><thead><tr><th>Arquivo</th><th>Papel</th></tr></thead><tbody>
+<tr><td><code>src/main.rs</code></td><td>linha de comando, instalar, configurar, o laço do residente</td></tr>
+<tr><td><code>src/extensao.rs</code></td><td>conferir a versão, abrir o pacote, trocar os arquivos</td></tr>
+<tr><td><code>src/proprio.rs</code></td><td>auto-atualização e o rabicho do instalador</td></tr>
+<tr><td><code>src/plataforma.rs</code></td><td>a conversa com a API (ativação, download autenticado)</td></tr>
+<tr><td><code>src/navegador.rs</code></td><td>a extensão está carregada no Chrome? (leitura do perfil)</td></tr>
+<tr><td><code>src/bandeja.rs</code>, <code>src/dialogo.rs</code></td><td>ícone, menu, avisos e a janela do endereço</td></tr>
+<tr><td><code>src/config.rs</code></td><td><code>config.json</code> e <code>estado.json</code></td></tr>
+<tr><td><code>src/sistema.rs</code></td><td>Windows: pastas, registro, cofre, instância única, log</td></tr>
+<tr><td><code>src/rede.rs</code></td><td>HTTP por WinINet</td></tr>
+<tr><td><code>recursos/</code></td><td>o ícone "+" e o script que o gera</td></tr>
+</tbody></table></div>
+<p>Para ensaiar sem encostar na instalação de verdade, a variável <code>SMSMAIS_RAIZ</code> troca a raiz (e o nome do valor no registro, do mutex e dos eventos ganham um sufixo).</p>
+<h2>Como foi ensaiado (30/09 e 01/10/2026)</h2>
+<p>Numa raiz isolada, contra um servidor local que implementa o contrato acima e um Chrome for Testing 154 com a extensão carregada da pasta mantida pelo atualizador:</p>
+<div class="tw"><table><thead><tr><th>Ensaio</th><th>Resultado</th></tr></thead><tbody>
+<tr><td>Instalador "do painel" (executável + rabicho)</td><td>instalou, autorizou sem digitar nada, gravou o executável limpo; token cifrado no arquivo</td></tr>
+<tr><td>Mesmo código de ativação usado de novo</td><td><code>410</code> — não autoriza duas vezes</td></tr>
+<tr><td>Configurar pelo navegador (pedir código, autorizar, receber token)</td><td>token guardado 1 s depois do clique em autorizar</td></tr>
+<tr><td>Versão publicada só em <code>teste</code>, PC em <code>prod</code></td><td>não recebeu</td></tr>
+<tr><td>PC movido para <code>teste</code> no servidor</td><td>recebeu; extensão recarregada sozinha em 13 s; <code>chrome://extensions</code> mostra a versão nova</td></tr>
+<tr><td>Arquivo que saiu de uma versão para a outra</td><td>apagado; arquivo alheio na pasta, intocado</td></tr>
+<tr><td>Auto-atualização com SHA-256 errado</td><td>recusada, ficou a versão instalada</td></tr>
+<tr><td>Auto-atualização anunciando versão diferente da do executável</td><td>recusada</td></tr>
+<tr><td>Auto-atualização legítima (0.1.0 → 0.1.1 → 0.1.2)</td><td>trocou, renasceu, limpou o <code>.antigo</code> no ciclo seguinte</td></tr>
+<tr><td>Modo desenvolvedor desligado no Chrome</td><td>detectado, avisado e informado à plataforma</td></tr>
+<tr><td>Computador revogado (<code>401</code>)</td><td>aviso claro; voltou sozinho quando a plataforma liberou</td></tr>
+<tr><td>Residente ligado por horas e 8 ciclos seguidos</td><td>2,7 MB de memória privada, 292 handles, estável</td></tr>
+<tr><td>Desinstalar</td><td>início automático removido, residente encerrado, pasta apagada; extensão intocada</td></tr>
+</tbody></table></div>
+<p>Depois, <strong>o atualizador de verdade contra a API de verdade</strong> (o <code>SMSMais.server</code> subido localmente com as rotinas de fundo desligadas, apontado para a bancada de testes):</p>
+<div class="tw"><table><thead><tr><th>Ensaio</th><th>Resultado</th></tr></thead><tbody>
+<tr><td>Rotas sem credencial, com token inventado, com chave inventada</td><td><code>401</code> em todas</td></tr>
+<tr><td>Chave de publicação gerada; publicar e promover por ela</td><td>atualizador 0.1.0 e extensão 0.5.33 em produção, marcados "pela API"</td></tr>
+<tr><td>Instalador antes de haver atualizador em produção</td><td><code>409</code></td></tr>
+<tr><td><code>GET /extensao/instalador</code> como usuário logado → executar</td><td>computador autorizado, extensão 0.5.32 → 0.5.33 no disco</td></tr>
+<tr><td>Mesmo instalador num "segundo PC"; instalador publicado como atualizador</td><td><code>410</code>; recusado com o motivo</td></tr>
+<tr><td>Extensão 0.5.34 publicada; PC de produção</td><td>não recebeu; movido para teste pela API de administração, recebeu</td></tr>
+<tr><td>Atualizador 0.1.1 publicado em teste</td><td>o PC se atualizou sozinho</td></tr>
+<tr><td>Configurar: pedido → página do painel → autorizar</td><td>autorizado</td></tr>
+<tr><td>Revogar o computador</td><td>o atualizador avisou e parou de receber</td></tr>
+<tr><td>Painel, num navegador de teste</td><td>publicar e pôr em produção pela tela; recusa dentro do modal; aba Computadores com o inventário; página de autorizar; chave da API mostrada uma vez</td></tr>
+</tbody></table></div>
+<p>Não foi ensaiado: PC real da recepção (antivírus, proxy da prefeitura, disco trancado), dois usuários do Windows logados ao mesmo tempo, e o clique em <em>Configurar…</em> no menu do ícone com o código final (a janela foi aberta e conferida; o fluxo que ela dispara foi ensaiado pela linha de comando).</p>
+</main>
+</body>
+</html>
