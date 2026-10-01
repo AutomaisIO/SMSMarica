@@ -54,9 +54,9 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
   if (isError || !ticket) return <p className="p-6 text-sm text-red-600">Ticket não encontrado.</p>;
 
   const arquivado = gestao ? ticket.arquivadoPeloAdmin : ticket.arquivadoPeloAutor;
-  // Fora da gestão, só o autor arquiva (o servidor recusa os demais). Com a visibilidade
-  // "Por unidade"/"Público", o ticket de outra pessoa aparece aqui só para leitura.
-  const podeArquivar = gestao || (!!meuId && ticket.autorId === meuId);
+  // Fora da gestão, só o autor arquiva e responde (o servidor recusa os demais). Com a
+  // visibilidade "Por unidade"/"Público", o ticket de outra pessoa aparece aqui só para leitura.
+  const podeAgir = gestao || (!!meuId && ticket.autorId === meuId);
   // Gestão: o autor já visualizou/reconheceu a última resposta?
   const autorReconheceu =
     !!ticket.respostaReconhecidaEm &&
@@ -111,7 +111,7 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
           </div>
         )}
 
-        {podeArquivar && (
+        {podeAgir && (
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variante="outline" tamanho="sm" onClick={alternarArquivo} disabled={arquivar.isPending}>
               {arquivado ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
@@ -149,7 +149,7 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
       )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <ConversaTicket ticketId={id} gestao={gestao} comentarios={ticket.comentarios} />
+        <ConversaTicket ticketId={id} gestao={gestao} comentarios={ticket.comentarios} podeResponder={podeAgir} />
       </div>
 
       <ConfirmDialog

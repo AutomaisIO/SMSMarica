@@ -12,9 +12,11 @@ type Props = {
   ticketId: string;
   gestao: boolean;
   comentarios: TicketComentario[];
+  /** Falso no ticket de outra pessoa (visível pela configuração de visibilidade): só leitura. */
+  podeResponder?: boolean;
 };
 
-export function ConversaTicket({ ticketId, gestao, comentarios }: Props) {
+export function ConversaTicket({ ticketId, gestao, comentarios, podeResponder = true }: Props) {
   const [texto, setTexto] = useState('');
   const [interno, setInterno] = useState(false);
   const [anexos, setAnexos] = useState<AnexoRef[]>([]);
@@ -67,31 +69,35 @@ export function ConversaTicket({ ticketId, gestao, comentarios }: Props) {
         </ul>
       )}
 
-      <div ref={caixaRef} className="space-y-2 rounded-lg border border-slate-200 p-3">
-        <textarea
-          value={texto}
-          rows={3}
-          maxLength={5000}
-          placeholder={gestao ? 'Responder ao usuário…' : 'Escreva uma resposta…'}
-          onChange={(e) => setTexto(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-        />
-        <AnexosInput anexos={anexos} aoMudar={setAnexos} disabled={comentar.isPending} escopoColar={caixaRef} />
-        <div className="flex items-center justify-between">
-          {gestao ? (
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={interno} onChange={(e) => setInterno(e.target.checked)} />
-              Nota interna (não visível ao autor)
-            </label>
-          ) : (
-            <span />
-          )}
-          <Button onClick={enviar} disabled={comentar.isPending || !texto.trim()} tamanho="sm">
-            <Send className="h-4 w-4" />
-            {comentar.isPending ? 'Enviando…' : 'Enviar'}
-          </Button>
+      {podeResponder ? (
+        <div ref={caixaRef} className="space-y-2 rounded-lg border border-slate-200 p-3">
+          <textarea
+            value={texto}
+            rows={3}
+            maxLength={5000}
+            placeholder={gestao ? 'Responder ao usuário…' : 'Escreva uma resposta…'}
+            onChange={(e) => setTexto(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+          />
+          <AnexosInput anexos={anexos} aoMudar={setAnexos} disabled={comentar.isPending} escopoColar={caixaRef} />
+          <div className="flex items-center justify-between">
+            {gestao ? (
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" checked={interno} onChange={(e) => setInterno(e.target.checked)} />
+                Nota interna (não visível ao autor)
+              </label>
+            ) : (
+              <span />
+            )}
+            <Button onClick={enviar} disabled={comentar.isPending || !texto.trim()} tamanho="sm">
+              <Send className="h-4 w-4" />
+              {comentar.isPending ? 'Enviando…' : 'Enviar'}
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <p className="text-xs text-slate-400">Só quem abriu o ticket responde nele.</p>
+      )}
     </div>
   );
 }
