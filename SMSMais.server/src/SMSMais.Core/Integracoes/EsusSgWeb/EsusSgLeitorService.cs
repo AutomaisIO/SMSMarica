@@ -34,6 +34,13 @@ public interface IEsusSgLeitorService
 
     /// <summary>Procedimentos que a unidade pode pedir ao SG (combo "reguláveis por solicitante").</summary>
     Task<IReadOnlyList<EsusSgRecursoCatalogo>> LerCatalogoExameAsync(CancellationToken cancellationToken);
+
+    /// <summary>Linhas de EXAME do histórico de atendimentos de uma pessoa (1 requisição).</summary>
+    Task<IReadOnlyList<EsusSgHistoricoExame>> LerHistoricoExamesAsync(
+        string pessoaIdEsus, DateOnly ate, CancellationToken cancellationToken);
+
+    /// <summary>Trilha de um exame — é onde está a efetivação (1 requisição).</summary>
+    Task<IReadOnlyList<EsusSgEventoExame>> LerTrilhaExameAsync(long idExame, CancellationToken cancellationToken);
 }
 
 public sealed class EsusSgLeitorService(IEsusSgSessao sessao, ILogger<EsusSgLeitorService> logger)
@@ -96,6 +103,55 @@ public sealed class EsusSgLeitorService(IEsusSgSessao sessao, ILogger<EsusSgLeit
         }
         return lista;
     }
+
+    // ------------------------------------------------------------------ comparecimento
+
+    private const string CaminhoHistoricoPaciente = "pacientes/controller-paciente/buscar-historico-geral-paciente";
+    private const string CaminhoTrilhaExame = "pacientes/controller-paciente/buscar-detalhes-historico-exame-paciente";
+
+    /// <summary>Uma página só, grande: medido em 01/10/2026, a pessoa com mais histórico tinha ~100
+    /// linhas (todos os módulos, desde 2021).</summary>
+    private const int TamanhoPaginaHistorico = 1000;
+
+    public async Task<IReadOnlyList<EsusSgHistoricoExame>> LerHistoricoExamesAsync(
+        string pessoaIdEsus, DateOnly ate, CancellationToken cancellationToken)
+    {
+        var dados = await sessao.PostarLegadoAsync(
+            CaminhoHistoricoPaciente, FormHistorico(pessoaIdEsus, ate), cancellationToken);
+        var (linhas, _) = LinhasETotal(dados, CaminhoHistoricoPaciente);
+        return linhas.Select(EsusSgHistoricoExame.De).Where(h => h is not null).Select(h => h!).ToList();
+    }
+
+    public async Task<IReadOnlyList<EsusSgEventoExame>> LerTrilhaExameAsync(long idExame, CancellationToken cancellationToken)
+    {
+        // Sem arrFormData: o front manda { idExame } solto.
+        var dados = await sessao.PostarLegadoAsync(
+            CaminhoTrilhaExame, new JsonObject { ["idExame"] = idExame }, cancellationToken);
+        if (dados.ValueKind != JsonValueKind.Array)
+        {
+            throw new FormatException($"ESUS SG {CaminhoTrilhaExame}: esperava lista, veio {dados.ValueKind}.");
+        }
+        return dados.EnumerateArray().Select(EsusSgEventoExame.De).ToList();
+    }
+
+    /// <summary>"Histórico de Atendimentos do Paciente" — o corpo é <c>arrFiltro</c>, NÃO
+    /// <c>arrFormData</c> (copiado do front em 01/10/2026). Período largo: o filtro é pela data do
+    /// pedido, que pode ser anos antes do agendamento (mediana de espera de 924 dias).</summary>
+    internal static JsonObject FormHistorico(string pessoaIdEsus, DateOnly ate) => new()
+    {
+        ["arrFiltro"] = new JsonObject
+        {
+            ["pes_id"] = int.TryParse(pessoaIdEsus, NumberStyles.Integer, CultureInfo.InvariantCulture, out var p)
+                ? p
+                : throw new FormatException($"pes_id do ESUS não numérico: '{pessoaIdEsus}'."),
+            ["mod_id"] = null,
+            ["periodoInicial"] = "01/01/2015",
+            ["periodoFinal"] = ate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
+            ["rdg_regulacao"] = null,
+            ["limiteInicio"] = 0,
+            ["limiteFim"] = TamanhoPaginaHistorico,
+        },
+    };
 
     // ------------------------------------------------------------------ paginação
 

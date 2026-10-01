@@ -57,6 +57,11 @@ internal sealed class EsusSgSolicitacaoConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.NotificacaoEntrega).HasColumnName("notificacao_entrega").HasMaxLength(40);
         builder.Property(x => x.NotificacaoResposta).HasColumnName("notificacao_resposta").HasMaxLength(60);
 
+        builder.Property(x => x.Efetivacao).HasColumnName("efetivacao");
+        builder.Property(x => x.EfetivadoEm).HasColumnName("efetivado_em");
+        builder.Property(x => x.MotivoNaoEfetivacao).HasColumnName("motivo_nao_efetivacao").HasMaxLength(200);
+        builder.Property(x => x.EfetivacaoLidaEm).HasColumnName("efetivacao_lida_em");
+
         builder.Property(x => x.Situacao).HasColumnName("situacao").IsRequired();
 
         builder.Property(x => x.PacienteId).HasColumnName("paciente_id");

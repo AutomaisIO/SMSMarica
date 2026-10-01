@@ -242,9 +242,14 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
                 x.DataSolicitacao,
                 x.DataEntradaFila,
                 x.Situacao,
+                x.Efetivacao,
+                x.EfetivadoEm,
+                x.MotivoNaoEfetivacao,
+                x.EfetivacaoLidaEm,
             })
             .ToListAsync(cancellationToken);
 
+        var hoje = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
         return linhas.Select(l =>
         {
             // "06/10/2026 13:15:00" é hora LOCAL de Brasília — fica wall-clock, como no SER.
@@ -253,18 +258,50 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
                 DateTimeStyles.None, out var dataHora);
             DateTime? data = temHora ? dataHora : l.DataAgendada?.ToDateTime(TimeOnly.MinValue);
             var situacao = MapearEsusSg(l.Situacao);
+            var agendado = situacao == SituacaoAgendamentoPaciente.Agendado;
+            var prova = l.Situacao.ToString();
+
+            // O que a unidade executante apontou no ESUS (lido do histórico do paciente pela varredura).
+            if (agendado && l.DataAgendada is { } dia && dia < hoje)
+            {
+                switch (l.Efetivacao)
+                {
+                    case EfetivacaoEsusSg.Efetivado:
+                        situacao = SituacaoAgendamentoPaciente.Compareceu;
+                        prova = l.EfetivadoEm is { } em
+                            ? $"exame efetivado pela unidade no ESUS em {FusoBrasilia.ParaExibicao(em):dd/MM/yyyy}"
+                            : "exame efetivado pela unidade no ESUS";
+                        break;
+                    case EfetivacaoEsusSg.NaoEfetivado:
+                        situacao = SituacaoAgendamentoPaciente.Faltou;
+                        prova = "exame não efetivado no ESUS" + (l.MotivoNaoEfetivacao is { } m ? $": {m}" : string.Empty);
+                        break;
+                    default:
+                        // Em aberto só se alguém foi olhar DEPOIS do dia; sem isso, "sem registro".
+                        if (l.Efetivacao == EfetivacaoEsusSg.EmAberto
+                            || (l.EfetivacaoLidaEm is { } lida && DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(lida)) > dia))
+                        {
+                            situacao = SituacaoAgendamentoPaciente.EmAberto;
+                            prova = l.EfetivacaoLidaEm is { } quando
+                                ? $"sem apontamento da unidade no ESUS em {FusoBrasilia.ParaExibicao(quando):dd/MM/yyyy}"
+                                : "sem apontamento da unidade no ESUS";
+                        }
+                        break;
+                }
+            }
+
             return new AgendamentoPacienteItemDto(
                 l.Id,
                 OrigemAgendamentoPaciente.EsusSg,
                 l.Tipo == TipoRecursoEsusSg.Consulta ? "Consulta" : "Exame",
                 NormalizarTexto(l.Recurso),
                 l.UnidadeExecutora,
-                situacao == SituacaoAgendamentoPaciente.Agendado ? data : null,
-                temHora && situacao == SituacaoAgendamentoPaciente.Agendado,
+                agendado ? data : null,
+                temHora && agendado,
                 l.DataSolicitacao ?? l.DataEntradaFila,
                 situacao,
                 DescreverSituacao(situacao),
-                l.Situacao.ToString(),
+                prova,
                 l.IdEsusSg,
                 l.Id); // detalhe ESUS SG abre pelo id da própria esussg_solicitacao
         });

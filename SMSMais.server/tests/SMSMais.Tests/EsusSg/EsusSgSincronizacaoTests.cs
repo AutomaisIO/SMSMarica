@@ -50,6 +50,22 @@ public class EsusSgSincronizacaoTests(PostgresFixture fixture)
 
         public Task<IReadOnlyList<EsusSgRecursoCatalogo>> LerCatalogoExameAsync(CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<EsusSgRecursoCatalogo>>([]);
+
+        /// <summary>Histórico por pes_id e trilha por id de exame — o comparecimento.</summary>
+        public Dictionary<string, List<EsusSgHistoricoExame>> Historico { get; } = [];
+        public Dictionary<long, List<EsusSgEventoExame>> Trilhas { get; } = [];
+        public List<string> HistoricosLidos { get; } = [];
+
+        public Task<IReadOnlyList<EsusSgHistoricoExame>> LerHistoricoExamesAsync(
+            string pessoaIdEsus, DateOnly ate, CancellationToken ct)
+        {
+            HistoricosLidos.Add(pessoaIdEsus);
+            return Task.FromResult<IReadOnlyList<EsusSgHistoricoExame>>(
+                Historico.TryGetValue(pessoaIdEsus, out var h) ? h : []);
+        }
+
+        public Task<IReadOnlyList<EsusSgEventoExame>> LerTrilhaExameAsync(long idExame, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<EsusSgEventoExame>>(Trilhas.TryGetValue(idExame, out var t) ? t : []);
     }
 
     private sealed class CatalogoFake : IEsusSgCatalogoSyncService
@@ -135,6 +151,76 @@ public class EsusSgSincronizacaoTests(PostgresFixture fixture)
             Assert.Equal(1, await db.EsusSgEventos.CountAsync(e => e.EsusSgSolicitacao!.IdEsusSg == a));
             Assert.Equal(3, await db.EsusSgEventos.CountAsync(e => e.EsusSgSolicitacao!.IdEsusSg == b));
             Assert.Equal(1, await db.EsusSgGatilhos.CountAsync(g => g.IdEsusSg == a));
+        }
+    }
+
+    private static EsusSgEventoExame Evento(string filId, EfetivacaoEsusSg? efetivacao, DateTime registro, int ordem,
+        string? motivo = null) => new(filId, efetivacao is null ? "AGENDADO" : efetivacao.ToString(), efetivacao,
+        efetivacao == EfetivacaoEsusSg.Efetivado ? registro : null, motivo, registro, null, ordem);
+
+    /// <summary>
+    /// Comparecimento: para o agendamento que passou, a varredura lê o histórico da pessoa e a trilha do
+    /// exame do mesmo dia, e grava o que a unidade apontou. Exame do mesmo dia de OUTRO pedido (fil_id de
+    /// outro) não conta; agendamento futuro não é lido; efetivado não é relido.
+    /// </summary>
+    [Fact]
+    public async Task Comparecimento_vem_da_trilha_do_exame_do_mesmo_dia_e_efetivado_nao_e_relido()
+    {
+        var hoje = FusoBrasilia.HojeEmBrasilia();
+        var dia = hoje.AddDays(-5);
+        var (veio, faltou, aberto, outro, futuro) = (Id(), Id(), Id(), Id(), Id());
+        var t0 = FusoBrasilia.DeBrasiliaParaUtc(dia.ToDateTime(new TimeOnly(15, 42)));
+        var leitor = new LeitorFake
+        {
+            Agendados = [Agendado(veio, "a", dia), Agendado(faltou, "b", dia), Agendado(aberto, "c", dia),
+                         Agendado(outro, "d", dia), Agendado(futuro, "e", hoje.AddDays(10))],
+        };
+        long n = Random.Shared.NextInt64(1_000_000, 9_000_000);
+        void Hist(string id, long exame, DateOnly quando) =>
+            leitor.Historico["p" + id] = [new EsusSgHistoricoExame("999", [exame], quando)];
+        Hist(veio, n, dia);
+        leitor.Trilhas[n] = [Evento(veio, null, t0.AddDays(-9), 1), Evento(veio, EfetivacaoEsusSg.Efetivado, t0, 3),
+                             Evento(veio, EfetivacaoEsusSg.Efetivado, t0, 2)];
+        Hist(faltou, n + 1, dia);
+        leitor.Trilhas[n + 1] = [Evento(faltou, null, t0.AddDays(-9), 1),
+                                 Evento(faltou, EfetivacaoEsusSg.NaoEfetivado, t0, 2, "Não Compareceu")];
+        Hist(aberto, n + 2, dia);
+        leitor.Trilhas[n + 2] = [Evento(aberto, null, t0.AddDays(-9), 1)];
+        Hist(outro, n + 3, dia);
+        leitor.Trilhas[n + 3] = [Evento("12345", EfetivacaoEsusSg.Efetivado, t0, 1)];
+        Hist(futuro, n + 4, hoje.AddDays(10));
+
+        await using (var db = fixture.CriarDbContext()) await RodarAsync(db, leitor);
+
+        await using (var db = fixture.CriarDbContext())
+        {
+            var sVeio = await db.EsusSgSolicitacoes.Include(x => x.Eventos).FirstAsync(x => x.IdEsusSg == veio);
+            Assert.Equal(EfetivacaoEsusSg.Efetivado, sVeio.Efetivacao);
+            Assert.Equal(t0, sVeio.EfetivadoEm);
+            Assert.Contains(sVeio.Eventos, e => e.TipoEvento == TipoEventoExterno.ChegadaNoDestino);
+
+            var sFaltou = await db.EsusSgSolicitacoes.FirstAsync(x => x.IdEsusSg == faltou);
+            Assert.Equal(EfetivacaoEsusSg.NaoEfetivado, sFaltou.Efetivacao);
+            Assert.Equal("Não Compareceu", sFaltou.MotivoNaoEfetivacao);
+
+            var sAberto = await db.EsusSgSolicitacoes.FirstAsync(x => x.IdEsusSg == aberto);
+            Assert.Null(sAberto.Efetivacao);
+            Assert.NotNull(sAberto.EfetivacaoLidaEm); // olhou depois do dia: a unidade não apontou
+
+            Assert.Null((await db.EsusSgSolicitacoes.FirstAsync(x => x.IdEsusSg == outro)).Efetivacao);
+            Assert.Null((await db.EsusSgSolicitacoes.FirstAsync(x => x.IdEsusSg == futuro)).EfetivacaoLidaEm);
+        }
+        Assert.DoesNotContain("p" + futuro, leitor.HistoricosLidos);
+
+        // Segunda rodada: quem já foi efetivado não é relido; os outros são.
+        leitor.HistoricosLidos.Clear();
+        await using (var db = fixture.CriarDbContext()) await RodarAsync(db, leitor);
+        Assert.DoesNotContain("p" + veio, leitor.HistoricosLidos);
+        Assert.Contains("p" + aberto, leitor.HistoricosLidos);
+        await using (var db = fixture.CriarDbContext())
+        {
+            Assert.Equal(1, await db.EsusSgEventos.CountAsync(e =>
+                e.EsusSgSolicitacao!.IdEsusSg == veio && e.TipoEvento == TipoEventoExterno.ChegadaNoDestino));
         }
     }
 

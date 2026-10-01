@@ -193,8 +193,12 @@ com atraso, então releitura dos últimos ~31 dias vale aqui também.
 
 **Custo para produção:** 1 requisição por paciente (histórico) + 1 por exame. Os agendados de Maricá no
 SG são poucos (64 num trimestre em 30/09), então reler os que passaram nos últimos 31 dias custa
-dezenas de requisições por noite. Não implementado — a ficha segue mostrando "Sem registro de chegada"
-para o ESUS SG até a varredura passar a ler esse detalhe.
+dezenas de requisições por noite. **Implementado em 01/10/2026** na varredura diária
+(`EsusSgSincronizacaoService.ConferirEfetivacaoAsync`): agendamentos de exame dos últimos 31 dias, efetivado
+não é relido, teto de 150 pessoas por rodada; grava `efetivacao`/`efetivado_em`/`motivo_nao_efetivacao`/
+`efetivacao_lida_em` em `esussg_solicitacao` e a ficha mostra Compareceu / Faltou / Em aberto.
+**Armadilha medida:** o `id_fila` do histórico NÃO é o `fil_id` das listas (2105231 × 4064691) — o
+casamento é pela data do agendamento + o `fil_id` que a TRILHA traz (às vezes vem vazio).
 
 ## 6. Trava de somente-leitura
 

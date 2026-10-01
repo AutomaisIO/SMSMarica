@@ -146,6 +146,9 @@ public sealed class EsusSgSincronizacaoService(
                             tipo);
                     }
                 }
+
+                // Por último: a fila e os agendados já estão gravados; falha aqui não os desfaz.
+                await ConferirEfetivacaoAsync(execucao, cancellationToken);
             }
 
             execucao.Fase = FaseVarreduraEsusSg.Finalizada;
@@ -608,6 +611,138 @@ public sealed class EsusSgSincronizacaoService(
     private static void MarcarSeMudouOPaciente(EsusSgSolicitacao alvo, string antes, DateTime agora)
     {
         if (RetratoDoPaciente(alvo) != antes) alvo.PacienteConciliarEm = agora;
+    }
+
+    // ------------------------------------------------------------------ comparecimento
+
+    /// <summary>Quantos dias para trás o comparecimento é relido. A unidade aponta com atraso
+    /// (medido: no dia, em 5 dias, em 2 semanas) — mesma janela da releitura de chegadas do SISREG.</summary>
+    internal const int DiasDeEfetivacao = 31;
+
+    /// <summary>Teto de pessoas por rodada (cada uma custa 1 requisição + 1 por exame). Os agendados
+    /// de Maricá no SG são poucos — 64 num trimestre em 30/09/2026 —, então o teto só protege de
+    /// surpresa; quem fica de fora entra na próxima noite, os nunca lidos primeiro.</summary>
+    internal const int MaximoPessoasPorRodada = 150;
+
+    /// <summary>
+    /// Lê, para os agendamentos de exame que passaram nos últimos <see cref="DiasDeEfetivacao"/> dias,
+    /// o que a unidade executante apontou: efetivado, não efetivado ("Não Compareceu") ou em aberto.
+    ///
+    /// <para><b>De onde vem:</b> as listas de fila e agendados não trazem. Está no "Histórico de
+    /// Atendimentos do Paciente": o histórico da pessoa diz quais exames ela tem (o <c>id_fila</c> dele
+    /// NÃO é o nosso <c>fil_id</c>), e a trilha de cada exame traz a efetivação e o <c>fil_id</c>. O
+    /// casamento é pela data do agendamento e, quando a trilha traz, pelo <c>fil_id</c>.</para>
+    ///
+    /// <para>Efetivado é estado final e não é relido. Falha numa pessoa vira falha registrada e a
+    /// pessoa fica para a próxima rodada — nada aqui derruba a varredura.</para>
+    /// </summary>
+    private async Task ConferirEfetivacaoAsync(EsusSgVarreduraExecucao execucao, CancellationToken cancellationToken)
+    {
+        var hoje = FusoBrasilia.HojeEmBrasilia();
+        var desde = hoje.AddDays(-DiasDeEfetivacao);
+        var alvos = await db.EsusSgSolicitacoes.AsNoTracking()
+            .Where(s => s.ExcluidoEm == null && s.Tipo == TipoRecursoEsusSg.Exame
+                && s.Situacao == SituacaoEsusSg.Agendada && s.PessoaIdEsus != null
+                && s.DataAgendada >= desde && s.DataAgendada < hoje
+                && s.Efetivacao != EfetivacaoEsusSg.Efetivado)
+            .Select(s => new { s.IdEsusSg, s.PessoaIdEsus, s.EfetivacaoLidaEm })
+            .ToListAsync(cancellationToken);
+        if (alvos.Count == 0) return;
+
+        var pessoas = alvos
+            .GroupBy(a => a.PessoaIdEsus!)
+            .OrderBy(g => g.Min(a => a.EfetivacaoLidaEm ?? DateTime.MinValue))
+            .Take(MaximoPessoasPorRodada)
+            .ToList();
+
+        var requisicoesAntes = execucao.Requisicoes;
+        int compareceram = 0, faltaram = 0, emAberto = 0, falhas = 0;
+        foreach (var pessoa in pessoas)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var (solicitacoes, chaves) = await CarregarAsync(
+                TipoRecursoEsusSg.Exame, pessoa.Select(a => a.IdEsusSg), cancellationToken);
+            try
+            {
+                var historico = await leitor.LerHistoricoExamesAsync(pessoa.Key, hoje, cancellationToken);
+                execucao.Requisicoes++;
+
+                var trilhas = new Dictionary<long, IReadOnlyList<EsusSgEventoExame>>();
+                var agora = DateTime.UtcNow;
+                foreach (var s in solicitacoes.Values)
+                {
+                    var doDia = new List<IReadOnlyList<EsusSgEventoExame>>();
+                    foreach (var id in historico.Where(h => h.DataAgendamento == s.DataAgendada).SelectMany(h => h.IdsExame))
+                    {
+                        if (!trilhas.TryGetValue(id, out var trilha))
+                        {
+                            trilha = await leitor.LerTrilhaExameAsync(id, cancellationToken);
+                            execucao.Requisicoes++;
+                            trilhas[id] = trilha;
+                        }
+                        // Exame de outro pedido no mesmo dia: a trilha que traz fil_id diz de quem é.
+                        var filIds = trilha.Select(e => e.FilId).Where(f => !string.IsNullOrEmpty(f)).ToHashSet();
+                        if (filIds.Count == 0 || filIds.Contains(s.IdEsusSg)) doDia.Add(trilha);
+                    }
+
+                    var r = EfetivacaoEsusSgResolvida.Resolver(doDia);
+                    AplicarEfetivacao(execucao, s, r, chaves, agora);
+                    switch (r.Estado)
+                    {
+                        case EfetivacaoEsusSg.Efetivado: compareceram++; break;
+                        case EfetivacaoEsusSg.NaoEfetivado: faltaram++; break;
+                        default: emAberto++; break;
+                    }
+                }
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is EsusSgRespostaErroException or HttpRequestException or FormatException)
+            {
+                falhas++;
+                // Descarta o que esta pessoa deixou pela metade (a execução continua rastreada: os
+                // contadores dela seguem valendo).
+                foreach (var e in db.ChangeTracker.Entries()
+                             .Where(e => e.Entity is EsusSgSolicitacao or EsusSgEvento or EsusSgGatilho)
+                             .ToList())
+                {
+                    e.State = EntityState.Detached;
+                }
+                db.EsusSgVarreduraFalhas.Add(NovaFalha(execucao, TipoFalhaEsusSg.ErroEfetivacao,
+                    TipoRecursoEsusSg.Exame, null, $"Comparecimento da pessoa {pessoa.Key}: {ex.Message}", null));
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        execucao.UltimoSinalEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation(
+            "ESUS SG: comparecimento de {Pessoas} pessoa(s) — {Compareceram} efetivado(s), {Faltaram} não efetivado(s), "
+            + "{EmAberto} sem apontamento; {Req} requisição(ões), {Falhas} falha(s).",
+            pessoas.Count, compareceram, faltaram, emAberto, execucao.Requisicoes - requisicoesAntes, falhas);
+    }
+
+    private void AplicarEfetivacao(
+        EsusSgVarreduraExecucao execucao, EsusSgSolicitacao s, EfetivacaoEsusSgResolvida r,
+        HashSet<string> chaves, DateTime agora)
+    {
+        var anterior = s.Efetivacao;
+        s.Efetivacao = r.Estado;
+        s.EfetivadoEm = r.EfetivadoEm;
+        s.MotivoNaoEfetivacao = Truncar(r.Motivo, 200);
+        s.EfetivacaoLidaEm = agora;
+        if (anterior == r.Estado || r.Estado is null) return;
+
+        // Entra na trilha montada, com a data em que a unidade apontou (ou a da leitura, sem ela).
+        var (rotulo, tipo) = r.Estado switch
+        {
+            EfetivacaoEsusSg.Efetivado => ("Exame efetivado (compareceu)", TipoEventoExterno.ChegadaNoDestino),
+            EfetivacaoEsusSg.NaoEfetivado => ("Exame não efetivado", TipoEventoExterno.Outro),
+            _ => ("Efetivação em aberto", TipoEventoExterno.Outro),
+        };
+        AdicionarEvento(execucao, s, chaves, r.EfetivadoEm ?? agora, rotulo, tipo,
+            usuario: null, lotacao: LotacaoSaoGoncalo, unidade: s.UnidadeExecutora,
+            anterior: anterior?.ToString(), atualTxt: r.Estado.ToString(),
+            observacao: r.Motivo ?? "Lido do histórico do paciente no ESUS.", agora);
     }
 
     // ------------------------------------------------------------------ eventos e gatilhos

@@ -186,8 +186,8 @@ export const artigoPacientes: Artigo = {
                 termo: <SeloRef cor="alerta">Em aberto</SeloRef>,
                 descricao: (
                   <>
-                    SISREG: a data passou e a unidade ainda <strong>não apontou</strong> nem a chegada
-                    nem a falta. <strong>Não é falta</strong> — é uma pendência da unidade, não do
+                    SISREG e ESUS de São Gonçalo: a data passou e a unidade ainda{' '}
+                    <strong>não apontou</strong> nem a chegada nem a falta. <strong>Não é falta</strong> — é uma pendência da unidade, não do
                     paciente.
                   </>
                 ),
@@ -200,7 +200,7 @@ export const artigoPacientes: Artigo = {
               {
                 termo: <SeloRef>Sem registro de chegada</SeloRef>,
                 descricao:
-                  'A data passou e não há informação: ninguém conferiu depois do dia, ou o sistema de origem não informa comparecimento — é sempre o caso do ESUS de São Gonçalo.',
+                  'A data passou e não há informação: ninguém conferiu o sistema de origem depois do dia. Some na próxima leitura.',
               },
               {
                 termo: <SeloRef>Saiu da fila</SeloRef>,
@@ -209,10 +209,11 @@ export const artigoPacientes: Artigo = {
               },
             ]}
           />
-          <Callout tipo="regra" titulo="No SISREG, a unidade escolhe entre três respostas">
-            Para cada agendamento que já passou, a unidade executante aponta no SISREG uma de três
-            situações: <strong>Confirmado</strong>, <strong>Falta</strong> ou{' '}
-            <strong>Pendente de confirmação</strong> (não apontou nada). A ficha mostra as três
+          <Callout tipo="regra" titulo="No SISREG e no ESUS, a unidade escolhe entre três respostas">
+            Para cada agendamento que já passou, a unidade executante aponta uma de três situações: no
+            SISREG, <strong>Confirmado</strong>, <strong>Falta</strong> ou{' '}
+            <strong>Pendente de confirmação</strong>; no ESUS de São Gonçalo, <strong>Efetivado</strong>,{' '}
+            <strong>Não efetivado</strong> (com o motivo, em geral “Não Compareceu”) ou nada. A ficha mostra as três
             separadas — Compareceu, Faltou e Em aberto. Agendamento em aberto nunca vira falta sozinho:
             há unidades que deixam de apontar, e tratar isso como ausência do paciente seria injusto
             com ele.
@@ -239,6 +240,11 @@ export const artigoPacientes: Artigo = {
             <Item>
               <strong>SER e SERNIT</strong>: a sincronização da madrugada relê a base inteira — o selo
               acompanha o que estiver lá na manhã seguinte.
+            </Item>
+            <Item>
+              <strong>ESUS de São Gonçalo</strong>: a sincronização da madrugada lê, no histórico de cada
+              paciente, a efetivação dos exames agendados nos últimos 31 dias. Exame efetivado não é
+              relido.
             </Item>
           </Lista>
           <Callout tipo="dica" titulo="Por que um atendimento recente pode estar “Em aberto”">
@@ -286,9 +292,9 @@ export const artigoPacientes: Artigo = {
                 'A unidade executante não apontou o resultado no SISREG. Não conte como falta; se precisar saber, pergunte à unidade.',
             },
             {
-              termo: 'Tudo do ESUS de São Gonçalo está “Sem registro de chegada”.',
+              termo: 'Um exame antigo do ESUS de São Gonçalo está “Sem registro de chegada”.',
               descricao:
-                'O ESUS de São Gonçalo não informa ao município se o paciente compareceu. Não há o que atualizar.',
+                'A efetivação é lida só para os agendamentos dos últimos 31 dias (a partir de 01/10/2026). Os mais antigos ficam sem registro.',
             },
             {
               termo: 'Cliquei na linha e o detalhe não abriu.',

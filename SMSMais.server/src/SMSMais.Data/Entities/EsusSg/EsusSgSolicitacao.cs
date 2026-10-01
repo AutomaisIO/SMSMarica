@@ -28,6 +28,23 @@ public enum SituacaoEsusSg
     SaiuDaFila = 4,
 }
 
+/// <summary>
+/// O que a unidade executante apontou do agendamento no ESUS (<c>efl_id_exames_efetivacao</c> do
+/// detalhe do exame no histórico do paciente). Mesmos três estados do SISREG. Números = os do ESUS.
+/// </summary>
+public enum EfetivacaoEsusSg
+{
+    /// <summary>A unidade marcou explicitamente como em aberto ("MODIFICADO PARA EM ABERTO").</summary>
+    EmAberto = 1,
+
+    /// <summary>Exame efetivado — o paciente compareceu.</summary>
+    Efetivado = 2,
+
+    /// <summary>Não efetivado; o motivo vem em <see cref="EsusSgSolicitacao.MotivoNaoEfetivacao"/>
+    /// ("Não Compareceu").</summary>
+    NaoEfetivado = 3,
+}
+
 /// <summary>Módulo do ESUS em que o pedido vive. Maricá usa, na prática, só exame (PPI).</summary>
 public enum TipoRecursoEsusSg
 {
@@ -150,6 +167,28 @@ public class EsusSgSolicitacao
 
     /// <summary>Resposta do paciente à notificação do ESUS (CONFIRMADO, NÃO RESPONDIDO, AGUARDANDO).</summary>
     public string? NotificacaoResposta { get; set; }
+
+    // ---- Comparecimento (lido do histórico do paciente no ESUS, não das listas) ----
+
+    /// <summary>
+    /// O que a unidade executante apontou do agendamento. <c>null</c> = nada apontado (ou ainda não
+    /// lido — ver <see cref="EfetivacaoLidaEm"/>).
+    ///
+    /// <para>Não vem nas listas de fila e agendados: só no detalhe do exame do "Histórico de
+    /// Atendimentos do Paciente", uma requisição por paciente e uma por exame. A varredura relê os
+    /// agendamentos dos últimos dias (a unidade aponta com atraso).</para>
+    /// </summary>
+    public EfetivacaoEsusSg? Efetivacao { get; set; }
+
+    /// <summary>Quando a unidade efetivou (UTC; o ESUS dá hora de Brasília).</summary>
+    public DateTime? EfetivadoEm { get; set; }
+
+    /// <summary>Motivo da não efetivação, como o ESUS escreve ("Não Compareceu").</summary>
+    public string? MotivoNaoEfetivacao { get; set; }
+
+    /// <summary>Última leitura do comparecimento (UTC). Só diz algo do atendimento se for depois do dia
+    /// agendado: lido depois e ainda sem apontamento = a unidade deixou em aberto.</summary>
+    public DateTime? EfetivacaoLidaEm { get; set; }
 
     public SituacaoEsusSg Situacao { get; set; }
 

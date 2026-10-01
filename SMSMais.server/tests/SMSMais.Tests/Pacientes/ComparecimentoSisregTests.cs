@@ -4,6 +4,7 @@ using SMSMais.Core.Pacientes.Agendamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.EsusSg;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Data.Entities.Sisreg;
 using SMSMais.Tests.Infraestrutura;
@@ -177,5 +178,52 @@ public class ComparecimentoSisregTests(PostgresFixture fixture)
 
         // Cancelada continua cancelada, mesmo constando na lista de faltas.
         Assert.Equal(SituacaoAgendamentoPaciente.Cancelado, Do("CANCELADA").Situacao);
+    }
+
+    /// <summary>
+    /// ESUS de São Gonçalo: a efetivação que a varredura lê do histórico do paciente vira os mesmos
+    /// selos do SISREG. Sem leitura depois do dia, "sem registro de chegada" — nunca "em aberto".
+    /// </summary>
+    [Fact]
+    public async Task EsusSg_mostra_efetivado_nao_efetivado_e_em_aberto()
+    {
+        var paciente = Guid.NewGuid();
+        var agora = DateTime.UtcNow;
+        var dia = FusoBrasilia.HojeEmBrasilia().AddDays(-6);
+        var depoisDoDia = FusoBrasilia.DeBrasiliaParaUtc(dia.AddDays(2).ToDateTime(new TimeOnly(10, 0)));
+        var antesDoDia = FusoBrasilia.DeBrasiliaParaUtc(dia.AddDays(-2).ToDateTime(new TimeOnly(10, 0)));
+
+        await using (var db = fixture.CriarDbContext())
+        {
+            EsusSgSolicitacao Esus(string recurso, EfetivacaoEsusSg? efetivacao, DateTime? lida, string? motivo = null) => new()
+            {
+                Id = Guid.NewGuid(), IdEsusSg = Codigo(), Tipo = TipoRecursoEsusSg.Exame, Recurso = recurso,
+                PacienteNome = "PACIENTE TESTE", PacienteId = paciente, Situacao = SituacaoEsusSg.Agendada,
+                DataAgendada = dia, DataHoraAgendadaTexto = $"{dia:dd/MM/yyyy} 08:00:00",
+                Efetivacao = efetivacao, MotivoNaoEfetivacao = motivo, EfetivacaoLidaEm = lida,
+                EfetivadoEm = efetivacao == EfetivacaoEsusSg.Efetivado ? depoisDoDia : null,
+                SincronizadoEm = agora, CriadoEm = agora,
+            };
+            db.EsusSgSolicitacoes.AddRange(
+                Esus("ESUS EFETIVADO", EfetivacaoEsusSg.Efetivado, depoisDoDia),
+                Esus("ESUS NAO EFETIVADO", EfetivacaoEsusSg.NaoEfetivado, depoisDoDia, "Não Compareceu"),
+                Esus("ESUS LIDO DEPOIS", null, depoisDoDia),
+                Esus("ESUS LIDO ANTES", null, antesDoDia),
+                Esus("ESUS NUNCA LIDO", null, null));
+            await db.SaveChangesAsync();
+        }
+
+        await using var leitura = fixture.CriarDbContext();
+        var r = await new AgendamentosPacienteService(leitura).ListarPorPacienteAsync(paciente);
+        AgendamentoPacienteItemDto Do(string d) => Assert.Single(r.Historico, i => i.Descricao == d);
+
+        Assert.Equal(SituacaoAgendamentoPaciente.Compareceu, Do("ESUS EFETIVADO").Situacao);
+        Assert.Contains("efetivado pela unidade no ESUS", Do("ESUS EFETIVADO").SituacaoOrigem);
+        Assert.Equal(SituacaoAgendamentoPaciente.Faltou, Do("ESUS NAO EFETIVADO").Situacao);
+        Assert.Contains("Não Compareceu", Do("ESUS NAO EFETIVADO").SituacaoOrigem);
+        Assert.Equal(SituacaoAgendamentoPaciente.EmAberto, Do("ESUS LIDO DEPOIS").Situacao);
+        Assert.Equal(SituacaoAgendamentoPaciente.SemRegistroDeChegada, Do("ESUS LIDO ANTES").Situacao);
+        Assert.Equal(SituacaoAgendamentoPaciente.SemRegistroDeChegada, Do("ESUS NUNCA LIDO").Situacao);
+        Assert.All(r.Historico, i => Assert.NotNull(i.DataHora));
     }
 }

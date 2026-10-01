@@ -810,9 +810,10 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
         e SISREG (regulação municipal), além da agenda própria. No histórico, “Compareceu” e “Faltou”
         só aparecem com registro da unidade executante: chegada confirmada (ou registrada pela
         recepção) e falta apontada. No SISREG, “Em aberto” é o agendamento que já passou e a unidade
-        ainda não apontou o resultado — não é falta. As faltas são relidas de hora em hora e as
-        chegadas, toda noite. “Sem registro de chegada” é quando a origem não informou nada — sempre
-        o caso do ESUS SG. Passe o mouse no selo para ver de onde veio e quando foi lido.
+        ainda não apontou o resultado — não é falta; no ESUS SG vale o mesmo para a efetivação do exame.
+        As faltas do SISREG são relidas de hora em hora e as chegadas, toda noite; o ESUS SG, toda
+        noite. “Sem registro de chegada” é quando ninguém conferiu depois do dia. Passe o mouse no
+        selo para ver de onde veio e quando foi lido.
         No ESUS SG, “Saiu da fila” quer dizer que o pedido não consta mais na fila nem nos agendados
         — o motivo não é informado, e não é o mesmo que cancelado. Clique numa linha do SER, do
         SERNIT, do ESUS SG ou de exame de imagem para abrir o detalhe.

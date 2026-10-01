@@ -34,7 +34,7 @@ internal static class IndicadoresEsusSgCalculo
             ],
             new GraficoIndicadorDto("barras", ["Vagas utilizadas (agendamentos no mês)"]), null, [], null));
         secoes.Add(new SecaoIndicadorDto("absenteismo", "Absenteísmo",
-            "O ESUS de São Gonçalo não informa ao município solicitante se o paciente compareceu ao atendimento agendado.",
+            "O comparecimento no ESUS de São Gonçalo só existe no histórico de cada paciente (efetivação do exame). A plataforma passou a lê-lo em 01/10/2026, para os agendamentos dos últimos 31 dias, e mostra na ficha do paciente; o absenteísmo do ESUS ainda não é consolidado aqui.",
             true, [], null, null, [], null));
 
         var reg = await PorTipoAsync(sql, $"""
@@ -159,7 +159,7 @@ internal static class IndicadoresEsusSgCalculo
             "ESUS de São Gonçalo — regulação da PPI de São Gonçalo", p.Meses, agora,
             [
                 $"Espelho da fila e dos agendados do município no ESUS de São Gonçalo ({Formatar.Numero(cob[0])} solicitações), primeira varredura em {Formatar.Data(cob[1]) ?? "—"}, última em {Formatar.Data(cob[2]) ?? "—"}.",
-                "O ESUS não informa comparecimento, oferta de vagas nem motivo de exclusão ao município solicitante.",
+                "O ESUS não mostra oferta de vagas nem motivo de exclusão ao município solicitante; o comparecimento só aparece no histórico de cada paciente (lido para a ficha desde 01/10/2026).",
             ],
             secoes);
     }

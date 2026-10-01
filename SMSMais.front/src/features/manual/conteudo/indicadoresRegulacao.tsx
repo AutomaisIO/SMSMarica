@@ -319,7 +319,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
               {
                 termo: 'ESUS SG',
                 descricao:
-                  'O ESUS de São Gonçalo mostra só duas listas, fila e agendados. Não informa se o paciente compareceu (absenteísmo), não mostra a oferta (as cotas da PPI são do município executor) e não mostra cancelamento, exclusão nem motivo — quem sai das duas listas sem agendamento simplesmente some.',
+                  'O ESUS de São Gonçalo mostra duas listas, fila e agendados. O comparecimento existe só no histórico de cada paciente: a plataforma passou a lê-lo em 01/10/2026 para a ficha do paciente, mas o absenteísmo do ESUS ainda não é calculado; também não mostra a oferta (as cotas da PPI são do município executor) e não mostra cancelamento, exclusão nem motivo — quem sai das duas listas sem agendamento simplesmente some.',
               },
               {
                 termo: 'SISREG',

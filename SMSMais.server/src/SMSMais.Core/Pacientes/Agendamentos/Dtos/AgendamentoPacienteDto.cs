@@ -29,8 +29,9 @@ public enum OrigemAgendamentoPaciente
 /// de TRÊS estados, e os três chegam aqui separados: confirmou a chegada (ou a recepção registrou
 /// aqui, <c>AutorizadoEm</c>) → <see cref="Compareceu"/>; registrou falta — é o que a lista de
 /// absenteísmo (<c>sisreg_falta</c>) contém → <see cref="Faltou"/>; não apontou nada →
-/// <see cref="EmAberto"/>, que NÃO é falta. Quando ninguém foi olhar depois do dia (ou a fonte não
-/// informa, como o ESUS SG), fica <see cref="SemRegistroDeChegada"/>.</para>
+/// <see cref="EmAberto"/>, que NÃO é falta. No ESUS SG, os mesmos três, pela efetivação do exame que
+/// a varredura lê do histórico do paciente (efetivado / não efetivado / sem apontamento). Quando
+/// ninguém foi olhar depois do dia, fica <see cref="SemRegistroDeChegada"/>.</para>
 /// </summary>
 public enum SituacaoAgendamentoPaciente
 {
@@ -69,7 +70,7 @@ public enum SituacaoAgendamentoPaciente
     /// "Agendado" de quem ficou no passado — "agendado" numa data vencida não diz nada.</summary>
     SemRegistroDeChegada = 11,
 
-    /// <summary>SISREG: o agendamento já passou e a unidade executante ainda não apontou o resultado
+    /// <summary>SISREG e ESUS SG: o agendamento já passou e a unidade executante ainda não apontou o resultado
     /// — nem confirmou a chegada, nem registrou falta ("Pendente de confirmação" na tela do SISREG).
     /// Não diz nada sobre o paciente: medido no CDT, 104 de 108 pendentes seguiam pendentes seis
     /// semanas depois. Difere de <see cref="SemRegistroDeChegada"/> porque aqui alguém FOI olhar.</summary>

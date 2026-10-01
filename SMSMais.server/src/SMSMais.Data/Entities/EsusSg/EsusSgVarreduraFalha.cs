@@ -14,6 +14,10 @@ public enum TipoFalhaEsusSg
 
     /// <summary>A trava de somente-leitura recusou a chamada — <b>é bug do motor</b>.</summary>
     EscritaBloqueada = 5,
+
+    /// <summary>Não deu para ler o comparecimento de uma pessoa (histórico ou trilha do exame).
+    /// Não derruba a rodada: a pessoa fica para a próxima.</summary>
+    ErroEfetivacao = 6,
 }
 
 /// <summary>Uma falha registrada na rodada do ESUS SG — para nada ficar incompleto em silêncio.</summary>
