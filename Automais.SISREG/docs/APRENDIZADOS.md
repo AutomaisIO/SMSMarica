@@ -1080,6 +1080,37 @@ Medido em PROD (só leitura), agendamentos de 2026 que já passaram, por mês da
   Faltou (está na lista de faltas, em qualquer idade), **Em aberto** (nem um nem outro, e alguém
   olhou depois do dia) e Sem registro de chegada (ninguém olhou). Para recuperar um período antigo de uma
   vez, subir `DiasDeChegada` por uma noite — a fatia respeita o limite de 31 dias sozinha.
+- **Backfill do passado (01/10/2026, à tarde) — o que precisa e o que não precisa ser relido.**
+  Medido em PROD: até jul/2026, TODO pendente da col. 34 foi gravado 30+ dias depois do atendimento
+  (carga do histórico) — ali o "pendente" já é o estado final e reler o TXT não muda nada. O buraco de
+  confirmação é só **agosto/2026** (1.958 pendentes lidos com menos de 30 dias, 25 unidades; setembro
+  entra na releitura de 31 dias) → `reler_chegadas_periodo.py`. O buraco grande é outro: a lista de
+  faltas só estava carregada de **02/01/2025** em diante, e de 2019-10 a 2024-12 há ~360 mil pendentes
+  que a ficha não sabe separar em Faltou × Em aberto → `coletar_faltas_historico.py` +
+  `carregar_faltas_historico_prod.py`.
+- **`rel_amb_faltas_sol.pl` da REDE INTEIRA não serve para o passado antigo:** 2 dias de dez/2024 →
+  conexão derrubada aos 65 s (duas vezes); 2 dias de ago/2026 → 50 s (na véspera, uma semana inteira
+  saía em ~40 s — a tela fica mais lenta à tarde). **Com `cnes_executante`** a mesma lista responde
+  rápido: uma semana do Péricles (dez/2024) em 8 s, o mês inteiro em 29 s (660 linhas). Antes de 2025
+  são só 13 executantes com agendamento nosso, então "rede inteira" = a união delas. A janela é
+  unidade × mês, e a cortada se parte ao meio em vez de repetir (repetir a consulta que passa do teto
+  só gasta orçamento).
+- **Com `cnes_executante`, "nenhuma falta" NÃO vem escrito:** a tela devolve só o formulário de pesquisa
+  (13.557 bytes, sem tabela, sem "nenhum"). Provado com controle de resposta conhecida (DIMAGEM em
+  jan/2024, antes de ter agenda — idêntica byte a byte) e com o banco: Conde e as USFs não apontavam
+  nada em 2024 (0 confirmados), e o Centro de Radiologia só começou a apontar falta em **nov/2024**
+  (out: 142 pendentes e lista vazia; nov: 552 de 554 pendentes na lista). O atributo vem sem aspas
+  (`name=cnes_executante`) — a primeira detecção procurou com aspas e não casou.
+- **`ConnectError` ≠ corte de 65 s:** o SISREG passou a recusar conexão (reset no handshake, até no
+  login) depois de ~80 requisições nossas numa hora, somadas ao robô de produção. Partir a janela por
+  isso só multiplicou requisição (CDT de out/2024 virou 8 pedaços); agora só `ReadError`/
+  `RemoteProtocolError` partem. Parar e voltar mais tarde resolveu.
+- **Resultado out–dez/2024 (gravado em PROD 01/10):** 9.939 faltas; dos 25.737 pendentes do trimestre,
+  9.920 viram Faltou e 15.817 Em aberto (Conde, USFs e Radiologia antes de nov não apontavam nada).
+- **Janela por unidade e o indicador:** a ficha conta qualquer janela de faltas concluída (coletor 1),
+  sem olhar escopo; o indicador de absenteísmo dá o mês como "oficial" quando todos os dias estão
+  cobertos, também sem olhar escopo. As janelas históricas entram com escopo `exec:<CNES>` — 2024
+  passa a contar como oficial para as executantes que temos na base, que é também o denominador.
 - **SER e SERNIT não precisam de nada disso:** a varredura noturna relê a base INTEIRA, as 7
   situações (SER ~70 min, SERNIT ~3–6 min); toda linha do espelho tinha `sincronizado_em` da
   madrugada. "Agendada" com data passada lá é o próprio SER sem registro de chegada (set/26: 69 de

@@ -55,6 +55,10 @@ class Captcha(Exception):
     pass
 
 
+class ConexaoCortada(Exception):
+    """O SISREG derrubou a conexão (o corte de ~65 s das consultas pesadas). Quem pediu decide: partir a janela."""
+
+
 def meses(de: str, ate: str) -> list[tuple[int, int]]:
     a, m = map(int, de.split("-")); a2, m2 = map(int, ate.split("-"))
     out = []
@@ -103,8 +107,12 @@ class Coletor:
     def login(self) -> None:
         self.cli.login(self.env["SISREG_USUARIO"], self.env["SISREG_SENHA"]); self.gastas += 2
 
-    def pedir(self, metodo: str, caminho: str, campos: dict) -> str:
-        """Uma consulta, com ritmo, relogin se o robô de produção derrubou a sessão, e CAPTCHA = parar."""
+    def pedir(self, metodo: str, caminho: str, campos: dict, repetir_em_erro: bool = True) -> str:
+        """Uma consulta, com ritmo, relogin se o robô de produção derrubou a sessão, e CAPTCHA = parar.
+
+        `repetir_em_erro=False`: corte de conexão vira `ConexaoCortada` na hora, em vez de três
+        tentativas iguais — repetir uma consulta que passa do teto de ~65 s só gasta orçamento.
+        """
         for tentativa in range(3):
             if self.gastas >= self.max_req:
                 raise SystemExit(f"teto de {self.max_req} requisições atingido — rode de novo para continuar")
@@ -118,6 +126,12 @@ class Coletor:
             except Exception as e:  # corte de conexão (~65 s) ou rede
                 self.gastas += 1
                 print(f"    ! {type(e).__name__} em {caminho} (tentativa {tentativa + 1})")
+                # Só o corte NO MEIO da resposta é o teto de ~65 s. Falha ao CONECTAR é rede/servidor
+                # instável — partir a janela por isso só multiplica requisição (medido em 01/10/2026:
+                # o CDT de out/2024 virou 8 pedaços de 4 dias por ConnectError em sequência).
+                corte = type(e).__name__ in ("ReadError", "RemoteProtocolError", "ReadTimeout")
+                if not repetir_em_erro and corte:
+                    raise ConexaoCortada(f"{type(e).__name__}: {e}") from e
                 time.sleep(20)
                 continue
             self.gastas += 1
