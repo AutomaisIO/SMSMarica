@@ -58,5 +58,33 @@ public class MensagemWhatsApp
     /// <summary>Natureza da mensagem. Nulo em linhas legadas (tratar como texto/template).</summary>
     public TipoMensagem? TipoMensagem { get; set; }
 
+    // Mídia recebida (imagem/documento/áudio/vídeo) — aditivo, nullable ---------------------
+
+    /// <summary>Id da mídia na Meta (<c>image.id</c>, <c>document.id</c>…). Só serve por ~30 dias.</summary>
+    public string? MidiaWaId { get; set; }
+    public string? MidiaMimeType { get; set; }
+
+    /// <summary>Nome do arquivo informado pelo remetente (só documento traz).</summary>
+    public string? MidiaNomeArquivo { get; set; }
+
+    /// <summary>Legenda que o paciente escreveu junto da mídia.</summary>
+    public string? MidiaLegenda { get; set; }
+
+    public long? MidiaTamanho { get; set; }
+    public string? MidiaSha256 { get; set; }
+
+    /// <summary>Chave no armazenamento (Spaces) quando o arquivo foi guardado.</summary>
+    public string? MidiaChave { get; set; }
+
+    /// <summary>Nulo = mensagem sem mídia (ou anterior a este recurso).</summary>
+    public SituacaoMidiaWhatsApp? MidiaSituacao { get; set; }
+
+    /// <summary>Quando alguém da equipe aceitou ou descartou a mídia.</summary>
+    public DateTime? MidiaDecididaEm { get; set; }
+    public Guid? MidiaDecididaPor { get; set; }
+
+    /// <summary>Documento do acervo criado quando a mídia foi aceita no cadastro.</summary>
+    public Guid? DocumentoPacienteId { get; set; }
+
     public Conversa? Conversa { get; set; }
 }

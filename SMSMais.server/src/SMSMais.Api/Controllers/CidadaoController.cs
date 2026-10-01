@@ -9,6 +9,7 @@ using SMSMais.Core.Acompanhantes.Dtos;
 using SMSMais.Core.Atendimentos;
 using SMSMais.Core.Cidadao;
 using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.DocumentosPaciente;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Telefones;
 using SMSMais.Core.Telefones.Dtos;
@@ -233,6 +234,55 @@ public sealed class CidadaoController(
         return pdf is null
             ? NotFound()
             : File(pdf, "application/pdf", $"exame-imagens-{solicitacaoExameId}.pdf");
+    }
+
+    // ---- Documentos (acervo do paciente: o que está no cadastro + o que ele enviou) ----
+
+    /// <summary>
+    /// Tudo o que está no cadastro do paciente — documentos, laudos assinados, imagens dos exames —
+    /// e o que ele mesmo enviou e ainda espera conferência da equipe.
+    /// </summary>
+    [HttpGet("documentos")]
+    [ProducesResponseType<IReadOnlyList<ItemAcervoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<ItemAcervoDto>> Documentos(
+        [FromServices] IDocumentosPacienteService acervo, CancellationToken ct) =>
+        acervo.ListarAsync(PacienteId(), incluirPendentes: true, ct);
+
+    [HttpGet("documentos/{tipo}/{id:guid}/conteudo")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DocumentoConteudo(
+        TipoItemAcervo tipo, Guid id, [FromServices] IDocumentosPacienteService acervo, CancellationToken ct)
+    {
+        var c = await acervo.ObterConteudoAsync(PacienteId(), tipo, id, permitirPendente: true, ct);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
+    /// <summary>
+    /// O paciente anexa um documento (foto ou PDF) pelo app. Entra PENDENTE: só vale no cadastro
+    /// depois que alguém da equipe aceita — e há teto de pendentes por paciente.
+    /// </summary>
+    [HttpPost("documentos")]
+    [RequestSizeLimit(30 * 1024 * 1024)]
+    [ProducesResponseType<ItemAcervoDto>(StatusCodes.Status200OK)]
+    public async Task<ItemAcervoDto> EnviarDocumento(
+        IFormFile arquivo, [FromForm] string titulo, [FromForm] string? descricao,
+        [FromServices] IDocumentosPacienteService acervo, CancellationToken ct)
+    {
+        using var ms = new MemoryStream();
+        await arquivo.CopyToAsync(ms, ct);
+        return await acervo.AdicionarAsync(new NovoDocumentoPaciente(
+            PacienteId(), titulo, descricao, arquivo.FileName, arquivo.ContentType, ms.ToArray(),
+            OrigemDocumentoPaciente.AppCidadao, "app-cidadao", SituacaoDocumentoPaciente.Pendente), ct);
+    }
+
+    /// <summary>Retira um documento que o paciente enviou e que ainda não foi conferido.</summary>
+    [HttpDelete("documentos/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RetirarDocumento(
+        Guid id, [FromServices] IDocumentosPacienteService acervo, CancellationToken ct)
+    {
+        await acervo.RetirarEnvioDoPacienteAsync(PacienteId(), id, ct);
+        return NoContent();
     }
 
     /// <summary>Laudos assinados (PAdES) do paciente.</summary>

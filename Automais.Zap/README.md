@@ -67,6 +67,7 @@ compartilhado.
 | `GET /meta/webhook` | Handshake `hub.challenge` da Meta |
 | `POST /meta/webhook` | Recebe o evento e entrega — é esta a Callback URL do App |
 | `POST /v1/mensagens` | Envio pelo sistema do cliente (token de tenant) |
+| `GET /v1/midias-recebidas/{mediaId}?phone_number_id=` | Baixa da Meta a foto/PDF que o cidadão mandou e devolve os bytes, sem guardar (token de tenant; teto `max_bytes`, padrão 25 MB) — ADR-0066 do SMSMais |
 | `GET /admin` | Painel do cliente selecionado (login) |
 | `GET /admin/tenant` | Painel: KPIs, WABAs e saúde do canal |
 | `GET /admin/waba` | WABA: rota de entrega, roteamento, segredo, números |

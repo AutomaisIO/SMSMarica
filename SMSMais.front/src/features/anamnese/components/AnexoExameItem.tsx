@@ -47,9 +47,14 @@ export function AnexoExameItem({
       <FileText className="h-5 w-5 shrink-0 text-primary-600" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-medium text-gray-900" title={anexo.nome}>
+          <button
+            type="button"
+            onClick={aoRevisar}
+            className="truncate text-left font-medium text-gray-900 hover:text-primary-700 hover:underline"
+            title="Visualizar arquivo"
+          >
             {anexo.nome}
-          </span>
+          </button>
           <span
             className={
               pendente

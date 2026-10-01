@@ -151,3 +151,28 @@ export async function obterResumoConversas(): Promise<ResumoConversas> {
   const { data } = await http.get<ResumoConversas>('/conversas/resumo');
   return data;
 }
+
+// ---------------------------------------------------------------- mídias (foto/PDF do paciente)
+
+/** Endpoint autenticado do conteúdo da mídia — para o visualizador (vale para Pendente e Aceita). */
+export function caminhoMidiaMensagem(mensagemId: string): string {
+  return `/conversas/mensagens/${mensagemId}/midia`;
+}
+
+/** Guarda a mídia como documento no cadastro do paciente escolhido (400 se ele não tem ligação com a conversa). */
+export async function aceitarMidia(
+  mensagemId: string,
+  body: { pacienteId: string; titulo: string; descricao: string | null },
+): Promise<void> {
+  await http.post(`/conversas/mensagens/${mensagemId}/midia/aceitar`, body);
+}
+
+/** Descarta a mídia: o arquivo sai do armazenamento e a trava de pendentes do número alivia. */
+export async function descartarMidia(mensagemId: string): Promise<void> {
+  await http.post(`/conversas/mensagens/${mensagemId}/midia/descartar`, {});
+}
+
+/** Tenta baixar de novo uma mídia travada ou que falhou (409 se ainda travada ou vencida na Meta). */
+export async function baixarMidiaDeNovo(mensagemId: string): Promise<void> {
+  await http.post(`/conversas/mensagens/${mensagemId}/midia/baixar`, {});
+}

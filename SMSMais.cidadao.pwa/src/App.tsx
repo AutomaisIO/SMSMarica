@@ -9,6 +9,7 @@ import { Home } from '@/pages/Home';
 import { Perfil } from '@/pages/Perfil';
 import { Atendimentos } from '@/pages/Atendimentos';
 import { Exames } from '@/pages/Exames';
+import { Documentos } from '@/pages/Documentos';
 import { Chat } from '@/pages/Chat';
 import { Transporte } from '@/pages/Transporte';
 import { ConsultasAgendadas, ExamesAgendados } from '@/pages/Agendados';
@@ -51,6 +52,7 @@ export function App() {
           <Route path="/exames" element={<Exames />} />
           {/* Laudo pertence ao exame (abre dentro do card em /exames); /laudos redireciona. */}
           <Route path="/laudos" element={<Navigate to="/exames" replace />} />
+          <Route path="/documentos" element={<Documentos />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/transporte" element={<Transporte />} />
           <Route path="/perfil" element={<Perfil />} />

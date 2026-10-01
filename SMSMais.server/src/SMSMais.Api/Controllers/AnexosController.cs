@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Anexos;
 using SMSMais.Core.Anexos.Dtos;
+using SMSMais.Core.DocumentosPaciente;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -18,7 +19,7 @@ namespace SMSMais.Api.Controllers;
 /// (só o token autoriza), com CORS e rate-limit dedicados.
 /// </summary>
 [ApiController]
-public sealed class AnexosController(IAnexosService service) : ControllerBase
+public sealed class AnexosController(IAnexosService service, IDocumentosPacienteService acervo) : ControllerBase
 {
     private readonly IAnexosService _service = service;
 
@@ -64,10 +65,44 @@ public sealed class AnexosController(IAnexosService service) : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Stream do PDF de um documento (autenticado).</summary>
+    /// <summary>Documentos do cadastro do paciente do exame, disponíveis para anexar na anamnese.</summary>
+    [HttpGet("anamneses/{solicitacaoExameId:guid}/acervo")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ItemAcervoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ItemAcervoDto>> Acervo(
+        Guid solicitacaoExameId, CancellationToken cancellationToken)
+    {
+        var pacienteId = await acervo.PacienteDoExameImagemAsync(solicitacaoExameId, cancellationToken);
+        return await acervo.ListarAsync(pacienteId, incluirPendentes: false, cancellationToken);
+    }
+
+    /// <summary>Conteúdo de um documento do cadastro do paciente do exame (visualizador).</summary>
+    [HttpGet("anamneses/{solicitacaoExameId:guid}/acervo/conteudo")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> AcervoConteudo(
+        Guid solicitacaoExameId, [FromQuery] string chave, CancellationToken cancellationToken)
+    {
+        var pacienteId = await acervo.PacienteDoExameImagemAsync(solicitacaoExameId, cancellationToken);
+        var c = await acervo.ObterConteudoPorChaveAsync(pacienteId, chave, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
+    /// <summary>Anexa na anamnese um documento que o paciente já tem no cadastro (entra salvo).</summary>
+    [HttpPost("anamneses/{solicitacaoExameId:guid}/anexos/do-acervo")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType<IReadOnlyList<AnexoExameDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AnexoExameDto>> AnexarDoAcervo(
+        Guid solicitacaoExameId, [FromBody] RegulacaoExigenciasController.AnexarDoAcervoRequest req,
+        CancellationToken cancellationToken)
+    {
+        await acervo.AnexarNaAnamneseAsync(solicitacaoExameId, req.Chave, cancellationToken);
+        return await _service.ListarPorSolicitacaoAsync(solicitacaoExameId, cancellationToken);
+    }
+
+    /// <summary>Stream do documento (PDF ou imagem) — autenticado.</summary>
     [HttpGet("anexos/{id:guid}/conteudo")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
-    [Produces("application/pdf")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ObterConteudo(Guid id, CancellationToken cancellationToken)

@@ -1,7 +1,17 @@
 import { useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileText, Image as ImagemIcone, Loader2, Paperclip, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  FolderOpen,
+  Image as ImagemIcone,
+  Loader2,
+  Paperclip,
+  Trash2,
+} from 'lucide-react';
 
 import { formatarTamanhoBytes } from '@/features/anamnese/lib/anexos';
+import { DialogoDocumento, tituloDoArquivo } from '@/shared/acervo/DialogoDocumento';
 import { cn } from '@/shared/lib/cn';
 
 export type ArquivoResumo = {
@@ -12,7 +22,13 @@ export type ArquivoResumo = {
   versao: number;
   /** Preenchido quando o arquivo já foi ao sistema de regulação — daí não se remove mais. */
   enviadoAoSistemaEm?: string | null;
+  /** Nome do documento dado por quem anexou (o nome do arquivo fica como apoio). */
+  titulo?: string | null;
+  descricao?: string | null;
 };
+
+/** O que quem anexou disse do documento — vai junto com o arquivo. */
+export type InfoDocumento = { titulo: string; descricao: string | null };
 
 type Props = {
   titulo?: string;
@@ -24,8 +40,15 @@ type Props = {
   accept: string[];
   limiteMb: number;
   arquivos: ArquivoResumo[];
-  onEnviar: (files: File[]) => Promise<void>;
+  /** Com `pedirTitulo`, recebe um arquivo por vez junto com o nome e a descrição. */
+  onEnviar: (files: File[], info?: InfoDocumento) => Promise<void>;
   onRemover?: (id: string) => Promise<void>;
+  /** Abre o arquivo no visualizador (o item da lista vira clicável). */
+  onAbrir?: (arquivo: ArquivoResumo) => void;
+  /** Mostra "Anexar do cadastro" — escolher um documento que o paciente já tem guardado. */
+  onAnexarDoCadastro?: () => void;
+  /** Pede nome e descrição do documento antes de enviar (um arquivo por vez). */
+  pedirTitulo?: boolean;
   disabled?: boolean;
 };
 
@@ -49,10 +72,14 @@ export function UploadAnexo({
   arquivos,
   onEnviar,
   onRemover,
+  onAbrir,
+  onAnexarDoCadastro,
+  pedirTitulo,
   disabled,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [enviando, setEnviando] = useState(false);
+  const [aguardandoTitulo, setAguardandoTitulo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [removendo, setRemovendo] = useState<string | null>(null);
 
@@ -71,6 +98,13 @@ export function UploadAnexo({
     const tipoRuim = escolhidos.find((f) => f.type && !accept.includes(f.type));
     if (tipoRuim) {
       setErro(`"${tipoRuim.name}" não é um tipo aceito.`);
+      return;
+    }
+
+    if (pedirTitulo) {
+      // O nome vem antes do envio: é ele que faz o documento ser achado depois no cadastro.
+      setAguardandoTitulo(escolhidos[0]);
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
@@ -134,7 +168,25 @@ export function UploadAnexo({
                 className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm"
               >
                 <Icone className="size-4 shrink-0 text-slate-400" />
-                <span className="min-w-0 flex-1 truncate text-slate-700">{a.nome}</span>
+                {onAbrir ? (
+                  <button
+                    type="button"
+                    onClick={() => onAbrir(a)}
+                    className="min-w-0 flex-1 text-left"
+                    title="Visualizar arquivo"
+                  >
+                    <span className="block truncate text-slate-700 hover:text-red-700 hover:underline">
+                      {a.titulo || a.nome}
+                    </span>
+                    {a.titulo || a.descricao ? (
+                      <span className="block truncate text-[11px] text-slate-400">
+                        {[a.descricao, a.titulo ? a.nome : null].filter(Boolean).join(' · ')}
+                      </span>
+                    ) : null}
+                  </button>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate text-slate-700">{a.titulo || a.nome}</span>
+                )}
                 <span className="shrink-0 text-xs text-slate-400">
                   {formatarTamanhoBytes(a.tamanho)}
                 </span>
@@ -175,7 +227,7 @@ export function UploadAnexo({
         ref={inputRef}
         type="file"
         className="hidden"
-        multiple={multiple}
+        multiple={multiple && !pedirTitulo}
         accept={accept.join(',')}
         onChange={(e) => aoEscolher(e.target.files)}
       />
@@ -188,11 +240,42 @@ export function UploadAnexo({
         {enviando ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
         {enviando ? 'Enviando…' : arquivos.length ? 'Anexar mais' : 'Anexar arquivo'}
       </button>
+      {onAnexarDoCadastro ? (
+        <button
+          type="button"
+          onClick={onAnexarDoCadastro}
+          disabled={disabled || enviando}
+          className="ml-2 inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+          title="Escolher um documento que o paciente já tem no cadastro"
+        >
+          <FolderOpen className="size-4" />
+          Anexar do cadastro
+        </button>
+      ) : null}
       <p className="mt-1 text-[11px] text-slate-400">
         Até {limiteMb} MB por arquivo. Foto do celular serve.
       </p>
 
       {erro ? <p className="mt-1 text-xs font-medium text-red-600">{erro}</p> : null}
+
+      <DialogoDocumento
+        aberto={aguardandoTitulo !== null}
+        tituloModal={titulo ? `Anexar em "${titulo}"` : 'Anexar documento'}
+        descricaoModal={aguardandoTitulo?.name}
+        tituloInicial={aguardandoTitulo ? tituloDoArquivo(aguardandoTitulo.name) : ''}
+        rotuloConfirmar="Anexar"
+        aoFechar={() => setAguardandoTitulo(null)}
+        aoConfirmar={async (t, d) => {
+          if (!aguardandoTitulo) return;
+          setEnviando(true);
+          try {
+            await onEnviar([aguardandoTitulo], { titulo: t, descricao: d });
+            setAguardandoTitulo(null);
+          } finally {
+            setEnviando(false);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Conversas;
+using SMSMais.Core.Conversas.Midias;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMais.Core.Pacientes;
@@ -33,7 +34,8 @@ public sealed class WhatsAppWebhookService(
     IEnumerable<IManipuladorMensagemWhatsApp> manipuladores,
     IOptions<ComunicacaoPacienteOptions> notificadorOptions,
     IContatoComprometidoService contatosComprometidos,
-    ILogger<WhatsAppWebhookService> logger) : IWhatsAppWebhookService
+    ILogger<WhatsAppWebhookService> logger,
+    SinalMidiasWhatsApp? sinalMidias = null) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
     {
@@ -91,6 +93,7 @@ public sealed class WhatsAppWebhookService(
 
         var texto = ExtrairTexto(m);
         var tipo = ExtrairTipo(m);
+        var midia = ExtrairMidia(m);
         var contexto = m.TryGetProperty("context", out var ctxEl) && ctxEl.TryGetProperty("id", out var ctxId)
             ? ctxId.GetString() : null;
         var ocorridoEm = ExtrairTimestamp(m);
@@ -116,6 +119,19 @@ public sealed class WhatsAppWebhookService(
             OcorridoEm = ocorridoEm,
             CriadoEm = DateTime.UtcNow,
         };
+        if (midia is not null)
+        {
+            // Só anota; o download é do worker (o relay espera a resposta por poucos segundos).
+            // Foto e PDF vão para a fila; áudio/vídeo ficam só registrados.
+            msg.MidiaWaId = midia.Id;
+            msg.MidiaMimeType = midia.MimeType;
+            msg.MidiaNomeArquivo = Truncar(midia.NomeArquivo, 255);
+            msg.MidiaLegenda = Truncar(midia.Legenda, 2000);
+            msg.MidiaSha256 = midia.Sha256 is { Length: <= 64 } sha ? sha : null;
+            msg.MidiaSituacao = tipo is TipoMensagem.Imagem or TipoMensagem.Documento
+                ? SituacaoMidiaWhatsApp.Recebendo
+                : null;
+        }
         db.MensagensWhatsApp.Add(msg);
 
         // Efeitos da mensagem inbound na conversa (uniforme p/ conversa nova ou existente).
@@ -134,7 +150,7 @@ public sealed class WhatsAppWebhookService(
         conversa.JanelaExpiraEm = ocorridoEm.AddHours(24);       // renova janela de 24h
         conversa.UltimaMensagemEm = ocorridoEm;
         conversa.UltimaMensagemDirecao = DirecaoMensagem.Entrada;
-        conversa.UltimaMensagemPreview = Truncar(texto);
+        conversa.UltimaMensagemPreview = Truncar(texto ?? PreviewMidia(tipo, midia));
         conversa.NaoLidas += 1;
         conversa.AtualizadoEm = DateTime.UtcNow;
 
@@ -153,10 +169,12 @@ public sealed class WhatsAppWebhookService(
 
         await db.SaveChangesAsync(ct);
 
+        if (msg.MidiaSituacao == SituacaoMidiaWhatsApp.Recebendo) sinalMidias?.Sinalizar();
+
         // Tempo real APÓS o commit.
         await notificador.MensagemRecebidaAsync(new ConversaEventoRealtime(
             conversa.Id, conversa.OperadorResponsavelId, conversa.UnidadeId,
-            conversa.TelefoneCanonical, conversa.NomeContato, Truncar(texto),
+            conversa.TelefoneCanonical, conversa.NomeContato, conversa.UltimaMensagemPreview,
             conversa.NaoLidas, ocorridoEm), ct);
     }
 
@@ -372,4 +390,40 @@ public sealed class WhatsAppWebhookService(
     }
 
     private static string? Truncar(string? s) => s is null ? null : s.Length <= 200 ? s : s[..200];
+
+    private static string? Truncar(string? s, int maximo) => s is null ? null : s.Length <= maximo ? s : s[..maximo];
+
+    private sealed record MidiaRecebidaInfo(string Id, string? MimeType, string? NomeArquivo, string? Legenda, string? Sha256);
+
+    /// <summary>
+    /// Objeto de mídia da Cloud API (<c>image</c>, <c>document</c>, <c>audio</c>, <c>video</c>,
+    /// <c>sticker</c>): id, mime, nome do arquivo (só documento) e legenda.
+    /// </summary>
+    private static MidiaRecebidaInfo? ExtrairMidia(JsonElement m)
+    {
+        var tipo = m.TryGetProperty("type", out var t) ? t.GetString() : null;
+        if (tipo is not ("image" or "document" or "audio" or "voice" or "video" or "sticker")) return null;
+        if (!m.TryGetProperty(tipo, out var obj) || obj.ValueKind != JsonValueKind.Object) return null;
+
+        string? Ler(string prop) =>
+            obj.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+        var id = Ler("id");
+        return string.IsNullOrWhiteSpace(id)
+            ? null
+            : new MidiaRecebidaInfo(id, Ler("mime_type"), Ler("filename"), Ler("caption"), Ler("sha256"));
+    }
+
+    private static string? PreviewMidia(TipoMensagem tipo, MidiaRecebidaInfo? midia)
+    {
+        var rotulo = tipo switch
+        {
+            TipoMensagem.Imagem => "📷 Imagem",
+            TipoMensagem.Documento => "📎 " + (midia?.NomeArquivo ?? "Documento"),
+            TipoMensagem.Audio => "🎤 Áudio",
+            TipoMensagem.Video => "🎬 Vídeo",
+            _ => null,
+        };
+        return midia?.Legenda is { Length: > 0 } legenda && rotulo is not null ? $"{rotulo} — {legenda}" : rotulo;
+    }
 }

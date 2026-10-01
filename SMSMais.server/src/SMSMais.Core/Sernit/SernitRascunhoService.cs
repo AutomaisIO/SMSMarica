@@ -1,6 +1,10 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.DocumentosPaciente;
+using SMSMais.Core.Midias.Dtos;
+using SMSMais.Core.Pacientes;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Midias;
 using SMSMais.Core.Regulacao.Legado;
@@ -25,7 +29,19 @@ public interface ISernitRascunhoService
     Task ExcluirAsync(Guid id, CancellationToken cancellationToken);
     Task<SernitRascunhoDetalheDto> MarcarProntoAsync(Guid id, CancellationToken cancellationToken);
     Task<SernitRascunhoAnexoDto> AnexarAsync(
-        Guid id, string nomeArquivo, string? contentType, byte[] conteudo, CancellationToken cancellationToken);
+        Guid id, string nomeArquivo, string? contentType, byte[] conteudo, CancellationToken cancellationToken, string? titulo = null, string? descricao = null);
+
+    /// <summary>Anexa um documento que o paciente (pelo CNS do rascunho) já tem no cadastro.</summary>
+    Task<SernitRascunhoAnexoDto> AnexarDoAcervoAsync(Guid id, string chave, CancellationToken cancellationToken);
+
+    /// <summary>Acervo (aceito) do paciente do rascunho; vazio se o CNS não é de paciente cadastrado.</summary>
+    Task<IReadOnlyList<ItemAcervoDto>> ListarAcervoAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<ConteudoAcervo> ObterConteudoAcervoAsync(Guid id, string chave, CancellationToken cancellationToken);
+
+    /// <summary>Conteúdo de um anexo do rascunho, para o visualizador.</summary>
+    Task<MidiaConteudo> ObterConteudoAnexoAsync(Guid id, Guid anexoId, CancellationToken cancellationToken);
+
     Task RemoverAnexoAsync(Guid id, Guid anexoId, CancellationToken cancellationToken);
 }
 
@@ -33,7 +49,9 @@ public sealed class SernitRascunhoService(
     SmsMaisDbContext db,
     IMidiasService midias,
     IUsuarioAtualAccessor usuarioAtual,
-    IRascunhoLegadoGate legado) : ISernitRascunhoService
+    IRascunhoLegadoGate legado,
+    IDocumentosPacienteService? acervo = null,
+    IPacientesService? pacientes = null) : ISernitRascunhoService
 {
     private const int TamanhoMaximoAnexo = 10 * 1024 * 1024;
 
@@ -143,7 +161,7 @@ public sealed class SernitRascunhoService(
     }
 
     public async Task<SernitRascunhoAnexoDto> AnexarAsync(
-        Guid id, string nomeArquivo, string? contentType, byte[] conteudo, CancellationToken cancellationToken)
+        Guid id, string nomeArquivo, string? contentType, byte[] conteudo, CancellationToken cancellationToken, string? titulo = null, string? descricao = null)
     {
         await legado.GarantirEscritaPermitidaAsync("SERNIT", cancellationToken);
 
@@ -180,6 +198,8 @@ public sealed class SernitRascunhoService(
             NomeArquivo = nomeArquivo,
             ContentType = contentType,
             Tamanho = conteudo.Length,
+            Titulo = Texto(titulo, 200),
+            Descricao = Texto(descricao, 2000),
             CriadoEm = DateTime.UtcNow,
         };
 
@@ -187,10 +207,121 @@ public sealed class SernitRascunhoService(
         r.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
-        return new SernitRascunhoAnexoDto(
-            anexo.Id, anexo.MidiaId, anexo.NomeArquivo, anexo.ContentType, anexo.Tamanho,
-            anexo.EnviadoEm, anexo.CriadoEm);
+        // Anexou na solicitação = fica também no cadastro do paciente (quando o CNS é de alguém
+        // cadastrado). A cópia é consequência: se falhar, o anexo do rascunho continua valendo.
+        if (acervo is not null
+            && await AcervoPorCns.ResolverPacienteAsync(pacientes, r.Cns, cancellationToken) is { } pacienteId)
+        {
+            await acervo.RegistrarCopiaAsync(new NovoDocumentoPaciente(
+                pacienteId,
+                anexo.Titulo ?? Path.GetFileNameWithoutExtension(nomeArquivo),
+                anexo.Descricao,
+                nomeArquivo,
+                contentType ?? "application/octet-stream",
+                conteudo,
+                OrigemDocumentoPaciente.Solicitacao,
+                $"sernit-solicitacao:{r.Id:D}",
+                SituacaoDocumentoPaciente.Aceito), cancellationToken);
+        }
+
+        return ParaAnexoDto(anexo);
     }
+
+    public async Task<SernitRascunhoAnexoDto> AnexarDoAcervoAsync(Guid id, string chave, CancellationToken cancellationToken)
+    {
+        await legado.GarantirEscritaPermitidaAsync("SERNIT", cancellationToken);
+
+        var r = await db.SernitSolicitacaoRascunhos
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException("Rascunho de solicitação do SERNIT", id);
+
+        var pacienteId = await AcervoPorCns.ExigirPacienteAsync(pacientes, r.Cns, cancellationToken);
+        var conteudo = await ExigirAcervo().ObterConteudoPorChaveAsync(pacienteId, chave, cancellationToken);
+
+        // O que o SMSMais produziu (laudo, imagens) pode passar do teto do upload manual; mesmo
+        // assim o envio ao sistema externo tem limite — o teto vale aqui também.
+        if (conteudo.Conteudo.Length > TamanhoMaximoAnexo)
+        {
+            throw new ValidacaoException(
+                "sernit.anexo_grande",
+                $"O documento tem {conteudo.Conteudo.Length / 1024 / 1024} MB e o limite é "
+                + $"{TamanhoMaximoAnexo / 1024 / 1024} MB.");
+        }
+
+        var midia = await midias.EnviarAsync(
+            usuarioAtual.UsuarioId,
+            conteudo.NomeArquivo,
+            conteudo.MimeType,
+            conteudo.Conteudo,
+            categoria: "sernit-solicitacao",
+            cancellationToken);
+
+        var anexo = new SernitRascunhoAnexo
+        {
+            Id = Guid.NewGuid(),
+            RascunhoId = r.Id,
+            MidiaId = midia.Id,
+            NomeArquivo = conteudo.NomeArquivo,
+            ContentType = conteudo.MimeType,
+            Tamanho = conteudo.Conteudo.Length,
+            Titulo = Texto(conteudo.Titulo, 200),
+            Descricao = Texto(conteudo.Descricao, 2000),
+            CriadoEm = DateTime.UtcNow,
+        };
+
+        db.SernitRascunhoAnexos.Add(anexo);
+        r.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return ParaAnexoDto(anexo);
+    }
+
+    public async Task<IReadOnlyList<ItemAcervoDto>> ListarAcervoAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var cns = await db.SernitSolicitacaoRascunhos.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new { x.Cns })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new NaoEncontradoException("Rascunho de solicitação do SERNIT", id);
+
+        var pacienteId = await AcervoPorCns.ResolverPacienteAsync(pacientes, cns.Cns, cancellationToken);
+        return pacienteId is { } p
+            ? await ExigirAcervo().ListarAsync(p, incluirPendentes: false, cancellationToken)
+            : [];
+    }
+
+    public async Task<ConteudoAcervo> ObterConteudoAcervoAsync(Guid id, string chave, CancellationToken cancellationToken)
+    {
+        var cns = await db.SernitSolicitacaoRascunhos.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => x.Cns)
+            .FirstOrDefaultAsync(cancellationToken);
+        var pacienteId = await AcervoPorCns.ExigirPacienteAsync(pacientes, cns, cancellationToken);
+        return await ExigirAcervo().ObterConteudoPorChaveAsync(pacienteId, chave, cancellationToken);
+    }
+
+    public async Task<MidiaConteudo> ObterConteudoAnexoAsync(Guid id, Guid anexoId, CancellationToken cancellationToken)
+    {
+        var anexo = await db.SernitRascunhoAnexos.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == anexoId && x.RascunhoId == id, cancellationToken)
+            ?? throw new NaoEncontradoException("Anexo do rascunho", anexoId);
+
+        var c = await midias.ObterConteudoAsync(anexo.MidiaId, cancellationToken)
+            ?? throw new NaoEncontradoException("Conteúdo do anexo", anexoId);
+        return new MidiaConteudo(c.Conteudo, anexo.ContentType ?? c.MimeType, anexo.NomeArquivo);
+    }
+
+    private IDocumentosPacienteService ExigirAcervo() =>
+        acervo ?? throw new InvalidOperationException("Acervo do paciente não registrado.");
+
+    private static string? Texto(string? valor, int maximo)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        var t = valor.Trim();
+        return t.Length > maximo ? t[..maximo] : t;
+    }
+
+    private static SernitRascunhoAnexoDto ParaAnexoDto(SernitRascunhoAnexo a) => new(
+        a.Id, a.MidiaId, a.NomeArquivo, a.Titulo, a.Descricao, a.ContentType, a.Tamanho, a.EnviadoEm, a.CriadoEm);
 
     public async Task RemoverAnexoAsync(Guid id, Guid anexoId, CancellationToken cancellationToken)
     {
@@ -275,8 +406,7 @@ public sealed class SernitRascunhoService(
         r.AtualizadoEm, r.EnviadoEm,
         [.. r.Anexos
             .OrderBy(a => a.CriadoEm)
-            .Select(a => new SernitRascunhoAnexoDto(
-                a.Id, a.MidiaId, a.NomeArquivo, a.ContentType, a.Tamanho, a.EnviadoEm, a.CriadoEm))]);
+            .Select(ParaAnexoDto)]);
 
     private static string? Limpar(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 }

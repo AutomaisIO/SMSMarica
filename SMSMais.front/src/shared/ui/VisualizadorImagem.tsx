@@ -24,6 +24,10 @@ type Props = {
   /** Índice inicial (0). */
   indiceInicial?: number;
   aoFechar: () => void;
+  /** Botões de ação numa barra embaixo (ex.: "Adicionar ao cadastro do paciente"). */
+  acoes?: React.ReactNode;
+  /** Esconde "Copiar link" — para arquivo privado (blob URL), em que o link não serve a ninguém. */
+  semCopiarLink?: boolean;
 };
 
 const ESCALA_MIN = 1;
@@ -35,7 +39,7 @@ const PASSO = 0.5;
  * arraste (pan) quando ampliada. Fecha no ESC, no X ou clicando no fundo. Se
  * receber mais de uma imagem, mostra setas de navegação e o contador.
  */
-export function VisualizadorImagem({ imagens, indiceInicial = 0, aoFechar }: Props) {
+export function VisualizadorImagem({ imagens, indiceInicial = 0, aoFechar, acoes, semCopiarLink }: Props) {
   const [indice, setIndice] = useState(indiceInicial);
   const [escala, setEscala] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -170,9 +174,11 @@ export function VisualizadorImagem({ imagens, indiceInicial = 0, aoFechar }: Pro
           <BotaoBarra titulo="Abrir em nova aba" aoClicar={abrirNovaAba}>
             <ExternalLink className="h-5 w-5" />
           </BotaoBarra>
-          <BotaoBarra titulo="Copiar link" aoClicar={copiarLink}>
-            <Copy className="h-5 w-5" />
-          </BotaoBarra>
+          {semCopiarLink ? null : (
+            <BotaoBarra titulo="Copiar link" aoClicar={copiarLink}>
+              <Copy className="h-5 w-5" />
+            </BotaoBarra>
+          )}
           <span className="mx-1 h-5 w-px bg-white/20" aria-hidden />
           <BotaoBarra titulo="Fechar (Esc)" aoClicar={aoFechar}>
             <X className="h-5 w-5" />
@@ -214,6 +220,12 @@ export function VisualizadorImagem({ imagens, indiceInicial = 0, aoFechar }: Pro
           </BotaoSeta>
         ) : null}
       </div>
+
+      {acoes ? (
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-black/60 px-4 py-3">
+          {acoes}
+        </div>
+      ) : null}
     </div>
   );
 }

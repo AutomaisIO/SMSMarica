@@ -67,6 +67,11 @@ public class SernitRascunhoAnexo
     public string? ContentType { get; set; }
     public long Tamanho { get; set; }
 
+    /// <summary>Nome do documento dado por quem anexou (ex.: "Laudo da ressonância"). Nulo em linha antiga.</summary>
+    public string? Titulo { get; set; }
+
+    public string? Descricao { get; set; }
+
     public DateTime? EnviadoEm { get; set; }
     public DateTime CriadoEm { get; set; }
 }

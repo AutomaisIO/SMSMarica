@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
 using SMSMais.Api.Auth;
+using SMSMais.Core.DocumentosPaciente;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Data.Entities.Enums;
 
@@ -40,15 +41,44 @@ public sealed class RegulacaoExigenciasController(IRegulacaoExigenciaService ser
     [RequestSizeLimit(LimiteCorpoBytes)]
     [ProducesResponseType<ArquivoExigenciaDto>(StatusCodes.Status200OK)]
     public async Task<ArquivoExigenciaDto> Anexar(
-        Guid solicitacaoId, Guid exigenciaId, IFormFile arquivo, CancellationToken cancellationToken)
+        Guid solicitacaoId, Guid exigenciaId, IFormFile arquivo,
+        [FromForm] string? titulo, [FromForm] string? descricao, CancellationToken cancellationToken)
     {
         using var ms = new MemoryStream();
         await arquivo.CopyToAsync(ms, cancellationToken);
 
         return await servico.AnexarAsync(
             solicitacaoId, exigenciaId, arquivo.FileName, arquivo.ContentType, ms.ToArray(),
-            cancellationToken);
+            cancellationToken, titulo, descricao);
     }
+
+    /// <summary>Anexa um documento que o paciente já tem no cadastro, sem novo upload.</summary>
+    [HttpPost("{exigenciaId:guid}/do-acervo")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ArquivoExigenciaDto>(StatusCodes.Status200OK)]
+    public Task<ArquivoExigenciaDto> AnexarDoAcervo(
+        Guid solicitacaoId, Guid exigenciaId, [FromBody] AnexarDoAcervoRequest req, CancellationToken cancellationToken) =>
+        servico.AnexarDoAcervoAsync(solicitacaoId, exigenciaId, req.Chave, cancellationToken);
+
+    /// <summary>Documentos do cadastro do paciente disponíveis para anexar.</summary>
+    [HttpGet("~/regulacao/solicitacoes/{solicitacaoId:guid}/acervo")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ItemAcervoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<ItemAcervoDto>> Acervo(Guid solicitacaoId, CancellationToken cancellationToken) =>
+        servico.ListarAcervoAsync(solicitacaoId, cancellationToken);
+
+    /// <summary>Conteúdo de um documento do cadastro, para o visualizador.</summary>
+    [HttpGet("~/regulacao/solicitacoes/{solicitacaoId:guid}/acervo/conteudo")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> AcervoConteudo(
+        Guid solicitacaoId, [FromQuery] string chave, CancellationToken cancellationToken)
+    {
+        var c = await servico.ObterConteudoAcervoAsync(solicitacaoId, chave, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
+    public sealed record AnexarDoAcervoRequest(string Chave);
 
     [HttpDelete("arquivos/{arquivoId:guid}")]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]

@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AnexosRascunho } from '@/shared/acervo/AnexosRascunho';
+import { apiAnexosRascunho } from '@/shared/acervo/api';
 import {
   AlertTriangle,
   Check,
@@ -8,12 +11,10 @@ import {
   Paperclip,
   Save,
   Send,
-  Trash2,
   Search,
 } from 'lucide-react';
 
 import {
-  useAnexarRascunhoSer,
   useCamposCatalogoSer,
   useFormularioCatalogoSer,
   useMarcarRascunhoPronto,
@@ -45,6 +46,8 @@ import {
 import { Select } from '@/shared/ui/Select';
 import { formatarInstante } from '@/shared/lib/datas';
 import { pesquisarPacienteSer } from '@/features/ser/api/serApi';
+
+const anexosRascunhoSer = apiAnexosRascunho('/regulacao/ser/rascunhos');
 
 /**
  * Regulação → Nova solicitação.
@@ -86,8 +89,9 @@ export function SerNovaSolicitacaoPage() {
   const carregado = useRascunhoSer(rascunhoId);
 
   const salvar = useSalvarRascunhoSer();
+
+  const queryClient = useQueryClient();
   const marcarPronto = useMarcarRascunhoPronto();
-  const anexar = useAnexarRascunhoSer();
   const removerAnexo = useRemoverAnexoRascunhoSer();
 
   // Ao abrir um rascunho existente, a tela é repovoada a partir dele.
@@ -201,24 +205,6 @@ export function SerNovaSolicitacaoPage() {
       setRascunhoId(salvo.id);
       await marcarPronto.mutateAsync(salvo.id);
       setAviso('Marcado como pronto — completo e esperando autorização de envio.');
-    } catch (e) {
-      setErro(extrairMensagemDeErro(e));
-    }
-  }
-
-  async function aoAnexar(arquivo: File) {
-    setErro(null);
-    try {
-      // Anexo pertence a um rascunho: se ainda não existe, salva antes — senão o arquivo não
-      // teria a quem pertencer.
-      let id = rascunhoId;
-      if (!id) {
-        const r = await salvar.mutateAsync({ id: null, corpo: corpo() });
-        id = r.id;
-        setRascunhoId(id);
-      }
-      await anexar.mutateAsync({ id, arquivo });
-      setAviso(`"${arquivo.name}" anexado. Fica guardado aqui e sobe junto no envio.`);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -514,52 +500,36 @@ export function SerNovaSolicitacaoPage() {
               <Paperclip className="size-4" /> Anexos
             </h2>
 
-            <ul className="mb-2 space-y-1">
-              {(carregado.data?.anexos ?? []).map((a) => (
-                <li key={a.id} className="flex items-center gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate">{a.nomeArquivo}</span>
-                  <span className="shrink-0 text-xs text-slate-500">
-                    {(a.tamanho / 1024).toFixed(0)} KB
-                  </span>
-                  {a.enviadoEm ? (
-                    <span className="shrink-0 text-xs text-emerald-700">no SER</span>
-                  ) : (
-                    !somenteLeitura && (
-                      <button
-                        type="button"
-                        title="Remover anexo"
-                        onClick={() =>
-                          rascunhoId && removerAnexo.mutate({ id: rascunhoId, anexoId: a.id })
-                        }
-                        className="shrink-0 text-slate-400 hover:text-red-700"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    )
-                  )}
-                </li>
-              ))}
-            </ul>
-
-            {!somenteLeitura && (
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
-                {anexar.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Paperclip className="size-4" />
-                )}
-                Anexar arquivo
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void aoAnexar(f);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            )}
+            <AnexosRascunho
+              anexos={carregado.data?.anexos ?? []}
+              somenteLeitura={somenteLeitura}
+              sistema="SER"
+              rascunhoId={rascunhoId}
+              salvarRascunho={async () => {
+                // Salva o que está na tela: o anexo precisa de dono, e o "anexar do cadastro"
+                // acha o paciente pelo CNS gravado.
+                const r = await salvar.mutateAsync({ id: rascunhoId, corpo: corpo() });
+                setRascunhoId(r.id);
+                return r.id;
+              }}
+              enviar={async (id, arquivo, titulo, descricao) => {
+                await anexosRascunhoSer.enviar(id, arquivo, titulo, descricao);
+                await queryClient.invalidateQueries({ queryKey: ['ser', 'rascunhos'] });
+              }}
+              remover={(id, anexoId) => removerAnexo.mutate({ id, anexoId })}
+              caminhoConteudo={anexosRascunhoSer.caminhoConteudo}
+              listarAcervo={anexosRascunhoSer.listarAcervo}
+              caminhoConteudoAcervo={anexosRascunhoSer.caminhoConteudoAcervo}
+              anexarDoAcervo={async (id, chave) => {
+                await anexosRascunhoSer.anexarDoAcervo(id, chave);
+                await queryClient.invalidateQueries({ queryKey: ['ser', 'rascunhos'] });
+              }}
+              aoAvisar={(m) => {
+                setErro(null);
+                setAviso(m);
+              }}
+              aoErro={(e) => setErro(extrairMensagemDeErro(e))}
+            />
             <p className="mt-1 text-xs text-slate-500">
               Até 10 MB por arquivo. Fica guardado na nossa base e sobe junto quando o pedido for
               enviado.

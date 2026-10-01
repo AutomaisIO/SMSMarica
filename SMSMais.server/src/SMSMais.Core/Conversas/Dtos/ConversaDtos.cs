@@ -59,7 +59,15 @@ public sealed record MensagemDto(
     Guid? AutorUsuarioId,
     string? AutorNomeExibicao,
     StatusMensagemWhatsApp Status,
-    DateTime OcorridoEm);
+    DateTime OcorridoEm,
+    /// <summary>Foto/PDF que o paciente mandou: o que aconteceu com o arquivo. Nulo = sem mídia.</summary>
+    SituacaoMidiaWhatsApp? MidiaSituacao = null,
+    string? MidiaMimeType = null,
+    string? MidiaNomeArquivo = null,
+    string? MidiaLegenda = null,
+    long? MidiaTamanho = null,
+    /// <summary>Documento do cadastro criado quando a mídia foi aceita.</summary>
+    Guid? DocumentoPacienteId = null);
 
 /// <summary>Inicia uma nova conversa disparando um template HSM aprovado.</summary>
 public sealed record IniciarConversaRequest(

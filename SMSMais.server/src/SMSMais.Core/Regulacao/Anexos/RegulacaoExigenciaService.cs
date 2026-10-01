@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.DocumentosPaciente;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
@@ -15,6 +16,8 @@ namespace SMSMais.Core.Regulacao.Anexos;
 public sealed record ArquivoExigenciaDto(
     Guid Id,
     string Nome,
+    string? Titulo,
+    string? Descricao,
     string ContentType,
     long Tamanho,
     int Versao,
@@ -50,9 +53,24 @@ public interface IRegulacaoExigenciaService
     Task<ExigenciaDto> GarantirDaRegraAsync(
         Guid solicitacaoId, Guid regraId, string titulo, bool obrigatoria, CancellationToken ct);
 
+    /// <param name="titulo">Nome do documento dado por quem anexou; sem ele, vale o nome do arquivo.</param>
+    /// <remarks>O arquivo também entra no acervo do paciente ("Exames anexados" do cadastro).</remarks>
     Task<ArquivoExigenciaDto> AnexarAsync(
         Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo,
-        CancellationToken ct);
+        CancellationToken ct, string? titulo = null, string? descricao = null);
+
+    /// <summary>
+    /// Anexa um documento que o paciente já tem no cadastro (chave <c>tipo:id</c> do acervo).
+    /// Não passa pelas regras de upload — o arquivo já foi aceito quando entrou no cadastro.
+    /// </summary>
+    Task<ArquivoExigenciaDto> AnexarDoAcervoAsync(
+        Guid solicitacaoId, Guid exigenciaId, string chave, CancellationToken ct);
+
+    /// <summary>Acervo (aceito) do paciente da solicitação — o que dá para anexar sem novo upload.</summary>
+    Task<IReadOnlyList<ItemAcervoDto>> ListarAcervoAsync(Guid solicitacaoId, CancellationToken ct);
+
+    /// <summary>Conteúdo de um item do acervo do paciente da solicitação (para o visualizador).</summary>
+    Task<ConteudoAcervo> ObterConteudoAcervoAsync(Guid solicitacaoId, string chave, CancellationToken ct);
 
     /// <summary>
     /// Anexa um PDF gerado pelo próprio SMSMais (exame/laudo do acervo), marcado
@@ -91,7 +109,8 @@ public sealed class RegulacaoExigenciaService(
     IArquivoExigenciaStore store,
     IRegulacaoConfiguracaoService configuracao,
     IUsuarioAtualAccessor usuarioAtual,
-    IRegulacaoEscopo escopoRegulacao) : IRegulacaoExigenciaService
+    IRegulacaoEscopo escopoRegulacao,
+    IDocumentosPacienteService? acervo = null) : IRegulacaoExigenciaService
 {
     private const string TituloAnexosGerais = "Anexos gerais";
 
@@ -178,7 +197,7 @@ public sealed class RegulacaoExigenciaService(
 
     public async Task<ArquivoExigenciaDto> AnexarAsync(
         Guid solicitacaoId, Guid exigenciaId, string nome, string contentType, byte[] conteudo,
-        CancellationToken ct)
+        CancellationToken ct, string? titulo = null, string? descricao = null)
     {
         var solicitacao = await ExigirSolicitacaoAsync(solicitacaoId, ct);
         var exigencia = await ExigirExigenciaAsync(solicitacaoId, exigenciaId, ct);
@@ -232,6 +251,8 @@ public sealed class RegulacaoExigenciaService(
             ExigenciaId = exigenciaId,
             ChaveArmazenamento = chave,
             Nome = LimparNome(nome),
+            Titulo = Texto(titulo, 200),
+            Descricao = Texto(descricao, 2000),
             ContentType = tipo,
             Tamanho = conteudo.LongLength,
             Sha256 = Convert.ToHexStringLower(SHA256.HashData(conteudo)),
@@ -251,7 +272,89 @@ public sealed class RegulacaoExigenciaService(
         }
 
         await db.SaveChangesAsync(ct);
+
+        // Anexou na solicitação = fica também no cadastro do paciente, perene. A caixinha guarda a
+        // própria cópia (retirar o anexo daqui não pode apagar o documento do cadastro).
+        if (acervo is not null)
+        {
+            await acervo.RegistrarCopiaAsync(new NovoDocumentoPaciente(
+                solicitacao.PacienteId,
+                arquivo.Titulo ?? Path.GetFileNameWithoutExtension(arquivo.Nome),
+                arquivo.Descricao,
+                arquivo.Nome,
+                tipo,
+                conteudo,
+                OrigemDocumentoPaciente.Solicitacao,
+                $"regulacao:{solicitacao.Id:D}",
+                SituacaoDocumentoPaciente.Aceito), ct);
+        }
+
         return Mapear(arquivo);
+    }
+
+    public async Task<ArquivoExigenciaDto> AnexarDoAcervoAsync(
+        Guid solicitacaoId, Guid exigenciaId, string chave, CancellationToken ct)
+    {
+        var solicitacao = await ExigirSolicitacaoAsync(solicitacaoId, ct);
+        var exigencia = await ExigirExigenciaAsync(solicitacaoId, exigenciaId, ct);
+        var conteudo = await ExigirAcervo().ObterConteudoPorChaveAsync(solicitacao.PacienteId, chave, ct);
+
+        var versaoAnterior = await db.RegulacaoExigenciaArquivos
+            .Where(a => a.ExigenciaId == exigenciaId)
+            .OrderByDescending(a => a.Versao)
+            .FirstOrDefaultAsync(ct);
+
+        var caixinhaDeRegra = exigencia.RegraId is not null;
+        if (caixinhaDeRegra && versaoAnterior is { Situacao: SituacaoArquivoExigencia.Atual })
+        {
+            versaoAnterior.Situacao = SituacaoArquivoExigencia.Substituido;
+        }
+
+        var id = Guid.CreateVersion7();
+        var chaveArmazenamento = store.MontarChave(
+            solicitacao.PacienteId, id, DocumentosPacienteService.Extensao(conteudo.MimeType));
+        await store.SalvarAsync(chaveArmazenamento, conteudo.Conteudo, ct);
+
+        var arquivo = new RegulacaoExigenciaArquivo
+        {
+            Id = id,
+            ExigenciaId = exigenciaId,
+            ChaveArmazenamento = chaveArmazenamento,
+            Nome = LimparNome(conteudo.NomeArquivo),
+            Titulo = Texto(conteudo.Titulo, 200),
+            Descricao = Texto(conteudo.Descricao, 2000),
+            ContentType = conteudo.MimeType,
+            Tamanho = conteudo.Conteudo.LongLength,
+            Sha256 = Convert.ToHexStringLower(SHA256.HashData(conteudo.Conteudo)),
+            Versao = (versaoAnterior?.Versao ?? 0) + 1,
+            SubstituiArquivoId = caixinhaDeRegra ? versaoAnterior?.Id : null,
+            Situacao = SituacaoArquivoExigencia.Atual,
+            Origem = OrigemArquivoExigencia.Acervo,
+            CriadoEm = DateTime.UtcNow,
+            CriadoPor = usuarioAtual.UsuarioId,
+        };
+        db.RegulacaoExigenciaArquivos.Add(arquivo);
+
+        if (exigencia.Situacao is SituacaoExigenciaRegulacao.Pendente or SituacaoExigenciaRegulacao.Criticada)
+        {
+            exigencia.Situacao = SituacaoExigenciaRegulacao.Atendida;
+            exigencia.CriticaTexto = null;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Mapear(arquivo);
+    }
+
+    public async Task<IReadOnlyList<ItemAcervoDto>> ListarAcervoAsync(Guid solicitacaoId, CancellationToken ct)
+    {
+        var solicitacao = await ExigirSolicitacaoAsync(solicitacaoId, ct, rastrear: false);
+        return await ExigirAcervo().ListarAsync(solicitacao.PacienteId, incluirPendentes: false, ct);
+    }
+
+    public async Task<ConteudoAcervo> ObterConteudoAcervoAsync(Guid solicitacaoId, string chave, CancellationToken ct)
+    {
+        var solicitacao = await ExigirSolicitacaoAsync(solicitacaoId, ct, rastrear: false);
+        return await ExigirAcervo().ObterConteudoPorChaveAsync(solicitacao.PacienteId, chave, ct);
     }
 
     public async Task<ArquivoExigenciaDto> AnexarInternoAsync(
@@ -436,6 +539,16 @@ public sealed class RegulacaoExigenciaService(
             .FirstOrDefaultAsync(a => a.Id == arquivoId && a.Exigencia!.SolicitacaoId == solicitacaoId, ct)
         ?? throw new NaoEncontradoException("Anexo da solicitação", arquivoId);
 
+    private IDocumentosPacienteService ExigirAcervo() =>
+        acervo ?? throw new InvalidOperationException("Acervo do paciente não registrado.");
+
+    private static string? Texto(string? valor, int maximo)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        var t = valor.Trim();
+        return t.Length > maximo ? t[..maximo] : t;
+    }
+
     private static string ExtensaoDe(string nome, string contentType)
     {
         var doNome = Path.GetExtension(nome ?? string.Empty).Trim('.').ToLowerInvariant();
@@ -467,6 +580,6 @@ public sealed class RegulacaoExigenciaService(
                 .Select(Mapear)]);
 
     private static ArquivoExigenciaDto Mapear(RegulacaoExigenciaArquivo a) =>
-        new(a.Id, a.Nome, a.ContentType, a.Tamanho, a.Versao, a.Situacao, a.Origem,
+        new(a.Id, a.Nome, a.Titulo, a.Descricao, a.ContentType, a.Tamanho, a.Versao, a.Situacao, a.Origem,
             a.EnviadoAoSistemaEm, a.CriadoEm);
 }

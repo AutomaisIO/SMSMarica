@@ -30,6 +30,10 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'solicitação',
     'solicitações',
     'nova solicitação',
+    'anexar do cadastro',
+    'exames anexados',
+    'nome do documento',
+    'visualizar anexo',
     'pedido',
     'regulação',
     'pré-regulação',
@@ -350,17 +354,41 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'anexos',
       titulo: 'Anexos',
-      busca: 'anexo anexos caixinha documento exigido anexos gerais pdf imagem tamanho limite usar este exame da rede remover',
+      busca:
+        'anexo anexos caixinha documento exigido anexos gerais pdf imagem tamanho limite usar este exame da rede remover nome do documento descrição visualizar abrir anexar do cadastro exames anexados laudo assinado imagens do exame cadastro do paciente',
       conteudo: (
-        <Lista>
-          <Item>Cada documento exigido pelo manual vira uma caixinha; toda solicitação tem também “Anexos gerais”.</Item>
-          <Item>Os tipos e o tamanho máximo são os da configuração (normalmente PDF e imagens, até 15 MB).</Item>
-          <Item>
-            Quando a rede já tem um exame do paciente que serve para a caixinha, aparece a sugestão com{' '}
-            <BotaoRef>Usar este</BotaoRef>.
-          </Item>
-          <Item>Arquivo que já foi enviado ao sistema de destino não pode mais ser removido.</Item>
-        </Lista>
+        <>
+          <Lista>
+            <Item>Cada documento exigido pelo manual vira uma caixinha; toda solicitação tem também “Anexos gerais”.</Item>
+            <Item>
+              <BotaoRef variante="outline">Anexar arquivo</BotaoRef> pede, antes de enviar, o{' '}
+              <strong>nome do documento</strong> (obrigatório) e uma <strong>descrição</strong>. Um
+              arquivo por vez — cada um com o seu nome.
+            </Item>
+            <Item>
+              O arquivo anexado <strong>também fica no cadastro do paciente</strong> (aba Exames anexados,
+              origem “Solicitação”). Da próxima vez que ele precisar do mesmo documento, ninguém pede de novo.
+            </Item>
+            <Item>Clique no nome do anexo para abri-lo no visualizador do sistema (PDF ou imagem com zoom).</Item>
+            <Item>
+              <BotaoRef variante="outline">Anexar do cadastro</BotaoRef> lista o que o paciente já tem
+              guardado — documentos, laudos <strong>assinados</strong> e o PDF das imagens dos exames —
+              com busca, “olho” para visualizar e <BotaoRef>Anexar</BotaoRef>. O escolhido entra na
+              caixinha sem novo upload.
+            </Item>
+            <Item>Os tipos e o tamanho máximo do upload são os da configuração (normalmente PDF e imagens, até 15 MB).</Item>
+            <Item>
+              Quando a rede já tem um exame do paciente que serve para a caixinha, aparece a sugestão com{' '}
+              <BotaoRef>Usar este</BotaoRef>.
+            </Item>
+            <Item>Arquivo que já foi enviado ao sistema de destino não pode mais ser removido.</Item>
+          </Lista>
+          <Callout tipo="dica" titulo="Não aparece o exame que o paciente mandou pelo app?">
+            O que o paciente envia pelo app (ou pelo WhatsApp) só entra no “Anexar do cadastro” depois
+            que alguém da equipe aceita — na ficha do paciente, aba Exames anexados. É a conferência que
+            impede foto ilegível ou documento de outra pessoa de ir para o regulador.
+          </Callout>
+        </>
       ),
     },
     {

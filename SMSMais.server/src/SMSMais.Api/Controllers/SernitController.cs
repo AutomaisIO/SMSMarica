@@ -479,13 +479,50 @@ public sealed class SernitRascunhoController(
     [RequestSizeLimit(12 * 1024 * 1024)]
     [ProducesResponseType<SernitRascunhoAnexoDto>(StatusCodes.Status200OK)]
     public async Task<SernitRascunhoAnexoDto> Anexar(
-        Guid id, IFormFile arquivo, CancellationToken cancellationToken)
+        Guid id, IFormFile arquivo, [FromForm] string? titulo, [FromForm] string? descricao,
+        CancellationToken cancellationToken)
     {
         using var ms = new MemoryStream();
         await arquivo.CopyToAsync(ms, cancellationToken);
         return await rascunhos.AnexarAsync(
-            id, arquivo.FileName, arquivo.ContentType, ms.ToArray(), cancellationToken);
+            id, arquivo.FileName, arquivo.ContentType, ms.ToArray(), cancellationToken, titulo, descricao);
     }
+
+    /// <summary>Conteúdo de um anexo do rascunho, para o visualizador.</summary>
+    [HttpGet("{id:guid}/anexos/{anexoId:guid}/conteudo")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ConteudoAnexo(Guid id, Guid anexoId, CancellationToken cancellationToken)
+    {
+        var c = await rascunhos.ObterConteudoAnexoAsync(id, anexoId, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
+    /// <summary>Documentos do cadastro do paciente (pelo CNS do rascunho) disponíveis para anexar.</summary>
+    [HttpGet("{id:guid}/acervo")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SMSMais.Core.DocumentosPaciente.ItemAcervoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<SMSMais.Core.DocumentosPaciente.ItemAcervoDto>> Acervo(
+        Guid id, CancellationToken cancellationToken) =>
+        rascunhos.ListarAcervoAsync(id, cancellationToken);
+
+    [HttpGet("{id:guid}/acervo/conteudo")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> AcervoConteudo(
+        Guid id, [FromQuery] string chave, CancellationToken cancellationToken)
+    {
+        var c = await rascunhos.ObterConteudoAcervoAsync(id, chave, cancellationToken);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
+    /// <summary>Anexa um documento do cadastro do paciente, sem novo upload.</summary>
+    [HttpPost("{id:guid}/anexos/do-acervo")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SernitRascunhoAnexoDto>(StatusCodes.Status200OK)]
+    public Task<SernitRascunhoAnexoDto> AnexarDoAcervo(
+        Guid id, [FromBody] RegulacaoExigenciasController.AnexarDoAcervoRequest req, CancellationToken cancellationToken) =>
+        rascunhos.AnexarDoAcervoAsync(id, req.Chave, cancellationToken);
 
     [HttpDelete("{id:guid}/anexos/{anexoId:guid}")]
     [RequerPermissao(ModuloPermissao.RegulacaoSernit, AcoesPermissao.Edicao)]

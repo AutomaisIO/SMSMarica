@@ -30,10 +30,28 @@ internal sealed class MensagemWhatsAppConfiguration : IEntityTypeConfiguration<M
         builder.Property(m => m.AutorNomeExibicao).HasColumnName("autor_nome_exibicao").HasMaxLength(200);
         builder.Property(m => m.TipoMensagem).HasColumnName("tipo_mensagem").HasConversion<int>();
 
+        // Mídia recebida (aditivo, nullable).
+        builder.Property(m => m.MidiaWaId).HasColumnName("midia_wa_id").HasMaxLength(120);
+        builder.Property(m => m.MidiaMimeType).HasColumnName("midia_mime_type").HasMaxLength(120);
+        builder.Property(m => m.MidiaNomeArquivo).HasColumnName("midia_nome_arquivo").HasMaxLength(255);
+        builder.Property(m => m.MidiaLegenda).HasColumnName("midia_legenda").HasMaxLength(2000);
+        builder.Property(m => m.MidiaTamanho).HasColumnName("midia_tamanho");
+        builder.Property(m => m.MidiaSha256).HasColumnName("midia_sha256").HasMaxLength(64);
+        builder.Property(m => m.MidiaChave).HasColumnName("midia_chave").HasMaxLength(400);
+        builder.Property(m => m.MidiaSituacao).HasColumnName("midia_situacao").HasConversion<int>();
+        builder.Property(m => m.MidiaDecididaEm).HasColumnName("midia_decidida_em");
+        builder.Property(m => m.MidiaDecididaPor).HasColumnName("midia_decidida_por");
+        builder.Property(m => m.DocumentoPacienteId).HasColumnName("documento_paciente_id");
+
         builder.HasOne(m => m.Conversa).WithMany(c => c.Mensagens).HasForeignKey(m => m.ConversaId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(m => m.WaMessageId).IsUnique().HasFilter("wa_message_id IS NOT NULL");
         builder.HasIndex(m => new { m.PacienteId, m.OcorridoEm });
         builder.HasIndex(m => new { m.ConversaId, m.OcorridoEm });
+
+        // Conta as mídias pendentes por número (trava de 10) sem varrer a tabela inteira.
+        builder.HasIndex(m => new { m.Telefone, m.MidiaSituacao })
+            .HasFilter("midia_situacao IS NOT NULL")
+            .HasDatabaseName("ix_whatsapp_mensagem_telefone_midia");
     }
 }

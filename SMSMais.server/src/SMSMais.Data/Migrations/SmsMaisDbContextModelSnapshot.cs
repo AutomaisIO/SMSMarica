@@ -1712,6 +1712,118 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("documento_exame", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.DocumentoPaciente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AceitoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("aceito_em");
+
+                    b.Property<Guid?>("AceitoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aceito_por");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<string>("ChaveArmazenamento")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("chave_armazenamento");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("descricao");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("HashSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash_sha256");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("mime_type");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("nome_arquivo");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("integer")
+                        .HasColumnName("origem");
+
+                    b.Property<string>("OrigemReferencia")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("origem_referencia");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Situacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("situacao");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tamanho_bytes");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PacienteId", "CriadoEm")
+                        .HasDatabaseName("ix_documento_paciente_paciente_criado");
+
+                    b.HasIndex("PacienteId", "HashSha256")
+                        .HasDatabaseName("ix_documento_paciente_paciente_hash");
+
+                    b.ToTable("documento_paciente", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.DownloadToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5621,10 +5733,60 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("direcao");
 
+                    b.Property<Guid?>("DocumentoPacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("documento_paciente_id");
+
                     b.Property<string>("ErroMeta")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("erro_meta");
+
+                    b.Property<string>("MidiaChave")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("midia_chave");
+
+                    b.Property<DateTime?>("MidiaDecididaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("midia_decidida_em");
+
+                    b.Property<Guid?>("MidiaDecididaPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("midia_decidida_por");
+
+                    b.Property<string>("MidiaLegenda")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("midia_legenda");
+
+                    b.Property<string>("MidiaMimeType")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("midia_mime_type");
+
+                    b.Property<string>("MidiaNomeArquivo")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("midia_nome_arquivo");
+
+                    b.Property<string>("MidiaSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("midia_sha256");
+
+                    b.Property<int?>("MidiaSituacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("midia_situacao");
+
+                    b.Property<long?>("MidiaTamanho")
+                        .HasColumnType("bigint")
+                        .HasColumnName("midia_tamanho");
+
+                    b.Property<string>("MidiaWaId")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("midia_wa_id");
 
                     b.Property<DateTime>("OcorridoEm")
                         .HasColumnType("timestamp with time zone")
@@ -5667,6 +5829,10 @@ namespace SMSMais.Data.Migrations
                     b.HasIndex("ConversaId", "OcorridoEm");
 
                     b.HasIndex("PacienteId", "OcorridoEm");
+
+                    b.HasIndex("Telefone", "MidiaSituacao")
+                        .HasDatabaseName("ix_whatsapp_mensagem_telefone_midia")
+                        .HasFilter("midia_situacao IS NOT NULL");
 
                     b.ToTable("whatsapp_mensagem", "smsmarica");
                 });
@@ -8054,6 +8220,11 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("criado_por");
 
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("descricao");
+
                     b.Property<DateTime?>("EnviadoAoSistemaEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("enviado_ao_sistema_em");
@@ -8089,6 +8260,11 @@ namespace SMSMais.Data.Migrations
                     b.Property<long>("Tamanho")
                         .HasColumnType("bigint")
                         .HasColumnName("tamanho");
+
+                    b.Property<string>("Titulo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
 
                     b.Property<int>("Versao")
                         .HasColumnType("integer")
@@ -10511,6 +10687,11 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
 
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("descricao");
+
                     b.Property<DateTime?>("EnviadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("enviado_em");
@@ -10532,6 +10713,11 @@ namespace SMSMais.Data.Migrations
                     b.Property<long>("Tamanho")
                         .HasColumnType("bigint")
                         .HasColumnName("tamanho");
+
+                    b.Property<string>("Titulo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
 
                     b.HasKey("Id");
 
@@ -11520,6 +11706,11 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
 
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("descricao");
+
                     b.Property<DateTime?>("EnviadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("enviado_em");
@@ -11541,6 +11732,11 @@ namespace SMSMais.Data.Migrations
                     b.Property<long>("Tamanho")
                         .HasColumnType("bigint")
                         .HasColumnName("tamanho");
+
+                    b.Property<string>("Titulo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
 
                     b.HasKey("Id");
 

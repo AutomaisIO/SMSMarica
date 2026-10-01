@@ -78,6 +78,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<DocumentoExame> DocumentosExame => Set<DocumentoExame>();
     public DbSet<AnexoUploadToken> AnexoUploadTokens => Set<AnexoUploadToken>();
 
+    // Acervo do paciente ("Exames anexados" perene no cadastro)
+    public DbSet<DocumentoPaciente> DocumentosPaciente => Set<DocumentoPaciente>();
+
     // Tokens de API (chaves de serviço para integrações externas, ex.: CentralIA)
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
 

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0066 — Acervo do paciente ("Exames anexados" perene) e mídia do WhatsApp pendente até alguém aceitar</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0066 — Acervo do paciente ("Exames anexados" perene) e mídia do WhatsApp pendente até alguém aceitar</h1>
+<p><strong>Status:</strong> aceito (implementado localmente em 2026-10-01; deploy depende de OK) · <strong>Data:</strong> 2026-10-01 <strong>Relacionado:</strong> <a href="./0019-anexos-exame-pwa-qr-armazenamento.md">ADR-0019</a> (anexos da anamnese por QR, armazenamento no Spaces) · <a href="./0052-fila-pre-regulacao-e-agente-regulador.md">ADR-0052</a> (caixinhas de exigência da solicitação de regulação) · <a href="./0044-app-meta-unico-e-roteador-whatsapp.md">ADR-0044</a> (só o Automais.Zap tem o token da Meta) · <a href="./0007-schema-fhir-separado.md">ADR-0007</a></p>
+<h2>Contexto</h2>
+<p>Pedido do Bernardo (01/10/2026):</p>
+<ul>
+<li>Anexar um documento numa solicitação já funcionava, mas o anexo não abria em lugar nenhum.</li>
+<li>O documento devia pedir nome e descrição e ficar <strong>perene</strong> no cadastro do paciente, em</li>
+</ul>
+<p>  "Exames anexados".</p>
+<ul>
+<li>Foto ou PDF que o paciente manda pelo WhatsApp não aparecia na conversa. Devia dar para</li>
+</ul>
+<p>  visualizar e "adicionar ao cadastro do paciente".</p>
+<ul>
+<li>O que está no cadastro, incluindo laudo <strong>assinado</strong> e PDF das imagens dos exames, devia ficar</li>
+</ul>
+<p>  disponível para anexar em qualquer solicitação.</p>
+<ul>
+<li>O app do cidadão devia ganhar "anexar documento" e a lista de tudo.</li>
+<li>Mídia do chat e envio do app ficam <strong>pendentes até alguém aceitar</strong>. Com 10 pendentes, trava,</li>
+</ul>
+<p>  contra quem polui o armazenamento.</p>
+<p>O que existia:</p>
+<p><strong>Anexos: três sistemas que não se falavam</strong></p>
+<div class="tw"><table><thead><tr><th>Sistema</th><th>Onde guarda</th><th>Ligação com o paciente</th></tr></thead><tbody>
+<tr><td>Anamnese por QR (<code>documento_exame</code>)</td><td>Spaces</td><td>Indireta, pelo <code>ExameImagem</code></td></tr>
+<tr><td>Caixinhas da regulação (<code>regulacao_exigencia_arquivo</code>)</td><td>Spaces</td><td>Pela solicitação</td></tr>
+<tr><td>Rascunhos SER/SERNIT (<code>*_rascunho_anexo</code>)</td><td><code>midia</code>, dentro do Postgres</td><td>Só pelo CNS digitado</td></tr>
+</tbody></table></div>
+<ul>
+<li>A aba "Exames anexados" mostrava só o primeiro.</li>
+<li>Nenhum dos três abria o arquivo na tela.</li>
+</ul>
+<p><strong>WhatsApp</strong></p>
+<ul>
+<li>O webhook gravava só o <em>tipo</em> da mensagem (<code>TipoMensagem.Imagem</code>). O id da mídia era jogado</li>
+</ul>
+<p>  fora, e a bolha ficava vazia.</p>
+<ul>
+<li>Só o Automais.Zap tem o token da Meta para baixar a mídia.</li>
+<li>O relay espera a resposta do SMSMais por ~10 s.</li>
+<li>A Meta guarda a mídia por ~30 dias.</li>
+</ul>
+<h2>Decisão</h2>
+<h3>1. Acervo do paciente: entidade própria, <code>smsmarica.documento_paciente</code></h3>
+<p>O documento do acervo tem estes dados:</p>
+<ul>
+<li>paciente (id do hub FHIR);</li>
+<li>título e descrição;</li>
+<li>nome do arquivo, tipo, tamanho e SHA-256;</li>
+<li>chave no Spaces;</li>
+<li>origem: <code>Painel</code> | <code>Solicitação</code> | <code>WhatsApp</code> | <code>AppCidadão</code>, mais uma referência de origem;</li>
+<li>situação: <code>Pendente</code> | <code>Aceito</code>, com quem aceitou e quando;</li>
+<li>auditoria e exclusão lógica (ADR-0006).</li>
+</ul>
+<ul>
+<li><strong>Cada fluxo guarda a própria cópia.</strong> A caixinha da regulação apaga o conteúdo quando o anexo</li>
+</ul>
+<p>  é retirado, e o acervo não pode sumir junto. Por isso anexar numa solicitação grava <strong>também</strong>   uma cópia no acervo, com dedup por hash dentro do paciente: o mesmo PDF em três solicitações vira   um documento só. Copiar arquivo custa pouco; amarrar ciclos de vida diferentes custaria caro.</p>
+<ul>
+<li><strong>A cópia no acervo é consequência e nunca derruba o anexo</strong> (<code>RegistrarCopiaAsync</code>). Se falhar,</li>
+</ul>
+<p>  fica no log, e o anexo da solicitação vale.</p>
+<ul>
+<li><strong>A lista do cadastro é uma união, não uma tabela.</strong> Ela junta:</li>
+<li>os documentos do acervo;</li>
+<li>os PDFs da anamnese já salvos;</li>
+<li>os laudos <strong>assinados</strong> (laudo sem assinatura não entra);</li>
+<li>o PDF das imagens de cada exame realizado, com a mesma regra do app do cidadão para achar o</li>
+</ul>
+<p>    study efetivo.</p>
+<p>  Cada item tem uma chave <code>tipo:id</code>. É ela que a solicitação manda de volta para anexar sem novo   upload, e o backend relê o conteúdo conferindo que o item é do paciente.</p>
+<ul>
+<li><strong>Só o que está <code>Aceito</code> é anexável.</strong> O que o paciente envia pelo app entra <code>Pendente</code>. A</li>
+</ul>
+<p>  equipe vê e aceita, e pode corrigir o nome nesse momento. Teto: <strong>10 pendentes por paciente</strong>.</p>
+<ul>
+<li><strong>Acesso por contexto, não por um endpoint genérico.</strong> A regulação lê o acervo pela solicitação,</li>
+</ul>
+<p>  com o escopo dela. SER/SERNIT leem pelo rascunho (o CNS vira paciente), a anamnese pelo exame e o   cadastro pelo módulo Pacientes. Quem tem só o módulo Regulação não precisa do módulo Pacientes para   anexar do cadastro, e o alcance de cada tela continua valendo.</p>
+<ul>
+<li>Aceitos: PDF, JPEG, PNG, WEBP e GIF, até 25 MB.</li>
+</ul>
+<h3>2. Mídia do WhatsApp: o webhook anota, um worker baixa, a equipe decide</h3>
+<ul>
+<li><strong>No webhook:</strong> o <code>whatsapp_mensagem</code> ganha as colunas <code>midia_*</code>. O webhook guarda id, tipo, nome</li>
+</ul>
+<p>  do arquivo e legenda, e marca <code>Recebendo</code>. Ele <strong>não baixa nada</strong>, porque o relay não espera.</p>
+<ul>
+<li><strong>No worker (<code>BaixadorMidiasWhatsAppWorker</code>):</strong> acorda pelo sinal do webhook e, de todo jeito, a</li>
+</ul>
+<p>  cada 30 s. Baixa a mídia pelo endpoint novo do Zap e guarda no Spaces como <code>Pendente</code>. Foto e PDF   vão para a fila; áudio e vídeo ficam só registrados.   - Falha passageira é tentada de novo por algumas horas; falha definitiva vira <code>Falhou</code>.   - "Tentar de novo" funciona até 30 dias.</p>
+<ul>
+<li><strong>A equipe decide:</strong></li>
+<li><strong>Aceitar</strong> cria o documento no acervo do paciente escolhido e apaga a cópia da conversa. O</li>
+</ul>
+<p>    paciente tem de ter ligação com a conversa: ser o da mensagem, o da conversa ou alguém com     aquele telefone.   - <strong>Descartar</strong> apaga o arquivo.</p>
+<ul>
+<li><strong>Trava:</strong> com <strong>10 mídias <code>Pendente</code> no mesmo número</strong>, as próximas nem são baixadas</li>
+</ul>
+<p>  (<code>Bloqueada</code>). Decidir as pendentes libera de novo.</p>
+<ul>
+<li><strong>Endpoint novo no Automais.Zap:</strong> <code>GET v1/midias-recebidas/{mediaId}?phone_number_id=</code>. É</li>
+</ul>
+<p>  autenticado pelo token do tenant, confere se o tenant pode usar o número e passa o   <code>phone_number_id</code> à Meta. Ele <strong>não guarda nada</strong>: faz o <code>GET /{media-id}</code>, depois o <code>GET</code> na URL   assinada, e devolve os bytes, com teto de tamanho.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Uma tabela nova, <code>documento_paciente</code>.</li>
+<li>Colunas aditivas e nulas: <code>whatsapp_mensagem.midia_*</code>, e <code>titulo</code>/<code>descricao</code> nos anexos de</li>
+</ul>
+<p>  regulação, SER e SERNIT.</p>
+<ul>
+<li>Uma migration (<code>AcervoDocumentosPaciente</code>), sem dado.</li>
+<li><strong>O deploy do Zap tem de ir antes ou junto do backend.</strong> Sem o endpoint novo, o worker grava</li>
+</ul>
+<p>  <code>Falhou</code> depois das horas de tentativa, e "Tentar de novo" recupera em até 30 dias.</p>
+<ul>
+<li><strong>Anexos antigos não são copiados para o acervo.</strong> Os da regulação e do SER/SERNIT anteriores a</li>
+</ul>
+<p>  esta mudança continuam só na solicitação, e não há backfill. Os PDFs da anamnese, os laudos e as   imagens já aparecem pela união.</p>
+<ul>
+<li><strong>O PDF das imagens é gerado sob demanda</strong> quando alguém o abre ou anexa. Isso pesa no PACS na</li>
+</ul>
+<p>  primeira vez, e o cache do app do cidadão ajuda.</p>
+<ul>
+<li><strong>Quanto se guarda:</strong> foto do celular vai para o Spaces até 25 MB por arquivo. A trava de 10</li>
+</ul>
+<p>  pendentes limita o que entra sem ninguém decidir.</p>
+</main>
+</body>
+</html>

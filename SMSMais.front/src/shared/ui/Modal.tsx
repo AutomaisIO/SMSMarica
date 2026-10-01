@@ -10,6 +10,8 @@ type Props = {
   descricao?: string;
   children: ReactNode;
   largura?: 'sm' | 'md' | 'lg';
+  /** Abre por cima de uma tela cheia (ex.: o visualizador de arquivo, que fica em z-60). */
+  porCima?: boolean;
 };
 
 const larguras: Record<NonNullable<Props['largura']>, string> = {
@@ -48,7 +50,7 @@ function travarRolagem(): () => void {
   };
 }
 
-export function Modal({ aberto, aoFechar, titulo, descricao, children, largura = 'md' }: Props) {
+export function Modal({ aberto, aoFechar, titulo, descricao, children, largura = 'md', porCima }: Props) {
   // `aoFechar` costuma ser uma função declarada no corpo de quem renderiza, ou seja, uma
   // identidade nova a cada render. Na lista de dependências ela fazia o efeito inteiro ser
   // desmontado e remontado sem que nada tivesse mudado — era esse churn que corrompia a trava de
@@ -74,7 +76,7 @@ export function Modal({ aberto, aoFechar, titulo, descricao, children, largura =
   if (!aberto) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+    <div className={cn('fixed inset-0 flex items-center justify-center px-4 py-8', porCima ? 'z-[70]' : 'z-50')}>
       <div
         className="absolute inset-0 bg-black/50"
         onClick={aoFechar}

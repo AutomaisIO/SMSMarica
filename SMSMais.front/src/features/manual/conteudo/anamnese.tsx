@@ -26,9 +26,14 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-01',
   palavrasChave: [
     'anamnese',
+    'documentos anexados',
+    'exames anexados',
+    'anexar do cadastro',
+    'revisar documento',
+    'QR',
     'mamografia',
     'questionário',
     'SISCAN',
@@ -178,6 +183,36 @@ export const artigoAnamnese: Artigo = {
             que a médica olha primeiro. Um traço de cicatriz de cirurgia diz o lado sem precisar de
             texto.
           </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'documentos-anexados',
+      titulo: 'Documentos / Exames anexados',
+      busca:
+        'documentos exames anexados anexo qr celular digitalizar revisar visualizar salvar pendente anexar do cadastro laudo assinado imagens exame anterior',
+      conteudo: (
+        <>
+          <P>
+            Os exames em papel que a paciente traz entram por aqui, de dois jeitos:
+          </P>
+          <Lista>
+            <Item>
+              <BotaoRef variante="outline">Adicionar Exame</BotaoRef> — mostra um QR para digitalizar o
+              papel pelo celular. O documento chega <SeloRef cor="alerta">Pendente</SeloRef>: clique no
+              nome (ou em <BotaoRef variante="ghost">Revisar</BotaoRef>) para abrir no visualizador do
+              sistema e use <BotaoRef>Salvar na anamnese</BotaoRef> se estiver legível.
+            </Item>
+            <Item>
+              <BotaoRef variante="outline">Anexar do cadastro</BotaoRef> — escolhe algo que a paciente já
+              tem guardado (documentos, laudos assinados, imagens de exames anteriores). Entra já salvo,
+              porque o que está no cadastro já foi conferido.
+            </Item>
+          </Lista>
+          <P>
+            Tudo o que é salvo aqui aparece também na ficha da paciente, aba Exames anexados — e fica
+            disponível para anexar em outras solicitações.
+          </P>
         </>
       ),
     },

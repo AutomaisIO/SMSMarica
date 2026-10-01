@@ -19,6 +19,8 @@ function limitar(v: number) {
 /**
  * Visualizador de PDF em tela cheia, renderizado no próprio app com pdf.js (canvas por
  * página). Some a necessidade de um leitor de PDF externo. Botão de baixar sempre presente.
+ * Também exibe FOTOS (documentos enviados como imagem, em Documentos): mesmo zoom e mesmos
+ * botões, para o cidadão não ter de aprender duas telas.
  *
  * Zoom por GESTO: pinça (dois dedos) e duplo-toque ampliam/reduzem o documento; os botões
  * −/+ fazem o mesmo. A ampliação é feita crescendo a LARGURA do conteúdo, então o próprio
@@ -26,7 +28,8 @@ function limitar(v: number) {
  * entre as páginas.
  */
 export function VisualizadorPdf() {
-  const { aberto, dados, nome, fechar } = usePdfViewer();
+  const { aberto, dados, nome, mimeType, fechar } = usePdfViewer();
+  const ehImagem = mimeType.startsWith('image/');
   const containerRef = useRef<HTMLDivElement | null>(null);
   const conteudoRef = useRef<HTMLDivElement | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -47,6 +50,30 @@ export function VisualizadorPdf() {
     setErro(false);
     setErroDetalhe(null);
     setEscala(1); // cada documento abre em 100%
+
+    if (ehImagem) {
+      // Foto: um <img> ocupando a largura — o zoom (largura do conteúdo) funciona igual ao PDF.
+      const urlImg = URL.createObjectURL(new Blob([dados.slice(0)], { type: mimeType }));
+      const img = document.createElement('img');
+      img.alt = nome;
+      img.className = 'mx-auto mb-3 block w-full rounded-lg bg-white shadow';
+      img.onload = () => {
+        if (!cancelado) setCarregando(false);
+      };
+      img.onerror = () => {
+        if (!cancelado) {
+          setErroDetalhe(`imagem ${mimeType} · ${dados.byteLength}B`);
+          setErro(true);
+          setCarregando(false);
+        }
+      };
+      img.src = urlImg;
+      conteudo?.appendChild(img);
+      return () => {
+        cancelado = true;
+        URL.revokeObjectURL(urlImg);
+      };
+    }
 
     (async () => {
       try {
@@ -98,7 +125,7 @@ export function VisualizadorPdf() {
     return () => {
       cancelado = true;
     };
-  }, [aberto, dados]);
+  }, [aberto, dados, ehImagem, mimeType, nome]);
 
   // Gestos de zoom: pinça (2 dedos) e duplo-toque. Listeners nativos com passive:false para
   // poder cancelar o comportamento padrão do navegador durante a pinça.
@@ -152,7 +179,7 @@ export function VisualizadorPdf() {
 
   function baixar() {
     if (!dados) return;
-    const blobUrl = URL.createObjectURL(new Blob([dados.slice(0)], { type: 'application/pdf' }));
+    const blobUrl = URL.createObjectURL(new Blob([dados.slice(0)], { type: mimeType }));
     const a = document.createElement('a');
     a.href = blobUrl;
     a.download = nome;
@@ -164,7 +191,7 @@ export function VisualizadorPdf() {
 
   // Compartilhamento nativo do celular (WhatsApp, e-mail, etc.). Só aparece se o
   // aparelho suportar compartilhar arquivos; senão, o botão Baixar já cobre.
-  const arquivo = dados ? new File([dados.slice(0)], nome, { type: 'application/pdf' }) : null;
+  const arquivo = dados ? new File([dados.slice(0)], nome, { type: mimeType }) : null;
   const podeCompartilhar =
     typeof navigator !== 'undefined' &&
     !!navigator.canShare &&
@@ -173,7 +200,7 @@ export function VisualizadorPdf() {
 
   async function compartilhar() {
     if (!dados) return;
-    const file = new File([dados.slice(0)], nome, { type: 'application/pdf' });
+    const file = new File([dados.slice(0)], nome, { type: mimeType });
     try {
       await navigator.share({ files: [file], title: nome });
     } catch {

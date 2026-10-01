@@ -63,6 +63,8 @@ internal sealed class SerRascunhoAnexoConfiguration : IEntityTypeConfiguration<S
         builder.Property(x => x.NomeArquivo).HasColumnName("nome_arquivo").HasMaxLength(260).IsRequired();
         builder.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(120);
         builder.Property(x => x.Tamanho).HasColumnName("tamanho").IsRequired();
+        builder.Property(x => x.Titulo).HasColumnName("titulo").HasMaxLength(200);
+        builder.Property(x => x.Descricao).HasColumnName("descricao").HasMaxLength(2000);
         builder.Property(x => x.EnviadoEm).HasColumnName("enviado_em");
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
 

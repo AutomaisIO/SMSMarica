@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  aceitarMidia,
   assumirConversa,
+  baixarMidiaDeNovo,
+  descartarMidia,
   buscarContatos,
   devolverConversa,
   encaminharConversa,
@@ -233,5 +236,50 @@ export function useResumoConversas(habilitado: boolean) {
     queryFn: obterResumoConversas,
     enabled: habilitado,
     refetchInterval: 30_000,
+  });
+}
+
+/**
+ * Decisões sobre a mídia que o paciente mandou. Depois de qualquer uma, a thread é refeita (a
+ * bolha muda de situação) — o SignalR também avisa, mas a tela de quem agiu não espera por ele.
+ */
+function invalidarMidia(client: ReturnType<typeof useQueryClient>, conversaId: string | null) {
+  if (conversaId) client.invalidateQueries({ queryKey: conversasKeys.mensagens(conversaId) });
+  // Ficha do paciente: o histórico de conversas lá também mostra a situação da mídia.
+  client.invalidateQueries({ queryKey: ['pacientes', 'mensagens-sessao'] });
+}
+
+export function useAceitarMidia() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (v: {
+      mensagemId: string;
+      conversaId: string | null;
+      pacienteId: string;
+      titulo: string;
+      descricao: string | null;
+    }) => aceitarMidia(v.mensagemId, { pacienteId: v.pacienteId, titulo: v.titulo, descricao: v.descricao }),
+    onSuccess: (_d, v) => {
+      invalidarMidia(client, v.conversaId);
+      // "Exames anexados" da ficha (SecaoExamesAnexados) ganha o documento novo.
+      client.invalidateQueries({ queryKey: ['pacientes', v.pacienteId, 'acervo'] });
+    },
+  });
+}
+
+export function useDescartarMidia() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { mensagemId: string; conversaId: string | null }) => descartarMidia(v.mensagemId),
+    onSuccess: (_d, v) => invalidarMidia(client, v.conversaId),
+  });
+}
+
+export function useBaixarMidiaDeNovo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { mensagemId: string; conversaId: string | null }) => baixarMidiaDeNovo(v.mensagemId),
+    // No erro também: um 409 pode significar que a situação mudou (ex.: venceu na Meta).
+    onSettled: (_d, _e, v) => invalidarMidia(client, v.conversaId),
   });
 }

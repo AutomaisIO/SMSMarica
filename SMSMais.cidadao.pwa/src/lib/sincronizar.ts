@@ -1,4 +1,4 @@
-import { api, pdfUrls } from './api';
+import { api, pdfUrls, urlConteudoAcervo } from './api';
 import { http } from './httpClient';
 import { manterApenasPdfCache, obterPdfCache, salvarPdfCache } from './pdfCache';
 import { useAuth } from '@/store/auth';
@@ -33,7 +33,10 @@ async function executar(pacienteId: string): Promise<void> {
       api.exames().catch(() => []),
       api.laudos().catch(() => []),
     ]);
-    await Promise.all([
+    // Acervo (Documentos): só a LISTA. O conteúdo não é pré-baixado — laudos, anexos e imagens
+    // já entram pela fila abaixo (mesmas URLs) e o resto é baixado quando o cidadão abre.
+    const [documentos] = await Promise.all([
+      api.documentos().catch(() => []),
       api.agendamentos('exame').catch(() => null),
       api.agendamentos('consulta').catch(() => null),
       api.atendimentos().catch(() => null),
@@ -64,7 +67,8 @@ async function executar(pacienteId: string): Promise<void> {
     //    deixado de ser dele (correção de identidade, exclusão, cancelamento) — a listagem
     //    para de trazê-lo, mas o PDF já baixado continuaria acessível offline.
     if (useAuth.getState().paciente?.id === pacienteId) {
-      await manterApenasPdfCache(fila.map((f) => f.url));
+      // O que o cidadão abriu em Documentos continua no aparelho enquanto estiver no acervo.
+      await manterApenasPdfCache([...fila.map((f) => f.url), ...documentos.map(urlConteudoAcervo)]);
     }
   } catch {
     /* sincronização é best-effort — nunca afeta a navegação */

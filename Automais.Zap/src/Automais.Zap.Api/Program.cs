@@ -61,6 +61,12 @@ builder.Services.AddHttpClient<IEnvioService, EnvioService>(c =>
     c.Timeout = TimeSpan.FromSeconds(20);
 });
 
+// Download da mídia que o cidadão mandou. Timeout maior que o do envio: é arquivo, não JSON.
+builder.Services.AddHttpClient<Automais.Zap.Core.Midias.IMidiaRecebidaService, Automais.Zap.Core.Midias.MidiaRecebidaService>(c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(60);
+});
+
 builder.Services.AddHostedService<LimpezaLogService>();
 
 // Chaves do Data Protection (cifram o cookie do admin) FORA de /opt/automais-zap/api: o

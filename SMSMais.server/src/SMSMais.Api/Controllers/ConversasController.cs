@@ -82,6 +82,53 @@ public sealed class ConversasController(
     public async Task<IReadOnlyList<MensagemDto>> Mensagens(Guid id, CancellationToken ct) =>
         await service.ObterMensagensAsync(id, ct);
 
+    // ---- Foto/PDF que o paciente mandou (pendente até alguém aceitar no cadastro ou descartar) ----
+
+    /// <summary>Conteúdo do arquivo da mensagem, para o visualizador.</summary>
+    [HttpGet("mensagens/{mensagemId:guid}/midia")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Midia(
+        Guid mensagemId, [FromServices] SMSMais.Core.Conversas.Midias.IMidiasConversaService midias, CancellationToken ct)
+    {
+        var c = await midias.ObterConteudoAsync(mensagemId, ct);
+        return File(c.Conteudo, c.MimeType, c.NomeArquivo);
+    }
+
+    /// <summary>Adiciona o arquivo ao cadastro do paciente ("Exames anexados").</summary>
+    [HttpPost("mensagens/{mensagemId:guid}/midia/aceitar")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> AceitarMidia(
+        Guid mensagemId, [FromBody] SMSMais.Core.Conversas.Midias.AceitarMidiaRequest req,
+        [FromServices] SMSMais.Core.Conversas.Midias.IMidiasConversaService midias, CancellationToken ct)
+    {
+        await midias.AceitarAsync(mensagemId, req, ct);
+        return NoContent();
+    }
+
+    /// <summary>Descarta o arquivo (sai do armazenamento e libera a trava de pendentes).</summary>
+    [HttpPost("mensagens/{mensagemId:guid}/midia/descartar")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DescartarMidia(
+        Guid mensagemId, [FromServices] SMSMais.Core.Conversas.Midias.IMidiasConversaService midias, CancellationToken ct)
+    {
+        await midias.DescartarAsync(mensagemId, ct);
+        return NoContent();
+    }
+
+    /// <summary>Tenta baixar de novo um arquivo que falhou ou foi travado.</summary>
+    [HttpPost("mensagens/{mensagemId:guid}/midia/baixar")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> BaixarMidia(
+        Guid mensagemId, [FromServices] SMSMais.Core.Conversas.Midias.IMidiasConversaService midias, CancellationToken ct)
+    {
+        await midias.TentarDeNovoAsync(mensagemId, ct);
+        return NoContent();
+    }
+
     [HttpPost]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]

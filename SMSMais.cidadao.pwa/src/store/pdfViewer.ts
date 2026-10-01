@@ -4,19 +4,23 @@ type PdfViewerState = {
   aberto: boolean;
   dados: ArrayBuffer | null;
   nome: string;
-  abrir: (dados: ArrayBuffer, nome: string) => void;
+  /** 'application/pdf' (pdf.js) ou 'image/*' (foto enviada/recebida — exibida como <img>). */
+  mimeType: string;
+  abrir: (dados: ArrayBuffer, nome: string, mimeType?: string) => void;
   fechar: () => void;
 };
 
 /**
- * Visualizador de PDF embutido no app — evita depender do leitor de PDF do celular
- * (muitos idosos não têm um instalado). O `abrirPdf` (lib/pdf) empurra os bytes aqui e
- * o <VisualizadorPdf/> (montado no AppShell) renderiza com pdf.js.
+ * Visualizador de documentos embutido no app — evita depender do leitor de PDF do celular
+ * (muitos idosos não têm um instalado). O `abrirPdf`/`abrirDocumento` (lib/pdf) empurra os
+ * bytes aqui e o <VisualizadorPdf/> (montado no AppShell) renderiza: PDF com pdf.js, foto
+ * como imagem — mesmo zoom, mesmo Baixar/Compartilhar.
  */
 export const usePdfViewer = create<PdfViewerState>((set) => ({
   aberto: false,
   dados: null,
   nome: 'documento.pdf',
-  abrir: (dados, nome) => set({ aberto: true, dados, nome }),
+  mimeType: 'application/pdf',
+  abrir: (dados, nome, mimeType = 'application/pdf') => set({ aberto: true, dados, nome, mimeType }),
   fechar: () => set({ aberto: false, dados: null }),
 }));

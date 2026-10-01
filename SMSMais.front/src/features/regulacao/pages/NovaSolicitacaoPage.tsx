@@ -20,7 +20,9 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
-import { UploadAnexo } from '@/shared/ui/UploadAnexo';
+import { UploadAnexo, type ArquivoResumo } from '@/shared/ui/UploadAnexo';
+import { SeletorAcervo } from '@/shared/acervo/SeletorAcervo';
+import { VisualizadorArquivo } from '@/shared/acervo/VisualizadorArquivo';
 import { CampoDinamico } from '@/shared/regulacao/CampoDinamico';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { cn } from '@/shared/lib/cn';
@@ -42,6 +44,13 @@ import { PassoPaciente } from '../components/wizard/PassoPaciente';
 import { PassoRegras } from '../components/wizard/PassoRegras';
 import { ExamesInternosSugeridos } from '../components/ExamesInternosSugeridos';
 import { IncluirMedico } from '../components/IncluirMedico';
+import {
+  anexarComTitulo,
+  anexarDoAcervo,
+  caminhoArquivoExigencia,
+  caminhoConteudoAcervo,
+  listarAcervoDaSolicitacao,
+} from '../api/acervoRegulacao';
 import { SeletorCidRegulacao } from '../components/SeletorCidRegulacao';
 import type { FluxoRegulacao, SolicitacaoRegulacao } from '../tiposSolicitacao';
 import { ROTULO_SISTEMA_REGULACAO } from '../types';
@@ -117,6 +126,9 @@ export function NovaSolicitacaoPage() {
 
   const formulario = useFormularioRegulacao(procedimento?.id ?? null, fluxo);
   const exigencias = useExigencias(solicitacaoId);
+  // Anexos: abrir no visualizador e "anexar do cadastro" (exigência que recebe o escolhido).
+  const [arquivoAberto, setArquivoAberto] = useState<ArquivoResumo | null>(null);
+  const [exigenciaDoCadastro, setExigenciaDoCadastro] = useState<string | null>(null);
   const pendencias = usePendencias(passo === 'revisao' ? solicitacaoId : null);
 
   // Edição: preenche o assistente com o que está gravado, uma vez, e abre no formulário — é
@@ -540,9 +552,18 @@ export function NovaSolicitacaoPage() {
                   accept={config.data?.anexoTiposPermitidos ?? ['application/pdf']}
                   limiteMb={config.data?.anexoLimiteMb ?? 15}
                   arquivos={e.arquivos}
-                  onEnviar={async (files) => {
+                  pedirTitulo
+                  onAbrir={setArquivoAberto}
+                  onAnexarDoCadastro={solicitacaoId ? () => setExigenciaDoCadastro(e.id) : undefined}
+                  onEnviar={async (files, info) => {
                     for (const arquivo of files) {
-                      await anexar.mutateAsync({ solicitacaoId: solicitacaoId!, exigenciaId: e.id, arquivo });
+                      if (info) {
+                        // Com nome e descrição o arquivo também entra no cadastro do paciente.
+                        await anexarComTitulo(solicitacaoId!, e.id, arquivo, info.titulo, info.descricao);
+                        await queryClient.invalidateQueries({ queryKey: ['regulacao', 'solicitacoes'] });
+                      } else {
+                        await anexar.mutateAsync({ solicitacaoId: solicitacaoId!, exigenciaId: e.id, arquivo });
+                      }
                     }
                   }}
                   onRemover={async (arquivoId) => {
@@ -556,6 +577,31 @@ export function NovaSolicitacaoPage() {
                 )}
                 </div>
               ))}
+
+              {arquivoAberto && solicitacaoId ? (
+                <VisualizadorArquivo
+                  caminho={caminhoArquivoExigencia(solicitacaoId, arquivoAberto.id)}
+                  titulo={arquivoAberto.titulo || arquivoAberto.nome}
+                  descricao={arquivoAberto.descricao}
+                  nomeArquivo={arquivoAberto.nome}
+                  aoFechar={() => setArquivoAberto(null)}
+                />
+              ) : null}
+
+              {solicitacaoId ? (
+                <SeletorAcervo
+                  aberto={exigenciaDoCadastro !== null}
+                  aoFechar={() => setExigenciaDoCadastro(null)}
+                  chaveConsulta={['regulacao', 'solicitacoes', solicitacaoId, 'acervo']}
+                  carregar={() => listarAcervoDaSolicitacao(solicitacaoId)}
+                  caminhoConteudo={(item) => caminhoConteudoAcervo(solicitacaoId, item)}
+                  aoAnexar={async (item) => {
+                    await anexarDoAcervo(solicitacaoId, exigenciaDoCadastro!, item.chave);
+                    notificar('Documento do cadastro anexado.', 'sucesso');
+                    await queryClient.invalidateQueries({ queryKey: ['regulacao', 'solicitacoes'] });
+                  }}
+                />
+              ) : null}
             </div>
           </div>
         ) : null}

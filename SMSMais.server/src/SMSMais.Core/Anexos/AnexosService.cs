@@ -223,7 +223,9 @@ public sealed class AnexosService(
         var bytes = await armazenamento.LerAsync(documento.ChaveArmazenamento, cancellationToken);
         if (bytes is null) return null;
 
-        return new AnexoConteudo(bytes, documento.MimeType, MontarNomeArquivo(documento.Nome));
+        return new AnexoConteudo(
+            bytes, documento.MimeType,
+            DocumentosPaciente.DocumentosPacienteService.NomeArquivo(documento.Nome, documento.MimeType));
     }
 
     public async Task<IReadOnlyList<AnexoExameDto>> ListarPorPacienteAsync(
@@ -278,12 +280,5 @@ public sealed class AnexosService(
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
-    }
-
-    private static string MontarNomeArquivo(string nome)
-    {
-        var limpo = new string([.. nome.Where(c => !Path.GetInvalidFileNameChars().Contains(c))]).Trim();
-        if (string.IsNullOrEmpty(limpo)) limpo = "documento";
-        return limpo.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? limpo : $"{limpo}.pdf";
     }
 }

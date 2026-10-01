@@ -329,6 +329,9 @@ export type AnexoRascunhoSernit = {
   id: string;
   midiaId: string;
   nomeArquivo: string;
+  /** Nome do documento dado por quem anexou; nulo em anexo antigo. */
+  titulo?: string | null;
+  descricao?: string | null;
   contentType: string | null;
   tamanho: number;
   enviadoEm: string | null;

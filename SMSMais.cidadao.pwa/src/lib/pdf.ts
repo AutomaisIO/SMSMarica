@@ -9,16 +9,26 @@ import { obterPdfCache, salvarPdfCache } from './pdfCache';
  * abrem direto do aparelho, sem rede.
  */
 export async function abrirPdf(url: string, nomePadrao = 'documento.pdf'): Promise<void> {
+  return abrirDocumento(url, nomePadrao, 'application/pdf');
+}
+
+/**
+ * Mesma coisa que `abrirPdf`, para qualquer documento do acervo (PDF ou FOTO). O cache local
+ * guarda só os bytes, então o tipo vem de quem chama (a listagem já informa o mimeType); na
+ * 1ª abertura vale o Content-Type que o servidor mandou.
+ */
+export async function abrirDocumento(url: string, nomePadrao: string, mimeType: string): Promise<void> {
   const cache = await obterPdfCache(url);
   if (cache) {
-    usePdfViewer.getState().abrir(cache, nomePadrao);
+    usePdfViewer.getState().abrir(cache, nomePadrao, mimeType);
     return;
   }
 
   const resp = await http.get(url, { responseType: 'arraybuffer' });
   const dados = resp.data as ArrayBuffer;
   const nome = nomeDoHeader(resp.headers?.['content-disposition']) ?? nomePadrao;
-  usePdfViewer.getState().abrir(dados, nome);
+  const tipoServidor = String(resp.headers?.['content-type'] ?? '').split(';')[0].trim();
+  usePdfViewer.getState().abrir(dados, nome, tipoServidor || mimeType);
   // Salva uma cópia (o pdf.js pode "detachar" o buffer aberto) — best-effort.
   void salvarPdfCache(url, dados.slice(0));
 }

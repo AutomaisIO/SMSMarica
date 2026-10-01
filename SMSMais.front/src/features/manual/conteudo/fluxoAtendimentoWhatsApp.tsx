@@ -56,7 +56,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
   grupo: 'atendimento',
   icone: Workflow,
   publico: 'Toda a equipe que atende pelo WhatsApp — e quem precisa explicar o sistema para alguém',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-01',
   palavrasChave: [
     'fluxo',
     'lógica',
@@ -95,6 +95,17 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     'esus',
     'motivo de pendência',
     'app do cidadão',
+    'foto',
+    'pdf',
+    'arquivo',
+    'anexo',
+    'documento',
+    'visualizar arquivo',
+    'adicionar ao cadastro do paciente',
+    'descartar',
+    'aguardando decisão',
+    'limite de 10 arquivos',
+    'tentar de novo',
   ],
   secoes: () => [
     {
@@ -350,6 +361,50 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
             no topo da Central conta quantas conversas estão com a última palavra do cidadão e a janela
             aberta, mostra a prévia do lote (quem terminou só em “obrigado/ok” fica de fora) e dispara as
             retomadas de uma vez — o robô responde uma a uma pela fila normal.
+          </P>
+        </div>
+      ),
+    },
+    {
+      id: 'arquivos-do-paciente',
+      titulo: 'Fotos e PDFs que o paciente manda',
+      busca:
+        'foto imagem pdf documento arquivo anexo whatsapp visualizar arquivo adicionar ao cadastro do paciente descartar aguardando decisão recebendo não guardado limite 10 tentar de novo áudio vídeo 30 dias',
+      conteudo: (
+        <div className="space-y-4">
+          <P>
+            Foto ou PDF que o paciente manda aparece na bolha com <BotaoRef>Visualizar arquivo</BotaoRef>{' '}
+            (imagem pequena já mostra a miniatura). O robô não lê arquivo: quem decide é a pessoa da equipe.
+          </P>
+          <ListaDefinicoes
+            itens={[
+              { termo: 'Recebendo arquivo…', descricao: 'O sistema está baixando do WhatsApp. Leva segundos.' },
+              {
+                termo: 'Aguardando decisão',
+                descricao:
+                  'Guardado, esperando alguém abrir e escolher: Adicionar ao cadastro do paciente (pede nome, descrição e — se o número é de mais de um paciente — de quem é) ou Descartar (o arquivo é apagado).',
+              },
+              { termo: 'No cadastro do paciente', descricao: 'Já está na ficha, aba Exames anexados, com origem WhatsApp.' },
+              {
+                termo: 'Não guardado: este número já tem 10 arquivos aguardando decisão',
+                descricao:
+                  'Trava contra quem manda arquivo em massa para encher o armazenamento. Decida os pendentes desse número e use Tentar de novo.',
+              },
+              {
+                termo: 'Não foi possível baixar o arquivo',
+                descricao:
+                  'Falha de rede ou arquivo que não é foto nem PDF. Tentar de novo funciona por até 30 dias — depois disso o WhatsApp não guarda mais, e é preciso pedir ao paciente que mande outra vez.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="Por que nada vai sozinho para o cadastro">
+            Quem manda pelo WhatsApp pode mandar qualquer coisa — foto da receita, do documento de outra
+            pessoa, do gato. Só o que alguém da equipe aceitou passa a valer como documento do paciente e
+            fica disponível para anexar em solicitação.
+          </Callout>
+          <P>
+            Áudio e vídeo aparecem só como aviso na bolha — não são guardados. Na ficha do paciente
+            (aba Conversas) o arquivo pode ser visto, mas a decisão é sempre na tela de Conversas.
           </P>
         </div>
       ),

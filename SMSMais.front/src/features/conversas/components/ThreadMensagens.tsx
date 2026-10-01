@@ -12,6 +12,7 @@ import {
 } from '@/features/conversas/api/queries';
 import { useAssinaturaConversa } from '@/features/conversas/hooks/useChatHub';
 import { ComposerMensagem } from '@/features/conversas/components/ComposerMensagem';
+import { ConteudoMidia } from '@/features/conversas/components/ConteudoMidia';
 import { ConfirmarAgendamentoChat } from '@/features/conversas/components/ConfirmarAgendamentoChat';
 import { RetomarComRoboChat } from '@/features/conversas/components/RetomarComRoboChat';
 import { EncaminharConversaDialog } from '@/features/conversas/components/EncaminharConversaDialog';
@@ -58,15 +59,21 @@ function Bolha({
   onPararRobo,
   onTreinar,
   pararPendente,
+  podeDecidirMidia,
+  pacientePadrao,
 }: {
   m: Mensagem;
   onPararRobo?: () => void;
   onTreinar?: () => void;
   pararPendente?: boolean;
+  podeDecidirMidia?: boolean;
+  pacientePadrao?: { id: string; nome: string | null } | null;
 }) {
   const saida = m.direcao === 'Saida';
   const nota = m.tipoMensagem === 'NotaInterna';
   const robo = m.tipoMensagem === 'Robo';
+  // A legenda da foto/PDF é o "texto" da mensagem; se o servidor já a pôs em conteudo, não repete.
+  const legenda = m.midiaLegenda && m.midiaLegenda !== m.conteudo ? m.midiaLegenda : null;
   return (
     <div className={`flex flex-col ${saida ? 'items-end' : 'items-start'}`}>
       <div
@@ -87,7 +94,9 @@ function Bolha({
           </p>
         )}
         {m.template && !m.conteudo && <p className="italic opacity-90">[modelo: {m.template}]</p>}
+        <ConteudoMidia m={m} podeDecidir={podeDecidirMidia} pacientePadrao={pacientePadrao} />
         {m.conteudo && <p className="whitespace-pre-wrap break-words">{m.conteudo}</p>}
+        {legenda && <p className="mt-1 whitespace-pre-wrap break-words">{legenda}</p>}
         <div className={`mt-1 flex items-center gap-1 ${saida ? 'justify-end' : ''}`}>
           <p className={`text-[10px] ${saida && !nota && !robo ? 'text-white/70' : 'text-gray-400'}`}>{hora(m.ocorridoEm)}</p>
           {saida && !nota && m.status !== 'Recebida' && (
@@ -358,6 +367,10 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
                 : undefined
             }
             pararPendente={pararRobo.isPending}
+            podeDecidirMidia={podeEditar}
+            pacientePadrao={
+              conversa?.pacienteId ? { id: conversa.pacienteId, nome: conversa.pacienteNome } : null
+            }
           />
         ))}
         <div ref={fimRef} />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Bot, ChevronDown, ChevronRight, Loader2, MessageCircle, Users } from 'lucide-react';
 import { useMensagensSessaoPaciente, useSessoesConversaPaciente } from '@/features/pacientes/api/queries';
+import { ConteudoMidia } from '@/features/conversas/components/ConteudoMidia';
 import { formatarInstante } from '@/shared/lib/datas';
 import type { Mensagem } from '@/features/conversas/types';
 import type { SessaoConversaPaciente } from '@/features/pacientes/types';
@@ -12,11 +13,15 @@ function telefoneFmt(fone: string): string {
   return fone;
 }
 
-/** Bolha somente-leitura — mesmo visual da Central (ThreadMensagens), sem composer/ações. */
+/**
+ * Bolha somente-leitura — mesmo visual da Central (ThreadMensagens), sem composer/ações. Foto/PDF
+ * só se VÊ aqui; aceitar ou descartar é na Central de Conversas, onde está o contexto da conversa.
+ */
 function BolhaLeitura({ m }: { m: Mensagem }) {
   const saida = m.direcao === 'Saida';
   const nota = m.tipoMensagem === 'NotaInterna';
   const robo = m.tipoMensagem === 'Robo';
+  const legenda = m.midiaLegenda && m.midiaLegenda !== m.conteudo ? m.midiaLegenda : null;
   return (
     <div className={`flex ${saida ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -37,7 +42,9 @@ function BolhaLeitura({ m }: { m: Mensagem }) {
           </p>
         )}
         {m.template && !m.conteudo && <p className="italic opacity-90">[modelo: {m.template}]</p>}
+        <ConteudoMidia m={m} />
         {m.conteudo && <p className="whitespace-pre-wrap break-words">{m.conteudo}</p>}
+        {legenda && <p className="mt-1 whitespace-pre-wrap break-words">{legenda}</p>}
         <p className={`mt-1 text-[10px] ${saida && !nota && !robo ? 'text-white/70' : 'text-gray-400'}`}>
           {formatarInstante(m.ocorridoEm)}
         </p>

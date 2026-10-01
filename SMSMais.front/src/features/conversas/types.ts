@@ -5,6 +5,13 @@ export type TipoMensagem =
 export type AssuntoConversa = 'Tfd' | 'MarcacaoConsulta' | 'Duvida' | 'Atendente' | 'Outro';
 export type StatusMensagem = 'Enviada' | 'Entregue' | 'Lida' | 'Falha' | 'Recebida';
 /**
+ * O que aconteceu com a foto/PDF que o paciente mandou (espelha SituacaoMidiaWhatsApp):
+ * Recebendo → o worker ainda vai baixar; Pendente → guardado, esperando alguém decidir;
+ * Aceita → virou documento do cadastro; Descartada → arquivo apagado; Bloqueada → não guardado
+ * porque o número já tem 10 pendentes; Falhou → o download não deu certo.
+ */
+export type SituacaoMidia = 'Recebendo' | 'Pendente' | 'Aceita' | 'Descartada' | 'Bloqueada' | 'Falhou';
+/**
  * 'Unidade' é a FILA (sem responsável, das minhas unidades + triagem geral); 'Minhas' são as
  * que eu atendo. As duas são disjuntas. 'NaoAtribuidas' sobrevive só por compatibilidade — o
  * backend a trata como alias de 'Unidade'.
@@ -49,6 +56,15 @@ export type Mensagem = {
   autorNomeExibicao: string | null;
   status: StatusMensagem;
   ocorridoEm: string;
+  /** Nulo = mensagem sem mídia guardável (texto, ou áudio/vídeo, que só ficam registrados). */
+  midiaSituacao?: SituacaoMidia | null;
+  midiaMimeType?: string | null;
+  midiaNomeArquivo?: string | null;
+  /** Legenda que o paciente escreveu junto da foto/PDF. */
+  midiaLegenda?: string | null;
+  midiaTamanho?: number | null;
+  /** Documento do cadastro criado quando a mídia foi aceita. */
+  documentoPacienteId?: string | null;
 };
 
 export type TemplateWhatsApp = {

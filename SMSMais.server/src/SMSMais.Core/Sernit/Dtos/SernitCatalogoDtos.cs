@@ -90,6 +90,8 @@ public sealed record SernitRascunhoAnexoDto(
     Guid Id,
     Guid MidiaId,
     string NomeArquivo,
+    string? Titulo,
+    string? Descricao,
     string? ContentType,
     long Tamanho,
     DateTime? EnviadoEm,

@@ -6,18 +6,22 @@ import type { Artigo } from '@/features/manual/tipos';
 
 /**
  * Artigo do cadastro de Pacientes: a lista (busca, sem CPF, excluir) e a ficha, com foco na aba
- * Agendamentos — de onde vem cada linha e o que cada selo de comparecimento quer dizer.
+ * Agendamentos — de onde vem cada linha e o que cada selo de comparecimento quer dizer — e na aba
+ * Exames anexados (o acervo do paciente).
  *
  * Conferido no código: `features/pacientes` (PacientesPage, PacienteDetalhePage — abas e
- * SecaoAgendamentos, types.ts) e no backend `AgendamentosPacienteService` (fontes, próximos ×
- * histórico, regra dos selos), `VarreduraAgendaService.ConferirChegadasAsync` (chegadas dos últimos
- * 31 dias toda noite) e o coletor `FaltasRecentes` (lista de faltas de hora em hora).
+ * SecaoAgendamentos, SecaoExamesAnexados, types.ts), `shared/acervo` (tipos, DialogoDocumento,
+ * VisualizadorArquivo) e no backend `AgendamentosPacienteService` (fontes, próximos × histórico,
+ * regra dos selos), `VarreduraAgendaService.ConferirChegadasAsync` (chegadas dos últimos 31 dias
+ * toda noite), o coletor `FaltasRecentes` (lista de faltas de hora em hora) e
+ * `DocumentosPacienteService` (o que entra no acervo, dedup por conteúdo, teto de 10 pendentes,
+ * 25 MB, exclusão) + `DocumentosPacienteController` (permissões).
  */
 export const artigoPacientes: Artigo = {
   slug: 'pacientes',
   titulo: 'Pacientes (cadastro e ficha)',
   resumo:
-    'Buscar e cadastrar pacientes e ler a ficha — em especial a aba Agendamentos, que junta SISREG, SER, SERNIT e ESUS de São Gonçalo e diz se o paciente compareceu, faltou ou se a unidade ainda não apontou.',
+    'Buscar e cadastrar pacientes e ler a ficha — a aba Agendamentos, que junta SISREG, SER, SERNIT e ESUS de São Gonçalo e diz se o paciente compareceu, e a aba Exames anexados, onde ficam para sempre os documentos, laudos e imagens dele.',
   grupo: 'cadastros',
   icone: Users,
   rota: '/app/pacientes',
@@ -57,6 +61,30 @@ export const artigoPacientes: Artigo = {
     'São Gonçalo',
     'absenteísmo',
     'unidade executante',
+    'exames anexados',
+    'documentos',
+    'documento',
+    'anexar documento',
+    'anexo',
+    'acervo',
+    'laudo',
+    'laudo assinado',
+    'imagens do exame',
+    'PDF das imagens',
+    'anamnese',
+    'aguardando conferência',
+    'conferência',
+    'aceitar',
+    'enviado pelo paciente',
+    'app do cidadão',
+    'WhatsApp',
+    'nome do documento',
+    'descrição',
+    'visualizar',
+    'excluir documento',
+    'limite de 10',
+    '25 MB',
+    'duplicado',
   ],
   secoes: () => [
     {
@@ -100,18 +128,22 @@ export const artigoPacientes: Artigo = {
     {
       id: 'ficha',
       titulo: 'As abas da ficha',
-      busca: 'abas resumo atendimentos agendamentos transporte exames anexados conversas histórico de acesso histórico de alterações dados pessoais',
+      busca: 'abas resumo atendimentos agendamentos transporte exames anexados documentos laudos imagens conversas somente leitura histórico de acesso histórico de alterações dados pessoais',
       conteudo: (
         <>
           <P>A ficha abre no Resumo. As outras abas, na ordem da tela:</P>
           <Lista>
             <Item>
-              <AbaRef>Atendimentos</AbaRef>, <AbaRef>Agendamentos</AbaRef>,{' '}
-              <AbaRef>Transporte</AbaRef> e <AbaRef>Exames anexados</AbaRef> — o que o paciente teve e
-              tem marcado;
+              <AbaRef>Atendimentos</AbaRef>, <AbaRef>Agendamentos</AbaRef> e{' '}
+              <AbaRef>Transporte</AbaRef> — o que o paciente teve e tem marcado;
             </Item>
             <Item>
-              <AbaRef>Conversas</AbaRef> — o WhatsApp com ele;
+              <AbaRef>Exames anexados</AbaRef> — os documentos, laudos assinados e imagens de exame
+              que ficam guardados no cadastro (ver abaixo);
+            </Item>
+            <Item>
+              <AbaRef>Conversas</AbaRef> — o WhatsApp com ele, só para leitura (decidir o que fazer com
+              um arquivo que ele mandou é na tela de Conversas);
             </Item>
             <Item>
               <AbaRef>Histórico de Acesso</AbaRef> — as entradas do próprio paciente no aplicativo;
@@ -275,9 +307,160 @@ export const artigoPacientes: Artigo = {
       ),
     },
     {
+      id: 'exames-anexados',
+      titulo: 'A aba Exames anexados: o que fica guardado do paciente',
+      busca:
+        'exames anexados documentos acervo laudo assinado imagens do exame pdf das imagens anamnese origem cadastro solicitação whatsapp enviado pelo paciente filtro todos documentos laudos imagens de exame visualizar abrir zoom baixar',
+      conteudo: (
+        <>
+          <P>
+            É a pasta do paciente. O que entra aqui fica <strong>para sempre</strong> no cadastro, venha
+            de onde vier — por isso é daqui que a regulação e a anamnese puxam documento sem pedir para
+            enviar de novo. Numa lista só, do mais recente para o mais antigo, aparecem:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Documentos',
+                descricao: (
+                  <>
+                    Arquivos anexados por alguém. A linha diz a origem: <strong>Cadastro</strong>{' '}
+                    (anexado aqui mesmo), <strong>Solicitação</strong> (anexado num pedido de
+                    regulação), <strong>WhatsApp</strong> (o paciente mandou na conversa e alguém da
+                    equipe guardou) ou <strong>Enviado pelo paciente</strong> (pelo app do cidadão).
+                  </>
+                ),
+              },
+              {
+                termo: 'Laudos',
+                descricao:
+                  'Só os laudos ASSINADOS. Rascunho e laudo esperando assinatura não aparecem: o que está aqui pode ser mostrado e anexado como documento definitivo.',
+              },
+              {
+                termo: 'Imagens de exame',
+                descricao: 'Um PDF com as imagens de cada exame de imagem do paciente, montado pelo sistema.',
+              },
+              {
+                termo: 'Anamnese',
+                descricao:
+                  'Os documentos digitalizados pelo celular (QR) e salvos na anamnese de um exame.',
+              },
+            ]}
+          />
+          <P>
+            Os botões em cima da lista (<AbaRef>Todos</AbaRef> <AbaRef>Documentos</AbaRef>{' '}
+            <AbaRef>Laudos</AbaRef> <AbaRef>Imagens de exame</AbaRef> <AbaRef>Anamnese</AbaRef>) só
+            filtram o que se vê. Clique no nome (ou no olho) para abrir o arquivo no visualizador do
+            sistema, sem sair da ficha: PDF abre no leitor, imagem abre com zoom, e os dois podem ser
+            baixados.
+          </P>
+          <Callout tipo="dica" titulo="O mesmo arquivo não aparece duas vezes">
+            O sistema reconhece o arquivo pelo conteúdo, não pelo nome. O mesmo PDF anexado em três
+            solicitações vira <strong>um</strong> documento só no cadastro — a lista não enche de cópias.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'anexar-documento',
+      titulo: 'Anexar, renomear e excluir um documento',
+      busca:
+        'anexar documento enviar arquivo upload nome do documento descrição obrigatório pdf jpg png webp gif 25 MB tamanho tipo editar lápis renomear excluir apagar solicitação cópia',
+      conteudo: (
+        <>
+          <P>
+            <BotaoRef variante="outline">Anexar documento</BotaoRef> abre a escolha do arquivo: PDF ou
+            imagem (JPG, PNG, WEBP, GIF), até <strong>25 MB</strong>. Antes de enviar, o sistema pede:
+          </P>
+          <Lista>
+            <Item>
+              <strong>Nome do documento</strong> (obrigatório) — vem sugerido a partir do nome do
+              arquivo; troque por algo que diga o que é.
+            </Item>
+            <Item>
+              <strong>Descrição</strong> (opcional) — de quando é, quem pediu, o que mostra.
+            </Item>
+          </Lista>
+          <Callout tipo="regra" titulo="Por que o nome é obrigatório">
+            “IMG_20260930.jpg” não diz a ninguém o que é. Daqui a três meses, quem procurar o resultado
+            da biópsia numa solicitação vai achar pelo nome e pela descrição — é a busca do “Anexar do
+            cadastro” que lê esses dois campos.
+          </Callout>
+          <P>
+            O lápis corrige o nome e a descrição; <BotaoRef variante="ghost">Excluir</BotaoRef> tira o
+            documento do cadastro e <strong>apaga o arquivo</strong>. As solicitações que já usaram o
+            documento não perdem nada: cada uma guardou a própria cópia.
+          </P>
+          <P>
+            Laudos, imagens de exame e documentos da anamnese aparecem aqui, mas não se editam nem se
+            excluem por esta aba — eles pertencem ao laudo, ao exame e à anamnese de onde vieram.
+          </P>
+        </>
+      ),
+    },
+    {
+      id: 'aguardando-conferencia',
+      titulo: '“Aguardando conferência”: o que o paciente mandou pelo app',
+      busca:
+        'aguardando conferência pendente enviado pelo paciente app do cidadão documentos aceitar conferir confirmar nome limite 10 dez pendentes recusa excluir retirar em conferência',
+      conteudo: (
+        <>
+          <P>
+            No app do cidadão, o menu <strong>Documentos</strong> mostra ao paciente tudo o que está
+            nesta aba e deixa ele mesmo enviar um exame. O que ele envia chega aqui em cima, num quadro
+            separado: <SeloRef cor="alerta">Aguardando conferência</SeloRef>.
+          </P>
+          <P>
+            Documento nessa situação ainda <strong>não vale</strong>: não aparece para anexar em
+            solicitação nem na anamnese. Alguém com permissão de edição abre, confere e clica em{' '}
+            <BotaoRef>Aceitar</BotaoRef> — o sistema pede para confirmar o nome e a descrição (o
+            paciente costuma mandar “foto.jpg”). Se o arquivo não serve (foto ilegível, documento de
+            outra pessoa), use <BotaoRef variante="ghost">Excluir</BotaoRef>.
+          </P>
+          <Callout tipo="regra" titulo="Por que o que vem do paciente espera alguém olhar">
+            O que a equipe anexa já passou por alguém que sabe o que é. O que chega de fora pode ser
+            qualquer coisa — e, depois de anexado numa solicitação, vai para o regulador como documento
+            do paciente. A conferência é o momento de barrar o engano antes que ele viaje.
+          </Callout>
+          <Callout tipo="atencao" titulo="No máximo 10 esperando por paciente">
+            Com 10 documentos aguardando conferência, o app recusa novos envios até a equipe decidir
+            (aceitar ou excluir). É a trava contra quem manda arquivo em massa — e é também o aviso de
+            que tem trabalho parado nesta ficha.
+          </Callout>
+          <P>
+            Enquanto ninguém conferiu, o próprio paciente pode retirar o que mandou pelo app — por isso
+            um item pendente pode sumir da lista sem que ninguém da equipe tenha mexido.
+          </P>
+        </>
+      ),
+    },
+    {
+      id: 'documentos-permissoes',
+      titulo: 'Quem pode o quê nos documentos',
+      busca: 'permissão perfil pacientes consulta edição exclusão anexar aceitar excluir ver documentos',
+      conteudo: (
+        <>
+          <P>Tudo nesta aba é governado pelo módulo <strong>Pacientes</strong> do perfil:</P>
+          <Lista>
+            <Item>
+              <strong>Consulta</strong> — ver a lista e abrir os arquivos;
+            </Item>
+            <Item>
+              <strong>Edição</strong> — anexar documento, corrigir nome e descrição e aceitar o que o
+              paciente enviou;
+            </Item>
+            <Item>
+              <strong>Exclusão</strong> — excluir documento do cadastro.
+            </Item>
+          </Lista>
+        </>
+      ),
+    },
+    {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
-      busca: 'não aparece agendamento paciente diz que foi aparece faltou em aberto antigo sem registro de chegada não abre detalhe permissão',
+      busca:
+        'não aparece agendamento paciente diz que foi aparece faltou em aberto antigo sem registro de chegada não abre detalhe permissão laudo não aparece documento não aparece para anexar anexei duas vezes excluí documento solicitação perdeu anexo whatsapp arquivo',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -300,6 +483,31 @@ export const artigoPacientes: Artigo = {
               termo: 'Cliquei na linha e o detalhe não abriu.',
               descricao:
                 'Ou a linha não tem detalhe (consulta do SISREG), ou o seu perfil não tem permissão de consulta no módulo daquele sistema (SER, SERNIT, ESUS SG ou Solicitações de Exame).',
+            },
+            {
+              termo: 'O laudo do exame não aparece em Exames anexados.',
+              descricao:
+                'Só entra laudo assinado. Enquanto o médico não assinar, o laudo não está pronto para circular como documento.',
+            },
+            {
+              termo: 'O paciente mandou um exame pelo app e ele não aparece para anexar na solicitação.',
+              descricao:
+                'Está em “Aguardando conferência”. Aceite na aba Exames anexados; a partir daí ele aparece no “Anexar do cadastro”.',
+            },
+            {
+              termo: 'O paciente mandou uma foto pelo WhatsApp. Ela vem para cá sozinha?',
+              descricao:
+                'Não. Alguém com acesso a Conversas abre o arquivo na conversa e escolhe “Adicionar ao cadastro do paciente” (ou descarta). Só então ele aparece aqui, com origem WhatsApp.',
+            },
+            {
+              termo: 'Anexei o mesmo arquivo de novo e a lista não mudou.',
+              descricao:
+                'É de propósito: o sistema reconhece o arquivo pelo conteúdo e mantém um documento só.',
+            },
+            {
+              termo: 'Se eu excluir um documento, a solicitação que o usou fica sem anexo?',
+              descricao:
+                'Não. Cada solicitação guardou a própria cópia. Excluir aqui tira o documento só do cadastro.',
             },
           ]}
         />

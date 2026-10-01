@@ -159,6 +159,9 @@ public static class DependencyInjection
             sp.GetRequiredService<Armazenamento.ArmazenamentoSpaces>());
         services.Configure<Anexos.AnexosOptions>(configuration.GetSection(Anexos.AnexosOptions.Secao));
         services.AddScoped<Anexos.IAnexosService, Anexos.AnexosService>();
+
+        // ---- Acervo do paciente ("Exames anexados" perene no cadastro) ----
+        services.AddScoped<DocumentosPaciente.IDocumentosPacienteService, DocumentosPaciente.DocumentosPacienteService>();
         services.AddScoped<IGeradorIdentificadores, GeradorIdentificadores>();
         services.AddScoped<INotificadorExame, NotificadorExameLog>();
 
@@ -950,6 +953,16 @@ public static class DependencyInjection
         {
             client.Timeout = TimeSpan.FromSeconds(20);
         });
+
+        // Mídia que o paciente manda (foto/PDF): o webhook anota, o worker baixa pelo Zap e guarda
+        // como pendente; a equipe aceita no cadastro ou descarta. Trava de 10 pendentes por número.
+        services.AddHttpClient<Conversas.Midias.IZapMidiaCliente, Conversas.Midias.ZapMidiaCliente>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(90);
+        });
+        services.AddSingleton<Conversas.Midias.SinalMidiasWhatsApp>();
+        services.AddScoped<Conversas.Midias.IMidiasConversaService, Conversas.Midias.MidiasConversaService>();
+        services.AddHostedService<Conversas.Midias.BaixadorMidiasWhatsAppWorker>();
 
         // ---- Módulo Conversas (chat WhatsApp multi-operador, transversal) ----
         services.Configure<Conversas.ConversasOptions>(

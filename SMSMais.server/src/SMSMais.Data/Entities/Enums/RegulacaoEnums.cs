@@ -137,6 +137,9 @@ public enum OrigemArquivoExigencia
 
     /// <summary>Gerado a partir de exame/laudo que já existia no SMSMais.</summary>
     ExameInterno = 2,
+
+    /// <summary>Escolhido no acervo do paciente ("Exames anexados" do cadastro).</summary>
+    Acervo = 3,
 }
 
 /// <summary>

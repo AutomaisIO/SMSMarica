@@ -103,6 +103,11 @@ public class SerRascunhoAnexo
     public string? ContentType { get; set; }
     public long Tamanho { get; set; }
 
+    /// <summary>Nome do documento dado por quem anexou (ex.: "Laudo da ressonância"). Nulo em linha antiga.</summary>
+    public string? Titulo { get; set; }
+
+    public string? Descricao { get; set; }
+
     /// <summary>Quando ESTE arquivo chegou ao SER. Nulo = ainda só nosso.</summary>
     public DateTime? EnviadoEm { get; set; }
 

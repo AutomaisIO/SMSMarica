@@ -1,16 +1,21 @@
 import { useState } from 'react';
-import { FilePlus2, Loader2, Paperclip } from 'lucide-react';
-import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { useQueryClient } from '@tanstack/react-query';
+import { FilePlus2, FolderOpen, Loader2, Paperclip, Save } from 'lucide-react';
+import { extrairMensagemDeErro, http } from '@/shared/api/httpClient';
+import { SeletorAcervo } from '@/shared/acervo/SeletorAcervo';
+import type { ItemAcervo } from '@/shared/acervo/tipos';
+import { AcaoVisualizador, VisualizadorArquivo } from '@/shared/acervo/VisualizadorArquivo';
 import { Button } from '@/shared/ui/Button';
+import { notificar } from '@/shared/ui/Notificacoes';
 import { AdicionarExameModal } from '@/features/anamnese/components/AdicionarExameModal';
 import { AnexoExameItem } from '@/features/anamnese/components/AnexoExameItem';
 import {
+  anexosKeys,
   useAnexosExame,
   useCriarTokenAnexo,
   useExcluirAnexo,
   useSalvarAnexo,
 } from '@/features/anamnese/api/queries';
-import { abrirPdfAnexo } from '@/features/anamnese/lib/anexos';
 import type { AnexoExameDto, AnexoUploadTokenDto } from '@/features/anamnese/types';
 
 type Props = {
@@ -31,6 +36,9 @@ export function AnexosExameSecao({ solicitacaoExameId, podeEditar }: Props) {
   const [revisandoId, setRevisandoId] = useState<string | null>(null);
   const [salvandoId, setSalvandoId] = useState<string | null>(null);
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const [vendo, setVendo] = useState<AnexoExameDto | null>(null);
+  const [seletorAberto, setSeletorAberto] = useState(false);
+  const qc = useQueryClient();
 
   const anexosQuery = useAnexosExame(solicitacaoExameId, { polling: modalAberto });
   const criarToken = useCriarTokenAnexo();
@@ -50,16 +58,11 @@ export function AnexosExameSecao({ solicitacaoExameId, podeEditar }: Props) {
     });
   }
 
-  async function aoRevisar(a: AnexoExameDto) {
+  // Revisar = abrir no visualizador do sistema (PDF ou imagem), com "Salvar" ali mesmo.
+  function aoRevisar(a: AnexoExameDto) {
     setErro(null);
-    setRevisandoId(a.id);
-    try {
-      await abrirPdfAnexo(a.id);
-    } catch (e) {
-      setErro(extrairMensagemDeErro(e));
-    } finally {
-      setRevisandoId(null);
-    }
+    setRevisandoId(null);
+    setVendo(a);
   }
 
   function aoSalvar(a: AnexoExameDto) {
@@ -95,14 +98,20 @@ export function AnexosExameSecao({ solicitacaoExameId, podeEditar }: Props) {
           DOCUMENTOS / EXAMES ANEXADOS
         </div>
         {podeEditar ? (
-          <Button variante="outline" tamanho="sm" onClick={aoAdicionar} disabled={criarToken.isPending}>
-            {criarToken.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <FilePlus2 className="mr-2 h-4 w-4" />
-            )}
-            Adicionar Exame
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variante="outline" tamanho="sm" onClick={() => setSeletorAberto(true)}>
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Anexar do cadastro
+            </Button>
+            <Button variante="outline" tamanho="sm" onClick={aoAdicionar} disabled={criarToken.isPending}>
+              {criarToken.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FilePlus2 className="mr-2 h-4 w-4" />
+              )}
+              Adicionar Exame
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -139,6 +148,46 @@ export function AnexosExameSecao({ solicitacaoExameId, podeEditar }: Props) {
           </ul>
         )}
       </div>
+
+      {vendo ? (
+        <VisualizadorArquivo
+          caminho={`/anexos/${vendo.id}/conteudo`}
+          titulo={vendo.nome}
+          descricao={vendo.descricao}
+          aoFechar={() => setVendo(null)}
+          acoes={
+            podeEditar && vendo.status === 'Pendente' ? (
+              <AcaoVisualizador
+                destaque
+                disabled={salvandoId === vendo.id}
+                aoClicar={() => {
+                  aoSalvar(vendo);
+                  setVendo(null);
+                }}
+              >
+                <Save className="size-4" /> Salvar na anamnese
+              </AcaoVisualizador>
+            ) : undefined
+          }
+        />
+      ) : null}
+
+      <SeletorAcervo
+        aberto={seletorAberto}
+        aoFechar={() => setSeletorAberto(false)}
+        chaveConsulta={['anamnese', solicitacaoExameId, 'acervo']}
+        carregar={async () =>
+          (await http.get<ItemAcervo[]>(`/anamneses/${solicitacaoExameId}/acervo`)).data
+        }
+        caminhoConteudo={(item) =>
+          `/anamneses/${solicitacaoExameId}/acervo/conteudo?chave=${encodeURIComponent(item.chave)}`
+        }
+        aoAnexar={async (item) => {
+          await http.post(`/anamneses/${solicitacaoExameId}/anexos/do-acervo`, { chave: item.chave });
+          notificar('Documento do cadastro anexado à anamnese.', 'sucesso');
+          await qc.invalidateQueries({ queryKey: anexosKeys.lista(solicitacaoExameId) });
+        }}
+      />
 
       {token ? (
         <AdicionarExameModal

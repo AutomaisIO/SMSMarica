@@ -71,6 +71,12 @@ public sealed class RegulacaoExigenciaArquivo
     public string ChaveArmazenamento { get; set; } = string.Empty;
 
     public string Nome { get; set; } = string.Empty;
+
+    /// <summary>Nome do documento dado por quem anexou (ex.: "Laudo da ressonância"). Nulo em linha antiga.</summary>
+    public string? Titulo { get; set; }
+
+    public string? Descricao { get; set; }
+
     public string ContentType { get; set; } = string.Empty;
     public long Tamanho { get; set; }
 

@@ -520,6 +520,8 @@ public sealed record SerRascunhoAnexoDto(
     Guid Id,
     Guid MidiaId,
     string NomeArquivo,
+    string? Titulo,
+    string? Descricao,
     string? ContentType,
     long Tamanho,
     /// <summary>Nulo = o arquivo ainda é só nosso; não subiu para o SER.</summary>

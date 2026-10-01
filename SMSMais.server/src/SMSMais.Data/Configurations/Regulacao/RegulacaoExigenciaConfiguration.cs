@@ -54,6 +54,8 @@ internal sealed class RegulacaoExigenciaArquivoConfiguration
         builder.Property(x => x.ChaveArmazenamento)
             .HasColumnName("chave_armazenamento").HasMaxLength(300).IsRequired();
         builder.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(260).IsRequired();
+        builder.Property(x => x.Titulo).HasColumnName("titulo").HasMaxLength(200);
+        builder.Property(x => x.Descricao).HasColumnName("descricao").HasMaxLength(2000);
         builder.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(120).IsRequired();
         builder.Property(x => x.Tamanho).HasColumnName("tamanho").IsRequired();
         builder.Property(x => x.Sha256).HasColumnName("sha256").HasMaxLength(64).IsRequired();

@@ -143,7 +143,32 @@ export type AgendamentoExameDetalhe = {
 /** Chave de acesso (confirmação do SISREG) — entregue só no dia do exame. */
 export type ChaveAcessoExame = { chave: string; codigoSolicitacao: string };
 
-export type TelefoneOtpEmitido = { canal: string; mascara: string | null; expiraEmSegundos: number };
+/**
+ * Um item do acervo do paciente (menu Documentos): o que está no cadastro dele — documentos,
+ * anexos da anamnese, laudos assinados, PDF das imagens dos exames — e o que ele mesmo enviou
+ * e ainda espera a equipe conferir (`situacao: 'Pendente'`).
+ */
+export type ItemAcervo = {
+  /** "tipo:id" — única na lista. */
+  chave: string;
+  tipo: 'Documento' | 'AnexoExame' | 'Laudo' | 'ImagensExame';
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  mimeType: string;
+  tamanhoBytes: number | null;
+  paginas: number | null;
+  data: string;
+  /** Rótulo pronto para exibir: "Cadastro", "Enviado pelo paciente", "Laudo"… */
+  origem: string;
+  situacao: 'Pendente' | 'Aceito' | null;
+  editavel: boolean;
+};
+
+/** Rótulo de origem que o servidor dá ao que o próprio paciente mandou pelo app. */
+export const ORIGEM_ENVIADO_PELO_PACIENTE = 'Enviado pelo paciente';
+
+export type TelefoneOtpEmitido ={ canal: string; mascara: string | null; expiraEmSegundos: number };
 export type TelefoneValidado = { numero: string; validado: boolean; validadoEm: string | null };
 
 export type ConsentimentoStatus = {
@@ -220,7 +245,58 @@ export const api = {
       .then((r) => r.data),
   cancelarExame: (solicitacaoExameId: string, motivo: string) =>
     http.post(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/cancelar`, { motivo }),
+
+  // Acervo (menu Documentos). A LISTA tem cache offline como as demais; o envio nunca.
+  documentos: () =>
+    comCacheLocal('documentos', () =>
+      http.get<ItemAcervo[]>('/auth/paciente/documentos').then((r) => r.data)),
+  /**
+   * Envia foto/PDF para o cadastro — entra Pendente até a equipe conferir. O cliente padrão
+   * manda `Content-Type: application/json`; com FormData isso faria o axios serializar em
+   * JSON, então forçamos multipart (o navegador completa com o `boundary`).
+   */
+  enviarDocumento: (
+    arquivo: File,
+    titulo: string,
+    descricao: string | null,
+    aoProgresso?: (fracao: number) => void,
+  ) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo, arquivo.name);
+    form.append('titulo', titulo);
+    if (descricao) form.append('descricao', descricao);
+    return http
+      .post<ItemAcervo>('/auth/paciente/documentos', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        // Sinal fraco é a regra: o envio de uma foto pode levar um bom tempo — mostra o andamento.
+        onUploadProgress: (e) => {
+          if (aoProgresso && e.total) aoProgresso(e.loaded / e.total);
+        },
+      })
+      .then((r) => r.data);
+  },
+  /** Retira um envio do próprio paciente que a equipe ainda não conferiu. */
+  retirarDocumento: (id: string) => http.delete(`/auth/paciente/documentos/${id}`),
 };
+
+/**
+ * URL do conteúdo de um item do acervo. Laudo, imagens e anexos da anamnese usam as MESMAS
+ * URLs da tela Exames (mesmos ids, mesmo arquivo): assim reaproveitam o PDF que a sincronização
+ * já deixou no aparelho e não geram de novo o PDF de imagens, que é pesado. Só o documento do
+ * cadastro tem endpoint próprio.
+ */
+export function urlConteudoAcervo(item: Pick<ItemAcervo, 'tipo' | 'id'>): string {
+  switch (item.tipo) {
+    case 'Laudo':
+      return pdfUrls.laudo(item.id);
+    case 'ImagensExame':
+      return pdfUrls.exameImagens(item.id);
+    case 'AnexoExame':
+      return pdfUrls.anexo(item.id);
+    default:
+      return `/auth/paciente/documentos/${item.tipo}/${item.id}/conteudo`;
+  }
+}
 
 // URLs de PDF protegido (abertas/baixadas via blob — ver lib/pdf.ts).
 export const pdfUrls = {

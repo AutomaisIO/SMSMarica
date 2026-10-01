@@ -185,10 +185,13 @@ export function useChatHub(habilitado: boolean) {
 
     // conversaAtualizada também cobre mudança de POSSE/unidade (assumir/devolver/encaminhar/
     // transferir): o antigo dono com a thread aberta precisa ver o chip mudar — o detalhe não
-    // tem poll, só invalidação.
+    // tem poll, só invalidação. Também é o aviso de que uma MÍDIA mudou de situação (baixada,
+    // aceita, descartada — MidiasConversaService): as mensagens são refeitas para a bolha sair
+    // de "Recebendo arquivo…". Só refaz se a thread estiver aberta (query ativa) — barato.
     conn.on('conversaAtualizada', (evt: ConversaEventoRealtime) => {
       invalidarLista();
       queryClient.invalidateQueries({ queryKey: ['conversas', 'detalhe', evt.conversaId] });
+      queryClient.invalidateQueries({ queryKey: ['conversas', 'mensagens', evt.conversaId] });
     });
 
     const reassinar = () => {

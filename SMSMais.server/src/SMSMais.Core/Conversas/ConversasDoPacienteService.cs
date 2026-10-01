@@ -143,7 +143,9 @@ public sealed class ConversasDoPacienteService(
             .Take(LimiteMensagensPorSessao)
             .Select(m => new MensagemDto(
                 m.Id, m.ConversaId, m.Direcao, m.TipoMensagem, m.Conteudo, m.Template,
-                m.AutorUsuarioId, m.AutorNomeExibicao, m.Status, m.OcorridoEm))
+                m.AutorUsuarioId, m.AutorNomeExibicao, m.Status, m.OcorridoEm,
+                m.MidiaSituacao, m.MidiaMimeType, m.MidiaNomeArquivo, m.MidiaLegenda, m.MidiaTamanho,
+                m.DocumentoPacienteId))
             .ToListAsync(ct);
     }
 

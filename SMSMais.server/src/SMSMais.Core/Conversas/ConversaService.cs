@@ -494,7 +494,9 @@ public sealed class ConversaService(
             .Take(500)
             .Select(m => new MensagemDto(
                 m.Id, m.ConversaId, m.Direcao, m.TipoMensagem, m.Conteudo, m.Template,
-                m.AutorUsuarioId, m.AutorNomeExibicao, m.Status, m.OcorridoEm))
+                m.AutorUsuarioId, m.AutorNomeExibicao, m.Status, m.OcorridoEm,
+                m.MidiaSituacao, m.MidiaMimeType, m.MidiaNomeArquivo, m.MidiaLegenda, m.MidiaTamanho,
+                m.DocumentoPacienteId))
             .ToListAsync(ct);
 
         recentes.Reverse(); // a UI rola para o fim: ordem ascendente por OcorridoEm
