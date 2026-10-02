@@ -99,15 +99,20 @@ internal sealed class EscopoExameUnidade(SmsMaisDbContext db) : IEscopoExameUnid
 
         if (existente is not null) return (existente, false);
 
-        var unidadeTemAparelho = await db.TiposExame
-            .Where(t => t.Id == tipoExameId)
-            .AnyAsync(t => db.Equipamentos.Any(e =>
-                e.UnidadeId == unidadeId
-                && e.ModalidadeDicom == t.ModalidadeDicom
-                && e.Ativo
-                && e.ExcluidoEm == null
-                && e.IdentificadorDicom != null
-                && e.IdentificadorDicom != ""), cancellationToken);
+        // FindAsync, não consulta: o tipo que a importação acabou de criar ainda está só no change
+        // tracker (o SaveChanges vem depois, junto com a solicitação). Uma consulta ao banco não o
+        // achava, o "tem aparelho?" dava falso e TODO tipo novo nascia desligado — mesmo no CDT, que
+        // tem o RX-CDT. Foi o 261002664 em 02/10/2026 (RADIOGRAFIA DE BRACO DIREITO, tipo e par
+        // criados juntos em 24/09), e o par de 28/09 que nasceu desligado depois do 25e24b9.
+        var tipo = await db.TiposExame.FindAsync([tipoExameId], cancellationToken);
+
+        var unidadeTemAparelho = tipo is not null && await db.Equipamentos.AnyAsync(e =>
+            e.UnidadeId == unidadeId
+            && e.ModalidadeDicom == tipo.ModalidadeDicom
+            && e.Ativo
+            && e.ExcluidoEm == null
+            && e.IdentificadorDicom != null
+            && e.IdentificadorDicom != "", cancellationToken);
 
         var novo = new TipoExameUnidade
         {

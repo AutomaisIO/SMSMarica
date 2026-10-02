@@ -145,6 +145,44 @@ public class EscopoExameUnidadeTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Tipo_criado_na_mesma_importacao_ainda_nao_salvo_nasce_ligado_onde_ha_aparelho()
+    {
+        // O caso real da importação: o resolvedor ADICIONA o tipo e o GarantirAsync roda antes do
+        // SaveChanges. O teste acima usa tipo já gravado e não pegava isso — em produção todo tipo
+        // novo nascia desligado (261002664, RADIOGRAFIA DE BRACO DIREITO no CDT, 02/10/2026).
+        await using var db = fixture.CriarDbContext();
+        var unidade = new Unidade
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"COM RX {Guid.NewGuid().ToString("N")[..8]}",
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.Unidades.Add(unidade);
+        await db.SaveChangesAsync();
+        await EquipamentoAsync(db, unidade.Id, ModalidadeDicom.DX, "RX-NOVO", "Raio-X");
+
+        var tipo = new TipoExame
+        {
+            Id = Guid.CreateVersion7(),
+            Nome = $"RADIOGRAFIA TESTE {Guid.NewGuid().ToString("N")[..8]}",
+            AutoCriado = true,
+            ModalidadeDicom = ModalidadeDicom.DX,
+            RequestedProcedureDescription = "RX",
+            ScheduledProcedureStepDescription = "RX",
+            CodigosProtocolo = [],
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.TiposExame.Add(tipo); // sem SaveChanges, como na importação
+
+        var (escopo, criado) = await new EscopoExameUnidade(db).GarantirAsync(tipo.Id, unidade.Id);
+        await db.SaveChangesAsync();
+
+        Assert.True(criado);
+        Assert.True(escopo.EnviarParaWorklist);
+    }
+
+    [Fact]
     public async Task Equipamento_configurado_no_escopo_vence_a_deducao_por_modalidade()
     {
         // A razão de ser do campo: sem ele o destino sai do casamento
