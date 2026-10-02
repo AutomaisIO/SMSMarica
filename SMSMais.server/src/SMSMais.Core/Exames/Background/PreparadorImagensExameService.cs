@@ -156,8 +156,16 @@ public sealed class PreparadorImagensExameService(
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var pdfImagens = scope.ServiceProvider.GetRequiredService<IExameImagensPdfService>();
 
-        var sol = await db.ExamesImagem
-            .FirstOrDefaultAsync(s => s.Id == solicitacaoId && s.ExcluidoEm == null, ct);
+        // Sem rastrear e gravando SÓ a coluna do preparador (ExecuteUpdate): a geração do PDF leva
+        // segundos buscando no PACS e, nesse meio-tempo, o laudo, o worker da worklist ou a
+        // associação gravam o mesmo exame. Com a entidade rastreada o SaveChanges esbarrava na trava
+        // xmin (DbUpdateConcurrencyException), derrubava a passagem inteira e os exames seguintes
+        // da fila ficavam para a próxima volta — avisos de 02/10/2026. O preparador não tem nada a
+        // disputar com ninguém: só carimba "preparado" ou soma uma tentativa.
+        var sol = await db.ExamesImagem.AsNoTracking()
+            .Where(s => s.Id == solicitacaoId && s.ExcluidoEm == null)
+            .Select(s => new { s.AccessionNumber, s.ImagensPreparacaoTentativas })
+            .FirstOrDefaultAsync(ct);
         if (sol is null) return;
 
         try
@@ -166,7 +174,9 @@ public sealed class PreparadorImagensExameService(
             // O PDF do "exame completo" (painel) reaproveita o mesmo render-cache no clique.
             await pdfImagens.GerarOuObterAsync(solicitacaoId, ct);
 
-            sol.ImagensPreparadasEm = DateTime.UtcNow;
+            var agora = DateTime.UtcNow;
+            await db.ExamesImagem.Where(s => s.Id == solicitacaoId)
+                .ExecuteUpdateAsync(u => u.SetProperty(s => s.ImagensPreparadasEm, agora), ct);
             logger.LogInformation(
                 "Preparador: exame {Pedido} pré-materializado (tentativa {N}).",
                 sol.AccessionNumber, sol.ImagensPreparacaoTentativas + 1);
@@ -177,13 +187,13 @@ public sealed class PreparadorImagensExameService(
         }
         catch (Exception ex)
         {
-            sol.ImagensPreparacaoTentativas++;
+            await db.ExamesImagem.Where(s => s.Id == solicitacaoId)
+                .ExecuteUpdateAsync(u => u.SetProperty(
+                    s => s.ImagensPreparacaoTentativas, s => s.ImagensPreparacaoTentativas + 1), ct);
             logger.LogWarning(ex,
                 "Preparador: falha ao pré-materializar o exame {Pedido} (tentativa {N}/{Max}).",
-                sol.AccessionNumber, sol.ImagensPreparacaoTentativas, _options.MaxTentativas);
+                sol.AccessionNumber, sol.ImagensPreparacaoTentativas + 1, _options.MaxTentativas);
         }
-
-        await db.SaveChangesAsync(ct);
     }
 
     // ---------------- Re-validação (ticket #68): estudo que cresceu no PACS após materializado ----------------
@@ -243,12 +253,10 @@ public sealed class PreparadorImagensExameService(
             await pdfImagens.InvalidarAsync(id, ct);
             await pdfImagens.GerarOuObterAsync(id, ct);
 
-            var sol = await db.ExamesImagem.FirstOrDefaultAsync(s => s.Id == id && s.ExcluidoEm == null, ct);
-            if (sol is not null)
-            {
-                sol.ImagensPreparadasEm = DateTime.UtcNow;
-                await db.SaveChangesAsync(ct);
-            }
+            // Mesma razão do PrepararUmAsync: só a coluna, sem disputar a trava xmin.
+            var agora = DateTime.UtcNow;
+            await db.ExamesImagem.Where(s => s.Id == id && s.ExcluidoEm == null)
+                .ExecuteUpdateAsync(u => u.SetProperty(s => s.ImagensPreparadasEm, agora), ct);
 
             logger.LogInformation(
                 "Re-validação: exame {Id} reprocessado — cache {De} -> PACS {Para} imagens (estudo completado após materialização).",

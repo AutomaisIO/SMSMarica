@@ -86,9 +86,15 @@ public sealed class ConfirmacoesPainelService(
 
         // "Respondido em" = quando confirmou OU quando avisou que não vai.
         if (de is { } d)
-            query = query.Where(s => (s.ConfirmacaoCanceladaEm ?? s.ConfirmadoEm) >= d);
+        {
+            var deUtc = FusoBrasilia.LimiteDeFiltroParaUtc(d);
+            query = query.Where(s => (s.ConfirmacaoCanceladaEm ?? s.ConfirmadoEm) >= deUtc);
+        }
         if (ate is { } a)
-            query = query.Where(s => (s.ConfirmacaoCanceladaEm ?? s.ConfirmadoEm) < a.AddDays(1));
+        {
+            var ateUtc = FusoBrasilia.LimiteDeFiltroParaUtc(a).AddDays(1);
+            query = query.Where(s => (s.ConfirmacaoCanceladaEm ?? s.ConfirmadoEm) < ateUtc);
+        }
 
         if (!string.IsNullOrWhiteSpace(texto))
         {

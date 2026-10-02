@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Notificacoes.Comunicacao.Dtos;
 using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Data;
@@ -42,8 +43,16 @@ public sealed class ComunicacaoGestaoService(
             query = query.Where(n => n.Finalidade == fin);
         if (Enum.TryParse<StatusConfirmacaoAgendamento>(filtro.Confirmacao, ignoreCase: true, out var conf))
             query = query.Where(n => n.Solicitacao != null && n.Solicitacao.StatusConfirmacao == conf);
-        if (filtro.De is { } de) query = query.Where(n => n.CriadoEm >= de);
-        if (filtro.Ate is { } ate) query = query.Where(n => n.CriadoEm < ate.AddDays(1));
+        if (filtro.De is { } de)
+        {
+            var deUtc = FusoBrasilia.LimiteDeFiltroParaUtc(de);
+            query = query.Where(n => n.CriadoEm >= deUtc);
+        }
+        if (filtro.Ate is { } ate)
+        {
+            var ateUtc = FusoBrasilia.LimiteDeFiltroParaUtc(ate).AddDays(1);
+            query = query.Where(n => n.CriadoEm < ateUtc);
+        }
         if (!string.IsNullOrWhiteSpace(filtro.Texto))
         {
             var t = filtro.Texto.Trim();

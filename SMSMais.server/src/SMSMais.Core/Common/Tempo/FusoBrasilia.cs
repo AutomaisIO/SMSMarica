@@ -45,4 +45,17 @@ public static class FusoBrasilia
     public static DateTime DeBrasiliaParaUtc(DateTime brasilia) => DateTime.SpecifyKind(
         DateTime.SpecifyKind(brasilia, DateTimeKind.Unspecified).AddHours(-OffsetHoras),
         DateTimeKind.Utc);
+
+    /// <summary>
+    /// Limite de filtro vindo da tela (<c>?de=2026-10-02T00:00:00</c>) para comparar com coluna de
+    /// instante. Sem fuso, é dia/hora de Brasília e vira UTC; com fuso (já UTC ou Local), só é
+    /// normalizado para UTC. Sem isto o Npgsql recusa o parâmetro (<c>Kind=Unspecified</c>) e a
+    /// tela inteira cai com 500 — foi o ERRO-Y6K93P na Mensageria em 02/10/2026.
+    /// </summary>
+    public static DateTime LimiteDeFiltroParaUtc(DateTime valor) => valor.Kind switch
+    {
+        DateTimeKind.Utc => valor,
+        DateTimeKind.Local => valor.ToUniversalTime(),
+        _ => DeBrasiliaParaUtc(valor),
+    };
 }

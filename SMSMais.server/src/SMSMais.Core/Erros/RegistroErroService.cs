@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Erros.Dtos;
 using SMSMais.Core.Identidade;
 using SMSMais.Data;
@@ -129,9 +130,15 @@ public sealed class RegistroErroService(SmsMaisDbContext db, IUsuarioAtualAccess
             q = q.Where(e => e.CodigoReferencia == codigo);
         }
         if (filtro.De is { } de)
-            q = q.Where(e => e.CriadoEm >= de);
+        {
+            var deUtc = FusoBrasilia.LimiteDeFiltroParaUtc(de);
+            q = q.Where(e => e.CriadoEm >= deUtc);
+        }
         if (filtro.Ate is { } ate)
-            q = q.Where(e => e.CriadoEm <= ate);
+        {
+            var ateUtc = FusoBrasilia.LimiteDeFiltroParaUtc(ate);
+            q = q.Where(e => e.CriadoEm <= ateUtc);
+        }
         if (!string.IsNullOrWhiteSpace(filtro.Texto))
         {
             var padrao = $"%{filtro.Texto.Trim()}%";
