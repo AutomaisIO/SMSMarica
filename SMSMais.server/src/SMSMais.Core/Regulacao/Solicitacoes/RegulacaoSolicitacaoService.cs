@@ -760,6 +760,8 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException("sistema", "O NAR sempre termina no SISREG.");
         }
 
+        await ExigirMedicoResolvidoAsync(s, ct);
+
         s.SistemaDestino = req.Sistema;
         s.NumeroExterno = numero;
         s.EnviadoEm = req.EnviadoEm ?? DateTime.UtcNow;
@@ -787,6 +789,41 @@ public sealed class RegulacaoSolicitacaoService(
         }
 
         return await ObterAsync(id, ct);
+    }
+
+    /// <summary>
+    /// Médico pedido na abertura e ainda não cadastrado no sistema (<c>pendente:{id}</c>): o
+    /// pedido não pode ter sido gravado lá — o SER só aceita médico da lista dele. O técnico
+    /// cadastra no SER, confirma o médico e aí registra o envio.
+    /// </summary>
+    private async Task ExigirMedicoResolvidoAsync(RegulacaoSolicitacao s, CancellationToken ct)
+    {
+        string? valor = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(s.FormularioJson);
+            if (doc.RootElement.TryGetProperty("canonico", out var c)
+                && c.TryGetProperty(RegulacaoFormularioService.ChaveMedicoSolicitante, out var m)
+                && m.ValueKind == JsonValueKind.String)
+            {
+                valor = m.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+
+        if (Medicos.RegulacaoMedicoPendenteService.IdDoValor(valor) is not { } pendenteId) return;
+
+        var pendente = await db.RegulacaoMedicosPendentes.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == pendenteId, ct);
+        var situacao = pendente?.Situacao;
+        throw new ValidacaoException(
+            "medico",
+            situacao == SituacaoMedicoPendente.Recusado
+                ? "O médico pedido pela unidade foi recusado. Devolva a solicitação para ela escolher outro."
+                : $"Cadastre o médico {pendente?.Nome} no sistema e confirme o cadastro antes de registrar o envio.");
     }
 
     public async Task<RegulacaoSolicitacaoDetalheDto> ConfirmarOkInternoAsync(

@@ -41,6 +41,7 @@ import { BuscaProcedimento } from '../components/BuscaProcedimento';
 import { PassoPaciente } from '../components/wizard/PassoPaciente';
 import { PassoRegras } from '../components/wizard/PassoRegras';
 import { ExamesInternosSugeridos } from '../components/ExamesInternosSugeridos';
+import { IncluirMedico } from '../components/IncluirMedico';
 import { SeletorCidRegulacao } from '../components/SeletorCidRegulacao';
 import type { FluxoRegulacao, SolicitacaoRegulacao } from '../tiposSolicitacao';
 import { ROTULO_SISTEMA_REGULACAO } from '../types';
@@ -507,6 +508,18 @@ export function NovaSolicitacaoPage() {
                     onChange={(v) => setValores((atual) => ({ ...atual, [c.chave]: v }))}
                   />
                   )}
+                  {/* Médico fora da lista: vira pedido de cadastro PENDENTE — quem cadastra no
+                      sistema é a regulação, no fim do processo. */}
+                  {c.chave === 'medico_solicitante' && (destino === 'Ser' || destino === 'Sernit') ? (
+                    <IncluirMedico
+                      sistema={destino}
+                      aoEscolher={(v) => {
+                        setValores((atual) => ({ ...atual, [c.chave]: v }));
+                        // O pedido entra na lista do campo como "(aguardando cadastro…)".
+                        void formulario.refetch();
+                      }}
+                    />
+                  ) : null}
                   {c.origens.length === 1 && fluxo === 'Externo' ? (
                     <p className="mt-0.5 text-[11px] text-slate-400">
                       exigido só pelo {ROTULO_SISTEMA_REGULACAO[c.origens[0]]}

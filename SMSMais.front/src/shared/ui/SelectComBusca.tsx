@@ -8,6 +8,32 @@ function normalizar(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
+const PARTICULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+
+function palavras(texto: string): string[] {
+  return normalizar(texto)
+    .split(/[^a-z0-9]+/)
+    .filter((p) => p && !PARTICULAS.has(p));
+}
+
+/**
+ * Cada palavra digitada tem de bater com alguma palavra do rótulo — pelo INÍCIO ("rod" acha
+ * RODRIGUES) ou pela INICIAL ("andrade" acha o "A." de "LAURA BEATRIZ A. RODRIGUES"). A ordem não
+ * importa e "de/da/dos" são ignorados. Ao menos uma palavra tem de bater com uma palavra INTEIRA
+ * do rótulo — só iniciais trariam ruído ("laura" acharia "MAXIMILIANO L. ROSA").
+ *
+ * <p>Era busca por trecho contínuo, e o cadastro de médicos do SER é cheio de nome abreviado e
+ * sobrenome a mais: quem digitava o nome completo não achava o médico, concluía que ele não existia
+ * e o cadastrava de novo — no SER, onde não dá para editar nem apagar (01/10/2026).</p>
+ */
+function casa(termo: string[], rotulo: string[]): boolean {
+  const cadaUma = termo.every((t) =>
+    rotulo.some((r) => r.startsWith(t) || (r.length === 1 && t.length > 1 && t[0] === r)),
+  );
+  const algumaInteira = termo.some((t) => rotulo.some((r) => r.length > 1 && r.startsWith(t)));
+  return cadaUma && algumaInteira;
+}
+
 /**
  * Um `<select>` para listas longas (a de médicos do SER passa de 800 nomes): abre uma caixa
  * com busca por qualquer parte do rótulo, sem acento. Devolve o VALOR da opção, como o select.
@@ -41,7 +67,16 @@ export function SelectComBusca({
 
   const filtradas = useMemo(() => {
     const t = normalizar(termo.trim());
-    return t ? opcoes.filter((o) => normalizar(o.rotulo).includes(t)) : opcoes;
+    if (!t) return opcoes;
+    const termoPalavras = palavras(termo);
+    // O trecho contínuo continua valendo (e vem primeiro: é o acerto mais provável); a busca por
+    // palavras acrescenta o nome abreviado ou com sobrenome a mais.
+    const porTrecho = opcoes.filter((o) => normalizar(o.rotulo).includes(t));
+    const jaTem = new Set(porTrecho.map((o) => o.valor));
+    const porPalavra = termoPalavras.length
+      ? opcoes.filter((o) => !jaTem.has(o.valor) && casa(termoPalavras, palavras(o.rotulo)))
+      : [];
+    return [...porTrecho, ...porPalavra];
   }, [opcoes, termo]);
 
   const escolhida = opcoes.find((o) => o.valor === valor);

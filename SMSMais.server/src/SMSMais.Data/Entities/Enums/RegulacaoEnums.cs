@@ -266,6 +266,22 @@ public enum RespostaRegraRegulacao
     Deduzido = 4,
 }
 
+/// <summary>O que aconteceu com o médico pedido na abertura (<c>RegulacaoMedicoPendente</c>).</summary>
+public enum SituacaoMedicoPendente
+{
+    /// <summary>Esperando o técnico da regulação cadastrar no sistema de destino.</summary>
+    Pendente = 1,
+
+    /// <summary>O técnico cadastrou no sistema.</summary>
+    Cadastrado = 2,
+
+    /// <summary>Já estava no sistema (com outro nome, em geral abreviado) — nada foi cadastrado.</summary>
+    JaExistia = 3,
+
+    /// <summary>O técnico não cadastrou; o motivo vai para a unidade.</summary>
+    Recusado = 4,
+}
+
 public enum ResultadoRegraRegulacao
 {
     Atende = 1,

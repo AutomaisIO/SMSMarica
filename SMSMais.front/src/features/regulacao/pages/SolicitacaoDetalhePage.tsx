@@ -9,6 +9,7 @@ import { formatarInstante } from '@/shared/lib/datas';
 
 import { LinhaDoTempo } from '../components/LinhaDoTempo';
 import { ModalRegistrarEnvio } from '../components/ModalRegistrarEnvio';
+import { MedicoPendenteCard } from '../components/MedicoPendenteCard';
 import { RespostasRegras } from '../components/RespostasRegras';
 import { ROTULO_FLUXO, StatusRegulacaoBadge } from '../components/StatusRegulacaoBadge';
 import {
@@ -219,6 +220,8 @@ export function SolicitacaoDetalhePage() {
           </Button>
         )}
       </div>
+
+      <MedicoPendenteCard valorMedico={s.formulario?.medico_solicitante} podeResolver={podeAgente} />
 
       <RespostasRegras solicitacaoId={id} />
 

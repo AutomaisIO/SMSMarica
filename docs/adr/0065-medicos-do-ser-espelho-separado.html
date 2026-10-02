@@ -128,6 +128,28 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li><strong>Quando liberar o envio</strong>, a ligação confirmada evita duplicar no Estado um médico que já</li>
 </ul>
 <p>  está lá.</p>
+<h2>Complemento — 02/10/2026: médico pedido na abertura fica PENDENTE</h2>
+<p>Decisão do Bernardo. Substitui a linha "Médico não está na lista continua se resolvendo no SER".</p>
+<ul>
+<li><strong>Quem pode abrir solicitação pode procurar e pedir médico.</strong> Na Nova Solicitação, quando o</li>
+</ul>
+<p>  médico não está na lista do destino (SER ou SERNIT), "Incluir médico" abre o modal com os   mesmos campos do modal do SER: nome (gravado em MAIÚSCULAS), tipo de documento (CRM, CNS, RG,   CPF, PMM, RMS), número e especialidade. Só o nome é obrigatório.</p>
+<ul>
+<li><strong>Antes de pedir, "Já existe?".</strong> A busca compara palavra a palavra, entendendo abreviação e</li>
+</ul>
+<p>  inicial ("ANDRADE" = "A.") e sobrenome a mais. Medido em 01/10/2026: "LAURA BEATRIZ ANDRADE   RODRIGUES" ia ser cadastrada de novo, e já existia como "LAURA BEATRIZ A. RODRIGUES VILELA". A   regra está em <code>SemelhancaNome</code> e só <strong>sugere</strong> — quem escolhe é a pessoa.</p>
+<ul>
+<li><strong>O pedido não escreve no SER.</strong> Fica em <code>smsmarica.regulacao_medico_pendente</code>, e a solicitação</li>
+</ul>
+<p>  guarda o médico como <code>pendente:{id}</code>. Outra unidade que procurar o mesmo médico encontra o   pedido e o reaproveita.</p>
+<ul>
+<li><strong>Quem cadastra no sistema é o técnico da regulação</strong>, pela tela do próprio SER (ícone "Adicionar</li>
+</ul>
+<p>  médico", que no modal da solicitação TEM tipo e número de documento — diferente do formulário   de Cadastro → Profissionais medido acima). No detalhe da solicitação ele resolve:   <strong>Cadastrei</strong>, <strong>Já existia</strong> (a solicitação passa a usar o nome de lá) ou <strong>Recusado</strong> (com   motivo para a unidade). O "Registrar envio" fica barrado enquanto o médico estiver pendente.</p>
+<ul>
+<li>A decisão 6 (envio automático de médico ao SER) continua desligada: a escrita no cadastro do</li>
+</ul>
+<p>  Estado segue sendo de uma pessoa.</p>
 </main>
 </body>
 </html>

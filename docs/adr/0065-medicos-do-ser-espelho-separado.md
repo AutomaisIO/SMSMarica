@@ -98,3 +98,26 @@ SISREG e ESUS ficam de fora por ora:
 - **"Médico não está na lista"** continua se resolvendo no SER, até o envio ser liberado.
 - **Quando liberar o envio**, a ligação confirmada evita duplicar no Estado um médico que já
   está lá.
+
+## Complemento — 02/10/2026: médico pedido na abertura fica PENDENTE
+
+Decisão do Bernardo. Substitui a linha "Médico não está na lista continua se resolvendo no SER".
+
+- **Quem pode abrir solicitação pode procurar e pedir médico.** Na Nova Solicitação, quando o
+  médico não está na lista do destino (SER ou SERNIT), "Incluir médico" abre o modal com os
+  mesmos campos do modal do SER: nome (gravado em MAIÚSCULAS), tipo de documento (CRM, CNS, RG,
+  CPF, PMM, RMS), número e especialidade. Só o nome é obrigatório.
+- **Antes de pedir, "Já existe?".** A busca compara palavra a palavra, entendendo abreviação e
+  inicial ("ANDRADE" = "A.") e sobrenome a mais. Medido em 01/10/2026: "LAURA BEATRIZ ANDRADE
+  RODRIGUES" ia ser cadastrada de novo, e já existia como "LAURA BEATRIZ A. RODRIGUES VILELA". A
+  regra está em `SemelhancaNome` e só **sugere** — quem escolhe é a pessoa.
+- **O pedido não escreve no SER.** Fica em `smsmarica.regulacao_medico_pendente`, e a solicitação
+  guarda o médico como `pendente:{id}`. Outra unidade que procurar o mesmo médico encontra o
+  pedido e o reaproveita.
+- **Quem cadastra no sistema é o técnico da regulação**, pela tela do próprio SER (ícone "Adicionar
+  médico", que no modal da solicitação TEM tipo e número de documento — diferente do formulário
+  de Cadastro → Profissionais medido acima). No detalhe da solicitação ele resolve:
+  **Cadastrei**, **Já existia** (a solicitação passa a usar o nome de lá) ou **Recusado** (com
+  motivo para a unidade). O "Registrar envio" fica barrado enquanto o médico estiver pendente.
+- A decisão 6 (envio automático de médico ao SER) continua desligada: a escrita no cadastro do
+  Estado segue sendo de uma pessoa.

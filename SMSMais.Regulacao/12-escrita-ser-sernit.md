@@ -76,6 +76,7 @@ Planos 04, 07, spike a. **OK explícito** para o spike e para o primeiro envio r
 - O SER recusou o Gravar via robô em 08/2026 ("bloqueado até no navegador"): pode ser validação de negócio (paciente, unidade solicitante) e não protocolo. O spike a captura `form0:messages` e para.
 - O anexo é "duas conversas Seam amarradas pela sessão" — o passo mais provável de falhar em silêncio. Verificar `form0:anexoList` **sempre**.
 - Ids `j_id…` mudam quando a SES recompila: localizar por rótulo/estrutura, nunca fixar (lição de `SerFormDeModuloTests`).
+- **O `value` do combo de RECURSO também é posicional** (medido em 01/10/2026: o combo inteiro renumerou entre agosto e 30/09 — 988–1037 viraram 1038+). O número guardado no espelho (`ser_catalogo_recurso.valor`, `chave_externa` da origem) **não pode ir direto no Gravar**: na mesma sessão do envio, relistar o combo do ramo e achar o recurso **pelo rótulo** (`ChaveRotulo.Normalizar`); rótulo não encontrado ou repetido = parar e avisar, nunca mandar o número antigo. Vale igual para o SERNIT. Ver `RegulacaoCatalogoService.RealinharPosicionaisAsync` e `reparar_catalogo_posicional.py`.
 - `SerWebSessao` em prod com aviso pendente na home derruba a integração (incidente 28/08): o service precisa devolver a mensagem "há aviso pendente no SER; alguém precisa lê-lo" em vez de falha genérica.
 - Múltiplas sessões simultâneas são OK no SER (medido 08/08) — não há a arbitragem do SISREG.
 

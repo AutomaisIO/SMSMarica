@@ -296,6 +296,18 @@ public sealed class RegulacaoFormularioService(
             .Select(nome => (nome, nome))
             .ToList();
 
+        // Médicos pedidos na abertura e ainda não cadastrados no sistema: entram na lista para
+        // outra unidade reaproveitar o pedido em vez de pedir de novo. O valor é `pendente:{id}`
+        // — o "Registrar envio" barra enquanto o técnico não cadastrar e confirmar.
+        var pendentes = await db.RegulacaoMedicosPendentes.AsNoTracking()
+            .Where(m => m.Sistema == sistema && m.Situacao == SituacaoMedicoPendente.Pendente)
+            .OrderBy(m => m.Nome)
+            .Select(m => new { m.Id, m.Nome })
+            .ToListAsync(ct);
+        medicos.AddRange(pendentes.Select(m => (
+            Medicos.RegulacaoMedicoPendenteService.Valor(m.Id),
+            $"{m.Nome} (aguardando cadastro no {sistema.ToString().ToUpperInvariant()})")));
+
         // Ordem negativa: o bloco fixo vem antes do dinâmico, na ordem da tela do SER.
         return
         [

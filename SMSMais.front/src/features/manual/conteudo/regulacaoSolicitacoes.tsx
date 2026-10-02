@@ -25,7 +25,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
   publico: 'Quem abre solicitações na unidade e quem trabalha na pré-regulação (agente regulador)',
-  atualizadoEm: '2026-10-01',
+  atualizadoEm: '2026-10-02',
   palavrasChave: [
     'solicitação',
     'solicitações',
@@ -293,7 +293,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'formulario',
       titulo: 'O formulário do destino Externo (SER e SERNIT)',
       busca:
-        'formulário campos médico solicitante lista classificação de risco prioridade hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
+        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente aguardando cadastro lista classificação de risco prioridade hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
       conteudo: (
         <>
           <P>
@@ -307,7 +307,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               {
                 termo: 'Médico solicitante *',
                 descricao:
-                  'Escolhido da lista de médicos do próprio sistema de destino — a lista é longa, então tem busca por qualquer parte do nome. Só aparecem os médicos do destino escolhido: o médico cadastrado no SER não existe no SERNIT, e vice-versa. A especialidade e o telefone do médico não são perguntados: o próprio sistema preenche a partir do cadastro dele.',
+                  'Escolhido da lista de médicos do próprio sistema de destino — a lista é longa, então tem busca. Procure por palavras, em qualquer ordem: o SER abrevia muito ("LAURA BEATRIZ A. RODRIGUES"), e a busca acha o médico mesmo digitando o nome completo ("andrade" acha o "A."). Não achou? Use “Não achou? Incluir médico”: o sistema confere se ele já existe com outro nome (no sistema ou já pedido por outra unidade) e, se não existir, o médico fica pendente — aguardando cadastro no SER, feito pela regulação. Você segue com a solicitação normalmente. No SER não dá para apagar cadastro duplicado: por isso quem cadastra lá é a regulação. Só aparecem os médicos do destino escolhido: o médico cadastrado no SER não existe no SERNIT, e vice-versa. A especialidade e o telefone do médico não são perguntados: o próprio sistema preenche a partir do cadastro dele.',
               },
               {
                 termo: 'Classificação de risco *',
@@ -442,7 +442,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'detalhe',
       titulo: 'O detalhe e as ações',
       busca:
-        'detalhe ações assumir devolver à unidade recusar registrar envio número gerado ok já está no sisreg cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo regras do manual respostas condições marcadas',
+        'detalhe ações assumir devolver à unidade recusar registrar envio número gerado ok já está no sisreg cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo regras do manual respostas condições marcadas médico novo a cadastrar pendente cadastrei já existia',
       conteudo: (
         <>
           <P>
@@ -455,6 +455,14 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             respondido e o que o sistema deduziu (idade, sexo), com o resultado de cada uma: atende,
             ressalva, bloqueia ou em aberto. Nas perguntas de lista aparecem as condições marcadas. O
             cartão mostra o que ficou gravado — não refaz a conta.
+          </P>
+          <P>
+            Quando a unidade pediu um médico que não está na lista do sistema, aparece o cartão amarelo{' '}
+            <strong>Médico novo a cadastrar</strong>, com nome, documento e especialidade. O agente cadastra no
+            SER (ícone “Adicionar médico” ao lado de “Médico responsável”) e resolve aqui:{' '}
+            <BotaoRef>Cadastrei no SER</BotaoRef>, <BotaoRef>Já existia no SER</BotaoRef> (escolhe o cadastro
+            que já estava lá — a solicitação passa a usar esse nome) ou <BotaoRef>Recusar</BotaoRef>, com o
+            motivo. O <BotaoRef>Registrar envio</BotaoRef> só libera depois disso.
           </P>
           <Sub>Unidade</Sub>
           <Lista>
