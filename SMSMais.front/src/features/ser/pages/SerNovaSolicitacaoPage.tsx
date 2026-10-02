@@ -34,6 +34,7 @@ import type {
 import { SeletorCidSer } from '@/features/ser/components/SeletorCidSer';
 import { SeletorRecursoSer } from '@/features/ser/components/SeletorRecursoSer';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -230,7 +231,10 @@ export function SerNovaSolicitacaoPage() {
       <header className="flex flex-wrap items-center gap-3">
         <FilePlus2 className="size-6 text-red-700" />
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Nova solicitação (SER)</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-900">Nova solicitação (SER)</h1>
+            <AjudaManual artigo="rascunhos-ser-sernit" />
+          </div>
           <p className="text-sm text-slate-600">
             Monte o pedido e guarde aqui. O envio ao SER é um passo separado.
           </p>

@@ -34,6 +34,7 @@ import type {
 import { SeletorCidSernit } from '@/features/sernit/components/SeletorCidSernit';
 import { SeletorRecursoSernit } from '@/features/sernit/components/SeletorRecursoSernit';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -216,7 +217,10 @@ export function SernitNovaSolicitacaoPage() {
       <header className="flex flex-wrap items-center gap-3">
         <FilePlus2 className="size-6 text-red-700" />
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Nova solicitação (SERNIT)</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-900">Nova solicitação (SERNIT)</h1>
+            <AjudaManual artigo="rascunhos-ser-sernit" />
+          </div>
           <p className="text-sm text-slate-600">
             Monte o pedido e guarde aqui. O envio ao SERNIT é um passo separado.
           </p>
