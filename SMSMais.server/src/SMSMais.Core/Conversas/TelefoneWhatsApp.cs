@@ -46,6 +46,22 @@ public static class TelefoneWhatsApp
     }
 
     /// <summary>
+    /// Para qual número do cadastro vai o WhatsApp — régua ÚNICA de todo envio ao paciente.
+    /// O verificado vence (e ele é sempre o principal — <c>MarcarTelefoneConfirmado</c>). Sem
+    /// verificado, vai o PRINCIPAL quando ele é celular; o campo "celular" só entra se o
+    /// principal não for celular; o residencial é o último recurso (import às vezes guarda
+    /// celular ali). Número negado (quem atendeu disse que não é o paciente) nunca é destino.
+    /// Null = nenhum celular utilizável.
+    /// </summary>
+    public static string? DestinoDoCadastro(
+        string? verificado, string? principal, string? celular, string? residencial, string? negado = null)
+    {
+        if (!string.IsNullOrWhiteSpace(verificado)) return verificado;
+        return new[] { principal, celular, residencial }.FirstOrDefault(t =>
+            EhCelularBr(t) && !(negado is not null && MesmoNumero(t, negado)));
+    }
+
+    /// <summary>
     /// Último recurso quando o número vem sem DDD e a instância ainda não configurou o seu
     /// (<c>Instituicao.DddPadrao</c>, ADR-0043). Quem tem acesso à identidade da instituição
     /// deve passar o DDD dela para <see cref="Interpretar"/> — este valor existe só para os

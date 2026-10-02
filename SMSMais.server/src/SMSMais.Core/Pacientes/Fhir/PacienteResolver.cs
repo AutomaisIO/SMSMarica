@@ -16,7 +16,9 @@ public sealed record PacienteResumo(
     string? TelefoneVerificado = null,
     /// <summary>CEP do endereço do paciente (só dígitos ou como veio do hub), se houver.</summary>
     string? Cep = null,
-    /// <summary>Melhor número de contato (celular &gt; verificado &gt; principal), se houver.</summary>
+    /// <summary>Melhor número de contato: o destino do WhatsApp (verificado &gt; principal celular &gt;
+    /// campo celular &gt; residencial — <c>TelefoneWhatsApp.DestinoDoCadastro</c>); sem celular, o
+    /// principal como está (serve para ligar).</summary>
     string? Celular = null,
     /// <summary>Logradouro do endereço do paciente, se houver.</summary>
     string? Logradouro = null);
@@ -56,7 +58,7 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
             var dto = PacienteFhirMapper.ParaDto(patient);
             return new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns, dto.DataNascimento, dto.Sexo,
                 dto.TelefoneVerificado, dto.Endereco?.Cep,
-                dto.TelefoneCelular ?? dto.TelefoneVerificado ?? dto.TelefonePrincipal, dto.Endereco?.Logradouro);
+                MelhorContato(dto), dto.Endereco?.Logradouro);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
@@ -94,7 +96,7 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
                     var dto = PacienteFhirMapper.ParaDto(patient);
                     mapa[dto.Id] = new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns,
                         dto.DataNascimento, dto.Sexo, dto.TelefoneVerificado, dto.Endereco?.Cep,
-                        dto.TelefoneCelular ?? dto.TelefoneVerificado ?? dto.TelefonePrincipal, dto.Endereco?.Logradouro);
+                        MelhorContato(dto), dto.Endereco?.Logradouro);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
@@ -148,4 +150,9 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
             if (e.Resource is Patient p && Guid.TryParse(p.Id, out var g))
                 ids.Add(g);
     }
+
+    private static string? MelhorContato(Dtos.PacienteDto dto) =>
+        Conversas.TelefoneWhatsApp.DestinoDoCadastro(
+            dto.TelefoneVerificado, dto.TelefonePrincipal, dto.TelefoneCelular, dto.TelefoneResidencial)
+        ?? dto.TelefonePrincipal ?? dto.TelefoneCelular;
 }

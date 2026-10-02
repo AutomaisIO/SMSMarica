@@ -67,13 +67,12 @@ public sealed class PesquisasSatisfacaoService(
         var p = await db.PesquisasSatisfacao.AsNoTracking().FirstAsync(x => x.Id == envio.PesquisaId, ct);
         var paciente = await pacientes.ObterPorIdAsync(pacienteId, ct);
 
-        // Mesma régua do resto das comunicações: contato verificado primeiro, qualquer celular
-        // do cadastro depois. Aqui NÃO se exige verificação — a pesquisa não carrega resultado
-        // nem laudo, e exigir contato verificado deixaria de fora justamente quem a recepção
-        // ainda não alcançou.
-        var telefone = paciente.TelefoneVerificado
-            ?? new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal, paciente.TelefoneResidencial }
-                .FirstOrDefault(TelefoneWhatsApp.EhCelularBr);
+        // Mesma régua do resto das comunicações (TelefoneWhatsApp.DestinoDoCadastro): verificado,
+        // depois o principal celular. Aqui NÃO se exige verificação — a pesquisa não carrega
+        // resultado nem laudo, e exigir contato verificado deixaria de fora justamente quem a
+        // recepção ainda não alcançou.
+        var telefone = TelefoneWhatsApp.DestinoDoCadastro(paciente.TelefoneVerificado,
+            paciente.TelefonePrincipal, paciente.TelefoneCelular, paciente.TelefoneResidencial, paciente.TelefoneNegado);
 
         if (!TelefoneWhatsApp.EhCelularBr(telefone))
             throw new ConflitoException(

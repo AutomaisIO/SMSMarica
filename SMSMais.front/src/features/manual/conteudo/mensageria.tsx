@@ -194,7 +194,7 @@ export const artigoMensageria: Artigo = {
       id: 'envios',
       titulo: 'Envios: achar uma mensagem e entender o que houve com ela',
       busca:
-        'envios buscar sisreg accession telefone selo status detalhe linha do tempo reenviar erro meta magic link finalidade confirmação reforço orientação ao posto lembrete aviso de cancelamento exame liberado laudo pronto dispensada',
+        'envios buscar sisreg accession telefone selo status detalhe linha do tempo reenviar erro meta magic link finalidade confirmação reforço orientação ao posto lembrete aviso de cancelamento exame liberado laudo pronto dispensada para qual número telefone principal campo celular verificado destino',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -269,6 +269,13 @@ export const artigoMensageria: Artigo = {
               },
             ]}
           />
+          <Callout tipo="dica" titulo="Para qual número a mensagem sai">
+            Sai uma mensagem só, para um número só. O número verificado vence (e ele é sempre o principal). Sem
+            verificado, vai para o <strong>telefone principal</strong> do cadastro, quando ele é celular. O campo
+            "celular" só é usado se o principal não for celular (um fixo, por exemplo); o residencial é o último
+            recurso. Número marcado como inválido nunca recebe. Se a mensagem foi para o número errado, o conserto é
+            corrigir o principal no cadastro do paciente.
+          </Callout>
           <Callout tipo="atencao" titulo="Reenviar não é o conserto de tudo">
             O <BotaoRef>Reenviar</BotaoRef> do detalhe manda a mesma mensagem de novo. Ele resolve falha momentânea
             de entrega — não resolve número errado, cadastro sem celular nem número marcado como inválido. Nesses

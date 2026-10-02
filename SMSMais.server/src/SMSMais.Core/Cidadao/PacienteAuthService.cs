@@ -56,7 +56,7 @@ public sealed class PacienteAuthService(
         if (string.IsNullOrWhiteSpace(dados.TelefoneVerificado))
         {
             var doCadastro = PrimeiroTelefone(
-                dados.TelefoneCelular, dados.TelefonePrincipal, dados.TelefoneResidencial);
+                dados.TelefonePrincipal, dados.TelefoneCelular, dados.TelefoneResidencial);
             return NadaEnviado(SituacaoLoginCidadao.Verificacao, doCadastro is null ? null : Mascarar(doCadastro));
         }
 

@@ -52,7 +52,8 @@ public sealed class WhatsAppNotificador(
         try
         {
             var p = await pacientes.ObterPorIdAsync(pacienteId, ct);
-            var fone = p.TelefoneCelular ?? p.TelefonePrincipal ?? p.TelefoneResidencial;
+            var fone = Conversas.TelefoneWhatsApp.DestinoDoCadastro(p.TelefoneVerificado,
+                p.TelefonePrincipal, p.TelefoneCelular, p.TelefoneResidencial, p.TelefoneNegado);
             var primeiro = string.IsNullOrWhiteSpace(p.NomeCompleto) ? "" : p.NomeCompleto.Split(' ')[0];
             return (string.IsNullOrWhiteSpace(fone) ? null : fone, primeiro);
         }

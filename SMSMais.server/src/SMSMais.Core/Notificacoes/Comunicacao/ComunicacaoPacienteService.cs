@@ -767,16 +767,15 @@ public sealed class ComunicacaoPacienteService(
             }
         }
 
-        // Telefone: contato VERIFICADO (marcador no telecom FHIR, já vem no DTO) > qualquer
-        // CELULAR do cadastro (celular > principal > residencial — import às vezes guarda o
-        // celular como "home").
+        // Telefone: régua única (TelefoneWhatsApp.DestinoDoCadastro) — verificado > PRINCIPAL
+        // celular > campo celular (só se o principal não for celular) > residencial.
         // Número marcado como INVÁLIDO (quem atendeu disse que não conhece o paciente) nunca é
         // destino — nem de mensagem automática nem de reenvio. Só volta a valer quando o número é
         // verificado de novo ou a recepção dá a marcação por improcedente.
         bool Negado(string? t) => paciente.TelefoneNegado is { } neg && TelefoneWhatsApp.MesmoNumero(t, neg);
-        var candidatos = new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal, paciente.TelefoneResidencial };
-        var telefone = paciente.TelefoneVerificado
-            ?? candidatos.FirstOrDefault(t => TelefoneWhatsApp.EhCelularBr(t) && !Negado(t));
+        var candidatos = new[] { paciente.TelefonePrincipal, paciente.TelefoneCelular, paciente.TelefoneResidencial };
+        var telefone = TelefoneWhatsApp.DestinoDoCadastro(paciente.TelefoneVerificado,
+            paciente.TelefonePrincipal, paciente.TelefoneCelular, paciente.TelefoneResidencial, paciente.TelefoneNegado);
 
         if (!TelefoneWhatsApp.EhCelularBr(telefone))
         {

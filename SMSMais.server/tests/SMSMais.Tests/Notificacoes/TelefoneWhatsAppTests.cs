@@ -21,6 +21,20 @@ public class TelefoneWhatsAppTests
     public void EhCelularBr_classifica_corretamente(string? telefone, bool esperado) =>
         Assert.Equal(esperado, TelefoneWhatsApp.EhCelularBr(telefone));
 
+    // Destino do WhatsApp: verificado > PRINCIPAL celular > campo celular (só se o principal não
+    // for celular) > residencial. Negado nunca.
+    [Theory]
+    [InlineData(null, "21999990001", "21999990002", null, null, "21999990001")]  // principal celular vence o campo celular
+    [InlineData(null, "2133334444", "21999990002", null, null, "21999990002")]   // principal fixo → campo celular
+    [InlineData(null, null, "21999990002", null, null, "21999990002")]           // sem principal → campo celular
+    [InlineData(null, "2133334444", null, "21999990003", null, "21999990003")]   // residencial é o último recurso
+    [InlineData("21999990009", "21999990001", "21999990002", null, null, "21999990009")] // verificado vence
+    [InlineData(null, "21999990001", "21999990002", null, "5521999990001", "21999990002")] // principal negado → campo celular
+    [InlineData(null, "2133334444", null, null, null, null)]                     // só fixo → nenhum destino
+    public void DestinoDoCadastro_prefere_o_principal(
+        string? verificado, string? principal, string? celular, string? residencial, string? negado, string? esperado) =>
+        Assert.Equal(esperado, TelefoneWhatsApp.DestinoDoCadastro(verificado, principal, celular, residencial, negado));
+
     [Theory]
     [InlineData("(21) 99999-0000", "5521999990000")]
     [InlineData("5521999990000", "5521999990000")]
