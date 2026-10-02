@@ -18,6 +18,7 @@ import { artigoRascunhosSerSernit } from '@/features/manual/conteudo/rascunhosSe
 import { artigoRegulacaoSolicitacoes } from '@/features/manual/conteudo/regulacaoSolicitacoes';
 import { artigoSerMedicos } from '@/features/manual/conteudo/serMedicos';
 import { artigoSernitMedicos } from '@/features/manual/conteudo/sernitMedicos';
+import { artigoSisregMedicos } from '@/features/manual/conteudo/sisregMedicos';
 import { artigoTickets } from '@/features/manual/conteudo/tickets';
 import { artigoTicketsGestao } from '@/features/manual/conteudo/ticketsGestao';
 import { artigoTiposTratamento } from '@/features/manual/conteudo/tiposTratamento';
@@ -102,6 +103,7 @@ export const ARTIGOS: Artigo[] = [
   artigoRegulacaoSolicitacoes,
   artigoSerMedicos,
   artigoSernitMedicos,
+  artigoSisregMedicos,
   artigoTickets,
   artigoTicketsGestao,
   artigoTiposTratamento,

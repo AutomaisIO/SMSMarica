@@ -285,6 +285,19 @@ public enum SituacaoMedicoPendente
     Recusado = 4,
 }
 
+/// <summary>De onde veio o médico do cadastro local (<c>RegulacaoMedicoLocal</c>).</summary>
+public enum OrigemMedicoLocal
+{
+    /// <summary>Solicitante das fichas importadas do SISREG.</summary>
+    Fichas = 1,
+
+    /// <summary>Profissional executante sincronizado por unidade (PROFISSIONAIS_POR_UPS).</summary>
+    Executantes = 2,
+
+    /// <summary>Incluído por alguém na Nova Solicitação.</summary>
+    Plataforma = 3,
+}
+
 public enum ResultadoRegraRegulacao
 {
     Atende = 1,

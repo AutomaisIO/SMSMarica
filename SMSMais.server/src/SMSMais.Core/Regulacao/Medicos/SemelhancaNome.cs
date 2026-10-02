@@ -65,7 +65,8 @@ public static class SemelhancaNome
         return inteiras >= 2 ? (double)casadas / Math.Min(a.Count, b.Count) : 0;
     }
 
-    private static bool Casa(string x, string y) =>
+    /// <summary>Uma palavra casa com a outra: igual, inicial, abreviação por prefixo ou um erro (5+ letras).</summary>
+    internal static bool Casa(string x, string y) =>
         x == y
         || (x.Length == 1 && y[0] == x[0])
         || (y.Length == 1 && x[0] == y[0])

@@ -66,6 +66,7 @@ import { RedirecionaIndicadorLegado } from '@/features/indicadores/pages/Redirec
 import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
+import { SisregMedicosPage } from '@/features/sisreg/pages/SisregMedicosPage';
 import { SisregEstatisticasPage } from '@/features/sisreg-estatisticas/pages/SisregEstatisticasPage';
 import { RegulacaoEstatisticasPage } from '@/features/regulacao-estatisticas/pages/RegulacaoEstatisticasPage';
 import { IndicadoresRegulacaoPage } from '@/features/regulacao-indicadores/pages/IndicadoresRegulacaoPage';
@@ -306,6 +307,7 @@ export function AppRouter() {
           </Route>
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
+          <Route path="sisreg/medicos" element={<SisregMedicosPage />} />
           <Route element={<RotaComModulo modulo="EstatisticaSisreg" rotulo="Estatísticas — SISREG" />}>
             <Route path="sisreg/estatisticas" element={<SisregEstatisticasPage />} />
           </Route>

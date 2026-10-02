@@ -442,6 +442,14 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Consulta integrada (só leitura).',
           },
           {
+            // Cadastro NOSSO: o SISREG não tem lista de médico solicitante (é texto na ficha).
+            rotulo: 'Médicos',
+            to: '/app/sisreg/medicos',
+            icone: Stethoscope,
+            modulo: 'Sisreg',
+            descricao: 'Médicos solicitantes das fichas, sem repetição — a Nova Solicitação usa para preencher.',
+          },
+          {
             rotulo: 'Importação',
             to: '/app/importacao-sisreg',
             icone: DownloadCloud,

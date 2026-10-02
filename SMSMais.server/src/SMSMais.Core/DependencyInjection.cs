@@ -1074,6 +1074,7 @@ public static class DependencyInjection
         services.AddScoped<Regulacao.Regras.IRegulacaoProcedimentoRegradoService, Regulacao.Regras.RegulacaoProcedimentoRegradoService>();
         services.AddScoped<Regulacao.Regras.IRegulacaoElegibilidadeService, Regulacao.Regras.RegulacaoElegibilidadeService>();
         services.AddScoped<Regulacao.Medicos.IRegulacaoMedicoPendenteService, Regulacao.Medicos.RegulacaoMedicoPendenteService>();
+        services.AddScoped<Regulacao.Medicos.IRegulacaoMedicoLocalService, Regulacao.Medicos.RegulacaoMedicoLocalService>();
         services.AddScoped<Regulacao.Solicitacoes.IRegulacaoEventoService, Regulacao.Solicitacoes.RegulacaoEventoService>();
         services.AddScoped<Regulacao.Solicitacoes.IRegulacaoSolicitacaoService, Regulacao.Solicitacoes.RegulacaoSolicitacaoService>();
         services.AddScoped<Regulacao.Legado.IRascunhoLegadoGate, Regulacao.Legado.RascunhoLegadoGate>();

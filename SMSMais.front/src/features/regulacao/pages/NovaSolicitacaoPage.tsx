@@ -46,6 +46,7 @@ import { PassoRegras } from '../components/wizard/PassoRegras';
 import { ExamesInternosSugeridos } from '../components/ExamesInternosSugeridos';
 import { CHAVE_CIDS_SECUNDARIOS, CidsSecundarios } from '../components/CidsSecundarios';
 import { IncluirMedico } from '../components/IncluirMedico';
+import { MedicoSisreg } from '../components/MedicoSisreg';
 import {
   anexarComTitulo,
   anexarDoAcervo,
@@ -567,6 +568,21 @@ export function NovaSolicitacaoPage() {
                         void formulario.refetch();
                       }}
                     />
+                  ) : null}
+                  {/* SISREG: o médico é texto digitado. A busca no nosso cadastro (montado das
+                      fichas, sem duplicar) só preenche CPF e nome. */}
+                  {c.chave === 'profissional_solicitante_cpf' ? (
+                    <div className="mt-2">
+                      <MedicoSisreg
+                        aoEscolher={(cpf, nome) =>
+                          setValores((atual) => ({
+                            ...atual,
+                            profissional_solicitante_cpf: cpf,
+                            profissional_solicitante_nome: nome,
+                          }))
+                        }
+                      />
+                    </div>
                   ) : null}
                   {c.origens.length === 1 && fluxo === 'Externo' ? (
                     <p className="mt-0.5 text-[11px] text-slate-400">

@@ -27,6 +27,8 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   publico: 'Quem abre solicitações na unidade e quem trabalha na pré-regulação (agente regulador)',
   atualizadoEm: '2026-10-02',
   palavrasChave: [
+    'médico do SISREG',
+    'profissional solicitante',
     'solicitação',
     'solicitações',
     'nova solicitação',
@@ -305,7 +307,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'formulario',
       titulo: 'O formulário do destino Externo (SER e SERNIT)',
       busca:
-        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente aguardando cadastro cid secundário cids secundários observações lista classificação de risco prioridade p1 p2 p3 p4 emergência urgência prioridade não urgente baixa complexidade não classificado cor badge hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
+        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente procurar médico já usado no sisreg cpf do profissional nome do profissional cadastro de médicos do sisreg aguardando cadastro cid secundário cids secundários observações lista classificação de risco prioridade p1 p2 p3 p4 emergência urgência prioridade não urgente baixa complexidade não classificado cor badge hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
       conteudo: (
         <>
           <P>
@@ -362,6 +364,20 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
           <P>
             O formulário do Interno é o do SISREG: CPF e nome do profissional solicitante (obrigatórios),
             CID, “É retorno?” e observação.
+          </P>
+          <P>
+            O SISREG não tem lista de médicos: o CPF e o nome são digitados. Para não redigitar, use{' '}
+            <strong>Procurar médico já usado no SISREG</strong>, logo abaixo do CPF: procure por palavras do
+            nome (acha abreviado) ou pelo começo do CPF, e escolher preenche os dois campos. A busca usa o
+            nosso cadastro de médicos do SISREG, montado das fichas já importadas, sem repetição. Se o
+            médico não tiver CPF no cadastro, só o nome é preenchido e o CPF você digita.
+          </P>
+          <P>
+            Não achou? <BotaoRef>Não achou? Incluir médico</BotaoRef>: nome completo, CPF se tiver,
+            conselho. <BotaoRef>Conferir se já existe</BotaoRef> mostra quem parece o mesmo (CPF igual ou
+            nome abreviado). Se não for nenhum, <BotaoRef>Incluir</BotaoRef> grava direto no nosso
+            cadastro e já preenche a solicitação. Aqui não há pendência, porque no SISREG não há cadastro
+            de médico para fazer.
           </P>
         </>
       ),
