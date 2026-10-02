@@ -44,6 +44,31 @@ oncologia pede campos diferentes".
 Ações da aba: `form0:addMedico` (Adicionar médico), `form0:j_id299` (Anexar Arquivo) e
 **`form0:j_id313` (Gravar)** — este último é escrita e está fora de qualquer uso nosso.
 
+#### Classificação de Risco: o código diz o que cada "Prioridade" é
+
+Lido da tela em `Automais.SER/capturas/criar_relatorio.json` (gerado por `probe_tela_criar.py`).
+A tela só mostra "Prioridade 1..4", mas o value de cada opção é o nome do nível — e é ele que o
+SER grava:
+
+| Na tela | value (o que o SER grava) | Significado |
+|---|---|---|
+| Prioridade 1 | `EMERGENCIA` | Emergência |
+| Prioridade 2 | `URGENCIA` | Urgência |
+| Prioridade 3 | `PRIORIDADE_NAO_URGENTE` | Prioridade, mas não urgente |
+| Prioridade 4 | `CONSULTA_BAIXA_COMPLEXIDADE` | Rotina / baixa complexidade |
+
+O "Selecione" tem value `org.jboss.seam.ui.NoSelectionConverter.noSelectionValue` e rótulo
+vazio em alguns combos — por isso o casamento por prefixo do `probe_criar_solicitacao.py` exige
+rótulo não-vazio, senão qualquer alvo casaria com ele e o pedido sairia com o risco errado.
+
+**O que nenhuma fonte do SER diz:** prazo ou critério clínico de cada nível. Os manuais do
+solicitante (CRECE e REUNI, 2022, em `Automais.SER/documentacao/`) só mandam "informar a hipótese
+diagnóstica (classificação de risco e CID 10)" e avisam que a regulação reclassifica. A escala
+de 4 cores com prazo (vermelho ≤30 dias, amarelo ≤90, verde ≤180, azul >180) é do **SISREG**
+(protocolo do regulador da SUBPAV) — bate com estes 4 níveis, mas é de outro sistema.
+Emergência com risco de morte não entra no ambulatorial: vai para "vaga zero". Na prática,
+rotina é **Prioridade 4**; sobe-se só quando o caso clínico justifica.
+
 #### "É AMBULATÓRIO ESTADUAL?" não é um campo — é um interruptor de catálogo
 
 Medido em 10/08/2026 (`probe_ambulatorio_estadual.py` e `probe_sisreg_detalhe.py`). Este combo é o

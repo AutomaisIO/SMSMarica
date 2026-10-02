@@ -52,6 +52,16 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <tr><td>Unidade de origem (texto livre)</td><td><code>form0:unidadeNaoIdentificada</code></td><td>text</td><td>sim</td></tr>
 </tbody></table></div>
 <p>Ações da aba: <code>form0:addMedico</code> (Adicionar médico), <code>form0:j_id299</code> (Anexar Arquivo) e <strong><code>form0:j_id313</code> (Gravar)</strong> — este último é escrita e está fora de qualquer uso nosso.</p>
+<h4>Classificação de Risco: o código diz o que cada "Prioridade" é</h4>
+<p>Lido da tela em <code>Automais.SER/capturas/criar_relatorio.json</code> (gerado por <code>probe_tela_criar.py</code>). A tela só mostra "Prioridade 1..4", mas o value de cada opção é o nome do nível — e é ele que o SER grava:</p>
+<div class="tw"><table><thead><tr><th>Na tela</th><th>value (o que o SER grava)</th><th>Significado</th></tr></thead><tbody>
+<tr><td>Prioridade 1</td><td><code>EMERGENCIA</code></td><td>Emergência</td></tr>
+<tr><td>Prioridade 2</td><td><code>URGENCIA</code></td><td>Urgência</td></tr>
+<tr><td>Prioridade 3</td><td><code>PRIORIDADE_NAO_URGENTE</code></td><td>Prioridade, mas não urgente</td></tr>
+<tr><td>Prioridade 4</td><td><code>CONSULTA_BAIXA_COMPLEXIDADE</code></td><td>Rotina / baixa complexidade</td></tr>
+</tbody></table></div>
+<p>O "Selecione" tem value <code>org.jboss.seam.ui.NoSelectionConverter.noSelectionValue</code> e rótulo vazio em alguns combos — por isso o casamento por prefixo do <code>probe_criar_solicitacao.py</code> exige rótulo não-vazio, senão qualquer alvo casaria com ele e o pedido sairia com o risco errado.</p>
+<p><strong>O que nenhuma fonte do SER diz:</strong> prazo ou critério clínico de cada nível. Os manuais do solicitante (CRECE e REUNI, 2022, em <code>Automais.SER/documentacao/</code>) só mandam "informar a hipótese diagnóstica (classificação de risco e CID 10)" e avisam que a regulação reclassifica. A escala de 4 cores com prazo (vermelho ≤30 dias, amarelo ≤90, verde ≤180, azul &gt;180) é do <strong>SISREG</strong> (protocolo do regulador da SUBPAV) — bate com estes 4 níveis, mas é de outro sistema. Emergência com risco de morte não entra no ambulatorial: vai para "vaga zero". Na prática, rotina é <strong>Prioridade 4</strong>; sobe-se só quando o caso clínico justifica.</p>
 <h4>"É AMBULATÓRIO ESTADUAL?" não é um campo — é um interruptor de catálogo</h4>
 <p>Medido em 10/08/2026 (<code>probe_ambulatorio_estadual.py</code> e <code>probe_sisreg_detalhe.py</code>). Este combo é o <strong>primeiro</strong> da aba e tem <code>onchange</code> A4J próprio (<code>form0:j_id46</code>). A tabela acima o listava como um select comum, o que escondeu que ele <strong>troca o catálogo inteiro</strong>:</p>
 <div class="tw"><table><thead><tr><th></th><th>Não (= o default "Selecione…")</th><th>Sim</th></tr></thead><tbody>

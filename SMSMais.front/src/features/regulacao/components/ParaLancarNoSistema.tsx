@@ -5,10 +5,14 @@ import { useFormularioRegulacao } from '../api/solicitacoesQueries';
 import { idPendente } from '../api/medicosApi';
 import type { SolicitacaoRegulacao } from '../tiposSolicitacao';
 import { ROTULO_SISTEMA_REGULACAO } from '../types';
+import { BadgeRisco } from '@/shared/regulacao/ClassificacaoRisco';
 import { CHAVE_CIDS_SECUNDARIOS, lerCidsSecundarios, observacoesComCids } from './CidsSecundarios';
 
 /** As chaves de Observações: SER/SERNIT usam `observacoes`, o SISREG `observacao`. */
 const CHAVES_OBSERVACOES = ['observacoes', 'observacao'];
+
+/** Chave canônica da Classificação de risco (`RegulacaoFormularioService.ChaveClassificacaoRisco`). */
+const CHAVE_RISCO = 'classificacao_risco';
 
 /**
  * "O que digitar no sistema" — o formulário da solicitação campo a campo, com o rótulo do sistema
@@ -37,15 +41,27 @@ export function ParaLancarNoSistema({ s }: { s: SolicitacaoRegulacao }) {
       if (CHAVES_OBSERVACOES.includes(c.chave)) valor = observacoesComCids(valor, cids);
       if (idPendente(valor)) valor = '(médico aguardando cadastro — resolva o cartão acima)';
       // Opção de lista: o técnico procura pelo texto da opção, não pelo código.
-      const opcao = c.opcoes?.find((o) => o.valor === valor);
-      return { chave: c.chave, rotulo: c.rotulo, valor: opcao?.rotulo ?? valor };
+      // O mesmo valor pode vir de dois sistemas com rótulos diferentes (EMERGENCIA é "Prioridade
+      // 1" no SER e "Emergência" no SERNIT): o rótulo que vale é o do destino.
+      const opcao =
+        c.opcoes?.find((o) => o.valor === valor && o.origens.includes(destino)) ??
+        c.opcoes?.find((o) => o.valor === valor);
+      // Na classificação de risco, o texto copiado continua o do sistema ("Prioridade 1" no
+      // SER) — é o que existe no combo de lá; o badge ao lado é só para ler.
+      const risco = c.chave === CHAVE_RISCO && valor ? { valor, rotulo: opcao?.rotulo } : undefined;
+      return { chave: c.chave, rotulo: c.rotulo, valor: opcao?.rotulo ?? valor, risco };
     })
     .filter((l) => l.valor);
 
   // Sem campo de Observações no formulário: os CIDs secundários aparecem numa linha à parte.
   const temObservacoes = campos.some((c) => CHAVES_OBSERVACOES.includes(c.chave));
   if (!temObservacoes && cids.length > 0) {
-    linhas.push({ chave: 'cids', rotulo: 'Observações (CIDs secundários)', valor: observacoesComCids('', cids) });
+    linhas.push({
+      chave: 'cids',
+      rotulo: 'Observações (CIDs secundários)',
+      valor: observacoesComCids('', cids),
+      risco: undefined,
+    });
   }
 
   if (linhas.length === 0) return null;
@@ -62,7 +78,14 @@ export function ParaLancarNoSistema({ s }: { s: SolicitacaoRegulacao }) {
         {linhas.map((l) => (
           <div key={l.chave} className="grid grid-cols-[minmax(0,12rem)_1fr_auto] items-start gap-2 text-sm">
             <dt className="text-slate-500">{l.rotulo}</dt>
-            <dd className="whitespace-pre-wrap break-words text-slate-900">{l.valor}</dd>
+            <dd className="whitespace-pre-wrap break-words text-slate-900">
+              {l.valor}
+              {l.risco ? (
+                <span className="ml-2">
+                  <BadgeRisco valor={l.risco.valor} rotulo={l.risco.rotulo} />
+                </span>
+              ) : null}
+            </dd>
             <Copiar texto={l.valor} />
           </div>
         ))}

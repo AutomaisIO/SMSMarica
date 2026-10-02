@@ -70,6 +70,8 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'médico solicitante',
     'classificação de risco',
     'prioridade',
+    'emergência',
+    'urgência',
     'hipótese',
     'CID',
     'unidade de origem',
@@ -303,7 +305,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'formulario',
       titulo: 'O formulário do destino Externo (SER e SERNIT)',
       busca:
-        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente aguardando cadastro cid secundário cids secundários observações lista classificação de risco prioridade hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
+        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente aguardando cadastro cid secundário cids secundários observações lista classificação de risco prioridade p1 p2 p3 p4 emergência urgência prioridade não urgente baixa complexidade não classificado cor badge hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
       conteudo: (
         <>
           <P>
@@ -321,7 +323,8 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               },
               {
                 termo: 'Classificação de risco *',
-                descricao: 'Prioridade 1 a 4, como o próprio sistema escreve.',
+                descricao:
+                  'Um botão colorido por nível: P1 · Emergência (vermelho), P2 · Urgência (amarelo), P3 · Prioridade não urgente (verde) e P4 (azul): “Baixa complexidade” no SER, “Não urgente” no SERNIT. O SERNIT tem ainda “Não classificado” (cinza); o SER não tem essa opção e a tela não a inventa. As cores são as mesmas da fila do SISREG, para a régua ser uma só. Só muda o jeito de mostrar: o que vai para o sistema é a opção dele (no SER, “Prioridade 1” é a P1). Rotina é P4; suba só quando o caso clínico justificar, porque a regulação reclassifica.',
               },
               {
                 termo: 'Hipótese (CID) *',
@@ -508,7 +511,8 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             O quadro <strong>Para lançar no SER</strong> (ou SERNIT, SISREG — o destino da solicitação)
             mostra o formulário campo a campo, com o nome do campo como o sistema chama e um botão de
             copiar em cada valor: é o que o agente digita na tela do sistema. As Observações já vêm com os
-            CIDs secundários no fim.
+            CIDs secundários no fim. A classificação de risco aparece com o texto do combo de lá (no SER,
+            “Prioridade 1”) e o badge colorido ao lado, só para conferir.
           </P>
           <Sub>Unidade</Sub>
           <Lista>

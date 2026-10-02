@@ -3,12 +3,16 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { SelectComBusca } from '@/shared/ui/SelectComBusca';
 
+import { SeletorRisco } from './ClassificacaoRisco';
 import {
   paraBr,
   paraIso,
   type CampoDinamicoRegulacao,
   type NomeSistemaRegulacao,
 } from './tiposCampo';
+
+/** A Classificação de risco pelo nome nativo (SER/SERNIT) e pela chave canônica da Regulação. */
+const CAMPOS_RISCO = ['form0:classificacao_risco', 'classificacao_risco'];
 
 type Props = {
   c: CampoDinamicoRegulacao;
@@ -99,6 +103,16 @@ export function CampoDinamico({ c, valor, desabilitado, onChange, sistema }: Pro
   }
 
   if ((c.tipo === 'select' || c.tipo === 'radio') && c.opcoes?.length) {
+    // Classificação de risco: badge colorido por nível em vez do "Prioridade 1" cru do SER. O
+    // valor escolhido continua o do sistema.
+    if (CAMPOS_RISCO.includes(c.campo)) {
+      return (
+        <Campo label={rotulo} htmlFor={id} className="min-w-72">
+          <SeletorRisco id={id} opcoes={c.opcoes} valor={valor} desabilitado={desabilitado} onChange={onChange} />
+        </Campo>
+      );
+    }
+
     if (c.tipo === 'radio') {
       return (
         <Campo label={rotulo} htmlFor={id} className="min-w-72">

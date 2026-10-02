@@ -39,6 +39,7 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { CampoDinamico } from '@/shared/regulacao/CampoDinamico';
+import { SeletorRisco } from '@/shared/regulacao/ClassificacaoRisco';
 import { CampoPaciente } from '@/shared/regulacao/CampoPaciente';
 import {
   AvisoRascunhoLegado,
@@ -421,18 +422,14 @@ export function SerNovaSolicitacaoPage() {
           <section>
             <h2 className="mb-2 font-semibold text-slate-800">Classificação</h2>
             <div className="flex flex-wrap items-end gap-3">
-              <Campo label="Classificação de risco *" htmlFor="ns-risco" className="w-56">
-                <Select
+              <Campo label="Classificação de risco *" htmlFor="ns-risco" className="min-w-72">
+                <SeletorRisco
                   id="ns-risco"
-                  value={campos['form0:classificacao_risco'] ?? ''}
-                  disabled={somenteLeitura}
-                  onChange={(e) => setCampos({ ...campos, 'form0:classificacao_risco': e.target.value })}
-                >
-                  <option value="">Selecione…</option>
-                  {(catalogo.data?.classificacoesRisco ?? []).map((o: OpcaoSer) => (
-                    <option key={o.valor} value={o.valor}>{o.rotulo}</option>
-                  ))}
-                </Select>
+                  opcoes={catalogo.data?.classificacoesRisco ?? []}
+                  valor={campos['form0:classificacao_risco'] ?? ''}
+                  desabilitado={somenteLeitura}
+                  onChange={(v) => setCampos({ ...campos, 'form0:classificacao_risco': v })}
+                />
               </Campo>
 
               <Campo label="Médico responsável" htmlFor="ns-medico" className="min-w-72 flex-1">

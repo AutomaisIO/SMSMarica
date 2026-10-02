@@ -108,7 +108,7 @@ export const artigoRascunhosSerSernit: Artigo = {
       id: 'formulario',
       titulo: 'O formulário (enquanto a tela está em uso)',
       busca:
-        'ambulatório estadual tipo consulta exame recurso catálogo campos do recurso CNS CPF buscar no SER cadastro do paciente classificação de risco médico responsável hipótese CID salvar rascunho marcar pronto enviar desligado',
+        'ambulatório estadual tipo consulta exame recurso catálogo campos do recurso CNS CPF buscar no SER cadastro do paciente classificação de risco prioridade p1 p2 p3 p4 emergência urgência cor médico responsável hipótese CID salvar rascunho marcar pronto enviar desligado',
       conteudo: (
         <>
           <P>Numa instância em que a migração ainda não aconteceu, a tela é montada assim:</P>
@@ -126,6 +126,9 @@ export const artigoRascunhosSerSernit: Artigo = {
             </Item>
             <Item>
               <strong>Classificação</strong> — classificação de risco, médico responsável e hipótese (CID).
+              O risco é um botão colorido por nível (P1 · Emergência em vermelho, P2 · Urgência em
+              amarelo, P3 em verde, P4 em azul; “Não classificado”, em cinza, só no SERNIT, que tem a
+              opção). O que vai para o sistema continua a opção dele.
             </Item>
             <Item>
               <strong>Campos do recurso</strong> — mudam conforme o recurso escolhido.
