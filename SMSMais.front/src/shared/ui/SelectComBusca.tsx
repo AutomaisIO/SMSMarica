@@ -26,6 +26,19 @@ function palavras(texto: string): string[] {
  * sobrenome a mais: quem digitava o nome completo não achava o médico, concluía que ele não existia
  * e o cadastrava de novo — no SER, onde não dá para editar nem apagar (01/10/2026).</p>
  */
+/** A mesma busca do campo, para listas fora dele (ex.: a tela de Médicos de cada sistema). */
+export function filtrarPorPalavras<T>(itens: T[], termo: string, rotulo: (item: T) => string): T[] {
+  const t = normalizar(termo.trim());
+  if (!t) return itens;
+  const termoPalavras = palavras(termo);
+  const porTrecho = itens.filter((i) => normalizar(rotulo(i)).includes(t));
+  const jaTem = new Set(porTrecho);
+  const porPalavra = termoPalavras.length
+    ? itens.filter((i) => !jaTem.has(i) && casa(termoPalavras, palavras(rotulo(i))))
+    : [];
+  return [...porTrecho, ...porPalavra];
+}
+
 function casa(termo: string[], rotulo: string[]): boolean {
   const cadaUma = termo.every((t) =>
     rotulo.some((r) => r.startsWith(t) || (r.length === 1 && t.length > 1 && t[0] === r)),

@@ -16,12 +16,12 @@ export const artigoSerMedicos: Artigo = {
   slug: 'ser-medicos',
   titulo: 'Médicos do SER',
   resumo:
-    'Os médicos como estão cadastrados no SER, num espelho à parte do nosso cadastro — de onde sai o “Médico solicitante” das solicitações ao SER.',
+    'Os médicos como estão cadastrados no SER, num espelho à parte do nosso cadastro, e os pedidos de cadastro de médico feitos pelas unidades.',
   grupo: 'regulacao',
   icone: Stethoscope,
   rota: '/app/regulacao/ser/medicos',
   publico: 'Quem prepara as solicitações ao SER e cuida da lista de médicos solicitantes',
-  atualizadoEm: '2026-10-01',
+  atualizadoEm: '2026-10-02',
   palavrasChave: [
     'médicos do SER',
     'profissionais',
@@ -38,6 +38,9 @@ export const artigoSerMedicos: Artigo = {
     'documento',
     'espelho',
     'enviar para o SER',
+    'pedidos de cadastro',
+    'médico pendente',
+    'adicionar médico',
   ],
   secoes: () => [
     {
@@ -48,9 +51,10 @@ export const artigoSerMedicos: Artigo = {
         <>
           <P>
             O SER só aceita como <strong>médico solicitante</strong> quem está cadastrado lá, com
-            lotação no município. Esta tela mostra esses médicos <strong>exatamente como o SER os
-            tem</strong> — e é dessa mesma lista que sai o campo “Médico solicitante” das solicitações
-            ao SER.
+            lotação no município. Esta tela mostra os profissionais <strong>exatamente como o SER os
+            tem</strong> (Cadastro → Profissionais), para conferir e ligar ao nosso cadastro. O campo
+            “Médico solicitante” da solicitação usa a lista do próprio combo do SER, copiada em
+            “Copiar catálogo do SER” (Configuração).
           </P>
           <Callout tipo="regra" titulo="À parte do nosso cadastro">
             O cadastro do SER é ruim: quase ninguém tem CPF, metade só tem o nome, há nomes abreviados e
@@ -104,8 +108,8 @@ export const artigoSerMedicos: Artigo = {
                 termo: 'Situação',
                 descricao: (
                   <>
-                    <SeloRef cor="sucesso">Ativo</SeloRef> aparece na lista de médicos da solicitação;{' '}
-                    <SeloRef>Inativo</SeloRef> não.
+                    <SeloRef cor="sucesso">Ativo</SeloRef> ou <SeloRef>Inativo</SeloRef> no SER, como está
+                    na lotação de lá.
                   </>
                 ),
               },
@@ -135,15 +139,24 @@ export const artigoSerMedicos: Artigo = {
     },
     {
       id: 'enviar',
-      titulo: 'E o médico que não está no SER?',
-      busca: 'enviar para o ser cadastrar médico no ser lotação especialidade cbo não liberado autorização',
+      titulo: 'E o médico que não está no SER? — Pedidos de cadastro',
+      busca: 'enviar para o ser cadastrar médico no ser pedidos de cadastro pendente adicionar médico cadastrei já existia recusar',
       conteudo: (
-        <P>
-          Por enquanto, ele precisa ser cadastrado no próprio SER (Cadastro → Profissionais). Enviar
-          pela nossa plataforma está desenhado, mas ainda não liberado: é escrita no sistema do Estado e
-          precisa de autorização antes do primeiro envio. Depois de cadastrar lá, use{' '}
-          <BotaoRef>Importar do SER</BotaoRef> para ele aparecer aqui e na solicitação.
-        </P>
+        <>
+          <P>
+            Na Nova Solicitação, a unidade que não acha o médico usa “Incluir médico”: o pedido fica{' '}
+            <strong>pendente</strong>, sem escrever no SER. Os pedidos aparecem no fim desta tela, em{' '}
+            <strong>Pedidos de cadastro no SER</strong>, e também no detalhe de cada solicitação.
+          </P>
+          <P>
+            Quem regula cadastra o médico no SER — na tela de solicitação de lá, ícone{' '}
+            <strong>Adicionar médico</strong> ao lado de “Médico responsável” (tem tipo e número de
+            documento, onde vai o CRM) — e resolve aqui: <BotaoRef>Cadastrei no SER</BotaoRef>,{' '}
+            <BotaoRef>Já existia no SER</BotaoRef> (escolhe o cadastro de lá; as solicitações passam a
+            usar esse nome) ou <BotaoRef>Recusar</BotaoRef>, com o motivo. Depois, “Copiar catálogo do SER”
+            traz o nome para a lista do campo.
+          </P>
+        </>
       ),
     },
   ],

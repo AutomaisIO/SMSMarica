@@ -347,6 +347,13 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Movimentações do SERNIT que ainda não foram vistas.',
           },
           {
+            rotulo: 'Médicos',
+            to: '/app/regulacao/sernit/medicos',
+            icone: Stethoscope,
+            modulo: 'RegulacaoSernit',
+            descricao: 'A lista de médicos do SERNIT e os pedidos de cadastro das unidades.',
+          },
+          {
             // Módulo próprio (70), desligado por padrão.
             rotulo: 'Estatísticas',
             to: '/app/regulacao/sernit/estatisticas',

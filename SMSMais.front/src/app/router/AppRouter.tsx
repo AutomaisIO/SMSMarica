@@ -73,6 +73,7 @@ import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregM
 import { SerNotificacoesPage } from '@/features/ser/pages/SerNotificacoesPage';
 import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoPage';
 import { SerMedicosPage } from '@/features/ser/pages/SerMedicosPage';
+import { SernitMedicosPage } from '@/features/sernit/pages/SernitMedicosPage';
 import { SerFilaPage } from '@/features/ser/pages/SerFilaPage';
 import { SerSolicitacaoDetalhePage } from '@/features/ser/pages/SerSolicitacaoDetalhePage';
 import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfiguracaoPage';
@@ -242,6 +243,7 @@ export function AppRouter() {
           <Route path="regulacao/notificacoes" element={<SerNotificacoesPage />} />
           <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />
           <Route path="regulacao/ser/medicos" element={<SerMedicosPage />} />
+          <Route path="regulacao/sernit/medicos" element={<SernitMedicosPage />} />
           <Route path="regulacao/ser/:id" element={<SerSolicitacaoDetalhePage />} />
           <Route path="regulacao/configuracao" element={<RegulacaoConfiguracaoPage />} />
           {/* Regulação → Solicitações (ADR-0052): abertura pela unidade solicitante.

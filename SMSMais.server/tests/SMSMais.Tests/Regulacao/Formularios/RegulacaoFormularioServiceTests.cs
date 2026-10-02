@@ -389,4 +389,15 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
 
         f.Esquema.Should().Be("sisreg.inclusao");
     }
+
+    [Theory]
+    [InlineData("Paciente com dor", "Paciente com dor\n\nCID(s) secundário(s): (E11 ) Diabetes; (I10 ) Hipertensão")]
+    [InlineData("", "CID(s) secundário(s): (E11 ) Diabetes; (I10 ) Hipertensão")]
+    public void Cids_secundarios_vao_no_fim_das_observacoes(string observacoes, string esperado) =>
+        RegulacaoFormularioService.ComCidsSecundarios(observacoes, ["(E11 ) Diabetes", "(I10 ) Hipertensão"])
+            .Should().Be(esperado);
+
+    [Fact]
+    public void Sem_cid_secundario_as_observacoes_ficam_como_estao() =>
+        RegulacaoFormularioService.ComCidsSecundarios("  texto  ", []).Should().Be("texto");
 }

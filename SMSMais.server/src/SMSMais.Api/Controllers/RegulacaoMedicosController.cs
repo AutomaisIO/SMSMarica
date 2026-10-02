@@ -19,7 +19,8 @@ public sealed class RegulacaoMedicosController(IRegulacaoMedicoPendenteService m
 {
     /// <summary>"Já existe?" — parecidos na lista do sistema e entre os já pedidos.</summary>
     [HttpGet("parecidos")]
-    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [RequerQualquerPermissao(AcoesPermissao.Consulta, ModuloPermissao.Regulacao, ModuloPermissao.RegulacaoTriagem,
+        ModuloPermissao.RegulacaoSer, ModuloPermissao.RegulacaoSernit)]
     [ProducesResponseType<IReadOnlyList<MedicoParecidoDto>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<MedicoParecidoDto>> Parecidos(
         [FromQuery] SistemaRegulacao sistema, [FromQuery] string? nome, [FromQuery] string? documento,
@@ -33,8 +34,18 @@ public sealed class RegulacaoMedicosController(IRegulacaoMedicoPendenteService m
     public Task<MedicoPendenteDto> Criar([FromBody] CriarMedicoPendenteRequest req, CancellationToken cancellationToken) =>
         medicos.CriarAsync(req, cancellationToken);
 
+    /// <summary>A lista de médicos do sistema — o que aparece no combo da solicitação.</summary>
+    [HttpGet("lista")]
+    [RequerQualquerPermissao(AcoesPermissao.Consulta, ModuloPermissao.Regulacao, ModuloPermissao.RegulacaoTriagem,
+        ModuloPermissao.RegulacaoSer, ModuloPermissao.RegulacaoSernit)]
+    [ProducesResponseType<IReadOnlyList<string>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<string>> Lista([FromQuery] SistemaRegulacao sistema, CancellationToken cancellationToken) =>
+        medicos.ListaDoSistemaAsync(sistema, cancellationToken);
+
+    /// <summary>Os pedidos de cadastro — a fila do técnico (também nas telas Médicos do SER/SERNIT).</summary>
     [HttpGet("pendentes")]
-    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [RequerQualquerPermissao(AcoesPermissao.Consulta, ModuloPermissao.Regulacao, ModuloPermissao.RegulacaoTriagem,
+        ModuloPermissao.RegulacaoSer, ModuloPermissao.RegulacaoSernit)]
     [ProducesResponseType<IReadOnlyList<MedicoPendenteDto>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<MedicoPendenteDto>> Listar(
         [FromQuery] SistemaRegulacao? sistema, [FromQuery] SituacaoMedicoPendente? situacao,
@@ -42,7 +53,8 @@ public sealed class RegulacaoMedicosController(IRegulacaoMedicoPendenteService m
         medicos.ListarAsync(sistema, situacao, cancellationToken);
 
     [HttpGet("pendentes/{id:guid}")]
-    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [RequerQualquerPermissao(AcoesPermissao.Consulta, ModuloPermissao.Regulacao, ModuloPermissao.RegulacaoTriagem,
+        ModuloPermissao.RegulacaoSer, ModuloPermissao.RegulacaoSernit)]
     [ProducesResponseType<MedicoPendenteDto>(StatusCodes.Status200OK)]
     public Task<MedicoPendenteDto> Obter(Guid id, CancellationToken cancellationToken) =>
         medicos.ObterAsync(id, cancellationToken);

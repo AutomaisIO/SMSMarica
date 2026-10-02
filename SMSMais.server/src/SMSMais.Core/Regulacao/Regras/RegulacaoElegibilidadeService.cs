@@ -397,12 +397,16 @@ public sealed class RegulacaoElegibilidadeService(
             var raiz = JsonDocument.Parse(formularioJson).RootElement;
             if (!raiz.TryGetProperty("canonico", out var c)) return null;
 
-            foreach (var chave in new[] { "cid10", "cid", "cid_principal" })
+            // `hipotese_cid` é o CID do fluxo Externo (SER/SERNIT), no formato do SER: "(A09 )
+            // Diarréia…". Sem ele aqui, as regras de CID nunca rodavam nas solicitações externas
+            // (achado em 02/10/2026). O avaliador compara por prefixo de CÓDIGO: extrai o código.
+            foreach (var chave in new[] { "hipotese_cid", "cid10", "cid", "cid_principal" })
             {
                 if (c.TryGetProperty(chave, out var v) && v.ValueKind == JsonValueKind.String)
                 {
                     var texto = v.GetString();
-                    if (!string.IsNullOrWhiteSpace(texto)) return texto;
+                    if (string.IsNullOrWhiteSpace(texto)) continue;
+                    return AnaliseRegras.AnaliseRegrasEspelhoService.CodigoCid(texto.Trim().TrimStart('(', ' ')) ?? texto;
                 }
             }
         }

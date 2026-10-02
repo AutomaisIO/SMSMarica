@@ -529,6 +529,10 @@ public sealed class RegulacaoFormularioService(
         var saida = new Dictionary<string, string>(StringComparer.Ordinal);
         if (canonico.ValueKind != JsonValueKind.Object) return saida;
 
+        var cidsSecundarios = canonico.TryGetProperty(ChaveCidsSecundarios, out var cs)
+            ? ComoTexto(cs).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : [];
+
         foreach (var m in mapa)
         {
             if (m.Transformacao?.StartsWith(PrefixoConstante, StringComparison.Ordinal) == true)
@@ -537,14 +541,33 @@ public sealed class RegulacaoFormularioService(
                 continue;
             }
 
-            if (!canonico.TryGetProperty(m.ChaveCanonica, out var valor)) continue;
+            var texto = canonico.TryGetProperty(m.ChaveCanonica, out var valor) ? ComoTexto(valor) : string.Empty;
 
-            var texto = ComoTexto(valor);
+            // Os sistemas só têm UM CID na tela: os secundários viajam no fim das Observações.
+            if (ChavesObservacoes.Contains(m.ChaveCanonica)) texto = ComCidsSecundarios(texto, cidsSecundarios);
+
             if (string.IsNullOrEmpty(texto)) continue;
 
             saida[m.NomeNativo] = Transformar(texto, m.Transformacao);
         }
         return saida;
+    }
+
+    /// <summary>
+    /// CIDs secundários da solicitação, um por linha. Não são campo de nenhum sistema: a tela do
+    /// SER/SERNIT/SISREG tem um CID só, e os demais vão no fim das Observações.
+    /// </summary>
+    public const string ChaveCidsSecundarios = "cids_secundarios";
+
+    private static readonly HashSet<string> ChavesObservacoes = ["observacoes", "observacao"];
+
+    /// <summary>As Observações como vão ao sistema — espelha `observacoesComCids` do front.</summary>
+    public static string ComCidsSecundarios(string? observacoes, IReadOnlyCollection<string> cids)
+    {
+        var baseTexto = (observacoes ?? string.Empty).Trim();
+        if (cids.Count == 0) return baseTexto;
+        var linha = $"CID(s) secundário(s): {string.Join("; ", cids)}";
+        return baseTexto.Length == 0 ? linha : $"{baseTexto}\n\n{linha}";
     }
 
     private static string ComoTexto(JsonElement v) => v.ValueKind switch

@@ -80,3 +80,20 @@ export async function resolverMedicoPendente(
   });
   return data;
 }
+
+/** Os pedidos de cadastro de um sistema — a fila do técnico da regulação. */
+export async function listarMedicosPendentes(
+  sistema: SistemaRegulacao,
+  situacao: SituacaoMedicoPendente | null,
+): Promise<MedicoPendente[]> {
+  const { data } = await http.get<MedicoPendente[]>('/regulacao/medicos/pendentes', {
+    params: { sistema, situacao: situacao ?? undefined },
+  });
+  return data;
+}
+
+/** Os médicos na lista do próprio sistema (a cópia do combo "Médico responsável"). */
+export async function listarMedicosDoSistema(sistema: SistemaRegulacao): Promise<string[]> {
+  const { data } = await http.get<string[]>('/regulacao/medicos/lista', { params: { sistema } });
+  return data;
+}

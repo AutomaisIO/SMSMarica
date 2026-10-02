@@ -10,6 +10,7 @@ import {
   type SerProfissional,
 } from '@/features/ser/api/profissionaisApi';
 import { useBuscarMedicos } from '@/features/medicos/api/queries';
+import { PedidosDeCadastroMedico } from '@/features/regulacao/components/PedidosDeCadastroMedico';
 import { usePermissao } from '@/shared/auth/authStore';
 import { formatarInstante } from '@/shared/lib/datas';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
@@ -241,6 +242,11 @@ export function SerMedicosPage() {
           Enviar ao SER um médico que só existe no nosso cadastro ainda não está liberado: é escrita
           no sistema do Estado e precisa de autorização antes do primeiro envio.
         </p>
+      </div>
+
+      {/* Médicos que as unidades pediram e ainda não estão no SER — quem cadastra é a regulação. */}
+      <div className="border-t border-slate-200 pt-4">
+        <PedidosDeCadastroMedico sistema="Ser" />
       </div>
 
       <ModalLigar profissional={ligando} aoFechar={() => setLigando(null)} />

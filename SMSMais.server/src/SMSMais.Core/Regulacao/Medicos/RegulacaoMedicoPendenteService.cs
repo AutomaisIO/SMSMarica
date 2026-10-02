@@ -52,6 +52,9 @@ public interface IRegulacaoMedicoPendenteService
 
     Task<MedicoPendenteDto> ObterAsync(Guid id, CancellationToken ct);
 
+    /// <summary>Os médicos na lista do próprio sistema (a cópia do combo "Médico responsável").</summary>
+    Task<IReadOnlyList<string>> ListaDoSistemaAsync(SistemaRegulacao sistema, CancellationToken ct);
+
     Task<IReadOnlyList<MedicoPendenteDto>> ListarAsync(
         SistemaRegulacao? sistema, SituacaoMedicoPendente? situacao, CancellationToken ct);
 
@@ -182,6 +185,9 @@ public sealed class RegulacaoMedicoPendenteService(
         await db.SaveChangesAsync(ct);
         return Mapear(novo);
     }
+
+    public async Task<IReadOnlyList<string>> ListaDoSistemaAsync(SistemaRegulacao sistema, CancellationToken ct) =>
+        [.. (await NomesDoSistemaAsync(sistema, ct)).Where(n => n.Length > 0).OrderBy(n => n, StringComparer.Ordinal)];
 
     public async Task<MedicoPendenteDto> ObterAsync(Guid id, CancellationToken ct) =>
         Mapear(await db.RegulacaoMedicosPendentes.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, ct)

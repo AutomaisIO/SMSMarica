@@ -301,6 +301,26 @@ public class RegulacaoElegibilidadeServiceTests(PostgresFixture fixture)
         r.BloqueiaEnvio.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task O_CID_do_fluxo_externo_no_formato_do_SER_alimenta_a_regra()
+    {
+        // No Externo o CID fica em `hipotese_cid`, como o SER escreve: "(C504) Neoplasia…". Antes
+        // de 02/10/2026 o avaliador não lia essa chave e as regras de CID nunca rodavam.
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var s = await db.RegulacaoSolicitacoes.FirstAsync(x => x.Id == c.SolicitacaoId);
+        s.FormularioJson = """{"canonico":{"hipotese_cid":"(C504) Neoplasia maligna da mama"}}""";
+        var regra = NovaRegra(c.ProcedimentoId, TipoRegraRegulacao.Dedutivel);
+        regra.CidsExcluidosJson = JsonSerializer.Serialize(new[] { "C50" });
+        db.RegulacaoRegras.Add(regra);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var r = await Montar(db, c).AvaliarAsync(c.SolicitacaoId, CancellationToken.None);
+
+        r.DestinosPermitidos.Should().BeEmpty("C50.4 casa por prefixo com o excluído C50");
+    }
+
     // ---------------------------------------------------------------- pergunta de lista
 
     private static readonly string[] Condicoes = ["Genitália ambígua", "Fraturas Patológicas", "Doenças Raras"];

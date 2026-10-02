@@ -145,7 +145,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'abrir',
       titulo: 'Abrir uma solicitação (o assistente)',
-      busca: 'nova solicitação assistente passos procedimento destino paciente regras formulário anexos revisão avançar rascunho criado unidade',
+      busca: 'nova solicitação assistente passos procedimento destino paciente regras formulário anexos revisão avançar rascunho criado unidade salvar rascunho continuar depois',
       conteudo: (
         <>
           <P>
@@ -186,6 +186,12 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
           <P>
             Depois que o rascunho existe, a barra de passos fica clicável: dá para voltar e trocar o
             procedimento, o destino ou o paciente — a troca é gravada ao avançar de novo.
+          </P>
+          <P>
+            Precisa parar no meio? <BotaoRef>Salvar rascunho</BotaoRef> (no rodapé, a partir do momento em
+            que procedimento e paciente estão escolhidos) grava o que está na tela e leva ao detalhe. Para
+            continuar depois, abra o rascunho em <strong>Minha fila</strong> e clique em{' '}
+            <BotaoRef>Continuar rascunho</BotaoRef>. O rascunho é só seu — ninguém mais o vê na fila.
           </P>
           <Callout tipo="dica" titulo="“De qual unidade é esta solicitação?”">
             Se você tem mais de uma unidade e nenhuma está escolhida no topo, o sistema pergunta antes
@@ -297,7 +303,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'formulario',
       titulo: 'O formulário do destino Externo (SER e SERNIT)',
       busca:
-        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente aguardando cadastro lista classificação de risco prioridade hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
+        'formulário campos médico solicitante busca nome abreviado duplicado incluir médico pendente aguardando cadastro cid secundário cids secundários observações lista classificação de risco prioridade hipótese cid lista do recurso ao vivo unidade de origem fixa queixa principal resultado de exames observações obrigatório exigido só pelo',
       conteudo: (
         <>
           <P>
@@ -324,6 +330,12 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               },
             ]}
           />
+          <P>
+            <strong>CIDs secundários:</strong> abaixo do CID principal, <BotaoRef>Adicionar CID secundário</BotaoRef>{' '}
+            abre a mesma caixa de busca; cada CID escolhido vira uma etiqueta (o “x” tira). Os sistemas de
+            destino só têm UM CID na tela — os secundários vão, no lançamento, no fim das{' '}
+            <strong>Observações</strong> (“CID(s) secundário(s): …”).
+          </P>
           <Callout tipo="atencao" titulo="Por que não dá para digitar o CID">
             O SER guarda a hipótese pelo CID escolhido na lista e descarta o texto digitado — o pedido
             voltaria sem hipótese. Se aparecer um texto em amarelo no campo (rascunho antigo), procure o
@@ -470,7 +482,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'detalhe',
       titulo: 'O detalhe e as ações',
       busca:
-        'detalhe ações assumir devolver à unidade recusar registrar envio número gerado ok já está no sisreg cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo regras do manual respostas condições marcadas médico novo a cadastrar pendente cadastrei já existia',
+        'detalhe ações assumir devolver à unidade recusar registrar envio número gerado ok já está no sisreg cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo regras do manual respostas condições marcadas médico novo a cadastrar pendente cadastrei já existia para lançar no sistema copiar campos',
       conteudo: (
         <>
           <P>
@@ -491,6 +503,12 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             <BotaoRef>Cadastrei no SER</BotaoRef>, <BotaoRef>Já existia no SER</BotaoRef> (escolhe o cadastro
             que já estava lá — a solicitação passa a usar esse nome) ou <BotaoRef>Recusar</BotaoRef>, com o
             motivo. O <BotaoRef>Registrar envio</BotaoRef> só libera depois disso.
+          </P>
+          <P>
+            O quadro <strong>Para lançar no SER</strong> (ou SERNIT, SISREG — o destino da solicitação)
+            mostra o formulário campo a campo, com o nome do campo como o sistema chama e um botão de
+            copiar em cada valor: é o que o agente digita na tela do sistema. As Observações já vêm com os
+            CIDs secundários no fim.
           </P>
           <Sub>Unidade</Sub>
           <Lista>

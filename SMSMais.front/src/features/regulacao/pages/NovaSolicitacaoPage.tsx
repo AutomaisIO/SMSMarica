@@ -10,6 +10,7 @@ import {
   FilePlus2,
   Loader2,
   PencilLine,
+  Save,
   Send,
   Undo2,
 } from 'lucide-react';
@@ -43,6 +44,7 @@ import { BuscaProcedimento } from '../components/BuscaProcedimento';
 import { PassoPaciente } from '../components/wizard/PassoPaciente';
 import { PassoRegras } from '../components/wizard/PassoRegras';
 import { ExamesInternosSugeridos } from '../components/ExamesInternosSugeridos';
+import { CHAVE_CIDS_SECUNDARIOS, CidsSecundarios } from '../components/CidsSecundarios';
 import { IncluirMedico } from '../components/IncluirMedico';
 import {
   anexarComTitulo,
@@ -261,6 +263,27 @@ export function NovaSolicitacaoPage() {
   async function salvarFormulario() {
     if (!solicitacaoId) return;
     await atualizar.mutateAsync({ id: solicitacaoId, formulario: valores });
+  }
+
+  /**
+   * "Salvar rascunho": parar e voltar depois. Cria o rascunho se ainda não existe (precisa de
+   * procedimento e paciente) ou grava o que está na tela, e leva ao detalhe — de onde se continua
+   * pelo "Continuar rascunho". Rascunho é só de quem abriu: ninguém mais o vê na fila.
+   */
+  async function salvarRascunho() {
+    if (!solicitacaoId) {
+      if (precisaEscolherUnidade) {
+        setEscolhendoUnidadePara(passo);
+        return;
+      }
+      if (!(await criarRascunho())) return;
+      notificar('Rascunho salvo. Para continuar, abra-o em Minha fila.', 'sucesso');
+      return;
+    }
+    if (indice <= ULTIMO_PASSO_DA_ESTRUTURA && !(await salvarEstrutura())) return;
+    if (passo === 'formulario') await salvarFormulario();
+    notificar('Rascunho salvo. Para continuar, use “Continuar rascunho”.', 'sucesso');
+    navegar(`/app/regulacao/solicitacoes/${solicitacaoId}`);
   }
 
   async function irPara(alvo: Passo) {
@@ -520,6 +543,19 @@ export function NovaSolicitacaoPage() {
                     onChange={(v) => setValores((atual) => ({ ...atual, [c.chave]: v }))}
                   />
                   )}
+                  {/* CID principal + secundários: os sistemas só têm UM CID na tela, então os
+                      secundários vão no fim das Observações na hora de lançar. */}
+                  {c.tipo === 'cid' ? (
+                    <div className="mt-3">
+                      <CidsSecundarios
+                        valor={valores[CHAVE_CIDS_SECUNDARIOS] ?? ''}
+                        onChange={(v) => setValores((atual) => ({ ...atual, [CHAVE_CIDS_SECUNDARIOS]: v }))}
+                        procedimentoId={procedimento?.id ?? null}
+                        sistema={(destino || null) as SistemaRegulacao | null}
+                        comCaixaDoRecurso={fluxo === 'Externo'}
+                      />
+                    </div>
+                  ) : null}
                   {/* Médico fora da lista: vira pedido de cadastro PENDENTE — quem cadastra no
                       sistema é a regulação, no fim do processo. */}
                   {c.chave === 'medico_solicitante' && (destino === 'Ser' || destino === 'Sernit') ? (
@@ -645,6 +681,12 @@ export function NovaSolicitacaoPage() {
         >
           <ArrowLeft className="mr-1 size-4" /> Voltar
         </Button>
+
+        {(solicitacaoId || (procedimento && paciente && fluxo)) && passo !== 'revisao' ? (
+          <Button variante="ghost" disabled={ocupado} onClick={salvarRascunho}>
+            <Save className="mr-1 size-4" /> Salvar rascunho
+          </Button>
+        ) : null}
 
         {passo === 'revisao' ? (
           <Button
