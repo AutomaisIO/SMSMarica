@@ -1,7 +1,9 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -509,37 +511,67 @@ public sealed class WhatsAppCliente(
         var carga = new { phone_number_id = ctx.PhoneNumberId, para = telefone, mensagem = body };
         var msg = NovaMensagem(telefone, template, conteudo, pacienteId);
 
+        HttpStatusCode status;
+        string corpo;
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(carga) };
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ctx.ZapToken);
             using var resp = await http.SendAsync(req, ct);
-            var corpo = await resp.Content.ReadAsStringAsync(ct);
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                var erro = ExtrairErroZap(corpo) ?? $"HTTP {(int)resp.StatusCode}: {corpo}";
-                msg.Status = StatusMensagemWhatsApp.Falha;
-                msg.Conteudo = Truncar($"{conteudo} | erro {(int)resp.StatusCode}: {corpo}");
-                msg.ErroMeta = erro.Length <= 500 ? erro : erro[..500];
-                db.MensagensWhatsApp.Add(msg);
-                await db.SaveChangesAsync(ct);
-                logger.LogWarning("WhatsApp envio falhou {Status}: {Corpo}", resp.StatusCode, corpo);
-                return new EnvioWhatsAppResultado(false, null, erro);
-            }
-
-            msg.WaMessageId = ExtrairWamidZap(corpo);
-            db.MensagensWhatsApp.Add(msg);
-            await db.SaveChangesAsync(ct);
-            return new EnvioWhatsAppResultado(true, msg.WaMessageId, null);
+            status = resp.StatusCode;
+            corpo = await resp.Content.ReadAsStringAsync(ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             msg.Status = StatusMensagemWhatsApp.Falha;
             msg.Conteudo = Truncar($"{conteudo} | erro: {ex.Message}");
-            try { db.MensagensWhatsApp.Add(msg); await db.SaveChangesAsync(ct); } catch { /* best-effort */ }
+            db.MensagensWhatsApp.Add(msg);
+            await RegistrarEnvioAsync(msg, ct);
             logger.LogWarning(ex, "Falha de rede ao enviar WhatsApp.");
             return new EnvioWhatsAppResultado(false, null, ex.Message);
+        }
+
+        // Daqui em diante o Zap JÁ respondeu: o resultado é o dele, e uma falha ao gravar o registro
+        // não o desmente. Antes, o SaveChanges vinha dentro do mesmo try — levando junto o que quem
+        // chamou deixou pendente no DbContext — e uma corrida de banco virava "não saiu… o cidadão
+        // ficou sem retorno" para uma mensagem que tinha saído (03/10/2026, …0353 e …1270).
+        if ((int)status is < 200 or > 299)
+        {
+            var erro = ExtrairErroZap(corpo) ?? $"HTTP {(int)status}: {corpo}";
+            msg.Status = StatusMensagemWhatsApp.Falha;
+            msg.Conteudo = Truncar($"{conteudo} | erro {(int)status}: {corpo}");
+            msg.ErroMeta = erro.Length <= 500 ? erro : erro[..500];
+            db.MensagensWhatsApp.Add(msg);
+            await RegistrarEnvioAsync(msg, ct);
+            logger.LogWarning("WhatsApp envio falhou {Status}: {Corpo}", status, corpo);
+            return new EnvioWhatsAppResultado(false, null, erro);
+        }
+
+        msg.WaMessageId = ExtrairWamidZap(corpo);
+        db.MensagensWhatsApp.Add(msg);
+        await RegistrarEnvioAsync(msg, ct);
+        return new EnvioWhatsAppResultado(true, msg.WaMessageId, null);
+    }
+
+    /// <summary>
+    /// Grava o registro do envio. O SaveChanges leva junto o que quem chamou deixou pendente no
+    /// mesmo DbContext; se essa gravação cair (corrida com outro webhook), o registro FICA pendente
+    /// — o SaveChanges final de quem chamou (o webhook relê e reaplica a conversa) o leva — e o envio
+    /// não é desmentido. Warning, não Error: o que for perda de verdade quem chamou reporta.
+    /// </summary>
+    private async Task RegistrarEnvioAsync(MensagemWhatsApp msg, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            logger.LogWarning(ex,
+                "WhatsApp: o envio para …{Fone4} ({Status}, wamid {Wamid}) teve resposta do Zap, mas o registro "
+                + "não gravou agora: {Erro}. Fica pendente para a gravação de quem chamou.",
+                Conversas.TelefoneWhatsApp.Ultimos4(msg.Telefone), msg.Status, msg.WaMessageId,
+                ex.InnerException?.Message ?? ex.Message);
         }
     }
 

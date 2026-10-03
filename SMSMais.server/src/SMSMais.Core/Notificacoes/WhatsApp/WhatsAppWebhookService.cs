@@ -135,24 +135,37 @@ public sealed class WhatsAppWebhookService(
         db.MensagensWhatsApp.Add(msg);
 
         // Efeitos da mensagem inbound na conversa (uniforme p/ conversa nova ou existente).
-        conversa.PacienteId ??= pacienteId;
-        conversa.NomeContato ??= nomeContato;
-        conversa.Status = StatusConversa.Aberta;                 // reabre Pendente/Resolvida/Fechada
-        // Robô — âncora da JANELA corrente: abre janela nova = primeiro contato OU a anterior já
-        // expirou. Zera o contador de interações do robô. É a primitiva da trava humano-por-janela
-        // (o robô se cala se houve resposta/atribuição humana desde JanelaAbertaEm). Precede a
-        // renovação de JanelaExpiraEm de propósito — senão a comparação nunca detectaria expiração.
-        if (conversa.JanelaExpiraEm is null || conversa.JanelaExpiraEm <= ocorridoEm)
+        void AplicarEntrada(Conversa c)
         {
-            conversa.JanelaAbertaEm = ocorridoEm;
-            conversa.RoboInteracoesNaJanela = 0;
+            c.PacienteId ??= pacienteId;
+            c.NomeContato ??= nomeContato;
+            c.Status = StatusConversa.Aberta;                    // reabre Pendente/Resolvida/Fechada
+            // Robô — âncora da JANELA corrente: abre janela nova = primeiro contato OU a anterior já
+            // expirou. Zera o contador de interações do robô. É a primitiva da trava humano-por-janela
+            // (o robô se cala se houve resposta/atribuição humana desde JanelaAbertaEm). Precede a
+            // renovação de JanelaExpiraEm de propósito — senão a comparação nunca detectaria expiração.
+            if (c.JanelaExpiraEm is null || c.JanelaExpiraEm <= ocorridoEm)
+            {
+                c.JanelaAbertaEm = ocorridoEm;
+                c.RoboInteracoesNaJanela = 0;
+            }
+            c.JanelaExpiraEm = ocorridoEm.AddHours(24);          // renova janela de 24h
+            c.UltimaMensagemEm = ocorridoEm;
+            c.UltimaMensagemDirecao = DirecaoMensagem.Entrada;
+            c.UltimaMensagemPreview = Truncar(texto ?? PreviewMidia(tipo, midia));
+            c.NaoLidas += 1;
+            c.AtualizadoEm = DateTime.UtcNow;
         }
-        conversa.JanelaExpiraEm = ocorridoEm.AddHours(24);       // renova janela de 24h
-        conversa.UltimaMensagemEm = ocorridoEm;
-        conversa.UltimaMensagemDirecao = DirecaoMensagem.Entrada;
-        conversa.UltimaMensagemPreview = Truncar(texto ?? PreviewMidia(tipo, midia));
-        conversa.NaoLidas += 1;
-        conversa.AtualizadoEm = DateTime.UtcNow;
+
+        // A mensagem do cidadão e a conversa gravam ANTES dos manipuladores. Antes elas ficavam
+        // pendentes e iam junto no primeiro SaveChanges de quem respondesse — o do WhatsAppCliente,
+        // DEPOIS da ida ao Zap: numa corrida com outro webhook do mesmo número a gravação inteira
+        // caía (a resposta já tinha saído), nada ficava registrado e o aviso dizia "o cidadão ficou
+        // sem retorno". Medido em 03/10/2026: …0353 (duas conversas novas ao mesmo tempo,
+        // IX_conversa_telefone_canonical_canal) e …1270 (xmin da conversa).
+        if (await SalvarEntradaAsync(conversa, msg, AplicarEntrada, ct) is not { } gravada)
+            return; // o webhook concorrente já gravou esta mesma mensagem
+        conversa = gravada;
 
         // Manipuladores de domínio (não fazem SaveChanges).
         var botaoPayload = m.TryGetProperty("button", out var btnEl) && btnEl.TryGetProperty("payload", out var bp)
@@ -167,7 +180,7 @@ public sealed class WhatsAppWebhookService(
             catch (Exception ex) { logger.LogWarning(ex, "Manipulador {Tipo} falhou.", manipulador.GetType().Name); }
         }
 
-        await db.SaveChangesAsync(ct);
+        await SalvarEfeitosDosManipuladoresAsync(conversa, ct);
 
         if (msg.MidiaSituacao == SituacaoMidiaWhatsApp.Recebendo) sinalMidias?.Sinalizar();
 
@@ -177,6 +190,127 @@ public sealed class WhatsAppWebhookService(
             conversa.TelefoneCanonical, conversa.NomeContato, conversa.UltimaMensagemPreview,
             conversa.NaoLidas, ocorridoEm), ct);
     }
+
+    private const int MaxTentativasGravacao = 3;
+    private const string IndiceConversaVivaDoTelefone = "IX_conversa_telefone_canonical_canal";
+    private const string IndiceWamid = "IX_whatsapp_mensagem_wa_message_id";
+
+    /// <summary>
+    /// Grava a mensagem do cidadão e os efeitos dela na conversa, resolvendo as duas corridas com
+    /// outro webhook do MESMO número (o cidadão manda duas mensagens juntas, ou toca o botão duas
+    /// vezes): (1) os dois abriram conversa nova — quem perdeu adota a conversa que o outro gravou;
+    /// (2) a conversa mudou depois de lida (<c>xmin</c>) — relê e reaplica por cima do estado atual,
+    /// como o robô faz desde 01/10. Devolve a conversa gravada, ou <c>null</c> quando esta mesma
+    /// mensagem já tinha sido gravada pelo outro webhook (entrega repetida do relay).
+    /// </summary>
+    private async Task<Conversa?> SalvarEntradaAsync(
+        Conversa conversa, MensagemWhatsApp msg, Action<Conversa> aplicar, CancellationToken ct)
+    {
+        aplicar(conversa);
+        for (var tentativa = 1; ; tentativa++)
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return conversa;
+            }
+            catch (DbUpdateException ex) when (ViolouIndice(ex, IndiceWamid))
+            {
+                logger.LogInformation("Webhook WhatsApp: mensagem {Wamid} já gravada por outro webhook — ignorada.",
+                    msg.WaMessageId);
+                db.ChangeTracker.Clear();
+                return null;
+            }
+            catch (DbUpdateException ex) when (tentativa < MaxTentativasGravacao
+                && db.Entry(conversa).State == EntityState.Added && ViolouIndice(ex, IndiceConversaVivaDoTelefone))
+            {
+                var viva = await db.Conversas.FirstOrDefaultAsync(
+                    c => c.TelefoneCanonical == conversa.TelefoneCanonical && c.Canal == conversa.Canal
+                      && c.ExcluidoEm == null
+                      && (c.Status == StatusConversa.Aberta || c.Status == StatusConversa.Pendente), ct);
+                if (viva is null) throw;
+                logger.LogInformation(
+                    "Webhook WhatsApp (…{Fone4}): outro webhook abriu a conversa primeiro — adotando {Conversa}.",
+                    TelefoneWhatsApp.Ultimos4(conversa.TelefoneCanonical), viva.Id);
+                db.Entry(conversa).State = EntityState.Detached;
+                // A navegação também: com ela apontando a conversa descartada, o SaveChanges a
+                // reanexaria como nova e a violação se repetiria.
+                msg.Conversa = viva;
+                msg.ConversaId = viva.Id;
+                msg.PacienteId ??= viva.PacienteId;
+                conversa = viva;
+                aplicar(conversa);
+            }
+            catch (DbUpdateConcurrencyException ex) when (tentativa < MaxTentativasGravacao
+                && ex.Entries.All(e => e.Entity is Conversa c && c.Id == conversa.Id))
+            {
+                logger.LogInformation(
+                    "Webhook WhatsApp: conversa {Conversa} mudou enquanto a mensagem era gravada — relendo e reaplicando (tentativa {Tentativa}).",
+                    conversa.Id, tentativa);
+                await db.Entry(conversa).ReloadAsync(ct);
+                aplicar(conversa);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Grava o que os manipuladores deixaram pendente (estado do diálogo, liberações, marcas na
+    /// conversa). Na corrida com outro webhook pela conversa, relê e reaplica por cima o que ELES
+    /// mudaram nela. Falha que sobra é erro de verdade e vai como Error (vira aviso no celular),
+    /// com o que de fato aconteceu: a mensagem do cidadão já está gravada, a resposta pode ter saído,
+    /// o efeito não. Não relança — um 409 faria o relay reentregar à toa (a mensagem já está gravada).
+    /// </summary>
+    private async Task SalvarEfeitosDosManipuladoresAsync(Conversa conversa, CancellationToken ct)
+    {
+        for (var tentativa = 1; ; tentativa++)
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex) when (tentativa < MaxTentativasGravacao
+                && ex.Entries.All(e => e.Entity is Conversa c && c.Id == conversa.Id))
+            {
+                logger.LogInformation(
+                    "Webhook WhatsApp: conversa {Conversa} mudou enquanto os manipuladores respondiam — relendo e reaplicando (tentativa {Tentativa}).",
+                    conversa.Id, tentativa);
+                var entrada = db.Entry(conversa);
+                var mudadas = entrada.Properties
+                    .Where(p => p.IsModified)
+                    .Select(p => (p.Metadata.Name, p.CurrentValue))
+                    .ToList();
+                await entrada.ReloadAsync(ct);
+                foreach (var (nome, valor) in mudadas)
+                    entrada.Property(nome).CurrentValue = valor;
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex,
+                    "Webhook WhatsApp (…{Fone4}): a mensagem do cidadão está gravada, mas o que os manipuladores "
+                    + "fizeram com ela NÃO gravou ({Erro}) — a resposta pode ter saído e o diálogo ficado uma etapa atrás.",
+                    TelefoneWhatsApp.Ultimos4(conversa.TelefoneCanonical), ex.InnerException?.Message ?? ex.Message);
+
+                // Ao menos o registro das respostas que SAÍRAM: sem ele a thread omite o que o
+                // cidadão recebeu. A conversa já está gravada (SalvarEntradaAsync) — fica como está.
+                foreach (var e in db.ChangeTracker.Entries().ToList())
+                {
+                    if (e.Entity is MensagemWhatsApp && e.State == EntityState.Added) continue;
+                    e.State = e.Entity is Conversa ? EntityState.Unchanged : EntityState.Detached;
+                }
+                try { await db.SaveChangesAsync(ct); }
+                catch (DbUpdateException ex2)
+                {
+                    logger.LogWarning(ex2, "Webhook WhatsApp: nem o registro das respostas enviadas gravou.");
+                }
+                db.ChangeTracker.Clear();
+                return;
+            }
+        }
+    }
+
+    private static bool ViolouIndice(DbUpdateException ex, string indice) =>
+        ex.InnerException is Npgsql.PostgresException { SqlState: "23505" } pg && pg.ConstraintName == indice;
 
     /// <summary>
     /// Aplica um recibo (sent/delivered/read/failed) à mensagem outbound (por wamid) e espelha
