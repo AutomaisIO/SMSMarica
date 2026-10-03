@@ -7,6 +7,7 @@ import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { RotaComModulo } from '@/app/router/RotaComModulo';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { PoliticaPrivacidadeExtensaoPage } from '@/features/extensao-navegador/pages/PoliticaPrivacidadeExtensaoPage';
 import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
 import { ConsultaInteligentePage } from '@/features/consulta-inteligente/pages/ConsultaInteligentePage';
 import { IaConfiguracaoPage } from '@/features/ia/pages/IaConfiguracaoPage';
@@ -148,6 +149,8 @@ export function AppRouter() {
     <Routes>
       <Route path="/" element={<RedirecionamentoRaiz />} />
       <Route path="/login" element={<LoginPage />} />
+      {/* Pública: a Chrome Web Store exige a política da extensão num endereço aberto. */}
+      <Route path="/privacidade/extensao" element={<PoliticaPrivacidadeExtensaoPage />} />
 
       {/* Compat: redireciona rotas antigas /operador e /gestor para /app. */}
       <Route path="/operador/*" element={<Navigate to="/app" replace />} />
