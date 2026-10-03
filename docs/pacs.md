@@ -704,10 +704,15 @@ real falha" é a assinatura desta dupla falha. Rede e DO Spaces estavam ok.
   `linux-modules-extra-$(uname -r)` + `zram-tools`, `/dev/zram0` ≈ 1 GB (zstd, 50% da RAM,
   prioridade 100 > swapfile em disco). Folga geral — **não** corrige o OOM de direct memory.
 
-**Follow-ups ainda abertos (não feitos — exigem parada ou dimensionamento):**
-- Revisar `-XX:MaxDirectMemorySize`/heap e/ou **subir a RAM** do droplet; investigar o
-  vazamento de direct buffer. Alternativa barata: **restart programado** do `dcm4chee`
-  (ex.: semanal) como válvula, já que o OOM levou 118 dias pra estourar.
+**Válvula contra recorrência (feita em 2026-10-03):** **restart programado** do `dcm4chee`,
+**domingo 00:00 (America/Sao_Paulo)**, via timer systemd `dcm4chee-restart.timer` →
+`dcm4chee-restart.service` (`systemctl restart dcm4chee`). Como o OOM levou 118 dias pra
+estourar, um ciclo semanal zera a direct memory com folga. Downtime de ~30–40 s na madrugada
+de menor uso. Conferir: `systemctl list-timers dcm4chee-restart.timer`.
+
+**Follow-ups ainda abertos (exigem parada maior ou dimensionamento):**
+- Revisar `-XX:MaxDirectMemorySize`/heap e/ou **subir a RAM** do droplet (2 GB é apertado) e
+  investigar a fundo o vazamento de direct buffer — o restart semanal é paliativo, não cura.
 
 ## 11. Operação — receitas curtas
 
@@ -723,6 +728,9 @@ journalctl -u dcm4chee -f
 
 # Reiniciar PACS (~40s de downtime)
 systemctl restart dcm4chee
+
+# Restart semanal automático (domingo 00:00 -03) — válvula contra OOM de direct memory (§10.7)
+systemctl list-timers dcm4chee-restart.timer   # ver próximo disparo
 
 # Storage — checar montagem (mount vivo?)
 df -h /mnt/s3images && mount | grep s3fs
