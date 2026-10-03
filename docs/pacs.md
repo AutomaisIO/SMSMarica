@@ -667,6 +667,48 @@ Procedimento: backup do device config (`GET /devices/dcm4chee-arc`), aplicar a
 remoção + repontes via `PUT` + `POST /ctrl/reload`. Totalmente reversível pelo
 backup. (Os AEs `PACS-CDT`/`WORK-CDT` foram criados exatamente assim em 2026-06-16.)
 
+### 10.7. **Dupla falha de 2026-10-03 — OOM de direct memory do JVM + segfault do s3fs**
+
+Na madrugada de 2026-10-03 (~00:28 local / 03:28 UTC) o PACS caiu em **dois defeitos
+simultâneos e independentes**, que de fora apareciam juntos como "500 no PACS":
+
+1. **JVM do dcm4chee estourou a direct memory** (`java.lang.OutOfMemoryError: Cannot
+   reserve ... bytes of direct buffer memory`, limite ~512 MB) após **118 dias de uptime** —
+   cara de vazamento lento de `ByteBuffer` direto. Sem direct buffer, o pool IronJacamar
+   não conseguia abrir conexão com o `PacsDS` (`IJ031084` / `IJ000453`), e o handshake TLS
+   com o Postgres corrompia (no log do Postgres: `SSL error: decryption failed or bad record
+   mac`, `could not accept SSL connection`). Resultado: **toda query/metadado que tocava o
+   banco → 500**; só `studies?limit=1` escapava. **O Postgres estava saudável** — quem falhava
+   era o cliente (o JVM).
+2. **O processo s3fs segfaltou** (`kernel: s3fs[...] segfault`), deixando `/mnt/s3images`
+   como mount morto (`Transport endpoint is not connected`). Com isso **nenhum byte de pixel
+   era lido** — metadados vinham do Postgres, mas `rendered`/retrieve do objeto → 500
+   (`IOException: Storage[id=fs1, uri=file:///mnt/s3images/] not accessable`).
+
+**Diagnóstico de fora (sem entrar no host):** QIDO leve 200, mas a consulta por data do
+sincronizador 500, e `rendered` 500 — a assimetria "metadado barato passa, leitura de dado
+real falha" é a assinatura desta dupla falha. Rede e DO Spaces estavam ok.
+
+**Correção aplicada (ambos reversíveis):**
+- `systemctl restart dcm4chee` — zera a direct memory do JVM, o pool reconecta.
+- `fusermount -u /mnt/s3images && mount /mnt/s3images` — remonta o s3fs pela linha do fstab.
+- Validado: QIDO/metadados/`rendered`/retrieve de volta em 200; background services
+  (`SincronizadorExamesService`, `PreparadorImagensExameService`) pararam de falhar. Nenhuma
+  perda de dado (os workers re-tentam e são idempotentes).
+
+**Blindagens feitas no mesmo dia (contra recorrência):**
+- `dcm4chee.service` ganhou `RequiresMountsFor=/mnt/s3images` — o serviço passa a **ordenar
+  após e exigir** o mount do storage, pra não subir "pela metade" com o s3fs fora. (Backup do
+  unit em `/root/backup-dcm4chee-unit-*.service`.)
+- **zram ativado** no host (2 GB de RAM é apertado e o s3fs segfaltou sob pressão de memória):
+  `linux-modules-extra-$(uname -r)` + `zram-tools`, `/dev/zram0` ≈ 1 GB (zstd, 50% da RAM,
+  prioridade 100 > swapfile em disco). Folga geral — **não** corrige o OOM de direct memory.
+
+**Follow-ups ainda abertos (não feitos — exigem parada ou dimensionamento):**
+- Revisar `-XX:MaxDirectMemorySize`/heap e/ou **subir a RAM** do droplet; investigar o
+  vazamento de direct buffer. Alternativa barata: **restart programado** do `dcm4chee`
+  (ex.: semanal) como válvula, já que o OOM levou 118 dias pra estourar.
+
 ## 11. Operação — receitas curtas
 
 > Todos os comandos assumem SSH como `root@pacs.marica.automais.cloud`.
@@ -682,9 +724,15 @@ journalctl -u dcm4chee -f
 # Reiniciar PACS (~40s de downtime)
 systemctl restart dcm4chee
 
-# Storage — checar montagem
+# Storage — checar montagem (mount vivo?)
 df -h /mnt/s3images && mount | grep s3fs
 ls /mnt/s3images/ | head -5
+# Se der "Transport endpoint is not connected", o s3fs morreu (ver §10.7) — remontar:
+fusermount -u /mnt/s3images 2>/dev/null || umount -l /mnt/s3images
+mount /mnt/s3images && stat /mnt/s3images/$(date +%Y)   # confirma leitura real
+
+# Memória / swap (host de 2 GB — ver §10.7)
+free -h && swapon --show
 
 # Postgres
 sudo -u postgres psql dcmdb -c "SELECT count(*) FROM study;"
