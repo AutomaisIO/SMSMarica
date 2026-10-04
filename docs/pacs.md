@@ -713,6 +713,9 @@ de menor uso. Conferir: `systemctl list-timers dcm4chee-restart.timer`.
 **Follow-ups ainda abertos (exigem parada maior ou dimensionamento):**
 - Revisar `-XX:MaxDirectMemorySize`/heap e/ou **subir a RAM** do droplet (2 GB é apertado) e
   investigar a fundo o vazamento de direct buffer — o restart semanal é paliativo, não cura.
+  O monitor do §11.1 avisa a memória direta usada antes de cada restart (dá a curva do
+  vazamento) e alerta em 80% do limite. Heap de 512 MB também estoura no `rendered` de imagem
+  grande (§11.1).
 
 ## 11. Operação — receitas curtas
 
@@ -747,7 +750,54 @@ sudo -u postgres psql dcmdb -c "SELECT count(*) FROM study;"
 
 # UI Arc Light (admin)
 # http://pacs.marica.automais.cloud:8080/dcm4chee-arc/ui2/
+
+# Monitor do PACS (§11.1)
+systemctl list-timers pacs-monitor.timer dcm4chee-restart.timer
+journalctl -u pacs-monitor -n 30          # cada aviso enviado aparece como "AVISO pacs.*"
+cat /var/lib/pacs-monitor/estado.json      # o que está em falha agora + última memória direta lida
 ```
+
+### 11.1. Monitor de dentro do PACS (avisos no celular)
+
+Criado em 2026-10-04 depois da dupla falha de 03/10 (§10.7). A plataforma só via o PACS **de fora**
+(o `SincronizadorExamesService` tomando erro) — e nada sabia de memória do Java, s3fs ou do restart
+semanal. Agora um script roda **no servidor do PACS** e avisa pelo mesmo caminho dos demais erros:
+`POST https://api.smsmarica.online/alertas-plataforma/externo` (chave em `X-Monitor-Chave`) → freio
+por fonte → WhatsApp → histórico em **Sistema → Avisos no celular**.
+
+Fontes já vêm no catálogo do servidor (`AlertaCatalogo.Pacs*`); a chave do monitor **só** aceita estas:
+
+| Fonte | Quando |
+|---|---|
+| `pacs.servico` | consulta de exames (QIDO local) falha há ≥ 2 min · `stat` em `/mnt/s3images/<ano>` falha/trava há ≥ 2 min · `segfault` no kernel · restart programado **não voltou** em 5 min |
+| `pacs.memoria` | `OutOfMemoryError` novo no `server.log` (separa **memória direta** = o vazamento de 03/10, de **heap** = imagem grande no `rendered`) · memória direta ≥ 80% do limite (lida a cada 10 min pelo `jboss-cli`) · host com < 120 MB livres há ≥ 2 min · OOM-killer do kernel |
+| `pacs.recuperado` | o que estava em falha voltou ao normal (com quanto tempo durou) |
+| `pacs.reinicio` | o restart de domingo 00:00 vai começar — leva o uptime e a **memória direta usada até ali** (o termômetro do vazamento, semana a semana) |
+| `pacs.reinicio_concluido` | o restart terminou e PACS + armazenamento responderam (com o tempo que levou) |
+
+Avisa por **transição** (problema que continua não repete a cada minuto). Se a plataforma não
+responder, o aviso fica em `/var/lib/pacs-monitor/pendentes.jsonl` e sai na passagem seguinte.
+
+**Arquivos** (fonte em `scripts/pacs-monitor/`, instalar com `bash instalar.sh` no host):
+- `/opt/pacs-monitor/pacs-monitor.py` — modos `verificar` (timer de 1 min), `reiniciar` (restart
+  semanal) e `testar` (manda um aviso de teste);
+- `pacs-monitor.service` + `.timer` (a cada 60 s);
+- `dcm4chee-restart.service` **substituído**: em vez de `systemctl restart dcm4chee` direto, chama
+  `pacs-monitor.py reiniciar` (avisa antes, reinicia, espera responder, avisa depois). O
+  `dcm4chee-restart.timer` (domingo 00:00) não muda. Backup do unit antigo em
+  `/root/backup-dcm4chee-restart.service.antes-monitor`.
+- `/etc/pacs-monitor.env` (600) — `PACS_MONITOR_URL` + `PACS_MONITOR_CHAVE`; a mesma chave vai no
+  env da plataforma como `AlertaPlataforma__ChaveMonitorExterno`. Sem a chave do lado da
+  plataforma a entrada responde 404 (desligada).
+
+**Do lado de fora**, o `SincronizadorExamesService` só vira erro (e aviso) depois de **2 min de falha
+contínua** (`Sincronizador:ToleranciaFalhaSegundos`): a porta 8080 fica fechada ~20 s no restart
+semanal e isso não é incidente (04/10/2026: o restart gerou um "Connection refused" no celular).
+
+**Achado de 04/10 ao montar o monitor:** além do vazamento de memória direta, o `server.log` tem
+`OutOfMemoryError: Java heap space` (03/10 22:10 e 22:31; 04/10 00:36) no `rendered` de imagens
+grandes (`DicomImageReader.readRaster`) — heap de 512 MB (`-Xmx512m`). O PACS não cai, mas aquela
+imagem falha. Entra no mesmo follow-up de dimensionamento do §10.7.
 
 ## 12. Referências
 

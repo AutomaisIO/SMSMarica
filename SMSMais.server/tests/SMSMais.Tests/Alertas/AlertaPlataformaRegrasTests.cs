@@ -83,6 +83,28 @@ public class AlertaPlataformaRegrasTests
         FalhaContaIa.EhFalhaDeConta($"Anthropic retornou 400: {corpo}").Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData(AlertaCatalogo.PacsMemoria, true)]
+    [InlineData(AlertaCatalogo.PacsServico, true)]
+    [InlineData(AlertaCatalogo.PacsRecuperado, true)]
+    [InlineData(AlertaCatalogo.PacsReinicio, true)]
+    [InlineData(AlertaCatalogo.PacsReinicioConcluido, true)]
+    // A chave do monitor não pode se passar por outra fonte nem criar fonte nova.
+    [InlineData(AlertaCatalogo.RoboFalha, false)]
+    [InlineData(AlertaCatalogo.Erro500, false)]
+    [InlineData("pacs.qualquer_coisa", false)]
+    [InlineData("", false)]
+    public void Monitor_externo_so_reporta_as_fontes_do_pacs(string chave, bool aceita) =>
+        AlertaCatalogo.AceitaDeMonitorExterno(chave).Should().Be(aceita);
+
+    [Fact]
+    public void Fontes_do_pacs_aparecem_na_tela_mesmo_sem_ocorrencia() =>
+        AlertaCatalogo.Conhecidas.Select(o => o.Chave).Should().Contain(
+        [
+            AlertaCatalogo.PacsMemoria, AlertaCatalogo.PacsServico, AlertaCatalogo.PacsRecuperado,
+            AlertaCatalogo.PacsReinicio, AlertaCatalogo.PacsReinicioConcluido,
+        ]);
+
     [Fact]
     public void Erro_comum_da_api_nao_e_falha_de_conta() =>
         FalhaContaIa.Classificar(HttpStatusCode.BadRequest,

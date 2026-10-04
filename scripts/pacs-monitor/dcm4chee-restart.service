@@ -1,0 +1,11 @@
+[Unit]
+Description=Restart semanal do dcm4chee (valvula contra vazamento de direct memory do JVM - ver docs/pacs.md 10.7) com aviso antes e depois
+After=network.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pacs-monitor.env
+# Avisa "vai reiniciar" (com a memoria direta usada ate ali), reinicia, espera o PACS e o
+# armazenamento responderem e avisa "voltou" - ou "NAO voltou" (sai 1, unit fica failed).
+ExecStart=/usr/bin/python3 /opt/pacs-monitor/pacs-monitor.py reiniciar
+TimeoutStartSec=10min

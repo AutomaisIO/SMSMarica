@@ -1,0 +1,10 @@
+[Unit]
+Description=Roda o monitor do PACS a cada minuto
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

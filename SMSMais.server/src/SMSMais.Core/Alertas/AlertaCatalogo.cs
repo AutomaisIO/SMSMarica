@@ -26,6 +26,15 @@ public static class AlertaCatalogo
 
     public static string Sincronismo(string provedor) => $"sincronismo.{provedor.ToLowerInvariant()}";
 
+    // Monitor que roda DENTRO do servidor do PACS (docs/pacs.md §11.1) e reporta por
+    // POST /alertas-plataforma/externo. Chaves separadas de propósito: o freio é por chave, e o
+    // "voltou" logo depois do "vai reiniciar" não pode ser engolido por ele.
+    public const string PacsMemoria = "pacs.memoria";
+    public const string PacsServico = "pacs.servico";
+    public const string PacsRecuperado = "pacs.recuperado";
+    public const string PacsReinicio = "pacs.reinicio";
+    public const string PacsReinicioConcluido = "pacs.reinicio_concluido";
+
     public static readonly IReadOnlyList<OrigemConhecida> Conhecidas =
     [
         new(RoboFalha, "Robô de atendimento", "Robô",
@@ -50,12 +59,35 @@ public static class AlertaCatalogo
             "Falhas avisadas pelo motor do SERNIT."),
         new(Sincronismo("esussg"), "Sincronismo ESUS SG", "Sincronismo",
             "Falhas avisadas pelo motor do ESUS de São Gonçalo."),
+        new(PacsMemoria, "PACS — memória", GrupoPacs,
+            "Vigiado de dentro do servidor do PACS: o Java do dcm4chee esgotou a memória "
+            + "(OutOfMemoryError — heap ou memória direta), a memória direta passou do limite de "
+            + "alerta, ou o servidor ficou sem memória livre e o sistema matou um processo."),
+        new(PacsServico, "PACS — fora do ar", GrupoPacs,
+            "Vigiado de dentro do servidor do PACS: o dcm4chee não responde há mais de 2 minutos, "
+            + "o armazenamento das imagens (s3fs) caiu, ou o reinício programado não voltou."),
+        new(PacsRecuperado, "PACS — voltou ao normal", GrupoPacs,
+            "O que o monitor do PACS tinha avisado como fora do ar voltou a funcionar."),
+        new(PacsReinicio, "PACS — reinício programado", GrupoPacs,
+            "Aviso de que o reinício semanal do dcm4chee (domingo 00:00) vai começar, com a "
+            + "memória direta usada até ali — é o termômetro do vazamento."),
+        new(PacsReinicioConcluido, "PACS — reinício concluído", GrupoPacs,
+            "O reinício programado terminou e o PACS respondeu de novo (com o tempo que levou)."),
         new(Teste, "Mensagem de teste", "Sistema",
             "Disparada pelo botão \"Enviar teste\" desta tela."),
     ];
 
+    private const string GrupoPacs = "PACS / Worklist";
+
     public static OrigemConhecida? Buscar(string chave) =>
         Conhecidas.FirstOrDefault(o => string.Equals(o.Chave, chave, StringComparison.Ordinal));
+
+    /// <summary>
+    /// Fontes que um monitor de FORA da plataforma pode reportar. Lista fechada: a chave do monitor
+    /// não pode criar fonte nova nem se passar por robô, IA ou erro 500.
+    /// </summary>
+    public static bool AceitaDeMonitorExterno(string chave) =>
+        chave is PacsMemoria or PacsServico or PacsRecuperado or PacsReinicio or PacsReinicioConcluido;
 
     /// <summary>Descrição das fontes <c>log:*</c> (as descobertas pela captura do log).</summary>
     public const string DescricaoLog =

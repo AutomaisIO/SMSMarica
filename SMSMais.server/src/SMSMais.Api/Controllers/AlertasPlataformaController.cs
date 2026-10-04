@@ -1,4 +1,9 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Alertas;
 using SMSMais.Data.Entities.Enums;
@@ -68,4 +73,50 @@ public sealed class AlertasPlataformaController(IAlertaPlataformaService service
     [ProducesResponseType<AlertaEnvioDto>(StatusCodes.Status200OK)]
     public Task<AlertaEnvioDto> Testar(CancellationToken cancellationToken) =>
         service.TestarAsync(cancellationToken);
+
+    public const string PoliticaDeLimiteExterno = "alerta-monitor-externo";
+
+    /// <summary>
+    /// Entrada do monitor que roda DENTRO do servidor do PACS (memória do Java, s3fs, reinício
+    /// programado — docs/pacs.md §11.1). Sem o login do painel: a chave vem em
+    /// <c>X-Monitor-Chave</c> e só aceita as fontes <c>pacs.*</c> do catálogo. O aviso segue o
+    /// caminho de sempre (fila → freio → WhatsApp → histórico na tela Avisos no celular).
+    /// </summary>
+    [HttpPost("externo")]
+    [AllowAnonymous]
+    [EnableRateLimiting(PoliticaDeLimiteExterno)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult ReportarExterno(
+        [FromBody] AlertaExternoRequest request,
+        [FromServices] IAlertaPlataforma alerta,
+        [FromServices] IOptions<AlertaPlataformaOptions> opcoes)
+    {
+        var chave = opcoes.Value.ChaveMonitorExterno;
+        if (string.IsNullOrWhiteSpace(chave)) return NotFound();
+        if (!ChaveConfere(Request.Headers["X-Monitor-Chave"].ToString(), chave)) return Unauthorized();
+
+        if (!AlertaCatalogo.AceitaDeMonitorExterno(request.Origem ?? string.Empty))
+            return BadRequest(new { mensagem = $"Fonte '{request.Origem}' não aceita do monitor externo." });
+        if (string.IsNullOrWhiteSpace(request.Titulo))
+            return BadRequest(new { mensagem = "Informe 'titulo'." });
+
+        var detalhe = (request.Detalhe ?? string.Empty).Trim();
+        if (detalhe.Length > 4000) detalhe = detalhe[..4000];
+
+        alerta.Reportar(request.Origem!, request.Titulo.Trim(), detalhe);
+        return Accepted();
+    }
+
+    private static bool ChaveConfere(string apresentada, string esperada)
+    {
+        if (string.IsNullOrEmpty(apresentada)) return false;
+        var a = Encoding.UTF8.GetBytes(apresentada);
+        var b = Encoding.UTF8.GetBytes(esperada);
+        return a.Length == b.Length && CryptographicOperations.FixedTimeEquals(a, b);
+    }
 }
+
+public sealed record AlertaExternoRequest(string? Origem, string? Titulo, string? Detalhe);

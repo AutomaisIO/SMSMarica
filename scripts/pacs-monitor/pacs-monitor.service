@@ -1,0 +1,10 @@
+[Unit]
+Description=Monitor do PACS - memoria do Java, s3fs e servico; avisa a plataforma SMSMais (docs/pacs.md 11.1)
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pacs-monitor.env
+ExecStart=/usr/bin/python3 /opt/pacs-monitor/pacs-monitor.py verificar
+TimeoutStartSec=120
+Nice=10

@@ -123,8 +123,14 @@ public sealed partial class AlertaPlataformaDespachante(
             db.AlertaOrigens.Add(origem);
         }
 
+        // Esfriou: é um episódio novo. Zera também as ocorrências represadas pelo freio — senão o
+        // aviso de hoje carrega as do episódio anterior (04/10/2026: "21 ocorrências" de uma
+        // queda de 18 s, sendo 20 da queda da véspera).
         if (origem.UltimaOcorrenciaEm is { } anterior && agora - anterior > Esfriamento)
+        {
             origem.AvisosSeguidos = 0;
+            origem.OcorrenciasSemAviso = 0;
+        }
 
         origem.Ocorrencias++;
         origem.UltimaOcorrenciaEm = agora;

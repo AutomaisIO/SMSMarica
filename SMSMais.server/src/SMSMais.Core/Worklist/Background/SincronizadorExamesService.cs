@@ -32,6 +32,7 @@ public sealed class SincronizadorExamesService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var intervalo = TimeSpan.FromSeconds(Math.Max(5, _options.IntervaloSegundos));
+        var tolerancia = new ToleranciaFalha(TimeSpan.FromSeconds(Math.Max(0, _options.ToleranciaFalhaSegundos)));
         _logger.LogInformation("SincronizadorExamesService iniciado — intervalo {Intervalo}.", intervalo);
 
         // Pequeno delay inicial pra não atropelar o startup da API.
@@ -43,6 +44,10 @@ public sealed class SincronizadorExamesService(
             try
             {
                 await ExecutarUmaPassagemAsync(stoppingToken);
+
+                if (tolerancia.RegistrarSucesso(DateTime.UtcNow) is { } duracao)
+                    _logger.LogInformation(
+                        "SincronizadorExamesService voltou a falar com o PACS após {Duracao:hh\\:mm\\:ss} de falha.", duracao);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -53,7 +58,16 @@ public sealed class SincronizadorExamesService(
                 // Inclui TaskCanceledException de TIMEOUT do HttpClient (PACS lento): trata como
                 // falha transitória e continua o loop. NUNCA deixa a exceção subir — senão o
                 // BackgroundServiceExceptionBehavior=StopHost derruba a API inteira.
-                _logger.LogError(ex, "Falha na passagem do SincronizadorExamesService — vai tentar de novo.");
+                //
+                // Dentro da tolerância fica em Warning (não vai ao celular): o restart semanal do
+                // dcm4chee derruba a porta por ~20 s e não é incidente. Passou dela, Error — com o
+                // MESMO texto de sempre, para continuar caindo na mesma fonte de aviso.
+                if (tolerancia.RegistrarFalha(DateTime.UtcNow))
+                    _logger.LogError(ex, "Falha na passagem do SincronizadorExamesService — vai tentar de novo.");
+                else
+                    _logger.LogWarning(ex,
+                        "Falha na passagem do SincronizadorExamesService (falhando desde {Desde:HH:mm:ss} UTC, dentro da tolerância) — vai tentar de novo.",
+                        tolerancia.FalhandoDesde);
             }
 
             try { await Task.Delay(intervalo, stoppingToken); }

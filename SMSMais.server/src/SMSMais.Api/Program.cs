@@ -347,6 +347,18 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+
+    // Monitor de dentro do servidor do PACS (POST /alertas-plataforma/externo): reporta por
+    // transição, alguns avisos por hora no máximo. O teto barra força bruta na chave.
+    options.AddPolicy(SMSMais.Api.Controllers.AlertasPlataformaController.PoliticaDeLimiteExterno, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 // Atrás do nginx (proxy no mesmo host): sem isto, RemoteIpAddress é o loopback do proxy

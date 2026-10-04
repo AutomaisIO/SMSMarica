@@ -27,4 +27,11 @@ public sealed class AlertaPlataformaOptions
     /// do freio não pode virar conta. Passou do teto, o aviso é contado e registrado, não enviado.
     /// </summary>
     public int TetoDiario { get; set; } = 60;
+
+    /// <summary>
+    /// Chave que o monitor de dentro do servidor do PACS apresenta em <c>X-Monitor-Chave</c> para
+    /// reportar por <c>POST /alertas-plataforma/externo</c>. Vazia = entrada desligada (404). Só no
+    /// env do servidor (<c>AlertaPlataforma__ChaveMonitorExterno</c>), nunca no repositório.
+    /// </summary>
+    public string ChaveMonitorExterno { get; set; } = string.Empty;
 }
