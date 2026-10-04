@@ -60,6 +60,12 @@ public static class ProvedoresIntegracao
         // clientId=usuário, clientSecret=senha, parametrosJson={cliente, apiUrl, legadoUrl}.
         // Cadastrada pela aba ESUS SG de Regulação → Configuração, não por esta tela.
         ["esussg"] = "ESUS — São Gonçalo",
+        // e-SUS APS PEC do município (o e-SUS do GOVERNO, esus.marica.rj.gov.br) — consulta do cadastro
+        // do cidadão (celular) para corrigir telefone que falhou, SOMENTE LEITURA (ADR-0067).
+        // clientId=usuário (CPF), clientSecret=senha,
+        // parametrosJson={baseUrl, acessoId, janelaInicio, janelaFim}. Credencial CEDIDA por uma
+        // servidora e o PEC é sessão única: só se usa na janela da madrugada, para não derrubá-la.
+        ["esuspec"] = "e-SUS APS PEC (cadastro do cidadão)",
         // NB: o conector web do Klinikos NÃO é um provedor de credencial de serviço (não é
         // integração tipo Google/Spaces). É uma FONTE DE PRONTUÁRIO — configurada em
         // "Importar Prontuários → Fontes/Conectores" como uma IaFonte (Tipo=KlinikosWeb), com

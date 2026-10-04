@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0067 — Correção automática de telefone pelo e-SUS PEC (rotina noturna) e reenvio da mensagem</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0067 — Correção automática de telefone pelo e-SUS PEC (rotina noturna) e reenvio da mensagem</h1>
+<p><strong>Status:</strong> proposto · <strong>Data:</strong> 2026-10-04 <strong>Relacionado:</strong> <a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a> (confirmações, posse, Mensageria) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (destinatário correto) · <a href="./0047-posse-de-conversa-filas.md">ADR-0047</a> (conversas) · <a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a> (proveniência por fonte) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (sistemas externos só leitura) · <code>SistemaRegulacao.Esus = 4</code> (reservado no <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a>)</p>
+<h2>Contexto</h2>
+<p>Quando a mensagem do agendamento não chega (a Meta recusa porque o número não é WhatsApp, o cadastro não tem celular, ou quem atende diz "não sou essa pessoa"), o paciente cai na aba <strong>Telefone comprometido</strong> e fica esperando alguém da recepção conseguir outro número. Hoje ninguém procura esse número em lugar nenhum.</p>
+<p>O <strong>e-SUS APS PEC</strong> do município (o e-SUS do governo, <code>esus.marica.rj.gov.br</code>) é onde a atenção básica atualiza o cadastro do cidadão, e é a fonte mais fresca de celular e filiação. Em 02–04/10/2026 o laboratório <code>Automais.esus/</code> (somente leitura) mediu isso de ponta a ponta e, com o OK do Bernardo, a correção foi feita à mão em produção:</p>
+<ul>
+<li><strong>4.064</strong> pacientes com contato comprometido, número errado ou mensagem retida → o PEC tinha **outro</li>
+</ul>
+<p>  celular válido para 67%** (2.704). Cadastro do PEC atualizado em 2026 para 95% deles.</p>
+<ul>
+<li><strong>2.677</strong> telefones trocados (o antigo vai para o histórico), <strong>849</strong> mensagens reenviadas: das</li>
+</ul>
+<p>  reenviadas, ~400 chegaram na primeira hora.</p>
+<ul>
+<li>O mesmo levantamento completou <strong>mãe 1.784, pai 1.791</strong> e trocou <strong>262 CNS</strong> (só os confirmados no</li>
+</ul>
+<p>  CADSUS pelo SER).</p>
+<ul>
+<li>O PEC é sessão única por usuário: logar derruba quem estiver usando a mesma conta. A credencial foi</li>
+</ul>
+<p>  cedida por uma servidora; <strong>de madrugada</strong> ela não está no sistema.</p>
+<h2>Decisão</h2>
+<p>Uma rotina noturna no backend repete, todo dia, o que foi feito à mão — só leitura no PEC, escrita só no nosso hub.</p>
+<ol>
+<li><strong>Credencial.</strong> Usuário e senha do PEC cadastrados em Integrações (<code>integracao_credencial</code>, cifrados),</li>
+</ol>
+<p>   como SISREG/SER/SERNIT. Acesso de leitura de prontuário/cadastro (lotação de coordenação/diretor).</p>
+<ol>
+<li><strong>Janela.</strong> Só de madrugada (padrão 02:00–05:00, configurável). Fora da janela a rotina <strong>não loga</strong>.</li>
+</ol>
+<p>   Dentro dela o login pode forçar a entrada (<code>force</code>), porque a dona da credencial não está usando.</p>
+<ol>
+<li><strong>Quem entra.</strong> Pacientes, desde a última rodada, com: contato comprometido aberto (sem celular /</li>
+</ol>
+<p>   não é WhatsApp), pendência "número errado" aberta, ou comunicação retida aguardando correção do    contato. Cada paciente consultado fica registrado e não é reconsultado em menos de N dias.</p>
+<ol>
+<li><strong>Consulta no PEC.</strong> Um por vez, intervalo aleatório de 1–2 s, retentativa em 502/504. Por CPF (ou CNS),</li>
+</ol>
+<p>   lendo <code>cidadaos</code> + <code>cidadao(id)</code> (celular, residencial, contato, data de atualização). Só <code>query</code>; a    trava do cliente recusa qualquer mutation e as consultas que regravam o cadastro pelo CADSUS.</p>
+<ol>
+<li><strong>Decisão por paciente</strong> (a mesma de 02–04/10):</li>
+</ol>
+<ul>
+<li>telefone <strong>validado</strong> (OTP) → nunca é alterado;</li>
+<li>o PEC tem <strong>outro celular válido</strong> → troca: vira o principal (<code>rank 1</code>, <code>contato-origem = esus-pec</code>,</li>
+</ul>
+<p>     <code>period.start</code>); o antigo vai para o histórico (<code>period.end</code>); auditoria <code>TrocouTelefoneEsusPec</code>;      baixa no contato comprometido;    - o número do PEC é o confirmado (próprio) de <strong>outra pessoa</strong> → só troca se houver <strong>sobrenome em      comum</strong> (é o celular da família); senão, fica para a recepção;    - o PEC traz <strong>o mesmo número que falhou</strong> ou é o número negado → marca <strong>"e-SUS também errado"</strong> e o      paciente fica na aba Telefone comprometido com esse motivo (ligar);    - não achado no PEC / sem celular válido → fica na aba, com o motivo.</p>
+<ol>
+<li><strong>Reenvio.</strong> No horário de envio do dia seguinte, a mensagem que falhou <strong>por número</strong> volta para a fila,</li>
+</ol>
+<p>   pelo mesmo caminho do botão Reenviar (revoga links antigos, zera, re-resolve o telefone atual). Só    reenvia agendamento <strong>futuro</strong> ainda <strong>sem resposta</strong>. Não reenvia quando o motivo não foi o número    ("já respondeu por outro canal", "sem data futura", "sem CPF para o link").</p>
+<ol>
+<li><strong>Histórico de tentativas.</strong> Cada reenvio grava na trilha de contatos a tentativa anterior (número,</li>
+</ol>
+<p>   resultado, motivo) e a nova. <strong>Fase 2:</strong> o card da mensagem mostra essa sequência    ("1ª para (21) 9…-1234 — não é WhatsApp · 2ª para o celular do e-SUS — entregue/lida/falhou").</p>
+<h2>Consequências</h2>
+<ul>
+<li>O telefone furado deixa de esperar a recepção: no dia seguinte o paciente recebe pelo número do PEC.</li>
+<li>Toda troca é rastreável: origem no próprio telecom, auditoria e trilha de contatos; o número antigo nunca</li>
+</ul>
+<p>  some.</p>
+<ul>
+<li>O PEC continua sem receber nenhuma escrita nossa.</li>
+<li>Se a servidora desistir da cessão, a rotina para (credencial inválida → aviso de erro), e o resto do</li>
+</ul>
+<p>  sistema segue igual.</p>
+<ul>
+<li>Custo no PEC: ~2 consultas por paciente, de madrugada, em sequência.</li>
+</ul>
+<h2>Fora de escopo (decisões separadas)</h2>
+<ul>
+<li><strong>Remanejamento do SISREG:</strong> a vaga nova chega, mas a antiga não é cancelada no nosso sistema (medido em</li>
+</ul>
+<p>  04/10: 54 tireoides de 06/10 e 38 tomografias de crianças). Precisa de ajuste na conciliação, não nesta rotina.</p>
+<ul>
+<li>Completar filiação/CNS automaticamente (feito à mão em 03/10; regra própria: só completa vazio, CNS</li>
+</ul>
+<p>  só com confirmação do CADSUS).</p>
+<ul>
+<li>Validação de nome/nascimento divergentes (Hub do Desenvolvedor).</li>
+</ul>
+<h2>Plano</h2>
+<ol>
+<li><code>Core/Integracoes/EsusPec/</code> — cliente GraphQL só-leitura (porta do <code>Automais.esus/pec/client.py</code>:</li>
+</ol>
+<p>   XSRF, <code>Api-Consumer-Id: ESUS_WEB_CLIENT</code>, trava de mutation, retentativa, intervalo).</p>
+<ol>
+<li>Serviço de decisão + <code>BackgroundService</code> na janela da madrugada; registro por paciente consultado.</li>
+<li>Troca no hub pelo caminho normal de gravação do Patient (não por SQL), com auditoria.</li>
+<li>Reenvio: reaproveitar <code>RearmarParaNovoEnvio</code> + revogação de links; agendar para o horário de envio.</li>
+<li>Tela: credencial em Integrações; contadores da última rodada; motivo "e-SUS também errado" na aba.</li>
+<li>Manual: artigo de Confirmações / Telefone comprometido (skill <code>confrontar-manual</code>).</li>
+<li>Fase 2: histórico de tentativas no card da mensagem.</li>
+</ol>
+</main>
+</body>
+</html>

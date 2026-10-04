@@ -12,6 +12,7 @@ import { GoogleMapsCard } from '@/features/integracoes/components/GoogleMapsCard
 import { NavigationSdkCard } from '@/features/integracoes/components/NavigationSdkCard';
 import { ProxyServicoSection } from '@/features/integracoes/components/ProxyServicoSection';
 import { SisregCard, PROVEDOR_SISREG } from '@/features/integracoes/components/SisregCard';
+import { EsusPecCard, PROVEDOR_ESUS_PEC } from '@/features/integracoes/components/EsusPecCard';
 import { WhatsAppCard } from '@/features/integracoes/components/WhatsAppCard';
 
 function LinkCard({ to, titulo, descricao }: { to: string; titulo: string; descricao: string }) {
@@ -39,7 +40,18 @@ export function IntegracoesPage() {
   // O Spaces (S3) tem card próprio (Access/Secret Key + endpoint/region/bucket),
   // então é separado da lista genérica de provedores OAuth.
   const lista = credenciais.data ?? [];
-  const credsOauth = lista.filter((c) => c.provedor !== PROVEDOR_SPACES && c.provedor !== PROVEDOR_SISREG);
+  const credsOauth = lista.filter(
+    (c) => c.provedor !== PROVEDOR_SPACES && c.provedor !== PROVEDOR_SISREG && c.provedor !== PROVEDOR_ESUS_PEC,
+  );
+  const credEsusPec = lista.find((c) => c.provedor === PROVEDOR_ESUS_PEC) ?? {
+    provedor: PROVEDOR_ESUS_PEC,
+    rotulo: 'e-SUS APS PEC (cadastro do cidadão)',
+    clientIdDefinido: false,
+    clientSecretDefinido: false,
+    redirectUri: null,
+    parametrosJson: null,
+    ativo: false,
+  };
   const credSpaces = lista.find((c) => c.provedor === PROVEDOR_SPACES) ?? {
     provedor: PROVEDOR_SPACES,
     rotulo: 'DigitalOcean Spaces (S3)',
@@ -108,6 +120,15 @@ export function IntegracoesPage() {
         </h2>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <SisregCard cred={credSisreg} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Correção de telefone pelo e-SUS (atenção básica)
+        </h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <EsusPecCard cred={credEsusPec} />
         </div>
       </section>
 
