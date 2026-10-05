@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Identidade;
-using SMSMais.Core.SolicitacoesExame;
-using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Solicitacoes;
+using SMSMais.Core.Solicitacoes.Identificadores;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;

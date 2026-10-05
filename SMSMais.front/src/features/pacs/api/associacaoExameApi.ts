@@ -1,6 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type { AssociacaoExame, OrigemEstudo } from '@/features/pacs/types';
-import type { SolicitacaoExame } from '@/features/solicitacoes-exame/types';
+import type { Solicitacao } from '@/features/solicitacoes/types';
 
 /** Vínculos (explícito ou implícito) por StudyInstanceUID, para a listagem. */
 export async function listarAssociacoesPorStudies(uids: string[]): Promise<AssociacaoExame[]> {
@@ -61,8 +61,8 @@ export async function resincronizarExames(): Promise<ResincronizacaoResultado> {
 }
 
 /** Pré-visualização do modal: solicitação enriquecida pelo número SMS. 204 → null. */
-export async function previewSolicitacaoPorAccession(accession: string): Promise<SolicitacaoExame | null> {
-  const { data } = await http.get<SolicitacaoExame | ''>(
+export async function previewSolicitacaoPorAccession(accession: string): Promise<Solicitacao | null> {
+  const { data } = await http.get<Solicitacao | ''>(
     `/exames/associacoes/preview/${encodeURIComponent(accession)}`,
   );
   return data && typeof data === 'object' ? data : null;

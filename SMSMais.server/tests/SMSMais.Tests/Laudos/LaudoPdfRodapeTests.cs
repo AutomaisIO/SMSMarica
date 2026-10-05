@@ -11,7 +11,7 @@ using SMSMais.Core.Laudos.Pdf;
 using SMSMais.Core.Medicos.Assinatura;
 using SMSMais.Core.Midias;
 using SMSMais.Core.Pacientes;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Core.Worklist;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -53,7 +53,7 @@ public class LaudoPdfRodapeTests
 
         var midias = Substitute.For<IMidiasService>();
         var pacientes = Substitute.For<IPacientesService>();
-        var solicitacoes = Substitute.For<ISolicitacoesExameService>();
+        var solicitacoes = Substitute.For<ISolicitacoesService>();
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
 
         var instituicao = Substitute.For<IInstituicaoService>();

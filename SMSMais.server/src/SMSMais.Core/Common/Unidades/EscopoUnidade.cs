@@ -8,7 +8,7 @@ namespace SMSMais.Core.Common.Unidades;
 /// Multitenancy por unidade: "quais unidades este usuário enxerga agora?" — resposta única,
 /// independente da entidade que será filtrada.
 ///
-/// A mesma cascata estava copiada em <c>SolicitacoesExameService</c>, <c>ConsultasService</c> e
+/// A mesma cascata estava copiada em <c>SolicitacoesService</c>, <c>ConsultasService</c> e
 /// <c>LaudosService</c>, e o painel de início seria a quarta cópia. Cada divergência entre elas
 /// vira um vazamento de dado entre unidades que ninguém percebe — por isso a resolução mora aqui.
 ///
@@ -138,10 +138,10 @@ public static class SolicitacaoNoEscopo
     /// ⇒ Enviada. Quando a unidade é as duas coisas, <b>Recebida prevalece</b> (a execução manda).
     /// Sem referência única (visão do conjunto / município) não há seta que faça sentido.
     /// </summary>
-    public static SolicitacoesExame.Dtos.DirecaoSolicitacao? Direcao(
+    public static Solicitacoes.Dtos.DirecaoSolicitacao? Direcao(
         Guid? referencia, Guid executanteId, Guid? solicitanteId) =>
         referencia is not { } r ? null
-        : executanteId == r ? SolicitacoesExame.Dtos.DirecaoSolicitacao.Recebida
-        : solicitanteId == r ? SolicitacoesExame.Dtos.DirecaoSolicitacao.Enviada
+        : executanteId == r ? Solicitacoes.Dtos.DirecaoSolicitacao.Recebida
+        : solicitanteId == r ? Solicitacoes.Dtos.DirecaoSolicitacao.Enviada
         : null;
 }

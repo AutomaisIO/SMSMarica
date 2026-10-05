@@ -29,13 +29,13 @@ public sealed class SiscanSessaoOperadorController(
 {
     /// <summary>A tela pergunta isto antes de oferecer "Gerar Requisição SISCAN".</summary>
     [HttpGet]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<SiscanSessaoOperadorInfo>(StatusCodes.Status200OK)]
     public SiscanSessaoOperadorInfo Estado() => sessoes.Estado(Sessao());
 
     /// <summary>Entra no SISCAN com a credencial do operador. Valida CONTRA O SISCAN na hora.</summary>
     [HttpPost]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<SiscanSessaoOperadorInfo>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public Task<SiscanSessaoOperadorInfo> Entrar(
@@ -44,7 +44,7 @@ public sealed class SiscanSessaoOperadorController(
 
     /// <summary>Sai do SISCAN. O front chama isto no logout — sair daqui é sair de lá.</summary>
     [HttpDelete]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public IActionResult Sair()
     {

@@ -8,7 +8,7 @@ using SMSMais.Core.Laudos.Configuracao.Dtos;
 using SMSMais.Core.Laudos.Pdf;
 using SMSMais.Core.Midias;
 using SMSMais.Core.Pacientes;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Core.Worklist;
 using SMSMais.Core.Midias.Dtos;
 using SMSMais.Data.Entities;
@@ -56,7 +56,7 @@ public class LaudoPdfCabecalhoTabelaTests
             .Returns(new MidiaConteudo(sus, "image/png", "sus.png"));
 
         var pacientes = Substitute.For<IPacientesService>();
-        var solicitacoes = Substitute.For<ISolicitacoesExameService>();
+        var solicitacoes = Substitute.For<ISolicitacoesService>();
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
 
         var instituicao = Substitute.For<IInstituicaoService>();

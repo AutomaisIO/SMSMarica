@@ -13,7 +13,7 @@ import type { ItemSolicitacaoPainel } from '@/features/painel-inicio/types';
  */
 export function LinhaSolicitacao({ item }: { item: ItemSolicitacaoPainel }) {
   const navigate = useNavigate();
-  const rota = `/app/solicitacoes-exame/${item.id}`;
+  const rota = `/app/solicitacoes/${item.id}`;
 
   function abrir(novaAba: boolean) {
     if (novaAba) window.open(rota, '_blank', 'noopener');

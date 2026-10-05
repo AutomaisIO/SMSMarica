@@ -1,5 +1,5 @@
 import type { ModalidadeDicom } from '@/features/tipos-exame/types';
-import type { ComunicacaoChip } from '@/features/solicitacoes-exame/types';
+import type { ComunicacaoChip } from '@/features/solicitacoes/types';
 
 export type StatusLaudo = 'Rascunho' | 'Finalizado';
 

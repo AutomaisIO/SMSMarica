@@ -8,8 +8,8 @@ using SMSMais.Core.Laudos.Configuracao;
 using SMSMais.Core.Midias;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
-using SMSMais.Core.SolicitacoesExame;
-using SMSMais.Core.SolicitacoesExame.Dtos;
+using SMSMais.Core.Solicitacoes;
+using SMSMais.Core.Solicitacoes.Dtos;
 using SMSMais.Core.Worklist;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -28,7 +28,7 @@ public sealed class LaudoPdfRenderer(
     ILaudoConfiguracaoService configuracao,
     IMidiasService midias,
     IPacientesService pacientes,
-    ISolicitacoesExameService solicitacoes,
+    ISolicitacoesService solicitacoes,
     IConsultaStudyClient consultaStudy,
     IInstituicaoService instituicao,
     IOptions<LaudosPdfOptions> options) : ILaudoPdfRenderer
@@ -37,7 +37,7 @@ public sealed class LaudoPdfRenderer(
     private readonly ILaudoConfiguracaoService _configuracao = configuracao;
     private readonly IMidiasService _midias = midias;
     private readonly IPacientesService _pacientes = pacientes;
-    private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
+    private readonly ISolicitacoesService _solicitacoes = solicitacoes;
     private readonly IConsultaStudyClient _consultaStudy = consultaStudy;
     private readonly IInstituicaoService _instituicao = instituicao;
     private readonly LaudosPdfOptions _opt = options.Value;
@@ -642,7 +642,7 @@ public sealed class LaudoPdfRenderer(
     /// Solicitação ligada ao estudo (match direto por StudyInstanceUID ou via associação).
     /// Falha na resolução NUNCA derruba o PDF — só omite os dados do pedido.
     /// </summary>
-    private async Task<SolicitacaoExameDto?> ResolverSolicitacaoAsync(string studyInstanceUID, CancellationToken ct)
+    private async Task<SolicitacaoDto?> ResolverSolicitacaoAsync(string studyInstanceUID, CancellationToken ct)
     {
         try
         {
@@ -662,7 +662,7 @@ public sealed class LaudoPdfRenderer(
     /// NUNCA usa a data da SOLICITAÇÃO como data do exame.
     /// </summary>
     private async Task<string?> ResolverDataExameAsync(
-        SolicitacaoExameDto? solicitacao, string studyInstanceUID, CancellationToken ct)
+        SolicitacaoDto? solicitacao, string studyInstanceUID, CancellationToken ct)
     {
         // 1) DICOM persistido (wall-clock local) — exibe como está.
         if (solicitacao?.DataEstudo is { } dicom)
@@ -687,7 +687,7 @@ public sealed class LaudoPdfRenderer(
 
     // Cada item é uma LINHA do cabeçalho (1+ campos rótulo/valor renderizados lado a lado).
     private static IReadOnlyList<IReadOnlyList<(string Rotulo, string Valor)>> MontarCabecalhoPaciente(
-        Laudo l, PacienteDto? p, SolicitacaoExameDto? s, string? dataExame)
+        Laudo l, PacienteDto? p, SolicitacaoDto? s, string? dataExame)
     {
         var linhas = new List<IReadOnlyList<(string, string)>>();
 

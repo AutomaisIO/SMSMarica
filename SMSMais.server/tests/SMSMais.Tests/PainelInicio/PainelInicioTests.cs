@@ -5,7 +5,7 @@ using SMSMais.Core.Identidade.Dtos;
 using SMSMais.Core.PainelInicio;
 using SMSMais.Core.PainelInicio.Dtos;
 using SMSMais.Core.Pacientes.Fhir;
-using SMSMais.Core.SolicitacoesExame.Dtos;
+using SMSMais.Core.Solicitacoes.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;
@@ -128,7 +128,7 @@ public class PainelInicioTests(PostgresFixture fixture)
         var (usuario, unidade) = await CriarOperadorAsync(db);
         await CriarPendenciaAsync(db, unidade);
 
-        var painel = await CriarServico(db, usuario, unidade, ModuloPermissao.SolicitacoesExame)
+        var painel = await CriarServico(db, usuario, unidade, ModuloPermissao.Solicitacoes)
             .ObterAsync(LenteEscopoPainel.Unidade, DirecaoPainel.Tudo);
 
         Assert.Null(painel.PendenciasImportacao);
@@ -179,7 +179,7 @@ public class PainelInicioTests(PostgresFixture fixture)
 
         var regulador = await CriarUsuarioAsync(db);
         var servico = CriarServico(db, regulador, unidadeAtiva: null,
-            ModuloPermissao.SolicitacoesExame, ModuloPermissao.Sisreg, ModuloPermissao.RegulacaoTriagem);
+            ModuloPermissao.Solicitacoes, ModuloPermissao.Sisreg, ModuloPermissao.RegulacaoTriagem);
 
         var painel = await servico.ObterAsync(LenteEscopoPainel.Municipio, DirecaoPainel.Tudo);
 
@@ -286,7 +286,7 @@ public class PainelInicioTests(PostgresFixture fixture)
     private static PainelInicioService CriarServico(
         SmsMaisDbContext db, Guid usuarioId, Guid? unidadeAtiva, params ModuloPermissao[] modulos)
     {
-        if (modulos.Length == 0) modulos = [ModuloPermissao.SolicitacoesExame, ModuloPermissao.Sisreg];
+        if (modulos.Length == 0) modulos = [ModuloPermissao.Solicitacoes, ModuloPermissao.Sisreg];
 
         var identidade = Substitute.For<IIdentidadeService>();
         var resolvidas = modulos.Select(m => new PermissaoModuloDto(m, AcoesPermissao.Todas)).ToList();

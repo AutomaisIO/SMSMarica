@@ -52,7 +52,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Veiculos', rotulo: 'Veículos' },
   { id: 'Motoristas', rotulo: 'Motoristas' },
   { id: 'Avaliacoes', rotulo: 'Avaliações' },
-  { id: 'SolicitacoesExame', rotulo: 'Solicitações de exame' },
+  { id: 'Solicitacoes', rotulo: 'Exames e consultas (solicitações)' },
   { id: 'SolicitacaoExameManual', rotulo: 'Solicitação manual de exame (botão "Nova solicitação")' },
   { id: 'TiposExame', rotulo: 'Tipos de exame' },
   { id: 'ProcedimentosSigtap', rotulo: 'Catálogo SIGTAP' },
@@ -107,7 +107,6 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   // Um módulo só para os quatro sistemas (79): é o retrato da regulação, não a produção de ninguém.
   { id: 'IndicadoresRegulacao', rotulo: 'Indicadores de Regulação (SISREG, SER, SERNIT, ESUS SG)' },
   { id: 'Sandbox', rotulo: 'Sandbox de testes (QA)' },
-  { id: 'Consultas', rotulo: 'Consultas reguladas (SISREG)' },
   { id: 'MapeamentoSigtap', rotulo: 'Mapeamento SIGTAP → tipo de exame' },
   // Do Processo Regulatório, entram na matriz só os que hoje concedem alguma coisa de fato: os
   // TRÊS de visão global (lente "Município" do painel de início, ADR-0033 §5) e, desde o

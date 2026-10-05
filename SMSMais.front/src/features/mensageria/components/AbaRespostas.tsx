@@ -59,7 +59,7 @@ export function AbaRespostas() {
         chave: 'proc',
         cabecalho: 'Procedimento',
         render: (r) => {
-          const rota = r.exameId ? `/app/solicitacoes-exame/${r.exameId}` : `/app/consultas/${r.solicitacaoId}`;
+          const rota = `/app/solicitacoes/${r.exameId ?? r.solicitacaoId}`;
           return (
             <Link to={rota} className="text-red-700 hover:underline">
               {r.procedimento ?? (r.categoria === 'Consulta' ? 'Consulta' : 'Exame')}

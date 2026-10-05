@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 
@@ -13,7 +13,7 @@ namespace SMSMais.Core.Worklist.Background;
 /// Worker que processa o fluxo resiliente de envio Solicitada → Enviada → Agendada.
 ///
 /// A cada N segundos pega solicitações cujo <c>ProximaTentativaEm</c> está
-/// vencido e chama <see cref="ISolicitacoesExameService.ProcessarTentativaEnvioAsync"/>,
+/// vencido e chama <see cref="ISolicitacoesService.ProcessarTentativaEnvioAsync"/>,
 /// que decide entre POST (Solicitada→Enviada) e GET de confirmação
 /// (Enviada→Agendada). Tudo idempotente e isolado por solicitação — uma
 /// falha não bloqueia as outras.
@@ -64,7 +64,7 @@ public sealed class EnviadorWorklistService(
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
-        var solicitacoes = scope.ServiceProvider.GetRequiredService<ISolicitacoesExameService>();
+        var solicitacoes = scope.ServiceProvider.GetRequiredService<ISolicitacoesService>();
 
         var agora = DateTime.UtcNow;
         var max = Math.Clamp(_options.MaximoPorPassagem, 1, 200);

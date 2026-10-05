@@ -159,7 +159,7 @@ No detalhe da solicitação, a seção "Comunicação com o paciente" mostra a t
 comunicação (fila/enviada/entregue/lida/visualizada + erros) e os **contatos manuais**
 (`contato_registro`, append-only): botão "Registrar contato" (meio: ligação/WhatsApp/presencial;
 resultado: atendeu/não atendeu/caixa postal/número inválido; observação).
-Endpoints: `GET /solicitacoes-exame/{id}/historico`, `POST /solicitacoes-exame/{id}/contatos`.
+Endpoints: `GET /solicitacoes/{id}/historico`, `POST /solicitacoes/{id}/contatos`.
 Gestão geral em `/comunicacoes-paciente` (rota renomeada de agendamento-notificacoes).
 
 ## Visão geral
@@ -202,7 +202,7 @@ Paciente chega na recepção ──> AUTORIZAR (chave SISREG; exige telefone ver
   com magic link novo; erros permanentes da Meta (131026/131030) são terminais.
 - **Magic link**: uso único **atômico**. Token gasto nunca re-autentica: com sessão no aparelho
   abre o destino direto; sem sessão cai no login.
-- **Autorização** (`POST /solicitacoes-exame/{id}/autorizar`):
+- **Autorização** (`POST /solicitacoes/{id}/autorizar`):
   - exige paciente com **número verificado** (marcador no telecom do Patient FHIR) **ou uma
     dispensa de verificação registrada** (ver seção abaixo) — o botão "Verificar" no Resumo do
     Paciente faz o OTP com número editável e grava direto no FHIR;
@@ -263,7 +263,7 @@ uma verificação que nunca ia acontecer.
 `GET /telefones/dispensa/motivos` (opções + consequência de cada uma) ·
 `GET /telefones/dispensa/{pacienteId}` (ativa; 204 quando não há) ·
 `POST /telefones/dispensa` · `POST /telefones/dispensa/{pacienteId}/revogar`.
-Permissão: `SolicitacoesExame` (Consulta para ler, Edição para registrar/revogar) — dispensar é
+Permissão: `Solicitacoes` (Consulta para ler, Edição para registrar/revogar) — dispensar é
 ato da recepção que autoriza, não edição de cadastro.
 
 No painel: botão **"Não vai validar"** ao lado do "Verificar" (Resumo do Paciente e card de
@@ -273,7 +273,7 @@ aviso de **entrega presencial**.
 
 ## Situação "de fora" (lista de Solicitações)
 
-Derivada no front (`features/solicitacoes-exame/components/SituacaoSolicitacao.tsx`), na ordem:
+Derivada no front (`features/solicitacoes/components/SituacaoSolicitacao.tsx`), na ordem:
 
 | Situação | Cor | Regra |
 |---|---|---|

@@ -29,7 +29,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Cria um token de upload (escopo de 1 solicitação) para o QR code.</summary>
     [HttpPost("anamneses/{solicitacaoExameId:guid}/anexos/tokens")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<CriarTokenRespostaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<CriarTokenRespostaDto> CriarToken(
@@ -38,7 +38,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Lista os documentos anexados a uma solicitação (todos os status, não-excluídos).</summary>
     [HttpGet("anamneses/{solicitacaoExameId:guid}/anexos")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<AnexoExameDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AnexoExameDto>> ListarPorSolicitacao(
         Guid solicitacaoExameId, CancellationToken cancellationToken) =>
@@ -46,7 +46,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Confirma/atualiza um documento (Pendente → Salvo).</summary>
     [HttpPost("anexos/{id:guid}/salvar")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<AnexoExameDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -56,7 +56,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Exclusão lógica (soft delete) de um documento anexado.</summary>
     [HttpDelete("anexos/{id:guid}")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Exclusao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
@@ -67,7 +67,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Documentos do cadastro do paciente do exame, disponíveis para anexar na anamnese.</summary>
     [HttpGet("anamneses/{solicitacaoExameId:guid}/acervo")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<ItemAcervoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<ItemAcervoDto>> Acervo(
         Guid solicitacaoExameId, CancellationToken cancellationToken)
@@ -78,7 +78,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Conteúdo de um documento do cadastro do paciente do exame (visualizador).</summary>
     [HttpGet("anamneses/{solicitacaoExameId:guid}/acervo/conteudo")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> AcervoConteudo(
         Guid solicitacaoExameId, [FromQuery] string chave, CancellationToken cancellationToken)
@@ -90,7 +90,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Anexa na anamnese um documento que o paciente já tem no cadastro (entra salvo).</summary>
     [HttpPost("anamneses/{solicitacaoExameId:guid}/anexos/do-acervo")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<IReadOnlyList<AnexoExameDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AnexoExameDto>> AnexarDoAcervo(
         Guid solicitacaoExameId, [FromBody] RegulacaoExigenciasController.AnexarDoAcervoRequest req,
@@ -102,7 +102,7 @@ public sealed class AnexosController(IAnexosService service, IDocumentosPaciente
 
     /// <summary>Stream do documento (PDF ou imagem) — autenticado.</summary>
     [HttpGet("anexos/{id:guid}/conteudo")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ObterConteudo(Guid id, CancellationToken cancellationToken)

@@ -849,7 +849,7 @@ export function PacienteFormPage() {
         setSugerirSolicitacao(null);
         if (sug) {
           // Abre a solicitação já com o paciente selecionado — sem buscar de novo.
-          navigate('/app/solicitacoes-exame/novo', {
+          navigate('/app/solicitacoes/novo', {
             state: { pacienteCriado: { id: sug.id, nomeCompleto: sug.nome } },
           });
         }

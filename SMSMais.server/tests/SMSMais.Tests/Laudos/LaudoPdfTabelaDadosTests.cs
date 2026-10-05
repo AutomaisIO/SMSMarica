@@ -8,7 +8,7 @@ using SMSMais.Core.Laudos.Configuracao.Dtos;
 using SMSMais.Core.Laudos.Pdf;
 using SMSMais.Core.Midias;
 using SMSMais.Core.Pacientes;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Core.Worklist;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -160,7 +160,7 @@ public class LaudoPdfTabelaDadosTests
             cfg,
             Substitute.For<IMidiasService>(),
             Substitute.For<IPacientesService>(),
-            Substitute.For<ISolicitacoesExameService>(),
+            Substitute.For<ISolicitacoesService>(),
             Substitute.For<IConsultaStudyClient>(),
             instituicao,
             Options.Create(new LaudosPdfOptions()));

@@ -57,7 +57,7 @@ export function useResolverPendenciaComPaciente() {
       // A pendência resolvida vira solicitação: some da raia, some do bloco de busca, e a
       // listagem de solicitações passa a ter uma linha nova.
       qc.invalidateQueries({ queryKey: painelKeys.raiz });
-      qc.invalidateQueries({ queryKey: ['solicitacoes-exame'] });
+      qc.invalidateQueries({ queryKey: ['solicitacoes'] });
       qc.invalidateQueries({ queryKey: ['importacao-sisreg'] });
     },
   });

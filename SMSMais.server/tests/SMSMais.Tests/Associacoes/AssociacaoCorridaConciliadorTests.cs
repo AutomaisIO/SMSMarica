@@ -8,8 +8,8 @@ using SMSMais.Core.Notificacoes;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Core.Pacs;
-using SMSMais.Core.SolicitacoesExame;
-using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Solicitacoes;
+using SMSMais.Core.Solicitacoes.Identificadores;
 using SMSMais.Core.Telefones;
 using SMSMais.Core.Worklist;
 using SMSMais.Core.Erros;
@@ -40,7 +40,7 @@ public class AssociacaoCorridaConciliadorTests(PostgresFixture fixture)
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
         consultaStudy.StudyExistePorStudyUidAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
-        var solicitacoes = new SolicitacoesExameService(
+        var solicitacoes = new SolicitacoesService(
             db,
             Substitute.For<IGeradorIdentificadores>(),
             Substitute.For<IDcm4cheeMwlClient>(),
@@ -55,7 +55,7 @@ public class AssociacaoCorridaConciliadorTests(PostgresFixture fixture)
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             Substitute.For<IRegistroErroService>(),
             Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
-            NullLogger<SolicitacoesExameService>.Instance);
+            NullLogger<SolicitacoesService>.Instance);
 
         var identidades = Substitute.For<IResolvedorIdentidadeDicom>();
         identidades.ObterAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

@@ -21,7 +21,9 @@ public enum ModuloPermissao
     Medicos = 13,
     Laudos = 14,
     LaudosTemplates = 15,
-    SolicitacoesExame = 16,
+    /// <summary>Solicitações reguladas — exames de imagem, consultas, laboratório… numa lista só
+    /// (ADR-0021): listar, ver o detalhe, autorizar a chegada, cancelar, comunicar.</summary>
+    Solicitacoes = 16,
     TiposExame = 17,
     ProcedimentosSigtap = 18,
 
@@ -97,9 +99,8 @@ public enum ModuloPermissao
     /// definir as variáveis. USAR os atalhos no chat exige só <see cref="Conversas"/>.</summary>
     RespostasRapidas = 40,
 
-    /// <summary>Consultas reguladas (SISREG): listar/consultar as solicitações de consulta
-    /// (categoria não-imagem). Sem PACS/laudo. Ver ADR-0021.</summary>
-    Consultas = 41,
+    // 41 era "Consultas": fundido em Solicitacoes (exames e consultas numa lista só) — as
+    // permissões foram migradas para o 16. Não reutilizar o número.
 
     /// <summary>Mapeamento SIGTAP→TipoExame: curadoria dos exames de imagem importados sem tipo
     /// (pendentes) — criar/vincular TipoExame com backfill por código SIGTAP.</summary>
@@ -165,7 +166,7 @@ public enum ModuloPermissao
     SisregMapeamento = 52,
 
     /// <summary>Abrir SOLICITAÇÃO DE EXAME MANUAL (o botão "Nova solicitação" da tela de exames /
-    /// <c>POST /solicitacoes-exame</c>). Separado de <see cref="SolicitacoesExame"/> porque criar
+    /// <c>POST /solicitacoes</c>). Separado de <see cref="Solicitacoes"/> porque criar
     /// à mão é a exceção — o fluxo normal entra pela importação do SISREG (serviço, sem passar por
     /// este gate) — e queremos liberar o botão só a usuários específicos, não a todo perfil com
     /// Inclusão no módulo. Usa apenas a ação <c>Inclusao</c> (ticket #89).</summary>
@@ -242,8 +243,8 @@ public enum ModuloPermissao
     Agenda = 62,
 
     /// <summary>Revelar a <b>chave de confirmação</b> de uma solicitação, lida na hora no SISREG
-    /// (ficha do <c>cons_marcados_reg</c>), pela seção "SISREG" do detalhe de exame e de consulta.
-    /// <para>Módulo próprio, e não uma ação de <see cref="SolicitacoesExame"/>/<see cref="Consultas"/>,
+    /// (ficha do <c>cons_marcados_reg</c>), pela seção "SISREG" do detalhe da solicitação.
+    /// <para>Módulo próprio, e não uma ação de <see cref="Solicitacoes"/>,
     /// porque a chave é a <b>prova de comparecimento</b>: é o que o executante digita no SISREG para
     /// dar baixa, e o SISREG só a entrega a quem traz o comprovante. Quem vê o pedido não deveria,
     /// por isso, poder dar baixa sem o paciente. Cada revelação gasta uma requisição do orçamento

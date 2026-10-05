@@ -57,19 +57,19 @@ public sealed class TelefonesController(
     // código) consente em não validar, com motivo. Sem isso a recepção ficava sem saída: a
     // autorização presencial do exame exige contato verificado.
     //
-    // Permissão: mesma da recepção que autoriza o exame (SolicitacoesExame/Edição) — dispensar
+    // Permissão: mesma da recepção que autoriza o exame (Solicitacoes/Edição) — dispensar
     // é ato do balcão, não edição de cadastro.
     // ---------------------------------------------------------------------------------------
 
     /// <summary>Motivos disponíveis, com o efeito de cada um sobre o envio de resultado/laudo.</summary>
     [HttpGet("dispensa/motivos")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<MotivoDispensaContatoDto>>(StatusCodes.Status200OK)]
     public IReadOnlyList<MotivoDispensaContatoDto> MotivosDispensa() => dispensas.ListarMotivos();
 
     /// <summary>Dispensa ATIVA do paciente. 204 quando não há (o gate de verificado vale normal).</summary>
     [HttpGet("dispensa/{pacienteId:guid}")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<DispensaContatoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult<DispensaContatoDto>> DispensaAtiva(
@@ -81,7 +81,7 @@ public sealed class TelefonesController(
 
     /// <summary>Registra a dispensa (motivo + ciência do paciente). Substitui a ativa, se houver.</summary>
     [HttpPost("dispensa")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<DispensaContatoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -93,7 +93,7 @@ public sealed class TelefonesController(
 
     /// <summary>Derruba a dispensa ativa (ex.: paciente voltou com celular). Idempotente.</summary>
     [HttpPost("dispensa/{pacienteId:guid}/revogar")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RevogarDispensa(
         Guid pacienteId, [FromBody] RevogarDispensaContatoRequest? request, CancellationToken cancellationToken)

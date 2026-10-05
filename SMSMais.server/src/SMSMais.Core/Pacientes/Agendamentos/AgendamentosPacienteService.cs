@@ -338,9 +338,9 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
                 s.RawSisreg,
                 s.ChegadaConfirmadaSisreg,
                 s.ChegadaSisregLidaEm,
-                // O detalhe (GET /solicitacoes-exame/{id}) resolve pelo id do satélite de imagem —
-                // existe só para exame de imagem; consulta/gráfico/outros ficam sem modal.
-                ExameImagemId = s.ExameImagem != null ? (Guid?)s.ExameImagem.Id : null,
+                // O detalhe (GET /solicitacoes/{id}) abre pelo id PÚBLICO: o do exame de imagem
+                // quando há, senão o da própria solicitação (consulta, laboratório…).
+                DetalheId = s.ExameImagem != null ? s.ExameImagem.Id : s.Id,
             })
             .ToListAsync(cancellationToken);
 
@@ -461,7 +461,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
                 DescreverSituacao(situacao),
                 prova,
                 l.CodigoSolicitacao,
-                l.ExameImagemId);
+                l.DetalheId);
         });
     }
 

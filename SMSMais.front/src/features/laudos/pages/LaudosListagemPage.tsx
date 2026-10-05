@@ -17,7 +17,7 @@ import { useExcluirLaudo, useListarLaudos } from '@/features/laudos/api/queries'
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
-import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
+import { ChecksComunicacao } from '@/features/solicitacoes/components/ChecksComunicacao';
 import { CATEGORIAS_BIRADS, corBiRads } from '@/features/laudos/checklist/birads';
 import type { FiltroLaudos, LaudoListItem, StatusLaudo } from '@/features/laudos/types';
 

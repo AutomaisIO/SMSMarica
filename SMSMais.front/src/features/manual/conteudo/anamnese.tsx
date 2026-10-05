@@ -26,7 +26,7 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-10-01',
+  atualizadoEm: '2026-10-05',
   palavrasChave: [
     'anamnese',
     'documentos anexados',
@@ -121,7 +121,7 @@ export const artigoAnamnese: Artigo = {
         <>
           <P>
             Preenche quem recebe a paciente, com ela na frente — é o único momento em que dá para
-            perguntar. A tela abre pela lista de <strong>Solicitações</strong>, no pedido do exame.
+            perguntar. A tela abre pela lista de <strong>Exames e consultas</strong>, no pedido do exame.
           </P>
           <P>
             Aberta de qualquer outro lugar — pela janela do <strong>Laudar</strong> ou pelo PACS —,
@@ -541,11 +541,11 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'quem-pode',
       titulo: 'Quem pode o quê',
-      busca: 'permissão perfil solicitações de exame consulta edição',
+      busca: 'permissão perfil exames e consultas solicitações consulta edição',
       conteudo: (
         <>
           <P>
-            Tudo aqui é governado pelo módulo <strong>Solicitações de Exame</strong> do perfil:
+            Tudo aqui é governado pelo módulo <strong>Exames e consultas (solicitações)</strong> do perfil:
           </P>
           <Lista>
             <Item>

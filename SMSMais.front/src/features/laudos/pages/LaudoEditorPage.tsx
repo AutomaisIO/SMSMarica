@@ -27,7 +27,7 @@ import { EditorRichText } from '@/shared/ui/EditorRichText';
 import { CabecalhoLaudo } from '@/features/laudos/components/CabecalhoLaudo';
 import { SeletorTemplate } from '@/features/laudos/components/SeletorTemplate';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
-import { useSolicitacaoPorStudy } from '@/features/solicitacoes-exame/api/queries';
+import { useSolicitacaoPorStudy } from '@/features/solicitacoes/api/queries';
 import { useAnexosExamePaciente } from '@/features/pacientes/api/queries';
 import { useContextoAnamnese } from '@/features/anamnese/api/queries';
 import { ClipboardCheck, ClipboardList, History } from 'lucide-react';
@@ -734,7 +734,7 @@ export function LaudoEditorPage() {
               <div className="flex-1 min-w-0">
                 <span className="font-medium">Pedido:</span>{' '}
                 <Link
-                  to={`/app/solicitacoes-exame/${solicitacao.data.id}`}
+                  to={`/app/solicitacoes/${solicitacao.data.id}`}
                   className="font-mono hover:underline"
                 >
                   {solicitacao.data.accessionNumber}

@@ -1,4 +1,4 @@
-using SMSMais.Core.SolicitacoesExame.Dtos;
+using SMSMais.Core.Solicitacoes.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Laudos.Dtos;

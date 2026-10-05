@@ -12,7 +12,7 @@ using SMSMais.Core.Medicos.Assinatura;
 using SMSMais.Core.Medicos.Dtos;
 using SMSMais.Core.Medicos.Fhir;
 using SMSMais.Core.Pacientes.Fhir;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Core.Worklist;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -23,7 +23,7 @@ namespace SMSMais.Core.Laudos;
 public sealed class LaudosService(
     SmsMaisDbContext db,
     IHtmlSanitizer sanitizer,
-    Lazy<ISolicitacoesExameService> solicitacoes,
+    Lazy<ISolicitacoesService> solicitacoes,
     IPacienteFhirClient pacienteFhir,
     IPractitionerFhirClient practitionerFhir,
     IPacienteResolver pacienteResolver,
@@ -38,9 +38,9 @@ public sealed class LaudosService(
     private readonly bool _nuvemHabilitada = nuvemOptions.Value.Habilitado;
     private readonly SmsMaisDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
-    // Lazy: quebra a dependência circular SolicitacoesExame → Assinatura → PdfRenderer
-    // → Laudos → SolicitacoesExame na construção do grafo de DI (resolução só no uso).
-    private readonly Lazy<ISolicitacoesExameService> _solicitacoes = solicitacoes;
+    // Lazy: quebra a dependência circular Solicitacoes → Assinatura → PdfRenderer
+    // → Laudos → Solicitacoes na construção do grafo de DI (resolução só no uso).
+    private readonly Lazy<ISolicitacoesService> _solicitacoes = solicitacoes;
     private readonly IPacienteFhirClient _pacienteFhir = pacienteFhir;
     private readonly IPractitionerFhirClient _practitionerFhir = practitionerFhir;
     private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
@@ -260,7 +260,7 @@ public sealed class LaudosService(
             .ToListAsync(ct))
             .ToDictionary(
                 c => c.SolicitacaoId!.Value,
-                c => new SolicitacoesExame.Dtos.ComunicacaoChipDto(
+                c => new Solicitacoes.Dtos.ComunicacaoChipDto(
                     c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
         if (chips.Count == 0) return dtos;
 

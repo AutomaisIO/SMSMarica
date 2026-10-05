@@ -6,7 +6,7 @@ import { MenuContextoBar } from '@/app/layout/MenuContextoBar';
 import { Sidebar } from '@/app/layout/Sidebar';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
 import { useComposerPreferencias } from '@/features/conversas/store/composerPreferencias';
-import { useVisaoSolicitacoes } from '@/features/solicitacoes-exame/store/visaoPreferencia';
+import { useVisaoSolicitacoes } from '@/features/solicitacoes/store/visaoPreferencia';
 import { useTabelaPreferencias } from '@/shared/ui/tabelaPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useModalidadesExames } from '@/features/pacs/store/modalidadesPreferencia';

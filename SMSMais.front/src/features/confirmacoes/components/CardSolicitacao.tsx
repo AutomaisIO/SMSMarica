@@ -82,7 +82,7 @@ export function CardSolicitacao({ item, aba, podeEditar, podeCancelar, ocupado, 
     item.statusConfirmacao !== 'Confirmada' &&
     !meuEmAtendimento &&
     !emAtendimentoPorOutro;
-  const rotaSolicitacao = item.exameId ? `/app/solicitacoes-exame/${item.exameId}` : `/app/consultas/${item.solicitacaoId}`;
+  const rotaSolicitacao = `/app/solicitacoes/${item.exameId ?? item.solicitacaoId}`;
   const dataAgendada = item.dataAgendada ? new Date(item.dataAgendada) : null;
   const ehHoje = dataAgendada ? dataAgendada.toDateString() === new Date().toDateString() : false;
 

@@ -77,7 +77,7 @@ export function PainelInicio() {
           total={data.cancelados.total}
           tom="vermelho"
           icone={XCircle}
-          verTodosPara="/app/solicitacoes-exame?painel=cancelados"
+          verTodosPara="/app/solicitacoes?painel=cancelados"
         >
           {data.cancelados.itens.map((i) => (
             <LinhaSolicitacao key={i.id} item={i} />
@@ -92,7 +92,7 @@ export function PainelInicio() {
           total={data.aguardando.total}
           tom="ambar"
           icone={CalendarClock}
-          verTodosPara="/app/solicitacoes-exame?painel=aguardando"
+          verTodosPara="/app/solicitacoes?painel=aguardando"
         >
           {data.aguardando.itens.map((i) => (
             <LinhaSolicitacao key={i.id} item={i} />

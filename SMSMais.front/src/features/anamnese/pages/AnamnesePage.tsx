@@ -82,7 +82,7 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
   // justamente enquanto lauda (janela solta) ou olhando o exame pelo PACS
   // (`?leitura=1`). O gate é só a permissão — que o backend também exige no
   // endpoint. Já o questionário continua somente-leitura fora de Solicitações.
-  const podeAnexar = usePermissao('SolicitacoesExame', 'Edicao');
+  const podeAnexar = usePermissao('Solicitacoes', 'Edicao');
   // Enviada ao SISCAN = somente leitura. As respostas viraram uma requisição numa base federal;
   // mudá-las aqui criaria duas verdades para o mesmo exame, sem ninguém saber qual vale. O
   // backend recusa igual — esta trava é a conveniência, aquela é a regra.

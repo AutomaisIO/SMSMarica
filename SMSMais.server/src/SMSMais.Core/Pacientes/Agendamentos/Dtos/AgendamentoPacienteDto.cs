@@ -96,8 +96,8 @@ public enum SituacaoAgendamentoPaciente
 /// <param name="NumeroSolicitacao">Número da solicitação na origem — o "ID Solicitação" do SER,
 /// ou o código SISREG da nossa <c>solicitacao</c>. <c>null</c> na agenda local.</param>
 /// <param name="DetalheId">Id para abrir o detalhe (modal) da linha. SER: id da
-/// <c>ser_solicitacao</c>; SISREG: id do <c>ExameImagem</c> (só existe para exame de imagem —
-/// consultas ficam sem detalhe). <c>null</c> = linha sem detalhe navegável.</param>
+/// <c>ser_solicitacao</c>; SISREG: o id público da solicitação (o do exame de imagem quando há,
+/// senão o da espinha). <c>null</c> = linha sem detalhe navegável.</param>
 public sealed record AgendamentoPacienteItemDto(
     Guid Id,
     OrigemAgendamentoPaciente Origem,

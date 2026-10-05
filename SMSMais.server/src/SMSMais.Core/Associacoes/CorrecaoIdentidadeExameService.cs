@@ -6,7 +6,7 @@ using SMSMais.Core.Identidade;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Core.Pacs;
-using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Solicitacoes.Identificadores;
 using SMSMais.Core.Worklist;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -22,7 +22,7 @@ public sealed class CorrecaoIdentidadeExameService(
     IPacienteResolver pacientes,
     IDcm4cheeMwlClient mwl,
     IConsultaStudyClient consultaStudy,
-    SolicitacoesExame.ISolicitacoesExameService solicitacoes,
+    Solicitacoes.ISolicitacoesService solicitacoes,
     IGeradorIdentificadores identificadores,
     IComunicacaoPacienteService comunicacoes,
     IAuditoriaService auditoria,

@@ -15,7 +15,7 @@ import { definirTelefonePrincipal } from '@/features/telefone-validacao/api/tele
 import { BotaoVerificarTelefonePaciente } from '@/features/telefone-validacao/components/BotaoVerificarTelefonePaciente';
 import { BotaoDispensarVerificacao } from '@/features/telefone-validacao/components/BotaoDispensarVerificacao';
 import { SeloDispensaContato } from '@/features/telefone-validacao/components/SeloDispensaContato';
-import { UltimaSolicitacaoPaciente } from '@/features/solicitacoes-exame/components/UltimaSolicitacaoPaciente';
+import { UltimaSolicitacaoPaciente } from '@/features/solicitacoes/components/UltimaSolicitacaoPaciente';
 import { BotaoWhatsAppPaciente } from '@/features/conversas/components/BotaoWhatsAppPaciente';
 import {
   formatarIdadeCurta,
@@ -315,7 +315,7 @@ export function NomePacienteComResumo({
         {aberto ? (
           <UltimaSolicitacaoPaciente
             pacienteId={pacienteId}
-            aoAbrir={(id) => navegarNaJanelaCerta(`/app/solicitacoes-exame/${id}`)}
+            aoAbrir={(id) => navegarNaJanelaCerta(`/app/solicitacoes/${id}`)}
           />
         ) : null}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">

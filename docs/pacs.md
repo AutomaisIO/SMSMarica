@@ -238,7 +238,7 @@ na autorização da recepção e de novo no envio:
 |---|---|
 | **nenhum** | autorização **passa** (cadastrar equipamento é tarefa de administrador — travar a recepção deixaria o paciente parado no balcão); o envio falha com `worklist.sem_equipamento`, visível no exame |
 | **um** | usado automaticamente e **gravado** em `exame_imagem.equipamento_id` — a decisão fica explícita, e equipamento cadastrado depois não muda o destino deste pedido |
-| **dois ou mais** | a autorização **recusa** com `autorizacao.equipamento_obrigatorio` até a recepção escolher a sala (`POST /solicitacoes-exame/{id}/autorizar` aceita `equipamentoId`; as opções vêm de `GET /solicitacoes-exame/{id}/equipamentos`) |
+| **dois ou mais** | a autorização **recusa** com `autorizacao.equipamento_obrigatorio` até a recepção escolher a sala (`POST /solicitacoes/{id}/autorizar` aceita `equipamentoId`; as opções vêm de `GET /solicitacoes/{id}/equipamentos`) |
 
 A escolha é exigida **na autorização** porque é o último ponto do fluxo com uma
 pessoa presente que sabe em qual sala o paciente vai entrar — depois disso o envio
@@ -357,7 +357,7 @@ seleciona o que remover (`ProcessarLimpezaWorklistAsync`).
 Falha na remoção não perde o item: o campo continua preenchido, e o exame volta à
 fila na passagem seguinte (backoff de 5 min). Para recolocar um item removido —
 segunda aquisição do mesmo pedido, por exemplo — existe *Reenviar worklist* na tela
-do exame (`POST /solicitacoes-exame/{id}/reenviar-worklist`).
+do exame (`POST /solicitacoes/{id}/reenviar-worklist`).
 
 > **Itens órfãos** (na worklist do dcm4chee sem exame correspondente aqui) **não**
 > são removidos automaticamente: o PACS pode um dia atender outro sistema, e o nosso

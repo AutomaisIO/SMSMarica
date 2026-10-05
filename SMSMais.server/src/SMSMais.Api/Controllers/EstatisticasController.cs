@@ -55,11 +55,11 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
     /// <summary>
     /// Exporta a lista ANALÍTICA (CSV) que sustenta os agregados de imagem, no conteúdo escolhido
     /// (<c>Exames</c>, <c>Laudos</c> ou <c>ExamesLaudos</c>). SEM PII de paciente — só números do
-    /// exame/solicitação/laudo (decisão do ticket #94). Gate <see cref="ModuloPermissao.SolicitacoesExame"/>
+    /// exame/solicitação/laudo (decisão do ticket #94). Gate <see cref="ModuloPermissao.Solicitacoes"/>
     /// (nível da listagem de exames); a leitura é auditada no serviço.
     /// </summary>
     [HttpGet("exames-imagem/exportar")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ExportarExamesImagem(
         [FromQuery] DateOnly? de = null,
@@ -94,7 +94,7 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
     /// .xlsx formatado a partir desta lista. Mesmo gate/escopo da exportação; a leitura é auditada.
     /// </summary>
     [HttpGet("exames-imagem/faturamento")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<ExameFaturamentoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<ExameFaturamentoDto>> FaturamentoExamesImagem(
         [FromQuery] DateOnly? de = null,

@@ -6,8 +6,8 @@ using SMSMais.Core.Laudos.Assinatura;
 using SMSMais.Core.Notificacoes;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Pacientes.Fhir;
-using SMSMais.Core.SolicitacoesExame;
-using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Solicitacoes;
+using SMSMais.Core.Solicitacoes.Identificadores;
 using SMSMais.Core.Telefones;
 using SMSMais.Core.Worklist;
 using SMSMais.Core.Erros;
@@ -34,9 +34,9 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         consultaStudy.ObterDataHoraEstudoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(DataEstudoDicom);
 
-        // SolicitacoesExameService REAL: a promoção a Realizada (status/RealizadoEm/DataEstudo)
+        // SolicitacoesService REAL: a promoção a Realizada (status/RealizadoEm/DataEstudo)
         // precisa acontecer de verdade; enfileiramento de comunicação fica no substitute.
-        var solicitacoes = new SolicitacoesExameService(
+        var solicitacoes = new SolicitacoesService(
             db,
             Substitute.For<IGeradorIdentificadores>(),
             Substitute.For<IDcm4cheeMwlClient>(),
@@ -51,7 +51,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             Substitute.For<IRegistroErroService>(),
             Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
-            NullLogger<SolicitacoesExameService>.Instance);
+            NullLogger<SolicitacoesService>.Instance);
 
         // Reescritor como substitute: a conciliação AUTOMÁTICA não reescreve o DICOM de propósito
         // (o equipamento pode ainda estar enviando instâncias). Se algum caso deste arquivo

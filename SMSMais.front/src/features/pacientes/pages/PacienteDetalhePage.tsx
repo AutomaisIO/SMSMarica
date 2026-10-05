@@ -28,7 +28,7 @@ import { usePermissao } from '@/shared/auth/authStore';
 import { ModalSolicitacaoSer } from '@/features/ser/components/ModalSolicitacaoSer';
 import { ModalSolicitacaoSernit } from '@/features/sernit/components/ModalSolicitacaoSernit';
 import { ModalSolicitacaoEsusSg } from '@/features/esussg/components/ModalSolicitacaoEsusSg';
-import { ModalSolicitacaoExame } from '@/features/solicitacoes-exame/components/ModalSolicitacaoExame';
+import { ModalSolicitacao } from '@/features/solicitacoes/components/ModalSolicitacao';
 import {
   useAcessosPaciente,
   useAgendamentosPaciente,
@@ -730,15 +730,15 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
   const historico = q.data?.historico ?? [];
 
   // Drill-in por modal, respeitando a permissão de cada módulo: a aba abre com Pacientes.Consulta,
-  // mas o detalhe do SER exige RegulacaoSer, o do SERNIT RegulacaoSernit e o do exame SolicitacoesExame.
+  // mas o detalhe do SER exige RegulacaoSer, o do SERNIT RegulacaoSernit e o do exame Solicitacoes.
   const podeVerSer = usePermissao('RegulacaoSer', 'Consulta');
   const podeVerSernit = usePermissao('RegulacaoSernit', 'Consulta');
   const podeVerEsusSg = usePermissao('RegulacaoEsusSg', 'Consulta');
-  const podeVerExame = usePermissao('SolicitacoesExame', 'Consulta');
+  const podeVerExame = usePermissao('Solicitacoes', 'Consulta');
   const [serModalId, setSerModalId] = useState<string | null>(null);
   const [sernitModalId, setSernitModalId] = useState<string | null>(null);
   const [esusSgModalId, setEsusSgModalId] = useState<string | null>(null);
-  const [exameModalId, setExameModalId] = useState<string | null>(null);
+  const [solicitacaoModalId, setSolicitacaoModalId] = useState<string | null>(null);
 
   function podeAbrir(a: AgendamentoPacienteItem): boolean {
     if (!a.detalheId) return false;
@@ -754,7 +754,7 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
     if (a.origem === 'Ser') setSerModalId(a.detalheId);
     else if (a.origem === 'Sernit') setSernitModalId(a.detalheId);
     else if (a.origem === 'EsusSg') setEsusSgModalId(a.detalheId);
-    else if (a.origem === 'Sisreg') setExameModalId(a.detalheId);
+    else if (a.origem === 'Sisreg') setSolicitacaoModalId(a.detalheId);
   }
 
   return (
@@ -822,7 +822,7 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
       <ModalSolicitacaoSer solicitacaoId={serModalId} aoFechar={() => setSerModalId(null)} />
       <ModalSolicitacaoSernit solicitacaoId={sernitModalId} aoFechar={() => setSernitModalId(null)} />
       <ModalSolicitacaoEsusSg solicitacaoId={esusSgModalId} aoFechar={() => setEsusSgModalId(null)} />
-      <ModalSolicitacaoExame solicitacaoId={exameModalId} aoFechar={() => setExameModalId(null)} />
+      <ModalSolicitacao solicitacaoId={solicitacaoModalId} aoFechar={() => setSolicitacaoModalId(null)} />
     </div>
   );
 }

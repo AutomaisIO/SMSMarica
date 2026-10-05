@@ -334,7 +334,7 @@ function DetalheCampanha({
         dados={itens}
         chaveLinha={(i) => i.solicitacaoId}
         carregando={alcance.isLoading}
-        aoClicarLinha={(i) => navigate(i.exameId ? `/app/solicitacoes-exame/${i.exameId}` : `/app/consultas/${i.solicitacaoId}`)}
+        aoClicarLinha={(i) => navigate(`/app/solicitacoes/${i.exameId ?? i.solicitacaoId}`)}
         dicaLinha="Clique para abrir a solicitação do SISREG"
         vazio="Nenhum agendamento nesta situação. Se a campanha acabou de ser criada, confira se a agenda da unidade já foi importada do SISREG."
       />

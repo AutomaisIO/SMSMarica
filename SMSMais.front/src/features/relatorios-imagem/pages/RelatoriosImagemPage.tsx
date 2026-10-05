@@ -207,7 +207,7 @@ function BarrasHorizontais({ dados, cor }: { dados: RotuloContagem[]; cor?: stri
  */
 export function RelatoriosImagemPage() {
   const pode = useTemConsulta('Estatistica');
-  const podeExportar = useTemConsulta('SolicitacoesExame');
+  const podeExportar = useTemConsulta('Solicitacoes');
   const presets = useMemo(presetsMeses, []);
   const [de, setDe] = useState(() => presets[presets.length - 1].de);
   const [ate, setAte] = useState(() => isoHoje());

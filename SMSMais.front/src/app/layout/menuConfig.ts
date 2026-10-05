@@ -495,18 +495,11 @@ export const SECOES: SecaoMenu[] = [
     icone: ClipboardCheck,
     itens: [
       {
-        rotulo: 'Exames',
-        to: '/app/solicitacoes-exame',
+        rotulo: 'Exames e consultas',
+        to: '/app/solicitacoes',
         icone: ClipboardCheck,
-        modulo: 'SolicitacoesExame',
-        descricao: 'Pedidos de exame de imagem e worklist.',
-      },
-      {
-        rotulo: 'Consultas',
-        to: '/app/consultas',
-        icone: Stethoscope,
-        modulo: 'Consultas',
-        descricao: 'Consultas reguladas do SISREG (sem imagem/laudo).',
+        modulo: 'Solicitacoes',
+        descricao: 'Exames de imagem, consultas e demais procedimentos regulados, numa lista só.',
       },
       {
         rotulo: 'Mapeamento pendente',

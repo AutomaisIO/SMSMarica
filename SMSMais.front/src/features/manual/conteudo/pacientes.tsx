@@ -524,7 +524,7 @@ export const artigoPacientes: Artigo = {
             {
               termo: 'Cliquei na linha e o detalhe não abriu.',
               descricao:
-                'Ou a linha não tem detalhe (consulta do SISREG), ou o seu perfil não tem permissão de consulta no módulo daquele sistema (SER, SERNIT, ESUS SG ou Solicitações de Exame).',
+                'Ou a linha não tem detalhe (agenda local), ou o seu perfil não tem permissão de consulta no módulo daquele sistema (SER, SERNIT, ESUS SG ou Exames e consultas).',
             },
             {
               termo: 'O laudo do exame não aparece em Exames anexados.',

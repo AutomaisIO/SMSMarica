@@ -9,7 +9,7 @@ using SMSMais.Core.Downloads;
 using SMSMais.Core.Institucional;
 using SMSMais.Core.Institucional.Dtos;
 using SMSMais.Core.Laudos.Verificacao;
-using SMSMais.Core.SolicitacoesExame.Declaracao;
+using SMSMais.Core.Solicitacoes.Declaracao;
 
 namespace SMSMais.Api.Controllers;
 

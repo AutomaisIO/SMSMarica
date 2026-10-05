@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Associacoes;
 using SMSMais.Core.Associacoes.Dtos;
-using SMSMais.Core.SolicitacoesExame;
-using SMSMais.Core.SolicitacoesExame.Dtos;
+using SMSMais.Core.Solicitacoes;
+using SMSMais.Core.Solicitacoes.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -16,7 +16,7 @@ namespace SMSMais.Api.Controllers;
 [Route("exames/associacoes")]
 public sealed class ExameAssociacaoController(
     IExameAssociacaoService service,
-    ISolicitacoesExameService solicitacoes) : ControllerBase
+    ISolicitacoesService solicitacoes) : ControllerBase
 {
     /// <summary>Associa um estudo a uma solicitação (pelo número SMS do pedido).</summary>
     [HttpPost]
@@ -69,11 +69,11 @@ public sealed class ExameAssociacaoController(
 
     /// <summary>
     /// Pré-visualização do modal: solicitação enriquecida (paciente + resumo) pelo
-    /// número SMS. Sob permissão Pacs (o operador da tela não precisa de SolicitacoesExame).
+    /// número SMS. Sob permissão Pacs (o operador da tela não precisa de Solicitacoes).
     /// </summary>
     [HttpGet("preview/{accession}")]
     [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
-    [ProducesResponseType<SolicitacaoExameDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SolicitacaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Preview(string accession, CancellationToken cancellationToken)
     {

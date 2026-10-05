@@ -6,8 +6,8 @@ using SMSMais.Core.Laudos.Assinatura;
 using SMSMais.Core.Notificacoes;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Pacientes.Fhir;
-using SMSMais.Core.SolicitacoesExame;
-using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Solicitacoes;
+using SMSMais.Core.Solicitacoes.Identificadores;
 using SMSMais.Core.Telefones;
 using SMSMais.Core.Worklist;
 using SMSMais.Core.Erros;
@@ -26,10 +26,10 @@ namespace SMSMais.Tests.Worklist;
 [Collection(nameof(PostgresCollection))]
 public class LimpezaWorklistTests(PostgresFixture fixture)
 {
-    private static (SolicitacoesExameService Service, IDcm4cheeMwlClient Mwl) CriarService(SmsMaisDbContext db)
+    private static (SolicitacoesService Service, IDcm4cheeMwlClient Mwl) CriarService(SmsMaisDbContext db)
     {
         var mwl = Substitute.For<IDcm4cheeMwlClient>();
-        var service = new SolicitacoesExameService(
+        var service = new SolicitacoesService(
             db,
             Substitute.For<IGeradorIdentificadores>(),
             mwl,
@@ -44,7 +44,7 @@ public class LimpezaWorklistTests(PostgresFixture fixture)
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             Substitute.For<IRegistroErroService>(),
             Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
-            NullLogger<SolicitacoesExameService>.Instance);
+            NullLogger<SolicitacoesService>.Instance);
         return (service, mwl);
     }
 

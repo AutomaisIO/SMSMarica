@@ -4,9 +4,10 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Exames;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Laudos.Configuracao;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Downloads;
 
@@ -51,7 +52,7 @@ public sealed class DownloadTokenService(
     SmsMaisDbContext db,
     ILaudoConfiguracaoService configuracaoLaudo,
     IExameCompletoPdfService exameCompleto,
-    ISolicitacoesExameService solicitacoes,
+    ISolicitacoesService solicitacoes,
     IUsuarioAtualAccessor usuarioAtual,
     IConfiguration configuration) : IDownloadTokenService
 {
@@ -60,8 +61,11 @@ public sealed class DownloadTokenService(
     public async Task<DownloadLinkDto> GerarExameCompletoAsync(
         Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
-        // Valida que a solicitação existe (lança NaoEncontrado se não).
-        _ = await solicitacoes.ObterPorIdAsync(solicitacaoExameId, cancellationToken);
+        // Valida que a solicitação existe (lança NaoEncontrado se não) e tem exame de imagem — o
+        // link baixa capa + imagens do PACS, que consulta não tem.
+        var solicitacao = await solicitacoes.ObterPorIdAsync(solicitacaoExameId, cancellationToken);
+        if (solicitacao.Categoria != CategoriaSolicitacao.Imagem)
+            throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
 
         var cfg = await configuracaoLaudo.ObterAsync(cancellationToken);
         var dias = Math.Clamp(cfg.DownloadLinkValidadeDias, 1, 365);

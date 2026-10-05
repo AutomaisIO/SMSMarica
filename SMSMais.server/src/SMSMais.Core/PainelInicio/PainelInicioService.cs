@@ -46,7 +46,7 @@ public sealed class PainelInicioService(
         LenteEscopoPainel lente, DirecaoPainel direcao, CancellationToken ct = default)
     {
         var acoes = await ResolverPermissoesAsync(ct);
-        var podeVerSolicitacoes = Tem(acoes, ModuloPermissao.SolicitacoesExame);
+        var podeVerSolicitacoes = Tem(acoes, ModuloPermissao.Solicitacoes);
         var podeVerSisreg = Tem(acoes, ModuloPermissao.Sisreg);
 
         var podeMunicipio = await PodeVerMunicipioAsync(acoes, ct);

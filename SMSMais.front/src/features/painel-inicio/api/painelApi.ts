@@ -18,12 +18,12 @@ export async function obterPainelInicio(
 /**
  * Pendências de importação que casam com o termo — o bloco da busca de Solicitações.
  * Endpoint irmão da listagem (que devolve array nu e não pode ser embrulhada), gateado pela
- * permissão da TELA (`SolicitacoesExame`), não pela do módulo SISREG: quem precisa disto é a
+ * permissão da TELA (`Solicitacoes`), não pela do módulo SISREG: quem precisa disto é a
  * recepção. Ver ADR-0035.
  */
 export async function buscarPendenciasImportacao(busca: string): Promise<PendenciaImportacaoBusca[]> {
   const { data } = await http.get<PendenciaImportacaoBusca[]>(
-    '/solicitacoes-exame/pendencias-importacao',
+    '/solicitacoes/pendencias-importacao',
     { params: { busca } },
   );
   return data;

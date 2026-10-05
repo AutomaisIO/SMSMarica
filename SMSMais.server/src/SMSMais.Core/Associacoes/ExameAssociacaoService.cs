@@ -6,7 +6,7 @@ using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Core.Pacs;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Core.Worklist;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -18,7 +18,7 @@ public sealed class ExameAssociacaoService(
     SmsMaisDbContext db,
     IPacienteResolver pacienteResolver,
     IConsultaStudyClient consultaStudy,
-    ISolicitacoesExameService solicitacoes,
+    ISolicitacoesService solicitacoes,
     Pacs.IPacsReescritorEstudoClient reescritor,
     Pacs.IResolvedorIdentidadeDicom identidades,
     IUsuarioAtualAccessor usuarioAtual,

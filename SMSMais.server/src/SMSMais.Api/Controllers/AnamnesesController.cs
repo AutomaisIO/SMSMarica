@@ -20,7 +20,7 @@ public sealed class AnamnesesController(IAnamnesesService service) : ControllerB
     /// Informar <c>solicitacaoExameId</c> OU <c>accessionNumber</c>.
     /// </summary>
     [HttpGet("contexto")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<AnamneseContextoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<AnamneseContextoDto> ObterContexto(
@@ -31,7 +31,7 @@ public sealed class AnamnesesController(IAnamnesesService service) : ControllerB
 
     /// <summary>Cria ou atualiza (upsert) a anamnese da solicitação — pode ser reaberta e editada.</summary>
     [HttpPut("{solicitacaoExameId:guid}")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<AnamneseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

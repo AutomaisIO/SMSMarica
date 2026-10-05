@@ -4,7 +4,7 @@ using SMSMais.Core.Downloads;
 using SMSMais.Core.Exames;
 using SMSMais.Core.Identidade;
 using SMSMais.Core.Laudos.Configuracao;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Tests.Infraestrutura;
@@ -18,7 +18,7 @@ namespace SMSMais.Tests.Downloads;
 ///
 /// Os casos aqui fixam as garantias que não podem regredir: <b>sem liberação não sai arquivo</b>
 /// e <b>o status não conta nada sobre o exame</b> antes do CPF. A comparação do CPF em si
-/// depende de um <c>SolicitacaoExameDto</c> de ~60 campos posicionais e é exercitada de ponta a
+/// depende de um <c>SolicitacaoDto</c> de ~60 campos posicionais e é exercitada de ponta a
 /// ponta na verificação manual; montá-lo aqui não acrescentaria cobertura ao que interessa.
 /// </summary>
 [Collection(nameof(PostgresCollection))]
@@ -28,7 +28,7 @@ public class DownloadPublicoGateCpfTests(PostgresFixture fixture)
         new(db,
             Substitute.For<ILaudoConfiguracaoService>(),
             Substitute.For<IExameCompletoPdfService>(),
-            Substitute.For<ISolicitacoesExameService>(),
+            Substitute.For<ISolicitacoesService>(),
             new UsuarioAtualAccessorFake(),
             Substitute.For<Microsoft.Extensions.Configuration.IConfiguration>());
 

@@ -21,8 +21,8 @@ using SMSMais.Core.Pacs;
 using SMSMais.Core.Perfis;
 using SMSMais.Core.Procedimentos;
 using SMSMais.Core.Rastreamento;
-using SMSMais.Core.SolicitacoesExame;
-using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Solicitacoes;
+using SMSMais.Core.Solicitacoes.Identificadores;
 using SMSMais.Core.TiposExame;
 using SMSMais.Core.TiposTratamento;
 using SMSMais.Core.Translado;
@@ -75,8 +75,8 @@ public static class DependencyInjection
         services.AddScoped<ITiposTratamentoService, TiposTratamentoService>();
         services.AddScoped<ILaudoTemplatesService, LaudoTemplatesService>();
         services.AddScoped<ILaudosService, LaudosService>();
-        // Resolução preguiçosa p/ quebrar o ciclo de DI Laudos ↔ SolicitacoesExame.
-        services.AddScoped(sp => new Lazy<ISolicitacoesExameService>(sp.GetRequiredService<ISolicitacoesExameService>));
+        // Resolução preguiçosa p/ quebrar o ciclo de DI Laudos ↔ Solicitacoes.
+        services.AddScoped(sp => new Lazy<ISolicitacoesService>(sp.GetRequiredService<ISolicitacoesService>));
         services.AddScoped<ILaudoPdfRenderer, LaudoPdfRenderer>();
         services.AddScoped<Laudos.Configuracao.ILaudoConfiguracaoService, Laudos.Configuracao.LaudoConfiguracaoService>();
 
@@ -100,8 +100,8 @@ public static class DependencyInjection
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(
             configuration.GetSection(Laudos.Assinatura.AssinaturaOptions.SecaoConfig));
         services.AddScoped<Laudos.Assinatura.ILaudoAssinaturaService, Laudos.Assinatura.LaudoAssinaturaService>();
-        // Resolução preguiçosa: SolicitacoesExame entra no subsistema de Laudos por
-        // aqui; sem o Lazy o grafo de DI fecha ciclo (via Laudos → SolicitacoesExame,
+        // Resolução preguiçosa: Solicitacoes entra no subsistema de Laudos por
+        // aqui; sem o Lazy o grafo de DI fecha ciclo (via Laudos → Solicitacoes,
         // direto e via ExameAssociacao).
         services.AddScoped(sp => new Lazy<Laudos.Assinatura.ILaudoAssinaturaService>(
             sp.GetRequiredService<Laudos.Assinatura.ILaudoAssinaturaService>));
@@ -135,16 +135,15 @@ public static class DependencyInjection
         // ---- Solicitação de Exames + Worklist + Notificações ----
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();
-        services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        services.AddScoped<ISolicitacoesService, SolicitacoesService>();
         services.AddScoped<ISolicitacaoHistoricoService, SolicitacaoHistoricoService>();
-        services.AddScoped<Consultas.IConsultasService, Consultas.ConsultasService>();
         // Painel da tela de início (read model; ADR-0033).
         services.AddScoped<PainelInicio.IPainelInicioService, PainelInicio.PainelInicioService>();
         services.AddScoped<Mapeamento.IMapeamentoSigtapService, Mapeamento.MapeamentoSigtapService>();
         // Backfill de data_estudo (DICOM) — depende só de DbContext + IConsultaStudyClient (sem ciclo).
-        services.AddScoped<SolicitacoesExame.IBackfillDataEstudoService, SolicitacoesExame.BackfillDataEstudoService>();
-        services.AddScoped<SolicitacoesExame.Declaracao.IDeclaracaoComparecimentoService,
-            SolicitacoesExame.Declaracao.DeclaracaoComparecimentoService>();
+        services.AddScoped<Solicitacoes.IBackfillDataEstudoService, Solicitacoes.BackfillDataEstudoService>();
+        services.AddScoped<Solicitacoes.Declaracao.IDeclaracaoComparecimentoService,
+            Solicitacoes.Declaracao.DeclaracaoComparecimentoService>();
         services.AddScoped<Downloads.IDownloadTokenService, Downloads.DownloadTokenService>();
         services.AddScoped<Associacoes.IExameAssociacaoService, Associacoes.ExameAssociacaoService>();
         services.AddScoped<Pacs.IResolvedorIdentidadeDicom, Pacs.ResolvedorIdentidadeDicom>();

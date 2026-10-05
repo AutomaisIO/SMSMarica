@@ -31,11 +31,9 @@ import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { ProcedimentosSigtapPage } from '@/features/procedimentos-sigtap/pages/ProcedimentosSigtapPage';
 import { AnamnesePage } from '@/features/anamnese/pages/AnamnesePage';
 import { ExamesAnterioresJanelaPage } from '@/features/exames-anteriores/pages/ExamesAnterioresJanelaPage';
-import { SolicitacaoExameDetalhePage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameDetalhePage';
-import { SolicitacaoExameFormPage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameFormPage';
-import { SolicitacoesExamePage } from '@/features/solicitacoes-exame/pages/SolicitacoesExamePage';
-import { ConsultasPage } from '@/features/consultas/pages/ConsultasPage';
-import { ConsultaDetalhePage } from '@/features/consultas/pages/ConsultaDetalhePage';
+import { SolicitacaoDetalhePage } from '@/features/solicitacoes/pages/SolicitacaoDetalhePage';
+import { SolicitacaoExameFormPage } from '@/features/solicitacoes/pages/SolicitacaoExameFormPage';
+import { SolicitacoesPage } from '@/features/solicitacoes/pages/SolicitacoesPage';
 import { MapeamentoSigtapPage } from '@/features/mapeamento-sigtap/pages/MapeamentoSigtapPage';
 import { ImportacaoSisregPage } from '@/features/importacao-sisreg/pages/ImportacaoSisregPage';
 import { TipoExameFormPage } from '@/features/tipos-exame/pages/TipoExameFormPage';
@@ -83,7 +81,7 @@ import { NovaSolicitacaoPage } from '@/features/regulacao/pages/NovaSolicitacaoP
 import { MinhaFilaPage } from '@/features/regulacao/pages/MinhaFilaPage';
 import { FilaRegulacaoPage } from '@/features/regulacao/pages/FilaRegulacaoPage';
 import { AnaliseSolicitacaoPage } from '@/features/regulacao/pages/AnaliseSolicitacaoPage';
-import { SolicitacaoDetalhePage } from '@/features/regulacao/pages/SolicitacaoDetalhePage';
+import { SolicitacaoDetalhePage as RegulacaoSolicitacaoDetalhePage } from '@/features/regulacao/pages/SolicitacaoDetalhePage';
 import { NotificacoesRegulacaoPage } from '@/features/regulacao/pages/NotificacoesRegulacaoPage';
 import { RegrasElegibilidadePage } from '@/features/regulacao/pages/RegrasElegibilidadePage';
 import { SernitNotificacoesPage } from '@/features/sernit/pages/SernitNotificacoesPage';
@@ -221,15 +219,16 @@ export function AppRouter() {
           <Route path="laudo-templates/novo" element={<LaudoTemplateEditorPage />} />
           <Route path="laudo-templates/:id" element={<LaudoTemplateEditorPage />} />
           <Route path="laudo-configuracao" element={<LaudoConfiguracaoPage />} />
-          <Route path="solicitacoes-exame" element={<SolicitacoesExamePage />} />
-          <Route path="solicitacoes-exame/novo" element={<SolicitacaoExameFormPage />} />
-          <Route path="solicitacoes-exame/:id" element={<SolicitacaoExameDetalhePage />} />
-          <Route path="solicitacoes-exame/:id/editar" element={<SolicitacaoExameFormPage />} />
+          <Route path="solicitacoes" element={<SolicitacoesPage />} />
+          <Route path="solicitacoes/novo" element={<SolicitacaoExameFormPage />} />
+          <Route path="solicitacoes/:id" element={<SolicitacaoDetalhePage />} />
+          <Route path="solicitacoes/:id/editar" element={<SolicitacaoExameFormPage />} />
           <Route path="importacao-sisreg" element={<ImportacaoSisregPage />} />
           <Route path="anamnese" element={<AnamnesePage />} />
           <Route path="tipos-exame" element={<TiposExamePage />} />
-          <Route path="consultas" element={<ConsultasPage />} />
-          <Route path="consultas/:id" element={<ConsultaDetalhePage />} />
+          {/* Exames e consultas viraram uma lista só: os endereços antigos (favoritos) caem nela. */}
+          <Route path="solicitacoes-exame/*" element={<Navigate to="/app/solicitacoes" replace />} />
+          <Route path="consultas/*" element={<Navigate to="/app/solicitacoes" replace />} />
           <Route path="mapeamento-sigtap" element={<MapeamentoSigtapPage />} />
           <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />
           <Route path="tipos-exame/:id" element={<TipoExameFormPage />} />
@@ -264,7 +263,7 @@ export function AppRouter() {
               path="regulacao/solicitacoes/notificacoes"
               element={<NotificacoesRegulacaoPage />}
             />
-            <Route path="regulacao/solicitacoes/:id" element={<SolicitacaoDetalhePage />} />
+            <Route path="regulacao/solicitacoes/:id" element={<RegulacaoSolicitacaoDetalhePage />} />
           </Route>
           {/* Gestão de fila: a visão de quem avalia e regula (48) — gate próprio, mais estreito.
               A lista e a análise de cada pedido ficam fora de `regulacao/solicitacoes/*`, que é o

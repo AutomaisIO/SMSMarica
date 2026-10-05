@@ -31,7 +31,7 @@ public sealed class SiscanRequisicaoController(ISiscanRequisicaoService servico)
     /// </param>
     /// <param name="etnia">Só com Raça/Cor Indígena (o preparo devolveu <c>etniaOpcoes</c>).</param>
     [HttpGet("{exameImagemId:guid}")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<SiscanPreparoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public Task<SiscanPreparoDto> Preparar(
@@ -42,7 +42,7 @@ public sealed class SiscanRequisicaoController(ISiscanRequisicaoService servico)
 
     /// <summary>Cria a requisição no SISCAN e carimba protocolo e nº do exame no nosso pedido.</summary>
     [HttpPost("{exameImagemId:guid}")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [RequerPermissao(ModuloPermissao.Solicitacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType<SiscanRequisicaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

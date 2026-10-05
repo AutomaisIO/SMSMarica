@@ -1,5 +1,5 @@
 using FluentAssertions;
-using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Solicitacoes;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Integracoes;

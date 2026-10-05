@@ -1,4 +1,4 @@
-import type { DirecaoSolicitacao } from '@/features/solicitacoes-exame/types';
+import type { DirecaoSolicitacao } from '@/features/solicitacoes/types';
 
 /**
  * Lente de escopo do painel. `Municipio` é a modelagem da REGULAÇÃO — que não é executante nem

@@ -60,7 +60,7 @@ export function useDispensaAtiva(pacienteId?: string | null, habilitado = true) 
  */
 function invalidarDependentes(client: ReturnType<typeof useQueryClient>, pacienteId: string) {
   client.invalidateQueries({ queryKey: dispensaKeys.doPaciente(pacienteId) });
-  client.invalidateQueries({ queryKey: ['solicitacoes-exame'] });
+  client.invalidateQueries({ queryKey: ['solicitacoes'] });
   client.invalidateQueries({ queryKey: ['pacientes'] });
 }
 

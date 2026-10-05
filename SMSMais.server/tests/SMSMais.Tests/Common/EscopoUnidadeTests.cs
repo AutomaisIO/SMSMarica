@@ -8,7 +8,7 @@ namespace SMSMais.Tests.Common;
 
 /// <summary>
 /// Paridade da resolução do escopo de unidade (ADR-0033) com o comportamento que estava copiado em
-/// <c>SolicitacoesExameService</c>, <c>ConsultasService</c> e <c>LaudosService</c>. Cada divergência
+/// <c>SolicitacoesService</c>, <c>ConsultasService</c> e <c>LaudosService</c>. Cada divergência
 /// entre aquelas cópias seria um vazamento de dado entre unidades — por isso os cinco caminhos da
 /// cascata são fixados aqui, incluindo o <b>fail-open</b> (que é comportamento vigente, não desejo).
 /// </summary>
