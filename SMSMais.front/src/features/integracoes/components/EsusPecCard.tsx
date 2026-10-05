@@ -39,8 +39,7 @@ function lerParametros(json: string | null): ParametrosEsusPec {
  * genérico cifrado: Usuário (CPF) → clientId, Senha → clientSecret; endereço, acesso (lotação) e a
  * janela da madrugada vão em parametrosJson.
  *
- * ⚠️ O PEC aceita UMA sessão por usuário e a credencial é cedida por uma servidora: a rotina só entra
- * dentro da janela da madrugada, para não derrubar a sessão dela durante o expediente.
+ * O PEC aceita UMA sessão por usuário: a rotina só entra dentro da janela configurada.
  */
 export function EsusPecCard({ cred }: { cred: IntegracaoCredencial }) {
   const podeEditar = usePermissao('IntegracoesConfig', 'Edicao');
@@ -137,12 +136,6 @@ export function EsusPecCard({ cred }: { cred: IntegracaoCredencial }) {
 
       {aberto ? (
         <form onSubmit={aoSalvar} className="mt-4 space-y-4 border-t border-gray-100 pt-4">
-          <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            O e-SUS aceita apenas <b>uma sessão por usuário</b>. Esta credencial é usada só dentro da janela
-            da madrugada abaixo — fora dela o sistema não entra, para não derrubar quem cedeu o acesso.
-            A consulta é somente leitura: nada é gravado no e-SUS.
-          </p>
-
           <Campo
             label="Usuário (CPF)"
             htmlFor="esuspec-usuario"
@@ -152,7 +145,7 @@ export function EsusPecCard({ cred }: { cred: IntegracaoCredencial }) {
               id="esuspec-usuario"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
-              placeholder={cred.clientIdDefinido ? '••••••••' : 'CPF de quem cedeu o acesso'}
+              placeholder={cred.clientIdDefinido ? '••••••••' : 'CPF'}
               autoComplete="off"
               inputMode="numeric"
               disabled={!podeEditar}
@@ -204,7 +197,7 @@ export function EsusPecCard({ cred }: { cred: IntegracaoCredencial }) {
             <Campo label="Janela — início" htmlFor="esuspec-ini" dica="Horário de Brasília (HH:MM).">
               <Input id="esuspec-ini" value={params.janelaInicio} onChange={campo('janelaInicio')} placeholder="02:00" disabled={!podeEditar} />
             </Campo>
-            <Campo label="Janela — fim" htmlFor="esuspec-fim" dica="Fora da janela o sistema não entra.">
+            <Campo label="Janela — fim" htmlFor="esuspec-fim">
               <Input id="esuspec-fim" value={params.janelaFim} onChange={campo('janelaFim')} placeholder="05:00" disabled={!podeEditar} />
             </Campo>
           </div>
