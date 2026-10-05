@@ -21,6 +21,7 @@ import {
   useSolicitacoesRecentesPaciente,
 } from '@/features/solicitacoes-exame/api/queries';
 import { SeletorTipoExame } from '@/features/solicitacoes-exame/components/SeletorTipoExame';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { AJUDA_SOLICITACAO } from '@/features/solicitacoes-exame/ajudaCampos';
 import type { PrioridadeSolicitacao } from '@/features/solicitacoes-exame/types';
 
@@ -243,7 +244,11 @@ export function SolicitacaoExameFormPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
               <div>
-                <div className="font-medium text-gray-900">{estado.pacienteNome}</div>
+                <NomePacienteComResumo
+                  pacienteId={estado.pacienteId}
+                  nome={estado.pacienteNome}
+                  classNameNome="font-medium text-gray-900"
+                />
                 <div className="text-xs text-gray-500 font-mono">ID {estado.pacienteId}</div>
               </div>
               {ehNovo ? (

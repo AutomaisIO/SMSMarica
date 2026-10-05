@@ -26,7 +26,7 @@ export const artigoPacientes: Artigo = {
   icone: Users,
   rota: '/app/pacientes',
   publico: 'Quem atende, regula ou acompanha o paciente e precisa da ficha dele',
-  atualizadoEm: '2026-10-01',
+  atualizadoEm: '2026-10-05',
   palavrasChave: [
     'paciente',
     'pacientes',
@@ -78,6 +78,10 @@ export const artigoPacientes: Artigo = {
     'enviado pelo paciente',
     'app do cidadão',
     'WhatsApp',
+    'idade',
+    'bonequinho',
+    'resumo do paciente',
+    'falar no WhatsApp',
     'nome do documento',
     'descrição',
     'visualizar',
@@ -98,6 +102,44 @@ export const artigoPacientes: Artigo = {
             regulação, exames, transporte, conversas pelo WhatsApp — se pendura nesta ficha. A lista
             serve para achar a pessoa; a ficha, para entender a situação dela sem abrir outro sistema.
           </P>
+        </>
+      ),
+    },
+    {
+      id: 'nome-nas-telas',
+      titulo: 'O nome do paciente em qualquer tela: idade, resumo e WhatsApp',
+      busca:
+        'nome do paciente idade 54a anos meses bebê bonequinho ícone resumo do paciente whatsapp falar conversar atalho passar o mouse todas as telas',
+      conteudo: (
+        <>
+          <P>
+            Em todo o sistema — filas, listas, cabeçalhos e detalhes —, o nome do paciente aparece do mesmo
+            jeito, seguido de três coisas:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: <strong>54a</strong>,
+                descricao:
+                  'A idade, só em anos. Passe o mouse em cima para ver anos e meses. Bebê com menos de um ano aparece em meses (“8m”). Se o cadastro não tem data de nascimento, a idade não aparece.',
+              },
+              {
+                termo: 'Bonequinho',
+                descricao:
+                  'Abre o resumo do cadastro (CPF, CNS, nascimento, telefone, nome da mãe), sem sair da tela — com atalhos para ver ou editar a ficha.',
+              },
+              {
+                termo: 'WhatsApp',
+                descricao:
+                  'Abre a conversa com o paciente: se ele escreveu nas últimas 24 horas, cai direto na conversa; senão, abre a nova conversa já com ele escolhido, para mandar o modelo de mensagem.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="O WhatsApp depende do perfil">
+            O ícone do WhatsApp só aparece para quem tem, no perfil, o módulo{' '}
+            <strong>Central de Atendimento (chat)</strong> — é onde a resposta do paciente chega. Sem o
+            módulo, aparecem só o nome, a idade e o bonequinho.
+          </Callout>
         </>
       ),
     },

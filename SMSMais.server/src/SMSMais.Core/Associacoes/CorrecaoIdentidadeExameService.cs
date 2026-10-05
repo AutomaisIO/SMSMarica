@@ -47,15 +47,16 @@ public sealed class CorrecaoIdentidadeExameService(
         if (string.IsNullOrWhiteSpace(accessionDestino))
         {
             return new PreviaCorrecaoDto(uid, nomeAtual, atual?.Id, atual?.AccessionNumber,
-                string.Empty, Guid.Empty, string.Empty, null, rascunhos, assinado, enviada, null);
+                string.Empty, null, Guid.Empty, string.Empty, null, rascunhos, assinado, enviada, null);
         }
 
         var destino = await ExamePorAccessionAsync(accessionDestino.Trim(), cancellationToken);
         var nomeDestino = await NomeDoPacienteAsync(destino, cancellationToken) ?? "(sem nome)";
+        var pacienteDestinoId = destino.Solicitacao?.PacienteId is { } pid && pid != Guid.Empty ? pid : (Guid?)null;
 
         return new PreviaCorrecaoDto(
             uid, nomeAtual, atual?.Id, atual?.AccessionNumber,
-            nomeDestino, destino.Id, destino.AccessionNumber,
+            nomeDestino, pacienteDestinoId, destino.Id, destino.AccessionNumber,
             destino.Solicitacao?.ProcedimentoTexto,
             rascunhos, assinado, enviada,
             await SugerirStudyDoDestinoAsync(destino, uid, cancellationToken));

@@ -6,6 +6,7 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { ModalOtpTelefone } from '@/features/telefone-validacao/components/ModalOtpTelefone';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { useAtendentes } from '@/features/confirmacoes/api';
 import type { AcaoResultado, SolicitacaoAtendimento } from '@/features/confirmacoes/types';
 import { dataHora } from '@/features/mensageria/lib/rotulos';
@@ -20,7 +21,13 @@ type Base = {
 function Cabecalho({ item }: { item: SolicitacaoAtendimento }) {
   return (
     <p className="text-sm text-gray-600">
-      <strong>{item.pacienteNome ?? '(sem nome)'}</strong> · {item.procedimento ?? item.categoria} ·{' '}
+      <NomePacienteComResumo
+        pacienteId={item.pacienteId}
+        nome={item.pacienteNome ?? '(sem nome)'}
+        classNameNome="font-bold"
+        className="align-middle"
+      />{' '}
+      · {item.procedimento ?? item.categoria} ·{' '}
       {dataHora(item.dataAgendada)}{item.codigoSolicitacao ? ` · SISREG ${item.codigoSolicitacao}` : ''}
     </p>
   );

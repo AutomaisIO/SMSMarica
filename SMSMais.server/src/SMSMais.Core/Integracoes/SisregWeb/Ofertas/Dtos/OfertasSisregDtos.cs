@@ -154,7 +154,12 @@ public sealed record OcupanteDaVagaDto(
     string? ProfissionalExecutanteNome,
     string? UnidadeSolicitante,
     StatusConfirmacaoAgendamento StatusConfirmacao,
-    CategoriaSolicitacao Categoria);
+    CategoriaSolicitacao Categoria,
+    /// <summary>Nosso paciente — a tela mostra o nome no padrão (idade + resumo). Nulo quando a
+    /// solicitação não tem paciente.</summary>
+    Guid? PacienteId = null,
+    /// <summary>Nascimento vindo do hub (a idade sai dele sem nova consulta); nulo se não resolveu.</summary>
+    DateOnly? PacienteNascimento = null);
 
 /// <summary>Quem ocupa as vagas de um dia da oferta, com a mesma conta do cartão.</summary>
 /// <param name="Vagas">Vagas da regulação no dia (1ª vez + reserva).</param>

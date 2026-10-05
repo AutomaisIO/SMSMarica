@@ -753,6 +753,7 @@ export function LaudoEditorPage() {
           ) : null}
 
           <CabecalhoLaudo
+            pacienteId={detalhe.data?.pacienteId ?? solicitacao.data?.pacienteId}
             pacienteNome={detalhe.data?.pacienteNome ?? solicitacao.data?.pacienteNome}
             pacienteCpf={detalhe.data?.pacienteCpf ?? solicitacao.data?.pacienteCpf}
             pacienteNomeDicom={detalhe.data?.pacienteNomeDicom}

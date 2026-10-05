@@ -4,6 +4,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarCpf } from '@/shared/lib/cpf';
 import { formatarInstante, formatarWallClock } from '@/shared/lib/datas';
 import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { useAssuntos, useManifestacao, useMarcadores } from '@/features/ouvidoria/api/queries';
 import { AcoesManifestacao } from '@/features/ouvidoria/components/AcoesManifestacao';
 import { AnexosOuvidoriaLista } from '@/features/ouvidoria/components/AnexosOuvidoria';
@@ -155,7 +156,16 @@ export function ManifestacaoDetalhePage({ modoPonto = false }: Props) {
               {m.referido ? (
                 <Bloco titulo="Paciente referido">
                   <dl className="grid gap-y-1 text-sm">
-                    <Item rotulo="Nome" valor={m.referido.nome} />
+                    <Item
+                      rotulo="Nome"
+                      valor={
+                        m.referido.patientId ? (
+                          <NomePacienteComResumo pacienteId={m.referido.patientId} nome={m.referido.nome} />
+                        ) : (
+                          m.referido.nome
+                        )
+                      }
+                    />
                     <Item rotulo="CPF" valor={m.referido.cpf ? formatarCpf(m.referido.cpf) : null} />
                     <Item rotulo="CNS" valor={m.referido.cns} />
                   </dl>

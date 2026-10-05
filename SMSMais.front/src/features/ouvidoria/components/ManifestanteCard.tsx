@@ -6,6 +6,7 @@ import { formatarCpf } from '@/shared/lib/cpf';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Modal } from '@/shared/ui/Modal';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { useRevelarIdentidade } from '@/features/ouvidoria/api/queries';
 import { Textarea } from '@/features/ouvidoria/components/Textarea';
 import type { ManifestacaoDetalheDto, ManifestanteDto } from '@/features/ouvidoria/types';
@@ -60,7 +61,13 @@ export function ManifestanteCard({ manifestacao: m }: Props) {
     <Bloco titulo="Manifestante">
       {dados ? (
         <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-          <Item rotulo="Nome" valor={dados.nome} />
+          <Item
+            rotulo="Nome"
+            valor={
+              // Manifestante que é paciente cadastrado: o mesmo padrão de nome do resto do painel.
+              dados.patientId ? <NomePacienteComResumo pacienteId={dados.patientId} nome={dados.nome} /> : dados.nome
+            }
+          />
           <Item rotulo="CPF" valor={dados.cpf ? formatarCpf(dados.cpf) : null} />
           <Item rotulo="Telefone" valor={dados.telefone} />
           <Item rotulo="E-mail" valor={dados.email} />

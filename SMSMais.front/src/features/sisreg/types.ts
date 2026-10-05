@@ -462,6 +462,10 @@ export type OcupanteDaVaga = {
   unidadeSolicitante: string | null;
   statusConfirmacao: 'Pendente' | 'Confirmada' | 'Cancelada';
   categoria: string;
+  /** Nosso paciente; nulo se a solicitação não tem. */
+  pacienteId?: string | null;
+  /** aaaa-mm-dd, do hub; nulo se não resolveu. */
+  pacienteNascimento?: string | null;
 };
 
 /** Quem ocupa as vagas de um dia da oferta, com a mesma conta do cartão. */

@@ -6,6 +6,7 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { useAssociarExame, usePreviewSolicitacao } from '@/features/pacs/api/queries';
 import type { Estudo } from '@/features/pacs/types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 type Props = {
   /** Estudo a associar; null fecha o modal. */
@@ -118,7 +119,11 @@ export function ModalAssociarExame({ estudo, aoFechar }: Props) {
             <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm">
               <div className="flex items-center gap-2 text-emerald-800">
                 <CheckCircle2 className="h-4 w-4" />
-                <span className="text-base font-semibold">{solicitacao.pacienteNome}</span>
+                <NomePacienteComResumo
+                  pacienteId={solicitacao.pacienteId}
+                  nome={solicitacao.pacienteNome}
+                  classNameNome="text-base font-semibold"
+                />
               </div>
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-700">
                 <Item rotulo="Exame" valor={solicitacao.tipoExameNome} />

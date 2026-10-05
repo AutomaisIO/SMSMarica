@@ -22,6 +22,8 @@ export type ImportacaoExecucaoResultado = {
   solicitacaoId: string | null;
   accessionNumber: string | null;
   pacienteNome: string | null;
+  /** Nosso paciente resolvido/criado (ausente quando não chegou a resolver). */
+  pacienteId?: string | null;
   pacienteCriado: boolean;
   unidadeSolicitanteCriada: boolean;
   unidadeExecutanteCriada: boolean;

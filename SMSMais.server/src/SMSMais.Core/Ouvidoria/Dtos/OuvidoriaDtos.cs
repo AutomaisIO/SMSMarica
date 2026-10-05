@@ -62,7 +62,9 @@ public sealed record ManifestacaoListaDto(
     /// <summary>Encaminhada e a área passou do prazo dela.</summary>
     bool AreaAtrasada,
     DateTime UltimaAtividadeEm,
-    string? ResponsavelNome);
+    string? ResponsavelNome,
+    /// <summary>Paciente cadastrado do manifestante (quando há); nulo junto com o nome se a identidade é restrita.</summary>
+    Guid? ManifestantePatientId);
 
 public sealed record AnexoDto(Guid Id, Guid MidiaId, string NomeArquivo, bool VisivelAoCidadao, DateTime CriadoEm);
 
@@ -104,6 +106,7 @@ public sealed record ManifestacaoDetalheDto(
     bool AreaAtrasada,
     DateTime UltimaAtividadeEm,
     string? ResponsavelNome,
+    Guid? ManifestantePatientId,
     /// <summary>Para o ponto de resposta em denúncia é o teor pseudonimizado (o integral nunca sai).</summary>
     string Teor,
     string? TeorPseudonimizado,

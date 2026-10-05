@@ -116,7 +116,7 @@ public sealed class OuvidoriaManifestacaoService(
                 UnidadeNome = m.Unidade != null ? m.Unidade.Nome : null,
                 PontoRespostaNome = m.PontoResposta != null ? m.PontoResposta.Nome : null,
                 m.ManifestanteNome, m.RegistradaEm, m.PrazoRespostaEm, m.PrazoAreaEm, m.DiasAtraso,
-                m.UltimaAtividadeEm, m.ResponsavelId, m.PontoRespostaId,
+                m.UltimaAtividadeEm, m.ResponsavelId, m.PontoRespostaId, m.ManifestantePatientId,
             })
             .ToListAsync(ct);
 
@@ -136,7 +136,8 @@ public sealed class OuvidoriaManifestacaoService(
                 diasAtraso, aberta && diasAtraso > 0,
                 l.Status == OuvidoriaStatus.Encaminhada && l.PrazoAreaEm is { } pa && pa < hoje,
                 l.UltimaAtividadeEm,
-                l.ResponsavelId is { } r ? nomes.GetValueOrDefault(r) : null);
+                l.ResponsavelId is { } r ? nomes.GetValueOrDefault(r) : null,
+                restrita ? null : l.ManifestantePatientId);
         }).ToList();
 
         return new PaginaDto<ManifestacaoListaDto>(itens, total, pagina, tamanho);
@@ -244,6 +245,7 @@ public sealed class OuvidoriaManifestacaoService(
             m.Status == OuvidoriaStatus.Encaminhada && m.PrazoAreaEm is { } pa && pa < hoje,
             m.UltimaAtividadeEm,
             m.ResponsavelId is { } resp ? nomes.GetValueOrDefault(resp) : null,
+            restrita ? null : m.ManifestantePatientId,
             teor,
             modoPonto ? null : m.TeorPseudonimizado,
             manifestante,

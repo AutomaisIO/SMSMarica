@@ -1,18 +1,35 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { formatarInstante } from '@/shared/lib/datas';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type { ItemSolicitacaoPainel } from '@/features/painel-inicio/types';
 
 /**
  * Uma linha de solicitação numa raia. A seta reusa o vocabulário que a listagem de solicitações
  * já ensinou ao operador: ↓ recebida (sou a executante) · ↑ enviada (eu pedi).
+ *
+ * A linha é um div clicável (não <Link>) para poder aninhar o nome-padrão do paciente, que tem
+ * botões (resumo, WhatsApp) e abre diálogos — dentro de um <a> qualquer clique neles navegaria.
  */
 export function LinhaSolicitacao({ item }: { item: ItemSolicitacaoPainel }) {
+  const navigate = useNavigate();
+  const rota = `/app/solicitacoes-exame/${item.id}`;
+
+  function abrir(novaAba: boolean) {
+    if (novaAba) window.open(rota, '_blank', 'noopener');
+    else navigate(rota);
+  }
+
   return (
     <li>
-      <Link
-        to={`/app/solicitacoes-exame/${item.id}`}
-        className="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2 text-sm hover:bg-gray-50"
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={(e) => abrir(e.ctrlKey || e.metaKey)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') abrir(e.ctrlKey || e.metaKey);
+        }}
+        className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-1 py-2 text-sm hover:bg-gray-50"
       >
         {item.direcao && (
           <span
@@ -27,8 +44,18 @@ export function LinhaSolicitacao({ item }: { item: ItemSolicitacaoPainel }) {
           </span>
         )}
 
-        {/* Nome do paciente NÃO é abreviado: se não couber, quebra. */}
-        <span className="font-medium text-gray-900">{item.pacienteNome ?? 'Paciente não identificado'}</span>
+        {/* Nome do paciente NÃO é abreviado: se não couber, quebra. Cliques e teclas no nome
+            (resumo, WhatsApp e os diálogos que eles abrem) não chegam à linha. */}
+        <span
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <NomePacienteComResumo
+            pacienteId={item.pacienteId}
+            nome={item.pacienteNome ?? 'Paciente não identificado'}
+            classNameNome="font-medium text-gray-900"
+          />
+        </span>
 
         {item.procedimento && <span className="text-gray-600">{item.procedimento}</span>}
 
@@ -44,7 +71,7 @@ export function LinhaSolicitacao({ item }: { item: ItemSolicitacaoPainel }) {
             “{item.motivoCancelamento}”
           </span>
         )}
-      </Link>
+      </div>
     </li>
   );
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -22,6 +22,7 @@ import { useFalhasImportacao } from '@/features/importacao-sisreg/api/queries';
 import { ErrosImportacao } from '@/features/importacao-sisreg/components/ErrosImportacao';
 import { ImportacaoLote } from '@/features/importacao-sisreg/components/ImportacaoLote';
 import { RastreioImportacao } from '@/features/importacao-sisreg/components/RastreioImportacao';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { useQueryClient } from '@tanstack/react-query';
 import { importacaoKeys } from '@/features/importacao-sisreg/api/queries';
 import type {
@@ -489,7 +490,16 @@ function ModalResultado({
           {ok ? (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <Info rotulo="Paciente" valor={resultado.pacienteNome ?? '—'} />
+                <Info
+                  rotulo="Paciente"
+                  valor={
+                    resultado.pacienteId ? (
+                      <NomePacienteComResumo pacienteId={resultado.pacienteId} nome={resultado.pacienteNome} />
+                    ) : (
+                      resultado.pacienteNome ?? '—'
+                    )
+                  }
+                />
                 <Info rotulo="Paciente" valor={resultado.pacienteCriado ? 'criado' : 'já existia (reusado)'} />
                 <Info rotulo="Accession" valor={resultado.accessionNumber ?? '—'} />
                 <Info
@@ -526,7 +536,7 @@ function ModalResultado({
   );
 }
 
-function Info({ rotulo, valor }: { rotulo: string; valor: string }) {
+function Info({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
   return (
     <div>
       <div className="text-xs uppercase tracking-wide text-gray-500">{rotulo}</div>

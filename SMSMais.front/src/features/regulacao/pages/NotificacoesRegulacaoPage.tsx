@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BellRing, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { useTemConsulta } from '@/shared/auth/authStore';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
@@ -89,7 +90,12 @@ export function NotificacoesRegulacaoPage() {
       ordenar: (n) => n.pacienteNome,
       render: (n) => (
         <div className="min-w-0">
-          <p className="truncate text-slate-900">{n.pacienteNome}</p>
+          <NomePacienteComResumo
+            pacienteId={n.pacienteId}
+            nome={n.pacienteNome}
+            className="min-w-0"
+            classNameNome="truncate text-slate-900"
+          />
           <p className="truncate text-xs text-slate-500">{n.procedimento}</p>
         </div>
       ),

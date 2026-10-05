@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, Inbox, Loader2, Radar, X } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import {
   useIgnorarPendencia,
   useListarPendencias,
@@ -82,7 +83,7 @@ export function PendenciasCadastroPage() {
       render: (p) =>
         p.pacienteId ? (
           <div>
-            <span className="text-gray-900">{p.pacienteNome ?? '—'}</span>
+            <NomePacienteComResumo pacienteId={p.pacienteId} nome={p.pacienteNome ?? '—'} classNameNome="text-gray-900" />
             {p.pacienteCpf ? <p className="text-xs text-gray-500">CPF {p.pacienteCpf}</p> : null}
           </div>
         ) : (

@@ -1,3 +1,4 @@
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { formatarInstante } from '@/shared/lib/datas';
 
@@ -51,7 +52,12 @@ export function TabelaSolicitacoes({
       ordenar: (s) => s.pacienteNome,
       render: (s) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-slate-900">{s.pacienteNome}</p>
+          <NomePacienteComResumo
+            pacienteId={s.pacienteId}
+            nome={s.pacienteNome}
+            className="min-w-0"
+            classNameNome="truncate font-medium text-slate-900"
+          />
           {/* Sem CPF a solicitação não sai da fila — avisar aqui evita a descoberta no "Enviar". */}
           {!s.pacienteCpf && <p className="text-xs text-amber-700">sem CPF</p>}
         </div>

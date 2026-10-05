@@ -138,6 +138,8 @@ export type ManifestacaoListaDto = {
   areaAtrasada: boolean;
   ultimaAtividadeEm: string;
   responsavelNome: string | null;
+  /** Paciente cadastrado do manifestante, quando há. Null junto com o nome quando a identidade é restrita. */
+  manifestantePatientId: string | null;
 };
 
 export type AnexoDto = {

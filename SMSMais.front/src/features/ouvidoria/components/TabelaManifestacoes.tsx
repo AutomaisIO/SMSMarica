@@ -7,6 +7,7 @@ import {
   TipoManifestacaoBadge,
 } from '@/features/ouvidoria/components/badges';
 import { PrazoChip } from '@/features/ouvidoria/components/PrazoChip';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type { ManifestacaoListaDto } from '@/features/ouvidoria/types';
 
 type Props = {
@@ -61,7 +62,11 @@ export function TabelaManifestacoes({ dados, carregando, aoAbrir, ocultarManifes
             className: 'text-sm text-slate-600',
             ordenar: (m: ManifestacaoListaDto) => m.manifestanteNome,
             render: (m: ManifestacaoListaDto) =>
-              m.manifestanteNome ?? <span className="text-xs text-slate-400">{m.identificacao === 'Anonima' ? 'anônimo' : 'restrito'}</span>,
+              m.manifestanteNome && m.manifestantePatientId ? (
+                <NomePacienteComResumo pacienteId={m.manifestantePatientId} nome={m.manifestanteNome} />
+              ) : (
+                m.manifestanteNome ?? <span className="text-xs text-slate-400">{m.identificacao === 'Anonima' ? 'anônimo' : 'restrito'}</span>
+              ),
           } satisfies Coluna<ManifestacaoListaDto>,
         ]),
     { chave: 'unidade', cabecalho: 'Unidade', className: 'text-sm text-slate-600', ordenar: (m) => m.unidadeNome, render: (m) => m.unidadeNome ?? '—' },

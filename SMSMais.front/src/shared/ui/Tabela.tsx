@@ -375,6 +375,10 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
                       ? (e) => {
                           // Ignora cliques em elementos interativos (botões/links/inputs).
                           if ((e.target as HTMLElement).closest('button, a, input, select, [role="button"]')) return;
+                          // Clique num modal aberto a partir da linha (portal, fora da tabela no DOM)
+                          // sobe pela árvore do React até aqui — fechar o resumo do paciente clicando
+                          // no fundo escuro não pode abrir a linha.
+                          if (!e.currentTarget.contains(e.target as Node)) return;
                           aoClicarLinha(item);
                         }
                       : undefined

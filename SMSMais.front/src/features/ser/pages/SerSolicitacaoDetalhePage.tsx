@@ -6,6 +6,7 @@ import { useSolicitacaoSer } from '@/features/ser/api/queries';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
 import { PainelFollowUpSer } from '@/features/ser/components/PainelFollowUpSer';
 import { PainelContatosSer } from '@/features/ser/components/PainelContatosSer';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type { EventoSer } from '@/features/ser/types';
 
 function dataHora(iso: string | null): string {
@@ -128,7 +129,22 @@ export function SerSolicitacaoDetalhePage() {
             <User className="size-4 text-red-600" /> Paciente
           </h2>
           <dl className="space-y-2">
-            <Linha rotulo="Nome" valor={r.pacienteNome} />
+            <div>
+              <dt className="text-xs text-slate-500">Nome</dt>
+              <dd className="text-sm">
+                {/* Ligado ao nosso cadastro: o padrão do painel (idade · resumo · WhatsApp).
+                    Sem ligação, só o nome como o SER mostra. */}
+                {r.pacienteId ? (
+                  <NomePacienteComResumo
+                    pacienteId={r.pacienteId}
+                    nome={r.pacienteNome}
+                    classNameNome="font-medium"
+                  />
+                ) : (
+                  r.pacienteNome || '—'
+                )}
+              </dd>
+            </div>
             <Linha rotulo="Idade" valor={r.idadeTexto} />
             <Linha rotulo="Nascimento" valor={data(detalhe.dataNascimento)} />
             <Linha rotulo="Sexo" valor={detalhe.sexo} />

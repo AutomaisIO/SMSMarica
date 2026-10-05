@@ -5,6 +5,7 @@ import { usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useAcaoAtendimento, useResumoAgendamento } from '@/features/confirmacoes/api';
 import { ChipConfirmacao } from '@/features/conversas/components/ConfirmarAgendamentoChat';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { dataHora } from '@/features/mensageria/lib/rotulos';
 
 /**
@@ -102,7 +103,13 @@ export function JanelaAtendimentoPage() {
           <>
             <section className="space-y-1 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-gray-900">{a.pacienteNome ?? 'Paciente'}</p>
+                {/* Janela aberta pelo próprio chat: o atalho do WhatsApp seria ruído aqui. */}
+                <NomePacienteComResumo
+                  pacienteId={a.pacienteId}
+                  nome={a.pacienteNome ?? 'Paciente'}
+                  classNameNome="text-sm font-semibold text-gray-900"
+                  mostrarWhatsApp={false}
+                />
                 <ChipConfirmacao status={a.statusConfirmacao} />
               </div>
               <p className="text-sm text-gray-800">{a.procedimento ?? a.categoria}</p>

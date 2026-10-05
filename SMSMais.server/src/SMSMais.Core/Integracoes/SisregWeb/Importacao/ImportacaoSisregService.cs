@@ -643,7 +643,8 @@ public sealed class ImportacaoSisregService(
 
         return (new ImportacaoExecucaoResultado(
             codigo, true, idPublico, accession ?? string.Empty,
-            nomeResolvido, pacienteCriado, solicCriada, execCriada, passos, null), false);
+            nomeResolvido, pacienteCriado, solicCriada, execCriada, passos, null,
+            PacienteId: pacienteId), false);
     }
 
     /// <summary>

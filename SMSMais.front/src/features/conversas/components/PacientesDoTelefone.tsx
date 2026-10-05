@@ -46,11 +46,13 @@ export function PacientesDoTelefone({ conversaId }: { conversaId: string }) {
             .filter(Boolean)
             .join(' · ')}
         >
-          {formatarNomeProprio(p.nome)}
-          {idade(p.dataNascimento) ? (
-            <span className="text-gray-400">({idade(p.dataNascimento)})</span>
-          ) : null}
-          <NomePacienteComResumo pacienteId={p.pacienteId} mostrarWhatsApp={false} />
+          {/* A idade sai do próprio componente (padrão "Nome · 54a"), já com a data que veio. */}
+          <NomePacienteComResumo
+            pacienteId={p.pacienteId}
+            nome={formatarNomeProprio(p.nome)}
+            nascimento={p.dataNascimento}
+            mostrarWhatsApp={false}
+          />
         </span>
       ))}
     </div>

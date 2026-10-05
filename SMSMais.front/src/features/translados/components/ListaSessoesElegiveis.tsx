@@ -3,6 +3,7 @@ import { AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import type { SessaoElegivel } from '@/features/translados/types';
 import { ChipsNecessidades } from '@/features/tratamentos/components/ChipsNecessidades';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 type Props = {
   sessoes: SessaoElegivel[];
@@ -110,6 +111,16 @@ function Secao({
   );
 }
 
+/**
+ * Clicar no nome continua selecionando a sessão; os botões do resumo/WhatsApp e o que acontece
+ * dentro do modal do resumo (que vem por portal, fora deste DOM, mas borbulha pela árvore React)
+ * não podem selecionar junto.
+ */
+function naoSelecionarPeloResumo(e: React.SyntheticEvent<HTMLElement>) {
+  const alvo = e.target as Element;
+  if (!e.currentTarget.contains(alvo) || alvo.closest('button')) e.stopPropagation();
+}
+
 function Item({
   sessao,
   selecionado,
@@ -120,13 +131,23 @@ function Item({
   aoSelecionar?: (s: SessaoElegivel | null) => void;
 }) {
   const hora = formatarHora(sessao.horaPrevistaBusca);
+  const alternar = () => aoSelecionar?.(selecionado ? null : sessao);
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => aoSelecionar?.(selecionado ? null : sessao)}
+      {/* div com papel de botão (e não <button>): o nome traz os botões do resumo e do
+          WhatsApp, e botão dentro de botão não é HTML válido. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={alternar}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            alternar();
+          }
+        }}
         className={cn(
-          'w-full rounded-md border px-3 py-2 text-left transition',
+          'w-full cursor-pointer rounded-md border px-3 py-2 text-left transition',
           selecionado
             ? 'border-red-500 bg-red-50 ring-1 ring-red-500'
             : 'border-gray-200 bg-white hover:border-red-300 hover:bg-red-50/30',
@@ -134,7 +155,17 @@ function Item({
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900">{sessao.pacienteNome}</p>
+            <p
+              className="truncate text-sm font-medium text-gray-900"
+              onClick={naoSelecionarPeloResumo}
+              onKeyDown={naoSelecionarPeloResumo}
+            >
+              <NomePacienteComResumo
+                pacienteId={sessao.pacienteId}
+                nome={sessao.pacienteNome}
+                classNameNome="truncate"
+              />
+            </p>
             <p className="truncate text-xs text-gray-500">{sessao.unidadeAtendimentoNome}</p>
           </div>
           {sessao.vencida ? (
@@ -155,7 +186,7 @@ function Item({
             acompanhantes={{ previstos: sessao.acompanhantesPrevistos, limite: sessao.limiteAcompanhantes }}
           />
         </div>
-      </button>
+      </div>
     </li>
   );
 }

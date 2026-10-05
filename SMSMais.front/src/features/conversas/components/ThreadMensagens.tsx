@@ -208,10 +208,15 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
             {/* Título = nome COMPLETO do paciente resolvido do banco (quando há); o nome do
                 perfil do WhatsApp fica no subtítulo — os dois convivem para expor divergência. */}
             <p className="flex items-center gap-1 text-sm font-semibold text-gray-900">
-              {conversa?.pacienteNome || conversa?.nomeContato || conversa?.telefoneCanonical || 'Conversa'}
               {conversa?.pacienteId ? (
-                <NomePacienteComResumo pacienteId={conversa.pacienteId} mostrarWhatsApp={false} />
-              ) : null}
+                <NomePacienteComResumo
+                  pacienteId={conversa.pacienteId}
+                  nome={conversa.pacienteNome || conversa.nomeContato || conversa.telefoneCanonical || 'Conversa'}
+                  mostrarWhatsApp={false}
+                />
+              ) : (
+                conversa?.pacienteNome || conversa?.nomeContato || conversa?.telefoneCanonical || 'Conversa'
+              )}
             </p>
             <p className="text-xs text-gray-500">
               {conversa?.contatoNegado ? (

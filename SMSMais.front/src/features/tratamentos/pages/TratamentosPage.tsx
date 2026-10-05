@@ -15,6 +15,7 @@ import {
 } from '@/features/tratamentos/api/queries';
 import { formatarDataBr } from '@/features/tratamentos/lib/agenda';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 export function TratamentosPage() {
   const navigate = useNavigate();
@@ -26,7 +27,11 @@ export function TratamentosPage() {
   const visiveis = (lista.data ?? []).filter((t) => t.ativo);
 
   const colunas: Coluna<TratamentoListItem>[] = [
-    { chave: 'paciente', cabecalho: 'Paciente', render: (t) => t.pacienteNome },
+    {
+      chave: 'paciente',
+      cabecalho: 'Paciente',
+      render: (t) => <NomePacienteComResumo pacienteId={t.pacienteId} nome={t.pacienteNome} />,
+    },
     {
       chave: 'tipo',
       cabecalho: 'Tipo',

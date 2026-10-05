@@ -31,6 +31,7 @@ import {
   type RegraAcompanhantesPayload,
 } from '@/features/tratamentos/types';
 import type { PacienteListItem } from '@/features/pacientes/types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 type Passo = 'paciente' | 'dados' | 'condicao' | 'agenda' | 'revisao';
 
@@ -119,7 +120,18 @@ export function TratamentoFormPage() {
             <AjudaManual artigo="atendimentos-transporte" secao="cadastrar" />
           </div>
           <p className="text-sm text-gray-600">
-            {paciente ? `Paciente: ${paciente.nomeCompleto}` : 'Selecione o paciente para começar.'}
+            {paciente ? (
+              <>
+                Paciente:{' '}
+                <NomePacienteComResumo
+                  pacienteId={paciente.id}
+                  nome={paciente.nomeCompleto}
+                  nascimento={paciente.dataNascimento ?? undefined}
+                />
+              </>
+            ) : (
+              'Selecione o paciente para começar.'
+            )}
           </p>
         </div>
       </header>

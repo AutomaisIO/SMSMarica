@@ -1,3 +1,4 @@
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarInstante } from '@/shared/lib/datas';
 
 import { ROTULO_FLUXO, StatusRegulacaoBadge } from './StatusRegulacaoBadge';
@@ -20,7 +21,9 @@ export function CabecalhoSolicitacao({ s }: { s: SolicitacaoRegulacao }) {
           <p className="font-mono text-lg font-semibold text-slate-900">
             {s.numeroExterno ?? `PR-${s.numeroLocal}`}
           </p>
-          <h1 className="text-lg font-semibold text-slate-900">{s.pacienteNome}</h1>
+          <h1 className="text-lg font-semibold text-slate-900">
+            <NomePacienteComResumo pacienteId={s.pacienteId} nome={s.pacienteNome} />
+          </h1>
           <p className="text-sm text-slate-600">{s.procedimentoNome}</p>
         </div>
         <StatusRegulacaoBadge status={s.status} />

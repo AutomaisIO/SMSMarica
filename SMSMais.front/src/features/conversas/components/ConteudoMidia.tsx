@@ -10,6 +10,7 @@ import {
   usePacientesDoTelefone,
 } from '@/features/conversas/api/queries';
 import type { Mensagem } from '@/features/conversas/types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { baixarArquivo } from '@/shared/acervo/api';
 import { DialogoDocumento, tituloDoArquivo } from '@/shared/acervo/DialogoDocumento';
 import { AcaoVisualizador, VisualizadorArquivo } from '@/shared/acervo/VisualizadorArquivo';
@@ -401,7 +402,14 @@ function DialogoAceitar({
         </div>
       ) : opcoes.length === 1 ? (
         <p className="text-sm text-gray-600">
-          Paciente: <span className="font-medium text-gray-900">{formatarNomeProprio(opcoes[0].nome)}</span>
+          Paciente:{' '}
+          <NomePacienteComResumo
+            pacienteId={opcoes[0].id}
+            nome={formatarNomeProprio(opcoes[0].nome)}
+            classNameNome="font-medium text-gray-900"
+            className="align-middle"
+            mostrarWhatsApp={false}
+          />
         </p>
       ) : doTelefone.isLoading ? (
         <p className="flex items-center gap-2 text-sm text-gray-500">

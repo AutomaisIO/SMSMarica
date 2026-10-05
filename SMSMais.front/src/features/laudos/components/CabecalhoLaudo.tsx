@@ -1,6 +1,9 @@
 import { ScanLine, User } from 'lucide-react';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 type Props = {
+  /** Nosso paciente (do laudo ou do pedido). Com ele, o nome sai no padrão: idade + resumo. */
+  pacienteId?: string | null;
   pacienteNome?: string | null;
   pacienteCpf?: string | null;
   /** Nome cru do DICOM — rótulo temporário exibido em cinza quando não há vínculo. */
@@ -15,6 +18,7 @@ type Props = {
 };
 
 export function CabecalhoLaudo({
+  pacienteId,
   pacienteNome,
   pacienteCpf,
   pacienteNomeDicom,
@@ -31,7 +35,16 @@ export function CabecalhoLaudo({
         <User className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
         <div className="min-w-0">
           <div className="text-xs uppercase tracking-wide text-gray-500">Paciente</div>
-          {pacienteNome ? (
+          {pacienteId ? (
+            // Paciente cadastrado: nome + idade + bonequinho (resumo) + WhatsApp. Sem nome
+            // resolvido no hub, ainda é vínculo real — "Paciente vinculado".
+            <NomePacienteComResumo
+              pacienteId={pacienteId}
+              nome={pacienteNome || 'Paciente vinculado'}
+              className="min-w-0"
+              classNameNome={`truncate text-sm font-medium ${pacienteNome ? 'text-gray-900' : 'text-gray-500'}`}
+            />
+          ) : pacienteNome ? (
             <div className="truncate text-sm font-medium text-gray-900">{pacienteNome}</div>
           ) : pacienteVinculado ? (
             // Vinculado, mas o nome não resolveu no hub FHIR — vínculo real, nunca "não vinculado".

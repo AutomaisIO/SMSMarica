@@ -17,6 +17,11 @@ import { BotaoDispensarVerificacao } from '@/features/telefone-validacao/compone
 import { SeloDispensaContato } from '@/features/telefone-validacao/components/SeloDispensaContato';
 import { UltimaSolicitacaoPaciente } from '@/features/solicitacoes-exame/components/UltimaSolicitacaoPaciente';
 import { BotaoWhatsAppPaciente } from '@/features/conversas/components/BotaoWhatsAppPaciente';
+import {
+  formatarIdadeCurta,
+  formatarIdadeExtensa,
+  useIdadePacienteMeses,
+} from '@/features/pacientes/api/idadePaciente';
 import type { Paciente } from '@/features/pacientes/types';
 
 const SEXO_LABEL: Record<string, string> = {
@@ -233,17 +238,31 @@ type Props = {
    * conversa já está aberta e o botão seria ruído.
    */
   mostrarWhatsApp?: boolean;
+  /**
+   * Data de nascimento (aaaa-mm-dd), quando a tela já a tem: a idade sai dela, sem pedir nada ao
+   * servidor. Omitida, a idade vem de `/pacientes/idades`, em lote com os outros nomes da tela.
+   */
+  nascimento?: string | null;
+  /** Mostra a idade ("54a") antes do bonequinho. Padrão: sim. */
+  mostrarIdade?: boolean;
 };
 
 /**
+ * O PADRÃO de nome de paciente em todo o painel: nome · idade ("54a", em negrito menor) ·
+ * bonequinho (resumo do cadastro) · WhatsApp (só com o módulo Central de Atendimento). Onde
+ * aparece nome de paciente identificado, é este componente.
+ *
  * Renderiza o nome do paciente (opcional) com um ícone pequeno ao lado. Ao clicar
  * no ícone abre um modal com um card-resumo dos dados (nome, CPF, CNS, nascimento,
  * sexo, telefone, nome da mãe) e um botão "Editar" que leva à edição do paciente.
  * Componente genérico/reutilizável dentro da feature de pacientes.
  */
 export function NomePacienteComResumo({
-  pacienteId, nome, className, classNameNome, sufixo, mostrarWhatsApp = true,
+  pacienteId, nome, className, classNameNome, sufixo, mostrarWhatsApp = true, nascimento,
+  mostrarIdade = true,
 }: Props) {
+  const idadeMeses = useIdadePacienteMeses(mostrarIdade ? pacienteId : null, nascimento);
+  const idade = formatarIdadeCurta(idadeMeses);
   const navigate = useNavigate();
   const location = useLocation();
   const [aberto, setAberto] = useState(false);
@@ -264,6 +283,16 @@ export function NomePacienteComResumo({
     <span className={cn('inline-flex max-w-full items-center gap-1.5', className)}>
       {/* min-w-0 deixa o nome encolher e truncar (…) dentro do flex; sem isso ele vaza a coluna. */}
       {nome ? <span className={cn('min-w-0', classNameNome)}>{nome}</span> : null}
+      {/* Menor e em negrito: contrasta com o nome sem competir com ele. Só os anos na tela;
+          os meses, no passar do mouse. Bebê (menos de um ano) aparece em meses. */}
+      {mostrarIdade && idade ? (
+        <span
+          className="shrink-0 cursor-default text-xs font-bold text-gray-700"
+          title={`Idade: ${formatarIdadeExtensa(idadeMeses)}`}
+        >
+          {idade}
+        </span>
+      ) : null}
       <button
         type="button"
         onClick={() => setAberto(true)}

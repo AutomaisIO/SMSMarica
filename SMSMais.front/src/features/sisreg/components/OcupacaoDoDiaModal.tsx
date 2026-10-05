@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react';
 import { Modal } from '@/shared/ui/Modal';
 import { useOcupacaoDoDia } from '../api/queries';
 import type { OcupanteDaVaga } from '../types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 /** O dia clicado no "Quando dá para marcar". */
 export type AlvoOcupacao = {
@@ -31,10 +32,23 @@ function Linha({ o }: { o: OcupanteDaVaga }) {
         {o.hora.slice(0, 5)}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">
-          {o.pacienteNome ?? <span className="italic text-gray-500">nome não encontrado</span>}
-          {o.idadeAnos != null ? <span className="font-normal text-gray-500"> · {o.idadeAnos} anos</span> : null}
-        </p>
+        {o.pacienteId && o.pacienteNome ? (
+          // Nome no padrão do painel: a idade ("54a") já vem no componente, do nascimento do hub.
+          <p className="text-sm font-medium text-gray-900">
+            <NomePacienteComResumo
+              pacienteId={o.pacienteId}
+              nome={o.pacienteNome}
+              nascimento={o.pacienteNascimento ?? null}
+              className="min-w-0"
+              classNameNome="truncate"
+            />
+          </p>
+        ) : (
+          <p className="truncate text-sm font-medium text-gray-900">
+            {o.pacienteNome ?? <span className="italic text-gray-500">nome não encontrado</span>}
+            {o.idadeAnos != null ? <span className="font-normal text-gray-500"> · {o.idadeAnos} anos</span> : null}
+          </p>
+        )}
         <p className="mt-0.5 text-xs text-gray-600">
           {[o.procedimentoTexto, o.profissionalExecutanteNome].filter(Boolean).join(' · ')}
         </p>

@@ -16,6 +16,7 @@ import {
   type PreviaCorrecao,
 } from '@/features/solicitacoes-exame/api/correcaoIdentidadeApi';
 import type { SolicitacaoExame } from '@/features/solicitacoes-exame/types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 type Acao = 'descartar' | 'alterar' | 'trocar';
 
@@ -168,7 +169,15 @@ function ModalCorrigir({ s, aoFechar }: { s: SolicitacaoExame; aoFechar: () => v
 
             {previa?.destinoAccession && (
               <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm">
-                <div className="font-medium text-gray-900">{previa.destinoPacienteNome}</div>
+                {previa.destinoPacienteId ? (
+                  <NomePacienteComResumo
+                    pacienteId={previa.destinoPacienteId}
+                    nome={previa.destinoPacienteNome}
+                    classNameNome="font-medium text-gray-900"
+                  />
+                ) : (
+                  <div className="font-medium text-gray-900">{previa.destinoPacienteNome}</div>
+                )}
                 <div className="text-gray-600">
                   {previa.destinoProcedimento ?? 'Exame'} · pedido {previa.destinoAccession}
                 </div>

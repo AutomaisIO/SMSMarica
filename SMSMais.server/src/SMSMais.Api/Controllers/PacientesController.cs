@@ -47,6 +47,19 @@ public sealed class PacientesController(
         CancellationToken cancellationToken) =>
         await _service.BuscarAsync(termo, cancellationToken);
 
+    /// <summary>
+    /// Idade (em meses) de vários pacientes de uma vez — a que aparece ao lado do nome em toda
+    /// tela ("54a"). Sem módulo: basta estar autenticado, porque devolve só a idade, nunca a data
+    /// de nascimento (ver <see cref="IIdadePacientesService"/>). Até 200 ids por chamada.
+    /// </summary>
+    [HttpPost("idades")]
+    [ProducesResponseType<IReadOnlyList<IdadePacienteDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<IdadePacienteDto>> Idades(
+        [FromBody] IdadesPacientesRequest req,
+        [FromServices] IIdadePacientesService idades,
+        CancellationToken cancellationToken) =>
+        idades.ObterAsync(req.Ids, cancellationToken);
+
     /// <summary>Retorna um paciente pelo identificador.</summary>
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]

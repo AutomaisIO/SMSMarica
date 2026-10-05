@@ -12,6 +12,7 @@ import {
   useSalvarConfigFaturamento,
 } from '@/features/faturamento/api';
 import type { DimensaoFaturamento } from '@/features/faturamento/types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 const DIMENSOES: { id: DimensaoFaturamento; rotulo: string }[] = [
   { id: 'Paciente', rotulo: 'Paciente' },
@@ -120,7 +121,14 @@ export function FaturamentoPage() {
               ) : (
                 resumo.data!.itens.map((i) => (
                   <tr key={i.chaveId || i.descricao}>
-                    <td className="px-4 py-2 text-gray-900">{i.descricao}</td>
+                    <td className="px-4 py-2 text-gray-900">
+                      {/* Agrupado por paciente, a chave é o id dele: nome no padrão do painel. */}
+                      {resumo.data!.dimensao === 'Paciente' && i.chaveId ? (
+                        <NomePacienteComResumo pacienteId={i.chaveId} nome={i.descricao} />
+                      ) : (
+                        i.descricao
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-right text-gray-600">{i.qtdRegistros}</td>
                     <td className="px-4 py-2 text-right text-gray-600">{num(i.totalKm, 1)}</td>
                     <td className="px-4 py-2 text-right text-gray-600">{num(i.totalUnidades)}</td>
@@ -170,7 +178,9 @@ export function FaturamentoPage() {
                   return (
                     <tr key={r.id}>
                       <td className="px-4 py-2 text-gray-600">{dataBr(r.data)}</td>
-                      <td className="px-4 py-2 text-gray-900">{r.pacienteNome}</td>
+                      <td className="px-4 py-2 text-gray-900">
+                        <NomePacienteComResumo pacienteId={r.pacienteId} nome={r.pacienteNome} />
+                      </td>
                       <td className="px-4 py-2 text-gray-600">{r.unidadeAtendimentoNome}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{num(r.kmComPaciente, 1)}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{num(r.unidades)}</td>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { http, extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useAnexosExamePaciente } from '@/features/pacientes/api/queries';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarTamanhoBytes } from '@/features/anamnese/lib/anexos';
 import type { AnexoExameDto } from '@/features/anamnese/types';
 
@@ -97,8 +98,15 @@ export function ExamesAnterioresJanelaPage() {
       <header className="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-3">
         <FileText className="h-5 w-5 text-primary-600" />
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold text-gray-900">
-            Exames anteriores{nome ? ` — ${nome}` : ''}
+          <h1 className="flex min-w-0 items-center gap-1 text-base font-semibold text-gray-900">
+            <span className="shrink-0">Exames anteriores{nome ? ' —' : ''}</span>
+            {nome ? (
+              pacienteId ? (
+                <NomePacienteComResumo pacienteId={pacienteId} nome={nome} className="min-w-0" classNameNome="truncate" />
+              ) : (
+                <span className="truncate">{nome}</span>
+              )
+            ) : null}
           </h1>
           <p className="text-xs text-gray-500">
             {lista.length} {lista.length === 1 ? 'documento' : 'documentos'}

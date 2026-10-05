@@ -356,7 +356,9 @@ public sealed class OfertasSisregService(
                 a.ProfissionalExecutanteNome,
                 a.UnidadeSolicitante,
                 a.StatusConfirmacao,
-                a.Categoria);
+                a.Categoria,
+                a.PacienteId != Guid.Empty ? a.PacienteId : (Guid?)null,
+                p?.DataNascimento);
         }).ToList();
 
         return new OcupacaoDoDiaDto(

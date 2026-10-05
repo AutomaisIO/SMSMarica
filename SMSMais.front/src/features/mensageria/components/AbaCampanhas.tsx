@@ -11,7 +11,6 @@ import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
-import { BotaoWhatsAppPaciente } from '@/features/conversas/components/BotaoWhatsAppPaciente';
 import { listarUnidades } from '@/features/unidades/api/unidadesApi';
 import {
   useAlcanceCampanha,
@@ -180,7 +179,6 @@ function DetalheCampanha({
               nome={i.pacienteNome ?? '—'}
               classNameNome="font-medium text-gray-900"
             />
-            <BotaoWhatsAppPaciente pacienteId={i.pacienteId} />
           </div>
           <div className="text-xs text-gray-500">{i.codigoSolicitacao ? `SISREG ${i.codigoSolicitacao}` : ''}</div>
         </div>

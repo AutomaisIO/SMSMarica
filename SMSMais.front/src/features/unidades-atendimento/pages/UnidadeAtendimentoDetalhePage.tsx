@@ -14,6 +14,7 @@ import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import { formatarDataBr } from '@/features/tratamentos/lib/agenda';
 import { formatarDuracao } from '@/shared/lib/tempoMedio';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 export function UnidadeAtendimentoDetalhePage() {
   const navigate = useNavigate();
@@ -45,7 +46,17 @@ export function UnidadeAtendimentoDetalhePage() {
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
-      render: (t) => <span className="font-medium text-gray-900">{t.pacienteNome}</span>,
+      // O stopPropagation segura o clique: a linha abre o atendimento, e abrir o resumo do
+      // paciente ou o WhatsApp não pode levar o operador para outra tela junto.
+      render: (t) => (
+        <span onClick={(e) => e.stopPropagation()}>
+          <NomePacienteComResumo
+            pacienteId={t.pacienteId}
+            nome={t.pacienteNome}
+            classNameNome="font-medium text-gray-900"
+          />
+        </span>
+      ),
     },
     { chave: 'tipo', cabecalho: 'Tipo', render: (t) => t.tipoTratamentoNome ?? t.descricao },
     { chave: 'tempo', cabecalho: 'Tempo médio', render: (t) => formatarDuracao(t.tempoMedioMinutos) },

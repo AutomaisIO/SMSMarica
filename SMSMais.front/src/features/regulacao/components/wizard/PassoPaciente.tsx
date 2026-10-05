@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, IdCard, Loader2, Search, UserPlus, X } from 'lucide-react';
 
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
@@ -74,7 +75,15 @@ export function PassoPaciente({ value, onChange, exigirCpf }: Props) {
         <div className="rounded-md border border-red-200 bg-red-50/60 p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate font-medium text-slate-900">{value.nome}</p>
+              <p className="truncate font-medium text-slate-900">
+                <NomePacienteComResumo
+                  pacienteId={value.id}
+                  nome={value.nome}
+                  nascimento={value.nascimento ?? null}
+                  className="min-w-0"
+                  classNameNome="truncate"
+                />
+              </p>
               <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-600">
                 <div>
                   <dt className="inline text-slate-400">CPF: </dt>

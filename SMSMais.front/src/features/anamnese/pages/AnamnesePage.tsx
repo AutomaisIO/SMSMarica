@@ -7,7 +7,6 @@ import {
   Loader2,
   Save,
   ShieldAlert,
-  User,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -27,6 +26,7 @@ import {
 } from '@/features/anamnese/components/SecaoSiscan';
 import { useSessaoSiscan } from '@/features/anamnese/api/siscanApi';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarInstanteData } from '@/shared/lib/datas';
 import { Modal } from '@/shared/ui/Modal';
 import {
@@ -378,8 +378,11 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           <div className="lg:col-span-2">
             <span className="text-gray-500">Nome completo</span>
             <p className="flex items-center gap-1.5 font-medium text-gray-900">
-              <User className="h-4 w-4 text-gray-400" />
-              {ctx.pacienteNome || '—'}
+              <NomePacienteComResumo
+                pacienteId={ctx.pacienteId}
+                nome={ctx.pacienteNome || '—'}
+                nascimento={ctx.pacienteNascimento}
+              />
             </p>
           </div>
           <div>
@@ -944,6 +947,8 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
       <ModalGerarRequisicaoSiscan
         aberto={gerarSiscan}
         exameImagemId={ctx.solicitacaoExameId}
+        pacienteId={ctx.pacienteId}
+        pacienteNascimento={ctx.pacienteNascimento}
         aoFechar={() => {
           setGerarSiscan(false);
           // Quem pediu para sair e parou aqui para gerar continua saindo depois.

@@ -1251,7 +1251,8 @@ export function PacienteDetalhePage() {
               <h1 className="text-2xl font-semibold text-gray-900">
                 {p?.nomeCompleto ?? 'Carregando…'}
               </h1>
-              {p ? <NomePacienteComResumo pacienteId={p.id} /> : null}
+              {/* A idade já está por extenso logo abaixo — aqui não se repete. */}
+              {p ? <NomePacienteComResumo pacienteId={p.id} mostrarIdade={false} /> : null}
               {p ? <StatusBadge ativo={p.ativo} /> : null}
               <AjudaManual artigo="pacientes" secao={vista === 'agendamentos' ? 'selos' : undefined} />
             </div>

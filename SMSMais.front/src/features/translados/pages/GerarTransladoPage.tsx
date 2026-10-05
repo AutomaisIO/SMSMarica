@@ -18,6 +18,7 @@ import { Input } from '@/shared/ui/Input';
 import { useGerarTranslado } from '@/features/translados/api/queries';
 import type { ResultadoGeracao } from '@/features/translados/types';
 import { ChipsNecessidades } from '@/features/tratamentos/components/ChipsNecessidades';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 function dataLocalHoje(): string {
   const d = new Date();
@@ -186,7 +187,7 @@ function Resultado({ resultado, aoAbrirLista }: { resultado: ResultadoGeracao; a
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-50 text-[11px] font-medium text-primary-700">
                     {p.ordem}
                   </span>
-                  <span>{p.pacienteNome}</span>
+                  <NomePacienteComResumo pacienteId={p.pacienteId} nome={p.pacienteNome} />
                   <ChipsNecessidades
                     necessidades={p.necessidades}
                     acompanhantes={{
@@ -211,7 +212,11 @@ function Resultado({ resultado, aoAbrirLista }: { resultado: ResultadoGeracao; a
             {resultado.naoAlocadas.map((s) => (
               <li key={s.sessaoId} className="flex flex-wrap items-center gap-x-2 text-sm text-gray-700">
                 <MapPin className="h-3.5 w-3.5 text-amber-600" />
-                <span className="font-medium">{s.pacienteNome}</span>
+                <NomePacienteComResumo
+                  pacienteId={s.pacienteId}
+                  nome={s.pacienteNome}
+                  classNameNome="font-medium"
+                />
                 <span className="text-gray-500">({s.unidadeAtendimentoNome})</span>
                 <span className="text-amber-700">— {s.motivo}</span>
               </li>

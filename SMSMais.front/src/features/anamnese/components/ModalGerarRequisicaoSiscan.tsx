@@ -16,6 +16,7 @@ import {
   type UnidadeSiscan,
 } from '@/features/anamnese/api/siscanApi';
 import { perdeuSessaoSiscan, recusaPorCadastroCadsus } from '@/features/anamnese/lib/sessaoSiscan';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -59,12 +60,18 @@ const URL_CADSUSWEB = 'https://cadastro.saude.gov.br/novocartao/';
 export function ModalGerarRequisicaoSiscan({
   aberto,
   exameImagemId,
+  pacienteId,
+  pacienteNascimento,
   aoFechar,
   aoGerar,
   aoPerderSessao,
 }: {
   aberto: boolean;
   exameImagemId: string;
+  /** Paciente do pedido — o nome aparece no padrão do painel (idade + resumo). Sem ele, só o texto. */
+  pacienteId?: string | null;
+  /** Data de nascimento (aaaa-mm-dd), quando quem abre já a tem — a idade sai dela. */
+  pacienteNascimento?: string | null;
   aoFechar: () => void;
   aoGerar?: (resultado: RequisicaoSiscan) => void;
   /**
@@ -418,7 +425,17 @@ export function ModalGerarRequisicaoSiscan({
           <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex justify-between gap-3 sm:block">
               <dt className="text-gray-500">Paciente</dt>
-              <dd className="font-medium text-gray-900">{dados.pacienteNome}</dd>
+              <dd className="font-medium text-gray-900">
+                {pacienteId ? (
+                  <NomePacienteComResumo
+                    pacienteId={pacienteId}
+                    nome={dados.pacienteNome}
+                    nascimento={pacienteNascimento}
+                  />
+                ) : (
+                  dados.pacienteNome
+                )}
+              </dd>
             </div>
             <div className="flex justify-between gap-3 sm:block">
               <dt className="text-gray-500">

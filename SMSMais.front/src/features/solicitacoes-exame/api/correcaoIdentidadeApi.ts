@@ -14,6 +14,8 @@ export type PreviaCorrecao = {
   exameAtualId: string | null;
   accessionAtual: string | null;
   destinoPacienteNome: string;
+  /** Nosso paciente do destino (null enquanto não há destino conferido). */
+  destinoPacienteId: string | null;
   destinoExameId: string;
   destinoAccession: string;
   destinoProcedimento: string | null;

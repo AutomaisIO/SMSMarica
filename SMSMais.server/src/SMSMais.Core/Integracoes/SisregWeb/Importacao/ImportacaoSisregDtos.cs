@@ -44,7 +44,10 @@ public sealed record ImportacaoExecucaoResultado(
     string? Erro,
     /// <summary>Causa tipada do impedimento — é o que a lista de pendências grava para saber qual
     /// ação oferecer. <c>null</c> quando houve sucesso. Ver ADR-0035.</summary>
-    CausaFalhaImportacao? Causa = null);
+    CausaFalhaImportacao? Causa = null,
+    /// <summary>Nosso paciente resolvido/criado — a tela mostra o nome no padrão (idade + resumo).
+    /// <c>null</c> quando não chegou a resolver paciente.</summary>
+    Guid? PacienteId = null);
 
 /// <summary>Resultado do preview de importação para um período.</summary>
 public sealed record ImportacaoPreviewResultado(

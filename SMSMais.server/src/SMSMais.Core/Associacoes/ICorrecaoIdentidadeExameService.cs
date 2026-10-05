@@ -19,6 +19,9 @@ public sealed record PreviaCorrecaoDto(
     Guid? ExameAtualId,
     string? AccessionAtual,
     string DestinoPacienteNome,
+    /// <summary>Nosso paciente do destino — a tela mostra o nome no padrão (idade + resumo).
+    /// Null quando ainda não há destino conferido.</summary>
+    Guid? DestinoPacienteId,
     Guid DestinoExameId,
     string DestinoAccession,
     string? DestinoProcedimento,

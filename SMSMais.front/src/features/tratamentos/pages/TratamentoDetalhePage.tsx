@@ -12,6 +12,7 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { ListaAcompanhantes } from '@/features/acompanhantes/components/ListaAcompanhantes';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import {
   useAdicionarSessao,
   useAtualizarSessao,
@@ -219,7 +220,13 @@ export function TratamentoDetalhePage() {
               <AjudaManual artigo="atendimentos-transporte" />
             </div>
             <p className="text-sm text-gray-600">
-              Paciente <strong>{t.pacienteNome}</strong> · Unidade de atendimento <strong>{t.unidadeAtendimentoNome}</strong>
+              Paciente{' '}
+              <NomePacienteComResumo
+                pacienteId={t.pacienteId}
+                nome={t.pacienteNome}
+                classNameNome="font-bold"
+              />{' '}
+              · Unidade de atendimento <strong>{t.unidadeAtendimentoNome}</strong>
               {t.unidadeAtendimentoCidade ? <> · {t.unidadeAtendimentoCidade}</> : null}
               {!t.ativo ? <> · <span className="text-gray-500">encerrado</span></> : null}
             </p>

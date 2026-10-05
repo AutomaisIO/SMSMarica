@@ -118,7 +118,9 @@ public sealed record RegulacaoSolicitacaoListaDto(
     string? UnidadeEmNomeDe,
     string? AgenteNome,
     DateTime CriadoEm,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+    /// <summary>Para o nome sair com idade, resumo e WhatsApp, como em toda tela.</summary>
+    Guid PacienteId);
 
 public sealed record PaginaSolicitacoesRegulacaoDto(
     int Total, IReadOnlyList<RegulacaoSolicitacaoListaDto> Itens);
@@ -277,7 +279,7 @@ public sealed class RegulacaoSolicitacaoService(
                 s.UnidadeSolicitante != null ? s.UnidadeSolicitante.Nome : "(unidade removida)",
                 s.UnidadeEmNomeDe != null ? s.UnidadeEmNomeDe.Nome : null,
                 null,
-                s.CriadoEm, s.AtualizadoEm))
+                s.CriadoEm, s.AtualizadoEm, s.PacienteId))
             .ToListAsync(ct);
 
         // O nome do agente sai de uma segunda consulta, e não de um join por linha: são poucos

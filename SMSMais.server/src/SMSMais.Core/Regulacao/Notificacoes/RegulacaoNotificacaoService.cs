@@ -31,7 +31,9 @@ public sealed record RegulacaoNotificacaoDto(
     Guid UnidadeSolicitanteId,
     string UnidadeSolicitante,
     DateTime CriadoEm,
-    bool Vista);
+    bool Vista,
+    /// <summary>Para o nome sair com idade, resumo e WhatsApp, como em toda tela.</summary>
+    Guid PacienteId);
 
 public sealed record PaginaNotificacoesRegulacaoDto(
     int Total, IReadOnlyList<RegulacaoNotificacaoDto> Itens);
@@ -126,7 +128,8 @@ public sealed class RegulacaoNotificacaoService(
                     ? x.Evento.Solicitacao.UnidadeSolicitante.Nome
                     : "(unidade removida)",
                 x.Evento.CriadoEm,
-                x.Vista))
+                x.Vista,
+                x.Evento.Solicitacao.PacienteId))
             .ToListAsync(ct);
 
         return new PaginaNotificacoesRegulacaoDto(total, itens);

@@ -64,16 +64,23 @@ export function PacientesPage() {
           >
             {p.nomeCompleto}
           </button>
-          {p.identidadeIncompleta ? (
-            <span
-              className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800"
-              title="Cadastro sem CPF, importado do prontuário de origem. Como não há CPF, este paciente não pode ser unido ao mesmo cidadão em outras bases — ele pode aparecer mais de uma vez. Confirme a identidade antes de usar para algo definitivo."
-            >
-              <AlertTriangle className="h-3 w-3" />
-              sem CPF
-            </span>
-          ) : null}
-          <NomePacienteComResumo pacienteId={p.id} />
+          {/* O nome fica de fora (é o link do cadastro); o componente põe idade, bonequinho e
+              WhatsApp logo depois, no padrão do painel. O selo "sem CPF" vem por último. */}
+          <NomePacienteComResumo
+            pacienteId={p.id}
+            nascimento={p.dataNascimento}
+            sufixo={
+              p.identidadeIncompleta ? (
+                <span
+                  className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800"
+                  title="Cadastro sem CPF, importado do prontuário de origem. Como não há CPF, este paciente não pode ser unido ao mesmo cidadão em outras bases — ele pode aparecer mais de uma vez. Confirme a identidade antes de usar para algo definitivo."
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  sem CPF
+                </span>
+              ) : null
+            }
+          />
         </div>
       ),
     },

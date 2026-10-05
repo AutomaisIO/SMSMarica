@@ -159,6 +159,7 @@ export type SolicitacaoRegulacaoLista = {
   agenteNome: string | null;
   criadoEm: string;
   atualizadoEm: string | null;
+  pacienteId: string;
 };
 
 export type PaginaSolicitacoesRegulacao = {
@@ -211,6 +212,7 @@ export type NotificacaoRegulacao = {
   unidadeSolicitante: string;
   criadoEm: string;
   vista: boolean;
+  pacienteId: string;
 };
 
 export type PaginaNotificacoesRegulacao = {
