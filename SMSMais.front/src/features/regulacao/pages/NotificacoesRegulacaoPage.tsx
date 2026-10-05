@@ -171,7 +171,15 @@ export function NotificacoesRegulacaoPage() {
         dados={pagina.data?.itens ?? []}
         chaveLinha={(n) => n.eventoId}
         carregando={pagina.isLoading}
-        aoClicarLinha={(n) => navegar(`/app/regulacao/solicitacoes/${n.solicitacaoId}`)}
+        // Em "Todas as unidades" quem olha é o regulador: o clique leva à análise (Gestão de fila).
+        // Em "Minhas unidades", ao detalhe de quem pediu.
+        aoClicarLinha={(n) =>
+          navegar(
+            ehAgente && escopo === 'todas'
+              ? `/app/regulacao/gestao-fila/${n.solicitacaoId}`
+              : `/app/regulacao/solicitacoes/${n.solicitacaoId}`,
+          )
+        }
         dicaLinha="Clique para abrir a solicitação"
         vazio={soNaoVistas ? 'Nada novo por aqui.' : 'Nenhuma movimentação registrada.'}
         idTabela="regulacao-notificacoes"

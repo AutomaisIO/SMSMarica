@@ -18,7 +18,7 @@ import { useResumoFilaRegulacao, useSolicitacoes } from '../api/solicitacoesQuer
  * responde a pergunta da ponta: "e o pedido daquela paciente?".</p>
  *
  * <p><b>O escopo é do backend, não desta tela.</b> Aqui a fila é a da unidade escolhida no topo,
- * para todos — agente inclusive (o município inteiro é a "Fila da regulação"). Rascunho só aparece
+ * para todos — agente inclusive (o município inteiro é a "Gestão de fila"). Rascunho só aparece
  * para quem o abriu.</p>
  */
 export function MinhaFilaPage() {

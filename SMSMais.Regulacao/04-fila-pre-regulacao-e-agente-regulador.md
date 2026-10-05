@@ -108,6 +108,15 @@ Enum: manter os nomes `Regulacao`, `RegulacaoTriagem`, `RegulacaoConfiguracao`; 
 
 ### Front
 
+> **Corrigido em 05/10/2026 — duas visões, duas telas** (ver "Desvios do plano" no `PROGRESSO.md`).
+> O que está abaixo descreve uma tela de detalhe só, com os botões decididos pela permissão, e a
+> fila do agente como subitem de "Solicitações". Passou a valer: **Solicitações** é o lado de quem
+> pede (Minha fila · Nova solicitação · Notificações; detalhe só com continuar/corrigir/cancelar);
+> **Gestão de fila** é um item próprio do grupo `regulacao` (módulo 48), em
+> `/app/regulacao/gestao-fila` (lista, sem aba de rascunho) e `/app/regulacao/gestao-fila/:id`
+> (`AnaliseSolicitacaoPage`, com assumir · aceitar e registrar envio · devolver · recusar · OK
+> interno). O endereço antigo `/app/regulacao/solicitacoes/regulacao` redireciona.
+
 - Menu: em `menuConfig.ts`, grupo `regulacao`, item **Solicitações** (`/app/regulacao/solicitacoes`, módulo `Regulacao`) com subitens: Nova solicitação · Minha fila · Fila da regulação (só com 48) · Pendências (plano 06) · Notificações (plano 05). Badge "pendências da minha unidade" via novo caso em `contadorBadge()` + hook `useRegulacaoBadges()`.
 - `<RotaComModulo modulo="RegulacaoTriagem">` em `app/router/` (renderiza 403 amigável) — as rotas hoje não são gateadas; criar e usar nas rotas do agente e da configuração.
 - `MinhaFilaPage` (unidade): tabs por status (Rascunho / Pré-regulação / Devolvidas / Enviadas / Em fila / Agendadas), busca, tabela com paciente, procedimento, fluxo, destino, agente, atualizado em.
@@ -122,7 +131,7 @@ Enum: manter os nomes `Regulacao`, `RegulacaoTriagem`, `RegulacaoConfiguracao`; 
 - [ ] **3.3** `RegulacaoSolicitacoesController` com o mapa acima; `EscopoUnidade` no service; ampliação por 48.
 - [ ] **3.4** `MinhaFilaPage`, `FilaRegulacaoPage` (+ `api/regulacaoApi.ts`, `useResumoRegulacao`).
 - [ ] **3.5** `SolicitacaoDetalhePage` com timeline (eventos + pendências + comunicações) e ações do agente (assumir com RowVersion, ajustar com diff, devolver, recusar).
-- [ ] **3.5b** **Trocar o procedimento** (`POST …/{id}/trocar-procedimento`, evento `TrocaProcedimento`) — exigido por **D-10**: o canônico é plano, o solicitante pode ter escolhido o balde ou um específico, e é o agente quem desempata (nos dois sentidos). Não é um `Ajuste` comum: trocar o procedimento **muda o formulário e muda as regras**, então o service tem de (a) regerar `formulario_versao`, (b) **preservar as respostas dos campos cuja chave canônica sobrevive** e descartar o resto registrando o que caiu no `diff_json`, (c) reavaliar a elegibilidade e regravar `regulacao_solicitacao_destino`, (d) recusar a troca se a solicitação já tiver número externo (aí é cancelar e refazer). Também vale para trocar entre destinos com oferta diferente — 38 recursos do SERNIT não existem no SER (spike c §2).
+- [ ] ~~**3.5b**~~ **Revisto em 05/10/2026: o regulador não troca o procedimento** (D-10 revista — as regras e perguntas mudam, e quem responde é a unidade). Procedimento errado = **devolver** pedindo a troca; a unidade troca no assistente. O endpoint abaixo ficou no backend, sem tela. Texto original: **Trocar o procedimento** (`POST …/{id}/trocar-procedimento`, evento `TrocaProcedimento`) — exigido por **D-10**: o canônico é plano, o solicitante pode ter escolhido o balde ou um específico, e é o agente quem desempata (nos dois sentidos). Não é um `Ajuste` comum: trocar o procedimento **muda o formulário e muda as regras**, então o service tem de (a) regerar `formulario_versao`, (b) **preservar as respostas dos campos cuja chave canônica sobrevive** e descartar o resto registrando o que caiu no `diff_json`, (c) reavaliar a elegibilidade e regravar `regulacao_solicitacao_destino`, (d) recusar a troca se a solicitação já tiver número externo (aí é cancelar e refazer). Também vale para trocar entre destinos com oferta diferente — 38 recursos do SERNIT não existem no SER (spike c §2).
 - [ ] **3.6** "Registrar envio" assistido + trava; "OK interno" (ação local) para o caso D-8.
 - [ ] **3.7** (plano 05) FKs de espelho e conciliação por número.
 - [ ] **3.8** (plano 05) notificações por unidade + badge.

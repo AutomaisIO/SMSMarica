@@ -213,7 +213,7 @@ export const SECOES: SecaoMenu[] = [
         icone: ClipboardList,
         modulo: 'Regulacao',
         descricao:
-          'Abertura, fila de pré-regulação e acompanhamento das solicitações (SISREG, SER, SERNIT).',
+          'Abertura e acompanhamento das solicitações da unidade (SISREG, SER, SERNIT).',
         subItens: [
           {
             rotulo: 'Minha fila',
@@ -231,13 +231,6 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'Abre uma solicitação: procedimento, destino, paciente, formulário e anexos.',
           },
           {
-            rotulo: 'Fila da regulação',
-            to: '/app/regulacao/solicitacoes/regulacao',
-            icone: ClipboardCheck,
-            modulo: 'RegulacaoTriagem',
-            descricao: 'Todas as unidades do município — a visão do agente regulador.',
-          },
-          {
             rotulo: 'Notificações',
             to: '/app/regulacao/solicitacoes/notificacoes',
             icone: BellRing,
@@ -252,6 +245,17 @@ export const SECOES: SecaoMenu[] = [
             descricao: 'O que o manual exige por procedimento — curadoria e importação.',
           },
         ],
+      },
+      {
+        // Gestão de fila: o olhar de quem avalia e regula, separado do de quem pede (pedido do
+        // Bernardo, 05/10/2026). Era o subitem "Fila da regulação" dentro de Solicitações; o
+        // módulo é o mesmo 48 — quem já tinha acesso continua tendo.
+        rotulo: 'Gestão de fila',
+        to: '/app/regulacao/gestao-fila',
+        icone: ClipboardCheck,
+        modulo: 'RegulacaoTriagem',
+        descricao:
+          'O que as unidades enviaram para a regulação: analisar, aceitar, devolver ou recusar.',
       },
       {
         // 2º nível: SER (Estado / SES-RJ). O clique expande os submenus (3º nível).

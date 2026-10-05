@@ -6,13 +6,14 @@ import { AbaRef, BotaoRef, SeloRef } from '@/features/manual/components/Referenc
 import type { Artigo } from '@/features/manual/tipos';
 
 /**
- * Artigo de Regulação → Solicitações (ADR-0052): a unidade abre a solicitação, ela passa pela
- * pré-regulação e o agente regulador leva ao sistema de destino.
+ * Artigo de Regulação → Solicitações (ADR-0052), o lado de QUEM PEDE: a unidade abre a
+ * solicitação, acompanha a pré-regulação e corrige o que voltar. O lado de quem avalia e regula
+ * (assumir, aceitar, devolver, recusar) está em `regulacaoGestaoFila`.
  *
- * Conferido no código em 01/10/2026: `features/regulacao` (MinhaFilaPage, FilaRegulacaoPage,
- * NovaSolicitacaoPage, SolicitacaoDetalhePage, NotificacoesRegulacaoPage, AbasFilaRegulacao,
- * TabelaSolicitacoes, StatusRegulacaoBadge, BuscaProcedimento, wizard/PassoPaciente,
- * wizard/PassoRegras, SeletorCidRegulacao, ModalRegistrarEnvio, LinhaDoTempo) e no backend
+ * Conferido no código em 05/10/2026: `features/regulacao` (MinhaFilaPage, NovaSolicitacaoPage,
+ * SolicitacaoDetalhePage, NotificacoesRegulacaoPage, AbasFilaRegulacao, TabelaSolicitacoes,
+ * StatusRegulacaoBadge, BuscaProcedimento, wizard/PassoPaciente, wizard/PassoRegras,
+ * SeletorCidRegulacao, CabecalhoSolicitacao, AnexosSolicitacao, ModalMotivo, LinhaDoTempo) e no backend
  * (`MaquinaDeEstadosRegulacao`, `RegulacaoSolicitacaoService`, `RegulacaoFormularioService`,
  * `RegulacaoCidService`, `RegulacaoNotificacaoService`, `ModuloPermissao` 47/48/51).
  */
@@ -20,12 +21,12 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   slug: 'regulacao-solicitacoes',
   titulo: 'Solicitações de regulação',
   resumo:
-    'Como a unidade abre um pedido de consulta ou exame, como ele passa pela pré-regulação e como o agente regulador o leva ao SISREG, ao SER, ao SERNIT ou ao ESUS de São Gonçalo.',
+    'Como a unidade abre um pedido de consulta ou exame, acompanha a passagem pela pré-regulação e corrige o que voltar — até o pedido chegar ao SISREG, ao SER, ao SERNIT ou ao ESUS de São Gonçalo.',
   grupo: 'regulacao',
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
-  publico: 'Quem abre solicitações na unidade e quem trabalha na pré-regulação (agente regulador)',
-  atualizadoEm: '2026-10-02',
+  publico: 'Quem abre e acompanha solicitações na unidade',
+  atualizadoEm: '2026-10-05',
   palavrasChave: [
     'médico do SISREG',
     'profissional solicitante',
@@ -39,19 +40,15 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'pedido',
     'regulação',
     'pré-regulação',
-    'fila da regulação',
     'minha fila',
     'agente regulador',
-    'triagem',
+    'gestão de fila',
     'rascunho',
     'devolvida',
     'corrigir e reenviar',
     'recusada',
     'cancelar',
-    'assumir',
-    'registrar envio',
     'número do sistema',
-    'OK interno',
     'interno',
     'externo',
     'NAR',
@@ -117,7 +114,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'quem-faz-o-que',
       titulo: 'Quem faz o quê',
-      busca: 'permissão perfil módulo 47 48 51 unidade solicitante agente regulador configuração escopo unidade topo',
+      busca: 'permissão perfil módulo 47 48 51 unidade solicitante agente regulador gestão de fila configuração escopo unidade topo',
       conteudo: (
         <>
           <ListaDefinicoes
@@ -130,7 +127,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               {
                 termo: 'Agente regulador',
                 descricao:
-                  'Trabalha na “Fila da regulação”: a unidade escolhida no topo da tela, ou o município inteiro com “todas”. Assume o pedido, devolve à unidade, recusa, registra o envio ao sistema e dá o “OK” nos pedidos internos. O agente também pode abrir solicitações.',
+                  'Trabalha numa tela à parte, Regulação → Gestão de fila: recebe o que as unidades enviaram, assume, aceita (registra o envio ao sistema), devolve à unidade ou recusa. Tem artigo próprio neste manual — “Gestão de fila (regulação)”. O agente também pode abrir solicitações, por aqui.',
               },
               {
                 termo: 'Configuração da regulação',
@@ -444,22 +441,24 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     },
     {
       id: 'filas',
-      titulo: 'As filas e as situações',
+      titulo: 'Minha fila e as situações',
       busca:
-        'minha fila fila da regulação abas rascunhos pré-regulação em análise devolvidas enviadas no sistema encerradas situação status busca número PR fluxo destino agente filtro unidade topo todas município',
+        'minha fila abas rascunhos pré-regulação em análise devolvidas enviadas no sistema encerradas situação status busca número PR unidade topo gestão de fila',
       conteudo: (
         <>
           <P>
-            <strong>Minha fila</strong> mostra os pedidos das suas unidades; a <strong>Fila da regulação</strong>{' '}
-            (agente) tem ainda os filtros de fluxo e de destino e a coluna do agente que assumiu. As duas
-            seguem a <strong>unidade escolhida no topo da tela</strong> — em todas as abas, de Pré-regulação
-            a Encerradas; o agente vê o município inteiro escolhendo “todas” lá em cima. As abas são as
-            mesmas nas duas:
+            <strong>Minha fila</strong> mostra os pedidos das suas unidades e em que pé está cada um. Ela
+            segue a <strong>unidade escolhida no topo da tela</strong> — em todas as abas, de Pré-regulação
+            a Encerradas. (A regulação trabalha em outra tela, a <strong>Gestão de fila</strong>; o que você
+            vê aqui é só o lado de quem pediu.)
           </P>
           <ListaDefinicoes
             itens={[
               { termo: <AbaRef>Rascunhos</AbaRef>, descricao: 'Só os que você abriu.' },
-              { termo: <AbaRef>Pré-regulação</AbaRef>, descricao: <SeloRef>Na pré-regulação</SeloRef> },
+              {
+                termo: <AbaRef>Pré-regulação</AbaRef>,
+                descricao: <><SeloRef>Na pré-regulação</SeloRef> — enviado, aguardando um agente assumir.</>,
+              },
               { termo: <AbaRef>Em análise</AbaRef>, descricao: <><SeloRef>Em análise</SeloRef> — um agente assumiu.</> },
               { termo: <AbaRef>Devolvidas</AbaRef>, descricao: <><SeloRef>Devolvida à unidade</SeloRef> — a unidade precisa corrigir.</> },
               {
@@ -499,15 +498,21 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     },
     {
       id: 'detalhe',
-      titulo: 'O detalhe e as ações',
+      titulo: 'O detalhe do pedido',
       busca:
-        'detalhe ações assumir devolver à unidade recusar registrar envio número gerado ok já está no sisreg cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo regras do manual respostas condições marcadas médico novo a cadastrar pendente cadastrei já existia para lançar no sistema copiar campos',
+        'detalhe ações cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo regras do manual respostas condições marcadas anexos visualizar arquivo médico novo a cadastrar pendente formulário preenchido campos abrir na gestão de fila',
       conteudo: (
         <>
           <P>
             O detalhe mostra o cabeçalho do pedido (fluxo, destino, data, CPF), o motivo da situação atual
-            quando existe e a <strong>linha do tempo</strong>: quem fez o quê, de qual situação para qual,
-            com o motivo e o que mudou campo a campo.
+            quando existe — é onde aparece o que a regulação pediu para corrigir, ou por que recusou — e a{' '}
+            <strong>linha do tempo</strong>: quem fez o quê, de qual situação para qual, com o motivo e o
+            que mudou campo a campo.
+          </P>
+          <P>
+            O quadro <strong>Para lançar no SER</strong> (ou SERNIT, SISREG — o destino da solicitação)
+            mostra o formulário campo a campo, como foi preenchido. É o que a regulação vai digitar no
+            sistema de destino.
           </P>
           <P>
             Quando o procedimento tem regras, o cartão <strong>Regras do manual</strong> mostra o que foi
@@ -516,53 +521,34 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             cartão mostra o que ficou gravado — não refaz a conta.
           </P>
           <P>
-            Quando a unidade pediu um médico que não está na lista do sistema, aparece o cartão amarelo{' '}
-            <strong>Médico novo a cadastrar</strong>, com nome, documento e especialidade. O agente cadastra no
-            SER (ícone “Adicionar médico” ao lado de “Médico responsável”) e resolve aqui:{' '}
-            <BotaoRef>Cadastrei no SER</BotaoRef>, <BotaoRef>Já existia no SER</BotaoRef> (escolhe o cadastro
-            que já estava lá — a solicitação passa a usar esse nome) ou <BotaoRef>Recusar</BotaoRef>, com o
-            motivo. O <BotaoRef>Registrar envio</BotaoRef> só libera depois disso.
+            O cartão <strong>Anexos</strong> lista os arquivos que foram com o pedido, caixinha por
+            caixinha. Clique no nome para abrir no visualizador (PDF ou imagem com zoom). Aqui é só
+            conferência: para anexar ou trocar um arquivo, o pedido precisa estar em rascunho ou devolvido
+            — aí é pelo assistente.
           </P>
           <P>
-            O quadro <strong>Para lançar no SER</strong> (ou SERNIT, SISREG — o destino da solicitação)
-            mostra o formulário campo a campo, com o nome do campo como o sistema chama e um botão de
-            copiar em cada valor: é o que o agente digita na tela do sistema. As Observações já vêm com os
-            CIDs secundários no fim. A classificação de risco aparece com o texto do combo de lá (no SER,
-            “Prioridade 1”) e o badge colorido ao lado, só para conferir.
+            Quando você pediu um médico que não está na lista do sistema de destino, aparece o cartão
+            amarelo <strong>Médico novo a cadastrar</strong>, com nome, documento e especialidade. Quem
+            cadastra o médico no sistema e resolve o cartão é a regulação; por aqui você só acompanha — se
+            o médico for recusado, o cartão diz o motivo.
           </P>
-          <Sub>Unidade</Sub>
+          <Sub>O que dá para fazer</Sub>
           <Lista>
             <Item>
               <BotaoRef>Continuar rascunho</BotaoRef> / <BotaoRef>Corrigir e reenviar</BotaoRef> — volta ao
               assistente.
             </Item>
             <Item>
-              <BotaoRef>Cancelar solicitação</BotaoRef> — só enquanto está em rascunho ou na pré-regulação,
-              antes de um agente assumir. Pede o motivo.
+              <BotaoRef variante="outline">Cancelar solicitação</BotaoRef> — só enquanto está em rascunho ou
+              na pré-regulação, antes de um agente assumir. Abre uma janela que pede o motivo e mostra o
+              resultado; cancelamento não tem volta.
             </Item>
           </Lista>
-          <Sub>Agente regulador</Sub>
-          <Lista>
-            <Item>
-              <BotaoRef>Assumir</BotaoRef> — o pedido passa para <SeloRef>Em análise</SeloRef> no seu nome. Se
-              outro agente assumiu antes, a tela avisa.
-            </Item>
-            <Item>
-              <BotaoRef>Devolver à unidade</BotaoRef> — com o que precisa ser corrigido (obrigatório).
-            </Item>
-            <Item>
-              <BotaoRef>Recusar</BotaoRef> — com o motivo (obrigatório; é o que a unidade lê).
-            </Item>
-            <Item>
-              <BotaoRef>Registrar envio</BotaoRef> — depois de incluir o pedido na tela do sistema, informe
-              o número que ele gerou. O número passa a identificar o caso; número repetido no mesmo sistema
-              é recusado (sinal de pedido lançado duas vezes).
-            </Item>
-            <Item>
-              <BotaoRef>OK — já está no SISREG</BotaoRef> — só no Interno, para o pedido que já está na fila
-              do SISREG.
-            </Item>
-          </Lista>
+          <Callout tipo="dica" titulo="Assumir, devolver e recusar não ficam aqui">
+            As decisões da regulação ficam na tela de análise, em <strong>Regulação → Gestão de fila</strong>.
+            Quem também é agente regulador vê neste detalhe o botão{' '}
+            <BotaoRef variante="outline">Abrir na Gestão de fila</BotaoRef>, que leva o pedido para lá.
+          </Callout>
         </>
       ),
     },
@@ -603,7 +589,8 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
           <P>
             Clique na linha para abrir o pedido, ou em “marcar como vista”. Por padrão aparecem só as não
             vistas. O agente pode alternar entre <AbaRef>Minhas unidades</AbaRef> e{' '}
-            <AbaRef>Todas as unidades</AbaRef>.
+            <AbaRef>Todas as unidades</AbaRef> — em “Todas”, o clique abre a análise do pedido na Gestão
+            de fila.
           </P>
         </>
       ),

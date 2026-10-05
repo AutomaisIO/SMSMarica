@@ -82,6 +82,7 @@ import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfigu
 import { NovaSolicitacaoPage } from '@/features/regulacao/pages/NovaSolicitacaoPage';
 import { MinhaFilaPage } from '@/features/regulacao/pages/MinhaFilaPage';
 import { FilaRegulacaoPage } from '@/features/regulacao/pages/FilaRegulacaoPage';
+import { AnaliseSolicitacaoPage } from '@/features/regulacao/pages/AnaliseSolicitacaoPage';
 import { SolicitacaoDetalhePage } from '@/features/regulacao/pages/SolicitacaoDetalhePage';
 import { NotificacoesRegulacaoPage } from '@/features/regulacao/pages/NotificacoesRegulacaoPage';
 import { RegrasElegibilidadePage } from '@/features/regulacao/pages/RegrasElegibilidadePage';
@@ -265,11 +266,19 @@ export function AppRouter() {
             />
             <Route path="regulacao/solicitacoes/:id" element={<SolicitacaoDetalhePage />} />
           </Route>
-          {/* A fila do município é do agente regulador (48) — gate próprio, mais estreito. */}
+          {/* Gestão de fila: a visão de quem avalia e regula (48) — gate próprio, mais estreito.
+              A lista e a análise de cada pedido ficam fora de `regulacao/solicitacoes/*`, que é o
+              lado de quem pede. */}
           <Route
-            element={<RotaComModulo modulo="RegulacaoTriagem" rotulo="Regulação — Agente regulador" />}
+            element={<RotaComModulo modulo="RegulacaoTriagem" rotulo="Regulação — Gestão de fila" />}
           >
-            <Route path="regulacao/solicitacoes/regulacao" element={<FilaRegulacaoPage />} />
+            <Route path="regulacao/gestao-fila" element={<FilaRegulacaoPage />} />
+            <Route path="regulacao/gestao-fila/:id" element={<AnaliseSolicitacaoPage />} />
+            {/* Endereço antigo da "Fila da regulação": favorito de quem já usava não quebra. */}
+            <Route
+              path="regulacao/solicitacoes/regulacao"
+              element={<Navigate to="/app/regulacao/gestao-fila" replace />}
+            />
           </Route>
           {/* Curadoria das regras: é configuração da regulação (51), não do solicitante. */}
           <Route

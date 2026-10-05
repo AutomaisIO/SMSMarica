@@ -216,7 +216,7 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
 
         // Agente lotado na unidade A, com ela escolhida no topo. Na tela "Solicitações" a fila é a
         // da unidade — pré-regulação, em análise, devolvidas e encerradas das outras unidades não
-        // aparecem ali; elas são da "Fila da regulação".
+        // aparecem ali; elas são da "Gestão de fila".
         db.UsuarioUnidades.Add(new UsuarioUnidade
         {
             UsuarioId = c.Agente, UnidadeId = c.UnidadeA, Principal = true, CriadoEm = DateTime.UtcNow,

@@ -79,7 +79,7 @@ public sealed class RegulacaoEscopo(
         if (!await EhAgenteAsync(ct))
         {
             throw new UnauthorizedAccessException(
-                "Esta ação é do agente regulador (módulo Regulação — Agente regulador).");
+                "Esta ação é do agente regulador (módulo Regulação — Gestão de fila).");
         }
     }
 

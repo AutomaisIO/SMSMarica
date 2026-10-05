@@ -85,7 +85,7 @@ public sealed record RegistrarEnvioRequest(
 /// próprio trabalho.
 /// </param>
 /// <param name="FilaDoMunicipio">
-/// A tela "Fila da regulação": para o agente (módulo 48), o município inteiro quando nenhuma
+/// A tela "Gestão de fila": para o agente (módulo 48), o município inteiro quando nenhuma
 /// unidade está escolhida no topo, ou a unidade escolhida. Sem ela — a tela "Solicitações" — a fila
 /// é a das unidades do usuário pela cascata normal, <b>para o agente também</b>. Para quem não é
 /// agente não amplia nada.
@@ -125,7 +125,7 @@ public sealed record PaginaSolicitacoesRegulacaoDto(
 
 /// <param name="PorStatus">Contagem por status — alimenta as abas da fila e o badge da sidebar.</param>
 /// <param name="VeTodasUnidades">
-/// Se a fila pedida cobre o município inteiro: o agente na "Fila da regulação", ou quem tem
+/// Se a fila pedida cobre o município inteiro: o agente na "Gestão de fila", ou quem tem
 /// acesso global sem unidade escolhida no topo.
 /// </param>
 public sealed record RegulacaoResumoFilaDto(

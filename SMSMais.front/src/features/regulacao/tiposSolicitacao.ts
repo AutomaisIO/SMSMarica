@@ -75,6 +75,9 @@ export type PendenciaEnvio = { codigo: string; descricao: string };
 export type ArquivoExigencia = {
   id: string;
   nome: string;
+  /** Nome do documento dado por quem anexou; o nome do arquivo fica como apoio. */
+  titulo: string | null;
+  descricao: string | null;
   contentType: string;
   tamanho: number;
   versao: number;
@@ -174,7 +177,7 @@ export type FiltroSolicitacoesRegulacao = {
   /** Só as que eu abri — vale sobretudo para o agente, que enxerga tudo. */
   soMinhas?: boolean;
   /**
-   * A "Fila da regulação": para o agente, o município inteiro. Sem isto a fila é a da unidade
+   * A "Gestão de fila": para o agente, o município inteiro. Sem isto a fila é a da unidade
    * escolhida no topo — para o agente também. Para quem não é agente não amplia nada.
    */
   filaDoMunicipio?: boolean;
@@ -185,7 +188,7 @@ export type FiltroSolicitacoesRegulacao = {
 export type ResumoFilaRegulacao = {
   porStatus: Partial<Record<StatusRegulacao, number>>;
   /**
-   * `true` = a fila pedida cobre o município inteiro (o agente na "Fila da regulação", ou quem tem
+   * `true` = a fila pedida cobre o município inteiro (o agente na "Gestão de fila", ou quem tem
    * acesso global sem unidade escolhida no topo).
    */
   veTodasUnidades: boolean;

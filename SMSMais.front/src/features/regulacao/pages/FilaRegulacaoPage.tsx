@@ -9,38 +9,44 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 
-import { ABAS_FILA, AbasFilaRegulacao } from '../components/AbasFilaRegulacao';
+import { ABAS_GESTAO_FILA, AbasFilaRegulacao } from '../components/AbasFilaRegulacao';
 import { TabelaSolicitacoes } from '../components/TabelaSolicitacoes';
 import { useResumoFilaRegulacao, useSolicitacoes } from '../api/solicitacoesQueries';
 import type { FluxoRegulacao } from '../tiposSolicitacao';
 import type { SistemaRegulacao } from '../types';
 
 /**
- * A fila do agente regulador (plano 04) — o município inteiro, ou a unidade escolhida no topo.
+ * Gestão de fila (plano 04) — o que as unidades enviaram para a regulação: o município inteiro,
+ * ou a unidade escolhida no topo. É o olhar de quem avalia e regula; o de quem pede é a
+ * `MinhaFilaPage`.
  *
  * <p>A rota é gateada por `RegulacaoTriagem` (48); a ampliação do escopo é do backend. Esta tela
  * acrescenta o que só faz sentido para quem vê tudo: filtrar por fluxo e por sistema de destino,
- * e olhar só o que ainda não tem agente.</p>
+ * e a coluna de quem assumiu.</p>
  *
- * <p><b>As ações (assumir, ajustar, devolver, recusar) ainda não estão aqui</b> — são as tarefas
- * 3.5 e 3.6. Esta entrega é a visão; sem ela, o agente não tem por onde começar.</p>
+ * <p><b>Não há rascunho aqui, nem "Nova solicitação":</b> rascunho ainda não chegou à regulação, e
+ * abrir pedido é do lado de quem pede. Cada linha abre a análise (`AnaliseSolicitacaoPage`), que é
+ * onde ficam assumir, aceitar, devolver e recusar.</p>
  */
 export function FilaRegulacaoPage() {
   const navegar = useNavigate();
-  const [aba, setAba] = useState(ABAS_FILA[1].id);
+  const [aba, setAba] = useState(ABAS_GESTAO_FILA[0].id); // recebidas: o que tem para analisar
   const [busca, setBusca] = useState('');
   const [buscaAplicada, setBuscaAplicada] = useState('');
   const [fluxo, setFluxo] = useState<FluxoRegulacao | ''>('');
   const [sistema, setSistema] = useState<SistemaRegulacao | ''>('');
 
   // Fila do agente: o município inteiro com "todas" no topo, ou a unidade escolhida lá — o backend
-  // só amplia para quem tem o 48. Rascunhos, mesmo aqui, são só os do próprio agente.
+  // só amplia para quem tem o 48.
   const resumo = useResumoFilaRegulacao(true);
   const unidades = useAuth((s) => s.unidades);
   const unidadeAtivaId = useAuth((s) => s.unidadeAtivaId);
   const unidadeAtiva = unidades.find((u) => u.id === unidadeAtivaId) ?? null;
 
-  const status = useMemo(() => ABAS_FILA.find((a) => a.id === aba)?.status ?? [], [aba]);
+  const status = useMemo(
+    () => ABAS_GESTAO_FILA.find((a) => a.id === aba)?.status ?? [],
+    [aba],
+  );
 
   const filtro = useMemo(
     () => ({
@@ -66,8 +72,8 @@ export function FilaRegulacaoPage() {
         <ClipboardCheck className="size-6 text-red-700" />
         <div>
           <div className="flex items-center gap-1">
-            <h1 className="text-xl font-semibold text-slate-900">Fila da regulação</h1>
-            <AjudaManual artigo="regulacao-solicitacoes" secao="detalhe" />
+            <h1 className="text-xl font-semibold text-slate-900">Gestão de fila</h1>
+            <AjudaManual artigo="regulacao-gestao-fila" />
           </div>
           <p className="text-sm text-slate-600">
             {resumo.data?.veTodasUnidades
@@ -79,7 +85,12 @@ export function FilaRegulacaoPage() {
         </div>
       </header>
 
-      <AbasFilaRegulacao ativa={aba} aoTrocar={setAba} resumo={resumo.data} />
+      <AbasFilaRegulacao
+        ativa={aba}
+        aoTrocar={setAba}
+        resumo={resumo.data}
+        abas={ABAS_GESTAO_FILA}
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <form onSubmit={submeterBusca} className="flex max-w-md flex-1 gap-2">
@@ -128,13 +139,7 @@ export function FilaRegulacaoPage() {
         carregando={pagina.isLoading}
         mostrarUnidade={resumo.data?.veTodasUnidades ?? true}
         mostrarAgente
-        aoAbrir={(s) =>
-          navegar(
-            s.status === 'Rascunho'
-              ? `/app/regulacao/solicitacoes/${s.id}/editar`
-              : `/app/regulacao/solicitacoes/${s.id}`,
-          )
-        }
+        aoAbrir={(s) => navegar(`/app/regulacao/gestao-fila/${s.id}`)}
         vazio="Nenhuma solicitação nesta situação com os filtros atuais."
       />
 

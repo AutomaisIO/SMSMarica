@@ -31,6 +31,36 @@ export const ABAS_FILA: AbaFila[] = [
   { id: 'encerradas', rotulo: 'Encerradas', status: ['Concluida', 'Cancelada', 'Recusada'] },
 ];
 
+/**
+ * As abas de quem regula (Gestão de fila). Os mesmos status, lidos do outro lado do balcão.
+ *
+ * <p><b>Sem "Rascunhos":</b> rascunho é trabalho de quem pede e ainda não chegou à regulação. A
+ * primeira aba é o que chegou e ninguém assumiu — para a unidade isso é "Pré-regulação" (onde o
+ * pedido está); para o regulador é "Recebidas" (o que tem para analisar).</p>
+ */
+export const ABAS_GESTAO_FILA: AbaFila[] = [
+  {
+    id: 'recebidas',
+    rotulo: 'Recebidas',
+    status: ['PendenteRegulacao'],
+    dica: 'Chegaram das unidades e ninguém assumiu ainda',
+  },
+  { id: 'analise', rotulo: 'Em análise', status: ['EmAnalise'], dica: 'Um agente assumiu' },
+  {
+    id: 'devolvidas',
+    rotulo: 'Devolvidas',
+    status: ['Devolvida'],
+    dica: 'Aguardando a unidade corrigir',
+  },
+  {
+    id: 'enviadas',
+    rotulo: 'Enviadas',
+    status: ['EnviandoAoSistema', 'EnviadaAoSistema', 'FalhaEnvio'],
+  },
+  { id: 'externa', rotulo: 'No sistema', status: ['EmFilaExterna', 'Agendada'] },
+  { id: 'encerradas', rotulo: 'Encerradas', status: ['Concluida', 'Cancelada', 'Recusada'] },
+];
+
 export function contarAba(resumo: ResumoFilaRegulacao | undefined, aba: AbaFila): number {
   if (!resumo) return 0;
   return aba.status.reduce((total, s) => total + (resumo.porStatus[s] ?? 0), 0);
@@ -40,14 +70,17 @@ export function AbasFilaRegulacao({
   ativa,
   aoTrocar,
   resumo,
+  abas = ABAS_FILA,
 }: {
   ativa: string;
   aoTrocar: (id: string) => void;
   resumo: ResumoFilaRegulacao | undefined;
+  /** Quais abas mostrar. Padrão: as da unidade solicitante. */
+  abas?: AbaFila[];
 }) {
   return (
     <div className="flex flex-wrap gap-1 border-b border-slate-200">
-      {ABAS_FILA.map((aba) => {
+      {abas.map((aba) => {
         const total = contarAba(resumo, aba);
         const selecionada = aba.id === ativa;
         return (
