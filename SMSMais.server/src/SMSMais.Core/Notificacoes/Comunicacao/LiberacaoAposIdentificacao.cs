@@ -76,6 +76,15 @@ public sealed class LiberacaoAposIdentificacao(
     /// </summary>
     internal static readonly TimeSpan FolgaAntesDoAgendamento = TimeSpan.FromMinutes(15);
 
+    /// <summary>
+    /// Os dois chamadores ENVIAM NA HORA o que foi liberado (sessão, senão template). Com a próxima
+    /// tentativa em "agora", o worker achava a linha assim que a liberação gravava — no meio do
+    /// webhook — e mandava o template em paralelo: em 05/10/2026 (…4905) a paciente recebeu os dados
+    /// pela conversa e, 0,4 s depois, pelo template, e a gravação do webhook caiu na trava. A reserva
+    /// segura o worker; ele só entra se o envio imediato não tiver saído.
+    /// </summary>
+    internal static readonly TimeSpan ReservaDoEnvioImediato = TimeSpan.FromMinutes(2);
+
     /// <summary>Motivo gravado na linha que ficou coberta pela vencedora da mesma solicitação.</summary>
     internal const string MotivoCoberta = "Coberta pela confirmação liberada na identificação.";
 
@@ -186,7 +195,7 @@ public sealed class LiberacaoAposIdentificacao(
                 .ToList();
             var vencedora = ordenadas[0];
             vencedora.Status = StatusComunicacao.Pendente;
-            vencedora.ProximaTentativaEm = agora;
+            vencedora.ProximaTentativaEm = agora.Add(ReservaDoEnvioImediato);
             vencedora.MotivoFalha = null;
             // Envia mesmo se o carimbo do telefone no FHIR falhar (anti-loop de desafio).
             vencedora.IgnorarVerificacaoTelefone = true;

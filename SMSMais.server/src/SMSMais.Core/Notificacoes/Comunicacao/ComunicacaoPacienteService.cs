@@ -490,15 +490,7 @@ public sealed class ComunicacaoPacienteService(
                 return false;
             }
 
-            n.Status = StatusComunicacao.Enviada;
-            n.EnviadoEm = DateTime.UtcNow;
-            n.MotivoFalha = null;
-            n.ProximaTentativaEm = null;
-            n.Telefone = telefoneDestino;
-            n.LoginLinkId = link.Token;
-            n.AtualizadoEm = DateTime.UtcNow;
-            if (resultado.WaMessageId is not null) n.MensagemWhatsAppId = await MensagemDoEnvioAsync(resultado, ct);
-            await db.SaveChangesAsync(ct);
+            await GravarDetalhesEnviadosAsync(n, telefoneDestino, link.Token, resultado, ct);
             return true;
         }
         catch (Exception ex)
@@ -509,6 +501,72 @@ public sealed class ComunicacaoPacienteService(
                 "Falha ao enviar os detalhes do agendamento na conversa (…{Fone4}, comunicação {Id}).",
                 Ultimos4(telefoneDestino), comunicacaoId);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Grava a comunicação como enviada DEPOIS que os detalhes saíram. A mensagem já está com a
+    /// pessoa: falha aqui não pode virar "não saiu" — antes o chamador caía no template e mandava
+    /// tudo de novo. O SaveChanges leva junto o que o webhook deixou pendente; na corrida (xmin)
+    /// relê o que mudou por fora e reaplica por cima o que estava pendente — menos na comunicação
+    /// que outro envio já gravou como saída (o registro dele fica).
+    /// </summary>
+    private async Task GravarDetalhesEnviadosAsync(
+        ComunicacaoPaciente n, string telefoneDestino, Guid loginLinkId, EnvioWhatsAppResultado resultado,
+        CancellationToken ct)
+    {
+        try
+        {
+            var mensagemId = resultado.WaMessageId is not null ? await MensagemDoEnvioAsync(resultado, ct) : null;
+            void Aplicar()
+            {
+                n.Status = StatusComunicacao.Enviada;
+                n.EnviadoEm = DateTime.UtcNow;
+                n.MotivoFalha = null;
+                n.ProximaTentativaEm = null;
+                n.Telefone = telefoneDestino;
+                n.LoginLinkId = loginLinkId;
+                n.AtualizadoEm = DateTime.UtcNow;
+                if (mensagemId is not null) n.MensagemWhatsAppId = mensagemId;
+            }
+
+            Aplicar();
+            for (var tentativa = 1; ; tentativa++)
+            {
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                    return;
+                }
+                catch (DbUpdateConcurrencyException ex) when (tentativa < 3)
+                {
+                    foreach (var entrada in ex.Entries)
+                    {
+                        var mudadas = entrada.Properties
+                            .Where(p => p.IsModified)
+                            .Select(p => (p.Metadata.Name, p.CurrentValue))
+                            .ToList();
+                        await entrada.ReloadAsync(ct);
+                        if (entrada.State == EntityState.Detached) continue; // apagada por fora
+                        if (ReferenceEquals(entrada.Entity, n))
+                        {
+                            if (n.Status == StatusComunicacao.Pendente) Aplicar();
+                            continue;
+                        }
+                        foreach (var (nome, valor) in mudadas)
+                            entrada.Property(nome).CurrentValue = valor;
+                    }
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex,
+                "Detalhes do agendamento SAÍRAM na conversa (…{Fone4}, comunicação {Id}), mas o registro do "
+                + "envio não gravou — fica como está no banco.", Ultimos4(telefoneDestino), n.Id);
+            // Presa no DbContext com o estado desatualizado, derrubaria a gravação final do webhook.
+            try { await db.Entry(n).ReloadAsync(ct); }
+            catch { db.Entry(n).State = EntityState.Detached; }
         }
     }
 

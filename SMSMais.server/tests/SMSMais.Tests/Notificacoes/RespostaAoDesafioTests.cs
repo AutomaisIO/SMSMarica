@@ -559,6 +559,28 @@ public class RespostaAoDesafioTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Liberada_fica_reservada_ao_envio_imediato_e_o_worker_nao_pega_junto()
+    {
+        // 05/10/2026 (…4905): com a próxima tentativa em "agora", o worker achou a linha no meio do
+        // webhook e mandou o template 0,4 s depois dos dados na conversa — a pessoa recebeu duas vezes.
+        await using var db = fixture.CriarDbContext();
+        var joana = NovaPessoa("JOANA DE SOUZA", "11122233344");
+        var (_, principal) = await RetidaAsync(db, joana);
+
+        var antes = DateTime.UtcNow;
+        var r = await VerificacaoCadastralHandlerTests.Liberacao(db).LiberarAsync(joana.Id, principal.Id);
+        await db.SaveChangesAsync();
+
+        Assert.Equal(1, r.Liberadas);
+        await using var db2 = fixture.CriarDbContext();
+        var liberada = await LerAsync(db2, principal.Id);
+        Assert.Equal(StatusComunicacao.Pendente, liberada.Status);
+        Assert.NotNull(liberada.ProximaTentativaEm); // o fallback (ProcessarTentativaEnvioAsync) exige
+        Assert.True(liberada.ProximaTentativaEm > antes.AddMinutes(1),
+            "a liberada não pode ficar elegível ao worker enquanto o envio imediato está em curso");
+    }
+
+    [Fact]
     public async Task Agendamento_que_ja_passou_nao_promete_envio_e_diz_por_que()
     {
         await using var db = fixture.CriarDbContext();

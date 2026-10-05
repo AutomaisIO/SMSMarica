@@ -1196,16 +1196,36 @@ public sealed class SolicitacoesExameService(
             _logger.LogInformation(
                 "Worklist de {Accession} removida do PACS (exame {Status}).", s.AccessionNumber, s.Status);
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            await SoltarExameMudadoPorForaAsync(s, cancellationToken);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // PACS fora/lento: tenta de novo daqui a pouco. Backoff fixo e curto — diferente do
             // envio, aqui não há paciente esperando, e o item some assim que o PACS responder.
             s.ProximaTentativaEm = agora.AddMinutes(5);
             s.AtualizadoEm = agora;
-            await _db.SaveChangesAsync(cancellationToken);
+            try { await _db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateConcurrencyException) { await SoltarExameMudadoPorForaAsync(s, cancellationToken); return; }
             _logger.LogWarning(ex,
                 "Falha ao remover MWL de {Accession} — nova tentativa em 5 min.", s.AccessionNumber);
         }
+    }
+
+    /// <summary>
+    /// Outra rotina mexeu no exame enquanto a limpeza ia ao PACS (trava <c>xmin</c>). Não é falha:
+    /// a próxima passada repete — o PACS responde 404, que conta como removido, e o espelho zera.
+    /// Gravar de novo o estado desatualizado só repetia o erro, e o registro preso no DbContext (é o
+    /// da passada inteira) derrubava os exames seguintes. Medido em 05/10/2026: a passada seguinte
+    /// resolveu em 15 s.
+    /// </summary>
+    private async Task SoltarExameMudadoPorForaAsync(ExameImagem s, CancellationToken cancellationToken)
+    {
+        await _db.Entry(s).ReloadAsync(cancellationToken);
+        _logger.LogInformation(
+            "Limpeza da worklist de {Accession}: o exame mudou durante a remoção no PACS — a próxima passada confirma.",
+            s.AccessionNumber);
     }
 
     /// <summary>
