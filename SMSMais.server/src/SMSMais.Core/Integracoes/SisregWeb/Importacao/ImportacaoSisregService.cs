@@ -116,7 +116,10 @@ public sealed class ImportacaoSisregService(
     // Trilha: a reconciliação COMPLEMENTA uma solicitação criada manualmente pela recepção (mesmo
     // número do SISREG) — o histórico tem de mostrar "criada à mão por fulano, depois complementada".
     Auditoria.IAuditoriaService auditoria,
-    Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes) : IImportacaoSisregService
+    Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes,
+    // Pedido de imagem que já existe SEM exame (carga do histórico de 08/09): a varredura que o
+    // reencontra cria o satélite — sem ele a recepção não acha o pedido (05/10/2026).
+    ISateliteImagemSisreg sateliteImagem) : IImportacaoSisregService
 {
     // ---- Contexto do operador ----
     // Numa request, vem do IUsuarioAtualAccessor. Num LOTE, o serviço roda no runner, onde não há
@@ -301,6 +304,9 @@ public sealed class ImportacaoSisregService(
                 // nada denunciava. Agora compara (de graça, a linha já está na mão), aplica o que é
                 // do SISREG e deixa o rastro para o regulador tratar.
                 var alteracoes = await ReconciliarAsync(existente, m, ct);
+                if (await sateliteImagem.GarantirAsync(existente, null, ct)
+                    is ResultadoSatelite.Criado or ResultadoSatelite.TipoCompletado)
+                    await db.SaveChangesAsync(ct);
                 return (Falha(
                     alteracoes == 0
                         ? "Já existe uma solicitação com esse número do SISREG."

@@ -419,6 +419,12 @@ public static class DependencyInjection
             Integracoes.SisregWeb.Importacao.IResolvedorTipoExameSisreg,
             Integracoes.SisregWeb.Importacao.ResolvedorTipoExameSisreg>();
 
+        // Satélite de imagem que falta em pedido já existente (carga do histórico de 08/09) — a
+        // varredura cria ao reencontrar; o reparo em lote cobre os agendados de hoje em diante.
+        services.AddScoped<
+            Integracoes.SisregWeb.Importacao.ISateliteImagemSisreg,
+            Integracoes.SisregWeb.Importacao.SateliteImagemSisreg>();
+
         // Motor de varredura da agenda (cons_agendas). Uma varredura por vez em toda a instalação:
         // as unidades saem para o SISREG pelo mesmo IP, então paralelizar só aproxima o CAPTCHA.
         services.Configure<Integracoes.SisregWeb.Varredura.VarreduraSisregOpcoes>(

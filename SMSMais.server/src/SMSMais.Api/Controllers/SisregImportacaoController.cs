@@ -133,6 +133,22 @@ public sealed class SisregImportacaoController(
         => await importacao.ReprocessarPendenciasSigtapAsync(request.ProcedimentoTexto, cancellationToken);
 
     /// <summary>
+    /// Cria o exame (satélite de imagem) que falta nos pedidos agendados de hoje em diante — a carga
+    /// do histórico de 08/09 gravou pedidos sem ele, e pedido sem exame não aparece na tela de
+    /// Solicitações de Exame. Lote por cursor: repetir passando o <c>cursor</c> devolvido até
+    /// <c>restantes</c> zerar. ESCRITA.
+    /// </summary>
+    [HttpPost("reparar-exames-sem-satelite")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<SMSMais.Core.Integracoes.SisregWeb.Importacao.ReparoSatelitesResultado>(StatusCodes.Status200OK)]
+    public async Task<SMSMais.Core.Integracoes.SisregWeb.Importacao.ReparoSatelitesResultado> RepararExamesSemSatelite(
+        [FromServices] SMSMais.Core.Integracoes.SisregWeb.Importacao.ISateliteImagemSisreg satelite,
+        CancellationToken cancellationToken,
+        [FromQuery] int limite = 500,
+        [FromQuery] Guid? cursor = null)
+        => await satelite.RepararAsync(limite, cursor, cancellationToken);
+
+    /// <summary>
     /// Backfill das fichas que só têm CNS: consulta o CADSUS (porta configurada) e carimba o CPF —
     /// ou reponta para o cadastro que já tinha o CPF. Lote pequeno e síncrono (a lista de ids vem
     /// de quem chama; teto por chamada dentro do serviço). ESCRITA.
