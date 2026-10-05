@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-09-29',
+  atualizadoEm: '2026-10-04',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
@@ -48,6 +48,8 @@ export const artigoConfirmacoes: Artigo = {
     'número negado',
     'pendente',
     'telefone comprometido',
+    'e-sus',
+    'correção automática de telefone',
     'fila de cancelamento',
     'pedido de cancelamento',
     'motivo do cancelamento',
@@ -427,7 +429,7 @@ export const artigoConfirmacoes: Artigo = {
     {
       id: 'telefone-comprometido',
       titulo: 'Quando o WhatsApp não alcança a pessoa',
-      busca: 'sem celular não é whatsapp 131026 corrigir contato código otp verificar telefone',
+      busca: 'sem celular não é whatsapp 131026 corrigir contato código otp verificar telefone e-sus esus atenção básica madrugada correção automática histórico',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -449,6 +451,36 @@ export const artigoConfirmacoes: Artigo = {
               },
             ]}
           />
+          <Sub>De madrugada, o sistema tenta sozinho pelo e-SUS</Sub>
+          <P>
+            Quando a integração com o <strong>e-SUS da atenção básica</strong> está ligada (Sistema → Integrações), toda
+            madrugada o sistema consulta o cadastro do posto de quem está nesta aba, de quem tem pendência de número
+            errado e de quem teve a mensagem recusada pelo WhatsApp. É <strong>só consulta</strong>: nada é gravado no
+            e-SUS. O que acontece depende do que ele encontra:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Outro celular',
+                descricao:
+                  'Vira o número principal do cadastro, marcado como vindo do e-SUS. O número antigo não é apagado: fica no histórico do cadastro. A pendência de número errado é fechada, a ficha sai desta aba e a mensagem que não tinha chegado é reenviada — no card aparece a anotação dizendo que o telefone foi corrigido pelo e-SUS.',
+              },
+              {
+                termo: 'O mesmo número',
+                descricao:
+                  'A marca ganha a observação "O e-SUS (atenção básica) tem este mesmo número". Não adianta procurar lá: o caminho é ligar ou pegar o número na próxima vinda.',
+              },
+              {
+                termo: 'Número de outra pessoa',
+                descricao:
+                  'Se o celular do e-SUS já é o número verificado de outra pessoa (que não parece ser da família), a troca não é feita — a ficha continua aqui.',
+              },
+            ]}
+          />
+          <P>
+            Número <strong>verificado</strong> por código nunca é trocado pela rotina. Cada pessoa é consultada no máximo
+            uma vez por semana.
+          </P>
           <Sub>Corrigir o contato (e por que tem código)</Sub>
           <P>
             Na aba <AbaRef>Contato errado</AbaRef>, o botão <BotaoRef variante="outline">Corrigir contato</BotaoRef> abre

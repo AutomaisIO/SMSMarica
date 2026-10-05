@@ -328,6 +328,10 @@ public static class DependencyInjection
         // ---- Credenciais de provedores OAuth (Microsoft/Facebook/Google), cifradas ----
         services.AddScoped<Integracoes.Credenciais.IIntegracaoCredencialService, Integracoes.Credenciais.IntegracaoCredencialService>();
 
+        // ---- e-SUS APS PEC (ADR-0067): correção de telefone furado, SÓ LEITURA, na janela da madrugada ----
+        services.AddScoped<Integracoes.EsusPec.ICorrecaoTelefoneEsusService, Integracoes.EsusPec.CorrecaoTelefoneEsusService>();
+        services.AddHostedService<Integracoes.EsusPec.CorrecaoTelefoneEsusWorker>();
+
         // ---- SISREG III (web scraping): consulta de paciente por CNS (CADSUS) ----
         // Sessão única por operador → um cliente HTTP com cookies próprios POR OPERADOR
         // (singleton), que reloga sozinho quando a sessão cai. A credencial é a global do store

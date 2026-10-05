@@ -27,7 +27,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <body>
 <main>
 <h1>ADR-0067 — Correção automática de telefone pelo e-SUS PEC (rotina noturna) e reenvio da mensagem</h1>
-<p><strong>Status:</strong> proposto · <strong>Data:</strong> 2026-10-04 <strong>Relacionado:</strong> <a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a> (confirmações, posse, Mensageria) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (destinatário correto) · <a href="./0047-posse-de-conversa-filas.md">ADR-0047</a> (conversas) · <a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a> (proveniência por fonte) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (sistemas externos só leitura) · <code>SistemaRegulacao.Esus = 4</code> (reservado no <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a>)</p>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-04 · fase 1 implementada em 04/10/2026 <strong>Relacionado:</strong> <a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a> (confirmações, posse, Mensageria) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (destinatário correto) · <a href="./0047-posse-de-conversa-filas.md">ADR-0047</a> (conversas) · <a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a> (proveniência por fonte) · <a href="./0012-agendamento-local-e-integracao-sisreg-leitura.md">ADR-0012</a> (sistemas externos só leitura) · <code>SistemaRegulacao.Esus = 4</code> (reservado no <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a>)</p>
 <h2>Contexto</h2>
 <p>Quando a mensagem do agendamento não chega (a Meta recusa porque o número não é WhatsApp, o cadastro não tem celular, ou quem atende diz "não sou essa pessoa"), o paciente cai na aba <strong>Telefone comprometido</strong> e fica esperando alguém da recepção conseguir outro número. Hoje ninguém procura esse número em lugar nenhum.</p>
 <p>O <strong>e-SUS APS PEC</strong> do município (o e-SUS do governo, <code>esus.marica.rj.gov.br</code>) é onde a atenção básica atualiza o cadastro do cidadão, e é a fonte mais fresca de celular e filiação. Em 02–04/10/2026 o laboratório <code>Automais.esus/</code> (somente leitura) mediu isso de ponta a ponta e, com o OK do Bernardo, a correção foi feita à mão em produção:</p>
@@ -120,6 +120,24 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>Manual: artigo de Confirmações / Telefone comprometido (skill <code>confrontar-manual</code>).</li>
 <li>Fase 2: histórico de tentativas no card da mensagem.</li>
 </ol>
+<h2>Implementação (fase 1 — 04/10/2026)</h2>
+<ul>
+<li><code>Core/Integracoes/EsusPec/EsusPecCliente.cs</code> — cliente só-leitura (documentos GraphQL fixos: 3 mutações</li>
+</ul>
+<p>  de sessão + 2 consultas; nada mais sai dali).</p>
+<ul>
+<li><code>TrocaTelefoneEsus.cs</code> — a regra pura (decisão + troca no <code>Patient</code>), coberta por</li>
+</ul>
+<p>  <code>TrocaTelefoneEsusTests</code>.</p>
+<ul>
+<li><code>CorrecaoTelefoneEsusService.cs</code> — fila, consulta, troca pelo <code>IPacienteFhirClient</code> (retentativa em</li>
+</ul>
+<p>  conflito de versão), auditoria (<code>ConsultouEsusPec</code> por paciente, <code>TrocouTelefoneEsusPec</code> na troca),   baixa do contato comprometido, resolução da pendência de número errado (que já solta as mensagens   retidas) e rearme da mensagem que falhou por número; <code>CorrecaoTelefoneEsusWorker</code> acorda a cada 15 min   e só entra com credencial ativa + janela + fila não vazia. Teto de 500 pacientes por passagem;   reconsulta após 7 dias; desiste após 5 erros seguidos.</p>
+<ul>
+<li><strong>Desvios do plano, de propósito:</strong></li>
+<li>"e-SUS também errado" não virou motivo novo (seria enum + tela): vai como <strong>observação</strong> na marca</li>
+</ul>
+<p>    "Número não é WhatsApp" — sem migration.   - O rearme acontece na própria madrugada (<code>próxima tentativa = agora</code>); quem segura até o horário de     envio é o enviador, que já respeita a janela de horário.   - Contadores da última rodada na tela: ainda não (só log). O card ganha a anotação na trilha de     contatos ("telefone corrigido pelo e-SUS… reenviada"); a sequência de tentativas segue na fase 2.</p>
 </main>
 </body>
 </html>

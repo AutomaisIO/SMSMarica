@@ -1,6 +1,6 @@
 # ADR-0067 — Correção automática de telefone pelo e-SUS PEC (rotina noturna) e reenvio da mensagem
 
-**Status:** proposto · **Data:** 2026-10-04
+**Status:** aceito · **Data:** 2026-10-04 · fase 1 implementada em 04/10/2026
 **Relacionado:** [ADR-0059](./0059-atendimento-humano-de-confirmacao.md) (confirmações, posse, Mensageria) ·
 [ADR-0057](./0057-destinatario-correto-e-contato-negado.md) (destinatário correto) ·
 [ADR-0047](./0047-posse-de-conversa-filas.md) (conversas) ·
@@ -89,3 +89,24 @@ nosso hub.
 5. Tela: credencial em Integrações; contadores da última rodada; motivo "e-SUS também errado" na aba.
 6. Manual: artigo de Confirmações / Telefone comprometido (skill `confrontar-manual`).
 7. Fase 2: histórico de tentativas no card da mensagem.
+
+## Implementação (fase 1 — 04/10/2026)
+
+- `Core/Integracoes/EsusPec/EsusPecCliente.cs` — cliente só-leitura (documentos GraphQL fixos: 3 mutações
+  de sessão + 2 consultas; nada mais sai dali).
+- `TrocaTelefoneEsus.cs` — a regra pura (decisão + troca no `Patient`), coberta por
+  `TrocaTelefoneEsusTests`.
+- `CorrecaoTelefoneEsusService.cs` — fila, consulta, troca pelo `IPacienteFhirClient` (retentativa em
+  conflito de versão), auditoria (`ConsultouEsusPec` por paciente, `TrocouTelefoneEsusPec` na troca),
+  baixa do contato comprometido, resolução da pendência de número errado (que já solta as mensagens
+  retidas) e rearme da mensagem que falhou por número; `CorrecaoTelefoneEsusWorker` acorda a cada 15 min
+  e só entra com credencial ativa + janela + fila não vazia. Teto de 500 pacientes por passagem;
+  reconsulta após 7 dias; desiste após 5 erros seguidos.
+- **Desvios do plano, de propósito:**
+  - "e-SUS também errado" não virou motivo novo (seria enum + tela): vai como **observação** na marca
+    "Número não é WhatsApp" — sem migration.
+  - O rearme acontece na própria madrugada (`próxima tentativa = agora`); quem segura até o horário de
+    envio é o enviador, que já respeita a janela de horário.
+  - Contadores da última rodada na tela: ainda não (só log). O card ganha a anotação na trilha de
+    contatos ("telefone corrigido pelo e-SUS… reenviada"); a sequência de tentativas segue na fase 2.
+
