@@ -18,10 +18,17 @@ namespace SMSMais.Core.Integracoes.SisregWeb.Importacao;
 /// ao reencontrar o número do SISREG, só reconciliava os campos. Em 05/10/2026 a recepção do CDT
 /// não achava a paciente da mamografia das 08:10 — 4.292 pedidos futuros estavam invisíveis.</para>
 ///
-/// <para>Espelha o caminho de criação da importação: categoria refeita pela mesma regra
-/// (<see cref="CategoriaSigtap"/>), tipo pelo NOME do SISREG (<see cref="IResolvedorTipoExameSisreg"/>),
-/// par tipo×unidade no escopo e status <c>Solicitada</c> sem próxima tentativa — nada vai ao PACS
-/// até a recepção autorizar.</para>
+/// <para><b>Invariante: TODA solicitação de categoria Imagem tem satélite.</b> A tela de Consultas
+/// lista o que NÃO é imagem; a de Exames, o que tem satélite. Imagem sem satélite não aparece em
+/// tela nenhuma — por isso a categoria GRAVADA manda, sem segunda opinião do SIGTAP. A 1ª versão
+/// (2163681) refazia a categoria por <see cref="CategoriaSigtap"/> e deixou 1.308 pedidos da carga
+/// (audiometria, EEG, cirurgias "CE-", OCI…) fora das duas telas; o Bernardo: "TODOS apareçam na
+/// tela… SEMPRE".</para>
+///
+/// <para>Espelha o caminho de criação da importação: tipo pelo NOME do SISREG
+/// (<see cref="IResolvedorTipoExameSisreg"/>, nasce com worklist desligado), par tipo×unidade no
+/// escopo e status <c>Solicitada</c> sem próxima tentativa — nada vai ao PACS até a recepção
+/// autorizar.</para>
 /// </summary>
 public interface ISateliteImagemSisreg
 {
@@ -47,14 +54,11 @@ public enum ResultadoSatelite
     NadaAFazer = 0,
     Criado = 1,
     TipoCompletado = 2,
-    /// <summary>A regra da importação não classifica o procedimento como imagem — não cria.</summary>
-    ForaDeImagem = 3,
 }
 
 public sealed record ReparoSatelitesResultado(
     int Criados,
     int TiposCompletados,
-    int ForaDeImagem,
     Guid? Cursor,
     int Restantes);
 
@@ -79,13 +83,8 @@ public sealed class SateliteImagemSisreg(
         if (exame is not null && (exame.TipoExameId is not null || exame.ExcluidoEm is not null))
             return ResultadoSatelite.NadaAFazer;
 
-        // Mesma regra de roteamento da importação: com SIGTAP, pelo subgrupo; sem, pelo nome.
         var nome = ResolvedorTipoExameSisreg.NormalizarNome(solicitacao.ProcedimentoTexto ?? string.Empty);
         var sig = SoDigitos(solicitacao.ProcedimentoSigtapCodigo);
-        var categoria = sig.Length >= 4 ? CategoriaSigtap.Resolver(sig) : CategoriaSigtap.ResolverPorNome(nome);
-        if (categoria != CategoriaSolicitacao.Imagem)
-            return ResultadoSatelite.ForaDeImagem;
-
         var tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
             nome, SoDigitos(solicitacao.ProcedimentoCodigoSisreg), sig, ct);
         if (tipoExameId is { } tipo)
@@ -133,8 +132,8 @@ public sealed class SateliteImagemSisreg(
             && (!db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id)
                 || db.ExamesImagem.Any(e => e.SolicitacaoId == s.Id && e.ExcluidoEm == null && e.TipoExameId == null)));
 
-        // Cursor por id (não por data): o "fora de imagem" continua pendente para sempre e, ordenado
-        // por data, travaria o lote no mesmo começo a cada chamada.
+        // Cursor por id (não por data): o exame sem nome de procedimento fica sem tipo e continua
+        // "pendente" para sempre — ordenado por data, travaria o lote no mesmo começo a cada chamada.
         var ids = await Pendentes()
             .Where(s => depoisDe == null || s.Id.CompareTo(depoisDe.Value) > 0)
             .OrderBy(s => s.Id)
@@ -154,7 +153,7 @@ public sealed class SateliteImagemSisreg(
             return atual;
         }
 
-        int criados = 0, tipos = 0, fora = 0;
+        int criados = 0, tipos = 0;
         foreach (var id in ids)
         {
             for (var tentativa = 1; ; tentativa++)
@@ -177,7 +176,6 @@ public sealed class SateliteImagemSisreg(
 
                 if (resultado == ResultadoSatelite.Criado) criados++;
                 else if (resultado == ResultadoSatelite.TipoCompletado) tipos++;
-                else if (resultado == ResultadoSatelite.ForaDeImagem) fora++;
                 break;
             }
             db.ChangeTracker.Clear();
@@ -187,7 +185,7 @@ public sealed class SateliteImagemSisreg(
         var restantes = await Pendentes()
             .Where(s => cursor == null || s.Id.CompareTo(cursor.Value) > 0)
             .CountAsync(ct);
-        return new ReparoSatelitesResultado(criados, tipos, fora, cursor, restantes);
+        return new ReparoSatelitesResultado(criados, tipos, cursor, restantes);
     }
 
     private static string SoDigitos(string? s) =>
