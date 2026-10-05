@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using SMSMais.Core.Auditoria;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Core.Conversas;
 using SMSMais.Core.Integracoes.Credenciais;
 using SMSMais.Core.Notificacoes.Comunicacao;
 using SMSMais.Core.Pacientes;
@@ -20,7 +21,7 @@ namespace SMSMais.Core.Integracoes.EsusPec;
 
 /// <summary>Resultado de uma passagem da rotina (para log).</summary>
 public sealed record ResumoCorrecaoTelefoneEsus(
-    int Consultados, int Trocados, int EsusTambemErrado, int SemCelular, int Verificados,
+    int Consultados, int Trocados, int JaCorrigidos, int EsusTambemErrado, int SemCelular, int Verificados,
     int NumeroDeOutraPessoa, int NaoAchados, int Reenvios, string? Interrompida);
 
 /// <summary>
@@ -28,6 +29,11 @@ public sealed record ResumoCorrecaoTelefoneEsus(
 /// pendência de número errado, mensagem que falhou por número) tem o cadastro do e-SUS PEC
 /// consultado — SÓ LEITURA — e, quando o PEC traz outro celular, ele vira o principal no hub
 /// (o antigo vai para o histórico) e a mensagem que não chegou sai de novo, no envio normal.
+///
+/// <para>Antes do e-SUS, o próprio cadastro: se o principal de hoje já não é nenhum dos números que
+/// falharam (alguém corrigiu depois), não há o que perguntar ao PEC — só fechar as marcas e
+/// pendências que ficaram para trás e reenviar a mensagem (medido na 1ª madrugada, 05/10/2026:
+/// metade das consultas foi gasta com cadastros já corrigidos, e 682 mensagens ficaram paradas).</para>
 /// </summary>
 public interface ICorrecaoTelefoneEsusService
 {
@@ -49,14 +55,29 @@ public sealed class CorrecaoTelefoneEsusService(
     public const string Provedor = "esuspec";
     public const string AcaoConsulta = "ConsultouEsusPec";
     public const string AcaoTroca = "TrocouTelefoneEsusPec";
+    /// <summary>Valor gravado na auditoria quando o cadastro já estava corrigido (sem ir ao e-SUS).</summary>
+    public const string ValorJaCorrigido = "JaCorrigido";
 
-    /// <summary>Teto por passagem: ~3 s por paciente (2 consultas + intervalo) ≈ 25 min.</summary>
+    /// <summary>Teto por passagem: ~3 s por paciente consultado no PEC (2 consultas + intervalo) ≈ 25 min.</summary>
     private const int MaximoPorPassagem = 500;
     /// <summary>Quem já foi consultado volta à fila só depois disso — o PEC não muda toda noite.</summary>
     private static readonly TimeSpan Reconsulta = TimeSpan.FromDays(7);
     /// <summary>Só olha falhas de envio recentes; as antigas já não têm mensagem a reenviar.</summary>
     private static readonly TimeSpan JanelaFalhas = TimeSpan.FromDays(60);
+    /// <summary>
+    /// Folga mínima até o atendimento para reenviar: a rotina roda de madrugada e a mensagem só sai no
+    /// horário de envio — atendimento às 07h rearmado às 03h chegaria depois. O enviador confere de
+    /// novo na hora de enviar ("sem data futura no momento do envio").
+    /// </summary>
+    private static readonly TimeSpan FolgaReenvio = TimeSpan.FromHours(6);
     private const int ErrosSeguidosParaDesistir = 5;
+
+    /// <summary>
+    /// Noite (data de Brasília) em que os já consultados nesta semana tiveram o cadastro reconferido.
+    /// Uma vez por noite basta — sem isso, a cada 15 min a mesma lista seria relida do hub e tomaria
+    /// o lugar de quem ainda espera o PEC. Estático: vale para o processo; reiniciar só repete a conferência.
+    /// </summary>
+    private static DateOnly? _ultimaReconferencia;
 
     private static readonly TimeOnly JanelaInicioPadrao = new(2, 0);
     private static readonly TimeOnly JanelaFimPadrao = new(5, 0);
@@ -71,40 +92,61 @@ public sealed class CorrecaoTelefoneEsusService(
         var p = Parametros.Ler(cred.ParametrosJson);
         if (!DentroDaJanela(p.Inicio, p.Fim, AgoraBrasilia())) return null;
 
-        var candidatos = await CandidatosAsync(ct);
+        var noite = FusoBrasilia.HojeEmBrasilia();
+        var reconferir = _ultimaReconferencia != noite;
+        var candidatos = await CandidatosAsync(reconferir, ct);
+        if (reconferir) _ultimaReconferencia = noite;
         if (candidatos.Count == 0) return null;
 
         logger.LogInformation("Correção de telefone pelo e-SUS: {Qtd} paciente(s) na fila desta passagem.", candidatos.Count);
 
-        int consultados = 0, trocados = 0, tambemErrado = 0, semCelular = 0, verificados = 0,
+        int consultados = 0, trocados = 0, jaCorrigidos = 0, tambemErrado = 0, semCelular = 0, verificados = 0,
             deOutro = 0, naoAchados = 0, reenvios = 0, errosSeguidos = 0;
         string? interrompida = null;
 
+        // O login no PEC só acontece se algum paciente precisar dele — passagem só de cadastros já
+        // corrigidos não encosta no e-SUS.
         using var pec = new EsusPecCliente(p.BaseUrl);
+        var logado = false;
+        async Task<EsusPecCliente> PecAsync()
+        {
+            if (!logado)
+            {
+                // De madrugada ninguém está usando a conta: forçar é seguro (e é o motivo da janela).
+                try
+                {
+                    await pec.LoginAsync(cred.ClientId, cred.ClientSecret, forcar: true, ct);
+                    await pec.SelecionarAcessoAsync(p.AcessoId, ct);
+                }
+                catch (ErroEsusPec e) { throw new SessaoPecFalhou(e.Message); }
+                logado = true;
+            }
+            return pec;
+        }
+
         try
         {
-            // De madrugada a dona da credencial não está no sistema: forçar é seguro (e é o motivo da janela).
-            await pec.LoginAsync(cred.ClientId, cred.ClientSecret, forcar: true, ct);
-            await pec.SelecionarAcessoAsync(p.AcessoId, ct);
-
             foreach (var c in candidatos)
             {
                 if (!DentroDaJanela(p.Inicio, p.Fim, AgoraBrasilia())) { interrompida = "fim da janela"; break; }
                 try
                 {
-                    var r = await ProcessarAsync(pec, c, ct);
+                    var r = await ProcessarAsync(PecAsync, c, ct);
                     errosSeguidos = 0;
-                    consultados++;
+                    if (r.ConsultouPec) consultados++;
+                    reenvios += r.Reenvios;
                     switch (r.Decisao)
                     {
-                        case DecisaoTelefoneEsus.Trocar: trocados++; reenvios += r.Reenvios; break;
+                        case DecisaoTelefoneEsus.Trocar: trocados++; break;
+                        case DecisaoTelefoneEsus.JaEOPrincipal: jaCorrigidos++; break;
                         case DecisaoTelefoneEsus.EsusTambemErrado: tambemErrado++; break;
                         case DecisaoTelefoneEsus.EsusSemCelular: semCelular++; break;
                         case DecisaoTelefoneEsus.MantemVerificado: verificados++; break;
                         case DecisaoTelefoneEsus.NumeroDeOutraPessoa: deOutro++; break;
-                        case null: naoAchados++; break;
+                        case null when r.ConsultouPec: naoAchados++; break;
                     }
                 }
+                catch (SessaoPecFalhou) { throw; } // sem sessão no PEC não adianta seguir
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                 catch (Exception ex)
                 {
@@ -114,38 +156,47 @@ public sealed class CorrecaoTelefoneEsusService(
                 }
             }
         }
-        catch (ErroEsusPec ex)
+        catch (SessaoPecFalhou ex)
         {
             interrompida = ex.Message;
             logger.LogWarning("Correção de telefone pelo e-SUS: sessão no PEC falhou — {Erro}", ex.Message);
         }
         finally
         {
-            await pec.LogoutAsync(CancellationToken.None);
+            if (logado) await pec.LogoutAsync(CancellationToken.None);
         }
 
-        var resumo = new ResumoCorrecaoTelefoneEsus(consultados, trocados, tambemErrado, semCelular, verificados,
-            deOutro, naoAchados, reenvios, interrompida);
+        var resumo = new ResumoCorrecaoTelefoneEsus(consultados, trocados, jaCorrigidos, tambemErrado, semCelular,
+            verificados, deOutro, naoAchados, reenvios, interrompida);
         logger.LogInformation("Correção de telefone pelo e-SUS: {@Resumo}", resumo);
         return resumo;
     }
 
     // ------------------------------------------------------------------------------------------
 
-    internal sealed record Candidato(Guid PacienteId, IReadOnlyList<string> Furados, bool TemAgendamentoFuturo);
+    /// <summary>Login/escolha de acesso no PEC falhou — encerra a passagem (erro de um paciente não encerra).</summary>
+    private sealed class SessaoPecFalhou(string mensagem) : Exception(mensagem);
 
-    private sealed record Resultado(DecisaoTelefoneEsus? Decisao, int Reenvios = 0);
+    /// <param name="ConsultadoRecente">Já passou pelo PEC nos últimos 7 dias — não é consultado de novo.</param>
+    /// <param name="TemPendenteLocal">Tem algo que o cadastro corrigido resolve sozinho: marca aberta,
+    /// pendência aberta ou mensagem de atendimento futuro parada por número.</param>
+    internal sealed record Candidato(
+        Guid PacienteId, IReadOnlyList<string> Furados, bool TemAgendamentoFuturo,
+        bool ConsultadoRecente, bool TemPendenteLocal);
+
+    private sealed record Resultado(DecisaoTelefoneEsus? Decisao, bool ConsultouPec, int Reenvios = 0);
 
     /// <summary>
     /// Quem tem telefone furado: marca de telefone comprometido aberta, pendência de número errado
     /// aberta, ou mensagem recente que falhou por número (erro permanente da Meta / sem telefone /
-    /// retida por número negado). Fora quem foi consultado nos últimos 7 dias. Quem tem
-    /// agendamento pela frente vai primeiro — é quem ganha com a mensagem reenviada.
+    /// retida por número negado). Entra quem ainda não foi ao PEC nesta semana, ou quem tem algo que
+    /// o cadastro já corrigido resolve sem PEC. Quem tem agendamento pela frente vai primeiro.
     /// </summary>
-    private async Task<IReadOnlyList<Candidato>> CandidatosAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<Candidato>> CandidatosAsync(bool reconferir, CancellationToken ct)
     {
         var agora = DateTime.UtcNow;
         var desdeFalha = agora - JanelaFalhas;
+        var limiteFuturo = agora + FolgaReenvio;
 
         var comprometidos = await db.ContatosComprometidos.AsNoTracking()
             .Where(c => c.ResolvidoEm == null)
@@ -157,19 +208,29 @@ public sealed class CorrecaoTelefoneEsusService(
             .Select(x => new { PacienteId = x.PacienteId!.Value, Telefone = (string?)x.TelefoneCanonical })
             .ToListAsync(ct);
         var falhas = await db.ComunicacoesPaciente.AsNoTracking()
-            .Where(c => c.CriadoEm > desdeFalha
-                && (c.Status == StatusComunicacao.AguardandoCorrecaoContato
-                    || c.Status == StatusComunicacao.SemTelefoneValido
-                    || (c.Status == StatusComunicacao.Falha && c.MotivoFalha != null
-                        && (c.MotivoFalha.Contains("131026") || c.MotivoFalha.Contains("131030")))))
+            .Where(FalhaDeNumero)
+            .Where(c => c.CriadoEm > desdeFalha)
             .Select(c => new { c.PacienteId, c.Telefone })
             .ToListAsync(ct);
+        var falhasFuturas = (await db.ComunicacoesPaciente.AsNoTracking()
+                .Where(FalhaDeNumero)
+                .Where(c => c.SolicitacaoId != null
+                    && c.Solicitacao!.ExcluidoEm == null
+                    && c.Solicitacao.Status != StatusSolicitacao.Cancelada
+                    && c.Solicitacao.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente
+                    && c.Solicitacao.DataAgendada > limiteFuturo)
+                .Select(c => c.PacienteId)
+                .Distinct()
+                .ToListAsync(ct))
+            .ToHashSet();
 
         var porPaciente = comprometidos.Concat(negados).Concat(falhas)
             .GroupBy(x => x.PacienteId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.Telefone).OfType<string>()
                 .Where(t => t.Length > 0).Distinct().ToList());
         if (porPaciente.Count == 0) return [];
+
+        var comMarca = comprometidos.Select(x => x.PacienteId).Concat(negados.Select(x => x.PacienteId)).ToHashSet();
 
         var desdeConsulta = agora - Reconsulta;
         var jaConsultados = (await db.RegistrosAuditoria.AsNoTracking()
@@ -178,9 +239,7 @@ public sealed class CorrecaoTelefoneEsusService(
                 .ToListAsync(ct))
             .ToHashSet(StringComparer.Ordinal);
 
-        var ids = porPaciente.Keys.Where(id => !jaConsultados.Contains(id.ToString())).ToList();
-        if (ids.Count == 0) return [];
-
+        var ids = porPaciente.Keys.ToList();
         var comFuturo = (await db.Solicitacoes.AsNoTracking()
                 .Where(s => ids.Contains(s.PacienteId) && s.ExcluidoEm == null
                     && s.Status != StatusSolicitacao.Cancelada && s.DataAgendada > agora)
@@ -189,24 +248,57 @@ public sealed class CorrecaoTelefoneEsusService(
                 .ToListAsync(ct))
             .ToHashSet();
 
-        return [.. ids
-            .Select(id => new Candidato(id, porPaciente[id], comFuturo.Contains(id)))
+        var todos = ids
+            .Select(id => new Candidato(id, porPaciente[id], comFuturo.Contains(id),
+                jaConsultados.Contains(id.ToString()), comMarca.Contains(id) || falhasFuturas.Contains(id)))
+            .ToList();
+
+        // Os já consultados nesta semana só voltam para a reconferência do cadastro (uma vez por
+        // noite, sem PEC, fora do teto); a fila do PEC é a dos que ainda não foram consultados.
+        var reconferencia = reconferir
+            ? todos.Where(c => c.ConsultadoRecente && c.TemPendenteLocal)
+            : [];
+        var paraPec = todos.Where(c => !c.ConsultadoRecente)
             .OrderByDescending(c => c.TemAgendamentoFuturo)
-            .Take(MaximoPorPassagem)];
+            .Take(MaximoPorPassagem);
+        return [.. reconferencia.OrderByDescending(c => c.TemAgendamentoFuturo), .. paraPec];
     }
 
-    private async Task<Resultado> ProcessarAsync(EsusPecCliente pec, Candidato c, CancellationToken ct)
+    /// <summary>Mensagem que falhou por causa do NÚMERO (não por "já respondeu", "sem data" etc.).</summary>
+    private static readonly System.Linq.Expressions.Expression<Func<ComunicacaoPaciente, bool>> FalhaDeNumero = c =>
+        c.Status == StatusComunicacao.AguardandoCorrecaoContato
+        || c.Status == StatusComunicacao.SemTelefoneValido
+        || (c.Status == StatusComunicacao.Falha && c.MotivoFalha != null
+            && (c.MotivoFalha.Contains("131026") || c.MotivoFalha.Contains("131030")));
+
+    private async Task<Resultado> ProcessarAsync(Func<Task<EsusPecCliente>> obterPec, Candidato c, CancellationToken ct)
     {
         var patient = await fhir.ObterAsync(c.PacienteId, ct);
-        if (patient is null) return new Resultado(null);
+        if (patient is null) return new Resultado(null, false);
+
+        // 1) O cadastro já foi corrigido depois da falha: nada a perguntar ao e-SUS — arruma o que
+        //    ficou para trás (marcas, pendências, mensagem parada) com o número de hoje.
+        if (TrocaTelefoneEsus.JaCorrigido(patient, c.Furados))
+        {
+            var principal = TrocaTelefoneEsus.CelularNacional(TrocaTelefoneEsus.Principal(patient)!.Value)!;
+            var reenviados = await ArrumarDepoisDaCorrecaoAsync(c.PacienteId, principal,
+                "Telefone já corrigido no cadastro", ct);
+            if (!c.ConsultadoRecente)
+                await RegistrarConsultaAsync(c.PacienteId, ValorJaCorrigido, principal, ct);
+            return new Resultado(DecisaoTelefoneEsus.JaEOPrincipal, false, reenviados);
+        }
+
+        // Daqui para baixo é o PEC — e ele só é perguntado uma vez por semana.
+        if (c.ConsultadoRecente) return new Resultado(null, false);
 
         // Validado (OTP) não se altera — nem gasta consulta no PEC.
         if (TrocaTelefoneEsus.TemTelefoneValidado(patient))
         {
-            await RegistrarConsultaAsync(c.PacienteId, DecisaoTelefoneEsus.MantemVerificado, null, ct);
-            return new Resultado(DecisaoTelefoneEsus.MantemVerificado);
+            await RegistrarConsultaAsync(c.PacienteId, nameof(DecisaoTelefoneEsus.MantemVerificado), null, ct);
+            return new Resultado(DecisaoTelefoneEsus.MantemVerificado, false);
         }
 
+        var pec = await obterPec();
         var cpf = PacienteFhirMapper.CpfDe(patient);
         var cns = PacienteFhirMapper.CnsDe(patient);
         CidadaoEsusPec? cidadao = null;
@@ -214,8 +306,8 @@ public sealed class CorrecaoTelefoneEsusService(
         if (cidadao is null && !string.IsNullOrEmpty(cns)) cidadao = await pec.BuscarCidadaoAsync(cns, ct);
         if (cidadao is null)
         {
-            await RegistrarConsultaAsync(c.PacienteId, null, "não achado no e-SUS", ct);
-            return new Resultado(null);
+            await RegistrarConsultaAsync(c.PacienteId, "NaoAchado", null, ct);
+            return new Resultado(null, true);
         }
 
         var celular = TrocaTelefoneEsus.CelularNacional(cidadao.TelefoneCelular);
@@ -226,7 +318,7 @@ public sealed class CorrecaoTelefoneEsusService(
         {
             case DecisaoTelefoneEsus.Trocar:
                 var reenvios = await TrocarAsync(c, celular!, ct);
-                return new Resultado(decisao, reenvios);
+                return new Resultado(decisao, true, reenvios);
 
             case DecisaoTelefoneEsus.EsusTambemErrado:
                 // O e-SUS tem o MESMO número furado: fica anotado na marca, para a recepção saber que
@@ -236,8 +328,8 @@ public sealed class CorrecaoTelefoneEsusService(
                 break;
         }
 
-        await RegistrarConsultaAsync(c.PacienteId, decisao, celular, ct);
-        return new Resultado(decisao);
+        await RegistrarConsultaAsync(c.PacienteId, decisao.ToString(), celular, ct);
+        return new Resultado(decisao, true);
     }
 
     /// <summary>O celular do PEC é o confirmado (próprio) de outra pessoa sem sobrenome em comum?
@@ -281,43 +373,57 @@ public sealed class CorrecaoTelefoneEsusService(
         if (!aplicou) return 0;
 
         await auditoria.RegistrarAsync("Paciente", c.PacienteId.ToString(), AcaoTroca, anterior, celular, ct);
-        await RegistrarConsultaAsync(c.PacienteId, DecisaoTelefoneEsus.Trocar, celular, ct);
-        await contatos.ReconciliarAsync(c.PacienteId, celular, ct);
-        await db.SaveChangesAsync(ct);
-
-        // Pendência de número errado: o cadastro foi corrigido. Resolver também solta as mensagens
-        // retidas por número negado (voltam a Pendente e saem para o número novo).
-        var abertas = await db.PendenciasCadastro.AsNoTracking()
-            .Where(x => x.PacienteId == c.PacienteId && x.Status == StatusPendenciaCadastro.Aberta
-                && x.Tipo == TipoPendenciaCadastro.NumeroErrado)
-            .Select(x => x.Id)
-            .ToListAsync(ct);
-        foreach (var id in abertas)
-            await pendencias.ResolverAsync(id, $"Telefone corrigido pelo e-SUS (atenção básica): {celular}.", ct);
-
-        return await RearmarFalhasAsync(c.PacienteId, celular, ct);
+        await RegistrarConsultaAsync(c.PacienteId, nameof(DecisaoTelefoneEsus.Trocar), celular, ct);
+        return await ArrumarDepoisDaCorrecaoAsync(c.PacienteId, celular,
+            "Telefone corrigido pelo e-SUS (atenção básica)", ct);
     }
 
     /// <summary>
-    /// A mensagem que falhou por número (de agendamento ainda pela frente, não confirmado nem
-    /// cancelado) volta à fila — mesmo saneamento do reenvio manual: links antigos revogados, linha
-    /// rearmada; o enviador resolve o telefone do cadastro, já corrigido. Fica a anotação no card.
+    /// Com o número de hoje (<paramref name="atual"/>) valendo: fecha as marcas de telefone
+    /// comprometido que falavam de outro número, resolve as pendências de número errado (o que já
+    /// solta as mensagens retidas) e reenvia a mensagem que falhou por número.
     /// </summary>
-    private async Task<int> RearmarFalhasAsync(Guid pacienteId, string celular, CancellationToken ct)
+    private async Task<int> ArrumarDepoisDaCorrecaoAsync(Guid pacienteId, string atual, string motivo, CancellationToken ct)
+    {
+        await contatos.ReconciliarAsync(pacienteId, atual, ct);
+        await db.SaveChangesAsync(ct);
+
+        var abertas = await db.PendenciasCadastro.AsNoTracking()
+            .Where(x => x.PacienteId == pacienteId && x.Status == StatusPendenciaCadastro.Aberta
+                && x.Tipo == TipoPendenciaCadastro.NumeroErrado)
+            .Select(x => new { x.Id, x.TelefoneCanonical })
+            .ToListAsync(ct);
+        foreach (var x in abertas.Where(x => !TelefoneWhatsApp.MesmoNumero(x.TelefoneCanonical, atual)))
+            await pendencias.ResolverAsync(x.Id, $"{motivo}: {atual}.", ct);
+
+        return await RearmarFalhasAsync(pacienteId, atual, motivo, ct);
+    }
+
+    /// <summary>
+    /// A mensagem que falhou por número volta à fila — mas SÓ se o atendimento ainda está pela frente
+    /// (com folga para a mensagem sair no horário de envio), não foi confirmado nem cancelado. Mesmo
+    /// saneamento do reenvio manual: links antigos revogados, linha rearmada; o enviador resolve o
+    /// telefone do cadastro (já corrigido) e confere a data de novo na hora de enviar. Fica a anotação
+    /// no card.
+    /// </summary>
+    private async Task<int> RearmarFalhasAsync(Guid pacienteId, string atual, string motivo, CancellationToken ct)
     {
         var agora = DateTime.UtcNow;
+        var limiteFuturo = agora + FolgaReenvio;
         var ultimas = (await db.ComunicacoesPaciente
                 .Include(x => x.Solicitacao)
                 .Where(x => x.PacienteId == pacienteId && x.SolicitacaoId != null
                     && x.Solicitacao!.ExcluidoEm == null
                     && x.Solicitacao.Status != StatusSolicitacao.Cancelada
-                    && x.Solicitacao.DataAgendada > agora
+                    && x.Solicitacao.DataAgendada > limiteFuturo
                     && x.Solicitacao.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
                 .ToListAsync(ct))
             .GroupBy(x => (x.SolicitacaoId, x.Finalidade))
             .Select(g => g.OrderByDescending(x => x.CriadoEm).First())
             .Where(x => x.Status == StatusComunicacao.SemTelefoneValido
-                || (x.Status == StatusComunicacao.Falha && ComunicacaoPacienteService.ErroPermanente(x.MotivoFalha)))
+                || (x.Status == StatusComunicacao.Falha && ComunicacaoPacienteService.ErroPermanente(x.MotivoFalha))
+                // Retida por número negado, mas o número de hoje é outro: a retenção não vale mais.
+                || (x.Status == StatusComunicacao.AguardandoCorrecaoContato && !TelefoneWhatsApp.MesmoNumero(x.Telefone, atual)))
             .ToList();
 
         foreach (var n in ultimas)
@@ -331,8 +437,7 @@ public sealed class CorrecaoTelefoneEsusService(
                 PacienteId = pacienteId,
                 Meio = MeioContato.WhatsApp,
                 Resultado = ResultadoContato.Outro,
-                Observacao = $"A mensagem não chegou no número antigo. Telefone corrigido pelo e-SUS (atenção básica) "
-                    + $"para {celular} e a mensagem foi reenviada.",
+                Observacao = $"A mensagem não chegou no número antigo. {motivo} para {atual} e a mensagem foi reenviada.",
                 CriadoEm = agora,
             });
         }
@@ -340,9 +445,8 @@ public sealed class CorrecaoTelefoneEsusService(
         return ultimas.Count;
     }
 
-    private async Task RegistrarConsultaAsync(Guid pacienteId, DecisaoTelefoneEsus? decisao, string? celular, CancellationToken ct)
+    private async Task RegistrarConsultaAsync(Guid pacienteId, string valor, string? celular, CancellationToken ct)
     {
-        var valor = decisao?.ToString() ?? "NaoAchado";
         await auditoria.RegistrarAsync("Paciente", pacienteId.ToString(), AcaoConsulta, null,
             celular is null ? valor : $"{valor}: {celular}", ct);
         await db.SaveChangesAsync(ct);

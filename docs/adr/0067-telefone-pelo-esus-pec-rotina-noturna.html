@@ -138,6 +138,25 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>"e-SUS também errado" não virou motivo novo (seria enum + tela): vai como <strong>observação</strong> na marca</li>
 </ul>
 <p>    "Número não é WhatsApp" — sem migration.   - O rearme acontece na própria madrugada (<code>próxima tentativa = agora</code>); quem segura até o horário de     envio é o enviador, que já respeita a janela de horário.   - Contadores da última rodada na tela: ainda não (só log). O card ganha a anotação na trilha de     contatos ("telefone corrigido pelo e-SUS… reenviada"); a sequência de tentativas segue na fase 2.</p>
+<h2>Ajuste após a 1ª madrugada (05/10/2026)</h2>
+<p>Medido: 2.192 consultados — 430 trocados, 344 "e-SUS também errado", 93 sem celular, 33 não achados, 19 de outra pessoa, 171 validados e <strong>1.102 "já era o principal"</strong> (números trocados à mão em 02–04/10). Nesses 1.102 a rotina não fazia nada: 682 pacientes ficaram com a mensagem de atendimento futuro parada (falhou no número velho) e 303 com marca de telefone comprometido sobre um número que nem é mais o principal — e metade das consultas ao PEC da noite foi gasta à toa.</p>
+<p>Correção:</p>
+<ul>
+<li><strong>Cadastro antes do PEC.</strong> Se o principal de hoje é um celular válido que não falhou nem foi negado</li>
+</ul>
+<p>  (<code>TrocaTelefoneEsus.JaCorrigido</code>), não se consulta o e-SUS: fecha as marcas e as pendências de outro   número e reenvia a mensagem. Auditoria <code>ConsultouEsusPec</code> com valor <code>JaCorrigido</code>.</p>
+<ul>
+<li><strong>Reconferência noturna.</strong> Quem foi consultado nesta semana e ainda tem marca/pendência aberta ou</li>
+</ul>
+<p>  mensagem de atendimento futuro parada é reconferido no cadastro <strong>uma vez por noite</strong>, sem PEC e fora do   teto de 500 — é o que alcança os 682 da 1ª noite sem esperar os 7 dias.</p>
+<ul>
+<li><strong>Só mensagem ainda futura.</strong> O reenvio exige atendimento a mais de 6 h (a rotina roda de madrugada e a</li>
+</ul>
+<p>  mensagem só sai no horário de envio), não confirmado e não cancelado; o enviador confere a data de novo   na hora de enviar.</p>
+<ul>
+<li>Login no PEC só quando algum paciente precisa dele; falha de login encerra a passagem, erro de um</li>
+</ul>
+<p>  paciente não.</p>
 </main>
 </body>
 </html>

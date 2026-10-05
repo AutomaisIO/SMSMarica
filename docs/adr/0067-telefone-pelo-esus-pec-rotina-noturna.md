@@ -110,3 +110,24 @@ nosso hub.
   - Contadores da última rodada na tela: ainda não (só log). O card ganha a anotação na trilha de
     contatos ("telefone corrigido pelo e-SUS… reenviada"); a sequência de tentativas segue na fase 2.
 
+## Ajuste após a 1ª madrugada (05/10/2026)
+
+Medido: 2.192 consultados — 430 trocados, 344 "e-SUS também errado", 93 sem celular, 33 não achados,
+19 de outra pessoa, 171 validados e **1.102 "já era o principal"** (números trocados à mão em 02–04/10).
+Nesses 1.102 a rotina não fazia nada: 682 pacientes ficaram com a mensagem de atendimento futuro parada
+(falhou no número velho) e 303 com marca de telefone comprometido sobre um número que nem é mais o
+principal — e metade das consultas ao PEC da noite foi gasta à toa.
+
+Correção:
+- **Cadastro antes do PEC.** Se o principal de hoje é um celular válido que não falhou nem foi negado
+  (`TrocaTelefoneEsus.JaCorrigido`), não se consulta o e-SUS: fecha as marcas e as pendências de outro
+  número e reenvia a mensagem. Auditoria `ConsultouEsusPec` com valor `JaCorrigido`.
+- **Reconferência noturna.** Quem foi consultado nesta semana e ainda tem marca/pendência aberta ou
+  mensagem de atendimento futuro parada é reconferido no cadastro **uma vez por noite**, sem PEC e fora do
+  teto de 500 — é o que alcança os 682 da 1ª noite sem esperar os 7 dias.
+- **Só mensagem ainda futura.** O reenvio exige atendimento a mais de 6 h (a rotina roda de madrugada e a
+  mensagem só sai no horário de envio), não confirmado e não cancelado; o enviador confere a data de novo
+  na hora de enviar.
+- Login no PEC só quando algum paciente precisa dele; falha de login encerra a passagem, erro de um
+  paciente não.
+

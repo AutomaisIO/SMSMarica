@@ -126,6 +126,33 @@ public class TrocaTelefoneEsusTests
         PatientMergeFhir.EhAposentado(antigo).Should().BeTrue();
     }
 
+    [Fact]
+    public void Ja_corrigido_quando_o_principal_de_hoje_nao_e_o_que_falhou()
+    {
+        // Caso da 1ª madrugada: o número foi trocado à mão, mas a mensagem antiga falhou no velho.
+        var p = Paciente(Fone("21933334444", 1), Fone("21911112222"));
+        TrocaTelefoneEsus.JaCorrigido(p, ["5521911112222"]).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Nao_esta_corrigido_quando_o_principal_e_o_que_falhou()
+    {
+        var p = Paciente(Fone("21911112222", 1));
+        TrocaTelefoneEsus.JaCorrigido(p, ["5521911112222"]).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Nao_esta_corrigido_quando_o_principal_nao_e_celular_ou_foi_negado()
+    {
+        TrocaTelefoneEsus.JaCorrigido(Paciente(Fone("2126345678", 1)), []).Should().BeFalse("fixo não recebe WhatsApp");
+
+        var negado = Fone("21933334444", 1);
+        negado.AddExtension(PatientMergeFhir.ExtContatoNegado, new FhirDateTime(Agora));
+        TrocaTelefoneEsus.JaCorrigido(Paciente(negado), []).Should().BeFalse();
+
+        TrocaTelefoneEsus.JaCorrigido(Paciente(), []).Should().BeFalse("sem telefone nenhum");
+    }
+
     [Theory]
     [InlineData("MARIA DA SILVA SOUZA", "JOÃO SOUZA", true)]
     [InlineData("Maria Conceição", "José da Conceicao", true)]   // acento não separa família

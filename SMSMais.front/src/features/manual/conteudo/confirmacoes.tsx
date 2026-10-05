@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-10-04',
+  atualizadoEm: '2026-10-05',
   palavrasChave: [
     'confirmação',
     'confirmar presença',
@@ -478,8 +478,13 @@ export const artigoConfirmacoes: Artigo = {
             ]}
           />
           <P>
-            Número <strong>verificado</strong> por código nunca é trocado pela rotina. Cada pessoa é consultada no máximo
-            uma vez por semana.
+            Se alguém <strong>já corrigiu</strong> o número no cadastro depois da falha, o sistema nem pergunta ao e-SUS:
+            só fecha a marca e a pendência que ficaram para trás e reenvia a mensagem para o número de hoje.
+          </P>
+          <P>
+            A mensagem só é reenviada se o atendimento <strong>ainda está pela frente</strong> (com folga para ela sair no
+            horário de envio) e se a pessoa ainda não confirmou nem cancelou. Número <strong>verificado</strong> por código
+            nunca é trocado pela rotina. Cada pessoa é consultada no e-SUS no máximo uma vez por semana.
           </P>
           <Sub>Corrigir o contato (e por que tem código)</Sub>
           <P>

@@ -75,6 +75,17 @@ public static class TrocaTelefoneEsus
         return a.Count > 0 && a.Overlaps(Sobrenomes(nomeB));
     }
 
+    /// <summary>
+    /// O cadastro JÁ foi corrigido depois da falha: o principal de hoje é um celular válido que não
+    /// está entre os números que falharam nem foi negado. Nesse caso não há o que perguntar ao e-SUS —
+    /// só arrumar o que ficou para trás (marcas, pendências, mensagem não reenviada).
+    /// </summary>
+    public static bool JaCorrigido(Patient p, IEnumerable<string> furados)
+    {
+        if (Principal(p) is not { } pr || CelularNacional(pr.Value) is not { } cel) return false;
+        return !EhNumeroNegado(p, cel) && !furados.Any(f => TelefoneWhatsApp.MesmoNumero(f, cel));
+    }
+
     /// <summary>Decide, na ordem das regras. <paramref name="furados"/> = números que falharam/foram negados.
     /// <paramref name="confirmadoPorOutro"/> = o número do PEC é o confirmado (próprio) de outra pessoa
     /// SEM sobrenome em comum (quem chama já aplicou a exceção da família).</summary>
