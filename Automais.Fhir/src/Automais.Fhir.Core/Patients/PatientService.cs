@@ -126,18 +126,17 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
                 || (p.CnsTodos != null && p.CnsTodos.Any(c => procurado.Contains(c))));
         }
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
-            // Insensível a acento E case: f_unaccent() (wrapper IMMUTABLE de unaccent) normaliza
-            // os dois lados; o ILIKE cuida do case. f_unaccent (não unaccent) porque é o que casa
-            // o índice GIN trigram ix_patient_nome_funaccent_trgm — sem ele, seq scan em 378k.
-            query = query.Where(p => p.Nome != null
-                && EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome), FhirDbContext.FUnaccent($"%{filtro.Nome}%")));
+            query = NomeContemPalavras(query, filtro.Nome);
 
         // Busca humana unificada: nome (contém) OU CPF/CNS por PREFIXO (não espera terminar).
         // `%` do termo é escapado para não virar wildcard vindo do usuário.
         var termo = filtro.Termo?.Trim();
         var digitos = Digitos(termo);
         var buscaTermo = !string.IsNullOrWhiteSpace(termo);
-        if (buscaTermo)
+        if (buscaTermo && digitos.Length == 0)
+            // Sem dígito não há CPF/CNS a casar: é busca só por nome, palavra a palavra.
+            query = NomeContemPalavras(query, termo!);
+        else if (buscaTermo)
         {
             var contemNome = $"%{EscaparLike(termo!)}%";
             var prefixoDoc = digitos.Length > 0 ? digitos + "%" : null;
@@ -169,10 +168,15 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
             // alfabéticos sumia da busca mesmo estando na lista.
             // O `unaccent(...)` do padrão fica DENTRO da árvore de expressão (é função de banco;
             // chamá-lo em C# lançaria). Só a string do padrão é montada aqui.
+            // Com várias palavras, quem começa pela frase inteira vem antes de quem só começa
+            // pela primeira palavra ("neide marins" põe NEIDE MARINS… antes de NEIDE DE MARINS…).
             var padraoPrefixo = $"{EscaparLike(termo!)}%";
+            var padraoPrimeiraPalavra = $"{EscaparLike(Palavras(termo!)[0])}%";
             ordenada = query
                 .OrderByDescending(p => p.Nome != null
                     && EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome), FhirDbContext.FUnaccent(padraoPrefixo)))
+                .ThenByDescending(p => p.Nome != null
+                    && EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome), FhirDbContext.FUnaccent(padraoPrimeiraPalavra)))
                 .ThenBy(p => p.Nome);
         }
         else
@@ -474,6 +478,29 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
     /// <summary>Escapa os curingas do LIKE/ILIKE (<c>%</c>, <c>_</c>, <c>\</c>) num termo digitado
     /// pelo usuário, para que ele seja casado literalmente e não como padrão.</summary>
+    /// <summary>
+    /// Nome contém TODAS as palavras, em qualquer posição e ordem — "neide marins" acha
+    /// NEIDE DE MARINS GOMES (a frase inteira como um só "contém" não achava: o "de" no meio
+    /// quebrava). Insensível a acento E case: f_unaccent() (wrapper IMMUTABLE de unaccent)
+    /// normaliza os dois lados; o ILIKE cuida do case. f_unaccent (não unaccent) porque é o que
+    /// casa o índice GIN trigram ix_patient_nome_funaccent_trgm — sem ele, seq scan em 378k.
+    /// Um Where por palavra vira AND dentro de UM Bitmap Index Scan no mesmo índice (medido em
+    /// produção: 17 ms contra 50 ms da frase inteira; palavra curta como "de" não atrapalha).
+    /// </summary>
+    private static IQueryable<PatientRow> NomeContemPalavras(IQueryable<PatientRow> query, string texto)
+    {
+        query = query.Where(p => p.Nome != null);
+        foreach (var palavra in Palavras(texto))
+        {
+            var padrao = $"%{EscaparLike(palavra)}%";
+            query = query.Where(p => EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome!), FhirDbContext.FUnaccent(padrao)));
+        }
+        return query;
+    }
+
+    private static string[] Palavras(string texto) =>
+        texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     private static string EscaparLike(string valor) =>
         valor.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
