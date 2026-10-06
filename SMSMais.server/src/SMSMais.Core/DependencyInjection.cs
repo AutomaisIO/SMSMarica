@@ -801,6 +801,7 @@ public static class DependencyInjection
         // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.
         services.AddScoped<Integracoes.Sisreg.Configuracao.ISisregConfiguracaoService, Integracoes.Sisreg.Configuracao.SisregConfiguracaoService>();
         services.AddScoped<Integracoes.Sisreg.ISisregConsultaService, Integracoes.Sisreg.SisregConsultaService>();
+        services.AddScoped<Integracoes.Sisreg.Base.IConsultaBaseSisregService, Integracoes.Sisreg.Base.ConsultaBaseSisregService>();
         services.AddHttpClient<Integracoes.Sisreg.ISisregClient, Integracoes.Sisreg.SisregClient>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);

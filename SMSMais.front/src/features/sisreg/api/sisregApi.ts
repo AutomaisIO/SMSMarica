@@ -12,7 +12,6 @@ import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarSisregConfiguracaoPayload,
   BackfillExecutanteResultado,
-  ConsultaSisreg,
   MapeamentoLoteAceito,
   MapeamentoLoteAgendamento,
   MapeamentoLoteExecucao,
@@ -23,9 +22,7 @@ import type {
   PrepararRedePayload,
   PreverAgendamento,
   PreverAgendamentoPayload,
-  RegistroSisreg,
   SalvarMapeamentoLoteAgendamento,
-  SisregBuscaResultado,
   EscalasAgendamento,
   EscalasSincronizacaoAceita,
   EscalasSincronizacaoExecucao,
@@ -122,25 +119,6 @@ export async function salvarAgendamentoMapeamentoLote(
   payload: SalvarMapeamentoLoteAgendamento,
 ): Promise<MapeamentoLoteAgendamento> {
   const { data } = await http.put<MapeamentoLoteAgendamento>('/sisreg/mapeamento/lote/agendamento', payload);
-  return data;
-}
-
-type IntervaloParams = { inicio?: string; fim?: string; tamanho: number };
-
-/** Executa uma das 6 consultas de leitura do SISREG. */
-export async function consultarSisreg(
-  consulta: ConsultaSisreg,
-  params: IntervaloParams,
-): Promise<SisregBuscaResultado<RegistroSisreg>> {
-  const rota: Record<ConsultaSisreg, string> = {
-    'novas-solicitacoes': '/sisreg/ambulatorial/novas-solicitacoes',
-    fila: '/sisreg/ambulatorial/fila',
-    agendadas: '/sisreg/ambulatorial/agendadas',
-    atendidas: '/sisreg/ambulatorial/atendidas',
-    'canceladas-devolvidas': '/sisreg/ambulatorial/canceladas-devolvidas',
-    internacoes: '/sisreg/hospitalar/internacoes',
-  };
-  const { data } = await http.get<SisregBuscaResultado<RegistroSisreg>>(rota[consulta], { params });
   return data;
 }
 

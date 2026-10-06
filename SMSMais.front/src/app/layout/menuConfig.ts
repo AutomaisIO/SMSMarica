@@ -443,7 +443,7 @@ export const SECOES: SecaoMenu[] = [
             icone: ClipboardList,
             modulo: 'Sisreg',
             end: true,
-            descricao: 'Consulta integrada (só leitura).',
+            descricao: 'Agendamentos do SISREG na nossa base: situação, filtros e PDF.',
           },
           {
             // Cadastro NOSSO: o SISREG não tem lista de médico solicitante (é texto na ficha).
