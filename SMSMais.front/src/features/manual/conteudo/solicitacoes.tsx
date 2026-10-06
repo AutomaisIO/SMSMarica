@@ -195,9 +195,10 @@ export const artigoSolicitacoes: Artigo = {
           </P>
           <P>
             Na <strong>Regulação</strong> aparece também o <strong>diagnóstico inicial</strong> — o
-            CID‑10 que o médico informou no pedido, do jeito que vem do SISREG (ex.: <em>CID M545 —
-            Dor lombar baixa</em>). É o que ajuda o laudista a saber o tipo de laudo a fazer. Quando
-            o pedido não traz CID, a linha simplesmente não aparece.
+            CID‑10 que o médico informou no pedido, do jeito que vem do SISREG (ex.:{' '}
+            <em>CID Z12</em>). É o que ajuda o laudista a saber o tipo de laudo a fazer. Passe o
+            mouse sobre o código para ler o que ele significa por extenso (ex.: <em>Exame especial
+            de rastreamento de neoplasias</em>). Quando o pedido não traz CID, a linha não aparece.
           </P>
           <P>
             Só no exame de imagem aparecem o <strong>ciclo do exame</strong> (Solicitada → Enviada →

@@ -294,17 +294,17 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           </h1>
           <p className="text-sm text-gray-500">
             Pedido <span className="font-mono">{ctx.accessionNumber}</span> · {ctx.tipoExameNome}
-            {ctx.cidCodigo ? (
-              <>
-                {' '}
-                · Diagnóstico inicial: <span className="font-medium text-gray-700">CID {ctx.cidCodigo}</span>
-                {ctx.cidDescricao ? ` — ${ctx.cidDescricao}` : null}
-              </>
-            ) : null}
             {ctx.anamnese?.preenchidoPorNome ? (
               <> · preenchida por {ctx.anamnese.preenchidoPorNome}</>
             ) : null}
           </p>
+          {ctx.cidCodigo ? (
+            <p className="text-sm text-gray-600">
+              Diagnóstico inicial:{' '}
+              <span className="font-medium text-gray-800">CID {ctx.cidCodigo}</span>
+              {ctx.cidDescricao ? ` — ${ctx.cidDescricao}` : null}
+            </p>
+          ) : null}
           {/* O carimbo do SISCAN: é o que a médica leva para laudar. Fica no cabeçalho porque é
               informação de identidade do pedido, não uma resposta do questionário. */}
           {ctx.siscanProtocolo ? (

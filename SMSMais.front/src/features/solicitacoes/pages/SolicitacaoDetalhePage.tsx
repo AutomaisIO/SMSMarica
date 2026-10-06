@@ -461,8 +461,16 @@ export function SolicitacaoDetalhePage() {
                 <br />
                 <span className="text-gray-600">
                   Diagnóstico inicial:{' '}
-                  <span className="font-medium">CID {s.cidCodigo}</span>
-                  {s.cidDescricao ? ` — ${s.cidDescricao}` : null}
+                  <span
+                    className={
+                      s.cidDescricao
+                        ? 'font-medium underline decoration-dotted underline-offset-2 cursor-help'
+                        : 'font-medium'
+                    }
+                    title={s.cidDescricao ?? undefined}
+                  >
+                    CID {s.cidCodigo}
+                  </span>
                 </span>
               </>
             ) : null}
