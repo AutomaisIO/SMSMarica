@@ -11,8 +11,8 @@ public class ElevenLabsConfiguracao
 
     public string BaseUrl { get; set; } = "https://api.elevenlabs.io/";
 
-    /// <summary>Modelo de transcrição (STT). Padrão: scribe_v1.</summary>
-    public string Modelo { get; set; } = "scribe_v1";
+    /// <summary>Modelo de transcrição (STT). Padrão: scribe_v2 (scribe_v1 foi depreciado).</summary>
+    public string Modelo { get; set; } = "scribe_v2";
 
     /// <summary>Chave da API cifrada. Write-only na API.</summary>
     public string? ApiKeyCifrada { get; set; }

@@ -14,7 +14,7 @@ export function ElevenLabsCard() {
 
   const [aberto, setAberto] = useState(false);
   const [baseUrl, setBaseUrl] = useState('https://api.elevenlabs.io/');
-  const [modelo, setModelo] = useState('scribe_v1');
+  const [modelo, setModelo] = useState('scribe_v2');
   const [apiKey, setApiKey] = useState('');
   const [ativo, setAtivo] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export function ElevenLabsCard() {
             <Input id="el-url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} disabled={!podeEditar} />
           </Campo>
 
-          <Campo label="Modelo (STT)" htmlFor="el-modelo" dica="Padrão: scribe_v1.">
+          <Campo label="Modelo (STT)" htmlFor="el-modelo" dica="Padrão: scribe_v2.">
             <Input id="el-modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} disabled={!podeEditar} />
           </Campo>
 
