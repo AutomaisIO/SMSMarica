@@ -229,11 +229,25 @@ public sealed class IdentidadeService(
         if (!string.IsNullOrWhiteSpace(filtro.Busca))
         {
             var termo = filtro.Busca.Trim();
-            var padraoNome = $"%{termo}%";
             var digitos = NormalizarDigitos(termo);
-            query = query.Where(u =>
-                EF.Functions.ILike(u.NomeCompleto, padraoNome)
-                || (digitos.Length > 0 && u.Cpf != null && u.Cpf.Contains(digitos)));
+            if (digitos.Length == 0)
+            {
+                // Sem dígito é busca só por nome: cada palavra, em qualquer posição e ordem, sem
+                // acento e sem caixa — "jose silva" acha JOSÉ DA SILVA (a frase inteira como um
+                // só "contém" não achava).
+                foreach (var palavra in termo.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var padrao = $"%{palavra.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_")}%";
+                    query = query.Where(u => EF.Functions.ILike(SmsMaisDbContext.FUnaccent(u.NomeCompleto), SmsMaisDbContext.FUnaccent(padrao)));
+                }
+            }
+            else
+            {
+                var padraoNome = $"%{termo}%";
+                query = query.Where(u =>
+                    EF.Functions.ILike(u.NomeCompleto, padraoNome)
+                    || (u.Cpf != null && u.Cpf.Contains(digitos)));
+            }
         }
 
         if (filtro.UnidadeId is { } unidadeId)

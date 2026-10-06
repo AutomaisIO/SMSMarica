@@ -102,12 +102,30 @@ public sealed class PractitionerService(FhirDbContext db, TimeProvider clock) : 
             query = query.Where(p => p.Conselho != excluida);
         }
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
-            query = query.Where(p => p.Nome != null && EF.Functions.ILike(p.Nome, $"%{filtro.Nome}%"));
+        {
+            // Cada palavra, em qualquer posição e ordem, sem acento e sem caixa — "jose silva" acha
+            // JOSÉ DA SILVA (a frase inteira como um só "contém" não achava). Sem índice trigram de
+            // propósito: são ~4 mil linhas, e o seq scan com f_unaccent mediu 30 ms em produção.
+            query = query.Where(p => p.Nome != null);
+            foreach (var palavra in Palavras(filtro.Nome))
+            {
+                var padrao = $"%{EscaparLike(palavra)}%";
+                query = query.Where(p => EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome!), FhirDbContext.FUnaccent(padrao)));
+            }
+        }
 
-        // Sem busca textual (nome): últimos incluídos primeiro. Com nome: ordem alfabética.
-        var ordenada = string.IsNullOrWhiteSpace(filtro.Nome)
-            ? query.OrderByDescending(p => p.LastUpdated)
-            : query.OrderBy(p => p.Nome);
+        // Sem busca textual (nome): últimos incluídos primeiro. Com nome: quem começa pela frase
+        // digitada no topo, depois ordem alfabética.
+        IOrderedQueryable<PractitionerRow> ordenada;
+        if (string.IsNullOrWhiteSpace(filtro.Nome))
+            ordenada = query.OrderByDescending(p => p.LastUpdated);
+        else
+        {
+            var padraoPrefixo = $"{EscaparLike(filtro.Nome.Trim())}%";
+            ordenada = query
+                .OrderByDescending(p => EF.Functions.ILike(FhirDbContext.FUnaccent(p.Nome!), FhirDbContext.FUnaccent(padraoPrefixo)))
+                .ThenBy(p => p.Nome);
+        }
         var rows = await ordenada.Take(LimiteBusca).ToListAsync(ct);
 
         var bundle = new Bundle { Type = Bundle.BundleType.Searchset, Total = rows.Count };
@@ -140,4 +158,10 @@ public sealed class PractitionerService(FhirDbContext db, TimeProvider clock) : 
         row.Nome = p.Name.FirstOrDefault(n => n.Use == HumanName.NameUse.Official)?.Text
                    ?? p.Name.FirstOrDefault()?.Text;
     }
+
+    private static string[] Palavras(string texto) =>
+        texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static string EscaparLike(string valor) =>
+        valor.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 }
