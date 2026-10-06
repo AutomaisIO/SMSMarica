@@ -25,6 +25,7 @@ public sealed class SernitCatalogoSyncService(
     SmsMaisDbContext db,
     ISernitNovaSolicitacaoService leitor,
     Regulacao.Catalogo.IRegulacaoCatalogoService catalogoRegulacao,
+    Common.Cid.ICidCatalogoSyncService cidCatalogo,
     ILogger<SernitCatalogoSyncService> logger) : ISernitCatalogoSyncService
 {
     private static readonly (string Codigo, TipoRecursoSernit Tipo)[] Tipos =
@@ -113,6 +114,17 @@ public sealed class SernitCatalogoSyncService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "SERNIT/catálogo: sincronismo do catálogo canônico da regulação falhou.");
+        }
+
+        // Catálogo CID-10 CANÔNICO (nossa tabela, ticket #155): consolida SER + SERNIT. try/catch
+        // que só loga, pela mesma razão do bloco acima.
+        try
+        {
+            await cidCatalogo.SincronizarAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "SERNIT/catálogo: consolidação do catálogo CID canônico falhou.");
         }
 
         return new SernitCatalogoSyncResultadoDto(recursos, campos, listas, falhas, duracao, cids);

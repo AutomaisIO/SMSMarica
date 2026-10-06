@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<Pacientes.Promocao.IPromocaoBlobService, Pacientes.Promocao.PromocaoBlobService>();
         services.AddScoped<Auditoria.IAuditoriaService, Auditoria.AuditoriaService>();
         services.AddScoped<Common.Cid.ICidCatalogoService, Common.Cid.CidCatalogoService>();
+        services.AddScoped<Common.Cid.ICidCatalogoSyncService, Common.Cid.CidCatalogoSyncService>();
         services.AddScoped<Erros.IRegistroErroService, Erros.RegistroErroService>();
         services.AddScoped<ITratamentosService, TratamentosService>();
         services.AddScoped<Acompanhantes.IAcompanhantesService, Acompanhantes.AcompanhantesService>();

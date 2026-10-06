@@ -180,6 +180,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<SerVarreduraExecucao> SerVarreduraExecucoes => Set<SerVarreduraExecucao>();
     public DbSet<SerVarreduraFalha> SerVarreduraFalhas => Set<SerVarreduraFalha>();
 
+    // Catálogo CID-10 CANÔNICO da instância (nossa tabela), consolidado do SER + SERNIT.
+    public DbSet<Cid> Cids => Set<Cid>();
+
     // Catálogo do SER espelhado: a tela de nova solicitação monta o formulário daqui, offline.
     public DbSet<SerCatalogoRecurso> SerCatalogoRecursos => Set<SerCatalogoRecurso>();
     public DbSet<SerCatalogoCampo> SerCatalogoCampos => Set<SerCatalogoCampo>();

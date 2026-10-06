@@ -37,6 +37,7 @@ public sealed class SerCatalogoSyncService(
     SmsMaisDbContext db,
     ISerNovaSolicitacaoService leitor,
     Regulacao.Catalogo.IRegulacaoCatalogoService catalogoRegulacao,
+    Common.Cid.ICidCatalogoSyncService cidCatalogo,
     ILogger<SerCatalogoSyncService> logger) : ISerCatalogoSyncService
 {
     private static readonly (string Codigo, TipoRecursoSer Tipo)[] Tipos =
@@ -146,6 +147,18 @@ public sealed class SerCatalogoSyncService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "SER/catálogo: sincronismo do catálogo canônico da regulação falhou.");
+        }
+
+        // Catálogo CID-10 CANÔNICO (nossa tabela, ticket #155): consolida o que o espelho do SER
+        // acabou de atualizar com o do SERNIT. try/catch que só loga, pela mesma razão do bloco
+        // acima — a cópia de origem não pode falhar porque a consolidação teve problema.
+        try
+        {
+            await cidCatalogo.SincronizarAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "SER/catálogo: consolidação do catálogo CID canônico falhou.");
         }
 
         return new SerCatalogoSyncResultadoDto(recursos, campos, listas, falhas, duracao, cids);

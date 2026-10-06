@@ -4,10 +4,13 @@ using SMSMais.Data;
 namespace SMSMais.Core.Common.Cid;
 
 /// <summary>
-/// Descrição por extenso de um código CID-10 a partir do catálogo canônico já importado
-/// (<c>ser_catalogo_cid</c>: ~14k códigos, descrição estável por código — zero divergências medidas
-/// em 06/10/2026). Serve para mostrar o "diagnóstico inicial" do pedido (o CID que o SISREG traz)
-/// legível na tela da solicitação e da anamnese (ticket #155).
+/// Descrição por extenso de um código CID-10 a partir da NOSSA tabela canônica
+/// (<c>smsmarica.cid</c>, ver <see cref="SMSMais.Data.Entities.Cid"/>). Serve para mostrar o
+/// "diagnóstico inicial" do pedido (o CID que o SISREG traz) legível na tela da solicitação e da
+/// anamnese (ticket #155).
+///
+/// <para>A tabela é consolidada do SER + SERNIT por <see cref="ICidCatalogoSyncService"/>; aqui a
+/// leitura é só da nossa base, sem tocar nos espelhos nem nos sistemas externos.</para>
 ///
 /// <para><b>Best-effort:</b> código fora do catálogo devolve <c>null</c> e a tela mostra só o código —
 /// perder a descrição nunca pode esconder o CID.</para>
@@ -28,7 +31,7 @@ public sealed class CidCatalogoService(SmsMaisDbContext db) : ICidCatalogoServic
     {
         var c = Normalizar(codigo);
         if (c is null) return null;
-        return await db.SerCatalogoCids.AsNoTracking()
+        return await db.Cids.AsNoTracking()
             .Where(x => x.Codigo == c)
             .Select(x => x.Descricao)
             .FirstOrDefaultAsync(ct);
@@ -40,18 +43,15 @@ public sealed class CidCatalogoService(SmsMaisDbContext db) : ICidCatalogoServic
         var distintos = codigos.Select(Normalizar).OfType<string>().Distinct().ToList();
         if (distintos.Count == 0) return new Dictionary<string, string>(StringComparer.Ordinal);
 
-        var pares = await db.SerCatalogoCids.AsNoTracking()
+        var pares = await db.Cids.AsNoTracking()
             .Where(x => distintos.Contains(x.Codigo))
             .Select(x => new { x.Codigo, x.Descricao })
             .ToListAsync(ct);
 
-        // Descrição estável por código; GroupBy protege de qualquer código repetido entre listas.
-        return pares
-            .GroupBy(p => p.Codigo, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First().Descricao, StringComparer.Ordinal);
+        return pares.ToDictionary(p => p.Codigo, p => p.Descricao, StringComparer.Ordinal);
     }
 
-    /// <summary>Normaliza o código do jeito que o catálogo guarda (sem dot, caixa alta, sem espaços).</summary>
+    /// <summary>Normaliza o código do jeito que o catálogo guarda (sem ponto, caixa alta, sem espaços).</summary>
     private static string? Normalizar(string? codigo)
     {
         var t = (codigo ?? string.Empty).Trim().ToUpperInvariant();
