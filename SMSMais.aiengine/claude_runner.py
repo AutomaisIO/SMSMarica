@@ -102,6 +102,13 @@ _BLOCO_WHATSAPP = (
 )
 
 
+#: Rótulo do turno aberto quando o modelo retoma SOZINHO depois que uma tarefa em segundo
+#: plano (build, análise, consulta pesada) termina — ver `_abrir_turno_continuacao` e o
+#: ticket #156. Vai no campo `prompt` do turno, que o painel exibe como a bolha do operador;
+#: por isso é um texto legível, deixando claro que a retomada foi automática.
+PROMPT_CONTINUACAO = "⟳ Retomada automática (uma tarefa em segundo plano terminou)"
+
+
 def _pergunta_do_prompt(prompt: str) -> str:
     """Só a pergunta do operador: o .NET anexa o contexto (RAG) depois de uma linha '---'."""
     return (prompt or "").split("\n---\n", 1)[0].strip()[:4000]
@@ -175,6 +182,24 @@ def _message_to_events(message: Any) -> list[dict]:
     if isinstance(content, str):
         return [{"type": "text", "text": content}]
     return [e for e in (_block_to_event(b) for b in content) if e]
+
+
+def _mensagem_abre_continuacao(message: Any) -> bool:
+    """True se a mensagem carrega conteúdo do modelo que justifica abrir um turno de
+    continuação quando ela chega sem turno ativo (ticket #156).
+
+    - `AssistantMessage`: sempre (é prosa/ferramenta do modelo).
+    - `UserMessage` com conteúdo em LISTA: resultado de ferramenta devolvido ao modelo
+      (ToolResultBlocks) — a retomada começou. Conteúdo string é injeção/skill, não abre.
+    - `SystemMessage`/`ResultMessage`: nunca por si. SystemMessage é ruído de init/resume;
+      um ResultMessage órfão é a cauda de um turno já encerrado, não uma retomada.
+    """
+    name = type(message).__name__
+    if name == "AssistantMessage":
+        return True
+    if name == "UserMessage":
+        return isinstance(getattr(message, "content", None), list)
+    return False
 
 
 class ClaudeEngine:
@@ -616,10 +641,20 @@ class ClaudeEngine:
 
         tid = live.current_turn_id
         if tid is None:
-            # Sobra de um turno interrompido, ou replay de um `resume`. Antes isto virava
-            # conteúdo do turno seguinte; agora é lixo identificado.
-            logger.info("Sessão %s: %s fora de turno — descartada.", live.id, name)
-            return
+            # Conteúdo do modelo FORA de turno = o Claude retomou sozinho depois que uma
+            # tarefa em segundo plano (build, análise) terminou — ver ticket #156. O turno
+            # que a disparou já fechou no ResultMessage, mas o leitor é único e vive entre
+            # turnos, então a continuação chega aqui. Em vez de descartá-la (era o bug),
+            # abrimos um turno de continuação e a atribuímos a ele.
+            #
+            # Só conteúdo abre turno. SystemMessage/ResultMessage soltos continuam sendo
+            # lixo: SystemMessage é init/ping de `resume`; um ResultMessage órfão é a cauda
+            # de um turno já encerrado (cancelado/interrompido) cujo stream ainda drenava.
+            if _mensagem_abre_continuacao(message):
+                tid = self._abrir_turno_continuacao(live)
+            if tid is None:
+                logger.info("Sessão %s: %s fora de turno — descartada.", live.id, name)
+                return
 
         for event in _message_to_events(message):
             event["seq"] = live.seq
@@ -638,15 +673,24 @@ class ClaudeEngine:
         bloco inteiro e zera o parcial. Assim o volume do SQLite não muda e o cursor do
         painel continua monotônico.
         """
-        if not isinstance(evento, dict) or not live.current_turn_id:
+        if not isinstance(evento, dict):
             return
         if evento.get("type") != "content_block_delta":
             return
         delta = evento.get("delta")
-        if isinstance(delta, dict) and delta.get("type") == "text_delta":
-            texto = delta.get("text") or ""
-            if texto and len(live.partial_text) < config.PARTIAL_MAX_CHARS:
-                live.partial_text += texto
+        if not (isinstance(delta, dict) and delta.get("type") == "text_delta"):
+            return
+        texto = delta.get("text") or ""
+        if not texto:
+            return
+        if not live.current_turn_id:
+            # Primeira delta de uma retomada autônoma (ticket #156): abre o turno de
+            # continuação já aqui, para a digitação ao vivo aparecer desde o início — e não
+            # só quando a AssistantMessage completa chegar.
+            if self._abrir_turno_continuacao(live) is None:
+                return
+        if len(live.partial_text) < config.PARTIAL_MAX_CHARS:
+            live.partial_text += texto
 
     def _finish_turn(self, live: LiveSession, result: Any) -> None:
         tid = live.current_turn_id
@@ -682,6 +726,50 @@ class ClaudeEngine:
         live.turn_started_at = 0.0
         live.interrompido_em = 0.0
         live.last_used_at = time.time()
+
+    def _abrir_turno_continuacao(self, live: LiveSession) -> Optional[str]:
+        """Abre um turno AUTÔNOMO quando o modelo retoma sozinho fora de turno (ticket #156).
+
+        É o caso de uma tarefa em segundo plano (build, análise, consulta pesada) que termina
+        DEPOIS que o turno que a disparou já fechou no ResultMessage: o SDK retoma o modelo e
+        emite mensagens no mesmo stream. Sem isto elas caíam em "fora de turno — descartada" e
+        a sessão só seguia quando o operador mandava uma mensagem para "acordá-la".
+
+        **Síncrono de propósito (sem `await`).** Roda dentro do leitor; precisa ser atômico
+        frente ao event loop para não correr com `start_turn` pela posse de `current_turn_id`.
+        A ordem é: grava o turno no store e SÓ ENTÃO seta `live.current_turn_id` — assim, se o
+        operador mandar uma mensagem no mesmo instante, ou ele vê o turno de continuação já
+        aberto (e `start_turn` devolve 409, correto: o agente está ocupado), ou ele abre o
+        dele antes e a continuação é atribuída ao turno dele (o modelo trata tudo junto).
+        """
+        record = store.get_session(live.id)
+        if record is None:
+            return None
+        # Herda o operador com que o cliente foi construído: a autorização (admin × somente
+        # leitura) e a identidade de auditoria são as mesmas — uma retomada não troca quem
+        # conduz. Cai para o criador da sessão se o cliente subiu sem operador de turno.
+        if live.operador is not None:
+            usuario_id = live.operador[0]
+        else:
+            usuario_id = record.get("usuario_id")
+        usuario_nome = record.get("usuario_nome")
+
+        tid = str(uuid.uuid4())
+        store.create_turn(tid, live.id, PROMPT_CONTINUACAO, time.time(),
+                          usuario_id, usuario_nome)
+        store.touch_session(live.id)
+        live.current_turn_id = tid
+        live.seq = 0
+        live.partial_text = ""
+        live.encerramento_forcado = None
+        live.interrompido_em = 0.0
+        live.turn_started_at = time.time()
+        live.last_used_at = time.time()
+        live.auditoria = {"usuarioId": usuario_id, "pergunta": "(retomada automática)",
+                          "turnoId": tid}
+        logger.info("Sessão %s: tarefa em segundo plano concluída — turno de continuação %s "
+                    "aberto automaticamente.", live.id, tid)
+        return tid
 
     # ------------------------------------------------------------------ turnos
 

@@ -54,6 +54,10 @@ class StreamEvent:
                       "delta": {"type": "text_delta", "text": texto}}
 
 
+class SystemMessage:
+    """Init/ping de `resume`: chega fora de turno e NÃO deve abrir continuação (ticket #156)."""
+
+
 class ClaudeAgentOptions:
     """Aceita qualquer campo: o teste não valida a configuração do SDK."""
 
@@ -276,12 +280,59 @@ async def test_autorizacao_por_operador() -> None:
            "turno sem usuario_id cai no somente leitura (menor privilégio)")
 
 
+async def test_retomada_automatica_apos_tarefa_em_background() -> None:
+    print("\n[6] tarefa em segundo plano que termina retoma a sessão sozinha (ticket #156)")
+    sessao = await engine.create_session(title="retomada", usuario_nome="Bernardo")
+    sid = sessao["id"]
+
+    # Turno normal do operador: conceitualmente dispara um trabalho em segundo plano e fecha
+    # no ResultMessage, como acontece quando o agente diz "comecei o build, aviso ao terminar".
+    primeiro = await engine.start_turn(sid, "PRIMEIRO", usuario_nome="Bernardo")
+    await esperar_fim(primeiro["id"])
+    live = engine._live[sid]
+    checar(live.current_turn_id is None, "o turno do operador fechou (sessão ficou ociosa)")
+    antes = store.turn_count(sid)
+
+    # Ruído fora de turno NÃO pode abrir turno: SystemMessage é init/ping de resume.
+    await live.client.fila.put(SystemMessage())
+    await asyncio.sleep(0.1)
+    checar(store.turn_count(sid) == antes,
+           "SystemMessage solto continua sendo descartado (não abre continuação)")
+
+    # A tarefa em segundo plano termina: o SDK retoma o modelo SOZINHO e emite conteúdo no
+    # mesmo stream, sem novo query() do operador. Antes isto caía em "fora de turno —
+    # descartada" e a sessão só seguia quando o operador mandava uma mensagem.
+    await live.client.fila.put(AssistantMessage([TextBlock("BUILD_OK terminei o build")]))
+    await live.client.fila.put(ResultMessage(result="continuação concluída"))
+
+    limite = asyncio.get_event_loop().time() + 5.0
+    novo = None
+    while asyncio.get_event_loop().time() < limite:
+        hist = store.session_history(sid)
+        if len(hist) > antes and hist[-1]["status"] != "running":
+            novo = hist[-1]
+            break
+        await asyncio.sleep(0.02)
+
+    checar(novo is not None, "a sessão abriu um turno de continuação sozinha")
+    if novo:
+        checar(novo["prompt"] == claude_runner.PROMPT_CONTINUACAO,
+               "o turno de continuação é rotulado como retomada automática")
+        checar(novo["status"] == "done",
+               f"o turno de continuação fecha normalmente (veio {novo['status']})")
+        checar("BUILD_OK" in textos(novo["id"]),
+               "o conteúdo produzido sozinho foi preservado  <- o bug descartava isto")
+        checar(novo["usuario_nome"] == "Bernardo",
+               "a continuação herda o operador da sessão (autoria/autorização preservadas)")
+
+
 async def main() -> int:
     for teste in (test_cancelamento_nao_contamina_o_proximo_turno,
                   test_participantes_e_autoria,
                   test_texto_ao_vivo,
                   test_watchdog_encerra_turno_estourado,
-                  test_autorizacao_por_operador):
+                  test_autorizacao_por_operador,
+                  test_retomada_automatica_apos_tarefa_em_background):
         await teste()
     await engine.shutdown()
 

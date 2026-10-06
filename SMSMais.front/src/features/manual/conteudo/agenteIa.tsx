@@ -37,6 +37,11 @@ export const artigoAgenteIa: Artigo = {
     'status',
     'responder citando o aviso',
     'somente leitura',
+    'retomada automática',
+    'continua sozinho',
+    'tarefa em segundo plano',
+    'build demorado',
+    'acordar o agente',
   ],
   secoes: () => [
     {
@@ -53,6 +58,27 @@ export const artigoAgenteIa: Artigo = {
           <P>
             Só os administradores do agente podem pedir mudança (código, deploy, escrita no servidor). Os demais
             ficam em modo somente leitura e, quando o pedido exige mudança, o agente oferece abrir um ticket.
+          </P>
+        </>
+      ),
+    },
+    {
+      id: 'retomada-automatica',
+      titulo: 'Quando o agente retoma sozinho',
+      busca:
+        'retomada automática continua sozinho tarefa em segundo plano build demorado análise acordar o agente cutucar turno de continuação',
+      conteudo: (
+        <>
+          <P>
+            Em tarefas longas, o agente às vezes dispara um trabalho em <strong>segundo plano</strong> (um build, uma
+            análise, uma consulta pesada) e segue esperando ele terminar. Quando esse trabalho conclui, o agente{' '}
+            <strong>volta a rodar sozinho</strong> e continua de onde parou — você não precisa mandar nenhuma mensagem
+            para “acordá-lo”.
+          </P>
+          <P>
+            No histórico isso aparece como um novo passo marcado com{' '}
+            <strong>“⟳ Retomada automática”</strong>: é o agente retomando por conta própria, não uma mensagem sua. Se
+            a conversa estiver aberta, ela volta a mostrar o agente trabalhando ao vivo em alguns segundos.
           </P>
         </>
       ),

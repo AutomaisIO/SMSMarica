@@ -37,6 +37,11 @@ import { ListaSessoes } from '../components/ListaSessoes';
 import type { EventoAgente, KindSessao, StatusTurno, TurnoResumo } from '../types';
 
 const INTERVALO_POLL_MS = 700;
+// Cadência da vigília de retomada automática (ticket #156): enquanto a conversa está aberta e
+// ociosa, checamos de longe em longe se o agente voltou a rodar sozinho (o motor abre um turno
+// de continuação quando uma tarefa em segundo plano termina). Mais lento que o polling ativo —
+// aqui não há resposta sendo escrita, só esperamos o eventual despertar.
+const INTERVALO_VIGIA_MS = 3000;
 
 /** "5521979997000" → "(21) 97999-7000". Só para exibir. */
 function formatarTelefone(telefone: string): string {
@@ -548,6 +553,44 @@ export function AgenteIaPage() {
       }
     })();
   }, [podeVer, sessaoId, acompanharTurno, enviarPrompt]);
+
+  // Vigília de retomada automática (ticket #156). O trabalho do agente roda no servidor: quando
+  // ele dispara uma tarefa demorada em segundo plano (build, análise) e ela termina, o motor
+  // abre SOZINHO um turno de continuação — o agente segue de onde parou sem o operador cutucar.
+  // O polling ativo (`acompanharTurno`) já parou quando o turno anterior fechou, então, enquanto
+  // a conversa está aberta e ociosa, checamos de longe em longe se surgiu um turno corrente novo
+  // e reatamos o acompanhamento ao vivo. Pausa enquanto há turno sendo seguido (`ocupado`) e não
+  // vale para a aba WhatsApp (somente leitura; quem conduz é o celular).
+  useEffect(() => {
+    if (!podeVer || !sessaoId || somenteLeitura || ocupado || iniciando) return;
+    const token = execucaoRef.current;
+    let vivo = true;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const tique = async () => {
+      if (!vivo || execucaoRef.current !== token) return;
+      let detalhe;
+      try {
+        detalhe = await obterSessao(sessaoId);
+      } catch {
+        return; // rede instável: tenta no próximo tique, sem ruído na tela
+      }
+      if (!vivo || execucaoRef.current !== token) return;
+      const corrente = detalhe.currentTurnId;
+      if (!corrente) return;
+      // O agente retomou sozinho: para a vigília, reconstrói a conversa com o turno novo e
+      // reata o acompanhamento ao vivo desse turno.
+      vivo = false;
+      if (timer) clearInterval(timer);
+      setMensagens(turnosParaMensagens(detalhe.turns));
+      const turnoCont = detalhe.turns.find((t) => t.id === corrente);
+      void acompanharTurno(corrente, (turnoCont?.events ?? []).length, token);
+    };
+    timer = setInterval(tique, INTERVALO_VIGIA_MS);
+    return () => {
+      vivo = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [podeVer, sessaoId, somenteLeitura, ocupado, iniciando, acompanharTurno]);
 
   // Detecta se o usuário está perto do fim (margem de 80px cobre o arredondamento do
   // scroll e a barra de digitação). Só então o autoscroll continua "grudado".
