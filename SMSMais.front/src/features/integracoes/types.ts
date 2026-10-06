@@ -33,6 +33,21 @@ export type TesteSpacesResultado = {
 export type TfdGoogle = { baseUrl: string; chaveConfigurada: boolean; ativo: boolean };
 export type AtualizarTfdGoogle = { baseUrl: string; apiKey?: string; ativo: boolean };
 
+// ElevenLabs — fala-para-texto (STT) do Agente IA. Chave cifrada, nunca reexibida.
+export type ElevenLabs = {
+  baseUrl: string;
+  modelo: string;
+  chaveConfigurada: boolean;
+  ativo: boolean;
+};
+// Chave em branco mantém a que está gravada.
+export type AtualizarElevenLabs = {
+  baseUrl: string;
+  modelo?: string;
+  apiKey?: string;
+  ativo: boolean;
+};
+
 // WhatsApp — a instância fala só com o Automais.Zap; as credenciais da Meta vivem lá.
 export type TfdWhatsApp = {
   phoneNumberId: string | null;

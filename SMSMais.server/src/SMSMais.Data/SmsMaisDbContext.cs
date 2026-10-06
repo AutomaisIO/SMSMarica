@@ -268,6 +268,10 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<GeoEndereco> GeoEnderecos => Set<GeoEndereco>();
     public DbSet<GeoConfiguracao> GeoConfiguracao => Set<GeoConfiguracao>();
 
+    // ElevenLabs — credencial do serviço de fala-para-texto (STT) do Agente IA.
+    public DbSet<Entities.Integracoes.ElevenLabsConfiguracao> ElevenLabsConfiguracao
+        => Set<Entities.Integracoes.ElevenLabsConfiguracao>();
+
     // Módulo TFD propriamente dito (transporte sanitário) — ADR-0017.
     public DbSet<RegistroFaturamento> RegistrosFaturamento => Set<RegistroFaturamento>();
     public DbSet<TfdConfiguracao> TfdConfiguracao => Set<TfdConfiguracao>();

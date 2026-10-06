@@ -8,6 +8,7 @@ import {
   DigitalOceanSpacesCard,
   PROVEDOR_SPACES,
 } from '@/features/integracoes/components/DigitalOceanSpacesCard';
+import { ElevenLabsCard } from '@/features/integracoes/components/ElevenLabsCard';
 import { GoogleMapsCard } from '@/features/integracoes/components/GoogleMapsCard';
 import { NavigationSdkCard } from '@/features/integracoes/components/NavigationSdkCard';
 import { ProxyServicoSection } from '@/features/integracoes/components/ProxyServicoSection';
@@ -140,6 +141,15 @@ export function IntegracoesPage() {
           <GoogleMapsCard />
           <NavigationSdkCard />
           <WhatsAppCard />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Transcrição de áudio (Agente IA)
+        </h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <ElevenLabsCard />
         </div>
       </section>
 

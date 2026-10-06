@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarCredencialPayload,
+  AtualizarElevenLabs,
   AtualizarProxyMotorPayload,
   AtualizarTfdGoogle,
   AtualizarTfdWhatsApp,
+  ElevenLabs,
   IntegracaoCredencial,
   ProxyMotor,
   ProxyTesteCepResultado,
@@ -19,6 +21,7 @@ const keys = {
   credenciais: ['integracoes', 'credenciais'] as const,
   google: ['integracoes', 'tfd', 'google'] as const,
   whatsapp: ['integracoes', 'tfd', 'whatsapp'] as const,
+  elevenlabs: ['integracoes', 'elevenlabs'] as const,
   proxy: (servico: ServicoProxy) => ['integracoes', 'proxy', servico] as const,
 };
 
@@ -94,6 +97,23 @@ export function useSalvarTfdWhatsApp() {
   return useMutation({
     mutationFn: (payload: AtualizarTfdWhatsApp) => http.put('/integracoes/tfd/whatsapp', payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.whatsapp }),
+  });
+}
+
+// ---- ElevenLabs (fala-para-texto do Agente IA) ----
+
+export function useElevenLabs() {
+  return useQuery({
+    queryKey: keys.elevenlabs,
+    queryFn: async () => (await http.get<ElevenLabs>('/integracoes/elevenlabs')).data,
+  });
+}
+
+export function useSalvarElevenLabs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AtualizarElevenLabs) => http.put('/integracoes/elevenlabs', payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.elevenlabs }),
   });
 }
 

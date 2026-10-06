@@ -918,6 +918,7 @@ public static class DependencyInjection
         services.AddScoped<Exames.IExameImagensPdfService, Exames.ExameImagensPdfService>();
         services.AddScoped<Exames.IExameCompletoPdfService, Exames.ExameCompletoPdfService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
+        services.AddScoped<Integracoes.ElevenLabs.IElevenLabsConfigService, Integracoes.ElevenLabs.ElevenLabsConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();
         services.AddScoped<Geo.IDistanciaService, Geo.DistanciaService>();
         services.AddHttpClient<Geo.Google.IGoogleGeocodingClient, Geo.Google.GoogleGeocodingClient>(client =>
