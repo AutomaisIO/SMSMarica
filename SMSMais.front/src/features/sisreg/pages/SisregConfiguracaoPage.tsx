@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { testarConexaoSisreg } from '@/features/sisreg/api/sisregApi';
 import {
   useAtualizarConfiguracaoSisreg,
@@ -138,6 +139,7 @@ export function SisregConfiguracaoPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
           <Settings2 className="h-6 w-6 text-primary-600" />
           Configuração SISREG
+          <AjudaManual artigo="sisreg-configuracao" />
         </h1>
         <p className="mt-1 text-sm text-gray-600">
           Credenciais e escopo da integração de leitura com o SISREG (DATASUS). Senha e token são

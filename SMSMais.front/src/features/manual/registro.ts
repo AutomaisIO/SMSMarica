@@ -22,6 +22,7 @@ import { artigoRegulacaoGestaoFila } from '@/features/manual/conteudo/regulacaoG
 import { artigoRegulacaoSolicitacoes } from '@/features/manual/conteudo/regulacaoSolicitacoes';
 import { artigoSerMedicos } from '@/features/manual/conteudo/serMedicos';
 import { artigoSernitMedicos } from '@/features/manual/conteudo/sernitMedicos';
+import { artigoSisregConfiguracao } from '@/features/manual/conteudo/sisregConfiguracao';
 import { artigoSisregConsultar } from '@/features/manual/conteudo/sisregConsultar';
 import { artigoSisregMedicos } from '@/features/manual/conteudo/sisregMedicos';
 import { artigoSolicitacoes } from '@/features/manual/conteudo/solicitacoes';
@@ -113,6 +114,7 @@ export const ARTIGOS: Artigo[] = [
   artigoRegulacaoSolicitacoes,
   artigoSerMedicos,
   artigoSernitMedicos,
+  artigoSisregConfiguracao,
   artigoSisregConsultar,
   artigoSisregMedicos,
   artigoSolicitacoes,
