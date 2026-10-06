@@ -25,7 +25,10 @@ public sealed record ColetaIndicadoresStatusDto(
     int TetoPorHora,
     DateTime? UltimoPassoEm,
     IReadOnlyList<ResumoColetorDto> Coletores,
-    IReadOnlyList<FalhaColetaDto> UltimasFalhas);
+    IReadOnlyList<FalhaColetaDto> UltimasFalhas,
+    // Leituras que falharam e voltaram para a fila (pelo botão, pela rodada do dia ou depois de um
+    // tempo esgotado): o erro de antes continua gravado até a próxima tentativa começar.
+    IReadOnlyList<FalhaColetaDto> DeVoltaNaFila);
 
 public interface IColetaIndicadoresSisregService
 {
@@ -53,7 +56,7 @@ public interface IColetaIndicadoresSisregService
     /// <summary>Botão da tela: todas as falhas voltam a pendente, com as tentativas zeradas.</summary>
     Task<int> RearmarFalhasAsync(CancellationToken ct);
 
-    Task<(IReadOnlyList<ResumoColetorDto> Coletores, IReadOnlyList<FalhaColetaDto> Falhas)> ResumoAsync(CancellationToken ct);
+    Task<(IReadOnlyList<ResumoColetorDto> Coletores, IReadOnlyList<FalhaColetaDto> Falhas, IReadOnlyList<FalhaColetaDto> DeVoltaNaFila)> ResumoAsync(CancellationToken ct);
 }
 
 /// <summary>
@@ -136,6 +139,33 @@ public sealed class ColetaIndicadoresSisregService(
                     continue;
                 }
                 if (item.Status == StatusColetaIndicador.EmAndamento) continue;
+
+                // Semana que estourou o tempo do SISREG foi dividida em dias: ela não volta a ser
+                // tentada inteira (estouraria de novo, hora após hora — 09–16/09 e 17–23/09 de 2026
+                // nunca leram assim), quem reabre são os dias. A semana corrente ganha o dia novo aqui.
+                if (item.Erro?.StartsWith(MarcaDividida, StringComparison.Ordinal) == true)
+                {
+                    item.JanelaFim = s.Fim;
+                    foreach (var d in PlanoColetaIndicadores.Dias(s))
+                    {
+                        var dia = existentes.FirstOrDefault(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes
+                                                                 && c.Escopo == PlanoColetaIndicadores.EscopoDia
+                                                                 && c.JanelaInicio == d.Inicio);
+                        if (dia is null)
+                        {
+                            Criar(ColetorIndicadorSisreg.FaltasRecentes, d.Inicio, d.Fim, PlanoColetaIndicadores.EscopoDia);
+                            continue;
+                        }
+                        if (dia.Status != StatusColetaIndicador.EmAndamento
+                            && (dia.IniciadoEm is null || dia.IniciadoEm < vencida))
+                        {
+                            dia.Status = StatusColetaIndicador.Pendente;
+                            dia.Tentativas = 0;
+                        }
+                    }
+                    continue;
+                }
+
                 if (item.JanelaFim != s.Fim || item.IniciadoEm is null || item.IniciadoEm < vencida)
                 {
                     item.JanelaFim = s.Fim;
@@ -334,7 +364,7 @@ public sealed class ColetaIndicadoresSisregService(
                 .SetProperty(c => c.Status, StatusColetaIndicador.Pendente)
                 .SetProperty(c => c.Tentativas, 0), ct);
 
-    public async Task<(IReadOnlyList<ResumoColetorDto> Coletores, IReadOnlyList<FalhaColetaDto> Falhas)> ResumoAsync(
+    public async Task<(IReadOnlyList<ResumoColetorDto> Coletores, IReadOnlyList<FalhaColetaDto> Falhas, IReadOnlyList<FalhaColetaDto> DeVoltaNaFila)> ResumoAsync(
         CancellationToken ct)
     {
         var porColetor = await db.SisregIndicadorColetas
@@ -359,7 +389,15 @@ public sealed class ColetaIndicadoresSisregService(
             .Take(8)
             .Select(c => new FalhaColetaDto(c.Coletor, c.JanelaInicio, c.JanelaFim, c.Escopo, c.Tentativas, c.Erro, c.IniciadoEm))
             .ToListAsync(ct);
-        return (coletores, falhas);
+
+        var deVolta = await db.SisregIndicadorColetas
+            .Where(c => c.Status == StatusColetaIndicador.Pendente && c.Erro != null
+                        && !c.Erro.StartsWith(MarcaDividida))
+            .OrderBy(c => c.Coletor).ThenBy(c => c.JanelaInicio)
+            .Take(12)
+            .Select(c => new FalhaColetaDto(c.Coletor, c.JanelaInicio, c.JanelaFim, c.Escopo, c.Tentativas, c.Erro, c.IniciadoEm))
+            .ToListAsync(ct);
+        return (coletores, falhas, deVolta);
     }
 
     private static string? Cortar(string? s) => s is null ? null : s.Length <= 1000 ? s : s[..1000];

@@ -440,6 +440,22 @@ public class ColetaIndicadoresSisregTests
             .Should().Be(DesfechoPasso.Falha);
     }
 
+    /// <summary>
+    /// A lista repete a mesma linha em páginas vizinhas: set/2026 declarou 1486 e a soma crua deu 1487 —
+    /// o mês nunca fechava, com as 1486 gravadas. O que conta é o cancelamento distinto (código + quando).
+    /// </summary>
+    [Fact]
+    public async Task Canceladas_com_linha_repetida_entre_paginas_fecham_pelo_distinto()
+    {
+        var t = new TrabalhoCanceladasMes(Item(ColetorIndicadorSisreg.Canceladas));
+        var sessao = new SessaoRoteirizada(
+            Canceladas(3, 2, "111111111", "222222222"), Canceladas(3, 2, "222222222", "333333333"));
+
+        await TrabalhoColeta.ExecutarAsync(t, sessao, new ArmazemFalso(), default);
+        (await TrabalhoColeta.ExecutarAsync(t, sessao, new ArmazemFalso(), default))
+            .Should().Be(ResultadoPasso.Concluida(3));
+    }
+
     [Fact]
     public async Task Desfechos_leem_as_tres_situacoes_da_unidade_e_so_gravam_no_fim()
     {

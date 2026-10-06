@@ -202,7 +202,11 @@ public sealed class TrabalhoCanceladasMes(ItemColeta item) : TrabalhoColeta(item
     private int _pagina;
     private int? _declaradas;
     private int? _paginas;
-    private int _lidas;
+
+    // O que conta é o cancelamento DISTINTO (código + quando): a lista às vezes repete a mesma linha
+    // em páginas vizinhas — set/2026 declarou 1486, a soma crua deu 1487 e o mês nunca fechava,
+    // embora as 1486 estivessem gravadas (a gravação já deduplica pela mesma chave).
+    private readonly HashSet<(string Codigo, DateTime? CanceladoEm)> _lidas = [];
 
     public override string Descricao =>
         $"canceladas {Item.Inicio:MM/yyyy}" + (_paginas is { } p ? $" — página {Math.Min(_pagina + 1, p)} de {p}" : "");
@@ -236,7 +240,7 @@ public sealed class TrabalhoCanceladasMes(ItemColeta item) : TrabalhoColeta(item
             }
         }
 
-        _lidas += linhas.Count;
+        foreach (var l in linhas) _lidas.Add((l.Codigo, l.CanceladoEm));
         await armazem.GravarCanceladasAsync(linhas, ct);
         _pagina++;
 
@@ -244,9 +248,10 @@ public sealed class TrabalhoCanceladasMes(ItemColeta item) : TrabalhoColeta(item
         if (_pagina < ultima && _pagina < TetoPaginas) return ResultadoPasso.Continuar();
 
         // A tela DIZ quantas existem. Fechar sem bater é concluir de leitura incompleta.
-        return _lidas == _declaradas
+        return _lidas.Count == _declaradas
             ? ResultadoPasso.Concluida(_declaradas.Value)
-            : ResultadoPasso.Falha($"a tela declarou {_declaradas} marcação(ões) em {ultima} página(s) e foram lidas {_lidas}");
+            : ResultadoPasso.Falha(
+                $"a tela declarou {_declaradas} marcação(ões) em {ultima} página(s) e foram lidas {_lidas.Count} distintas");
     }
 }
 

@@ -215,7 +215,10 @@ public sealed class ColetaIndicadoresScheduler(
                     trabalho.Descricao, r.Linhas);
                 break;
 
-            case DesfechoPasso.TempoEsgotado when item.Coletor == ColetorIndicadorSisreg.Faltas
+            // As faltas recentes também: a semana cheia passa dos ~65 s do proxy do SISREG, e sem
+            // dividir ela era tentada inteira de hora em hora, sem nunca fechar.
+            case DesfechoPasso.TempoEsgotado when item.Coletor is ColetorIndicadorSisreg.Faltas
+                                                      or ColetorIndicadorSisreg.FaltasRecentes
                                                   && item.Fim > item.Inicio:
                 await servico.DividirEmDiasAsync(item.Id, r.Mensagem ?? "tempo esgotado", ct);
                 logger.LogWarning("SISREG_INDICADORES: {Trabalho} estourou o tempo — dividido em dias.", trabalho.Descricao);

@@ -8,7 +8,12 @@ import {
   useSalvarColetaIndicadores,
   useStatusColetaIndicadores,
 } from '@/features/sisreg/api/queries';
-import type { ColetorIndicadorSisreg, EsperaColetaIndicadores } from '@/features/sisreg/types';
+import type {
+  ColetaIndicadoresStatus,
+  ColetorIndicadorSisreg,
+  EsperaColetaIndicadores,
+  FalhaColetaIndicador,
+} from '@/features/sisreg/types';
 
 const NOME_COLETOR: Record<ColetorIndicadorSisreg, string> = {
   Faltas: 'Faltas (absenteísmo oficial)',
@@ -44,6 +49,24 @@ function janela(inicio: string, fim: string) {
   return inicio === fim ? f(inicio) : `${f(inicio)} a ${f(fim)}`;
 }
 
+function descreverLeitura(f: FalhaColetaIndicador) {
+  return (
+    `${NOME_COLETOR[f.coletor]}, ${janela(f.inicio, f.fim)}`
+    + (/^\d{7}$/.test(f.escopo) ? ` (unidade ${f.escopo})` : '')
+    + (f.escopo === 'amostra' ? ' (amostra de motivos)' : '')
+  );
+}
+
+/** Quando o que está na fila vai ser lido — a resposta que faltava depois de "Tentar todas de novo". */
+function quandoVaiLer(s: ColetaIndicadoresStatus) {
+  if (!s.ativa) return 'A coleta automática está desligada: ligue-a acima para que sejam lidas.';
+  if (s.pausadaAte) return 'O coletor está pausado por CAPTCHA: só voltam a ser lidas depois de retomar.';
+  if (!s.chaveMestraLigada) return 'O sincronismo automático do SISREG (topo da tela) está desligado: ligue-o para que sejam lidas.';
+  if (s.espera === 'ForaDoHorario')
+    return 'Serão lidas a partir das 01:20 — à noite a sessão do SISREG é da varredura das agendas.';
+  return 'Serão lidas nos próximos minutos, uma requisição a cada 30 segundos, intercaladas com os outros motores.';
+}
+
 /**
  * Coletor dos INDICADORES DE REGULAÇÃO: mantém em dia, a partir de agora, o que a tela Regulação →
  * SISREG → Indicadores mostra e o espelho da agenda não tem — lista oficial de faltas, cotas PPI,
@@ -59,6 +82,9 @@ export function IndicadoresColetaSecao() {
   const retomar = useRetomarColetaIndicadores();
   const rearmar = useRearmarColetaIndicadores();
   const [erro, setErro] = useState<string | null>(null);
+  // Desfecho do "Tentar todas de novo" fica na seção até a pessoa fechar: sem isto a lista vermelha
+  // simplesmente sumia e não havia como saber o que tinha acontecido.
+  const [rearmadas, setRearmadas] = useState<number | null>(null);
 
   const s = status.data;
   const ocupado = salvar.isPending || retomar.isPending || rearmar.isPending;
@@ -181,32 +207,70 @@ export function IndicadoresColetaSecao() {
             </table>
           </div>
 
+          {rearmadas !== null ? (
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+              <p className="font-medium">
+                {rearmadas === 0
+                  ? 'Nenhuma leitura estava em falha.'
+                  : `${rearmadas} leitura${rearmadas === 1 ? '' : 's'} voltou${rearmadas === 1 ? '' : 'aram'} para a fila, com as 6 tentativas de novo.`}
+              </p>
+              {rearmadas > 0 ? <p className="mt-1">{quandoVaiLer(s)}</p> : null}
+              <p className="mt-1 text-emerald-700">
+                Acompanhe na tabela: saem de “Com falha”, ficam em “Na fila” e vão para “Lidas” quando fecham. Se
+                falharem de novo, voltam para a lista vermelha.
+              </p>
+              <button
+                type="button"
+                className="mt-1 text-emerald-700 underline"
+                onClick={() => setRearmadas(null)}
+              >
+                Fechar aviso
+              </button>
+            </div>
+          ) : null}
+
           {s.ultimasFalhas.length > 0 ? (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-              <p className="font-medium">Leituras que não fecharam (nada foi gravado delas):</p>
+              <p className="font-medium">Leituras que não fecharam — o período fica fora do indicador até fechar:</p>
               <ul className="mt-1 space-y-0.5">
                 {s.ultimasFalhas.map((f) => (
                   <li key={`${f.coletor}-${f.inicio}-${f.escopo}`}>
-                    {NOME_COLETOR[f.coletor]}, {janela(f.inicio, f.fim)}
-                    {/^\d{7}$/.test(f.escopo) ? ` (unidade ${f.escopo})` : ''}
-                    {f.escopo === 'amostra' ? ' (amostra de motivos)' : ''} — {f.erro ?? 'sem mensagem'} (
-                    {f.tentativas} tentativa{f.tentativas === 1 ? '' : 's'})
+                    {descreverLeitura(f)} — {f.erro ?? 'sem mensagem'} ({f.tentativas} tentativa
+                    {f.tentativas === 1 ? '' : 's'})
                   </li>
                 ))}
               </ul>
               <p className="mt-2 text-red-700">
                 Falhas são tentadas de novo sozinhas no dia seguinte, até 6 vezes — as das últimas
-                semanas, na rodada da hora seguinte.
+                semanas, na rodada da hora seguinte. Depois da 6ª, só voltam pelo botão abaixo, que devolve
+                todas para a fila com as tentativas zeradas (não lê na hora e não apaga nada).
               </p>
               <Button
                 variante="outline"
                 className="mt-2"
                 disabled={ocupado}
-                onClick={() => acao(rearmar.mutateAsync())}
+                onClick={() => {
+                  const emFalha = s.coletores.reduce((t, c) => t + c.falhas, 0);
+                  acao(rearmar.mutateAsync().then(() => setRearmadas(emFalha)));
+                }}
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Tentar todas de novo
               </Button>
+            </div>
+          ) : null}
+
+          {s.deVoltaNaFila.length > 0 ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-medium">De volta na fila (falharam antes e vão ser tentadas de novo):</p>
+              <ul className="mt-1 space-y-0.5">
+                {s.deVoltaNaFila.map((f) => (
+                  <li key={`volta-${f.coletor}-${f.inicio}-${f.escopo}`}>
+                    {descreverLeitura(f)} — última tentativa {dataHora(f.tentadaEm)}: {f.erro}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-amber-800">{quandoVaiLer(s)}</p>
             </div>
           ) : null}
         </>

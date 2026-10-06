@@ -22,7 +22,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
   icone: Gauge,
   rota: '/app/regulacao/indicadores',
   publico: 'Quem acompanha e presta contas da regulação: gestão, coordenação e controle',
-  atualizadoEm: '2026-10-01',
+  atualizadoEm: '2026-10-06',
   palavrasChave: [
     'indicadores',
     'indicadores de regulação',
@@ -75,6 +75,10 @@ export const artigoIndicadoresRegulacao: Artigo = {
     'indisponível',
     'piso',
     'cobertura dos dados',
+    'coletor',
+    'tentar todas de novo',
+    'leitura não fechou',
+    'de volta na fila',
   ],
   secoes: () => [
     {
@@ -369,6 +373,65 @@ export const artigoIndicadoresRegulacao: Artigo = {
               relidas por cerca de três meses, porque um pedido de um mês pode ser devolvido meses depois.
             </Item>
           </Lista>
+        </>
+      ),
+    },
+    {
+      id: 'leitura-nao-fechou',
+      titulo: 'Quando uma leitura do coletor não fecha',
+      busca:
+        'leitura não fechou falha erro tentar todas de novo reler botão de volta na fila tentativas seis tempo esgotado 504 SISREG não respondeu dividida em dias declarou lidas distintas período fora do indicador configuração coletor',
+      conteudo: (
+        <>
+          <P>
+            Cada leitura do coletor só vale quando <strong>fecha</strong>: a quantidade lida tem de bater com a
+            que a tela do SISREG declara. Leitura que não fecha não entra no indicador, e o período fica de fora
+            até a leitura fechar. É o que impede um número oficial de sair de uma leitura pela metade.
+          </P>
+          <P>
+            Em SISREG → Configuração, na seção do coletor, a tabela mostra por tipo de leitura quantas já foram{' '}
+            <strong>Lidas</strong>, quantas estão <strong>Na fila</strong> e quantas estão <strong>Com falha</strong>.
+            Abaixo dela aparecem duas listas:
+          </P>
+          <Lista>
+            <Item>
+              <strong>Leituras que não fecharam</strong> (vermelha): cada uma com o motivo e quantas vezes foi
+              tentada. Elas são tentadas de novo sozinhas uma vez por dia, até 6 vezes; as faltas das últimas
+              semanas, de hora em hora. Depois da 6ª tentativa, só voltam pelo botão <strong>Tentar todas de
+              novo</strong>.
+            </Item>
+            <Item>
+              <strong>De volta na fila</strong> (amarela): leituras que falharam e já voltaram para a fila, pelo
+              botão, pela rodada do dia ou depois de um tempo esgotado. Mostra quando foi a última tentativa e o
+              erro dela, até a próxima tentativa começar.
+            </Item>
+          </Lista>
+          <P>
+            O botão <strong>não lê na hora</strong> e não apaga nada: devolve todas as leituras em falha para a
+            fila, com as 6 tentativas de novo. Depois do clique, a seção diz quantas voltaram e quando serão
+            lidas. O coletor só lê entre 01:20 e 18:00, porque à noite a sessão do SISREG é da varredura das
+            agendas. Ele também não lê com a coleta desligada, com o sincronismo automático desligado ou com a
+            pausa por CAPTCHA.
+          </P>
+          <P>Dois casos que se resolvem sozinhos:</P>
+          <Lista>
+            <Item>
+              <strong>“O SISREG não respondeu a tempo”</strong>: o SISREG corta uma consulta pesada perto de um
+              minuto. Nas faltas, a semana que estoura o tempo é <strong>dividida em dias</strong>, cada dia lido
+              separado. Vale tanto para a leitura oficial quanto para a das últimas semanas, que alimenta a ficha
+              do paciente.
+            </Item>
+            <Item>
+              <strong>Linha repetida entre páginas</strong>: a lista de canceladas às vezes mostra o mesmo
+              cancelamento em duas páginas vizinhas. Ele é contado <strong>uma vez só</strong>, pelo código da
+              solicitação e pela data do cancelamento.
+            </Item>
+          </Lista>
+          <P>
+            Nada disso afeta a agenda, a fila ou as solicitações: o coletor alimenta só os indicadores e, nas
+            faltas recentes, a ficha do paciente. Enquanto a semana das faltas recentes não fecha, a falta
+            daquele período aparece como “Em aberto” na ficha.
+          </P>
         </>
       ),
     },

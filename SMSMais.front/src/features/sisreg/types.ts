@@ -513,4 +513,6 @@ export type ColetaIndicadoresStatus = {
   ultimoPassoEm: string | null;
   coletores: ResumoColetorIndicador[];
   ultimasFalhas: FalhaColetaIndicador[];
+  /** Falharam e voltaram para a fila (botão, rodada do dia ou tempo esgotado) — o erro é o da última tentativa. */
+  deVoltaNaFila: FalhaColetaIndicador[];
 };

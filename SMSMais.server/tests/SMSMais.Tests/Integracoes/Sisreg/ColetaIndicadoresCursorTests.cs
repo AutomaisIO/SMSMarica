@@ -166,6 +166,81 @@ public class ColetaIndicadoresCursorTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// Semana recente que estourou o tempo do SISREG é dividida em dias e NÃO volta a ser tentada
+    /// inteira: quem reabre de hora em hora são os dias, e a semana corrente ganha o dia novo. Antes a
+    /// semana cheia era tentada a cada hora e nunca fechava (09–16/09 e 17–23/09 de 2026).
+    /// </summary>
+    [Fact]
+    public async Task Faltas_recentes_divididas_reabrem_os_dias_e_nao_a_semana()
+    {
+        await using var db = fixture.CriarDbContext();
+        await LimparAsync(db);
+        var hoje = new DateOnly(2031, 6, 10);
+        await Criar(db).PlanejarAsync(hoje, default);
+
+        Guid IdDaSemana(SmsMaisDbContext d, DateOnly inicio) => d.SisregIndicadorColetas
+            .Single(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.Escopo == "" && c.JanelaInicio == inicio).Id;
+
+        var cheia = new DateOnly(2031, 5, 17);
+        var corrente = new DateOnly(2031, 6, 9);
+        await using (var d = fixture.CriarDbContext())
+        {
+            await Criar(d).DividirEmDiasAsync(IdDaSemana(d, cheia), "tempo esgotado", default);
+            await Criar(d).DividirEmDiasAsync(IdDaSemana(d, corrente), "tempo esgotado", default);
+        }
+
+        // Tudo lido há duas horas — a semana e os dias envelheceram.
+        await db.SisregIndicadorColetas
+            .Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio >= InicioDoTeste
+                        && c.Escopo == PlanoColetaIndicadores.EscopoDia)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(c => c.Status, StatusColetaIndicador.Concluida)
+                .SetProperty(c => c.Tentativas, 2)
+                .SetProperty(c => c.IniciadoEm, DateTime.UtcNow.AddHours(-2)));
+        await db.SisregIndicadorColetas
+            .Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.JanelaInicio >= InicioDoTeste && c.Escopo == "")
+            .ExecuteUpdateAsync(u => u.SetProperty(c => c.IniciadoEm, DateTime.UtcNow.AddHours(-2)));
+
+        await using (var d = fixture.CriarDbContext()) await Criar(d).PlanejarAsync(hoje, default);
+        await using (var ver = fixture.CriarDbContext())
+        {
+            var semana = await ver.SisregIndicadorColetas.SingleAsync(c =>
+                c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.Escopo == "" && c.JanelaInicio == cheia);
+            Assert.Equal(StatusColetaIndicador.Falha, semana.Status);
+            Assert.StartsWith(ColetaIndicadoresSisregService.MarcaDividida, semana.Erro);
+
+            var dias = await ver.SisregIndicadorColetas
+                .Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.Escopo == PlanoColetaIndicadores.EscopoDia
+                            && c.JanelaInicio >= cheia && c.JanelaInicio <= new DateOnly(2031, 5, 23))
+                .ToListAsync();
+            Assert.Equal(7, dias.Count);
+            Assert.All(dias, x =>
+            {
+                Assert.Equal(StatusColetaIndicador.Pendente, x.Status);
+                Assert.Equal(0, x.Tentativas);
+            });
+        }
+
+        // No dia seguinte a semana corrente (dividida no dia 09) ganha o dia 10 como item próprio.
+        await using (var d = fixture.CriarDbContext()) await Criar(d).PlanejarAsync(hoje.AddDays(1), default);
+        await using (var ver = fixture.CriarDbContext())
+        {
+            var semana = await ver.SisregIndicadorColetas.SingleAsync(c =>
+                c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.Escopo == "" && c.JanelaInicio == corrente);
+            Assert.Equal(new DateOnly(2031, 6, 10), semana.JanelaFim);
+            Assert.Equal(StatusColetaIndicador.Falha, semana.Status);
+
+            var diasDaCorrente = await ver.SisregIndicadorColetas
+                .Where(c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes && c.Escopo == PlanoColetaIndicadores.EscopoDia
+                            && c.JanelaInicio >= corrente)
+                .Select(c => c.JanelaInicio).OrderBy(x => x).ToListAsync();
+            Assert.Equal([corrente, new DateOnly(2031, 6, 10)], diasDaCorrente);
+        }
+
+        await LimparAsync(db);
+    }
+
+    /// <summary>
     /// Mês passado com o total declarado (a carga de 30/09) e sem as linhas: ganha uma AMOSTRA de motivos —
     /// uma vez só, e sem tocar na janela do total. Mês que já tem as linhas não ganha.
     /// </summary>

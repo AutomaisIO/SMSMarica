@@ -66,7 +66,7 @@ public sealed class SisregIndicadoresColetaController(
     {
         var config = await ColetaIndicadoresConfig.ObterAsync(credenciais, ct);
         var chave = await SincronismoAutomaticoSisreg.LigadoAsync(db, ct);
-        var (coletores, falhas) = await coleta.ResumoAsync(ct);
+        var (coletores, falhas, deVolta) = await coleta.ResumoAsync(ct);
         var agora = DateTime.UtcNow;
         return new ColetaIndicadoresStatusDto(
             config.Ativa,
@@ -78,6 +78,7 @@ public sealed class SisregIndicadoresColetaController(
             opcoes.Value.TetoPorHora,
             estado.UltimoPassoEm,
             coletores,
-            falhas);
+            falhas,
+            deVolta);
     }
 }
