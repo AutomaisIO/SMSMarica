@@ -58,4 +58,11 @@ public enum SituacaoMidiaWhatsApp
 
     /// <summary>O download falhou (mídia expirada na Meta, Zap fora, tipo não aceito, grande demais).</summary>
     Falhou = 6,
+
+    /// <summary>
+    /// Áudio (nota de voz) aguardando transcrição. O webhook não transcreve (não pode travar); um
+    /// worker baixa pelo Zap, manda ao ElevenLabs (STT) e grava o texto na mensagem, que então segue
+    /// o fluxo normal como se fosse texto (robô, confirmação, Agente IA). Não vai para o acervo.
+    /// </summary>
+    TranscrevendoAudio = 7,
 }

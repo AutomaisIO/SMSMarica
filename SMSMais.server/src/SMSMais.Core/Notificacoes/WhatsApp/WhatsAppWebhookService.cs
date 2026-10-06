@@ -18,6 +18,12 @@ namespace SMSMais.Core.Notificacoes.WhatsApp;
 public interface IWhatsAppWebhookService
 {
     Task ProcessarAsync(string rawJson, CancellationToken ct = default);
+
+    /// <summary>
+    /// Áudio já transcrito pelo worker de STT: grava o texto na mensagem recebida e a devolve ao
+    /// fluxo normal de entrada (manipuladores + tempo real), como se o cidadão tivesse escrito.
+    /// </summary>
+    Task RotearMensagemTranscritaAsync(Guid mensagemId, string texto, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -35,7 +41,8 @@ public sealed class WhatsAppWebhookService(
     IOptions<ComunicacaoPacienteOptions> notificadorOptions,
     IContatoComprometidoService contatosComprometidos,
     ILogger<WhatsAppWebhookService> logger,
-    SinalMidiasWhatsApp? sinalMidias = null) : IWhatsAppWebhookService
+    SinalMidiasWhatsApp? sinalMidias = null,
+    Transcricao.SinalTranscricaoAudio? sinalTranscricao = null) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
     {
@@ -128,9 +135,13 @@ public sealed class WhatsAppWebhookService(
             msg.MidiaNomeArquivo = Truncar(midia.NomeArquivo, 255);
             msg.MidiaLegenda = Truncar(midia.Legenda, 2000);
             msg.MidiaSha256 = midia.Sha256 is { Length: <= 64 } sha ? sha : null;
-            msg.MidiaSituacao = tipo is TipoMensagem.Imagem or TipoMensagem.Documento
-                ? SituacaoMidiaWhatsApp.Recebendo
-                : null;
+            msg.MidiaSituacao = tipo switch
+            {
+                TipoMensagem.Imagem or TipoMensagem.Documento => SituacaoMidiaWhatsApp.Recebendo,
+                // Nota de voz: fila de transcrição (STT em segundo plano), não vai ao acervo.
+                TipoMensagem.Audio => SituacaoMidiaWhatsApp.TranscrevendoAudio,
+                _ => null,
+            };
         }
         db.MensagensWhatsApp.Add(msg);
 
@@ -167,12 +178,32 @@ public sealed class WhatsAppWebhookService(
             return; // o webhook concorrente já gravou esta mesma mensagem
         conversa = gravada;
 
-        // Manipuladores de domínio (não fazem SaveChanges).
+        // Áudio (nota de voz): o webhook NÃO transcreve — o relay espera poucos segundos e o STT
+        // leva 1–3s (ADR-0066). Um worker baixa, transcreve no ElevenLabs e devolve o texto ao
+        // fluxo pela RotearMensagemTranscritaAsync (que roda os manipuladores como se fosse texto).
+        if (msg.MidiaSituacao == SituacaoMidiaWhatsApp.TranscrevendoAudio)
+        {
+            sinalTranscricao?.Sinalizar();
+            return;
+        }
+
         var botaoPayload = m.TryGetProperty("button", out var btnEl) && btnEl.TryGetProperty("payload", out var bp)
             ? bp.GetString() : null;
         var interativoReplyId = m.TryGetProperty("interactive", out var itEl)
             && itEl.TryGetProperty("button_reply", out var brEl) && brEl.TryGetProperty("id", out var bri)
             ? bri.GetString() : null;
+
+        await RotearAsync(conversa, msg, texto, botaoPayload, interativoReplyId, ocorridoEm, ct);
+    }
+
+    /// <summary>
+    /// Roda os manipuladores de domínio sobre a mensagem já gravada e notifica em tempo real APÓS o
+    /// commit. Caminho comum do texto recebido e do áudio já transcrito (ADR-0066/0068).
+    /// </summary>
+    private async Task RotearAsync(Conversa conversa, MensagemWhatsApp msg, string? texto,
+        string? botaoPayload, string? interativoReplyId, DateTime ocorridoEm, CancellationToken ct)
+    {
+        // Manipuladores de domínio (não fazem SaveChanges).
         var ctx = new ManipuladorContexto(conversa, msg, texto, conversa.PacienteId, botaoPayload, interativoReplyId);
         foreach (var manipulador in manipuladores.OrderBy(x => x.Ordem))
         {
@@ -194,6 +225,28 @@ public sealed class WhatsAppWebhookService(
             conversa.Id, conversa.OperadorResponsavelId, conversa.UnidadeId,
             conversa.TelefoneCanonical, conversa.NomeContato, conversa.UltimaMensagemPreview,
             conversa.NaoLidas, ocorridoEm), ct);
+    }
+
+    /// <summary>
+    /// Áudio transcrito pelo worker de STT: grava o texto na mensagem e a devolve ao fluxo normal
+    /// (manipuladores + tempo real), como se o cidadão tivesse escrito. Idempotente: só age enquanto
+    /// a situação for <see cref="SituacaoMidiaWhatsApp.TranscrevendoAudio"/>.
+    /// </summary>
+    public async Task RotearMensagemTranscritaAsync(Guid mensagemId, string texto, CancellationToken ct = default)
+    {
+        var msg = await db.MensagensWhatsApp.FirstOrDefaultAsync(x => x.Id == mensagemId, ct);
+        if (msg is null || msg.MidiaSituacao != SituacaoMidiaWhatsApp.TranscrevendoAudio) return;
+
+        var conversa = await db.Conversas.FirstOrDefaultAsync(c => c.Id == msg.ConversaId, ct);
+        if (conversa is null) return;
+
+        msg.Conteudo = texto;
+        msg.MidiaSituacao = null;              // transcrito; não é mídia de acervo
+        conversa.UltimaMensagemPreview = Truncar(texto);
+        conversa.AtualizadoEm = DateTime.UtcNow;
+
+        await RotearAsync(conversa, msg, texto, botaoPayload: null, interativoReplyId: null,
+            ocorridoEm: msg.OcorridoEm, ct);
     }
 
     private const int MaxTentativasGravacao = 3;

@@ -979,6 +979,16 @@ public static class DependencyInjection
         services.AddScoped<Conversas.Midias.IMidiasConversaService, Conversas.Midias.MidiasConversaService>();
         services.AddHostedService<Conversas.Midias.BaixadorMidiasWhatsAppWorker>();
 
+        // Áudio (nota de voz): o webhook marca para transcrever, um worker baixa pelo Zap, manda ao
+        // ElevenLabs (STT) e devolve o texto ao fluxo de entrada como se fosse texto (ADR-0066/0068).
+        services.AddHttpClient<Integracoes.ElevenLabs.IElevenLabsTranscricaoService, Integracoes.ElevenLabs.ElevenLabsTranscricaoService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+        services.AddSingleton<Notificacoes.WhatsApp.Transcricao.SinalTranscricaoAudio>();
+        services.AddScoped<Notificacoes.WhatsApp.Transcricao.IAudioTranscricaoConversaService, Notificacoes.WhatsApp.Transcricao.AudioTranscricaoConversaService>();
+        services.AddHostedService<Notificacoes.WhatsApp.Transcricao.TranscricaoAudioWorker>();
+
         // ---- Módulo Conversas (chat WhatsApp multi-operador, transversal) ----
         services.Configure<Conversas.ConversasOptions>(
             configuration.GetSection(Conversas.ConversasOptions.SecaoConfig));
