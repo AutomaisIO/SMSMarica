@@ -940,12 +940,22 @@ type Vista =
   | 'dados';
 
 /** Histórico de alterações auditadas do paciente (ex.: correções de nome). */
+/** Rótulos amigáveis das ações codificadas da trilha (as "Alteração de X" já vêm por extenso). */
+const ROTULO_ACAO_AUDITORIA: Record<string, string> = {
+  AlteracaoNome: 'Alteração de nome',
+  UnificacaoPaciente: 'Unificação de cadastros',
+  DefinicaoCpf: 'Definição de CPF',
+  CompletouNascimento: 'Preenchimento de nascimento',
+  CompletouFiliacao: 'Preenchimento de filiação',
+  AbsorcaoCns: 'Absorção de CNS',
+};
+
 function SecaoAuditoriaPaciente({ pacienteId }: { pacienteId: string }) {
   const q = useAuditoriaPaciente(pacienteId);
   const colunas: Coluna<RegistroAuditoria>[] = [
     { chave: 'data', cabecalho: 'Data/hora', render: (r) => formatarDataHora(r.criadoEm) ?? '—' },
     { chave: 'usuario', cabecalho: 'Usuário', render: (r) => r.usuarioNome ?? '—' },
-    { chave: 'acao', cabecalho: 'Ação', render: (r) => (r.acao === 'AlteracaoNome' ? 'Alteração de nome' : r.acao) },
+    { chave: 'acao', cabecalho: 'Ação', render: (r) => ROTULO_ACAO_AUDITORIA[r.acao] ?? r.acao },
     { chave: 'de', cabecalho: 'De', render: (r) => <span className="text-gray-500">{r.valorAnterior ?? '—'}</span> },
     { chave: 'para', cabecalho: 'Para', render: (r) => <span className="font-medium text-gray-900">{r.valorNovo ?? '—'}</span> },
   ];

@@ -14,11 +14,14 @@ import {
   obterPacientePorCpf,
   obterPacientePorId,
   obterSessoesConversa,
+  preverUnificacao,
   reativarPaciente,
+  unificarPacientes,
 } from '@/features/pacientes/api/pacientesApi';
 import type {
   AtualizarPacientePayload,
   CadastrarPacientePayload,
+  UnificarPacientesPayload,
 } from '@/features/pacientes/types';
 
 export const pacientesKeys = {
@@ -201,4 +204,29 @@ export function useReativarPaciente() {
 
 export async function consultarPacientePorCpf(cpf: string) {
   return obterPacientePorCpf(cpf);
+}
+
+/** Prévia (dry-run) da unificação — só dispara com os dois cadastros escolhidos e distintos. */
+export function usePreverUnificacao(sobreviventeId: string | null, absorvidoId: string | null) {
+  return useQuery({
+    queryKey: ['pacientes', 'unificar-previa', sobreviventeId, absorvidoId] as const,
+    queryFn: () => {
+      if (!sobreviventeId || !absorvidoId) throw new Error('Cadastros não informados.');
+      return preverUnificacao(sobreviventeId, absorvidoId);
+    },
+    enabled: Boolean(sobreviventeId && absorvidoId && sobreviventeId !== absorvidoId),
+  });
+}
+
+export function useUnificarPacientes() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UnificarPacientesPayload) => unificarPacientes(payload),
+    onSuccess: (_data, variables) => {
+      client.invalidateQueries({ queryKey: pacientesKeys.raiz });
+      client.invalidateQueries({ queryKey: pacientesKeys.porId(variables.sobreviventeId) });
+      client.invalidateQueries({ queryKey: pacientesKeys.porId(variables.absorvidoId) });
+      client.invalidateQueries({ queryKey: pacientesKeys.auditoria(variables.sobreviventeId) });
+    },
+  });
 }
