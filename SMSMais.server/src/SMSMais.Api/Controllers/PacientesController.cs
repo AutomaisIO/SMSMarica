@@ -344,4 +344,37 @@ public sealed class PacientesController(
         await _service.ReativarAsync(id, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// Prévia da unificação de dois cadastros do mesmo paciente: os dois cadastros completos, os
+    /// campos que divergem (para a resolução na tela), se há CPF/CNS divergente (pede confirmação)
+    /// e quantas referências de cada módulo do painel serão movidas. Só leitura — não altera nada.
+    /// </summary>
+    [HttpGet("unificar/previa")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<PreviaUnificacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<PreviaUnificacaoDto> PreverUnificacao(
+        [FromQuery] Guid sobrevivente,
+        [FromQuery] Guid absorvido,
+        CancellationToken cancellationToken) =>
+        await _service.PreverUnificacaoAsync(sobrevivente, absorvido, cancellationToken);
+
+    /// <summary>
+    /// Unifica dois cadastros do mesmo paciente. Aplica a resolução campo a campo ao cadastro que
+    /// fica (sobrevivente), funde no hub FHIR (identificadores + clínico + <c>Patient.link</c>, o
+    /// absorvido vira inativo) e reaponta laudo, solicitação, regulação, conversa, acervo e demais
+    /// referências do painel. A ação fica no Histórico de alterações dos dois cadastros.
+    /// </summary>
+    [HttpPost("unificar")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ResultadoUnificacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ResultadoUnificacaoDto> Unificar(
+        [FromBody] UnificarPacientesRequest request,
+        CancellationToken cancellationToken) =>
+        await _service.UnificarAsync(request, cancellationToken);
 }

@@ -130,6 +130,24 @@ public interface IPacientesService
     Task DesativarAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task ReativarAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Prévia (dry-run) da unificação de dois cadastros do mesmo paciente: devolve os dois
+    /// cadastros completos, os campos que divergem (para a resolução na tela), se há CPF/CNS
+    /// divergente (caso que pede confirmação) e quantas referências de cada módulo do painel
+    /// serão repontadas. Não altera nada.
+    /// </summary>
+    Task<PreviaUnificacaoDto> PreverUnificacaoAsync(
+        Guid sobreviventeId, Guid absorvidoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unifica dois cadastros do mesmo paciente: aplica a resolução campo a campo ao sobrevivente,
+    /// funde no hub FHIR (identifiers + clínico de <c>fhir.*</c> + <c>Patient.link</c>, absorvido
+    /// vira <c>active=false</c>) e reaponta o restante em <c>smsmarica.*</c>. Registra a ação na
+    /// trilha de auditoria dos dois cadastros.
+    /// </summary>
+    Task<ResultadoUnificacaoDto> UnificarAsync(
+        UnificarPacientesRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Resumo para checar existência por CPF (inclusive inativos).</summary>
