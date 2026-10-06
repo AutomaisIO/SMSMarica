@@ -456,6 +456,16 @@ export function SolicitacaoDetalhePage() {
                 <span className="font-medium">{s.prioridade}</span>
               )}
             </span>
+            {s.cidCodigo ? (
+              <>
+                <br />
+                <span className="text-gray-600">
+                  Diagnóstico inicial:{' '}
+                  <span className="font-medium">CID {s.cidCodigo}</span>
+                  {s.cidDescricao ? ` — ${s.cidDescricao}` : null}
+                </span>
+              </>
+            ) : null}
             {s.justificativa ? (
               <>
                 <br />

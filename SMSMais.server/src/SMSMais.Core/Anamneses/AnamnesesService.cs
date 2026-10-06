@@ -11,6 +11,7 @@ namespace SMSMais.Core.Anamneses;
 public sealed class AnamnesesService(
     SmsMaisDbContext db,
     IPacienteResolver pacienteResolver,
+    Common.Cid.ICidCatalogoService cidCatalogo,
     IUsuarioAtualAccessor usuarioAtual) : IAnamnesesService
 {
     public async Task<AnamneseContextoDto> ObterContextoAsync(
@@ -39,6 +40,12 @@ public sealed class AnamnesesService(
 
         var paciente = await pacienteResolver.ResolverAsync(sol.Solicitacao!.PacienteId, cancellationToken);
 
+        // Diagnóstico inicial do pedido (CID-10 do SISREG): coluna materializada ou, quando vazia
+        // (importações anteriores ao ticket #155), lido do RAW. Descrição por extenso best-effort.
+        var cidCodigo = sol.Solicitacao!.CidCodigo
+            ?? Integracoes.SisregWeb.Importacao.AgendaTxtParser.CidDe(sol.Solicitacao!.RawSisreg);
+        var cidDescricao = await cidCatalogo.DescricaoAsync(cidCodigo, cancellationToken);
+
         return new AnamneseContextoDto(
             sol.Id,
             sol.AccessionNumber,
@@ -51,7 +58,9 @@ public sealed class AnamnesesService(
             paciente?.DataNascimento,
             anamnese is null ? null : ParaDto(anamnese),
             sol.SiscanProtocolo,
-            sol.SiscanNumeroExame);
+            sol.SiscanNumeroExame,
+            cidCodigo,
+            cidDescricao);
     }
 
     public async Task<AnamneseDto> SalvarAsync(

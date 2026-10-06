@@ -574,6 +574,9 @@ public sealed class ImportacaoSisregService(
             ProfissionalExecutanteCpf = m.CpfProfissionalExecutante,
             ProfissionalExecutanteNome = m.NomeProfissionalExecutante,
             RawSisreg = m.LinhaRaw,
+            // CID-10 informado no pedido (coluna 35) — o "diagnóstico inicial" que a médica lê para
+            // saber o tipo de laudo (ticket #155). Materializa a coluna; o RAW segue como fonte.
+            CidCodigo = m.Cid,
             TipoVaga = VagaDe(m.EhRetorno),
             CodigoSolicitacao = codigo,
             // Solicitada = "ainda sem data firme". Linha de agenda com data JÁ é agendamento — gravar
@@ -724,6 +727,7 @@ public sealed class ImportacaoSisregService(
             alvo.ProcedimentoTexto = depois.ProcedimentoNome;
 
         alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg;
+        if (!string.IsNullOrWhiteSpace(m.Cid)) alvo.CidCodigo = m.Cid;
         if (VagaDe(m.EhRetorno) is { } tipoVaga) alvo.TipoVaga = tipoVaga;
         PromoverParaAgendada(alvo);
         alvo.AtualizadoEm = agora;
@@ -760,6 +764,7 @@ public sealed class ImportacaoSisregService(
         if (sig.Length > 0) alvo.ProcedimentoSigtapCodigo = sig;
         var nomeProc = ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty);
         if (nomeProc.Length > 0) alvo.ProcedimentoTexto = nomeProc;
+        if (!string.IsNullOrWhiteSpace(m.Cid)) alvo.CidCodigo = m.Cid;
         if (!string.IsNullOrWhiteSpace(m.NomeMedicoSolicitante)) alvo.SolicitanteNome = m.NomeMedicoSolicitante!;
         if (!string.IsNullOrWhiteSpace(m.CpfMedicoSolicitante)) alvo.SolicitanteCpf = m.CpfMedicoSolicitante;
         // Só sobrescreve quando a fonte informa: o caminho pontual do `cons_agendas` não traz o

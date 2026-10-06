@@ -354,6 +354,10 @@ export type AnamneseContexto = {
   siscanProtocolo: string | null;
   /** Nº do exame no SISCAN — o outro número, que abre o resultado lá. */
   siscanNumeroExame: string | null;
+  /** "Diagnóstico inicial" do pedido = CID-10 do SISREG. Null = o pedido não trouxe CID. */
+  cidCodigo: string | null;
+  /** Descrição do CID por extenso quando o catálogo reconhece; null = mostra só o código. */
+  cidDescricao: string | null;
 };
 
 export type SalvarAnamnesePayload = {

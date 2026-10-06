@@ -44,6 +44,7 @@ public class LimpezaWorklistTests(PostgresFixture fixture)
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             Substitute.For<IRegistroErroService>(),
             Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
+            Substitute.For<SMSMais.Core.Common.Cid.ICidCatalogoService>(),
             NullLogger<SolicitacoesService>.Instance);
         return (service, mwl);
     }

@@ -112,7 +112,15 @@ public sealed record SolicitacaoDto(
 
     // Natureza da vaga no SISREG (Primeira Vez / Retorno). Null = não informado (pedido manual).
     // A tela destaca "Retorno". Materializado da coluna 8 do TXT (ticket #135).
-    TipoVaga? TipoVaga = null);
+    TipoVaga? TipoVaga = null,
+
+    // "Diagnóstico inicial" do pedido = CID-10 informado no SISREG (coluna 35). A médica o lê para
+    // saber o tipo de laudo (ticket #155). Vem da coluna materializada ou, quando ela está vazia
+    // (importações antigas), do próprio RawSisreg. Null = o pedido não trouxe CID.
+    string? CidCodigo = null,
+    // Descrição do CID por extenso, resolvida no catálogo canônico (enriquecimento do detalhe).
+    // Null = catálogo não reconhece o código → a tela mostra só o código.
+    string? CidDescricao = null);
 
 /// <summary>
 /// Direção da solicitação RELATIVA à unidade ativa da sessão. <c>Recebida</c> = a unidade

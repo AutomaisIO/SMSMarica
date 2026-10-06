@@ -26,9 +26,12 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-10-05',
+  atualizadoEm: '2026-10-06',
   palavrasChave: [
     'anamnese',
+    'diagnóstico inicial',
+    'CID',
+    'CID-10',
     'documentos anexados',
     'exames anexados',
     'anexar do cadastro',
@@ -91,7 +94,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'para-que-serve',
       titulo: 'Para que serve',
-      busca: 'anamnese questionário mamografia papel formulário por que existe laudo médica',
+      busca: 'anamnese questionário mamografia papel formulário por que existe laudo médica cabeçalho diagnóstico inicial CID CID-10 hipótese diagnóstica tipo de laudo',
       conteudo: (
         <>
           <P>
@@ -105,6 +108,12 @@ export const artigoAnamnese: Artigo = {
             leitura da imagem. Para o <strong>SISCAN</strong>, o sistema do Ministério da Saúde que
             acompanha o rastreamento de câncer, é a própria requisição: sem ela, o exame não existe
             lá, e sem existir lá a médica não consegue lançar o resultado.
+          </P>
+          <P>
+            No alto da tela, o cabeçalho identifica o pedido: o nº do exame, o tipo e o{' '}
+            <strong>diagnóstico inicial</strong> — o CID‑10 que o médico informou no SISREG (ex.:{' '}
+            <em>CID M545 — Dor lombar baixa</em>). Ele aparece tanto para quem preenche quanto para
+            quem lauda, e some quando o pedido não traz CID.
           </P>
           <Callout tipo="regra" titulo="Uma anamnese por pedido">
             Cada pedido de exame tem uma anamnese só, e ela pode ser reaberta e corrigida enquanto

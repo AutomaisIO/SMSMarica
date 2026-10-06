@@ -31,7 +31,12 @@ public sealed record AnamneseContextoDto(
     /// <summary>Protocolo da requisição no SISCAN, quando já foi gerada. Null = ainda não.</summary>
     string? SiscanProtocolo = null,
     /// <summary>Nº do exame no SISCAN — o outro número, que abre o resultado lá.</summary>
-    string? SiscanNumeroExame = null);
+    string? SiscanNumeroExame = null,
+    /// <summary>"Diagnóstico inicial" do pedido = CID-10 do SISREG. A médica o lê no cabeçalho para
+    /// saber o tipo de laudo (ticket #155). Null = o pedido não trouxe CID.</summary>
+    string? CidCodigo = null,
+    /// <summary>Descrição do CID por extenso (catálogo canônico); null = mostra só o código.</summary>
+    string? CidDescricao = null);
 
 /// <summary>Payload de criação/edição (upsert) da anamnese de uma solicitação.</summary>
 public sealed record SalvarAnamneseDto(

@@ -38,6 +38,7 @@ public sealed class SolicitacoesService(
     Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
     Erros.IRegistroErroService registroErros,
     Auditoria.IAuditoriaService auditoria,
+    Common.Cid.ICidCatalogoService cidCatalogo,
     ILogger<SolicitacoesService> logger)
     : ISolicitacoesService
 {
@@ -58,6 +59,7 @@ public sealed class SolicitacoesService(
     private readonly Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> _comunicacoes = comunicacoes;
     private readonly Erros.IRegistroErroService _registroErros = registroErros;
     private readonly Auditoria.IAuditoriaService _auditoria = auditoria;
+    private readonly Common.Cid.ICidCatalogoService _cidCatalogo = cidCatalogo;
     private readonly ILogger<SolicitacoesService> _logger = logger;
 
     // Resolve nome/CPF/CNS do paciente (hub FHIR) e embute nos DTOs.
@@ -101,6 +103,14 @@ public sealed class SolicitacoesService(
                 .FirstOrDefaultAsync(ct);
             if (nome is not null) enriquecido = enriquecido with { AutorizadoPorNome = nome };
         }
+
+        // Diagnóstico inicial (CID-10 do SISREG) por extenso — a médica abre a ficha para saber o
+        // tipo de laudo (ticket #155). Só no detalhe; a listagem não precisa. Best-effort: código
+        // fora do catálogo fica só com o código.
+        if (!string.IsNullOrWhiteSpace(enriquecido.CidCodigo)
+            && await _cidCatalogo.DescricaoAsync(enriquecido.CidCodigo, ct) is { } cidDesc)
+            enriquecido = enriquecido with { CidDescricao = cidDesc };
+
         return enriquecido;
     }
 

@@ -253,6 +253,22 @@ public static class AgendaTxtParser
         return Chegada(c[ConfirmacaoChegada]);
     }
 
+    /// <summary>
+    /// CID-10 (coluna 35) de UMA linha crua do export — o "diagnóstico inicial" do pedido que a
+    /// médica lê para saber o tipo de laudo (ticket #155). Mesma lente do
+    /// <see cref="ChegadaConfirmada"/>: lê direto do RAW guardado em <c>Solicitacao.RawSisreg</c>
+    /// quando a coluna materializada (<c>cid_codigo</c>) não foi preenchida — o que acontece em
+    /// toda importação anterior ao ticket. <c>null</c> se a linha não é do layout de 38 campos ou
+    /// não traz CID.
+    /// </summary>
+    public static string? CidDe(string? linha)
+    {
+        if (string.IsNullOrWhiteSpace(linha)) return null;
+        var c = linha.Split(';');
+        if (c.Length < TotalCampos || !SoDigitosNaoVazio(c[CodigoSolicitacao])) return null;
+        return LimparNulo(c[Cid]);
+    }
+
     /// <summary>Coluna 34: "CONFIRMADO" → true, "PENDENTE" → false, qualquer outro → desconhecido.</summary>
     private static bool? Chegada(string? s) => (s ?? string.Empty).Trim().ToUpperInvariant() switch
     {

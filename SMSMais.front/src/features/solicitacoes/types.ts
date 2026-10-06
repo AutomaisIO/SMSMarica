@@ -136,6 +136,11 @@ export type Solicitacao = {
 
   /** Natureza da vaga no SISREG (Primeira Vez / Retorno). null = não informado (pedido manual). */
   tipoVaga: TipoVaga | null;
+
+  /** "Diagnóstico inicial" do pedido = CID-10 informado no SISREG. null = o pedido não trouxe CID. */
+  cidCodigo: string | null;
+  /** Descrição do CID por extenso quando o catálogo reconhece; null = mostra só o código. */
+  cidDescricao: string | null;
 };
 
 export type SolicitacaoListItem = {

@@ -294,6 +294,13 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           </h1>
           <p className="text-sm text-gray-500">
             Pedido <span className="font-mono">{ctx.accessionNumber}</span> · {ctx.tipoExameNome}
+            {ctx.cidCodigo ? (
+              <>
+                {' '}
+                · Diagnóstico inicial: <span className="font-medium text-gray-700">CID {ctx.cidCodigo}</span>
+                {ctx.cidDescricao ? ` — ${ctx.cidDescricao}` : null}
+              </>
+            ) : null}
             {ctx.anamnese?.preenchidoPorNome ? (
               <> · preenchida por {ctx.anamnese.preenchidoPorNome}</>
             ) : null}

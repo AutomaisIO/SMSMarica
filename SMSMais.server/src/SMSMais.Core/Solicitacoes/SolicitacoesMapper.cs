@@ -99,7 +99,11 @@ internal static class SolicitacoesMapper
             exame?.EquipamentoId,
             exame?.Equipamento?.Nome,
             exame?.Equipamento?.IdentificadorDicom,
-            TipoVaga: reg.TipoVaga);
+            TipoVaga: reg.TipoVaga,
+            // CID materializado; na ausência dele (importações anteriores ao ticket #155), lê do RAW.
+            // A descrição por extenso é resolvida no enriquecimento do detalhe (precisa do catálogo).
+            CidCodigo: reg.CidCodigo
+                ?? Integracoes.SisregWeb.Importacao.AgendaTxtParser.CidDe(reg.RawSisreg));
     }
 
     public static SolicitacaoListItemDto ParaListItem(Solicitacao reg, Guid? unidadeReferencia = null)

@@ -24,8 +24,12 @@ export const artigoSolicitacoes: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/solicitacoes',
   publico: 'Recepção das unidades e quem acompanha os agendamentos',
-  atualizadoEm: '2026-10-05',
+  atualizadoEm: '2026-10-06',
   palavrasChave: [
+    'diagnóstico inicial',
+    'CID',
+    'CID-10',
+    'hipótese diagnóstica',
     'solicitações',
     'exames',
     'consultas',
@@ -181,13 +185,19 @@ export const artigoSolicitacoes: Artigo = {
     {
       id: 'detalhe',
       titulo: 'O detalhe: exame e consulta',
-      busca: 'detalhe exame consulta ciclo do exame equipamento worklist PACS laudo histórico de mensagens seção SISREG',
+      busca: 'detalhe exame consulta ciclo do exame equipamento worklist PACS laudo histórico de mensagens seção SISREG diagnóstico inicial CID CID-10 hipótese diagnóstica',
       conteudo: (
         <>
           <P>
             Clicar na linha abre o detalhe. Nos dois tipos ele mostra o paciente, quem solicitou, a
             regulação (nº do SISREG, chave, prioridade), a chegada, o histórico de mensagens e
             contatos, a seção do SISREG e a linha do tempo.
+          </P>
+          <P>
+            Na <strong>Regulação</strong> aparece também o <strong>diagnóstico inicial</strong> — o
+            CID‑10 que o médico informou no pedido, do jeito que vem do SISREG (ex.: <em>CID M545 —
+            Dor lombar baixa</em>). É o que ajuda o laudista a saber o tipo de laudo a fazer. Quando
+            o pedido não traz CID, a linha simplesmente não aparece.
           </P>
           <P>
             Só no exame de imagem aparecem o <strong>ciclo do exame</strong> (Solicitada → Enviada →
