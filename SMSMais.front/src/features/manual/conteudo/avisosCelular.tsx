@@ -94,20 +94,21 @@ export const artigoAvisosCelular: Artigo = {
       id: 'agente-ia',
       titulo: 'Conversa com o Agente IA pelo WhatsApp',
       busca:
-        'agente ia agente pelo whatsapp conversa com o agente ia robô ícone usuário representa reiniciar parar status responder citando o aviso duas etapas desligar acesso',
+        'agente ia agente pelo whatsapp conversa com o agente ia interruptor usuário representa reiniciar parar status responder citando o aviso duas etapas desligar acesso',
       conteudo: (
         <>
           <P>
-            Pelo ícone do robô, ao lado de cada telefone, liga-se a chave <strong>Conversa com o Agente IA</strong> e
-            escolhe-se o <strong>usuário</strong> que aquele telefone representa. A partir daí, quem escrever desse
-            número no WhatsApp conversa com o Agente IA do servidor, com o acesso desse usuário — acesso total se
-            ele for administrador do agente. O telefone ganha o selo <strong>Agente IA</strong> na lista.
+            Na linha de cada telefone há o interruptor <strong>Agente IA</strong>. Ligar grava na hora, e o
+            telefone passa a representar <strong>o usuário logado</strong> — só a própria pessoa pode se vincular.
+            A partir daí, quem escrever desse número no WhatsApp conversa com o Agente IA do servidor, com o acesso
+            desse usuário — acesso total se ele for administrador do agente. Mande <strong>status</strong> do
+            celular para testar.
           </P>
           <ListaDefinicoes
             itens={[
               { termo: 'reiniciar', descricao: 'Fecha a sessão atual e começa uma nova, do zero.' },
               { termo: 'parar', descricao: 'Interrompe o trabalho que está em andamento.' },
-              { termo: 'status', descricao: 'Diz se há trabalho em andamento.' },
+              { termo: 'status', descricao: 'Mostra a sessão: desde quando está aberta, quantos pedidos, se há trabalho em andamento e quantos esperam.' },
             ]}
           />
           <P>
@@ -117,7 +118,7 @@ export const artigoAvisosCelular: Artigo = {
           </P>
           <Callout tipo="atencao" titulo="Acesso total pelo celular">
             Quem tomar esse WhatsApp ganha o mesmo acesso. Ligue a confirmação em duas etapas do WhatsApp no celular.
-            Desmarcar a chave corta o acesso na hora — é o botão de emergência se o celular for perdido.
+            Desligar o interruptor corta o acesso na hora — é o botão de emergência se o celular for perdido.
           </Callout>
         </>
       ),
