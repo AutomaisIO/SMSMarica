@@ -5,6 +5,7 @@ using SMSMais.Core.Common.Documentos;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.Pacientes.Unificacao;
 
 namespace SMSMais.Core.Pacientes;
 
@@ -17,6 +18,7 @@ public sealed class PacientesService(
     IPacienteFhirClient fhir,
     Auditoria.IAuditoriaService auditoria,
     Geo.IGeocodificadorService geocoder,
+    IRepontadorPacienteService repontador,
     Microsoft.Extensions.Logging.ILogger<PacientesService> logger) : IPacientesService
 {
     private const int LimiteBusca = 10;
@@ -441,6 +443,114 @@ public sealed class PacientesService(
         // Append, nunca substituição — o principal é o contato validado por OTP e é intocável.
         if (!string.IsNullOrWhiteSpace(telefone))
             await AdicionarTelefoneAsync(destinoId, new AdicionarTelefoneRequest(telefone), cancellationToken);
+    }
+
+    public async Task<PreviaUnificacaoDto> PreverUnificacaoAsync(
+        Guid sobreviventeId, Guid absorvidoId, CancellationToken cancellationToken = default)
+    {
+        if (sobreviventeId == absorvidoId)
+            throw new ValidacaoException(
+                "paciente.unificar_mesmo", "Escolha dois cadastros diferentes para unificar.");
+
+        var sobrevivente = await ObterPorIdAsync(sobreviventeId, cancellationToken);
+        var absorvido = await ObterPorIdAsync(absorvidoId, cancellationToken);
+
+        var cpfDiverge = ChaveDivergente(sobrevivente.Cpf, absorvido.Cpf);
+        var cnsDiverge = ChaveDivergente(sobrevivente.Cns, absorvido.Cns);
+
+        var referencias = await repontador.ContarReferenciasAsync(absorvidoId, cancellationToken);
+        var modulos = UnificacaoResumo.AgruparModulos(referencias);
+
+        return new PreviaUnificacaoDto(
+            sobrevivente,
+            absorvido,
+            cpfDiverge,
+            cnsDiverge,
+            UnificacaoResumo.Divergencias(sobrevivente, absorvido),
+            modulos,
+            modulos.Sum(m => m.Quantidade));
+    }
+
+    public async Task<ResultadoUnificacaoDto> UnificarAsync(
+        UnificarPacientesRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.SobreviventeId == request.AbsorvidoId)
+            throw new ValidacaoException(
+                "paciente.unificar_mesmo", "Escolha dois cadastros diferentes para unificar.");
+
+        var sobrevivente = await fhir.ObterAsync(request.SobreviventeId, cancellationToken)
+            ?? throw new NaoEncontradoException("Paciente", request.SobreviventeId);
+        var absorvido = await fhir.ObterAsync(request.AbsorvidoId, cancellationToken)
+            ?? throw new NaoEncontradoException("Paciente", request.AbsorvidoId);
+
+        // Já unificado antes? O hub marca o absorvido com active=false + link replaced-by. Unir de
+        // novo embaralharia o histórico — barra aqui com mensagem clara.
+        if (absorvido.Active == false
+            || (absorvido.Link?.Any(l => l.Type == Patient.LinkType.ReplacedBy) ?? false))
+        {
+            throw new ConflitoException(
+                "paciente.ja_unificado",
+                "Este cadastro já foi unificado em outro anteriormente e não pode ser unificado de novo.");
+        }
+
+        // Caso perigoso: CPF e/ou CNS preenchidos nos dois e DIFERENTES. Podem ser pessoas distintas
+        // (ADR-0041). Só segue com a confirmação explícita que a tela coleta.
+        var cpfDiverge = ChaveDivergente(PacienteFhirMapper.CpfDe(sobrevivente), PacienteFhirMapper.CpfDe(absorvido));
+        var cnsDiverge = ChaveDivergente(PacienteFhirMapper.CnsDe(sobrevivente), PacienteFhirMapper.CnsDe(absorvido));
+        if ((cpfDiverge || cnsDiverge) && !request.ConfirmaChavesDivergentes)
+        {
+            throw new ValidacaoException(
+                "paciente.chaves_divergentes",
+                "Os dois cadastros têm CPF e/ou CNS diferentes. Confirme que é a mesma pessoa antes "
+                + "de unificar — unir pessoas diferentes mistura dois prontuários.");
+        }
+
+        // 1) Resolução campo a campo escolhida na tela → aplicada ao SOBREVIVENTE pelo caminho de
+        // edição normal, que já audita cada campo alterado (Histórico de alterações).
+        if (!string.IsNullOrWhiteSpace(request.NomeFinal))
+            await AtualizarNomeAsync(
+                request.SobreviventeId, new AtualizarNomePacienteRequest(request.NomeFinal.Trim()), cancellationToken);
+        if (request.DadosFinais is not null)
+            await AtualizarAsync(request.SobreviventeId, request.DadosFinais, cancellationToken);
+
+        // 2) Fusão no hub FHIR: move identifiers, cria Patient.link, marca o absorvido active=false
+        // e reaponta o clínico de fhir.* (encounter, condition, observation, medicação, documentos).
+        var hub = await fhir.FundirAsync(request.SobreviventeId, request.AbsorvidoId, cancellationToken);
+
+        // 3) A outra metade: reaponta smsmarica.* (laudo, solicitação, regulação, conversa, acervo…)
+        // do absorvido para o sobrevivente. Idempotente, em transação.
+        var referencias = await repontador.RepontarAsync(
+            request.SobreviventeId, request.AbsorvidoId, cancellationToken);
+        var totalReferencias = referencias.Sum(r => r.Linhas);
+
+        // 4) Trilha: registra nos DOIS cadastros (aparece no Histórico de alterações de cada um).
+        var resumo =
+            $"Clínico no hub: {hub.TotalClinicoRepontado} • Cadastros no painel: {totalReferencias} "
+            + $"• Identificadores absorvidos: {hub.IdentifiersAbsorvidos}";
+        await auditoria.RegistrarAsync(
+            "Paciente", request.SobreviventeId.ToString(), "UnificacaoPaciente",
+            $"Absorveu o cadastro {request.AbsorvidoId}", resumo, cancellationToken);
+        await auditoria.RegistrarAsync(
+            "Paciente", request.AbsorvidoId.ToString(), "UnificacaoPaciente",
+            $"Unificado no cadastro {request.SobreviventeId}", resumo, cancellationToken);
+
+        logger.LogInformation(
+            "Unificação de paciente: sobrevivente {Sobrevivente} absorveu {Absorvido} — "
+            + "clínico {Clinico}, cadastros {Cadastros}, identificadores {Ids}.",
+            request.SobreviventeId, request.AbsorvidoId, hub.TotalClinicoRepontado,
+            totalReferencias, hub.IdentifiersAbsorvidos);
+
+        return new ResultadoUnificacaoDto(
+            request.SobreviventeId, request.AbsorvidoId,
+            totalReferencias, hub.TotalClinicoRepontado, hub.IdentifiersAbsorvidos);
+    }
+
+    /// <summary>Duas chaves nacionais preenchidas e diferentes (comparadas só por dígitos).</summary>
+    private static bool ChaveDivergente(string? a, string? b)
+    {
+        var da = Digitos(a);
+        var db = Digitos(b);
+        return da.Length > 0 && db.Length > 0 && da != db;
     }
 
     private static string Mascarar(string cpf) =>

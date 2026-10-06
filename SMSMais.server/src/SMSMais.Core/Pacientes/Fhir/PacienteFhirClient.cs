@@ -74,6 +74,25 @@ public sealed class PacienteFhirClient(HttpClient http) : IPacienteFhirClient
         return await LerRecurso<Bundle>(resp, ct);
     }
 
+    public async Task<ResultadoFusaoHub> FundirAsync(Guid sobreviventeId, Guid absorvidoId, CancellationToken ct = default)
+    {
+        var url = $"fhir/Patient/{sobreviventeId}/$merge?source={absorvidoId}";
+        using var resp = await http.PostAsync(url, content: null, ct);
+        var p = await LerRecurso<Parameters>(resp, ct);
+
+        int Int(string nome) =>
+            p.Parameter.FirstOrDefault(x => x.Name == nome)?.Value is Integer { Value: { } v } ? v : 0;
+
+        return new ResultadoFusaoHub(
+            IdentifiersAbsorvidos: Int("identifiersAbsorvidos"),
+            Encounters: Int("encounter"),
+            Conditions: Int("condition"),
+            Observations: Int("observation"),
+            MedicationRequests: Int("medicationRequest"),
+            MedicationAdministrations: Int("medicationAdministration"),
+            DocumentReferences: Int("documentReference"));
+    }
+
     private static StringContent Body(Resource r) =>
         new(FhirJson.Serialize(r), Encoding.UTF8, MediaType);
 

@@ -27,4 +27,26 @@ public interface IPacienteFhirClient
 
     /// <summary>Página keyset (por Id) de Patients vivos, para manutenção/backfill (ADR-0020 R3).</summary>
     Task<Bundle> ListarParaManutencaoAsync(Guid? cursor, int count, CancellationToken ct = default);
+
+    /// <summary>
+    /// Funde dois Patients que são a MESMA pessoa (<c>POST /fhir/Patient/{sobrevivente}/$merge?source={absorvido}</c>).
+    /// O hub move os identifiers do absorvido para o sobrevivente, cria <c>Patient.link</c>
+    /// (replaces/replaced-by), marca o absorvido <c>active=false</c> (não apaga) e reaponta o
+    /// clínico de <c>fhir.*</c>. NÃO alcança <c>smsmarica.*</c> — isso é do repontador local.
+    /// </summary>
+    Task<ResultadoFusaoHub> FundirAsync(Guid sobreviventeId, Guid absorvidoId, CancellationToken ct = default);
+}
+
+/// <summary>O que o <c>$merge</c> do hub moveu, para conferência e para a trilha de auditoria.</summary>
+public sealed record ResultadoFusaoHub(
+    int IdentifiersAbsorvidos,
+    int Encounters,
+    int Conditions,
+    int Observations,
+    int MedicationRequests,
+    int MedicationAdministrations,
+    int DocumentReferences)
+{
+    public int TotalClinicoRepontado => Encounters + Conditions + Observations
+                                        + MedicationRequests + MedicationAdministrations + DocumentReferences;
 }
