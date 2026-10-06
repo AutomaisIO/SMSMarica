@@ -283,6 +283,8 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<Entities.Alertas.AlertaDestinatario> AlertaDestinatarios => Set<Entities.Alertas.AlertaDestinatario>();
     public DbSet<Entities.Alertas.AlertaOrigem> AlertaOrigens => Set<Entities.Alertas.AlertaOrigem>();
     public DbSet<Entities.Alertas.AlertaEnvio> AlertaEnvios => Set<Entities.Alertas.AlertaEnvio>();
+    // Agente IA pelo WhatsApp do celular de aviso (ADR-0068).
+    public DbSet<Entities.AgenteIa.AgenteWhatsAppPedido> AgenteWhatsAppPedidos => Set<Entities.AgenteIa.AgenteWhatsAppPedido>();
 
     // Módulo Conversas — chat WhatsApp multi-operador, transversal a todo o SMSMais.
     public DbSet<Conversa> Conversas => Set<Conversa>();

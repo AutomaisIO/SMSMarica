@@ -985,6 +985,14 @@ public static class DependencyInjection
         // No-op por padrão (testes/console/background); a Api sobrescreve com o SignalR.
         services.AddScoped<Conversas.IConversaNotificador, Conversas.NotificadorConversaNulo>();
         // Manipuladores de mensagem inbound (o webhook aplica todos, ordenados).
+        // Agente IA pelo WhatsApp do celular de aviso (ADR-0068): Ordem 1 e encerra a cadeia.
+        services.AddScoped<AgenteIa.WhatsApp.ITelefonesAgenteIa, AgenteIa.WhatsApp.TelefonesAgenteIa>();
+        services.AddScoped<AgenteIa.WhatsApp.IAgenteIaMotorWhatsApp, AgenteIa.WhatsApp.AgenteIaMotorWhatsApp>();
+        services.AddScoped<AgenteIa.WhatsApp.IAgenteWhatsAppProcessador, AgenteIa.WhatsApp.AgenteWhatsAppProcessador>();
+        services.AddSingleton<AgenteIa.WhatsApp.SinalAgenteWhatsApp>();
+        services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
+            AgenteIa.WhatsApp.AgenteIaWhatsAppHandler>();
+        services.AddHostedService<AgenteIa.WhatsApp.AgenteWhatsAppWorker>();
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
             Notificacoes.WhatsApp.Manipuladores.AcompanhanteWhatsAppHandler>();
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,

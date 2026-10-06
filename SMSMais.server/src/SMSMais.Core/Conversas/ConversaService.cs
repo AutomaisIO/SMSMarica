@@ -25,7 +25,8 @@ public sealed class ConversaService(
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
     Institucional.IInstituicaoService instituicao,
     IOptions<ConversasOptions> opcoes,
-    IConfiguration configuration) : IConversaService
+    IConfiguration configuration,
+    AgenteIa.WhatsApp.ITelefonesAgenteIa? telefonesAgente = null) : IConversaService
 {
     private const int LimiteContatos = 10;
 
@@ -329,7 +330,9 @@ public sealed class ConversaService(
         var minhasUnidades = await vinculos.ObterUnidadeIdsAsync(me, ct);
         var agora = DateTime.UtcNow;
 
-        var query = db.Conversas.AsNoTracking().Where(c => c.ExcluidoEm == null);
+        var ocultos = await TelefonesOcultosAsync(ct);
+        var query = db.Conversas.AsNoTracking()
+            .Where(c => c.ExcluidoEm == null && !ocultos.Contains(c.TelefoneCanonical));
 
         // Minhas e a fila são DISJUNTAS: conversa com dono aparece só na lista pessoal do dono;
         // a fila é o que ninguém puxou — das minhas unidades ou da triagem geral. NaoAtribuidas
@@ -431,8 +434,9 @@ public sealed class ConversaService(
     public async Task<ConversaListItemDto> ObterAsync(Guid conversaId, CancellationToken ct = default)
     {
         var agora = DateTime.UtcNow;
+        var ocultos = await TelefonesOcultosAsync(ct);
         var dto = await db.Conversas.AsNoTracking()
-            .Where(c => c.Id == conversaId && c.ExcluidoEm == null)
+            .Where(c => c.Id == conversaId && c.ExcluidoEm == null && !ocultos.Contains(c.TelefoneCanonical))
             .Select(c => new ConversaListItemDto(
                 c.Id, c.TelefoneCanonical, c.NomeContato, c.PacienteId, c.Assunto, c.Status,
                 c.OperadorResponsavelId, c.OperadorResponsavel!.NomeCompleto,
@@ -488,8 +492,10 @@ public sealed class ConversaService(
         // que têm conversa_id nulo) + as do mesmo paciente em outros números. O telefone canônico
         // é a mesma chave em toda origem (Canonizar no inbound; NormalizarTelefone no outbound —
         // mesmo algoritmo). Teto nas 500 MAIS RECENTES, devolvidas em ordem cronológica.
+        var ocultos = await TelefonesOcultosAsync(ct);
         var recentes = await db.MensagensWhatsApp.AsNoTracking()
             .Where(m => m.Telefone == fone || (pacienteId != null && m.PacienteId == pacienteId))
+            .Where(m => !ocultos.Contains(m.Telefone))
             .OrderByDescending(m => m.OcorridoEm)
             .Take(500)
             .Select(m => new MensagemDto(
@@ -740,8 +746,10 @@ public sealed class ConversaService(
         // (verificação, detalhes do agendamento, confirmação) são gravadas SEM ConversaId — medir
         // por conversa faz gente plenamente atendida parecer largada (armadilha já documentada:
         // superestima 3–5×), e a retomada atropelaria um atendimento que acabou de dar certo.
+        var ocultos = await TelefonesOcultosAsync(ct);
         var brutas = await db.Conversas.AsNoTracking()
-            .Where(c => c.ExcluidoEm == null && !c.RoboBloqueado && c.JanelaExpiraEm > agora)
+            .Where(c => c.ExcluidoEm == null && !c.RoboBloqueado && c.JanelaExpiraEm > agora
+                && !ocultos.Contains(c.TelefoneCanonical))
             .Select(c => new
             {
                 c.Id,
@@ -954,7 +962,9 @@ public sealed class ConversaService(
         var me = ExigirUsuario();
         var minhasUnidades = await vinculos.ObterUnidadeIdsAsync(me, ct);
 
-        var vivas = db.Conversas.AsNoTracking().Where(c => c.ExcluidoEm == null);
+        var ocultos = await TelefonesOcultosAsync(ct);
+        var vivas = db.Conversas.AsNoTracking()
+            .Where(c => c.ExcluidoEm == null && !ocultos.Contains(c.TelefoneCanonical));
         var minhas = await FiltrarMinhas(vivas, me).SumAsync(c => c.NaoLidas, ct);
         var fila = await FiltrarFila(vivas, minhasUnidades).SumAsync(c => c.NaoLidas, ct);
         // Todas: sem recorte de posse/unidade — espelha o que a aba Todas lista (ADR-0048).
@@ -983,9 +993,19 @@ public sealed class ConversaService(
     private async Task<Conversa> CarregarVivaAsync(Guid conversaId, bool rastrear, CancellationToken ct)
     {
         IQueryable<Conversa> query = rastrear ? db.Conversas : db.Conversas.AsNoTracking();
-        return await query.FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
+        var ocultos = await TelefonesOcultosAsync(ct);
+        return await query.FirstOrDefaultAsync(
+                c => c.Id == conversaId && c.ExcluidoEm == null && !ocultos.Contains(c.TelefoneCanonical), ct)
             ?? throw new NaoEncontradoException("Conversa", conversaId);
     }
+
+    /// <summary>
+    /// Telefones que conversam com o Agente IA (ADR-0068): TODAS as conversas e mensagens deles
+    /// ficam fora do módulo — listas, contadores, thread e histórico do paciente. A conversa
+    /// existe (o webhook grava tudo), mas quem a lê é o painel do Agente IA.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> TelefonesOcultosAsync(CancellationToken ct) =>
+        telefonesAgente is null ? [] : await telefonesAgente.GrafiasOcultasAsync(ct);
 
     /// <summary>
     /// Carrega a conversa aplicando o escopo de acesso por id — fora do escopo → 404 (não vaza a

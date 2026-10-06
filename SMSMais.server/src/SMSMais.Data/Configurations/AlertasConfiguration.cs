@@ -17,8 +17,18 @@ internal sealed class AlertaDestinatarioConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(e => e.CriadoPor).HasColumnName("criado_por").HasMaxLength(200);
+        builder.Property(e => e.AgenteIa).HasColumnName("agente_ia").HasDefaultValue(false).IsRequired();
+        builder.Property(e => e.AgenteUsuarioId).HasColumnName("agente_usuario_id");
+
+        builder.HasOne(e => e.AgenteUsuario).WithMany()
+            .HasForeignKey(e => e.AgenteUsuarioId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .HasConstraintName("fk_alerta_destinatario_agente_usuario");
 
         builder.HasIndex(e => e.Telefone).IsUnique().HasDatabaseName("ux_alerta_destinatario_telefone");
+        // Ligado sem usuário seria um telefone com o agente e sem identidade: o banco recusa.
+        builder.ToTable(t => t.HasCheckConstraint(
+            "ck_alerta_destinatario_agente_usuario", "NOT agente_ia OR agente_usuario_id IS NOT NULL"));
     }
 }
 

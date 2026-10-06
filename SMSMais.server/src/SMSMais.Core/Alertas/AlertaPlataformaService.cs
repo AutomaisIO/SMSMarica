@@ -9,7 +9,11 @@ using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.Alertas;
 
-public sealed record AlertaDestinatarioDto(Guid Id, string Telefone, string? Nome, bool Ativo, DateTime CriadoEm);
+/// <param name="AgenteIa">Este número conversa com o Agente IA do servidor (ADR-0068).</param>
+/// <param name="AgenteUsuarioId">Usuário que o número representa no agente.</param>
+public sealed record AlertaDestinatarioDto(
+    Guid Id, string Telefone, string? Nome, bool Ativo, DateTime CriadoEm,
+    bool AgenteIa = false, Guid? AgenteUsuarioId = null, string? AgenteUsuarioNome = null);
 
 public sealed record AlertaOrigemDto(
     string Chave, string Rotulo, string Grupo, string Descricao, bool Catalogada, bool Silenciada,
@@ -32,7 +36,8 @@ public sealed record AlertaPainelDto(
     IReadOnlyList<AlertaEnvioDto> Envios,
     AlertaTemplateDto Template);
 
-public sealed record SalvarAlertaDestinatarioRequest(string Telefone, string? Nome, bool Ativo = true);
+public sealed record SalvarAlertaDestinatarioRequest(
+    string Telefone, string? Nome, bool Ativo = true, bool AgenteIa = false, Guid? AgenteUsuarioId = null);
 
 public sealed record SilenciarAlertaOrigemRequest(bool Silenciada);
 
@@ -52,13 +57,15 @@ public sealed class AlertaPlataformaService(
     AlertaPlataformaDespachante despachante,
     IWhatsAppCliente whatsApp,
     IOptions<AlertaPlataformaOptions> opcoes,
-    IUsuarioAtualAccessor usuarioAtual) : IAlertaPlataformaService
+    IUsuarioAtualAccessor usuarioAtual,
+    IIdentidadeService identidade) : IAlertaPlataformaService
 {
     public async Task<AlertaPainelDto> ObterPainelAsync(CancellationToken ct = default)
     {
         var destinatarios = await db.AlertaDestinatarios.AsNoTracking()
             .OrderBy(d => d.CriadoEm)
-            .Select(d => new AlertaDestinatarioDto(d.Id, d.Telefone, d.Nome, d.Ativo, d.CriadoEm))
+            .Select(d => new AlertaDestinatarioDto(d.Id, d.Telefone, d.Nome, d.Ativo, d.CriadoEm,
+                d.AgenteIa, d.AgenteUsuarioId, d.AgenteUsuario != null ? d.AgenteUsuario.NomeCompleto : null))
             .ToListAsync(ct);
 
         var linhas = await db.AlertaOrigens.AsNoTracking().ToListAsync(ct);
@@ -118,9 +125,10 @@ public sealed class AlertaPlataformaService(
             CriadoEm = DateTime.UtcNow,
             CriadoPor = await QuemAsync(ct),
         };
+        await AplicarAgenteAsync(d, req, ct);
         db.AlertaDestinatarios.Add(d);
         await db.SaveChangesAsync(ct);
-        return new AlertaDestinatarioDto(d.Id, d.Telefone, d.Nome, d.Ativo, d.CriadoEm);
+        return await ProjetarAsync(d, ct);
     }
 
     public async Task<AlertaDestinatarioDto> AtualizarDestinatarioAsync(
@@ -133,11 +141,15 @@ public sealed class AlertaPlataformaService(
         if (telefone != d.Telefone && await db.AlertaDestinatarios.AnyAsync(x => x.Telefone == telefone, ct))
             throw new ConflitoException("alerta.telefone_duplicado", "Este telefone já recebe os avisos.");
 
+        // Trocar o número de quem fala com o agente entrega o acesso a outro celular: é o mesmo
+        // ato que ligar a chave e passa pela mesma regra.
+        var mudouNumeroDoAgente = d.AgenteIa && req.AgenteIa && telefone != d.Telefone;
         d.Telefone = telefone;
         d.Nome = Nome(req.Nome);
         d.Ativo = req.Ativo;
+        await AplicarAgenteAsync(d, req, ct, forcarConferencia: mudouNumeroDoAgente);
         await db.SaveChangesAsync(ct);
-        return new AlertaDestinatarioDto(d.Id, d.Telefone, d.Nome, d.Ativo, d.CriadoEm);
+        return await ProjetarAsync(d, ct);
     }
 
     public async Task RemoverDestinatarioAsync(Guid id, CancellationToken ct = default)
@@ -200,6 +212,58 @@ public sealed class AlertaPlataformaService(
         Ocorrencias: o?.Ocorrencias ?? 0,
         o?.UltimaOcorrenciaEm, o?.UltimoAvisoEm, o?.OcorrenciasSemAviso ?? 0,
         o?.UltimoTitulo, o?.UltimoDetalhe);
+
+    /// <summary>
+    /// A chave "Conversa com o Agente IA" (ADR-0068). DESLIGAR qualquer um com acesso à tela pode —
+    /// é o interruptor. LIGAR, trocar o usuário ou o número só o PRÓPRIO usuário vinculado, e ele
+    /// precisa ter o módulo Agente IA com edição: senão quem só cuida dos avisos poria o próprio
+    /// celular falando com o servidor em nome de outra pessoa. (Acesso total × somente leitura
+    /// continua decidido pelo motor, pela lista de administradores.)
+    /// </summary>
+    private async Task AplicarAgenteAsync(
+        AlertaDestinatario d, SalvarAlertaDestinatarioRequest req, CancellationToken ct, bool forcarConferencia = false)
+    {
+        if (!req.AgenteIa)
+        {
+            d.AgenteIa = false;
+            d.AgenteUsuarioId = null;
+            return;
+        }
+
+        if (req.AgenteUsuarioId is not Guid alvo)
+            throw new ValidacaoException("alerta.agente_sem_usuario",
+                "Escolha o usuário que este telefone representa no Agente IA.");
+
+        var mudou = !d.AgenteIa || d.AgenteUsuarioId != alvo || forcarConferencia;
+        if (mudou)
+        {
+            if (usuarioAtual.UsuarioId != alvo)
+                throw new ValidacaoException("alerta.agente_outro_usuario",
+                    "Só o próprio usuário pode ligar o Agente IA no telefone dele. Entre com o usuário escolhido para ligar.");
+
+            var ativo = await db.Usuarios.AsNoTracking()
+                .AnyAsync(u => u.Id == alvo && u.Ativo && u.ExcluidoEm == null, ct);
+            if (!ativo)
+                throw new ValidacaoException("alerta.agente_usuario_inativo", "O usuário escolhido não está ativo.");
+
+            var perms = await identidade.ObterPermissoesResolvidasAsync(alvo, ct);
+            var agente = perms.Resolvidas.FirstOrDefault(p => p.Modulo == ModuloPermissao.AgenteIa);
+            if (agente is null || (agente.Acoes & AcoesPermissao.Edicao) != AcoesPermissao.Edicao)
+                throw new ValidacaoException("alerta.agente_sem_permissao",
+                    "O usuário escolhido não tem o módulo Agente IA com edição.");
+        }
+
+        d.AgenteIa = true;
+        d.AgenteUsuarioId = alvo;
+    }
+
+    private async Task<AlertaDestinatarioDto> ProjetarAsync(AlertaDestinatario d, CancellationToken ct)
+    {
+        var nome = d.AgenteUsuarioId is Guid id
+            ? await db.Usuarios.AsNoTracking().Where(u => u.Id == id).Select(u => u.NomeCompleto).FirstOrDefaultAsync(ct)
+            : null;
+        return new AlertaDestinatarioDto(d.Id, d.Telefone, d.Nome, d.Ativo, d.CriadoEm, d.AgenteIa, d.AgenteUsuarioId, nome);
+    }
 
     private static string ValidarTelefone(string? telefone)
     {

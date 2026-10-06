@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0068 — Agente IA pelo WhatsApp do celular de aviso</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0068 — Agente IA pelo WhatsApp do celular de aviso</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-06 · implementado em 06/10/2026 (não deployado) <strong>Relacionado:</strong> <a href="./0011-modulo-ia-consulta-linguagem-natural.md">ADR-0011</a> (módulo IA) · <a href="./0044-app-meta-unico-e-roteador-whatsapp.md">ADR-0044</a> (WhatsApp via Automais.Zap) · <a href="./0047-posse-de-conversa-filas.md">ADR-0047</a> / <a href="./0048-todas-destravada-e-historico-completo.md">ADR-0048</a> (Conversas) · Avisos no celular (<code>alerta_destinatario</code>, lista única desde 24/09/2026)</p>
+<h2>Contexto</h2>
+<p>O telefone cadastrado em <strong>Sistema → Avisos no celular</strong> recebe todo erro da plataforma (robô parado, sincronismo que falhou, erro 500 novo). Até aqui, para agir sobre um aviso era preciso abrir o painel, entrar no <strong>Agente IA</strong> (Claude Code no servidor, com o clone do repositório) e contar a história de novo.</p>
+<p>O Bernardo pediu que o próprio WhatsApp seja o canal: quem recebe o aviso responde ali mesmo e conversa com o agente, numa sessão que <strong>não expira</strong> — só recomeça quando ele pedir.</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Quem fala com o agente.</strong> Um telefone de Avisos no celular com a chave nova **"Conversa com o Agente</li>
+</ol>
+<p>   IA"<strong> ligada e </strong>vinculado a um usuário<strong> (<code>alerta_destinatario.agente_ia</code> + <code>agente_usuario_id</code>;    CHECK impede ligado sem usuário). O usuário vinculado é a identidade do agente: carimba autoria e    decide o acesso. </strong>Acesso total × somente leitura continua decidido só pelo motor**    (<code>AIENGINE_ADMIN_USUARIO_IDS</code>) — o canal não cria segunda regra de autorização.</p>
+<ol>
+<li><strong>Quem pode ligar.</strong> Desligar, qualquer um com acesso à tela (é o interruptor). **Ligar, trocar o</li>
+</ol>
+<p>   usuário ou o número de quem já está ligado: só o próprio usuário vinculado**, e ele precisa ter o    módulo Agente IA com edição. Sem isso, quem só cuida dos avisos poria o próprio celular falando com o    servidor em nome de outra pessoa.</p>
+<ol>
+<li><strong>Caminho da mensagem.</strong> Webhook → manipulador <code>AgenteIaWhatsAppHandler</code> (Ordem 1) grava um</li>
+</ol>
+<p>   <code>agente_whatsapp_pedido</code> e <strong>encerra a cadeia</strong> (<code>ManipuladorContexto.Encerrado</code>): robô, confirmação,    acompanhante e verificação cadastral nunca veem a mensagem — o celular pode ser também cadastro de    paciente, e um "sim" dito ao agente não pode virar confirmação de agendamento. O webhook não espera o    agente (o relay do Zap espera segundos; um turno leva minutos).</p>
+<ol>
+<li><strong>Worker</strong> (<code>AgenteWhatsAppWorker</code>): leva o pedido ao motor (<code>POST /internal/ai/whatsapp/turns</code>),</li>
+</ol>
+<p>   acompanha os eventos do turno e responde em texto livre — a janela de 24h está aberta porque foi o    operador quem escreveu. Andamento: "⏳ recebido" na hora, depois os textos do agente agrupados a cada    ~30 s, e a resposta final ao terminar (o andamento que sobra é descartado, para não repetir o final).    Uma mensagem por vez por telefone: a que chega com turno rodando espera na fila e é avisada uma vez.    Cursor e andamento ficam na linha do pedido — restart da API retoma sem reenviar.</p>
+<ol>
+<li><strong>Sessão.</strong> Uma por telefone (<code>kind='whatsapp'</code>, <code>canal_ref</code> = telefone normalizado com nono dígito).</li>
+</ol>
+<p>   O processo do Claude continua sendo descartado após 30 min ocioso e volta com <code>resume</code>; a sessão em si    nunca é podada (a limpeza de 30 dias poupa <code>whatsapp</code>, ativas e arquivadas).</p>
+<ol>
+<li><strong>Comandos</strong> (mensagem inteira, sem acento/caixa): <code>parar</code> interrompe o turno; <code>reiniciar</code> arquiva a</li>
+</ol>
+<p>   sessão e cancela o que esperava; <code>status</code> mostra a sessão. "parar o worker X" é pedido ao agente, não    comando.</p>
+<ol>
+<li><strong>Responder citando um aviso</strong> leva o texto da mensagem citada junto do pedido, num bloco marcado</li>
+</ol>
+<p>   como <strong>dado, não instrução</strong> (o aviso nasce de log e pode carregar texto de terceiros).</p>
+<ol>
+<li><strong>Fora do módulo Conversas.</strong> Todas as conversas e mensagens desse telefone somem de listas,</li>
+</ol>
+<p>   contadores, thread e histórico do paciente. O registro fica no painel <strong>Inteligência → Agente IA →    aba WhatsApp</strong>, só leitura (quem conduz é o celular).</p>
+<ol>
+<li><strong>Só texto</strong> na fase 1. Áudio, foto e documento recebem resposta pedindo texto.</li>
+</ol>
+<h2>Consequências</h2>
+<ul>
+<li><strong>Risco aceito:</strong> com acesso total, quem tomar o WhatsApp do celular (clonagem de chip, sessão do</li>
+</ul>
+<p>  WhatsApp Web esquecida) ganha o agente com acesso ao servidor de produção. PIN não ajuda numa sessão que   não expira. Mitigações: <strong>confirmação em duas etapas do próprio WhatsApp</strong> no celular (recomendada na   tela); o interruptor na tela; a regra de confirmação por ação em produção continua no prompt do agente.</p>
+<ul>
+<li>O motor do agente passa a ter uma sessão "fixa" ocupando um dos <code>MAX_SESSIONS</code> (3) quando ativa.</li>
+<li>A migration <code>AgenteIaPeloWhatsApp</code> só adiciona (duas colunas + uma tabela). Com a replicação DO→EVEO</li>
+</ul>
+<p>  ligada, o DDL vai <strong>primeiro no psql01</strong>.</p>
+<h2>Fora desta fase</h2>
+<ul>
+<li>Transcrição de áudio (o Bernardo dita por voz) — precisa de um serviço de fala-para-texto.</li>
+<li>Repassar foto/print de erro ao agente.</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive, ArchiveRestore, Pencil, Plus, Ticket, Users } from 'lucide-react';
+import { Archive, ArchiveRestore, Pencil, Plus, Smartphone, Ticket, Users } from 'lucide-react';
 import { Modal } from '@/shared/ui/Modal';
 import { Button } from '@/shared/ui/Button';
 import { formatarInstante } from '@/shared/lib/datas';
@@ -9,7 +9,7 @@ import {
   useRenomearSessao,
   useRestaurarSessao,
 } from '@/features/agente-ia/api/queries';
-import type { SessaoResumo } from '@/features/agente-ia/types';
+import type { KindSessao, SessaoResumo } from '@/features/agente-ia/types';
 
 type Props = {
   sessaoAtivaId: string | null;
@@ -18,7 +18,18 @@ type Props = {
   onArquivada: (id: string) => void;
   podeEditar: boolean;
   criando: boolean;
+  /** `whatsapp`: sessões conduzidas pelo celular — não se abre conversa nova daqui. */
+  kind?: KindSessao;
 };
+
+/** "5521979997000" → "(21) 97999-7000". Só para exibir. */
+function formatarTelefone(telefone: string): string {
+  const d = telefone.replace(/\D/g, '');
+  const local = d.length > 11 ? d.slice(-11) : d;
+  if (local.length === 11) return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+  if (local.length === 10) return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  return telefone;
+}
 
 /** O motor guarda os tempos em epoch de segundos; o util central espera um instante ISO. */
 function instante(epoch: number | null): string {
@@ -48,12 +59,14 @@ export function ListaSessoes({
   onArquivada,
   podeEditar,
   criando,
+  kind = 'agente',
 }: Props) {
+  const ehWhatsApp = kind === 'whatsapp';
   const [arquivadas, setArquivadas] = useState(false);
   const [renomeando, setRenomeando] = useState<SessaoResumo | null>(null);
   const [titulo, setTitulo] = useState('');
 
-  const { data: sessoes, isLoading } = useListarSessoes(arquivadas);
+  const { data: sessoes, isLoading } = useListarSessoes(arquivadas, kind);
   const renomear = useRenomearSessao();
   const arquivar = useArquivarSessao();
   const restaurar = useRestaurarSessao();
@@ -71,16 +84,22 @@ export function ListaSessoes({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-slate-200 p-2">
-        <button
-          type="button"
-          onClick={onNova}
-          disabled={!podeEditar || criando}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" /> Nova conversa
-        </button>
-      </div>
+      {ehWhatsApp ? (
+        <p className="border-b border-slate-200 p-3 text-xs text-slate-500">
+          Uma sessão por telefone. Ela não expira: só muda quando o celular manda <strong>reiniciar</strong>.
+        </p>
+      ) : (
+        <div className="flex items-center gap-2 border-b border-slate-200 p-2">
+          <button
+            type="button"
+            onClick={onNova}
+            disabled={!podeEditar || criando}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" /> Nova conversa
+          </button>
+        </div>
+      )}
 
       <div className="border-b border-slate-100 px-3 py-1.5">
         <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-500">
@@ -98,7 +117,13 @@ export function ListaSessoes({
         {isLoading && <li className="p-4 text-sm text-slate-500">Carregando…</li>}
         {!isLoading && (sessoes?.length ?? 0) === 0 && (
           <li className="p-4 text-sm text-slate-500">
-            {arquivadas ? 'Nenhuma conversa arquivada.' : 'Nenhuma conversa aberta.'}
+            {ehWhatsApp
+              ? arquivadas
+                ? 'Nenhuma sessão do WhatsApp arquivada.'
+                : 'Nenhuma sessão aberta pelo WhatsApp. Ligue “Conversa com o Agente IA” num telefone de Avisos no celular.'
+              : arquivadas
+                ? 'Nenhuma conversa arquivada.'
+                : 'Nenhuma conversa aberta.'}
           </li>
         )}
         {sessoes?.map((s) => (
@@ -124,6 +149,12 @@ export function ListaSessoes({
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                {s.canal_ref && (
+                  <span className="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                    <Smartphone className="h-3 w-3" />
+                    {formatarTelefone(s.canal_ref)}
+                  </span>
+                )}
                 {s.ticket_numero && (
                   <span className="flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
                     <Ticket className="h-3 w-3" />#{s.ticket_numero}
@@ -172,7 +203,11 @@ export function ListaSessoes({
                 ) : (
                   <button
                     type="button"
-                    title="Arquivar — o histórico fica guardado"
+                    title={
+                      ehWhatsApp
+                        ? 'Arquivar — o histórico fica guardado; a próxima mensagem do celular abre uma sessão nova'
+                        : 'Arquivar — o histórico fica guardado'
+                    }
                     onClick={() =>
                       arquivar.mutate(s.id, { onSuccess: () => onArquivada(s.id) })
                     }

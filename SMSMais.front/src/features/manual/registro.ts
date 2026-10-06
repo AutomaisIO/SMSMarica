@@ -1,8 +1,10 @@
 import { BookOpen, Bus, ClipboardCheck, Folder, LifeBuoy, MessageCircle, Settings2, Stethoscope } from 'lucide-react';
+import { artigoAgenteIa } from '@/features/manual/conteudo/agenteIa';
 import { artigoAnaliseRegrasEspelho } from '@/features/manual/conteudo/analiseRegrasEspelho';
 import { artigoAnamnese } from '@/features/manual/conteudo/anamnese';
 import { artigoAssinaturaLaudo } from '@/features/manual/conteudo/assinaturaLaudo';
 import { artigoAtendimentosTransporte } from '@/features/manual/conteudo/atendimentosTransporte';
+import { artigoAvisosCelular } from '@/features/manual/conteudo/avisosCelular';
 import { artigoAvisosConexao } from '@/features/manual/conteudo/avisosConexao';
 import { artigoConfirmacoes } from '@/features/manual/conteudo/confirmacoes';
 import { artigoEsusSaoGoncalo } from '@/features/manual/conteudo/esusSaoGoncalo';
@@ -86,10 +88,12 @@ export const GRUPOS: GrupoManual[] = [
 ];
 
 export const ARTIGOS: Artigo[] = [
+  artigoAgenteIa,
   artigoAnaliseRegrasEspelho,
   artigoAnamnese,
   artigoAssinaturaLaudo,
   artigoAtendimentosTransporte,
+  artigoAvisosCelular,
   artigoAvisosConexao,
   artigoConfirmacoes,
   artigoEsusSaoGoncalo,

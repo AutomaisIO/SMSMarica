@@ -1,6 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   CriarSessaoPayload,
+  KindSessao,
   SessaoDetalhe,
   SessaoResumo,
   TurnoView,
@@ -20,9 +21,13 @@ export async function criarSessao(payload: CriarSessaoPayload = {}) {
   return data;
 }
 
-export async function listarSessoes(arquivadas = false) {
+/**
+ * `kind`: `agente` (padrão — conversas abertas pelo painel) ou `whatsapp` (sessões conduzidas
+ * pelo celular cadastrado em Avisos no celular; uma por telefone).
+ */
+export async function listarSessoes(arquivadas = false, kind: KindSessao = 'agente') {
   const { data } = await http.get<{ sessions: SessaoResumo[] }>('/agente-ia/sessions', {
-    params: { arquivadas },
+    params: kind === 'agente' ? { arquivadas } : { arquivadas, kind },
   });
   return data.sessions;
 }

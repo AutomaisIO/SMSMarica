@@ -178,11 +178,16 @@ public sealed class WhatsAppWebhookService(
         {
             try { await manipulador.TratarAsync(ctx, ct); }
             catch (Exception ex) { logger.LogWarning(ex, "Manipulador {Tipo} falhou.", manipulador.GetType().Name); }
+            if (ctx.Encerrado) break;
         }
 
         await SalvarEfeitosDosManipuladoresAsync(conversa, ct);
 
         if (msg.MidiaSituacao == SituacaoMidiaWhatsApp.Recebendo) sinalMidias?.Sinalizar();
+
+        // Conversa do Agente IA (ADR-0068) não existe para o módulo Conversas: o evento levaria a
+        // prévia do texto ao navegador de todo atendente.
+        if (ctx.Encerrado) return;
 
         // Tempo real APÓS o commit.
         await notificador.MensagemRecebidaAsync(new ConversaEventoRealtime(

@@ -46,10 +46,16 @@ public sealed class AgenteIaController : ControllerBase
     public Task<IActionResult> CriarSessao([FromBody] object? corpo, CancellationToken ct) =>
         ProxyAsync(HttpMethod.Post, "/internal/ai/sessions", corpo, ct);
 
+    /// <summary>
+    /// <paramref name="kind"/>: <c>agente</c> (as do painel, padrão) ou <c>whatsapp</c> — as conduzidas
+    /// pelo celular de aviso (ADR-0068), que o painel mostra só para leitura.
+    /// </summary>
     [HttpGet("sessions")]
     [RequerPermissao(ModuloPermissao.AgenteIa, AcoesPermissao.Consulta)]
-    public Task<IActionResult> ListarSessoes([FromQuery] bool arquivadas, CancellationToken ct) =>
-        ProxyAsync(HttpMethod.Get, $"/internal/ai/sessions?include_archived={(arquivadas ? "true" : "false")}", null, ct);
+    public Task<IActionResult> ListarSessoes([FromQuery] bool arquivadas, [FromQuery] string? kind, CancellationToken ct) =>
+        ProxyAsync(HttpMethod.Get,
+            $"/internal/ai/sessions?include_archived={(arquivadas ? "true" : "false")}"
+            + $"&kind={(kind == "whatsapp" ? "whatsapp" : "agente")}", null, ct);
 
     /// <summary>Renomeia a conversa. O título default é o começo do primeiro prompt.</summary>
     [HttpPatch("sessions/{sessionId}")]

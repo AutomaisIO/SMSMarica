@@ -7,6 +7,11 @@ export type AlertaDestinatario = {
   nome: string | null;
   ativo: boolean;
   criadoEm: string;
+  /** Quem escreve deste número conversa com o Agente IA do servidor (canal WhatsApp). */
+  agenteIa: boolean;
+  /** Usuário que o telefone representa no Agente IA — dele sai o acesso (total se for admin do agente). */
+  agenteUsuarioId: string | null;
+  agenteUsuarioNome: string | null;
 };
 
 export type AlertaOrigem = {
@@ -54,4 +59,11 @@ export type AlertaPainel = {
   template: AlertaTemplate;
 };
 
-export type SalvarDestinatario = { telefone: string; nome?: string | null; ativo: boolean };
+export type SalvarDestinatario = {
+  telefone: string;
+  nome?: string | null;
+  ativo: boolean;
+  agenteIa: boolean;
+  /** Obrigatório quando `agenteIa` está ligado. */
+  agenteUsuarioId: string | null;
+};

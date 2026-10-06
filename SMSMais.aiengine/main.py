@@ -191,11 +191,21 @@ async def create_session(payload: dict = Body(default={}),
             "model": config.MODEL}
 
 
+# Kinds que a lista do painel do Agente IA pode pedir. 'dados' fica de fora de propósito: é
+# por usuário e tem rota própria (/internal/ai/dados/*) com a guarda de dono.
+_KINDS_LISTAVEIS = {"agente", "whatsapp"}
+
+
 @app.get("/internal/ai/sessions", tags=["AI"])
 async def list_sessions(include_archived: bool = Query(default=False),
+                        kind: str = Query(default="agente"),
                         x_smsmarica_internal_key: str | None = Header(default=None)):
     require_internal_key(x_smsmarica_internal_key)
-    return {"sessions": engine.list_sessions(include_archived=include_archived)}
+    if kind not in _KINDS_LISTAVEIS:
+        raise HTTPException(status_code=400, detail="kind deve ser 'agente' ou 'whatsapp'.")
+    # 'whatsapp' é global como 'agente' (sem filtro de usuário): quem vê o painel do agente vê
+    # o que foi feito pelo celular — com acesso total ao host, isso é trilha de auditoria.
+    return {"sessions": engine.list_sessions(include_archived=include_archived, kind=kind)}
 
 
 @app.patch("/internal/ai/sessions/{session_id}", tags=["AI"])
@@ -293,6 +303,60 @@ async def atendimento_responder(payload: dict = Body(...),
     except Exception as e:  # noqa: BLE001
         logger.exception("Falha no turno do robô de atendimento.")
         raise HTTPException(status_code=502, detail=f"Falha no motor de atendimento: {e}")
+
+
+# ─────────────────────────── Canal WhatsApp do Agente IA ──────────────────────────────────
+# O celular do operador (telefone de Avisos no celular com o agente ligado) conversa com o
+# MESMO agente do painel, numa sessão por telefone que não expira — só "reiniciar" arquiva.
+# Quem decide se o telefone pode falar com o agente, e com qual usuario_id, é a API .NET; aqui
+# a autorização de escrita continua sendo SÓ a de ADMIN_USUARIO_IDS (ferramentas do processo).
+# Polling, cancelamento e detalhe reaproveitam /internal/ai/turns/* e /internal/ai/sessions/*.
+
+@app.post("/internal/ai/whatsapp/turns", tags=["AI-WhatsApp"])
+async def whatsapp_create_turn(payload: dict = Body(...),
+                               x_smsmarica_internal_key: str | None = Header(default=None),
+                               usuario_id: str | None = UsuarioId,
+                               usuario_nome: str | None = UsuarioNome):
+    require_internal_key(x_smsmarica_internal_key)
+    payload = payload or {}
+    telefone = (payload.get("telefone") or "").strip()
+    prompt = (payload.get("prompt") or "").strip()
+    if not telefone or not prompt:
+        raise HTTPException(status_code=400, detail="Campos 'telefone' e 'prompt' são obrigatórios.")
+    try:
+        turno, nova = await engine.whatsapp_turn(telefone, prompt, usuario_id, _nome(usuario_nome))
+    except MemoryError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        # O .NET precisa do id do turno em andamento (para "parar" e para acompanhar), então o
+        # 409 leva o id no corpo em vez de só o texto.
+        estado = engine.whatsapp_estado(telefone)
+        return JSONResponse({"detail": str(exc), "sessionId": estado["sessionId"],
+                             "currentTurnId": estado["currentTurnId"]}, status_code=409)
+    return {"sessionId": turno["session_id"], "turnId": turno["id"],
+            "status": turno["status"], "novaSessao": nova}
+
+
+@app.post("/internal/ai/whatsapp/reiniciar", tags=["AI-WhatsApp"])
+async def whatsapp_reiniciar(payload: dict = Body(...),
+                             x_smsmarica_internal_key: str | None = Header(default=None)):
+    require_internal_key(x_smsmarica_internal_key)
+    telefone = ((payload or {}).get("telefone") or "").strip()
+    if not telefone:
+        raise HTTPException(status_code=400, detail="Campo 'telefone' é obrigatório.")
+    return {"arquivada": await engine.whatsapp_reiniciar(telefone)}
+
+
+@app.get("/internal/ai/whatsapp/estado", tags=["AI-WhatsApp"])
+async def whatsapp_estado(telefone: str = Query(...),
+                          x_smsmarica_internal_key: str | None = Header(default=None)):
+    require_internal_key(x_smsmarica_internal_key)
+    telefone = (telefone or "").strip()
+    if not telefone:
+        raise HTTPException(status_code=400, detail="Parâmetro 'telefone' é obrigatório.")
+    return engine.whatsapp_estado(telefone)
 
 
 # ─────────────────────────── Modo `dados` (menu IA: perguntas às bases) ───────────────────

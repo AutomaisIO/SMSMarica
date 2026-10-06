@@ -24,6 +24,14 @@ public sealed record ManipuladorContexto(
     /// se ABSTER, para não responder por cima de um fluxo determinístico.
     /// </summary>
     public bool Consumido { get; set; }
+
+    /// <summary>
+    /// A mensagem não é de cidadão e NENHUM manipulador seguinte deve vê-la — nem os de domínio, que
+    /// ignoram <see cref="Consumido"/>. Hoje só o canal do Agente IA (ADR-0068) encerra: o celular de
+    /// aviso pode ser também o cadastro de um paciente, e um "sim" dito ao agente não pode virar
+    /// confirmação de agendamento.
+    /// </summary>
+    public bool Encerrado { get; set; }
 }
 
 /// <summary>

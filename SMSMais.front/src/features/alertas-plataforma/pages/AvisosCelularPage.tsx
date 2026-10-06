@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
-import { BellRing, BellOff, CheckCircle2, Loader2, Plus, Send, Trash2, TriangleAlert } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { BellRing, BellOff, Bot, CheckCircle2, Loader2, Plus, Send, Trash2, TriangleAlert } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { formatarInstante } from '@/shared/lib/datas';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { notificar } from '@/shared/ui/Notificacoes';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { listarUsuarios } from '@/features/usuarios/api/usuariosApi';
 import {
   useAdicionarDestinatario,
   useAtualizarDestinatario,
@@ -102,6 +105,132 @@ function EstadoTemplate({ t }: { t: AlertaTemplate }) {
   );
 }
 
+/**
+ * Canal do Agente IA pelo WhatsApp: quem escreve deste número conversa com o Agente IA do
+ * servidor, com o acesso do usuário escolhido. Desligar a chave grava NA HORA — é o
+ * interruptor de emergência (celular perdido, WhatsApp clonado).
+ */
+function AgenteIaDestinatario({ d, aoFechar }: { d: AlertaDestinatario; aoFechar: () => void }) {
+  const atualizar = useAtualizarDestinatario();
+  const [ligado, setLigado] = useState(d.agenteIa);
+  const [usuario, setUsuario] = useState<{ id: string; nome: string } | null>(
+    d.agenteUsuarioId ? { id: d.agenteUsuarioId, nome: d.agenteUsuarioNome ?? '—' } : null,
+  );
+  const [busca, setBusca] = useState('');
+  const termo = busca.trim();
+  const usuarios = useQuery({
+    queryKey: ['alertas-plataforma', 'usuarios', termo],
+    queryFn: () => listarUsuarios({ busca: termo, limite: 10 }),
+    enabled: termo.length >= 2,
+  });
+  const ativos = (usuarios.data ?? []).filter((u) => u.ativo);
+
+  async function salvar(agenteIa: boolean, usuarioId: string | null) {
+    try {
+      await atualizar.mutateAsync({
+        id: d.id,
+        body: { telefone: d.telefone, nome: d.nome, ativo: d.ativo, agenteIa, agenteUsuarioId: usuarioId },
+      });
+      notificar(
+        agenteIa ? 'Agente IA ligado para este telefone.' : 'Agente IA desligado — o acesso pelo celular foi cortado.',
+        'sucesso',
+      );
+      aoFechar();
+    } catch (e) {
+      notificar(extrairMensagemDeErro(e), 'erro');
+    }
+  }
+
+  async function aoAlternar(novo: boolean) {
+    setLigado(novo);
+    // Desligar é o corte de emergência: grava sem pedir mais nada.
+    if (!novo && d.agenteIa) await salvar(false, null);
+  }
+
+  return (
+    <div className="mt-2 w-full space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+      <label className="flex items-center gap-2 font-medium text-gray-900">
+        <input
+          type="checkbox"
+          checked={ligado}
+          disabled={atualizar.isPending}
+          onChange={(e) => void aoAlternar(e.target.checked)}
+        />
+        Conversa com o Agente IA
+      </label>
+
+      <ul className="list-disc space-y-1 pl-5 text-xs text-gray-600">
+        <li>
+          Quem escrever deste número no WhatsApp conversa com o <strong>Agente IA do servidor</strong>, com o acesso
+          do usuário escolhido abaixo — acesso total se ele for administrador do agente.
+        </li>
+        <li>As mensagens deste telefone somem do módulo Conversas; as sessões ficam em Agente IA → aba WhatsApp.</li>
+        <li>
+          Comandos: <strong>reiniciar</strong> (sessão nova), <strong>parar</strong> (interrompe o trabalho em
+          andamento), <strong>status</strong>. Responder citando um aviso de erro leva o aviso junto ao pedido.
+        </li>
+        <li>Ligue a confirmação em duas etapas do WhatsApp nesse celular. Desmarcar a chave corta o acesso na hora.</li>
+      </ul>
+
+      {ligado && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-700">
+            Usuário que este telefone representa:{' '}
+            <span className="text-gray-900">{usuario?.nome ?? 'nenhum escolhido'}</span>
+          </p>
+          <Input
+            className="w-72"
+            placeholder="Buscar usuário por nome ou CPF"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+          {termo.length >= 2 && (
+            <ul className="max-h-48 w-72 divide-y divide-gray-100 overflow-y-auto rounded-md border border-gray-200 bg-white">
+              {usuarios.isLoading && <li className="px-3 py-2 text-xs text-gray-500">Buscando…</li>}
+              {!usuarios.isLoading && ativos.length === 0 && (
+                <li className="px-3 py-2 text-xs text-gray-500">Nenhum usuário ativo encontrado.</li>
+              )}
+              {ativos.map((u) => (
+                <li key={u.id}>
+                  <button
+                    type="button"
+                    className={`w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 ${
+                      usuario?.id === u.id ? 'font-semibold text-primary-700' : 'text-gray-800'
+                    }`}
+                    onClick={() => {
+                      setUsuario({ id: u.id, nome: u.nomeCompleto });
+                      setBusca('');
+                    }}
+                  >
+                    {u.nomeCompleto}
+                    {u.email && <span className="ml-1 text-xs text-gray-500">{u.email}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {ligado && (
+          <Button
+            tamanho="sm"
+            disabled={atualizar.isPending || !usuario}
+            onClick={() => usuario && void salvar(true, usuario.id)}
+          >
+            {atualizar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+            {d.agenteIa ? 'Salvar' : 'Ligar o Agente IA'}
+          </Button>
+        )}
+        <Button variante="ghost" tamanho="sm" onClick={aoFechar}>
+          Fechar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function Destinatarios({
   lista,
   podeEditar,
@@ -116,6 +245,7 @@ function Destinatarios({
   const [telefone, setTelefone] = useState('');
   const [nome, setNome] = useState('');
   const [resultadoTeste, setResultadoTeste] = useState<AlertaEnvio | null>(null);
+  const [editandoAgente, setEditandoAgente] = useState<string | null>(null);
 
   async function aoAdicionar() {
     if (telefone.replace(/\D/g, '').length < 10) {
@@ -123,7 +253,13 @@ function Destinatarios({
       return;
     }
     try {
-      await adicionar.mutateAsync({ telefone, nome: nome.trim() || null, ativo: true });
+      await adicionar.mutateAsync({
+        telefone,
+        nome: nome.trim() || null,
+        ativo: true,
+        agenteIa: false,
+        agenteUsuarioId: null,
+      });
       setTelefone('');
       setNome('');
       notificar('Telefone adicionado.', 'sucesso');
@@ -175,6 +311,15 @@ function Destinatarios({
                 {formatarTelefone(d.telefone)}
               </span>
               <span className="text-gray-600">{d.nome ?? ''}</span>
+              {d.agenteIa && (
+                <span
+                  className="flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800"
+                  title={`Conversa com o Agente IA como ${d.agenteUsuarioNome ?? '—'}`}
+                >
+                  <Bot className="h-3 w-3" />
+                  Agente IA{d.agenteUsuarioNome ? ` · ${d.agenteUsuarioNome}` : ''}
+                </span>
+              )}
               {podeEditar && (
                 <span className="ml-auto flex items-center gap-2">
                   <label className="flex items-center gap-1 text-xs text-gray-600">
@@ -183,12 +328,29 @@ function Destinatarios({
                       checked={d.ativo}
                       onChange={(e) =>
                         atualizar
-                          .mutateAsync({ id: d.id, body: { telefone: d.telefone, nome: d.nome, ativo: e.target.checked } })
+                          .mutateAsync({
+                            id: d.id,
+                            body: {
+                              telefone: d.telefone,
+                              nome: d.nome,
+                              ativo: e.target.checked,
+                              agenteIa: d.agenteIa,
+                              agenteUsuarioId: d.agenteUsuarioId,
+                            },
+                          })
                           .catch((err) => notificar(extrairMensagemDeErro(err), 'erro'))
                       }
                     />
                     recebe
                   </label>
+                  <button
+                    type="button"
+                    title="Conversa com o Agente IA pelo WhatsApp"
+                    className={d.agenteIa ? 'text-violet-600 hover:text-violet-800' : 'text-gray-400 hover:text-gray-700'}
+                    onClick={() => setEditandoAgente((atual) => (atual === d.id ? null : d.id))}
+                  >
+                    <Bot className="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     title="Remover"
@@ -198,6 +360,9 @@ function Destinatarios({
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </span>
+              )}
+              {podeEditar && editandoAgente === d.id && (
+                <AgenteIaDestinatario d={d} aoFechar={() => setEditandoAgente(null)} />
               )}
             </li>
           ))}
@@ -422,6 +587,7 @@ export function AvisosCelularPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
           <BellRing className="h-6 w-6 text-primary-600" />
           Avisos no celular
+          <AjudaManual artigo="avisos-no-celular" />
         </h1>
         <p className="mt-1 text-sm text-gray-600">
           Erros da plataforma mandados por WhatsApp a quem cuida dela: robô que parou de responder, crédito da

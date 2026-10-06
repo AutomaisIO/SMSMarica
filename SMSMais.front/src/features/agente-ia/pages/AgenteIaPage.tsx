@@ -9,6 +9,7 @@ import {
   Loader2,
   MessageSquare,
   Send,
+  Smartphone,
   Square,
   Terminal,
   Ticket,
@@ -19,6 +20,7 @@ import { useAuth, usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { useContextoTicketPorNumero } from '@/features/tickets/api/queries';
 import { obterContextoTicketPorNumero } from '@/features/tickets/api/ticketsApi';
 import type { TicketStatus } from '@/features/tickets/types';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { VisualizadorImagem } from '@/shared/ui/VisualizadorImagem';
 import { ehUrlDominioConfiavel } from '@/shared/lib/dominio';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,9 +34,18 @@ import {
 } from '../api/agenteIaApi';
 import { agenteIaKeys } from '../api/queries';
 import { ListaSessoes } from '../components/ListaSessoes';
-import type { EventoAgente, StatusTurno, TurnoResumo } from '../types';
+import type { EventoAgente, KindSessao, StatusTurno, TurnoResumo } from '../types';
 
 const INTERVALO_POLL_MS = 700;
+
+/** "5521979997000" → "(21) 97999-7000". Só para exibir. */
+function formatarTelefone(telefone: string): string {
+  const d = telefone.replace(/\D/g, '');
+  const local = d.length > 11 ? d.slice(-11) : d;
+  if (local.length === 11) return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+  if (local.length === 10) return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  return telefone;
+}
 // O turno roda no servidor. Falha de rede aqui não significa que ele morreu — significa que
 // perdemos a visão dele. Continuamos tentando; o histórico persistido recupera o resto.
 const MAX_FALHAS_POLL = 100;
@@ -328,6 +339,11 @@ export function AgenteIaPage() {
 
   const [sessaoId, setSessaoId] = useState<string | null>(sessaoDaUrl);
   const [ticketDaSessao, setTicketDaSessao] = useState<number | null>(null);
+  // Aba da lista: conversas do painel × sessões conduzidas pelo celular (WhatsApp).
+  const [aba, setAba] = useState<KindSessao>('agente');
+  // A conversa aberta é do canal WhatsApp: somente leitura aqui — quem conduz é o celular.
+  const [somenteLeitura, setSomenteLeitura] = useState(false);
+  const [telefoneDaSessao, setTelefoneDaSessao] = useState<string | null>(null);
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [entrada, setEntrada] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -496,6 +512,10 @@ export function AgenteIaPage() {
         const detalhe = await obterSessao(sessaoId);
         if (execucaoRef.current !== token) return;
         setTicketDaSessao(detalhe.ticket_numero);
+        const doWhatsApp = detalhe.kind === 'whatsapp';
+        setSomenteLeitura(doWhatsApp);
+        setTelefoneDaSessao(doWhatsApp ? (detalhe.canal_ref ?? null) : null);
+        if (doWhatsApp) setAba('whatsapp');
         setMensagens(turnosParaMensagens(detalhe.turns));
         setIniciando(false);
 
@@ -508,7 +528,7 @@ export function AgenteIaPage() {
         // Veio da triagem: dá o pontapé para o operador não ter que digitar nada. Só a
         // referência #N — quem busca o conteúdo (sempre fresco, direto do banco) é o agente,
         // pela skill resolver-ticket.
-        if (contextoPendenteRef.current && (detalhe.turns?.length ?? 0) === 0) {
+        if (!doWhatsApp && contextoPendenteRef.current && (detalhe.turns?.length ?? 0) === 0) {
           contextoPendenteRef.current = false;
           const instrucao = instrucaoPendenteRef.current;
           instrucaoPendenteRef.current = undefined;
@@ -580,6 +600,32 @@ export function AgenteIaPage() {
     }
   }
 
+  async function trocarAba(nova: KindSessao) {
+    if (nova === aba) return;
+    setAba(nova);
+    // Abre a mais recente da aba escolhida (ou nenhuma), sem interromper o que roda no servidor.
+    try {
+      const sessoes = await listarSessoes(false, nova);
+      const primeira = sessoes[0]?.id;
+      if (primeira) {
+        selecionar(primeira);
+      } else {
+        execucaoRef.current += 1;
+        setSessaoId(null);
+        setMensagens([]);
+        setTicketDaSessao(null);
+        setSomenteLeitura(nova === 'whatsapp');
+        setTelefoneDaSessao(null);
+        setOcupado(false);
+        setTurnoAtivo(null);
+        setIniciando(false);
+        setParams({}, { replace: true });
+      }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao listar as conversas.');
+    }
+  }
+
   function aoArquivar(id: string) {
     if (id !== sessaoId) return;
     setSessaoId(null);
@@ -611,6 +657,7 @@ export function AgenteIaPage() {
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
           <Bot className="h-6 w-6 text-red-600" />
           Agente IA
+          <AjudaManual artigo="agente-ia" />
         </h1>
         <p className="mt-1 text-sm text-slate-600">
           O trabalho roda no servidor — pode fechar esta aba ou trocar de conversa.
@@ -621,7 +668,15 @@ export function AgenteIaPage() {
           status, sempre frescos) ou uma pergunta avulsa. */}
       {sessaoId && !iniciando && (
         <div className="mb-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-          {ticketDaSessao ? (
+          {somenteLeitura ? (
+            <>
+              <Smartphone className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span className="shrink-0 font-semibold text-slate-800">WhatsApp</span>
+              <span className="min-w-0 flex-1 truncate text-slate-600">
+                {telefoneDaSessao ? formatarTelefone(telefoneDaSessao) : 'telefone do Avisos no celular'}
+              </span>
+            </>
+          ) : ticketDaSessao ? (
             <>
               <Ticket className="h-4 w-4 shrink-0 text-red-600" />
               <span className="shrink-0 font-semibold text-slate-800">
@@ -645,8 +700,33 @@ export function AgenteIaPage() {
       )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div className="w-72 shrink-0 border-r border-slate-200">
+        <div className="flex w-72 shrink-0 flex-col border-r border-slate-200">
+          <div className="flex border-b border-slate-200 text-sm" role="tablist">
+            {(
+              [
+                ['agente', 'Painel'],
+                ['whatsapp', 'WhatsApp'],
+              ] as const
+            ).map(([k, rotulo]) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={aba === k}
+                onClick={() => void trocarAba(k)}
+                className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-2 font-medium ${
+                  aba === k ? 'border-b-2 border-red-600 text-red-700' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {k === 'whatsapp' ? <Smartphone className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                {rotulo}
+              </button>
+            ))}
+          </div>
+          <div className="min-h-0 flex-1">
           <ListaSessoes
+            key={aba}
+            kind={aba}
             sessaoAtivaId={sessaoId}
             onSelecionar={selecionar}
             onNova={() => void novaConversa()}
@@ -654,6 +734,7 @@ export function AgenteIaPage() {
             podeEditar={podeAgir}
             criando={iniciando}
           />
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -674,13 +755,17 @@ export function AgenteIaPage() {
 
             {!iniciando && !sessaoId && (
               <p className="text-sm text-slate-500">
-                Selecione uma conversa à esquerda ou abra uma nova.
+                {aba === 'whatsapp'
+                  ? 'Nenhuma sessão do WhatsApp selecionada.'
+                  : 'Selecione uma conversa à esquerda ou abra uma nova.'}
               </p>
             )}
 
             {!iniciando && sessaoId && mensagens.length === 0 && (
               <p className="text-sm text-slate-500">
-                Peça um diagnóstico, uma investigação de ticket ou uma correção de código.
+                {somenteLeitura
+                  ? 'Nada ainda: as mensagens que o celular mandar aparecem aqui.'
+                  : 'Peça um diagnóstico, uma investigação de ticket ou uma correção de código.'}
               </p>
             )}
 
@@ -736,6 +821,13 @@ export function AgenteIaPage() {
 
           {erro && <p className="px-4 pb-1 text-sm text-red-600">{erro}</p>}
 
+          {somenteLeitura ? (
+            <p className="flex items-center gap-2 border-t border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+              <Smartphone className="h-4 w-4 shrink-0 text-emerald-600" />
+              Somente leitura: quem conduz esta conversa é o celular, pelo WhatsApp. Para interromper,
+              mande “parar” de lá; para começar do zero, “reiniciar”.
+            </p>
+          ) : (
           <form onSubmit={enviar} className="flex items-end gap-2 border-t border-slate-200 p-3">
             <textarea
               value={entrada}
@@ -771,6 +863,7 @@ export function AgenteIaPage() {
               </button>
             )}
           </form>
+          )}
         </div>
       </div>
     </div>

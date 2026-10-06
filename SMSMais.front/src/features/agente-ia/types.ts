@@ -22,8 +22,17 @@ export type TurnoResumo = {
   usuario_nome: string | null;
 };
 
+/**
+ * `agente` = conversa aberta pelo painel. `whatsapp` = sessão conduzida pelo celular cadastrado
+ * em Avisos no celular (uma por telefone, não expira; "reiniciar" no WhatsApp abre outra).
+ */
+export type KindSessao = 'agente' | 'whatsapp';
+
 export type SessaoResumo = {
   id: string;
+  kind?: KindSessao | 'dados';
+  /** Canal WhatsApp: o telefone que conduz a sessão. */
+  canal_ref?: string | null;
   title: string;
   ticket_numero: number | null;
   ticket_titulo: string | null;

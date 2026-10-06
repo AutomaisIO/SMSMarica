@@ -74,6 +74,10 @@ _COLUNAS_EXTRA = {
         # Slug da base (ia_fonte) desta sessão de dados. Fixo por sessão: o tool consulta
         # SEMPRE esta base, o modelo não troca. Nulo nas sessões 'agente'.
         ("base_slug", "TEXT"),
+        # Canal externo a que a sessão pertence. Hoje só 'whatsapp': o telefone canônico do
+        # operador. É por ele que a mensagem que chega cai SEMPRE na mesma sessão —
+        # o telefone não sabe o id da sessão, e não deveria precisar saber.
+        ("canal_ref", "TEXT"),
     ],
     # O autor da sessão não é a história toda: um colega pode assumir a investigação no meio.
     # Guardando quem mandou CADA turno, a sessão mostra todos os que participaram.
@@ -117,14 +121,16 @@ class Store:
                        ticket_titulo: Optional[str], cwd: str,
                        usuario_id: Optional[str] = None,
                        usuario_nome: Optional[str] = None,
-                       kind: str = "agente", base_slug: Optional[str] = None) -> None:
+                       kind: str = "agente", base_slug: Optional[str] = None,
+                       canal_ref: Optional[str] = None) -> None:
         now = time.time()
         self._write(
             "INSERT INTO sessions (id, title, ticket_numero, ticket_titulo, created_at,"
-            " last_used_at, cwd, claude_session_id, usuario_id, usuario_nome, kind, base_slug)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            " last_used_at, cwd, claude_session_id, usuario_id, usuario_nome, kind, base_slug,"
+            " canal_ref)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (sid, title, ticket_numero, ticket_titulo, now, now, cwd, sid,
-             usuario_id, usuario_nome, kind, base_slug),
+             usuario_id, usuario_nome, kind, base_slug, canal_ref),
         )
 
     def reset_claude_session(self, sid: str, novo_claude_id: str, cwd: str) -> None:
@@ -176,6 +182,19 @@ class Store:
             " ORDER BY last_used_at DESC LIMIT 1", (numero,))
         return dict(rows[0]) if rows else None
 
+    def find_active_whatsapp(self, canal_ref: str) -> Optional[dict]:
+        """A sessão VIVA do telefone: toda mensagem dele cai nela até o operador pedir
+        "reiniciar" (que arquiva). Mais de uma ativa não deveria existir; se existir (corrida
+        entre duas mensagens simultâneas), a mais recente vence de forma estável."""
+        rows = self._rows(
+            "SELECT * FROM sessions WHERE kind='whatsapp' AND canal_ref=? AND archived_at IS NULL"
+            " ORDER BY created_at DESC LIMIT 1", (canal_ref,))
+        return dict(rows[0]) if rows else None
+
+    def turn_count(self, sid: str) -> int:
+        rows = self._rows("SELECT COUNT(*) AS c FROM turns WHERE session_id=?", (sid,))
+        return int(rows[0]["c"]) if rows else 0
+
     def list_sessions(self, include_archived: bool = False, limit: int = 50,
                       kind: str = "agente", usuario_id: Optional[str] = None) -> list[dict]:
         # Segmentação: 'agente' é global (todo operador vê todas); 'dados' é POR USUÁRIO
@@ -215,8 +234,12 @@ class Store:
         return out
 
     def prune_sessions(self, older_than_days: int) -> int:
+        # Sessões do WhatsApp NUNCA são podadas — nem as arquivadas. A do canal é "a conversa
+        # que não expira" por definição, e as arquivadas são o histórico que o painel mostra
+        # do que foi feito pelo celular (com acesso total ao host, isso é trilha, não lixo).
         cutoff = time.time() - older_than_days * 86400
-        rows = self._rows("SELECT id FROM sessions WHERE last_used_at < ?", (cutoff,))
+        rows = self._rows(
+            "SELECT id FROM sessions WHERE last_used_at < ? AND kind <> 'whatsapp'", (cutoff,))
         for row in rows:
             self._write("DELETE FROM sessions WHERE id=?", (row["id"],))
         return len(rows)
