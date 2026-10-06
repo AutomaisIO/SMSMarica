@@ -260,11 +260,12 @@ export function IndicadoresColetaSecao() {
             </div>
           ) : null}
 
-          {s.deVoltaNaFila.length > 0 ? (
+          {/* `?? []`: o painel sobe antes do servidor no deploy, e o servidor velho não manda a lista. */}
+          {(s.deVoltaNaFila ?? []).length > 0 ? (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
               <p className="font-medium">De volta na fila (falharam antes e vão ser tentadas de novo):</p>
               <ul className="mt-1 space-y-0.5">
-                {s.deVoltaNaFila.map((f) => (
+                {(s.deVoltaNaFila ?? []).map((f) => (
                   <li key={`volta-${f.coletor}-${f.inicio}-${f.escopo}`}>
                     {descreverLeitura(f)} — última tentativa {dataHora(f.tentadaEm)}: {f.erro}
                   </li>
