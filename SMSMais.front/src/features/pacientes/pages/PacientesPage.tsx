@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, Eye, Merge, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
@@ -149,10 +149,16 @@ export function PacientesPage() {
             (com ou sem formatação) — até 10 resultados.
           </p>
         </div>
-        <Button onClick={() => navigate('/app/pacientes/novo')}>
-          <Plus className="h-4 w-4" />
-          Novo paciente
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variante="outline" onClick={() => navigate('/app/pacientes/unificar')}>
+            <Merge className="h-4 w-4" />
+            Unificar paciente
+          </Button>
+          <Button onClick={() => navigate('/app/pacientes/novo')}>
+            <Plus className="h-4 w-4" />
+            Novo paciente
+          </Button>
+        </div>
       </header>
 
       <div className="relative">

@@ -176,6 +176,55 @@ export type CadastrarPacientePayload = PacienteFormPayload;
 
 export type AtualizarPacientePayload = Omit<PacienteFormPayload, 'nomeCompleto' | 'cpf' | 'dataNascimento'>;
 
+// ---- Unificação de cadastros duplicados ----
+
+/** Um campo cujo valor difere entre os dois cadastros a unificar. */
+export type DivergenciaCampo = {
+  campo: string;
+  sobrevivente: string | null;
+  absorvido: string | null;
+};
+
+/** Quantas referências ao paciente um módulo do painel tem (agregado p/ a prévia). */
+export type ContagemModulo = {
+  modulo: string;
+  quantidade: number;
+};
+
+/** Prévia (dry-run) da unificação: os dois cadastros, divergências e o que será movido. */
+export type PreviaUnificacao = {
+  sobrevivente: Paciente;
+  absorvido: Paciente;
+  /** CPF preenchido nos dois e diferente — caso perigoso, pede confirmação. */
+  cpfDivergente: boolean;
+  /** CNS preenchido nos dois e diferente — caso perigoso, pede confirmação. */
+  cnsDivergente: boolean;
+  campos: DivergenciaCampo[];
+  referencias: ContagemModulo[];
+  totalReferencias: number;
+};
+
+/** Corpo do POST /pacientes/unificar. */
+export type UnificarPacientesPayload = {
+  sobreviventeId: string;
+  absorvidoId: string;
+  /** Demografia final escolhida (valores que "ficam"). Nulo = mantém o sobrevivente. */
+  dadosFinais?: AtualizarPacientePayload | null;
+  /** Nome oficial final, quando o operador decidir trocar o do sobrevivente. */
+  nomeFinal?: string | null;
+  /** Confirmação explícita quando CPF/CNS divergem (risco de fundir pessoas diferentes). */
+  confirmaChavesDivergentes: boolean;
+};
+
+/** Resultado da unificação concluída. */
+export type ResultadoUnificacao = {
+  sobreviventeId: string;
+  absorvidoId: string;
+  referenciasRepontadas: number;
+  clinicoRepontado: number;
+  identificadoresAbsorvidos: number;
+};
+
 /** Diagnóstico (CID-10) de um atendimento. */
 export type Diagnostico = {
   codigo: string;

@@ -10,7 +10,10 @@ import type {
   Paciente,
   PacienteExistencia,
   PacienteListItem,
+  PreviaUnificacao,
+  ResultadoUnificacao,
   SessaoConversaPaciente,
+  UnificarPacientesPayload,
 } from '@/features/pacientes/types';
 
 export async function obterAtendimentos(id: string): Promise<Atendimento[]> {
@@ -117,6 +120,28 @@ export async function obterAuditoriaPaciente(id: string): Promise<PaginaAuditori
 
 export async function desativarPaciente(id: string): Promise<void> {
   await http.delete(`/pacientes/${id}`);
+}
+
+/**
+ * Prévia (dry-run) da unificação: os dois cadastros completos, os campos que divergem e
+ * quantas referências de cada módulo serão movidas. Não altera nada.
+ */
+export async function preverUnificacao(
+  sobrevivente: string,
+  absorvido: string,
+): Promise<PreviaUnificacao> {
+  const { data } = await http.get<PreviaUnificacao>('/pacientes/unificar/previa', {
+    params: { sobrevivente, absorvido },
+  });
+  return data;
+}
+
+/** Unifica dois cadastros do mesmo paciente (ver UnificarPacientesPayload). */
+export async function unificarPacientes(
+  payload: UnificarPacientesPayload,
+): Promise<ResultadoUnificacao> {
+  const { data } = await http.post<ResultadoUnificacao>('/pacientes/unificar', payload);
+  return data;
 }
 
 export async function reativarPaciente(id: string): Promise<void> {
