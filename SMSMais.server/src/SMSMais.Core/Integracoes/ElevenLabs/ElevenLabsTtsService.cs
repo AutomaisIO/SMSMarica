@@ -27,6 +27,8 @@ public sealed class ElevenLabsTtsService(
     private const string OutputFormat = "opus_48000_64";
     // Teto de texto por síntese: evita áudio gigante/custo alto num descuido.
     private const int MaxChars = 5000;
+    // Fala um pouco mais rápida que o natural. Faixa válida do ElevenLabs: 0.7 a 1.2.
+    private const double Velocidade = 1.15;
 
     public async Task<SinteseResultado> SintetizarAsync(string texto, CancellationToken ct = default)
     {
@@ -48,7 +50,12 @@ public sealed class ElevenLabsTtsService(
         var url = $"{ctx.BaseUrl.TrimEnd('/')}/v1/text-to-speech/{Uri.EscapeDataString(vozId)}?output_format={OutputFormat}";
         try
         {
-            var payload = JsonSerializer.Serialize(new { text = corpo, model_id = ctx.ModeloTts });
+            var payload = JsonSerializer.Serialize(new
+            {
+                text = corpo,
+                model_id = ctx.ModeloTts,
+                voice_settings = new { speed = Velocidade },
+            });
             using var req = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = new StringContent(payload, Encoding.UTF8, "application/json"),
