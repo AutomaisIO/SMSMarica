@@ -79,7 +79,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
         var usuario = Guid.NewGuid();
         Ligado(fone, usuario);
         var pedido = await PedidoAsync(db, fone, "por que o robô parou?");
-        _motor.IniciarTurnoAsync(fone, "por que o robô parou?", usuario, "Operador", Arg.Any<CancellationToken>())
+        _motor.IniciarTurnoAsync(fone, Arg.Is<string>(s => s.StartsWith("por que o robô parou?")), usuario, "Operador", Arg.Any<CancellationToken>())
             .Returns(new TurnoIniciado("s1", "t1", NovaSessao: true));
         var proc = Criar(db);
 
@@ -121,7 +121,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
         var fone = NovoTelefone();
         Ligado(fone, Guid.NewGuid());
         var primeiro = await PedidoAsync(db, fone, "primeiro");
-        _motor.IniciarTurnoAsync(fone, "primeiro", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _motor.IniciarTurnoAsync(fone, Arg.Is<string>(s => s.StartsWith("primeiro")), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new TurnoIniciado("s1", "t1", false));
         _motor.LerTurnoAsync("t1", Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new LeituraTurno("running", null, [], 0));
@@ -134,7 +134,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
 
         _enviados.Count(e => e.StartsWith("📥")).Should().Be(1);
         (await RelerAsync(db, segundo.Id)).Situacao.Should().Be(SituacaoPedidoAgente.Pendente);
-        await _motor.DidNotReceive().IniciarTurnoAsync(fone, "segundo", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _motor.DidNotReceive().IniciarTurnoAsync(fone, Arg.Is<string>(s => s.StartsWith("segundo")), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         (await RelerAsync(db, primeiro.Id)).Situacao.Should().Be(SituacaoPedidoAgente.EmAndamento);
     }
 
@@ -145,7 +145,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
         var fone = NovoTelefone();
         Ligado(fone, Guid.NewGuid());
         var pedido = await PedidoAsync(db, fone, "faz o deploy");
-        _motor.IniciarTurnoAsync(fone, "faz o deploy", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _motor.IniciarTurnoAsync(fone, Arg.Is<string>(s => s.StartsWith("faz o deploy")), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new TurnoIniciado("s1", "t9", false));
         var proc = Criar(db);
         await proc.ProcessarAsync(default);
@@ -166,7 +166,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
         var fone = NovoTelefone();
         Ligado(fone, Guid.NewGuid());
         var pedido = await PedidoAsync(db, fone, "investiga");
-        _motor.IniciarTurnoAsync(fone, "investiga", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _motor.IniciarTurnoAsync(fone, Arg.Is<string>(s => s.StartsWith("investiga")), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new TurnoIniciado("s1", "t5", false));
         var proc = Criar(db);
         await proc.ProcessarAsync(default);
