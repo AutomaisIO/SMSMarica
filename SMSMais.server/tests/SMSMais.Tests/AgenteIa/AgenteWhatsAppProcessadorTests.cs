@@ -31,6 +31,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
     private readonly IElevenLabsTtsService _tts = Substitute.For<IElevenLabsTtsService>();
     private readonly IArmazenamentoAudioTemporario _audioTemp = Substitute.For<IArmazenamentoAudioTemporario>();
     private readonly IArmazenamentoArquivoAgente _arquivoAgente = Substitute.For<IArmazenamentoArquivoAgente>();
+    private readonly IArmazenamentoDocumentoPublico _documentoPublico = Substitute.For<IArmazenamentoDocumentoPublico>();
     private readonly IZapMidiaCliente _zapMidia = Substitute.For<IZapMidiaCliente>();
     private readonly IConfiguration _config = Substitute.For<IConfiguration>();
     private readonly List<string> _enviados = [];
@@ -41,7 +42,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
                 Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>())
             .Returns(new EnvioWhatsAppResultado(true, "wamid", null));
         return new AgenteWhatsAppProcessador(db, _telefones, _motor, _whats, _tts, _audioTemp,
-            _arquivoAgente, _zapMidia, _config, NullLogger<AgenteWhatsAppProcessador>.Instance);
+            _arquivoAgente, _documentoPublico, _zapMidia, _config, NullLogger<AgenteWhatsAppProcessador>.Instance);
     }
 
     private static string NovoTelefone() => "55219" + Random.Shared.Next(10000000, 99999999);

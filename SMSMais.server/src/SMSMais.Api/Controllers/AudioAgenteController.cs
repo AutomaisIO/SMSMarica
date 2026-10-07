@@ -11,14 +11,24 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [AllowAnonymous]
-[Route("publico/audio-agente")]
-public sealed class AudioAgenteController(IArmazenamentoAudioTemporario armazenamento) : ControllerBase
+public sealed class AudioAgenteController(
+    IArmazenamentoAudioTemporario audio, IArmazenamentoDocumentoPublico documentos) : ControllerBase
 {
-    [HttpGet("{token}")]
-    public async Task<IActionResult> Obter(string token, CancellationToken cancellationToken)
+    /// <summary>Nota de voz (TTS) que o Agente IA devolve — a Meta busca este link.</summary>
+    [HttpGet("publico/audio-agente/{token}")]
+    public async Task<IActionResult> Audio(string token, CancellationToken cancellationToken)
     {
-        var bytes = await armazenamento.LerAsync(token, cancellationToken);
+        var bytes = await audio.LerAsync(token, cancellationToken);
         if (bytes is null) return NotFound();
         return File(bytes, "audio/ogg");
+    }
+
+    /// <summary>Documento (PDF, planilha, etc.) que o Agente IA gera e entrega — a Meta busca este link.</summary>
+    [HttpGet("publico/arquivo-agente/{token}")]
+    public async Task<IActionResult> Arquivo(string token, CancellationToken cancellationToken)
+    {
+        var doc = await documentos.LerAsync(token, cancellationToken);
+        if (doc is null) return NotFound();
+        return File(doc.Conteudo, doc.ContentType);
     }
 }

@@ -356,6 +356,24 @@ public sealed class WhatsAppCliente(
         return await EnviarRealAsync(ctx, body, fone, template: null, conteudo: conteudo, pacienteId, ct);
     }
 
+    public async Task<EnvioWhatsAppResultado> EnviarDocumentoAsync(
+        string telefone, string linkDocumento, string nomeArquivo, string? legenda = null,
+        Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico)
+    {
+        var fone = NormalizarTelefone(telefone);
+        var conteudo = $"[documento: {nomeArquivo}]";
+        if (await BloqueioAsync(origem, fone, null, conteudo, pacienteId, ct) is { } bloqueio) return bloqueio;
+        var ctx = await ObterContextoOuNuloAsync(ct);
+        if (ctx is null) return await SimularAsync(fone, template: null, conteudo, pacienteId, ct);
+
+        object documento = string.IsNullOrWhiteSpace(legenda)
+            ? new { link = linkDocumento, filename = nomeArquivo }
+            : new { link = linkDocumento, filename = nomeArquivo, caption = legenda };
+        object body = new { messaging_product = "whatsapp", to = fone, type = "document", document = documento };
+        return await EnviarRealAsync(ctx, body, fone, template: null, conteudo: conteudo, pacienteId, ct);
+    }
+
     public async Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
         string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
         Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,

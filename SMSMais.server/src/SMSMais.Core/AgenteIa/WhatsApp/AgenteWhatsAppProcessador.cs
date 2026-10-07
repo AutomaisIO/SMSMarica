@@ -38,6 +38,7 @@ public sealed class AgenteWhatsAppProcessador(
     SMSMais.Core.Integracoes.ElevenLabs.IElevenLabsTtsService tts,
     SMSMais.Core.Armazenamento.IArmazenamentoAudioTemporario audioTemp,
     SMSMais.Core.Armazenamento.IArmazenamentoArquivoAgente arquivoAgente,
+    SMSMais.Core.Armazenamento.IArmazenamentoDocumentoPublico documentoPublico,
     SMSMais.Core.Conversas.Midias.IZapMidiaCliente zapMidia,
     Microsoft.Extensions.Configuration.IConfiguration configuration,
     ILogger<AgenteWhatsAppProcessador> logger) : IAgenteWhatsAppProcessador
@@ -173,7 +174,10 @@ public sealed class AgenteWhatsAppProcessador(
 
         try
         {
-            var turno = await motor.IniciarTurnoAsync(telefone, MontarPrompt(proximo), dono.UsuarioId, dono.UsuarioNome, ct);
+            var pastaSaida = PastaSaida(proximo.Id);
+            Directory.CreateDirectory(pastaSaida);
+            var prompt = MontarPrompt(proximo) + InstrucaoSaida(pastaSaida);
+            var turno = await motor.IniciarTurnoAsync(telefone, prompt, dono.UsuarioId, dono.UsuarioNome, ct);
             proximo.Situacao = SituacaoPedidoAgente.EmAndamento;
             proximo.SessaoId = turno.SessaoId;
             proximo.TurnoId = turno.TurnoId;
@@ -247,6 +251,7 @@ public sealed class AgenteWhatsAppProcessador(
                     await ResponderComVozAsync(telefone, resposta!, ct);
                 else
                     await ResponderAsync(telefone, string.IsNullOrWhiteSpace(resposta) ? "✅ Feito." : resposta, ct);
+                await EnviarArquivosDeSaidaAsync(p.Id, telefone, ct);
                 break;
             case "cancelled" or "interrupted":
                 Encerrar(p, SituacaoPedidoAgente.Cancelado, leitura.Erro);
@@ -388,6 +393,48 @@ public sealed class AgenteWhatsAppProcessador(
         if (m.Contains("jpeg") || m.Contains("jpg")) return "jpg";
         var ext = Path.GetExtension(nome ?? "").TrimStart('.');
         return string.IsNullOrEmpty(ext) ? "bin" : ext;
+    }
+
+    // ---- Entrega de arquivos que o agente GERA (PDF, planilha…) ----
+    // A cada turno o worker cria uma pasta e diz ao agente para salvar ali o que quiser me entregar;
+    // ao terminar, tudo que estiver na pasta vai como documento no WhatsApp. O motor roda como root
+    // (umask 022 → arquivos 0644), então o server (smsmarica) lê e envia sem problema de permissão.
+    private const int MaxArquivosSaida = 10;
+
+    private string BaseSaida => configuration["AgenteSaida:Diretorio"]
+        ?? System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsmarica-agente-saida");
+
+    private string PastaSaida(Guid pedidoId) => System.IO.Path.Combine(BaseSaida, pedidoId.ToString("N"));
+
+    private static string InstrucaoSaida(string pasta) =>
+        $"\n\n---\nSe precisar me ENTREGAR um arquivo (PDF, planilha, CSV, imagem…), salve-o nesta pasta:\n{pasta}\n"
+        + "Tudo que estiver nela quando você terminar eu envio como documento no WhatsApp. Não precisa citar o caminho na resposta.";
+
+    private async Task EnviarArquivosDeSaidaAsync(Guid pedidoId, string telefone, CancellationToken ct)
+    {
+        var pasta = PastaSaida(pedidoId);
+        if (!Directory.Exists(pasta)) return;
+        var arquivos = Directory.GetFiles(pasta).OrderBy(f => f).Take(MaxArquivosSaida).ToList();
+        foreach (var caminho in arquivos)
+        {
+            try
+            {
+                var bytes = await File.ReadAllBytesAsync(caminho, ct);
+                if (bytes.Length == 0) continue;
+                var nome = System.IO.Path.GetFileName(caminho);
+                var token = await documentoPublico.GuardarAsync(bytes, System.IO.Path.GetExtension(caminho), ct);
+                var baseUrl = (configuration["Publico:BaseUrl"] ?? "https://api.smsmarica.online").TrimEnd('/');
+                var link = $"{baseUrl}/publico/arquivo-agente/{token}";
+                var r = await whatsApp.EnviarDocumentoAsync(telefone, link, nome, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+                if (!r.Ok)
+                    logger.LogWarning("Agente IA (…{Fone4}): documento recusado — {Erro}", Ultimos4(telefone), r.Erro);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Agente IA (…{Fone4}): falha ao enviar arquivo de saída.", Ultimos4(telefone));
+            }
+        }
+        try { Directory.Delete(pasta, recursive: true); } catch { /* best-effort; a rotação limpa depois */ }
     }
 
     private static void Encerrar(AgenteWhatsAppPedido p, SituacaoPedidoAgente situacao, string? erro)

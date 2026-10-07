@@ -126,6 +126,15 @@ public interface IWhatsAppCliente
         string telefone, string linkAudio, Guid? pacienteId = null, CancellationToken ct = default,
         OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
 
+    /// <summary>
+    /// Envia um DOCUMENTO (PDF, planilha, etc.) por LINK público — a Meta busca o arquivo na URL e o
+    /// destinatário baixa. Só dentro da janela de 24h. Usado pelo Agente IA ao gerar e entregar arquivos.
+    /// </summary>
+    Task<EnvioWhatsAppResultado> EnviarDocumentoAsync(
+        string telefone, string linkDocumento, string nomeArquivo, string? legenda = null,
+        Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
+
     /// <param name="conteudoLegivel">Texto humano do template (com as variáveis já preenchidas) para
     /// gravar como conteúdo da mensagem — aparece na thread e no histórico do robô. Nulo mantém o
     /// marcador <c>[template:nome] param | param</c>.</param>
