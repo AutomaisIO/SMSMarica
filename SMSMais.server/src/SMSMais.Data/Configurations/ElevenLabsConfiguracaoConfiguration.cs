@@ -16,6 +16,7 @@ internal sealed class ElevenLabsConfiguracaoConfiguration : IEntityTypeConfigura
         builder.Property(c => c.Modelo).HasColumnName("modelo").HasMaxLength(80).IsRequired();
         builder.Property(c => c.VozId).HasColumnName("voz_id").HasMaxLength(120);
         builder.Property(c => c.ModeloTts).HasColumnName("modelo_tts").HasMaxLength(80).IsRequired();
+        builder.Property(c => c.VelocidadeTts).HasColumnName("velocidade_tts").HasDefaultValue(1.15).IsRequired();
         builder.Property(c => c.ApiKeyCifrada).HasColumnName("api_key_cifrada");
         builder.Property(c => c.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(c => c.CriadoEm).HasColumnName("criado_em").IsRequired();

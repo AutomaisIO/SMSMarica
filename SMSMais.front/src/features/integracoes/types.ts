@@ -39,6 +39,7 @@ export type ElevenLabs = {
   modelo: string;
   vozId: string | null;
   modeloTts: string;
+  velocidadeTts: number;
   chaveConfigurada: boolean;
   ativo: boolean;
 };
@@ -48,8 +49,17 @@ export type AtualizarElevenLabs = {
   modelo?: string;
   vozId?: string;
   modeloTts?: string;
+  velocidadeTts?: number;
   apiKey?: string;
   ativo: boolean;
+};
+
+// Voz da conta ElevenLabs (para o seletor na tela).
+export type VozElevenLabs = {
+  vozId: string;
+  nome: string;
+  idioma: string | null;
+  categoria: string | null;
 };
 
 // WhatsApp — a instância fala só com o Automais.Zap; as credenciais da Meta vivem lá.

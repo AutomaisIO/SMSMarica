@@ -20,6 +20,9 @@ public class ElevenLabsConfiguracao
     /// <summary>Modelo da síntese (TTS). Padrão: eleven_multilingual_v2.</summary>
     public string ModeloTts { get; set; } = "eleven_multilingual_v2";
 
+    /// <summary>Velocidade da fala (TTS). Faixa do ElevenLabs: 0,7 a 1,2. Padrão: 1,15.</summary>
+    public double VelocidadeTts { get; set; } = 1.15;
+
     /// <summary>Chave da API cifrada. Write-only na API.</summary>
     public string? ApiKeyCifrada { get; set; }
 

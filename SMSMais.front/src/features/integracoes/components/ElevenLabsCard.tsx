@@ -5,11 +5,13 @@ import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
-import { useElevenLabs, useSalvarElevenLabs } from '@/features/integracoes/api';
+import { Select } from '@/shared/ui/Select';
+import { useElevenLabs, useElevenLabsVozes, useSalvarElevenLabs } from '@/features/integracoes/api';
 
 export function ElevenLabsCard() {
   const podeEditar = usePermissao('IntegracoesConfig', 'Edicao');
   const config = useElevenLabs();
+  const vozes = useElevenLabsVozes();
   const salvar = useSalvarElevenLabs();
 
   const [aberto, setAberto] = useState(false);
@@ -17,6 +19,7 @@ export function ElevenLabsCard() {
   const [modelo, setModelo] = useState('scribe_v2');
   const [modeloTts, setModeloTts] = useState('eleven_multilingual_v2');
   const [vozId, setVozId] = useState('');
+  const [velocidade, setVelocidade] = useState(1.15);
   const [apiKey, setApiKey] = useState('');
   const [ativo, setAtivo] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -28,11 +31,13 @@ export function ElevenLabsCard() {
       setModelo(config.data.modelo);
       setModeloTts(config.data.modeloTts);
       setVozId(config.data.vozId ?? '');
+      setVelocidade(config.data.velocidadeTts);
       setAtivo(config.data.ativo);
     }
   }, [config.data]);
 
   const configurada = config.data?.chaveConfigurada ?? false;
+  const listaVozes = vozes.data ?? [];
 
   function aoSalvar(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +49,7 @@ export function ElevenLabsCard() {
         modelo: modelo.trim() || undefined,
         modeloTts: modeloTts.trim() || undefined,
         vozId: vozId.trim(),
+        velocidadeTts: velocidade,
         apiKey: apiKey || undefined,
         ativo,
       },
@@ -97,11 +103,54 @@ export function ElevenLabsCard() {
           </Campo>
 
           <Campo
-            label="Voz (voice_id)"
+            label="Voz"
             htmlFor="el-voz"
-            dica="Em branco = usa a primeira voz da sua conta ElevenLabs."
+            dica={
+              listaVozes.length > 0
+                ? 'A voz usada nas respostas em áudio. Em branco = primeira da conta.'
+                : 'Cole um voice_id. (A lista de vozes só aparece com a chave válida salva.)'
+            }
           >
-            <Input id="el-voz" value={vozId} onChange={(e) => setVozId(e.target.value)} placeholder="(primeira da conta)" disabled={!podeEditar} />
+            {listaVozes.length > 0 ? (
+              <Select id="el-voz" value={vozId} onChange={(e) => setVozId(e.target.value)} disabled={!podeEditar}>
+                <option value="">(primeira da conta)</option>
+                {vozId && !listaVozes.some((v) => v.vozId === vozId) ? (
+                  <option value={vozId}>{vozId} (atual)</option>
+                ) : null}
+                {listaVozes.map((v) => (
+                  <option key={v.vozId} value={v.vozId}>
+                    {v.nome}
+                    {v.idioma ? ` — ${v.idioma}` : ''}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Input
+                id="el-voz"
+                value={vozId}
+                onChange={(e) => setVozId(e.target.value)}
+                placeholder="(primeira da conta)"
+                disabled={!podeEditar}
+              />
+            )}
+          </Campo>
+
+          <Campo
+            label={`Velocidade da voz: ${velocidade.toFixed(2)}×`}
+            htmlFor="el-vel"
+            dica="0,70 (mais devagar) a 1,20 (mais rápido). Padrão 1,15."
+          >
+            <input
+              id="el-vel"
+              type="range"
+              min={0.7}
+              max={1.2}
+              step={0.05}
+              value={velocidade}
+              onChange={(e) => setVelocidade(Number(e.target.value))}
+              disabled={!podeEditar}
+              className="w-full"
+            />
           </Campo>
 
           <Campo

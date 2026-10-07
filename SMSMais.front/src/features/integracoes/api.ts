@@ -7,6 +7,7 @@ import type {
   AtualizarTfdGoogle,
   AtualizarTfdWhatsApp,
   ElevenLabs,
+  VozElevenLabs,
   IntegracaoCredencial,
   ProxyMotor,
   ProxyTesteCepResultado,
@@ -114,6 +115,15 @@ export function useSalvarElevenLabs() {
   return useMutation({
     mutationFn: (payload: AtualizarElevenLabs) => http.put('/integracoes/elevenlabs', payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.elevenlabs }),
+  });
+}
+
+// Vozes da conta ElevenLabs (para o seletor). Vem vazio se a chave não estiver válida.
+export function useElevenLabsVozes() {
+  return useQuery({
+    queryKey: ['integracoes', 'elevenlabs', 'vozes'] as const,
+    queryFn: async () => (await http.get<VozElevenLabs[]>('/integracoes/elevenlabs/vozes')).data,
+    staleTime: 60_000,
   });
 }
 
