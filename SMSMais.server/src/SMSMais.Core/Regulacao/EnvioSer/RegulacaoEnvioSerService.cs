@@ -144,6 +144,11 @@ public sealed partial class RegulacaoEnvioSerService(
                     entrou ? null : "o SER não listou o arquivo depois de anexar"));
                 if (!entrou)
                 {
+                    // DIAGNÓSTICO: o que o SER DE FATO listou na releitura — é o que diz se a grade
+                    // veio vazia (A4J não atualizou), com nome diferente, ou sem o arquivo mesmo.
+                    logger.LogWarning(
+                        "SER_ANEXO_NAO_LISTADO: esperado \"{Esperado}\"; o SER listou {N} célula(s): [{Listados}].",
+                        anexo.Nome, listados.Count, string.Join(" | ", listados));
                     throw new ValidacaoException(
                         "ser.anexo",
                         $"O SER não listou o anexo \"{anexo.Nome}\" depois de recebê-lo. "

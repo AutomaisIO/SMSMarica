@@ -243,7 +243,19 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
                 [CampoArquivo] = SerHtmlParser.RemoverDoPost,
             },
             _viewState, $"confirmar anexo na nova solicitação ({nome})", ct);
-        Absorver(await SeguirAsync(r.Texto, ct));
+        var confirmHtml = await SeguirAsync(r.Texto, ct);
+        Absorver(confirmHtml);
+
+        // DIAGNÓSTICO (envio ao SER): distingue "o SER não listou o anexo" de "a resposta A4J não
+        // atualizou a grade que a gente relê". Loga o que o A4J mandou re-renderizar e como ficou o
+        // `form0:anexoList` logo após confirmar — sem isso, a falha de conferência é indiagnosticável.
+        var atualizados = string.Join(",", IdsAtualizados(SerHtmlParser.Documento(confirmHtml)));
+        var listaAgora = AnexosListados();
+        logger.LogInformation(
+            "SER_ANEXO_DIAG [{Nome}]: confirmado. A4J re-renderizou [{Ids}]; form0:anexoList "
+            + "tem {N} célula(s): [{Lista}].",
+            nome, string.IsNullOrEmpty(atualizados) ? "(página inteira/sem meta)" : atualizados,
+            listaAgora.Count, string.Join(" | ", listaAgora));
     }
 
     /// <summary>
