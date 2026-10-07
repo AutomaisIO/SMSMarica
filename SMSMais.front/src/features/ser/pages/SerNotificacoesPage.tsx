@@ -6,6 +6,7 @@ import {
   useNotificacoesSer,
   useResumoNotificacoesSer,
   useTecnicosNotificacoesSer,
+  useRecursosNotificacoesSer,
 } from '@/features/ser/api/queries';
 import {
   ROTULO_SITUACAO,
@@ -39,6 +40,9 @@ import { AvatarTecnico } from '@/shared/regulacao/AvatarTecnico';
 import { FiltroTecnicos } from '@/shared/regulacao/FiltroTecnicos';
 import { SEM_TECNICO } from '@/shared/regulacao/tecnicos';
 import { useTecnicosFiltro } from '@/shared/regulacao/tecnicosFiltroPreferencia';
+import { GerenciadorRecursos } from '@/shared/regulacao/GerenciadorRecursos';
+import { useRecursosFiltro } from '@/shared/regulacao/recursosFiltroPreferencia';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 
 /**
  * Regulação → Notificações: o que mudou no SER e ainda ninguém olhou.
@@ -89,18 +93,29 @@ export function SerNotificacoesPage() {
     setPaginaAtual(1);
   };
 
-  const { data: resumo } = useResumoNotificacoesSer(tecnicosSelecionados);
+  // Recurso (procedimento/especialidade): salvo no perfil do usuário, como o filtro por técnico —
+  // cada um configura a própria tela. Recorta lista e resumo junto com o técnico.
+  const recursosSelecionados = useRecursosFiltro((s) => s.ser);
+  const definirRecursos = useRecursosFiltro((s) => s.definir);
+  const { data: recursos = [] } = useRecursosNotificacoesSer();
+  const escolherRecursos = (lista: string[]) => {
+    definirRecursos('ser', lista);
+    setPaginaAtual(1);
+  };
+
+  const { data: resumo } = useResumoNotificacoesSer(tecnicosSelecionados, recursosSelecionados);
   const filtro = useMemo(
     () => ({
       tipo,
       tecnicos: tecnicosSelecionados,
+      recursos: recursosSelecionados,
       situacao,
       categoriaFollowUp: categoria,
       tipoUltimoEvento: tipoEvento,
       pagina: paginaAtual,
       tamanho,
     }),
-    [tipo, tecnicosSelecionados, situacao, categoria, tipoEvento, paginaAtual, tamanho],
+    [tipo, tecnicosSelecionados, recursosSelecionados, situacao, categoria, tipoEvento, paginaAtual, tamanho],
   );
   const { data: pagina, isLoading } = useNotificacoesSer(filtro);
 
@@ -149,7 +164,10 @@ export function SerNotificacoesPage() {
       <header className="flex items-center gap-3">
         <BellRing className="size-6 text-red-700" />
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Notificações da regulação</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-semibold text-slate-900">Notificações da regulação</h1>
+            <AjudaManual artigo="notificacoes-regulacao" />
+          </div>
           <p className="text-sm text-slate-600">
             Movimentações no SER que ainda não foram vistas. Marcar como visto tira daqui.
           </p>
@@ -189,16 +207,29 @@ export function SerNotificacoesPage() {
           </button>
         ))}
 
-        <div className="mb-1 ml-auto flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
-          <label htmlFor="ser-filtro-tecnicos" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Técnico regulador
-          </label>
-          <FiltroTecnicos
-            id="ser-filtro-tecnicos"
-            tecnicos={tecnicos}
-            selecionados={tecnicosSelecionados}
-            aoMudar={escolherTecnicos}
-          />
+        <div className="mb-1 ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+            <label htmlFor="ser-filtro-tecnicos" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Técnico regulador
+            </label>
+            <FiltroTecnicos
+              id="ser-filtro-tecnicos"
+              tecnicos={tecnicos}
+              selecionados={tecnicosSelecionados}
+              aoMudar={escolherTecnicos}
+            />
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+            <label htmlFor="ser-filtro-recursos" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Procedimentos
+            </label>
+            <GerenciadorRecursos
+              id="ser-filtro-recursos"
+              recursos={recursos}
+              selecionados={recursosSelecionados}
+              aoMudar={escolherRecursos}
+            />
+          </div>
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useModalidadesExames } from '@/features/pacs/store/modalidadesPreferencia';
 import { useSistemasOcultos } from '@/features/regulacao/store/sistemasOcultosPreferencia';
 import { useTecnicosFiltro } from '@/shared/regulacao/tecnicosFiltroPreferencia';
+import { useRecursosFiltro } from '@/shared/regulacao/recursosFiltroPreferencia';
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
@@ -28,6 +29,7 @@ export function Layout() {
   const hidratarModalidades = useModalidadesExames((s) => s.hidratar);
   const hidratarSistemasOcultos = useSistemasOcultos((s) => s.hidratar);
   const hidratarTecnicos = useTecnicosFiltro((s) => s.hidratar);
+  const hidratarRecursos = useRecursosFiltro((s) => s.hidratar);
   const { novaVersao, atualizar } = useVersaoApp();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -72,6 +74,7 @@ export function Layout() {
           sernit: p.notificacoesSernitTecnicos,
           esussg: p.notificacoesEsusSgTecnicos,
         });
+        hidratarRecursos({ ser: p.notificacoesSerRecursos });
         // Bip do chat persistido no usuário (ticket #127): aplica o silêncio salvo. Só
         // seta o estado — NÃO re-persiste (evita gravar de volta na hidratação).
         useChat.getState().setSom(!(p.bipChatSilenciado ?? false));
@@ -90,6 +93,7 @@ export function Layout() {
     hidratarModalidades,
     hidratarSistemasOcultos,
     hidratarTecnicos,
+    hidratarRecursos,
   ]);
 
   return (

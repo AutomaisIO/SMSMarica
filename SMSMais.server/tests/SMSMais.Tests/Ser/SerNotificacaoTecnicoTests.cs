@@ -27,7 +27,11 @@ public class SerNotificacaoTecnicoTests(PostgresFixture fixture)
     /// <summary>Nome único por teste: a base de testes é compartilhada e acumula linhas.</summary>
     private static string NovoTecnico() => "tecnico " + Guid.NewGuid().ToString("N")[..8];
 
-    private static SerSolicitacao Semear(SmsMaisDbContext db, string idSer, TipoRecursoSer tipo = TipoRecursoSer.Consulta)
+    /// <summary>Recurso único por teste: a base é compartilhada e acumula linhas.</summary>
+    private static string NovoRecurso() => "RECURSO " + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+
+    private static SerSolicitacao Semear(
+        SmsMaisDbContext db, string idSer, TipoRecursoSer tipo = TipoRecursoSer.Consulta, string recurso = "CARDIOLOGIA")
     {
         var agora = DateTime.UtcNow;
         var s = new SerSolicitacao
@@ -35,7 +39,7 @@ public class SerNotificacaoTecnicoTests(PostgresFixture fixture)
             Id = Guid.CreateVersion7(),
             IdSer = idSer,
             Tipo = tipo,
-            Recurso = "CARDIOLOGIA",
+            Recurso = recurso,
             PacienteNome = "PACIENTE DE TESTE",
             Situacao = SituacaoSer.EmFila,
             SincronizadoEm = agora,
@@ -129,7 +133,7 @@ public class SerNotificacaoTecnicoTests(PostgresFixture fixture)
 
         var service = CriarService(db);
 
-        var resumo = await service.ResumoAsync([tecnico], CancellationToken.None);
+        var resumo = await service.ResumoAsync([tecnico], null, CancellationToken.None);
         Assert.Equal(2, resumo.Total);
         Assert.Equal(1, resumo.Contadores.Single(c => c.Tipo == TipoRecursoSer.Exame).Quantidade);
 
@@ -138,5 +142,40 @@ public class SerNotificacaoTecnicoTests(PostgresFixture fixture)
         Assert.Equal(2, Assert.Single(tecnicos, t => t.Chave == tecnico.ToUpperInvariant()).Pendentes);
         // Quem só reenviou aparece no filtro, sem pendência atribuída.
         Assert.Equal(0, Assert.Single(tecnicos, t => t.Chave == soReenviou.ToUpperInvariant()).Pendentes);
+    }
+
+    [Fact]
+    public async Task Filtro_por_recurso_recorta_lista_resumo_e_opcoes()
+    {
+        await using var db = fixture.CriarDbContext();
+        var recursoA = NovoRecurso();
+        var recursoB = NovoRecurso();
+
+        var idA1 = NovoId();
+        Semear(db, idA1, TipoRecursoSer.Consulta, recursoA);
+        var idA2 = NovoId();
+        Semear(db, idA2, TipoRecursoSer.Exame, recursoA);
+        var idB = NovoId();
+        Semear(db, idB, TipoRecursoSer.Consulta, recursoB);
+        await db.SaveChangesAsync();
+
+        var service = CriarService(db);
+
+        // Lista: marcar um recurso recorta só o dele (os dois tipos daquele recurso).
+        var soA = await service.ListarAsync(
+            new SerNotificacaoFiltroDto { Recursos = [recursoA], Tamanho = 1000 }, CancellationToken.None);
+        Assert.Contains(soA.Itens, n => n.IdSer == idA1);
+        Assert.Contains(soA.Itens, n => n.IdSer == idA2);
+        Assert.DoesNotContain(soA.Itens, n => n.IdSer == idB);
+
+        // Resumo reconta pelo recurso: 2 do recursoA, 1 em cada tipo.
+        var resumo = await service.ResumoAsync(null, [recursoA], CancellationToken.None);
+        Assert.Equal(2, resumo.Total);
+        Assert.Equal(1, resumo.Contadores.Single(c => c.Tipo == TipoRecursoSer.Exame).Quantidade);
+
+        // Opções do filtro: cada recurso com sua contagem de pendentes.
+        var recursos = await service.RecursosAsync(CancellationToken.None);
+        Assert.Equal(2, Assert.Single(recursos, r => r.Recurso == recursoA).Pendentes);
+        Assert.Equal(1, Assert.Single(recursos, r => r.Recurso == recursoB).Pendentes);
     }
 }

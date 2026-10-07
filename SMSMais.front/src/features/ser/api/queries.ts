@@ -21,6 +21,7 @@ import {
   listarRecursosNovaSer,
   obterResumoNotificacoesSer,
   listarTecnicosNotificacoesSer,
+  listarRecursosNotificacoesSer,
   obterVarreduraAutomaticaSer,
   salvarVarreduraAutomaticaSer,
   listarExecucoesSer,
@@ -136,8 +137,10 @@ export function useSalvarCredencialSer() {
 // ---------------------------------------------------------------- notificações
 
 export const notificacaoKeys = {
-  resumo: (tecnicos: string[]) => ['ser', 'notificacoes', 'resumo', tecnicos] as const,
+  resumo: (tecnicos: string[], recursos: string[]) =>
+    ['ser', 'notificacoes', 'resumo', tecnicos, recursos] as const,
   tecnicos: ['ser', 'notificacoes', 'tecnicos'] as const,
+  recursos: ['ser', 'notificacoes', 'recursos'] as const,
   lista: (f: NotificacoesFiltro) => ['ser', 'notificacoes', 'lista', f] as const,
 };
 
@@ -145,11 +148,12 @@ export const notificacaoKeys = {
  * Resumo com polling curto: notificação que chega tarde não serve de notificação. 10s é o
  * suficiente — a varredura que as produz roda de hora em hora, no melhor caso.
  */
-/** Com técnicos marcados, o resumo reconta só o que é deles — abas e situações batem com a lista. */
-export function useResumoNotificacoesSer(tecnicos: string[] = []) {
+/** Com técnicos e/ou recursos marcados, o resumo reconta só o que casa — abas e situações batem
+ * com a lista. */
+export function useResumoNotificacoesSer(tecnicos: string[] = [], recursos: string[] = []) {
   return useQuery({
-    queryKey: notificacaoKeys.resumo(tecnicos),
-    queryFn: () => obterResumoNotificacoesSer(tecnicos),
+    queryKey: notificacaoKeys.resumo(tecnicos, recursos),
+    queryFn: () => obterResumoNotificacoesSer(tecnicos, recursos),
     refetchInterval: 10_000,
   });
 }
@@ -160,6 +164,15 @@ export function useTecnicosNotificacoesSer() {
   return useQuery({
     queryKey: notificacaoKeys.tecnicos,
     queryFn: listarTecnicosNotificacoesSer,
+    refetchInterval: 30_000,
+  });
+}
+
+/** Recursos do filtro, com as pendências de cada um. Polling espaçado como o de técnicos. */
+export function useRecursosNotificacoesSer() {
+  return useQuery({
+    queryKey: notificacaoKeys.recursos,
+    queryFn: listarRecursosNotificacoesSer,
     refetchInterval: 30_000,
   });
 }

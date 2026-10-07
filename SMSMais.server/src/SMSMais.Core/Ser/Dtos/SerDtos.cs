@@ -396,6 +396,10 @@ public sealed record SerNotificacaoFiltroDto
     /// <c>GET notificacoes/tecnicos</c>). Vazio = todos.</summary>
     public List<string>? Tecnicos { get; init; }
 
+    /// <summary>Só solicitações destes recursos (os valores exatos de
+    /// <c>GET notificacoes/recursos</c>). Vazio = todos.</summary>
+    public List<string>? Recursos { get; init; }
+
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;
 }

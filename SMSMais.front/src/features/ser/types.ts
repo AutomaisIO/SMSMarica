@@ -349,6 +349,8 @@ export type NotificacoesFiltro = {
   tipoUltimoEvento?: TipoEventoExterno;
   /** Só solicitações incluídas por estes técnicos (chaves). Vazio = todos. */
   tecnicos?: string[];
+  /** Só solicitações destes recursos (valores de GET notificacoes/recursos). Vazio = todos. */
+  recursos?: string[];
   pagina?: number;
   tamanho?: number;
 };

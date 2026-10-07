@@ -17,6 +17,7 @@ namespace SMSMais.Core.Identidade.Dtos;
 /// <param name="NotificacoesSerTecnicos">Técnicos reguladores (chave = nome normalizado de quem incluiu a solicitação) marcados no filtro das Notificações do SER. Salvo no usuário: quem filtra "o que é meu" não quer refazer a seleção a cada login. Lista vazia = todos.</param>
 /// <param name="NotificacoesSernitTecnicos">O mesmo para as Notificações do SERNIT — separado do SER porque os nomes e as filas são de sistemas diferentes.</param>
 /// <param name="NotificacoesEsusSgTecnicos">O mesmo para as Notificações do ESUS de São Gonçalo (técnico = quem incluiu na fila do ESUS).</param>
+/// <param name="NotificacoesSerRecursos">Recursos (procedimento/especialidade) marcados no filtro por recurso das Notificações do SER. Salvo no usuário, como o filtro por técnico: cada um configura a própria tela. Lista vazia = todos.</param>
 public sealed record PreferenciasUiDto(
     Dictionary<string, string>? MenuDefaults,
     int? AlturaComposerChat = null,
@@ -29,4 +30,5 @@ public sealed record PreferenciasUiDto(
     bool? BipChatSilenciado = null,
     List<string>? NotificacoesSerTecnicos = null,
     List<string>? NotificacoesSernitTecnicos = null,
-    List<string>? NotificacoesEsusSgTecnicos = null);
+    List<string>? NotificacoesEsusSgTecnicos = null,
+    List<string>? NotificacoesSerRecursos = null);

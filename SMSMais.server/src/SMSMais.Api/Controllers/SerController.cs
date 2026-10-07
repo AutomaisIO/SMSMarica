@@ -195,8 +195,9 @@ public sealed class SerNotificacaoController(ISerNotificacaoService notificacoes
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
     [ProducesResponseType<SerNotificacaoResumoDto>(StatusCodes.Status200OK)]
     public Task<SerNotificacaoResumoDto> Resumo(
-        [FromQuery] List<string>? tecnicos, CancellationToken cancellationToken) =>
-        notificacoes.ResumoAsync(tecnicos, cancellationToken);
+        [FromQuery] List<string>? tecnicos, [FromQuery] List<string>? recursos,
+        CancellationToken cancellationToken) =>
+        notificacoes.ResumoAsync(tecnicos, recursos, cancellationToken);
 
     /// <summary>Técnicos reguladores (quem incluiu a solicitação) com as pendências de cada um —
     /// as opções do filtro por técnico.</summary>
@@ -205,6 +206,14 @@ public sealed class SerNotificacaoController(ISerNotificacaoService notificacoes
     [ProducesResponseType<IReadOnlyList<TecnicoNotificacaoDto>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<TecnicoNotificacaoDto>> Tecnicos(CancellationToken cancellationToken) =>
         notificacoes.TecnicosAsync(cancellationToken);
+
+    /// <summary>Recursos (procedimento/especialidade) com notificação pendente, com a contagem de
+    /// cada um — as opções do filtro por recurso.</summary>
+    [HttpGet("recursos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<RecursoNotificacaoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<RecursoNotificacaoDto>> Recursos(CancellationToken cancellationToken) =>
+        notificacoes.RecursosAsync(cancellationToken);
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]

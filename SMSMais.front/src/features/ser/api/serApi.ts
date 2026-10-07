@@ -1,5 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type { TecnicoNotificacao } from '@/shared/regulacao/tecnicos';
+import type { RecursoNotificacao } from '@/shared/regulacao/recursos';
 import type {
   BuscaSerFiltro,
   ConsultaDiretaFiltro,
@@ -103,9 +104,11 @@ export async function historicoDiretoSer(
 // ---------------------------------------------------------------- notificações
 
 // `indexes: null` manda a lista como `tecnicos=A&tecnicos=B` — o formato que o ASP.NET liga.
-export async function obterResumoNotificacoesSer(tecnicos: string[]): Promise<NotificacoesResumo> {
+export async function obterResumoNotificacoesSer(
+  tecnicos: string[], recursos: string[],
+): Promise<NotificacoesResumo> {
   const { data } = await http.get<NotificacoesResumo>('/regulacao/ser/notificacoes/resumo', {
-    params: { tecnicos },
+    params: { tecnicos, recursos },
     paramsSerializer: { indexes: null },
   });
   return data;
@@ -121,6 +124,11 @@ export async function listarNotificacoesSer(filtro: NotificacoesFiltro): Promise
 
 export async function listarTecnicosNotificacoesSer(): Promise<TecnicoNotificacao[]> {
   const { data } = await http.get<TecnicoNotificacao[]>('/regulacao/ser/notificacoes/tecnicos');
+  return data;
+}
+
+export async function listarRecursosNotificacoesSer(): Promise<RecursoNotificacao[]> {
+  const { data } = await http.get<RecursoNotificacao[]>('/regulacao/ser/notificacoes/recursos');
   return data;
 }
 

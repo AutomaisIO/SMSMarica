@@ -40,6 +40,8 @@ export type PreferenciasUi = {
   notificacoesSernitTecnicos?: string[];
   /** Técnicos marcados no filtro das Notificações do ESUS de São Gonçalo (quem incluiu na fila). */
   notificacoesEsusSgTecnicos?: string[];
+  /** Recursos (procedimento/especialidade) marcados no filtro por recurso das Notificações do SER. Vazio = todos. */
+  notificacoesSerRecursos?: string[];
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -57,6 +59,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     notificacoesSerTecnicos: data?.notificacoesSerTecnicos ?? undefined,
     notificacoesSernitTecnicos: data?.notificacoesSernitTecnicos ?? undefined,
     notificacoesEsusSgTecnicos: data?.notificacoesEsusSgTecnicos ?? undefined,
+    notificacoesSerRecursos: data?.notificacoesSerRecursos ?? undefined,
   };
 }
 

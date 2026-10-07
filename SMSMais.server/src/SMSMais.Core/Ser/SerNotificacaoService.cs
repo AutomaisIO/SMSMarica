@@ -24,14 +24,19 @@ namespace SMSMais.Core.Ser;
 public interface ISerNotificacaoService
 {
     /// <summary>Contadores do que está por ler, quebrados por tipo de recurso e situação —
-    /// alimenta as abas (Consulta/Exame) e os números por situação. Com <paramref name="tecnicos"/>,
-    /// conta só o que é deles — o contador tem de bater com a lista filtrada.</summary>
+    /// alimenta as abas (Consulta/Exame) e os números por situação. Com <paramref name="tecnicos"/>
+    /// e/ou <paramref name="recursos"/>, conta só o que casa — o contador tem de bater com a lista
+    /// filtrada.</summary>
     Task<SerNotificacaoResumoDto> ResumoAsync(
-        IReadOnlyList<string>? tecnicos, CancellationToken cancellationToken);
+        IReadOnlyList<string>? tecnicos, IReadOnlyList<string>? recursos, CancellationToken cancellationToken);
 
     /// <summary>Todos os técnicos que já incluíram solicitação no SER, com quantas notificações
     /// pendentes cada um tem — alimenta o filtro por técnico.</summary>
     Task<IReadOnlyList<TecnicoNotificacaoDto>> TecnicosAsync(CancellationToken cancellationToken);
+
+    /// <summary>Os recursos com notificação pendente agora, com a contagem de cada um — alimenta o
+    /// filtro por recurso.</summary>
+    Task<IReadOnlyList<RecursoNotificacaoDto>> RecursosAsync(CancellationToken cancellationToken);
 
     Task<SerNotificacaoPaginaDto> ListarAsync(
         SerNotificacaoFiltroDto filtro, CancellationToken cancellationToken);
@@ -58,11 +63,11 @@ public sealed class SerNotificacaoService(
     private const int TamanhoMaximo = 1000;
 
     public async Task<SerNotificacaoResumoDto> ResumoAsync(
-        IReadOnlyList<string>? tecnicos, CancellationToken cancellationToken)
+        IReadOnlyList<string>? tecnicos, IReadOnlyList<string>? recursos, CancellationToken cancellationToken)
     {
         // Agrupa no banco: a fila passa de 30 mil e trazer tudo para contar em memória seria
         // desperdício num endpoint que a tela chama a cada poucos segundos.
-        var linhas = await FiltrarTecnicos(PendentesQuery(), tecnicos)
+        var linhas = await FiltrarRecursos(FiltrarTecnicos(PendentesQuery(), tecnicos), recursos)
             .GroupBy(x => new { x.Solicitacao.Tipo, x.Gatilho.SituacaoAtual })
             .Select(g => new
             {
@@ -100,10 +105,37 @@ public sealed class SerNotificacaoService(
         return TecnicoInclusao.ComPendentes(nomes, pendentes.Select(p => (p.Tecnico, p.Quantidade)));
     }
 
+    public async Task<IReadOnlyList<RecursoNotificacaoDto>> RecursosAsync(
+        CancellationToken cancellationToken)
+    {
+        // Catálogo completo: TODO recurso já visto (não só os com pendência), para quem monta a
+        // própria tela poder marcar um que ainda não apareceu na fila. O número é a pendência de
+        // agora — 0 inclusive.
+        var catalogo = await db.SerSolicitacoes
+            .Where(s => s.ExcluidoEm == null && s.Recurso != null && s.Recurso != "")
+            .GroupBy(s => new { s.Recurso, s.Tipo })
+            .Select(g => new { g.Key.Recurso, g.Key.Tipo })
+            .ToListAsync(cancellationToken);
+
+        var pendentes = await PendentesQuery()
+            .Where(x => x.Solicitacao.Recurso != null && x.Solicitacao.Recurso != "")
+            .GroupBy(x => x.Solicitacao.Recurso)
+            .Select(g => new { Recurso = g.Key, Quantidade = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var contagem = pendentes.ToDictionary(p => p.Recurso!, p => p.Quantidade);
+        // Mesmo recurso em tipos diferentes é raro; deduplica pelo nome mantendo o primeiro tipo.
+        return [.. catalogo
+            .GroupBy(c => c.Recurso!)
+            .OrderBy(g => g.Key, StringComparer.InvariantCulture)
+            .Select(g => new RecursoNotificacaoDto(
+                g.Key, g.First().Tipo.ToString(), contagem.GetValueOrDefault(g.Key)))];
+    }
+
     public async Task<SerNotificacaoPaginaDto> ListarAsync(
         SerNotificacaoFiltroDto filtro, CancellationToken cancellationToken)
     {
-        var consulta = FiltrarTecnicos(PendentesQuery(), filtro.Tecnicos);
+        var consulta = FiltrarRecursos(FiltrarTecnicos(PendentesQuery(), filtro.Tecnicos), filtro.Recursos);
 
         if (filtro.Tipo is { } tipo) consulta = consulta.Where(x => x.Solicitacao.Tipo == tipo);
         if (filtro.Situacao is { } sit) consulta = consulta.Where(x => x.Gatilho.SituacaoAtual == sit);
@@ -257,6 +289,15 @@ public sealed class SerNotificacaoService(
         var nomes = chaves.Where(c => c != TecnicoInclusao.SemTecnico).ToList();
         return consulta.Where(x =>
             (x.Tecnico == null && incluiSemTecnico) || (x.Tecnico != null && nomes.Contains(x.Tecnico)));
+    }
+
+    private static IQueryable<GatilhoComSolicitacao> FiltrarRecursos(
+        IQueryable<GatilhoComSolicitacao> consulta, IEnumerable<string>? recursos)
+    {
+        var alvos = RecursoInclusao.Normalizar(recursos);
+        if (alvos.Count == 0) return consulta;
+        var lista = alvos.ToList();
+        return consulta.Where(x => x.Solicitacao.Recurso != null && lista.Contains(x.Solicitacao.Recurso));
     }
 
 
