@@ -992,6 +992,8 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(60);
         });
         services.AddSingleton<Armazenamento.IArmazenamentoAudioTemporario, Armazenamento.ArmazenamentoAudioTemporario>();
+        // Imagem/PDF que o operador manda ao Agente IA: baixado e salvo em /tmp para o motor ler.
+        services.AddSingleton<Armazenamento.IArmazenamentoArquivoAgente, Armazenamento.ArmazenamentoArquivoAgente>();
         services.AddSingleton<Notificacoes.WhatsApp.Transcricao.SinalTranscricaoAudio>();
         services.AddScoped<Notificacoes.WhatsApp.Transcricao.IAudioTranscricaoConversaService, Notificacoes.WhatsApp.Transcricao.AudioTranscricaoConversaService>();
         services.AddHostedService<Notificacoes.WhatsApp.Transcricao.TranscricaoAudioWorker>();

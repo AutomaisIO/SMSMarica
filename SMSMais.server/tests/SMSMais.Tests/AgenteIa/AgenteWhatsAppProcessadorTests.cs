@@ -7,6 +7,7 @@ using SMSMais.Core.AgenteIa.WhatsApp;
 using SMSMais.Core.Alertas;
 using SMSMais.Core.Armazenamento;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Conversas.Midias;
 using SMSMais.Core.Integracoes.ElevenLabs;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Data;
@@ -29,6 +30,8 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
     private readonly ITelefonesAgenteIa _telefones = Substitute.For<ITelefonesAgenteIa>();
     private readonly IElevenLabsTtsService _tts = Substitute.For<IElevenLabsTtsService>();
     private readonly IArmazenamentoAudioTemporario _audioTemp = Substitute.For<IArmazenamentoAudioTemporario>();
+    private readonly IArmazenamentoArquivoAgente _arquivoAgente = Substitute.For<IArmazenamentoArquivoAgente>();
+    private readonly IZapMidiaCliente _zapMidia = Substitute.For<IZapMidiaCliente>();
     private readonly IConfiguration _config = Substitute.For<IConfiguration>();
     private readonly List<string> _enviados = [];
 
@@ -37,8 +40,8 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
         _whats.EnviarTextoAsync(Arg.Any<string>(), Arg.Do<string>(_enviados.Add), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>())
             .Returns(new EnvioWhatsAppResultado(true, "wamid", null));
-        return new AgenteWhatsAppProcessador(db, _telefones, _motor, _whats, _tts, _audioTemp, _config,
-            NullLogger<AgenteWhatsAppProcessador>.Instance);
+        return new AgenteWhatsAppProcessador(db, _telefones, _motor, _whats, _tts, _audioTemp,
+            _arquivoAgente, _zapMidia, _config, NullLogger<AgenteWhatsAppProcessador>.Instance);
     }
 
     private static string NovoTelefone() => "55219" + Random.Shared.Next(10000000, 99999999);
@@ -185,7 +188,7 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
         var pedido = await PedidoAsync(db, fone, "");
         await Criar(db).ProcessarAsync(default);
 
-        _enviados.Should().ContainSingle().Which.Should().Contain("só leio texto");
+        _enviados.Should().ContainSingle().Which.Should().Contain("imagem e PDF");
         (await RelerAsync(db, pedido.Id)).Situacao.Should().Be(SituacaoPedidoAgente.Concluido);
         await _motor.DidNotReceiveWithAnyArgs().IniciarTurnoAsync(default!, default!, default, default!, default);
     }
