@@ -25,7 +25,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/regulacao/gestao-fila',
   publico: 'Quem avalia e regula as solicitações (agente regulador)',
-  atualizadoEm: '2026-10-05',
+  atualizadoEm: '2026-10-07',
   palavrasChave: [
     'gestão de fila',
     'fila da regulação',
@@ -42,6 +42,14 @@ export const artigoRegulacaoGestaoFila: Artigo = {
     'assumir',
     'aceitar',
     'aceitar e registrar envio',
+    'aceitar e enviar ao SER',
+    'enviar ao SER',
+    'envio automático',
+    'prévia do envio',
+    'senha do SER',
+    'falha no envio',
+    'pedido parecido',
+    'já lancei no SER',
     'registrar envio',
     'número do sistema',
     'devolver',
@@ -235,7 +243,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'decidir',
       titulo: 'Decidir: assumir, aceitar, devolver ou recusar',
       busca:
-        'decidir decisão assumir aceitar e registrar envio número gerado sistema devolver à unidade recusar motivo obrigatório ok já está no sisreg interno nar outro agente assumiu número repetido duplicado resultado modal',
+        'decidir decisão assumir aceitar e enviar ao ser aceitar e registrar envio já lancei no ser número gerado sistema devolver à unidade recusar motivo obrigatório ok já está no sisreg interno nar outro agente assumiu número repetido duplicado resultado modal',
       conteudo: (
         <>
           <Passos
@@ -263,9 +271,14 @@ export const artigoRegulacaoGestaoFila: Artigo = {
           <ListaDefinicoes
             itens={[
               {
+                termo: <BotaoRef>Aceitar e enviar ao SER</BotaoRef>,
+                descricao:
+                  'Quando o destino é o SER, a plataforma faz o lançamento: preenche a tela do SER, anexa os documentos, grava e traz o número. Veja “Enviar ao SER”, logo abaixo.',
+              },
+              {
                 termo: <BotaoRef>Aceitar e registrar envio</BotaoRef>,
                 descricao:
-                  'Aceitar é levar o pedido ao sistema de destino: inclua-o na tela do sistema (use o quadro “Para lançar no sistema”) e informe aqui o número que ele gerou. O pedido passa para “Enviada ao sistema” e o número passa a identificar o caso. Número repetido no mesmo sistema é recusado — é sinal de pedido lançado duas vezes. No Interno e no NAR o sistema é sempre o SISREG.',
+                  'Para os outros destinos (e quando você já lançou no SER pela tela dele — o botão aparece como “Já lancei no SER — registrar número”): inclua o pedido na tela do sistema (use o quadro “Para lançar no sistema”) e informe aqui o número que ele gerou. O pedido passa para “Enviada ao sistema” e o número passa a identificar o caso. Número repetido no mesmo sistema é recusado — é sinal de pedido lançado duas vezes. No Interno e no NAR o sistema é sempre o SISREG.',
               },
               {
                 termo: <BotaoRef variante="outline">Devolver à unidade</BotaoRef>,
@@ -288,6 +301,69 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             Ao devolver ou recusar, a janela do motivo mostra o que aconteceu e só fecha quando você
             clicar em <BotaoRef>Fechar</BotaoRef>. Se der erro, a mensagem aparece ali mesmo e o texto
             digitado continua.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'enviar-ao-ser',
+      titulo: 'Enviar ao SER',
+      busca:
+        'enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado',
+      conteudo: (
+        <>
+          <p>
+            Com o destino SER, o botão <BotaoRef>Aceitar e enviar ao SER</BotaoRef> faz o que antes era
+            feito à mão na tela do SER — como o envio ao SISCAN na anamnese.
+          </p>
+          <Passos
+            itens={[
+              {
+                titulo: 'Entrar com o SEU usuário do SER',
+                detalhe:
+                  'Na primeira vez da sessão, a janela pede o usuário e a senha que você usa no site do SER. É você quem assina o pedido lá — o SER grava o nome de quem fez. A senha não fica guardada: sair do sistema a apaga. Atenção: entrar aqui derruba a sua aba do SER aberta no navegador (o SER só aceita uma sessão por usuário).',
+              },
+              {
+                titulo: 'Prévia — nada é gravado',
+                detalhe:
+                  'A plataforma abre a tela de nova solicitação do SER e preenche tudo: recurso, paciente (pelo CNS ou CPF), médico solicitante, classificação de risco, unidade de origem, hipótese (CID) e os campos do recurso. A janela mostra campo a campo o que vai, os anexos como vão e se o SER já tem pedido parecido para o paciente.',
+              },
+              {
+                titulo: <BotaoRef>Enviar ao SER</BotaoRef>,
+                detalhe:
+                  'Anexa os documentos, grava, relê o pedido no SER para conferir e traz o número. Leva cerca de um minuto — não feche a janela. O resultado aparece nela: o número do SER ou o erro, com o texto que o SER mostrou.',
+              },
+            ]}
+          />
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Anexos',
+                descricao:
+                  'O SER aceita no máximo dois arquivos de até 5 MB. Com até dois, eles vão como estão, com o título que a unidade deu como nome. Com mais, a plataforma junta tudo num PDF só. Arquivo acima de 5 MB é recusado antes de tocar no SER — peça à unidade uma versão menor.',
+              },
+              {
+                termo: 'Pedido parecido no SER',
+                descricao:
+                  'Se o SER já tem pedido do mesmo paciente para o mesmo recurso, a prévia mostra o número e a situação, e só deixa enviar depois que você marcar “Conferi: é outro caso”.',
+              },
+              {
+                termo: 'Erro antes de gravar',
+                descricao:
+                  'Recurso que o SER não oferece mais, CPF/CNS que é de outra pessoa no SER, médico que não está na lista do SER, CID que o recurso não aceita, campo obrigatório vazio: a janela diz qual, e nada foi gravado. Corrija (ou devolva à unidade) e tente de novo.',
+              },
+              {
+                termo: '“Falha no envio”',
+                descricao:
+                  'Se o envio não termina, o pedido fica como “Falha no envio”, com o motivo em amarelo. Quando o motivo diz que o Gravar chegou ao SER, procure o pedido no SER ANTES de qualquer coisa: se ele existe, use “Registrar número (já está no sistema)”; se não existe, “Enviar ao SER de novo”.',
+              },
+            ]}
+          />
+          <Callout tipo="dica" titulo="Por que a plataforma acha tudo pelo nome">
+            O SER renumera a lista de recursos quando a SES acrescenta um — o número de ontem pode ser
+            outra especialidade hoje. Por isso a plataforma escolhe recurso, médico e CID pelo nome, na
+            tela do dia. Se a SES renomear um recurso, o envio para com aviso, em vez de mandar o
+            pedido para o lugar errado.
           </Callout>
         </>
       ),
@@ -347,6 +423,16 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               termo: 'Assumi um pedido por engano.',
               descricao:
                 'Não há como “soltar” um pedido assumido. Mas qualquer agente pode decidir um pedido que está em análise — combine com o colega que vai cuidar dele.',
+            },
+            {
+              termo: 'O envio ao SER pediu minha senha.',
+              descricao:
+                'É de propósito: quem assina o pedido no SER é você. A credencial da Configuração é só de leitura (sincronismo). A senha vale até você sair do sistema.',
+            },
+            {
+              termo: 'Ficou “Falha no envio”. E agora?',
+              descricao:
+                'Leia o motivo em amarelo. Se diz que o Gravar chegou ao SER, procure o pedido no SER primeiro — achou, registre o número; não achou, envie de novo. Se diz “Nada foi gravado no SER”, corrija o que ele aponta e envie de novo.',
             },
             {
               termo: 'Não consigo registrar o envio.',

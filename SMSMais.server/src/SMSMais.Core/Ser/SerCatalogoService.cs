@@ -32,6 +32,18 @@ public interface ISerCatalogoService
     Task<SerCidSugestoesDto?> BuscarCidsAsync(
         TipoRecursoSer tipo, string recurso, bool ambulatorioEstadual, string termo,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Campos dinâmicos da linha do espelho — pelo <b>id nosso</b>, que é o que a origem do
+    /// catálogo canônico guarda. Não passa pelo número do combo (posição, muda quando a SES
+    /// renumera — Regulacao.Catalogo.IdentidadePorNome).
+    /// </summary>
+    Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposDoRecursoAsync(
+        Guid recursoId, CancellationToken cancellationToken);
+
+    /// <summary><see cref="BuscarCidsAsync"/> pelo id nosso da linha do espelho.</summary>
+    Task<SerCidSugestoesDto?> BuscarCidsDoRecursoAsync(
+        Guid recursoId, string termo, CancellationToken cancellationToken);
 }
 
 public sealed class SerCatalogoService(
@@ -46,22 +58,39 @@ public sealed class SerCatalogoService(
             .OrderBy(x => x.Lista).ThenBy(x => x.Ordem)
             .ToListAsync(cancellationToken);
 
-        var recursos = await db.SerCatalogoRecursos
+        var todos = await db.SerCatalogoRecursos
             .AsNoTracking()
+            .Select(x => new
+            {
+                x.Tipo, x.AmbulatorioEstadual, x.Valor, x.Rotulo, x.CamposLidos, x.CidListaId, x.SincronizadoEm,
+            })
+            .ToListAsync(cancellationToken);
+
+        // Só o que estava no combo na ÚLTIMA listagem de cada (tipo, ramo): recurso que a SES
+        // retirou continua no espelho (identidade é o nome, a linha não é reaproveitada) com a data
+        // do dia em que saiu — oferecê-lo, ou contá-lo, seria mostrar o que o SER não tem mais.
+        var porCombo = todos
+            .GroupBy(x => (x.Tipo, x.AmbulatorioEstadual))
+            .Select(g =>
+            {
+                var ultima = g.Max(x => x.SincronizadoEm);
+                return (Ultima: ultima, Linhas: g.Where(x => x.SincronizadoEm >= ultima.AddHours(-1)).ToList());
+            })
+            .ToList();
+        var atuais = porCombo.SelectMany(c => c.Linhas).ToList();
+
+        var recursos = atuais
             .OrderBy(x => x.Tipo).ThenBy(x => x.Rotulo)
             .Select(x => new SerCatalogoRecursoDto(
                 x.Tipo, x.AmbulatorioEstadual, x.Valor, x.Rotulo, x.CamposLidos))
-            .ToListAsync(cancellationToken);
+            .ToList();
 
-        // A data mais ANTIGA, não a mais nova: o catálogo só está tão atualizado quanto o item
-        // mais velho dele. A média ou o máximo esconderiam um pedaço parado há meses.
-        DateTime? sincronizado = recursos.Count == 0
-            ? null
-            : await db.SerCatalogoRecursos.MinAsync(x => (DateTime?)x.SincronizadoEm, cancellationToken);
+        // A cópia do combo mais ATRASADO, não a mais nova: o catálogo só está tão atualizado
+        // quanto o pedaço mais velho dele. É a mesma régua da cópia diária (CatalogosRegulacaoFrescor).
+        DateTime? sincronizado = porCombo.Count == 0 ? null : porCombo.Min(c => c.Ultima);
 
         var cids = await db.SerCatalogoCids.CountAsync(cancellationToken);
-        var semCid = await db.SerCatalogoRecursos
-            .CountAsync(r => r.CidListaId == null, cancellationToken);
+        var semCid = atuais.Count(r => r.CidListaId == null);
 
         return new SerCatalogoFormularioDto(
             Lista(listas, "ambulatorio_estadual"),
@@ -111,7 +140,37 @@ public sealed class SerCatalogoService(
             .Select(r => r.CidListaId)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (listaId is null) return null;
+        return listaId is null ? null : await BuscarNaListaAsync(listaId.Value, termo, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposDoRecursoAsync(
+        Guid recursoId, CancellationToken cancellationToken)
+    {
+        var campos = await db.SerCatalogoCampos
+            .AsNoTracking()
+            .Where(c => c.RecursoId == recursoId)
+            .OrderBy(c => c.Ordem)
+            .ToListAsync(cancellationToken);
+
+        return [.. campos.Select(c => new SerCampoDinamicoDto(
+            c.Numero, c.Campo, c.Rotulo, c.Tipo, c.Obrigatorio, Opcoes(c.OpcoesJson)))];
+    }
+
+    public async Task<SerCidSugestoesDto?> BuscarCidsDoRecursoAsync(
+        Guid recursoId, string termo, CancellationToken cancellationToken)
+    {
+        var listaId = await db.SerCatalogoRecursos
+            .AsNoTracking()
+            .Where(r => r.Id == recursoId)
+            .Select(r => r.CidListaId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return listaId is null ? null : await BuscarNaListaAsync(listaId.Value, termo, cancellationToken);
+    }
+
+    private async Task<SerCidSugestoesDto> BuscarNaListaAsync(
+        Guid listaId, string termo, CancellationToken cancellationToken)
+    {
 
         // A MESMA régua da cópia (SerCidBusca): normalizar de um jeito aqui e de outro lá faria a
         // tela não achar nada, sem erro nenhum.

@@ -42,7 +42,24 @@ public sealed class EsusSgCatalogoSyncService(
 
         var existentes = await db.EsusSgCatalogoRecursos
             .Where(r => r.Tipo == TipoRecursoEsusSg.Exame)
-            .ToDictionaryAsync(r => r.Valor, StringComparer.Ordinal, cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        // Identidade = NOME, como no SER e no SERNIT (Regulacao.Catalogo.IdentidadePorNome). O
+        // `data` do combo fica como atributo.
+        var (porNome, fundidas) = Regulacao.Catalogo.IdentidadePorNome.Consolidar(
+            existentes, r => r.Rotulo, r => r.SincronizadoEm);
+        if (fundidas.Count > 0)
+        {
+            foreach (var (fundida, dona) in fundidas)
+            {
+                await db.RegulacaoProcedimentoOrigens
+                    .Where(o => o.EsusSgCatalogoRecursoId == fundida.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(o => o.EsusSgCatalogoRecursoId, dona.Id), cancellationToken);
+            }
+            db.EsusSgCatalogoRecursos.RemoveRange(fundidas.Select(f => f.Fundida));
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        foreach (var (chave, linha) in porNome) linha.RotuloChave = chave;
 
         var agora = DateTime.UtcNow;
         int novos = 0, alterados = 0, inativados = 0;
@@ -50,15 +67,19 @@ public sealed class EsusSgCatalogoSyncService(
 
         foreach (var r in lidos)
         {
-            vivos.Add(r.Valor);
-            if (!existentes.TryGetValue(r.Valor, out var atual))
+            var rotulo = r.Rotulo.Length <= 300 ? r.Rotulo : r.Rotulo[..300];
+            var chave = Regulacao.Catalogo.IdentidadePorNome.Chave(rotulo);
+            if (chave.Length == 0 || !vivos.Add(chave)) continue;
+
+            if (!porNome.TryGetValue(chave, out var atual))
             {
                 db.EsusSgCatalogoRecursos.Add(new EsusSgCatalogoRecurso
                 {
                     Id = Guid.NewGuid(),
                     Tipo = TipoRecursoEsusSg.Exame,
                     Valor = r.Valor,
-                    Rotulo = r.Rotulo.Length <= 300 ? r.Rotulo : r.Rotulo[..300],
+                    Rotulo = rotulo,
+                    RotuloChave = chave,
                     Ativo = true,
                     SincronizadoEm = agora,
                 });
@@ -66,21 +87,25 @@ public sealed class EsusSgCatalogoSyncService(
                 continue;
             }
 
-            if (atual.Rotulo != r.Rotulo || !atual.Ativo)
+            if (atual.Rotulo != rotulo || atual.Valor != r.Valor || !atual.Ativo)
             {
-                atual.Rotulo = r.Rotulo.Length <= 300 ? r.Rotulo : r.Rotulo[..300];
+                atual.Rotulo = rotulo;
+                atual.Valor = r.Valor;
                 atual.Ativo = true;
                 alterados++;
             }
             atual.SincronizadoEm = agora;
         }
 
-        foreach (var sumido in existentes.Values.Where(e => e.Ativo && !vivos.Contains(e.Valor)))
+        foreach (var sumido in porNome.Where(p => p.Value.Ativo && !vivos.Contains(p.Key)).Select(p => p.Value))
         {
             sumido.Ativo = false;
             sumido.SincronizadoEm = agora;
             inativados++;
         }
+
+        // Fundir também é mudança: a origem canônica tem de seguir a linha que ficou.
+        if (fundidas.Count > 0) alterados += fundidas.Count;
 
         await db.SaveChangesAsync(cancellationToken);
         var resultado = new EsusSgCatalogoSyncResultado(lidos.Count, novos, alterados, inativados);

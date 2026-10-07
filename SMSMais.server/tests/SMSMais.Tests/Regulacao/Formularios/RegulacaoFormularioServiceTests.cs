@@ -53,13 +53,32 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
             CriadoEm = DateTime.UtcNow,
         };
         db.RegulacaoProcedimentos.Add(p);
+
+        // As linhas do espelho existem de verdade: o formulário lê os campos pela linha que a
+        // origem guarda (id nosso), não pelo número do combo.
+        var noSer = new SerCatalogoRecurso
+        {
+            Id = Guid.NewGuid(), Tipo = TipoRecursoSer.Consulta, Valor = sufixo,
+            Rotulo = $"CONSULTA EM CARDIOLOGIA {sufixo}", RotuloChave = $"CONSULTA EM CARDIOLOGIA {sufixo}",
+            SincronizadoEm = DateTime.UtcNow, CamposLidos = true,
+        };
+        var noSernit = new SernitCatalogoRecurso
+        {
+            Id = Guid.NewGuid(), Tipo = TipoRecursoSernit.Consulta, Valor = sufixo,
+            Rotulo = $"Cardiologia {sufixo}", RotuloChave = $"CARDIOLOGIA {sufixo}",
+            SincronizadoEm = DateTime.UtcNow, CamposLidos = true,
+        };
+        db.SerCatalogoRecursos.Add(noSer);
+        db.SernitCatalogoRecursos.Add(noSernit);
+
         db.RegulacaoProcedimentoOrigens.AddRange(
             new RegulacaoProcedimentoOrigem
             {
                 Id = Guid.CreateVersion7(),
                 ProcedimentoId = p.Id,
                 Sistema = SistemaRegulacao.Ser,
-                ChaveExterna = $"1|{sufixo}|NAO_AE",
+                SerCatalogoRecursoId = noSer.Id,
+                ChaveExterna = $"1|NAO_AE|{noSer.Id:N}",
                 RotuloExterno = "CONSULTA EM CARDIOLOGIA",
                 Ramo = "NAO_AE",
                 CriadoEm = DateTime.UtcNow,
@@ -69,7 +88,8 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
                 Id = Guid.CreateVersion7(),
                 ProcedimentoId = p.Id,
                 Sistema = SistemaRegulacao.Sernit,
-                ChaveExterna = $"1|{sufixo}",
+                SernitCatalogoRecursoId = noSernit.Id,
+                ChaveExterna = $"1|{noSernit.Id:N}",
                 RotuloExterno = "Cardiologia",
                 CriadoEm = DateTime.UtcNow,
             });
@@ -96,11 +116,11 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
         var (servico, ser, sernit) = Montar(db);
 
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([
                 CampoSer("1", "form0:d1", "Queixa Principal", "textarea", true),
             ]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([
                 CampoSernit("9", "form0:x9", "Queixa Principal", "textarea", false),
                 CampoSernit("10", "form0:x10", "Peso do Paciente (gramas)", "text", true),
@@ -123,9 +143,9 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var (servico, ser, sernit) = Montar(db);
 
         // Exatamente a divergência medida no spike c: obrigatório no SER, opcional no SERNIT.
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([CampoSer("1", "form0:d1", "Observações", "textarea", true)]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([CampoSernit("9", "form0:x9", "Observações", "textarea", false)]);
 
         var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
@@ -142,13 +162,13 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var (servico, ser, sernit) = Montar(db);
 
         // Opcionais nos DOIS sistemas — e mesmo assim exigidos (pedido do Bernardo, 01/10/2026).
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([
                 CampoSer("1", "form0:d1", "Queixa Principal", "textarea", false),
                 CampoSer("2", "form0:d2", "Resultado de Exames", "textarea", false),
                 CampoSer("3", "form0:d3", "Observações", "textarea", false),
             ]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([
                 CampoSernit("9", "form0:x9", "Observação", "textarea", false),
                 CampoSernit("10", "form0:x10",
@@ -169,9 +189,9 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
         var (servico, ser, sernit) = Montar(db);
 
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([CampoSer("1", "form0:d1", "Observações", "textarea", true)]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([CampoSernit("9", "form0:x9", "Observação", "textarea", false)]);
 
         var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
@@ -189,9 +209,9 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
         var (servico, ser, sernit) = Montar(db);
 
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([CampoSer("1", "form0:d1", "Risco", "select", true, ("1", "Alto"))]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([CampoSernit("9", "form0:x9", "Risco", "textarea", false)]);
 
         var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
@@ -208,9 +228,9 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
         var (servico, ser, sernit) = Montar(db);
 
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([CampoSer("1", "form0:d1", "Queixa Principal", "textarea", true)]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([]);
 
         var a = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
@@ -226,12 +246,12 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
         var (servico, ser, sernit) = Montar(db);
 
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([
                 CampoSer("1", "form0:dinamico_id_3", "Data da coleta", "date", false),
                 CampoSer("2", "form0:dinamico_id_4", "Sintomas", "checkbox", false, ("a", "Dor"), ("b", "Febre")),
             ]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([]);
 
         var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
@@ -255,12 +275,12 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
         var (servico, ser, sernit) = Montar(db);
 
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([
                 CampoSer("1", "form0:d1", "Queixa Principal", "textarea", true),
                 CampoSer("2", "form0:d2", "Resultado de Exames", "textarea", true),
             ]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([]);
 
         var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);
@@ -285,9 +305,9 @@ public class RegulacaoFormularioServiceTests(PostgresFixture fixture)
         var procedimentoId = await ProcedimentoComAsDuasOrigensAsync(db);
         var (servico, ser, sernit) = Montar(db);
 
-        ser.ObterCamposAsync(Arg.Any<TipoRecursoSer>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        ser.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SerCampoDinamicoDto>>([CampoSer("1", "form0:d1", "Queixa Principal", "textarea", true)]);
-        sernit.ObterCamposAsync(Arg.Any<TipoRecursoSernit>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        sernit.ObterCamposDoRecursoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<SernitCampoDinamicoDto>>([]);
 
         var f = await servico.ObterOuGerarAsync(procedimentoId, FluxoRegulacao.Externo, CancellationToken.None);

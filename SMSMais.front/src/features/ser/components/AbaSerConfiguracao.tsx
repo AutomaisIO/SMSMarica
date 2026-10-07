@@ -363,7 +363,7 @@ export function AbaSerConfiguracao() {
                 )}
                 {catalogo.sincronizadoEm && (
                   <span className="text-xs text-slate-500">
-                    {' '}· mais antigo de {dataHora(catalogo.sincronizadoEm)}
+                    {' '}· atualizado em {dataHora(catalogo.sincronizadoEm)}
                   </span>
                 )}
               </>
@@ -401,9 +401,10 @@ export function AbaSerConfiguracao() {
           )}
 
           <p className="w-full text-xs text-slate-500">
-            Roda em segundo plano — pode fechar a tela. Uma ida ao SER por recurso (~10 min na
-            primeira vez). É retomável: recurso já copiado
-            não é pedido de novo, então rodar outra vez completa o que faltou.
+            Atualiza sozinho uma vez por dia (de madrugada, ou na primeira solicitação aberta no
+            dia); o botão é para não esperar. Roda em segundo plano — pode fechar a tela. Uma ida ao
+            SER por recurso (~10 min na primeira vez); depois, só o que for novo. O recurso é
+            reconhecido pelo NOME: quando o SER renumera a lista, nada troca de lugar.
           </p>
         </div>
 

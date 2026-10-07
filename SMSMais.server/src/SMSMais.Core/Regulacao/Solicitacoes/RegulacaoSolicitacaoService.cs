@@ -16,6 +16,7 @@ using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Regulacao;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Core.Regulacao.Solicitacoes;
 
@@ -180,6 +181,30 @@ public interface IRegulacaoSolicitacaoService
         Guid id, RegistrarEnvioRequest req, CancellationToken ct);
 
     /// <summary>
+    /// Confere se a solicitação pode ir ao SER pelo envio automático e devolve o que o envio
+    /// precisa (recurso do espelho, versão do formulário, arquivos). Só lê — não muda estado.
+    /// </summary>
+    Task<DadosEnvioSer> PrepararEnvioSerAsync(Guid id, CancellationToken ct);
+
+    /// <summary>
+    /// Trava o caso em <see cref="StatusRegulacao.EnviandoAoSistema"/> antes de tocar o SER. É a
+    /// trava contra dois agentes (ou dois cliques) criando o mesmo pedido duas vezes.
+    /// </summary>
+    Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct);
+
+    /// <summary>O SER devolveu número: registra, com quem assinou e se a releitura conferiu.</summary>
+    Task<RegulacaoSolicitacaoDetalheDto> ConcluirEnvioAutomaticoAsync(
+        Guid id, ConclusaoEnvioSer conclusao, CancellationToken ct);
+
+    /// <summary>
+    /// O envio não terminou. <paramref name="gravarAcionado"/> diz se o Gravar chegou a ser
+    /// enviado ao SER: aí o pedido PODE ter sido criado lá, e quem tenta de novo precisa conferir
+    /// antes — o motivo diz isso com todas as letras.
+    /// </summary>
+    Task<RegulacaoSolicitacaoDetalheDto> RegistrarFalhaEnvioAsync(
+        Guid id, string motivo, bool gravarAcionado, CancellationToken ct);
+
+    /// <summary>
     /// D-8: a solicitação interna já nasceu no SISREG pelas mãos do solicitante; o "OK" do agente
     /// é ação local, que a tira da fila de triagem.
     /// </summary>
@@ -200,7 +225,9 @@ public interface IRegulacaoSolicitacaoService
 /// <see cref="EscopoUnidade"/>: quem não tem vínculo não enxerga nada, em vez de enxergar tudo.
 /// Ampliação para o agente regulador (módulo 48) é do incremento 3.</para>
 ///
-/// <para><b>Nada aqui escreve em sistema de regulação</b> (D-11). "Enviar para a fila" põe a
+/// <para><b>Nada aqui escreve em sistema de regulação</b> (D-11). O envio automático ao SER
+/// (ADR-0069) mora em <c>Regulacao.EnvioSer</c>; daqui ele só usa as transições de estado
+/// (Enviando → Enviada | Falha no envio). "Enviar para a fila" põe a
 /// solicitação em <see cref="StatusRegulacao.PendenteRegulacao"/> e para; a inclusão no SISREG
 /// pelo próprio solicitante (D-8) depende do spike b e entra no incremento 7.</para>
 /// </summary>
@@ -827,6 +854,174 @@ public sealed class RegulacaoSolicitacaoService(
                 ? "O médico pedido pela unidade foi recusado. Devolva a solicitação para ela escolher outro."
                 : $"Cadastre o médico {pendente?.Nome} no sistema e confirme o cadastro antes de registrar o envio.");
     }
+
+    // ---------------------------------------------------------------- envio automático ao SER
+
+    /// <summary>
+    /// Quanto tempo um envio pode ficar "enviando" antes de ser dado como interrompido (queda do
+    /// servidor no meio). Um envio normal leva menos de um minuto; anexo grande, poucos.
+    /// </summary>
+    private static readonly TimeSpan EnvioInterrompidoApos = TimeSpan.FromMinutes(20);
+
+    public async Task<DadosEnvioSer> PrepararEnvioSerAsync(Guid id, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+        var s = await CarregarNoEscopoAsync(id, ct);
+
+        var podeComecar = s.Status is StatusRegulacao.EmAnalise or StatusRegulacao.FalhaEnvio
+            || (s.Status == StatusRegulacao.EnviandoAoSistema && EnvioInterrompido(s));
+        if (!podeComecar)
+        {
+            throw new ConflitoException(
+                "regulacao.envio_estado",
+                s.Status == StatusRegulacao.EnviandoAoSistema
+                    ? "Esta solicitação já está sendo enviada ao SER. Aguarde o resultado."
+                    : "Só dá para enviar ao SER uma solicitação em análise (ou cujo envio falhou).");
+        }
+        if (s.SistemaDestino != SistemaRegulacao.Ser)
+        {
+            throw new ValidacaoException("sistema", "O destino desta solicitação não é o SER.");
+        }
+        if (s.FormularioVersaoId is not { } versaoId)
+        {
+            throw new ValidacaoException("formulario", "A solicitação não tem formulário preenchido.");
+        }
+
+        await ExigirMedicoResolvidoAsync(s, ct);
+
+        var origem = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
+            .Where(o => o.ProcedimentoId == s.ProcedimentoId && o.Ativo
+                        && o.Sistema == SistemaRegulacao.Ser && o.SerCatalogoRecursoId != null)
+            .Select(o => o.SerCatalogoRecursoId)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new ValidacaoException(
+                "procedimento",
+                "O procedimento desta solicitação não está ligado a um recurso do SER no catálogo. "
+                + "Confira o pareamento em Regulação → Configuração → Catálogo de procedimentos.");
+
+        var recurso = await db.SerCatalogoRecursos.AsNoTracking()
+            .Where(r => r.Id == origem)
+            .Select(r => new { r.Id, r.Tipo, r.AmbulatorioEstadual, r.Rotulo })
+            .FirstAsync(ct);
+
+        var arquivos = await db.RegulacaoExigenciaArquivos.AsNoTracking()
+            .Where(a => a.Exigencia!.SolicitacaoId == id
+                        && a.Exigencia.Situacao != SituacaoExigenciaRegulacao.Dispensada
+                        && a.Situacao == SituacaoArquivoExigencia.Atual)
+            .OrderBy(a => a.Exigencia!.Ordem).ThenBy(a => a.CriadoEm)
+            .Select(a => new ArquivoParaEnvio(a.Id, a.Nome, a.Titulo, a.ContentType, a.Tamanho, a.ChaveArmazenamento))
+            .ToListAsync(ct);
+
+        return new DadosEnvioSer(
+            s.Id, s.NumeroLocal, s.PacienteNome, s.PacienteCpf, s.PacienteCns,
+            versaoId, s.FormularioJson,
+            recurso.Id, recurso.Tipo, recurso.AmbulatorioEstadual, recurso.Rotulo,
+            arquivos);
+    }
+
+    public async Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct)
+    {
+        await escopoRegulacao.ExigirAgenteAsync(ct);
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+
+        // Envio que morreu no meio (deploy, queda): primeiro fecha como falha, com o aviso de
+        // conferir — ele pode ter chegado ao Gravar.
+        if (s.Status == StatusRegulacao.EnviandoAoSistema && EnvioInterrompido(s))
+        {
+            const string motivo = "O envio anterior foi interrompido (o servidor caiu ou reiniciou no meio). "
+                + "Confira no SER se o pedido não foi criado antes de enviar de novo.";
+            await TransitarAsync(s, StatusRegulacao.FalhaEnvio, PapelEventoRegulacao.Sistema, ct,
+                detalhe: new { motivo, interrompido = true });
+            s.StatusMotivo = motivo;
+        }
+
+        await TransitarAsync(s, StatusRegulacao.EnviandoAoSistema, PapelEventoRegulacao.Agente, ct,
+            detalhe: new { automatico = true, sistema = SistemaRegulacao.Ser.ToString() });
+        s.StatusMotivo = null;
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // `xmin`: outro agente (ou o mesmo, num duplo clique) começou o envio primeiro.
+            throw new ConflitoException(
+                "regulacao.envio_concorrente",
+                "Outra pessoa começou a enviar esta solicitação agora. Atualize a tela.");
+        }
+    }
+
+    public async Task<RegulacaoSolicitacaoDetalheDto> ConcluirEnvioAutomaticoAsync(
+        Guid id, ConclusaoEnvioSer conclusao, CancellationToken ct)
+    {
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+
+        s.NumeroExterno = conclusao.NumeroExterno;
+        s.EnviadoEm = DateTime.UtcNow;
+        s.EnviadoPorUsuarioId = usuarioAtual.UsuarioId;
+        s.OperadorExternoLogin = conclusao.OperadorLogin;
+        s.EnvioAssistido = false;
+        s.StatusMotivo = conclusao.Conferido
+            ? null
+            : "O SER devolveu o número, mas a releitura não achou o pedido na hora. Confira no SER.";
+
+        await TransitarAsync(s, StatusRegulacao.EnviadaAoSistema, PapelEventoRegulacao.Sistema, ct,
+            detalhe: new
+            {
+                automatico = true,
+                sistema = SistemaRegulacao.Ser.ToString(),
+                numeroExterno = conclusao.NumeroExterno,
+                operadorSer = conclusao.OperadorLogin,
+                conferido = conclusao.Conferido,
+                mensagemDoSer = conclusao.MensagemDoSer,
+                anexos = conclusao.ArquivosEnviados.Count,
+            });
+
+        if (conclusao.ArquivosEnviados.Count > 0)
+        {
+            var agora = DateTime.UtcNow;
+            var arquivos = await db.RegulacaoExigenciaArquivos
+                .Where(a => conclusao.ArquivosEnviados.Contains(a.Id))
+                .ToListAsync(ct);
+            foreach (var a in arquivos) a.EnviadoAoSistemaEm = agora;
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            throw new ConflitoException(
+                "regulacao.numero_externo_duplicado",
+                $"O SER devolveu o número {conclusao.NumeroExterno}, mas ele já está registrado em outra "
+                + "solicitação. Confira no SER — o pedido pode ter sido lançado duas vezes.");
+        }
+
+        return await ObterAsync(id, ct);
+    }
+
+    public async Task<RegulacaoSolicitacaoDetalheDto> RegistrarFalhaEnvioAsync(
+        Guid id, string motivo, bool gravarAcionado, CancellationToken ct)
+    {
+        var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var texto = gravarAcionado
+            ? "ATENÇÃO: o Gravar chegou a ser enviado ao SER. Confira no SER se o pedido não foi criado "
+              + $"antes de tentar de novo. {motivo}"
+            : $"Nada foi gravado no SER. {motivo}";
+        if (texto.Length > 1000) texto = texto[..1000];
+
+        await TransitarAsync(s, StatusRegulacao.FalhaEnvio, PapelEventoRegulacao.Sistema, ct,
+            detalhe: new { automatico = true, motivo, gravarAcionado });
+        s.StatusMotivo = texto;
+        await db.SaveChangesAsync(ct);
+
+        return await ObterAsync(id, ct);
+    }
+
+    private static bool EnvioInterrompido(RegulacaoSolicitacao s) =>
+        DateTime.UtcNow - (s.AtualizadoEm ?? s.CriadoEm) > EnvioInterrompidoApos;
 
     public async Task<RegulacaoSolicitacaoDetalheDto> ConfirmarOkInternoAsync(
         Guid id, CancellationToken ct)

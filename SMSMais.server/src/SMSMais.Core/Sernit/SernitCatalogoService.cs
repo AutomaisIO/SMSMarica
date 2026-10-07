@@ -22,6 +22,18 @@ public interface ISernitCatalogoService
     /// ainda não tem lista copiada (aí quem chama cai no autocomplete ao vivo).</summary>
     Task<SernitCidSugestoesDto?> BuscarCidsAsync(
         TipoRecursoSernit tipo, string recurso, string termo, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Campos dinâmicos da linha do espelho — pelo <b>id nosso</b>, que é o que a origem do
+    /// catálogo canônico guarda. Não passa pelo número do combo (posição, muda quando a SES
+    /// renumera — Regulacao.Catalogo.IdentidadePorNome).
+    /// </summary>
+    Task<IReadOnlyList<SernitCampoDinamicoDto>> ObterCamposDoRecursoAsync(
+        Guid recursoId, CancellationToken cancellationToken);
+
+    /// <summary><see cref="BuscarCidsAsync"/> pelo id nosso da linha do espelho.</summary>
+    Task<SernitCidSugestoesDto?> BuscarCidsDoRecursoAsync(
+        Guid recursoId, string termo, CancellationToken cancellationToken);
 }
 
 public sealed class SernitCatalogoService(
@@ -37,19 +49,32 @@ public sealed class SernitCatalogoService(
             .OrderBy(x => x.Lista).ThenBy(x => x.Ordem)
             .ToListAsync(cancellationToken);
 
-        var recursos = await db.SernitCatalogoRecursos
+        var todos = await db.SernitCatalogoRecursos
             .AsNoTracking()
-            .OrderBy(x => x.Tipo).ThenBy(x => x.Rotulo)
-            .Select(x => new SernitCatalogoRecursoDto(x.Tipo, x.Valor, x.Rotulo, x.CamposLidos))
+            .Select(x => new { x.Tipo, x.Valor, x.Rotulo, x.CamposLidos, x.CidListaId, x.SincronizadoEm })
             .ToListAsync(cancellationToken);
 
-        // A data mais ANTIGA: o catálogo só está tão atualizado quanto o item mais velho dele.
-        DateTime? sincronizado = recursos.Count == 0
-            ? null
-            : await db.SernitCatalogoRecursos.MinAsync(x => (DateTime?)x.SincronizadoEm, cancellationToken);
+        // Só a última listagem de cada tipo e a data do combo mais atrasado — ver
+        // SerCatalogoService.ObterFormularioAsync.
+        var porCombo = todos
+            .GroupBy(x => x.Tipo)
+            .Select(g =>
+            {
+                var ultima = g.Max(x => x.SincronizadoEm);
+                return (Ultima: ultima, Linhas: g.Where(x => x.SincronizadoEm >= ultima.AddHours(-1)).ToList());
+            })
+            .ToList();
+        var atuais = porCombo.SelectMany(c => c.Linhas).ToList();
+
+        var recursos = atuais
+            .OrderBy(x => x.Tipo).ThenBy(x => x.Rotulo)
+            .Select(x => new SernitCatalogoRecursoDto(x.Tipo, x.Valor, x.Rotulo, x.CamposLidos))
+            .ToList();
+
+        DateTime? sincronizado = porCombo.Count == 0 ? null : porCombo.Min(c => c.Ultima);
 
         var cids = await db.SernitCatalogoCids.CountAsync(cancellationToken);
-        var semCid = await db.SernitCatalogoRecursos.CountAsync(r => r.CidListaId == null, cancellationToken);
+        var semCid = atuais.Count(r => r.CidListaId == null);
 
         return new SernitCatalogoFormularioDto(
             Lista(listas, "classificacao_risco"),
@@ -85,7 +110,37 @@ public sealed class SernitCatalogoService(
             .Select(r => r.CidListaId)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (listaId is null) return null;
+        return listaId is null ? null : await BuscarNaListaAsync(listaId.Value, termo, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<SernitCampoDinamicoDto>> ObterCamposDoRecursoAsync(
+        Guid recursoId, CancellationToken cancellationToken)
+    {
+        var campos = await db.SernitCatalogoCampos
+            .AsNoTracking()
+            .Where(c => c.RecursoId == recursoId)
+            .OrderBy(c => c.Ordem)
+            .ToListAsync(cancellationToken);
+
+        return [.. campos.Select(c => new SernitCampoDinamicoDto(
+            c.Numero, c.Campo, c.Rotulo, c.Tipo, c.Obrigatorio, Opcoes(c.OpcoesJson)))];
+    }
+
+    public async Task<SernitCidSugestoesDto?> BuscarCidsDoRecursoAsync(
+        Guid recursoId, string termo, CancellationToken cancellationToken)
+    {
+        var listaId = await db.SernitCatalogoRecursos
+            .AsNoTracking()
+            .Where(r => r.Id == recursoId)
+            .Select(r => r.CidListaId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return listaId is null ? null : await BuscarNaListaAsync(listaId.Value, termo, cancellationToken);
+    }
+
+    private async Task<SernitCidSugestoesDto> BuscarNaListaAsync(
+        Guid listaId, string termo, CancellationToken cancellationToken)
+    {
 
         var busca = SernitCidBusca.Normalizar(termo);
 

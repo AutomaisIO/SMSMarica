@@ -1105,6 +1105,14 @@ public static class DependencyInjection
         // Notificações de Alta do SER/SERNIT saem sozinhas da fila após 5 dias sem ninguém marcar.
         services.AddHostedService<Regulacao.Notificacoes.LimpezaAltaNotificacaoWorker>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoCatalogoService, Regulacao.Catalogo.RegulacaoCatalogoService>();
+        // Envio automático ao SER (07/10/2026): preenche, anexa e grava com a senha do regulador.
+        services.AddScoped<Regulacao.EnvioSer.IRegulacaoEnvioSerService, Regulacao.EnvioSer.RegulacaoEnvioSerService>();
+        // Cópia diária dos catálogos do SER/SERNIT (07/10/2026): agendador de madrugada + a
+        // primeira solicitação aberta no dia confere também.
+        services.Configure<Regulacao.Catalogo.CatalogoDiarioOpcoes>(
+            configuration.GetSection(Regulacao.Catalogo.CatalogoDiarioOpcoes.Secao));
+        services.AddSingleton<Regulacao.Catalogo.ICatalogosRegulacaoFrescor, Regulacao.Catalogo.CatalogosRegulacaoFrescor>();
+        services.AddHostedService<Regulacao.Catalogo.CatalogosRegulacaoDiarioScheduler>();
         services.AddScoped<Regulacao.Catalogo.IRegulacaoProcedimentoBuscaService, Regulacao.Catalogo.RegulacaoProcedimentoBuscaService>();
         services.AddScoped<Regulacao.Anexos.IArquivoExigenciaStore, Regulacao.Anexos.ArquivoExigenciaStoreSpaces>();
         services.AddScoped<Regulacao.Anexos.IRegulacaoExigenciaService, Regulacao.Anexos.RegulacaoExigenciaService>();

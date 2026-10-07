@@ -483,8 +483,10 @@ public sealed record SerCidDto(string Codigo, string Descricao, string Texto);
 /// A "impressão digital" da lista de CID de um recurso: as contagens das buscas de sondagem,
 /// na forma <c>78|395|90</c>. Recursos com a mesma assinatura compartilham a mesma lista.
 /// </summary>
+/// <para><c>Rotulo</c> é por onde a cópia acha a linha do espelho: o <c>Recurso</c> (o value do
+/// combo) é posição e não identifica nada fora desta conversa com o SER.</para>
 public sealed record SerAssinaturaCidDto(
-    string Tipo, bool AmbulatorioEstadual, string Recurso, string Assinatura);
+    string Tipo, bool AmbulatorioEstadual, string Recurso, string Assinatura, string Rotulo);
 
 /// <summary>Resposta do autocomplete de CID para um termo.</summary>
 public sealed record SerCidSugestoesDto(

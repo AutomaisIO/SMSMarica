@@ -262,8 +262,7 @@ public sealed class RegulacaoCatalogoService(
             .ToList();
         lista.AddRange(ser.Select(r => new OrigemDesejada(
             SistemaRegulacao.Ser,
-            // O ramo entra na chave: o mesmo `valor` existe nos dois com formulários diferentes.
-            $"{(int)r.Tipo}|{r.Valor}|{(r.AmbulatorioEstadual ? "AE" : "NAO_AE")}",
+            ChaveDoEspelho((int)r.Tipo, r.AmbulatorioEstadual ? "AE" : "NAO_AE", r.Id),
             r.Rotulo,
             r.AmbulatorioEstadual ? "AE" : "NAO_AE",
             r.Tipo == TipoRecursoSer.Exame ? TipoProcedimentoRegulacao.Exame : TipoProcedimentoRegulacao.Consulta,
@@ -278,7 +277,7 @@ public sealed class RegulacaoCatalogoService(
             .ToList();
         lista.AddRange(sernit.Select(r => new OrigemDesejada(
             SistemaRegulacao.Sernit,
-            $"{(int)r.Tipo}|{r.Valor}",
+            ChaveDoEspelho((int)r.Tipo, null, r.Id),
             r.Rotulo,
             null,
             r.Tipo == TipoRecursoSernit.Exame ? TipoProcedimentoRegulacao.Exame : TipoProcedimentoRegulacao.Consulta,
@@ -292,7 +291,7 @@ public sealed class RegulacaoCatalogoService(
             .ToListAsync(ct);
         lista.AddRange(esusSg.Select(r => new OrigemDesejada(
             SistemaRegulacao.EsusSg,
-            $"{(int)r.Tipo}|{r.Valor}",
+            ChaveDoEspelho((int)r.Tipo, null, r.Id),
             r.Rotulo,
             null,
             r.Tipo == TipoRecursoEsusSg.Exame ? TipoProcedimentoRegulacao.Exame : TipoProcedimentoRegulacao.Consulta,
@@ -309,6 +308,20 @@ public sealed class RegulacaoCatalogoService(
         }
         return unicas;
     }
+
+    /// <summary>
+    /// A chave externa das origens de SER, SERNIT e ESUS SG: <c>{tipo}|{ramo}|{id da linha do
+    /// espelho}</c> (sem o ramo fora do SER) — <b>a nossa numeração</b>, não a do combo.
+    ///
+    /// <para>Até 07/10/2026 a chave levava o <c>value</c> do combo, que é posição: a SES renumera e
+    /// a chave passava a apontar outro recurso. A linha do espelho agora é identificada pelo nome
+    /// (<see cref="IdentidadePorNome"/>) e não muda quando o combo renumera — então a chave também
+    /// não. Quem precisa conversar com o sistema ao vivo acha o recurso pelo NOME na hora. As
+    /// origens com chave no formato antigo migram sozinhas na primeira passada, por
+    /// <see cref="RealinharPosicionaisAsync"/> (a identidade dele é tipo + ramo + rótulo).</para>
+    /// </summary>
+    public static string ChaveDoEspelho(int tipo, string? ramo, Guid recursoId) =>
+        ramo is null ? $"{tipo}|{recursoId:N}" : $"{tipo}|{ramo}|{recursoId:N}";
 
     /// <summary>
     /// As linhas da última listagem de um combo. A sincronização do espelho carimba com a MESMA

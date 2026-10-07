@@ -25,14 +25,26 @@ public class SerCatalogoRecurso
     /// só existem no "Sim" e ficaram fora da nossa primeira cópia. EXAME lista 83 e 64. E o mesmo
     /// recurso pede formulários diferentes: o 1000 pede 9 campos no "Não" e 3 no "Sim".</para>
     ///
-    /// <para>Por isso o par (tipo, valor) NÃO identifica um recurso — só (tipo, valor, ramo).</para>
+    /// <para>Por isso o nome sozinho NÃO identifica um recurso — só (tipo, ramo, nome).</para>
     /// </summary>
     public bool AmbulatorioEstadual { get; set; }
 
-    /// <summary>O <c>value</c> do combo no SER — é ele que viaja no envio.</summary>
+    /// <summary>
+    /// O <c>value</c> que o combo deu a este recurso na <b>última listagem</b> — <b>posição, não
+    /// identidade</b>. A SES renumera o combo inteiro quando acrescenta um recurso (medido em
+    /// 22/09, 30/09 e 07/10/2026: o 1130 era Buco-Maxilo e virou Odontopediatria). Serve só à
+    /// própria rodada de cópia; quem conversa com o sistema ao vivo acha o recurso pelo NOME na hora.
+    /// </summary>
     public string Valor { get; set; } = string.Empty;
 
     public string Rotulo { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <b>A identidade do recurso</b>: o rótulo normalizado (sem acento, pontuação nem espaço
+    /// duplo, em maiúsculas — <c>ChaveRotulo.Normalizar</c>). Único por tipo e ramo. Nulo só em
+    /// linha antiga que a cópia ainda não consolidou.
+    /// </summary>
+    public string? RotuloChave { get; set; }
 
     /// <summary>Quando a sincronização confirmou este recurso pela última vez. Recurso que para
     /// de aparecer no SER fica com a data velha — é assim que se enxerga o que saiu do ar.</summary>

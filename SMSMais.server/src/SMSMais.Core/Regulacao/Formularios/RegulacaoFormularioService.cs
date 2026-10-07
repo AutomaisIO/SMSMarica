@@ -181,7 +181,7 @@ public sealed class RegulacaoFormularioService(
             .Where(o => o.ProcedimentoId == procedimentoId && o.Ativo
                 && (o.Sistema == SistemaRegulacao.Ser || o.Sistema == SistemaRegulacao.Sernit
                     || o.Sistema == SistemaRegulacao.EsusSg))
-            .Select(o => new { o.Sistema, o.ChaveExterna, o.Ramo })
+            .Select(o => new { o.Sistema, o.SerCatalogoRecursoId, o.SernitCatalogoRecursoId })
             .ToListAsync(ct);
 
         if (origens.Count == 0)
@@ -199,8 +199,8 @@ public sealed class RegulacaoFormularioService(
             // integração é só leitura) — o pedido segue com os campos canônicos, sem bloco dinâmico.
             if (o.Sistema == SistemaRegulacao.EsusSg) continue;
             brutos.AddRange(o.Sistema == SistemaRegulacao.Ser
-                ? await LerCamposSerAsync(o.ChaveExterna, o.Ramo, ct)
-                : await LerCamposSernitAsync(o.ChaveExterna, ct));
+                ? await LerCamposSerAsync(o.SerCatalogoRecursoId, ct)
+                : await LerCamposSernitAsync(o.SernitCatalogoRecursoId, ct));
         }
 
         var sistemasDoBloco = origens.Select(o => o.Sistema)
@@ -342,14 +342,16 @@ public sealed class RegulacaoFormularioService(
         return [.. linhas.Select(l => (l.Valor, l.Rotulo))];
     }
 
-    private async Task<List<CampoBruto>> LerCamposSerAsync(string chaveExterna, string? ramo, CancellationToken ct)
+    /// <summary>
+    /// Pela linha do espelho que a origem guarda (id nosso), nunca pelo número do combo: o número
+    /// é posição e a SES renumera (Regulacao.Catalogo.IdentidadePorNome) — lido pelo número, o
+    /// formulário saía com os campos de outro recurso.
+    /// </summary>
+    private async Task<List<CampoBruto>> LerCamposSerAsync(Guid? recursoId, CancellationToken ct)
     {
-        // Chave externa do SER: "{tipo}|{valor}|{AE|NAO_AE}".
-        var partes = chaveExterna.Split('|');
-        if (partes.Length < 2 || !int.TryParse(partes[0], out var tipo)) return [];
+        if (recursoId is null) return [];
 
-        var campos = await serCatalogo.ObterCamposAsync(
-            (TipoRecursoSer)tipo, partes[1], ramo == "AE", ct);
+        var campos = await serCatalogo.ObterCamposDoRecursoAsync(recursoId.Value, ct);
 
         return [.. campos.Select((c, i) => new CampoBruto(
             Slug(c.Rotulo), c.Rotulo, c.Tipo, c.Obrigatorio,
@@ -357,13 +359,11 @@ public sealed class RegulacaoFormularioService(
             SistemaRegulacao.Ser, c.Campo, i))];
     }
 
-    private async Task<List<CampoBruto>> LerCamposSernitAsync(string chaveExterna, CancellationToken ct)
+    private async Task<List<CampoBruto>> LerCamposSernitAsync(Guid? recursoId, CancellationToken ct)
     {
-        var partes = chaveExterna.Split('|');
-        if (partes.Length < 2 || !int.TryParse(partes[0], out var tipo)) return [];
+        if (recursoId is null) return [];
 
-        var campos = await sernitCatalogo.ObterCamposAsync(
-            (TipoRecursoSernit)tipo, partes[1], ct);
+        var campos = await sernitCatalogo.ObterCamposDoRecursoAsync(recursoId.Value, ct);
 
         return [.. campos.Select((c, i) => new CampoBruto(
             Slug(c.Rotulo), c.Rotulo, c.Tipo, c.Obrigatorio,

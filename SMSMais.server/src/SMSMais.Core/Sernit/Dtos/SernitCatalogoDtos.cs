@@ -26,8 +26,9 @@ public sealed record SernitCidSugestoesDto(
     /// <summary>O SERNIT cortou a lista no teto — há mais CID que casam o termo.</summary>
     bool Truncado);
 
-/// <summary>A "impressão digital" da lista de CID de um recurso (contagens de sondagem).</summary>
-public sealed record SernitAssinaturaCidDto(string Tipo, string Recurso, string Assinatura);
+/// <summary>A "impressão digital" da lista de CID de um recurso (contagens de sondagem).
+/// <c>Rotulo</c> é por onde a cópia acha a linha do espelho — o value do combo é posição.</summary>
+public sealed record SernitAssinaturaCidDto(string Tipo, string Recurso, string Assinatura, string Rotulo);
 
 /// <summary>Bloco fixo do formulário de nova solicitação, lido AO VIVO. Sem "ambulatório estadual".</summary>
 public sealed record SernitFormularioNovaDto(

@@ -89,7 +89,7 @@ public sealed class SernitCatalogoSyncService(
         var cids = 0;
         try
         {
-            cids = await SincronizarCidsAsync(refazerTudo, cancellationToken);
+            cids = await SincronizarCidsAsync(refazerTudo, agora, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -130,9 +130,12 @@ public sealed class SernitCatalogoSyncService(
         return new SernitCatalogoSyncResultadoDto(recursos, campos, listas, falhas, duracao, cids);
     }
 
-    private async Task<int> SincronizarCidsAsync(bool refazerTudo, CancellationToken cancellationToken)
+    private async Task<int> SincronizarCidsAsync(bool refazerTudo, DateTime agora, CancellationToken cancellationToken)
     {
-        var semLista = await db.SernitCatalogoRecursos.CountAsync(r => r.CidListaId == null, cancellationToken);
+        // Só o combo de HOJE conta — ver SerCatalogoSyncService.SincronizarCidsAsync.
+        var desta = agora.AddSeconds(-1);
+        var semLista = await db.SernitCatalogoRecursos
+            .CountAsync(r => r.CidListaId == null && r.SincronizadoEm >= desta, cancellationToken);
         if (!refazerTudo && semLista == 0)
         {
             logger.LogInformation("SERNIT/cid: todos os recursos já têm lista de CID — nada a medir.");
@@ -147,8 +150,10 @@ public sealed class SernitCatalogoSyncService(
                 ? TipoRecursoSernit.Exame
                 : TipoRecursoSernit.Consulta;
 
+            // Pelo NOME: o número é posição (Regulacao.Catalogo.IdentidadePorNome).
+            var chave = Regulacao.Catalogo.IdentidadePorNome.Chave(a.Rotulo);
             var recurso = await db.SernitCatalogoRecursos
-                .FirstOrDefaultAsync(r => r.Tipo == tipo && r.Valor == a.Recurso, cancellationToken);
+                .FirstOrDefaultAsync(r => r.Tipo == tipo && r.RotuloChave == chave, cancellationToken);
             if (recurso is null) continue;
 
             recurso.CidAssinatura = a.Assinatura;
@@ -159,7 +164,8 @@ public sealed class SernitCatalogoSyncService(
         // passada 2: uma cópia por assinatura que ainda não tem lista
         var listas = await db.SernitCatalogoCidListas.ToDictionaryAsync(l => l.Assinatura, cancellationToken);
         var pendentes = await db.SernitCatalogoRecursos
-            .Where(r => r.CidAssinatura != null && (refazerTudo || r.CidListaId == null))
+            .Where(r => r.CidAssinatura != null && r.SincronizadoEm >= desta
+                        && (refazerTudo || r.CidListaId == null))
             .ToListAsync(cancellationToken);
 
         var copiados = 0;
@@ -264,20 +270,44 @@ public sealed class SernitCatalogoSyncService(
     {
         var existentes = await db.SernitCatalogoRecursos
             .Where(x => x.Tipo == tipo)
-            .ToDictionaryAsync(x => x.Valor, cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        foreach (var o in doSernit.DistinctBy(x => x.Valor))
+        // Identidade = NOME, como no SER (SerCatalogoSyncService.SalvarRecursosAsync): o `value`
+        // do combo é posicional.
+        var (porNome, fundidas) = Regulacao.Catalogo.IdentidadePorNome.Consolidar(
+            existentes, r => r.Rotulo, r => r.SincronizadoEm);
+        if (fundidas.Count > 0)
         {
-            if (existentes.TryGetValue(o.Valor, out var atual))
+            foreach (var (fundida, dona) in fundidas)
             {
-                // Mesmo caso do SER: o `value` do combo é posicional. Rótulo diferente no mesmo
-                // número é outro recurso — campos e lista de CID do anterior não servem mais.
-                if (!string.Equals(atual.Rotulo, o.Rotulo, StringComparison.Ordinal))
-                {
-                    atual.CamposLidos = false;
-                    atual.CidListaId = null;
-                    atual.CidAssinatura = null;
-                }
+                await db.RegulacaoProcedimentoOrigens
+                    .Where(o => o.SernitCatalogoRecursoId == fundida.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(o => o.SernitCatalogoRecursoId, dona.Id), cancellationToken);
+            }
+            db.SernitCatalogoRecursos.RemoveRange(fundidas.Select(f => f.Fundida));
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation(
+                "SERNIT/catálogo: {Qtd} linha(s) do mesmo recurso em números antigos fundidas por nome ({Tipo}).",
+                fundidas.Count, tipo);
+        }
+        foreach (var (chave, linha) in porNome) linha.RotuloChave = chave;
+
+        var vistos = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var o in doSernit)
+        {
+            var chave = Regulacao.Catalogo.IdentidadePorNome.Chave(o.Rotulo);
+            if (chave.Length == 0) continue;
+            if (!vistos.Add(chave))
+            {
+                logger.LogWarning(
+                    "SERNIT/catálogo: nome repetido no combo de {Tipo}: {Rotulo} — ficou o primeiro.",
+                    tipo, o.Rotulo);
+                continue;
+            }
+
+            if (porNome.TryGetValue(chave, out var atual))
+            {
+                atual.Valor = o.Valor;
                 atual.Rotulo = o.Rotulo;
                 atual.SincronizadoEm = agora;
                 continue;
@@ -289,13 +319,14 @@ public sealed class SernitCatalogoSyncService(
                 Tipo = tipo,
                 Valor = o.Valor,
                 Rotulo = o.Rotulo,
+                RotuloChave = chave,
                 SincronizadoEm = agora,
                 CamposLidos = false,
             });
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return doSernit.DistinctBy(x => x.Valor).Count();
+        return vistos.Count;
     }
 
     private async Task<int> SalvarCamposAsync(

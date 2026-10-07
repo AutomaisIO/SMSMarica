@@ -55,7 +55,7 @@ public sealed class RegulacaoCidService(
         var origens = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
             .Where(o => o.ProcedimentoId == procedimentoId && o.Ativo
                 && (o.Sistema == SistemaRegulacao.Ser || o.Sistema == SistemaRegulacao.Sernit))
-            .Select(o => new { o.Sistema, o.ChaveExterna, o.Ramo })
+            .Select(o => new { o.Sistema, o.SerCatalogoRecursoId, o.SernitCatalogoRecursoId })
             .ToListAsync(ct);
 
         var origem =
@@ -66,34 +66,46 @@ public sealed class RegulacaoCidService(
                 "procedimento",
                 "Este procedimento não tem recurso no SER nem no SERNIT — não há lista de CID para a hipótese.");
 
-        // Chave externa: SER "{tipo}|{valor}|{AE|NAO_AE}", SERNIT "{tipo}|{valor}".
-        var partes = origem.ChaveExterna.Split('|');
-        if (partes.Length < 2 || !int.TryParse(partes[0], out var tipo))
-        {
-            throw new ValidacaoException(
-                "procedimento",
-                $"A origem {origem.Sistema} deste procedimento está com a chave fora do formato ({origem.ChaveExterna}).");
-        }
-
-        var recurso = partes[1];
+        // Pela linha do espelho (id nosso). Do espelho primeiro; sem lista copiada, ao vivo — e o
+        // ao vivo acha o recurso pelo NOME, porque o número do combo é posição e a SES renumera
+        // (Regulacao.Catalogo.IdentidadePorNome).
         var busca = termo ?? string.Empty;
 
         if (origem.Sistema == SistemaRegulacao.Ser)
         {
-            var tipoSer = (TipoRecursoSer)tipo;
-            var ae = origem.Ramo == "AE";
-            var r = await serCatalogo.BuscarCidsAsync(tipoSer, recurso, ae, busca, ct)
-                    ?? await serAoVivo.SugerirCidsAsync(tipoSer.ToString(), recurso, ae, busca, ct);
+            var id = origem.SerCatalogoRecursoId ?? throw SemEspelho(origem.Sistema);
+            var r = await serCatalogo.BuscarCidsDoRecursoAsync(id, busca, ct);
+            if (r is null)
+            {
+                var rec = await db.SerCatalogoRecursos.AsNoTracking()
+                    .Where(x => x.Id == id)
+                    .Select(x => new { x.Tipo, x.AmbulatorioEstadual, x.Rotulo })
+                    .FirstAsync(ct);
+                r = await serAoVivo.SugerirCidsPorNomeAsync(
+                    rec.Tipo.ToString(), rec.Rotulo, rec.AmbulatorioEstadual, busca, ct);
+            }
             return new CidRegulacaoSugestoesDto(
                 [.. r.Itens.Select(c => new CidRegulacaoDto(c.Codigo, c.Descricao, c.Texto))],
                 r.Truncado, SistemaRegulacao.Ser);
         }
 
-        var tipoSernit = (TipoRecursoSernit)tipo;
-        var s = await sernitCatalogo.BuscarCidsAsync(tipoSernit, recurso, busca, ct)
-                ?? await sernitAoVivo.SugerirCidsAsync(tipoSernit.ToString(), recurso, busca, ct);
+        var idSernit = origem.SernitCatalogoRecursoId ?? throw SemEspelho(origem.Sistema);
+        var s = await sernitCatalogo.BuscarCidsDoRecursoAsync(idSernit, busca, ct);
+        if (s is null)
+        {
+            var rec = await db.SernitCatalogoRecursos.AsNoTracking()
+                .Where(x => x.Id == idSernit)
+                .Select(x => new { x.Tipo, x.Rotulo })
+                .FirstAsync(ct);
+            s = await sernitAoVivo.SugerirCidsPorNomeAsync(rec.Tipo.ToString(), rec.Rotulo, busca, ct);
+        }
         return new CidRegulacaoSugestoesDto(
             [.. s.Itens.Select(c => new CidRegulacaoDto(c.Codigo, c.Descricao, c.Texto))],
             s.Truncado, SistemaRegulacao.Sernit);
     }
+
+    private static ValidacaoException SemEspelho(SistemaRegulacao sistema) => new(
+        "procedimento",
+        $"A origem {sistema} deste procedimento não está ligada ao catálogo copiado do sistema. "
+        + "Rode a sincronização do catálogo e tente de novo.");
 }

@@ -120,7 +120,7 @@ public sealed class SerCatalogoSyncService(
         var cids = 0;
         try
         {
-            cids = await SincronizarCidsAsync(refazerTudo, cancellationToken);
+            cids = await SincronizarCidsAsync(refazerTudo, agora, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -180,10 +180,14 @@ public sealed class SerCatalogoSyncService(
     /// CID-10 inteiro) para 390 deles e 136 para os 32 oncológicos. Por isso a segunda passada
     /// custa duas varreduras, não 422.</para>
     /// </summary>
-    private async Task<int> SincronizarCidsAsync(bool refazerTudo, CancellationToken cancellationToken)
+    private async Task<int> SincronizarCidsAsync(
+        bool refazerTudo, DateTime agora, CancellationToken cancellationToken)
     {
+        // Só o que está no combo HOJE conta: recurso que saiu do ar fica sem lista para sempre, e
+        // contá-lo faria a medição inteira (~3 min de SER) rodar em toda cópia diária.
+        var desta = agora.AddSeconds(-1); // o Postgres guarda em µs; o .NET tem 100 ns
         var semLista = await db.SerCatalogoRecursos
-            .CountAsync(r => r.CidListaId == null, cancellationToken);
+            .CountAsync(r => r.CidListaId == null && r.SincronizadoEm >= desta, cancellationToken);
 
         if (!refazerTudo && semLista == 0)
         {
@@ -200,10 +204,12 @@ public sealed class SerCatalogoSyncService(
                 ? TipoRecursoSer.Exame
                 : TipoRecursoSer.Consulta;
 
+            // Pelo NOME: o número é posição (Regulacao.Catalogo.IdentidadePorNome).
+            var chave = Regulacao.Catalogo.IdentidadePorNome.Chave(a.Rotulo);
             var recurso = await db.SerCatalogoRecursos.FirstOrDefaultAsync(
                 r => r.Tipo == tipo
                      && r.AmbulatorioEstadual == a.AmbulatorioEstadual
-                     && r.Valor == a.Recurso,
+                     && r.RotuloChave == chave,
                 cancellationToken);
 
             // Recurso que o SER lista e a nossa cópia ainda não tem: a fase de recursos roda
@@ -220,8 +226,11 @@ public sealed class SerCatalogoSyncService(
         var listas = await db.SerCatalogoCidListas
             .ToDictionaryAsync(l => l.Assinatura, cancellationToken);
 
+        // Só os do combo de hoje: o `Valor` de quem saiu do ar é o número de outro recurso agora,
+        // e usá-lo como porta de entrada copiaria a lista errada.
         var pendentes = await db.SerCatalogoRecursos
-            .Where(r => r.CidAssinatura != null && (refazerTudo || r.CidListaId == null))
+            .Where(r => r.CidAssinatura != null && r.SincronizadoEm >= desta
+                        && (refazerTudo || r.CidListaId == null))
             .ToListAsync(cancellationToken);
 
         var copiados = 0;
@@ -340,24 +349,52 @@ public sealed class SerCatalogoSyncService(
     {
         var existentes = await db.SerCatalogoRecursos
             .Where(x => x.Tipo == tipo && x.AmbulatorioEstadual == ramo)
-            .ToDictionaryAsync(x => x.Valor, cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        // Mesma razão da lista: recurso repetido no combo derrubaria a cópia inteira.
-        foreach (var o in doSer.DistinctBy(x => x.Valor))
+        // Identidade = NOME (Regulacao.Catalogo.IdentidadePorNome). O `value` do combo é POSIÇÃO:
+        // quando a SES acrescenta um recurso, os números de todos os que vêm depois deslizam
+        // (22/09, 30/09 e 07/10/2026). Casando pelo número, esta linha era reaproveitada pelo
+        // recurso que passou a ocupar a posição — e quem estava ligado a ela trocava de recurso.
+        var (porNome, fundidas) = Regulacao.Catalogo.IdentidadePorNome.Consolidar(
+            existentes, r => r.Rotulo, r => r.SincronizadoEm);
+        if (fundidas.Count > 0)
         {
-            if (existentes.TryGetValue(o.Valor, out var atual))
+            foreach (var (fundida, dona) in fundidas)
             {
-                // O `value` do combo do SER é POSICIONAL, não identidade: quando a SES acrescenta um
-                // recurso, os números de todos os que vêm depois deslizam (medido em 22/09 e 30/09/2026:
-                // 1030 → 1067, +37). Rótulo diferente no mesmo número é OUTRO recurso — os campos e a
-                // lista de CID lidos eram do anterior. Invalidar faz a passada abaixo reler na hora;
-                // manter fazia o formulário de "Genética Pediátrica" sair com os campos de outro recurso.
-                if (!string.Equals(atual.Rotulo, o.Rotulo, StringComparison.Ordinal))
-                {
-                    atual.CamposLidos = false;
-                    atual.CidListaId = null;
-                    atual.CidAssinatura = null;
-                }
+                await db.RegulacaoProcedimentoOrigens
+                    .Where(o => o.SerCatalogoRecursoId == fundida.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(o => o.SerCatalogoRecursoId, dona.Id), cancellationToken);
+            }
+            // Apaga ANTES de carimbar as chaves: o índice único de nome não aceitaria as duas.
+            db.SerCatalogoRecursos.RemoveRange(fundidas.Select(f => f.Fundida));
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation(
+                "SER/catálogo: {Qtd} linha(s) do mesmo recurso em números antigos fundidas por nome "
+                + "({Tipo}, ambulatório estadual={Ramo}).",
+                fundidas.Count, tipo, ramo ? "Sim" : "Não");
+        }
+        foreach (var (chave, linha) in porNome) linha.RotuloChave = chave;
+
+        var vistos = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var o in doSer)
+        {
+            var chave = Regulacao.Catalogo.IdentidadePorNome.Chave(o.Rotulo);
+            if (chave.Length == 0) continue;
+            if (!vistos.Add(chave))
+            {
+                // O próprio SER repete opção (já visto no combo de médicos). Nome repetido no
+                // combo de recursos nunca foi medido; se aparecer, fica a primeira e se registra.
+                logger.LogWarning(
+                    "SER/catálogo: nome repetido no combo de {Tipo}: {Rotulo} — ficou o primeiro.",
+                    tipo, o.Rotulo);
+                continue;
+            }
+
+            if (porNome.TryGetValue(chave, out var atual))
+            {
+                // Mesmo recurso, número de hoje. Campos e lista de CID continuam valendo: são do
+                // recurso, não da posição.
+                atual.Valor = o.Valor;
                 atual.Rotulo = o.Rotulo;
                 atual.SincronizadoEm = agora;
                 continue;
@@ -370,13 +407,14 @@ public sealed class SerCatalogoSyncService(
                 AmbulatorioEstadual = ramo,
                 Valor = o.Valor,
                 Rotulo = o.Rotulo,
+                RotuloChave = chave,
                 SincronizadoEm = agora,
                 CamposLidos = false,
             });
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return doSer.DistinctBy(x => x.Valor).Count();
+        return vistos.Count;
     }
 
     private async Task<int> SalvarCamposAsync(

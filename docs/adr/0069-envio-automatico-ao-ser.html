@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0069 — Envio automático da solicitação ao SER (e catálogo identificado pelo nome)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0069 — Envio automático da solicitação ao SER (e catálogo identificado pelo nome)</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-07 · implementado em 07/10/2026 (não deployado; para teste da equipe) <strong>Relacionado:</strong> <a href="./0052-fila-pre-regulacao-e-agente-regulador.md">ADR-0052</a> (fila de pré-regulação; supersede parcial da D-11) · <a href="./0055-catalogo-canonico-e-embeddings.md">ADR-0055</a> (catálogo canônico) · <a href="./0065-medicos-do-ser-espelho-separado.md">ADR-0065</a> (médico guardado pelo NOME) · <code>docs/ser-criar-solicitacao.md</code> §2.4–2.5 · <code>docs/ser.md</code> §9–10 (escrita assinada pelo operador)</p>
+<h2>Contexto</h2>
+<p>Até aqui, aceitar uma solicitação com destino SER era trabalho manual: o regulador abria o site do SER, redigitava tudo (recurso, paciente, médico, risco, unidade, CID, campos do recurso), anexava os documentos e trazia o número de volta pelo "Registrar envio" (D-11 do ADR-0052: nada nosso escrevia no sistema de regulação). O Bernardo pediu que o envio ao SER funcione <strong>como o envio ao SISCAN na anamnese</strong>: a plataforma preenche tudo, anexa os documentos, grava e trata os erros que o SER devolver.</p>
+<p>O ensaio com uma solicitação real (PR-20, 07/10/2026) mostrou que a tela inteira amarra — e mostrou também que o <code>value</code> do combo de Recurso do SER é <strong>posição</strong>: o 1130 do nosso espelho (Buco-Maxilo) era Odontopediatria no SER naquele dia, e as 422 ligações do catálogo apontavam números que já eram de outro recurso.</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Identidade dos catálogos externos é o NOME.</strong> As linhas de <code>ser_catalogo_recurso</code>,</li>
+</ol>
+<p>   <code>sernit_catalogo_recurso</code> e <code>esussg_catalogo_recurso</code> são identificadas por <code>rotulo_chave</code> (rótulo    normalizado, único por tipo e ramo). O <code>valor</code> vira "o número de hoje". A chave da origem no catálogo    canônico passa a ser <strong>a nossa numeração</strong> (<code>{tipo}|{ramo}|{id da linha do espelho}</code>). Quem conversa    com o sistema ao vivo acha o recurso pelo nome na hora. Renomeação na SES = recurso novo para nós:    falha visível, nunca o pedido no lugar errado.</p>
+<ol>
+<li><strong>Cópia diária</strong> dos catálogos do SER e do SERNIT (agendador a partir das 05h; a primeira solicitação</li>
+</ol>
+<p>   aberta no dia também confere). Frescor, não correção: nada depende do número copiado.</p>
+<ol>
+<li><strong>Envio automático ao SER</strong>, em duas etapas como o SISCAN:</li>
+</ol>
+<ul>
+<li><strong>prévia</strong> (<code>POST /regulacao/solicitacoes/{id}/ser/preparar</code>): percorre a tela de criação do SER</li>
+</ul>
+<p>     inteira e para antes de anexar — devolve campo a campo o que iria, os anexos e os pedidos parecidos      que o SER já tem para o paciente (a "crítica");    - <strong>envio</strong> (<code>POST …/ser/enviar</code>): preenche, anexa, grava, <strong>relê do SER</strong> para provar e registra o      número. Estados: <code>EmAnalise → EnviandoAoSistema → EnviadaAoSistema | FalhaEnvio</code>.</p>
+<ol>
+<li><strong>Quem assina é o regulador</strong>, com o usuário e a senha DELE no SER (sessão em memória amarrada ao</li>
+</ol>
+<p>   login no SMSMais, a mesma do FollowUP — <code>ISerSessaoOperadorStore</code>). A credencial de sincronismo nunca    escreve.</p>
+<ol>
+<li><strong>Erro diz se o Gravar chegou ao SER.</strong> Recusa antes do Gravar ou mensagem de validação no Gravar =</li>
+</ol>
+<p>   "nada foi gravado". Resposta sem número depois do Gravar = o pedido PODE existir lá: a solicitação    fica em <code>FalhaEnvio</code> com o aviso de conferir, e o agente pode registrar o número que achou    (<code>FalhaEnvio → EnviadaAoSistema</code>, nova transição do agente).</p>
+<ol>
+<li><strong>Anexos pela regra que a tela do SER declara:</strong> até 2 arquivos de 5 MB; com mais, a plataforma junta</li>
+</ol>
+<p>   tudo num PDF; acima de 5 MB é recusa antes de tocar o SER.</p>
+<h2>Consequências</h2>
+<ul>
+<li>A D-11 do ADR-0052 deixa de valer <strong>para o SER</strong>: SISREG e SERNIT continuam só pelo "registrar envio".</li>
+<li>O upload de anexo (<code>rich:fileUpload</code>) foi implementado pelo protocolo lido do <code>ui.pack.js</code> do SER, mas</li>
+</ul>
+<p>  <strong>nunca tinha sido exercitado</strong> antes do teste da equipe. A trava é ver o arquivo listado em   <code>form0:anexoList</code> antes do Gravar: se não aparecer, o envio para sem gravar.</p>
+<ul>
+<li>Entrar com a senha do SER na plataforma derruba a aba do SER do mesmo usuário no navegador (o SER só</li>
+</ul>
+<p>  aceita uma sessão por usuário).</p>
+<ul>
+<li>Campo dinâmico de múltipla escolha com mais de uma opção ainda não é enviado automaticamente (o envio</li>
+</ul>
+<p>  para com mensagem).</p>
+</main>
+</body>
+</html>

@@ -240,3 +240,52 @@ export async function usarExameInterno(
   );
   return data;
 }
+
+// ---------------------------------------------------------------- envio automático ao SER
+
+/** O que foi posto em um campo da tela do SER, e se o SER aceitou. */
+export type PassoEnvioSer = { campo: string; valor: string | null; ok: boolean; observacao: string | null };
+
+export type AnexoEnvioSer = { nome: string; tamanho: number; arquivosJuntados: number };
+
+export type PedidoParecidoSer = {
+  idSer: string;
+  recurso: string | null;
+  dataSolicitacao: string | null;
+  situacao: string | null;
+};
+
+/** A prévia: a tela do SER preenchida inteira, sem anexar nem gravar. */
+export type PreparoEnvioSer = {
+  operadorSer: string;
+  recurso: string;
+  passos: PassoEnvioSer[];
+  anexos: AnexoEnvioSer[];
+  possiveisDuplicados: PedidoParecidoSer[];
+};
+
+export type ResultadoEnvioSer = {
+  numeroExterno: string;
+  /** O pedido foi relido do SER com este paciente e este recurso. */
+  conferido: boolean;
+  mensagemDoSer: string | null;
+  operadorSer: string;
+  passos: PassoEnvioSer[];
+  solicitacao: SolicitacaoRegulacao;
+};
+
+export async function prepararEnvioSer(id: string): Promise<PreparoEnvioSer> {
+  const { data } = await http.post<PreparoEnvioSer>(`${base}/${id}/ser/preparar`);
+  return data;
+}
+
+/** ESCREVE no SER, assinado pelo regulador logado no SER. */
+export async function enviarAoSer(
+  id: string,
+  enviarMesmoComPedidoParecido: boolean,
+): Promise<ResultadoEnvioSer> {
+  const { data } = await http.post<ResultadoEnvioSer>(`${base}/${id}/ser/enviar`, {
+    enviarMesmoComPedidoParecido,
+  });
+  return data;
+}

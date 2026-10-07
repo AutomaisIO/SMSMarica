@@ -298,8 +298,11 @@ public class RegulacaoCatalogoSyncTests(PostgresFixture fixture)
             o.Ativo.Should().BeTrue();
         }
 
-        // A chave segue o número de HOJE — é ela que monta o formulário e viaja no envio.
-        depois.Single(o => o.RotuloExterno == rotuloA).ChaveExterna.Should().EndWith($"|{b.Valor}|NAO_AE");
+        // A chave é a NOSSA numeração (a linha do espelho que hoje tem aquele nome), nunca o
+        // número do combo — e a ligação ao espelho segue junto.
+        var origemA = depois.Single(o => o.RotuloExterno == rotuloA);
+        origemA.ChaveExterna.Should().Be($"1|NAO_AE|{b.Id:N}");
+        origemA.SerCatalogoRecursoId.Should().Be(b.Id);
     }
 
     [Fact]

@@ -176,5 +176,14 @@ public class SerCadastroPacienteTests
         public Task<IReadOnlyList<SerCidDto>> CopiarListaCidAsync(
             string tipo, string recurso, bool ambulatorioEstadual, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
+
+        public Task<string> EscolherRecursoPorNomeAsync(
+            string tipo, string rotulo, bool ambulatorioEstadual, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<SerCidSugestoesDto> SugerirCidsPorNomeAsync(
+            string tipo, string rotulo, bool ambulatorioEstadual, string termo,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 }

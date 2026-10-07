@@ -731,4 +731,101 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
         pendentesDoAgente.Should().BeGreaterThan(pendentesDaPonta,
             "o agente enxerga as duas unidades do cenário, a ponta só a dela");
     }
+
+    // ------------------------------------------------------------ envio automático ao SER (07/10/2026)
+
+    [Fact]
+    public async Task Envio_automatico_trava_em_Enviando_e_o_segundo_inicio_e_recusado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+        (await agente.ObterAsync(c.SolicitacaoA, CancellationToken.None)).Status
+            .Should().Be(StatusRegulacao.EnviandoAoSistema);
+
+        // Duplo clique, ou dois agentes: o segundo não pode começar outro envio do mesmo caso.
+        var deNovo = () => agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+        await deNovo.Should().ThrowAsync<ConflitoException>();
+    }
+
+    [Fact]
+    public async Task Envio_automatico_concluido_grava_numero_quem_assinou_e_se_conferiu()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var numero = $"9{Random.Shared.Next(1_000_000, 9_999_999)}";
+        var depois = await agente.ConcluirEnvioAutomaticoAsync(
+            c.SolicitacaoA,
+            new ConclusaoEnvioSer(numero, "regulador.ser", Conferido: true, "Solicitação salva com sucesso", []),
+            CancellationToken.None);
+
+        depois.Status.Should().Be(StatusRegulacao.EnviadaAoSistema);
+        depois.NumeroExterno.Should().Be(numero);
+        depois.EnvioAssistido.Should().BeFalse("o número veio do nosso envio, não da digitação do agente");
+
+        var evento = (await agente.EventosAsync(c.SolicitacaoA, CancellationToken.None))
+            .Last(e => e.Tipo == TipoEventoRegulacao.NumeroExterno);
+        evento.Detalhe!.Value.GetProperty("automatico").GetBoolean().Should().BeTrue();
+        evento.Detalhe!.Value.GetProperty("conferido").GetBoolean().Should().BeTrue();
+        evento.Detalhe!.Value.GetProperty("operadorSer").GetString().Should().Be("regulador.ser");
+    }
+
+    [Fact]
+    public async Task Falha_depois_do_Gravar_avisa_para_conferir_e_aceita_o_numero_digitado()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var falhou = await agente.RegistrarFalhaEnvioAsync(
+            c.SolicitacaoA, "O SER não devolveu o número.", gravarAcionado: true, CancellationToken.None);
+
+        falhou.Status.Should().Be(StatusRegulacao.FalhaEnvio);
+        falhou.StatusMotivo.Should().StartWith("ATENÇÃO: o Gravar chegou a ser enviado ao SER");
+
+        // Conferiu no SER e achou o pedido: registra o número sem passar por "Em análise".
+        var numero = $"SER{Sufixo()}";
+        var depois = await agente.RegistrarEnvioAsync(
+            c.SolicitacaoA, new RegistrarEnvioRequest(SistemaRegulacao.Ser, numero, null), CancellationToken.None);
+        depois.Status.Should().Be(StatusRegulacao.EnviadaAoSistema);
+        depois.NumeroExterno.Should().Be(numero);
+    }
+
+    [Fact]
+    public async Task Falha_antes_do_Gravar_diz_que_nada_foi_gravado_e_permite_reenviar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var falhou = await agente.RegistrarFalhaEnvioAsync(
+            c.SolicitacaoA, "O SER não aceita o CID X99.", gravarAcionado: false, CancellationToken.None);
+        falhou.StatusMotivo.Should().StartWith("Nada foi gravado no SER.");
+
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+        (await agente.ObterAsync(c.SolicitacaoA, CancellationToken.None)).Status
+            .Should().Be(StatusRegulacao.EnviandoAoSistema);
+    }
+
+    [Fact]
+    public async Task Envio_automatico_nao_comeca_em_solicitacao_que_ninguem_assumiu()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+
+        var preparar = () => agente.PrepararEnvioSerAsync(c.SolicitacaoA, CancellationToken.None);
+        await preparar.Should().ThrowAsync<ConflitoException>();
+    }
 }

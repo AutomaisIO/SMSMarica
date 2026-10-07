@@ -20,12 +20,19 @@ internal sealed class SerCatalogoRecursoConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.AmbulatorioEstadual)
             .HasColumnName("ambulatorio_estadual").IsRequired().HasDefaultValue(false);
 
-        // A chave natural do recurso no SER é (tipo, ramo, value do combo) — o RAMO faz parte da
-        // identidade porque o mesmo `value` aparece nos dois com formulários diferentes (ver
-        // SerCatalogoRecurso.AmbulatorioEstadual). Deixar o ramo de fora faria as duas versões
-        // brigarem pela mesma linha, e a última cópia venceria em silêncio.
+        builder.Property(x => x.RotuloChave).HasColumnName("rotulo_chave").HasMaxLength(300);
+
+        // Identidade = NOME (07/10/2026). O `value` do combo é posição — a SES renumera o combo
+        // inteiro quando acrescenta um recurso — e por isso deixou de ser único: dois recursos
+        // podem ter tido o mesmo número em dias diferentes. Parcial porque linha antiga nasce sem
+        // a chave e só a ganha quando a cópia consolida.
+        // O RAMO faz parte da identidade: o mesmo nome aparece nos dois com formulários diferentes
+        // (ver SerCatalogoRecurso.AmbulatorioEstadual).
+        builder.HasIndex(x => new { x.Tipo, x.AmbulatorioEstadual, x.RotuloChave })
+            .IsUnique().HasFilter("rotulo_chave IS NOT NULL")
+            .HasDatabaseName("ux_ser_catalogo_recurso_nome");
         builder.HasIndex(x => new { x.Tipo, x.AmbulatorioEstadual, x.Valor })
-            .IsUnique().HasDatabaseName("ux_ser_catalogo_recurso");
+            .HasDatabaseName("ix_ser_catalogo_recurso_valor");
 
         builder.HasMany(x => x.Campos)
             .WithOne(x => x.Recurso!)

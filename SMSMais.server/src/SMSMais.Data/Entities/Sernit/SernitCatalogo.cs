@@ -3,7 +3,7 @@ namespace SMSMais.Data.Entities.Sernit;
 /// <summary>
 /// Um recurso do catálogo do SERNIT (o que se pode pedir), espelhado na nossa base. Espelho do
 /// <c>SerCatalogoRecurso</c> do SER-RJ, mas <b>sem o ramo "ambulatório estadual"</b> — o SERNIT
-/// não tem esse gate, então a chave natural é só (Tipo, Valor). Medido no lab: CONSULTA 43
+/// não tem esse gate, então a identidade é (Tipo, nome) — ver <see cref="RotuloChave"/>. Medido no lab: CONSULTA 43
 /// recursos em 3 formulários, EXAME 35 em 5.
 /// </summary>
 public class SernitCatalogoRecurso
@@ -12,10 +12,22 @@ public class SernitCatalogoRecurso
 
     public TipoRecursoSernit Tipo { get; set; }
 
-    /// <summary>O <c>value</c> do combo `form0:comboRecurso` no SERNIT — é ele que viaja no envio.</summary>
+    /// <summary>
+    /// O <c>value</c> que o combo deu a este recurso na <b>última listagem</b> — <b>posição, não
+    /// identidade</b>. A SES renumera o combo inteiro quando acrescenta um recurso (medido em
+    /// 22/09, 30/09 e 07/10/2026: o 1130 era Buco-Maxilo e virou Odontopediatria). Serve só à
+    /// própria rodada de cópia; quem conversa com o sistema ao vivo acha o recurso pelo NOME na hora.
+    /// </summary>
     public string Valor { get; set; } = string.Empty;
 
     public string Rotulo { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <b>A identidade do recurso</b>: o rótulo normalizado (sem acento, pontuação nem espaço
+    /// duplo, em maiúsculas — <c>ChaveRotulo.Normalizar</c>). Único por tipo. Nulo só em
+    /// linha antiga que a cópia ainda não consolidou.
+    /// </summary>
+    public string? RotuloChave { get; set; }
 
     public DateTime SincronizadoEm { get; set; }
 

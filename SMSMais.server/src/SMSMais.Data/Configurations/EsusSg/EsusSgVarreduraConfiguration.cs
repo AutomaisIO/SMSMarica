@@ -93,7 +93,16 @@ internal sealed class EsusSgCatalogoRecursoConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.Ativo).HasColumnName("ativo").IsRequired().HasDefaultValue(true);
         builder.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em").IsRequired();
 
+        builder.Property(x => x.RotuloChave).HasColumnName("rotulo_chave").HasMaxLength(300);
+
+        // Identidade = NOME (07/10/2026). O `value` do combo é posição — a SES renumera o combo
+        // inteiro quando acrescenta um recurso — e por isso deixou de ser único: dois recursos
+        // podem ter tido o mesmo número em dias diferentes. Parcial porque linha antiga nasce sem
+        // a chave e só a ganha quando a cópia consolida.
+        builder.HasIndex(x => new { x.Tipo, x.RotuloChave })
+            .IsUnique().HasFilter("rotulo_chave IS NOT NULL")
+            .HasDatabaseName("ux_esussg_catalogo_recurso_nome");
         builder.HasIndex(x => new { x.Tipo, x.Valor })
-            .IsUnique().HasDatabaseName("ux_esussg_catalogo_recurso");
+            .HasDatabaseName("ix_esussg_catalogo_recurso_valor");
     }
 }

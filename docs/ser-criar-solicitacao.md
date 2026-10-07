@@ -373,6 +373,73 @@ Usuário e Ação**.
 > distintas (o `form0` do pedido e o `formAnexar` do arquivo) amarradas pela mesma sessão Seam,
 > e o arquivo sobe *antes* de o pedido ser gravado.
 
+## 2.4 Ensaio ponta a ponta com um pedido real (07/10/2026) — e o recurso que mudou de número
+
+Primeiro ensaio com **uma solicitação de verdade da Regulação** (PR-20, fluxo Externo → SER),
+montando a aba inteira com os dados dela e parando no Gravar (script de ensaio sem caminho de
+gravação + trava que recusa POST com controle "Gravar/Anexar/Confirmar/Sim" ou no `formAnexar`).
+Tudo amarrou: ramo → tipo → recurso + `suggRecurso`, paciente por CNS **e** por CPF (mesmo nome),
+radio do médico + `medicoResp` resolvido **pelo nome** (o SER preencheu a especialidade sozinho),
+unidade de origem "Não" + `CREGMARICA`, CID amarrado com o texto idêntico ao que guardamos, risco
+pelo `value` (`EMERGENCIA`), e os 3 dinâmicos obrigatórios (sem `maxlength`; a queixa tinha 824
+caracteres). O Gravar hoje é `form0:j_id319` (era `j_id313` em agosto — mais uma prova de que id
+JSF não se chumba). O upload não declara `acceptedTypes`; só `maxFileBatchSize: 2`.
+
+**O que o ensaio pegou: o número do Recurso já era outro.** O catálogo sincronizado em 30/09
+dizia `1130` = *CIRURGIA BUCO-MAXILO FACIAL*; em 07/10 o `1130` do ramo "Sim" era
+*ODONTOPEDIATRIA* e o Buco-Maxilo estava em `1134`. Medido no mesmo dia: **as 422 origens SER
+ativas** de `regulacao_procedimento_origem` apontam para um `value` que hoje é outro recurso (421
+ainda existem pelo nome, com outro número). Ou seja: o `value` do Recurso é posicional como o do
+médico (§2.1.2), e **o envio tem de resolver o recurso pelo RÓTULO na hora**, dentro do ramo e do
+tipo — nunca pelo `valor` guardado. Mandar pelo número teria aberto a consulta na especialidade
+errada, sem erro nenhum.
+
+**Corrigido no mesmo dia (07/10/2026) — identidade por NOME nos três espelhos (SER, SERNIT, ESUS SG):**
+
+- A linha do espelho (`ser_catalogo_recurso`, `sernit_catalogo_recurso`, `esussg_catalogo_recurso`)
+  é identificada por `rotulo_chave` (o rótulo normalizado, único por tipo e ramo). O `valor` virou
+  atributo: "o número que o combo deu a este recurso na última listagem". A cópia acha a linha pelo
+  nome e só atualiza o número; linhas antigas do mesmo nome em números velhos são fundidas na
+  primeira cópia (622 → 423 no ensaio com o catálogo de produção), e quem apontava para elas segue a
+  que ficou. Código: `Core/Regulacao/Catalogo/IdentidadePorNome.cs`.
+- A chave da origem no catálogo canônico passou a ser **a nossa numeração**:
+  `{tipo}|{ramo}|{id da linha do espelho}` (sem o ramo fora do SER). As origens antigas migram
+  sozinhas na primeira passada (`RealinharPosicionaisAsync`). No ensaio com produção: 421 das 422
+  origens ativas seguiram o recurso, **nenhuma mudou de procedimento**; a única desligada foi a que a
+  SES de fato tirou do ar.
+- Formulário e lista de CID da Regulação leem o espelho **pelo id da linha**; quando não há lista
+  copiada, o autocomplete ao vivo escolhe o recurso **pelo nome** (`EscolherRecursoPorNomeAsync`,
+  que é o que o envio vai usar). Nome que o SER não oferece mais é recusa com mensagem, nunca um
+  "parecido".
+- **Cópia diária**: agendador a partir das 05h (Brasília) e a primeira solicitação aberta no dia
+  também confere (`CatalogosRegulacaoFrescor`); só enfileira se algum combo não foi copiado hoje, e
+  não insiste antes de 1 h se a cópia falhar. Desliga em `Regulacao:CatalogoDiario:Ativo`. Instância
+  que nunca copiou o SER/SERNIT não passa a bater nele.
+- Na primeira cópia depois do deploy, os campos dinâmicos dos ~422 recursos do SER são relidos
+  (todos estavam marcados "a reler" desde a renumeração de 30/09): ~10 min de SER, uma vez.
+
+## 2.5 Envio automático pela plataforma (07/10/2026) — ADR-0069
+
+`Core/Ser/Criacao/SerCriacaoSolicitacao.cs` é o porte da sonda para o servidor; quem orquestra é
+`Core/Regulacao/EnvioSer/RegulacaoEnvioSerService.cs` (prévia + envio). O que mudou em relação à sonda:
+
+- **A página é mantida como o DOM do navegador**: cada resposta A4J troca os elementos listados em
+  `Ajax-Update-Ids`; no Gravar vai o formulário inteiro como ficou (campo que sumiu não vai; campo que
+  apareceu vai), com as escolhas e o que foi digitado por cima.
+- **Campos dinâmicos pelo rótulo**: o mapa do formulário traduz para os nomes do espelho; a tela de hoje é
+  casada pelo rótulo. Ensaio contra o SER real com nomes antigos de propósito: os 3 campos acharam o lugar.
+- **Paciente conferido pelo nome** depois da pesquisa por CNS/CPF — CNS de outra pessoa é recusa.
+- **Crítica**: antes de gravar, pesquisa por CPF (ou CNS) nas situações Em fila, Pendente e Agendada;
+  pedido do mesmo recurso bloqueia até o regulador confirmar que é outro caso.
+- **Anexo** (§2.3): "Anexar Arquivo" (submit A4J do form0) → POST multipart no `action` do
+  `formAnexar` com `_richfaces_upload_uid`, `formAnexar:upload`, `_richfaces_upload_file_indicator` e
+  `AJAXREQUEST` na query → botão "Anexar" do modal. **Nunca exercitado antes do teste da equipe**; a
+  trava é o nome do arquivo em `form0:anexoList` antes do Gravar.
+- **Gravar** com a região lida do `onclick` do botão (`form0`); número lido da mensagem; **releitura**
+  pelo ID nas situações Em fila/Pendente/Agendada, conferindo paciente e recurso.
+- O botão Gravar em 07/10/2026 era `form0:j_id319`, o Anexar do modal `formAnexar:j_id326` — só para
+  reconhecer em captura; o código acha os dois pelo título/valor.
+
 ## 3. O catálogo medido
 
 **203 recursos** (120 consultas + 83 exames)

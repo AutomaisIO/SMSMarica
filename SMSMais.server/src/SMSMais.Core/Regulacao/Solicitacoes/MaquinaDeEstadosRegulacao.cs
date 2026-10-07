@@ -67,6 +67,10 @@ public static class MaquinaDeEstadosRegulacao
             PapelEventoRegulacao.Agente, TipoEventoRegulacao.EnvioSistema),
         new(StatusRegulacao.FalhaEnvio, StatusRegulacao.EmAnalise,
             PapelEventoRegulacao.Agente, TipoEventoRegulacao.Ajuste),
+        // O envio automático falhou DEPOIS do Gravar e o agente conferiu no sistema que o pedido
+        // foi criado: ele registra o número, como no envio assistido.
+        new(StatusRegulacao.FalhaEnvio, StatusRegulacao.EnviadaAoSistema,
+            PapelEventoRegulacao.Agente, TipoEventoRegulacao.NumeroExterno),
 
         // --- sistema (envio, varreduras, importação) ---
         new(StatusRegulacao.EnviandoAoSistema, StatusRegulacao.EnviadaAoSistema,

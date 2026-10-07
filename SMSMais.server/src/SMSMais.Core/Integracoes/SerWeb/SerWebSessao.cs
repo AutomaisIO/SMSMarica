@@ -64,6 +64,22 @@ public interface ISerWebSessao
         string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
         string? viewState, string operacao, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Sobe UM arquivo pelo <c>rich:fileUpload</c> do SER — <b>ESCREVE</b> (o arquivo vai para o
+    /// servidor do Estado). Protocolo lido do <c>ui.pack.js</c> do próprio SER
+    /// (docs/ser-criar-solicitacao.md §2.3): POST <c>multipart/form-data</c> no <c>action</c> do
+    /// form, com <paramref name="parametrosUrl"/> na query (o RichFaces reescreve o action na hora),
+    /// os campos do form e o arquivo no input <paramref name="campoArquivo"/>.
+    ///
+    /// <para>Implementação padrão recusa: só a sessão real sabe subir arquivo, e os falsos dos
+    /// testes não precisam fingir que sabem.</para>
+    /// </summary>
+    Task<RespostaSer> EnviarArquivoAsync(
+        string htmlPagina, string formId, string campoArquivo, string nomeArquivo, string contentType,
+        byte[] conteudo, IReadOnlyDictionary<string, string> parametrosUrl, string? viewState,
+        string operacao, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Esta sessão do SER não sobe arquivo.");
+
     /// <summary>Autentica uma credencial avulsa (ainda não salva) — usado na tela de configuração.</summary>
     Task<string> AutenticarAvulsoAsync(string usuario, string senha, CancellationToken cancellationToken);
 
@@ -239,6 +255,77 @@ public sealed partial class SerWebSessao(
 
         // `comoNavegador`: escrita não manda campo travado de volta (identidade do paciente).
         return SubmeterAsync(htmlPagina, formId, extras, viewState, comoNavegador: true, cancellationToken);
+    }
+
+    public async Task<RespostaSer> EnviarArquivoAsync(
+        string htmlPagina, string formId, string campoArquivo, string nomeArquivo, string contentType,
+        byte[] conteudo, IReadOnlyDictionary<string, string> parametrosUrl, string? viewState,
+        string operacao, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(operacao))
+        {
+            throw new ArgumentException(
+                "Toda escrita no SER precisa dizer QUAL operação é — o nome vai para o log.",
+                nameof(operacao));
+        }
+
+        logger.LogWarning(
+            "SER: ESCRITA — {Operacao} (arquivo {Nome}, {Bytes} bytes, form {Form}).",
+            operacao, nomeArquivo, conteudo.Length, formId);
+
+        var doc = SerHtmlParser.Documento(htmlPagina);
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var sessao = await GarantirSessaoAsync(cancellationToken);
+
+            var campos = SerHtmlParser.CamposDoForm(doc, formId, comoNavegador: true);
+            campos.Remove(campoArquivo); // vai como parte de arquivo, não como texto vazio
+            campos[formId] = formId;
+            var vs = viewState ?? SerHtmlParser.ViewStateDoForm(doc, formId) ?? sessao.UltimoViewState;
+            if (!string.IsNullOrEmpty(vs)) campos["javax.faces.ViewState"] = vs;
+
+            // Mesma regra de sempre: o destino é o `action` do form, nunca constante (docs/ser.md §3.3).
+            var action = SerHtmlParser.ActionDoForm(doc, formId)
+                ?? throw new ValidacaoException(
+                    "ser.form_sem_action", $"O form '{formId}' da tela do SER veio sem `action`.");
+            var query = string.Join('&', parametrosUrl.Select(p =>
+                $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+            var destino = new Uri(sessao.BaseUri, action + (action.Contains('?') ? "&" : "?") + query);
+
+            using var corpo = new MultipartFormDataContent();
+            foreach (var (nome, valor) in campos) corpo.Add(new StringContent(valor, Encoding.UTF8), nome);
+            var arquivo = new ByteArrayContent(conteudo);
+            arquivo.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+            corpo.Add(arquivo, campoArquivo, nomeArquivo);
+
+            using var requisicao = new HttpRequestMessage(HttpMethod.Post, destino) { Content = corpo };
+            using var resposta = await sessao.Http.SendAsync(requisicao, cancellationToken);
+            var bytes = await resposta.Content.ReadAsByteArrayAsync(cancellationToken);
+
+            if ((int)resposta.StatusCode >= 400)
+            {
+                throw new ValidacaoException(
+                    "ser.upload_recusado",
+                    $"O SER recusou o arquivo {nomeArquivo} (HTTP {(int)resposta.StatusCode}). Nada foi gravado.");
+            }
+
+            var r = new RespostaSer(bytes, resposta.Content.Headers.ContentType?.MediaType, null, null);
+            if (r.EhTexto && EhTelaDeLogin(r.Texto))
+            {
+                Reiniciar();
+                throw new ValidacaoException(
+                    "ser.sessao_expirada", "A sessão do SER caiu durante o envio do arquivo. Nada foi gravado.");
+            }
+            if (r.EhTexto) AbsorverViewState(sessao, r.Texto);
+            return r;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     private async Task<RespostaSer> SubmeterAsync(

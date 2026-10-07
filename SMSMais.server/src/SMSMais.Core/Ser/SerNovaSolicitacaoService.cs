@@ -75,6 +75,31 @@ public interface ISerNovaSolicitacaoService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Acha o recurso no combo <b>pelo NOME</b>, deixa-o escolhido na aba e devolve o <c>value</c>
+    /// que ele tem <b>agora</b>.
+    ///
+    /// <para><b>É por aqui que se conversa com o SER sobre um recurso nosso</b> — nunca pelo número
+    /// guardado. O <c>value</c> do combo é posição: a SES renumera quando acrescenta um recurso, e
+    /// o número da cópia de ontem pode ser outro recurso hoje (07/10/2026: o 1130 do SER era
+    /// Buco-Maxilo no espelho e Odontopediatria no SER). Mandar pelo número abriria o pedido na
+    /// especialidade errada, sem erro nenhum.</para>
+    ///
+    /// <para>Nome que não está no combo (a SES retirou ou renomeou) é recusa com mensagem — nunca
+    /// um "parecido".</para>
+    /// </summary>
+    Task<string> EscolherRecursoPorNomeAsync(
+        string tipo, string rotulo, bool ambulatorioEstadual, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// <see cref="SugerirCidsAsync"/> com o recurso achado pelo NOME
+    /// (<see cref="EscolherRecursoPorNomeAsync"/>). É o caminho da Regulação: o espelho não guarda
+    /// número que valha amanhã.
+    /// </summary>
+    Task<SerCidSugestoesDto> SugerirCidsPorNomeAsync(
+        string tipo, string rotulo, bool ambulatorioEstadual, string termo,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// A lista INTEIRA de CID daquele recurso, varrida por prefixo de código.
     ///
     /// <para>O SER corta cada busca em 500 linhas, então não existe "traga tudo": a lista é
@@ -228,6 +253,57 @@ public sealed partial class SerNovaSolicitacaoService(
         return saida;
     }
 
+    public async Task<string> EscolherRecursoPorNomeAsync(
+        string tipo, string rotulo, bool ambulatorioEstadual, CancellationToken cancellationToken)
+    {
+        var nome = Regulacao.Catalogo.IdentidadePorNome.Chave(rotulo);
+        if (nome.Length == 0)
+        {
+            throw new ValidacaoException("ser.recurso_obrigatorio", "Informe o recurso do SER pelo nome.");
+        }
+
+        var html = await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
+        var achados = Regulacao.Catalogo.IdentidadePorNome.Achar(
+            Combo(SerHtmlParser.Documento(html), CampoRecurso), o => o.Rotulo, rotulo);
+
+        if (achados.Count != 1)
+        {
+            throw new ValidacaoException(
+                "ser.recurso_fora_do_combo",
+                achados.Count == 0
+                    ? $"O SER não oferece mais o recurso \"{rotulo}\" ({TipoParaOSer(tipo)}, ambulatório "
+                      + $"estadual: {(ambulatorioEstadual ? "Sim" : "Não")}). A SES pode tê-lo retirado ou "
+                      + "renomeado — confira o pareamento do procedimento no catálogo da Regulação."
+                    : $"O SER tem {achados.Count} recursos com o nome \"{rotulo}\" — não dá para escolher "
+                      + "um sem risco de errar.");
+        }
+
+        await TrocarAsync(CampoRecurso, achados[0].Valor, cancellationToken);
+        return achados[0].Valor;
+    }
+
+    public async Task<SerCidSugestoesDto> SugerirCidsPorNomeAsync(
+        string tipo, string rotulo, bool ambulatorioEstadual, string termo,
+        CancellationToken cancellationToken)
+    {
+        var busca = (termo ?? string.Empty).Trim();
+
+        // Cache pelo NOME, pela mesma razão de SugerirCidsAsync (a sessão do SER é única e
+        // serializada) — e porque a chave pelo número envelheceria na próxima renumeração.
+        var chave = $"ser:cid:nome:{(ambulatorioEstadual ? "amb" : "nao")}:{TipoParaOSer(tipo)}"
+                    + $":{Regulacao.Catalogo.IdentidadePorNome.Chave(rotulo)}:{busca.ToLowerInvariant()}";
+        if (cache.TryGetValue(chave, out SerCidSugestoesDto? guardado) && guardado is not null)
+        {
+            return guardado;
+        }
+
+        await EscolherRecursoPorNomeAsync(tipo, rotulo, ambulatorioEstadual, cancellationToken);
+        var itens = await BuscarNoSerAsync(CaixaDaHipotese(), busca, cancellationToken);
+        var saida = new SerCidSugestoesDto(itens, itens.Count >= TetoDeSugestoes);
+        cache.Set(chave, saida, TimeSpan.FromHours(6));
+        return saida;
+    }
+
     public async IAsyncEnumerable<SerAssinaturaCidDto> MedirAssinaturasCidAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -261,7 +337,7 @@ public sealed partial class SerNovaSolicitacaoService(
                     }
 
                     yield return new SerAssinaturaCidDto(
-                        tipo, ramo, r.Valor, string.Join(SeparadorAssinatura, contagens));
+                        tipo, ramo, r.Valor, string.Join(SeparadorAssinatura, contagens), r.Rotulo);
                 }
             }
         }

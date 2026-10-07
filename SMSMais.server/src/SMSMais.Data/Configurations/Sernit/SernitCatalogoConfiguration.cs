@@ -20,9 +20,17 @@ internal sealed class SernitCatalogoRecursoConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.CidListaId).HasColumnName("cid_lista_id");
         builder.Property(x => x.CidAssinatura).HasColumnName("cid_assinatura").HasMaxLength(60);
 
-        // Chave natural: (tipo, value do combo). O SERNIT não tem o ramo "ambulatório estadual".
+        builder.Property(x => x.RotuloChave).HasColumnName("rotulo_chave").HasMaxLength(300);
+
+        // Identidade = NOME (07/10/2026). O `value` do combo é posição — a SES renumera o combo
+        // inteiro quando acrescenta um recurso — e por isso deixou de ser único: dois recursos
+        // podem ter tido o mesmo número em dias diferentes. Parcial porque linha antiga nasce sem
+        // a chave e só a ganha quando a cópia consolida.
+        builder.HasIndex(x => new { x.Tipo, x.RotuloChave })
+            .IsUnique().HasFilter("rotulo_chave IS NOT NULL")
+            .HasDatabaseName("ux_sernit_catalogo_recurso_nome");
         builder.HasIndex(x => new { x.Tipo, x.Valor })
-            .IsUnique().HasDatabaseName("ux_sernit_catalogo_recurso");
+            .HasDatabaseName("ix_sernit_catalogo_recurso_valor");
 
         builder.HasMany(x => x.Campos)
             .WithOne(x => x.Recurso!)

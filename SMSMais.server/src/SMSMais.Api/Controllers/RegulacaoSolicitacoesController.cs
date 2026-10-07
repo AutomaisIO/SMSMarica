@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 
 using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Anexos;
+using SMSMais.Core.Regulacao.Catalogo;
+using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Core.Regulacao.Solicitacoes;
@@ -12,7 +14,8 @@ namespace SMSMais.Api.Controllers;
 /// <summary>
 /// Abertura e edição da solicitação pela unidade solicitante (planos 02 e 04).
 ///
-/// <para><b>Nenhum endpoint aqui escreve em SISREG, SER ou SERNIT</b> (D-11). "Enviar para a
+/// <para><b>Só <c>ser/enviar</c> escreve fora daqui</b> — no SER, assinado pelo regulador
+/// (ADR-0069, que supersede a D-11 para o SER). SISREG e SERNIT seguem pelo "registrar envio". "Enviar para a
 /// fila" põe a solicitação em pré-regulação e para; o envio ao sistema é do agente regulador
 /// (módulo 48) e entra nos incrementos 3, 5 e 7.</para>
 /// </summary>
@@ -21,7 +24,9 @@ namespace SMSMais.Api.Controllers;
 public sealed class RegulacaoSolicitacoesController(
     IRegulacaoSolicitacaoService servico,
     IRegulacaoFormularioService formularios,
-    IRegulacaoElegibilidadeService elegibilidade) : ControllerBase
+    IRegulacaoElegibilidadeService elegibilidade,
+    ICatalogosRegulacaoFrescor catalogos,
+    IRegulacaoEnvioSerService envioSer) : ControllerBase
 {
     /// <summary>
     /// A fila. Por padrão é a da unidade escolhida no topo — para todos, agente inclusive. Com
@@ -63,8 +68,13 @@ public sealed class RegulacaoSolicitacoesController(
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
     [ProducesResponseType<RegulacaoSolicitacaoDetalheDto>(StatusCodes.Status200OK)]
-    public Task<RegulacaoSolicitacaoDetalheDto> Obter(Guid id, CancellationToken cancellationToken) =>
-        servico.ObterAsync(id, cancellationToken);
+    public Task<RegulacaoSolicitacaoDetalheDto> Obter(Guid id, CancellationToken cancellationToken)
+    {
+        // A primeira solicitação aberta no dia confere se o catálogo do SER/SERNIT é de hoje.
+        // Não espera nem falha: só enfileira a cópia em segundo plano.
+        catalogos.Cutucar();
+        return servico.ObterAsync(id, cancellationToken);
+    }
 
     [HttpPut("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Edicao)]
@@ -82,8 +92,11 @@ public sealed class RegulacaoSolicitacoesController(
     [ProducesResponseType<RegulacaoFormularioDto>(StatusCodes.Status200OK)]
     public Task<RegulacaoFormularioDto> Formulario(
         [FromQuery] Guid procedimentoId, [FromQuery] FluxoRegulacao fluxo,
-        CancellationToken cancellationToken) =>
-        formularios.ObterOuGerarAsync(procedimentoId, fluxo, cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        catalogos.Cutucar();
+        return formularios.ObterOuGerarAsync(procedimentoId, fluxo, cancellationToken);
+    }
 
     /// <summary>O que ainda falta para a solicitação sair do rascunho. Lista vazia = pode enviar.</summary>
     [HttpGet("{id:guid}/pendencias")]
@@ -141,8 +154,37 @@ public sealed class RegulacaoSolicitacoesController(
     }
 
     /// <summary>
+    /// Prévia do envio ao SER: a plataforma preenche a tela de criação do SER inteira com a
+    /// solicitação — recurso, paciente, médico, risco, unidade, CID, campos do recurso — e para
+    /// ANTES de anexar e gravar. Devolve campo a campo o que iria, os anexos como iriam e os pedidos
+    /// parecidos que o SER já tem para o paciente.
+    ///
+    /// <para>Usa a sessão do SER do próprio regulador; sem ela responde 400 com
+    /// <c>ser.sessao_operador_ausente</c> — o sinal para a tela pedir usuário e senha do SER.</para>
+    /// </summary>
+    [HttpPost("{id:guid}/ser/preparar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<EnvioSerPreparoDto>(StatusCodes.Status200OK)]
+    public Task<EnvioSerPreparoDto> PrepararEnvioSer(Guid id, CancellationToken cancellationToken) =>
+        envioSer.PrepararAsync(id, cancellationToken);
+
+    /// <summary>
+    /// <b>Envia ao SER — ESCREVE no sistema do Estado</b>, assinado pelo regulador logado. Preenche,
+    /// anexa, grava, relê o pedido do SER para provar e registra o número. Pedido parecido já
+    /// existente responde 409 <c>ser.pedido_parecido</c> até o regulador confirmar.
+    /// </summary>
+    [HttpPost("{id:guid}/ser/enviar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<EnvioSerResultadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<EnvioSerResultadoDto> EnviarAoSer(
+        Guid id, [FromBody] EnviarAoSerRequest req, CancellationToken cancellationToken) =>
+        envioSer.EnviarAsync(id, req, cancellationToken);
+
+    /// <summary>
     /// Envio assistido: o agente incluiu pela tela do sistema de regulação e digita o número
-    /// aqui. <b>Nada sai daqui para o SISREG/SER/SERNIT</b> — a D-11 continua de pé.
+    /// aqui. <b>Nada sai daqui para o sistema de regulação</b> — é o caminho do SISREG e do SERNIT, e
+    /// do SER quando o regulador já lançou pela tela dele.
     /// </summary>
     [HttpPost("{id:guid}/registrar-envio")]
     [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
