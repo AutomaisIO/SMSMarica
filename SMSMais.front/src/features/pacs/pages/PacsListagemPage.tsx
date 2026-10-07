@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Edit2, FilePlus, FileText, Link2, Loader2, R
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { useDebounce } from '@/shared/hooks/useDebounce';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { Campo } from '@/shared/ui/Campo';
@@ -558,7 +559,10 @@ export function PacsListagemPage() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Exames de imagem</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold text-gray-900">Exames de imagem</h1>
+            <AjudaManual artigo="pacs" />
+          </div>
           <p className="mt-1 text-sm text-gray-600">
             Filtre os exames disponíveis no PACS e abra o visualizador ou o PDF do laudo em uma janela separada.
           </p>

@@ -9,7 +9,7 @@ import {
   type ImagemLista,
 } from '@/features/pacs/components/PacsImagensSidebar';
 import { PacsViewport } from '@/features/pacs/components/PacsViewport';
-import { useAssociacoesPorStudyUIDs } from '@/features/pacs/api/queries';
+import { useAssociacoesPorStudyUIDs, usePreviewSolicitacao } from '@/features/pacs/api/queries';
 import type { Layout } from '@/features/pacs/components/SeletorLayoutGrade';
 import { notificar } from '@/shared/ui/Notificacoes';
 import {
@@ -64,6 +64,12 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
   // listagem. Uma consulta leve; sem vínculo, cai no texto do aparelho.
   const associacao = useAssociacoesPorStudyUIDs(estudo?.studyInstanceUID ? [estudo.studyInstanceUID] : []);
   const tipoDoPedido = associacao.data?.[0]?.tipoExameNome?.trim() || null;
+  // Diagnóstico inicial do pedido (CID-10 do SISREG, ticket #155): a médica lê no cabeçalho para
+  // saber o tipo de laudo, como na anamnese. Vem da ficha do pedido (já resolve a descrição);
+  // sem vínculo ou sem CID, o badge simplesmente não aparece.
+  const pedido = usePreviewSolicitacao(associacao.data?.[0]?.accessionNumber ?? '');
+  const cidCodigo = pedido.data?.cidCodigo?.trim() || null;
+  const cidDescricao = pedido.data?.cidDescricao?.trim() || null;
 
   const [imagens, setImagens] = useState<ImagemLista[]>([]);
   const [layout, setLayout] = useState<Layout>({ linhas: 1, colunas: 1 });
@@ -323,16 +329,29 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
       )}
     >
       <header className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-gray-700 bg-gray-900 px-4 py-2">
-        <div className="min-w-0 truncate text-sm text-gray-300">
+        <div className="flex min-w-0 items-center gap-3 text-sm text-gray-300">
           {estudo ? (
             <>
-              <span className="font-medium text-white">{estudo.patientName || 'Paciente'}</span>
-              <span className="text-gray-500"> · </span>
-              {estudo.patientAge || '—'}/{estudo.patientSex || '—'}
-              <span className="text-gray-500"> · </span>
-              {tipoDoPedido || estudo.studyDescription || estudo.modalidade}
-              <span className="text-gray-500"> · </span>
-              {estudo.studyDateFormatado}
+              <span className="min-w-0 truncate">
+                <span className="font-medium text-white">{estudo.patientName || 'Paciente'}</span>
+                <span className="text-gray-500"> · </span>
+                {estudo.patientAge || '—'}/{estudo.patientSex || '—'}
+                <span className="text-gray-500"> · </span>
+                {tipoDoPedido || estudo.studyDescription || estudo.modalidade}
+                <span className="text-gray-500"> · </span>
+                {estudo.studyDateFormatado}
+              </span>
+              {cidCodigo ? (
+                <span
+                  className="inline-flex min-w-0 max-w-[28rem] shrink items-center rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs text-amber-100 ring-1 ring-inset ring-amber-400/50"
+                  title={`Diagnóstico inicial: CID ${cidCodigo}${cidDescricao ? ` — ${cidDescricao}` : ''}`}
+                >
+                  <span className="truncate">
+                    <span className="font-semibold text-amber-300">CID {cidCodigo}</span>
+                    {cidDescricao ? ` — ${cidDescricao}` : null}
+                  </span>
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="text-gray-500">PACS — Visualizador</span>
