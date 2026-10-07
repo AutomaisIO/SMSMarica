@@ -14,6 +14,12 @@ public class ElevenLabsConfiguracao
     /// <summary>Modelo de transcrição (STT). Padrão: scribe_v2 (scribe_v1 foi depreciado).</summary>
     public string Modelo { get; set; } = "scribe_v2";
 
+    /// <summary>Voz da síntese (TTS) — voice_id do ElevenLabs. Em branco = usa a primeira da conta.</summary>
+    public string? VozId { get; set; }
+
+    /// <summary>Modelo da síntese (TTS). Padrão: eleven_multilingual_v2.</summary>
+    public string ModeloTts { get; set; } = "eleven_multilingual_v2";
+
     /// <summary>Chave da API cifrada. Write-only na API.</summary>
     public string? ApiKeyCifrada { get; set; }
 

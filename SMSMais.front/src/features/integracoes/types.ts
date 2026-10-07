@@ -33,10 +33,12 @@ export type TesteSpacesResultado = {
 export type TfdGoogle = { baseUrl: string; chaveConfigurada: boolean; ativo: boolean };
 export type AtualizarTfdGoogle = { baseUrl: string; apiKey?: string; ativo: boolean };
 
-// ElevenLabs — fala-para-texto (STT) do Agente IA. Chave cifrada, nunca reexibida.
+// ElevenLabs — fala-para-texto (STT) e texto-para-fala (TTS) do Agente IA. Chave cifrada, nunca reexibida.
 export type ElevenLabs = {
   baseUrl: string;
   modelo: string;
+  vozId: string | null;
+  modeloTts: string;
   chaveConfigurada: boolean;
   ativo: boolean;
 };
@@ -44,6 +46,8 @@ export type ElevenLabs = {
 export type AtualizarElevenLabs = {
   baseUrl: string;
   modelo?: string;
+  vozId?: string;
+  modeloTts?: string;
   apiKey?: string;
   ativo: boolean;
 };

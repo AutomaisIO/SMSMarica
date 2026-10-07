@@ -87,6 +87,11 @@ public class NotificadorSincronismoTests
             return Task.FromResult(new EnvioWhatsAppResultado(true, "wamid", null));
         }
 
+        public Task<EnvioWhatsAppResultado> EnviarAudioAsync(
+            string telefone, string linkAudio, Guid? pacienteId = null, CancellationToken ct = default,
+            OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico) =>
+            Task.FromResult(new EnvioWhatsAppResultado(true, "wamid", null));
+
         public Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
             string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
             Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default,

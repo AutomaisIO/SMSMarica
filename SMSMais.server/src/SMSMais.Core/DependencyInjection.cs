@@ -985,6 +985,13 @@ public static class DependencyInjection
         {
             client.Timeout = TimeSpan.FromSeconds(60);
         });
+        // TTS (resposta em voz do Agente IA): sintetiza no ElevenLabs e guarda o .ogg num diretório
+        // temporário local rotacionado (sem S3), servido por /publico/audio-agente só para a Meta buscar.
+        services.AddHttpClient<Integracoes.ElevenLabs.IElevenLabsTtsService, Integracoes.ElevenLabs.ElevenLabsTtsService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+        services.AddSingleton<Armazenamento.IArmazenamentoAudioTemporario, Armazenamento.ArmazenamentoAudioTemporario>();
         services.AddSingleton<Notificacoes.WhatsApp.Transcricao.SinalTranscricaoAudio>();
         services.AddScoped<Notificacoes.WhatsApp.Transcricao.IAudioTranscricaoConversaService, Notificacoes.WhatsApp.Transcricao.AudioTranscricaoConversaService>();
         services.AddHostedService<Notificacoes.WhatsApp.Transcricao.TranscricaoAudioWorker>();

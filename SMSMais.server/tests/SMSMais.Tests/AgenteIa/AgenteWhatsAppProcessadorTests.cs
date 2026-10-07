@@ -1,10 +1,13 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SMSMais.Core.AgenteIa.WhatsApp;
 using SMSMais.Core.Alertas;
+using SMSMais.Core.Armazenamento;
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.ElevenLabs;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -24,6 +27,9 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
     private readonly IAgenteIaMotorWhatsApp _motor = Substitute.For<IAgenteIaMotorWhatsApp>();
     private readonly IWhatsAppCliente _whats = Substitute.For<IWhatsAppCliente>();
     private readonly ITelefonesAgenteIa _telefones = Substitute.For<ITelefonesAgenteIa>();
+    private readonly IElevenLabsTtsService _tts = Substitute.For<IElevenLabsTtsService>();
+    private readonly IArmazenamentoAudioTemporario _audioTemp = Substitute.For<IArmazenamentoAudioTemporario>();
+    private readonly IConfiguration _config = Substitute.For<IConfiguration>();
     private readonly List<string> _enviados = [];
 
     private AgenteWhatsAppProcessador Criar(SmsMaisDbContext db)
@@ -31,7 +37,8 @@ public class AgenteWhatsAppProcessadorTests(PostgresFixture fixture)
         _whats.EnviarTextoAsync(Arg.Any<string>(), Arg.Do<string>(_enviados.Add), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>(), Arg.Any<OrigemEnvioWhatsApp>())
             .Returns(new EnvioWhatsAppResultado(true, "wamid", null));
-        return new AgenteWhatsAppProcessador(db, _telefones, _motor, _whats, NullLogger<AgenteWhatsAppProcessador>.Instance);
+        return new AgenteWhatsAppProcessador(db, _telefones, _motor, _whats, _tts, _audioTemp, _config,
+            NullLogger<AgenteWhatsAppProcessador>.Instance);
     }
 
     private static string NovoTelefone() => "55219" + Random.Shared.Next(10000000, 99999999);

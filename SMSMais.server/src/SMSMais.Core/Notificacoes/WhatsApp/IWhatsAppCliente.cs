@@ -117,6 +117,15 @@ public interface IWhatsAppCliente
         string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default,
         OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
 
+    /// <summary>
+    /// Envia uma mensagem de ÁUDIO (nota de voz) por LINK público — a Meta busca o arquivo na URL.
+    /// Só dentro da janela de 24h (como o texto livre). O relay repassa o corpo <c>type:"audio"</c>
+    /// intacto. Usado hoje pelo TTS do Agente IA (ADR-0068).
+    /// </summary>
+    Task<EnvioWhatsAppResultado> EnviarAudioAsync(
+        string telefone, string linkAudio, Guid? pacienteId = null, CancellationToken ct = default,
+        OrigemEnvioWhatsApp origem = OrigemEnvioWhatsApp.Automatico);
+
     /// <param name="conteudoLegivel">Texto humano do template (com as variáveis já preenchidas) para
     /// gravar como conteúdo da mensagem — aparece na thread e no histórico do robô. Nulo mantém o
     /// marcador <c>[template:nome] param | param</c>.</param>

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMais.Core.Common.Tempo;
@@ -33,6 +34,9 @@ public sealed class AgenteWhatsAppProcessador(
     ITelefonesAgenteIa telefones,
     IAgenteIaMotorWhatsApp motor,
     IWhatsAppCliente whatsApp,
+    SMSMais.Core.Integracoes.ElevenLabs.IElevenLabsTtsService tts,
+    SMSMais.Core.Armazenamento.IArmazenamentoAudioTemporario audioTemp,
+    Microsoft.Extensions.Configuration.IConfiguration configuration,
     ILogger<AgenteWhatsAppProcessador> logger) : IAgenteWhatsAppProcessador
 {
     internal static readonly TimeSpan IntervaloAndamento = TimeSpan.FromSeconds(30);
@@ -226,7 +230,10 @@ public sealed class AgenteWhatsAppProcessador(
         {
             case "done":
                 Encerrar(p, SituacaoPedidoAgente.Concluido, null);
-                await ResponderAsync(telefone, string.IsNullOrWhiteSpace(resposta) ? "✅ Feito." : resposta, ct);
+                if (!string.IsNullOrWhiteSpace(resposta) && PediuAudio(p.Texto))
+                    await ResponderComVozAsync(telefone, resposta!, ct);
+                else
+                    await ResponderAsync(telefone, string.IsNullOrWhiteSpace(resposta) ? "✅ Feito." : resposta, ct);
                 break;
             case "cancelled" or "interrupted":
                 Encerrar(p, SituacaoPedidoAgente.Cancelado, leitura.Erro);
@@ -253,6 +260,59 @@ public sealed class AgenteWhatsAppProcessador(
                 return;
             }
         }
+    }
+
+    /// <summary>
+    /// Devolve a resposta como NOTA DE VOZ (TTS do ElevenLabs): sintetiza, guarda no diretório
+    /// temporário rotacionado, monta o link público e manda <c>type:audio</c>. Qualquer tropeço
+    /// (TTS indisponível, falha ao guardar, envio recusado) cai para o texto — nunca fica mudo.
+    /// </summary>
+    private async Task ResponderComVozAsync(string telefone, string texto, CancellationToken ct)
+    {
+        var sintese = await tts.SintetizarAsync(texto, ct);
+        if (sintese.Audio is not { Length: > 0 })
+        {
+            logger.LogInformation("Agente IA (…{Fone4}): TTS indisponível ({Erro}) — respondendo em texto.",
+                Ultimos4(telefone), sintese.Erro);
+            await ResponderAsync(telefone, texto, ct);
+            return;
+        }
+
+        string token;
+        try { token = await audioTemp.GuardarAsync(sintese.Audio, ct); }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Agente IA (…{Fone4}): falha ao guardar o áudio — respondendo em texto.", Ultimos4(telefone));
+            await ResponderAsync(telefone, texto, ct);
+            return;
+        }
+
+        var baseUrl = (configuration["Publico:BaseUrl"] ?? "https://api.smsmarica.online").TrimEnd('/');
+        var link = $"{baseUrl}/publico/audio-agente/{token}";
+        var r = await whatsApp.EnviarAudioAsync(telefone, link, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
+        if (!r.Ok)
+        {
+            logger.LogWarning("Agente IA (…{Fone4}): áudio recusado ({Erro}) — respondendo em texto.", Ultimos4(telefone), r.Erro);
+            await ResponderAsync(telefone, texto, ct);
+        }
+    }
+
+    // "me responde em áudio", "manda um áudio", "responde em voz"… (sem acento, minúsculas).
+    private static readonly Regex RegexPediuAudio = new(
+        @"\b(?:em|por)\s+(?:audio|voz)\b|\b(?:manda|mande|envia|envie|responde|responda|quero|retorna|retorne|devolve|devolva|gera|gere|faz|faca|grava|grave)\b[^.?!]{0,20}\b(?:audio|voz)\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static bool PediuAudio(string? texto)
+        => !string.IsNullOrWhiteSpace(texto) && RegexPediuAudio.IsMatch(RemoverAcentos(texto));
+
+    private static string RemoverAcentos(string s)
+    {
+        var formD = s.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(formD.Length);
+        foreach (var ch in formD)
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                sb.Append(ch);
+        return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 
     private static void Encerrar(AgenteWhatsAppPedido p, SituacaoPedidoAgente situacao, string? erro)

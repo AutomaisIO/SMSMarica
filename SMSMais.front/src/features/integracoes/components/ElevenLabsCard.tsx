@@ -15,6 +15,8 @@ export function ElevenLabsCard() {
   const [aberto, setAberto] = useState(false);
   const [baseUrl, setBaseUrl] = useState('https://api.elevenlabs.io/');
   const [modelo, setModelo] = useState('scribe_v2');
+  const [modeloTts, setModeloTts] = useState('eleven_multilingual_v2');
+  const [vozId, setVozId] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [ativo, setAtivo] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -24,6 +26,8 @@ export function ElevenLabsCard() {
     if (config.data) {
       setBaseUrl(config.data.baseUrl);
       setModelo(config.data.modelo);
+      setModeloTts(config.data.modeloTts);
+      setVozId(config.data.vozId ?? '');
       setAtivo(config.data.ativo);
     }
   }, [config.data]);
@@ -35,7 +39,14 @@ export function ElevenLabsCard() {
     setErro(null);
     setSalvo(false);
     salvar.mutate(
-      { baseUrl: baseUrl.trim(), modelo: modelo.trim() || undefined, apiKey: apiKey || undefined, ativo },
+      {
+        baseUrl: baseUrl.trim(),
+        modelo: modelo.trim() || undefined,
+        modeloTts: modeloTts.trim() || undefined,
+        vozId: vozId.trim(),
+        apiKey: apiKey || undefined,
+        ativo,
+      },
       {
         onSuccess: () => {
           setSalvo(true);
@@ -55,7 +66,7 @@ export function ElevenLabsCard() {
       >
         <span className="flex items-center gap-2">
           <Mic className="h-5 w-5 text-primary-600" />
-          <span className="font-medium text-gray-900">ElevenLabs (transcrição de áudio)</span>
+          <span className="font-medium text-gray-900">ElevenLabs (áudio: transcrição e voz)</span>
         </span>
         <span className="flex items-center gap-2">
           <span
@@ -77,8 +88,20 @@ export function ElevenLabsCard() {
             <Input id="el-url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} disabled={!podeEditar} />
           </Campo>
 
-          <Campo label="Modelo (STT)" htmlFor="el-modelo" dica="Padrão: scribe_v2.">
+          <Campo label="Modelo de transcrição (STT)" htmlFor="el-modelo" dica="Padrão: scribe_v2.">
             <Input id="el-modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} disabled={!podeEditar} />
+          </Campo>
+
+          <Campo label="Modelo de voz (TTS)" htmlFor="el-modelo-tts" dica="Padrão: eleven_multilingual_v2.">
+            <Input id="el-modelo-tts" value={modeloTts} onChange={(e) => setModeloTts(e.target.value)} disabled={!podeEditar} />
+          </Campo>
+
+          <Campo
+            label="Voz (voice_id)"
+            htmlFor="el-voz"
+            dica="Em branco = usa a primeira voz da sua conta ElevenLabs."
+          >
+            <Input id="el-voz" value={vozId} onChange={(e) => setVozId(e.target.value)} placeholder="(primeira da conta)" disabled={!podeEditar} />
           </Campo>
 
           <Campo
