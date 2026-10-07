@@ -56,6 +56,26 @@ public sealed partial class ExceptionHandlingMiddleware(
             await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
                 "Origem indisponível", ex.Message, type: "klinikos.crystal_indisponivel");
         }
+        // SISCAN instável/congestionado (DATASUS): 503 retryável. É erro TRATADO — então entra na
+        // lista de Erros já classificado (não empilhado como genérico): uma linha por `motivo`, com
+        // contador (AssinaturaChave estável agrupa apesar de o caminho carregar o id do exame). NÃO
+        // alerta o celular (instabilidade esperada, comum no pico), e o transporte já logou o
+        // SISCAN_INSTAVEL com o detalhe. O `motivo` vai na resposta para a tela re-tentar.
+        catch (SMSMais.Core.Integracoes.SiscanWeb.SiscanIndisponivelException ex)
+        {
+            await PersistirErroEObterCodigo(
+                context, ex, StatusCodes.Status503ServiceUnavailable,
+                alertar: false,
+                assinaturaChave: $"siscan.indisponivel|{ex.Motivo}",
+                mensagemOverride: $"SISCAN indisponível ({ex.Motivo}): instabilidade do SISCAN "
+                    + "(DATASUS) — 503 retryável, tratado.");
+            await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
+                "SISCAN indisponível",
+                $"{ex.Message} Tente novamente em instantes — costuma ser instabilidade do SISCAN, "
+                + "comum em horário de pico.",
+                type: "siscan.indisponivel",
+                extras: new() { ["motivo"] = ex.Motivo });
+        }
         // Guarda de versão do Klinikos: a versão detectada na tela diverge da declarada (o build da
         // origem mudou) — bloqueio de segurança, reconciliar a versão no cadastro. 409, sem alerta.
         catch (SMSMais.Core.Integracoes.KlinikosWeb.KlinikosBuildDivergenteException ex)
@@ -138,7 +158,9 @@ public sealed partial class ExceptionHandlingMiddleware(
     /// Se a própria gravação falhar (ex.: o DB caiu), NÃO mascara o erro original:
     /// loga e devolve um código derivado do TraceId para o usuário ainda ter o que reportar.
     /// </summary>
-    private async Task<RegistroErroResultado> PersistirErroEObterCodigo(HttpContext context, Exception ex, int statusCode)
+    private async Task<RegistroErroResultado> PersistirErroEObterCodigo(
+        HttpContext context, Exception ex, int statusCode,
+        bool alertar = true, string? assinaturaChave = null, string? mensagemOverride = null)
     {
         try
         {
@@ -150,19 +172,21 @@ public sealed partial class ExceptionHandlingMiddleware(
                 QueryString: context.Request.QueryString.HasValue ? context.Request.QueryString.Value : null,
                 StatusCode: statusCode,
                 TipoExcecao: ex.GetType().FullName ?? ex.GetType().Name,
-                Mensagem: ex.Message,
+                Mensagem: mensagemOverride ?? ex.Message,
                 StackTrace: ex.StackTrace,
                 Interna: ex.InnerException is null
                     ? null
                     : $"{ex.InnerException.GetType().FullName}: {ex.InnerException.Message}",
                 TraceId: context.TraceIdentifier,
-                UserAgent: string.IsNullOrEmpty(ua) ? null : ua);
+                UserAgent: string.IsNullOrEmpty(ua) ? null : ua,
+                AssinaturaChave: assinaturaChave);
 
             // CancellationToken.None: garante que o log seja gravado mesmo se o cliente desistir.
             var resultado = await servico.RegistrarAsync(dados, CancellationToken.None);
 
-            // Erro NOVO vai ao celular com o código; repetição do mesmo erro em aberto não.
-            if (!resultado.JaReportado)
+            // Erro NOVO vai ao celular com o código; repetição do mesmo erro em aberto não. Erro
+            // tratado e esperado (ex.: SISCAN instável) entra na lista mas NÃO alerta (alertar=false).
+            if (alertar && !resultado.JaReportado)
             {
                 context.RequestServices.GetService<IAlertaPlataforma>()?.Reportar(new EventoAlerta(
                     AlertaCatalogo.Erro500,

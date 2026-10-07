@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useEntrarNoSiscan } from '@/features/anamnese/api/siscanApi';
+import { SiscanInstavel } from '@/features/anamnese/components/SiscanInstavel';
+import { useRetrySiscan } from '@/features/anamnese/lib/useRetrySiscan';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
@@ -37,26 +39,65 @@ export function ModalLoginSiscan({
   const [erro, setErro] = useState<string | null>(null);
 
   const entrar = useEntrarNoSiscan();
+  const retry = useRetrySiscan();
 
   // Reabrir não pode herdar a senha nem o erro da tentativa anterior pendurados na tela.
   useEffect(() => {
     if (aberto) {
       setSenha('');
       setErro(null);
+      retry.resetar();
     }
+    // `retry.resetar` é estável (useCallback); fora das deps para não re-resetar a cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto]);
 
-  async function aoEnviar(e: React.FormEvent) {
-    e.preventDefault();
+  // O núcleo do envio, chamável sem evento — o botão "Tentar de novo" do aviso de instabilidade o
+  // reusa com a mesma credencial (a senha só é limpa no sucesso).
+  async function submeter() {
     setErro(null);
-    try {
-      await entrar.mutateAsync({ usuario: usuario.trim(), senha });
+    // Instabilidade do SISCAN re-tenta sozinha (até 3x, com contagem); credencial errada e erro
+    // nosso voltam na hora.
+    const r = await retry.executar(() => entrar.mutateAsync({ usuario: usuario.trim(), senha }));
+    if (r.ok) {
       setSenha('');
       aoAutenticar?.();
       aoFechar();
-    } catch (falha) {
-      setErro(extrairMensagemDeErro(falha));
+      return;
     }
+    // Esgotou (o aviso de instabilidade mostra o recado) ou foi cancelado: nada a fazer aqui.
+    if (r.esgotado || r.cancelado) return;
+    setErro(extrairMensagemDeErro(r.erro));
+  }
+
+  async function aoEnviar(e: React.FormEvent) {
+    e.preventDefault();
+    await submeter();
+  }
+
+  // O aviso de instabilidade só aparece DEPOIS que a 1ª tentativa falhou: a 1ª é um login normal
+  // (SISCAN saudável responde em ~1 s e nem se vê o aviso). A partir daí — esperando a próxima, na
+  // 2ª/3ª tentativa, ou esgotado — a tela vira o aviso.
+  const mostrarInstavel =
+    retry.estado.fase === 'aguardando' ||
+    retry.estado.fase === 'esgotado' ||
+    (retry.estado.fase === 'tentando' && retry.estado.tentativa >= 2);
+
+  const enviando = retry.estado.fase === 'tentando';
+
+  if (aberto && mostrarInstavel) {
+    return (
+      <Modal aberto={aberto} aoFechar={aoFechar} titulo="Entrar no SISCAN" largura="sm">
+        <SiscanInstavel
+          estado={retry.estado}
+          aoTentarDeNovo={() => {
+            retry.resetar();
+            void submeter();
+          }}
+          aoFechar={aoFechar}
+        />
+      </Modal>
+    );
   }
 
   return (
@@ -115,8 +156,8 @@ export function ModalLoginSiscan({
           <Button type="button" variante="secundaria" onClick={aoFechar}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={entrar.isPending}>
-            {entrar.isPending ? (
+          <Button type="submit" disabled={enviando}>
+            {enviando ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <KeyRound className="mr-2 h-4 w-4" />

@@ -48,6 +48,10 @@ public sealed record RegistroErroResultado(string Codigo, bool JaReportado, int 
 public sealed record ResolverErroRequest(string? ResolvidoPor = null, string? Nota = null);
 
 /// <summary>Dados capturados pelo middleware ao registrar um erro não tratado.</summary>
+/// <param name="AssinaturaChave">Quando informada, é ELA (e não método+caminho+mensagem) que
+/// define "o mesmo erro" para a dedup. Serve ao erro TRATADO que precisa agrupar apesar de o
+/// caminho variar (ex.: <c>siscan.indisponivel|timeout</c> agrupa todas as instabilidades do SISCAN
+/// num registro só, com contador, em vez de um código novo por exame).</param>
 public sealed record RegistrarErroDados(
     string Metodo,
     string Caminho,
@@ -58,7 +62,8 @@ public sealed record RegistrarErroDados(
     string? StackTrace,
     string? Interna,
     string? TraceId,
-    string? UserAgent);
+    string? UserAgent,
+    string? AssinaturaChave = null);
 
 public sealed record ErroFiltroDto(
     string? Codigo = null,

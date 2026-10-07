@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -479,17 +480,15 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
         };
         if (ajax) requisicao.Headers.Add("X-Requested-With", "XMLHttpRequest");
 
-        var relogio = Stopwatch.StartNew();
-        using var resposta = await sessao.Http.SendAsync(requisicao, cancellationToken);
-        var texto = await resposta.Content.ReadAsStringAsync(cancellationToken);
-        relogio.Stop();
+        var (texto, status, ms) = await EnviarAsync(
+            ajax ? "enviar (A4J)" : "enviar", destino,
+            () => sessao.Http.SendAsync(requisicao, cancellationToken), cancellationToken);
 
         // Cada ida ao SISCAN custa segundos e o fluxo tem muitas — sem o tempo por requisição
         // não dá para saber se está lento por causa deles ou de quantas vezes vamos lá.
         logger.LogInformation(
             "SISCAN: POST{Ajax} {Destino} — {Campos} campo(s) · HTTP {Status} · {Bytes} bytes · {Ms} ms",
-            ajax ? " A4J" : "", destino, lista.Count, (int)resposta.StatusCode, texto.Length,
-            relogio.ElapsedMilliseconds);
+            ajax ? " A4J" : "", destino, lista.Count, (int)status, texto.Length, ms);
 
         return texto;
     }
@@ -497,17 +496,122 @@ public sealed partial class SiscanWebSessao(ILogger<SiscanWebSessao> logger)
     private async Task<string> GetAsync(
         Sessao sessao, string caminho, CancellationToken cancellationToken)
     {
-        var relogio = Stopwatch.StartNew();
-        using var resposta = await sessao.Http.GetAsync(new Uri(sessao.BaseUri, caminho), cancellationToken);
-        var texto = await resposta.Content.ReadAsStringAsync(cancellationToken);
-        relogio.Stop();
+        var (texto, status, ms) = await EnviarAsync(
+            "abrir", caminho,
+            () => sessao.Http.GetAsync(new Uri(sessao.BaseUri, caminho), cancellationToken), cancellationToken);
 
         logger.LogInformation(
             "SISCAN: GET {Caminho} — HTTP {Status} · {Bytes} bytes · {Ms} ms",
-            caminho, (int)resposta.StatusCode, texto.Length, relogio.ElapsedMilliseconds);
+            caminho, (int)status, texto.Length, ms);
 
         return texto;
     }
+
+    /// <summary>
+    /// Transporte único do SISCAN: envia, lê o corpo, cronometra e <b>classifica a falha</b>.
+    ///
+    /// <para>A diferença que importa é "o SISCAN está instável" × "é bug nosso". Timeout (lentidão),
+    /// conexão resetada (queda no meio), rede e HTTP 5xx são do <b>lado do SISCAN</b> — viram
+    /// <see cref="SiscanIndisponivelException"/> (503 retryável, sem registro_erro) e um log
+    /// <c>SISCAN_INSTAVEL</c> com passo, caminho, status, tempo e um trecho da resposta, para a
+    /// investigação. O cancelamento real do chamador (<paramref name="ct"/>) sobe intacto — não é
+    /// indisponibilidade.</para>
+    /// </summary>
+    private async Task<(string Corpo, HttpStatusCode Status, long Ms)> EnviarAsync(
+        string passo, string alvo, Func<Task<HttpResponseMessage>> enviar, CancellationToken ct)
+    {
+        var relogio = Stopwatch.StartNew();
+        HttpResponseMessage resposta;
+        string corpo;
+        try
+        {
+            resposta = await enviar();
+            corpo = await resposta.Content.ReadAsStringAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // cancelamento do chamador (cliente desistiu) — não é falha do SISCAN.
+        }
+        catch (OperationCanceledException ex) // TaskCanceledException do timeout do HttpClient.
+        {
+            relogio.Stop();
+            LogSiscanInstavel(SiscanIndisponivelException.Motivos.Timeout, passo, alvo, null, relogio.ElapsedMilliseconds, null, ex);
+            throw new SiscanIndisponivelException(
+                SiscanIndisponivelException.Motivos.Timeout,
+                $"O SISCAN não respondeu a tempo (>{relogio.ElapsedMilliseconds} ms) ao {passo} {alvo}.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            relogio.Stop();
+            var motivo = ClassificarRede(ex);
+            LogSiscanInstavel(motivo, passo, alvo, null, relogio.ElapsedMilliseconds, null, ex);
+            throw new SiscanIndisponivelException(
+                motivo,
+                $"Falha de conexão com o SISCAN ao {passo} {alvo}: {DescreverCausa(ex)}.", ex);
+        }
+
+        using (resposta)
+        {
+            relogio.Stop();
+            if ((int)resposta.StatusCode >= 500)
+            {
+                LogSiscanInstavel(
+                    SiscanIndisponivelException.Motivos.HttpServidor, passo, alvo,
+                    resposta.StatusCode, relogio.ElapsedMilliseconds, Trecho(corpo), null);
+                throw new SiscanIndisponivelException(
+                    SiscanIndisponivelException.Motivos.HttpServidor,
+                    $"O SISCAN respondeu HTTP {(int)resposta.StatusCode} ao {passo} {alvo} "
+                    + "(indisponibilidade ou congestionamento do servidor dele).");
+            }
+
+            return (corpo, resposta.StatusCode, relogio.ElapsedMilliseconds);
+        }
+    }
+
+    /// <summary>Reset de conexão (o par derrubou) × outra falha de transporte (DNS/TLS/recusa).
+    /// O reset é o sintoma clássico de congestionamento do SISCAN; separá-lo ajuda a investigar.</summary>
+    internal static string ClassificarRede(HttpRequestException ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+        {
+            if (e is SocketException { SocketErrorCode: SocketError.ConnectionReset or SocketError.ConnectionAborted })
+                return SiscanIndisponivelException.Motivos.ConexaoResetada;
+            if (e is IOException io
+                && (io.Message.Contains("reset", StringComparison.OrdinalIgnoreCase)
+                    || io.Message.Contains("broken pipe", StringComparison.OrdinalIgnoreCase)
+                    || io.Message.Contains("forcibly", StringComparison.OrdinalIgnoreCase)))
+                return SiscanIndisponivelException.Motivos.ConexaoResetada;
+        }
+        return SiscanIndisponivelException.Motivos.Rede;
+    }
+
+    /// <summary>A mensagem da causa-raiz (a interna, quando há) — é ela que diz "Connection reset
+    /// by peer", não a genérica "An error occurred while sending the request".</summary>
+    private static string DescreverCausa(Exception ex)
+    {
+        var raiz = ex;
+        while (raiz.InnerException is not null) raiz = raiz.InnerException;
+        return raiz.Message;
+    }
+
+    /// <summary>Trecho curto da resposta para o log de 5xx — a página de erro do SISCAN é genérica
+    /// (sem PII). Colapsa espaços e corta em 200 caracteres.</summary>
+    private static string Trecho(string corpo)
+    {
+        var limpo = WhitespaceRegex().Replace(corpo, " ").Trim();
+        return limpo.Length <= 200 ? limpo : limpo[..200] + "…";
+    }
+
+    private void LogSiscanInstavel(
+        string motivo, string passo, string alvo, HttpStatusCode? status, long ms, string? trecho, Exception? ex) =>
+        logger.LogWarning(
+            ex,
+            "SISCAN_INSTAVEL motivo={Motivo} passo={Passo} alvo={Alvo} http={Http} ms={Ms} causa={Causa} trecho={Trecho}",
+            motivo, passo, alvo, status is null ? "-" : ((int)status).ToString(), ms,
+            ex is null ? "-" : DescreverCausa(ex), trecho ?? "-");
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
 
     private sealed record Credenciais(string Usuario, string Senha);
 

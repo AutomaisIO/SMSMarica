@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using FluentAssertions;
 using SMSMais.Core.Integracoes.SiscanWeb;
 
@@ -373,4 +374,31 @@ public class SiscanWebSessaoTests
     public void Campo_de_ano_ganha_rotulo_legivel(string campo, string? esperado) =>
         SMSMais.Core.Integracoes.SiscanWeb.Requisicao.SiscanRequisicaoService.RotuloDeAno(campo)
             .Should().Be(esperado);
+
+    /// <summary>
+    /// Reset de conexão (o SISCAN derrubou a conexão no meio, sintoma clássico do pico da manhã) é
+    /// classificado à parte de uma falha de rede genérica — é essa diferença que diz, na
+    /// investigação, "o servidor caiu" × "não cheguei até ele". Cobre tanto o SocketException
+    /// tipado quanto o IOException que só traz a frase ("Connection reset by peer").
+    /// </summary>
+    [Fact]
+    public void Classifica_reset_de_conexao_separado_de_rede()
+    {
+        var porSocket = new HttpRequestException(
+            "An error occurred while sending the request.",
+            new SocketException((int)SocketError.ConnectionReset));
+        SiscanWebSessao.ClassificarRede(porSocket)
+            .Should().Be(SiscanIndisponivelException.Motivos.ConexaoResetada);
+
+        var porMensagem = new HttpRequestException(
+            "Error while copying content to a stream.",
+            new IOException("Unable to read data from the transport connection: Connection reset by peer."));
+        SiscanWebSessao.ClassificarRede(porMensagem)
+            .Should().Be(SiscanIndisponivelException.Motivos.ConexaoResetada);
+
+        // Sem reset no encadeamento: é rede genérica (DNS/TLS/recusa), não queda no meio.
+        var redeGenerica = new HttpRequestException("No such host is known.");
+        SiscanWebSessao.ClassificarRede(redeGenerica)
+            .Should().Be(SiscanIndisponivelException.Motivos.Rede);
+    }
 }

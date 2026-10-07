@@ -26,9 +26,15 @@ export const artigoAnamnese: Artigo = {
   icone: ClipboardList,
   rota: '/app/anamnese',
   publico: 'Quem recebe a paciente para a mamografia e quem lauda',
-  atualizadoEm: '2026-10-06',
+  atualizadoEm: '2026-10-07',
   palavrasChave: [
     'anamnese',
+    'siscan indisponível',
+    'siscan instável',
+    'siscan congestionado',
+    'siscan fora do ar',
+    'tente de novo',
+    'erro ao entrar no siscan',
     'diagnóstico inicial',
     'CID',
     'CID-10',
@@ -286,7 +292,7 @@ export const artigoAnamnese: Artigo = {
     {
       id: 'gerar-requisicao',
       titulo: 'Gerar a requisição no SISCAN',
-      busca: 'gerar requisição botão senha login entrar sessão confirmar salvar criar data da solicitação data do exame data de atendimento DICOM desconectou sessão expirou reconectar inatividade GERENCIAR EXAME autocompletar',
+      busca: 'gerar requisição botão senha login entrar sessão confirmar salvar criar data da solicitação data do exame data de atendimento DICOM desconectou sessão expirou reconectar inatividade GERENCIAR EXAME autocompletar siscan indisponível instável congestionado fora do ar tente de novo pico da manhã erro ao entrar',
       conteudo: (
         <>
           <P>
@@ -336,6 +342,16 @@ export const artigoAnamnese: Artigo = {
             <BotaoRef variante="outline">Tentar de novo</BotaoRef> — a segunda tentativa já sai
             conectada. Se a sua sessão aqui tiver acabado (por exemplo, depois de muitas horas
             parada), a tela pede o login do SISCAN de novo e, ao entrar, volta para a conferência.
+          </Callout>
+          <Callout tipo="atencao" titulo="Se o SISCAN estiver instável, a tela tenta sozinha">
+            Quando o SISCAN está lento ou derruba a conexão — comum no{' '}
+            <strong>pico da manhã</strong> — ao entrar, a tela mostra{' '}
+            <em>“o SISCAN está lento ou com problemas”</em> e <strong>tenta de novo sozinha</strong>,
+            com uma contagem entre as tentativas (até 3 vezes). Se as três falharem, aparece{' '}
+            <em>“o sistema do SISCAN está instável, tente mais tarde”</em> — é instabilidade{' '}
+            <strong>do lado deles</strong>, não do nosso sistema, e nada foi gravado. Só vale abrir
+            chamado com o código quando a mensagem for de <strong>erro inesperado</strong> (aí, sim, é
+            coisa nossa para investigar).
           </Callout>
           <Callout tipo="lgpd" titulo="A sua senha do SISCAN não é guardada">
             Ela fica na memória do servidor presa à sua sessão e morre quando você sai do sistema.

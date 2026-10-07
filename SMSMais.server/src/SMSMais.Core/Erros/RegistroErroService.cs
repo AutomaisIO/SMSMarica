@@ -73,10 +73,14 @@ public sealed class RegistroErroService(SmsMaisDbContext db, IUsuarioAtualAccess
         return new RegistroErroResultado(codigo, JaReportado: false, 1);
     }
 
-    /// <summary>Assinatura estável do erro — o que define "o mesmo erro" para dedup.</summary>
+    /// <summary>Assinatura estável do erro — o que define "o mesmo erro" para dedup. Com
+    /// <see cref="RegistrarErroDados.AssinaturaChave"/>, é ela que manda (erro tratado que agrupa
+    /// apesar de caminho/mensagem variarem); senão, método+caminho+status+tipo+mensagem.</summary>
     private static string Assinar(RegistrarErroDados d)
     {
-        var bruto = $"{d.Metodo}|{d.Caminho}|{d.StatusCode}|{d.TipoExcecao}|{d.Mensagem}";
+        var bruto = string.IsNullOrWhiteSpace(d.AssinaturaChave)
+            ? $"{d.Metodo}|{d.Caminho}|{d.StatusCode}|{d.TipoExcecao}|{d.Mensagem}"
+            : $"chave|{d.AssinaturaChave}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(bruto));
         return Convert.ToHexString(hash); // 64 chars
     }

@@ -35,3 +35,15 @@ export function recusaPorCadastroCadsus(erro: unknown): boolean {
 export function perdeuSessaoSiscan(erro: unknown): boolean {
   return codigosDoErro(erro).some((c) => CODIGOS_SEM_SESSAO.includes(c));
 }
+
+/**
+ * Instabilidade do PRÓPRIO SISCAN (DATASUS): timeout, conexão resetada, rede ou HTTP 5xx — o
+ * backend devolve 503 com `type: "siscan.indisponivel"` (ver `SiscanIndisponivelException`). Não é
+ * erro nosso nem credencial inválida: é "o SISCAN está lento/caiu", comum no pico da manhã, e a
+ * saída é tentar de novo. É esta a falha que a tela re-tenta sozinha com contagem.
+ */
+export function ehSiscanIndisponivel(erro: unknown): boolean {
+  if (!(erro instanceof AxiosError)) return false;
+  const dados = erro.response?.data as ProblemaApi | undefined;
+  return erro.response?.status === 503 && dados?.type === 'siscan.indisponivel';
+}
