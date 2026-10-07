@@ -36,4 +36,27 @@ public sealed class ElevenLabsConfigController(
         await _service.AtualizarAsync(request, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Busca vozes pt-BR na biblioteca pública, com filtros de gênero e idade.</summary>
+    [HttpGet("biblioteca")]
+    [RequerPermissao(ModuloPermissao.IntegracoesConfig, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<VozBibliotecaElevenLabs>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<VozBibliotecaElevenLabs>> Biblioteca(
+        [FromQuery] string? genero, [FromQuery] string? idade, [FromQuery] string? busca,
+        CancellationToken cancellationToken) =>
+        await _tts.ListarBibliotecaPtBrAsync(genero, idade, busca, cancellationToken);
+
+    /// <summary>Adiciona uma voz da biblioteca à conta e passa a usá-la nas respostas em áudio.</summary>
+    [HttpPost("biblioteca/usar")]
+    [RequerPermissao(ModuloPermissao.IntegracoesConfig, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UsarVoz(
+        [FromBody] UsarVozBibliotecaRequest request, CancellationToken cancellationToken)
+    {
+        var vozId = await _tts.AdicionarVozAsync(request.PublicOwnerId, request.VozId, request.Nome, cancellationToken);
+        if (vozId is null)
+            return UnprocessableEntity(new { erro = "Não foi possível adicionar a voz (verifique a chave e o limite de vozes da conta)." });
+        await _service.DefinirVozAsync(vozId, cancellationToken);
+        return Ok(new { vozId });
+    }
 }

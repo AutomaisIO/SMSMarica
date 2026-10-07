@@ -7,6 +7,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { useElevenLabs, useElevenLabsVozes, useSalvarElevenLabs } from '@/features/integracoes/api';
+import { BuscadorVozesPtBr } from '@/features/integracoes/components/BuscadorVozesPtBr';
 
 export function ElevenLabsCard() {
   const podeEditar = usePermissao('IntegracoesConfig', 'Edicao');
@@ -152,6 +153,8 @@ export function ElevenLabsCard() {
               className="w-full"
             />
           </Campo>
+
+          <BuscadorVozesPtBr podeEditar={podeEditar} />
 
           <Campo
             label="Chave da API (API Key)"

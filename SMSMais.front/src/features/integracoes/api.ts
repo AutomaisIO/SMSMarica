@@ -8,6 +8,8 @@ import type {
   AtualizarTfdWhatsApp,
   ElevenLabs,
   VozElevenLabs,
+  VozBibliotecaElevenLabs,
+  FiltroVozBiblioteca,
   IntegracaoCredencial,
   ProxyMotor,
   ProxyTesteCepResultado,
@@ -124,6 +126,33 @@ export function useElevenLabsVozes() {
     queryKey: ['integracoes', 'elevenlabs', 'vozes'] as const,
     queryFn: async () => (await http.get<VozElevenLabs[]>('/integracoes/elevenlabs/vozes')).data,
     staleTime: 60_000,
+  });
+}
+
+// Busca vozes pt-BR na biblioteca pública (filtros opcionais de gênero/idade/texto).
+export function useVozesBiblioteca(filtro: FiltroVozBiblioteca, habilitado: boolean) {
+  return useQuery({
+    queryKey: ['integracoes', 'elevenlabs', 'biblioteca', filtro] as const,
+    queryFn: async () =>
+      (
+        await http.get<VozBibliotecaElevenLabs[]>('/integracoes/elevenlabs/biblioteca', {
+          params: filtro,
+        })
+      ).data,
+    enabled: habilitado,
+  });
+}
+
+// Adiciona uma voz da biblioteca à conta e passa a usá-la.
+export function useUsarVozBiblioteca() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { publicOwnerId: string; vozId: string; nome: string }) =>
+      http.post('/integracoes/elevenlabs/biblioteca/usar', v),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.elevenlabs });
+      qc.invalidateQueries({ queryKey: ['integracoes', 'elevenlabs', 'vozes'] });
+    },
   });
 }
 

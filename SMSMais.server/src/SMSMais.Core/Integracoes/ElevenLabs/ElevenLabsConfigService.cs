@@ -42,6 +42,15 @@ public sealed class ElevenLabsConfigService(SmsMaisDbContext db, IProtetorSegred
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task DefinirVozAsync(string vozId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(vozId)) return;
+        var c = await ObterOuCriarAsync(ct);
+        c.VozId = vozId.Trim();
+        c.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<ElevenLabsContexto> ObterContextoAsync(CancellationToken ct = default)
     {
         var c = await db.ElevenLabsConfiguracao.AsNoTracking().FirstOrDefaultAsync(ct)

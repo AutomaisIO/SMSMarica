@@ -62,6 +62,19 @@ export type VozElevenLabs = {
   categoria: string | null;
 };
 
+// Voz da biblioteca pública (pt-BR) — para o buscador.
+export type VozBibliotecaElevenLabs = {
+  vozId: string;
+  publicOwnerId: string;
+  nome: string;
+  genero: string | null;
+  idade: string | null;
+  previewUrl: string | null;
+  jaAdicionada: boolean;
+};
+
+export type FiltroVozBiblioteca = { genero?: string; idade?: string; busca?: string };
+
 // WhatsApp — a instância fala só com o Automais.Zap; as credenciais da Meta vivem lá.
 export type TfdWhatsApp = {
   phoneNumberId: string | null;

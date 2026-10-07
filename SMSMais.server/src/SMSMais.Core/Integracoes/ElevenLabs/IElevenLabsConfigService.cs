@@ -9,6 +9,9 @@ public interface IElevenLabsConfigService
     Task<ElevenLabsConfigDto> ObterAsync(CancellationToken ct = default);
     Task AtualizarAsync(AtualizarElevenLabsConfigRequest request, CancellationToken ct = default);
 
+    /// <summary>Fixa a voz ativa (voice_id) — usado ao escolher uma voz da biblioteca.</summary>
+    Task DefinirVozAsync(string vozId, CancellationToken ct = default);
+
     /// <summary>Resolve o contexto com a chave revelada. Lança se não configurada/inativa/sem chave.</summary>
     Task<ElevenLabsContexto> ObterContextoAsync(CancellationToken ct = default);
 }

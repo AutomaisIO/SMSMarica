@@ -19,6 +19,13 @@ public interface IElevenLabsTtsService
 
     /// <summary>Vozes da conta (para o seletor na tela). Vazio se não configurada/sem acesso.</summary>
     Task<IReadOnlyList<VozElevenLabs>> ListarVozesAsync(CancellationToken ct = default);
+
+    /// <summary>Vozes pt-BR da biblioteca pública, com filtros opcionais de gênero e idade.</summary>
+    Task<IReadOnlyList<VozBibliotecaElevenLabs>> ListarBibliotecaPtBrAsync(
+        string? genero, string? idade, string? busca, CancellationToken ct = default);
+
+    /// <summary>Adiciona uma voz da biblioteca à conta. Devolve o voice_id na conta, ou null se falhar.</summary>
+    Task<string?> AdicionarVozAsync(string publicOwnerId, string vozId, string nome, CancellationToken ct = default);
 }
 
 public sealed class ElevenLabsTtsService(
@@ -126,5 +133,95 @@ public sealed class ElevenLabsTtsService(
     {
         var vozes = await ListarVozesAsync(ctx, ct);
         return vozes.Count > 0 ? vozes[0].VozId : null;
+    }
+
+    private static readonly string[] GenerosValidos = ["male", "female"];
+    private static readonly string[] IdadesValidas = ["young", "middle_aged", "old"];
+
+    public async Task<IReadOnlyList<VozBibliotecaElevenLabs>> ListarBibliotecaPtBrAsync(
+        string? genero, string? idade, string? busca, CancellationToken ct = default)
+    {
+        ElevenLabsContexto ctx;
+        try { ctx = await config.ObterContextoAsync(ct); }
+        catch (ValidacaoException) { return []; }
+
+        var q = new List<string> { "language=pt", "page_size=50" };
+        if (GenerosValidos.Contains(genero)) q.Add($"gender={genero}");
+        if (IdadesValidas.Contains(idade)) q.Add($"age={idade}");
+        if (!string.IsNullOrWhiteSpace(busca)) q.Add($"search={Uri.EscapeDataString(busca.Trim())}");
+        var url = $"{ctx.BaseUrl.TrimEnd('/')}/v1/shared-voices?{string.Join('&', q)}";
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Add("xi-api-key", ctx.ApiKey);
+            using var resp = await http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return [];
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("voices", out var vs) || vs.ValueKind != JsonValueKind.Array)
+                return [];
+            var lista = new List<VozBibliotecaElevenLabs>();
+            foreach (var v in vs.EnumerateArray())
+            {
+                // Só português do Brasil: a biblioteca mistura pt-PT no language=pt.
+                var locale = v.TryGetProperty("locale", out var lc) ? lc.GetString() : null;
+                var accent = v.TryGetProperty("accent", out var ac) ? ac.GetString() : null;
+                var ehBr = string.Equals(locale, "pt-BR", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(accent, "brazilian", StringComparison.OrdinalIgnoreCase);
+                if (!ehBr) continue;
+                if (!v.TryGetProperty("voice_id", out var idEl) || idEl.GetString() is not { Length: > 0 } vid) continue;
+                var owner = v.TryGetProperty("public_owner_id", out var po) ? po.GetString() : null;
+                if (string.IsNullOrEmpty(owner)) continue;
+                lista.Add(new VozBibliotecaElevenLabs(
+                    vid,
+                    owner,
+                    v.TryGetProperty("name", out var n) ? n.GetString() ?? vid : vid,
+                    v.TryGetProperty("gender", out var g) ? g.GetString() : null,
+                    v.TryGetProperty("age", out var a) ? a.GetString() : null,
+                    v.TryGetProperty("preview_url", out var pv) ? pv.GetString() : null,
+                    v.TryGetProperty("is_added_by_user", out var ad) && ad.ValueKind == JsonValueKind.True));
+            }
+            return lista;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Falha ao buscar vozes pt-BR na biblioteca do ElevenLabs.");
+            return [];
+        }
+    }
+
+    public async Task<string?> AdicionarVozAsync(string publicOwnerId, string vozId, string nome, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(publicOwnerId) || string.IsNullOrWhiteSpace(vozId)) return null;
+        ElevenLabsContexto ctx;
+        try { ctx = await config.ObterContextoAsync(ct); }
+        catch (ValidacaoException) { return null; }
+
+        var url = $"{ctx.BaseUrl.TrimEnd('/')}/v1/voices/add/{Uri.EscapeDataString(publicOwnerId)}/{Uri.EscapeDataString(vozId)}";
+        try
+        {
+            var nomeLimpo = string.IsNullOrWhiteSpace(nome) ? vozId : nome.Trim();
+            var payload = JsonSerializer.Serialize(new { new_name = nomeLimpo });
+            using var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+            };
+            req.Headers.Add("xi-api-key", ctx.ApiKey);
+            using var resp = await http.SendAsync(req, ct);
+            var corpo = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                logger.LogWarning("ElevenLabs add voice HTTP {Status}.", (int)resp.StatusCode);
+                return null;
+            }
+            using var doc = JsonDocument.Parse(corpo);
+            // A conta pode manter o mesmo id; se vier outro, é o da cópia na conta.
+            return doc.RootElement.TryGetProperty("voice_id", out var nv) && nv.GetString() is { Length: > 0 } novo
+                ? novo : vozId;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Falha ao adicionar voz da biblioteca do ElevenLabs.");
+            return null;
+        }
     }
 }

@@ -16,3 +16,11 @@ public sealed record ElevenLabsContexto(
 
 /// <summary>Uma voz da conta ElevenLabs, para o seletor na tela.</summary>
 public sealed record VozElevenLabs(string VozId, string Nome, string? Idioma, string? Categoria);
+
+/// <summary>Uma voz da biblioteca pública (pt-BR), para o buscador na tela.</summary>
+public sealed record VozBibliotecaElevenLabs(
+    string VozId, string PublicOwnerId, string Nome, string? Genero, string? Idade,
+    string? PreviewUrl, bool JaAdicionada);
+
+/// <summary>Pedido para adicionar uma voz da biblioteca à conta e usá-la nas respostas.</summary>
+public sealed record UsarVozBibliotecaRequest(string PublicOwnerId, string VozId, string Nome);
