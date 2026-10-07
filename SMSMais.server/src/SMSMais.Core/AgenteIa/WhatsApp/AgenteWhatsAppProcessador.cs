@@ -7,6 +7,7 @@ using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Data;
 using SMSMais.Data.Entities.AgenteIa;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Core.AgenteIa.WhatsApp;
 
@@ -230,7 +231,7 @@ public sealed class AgenteWhatsAppProcessador(
         {
             case "done":
                 Encerrar(p, SituacaoPedidoAgente.Concluido, null);
-                if (!string.IsNullOrWhiteSpace(resposta) && PediuAudio(p.Texto))
+                if (!string.IsNullOrWhiteSpace(resposta) && await DeveResponderEmVozAsync(p, ct))
                     await ResponderComVozAsync(telefone, resposta!, ct);
                 else
                     await ResponderAsync(telefone, string.IsNullOrWhiteSpace(resposta) ? "✅ Feito." : resposta, ct);
@@ -297,10 +298,23 @@ public sealed class AgenteWhatsAppProcessador(
         }
     }
 
-    // "me responde em áudio", "manda um áudio", "responde em voz"… (sem acento, minúsculas).
+    /// <summary>
+    /// Responde em voz quando (a) a mensagem que abriu o turno foi um ÁUDIO — você falou, eu falo de
+    /// volta; ou (b) o texto menciona áudio/voz (ex.: "me responde em áudio", "é pra mandar áudio").
+    /// </summary>
+    private async Task<bool> DeveResponderEmVozAsync(AgenteWhatsAppPedido p, CancellationToken ct)
+    {
+        if (PediuAudio(p.Texto)) return true;
+        var tipo = await db.MensagensWhatsApp.AsNoTracking()
+            .Where(m => m.Id == p.MensagemId)
+            .Select(m => (TipoMensagem?)m.TipoMensagem)
+            .FirstOrDefaultAsync(ct);
+        return tipo == TipoMensagem.Audio;
+    }
+
+    // Menção a áudio/voz dispara a resposta falada (canal pessoal do operador — gatilho generoso).
     private static readonly Regex RegexPediuAudio = new(
-        @"\b(?:em|por)\s+(?:audio|voz)\b|\b(?:manda|mande|envia|envie|responde|responda|quero|retorna|retorne|devolve|devolva|gera|gere|faz|faca|grava|grave)\b[^.?!]{0,20}\b(?:audio|voz)\b",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"\b(audio|voz)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static bool PediuAudio(string? texto)
         => !string.IsNullOrWhiteSpace(texto) && RegexPediuAudio.IsMatch(RemoverAcentos(texto));
