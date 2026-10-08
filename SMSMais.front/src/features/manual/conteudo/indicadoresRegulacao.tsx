@@ -22,7 +22,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
   icone: Gauge,
   rota: '/app/regulacao/indicadores',
   publico: 'Quem acompanha e presta contas da regulação: gestão, coordenação e controle',
-  atualizadoEm: '2026-10-06',
+  atualizadoEm: '2026-10-08',
   palavrasChave: [
     'indicadores',
     'indicadores de regulação',
@@ -380,7 +380,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
       id: 'leitura-nao-fechou',
       titulo: 'Quando uma leitura do coletor não fecha',
       busca:
-        'leitura não fechou falha erro tentar todas de novo reler botão de volta na fila tentativas seis tempo esgotado 504 SISREG não respondeu dividida em dias declarou lidas distintas período fora do indicador configuração coletor',
+        'leitura não fechou falha erro tentar todas de novo reler botão de volta na fila tentativas seis tempo esgotado 504 SISREG não respondeu dividida em dias declarou lidas distintas período fora do indicador configuração coletor página única rodapé paginação a menos aviso celular 07:00 base desatualizada',
       conteudo: (
         <>
           <P>
@@ -422,6 +422,16 @@ export const artigoIndicadoresRegulacao: Artigo = {
               do paciente.
             </Item>
             <Item>
+              <strong>Dia com até 10 faltas</strong>: a lista de uma página só não traz o rodapé “Mostrando
+              Página de N”. Ela vale assim mesmo, como uma página.
+            </Item>
+            <Item>
+              <strong>Lista com uma ou duas faltas a menos que a paginação</strong>: a contagem paginada da rede
+              inteira às vezes conta uma a mais do que a lista entrega. Medido no dia 14/09/2026: lido unidade
+              por unidade, cada lista bateu com a sua paginação e a soma deu exatamente a lista da rede. Até duas a
+              menos, a leitura é gravada, com um aviso no log. Mais que isso é falha.
+            </Item>
+            <Item>
               <strong>Linha repetida entre páginas</strong>: a lista de canceladas às vezes mostra o mesmo
               cancelamento em duas páginas vizinhas. Ele é contado <strong>uma vez só</strong>, pelo código da
               solicitação e pela data do cancelamento.
@@ -431,6 +441,13 @@ export const artigoIndicadoresRegulacao: Artigo = {
             Nada disso afeta a agenda, a fila ou as solicitações: o coletor alimenta só os indicadores e, nas
             faltas recentes, a ficha do paciente. Enquanto a semana das faltas recentes não fecha, a falta
             daquele período aparece como “Em aberto” na ficha.
+          </P>
+          <P>
+            Cada leitura que não fecha fica só no log, e por isso não chega ao celular: o SISREG corta metade
+            delas, e a rodada seguinte fecha. O que chega ao celular é o resultado: todo dia às 07:00 o sistema
+            confere se algum dia já passado ficou <strong>sem a lista de faltas</strong> ou se alguma unidade
+            ficou <strong>sem releitura de chegada</strong> há mais de 30 h. Se ficou, avisa a lista de Avisos
+            no celular e mostra o mesmo aviso em SISREG → Consultar.
           </P>
         </>
       ),

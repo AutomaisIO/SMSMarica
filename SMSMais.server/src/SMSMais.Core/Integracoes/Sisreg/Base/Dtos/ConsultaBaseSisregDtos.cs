@@ -77,13 +77,17 @@ public sealed record AgendamentoBaseSisregDto(
     SituacaoAgendamentoSisreg Situacao);
 
 /// <param name="TotalPessoas">Pacientes distintos no resultado inteiro (não só na página).</param>
+/// <param name="Frescor">O que a base ainda não leu do SISREG neste recorte: dias sem a lista de
+/// faltas e unidades sem releitura de chegada. Com algo aqui, parte do "Pendente de atualização" pode
+/// ser falta ou comparecimento que a base ainda não sabe.</param>
 public sealed record ConsultaBaseSisregResultado(
     int TotalAtendimentos,
     int TotalPessoas,
     IReadOnlyList<ContagemSituacaoDto> PorSituacao,
     int Pagina,
     int Tamanho,
-    IReadOnlyList<AgendamentoBaseSisregDto> Itens);
+    IReadOnlyList<AgendamentoBaseSisregDto> Itens,
+    FrescorBaseSisregDto Frescor);
 
 public sealed record OpcaoUnidadeConsultaDto(Guid Id, string Nome, int Quantidade);
 

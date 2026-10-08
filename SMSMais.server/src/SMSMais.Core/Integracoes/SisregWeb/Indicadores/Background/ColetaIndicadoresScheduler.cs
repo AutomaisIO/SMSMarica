@@ -213,6 +213,8 @@ public sealed class ColetaIndicadoresScheduler(
                     await servico.CriarItensDeUnidadesAsync(item.Inicio, unidades, ct);
                 logger.LogInformation("SISREG_INDICADORES: {Trabalho} concluído ({Linhas} linha(s)).",
                     trabalho.Descricao, r.Linhas);
+                if (r.Mensagem is { Length: > 0 } aviso)
+                    logger.LogWarning("SISREG_INDICADORES_DIFERENCA: {Trabalho}: {Aviso}.", trabalho.Descricao, aviso);
                 break;
 
             // As faltas recentes também: a semana cheia passa dos ~65 s do proxy do SISREG, e sem

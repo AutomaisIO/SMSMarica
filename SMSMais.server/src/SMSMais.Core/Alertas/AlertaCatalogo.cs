@@ -26,6 +26,9 @@ public static class AlertaCatalogo
 
     public static string Sincronismo(string provedor) => $"sincronismo.{provedor.ToLowerInvariant()}";
 
+    /// <summary>Conferência diária da base do SISREG: dia sem lista de faltas ou unidade sem releitura de chegada.</summary>
+    public const string SisregFrescor = "sisreg.frescor";
+
     // Monitor que roda DENTRO do servidor do PACS (docs/pacs.md §11.1) e reporta por
     // POST /alertas-plataforma/externo. Chaves separadas de propósito: o freio é por chave, e o
     // "voltou" logo depois do "vai reiniciar" não pode ser engolido por ele.
@@ -53,6 +56,10 @@ public static class AlertaCatalogo
         new(Sincronismo("sisreg"), "Sincronismo SISREG", "Sincronismo",
             "CAPTCHA, credencial derrubada, unidade com erro e rodada do lote de mapeamento que "
             + "terminou com pendência."),
+        new(SisregFrescor, "Base do SISREG desatualizada", "Sincronismo",
+            "Conferência das 07:00: dia já passado sem a lista de faltas do SISREG, ou unidade cuja "
+            + "chegada dos pacientes não é relida há mais de 30 h. Enquanto isso, quem faltou ou veio "
+            + "aparece como \"Pendente de atualização\" na Consulta e na ficha do paciente."),
         new(Sincronismo("ser"), "Sincronismo SER", "Sincronismo",
             "Falhas avisadas pelo motor do SER."),
         new(Sincronismo("sernit"), "Sincronismo SERNIT", "Sincronismo",

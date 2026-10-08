@@ -12,6 +12,7 @@ import { Select } from '@/shared/ui/Select';
 import { SelecaoMultipla } from '@/shared/ui/SelecaoMultipla';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { ModalSolicitacao } from '@/features/solicitacoes/components/ModalSolicitacao';
+import { AvisoFrescorBase } from '@/features/sisreg/components/AvisoFrescorBase';
 import { ROTULO_CATEGORIA } from '@/features/solicitacoes/components/CategoriaBadge';
 import {
   SITUACOES_SISREG,
@@ -322,6 +323,8 @@ export function SisregConsultaPage() {
               </Button>
             </div>
           </div>
+
+          <AvisoFrescorBase frescor={dados.frescor} />
 
           {erroPdf ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{erroPdf}</div>

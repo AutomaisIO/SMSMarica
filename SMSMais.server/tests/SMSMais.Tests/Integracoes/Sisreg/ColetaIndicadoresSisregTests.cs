@@ -332,6 +332,65 @@ public class ColetaIndicadoresSisregTests
         armazem.FaltasSubstituidas.Should().BeNull();
     }
 
+    /// <summary>
+    /// Dia com até 10 faltas: o SISREG não escreve "Mostrando Página de N" quando há uma página só.
+    /// 12/09, 27/09 e 04/10/2026 (9, 8 e 3 faltas) ficavam em falha para sempre exigindo o rodapé.
+    /// </summary>
+    [Fact]
+    public async Task Faltas_de_uma_pagina_so_fecham_sem_o_rodape()
+    {
+        var sessao = new SessaoRoteirizada(Faltas(paginas: null, linhas: 9), Faltas(paginas: null, linhas: 9));
+        var armazem = new ArmazemFalso();
+        var t = new TrabalhoFaltas(Item(ColetorIndicadorSisreg.FaltasRecentes, "dia"), 0.7, recentes: true);
+
+        (await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default)).Desfecho.Should().Be(DesfechoPasso.Continuar);
+        (await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default)).Should().Be(ResultadoPasso.Concluida(9));
+        armazem.FaltasSubstituidas.Should().Be(9);
+    }
+
+    [Fact]
+    public async Task Pagina_sem_rodape_com_mais_de_dez_linhas_nao_vale_como_uma_pagina()
+    {
+        var sessao = new SessaoRoteirizada(Faltas(paginas: null, linhas: 11));
+        var armazem = new ArmazemFalso();
+        var t = new TrabalhoFaltas(Item(ColetorIndicadorSisreg.FaltasRecentes, "dia"), 0.7, recentes: true);
+
+        (await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default)).Desfecho.Should().Be(DesfechoPasso.Falha);
+        armazem.FaltasSubstituidas.Should().BeNull();
+    }
+
+    /// <summary>
+    /// 14/09/2026: a lista inteira trouxe 310 e a paginação da rede dizia 32 páginas (311–320). Lido
+    /// por unidade executante, as 13 listas bateram com a própria paginação e somaram 310 — a sobra
+    /// é da contagem do SISREG. Uma ou duas a menos gravam, com aviso; mais que isso continua falha.
+    /// </summary>
+    [Theory]
+    [InlineData(310, true)]
+    [InlineData(309, true)]
+    [InlineData(308, false)]
+    public async Task Lista_ate_duas_abaixo_da_paginacao_grava_com_aviso(int linhas, bool grava)
+    {
+        var sessao = new SessaoRoteirizada(Faltas(paginas: 32, linhas: 10), Faltas(paginas: null, linhas: linhas));
+        var armazem = new ArmazemFalso();
+        var t = new TrabalhoFaltas(Item(ColetorIndicadorSisreg.FaltasRecentes, "dia"), 0.7, recentes: true);
+
+        await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default);
+        var r = await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default);
+
+        if (grava)
+        {
+            r.Desfecho.Should().Be(DesfechoPasso.Concluida);
+            r.Linhas.Should().Be(linhas);
+            r.Mensagem.Should().Contain("a partir de 311");
+            armazem.FaltasSubstituidas.Should().Be(linhas);
+        }
+        else
+        {
+            r.Desfecho.Should().Be(DesfechoPasso.Falha);
+            armazem.FaltasSubstituidas.Should().BeNull();
+        }
+    }
+
     [Fact]
     public async Task Faltas_com_trava_de_encolhimento_nao_apagam_a_janela_gravada()
     {

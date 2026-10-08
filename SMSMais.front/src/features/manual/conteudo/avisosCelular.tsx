@@ -20,7 +20,7 @@ export const artigoAvisosCelular: Artigo = {
   icone: BellRing,
   rota: '/app/avisos-celular',
   publico: 'Quem cuida da plataforma (permissão Erros)',
-  atualizadoEm: '2026-10-06',
+  atualizadoEm: '2026-10-08',
   palavrasChave: [
     'avisos no celular',
     'aviso de erro',
@@ -45,13 +45,18 @@ export const artigoAvisosCelular: Artigo = {
     {
       id: 'para-que-serve',
       titulo: 'Para que serve',
-      busca: 'erro plataforma whatsapp robô sincronismo erro 500 log',
+      busca: 'erro plataforma whatsapp robô sincronismo erro 500 log base sisreg desatualizada faltas 07:00',
       conteudo: (
         <>
           <P>
             Todo erro da plataforma — robô que parou de responder, crédito da IA, sincronismo que falhou, erro 500
             novo e qualquer erro que um motor grave no log — vira uma mensagem de WhatsApp para os telefones desta
             tela. É a <strong>única</strong> lista de avisos de erro: não existe outra configuração em nenhuma tela.
+          </P>
+          <P>
+            Além dos erros, chega um aviso por dia, às 07:00, quando a <strong>base do SISREG está desatualizada</strong>:
+            dia já passado sem a lista de faltas, ou unidade cuja chegada dos pacientes não é relida há mais de 30 h.
+            É o que impede o relatório de pendentes de sair contando falta como pendente sem ninguém saber.
           </P>
           <P>
             Se a pessoa escreveu para o número da Secretaria nas últimas 23 horas, o aviso chega como mensagem

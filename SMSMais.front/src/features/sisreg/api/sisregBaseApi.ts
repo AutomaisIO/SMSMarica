@@ -64,6 +64,18 @@ export type AgendamentoBaseSisreg = {
   situacao: SituacaoAgendamentoSisreg;
 };
 
+/**
+ * O que a base ainda não leu do SISREG no recorte: dias sem a lista de faltas e unidades cuja
+ * chegada não é relida há mais de `horasParaAtraso` h. Com algo aqui, parte do "Pendente de
+ * atualização" pode ser falta ou comparecimento que a base ainda não sabe.
+ */
+export type FrescorBaseSisreg = {
+  /** `dia` é data-só (wall-clock); `ultimaLeitura` é instante UTC ou null (nunca lido). */
+  diasSemFaltas: { dia: string; agendamentos: number; ultimaLeitura: string | null }[];
+  chegadasAtrasadas: { unidadeId: string; unidade: string; agendamentos: number; ultimaLeitura: string | null }[];
+  horasParaAtraso: number;
+};
+
 export type ResultadoConsultaBase = {
   totalAtendimentos: number;
   totalPessoas: number;
@@ -71,6 +83,8 @@ export type ResultadoConsultaBase = {
   pagina: number;
   tamanho: number;
   itens: AgendamentoBaseSisreg[];
+  /** Opcional: o front pode subir antes do servidor no deploy. */
+  frescor?: FrescorBaseSisreg;
 };
 
 export type OpcoesConsultaBase = {

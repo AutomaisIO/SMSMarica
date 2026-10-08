@@ -1116,3 +1116,34 @@ Medido em PROD (só leitura), agendamentos de 2026 que já passaram, por mês da
   madrugada. "Agendada" com data passada lá é o próprio SER sem registro de chegada (set/26: 69 de
   306). **ESUS SG não informa chegada** nas duas listas lidas (4.934 agendadas no passado); a única
   pista não sondada é `controller-exame-paciente-exames-2/buscar-historico-de-exames-agendados`.
+
+### Rodada 6 (07–08/10/2026) — o dia que nunca fechava: a conferência era rígida demais
+
+Motivo: o relatório de pendentes (SISREG → Consultar) saiu com faltas contadas como "Pendente de
+atualização". As semanas 09–16/09 e 17–23/09 das faltas recentes nunca tinham lido (corrigido em
+e1ddf41, dividindo em dias); depois disso sobraram **14/09** (875 em aberto) e **12/09** furados.
+Sonda: `sonda_faltas_dia.py` (~45 requisições no total, com OK do Bernardo).
+
+- **O 14/09 foi LIDO e jogado fora.** Às 15:08 de 07/10 a lista inteira da rede veio com 310 faltas e
+  a paginada dizia 32 páginas (311–320) → recusada. Lido por **unidade executante** (13 unidades com
+  agendamento no dia): cada lista bateu com a própria paginação e a soma deu **exatamente 310**. O
+  parser não perdeu linha nenhuma (0 linhas com código descartadas em todas). A contagem paginada da
+  REDE às vezes conta uma a mais que a lista. Coletor passou a aceitar até 2 a menos, com aviso no log.
+- **Lista de uma página não tem rodapé.** 12/09 = 9 faltas, sem "Mostrando Página de N" na paginada
+  nem na lista; 27/09 (8) e 04/10 (3) idem. O coletor exigia o rodapé quando havia linha → falha eterna.
+  Agora: sem rodapé e ≤ 10 linhas = 1 página.
+- **O corte de ~65 s não é só peso.** Por unidade, 4 de 13 cortaram na primeira tentativa, até
+  unidades com 1–2 faltas (Conde, Ponta Grossa); repetidas, responderam em segundos. No coletor de
+  produção, 07/10: 164 cortes × 185 leituras fechadas, espalhados igual das 01h às 17h. Em 153 dos 164
+  não havia outra rotina do SISREG ativa (o coletor espera os outros motores) e a sessão só caiu uma
+  vez no dia — **não é concorrência interna**. A rodada seguinte fecha.
+- **Concorrência existe, sim, quando o laboratório roda junto com a produção:** a sonda usou o
+  PROGRAMADOR-BERNARDO durante a varredura noturna e às 00:00 a produção logou "sessão expirada —
+  refazendo login". Sonda de laboratório: só fora das janelas das rotinas (varredura ~18h–00h, coletor
+  01:20–18:00, fila 03:00) ou aceitando derrubar a sessão delas.
+- **Faltas por executante, 14/09:** CRAD 62 (= os 62 pendentes que tínhamos), CDT 121, DIMAGEM 30, CMI 28,
+  Che Guevara 25, Radiologia 19, CEO Itaipuaçu 7, Guaratiba 7, Bambuí 6, Conde 2, CEO 2, Ponta Grossa 1,
+  Péricles 0 (só o formulário — Péricles não apontou falta no dia).
+- **Ainda em aberto:** 691941761 (CRAD, 23/09) está como AGE/FALTA/EXEC na tela do SISREG e fora da lista
+  de 23/09 lida às 15:17 de 07/10 (204 linhas, dentro da paginação). Não sondado — conferir se a lista
+  do CRAD em 23/09 traz o código antes de concluir que a lista oficial omite falta apontada.

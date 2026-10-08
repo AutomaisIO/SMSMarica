@@ -18,7 +18,7 @@ export const artigoSisregConsultar: Artigo = {
   icone: ClipboardList,
   rota: '/app/sisreg',
   publico: 'Quem acompanha a regulação e cobra das unidades o apontamento de chegada e falta',
-  atualizadoEm: '2026-10-06',
+  atualizadoEm: '2026-10-08',
   palavrasChave: [
     'consultar sisreg',
     'pendente de atualização',
@@ -30,6 +30,10 @@ export const artigoSisregConsultar: Artigo = {
     'exportar pdf',
     'unidade executante',
     'procedimento',
+    'base desatualizada',
+    'faltas não lidas',
+    'aviso amarelo',
+    'aviso no celular',
   ],
   secoes: () => [
     {
@@ -82,6 +86,44 @@ export const artigoSisregConsultar: Artigo = {
       ),
     },
     {
+      id: 'base-incompleta',
+      titulo: 'Quando aparece o aviso amarelo: a base ainda não leu tudo',
+      busca:
+        'aviso amarelo base desatualizada incompleta lista de faltas não lida dia sem leitura chegada não relida 30 horas pendente errado falta contada como pendente celular 07:00 pdf',
+      conteudo: (
+        <>
+          <P>
+            “Faltou” e “Compareceu” não vêm junto com o agendamento: saem de duas leituras do SISREG que acontecem
+            depois. A <strong>lista de faltas</strong> de cada dia é lida de hora em hora, entre 01:20 e 18:00. A{' '}
+            <strong>chegada</strong> dos pacientes é relida toda noite, unidade por unidade.
+          </P>
+          <P>
+            Enquanto uma dessas leituras não acontece, o atendimento aparece como “Pendente de atualização”, mesmo
+            que a unidade já tenha apontado a falta ou a chegada. Por isso, quando o período pesquisado tem algo
+            ainda não lido, aparece um <strong>aviso amarelo</strong> em cima da tabela dizendo:
+          </P>
+          <Lista>
+            <Item>
+              <strong>Lista de faltas não lida</strong>: os dias sem a lista, quantos atendimentos estão em aberto
+              em cada um e quando foi a última leitura. Quem faltou nesses dias aparece como pendente.
+            </Item>
+            <Item>
+              <strong>Chegada não relida há mais de 30 h</strong>: as unidades que a leitura da noite deixou de
+              reler. Quem compareceu e foi confirmado depois aparece como pendente.
+            </Item>
+          </Lista>
+          <Callout tipo="atencao" titulo="Com o aviso amarelo, não cobre a unidade ainda">
+            Os pendentes dos dias e unidades do aviso podem estar errados. Espere a leitura, que acontece sozinha,
+            e pesquise de novo; ou cobre só os outros dias. O aviso também sai impresso no PDF.
+          </Callout>
+          <P>
+            Ninguém precisa ficar conferindo isso: todo dia às 07:00 o sistema confere os últimos 45 dias e, se
+            faltar alguma leitura, manda um aviso pelo WhatsApp para a lista de Avisos no celular.
+          </P>
+        </>
+      ),
+    },
+    {
       id: 'filtros',
       titulo: 'Como filtrar',
       busca: 'período data do agendamento data da solicitação unidades situação procedimentos exames consultas marcar todas desmarcar pesquisar',
@@ -130,7 +172,7 @@ export const artigoSisregConsultar: Artigo = {
     {
       id: 'pdf',
       titulo: 'Exportar PDF',
-      busca: 'exportar pdf relatório nominal imprimir nome data procedimento situação 5000 lgpd',
+      busca: 'exportar pdf relatório nominal imprimir nome data procedimento situação 5000 lgpd aviso amarelo base incompleta',
       conteudo: (
         <>
           <P>
@@ -138,6 +180,10 @@ export const artigoSisregConsultar: Artigo = {
             não só a página aberta: nome do paciente, data do agendamento, procedimento e situação, em ordem
             alfabética. O filtro usado sai escrito no topo. O limite é de 5.000 atendimentos; acima disso,
             diminua o período ou marque menos unidades.
+          </P>
+          <P>
+            Se a base ainda não leu tudo do período, o PDF sai com o mesmo aviso amarelo da tela logo abaixo do
+            filtro. Assim quem recebe o papel sabe que parte dos pendentes ainda pode mudar.
           </P>
           <Callout tipo="lgpd">
             O PDF tem nome de paciente. Envie só por canal interno e só para quem precisa cobrar ou resolver os

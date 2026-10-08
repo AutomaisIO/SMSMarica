@@ -107,8 +107,11 @@ public sealed class TrabalhoFaltas(
         var faltas = IndicadoresSisregHtmlParser.Faltas(html);
         if (_paginas is null)
         {
+            // Sem rodapé: ou não há falta nenhuma, ou cabe tudo numa página — o SISREG só escreve
+            // "Mostrando Página de N" quando há mais de uma. Medido em 07/10/2026: 12/09 (9 faltas),
+            // 27/09 (8) e 04/10 (3) ficavam em falha para sempre por exigir o rodapé.
             _paginas = IndicadoresSisregHtmlParser.PaginasDeFaltas(html)
-                       ?? (faltas.Count == 0 ? 0 : null);
+                       ?? (faltas.Count <= IndicadoresSisregHtmlParser.FaltasPorPagina ? (faltas.Count == 0 ? 0 : 1) : null);
             if (_paginas is null)
                 return ResultadoPasso.Falha("a consulta paginada não trouxe o rodapé \"Mostrando Página de N\"");
             return ResultadoPasso.Continuar();
@@ -118,11 +121,14 @@ public sealed class TrabalhoFaltas(
         var n = _paginas.Value;
         var minimo = n == 0 ? 0 : (n - 1) * IndicadoresSisregHtmlParser.FaltasPorPagina + 1;
         var maximo = n * IndicadoresSisregHtmlParser.FaltasPorPagina;
-        if (faltas.Count < minimo || faltas.Count > maximo)
+        if (faltas.Count < minimo - FolgaDaPaginacao || faltas.Count > maximo)
         {
             return ResultadoPasso.Falha(
                 $"a lista trouxe {faltas.Count} falta(s) e a paginação indica entre {minimo} e {maximo} — nada foi gravado");
         }
+        var aviso = faltas.Count < minimo
+            ? $"a lista trouxe {faltas.Count} falta(s) e a paginação do SISREG indica a partir de {minimo} — gravada assim"
+            : null;
 
         var anteriores = await armazem.ContarFaltasAsync(Item.Inicio, Item.Fim, ct);
         var unicas = faltas.Select(f => (f.Codigo, f.DataExecucao)).Distinct().Count();
@@ -133,8 +139,19 @@ public sealed class TrabalhoFaltas(
         }
 
         await armazem.SubstituirFaltasAsync(Item.Inicio, Item.Fim, faltas, ct);
-        return ResultadoPasso.Concluida(unicas);
+        return new ResultadoPasso(DesfechoPasso.Concluida, unicas, Mensagem: aviso);
     }
+
+    /// <summary>
+    /// Quantas linhas a lista inteira pode ter A MENOS que a paginação indica. A contagem paginada da
+    /// rede inteira às vezes conta uma a mais que a lista entrega: em 07/10/2026 o 14/09 veio com 310
+    /// e a paginação dizia 32 páginas (311–320); lido unidade executante por unidade, as 13 listas
+    /// bateram cada uma com a própria paginação e somaram exatamente 310 — o nosso leitor não perdeu
+    /// linha, a sobra é do SISREG. Sem folga, o dia era recusado inteiro e ficava sem falta nenhuma
+    /// (875 agendamentos como "Pendente"). A folga é pequena de propósito: corte de verdade no meio
+    /// da lista perde muito mais que isso, e resposta sem <c>&lt;/html&gt;</c> já é recusada antes.
+    /// </summary>
+    public const int FolgaDaPaginacao = 2;
 
     private Dictionary<string, string> Campos(bool lista)
     {

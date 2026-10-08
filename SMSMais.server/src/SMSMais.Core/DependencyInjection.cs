@@ -804,6 +804,10 @@ public static class DependencyInjection
         services.AddScoped<Integracoes.Sisreg.Configuracao.ISisregConfiguracaoService, Integracoes.Sisreg.Configuracao.SisregConfiguracaoService>();
         services.AddScoped<Integracoes.Sisreg.ISisregConsultaService, Integracoes.Sisreg.SisregConsultaService>();
         services.AddScoped<Integracoes.Sisreg.Base.IConsultaBaseSisregService, Integracoes.Sisreg.Base.ConsultaBaseSisregService>();
+        services.Configure<Integracoes.Sisreg.Base.FrescorBaseSisregOpcoes>(
+            configuration.GetSection(Integracoes.Sisreg.Base.FrescorBaseSisregOpcoes.Secao));
+        services.AddScoped<Integracoes.Sisreg.Base.IFrescorBaseSisregService, Integracoes.Sisreg.Base.FrescorBaseSisregService>();
+        services.AddHostedService<Integracoes.Sisreg.Base.AvisoFrescorBaseSisregWorker>();
         services.AddHttpClient<Integracoes.Sisreg.ISisregClient, Integracoes.Sisreg.SisregClient>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);

@@ -22,7 +22,8 @@ public sealed class ConsultaBaseSisregService(
     IUsuarioAtualAccessor usuarioAtual,
     IPacienteResolver pacientes,
     IInstituicaoService instituicao,
-    IMidiasService midias) : IConsultaBaseSisregService
+    IMidiasService midias,
+    IFrescorBaseSisregService frescor) : IConsultaBaseSisregService
 {
     /// <summary>Teto do período: um ano. Mais que isso vira relatório, não consulta de tela.</summary>
     public const int MaxDiasPeriodo = 366;
@@ -171,7 +172,8 @@ public sealed class ConsultaBaseSisregService(
             .Where(c => c.Quantidade > 0)
             .ToList();
 
-        return new ConsultaBaseSisregResultado(total, pessoas, porSituacao, filtro.Pagina, filtro.Tamanho, itens);
+        var aviso = await FrescorAsync(filtro, escopo, hoje, ct);
+        return new ConsultaBaseSisregResultado(total, pessoas, porSituacao, filtro.Pagina, filtro.Tamanho, itens, aviso);
     }
 
     public async Task<OpcoesConsultaBaseSisregDto> OpcoesAsync(
@@ -239,8 +241,24 @@ public sealed class ConsultaBaseSisregService(
                 .ToListAsync(ct)
             : [];
 
+        var aviso = await FrescorAsync(filtro, escopo, hoje, ct);
         var idv = await IdentidadeVisualPdf.ResolverAsync(instituicao, midias, ct);
-        return new ConsultaBaseSisregPdf(filtro, itens, nomesUnidades, DateTime.UtcNow, idv).Gerar();
+        return new ConsultaBaseSisregPdf(filtro, itens, nomesUnidades, aviso, DateTime.UtcNow, idv).Gerar();
+    }
+
+    /// <summary>
+    /// O frescor do MESMO recorte que o usuário está vendo: as unidades marcadas (dentro do escopo
+    /// dele) e os dias de agendamento do período. Pelo eixo da solicitação, o agendamento pode cair
+    /// em qualquer dia depois do início — confere do início até ontem.
+    /// </summary>
+    private Task<FrescorBaseSisregDto> FrescorAsync(
+        ConsultaBaseSisregFiltro filtro, EscopoUnidadeResultado escopo, DateOnly hoje, CancellationToken ct)
+    {
+        IReadOnlyCollection<Guid>? unidades = filtro.UnidadeIds is { Count: > 0 } marcadas
+            ? (escopo.VeTudo ? marcadas : marcadas.Intersect(escopo.Unidades).ToArray())
+            : (escopo.VeTudo ? null : escopo.Unidades);
+        var fim = filtro.Eixo == EixoDataConsultaSisreg.Solicitacao ? hoje.AddDays(-1) : filtro.Fim;
+        return frescor.ConferirAsync(filtro.Inicio, fim, unidades, ct);
     }
 
     private static readonly System.Globalization.CultureInfo PdfCultura =

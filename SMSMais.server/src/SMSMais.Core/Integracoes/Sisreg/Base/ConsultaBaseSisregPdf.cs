@@ -18,6 +18,7 @@ internal sealed class ConsultaBaseSisregPdf(
     ConsultaBaseSisregFiltro filtro,
     IReadOnlyList<AgendamentoBaseSisregDto> itens,
     IReadOnlyList<string> nomesUnidades,
+    FrescorBaseSisregDto frescor,
     DateTime geradoEmUtc,
     IdentidadeVisualPdf idv)
 {
@@ -53,6 +54,7 @@ internal sealed class ConsultaBaseSisregPdf(
             {
                 col.Spacing(10);
                 col.Item().Element(Abertura);
+                if (!frescor.EmDia) col.Item().Element(AvisoDeFrescor);
                 col.Item().Element(Tabela);
             });
             page.Footer().Row(r =>
@@ -118,6 +120,31 @@ internal sealed class ConsultaBaseSisregPdf(
             }, ultimo: true);
         });
     });
+
+    /// <summary>
+    /// O papel sai do sistema e circula sem a tela: se a base ainda não leu parte do recorte, o
+    /// aviso vai impresso — senão "Pendente de atualização" vira cobrança à unidade por falta que
+    /// ela já apontou (07/10/2026, fisioterapia de setembro).
+    /// </summary>
+    private void AvisoDeFrescor(IContainer c) => c
+        .Background("#fff8c5").Border(0.8f).BorderColor("#d4a72c").Padding(6)
+        .Column(col =>
+        {
+            col.Spacing(2);
+            col.Item().Text("Atenção: a base ainda não leu tudo do SISREG neste período").Bold().FontColor("#7d4e00");
+            if (frescor.DiasSemFaltas.Count > 0)
+            {
+                col.Item().Text("Lista de faltas não lida para: "
+                    + string.Join(", ", frescor.DiasSemFaltas.Select(d => d.Dia.ToString("dd/MM/yyyy", PtBr)))
+                    + ". Quem faltou nesses dias aparece como \"Pendente de atualização\".");
+            }
+            if (frescor.ChegadasAtrasadas.Count > 0)
+            {
+                col.Item().Text($"Chegada dos pacientes não relida há mais de {frescor.HorasParaAtraso} h em: "
+                    + string.Join("; ", frescor.ChegadasAtrasadas.Select(u => u.Unidade))
+                    + ". Quem compareceu e foi confirmado depois disso aparece como \"Pendente de atualização\".");
+            }
+        });
 
     private static void Campo(TextDescriptor t, string rotulo, string valor, bool ultimo = false)
     {

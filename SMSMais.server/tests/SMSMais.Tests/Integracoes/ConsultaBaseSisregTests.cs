@@ -31,7 +31,11 @@ public class ConsultaBaseSisregTests(PostgresFixture fixture)
 
     private static ConsultaBaseSisregService Servico(SmsMaisDbContext db) =>
         new(db, new UsuarioAtualAccessorFake(), Substitute.For<IPacienteResolver>(),
-            Substitute.For<IInstituicaoService>(), Substitute.For<IMidiasService>());
+            Substitute.For<IInstituicaoService>(), Substitute.For<IMidiasService>(),
+            new FrescorBaseSisregService(db,
+                Microsoft.Extensions.Options.Options.Create(new FrescorBaseSisregOpcoes()),
+                Microsoft.Extensions.Options.Options.Create(new SMSMais.Core.Integracoes.SisregWeb.Indicadores.ColetaIndicadoresOpcoes()),
+                Microsoft.Extensions.Options.Options.Create(new SMSMais.Core.Integracoes.SisregWeb.Varredura.VarreduraSisregOpcoes())));
 
     /// <summary>Unidade nova a cada teste: a bancada é compartilhada e o serviço vê a rede inteira.</summary>
     private static async Task<Guid> UnidadeAsync(SmsMaisDbContext db)
@@ -274,7 +278,11 @@ public class ConsultaBaseSisregTests(PostgresFixture fixture)
 
         var pdf = new ConsultaBaseSisregPdf(
             new ConsultaBaseSisregFiltro(Dia, Dia, Situacoes: [SituacaoAgendamentoSisreg.Pendente]),
-            itens, ["UNIDADE"], DateTime.UtcNow,
+            itens, ["UNIDADE"],
+            // Com o aviso de base incompleta: é o caminho que imprime a faixa amarela.
+            new FrescorBaseSisregDto([new DiaSemFaltasDto(Dia, 3, null)],
+                [new ChegadaAtrasadaDto(Guid.NewGuid(), "UNIDADE", 2, null)], 30),
+            DateTime.UtcNow,
             new IdentidadeVisualPdf("Secretaria de Teste", "#B71C1C", "#700000", null)).Gerar();
 
         Assert.True(pdf.Length > 1000);
