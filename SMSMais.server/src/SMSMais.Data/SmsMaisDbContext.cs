@@ -39,6 +39,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RotaDiaria> Rotas => Set<RotaDiaria>();
     public DbSet<Alocacao> Alocacoes => Set<Alocacao>();
     public DbSet<PontoGps> PontosGps => Set<PontoGps>();
+    /// <summary>Tablet fixo no veículo (Mapa da frota) — docs/modulos/tfd/deslocamento-tablet.md.</summary>
+    public DbSet<DispositivoVeiculo> DispositivosVeiculo => Set<DispositivoVeiculo>();
+    public DbSet<PosicaoVeiculo> PosicoesVeiculo => Set<PosicaoVeiculo>();
     public DbSet<Geofence> Geofences => Set<Geofence>();
     public DbSet<EventoChegada> EventosChegada => Set<EventoChegada>();
     public DbSet<Avaliacao> Avaliacoes => Set<Avaliacao>();

@@ -39,3 +39,31 @@ export async function atualizarLayoutVeiculo(
 export async function desativarVeiculo(id: string): Promise<void> {
   await http.delete(`/veiculos/${id}`);
 }
+
+// --- Tablet fixo no veículo (Mapa da frota) — docs/modulos/tfd/deslocamento-tablet.md ---
+
+export type DispositivoVeiculo = {
+  id: string;
+  ativo: boolean;
+  ativadoEm: string | null;
+  ultimoContatoEm: string | null;
+  modelo: string | null;
+  codigoPendente: boolean;
+  codigoExpiraEm: string | null;
+};
+
+export type CodigoAtivacao = { codigo: string; expiraEm: string };
+
+export async function obterDispositivoVeiculo(id: string): Promise<DispositivoVeiculo | null> {
+  const resposta = await http.get<DispositivoVeiculo | ''>(`/veiculos/${id}/dispositivo`);
+  return resposta.status === 204 || !resposta.data ? null : resposta.data;
+}
+
+export async function gerarCodigoDispositivo(id: string): Promise<CodigoAtivacao> {
+  const { data } = await http.post<CodigoAtivacao>(`/veiculos/${id}/dispositivo/codigo`);
+  return data;
+}
+
+export async function desvincularDispositivo(id: string): Promise<void> {
+  await http.delete(`/veiculos/${id}/dispositivo`);
+}

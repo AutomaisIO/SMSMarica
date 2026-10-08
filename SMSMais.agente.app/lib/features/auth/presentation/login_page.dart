@@ -47,7 +47,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (!mounted) return;
     setState(() => _carregando = false);
-    context.go('/rota');
+    context.go('/deslocamento');
   }
 
   @override

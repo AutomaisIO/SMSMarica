@@ -13,6 +13,8 @@ import type { Artigo } from '@/features/manual/tipos';
  * MapaDeAssentos, SeletorCorVeiculo, IlustracaoVeiculo, lib/corVeiculo, lib/desenhoVeiculo),
  * `features/translados` (TransladoDetalhePage, MapaDeAssentosAlocavel) e no backend
  * (`VeiculosService` — placa única e exclusão lógica —, `VeiculosValidators`, `VeiculosController`).
+ * Tablet vinculado: `components/TabletVinculado`, `DispositivosVeiculoController`,
+ * `DispositivoVeiculoService` e o Mapa da frota (`features/rastreamento/pages/MapaFrotaPage`).
  */
 export const artigoVeiculos: Artigo = {
   slug: 'veiculos',
@@ -23,9 +25,16 @@ export const artigoVeiculos: Artigo = {
   icone: Bus,
   rota: '/app/veiculos',
   publico: 'Quem cadastra a frota e monta os translados do transporte de pacientes',
-  atualizadoEm: '2026-09-30',
+  atualizadoEm: '2026-10-08',
   palavrasChave: [
     'veículo',
+    'tablet',
+    'tablet do carro',
+    'vincular tablet',
+    'código de ativação',
+    'mapa da frota',
+    'GPS',
+    'velocidade',
     'frota',
     'carro',
     'van',
@@ -322,6 +331,52 @@ export const artigoVeiculos: Artigo = {
       ),
     },
     {
+      id: 'tablet',
+      titulo: 'Tablet do carro e o Mapa da frota',
+      busca: 'tablet vincular código ativação desvincular trocar tablet mapa da frota gps posição velocidade km/h sem rota última posição app do motorista',
+      conteudo: (
+        <>
+          <P>
+            Um tablet preso no carro (com o app do motorista) faz o veículo aparecer no{' '}
+            <strong>Mapa da frota</strong> com a posição e a velocidade, mesmo sem rota no dia. O
+            tablet fica ligado ao <strong>veículo</strong>, não a um motorista.
+          </P>
+          <Passos
+            itens={[
+              { titulo: 'Abra o detalhe do veículo e, em Tablet vinculado, clique em Gerar código.' },
+              {
+                titulo: 'No tablet, abra Vincular veículo e digite o código de 8 letras.',
+                detalhe: 'O código vale 24 horas e só pode ser usado uma vez.',
+              },
+              { titulo: 'Pronto: o cartão mostra "Vinculado" e a hora da última posição recebida.' },
+            ]}
+          />
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'No mapa',
+                descricao:
+                  'O carro aparece em azul-piscina quando não tem rota no dia ("Tablet (sem rota)"); com rota, fica na cor do status da rota. Em movimento, mostra a velocidade embaixo do ícone. O mapa atualiza a cada 5 segundos.',
+              },
+              {
+                termo: 'Trocar o tablet',
+                descricao:
+                  'Gere um código novo e digite no tablet novo: ao ativar, o anterior para de ser aceito na hora.',
+              },
+              {
+                termo: 'Desvincular',
+                descricao: 'O tablet para de ser aceito e o carro sai do mapa (o histórico de posições fica).',
+              },
+            ]}
+          />
+          <Callout tipo="dica" titulo="Ícone apagado no mapa">
+            Ícone esmaecido = o tablet não manda posição há mais de 5 minutos (desligado, sem
+            internet ou fora do app).
+          </Callout>
+        </>
+      ),
+    },
+    {
       id: 'excluir',
       titulo: 'Excluir um veículo',
       busca: 'excluir desativar veículo vendido baixado histórico placa reservada reativar',
@@ -351,7 +406,7 @@ export const artigoVeiculos: Artigo = {
             itens={[
               { termo: 'Consulta', descricao: 'Ver a lista e o detalhe.' },
               { termo: 'Inclusão', descricao: 'Cadastrar veículo.' },
-              { termo: 'Edição', descricao: 'Editar dados, cor e layout de assentos.' },
+              { termo: 'Edição', descricao: 'Editar dados, cor e layout de assentos; vincular e desvincular o tablet do carro.' },
               { termo: 'Exclusão', descricao: 'Excluir.' },
             ]}
           />

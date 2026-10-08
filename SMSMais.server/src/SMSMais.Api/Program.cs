@@ -348,6 +348,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
+    // Tablet fixo no veículo (Mapa da frota): ativar com código + posições a cada 5 s. Particiona por
+    // IP; tablets de carros diferentes saem por IPs de operadora diferentes. Teto barra chute de código.
+    options.AddPolicy(SMSMais.Api.Controllers.DispositivosVeiculoController.PoliticaDeLimite, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
     // Monitor de dentro do servidor do PACS (POST /alertas-plataforma/externo): reporta por
     // transição, alguns avisos por hora no máximo. O teto barra força bruta na chave.
     options.AddPolicy(SMSMais.Api.Controllers.AlertasPlataformaController.PoliticaDeLimiteExterno, httpContext =>

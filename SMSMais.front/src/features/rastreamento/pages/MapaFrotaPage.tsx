@@ -3,13 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import L, { type LatLngBoundsExpression } from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Bus, MapPin, RefreshCw, Users } from 'lucide-react';
+import { Bus, Gauge, MapPin, RefreshCw, Users } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { listarFrota } from '@/features/rastreamento/api/rastreamentoApi';
 import type { FrotaVeiculo } from '@/features/rastreamento/types';
 
 const CENTRO_MARICA: [number, number] = [-22.9197, -42.8186];
-const INTERVALO_MS = 15_000; // GPS chega ~1/min; 15s mantém o mapa fresco sem custo
+// App do motorista manda ~1/min; o tablet do carro manda a cada 5 s em deslocamento.
+const INTERVALO_MS = 5_000;
 
 // StatusRota chega como string (JsonStringEnumConverter global no backend).
 const STATUS: Record<string, { rotulo: string; cor: string }> = {
@@ -19,8 +20,26 @@ const STATUS: Record<string, { rotulo: string; cor: string }> = {
   Cancelada: { rotulo: 'Cancelada', cor: '#dc2626' },
 };
 
-function statusDe(s: string) {
+// Veículo que aparece só pelo tablet fixo nele (sem rota no dia).
+const SO_TABLET = { rotulo: 'Tablet (sem rota)', cor: '#0891b2' };
+
+function statusDe(s: string | null) {
+  if (!s) return SO_TABLET;
   return STATUS[s] ?? { rotulo: s, cor: '#6b7280' };
+}
+
+function chaveDe(v: FrotaVeiculo): string {
+  return v.rotaId ?? `tablet-${v.veiculoId}`;
+}
+
+function tituloDe(v: FrotaVeiculo): string {
+  return v.motoristaNome ?? `Veículo ${v.veiculoPlaca}`;
+}
+
+/** Velocidade só faz sentido se a posição é recente (tablet manda a cada 5 s em movimento). */
+function velocidadeAtual(v: FrotaVeiculo): number | null {
+  if (v.velocidadeKmh == null || estaParado(v.atualizadoEm)) return null;
+  return Math.round(v.velocidadeKmh);
 }
 
 function dataLocalHoje(): string {
@@ -51,14 +70,21 @@ const ICONE_BUS_SVG =
   '<path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.6 6.8 19.9 6 19 6H5a2 2 0 0 0-1.9 1.5L1.7 12.7c-.1.4-.2.8-.2 1.2 0 .4.1.8.2 1.2C2 16.3 2.5 18 2.5 18H5"/>' +
   '<circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>';
 
-function iconeVan(cor: string, parado: boolean): L.DivIcon {
+function iconeVan(cor: string, parado: boolean, velocidade: number | null): L.DivIcon {
+  const etiqueta =
+    velocidade != null && velocidade >= 1
+      ? `<div style="position:absolute;top:36px;left:50%;transform:translateX(-50%);white-space:nowrap;` +
+        `background:#111827;color:white;font:600 11px/1 system-ui,sans-serif;padding:3px 6px;` +
+        `border-radius:9999px;box-shadow:0 1px 3px rgba(0,0,0,.4);">${velocidade} km/h</div>`
+      : '';
   return L.divIcon({
     className: 'frota-marker',
     html:
+      `<div style="position:relative;width:34px;height:34px;">` +
       `<div style="background:${cor};width:34px;height:34px;border-radius:50%;` +
       `border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.45);` +
       `display:flex;align-items:center;justify-content:center;opacity:${parado ? 0.5 : 1};">` +
-      `${ICONE_BUS_SVG}</div>`,
+      `${ICONE_BUS_SVG}</div>${etiqueta}</div>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     popupAnchor: [0, -18],
@@ -104,7 +130,7 @@ export function MapaFrotaPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Mapa da frota</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Posição dos veículos em tempo real — atualiza a cada 15&nbsp;segundos.
+            Posição dos veículos em tempo real — atualiza a cada 5&nbsp;segundos.
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm text-gray-500">
@@ -145,13 +171,13 @@ export function MapaFrotaPage() {
               const st = statusDe(v.status);
               return (
                 <Marker
-                  key={v.rotaId}
+                  key={chaveDe(v)}
                   position={[v.latitude, v.longitude]}
-                  icon={iconeVan(st.cor, estaParado(v.atualizadoEm))}
+                  icon={iconeVan(st.cor, estaParado(v.atualizadoEm), velocidadeAtual(v))}
                 >
                   <Popup>
                     <div className="space-y-1 text-sm">
-                      <div className="font-semibold text-gray-900">{v.motoristaNome}</div>
+                      <div className="font-semibold text-gray-900">{tituloDe(v)}</div>
                       <div className="text-gray-700">
                         {v.veiculoPlaca}
                         {v.veiculoModelo ? ` · ${v.veiculoModelo}` : ''}
@@ -163,9 +189,13 @@ export function MapaFrotaPage() {
                         />
                         <span className="text-gray-700">{st.rotulo}</span>
                       </div>
-                      <div className="text-gray-600">{v.qtdPacientes} paciente(s)</div>
+                      {v.rotaId ? <div className="text-gray-600">{v.qtdPacientes} paciente(s)</div> : null}
+                      {velocidadeAtual(v) != null ? (
+                        <div className="font-medium text-gray-900">{velocidadeAtual(v)} km/h</div>
+                      ) : null}
                       <div className="text-xs text-gray-500">
                         Atualizado {haQuantoTempo(v.atualizadoEm)}
+                        {v.origem === 'tablet' ? ' · via tablet do carro' : ''}
                       </div>
                     </div>
                   </Popup>
@@ -178,7 +208,7 @@ export function MapaFrotaPage() {
         <aside className="space-y-2">
           {veiculos.length === 0 && !frota.isLoading ? (
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-6 text-center text-sm text-gray-500">
-              Nenhuma rota para hoje.
+              Nenhuma rota nem tablet de veículo com posição hoje.
             </div>
           ) : null}
           {veiculos.map((v) => {
@@ -186,7 +216,7 @@ export function MapaFrotaPage() {
             const semSinal = v.latitude == null || v.longitude == null;
             return (
               <div
-                key={v.rotaId}
+                key={chaveDe(v)}
                 className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -198,7 +228,7 @@ export function MapaFrotaPage() {
                       <Bus className="h-4 w-4" />
                     </span>
                     <div>
-                      <div className="text-sm font-semibold text-gray-900">{v.motoristaNome}</div>
+                      <div className="text-sm font-semibold text-gray-900">{tituloDe(v)}</div>
                       <div className="text-xs text-gray-500">
                         {v.veiculoPlaca}
                         {v.veiculoModelo ? ` · ${v.veiculoModelo}` : ''}
@@ -213,10 +243,17 @@ export function MapaFrotaPage() {
                   </span>
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
-                    {v.qtdPacientes} paciente(s)
-                  </span>
+                  {v.rotaId ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5" />
+                      {v.qtdPacientes} paciente(s)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-cyan-700">
+                      <Gauge className="h-3.5 w-3.5" />
+                      {velocidadeAtual(v) != null ? `${velocidadeAtual(v)} km/h` : 'parado'}
+                    </span>
+                  )}
                   <span className={`inline-flex items-center gap-1 ${semSinal ? 'text-amber-600' : ''}`}>
                     <MapPin className="h-3.5 w-3.5" />
                     {haQuantoTempo(v.atualizadoEm)}

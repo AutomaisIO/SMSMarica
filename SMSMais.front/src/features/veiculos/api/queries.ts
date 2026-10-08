@@ -4,7 +4,10 @@ import {
   atualizarVeiculo,
   cadastrarVeiculo,
   desativarVeiculo,
+  desvincularDispositivo,
+  gerarCodigoDispositivo,
   listarVeiculos,
+  obterDispositivoVeiculo,
   obterVeiculoPorId,
 } from '@/features/veiculos/api/veiculosApi';
 import type {
@@ -69,5 +72,30 @@ export function useDesativarVeiculo() {
   return useMutation({
     mutationFn: (id: string) => desativarVeiculo(id),
     onSuccess: () => client.invalidateQueries({ queryKey: veiculosKeys.lista() }),
+  });
+}
+
+export function useDispositivoVeiculo(id: string | null) {
+  return useQuery({
+    queryKey: ['veiculos', 'dispositivo', id ?? 'nenhum'],
+    queryFn: () => obterDispositivoVeiculo(id as string),
+    enabled: Boolean(id),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useGerarCodigoDispositivo(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => gerarCodigoDispositivo(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['veiculos', 'dispositivo', id] }),
+  });
+}
+
+export function useDesvincularDispositivo(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => desvincularDispositivo(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['veiculos', 'dispositivo', id] }),
   });
 }

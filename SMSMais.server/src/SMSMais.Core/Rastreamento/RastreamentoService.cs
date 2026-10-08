@@ -134,21 +134,21 @@ public sealed class RastreamentoService(
     public async Task<IReadOnlyList<FrotaVeiculoDto>> ListarFrotaAsync(DateOnly? data, CancellationToken cancellationToken = default)
     {
         var dia = data ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var inicioDia = dia.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var fimDia = inicioDia.AddDays(1);
 
         var rotas = await _db.Rotas.AsNoTracking()
             .Where(r => r.Data == dia && r.Status != StatusRota.Cancelada)
             .Include(r => r.Veiculo)
             .Include(r => r.Motorista).ThenInclude(m => m!.Usuario)
             .ToListAsync(cancellationToken);
-        if (rotas.Count == 0) return [];
 
         var motoristaIds = rotas.Select(r => r.MotoristaId).Distinct().ToList();
         var rotaIds = rotas.Select(r => r.Id).ToList();
 
         // Última posição por motorista (pontos do dia).
-        var inicioDia = dia.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var pontos = await _db.PontosGps.AsNoTracking()
-            .Where(p => motoristaIds.Contains(p.MotoristaId) && p.CapturadoEm >= inicioDia)
+        var pontos = motoristaIds.Count == 0 ? [] : await _db.PontosGps.AsNoTracking()
+            .Where(p => motoristaIds.Contains(p.MotoristaId) && p.CapturadoEm >= inicioDia && p.CapturadoEm < fimDia)
             .OrderByDescending(p => p.CapturadoEm)
             .Select(p => new { p.MotoristaId, p.Coordenada.Latitude, p.Coordenada.Longitude, p.CapturadoEm })
             .ToListAsync(cancellationToken);
@@ -156,22 +156,48 @@ public sealed class RastreamentoService(
             .GroupBy(p => p.MotoristaId)
             .ToDictionary(g => g.Key, g => g.First());
 
+        // Última posição do dia de cada veículo com tablet (poucos veículos; índice veiculo_id+capturado_em).
+        var veiculosComTablet = await _db.DispositivosVeiculo.AsNoTracking()
+            .Where(d => d.TokenHash != null)
+            .Select(d => d.VeiculoId)
+            .ToListAsync(cancellationToken);
+        var ultimaDoTablet = new Dictionary<Guid, PosicaoVeiculo>();
+        foreach (var veiculoId in veiculosComTablet)
+        {
+            var ultima = await _db.PosicoesVeiculo.AsNoTracking()
+                .Where(p => p.VeiculoId == veiculoId && p.CapturadoEm >= inicioDia && p.CapturadoEm < fimDia)
+                .OrderByDescending(p => p.CapturadoEm)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (ultima is not null) ultimaDoTablet[veiculoId] = ultima;
+        }
+
         // Quantidade de pacientes por rota.
-        var pacientesPorRota = await _db.Alocacoes.AsNoTracking()
+        var pacientesPorRota = rotaIds.Count == 0 ? [] : await _db.Alocacoes.AsNoTracking()
             .Where(a => rotaIds.Contains(a.RotaDiariaId) && a.Tipo == TipoAlocacao.Paciente)
             .GroupBy(a => a.RotaDiariaId)
             .Select(g => new { RotaId = g.Key, Qtd = g.Select(x => x.SessaoId).Distinct().Count() })
             .ToDictionaryAsync(x => x.RotaId, x => x.Qtd, cancellationToken);
 
-        return [.. rotas.Select(r =>
+        var frota = rotas.Select(r =>
         {
-            double? lat = null, lng = null;
+            double? lat = null, lng = null, velocidade = null, rumo = null;
             DateTime? atualizadoEm = null;
+            var origem = "motorista";
             if (ultimoPorMotorista.TryGetValue(r.MotoristaId, out var pt))
             {
                 lat = pt.Latitude;
                 lng = pt.Longitude;
                 atualizadoEm = pt.CapturadoEm;
+            }
+            // O tablet do carro vale quando é mais recente que o app do motorista.
+            if (ultimaDoTablet.TryGetValue(r.VeiculoId, out var tb) && (atualizadoEm is null || tb.CapturadoEm > atualizadoEm))
+            {
+                lat = tb.Coordenada.Latitude;
+                lng = tb.Coordenada.Longitude;
+                atualizadoEm = tb.CapturadoEm;
+                velocidade = tb.VelocidadeKmh;
+                rumo = tb.Rumo;
+                origem = "tablet";
             }
 
             return new FrotaVeiculoDto(
@@ -181,8 +207,30 @@ public sealed class RastreamentoService(
                 r.MotoristaId,
                 r.Motorista?.Usuario?.NomeCompleto ?? "Motorista",
                 pacientesPorRota.GetValueOrDefault(r.Id, 0),
-                lat, lng, atualizadoEm);
-        })];
+                lat, lng, atualizadoEm, velocidade, rumo, origem);
+        }).ToList();
+
+        // Veículos com tablet que andaram hoje sem rota no dia: aparecem só pelo tablet.
+        var veiculosEmRota = rotas.Select(r => r.VeiculoId).ToHashSet();
+        var soTablet = ultimaDoTablet.Keys.Where(v => !veiculosEmRota.Contains(v)).ToList();
+        if (soTablet.Count > 0)
+        {
+            var veiculos = await _db.Veiculos.AsNoTracking()
+                .Where(v => soTablet.Contains(v.Id))
+                .ToDictionaryAsync(v => v.Id, cancellationToken);
+            foreach (var veiculoId in soTablet)
+            {
+                var tb = ultimaDoTablet[veiculoId];
+                var v = veiculos.GetValueOrDefault(veiculoId);
+                frota.Add(new FrotaVeiculoDto(
+                    null, null, veiculoId, v?.Placa ?? string.Empty, v?.Modelo ?? string.Empty,
+                    null, null, 0,
+                    tb.Coordenada.Latitude, tb.Coordenada.Longitude, tb.CapturadoEm,
+                    tb.VelocidadeKmh, tb.Rumo, "tablet"));
+            }
+        }
+
+        return frota;
     }
 
     // ---------------- FT5: pacientes aguardando + "puxar" ----------------

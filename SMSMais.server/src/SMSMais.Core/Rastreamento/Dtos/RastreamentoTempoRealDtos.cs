@@ -3,22 +3,26 @@ using SMSMais.Data.Entities.Enums;
 namespace SMSMais.Core.Rastreamento.Dtos;
 
 /// <summary>
-/// Posição corrente de um veículo/motorista da frota no dia (snapshot para o mapa ao vivo).
-/// <see cref="Latitude"/>/<see cref="Longitude"/>/<see cref="AtualizadoEm"/> vêm do último ponto
-/// GPS do dia; null quando o motorista ainda não enviou posição.
+/// Posição corrente de um veículo da frota no dia (snapshot para o mapa ao vivo). Vem de uma rota do
+/// dia (posição do app do motorista) e/ou do tablet fixo no carro (<see cref="Origem"/> = "tablet",
+/// docs/modulos/tfd/deslocamento-tablet.md). Item só de tablet tem <see cref="RotaId"/>,
+/// <see cref="Status"/> e <see cref="MotoristaId"/> nulos. Posição null = ainda sem GPS no dia.
 /// </summary>
 public sealed record FrotaVeiculoDto(
-    Guid RotaId,
-    StatusRota Status,
+    Guid? RotaId,
+    StatusRota? Status,
     Guid VeiculoId,
     string VeiculoPlaca,
     string VeiculoModelo,
-    Guid MotoristaId,
-    string MotoristaNome,
+    Guid? MotoristaId,
+    string? MotoristaNome,
     int QtdPacientes,
     double? Latitude,
     double? Longitude,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+    double? VelocidadeKmh = null,
+    double? Rumo = null,
+    string Origem = "motorista");
 
 /// <summary>
 /// Paciente que terminou o atendimento fora de Maricá e aguarda o carro para a volta.

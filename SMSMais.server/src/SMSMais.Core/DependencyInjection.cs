@@ -61,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<Medicos.Assinatura.IAssinaturaMedicoService, Medicos.Assinatura.AssinaturaMedicoService>();
         services.AddScoped<ITransladoService, TransladoService>();
         services.AddScoped<IRastreamentoService, RastreamentoService>();
+        services.AddScoped<Rastreamento.Dispositivos.IDispositivoVeiculoService, Rastreamento.Dispositivos.DispositivoVeiculoService>();
         services.AddScoped<IRastreamentoNotificador, NotificadorRastreamentoNulo>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<Tickets.ITicketService, Tickets.TicketService>();

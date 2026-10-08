@@ -1,4 +1,6 @@
 import 'package:agente/features/auth/presentation/login_page.dart';
+import 'package:agente/features/deslocamento/presentation/deslocamento_page.dart';
+import 'package:agente/features/dispositivo/presentation/vincular_veiculo_page.dart';
 import 'package:agente/features/navegacao/presentation/navegacao_page.dart';
 import 'package:agente/features/rota/presentation/rota_do_dia_page.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
@@ -16,22 +18,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       final sessao = ref.read(sessaoProvider);
       final indoParaLogin = state.matchedLocation == '/login';
       if (sessao == null && !indoParaLogin) return '/login';
-      if (sessao != null && indoParaLogin) return '/rota';
+      if (sessao != null && indoParaLogin) return '/deslocamento';
       return null;
     },
     routes: [
+      GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(
-        path: '/login',
-        builder: (_, __) => const LoginPage(),
+        path: '/deslocamento',
+        builder: (_, __) => const DeslocamentoPage(),
       ),
       GoRoute(
-        path: '/rota',
-        builder: (_, __) => const RotaDoDiaPage(),
+        path: '/vincular',
+        builder: (_, __) => const VincularVeiculoPage(),
       ),
-      GoRoute(
-        path: '/navegacao',
-        builder: (_, __) => const NavegacaoPage(),
-      ),
+      GoRoute(path: '/rota', builder: (_, __) => const RotaDoDiaPage()),
+      GoRoute(path: '/navegacao', builder: (_, __) => const NavegacaoPage()),
     ],
   );
 });

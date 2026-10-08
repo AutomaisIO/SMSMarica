@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
+import { usePermissao } from '@/shared/auth/authStore';
+import { TabletVinculado } from '@/features/veiculos/components/TabletVinculado';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { MapaDeAssentos, type LinhaLayout } from '@/features/veiculos/components/MapaDeAssentos';
 import { useVeiculoPorId } from '@/features/veiculos/api/queries';
@@ -61,6 +63,7 @@ export function VeiculoDetalhePage() {
   const id = params.id ?? '';
 
   const detalhe = useVeiculoPorId(id || null);
+  const podeEditar = usePermissao('Veiculos', 'Edicao');
   const translados = useListarRotas({ veiculoId: id });
 
   const v = detalhe.data;
@@ -179,6 +182,8 @@ export function VeiculoDetalhePage() {
           </aside>
         </div>
       ) : null}
+
+      {v ? <TabletVinculado veiculoId={v.id} podeEditar={podeEditar} /> : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">Translados recentes</h2>
