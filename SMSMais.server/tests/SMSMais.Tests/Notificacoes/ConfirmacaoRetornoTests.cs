@@ -32,9 +32,10 @@ public class ConfirmacaoRetornoTests(PostgresFixture fixture)
     private readonly string _telefone = SeedSolicitacao.TelefoneAleatorio();
 
     private async Task<(Solicitacao S, ComunicacaoPaciente C)> SeedAsync(
-        SmsMaisDbContext db, Guid pacienteId, TipoVaga? vaga)
+        SmsMaisDbContext db, Guid pacienteId, TipoVaga? vaga, DateTime? dataAgendada = null,
+        OrigemComunicacao origem = OrigemComunicacao.Automatico, bool liberadaNaIdentificacao = false)
     {
-        var exame = await SeedSolicitacao.CriarAsync(db, pacienteId, dataAgendada: DateTime.UtcNow.AddDays(5));
+        var exame = await SeedSolicitacao.CriarAsync(db, pacienteId, dataAgendada: dataAgendada ?? DateTime.UtcNow.AddDays(5));
         var s = await db.Solicitacoes.Include(x => x.UnidadeExecutante).SingleAsync(x => x.Id == exame.SolicitacaoId);
         s.TipoVaga = vaga;
         s.UnidadeExecutante!.Endereco = new Endereco
@@ -57,6 +58,8 @@ public class ConfirmacaoRetornoTests(PostgresFixture fixture)
             ProximaTentativaEm = DateTime.UtcNow,
             // A janela de envio (08h–18h) não é o que está sob teste.
             IgnorarJanelaHorario = true,
+            Origem = origem,
+            IgnorarVerificacaoTelefone = liberadaNaIdentificacao,
             CriadoEm = DateTime.UtcNow,
         };
         db.ComunicacoesPaciente.Add(c);
@@ -157,6 +160,71 @@ public class ConfirmacaoRetornoTests(PostgresFixture fixture)
         await using var db = fixture.CriarDbContext();
         var pacienteId = Guid.NewGuid();
         var (s, c) = await SeedAsync(db, pacienteId, TipoVaga.PrimeiraVez);
+        var (servico, whats) = await ServicoAsync(db, s, verificado: true);
+
+        await servico.ProcessarTentativaEnvioAsync(c.Id);
+
+        Assert.Equal("confirmacao_regulacao", EnvioComBotoes(whats)[1]);
+    }
+
+    // ===== Atendimento HOJE (08/10/2026): a de primeira vez não sai; o resto sai =====
+
+    /// <summary>Mais tarde, hoje (Brasília): futuro, mas no mesmo dia.</summary>
+    private static DateTime MaisTardeHoje() =>
+        SMSMais.Core.Common.Tempo.FusoBrasilia.DeBrasiliaParaUtc(
+            SMSMais.Core.Common.Tempo.FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date.AddHours(23).AddMinutes(59));
+
+    [Fact]
+    public async Task Primeira_vez_automatica_para_hoje_e_dispensada_sem_enviar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var (s, c) = await SeedAsync(db, pacienteId, TipoVaga.PrimeiraVez, MaisTardeHoje());
+        var (servico, whats) = await ServicoAsync(db, s, verificado: true);
+
+        await servico.ProcessarTentativaEnvioAsync(c.Id);
+
+        Assert.DoesNotContain(whats.ReceivedCalls(), x => x.GetMethodInfo().Name.StartsWith("Enviar"));
+        await using var db2 = fixture.CriarDbContext();
+        var depois = await db2.ComunicacoesPaciente.AsNoTracking().SingleAsync(x => x.Id == c.Id);
+        Assert.Equal(StatusComunicacao.Dispensada, depois.Status);
+        Assert.Contains("Atendimento hoje", depois.MotivoFalha);
+    }
+
+    [Fact]
+    public async Task Primeira_vez_nao_verificada_para_hoje_nem_recebe_a_primeira_mensagem()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var (s, c) = await SeedAsync(db, pacienteId, TipoVaga.PrimeiraVez, MaisTardeHoje());
+        var (servico, whats) = await ServicoAsync(db, s, verificado: false);
+
+        await servico.ProcessarTentativaEnvioAsync(c.Id);
+
+        Assert.DoesNotContain(whats.ReceivedCalls(), x => x.GetMethodInfo().Name.StartsWith("Enviar"));
+    }
+
+    [Fact]
+    public async Task Retorno_para_hoje_sai()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var (s, c) = await SeedAsync(db, pacienteId, TipoVaga.Retorno, MaisTardeHoje());
+        var (servico, whats) = await ServicoAsync(db, s, verificado: true);
+
+        await servico.ProcessarTentativaEnvioAsync(c.Id);
+
+        Assert.Equal("confirmar_agendamento_urlapp", EnvioComBotoes(whats)[1]);
+    }
+
+    [Theory]
+    [InlineData(OrigemComunicacao.Manual, false)] // botão Enviar/Reenviar ou lote: decisão de uma pessoa
+    [InlineData(OrigemComunicacao.Automatico, true)] // liberada depois de a pessoa se identificar
+    public async Task Primeira_vez_para_hoje_sai_quando_foi_uma_pessoa_que_pediu(OrigemComunicacao origem, bool liberada)
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var (s, c) = await SeedAsync(db, pacienteId, TipoVaga.PrimeiraVez, MaisTardeHoje(), origem, liberada);
         var (servico, whats) = await ServicoAsync(db, s, verificado: true);
 
         await servico.ProcessarTentativaEnvioAsync(c.Id);

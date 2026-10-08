@@ -221,6 +221,12 @@ export function AbaRegras() {
           sincronização do SISREG pode rodar de madrugada sem ninguém receber mensagem de noite. A única exceção é a
           resposta a quem acabou de se identificar pelo WhatsApp (a pessoa está na conversa).
         </p>
+        <p className="mt-2 text-sm text-gray-600">
+          A confirmação de um atendimento <strong>de amanhã</strong> que chega depois que o horário fechou ainda sai
+          até as <strong>21h</strong> — senão só sairia no próprio dia. E a confirmação automática de{' '}
+          <strong>primeira vez</strong> para um atendimento <strong>de hoje</strong> não sai: ela pede para retirar a
+          guia no posto antes do dia. Retorno, envio manual e o lote continuam saindo.
+        </p>
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-gray-700">Começa a enviar às</span>

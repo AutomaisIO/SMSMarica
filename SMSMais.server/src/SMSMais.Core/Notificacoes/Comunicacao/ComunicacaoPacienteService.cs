@@ -379,9 +379,18 @@ public sealed class ComunicacaoPacienteService(
                 Terminal(n, StatusComunicacao.Falha,
                     "Aviso retroativo: entrou na fila antes de o aviso de cancelamento ser ligado.");
             }
+            else if (await PrimeiraVezParaHojeAsync(n, s!, ct))
+            {
+                // A confirmação de PRIMEIRA VEZ manda retirar a guia no posto antes do dia: no
+                // próprio dia ela não tem como ser cumprida. Não é falha do envio — deixou de fazer
+                // sentido. A ficha segue em Confirmações para a equipe falar com o paciente.
+                Terminal(n, StatusComunicacao.Dispensada,
+                    "Atendimento hoje: a confirmação de primeira vez pede para retirar a guia no posto "
+                    + "antes do dia e não sai no próprio dia. Confirme por telefone em Confirmações.");
+            }
             else if (EhSobreAgendamento(n.Finalidade)
                      && !n.IgnorarJanelaHorario
-                     && await ForaDaJanelaAsync(ct) is { } abertura)
+                     && await ForaDaJanelaAsync(n, s!, ct) is { } abertura)
             {
                 // Fora do horário (padrão 08h–18h): não é tentativa — fica EMPILHADA e sai quando a
                 // janela abrir. Vale também para reenvio manual: a regra é sobre o paciente.
@@ -588,16 +597,40 @@ public sealed class ComunicacaoPacienteService(
         => _regras ??= await regrasConfirmacao.ObterAsync(ct);
 
     /// <summary>Próxima abertura da janela (UTC) quando AGORA está fora dela; null se está dentro.</summary>
-    private async Task<DateTime?> ForaDaJanelaAsync(CancellationToken ct)
+    private async Task<DateTime?> ForaDaJanelaAsync(ComunicacaoPaciente n, Solicitacao s, CancellationToken ct)
     {
         var r = await RegrasAsync(ct);
         var inicio = TimeOnly.Parse(r.HoraInicioEnvio);
         var fim = TimeOnly.Parse(r.HoraFimEnvio);
         var agora = DateTime.UtcNow;
-        return Confirmacoes.JanelaEnvioConfirmacao.Dentro(agora, inicio, fim)
-            ? null
-            : Confirmacoes.JanelaEnvioConfirmacao.ProximaAbertura(agora, inicio, fim);
+        if (Confirmacoes.JanelaEnvioConfirmacao.Dentro(agora, inicio, fim)) return null;
+
+        // Folga da véspera: a confirmação do atendimento de AMANHÃ que entrou na fila depois de a
+        // janela fechar (a importação do SISREG roda logo depois das 18h) ainda sai hoje à noite —
+        // senão só sairia amanhã cedo, no dia do atendimento.
+        if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            && s.DataAgendada is { } dataAgendada
+            && TimeOnly.TryParse(options.Value.HoraLimiteVesperaConfirmacao, out var limiteVespera)
+            && Confirmacoes.JanelaEnvioConfirmacao.NaFolgaDaVespera(agora, dataAgendada, fim, limiteVespera))
+            return null;
+
+        return Confirmacoes.JanelaEnvioConfirmacao.ProximaAbertura(agora, inicio, fim);
     }
+
+    /// <summary>
+    /// Confirmação AUTOMÁTICA de primeira vez para um atendimento de hoje — a que não sai. Ficam de
+    /// fora: o retorno (a mensagem dele só lembra local e hora), a campanha (fala do local dela, sem
+    /// guia), o envio manual/lote (decisão de uma pessoa) e a liberação depois de a pessoa se
+    /// identificar (foi ela quem pediu os dados).
+    /// </summary>
+    private async Task<bool> PrimeiraVezParaHojeAsync(ComunicacaoPaciente n, Solicitacao s, CancellationToken ct) =>
+        n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+        && n.Origem == OrigemComunicacao.Automatico
+        && !n.IgnorarVerificacaoTelefone
+        && s.TipoVaga != TipoVaga.Retorno
+        && s.DataAgendada is { } dataAgendada
+        && Confirmacoes.JanelaEnvioConfirmacao.AtendimentoHoje(DateTime.UtcNow, dataAgendada)
+        && await Campanhas.CampanhaResolver.VigenteAsync(db, s.UnidadeExecutanteId, s.DataAgendada, ct) is null;
 
     public async Task ReenviarAsync(Guid solicitacaoExameId, Guid comunicacaoId, CancellationToken ct = default)
     {

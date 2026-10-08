@@ -29,6 +29,9 @@ export const artigoMensageria: Artigo = {
     'mensageria',
     'retorno',
     'confirmação de retorno',
+    'mesmo dia',
+    'atendimento hoje',
+    'véspera',
     'aviso de cancelamento',
     'cancelamento',
     'whatsapp',
@@ -460,7 +463,7 @@ export const artigoMensageria: Artigo = {
       id: 'regras',
       titulo: 'Regras e parâmetros: o que governa o automático',
       busca:
-        'regras parâmetros janela de envio vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente reforço orientação ao posto interruptor desligado',
+        'regras parâmetros janela de envio horário 21h véspera atendimento de amanhã atendimento hoje mesmo dia primeira vez dispensada vazão lembrete dias antes conciliação cadência fechamento quem recebe aviso unidade aviso de cancelamento avisar paciente cancelado daqui para frente reforço orientação ao posto interruptor desligado',
       conteudo: (
         <div className="space-y-4">
           <Sub>Parâmetros de disparo</Sub>
@@ -470,6 +473,28 @@ export const artigoMensageria: Artigo = {
             de madrugada sem ninguém receber mensagem de noite. A única exceção é a resposta a quem acabou de se
             identificar pelo WhatsApp, porque a pessoa está na conversa naquele instante.
           </P>
+          <Callout tipo="regra" titulo="Atendimento de amanhã sai até as 21h; primeira vez de hoje não sai">
+            A importação do SISREG roda logo depois das 18h, quando o horário já fechou. Sem uma folga, o
+            agendamento de amanhã cedo esperava a manhã seguinte e chegava no <strong>próprio dia</strong> — uma hora
+            antes da consulta, pedindo para retirar a guia no posto. Por isso:
+            <Lista>
+              <Item>
+                A confirmação de um atendimento <strong>de amanhã</strong> ainda sai depois que o horário fechou, até as{' '}
+                <strong>21h</strong>. As outras mensagens seguem o horário normal.
+              </Item>
+              <Item>
+                A confirmação automática de <strong>primeira vez</strong> para um atendimento <strong>de hoje</strong>{' '}
+                não sai: ela pede para retirar a guia antes do dia, e no próprio dia isso não tem como ser cumprido. Em
+                Envios ela aparece como <em>Dispensada</em>, com o motivo "Atendimento hoje"; a ficha continua em
+                Confirmações para a equipe ligar.
+              </Item>
+              <Item>
+                Continuam saindo no próprio dia: o <strong>retorno</strong> (a mensagem dele só lembra local, endereço e
+                hora), a campanha, o envio manual e o lote (decisão de uma pessoa) e os dados para quem acabou de se
+                identificar (foi ela quem pediu).
+              </Item>
+            </Lista>
+          </Callout>
 
           <Sub>Lembrete antes do agendamento</Sub>
           <P>

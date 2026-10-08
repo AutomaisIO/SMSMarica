@@ -20,6 +20,14 @@ public sealed class ComunicacaoPacienteOptions
     /// <summary>Idioma dos templates (BCP-47 da Meta).</summary>
     public string Idioma { get; set; } = "pt_BR";
 
+    /// <summary>
+    /// Até que hora (Brasília) a confirmação de um atendimento de AMANHÃ ainda sai depois que a
+    /// janela do menu Confirmações fechou. A importação do SISREG roda logo depois das 18h: sem
+    /// esta folga, o agendamento de amanhã cedo esperava a janela abrir e chegava no próprio dia
+    /// (≈800 confirmações em 30 dias até 08/10/2026). Vazio desliga a folga.
+    /// </summary>
+    public string HoraLimiteVesperaConfirmacao { get; set; } = "21:00";
+
     // ---- Cabeçalho com IMAGEM ----
     // Modelo aprovado com foto no topo EXIGE o componente de header em cada envio: a imagem do
     // modelo é só exemplo, não vai sozinha. Sem isso a Meta recusa com

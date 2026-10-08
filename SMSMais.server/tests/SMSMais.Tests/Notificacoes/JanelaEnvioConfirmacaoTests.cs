@@ -40,4 +40,38 @@ public class JanelaEnvioConfirmacaoTests
         var agora = Utc(17, 15);
         Assert.Equal(agora, JanelaEnvioConfirmacao.ProximaAbertura(agora, Inicio, Fim));
     }
+
+    // ---- Folga da véspera (08/10/2026): atendimento de amanhã sai até as 21h ----
+
+    private static readonly TimeOnly LimiteVespera = new(21, 0);
+
+    [Theory]
+    [InlineData(21, 50, 18, true)]  // 18:50 Brasília, atendimento amanhã — o caso da importação das 18h
+    [InlineData(23, 59, 18, true)]  // 20:59
+    [InlineData(0, 0, 18, false)]   // 21:00 — a folga acabou (já é 18/09 00:00 UTC, mas 17/09 em Brasília)
+    [InlineData(21, 50, 19, false)] // atendimento depois de amanhã: espera a janela normal
+    [InlineData(21, 50, 17, false)] // atendimento hoje: a folga não é para o próprio dia
+    [InlineData(10, 30, 18, false)] // 07:30 da manhã: a folga não antecipa o início da janela
+    public void Folga_da_vespera_so_vale_depois_do_fim_e_para_amanha(int horaUtc, int minuto, int diaAtendimento, bool esperado)
+    {
+        // Agora: 17/09 (ou 18/09 00:00 UTC = 17/09 21:00 Brasília). Atendimento às 09:30 Brasília.
+        var agora = horaUtc == 0 ? Utc(18, 0) : Utc(17, horaUtc, minuto);
+        var atendimento = Utc(diaAtendimento, 12, 30);
+        Assert.Equal(esperado, JanelaEnvioConfirmacao.NaFolgaDaVespera(agora, atendimento, Fim, LimiteVespera));
+    }
+
+    [Fact]
+    public void Folga_desligada_quando_a_janela_ja_vai_alem_do_limite() =>
+        Assert.False(JanelaEnvioConfirmacao.NaFolgaDaVespera(
+            Utc(17, 23, 30), Utc(18, 12, 30), fim: new TimeOnly(22, 0), LimiteVespera));
+
+    [Theory]
+    [InlineData(11, 30, true)]  // 17/09 08:30 Brasília, atendimento 17/09 09:30
+    [InlineData(2, 0, false)]   // 17/09 23:00 Brasília (18/09 02:00 UTC) — hoje é 17, atendimento é 18
+    public void Atendimento_hoje_compara_datas_de_Brasilia(int horaUtcAgora, int minuto, bool esperado)
+    {
+        var agora = horaUtcAgora == 2 ? Utc(18, 2) : Utc(17, horaUtcAgora, minuto);
+        var atendimento = horaUtcAgora == 2 ? Utc(18, 12, 30) : Utc(17, 12, 30);
+        Assert.Equal(esperado, JanelaEnvioConfirmacao.AtendimentoHoje(agora, atendimento));
+    }
 }
