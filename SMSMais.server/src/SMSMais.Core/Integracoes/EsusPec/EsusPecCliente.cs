@@ -90,8 +90,10 @@ public sealed class EsusPecCliente : IDisposable
         }
         catch (ErroEsusPec e) when (forcar && e.Classificacao is "UsuarioJaLogadoException" or "PecAuthenticationException")
         {
-            entrada["force"] = true;
-            await GraphQlAsync(MutLogin, new JsonObject { ["input"] = entrada }, "Login", login: true, ct);
+            // Cópia: `entrada` já pertence ao pedido anterior, e um nó JSON não pode ter dois pais.
+            var forcada = (JsonObject)entrada.DeepClone();
+            forcada["force"] = true;
+            await GraphQlAsync(MutLogin, new JsonObject { ["input"] = forcada }, "Login", login: true, ct);
         }
         _logado = true;
     }
