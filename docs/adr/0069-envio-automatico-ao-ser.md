@@ -1,6 +1,6 @@
-# ADR-0069 — Envio automático da solicitação ao SER (e catálogo identificado pelo nome)
+# ADR-0069 — Envio automático da solicitação ao SER e ao SERNIT (e catálogo identificado pelo nome)
 
-**Status:** aceito · **Data:** 2026-10-07 · implementado em 07/10/2026 (não deployado; para teste da equipe)
+**Status:** aceito · **Data:** 2026-10-07 · SER em produção desde 07/10/2026 · estendido ao SERNIT em 08/10/2026 (§7)
 **Relacionado:** [ADR-0052](./0052-fila-pre-regulacao-e-agente-regulador.md) (fila de pré-regulação; supersede
 parcial da D-11) · [ADR-0055](./0055-catalogo-canonico-e-embeddings.md) (catálogo canônico) ·
 [ADR-0065](./0065-medicos-do-ser-espelho-separado.md) (médico guardado pelo NOME) · `docs/ser-criar-solicitacao.md`
@@ -30,10 +30,11 @@ outro recurso.
 2. **Cópia diária** dos catálogos do SER e do SERNIT (agendador a partir das 05h; a primeira solicitação
    aberta no dia também confere). Frescor, não correção: nada depende do número copiado.
 3. **Envio automático ao SER**, em duas etapas como o SISCAN:
-   - **prévia** (`POST /regulacao/solicitacoes/{id}/ser/preparar`): percorre a tela de criação do SER
+   - **prévia** (`POST /regulacao/solicitacoes/{id}/envio-automatico/preparar`; a rota antiga
+     `…/ser/preparar` continua respondendo): percorre a tela de criação do SER
      inteira e para antes de anexar — devolve campo a campo o que iria, os anexos e os pedidos parecidos
      que o SER já tem para o paciente (a "crítica");
-   - **envio** (`POST …/ser/enviar`): preenche, anexa, grava, **relê do SER** para provar e registra o
+   - **envio** (`POST …/envio-automatico/enviar`, antiga `…/ser/enviar`): preenche, anexa, grava, **relê do SER** para provar e registra o
      número. Estados: `EmAnalise → EnviandoAoSistema → EnviadaAoSistema | FalhaEnvio`.
 4. **Quem assina é o regulador**, com o usuário e a senha DELE no SER (sessão em memória amarrada ao
    login no SMSMais, a mesma do FollowUP — `ISerSessaoOperadorStore`). A credencial de sincronismo nunca
@@ -44,13 +45,32 @@ outro recurso.
    (`FalhaEnvio → EnviadaAoSistema`, nova transição do agente).
 6. **Anexos pela regra que a tela do SER declara:** até 2 arquivos de 5 MB; com mais, a plataforma junta
    tudo num PDF; acima de 5 MB é recusa antes de tocar o SER.
+7. **O SERNIT pelo mesmo motor** (08/10/2026). SER-RJ e SERNIT são a mesma aplicação (JSF 1.2 +
+   RichFaces 3.3 + Seam) em instâncias diferentes; o motor da tela de criação recebe um transporte
+   (a sessão de cada um) e um perfil com o que muda — medido na aba real do SERNIT:
+   - sem o combo "É ambulatório estadual?" nem o autocomplete de recurso; CNS em `form0:numeroCNS`;
+     botões são `<input value>` (o motor acha Pesquisar/Anexar Arquivo/Gravar pelo RÓTULO, nunca por
+     `j_id`); a aba Editar responde com 302 para `http://`, que o transporte segue pela sessão;
+   - **a pesquisa de paciente só aceita CNS** (CPF volta "CNS INVÁLIDO") e **o SERNIT não consulta o
+     CADSUS**: só acha quem já teve pedido lá (6 de 6 pacientes de Maricá sem pedido no SERNIT vieram com
+     o painel vazio e aberto). Nesse caso a plataforma **cadastra o paciente na tela do SERNIT com o
+     nosso cadastro** (nome, CPF, sexo, nascimento, mãe, endereço com UF→município, telefones, raça),
+     como o regulador digitaria; sem nome, CPF, sexo ou nascimento no nosso cadastro, para antes do
+     Gravar. Paciente que o SERNIT já conhece segue a regra do SER: o nome de lá tem de bater com o nosso;
+   - CPF é obrigatório para gravar no SERNIT; os anexos têm a mesma regra (2 arquivos, 5 MB);
+   - quem assina é o regulador com a senha DELE no SERNIT (`ISernitSessaoOperadorStore`, a mesma do
+     FollowUP do SERNIT).
 
 ## Consequências
 
-- A D-11 do ADR-0052 deixa de valer **para o SER**: SISREG e SERNIT continuam só pelo "registrar envio".
-- O upload de anexo (`rich:fileUpload`) foi implementado pelo protocolo lido do `ui.pack.js` do SER, mas
-  **nunca tinha sido exercitado** antes do teste da equipe. A trava é ver o arquivo listado em
-  `form0:anexoList` antes do Gravar: se não aparecer, o envio para sem gravar.
+- A D-11 do ADR-0052 deixa de valer **para o SER e o SERNIT**: o SISREG continua só pelo "registrar envio".
+- O upload de anexo (`rich:fileUpload`) foi implementado pelo protocolo lido do `ui.pack.js` do SER. Os
+  dois primeiros envios reais (07/10) subiram anexos que o SER guardou como "Null": o multipart do .NET
+  não era o do navegador. Corrigido em 08/10 (multipart montado como o navegador manda) e a trava passou
+  a ser o **nome** do arquivo listado em `form0:anexoList` antes do Gravar — contar linhas deixava passar
+  anexo quebrado.
+- No SERNIT, o envio de paciente novo **cria o cadastro dele no SERNIT** com os nossos dados: o que estiver
+  errado no nosso cadastro vai para lá. A prévia mostra cada campo antes do envio.
 - Entrar com a senha do SER na plataforma derruba a aba do SER do mesmo usuário no navegador (o SER só
   aceita uma sessão por usuário).
 - Campo dinâmico de múltipla escolha com mais de uma opção ainda não é enviado automaticamente (o envio

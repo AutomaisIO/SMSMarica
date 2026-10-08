@@ -44,6 +44,9 @@ export const artigoRegulacaoGestaoFila: Artigo = {
     'aceitar e registrar envio',
     'aceitar e enviar ao SER',
     'enviar ao SER',
+    'aceitar e enviar ao SERNIT',
+    'enviar ao SERNIT',
+    'SERNIT',
     'envio automático',
     'prévia do envio',
     'senha do SER',
@@ -307,14 +310,17 @@ export const artigoRegulacaoGestaoFila: Artigo = {
     },
     {
       id: 'enviar-ao-ser',
-      titulo: 'Enviar ao SER',
+      titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado',
+        'enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente',
       conteudo: (
         <>
           <p>
             Com o destino SER, o botão <BotaoRef>Aceitar e enviar ao SER</BotaoRef> faz o que antes era
-            feito à mão na tela do SER — como o envio ao SISCAN na anamnese.
+            feito à mão na tela do SER — como o envio ao SISCAN na anamnese. Com o destino SERNIT (a
+            regulação de Niterói), o botão é <BotaoRef>Aceitar e enviar ao SERNIT</BotaoRef> e o
+            caminho é o mesmo, com o usuário e a senha do SERNIT. O que muda no SERNIT está no fim
+            desta seção.
           </p>
           <Passos
             itens={[
@@ -359,6 +365,14 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               },
             ]}
           />
+          <Callout tipo="regra" titulo="No SERNIT: paciente que o SERNIT ainda não conhece">
+            O SERNIT só acha o paciente pelo <strong>CNS</strong>, e só se ele já teve pedido lá — o
+            SERNIT não consulta o CADSUS. Quando não acha, a plataforma cadastra o paciente na própria
+            tela do SERNIT com os dados do <strong>nosso cadastro</strong>: nome, CPF, sexo, data de
+            nascimento, nome da mãe, endereço, telefone e raça/cor. A prévia mostra cada um desses
+            campos. Se faltar CNS, nome, CPF, sexo ou data de nascimento no nosso cadastro, o envio
+            para antes de gravar e diz o que completar no cadastro do paciente.
+          </Callout>
           <Callout tipo="dica" titulo="Por que a plataforma acha tudo pelo nome">
             O SER renumera a lista de recursos quando a SES acrescenta um — o número de ontem pode ser
             outra especialidade hoje. Por isso a plataforma escolhe recurso, médico e CID pelo nome, na

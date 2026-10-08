@@ -264,6 +264,18 @@ popula o painel **`form0:painelDadosDoPaciente`**. Identidade travada (`disabled
 tem), nascimento, mãe, sexo, raça; editáveis: endereço + telefones (Residencial `form0:j_id152`,
 Celular `form0:j_id157`, Comercial `form0:j_id159` — ids posicionais).
 
+**O SERNIT NÃO consulta o CADSUS (medido 08/10/2026, envio automático — ADR-0069 §7):** a pesquisa só
+acha quem **já teve pedido no SERNIT**. Paciente novo volta com o painel **vazio e todo aberto**
+(nome, CPF, sexo, nascimento, mãe — tudo editável), sem mensagem nenhuma: é a tela pedindo para
+digitar o cadastro. 6 de 6 CNS de Maricá tirados do espelho do SER (sem pedido no SERNIT) vieram assim;
+um CNS com pedido no SERNIT veio preenchido e travado. E **o campo só aceita CNS**: CPF em
+`form0:numeroCNS` volta "CNS INVÁLIDO". Máscaras do painel (jQuery `mask`): CPF `999.999.999-99`,
+nascimento `99/99/9999`, CEP `99999-999`, Residencial `(99)9999-9999`, Celular/Comercial
+`(99)99999-9999`. Sexo `M`/`F`; raça `BRANCA`/`PRETA`/`PARDA`/`AMARELA`/`INDIGENA`/`SEM_INFORMACAO`;
+UF por extenso com `value` numérico (RJ = 58) e **o município só carrega no `onchange` da UF**
+(A4J `_viewRoot`, evento `form0:j_id142`); "Nome da Mãe" tem `maxlength=50`. O envio automático
+digita esse painel com o nosso cadastro (`PacienteNaTela`).
+
 **Campos dinâmicos:** vivem em `<span id="form0:campoDinamicoBox">` (vazio até escolher o Recurso).
 Catálogo completo (`capturas/campos_dinamicos_sernit.json`): **CONSULTA = 43 recursos em 3
 formulários; EXAME = 35 recursos em 5 formulários** — bem mais simples que o SER-RJ (21). As

@@ -10,7 +10,7 @@ import { AnexosSolicitacao } from '../components/AnexosSolicitacao';
 import { CabecalhoSolicitacao } from '../components/CabecalhoSolicitacao';
 import { LinhaDoTempo } from '../components/LinhaDoTempo';
 import { MedicoPendenteCard } from '../components/MedicoPendenteCard';
-import { ModalEnviarAoSer } from '../components/ModalEnviarAoSer';
+import { ModalEnviarAoSistema } from '../components/ModalEnviarAoSistema';
 import { ModalMotivo } from '../components/ModalMotivo';
 import { ModalRegistrarEnvio } from '../components/ModalRegistrarEnvio';
 import { ParaLancarNoSistema } from '../components/ParaLancarNoSistema';
@@ -32,7 +32,7 @@ const SITUACAO_PARA_A_REGULACAO: Record<StatusRegulacao, string> = {
   PendenteRegulacao: 'Recebida da unidade. Ninguém assumiu ainda.',
   EmAnalise: 'Em análise. Confira o pedido e decida: aceitar, devolver para correção ou recusar.',
   Devolvida: 'Devolvida — aguardando a unidade corrigir e reenviar.',
-  EnviandoAoSistema: 'Envio ao sistema de destino em andamento — a plataforma está preenchendo e gravando no SER.',
+  EnviandoAoSistema: 'Envio ao sistema de destino em andamento — a plataforma está preenchendo e gravando lá.',
   EnviadaAoSistema: 'Já está no sistema de destino — o acompanhamento vem do espelho de lá.',
   EmFilaExterna: 'Já está no sistema de destino — o acompanhamento vem do espelho de lá.',
   Agendada: 'Já está no sistema de destino — o acompanhamento vem do espelho de lá.',
@@ -68,12 +68,12 @@ export function AnaliseSolicitacaoPage() {
 
   const [erro, setErro] = useState<string | null>(null);
   const [modalEnvio, setModalEnvio] = useState(false);
-  const [modalSer, setModalSer] = useState(false);
+  const [modalAutomatico, setModalAutomatico] = useState(false);
   const [motivoDe, setMotivoDe] = useState<'devolver' | 'recusar' | null>(null);
 
   const s = solicitacao.data;
 
-  // Enviando ao SER (outra aba, outra pessoa, ou quem fechou o modal): o desfecho aparece sozinho.
+  // Enviando ao SER/SERNIT (outra aba, outra pessoa, ou quem fechou o modal): o desfecho aparece sozinho.
   const enviando = s?.status === 'EnviandoAoSistema';
   const { refetch: recarregar } = solicitacao;
   useEffect(() => {
@@ -98,9 +98,13 @@ export function AnaliseSolicitacaoPage() {
   if (!s) return <p className="text-sm text-slate-500">Solicitação não encontrada.</p>;
 
   const emAberto = ['PendenteRegulacao', 'EmAnalise', 'Devolvida'].includes(s.status);
-  // O envio automático só existe para o SER por enquanto; os outros destinos seguem pelo
-  // "registrar envio" (o agente lança na tela do sistema e digita o número).
-  const vaiAoSer = s.sistemaDestino === 'Ser' && s.fluxo === 'Externo';
+  // O envio automático existe para o SER e o SERNIT (ADR-0069); o SISREG segue pelo "registrar
+  // envio" (o agente lança na tela do sistema e digita o número).
+  const automatico =
+    s.fluxo === 'Externo' && (s.sistemaDestino === 'Ser' || s.sistemaDestino === 'Sernit')
+      ? s.sistemaDestino
+      : null;
+  const nomeSistema = automatico === 'Sernit' ? 'SERNIT' : 'SER';
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -135,13 +139,13 @@ export function AnaliseSolicitacaoPage() {
 
         {s.status === 'FalhaEnvio' && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {vaiAoSer && (
-              <Button onClick={() => setModalSer(true)}>
+            {automatico && (
+              <Button onClick={() => setModalAutomatico(true)}>
                 <Send className="size-4" />
-                Enviar ao SER de novo
+                Enviar ao {nomeSistema} de novo
               </Button>
             )}
-            {/* O Gravar pode ter chegado ao SER: quem conferiu lá e achou o pedido registra o número. */}
+            {/* O Gravar pode ter chegado ao sistema: quem conferiu lá e achou o pedido registra o número. */}
             <Button variante="secundaria" onClick={() => setModalEnvio(true)}>
               <Hash className="size-4" />
               Registrar número (já está no sistema)
@@ -175,17 +179,17 @@ export function AnaliseSolicitacaoPage() {
             )}
 
             {/* Aceitar não é um estado: é levar o pedido ao sistema de destino e trazer o número.
-                Para o SER, a plataforma faz o lançamento; o "registrar" fica para quem já lançou à mão. */}
-            {s.status === 'EmAnalise' && vaiAoSer && (
-              <Button onClick={() => setModalSer(true)}>
+                Para o SER e o SERNIT, a plataforma faz o lançamento; o "registrar" fica para quem já lançou à mão. */}
+            {s.status === 'EmAnalise' && automatico && (
+              <Button onClick={() => setModalAutomatico(true)}>
                 <Send className="size-4" />
-                Aceitar e enviar ao SER
+                Aceitar e enviar ao {nomeSistema}
               </Button>
             )}
             {s.status === 'EmAnalise' && (
-              <Button variante={vaiAoSer ? 'secundaria' : 'primaria'} onClick={() => setModalEnvio(true)}>
+              <Button variante={automatico ? 'secundaria' : 'primaria'} onClick={() => setModalEnvio(true)}>
                 <Hash className="size-4" />
-                {vaiAoSer ? 'Já lancei no SER — registrar número' : 'Aceitar e registrar envio'}
+                {automatico ? `Já lancei no ${nomeSistema} — registrar número` : 'Aceitar e registrar envio'}
               </Button>
             )}
 
@@ -234,14 +238,17 @@ export function AnaliseSolicitacaoPage() {
         }}
       />
 
-      <ModalEnviarAoSer
-        solicitacaoId={id}
-        aberto={modalSer}
-        aoFechar={() => {
-          setModalSer(false);
-          void Promise.all([solicitacao.refetch(), eventos.refetch()]);
-        }}
-      />
+      {automatico && (
+        <ModalEnviarAoSistema
+          sistema={automatico}
+          solicitacaoId={id}
+          aberto={modalAutomatico}
+          aoFechar={() => {
+            setModalAutomatico(false);
+            void Promise.all([solicitacao.refetch(), eventos.refetch()]);
+          }}
+        />
+      )}
 
       {motivoDe === 'devolver' && (
         <ModalMotivo

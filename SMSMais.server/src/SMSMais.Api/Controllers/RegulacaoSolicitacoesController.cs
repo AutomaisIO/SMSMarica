@@ -14,8 +14,8 @@ namespace SMSMais.Api.Controllers;
 /// <summary>
 /// Abertura e edição da solicitação pela unidade solicitante (planos 02 e 04).
 ///
-/// <para><b>Só <c>ser/enviar</c> escreve fora daqui</b> — no SER, assinado pelo regulador
-/// (ADR-0069, que supersede a D-11 para o SER). SISREG e SERNIT seguem pelo "registrar envio". "Enviar para a
+/// <para><b>Só o envio automático escreve fora daqui</b> — no SER ou no SERNIT, assinado pelo
+/// regulador (ADR-0069, que supersede a D-11 para esses dois). O SISREG segue pelo "registrar envio". "Enviar para a
 /// fila" põe a solicitação em pré-regulação e para; o envio ao sistema é do agente regulador
 /// (módulo 48) e entra nos incrementos 3, 5 e 7.</para>
 /// </summary>
@@ -154,25 +154,42 @@ public sealed class RegulacaoSolicitacoesController(
     }
 
     /// <summary>
-    /// Prévia do envio ao SER: a plataforma preenche a tela de criação do SER inteira com a
-    /// solicitação — recurso, paciente, médico, risco, unidade, CID, campos do recurso — e para
-    /// ANTES de anexar e gravar. Devolve campo a campo o que iria, os anexos como iriam e os pedidos
-    /// parecidos que o SER já tem para o paciente.
+    /// Prévia do envio automático ao <b>SER ou ao SERNIT</b> — o sistema é o destino da solicitação
+    /// (ADR-0069). A plataforma preenche a tela de criação do sistema inteira — recurso, paciente,
+    /// médico, risco, unidade, CID, campos do recurso — e para ANTES de anexar e gravar. Devolve campo
+    /// a campo o que iria, os anexos como iriam e os pedidos parecidos que o sistema já tem.
     ///
-    /// <para>Usa a sessão do SER do próprio regulador; sem ela responde 400 com
-    /// <c>ser.sessao_operador_ausente</c> — o sinal para a tela pedir usuário e senha do SER.</para>
+    /// <para>Usa a sessão do próprio regulador no sistema; sem ela responde 400 com
+    /// <c>ser.sessao_operador_ausente</c> ou <c>sernit.sessao_operador_ausente</c> — o sinal para a
+    /// tela pedir usuário e senha.</para>
     /// </summary>
+    [HttpPost("{id:guid}/envio-automatico/preparar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<EnvioSerPreparoDto>(StatusCodes.Status200OK)]
+    public Task<EnvioSerPreparoDto> PrepararEnvioAutomatico(Guid id, CancellationToken cancellationToken) =>
+        envioSer.PrepararAsync(id, cancellationToken);
+
+    /// <summary>
+    /// <b>Envia ao SER ou ao SERNIT — ESCREVE no sistema de regulação</b>, assinado pelo regulador
+    /// logado. Preenche, anexa, grava, relê o pedido para provar e registra o número. Pedido parecido
+    /// já existente responde 409 <c>ser.pedido_parecido</c> até o regulador confirmar.
+    /// </summary>
+    [HttpPost("{id:guid}/envio-automatico/enviar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<EnvioSerResultadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<EnvioSerResultadoDto> EnviarAutomatico(
+        Guid id, [FromBody] EnviarAoSerRequest req, CancellationToken cancellationToken) =>
+        envioSer.EnviarAsync(id, req, cancellationToken);
+
+    /// <summary>Rota antiga (07/10/2026) — a tela publicada antes do SERNIT chama esta. Mesmo efeito.</summary>
     [HttpPost("{id:guid}/ser/preparar")]
     [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
     [ProducesResponseType<EnvioSerPreparoDto>(StatusCodes.Status200OK)]
     public Task<EnvioSerPreparoDto> PrepararEnvioSer(Guid id, CancellationToken cancellationToken) =>
         envioSer.PrepararAsync(id, cancellationToken);
 
-    /// <summary>
-    /// <b>Envia ao SER — ESCREVE no sistema do Estado</b>, assinado pelo regulador logado. Preenche,
-    /// anexa, grava, relê o pedido do SER para provar e registra o número. Pedido parecido já
-    /// existente responde 409 <c>ser.pedido_parecido</c> até o regulador confirmar.
-    /// </summary>
+    /// <summary>Rota antiga (07/10/2026) — a tela publicada antes do SERNIT chama esta. Mesmo efeito.</summary>
     [HttpPost("{id:guid}/ser/enviar")]
     [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
     [ProducesResponseType<EnvioSerResultadoDto>(StatusCodes.Status200OK)]
@@ -183,8 +200,8 @@ public sealed class RegulacaoSolicitacoesController(
 
     /// <summary>
     /// Envio assistido: o agente incluiu pela tela do sistema de regulação e digita o número
-    /// aqui. <b>Nada sai daqui para o sistema de regulação</b> — é o caminho do SISREG e do SERNIT, e
-    /// do SER quando o regulador já lançou pela tela dele.
+    /// aqui. <b>Nada sai daqui para o sistema de regulação</b> — é o caminho do SISREG, e do SER/SERNIT
+    /// quando o regulador já lançou pela tela do sistema.
     /// </summary>
     [HttpPost("{id:guid}/registrar-envio")]
     [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]

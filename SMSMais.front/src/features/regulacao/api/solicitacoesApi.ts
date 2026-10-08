@@ -255,8 +255,14 @@ export type PedidoParecidoSer = {
   situacao: string | null;
 };
 
-/** A prévia: a tela do SER preenchida inteira, sem anexar nem gravar. */
+/** Os sistemas com envio automático (ADR-0069): a mesma aplicação em duas instâncias. */
+export type SistemaEnvioAutomatico = 'Ser' | 'Sernit';
+
+/** A prévia: a tela do SER/SERNIT preenchida inteira, sem anexar nem gravar. */
 export type PreparoEnvioSer = {
+  /** "SER" ou "SERNIT" — o nome que o servidor usa nas mensagens. */
+  sistema: string;
+  /** Usuário do operador no sistema (o nome do campo é do tempo em que só havia o SER). */
   operadorSer: string;
   recurso: string;
   passos: PassoEnvioSer[];
@@ -272,19 +278,21 @@ export type ResultadoEnvioSer = {
   operadorSer: string;
   passos: PassoEnvioSer[];
   solicitacao: SolicitacaoRegulacao;
+  sistema: string;
 };
 
-export async function prepararEnvioSer(id: string): Promise<PreparoEnvioSer> {
-  const { data } = await http.post<PreparoEnvioSer>(`${base}/${id}/ser/preparar`);
+/** O sistema é o destino da solicitação — o servidor escolhe entre SER e SERNIT. */
+export async function prepararEnvioAutomatico(id: string): Promise<PreparoEnvioSer> {
+  const { data } = await http.post<PreparoEnvioSer>(`${base}/${id}/envio-automatico/preparar`);
   return data;
 }
 
-/** ESCREVE no SER, assinado pelo regulador logado no SER. */
-export async function enviarAoSer(
+/** ESCREVE no SER ou no SERNIT, assinado pelo regulador logado no sistema. */
+export async function enviarAutomatico(
   id: string,
   enviarMesmoComPedidoParecido: boolean,
 ): Promise<ResultadoEnvioSer> {
-  const { data } = await http.post<ResultadoEnvioSer>(`${base}/${id}/ser/enviar`, {
+  const { data } = await http.post<ResultadoEnvioSer>(`${base}/${id}/envio-automatico/enviar`, {
     enviarMesmoComPedidoParecido,
   });
   return data;

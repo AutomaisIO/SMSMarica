@@ -825,7 +825,7 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
         var c = await CenarioAsync(db);
         var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
 
-        var preparar = () => agente.PrepararEnvioSerAsync(c.SolicitacaoA, CancellationToken.None);
+        var preparar = () => agente.PrepararEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
         await preparar.Should().ThrowAsync<ConflitoException>();
     }
 }

@@ -184,7 +184,7 @@ public interface IRegulacaoSolicitacaoService
     /// Confere se a solicitação pode ir ao SER pelo envio automático e devolve o que o envio
     /// precisa (recurso do espelho, versão do formulário, arquivos). Só lê — não muda estado.
     /// </summary>
-    Task<DadosEnvioSer> PrepararEnvioSerAsync(Guid id, CancellationToken ct);
+    Task<DadosEnvioSer> PrepararEnvioAutomaticoAsync(Guid id, CancellationToken ct);
 
     /// <summary>
     /// Trava o caso em <see cref="StatusRegulacao.EnviandoAoSistema"/> antes de tocar o SER. É a
@@ -863,10 +863,14 @@ public sealed class RegulacaoSolicitacaoService(
     /// </summary>
     private static readonly TimeSpan EnvioInterrompidoApos = TimeSpan.FromMinutes(20);
 
-    public async Task<DadosEnvioSer> PrepararEnvioSerAsync(Guid id, CancellationToken ct)
+    public async Task<DadosEnvioSer> PrepararEnvioAutomaticoAsync(Guid id, CancellationToken ct)
     {
         await escopoRegulacao.ExigirAgenteAsync(ct);
         var s = await CarregarNoEscopoAsync(id, ct);
+
+        // O envio automático existe para o SER-RJ e para o SERNIT — a mesma aplicação (ADR-0069).
+        var sistema = s.SistemaDestino;
+        var nome = sistema == SistemaRegulacao.Sernit ? "SERNIT" : "SER";
 
         var podeComecar = s.Status is StatusRegulacao.EmAnalise or StatusRegulacao.FalhaEnvio
             || (s.Status == StatusRegulacao.EnviandoAoSistema && EnvioInterrompido(s));
@@ -875,12 +879,13 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ConflitoException(
                 "regulacao.envio_estado",
                 s.Status == StatusRegulacao.EnviandoAoSistema
-                    ? "Esta solicitação já está sendo enviada ao SER. Aguarde o resultado."
-                    : "Só dá para enviar ao SER uma solicitação em análise (ou cujo envio falhou).");
+                    ? $"Esta solicitação já está sendo enviada ao {nome}. Aguarde o resultado."
+                    : $"Só dá para enviar ao {nome} uma solicitação em análise (ou cujo envio falhou).");
         }
-        if (s.SistemaDestino != SistemaRegulacao.Ser)
+        if (sistema is not (SistemaRegulacao.Ser or SistemaRegulacao.Sernit))
         {
-            throw new ValidacaoException("sistema", "O destino desta solicitação não é o SER.");
+            throw new ValidacaoException(
+                "sistema", "O envio automático é só para o SER e o SERNIT. Para este destino, use o registrar envio.");
         }
         if (s.FormularioVersaoId is not { } versaoId)
         {
@@ -890,19 +895,22 @@ public sealed class RegulacaoSolicitacaoService(
         await ExigirMedicoResolvidoAsync(s, ct);
 
         var origem = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
-            .Where(o => o.ProcedimentoId == s.ProcedimentoId && o.Ativo
-                        && o.Sistema == SistemaRegulacao.Ser && o.SerCatalogoRecursoId != null)
-            .Select(o => o.SerCatalogoRecursoId)
-            .FirstOrDefaultAsync(ct)
+            .Where(o => o.ProcedimentoId == s.ProcedimentoId && o.Ativo && o.Sistema == sistema)
+            .Select(o => new { o.SerCatalogoRecursoId, o.SernitCatalogoRecursoId })
+            .FirstOrDefaultAsync(ct);
+        var recursoId = (sistema == SistemaRegulacao.Ser ? origem?.SerCatalogoRecursoId : origem?.SernitCatalogoRecursoId)
             ?? throw new ValidacaoException(
                 "procedimento",
-                "O procedimento desta solicitação não está ligado a um recurso do SER no catálogo. "
+                $"O procedimento desta solicitação não está ligado a um recurso do {nome} no catálogo. "
                 + "Confira o pareamento em Regulação → Configuração → Catálogo de procedimentos.");
 
-        var recurso = await db.SerCatalogoRecursos.AsNoTracking()
-            .Where(r => r.Id == origem)
-            .Select(r => new { r.Id, r.Tipo, r.AmbulatorioEstadual, r.Rotulo })
-            .FirstAsync(ct);
+        var (ehExame, ambulatorioEstadual, rotulo) = sistema == SistemaRegulacao.Ser
+            ? await db.SerCatalogoRecursos.AsNoTracking().Where(r => r.Id == recursoId)
+                .Select(r => new ValueTuple<bool, bool, string>(r.Tipo == TipoRecursoSer.Exame, r.AmbulatorioEstadual, r.Rotulo))
+                .FirstAsync(ct)
+            : await db.SernitCatalogoRecursos.AsNoTracking().Where(r => r.Id == recursoId)
+                .Select(r => new ValueTuple<bool, bool, string>(r.Tipo == SMSMais.Data.Entities.Sernit.TipoRecursoSernit.Exame, false, r.Rotulo))
+                .FirstAsync(ct);
 
         var arquivos = await db.RegulacaoExigenciaArquivos.AsNoTracking()
             .Where(a => a.Exigencia!.SolicitacaoId == id
@@ -913,9 +921,9 @@ public sealed class RegulacaoSolicitacaoService(
             .ToListAsync(ct);
 
         return new DadosEnvioSer(
-            s.Id, s.NumeroLocal, s.PacienteNome, s.PacienteCpf, s.PacienteCns,
+            s.Id, s.NumeroLocal, s.PacienteId, s.PacienteNome, s.PacienteCpf, s.PacienteCns,
             versaoId, s.FormularioJson,
-            recurso.Id, recurso.Tipo, recurso.AmbulatorioEstadual, recurso.Rotulo,
+            sistema.Value, recursoId, ehExame, ambulatorioEstadual, rotulo,
             arquivos);
     }
 
@@ -928,15 +936,15 @@ public sealed class RegulacaoSolicitacaoService(
         // conferir — ele pode ter chegado ao Gravar.
         if (s.Status == StatusRegulacao.EnviandoAoSistema && EnvioInterrompido(s))
         {
-            const string motivo = "O envio anterior foi interrompido (o servidor caiu ou reiniciou no meio). "
-                + "Confira no SER se o pedido não foi criado antes de enviar de novo.";
+            var motivo = "O envio anterior foi interrompido (o servidor caiu ou reiniciou no meio). "
+                + $"Confira no {NomeDoSistema(s)} se o pedido não foi criado antes de enviar de novo.";
             await TransitarAsync(s, StatusRegulacao.FalhaEnvio, PapelEventoRegulacao.Sistema, ct,
                 detalhe: new { motivo, interrompido = true });
             s.StatusMotivo = motivo;
         }
 
         await TransitarAsync(s, StatusRegulacao.EnviandoAoSistema, PapelEventoRegulacao.Agente, ct,
-            detalhe: new { automatico = true, sistema = SistemaRegulacao.Ser.ToString() });
+            detalhe: new { automatico = true, sistema = (s.SistemaDestino ?? SistemaRegulacao.Ser).ToString() });
         s.StatusMotivo = null;
 
         try
@@ -964,13 +972,13 @@ public sealed class RegulacaoSolicitacaoService(
         s.EnvioAssistido = false;
         s.StatusMotivo = conclusao.Conferido
             ? null
-            : "O SER devolveu o número, mas a releitura não achou o pedido na hora. Confira no SER.";
+            : $"O {NomeDoSistema(s)} devolveu o número, mas a releitura não achou o pedido na hora. Confira lá.";
 
         await TransitarAsync(s, StatusRegulacao.EnviadaAoSistema, PapelEventoRegulacao.Sistema, ct,
             detalhe: new
             {
                 automatico = true,
-                sistema = SistemaRegulacao.Ser.ToString(),
+                sistema = (s.SistemaDestino ?? SistemaRegulacao.Ser).ToString(),
                 numeroExterno = conclusao.NumeroExterno,
                 operadorSer = conclusao.OperadorLogin,
                 conferido = conclusao.Conferido,
@@ -995,8 +1003,8 @@ public sealed class RegulacaoSolicitacaoService(
         {
             throw new ConflitoException(
                 "regulacao.numero_externo_duplicado",
-                $"O SER devolveu o número {conclusao.NumeroExterno}, mas ele já está registrado em outra "
-                + "solicitação. Confira no SER — o pedido pode ter sido lançado duas vezes.");
+                $"O {NomeDoSistema(s)} devolveu o número {conclusao.NumeroExterno}, mas ele já está registrado em "
+                + "outra solicitação. Confira lá — o pedido pode ter sido lançado duas vezes.");
         }
 
         return await ObterAsync(id, ct);
@@ -1006,10 +1014,11 @@ public sealed class RegulacaoSolicitacaoService(
         Guid id, string motivo, bool gravarAcionado, CancellationToken ct)
     {
         var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+        var nome = NomeDoSistema(s);
         var texto = gravarAcionado
-            ? "ATENÇÃO: o Gravar chegou a ser enviado ao SER. Confira no SER se o pedido não foi criado "
+            ? $"ATENÇÃO: o Gravar chegou a ser enviado ao {nome}. Confira no {nome} se o pedido não foi criado "
               + $"antes de tentar de novo. {motivo}"
-            : $"Nada foi gravado no SER. {motivo}";
+            : $"Nada foi gravado no {nome}. {motivo}";
         if (texto.Length > 1000) texto = texto[..1000];
 
         await TransitarAsync(s, StatusRegulacao.FalhaEnvio, PapelEventoRegulacao.Sistema, ct,
@@ -1019,6 +1028,9 @@ public sealed class RegulacaoSolicitacaoService(
 
         return await ObterAsync(id, ct);
     }
+
+    private static string NomeDoSistema(RegulacaoSolicitacao s) =>
+        s.SistemaDestino == SistemaRegulacao.Sernit ? "SERNIT" : "SER";
 
     private static bool EnvioInterrompido(RegulacaoSolicitacao s) =>
         DateTime.UtcNow - (s.AtualizadoEm ?? s.CriadoEm) > EnvioInterrompidoApos;

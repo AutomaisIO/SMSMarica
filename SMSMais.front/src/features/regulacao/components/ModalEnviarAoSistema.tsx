@@ -4,38 +4,74 @@ import { AlertTriangle, CheckCircle2, FileText, Loader2, Send, XCircle } from 'l
 
 import { ModalLoginSer } from '@/features/ser/components/ModalLoginSer';
 import { useSessaoSerObrigatoria } from '@/features/ser/lib/sessaoSer';
+import { ModalLoginSernit } from '@/features/sernit/components/ModalLoginSernit';
+import { useSessaoSernitObrigatoria } from '@/features/sernit/lib/sessaoSernit';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
 
 import { useEnviarAoSer, usePrepararEnvioSer } from '../api/solicitacoesQueries';
-import type { PassoEnvioSer, PreparoEnvioSer, ResultadoEnvioSer } from '../api/solicitacoesApi';
+import type {
+  PassoEnvioSer,
+  PreparoEnvioSer,
+  ResultadoEnvioSer,
+  SistemaEnvioAutomatico,
+} from '../api/solicitacoesApi';
 
 type Etapa = 'preparando' | 'previa' | 'enviando' | 'enviado' | 'erro';
 
 /**
- * "Enviar ao SER": a plataforma preenche a tela de criação do SER inteira, anexa os documentos e
- * grava — como o envio ao SISCAN na anamnese.
+ * "Enviar ao SER" / "Enviar ao SERNIT": a plataforma preenche a tela de criação do sistema inteira,
+ * anexa os documentos e grava — como o envio ao SISCAN na anamnese. SER-RJ e SERNIT são a mesma
+ * aplicação em instâncias diferentes; muda a sessão (cada um tem login próprio) e o nome.
  *
- * <p><b>Duas etapas, e a primeira não grava nada.</b> Ao abrir, o servidor percorre a tela do SER
+ * <p><b>Duas etapas, e a primeira não grava nada.</b> Ao abrir, o servidor percorre a tela do sistema
  * com a solicitação (recurso, paciente, médico, risco, unidade, CID, campos do recurso) e para
- * antes de anexar. A pessoa vê campo a campo o que vai, os anexos e os pedidos parecidos que o SER
+ * antes de anexar. A pessoa vê campo a campo o que vai, os anexos e os pedidos parecidos que o sistema
  * já tem para o paciente — só então envia.</p>
  *
- * <p><b>Assina quem envia</b>, com o usuário e a senha DELE no SER (o modal de login aparece
- * sozinho quando falta). O desfecho — número, ou o erro com o texto do SER — fica AQUI, no modal:
+ * <p><b>Assina quem envia</b>, com o usuário e a senha DELE no sistema (o modal de login aparece
+ * sozinho quando falta). O desfecho — número, ou o erro com o texto do sistema — fica AQUI, no modal:
  * é ato irreversível no sistema do Estado, e toast no canto ninguém vê.</p>
  */
-export function ModalEnviarAoSer({
+export function ModalEnviarAoSistema({
+  sistema,
+  ...props
+}: PropsModal & { sistema: SistemaEnvioAutomatico }) {
+  // Um componente por sistema: cada um chama o SEU hook de sessão (hook não é condicional).
+  return sistema === 'Sernit' ? <EnvioSernit {...props} /> : <EnvioSer {...props} />;
+}
+
+type PropsModal = { solicitacaoId: string; aberto: boolean; aoFechar: () => void };
+
+function EnvioSer(props: PropsModal) {
+  const sessao = useSessaoSerObrigatoria();
+  return <ModalEnvioAutomatico {...props} nome="SER" sessao={sessao} ModalLogin={ModalLoginSer} />;
+}
+
+function EnvioSernit(props: PropsModal) {
+  const sessao = useSessaoSernitObrigatoria();
+  return <ModalEnvioAutomatico {...props} nome="SERNIT" sessao={sessao} ModalLogin={ModalLoginSernit} />;
+}
+
+/** O que o modal usa da sessão — igual nos dois hooks (o usuário de cada sistema fica de fora). */
+type Sessao = Pick<
+  ReturnType<typeof useSessaoSerObrigatoria>,
+  'operador' | 'comSessao' | 'tratouFaltaDeSessao' | 'modal'
+>;
+
+function ModalEnvioAutomatico({
   solicitacaoId,
   aberto,
   aoFechar,
-}: {
-  solicitacaoId: string;
-  aberto: boolean;
-  aoFechar: () => void;
+  nome,
+  sessao,
+  ModalLogin,
+}: PropsModal & {
+  nome: 'SER' | 'SERNIT';
+  sessao: Sessao;
+  ModalLogin: (props: Sessao['modal']) => React.ReactNode;
 }) {
-  const sessao = useSessaoSerObrigatoria();
   const preparar = usePrepararEnvioSer();
   const enviar = useEnviarAoSer();
 
@@ -114,28 +150,28 @@ export function ModalEnviarAoSer({
           // desfecho. Por isso o X fica mudo enquanto envia.
           if (etapa !== 'enviando') aoFechar();
         }}
-        titulo="Enviar ao SER"
+        titulo={`Enviar ao ${nome}`}
         largura="lg"
       >
         {etapa === 'preparando' && (
           <Aguarde
-            titulo="Preenchendo a tela do SER…"
-            texto="A plataforma está abrindo a tela de nova solicitação do SER e preenchendo tudo. Nada é gravado nesta etapa."
+            titulo={`Preenchendo a tela do ${nome}…`}
+            texto={`A plataforma está abrindo a tela de nova solicitação do ${nome} e preenchendo tudo. Nada é gravado nesta etapa.`}
           />
         )}
 
         {etapa === 'enviando' && (
           <Aguarde
-            titulo="Enviando ao SER…"
-            texto="Anexando os documentos, gravando e relendo o pedido no SER para conferir. Leva cerca de um minuto — não feche esta janela."
+            titulo={`Enviando ao ${nome}…`}
+            texto={`Anexando os documentos, gravando e relendo o pedido no ${nome} para conferir. Leva cerca de um minuto — não feche esta janela.`}
           />
         )}
 
         {etapa === 'previa' && previa && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              A tela do SER foi preenchida assim — <b>nada foi gravado ainda</b>. Confira e envie.
-              Vai assinado por <b title={`usuário do SER: ${previa.operadorSer}`}>{sessao.operador ?? previa.operadorSer}</b>.
+              A tela do {nome} foi preenchida assim — <b>nada foi gravado ainda</b>. Confira e envie.
+              Vai assinado por <b title={`usuário do ${nome}: ${previa.operadorSer}`}>{sessao.operador ?? previa.operadorSer}</b>.
             </p>
 
             <ListaPassos passos={previa.passos} />
@@ -149,7 +185,7 @@ export function ModalEnviarAoSer({
                     {a.nome}
                     <span className="text-xs text-slate-400">
                       {(a.tamanho / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB
-                      {a.arquivosJuntados > 1 && ` · ${a.arquivosJuntados} arquivos juntados num PDF (o SER aceita no máximo 2)`}
+                      {a.arquivosJuntados > 1 && ` · ${a.arquivosJuntados} arquivos juntados num PDF (o ${nome} aceita no máximo 2)`}
                     </span>
                   </li>
                 ))}
@@ -159,7 +195,7 @@ export function ModalEnviarAoSer({
             {temParecidos && (
               <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                 <p className="flex items-center gap-2 font-medium">
-                  <AlertTriangle className="size-4" /> O SER já tem pedido deste paciente para este recurso
+                  <AlertTriangle className="size-4" /> O {nome} já tem pedido deste paciente para este recurso
                 </p>
                 <ul className="mt-1 list-inside list-disc">
                   {previa.possiveisDuplicados.map((d) => (
@@ -186,7 +222,7 @@ export function ModalEnviarAoSer({
               </Button>
               <Button onClick={fazerEnvio} disabled={temParecidos && !conferiParecidos}>
                 <Send className="size-4" />
-                Enviar ao SER
+                Enviar ao {nome}
               </Button>
             </div>
           </div>
@@ -196,15 +232,15 @@ export function ModalEnviarAoSer({
           <div className="space-y-4">
             <div className="rounded border border-emerald-300 bg-emerald-50 p-4 text-emerald-900">
               <p className="flex items-center gap-2 text-base font-semibold">
-                <CheckCircle2 className="size-5" /> Enviado ao SER — nº {resultado.numeroExterno}
+                <CheckCircle2 className="size-5" /> Enviado ao {nome} — nº {resultado.numeroExterno}
               </p>
               <p className="mt-1 text-sm">
                 {resultado.conferido
-                  ? 'O pedido foi relido do SER com este paciente e este recurso.'
-                  : 'O SER devolveu o número, mas a releitura não achou o pedido na hora. Confira no SER.'}
+                  ? `O pedido foi relido do ${nome} com este paciente e este recurso.`
+                  : `O ${nome} devolveu o número, mas a releitura não achou o pedido na hora. Confira no ${nome}.`}
               </p>
               {resultado.mensagemDoSer && (
-                <p className="mt-1 text-xs text-emerald-800">O SER disse: “{resultado.mensagemDoSer}”</p>
+                <p className="mt-1 text-xs text-emerald-800">O {nome} disse: “{resultado.mensagemDoSer}”</p>
               )}
             </div>
             <ListaPassos passos={resultado.passos} />
@@ -219,7 +255,7 @@ export function ModalEnviarAoSer({
             <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-900">
               <p className="flex items-center gap-2 font-semibold">
                 <XCircle className="size-5" />
-                {erroDepoisDeEnviar ? 'O envio ao SER não terminou' : 'Não deu para preparar o envio'}
+                {erroDepoisDeEnviar ? `O envio ao ${nome} não terminou` : 'Não deu para preparar o envio'}
               </p>
               <p className="mt-1 whitespace-pre-line">{erro}</p>
             </div>
@@ -237,7 +273,7 @@ export function ModalEnviarAoSer({
         )}
       </Modal>
 
-      <ModalLoginSer {...sessao.modal} />
+      <ModalLogin {...sessao.modal} />
     </>
   );
 }

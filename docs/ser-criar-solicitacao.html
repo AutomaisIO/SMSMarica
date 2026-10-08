@@ -234,7 +234,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <ul>
 <li><strong>Anexo</strong> (§2.3): "Anexar Arquivo" (submit A4J do form0) → POST multipart no <code>action</code> do</li>
 </ul>
-<p>  <code>formAnexar</code> com <code>_richfaces_upload_uid</code>, <code>formAnexar:upload</code>, <code>_richfaces_upload_file_indicator</code> e   <code>AJAXREQUEST</code> na query → botão "Anexar" do modal. <strong>Nunca exercitado antes do teste da equipe</strong>; a   trava é o nome do arquivo em <code>form0:anexoList</code> antes do Gravar.</p>
+<p>  <code>formAnexar</code> com <code>_richfaces_upload_uid</code>, <code>formAnexar:upload</code>, <code>_richfaces_upload_file_indicator</code> e   <code>AJAXREQUEST</code> na query → botão "Anexar" do modal. Os dois primeiros envios reais (07/10) subiram como   "Null": o multipart do .NET não é o do navegador. Desde 08/10 o corpo é montado como o navegador manda   (<code>SerWebSessao.MontarMultipartComoNavegador</code>) e a trava é o <strong>nome</strong> do arquivo em <code>form0:anexoList</code>   antes do Gravar.</p>
 <ul>
 <li><strong>Gravar</strong> com a região lida do <code>onclick</code> do botão (<code>form0</code>); número lido da mensagem; <strong>releitura</strong></li>
 </ul>
@@ -243,6 +243,17 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>O botão Gravar em 07/10/2026 era <code>form0:j_id319</code>, o Anexar do modal <code>formAnexar:j_id326</code> — só para</li>
 </ul>
 <p>  reconhecer em captura; o código acha os dois pelo título/valor.</p>
+<h3>2.6 O mesmo motor no SERNIT (08/10/2026) — ADR-0069 §7</h3>
+<p>O motor recebe um <strong>transporte</strong> (<code>ITransporteTelaCriacao</code>: a sessão do SER ou a do SERNIT) e um <strong>perfil</strong> (<code>PerfilTelaCriacao</code>) com o que muda entre as duas instâncias — <code>Core/Ser/Criacao/TelaCriacao.cs</code>. Botões são achados pelo rótulo, seja <code>&lt;a title&gt;</code> (SER) seja <code>&lt;input value&gt;</code> (SERNIT). Diferenças medidas na aba real do SERNIT (detalhe em <code>Automais.SERNIT/docs/APRENDIZADOS.md</code> §5.6):</p>
+<div class="tw"><table><thead><tr><th></th><th>SER-RJ</th><th>SERNIT</th></tr></thead><tbody>
+<tr><td>Ramo "É ambulatório estadual?"</td><td>sim</td><td>não existe</td></tr>
+<tr><td>Autocomplete de recurso (<code>suggRecurso</code>)</td><td>sim</td><td>não existe</td></tr>
+<tr><td>Campo do paciente</td><td><code>form0:numeroCADSUS</code> (CNS ou CPF)</td><td><code>form0:numeroCNS</code> (<strong>só CNS</strong>)</td></tr>
+<tr><td>Paciente sem pedido anterior</td><td>vem do CADSUS, travado</td><td><strong>painel vazio e aberto</strong>: a plataforma digita o nosso cadastro</td></tr>
+<tr><td>CPF para gravar</td><td>opcional</td><td>obrigatório</td></tr>
+<tr><td>Abrir a aba Editar</td><td>resposta direta</td><td>302 para <code>http://</code> (o transporte segue pela sessão)</td></tr>
+</tbody></table></div>
+<p>Prévia ponta a ponta contra o SERNIT real (08/10/2026, só leitura, paciente da PR-20 com recurso Cardiologia): recurso, paciente cadastrado na tela (inclusive UF → município), médico, risco, unidade, CID e os 7 campos do recurso — todos aceitos. Anexar e Gravar no SERNIT só se provam no primeiro envio da equipe.</p>
 <h2>3. O catálogo medido</h2>
 <p><strong>203 recursos</strong> (120 consultas + 83 exames) produzem <strong>21 formulários distintos</strong>, com <strong>163 campos dinâmicos únicos</strong> (90 obrigatórios).</p>
 <p>O formulário padrão — <strong>Queixa Principal, Resultado de Exames, Observações</strong>, todos obrigatórios — cobre 138 dos 203 recursos. O resto é especialidade pedindo dado clínico.</p>

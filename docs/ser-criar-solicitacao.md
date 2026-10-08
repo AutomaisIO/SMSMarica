@@ -433,12 +433,34 @@ errada, sem erro nenhum.
   pedido do mesmo recurso bloqueia até o regulador confirmar que é outro caso.
 - **Anexo** (§2.3): "Anexar Arquivo" (submit A4J do form0) → POST multipart no `action` do
   `formAnexar` com `_richfaces_upload_uid`, `formAnexar:upload`, `_richfaces_upload_file_indicator` e
-  `AJAXREQUEST` na query → botão "Anexar" do modal. **Nunca exercitado antes do teste da equipe**; a
-  trava é o nome do arquivo em `form0:anexoList` antes do Gravar.
+  `AJAXREQUEST` na query → botão "Anexar" do modal. Os dois primeiros envios reais (07/10) subiram como
+  "Null": o multipart do .NET não é o do navegador. Desde 08/10 o corpo é montado como o navegador manda
+  (`SerWebSessao.MontarMultipartComoNavegador`) e a trava é o **nome** do arquivo em `form0:anexoList`
+  antes do Gravar.
 - **Gravar** com a região lida do `onclick` do botão (`form0`); número lido da mensagem; **releitura**
   pelo ID nas situações Em fila/Pendente/Agendada, conferindo paciente e recurso.
 - O botão Gravar em 07/10/2026 era `form0:j_id319`, o Anexar do modal `formAnexar:j_id326` — só para
   reconhecer em captura; o código acha os dois pelo título/valor.
+
+### 2.6 O mesmo motor no SERNIT (08/10/2026) — ADR-0069 §7
+
+O motor recebe um **transporte** (`ITransporteTelaCriacao`: a sessão do SER ou a do SERNIT) e um
+**perfil** (`PerfilTelaCriacao`) com o que muda entre as duas instâncias — `Core/Ser/Criacao/TelaCriacao.cs`.
+Botões são achados pelo rótulo, seja `<a title>` (SER) seja `<input value>` (SERNIT). Diferenças medidas
+na aba real do SERNIT (detalhe em `Automais.SERNIT/docs/APRENDIZADOS.md` §5.6):
+
+| | SER-RJ | SERNIT |
+|---|---|---|
+| Ramo "É ambulatório estadual?" | sim | não existe |
+| Autocomplete de recurso (`suggRecurso`) | sim | não existe |
+| Campo do paciente | `form0:numeroCADSUS` (CNS ou CPF) | `form0:numeroCNS` (**só CNS**) |
+| Paciente sem pedido anterior | vem do CADSUS, travado | **painel vazio e aberto**: a plataforma digita o nosso cadastro |
+| CPF para gravar | opcional | obrigatório |
+| Abrir a aba Editar | resposta direta | 302 para `http://` (o transporte segue pela sessão) |
+
+Prévia ponta a ponta contra o SERNIT real (08/10/2026, só leitura, paciente da PR-20 com recurso
+Cardiologia): recurso, paciente cadastrado na tela (inclusive UF → município), médico, risco, unidade, CID
+e os 7 campos do recurso — todos aceitos. Anexar e Gravar no SERNIT só se provam no primeiro envio da equipe.
 
 ## 3. O catálogo medido
 

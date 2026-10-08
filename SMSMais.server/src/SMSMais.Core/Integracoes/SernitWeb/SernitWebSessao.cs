@@ -56,6 +56,18 @@ public interface ISernitWebSessao
 
     /// <summary>Segue o redirect A4J embutido no corpo (<c>&lt;meta name="Location"&gt;</c>).</summary>
     Task<string?> SeguirRedirectNoCorpoAsync(string corpo, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Sobe UM arquivo pelo <c>rich:fileUpload</c> — <b>ESCREVE</b>. Mesmo protocolo e mesmo corpo do
+    /// SER-RJ (<see cref="SerWeb.SerWebSessao.MontarMultipartComoNavegador"/>): a tela de criação do
+    /// SERNIT é a mesma aplicação (medido em 08/10/2026: mesmo <c>formAnexar</c>, mesma regra de 2
+    /// arquivos de 5 MB). Implementação padrão recusa — os falsos dos testes não sobem arquivo.
+    /// </summary>
+    Task<RespostaSernit> EnviarArquivoAsync(
+        string htmlPagina, string formId, string campoArquivo, string nomeArquivo, string contentType,
+        byte[] conteudo, IReadOnlyDictionary<string, string> parametrosUrl, string? viewState,
+        string operacao, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Esta sessão do SERNIT não sobe arquivo.");
 }
 
 /// <summary>A trava de somente-leitura recusou a operação. É bug do motor, não do SERNIT.</summary>
@@ -176,6 +188,81 @@ public sealed partial class SernitWebSessao(
     {
         GarantirLeitura(extras, SernitHtmlParser.Documento(htmlPagina));
         return SubmeterAsync(htmlPagina, formId, extras, viewState, comoNavegador: false, cancellationToken);
+    }
+
+    public async Task<RespostaSernit> EnviarArquivoAsync(
+        string htmlPagina, string formId, string campoArquivo, string nomeArquivo, string contentType,
+        byte[] conteudo, IReadOnlyDictionary<string, string> parametrosUrl, string? viewState,
+        string operacao, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(operacao))
+        {
+            throw new ArgumentException(
+                "Toda escrita no SERNIT precisa dizer QUAL operação é — o nome vai para o log.", nameof(operacao));
+        }
+
+        logger.LogWarning(
+            "SERNIT: ESCRITA — {Operacao} (arquivo {Nome}, {Bytes} bytes, form {Form}).",
+            operacao, nomeArquivo, conteudo.Length, formId);
+
+        var doc = SernitHtmlParser.Documento(htmlPagina);
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var sessao = await GarantirSessaoAsync(cancellationToken);
+
+            var campos = SernitHtmlParser.CamposDoForm(doc, formId, comoNavegador: true);
+            campos.Remove(campoArquivo);
+            campos[formId] = formId;
+            var vs = viewState ?? SernitHtmlParser.ViewStateDoForm(doc, formId) ?? sessao.UltimoViewState;
+            if (!string.IsNullOrEmpty(vs)) campos["javax.faces.ViewState"] = vs;
+
+            var action = SernitHtmlParser.ActionDoForm(doc, formId)
+                ?? throw new ValidacaoException(
+                    "sernit.form_sem_action", $"O form '{formId}' da tela do SERNIT veio sem `action`.");
+            var query = string.Join('&', parametrosUrl.Select(p =>
+                $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
+            var destino = new Uri(sessao.BaseUri, action + (action.Contains('?') ? "&" : "?") + query);
+
+            // O mesmo corpo do navegador que o SER-RJ usa (08/10/2026: o MultipartFormDataContent do
+            // .NET fazia o SER registrar o anexo sem arquivo — "Null" no download).
+            var (corpoBytes, limite) = SerWeb.SerWebSessao.MontarMultipartComoNavegador(
+                campos, campoArquivo, nomeArquivo, contentType, conteudo);
+            using var corpo = new ByteArrayContent(corpoBytes);
+            corpo.Headers.TryAddWithoutValidation("Content-Type", $"multipart/form-data; boundary={limite}");
+
+            using var requisicao = new HttpRequestMessage(HttpMethod.Post, destino) { Content = corpo };
+            if (sessao.Referer is { } referer) requisicao.Headers.TryAddWithoutValidation("Referer", referer);
+            using var resposta = await sessao.Http.SendAsync(requisicao, cancellationToken);
+            var bytes = await resposta.Content.ReadAsByteArrayAsync(cancellationToken);
+
+            if ((int)resposta.StatusCode >= 400)
+            {
+                throw new ValidacaoException(
+                    "sernit.upload_recusado",
+                    $"O SERNIT recusou o arquivo {nomeArquivo} (HTTP {(int)resposta.StatusCode}). Nada foi gravado.");
+            }
+
+            var r = new RespostaSernit(bytes, resposta.Content.Headers.ContentType?.MediaType, null, null);
+            if (EhTelaDeLogin(r.Texto))
+            {
+                Reiniciar();
+                throw new ValidacaoException(
+                    "sernit.sessao_expirada", "A sessão do SERNIT caiu durante o envio do arquivo. Nada foi gravado.");
+            }
+            if (SerWeb.SerWebSessao.RecusaDoUpload(r.Texto) is { } recusa)
+            {
+                throw new ValidacaoException(
+                    "sernit.upload_recusado", $"O SERNIT recusou o arquivo {nomeArquivo} ({recusa}). Nada foi gravado.");
+            }
+            AbsorverViewState(sessao, r.Texto);
+            return r;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     public Task<RespostaSernit> SubmeterEscritaAsync(

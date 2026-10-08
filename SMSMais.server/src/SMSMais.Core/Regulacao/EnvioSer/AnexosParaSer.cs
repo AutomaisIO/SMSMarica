@@ -28,7 +28,7 @@ public static class AnexosParaSer
     public const int MaximoDeArquivos = 2;
     public const long TamanhoMaximo = 5L * 1024 * 1024;
 
-    public static IReadOnlyList<AnexoParaSer> Preparar(IReadOnlyList<ArquivoLido> arquivos)
+    public static IReadOnlyList<AnexoParaSer> Preparar(IReadOnlyList<ArquivoLido> arquivos, string sistema = "SER")
     {
         if (arquivos.Count == 0) return [];
 
@@ -42,9 +42,9 @@ public static class AnexosParaSer
             throw new ValidacaoException(
                 "anexos",
                 arquivos.Count <= MaximoDeArquivos
-                    ? $"O arquivo \"{grande.Nome}\" tem {Mb(grande.Conteudo.LongLength)} — o SER aceita até 5 MB por "
+                    ? $"O arquivo \"{grande.Nome}\" tem {Mb(grande.Conteudo.LongLength)} — o {sistema} aceita até 5 MB por "
                       + "arquivo. Substitua por uma versão menor (foto com menos resolução, PDF comprimido)."
-                    : $"Os {arquivos.Count} anexos juntos num PDF dão {Mb(grande.Conteudo.LongLength)} — o SER aceita até "
+                    : $"Os {arquivos.Count} anexos juntos num PDF dão {Mb(grande.Conteudo.LongLength)} — o {sistema} aceita até "
                       + "5 MB por arquivo e no máximo 2 arquivos. Reduza ou remova anexos.");
         }
 

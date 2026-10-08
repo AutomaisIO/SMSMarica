@@ -11,8 +11,8 @@ import {
   listarNotificacoesRegulacao,
   listarSolicitacoes,
   confirmarOkInterno,
-  enviarAoSer,
-  prepararEnvioSer,
+  enviarAutomatico,
+  prepararEnvioAutomatico,
   marcarNotificacaoVista,
   marcarNotificacoesDaSolicitacaoVistas,
   obterResumoFila,
@@ -204,15 +204,15 @@ export function useRegistrarEnvio() {
  * Não muda nada nem aqui nem lá — por isso não invalida a fila.
  */
 export function usePrepararEnvioSer() {
-  return useMutation({ mutationFn: (id: string) => prepararEnvioSer(id) });
+  return useMutation({ mutationFn: (id: string) => prepararEnvioAutomatico(id) });
 }
 
-/** Envia ao SER (ESCREVE lá). Sucesso ou falha, o estado da solicitação muda: invalida tudo. */
+/** Envia ao SER/SERNIT (ESCREVE lá). Sucesso ou falha, o estado da solicitação muda: invalida tudo. */
 export function useEnviarAoSer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, mesmoComParecido }: { id: string; mesmoComParecido: boolean }) =>
-      enviarAoSer(id, mesmoComParecido),
+      enviarAutomatico(id, mesmoComParecido),
     onSettled: () => void qc.invalidateQueries({ queryKey: raiz }),
   });
 }

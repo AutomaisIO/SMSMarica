@@ -68,6 +68,55 @@ public class EnvioSerPecasTests
     }
 
     [Fact]
+    public void Numero_curto_do_SERNIT_e_lido_tambem_do_msgErro()
+    {
+        // O SERNIT numera com 3–5 dígitos e também escreve no `form0:msgErro`.
+        var html = "<html><body><form id=\"form0\"><span id=\"form0:msgErro\">Solicitação 4521 salva com sucesso</span></form></body></html>";
+
+        SerCriacaoSolicitacao.NumeroGerado(html).Should().Be("4521");
+        SerCriacaoSolicitacao.MensagemDaResposta(html).Should().Contain("4521");
+    }
+
+    [Fact]
+    public void Botao_e_achado_pelo_rotulo_seja_link_do_SER_seja_input_do_SERNIT()
+    {
+        var ser = SerHtmlParser.Documento(
+            "<form id=\"form0\"><a id=\"form0:j_id60\" title=\"Pesquisar\" href=\"#\"></a>"
+            + "<a id=\"form0:j_id319\" href=\"#\">Gravar</a></form>");
+        var sernit = SerHtmlParser.Documento(
+            "<form id=\"form0\"><input type=\"button\" id=\"form0:j_id60\" name=\"form0:j_id60\" value=\"Pesquisar\" />"
+            + "<input type=\"button\" id=\"form0:j_id274\" name=\"form0:j_id274\" value=\"Anexar Arquivo\" />"
+            + "<input type=\"button\" id=\"formAnexar:j_id289\" name=\"formAnexar:j_id289\" value=\"Anexar\" /></form>");
+
+        SerCriacaoSolicitacao.ControlePorRotulo(ser, "form0:", "Pesquisar").Should().Be("form0:j_id60");
+        SerCriacaoSolicitacao.ControlePorRotulo(ser, "form0:", "Gravar").Should().Be("form0:j_id319");
+        SerCriacaoSolicitacao.ControlePorRotulo(sernit, "form0:", "Anexar Arquivo").Should().Be("form0:j_id274");
+        SerCriacaoSolicitacao.ControlePorRotulo(sernit, "form0:", "Anexar").Should().BeNull("o Anexar do modal é de outro form");
+        SerCriacaoSolicitacao.ControlePorRotulo(sernit, "formAnexar:", "Anexar").Should().Be("formAnexar:j_id289");
+    }
+
+    [Fact]
+    public async Task Redirect_por_cabecalho_sem_pagina_e_seguido_pela_sessao()
+    {
+        // O SERNIT responde a aba Editar com 302 para http:// e corpo vazio (08/10/2026).
+        var abertos = new List<string>();
+        Task<string> Abrir(string url, CancellationToken _)
+        {
+            abertos.Add(url);
+            return Task.FromResult("<form id=\"form0\"></form>");
+        }
+
+        var seguido = await TelaCriacaoRedirect.SeguirAsync("http://x/editar.seam", string.Empty, Abrir, CancellationToken.None);
+        var comPagina = await TelaCriacaoRedirect.SeguirAsync("http://x/editar.seam", "<form id=\"form0\">a</form>", Abrir, CancellationToken.None);
+        var semLocation = await TelaCriacaoRedirect.SeguirAsync(null, "pedaço A4J", Abrir, CancellationToken.None);
+
+        seguido.Should().Be("<form id=\"form0\"></form>");
+        comPagina.Should().Be("<form id=\"form0\">a</form>", "resposta que já trouxe a página não é redirect");
+        semLocation.Should().Be("pedaço A4J");
+        abertos.Should().Equal("http://x/editar.seam");
+    }
+
+    [Fact]
     public void Mensagem_de_recusa_nao_tem_numero()
     {
         var html = "<html><body><form id=\"form0\"><div id=\"form0:divMensagens\">Consulta ou Exame é obrigatório.</div></form></body></html>";

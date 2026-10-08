@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADR-0069 — Envio automático da solicitação ao SER (e catálogo identificado pelo nome)</title>
+<title>ADR-0069 — Envio automático da solicitação ao SER e ao SERNIT (e catálogo identificado pelo nome)</title>
 <style>
 :root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
 @media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
@@ -26,8 +26,8 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 </head>
 <body>
 <main>
-<h1>ADR-0069 — Envio automático da solicitação ao SER (e catálogo identificado pelo nome)</h1>
-<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-07 · implementado em 07/10/2026 (não deployado; para teste da equipe) <strong>Relacionado:</strong> <a href="./0052-fila-pre-regulacao-e-agente-regulador.md">ADR-0052</a> (fila de pré-regulação; supersede parcial da D-11) · <a href="./0055-catalogo-canonico-e-embeddings.md">ADR-0055</a> (catálogo canônico) · <a href="./0065-medicos-do-ser-espelho-separado.md">ADR-0065</a> (médico guardado pelo NOME) · <code>docs/ser-criar-solicitacao.md</code> §2.4–2.5 · <code>docs/ser.md</code> §9–10 (escrita assinada pelo operador)</p>
+<h1>ADR-0069 — Envio automático da solicitação ao SER e ao SERNIT (e catálogo identificado pelo nome)</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-07 · SER em produção desde 07/10/2026 · estendido ao SERNIT em 08/10/2026 (§7) <strong>Relacionado:</strong> <a href="./0052-fila-pre-regulacao-e-agente-regulador.md">ADR-0052</a> (fila de pré-regulação; supersede parcial da D-11) · <a href="./0055-catalogo-canonico-e-embeddings.md">ADR-0055</a> (catálogo canônico) · <a href="./0065-medicos-do-ser-espelho-separado.md">ADR-0065</a> (médico guardado pelo NOME) · <code>docs/ser-criar-solicitacao.md</code> §2.4–2.5 · <code>docs/ser.md</code> §9–10 (escrita assinada pelo operador)</p>
 <h2>Contexto</h2>
 <p>Até aqui, aceitar uma solicitação com destino SER era trabalho manual: o regulador abria o site do SER, redigitava tudo (recurso, paciente, médico, risco, unidade, CID, campos do recurso), anexava os documentos e trazia o número de volta pelo "Registrar envio" (D-11 do ADR-0052: nada nosso escrevia no sistema de regulação). O Bernardo pediu que o envio ao SER funcione <strong>como o envio ao SISCAN na anamnese</strong>: a plataforma preenche tudo, anexa os documentos, grava e trata os erros que o SER devolver.</p>
 <p>O ensaio com uma solicitação real (PR-20, 07/10/2026) mostrou que a tela inteira amarra — e mostrou também que o <code>value</code> do combo de Recurso do SER é <strong>posição</strong>: o 1130 do nosso espelho (Buco-Maxilo) era Odontopediatria no SER naquele dia, e as 422 ligações do catálogo apontavam números que já eram de outro recurso.</p>
@@ -44,9 +44,9 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li><strong>Envio automático ao SER</strong>, em duas etapas como o SISCAN:</li>
 </ol>
 <ul>
-<li><strong>prévia</strong> (<code>POST /regulacao/solicitacoes/{id}/ser/preparar</code>): percorre a tela de criação do SER</li>
+<li><strong>prévia</strong> (<code>POST /regulacao/solicitacoes/{id}/envio-automatico/preparar</code>; a rota antiga</li>
 </ul>
-<p>     inteira e para antes de anexar — devolve campo a campo o que iria, os anexos e os pedidos parecidos      que o SER já tem para o paciente (a "crítica");    - <strong>envio</strong> (<code>POST …/ser/enviar</code>): preenche, anexa, grava, <strong>relê do SER</strong> para provar e registra o      número. Estados: <code>EmAnalise → EnviandoAoSistema → EnviadaAoSistema | FalhaEnvio</code>.</p>
+<p>     <code>…/ser/preparar</code> continua respondendo): percorre a tela de criação do SER      inteira e para antes de anexar — devolve campo a campo o que iria, os anexos e os pedidos parecidos      que o SER já tem para o paciente (a "crítica");    - <strong>envio</strong> (<code>POST …/envio-automatico/enviar</code>, antiga <code>…/ser/enviar</code>): preenche, anexa, grava, <strong>relê do SER</strong> para provar e registra o      número. Estados: <code>EmAnalise → EnviandoAoSistema → EnviadaAoSistema | FalhaEnvio</code>.</p>
 <ol>
 <li><strong>Quem assina é o regulador</strong>, com o usuário e a senha DELE no SER (sessão em memória amarrada ao</li>
 </ol>
@@ -59,12 +59,20 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li><strong>Anexos pela regra que a tela do SER declara:</strong> até 2 arquivos de 5 MB; com mais, a plataforma junta</li>
 </ol>
 <p>   tudo num PDF; acima de 5 MB é recusa antes de tocar o SER.</p>
+<ol>
+<li><strong>O SERNIT pelo mesmo motor</strong> (08/10/2026). SER-RJ e SERNIT são a mesma aplicação (JSF 1.2 +</li>
+</ol>
+<p>   RichFaces 3.3 + Seam) em instâncias diferentes; o motor da tela de criação recebe um transporte    (a sessão de cada um) e um perfil com o que muda — medido na aba real do SERNIT:    - sem o combo "É ambulatório estadual?" nem o autocomplete de recurso; CNS em <code>form0:numeroCNS</code>;      botões são <code>&lt;input value&gt;</code> (o motor acha Pesquisar/Anexar Arquivo/Gravar pelo RÓTULO, nunca por      <code>j_id</code>); a aba Editar responde com 302 para <code>http://</code>, que o transporte segue pela sessão;    - <strong>a pesquisa de paciente só aceita CNS</strong> (CPF volta "CNS INVÁLIDO") e <strong>o SERNIT não consulta o      CADSUS</strong>: só acha quem já teve pedido lá (6 de 6 pacientes de Maricá sem pedido no SERNIT vieram com      o painel vazio e aberto). Nesse caso a plataforma <strong>cadastra o paciente na tela do SERNIT com o      nosso cadastro</strong> (nome, CPF, sexo, nascimento, mãe, endereço com UF→município, telefones, raça),      como o regulador digitaria; sem nome, CPF, sexo ou nascimento no nosso cadastro, para antes do      Gravar. Paciente que o SERNIT já conhece segue a regra do SER: o nome de lá tem de bater com o nosso;    - CPF é obrigatório para gravar no SERNIT; os anexos têm a mesma regra (2 arquivos, 5 MB);    - quem assina é o regulador com a senha DELE no SERNIT (<code>ISernitSessaoOperadorStore</code>, a mesma do      FollowUP do SERNIT).</p>
 <h2>Consequências</h2>
 <ul>
-<li>A D-11 do ADR-0052 deixa de valer <strong>para o SER</strong>: SISREG e SERNIT continuam só pelo "registrar envio".</li>
-<li>O upload de anexo (<code>rich:fileUpload</code>) foi implementado pelo protocolo lido do <code>ui.pack.js</code> do SER, mas</li>
+<li>A D-11 do ADR-0052 deixa de valer <strong>para o SER e o SERNIT</strong>: o SISREG continua só pelo "registrar envio".</li>
+<li>O upload de anexo (<code>rich:fileUpload</code>) foi implementado pelo protocolo lido do <code>ui.pack.js</code> do SER. Os</li>
 </ul>
-<p>  <strong>nunca tinha sido exercitado</strong> antes do teste da equipe. A trava é ver o arquivo listado em   <code>form0:anexoList</code> antes do Gravar: se não aparecer, o envio para sem gravar.</p>
+<p>  dois primeiros envios reais (07/10) subiram anexos que o SER guardou como "Null": o multipart do .NET   não era o do navegador. Corrigido em 08/10 (multipart montado como o navegador manda) e a trava passou   a ser o <strong>nome</strong> do arquivo listado em <code>form0:anexoList</code> antes do Gravar — contar linhas deixava passar   anexo quebrado.</p>
+<ul>
+<li>No SERNIT, o envio de paciente novo <strong>cria o cadastro dele no SERNIT</strong> com os nossos dados: o que estiver</li>
+</ul>
+<p>  errado no nosso cadastro vai para lá. A prévia mostra cada campo antes do envio.</p>
 <ul>
 <li>Entrar com a senha do SER na plataforma derruba a aba do SER do mesmo usuário no navegador (o SER só</li>
 </ul>

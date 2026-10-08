@@ -28,8 +28,15 @@ namespace SMSMais.Core.Ser.Criacao;
 /// sobe para o Estado) e <see cref="GravarAsync"/>. Todo o resto passa pela trava de somente
 /// leitura de <see cref="ISerWebSessao.SubmeterFormAsync"/>.</para>
 /// </summary>
-public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger logger)
+public sealed partial class SerCriacaoSolicitacao(
+    ITransporteTelaCriacao transporte, PerfilTelaCriacao perfil, ILogger logger)
 {
+    /// <summary>O SER-RJ — o caso de origem; o SERNIT entra pelo construtor com perfil.</summary>
+    public SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger logger)
+        : this(new TransporteSer(sessao), PerfilTelaCriacao.Ser, logger)
+    {
+    }
+
     private const string Form = SerHtmlParser.FormPesquisa;
     private const string AbrirAbaEditar = "form0:editar_server_submit";
     private const string RegiaoViewRoot = "_viewRoot";
@@ -38,7 +45,6 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
     public const string CampoTipo = "form0:comboTipoRecurso";
     public const string CampoRecurso = "form0:comboRecurso";
     public const string CampoRecursoSugestao = "form0:suggRecurso";
-    public const string CampoCnsCpf = "form0:numeroCADSUS";
     public const string PainelPaciente = "form0:painelDadosDoPaciente";
     public const string RadioMedicoIdentificado = "form0:booleanMedicoSolicitanteIdentificado_radio";
     public const string CampoMedico = "form0:medicoResp";
@@ -68,21 +74,21 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
     public async Task AbrirAsync(CancellationToken ct)
     {
-        var tela = await sessao.AbrirTelaAsync(SerNovaSolicitacaoService.CaminhoTela, ct);
-        if (SerHtmlParser.BotaoPesquisar(SerHtmlParser.Documento(tela)) is null)
+        var tela = await transporte.AbrirTelaAsync(perfil.CaminhoTela, ct);
+        if (ControlePorRotulo(SerHtmlParser.Documento(tela), Form + ":", "Pesquisar") is null)
         {
-            throw Falha("O SER não devolveu a tela de Solicitação (sem botão Pesquisar). Sessão derrubada?");
+            throw Falha($"O {perfil.Sistema} não devolveu a tela de Solicitação (sem botão Pesquisar). Sessão derrubada?");
         }
 
-        var r = await sessao.SubmeterFormAsync(
+        var r = await transporte.SubmeterLeituraAsync(
             tela, Form,
             new Dictionary<string, string>(StringComparer.Ordinal) { [AbrirAbaEditar] = AbrirAbaEditar },
             SerHtmlParser.ViewStateQualquer(tela), ct);
-        var html = await SeguirAsync(r.Texto, ct);
+        var html = await SeguirAsync(r, ct);
 
         if (!html.Contains(CampoTipo, StringComparison.Ordinal))
         {
-            throw Falha("A aba Editar do SER não abriu em modo criação (combo de Tipo ausente).");
+            throw Falha($"A aba Editar do {perfil.Sistema} não abriu em modo criação (combo de Tipo ausente).");
         }
 
         _pagina = SerHtmlParser.Documento(html);
@@ -95,7 +101,7 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
     public async Task TrocarAsync(string campo, string valor, CancellationToken ct)
     {
         var evento = EventoDoControle(Html, campo)
-            ?? throw Falha($"Não achei o evento A4J do controle '{campo}' na tela do SER.");
+            ?? throw Falha($"Não achei o evento A4J do controle '{campo}' na tela do {perfil.Sistema}.");
 
         _escolhas[campo] = valor;
         await PostarLeituraAsync(new Dictionary<string, string>(StringComparer.Ordinal)
@@ -118,22 +124,22 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
         Func<IReadOnlyList<IReadOnlyList<string>>, int?> escolher, CancellationToken ct)
     {
         var caixa = SerHtmlParser.SuggestionBoxDoCampo(Html, campoTexto)
-            ?? throw Falha($"Não achei o autocomplete de '{campoTexto}' na tela do SER.");
+            ?? throw Falha($"Não achei o autocomplete de '{campoTexto}' na tela do {perfil.Sistema}.");
 
-        var busca = await sessao.SubmeterFormAsync(Html, Form, new Dictionary<string, string>(StringComparer.Ordinal)
+        var busca = await transporte.SubmeterLeituraAsync(Html, Form, new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["AJAXREQUEST"] = RegiaoViewRoot,
             ["inputvalue"] = termo,
             [caixa.BoxId] = caixa.BoxId,
             ["ajaxSingle"] = caixa.BoxId,
         }, _viewState, ct);
-        _viewState = SerHtmlParser.ViewStateQualquer(busca.Texto) ?? _viewState;
+        _viewState = SerHtmlParser.ViewStateQualquer(busca) ?? _viewState;
 
-        var linhas = SerHtmlParser.LinhasDeSugestao(SerHtmlParser.Documento(busca.Texto), caixa.BoxId)
+        var linhas = SerHtmlParser.LinhasDeSugestao(SerHtmlParser.Documento(busca), caixa.BoxId)
             ?? throw Falha($"O autocomplete de '{campoTexto}' não devolveu a tabela de sugestões.");
         if (escolher(linhas) is not int indice) return null;
 
-        var escolha = await sessao.SubmeterFormAsync(Html, Form, new Dictionary<string, string>(StringComparer.Ordinal)
+        var escolha = await transporte.SubmeterLeituraAsync(Html, Form, new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["AJAXREQUEST"] = RegiaoViewRoot,
             [caixa.OnselectId] = caixa.OnselectId,
@@ -143,12 +149,12 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
         // O efeito do onselect é invisível (Ajax-Update-Ids VAZIO): a escolha mora só na conversa
         // Seam. Sem o envelope A4J ela não aconteceu.
-        if (!escolha.Texto.Contains("Ajax-Response", StringComparison.Ordinal)
-            && !escolha.Texto.Contains("<form id=\"form0\"", StringComparison.Ordinal))
+        if (!escolha.Contains("Ajax-Response", StringComparison.Ordinal)
+            && !escolha.Contains("<form id=\"form0\"", StringComparison.Ordinal))
         {
-            throw Falha($"O SER não confirmou a escolha no autocomplete de '{campoTexto}'.");
+            throw Falha($"O {perfil.Sistema} não confirmou a escolha no autocomplete de '{campoTexto}'.");
         }
-        Absorver(escolha.Texto);
+        Absorver(escolha);
 
         // O texto da coluna oculta é o que o navegador escreve no campo — e o SER exige os dois.
         _escolhas[campoTexto] = linhas[indice][0];
@@ -157,13 +163,14 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
     public async Task PesquisarPacienteAsync(string cnsOuCpf, CancellationToken ct)
     {
-        var botao = SerNovaSolicitacaoService.BotaoPesquisarPaciente(Html)
+        // <a title="Pesquisar"> no SER, <input value="Pesquisar"> no SERNIT — pelo rótulo.
+        var botao = ControlePorRotulo(_pagina, Form + ":", "Pesquisar")
             ?? throw Falha("Não achei o botão Pesquisar do painel de paciente.");
 
-        _escolhas[CampoCnsCpf] = cnsOuCpf;
+        _escolhas[perfil.CampoCnsCpf] = cnsOuCpf;
         await PostarLeituraAsync(new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            [CampoCnsCpf] = cnsOuCpf,
+            [perfil.CampoCnsCpf] = cnsOuCpf,
             ["AJAXREQUEST"] = RegiaoViewRoot,
             [botao] = botao,
             ["ajaxSingle"] = botao,
@@ -175,15 +182,31 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
     // ------------------------------------------------------------------ leitura do estado
 
-    public List<SerOpcaoDto> Combo(string campo) => SerNovaSolicitacaoService.Combo(_pagina, campo);
+    public PerfilTelaCriacao Perfil => perfil;
 
-    public List<SerCampoPacienteDto> Paciente() => SerNovaSolicitacaoService.CamposDoPaciente(Html);
+    public List<SerOpcaoDto> Combo(string campo) => perfil.Combo(_pagina, campo);
 
-    public List<SerCampoDinamicoDto> CamposDinamicos() => SerNovaSolicitacaoService.CamposDinamicos(Html);
+    public List<SerCampoPacienteDto> Paciente() => perfil.Paciente(Html);
+
+    public List<SerCampoDinamicoDto> CamposDinamicos() => perfil.CamposDinamicos(Html);
+
+    /// <summary>O campo existe na página e o navegador o mandaria (não está travado).</summary>
+    public bool CampoEditavel(string nome) =>
+        _pagina.QuerySelector($"[name=\"{nome}\"]") is { } el && !el.HasAttribute("disabled") && !el.HasAttribute("readonly");
+
+    /// <summary>Valor do campo como está na página (o que o servidor renderizou).</summary>
+    public string? ValorNaPagina(string nome) => _pagina.QuerySelector($"[name=\"{nome}\"]")?.GetAttribute("value");
 
     public bool TemCampo(string nome) => _pagina.QuerySelector($"[name=\"{nome}\"]") is not null;
 
-    public string Mensagem() => SerHtmlParser.MensagemDaTela(_pagina);
+    public string Mensagem()
+    {
+        // O SERNIT também usa `form0:msgErro` (medido no lab) além das caixas do SER.
+        var msg = SerHtmlParser.MensagemDaTela(_pagina);
+        var erro = Espremer(_pagina.GetElementById("form0:msgErro")?.TextContent ?? string.Empty);
+        return erro.Length == 0 || msg.Contains(erro, StringComparison.Ordinal) ? msg
+            : msg.Length == 0 ? erro : $"{msg} | {erro}";
+    }
 
     /// <summary>Conteúdo das células de <c>form0:anexoList</c> — para diagnóstico. Para conferir
     /// anexo use <see cref="AnexosNomes"/>.</summary>
@@ -227,20 +250,20 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
     public async Task AnexarAsync(string nome, string contentType, byte[] conteudo, CancellationToken ct)
     {
         // 1. "Anexar Arquivo" — submit A4J do form0 inteiro, como o clique faz.
-        var abrir = BotaoPorTexto(Form + ":", "Anexar Arquivo")
-            ?? throw Falha("Não achei o botão \"Anexar Arquivo\" na tela do SER.");
+        var abrir = ControlePorRotulo(_pagina, Form + ":", "Anexar Arquivo")
+            ?? throw Falha($"Não achei o botão \"Anexar Arquivo\" na tela do {perfil.Sistema}.");
         // O resto do formulário já vai pela página; como "extras" só o que escolhemos/digitamos —
         // extra passa pela trava de somente-leitura, e o formulário inteiro ali seria ruído.
         var cliqueAbrir = new Dictionary<string, string>(_escolhas, StringComparer.Ordinal)
         {
             [abrir] = abrir,
-            ["AJAXREQUEST"] = SerHtmlParser.RegiaoDoBotao(Html, abrir) ?? Form,
+            ["AJAXREQUEST"] = RegiaoDoControle(Html, abrir) ?? Form,
         };
         await PostarLeituraAsync(cliqueAbrir, ct);
 
         // 2. O upload: query do RichFaces 3.3 (lida do FileUpload do SER) + o arquivo.
         var uid = Guid.NewGuid().ToString("N");
-        var upload = await sessao.EnviarArquivoAsync(
+        var upload = await transporte.EnviarArquivoAsync(
             Html, FormAnexar, CampoArquivo, nome, contentType, conteudo,
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -250,12 +273,12 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
                 ["AJAXREQUEST"] = RegiaoViewRoot,
             },
             _viewState, $"anexar arquivo na nova solicitação ({nome})", ct);
-        if (upload.EhTexto) Absorver(upload.Texto);
+        if (upload.Length > 0) Absorver(upload);
 
         // 3. "Anexar" do modal: passa o arquivo da área de upload para a lista do pedido.
         var confirmar = BotaoDoFormPorValor(FormAnexar, "Anexar")
-            ?? throw Falha("Não achei o botão \"Anexar\" do modal de anexos do SER.");
-        var r = await sessao.SubmeterEscritaAsync(
+            ?? throw Falha($"Não achei o botão \"Anexar\" do modal de anexos do {perfil.Sistema}.");
+        var r = await transporte.SubmeterEscritaAsync(
             Html, FormAnexar, new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 [confirmar] = confirmar,
@@ -264,7 +287,7 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
                 [CampoArquivo] = SerHtmlParser.RemoverDoPost,
             },
             _viewState, $"confirmar anexo na nova solicitação ({nome})", ct);
-        var confirmHtml = await SeguirAsync(r.Texto, ct);
+        var confirmHtml = await SeguirAsync(r, ct);
         Absorver(confirmHtml);
 
         // DIAGNÓSTICO (envio ao SER): distingue "o SER não listou o anexo" de "a resposta A4J não
@@ -273,9 +296,9 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
         var atualizados = string.Join(",", IdsAtualizados(SerHtmlParser.Documento(confirmHtml)));
         var listaAgora = AnexosListados();
         logger.LogInformation(
-            "SER_ANEXO_DIAG [{Nome}]: confirmado. A4J re-renderizou [{Ids}]; form0:anexoList "
+            "SER_ANEXO_DIAG [{Nome}] ({Sistema}): confirmado. A4J re-renderizou [{Ids}]; form0:anexoList "
             + "tem {N} célula(s): [{Lista}].",
-            nome, string.IsNullOrEmpty(atualizados) ? "(página inteira/sem meta)" : atualizados,
+            nome, perfil.Sistema, string.IsNullOrEmpty(atualizados) ? "(página inteira/sem meta)" : atualizados,
             listaAgora.Count, string.Join(" | ", listaAgora));
     }
 
@@ -286,27 +309,31 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
     /// </summary>
     public async Task<string> GravarAsync(string operacao, CancellationToken ct)
     {
-        var gravar = SerHtmlParser.BotaoGravar(_pagina, Form)
-            ?? throw Falha("Não achei o botão Gravar da aba Editar do SER. Nada foi enviado.");
+        // <a title="Gravar"> no SER, <input value="Gravar"> no SERNIT — sempre o de form0 (o modal
+        // de cadastrar médico do SERNIT tem outro "Gravar").
+        var gravar = ControlePorRotulo(_pagina, Form + ":", "Gravar")
+            ?? throw Falha($"Não achei o botão Gravar da aba Editar do {perfil.Sistema}. Nada foi enviado.");
 
         var extras = Formulario(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [gravar] = gravar,
             // A região sai do onclick do botão: é ela que decide o que o A4J processa.
-            ["AJAXREQUEST"] = SerHtmlParser.RegiaoDoBotao(Html, gravar) ?? Form,
+            ["AJAXREQUEST"] = RegiaoDoControle(Html, gravar) ?? Form,
         });
 
-        var r = await sessao.SubmeterEscritaAsync(Html, Form, extras, _viewState, operacao, ct);
-        var html = await SeguirAsync(r.Texto, ct);
+        var r = await transporte.SubmeterEscritaAsync(Html, Form, extras, _viewState, operacao, ct);
+        var html = await SeguirAsync(r, ct);
         Absorver(html);
         return html;
     }
 
-    /// <summary>O número que o SER devolveu na mensagem do Gravar (ou no campo de ID), se houver.</summary>
+    /// <summary>
+    /// O número que o sistema devolveu na mensagem do Gravar, se houver. Três dígitos ou mais: o
+    /// SER-RJ numera com 7 (8407041), o SERNIT com 3 a 5 (9891, 43303).
+    /// </summary>
     public static string? NumeroGerado(string html)
     {
-        var doc = SerHtmlParser.Documento(html);
-        var mensagem = SerHtmlParser.MensagemDaTela(doc);
+        var mensagem = MensagemDaResposta(html);
         foreach (var padrao in new[] { RegexNumeroSolicitacao(), RegexNumeroNo() })
         {
             var m = padrao.Match(mensagem);
@@ -315,10 +342,20 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
         return null;
     }
 
-    [GeneratedRegex(@"[Ss]olicita[çc][ãa]o\D{0,40}?(\d{6,})")]
+    /// <summary>A mensagem que a resposta traz — as caixas do SER-RJ e o <c>form0:msgErro</c> do SERNIT.</summary>
+    public static string MensagemDaResposta(string html)
+    {
+        var doc = SerHtmlParser.Documento(html);
+        var msg = SerHtmlParser.MensagemDaTela(doc);
+        var erro = Espremer(doc.GetElementById("form0:msgErro")?.TextContent ?? string.Empty);
+        return erro.Length == 0 || msg.Contains(erro, StringComparison.Ordinal) ? msg
+            : msg.Length == 0 ? erro : $"{msg} | {erro}";
+    }
+
+    [GeneratedRegex(@"[Ss]olicita[çc][ãa]o\D{0,40}?(\d{3,})")]
     private static partial Regex RegexNumeroSolicitacao();
 
-    [GeneratedRegex(@"n[ºo°]\s*(\d{6,})", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"n[ºo°]\s*(\d{3,})", RegexOptions.IgnoreCase)]
     private static partial Regex RegexNumeroNo();
 
     // ------------------------------------------------------------------ interno
@@ -343,13 +380,13 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
     private async Task PostarLeituraAsync(Dictionary<string, string> extras, CancellationToken ct)
     {
-        var r = await sessao.SubmeterFormAsync(Html, Form, extras, _viewState, ct);
-        Absorver(await SeguirAsync(r.Texto, ct));
+        var r = await transporte.SubmeterLeituraAsync(Html, Form, extras, _viewState, ct);
+        Absorver(await SeguirAsync(r, ct));
     }
 
     private async Task<string> SeguirAsync(string html, CancellationToken ct) =>
         SerHtmlParser.RedirectNoCorpo(html) is { Length: > 0 } destino
-            ? await sessao.AbrirTelaAsync(destino, ct)
+            ? await transporte.AbrirTelaAsync(destino, ct)
             : html;
 
     /// <summary>
@@ -401,11 +438,35 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
         return null;
     }
 
-    private string? BotaoPorTexto(string prefixoId, string texto) =>
-        _pagina.QuerySelectorAll("a")
-            .FirstOrDefault(a => (a.Id ?? string.Empty).StartsWith(prefixoId, StringComparison.Ordinal)
-                                 && Espremer(a.TextContent).Equals(texto, StringComparison.OrdinalIgnoreCase))
-            ?.Id;
+    /// <summary>
+    /// Id do controle de <paramref name="prefixoId"/> com aquele rótulo: <c>&lt;a&gt;</c> pelo texto
+    /// ou pelo <c>title</c> (o SER-RJ), <c>&lt;input type=button|submit&gt;</c> pelo <c>value</c> (o
+    /// SERNIT). Nunca por id: <c>j_id</c> é posicional.
+    /// </summary>
+    internal static string? ControlePorRotulo(IHtmlDocument pagina, string prefixoId, string rotulo)
+    {
+        bool Casa(string? s) => Espremer(s ?? string.Empty).Equals(rotulo, StringComparison.OrdinalIgnoreCase);
+        foreach (var el in pagina.QuerySelectorAll("a, input[type=button], input[type=submit]"))
+        {
+            var id = el.Id ?? el.GetAttribute("name") ?? string.Empty;
+            if (!id.StartsWith(prefixoId, StringComparison.Ordinal)) continue;
+            var ok = el.TagName.Equals("A", StringComparison.OrdinalIgnoreCase)
+                ? Casa(el.TextContent) || Casa(el.GetAttribute("title"))
+                : Casa(el.GetAttribute("value"));
+            if (ok) return id;
+        }
+        return null;
+    }
+
+    /// <summary>A região A4J que o <c>onclick</c> do controle declara — <c>&lt;a&gt;</c> ou <c>&lt;input&gt;</c>.</summary>
+    internal static string? RegiaoDoControle(string html, string id)
+    {
+        var m = Regex.Match(html, "<(a|input)[^>]*(id|name)=\"" + Regex.Escape(id) + "\"[^>]*>",
+            RegexOptions.None, TimeSpan.FromSeconds(2));
+        if (!m.Success) return null;
+        var g = Regex.Match(m.Value, @"A4J\.AJAX\.Submit\(\s*'([^']+)'");
+        return g.Success ? g.Groups[1].Value : null;
+    }
 
     private string? BotaoDoFormPorValor(string formId, string valor) =>
         (_pagina.GetElementById(formId) as IElement)?.QuerySelectorAll("input[type=button], input[type=submit]")
@@ -417,7 +478,7 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
     private ValidacaoException Falha(string mensagem)
     {
-        logger.LogWarning("SER/criação: {Mensagem}", mensagem);
+        logger.LogWarning("{Sistema}/criação: {Mensagem}", perfil.Sistema, mensagem);
         return new ValidacaoException("ser.criacao", mensagem);
     }
 }
