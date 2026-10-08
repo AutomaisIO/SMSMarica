@@ -185,7 +185,9 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
     public string Mensagem() => SerHtmlParser.MensagemDaTela(_pagina);
 
-    /// <summary>Nomes de arquivo listados em <c>form0:anexoList</c>.</summary>
+    /// <summary>Conteúdo das células de <c>form0:anexoList</c> — para diagnóstico. A grade do SER
+    /// NÃO traz o nome do arquivo: cada linha é <c>data/hora · quem anexou · Abrir/Excluir</c>.
+    /// Para conferir anexo use <see cref="AnexosLinhas"/> (contagem), não estes textos.</summary>
     public List<string> AnexosListados()
     {
         var tabela = _pagina.GetElementById("form0:anexoList");
@@ -194,6 +196,15 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
         return [.. corpo.QuerySelectorAll("tr")
             .SelectMany(tr => tr.QuerySelectorAll("td").Select(td => Espremer(td.TextContent)))
             .Where(t => t.Length > 0)];
+    }
+
+    /// <summary>Quantas linhas (arquivos) a grade <c>form0:anexoList</c> tem. É por aqui que se
+    /// confere o anexo — cada "Anexar" confirmado acrescenta uma linha; o nome do arquivo não
+    /// aparece na grade do SER, então contar linhas é o único sinal confiável.</summary>
+    public int AnexosLinhas()
+    {
+        var corpo = _pagina.GetElementById("form0:anexoList")?.QuerySelector("tbody");
+        return corpo?.QuerySelectorAll("tr").Count(tr => tr.QuerySelectorAll("td").Any()) ?? 0;
     }
 
     // ------------------------------------------------------------------ escrita

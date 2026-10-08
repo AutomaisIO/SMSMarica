@@ -136,24 +136,27 @@ public sealed partial class RegulacaoEnvioSerService(
             {
                 await motor.AnexarAsync(anexo.Nome, anexo.ContentType, anexo.Conteudo, ct);
             }
-            var listados = motor.AnexosListados();
+
+            // A grade de anexos do SER (form0:anexoList) NÃO mostra o nome do arquivo — cada linha é
+            // "data/hora · quem anexou · Abrir/Excluir". Então a conferência é por CONTAGEM: cada
+            // "Anexar" confirmado acrescenta uma linha; tem de haver uma linha por arquivo enviado.
+            // (Conferir por nome como antes dava "não listou" sempre, barrando todo envio com anexo.)
+            var linhas = motor.AnexosLinhas();
+            var todosEntraram = linhas >= anexos.Count;
             foreach (var anexo in anexos)
             {
-                var entrou = listados.Any(l => l.Contains(anexo.Nome, StringComparison.OrdinalIgnoreCase));
-                passos.Add(new EnvioSerPassoDto("Anexo", anexo.Nome, entrou,
-                    entrou ? null : "o SER não listou o arquivo depois de anexar"));
-                if (!entrou)
-                {
-                    // DIAGNÓSTICO: o que o SER DE FATO listou na releitura — é o que diz se a grade
-                    // veio vazia (A4J não atualizou), com nome diferente, ou sem o arquivo mesmo.
-                    logger.LogWarning(
-                        "SER_ANEXO_NAO_LISTADO: esperado \"{Esperado}\"; o SER listou {N} célula(s): [{Listados}].",
-                        anexo.Nome, listados.Count, string.Join(" | ", listados));
-                    throw new ValidacaoException(
-                        "ser.anexo",
-                        $"O SER não listou o anexo \"{anexo.Nome}\" depois de recebê-lo. "
-                        + Diagnostico(motor) + " Nada foi gravado.");
-                }
+                passos.Add(new EnvioSerPassoDto("Anexo", anexo.Nome, todosEntraram,
+                    todosEntraram ? null : "o SER registrou menos anexos do que foram enviados"));
+            }
+            if (!todosEntraram)
+            {
+                logger.LogWarning(
+                    "SER_ANEXO_CONTAGEM: enviados {Enviados}, linhas na grade do SER {Linhas}. {Diag}",
+                    anexos.Count, linhas, Diagnostico(motor));
+                throw new ValidacaoException(
+                    "ser.anexo",
+                    $"O SER registrou {linhas} anexo(s), mas foram enviados {anexos.Count}. "
+                    + Diagnostico(motor) + " Nada foi gravado.");
             }
 
             gravarAcionado = true;
