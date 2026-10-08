@@ -294,12 +294,15 @@ public sealed partial class SerWebSessao(
                 $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
             var destino = new Uri(sessao.BaseUri, action + (action.Contains('?') ? "&" : "?") + query);
 
-            using var corpo = new MultipartFormDataContent();
-            foreach (var (nome, valor) in campos) corpo.Add(new StringContent(valor, Encoding.UTF8), nome);
-            var arquivo = new ByteArrayContent(conteudo);
-            arquivo.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
-                string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
-            corpo.Add(arquivo, campoArquivo, nomeArquivo);
+            // Corpo montado à mão, IGUAL ao do navegador (08/10/2026). Com o MultipartFormDataContent
+            // do .NET o SER registrava o anexo SEM arquivo — "Nome do Arquivo" vazio na grade e
+            // download "Null" (PR-20 e PR-22): o .NET põe Content-Type em cada campo de texto, deixa o
+            // `name` sem aspas e acrescenta `filename*=`, e o leitor de multipart do RichFaces 3.3
+            // não entende isso como o arquivo do componente.
+            var (corpoBytes, limite) = MontarMultipartComoNavegador(
+                campos, campoArquivo, nomeArquivo, contentType, conteudo);
+            using var corpo = new ByteArrayContent(corpoBytes);
+            corpo.Headers.TryAddWithoutValidation("Content-Type", $"multipart/form-data; boundary={limite}");
 
             using var requisicao = new HttpRequestMessage(HttpMethod.Post, destino) { Content = corpo };
             using var resposta = await sessao.Http.SendAsync(requisicao, cancellationToken);
@@ -319,6 +322,11 @@ public sealed partial class SerWebSessao(
                 throw new ValidacaoException(
                     "ser.sessao_expirada", "A sessão do SER caiu durante o envio do arquivo. Nada foi gravado.");
             }
+            if (r.EhTexto && RecusaDoUpload(r.Texto) is { } recusa)
+            {
+                throw new ValidacaoException(
+                    "ser.upload_recusado", $"O SER recusou o arquivo {nomeArquivo} ({recusa}). Nada foi gravado.");
+            }
             if (r.EhTexto) AbsorverViewState(sessao, r.Texto);
             return r;
         }
@@ -327,6 +335,55 @@ public sealed partial class SerWebSessao(
             _gate.Release();
         }
     }
+
+    /// <summary>
+    /// O corpo <c>multipart/form-data</c> como o navegador o manda: campos de texto só com
+    /// <c>Content-Disposition</c> (nome entre aspas, sem <c>Content-Type</c>), o arquivo logo depois
+    /// do hidden do form — a ordem do DOM do <c>formAnexar</c> — com <c>filename="…"</c> simples e o
+    /// tipo do arquivo, e o ViewState no fim.
+    /// </summary>
+    internal static (byte[] Corpo, string Limite) MontarMultipartComoNavegador(
+        IReadOnlyDictionary<string, string> campos, string campoArquivo, string nomeArquivo,
+        string contentType, byte[] conteudo)
+    {
+        var limite = "----WebKitFormBoundary" + Guid.NewGuid().ToString("N")[..16];
+        static string Aspas(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+        using var ms = new MemoryStream();
+        void Escrever(string texto)
+        {
+            var b = Encoding.UTF8.GetBytes(texto);
+            ms.Write(b, 0, b.Length);
+        }
+        void Campo(string nome, string valor) =>
+            Escrever($"--{limite}\r\nContent-Disposition: form-data; name=\"{Aspas(nome)}\"\r\n\r\n{valor}\r\n");
+
+        // Hidden do form primeiro (é o primeiro elemento do DOM), depois o arquivo, depois o resto.
+        var ordem = campos.OrderBy(c => c.Key == "javax.faces.ViewState" ? 2 : 0).ToList();
+        var antesDoArquivo = ordem.Where(c => c.Key != "javax.faces.ViewState").ToList();
+        foreach (var (nome, valor) in antesDoArquivo) Campo(nome, valor);
+
+        var tipo = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType;
+        Escrever($"--{limite}\r\nContent-Disposition: form-data; name=\"{Aspas(campoArquivo)}\"; "
+                 + $"filename=\"{Aspas(nomeArquivo)}\"\r\nContent-Type: {tipo}\r\n\r\n");
+        ms.Write(conteudo, 0, conteudo.Length);
+        Escrever("\r\n");
+
+        foreach (var (nome, valor) in ordem.Where(c => c.Key == "javax.faces.ViewState")) Campo(nome, valor);
+        Escrever($"--{limite}--\r\n");
+        return (ms.ToArray(), limite);
+    }
+
+    /// <summary>
+    /// A recusa que o próprio SER declara na resposta do upload — as mesmas marcas que o
+    /// <c>LoadWatcher</c> do RichFaces procura no iframe (lido do <c>ui.pack.js</c> do SER em
+    /// 08/10/2026). <c>null</c> = sem recusa declarada.
+    /// </summary>
+    internal static string? RecusaDoUpload(string html) =>
+        html.Contains("_richfaces_file_upload_stopped", StringComparison.Ordinal) ? "upload interrompido"
+        : html.Contains("_richfaces_file_upload_size_restricted", StringComparison.Ordinal) ? "arquivo acima do tamanho permitido"
+        : html.Contains("_richfaces_file_upload_forbidden", StringComparison.Ordinal) ? "tipo de arquivo não permitido"
+        : null;
 
     private async Task<RespostaSer> SubmeterAsync(
         string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,

@@ -137,26 +137,30 @@ public sealed partial class RegulacaoEnvioSerService(
                 await motor.AnexarAsync(anexo.Nome, anexo.ContentType, anexo.Conteudo, ct);
             }
 
-            // A grade de anexos do SER (form0:anexoList) NÃO mostra o nome do arquivo — cada linha é
-            // "data/hora · quem anexou · Abrir/Excluir". Então a conferência é por CONTAGEM: cada
-            // "Anexar" confirmado acrescenta uma linha; tem de haver uma linha por arquivo enviado.
-            // (Conferir por nome como antes dava "não listou" sempre, barrando todo envio com anexo.)
-            var linhas = motor.AnexosLinhas();
-            var todosEntraram = linhas >= anexos.Count;
+            // Conferência pelo NOME, na coluna "Nome do Arquivo" da grade do SER (08/10/2026). Contar
+            // linhas deixou passar a PR-20 e a PR-22 com 2 linhas de nome VAZIO: o "Anexar" do modal
+            // cria a linha mesmo quando o arquivo não chegou, e no SER o download sai "Null". Linha
+            // sem nome é anexo que não existe — e então NADA é gravado.
+            var nomesNoSer = motor.AnexosNomes();
+            var faltando = anexos
+                .Where(a => !nomesNoSer.Any(n => string.Equals(n, a.Nome, StringComparison.OrdinalIgnoreCase)))
+                .Select(a => a.Nome)
+                .ToList();
             foreach (var anexo in anexos)
             {
-                passos.Add(new EnvioSerPassoDto("Anexo", anexo.Nome, todosEntraram,
-                    todosEntraram ? null : "o SER registrou menos anexos do que foram enviados"));
+                var entrou = !faltando.Contains(anexo.Nome);
+                passos.Add(new EnvioSerPassoDto("Anexo", anexo.Nome, entrou,
+                    entrou ? null : "o SER não registrou o arquivo"));
             }
-            if (!todosEntraram)
+            if (faltando.Count > 0)
             {
                 logger.LogWarning(
-                    "SER_ANEXO_CONTAGEM: enviados {Enviados}, linhas na grade do SER {Linhas}. {Diag}",
-                    anexos.Count, linhas, Diagnostico(motor));
+                    "SER_ANEXO_NAO_RECEBIDO: faltando [{Faltando}]; nomes na grade do SER [{Nomes}]. {Diag}",
+                    string.Join(" | ", faltando), string.Join(" | ", nomesNoSer), Diagnostico(motor));
                 throw new ValidacaoException(
                     "ser.anexo",
-                    $"O SER registrou {linhas} anexo(s), mas foram enviados {anexos.Count}. "
-                    + Diagnostico(motor) + " Nada foi gravado.");
+                    $"O SER não registrou o arquivo {string.Join(", ", faltando.Select(n => $"\"{n}\""))} "
+                    + "(a lista de anexos dele ficou sem o nome do arquivo). " + Diagnostico(motor) + " Nada foi gravado.");
             }
 
             gravarAcionado = true;

@@ -185,9 +185,8 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
 
     public string Mensagem() => SerHtmlParser.MensagemDaTela(_pagina);
 
-    /// <summary>Conteúdo das células de <c>form0:anexoList</c> — para diagnóstico. A grade do SER
-    /// NÃO traz o nome do arquivo: cada linha é <c>data/hora · quem anexou · Abrir/Excluir</c>.
-    /// Para conferir anexo use <see cref="AnexosLinhas"/> (contagem), não estes textos.</summary>
+    /// <summary>Conteúdo das células de <c>form0:anexoList</c> — para diagnóstico. Para conferir
+    /// anexo use <see cref="AnexosNomes"/>.</summary>
     public List<string> AnexosListados()
     {
         var tabela = _pagina.GetElementById("form0:anexoList");
@@ -198,13 +197,24 @@ public sealed partial class SerCriacaoSolicitacao(ISerWebSessao sessao, ILogger 
             .Where(t => t.Length > 0)];
     }
 
-    /// <summary>Quantas linhas (arquivos) a grade <c>form0:anexoList</c> tem. É por aqui que se
-    /// confere o anexo — cada "Anexar" confirmado acrescenta uma linha; o nome do arquivo não
-    /// aparece na grade do SER, então contar linhas é o único sinal confiável.</summary>
-    public int AnexosLinhas()
+    /// <summary>
+    /// A coluna <b>"Nome do Arquivo"</b> de cada linha de <c>form0:anexoList</c> (colunas: Data,
+    /// Nome do Arquivo, Usuário, Ação). É por ela que se confere o anexo.
+    ///
+    /// <para><b>Contar linhas não serve</b> (08/10/2026): a PR-20 e a PR-22 foram gravadas com 2 linhas
+    /// cada e o nome VAZIO — o "Anexar" do modal cria a linha mesmo quando o arquivo não chegou, e no
+    /// SER o download sai "Null". Linha sem nome é anexo que não existe.</para>
+    /// </summary>
+    public List<string> AnexosNomes() => NomesDaGradeDeAnexos(_pagina);
+
+    internal static List<string> NomesDaGradeDeAnexos(IHtmlDocument pagina)
     {
-        var corpo = _pagina.GetElementById("form0:anexoList")?.QuerySelector("tbody");
-        return corpo?.QuerySelectorAll("tr").Count(tr => tr.QuerySelectorAll("td").Any()) ?? 0;
+        var corpo = pagina.GetElementById("form0:anexoList")?.QuerySelector("tbody");
+        if (corpo is null) return [];
+        return [.. corpo.QuerySelectorAll("tr")
+            .Select(tr => tr.QuerySelectorAll("td").ToList())
+            .Where(tds => tds.Count >= 2)
+            .Select(tds => Espremer(tds[1].TextContent))];
     }
 
     // ------------------------------------------------------------------ escrita

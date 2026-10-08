@@ -97,3 +97,59 @@ public class EnvioSerPecasTests
         SerCriacaoSolicitacao.EventoDoControle(html, "form0:unidadeDeOrigemIdentificada_radio").Should().Be("form0:j_id270");
     }
 }
+
+/// <summary>
+/// O anexo que chegava ao SER sem arquivo (08/10/2026: PR-20 e PR-22 gravadas com "Nome do Arquivo"
+/// vazio e download "Null").
+/// </summary>
+public class EnvioSerAnexoTests
+{
+    [Fact]
+    public void Multipart_sai_como_o_do_navegador()
+    {
+        var campos = new Dictionary<string, string>
+        {
+            ["formAnexar"] = "formAnexar",
+            ["javax.faces.ViewState"] = "j_id9",
+        };
+
+        var (corpo, limite) = SerWebSessao.MontarMultipartComoNavegador(
+            campos, "formAnexar:upload:file", "RELATORIO MEDICO.jpg", "image/jpeg", [0xFF, 0xD8, 0xFF]);
+        var texto = System.Text.Encoding.Latin1.GetString(corpo);
+
+        texto.Should().Contain($"--{limite}\r\nContent-Disposition: form-data; name=\"formAnexar\"\r\n\r\nformAnexar\r\n",
+            "campo de texto: nome entre aspas e SEM Content-Type, como o navegador");
+        texto.Should().Contain(
+            "Content-Disposition: form-data; name=\"formAnexar:upload:file\"; filename=\"RELATORIO MEDICO.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n");
+        texto.Should().NotContain("filename*", "o navegador não manda filename*; o .NET mandava");
+        texto.Should().NotContain("text/plain");
+        texto.IndexOf("upload:file", StringComparison.Ordinal).Should()
+            .BeLessThan(texto.IndexOf("javax.faces.ViewState", StringComparison.Ordinal), "a ordem do DOM: o arquivo antes do ViewState");
+        texto.Should().EndWith($"--{limite}--\r\n");
+    }
+
+    [Theory]
+    [InlineData("<span id=\"_richfaces_file_upload_size_restricted\"></span>", "arquivo acima do tamanho permitido")]
+    [InlineData("<span id=\"_richfaces_file_upload_forbidden\"></span>", "tipo de arquivo não permitido")]
+    [InlineData("<span id=\"_richfaces_file_upload_stopped\"></span>", "upload interrompido")]
+    [InlineData("<input name=\"javax.faces.ViewState\" value=\"j_id10\" />", null)]
+    public void Le_a_recusa_que_o_SER_declara_no_upload(string html, string? esperado)
+    {
+        SerWebSessao.RecusaDoUpload(html).Should().Be(esperado);
+    }
+
+    [Fact]
+    public void Linha_da_grade_sem_nome_de_arquivo_nao_conta_como_anexo()
+    {
+        // A grade como o SER a mostrou na PR-20: duas linhas, "Nome do Arquivo" vazio.
+        var pagina = SerHtmlParser.Documento(
+            "<table id=\"form0:anexoList\"><thead><tr><th>Data</th><th>Nome do Arquivo</th><th>Usuário</th><th>Ação</th></tr></thead>"
+            + "<tbody><tr><td>23:23 - 07/10/2026</td><td></td><td>FULANO</td><td><a href=\"#\">Abrir</a></td></tr>"
+            + "<tr><td>23:23 - 07/10/2026</td><td>IDENTIFICACAO.jpg</td><td>FULANO</td><td><a href=\"#\">Abrir</a></td></tr></tbody></table>");
+
+        var nomes = SerCriacaoSolicitacao.NomesDaGradeDeAnexos(pagina);
+
+        nomes.Should().Equal("", "IDENTIFICACAO.jpg");
+        nomes.Should().NotContain("RELATORIO MEDICO.jpg", "linha de nome vazio é arquivo que não chegou");
+    }
+}
