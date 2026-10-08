@@ -167,10 +167,37 @@ public class FrescorBaseSisregTests(PostgresFixture fixture)
 
         var (titulo, detalhe) = AvisoFrescorBaseSisregWorker.Montar(f);
 
-        titulo.Should().Be("2 dia(s) sem a lista de faltas e 1 unidade(s) sem releitura de chegada");
-        detalhe.Should().Contain("14/09 (875 em aberto, nunca lido)")
+        titulo.Should().Be("FALHOU a atualização das faltas do SISREG em 2 dia(s) e FALHOU a releitura de chegada em 1 unidade(s)");
+        detalhe.Should().Contain("Faltas não atualizadas: 14/09 (875 em aberto, nunca lido)")
             .And.Contain("12/09 (32 em aberto, última leitura 05/10 16:52)")
             .And.Contain("CDT (120 em aberto, desde 05/10 18:00)")
             .And.Contain("Pendente de atualização");
+    }
+
+    private static HashSet<string> P(params string[] p) => [.. p];
+
+    /// <summary>
+    /// Quando o celular toca: resumo na primeira conferência do dia; depois só pendência NOVA; e um
+    /// aviso quando volta ao normal. A mesma pendência não repete de hora em hora.
+    /// </summary>
+    [Fact]
+    public void Aviso_sai_no_resumo_do_dia_em_pendencia_nova_e_quando_normaliza()
+    {
+        var d = AvisoFrescorBaseSisregWorker.DecisaoAviso.Avisar;
+        var nada = AvisoFrescorBaseSisregWorker.DecisaoAviso.Nada;
+        var ok = AvisoFrescorBaseSisregWorker.DecisaoAviso.AvisarQueNormalizou;
+
+        // Primeira hora do dia, com pendência já avisada ontem: resumo.
+        AvisoFrescorBaseSisregWorker.Decidir(P("faltas:2026-09-14"), P("faltas:2026-09-14"), primeiraDoDia: true).Should().Be(d);
+        // Mesma pendência nas horas seguintes: silêncio.
+        AvisoFrescorBaseSisregWorker.Decidir(P("faltas:2026-09-14"), P("faltas:2026-09-14"), primeiraDoDia: false).Should().Be(nada);
+        // Apareceu um dia novo: avisa na hora.
+        AvisoFrescorBaseSisregWorker.Decidir(P("faltas:2026-09-14", "faltas:2026-10-07"), P("faltas:2026-09-14"), primeiraDoDia: false).Should().Be(d);
+        // Um resolveu e o outro continua: silêncio.
+        AvisoFrescorBaseSisregWorker.Decidir(P("faltas:2026-10-07"), P("faltas:2026-09-14", "faltas:2026-10-07"), primeiraDoDia: false).Should().Be(nada);
+        // Tudo lido depois de um aviso: "voltou ao normal".
+        AvisoFrescorBaseSisregWorker.Decidir(P(), P("faltas:2026-10-07"), primeiraDoDia: false).Should().Be(ok);
+        // Nada pendente e nada avisado: silêncio.
+        AvisoFrescorBaseSisregWorker.Decidir(P(), P(), primeiraDoDia: true).Should().Be(nada);
     }
 }

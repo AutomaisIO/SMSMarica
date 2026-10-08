@@ -89,7 +89,7 @@ export const artigoSisregConsultar: Artigo = {
       id: 'base-incompleta',
       titulo: 'Quando aparece o aviso amarelo: a base ainda não leu tudo',
       busca:
-        'aviso amarelo base desatualizada incompleta lista de faltas não lida dia sem leitura chegada não relida 30 horas pendente errado falta contada como pendente celular 07:00 pdf',
+        'aviso amarelo base desatualizada de hora em hora incompleta lista de faltas não lida dia sem leitura chegada não relida 30 horas pendente errado falta contada como pendente celular 07:00 pdf',
       conteudo: (
         <>
           <P>
@@ -117,8 +117,10 @@ export const artigoSisregConsultar: Artigo = {
             e pesquise de novo; ou cobre só os outros dias. O aviso também sai impresso no PDF.
           </Callout>
           <P>
-            Ninguém precisa ficar conferindo isso: todo dia às 07:00 o sistema confere os últimos 45 dias e, se
-            faltar alguma leitura, manda um aviso pelo WhatsApp para a lista de Avisos no celular.
+            Ninguém precisa ficar conferindo isso: de hora em hora, das 07:00 às 18:00, o sistema confere os
+            últimos 45 dias e manda um aviso pelo WhatsApp para a lista de Avisos no celular. O aviso diz com
+            todas as letras que a atualização das faltas falhou e em quais dias. Chega um resumo na primeira hora
+            do dia, um aviso a cada pendência nova e um aviso quando tudo volta ao normal.
           </P>
         </>
       ),

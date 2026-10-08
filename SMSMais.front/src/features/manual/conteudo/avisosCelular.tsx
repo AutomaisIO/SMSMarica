@@ -54,8 +54,10 @@ export const artigoAvisosCelular: Artigo = {
             tela. É a <strong>única</strong> lista de avisos de erro: não existe outra configuração em nenhuma tela.
           </P>
           <P>
-            Além dos erros, chega um aviso por dia, às 07:00, quando a <strong>base do SISREG está desatualizada</strong>:
-            dia já passado sem a lista de faltas, ou unidade cuja chegada dos pacientes não é relida há mais de 30 h.
+            Além dos erros, chega aviso quando a <strong>base do SISREG está desatualizada</strong>: dia já passado sem
+            a lista de faltas (ou lista recente sem atualizar há mais de 6 h), ou unidade cuja chegada dos pacientes não
+            é relida há mais de 30 h. A conferência é de hora em hora, das 07:00 às 18:00: resumo na primeira hora do
+            dia, depois só pendência nova, e um aviso de “voltou ao normal” quando tudo é lido.
             É o que impede o relatório de pendentes de sair contando falta como pendente sem ninguém saber.
           </P>
           <P>

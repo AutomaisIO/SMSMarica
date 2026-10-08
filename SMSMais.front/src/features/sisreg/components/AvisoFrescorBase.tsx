@@ -54,7 +54,7 @@ export function AvisoFrescorBase({ frescor }: { frescor: FrescorBaseSisreg | und
       ) : null}
       <p className="mt-1 text-xs text-amber-800">
         A leitura acontece sozinha (faltas de hora em hora, chegadas toda noite). O mesmo aviso sai impresso no
-        PDF e vai para o celular do responsável às 07:00.
+        PDF e vai para o celular do responsável, conferido de hora em hora das 07:00 às 18:00.
       </p>
     </div>
   );

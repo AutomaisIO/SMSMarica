@@ -29,6 +29,9 @@ public static class AlertaCatalogo
     /// <summary>Conferência diária da base do SISREG: dia sem lista de faltas ou unidade sem releitura de chegada.</summary>
     public const string SisregFrescor = "sisreg.frescor";
 
+    /// <summary>A base do SISREG voltou a ficar em dia depois de um aviso. Chave separada: o freio é por chave.</summary>
+    public const string SisregFrescorOk = "sisreg.frescor_ok";
+
     // Monitor que roda DENTRO do servidor do PACS (docs/pacs.md §11.1) e reporta por
     // POST /alertas-plataforma/externo. Chaves separadas de propósito: o freio é por chave, e o
     // "voltou" logo depois do "vai reiniciar" não pode ser engolido por ele.
@@ -57,9 +60,12 @@ public static class AlertaCatalogo
             "CAPTCHA, credencial derrubada, unidade com erro e rodada do lote de mapeamento que "
             + "terminou com pendência."),
         new(SisregFrescor, "Base do SISREG desatualizada", "Sincronismo",
-            "Conferência das 07:00: dia já passado sem a lista de faltas do SISREG, ou unidade cuja "
-            + "chegada dos pacientes não é relida há mais de 30 h. Enquanto isso, quem faltou ou veio "
-            + "aparece como \"Pendente de atualização\" na Consulta e na ficha do paciente."),
+            "Conferência de hora em hora (07:00–18:00): dia já passado sem a lista de faltas do SISREG "
+            + "(ou lista recente sem atualizar há mais de 6 h), ou unidade cuja chegada dos pacientes não "
+            + "é relida há mais de 30 h. Avisa o resumo na primeira hora do dia e, depois, só pendência "
+            + "nova. Enquanto isso, quem faltou ou veio aparece como \"Pendente de atualização\"."),
+        new(SisregFrescorOk, "Base do SISREG voltou ao normal", "Sincronismo",
+            "As pendências do último aviso de base desatualizada foram lidas."),
         new(Sincronismo("ser"), "Sincronismo SER", "Sincronismo",
             "Falhas avisadas pelo motor do SER."),
         new(Sincronismo("sernit"), "Sincronismo SERNIT", "Sincronismo",

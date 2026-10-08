@@ -15,14 +15,23 @@ public sealed class FrescorBaseSisregOpcoes
     public const string Secao = "Sisreg:Frescor";
 
     /// <summary>
-    /// Leitura mais velha que isto, de algo que deveria ser relido todo dia, conta como atrasada. As
-    /// faltas recentes são relidas de hora em hora (01:20–18:00) e a chegada toda noite, então 30 h
-    /// só estoura quando a rotina deixou de ler — não por esperar a próxima rodada.
+    /// Chegada relida há mais que isto conta como atrasada. A varredura relê toda noite, então 30 h só
+    /// estoura quando a rotina deixou de ler — não por esperar a próxima noite.
     /// </summary>
     public int HorasParaAtraso { get; set; } = 30;
 
-    /// <summary>Hora de Brasília do aviso no celular: antes de a equipe abrir o relatório.</summary>
+    /// <summary>
+    /// Lista de faltas RECENTE (semana com menos de 30 dias) lida há mais que isto conta como atrasada.
+    /// O coletor relê esses dias de hora em hora entre 01:20 e 18:00; o SISREG corta cerca de metade
+    /// das leituras, mas 6 rodadas seguidas sem fechar já é problema.
+    /// </summary>
+    public int HorasParaAtrasoFaltas { get; set; } = 6;
+
+    /// <summary>Primeira conferência do dia (Brasília) — antes de a equipe abrir o relatório.</summary>
     public TimeOnly HoraDoAviso { get; set; } = new(7, 0);
+
+    /// <summary>Última conferência do dia (Brasília). Entre as duas, confere de hora em hora.</summary>
+    public TimeOnly HoraFimDoAviso { get; set; } = new(18, 0);
 
     /// <summary>Quantos dias para trás o aviso diário confere.</summary>
     public int DiasDoAviso { get; set; } = 45;
@@ -52,6 +61,13 @@ public sealed record FrescorBaseSisregDto(
     public bool EmDia => DiasSemFaltas.Count == 0 && ChegadasAtrasadas.Count == 0;
 
     public static FrescorBaseSisregDto Vazio(int horas) => new([], [], horas);
+
+    /// <summary>Identidade de cada pendência ("faltas:2026-09-14", "chegada:{unidade}") — é o que diz
+    /// se apareceu problema NOVO entre uma conferência e outra.</summary>
+    public IReadOnlySet<string> Pendencias() =>
+        DiasSemFaltas.Select(d => $"faltas:{d.Dia:yyyy-MM-dd}")
+            .Concat(ChegadasAtrasadas.Select(c => $"chegada:{c.UnidadeId}"))
+            .ToHashSet();
 }
 
 /// <summary>
@@ -141,6 +157,7 @@ public sealed class FrescorBaseSisregService(
         if (fim < inicio) return FrescorBaseSisregDto.Vazio(horas);
 
         var velho = DateTime.UtcNow.AddHours(-horas);
+        var faltasVelhas = DateTime.UtcNow.AddHours(-Math.Max(1, opcoes.Value.HorasParaAtrasoFaltas));
         var todas = unidades is null;
         var ids = unidades?.Distinct().ToArray() ?? [];
 
@@ -151,7 +168,7 @@ public sealed class FrescorBaseSisregService(
                     {
                         Value = hoje.AddDays(-Math.Max(1, coleta.Value.DiasParaFaltas)),
                     },
-                    new NpgsqlParameter("velho", NpgsqlDbType.TimestampTz) { Value = velho }))
+                    new NpgsqlParameter("velho", NpgsqlDbType.TimestampTz) { Value = faltasVelhas }))
             .ToListAsync(ct);
 
         // A chegada só é relida nos últimos N dias (a varredura): mais velho que isso é estado final.

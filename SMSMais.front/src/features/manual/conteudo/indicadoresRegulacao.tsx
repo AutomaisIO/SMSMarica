@@ -444,10 +444,12 @@ export const artigoIndicadoresRegulacao: Artigo = {
           </P>
           <P>
             Cada leitura que não fecha fica só no log, e por isso não chega ao celular: o SISREG corta metade
-            delas, e a rodada seguinte fecha. O que chega ao celular é o resultado: todo dia às 07:00 o sistema
-            confere se algum dia já passado ficou <strong>sem a lista de faltas</strong> ou se alguma unidade
-            ficou <strong>sem releitura de chegada</strong> há mais de 30 h. Se ficou, avisa a lista de Avisos
-            no celular e mostra o mesmo aviso em SISREG → Consultar.
+            delas, e a rodada seguinte fecha. O que chega ao celular é o resultado: de hora em hora, das 07:00 às
+            18:00, o sistema confere se algum dia já passado ficou <strong>sem a lista de faltas</strong> (ou com a
+            lista das últimas semanas sem atualizar há mais de 6 h) ou se alguma unidade ficou{' '}
+            <strong>sem releitura de chegada</strong> há mais de 30 h. Se ficou, avisa a lista de Avisos no celular
+            (resumo na primeira hora do dia, depois só pendência nova, e um aviso quando volta ao normal) e mostra o
+            mesmo aviso em SISREG → Consultar.
           </P>
         </>
       ),
