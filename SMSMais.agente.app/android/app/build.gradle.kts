@@ -18,6 +18,26 @@ val localProperties = Properties().apply {
 val mapsApiKey: String =
     (localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: "")
 
+// Assinatura de release: android/key.properties (gitignored, keystore em android/keystore/) ou
+// variáveis AGENTE_* (CI). Chave ESTÁVEL é obrigatória: o MDM atualiza o app por cima e o Android
+// recusa APK assinado com outra chave — por isso não há fallback para a chave de debug.
+val keyProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+val releaseStoreFile: String? =
+    keyProperties.getProperty("storeFile") ?: System.getenv("AGENTE_KEYSTORE_FILE")
+val releaseStorePassword: String? =
+    keyProperties.getProperty("storePassword") ?: System.getenv("AGENTE_KEYSTORE_PASSWORD")
+val releaseKeyAlias: String? =
+    keyProperties.getProperty("keyAlias") ?: System.getenv("AGENTE_KEY_ALIAS")
+val releaseKeyPassword: String? =
+    keyProperties.getProperty("keyPassword") ?: System.getenv("AGENTE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+    .all { !it.isNullOrBlank() }
+
 android {
     namespace = "io.automais.smsmais.agente"
     compileSdk = flutter.compileSdkVersion
@@ -47,11 +67,22 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -62,6 +93,18 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Release sem chave falha cedo, com a causa clara (em vez de gerar APK com chave de debug).
+gradle.taskGraph.whenReady {
+    val buildsRelease = allTasks.any { it.project == project && it.name.contains("Release") && it.name.startsWith("assemble") }
+    if (buildsRelease && !hasReleaseSigning) {
+        throw GradleException(
+            "Assinatura de release ausente: crie android/key.properties (storeFile, storePassword, " +
+                "keyAlias, keyPassword) ou defina AGENTE_KEYSTORE_FILE/AGENTE_KEYSTORE_PASSWORD/" +
+                "AGENTE_KEY_ALIAS/AGENTE_KEY_PASSWORD. Ver README, seção \"Distribuição pelo MDM\"."
+        )
+    }
 }
 
 dependencies {

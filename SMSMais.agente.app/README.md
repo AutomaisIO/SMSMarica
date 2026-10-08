@@ -63,3 +63,31 @@ Credenciais do login são **mockadas** em A1 — qualquer usuário/senha válido
 - A2.4 Marcação de embarque/desembarque (depende de S3.3).
 
 Plano detalhado: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md` (trilho A).
+
+## Distribuição pelo MDM (quiosque)
+
+Os tablets do TFD recebem o app pelo MDM da Automais.IO, que instala, atualiza e trava o tablet
+no app (quiosque). Por isso o release **sempre** sai com a mesma chave: o Android recusa atualizar um
+app assinado com outra chave.
+
+1. **Build de release** (a chave do Google, `MAPS_API_KEY`, fica em `android/local.properties`):
+   ```bash
+   cd SMSMais.agente.app
+   flutter build apk --release
+   # saída: build/app/outputs/flutter-apk/app-release.apk
+   ```
+   Sem a chave de assinatura o build **falha de propósito** (não há mais fallback para a chave de debug).
+2. **Chave de assinatura** (fora do git):
+   - `android/keystore/smsmais-agente-release.jks` + `android/key.properties` (senha e alias).
+   - CI futura: variáveis `AGENTE_KEYSTORE_FILE`, `AGENTE_KEYSTORE_PASSWORD`, `AGENTE_KEY_ALIAS`,
+     `AGENTE_KEY_PASSWORD`.
+   - **Faça backup dos dois arquivos.** Perder a chave = desinstalar e reinstalar o app em todos os
+     tablets (e refazer a restrição da chave do Google).
+   - SHA-1 do certificado (restrição da chave do GCP, junto com o package `io.automais.smsmais.agente`):
+     `98:FB:AB:5C:14:E3:F8:FE:81:AA:74:B1:7C:F8:F9:37:96:EE:AA:BA`.
+3. **Publicar**: Automais.IO › Managed Devices › aba **Mobile** › **Apps gerenciados** › enviar o
+   `app-release.apk` (pacote e versão são lidos do APK). A cada versão nova, suba o APK de novo com o
+   `version` do `pubspec.yaml` incrementado (o `+N` é o versionCode, precisa crescer).
+4. **Instalar**: no app do catálogo, **Instalar em…** › escolher os tablets › marcar **Definir como
+   quiosque**. O MDM concede as permissões do app (câmera, localização inclusive em segundo plano,
+   notificações), bloqueia a desinstalação e abre o app travado; após reboot ele volta sozinho.

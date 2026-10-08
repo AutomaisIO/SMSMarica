@@ -110,8 +110,11 @@ Galaxy Tab A (SM-T290). Configuração nativa em vigor:
 2. **Desugaring**: `isCoreLibraryDesugaringEnabled = true` +
    `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.0.4")`
    (exigido pelo SDK porque `minSdk 26 < 34`).
-3. **Package**: `applicationId`/`namespace` = **`online.smsmarica.agente`** — a
-   chave do GCP é restrita a esse package + SHA-1. **Android-only**
+3. **Package**: `applicationId`/`namespace` = **`io.automais.smsmais.agente`** (era
+   `online.smsmarica.agente` até o commit 759b4f7) — a chave do GCP é restrita a esse package +
+   SHA-1 do certificado de **release** (`98:FB:AB:5C:14:E3:F8:FE:81:AA:74:B1:7C:F8:F9:37:96:EE:AA:BA`,
+   keystore em `SMSMais.agente.app/android/keystore/`, ver README "Distribuição pelo MDM").
+   Restrição antiga (package velho / SHA-1 de debug) faz a navegação recusar a chave. **Android-only**
    ([ADR-0003](../../adr/0003-flutter-android-only-agente.md)).
 4. **GCP**: Navigation SDK + Routes API habilitados; chave restrita; manter
    orçamento + alertas de billing.
