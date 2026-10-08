@@ -599,7 +599,7 @@ export const artigoMensageria: Artigo = {
       id: 'reforco-confirmacao',
       titulo: 'Quem não se identificou: reforço e orientação ao posto',
       busca:
-        'reforço não respondeu não se identificou procure o posto orientação ao posto vou ao posto quero mais informações não sou essa pessoa três dias 72 horas domingo limite por número lembrete dispensada cadastro confirmado identificação liberou frase na conversa sim confirmo não poderei ir aviso de segurança outro número verificado',
+        'reforço retorno guia não respondeu não se identificou procure o posto orientação ao posto vou ao posto quero mais informações não sou essa pessoa três dias 72 horas domingo limite por número lembrete dispensada cadastro confirmado identificação liberou frase na conversa sim confirmo não poderei ir aviso de segurança outro número verificado',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -631,6 +631,13 @@ export const artigoMensageria: Artigo = {
             respondeu. O primeiro só é usado depois que a Meta aprovar esse modelo; até lá, todos recebem o segundo,
             que diz que a mensagem chegou e a resposta não — verdade nos dois casos.
           </P>
+          <Callout tipo="regra" titulo="Retorno: nada da régua fala da guia">
+            O segundo texto do reforço e a orientação ao posto dizem para retirar a guia no posto — o texto é fixo,
+            aprovado na Meta. Quem está num <strong>retorno</strong> já tem a guia, então: o reforço do retorno sai
+            sempre pelo primeiro texto (o que não fala da guia), e o retorno <strong>não recebe</strong> a orientação ao
+            posto. Enquanto a Meta não aprovar o primeiro texto, o retorno fica sem reforço — a linha aparece em Envios
+            como <em>Dispensada</em>, com o motivo.
+          </Callout>
           <Callout tipo="lgpd" titulo="Nenhum dos dois leva dado do agendamento">
             O reforço e a orientação dizem apenas se é um exame ou uma consulta. Nunca o nome do procedimento, a
             especialidade, a data, a hora ou a unidade: o número ainda não provou ser do paciente, e é justamente por

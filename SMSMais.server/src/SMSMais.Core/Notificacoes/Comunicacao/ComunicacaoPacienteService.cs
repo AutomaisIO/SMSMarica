@@ -1206,14 +1206,38 @@ public sealed class ComunicacaoPacienteService(
             return;
         }
 
+        // RETORNO: quem volta já tem a guia. A orientação ao posto ("retire a guia no posto") não
+        // serve a ele, e o reforço só sai pelo modelo que não fala da guia.
+        var ehRetorno = s.TipoVaga == TipoVaga.Retorno;
+        if (ehRetorno && !ehReforco)
+        {
+            Terminal(n, StatusComunicacao.Dispensada,
+                "Retorno: a orientação ao posto manda retirar a guia, que quem volta já tem.");
+            return;
+        }
+
         // Modelo escolhido AGORA, pela leitura da principal e pelo catálogo de hoje.
         IReadOnlyList<TemplateWhatsApp> catalogo;
+        var catalogoIndisponivel = false;
         try { catalogo = await whatsApp.ListarTemplatesAsync(ct); }
         catch (OperationCanceledException) { throw; } // shutdown não é "catálogo indisponível"
-        catch { catalogo = []; }
+        catch { catalogo = []; catalogoIndisponivel = true; }
+
+        if (ehRetorno && !catalogo.Any(t =>
+                string.Equals(t.Nome, opts.TemplateReforcoNaoLida, StringComparison.OrdinalIgnoreCase)))
+        {
+            // Sem catálogo agora não quer dizer modelo reprovado: tenta de novo mais tarde.
+            if (catalogoIndisponivel) { ReagendarOuFalhar(n, "Catálogo de modelos indisponível."); return; }
+            Terminal(n, StatusComunicacao.Dispensada,
+                $"Retorno: o reforço sem a guia ({opts.TemplateReforcoNaoLida}) ainda não está aprovado na Meta, "
+                + "e o outro modelo manda retirar a guia no posto.");
+            return;
+        }
+
+        // Retorno vai sempre pelo modelo de quem não leu — o único sem a guia.
         var envio = Confirmacoes.ReguaReforcoConfirmacao.MontarEnvio(
             n.Finalidade, n.Tipo, Tratamento(paciente.NomeCompleto, paciente.Sexo),
-            principalLida: principal.LidoEm is not null, catalogo, opts);
+            principalLida: principal.LidoEm is not null && !ehRetorno, catalogo, opts);
 
         var (parametros, incompativel) = await AjustarAoModeloAsync(envio.Modelo, envio.Parametros, ct);
         if (incompativel is not null)

@@ -408,7 +408,7 @@ public class ReguaReforcoConfirmacaoTests(PostgresFixture fixture)
     private async Task<CenarioEnvio> PrepararEnvioAsync(
         SmsMaisDbContext db, FinalidadeComunicacao finalidade, bool principalLida = true,
         IReadOnlyList<TemplateWhatsApp>? catalogo = null, string? telefoneVerificado = null,
-        string? telefoneDoCadastro = null)
+        string? telefoneDoCadastro = null, TipoVaga? vaga = null)
     {
         var agora = DateTime.UtcNow;
         var pacienteId = Guid.NewGuid();
@@ -416,6 +416,13 @@ public class ReguaReforcoConfirmacaoTests(PostgresFixture fixture)
         var (s, principal) = await SemearPrincipalAsync(db, pacienteId, telefone,
             dataAgendada: agora.AddDays(10), enviadoEm: agora.AddHours(-80),
             lidoEm: principalLida ? agora.AddHours(-79) : null);
+        if (vaga is not null)
+        {
+            var sol = await db.Solicitacoes.SingleAsync(x => x.Id == s.Id);
+            sol.TipoVaga = vaga;
+            await db.SaveChangesAsync();
+            s.TipoVaga = vaga;
+        }
 
         // O exame é uma MAMOGRAFIA: o nome do procedimento não pode aparecer em lugar nenhum.
         var exame = await db.ExamesImagem.Include(e => e.TipoExame).SingleAsync(e => e.SolicitacaoId == s.Id);
@@ -502,6 +509,76 @@ public class ReguaReforcoConfirmacaoTests(PostgresFixture fixture)
         var (modelo, parametros, _) = EnvioFeito(c.Whats);
         Assert.Equal("agendamento_aviso_pendente", modelo);
         Assert.Equal(new[] { "Sra. Maria", "do seu exame" }, parametros);
+    }
+
+    // ===== Retorno (08/10/2026): quem volta já tem a guia — nada da régua fala dela =====
+
+    private static readonly TemplateWhatsApp ModeloSemGuia = new("agendamento_aviso_pendente", "pt_BR", "UTILITY", null, 2, []);
+    private static readonly TemplateWhatsApp ModeloComGuia = new("agendamento_aguardando_resposta", "pt_BR", "UTILITY", null, 2, []);
+
+    [Fact]
+    public async Task Retorno_recebe_o_reforco_sem_a_guia_mesmo_tendo_lido()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararEnvioAsync(db, FinalidadeComunicacao.ReforcoConfirmacao, principalLida: true,
+            catalogo: [ModeloComGuia, ModeloSemGuia], vaga: TipoVaga.Retorno);
+
+        await c.Servico.ProcessarTentativaEnvioAsync(c.Linha.Id);
+
+        var (modelo, _, conteudo) = EnvioFeito(c.Whats);
+        Assert.Equal("agendamento_aviso_pendente", modelo);
+        Assert.DoesNotContain("guia", conteudo!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Retorno_sem_o_modelo_sem_guia_aprovado_nao_recebe_reforco()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararEnvioAsync(db, FinalidadeComunicacao.ReforcoConfirmacao,
+            catalogo: [ModeloComGuia], vaga: TipoVaga.Retorno);
+
+        await c.Servico.ProcessarTentativaEnvioAsync(c.Linha.Id);
+
+        Assert.DoesNotContain(c.Whats.ReceivedCalls(),
+            x => x.GetMethodInfo().Name == nameof(IWhatsAppCliente.EnviarTemplateAsync));
+        await using var db2 = fixture.CriarDbContext();
+        var linha = await db2.ComunicacoesPaciente.AsNoTracking().SingleAsync(x => x.Id == c.Linha.Id);
+        Assert.Equal(StatusComunicacao.Dispensada, linha.Status);
+    }
+
+    [Fact]
+    public async Task Retorno_nao_recebe_a_orientacao_ao_posto()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await PrepararEnvioAsync(db, FinalidadeComunicacao.OrientacaoPosto,
+            catalogo: [ModeloComGuia, ModeloSemGuia], vaga: TipoVaga.Retorno);
+
+        await c.Servico.ProcessarTentativaEnvioAsync(c.Linha.Id);
+
+        Assert.DoesNotContain(c.Whats.ReceivedCalls(),
+            x => x.GetMethodInfo().Name == nameof(IWhatsAppCliente.EnviarTemplateAsync));
+        await using var db2 = fixture.CriarDbContext();
+        Assert.Equal(StatusComunicacao.Dispensada,
+            (await db2.ComunicacoesPaciente.AsNoTracking().SingleAsync(x => x.Id == c.Linha.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Retorno_perto_da_data_nao_entra_na_fila_da_orientacao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var agora = AgoraFicticio();
+        var paciente = Guid.NewGuid();
+        // O mesmo cenário em que a primeira vez recebe a orientação (faltam 36h, mensagem de 4 dias).
+        var (s, _) = await SemearPrincipalAsync(db, paciente, SeedSolicitacao.TelefoneAleatorio(),
+            dataAgendada: agora.AddHours(36), enviadoEm: agora.AddHours(-96));
+        var sol = await db.Solicitacoes.SingleAsync(x => x.Id == s.Id);
+        sol.TipoVaga = TipoVaga.Retorno;
+        await db.SaveChangesAsync();
+
+        await CriarRegua(db, [paciente]).EnfileirarDevidosAsync(agora, default);
+
+        await using var db2 = fixture.CriarDbContext();
+        Assert.DoesNotContain(FinalidadeComunicacao.OrientacaoPosto, await FinalidadesDaSolicitacaoAsync(db2, s.Id));
     }
 
     [Fact]

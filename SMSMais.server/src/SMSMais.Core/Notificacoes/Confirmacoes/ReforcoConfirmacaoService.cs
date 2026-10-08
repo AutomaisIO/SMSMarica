@@ -136,6 +136,7 @@ public sealed class ReforcoConfirmacaoService(
                 p.MotivoFalha,
                 DataAgendada = p.Solicitacao!.DataAgendada!.Value,
                 p.Solicitacao.FonteCriacao,
+                p.Solicitacao.TipoVaga,
                 TemRawSisreg = p.Solicitacao.RawSisreg != null,
                 TemReforco = db.ComunicacoesPaciente.Any(c => c.SolicitacaoId == p.SolicitacaoId
                     && c.Finalidade == FinalidadeComunicacao.ReforcoConfirmacao
@@ -255,7 +256,9 @@ public sealed class ReforcoConfirmacaoService(
             var estado = estados.GetValueOrDefault(chave);
 
             // A orientação primeiro: se ela está devida, o reforço já não faz sentido (ela encerra).
+            // Retorno não recebe a orientação ao posto: ela manda retirar a guia, que quem volta já tem.
             var orientacaoDevida = orientacaoLigada
+                && p.TipoVaga != TipoVaga.Retorno
                 && p.DataAgendada >= dataMinimaOrientacao
                 && (p.DataAgendada <= orientacaoPelaData || p.UltimoToque2Em is { } t2 && t2 <= toque2Ate)
                 && ReguaReforcoConfirmacao.OrientacaoAlcanca(houveEntrada, estado, p.Id, p.PacienteId, agora);
