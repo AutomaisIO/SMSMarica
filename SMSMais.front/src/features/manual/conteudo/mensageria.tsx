@@ -24,9 +24,11 @@ export const artigoMensageria: Artigo = {
   icone: BellRing,
   rota: '/app/mensageria',
   publico: 'Quem responde pelo canal: coordenação, regulação e quem configura o envio automático',
-  atualizadoEm: '2026-09-29',
+  atualizadoEm: '2026-10-08',
   palavrasChave: [
     'mensageria',
+    'retorno',
+    'confirmação de retorno',
     'aviso de cancelamento',
     'cancelamento',
     'whatsapp',
@@ -194,7 +196,7 @@ export const artigoMensageria: Artigo = {
       id: 'envios',
       titulo: 'Envios: achar uma mensagem e entender o que houve com ela',
       busca:
-        'envios buscar sisreg accession telefone selo status detalhe linha do tempo reenviar erro meta magic link finalidade confirmação reforço orientação ao posto lembrete aviso de cancelamento exame liberado laudo pronto dispensada para qual número telefone principal campo celular verificado destino',
+        'envios buscar sisreg accession telefone selo status detalhe linha do tempo reenviar erro meta magic link finalidade confirmação retorno primeira vez vaga de retorno guia endereço da unidade reforço orientação ao posto lembrete aviso de cancelamento exame liberado laudo pronto dispensada para qual número telefone principal campo celular verificado destino',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -214,6 +216,11 @@ export const artigoMensageria: Artigo = {
                 termo: 'Confirmação de agendamento',
                 descricao:
                   'A primeira mensagem, que nasce na importação. Para número verificado, já leva a data e o link. Para número não verificado, só avisa que há um agendamento, com os botões "Quero mais informações" e "Não sou essa pessoa" — os dados vêm depois que a pessoa se identifica.',
+              },
+              {
+                termo: 'Confirmação de retorno',
+                descricao:
+                  'Quando o SISREG marca a vaga como Retorno, a confirmação não manda a pessoa ao posto retirar a guia — quem volta já fez o primeiro atendimento com ela. A mensagem diz o procedimento, a data, a hora, o nome e o endereço da unidade, e pede a confirmação. A conferência de identidade é a mesma: número não verificado recebe antes só o aviso curto, e os dados depois que a pessoa se identifica. Também o "Combinado!" de quem confirma sai sem o lembrete da guia.',
               },
               {
                 termo: 'Reforço da confirmação',

@@ -44,6 +44,12 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         + "retirar a *guia (ficha de solicitação)*. Sem ela não é possível fazer o atendimento.\n\n"
         + "No dia, leve: a *guia*, o *pedido médico*, o *cartão do SUS* e o *comprovante de residência*.";
 
+    /// <summary>O <see cref="LembreteGuia"/> com a quebra antes — vazio no RETORNO: quem volta já
+    /// fez o primeiro atendimento com a guia, e mandá-lo ao posto a cada sessão é o erro que a
+    /// confirmação do retorno corrige.</summary>
+    private static string LembreteGuiaPara(Solicitacao s) =>
+        s.TipoVaga == TipoVaga.Retorno ? string.Empty : $"\n\n{LembreteGuia}";
+
     public int Ordem => 110; // depois do AcompanhanteWhatsAppHandler (100)
 
     public async Task TratarAsync(ManipuladorContexto ctx, CancellationToken ct)
@@ -165,7 +171,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         }
 
         await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
-            $"Combinado! Sua presença {DescricaoAgendamento(s)} está *CONFIRMADA* ✅\n\n{LembreteGuia}",
+            $"Combinado! Sua presença {DescricaoAgendamento(s)} está *CONFIRMADA* ✅{LembreteGuiaPara(s)}",
             pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
@@ -222,7 +228,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         s.AtualizadoEm = DateTime.UtcNow;
 
         await whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical,
-            $"Combinado! Sua presença {DescricaoAgendamento(s)} está *CONFIRMADA* ✅\n\n{LembreteGuia}",
+            $"Combinado! Sua presença {DescricaoAgendamento(s)} está *CONFIRMADA* ✅{LembreteGuiaPara(s)}",
             pacienteId: ctx.PacienteId, ct: ct, origem: OrigemEnvioWhatsApp.Resposta);
     }
 
@@ -322,7 +328,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             ? "Já registramos que você *não vai* comparecer. Para marcar uma nova data, procure o "
               + "*posto de saúde* onde você é atendido(a)."
             : $"Sua presença já está *confirmada* ✅. Se precisar mudar, procure o *posto de saúde* "
-              + $"onde você é atendido(a).\n\n{LembreteGuia}";
+              + $"onde você é atendido(a).{LembreteGuiaPara(s)}";
         return whatsApp.EnviarTextoAsync(ctx.Conversa.TelefoneCanonical, texto, pacienteId: ctx.PacienteId, ct: ct,
             origem: OrigemEnvioWhatsApp.Resposta);
     }

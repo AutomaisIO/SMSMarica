@@ -23,7 +23,7 @@ export const artigoConfirmacoes: Artigo = {
   icone: CalendarCheck2,
   rota: '/app/confirmacoes',
   publico: 'Quem confirma agendamento por telefone, na unidade ou na regulação',
-  atualizadoEm: '2026-10-05',
+  atualizadoEm: '2026-10-08',
   palavrasChave: [
     'confirmação',
     'confirmar presença',

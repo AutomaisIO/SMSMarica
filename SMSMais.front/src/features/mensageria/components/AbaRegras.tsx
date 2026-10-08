@@ -513,7 +513,8 @@ export function AbaRegras() {
           </li>
           <li>
             Mensagem de confirmação com a data e a orientação de <strong>retirar a guia (ficha de solicitação) no posto</strong>{' '}
-            e levar o <strong>pedido médico</strong>.
+            e levar o <strong>pedido médico</strong>. No <strong>retorno</strong> (vaga de retorno no SISREG), a
+            mensagem traz o local e o endereço da unidade e não manda ao posto — quem volta já tem a guia.
           </li>
           <li>
             O paciente confirma pelo link, ou toca em <em>“Não poderei ir!”</em> e escolhe <em>“Quero cancelar”</em> ou{' '}

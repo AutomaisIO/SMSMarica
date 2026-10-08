@@ -449,14 +449,19 @@ public sealed class ComunicacaoPacienteService(
             var procedimento = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto;
             var rotulo = s.Categoria == CategoriaSolicitacao.Consulta ? "Consulta" : "Exame";
             var localNome = campanha?.LocalNome ?? s.UnidadeExecutante?.Nome;
+            // Retorno: sem o aviso de retirar a guia no posto (quem volta já a tem) e com o endereço
+            // da unidade, como na confirmação do retorno.
+            var ehRetorno = campanha is null && s.TipoVaga == TipoVaga.Retorno;
+            var endereco = campanha?.LocalEndereco
+                ?? (ehRetorno ? EnderecoEmUmaLinha(s.UnidadeExecutante?.Endereco) : null);
 
             var texto = $"Aqui estão as informações do agendamento de *{PrimeiroNome(paciente.NomeCompleto)}*:\n\n"
                 + (string.IsNullOrWhiteSpace(procedimento) ? string.Empty : $"{rotulo}: *{procedimento.Trim()}*\n")
                 + $"Data: *{quando.ToString("dd/MM/yyyy", PtBr)} às {quando.ToString("HH:mm", PtBr)}h*\n"
                 + (string.IsNullOrWhiteSpace(localNome) ? string.Empty : $"Local: *{localNome}*\n")
-                + (string.IsNullOrWhiteSpace(campanha?.LocalEndereco) ? string.Empty : $"Endereço: {campanha.LocalEndereco}\n")
-                + $"\n{WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler.LembreteGuia}\n\n"
-                + $"Comprovante e detalhes: {link.Url}";
+                + (string.IsNullOrWhiteSpace(endereco) ? string.Empty : $"Endereço: {endereco}\n")
+                + (ehRetorno ? string.Empty : $"\n{WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler.LembreteGuia}\n")
+                + $"\nComprovante e detalhes: {link.Url}";
 
             // A pergunta de presença vai na MESMA mensagem (decisão do dono, 26/09/2026) — quem já
             // respondeu por outro canal não é perguntado de novo.
@@ -797,7 +802,16 @@ public sealed class ComunicacaoPacienteService(
             : null;
         var entregaDireta = campanha is { ExigirConferenciaCadastral: false };
 
-        var exigeVerificado = n.Finalidade is FinalidadeComunicacao.ExameLiberado
+        // RETORNO (vaga de retorno no SISREG): quem volta já fez o primeiro atendimento — mandar
+        // "Boas notícias!… retire a guia no posto" o faz voltar ao posto à toa a cada sessão. A
+        // confirmação sai no modelo com local e endereço da unidade executante (ver MontarEnvio).
+        // A conferência de identidade NÃO muda: número não provado recebe antes a primeira
+        // mensagem curta, e os dados só vão depois que a pessoa se identificar.
+        var localRetorno = campanha is null && s.TipoVaga == TipoVaga.Retorno
+            ? await LocalDaUnidadeAsync(s.UnidadeExecutanteId, ct)
+            : null;
+
+        var exigeVerificado =n.Finalidade is FinalidadeComunicacao.ExameLiberado
             or FinalidadeComunicacao.LaudoPronto
             || (lembreteDeQuemConfirmou && !entregaDireta);
 
@@ -978,7 +992,7 @@ public sealed class ComunicacaoPacienteService(
         // pessoa confirmava os dados e recebia "seu exame foi agendado" outra vez.
         var (template, parametros, botoes) = MontarEnvio(
             n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, tokenLink, opts,
-            contatoVerificado || n.IgnorarVerificacaoTelefone, campanha);
+            contatoVerificado || n.IgnorarVerificacaoTelefone, campanha, localRetorno);
 
         // O modelo aprovado manda na quantidade de variáveis: mandar a mais é erro 132000 na Meta
         // e a mensagem não sai. Corta pela declaração do catálogo (cacheado) e avisa quando o
@@ -1333,7 +1347,7 @@ public sealed class ComunicacaoPacienteService(
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
         FinalidadeComunicacao finalidade, TipoAgendamento tipo, Solicitacao s, string? nomePaciente,
         Sexo sexo, Guid token, ComunicacaoPacienteOptions opts, bool contatoVerificado = false,
-        Campanhas.CampanhaVigente? campanha = null)
+        Campanhas.CampanhaVigente? campanha = null, LocalDoAgendamento? localRetorno = null)
     {
         var nome = PrimeiroNome(nomePaciente);
         // Nome do procedimento: exame de imagem tem TipoExame no satélite; consulta usa a
@@ -1350,29 +1364,9 @@ public sealed class ComunicacaoPacienteService(
                     && s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada
                     && !campanha.ExigirConferenciaCadastral));
         if (mensagemDeCampanha)
-        {
-            // confirmar_agendamento_urlapp (aprovado na Meta; era a confirmação até 08/07/2026):
-            // "📆Olá *{{1}}*, você tem {{2}} de *{{3}}* agendado para o dia *{{4}}*, {{5}}📍, às
-            // *{{6}}*. *Endereço:* {{7}} *É muito importante sua confirmação.*"
-            // {{5}} leva o rótulo "local: " — o nome do local é livre e um "na"/"no" fixo erraria a
-            // preposição. Botões na ordem do modelo: URL (0) e "Não poderei ir" (1, payload confirma:).
-            var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
-            return (
-                opts.TemplateCampanha,
-                [
-                    nome,
-                    tipo == TipoAgendamento.Consulta ? "uma consulta" : "um exame",
-                    exame,
-                    quando.ToString("dd/MM/yyyy", PtBr),
-                    $"local: {campanha!.LocalNome}",
-                    $"{quando.ToString("HH:mm", PtBr)}h",
-                    campanha.LocalEndereco,
-                ],
-                [
-                    url,
-                    new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}"),
-                ]);
-        }
+            return ConfirmacaoComLocal(
+                s, nome, tipo == TipoAgendamento.Consulta ? "uma consulta" : "um exame", exame,
+                new LocalDoAgendamento(campanha!.LocalNome, campanha.LocalEndereco), url, opts);
 
         switch (finalidade)
         {
@@ -1444,7 +1438,9 @@ public sealed class ComunicacaoPacienteService(
                 // a mensagem curta não serve — ela já sabe que há agendamento e quer os dados. Vai
                 // a confirmação completa, com data, guia e os botões de confirmar/não poderei ir.
                 if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
-                    return ConfirmacaoRegulacao(tipo, s, nome, exame, sexo, url, opts);
+                    return localRetorno is not null
+                        ? ConfirmacaoComLocal(s, nome, "um retorno", exame, localRetorno, url, opts)
+                        : ConfirmacaoRegulacao(tipo, s, nome, exame, sexo, url, opts);
 
                 var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
                 return (
@@ -1469,9 +1465,73 @@ public sealed class ComunicacaoPacienteService(
             // Botões na ordem do template: URL (0), "Não poderei ir!" (1, payload confirma:) e
             // "Falar com atendente" (2, payload atendente: — sem manipulador de propósito: a
             // resposta cai no módulo Conversas/Central de Atendimento).
+            // RETORNO não usa esse modelo: quem volta já tem guia — ver ConfirmacaoComLocal.
             default:
-                return ConfirmacaoRegulacao(tipo, s, nome, exame, sexo, url, opts);
+                return localRetorno is not null
+                    ? ConfirmacaoComLocal(s, nome, "um retorno", exame, localRetorno, url, opts)
+                    : ConfirmacaoRegulacao(tipo, s, nome, exame, sexo, url, opts);
         }
+    }
+
+    /// <summary>Onde o agendamento acontece, para o modelo que diz o local (campanha e retorno).</summary>
+    internal sealed record LocalDoAgendamento(string Nome, string Endereco);
+
+    /// <summary>
+    /// <c>confirmar_agendamento_urlapp</c> (aprovado na Meta; era a confirmação até 08/07/2026):
+    /// "📆Olá *{{1}}*, você tem {{2}} de *{{3}}* agendado para o dia *{{4}}*, {{5}}📍, às
+    /// *{{6}}*. *Endereço:* {{7}} *É muito importante sua confirmação.*" — sem "Boas notícias" e sem
+    /// mandar retirar a guia no posto. Serve à campanha (local dela, ADR-0062) e ao retorno (unidade
+    /// executante). "agendado" é fixo no modelo: {{2}} tem de ser masculino ("um exame", "um
+    /// retorno") para concordar. {{5}} leva o rótulo "local: " — o nome do local é livre e um
+    /// "na"/"no" fixo erraria a preposição. Botões na ordem do modelo: URL (0) e "Não poderei ir"
+    /// (1, payload confirma:).
+    /// </summary>
+    private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) ConfirmacaoComLocal(
+        Solicitacao s, string nome, string oQue, string exame, LocalDoAgendamento local,
+        BotaoTemplateWhatsApp url, ComunicacaoPacienteOptions opts)
+    {
+        var quando = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
+        return (
+            opts.TemplateCampanha,
+            [
+                nome,
+                oQue,
+                exame,
+                quando.ToString("dd/MM/yyyy", PtBr),
+                $"local: {local.Nome}",
+                $"{quando.ToString("HH:mm", PtBr)}h",
+                local.Endereco,
+            ],
+            [
+                url,
+                new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}"),
+            ]);
+    }
+
+    /// <summary>Nome e endereço da unidade executante, para a confirmação do retorno. Unidade sem
+    /// endereço cadastrado (hoje nenhuma das que avisam) não volta para o modelo da guia: o retorno
+    /// é no mesmo lugar do atendimento anterior.</summary>
+    private async Task<LocalDoAgendamento?> LocalDaUnidadeAsync(Guid unidadeId, CancellationToken ct)
+    {
+        var unidade = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(u => u.Id == unidadeId, ct);
+        if (unidade is null || string.IsNullOrWhiteSpace(unidade.Nome)) return null;
+        return new LocalDoAgendamento(
+            unidade.Nome.Trim(),
+            EnderecoEmUmaLinha(unidade.Endereco) ?? "o mesmo dos seus atendimentos anteriores");
+    }
+
+    /// <summary>"Rua X, 375 · Centro · Maricá/RJ" — ou nulo, se não há nada cadastrado.</summary>
+    internal static string? EnderecoEmUmaLinha(Endereco? e)
+    {
+        if (e is null) return null;
+        var partes = new[]
+        {
+            string.Join(", ", new[] { e.Logradouro, e.Numero }.Where(p => !string.IsNullOrWhiteSpace(p))),
+            e.Bairro,
+            string.Join("/", new[] { e.Cidade, e.Uf }.Where(p => !string.IsNullOrWhiteSpace(p))),
+        }.Where(p => !string.IsNullOrWhiteSpace(p));
+        var texto = string.Join(" · ", partes);
+        return string.IsNullOrWhiteSpace(texto) ? null : texto;
     }
 
     /// <summary>A confirmação completa (<c>confirmacao_regulacao</c>): data, hora, onde retirar a
