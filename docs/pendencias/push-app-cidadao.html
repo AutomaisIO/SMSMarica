@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Push do App do Cidadão — estado e próximos passos</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>Push do App do Cidadão — estado e próximos passos</h1>
+<p><strong>Status:</strong> implementado e verificado em teste automatizado, <strong>não publicado</strong>. Falta o projeto no Firebase e o teste de ponta a ponta num celular. Atualizado em 2026-10-09. <strong>Branch:</strong> <code>feat/push-cidadao</code>, publicada em <code>origin</code> (nada disso está na <code>main</code>). <strong>Relacionado:</strong> <a href="../adr/0070-push-do-app-do-cidadao.md">ADR-0070</a> (as decisões) · <a href="../../SMSMais.cidadao.app/README.md"><code>SMSMais.cidadao.app/README.md</code></a> (configurar o Firebase no app) · <a href="../adr/0018-identidade-e-sessao-do-cidadao.md">ADR-0018</a> (sessão do cidadão)</p>
+<p>Este documento existe para retomar o trabalho de outro computador. O que está no código se lê no código; aqui fica o que <strong>não</strong> se vê nele: o que foi provado, o que está fora do git e a ordem dos próximos passos. <strong>O repositório é público:</strong> endereços de servidor, senhas e o JSON do Firebase nunca entram aqui.</p>
+<h2>Começar num PC novo</h2>
+<p>Pré-requisitos: Windows (o script da pilha usa PowerShell 5.1), .NET SDK 10 (<code>global.json</code>), Node e npm, Flutter 3.41 ou mais novo com Android SDK (<code>flutter doctor</code>), e <code>dotnet tool install --global dotnet-ef</code>. Docker é opcional (com ele, os testes de banco rodam sem a bancada).</p>
+<pre><code>git fetch origin
+git switch feat/push-cidadao
+cd SMSMais.front; npm install; cd ..
+cd SMSMais.cidadao.app; flutter pub get; cd ..
+cd SMSMais.server; dotnet restore; cd ..</code></pre>
+<p>Os comandos abaixo rodam na raiz do clone.</p>
+<h2>O que é</h2>
+<p>O operador abre a ficha do paciente no painel e manda uma notificação para o celular dele, pelo app nativo (<code>SMSMais.cidadao.app</code>). Vai pelo Firebase Cloud Messaging (FCM), que <strong>não cobra</strong> por mensagem (o limite é de 600 mil por minuto por projeto).</p>
+<ul>
+<li>Na ficha do paciente, aba <strong>Histórico de Acesso</strong>: o bloco <strong>"Notificações no app"</strong> (acima do</li>
+</ul>
+<p>  "Histórico de acesso ao app") mostra os aparelhos com notificações ativas e as últimas   notificações enviadas. <strong>Enviar notificação</strong> pede título (65), mensagem (240) e a tela que abre   no app (lista fixa). O resultado de cada aparelho aparece no próprio modal.</p>
+<ul>
+<li>Aparelho = <strong>sessão</strong> do login do cidadão. Sair do app tira o aparelho; quem entra em dois</li>
+</ul>
+<p>  celulares recebe nos dois.</p>
+<ul>
+<li><strong>Sem dado de saúde no texto</strong> (aparece na tela bloqueada e passa pelo Google). O modal avisa.</li>
+<li>Permissão nova: módulo <strong>81 — Notificações no app do cidadão</strong> (<code>NotificacaoAppCidadao</code>; Consulta</li>
+</ul>
+<p>  vê, Edição envia). O perfil Admin recebe pelo seed; os outros perfis precisam marcar.</p>
+<ul>
+<li>A chave do Firebase fica em Integrações, no card <strong>"Firebase — notificações do app do cidadão"</strong>,</li>
+</ul>
+<p>  cifrada, com <strong>Testar</strong>.</p>
+<h2>Onde está cada parte</h2>
+<div class="tw"><table><thead><tr><th>Parte</th><th>Caminho</th></tr></thead><tbody>
+<tr><td>Servidor</td><td><code>SMSMais.server/src/SMSMais.Core/Cidadao/Push/</code></td></tr>
+<tr><td>Endpoints</td><td><code>PUT /auth/paciente/dispositivo</code> (<code>CidadaoController</code>) · <code>GET /pacientes/{id}/app-cidadao</code> e <code>POST /pacientes/{id}/app-cidadao/notificacoes</code> (<code>PacientesController</code>) · <code>POST /integracoes/credenciais/fcm/testar</code> (<code>IntegracaoCredencialController</code>)</td></tr>
+<tr><td>Banco</td><td>migration <code>20261009035717_PushDoAppDoCidadao</code>: 3 colunas <code>push_*</code> em <code>cidadao_sessao</code> + tabela <code>cidadao_notificacao</code></td></tr>
+<tr><td>Testes do servidor</td><td><code>SMSMais.server/tests/SMSMais.Tests/Cidadao/Push/</code></td></tr>
+<tr><td>Painel</td><td><code>SMSMais.front/src/features/pacientes/components/AppCidadaoNotificacoes.tsx</code>, <code>ModalEnviarNotificacao.tsx</code> · <code>features/integracoes/components/FirebaseCard.tsx</code></td></tr>
+<tr><td>Manual</td><td>artigo novo <code>manual/conteudo/integracoes.tsx</code>; seções <code>app-notificacoes*</code> em <code>manual/conteudo/pacientes.tsx</code></td></tr>
+<tr><td>App</td><td><code>SMSMais.cidadao.app/lib/shared/push/</code> (a branch também traz a reescrita do app como espelho do PWA, commitada junto)</td></tr>
+<tr><td>Pilha local de teste</td><td><a href="../../scripts/push-cidadao/pilha-local.ps1"><code>scripts/push-cidadao/pilha-local.ps1</code></a></td></tr>
+</tbody></table></div>
+<h2>O que já foi provado (09/10/2026)</h2>
+<div class="tw"><table><thead><tr><th>O quê</th><th>Resultado</th></tr></thead><tbody>
+<tr><td><code>dotnet build</code> (servidor)</td><td>0 avisos, 0 erros</td></tr>
+<tr><td>Testes do push sem banco</td><td>68/68</td></tr>
+<tr><td>Testes do push com banco, na bancada (<code>PushCidadaoServiceTests</code>)</td><td>13/13</td></tr>
+<tr><td>Suítes vizinhas na bancada (Cidadão, Integrações, Unificação)</td><td>1035/1036 — a única falha é <code>BackfillExecutanteTests</code>, que estoura o tempo na bancada e não tem relação</td></tr>
+<tr><td><code>dotnet ef migrations has-pending-model-changes</code></td><td>sem mudanças</td></tr>
+<tr><td>Painel <code>npx tsc -b</code></td><td>sem erros (o <code>npm run build</code> pede <code>VITE_API_BASE_URL</code>)</td></tr>
+<tr><td>App <code>flutter analyze</code> / <code>flutter test</code></td><td>sem problemas / 14/14</td></tr>
+<tr><td>App <code>flutter build apk --debug</code></td><td>gera o APK</td></tr>
+</tbody></table></div>
+<p>Para repetir:</p>
+<pre><code>cd SMSMais.server
+dotnet test tests/SMSMais.Tests --filter "FullyQualifiedName~Cidadao.Push&amp;FullyQualifiedName!~PushCidadaoServiceTests"
+dotnet test tests/SMSMais.Tests --filter "FullyQualifiedName~PushCidadaoServiceTests"   # Docker ou SMSMARICA_TESTS_CONNECTION
+dotnet ef migrations has-pending-model-changes --project src/SMSMais.Data --startup-project src/SMSMais.Api</code></pre>
+<p>As respostas do Firebase nos testes são <strong>simuladas</strong> a partir do formato documentado.</p>
+<h2>O que ainda não foi provado</h2>
+<ul>
+<li><strong>Nenhuma chamada real ao Firebase.</strong> O projeto ainda não existe.</li>
+<li>Teste em celular: permissão, receber com o app aberto, em segundo plano e fechado, o toque abrindo</li>
+</ul>
+<p>  a tela certa.</p>
+<ul>
+<li>A pilha local nunca subiu de verdade. A trava contra a produção foi testada com conexões hostis,</li>
+</ul>
+<p>  mas as janelas subindo, não.</p>
+<ul>
+<li>iOS: não foi compilado (precisa de Mac).</li>
+</ul>
+<h2>Estado fora do git</h2>
+<p>Coisas que um clone novo não mostra.</p>
+<p><strong>Bancada</strong> é o Postgres de testes compartilhado, num cluster separado da produção. A conexão <strong>não está em nenhum git</strong>: no PC original ela fica fora do repositório. Num PC novo, copie de lá (ou do painel do provedor do banco) e grave no seu usuário, abrindo um terminal novo depois:</p>
+<pre><code>[Environment]::SetEnvironmentVariable('SMSMARICA_TESTS_CONNECTION', 'Host=&lt;host&gt;;Port=25060;Database=defaultdb;Username=&lt;usuario&gt;;Password=&lt;senha&gt;;SSL Mode=Require', 'User')
+[Environment]::SetEnvironmentVariable('SMSMAIS_BANCADA_HOST', '&lt;host&gt;', 'User')</code></pre>
+<p>Se a conexão der tempo esgotado, o IP do PC precisa entrar na lista de origens confiáveis do cluster.</p>
+<ul>
+<li><strong>Bancada:</strong> a migration do push <strong>já está aplicada</strong> lá, com o índice <code>ix_cidadao_sessao_push_token</code></li>
+</ul>
+<p>  como b-tree (o arquivo foi trocado para hash depois; em produção ele nasce hash). Por isso a   migration <strong>não pode ser renomeada nem regerada</strong> com outro timestamp: a bancada quebraria com   "column already exists". O banco <code>fhir_testes</code> do hub já existe no mesmo cluster.</p>
+<ul>
+<li><strong>Bancada:</strong> já existe uma credencial <code>fcm</code> em Integrações, desativada e cifrada com a chave de</li>
+</ul>
+<p>  outro computador. No painel local, use <strong>Limpar</strong> antes de colar o JSON.</p>
+<ul>
+<li><strong>Bancada:</strong> o perfil Admin só ganha o módulo 81 na primeira subida da API desta branch (o seed</li>
+</ul>
+<p>  roda junto com as migrations).</p>
+<ul>
+<li><strong>Firebase:</strong> nenhum projeto criado.</li>
+<li><strong>Celular de teste (Samsung):</strong> tem um APK antigo do app, sem push.</li>
+<li><strong>Produção:</strong> nada. As colunas nem existem lá.</li>
+<li><strong>PC original:</strong> a pasta principal do repositório tem uma cópia não commitada, idêntica, de</li>
+</ul>
+<p>  <code>SMSMais.cidadao.app</code> (o app foi escrito lá e copiado para a branch). Depois do merge desta   branch, descarte essa cópia lá antes do <code>git pull</code> da <code>main</code>.</p>
+<h2>Armadilhas</h2>
+<ol>
+<li><strong><code>dotnet run</code> da API com a configuração padrão pode cair na PRODUÇÃO.</strong> No PC original o</li>
+</ol>
+<p>   user-secrets <code>smsmarica-api-dev</code> aponta para a produção, e o <code>AutoMigrate</code> está ligado: subir    assim aplica a migration, roda o seed e liga as rotinas de fundo na produção. Num PC novo o    user-secrets não existe; <strong>não</strong> o crie com a conexão da produção. Para testar, use o    <code>pilha-local.ps1</code>: ele só aceita a bancada, sobe fora de Development (o user-secrets nem carrega)    e desliga as rotinas.</p>
+<ol>
+<li><strong>O app sem <code>--dart-define=API_BASE_URL</code> fala com a produção.</strong> O login manda código de verdade</li>
+</ol>
+<p>   pelo WhatsApp para o paciente do CPF digitado, e o registro do aparelho dá 404 calado.</p>
+<ol>
+<li><strong>Painel:</strong> suba o desta branch. Um <code>.env*</code> em <code>SMSMais.front</code> apontando para outro backend faz o</li>
+</ol>
+<p>   painel pular a API local (o script aborta se encontrar).</p>
+<ol>
+<li><strong>Celular físico:</strong> <code>10.0.2.2</code> só funciona no emulador. No celular, <code>adb reverse tcp:5080 tcp:5080</code></li>
+</ol>
+<p>   e <code>API_BASE_URL=http://localhost:5080</code>.</p>
+<ol>
+<li><strong>Não rode <code>flutterfire configure</code> na pasta do app:</strong> ele grava um <code>firebase.json</code> por cima do</li>
+</ol>
+<p>   nosso e gera arquivos que não usamos.</p>
+<ol>
+<li><strong>App e chave de projetos diferentes:</strong> o envio mostra "Este aparelho está ligado a outro projeto</li>
+</ol>
+<p>   do Firebase". O Testar não pega esse caso (ele confere a chave, não o app).</p>
+<ol>
+<li><strong>Samsung:</strong> para receber com o app fechado, Bateria do app → Sem restrições. App parado com</li>
+</ol>
+<p>   "Forçar parada" não recebe push (e sair do <code>flutter run</code> com <code>q</code> também força a parada) — feche    pela lista de recentes.</p>
+<h2>Próximos passos</h2>
+<h3>1. Firebase (dono da conta Google)</h3>
+<ol>
+<li>console.firebase.google.com → projeto novo, <strong>sem Analytics</strong>.</li>
+<li>Adicionar app <strong>Android</strong> com o pacote <code>io.automais.smsmais.cidadao</code> (sem SHA-1, sem baixar nada).</li>
+<li>Configurações → Contas de serviço → <strong>Gerar nova chave privada</strong>. Se a conta for de uma</li>
+</ol>
+<p>   organização (Google Workspace, ou criada depois de maio de 2024), a política    <code>iam.managed.disableServiceAccountKeyCreation</code> bloqueia ("Key creation is not allowed"); quem for    administrador de políticas da organização abre exceção só para o projeto. Guarde o JSON <strong>fora    do repositório</strong> (num cofre de senhas): ele é colado duas vezes (local e produção), porque cada    ambiente cifra com a própria chave. Se ele não estiver à mão noutro PC, gere outra chave na mesma    conta e apague a antiga.</p>
+<ol>
+<li>Anotar ID do projeto, número do projeto, ID do app Android e a <strong>chave de API do Android</strong> (ela</li>
+</ol>
+<p>   não aparece no card do app: Google Cloud → APIs e serviços → Credenciais → "Android key (auto    created by Firebase)"). Preencher <code>SMSMais.cidadao.app/firebase.json</code> a partir do    <code>firebase.exemplo.json</code> (o <code>firebase.json</code> é ignorado pelo git). Guarde esses valores junto com o    JSON, para montar o arquivo em outro PC.</p>
+<ol>
+<li>Conferir na aba Cloud Messaging que a "Firebase Cloud Messaging API (V1)" está ativada.</li>
+</ol>
+<h3>2. Pilha local na bancada</h3>
+<p>Com as duas variáveis da seção "Estado fora do git" definidas:</p>
+<pre><code>powershell -ExecutionPolicy Bypass -File scripts\push-cidadao\pilha-local.ps1
+powershell -ExecutionPolicy Bypass -File scripts\push-cidadao\pilha-local.ps1 -Parar</code></pre>
+<p>O script sobe hub FHIR (banco <code>fhir_testes</code>, porta 5081), API (5080, com rotinas desligadas, código de login na tela e WhatsApp simulado) e painel (5173), e liga o <code>adb reverse</code> no celular conectado (com mais de um, passe <code>-Aparelho &lt;serial do adb devices&gt;</code>). Confira <strong>"Migrations OK."</strong> na janela da API: o <code>/health</code> responde mesmo se a migration falhar.</p>
+<p>No painel local (<code>http://localhost:5173</code>), entre com o admin do seed (login <code>admin</code>; a senha inicial é a constante <code>AdminSenhaInicial</code> em <code>SMSMais.server/src/SMSMais.Api/Auth/DbSeeder.cs</code>, se ninguém a trocou na bancada):</p>
+<ul>
+<li>Integrações → card <strong>Firebase — notificações do app do cidadão</strong> → <strong>Limpar</strong> → colar o JSON →</li>
+</ul>
+<p>  marcar <strong>Envio de notificações ativo</strong> → <strong>Salvar</strong> → <strong>Testar</strong>. Sem a permissão de Exclusão o   Limpar não aparece; colar por cima e salvar também resolve. O Testar faz um envio de validação   (não entrega nada): prova a chave, a API ligada e a permissão.</p>
+<ul>
+<li>Criar um paciente de teste com CPF válido, <strong>data de nascimento</strong> e sem WhatsApp verificado, com</li>
+</ul>
+<p>  uma solicitação que tenha número. No primeiro acesso o app pede nascimento, celular e esse   número. Sem nascimento no cadastro, o servidor confere o CPF na Receita (que localmente não tem   credencial).</p>
+<h3>3. Celular</h3>
+<pre><code>cd SMSMais.cidadao.app
+flutter run -d &lt;serial&gt; --dart-define-from-file=firebase.json --dart-define=API_BASE_URL=http://localhost:5080</code></pre>
+<p><code>&lt;serial&gt;</code> é o que aparece em <code>adb devices</code>. Entrar com o paciente de teste (o código aparece na tela), aceitar o termo e <strong>Permitir</strong> notificações. No console do <code>flutter run</code> deve aparecer o <code>PUT .../auth/paciente/dispositivo</code> com 204, e o aparelho aparece na ficha.</p>
+<h3>4. Testes, do mais simples ao completo</h3>
+<ol>
+<li>Console do Firebase → Messaging → <strong>Send test message</strong> com o token do log: prova</li>
+</ol>
+<p>   Firebase → celular sem o nosso servidor.</p>
+<ol>
+<li>Ficha do paciente → <strong>Enviar notificação</strong> escolhendo uma tela: prova tudo junto.</li>
+<li>Repetir com o app aberto, em segundo plano e fechado pelos recentes.</li>
+<li>Repetir com <code>flutter run --release</code>.</li>
+</ol>
+<h3>5. Produção — cada passo com OK explícito</h3>
+<ol>
+<li><strong>Rebase</strong> da branch sobre a <code>origin/main</code>. Veja o que entrou com</li>
+</ol>
+<p>   <code>git log --oneline HEAD..origin/main</code>. Em 09/10 à tarde eram 9 commits, e dois mexem nos mesmos    arquivos:    - <code>81dae1e</code> "Entrar como paciente": <code>CidadaoSessao</code>, <code>CidadaoSessaoConfiguration</code>,      <code>CidadaoSessaoService</code>, <code>CidadaoController</code>, <code>SmsMaisDbContext</code>, <code>DependencyInjection</code>,      snapshot; no painel, <code>PacienteDetalhePage</code>, <code>pacientesApi.ts</code> e o manual <code>pacientes.tsx</code>;    - <code>8cff73f</code> verificador do endereço do SISREG: snapshot, <code>SmsMaisDbContext</code>,      <code>DependencyInjection</code>, <code>integracoes/api.ts</code> e <code>integracoes/types.ts</code>.</p>
+<p>   A <code>main</code> ganhou duas migrations com data <strong>posterior</strong> à nossa    (<code>20261009035748_PersonificacaoPacienteSandbox</code>, já em produção, e <code>20261009133201_SisregEnderecoIp</code>).    Mantenha o timestamp da nossa mesmo assim: o EF aplica uma migration pendente mesmo com outra    mais nova já aplicada. No snapshot, junte os dois lados e confirme com    <code>dotnet ef migrations has-pending-model-changes</code> (tem de dizer que não há mudanças); depois rode    os testes <code>Cidadao.Push</code>.</p>
+<ol>
+<li><strong>Banco:</strong> o banco de produção está sendo migrado para o datacenter da EVEO, e o <strong>psql01</strong> de lá</li>
+</ol>
+<p>   recebe uma réplica lógica (publicação <code>smsmais_eveo</code>) que <strong>não leva DDL</strong>. Confirme no dia o    procedimento da migração. Até 09/10 a regra era aplicar o DDL <strong>antes</strong> no psql01    (<code>cidadao_sessao</code> é replicada), incluir <code>cidadao_notificacao</code> na publicação e conferir a    replicação depois.</p>
+<ol>
+<li><strong>Publicar:</strong> push na <code>main</code> dispara <code>deploy-server.yml</code> e <code>deploy-front.yml</code> para as duas</li>
+</ol>
+<p>   instâncias de produção, <strong>Maricá e CCDTI</strong> (ADR-0043): a migration roda nas duas. Conferir    <code>smsmarica.__migrations</code> e as linhas "Migrations OK." / "Seed do Admin OK." no log do serviço no    servidor (<code>journalctl</code>). O AutoMigrate falha calado, e o log do GitHub Actions só mostra o    journal quando o deploy falha.</p>
+<ol>
+<li>Colar o JSON no card do Firebase <strong>da produção</strong> e Testar.</li>
+<li>Dar o módulo 81 aos perfis que vão enviar.</li>
+<li>App apontado para a produção, entrar com o <strong>próprio</strong> CPF de quem testa e enviar pela própria ficha.</li>
+<li>Publicar o app nas lojas é outro projeto (conta Google Play, conta Apple).</li>
+</ol>
+<h3>6. iOS (por último)</h3>
+<p>Conta Apple Developer paga, Mac com Xcode, iPhone de verdade. Chave APNs <code>.p8</code> no Firebase (Configurações → Cloud Messaging); a Apple agora emite chave separada para Sandbox e Production — enviar as duas. Preencher <code>FIREBASE_IOS_*</code> no <code>firebase.json</code>.</p>
+<h2>Pendências conhecidas (não bloqueiam o teste)</h2>
+<ul>
+<li>No envio de verdade, a API do FCM desligada aparece no aparelho como "credencial recusada" (o</li>
+</ul>
+<p>  Testar distingue o caso; o manual lista as causas).</p>
+<ul>
+<li>Resposta do Google que não é JSON vai cortada em 200 caracteres para o detalhe do aparelho.</li>
+<li>O número reserva do WhatsApp no chat do app está no código, copiado do PWA (<code>chat_page.dart</code>).</li>
+</ul>
+<p>  Pela regra de instância por município (ADR-0043) ele deveria vir da configuração.</p>
+<ul>
+<li>Avisos automáticos (laudo pronto, exame agendado, transporte) não existem: cada gatilho é decisão</li>
+</ul>
+<p>  à parte, para não duplicar o WhatsApp (ADR-0070).</p>
+<ul>
+<li>PWA sem push (Web Push pode vir depois com o mesmo modelo).</li>
+<li>O FCM está trocando o token pelo FID; o app migra quando o <code>firebase_messaging</code> publicar o</li>
+</ul>
+<p>  <code>register()</code>, sem mexer no servidor.</p>
+</main>
+</body>
+</html>
