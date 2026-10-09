@@ -453,10 +453,18 @@ public sealed partial class AnaliseRegrasEspelhoService(
     [GeneratedRegex(@"^([A-Z]\d{2})\.?(\d?)")]
     private static partial Regex RegexCid();
 
+    /// <summary>
+    /// Versão do critério do parecer. Entra no hash: mudou a forma de decidir, todo pedido em aberto
+    /// é reanalisado na passada seguinte — sem isso, o parecer antigo ficaria parado até o pedido ou
+    /// a regra mudar. 2 = documento não decide mais o parecer (09/10/2026).
+    /// </summary>
+    private const string VersaoCriterio = "2";
+
     private static string Hash(
         SistemaRegulacao sistema, Entrada e, Guid? procedimentoId, string hashRegras, NaoSeiViraRegulacao naoSei)
     {
         var texto = string.Join('|', [
+            VersaoCriterio,
             ((int)sistema).ToString(), procedimentoId?.ToString("N") ?? "-", e.Nascimento?.ToString("O") ?? "-",
             e.Sexo ?? "-", string.IsNullOrWhiteSpace(e.Cpf) ? "0" : "1", e.Cid ?? "-", hashRegras, ((int)naoSei).ToString(),
             // A idade (em anos, como as regras a leem) muda com o tempo: entra no hash para a regra
