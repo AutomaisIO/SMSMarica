@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Loader2, Plus, Upload } from 'lucide-react';
+import { BookOpen, Eye, Loader2, Plus, Upload } from 'lucide-react';
 
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 
 import { BuscaProcedimento } from '../components/BuscaProcedimento';
 import { FormularioRegra } from '../components/FormularioRegra';
 import { ListaProcedimentosRegrados } from '../components/ListaProcedimentosRegrados';
+import { PreviaSolicitante } from '../components/PreviaSolicitante';
 import { ativarRegra, excluirRegra, importarRegrasCsv, listarRegras } from '../api/regulacaoApi';
 import type { ImportacaoRegrasResultado, RegraElegibilidade } from '../tiposSolicitacao';
 import type { RegulacaoProcedimentoItem } from '../types';
@@ -35,6 +37,7 @@ export function RegrasElegibilidadePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ImportacaoRegrasResultado | null>(null);
   const [criando, setCriando] = useState(false);
+  const [vendoPrevia, setVendoPrevia] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
   const regras = useQuery({
@@ -70,7 +73,10 @@ export function RegrasElegibilidadePage() {
       <header className="flex flex-wrap items-center gap-3">
         <BookOpen className="size-6 text-red-700" />
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Regras de elegibilidade</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-900">
+            Regras de elegibilidade
+            <AjudaManual artigo="regras-elegibilidade" />
+          </h1>
           <p className="text-sm text-slate-600">
             O que o manual da regulação exige por procedimento.
           </p>
@@ -158,12 +164,18 @@ export function RegrasElegibilidadePage() {
             <Button
               variante="secundaria"
               className="ml-auto"
-              onClick={() => setCriando((c) => !c)}
+              onClick={() => setVendoPrevia((v) => !v)}
             >
+              <Eye className="size-4" />
+              {vendoPrevia ? 'Fechar a prévia' : 'Ver como o solicitante vê'}
+            </Button>
+            <Button variante="secundaria" onClick={() => setCriando((c) => !c)}>
               <Plus className="size-4" />
               Nova regra
             </Button>
           </div>
+
+          {vendoPrevia && <PreviaSolicitante procedimentoId={procedimento.id} />}
 
           {criando && (
             <FormularioRegra

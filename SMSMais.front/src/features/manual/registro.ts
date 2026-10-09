@@ -22,6 +22,7 @@ import { artigoPacs } from '@/features/manual/conteudo/pacs';
 import { artigoPacientesUnificar } from '@/features/manual/conteudo/pacientesUnificar';
 import { artigoRascunhosSerSernit } from '@/features/manual/conteudo/rascunhosSerSernit';
 import { artigoRegulacaoGestaoFila } from '@/features/manual/conteudo/regulacaoGestaoFila';
+import { artigoRegrasElegibilidade } from '@/features/manual/conteudo/regrasElegibilidade';
 import { artigoRegulacaoSolicitacoes } from '@/features/manual/conteudo/regulacaoSolicitacoes';
 import { artigoSerMedicos } from '@/features/manual/conteudo/serMedicos';
 import { artigoSernitMedicos } from '@/features/manual/conteudo/sernitMedicos';
@@ -118,6 +119,7 @@ export const ARTIGOS: Artigo[] = [
   artigoRascunhosSerSernit,
   artigoRegulacaoGestaoFila,
   artigoRegulacaoSolicitacoes,
+  artigoRegrasElegibilidade,
   artigoSerMedicos,
   artigoSernitMedicos,
   artigoSisregConfiguracao,

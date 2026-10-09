@@ -14,6 +14,7 @@ import type {
   TipoProcedimentoRegulacao,
 } from '../types';
 import type {
+  AvaliacaoElegibilidade,
   ImportacaoRegrasResultado,
   ProcedimentoRegrado,
   RegraElegibilidade,
@@ -153,6 +154,24 @@ export async function listarProcedimentosRegrados(
     params: { sistemas, limite },
     paramsSerializer: { indexes: null },
   });
+  return data;
+}
+
+/** O paciente hipotético da prévia. Nulo = sem o dado (a regra que depende dele fica "a conferir"). */
+export type PreviaRegras = {
+  procedimentoId: string;
+  sistema: SistemaRegulacao | null;
+  idadeAnos: number | null;
+  sexo: 'M' | 'F' | null;
+  cid: string | null;
+};
+
+/**
+ * "Ver como o solicitante vê": o que o passo "Regras" do assistente mostraria para este
+ * procedimento e destino, sem resposta nenhuma. Só leitura — não cria solicitação.
+ */
+export async function previaRegras(req: PreviaRegras): Promise<AvaliacaoElegibilidade> {
+  const { data } = await http.post<AvaliacaoElegibilidade>('/regulacao/regras/previa', req);
   return data;
 }
 

@@ -2,6 +2,14 @@
 
 Como levar as **1.169 regras** extraídas dos manuais do SER para dentro do módulo, o que esperar de cada número e o que **não** importar. Conferido em 07/09/2026 contra os PDFs originais e contra o catálogo de produção.
 
+> **09/10/2026: NÃO reimporte o CSV.** O confronto dos dois manuais, página a página, com a produção ([`revisoes/2026-10-09-confronto-manuais-ser.md`](./revisoes/2026-10-09-confronto-manuais-ser.md)) mostrou que a extração errou em tabelas inteiras, e não só em linhas soltas:
+>
+> - as tabelas por **"Local da lesão"** da Oncologia viraram recursos falsos e foram descartadas (da Urologia só saiu a próstata; o Tórax engoliu Cólon/Reto);
+> - a Ortopedia do REUNI foi rotulada "ONCOLOGIA - …", e "lesão ligamentar a partir de 50 anos" virou idade mínima 50;
+> - a Hematologia pediátrica (p.35) caiu no adulto (p.33).
+>
+> As armadilhas que sobraram no CSV só não chegaram à produção porque ficaram sem par. Daqui para frente, cadastre a partir do inventário literal de `revisoes/2026-10-09-confronto-manuais-ser/`, conferido na imagem das páginas.
+
 ## 1. As fontes
 
 | Arquivo | Páginas | MD5 | Ramo do SER |
@@ -113,7 +121,7 @@ O perfil `Regulacao` enxerga a tela de regras mas **não consegue abrir solicita
 
 - **A curadoria.** Nada fica valendo por ser importado: tudo entra inativo, e enquanto nenhuma regra estiver ativa o passo de regras do wizard passa direto. O extrator classificou **974 linhas como pergunta**; ativar todas transformaria a abertura de solicitação num interrogatório. O trabalho é escolher as poucas que de fato impedem o encaminhamento, deixar as demais como texto informativo e descartar o resto — decisão clínica, não automatizável.
 - **A regra do encaminhamento já entra**, uma por procedimento (72), inativa. O certo seria uma só para todos; ver §4.
-- **Os 379 recursos sem par.** Metade do manual não casa com o catálogo porque o SER escreve o mesmo procedimento de dois jeitos. Isso melhora sozinho conforme o pareamento do catálogo (ADR-0055) avança; reimportar depois traz mais regras — mas veja a nota sobre duplicação acima.
+- **Os 379 recursos sem par.** Metade do manual não casa com o catálogo porque o SER escreve o mesmo procedimento de dois jeitos. Isso melhora sozinho conforme o pareamento do catálogo (ADR-0055) avança. ~~Reimportar depois traz mais regras~~ — **superado em 09/10/2026**: não reimporte o CSV (ver o aviso no topo).
 
 ## 7. Defeito corrigido antes de qualquer importação
 

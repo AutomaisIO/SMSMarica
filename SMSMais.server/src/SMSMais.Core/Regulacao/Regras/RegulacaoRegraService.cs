@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
 using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Identidade;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -85,7 +86,20 @@ public interface IRegulacaoRegraService
 
     /// <summary>Importa o CSV extraído dos manuais. Cria tudo <b>inativo</b>.</summary>
     Task<ImportacaoRegrasResultadoDto> ImportarCsvAsync(Stream csv, CancellationToken ct);
+
+    /// <summary>
+    /// "Ver como o solicitante vê": avalia as regras ATIVAS do procedimento como o passo "Regras"
+    /// do assistente avaliaria, para um paciente hipotético e sem resposta nenhuma. Não grava nada.
+    /// </summary>
+    Task<AvaliacaoElegibilidadeDto> PreviaAsync(PreviaRegrasRequest req, CancellationToken ct);
 }
+
+/// <param name="Sistema">Destino do pedido. Nulo = todos os sistemas onde o procedimento existe.</param>
+/// <param name="IdadeAnos">Idade do paciente hipotético. Nulo = sem data de nascimento.</param>
+/// <param name="Sexo"><c>"M"</c>, <c>"F"</c> ou nulo.</param>
+/// <param name="Cid">CID da hipótese, para as regras de CID. Nulo = sem CID.</param>
+public sealed record PreviaRegrasRequest(
+    Guid ProcedimentoId, SistemaRegulacao? Sistema, int? IdadeAnos, string? Sexo, string? Cid);
 
 /// <summary>
 /// Cadastro das regras de elegibilidade (plano 03).
@@ -111,6 +125,48 @@ public sealed class RegulacaoRegraService(
             .ToListAsync(ct);
 
         return [.. regras.Select(Mapear)];
+    }
+
+    public async Task<AvaliacaoElegibilidadeDto> PreviaAsync(PreviaRegrasRequest req, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(req.Sexo) && req.Sexo is not ("M" or "F"))
+        {
+            throw new ValidacaoException("sexo", "Sexo da prévia só pode ser M, F ou vazio.");
+        }
+        if (req.IdadeAnos is < 0 or > 130)
+        {
+            throw new ValidacaoException("idadeAnos", "Idade fora do intervalo.");
+        }
+
+        // As mesmas regras que o assistente carrega (`RegulacaoElegibilidadeService`): ativas, na
+        // ordem do cadastro. Prévia que lesse outra coisa deixaria de provar o que o solicitante vê.
+        var regras = await db.RegulacaoRegras.AsNoTracking()
+            .Where(r => r.ProcedimentoId == req.ProcedimentoId && r.Ativo)
+            .OrderBy(r => r.Ordem)
+            .ToListAsync(ct);
+
+        IReadOnlyList<SistemaRegulacao> candidatos = req.Sistema is { } destino
+            ? [destino]
+            : await db.RegulacaoProcedimentoOrigens.AsNoTracking()
+                .Where(o => o.ProcedimentoId == req.ProcedimentoId && o.Ativo)
+                .Select(o => o.Sistema)
+                .Distinct()
+                .ToListAsync(ct);
+
+        var hoje = FusoBrasilia.HojeEmBrasilia();
+
+        // Paciente hipotético: com CPF (o caso comum, e nenhuma regra ativa exige CPF hoje) e sem
+        // exames nossos — a prévia mostra as caixinhas como o solicitante as encontra, vazias.
+        var paciente = new PacienteParaRegras(
+            req.IdadeAnos is { } idade ? hoje.AddYears(-idade) : null,
+            string.IsNullOrWhiteSpace(req.Sexo) ? null : req.Sexo,
+            "previa",
+            null);
+
+        return AvaliadorElegibilidade.Avaliar(
+            regras, paciente, string.IsNullOrWhiteSpace(req.Cid) ? null : req.Cid.Trim(),
+            new Dictionary<Guid, RespostaRegraRegulacao>(), [], candidatos, hoje,
+            NaoSeiViraRegulacao.Ressalva);
     }
 
     public async Task<RegulacaoRegraDto> CriarAsync(
