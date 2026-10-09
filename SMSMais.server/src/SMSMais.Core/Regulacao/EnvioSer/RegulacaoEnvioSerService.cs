@@ -631,9 +631,21 @@ public sealed partial class RegulacaoEnvioSerService(
                     ? $"houve uma tentativa de cadastrar no {sistema} sem confirmação — confira lá"
                     : $"não está na lista de médicos do {sistema} — decida abaixo"));
         }
-        else
+        else if (!await PreencherMedicoAsync(ctx, motor, traduzido, passos, ct, naPrevia: medicoNovo is not null)
+                 && medicoNovo is not null)
         {
-            await PreencherMedicoAsync(ctx, motor, traduzido, passos, ct);
+            // O nome que a solicitação tem não está no combo de HOJE (foi dado como cadastrado e não
+            // entrou, ou saiu da lista): na prévia isso não é beco sem saída — vira o mesmo bloco do
+            // médico novo, e o regulador decide aqui ("É este" ou "Autorizo cadastrar"), como no SER.
+            var nome = traduzido[SerCriacaoSolicitacao.CampoMedico];
+            var reaberto = await medicosPendentes.ReabrirForaDaListaAsync(dados.Id, dados.Sistema, nome, ct);
+            logger.LogWarning(
+                "Regulação PR-{Numero}: médico {Nome} não está na lista do {Sistema} de hoje — pedido de cadastro reaberto ({Pendente}).",
+                dados.NumeroLocal, nome, sistema, reaberto.Id);
+            var bloco = await MedicoNovoAsync(ctx, motor, reaberto.Id, ct);
+            medicoNovo.Bloco = bloco;
+            passos.Add(new EnvioSerPassoDto("Médico solicitante", bloco.Nome, false,
+                $"não está na lista de médicos do {sistema} hoje — decida abaixo"));
         }
 
         // ---- classificação de risco (o value é o nível: EMERGENCIA, URGENCIA…)
@@ -676,24 +688,28 @@ public sealed partial class RegulacaoEnvioSerService(
         return passos;
     }
 
-    private async Task PreencherMedicoAsync(
+    /// <returns><c>false</c> só na prévia, quando o nome não está no combo (quem chama abre o bloco do
+    /// médico novo); fora dela, isso é recusa.</returns>
+    private async Task<bool> PreencherMedicoAsync(
         Contexto ctx, SerCriacaoSolicitacao motor, IReadOnlyDictionary<string, string> traduzido,
-        List<EnvioSerPassoDto> passos, CancellationToken ct)
+        List<EnvioSerPassoDto> passos, CancellationToken ct, bool naPrevia = false)
     {
         var sistema = ctx.Nome;
         var medico = Obrigatorio(traduzido, SerCriacaoSolicitacao.CampoMedico, "Médico solicitante");
         var medicos = IdentidadePorNome.Achar(motor.Combo(SerCriacaoSolicitacao.CampoMedico), o => o.Rotulo, medico);
         if (medicos.Count == 0)
         {
+            if (naPrevia) return false;
             throw new ValidacaoException(
                 "ser.medico",
-                $"O médico \"{medico}\" não está na lista de médicos do {sistema} do município. Ele precisa estar "
-                + $"cadastrado e lotado no {sistema} antes do envio.");
+                $"O médico \"{medico}\" não está na lista de médicos do {sistema}. Abra a prévia do envio de novo: "
+                + "ela mostra os nomes parecidos e deixa autorizar o cadastro.");
         }
         // Homônimo no combo (cadastro duplicado): qualquer um leva o mesmo nome ao pedido.
         await motor.TrocarAsync(SerCriacaoSolicitacao.CampoMedico, medicos[0].Valor, ct);
         passos.Add(new EnvioSerPassoDto("Médico solicitante", medicos[0].Rotulo, true,
             medicos.Count > 1 ? $"{medicos.Count} cadastros com este nome no {sistema}" : null));
+        return true;
     }
 
     /// <summary>

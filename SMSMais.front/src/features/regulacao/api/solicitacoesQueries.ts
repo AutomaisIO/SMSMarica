@@ -204,8 +204,19 @@ export function useRegistrarEnvio() {
  * Prévia do envio ao SER: a plataforma preenche a tela do SER e para antes de anexar e gravar.
  * Não muda nada nem aqui nem lá — por isso não invalida a fila.
  */
+/**
+ * A prévia do envio. Quando o médico da solicitação não está na lista do sistema de hoje, ela reabre
+ * o pedido de cadastro (o campo do médico vira pendente): o detalhe por trás muda, e o cartão do
+ * médico tem de acompanhar.
+ */
 export function usePrepararEnvioSer() {
-  return useMutation({ mutationFn: (id: string) => prepararEnvioAutomatico(id) });
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => prepararEnvioAutomatico(id),
+    onSuccess: (previa) => {
+      if (previa.medicoNovo) void qc.invalidateQueries({ queryKey: ['regulacao'] });
+    },
+  });
 }
 
 /** Envia ao SER/SERNIT (ESCREVE lá). Sucesso ou falha, o estado da solicitação muda: invalida tudo. */
