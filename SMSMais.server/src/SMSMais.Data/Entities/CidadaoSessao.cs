@@ -1,10 +1,10 @@
 namespace SMSMais.Data.Entities;
 
 /// <summary>
-/// Sessão de login do cidadão. <b>Single-device</b>: ao autenticar (por qualquer
-/// método), todas as sessões ativas anteriores são revogadas e uma nova é criada.
-/// O <see cref="Id"/> vai no JWT como <c>jti</c>; a cada request o token é validado
-/// contra a sessão — se o aparelho antigo mandar o token revogado, a autenticação quebra.
+/// Sessão de login do cidadão. Um paciente pode ter várias ao mesmo tempo (app, PWA,
+/// navegador): o login não revoga as anteriores. O <see cref="Id"/> vai no JWT como
+/// <c>jti</c>; a cada request o token é validado contra a sessão — sessão revogada ou
+/// expirada derruba a autenticação.
 /// </summary>
 public class CidadaoSessao
 {
@@ -27,4 +27,16 @@ public class CidadaoSessao
 
     /// <summary>Null = sessão ativa. Preenchido = revogada (logout ou login em outro device).</summary>
     public DateTime? RevogadaEm { get; set; }
+
+    /// <summary>
+    /// Token do Firebase Cloud Messaging do aparelho desta sessão (push do app do cidadão).
+    /// O aparelho pertence à sessão, não ao paciente: logout apaga o token junto, e o envio só
+    /// alcança sessão ativa — é o que impede push para quem já saiu do app.
+    /// </summary>
+    public string? PushToken { get; set; }
+
+    /// <summary><c>android</c> | <c>ios</c>.</summary>
+    public string? PushPlataforma { get; set; }
+
+    public DateTime? PushRegistradoEm { get; set; }
 }

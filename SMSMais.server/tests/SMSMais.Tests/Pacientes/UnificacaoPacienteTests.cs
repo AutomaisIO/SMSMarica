@@ -129,4 +129,17 @@ public class UnificacaoPacienteTests
         Assert.Equal(0, r.ReferenciasRepontadas);
         await _hub.Received(1).FundirAsync(s, a, Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public void Todo_alvo_do_repontador_aparece_na_previa_com_o_nome_do_modulo()
+    {
+        // Tabela nova no repontador sem rótulo aparece na prévia da tela pelo nome cru da tabela.
+        var semRotulo = RepontadorPacienteService.Alvos
+            .Select(a => a.Tabela)
+            .Distinct()
+            .Where(t => UnificacaoResumo.AgruparModulos([new ContagemRepontamento(t, "x", 1)])[0].Modulo == t)
+            .ToList();
+
+        Assert.Empty(semRotulo);
+    }
 }

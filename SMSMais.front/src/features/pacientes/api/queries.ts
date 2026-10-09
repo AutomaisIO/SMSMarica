@@ -5,8 +5,10 @@ import {
   buscarPacientes,
   cadastrarPaciente,
   desativarPaciente,
+  enviarNotificacaoApp,
   obterAcessos,
   obterAgendamentosPaciente,
+  obterAppCidadao,
   obterAnexosExame,
   obterAtendimentos,
   obterAuditoriaPaciente,
@@ -18,6 +20,7 @@ import {
   reativarPaciente,
   unificarPacientes,
 } from '@/features/pacientes/api/pacientesApi';
+import type { EnviarNotificacaoAppPayload } from '@/features/pacientes/api/pacientesApi';
 import type {
   AtualizarPacientePayload,
   CadastrarPacientePayload,
@@ -32,6 +35,7 @@ export const pacientesKeys = {
   atendimentos: (id: string) => ['pacientes', 'atendimentos', id] as const,
   agendamentos: (id: string) => ['pacientes', 'agendamentos', id] as const,
   acessos: (id: string) => ['pacientes', 'acessos', id] as const,
+  appCidadao: (id: string) => ['pacientes', 'app-cidadao', id] as const,
   anexosExame: (id: string) => ['pacientes', 'anexos-exame', id] as const,
   auditoria: (id: string) => ['pacientes', 'auditoria', id] as const,
   sessoesConversa: (id: string) => ['pacientes', 'sessoes-conversa', id] as const,
@@ -69,6 +73,33 @@ export function useAcessosPaciente(id: string | null) {
       return obterAcessos(id);
     },
     enabled: Boolean(id),
+  });
+}
+
+/** Aparelhos com notificação ativa e histórico de envios ao app (módulo NotificacaoAppCidadao). */
+export function useAppCidadao(id: string | null) {
+  return useQuery({
+    queryKey: id ? pacientesKeys.appCidadao(id) : ['pacientes', 'app-cidadao', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterAppCidadao(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+/**
+ * Envia notificação ao app do paciente. Recarrega o bloco também no erro: um 400/409 quer dizer
+ * que a configuração ou os aparelhos mudaram desde que a ficha abriu.
+ */
+export function useEnviarNotificacaoApp() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, corpo }: { id: string; corpo: EnviarNotificacaoAppPayload }) =>
+      enviarNotificacaoApp(id, corpo),
+    onSettled: (_data, _erro, variables) => {
+      client.invalidateQueries({ queryKey: pacientesKeys.appCidadao(variables.id) });
+    },
   });
 }
 

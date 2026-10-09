@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0070 — Notificação (push) no app do cidadão</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0070 — Notificação (push) no app do cidadão</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-09 · implementado em 09/10/2026 (não deployado; o app nativo ainda não está nas lojas) <strong>Relacionado:</strong> <a href="./0018-identidade-e-sessao-do-cidadao.md">ADR-0018</a> (sessão do cidadão) · <a href="./0043-instancia-por-municipio.md">ADR-0043</a> (configuração por instância) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (destinatário correto) · <code>SMSMais.cidadao.app/README.md</code> (como configurar o Firebase no app)</p>
+<h2>Contexto</h2>
+<p>O App do Cidadão ganhou a versão nativa (<code>SMSMais.cidadao.app</code>, Flutter, espelho do PWA). O Bernardo pediu um caminho para <strong>mandar uma mensagem do servidor direto para o app de um paciente específico</strong>. Até aqui, tudo o que chega ao cidadão vai pelo WhatsApp (templates da Meta, janela de 24h, custo por conversa). O app instalado permite um canal próprio, sem template e sem custo por mensagem.</p>
+<p>Três fatos do código moldaram a decisão:</p>
+<ul>
+<li><strong>O login do cidadão aceita várias sessões ao mesmo tempo.</strong> <code>CidadaoSessaoService.AbrirSessaoAsync</code></li>
+</ul>
+<p>  não revoga as anteriores: o paciente pode estar no app, no PWA e no navegador ao mesmo tempo. O   "aparelho" que recebe o push, portanto, não é o paciente — é a <strong>sessão</strong>.</p>
+<ul>
+<li><strong>Já existe um cofre cifrado de credenciais de integração</strong> (<code>smsmarica.integracao_credencial</code>, tela</li>
+</ul>
+<p>  Integrações), com segredo write-only, auditoria e liga/desliga.</p>
+<ul>
+<li><strong>Não existe push nenhum</strong> hoje (nem Web Push no PWA).</li>
+</ul>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Transporte: Firebase Cloud Messaging, API HTTP v1.</strong> É o único caminho de push para Android com</li>
+</ol>
+<p>   Google Play services e cobre o iOS (APNs) pelo mesmo envio. Um POST por aparelho, sequencial.</p>
+<ol>
+<li><strong>O token do aparelho mora na sessão</strong> (<code>cidadao_sessao.push_token</code>, <code>push_plataforma</code>,</li>
+</ol>
+<p>   <code>push_registrado_em</code>). O envio vai a <strong>todas as sessões ativas</strong> do paciente que têm token    (<code>revogada_em IS NULL</code>, <code>expira_em &gt; agora</code>, acesso ativo). Consequências diretas:    - logout zera o token junto com a revogação — o celular que saiu não recebe mais nada;    - sessão expirada ou revogada por qualquer motivo nunca recebe (o filtro do envio é a fonte da      verdade; não é preciso limpar o token em cada ponto que revoga);    - o mesmo token não fica em duas sessões: ao registrar, ele é retirado de qualquer outra;    - o envio só apaga o token quando o FCM diz que ele morreu (<code>UNREGISTERED</code>, ou <code>INVALID_ARGUMENT</code> no      campo <code>token</code>), como manda a documentação dele; <code>SENDER_ID_MISMATCH</code> (app gerado com um projeto do      Firebase e chave em Integrações de outro) é tratado como erro de configuração — vai para o log como      erro e <strong>não</strong> apaga o token.</p>
+<ol>
+<li><strong>Sem dado de saúde no push.</strong> O texto aparece na tela do celular, inclusive bloqueado, e passa pelos</li>
+</ol>
+<p>   servidores do Google sem criptografia ponta a ponta. O push <strong>chama a pessoa para abrir o app</strong>; o    conteúdo clínico continua atrás do login. O <code>data</code> leva só a rota a abrir e o id da notificação. O    painel mostra esse aviso a quem escreve.</p>
+<ol>
+<li><strong>Destino é lista fixa.</strong> A notificação pode abrir uma das telas internas do app (Início, Consultas e</li>
+</ol>
+<p>   Exames agendados, Atendimentos, Exames, Documentos, Transporte, Chat, Perfil). Servidor, painel e app    validam a mesma lista — nada de URL livre.</p>
+<ol>
+<li><strong>Histórico de envio</strong> em <code>smsmarica.cidadao_notificacao</code>: quem enviou, quando, para qual paciente,</li>
+</ol>
+<p>   título, mensagem, destino, quantos aparelhos e quantos o Firebase aceitou. Serve à auditoria (LGPD) e    ao "não chegou". Entra no repontador da unificação de cadastros.</p>
+<ol>
+<li><strong>Credencial no cofre de Integrações</strong>, provedor <code>fcm</code>: o JSON da conta de serviço do Google é o</li>
+</ol>
+<p>   segredo (cifrado, nunca devolvido); o <code>projectId</code> fica público na tela; <code>Ativo</code> desliga o envio.    Troca sem SSH e sem deploy, uma por instância (ADR-0043). Botão <strong>Testar</strong> pede um token de acesso    novo <strong>e</strong> faz um envio de validação (<code>validate_only</code>, para um tópico — não chega a ninguém): só o    envio prova que a API "Firebase Cloud Messaging (V1)" está ligada no projeto e que a conta tem papel    de envio. Credencial que não decifra neste servidor (cifrada em outro ambiente) responde no Testar e    barra o envio com <code>push.credencial_ilegivel</code>, em vez de erro 500.</p>
+<ol>
+<li><strong>Sem pacote do Google no servidor.</strong> O token OAuth2 da conta de serviço é obtido à mão (JWT RS256 com</li>
+</ol>
+<p>   <code>System.Security.Cryptography</code>, escopo só <code>firebase.messaging</code>, cache até 5 min antes de vencer). O    <code>FirebaseAdmin</code> traz estado global e escopos largos; o <code>Google.Apis.Auth</code> marcou obsoleta a leitura    de JSON que usaríamos.</p>
+<ol>
+<li><strong>Permissão própria: <code>NotificacaoAppCidadao = 81</code>.</strong> <code>Consulta</code> vê os aparelhos e o histórico na ficha</li>
+</ol>
+<p>   do paciente; <code>Edicao</code> envia. Mesmo critério do <code>PesquisaSatisfacao = 56</code>: consultar o paciente não dá    direito de mandar mensagem a ele.</p>
+<ol>
+<li><strong>No app, o Firebase é configurado só pelo Dart</strong> (<code>--dart-define-from-file=firebase.json</code>, arquivo fora</li>
+</ol>
+<p>   do git), sem <code>google-services.json</code> nem <code>GoogleService-Info.plist</code>. Sem essa configuração — e sempre    no modo demonstração e na web — o push fica desligado e o app funciona igual. O registro acontece    depois do login <strong>e</strong> do termo aceito; a permissão de notificação é pedida nesse momento.</p>
+<h2>Consequências</h2>
+<ul>
+<li>O envio manual pelo painel é o primeiro uso. Avisos automáticos (exame agendado, laudo pronto,</li>
+</ul>
+<p>  transporte) podem usar o mesmo serviço depois — <code>INotificadorExame</code> já é o ponto de extensão — mas   <strong>cada gatilho automático é decisão à parte</strong>, para não notificar em dobro com o WhatsApp.</p>
+<ul>
+<li>Push não substitui o WhatsApp: só alcança quem instalou o app nativo, entrou e aceitou receber.</li>
+<li>O PWA continua sem push. Web Push (VAPID) pode vir depois com o mesmo modelo (token por sessão,</li>
+</ul>
+<p>  <code>push_plataforma = web</code>).</p>
+<ul>
+<li>Para funcionar em produção falta configurar o projeto no Firebase (apps Android e iOS, chave APNs da</li>
+</ul>
+<p>  Apple, conta de serviço) — passo a passo no README do app — e publicar o app.</p>
+<ul>
+<li>O FCM está trocando o "token de registro" pelo FID (Firebase Installation ID). O campo <code>token</code> da API</li>
+</ul>
+<p>  aceita os dois durante a transição; quando o <code>firebase_messaging</code> publicar o <code>register()</code>, o app migra   sem mudar o servidor.</p>
+</main>
+</body>
+</html>

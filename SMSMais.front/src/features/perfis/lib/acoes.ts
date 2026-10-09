@@ -126,6 +126,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais, motor do SER/SERNIT/ESUS São Gonçalo, catálogo e regras)' },
   { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
   { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },
+  { id: 'NotificacaoAppCidadao', rotulo: 'Notificações no app do cidadão — ver aparelhos e enviar' },
   { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },
   { id: 'RoboAtendimento', rotulo: 'Robô de atendimento — cadastro de assuntos e comandos do bot' },
   { id: 'AjusteCadastro', rotulo: 'Pendências de cadastro (números errados) — ver e resolver' },
@@ -178,6 +179,12 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // inofensivo — o que ela libera é MANDAR MENSAGEM para o cidadão.
   PesquisaSatisfacao: {
     Edicao: 'Enviar pesquisa de satisfação ao paciente (WhatsApp)',
+  },
+  // Só Consulta e Edição valem, e as duas vivem na ficha do paciente (aba Histórico de Acesso).
+  // "Edição" aqui é MANDAR MENSAGEM para o celular do cidadão, que aparece até com a tela bloqueada.
+  NotificacaoAppCidadao: {
+    Consulta: 'Ver os aparelhos e o histórico de notificações',
+    Edicao: 'Enviar notificação ao celular do paciente',
   },
   // O que se edita aqui aparece na tela de login, no PDF de laudo e na página pública de
   // verificação — inclusive para quem NÃO está autenticado. Não é configuração operacional.

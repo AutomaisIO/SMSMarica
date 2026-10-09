@@ -1,5 +1,6 @@
 import { Users } from 'lucide-react';
 import { Callout } from '@/features/manual/components/Callout';
+import { Passos } from '@/features/manual/components/Passos';
 import { Item, Lista, ListaDefinicoes, P } from '@/features/manual/components/Prosa';
 import { AbaRef, BotaoRef, SeloRef } from '@/features/manual/components/Referencia';
 import type { Artigo } from '@/features/manual/tipos';
@@ -16,6 +17,15 @@ import type { Artigo } from '@/features/manual/tipos';
  * toda noite), o coletor `FaltasRecentes` (lista de faltas de hora em hora) e
  * `DocumentosPacienteService` (o que entra no acervo, dedup por conteúdo, teto de 10 pendentes,
  * 25 MB, exclusão) + `DocumentosPacienteController` (permissões).
+ *
+ * Notificações no app (09/10/2026): `components/AppCidadaoNotificacoes` e
+ * `ModalEnviarNotificacao` (limites 65/240, destinos fixos, desfecho por aparelho) contra o
+ * contrato `GET /pacientes/{id}/app-cidadao` e `POST .../notificacoes` (módulo
+ * NotificacaoAppCidadao, 400 sem configuração, 409 sem aparelho, histórico das 20 últimas).
+ * Desfechos por aparelho e resumo do histórico conferidos em `DesfechoEnvioFcm` (só UNREGISTERED e
+ * token inválido removem o aparelho; SENDER_ID_MISMATCH = "outro projeto do Firebase", não remove;
+ * os demais 401/403, inclusive API desligada (SERVICE_DISABLED), = "credencial do servidor") e
+ * a barreira da credencial que não decifra (`push.credencial_ilegivel`, 400) em `PushCidadaoService`.
  */
 export const artigoPacientes: Artigo = {
   slug: 'pacientes',
@@ -26,7 +36,7 @@ export const artigoPacientes: Artigo = {
   icone: Users,
   rota: '/app/pacientes',
   publico: 'Quem atende, regula ou acompanha o paciente e precisa da ficha dele',
-  atualizadoEm: '2026-10-05',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'paciente',
     'pacientes',
@@ -89,6 +99,26 @@ export const artigoPacientes: Artigo = {
     'limite de 10',
     '25 MB',
     'duplicado',
+    'notificação',
+    'notificações',
+    'push',
+    'enviar notificação',
+    'notificação no celular',
+    'aparelho',
+    'aparelhos',
+    'aparelho removido',
+    'Android',
+    'iPhone',
+    'Firebase',
+    'entregue',
+    'não entregue',
+    'histórico de acesso',
+    'histórico de notificações',
+    'outro projeto do Firebase',
+    'credencial ilegível',
+    'tela bloqueada',
+    'dado de saúde',
+    'abrir no app',
   ],
   secoes: () => [
     {
@@ -188,7 +218,8 @@ export const artigoPacientes: Artigo = {
               um arquivo que ele mandou é na tela de Conversas);
             </Item>
             <Item>
-              <AbaRef>Histórico de Acesso</AbaRef> — as entradas do próprio paciente no aplicativo;
+              <AbaRef>Histórico de Acesso</AbaRef> — as entradas do próprio paciente no aplicativo e,
+              para quem tem a permissão, as notificações enviadas ao celular dele (ver abaixo);
             </Item>
             <Item>
               <AbaRef>Histórico de alterações</AbaRef> — quem mudou o cadastro, e quando;
@@ -477,12 +508,238 @@ export const artigoPacientes: Artigo = {
       ),
     },
     {
-      id: 'documentos-permissoes',
-      titulo: 'Quem pode o quê nos documentos',
-      busca: 'permissão perfil pacientes consulta edição exclusão anexar aceitar excluir ver documentos',
+      id: 'app-notificacoes',
+      titulo: 'Notificações no app do cidadão',
+      busca:
+        'notificação notificações push enviar notificação celular app do cidadão aparelho aparelhos android iphone tela bloqueada firebase google entregue não entregue aparelho removido desinstalou histórico de notificações abrir no app título mensagem 65 240 dado de saúde diagnóstico resultado de exame não configurado sem aparelho',
       conteudo: (
         <>
-          <P>Tudo nesta aba é governado pelo módulo <strong>Pacientes</strong> do perfil:</P>
+          <P>
+            É a mensagem curta que aparece no celular do paciente, como a de qualquer aplicativo: um
+            título e um texto, mesmo com a tela bloqueada. Tocando nela, o app do cidadão abre na tela
+            que você escolheu. Serve para chamar a pessoa para o app — avisar que tem novidade lá dentro.
+          </P>
+          <P>
+            Fica na aba <AbaRef>Histórico de Acesso</AbaRef>, acima da tabela de entradas, no bloco{' '}
+            <strong>Notificações no app</strong>. O bloco só aparece para quem tem, no perfil, o módulo{' '}
+            <strong>Notificações no app do cidadão</strong>, e mostra:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Aviso de envio não configurado',
+                descricao:
+                  'Aparece enquanto o Firebase não estiver configurado e ativo em Integrações → Credenciais (nunca configurado, ou com o envio desligado lá). Até lá, nada sai — o botão fica desligado.',
+              },
+              {
+                termo: 'Aparelhos com notificações ativas',
+                descricao:
+                  'Cada celular em que o paciente entrou no app e permitiu as notificações: Android ou iPhone, desde quando as notificações estão ativas, quando ele entrou no app e, embaixo, a identificação técnica que o aparelho mandou ao entrar (quando mandou) — a mesma da coluna Dispositivo da tabela de entradas.',
+              },
+              {
+                termo: <BotaoRef>Enviar notificação</BotaoRef>,
+                descricao:
+                  'Só para quem pode enviar. Desligado, diz ao lado o motivo: envio não configurado ou paciente sem aparelho.',
+              },
+              {
+                termo: 'Últimas notificações enviadas',
+                descricao:
+                  'As 20 mais recentes: data e hora, quem enviou, a tela que abre, em quantos aparelhos foi entregue, o título, a mensagem e, se algum aparelho não recebeu, o resumo do porquê.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="Quem recebe">
+            Todos os aparelhos da lista, de uma vez. O paciente que entrou no app em dois celulares recebe
+            nos dois. Quem sai do app no celular, ou cujo acesso expirou ou foi encerrado, deixa de
+            receber naquele aparelho. Quem usa o app pelo navegador — mesmo com o atalho na tela inicial
+            do celular — não recebe notificação: só o aplicativo instalado recebe.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'app-notificacoes-enviar',
+      titulo: 'Como enviar uma notificação',
+      busca:
+        'como enviar notificação título mensagem abrir no app início consultas agendadas exames agendados meus atendimentos exames documentos transporte chat meu perfil enviando não feche esta janela',
+      conteudo: (
+        <>
+          <Passos
+            itens={[
+              { titulo: <>Clique em <BotaoRef>Enviar notificação</BotaoRef>.</> },
+              {
+                titulo: 'Escreva o título e a mensagem.',
+                detalhe:
+                  'O título tem até 65 caracteres e a mensagem até 240 — o contador mostra quanto já foi usado. Curto é melhor: na tela bloqueada, o celular corta o que passar.',
+              },
+              {
+                titulo: 'Escolha onde o app abre.',
+                detalhe:
+                  'Em “Abrir no app”: Início (se não escolher nada), Consultas agendadas, Exames agendados, Meus atendimentos, Exames, Documentos, Transporte (TFD), Chat ou Meu perfil.',
+              },
+              {
+                titulo: <>Clique em <BotaoRef>Enviar notificação</BotaoRef> e espere.</>,
+                detalhe:
+                  'Enquanto aparece “Enviando… não feche esta janela”, o sistema está entregando aparelho por aparelho. Leva poucos segundos.',
+              },
+              {
+                titulo: 'Leia o desfecho e feche.',
+                detalhe:
+                  'A própria janela mostra o que aconteceu em cada aparelho (ver abaixo). Ela não fecha sozinha: o resultado fica na tela até você fechar.',
+              },
+            ]}
+          />
+          <Callout tipo="atencao" titulo="Não tem como desfazer">
+            A notificação sai na hora e não se recolhe depois. Confira o texto antes de enviar.
+          </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'app-notificacoes-o-que-nao-escrever',
+      titulo: 'O que NÃO escrever numa notificação',
+      busca:
+        'o que não escrever dado de saúde diagnóstico resultado de exame doença remédio medicação sigilo LGPD tela bloqueada servidores do google privacidade exemplo',
+      conteudo: (
+        <>
+          <Callout tipo="regra" titulo="Nada de dado de saúde">
+            Não escreva diagnóstico, resultado de exame, nome de doença, remédio nem outro dado de saúde.
+            Chame a pessoa para abrir o app — o que é sigiloso fica lá dentro, atrás do login.
+          </Callout>
+          <P>Por quê:</P>
+          <Lista>
+            <Item>
+              A notificação <strong>aparece na tela do celular, mesmo bloqueado</strong>. Quem estiver
+              perto — família, colega de trabalho — lê sem precisar de senha.
+            </Item>
+            <Item>
+              O texto <strong>passa pelos servidores do Google</strong> (Firebase), que é quem leva a
+              notificação até o celular, inclusive ao iPhone.
+            </Item>
+          </Lista>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'Assim, sim',
+                descricao:
+                  '“Você tem uma atualização” — “Abra o app para ver os detalhes.”, abrindo em Exames.',
+              },
+              {
+                termo: 'Assim, não',
+                descricao: '“Resultado do seu exame” — “Sua glicose deu alta, procure o posto.”',
+              },
+            ]}
+          />
+          <P>
+            O aviso fica fixo na janela de envio, à vista de quem escreve, para lembrar disso toda vez.
+          </P>
+        </>
+      ),
+    },
+    {
+      id: 'app-notificacoes-desfecho',
+      titulo: 'O desfecho do envio: entregue, não entregue, aparelho removido',
+      busca:
+        'desfecho entregue não entregue entregue em parte aparelho removido desinstalou notificações desligadas chave da apple apns credencial do servidor chave apagada api de envio desligada sem permissão de envio firebase não respondeu tente de novo recusou a mensagem outro projeto do firebase app ligado a outro projeto app gerado com outro projeto recusou recusaram resumo do histórico credencial ilegível não pode ser lida por este servidor cifrada em outro ambiente limpar não configurado sem aparelho histórico',
+      conteudo: (
+        <>
+          <P>
+            Depois do envio, o título da janela resume (entregue, entregue em parte ou não entregue) e
+            há uma linha por aparelho — “Android — entregue”, “iPhone — não entregue”; com dois do mesmo
+            tipo, “Android 1”, “Android 2”:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: '… — entregue',
+                descricao:
+                  'O Firebase aceitou levar a notificação ao celular. Desligado ou sem internet, ele recebe quando voltar a se conectar. Entregue não quer dizer lida: quem desligou as notificações do app nas configurações do celular pode não ver nada.',
+              },
+              {
+                termo: '… — não entregue',
+                descricao: 'A linha diz o motivo. Os que aparecem:',
+              },
+            ]}
+          />
+          <Lista>
+            <Item>
+              <strong>“O app foi desinstalado ou as notificações foram desligadas neste aparelho.”</strong>{' '}
+              — vem com <SeloRef>aparelho removido</SeloRef> (ver abaixo).
+            </Item>
+            <Item>
+              <strong>“O Firebase recusou a chave da Apple (APNs).”</strong> — só acontece com iPhone e é
+              configuração do projeto, não do paciente. Avise quem cuida das integrações.
+            </Item>
+            <Item>
+              <strong>“Este aparelho está ligado a outro projeto do Firebase.”</strong> — o app do
+              cidadão foi gerado com um projeto do Firebase e a chave gravada em Integrações é de outro.
+              É configuração, não do paciente, e costuma bater em todos os aparelhos de uma vez. O
+              aparelho <strong>não</strong> sai da lista: ele volta a receber quando a configuração for
+              acertada. Avise quem cuida das integrações — o Testar de lá dá certo mesmo assim, porque não
+              chega a falar com um celular.
+            </Item>
+            <Item>
+              <strong>“O Firebase recusou a credencial do servidor.”</strong> — o Firebase não aceitou a
+              credencial de Integrações → Credenciais → Firebase. Em geral, a chave foi apagada no
+              Google, a API de envio está desligada no projeto ou a conta ficou sem permissão de enviar.
+              Avise quem cuida das integrações: o botão Testar de lá diz qual é o caso.
+            </Item>
+            <Item>
+              <strong>“O Firebase não respondeu agora.”</strong> — instabilidade passageira do lado do
+              Google. Tente de novo em alguns minutos.
+            </Item>
+            <Item>
+              <strong>“O Firebase recusou a mensagem: …”</strong> — seguido do motivo, nas palavras do
+              próprio Google. É raro; avise quem cuida das integrações.
+            </Item>
+          </Lista>
+          <Callout tipo="dica" titulo="Aparelho removido">
+            É o Firebase dizendo que aquele aparelho não existe mais para o app — em geral, o app foi
+            desinstalado. O aparelho sai da lista para o sistema não insistir num celular que não recebe.
+            Ele volta sozinho quando o paciente entrar de novo no app e permitir as notificações. É o
+            único desfecho que tira o aparelho da lista: nos outros, o problema não é o celular.
+          </Callout>
+          <P>
+            Toda tentativa com aparelho fica no histórico da ficha, mesmo que nenhum tenha recebido — é o
+            que responde, dias depois, ao “não chegou nada”. Quando algum aparelho não recebeu, a linha do
+            histórico resume o porquê em poucas palavras — por exemplo, “1 de 2 aparelhos recusou: app
+            desinstalado” ou “2 de 2 aparelhos recusaram: app ligado a outro projeto do Firebase”.
+          </P>
+          <P>
+            Três situações barram o envio antes de sair, com o aviso na própria janela, e{' '}
+            <strong>não</strong> entram no histórico:
+          </P>
+          <Lista>
+            <Item>
+              <strong>“O envio de notificações ao app ainda não foi configurado”</strong> — falta o
+              Firebase em Integrações;
+            </Item>
+            <Item>
+              <strong>“A credencial gravada não pode ser lida por este servidor”</strong> — o Firebase
+              está configurado, mas a chave foi gravada em outro ambiente e este servidor não consegue
+              abri-la. A ficha não tem como saber antes: o bloco mostra o envio como configurado e o botão
+              fica ligado. Avise quem cuida das integrações — lá se resolve com Limpar e colando o JSON de
+              novo;
+            </Item>
+            <Item>
+              <strong>“Este paciente não tem o app com as notificações ativas”</strong> — o último
+              aparelho saiu da lista desde que a ficha foi aberta.
+            </Item>
+          </Lista>
+        </>
+      ),
+    },
+    {
+      id: 'documentos-permissoes',
+      titulo: 'Quem pode o quê',
+      busca:
+        'permissão perfil pacientes consulta edição exclusão anexar aceitar excluir ver documentos notificações no app do cidadão enviar notificação ver aparelhos histórico módulo',
+      conteudo: (
+        <>
+          <P>
+            Os documentos (aba <AbaRef>Exames anexados</AbaRef>) são governados pelo módulo{' '}
+            <strong>Pacientes</strong> do perfil:
+          </P>
           <Lista>
             <Item>
               <strong>Consulta</strong> — ver a lista e abrir os arquivos;
@@ -495,6 +752,22 @@ export const artigoPacientes: Artigo = {
               <strong>Exclusão</strong> — excluir documento do cadastro.
             </Item>
           </Lista>
+          <P>
+            As notificações no app têm módulo próprio, <strong>Notificações no app do cidadão</strong>:
+          </P>
+          <Lista>
+            <Item>
+              <strong>Consulta</strong> — ver o bloco: aparelhos, aviso de configuração e histórico de
+              notificações;
+            </Item>
+            <Item>
+              <strong>Edição</strong> — enviar notificação.
+            </Item>
+          </Lista>
+          <Callout tipo="regra" titulo="Por que um módulo à parte">
+            Consultar a ficha do paciente não dá, por isso, o direito de mandar mensagem ao celular dele.
+            Quem envia precisa ter recebido essa permissão de propósito.
+          </Callout>
         </>
       ),
     },
@@ -545,6 +818,21 @@ export const artigoPacientes: Artigo = {
               termo: 'Anexei o mesmo arquivo de novo e a lista não mudou.',
               descricao:
                 'É de propósito: o sistema reconhece o arquivo pelo conteúdo e mantém um documento só.',
+            },
+            {
+              termo: 'Não vejo o bloco “Notificações no app” no Histórico de Acesso.',
+              descricao:
+                'O seu perfil não tem o módulo Notificações no app do cidadão. Peça a quem administra os perfis.',
+            },
+            {
+              termo: 'O paciente diz que não recebeu a notificação.',
+              descricao:
+                'Veja no histórico em quantos aparelhos ela foi entregue. Entregue e não vista quase sempre é notificação do app desligada nas configurações do celular. Não entregue tem o motivo na linha.',
+            },
+            {
+              termo: 'O paciente usa o app, mas não aparece aparelho nenhum.',
+              descricao:
+                'Ele não permitiu as notificações, saiu do app no celular ou usa o app pelo navegador (mesmo com o atalho na tela inicial, que não recebe). Peça para abrir o aplicativo instalado no celular e aceitar as notificações quando o celular perguntar.',
             },
             {
               termo: 'Se eu excluir um documento, a solicitação que o usou fica sem anexo?',

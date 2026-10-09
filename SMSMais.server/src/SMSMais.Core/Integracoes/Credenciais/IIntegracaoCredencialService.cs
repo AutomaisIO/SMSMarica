@@ -66,6 +66,10 @@ public static class ProvedoresIntegracao
         // parametrosJson={baseUrl, acessoId, janelaInicio, janelaFim}. Credencial CEDIDA por uma
         // servidora e o PEC é sessão única: só se usa na janela da madrugada, para não derrubá-la.
         ["esuspec"] = "e-SUS APS PEC (cadastro do cidadão)",
+        // Push do app do cidadão (FCM HTTP v1). clientId não usado; clientSecret = JSON inteiro da
+        // conta de serviço (conferido ao gravar); parametrosJson = {projectId}, tirado do próprio JSON
+        // só para exibição. Ativo liga/desliga o envio.
+        ["fcm"] = "Firebase Cloud Messaging (notificações do app do cidadão)",
         // NB: o conector web do Klinikos NÃO é um provedor de credencial de serviço (não é
         // integração tipo Google/Spaces). É uma FONTE DE PRONTUÁRIO — configurada em
         // "Importar Prontuários → Fontes/Conectores" como uma IaFonte (Tipo=KlinikosWeb), com

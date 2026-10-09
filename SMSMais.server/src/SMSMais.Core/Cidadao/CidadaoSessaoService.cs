@@ -24,10 +24,15 @@ public sealed class CidadaoSessaoService(
             .Where(l => l.ExpiraEm > agora)
             .ExecuteUpdateAsync(set => set.SetProperty(l => l.ExpiraEm, agora), ct);
 
-        // Quem já entrou com um link (possivelmente errado) perde o acesso agora.
+        // Quem já entrou com um link (possivelmente errado) perde o acesso agora — e o aparelho
+        // deixa de receber notificação junto.
         var sessoes = await db.CidadaoSessoes
             .Where(s => s.RevogadaEm == null && s.ExpiraEm > agora)
-            .ExecuteUpdateAsync(set => set.SetProperty(s => s.RevogadaEm, agora), ct);
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(s => s.RevogadaEm, agora)
+                .SetProperty(s => s.PushToken, (string?)null)
+                .SetProperty(s => s.PushPlataforma, (string?)null)
+                .SetProperty(s => s.PushRegistradoEm, (DateTime?)null), ct);
 
         logger.LogWarning(
             "REVOGAÇÃO GLOBAL de acessos do cidadão: {Links} link(s) expirado(s), {Sessoes} sessão(ões) revogada(s). Motivo: {Motivo}",
@@ -135,9 +140,14 @@ public sealed class CidadaoSessaoService(
     public async Task RevogarAsync(Guid sessaoJti, CancellationToken ct = default)
     {
         var agora = DateTime.UtcNow;
+        // Sair do app apaga o token do aparelho: notificação nunca vai para quem já saiu.
         await db.CidadaoSessoes
             .Where(s => s.Id == sessaoJti && s.RevogadaEm == null)
-            .ExecuteUpdateAsync(set => set.SetProperty(s => s.RevogadaEm, agora), ct);
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(s => s.RevogadaEm, agora)
+                .SetProperty(s => s.PushToken, (string?)null)
+                .SetProperty(s => s.PushPlataforma, (string?)null)
+                .SetProperty(s => s.PushRegistradoEm, (DateTime?)null), ct);
     }
 
     private static string Digitos(string? v) =>

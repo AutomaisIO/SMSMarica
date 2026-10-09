@@ -919,6 +919,12 @@ public static class DependencyInjection
         services.AddScoped<Cidadao.IConsentimentoCidadaoService, Cidadao.ConsentimentoCidadaoService>();
         // Leitura clínica do app do cidadão (exames + docs escaneados + imagens PACS + laudos + agendamentos).
         services.AddScoped<Cidadao.ICidadaoClinicoService, Cidadao.CidadaoClinicoService>();
+        // Push do app do cidadão (FCM HTTP v1): conta de serviço no cofre de Integrações (provedor fcm).
+        services.AddScoped<Cidadao.Push.IPushCidadaoService, Cidadao.Push.PushCidadaoService>();
+        services.AddHttpClient<Cidadao.Push.IClienteFcm, Cidadao.Push.ClienteFcm>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
         services.AddScoped<Exames.IExamePacsImagensReader, Exames.ExamePacsImagensReader>();
         services.AddScoped<Exames.IExameImagensPdfService, Exames.ExameImagensPdfService>();
         services.AddScoped<Exames.IExameCompletoPdfService, Exames.ExameCompletoPdfService>();

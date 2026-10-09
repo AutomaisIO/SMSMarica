@@ -40,6 +40,7 @@ import type { AcessoCidadao } from '@/features/pacientes/api/pacientesApi';
 import type { RegistroAuditoria } from '@/features/auditoria/types';
 import { NomeCompletoVerificavel } from '@/features/pacientes/components/NomeCompletoVerificavel';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { AppCidadaoNotificacoes } from '@/features/pacientes/components/AppCidadaoNotificacoes';
 import { BotaoEnviarPesquisa } from '@/features/pacientes/components/BotaoEnviarPesquisa';
 import { SecaoConversasWhatsApp } from '@/features/pacientes/components/SecaoConversasWhatsApp';
 import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
@@ -550,8 +551,8 @@ function statusAcesso(a: AcessoCidadao): { texto: string; classe: string } {
   return { texto: 'Expirada', classe: 'bg-amber-100 text-amber-700' };
 }
 
-/** Histórico de acessos (sessões de login) do paciente ao app. */
-function SecaoAcessos({ pacienteId }: { pacienteId: string }) {
+/** Histórico de acessos (sessões de login) do paciente ao app, com as notificações em cima. */
+function SecaoAcessos({ pacienteId, nomePaciente }: { pacienteId: string; nomePaciente?: string }) {
   const q = useAcessosPaciente(pacienteId);
   const colunas: Coluna<AcessoCidadao>[] = [
     { chave: 'criadaEm', cabecalho: 'Data/hora', render: (a) => formatarDataHora(a.criadaEm) ?? '—' },
@@ -577,6 +578,7 @@ function SecaoAcessos({ pacienteId }: { pacienteId: string }) {
   ];
   return (
     <>
+      <AppCidadaoNotificacoes pacienteId={pacienteId} nomePaciente={nomePaciente} />
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
         <Smartphone className="h-4 w-4" /> Histórico de acesso ao app
       </div>
@@ -1386,7 +1388,7 @@ export function PacienteDetalhePage() {
 
           {vista === 'acessos' ? (
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <SecaoAcessos pacienteId={id} />
+              <SecaoAcessos pacienteId={id} nomePaciente={p?.nomeCompleto} />
             </div>
           ) : null}
 

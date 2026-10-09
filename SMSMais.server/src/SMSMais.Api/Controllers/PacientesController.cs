@@ -8,6 +8,8 @@ using SMSMais.Core.Auditoria;
 using SMSMais.Core.Auditoria.Dtos;
 using SMSMais.Core.Cidadao;
 using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Cidadao.Push;
+using SMSMais.Core.Cidadao.Push.Dtos;
 using SMSMais.Core.Conversas;
 using SMSMais.Core.Conversas.Dtos;
 using SMSMais.Core.Pacientes;
@@ -102,6 +104,35 @@ public sealed class PacientesController(
     [ProducesResponseType<IReadOnlyList<AcessoCidadaoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AcessoCidadaoDto>> Acessos(Guid id, CancellationToken cancellationToken) =>
         await _sessoes.ListarAcessosAsync(id, cancellationToken);
+
+    /// <summary>
+    /// App do cidadão na ficha: se o envio está configurado, os aparelhos com notificação ativa e as
+    /// 20 notificações mais recentes. Módulo próprio (não Pacientes): ver quem recebe é o primeiro
+    /// passo de mandar mensagem ao celular do cidadão.
+    /// </summary>
+    [HttpGet("{id:guid}/app-cidadao")]
+    [RequerPermissao(ModuloPermissao.NotificacaoAppCidadao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AppCidadaoStatusDto>(StatusCodes.Status200OK)]
+    public Task<AppCidadaoStatusDto> AppCidadao(
+        Guid id, [FromServices] IPushCidadaoService push, CancellationToken cancellationToken) =>
+        push.ObterStatusAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Manda uma notificação ao app do cidadão (todos os aparelhos ativos). Sempre grava o histórico
+    /// quando há aparelho; o desfecho de cada um vem na resposta. 400 sem a credencial do Firebase,
+    /// 409 se o paciente não tem o app com notificações ativas.
+    /// </summary>
+    [HttpPost("{id:guid}/app-cidadao/notificacoes")]
+    [RequerPermissao(ModuloPermissao.NotificacaoAppCidadao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<EnvioNotificacaoAppDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<EnvioNotificacaoAppDto> EnviarNotificacaoApp(
+        Guid id,
+        [FromBody] EnviarNotificacaoAppRequest request,
+        [FromServices] IPushCidadaoService push,
+        CancellationToken cancellationToken) =>
+        push.EnviarAsync(id, request, cancellationToken);
 
     /// <summary>
     /// Sessões de conversa de WhatsApp do paciente (blocos separados por 24h+ de silêncio),

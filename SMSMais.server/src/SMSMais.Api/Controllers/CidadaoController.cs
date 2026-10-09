@@ -9,6 +9,8 @@ using SMSMais.Core.Acompanhantes.Dtos;
 using SMSMais.Core.Atendimentos;
 using SMSMais.Core.Cidadao;
 using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Cidadao.Push;
+using SMSMais.Core.Cidadao.Push.Dtos;
 using SMSMais.Core.DocumentosPaciente;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Telefones;
@@ -36,7 +38,8 @@ public sealed class CidadaoController(
     ICidadaoClinicoService clinico,
     ITelefoneValidacaoService telefones,
     ITratamentosService transporte,
-    IAcompanhantesService acompanhantes) : ControllerBase
+    IAcompanhantesService acompanhantes,
+    IPushCidadaoService push) : ControllerBase
 {
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
     [HttpGet("consentimento")]
@@ -103,6 +106,22 @@ public sealed class CidadaoController(
     public async Task<IActionResult> Logout(CancellationToken ct)
     {
         if (Jti() is Guid jti) await sessoes.RevogarAsync(jti, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Registra o aparelho desta sessão para receber notificações (token do Firebase). O app chama
+    /// a cada abertura e quando o Firebase troca o token; o mesmo token em outra sessão sai de lá.
+    /// </summary>
+    [HttpPut("dispositivo")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RegistrarDispositivo(
+        [FromBody] RegistrarDispositivoRequest req, CancellationToken ct)
+    {
+        var pacienteId = PacienteId();
+        var jti = Jti() ?? throw new UnauthorizedAccessException("Token sem identificação de sessão.");
+        await push.RegistrarAparelhoAsync(pacienteId, jti, req, ct);
         return NoContent();
     }
 

@@ -284,6 +284,8 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<CidadaoAcesso> CidadaoAcessos => Set<CidadaoAcesso>();
     public DbSet<CidadaoSessao> CidadaoSessoes => Set<CidadaoSessao>();
     public DbSet<CidadaoConsentimento> CidadaoConsentimentos => Set<CidadaoConsentimento>();
+    // Histórico das notificações (push) mandadas ao app do cidadão.
+    public DbSet<CidadaoNotificacao> CidadaoNotificacoes => Set<CidadaoNotificacao>();
 
     // Trilha de auditoria de ações de usuário (append-only). Ver RegistroAuditoria.
     public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();

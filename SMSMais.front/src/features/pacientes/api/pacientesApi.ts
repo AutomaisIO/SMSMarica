@@ -49,6 +49,80 @@ export async function obterAcessos(id: string): Promise<AcessoCidadao[]> {
   return data;
 }
 
+export type PlataformaAparelho = 'android' | 'ios';
+
+/** Sessão do app ativa e com o token de notificação registrado — é ela que recebe o envio. */
+export type AparelhoAppCidadao = {
+  sessaoId: string;
+  plataforma: PlataformaAparelho;
+  registradoEm: string;
+  entrouEm: string;
+  dispositivo: string | null;
+};
+
+export type NotificacaoAppEnviada = {
+  id: string;
+  titulo: string;
+  mensagem: string;
+  rota: string | null;
+  criadaEm: string;
+  enviadaPor: string | null;
+  aparelhos: number;
+  entregues: number;
+  falha: string | null;
+};
+
+export type AppCidadaoPaciente = {
+  /** Credencial do Firebase gravada e ativa em Integrações. */
+  configurado: boolean;
+  aparelhos: AparelhoAppCidadao[];
+  /** As 20 mais recentes, recentes primeiro. */
+  notificacoes: NotificacaoAppEnviada[];
+};
+
+export type EnviarNotificacaoAppPayload = {
+  titulo: string;
+  mensagem: string;
+  /** Tela do app que o toque abre; null = Início. */
+  rota: string | null;
+};
+
+export type ResultadoAparelhoNotificacao = {
+  plataforma: PlataformaAparelho;
+  entregue: boolean;
+  detalhe: string | null;
+  /** O Firebase disse que o token morreu: o aparelho saiu da lista e não recebe mais. */
+  aparelhoRemovido: boolean;
+};
+
+export type ResultadoEnvioNotificacaoApp = {
+  notificacaoId: string;
+  aparelhos: number;
+  entregues: number;
+  resultados: ResultadoAparelhoNotificacao[];
+};
+
+export async function obterAppCidadao(id: string): Promise<AppCidadaoPaciente> {
+  const { data } = await http.get<AppCidadaoPaciente>(`/pacientes/${id}/app-cidadao`);
+  return data;
+}
+
+/**
+ * Envia a notificação a todos os aparelhos ativos do paciente. Com aparelho, o servidor sempre
+ * grava o histórico e devolve 200 com o desfecho de cada um — mesmo que nenhum tenha aceitado.
+ * Sem configuração (400) ou sem aparelho (409), nada é gravado.
+ */
+export async function enviarNotificacaoApp(
+  id: string,
+  corpo: EnviarNotificacaoAppPayload,
+): Promise<ResultadoEnvioNotificacaoApp> {
+  const { data } = await http.post<ResultadoEnvioNotificacaoApp>(
+    `/pacientes/${id}/app-cidadao/notificacoes`,
+    corpo,
+  );
+  return data;
+}
+
 /** Sessões de conversa de WhatsApp do paciente (blocos por 24h+ de silêncio), recentes primeiro. */
 export async function obterSessoesConversa(id: string): Promise<SessaoConversaPaciente[]> {
   const { data } = await http.get<SessaoConversaPaciente[]>(`/pacientes/${id}/conversas/sessoes`);

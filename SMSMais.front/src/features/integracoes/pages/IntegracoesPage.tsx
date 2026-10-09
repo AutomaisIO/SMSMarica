@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, KeySquare, Loader2, Settings2, Sparkles } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useTemConsulta } from '@/shared/auth/authStore';
+import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { useCredenciais } from '@/features/integracoes/api';
 import { CredencialOAuthCard } from '@/features/integracoes/components/CredencialOAuthCard';
 import {
@@ -9,6 +10,7 @@ import {
   PROVEDOR_SPACES,
 } from '@/features/integracoes/components/DigitalOceanSpacesCard';
 import { ElevenLabsCard } from '@/features/integracoes/components/ElevenLabsCard';
+import { FirebaseCard, PROVEDOR_FCM } from '@/features/integracoes/components/FirebaseCard';
 import { GoogleMapsCard } from '@/features/integracoes/components/GoogleMapsCard';
 import { NavigationSdkCard } from '@/features/integracoes/components/NavigationSdkCard';
 import { ProxyServicoSection } from '@/features/integracoes/components/ProxyServicoSection';
@@ -39,11 +41,25 @@ export function IntegracoesPage() {
   const podeVerProxy = useTemConsulta('IntegracoesConfig');
 
   // O Spaces (S3) tem card próprio (Access/Secret Key + endpoint/region/bucket),
-  // então é separado da lista genérica de provedores OAuth.
+  // então é separado da lista genérica de provedores OAuth. O Firebase também: o segredo é um
+  // JSON de conta de serviço, não um par client id/secret.
   const lista = credenciais.data ?? [];
   const credsOauth = lista.filter(
-    (c) => c.provedor !== PROVEDOR_SPACES && c.provedor !== PROVEDOR_SISREG && c.provedor !== PROVEDOR_ESUS_PEC,
+    (c) =>
+      c.provedor !== PROVEDOR_SPACES &&
+      c.provedor !== PROVEDOR_SISREG &&
+      c.provedor !== PROVEDOR_ESUS_PEC &&
+      c.provedor !== PROVEDOR_FCM,
   );
+  const credFcm = lista.find((c) => c.provedor === PROVEDOR_FCM) ?? {
+    provedor: PROVEDOR_FCM,
+    rotulo: 'Firebase Cloud Messaging (notificações do app do cidadão)',
+    clientIdDefinido: false,
+    clientSecretDefinido: false,
+    redirectUri: null,
+    parametrosJson: null,
+    ativo: false,
+  };
   const credEsusPec = lista.find((c) => c.provedor === PROVEDOR_ESUS_PEC) ?? {
     provedor: PROVEDOR_ESUS_PEC,
     rotulo: 'e-SUS APS PEC (cadastro do cidadão)',
@@ -78,6 +94,7 @@ export function IntegracoesPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900">
           <Settings2 className="h-6 w-6 text-primary-600" />
           Integrações & credenciais
+          <AjudaManual artigo="integracoes" />
         </h1>
         <p className="mt-1 text-sm text-gray-600">
           Tokens e chaves dos provedores externos. Tudo é gravado de forma cifrada e nunca exibido de
@@ -103,6 +120,15 @@ export function IntegracoesPage() {
           {credsOauth.map((c) => (
             <CredencialOAuthCard key={c.provedor} cred={c} />
           ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Notificações do app do cidadão
+        </h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <FirebaseCard cred={credFcm} />
         </div>
       </section>
 

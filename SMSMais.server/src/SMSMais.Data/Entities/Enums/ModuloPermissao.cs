@@ -381,4 +381,14 @@ public enum ModuloPermissao
     /// versão e revogar computador. Baixar o instalador e autorizar o próprio computador NÃO pedem
     /// este módulo: basta estar logado (mesma regra do envio das capturas).</summary>
     ExtensaoNavegador = 80,
+
+    /// <summary>Notificação (push) no app do cidadão, pela ficha do paciente: ver os aparelhos com
+    /// as notificações ativas e o histórico de envios, e mandar uma mensagem que aparece na tela do
+    /// celular dele.
+    /// <para>Módulo próprio, e não uma ação de <see cref="Pacientes"/>, pelo mesmo motivo de
+    /// <see cref="PesquisaSatisfacao"/>: a operação <b>manda mensagem para o cidadão</b>, e quem
+    /// consulta o cadastro não deveria, por isso, poder escrever no celular dele.</para>
+    /// <para><c>Consulta</c> = ver aparelhos e histórico; <c>Edicao</c> = enviar. Sem item de menu:
+    /// vive na ficha do paciente.</para></summary>
+    NotificacaoAppCidadao = 81,
 }

@@ -13,6 +13,7 @@ import { artigoExtensaoChrome } from '@/features/manual/conteudo/extensaoChrome'
 import { artigoExtensaoChromeGerenciar } from '@/features/manual/conteudo/extensaoChromeGerenciar';
 import { artigoFluxoAtendimentoWhatsApp } from '@/features/manual/conteudo/fluxoAtendimentoWhatsApp';
 import { artigoIndicadoresRegulacao } from '@/features/manual/conteudo/indicadoresRegulacao';
+import { artigoIntegracoes } from '@/features/manual/conteudo/integracoes';
 import { artigoMensageria } from '@/features/manual/conteudo/mensageria';
 import { artigoMotoristas } from '@/features/manual/conteudo/motoristas';
 import { artigoNotificacoesRegulacao } from '@/features/manual/conteudo/notificacoesRegulacao';
@@ -108,6 +109,7 @@ export const ARTIGOS: Artigo[] = [
   artigoFluxoAtendimentoWhatsApp,
   artigoEnvioMensagens,
   artigoIndicadoresRegulacao,
+  artigoIntegracoes,
   artigoMensageria,
   artigoMotoristas,
   artigoNotificacoesRegulacao,

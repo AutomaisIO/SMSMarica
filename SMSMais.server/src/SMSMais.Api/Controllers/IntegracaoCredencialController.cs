@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Armazenamento;
+using SMSMais.Core.Cidadao.Push;
+using SMSMais.Core.Cidadao.Push.Dtos;
 using SMSMais.Core.Integracoes.Credenciais;
 using SMSMais.Core.Integracoes.Credenciais.Dtos;
 using SMSMais.Data.Entities.Enums;
@@ -63,4 +65,17 @@ public sealed class IntegracaoCredencialController(IIntegracaoCredencialService 
         [FromServices] ArmazenamentoSpaces spaces,
         CancellationToken cancellationToken)
         => await spaces.TestarAsync(cancellationToken);
+
+    /// <summary>
+    /// Testa a credencial do Firebase (notificações do app do cidadão): pede um access token novo
+    /// ao Google com a conta de serviço gravada e faz um envio de validação (<c>validate_only</c>,
+    /// para um tópico — não entrega a ninguém). Sempre 200 — o desfecho vem no corpo.
+    /// </summary>
+    [HttpPost("fcm/testar")]
+    [RequerPermissao(ModuloPermissao.IntegracoesConfig, AcoesPermissao.Edicao)]
+    [ProducesResponseType<TesteCredencialFcmDto>(StatusCodes.Status200OK)]
+    public async Task<TesteCredencialFcmDto> TestarFcm(
+        [FromServices] IPushCidadaoService push,
+        CancellationToken cancellationToken)
+        => await push.TestarCredencialAsync(cancellationToken);
 }
