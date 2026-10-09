@@ -3,6 +3,7 @@ using SMSMais.Core.Common.Dtos;
 using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Ser.Dtos;
+using SMSMais.Core.Sernit;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Regulacao.EnvioSer;
@@ -101,6 +102,60 @@ public class PacienteNaTelaTests
 
         m.Campos.Single(c => c.Campo == "form0:nomeMae").Valor.Should().HaveLength(50);
         m.Avisos.Should().ContainSingle(a => a.Contains("mãe"));
+    }
+
+    /// <summary>
+    /// A marcação do painel na aba real do SERNIT (09/10/2026, valores trocados): o <c>*</c> é um
+    /// <c>span.required</c> IRMÃO do rótulo. Lido como opcional, Município e Telefone Celular iam vazios
+    /// ao Gravar e o SERNIT recusava (PR-23).
+    /// </summary>
+    [Fact]
+    public void Painel_do_SERNIT_marca_obrigatorio_pelo_asterisco_ao_lado_do_rotulo()
+    {
+        const string html = """
+            <div id="form0:painelDadosDoPaciente"><span id="form0:renderizacaoPaciente"><table><tr>
+              <td><label>Nome</label><span id="form0:j_id107" class="required" style="color:red">*</span>
+                <br /><input id="form0:nome" type="text" name="form0:nome" value="FULANA DE TAL" disabled="disabled" /></td>
+              <td><label>Logradouro</label><span id="form0:j_id130" class="required">*</span>
+                <br /><input id="form0:logradouro" type="text" name="form0:logradouro" value="RUA A" /></td>
+              <td><label>CEP</label><br /><input id="form0:cep" name="form0:cep" type="text" value="" /></td>
+              <td><label>UF</label><span id="form0:j_id137" class="required">*</span>
+                <br /><select id="form0:uf" name="form0:uf"><option value="58" selected="selected">RIO DE JANEIRO</option></select></td>
+              <td><div id="form0:div-municipio"><label>Munic&iacute;pio</label><span id="form0:j_id145" class="required">*</span>
+                <br /><select id="form0:municipio" name="form0:municipio"></select></div></td>
+              <td><label>Telefone Residencial</label><br /><input id="form0:j_id152" name="form0:j_id152" type="text" value="" /></td>
+              <td><label>Telefone Celular</label><span id="form0:j_id154" class="required">*</span>
+                <br /><input id="form0:j_id157" name="form0:j_id157" type="text" value="" /></td>
+            </tr></table></span></div>
+            """;
+
+        var campos = SernitNovaSolicitacaoService.CamposDoPaciente(html).ToDictionary(c => c.Rotulo);
+
+        campos.Where(c => c.Value.Obrigatorio).Select(c => c.Key)
+            .Should().BeEquivalentTo("Nome", "Logradouro", "UF", "Município", "Telefone Celular");
+        campos["Município"].Valor.Should().BeNull();
+        campos["Telefone Celular"].Editavel.Should().BeTrue();
+        campos["Nome"].Editavel.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Celular_sem_celular_no_cadastro_cai_no_verificado()
+    {
+        var p = Paciente(celular: "(21) 2637-1234") with { TelefoneVerificado = "5521998765432" };
+
+        PacienteNaTela.Celular(p).Should().Be("(21)99876-5432", "fixo não serve para o campo de celular");
+    }
+
+    [Fact]
+    public void Numero_negado_nunca_vai_como_celular()
+    {
+        var p = Paciente(celular: "+55 21 99876-5432") with
+        {
+            TelefoneVerificado = "21991112222",
+            TelefoneNegado = "5521998765432",
+        };
+
+        PacienteNaTela.Celular(p).Should().Be("(21)99111-2222", "o SERNIT avisa o paciente por esse número");
     }
 
     [Theory]

@@ -479,7 +479,13 @@ public sealed partial class SernitNovaSolicitacaoService(
     }
 
     /// <summary>Cadastro do paciente que o SERNIT devolveu. Campo <c>disabled</c>/<c>readonly</c> não
-    /// é editável (a identidade é travada). <b>Caveat: painel/campos não verificados no lab.</b></summary>
+    /// é editável (a identidade é travada).
+    ///
+    /// <para>Cada campo mora numa célula <c>&lt;td&gt;&lt;label&gt;Rótulo&lt;/label&gt;&lt;span
+    /// class="required"&gt;*&lt;/span&gt;&lt;br/&gt;&lt;input/&gt;</c>: o asterisco é IRMÃO do rótulo,
+    /// não fica dentro dele (medido na aba real, 09/10/2026). Procurá-lo dentro do <c>label</c> dava
+    /// todo campo como opcional — e a PR-23 foi ao Gravar sem Município e sem Telefone Celular, que
+    /// o SERNIT exige.</para></summary>
     internal static List<SernitCampoPacienteDto> CamposDoPaciente(string html)
     {
         var doc = SernitHtmlParser.Documento(html);
@@ -496,7 +502,7 @@ public sealed partial class SernitNovaSolicitacaoService(
             if (tipoHtml is "hidden" or "submit" or "button" or "image" or "reset") continue;
 
             var label = el.ParentElement?.QuerySelector("label");
-            var obrigatorio = label?.QuerySelector("span.required") is not null;
+            var obrigatorio = el.ParentElement?.QuerySelector("span.required") is not null;
             var rotulo = Espremer(label?.TextContent ?? string.Empty).Replace("*", string.Empty).Trim(' ', ':');
 
             var ehSelect = string.Equals(el.TagName, "select", StringComparison.OrdinalIgnoreCase);
