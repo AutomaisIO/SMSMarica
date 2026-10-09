@@ -185,7 +185,7 @@ o form "Adicionar Novo" **não tem campo de CRM/Documento** e a validação JS e
 
 ---
 
-## 5. `Automais.SERNIT` — 18 scripts, **nenhum commitado**
+## 5. `Automais.SERNIT` — 19 scripts, **nenhum commitado**
 
 Laboratório em recon. As sondas são **numeradas na ordem em que foram feitas** — leia nessa ordem
 para entender o sistema:
@@ -196,7 +196,10 @@ para entender o sistema:
 `probe_campos_dinamicos.py` (9) → `probe_cid.py` (10) → `probe_judicial.py` (11, mandado judicial por
 situação com busca de CONTROLE — zero em 30/09/2026) → `probe_totais.py` (12, total REAL por
 situação para conferir o espelho `sernit_solicitacao`; não rodar com a varredura do servidor viva) →
-`probe_diag_varredura.py` (13, paginação × data final — levou ao achado da página 1 perdida, §9 do APRENDIZADOS)
+`probe_diag_varredura.py` (13, paginação × data final — levou ao achado da página 1 perdida, §9 do APRENDIZADOS) →
+`probe_medico_modal.py` (14, 09/10/2026, só leitura: aba Nova → combo "Médico responsável" filtrado por
+termos → clica `form0:addMedico` como o navegador e lê o modal. Respondeu: modal igual ao do SER —
+`txtNome`, tipo de documento com CRM, `txtDocumento`, especialidade; Gravar e ícone com `_viewRoot`)
 
 **Diagnóstico:** `probe_diag_editar.py`, `probe_diag_xrw.py` (o `X-Requested-With` num submit
 não-ajax faz o A4J devolver a tela errada), `probe_busca_id.py`, `probe_carry.py`, `probe_fix.py`,
