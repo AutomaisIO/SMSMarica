@@ -55,6 +55,14 @@ estiver presente** (valor = id da região/form). Sem ele o WildFly trata o POST 
 postback comum, re-renderiza a mesma página e **a ação nem roda** — HTTP 200, sem
 erro nenhum. É a falha mais difícil de diagnosticar do SER.
 
+**O valor que o navegador manda** (conferido no `framework.pack.js` do SER em 09/10/2026): o
+`onclick` é `A4J.AJAX.Submit('form0', event, {opções})` — o **primeiro argumento é o form**, não a
+região — e o `A4J.Query` faz `AJAXREQUEST = opções.containerId || "_viewRoot"`. Botão sem
+`containerId` nas opções (o caso de quase todos na tela de criação) manda **`_viewRoot`**. O SER
+também aceita o id do form (é com `form0` que o Gravar e o "Anexar Arquivo" da criação criaram as
+solicitações reais PR-20 e PR-22, e assim ficaram), mas o cadastro de médico pelo modal "Adicionar
+Médico" manda exatamente o do navegador (`SerCriacaoSolicitacao.RegiaoComoNavegador`).
+
 Com ele, a resposta vira:
 
 ```

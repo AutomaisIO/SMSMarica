@@ -25,7 +25,7 @@ public class EnvioSerMedicoNovoTests
         + "<select name=\"form0:medicoResp\" size=\"1\"><option value=\"\">Selecione</option>"
         + string.Concat(medicos.Select((m, i) => $"<option value=\"{i}\">{m}</option>"))
         + "</select>"
-        + "<a href=\"#\" id=\"form0:addMedico\" name=\"form0:addMedico\" onclick=\"A4J.AJAX.Submit('form0',event,{'similarityGroupingId':'form0:addMedico','parameters':{'form0:addMedico':'form0:addMedico'} } );return false;\" title=\"Adicionar m&eacute;dico\"><img src=\"/ser/images/ser/ico_Incluir_On.gif\" /></a>"
+        + "<a href=\"#\" id=\"form0:addMedico\" name=\"form0:addMedico\" onclick=\"A4J.AJAX.Submit('form0',event,{'similarityGroupingId':'form0:addMedico','oncomplete':function(request,event,data){document.getElementById('modalAdicionarMedico').component.show()},'parameters':{'form0:addMedico':'form0:addMedico'} } );return false;\" title=\"Adicionar m&eacute;dico\"><img src=\"/ser/images/ser/ico_Incluir_On.gif\" /></a>"
         + "<a href=\"#\" id=\"form0:j_id313\" title=\"Gravar\" onclick=\"A4J.AJAX.Submit('form0',event,{});return false;\">Gravar</a>"
         + "<input type=\"hidden\" name=\"javax.faces.ViewState\" value=\"j_id6\" />"
         + "</form>"
@@ -38,7 +38,7 @@ public class EnvioSerMedicoNovoTests
         + "<input id=\"formModalAdicionarMedico:txtDocumento\" type=\"text\" name=\"formModalAdicionarMedico:txtDocumento\" />"
         + "<select name=\"formModalAdicionarMedico:j_id349\" size=\"1\"><option value=\"936\">OFTALMOLOGIA - PALPEBRAS E VIAS LACRIMAIS</option>"
         + "<option value=\"937\">ONCOLOGIA</option><option value=\"943\">ONCOLOGIA - MASTOLOGIA</option></select>"
-        + "<input id=\"formModalAdicionarMedico:j_id352\" name=\"formModalAdicionarMedico:j_id352\" onclick=\"A4J.AJAX.Submit('formModalAdicionarMedico',event,{'similarityGroupingId':'formModalAdicionarMedico:j_id352'});return false;\" value=\"Gravar\" type=\"button\" />"
+        + "<input id=\"formModalAdicionarMedico:j_id352\" name=\"formModalAdicionarMedico:j_id352\" onclick=\"A4J.AJAX.Submit('formModalAdicionarMedico',event,{'similarityGroupingId':'formModalAdicionarMedico:j_id352','oncomplete':function(request,event,data){if (data == null) document.getElementById('modalAdicionarMedico').component.hide();},'parameters':{'formModalAdicionarMedico:j_id352':'formModalAdicionarMedico:j_id352'} } );return false;\" value=\"Gravar\" type=\"button\" />"
         + "<input id=\"formModalAdicionarMedico:j_id353\" name=\"formModalAdicionarMedico:j_id353\" value=\"Cancelar\" type=\"button\" />"
         + "<input type=\"hidden\" name=\"javax.faces.ViewState\" value=\"j_id6\" />"
         + "</form></body></html>";
@@ -100,8 +100,11 @@ public class EnvioSerMedicoNovoTests
             opcoes => opcoes.FirstOrDefault(o => o.Rotulo == "ONCOLOGIA"),
             "cadastrar o médico RAFAELA ROCHA BEDRAN (teste)", CancellationToken.None);
 
-        transporte.Leituras.Should().Contain(l => l.Form == "form0" && l.Extras.ContainsKey(SerCriacaoSolicitacao.AbrirModalMedico),
-            "o ícone abre o modal como o clique — e passa pela trava de somente-leitura");
+        var abrir = transporte.Leituras.Should().ContainSingle(l => l.Extras.ContainsKey(SerCriacaoSolicitacao.AbrirModalMedico),
+            "o ícone abre o modal como o clique — e passa pela trava de somente-leitura").Subject;
+        abrir.Form.Should().Be("form0");
+        abrir.Extras["AJAXREQUEST"].Should().Be("_viewRoot",
+            "o onclick do ícone não declara containerId — o A4J do navegador manda _viewRoot");
         var escrita = transporte.Escritas.Should().ContainSingle().Subject;
         escrita.Form.Should().Be(SerCriacaoSolicitacao.FormModalMedico, "o Gravar é o DO MODAL, nunca o de form0");
         escrita.Extras.Should().ContainKey("formModalAdicionarMedico:j_id352");
@@ -110,9 +113,19 @@ public class EnvioSerMedicoNovoTests
         escrita.Extras["formModalAdicionarMedico:j_id345"].Should().Be("CRM");
         escrita.Extras[SerCriacaoSolicitacao.CampoModalDocumento].Should().Be("5201216066");
         escrita.Extras["formModalAdicionarMedico:j_id349"].Should().Be("937");
-        escrita.Extras["AJAXREQUEST"].Should().Be("formModalAdicionarMedico");
+        escrita.Extras["AJAXREQUEST"].Should().Be("_viewRoot",
+            "é o que o clique no Gravar do modal manda: o 1º argumento do A4J.AJAX.Submit é o form, não a região");
         motor.EscritaAcionada.Should().BeTrue();
         motor.Combo(SerCriacaoSolicitacao.CampoMedico).Select(o => o.Rotulo).Should().Contain("RAFAELA ROCHA BEDRAN");
+    }
+
+    [Theory]
+    [InlineData("<input id=\"f:b\" name=\"f:b\" onclick=\"A4J.AJAX.Submit('f',event,{'similarityGroupingId':'f:b'});return false;\" type=\"button\" />", "_viewRoot")]
+    [InlineData("<input id=\"f:b\" name=\"f:b\" onclick=\"A4J.AJAX.Submit('f',event,{'containerId':'f:regiao','similarityGroupingId':'f:b'});return false;\" type=\"button\" />", "f:regiao")]
+    [InlineData("<span>sem o controle</span>", "_viewRoot")]
+    public void Regiao_como_o_navegador_e_o_containerId_ou_viewRoot(string html, string esperada)
+    {
+        SerCriacaoSolicitacao.RegiaoComoNavegador(html, "f:b").Should().Be(esperada);
     }
 
     [Fact]

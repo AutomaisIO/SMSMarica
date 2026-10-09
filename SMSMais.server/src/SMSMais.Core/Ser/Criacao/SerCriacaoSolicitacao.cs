@@ -341,7 +341,7 @@ public sealed partial class SerCriacaoSolicitacao(
         var cliqueAbrir = new Dictionary<string, string>(_escolhas, StringComparer.Ordinal)
         {
             [AbrirModalMedico] = AbrirModalMedico,
-            ["AJAXREQUEST"] = RegiaoDoControle(Html, AbrirModalMedico) ?? Form,
+            ["AJAXREQUEST"] = RegiaoComoNavegador(Html, AbrirModalMedico),
         };
         await PostarLeituraAsync(cliqueAbrir, ct);
 
@@ -368,7 +368,7 @@ public sealed partial class SerCriacaoSolicitacao(
             [CampoModalDocumento] = tipo is null ? string.Empty : numeroDocumento!.Trim(),
             [modal.CampoEspecialidade] = especialidade.Valor,
             [gravar] = gravar,
-            ["AJAXREQUEST"] = RegiaoDoControle(Html, gravar) ?? FormModalMedico,
+            ["AJAXREQUEST"] = RegiaoComoNavegador(Html, gravar),
         };
         if (modal.CampoTipoDocumento is { } campoTipo && tipo is not null) extras[campoTipo] = tipo;
 
@@ -569,7 +569,27 @@ public sealed partial class SerCriacaoSolicitacao(
         return null;
     }
 
-    /// <summary>A região A4J que o <c>onclick</c> do controle declara — <c>&lt;a&gt;</c> ou <c>&lt;input&gt;</c>.</summary>
+    /// <summary>
+    /// O <c>AJAXREQUEST</c> que o NAVEGADOR manda ao clicar no controle. No RichFaces 3.3 o
+    /// <c>onclick</c> é <c>A4J.AJAX.Submit('form', event, {opções})</c> e o <c>A4J.Query</c> do
+    /// <c>framework.pack.js</c> do SER faz <c>AJAXREQUEST = opções.containerId || "_viewRoot"</c> — o
+    /// primeiro argumento é o FORM, não a região. Os controles do modal "Adicionar Médico" não declaram
+    /// <c>containerId</c>, então o clique do técnico manda <c>_viewRoot</c>; é o que se manda aqui.
+    /// </summary>
+    internal static string RegiaoComoNavegador(string html, string id)
+    {
+        var m = Regex.Match(html, "<(a|input)[^>]*(id|name)=\"" + Regex.Escape(id) + "\"[^>]*>",
+            RegexOptions.None, TimeSpan.FromSeconds(2));
+        var g = m.Success ? Regex.Match(m.Value, @"'containerId'\s*:\s*'([^']+)'") : Match.Empty;
+        return g.Success ? g.Groups[1].Value : RegiaoViewRoot;
+    }
+
+    /// <summary>
+    /// O FORM que o <c>onclick</c> do controle submete (primeiro argumento do <c>A4J.AJAX.Submit</c>).
+    /// O Gravar e o "Anexar Arquivo" de <c>form0</c> mandam isto como <c>AJAXREQUEST</c> — o navegador
+    /// mandaria <c>_viewRoot</c> (<see cref="RegiaoComoNavegador"/>), mas é com o form que as
+    /// solicitações reais já foram criadas no SER (PR-20, PR-22); não se troca comportamento provado.
+    /// </summary>
     internal static string? RegiaoDoControle(string html, string id)
     {
         var m = Regex.Match(html, "<(a|input)[^>]*(id|name)=\"" + Regex.Escape(id) + "\"[^>]*>",

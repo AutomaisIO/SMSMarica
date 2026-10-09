@@ -19,6 +19,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -56,8 +59,10 @@ li{margin:3px 0}p,li{max-width:75ch}
 </tbody></table></div>
 <h3>3.1 A armadilha do <code>AJAXREQUEST</code></h3>
 <p>O Ajax4JSF <strong>só reconhece a requisição como AJAX se o parâmetro <code>AJAXREQUEST</code> estiver presente</strong> (valor = id da região/form). Sem ele o WildFly trata o POST como postback comum, re-renderiza a mesma página e <strong>a ação nem roda</strong> — HTTP 200, sem erro nenhum. É a falha mais difícil de diagnosticar do SER.</p>
+<p><strong>O valor que o navegador manda</strong> (conferido no <code>framework.pack.js</code> do SER em 09/10/2026): o <code>onclick</code> é <code>A4J.AJAX.Submit('form0', event, {opções})</code> — o <strong>primeiro argumento é o form</strong>, não a região — e o <code>A4J.Query</code> faz <code>AJAXREQUEST = opções.containerId || "_viewRoot"</code>. Botão sem <code>containerId</code> nas opções (o caso de quase todos na tela de criação) manda <strong><code>_viewRoot</code></strong>. O SER também aceita o id do form (é com <code>form0</code> que o Gravar e o "Anexar Arquivo" da criação criaram as solicitações reais PR-20 e PR-22, e assim ficaram), mas o cadastro de médico pelo modal "Adicionar Médico" manda exatamente o do navegador (<code>SerCriacaoSolicitacao.RegiaoComoNavegador</code>).</p>
 <p>Com ele, a resposta vira:</p>
-<p>``<code> ajax-response: redirect location: /ser/pages/principal.seam?cid=16273 </code>``</p>
+<pre><code>ajax-response: redirect
+location: /ser/pages/principal.seam?cid=16273</code></pre>
 <h3>3.2 A armadilha do ViewState por form</h3>
 <p>A home tem vários <code>&lt;form&gt;</code>, e o <code>javax.faces.ViewState</code> <strong>pode diferir entre eles</strong>. Pegar o primeiro do documento faz o JSF restaurar a view errada — mesmo sintoma silencioso. Sempre extrair o ViewState <strong>de dentro do form que está sendo submetido</strong>.</p>
 <h3>3.3 A armadilha do destino do POST (a pior de todas)</h3>
@@ -126,7 +131,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ul>
 <h4>A armadilha da busca que não devolve o resultado</h4>
 <p><strong>O POST do <code>btnSearch</code> responde ~267 bytes</strong>, e não a grade:</p>
-<p>``<code>xml &lt;meta name="Ajax-Response" content="redirect" /&gt; &lt;meta name="Location" content="/ser/pages/.../historico-pesquisar.seam?cid=25509" /&gt; </code>``</p>
+<pre><code>&lt;meta name="Ajax-Response" content="redirect" /&gt;
+&lt;meta name="Location" content="/ser/pages/.../historico-pesquisar.seam?cid=25509" /&gt;</code></pre>
 <p>É o <strong>mesmo redirect A4J embutido no corpo</strong> que a tela de histórico usa (§5), apontando para a própria tela com o <code>?cid</code> da conversa Seam. <strong>O resultado só existe na página de destino.</strong> Quem parseia os 267 bytes encontra grade vazia, nenhuma mensagem e nenhum aviso de corte — e conclui <em>"recorte vazio, cobertura completa"</em>. Custou uma noite em 06/08/2026, com três hipóteses erradas pelo caminho (data, tipo e unidade solicitante).</p>
 <h4>O filtro de Solicitante NÃO funciona por texto — o protocolo da amarração (resolvido 07/08/2026)</h4>
 <p><strong>O SER amarra a unidade solicitante no servidor, durante a ida-e-volta do autocomplete.</strong> Mandar o texto no campo do submit não filtra nada — o texto é decorativo.</p>
@@ -216,7 +222,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>Sem aviso escrito de corte.</strong> A caixa <code>form0:messages</code> volta vazia mesmo com a ALTA estourando. O único sinal é o lote voltar <strong>cheio</strong>, e o motor trata lote cheio como cortado: é inferência, mas na direção segura — no máximo fatia à toa. Concluir "completo" de um lote cheio é que seria a perda invisível de novo.</p>
 <h2>5. Tela de histórico</h2>
 <p>Chega por redirect A4J embutido no corpo (não no header):</p>
-<p>``<code>html &lt;meta name="Location" content="/ser/pages/consultas-exames/solicitacao/solicitar-consulta-historico.seam?cid=16453" /&gt; </code>``</p>
+<pre><code>&lt;meta name="Location" content="/ser/pages/consultas-exames/solicitacao/solicitar-consulta-historico.seam?cid=16453" /&gt;</code></pre>
 <p>Dois blocos:</p>
 <ul>
 <li><strong>Dados do paciente</strong> — inputs <em>readonly</em> com id volátil. Parsear pelo <code>&lt;label&gt;</code> do</li>
@@ -256,10 +262,17 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>3. Gravar do modal</td><td><strong>POST comum</strong>, no <code>action</code> do form do modal</td></tr>
 </tbody></table></div>
 <p>O POST do passo 3 tem <strong>cinco campos</strong>:</p>
-<p>``<code> &lt;form&gt;                = &lt;form&gt;          # marcador do form, como sempre no JSF &lt;form&gt;:&lt;textarea&gt;     = &lt;observação&gt; &lt;form&gt;:&lt;gravar&gt;       = Gravar autoScroll            = javax.faces.ViewState = &lt;o ViewState DE DENTRO desse form&gt; </code>``</p>
+<pre><code>&lt;form&gt;                = &lt;form&gt;          # marcador do form, como sempre no JSF
+&lt;form&gt;:&lt;textarea&gt;     = &lt;observação&gt;
+&lt;form&gt;:&lt;gravar&gt;       = Gravar
+autoScroll            =
+javax.faces.ViewState = &lt;o ViewState DE DENTRO desse form&gt;</code></pre>
 <p>Medido em 18/08/2026: form <code>j_id175</code>, textarea <code>j_id175:j_id183</code>, Gravar <code>j_id175:j_id185</code>, Cancelar <code>j_id175:j_id186</code>, item do menu <code>form0:listagem:0:j_id169</code>. <strong>Todos posicionais</strong> — o item do menu se acha pelo texto, o form pelo textarea + botão <em>Gravar</em> que ele contém.</p>
 <p><strong>"FollowUp registrado!" não é prova</strong> — é a lição de 10/08/2026 com a Hipótese, que respondeu sucesso e não gravou nada. A conferência é pelo <strong>Histórico</strong>, e o evento tem esta cara:</p>
-<p>``<code> 18/08/2026 13:03:51 · FollowUP · Agendada -&gt; Agendada CREG-METROPOLITANA II · HOSPITAL UNIVERSITARIO ANTONIO PEDRO (UFF HUAP) BERNARDO DOS SANTOS LEITE ALMEIDA · Gestor: GESTOR SMS MARICA · &lt;IP&gt; "Registramos que o contato com a paciente já foi realizado, e a mesma informa que poderá comparecer." </code>``</p>
+<pre><code>18/08/2026 13:03:51 · FollowUP · Agendada -&gt; Agendada
+CREG-METROPOLITANA II · HOSPITAL UNIVERSITARIO ANTONIO PEDRO (UFF HUAP)
+BERNARDO DOS SANTOS LEITE ALMEIDA · Gestor: GESTOR SMS MARICA · &lt;IP&gt;
+"Registramos que o contato com a paciente já foi realizado, e a mesma informa que poderá comparecer."</code></pre>
 <p>&gt; <strong>Correção a uma regra registrada.</strong> <code>docs/ser-continuacao.md §3</code> diz <em>"FollowUP é Em fila -&gt; &gt; Em fila"</em>. O certo é que o FollowUP <strong>preserva a situação, qualquer que ela seja</strong> — o caso &gt; medido foi <code>Agendada -&gt; Agendada</code>. A consequência prática não muda: FollowUP <strong>nunca</strong> aparece &gt; num diff de grade, então só a leitura do histórico o revela.</p>
 <p><strong>O evento carrega o usuário logado</strong> (nome completo) e a lotação (<code>Gestor: GESTOR SMS MARICA</code>). Como a integração usa uma credencial única, todo FollowUP nosso vai sair com esse nome — quem de fato pediu tem de estar no TEXTO, ou o histórico do Estado perde a autoria real.</p>
 <p>&gt; <strong>A trava de somente-leitura continua barrando isto no motor .NET</strong> — <code>registrar</code> e <code>followup</code> &gt; estão no regex, e o rótulo do botão é <em>Gravar</em>. Ligar o FollowUP é decisão explícita: exige &gt; liberar nominalmente esses componentes, como já foi feito para a troca de aba. Enquanto isso &gt; não acontecer, o caminho é a sonda <code>Automais.SER/probe_followup.py</code> (ensaio por padrão).</p>
@@ -278,6 +291,22 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>&gt; <strong>Isto NÃO altera o hub FHIR</strong> (decisão de 18/08/2026). Telefone no FHIR tem regras próprias — &gt; o marcador de verificado por OTP é a fonte única, e contato só ACUMULA (o incidente de 10/08 &gt; apagou 8.634 números num merge). O que a tela grava é o cadastro do SER e o espelho &gt; <code>ser_solicitacao</code>. Efeito colateral consciente: como espelho e SER passam a bater, a varredura &gt; seguinte não vê mudança e não dispara conciliação — a alteração fica no Estado e no espelho.</p>
 <h2>11. Laboratório</h2>
 <p><code>Automais.SER/</code> (Python) continua como bancada de recon — é onde se investiga tela nova antes de portar. Não roda em produção. <code>.env</code>, <code>credenciais_ser.txt</code> e <code>capturas/</code> são gitignored (credencial e PII).</p>
+<h2>12. Indicadores de regulação — o que o SER entrega (sondado 30/09/2026, só leitura)</h2>
+<p><strong>Mandado judicial (ambulatorial).</strong> A tela de Solicitação tem o checkbox <strong>"Somente com mandado judicial"</strong> (<code>form0:j_id87</code> nesta build — resolver pelo <code>&lt;strong&gt;</code> irmão; a grade NÃO mostra ícone nem coluna de judicial, só o filtro separa). Por situação: EM_FILA 0, PENDENTE 0, AGENDADA 12, CHEGADA_NAO_CONFIRMADA 21, CANCELADA 10, CHEGADA_CONFIRMADA 103 (5 páginas = teto de 100 → fatiar por ano de solicitação via <code>form0:dtInicialSolicitacaoInputDate</code>/<code>dtFinal…</code>), ALTA 23 — <strong>169, e os 169 já estão em <code>ser_solicitacao</code></strong> (33 com solicitação nos últimos 12 meses). Falta só a marcação: uma pesquisa extra por situação na varredura basta. A tela também filtra por <strong>Data da Consulta/Exame</strong> e <strong>Data de Agendamento</strong> (<code>form0:dtInicialConsultaExameInputDate</code>, <code>form0:dtInicialAgendamentoInputDate</code>).</p>
+<p><strong>Módulo Internação (<code>goModulo('internacao')</code>) abre com a credencial de Maricá.</strong> Os outros módulos da home são <code>oncologia</code>, <code>neonatal</code> e <code>ostomizados</code>. Telas úteis:</p>
+<ul>
+<li><code>/ser/pages/internacao/historico/historico-solicitacoes-pesquisar.seam</code> — filtros Município do</li>
+</ul>
+<p>  Paciente (<code>form0:municipio</code>, MARICA = <code>40</code>), Situação (Em fila, Regulado, Chegada Confirmada/Não   Confirmada, Internado, Aguardando confirmação, Pendente, Reservado, Alta, Cancelada, Negado),   Especialidade, Solicitação Vermelha, Tipo de Leito, Data da Solicitação. Teto <strong>500</strong> (avisa).   <strong>Exportar para Excel</strong> (<code>form0:btnExport</code>, POST comum do form0 sem <code>AJAXREQUEST</code>) devolve <code>.xls</code>   com Id, Destino, Data da Solicitação, CNS, Paciente, Município, CID, Procedimento, <strong>Motivo</strong>,   Situação. Fatiando por semana: <strong>set/2025 = 725 solicitações de internação de pacientes de   Maricá</strong> (Cancelada 201, Chegada Confirmada 136, Alta 131, Chegada Não Confirmada 86, Em fila 71,   Aprovado 60…). Custo ≈ 3 req por semana.</p>
+<ul>
+<li><code>/ser/pages/internacao/solicitacao/internacao-pesquisar.seam</code> — fila de internação (Tipo de leito,</li>
+</ul>
+<p>  Urgência/Eletiva/Cirurgia Eletiva, situação) com motivos de cancelamento/recusa de reserva.</p>
+<ul>
+<li><code>/ser/pages/internacao/consulta/consumo-contrato.seam</code> — Contratado × Consumido × Saldo por</li>
+</ul>
+<p>  contrato, mas os combos vêm só com "-- TODOS --" e a pesquisa volta vazia: Maricá não é   contratante no SER.</p>
+<p>Armadilha de laboratório: no Git Bash, <code>/ser/pages/...</code> passado como argumento vira caminho do Windows e o balanceador responde <strong>503 "No server is available"</strong> — usar <code>MSYS_NO_PATHCONV=1</code>.</p>
 </main>
 </body>
 </html>
