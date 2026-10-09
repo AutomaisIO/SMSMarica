@@ -137,6 +137,64 @@ public class AnaliseRegrasEspelhoTests(PostgresFixture fixture)
         Assert.NotEqual(primeira.EntradaHash, terceira.EntradaHash);
     }
 
+    /// <summary>
+    /// Documento não decide o parecer (09/10/2026): a análise não enxerga os anexos do pedido, e a
+    /// regra do encaminhamento — que todo procedimento do SER tem — deixava tudo "a conferir".
+    /// Pergunta que pode barrar continua deixando "a conferir".
+    /// </summary>
+    [Fact]
+    public async Task Documento_fica_listado_mas_nao_decide_e_pergunta_que_barra_fica_a_conferir()
+    {
+        await using var db = fixture.CriarDbContext();
+        var (rotulo, procedimentoId, regraIdade) = await CatalogoComRegraAsync(db);
+        // Só o documento: a regra de idade sai de cena.
+        (await db.RegulacaoRegras.FirstAsync(r => r.Id == regraIdade)).Ativo = false;
+        db.RegulacaoRegras.Add(new RegulacaoRegra
+        {
+            Id = Guid.CreateVersion7(),
+            ProcedimentoId = procedimentoId,
+            Tipo = TipoRegraRegulacao.Documental,
+            Severidade = SeveridadeRegraRegulacao.Bloqueia,
+            Descricao = "Encaminhamento médico com a descrição clara e detalhada do caso.",
+            DocumentoRotulo = "Encaminhamento médico",
+            Obrigatorio = true,
+            Versao = 1,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        });
+        var pedido = Pedido(rotulo, DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-40));
+        db.EsusSgSolicitacoes.Add(pedido);
+        await db.SaveChangesAsync();
+
+        var servico = Servico(db);
+        await servico.AnalisarPendentesAsync(SistemaRegulacao.EsusSg, 100_000, CancellationToken.None);
+        var soDocumento = await db.RegulacaoAnalisesEspelho.AsNoTracking().FirstAsync(a => a.EspelhoId == pedido.Id);
+        Assert.Equal(VereditoAnaliseRegras.Apto, soDocumento.Veredito);
+        Assert.Equal(1, soDocumento.DocumentosPendentes);
+        Assert.Contains("Encaminhamento médico", soDocumento.Resumo);
+        Assert.Contains("ESUS", soDocumento.Resumo);
+
+        db.RegulacaoRegras.Add(new RegulacaoRegra
+        {
+            Id = Guid.CreateVersion7(),
+            ProcedimentoId = procedimentoId,
+            Tipo = TipoRegraRegulacao.NaoDedutivel,
+            Severidade = SeveridadeRegraRegulacao.Bloqueia,
+            Descricao = "Critérios de exclusão: Doenças psiquiátricas descompensada.",
+            Pergunta = "O paciente tem doença psiquiátrica descompensada?",
+            RespostaBloqueia = RespostaRegraRegulacao.Sim,
+            Versao = 1,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        await servico.AnalisarPendentesAsync(SistemaRegulacao.EsusSg, 100_000, CancellationToken.None);
+        var comPergunta = await db.RegulacaoAnalisesEspelho.AsNoTracking().FirstAsync(a => a.EspelhoId == pedido.Id);
+        Assert.Equal(VereditoAnaliseRegras.AConferir, comPergunta.Veredito);
+        Assert.StartsWith("Conferir: O paciente tem doença psiquiátrica", comPergunta.Resumo);
+    }
+
     [Fact]
     public async Task Pedido_sem_origem_no_catalogo_e_sem_procedimento_nao_apto()
     {

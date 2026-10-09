@@ -19,6 +19,13 @@ import {
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 
+/** Onde ficam os anexos do pedido — é lá que o documento se confere. */
+const NOME_SISTEMA_ESPELHO: Record<SistemaAnaliseEspelho, string> = {
+  ser: 'SER',
+  sernit: 'SERNIT',
+  esussg: 'ESUS',
+};
+
 const ROTULO_RESULTADO: Record<ResultadoRegraRegulacao, string> = {
   Atende: 'Atende',
   Bloqueia: 'Bloqueia',
@@ -58,9 +65,10 @@ const ROTULO_SEVERIDADE: Record<SeveridadeRegraRegulacao, string> = {
  * (SER, SERNIT ou ESUS SG).
  *
  * <p>O mesmo avaliador do assistente de Nova Solicitação, rodando com o que o espelho sabe.
- * Pergunta e documento não têm resposta aqui — viram "a conferir" quando podem travar. É um
- * parecer ao lado do pedido: nada é escrito no sistema externo, por isso "Reanalisar" pede só a
- * Consulta do módulo.</p>
+ * Pergunta não tem resposta aqui — vira "a conferir" quando pode travar. Documento não decide o
+ * parecer (09/10/2026): os anexos ficam no sistema de origem e a análise não os enxerga, então ele
+ * só aparece listado para quem regula conferir lá. É um parecer ao lado do pedido: nada é escrito
+ * no sistema externo, por isso "Reanalisar" pede só a Consulta do módulo.</p>
  */
 export function PainelAnaliseRegras({
   sistema,
@@ -103,8 +111,10 @@ export function PainelAnaliseRegras({
 
       <p className="mb-3 text-xs text-slate-500">
         Usa as mesmas regras do assistente de Nova Solicitação, com o que o espelho sabe (idade,
-        sexo, CPF, CID). Perguntas e documentos não se respondem sozinhos — quando podem travar, o
-        pedido fica “a conferir”. É um parecer ao lado do pedido: nada é escrito no sistema externo.
+        sexo, CPF, CID). Pergunta não se responde sozinha — quando pode travar, o pedido fica “a
+        conferir”. Os anexos ficam no sistema de origem e a análise não os vê: os documentos que o
+        manual exige aparecem listados para você conferir lá, sem mudar o parecer. É um parecer ao lado
+        do pedido: nada é escrito no sistema externo.
       </p>
 
       {reanalisar.isError && (
@@ -133,11 +143,7 @@ export function PainelAnaliseRegras({
               valor={r.perguntasPendentes}
               destaque={r.perguntasPendentes > 0 ? 'text-amber-700' : undefined}
             />
-            <Contador
-              rotulo="Documentos em aberto"
-              valor={r.documentosPendentes}
-              destaque={r.documentosPendentes > 0 ? 'text-amber-700' : undefined}
-            />
+            <Contador rotulo="Documentos para conferir" valor={r.documentosPendentes} />
           </dl>
 
           <div className="text-sm">
@@ -220,7 +226,8 @@ export function PainelAnaliseRegras({
           {analise.documentos.length > 0 && (
             <div>
               <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <FileText className="size-3.5" /> Documentos que a regra pede
+                <FileText className="size-3.5" /> Documentos que o manual exige — confira no{' '}
+                {NOME_SISTEMA_ESPELHO[sistema]}
               </h3>
               <ul className="list-inside list-disc space-y-0.5 text-sm text-slate-800">
                 {analise.documentos.map((d) => (

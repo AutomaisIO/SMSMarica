@@ -65,7 +65,7 @@ export const DESCRICAO_VEREDITO: Record<VereditoAnaliseRegras, string> = {
   Bloqueado:
     'Uma regra bloqueia este sistema com o dado que o pedido já tem (idade, sexo, CPF, CID).',
   AConferir:
-    'Uma regra que bloqueia depende de pergunta ou documento que só uma pessoa responde — a máquina não conclui; alguém precisa conferir.',
+    'Uma regra que bloqueia depende de uma pergunta que só uma pessoa responde — a máquina não conclui; alguém precisa conferir.',
   ComRessalva: 'Alguma regra fez ressalva — quem regula decide.',
   Apto: 'Nenhuma regra bloqueou nem fez ressalva, e nada que trave ficou em aberto.',
   SemRegras: 'O procedimento não tem regra ativa que valha para este sistema.',

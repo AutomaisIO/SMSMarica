@@ -22,7 +22,7 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
   grupo: 'regulacao',
   icone: ListChecks,
   publico: 'Quem regula ou acompanha as filas do SER, do SERNIT e do ESUS São Gonçalo',
-  atualizadoEm: '2026-10-01',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'análise',
     'análise das regras',
@@ -86,7 +86,7 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
     {
       id: 'o-que-ela-sabe',
       titulo: 'Com o que a análise trabalha',
-      busca: 'dados idade nascimento sexo cpf cid espelho pergunta documento não responde sozinho',
+      busca: 'dados idade nascimento sexo cpf cid espelho pergunta documento não responde sozinho anexos sistema de origem conferir lá',
       conteudo: (
         <>
           <P>A análise usa só o que o espelho do pedido tem:</P>
@@ -96,10 +96,14 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
             <Item>o CID do pedido, quando o sistema de origem o informa.</Item>
           </Lista>
           <P>
-            Regras que dependem de uma <strong>pergunta</strong> (“o paciente já fez tal exame?”) ou
-            de um <strong>documento</strong> (laudo, exame anterior) não têm resposta aqui — isso é
-            juízo de pessoa. Quando uma dessas regras pode travar o pedido, ele fica{' '}
+            Regras que dependem de uma <strong>pergunta</strong> (“o paciente já fez tal exame?”) não
+            têm resposta aqui — isso é juízo de pessoa. Quando uma pergunta pode travar o pedido, ele fica{' '}
             <strong>A conferir</strong>.
+          </P>
+          <P>
+            <strong>Documento não muda o parecer.</strong> Os anexos do pedido ficam no sistema de origem
+            e a análise não os vê. Os documentos que o manual exige aparecem listados no painel — e na
+            frase do parecer, quando ele sai Apto — para você conferir no SER, no SERNIT ou no ESUS.
           </P>
         </>
       ),
@@ -120,7 +124,7 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
             {
               termo: <SeloRef cor="alerta">A conferir</SeloRef>,
               descricao:
-                'Uma regra que bloqueia depende de pergunta ou documento que só uma pessoa responde. A máquina não conclui — alguém precisa conferir.',
+                'Uma regra que bloqueia depende de uma pergunta que só uma pessoa responde. A máquina não conclui — alguém precisa conferir.',
             },
             {
               termo: <SeloRef cor="alerta">Com ressalva</SeloRef>,
@@ -128,7 +132,8 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
             },
             {
               termo: <SeloRef cor="sucesso">Apto</SeloRef>,
-              descricao: 'Nenhuma regra bloqueou nem fez ressalva, e nada que trave ficou em aberto.',
+              descricao:
+                'Nenhuma regra bloqueou nem fez ressalva, e nenhuma pergunta que trave ficou em aberto. Os documentos que o manual exige vêm citados na frase, para conferir no sistema de origem.',
             },
             {
               termo: <SeloRef>Sem regras</SeloRef>,
@@ -159,7 +164,7 @@ export const artigoAnaliseRegrasEspelho: Artigo = {
               {
                 termo: 'No detalhe do pedido',
                 descricao:
-                  'O painel mostra o veredito, a frase que o decidiu, as contagens (bloqueios, ressalvas, perguntas e documentos em aberto), o procedimento do catálogo canônico, cada regra avaliada com o resultado (Atende, Bloqueia, Ressalva, Indefinido) e o motivo, as perguntas e os documentos pendentes, e quando foi analisado.',
+                  'O painel mostra o veredito, a frase que o decidiu, as contagens (bloqueios, ressalvas, perguntas em aberto e documentos para conferir), o procedimento do catálogo canônico, cada regra avaliada com o resultado (Atende, Bloqueia, Ressalva, Indefinido) e o motivo, as perguntas e os documentos pendentes, e quando foi analisado.',
               },
             ]}
           />
