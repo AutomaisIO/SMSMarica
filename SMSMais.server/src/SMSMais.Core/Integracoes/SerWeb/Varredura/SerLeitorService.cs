@@ -122,7 +122,7 @@ public sealed class SerLeitorService(
         if (filtro.Tipo is { } tipo) extras[CampoTipo] = SerCodigos.Codigo(tipo);
         if (filtro.DataSolicitacaoInicio is { } di) extras[CampoDataInicio] = Br(di);
         if (filtro.DataSolicitacaoFim is { } df) extras[CampoDataFim] = Br(df);
-        if (!string.IsNullOrWhiteSpace(filtro.Cpf)) extras[CampoCpf] = filtro.Cpf!;
+        if (!string.IsNullOrWhiteSpace(filtro.Cpf)) extras[CampoCpf] = CpfComoATela(filtro.Cpf!);
         if (!string.IsNullOrWhiteSpace(filtro.Nome)) extras[CampoNome] = filtro.Nome!;
         if (!string.IsNullOrWhiteSpace(filtro.Cns)) extras[CampoCns] = filtro.Cns!;
         if (!string.IsNullOrWhiteSpace(filtro.IdSolicitacao)) extras[CampoIdSolicitacao] = filtro.IdSolicitacao!;
@@ -540,4 +540,16 @@ public sealed class SerLeitorService(
     }
 
     private static string Br(DateOnly d) => d.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// O campo CPF da pesquisa tem máscara <c>999.999.999-99</c> e o SER compara o texto como veio:
+    /// só dígitos devolve ZERO linhas, sem erro. Medido em 09/10/2026 (PR-17): o mesmo pedido Em fila
+    /// achado pelo CPF pontuado, pelo CNS e pelo ID, e não pelo CPF cru — e a crítica de "pedido
+    /// parecido" do envio deixou passar um pedido ativo. Mandamos como o navegador manda.
+    /// </summary>
+    internal static string CpfComoATela(string cpf)
+    {
+        var d = new string(cpf.Where(char.IsAsciiDigit).ToArray());
+        return d.Length == 11 ? $"{d[..3]}.{d[3..6]}.{d[6..9]}-{d[9..]}" : cpf;
+    }
 }

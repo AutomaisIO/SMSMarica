@@ -430,6 +430,10 @@ public sealed partial class RegulacaoEnvioSerService(
                     "ser.gravar",
                     recusou
                         ? $"O {ctx.Nome} recusou o pedido: \"{mensagem}\". Nada foi criado lá."
+                          + (RegexPedidoAtivo().IsMatch(mensagem)
+                              ? $" Se o pedido que já está no {ctx.Nome} é este mesmo caso, use \"Registrar número "
+                                + "(já está no sistema)\" com o número dele."
+                              : string.Empty)
                         : $"O {ctx.Nome} não devolveu o número da solicitação"
                           + (mensagem.Length > 0 ? $" (mensagem: \"{mensagem}\")" : string.Empty) + ".");
             }
@@ -477,8 +481,17 @@ public sealed partial class RegulacaoEnvioSerService(
         }
     }
 
-    [GeneratedRegex("obrigat|inv[aá]lid|n[aã]o (foi|pode|é)|informe|selecione|erro", RegexOptions.IgnoreCase)]
-    private static partial Regex RegexRecusa();
+    /// <summary>
+    /// Mensagem do sistema que é RECUSA (nada foi criado). "Existe uma Solicitação de Consulta ativa
+    /// deste recurso para este paciente" é a trava de duplicidade do SER (PR-17, 09/10/2026): não grava
+    /// nada, e tratá-la como "sem número" mandava o técnico conferir um pedido que não existe.
+    /// </summary>
+    [GeneratedRegex("obrigat|inv[aá]lid|n[aã]o (foi|pode|é)|informe|selecione|erro|existe uma solicita",
+        RegexOptions.IgnoreCase)]
+    internal static partial Regex RegexRecusa();
+
+    [GeneratedRegex("existe uma solicita", RegexOptions.IgnoreCase)]
+    private static partial Regex RegexPedidoAtivo();
 
     // ------------------------------------------------------------------ preenchimento
 
@@ -881,10 +894,15 @@ public sealed partial class RegulacaoEnvioSerService(
         // Sem documento, a pesquisa viria sem filtro de paciente — a fila do município inteiro.
         if (cpf.Length != 11 && cns.Length != 15) return [];
 
-        var linhas = await ctx.Pesquisar(
-            cpf.Length == 11 ? new FiltroExterno(cpf, null, null) : new FiltroExterno(null, cns, null), ct);
+        // Pelo CPF E pelo CNS: o cadastro do paciente lá pode ter só um dos dois, e uma busca que volta
+        // vazia não dá erro nenhum — foi assim que a PR-17 (09/10/2026) passou por cima de um pedido
+        // Em fila do mesmo paciente e recurso (a busca por CPF ia sem a máscara da tela e voltava 0).
+        var linhas = new List<LinhaExterna>();
+        if (cpf.Length == 11) linhas.AddRange(await ctx.Pesquisar(new FiltroExterno(cpf, null, null), ct));
+        if (cns.Length == 15) linhas.AddRange(await ctx.Pesquisar(new FiltroExterno(null, cns, null), ct));
         return [.. linhas
             .Where(l => IdentidadePorNome.Chave(l.Recurso) == IdentidadePorNome.Chave(dados.RecursoRotulo))
+            .DistinctBy(l => l.Id)
             .Select(l => new EnvioSerDuplicadoDto(l.Id, l.Recurso, l.DataSolicitacao, l.Situacao))];
     }
 

@@ -392,7 +392,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
+        'existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
       conteudo: (
         <>
           <p>
@@ -431,7 +431,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: 'Pedido parecido no SER',
                 descricao:
-                  'Se o SER já tem pedido do mesmo paciente para o mesmo recurso, a prévia mostra o número e a situação, e só deixa enviar depois que você marcar “Conferi: é outro caso”.',
+                  'Se o SER já tem pedido do mesmo paciente para o mesmo recurso (em fila, pendente ou agendado — procurado pelo CPF e pelo CNS), a prévia mostra o número e a situação, e só deixa enviar depois que você marcar “Conferi: é outro caso”. Se é o mesmo caso, não envie: use “Registrar número (já está no sistema)” com o número de lá. E se mesmo assim o SER disser “Existe uma Solicitação… ativa deste recurso para este paciente”, ele recusou — nada foi criado.',
               },
               {
                 termo: 'Erro antes de gravar',
@@ -441,7 +441,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: '“Falha no envio”',
                 descricao:
-                  'Se o envio não termina, o pedido fica como “Falha no envio”, com o motivo em amarelo. Quando o motivo diz que o Gravar chegou ao SER, procure o pedido no SER ANTES de qualquer coisa: se ele existe, use “Registrar número (já está no sistema)”; se não existe, “Enviar ao SER de novo”. Se o motivo é o risco ou o CID, altere no quadro e envie de novo.',
+                  'Se o envio não termina, o pedido fica como “Falha no envio”, com o motivo em amarelo. Quando o motivo diz que o Gravar chegou ao SER, procure o pedido no SER ANTES de qualquer coisa: se ele existe, use “Registrar número (já está no sistema)”; se não existe, “Enviar ao SER de novo”. Se o motivo é o risco ou o CID, altere no quadro e envie de novo. Registrado o número, o aviso amarelo sai (o motivo da falha continua na linha do tempo).',
               },
             ]}
           />

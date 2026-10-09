@@ -849,6 +849,10 @@ public sealed class RegulacaoSolicitacaoService(
         await TransitarAsync(
             s, StatusRegulacao.EnviadaAoSistema, PapelEventoRegulacao.Agente, ct,
             detalhe: new { assistido = true, sistema = req.Sistema.ToString(), numeroExterno = numero });
+        // O aviso da falha do envio automático ("ATENÇÃO: o Gravar chegou...") é da falha, não do
+        // pedido: com o número registrado ele ficava embaixo de "Enviada ao sistema" (PR-17, 09/10/2026).
+        // A trilha guarda o motivo da falha.
+        s.StatusMotivo = null;
 
         try
         {

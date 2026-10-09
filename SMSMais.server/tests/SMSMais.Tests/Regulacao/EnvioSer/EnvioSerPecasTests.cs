@@ -201,4 +201,16 @@ public class EnvioSerAnexoTests
         nomes.Should().Equal("", "IDENTIFICACAO.jpg");
         nomes.Should().NotContain("RELATORIO MEDICO.jpg", "linha de nome vazio é arquivo que não chegou");
     }
+
+    /// <summary>
+    /// A trava de duplicidade do SER é recusa: nada foi criado (PR-17, 09/10/2026). Tratada como
+    /// "sem número", mandava o técnico conferir um pedido que não existia.
+    /// </summary>
+    [Theory]
+    [InlineData("Existe uma Solicitação de Consulta ativa deste recurso para este paciente. Solicitante: X, Data: 08/10/2026 14:52:15, Estado: Em fila", true)]
+    [InlineData("O campo CID é obrigatório", true)]
+    [InlineData("", false)]
+    [InlineData("Operação realizada", false)]
+    public void Mensagem_de_recusa_do_sistema(string mensagem, bool recusa) =>
+        RegulacaoEnvioSerService.RegexRecusa().IsMatch(mensagem).Should().Be(recusa);
 }

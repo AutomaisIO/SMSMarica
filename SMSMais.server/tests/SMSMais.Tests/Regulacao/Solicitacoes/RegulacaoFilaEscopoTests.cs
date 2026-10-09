@@ -837,6 +837,7 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
             c.SolicitacaoA, new RegistrarEnvioRequest(SistemaRegulacao.Ser, numero, null), CancellationToken.None);
         depois.Status.Should().Be(StatusRegulacao.EnviadaAoSistema);
         depois.NumeroExterno.Should().Be(numero);
+        depois.StatusMotivo.Should().BeNull("o aviso era da falha; com o número registrado ele confunde (PR-17)");
     }
 
     [Fact]

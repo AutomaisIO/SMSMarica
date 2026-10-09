@@ -117,6 +117,32 @@ public class SerLeitorServiceTests
         sessao.ViewStatesEnviados[2].Should().Be("j_id9", "o parcial re-renderiza a MESMA view");
     }
 
+    /// <summary>
+    /// REGRESSÃO de 09/10/2026 (PR-17), medida contra o SER: na fila Em fila, o CPF só com dígitos
+    /// devolveu 0 linhas e o CPF com a máscara da tela devolveu o pedido — sem erro nenhum no caso
+    /// errado. A crítica de "pedido parecido" do envio passou por cima de um pedido ativo por isso.
+    /// </summary>
+    [Fact]
+    public async Task Cpf_vai_com_a_mascara_da_tela()
+    {
+        var sessao = new SessaoFalsa(
+            tela: TelaPesquisa(ViewStatePesquisa, comLinha: false),
+            respostas: [TelaPesquisa(ViewStatePesquisa, comLinha: true)]);
+        var leitor = new SerLeitorService(sessao, NullLogger<SerLeitorService>.Instance);
+
+        await leitor.PesquisarAsync(
+            new SerFiltroPesquisa { Situacao = SituacaoSer.EmFila, Cpf = "52998224725" }, CancellationToken.None);
+
+        sessao.ExtrasEnviados.Single()["form0:cpf"].Should().Be("529.982.247-25");
+    }
+
+    [Theory]
+    [InlineData("52998224725", "529.982.247-25")]
+    [InlineData("529.982.247-25", "529.982.247-25")]
+    [InlineData("1234", "1234")]
+    public void Cpf_como_a_tela(string entrada, string esperado) =>
+        SerLeitorService.CpfComoATela(entrada).Should().Be(esperado);
+
     // ------------------------------------------------------------------ dublê
 
     private sealed class SessaoFalsa(string tela, params string[] respostas) : ISerWebSessao
@@ -124,6 +150,8 @@ public class SerLeitorServiceTests
         private readonly Queue<string> _respostas = new(respostas);
 
         public List<string?> ViewStatesEnviados { get; } = [];
+
+        public List<IReadOnlyDictionary<string, string>> ExtrasEnviados { get; } = [];
 
         public Task<string> AbrirTelaPesquisaAsync(CancellationToken cancellationToken) =>
             Task.FromResult(tela);
@@ -136,6 +164,7 @@ public class SerLeitorServiceTests
             CancellationToken cancellationToken)
         {
             ViewStatesEnviados.Add(viewState);
+            ExtrasEnviados.Add(extras);
             return Task.FromResult(_respostas.Count > 0 ? _respostas.Dequeue() : "<html></html>");
         }
 

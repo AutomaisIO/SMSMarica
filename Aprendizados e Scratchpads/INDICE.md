@@ -163,6 +163,12 @@ credencial funcionam** — é a base da pré-carga paralela)
 **Outras:** `probe_historico.py`, `probe_historico_por_id.py`, `probe_solicitante.py`,
 `probe_export_solicitacao.py`, `probe_ambulatorio_estadual.py`, `probe_sisreg_detalhe.py`
 
+**Pesquisa da fila por CPF (09/10/2026, só leitura):** `probe_pesquisa_cpf.py <cpf> <cns> <id>` —
+compara `form0:cpf` só dígitos × com máscara × CNS × ID. Respondeu: **CPF só dígitos devolve 0
+linhas sem erro**; com a máscara `999.999.999-99` (como o navegador manda), pelo CNS e pelo ID acha.
+Era por isso que a crítica de "pedido parecido" do envio não via pedido ativo (PR-17). Imprime só
+contagem e IDs.
+
 **Cadastro de Profissionais (01/10/2026, só leitura):** `probe_profissional_saude.py` — menu
 Cadastro → Profissionais (módulo ambulatorial). Passos `inicio | pesquisar | pagina | novo |
 buscacpf | cbo | listas`. Respondeu: pesquisa lista ~930 profissionais com lotação na unidade
