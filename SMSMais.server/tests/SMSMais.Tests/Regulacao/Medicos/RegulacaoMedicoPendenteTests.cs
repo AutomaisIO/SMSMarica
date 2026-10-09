@@ -233,6 +233,60 @@ public class RegulacaoMedicoPendenteTests(PostgresFixture fixture)
             .Which.Nome.Should().Be($"RAFAELA R. {sobrenome} BEDRAN", "o regulador escolhe entre o que o combo tem AGORA");
     }
 
+    /// <summary>
+    /// PR-18/PR-23 (09/10/2026): "Cadastrei" com o nome da unidade, e o médico nunca entrou no SERNIT —
+    /// o envio barrava sem saída. Na prévia, o pedido de cadastro é reaberto para a solicitação, com o
+    /// documento e a especialidade do pedido antigo; o antigo fica como estava (é a história).
+    /// </summary>
+    [Fact]
+    public async Task Nome_dado_como_cadastrado_que_nao_esta_na_lista_reabre_o_pedido_na_solicitacao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var nome = $"LAURA TESTE {Sufixo()} VILELA";
+        var antigo = await Servico(db).CriarAsync(
+            new CriarMedicoPendenteRequest(SistemaRegulacao.Sernit, nome, "CRM", "52140159-2", "CLINICO GERAL"),
+            CancellationToken.None);
+        var solicitacaoId = await SolicitacaoComMedicoAsync(db, antigo.Valor);
+        db.ChangeTracker.Clear();
+        await Servico(db).ResolverAsync(
+            antigo.Id, new ResolverMedicoPendenteRequest(SituacaoMedicoPendente.Cadastrado, null, null), CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var reaberto = await Servico(db).ReabrirForaDaListaAsync(
+            solicitacaoId, SistemaRegulacao.Sernit, nome, CancellationToken.None);
+
+        reaberto.Id.Should().NotBe(antigo.Id);
+        reaberto.Situacao.Should().Be(SituacaoMedicoPendente.Pendente);
+        reaberto.Nome.Should().Be(nome);
+        reaberto.TipoDocumento.Should().Be("CRM");
+        reaberto.NumeroDocumento.Should().Be("52140159-2");
+        reaberto.Especialidade.Should().Be("CLINICO GERAL");
+        var formulario = (await db.RegulacaoSolicitacoes.AsNoTracking().FirstAsync(s => s.Id == solicitacaoId)).FormularioJson;
+        JsonDocument.Parse(formulario).RootElement.GetProperty("canonico").GetProperty("medico_solicitante").GetString()
+            .Should().Be(reaberto.Valor);
+        (await Servico(db).ObterAsync(antigo.Id, CancellationToken.None)).Situacao
+            .Should().Be(SituacaoMedicoPendente.Cadastrado, "o registro antigo é a história, não se reescreve");
+
+        // A outra solicitação com o mesmo nome reaproveita o mesmo pedido reaberto.
+        var outra = await SolicitacaoComMedicoAsync(db, nome);
+        db.ChangeTracker.Clear();
+        var deNovo = await Servico(db).ReabrirForaDaListaAsync(outra, SistemaRegulacao.Sernit, nome, CancellationToken.None);
+        deNovo.Id.Should().Be(reaberto.Id);
+    }
+
+    [Fact]
+    public async Task Reabrir_nao_troca_o_medico_se_ele_mudou_na_solicitacao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var solicitacaoId = await SolicitacaoComMedicoAsync(db, $"OUTRO MEDICO {Sufixo()} SILVA");
+
+        db.ChangeTracker.Clear();
+        var acao = () => Servico(db).ReabrirForaDaListaAsync(
+            solicitacaoId, SistemaRegulacao.Sernit, $"LAURA TESTE {Sufixo()} VILELA", CancellationToken.None);
+
+        await acao.Should().ThrowAsync<ConflitoException>();
+    }
+
     private static async Task<Guid> SolicitacaoComMedicoAsync(SmsMaisDbContext db, string valorMedico)
     {
         var sufixo = Sufixo();

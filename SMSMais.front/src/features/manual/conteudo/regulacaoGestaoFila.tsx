@@ -392,7 +392,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
+        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
       conteudo: (
         <>
           <p>
@@ -473,6 +473,12 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             tenta de novo sozinho: confira no SER e, no cartão do médico, use <BotaoRef>Já existia no SER</BotaoRef>{' '}
             (entrou — escolha o cadastro) ou <BotaoRef>Não entrou</BotaoRef> (volta a aguardar cadastro). No
             SERNIT é igual, com a lista e o usuário do SERNIT.
+            <br />
+            <br />
+            O mesmo bloco aparece quando o médico da solicitação <strong>foi dado como cadastrado</strong> mas o
+            nome não está na lista do sistema na hora do envio (alguém marcou “Cadastrei” e o cadastro não
+            entrou, ou o médico saiu da lista): a prévia reabre o pedido de cadastro com o documento e a
+            especialidade que a unidade informou, e você decide ali mesmo — “É este” ou “Autorizo cadastrar”.
           </Callout>
           <Callout tipo="regra" titulo="No SERNIT: paciente que o SERNIT ainda não conhece">
             O SERNIT só acha o paciente pelo <strong>CNS</strong>, e só se ele já teve pedido lá — o

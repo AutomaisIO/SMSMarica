@@ -78,6 +78,16 @@ public interface IRegulacaoMedicoPendenteService
 
     /// <summary>O Gravar não chegou a sair (ou o sistema recusou com mensagem): volta a pendente.</summary>
     Task<MedicoPendenteDto> LiberarCadastroAsync(Guid id, CancellationToken ct);
+
+    /// <summary>
+    /// O médico da solicitação tem um NOME (foi dado como cadastrado, ou escolhido de uma lista antiga),
+    /// mas o combo do sistema de HOJE não o tem — o envio barrava sem saída. Abre o pedido de cadastro
+    /// para ESTA solicitação (com o documento e a especialidade do pedido antigo, se houver) e põe o
+    /// <c>pendente:{id}</c> no campo do médico, para o regulador decidir no próprio envio: "É este" ou
+    /// "Autorizo cadastrar". Só troca o campo se ele ainda tem <paramref name="nome"/>.
+    /// </summary>
+    Task<MedicoPendenteDto> ReabrirForaDaListaAsync(
+        Guid solicitacaoId, SistemaRegulacao sistema, string nome, CancellationToken ct);
 }
 
 /// <summary>
@@ -348,6 +358,42 @@ public sealed class RegulacaoMedicoPendenteService(
                 ?? throw new NaoEncontradoException("Médico pendente", id);
         if (m.Situacao == SituacaoMedicoPendente.CadastroIncerto) await LiberarAsync(m, ct);
         return Mapear(m);
+    }
+
+    public async Task<MedicoPendenteDto> ReabrirForaDaListaAsync(
+        Guid solicitacaoId, SistemaRegulacao sistema, string nome, CancellationToken ct)
+    {
+        await escopo.ExigirAgenteAsync(ct);
+        var chave = string.Join(' ', SemelhancaNome.Palavras(nome));
+
+        // O pedido antigo que deu esse nome por cadastrado (PR-18/PR-23, 09/10/2026: "Cadastrei" com o
+        // nome da unidade, e o médico nunca entrou no SERNIT). Ele fica como está — é a história —, e
+        // o novo herda o que a unidade informou.
+        var antigo = (await db.RegulacaoMedicosPendentes.AsNoTracking()
+                .Where(m => m.Sistema == sistema && m.NomeNoSistema != null
+                            && (m.Situacao == SituacaoMedicoPendente.Cadastrado || m.Situacao == SituacaoMedicoPendente.JaExistia))
+                .OrderByDescending(m => m.ResolvidoEm)
+                .ToListAsync(ct))
+            .FirstOrDefault(m => string.Join(' ', SemelhancaNome.Palavras(m.NomeNoSistema)) == chave);
+
+        var pendente = await CriarAsync(
+            new CriarMedicoPendenteRequest(
+                sistema, antigo?.Nome ?? nome, antigo?.TipoDocumento, antigo?.NumeroDocumento, antigo?.Especialidade),
+            ct);
+
+        var s = await db.RegulacaoSolicitacoes.FirstOrDefaultAsync(x => x.Id == solicitacaoId, ct)
+                ?? throw new NaoEncontradoException("Solicitação", solicitacaoId);
+        var raiz = JsonNode.Parse(s.FormularioJson) as JsonObject ?? [];
+        if (raiz["canonico"] is not JsonObject canonico
+            || string.Join(' ', SemelhancaNome.Palavras(canonico["medico_solicitante"]?.GetValue<string>())) != chave)
+        {
+            throw new ConflitoException(
+                "regulacao.medico_mudou", "O médico desta solicitação mudou enquanto a prévia era montada. Abra a prévia de novo.");
+        }
+        canonico["medico_solicitante"] = Valor(pendente.Id);
+        s.FormularioJson = raiz.ToJsonString();
+        await db.SaveChangesAsync(ct);
+        return pendente;
     }
 
     // ---------------------------------------------------------------- apoio

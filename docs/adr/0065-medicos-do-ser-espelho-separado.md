@@ -184,3 +184,18 @@ Corrigido:
   continua com "Já existia" e "Não entrou". A fila de pedidos de cadastro segue como estava.
 - O clique no ícone e o Gravar do modal mandam `AJAXREQUEST=_viewRoot`, o que o navegador manda
   (conferido no `framework.pack.js`; `docs/ser.md` §3.1).
+
+### Ajuste — 09/10/2026 (tarde): nome dado como cadastrado que não está na lista
+
+Caso real (SERNIT, PR-18 e PR-23): o pendente foi resolvido com **"Cadastrei"** (fluxo antigo) com o
+nome da unidade, mas o médico nunca entrou na lista do SERNIT (o combo de 248 nomes não tinha nem o
+nome nem o sobrenome). Resolvido o pendente, o campo da solicitação passou a ter o NOME, e o envio
+barrava sem saída: "precisa estar cadastrado e lotado".
+
+Corrigido: **na prévia**, se o nome da solicitação não está no combo "Médico responsável" de hoje, a
+plataforma reabre o pedido de cadastro para essa solicitação (`ReabrirForaDaListaAsync`): um pendente
+novo — ou o que já estiver aberto com o mesmo nome — com o documento e a especialidade do pedido
+antigo, e o campo volta a `pendente:{id}` (só se ainda tiver aquele nome). A prévia mostra o mesmo
+bloco ("É este" / "Autorizo cadastrar") e o envio segue como no SER. O pendente antigo **não muda**:
+é a história de quem afirmou o quê. Fora da prévia, o envio continua recusando, mandando abrir a
+prévia de novo.
