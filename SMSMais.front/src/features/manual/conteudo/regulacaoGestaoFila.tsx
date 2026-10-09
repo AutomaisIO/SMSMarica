@@ -254,15 +254,13 @@ export const artigoRegulacaoGestaoFila: Artigo = {
           />
           <Callout tipo="atencao" titulo="Médico novo a cadastrar">
             Quando a unidade pediu um médico que não está na lista do sistema de destino, aparece um
-            cartão amarelo com nome, documento e especialidade. O caminho mais curto é o próprio{' '}
-            <BotaoRef>Aceitar e enviar ao SER</BotaoRef>: a prévia mostra os nomes parecidos da lista do
-            SER e, com a sua autorização, a plataforma cadastra o médico lá (ver “Enviar ao SER ou ao
-            SERNIT”). Também dá para cadastrar pela tela do SER (ícone “Adicionar médico” ao lado de
-            “Médico responsável”) e resolver aqui: <BotaoRef>Cadastrei no SER</BotaoRef>,{' '}
-            <BotaoRef variante="outline">Já existia no SER</BotaoRef> (escolhe o cadastro que já estava lá
-            — a solicitação passa a usar esse nome) ou <BotaoRef variante="outline">Recusar</BotaoRef>,
-            com o motivo. O envio só libera depois disso. Se o cartão ficar vermelho, “Cadastro no SER a
-            conferir”, veja o aviso sobre cadastro incerto na seção do envio.
+            cartão amarelo com nome, documento e especialidade. No SER e no SERNIT, o médico se resolve{' '}
+            <strong>no próprio envio</strong>: em <BotaoRef>Aceitar e enviar ao SER</BotaoRef>, a prévia
+            mostra os nomes parecidos da lista do SER e, se não for nenhum, você autoriza o cadastro — quem
+            cadastra é o envio, na tela de nova solicitação do SER (ver “Enviar ao SER ou ao SERNIT”). No
+            cartão fica só <BotaoRef variante="outline">Recusar</BotaoRef>, com o motivo (a unidade lê). Se o
+            cartão ficar vermelho, “Cadastro no SER a conferir”, veja o aviso sobre cadastro incerto na seção
+            do envio.
           </Callout>
         </>
       ),
@@ -394,7 +392,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
+        'cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
       conteudo: (
         <>
           <p>
@@ -449,7 +447,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
           />
           <Callout tipo="atencao" titulo="Médico que não está na lista do SER">
             Quando a unidade pediu um médico que o SER não tem, a prévia mostra o bloco{' '}
-            <strong>Médico não cadastrado no SER</strong>, e o envio só libera depois de resolver ali mesmo:
+            <strong>Médico não cadastrado no SER</strong>, e o envio só libera depois de você decidir ali mesmo:
             <Lista>
               <li>
                 <strong>Nomes parecidos na lista do SER hoje</strong> — o SER abrevia muito (“RAFAELA R.
@@ -459,10 +457,13 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               <li>
                 <BotaoRef>Não é nenhum — autorizo cadastrar no SER</BotaoRef> — confira nome, documento
                 (CRM) e escolha a <strong>especialidade da lista do SER</strong> (a plataforma sugere a que
-                parece a escrita pela unidade: “ONCOLOGISTA” → “ONCOLOGIA”). Marque a autorização e{' '}
-                <BotaoRef>Cadastrar no SER</BotaoRef>: a plataforma preenche o “Adicionar Médico” do SER com o
-                seu usuário, grava e confere se o nome entrou na lista. Se o nome já estava lá, nada é
-                gravado e a solicitação passa a usar esse cadastro.
+                parece a escrita pela unidade: “ONCOLOGISTA” → “ONCOLOGIA”) e marque a autorização. Você só
+                autoriza: o botão vira <BotaoRef>Cadastrar o médico e enviar ao SER</BotaoRef>, e o envio, com o
+                seu usuário, abre a tela de nova solicitação do SER, cadastra o médico pelo “Adicionar Médico”
+                (ícone ao lado de “Médico responsável”), confere se o nome entrou na lista e só então preenche e
+                grava a solicitação. Se o nome já estava lá, nada é cadastrado e a solicitação usa esse
+                cadastro. Se o cadastro do médico não der certo, a solicitação <strong>não</strong> é enviada e
+                continua em análise.
               </li>
               <li>Para recusar o médico, use o cartão do médico na solicitação (o motivo vai para a unidade).</li>
             </Lista>

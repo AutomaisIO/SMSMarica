@@ -214,7 +214,11 @@ export function AnaliseSolicitacaoPage() {
 
       <AjusteRiscoCid s={s} aoSalvar={() => void Promise.all([solicitacao.refetch(), eventos.refetch()])} />
 
-      <MedicoPendenteCard valorMedico={s.formulario?.medico_solicitante} podeResolver={emAberto} />
+      <MedicoPendenteCard
+        valorMedico={s.formulario?.medico_solicitante}
+        podeResolver={emAberto}
+        cadastroPeloEnvio={!!automatico}
+      />
 
       <RespostasRegras solicitacaoId={id} />
 

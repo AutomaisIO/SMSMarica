@@ -292,33 +292,16 @@ export type MedicoNovoNoSistema = {
   podeCadastrar: boolean;
 };
 
-export type MedicoCadastradoNoSistema = {
-  /** "Cadastrado" (gravou e apareceu na lista) ou "JaExistia" (o nome já estava lá; nada gravado). */
-  desfecho: 'Cadastrado' | 'JaExistia';
-  nomeNoSistema: string;
-  mensagem: string;
-  mensagemDoSistema: string | null;
-};
-
 /**
- * "Autorizo cadastrar" — ESCREVE no cadastro de médicos do SER/SERNIT (modal "Adicionar Médico"),
- * com a sessão do regulador. Sem prova de que entrou, responde erro `ser.medico_incerto`.
+ * "Autorizo cadastrar" — o regulador conferiu os nomes parecidos e autoriza. Quem cadastra é o PRÓPRIO
+ * envio, no "Adicionar Médico" da tela de nova solicitação do SER/SERNIT, antes de preencher o pedido.
  */
-export async function cadastrarMedicoNoSistema(
-  id: string,
-  dados: {
-    especialidade: string;
-    nome: string | null;
-    tipoDocumento: string | null;
-    numeroDocumento: string | null;
-  },
-): Promise<MedicoCadastradoNoSistema> {
-  const { data } = await http.post<MedicoCadastradoNoSistema>(`${base}/${id}/envio-automatico/medico`, {
-    autorizo: true,
-    ...dados,
-  });
-  return data;
-}
+export type AutorizoCadastroMedico = {
+  especialidade: string;
+  nome: string | null;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+};
 
 export type ResultadoEnvioSer = {
   numeroExterno: string;
@@ -341,9 +324,12 @@ export async function prepararEnvioAutomatico(id: string): Promise<PreparoEnvioS
 export async function enviarAutomatico(
   id: string,
   enviarMesmoComPedidoParecido: boolean,
+  medicoNovo: AutorizoCadastroMedico | null = null,
 ): Promise<ResultadoEnvioSer> {
   const { data } = await http.post<ResultadoEnvioSer>(`${base}/${id}/envio-automatico/enviar`, {
     enviarMesmoComPedidoParecido,
+    // Só vai quando o médico pedido não está na lista: o envio o cadastra antes (ESCREVE no cadastro do Estado).
+    medicoNovo: medicoNovo ? { autorizo: true, ...medicoNovo } : null,
   });
   return data;
 }

@@ -18,7 +18,7 @@ export const artigoSernitMedicos: Artigo = {
   icone: Stethoscope,
   rota: '/app/regulacao/sernit/medicos',
   publico: 'Quem prepara as solicitações ao SERNIT e quem regula',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'médicos do SERNIT',
     'médico solicitante',
@@ -65,8 +65,9 @@ export const artigoSernitMedicos: Artigo = {
           </P>
           <P>
             Ou pelo <strong>Aceitar e enviar ao SERNIT</strong>: a prévia mostra os nomes parecidos da lista do
-            SERNIT (“É este”) e, com a autorização de quem regula, a plataforma cadastra o médico pelo
-            “Adicionar Médico” do SERNIT e confere se o nome entrou. Se não der para confirmar, o pedido fica
+            SERNIT (“É este”); se não for nenhum, quem regula autoriza e o próprio envio cadastra o médico pelo
+            “Adicionar Médico” da tela de nova solicitação do SERNIT, confere se o nome entrou e segue com o
+            pedido. Se não der para confirmar, a solicitação não é enviada e o pedido fica
             em <strong>Cadastro a conferir</strong>: confira no SERNIT e use “Já existia no SERNIT” ou “Não
             entrou”.
           </P>

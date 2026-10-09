@@ -37,7 +37,8 @@ public sealed record EnvioSerDuplicadoDto(string IdSer, string? Recurso, string?
 /// <summary>A prévia: a tela do sistema preenchida inteira, sem anexar nem gravar.</summary>
 /// <param name="Sistema">"SER" ou "SERNIT" — para a tela dizer onde vai.</param>
 /// <param name="MedicoNovo">O médico pedido pela unidade ainda não está na lista do sistema: a
-/// pergunta ao regulador (é um destes parecidos? autoriza cadastrar?). Enquanto houver, não envia.</param>
+/// pergunta ao regulador (é um destes parecidos? autoriza cadastrar?). Sem resposta, não envia; com o
+/// "Autorizo", o envio cadastra o médico na própria tela de nova solicitação.</param>
 public sealed record EnvioSerPreparoDto(
     string OperadorSer,
     string Recurso,
@@ -55,7 +56,8 @@ public sealed record EnvioSerPreparoDto(
 /// <param name="Especialidades">As especialidades do modal "Adicionar Médico" do sistema, na ordem dele
 /// (sem repetição de rótulo) — a do pedido é texto livre da unidade e quase nunca bate.</param>
 /// <param name="EspecialidadeSugerida">A da lista que parece a pedida ("ONCOLOGISTA" → "ONCOLOGIA").</param>
-/// <param name="PodeCadastrar">O modal existe na tela e o médico está pendente (não houve tentativa).</param>
+/// <param name="PodeCadastrar">O modal existe na tela e o médico está pendente (não houve tentativa) —
+/// o regulador pode autorizar o cadastro pelo envio.</param>
 public sealed record MedicoNovoNoSistemaDto(
     Guid PendenteId,
     string Nome,
@@ -68,20 +70,20 @@ public sealed record MedicoNovoNoSistemaDto(
     string? EspecialidadeSugerida,
     bool PodeCadastrar);
 
-/// <summary>"Autorizo cadastrar no sistema" — os dados como vão ao modal "Adicionar Médico".</summary>
+/// <summary>
+/// "Autorizo cadastrar no sistema" — o regulador conferiu os nomes parecidos e autoriza; o cadastro é
+/// feito PELO ENVIO, no modal "Adicionar Médico" da tela de nova solicitação.
+/// </summary>
 /// <param name="Autorizo">Tem de vir <c>true</c>: é a autorização expressa do regulador para escrever no
 /// cadastro do Estado, que não tem editar nem apagar.</param>
 /// <param name="Especialidade">Rótulo da lista do sistema (<see cref="MedicoNovoNoSistemaDto.Especialidades"/>).</param>
 /// <param name="Nome">Vazio = o nome pedido pela unidade.</param>
-public sealed record CadastrarMedicoNoSistemaRequest(
+public sealed record AutorizoCadastroMedicoRequest(
     bool Autorizo, string Especialidade, string? Nome, string? TipoDocumento, string? NumeroDocumento);
 
-/// <param name="Desfecho">"Cadastrado" (gravou e o nome apareceu na lista) ou "JaExistia" (o nome
-/// já estava lá — nada foi gravado).</param>
-public sealed record MedicoCadastradoNoSistemaDto(
-    string Desfecho, string NomeNoSistema, string Mensagem, string? MensagemDoSistema);
-
-public sealed record EnviarAoSerRequest(bool EnviarMesmoComPedidoParecido);
+/// <param name="MedicoNovo">Só quando o médico pedido não está na lista do sistema: a autorização para o
+/// envio cadastrá-lo antes de preencher a solicitação.</param>
+public sealed record EnviarAoSerRequest(bool EnviarMesmoComPedidoParecido, AutorizoCadastroMedicoRequest? MedicoNovo = null);
 
 /// <summary>O desfecho do envio — vai para o próprio modal, não para um toast.</summary>
 public sealed record EnvioSerResultadoDto(
@@ -115,17 +117,13 @@ public interface IRegulacaoEnvioSerService
 {
     Task<EnvioSerPreparoDto> PrepararAsync(Guid solicitacaoId, CancellationToken ct);
 
+    /// <remarks>
+    /// Médico pedido pela unidade fora da lista do sistema: com o "Autorizo" em
+    /// <see cref="EnviarAoSerRequest.MedicoNovo"/>, o envio primeiro o cadastra pelo modal "Adicionar
+    /// Médico" da tela de nova solicitação — <b>ESCREVE no cadastro do Estado</b> (ADR-0065, complemento
+    /// de 08/10/2026) — e só segue se o nome aparecer na lista.
+    /// </remarks>
     Task<EnvioSerResultadoDto> EnviarAsync(Guid solicitacaoId, EnviarAoSerRequest req, CancellationToken ct);
-
-    /// <summary>
-    /// <b>Cadastra no sistema o médico pedido pela unidade</b> — ESCREVE no cadastro do Estado, pelo
-    /// modal "Adicionar Médico" da tela de criação, com a sessão do regulador e o "Autorizo" dele
-    /// (ADR-0065, complemento de 08/10/2026). Se o nome já está na lista, não grava: usa o cadastro de
-    /// lá. Depois do Gravar, só dá o médico por cadastrado se o nome aparecer na lista; senão o médico
-    /// fica "cadastro incerto" e ninguém tenta de novo sem conferir.
-    /// </summary>
-    Task<MedicoCadastradoNoSistemaDto> CadastrarMedicoAsync(
-        Guid solicitacaoId, CadastrarMedicoNoSistemaRequest req, CancellationToken ct);
 }
 
 public sealed partial class RegulacaoEnvioSerService(
@@ -159,7 +157,7 @@ public sealed partial class RegulacaoEnvioSerService(
     public async Task<EnvioSerPreparoDto> PrepararAsync(Guid solicitacaoId, CancellationToken ct)
     {
         // Médico ainda pendente não barra a PRÉVIA: ela mostra o que o sistema tem de parecido e
-        // pergunta ao regulador. O envio continua barrando.
+        // pergunta ao regulador. O envio só passa com a escolha de um parecido ou com o "Autorizo".
         var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct, aceitarMedicoPendente: true);
         var ctx = Contextualizar(dados);
         var anexos = await LerAnexosAsync(ctx, dados, ct);
@@ -181,33 +179,37 @@ public sealed partial class RegulacaoEnvioSerService(
         public MedicoNovoNoSistemaDto? Bloco { get; set; }
     }
 
-    public async Task<MedicoCadastradoNoSistemaDto> CadastrarMedicoAsync(
-        Guid solicitacaoId, CadastrarMedicoNoSistemaRequest req, CancellationToken ct)
+    /// <summary>
+    /// O médico pedido pela unidade, dentro do envio: na tela de nova solicitação do sistema, como o
+    /// técnico faria — se o nome já está no combo "Médico responsável", usa o de lá sem gravar nada;
+    /// senão, com o "Autorizo" do regulador, ícone "Adicionar médico" → modal → Gravar do modal, e só dá
+    /// por cadastrado se o nome aparecer na lista. Devolve o passo para a lista do envio.
+    ///
+    /// <para>Roda ANTES de a solicitação mudar de estado: falhar aqui não deixa a solicitação em "Falha
+    /// no envio" — ela continua em análise. Sem prova depois do Gravar do modal, o médico fica "cadastro
+    /// incerto" e ninguém tenta de novo sem conferir (o cadastro do Estado não tem editar nem apagar).</para>
+    /// </summary>
+    private async Task<EnvioSerPassoDto> MedicoNoEnvioAsync(
+        Contexto ctx, DadosEnvioSer dados, Guid pendenteId, AutorizoCadastroMedicoRequest? req, CancellationToken ct)
     {
-        var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct, aceitarMedicoPendente: true);
-        var ctx = Contextualizar(dados);
         var sistema = ctx.Nome;
-
-        if (dados.MedicoPendenteId is not { } pendenteId)
-        {
-            throw new ConflitoException(
-                "regulacao.medico_sem_pendencia",
-                "O médico desta solicitação já está resolvido. Feche e abra o envio de novo.");
-        }
         var pendente = await medicosPendentes.ObterAsync(pendenteId, ct);
-        if (pendente.Situacao != SituacaoMedicoPendente.Pendente)
+        if (pendente.Situacao == SituacaoMedicoPendente.CadastroIncerto)
         {
             throw new ConflitoException(
                 "regulacao.medico_ja_resolvido",
-                $"Já houve uma tentativa de cadastrar este médico no {sistema}. Confira lá e resolva pelo cartão "
-                + "do médico na solicitação — tentar de novo pode duplicar o cadastro.");
+                $"Já houve uma tentativa de cadastrar o médico {pendente.Nome} no {sistema} sem confirmação. Confira lá "
+                + "e resolva pelo cartão do médico na solicitação (\"Já existia\" ou \"Não entrou\") antes de enviar — "
+                + "tentar de novo pode duplicar o cadastro. A solicitação não foi enviada.");
         }
 
-        // ---- o pedido: autorização expressa e dados como o modal aceita
-        if (!req.Autorizo)
+        // ---- a autorização: expressa, e os dados como o modal aceita
+        if (req is not { Autorizo: true })
         {
             throw new ValidacaoException(
-                "autorizo", $"Cadastrar médico no {sistema} precisa da sua autorização expressa.");
+                "medico",
+                $"O médico {pendente.Nome} não está na lista do {sistema}. Na prévia, escolha um dos nomes parecidos "
+                + "ou autorize o cadastro dele. A solicitação não foi enviada.");
         }
         var nome = string.Join(' ', (string.IsNullOrWhiteSpace(req.Nome) ? pendente.Nome : req.Nome)
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
@@ -235,31 +237,31 @@ public sealed partial class RegulacaoEnvioSerService(
         }
         var chaveEspecialidade = IdentidadePorNome.Chave(req.Especialidade);
 
+        // ---- a tela de nova solicitação, onde o técnico cadastra o médico
         var motor = new SerCriacaoSolicitacao(ctx.Transporte, ctx.Perfil, logger);
         await motor.AbrirAsync(ct);
 
-        // ---- já está na lista com este nome? Não grava: usa o de lá.
+        // Já está na lista com este nome? Não grava: usa o de lá.
         var iguais = IdentidadePorNome.Achar(motor.Combo(SerCriacaoSolicitacao.CampoMedico), o => o.Rotulo, nome);
         if (iguais.Count > 0)
         {
             var existente = iguais[0].Rotulo.Trim();
             await medicosPendentes.ResolverAsync(
                 pendenteId, new ResolverMedicoPendenteRequest(SituacaoMedicoPendente.JaExistia, existente, null), ct);
-            return new MedicoCadastradoNoSistemaDto(
-                "JaExistia", existente,
-                $"O {sistema} já tem \"{existente}\" na lista de médicos — nada foi cadastrado. A solicitação passa a usar esse cadastro.",
-                null);
+            return new EnvioSerPassoDto($"Médico no {sistema}", existente, true,
+                $"já estava na lista de médicos do {sistema} — nada foi cadastrado");
         }
 
         if (motor.ModalMedico() is not { } modal)
         {
             throw new ValidacaoException(
-                "ser.medico", $"A tela do {sistema} não tem o modal \"Adicionar Médico\". Nada foi cadastrado.");
+                "ser.medico",
+                $"A tela do {sistema} não ofereceu o \"Adicionar Médico\". Nada foi cadastrado e a solicitação não foi enviada.");
         }
         if (!modal.Especialidades.Any(o => IdentidadePorNome.Chave(o.Rotulo) == chaveEspecialidade))
         {
             throw new ValidacaoException(
-                "especialidade", $"\"{req.Especialidade}\" não está na lista de especialidades do {sistema}.");
+                "especialidade", $"\"{req.Especialidade}\" não está na lista de especialidades do {sistema}. Nada foi enviado.");
         }
 
         // ---- a trava: pendente → "cadastro incerto" ANTES de escrever (duplo clique, dois reguladores,
@@ -288,12 +290,11 @@ public sealed partial class RegulacaoEnvioSerService(
                 var noSistema = achados[0].Rotulo.Trim();
                 await medicosPendentes.ConfirmarCadastroAsync(pendenteId, noSistema, ct);
                 logger.LogWarning(
-                    "Regulação PR-{Numero}: médico {Nome} CADASTRADO no {Sistema} por {Operador} (conferido na lista).",
+                    "Regulação PR-{Numero}: médico {Nome} CADASTRADO no {Sistema} por {Operador} no envio (conferido na lista).",
                     dados.NumeroLocal, noSistema, sistema, ctx.Operador);
-                return new MedicoCadastradoNoSistemaDto(
-                    "Cadastrado", noSistema,
-                    $"Médico cadastrado no {sistema} e conferido: \"{noSistema}\" já aparece na lista de médicos.",
-                    mensagem.Length > 0 ? mensagem : null);
+                return new EnvioSerPassoDto($"Médico cadastrado no {sistema}", noSistema, true,
+                    $"pelo \"Adicionar Médico\" da tela de nova solicitação, com a sua autorização — já aparece na lista"
+                    + (mensagem.Length > 0 ? $" (o {sistema} disse: \"{mensagem}\")" : string.Empty));
             }
 
             if (mensagem.Length > 0 && RegexRecusa().IsMatch(mensagem))
@@ -304,7 +305,9 @@ public sealed partial class RegulacaoEnvioSerService(
                     "Regulação PR-{Numero}: o {Sistema} recusou o cadastro do médico {Nome}: {Mensagem}",
                     dados.NumeroLocal, sistema, nome, mensagem);
                 throw new ValidacaoException(
-                    "ser.medico", $"O {sistema} recusou o cadastro: \"{mensagem}\". Nada foi cadastrado — corrija e tente de novo.");
+                    "ser.medico",
+                    $"O {sistema} recusou o cadastro do médico: \"{mensagem}\". Nada foi cadastrado e a solicitação não "
+                    + "foi enviada — corrija e tente de novo.");
             }
 
             logger.LogWarning(
@@ -328,15 +331,16 @@ public sealed partial class RegulacaoEnvioSerService(
     }
 
     private static string CadastroIncerto(string sistema, string nome, string detalhe) =>
-        $"ATENÇÃO: o Gravar chegou ao {sistema}, mas não deu para confirmar que \"{nome}\" entrou na lista de "
+        $"ATENÇÃO: o Gravar do \"Adicionar Médico\" chegou ao {sistema}, mas não deu para confirmar que \"{nome}\" entrou na lista de "
         + $"médicos. {detalhe} Confira no {sistema} antes de qualquer coisa: se o médico está lá, use \"Já existia\" "
         + "no cartão do médico e escolha o cadastro; se não está, \"Não entrou\". A plataforma não tenta de novo "
-        + "sozinha — repetir pode duplicar o médico no cadastro do Estado.";
+        + "sozinha — repetir pode duplicar o médico no cadastro do Estado. A solicitação NÃO foi enviada.";
 
     public async Task<EnvioSerResultadoDto> EnviarAsync(
         Guid solicitacaoId, EnviarAoSerRequest req, CancellationToken ct)
     {
-        var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct);
+        // Médico fora da lista não barra aqui: o envio o resolve antes de tudo (abaixo).
+        var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct, aceitarMedicoPendente: true);
         var ctx = Contextualizar(dados);
         var anexos = await LerAnexosAsync(ctx, dados, ct);
 
@@ -354,6 +358,17 @@ public sealed partial class RegulacaoEnvioSerService(
             }
         }
 
+        // ---- o médico pedido pela unidade, se não está na lista: cadastrado na tela de nova solicitação,
+        // com o "Autorizo", ANTES de a solicitação mudar de estado. Depois, os dados são relidos — a
+        // solicitação passou a ter o nome que está no sistema.
+        EnvioSerPassoDto? passoMedico = null;
+        if (dados.MedicoPendenteId is { } pendenteId)
+        {
+            passoMedico = await MedicoNoEnvioAsync(ctx, dados, pendenteId, req.MedicoNovo, ct);
+            db.ChangeTracker.Clear();
+            dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct);
+        }
+
         await solicitacoes.IniciarEnvioAutomaticoAsync(solicitacaoId, ct, dados.FormularioVersaoId);
 
         // Daqui em diante o envio vai até o fim mesmo que o navegador desista da espera (são umas
@@ -366,6 +381,7 @@ public sealed partial class RegulacaoEnvioSerService(
         try
         {
             var passos = await PreencherAsync(ctx, motor, dados, ct);
+            if (passoMedico is not null) passos.Insert(0, passoMedico);
 
             foreach (var anexo in anexos)
             {

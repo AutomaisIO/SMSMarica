@@ -177,6 +177,28 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <ul>
 <li><code>SituacaoMedicoPendente.CadastroIncerto = 5</code>, guardado como inteiro, <strong>sem migration</strong>.</li>
 </ul>
+<h3>Ajuste — 09/10/2026: o regulador só autoriza; quem cadastra é o envio</h3>
+<p>O combinado era: o técnico confere os nomes parecidos e <strong>autoriza</strong>, e o cadastro acontece <strong>no processo de inserção</strong> do SER. O que foi ao ar em 08/10 tinha um botão "Cadastrar no SER" à parte (endpoint <code>envio-automatico/medico</code>), e o cartão da solicitação ainda pedia "Cadastrei no SER". Corrigido:</p>
+<ul>
+<li><strong>O endpoint <code>POST .../envio-automatico/medico</code> sai.</strong> O "Autorizo" (nome, documento,</li>
+</ul>
+<p>  especialidade, <code>autorizo: true</code>) vai em <code>medicoNovo</code>, no <strong>próprio</strong> <code>POST .../envio-automatico/enviar</code>.</p>
+<ul>
+<li><strong>No envio</strong>, antes de a solicitação mudar de estado: abre a tela de nova solicitação, faz os</li>
+</ul>
+<p>  passos 2 a 7 acima no "Adicionar Médico" e, com o nome conferido na lista, relê a solicitação (que   passou a ter o nome de lá) e segue o envio de sempre. Se o médico não der certo, <strong>a solicitação   não é enviada</strong> e continua em análise; os desfechos do médico são os mesmos.</p>
+<ul>
+<li>Sem <code>medicoNovo</code>, médico fora da lista barra o envio com a pergunta ("escolha um parecido ou</li>
+</ul>
+<p>  autorize").</p>
+<ul>
+<li><strong>Cartão do médico na análise</strong> (solicitação com envio automático): sem "Cadastrei" nem "Já</li>
+</ul>
+<p>  existia"; fica o aviso de que o médico se resolve no envio e o <strong>Recusar</strong>. O "Cadastro a conferir"   continua com "Já existia" e "Não entrou". A fila de pedidos de cadastro segue como estava.</p>
+<ul>
+<li>O clique no ícone e o Gravar do modal mandam <code>AJAXREQUEST=_viewRoot</code>, o que o navegador manda</li>
+</ul>
+<p>  (conferido no <code>framework.pack.js</code>; <code>docs/ser.md</code> §3.1).</p>
 </main>
 </body>
 </html>

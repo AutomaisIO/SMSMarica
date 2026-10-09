@@ -21,7 +21,7 @@ export const artigoSerMedicos: Artigo = {
   icone: Stethoscope,
   rota: '/app/regulacao/ser/medicos',
   publico: 'Quem prepara as solicitações ao SER e cuida da lista de médicos solicitantes',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'médicos do SER',
     'profissionais',
@@ -152,9 +152,10 @@ export const artigoSerMedicos: Artigo = {
           </P>
           <P>
             O caminho mais curto é o <strong>Aceitar e enviar ao SER</strong> da Gestão de fila: a prévia mostra
-            os nomes parecidos da lista do SER (“É este”) e, com a autorização de quem regula, a plataforma
-            cadastra o médico no SER pelo “Adicionar Médico” de lá e confere se o nome entrou na lista. O
-            cadastro de médicos do SER não tem editar nem apagar — por isso a autorização é a cada médico.
+            os nomes parecidos da lista do SER (“É este”); se não for nenhum, quem regula autoriza o cadastro e
+            o próprio envio cadastra o médico pelo “Adicionar Médico” da tela de nova solicitação do SER,
+            confere se o nome entrou na lista e segue com o pedido. O cadastro de médicos do SER não tem editar
+            nem apagar — por isso a autorização é a cada médico.
           </P>
           <P>
             Também dá para cadastrar pela tela de solicitação do SER, ícone <strong>Adicionar médico</strong> ao

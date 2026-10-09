@@ -163,3 +163,24 @@ pessoa, mas quem digita é a plataforma, com a autorização expressa dessa pess
   no SERNIT, `Automais.SERNIT/capturas/nova.html`). O que o servidor exige no Gravar só o primeiro
   cadastro mostra — e a conferência pelo combo é o que impede tomar silêncio por sucesso.
 - `SituacaoMedicoPendente.CadastroIncerto = 5`, guardado como inteiro, **sem migration**.
+
+### Ajuste — 09/10/2026: o regulador só autoriza; quem cadastra é o envio
+
+O combinado era: o técnico confere os nomes parecidos e **autoriza**, e o cadastro acontece **no
+processo de inserção** do SER. O que foi ao ar em 08/10 tinha um botão "Cadastrar no SER" à parte
+(endpoint `envio-automatico/medico`), e o cartão da solicitação ainda pedia "Cadastrei no SER".
+Corrigido:
+
+- **O endpoint `POST .../envio-automatico/medico` sai.** O "Autorizo" (nome, documento,
+  especialidade, `autorizo: true`) vai em `medicoNovo`, no **próprio** `POST .../envio-automatico/enviar`.
+- **No envio**, antes de a solicitação mudar de estado: abre a tela de nova solicitação, faz os
+  passos 2 a 7 acima no "Adicionar Médico" e, com o nome conferido na lista, relê a solicitação (que
+  passou a ter o nome de lá) e segue o envio de sempre. Se o médico não der certo, **a solicitação
+  não é enviada** e continua em análise; os desfechos do médico são os mesmos.
+- Sem `medicoNovo`, médico fora da lista barra o envio com a pergunta ("escolha um parecido ou
+  autorize").
+- **Cartão do médico na análise** (solicitação com envio automático): sem "Cadastrei" nem "Já
+  existia"; fica o aviso de que o médico se resolve no envio e o **Recusar**. O "Cadastro a conferir"
+  continua com "Já existia" e "Não entrou". A fila de pedidos de cadastro segue como estava.
+- O clique no ícone e o Gravar do modal mandam `AJAXREQUEST=_viewRoot`, o que o navegador manda
+  (conferido no `framework.pack.js`; `docs/ser.md` §3.1).

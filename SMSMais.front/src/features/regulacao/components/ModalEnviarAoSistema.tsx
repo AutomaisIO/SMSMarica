@@ -13,8 +13,9 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 
 import { resolverMedicoPendente, TIPOS_DOCUMENTO, type MedicoParecido } from '../api/medicosApi';
-import { useCadastrarMedicoNoSistema, useEnviarAoSer, usePrepararEnvioSer } from '../api/solicitacoesQueries';
+import { useEnviarAoSer, usePrepararEnvioSer } from '../api/solicitacoesQueries';
 import type {
+  AutorizoCadastroMedico,
   MedicoNovoNoSistema,
   PassoEnvioSer,
   PreparoEnvioSer,
@@ -33,6 +34,10 @@ type Etapa = 'preparando' | 'previa' | 'enviando' | 'enviado' | 'erro';
  * com a solicitação (recurso, paciente, médico, risco, unidade, CID, campos do recurso) e para
  * antes de anexar. A pessoa vê campo a campo o que vai, os anexos e os pedidos parecidos que o sistema
  * já tem para o paciente — só então envia.</p>
+ *
+ * <p><b>Médico pedido que não está na lista do sistema</b>: a prévia mostra os nomes parecidos ("É
+ * este") e, se não for nenhum, o regulador AUTORIZA o cadastro — quem cadastra é o próprio envio, na
+ * tela de nova solicitação do sistema (ícone "Adicionar médico"), antes de preencher o pedido.</p>
  *
  * <p><b>Assina quem envia</b>, com o usuário e a senha DELE no sistema (o modal de login aparece
  * sozinho quando falta). O desfecho — número, ou o erro com o texto do sistema — fica AQUI, no modal:
@@ -87,6 +92,8 @@ function ModalEnvioAutomatico({
   const [conferiParecidos, setConferiParecidos] = useState(false);
   /** Desfecho do médico resolvido nesta abertura ("cadastrado e conferido") — fica à vista na prévia refeita. */
   const [avisoMedico, setAvisoMedico] = useState<string | null>(null);
+  /** O "Autorizo cadastrar" do médico fora da lista — vai junto com o envio, que faz o cadastro. */
+  const [autorizoMedico, setAutorizoMedico] = useState<AutorizoCadastroMedico | null>(null);
   const iniciou = useRef(false);
 
   async function fazerPrevia() {
@@ -94,6 +101,7 @@ function ModalEnvioAutomatico({
     setErro(null);
     setErroDepoisDeEnviar(false);
     setConferiParecidos(false);
+    setAutorizoMedico(null);
     try {
       setPrevia(await preparar.mutateAsync(solicitacaoId));
       setEtapa('previa');
@@ -109,7 +117,11 @@ function ModalEnvioAutomatico({
     setErro(null);
     try {
       setResultado(
-        await enviar.mutateAsync({ id: solicitacaoId, mesmoComParecido: conferiParecidos }),
+        await enviar.mutateAsync({
+          id: solicitacaoId,
+          mesmoComParecido: conferiParecidos,
+          medicoNovo: previa?.medicoNovo ? autorizoMedico : null,
+        }),
       );
       setEtapa('enviado');
     } catch (e) {
@@ -147,6 +159,7 @@ function ModalEnvioAutomatico({
 
   const ocupado = etapa === 'preparando' || etapa === 'enviando';
   const temParecidos = (previa?.possiveisDuplicados.length ?? 0) > 0;
+  const cadastraMedico = !!previa?.medicoNovo && !!autorizoMedico;
 
   return (
     <>
@@ -170,7 +183,11 @@ function ModalEnvioAutomatico({
         {etapa === 'enviando' && (
           <Aguarde
             titulo={`Enviando ao ${nome}…`}
-            texto={`Anexando os documentos, gravando e relendo o pedido no ${nome} para conferir. Leva cerca de um minuto — não feche esta janela.`}
+            texto={
+              cadastraMedico
+                ? `Cadastrando o médico pelo “Adicionar Médico” da tela de nova solicitação do ${nome} e conferindo na lista; depois, preenchendo, anexando os documentos, gravando e relendo o pedido. Leva cerca de um minuto — não feche esta janela.`
+                : `Anexando os documentos, gravando e relendo o pedido no ${nome} para conferir. Leva cerca de um minuto — não feche esta janela.`
+            }
           />
         )}
 
@@ -192,8 +209,7 @@ function ModalEnvioAutomatico({
                 key={`${previa.medicoNovo.pendenteId}-${previa.medicoNovo.situacao}`}
                 m={previa.medicoNovo}
                 nome={nome}
-                solicitacaoId={solicitacaoId}
-                tratouFaltaDeSessao={sessao.tratouFaltaDeSessao}
+                aoAutorizar={setAutorizoMedico}
                 aoResolver={(mensagem) => {
                   setAvisoMedico(mensagem);
                   void fazerPrevia();
@@ -249,11 +265,15 @@ function ModalEnvioAutomatico({
               </Button>
               <Button
                 onClick={fazerEnvio}
-                disabled={(temParecidos && !conferiParecidos) || !!previa.medicoNovo}
-                title={previa.medicoNovo ? `Resolva o médico acima antes de enviar ao ${nome}` : undefined}
+                disabled={(temParecidos && !conferiParecidos) || (!!previa.medicoNovo && !autorizoMedico)}
+                title={
+                  previa.medicoNovo && !autorizoMedico
+                    ? `Escolha um dos nomes parecidos ou autorize o cadastro do médico antes de enviar ao ${nome}`
+                    : undefined
+                }
               >
                 <Send className="size-4" />
-                Enviar ao {nome}
+                {cadastraMedico ? `Cadastrar o médico e enviar ao ${nome}` : `Enviar ao ${nome}`}
               </Button>
             </div>
           </div>
@@ -315,40 +335,54 @@ function ModalEnvioAutomatico({
  * <ul>
  *   <li><b>É este</b> — um dos nomes parecidos da lista de HOJE (o sistema abrevia muito); a
  *   solicitação passa a usar o cadastro de lá;</li>
- *   <li><b>Autorizo cadastrar</b> — a plataforma preenche o modal "Adicionar Médico" do sistema com a
- *   sessão do regulador, grava e confere na lista. O cadastro do Estado não tem editar nem apagar: por
- *   isso a autorização é expressa e a especialidade é escolhida da lista de lá.</li>
+ *   <li><b>Autorizo cadastrar</b> — o regulador confere os dados e AUTORIZA; o cadastro é feito pelo
+ *   próprio envio, no "Adicionar Médico" da tela de nova solicitação do sistema, antes de preencher o
+ *   pedido. O cadastro do Estado não tem editar nem apagar: por isso a autorização é expressa e a
+ *   especialidade é escolhida da lista de lá.</li>
  * </ul>
  * Recusar continua no cartão do médico na solicitação (o motivo vai para a unidade).
  */
 function BlocoMedicoNovo({
   m,
   nome,
-  solicitacaoId,
-  tratouFaltaDeSessao,
+  aoAutorizar,
   aoResolver,
 }: {
   m: MedicoNovoNoSistema;
   nome: 'SER' | 'SERNIT';
-  solicitacaoId: string;
-  tratouFaltaDeSessao: Sessao['tratouFaltaDeSessao'];
+  /** A autorização completa (ou `null` enquanto falta algo) — o envio leva junto. */
+  aoAutorizar: (a: AutorizoCadastroMedico | null) => void;
   aoResolver: (mensagem: string) => void;
 }) {
   const qc = useQueryClient();
-  const cadastrar = useCadastrarMedicoNoSistema();
   const [abrirCadastro, setAbrirCadastro] = useState(false);
   const [nomeMedico, setNomeMedico] = useState(m.nome);
   const [tipo, setTipo] = useState(m.numeroDocumento ? (m.tipoDocumento ?? '') : '');
   const [numero, setNumero] = useState(m.numeroDocumento ?? '');
   const [especialidade, setEspecialidade] = useState(m.especialidadeSugerida ?? '');
   const [autorizo, setAutorizo] = useState(false);
-  const [ocupado, setOcupado] = useState<'escolher' | 'cadastrar' | null>(null);
+  const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const incerto = m.situacao === 'CadastroIncerto';
 
+  const completo =
+    abrirCadastro && autorizo && !!especialidade && !!nomeMedico.trim() && !(numero.trim() && !tipo);
+  useEffect(() => {
+    aoAutorizar(
+      completo
+        ? {
+            especialidade,
+            nome: nomeMedico.trim() || null,
+            tipoDocumento: numero.trim() ? tipo || null : null,
+            numeroDocumento: numero.trim() || null,
+          }
+        : null,
+    );
+  }, [completo, especialidade, nomeMedico, tipo, numero, aoAutorizar]);
+
   async function usarEste(p: MedicoParecido) {
     setErro(null);
-    setOcupado('escolher');
+    setOcupado(true);
     try {
       await resolverMedicoPendente(m.pendenteId, 'JaExistia', p.nome, null);
       // Resolver troca o médico em todas as solicitações que o usavam: o detalhe por trás também muda.
@@ -357,29 +391,7 @@ function BlocoMedicoNovo({
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     } finally {
-      setOcupado(null);
-    }
-  }
-
-  async function fazerCadastro() {
-    setErro(null);
-    setOcupado('cadastrar');
-    try {
-      const r = await cadastrar.mutateAsync({
-        id: solicitacaoId,
-        dados: {
-          especialidade,
-          nome: nomeMedico.trim() || null,
-          tipoDocumento: numero.trim() ? tipo || null : null,
-          numeroDocumento: numero.trim() || null,
-        },
-      });
-      aoResolver(r.mensagem);
-    } catch (e) {
-      if (tratouFaltaDeSessao(e, fazerCadastro)) return;
-      setErro(extrairMensagemDeErro(e));
-    } finally {
-      setOcupado(null);
+      setOcupado(false);
     }
   }
 
@@ -392,7 +404,8 @@ function BlocoMedicoNovo({
         A unidade pediu <b>{m.nome}</b>
         {m.numeroDocumento && ` (${m.tipoDocumento} ${m.numeroDocumento})`}
         {m.especialidadePedida && ` — ${m.especialidadePedida}`}, que não está na lista de médicos do {nome}.
-        O envio só libera depois de resolver.
+        Confira os nomes parecidos: se for um deles, use “É este”; se não for nenhum, autorize o cadastro e o
+        envio cadastra o médico no {nome}.
       </p>
 
       {incerto && (
@@ -417,11 +430,7 @@ function BlocoMedicoNovo({
                 <span>
                   {p.nome} <span className="text-xs text-slate-500">· {p.motivo}</span>
                 </span>
-                <Button
-                  variante="secundaria"
-                  onClick={() => usarEste(p)}
-                  disabled={ocupado !== null}
-                >
+                <Button variante="secundaria" onClick={() => usarEste(p)} disabled={ocupado}>
                   É este
                 </Button>
               </li>
@@ -432,7 +441,7 @@ function BlocoMedicoNovo({
 
       {m.podeCadastrar && !abrirCadastro && (
         <div className="mt-3">
-          <Button onClick={() => setAbrirCadastro(true)} disabled={ocupado !== null}>
+          <Button onClick={() => setAbrirCadastro(true)} disabled={ocupado}>
             <UserPlus className="size-4" /> Não é nenhum — autorizo cadastrar no {nome}
           </Button>
         </div>
@@ -441,8 +450,10 @@ function BlocoMedicoNovo({
       {m.podeCadastrar && abrirCadastro && (
         <div className="mt-3 space-y-2 rounded border border-slate-200 bg-white p-3">
           <p className="text-slate-700">
-            A plataforma preenche o “Adicionar Médico” do {nome} com o seu usuário, grava e confere se o nome
-            entrou na lista. <b>O cadastro do Estado não tem editar nem apagar</b> — confira os dados.
+            Ao enviar, a plataforma abre a tela de nova solicitação do {nome} com o seu usuário, cadastra o
+            médico pelo “Adicionar Médico” (ao lado de “Médico responsável”), confere se o nome entrou na lista
+            e só então preenche e grava a solicitação. <b>O cadastro do Estado não tem editar nem apagar</b> —
+            confira os dados.
           </p>
           <label className="block">
             <span className="text-xs text-slate-500">Nome (como vai ficar no {nome})</span>
@@ -494,25 +505,19 @@ function BlocoMedicoNovo({
               onChange={(e) => setAutorizo(e.target.checked)}
             />
             <span>
-              Autorizo cadastrar este médico no {nome}. Conferi os nomes parecidos acima: não é nenhum deles.
+              Autorizo cadastrar este médico no {nome} no envio desta solicitação. Conferi os nomes parecidos
+              acima: não é nenhum deles.
             </span>
           </label>
-          <div className="flex justify-end gap-2">
-            <Button variante="ghost" onClick={() => setAbrirCadastro(false)} disabled={ocupado !== null}>
-              Voltar
-            </Button>
+          <div className="flex justify-end">
             <Button
-              onClick={fazerCadastro}
-              disabled={
-                ocupado !== null
-                || !autorizo
-                || !especialidade
-                || !nomeMedico.trim()
-                || (!!numero.trim() && !tipo)
-              }
+              variante="ghost"
+              onClick={() => {
+                setAbrirCadastro(false);
+                setAutorizo(false);
+              }}
             >
-              {ocupado === 'cadastrar' ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
-              {ocupado === 'cadastrar' ? `Cadastrando no ${nome}…` : `Cadastrar no ${nome}`}
+              Voltar
             </Button>
           </div>
         </div>
@@ -520,8 +525,8 @@ function BlocoMedicoNovo({
 
       {!m.podeCadastrar && !incerto && (
         <p className="mt-2 text-xs text-amber-900">
-          A tela do {nome} não ofereceu o “Adicionar Médico” agora — cadastre pela tela de lá e confirme no
-          cartão do médico.
+          A tela do {nome} não ofereceu o “Adicionar Médico” agora — feche e tente de novo mais tarde, ou escolha
+          um dos nomes parecidos.
         </p>
       )}
 

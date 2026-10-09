@@ -18,20 +18,22 @@ import { ROTULO_SISTEMA_REGULACAO } from '../types';
 /**
  * O médico que a unidade pediu na abertura e ainda não está no sistema de destino.
  *
- * <p>É o técnico da regulação quem cadastra no SER/SERNIT — pela tela de lá, no ícone "Adicionar
- * médico" ao lado do combo do médico — e confirma aqui. Enquanto o médico estiver pendente, o
- * "Registrar envio" fica barrado: o sistema só aceita médico da lista dele.</p>
- *
- * <p>Três desfechos: <b>cadastrei</b>; <b>já existia</b> com outro nome (o SER abrevia muito — a
- * solicitação passa a usar o nome de lá); ou <b>recusado</b>, com o motivo que a unidade lê.</p>
+ * <p>Na análise de uma solicitação com envio automático (SER/SERNIT), o médico se resolve NO ENVIO:
+ * a prévia mostra os nomes parecidos e o regulador autoriza o cadastro, que o próprio envio faz na tela
+ * de nova solicitação do sistema. Aqui fica só o aviso e o <b>recusar</b> (com o motivo que a unidade
+ * lê). Fora disso (fila de pedidos de cadastro), o técnico cadastra pela tela de lá e confirma aqui:
+ * <b>cadastrei</b> ou <b>já existia</b> com outro nome (o SER abrevia muito).</p>
  */
 export function MedicoPendenteCard({
   valorMedico,
   podeResolver,
+  cadastroPeloEnvio = false,
 }: {
   /** O valor do campo de médico da solicitação (`pendente:{id}` quando é pedido). */
   valorMedico: unknown;
   podeResolver: boolean;
+  /** A solicitação vai pelo envio automático: o cadastro é autorizado na prévia e feito pelo envio. */
+  cadastroPeloEnvio?: boolean;
 }) {
   const id = idPendente(typeof valorMedico === 'string' ? valorMedico : null);
   const qc = useQueryClient();
@@ -118,12 +120,17 @@ export function MedicoPendenteCard({
           “Já existia” e escolha o cadastro; se não está, “Não entrou” — e ele volta a aguardar cadastro.
           Não tente de novo sem conferir: o cadastro do Estado não tem apagar.
         </p>
+      ) : cadastroPeloEnvio ? (
+        <p className="mt-2 text-xs text-amber-900">
+          Em <strong>Aceitar e enviar ao {sistema}</strong>, confira os nomes parecidos da lista do {sistema} (o
+          {' '}{sistema} abrevia muito) e, se não for nenhum, <strong>autorize o cadastro</strong>: o próprio envio
+          cadastra o médico pelo “Adicionar Médico” da tela de nova solicitação do {sistema}, confere na lista e
+          segue com o pedido.
+        </p>
       ) : (
         <p className="mt-2 text-xs text-amber-900">
-          Pelo <strong>Enviar ao {sistema}</strong>, a plataforma mostra os nomes parecidos da lista e, com a sua
-          autorização, cadastra o médico lá. Ou, no {sistema}: na tela da solicitação, ícone{' '}
-          <strong>Adicionar médico</strong> ao lado de “Médico responsável”, e confirme aqui. O envio só libera
-          depois de resolver.
+          No {sistema}: na tela da solicitação, ícone <strong>Adicionar médico</strong> ao lado de “Médico
+          responsável”, e confirme aqui. O envio só libera depois de resolver.
         </p>
       )}
 
@@ -134,13 +141,17 @@ export function MedicoPendenteCard({
               Não entrou
             </Button>
           ) : (
-            <Button onClick={() => resolver('Cadastrado', null, null)} disabled={ocupado}>
-              Cadastrei no {sistema}
+            !cadastroPeloEnvio && (
+              <Button onClick={() => resolver('Cadastrado', null, null)} disabled={ocupado}>
+                Cadastrei no {sistema}
+              </Button>
+            )
+          )}
+          {(incerto || !cadastroPeloEnvio) && (
+            <Button variante="secundaria" onClick={abrirJaExistia} disabled={ocupado}>
+              Já existia no {sistema}
             </Button>
           )}
-          <Button variante="secundaria" onClick={abrirJaExistia} disabled={ocupado}>
-            Já existia no {sistema}
-          </Button>
           <Button variante="outline" onClick={() => setModo('recusar')} disabled={ocupado}>
             Recusar
           </Button>

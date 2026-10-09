@@ -172,7 +172,9 @@ public sealed class RegulacaoSolicitacoesController(
     /// <summary>
     /// <b>Envia ao SER ou ao SERNIT — ESCREVE no sistema de regulação</b>, assinado pelo regulador
     /// logado. Preenche, anexa, grava, relê o pedido para provar e registra o número. Pedido parecido
-    /// já existente responde 409 <c>ser.pedido_parecido</c> até o regulador confirmar.
+    /// já existente responde 409 <c>ser.pedido_parecido</c> até o regulador confirmar. Médico pedido pela
+    /// unidade fora da lista do sistema: com <c>medicoNovo.autorizo</c>, o envio o cadastra antes pelo
+    /// "Adicionar Médico" da tela de nova solicitação — ESCREVE no cadastro de médicos do Estado.
     /// </summary>
     [HttpPost("{id:guid}/envio-automatico/enviar")]
     [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
@@ -181,22 +183,6 @@ public sealed class RegulacaoSolicitacoesController(
     public Task<EnvioSerResultadoDto> EnviarAutomatico(
         Guid id, [FromBody] EnviarAoSerRequest req, CancellationToken cancellationToken) =>
         envioSer.EnviarAsync(id, req, cancellationToken);
-
-    /// <summary>
-    /// <b>"Autorizo cadastrar" — ESCREVE no cadastro de médicos do SER/SERNIT</b>, pelo modal
-    /// "Adicionar Médico" da tela de criação, com a sessão do regulador. Para o médico pedido pela
-    /// unidade que a prévia mostrou fora da lista (<c>medicoNovo</c>). Se o nome já está lá, não grava e
-    /// usa o de lá. Só dá por cadastrado se o nome aparecer na lista depois do Gravar; sem essa prova
-    /// responde 400 <c>ser.medico_incerto</c> e o médico fica "cadastro incerto" (ADR-0065, complemento
-    /// de 08/10/2026).
-    /// </summary>
-    [HttpPost("{id:guid}/envio-automatico/medico")]
-    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
-    [ProducesResponseType<MedicoCadastradoNoSistemaDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public Task<MedicoCadastradoNoSistemaDto> CadastrarMedicoNoSistema(
-        Guid id, [FromBody] CadastrarMedicoNoSistemaRequest req, CancellationToken cancellationToken) =>
-        envioSer.CadastrarMedicoAsync(id, req, cancellationToken);
 
     /// <summary>Rota antiga (07/10/2026) — a tela publicada antes do SERNIT chama esta. Mesmo efeito.</summary>
     [HttpPost("{id:guid}/ser/preparar")]
