@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Configuração do Firebase (push) de cada build — montada a partir do firebase.exemplo.json.
+/firebase.json
+# O app não usa os arquivos nativos do Firebase (tudo pelo Dart); se alguém baixar, não vai pro git.
+google-services.json
+GoogleService-Info.plist
+# Gerado pelo `flutterfire configure` (não usar — ver README): a configuração vem do firebase.json.
+/lib/firebase_options.dart

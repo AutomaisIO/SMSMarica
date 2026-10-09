@@ -1,17 +1,21 @@
 include: package:very_good_analysis/analysis_options.yaml
 
 analyzer:
-  plugins:
-    - custom_lint
   errors:
     lines_longer_than_80_chars: ignore
     public_member_api_docs: ignore
   exclude:
-    - "**/*.g.dart"
-    - "**/*.freezed.dart"
     - "**/generated_plugin_registrant.dart"
 
 linter:
   rules:
     always_use_package_imports: false
     prefer_relative_imports: false
+    # Telas com muitos widgets privados num arquivo só (espelho de cada página do PWA).
+    prefer_const_constructors_in_immutables: true
+    sort_constructors_first: false
+    avoid_positional_boolean_parameters: false
+    flutter_style_todos: false
+    cascade_invocations: false
+    # O pubspec agrupa os pacotes por finalidade, com comentário.
+    sort_pub_dependencies: false
