@@ -191,11 +191,12 @@ regra. Por isso quase toda ausência não tem nem ele.
    232 → 222, recursos do SER com regra 62 → 72. Plano executado em
    [`2026-10-09-confronto-manuais-ser/plano_lotes12.md`](./2026-10-09-confronto-manuais-ser/plano_lotes12.md);
    registro em `PROGRESSO.md` ("OKs de produção").
-3. Pôr a regra do encaminhamento em todo recurso do SER que esteja sem ela.
-4. Cadastrar as subseções **simples**, por ordem de volume: Polissonografia (< 18 dedutível),
+3. ✅ **Feito em 09/10/2026 (lote 3).** Pôr a regra do encaminhamento em todo recurso do SER que esteja sem ela
+   (337 canônicos; os 422 recursos do SER passam a ter regra).
+4. ✅ **Feito em 09/10/2026 (lote 3), na parte listada abaixo.** Cadastrar as subseções **simples**, por ordem de volume: Polissonografia (< 18 dedutível),
    Gastro Pediatria, Oncologia de requisito único (Tórax, Cólon/Reto, Cirurgia Geral, Tireoide,
    Oftalmo, Neuro, Pele, Mastologia), EEG, Cintilografia, Elastografia.
-5. **Urologia (Oncologia), provisório:** uma pergunta de lista "Local da lesão", com o requisito literal
+5. ✅ **Feito em 09/10/2026 (lote 3).** **Urologia (Oncologia), provisório:** uma pergunta de lista "Local da lesão", com o requisito literal
    de cada local dentro da opção e "nenhuma destas" bloqueando, mais um documento genérico "Exame(s)
    exigido(s) para o local marcado" e o histopatológico como documento não obrigatório. O local marcado
    fica gravado e o regulador vê. **O que se perde:** a caixinha específica por local (PSA e biópsia só
