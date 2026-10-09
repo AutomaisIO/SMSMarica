@@ -392,7 +392,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
+        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente campo município é obrigatório telefone celular para contato é obrigatório município uf celular nome da mãe logradouro o sernit não tinha médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
       conteudo: (
         <>
           <p>
@@ -480,13 +480,22 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             entrou, ou o médico saiu da lista): a prévia reabre o pedido de cadastro com o documento e a
             especialidade que a unidade informou, e você decide ali mesmo — “É este” ou “Autorizo cadastrar”.
           </Callout>
-          <Callout tipo="regra" titulo="No SERNIT: paciente que o SERNIT ainda não conhece">
+          <Callout tipo="regra" titulo="No SERNIT: o cadastro do paciente">
             O SERNIT só acha o paciente pelo <strong>CNS</strong>, e só se ele já teve pedido lá — o
             SERNIT não consulta o CADSUS. Quando não acha, a plataforma cadastra o paciente na própria
             tela do SERNIT com os dados do <strong>nosso cadastro</strong>: nome, CPF, sexo, data de
             nascimento, nome da mãe, endereço, telefone e raça/cor. A prévia mostra cada um desses
             campos. Se faltar CNS, nome, CPF, sexo ou data de nascimento no nosso cadastro, o envio
             para antes de gravar e diz o que completar no cadastro do paciente.
+            <br />
+            <br />
+            O SERNIT só grava o pedido com <strong>nome da mãe, logradouro, UF, município e telefone
+            celular</strong> do paciente. Quando ele já conhece o paciente mas o cadastro de lá está sem
+            algum desses, a plataforma completa só o que está vazio com o nosso cadastro — a prévia mostra
+            “o SERNIT não tinha; foi o do nosso cadastro”. O celular precisa ter DDD e 9 dígitos: telefone
+            fixo não serve, e o número marcado como <em>não é desta pessoa</em> nunca vai. Se nem lá nem no
+            nosso cadastro houver o dado, a prévia já avisa qual falta e por quê — complete o cadastro do
+            paciente aqui na plataforma e abra a prévia de novo.
           </Callout>
           <Callout tipo="dica" titulo="Por que a plataforma acha tudo pelo nome">
             O SER renumera a lista de recursos quando a SES acrescenta um — o número de ontem pode ser

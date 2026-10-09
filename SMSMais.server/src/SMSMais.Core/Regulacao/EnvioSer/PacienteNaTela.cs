@@ -51,7 +51,7 @@ public static class PacienteNaTela
             [Chave("Complemento")] = Maiusculo(e?.Complemento),
             [Chave("CEP")] = Mascara(Digitos(e?.Cep), 8, "{0}-{1}", 5, 3),
             [Chave("Bairro")] = Maiusculo(e?.Bairro),
-            [Chave("Telefone Celular")] = Telefone(p.TelefoneCelular) ?? Telefone(p.TelefonePrincipal),
+            [Chave("Telefone Celular")] = Celular(p),
             [Chave("Telefone Residencial")] = Telefone(p.TelefoneResidencial, fixo: true),
             [Chave("Raça")] = p.RacaCor switch
             {
@@ -97,11 +97,24 @@ public static class PacienteNaTela
         ["TO"] = "TOCANTINS",
     };
 
+    /// <summary>
+    /// O número do campo "Telefone Celular" (o SERNIT exige para gravar): o celular do cadastro, o
+    /// principal ou o verificado — o primeiro que é celular com DDD. O número NEGADO ("não sou essa
+    /// pessoa", ADR-0057) nunca vai: o SERNIT avisa o paciente por ele.
+    /// </summary>
+    internal static string? Celular(PacienteDto p)
+    {
+        var negado = SemPais(Digitos(p.TelefoneNegado));
+        return new[] { p.TelefoneCelular, p.TelefonePrincipal, p.TelefoneVerificado }
+            .Where(n => negado.Length == 0 || SemPais(Digitos(n)) != negado)
+            .Select(n => Telefone(n))
+            .FirstOrDefault(n => n is not null);
+    }
+
     /// <summary>Celular <c>(99)99999-9999</c>, fixo <c>(99)9999-9999</c>; o 55 do país sai.</summary>
     internal static string? Telefone(string? numero, bool fixo = false)
     {
-        var d = Digitos(numero);
-        if (d.Length is 12 or 13 && d.StartsWith("55", StringComparison.Ordinal)) d = d[2..];
+        var d = SemPais(Digitos(numero));
         return (fixo, d.Length) switch
         {
             (false, 11) => $"({d[..2]}){d[2..7]}-{d[7..]}",
@@ -130,4 +143,7 @@ public static class PacienteNaTela
     private static string? Maiusculo(string? s) => Vazio(s)?.ToUpper(new CultureInfo("pt-BR"));
 
     private static string Digitos(string? s) => new([.. (s ?? string.Empty).Where(char.IsDigit)]);
+
+    private static string SemPais(string d) =>
+        d.Length is 12 or 13 && d.StartsWith("55", StringComparison.Ordinal) ? d[2..] : d;
 }

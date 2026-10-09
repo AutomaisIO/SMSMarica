@@ -9,6 +9,7 @@ using SMSMais.Core.Integracoes.SernitWeb.Varredura;
 using SMSMais.Core.Integracoes.SerWeb;
 using SMSMais.Core.Integracoes.SerWeb.Varredura;
 using SMSMais.Core.Pacientes;
+using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Catalogo;
 using SMSMais.Core.Regulacao.Formularios;
@@ -559,19 +560,22 @@ public sealed partial class RegulacaoEnvioSerService(
         var nomeNoSistema = paciente.FirstOrDefault(c => c.Campo.EndsWith(":nome", StringComparison.Ordinal))?.Valor
                             ?? paciente.FirstOrDefault(c => c.Rotulo.Equals("Nome", StringComparison.OrdinalIgnoreCase))?.Valor;
         var preenchidos = new HashSet<string>(StringComparer.Ordinal);
+        // Por que um campo obrigatório ficou sem valor — vai na recusa, para quem corrige o cadastro.
+        var motivos = new Dictionary<string, string>(StringComparer.Ordinal);
+        var nosso = ctx.Perfil.CadastraPacienteNaTela ? await pacientes.ObterPorIdAsync(dados.PacienteId, ct) : null;
         var cadastradoNaTela = false;
         if (string.IsNullOrWhiteSpace(nomeNoSistema))
         {
             // O SERNIT não consulta o CADSUS: paciente que ele não conhece volta com o painel vazio e
             // aberto, e o regulador digitaria. Quem digita é a plataforma, com o nosso cadastro.
-            if (!ctx.Perfil.CadastraPacienteNaTela || !motor.CampoEditavel(CampoNome))
+            if (nosso is null || !motor.CampoEditavel(CampoNome))
             {
                 throw new ValidacaoException(
                     "ser.paciente",
                     $"O {sistema} não achou paciente pelo {(documento.Length == 15 ? "CNS" : "CPF")} {documento}. "
                     + Diagnostico(ctx, motor));
             }
-            nomeNoSistema = await CadastrarPacienteNaTelaAsync(ctx, motor, dados, paciente, passos, preenchidos, ct);
+            nomeNoSistema = await CadastrarPacienteNaTelaAsync(ctx, motor, nosso, paciente, passos, preenchidos, motivos, ct);
             cadastradoNaTela = true;
         }
         else if (IdentidadePorNome.Chave(nomeNoSistema) != IdentidadePorNome.Chave(dados.PacienteNome))
@@ -582,34 +586,48 @@ public sealed partial class RegulacaoEnvioSerService(
                 + $"solicitação é de \"{dados.PacienteNome}\". Confira o cadastro antes de enviar — pedido no paciente "
                 + "errado não se desfaz.");
         }
+        else if (nosso is not null)
+        {
+            // O SERNIT conhece o paciente, mas o cadastro de lá pode estar sem o que ele mesmo exige para
+            // gravar — a PR-23 (09/10/2026) foi recusada no Gravar por Município e Telefone Celular. O
+            // regulador completaria na tela; aqui vai o do nosso cadastro, só no obrigatório vazio.
+            await CompletarPacienteNaTelaAsync(ctx, motor, nosso, paciente, passos, preenchidos, motivos, ct);
+        }
 
         // O SERNIT só grava com CPF (medido no lab, §5.4): sem CPF no cadastro de lá, o campo vem
         // aberto e vazio — vai o do nosso cadastro; sem CPF dos dois lados, não há como enviar.
         if (ctx.Perfil.CpfObrigatorio && !preenchidos.Contains(CampoCpf) && motor.CampoEditavel(CampoCpf)
             && string.IsNullOrWhiteSpace(motor.ValorNaPagina(CampoCpf)))
         {
-            var nosso = Digitos(dados.PacienteCpf);
-            if (nosso.Length != 11)
+            var nossoCpf = Digitos(dados.PacienteCpf);
+            if (nossoCpf.Length != 11)
             {
                 throw new ValidacaoException(
                     "ser.paciente",
                     $"O {sistema} exige CPF para gravar, e o paciente não tem CPF nem lá nem no nosso cadastro. "
                     + "Complete o CPF do paciente antes de enviar.");
             }
-            var mascarado = $"{nosso[..3]}.{nosso[3..6]}.{nosso[6..9]}-{nosso[9..]}";
+            var mascarado = $"{nossoCpf[..3]}.{nossoCpf[3..6]}.{nossoCpf[6..9]}-{nossoCpf[9..]}";
             motor.Digitar(CampoCpf, mascarado);
             preenchidos.Add(CampoCpf);
             passos.Add(new EnvioSerPassoDto("CPF", mascarado, true, $"o {sistema} não tinha o CPF; foi o do nosso cadastro"));
         }
 
-        var faltandoNoCadastro = paciente
+        // Pelo painel como a página está AGORA: o município só fica aberto depois do onchange da UF.
+        var faltandoNoCadastro = motor.Paciente()
             .Where(c => c.Obrigatorio && c.Editavel && string.IsNullOrWhiteSpace(c.Valor) && !preenchidos.Contains(c.Campo))
-            .Select(c => c.Rotulo).ToList();
+            .ToList();
         if (faltandoNoCadastro.Count > 0)
         {
             throw new ValidacaoException(
                 "ser.paciente",
-                $"O cadastro do paciente no {sistema} está sem: {string.Join(", ", faltandoNoCadastro)}. Complete lá e tente de novo.");
+                nosso is null
+                    ? $"O cadastro do paciente no {sistema} está sem: {string.Join(", ", faltandoNoCadastro.Select(c => c.Rotulo))}. "
+                      + "Complete lá e tente de novo."
+                    : $"O {sistema} só grava o pedido com estes dados do paciente, que faltam lá e no nosso cadastro: "
+                      + string.Join("; ", faltandoNoCadastro.Select(c =>
+                          $"{c.Rotulo} ({motivos.GetValueOrDefault(c.Campo) ?? MotivoSemValor(c.Rotulo)})"))
+                      + ". Complete o cadastro do paciente aqui na plataforma e abra a prévia de novo.");
         }
         if (!cadastradoNaTela)
         {
@@ -776,11 +794,11 @@ public sealed partial class RegulacaoEnvioSerService(
     /// município só existe depois do <c>onchange</c> da UF.
     /// </summary>
     private async Task<string> CadastrarPacienteNaTelaAsync(
-        Contexto ctx, SerCriacaoSolicitacao motor, DadosEnvioSer dados, IReadOnlyList<SerCampoPacienteDto> painel,
-        List<EnvioSerPassoDto> passos, HashSet<string> preenchidos, CancellationToken ct)
+        Contexto ctx, SerCriacaoSolicitacao motor, PacienteDto nosso, IReadOnlyList<SerCampoPacienteDto> painel,
+        List<EnvioSerPassoDto> passos, HashSet<string> preenchidos, Dictionary<string, string> motivos,
+        CancellationToken ct)
     {
         var sistema = ctx.Nome;
-        var nosso = await pacientes.ObterPorIdAsync(dados.PacienteId, ct);
         var montagem = PacienteNaTela.Montar(nosso, painel);
         if (montagem.Faltando.Count > 0)
         {
@@ -802,30 +820,95 @@ public sealed partial class RegulacaoEnvioSerService(
             if (campo != CampoNome) passos.Add(new EnvioSerPassoDto($"Paciente · {rotulo}", valor, true));
         }
 
-        // UF por extenso na tela; município pelo nome, depois do onchange da UF.
-        if (nosso.Endereco is { } endereco && motor.CampoEditavel(CampoUf)
-            && string.IsNullOrWhiteSpace(painel.FirstOrDefault(c => c.Campo == CampoUf)?.Valor))
-        {
-            var ufs = IdentidadePorNome.Achar(motor.Combo(CampoUf), o => o.Rotulo, PacienteNaTela.NomeDaUf(endereco.Uf));
-            if (ufs.Count == 1)
-            {
-                await motor.TrocarAsync(CampoUf, ufs[0].Valor, ct);
-                passos.Add(new EnvioSerPassoDto("Paciente · UF", ufs[0].Rotulo, true));
-                var municipios = IdentidadePorNome.Achar(motor.Combo(CampoMunicipio), o => o.Rotulo, endereco.Cidade);
-                if (municipios.Count == 1)
-                {
-                    motor.Digitar(CampoMunicipio, municipios[0].Valor);
-                    passos.Add(new EnvioSerPassoDto("Paciente · Município", municipios[0].Rotulo, true));
-                }
-                else
-                {
-                    passos.Add(new EnvioSerPassoDto("Paciente · Município", endereco.Cidade, true,
-                        $"o {sistema} não lista \"{endereco.Cidade}\" nessa UF — vai sem município"));
-                }
-            }
-        }
+        await PreencherMunicipioAsync(ctx, motor, nosso, painel, passos, preenchidos, motivos, null, ct);
         return nome;
     }
+
+    /// <summary>
+    /// Paciente que o sistema conhece, com o cadastro de lá incompleto: o campo OBRIGATÓRIO que veio
+    /// aberto e vazio recebe o do nosso cadastro — o resto do cadastro de lá não é tocado. Sem esses
+    /// campos o Gravar volta recusado ("Campo Município é Obrigatório", PR-23).
+    /// </summary>
+    private async Task CompletarPacienteNaTelaAsync(
+        Contexto ctx, SerCriacaoSolicitacao motor, PacienteDto nosso, IReadOnlyList<SerCampoPacienteDto> painel,
+        List<EnvioSerPassoDto> passos, HashSet<string> preenchidos, Dictionary<string, string> motivos,
+        CancellationToken ct)
+    {
+        var vazios = painel
+            .Where(c => c.Obrigatorio && c.Editavel && string.IsNullOrWhiteSpace(c.Valor))
+            .Select(c => c.Campo)
+            .ToHashSet(StringComparer.Ordinal);
+        if (vazios.Count == 0) return;
+
+        var observacao = $"o {ctx.Nome} não tinha; foi o do nosso cadastro";
+        foreach (var (campo, rotulo, valor) in PacienteNaTela.Montar(nosso, painel).Campos.Where(c => vazios.Contains(c.Campo)))
+        {
+            motor.Digitar(campo, valor);
+            preenchidos.Add(campo);
+            passos.Add(new EnvioSerPassoDto($"Paciente · {rotulo}", valor, true, observacao));
+        }
+
+        if (vazios.Contains(CampoUf) || vazios.Contains(CampoMunicipio))
+        {
+            await PreencherMunicipioAsync(ctx, motor, nosso, painel, passos, preenchidos, motivos, observacao, ct);
+        }
+    }
+
+    /// <summary>
+    /// UF por extenso na tela; município pelo nome, depois do <c>onchange</c> da UF — é ele que traz a
+    /// lista de municípios. UF que o sistema já tem não é trocada: só o município vazio é escolhido, da
+    /// lista dessa UF. O que não deu para escolher vai para <paramref name="motivos"/>.
+    /// </summary>
+    private static async Task PreencherMunicipioAsync(
+        Contexto ctx, SerCriacaoSolicitacao motor, PacienteDto nosso, IReadOnlyList<SerCampoPacienteDto> painel,
+        List<EnvioSerPassoDto> passos, HashSet<string> preenchidos, Dictionary<string, string> motivos,
+        string? observacao, CancellationToken ct)
+    {
+        bool Vazio(string campo) => string.IsNullOrWhiteSpace(painel.FirstOrDefault(c => c.Campo == campo)?.Valor);
+        var endereco = nosso.Endereco;
+
+        if (Vazio(CampoUf) && motor.CampoEditavel(CampoUf))
+        {
+            var ufs = IdentidadePorNome.Achar(motor.Combo(CampoUf), o => o.Rotulo, PacienteNaTela.NomeDaUf(endereco?.Uf));
+            if (ufs.Count != 1)
+            {
+                var motivo = string.IsNullOrWhiteSpace(endereco?.Uf)
+                    ? "o nosso cadastro não tem a UF do endereço"
+                    : $"o {ctx.Nome} não tem a UF \"{endereco.Uf}\"";
+                motivos[CampoUf] = motivo;
+                motivos[CampoMunicipio] = motivo;
+                return;
+            }
+            await motor.TrocarAsync(CampoUf, ufs[0].Valor, ct);
+            preenchidos.Add(CampoUf);
+            passos.Add(new EnvioSerPassoDto("Paciente · UF", ufs[0].Rotulo, true, observacao));
+        }
+        else if (!Vazio(CampoMunicipio))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(endereco?.Cidade))
+        {
+            motivos[CampoMunicipio] = "o nosso cadastro não tem a cidade do endereço";
+            return;
+        }
+        var municipios = IdentidadePorNome.Achar(motor.Combo(CampoMunicipio), o => o.Rotulo, endereco.Cidade);
+        if (municipios.Count != 1)
+        {
+            motivos[CampoMunicipio] = $"o {ctx.Nome} não lista \"{endereco.Cidade}\" na UF do paciente";
+            return;
+        }
+        motor.Digitar(CampoMunicipio, municipios[0].Valor);
+        preenchidos.Add(CampoMunicipio);
+        passos.Add(new EnvioSerPassoDto("Paciente · Município", municipios[0].Rotulo, true, observacao));
+    }
+
+    /// <summary>Por que o nosso cadastro não deu valor ao campo obrigatório (vai na recusa).</summary>
+    private static string MotivoSemValor(string rotulo) =>
+        IdentidadePorNome.Chave(rotulo) == IdentidadePorNome.Chave("Telefone Celular")
+            ? "o nosso cadastro não tem celular com DDD e 9 dígitos"
+            : "o nosso cadastro também não tem";
 
     private async Task PreencherDinamicosAsync(
         Contexto ctx, SerCriacaoSolicitacao motor, DadosEnvioSer dados, IReadOnlyDictionary<string, string> traduzido,
