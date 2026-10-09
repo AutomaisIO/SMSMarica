@@ -45,15 +45,17 @@ public sealed class ComunicacaoPacienteOptions
     /// </summary>
     public Dictionary<string, string> ImagensCabecalho { get; set; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["confirmacao_exame"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
-        ["confirmacao_consulta"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg",
-        ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.jpg",
+        // ?v=2: artes com a pele da personagem mais escura (09/10/2026). A Meta pode guardar a
+        // imagem por endereço; ao trocar uma arte, suba o número para ela baixar a nova.
+        ["confirmacao_exame"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg?v=2",
+        ["confirmacao_consulta"] = "https://app.smsmarica.online/mensagens/consultas-e-exames.jpg?v=2",
+        ["agendamento_proximo"] = "https://app.smsmarica.online/mensagens/agendamento-proximo.jpg?v=2",
         // Escolha do Bernardo entre as quatro variações da arte (20/09/2026).
-        ["agendamento_cancelado_anonimo"] = "https://app.smsmarica.online/mensagens/cancelamento-branco-invertido.jpg",
+        ["agendamento_cancelado_anonimo"] = "https://app.smsmarica.online/mensagens/cancelamento-branco-invertido.jpg?v=2",
         // Régua de reforço da confirmação (24/09/2026): a mesma arte que foi como amostra na Meta.
-        ["agendamento_aviso_pendente"] = "https://app.smsmarica.online/mensagens/aviso-pendente-vermelho.jpg",
-        ["agendamento_aguardando_resposta"] = "https://app.smsmarica.online/mensagens/confirmacao-pendente-branco.jpg",
-        ["agendamento_procure_posto"] = "https://app.smsmarica.online/mensagens/procure-posto-branco.jpg",
+        ["agendamento_aviso_pendente"] = "https://app.smsmarica.online/mensagens/aviso-pendente-vermelho.jpg?v=2",
+        ["agendamento_aguardando_resposta"] = "https://app.smsmarica.online/mensagens/confirmacao-pendente-branco.jpg?v=2",
+        ["agendamento_procure_posto"] = "https://app.smsmarica.online/mensagens/procure-posto-branco.jpg?v=2",
     };
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
