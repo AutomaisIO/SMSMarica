@@ -49,6 +49,17 @@ public sealed class RegulacaoRegrasController(
         CancellationToken cancellationToken) =>
         servico.ListarAsync(procedimentoId, sistema, inativas, cancellationToken);
 
+    /// <summary>
+    /// "Ver como o solicitante vê": as perguntas, caixinhas e bloqueios que o passo "Regras" do
+    /// assistente mostraria para este procedimento e destino. Só leitura — não cria solicitação.
+    /// </summary>
+    [HttpPost("previa")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AvaliacaoElegibilidadeDto>(StatusCodes.Status200OK)]
+    public Task<AvaliacaoElegibilidadeDto> Previa(
+        [FromBody] PreviaRegrasRequest req, CancellationToken cancellationToken) =>
+        servico.PreviaAsync(req, cancellationToken);
+
     [HttpPost]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Inclusao)]
     [ProducesResponseType<RegulacaoRegraDto>(StatusCodes.Status200OK)]

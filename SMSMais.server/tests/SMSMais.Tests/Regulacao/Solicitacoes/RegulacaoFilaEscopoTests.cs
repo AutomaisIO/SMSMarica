@@ -15,6 +15,7 @@ using SMSMais.Core.Regulacao.Catalogo.Dtos;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
+using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Core.Regulacao.Solicitacoes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -94,8 +95,16 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
         var exigencias = new RegulacaoExigenciaService(db, new StoreFake(), config, acessor, escopo);
         var eventos = new RegulacaoEventoService(db, acessor);
 
+        // As regras do manual têm teste próprio (PendenciasDasRegrasTests). Aqui o procedimento não
+        // tem regra: a avaliação volta vazia e a conferência do envio segue como antes.
+        var elegibilidade = Substitute.For<IRegulacaoElegibilidadeService>();
+        elegibilidade.AvaliarAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new AvaliacaoElegibilidadeDto(
+                [], [], [], [], [], new Dictionary<SistemaRegulacao, string>(), false));
+
         return new RegulacaoSolicitacaoService(
-            db, acessor, form, exigencias, config, catalogo, eventos, escopo, pacientes);
+            db, acessor, form, exigencias, config, catalogo, eventos, escopo, pacientes,
+            elegibilidade);
     }
 
     private static IReadOnlyList<string> FaltandoEntre(string[] obrigatorios, JsonElement canonico) =>

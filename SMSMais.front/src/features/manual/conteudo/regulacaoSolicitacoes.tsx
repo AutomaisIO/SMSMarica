@@ -10,7 +10,7 @@ import type { Artigo } from '@/features/manual/tipos';
  * solicitação, acompanha a pré-regulação e corrige o que voltar. O lado de quem avalia e regula
  * (assumir, aceitar, devolver, recusar) está em `regulacaoGestaoFila`.
  *
- * Conferido no código em 05/10/2026: `features/regulacao` (MinhaFilaPage, NovaSolicitacaoPage,
+ * Conferido no código em 05/10/2026 (regras no envio e wizard/VisaoRegras em 09/10/2026): `features/regulacao` (MinhaFilaPage, NovaSolicitacaoPage,
  * SolicitacaoDetalhePage, NotificacoesRegulacaoPage, AbasFilaRegulacao, TabelaSolicitacoes,
  * StatusRegulacaoBadge, BuscaProcedimento, wizard/PassoPaciente, wizard/PassoRegras,
  * SeletorCidRegulacao, CabecalhoSolicitacao, AnexosSolicitacao, ModalMotivo, LinhaDoTempo) e no backend
@@ -80,6 +80,9 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'anexo',
     'anexos',
     'pendências',
+    'responda no passo regras',
+    'pergunta sem resposta',
+    'envio travado',
     'linha do tempo',
     'notificações',
     'PR-',
@@ -255,7 +258,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'regras',
       titulo: 'As regras do manual (Sim, Não, Não sei)',
-      busca: 'regras elegibilidade manual perguntas sim não não sei ressalva destino bloqueado documentos exigidos salvar respostas lista condições marcar caixas basta uma nenhuma destas',
+      busca: 'regras elegibilidade manual perguntas sim não não sei ressalva destino bloqueado documentos exigidos salvar respostas lista condições marcar caixas basta uma nenhuma destas sem resposta trava envio aviso amarelo',
       conteudo: (
         <>
           <P>
@@ -276,6 +279,19 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             </Item>
             <Item>Os documentos exigidos viram caixinhas de anexo no passo seguinte.</Item>
           </Lista>
+          <Sub>O que trava o envio</Sub>
+          <P>
+            O aviso amarelo no alto do passo diz o que vai segurar o{' '}
+            <BotaoRef>Enviar para a pré-regulação</BotaoRef>: <strong>pergunta sem resposta</strong> e{' '}
+            <strong>documento obrigatório sem anexo</strong>. Dá para avançar e voltar depois, mas o pedido só
+            sai com tudo respondido — se não souber a resposta, marque <BotaoRef>Não sei</BotaoRef> e o pedido
+            segue para o regulador conferir.
+          </P>
+          <Callout tipo="regra" titulo="Por que o envio confere as regras">
+            É o que poupa o técnico regulador de conferir o manual de novo, pedido por pedido: o que chega à
+            pré-regulação já passou pelas perguntas e pelos documentos que o manual exige, e as respostas
+            vão junto para ele ler.
+          </Callout>
           <Sub>Perguntas de lista: basta uma</Sub>
           <P>
             Quando o manual traz condições alternativas (“portadores das seguintes condições: …”), a
@@ -422,7 +438,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'revisao',
       titulo: 'Revisão e envio para a pré-regulação',
-      busca: 'revisão ainda falta pendências tudo certo enviar para a pré-regulação reenviar cpf destino preencha anexe',
+      busca: 'revisão ainda falta pendências tudo certo enviar para a pré-regulação reenviar cpf destino preencha anexe responda no passo regras regras do manual não pode ir ir para o passo regras',
       conteudo: (
         <>
           <P>A revisão lista o que impede o envio:</P>
@@ -430,8 +446,20 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             <Item>paciente sem CPF (quando a exigência está ligada);</Item>
             <Item>destino não escolhido;</Item>
             <Item>campo obrigatório vazio — “Preencha …”;</Item>
-            <Item>documento obrigatório faltando ou criticado — “Anexe: …”.</Item>
+            <Item>documento obrigatório faltando ou criticado — “Anexe: …”;</Item>
+            <Item>
+              pergunta das regras sem resposta — “Responda no passo Regras: …”;
+            </Item>
+            <Item>
+              destino que as regras do manual barraram — “Pelas regras do manual, este pedido não pode ir para
+              o …”, com o motivo.
+            </Item>
           </Lista>
+          <P>
+            Quando a pendência é de regra, o botão <BotaoRef>Ir para o passo Regras</BotaoRef> leva direto ao
+            lugar de resolver. Os documentos das regras viram caixinha mesmo que o passo Regras tenha sido
+            pulado: a conferência do envio avalia as regras de novo e cria o que faltar.
+          </P>
           <P>
             Sem pendências, aparece “Tudo certo” e <BotaoRef>Enviar para a pré-regulação</BotaoRef> libera.
             O pedido sai da sua aba de Rascunhos e vai para <AbaRef>Pré-regulação</AbaRef>.

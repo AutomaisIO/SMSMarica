@@ -679,6 +679,12 @@ export function NovaSolicitacaoPage() {
                     <li key={p.codigo}>{p.descricao}</li>
                   ))}
                 </ul>
+                {/* Pendência de regra se resolve no passo Regras: o atalho evita caçar o passo. */}
+                {pendencias.data!.some((p) => p.codigo.startsWith('regra.')) && (
+                  <Button variante="secundaria" className="mt-2" onClick={() => void irPara('regras')}>
+                    Ir para o passo Regras
+                  </Button>
+                )}
               </div>
             ) : (
               <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">

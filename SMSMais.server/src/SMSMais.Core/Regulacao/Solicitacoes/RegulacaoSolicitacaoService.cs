@@ -13,6 +13,7 @@ using SMSMais.Core.Regulacao.Catalogo;
 using SMSMais.Core.Regulacao.Comum;
 using SMSMais.Core.Regulacao.Configuracao;
 using SMSMais.Core.Regulacao.Formularios;
+using SMSMais.Core.Regulacao.Regras;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Regulacao;
@@ -245,7 +246,8 @@ public sealed class RegulacaoSolicitacaoService(
     IRegulacaoProcedimentoBuscaService catalogo,
     IRegulacaoEventoService eventos,
     IRegulacaoEscopo escopoRegulacao,
-    IPacientesService pacientes) : IRegulacaoSolicitacaoService
+    IPacientesService pacientes,
+    IRegulacaoElegibilidadeService elegibilidade) : IRegulacaoSolicitacaoService
 {
     private static readonly JsonElement ObjetoVazio = JsonDocument.Parse("{}").RootElement.Clone();
 
@@ -648,6 +650,13 @@ public sealed class RegulacaoSolicitacaoService(
             var rotulo = formulario.Campos.FirstOrDefault(c => c.Chave == chave)?.Rotulo ?? chave;
             pendencias.Add(new PendenciaEnvioDto($"campo.{chave}", $"Preencha \"{rotulo}\"."));
         }
+
+        // As regras do manual entram na conferência (09/10/2026). Avaliar aqui grava o veredito e
+        // GARANTE as caixinhas de documento antes de contá-las logo abaixo: sem isto, quem pulava o
+        // passo "Regras" enviava sem responder nada — e sem caixinha nenhuma, porque elas só nascem
+        // quando a avaliação roda.
+        var avaliacao = await elegibilidade.AvaliarAsync(id, ct);
+        pendencias.AddRange(PendenciasDasRegras.De(avaliacao, s.SistemaDestino));
 
         var caixinhas = await exigencias.ListarAsync(id, ct);
         foreach (var e in caixinhas.Where(e => e.Obrigatoria
