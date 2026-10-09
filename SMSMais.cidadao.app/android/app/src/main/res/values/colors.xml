@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mesmo vermelho do splash do PWA (#splash em SMSMais.cidadao.pwa/index.html). -->
+    <color name="vermelho_splash">#BC1F28</color>
+    <!-- Cor do ícone das notificações do push (= CoresMarica.marica). -->
+    <color name="notificacao">#C8102E</color>
+</resources>
