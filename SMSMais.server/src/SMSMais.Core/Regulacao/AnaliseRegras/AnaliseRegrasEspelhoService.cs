@@ -31,9 +31,10 @@ public sealed record ResultadoAnaliseRegras(int Lidos, int Analisados, int SemMu
 /// sistema), com o que o espelho sabe: nascimento, sexo, CPF e CID.</para>
 ///
 /// <para><b>O que ela não faz:</b> não responde pergunta nem anexa documento — isso é juízo de
-/// pessoa. Regra que bloqueia e depende de pergunta/documento vira
-/// <see cref="VereditoAnaliseRegras.AConferir"/>. E não escreve nada no sistema externo nem muda o
-/// pedido: é um parecer ao lado, para o agente olhar.</para>
+/// pessoa. Pergunta que bloqueia e não tem resposta vira <see cref="VereditoAnaliseRegras.AConferir"/>.
+/// <b>Documento não decide o parecer</b> (09/10/2026): os anexos ficam no sistema de origem e a
+/// análise não os enxerga — ele só aparece listado, para o regulador conferir lá. E ela não escreve
+/// nada no sistema externo nem muda o pedido: é um parecer ao lado, para o agente olhar.</para>
 ///
 /// <para><b>Só pedidos em aberto</b> (em fila ou pendentes): analisar o que já foi agendado ou teve
 /// alta seria ruído. A última análise de um pedido que fechou fica guardada.</para>
@@ -242,16 +243,20 @@ public sealed partial class AnaliseRegrasEspelhoService(
             FusoBrasilia.HojeEmBrasilia(),
             naoSei);
 
-        var porId = regras.ToDictionary(r => r.Id);
         var bloqueios = avaliacao.Regras.Where(r => r.Resultado == ResultadoRegraRegulacao.Bloqueia).ToList();
         var ressalvas = avaliacao.Regras.Where(r => r.Resultado == ResultadoRegraRegulacao.Ressalva).ToList();
         var avisos = avaliacao.Regras.Count(r => r.Severidade == SeveridadeRegraRegulacao.Aviso
                                                   && r.Resultado != ResultadoRegraRegulacao.Atende);
         var perguntasQueTravam = avaliacao.PerguntasPendentes
             .Where(p => p.Severidade == SeveridadeRegraRegulacao.Bloqueia).ToList();
+        // Documento NÃO decide o parecer (09/10/2026). A análise não enxerga os anexos do pedido —
+        // eles ficam no sistema de origem —, então todo documento obrigatório ficava "pendente" para
+        // sempre, e qualquer procedimento com a regra do encaminhamento caía em "A conferir": o
+        // parecer virava ruído e escondia o pedido que de fato tem pergunta em aberto. O documento
+        // segue listado (alertas e resumo) para o regulador conferir no sistema de origem.
         var documentosObrigatorios = avaliacao.DocumentosPendentes
-            .Where(d => d.Obrigatorio && porId.TryGetValue(d.RegraId, out var r)
-                        && r.Severidade == SeveridadeRegraRegulacao.Bloqueia)
+            .Where(d => d.Obrigatorio)
+            .Select(d => d.Rotulo)
             .ToList();
 
         alvo.Bloqueios = bloqueios.Count;
@@ -265,12 +270,10 @@ public sealed partial class AnaliseRegrasEspelhoService(
             alvo.Veredito = VereditoAnaliseRegras.Bloqueado;
             alvo.Resumo = Recortar(motivo, 500);
         }
-        else if (perguntasQueTravam.Count > 0 || documentosObrigatorios.Count > 0)
+        else if (perguntasQueTravam.Count > 0)
         {
             alvo.Veredito = VereditoAnaliseRegras.AConferir;
-            alvo.Resumo = Recortar(perguntasQueTravam.Count > 0
-                ? $"Conferir: {perguntasQueTravam[0].Pergunta}"
-                : $"Conferir documento: {documentosObrigatorios[0].Rotulo}", 500);
+            alvo.Resumo = Recortar($"Conferir: {perguntasQueTravam[0].Pergunta}", 500);
         }
         else if (avaliacao.DestinosComRessalva.Contains(sistema) || ressalvas.Count > 0)
         {
@@ -280,13 +283,17 @@ public sealed partial class AnaliseRegrasEspelhoService(
         else
         {
             alvo.Veredito = VereditoAnaliseRegras.Apto;
-            alvo.Resumo = null;
+            alvo.Resumo = documentosObrigatorios.Count == 0
+                ? null
+                : Recortar(
+                    $"Nada do que o sistema confere barrou. Conferir no {NomeSistema(sistema)} se o pedido traz: "
+                    + string.Join("; ", documentosObrigatorios) + ".", 500);
         }
 
         alvo.AlertasJson = JsonSerializer.Serialize(new Alertas(
             avaliacao.Regras,
             avaliacao.PerguntasPendentes,
-            avaliacao.DocumentosPendentes.Where(d => d.Obrigatorio).Select(d => d.Rotulo).ToList()), Json);
+            documentosObrigatorios), Json);
     }
 
     // ------------------------------------------------------------------ entradas por sistema
@@ -421,6 +428,15 @@ public sealed partial class AnaliseRegrasEspelhoService(
     }
 
     // ------------------------------------------------------------------ util
+
+    private static string NomeSistema(SistemaRegulacao s) => s switch
+    {
+        SistemaRegulacao.Ser => "SER",
+        SistemaRegulacao.Sernit => "SERNIT",
+        SistemaRegulacao.EsusSg => "ESUS",
+        SistemaRegulacao.Sisreg => "SISREG",
+        _ => s.ToString(),
+    };
 
     /// <summary>"J353 - Hipertrofia das amígdalas" → "J35.3". O avaliador compara por PREFIXO
     /// ("C50" aceita "C50.4"), então o código vai no formato pontuado da CID-10.</summary>
