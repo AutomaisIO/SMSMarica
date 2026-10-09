@@ -6,6 +6,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { AjudaManual } from '@/shared/ui/AjudaManual';
 import { Button } from '@/shared/ui/Button';
 
+import { AjusteRiscoCid } from '../components/AjusteRiscoCid';
 import { AnexosSolicitacao } from '../components/AnexosSolicitacao';
 import { CabecalhoSolicitacao } from '../components/CabecalhoSolicitacao';
 import { LinhaDoTempo } from '../components/LinhaDoTempo';
@@ -51,7 +52,8 @@ const SITUACAO_PARA_A_REGULACAO: Record<StatusRegulacao, string> = {
  * comandos da regulação até quando entrava pela fila da própria unidade.</p>
  *
  * <p>A rota é gateada por `RegulacaoTriagem` (48), e o backend recusa as ações de quem não o tem.
- * Aqui não há editar nem cancelar: isso é de quem pediu, e fica no detalhe da unidade.</p>
+ * Aqui não há cancelar nem editar o pedido inteiro: isso é de quem pediu, e fica no detalhe da
+ * unidade. A exceção é a Classificação de risco e o CID, que o regulador ajusta antes de enviar.</p>
  */
 export function AnaliseSolicitacaoPage() {
   const { id = '' } = useParams();
@@ -209,6 +211,8 @@ export function AnaliseSolicitacaoPage() {
           </div>
         )}
       </section>
+
+      <AjusteRiscoCid s={s} aoSalvar={() => void Promise.all([solicitacao.refetch(), eventos.refetch()])} />
 
       <MedicoPendenteCard valorMedico={s.formulario?.medico_solicitante} podeResolver={emAberto} />
 

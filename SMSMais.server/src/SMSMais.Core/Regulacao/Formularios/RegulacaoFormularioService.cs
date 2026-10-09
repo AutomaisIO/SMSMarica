@@ -134,10 +134,11 @@ public sealed class RegulacaoFormularioService(
             CriadoEm = DateTime.UtcNow,
         };
         db.RegulacaoFormularioVersoes.Add(versao);
+        var adicionados = new List<object> { versao };
 
         foreach (var m in mapa)
         {
-            db.RegulacaoFormularioCampoMapas.Add(new RegulacaoFormularioCampoMapa
+            var linha = new RegulacaoFormularioCampoMapa
             {
                 Id = Guid.CreateVersion7(),
                 FormularioVersaoId = versao.Id,
@@ -145,7 +146,9 @@ public sealed class RegulacaoFormularioService(
                 Sistema = m.Sistema,
                 NomeNativo = m.NomeNativo,
                 Transformacao = m.Transformacao,
-            });
+            };
+            db.RegulacaoFormularioCampoMapas.Add(linha);
+            adicionados.Add(linha);
         }
 
         try
@@ -156,7 +159,10 @@ public sealed class RegulacaoFormularioService(
         {
             // Duas aberturas simultâneas do mesmo procedimento: o unique do hash faz a segunda
             // colidir. Quem perdeu usa a versão que a outra gravou — é a mesma definição.
-            db.ChangeTracker.Clear();
+            // Sai do rastreio só o que ESTE método acrescentou: limpar o rastreador inteiro
+            // soltaria também a solicitação que quem chamou está editando, e a edição dela se
+            // perderia calada no SaveChanges seguinte.
+            foreach (var entidade in adicionados) db.Entry(entidade).State = EntityState.Detached;
             var deOutro = await db.RegulacaoFormularioVersoes.AsNoTracking()
                 .FirstAsync(v => v.Hash == hash, ct);
             return new RegulacaoFormularioDto(deOutro.Id, esquema, campos);
