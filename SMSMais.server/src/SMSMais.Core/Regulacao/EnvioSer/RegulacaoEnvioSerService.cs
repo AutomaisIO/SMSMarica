@@ -354,7 +354,7 @@ public sealed partial class RegulacaoEnvioSerService(
             }
         }
 
-        await solicitacoes.IniciarEnvioAutomaticoAsync(solicitacaoId, ct);
+        await solicitacoes.IniciarEnvioAutomaticoAsync(solicitacaoId, ct, dados.FormularioVersaoId);
 
         // Daqui em diante o envio vai até o fim mesmo que o navegador desista da espera (são umas
         // vinte idas ao sistema): cancelar no meio deixaria o caso preso em "Enviando" e, pior, sem

@@ -14,7 +14,9 @@ import type { Artigo } from '@/features/manual/tipos';
  * CabecalhoSolicitacao, AnexosSolicitacao, RespostasRegras, MedicoPendenteCard,
  * ParaLancarNoSistema, ModalRegistrarEnvio, ModalMotivo, LinhaDoTempo, NotificacoesRegulacaoPage)
  * e no backend (`MaquinaDeEstadosRegulacao`, `RegulacaoSolicitacaoService`, `RegulacaoEscopo`,
- * `ModuloPermissao` 48).
+ * `ModuloPermissao` 48). Em 09/10/2026: `AjusteRiscoCid` e o ajuste do agente em
+ * `RegulacaoSolicitacaoService.AtualizarAsync` (Em análise e Falha no envio; obrigatório não
+ * esvazia; evento "Ajuste" com autor e de → para).
  */
 export const artigoRegulacaoGestaoFila: Artigo = {
   slug: 'regulacao-gestao-fila',
@@ -25,9 +27,18 @@ export const artigoRegulacaoGestaoFila: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/regulacao/gestao-fila',
   publico: 'Quem avalia e regula as solicitações (agente regulador)',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'gestão de fila',
+    'classificação de risco',
+    'alterar classificação de risco',
+    'reclassificar risco',
+    'reclassificação',
+    'alterar CID',
+    'trocar CID',
+    'hipótese',
+    'ajustada pela regulação',
+    'ajuste da regulação',
     'fila da regulação',
     'pré-regulação',
     'agente regulador',
@@ -196,7 +207,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'analise',
       titulo: 'A análise do pedido',
       busca:
-        'análise pedido cabeçalho decisão da regulação anexos visualizar arquivo pdf imagem caixinha regras do manual respostas condições marcadas médico novo a cadastrar cadastrei já existia para lançar no sistema copiar campos linha do tempo',
+        'análise pedido cabeçalho decisão da regulação classificação de risco e cid hipótese alterar anexos visualizar arquivo pdf imagem caixinha regras do manual respostas condições marcadas médico novo a cadastrar cadastrei já existia para lançar no sistema copiar campos linha do tempo ajustada pela regulação',
       conteudo: (
         <>
           <P>
@@ -213,6 +224,11 @@ export const artigoRegulacaoGestaoFila: Artigo = {
                 termo: 'Decisão da regulação',
                 descricao:
                   'Diz em que pé o pedido está e mostra só os comandos que cabem naquele momento — ver “Decidir”.',
+              },
+              {
+                termo: 'Classificação de risco e CID',
+                descricao:
+                  'Nos pedidos para o SER e o SERNIT: o risco e a hipótese (CID) que a unidade informou, com o botão Alterar para você corrigir antes de enviar — ver “Alterar a classificação de risco e o CID”.',
               },
               {
                 termo: 'Regras do manual',
@@ -232,7 +248,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: 'Linha do tempo',
                 descricao:
-                  'Quem fez o quê, de qual situação para qual, com o motivo e o que mudou campo a campo.',
+                  'Quem fez o quê, de qual situação para qual, com o motivo e o que mudou campo a campo. Uma alteração sua no risco ou no CID aparece como “Ajustada pela regulação”, com o seu nome.',
               },
             ]}
           />
@@ -318,6 +334,63 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       ),
     },
     {
+      id: 'ajustar-risco-cid',
+      titulo: 'Alterar a classificação de risco e o CID',
+      busca:
+        'alterar classificação de risco reclassificar risco trocar cid hipótese corrigir antes de enviar ajuste da regulação ajustada pela regulação linha do tempo nome do técnico de para obrigatório não pode deixar em branco falha no envio cid recusado sem devolver à unidade',
+      conteudo: (
+        <>
+          <P>
+            A unidade é obrigada a preencher a classificação de risco e a hipótese (CID) para enviar o
+            pedido. Mas quem decide é a regulação: nos pedidos para o SER e o SERNIT, você pode corrigir
+            os dois antes de enviar, sem devolver à unidade.
+          </P>
+          <Passos
+            itens={[
+              {
+                titulo: <BotaoRef>Assumir</BotaoRef>,
+                detalhe:
+                  'Só quem assumiu altera. Na fila sem dono, o quadro aparece só para leitura.',
+              },
+              {
+                titulo: (
+                  <>
+                    <BotaoRef variante="outline">Alterar</BotaoRef>, no quadro “Classificação de risco e CID”
+                  </>
+                ),
+                detalhe:
+                  'Escolha o risco nos botões coloridos (as opções do sistema de destino) e o CID na caixa — a mesma lista que o destino aceita para aquele procedimento.',
+              },
+              {
+                titulo: <BotaoRef>Salvar alteração</BotaoRef>,
+                detalhe:
+                  'O pedido passa a ir com o que você escolheu. Depois, “Aceitar e enviar” normalmente — a prévia já mostra o valor novo.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="Fica registrado quem mudou e o que mudou">
+            Cada alteração entra na linha do tempo como <strong>Ajustada pela regulação</strong>, com o nome
+            de quem alterou e o antes → depois de cada campo (por exemplo, “Classificação de risco: URGENCIA →
+            EMERGENCIA”). A unidade vê a mesma linha do tempo no pedido dela.
+          </Callout>
+          <Lista>
+            <Item>
+              Dá para alterar com o pedido <strong>Em análise</strong> e também depois de uma{' '}
+              <strong>Falha no envio</strong> — é o caso do SER recusar o CID: troque e envie de novo.
+            </Item>
+            <Item>
+              Não dá para deixar em branco: o risco e o CID foram obrigatórios para a unidade, e o envio
+              pararia neles. Para trocar, escolha outro valor.
+            </Item>
+            <Item>
+              Os demais campos (queixa, exames, médico, anexos) continuam com a unidade: se estiverem
+              errados ou faltando, devolva dizendo o que corrigir.
+            </Item>
+          </Lista>
+        </>
+      ),
+    },
+    {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
@@ -365,12 +438,12 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               {
                 termo: 'Erro antes de gravar',
                 descricao:
-                  'Recurso que o SER não oferece mais, CPF/CNS que é de outra pessoa no SER, médico escolhido que sumiu da lista do SER, CID que o recurso não aceita, campo obrigatório vazio: a janela diz qual, e nada foi gravado. Corrija (ou devolva à unidade) e tente de novo.',
+                  'Recurso que o SER não oferece mais, CPF/CNS que é de outra pessoa no SER, médico escolhido que sumiu da lista do SER, CID que o recurso não aceita, campo obrigatório vazio: a janela diz qual, e nada foi gravado. Classificação de risco e CID você corrige aqui mesmo, no quadro “Classificação de risco e CID”; o resto, devolva à unidade. Depois, tente de novo.',
               },
               {
                 termo: '“Falha no envio”',
                 descricao:
-                  'Se o envio não termina, o pedido fica como “Falha no envio”, com o motivo em amarelo. Quando o motivo diz que o Gravar chegou ao SER, procure o pedido no SER ANTES de qualquer coisa: se ele existe, use “Registrar número (já está no sistema)”; se não existe, “Enviar ao SER de novo”.',
+                  'Se o envio não termina, o pedido fica como “Falha no envio”, com o motivo em amarelo. Quando o motivo diz que o Gravar chegou ao SER, procure o pedido no SER ANTES de qualquer coisa: se ele existe, use “Registrar número (já está no sistema)”; se não existe, “Enviar ao SER de novo”. Se o motivo é o risco ou o CID, altere no quadro e envie de novo.',
               },
             ]}
           />
@@ -454,7 +527,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'duvidas',
       titulo: 'Dúvidas frequentes',
       busca:
-        'dúvidas não vejo o pedido unidade topo assumi por engano soltar outro agente não consigo registrar envio médico pendente falta documento procedimento errado trocar procedimento fila da regulação sumiu menu',
+        'dúvidas não vejo o pedido unidade topo assumi por engano soltar outro agente não consigo registrar envio médico pendente falta documento procedimento errado trocar procedimento fila da regulação sumiu menu risco errado cid errado sem classificação de risco',
       conteudo: (
         <ListaDefinicoes
           itens={[
@@ -487,6 +560,16 @@ export const artigoRegulacaoGestaoFila: Artigo = {
               termo: 'Não consigo registrar o envio.',
               descricao:
                 'Se há o cartão amarelo “Médico novo a cadastrar”, resolva-o primeiro. Se o número já está em outra solicitação do mesmo sistema, confira se o pedido não foi lançado duas vezes.',
+            },
+            {
+              termo: 'A classificação de risco ou o CID estão errados.',
+              descricao:
+                'Não precisa devolver: assuma, use “Alterar” no quadro “Classificação de risco e CID”, salve e envie. A troca fica na linha do tempo com o seu nome.',
+            },
+            {
+              termo: 'O envio disse que falta a classificação de risco, mas a unidade preencheu.',
+              descricao:
+                'Era o caso dos pedidos abertos antes de 01/10/2026, quando o formulário do SER ainda não tinha o risco: o envio usava o formulário da abertura. Desde 09/10/2026 o envio usa sempre o formulário como está agora. Se ainda acontecer, confira o quadro “Classificação de risco e CID” e altere ali.',
             },
             {
               termo: 'O procedimento escolhido está errado.',

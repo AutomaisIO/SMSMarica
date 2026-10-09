@@ -193,7 +193,9 @@ public interface IRegulacaoSolicitacaoService
     /// Trava o caso em <see cref="StatusRegulacao.EnviandoAoSistema"/> antes de tocar o SER. É a
     /// trava contra dois agentes (ou dois cliques) criando o mesmo pedido duas vezes.
     /// </summary>
-    Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct);
+    /// <param name="formularioVersaoId">A versão do formulário com que o envio traduz (a de
+    /// <see cref="DadosEnvioSer.FormularioVersaoId"/>) — passa a ser a gravada na solicitação.</param>
+    Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct, Guid? formularioVersaoId = null);
 
     /// <summary>O SER devolveu número: registra, com quem assinou e se a releitura conferiu.</summary>
     Task<RegulacaoSolicitacaoDetalheDto> ConcluirEnvioAutomaticoAsync(
@@ -439,9 +441,11 @@ public sealed class RegulacaoSolicitacaoService(
 
         // Quem edita o quê: a unidade mexe no que ainda é dela (rascunho, devolvida); o agente
         // mexe no que assumiu. São dois momentos diferentes do mesmo caso, e o evento distingue
-        // um do outro — `Edicao` da ponta, `Ajuste` do agente.
+        // um do outro — `Edicao` da ponta, `Ajuste` do agente. O agente ajusta também depois de
+        // um envio que falhou: é ali que o SER costuma dizer que não aceita aquele CID, e o
+        // conserto é trocar e mandar de novo, sem devolver à unidade.
         var ehAgente = await escopoRegulacao.EhAgenteAsync(ct);
-        var ajusteDoAgente = ehAgente && s.Status == StatusRegulacao.EmAnalise;
+        var ajusteDoAgente = ehAgente && s.Status is StatusRegulacao.EmAnalise or StatusRegulacao.FalhaEnvio;
 
         if (!ajusteDoAgente && s.Status is not (StatusRegulacao.Rascunho or StatusRegulacao.Devolvida))
         {
@@ -466,6 +470,20 @@ public sealed class RegulacaoSolicitacaoService(
                 + "Para trocar o procedimento, use \"Trocar procedimento\".");
         }
 
+        var novoFluxo = req.Fluxo ?? s.Fluxo;
+        var novoProcedimento = req.ProcedimentoId ?? s.ProcedimentoId;
+        var fluxoTrocou = novoFluxo != s.Fluxo;
+        var procedimentoTrocou = novoProcedimento != s.ProcedimentoId;
+
+        // O formulário que vale é o de AGORA — o mesmo que a tela desenhou e que as pendências
+        // conferem —, e é a versão dele que fica gravada (PR-17, 09/10/2026: a versão da abertura
+        // ficava para sempre e o envio descartava o que ela não conhecia). Buscado antes de mexer
+        // na solicitação, porque a geração pode gravar uma versão nova. Com troca de procedimento
+        // ou fluxo, quem acerta a versão é `AplicarFormularioAsync`.
+        var formularioAtual = req.Formulario is not null && !fluxoTrocou && !procedimentoTrocou
+            ? await formularios.ObterOuGerarAsync(s.ProcedimentoId, s.Fluxo, ct)
+            : null;
+
         var pacienteTrocou = false;
         if (req.PacienteId is { } pacienteId)
         {
@@ -485,11 +503,6 @@ public sealed class RegulacaoSolicitacaoService(
             s.PacienteCpf = cpf;
             s.PacienteCns = cns;
         }
-
-        var novoFluxo = req.Fluxo ?? s.Fluxo;
-        var novoProcedimento = req.ProcedimentoId ?? s.ProcedimentoId;
-        var fluxoTrocou = novoFluxo != s.Fluxo;
-        var procedimentoTrocou = novoProcedimento != s.ProcedimentoId;
 
         if (fluxoTrocou || procedimentoTrocou)
         {
@@ -541,16 +554,37 @@ public sealed class RegulacaoSolicitacaoService(
 
         if (req.Formulario is { } f)
         {
+            var canonicoAntes = LerCanonico(s.FormularioJson);
+
+            // O regulador corrige (a Classificação de risco, o CID), não esvazia: campo que a
+            // unidade foi obrigada a preencher não volta em branco pela mão de quem regula — o
+            // envio pararia nele, e a trilha diria que foi a regulação que apagou.
+            if (ajusteDoAgente && formularioAtual is not null)
+            {
+                var faltavam = formularios.ObrigatoriosFaltando(formularioAtual, canonicoAntes).ToHashSet(StringComparer.Ordinal);
+                var esvaziados = formularios.ObrigatoriosFaltando(formularioAtual, f)
+                    .Where(chave => !faltavam.Contains(chave))
+                    .Select(chave => formularioAtual.Campos.FirstOrDefault(c => c.Chave == chave)?.Rotulo ?? chave)
+                    .ToList();
+                if (esvaziados.Count > 0)
+                {
+                    throw new ValidacaoException(
+                        "formulario",
+                        $"O ajuste não pode deixar em branco: {string.Join(", ", esvaziados.Select(r => $"\"{r}\""))}.");
+                }
+            }
+
             // O diff sai ANTES da sobrescrita — depois dela, o valor anterior já não existe.
-            var doFormulario = eventos.Diferenca(LerCanonico(s.FormularioJson), f);
+            var doFormulario = eventos.Diferenca(canonicoAntes, f);
             if (doFormulario is not null)
             {
                 foreach (var (chave, valor) in doFormulario) diff[chave] = valor;
             }
 
             // O formulário é guardado por sistema: `canonico` é o que a tela preenche, e a
-            // tradução para `ser`/`sernit`/`sisreg` acontece no envio, com a versão gravada.
+            // tradução para `ser`/`sernit`/`sisreg` acontece no envio, com a versão mais nova.
             s.FormularioJson = JsonSerializer.Serialize(new { canonico = f });
+            if (formularioAtual is not null) s.FormularioVersaoId = formularioAtual.VersaoId;
         }
 
         if (req.Observacoes is not null) s.Observacoes = req.Observacoes;
@@ -582,6 +616,15 @@ public sealed class RegulacaoSolicitacaoService(
         Guid id, CancellationToken ct)
     {
         var s = await CarregarNoEscopoAsync(id, ct);
+        var (pendencias, _) = await PendenciasAsync(s, ct);
+        return pendencias;
+    }
+
+    /// <summary>As pendências e o formulário contra o qual foram conferidas.</summary>
+    private async Task<(List<PendenciaEnvioDto> Pendencias, RegulacaoFormularioDto Formulario)> PendenciasAsync(
+        RegulacaoSolicitacao s, CancellationToken ct)
+    {
+        var id = s.Id;
         var config = await configuracao.ObterEntidadeAsync(ct);
         var pendencias = new List<PendenciaEnvioDto>();
 
@@ -613,7 +656,7 @@ public sealed class RegulacaoSolicitacaoService(
             pendencias.Add(new PendenciaEnvioDto($"exigencia.{e.Id}", $"Anexe: {e.Titulo}."));
         }
 
-        return pendencias;
+        return (pendencias, formulario);
     }
 
     public async Task<RegulacaoSolicitacaoDetalheDto> EnviarParaFilaAsync(Guid id, CancellationToken ct)
@@ -632,13 +675,16 @@ public sealed class RegulacaoSolicitacaoService(
                 $"Uma solicitação em {s.Status} não vai para a fila.");
         }
 
-        var pendencias = await PendenciasDeEnvioAsync(id, ct);
+        var (pendencias, formulario) = await PendenciasAsync(s, ct);
         if (pendencias.Count > 0)
         {
             throw new ValidacaoException(
                 "pendencias",
                 "Ainda falta: " + string.Join(" ", pendencias.Select(p => p.Descricao)));
         }
+
+        // A versão que segue com a solicitação é a que acabou de ser conferida.
+        s.FormularioVersaoId = formulario.VersaoId;
 
         // Aqui é onde, no incremento 7, o fluxo Interno inclui no SISREG com a credencial do
         // solicitante (D-8) antes de mudar de status. Enquanto o spike b não roda, a solicitação
@@ -902,9 +948,26 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException(
                 "sistema", "O envio automático é só para o SER e o SERNIT. Para este destino, use o registrar envio.");
         }
-        if (s.FormularioVersaoId is not { } versaoId)
+        // O envio traduz pela versão MAIS NOVA do formulário, não pela gravada na abertura
+        // (09/10/2026, PR-17): a solicitação aberta antes do bloco fixo do SER guardava uma versão
+        // sem Classificação de risco; a tela e as pendências já pediam o campo, a unidade
+        // preenchia — e a tradução o descartava. A versão que de fato foi fica gravada no início
+        // do envio (`IniciarEnvioAutomaticoAsync`).
+        var formulario = await formularios.ObterOuGerarAsync(s.ProcedimentoId, s.Fluxo, ct);
+
+        // O Externo é a união do SER com o SERNIT: só barra o que vai para ESTE destino — um campo
+        // que só o outro sistema pede não é motivo para não enviar.
+        var faltando = formularios.ObrigatoriosFaltando(formulario, LerCanonico(s.FormularioJson))
+            .Where(chave => formulario.Campos.FirstOrDefault(c => c.Chave == chave) is not { } campo
+                            || campo.Origens.Count == 0 || campo.Origens.Contains(sistema.Value))
+            .ToList();
+        if (faltando.Count > 0)
         {
-            throw new ValidacaoException("formulario", "A solicitação não tem formulário preenchido.");
+            var rotulos = faltando.Select(chave => formulario.Campos.FirstOrDefault(c => c.Chave == chave)?.Rotulo ?? chave);
+            throw new ValidacaoException(
+                "formulario",
+                $"Falta preencher: {string.Join(", ", rotulos.Select(r => $"\"{r}\""))}. Classificação de risco e "
+                + "Hipótese (CID) você corrige aqui na análise; os demais campos, devolva à unidade.");
         }
 
         // Prévia: médico ainda pendente (ou com cadastro incerto) não barra — a tela pergunta ao
@@ -951,15 +1014,19 @@ public sealed class RegulacaoSolicitacaoService(
 
         return new DadosEnvioSer(
             s.Id, s.NumeroLocal, s.PacienteId, s.PacienteNome, s.PacienteCpf, s.PacienteCns,
-            versaoId, s.FormularioJson,
+            formulario.VersaoId, s.FormularioJson,
             sistema.Value, recursoId, ehExame, ambulatorioEstadual, rotulo,
             arquivos, medicoPendenteId);
     }
 
-    public async Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct)
+    public async Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct, Guid? formularioVersaoId = null)
     {
         await escopoRegulacao.ExigirAgenteAsync(ct);
         var s = await CarregarNoEscopoAsync(id, ct, rastrear: true);
+
+        // Grava a versão com que o formulário vai ser traduzido: é ela que explica, depois, o que
+        // foi parar em cada campo do sistema de destino.
+        if (formularioVersaoId is { } versao) s.FormularioVersaoId = versao;
 
         // Envio que morreu no meio (deploy, queda): primeiro fecha como falha, com o aviso de
         // conferir — ele pode ter chegado ao Gravar.

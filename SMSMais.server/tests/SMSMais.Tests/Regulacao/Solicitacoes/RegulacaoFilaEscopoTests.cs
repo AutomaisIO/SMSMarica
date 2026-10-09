@@ -52,21 +52,26 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
     /// Chaves que o formulário dublado declara. Importa em um teste só — o da troca de
     /// procedimento, que precisa de uma chave que sobrevive e outra que não.
     /// </param>
+    /// <param name="obrigatorios">
+    /// Chaves que o formulário dublado exige — com o mesmo critério do serviço real (ausente ou em
+    /// branco = faltando). Sem elas, nada falta.
+    /// </param>
     private static RegulacaoSolicitacaoService Montar(
         SmsMaisDbContext db, Guid usuarioId, Guid? unidadeAtiva, Guid versaoFormularioId,
-        bool ehAgente, IPacientesService? pacientes = null, string[]? camposDoFormulario = null)
+        bool ehAgente, IPacientesService? pacientes = null, string[]? camposDoFormulario = null,
+        string[]? obrigatorios = null, CampoFormularioDto[]? campos = null)
     {
         var acessor = new UsuarioAtualAccessorFake(usuarioId, unidadeAtiva);
         var config = new RegulacaoConfiguracaoService(db, new MemoryCache(new MemoryCacheOptions()), acessor);
         pacientes ??= Substitute.For<IPacientesService>();
 
         var form = Substitute.For<IRegulacaoFormularioService>();
-        var campos = (camposDoFormulario ?? [])
-            .Select((chave, i) => new CampoFormularioDto(chave, chave, "text", false, null, [], i))
-            .ToArray();
+        campos ??= [.. (camposDoFormulario ?? [])
+            .Select((chave, i) => new CampoFormularioDto(chave, chave, "text", false, null, [], i))];
         form.ObterOuGerarAsync(Arg.Any<Guid>(), Arg.Any<FluxoRegulacao>(), Arg.Any<CancellationToken>())
             .Returns(new RegulacaoFormularioDto(versaoFormularioId, "externo.uniao", campos));
-        form.ObrigatoriosFaltando(Arg.Any<RegulacaoFormularioDto>(), Arg.Any<JsonElement>()).Returns([]);
+        form.ObrigatoriosFaltando(Arg.Any<RegulacaoFormularioDto>(), Arg.Any<JsonElement>())
+            .Returns(ci => FaltandoEntre(obrigatorios ?? [], ci.Arg<JsonElement>()));
 
         var catalogo = Substitute.For<IRegulacaoProcedimentoBuscaService>();
         catalogo.ObterAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -91,6 +96,40 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
 
         return new RegulacaoSolicitacaoService(
             db, acessor, form, exigencias, config, catalogo, eventos, escopo, pacientes);
+    }
+
+    private static IReadOnlyList<string> FaltandoEntre(string[] obrigatorios, JsonElement canonico) =>
+        [.. obrigatorios.Where(chave => canonico.ValueKind != JsonValueKind.Object
+            || !canonico.TryGetProperty(chave, out var v)
+            || string.IsNullOrWhiteSpace(v.ValueKind == JsonValueKind.String ? v.GetString() : v.ToString()))];
+
+    /// <summary>
+    /// Uma versão mais nova do formulário do mesmo procedimento — o que acontece quando o catálogo
+    /// muda depois da abertura (o bloco fixo do SER entrou assim, em 01/10/2026).
+    /// </summary>
+    private static async Task<Guid> VersaoMaisNovaAsync(SmsMaisDbContext db, Guid procedimentoId)
+    {
+        var versao = new RegulacaoFormularioVersao
+        {
+            Id = Guid.CreateVersion7(),
+            Esquema = "externo.uniao",
+            ProcedimentoId = procedimentoId,
+            DefinicaoJson = "[]",
+            Hash = Guid.NewGuid().ToString("N"),
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.RegulacaoFormularioVersoes.Add(versao);
+        await db.SaveChangesAsync();
+        return versao.Id;
+    }
+
+    /// <summary>O formulário como a unidade deixou ao enviar para a fila.</summary>
+    private static async Task PreencherAsync(SmsMaisDbContext db, Guid solicitacaoId, string canonico)
+    {
+        var s = await db.RegulacaoSolicitacoes.FirstAsync(x => x.Id == solicitacaoId);
+        s.FormularioJson = $$"""{"canonico":{{canonico}}}""";
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
     }
 
     private sealed record Cenario(
@@ -827,5 +866,181 @@ public class RegulacaoFilaEscopoTests(PostgresFixture fixture)
 
         var preparar = () => agente.PrepararEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
         await preparar.Should().ThrowAsync<ConflitoException>();
+    }
+
+    // ------------------------------------------------- ajuste do regulador e versão do formulário (09/10/2026)
+    //
+    // PR-17: aberta antes do bloco fixo do SER, guardava a versão do formulário sem Classificação de
+    // risco. A unidade preencheu o risco (a tela já pedia), e o "Enviar ao SER" respondeu "a
+    // solicitação está sem Classificação de risco" — a tradução usava a versão da abertura.
+
+    [Fact]
+    public async Task O_regulador_ajusta_risco_e_CID_e_a_trilha_diz_o_que_mudou_e_quem_mudou()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        await PreencherAsync(db, c.SolicitacaoA,
+            """{"classificacao_risco":"URGENCIA","hipotese_cid":"(C34 ) Neoplasia","observacoes":"dispneia"}""");
+        var nova = await VersaoMaisNovaAsync(db, c.ProcedimentoId);
+        var agente = Montar(db, c.Agente, null, nova, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var ajustado = JsonDocument.Parse(
+            """{"classificacao_risco":"EMERGENCIA","hipotese_cid":"(C341) Lobo superior","observacoes":"dispneia"}""").RootElement;
+        var depois = await agente.AtualizarAsync(
+            c.SolicitacaoA, new AtualizarRegulacaoSolicitacaoRequest(null, ajustado, null), CancellationToken.None);
+
+        depois.Formulario.GetProperty("classificacao_risco").GetString().Should().Be("EMERGENCIA");
+        depois.FormularioVersaoId.Should().Be(nova,
+            "a versão gravada é a que a tela desenhou agora, não a da abertura");
+
+        var ajuste = (await agente.EventosAsync(c.SolicitacaoA, CancellationToken.None))
+            .Should().ContainSingle(e => e.Tipo == TipoEventoRegulacao.Ajuste).Subject;
+        ajuste.Papel.Should().Be(PapelEventoRegulacao.Agente);
+        ajuste.UsuarioNome.Should().StartWith("AGENTE ", "a trilha diz qual técnico mudou");
+        var risco = ajuste.Diff!.Value.GetProperty("classificacao_risco");
+        risco.GetProperty("de").GetString().Should().Be("URGENCIA");
+        risco.GetProperty("para").GetString().Should().Be("EMERGENCIA");
+        ajuste.Diff!.Value.GetProperty("hipotese_cid").GetProperty("para").GetString().Should().Be("(C341) Lobo superior");
+        ajuste.Diff!.Value.TryGetProperty("observacoes", out _).Should().BeFalse("o que não mudou não entra na trilha");
+    }
+
+    [Fact]
+    public async Task O_regulador_nao_deixa_em_branco_campo_que_a_unidade_foi_obrigada_a_preencher()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        await PreencherAsync(db, c.SolicitacaoA, """{"classificacao_risco":"URGENCIA","hipotese_cid":"(C34 ) Neoplasia"}""");
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true,
+            obrigatorios: ["classificacao_risco", "hipotese_cid"]);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var semRisco = JsonDocument.Parse("""{"classificacao_risco":"","hipotese_cid":"(C34 ) Neoplasia"}""").RootElement;
+        var acao = () => agente.AtualizarAsync(
+            c.SolicitacaoA, new AtualizarRegulacaoSolicitacaoRequest(null, semRisco, null), CancellationToken.None);
+
+        (await acao.Should().ThrowAsync<ValidacaoException>()).Which.Message.Should().Contain("classificacao_risco");
+        (await agente.ObterAsync(c.SolicitacaoA, CancellationToken.None))
+            .Formulario.GetProperty("classificacao_risco").GetString().Should().Be("URGENCIA");
+    }
+
+    [Fact]
+    public async Task Depois_de_uma_falha_no_envio_o_regulador_ainda_ajusta()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.RegistrarFalhaEnvioAsync(
+            c.SolicitacaoA, "O SER não aceita o CID C34 para este recurso.", gravarAcionado: false, CancellationToken.None);
+
+        // É depois da recusa do CID que o regulador mais precisa trocar — sem devolver à unidade.
+        var outroCid = JsonDocument.Parse("""{"hipotese_cid":"(C349) Pulmao, nao especificado"}""").RootElement;
+        var depois = await agente.AtualizarAsync(
+            c.SolicitacaoA, new AtualizarRegulacaoSolicitacaoRequest(null, outroCid, null), CancellationToken.None);
+
+        depois.Status.Should().Be(StatusRegulacao.FalhaEnvio);
+        depois.Formulario.GetProperty("hipotese_cid").GetString().Should().Be("(C349) Pulmao, nao especificado");
+        (await agente.EventosAsync(c.SolicitacaoA, CancellationToken.None))
+            .Should().Contain(e => e.Tipo == TipoEventoRegulacao.Ajuste);
+    }
+
+    [Fact]
+    public async Task Enviar_para_a_fila_grava_a_versao_do_formulario_que_acabou_de_ser_conferida()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+        await agente.DevolverAsync(c.SolicitacaoA, "Falta o CID.", CancellationToken.None);
+
+        var nova = await VersaoMaisNovaAsync(db, c.ProcedimentoId);
+        var ponta = Montar(db, c.UsuarioA, c.UnidadeA, nova, ehAgente: false);
+        var reenviada = await ponta.EnviarParaFilaAsync(c.SolicitacaoA, CancellationToken.None);
+
+        reenviada.Status.Should().Be(StatusRegulacao.PendenteRegulacao);
+        reenviada.FormularioVersaoId.Should().Be(nova);
+    }
+
+    [Fact]
+    public async Task O_envio_traduz_pela_versao_mais_nova_e_a_grava_ao_comecar()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+
+        // O procedimento do cenário precisa de um recurso do SER para o envio ter para onde ir.
+        var recurso = new SMSMais.Data.Entities.Ser.SerCatalogoRecurso
+        {
+            Id = Guid.NewGuid(), Tipo = SMSMais.Data.Entities.Ser.TipoRecursoSer.Consulta,
+            Valor = $"9{Sufixo()[..4]}", Rotulo = $"CONSULTA TESTE ENVIO {Sufixo()}",
+            SincronizadoEm = DateTime.UtcNow, CamposLidos = true,
+        };
+        db.SerCatalogoRecursos.Add(recurso);
+        db.RegulacaoProcedimentoOrigens.Add(new RegulacaoProcedimentoOrigem
+        {
+            Id = Guid.CreateVersion7(), ProcedimentoId = c.ProcedimentoId, Sistema = SistemaRegulacao.Ser,
+            ChaveExterna = $"1|{recurso.Valor}|NAO_AE", RotuloExterno = recurso.Rotulo, Ramo = "NAO_AE",
+            SerCatalogoRecursoId = recurso.Id, Ativo = true, CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var nova = await VersaoMaisNovaAsync(db, c.ProcedimentoId);
+        var agente = Montar(db, c.Agente, null, nova, ehAgente: true);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var dados = await agente.PrepararEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+        dados.FormularioVersaoId.Should().Be(nova, "a versão da abertura não conhece o bloco fixo");
+
+        await agente.IniciarEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None, dados.FormularioVersaoId);
+        (await agente.ObterAsync(c.SolicitacaoA, CancellationToken.None)).FormularioVersaoId
+            .Should().Be(nova, "a versão que de fato foi fica gravada na solicitação");
+    }
+
+    [Fact]
+    public async Task O_envio_diz_o_que_falta_em_vez_de_descartar_o_campo_na_traducao()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        await PreencherAsync(db, c.SolicitacaoA, """{"hipotese_cid":"(C34 ) Neoplasia"}""");
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true,
+            obrigatorios: ["classificacao_risco", "hipotese_cid"]);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var preparar = () => agente.PrepararEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var erro = await preparar.Should().ThrowAsync<ValidacaoException>();
+        erro.Which.Message.Should().Contain("classificacao_risco").And.NotContain("hipotese_cid");
+    }
+
+    [Fact]
+    public async Task O_envio_ao_SER_nao_para_em_campo_que_so_o_SERNIT_pede()
+    {
+        await using var db = fixture.CriarDbContext();
+        var c = await CenarioAsync(db);
+        var recurso = new SMSMais.Data.Entities.Ser.SerCatalogoRecurso
+        {
+            Id = Guid.NewGuid(), Tipo = SMSMais.Data.Entities.Ser.TipoRecursoSer.Consulta,
+            Valor = $"9{Sufixo()[..4]}", Rotulo = $"CONSULTA TESTE UNIAO {Sufixo()}",
+            SincronizadoEm = DateTime.UtcNow, CamposLidos = true,
+        };
+        db.SerCatalogoRecursos.Add(recurso);
+        db.RegulacaoProcedimentoOrigens.Add(new RegulacaoProcedimentoOrigem
+        {
+            Id = Guid.CreateVersion7(), ProcedimentoId = c.ProcedimentoId, Sistema = SistemaRegulacao.Ser,
+            ChaveExterna = $"1|{recurso.Valor}|NAO_AE", RotuloExterno = recurso.Rotulo, Ramo = "NAO_AE",
+            SerCatalogoRecursoId = recurso.Id, Ativo = true, CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        // O Externo é a união dos dois sistemas: o campo do SERNIT existe no formulário, mas não
+        // vai para o SER — vazio, não impede o envio ao SER.
+        var agente = Montar(db, c.Agente, null, c.VersaoId, ehAgente: true,
+            obrigatorios: ["grau_histopatologico"],
+            campos: [new CampoFormularioDto("grau_histopatologico", "Grau", "text", true, null, [SistemaRegulacao.Sernit], 0)]);
+        await agente.AssumirAsync(c.SolicitacaoA, CancellationToken.None);
+
+        var dados = await agente.PrepararEnvioAutomaticoAsync(c.SolicitacaoA, CancellationToken.None);
+        dados.Sistema.Should().Be(SistemaRegulacao.Ser);
     }
 }

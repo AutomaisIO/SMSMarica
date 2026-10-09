@@ -48,7 +48,7 @@ const ROTULOS: Record<TipoEventoRegulacao, string> = {
   RespostaRegra: 'Regra respondida',
   EnvioFila: 'Enviada à pré-regulação',
   Assumida: 'Assumida pela regulação',
-  Ajuste: 'Ajustada pelo agente',
+  Ajuste: 'Ajustada pela regulação',
   Devolucao: 'Devolvida à unidade',
   EnvioSistema: 'Envio ao sistema disparado',
   FalhaEnvio: 'Falha no envio',
@@ -64,6 +64,26 @@ const ROTULOS: Record<TipoEventoRegulacao, string> = {
   OkInterno: 'Conferida pela regulação',
   TrocaProcedimento: 'Procedimento trocado',
 };
+
+/**
+ * O nome que a pessoa lê para as chaves do formulário. As do bloco fixo são as que o regulador
+ * ajusta; as demais (campos do recurso) saem da própria chave, sem os sublinhados.
+ */
+const ROTULOS_CAMPO: Record<string, string> = {
+  classificacao_risco: 'Classificação de risco',
+  hipotese_cid: 'Hipótese (CID)',
+  medico_solicitante: 'Médico solicitante',
+  cids_secundarios: 'CIDs secundários',
+  observacoes: 'Observações',
+  observacao: 'Observação',
+};
+
+function rotuloDoCampo(chave: string): string {
+  const conhecido = ROTULOS_CAMPO[chave];
+  if (conhecido) return conhecido;
+  const texto = chave.replace(/_/g, ' ');
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 
 export function LinhaDoTempo({
   eventos,
@@ -108,7 +128,7 @@ export function LinhaDoTempo({
                 <ul className="mt-1 space-y-0.5 text-xs text-slate-600">
                   {Object.entries(e.diff).map(([campo, v]) => (
                     <li key={campo}>
-                      <span className="font-medium">{campo}:</span>{' '}
+                      <span className="font-medium">{rotuloDoCampo(campo)}:</span>{' '}
                       <span className="text-slate-400 line-through">{v.de || '(vazio)'}</span>{' '}
                       → <span>{v.para || '(vazio)'}</span>
                     </li>

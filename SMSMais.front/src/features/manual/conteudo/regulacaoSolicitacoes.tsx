@@ -26,7 +26,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
   publico: 'Quem abre e acompanha solicitações na unidade',
-  atualizadoEm: '2026-10-05',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'médico do SISREG',
     'profissional solicitante',
@@ -323,12 +323,12 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               {
                 termo: 'Classificação de risco *',
                 descricao:
-                  'Um botão colorido por nível: P1 · Emergência (vermelho), P2 · Urgência (amarelo), P3 · Prioridade não urgente (verde) e P4 (azul): “Baixa complexidade” no SER, “Não urgente” no SERNIT. O SERNIT tem ainda “Não classificado” (cinza); o SER não tem essa opção e a tela não a inventa. As cores são as mesmas da fila do SISREG, para a régua ser uma só. Só muda o jeito de mostrar: o que vai para o sistema é a opção dele (no SER, “Prioridade 1” é a P1). Rotina é P4; suba só quando o caso clínico justificar, porque a regulação reclassifica.',
+                  'Um botão colorido por nível: P1 · Emergência (vermelho), P2 · Urgência (amarelo), P3 · Prioridade não urgente (verde) e P4 (azul): “Baixa complexidade” no SER, “Não urgente” no SERNIT. O SERNIT tem ainda “Não classificado” (cinza); o SER não tem essa opção e a tela não a inventa. As cores são as mesmas da fila do SISREG, para a régua ser uma só. Só muda o jeito de mostrar: o que vai para o sistema é a opção dele (no SER, “Prioridade 1” é a P1). Rotina é P4; suba só quando o caso clínico justificar, porque a regulação reclassifica — e a troca fica na linha do tempo do pedido, com o nome de quem trocou.',
               },
               {
                 termo: 'Hipótese (CID) *',
                 descricao:
-                  'Não é texto livre: escolha o CID na caixa. A lista é a que o destino aceita para AQUELE procedimento — um oncológico aceita só códigos de neoplasia, uma consulta comum aceita o CID-10 inteiro. Caixa vazia lista todos; a busca casa código e nome, sem exigir acento.',
+                  'Não é texto livre: escolha o CID na caixa. A lista é a que o destino aceita para AQUELE procedimento — um oncológico aceita só códigos de neoplasia, uma consulta comum aceita o CID-10 inteiro. Caixa vazia lista todos; a busca casa código e nome, sem exigir acento. A regulação pode trocar o CID antes de enviar (por exemplo, quando o SER não aceita o código); a troca aparece na linha do tempo.',
               },
             ]}
           />
@@ -500,14 +500,15 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'detalhe',
       titulo: 'O detalhe do pedido',
       busca:
-        'detalhe ações cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo regras do manual respostas condições marcadas anexos visualizar arquivo médico novo a cadastrar pendente formulário preenchido campos abrir na gestão de fila',
+        'detalhe ações cancelar solicitação motivo continuar rascunho corrigir e reenviar linha do tempo ajustada pela regulação risco cid alterado regras do manual respostas condições marcadas anexos visualizar arquivo médico novo a cadastrar pendente formulário preenchido campos abrir na gestão de fila',
       conteudo: (
         <>
           <P>
             O detalhe mostra o cabeçalho do pedido (fluxo, destino, data, CPF), o motivo da situação atual
             quando existe — é onde aparece o que a regulação pediu para corrigir, ou por que recusou — e a{' '}
             <strong>linha do tempo</strong>: quem fez o quê, de qual situação para qual, com o motivo e o
-            que mudou campo a campo.
+            que mudou campo a campo. Se a regulação alterar a classificação de risco ou o CID antes de
+            enviar, aparece “Ajustada pela regulação”, com o nome de quem alterou e o antes → depois.
           </P>
           <P>
             O quadro <strong>Para lançar no SER</strong> (ou SERNIT, SISREG — o destino da solicitação)
