@@ -27,4 +27,9 @@ public class CidadaoSessao
 
     /// <summary>Null = sessão ativa. Preenchido = revogada (logout ou login em outro device).</summary>
     public DateTime? RevogadaEm { get; set; }
+
+    /// <summary>Preenchido quando quem entrou foi a EQUIPE, pelo "Entrar como paciente" do
+    /// Sandbox — e não o próprio paciente. A sessão morre junto com a personificação.</summary>
+    public Guid? PersonificacaoId { get; set; }
+    public PersonificacaoPaciente? Personificacao { get; set; }
 }

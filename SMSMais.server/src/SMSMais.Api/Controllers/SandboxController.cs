@@ -12,8 +12,39 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("sandbox")]
-public sealed class SandboxController(ISandboxService service) : ControllerBase
+public sealed class SandboxController(
+    ISandboxService service,
+    IPersonificacaoPacienteService personificacao) : ControllerBase
 {
+    /// <summary>"Entrar como paciente": se o operador logado pode usar e qual paciente está valendo.</summary>
+    [HttpGet("personificacao")]
+    [RequerPermissao(ModuloPermissao.Sandbox, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PersonificacaoStatusDto>(StatusCodes.Status200OK)]
+    public async Task<PersonificacaoStatusDto> StatusPersonificacao(CancellationToken ct) =>
+        await personificacao.ObterStatusAsync(ct);
+
+    /// <summary>
+    /// A partir de agora, o CPF do operador no app do cidadão abre como este paciente (o código
+    /// continua indo para o WhatsApp do operador). Substitui o anterior; vale 12h ou até encerrar.
+    /// </summary>
+    [HttpPost("personificacao")]
+    [RequerPermissao(ModuloPermissao.Sandbox, AcoesPermissao.Edicao)]
+    [ProducesResponseType<PersonificacaoStatusDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<PersonificacaoStatusDto> AtivarPersonificacao(
+        [FromBody] AtivarPersonificacaoRequest req, CancellationToken ct) =>
+        await personificacao.AtivarAsync(req.PacienteId, ct);
+
+    /// <summary>Encerra: o CPF do operador volta a abrir o app como ele mesmo e as sessões abertas caem.</summary>
+    [HttpDelete("personificacao")]
+    [RequerPermissao(ModuloPermissao.Sandbox, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> EncerrarPersonificacao(CancellationToken ct)
+    {
+        await personificacao.EncerrarAsync(ct);
+        return NoContent();
+    }
+
     /// <summary>Busca paciente real por nome/CPF (mín. 3 caracteres).</summary>
     [HttpGet("pacientes")]
     [RequerPermissao(ModuloPermissao.Sandbox, AcoesPermissao.Consulta)]

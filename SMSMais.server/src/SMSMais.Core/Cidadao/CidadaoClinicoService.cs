@@ -377,7 +377,7 @@ public sealed class CidadaoClinicoService(
     }
 
     public async Task ConfirmarExameAsync(
-        Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+        Guid pacienteId, Guid solicitacaoExameId, string canal, CancellationToken cancellationToken = default)
     {
         var s = await ObterSolicitacaoDoPacienteAsync(pacienteId, solicitacaoExameId, cancellationToken);
         if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
@@ -386,13 +386,13 @@ public sealed class CidadaoClinicoService(
 
         s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
         s.ConfirmadoEm = DateTime.UtcNow;
-        s.ConfirmadoCanal = "app";
+        s.ConfirmadoCanal = canal;
         s.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task CancelarExameAsync(
-        Guid pacienteId, Guid solicitacaoExameId, string motivo, CancellationToken cancellationToken = default)
+        Guid pacienteId, Guid solicitacaoExameId, string motivo, string canal, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(motivo))
             throw new Common.Excecoes.ValidacaoException(
@@ -406,7 +406,7 @@ public sealed class CidadaoClinicoService(
         var texto = motivo.Trim();
         s.StatusConfirmacao = StatusConfirmacaoAgendamento.Cancelada;
         s.ConfirmacaoCanceladaEm = DateTime.UtcNow;
-        s.ConfirmadoCanal = "app";
+        s.ConfirmadoCanal = canal;
         s.MotivoCancelamentoPaciente = texto.Length <= 500 ? texto : texto[..500];
         s.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);

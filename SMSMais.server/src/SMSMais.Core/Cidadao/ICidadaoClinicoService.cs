@@ -40,9 +40,11 @@ public interface ICidadaoClinicoService
         Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
 
     /// <summary>Confirma a presença do paciente no exame agendado (card do app).</summary>
-    Task ConfirmarExameAsync(Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
+    /// <param name="canal">Vai para <c>ConfirmadoCanal</c>: <c>app</c> quando é o paciente;
+    /// <c>sandbox</c> quando é a equipe pelo "Entrar como paciente" — a equipe enxerga que foi teste.</param>
+    Task ConfirmarExameAsync(Guid pacienteId, Guid solicitacaoExameId, string canal, CancellationToken cancellationToken = default);
 
     /// <summary>Registra que o paciente NÃO irá (motivo obrigatório). Não cancela o exame —
     /// sinaliza para a equipe (StatusConfirmacao=Cancelada).</summary>
-    Task CancelarExameAsync(Guid pacienteId, Guid solicitacaoExameId, string motivo, CancellationToken cancellationToken = default);
+    Task CancelarExameAsync(Guid pacienteId, Guid solicitacaoExameId, string motivo, string canal, CancellationToken cancellationToken = default);
 }

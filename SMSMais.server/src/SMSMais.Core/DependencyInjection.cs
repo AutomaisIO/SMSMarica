@@ -257,6 +257,7 @@ public static class DependencyInjection
         services.AddScoped(sp => new Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService>(
             sp.GetRequiredService<Notificacoes.Comunicacao.IComunicacaoPacienteService>));
         services.AddScoped<Sandbox.ISandboxService, Sandbox.SandboxService>();
+        services.AddScoped<Sandbox.IPersonificacaoPacienteService, Sandbox.PersonificacaoPacienteService>();
         services.AddHostedService<Notificacoes.Comunicacao.EnviadorComunicacaoService>();
 
         // Sanitizador de HTML compartilhado (whitelist explícita das tags TipTap).

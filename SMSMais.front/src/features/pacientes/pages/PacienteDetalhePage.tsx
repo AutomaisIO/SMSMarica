@@ -538,6 +538,8 @@ function SecaoAtendimentos({ pacienteId, paciente }: { pacienteId: string; pacie
 
 const CANAL_ACESSO_LABEL: Record<string, string> = {
   'otp-whatsapp': 'WhatsApp (código)',
+  'magic-link': 'Link do WhatsApp',
+  personificacao: 'Equipe (Sandbox)',
   senha: 'Senha',
   google: 'Google',
   microsoft: 'Microsoft',
@@ -555,7 +557,16 @@ function SecaoAcessos({ pacienteId }: { pacienteId: string }) {
   const q = useAcessosPaciente(pacienteId);
   const colunas: Coluna<AcessoCidadao>[] = [
     { chave: 'criadaEm', cabecalho: 'Data/hora', render: (a) => formatarDataHora(a.criadaEm) ?? '—' },
-    { chave: 'canal', cabecalho: 'Forma de acesso', render: (a) => CANAL_ACESSO_LABEL[a.canal] ?? a.canal },
+    {
+      chave: 'canal',
+      cabecalho: 'Forma de acesso',
+      render: (a) => (
+        <>
+          {CANAL_ACESSO_LABEL[a.canal] ?? a.canal}
+          {a.personificadoPor ? <span className="block text-xs text-gray-500">{a.personificadoPor}</span> : null}
+        </>
+      ),
+    },
     {
       chave: 'dispositivo',
       cabecalho: 'Dispositivo',

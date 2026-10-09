@@ -19,6 +19,15 @@ internal sealed class CidadaoSessaoConfiguration : IEntityTypeConfiguration<Cida
         builder.Property(s => s.CriadaEm).HasColumnName("criada_em").IsRequired();
         builder.Property(s => s.ExpiraEm).HasColumnName("expira_em").IsRequired();
         builder.Property(s => s.RevogadaEm).HasColumnName("revogada_em");
+        builder.Property(s => s.PersonificacaoId).HasColumnName("personificacao_id");
+
+        builder.HasOne(s => s.Personificacao)
+            .WithMany()
+            .HasForeignKey(s => s.PersonificacaoId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(s => s.PersonificacaoId)
+            .HasDatabaseName("ix_cidadao_sessao_personificacao")
+            .HasFilter("personificacao_id IS NOT NULL");
 
         // Busca quente: validar o jti (PK) já é por chave. Este índice acelera
         // "achar a sessão ativa do acesso" na hora de revogar no novo login.

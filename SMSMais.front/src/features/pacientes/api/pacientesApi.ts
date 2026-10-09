@@ -42,6 +42,8 @@ export type AcessoCidadao = {
   expiraEm: string;
   revogadaEm: string | null;
   ativa: boolean;
+  /** Quem da equipe entrou no lugar do paciente ("Entrar como paciente" do Sandbox); null = o próprio. */
+  personificadoPor?: string | null;
 };
 
 export async function obterAcessos(id: string): Promise<AcessoCidadao[]> {

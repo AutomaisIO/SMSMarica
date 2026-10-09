@@ -8,6 +8,10 @@ namespace SMSMais.Core.Cidadao;
 /// </summary>
 public interface ICidadaoSessaoService
 {
+    /// <summary>Canal (claim <c>canal</c> e <c>cidadao_sessao.canal</c>) da sessão aberta pela equipe
+    /// no lugar do paciente. Não troca contato, foto, acompanhante nem aceita o termo.</summary>
+    const string CanalPersonificacao = "personificacao";
+
     /// <summary>
     /// Abre uma sessão para o cidadão (criando o <c>cidadao_acesso</c> se ainda não existir),
     /// revogando qualquer sessão ativa anterior. Retorna o JWT e a expiração.
@@ -17,8 +21,19 @@ public interface ICidadaoSessaoService
         string? dispositivo, string? ip, CancellationToken ct = default);
 
     /// <summary>
+    /// Sessão do "Entrar como paciente" (Sandbox): abre como o paciente, mas quem entrou foi o
+    /// operador. Canal <see cref="CanalPersonificacao"/>, presa à personificação e com a validade
+    /// dela — encerrar no Sandbox derruba o app.
+    /// </summary>
+    Task<(string Token, DateTime ExpiraEm)> AbrirSessaoPersonificadaAsync(
+        Guid patientId, string nome, string cpf, Guid personificacaoId, DateTime expiraAte,
+        string? dispositivo, string? ip, CancellationToken ct = default);
+
+    /// <summary>
     /// Valida o jti (id da sessão) contra a sessão ativa do paciente e, de quebra,
     /// informa se o cidadão tem consentimento vigente. Usado a cada request (gate).
+    /// <para>Sessão personificada conta como consentida: o operador não aceita o termo em nome
+    /// do paciente, e o gate não pode prender o teste na tela do termo.</para>
     /// </summary>
     Task<AcessoCidadaoValidacao> ValidarAcessoAsync(Guid sessaoJti, Guid patientId, CancellationToken ct = default);
 

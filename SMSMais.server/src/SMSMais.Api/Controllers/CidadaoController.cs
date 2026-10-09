@@ -42,8 +42,13 @@ public sealed class CidadaoController(
     [HttpGet("consentimento")]
     [PermiteSemConsentimento]
     [ProducesResponseType<ConsentimentoStatusDto>(StatusCodes.Status200OK)]
-    public Task<ConsentimentoStatusDto> ObterConsentimento(CancellationToken ct) =>
-        consentimentos.ObterStatusAsync(PacienteId(), ct);
+    public async Task<ConsentimentoStatusDto> ObterConsentimento(CancellationToken ct)
+    {
+        var status = await consentimentos.ObterStatusAsync(PacienteId(), ct);
+        // Personificada: o gate já trata como consentida, e a tela do termo não pode aparecer —
+        // aceitar seria a equipe concordando em nome do paciente. O status real dele não muda.
+        return Personificada() ? status with { Aceito = true } : status;
+    }
 
     /// <summary>Registra o aceite do termo vigente (acessível sem aceite — é o que cria o aceite).</summary>
     [HttpPost("consentimento")]
@@ -51,6 +56,7 @@ public sealed class CidadaoController(
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> AceitarConsentimento(CancellationToken ct)
     {
+        GarantirNaoPersonificada("consentimento.personificacao", "aceitar o termo em nome do paciente");
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var dispositivo = Request.Headers.UserAgent.ToString();
         await consentimentos.RegistrarAsync(PacienteId(), ip, dispositivo, ct);
@@ -73,6 +79,8 @@ public sealed class CidadaoController(
     public async Task<IActionResult> AtualizarContato(
         [FromBody] AtualizarContatoCidadaoRequest req, CancellationToken ct)
     {
+        GarantirNaoPersonificada("contato.personificacao", "alterar o contato do paciente");
+
         // LGPD: sessão aberta em 1 clique pelo link do WhatsApp NÃO troca telefone. O link pode ter
         // chegado a outra pessoa (repasse, celular emprestado) e trocar o número verificado é tomar
         // a conta. Para mexer no contato, entrar com o código (OTP) — que prova o número atual.
@@ -93,6 +101,7 @@ public sealed class CidadaoController(
     public async Task<IActionResult> AtualizarFoto(
         [FromBody] AtualizarFotoCidadaoRequest req, CancellationToken ct)
     {
+        GarantirNaoPersonificada("foto.personificacao", "trocar a foto do paciente");
         await pacientes.AtualizarFotoAsync(PacienteId(), req.FotoBase64, ct);
         return NoContent();
     }
@@ -165,6 +174,7 @@ public sealed class CidadaoController(
     /// </summary>
     private void GarantirSessaoPorCodigo()
     {
+        GarantirNaoPersonificada("acompanhante.personificacao", "cadastrar ou tirar acompanhante do paciente");
         if (string.Equals(User.FindFirst("canal")?.Value, "magic-link", StringComparison.Ordinal))
             throw new SMSMais.Core.Common.Excecoes.ConflitoException(
                 "acompanhante.sessao_por_link",
@@ -338,7 +348,7 @@ public sealed class CidadaoController(
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ConfirmarExame(Guid solicitacaoExameId, CancellationToken ct)
     {
-        await clinico.ConfirmarExameAsync(PacienteId(), solicitacaoExameId, ct);
+        await clinico.ConfirmarExameAsync(PacienteId(), solicitacaoExameId, CanalResposta(), ct);
         return NoContent();
     }
 
@@ -351,7 +361,7 @@ public sealed class CidadaoController(
     public async Task<IActionResult> CancelarExame(
         Guid solicitacaoExameId, [FromBody] CancelarExameCidadaoRequest corpo, CancellationToken ct)
     {
-        await clinico.CancelarExameAsync(PacienteId(), solicitacaoExameId, corpo.Motivo, ct);
+        await clinico.CancelarExameAsync(PacienteId(), solicitacaoExameId, corpo.Motivo, CanalResposta(), ct);
         return NoContent();
     }
 
@@ -365,8 +375,11 @@ public sealed class CidadaoController(
     [ProducesResponseType<TelefoneOtpEmitidoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<TelefoneOtpEmitidoDto> EnviarOtpContato(
-        [FromBody] TrocarContatoOtpRequest req, CancellationToken ct) =>
-        await telefones.EnviarCodigoAsync(Cpf(), req.Numero, ct);
+        [FromBody] TrocarContatoOtpRequest req, CancellationToken ct)
+    {
+        GarantirNaoPersonificada("contato.personificacao", "trocar o WhatsApp do paciente");
+        return await telefones.EnviarCodigoAsync(Cpf(), req.Numero, ct);
+    }
 
     /// <summary>Confirma o código do número novo; em sucesso, ele vira o contato principal validado
     /// (e o telefone principal do cadastro). Só então a troca é salva.</summary>
@@ -374,11 +387,34 @@ public sealed class CidadaoController(
     [ProducesResponseType<TelefoneValidadoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<TelefoneValidadoDto> ConfirmarContato(
-        [FromBody] ConfirmarContatoRequest req, CancellationToken ct) =>
-        await telefones.ConfirmarCodigoAsync(Cpf(), req.Numero, req.Codigo, ct, origem: "pwa-cidadao");
+        [FromBody] ConfirmarContatoRequest req, CancellationToken ct)
+    {
+        GarantirNaoPersonificada("contato.personificacao", "trocar o WhatsApp do paciente");
+        return await telefones.ConfirmarCodigoAsync(Cpf(), req.Numero, req.Codigo, ct, origem: "pwa-cidadao");
+    }
 
     public sealed record TrocarContatoOtpRequest(string Numero);
     public sealed record ConfirmarContatoRequest(string Numero, string Codigo);
+
+    /// <summary>Sessão aberta pela equipe no lugar do paciente ("Entrar como paciente" do Sandbox).</summary>
+    private bool Personificada() =>
+        string.Equals(User.FindFirst("canal")?.Value, ICidadaoSessaoService.CanalPersonificacao, StringComparison.Ordinal);
+
+    /// <summary>Canal gravado na resposta à confirmação: a equipe testando aparece como <c>sandbox</c>
+    /// (o mesmo do "Forçar estado"), não como se o paciente tivesse respondido.</summary>
+    private string CanalResposta() => Personificada() ? "sandbox" : "app";
+
+    /// <summary>
+    /// A personificação serve para ver e testar o app como o paciente — não para mexer na identidade
+    /// dele. Contato, foto, acompanhantes e o termo LGPD ficam com o paciente: trocar o WhatsApp
+    /// verificado por aqui, por exemplo, passaria o login e os laudos dele para o número da equipe.
+    /// </summary>
+    private void GarantirNaoPersonificada(string codigo, string acao)
+    {
+        if (Personificada())
+            throw new SMSMais.Core.Common.Excecoes.ConflitoException(
+                codigo, $"Entrando como o paciente pelo Sandbox não é possível {acao}.");
+    }
 
     /// <summary>CPF do cidadão a partir do claim do token (nunca do corpo).</summary>
     private string Cpf()

@@ -12,6 +12,7 @@ using SMSMais.Core.Integracoes.Proxy;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
+using SMSMais.Core.Sandbox;
 using SMSMais.Core.Telefones;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -35,6 +36,7 @@ public sealed class PacienteAuthServiceTests
     private readonly IWhatsAppCliente _whatsapp = Substitute.For<IWhatsAppCliente>();
     private readonly ITelefoneValidacaoService _telefones = Substitute.For<ITelefoneValidacaoService>();
     private readonly IConsultaCpfService _receita = Substitute.For<IConsultaCpfService>();
+    private readonly IPersonificacaoPacienteService _personificacoes = Substitute.For<IPersonificacaoPacienteService>();
 
     private PacienteAuthService CriarServico(bool modoTeste = true)
     {
@@ -64,7 +66,7 @@ public sealed class PacienteAuthServiceTests
 
         return new PacienteAuthService(
             db, _pacientes, _sessoes, _whatsapp, new MemoryCache(new MemoryCacheOptions()),
-            config, _telefones, _receita, NullLogger<PacienteAuthService>.Instance);
+            config, _telefones, _receita, _personificacoes, NullLogger<PacienteAuthService>.Instance);
     }
 
     [Fact]
@@ -241,15 +243,71 @@ public sealed class PacienteAuthServiceTests
             default, default!, default!, default!, default, default, default);
     }
 
-    private static PacienteDto Paciente(
+    [Fact]
+    public async Task ValidarOtp_OperadorComPersonificacao_AbreComoOPacienteEscolhido()
+    {
+        // O operador pede o código com o PRÓPRIO CPF — e o código vai para o WhatsApp DELE.
+        var operadorId = Guid.NewGuid();
+        _pacientes.ObterPorCpfAsync(Cpf, Arg.Any<CancellationToken>())
+            .Returns(new PacienteExistenciaDto(operadorId, "OPERADOR", Cpf, Ativo: true));
+        _pacientes.ObterPorIdAsync(operadorId, Arg.Any<CancellationToken>())
+            .Returns(Paciente(operadorId, telefoneVerificado: "5521999991234"));
+
+        var alvo = new PersonificacaoAlvo(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "JOANA ALVO", "11144477735", DateTime.UtcNow.AddHours(12));
+        _personificacoes.ResolverNoLoginAsync(Cpf, Arg.Any<CancellationToken>()).Returns(alvo);
+        _sessoes
+            .AbrirSessaoPersonificadaAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<DateTime>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(("token-personificado", alvo.ExpiraEm));
+
+        var servico = CriarServico();
+        var otp = await servico.SolicitarOtpAsync(new SolicitarOtpRequest(Cpf));
+        var r = await servico.ValidarOtpAsync(new ValidarOtpRequest(Cpf, otp.CodigoTeste!), null, null);
+
+        r.Token.Should().Be("token-personificado");
+        r.Paciente.Should().Be(new PacienteSessaoDto(alvo.PacienteId, "JOANA ALVO", "11144477735"));
+        await _sessoes.Received(1).AbrirSessaoPersonificadaAsync(
+            alvo.PacienteId, "JOANA ALVO", "11144477735", alvo.PersonificacaoId, alvo.ExpiraEm,
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _sessoes.DidNotReceiveWithAnyArgs().AbrirSessaoAsync(default, default!, default!, default!, default, default, default);
+        // O número carimbado é o do OPERADOR, no CPF dele — nada muda no cadastro do paciente.
+        await _telefones.Received(1).MarcarValidadoAsync(
+            Cpf, "5521999991234", Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ValidarOtp_SemPersonificacao_AbreComoOProprio()
+    {
+        var id = Guid.NewGuid();
+        _pacientes.ObterPorCpfAsync(Cpf, Arg.Any<CancellationToken>())
+            .Returns(new PacienteExistenciaDto(id, "MARIA DA SILVA", Cpf, Ativo: true));
+        _pacientes.ObterPorIdAsync(id, Arg.Any<CancellationToken>())
+            .Returns(Paciente(id, telefoneVerificado: "5521999991234"));
+
+        var servico = CriarServico();
+        var otp = await servico.SolicitarOtpAsync(new SolicitarOtpRequest(Cpf));
+        var r = await servico.ValidarOtpAsync(new ValidarOtpRequest(Cpf, otp.CodigoTeste!), null, null);
+
+        r.Paciente.Id.Should().Be(id);
+        await _sessoes.Received(1).AbrirSessaoAsync(
+            id, "MARIA DA SILVA", Cpf, "otp-whatsapp", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _sessoes.DidNotReceiveWithAnyArgs().AbrirSessaoPersonificadaAsync(
+            default, default!, default!, default, default, default, default, default);
+    }
+
+    internal static PacienteDto Paciente(
         Guid id,
         string? telefoneCelular = null,
         string? telefoneVerificado = null,
-        DateOnly? nascimento = null) =>
+        DateOnly? nascimento = null,
+        string cpf = Cpf,
+        string nome = "MARIA DA SILVA") =>
         new(
             Id: id,
-            NomeCompleto: "MARIA DA SILVA",
-            Cpf: Cpf,
+            NomeCompleto: nome,
+            Cpf: cpf,
             Cns: null,
             Latitude: 0,
             Longitude: 0,

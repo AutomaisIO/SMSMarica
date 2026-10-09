@@ -26,7 +26,7 @@ export const artigoPacientes: Artigo = {
   icone: Users,
   rota: '/app/pacientes',
   publico: 'Quem atende, regula ou acompanha o paciente e precisa da ficha dele',
-  atualizadoEm: '2026-10-05',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'paciente',
     'pacientes',
@@ -40,6 +40,8 @@ export const artigoPacientes: Artigo = {
     'excluir',
     'reativar',
     'agendamentos',
+    'histórico de acesso',
+    'entrar como paciente',
     'histórico de agendamentos',
     'próximos agendamentos',
     'comparecimento',
@@ -170,7 +172,7 @@ export const artigoPacientes: Artigo = {
     {
       id: 'ficha',
       titulo: 'As abas da ficha',
-      busca: 'abas resumo atendimentos agendamentos transporte exames anexados documentos laudos imagens conversas somente leitura histórico de acesso histórico de alterações dados pessoais',
+      busca: 'abas resumo atendimentos agendamentos transporte exames anexados documentos laudos imagens conversas somente leitura histórico de acesso equipe sandbox entrar como paciente histórico de alterações dados pessoais',
       conteudo: (
         <>
           <P>A ficha abre no Resumo. As outras abas, na ordem da tela:</P>
@@ -188,7 +190,9 @@ export const artigoPacientes: Artigo = {
               um arquivo que ele mandou é na tela de Conversas);
             </Item>
             <Item>
-              <AbaRef>Histórico de Acesso</AbaRef> — as entradas do próprio paciente no aplicativo;
+              <AbaRef>Histórico de Acesso</AbaRef> — as entradas no aplicativo. Quando quem entrou foi
+              alguém da equipe, testando o app como o paciente pelo Sandbox, a linha diz{' '}
+              <strong>Equipe (Sandbox)</strong> e o nome de quem entrou;
             </Item>
             <Item>
               <AbaRef>Histórico de alterações</AbaRef> — quem mudou o cadastro, e quando;

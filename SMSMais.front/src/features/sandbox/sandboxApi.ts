@@ -10,6 +10,20 @@ export type SandboxSolicitacao = {
   statusConfirmacao: string;
 };
 export type LinkTeste = { url: string; expiraEm: string };
+/** "Entrar como paciente": o CPF do operador no app abre como o paciente escolhido. */
+export type PersonificacaoStatus = {
+  apta: boolean;
+  motivoInapta: string | null;
+  cpfMascarado: string | null;
+  telefoneMascarado: string | null;
+  ativa: {
+    pacienteId: string;
+    pacienteNome: string;
+    criadaEm: string;
+    expiraEm: string;
+    sessoesAbertas: number;
+  } | null;
+};
 export type ResultadoEnvio = { ok: boolean; erro: string | null; link: string | null };
 
 export const sandboxApi = {
@@ -26,4 +40,8 @@ export const sandboxApi = {
   /** Simula o ciclo dos checks do zap (sem Meta): enviada|entregue|lida|visualizada|falha|reset. */
   simularComunicacao: (solicitacaoExameId: string, finalidade: string, estado: string) =>
     http.post('/sandbox/comunicacao', { solicitacaoExameId, finalidade, estado }),
+  personificacao: () => http.get<PersonificacaoStatus>('/sandbox/personificacao').then((r) => r.data),
+  ativarPersonificacao: (pacienteId: string) =>
+    http.post<PersonificacaoStatus>('/sandbox/personificacao', { pacienteId }).then((r) => r.data),
+  encerrarPersonificacao: () => http.delete('/sandbox/personificacao'),
 };

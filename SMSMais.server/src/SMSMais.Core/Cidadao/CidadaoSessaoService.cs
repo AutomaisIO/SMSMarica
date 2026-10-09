@@ -36,9 +36,20 @@ public sealed class CidadaoSessaoService(
         return (links, sessoes);
     }
 
-    public async Task<(string Token, DateTime ExpiraEm)> AbrirSessaoAsync(
+    public Task<(string Token, DateTime ExpiraEm)> AbrirSessaoAsync(
         Guid patientId, string nome, string cpf, string canal,
-        string? dispositivo, string? ip, CancellationToken ct = default)
+        string? dispositivo, string? ip, CancellationToken ct = default) =>
+        AbrirAsync(patientId, nome, cpf, canal, dispositivo, ip, personificacaoId: null, expiraAte: null, ct);
+
+    public Task<(string Token, DateTime ExpiraEm)> AbrirSessaoPersonificadaAsync(
+        Guid patientId, string nome, string cpf, Guid personificacaoId, DateTime expiraAte,
+        string? dispositivo, string? ip, CancellationToken ct = default) =>
+        AbrirAsync(patientId, nome, cpf, ICidadaoSessaoService.CanalPersonificacao, dispositivo, ip,
+            personificacaoId, expiraAte, ct);
+
+    private async Task<(string Token, DateTime ExpiraEm)> AbrirAsync(
+        Guid patientId, string nome, string cpf, string canal, string? dispositivo, string? ip,
+        Guid? personificacaoId, DateTime? expiraAte, CancellationToken ct)
     {
         var cpfDigitos = Digitos(cpf);
 
@@ -56,9 +67,10 @@ public sealed class CidadaoSessaoService(
             };
             db.CidadaoAcessos.Add(acesso);
         }
-        else if (!acesso.Ativo)
+        else if (!acesso.Ativo && personificacaoId is null)
         {
-            // Mantém a regra de bloqueio temporário coerente com Usuario.Ativo.
+            // Mantém a regra de bloqueio temporário coerente com Usuario.Ativo. A equipe entrando
+            // no lugar do paciente (personificação) não desbloqueia o acesso DELE.
             acesso.Ativo = true;
             acesso.AtualizadoEm = DateTime.UtcNow;
         }
@@ -73,6 +85,8 @@ public sealed class CidadaoSessaoService(
         // 3. Cria a nova sessão. O Id é o jti que vai no token.
         var dias = config.GetValue("Tfd:Cidadao:SessaoDias", defaultValue: 30);
         var expira = agora.AddDays(dias);
+        // Personificada não sobrevive à personificação (12h), mesmo que ninguém clique em Encerrar.
+        if (expiraAte is { } teto && teto < expira) expira = teto;
         var sessao = new CidadaoSessao
         {
             Id = Guid.NewGuid(),
@@ -82,6 +96,7 @@ public sealed class CidadaoSessaoService(
             Ip = Truncar(ip, 64),
             CriadaEm = agora,
             ExpiraEm = expira,
+            PersonificacaoId = personificacaoId,
         };
         db.CidadaoSessoes.Add(sessao);
         await db.SaveChangesAsync(ct);
@@ -100,9 +115,14 @@ public sealed class CidadaoSessaoService(
                 && s.RevogadaEm == null
                 && s.ExpiraEm > agora
                 && s.CidadaoAcesso.PatientId == patientId
-                && s.CidadaoAcesso.Ativo)
+                // Personificada: quem manda é a personificação (encerrada/expirada derruba), não
+                // o bloqueio do acesso do paciente.
+                && (s.PersonificacaoId == null
+                    ? s.CidadaoAcesso.Ativo
+                    : s.Personificacao!.EncerradaEm == null && s.Personificacao.ExpiraEm > agora))
             .Select(s => new
             {
+                Personificada = s.PersonificacaoId != null,
                 Consentido = s.CidadaoAcesso.Consentimentos
                     .Any(c => c.Versao == versao && c.RevogadoEm == null),
             })
@@ -110,7 +130,7 @@ public sealed class CidadaoSessaoService(
 
         return r is null
             ? new AcessoCidadaoValidacao(false, false)
-            : new AcessoCidadaoValidacao(true, r.Consentido);
+            : new AcessoCidadaoValidacao(true, r.Consentido || r.Personificada);
     }
 
     public async Task<IReadOnlyList<Dtos.AcessoCidadaoDto>> ListarAcessosAsync(
@@ -128,7 +148,8 @@ public sealed class CidadaoSessaoService(
                 s.CriadaEm,
                 s.ExpiraEm,
                 s.RevogadaEm,
-                s.RevogadaEm == null && s.ExpiraEm > agora))
+                s.RevogadaEm == null && s.ExpiraEm > agora,
+                s.Personificacao != null ? s.Personificacao.Usuario.NomeCompleto : null))
             .ToListAsync(ct);
     }
 

@@ -284,6 +284,8 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<CidadaoAcesso> CidadaoAcessos => Set<CidadaoAcesso>();
     public DbSet<CidadaoSessao> CidadaoSessoes => Set<CidadaoSessao>();
     public DbSet<CidadaoConsentimento> CidadaoConsentimentos => Set<CidadaoConsentimento>();
+    // "Entrar como paciente" do Sandbox: o operador entra no app com o próprio CPF e abre como o paciente.
+    public DbSet<PersonificacaoPaciente> PersonificacoesPaciente => Set<PersonificacaoPaciente>();
 
     // Trilha de auditoria de ações de usuário (append-only). Ver RegistroAuditoria.
     public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();

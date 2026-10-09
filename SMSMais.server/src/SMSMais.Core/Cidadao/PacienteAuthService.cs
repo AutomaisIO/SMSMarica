@@ -10,6 +10,7 @@ using SMSMais.Core.Integracoes.Proxy;
 using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Dtos;
+using SMSMais.Core.Sandbox;
 using SMSMais.Core.Telefones;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
@@ -25,6 +26,7 @@ public sealed class PacienteAuthService(
     IConfiguration config,
     ITelefoneValidacaoService telefoneValidacao,
     IConsultaCpfService consultaCpf,
+    IPersonificacaoPacienteService personificacoes,
     ILogger<PacienteAuthService> logger) : IPacienteAuthService
 {
     private static readonly TimeSpan Validade = TimeSpan.FromMinutes(5);
@@ -197,6 +199,16 @@ public sealed class PacienteAuthService(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Não foi possível marcar o telefone como validado no login do cidadão.");
+        }
+
+        // "Entrar como paciente" (Sandbox): quem acabou de provar o número é um operador que deixou
+        // um paciente escolhido — a sessão abre como esse paciente. O código foi para o WhatsApp
+        // DO OPERADOR (o fluxo acima não muda), então nada sai para o paciente.
+        if (entry.Cadastro is null && await personificacoes.ResolverNoLoginAsync(entry.Cpf, ct) is { } alvo)
+        {
+            var (tokenAlvo, _) = await sessoes.AbrirSessaoPersonificadaAsync(
+                alvo.PacienteId, alvo.Nome, alvo.Cpf, alvo.PersonificacaoId, alvo.ExpiraEm, dispositivo, ip, ct);
+            return new RespostaLoginPacienteDto(tokenAlvo, new PacienteSessaoDto(alvo.PacienteId, alvo.Nome, alvo.Cpf));
         }
 
         // Abre a sessão single-device (revoga a anterior) e emite o token.

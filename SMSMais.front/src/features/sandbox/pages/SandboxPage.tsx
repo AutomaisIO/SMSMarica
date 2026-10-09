@@ -9,6 +9,7 @@ import {
   type SandboxPaciente,
   type SandboxSolicitacao,
 } from '@/features/sandbox/sandboxApi';
+import { EntrarComoPaciente } from '@/features/sandbox/components/EntrarComoPaciente';
 
 // Corpo do template confirma_exame (mesmo texto aprovado), para colar/editar no teste.
 const MODELO_CONFIRMA_EXAME =
@@ -128,7 +129,7 @@ export function SandboxPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Sandbox de testes (QA)</h1>
           <p className="mt-1 text-sm text-gray-600">
             Opera sobre um <strong>paciente real</strong> que você escolher, para testar o magic link, a
-            visualização no PWA e o fluxo de confirmação. As mensagens são <strong>texto livre</strong> —
+            visualização no app (entrando como ele) e o fluxo de confirmação. As mensagens são <strong>texto livre</strong> —
             só chegam se a janela de 24h estiver aberta (mande uma mensagem ao número de produção primeiro).
           </p>
         </div>
@@ -179,9 +180,12 @@ export function SandboxPage() {
         ) : null}
       </section>
 
-      {/* 2. Enviar mensagem de teste */}
+      {/* 2. Entrar no app como o paciente (com o CPF e o WhatsApp do operador) */}
+      <EntrarComoPaciente selecionado={sel} />
+
+      {/* 3. Enviar mensagem de teste */}
       <section className="rounded-lg border border-gray-200 p-4">
-        <p className="mb-2 text-sm font-semibold text-gray-800">2. Enviar mensagem de teste (texto livre)</p>
+        <p className="mb-2 text-sm font-semibold text-gray-800">3. Enviar mensagem de teste (texto livre)</p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="text-xs font-medium text-gray-500">Telefone de destino</label>
@@ -236,11 +240,11 @@ export function SandboxPage() {
         ) : null}
       </section>
 
-      {/* 3. Forçar estado de confirmação */}
+      {/* 4. Forçar estado de confirmação */}
       {sel ? (
         <section className="rounded-lg border border-gray-200 p-4">
           <p className="mb-2 text-sm font-semibold text-gray-800">
-            3. Forçar estado de confirmação (reversível) — solicitações de {sel.nome}
+            4. Forçar estado de confirmação (reversível) — solicitações de {sel.nome}
           </p>
           {solic.length === 0 ? (
             <p className="text-sm text-gray-500">Este paciente não tem solicitações de exame.</p>
@@ -273,12 +277,12 @@ export function SandboxPage() {
         </section>
       ) : null}
 
-      {/* 4. Simular os checks do zap (sem Meta) */}
+      {/* 5. Simular os checks do zap (sem Meta) */}
       {sel && solic.length > 0 ? (
         <section className="rounded-lg border border-gray-200 p-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-gray-800">
-              4. Simular checks do zap (✓ enviada · ✓✓ entregue · ✓✓ azul lida · ⚠ falha)
+              5. Simular checks do zap (✓ enviada · ✓✓ entregue · ✓✓ azul lida · ⚠ falha)
             </p>
             <label className="flex items-center gap-2 text-xs text-gray-600">
               Comunicação:
