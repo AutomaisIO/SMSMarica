@@ -19,6 +19,9 @@ table{border-collapse:collapse;width:100%;background:var(--surface);border:1px s
 th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
 thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -26,26 +29,37 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h1>SISREG — egress de rede em produção (túnel WireGuard até o Datacenter Automais)</h1>
 <p>&gt; Como o backend em produção (<code>api.smsmarica.online</code>, DigitalOcean) alcança o &gt; <strong>SISREG III</strong> (<code>sisregiii.saude.gov.br</code>) — consulta de paciente por CNS (CADSUS / &gt; <code>cadweb50</code>), ofertas, agenda e demais chamadas do motor. Ver também o motor da integração em &gt; <code>SMSMais.Core/Integracoes/SisregWeb/</code> e o laboratório <code>Automais.SISREG/</code>.</p>
 <p>&gt; <strong>Mudança de 14/09/2026:</strong> o egress saiu do MikroTik do escritório (link <strong>Mundivox</strong>, &gt; cancelado) e passou para o <strong>CCR2116 do Datacenter Automais (Eveo/SP)</strong>. O túnel antigo &gt; (<code>wg-mk</code>) continua de pé, mas <strong>não carrega mais o SISREG</strong> — ver §Histórico.</p>
+<p>&gt; <strong>Mudança de 09/10/2026 — o SISREG trocou de IP sem aviso.</strong> <code>sisregiii.saude.gov.br</code> passou a &gt; ser CNAME de <code>ves-io-0e89aecd-….ac.vh.ves.io</code> (<strong>F5 Distributed Cloud</strong>, nó <code>sp4-sao</code>), IP &gt; <strong><code>159.60.146.75</code></strong>; o <code>189.28.130.13</code> passou a <strong>recusar</strong> conexão. Como o túnel só desviava o &gt; <code>/32</code> antigo, a VM saiu para o IP novo pela DigitalOcean/EUA e ficou sem resposta — o coletor &gt; logava "Não foi possível autenticar no SISREG", o que <strong>parecia</strong> bloqueio do IP da Eveo e não &gt; era (da Eveo, HTTP 200). Correção (12:48 UTC): IP novo no <code>AllowedIPs</code>; o CCR passou a liberar &gt; <strong>TCP 443 para qualquer destino</strong> (quem decide o que entra no túnel é a VM); e a VM ganhou o &gt; <strong>verificador</strong> <code>sisreg-egress-verificar</code> (timer de 1 min) que põe sozinho no túnel o IP que o &gt; DNS devolver — ver §Verificador.</p>
 <h2>Problema</h2>
 <p>O SISREG/DATASUS <strong>recusa conexões vindas do IP da DigitalOcean</strong>. Sintoma original: a chamada <code>GET /integracoes/cns</code> retornava <code>500 — Connection refused (sisregiii.saude.gov.br:443)</code>.</p>
 <ul>
-<li><code>sisregiii.saude.gov.br</code> resolve para um <strong>único IP</strong>: <strong><code>189.28.130.13</code></strong> (DATASUS, Brasil).</li>
+<li><code>sisregiii.saude.gov.br</code> resolvia para um <strong>único IP</strong>: <strong><code>189.28.130.13</code></strong> (DATASUS, Brasil).</li>
+</ul>
+<p>  Desde 09/10/2026 resolve para <strong><code>159.60.146.75</code></strong> (F5 Distributed Cloud) — o IP <strong>muda</strong>, por   isso a VM tem o verificador.</p>
+<ul>
 <li>Do IP da VM (<code>146.190.65.73</code>, datacenter nos EUA) a conexão TCP 443 é recusada.</li>
 <li><strong>O bloqueio é geográfico, não "de datacenter"</strong>: o M-EGRESS de 02/09/2026 mostrou o SISREG</li>
 </ul>
 <p>  respondendo HTTP 200 ao IP público da Eveo (datacenter em SP).</p>
 <h2>Solução: túnel WireGuard <strong>dedicado</strong> VM → CCR2116 Eveo</h2>
-<p>Um túnel WireGuard <strong>exclusivo para o SISREG</strong>, num tenant próprio do CCR do datacenter (como já são IPR <code>10.204</code> e escritório <code>10.205</code>). Apenas o tráfego destinado a <code>189.28.130.13</code> entra no túnel; sai pela internet da Eveo (<code>177.136.233.75</code>, SP). Todo o resto do tráfego da VM continua saindo normalmente pela DigitalOcean.</p>
+<p>Um túnel WireGuard <strong>exclusivo para o SISREG</strong>, num tenant próprio do CCR do datacenter (como já são IPR <code>10.204</code> e escritório <code>10.205</code>). Apenas o tráfego destinado ao(s) IP(s) do SISREG entra no túnel; sai pela internet da Eveo (<code>177.136.233.75</code>, SP). Todo o resto do tráfego da VM continua saindo normalmente pela DigitalOcean.</p>
 <h3>Topologia</h3>
-<p>``<code> [VM smsmarica.online]              WireGuard dedicado                 [CCR2116 Datacenter Eveo]  146.190.65.73 (público)  ── wg-eveo ⇄ wg-smsmarica (10.206.0.0/24) ──  177.136.233.75 (público)  wg-eveo = 10.206.0.2  ─────── VM disca o CCR (keepalive 25s) ───────►  wg-smsmarica = 10.206.0.1         │                                                                     │         │ rota: 189.28.130.13/32 dev wg-eveo                                  │ main → ether1 (EVEO-UPLINK)         ▼                                                                     │ masquerade out ether1    só o SISREG entra no túnel                                                 ▼                                                                   SISREG 189.28.130.13 (HTTP 200) </code>``</p>
+<pre><code>[VM smsmarica.online]              WireGuard dedicado                 [CCR2116 Datacenter Eveo]
+ 146.190.65.73 (público)  ── wg-eveo ⇄ wg-smsmarica (10.206.0.0/24) ──  177.136.233.75 (público)
+ wg-eveo = 10.206.0.2  ─────── VM disca o CCR (keepalive 25s) ───────►  wg-smsmarica = 10.206.0.1
+        │                                                                     │
+        │ rota: &lt;IP do SISREG&gt;/32 dev wg-eveo                                 │ main → ether1 (EVEO-UPLINK)
+        │ (mantida pelo verificador)                                          │ masquerade out ether1
+        ▼                                                                     ▼
+   só o SISREG entra no túnel                                SISREG 159.60.146.75 (F5 sp4-sao, HTTP 200)</code></pre>
 <ul>
 <li><strong>Direção:</strong> a <strong>VM disca</strong> o CCR (o CCR é o <em>listener</em> em UDP <code>51836</code>), mesmo padrão dos</li>
 </ul>
 <p>  outros tenants do datacenter. A VM não precisa de porta de entrada.</p>
 <ul>
-<li><strong>Isolamento no CCR:</strong> o túnel só pode ir ao SISREG. Qualquer outro destino que entre por</li>
+<li><strong>Isolamento no CCR:</strong> desde 09/10/2026 o túnel só pode sair por <strong>TCP 443</strong> (qualquer</li>
 </ul>
-<p>  <code>wg-smsmarica</code> é descartado, e o túnel não gerencia o router (só ICMP em <code>10.206.0.1</code>).</p>
+<p>  destino); o resto que entre por <code>wg-smsmarica</code> é descartado, e o túnel não gerencia o router   (só ICMP em <code>10.206.0.1</code>). O CCR <strong>não precisa saber</strong> o IP do SISREG — quem escolhe o que   entra no túnel é o <code>AllowedIPs</code> da VM. Antes era só <code>dst=189.28.130.13</code>, e foi isso que   quebrou quando o IP mudou.</p>
 <ul>
 <li><strong>NAT:</strong> o masquerade genérico <code>EVEO-UPLINK</code> (<code>out-interface=ether1</code>) já cobre; nenhuma regra</li>
 </ul>
@@ -57,7 +71,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>CCR (interface <code>wg-smsmarica</code>)</td><td><code>10.206.0.1/24</code>, listen UDP <code>51836</code></td></tr>
 <tr><td>Endpoint que a VM disca</td><td><code>177.136.233.75:51836</code></td></tr>
 <tr><td>IP com que o SISREG vê a produção</td><td><code>177.136.233.75</code> (Eveo/SP)</td></tr>
-<tr><td>Destino roteado pelo túnel</td><td><strong><code>189.28.130.13/32</code></strong> (SISREG)</td></tr>
+<tr><td>Destino roteado pelo túnel</td><td>IP(s) do SISREG: <strong><code>159.60.146.75/32</code></strong> (desde 09/10/2026) + <code>189.28.130.13/32</code> (antigo) — acrescentados pelo verificador</td></tr>
 <tr><td>Chave pública da VM (<code>wg-eveo</code>)</td><td><code>/yuolOIvOADiEPqeLSrGGTZe1v26IUnIWGGI99WHdm0=</code></td></tr>
 <tr><td>Chave pública do CCR (<code>wg-smsmarica</code>)</td><td><code>sB+1WLDoPZkbNW5FWHf6zoYngvMSit3gzJqjzFM3qnU=</code></td></tr>
 </tbody></table></div>
@@ -65,37 +79,71 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h2>Configuração aplicada</h2>
 <h3>VM <code>smsmarica.online</code> (Ubuntu, <code>wg-quick</code>)</h3>
 <p><code>/etc/wireguard/wg-eveo.conf</code> (chave privada em <code>/etc/wireguard/wg-eveo.key</code>, modo 600):</p>
-<p>```ini [Interface] Address = 10.206.0.2/24 MTU = 1420 PrivateKey = &lt;privada da VM — não versionar&gt;</p>
-<p>[Peer] PublicKey = sB+1WLDoPZkbNW5FWHf6zoYngvMSit3gzJqjzFM3qnU= Endpoint = 177.136.233.75:51836 AllowedIPs = 10.206.0.1/32, 189.28.130.13/32 PersistentKeepalive = 25 ```</p>
+<pre><code>[Interface]
+Address = 10.206.0.2/24
+MTU = 1420
+PrivateKey = &lt;privada da VM — não versionar&gt;
+
+[Peer]
+PublicKey = sB+1WLDoPZkbNW5FWHf6zoYngvMSit3gzJqjzFM3qnU=
+Endpoint = 177.136.233.75:51836
+AllowedIPs = 10.206.0.1/32, 189.28.130.13/32, 159.60.146.75/32
+PersistentKeepalive = 25</code></pre>
 <p>Habilitado no boot: <code>systemctl enable --now wg-quick@wg-eveo</code>.</p>
-<p>O <code>AllowedIPs = …, 189.28.130.13/32</code> faz o <code>wg-quick</code> criar a rota <code>189.28.130.13/32 dev wg-eveo</code> — <strong>só o SISREG</strong> entra no túnel.</p>
+<p>O <code>AllowedIPs = …, &lt;IP&gt;/32</code> faz o <code>wg-quick</code> criar a rota <code>&lt;IP&gt;/32 dev wg-eveo</code> — <strong>só o SISREG</strong> entra no túnel. A lista <strong>só cresce</strong>: o verificador acrescenta IP novo e nunca remove.</p>
 <p>⚠️ <strong>O <code>/32</code> do SISREG só pode estar em UM dos <code>.conf</code>.</strong> Se estiver no <code>wg-mk.conf</code> e no <code>wg-eveo.conf</code> ao mesmo tempo, o segundo <code>wg-quick</code> a subir no boot falha ao criar a rota duplicada. Hoje <code>wg-mk.conf</code> tem só <code>AllowedIPs = 172.31.99.2/32</code>.</p>
 <h3>CCR2116 Eveo (<code>10.30.50.26</code> pela automais-vpn, usuário <code>becape</code>, RouterOS 7.16.2)</h3>
-<p>```routeros /interface wireguard add name=wg-smsmarica listen-port=51836 mtu=1420 \     comment="Server VPN smsmarica.online (VM DO) - egress SISREG" /ip address add address=10.206.0.1/24 interface=wg-smsmarica comment="server tunel smsmarica.online" /interface wireguard peers add interface=wg-smsmarica \     public-key="/yuolOIvOADiEPqeLSrGGTZe1v26IUnIWGGI99WHdm0=" allowed-address=10.206.0.2/32 \     comment="smsmarica.online VM 146.190.65.73 - SISREG"</p>
-<h1>entrada do WireGuard (antes do drop geral da WAN)</h1>
-<p>/ip firewall filter add chain=input action=accept protocol=udp in-interface=ether1 dst-port=51836 \     comment="WireGuard wg-smsmarica" place-before=[find comment="DROPP ALL UNCKNOW"]</p>
-<h1>o túnel só alcança o SISREG</h1>
-<p>/ip firewall filter add chain=forward action=accept in-interface=wg-smsmarica out-interface=ether1 \     dst-address=189.28.130.13 comment="SMSMARICA: server so alcanca o SISREG" \     place-before=[find comment="fwd: established/related"] /ip firewall filter add chain=forward action=drop in-interface=wg-smsmarica \     comment="SMSMARICA: resto bloqueado" place-before=[find comment="fwd: established/related"]</p>
-<h1>o túnel não gerencia o router</h1>
-<p>/ip firewall filter add chain=input action=accept protocol=icmp dst-address=10.206.0.1 \     in-interface=wg-smsmarica comment="smsmarica: so ICMP no router" /ip firewall filter add chain=input action=drop in-interface=wg-smsmarica \     comment="smsmarica NAO gerencia o router" ```</p>
-<p>Backup antes da mudança: <code>antes-wg-smsmarica-140926.rsc</code> no disco do CCR.</p>
+<pre><code>/interface wireguard add name=wg-smsmarica listen-port=51836 mtu=1420 \
+    comment="Server VPN smsmarica.online (VM DO) - egress SISREG"
+/ip address add address=10.206.0.1/24 interface=wg-smsmarica comment="server tunel smsmarica.online"
+/interface wireguard peers add interface=wg-smsmarica \
+    public-key="/yuolOIvOADiEPqeLSrGGTZe1v26IUnIWGGI99WHdm0=" allowed-address=10.206.0.2/32 \
+    comment="smsmarica.online VM 146.190.65.73 - SISREG"
+
+# entrada do WireGuard (antes do drop geral da WAN)
+/ip firewall filter add chain=input action=accept protocol=udp in-interface=ether1 dst-port=51836 \
+    comment="WireGuard wg-smsmarica" place-before=[find comment="DROPP ALL UNCKNOW"]
+# o túnel só sai por HTTPS (desde 09/10/2026; antes era dst-address=189.28.130.13)
+/ip firewall filter add chain=forward action=accept in-interface=wg-smsmarica out-interface=ether1 \
+    protocol=tcp dst-port=443 comment="SMSMARICA: server so sai por HTTPS (443) - destino decidido pela VM" \
+    place-before=[find comment="fwd: established/related"]
+/ip firewall filter add chain=forward action=drop in-interface=wg-smsmarica \
+    comment="SMSMARICA: resto bloqueado" place-before=[find comment="fwd: established/related"]
+# o túnel não gerencia o router
+/ip firewall filter add chain=input action=accept protocol=icmp dst-address=10.206.0.1 \
+    in-interface=wg-smsmarica comment="smsmarica: so ICMP no router"
+/ip firewall filter add chain=input action=drop in-interface=wg-smsmarica \
+    comment="smsmarica NAO gerencia o router"</code></pre>
+<p>Backup antes da mudança: <code>antes-wg-smsmarica-140926.rsc</code> no disco do CCR. Antes da mudança de 09/10/2026: <code>antes-sisreg-f5-091026.rsc</code>. A address-list <strong><code>SISREG</code></strong> (159.60.146.75, 189.28.130.13 e o nome <code>sisregiii.saude.gov.br</code>) ficou no CCR <strong>sem regra usando</strong> — reserva para voltar a restringir por destino (<code>dst-address-list=SISREG</code>) se um dia for preciso.</p>
+<h2>Verificador (VM) — o IP do SISREG muda sem aviso</h2>
+<p>O WireGuard só aceita IP fixo no <code>AllowedIPs</code>, nunca nome. Por isso a VM tem um timer de 1 min que resolve <code>sisregiii.saude.gov.br</code> e, se o IP não estiver no túnel, <strong>acrescenta</strong> (<code>wg set</code>), garante a rota <code>dev wg-eveo</code> e grava no <code>wg-eveo.conf</code>. Nunca remove IP.</p>
+<div class="tw"><table><thead><tr><th>Peça</th><th>Onde</th></tr></thead><tbody>
+<tr><td>Script</td><td><code>/usr/local/sbin/sisreg-egress-verificar</code> (com <code>flock</code>, idempotente)</td></tr>
+<tr><td>Units</td><td><code>sisreg-egress-verificar.service</code> (oneshot) + <code>.timer</code> (<code>OnUnitActiveSec=1min</code>), habilitado</td></tr>
+<tr><td>Log</td><td><code>journalctl -t sisreg-egress</code> — só escreve quando mexe ("IP novo … incluido no tunel")</td></tr>
+</tbody></table></div>
+<p>Testado em 09/10/2026 simulando a troca (tirando o IP do túnel e a rota): o verificador recolocou os dois em &lt; 1 s e o SISREG respondeu 200. A <strong>aplicação</strong> observa o mesmo por conta própria (DNS + <code>ip route get</code>) e mostra o IP atual, desde quando e se sai pelo túnel no card do SISREG em <strong>Integrações</strong>, com aviso no celular quando o IP muda ou sai fora do túnel.</p>
 <h2>Verificação</h2>
 <p>Na VM:</p>
-<p>```bash wg show wg-eveo                      # "latest handshake" recente e transfer &gt; 0 ip route get 189.28.130.13           # esperado: dev wg-eveo src 10.206.0.2 ping -c3 10.206.0.1                  # CCR pelo túnel (~125 ms) curl -sS -o /dev/null -w "%{http_code} %{remote_ip}\n" https://sisregiii.saude.gov.br/</p>
-<h1>esperado: 200 189.28.130.13</h1>
-<p>```</p>
+<pre><code>wg show wg-eveo                      # "latest handshake" recente e transfer &gt; 0
+getent hosts sisregiii.saude.gov.br  # IP atual (09/10/2026: 159.60.146.75)
+ip route get 159.60.146.75           # esperado: dev wg-eveo src 10.206.0.2
+ping -c3 10.206.0.1                  # CCR pelo túnel (~125 ms)
+curl -sS -o /dev/null -w "%{http_code} %{remote_ip}\n" https://sisregiii.saude.gov.br/
+# esperado: 200 159.60.146.75
+systemctl list-timers sisreg-egress-verificar.timer</code></pre>
 <p>No CCR: <code>/interface wireguard peers print detail where interface=wg-smsmarica</code> (handshake, <code>rx</code>/<code>tx</code> crescendo) e <code>/ip firewall filter print stats where comment~"SMSMARICA"</code>.</p>
 <p>Resultado da virada (2026-09-14): handshake OK, ping ao CCR 0% de perda (125 ms), teste forçado <code>curl --interface wg-eveo</code> HTTP 200 <strong>antes</strong> de trocar a rota, e depois 3 chamadas seguidas HTTP 200 em 0,8–1,2 s já pelo caminho de produção.</p>
 <h2>Operação</h2>
 <ul>
 <li><strong>Persistência:</strong> <code>wg-quick@wg-eveo</code> habilitado no boot; config do CCR é permanente.</li>
-<li><strong>Se o SISREG mudar de IP:</strong> atualizar o <code>/32</code> nos <strong>dois</strong> lados — <code>AllowedIPs</code> do</li>
+<li><strong>Se o SISREG mudar de IP:</strong> nada a fazer — o verificador põe o IP novo no túnel em até 1 min</li>
 </ul>
-<p>  <code>wg-eveo.conf</code> na VM <strong>e</strong> a regra <code>SMSMARICA: server so alcanca o SISREG</code> no CCR (é ela que   filtra o destino; o peer do CCR não precisa mudar). Se passar a ter vários IPs, usar   address-list no CCR e o bloco no <code>AllowedIPs</code>.</p>
+<p>  e o CCR já libera qualquer destino em 443. Conferir no card do SISREG em Integrações (ou   <code>journalctl -t sisreg-egress</code>). Se o SISREG deixar de ser HTTPS/443, aí sim mexer no CCR.</p>
 <ul>
-<li><strong>Outro sistema bloqueado geograficamente (SER, CADSUS…):</strong> mesmo procedimento — <code>/32</code> no</li>
+<li><strong>Outro sistema bloqueado geograficamente (SER, CADSUS…):</strong> só o lado da VM — <code>/32</code> no</li>
 </ul>
-<p>  <code>AllowedIPs</code> da VM + uma regra <code>accept</code> a mais no CCR. Não abrir o túnel para <code>0.0.0.0/0</code>.</p>
+<p>  <code>AllowedIPs</code> (ao vivo com <code>wg set</code> + no <code>.conf</code>); o CCR já libera 443. Se o IP dele também   mudar, generalizar o verificador para uma lista de nomes. Não rotear <code>0.0.0.0/0</code> pelo túnel.</p>
 <ul>
 <li><strong>Voltar para o caminho antigo (emergência, enquanto a Mundivox existir):</strong></li>
 </ul>

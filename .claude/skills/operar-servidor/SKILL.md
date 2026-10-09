@@ -26,7 +26,9 @@ cada ação de impacto exige confirmação explícita nesta conversa.
 | `automais-assinador` | 5082 (**loopback**) | `/opt/automais-assinador/api` |
 | `smsmarica-aiengine` | 5085 (**loopback**) | **você** — não se reinicie no meio de um turno |
 | `centralia-server` / `centralia-front` / `centralia-agent-runner` | 5083, 5084 | **OUTRO produto (CentralIA/Falarmais). Não é seu — não reinicie, não mexa.** |
-| `wg-quick@wg-mk` | UDP 51830 | Túnel para MikroTik no Brasil — rota só para o SISREG (`189.28.130.13/32`) |
+| `wg-quick@wg-eveo` | — (disca o CCR Eveo) | Túnel de saída do SISREG pelo Brasil (`docs/sisreg-egress.md`). O SISREG **troca de IP** (09/10/2026 → F5 `159.60.146.75`) |
+| `sisreg-egress-verificar.timer` | — | A cada 1 min põe no `wg-eveo` o IP que o DNS do SISREG devolver. Log: `journalctl -t sisreg-egress`. "Não foi possível autenticar no SISREG" em massa = olhar aqui antes de suspeitar da senha |
+| `wg-quick@wg-mk` | UDP 51830 | Túnel antigo (MikroTik do escritório); **não carrega mais o SISREG** desde 14/09/2026 |
 
 nginx serve `smsmarica.online` (painel), `app.smsmarica.online` (PWA cidadão),
 `arquivos.smsmarica.online` e `api.smsmarica.online` (proxy → 5080). **Vhosts e certificados
