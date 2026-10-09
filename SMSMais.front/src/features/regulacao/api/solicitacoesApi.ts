@@ -1,5 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 
+import type { MedicoParecido, SituacaoMedicoPendente } from './medicosApi';
+
 import type {
   AvaliacaoElegibilidade,
   EscopoNotificacao,
@@ -268,7 +270,55 @@ export type PreparoEnvioSer = {
   passos: PassoEnvioSer[];
   anexos: AnexoEnvioSer[];
   possiveisDuplicados: PedidoParecidoSer[];
+  /** O médico pedido pela unidade não está na lista do sistema: a pergunta ao regulador. */
+  medicoNovo: MedicoNovoNoSistema | null;
 };
+
+/** O médico pedido na abertura que o combo "Médico responsável" do sistema não tem HOJE. */
+export type MedicoNovoNoSistema = {
+  pendenteId: string;
+  nome: string;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  /** Texto livre da unidade ("ONCOLOGISTA") — quase nunca bate com a lista do sistema. */
+  especialidadePedida: string | null;
+  situacao: SituacaoMedicoPendente;
+  /** Nomes do combo que podem ser o mesmo médico (abreviado, sobrenome a mais) e o CRM igual. */
+  parecidos: MedicoParecido[];
+  /** As especialidades do modal "Adicionar Médico" do sistema. */
+  especialidades: string[];
+  especialidadeSugerida: string | null;
+  /** O modal existe e o médico está pendente (não houve tentativa). */
+  podeCadastrar: boolean;
+};
+
+export type MedicoCadastradoNoSistema = {
+  /** "Cadastrado" (gravou e apareceu na lista) ou "JaExistia" (o nome já estava lá; nada gravado). */
+  desfecho: 'Cadastrado' | 'JaExistia';
+  nomeNoSistema: string;
+  mensagem: string;
+  mensagemDoSistema: string | null;
+};
+
+/**
+ * "Autorizo cadastrar" — ESCREVE no cadastro de médicos do SER/SERNIT (modal "Adicionar Médico"),
+ * com a sessão do regulador. Sem prova de que entrou, responde erro `ser.medico_incerto`.
+ */
+export async function cadastrarMedicoNoSistema(
+  id: string,
+  dados: {
+    especialidade: string;
+    nome: string | null;
+    tipoDocumento: string | null;
+    numeroDocumento: string | null;
+  },
+): Promise<MedicoCadastradoNoSistema> {
+  const { data } = await http.post<MedicoCadastradoNoSistema>(`${base}/${id}/envio-automatico/medico`, {
+    autorizo: true,
+    ...dados,
+  });
+  return data;
+}
 
 export type ResultadoEnvioSer = {
   numeroExterno: string;

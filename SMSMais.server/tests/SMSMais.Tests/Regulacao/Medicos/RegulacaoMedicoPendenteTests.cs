@@ -147,6 +147,92 @@ public class RegulacaoMedicoPendenteTests(PostgresFixture fixture)
         await deNovo.Should().ThrowAsync<ConflitoException>();
     }
 
+    [Fact]
+    public async Task Reservar_o_cadastro_pelo_modal_so_acontece_uma_vez()
+    {
+        // A trava do "Autorizo cadastrar": duplo clique ou dois reguladores não escrevem duas vezes.
+        await using var db = fixture.CriarDbContext();
+        var pendente = await Servico(db).CriarAsync(
+            new CriarMedicoPendenteRequest(SistemaRegulacao.Ser, $"ROSALVA TESTE {Sufixo()} MOURA", "CRM", "5201216066", "ONCOLOGISTA"),
+            CancellationToken.None);
+
+        var reservado = await Servico(db).ReservarCadastroAsync(pendente.Id, CancellationToken.None);
+        var deNovo = () => Servico(db).ReservarCadastroAsync(pendente.Id, CancellationToken.None);
+
+        reservado.Situacao.Should().Be(SituacaoMedicoPendente.CadastroIncerto,
+            "se o servidor cair no meio do Gravar, o estado que fica é o que manda conferir no sistema");
+        await deNovo.Should().ThrowAsync<ConflitoException>();
+    }
+
+    [Fact]
+    public async Task Cadastro_confirmado_troca_o_medico_nas_solicitacoes()
+    {
+        await using var db = fixture.CriarDbContext();
+        var nome = $"ROSALVA TESTE {Sufixo()} MOURA";
+        var pendente = await Servico(db).CriarAsync(
+            new CriarMedicoPendenteRequest(SistemaRegulacao.Ser, nome, null, null, null), CancellationToken.None);
+        var solicitacaoId = await SolicitacaoComMedicoAsync(db, pendente.Valor);
+        await Servico(db).ReservarCadastroAsync(pendente.Id, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var cadastrado = await Servico(db).ConfirmarCadastroAsync(pendente.Id, nome + " ", CancellationToken.None);
+
+        cadastrado.Situacao.Should().Be(SituacaoMedicoPendente.Cadastrado);
+        cadastrado.NomeNoSistema.Should().Be(nome);
+        var formulario = (await db.RegulacaoSolicitacoes.AsNoTracking().FirstAsync(s => s.Id == solicitacaoId)).FormularioJson;
+        JsonDocument.Parse(formulario).RootElement.GetProperty("canonico").GetProperty("medico_solicitante").GetString()
+            .Should().Be(nome);
+    }
+
+    [Fact]
+    public async Task Cadastro_incerto_nao_aceita_cadastrei_mas_aceita_ja_existia_e_nao_entrou()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pendente = await Servico(db).CriarAsync(
+            new CriarMedicoPendenteRequest(SistemaRegulacao.Ser, $"ROSALVA TESTE {Sufixo()} MOURA", null, null, null),
+            CancellationToken.None);
+        await Servico(db).ReservarCadastroAsync(pendente.Id, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var cadastrei = () => Servico(db).ResolverAsync(
+            pendente.Id, new ResolverMedicoPendenteRequest(SituacaoMedicoPendente.Cadastrado, null, null), CancellationToken.None);
+        await cadastrei.Should().ThrowAsync<ValidacaoException>("depois de um Gravar incerto, só se afirma o que se conferiu");
+
+        db.ChangeTracker.Clear();
+        var naoEntrou = await Servico(db).ResolverAsync(
+            pendente.Id, new ResolverMedicoPendenteRequest(SituacaoMedicoPendente.Pendente, null, null), CancellationToken.None);
+        naoEntrou.Situacao.Should().Be(SituacaoMedicoPendente.Pendente);
+
+        db.ChangeTracker.Clear();
+        var pendenteDeNovo = () => Servico(db).ResolverAsync(
+            pendente.Id, new ResolverMedicoPendenteRequest(SituacaoMedicoPendente.Pendente, null, null), CancellationToken.None);
+        await pendenteDeNovo.Should().ThrowAsync<ValidacaoException>("\"não entrou\" só existe depois de uma tentativa");
+
+        await Servico(db).ReservarCadastroAsync(pendente.Id, CancellationToken.None);
+        db.ChangeTracker.Clear();
+        var jaExistia = await Servico(db).ResolverAsync(
+            pendente.Id, new ResolverMedicoPendenteRequest(SituacaoMedicoPendente.JaExistia, "ROSALVA T. MOURA", null),
+            CancellationToken.None);
+        jaExistia.Situacao.Should().Be(SituacaoMedicoPendente.JaExistia);
+    }
+
+    [Fact]
+    public async Task Parecidos_ao_vivo_usam_a_lista_de_hoje_e_ignoram_pendentes()
+    {
+        await using var db = fixture.CriarDbContext();
+        var sobrenome = Sufixo();
+        await Servico(db).CriarAsync(
+            new CriarMedicoPendenteRequest(SistemaRegulacao.Ser, $"RAFAELA ROCHA {sobrenome}", null, null, null),
+            CancellationToken.None);
+
+        var parecidos = await Servico(db).ParecidosAsync(
+            SistemaRegulacao.Ser, $"RAFAELA ROCHA {sobrenome} BEDRAN", null, CancellationToken.None,
+            [$"RAFAELA R. {sobrenome} BEDRAN ", "OUTRO MEDICO QUALQUER"]);
+
+        parecidos.Should().ContainSingle()
+            .Which.Nome.Should().Be($"RAFAELA R. {sobrenome} BEDRAN", "o regulador escolhe entre o que o combo tem AGORA");
+    }
+
     private static async Task<Guid> SolicitacaoComMedicoAsync(SmsMaisDbContext db, string valorMedico)
     {
         var sufixo = Sufixo();

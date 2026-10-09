@@ -35,6 +35,7 @@ export function PedidosDeCadastroMedico({ sistema }: { sistema: SistemaRegulacao
           className="rounded-md border border-slate-300 px-2 py-1 text-sm"
         >
           <option value="Pendente">Aguardando cadastro</option>
+          <option value="CadastroIncerto">Cadastro a conferir</option>
           <option value="Cadastrado">Cadastrados</option>
           <option value="JaExistia">Já existiam</option>
           <option value="Recusado">Recusados</option>
@@ -42,8 +43,9 @@ export function PedidosDeCadastroMedico({ sistema }: { sistema: SistemaRegulacao
         </select>
       </div>
       <p className="text-xs text-slate-500">
-        Médicos que as unidades pediram ao abrir a solicitação. Quem cadastra no {nome} é a regulação, pela
-        tela de lá (ícone “Adicionar médico” ao lado do médico responsável), e confirma aqui.
+        Médicos que as unidades pediram ao abrir a solicitação. Quem cadastra no {nome} é a regulação: pelo
+        “Enviar ao {nome}” (a plataforma cadastra com a sua autorização) ou pela tela de lá (ícone “Adicionar
+        médico” ao lado do médico responsável), confirmando aqui.
       </p>
 
       {pedidos.isLoading && <p className="text-sm text-slate-500">Carregando…</p>}

@@ -51,7 +51,11 @@ export function MedicoPendenteCard({
   const m = pendente.data;
   const sistema = ROTULO_SISTEMA_REGULACAO[m.sistema];
 
-  async function resolver(acao: 'Cadastrado' | 'JaExistia' | 'Recusado', nome: string | null, mot: string | null) {
+  async function resolver(
+    acao: 'Cadastrado' | 'JaExistia' | 'Recusado' | 'Pendente',
+    nome: string | null,
+    mot: string | null,
+  ) {
     setErro(null);
     setOcupado(true);
     try {
@@ -76,7 +80,9 @@ export function MedicoPendenteCard({
     }
   }
 
-  if (m.situacao !== 'Pendente') {
+  const incerto = m.situacao === 'CadastroIncerto';
+
+  if (m.situacao !== 'Pendente' && !incerto) {
     return (
       <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm">
         <p className="text-slate-700">
@@ -90,9 +96,12 @@ export function MedicoPendenteCard({
   }
 
   return (
-    <section className="rounded-lg border border-amber-300 bg-amber-50 p-4">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-900">
-        <UserPlus className="size-4" /> Médico novo a cadastrar no {sistema}
+    <section
+      className={`rounded-lg border p-4 ${incerto ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}
+    >
+      <h2 className={`flex items-center gap-2 text-sm font-semibold ${incerto ? 'text-red-900' : 'text-amber-900'}`}>
+        <UserPlus className="size-4" />{' '}
+        {incerto ? `Cadastro no ${sistema} a conferir` : `Médico novo a cadastrar no ${sistema}`}
       </h2>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm text-slate-800">
         <dt className="text-slate-500">Nome</dt>
@@ -102,16 +111,33 @@ export function MedicoPendenteCard({
         <dt className="text-slate-500">Especialidade</dt>
         <dd>{m.especialidade ?? '— não informada'}</dd>
       </dl>
-      <p className="mt-2 text-xs text-amber-900">
-        No {sistema}: na tela da solicitação, ícone <strong>Adicionar médico</strong> ao lado de “Médico
-        responsável”. O “Registrar envio” só libera depois de resolver aqui.
-      </p>
+      {incerto ? (
+        <p className="mt-2 text-xs text-red-900">
+          A plataforma tentou cadastrar este médico no {sistema} (com a autorização da regulação) e não
+          conseguiu confirmar que ele entrou na lista. <strong>Confira no {sistema}</strong>: se o médico está lá,
+          “Já existia” e escolha o cadastro; se não está, “Não entrou” — e ele volta a aguardar cadastro.
+          Não tente de novo sem conferir: o cadastro do Estado não tem apagar.
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-amber-900">
+          Pelo <strong>Enviar ao {sistema}</strong>, a plataforma mostra os nomes parecidos da lista e, com a sua
+          autorização, cadastra o médico lá. Ou, no {sistema}: na tela da solicitação, ícone{' '}
+          <strong>Adicionar médico</strong> ao lado de “Médico responsável”, e confirme aqui. O envio só libera
+          depois de resolver.
+        </p>
+      )}
 
       {podeResolver && modo === 'nada' && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button onClick={() => resolver('Cadastrado', null, null)} disabled={ocupado}>
-            Cadastrei no {sistema}
-          </Button>
+          {incerto ? (
+            <Button onClick={() => resolver('Pendente', null, null)} disabled={ocupado}>
+              Não entrou
+            </Button>
+          ) : (
+            <Button onClick={() => resolver('Cadastrado', null, null)} disabled={ocupado}>
+              Cadastrei no {sistema}
+            </Button>
+          )}
           <Button variante="secundaria" onClick={abrirJaExistia} disabled={ocupado}>
             Já existia no {sistema}
           </Button>

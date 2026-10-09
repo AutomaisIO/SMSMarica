@@ -121,3 +121,45 @@ Decisão do Bernardo. Substitui a linha "Médico não está na lista continua se
   motivo para a unidade). O "Registrar envio" fica barrado enquanto o médico estiver pendente.
 - A decisão 6 (envio automático de médico ao SER) continua desligada: a escrita no cadastro do
   Estado segue sendo de uma pessoa.
+
+## Complemento — 08/10/2026: a decisão 6 liga, com o "Autorizo" do regulador a cada médico
+
+Decisão do Bernardo, depois de ver o cartão "Médico novo a cadastrar no SER" no meio do envio. Muda
+a última linha do complemento de 02/10: a escrita no cadastro do Estado continua sendo de uma
+pessoa, mas quem digita é a plataforma, com a autorização expressa dessa pessoa.
+
+- **Onde:** no próprio envio automático (ADR-0069). A **prévia** deixa de barrar o médico pendente.
+  Ela segue preenchendo a tela e devolve o bloco "Médico não cadastrado", que traz:
+  - o que a unidade pediu;
+  - os **nomes parecidos do combo "Médico responsável" de hoje**, por `SemelhancaNome`, mais o
+    documento igual no espelho `ser_profissional` (só quem está no combo);
+  - as especialidades do modal do sistema, com uma sugestão ("ONCOLOGISTA" → "ONCOLOGIA").
+
+  O **envio** continua barrando enquanto o médico não estiver resolvido.
+- **"É este"** resolve como **Já existia** (a solicitação passa a usar o nome de lá).
+- **"Autorizo cadastrar"** (`POST regulacao/solicitacoes/{id}/envio-automatico/medico`, com
+  `autorizo: true` obrigatório):
+  1. reabre a tela de criação;
+  2. se o nome já está no combo, **não grava** e resolve como Já existia;
+  3. passa o pendente para **`CadastroIncerto`** numa atualização condicional (é a trava contra
+     duplo clique e contra dois reguladores);
+  4. clica o ícone `form0:addMedico` (navegação, pela trava de somente-leitura);
+  5. preenche `formModalAdicionarMedico`: nome, tipo e número do documento, e a especialidade
+     escolhida **pelo rótulo depois de abrir o modal** (o `value` é índice de view; há rótulos
+     repetidos). O CPF fica vazio;
+  6. aciona o **Gravar do modal** por `SubmeterEscritaAsync`, com a sessão do operador e a
+     operação nomeada no log;
+  7. **confere se o nome aparece no combo**; se a resposta não re-renderizou o combo, reabre a tela.
+- **Desfechos:**
+  - **nome na lista** → `Cadastrado`, com o nome de lá, e troca nas solicitações;
+  - **mensagem de validação e nome fora** → volta a `Pendente` (nada criado);
+  - **qualquer outro caso depois do Gravar** → fica `CadastroIncerto`. Ninguém tenta de novo
+    sozinho, porque o SER não apaga e repetir duplica. O regulador confere no sistema e resolve
+    no cartão: **Já existia** (escolhe o cadastro) ou **Não entrou** (volta a pendente).
+    "Cadastrei" não é aceito nesse estado.
+- Vale para **SER e SERNIT**: o modal é o mesmo nas duas instâncias.
+- **O ensaio do Gravar (6a) é o primeiro uso real.** Não existe ensaio sem escrita: o SER não
+  apaga. O modal foi lido da captura do laboratório (`Automais.SER/capturas/criar_aba_editar.html`;
+  no SERNIT, `Automais.SERNIT/capturas/nova.html`). O que o servidor exige no Gravar só o primeiro
+  cadastro mostra — e a conferência pelo combo é o que impede tomar silêncio por sucesso.
+- `SituacaoMedicoPendente.CadastroIncerto = 5`, guardado como inteiro, **sem migration**.

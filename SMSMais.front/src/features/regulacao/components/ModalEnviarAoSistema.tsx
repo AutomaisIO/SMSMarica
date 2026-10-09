@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { AlertTriangle, CheckCircle2, FileText, Loader2, Send, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Loader2, Send, UserPlus, XCircle } from 'lucide-react';
 
 import { ModalLoginSer } from '@/features/ser/components/ModalLoginSer';
 import { useSessaoSerObrigatoria } from '@/features/ser/lib/sessaoSer';
@@ -8,10 +9,13 @@ import { ModalLoginSernit } from '@/features/sernit/components/ModalLoginSernit'
 import { useSessaoSernitObrigatoria } from '@/features/sernit/lib/sessaoSernit';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
+import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 
-import { useEnviarAoSer, usePrepararEnvioSer } from '../api/solicitacoesQueries';
+import { resolverMedicoPendente, TIPOS_DOCUMENTO, type MedicoParecido } from '../api/medicosApi';
+import { useCadastrarMedicoNoSistema, useEnviarAoSer, usePrepararEnvioSer } from '../api/solicitacoesQueries';
 import type {
+  MedicoNovoNoSistema,
   PassoEnvioSer,
   PreparoEnvioSer,
   ResultadoEnvioSer,
@@ -81,6 +85,8 @@ function ModalEnvioAutomatico({
   const [erro, setErro] = useState<string | null>(null);
   const [erroDepoisDeEnviar, setErroDepoisDeEnviar] = useState(false);
   const [conferiParecidos, setConferiParecidos] = useState(false);
+  /** Desfecho do médico resolvido nesta abertura ("cadastrado e conferido") — fica à vista na prévia refeita. */
+  const [avisoMedico, setAvisoMedico] = useState<string | null>(null);
   const iniciou = useRef(false);
 
   async function fazerPrevia() {
@@ -133,6 +139,7 @@ function ModalEnvioAutomatico({
     iniciou.current = true;
     setPrevia(null);
     setResultado(null);
+    setAvisoMedico(null);
     sessao.comSessao(fazerPrevia);
     // Só na abertura: a prévia não pode ser refeita a cada render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -173,6 +180,26 @@ function ModalEnvioAutomatico({
               A tela do {nome} foi preenchida assim — <b>nada foi gravado ainda</b>. Confira e envie.
               Vai assinado por <b title={`usuário do ${nome}: ${previa.operadorSer}`}>{sessao.operador ?? previa.operadorSer}</b>.
             </p>
+
+            {avisoMedico && (
+              <p className="flex items-center gap-2 rounded border border-emerald-300 bg-emerald-50 p-2 text-sm text-emerald-900">
+                <CheckCircle2 className="size-4 shrink-0" /> {avisoMedico}
+              </p>
+            )}
+
+            {previa.medicoNovo && (
+              <BlocoMedicoNovo
+                key={`${previa.medicoNovo.pendenteId}-${previa.medicoNovo.situacao}`}
+                m={previa.medicoNovo}
+                nome={nome}
+                solicitacaoId={solicitacaoId}
+                tratouFaltaDeSessao={sessao.tratouFaltaDeSessao}
+                aoResolver={(mensagem) => {
+                  setAvisoMedico(mensagem);
+                  void fazerPrevia();
+                }}
+              />
+            )}
 
             <ListaPassos passos={previa.passos} />
 
@@ -220,7 +247,11 @@ function ModalEnvioAutomatico({
               <Button variante="secundaria" onClick={aoFechar}>
                 Cancelar
               </Button>
-              <Button onClick={fazerEnvio} disabled={temParecidos && !conferiParecidos}>
+              <Button
+                onClick={fazerEnvio}
+                disabled={(temParecidos && !conferiParecidos) || !!previa.medicoNovo}
+                title={previa.medicoNovo ? `Resolva o médico acima antes de enviar ao ${nome}` : undefined}
+              >
                 <Send className="size-4" />
                 Enviar ao {nome}
               </Button>
@@ -275,6 +306,228 @@ function ModalEnvioAutomatico({
 
       <ModalLogin {...sessao.modal} />
     </>
+  );
+}
+
+/**
+ * O médico que a unidade pediu e que a lista do sistema não tem (ADR-0065, complemento de
+ * 08/10/2026). O regulador decide aqui mesmo, sem sair do envio:
+ * <ul>
+ *   <li><b>É este</b> — um dos nomes parecidos da lista de HOJE (o sistema abrevia muito); a
+ *   solicitação passa a usar o cadastro de lá;</li>
+ *   <li><b>Autorizo cadastrar</b> — a plataforma preenche o modal "Adicionar Médico" do sistema com a
+ *   sessão do regulador, grava e confere na lista. O cadastro do Estado não tem editar nem apagar: por
+ *   isso a autorização é expressa e a especialidade é escolhida da lista de lá.</li>
+ * </ul>
+ * Recusar continua no cartão do médico na solicitação (o motivo vai para a unidade).
+ */
+function BlocoMedicoNovo({
+  m,
+  nome,
+  solicitacaoId,
+  tratouFaltaDeSessao,
+  aoResolver,
+}: {
+  m: MedicoNovoNoSistema;
+  nome: 'SER' | 'SERNIT';
+  solicitacaoId: string;
+  tratouFaltaDeSessao: Sessao['tratouFaltaDeSessao'];
+  aoResolver: (mensagem: string) => void;
+}) {
+  const qc = useQueryClient();
+  const cadastrar = useCadastrarMedicoNoSistema();
+  const [abrirCadastro, setAbrirCadastro] = useState(false);
+  const [nomeMedico, setNomeMedico] = useState(m.nome);
+  const [tipo, setTipo] = useState(m.numeroDocumento ? (m.tipoDocumento ?? '') : '');
+  const [numero, setNumero] = useState(m.numeroDocumento ?? '');
+  const [especialidade, setEspecialidade] = useState(m.especialidadeSugerida ?? '');
+  const [autorizo, setAutorizo] = useState(false);
+  const [ocupado, setOcupado] = useState<'escolher' | 'cadastrar' | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const incerto = m.situacao === 'CadastroIncerto';
+
+  async function usarEste(p: MedicoParecido) {
+    setErro(null);
+    setOcupado('escolher');
+    try {
+      await resolverMedicoPendente(m.pendenteId, 'JaExistia', p.nome, null);
+      // Resolver troca o médico em todas as solicitações que o usavam: o detalhe por trás também muda.
+      void qc.invalidateQueries({ queryKey: ['regulacao'] });
+      aoResolver(`A solicitação passa a usar o cadastro “${p.nome}” do ${nome}.`);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function fazerCadastro() {
+    setErro(null);
+    setOcupado('cadastrar');
+    try {
+      const r = await cadastrar.mutateAsync({
+        id: solicitacaoId,
+        dados: {
+          especialidade,
+          nome: nomeMedico.trim() || null,
+          tipoDocumento: numero.trim() ? tipo || null : null,
+          numeroDocumento: numero.trim() || null,
+        },
+      });
+      aoResolver(r.mensagem);
+    } catch (e) {
+      if (tratouFaltaDeSessao(e, fazerCadastro)) return;
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  return (
+    <section className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+      <h3 className="flex items-center gap-2 font-semibold text-amber-900">
+        <UserPlus className="size-4" /> Médico não cadastrado no {nome}
+      </h3>
+      <p className="mt-1 text-slate-800">
+        A unidade pediu <b>{m.nome}</b>
+        {m.numeroDocumento && ` (${m.tipoDocumento} ${m.numeroDocumento})`}
+        {m.especialidadePedida && ` — ${m.especialidadePedida}`}, que não está na lista de médicos do {nome}.
+        O envio só libera depois de resolver.
+      </p>
+
+      {incerto && (
+        <p className="mt-2 rounded border border-red-300 bg-red-50 p-2 text-red-900">
+          Já houve uma tentativa de cadastrar este médico no {nome} e a plataforma não conseguiu confirmar.
+          Confira no {nome}: se ele está lá, escolha abaixo (ou use “Já existia” no cartão do médico); se não
+          está, use “Não entrou” no cartão do médico. A plataforma não tenta de novo sozinha — repetir pode
+          duplicar o cadastro do Estado.
+        </p>
+      )}
+
+      <div className="mt-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Nomes parecidos na lista do {nome} hoje
+        </p>
+        {m.parecidos.length === 0 ? (
+          <p className="mt-1 text-slate-600">Nenhum nome parecido na lista do {nome}.</p>
+        ) : (
+          <ul className="mt-1 space-y-1">
+            {m.parecidos.map((p) => (
+              <li key={p.valor} className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-white px-2 py-1">
+                <span>
+                  {p.nome} <span className="text-xs text-slate-500">· {p.motivo}</span>
+                </span>
+                <Button
+                  variante="secundaria"
+                  onClick={() => usarEste(p)}
+                  disabled={ocupado !== null}
+                >
+                  É este
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {m.podeCadastrar && !abrirCadastro && (
+        <div className="mt-3">
+          <Button onClick={() => setAbrirCadastro(true)} disabled={ocupado !== null}>
+            <UserPlus className="size-4" /> Não é nenhum — autorizo cadastrar no {nome}
+          </Button>
+        </div>
+      )}
+
+      {m.podeCadastrar && abrirCadastro && (
+        <div className="mt-3 space-y-2 rounded border border-slate-200 bg-white p-3">
+          <p className="text-slate-700">
+            A plataforma preenche o “Adicionar Médico” do {nome} com o seu usuário, grava e confere se o nome
+            entrou na lista. <b>O cadastro do Estado não tem editar nem apagar</b> — confira os dados.
+          </p>
+          <label className="block">
+            <span className="text-xs text-slate-500">Nome (como vai ficar no {nome})</span>
+            <Input value={nomeMedico} onChange={(e) => setNomeMedico(e.target.value.toUpperCase())} />
+          </label>
+          <div className="grid grid-cols-[8rem_1fr] gap-2">
+            <label className="block">
+              <span className="text-xs text-slate-500">Documento</span>
+              <select
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm"
+              >
+                <option value="">—</option>
+                {TIPOS_DOCUMENTO.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs text-slate-500">Número</span>
+              <Input value={numero} onChange={(e) => setNumero(e.target.value)} />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-xs text-slate-500">
+              Especialidade (lista do {nome}){m.especialidadePedida && ` — a unidade escreveu “${m.especialidadePedida}”`}
+            </span>
+            <select
+              value={especialidade}
+              onChange={(e) => setEspecialidade(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm"
+            >
+              <option value="">Escolha…</option>
+              {m.especialidades.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={autorizo}
+              onChange={(e) => setAutorizo(e.target.checked)}
+            />
+            <span>
+              Autorizo cadastrar este médico no {nome}. Conferi os nomes parecidos acima: não é nenhum deles.
+            </span>
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button variante="ghost" onClick={() => setAbrirCadastro(false)} disabled={ocupado !== null}>
+              Voltar
+            </Button>
+            <Button
+              onClick={fazerCadastro}
+              disabled={
+                ocupado !== null
+                || !autorizo
+                || !especialidade
+                || !nomeMedico.trim()
+                || (!!numero.trim() && !tipo)
+              }
+            >
+              {ocupado === 'cadastrar' ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+              {ocupado === 'cadastrar' ? `Cadastrando no ${nome}…` : `Cadastrar no ${nome}`}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!m.podeCadastrar && !incerto && (
+        <p className="mt-2 text-xs text-amber-900">
+          A tela do {nome} não ofereceu o “Adicionar Médico” agora — cadastre pela tela de lá e confirme no
+          cartão do médico.
+        </p>
+      )}
+
+      {erro && <p className="mt-2 whitespace-pre-line rounded border border-red-300 bg-red-50 p-2 text-red-900">{erro}</p>}
+      <p className="mt-2 text-xs text-slate-500">Para recusar o médico, use o cartão do médico na solicitação.</p>
+    </section>
   );
 }
 

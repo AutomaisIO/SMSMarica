@@ -11,6 +11,7 @@ import {
   listarNotificacoesRegulacao,
   listarSolicitacoes,
   confirmarOkInterno,
+  cadastrarMedicoNoSistema,
   enviarAutomatico,
   prepararEnvioAutomatico,
   marcarNotificacaoVista,
@@ -214,6 +215,19 @@ export function useEnviarAoSer() {
     mutationFn: ({ id, mesmoComParecido }: { id: string; mesmoComParecido: boolean }) =>
       enviarAutomatico(id, mesmoComParecido),
     onSettled: () => void qc.invalidateQueries({ queryKey: raiz }),
+  });
+}
+
+/**
+ * "Autorizo cadastrar" o médico no SER/SERNIT (ESCREVE lá). Sucesso ou falha, o médico pendente muda
+ * de estado e as solicitações que o usavam podem ter trocado de médico: invalida a Regulação inteira.
+ */
+export function useCadastrarMedicoNoSistema() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dados }: { id: string; dados: Parameters<typeof cadastrarMedicoNoSistema>[1] }) =>
+      cadastrarMedicoNoSistema(id, dados),
+    onSettled: () => void qc.invalidateQueries({ queryKey: ['regulacao'] }),
   });
 }
 

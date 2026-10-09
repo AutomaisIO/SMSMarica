@@ -55,6 +55,10 @@ public sealed partial class SerCriacaoSolicitacao(
     public const string FormAnexar = "formAnexar";
     public const string CampoArquivo = "formAnexar:upload:file";
     public const string ComponenteUpload = "formAnexar:upload";
+    public const string AbrirModalMedico = "form0:addMedico";
+    public const string FormModalMedico = "formModalAdicionarMedico";
+    public const string CampoModalNome = "formModalAdicionarMedico:txtNome";
+    public const string CampoModalDocumento = "formModalAdicionarMedico:txtDocumento";
 
     private IHtmlDocument _pagina = SerHtmlParser.Documento(string.Empty);
     private string? _viewState;
@@ -64,6 +68,12 @@ public sealed partial class SerCriacaoSolicitacao(
     /// re-renderiza o controle que mudou (o navegador guarda o valor no próprio DOM).
     /// </summary>
     private readonly Dictionary<string, string> _escolhas = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// O POST de escrita do cadastro de médico já saiu (<see cref="CadastrarMedicoAsync"/>). Falha
+    /// antes disso não escreveu nada; falha depois pode ter escrito.
+    /// </summary>
+    public bool EscritaAcionada { get; private set; }
 
     /// <summary>A última resposta, crua — para diagnóstico quando algo não bate.</summary>
     public string UltimaResposta { get; private set; } = string.Empty;
@@ -300,6 +310,107 @@ public sealed partial class SerCriacaoSolicitacao(
             + "tem {N} célula(s): [{Lista}].",
             nome, perfil.Sistema, string.IsNullOrEmpty(atualizados) ? "(página inteira/sem meta)" : atualizados,
             listaAgora.Count, string.Join(" | ", listaAgora));
+    }
+
+    /// <summary>
+    /// <b>CADASTRA um médico no sistema</b> pelo modal "Adicionar Médico" da própria tela de criação
+    /// (ícone ao lado de "Médico responsável"), como o técnico faria — <b>ESCREVE</b> no cadastro do
+    /// Estado, que não tem editar nem apagar. Quem chama só aciona isto com o "Autorizo" do regulador
+    /// (ADR-0065, complemento de 08/10/2026).
+    ///
+    /// <para>Clica o ícone (abre o modal; navegação, sem escrita), preenche nome, tipo e número do
+    /// documento e a especialidade, e aciona o Gravar DO MODAL — nunca o de <c>form0</c>. A
+    /// especialidade é escolhida DEPOIS de abrir: o <c>value</c> das opções é índice de view e pode
+    /// mudar quando o modal é re-renderizado. O CPF fica vazio (o modal não exige; informá-lo dispara a
+    /// busca no cadastro estadual, que é outro caminho).</para>
+    ///
+    /// <para>Devolve a resposta crua. A prova de que entrou é o nome aparecer no combo do médico —
+    /// quem chama confere (<see cref="Combo"/>) e, se não vir, reabre a tela.</para>
+    /// </summary>
+    public async Task<string> CadastrarMedicoAsync(
+        string nome, string? tipoDocumento, string? numeroDocumento,
+        Func<IReadOnlyList<SerOpcaoDto>, SerOpcaoDto?> escolherEspecialidade,
+        string operacao, CancellationToken ct)
+    {
+        if (ModalMedico() is null)
+        {
+            throw Falha($"A tela do {perfil.Sistema} não tem o modal \"Adicionar Médico\". Nada foi cadastrado.");
+        }
+
+        // 1. O ícone: submit A4J de form0, como o clique (ele só prepara e mostra o modal).
+        var cliqueAbrir = new Dictionary<string, string>(_escolhas, StringComparer.Ordinal)
+        {
+            [AbrirModalMedico] = AbrirModalMedico,
+            ["AJAXREQUEST"] = RegiaoDoControle(Html, AbrirModalMedico) ?? Form,
+        };
+        await PostarLeituraAsync(cliqueAbrir, ct);
+
+        // 2. O modal como ficou depois de aberto.
+        var modal = ModalMedico()
+            ?? throw Falha($"O modal \"Adicionar Médico\" do {perfil.Sistema} sumiu depois de aberto. Nada foi cadastrado.");
+        var especialidade = escolherEspecialidade(modal.Especialidades)
+            ?? throw Falha($"A especialidade escolhida não está mais na lista do {perfil.Sistema}. Nada foi cadastrado.");
+        string? tipo = null;
+        if (!string.IsNullOrWhiteSpace(numeroDocumento) && !string.IsNullOrWhiteSpace(tipoDocumento))
+        {
+            tipo = modal.TiposDocumento.FirstOrDefault(o =>
+                       string.Equals(o.Valor.Trim(), tipoDocumento.Trim(), StringComparison.OrdinalIgnoreCase)
+                       || string.Equals(o.Rotulo.Trim(), tipoDocumento.Trim(), StringComparison.OrdinalIgnoreCase))?.Valor
+                   ?? throw Falha($"O tipo de documento \"{tipoDocumento}\" não existe no modal do {perfil.Sistema}.");
+        }
+
+        var gravar = BotaoDoFormPorValor(FormModalMedico, "Gravar")
+            ?? throw Falha($"Não achei o Gravar do modal \"Adicionar Médico\" do {perfil.Sistema}. Nada foi cadastrado.");
+
+        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [CampoModalNome] = nome,
+            [CampoModalDocumento] = tipo is null ? string.Empty : numeroDocumento!.Trim(),
+            [modal.CampoEspecialidade] = especialidade.Valor,
+            [gravar] = gravar,
+            ["AJAXREQUEST"] = RegiaoDoControle(Html, gravar) ?? FormModalMedico,
+        };
+        if (modal.CampoTipoDocumento is { } campoTipo && tipo is not null) extras[campoTipo] = tipo;
+
+        // 3. O Gravar do modal — ESCRITA. Daqui em diante, qualquer falha é "pode ter gravado".
+        EscritaAcionada = true;
+        var r = await transporte.SubmeterEscritaAsync(Html, FormModalMedico, extras, _viewState, operacao, ct);
+        var html = await SeguirAsync(r, ct);
+        Absorver(html);
+        return html;
+    }
+
+    /// <summary>O modal "Adicionar Médico" como está na página: os dois combos e o nome de cada um.</summary>
+    public sealed record ModalMedicoDaTela(
+        string? CampoTipoDocumento,
+        IReadOnlyList<SerOpcaoDto> TiposDocumento,
+        string CampoEspecialidade,
+        IReadOnlyList<SerOpcaoDto> Especialidades);
+
+    /// <summary>
+    /// Lê o modal "Adicionar Médico" (já vem no HTML da aba, escondido). Os combos não têm id estável
+    /// (<c>j_id345</c> no SER, <c>j_id308</c> no SERNIT): o de tipo de documento é o que oferece "CRM";
+    /// o de especialidade, o outro. <c>null</c> se a tela não tem o modal.
+    /// </summary>
+    public ModalMedicoDaTela? ModalMedico() => ModalMedicoDe(_pagina);
+
+    internal static ModalMedicoDaTela? ModalMedicoDe(IHtmlDocument pagina)
+    {
+        if (pagina.GetElementById(FormModalMedico) is not IElement form) return null;
+        var combos = form.QuerySelectorAll("select")
+            .Select(s => (
+                Nome: s.GetAttribute("name") ?? string.Empty,
+                Opcoes: (IReadOnlyList<SerOpcaoDto>)[.. s.QuerySelectorAll("option")
+                    .Select(o => new SerOpcaoDto(o.GetAttribute("value") ?? string.Empty, Espremer(o.TextContent)))
+                    .Where(o => o.Valor.Length > 0)]))
+            .Where(c => c.Nome.Length > 0)
+            .ToList();
+        var tipo = combos.FirstOrDefault(c => c.Opcoes.Any(o => o.Rotulo.Equals("CRM", StringComparison.OrdinalIgnoreCase)));
+        var especialidade = combos.FirstOrDefault(c => c.Nome != tipo.Nome);
+        if (especialidade.Nome is null or { Length: 0 }) return null;
+        return new ModalMedicoDaTela(
+            tipo.Nome is { Length: > 0 } ? tipo.Nome : null, tipo.Opcoes ?? [],
+            especialidade.Nome, especialidade.Opcoes);
     }
 
     /// <summary>

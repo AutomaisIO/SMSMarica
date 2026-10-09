@@ -18,7 +18,7 @@ export const artigoSernitMedicos: Artigo = {
   icone: Stethoscope,
   rota: '/app/regulacao/sernit/medicos',
   publico: 'Quem prepara as solicitações ao SERNIT e quem regula',
-  atualizadoEm: '2026-10-02',
+  atualizadoEm: '2026-10-08',
   palavrasChave: [
     'médicos do SERNIT',
     'médico solicitante',
@@ -26,6 +26,8 @@ export const artigoSernitMedicos: Artigo = {
     'pedidos de cadastro',
     'médico pendente',
     'adicionar médico',
+    'autorizo cadastrar',
+    'cadastro a conferir',
     'CRM',
     'Niterói',
   ],
@@ -51,7 +53,7 @@ export const artigoSernitMedicos: Artigo = {
     {
       id: 'pedidos',
       titulo: 'Pedidos de cadastro',
-      busca: 'pedidos de cadastro pendente incluir médico adicionar médico cadastrei já existia recusar cpf busca',
+      busca: 'pedidos de cadastro pendente incluir médico adicionar médico cadastrei já existia recusar cpf busca autorizo cadastrar enviar ao sernit nomes parecidos cadastro a conferir não entrou',
       conteudo: (
         <>
           <P>
@@ -60,6 +62,13 @@ export const artigoSernitMedicos: Artigo = {
             o médico no SERNIT — tela de solicitação de lá, ícone <strong>Adicionar médico</strong> ao lado
             de “Médico responsável” — e resolve: <BotaoRef>Cadastrei no SERNIT</BotaoRef>,{' '}
             <BotaoRef>Já existia no SERNIT</BotaoRef> ou <BotaoRef>Recusar</BotaoRef>, com o motivo.
+          </P>
+          <P>
+            Ou pelo <strong>Aceitar e enviar ao SERNIT</strong>: a prévia mostra os nomes parecidos da lista do
+            SERNIT (“É este”) e, com a autorização de quem regula, a plataforma cadastra o médico pelo
+            “Adicionar Médico” do SERNIT e confere se o nome entrou. Se não der para confirmar, o pedido fica
+            em <strong>Cadastro a conferir</strong>: confira no SERNIT e use “Já existia no SERNIT” ou “Não
+            entrou”.
           </P>
           <Callout tipo="dica" titulo="O CPF procura o médico no SERNIT">
             No modal do SERNIT, digitar o CPF e sair do campo faz o próprio SERNIT procurar o profissional e

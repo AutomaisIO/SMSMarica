@@ -150,6 +150,33 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>A decisão 6 (envio automático de médico ao SER) continua desligada: a escrita no cadastro do</li>
 </ul>
 <p>  Estado segue sendo de uma pessoa.</p>
+<h2>Complemento — 08/10/2026: a decisão 6 liga, com o "Autorizo" do regulador a cada médico</h2>
+<p>Decisão do Bernardo, depois de ver o cartão "Médico novo a cadastrar no SER" no meio do envio. Muda a última linha do complemento de 02/10: a escrita no cadastro do Estado continua sendo de uma pessoa, mas quem digita é a plataforma, com a autorização expressa dessa pessoa.</p>
+<ul>
+<li><strong>Onde:</strong> no próprio envio automático (ADR-0069). A <strong>prévia</strong> deixa de barrar o médico pendente.</li>
+</ul>
+<p>  Ela segue preenchendo a tela e devolve o bloco "Médico não cadastrado", que traz:   - o que a unidade pediu;   - os <strong>nomes parecidos do combo "Médico responsável" de hoje</strong>, por <code>SemelhancaNome</code>, mais o     documento igual no espelho <code>ser_profissional</code> (só quem está no combo);   - as especialidades do modal do sistema, com uma sugestão ("ONCOLOGISTA" → "ONCOLOGIA").</p>
+<p>  O <strong>envio</strong> continua barrando enquanto o médico não estiver resolvido.</p>
+<ul>
+<li><strong>"É este"</strong> resolve como <strong>Já existia</strong> (a solicitação passa a usar o nome de lá).</li>
+<li><strong>"Autorizo cadastrar"</strong> (<code>POST regulacao/solicitacoes/{id}/envio-automatico/medico</code>, com</li>
+</ul>
+<p>  <code>autorizo: true</code> obrigatório):   1. reabre a tela de criação;   2. se o nome já está no combo, <strong>não grava</strong> e resolve como Já existia;   3. passa o pendente para <strong><code>CadastroIncerto</code></strong> numa atualização condicional (é a trava contra      duplo clique e contra dois reguladores);   4. clica o ícone <code>form0:addMedico</code> (navegação, pela trava de somente-leitura);   5. preenche <code>formModalAdicionarMedico</code>: nome, tipo e número do documento, e a especialidade      escolhida <strong>pelo rótulo depois de abrir o modal</strong> (o <code>value</code> é índice de view; há rótulos      repetidos). O CPF fica vazio;   6. aciona o <strong>Gravar do modal</strong> por <code>SubmeterEscritaAsync</code>, com a sessão do operador e a      operação nomeada no log;   7. <strong>confere se o nome aparece no combo</strong>; se a resposta não re-renderizou o combo, reabre a tela.</p>
+<ul>
+<li><strong>Desfechos:</strong></li>
+<li><strong>nome na lista</strong> → <code>Cadastrado</code>, com o nome de lá, e troca nas solicitações;</li>
+<li><strong>mensagem de validação e nome fora</strong> → volta a <code>Pendente</code> (nada criado);</li>
+<li><strong>qualquer outro caso depois do Gravar</strong> → fica <code>CadastroIncerto</code>. Ninguém tenta de novo</li>
+</ul>
+<p>    sozinho, porque o SER não apaga e repetir duplica. O regulador confere no sistema e resolve     no cartão: <strong>Já existia</strong> (escolhe o cadastro) ou <strong>Não entrou</strong> (volta a pendente).     "Cadastrei" não é aceito nesse estado.</p>
+<ul>
+<li>Vale para <strong>SER e SERNIT</strong>: o modal é o mesmo nas duas instâncias.</li>
+<li><strong>O ensaio do Gravar (6a) é o primeiro uso real.</strong> Não existe ensaio sem escrita: o SER não</li>
+</ul>
+<p>  apaga. O modal foi lido da captura do laboratório (<code>Automais.SER/capturas/criar_aba_editar.html</code>;   no SERNIT, <code>Automais.SERNIT/capturas/nova.html</code>). O que o servidor exige no Gravar só o primeiro   cadastro mostra — e a conferência pelo combo é o que impede tomar silêncio por sucesso.</p>
+<ul>
+<li><code>SituacaoMedicoPendente.CadastroIncerto = 5</code>, guardado como inteiro, <strong>sem migration</strong>.</li>
+</ul>
 </main>
 </body>
 </html>

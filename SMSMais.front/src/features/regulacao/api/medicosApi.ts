@@ -3,7 +3,7 @@ import { http } from '@/shared/api/httpClient';
 import type { SistemaRegulacao } from '../types';
 
 /** Espelha `SituacaoMedicoPendente` (viaja como string). */
-export type SituacaoMedicoPendente = 'Pendente' | 'Cadastrado' | 'JaExistia' | 'Recusado';
+export type SituacaoMedicoPendente = 'Pendente' | 'Cadastrado' | 'JaExistia' | 'Recusado' | 'CadastroIncerto';
 
 /** O que parece o mesmo médico — na lista do sistema ou entre os já pedidos. */
 export type MedicoParecido = {
@@ -69,7 +69,8 @@ export async function obterMedicoPendente(id: string): Promise<MedicoPendente> {
 
 export async function resolverMedicoPendente(
   id: string,
-  acao: Exclude<SituacaoMedicoPendente, 'Pendente'>,
+  /** "Pendente" só depois de um cadastro incerto: o regulador conferiu e o médico NÃO entrou. */
+  acao: Exclude<SituacaoMedicoPendente, 'CadastroIncerto'>,
   nomeNoSistema: string | null,
   motivo: string | null,
 ): Promise<MedicoPendente> {

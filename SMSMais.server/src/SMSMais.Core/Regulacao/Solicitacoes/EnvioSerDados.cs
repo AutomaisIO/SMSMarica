@@ -11,6 +11,8 @@ namespace SMSMais.Core.Regulacao.Solicitacoes;
 /// <param name="PacienteId">O nosso cadastro — o SERNIT não consulta o CADSUS, e paciente que ele
 /// não conhece é cadastrado na própria tela com os nossos dados.</param>
 /// <param name="AmbulatorioEstadual">O ramo do SER-RJ; no SERNIT é sempre <c>false</c> (não há o combo).</param>
+/// <param name="MedicoPendenteId">Médico pedido pela unidade e ainda não cadastrado no sistema — só vem
+/// preenchido na prévia (e no cadastro pelo modal); o envio barra antes.</param>
 public sealed record DadosEnvioSer(
     Guid Id,
     long NumeroLocal,
@@ -25,7 +27,8 @@ public sealed record DadosEnvioSer(
     bool EhExame,
     bool AmbulatorioEstadual,
     string RecursoRotulo,
-    IReadOnlyList<ArquivoParaEnvio> Arquivos);
+    IReadOnlyList<ArquivoParaEnvio> Arquivos,
+    Guid? MedicoPendenteId = null);
 
 /// <summary>Um arquivo atual de uma exigência da solicitação.</summary>
 public sealed record ArquivoParaEnvio(

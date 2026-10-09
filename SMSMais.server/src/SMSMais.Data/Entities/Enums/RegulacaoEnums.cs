@@ -283,6 +283,14 @@ public enum SituacaoMedicoPendente
 
     /// <summary>O técnico não cadastrou; o motivo vai para a unidade.</summary>
     Recusado = 4,
+
+    /// <summary>
+    /// A plataforma acionou o Gravar do modal "Adicionar médico" do sistema (com o "Autorizo" do
+    /// regulador) e NÃO conseguiu provar que o médico entrou na lista. Ninguém tenta de novo sozinho:
+    /// o sistema não tem editar nem apagar, e repetir pode duplicar o médico no cadastro do Estado. O
+    /// regulador confere lá e diz "já existia" (entrou) ou "não entrou" (volta a pendente).
+    /// </summary>
+    CadastroIncerto = 5,
 }
 
 /// <summary>De onde veio o médico do cadastro local (<c>RegulacaoMedicoLocal</c>).</summary>

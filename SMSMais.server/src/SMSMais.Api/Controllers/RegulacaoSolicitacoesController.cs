@@ -182,6 +182,22 @@ public sealed class RegulacaoSolicitacoesController(
         Guid id, [FromBody] EnviarAoSerRequest req, CancellationToken cancellationToken) =>
         envioSer.EnviarAsync(id, req, cancellationToken);
 
+    /// <summary>
+    /// <b>"Autorizo cadastrar" — ESCREVE no cadastro de médicos do SER/SERNIT</b>, pelo modal
+    /// "Adicionar Médico" da tela de criação, com a sessão do regulador. Para o médico pedido pela
+    /// unidade que a prévia mostrou fora da lista (<c>medicoNovo</c>). Se o nome já está lá, não grava e
+    /// usa o de lá. Só dá por cadastrado se o nome aparecer na lista depois do Gravar; sem essa prova
+    /// responde 400 <c>ser.medico_incerto</c> e o médico fica "cadastro incerto" (ADR-0065, complemento
+    /// de 08/10/2026).
+    /// </summary>
+    [HttpPost("{id:guid}/envio-automatico/medico")]
+    [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]
+    [ProducesResponseType<MedicoCadastradoNoSistemaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<MedicoCadastradoNoSistemaDto> CadastrarMedicoNoSistema(
+        Guid id, [FromBody] CadastrarMedicoNoSistemaRequest req, CancellationToken cancellationToken) =>
+        envioSer.CadastrarMedicoAsync(id, req, cancellationToken);
+
     /// <summary>Rota antiga (07/10/2026) — a tela publicada antes do SERNIT chama esta. Mesmo efeito.</summary>
     [HttpPost("{id:guid}/ser/preparar")]
     [RequerPermissao(ModuloPermissao.RegulacaoTriagem, AcoesPermissao.Edicao)]

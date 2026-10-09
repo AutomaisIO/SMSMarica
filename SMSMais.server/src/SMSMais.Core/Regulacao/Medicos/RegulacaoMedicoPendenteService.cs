@@ -34,15 +34,19 @@ public sealed record MedicoPendenteDto(
     /// <summary>O valor que vai no campo de médico da solicitação: <c>pendente:{id}</c>.</summary>
     string Valor);
 
-/// <param name="Acao">"Cadastrado", "JaExistia" ou "Recusado".</param>
+/// <param name="Acao">"Cadastrado", "JaExistia" ou "Recusado" — e "Pendente" só a partir de
+/// "CadastroIncerto" (o regulador conferiu no sistema e o médico NÃO entrou).</param>
 /// <param name="NomeNoSistema">Em "Já existia", o nome do cadastro que já estava lá (obrigatório).</param>
 public sealed record ResolverMedicoPendenteRequest(SituacaoMedicoPendente Acao, string? NomeNoSistema, string? Motivo);
 
 public interface IRegulacaoMedicoPendenteService
 {
     /// <summary>"Já existe?" — o que parece o mesmo médico, na lista do sistema e entre os pendentes.</summary>
+    /// <param name="nomesAoVivo">A lista do combo como o sistema a mostra AGORA (no envio). Sem ela,
+    /// vale a cópia do catálogo; com ela, os pendentes ficam de fora — a pergunta é "está lá?".</param>
     Task<IReadOnlyList<MedicoParecidoDto>> ParecidosAsync(
-        SistemaRegulacao sistema, string nome, string? numeroDocumento, CancellationToken ct);
+        SistemaRegulacao sistema, string nome, string? numeroDocumento, CancellationToken ct,
+        IReadOnlyList<string>? nomesAoVivo = null);
 
     /// <summary>
     /// Cria o pendente — ou devolve o que já existe com o mesmo nome no mesmo sistema, para duas
@@ -60,6 +64,20 @@ public interface IRegulacaoMedicoPendenteService
 
     /// <summary>O técnico da regulação resolve: cadastrou, já existia ou recusou.</summary>
     Task<MedicoPendenteDto> ResolverAsync(Guid id, ResolverMedicoPendenteRequest req, CancellationToken ct);
+
+    /// <summary>
+    /// Antes do Gravar do modal "Adicionar médico": passa o pendente para
+    /// <see cref="SituacaoMedicoPendente.CadastroIncerto"/> numa atualização condicional (só se ainda
+    /// estiver pendente). É a trava contra duplo clique e contra dois reguladores cadastrando o mesmo
+    /// médico — e, se o servidor cair no meio, o estado já é o conservador ("confira no sistema").
+    /// </summary>
+    Task<MedicoPendenteDto> ReservarCadastroAsync(Guid id, CancellationToken ct);
+
+    /// <summary>O médico apareceu na lista do sistema depois do Gravar: vira "Cadastrado" com o nome de lá.</summary>
+    Task<MedicoPendenteDto> ConfirmarCadastroAsync(Guid id, string nomeNoSistema, CancellationToken ct);
+
+    /// <summary>O Gravar não chegou a sair (ou o sistema recusou com mensagem): volta a pendente.</summary>
+    Task<MedicoPendenteDto> LiberarCadastroAsync(Guid id, CancellationToken ct);
 }
 
 /// <summary>
@@ -88,13 +106,15 @@ public sealed class RegulacaoMedicoPendenteService(
             : null;
 
     public async Task<IReadOnlyList<MedicoParecidoDto>> ParecidosAsync(
-        SistemaRegulacao sistema, string nome, string? numeroDocumento, CancellationToken ct)
+        SistemaRegulacao sistema, string nome, string? numeroDocumento, CancellationToken ct,
+        IReadOnlyList<string>? nomesAoVivo = null)
     {
         if (string.IsNullOrWhiteSpace(nome)) return [];
         var doc = SemelhancaNome.Digitos(numeroDocumento);
         var achados = new List<MedicoParecidoDto>();
+        var aoVivo = nomesAoVivo?.Select(n => n.Trim()).Where(n => n.Length > 0).Distinct().ToList();
 
-        foreach (var n in await NomesDoSistemaAsync(sistema, ct))
+        foreach (var n in aoVivo ?? await NomesDoSistemaAsync(sistema, ct))
         {
             var p = SemelhancaNome.Pontuacao(nome, n);
             if (p >= CorteNome) achados.Add(new(n, "Sistema", n, p, MotivoNome(nome, n), null));
@@ -112,14 +132,19 @@ public sealed class RegulacaoMedicoPendenteService(
             {
                 var d = SemelhancaNome.Digitos(p.Documento);
                 if (d.Length < 4 || !(d == doc || d.EndsWith(doc, StringComparison.Ordinal) || doc.EndsWith(d, StringComparison.Ordinal))) continue;
+                // Ao vivo, só vale quem está no combo de hoje: profissional do espelho sem lotação no
+                // município não pode ser escolhido como solicitante.
+                if (aoVivo is not null && !aoVivo.Any(n => SemelhancaNome.Pontuacao(p.Nome, n) >= 0.99)) continue;
                 achados.RemoveAll(a => a.Origem == "Sistema" && a.Nome == p.Nome);
                 achados.Add(new(p.Nome, "Sistema", p.Nome, 1.0, $"Documento igual ({p.Documento})", null));
             }
         }
 
-        var pendentes = await db.RegulacaoMedicosPendentes.AsNoTracking()
-            .Where(m => m.Sistema == sistema && m.Situacao == SituacaoMedicoPendente.Pendente)
-            .ToListAsync(ct);
+        var pendentes = aoVivo is not null
+            ? []
+            : await db.RegulacaoMedicosPendentes.AsNoTracking()
+                .Where(m => m.Sistema == sistema && m.Situacao == SituacaoMedicoPendente.Pendente)
+                .ToListAsync(ct);
         foreach (var m in pendentes)
         {
             var mesmoDoc = doc.Length >= 4 && SemelhancaNome.Digitos(m.NumeroDocumento) == doc;
@@ -211,9 +236,27 @@ public sealed class RegulacaoMedicoPendenteService(
 
         var m = await db.RegulacaoMedicosPendentes.FirstOrDefaultAsync(x => x.Id == id, ct)
                 ?? throw new NaoEncontradoException("Médico pendente", id);
-        if (m.Situacao != SituacaoMedicoPendente.Pendente)
+        if (m.Situacao is not (SituacaoMedicoPendente.Pendente or SituacaoMedicoPendente.CadastroIncerto))
         {
             throw new ConflitoException("regulacao.medico_ja_resolvido", "Este médico já foi resolvido por outra pessoa.");
+        }
+
+        // "Cadastrei" depois de um Gravar incerto seria afirmar sem conferir: depois de conferir no
+        // sistema, o caminho é "Já existia" escolhendo o cadastro (ele entrou) ou "Não entrou".
+        if (m.Situacao == SituacaoMedicoPendente.CadastroIncerto && req.Acao == SituacaoMedicoPendente.Cadastrado)
+        {
+            throw new ValidacaoException(
+                "acao", "A plataforma tentou cadastrar e não conseguiu confirmar. Confira no sistema: se o médico "
+                        + "está lá, use \"Já existia\" e escolha o cadastro; se não está, \"Não entrou\".");
+        }
+        if (req.Acao == SituacaoMedicoPendente.Pendente)
+        {
+            if (m.Situacao != SituacaoMedicoPendente.CadastroIncerto)
+            {
+                throw new ValidacaoException("acao", "Ação inválida.");
+            }
+            await LiberarAsync(m, ct);
+            return Mapear(m);
         }
 
         string? nomeFinal;
@@ -258,7 +301,64 @@ public sealed class RegulacaoMedicoPendenteService(
         return Mapear(m);
     }
 
+    public async Task<MedicoPendenteDto> ReservarCadastroAsync(Guid id, CancellationToken ct)
+    {
+        await escopo.ExigirAgenteAsync(ct);
+        var agora = DateTime.UtcNow;
+        var quem = usuarioAtual.UsuarioId;
+        var linhas = await db.RegulacaoMedicosPendentes
+            .Where(x => x.Id == id && x.Situacao == SituacaoMedicoPendente.Pendente)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(x => x.Situacao, SituacaoMedicoPendente.CadastroIncerto)
+                .SetProperty(x => x.AtualizadoEm, agora)
+                .SetProperty(x => x.AtualizadoPor, quem), ct);
+        var m = await db.RegulacaoMedicosPendentes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct)
+                ?? throw new NaoEncontradoException("Médico pendente", id);
+        if (linhas == 0)
+        {
+            throw new ConflitoException(
+                "regulacao.medico_ja_resolvido",
+                m.Situacao == SituacaoMedicoPendente.CadastroIncerto
+                    ? "Já houve uma tentativa de cadastrar este médico no sistema. Confira lá antes de qualquer coisa."
+                    : "Este médico já foi resolvido por outra pessoa.");
+        }
+        return Mapear(m);
+    }
+
+    public async Task<MedicoPendenteDto> ConfirmarCadastroAsync(Guid id, string nomeNoSistema, CancellationToken ct)
+    {
+        var m = await db.RegulacaoMedicosPendentes.FirstOrDefaultAsync(x => x.Id == id, ct)
+                ?? throw new NaoEncontradoException("Médico pendente", id);
+        var agora = DateTime.UtcNow;
+        m.Situacao = SituacaoMedicoPendente.Cadastrado;
+        m.NomeNoSistema = nomeNoSistema.Trim();
+        m.Motivo = null;
+        m.ResolvidoEm = agora;
+        m.ResolvidoPor = usuarioAtual.UsuarioId;
+        m.AtualizadoEm = agora;
+        m.AtualizadoPor = usuarioAtual.UsuarioId;
+        await TrocarNasSolicitacoesAsync(Valor(m.Id), m.NomeNoSistema, ct);
+        await db.SaveChangesAsync(ct);
+        return Mapear(m);
+    }
+
+    public async Task<MedicoPendenteDto> LiberarCadastroAsync(Guid id, CancellationToken ct)
+    {
+        var m = await db.RegulacaoMedicosPendentes.FirstOrDefaultAsync(x => x.Id == id, ct)
+                ?? throw new NaoEncontradoException("Médico pendente", id);
+        if (m.Situacao == SituacaoMedicoPendente.CadastroIncerto) await LiberarAsync(m, ct);
+        return Mapear(m);
+    }
+
     // ---------------------------------------------------------------- apoio
+
+    private async Task LiberarAsync(RegulacaoMedicoPendente m, CancellationToken ct)
+    {
+        m.Situacao = SituacaoMedicoPendente.Pendente;
+        m.AtualizadoEm = DateTime.UtcNow;
+        m.AtualizadoPor = usuarioAtual.UsuarioId;
+        await db.SaveChangesAsync(ct);
+    }
 
     private async Task TrocarNasSolicitacoesAsync(string valorPendente, string nomeFinal, CancellationToken ct)
     {

@@ -12,6 +12,7 @@ using SMSMais.Core.Pacientes;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Catalogo;
 using SMSMais.Core.Regulacao.Formularios;
+using SMSMais.Core.Regulacao.Medicos;
 using SMSMais.Core.Regulacao.Solicitacoes;
 using SMSMais.Core.Ser.Criacao;
 using SMSMais.Core.Ser.Dtos;
@@ -35,13 +36,50 @@ public sealed record EnvioSerDuplicadoDto(string IdSer, string? Recurso, string?
 
 /// <summary>A prévia: a tela do sistema preenchida inteira, sem anexar nem gravar.</summary>
 /// <param name="Sistema">"SER" ou "SERNIT" — para a tela dizer onde vai.</param>
+/// <param name="MedicoNovo">O médico pedido pela unidade ainda não está na lista do sistema: a
+/// pergunta ao regulador (é um destes parecidos? autoriza cadastrar?). Enquanto houver, não envia.</param>
 public sealed record EnvioSerPreparoDto(
     string OperadorSer,
     string Recurso,
     IReadOnlyList<EnvioSerPassoDto> Passos,
     IReadOnlyList<EnvioSerAnexoDto> Anexos,
     IReadOnlyList<EnvioSerDuplicadoDto> PossiveisDuplicados,
-    string Sistema = "SER");
+    string Sistema = "SER",
+    MedicoNovoNoSistemaDto? MedicoNovo = null);
+
+/// <summary>
+/// O médico pedido na abertura que a lista do sistema (o combo "Médico responsável" de HOJE) não tem.
+/// </summary>
+/// <param name="Parecidos">Nomes do combo que podem ser o mesmo médico (o sistema abrevia muito:
+/// "LAURA BEATRIZ A. RODRIGUES") e o CRM igual no espelho dos profissionais.</param>
+/// <param name="Especialidades">As especialidades do modal "Adicionar Médico" do sistema, na ordem dele
+/// (sem repetição de rótulo) — a do pedido é texto livre da unidade e quase nunca bate.</param>
+/// <param name="EspecialidadeSugerida">A da lista que parece a pedida ("ONCOLOGISTA" → "ONCOLOGIA").</param>
+/// <param name="PodeCadastrar">O modal existe na tela e o médico está pendente (não houve tentativa).</param>
+public sealed record MedicoNovoNoSistemaDto(
+    Guid PendenteId,
+    string Nome,
+    string? TipoDocumento,
+    string? NumeroDocumento,
+    string? EspecialidadePedida,
+    SituacaoMedicoPendente Situacao,
+    IReadOnlyList<MedicoParecidoDto> Parecidos,
+    IReadOnlyList<string> Especialidades,
+    string? EspecialidadeSugerida,
+    bool PodeCadastrar);
+
+/// <summary>"Autorizo cadastrar no sistema" — os dados como vão ao modal "Adicionar Médico".</summary>
+/// <param name="Autorizo">Tem de vir <c>true</c>: é a autorização expressa do regulador para escrever no
+/// cadastro do Estado, que não tem editar nem apagar.</param>
+/// <param name="Especialidade">Rótulo da lista do sistema (<see cref="MedicoNovoNoSistemaDto.Especialidades"/>).</param>
+/// <param name="Nome">Vazio = o nome pedido pela unidade.</param>
+public sealed record CadastrarMedicoNoSistemaRequest(
+    bool Autorizo, string Especialidade, string? Nome, string? TipoDocumento, string? NumeroDocumento);
+
+/// <param name="Desfecho">"Cadastrado" (gravou e o nome apareceu na lista) ou "JaExistia" (o nome
+/// já estava lá — nada foi gravado).</param>
+public sealed record MedicoCadastradoNoSistemaDto(
+    string Desfecho, string NomeNoSistema, string Mensagem, string? MensagemDoSistema);
 
 public sealed record EnviarAoSerRequest(bool EnviarMesmoComPedidoParecido);
 
@@ -78,6 +116,16 @@ public interface IRegulacaoEnvioSerService
     Task<EnvioSerPreparoDto> PrepararAsync(Guid solicitacaoId, CancellationToken ct);
 
     Task<EnvioSerResultadoDto> EnviarAsync(Guid solicitacaoId, EnviarAoSerRequest req, CancellationToken ct);
+
+    /// <summary>
+    /// <b>Cadastra no sistema o médico pedido pela unidade</b> — ESCREVE no cadastro do Estado, pelo
+    /// modal "Adicionar Médico" da tela de criação, com a sessão do regulador e o "Autorizo" dele
+    /// (ADR-0065, complemento de 08/10/2026). Se o nome já está na lista, não grava: usa o cadastro de
+    /// lá. Depois do Gravar, só dá o médico por cadastrado se o nome aparecer na lista; senão o médico
+    /// fica "cadastro incerto" e ninguém tenta de novo sem conferir.
+    /// </summary>
+    Task<MedicoCadastradoNoSistemaDto> CadastrarMedicoAsync(
+        Guid solicitacaoId, CadastrarMedicoNoSistemaRequest req, CancellationToken ct);
 }
 
 public sealed partial class RegulacaoEnvioSerService(
@@ -88,6 +136,7 @@ public sealed partial class RegulacaoEnvioSerService(
     ISerSessaoOperadorStore sessoesSer,
     ISernitSessaoOperadorStore sessoesSernit,
     IPacientesService pacientes,
+    IRegulacaoMedicoPendenteService medicosPendentes,
     IUsuarioAtualAccessor usuarioAtual,
     ILoggerFactory loggerFactory,
     ILogger<RegulacaoEnvioSerService> logger) : IRegulacaoEnvioSerService
@@ -109,19 +158,180 @@ public sealed partial class RegulacaoEnvioSerService(
 
     public async Task<EnvioSerPreparoDto> PrepararAsync(Guid solicitacaoId, CancellationToken ct)
     {
-        var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct);
+        // Médico ainda pendente não barra a PRÉVIA: ela mostra o que o sistema tem de parecido e
+        // pergunta ao regulador. O envio continua barrando.
+        var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct, aceitarMedicoPendente: true);
         var ctx = Contextualizar(dados);
         var anexos = await LerAnexosAsync(ctx, dados, ct);
 
         var motor = new SerCriacaoSolicitacao(ctx.Transporte, ctx.Perfil, logger);
-        var passos = await PreencherAsync(ctx, motor, dados, ct);
+        var medicoNovo = new MedicoNovoColetado();
+        var passos = await PreencherAsync(ctx, motor, dados, ct, medicoNovo);
         var duplicados = await ProcurarParecidosAsync(ctx, dados, ct);
 
         return new EnvioSerPreparoDto(
             ctx.Operador, dados.RecursoRotulo, passos,
             [.. anexos.Select(a => new EnvioSerAnexoDto(a.Nome, a.Conteudo.LongLength, a.Origens.Count))],
-            duplicados, ctx.Nome);
+            duplicados, ctx.Nome, medicoNovo.Bloco);
     }
+
+    /// <summary>Onde o preenchimento deixa o bloco do médico novo (só a prévia passa um).</summary>
+    private sealed class MedicoNovoColetado
+    {
+        public MedicoNovoNoSistemaDto? Bloco { get; set; }
+    }
+
+    public async Task<MedicoCadastradoNoSistemaDto> CadastrarMedicoAsync(
+        Guid solicitacaoId, CadastrarMedicoNoSistemaRequest req, CancellationToken ct)
+    {
+        var dados = await solicitacoes.PrepararEnvioAutomaticoAsync(solicitacaoId, ct, aceitarMedicoPendente: true);
+        var ctx = Contextualizar(dados);
+        var sistema = ctx.Nome;
+
+        if (dados.MedicoPendenteId is not { } pendenteId)
+        {
+            throw new ConflitoException(
+                "regulacao.medico_sem_pendencia",
+                "O médico desta solicitação já está resolvido. Feche e abra o envio de novo.");
+        }
+        var pendente = await medicosPendentes.ObterAsync(pendenteId, ct);
+        if (pendente.Situacao != SituacaoMedicoPendente.Pendente)
+        {
+            throw new ConflitoException(
+                "regulacao.medico_ja_resolvido",
+                $"Já houve uma tentativa de cadastrar este médico no {sistema}. Confira lá e resolva pelo cartão "
+                + "do médico na solicitação — tentar de novo pode duplicar o cadastro.");
+        }
+
+        // ---- o pedido: autorização expressa e dados como o modal aceita
+        if (!req.Autorizo)
+        {
+            throw new ValidacaoException(
+                "autorizo", $"Cadastrar médico no {sistema} precisa da sua autorização expressa.");
+        }
+        var nome = string.Join(' ', (string.IsNullOrWhiteSpace(req.Nome) ? pendente.Nome : req.Nome)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
+        if (nome.Length < 5 || !nome.Contains(' '))
+        {
+            throw new ValidacaoException("nome", "Digite o nome completo do médico (nome e sobrenome).");
+        }
+        if (nome.Length > 300) throw new ValidacaoException("nome", "O nome cabe em até 300 caracteres.");
+        var tipo = string.IsNullOrWhiteSpace(req.TipoDocumento) ? null : req.TipoDocumento.Trim().ToUpperInvariant();
+        var numero = string.IsNullOrWhiteSpace(req.NumeroDocumento) ? null : req.NumeroDocumento.Trim();
+        if (tipo is not null && !RegulacaoMedicoPendenteService.TiposDocumento.Contains(tipo))
+        {
+            throw new ValidacaoException(
+                "tipoDocumento",
+                $"Tipo de documento deve ser um destes: {string.Join(", ", RegulacaoMedicoPendenteService.TiposDocumento)}.");
+        }
+        if (numero is not null && tipo is null)
+        {
+            throw new ValidacaoException("tipoDocumento", "Diga de que é o número (CRM, CNS, RG, CPF…).");
+        }
+        if (numero is { Length: > 40 }) throw new ValidacaoException("numeroDocumento", "O número cabe em até 40 caracteres.");
+        if (string.IsNullOrWhiteSpace(req.Especialidade))
+        {
+            throw new ValidacaoException("especialidade", $"Escolha a especialidade da lista do {sistema}.");
+        }
+        var chaveEspecialidade = IdentidadePorNome.Chave(req.Especialidade);
+
+        var motor = new SerCriacaoSolicitacao(ctx.Transporte, ctx.Perfil, logger);
+        await motor.AbrirAsync(ct);
+
+        // ---- já está na lista com este nome? Não grava: usa o de lá.
+        var iguais = IdentidadePorNome.Achar(motor.Combo(SerCriacaoSolicitacao.CampoMedico), o => o.Rotulo, nome);
+        if (iguais.Count > 0)
+        {
+            var existente = iguais[0].Rotulo.Trim();
+            await medicosPendentes.ResolverAsync(
+                pendenteId, new ResolverMedicoPendenteRequest(SituacaoMedicoPendente.JaExistia, existente, null), ct);
+            return new MedicoCadastradoNoSistemaDto(
+                "JaExistia", existente,
+                $"O {sistema} já tem \"{existente}\" na lista de médicos — nada foi cadastrado. A solicitação passa a usar esse cadastro.",
+                null);
+        }
+
+        if (motor.ModalMedico() is not { } modal)
+        {
+            throw new ValidacaoException(
+                "ser.medico", $"A tela do {sistema} não tem o modal \"Adicionar Médico\". Nada foi cadastrado.");
+        }
+        if (!modal.Especialidades.Any(o => IdentidadePorNome.Chave(o.Rotulo) == chaveEspecialidade))
+        {
+            throw new ValidacaoException(
+                "especialidade", $"\"{req.Especialidade}\" não está na lista de especialidades do {sistema}.");
+        }
+
+        // ---- a trava: pendente → "cadastro incerto" ANTES de escrever (duplo clique, dois reguladores,
+        // queda do servidor no meio — em todos, o estado que fica é o que manda conferir).
+        await medicosPendentes.ReservarCadastroAsync(pendenteId, ct);
+        ct = CancellationToken.None;
+
+        try
+        {
+            var resposta = await motor.CadastrarMedicoAsync(
+                nome, tipo, numero,
+                opcoes => opcoes.FirstOrDefault(o => IdentidadePorNome.Chave(o.Rotulo) == chaveEspecialidade),
+                $"cadastrar o médico {nome} (PR-{dados.NumeroLocal}, autorizado pelo regulador)", ct);
+            var mensagem = SerCriacaoSolicitacao.MensagemDaResposta(resposta) is { Length: > 0 } m ? m : motor.Mensagem();
+
+            // A prova: o nome na lista de médicos. Se a resposta não re-renderizou o combo, reabre a tela.
+            var achados = IdentidadePorNome.Achar(motor.Combo(SerCriacaoSolicitacao.CampoMedico), o => o.Rotulo, nome);
+            if (achados.Count == 0)
+            {
+                await motor.AbrirAsync(ct);
+                achados = IdentidadePorNome.Achar(motor.Combo(SerCriacaoSolicitacao.CampoMedico), o => o.Rotulo, nome);
+            }
+
+            if (achados.Count > 0)
+            {
+                var noSistema = achados[0].Rotulo.Trim();
+                await medicosPendentes.ConfirmarCadastroAsync(pendenteId, noSistema, ct);
+                logger.LogWarning(
+                    "Regulação PR-{Numero}: médico {Nome} CADASTRADO no {Sistema} por {Operador} (conferido na lista).",
+                    dados.NumeroLocal, noSistema, sistema, ctx.Operador);
+                return new MedicoCadastradoNoSistemaDto(
+                    "Cadastrado", noSistema,
+                    $"Médico cadastrado no {sistema} e conferido: \"{noSistema}\" já aparece na lista de médicos.",
+                    mensagem.Length > 0 ? mensagem : null);
+            }
+
+            if (mensagem.Length > 0 && RegexRecusa().IsMatch(mensagem))
+            {
+                // Mensagem de validação e o nome fora da lista: o sistema recusou, nada foi criado.
+                await medicosPendentes.LiberarCadastroAsync(pendenteId, ct);
+                logger.LogWarning(
+                    "Regulação PR-{Numero}: o {Sistema} recusou o cadastro do médico {Nome}: {Mensagem}",
+                    dados.NumeroLocal, sistema, nome, mensagem);
+                throw new ValidacaoException(
+                    "ser.medico", $"O {sistema} recusou o cadastro: \"{mensagem}\". Nada foi cadastrado — corrija e tente de novo.");
+            }
+
+            logger.LogWarning(
+                "Regulação PR-{Numero}: Gravar do médico {Nome} no {Sistema} SEM confirmação (mensagem: {Mensagem}).",
+                dados.NumeroLocal, nome, sistema, mensagem);
+            throw new ValidacaoException("ser.medico_incerto", CadastroIncerto(sistema, nome,
+                mensagem.Length > 0 ? $"O {sistema} disse: \"{mensagem}\"." : $"O {sistema} não disse nada."));
+        }
+        catch (Exception ex) when (ex is not ValidacaoException || !motor.EscritaAcionada)
+        {
+            if (!motor.EscritaAcionada)
+            {
+                // Nada saiu: volta a pendente, e o regulador pode tentar de novo.
+                await medicosPendentes.LiberarCadastroAsync(pendenteId, CancellationToken.None);
+                throw;
+            }
+            logger.LogWarning(ex, "Regulação PR-{Numero}: falha DEPOIS do Gravar do médico {Nome} no {Sistema}.",
+                dados.NumeroLocal, nome, sistema);
+            throw new ValidacaoException("ser.medico_incerto", CadastroIncerto(sistema, nome, $"Erro: {ex.Message}."));
+        }
+    }
+
+    private static string CadastroIncerto(string sistema, string nome, string detalhe) =>
+        $"ATENÇÃO: o Gravar chegou ao {sistema}, mas não deu para confirmar que \"{nome}\" entrou na lista de "
+        + $"médicos. {detalhe} Confira no {sistema} antes de qualquer coisa: se o médico está lá, use \"Já existia\" "
+        + "no cartão do médico e escolha o cadastro; se não está, \"Não entrou\". A plataforma não tenta de novo "
+        + "sozinha — repetir pode duplicar o médico no cadastro do Estado.";
 
     public async Task<EnvioSerResultadoDto> EnviarAsync(
         Guid solicitacaoId, EnviarAoSerRequest req, CancellationToken ct)
@@ -262,7 +472,8 @@ public sealed partial class RegulacaoEnvioSerService(
     /// o sistema não aceite é recusa aqui, com o nome do campo — nunca vai ao Gravar para ver no que dá.
     /// </summary>
     private async Task<List<EnvioSerPassoDto>> PreencherAsync(
-        Contexto ctx, SerCriacaoSolicitacao motor, DadosEnvioSer dados, CancellationToken ct)
+        Contexto ctx, SerCriacaoSolicitacao motor, DadosEnvioSer dados, CancellationToken ct,
+        MedicoNovoColetado? medicoNovo = null)
     {
         var passos = new List<EnvioSerPassoDto>();
         var traduzido = await TraduzirAsync(dados, ct);
@@ -380,19 +591,21 @@ public sealed partial class RegulacaoEnvioSerService(
         // ---- médico solicitante (pelo NOME; o value do combo é índice de view)
         await motor.TrocarAsync(SerCriacaoSolicitacao.RadioMedicoIdentificado,
             traduzido.GetValueOrDefault(SerCriacaoSolicitacao.RadioMedicoIdentificado, "true"), ct);
-        var medico = Obrigatorio(traduzido, SerCriacaoSolicitacao.CampoMedico, "Médico solicitante");
-        var medicos = IdentidadePorNome.Achar(motor.Combo(SerCriacaoSolicitacao.CampoMedico), o => o.Rotulo, medico);
-        if (medicos.Count == 0)
+        if (dados.MedicoPendenteId is { } pendenteId && medicoNovo is not null)
         {
-            throw new ValidacaoException(
-                "ser.medico",
-                $"O médico \"{medico}\" não está na lista de médicos do {sistema} do município. Ele precisa estar "
-                + $"cadastrado e lotado no {sistema} antes do envio.");
+            // Médico pedido pela unidade e ainda fora da lista: a prévia segue (o regulador vê tudo
+            // o que iria) e a decisão sobre o médico vem num bloco à parte.
+            var bloco = await MedicoNovoAsync(ctx, motor, pendenteId, ct);
+            medicoNovo.Bloco = bloco;
+            passos.Add(new EnvioSerPassoDto("Médico solicitante", bloco.Nome, false,
+                bloco.Situacao == SituacaoMedicoPendente.CadastroIncerto
+                    ? $"houve uma tentativa de cadastrar no {sistema} sem confirmação — confira lá"
+                    : $"não está na lista de médicos do {sistema} — decida abaixo"));
         }
-        // Homônimo no combo (cadastro duplicado): qualquer um leva o mesmo nome ao pedido.
-        await motor.TrocarAsync(SerCriacaoSolicitacao.CampoMedico, medicos[0].Valor, ct);
-        passos.Add(new EnvioSerPassoDto("Médico solicitante", medicos[0].Rotulo, true,
-            medicos.Count > 1 ? $"{medicos.Count} cadastros com este nome no {sistema}" : null));
+        else
+        {
+            await PreencherMedicoAsync(ctx, motor, traduzido, passos, ct);
+        }
 
         // ---- classificação de risco (o value é o nível: EMERGENCIA, URGENCIA…)
         var risco = Obrigatorio(traduzido, SerCriacaoSolicitacao.CampoRisco, "Classificação de risco");
@@ -432,6 +645,78 @@ public sealed partial class RegulacaoEnvioSerService(
         await PreencherDinamicosAsync(ctx, motor, dados, traduzido, passos, ct);
 
         return passos;
+    }
+
+    private async Task PreencherMedicoAsync(
+        Contexto ctx, SerCriacaoSolicitacao motor, IReadOnlyDictionary<string, string> traduzido,
+        List<EnvioSerPassoDto> passos, CancellationToken ct)
+    {
+        var sistema = ctx.Nome;
+        var medico = Obrigatorio(traduzido, SerCriacaoSolicitacao.CampoMedico, "Médico solicitante");
+        var medicos = IdentidadePorNome.Achar(motor.Combo(SerCriacaoSolicitacao.CampoMedico), o => o.Rotulo, medico);
+        if (medicos.Count == 0)
+        {
+            throw new ValidacaoException(
+                "ser.medico",
+                $"O médico \"{medico}\" não está na lista de médicos do {sistema} do município. Ele precisa estar "
+                + $"cadastrado e lotado no {sistema} antes do envio.");
+        }
+        // Homônimo no combo (cadastro duplicado): qualquer um leva o mesmo nome ao pedido.
+        await motor.TrocarAsync(SerCriacaoSolicitacao.CampoMedico, medicos[0].Valor, ct);
+        passos.Add(new EnvioSerPassoDto("Médico solicitante", medicos[0].Rotulo, true,
+            medicos.Count > 1 ? $"{medicos.Count} cadastros com este nome no {sistema}" : null));
+    }
+
+    /// <summary>
+    /// O bloco "médico não cadastrado" da prévia: o pedido da unidade, o que o combo de HOJE tem de
+    /// parecido (e o CRM igual no espelho) e as especialidades do modal "Adicionar Médico".
+    /// </summary>
+    private async Task<MedicoNovoNoSistemaDto> MedicoNovoAsync(
+        Contexto ctx, SerCriacaoSolicitacao motor, Guid pendenteId, CancellationToken ct)
+    {
+        var pendente = await medicosPendentes.ObterAsync(pendenteId, ct);
+        var nomesNaLista = motor.Combo(SerCriacaoSolicitacao.CampoMedico).Select(o => o.Rotulo).ToList();
+        var parecidos = await medicosPendentes.ParecidosAsync(
+            pendente.Sistema, pendente.Nome, pendente.NumeroDocumento, ct, nomesNaLista);
+
+        var modal = motor.ModalMedico();
+        var especialidades = modal is null
+            ? []
+            : modal.Especialidades.Select(o => o.Rotulo.Trim()).Where(r => r.Length > 0)
+                .DistinctBy(IdentidadePorNome.Chave).ToList();
+
+        return new MedicoNovoNoSistemaDto(
+            pendente.Id, pendente.Nome, pendente.TipoDocumento, pendente.NumeroDocumento, pendente.Especialidade,
+            pendente.Situacao, parecidos, especialidades,
+            SugerirEspecialidade(pendente.Especialidade, especialidades),
+            PodeCadastrar: modal is not null && pendente.Situacao == SituacaoMedicoPendente.Pendente);
+    }
+
+    /// <summary>
+    /// A especialidade da lista do sistema que parece a que a unidade escreveu. A unidade escreve o
+    /// profissional ("ONCOLOGISTA", "PEDIATRA", "CLÍNICO GERAL"); a lista tem a especialidade
+    /// ("ONCOLOGIA", "PEDIATRIA", "CLÍNICA GERAL"): casa pelo começo comum de cada palavra. Entre as que
+    /// casam, a mais curta ("ONCOLOGIA" e não "ONCOLOGIA - MASTOLOGIA"). Só sugere: quem escolhe é o regulador.
+    /// </summary>
+    internal static string? SugerirEspecialidade(string? pedida, IReadOnlyList<string> lista)
+    {
+        var p = SemelhancaNome.Palavras(pedida);
+        if (p.Count == 0) return null;
+
+        static bool Casa(string a, string b)
+        {
+            var n = 0;
+            while (n < a.Length && n < b.Length && a[n] == b[n]) n++;
+            return n == a.Length || n == b.Length || n >= 6;
+        }
+
+        return lista
+            .Select(rotulo => (Rotulo: rotulo, Palavras: SemelhancaNome.Palavras(rotulo)))
+            .Where(c => c.Palavras.Count >= p.Count && p.Select((w, i) => Casa(w, c.Palavras[i])).All(x => x))
+            .OrderBy(c => c.Palavras.Count)
+            .ThenBy(c => c.Rotulo.Length)
+            .Select(c => c.Rotulo)
+            .FirstOrDefault();
     }
 
     private const string CampoCpf = "form0:cpf";

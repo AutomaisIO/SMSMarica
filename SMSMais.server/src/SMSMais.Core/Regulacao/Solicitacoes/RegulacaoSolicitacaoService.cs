@@ -184,7 +184,10 @@ public interface IRegulacaoSolicitacaoService
     /// Confere se a solicitação pode ir ao SER pelo envio automático e devolve o que o envio
     /// precisa (recurso do espelho, versão do formulário, arquivos). Só lê — não muda estado.
     /// </summary>
-    Task<DadosEnvioSer> PrepararEnvioAutomaticoAsync(Guid id, CancellationToken ct);
+    /// <param name="aceitarMedicoPendente">Na PRÉVIA e no cadastro do médico pelo modal do sistema:
+    /// médico pedido e ainda não cadastrado não barra — vem em <see cref="DadosEnvioSer.MedicoPendenteId"/>
+    /// para a tela perguntar ao regulador. No envio, barra.</param>
+    Task<DadosEnvioSer> PrepararEnvioAutomaticoAsync(Guid id, CancellationToken ct, bool aceitarMedicoPendente = false);
 
     /// <summary>
     /// Trava o caso em <see cref="StatusRegulacao.EnviandoAoSistema"/> antes de tocar o SER. É a
@@ -827,6 +830,26 @@ public sealed class RegulacaoSolicitacaoService(
     /// </summary>
     private async Task ExigirMedicoResolvidoAsync(RegulacaoSolicitacao s, CancellationToken ct)
     {
+        if (MedicoPendenteDe(s) is not { } pendenteId) return;
+
+        var pendente = await db.RegulacaoMedicosPendentes.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == pendenteId, ct);
+        throw new ValidacaoException(
+            "medico",
+            pendente?.Situacao switch
+            {
+                SituacaoMedicoPendente.Recusado =>
+                    "O médico pedido pela unidade foi recusado. Devolva a solicitação para ela escolher outro.",
+                SituacaoMedicoPendente.CadastroIncerto =>
+                    $"A plataforma tentou cadastrar o médico {pendente.Nome} no sistema e não conseguiu confirmar. "
+                    + "Confira lá e resolva o médico na solicitação antes de enviar.",
+                _ => $"Cadastre o médico {pendente?.Nome} no sistema e confirme o cadastro antes de registrar o envio.",
+            });
+    }
+
+    /// <summary>O id do médico pedido (<c>pendente:{id}</c>) no formulário da solicitação, se for um.</summary>
+    private static Guid? MedicoPendenteDe(RegulacaoSolicitacao s)
+    {
         string? valor = null;
         try
         {
@@ -840,19 +863,10 @@ public sealed class RegulacaoSolicitacaoService(
         }
         catch (JsonException)
         {
-            return;
+            return null;
         }
 
-        if (Medicos.RegulacaoMedicoPendenteService.IdDoValor(valor) is not { } pendenteId) return;
-
-        var pendente = await db.RegulacaoMedicosPendentes.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == pendenteId, ct);
-        var situacao = pendente?.Situacao;
-        throw new ValidacaoException(
-            "medico",
-            situacao == SituacaoMedicoPendente.Recusado
-                ? "O médico pedido pela unidade foi recusado. Devolva a solicitação para ela escolher outro."
-                : $"Cadastre o médico {pendente?.Nome} no sistema e confirme o cadastro antes de registrar o envio.");
+        return Medicos.RegulacaoMedicoPendenteService.IdDoValor(valor);
     }
 
     // ---------------------------------------------------------------- envio automático ao SER
@@ -863,7 +877,8 @@ public sealed class RegulacaoSolicitacaoService(
     /// </summary>
     private static readonly TimeSpan EnvioInterrompidoApos = TimeSpan.FromMinutes(20);
 
-    public async Task<DadosEnvioSer> PrepararEnvioAutomaticoAsync(Guid id, CancellationToken ct)
+    public async Task<DadosEnvioSer> PrepararEnvioAutomaticoAsync(
+        Guid id, CancellationToken ct, bool aceitarMedicoPendente = false)
     {
         await escopoRegulacao.ExigirAgenteAsync(ct);
         var s = await CarregarNoEscopoAsync(id, ct);
@@ -892,7 +907,21 @@ public sealed class RegulacaoSolicitacaoService(
             throw new ValidacaoException("formulario", "A solicitação não tem formulário preenchido.");
         }
 
-        await ExigirMedicoResolvidoAsync(s, ct);
+        // Prévia: médico ainda pendente (ou com cadastro incerto) não barra — a tela pergunta ao
+        // regulador. Recusado barra sempre: a unidade é que tem de escolher outro.
+        Guid? medicoPendenteId = null;
+        if (aceitarMedicoPendente && MedicoPendenteDe(s) is { } pendenteId
+            && await db.RegulacaoMedicosPendentes.AsNoTracking()
+                .AnyAsync(x => x.Id == pendenteId
+                               && (x.Situacao == SituacaoMedicoPendente.Pendente
+                                   || x.Situacao == SituacaoMedicoPendente.CadastroIncerto), ct))
+        {
+            medicoPendenteId = pendenteId;
+        }
+        else
+        {
+            await ExigirMedicoResolvidoAsync(s, ct);
+        }
 
         var origem = await db.RegulacaoProcedimentoOrigens.AsNoTracking()
             .Where(o => o.ProcedimentoId == s.ProcedimentoId && o.Ativo && o.Sistema == sistema)
@@ -924,7 +953,7 @@ public sealed class RegulacaoSolicitacaoService(
             s.Id, s.NumeroLocal, s.PacienteId, s.PacienteNome, s.PacienteCpf, s.PacienteCns,
             versaoId, s.FormularioJson,
             sistema.Value, recursoId, ehExame, ambulatorioEstadual, rotulo,
-            arquivos);
+            arquivos, medicoPendenteId);
     }
 
     public async Task IniciarEnvioAutomaticoAsync(Guid id, CancellationToken ct)
