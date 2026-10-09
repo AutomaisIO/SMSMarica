@@ -122,6 +122,9 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Operações observadas no SISREG pela extensão de navegador (fase de análise; só inclusão)
     public DbSet<Entities.Sisreg.SisregCapturaNavegador> SisregCapturasNavegador => Set<Entities.Sisreg.SisregCapturaNavegador>();
 
+    // IP(s) em que o SISREG respondeu, por período — o SISREG troca de IP sem aviso (docs/sisreg-egress.md)
+    public DbSet<Entities.Sisreg.SisregEnderecoIp> SisregEnderecosIp => Set<Entities.Sisreg.SisregEnderecoIp>();
+
     // Distribuição da extensão do Chrome e do atualizador pela plataforma (ADR-0064)
     public DbSet<ExtensaoPacote> ExtensaoPacotes => Set<ExtensaoPacote>();
     public DbSet<ExtensaoDispositivo> ExtensaoDispositivos => Set<ExtensaoDispositivo>();

@@ -32,6 +32,12 @@ public static class AlertaCatalogo
     /// <summary>A base do SISREG voltou a ficar em dia depois de um aviso. Chave separada: o freio é por chave.</summary>
     public const string SisregFrescorOk = "sisreg.frescor_ok";
 
+    // Endereço do SISREG (VerificadorEnderecoSisregWorker). Três chaves: o freio é por chave, e o
+    // "voltou ao túnel" não pode ser engolido pelo "fora do túnel" de minutos antes.
+    public const string SisregIpMudou = "sisreg.ip_mudou";
+    public const string SisregForaDoTunel = "sisreg.fora_do_tunel";
+    public const string SisregTunelOk = "sisreg.tunel_ok";
+
     // Monitor que roda DENTRO do servidor do PACS (docs/pacs.md §11.1) e reporta por
     // POST /alertas-plataforma/externo. Chaves separadas de propósito: o freio é por chave, e o
     // "voltou" logo depois do "vai reiniciar" não pode ser engolido por ele.
@@ -66,6 +72,15 @@ public static class AlertaCatalogo
             + "nova. Enquanto isso, quem faltou ou veio aparece como \"Pendente de atualização\"."),
         new(SisregFrescorOk, "Base do SISREG voltou ao normal", "Sincronismo",
             "As pendências do último aviso de base desatualizada foram lidas."),
+        new(SisregIpMudou, "SISREG trocou de IP", "Sincronismo",
+            "O endereço do SISREG (sisregiii.saude.gov.br) passou a resolver para um IP novo. O SISREG "
+            + "troca de IP sem aviso e a produção só o alcança pelo túnel; o servidor põe o IP novo no túnel "
+            + "sozinho em até 1 min. O card do SISREG em Integrações mostra o IP atual e o histórico."),
+        new(SisregForaDoTunel, "SISREG fora do túnel", "Sincronismo",
+            "Em duas verificações seguidas, a rota até o SISREG saiu por fora do túnel: de fora do Brasil "
+            + "o SISREG não responde e o login falha (\"Não foi possível autenticar\")."),
+        new(SisregTunelOk, "SISREG de volta ao túnel", "Sincronismo",
+            "A rota até o SISREG voltou a sair pelo túnel depois de um aviso de \"fora do túnel\"."),
         new(Sincronismo("ser"), "Sincronismo SER", "Sincronismo",
             "Falhas avisadas pelo motor do SER."),
         new(Sincronismo("sernit"), "Sincronismo SERNIT", "Sincronismo",

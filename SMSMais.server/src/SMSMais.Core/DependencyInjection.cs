@@ -809,6 +809,14 @@ public static class DependencyInjection
             configuration.GetSection(Integracoes.Sisreg.Base.FrescorBaseSisregOpcoes.Secao));
         services.AddScoped<Integracoes.Sisreg.Base.IFrescorBaseSisregService, Integracoes.Sisreg.Base.FrescorBaseSisregService>();
         services.AddHostedService<Integracoes.Sisreg.Base.AvisoFrescorBaseSisregWorker>();
+
+        // Endereço do SISREG: IP atual, desde quando e se sai pelo túnel (docs/sisreg-egress.md).
+        services.Configure<Integracoes.SisregWeb.Rede.EnderecoSisregOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.Rede.EnderecoSisregOpcoes.Secao));
+        services.AddSingleton<Integracoes.SisregWeb.Rede.ISondaEnderecoSisreg, Integracoes.SisregWeb.Rede.SondaEnderecoSisreg>();
+        services.AddSingleton<Integracoes.SisregWeb.Rede.EstadoEnderecoSisreg>();
+        services.AddScoped<Integracoes.SisregWeb.Rede.IEnderecoSisregService, Integracoes.SisregWeb.Rede.EnderecoSisregService>();
+        services.AddHostedService<Integracoes.SisregWeb.Rede.VerificadorEnderecoSisregWorker>();
         services.AddHttpClient<Integracoes.Sisreg.ISisregClient, Integracoes.Sisreg.SisregClient>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);

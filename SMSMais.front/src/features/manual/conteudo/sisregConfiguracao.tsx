@@ -10,6 +10,9 @@ import type { Artigo } from '@/features/manual/tipos';
  * `SincronizarTudoSecao`, `SincronismoEscalasSecao`, `FilaEsperaSecao` e `IndicadoresColetaSecao`;
  * no servidor, `VarreduraAgendaService` (janela, dias não lidos, chegadas), `DecididorVarreduraSisreg`
  * (nova tentativa) e `SisregConfiguracaoController` (Testar conexão, permissões).
+ * Seção "endereco" conferida em 09/10/2026: `features/integracoes/components/EnderecoSisregStatus`
+ * (cartão do SISREG em Integrações) e, no servidor, `VerificadorEnderecoSisregWorker` (verificação a
+ * cada 2 min, avisos) — o conserto da rota é o timer do servidor, docs/sisreg-egress.md.
  */
 export const artigoSisregConfiguracao: Artigo = {
   slug: 'sisreg-configuracao',
@@ -20,9 +23,16 @@ export const artigoSisregConfiguracao: Artigo = {
   icone: Settings2,
   rota: '/app/sisreg/configuracao',
   publico: 'Quem cuida da integração com o SISREG (não quem está regulando)',
-  atualizadoEm: '2026-10-06',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'configuração sisreg',
+    'endereço do sisreg',
+    'ip do sisreg',
+    'trocou de ip',
+    'túnel',
+    'fora do túnel',
+    'bloqueio',
+    'não foi possível autenticar',
     'credenciais',
     'senha',
     'testar conexão',
@@ -280,14 +290,59 @@ export const artigoSisregConfiguracao: Artigo = {
       ),
     },
     {
+      id: 'endereco',
+      titulo: 'Endereço do SISREG (IP e túnel)',
+      busca: 'endereço ip do sisreg trocou de ip túnel saída brasil bloqueio bloqueado histórico integrações não foi possível autenticar',
+      conteudo: (
+        <>
+          <P>
+            O SISREG só responde a acessos vindos do Brasil. Quando o servidor da plataforma fica fora do país, ele
+            fala com o SISREG por um <strong>túnel</strong> que sai pelo Brasil. O túnel só leva o endereço (IP)
+            exato do SISREG, e o SISREG <strong>troca de IP sem avisar</strong>. Se o túnel continuasse com o IP
+            antigo, o acesso sairia pelo exterior e o SISREG pararia de responder. Para quem olha de fora, isso
+            parece “nosso acesso foi bloqueado”, mas não é.
+          </P>
+          <P>
+            Por isso o servidor confere o IP do SISREG <strong>sozinho, a cada poucos minutos</strong>. Quando o IP
+            muda, ele mesmo põe o novo no túnel, em até um minuto. O resultado aparece em{' '}
+            <strong>Integrações</strong>, no cartão do SISREG, no bloco <strong>Endereço do SISREG</strong>:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              { termo: 'IP e “desde”', descricao: 'O endereço em que o SISREG responde agora e desde quando.' },
+              {
+                termo: 'Saindo pelo túnel',
+                descricao:
+                  'Está tudo certo. Num servidor que já fica no Brasil, aparece “Saída direta”, que também está certo.',
+              },
+              {
+                termo: 'Fora do túnel',
+                descricao:
+                  'O acesso está saindo pelo exterior e o SISREG não responde. Costuma se corrigir sozinho em até um minuto. Se persistir, chame o suporte técnico.',
+              },
+              { termo: 'Histórico', descricao: 'Cada IP em que o SISREG já respondeu, de quando a quando.' },
+            ]}
+          />
+        </>
+      ),
+    },
+    {
       id: 'avisos',
       titulo: 'Avisos de falha',
-      busca: 'avisos celular whatsapp captcha credencial derrubada unidade com erro',
+      busca: 'avisos celular whatsapp captcha credencial derrubada unidade com erro trocou de ip fora do túnel',
       conteudo: (
-        <P>
-          CAPTCHA, credencial derrubada e unidade com erro chegam no WhatsApp de quem está em Sistema → Avisos no
-          celular. Não há lista própria por integração: cadastre ou tire telefones lá.
-        </P>
+        <>
+          <P>
+            CAPTCHA, credencial derrubada e unidade com erro chegam no WhatsApp de quem está em Sistema → Avisos no
+            celular. Não há lista própria por integração: cadastre ou tire telefones lá.
+          </P>
+          <P>
+            Do endereço do SISREG vêm três avisos. “<strong>SISREG trocou de IP</strong>” é só informativo, porque o
+            servidor já cuida do túnel. “<strong>SISREG fora do túnel</strong>” só chega se o problema durar duas
+            conferências seguidas, e aí o login no SISREG está falhando. “<strong>SISREG de volta ao túnel</strong>”
+            avisa quando o problema se resolve.
+          </P>
+        </>
       ),
     },
     {
@@ -313,6 +368,11 @@ export const artigoSisregConfiguracao: Artigo = {
               termo: 'Parou de importar. O que olho primeiro?',
               descricao:
                 'A chave mestra no topo: se estiver amarela, está desligada. Depois, se houve aviso de CAPTCHA no celular.',
+            },
+            {
+              termo: 'De repente tudo falha com “Não foi possível autenticar no SISREG”. É a senha?',
+              descricao:
+                'Antes de trocar a senha, abra Integrações e olhe o bloco Endereço do SISREG no cartão do SISREG. Se estiver “Fora do túnel”, o problema é o caminho até o SISREG, não a senha. Foi o que aconteceu quando o SISREG trocou de IP.',
             },
             {
               termo: 'Uma unidade terminou Parcial. Perdi dados?',

@@ -7,6 +7,7 @@ import type {
   AtualizarTfdGoogle,
   AtualizarTfdWhatsApp,
   ElevenLabs,
+  EnderecoSisreg,
   VozElevenLabs,
   VozBibliotecaElevenLabs,
   FiltroVozBiblioteca,
@@ -26,7 +27,19 @@ const keys = {
   whatsapp: ['integracoes', 'tfd', 'whatsapp'] as const,
   elevenlabs: ['integracoes', 'elevenlabs'] as const,
   proxy: (servico: ServicoProxy) => ['integracoes', 'proxy', servico] as const,
+  enderecoSisreg: ['integracoes', 'sisreg', 'endereco'] as const,
 };
+
+// ---- Endereço do SISREG (IP atual, desde quando, túnel, histórico) ----
+
+// O servidor verifica a cada 2 min; o card relê a cada 1 min enquanto a tela está aberta.
+export function useEnderecoSisreg() {
+  return useQuery({
+    queryKey: keys.enderecoSisreg,
+    queryFn: async () => (await http.get<EnderecoSisreg>('/integracoes/sisreg/endereco')).data,
+    refetchInterval: 60_000,
+  });
+}
 
 // ---- Credenciais OAuth (store genérico) ----
 

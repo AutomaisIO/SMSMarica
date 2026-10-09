@@ -17,6 +17,41 @@ export type AtualizarCredencialPayload = {
   ativo: boolean;
 };
 
+// Endereço do SISREG (GET /integracoes/sisreg/endereco). O SISREG troca de IP sem aviso e a
+// produção só o alcança pelo túnel — ver docs/sisreg-egress.md. Instantes em UTC (ISO com 'Z').
+export type SituacaoEnderecoSisreg =
+  | 'NaoVerificado'
+  | 'NoTunel'
+  | 'SaidaDireta'
+  | 'ForaDoTunel'
+  | 'SemDns'
+  | 'RotaDesconhecida';
+
+export type EnderecoSisregIp = {
+  ip: string;
+  interfaceRota: string | null;
+  noTunel: boolean | null;
+  desdeEm: string | null;
+};
+
+export type EnderecoSisregPeriodo = {
+  ip: string;
+  desdeEm: string;
+  ultimaVezVistoEm: string;
+  ateEm: string | null;
+  interfaceRota: string | null;
+};
+
+export type EnderecoSisreg = {
+  host: string;
+  situacao: SituacaoEnderecoSisreg;
+  verificadoEm: string | null;
+  tunelEsperado: string | null;
+  erro: string | null;
+  atuais: EnderecoSisregIp[];
+  historico: EnderecoSisregPeriodo[];
+};
+
 // Resultado do teste de conexão do DigitalOcean Spaces (S3).
 // Sempre vem em HTTP 200 — o sucesso/falha do teste está em `ok`.
 export type EtapaTesteSpaces = 'credencial' | 'conexao' | 'escrita' | 'leitura' | 'exclusao' | 'ok';

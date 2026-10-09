@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { useLimparCredencial, useSalvarCredencial } from '@/features/integracoes/api';
+import { EnderecoSisregStatus } from '@/features/integracoes/components/EnderecoSisregStatus';
 import type { IntegracaoCredencial } from '@/features/integracoes/types';
 
 export const PROVEDOR_SISREG = 'sisreg';
@@ -118,6 +119,8 @@ export function SisregCard({ cred }: { cred: IntegracaoCredencial }) {
           <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${aberto ? 'rotate-180' : ''}`} />
         </span>
       </button>
+
+      <EnderecoSisregStatus />
 
       {aberto ? (
         <form onSubmit={aoSalvar} className="mt-4 space-y-4 border-t border-gray-100 pt-4">
