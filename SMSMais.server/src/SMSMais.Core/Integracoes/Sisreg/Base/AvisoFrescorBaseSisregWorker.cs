@@ -1,11 +1,13 @@
 using System.Globalization;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMais.Core.Alertas;
 using SMSMais.Core.Common.Tempo;
+using SMSMais.Data;
 
 namespace SMSMais.Core.Integracoes.Sisreg.Base;
 
@@ -20,6 +22,13 @@ namespace SMSMais.Core.Integracoes.Sisreg.Base;
 /// NOVA (um dia ou uma unidade que não estava no último aviso); e quando tudo volta ao normal depois
 /// de um aviso. A mesma pendência não é repetida de hora em hora — o SISREG corta metade das
 /// leituras e a rodada seguinte fecha; avisar cada corte seria barulho que ensina a ignorar.</para>
+///
+/// <para><b>Reinício do servidor</b> (<see cref="RestaurarEstado"/>). O que já foi avisado vive em
+/// memória; sem restaurar, cada deploy repetia o resumo do dia (09/10/2026: 08:28 e 11:01, os dois
+/// por deploy, durante a recuperação da troca de IP do SISREG). Na primeira conferência depois de
+/// subir, a última ocorrência de cada chave em <c>alerta_origem</c> diz se o resumo de hoje já saiu e
+/// se a última palavra foi "desatualizada" — aí as pendências atuais contam como já avisadas. O custo:
+/// pendência surgida entre o último aviso e o reinício só avisa se sair e voltar.</para>
 /// </summary>
 public sealed class AvisoFrescorBaseSisregWorker(
     IServiceScopeFactory scopes,
@@ -36,6 +45,7 @@ public sealed class AvisoFrescorBaseSisregWorker(
     private DateTime? _ultimaHoraConferida;
     private DateOnly? _resumoDoDia;
     private IReadOnlySet<string> _avisadas = new HashSet<string>();
+    private bool _estadoRestaurado;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -83,6 +93,26 @@ public sealed class AvisoFrescorBaseSisregWorker(
         _ultimaHoraConferida = hora;
 
         var pendencias = frescor.Pendencias();
+
+        if (!_estadoRestaurado)
+        {
+            var ultimas = await scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>().AlertaOrigens
+                .AsNoTracking()
+                .Where(o => o.Chave == AlertaCatalogo.SisregFrescor || o.Chave == AlertaCatalogo.SisregFrescorOk)
+                .Select(o => new { o.Chave, o.UltimaOcorrenciaEm })
+                .ToListAsync(ct);
+            var restaurado = RestaurarEstado(
+                ultimas.FirstOrDefault(u => u.Chave == AlertaCatalogo.SisregFrescor)?.UltimaOcorrenciaEm,
+                ultimas.FirstOrDefault(u => u.Chave == AlertaCatalogo.SisregFrescorOk)?.UltimaOcorrenciaEm,
+                hoje);
+            if (restaurado.ResumoJaMandado) _resumoDoDia = hoje;
+            if (restaurado.PendenciasJaAvisadas) _avisadas = pendencias;
+            _estadoRestaurado = true;
+            logger.LogInformation(
+                "SISREG_FRESCOR: estado restaurado após o reinício (resumo de hoje já mandado: {Resumo}; pendências atuais tidas como avisadas: {Avisadas}).",
+                restaurado.ResumoJaMandado, restaurado.PendenciasJaAvisadas);
+        }
+
         var decisao = Decidir(pendencias, _avisadas, primeiraDoDia: _resumoDoDia != hoje);
         _resumoDoDia = hoje;
 
@@ -136,6 +166,28 @@ public sealed class AvisoFrescorBaseSisregWorker(
         if (primeiraDoDia || atuais.Any(p => !avisadas.Contains(p)))
             return DecisaoAviso.Avisar;
         return DecisaoAviso.Nada;
+    }
+
+    public sealed record EstadoRestaurado(bool ResumoJaMandado, bool PendenciasJaAvisadas);
+
+    /// <summary>
+    /// O que o aviso já tinha dito hoje, reconstruído depois de um reinício a partir da última ocorrência
+    /// de cada chave (UTC). Pura, para teste.
+    /// </summary>
+    /// <param name="ultimoDesatualizado">Última ocorrência de <see cref="AlertaCatalogo.SisregFrescor"/>.</param>
+    /// <param name="ultimoNormalizou">Última ocorrência de <see cref="AlertaCatalogo.SisregFrescorOk"/>.</param>
+    /// <param name="hoje">Hoje em Brasília.</param>
+    public static EstadoRestaurado RestaurarEstado(DateTime? ultimoDesatualizado, DateTime? ultimoNormalizou, DateOnly hoje)
+    {
+        bool EhHoje(DateTime? utc) => utc is { } u && DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(u)) == hoje;
+
+        var desatualizadoHoje = EhHoje(ultimoDesatualizado);
+        if (!desatualizadoHoje && !EhHoje(ultimoNormalizou))
+            return new EstadoRestaurado(false, false);
+
+        // A última palavra de hoje foi "desatualizada": o que está pendente agora já foi dito.
+        var ultimaFoiDesatualizada = desatualizadoHoje && (ultimoNormalizou is null || ultimoDesatualizado > ultimoNormalizou);
+        return new EstadoRestaurado(true, ultimaFoiDesatualizada);
     }
 
     /// <summary>O texto do aviso. Público para teste: é o que o Bernardo lê no celular.</summary>
