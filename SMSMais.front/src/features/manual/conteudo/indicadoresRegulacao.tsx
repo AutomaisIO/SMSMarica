@@ -22,7 +22,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
   icone: Gauge,
   rota: '/app/regulacao/indicadores',
   publico: 'Quem acompanha e presta contas da regulação: gestão, coordenação e controle',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-10',
   palavrasChave: [
     'indicadores',
     'indicadores de regulação',
@@ -380,7 +380,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
       id: 'leitura-nao-fechou',
       titulo: 'Quando uma leitura do coletor não fecha',
       busca:
-        'leitura não fechou falha erro tentar todas de novo reler botão de volta na fila tentativas seis tempo esgotado 504 SISREG não respondeu dividida em dias declarou lidas distintas período fora do indicador configuração coletor página única rodapé paginação a menos aviso celular 07:00 base desatualizada',
+        'leitura não fechou falha erro tentar todas de novo reler botão de volta na fila tentativas seis tempo esgotado 504 SISREG não respondeu dividida em dias declarou lidas distintas período fora do indicador configuração coletor página única rodapé paginação a menos aviso celular 07:00 base desatualizada login recusado interrompida leitura parada',
       conteudo: (
         <>
           <P>
@@ -398,7 +398,9 @@ export const artigoIndicadoresRegulacao: Artigo = {
               <strong>Leituras que não fecharam</strong> (vermelha): cada uma com o motivo e quantas vezes foi
               tentada. Elas são tentadas de novo sozinhas uma vez por dia, até 6 vezes; as faltas das últimas
               semanas, de hora em hora. Depois da 6ª tentativa, só voltam pelo botão <strong>Tentar todas de
-              novo</strong>.
+              novo</strong>, e quem está em Avisos no celular recebe “Leitura parada”. Leitura interrompida no
+              meio (reinício do servidor, erro inesperado) também aparece aqui, com o motivo. Nenhuma leitura
+              fica parada sem aparecer em uma das listas.
             </Item>
             <Item>
               <strong>De volta na fila</strong> (amarela): leituras que falharam e já voltaram para a fila, pelo
@@ -412,6 +414,12 @@ export const artigoIndicadoresRegulacao: Artigo = {
             lidas. O coletor só lê entre 01:20 e 18:00, porque à noite a sessão do SISREG é da varredura das
             agendas. Ele também não lê com a coleta desligada, com o sincronismo automático desligado ou com a
             pausa por CAPTCHA.
+          </P>
+          <P>
+            Quando o SISREG <strong>recusa o login</strong>, a culpa não é da leitura: ela volta para a fila sem
+            gastar tentativa, e o coletor espera alguns minutos antes de tentar de novo. Até 10/10/2026 não era
+            assim: na noite em que o SISREG trocou de endereço e recusou o login, dez leituras de
+            faltas de setembro gastaram as seis tentativas e ficaram paradas sem aparecer na tela.
           </P>
           <P>Dois casos que se resolvem sozinhos:</P>
           <Lista>

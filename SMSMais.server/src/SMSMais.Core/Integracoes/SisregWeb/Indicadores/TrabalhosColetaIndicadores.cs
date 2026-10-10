@@ -16,6 +16,11 @@ public enum DesfechoPasso
     Captcha = 4,
     /// <summary>504/corte de conexão: consulta pesada demais para a janela.</summary>
     TempoEsgotado = 5,
+    /// <summary>
+    /// O SISREG recusou o login: nenhuma leitura anda, e a culpa não é do item. Pausa curta — se for a
+    /// senha, insistir a cada 30 s só piora.
+    /// </summary>
+    LoginRecusado = 6,
 }
 
 /// <param name="Linhas">Na conclusão: o total que a janela passa a registrar (o DECLARADO pela tela, quando há).</param>
@@ -62,6 +67,13 @@ public abstract class TrabalhoColeta(ItemColeta item)
         catch (Exception ex) when (SisregWebSessao.EhCaptcha(ex))
         {
             return new ResultadoPasso(DesfechoPasso.Captcha, Mensagem: ex.Message);
+        }
+        catch (Exception ex) when (SisregWebSessao.EhLoginRecusado(ex))
+        {
+            // Antes de 10/10/2026 esta exceção escapava do passo: o item voltava a pendente como órfão
+            // a cada tick e, na madrugada de login recusado (09/10), 10 leituras de faltas gastaram as
+            // 6 tentativas e ficaram paradas sem erro nenhum na tela.
+            return new ResultadoPasso(DesfechoPasso.LoginRecusado, Mensagem: ex.Message);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested
                                    && ex is HttpRequestException or TaskCanceledException or IOException)

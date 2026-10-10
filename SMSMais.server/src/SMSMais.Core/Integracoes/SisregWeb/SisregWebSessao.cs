@@ -83,6 +83,16 @@ public sealed class SisregWebSessao(
     public static bool EhCaptcha(Exception excecao) =>
         excecao is ValidacaoException validacao && validacao.Erros.ContainsKey(CodigoCaptcha);
 
+    /// <summary>Código da <see cref="ValidacaoException"/> lançada quando o SISREG recusa o login.</summary>
+    public const string CodigoLoginFalhou = "sisreg.login_falhou";
+
+    /// <summary>
+    /// O SISREG recusou o login? Não é culpa da consulta em curso: em 09/10/2026, na troca de endereço
+    /// do SISREG, o login foi recusado da noite de 08/10 à manhã de 09/10 com a senha certa.
+    /// </summary>
+    public static bool EhLoginRecusado(Exception excecao) =>
+        excecao is ValidacaoException validacao && validacao.Erros.ContainsKey(CodigoLoginFalhou);
+
     /// <summary>
     /// Intervalo mínimo entre relogins disparados por <i>suspeita</i> (resposta vazia). Segura o
     /// caso em que o vazio é real: sem ele, um mapeamento de 97 profissionais faria 97 logins.
@@ -273,7 +283,7 @@ public sealed class SisregWebSessao(
         if (!LoginOk(url, location, html))
         {
             throw new ValidacaoException(
-                "sisreg.login_falhou",
+                CodigoLoginFalhou,
                 "Não foi possível autenticar no SISREG. Verifique o usuário e a senha.");
         }
 

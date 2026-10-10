@@ -23,7 +23,7 @@ export const artigoSisregConfiguracao: Artigo = {
   icone: Settings2,
   rota: '/app/sisreg/configuracao',
   publico: 'Quem cuida da integração com o SISREG (não quem está regulando)',
-  atualizadoEm: '2026-10-09',
+  atualizadoEm: '2026-10-10',
   palavrasChave: [
     'configuração sisreg',
     'endereço do sisreg',
@@ -54,6 +54,8 @@ export const artigoSisregConfiguracao: Artigo = {
     'coletor',
     'indicadores',
     'tentar todas de novo',
+    'leitura parada',
+    'login recusado',
     'captcha',
     'orçamento',
     'requisições',
@@ -271,7 +273,7 @@ export const artigoSisregConfiguracao: Artigo = {
     {
       id: 'coletor',
       titulo: 'Coleta dos indicadores',
-      busca: 'coletor indicadores faltas cotas ppi canceladas desfechos lidas na fila com falha tentar todas de novo de volta na fila 01:20 18:00',
+      busca: 'coletor indicadores faltas cotas ppi canceladas desfechos lidas na fila com falha tentar todas de novo de volta na fila 01:20 18:00 login recusado aguardando interrompida',
       conteudo: (
         <>
           <P>
@@ -285,6 +287,11 @@ export const artigoSisregConfiguracao: Artigo = {
             a fila: não lê na hora e não apaga nada, e a seção passa a dizer quantas voltaram e quando serão lidas.
             O detalhe, e o que cada falha deixa de fora, está no artigo <strong>Indicadores de Regulação</strong>,
             seção “Quando uma leitura do coletor não fecha”.
+          </P>
+          <P>
+            Quando o SISREG recusa o login, a seção mostra “<strong>Aguardando: o SISREG recusou o login</strong>”.
+            Nenhuma leitura é gasta com isso: o coletor espera alguns minutos e tenta de novo sozinho. Se a
+            recusa continuar, olhe o Endereço do SISREG em Integrações antes de mexer na senha.
           </P>
         </>
       ),
@@ -329,12 +336,17 @@ export const artigoSisregConfiguracao: Artigo = {
     {
       id: 'avisos',
       titulo: 'Avisos de falha',
-      busca: 'avisos celular whatsapp captcha credencial derrubada unidade com erro trocou de ip fora do túnel',
+      busca: 'avisos celular whatsapp captcha credencial derrubada unidade com erro trocou de ip fora do túnel coletor login recusado leitura parada',
       conteudo: (
         <>
           <P>
             CAPTCHA, credencial derrubada e unidade com erro chegam no WhatsApp de quem está em Sistema → Avisos no
             celular. Não há lista própria por integração: cadastre ou tire telefones lá.
+          </P>
+          <P>
+            Do coletor dos indicadores vêm dois avisos. “<strong>O SISREG recusou o login</strong>” chega uma vez
+            só, no começo da recusa; o coletor segue tentando sozinho. “<strong>Leitura parada</strong>” chega
+            quando uma leitura falhou em todas as tentativas: ela só volta pelo botão Tentar todas de novo.
           </P>
           <P>
             Do endereço do SISREG vêm três avisos. “<strong>SISREG trocou de IP</strong>” é só informativo, porque o

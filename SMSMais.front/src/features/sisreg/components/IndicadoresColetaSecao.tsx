@@ -31,6 +31,8 @@ const TEXTO_ESPERA: Record<EsperaColetaIndicadores, string> = {
   OutroMotorUsandoASessao: 'Aguardando a vez: outro motor está usando a sessão do SISREG.',
   TetoDoColetor: 'Aguardando: atingiu o teto do coletor nesta hora.',
   OrcamentoGlobalCurto: 'Aguardando: o orçamento de requisições do operador está apertado nesta hora.',
+  LoginRecusado:
+    'Aguardando: o SISREG recusou o login. O coletor tenta de novo sozinho em alguns minutos; se continuar, confira o Endereço do SISREG em Integrações.',
 };
 
 function dataHora(iso: string | null) {
@@ -64,6 +66,8 @@ function quandoVaiLer(s: ColetaIndicadoresStatus) {
   if (!s.chaveMestraLigada) return 'O sincronismo automático do SISREG (topo da tela) está desligado: ligue-o para que sejam lidas.';
   if (s.espera === 'ForaDoHorario')
     return 'Serão lidas a partir das 01:20 — à noite a sessão do SISREG é da varredura das agendas.';
+  if (s.espera === 'LoginRecusado')
+    return 'Serão lidas quando o SISREG voltar a aceitar o login — o coletor tenta de novo sozinho em alguns minutos.';
   return 'Serão lidas nos próximos minutos, uma requisição a cada 30 segundos, intercaladas com os outros motores.';
 }
 
