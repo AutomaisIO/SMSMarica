@@ -1,4 +1,5 @@
 import type { SistemaRegulacao } from './types';
+import type { HistoricoComunicacao, HistoricoContato } from '@/features/solicitacoes/types';
 
 /** Tipos do fluxo de abertura de solicitação (planos 02 e 04). */
 
@@ -390,4 +391,53 @@ export type ImportacaoRegrasResultado = {
   criadas: number;
   semRecurso: number;
   avisos: string[];
+};
+
+// ---------------------------------------------------------------- contato com o paciente
+
+/** O agendamento como o sistema de destino mostra. O SISREG dá data e hora; os outros, o texto da tela deles. */
+export type AgendamentoNoDestino = {
+  sistema: SistemaRegulacao;
+  situacao: string | null;
+  dataHora: string | null;
+  dataTexto: string | null;
+  local: string | null;
+};
+
+/** A mensagem é um aviso automático — e de qual pedido (o paciente pode ter vários). */
+export type AvisoDaMensagem = {
+  finalidade: string;
+  destePedido: boolean;
+  procedimento: string | null;
+  dataAgendada: string | null;
+};
+
+export type MensagemAoPaciente = {
+  id: string;
+  em: string;
+  doPaciente: boolean;
+  status: 'Enviada' | 'Entregue' | 'Lida' | 'Falha' | 'Recebida';
+  telefone: string | null;
+  /** Quem da equipe escreveu. Nulo em mensagem automática e nas do paciente. */
+  autor: string | null;
+  tipo: string | null;
+  modelo: string | null;
+  texto: string | null;
+  erro: string | null;
+  aviso: AvisoDaMensagem | null;
+};
+
+/** `GET /regulacao/solicitacoes/{id}/contato-paciente` — o paciente foi avisado? leu? respondeu? */
+export type ContatoPacienteRegulacao = {
+  agendamento: AgendamentoNoDestino | null;
+  /** A plataforma avisa sozinha os agendamentos deste destino (hoje, só o SISREG). */
+  destinoComAvisoAutomatico: boolean;
+  confirmacao: 'Pendente' | 'Confirmada' | 'Cancelada' | null;
+  confirmadoEm: string | null;
+  confirmadoCanal: string | null;
+  motivoCancelamentoPaciente: string | null;
+  avisos: HistoricoComunicacao[];
+  contatos: HistoricoContato[];
+  mensagens: MensagemAoPaciente[];
+  telefoneConfirmado: string | null;
 };

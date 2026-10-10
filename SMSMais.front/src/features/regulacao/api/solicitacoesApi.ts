@@ -4,6 +4,7 @@ import type { MedicoParecido, SituacaoMedicoPendente } from './medicosApi';
 
 import type {
   AvaliacaoElegibilidade,
+  ContatoPacienteRegulacao,
   EscopoNotificacao,
   EventoRegulacao,
   Exigencia,
@@ -129,6 +130,12 @@ export async function obterResumoFila(filaDoMunicipio: boolean): Promise<ResumoF
 
 export async function listarEventos(id: string): Promise<EventoRegulacao[]> {
   const { data } = await http.get<EventoRegulacao[]>(`${base}/${id}/eventos`);
+  return data;
+}
+
+/** O paciente foi avisado do agendamento? Leu? Respondeu? Mesmo escopo do detalhe. */
+export async function obterContatoPaciente(id: string): Promise<ContatoPacienteRegulacao> {
+  const { data } = await http.get<ContatoPacienteRegulacao>(`${base}/${id}/contato-paciente`);
   return data;
 }
 

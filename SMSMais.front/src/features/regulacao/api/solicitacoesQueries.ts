@@ -6,6 +6,7 @@ import {
   cancelarSolicitacao,
   devolverSolicitacao,
   listarEventos,
+  obterContatoPaciente,
   listarExamesInternos,
   obterElegibilidade,
   listarNotificacoesRegulacao,
@@ -154,6 +155,17 @@ export function useEventosSolicitacao(id: string | null) {
     queryKey: [...raiz, id, 'eventos'],
     queryFn: () => listarEventos(id!),
     enabled: !!id,
+  });
+}
+
+/** O contato com o paciente sobre o caso: aviso automático, recibos, resposta e mensagens do WhatsApp. */
+export function useContatoPaciente(id: string | null) {
+  return useQuery({
+    queryKey: [...raiz, id, 'contato-paciente'],
+    queryFn: () => obterContatoPaciente(id!),
+    enabled: !!id,
+    // As respostas do paciente chegam a qualquer hora; quem está com o caso aberto vê sem recarregar.
+    refetchInterval: 60_000,
   });
 }
 

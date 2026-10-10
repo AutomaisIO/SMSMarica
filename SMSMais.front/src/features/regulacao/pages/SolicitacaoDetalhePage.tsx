@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/Button';
 
 import { AnexosSolicitacao } from '../components/AnexosSolicitacao';
 import { CabecalhoSolicitacao } from '../components/CabecalhoSolicitacao';
+import { ContatoComPaciente } from '../components/ContatoComPaciente';
 import { LinhaDoTempo } from '../components/LinhaDoTempo';
 import { MedicoPendenteCard } from '../components/MedicoPendenteCard';
 import { ModalMotivo } from '../components/ModalMotivo';
@@ -101,6 +102,9 @@ export function SolicitacaoDetalhePage() {
       <RespostasRegras solicitacaoId={id} />
 
       <AnexosSolicitacao solicitacaoId={id} />
+
+      {/* A unidade acompanha daqui se o paciente soube do agendamento — é ela quem fala com ele. */}
+      {s.status !== 'Rascunho' && <ContatoComPaciente solicitacaoId={id} artigoManual="regulacao-solicitacoes" />}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Linha do tempo</h2>

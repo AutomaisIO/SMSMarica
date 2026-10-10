@@ -29,6 +29,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   publico: 'Quem abre e acompanha solicitações na unidade',
   atualizadoEm: '2026-10-10',
   palavrasChave: [
+    'contato com o paciente',
+    'paciente foi avisado',
+    'aviso pelo WhatsApp',
+    'paciente confirmou',
+    'mensagens do paciente',
     'médico do SISREG',
     'profissional solicitante',
     'solicitação',
@@ -636,6 +641,55 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             Quem também é agente regulador vê neste detalhe o botão{' '}
             <BotaoRef variante="outline">Abrir na Gestão de fila</BotaoRef>, que leva o pedido para lá.
           </Callout>
+        </>
+      ),
+    },
+    {
+      id: 'contato-paciente',
+      titulo: 'Contato com o paciente: ele foi avisado?',
+      busca:
+        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu telefone confirmado sisreg ser sernit esus outro pedido equipe avisou à mão conversas',
+      conteudo: (
+        <>
+          <P>
+            Depois que o pedido sai da unidade, o quadro <strong>Contato com o paciente</strong> responde
+            à pergunta que mais importa quando chega a data: <strong>o paciente sabe do agendamento?</strong>
+          </P>
+          <Lista>
+            <Item>
+              <strong>O agendamento</strong> — a data e o local como o sistema de destino mostra (o SER e o
+              SERNIT escrevem a data do jeito deles).
+            </Item>
+            <Item>
+              <strong>O aviso automático</strong> — só existe para o <strong>SISREG</strong>. Aparece com os
+              sinais do WhatsApp: ✓ enviada, ✓✓ entregue, ✓✓ azul lida. Embaixo vem a resposta: confirmou que
+              vai, avisou que não vai (com o motivo dele) ou ainda não respondeu.
+            </Item>
+            <Item>
+              <strong>O telefone confirmado</strong> — o número que o próprio paciente provou ser dele. Sem
+              ele, a mensagem pode ter ido para um número que não é do paciente.
+            </Item>
+            <Item>
+              <strong>As mensagens pelo WhatsApp</strong> desde a abertura do pedido, das duas direções: o
+              que a equipe mandou (com o nome de quem escreveu), os avisos automáticos e o que o paciente
+              respondeu. As anotações internas da equipe não aparecem.
+            </Item>
+          </Lista>
+          <Callout tipo="atencao" titulo="Do SER, do SERNIT e do ESUS, a plataforma não avisa sozinha">
+            Para esses destinos, o quadro mostra a faixa amarela “A plataforma não avisa sozinha”. Aí, quem
+            diz se o paciente soube são as mensagens: veja se alguém da equipe mandou a data para ele. Se
+            ninguém mandou, ele pode não saber do agendamento.
+          </Callout>
+          <Callout tipo="dica" titulo="Aviso de outro pedido">
+            O paciente pode ter mais de um pedido, e o aviso automático não diz o procedimento (“Sua consulta
+            foi agendada!”). Por isso cada aviso vem marcado: <em>deste agendamento</em> ou{' '}
+            <em>de outro pedido</em>, com o procedimento e a data daquele. Aviso de outro pedido não conta
+            como aviso deste.
+          </Callout>
+          <P>
+            O quadro se atualiza sozinho a cada minuto: a resposta do paciente aparece sem recarregar a
+            página.
+          </P>
         </>
       ),
     },

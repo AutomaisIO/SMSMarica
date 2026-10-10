@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/Button';
 import { AjusteRiscoCid } from '../components/AjusteRiscoCid';
 import { AnexosSolicitacao } from '../components/AnexosSolicitacao';
 import { CabecalhoSolicitacao } from '../components/CabecalhoSolicitacao';
+import { ContatoComPaciente } from '../components/ContatoComPaciente';
 import { LinhaDoTempo } from '../components/LinhaDoTempo';
 import { MedicoPendenteCard } from '../components/MedicoPendenteCard';
 import { ModalEnviarAoSistema } from '../components/ModalEnviarAoSistema';
@@ -225,6 +226,8 @@ export function AnaliseSolicitacaoPage() {
       <AnexosSolicitacao solicitacaoId={id} />
 
       <ParaLancarNoSistema s={s} />
+
+      {s.status !== 'Rascunho' && <ContatoComPaciente solicitacaoId={id} artigoManual="regulacao-gestao-fila" />}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Linha do tempo</h2>

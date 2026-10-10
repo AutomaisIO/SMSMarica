@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
 using SMSMais.Core.Regulacao.Anexos;
 using SMSMais.Core.Regulacao.Catalogo;
+using SMSMais.Core.Regulacao.ContatoPaciente;
 using SMSMais.Core.Regulacao.EnvioSer;
 using SMSMais.Core.Regulacao.Formularios;
 using SMSMais.Core.Regulacao.Regras;
@@ -57,6 +58,18 @@ public sealed class RegulacaoSolicitacoesController(
     [ProducesResponseType<IReadOnlyList<RegulacaoEventoDto>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<RegulacaoEventoDto>> Eventos(Guid id, CancellationToken cancellationToken) =>
         servico.EventosAsync(id, cancellationToken);
+
+    /// <summary>
+    /// O contato com o paciente sobre o caso: o aviso automático do agendamento (SISREG), com os
+    /// recibos e a resposta, e as mensagens de WhatsApp trocadas desde a abertura. Mesmo escopo do
+    /// detalhe. Só lê.
+    /// </summary>
+    [HttpGet("{id:guid}/contato-paciente")]
+    [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<ContatoPacienteRegulacaoDto>(StatusCodes.Status200OK)]
+    public Task<ContatoPacienteRegulacaoDto> ContatoPaciente(
+        Guid id, [FromServices] IRegulacaoContatoPacienteService contato, CancellationToken cancellationToken) =>
+        contato.ObterAsync(id, cancellationToken);
 
     [HttpPost]
     [RequerPermissao(ModuloPermissao.Regulacao, AcoesPermissao.Inclusao)]
