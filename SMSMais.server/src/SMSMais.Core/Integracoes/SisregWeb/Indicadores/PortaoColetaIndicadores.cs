@@ -12,12 +12,16 @@ public enum EsperaColetaIndicadores
     OutroMotorUsandoASessao = 5,
     TetoDoColetor = 6,
     OrcamentoGlobalCurto = 7,
+
+    /// <summary>O SISREG recusou o login há pouco: espera uns minutos antes de tentar de novo.</summary>
+    LoginRecusado = 8,
 }
 
 /// <summary>O que o portão enxerga num tick.</summary>
 /// <param name="HoraLocal">Hora de Brasília.</param>
 /// <param name="GastasPeloColetorNaUltimaHora">Requisições do próprio coletor nos últimos 60 minutos.</param>
 /// <param name="RestanteGlobal">Folga do orçamento de TODOS os motores (<see cref="SisregOrcamentoRequisicoes"/>).</param>
+/// <param name="LoginRecusadoAteUtc">Fim da espera depois de um login recusado (memória do agendador).</param>
 public sealed record EntradaPortaoColeta(
     bool Ativa,
     bool ChaveMestraLigada,
@@ -26,7 +30,8 @@ public sealed record EntradaPortaoColeta(
     TimeOnly HoraLocal,
     bool OutroMotorVivo,
     int GastasPeloColetorNaUltimaHora,
-    int RestanteGlobal);
+    int RestanteGlobal,
+    DateTime? LoginRecusadoAteUtc = null);
 
 /// <summary>
 /// Decide se o coletor pode dar UM passo agora. Puro (sem relógio nem banco) — é o que dá para testar
@@ -34,6 +39,7 @@ public sealed record EntradaPortaoColeta(
 /// <list type="bullet">
 ///   <item>nasce desligado, e a chave-mestra do sincronismo automático vale por cima;</item>
 ///   <item>CAPTCHA pausa por um dia inteiro — relogar não resolve, só um humano no navegador;</item>
+///   <item>login recusado espera alguns minutos — insistir a cada tick não ajuda e, se for a senha, piora;</item>
 ///   <item>fora da faixa da varredura das agendas (18:00–01:20);</item>
 ///   <item>cede a vez a qualquer outro motor que esteja usando a sessão (a sessão é única por operador);</item>
 ///   <item>teto próprio por hora E folga larga no orçamento global.</item>
@@ -46,6 +52,7 @@ public static class PortaoColetaIndicadores
         if (!e.Ativa) return EsperaColetaIndicadores.Desligada;
         if (!e.ChaveMestraLigada) return EsperaColetaIndicadores.ChaveMestraDesligada;
         if (e.PausadaAteUtc is { } pausa && e.AgoraUtc < pausa) return EsperaColetaIndicadores.PausadaPorCaptcha;
+        if (e.LoginRecusadoAteUtc is { } login && e.AgoraUtc < login) return EsperaColetaIndicadores.LoginRecusado;
         if (!DentroDoHorario(e.HoraLocal, opcoes)) return EsperaColetaIndicadores.ForaDoHorario;
         if (e.OutroMotorVivo) return EsperaColetaIndicadores.OutroMotorUsandoASessao;
         if (e.GastasPeloColetorNaUltimaHora >= opcoes.TetoPorHora) return EsperaColetaIndicadores.TetoDoColetor;

@@ -32,7 +32,10 @@ public sealed record ColetaIndicadoresStatusDto(
 
 public interface IColetaIndicadoresSisregService
 {
-    /// <summary>Itens "em andamento" que ninguém está executando (restart, trabalho abandonado) voltam a pendente.</summary>
+    /// <summary>
+    /// Itens "em andamento" que ninguém está executando (restart, trabalho abandonado) voltam a pendente
+    /// — ou viram falha, com o motivo, se já gastaram todas as tentativas.
+    /// </summary>
     Task<int> ResetarEmAndamentoAsync(Guid? exceto, CancellationToken ct);
 
     /// <summary>Cria as janelas que faltam e re-arma as que precisam ser relidas.</summary>
@@ -42,9 +45,14 @@ public interface IColetaIndicadoresSisregService
     Task<ItemColeta?> ReservarProximoAsync(CancellationToken ct);
 
     Task ConcluirAsync(Guid id, int linhas, CancellationToken ct);
-    Task FalharAsync(Guid id, string erro, CancellationToken ct);
 
-    /// <summary>Volta a pendente sem culpa (CAPTCHA, coletor desligado no meio).</summary>
+    /// <summary>Marca a falha. Devolve <c>true</c> quando o item gastou todas as tentativas.</summary>
+    Task<bool> FalharAsync(Guid id, string erro, CancellationToken ct);
+
+    /// <summary>
+    /// Volta a pendente sem culpa (CAPTCHA, login recusado, coletor desligado no meio): a tentativa
+    /// contada na reserva é devolvida.
+    /// </summary>
     Task DevolverAsync(Guid id, string? motivo, CancellationToken ct);
 
     /// <summary>Semana de faltas que estourou o tempo: vira uma janela por dia.</summary>
@@ -77,15 +85,41 @@ public sealed class ColetaIndicadoresSisregService(
     /// <summary>Erro gravado na semana dividida — ela não é re-armada (os dias a substituem).</summary>
     public const string MarcaDividida = "DIVIDIDA EM DIAS";
 
-    public async Task<int> ResetarEmAndamentoAsync(Guid? exceto, CancellationToken ct) =>
-        await db.SisregIndicadorColetas
-            .Where(c => c.Status == StatusColetaIndicador.EmAndamento && (exceto == null || c.Id != exceto))
+    /// <summary>Erro do item que foi interrompido no meio em todas as tentativas.</summary>
+    public const string ErroInterrompida =
+        "interrompida no meio da leitura em todas as tentativas (reinício do servidor ou erro inesperado)";
+
+    public async Task<int> ResetarEmAndamentoAsync(Guid? exceto, CancellationToken ct)
+    {
+        var orfaos = db.SisregIndicadorColetas
+            .Where(c => c.Status == StatusColetaIndicador.EmAndamento && (exceto == null || c.Id != exceto));
+
+        // No teto, "pendente" é um beco: a reserva não pega mais o item, e nem o botão nem a rodada do
+        // dia o enxergam, porque os dois só re-armam falha. Foi assim que 10 leituras de faltas de
+        // setembro ficaram paradas sem erro nenhum na tela (09/10/2026).
+        var noTeto = await orfaos
+            .Where(c => c.Tentativas >= _opcoes.MaximoTentativas)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(c => c.Status, StatusColetaIndicador.Falha)
+                .SetProperty(c => c.Erro, ErroInterrompida), ct);
+        var deVolta = await orfaos
             .ExecuteUpdateAsync(u => u.SetProperty(c => c.Status, StatusColetaIndicador.Pendente), ct);
+        return noTeto + deVolta;
+    }
 
     public async Task PlanejarAsync(DateOnly hoje, CancellationToken ct)
     {
         var agora = DateTime.UtcNow;
         var inicioDoDia = FusoBrasilia.DeBrasiliaParaUtc(hoje.ToDateTime(TimeOnly.MinValue));
+
+        // Pendente no teto de tentativas nunca mais é reservado: vira falha, que aparece na tela e volta
+        // pelo botão. Só existe por causa do defeito corrigido em 10/10/2026 (órfão no teto voltava a
+        // pendente); fica aqui para que nenhum item volte a sumir assim.
+        await db.SisregIndicadorColetas
+            .Where(c => c.Status == StatusColetaIndicador.Pendente && c.Tentativas >= _opcoes.MaximoTentativas)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(c => c.Status, StatusColetaIndicador.Falha)
+                .SetProperty(c => c.Erro, c => c.Erro ?? ErroInterrompida), ct);
 
         // Falha de ontem (ou antes) tenta de novo hoje — até o teto de tentativas.
         await db.SisregIndicadorColetas
@@ -303,14 +337,19 @@ public sealed class ColetaIndicadoresSisregService(
             .SetProperty(c => c.LidoEm, DateTime.UtcNow)
             .SetProperty(c => c.Erro, (string?)null), ct);
 
-    public Task FalharAsync(Guid id, string erro, CancellationToken ct) =>
-        db.SisregIndicadorColetas.Where(c => c.Id == id).ExecuteUpdateAsync(u => u
+    public async Task<bool> FalharAsync(Guid id, string erro, CancellationToken ct)
+    {
+        await db.SisregIndicadorColetas.Where(c => c.Id == id).ExecuteUpdateAsync(u => u
             .SetProperty(c => c.Status, StatusColetaIndicador.Falha)
             .SetProperty(c => c.Erro, Cortar(erro)), ct);
+        return await db.SisregIndicadorColetas
+            .AnyAsync(c => c.Id == id && c.Tentativas >= _opcoes.MaximoTentativas, ct);
+    }
 
     public Task DevolverAsync(Guid id, string? motivo, CancellationToken ct) =>
         db.SisregIndicadorColetas.Where(c => c.Id == id).ExecuteUpdateAsync(u => u
             .SetProperty(c => c.Status, StatusColetaIndicador.Pendente)
+            .SetProperty(c => c.Tentativas, c => c.Tentativas > 0 ? c.Tentativas - 1 : 0)
             .SetProperty(c => c.Erro, Cortar(motivo)), ct);
 
     public async Task DividirEmDiasAsync(Guid id, string motivo, CancellationToken ct)

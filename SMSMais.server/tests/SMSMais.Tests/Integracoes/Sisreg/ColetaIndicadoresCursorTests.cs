@@ -60,6 +60,88 @@ public class ColetaIndicadoresCursorTests(PostgresFixture fixture)
         await LimparAsync(db);
     }
 
+    /// <summary>
+    /// O beco de 09/10/2026: o item interrompido no meio em todas as tentativas voltava a "pendente" com
+    /// o teto gasto — a reserva não o pegava mais, e nem o botão nem a rodada do dia o enxergavam (os dois
+    /// só re-armam falha). Agora ele vira falha com o motivo; e o que é devolvido sem culpa (CAPTCHA,
+    /// login recusado) recebe a tentativa de volta.
+    /// </summary>
+    [Fact]
+    public async Task Orfao_no_teto_vira_falha_e_devolver_sem_culpa_devolve_a_tentativa()
+    {
+        await using var db = fixture.CriarDbContext();
+        await LimparAsync(db);
+        var noTeto = Guid.NewGuid();
+        var comFolga = Guid.NewGuid();
+        var devolvido = Guid.NewGuid();
+        foreach (var (id, dia, tentativas) in new[] { (noTeto, 1, 6), (comFolga, 2, 3), (devolvido, 3, 2) })
+        {
+            db.SisregIndicadorColetas.Add(new SisregIndicadorColeta
+            {
+                Id = id, Coletor = ColetorIndicadorSisreg.Faltas, JanelaInicio = InicioDoTeste.AddDays(dia),
+                JanelaFim = InicioDoTeste.AddDays(dia), Escopo = PlanoColetaIndicadores.EscopoDia,
+                Status = StatusColetaIndicador.EmAndamento, Tentativas = tentativas, CriadoEm = DateTime.UtcNow,
+            });
+        }
+        await db.SaveChangesAsync();
+
+        await Criar(db).DevolverAsync(devolvido, "CAPTCHA — coletor pausado", default);
+        await Criar(db).ResetarEmAndamentoAsync(null, default);
+
+        await using var ver = fixture.CriarDbContext();
+        var itens = await ver.SisregIndicadorColetas.Where(c => c.JanelaInicio >= InicioDoTeste).ToDictionaryAsync(c => c.Id);
+        Assert.Equal(StatusColetaIndicador.Falha, itens[noTeto].Status);
+        Assert.Equal(ColetaIndicadoresSisregService.ErroInterrompida, itens[noTeto].Erro);
+        Assert.Equal(StatusColetaIndicador.Pendente, itens[comFolga].Status);
+        Assert.Equal(3, itens[comFolga].Tentativas);
+        Assert.Equal(StatusColetaIndicador.Pendente, itens[devolvido].Status);
+        Assert.Equal(1, itens[devolvido].Tentativas);
+
+        // A falha no teto avisa quem chama (é o que vira aviso no celular).
+        Assert.True(await Criar(ver).FalharAsync(noTeto, "de novo", default));
+        Assert.False(await Criar(ver).FalharAsync(comFolga, "uma vez", default));
+
+        await LimparAsync(db);
+    }
+
+    /// <summary>
+    /// Os itens que já estavam no beco (pendente com o teto gasto, sem erro) saem dele no plano: viram
+    /// falha visível, e o botão "Tentar todas de novo" os traz de volta com as tentativas zeradas.
+    /// </summary>
+    [Fact]
+    public async Task Plano_tira_do_beco_o_pendente_no_teto_e_o_botao_o_traz_de_volta()
+    {
+        await using var db = fixture.CriarDbContext();
+        await LimparAsync(db);
+        var id = Guid.NewGuid();
+        db.SisregIndicadorColetas.Add(new SisregIndicadorColeta
+        {
+            Id = id, Coletor = ColetorIndicadorSisreg.Faltas, JanelaInicio = new DateOnly(2031, 5, 1),
+            JanelaFim = new DateOnly(2031, 5, 1), Escopo = PlanoColetaIndicadores.EscopoDia,
+            Status = StatusColetaIndicador.Pendente, Tentativas = 6, CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        await Criar(db).PlanejarAsync(new DateOnly(2031, 6, 10), default);
+
+        await using (var ver = fixture.CriarDbContext())
+        {
+            var item = await ver.SisregIndicadorColetas.SingleAsync(c => c.Id == id);
+            Assert.Equal(StatusColetaIndicador.Falha, item.Status);
+            Assert.Equal(ColetaIndicadoresSisregService.ErroInterrompida, item.Erro);
+        }
+
+        await Criar(db).RearmarFalhasAsync(default);
+        await using (var ver = fixture.CriarDbContext())
+        {
+            var item = await ver.SisregIndicadorColetas.SingleAsync(c => c.Id == id);
+            Assert.Equal(StatusColetaIndicador.Pendente, item.Status);
+            Assert.Equal(0, item.Tentativas);
+        }
+
+        await LimparAsync(db);
+    }
+
     [Fact]
     public async Task Plano_cria_as_janelas_recentes_uma_vez_so()
     {
