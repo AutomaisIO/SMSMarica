@@ -113,6 +113,24 @@ public sealed record AgendamentoPacienteItemDto(
     string? NumeroSolicitacao,
     Guid? DetalheId);
 
+/// <summary>Em que parte da lista do PRÓPRIO paciente (app do cidadão) o item entra.</summary>
+public enum MomentoAgendamentoPaciente
+{
+    /// <summary>Agendado com data de hoje em diante.</summary>
+    Proximo = 1,
+
+    /// <summary>Esperando vaga na fila da regulação — sem data e sem motivo de pendência.</summary>
+    NaFila = 2,
+
+    /// <summary>Já passou ou foi encerrado (realizado, falta registrada, cancelado…).</summary>
+    Passado = 3,
+}
+
+/// <summary>Um item como o paciente o vê: a linha normalizada e a parte da lista onde entra.</summary>
+public sealed record AgendamentoVistoPeloPacienteDto(
+    AgendamentoPacienteItemDto Item,
+    MomentoAgendamentoPaciente Momento);
+
 /// <summary>Agendamentos do paciente, separados em próximos (por vir) e histórico (passados).</summary>
 /// <param name="Proximos">Futuros/pendentes, do mais próximo para o mais distante.</param>
 /// <param name="Historico">Passados/encerrados, do mais recente para o mais antigo.</param>

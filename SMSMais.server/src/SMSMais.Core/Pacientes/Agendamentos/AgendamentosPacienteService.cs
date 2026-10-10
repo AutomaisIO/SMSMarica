@@ -82,9 +82,66 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
             .ToList();
     }
 
+    public async Task<IReadOnlyList<AgendamentoVistoPeloPacienteDto>> AgendaDoPacienteAsync(
+        Guid pacienteId, IReadOnlyCollection<string> cns, CancellationToken cancellationToken = default)
+    {
+        var hojeLocal = FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date;
+
+        var itens = new List<AgendamentoPacienteItemDto>();
+        itens.AddRange(await LerSerAsync(pacienteId, cancellationToken));
+        itens.AddRange(await LerSernitAsync(pacienteId, cancellationToken));
+        itens.AddRange(await LerEsusSgAsync(pacienteId, cancellationToken));
+        // "Solicitada" na nossa base é pedido sem data — em produção, só pedido manual, sem linha do
+        // SISREG. A fila do SISREG para o paciente é a de verdade, lida abaixo.
+        itens.AddRange((await LerSisregAsync(pacienteId, DateOnly.FromDateTime(hojeLocal), cancellationToken))
+            .Where(i => i.Situacao != SituacaoAgendamentoPaciente.Pendente));
+        itens.AddRange(await LerFilaSisregAsync(cns, cancellationToken));
+
+        var resultado = new List<AgendamentoVistoPeloPacienteDto>();
+        foreach (var i in itens)
+        {
+            // Saída sem desfecho conhecido: dizer ao paciente que "saiu da fila" sem saber por quê
+            // assusta mais do que informa.
+            if (i.Situacao == SituacaoAgendamentoPaciente.SaiuDaFila) continue;
+
+            if (i.Situacao is SituacaoAgendamentoPaciente.EmFila or SituacaoAgendamentoPaciente.Pendente)
+            {
+                // Pendência vira "na fila": o motivo nunca sai para o paciente.
+                resultado.Add(new(i with
+                {
+                    Situacao = SituacaoAgendamentoPaciente.EmFila,
+                    SituacaoDescricao = DescreverSituacao(SituacaoAgendamentoPaciente.EmFila),
+                    SituacaoOrigem = null,
+                }, MomentoAgendamentoPaciente.NaFila));
+                continue;
+            }
+
+            if (EhHistorico(i, hojeLocal))
+            {
+                // Mesma leitura da ficha: "Agendado" numa data que já passou, sem prova de chegada
+                // nem de falta, é "sem registro de chegada".
+                var passado = i.Situacao is SituacaoAgendamentoPaciente.Agendado or SituacaoAgendamentoPaciente.Confirmado
+                    ? i with
+                    {
+                        Situacao = SituacaoAgendamentoPaciente.SemRegistroDeChegada,
+                        SituacaoDescricao = DescreverSituacao(SituacaoAgendamentoPaciente.SemRegistroDeChegada),
+                    }
+                    : i;
+                resultado.Add(new(passado, MomentoAgendamentoPaciente.Passado));
+                continue;
+            }
+
+            // Agendado sem data legível: para o paciente só se afirma agendamento com data.
+            if (i.DataHora is null) continue;
+            resultado.Add(new(i, MomentoAgendamentoPaciente.Proximo));
+        }
+        return resultado;
+    }
+
     /// <summary>Como o paciente entende quem marcou/regula o pedido (nunca a sigla crua sozinha).</summary>
     public static string DescreverRegulacaoParaPaciente(OrigemAgendamentoPaciente origem) => origem switch
     {
+        OrigemAgendamentoPaciente.Sisreg => "regulação municipal (SISREG)",
         OrigemAgendamentoPaciente.Ser => "regulação estadual (SER)",
         OrigemAgendamentoPaciente.Sernit => "regulação de Niterói",
         OrigemAgendamentoPaciente.EsusSg => "regulação de São Gonçalo",
@@ -464,6 +521,81 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
                 l.DetalheId);
         });
     }
+
+    // ---- Fila do SISREG (quem pediu e ainda espera — sisreg_fila_pendente) ----
+
+    /// <summary>
+    /// Pedidos do paciente que ainda esperam na fila do SISREG. A listagem do SISREG não traz CPF:
+    /// o elo é o CNS. Saiu da fila (agendado ou não) não volta por aqui — o agendado já vem da
+    /// <c>solicitacao</c>, e a saída sem agendar o SISREG não explica.
+    /// </summary>
+    private async Task<IEnumerable<AgendamentoPacienteItemDto>> LerFilaSisregAsync(
+        IReadOnlyCollection<string> cns, CancellationToken cancellationToken)
+    {
+        var cartoes = cns.Select(c => new string([.. c.Where(char.IsDigit)]))
+            .Where(c => c.Length == 15)
+            .Distinct()
+            .ToList();
+        if (cartoes.Count == 0) return [];
+
+        var linhas = await db.SisregFilaPendentes.AsNoTracking()
+            .Where(f => f.Cns != null && cartoes.Contains(f.Cns) && f.SaiuEm == null)
+            .Select(f => new { f.Id, f.CodigoSolicitacao, f.ProcedimentoNome, f.DataSolicitacao, f.UltimoVistoEm })
+            .ToListAsync(cancellationToken);
+        if (linhas.Count == 0) return [];
+
+        // A fila é um ESTADO: quem não apareceu na leitura mais recente pode já ter saído sem que a
+        // saída tenha sido percebida. Vale o que foi visto perto da última leitura.
+        var ultimaLeitura = await db.SisregFilaPendentes.AsNoTracking()
+            .MaxAsync(f => (DateTime?)f.UltimoVistoEm, cancellationToken);
+        var corte = (ultimaLeitura ?? DateTime.UtcNow).AddDays(-JanelaFilaSisregDias);
+
+        // Já virou marcação (a saída ainda não foi percebida): aparece como agendamento, não como fila.
+        var codigos = linhas.Select(l => l.CodigoSolicitacao).ToList();
+        var agendados = (await db.Solicitacoes.AsNoTracking()
+                .Where(s => s.CodigoSolicitacao != null && codigos.Contains(s.CodigoSolicitacao) && s.ExcluidoEm == null)
+                .Select(s => s.CodigoSolicitacao!)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        return linhas
+            .Where(l => l.UltimoVistoEm >= corte && !agendados.Contains(l.CodigoSolicitacao))
+            .Select(l => new AgendamentoPacienteItemDto(
+                l.Id,
+                OrigemAgendamentoPaciente.Sisreg,
+                EhConsultaPeloNome(l.ProcedimentoNome) ? "Consulta" : "Exame",
+                NormalizarTexto(l.ProcedimentoNome ?? "Procedimento"),
+                null,
+                null,
+                false,
+                l.DataSolicitacao,
+                SituacaoAgendamentoPaciente.EmFila,
+                DescreverSituacao(SituacaoAgendamentoPaciente.EmFila),
+                null,
+                l.CodigoSolicitacao,
+                null));
+    }
+
+    /// <summary>Tolerância entre a última leitura da fila do SISREG e a última vez que o pedido
+    /// apareceu nela (a leitura é diária; uma falha de um dia não pode esvaziar a fila do paciente).</summary>
+    private const int JanelaFilaSisregDias = 3;
+
+    /// <summary>
+    /// A fila do SISREG traz só o NOME do procedimento. Consulta é o que o nome diz que é:
+    /// "CONSULTA EM OFTALMOLOGIA", "GRUPO - CONSULTAS EM CIRURGIA GINECOLOGICA" e os "GRUPO - CE …"
+    /// (consulta especializada). O resto — exames, OCI, fisioterapia, pequenas cirurgias — é exame.
+    /// </summary>
+    private static bool EhConsultaPeloNome(string? nome)
+    {
+        if (string.IsNullOrWhiteSpace(nome)) return false;
+        var n = RegexEspacos().Replace(nome.Trim().ToUpperInvariant(), " ");
+        return n.StartsWith("CONSULTA", StringComparison.Ordinal)
+            || n.Contains("CONSULTAS", StringComparison.Ordinal)
+            || RegexGrupoCe().IsMatch(n);
+    }
+
+    [GeneratedRegex(@"^GRUPO\s*-\s*CE\s")]
+    private static partial Regex RegexGrupoCe();
 
     private static SituacaoAgendamentoPaciente MapearSisreg(StatusSolicitacao s) => s switch
     {

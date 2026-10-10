@@ -109,7 +109,9 @@ public sealed record ExameResumoDto(
 
 public sealed record LaudoResumoDto(Guid Id, DateTime Data, string Titulo, string Status);
 
-/// <summary>Detalhe completo do exame agendado (ticket do app).</summary>
+/// <summary>Detalhe completo do agendamento do SISREG (ticket do app). Apesar do nome, vale para
+/// qualquer pedido do SISREG — exame de imagem, ECG, consulta… <c>Tipo</c> diz qual ("Consulta" |
+/// "Exame") para a tela escolher as palavras.</summary>
 public sealed record AgendamentoExameDetalheDto(
     Guid SolicitacaoExameId,
     string TipoExame,
@@ -133,19 +135,22 @@ public sealed record AgendamentoExameDetalheDto(
     string? MotivoCancelamentoPaciente,
     // A chave de acesso só pode ser vista NO DIA do atendimento (Brasília). Decidido no back;
     // o app só mostra o botão quando isto vem true — e o endpoint recusa mesmo assim.
-    bool ChaveAcessoDisponivelHoje);
+    bool ChaveAcessoDisponivelHoje,
+    string Tipo = "Exame");
 
 /// <summary>Chave de acesso (confirmação do SISREG) entregue ao paciente no dia do exame.</summary>
 public sealed record ChaveAcessoCidadaoDto(string Chave, string CodigoSolicitacao);
 
-/// <summary>Consulta ou exame do paciente, projetado para o app.
-/// Exames importados do SISREG entram como SolicitacaoExame: <c>SolicitacaoExameId</c>
-/// preenchido + <c>StatusConfirmacao</c> ("Pendente"|"Confirmada"|"Cancelada") habilitam os
-/// botões Confirmar/Não poderei ir no card (<c>PodeResponder</c>).
-/// <para>Da regulação externa (SER, SERNIT, ESUS de São Gonçalo) entram os pedidos
-/// <b>na fila</b> (<c>NaFila</c>, sem data — <c>InicioEm</c> nulo) e os <b>agendados com data
-/// futura</b>. Na fila é só "na fila": nunca motivo de pendência, posição ou previsão.
-/// <c>Origem</c> diz, em linguagem do cidadão, quem regula ("regulação estadual (SER)").</para></summary>
+/// <summary>Consulta ou exame do paciente, projetado para o app — de todas as regulações (SISREG,
+/// SER, SERNIT, ESUS de São Gonçalo), em três partes (<c>Momento</c>): <c>"Proximo"</c> (agendado
+/// de hoje em diante), <c>"NaFila"</c> (esperando vaga, sem data — <c>InicioEm</c> nulo) e
+/// <c>"Passado"</c> (já passou ou foi encerrado). A lista vem nessa ordem.
+/// <para>Do SISREG, <c>SolicitacaoExameId</c> é o id público do pedido (o do exame de imagem quando
+/// há, senão o da solicitação): abre o ticket e, no próximo ainda sem resposta, habilita os botões
+/// Confirmar/Não poderei ir (<c>PodeResponder</c>).</para>
+/// <para>Na fila é só "na fila": nunca motivo de pendência, posição ou previsão. <c>Origem</c> diz,
+/// em linguagem do cidadão, quem regula ("regulação estadual (SER)").</para>
+/// <para><c>TemHora</c> = false: a fonte só deu o dia — a tela não inventa "00:00".</para></summary>
 public sealed record AgendamentoResumoDto(
     Guid Id,
     DateTime? InicioEm,
@@ -159,4 +164,6 @@ public sealed record AgendamentoResumoDto(
     string? StatusConfirmacao = null,
     bool PodeResponder = false,
     string? Origem = null,
-    bool NaFila = false);
+    bool NaFila = false,
+    string Momento = "Proximo",
+    bool TemHora = true);
