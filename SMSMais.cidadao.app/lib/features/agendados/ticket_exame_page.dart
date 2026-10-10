@@ -110,7 +110,12 @@ class _TicketExamePageState extends ConsumerState<TicketExamePage> {
     final cancelada = d.statusConfirmacao == 'Cancelada';
 
     final corpo = <Widget>[
-      ?_item(LucideIcons.building2, 'Local do exame (executante)', d.unidadeExecutoraNome),
+      // O ticket vale para qualquer pedido do SISREG — consulta inclusive.
+      ?_item(
+        LucideIcons.building2,
+        d.tipo == 'Consulta' ? 'Local da consulta (executante)' : 'Local do exame (executante)',
+        d.unidadeExecutoraNome,
+      ),
       ?_item(LucideIcons.mapPin, 'Endereço', d.unidadeExecutoraEndereco),
       ?_item(LucideIcons.phone, 'Telefone da unidade', d.unidadeExecutoraTelefone),
       ?_item(LucideIcons.building2, 'Unidade solicitante', d.unidadeSolicitanteNome),
@@ -308,7 +313,7 @@ class _TicketExamePageState extends ConsumerState<TicketExamePage> {
                   const TextSpan(text: 'A '),
                   TextSpan(text: 'chave de acesso', style: negrito),
                   const TextSpan(text: ' aparece aqui '),
-                  TextSpan(text: 'no dia do exame', style: negrito),
+                  TextSpan(text: d.tipo == 'Consulta' ? 'no dia da consulta' : 'no dia do exame', style: negrito),
                   const TextSpan(text: '.'),
                 ],
               ),
@@ -380,7 +385,7 @@ class _Cabecalho extends StatelessWidget {
               Icon(LucideIcons.calendarPlus, size: 14, color: branco85),
               const SizedBox(width: 6),
               Text(
-                'EXAME AGENDADO',
+                d.tipo == 'Consulta' ? 'CONSULTA AGENDADA' : 'EXAME AGENDADO',
                 style: Txt.sans(11, peso: FontWeight.w600, cor: branco85, espacamento: 11 * 0.2),
               ),
             ],

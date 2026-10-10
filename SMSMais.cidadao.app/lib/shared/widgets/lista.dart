@@ -37,7 +37,8 @@ class CorpoPagina extends StatelessWidget {
 
 /// Scaffold das telas de lista (`Lista.tsx`): carrega, mostra esqueleto, estado vazio ou erro
 /// com "Tentar de novo". Aqui ganha também o "puxar para atualizar" — as mensagens de erro do
-/// PWA já pedem "Puxe a tela para baixo para atualizar".
+/// PWA já pedem "Puxe a tela para baixo para atualizar". [secao] (opcional) separa a lista em
+/// blocos com título — os itens já vêm na ordem dos blocos.
 class Lista<T> extends StatefulWidget {
   const Lista({
     required this.titulo,
@@ -49,6 +50,7 @@ class Lista<T> extends StatefulWidget {
     this.sobretitulo,
     this.antes = const [],
     this.depois = const [],
+    this.secao,
     super.key,
   });
 
@@ -65,6 +67,9 @@ class Lista<T> extends StatefulWidget {
 
   /// Blocos depois da lista (ex.: "Meus acompanhantes" no Transporte).
   final List<Widget> depois;
+
+  /// Título do bloco do item; itens seguidos com o mesmo título ficam no mesmo bloco.
+  final String Function(T item)? secao;
 
   @override
   State<Lista<T>> createState() => ListaState<T>();
@@ -105,6 +110,23 @@ class ListaState<T> extends State<Lista<T>> {
       );
     } else if (_itens!.isEmpty) {
       conteudo = EstadoVazio(icone: widget.iconeVazio, titulo: widget.tituloVazio, descricao: widget.descricaoVazio);
+    } else if (widget.secao != null) {
+      final filhos = <Widget>[];
+      String? atual;
+      for (final item in _itens!) {
+        final titulo = widget.secao!(item);
+        if (titulo != atual) {
+          if (filhos.isNotEmpty) filhos.add(const SizedBox(height: 24));
+          filhos
+            ..add(TituloBloco(titulo))
+            ..add(const SizedBox(height: 8));
+          atual = titulo;
+        } else {
+          filhos.add(const SizedBox(height: 12));
+        }
+        filhos.add(widget.item(context, item, recarregar));
+      }
+      conteudo = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: filhos);
     } else {
       conteudo = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

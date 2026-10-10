@@ -126,4 +126,29 @@ void main() {
     expect(find.textContaining('Olá,'), findsOneWidget);
     expect(find.text('Consultas'), findsOneWidget);
   });
+
+  testWidgets('agenda de exames mostra próximos, fila e anteriores', (tester) async {
+    _celular(tester);
+    await tester.pumpWidget(
+      _app(
+        sessao: const SessaoCidadao(
+          token: 'demo',
+          paciente: PacienteSessao(id: 'p1', nome: 'MARIA DA CONCEIÇÃO EXEMPLO', cpf: '52998224725'),
+        ),
+      ),
+    );
+    await _assentar(tester);
+    await _tocar(tester, find.text('Li e concordo'));
+    await _assentar(tester);
+
+    // O primeiro "Exames" do Início é a agenda; o outro, os resultados.
+    await _tocar(tester, find.text('Exames').first);
+    await _assentar(tester);
+
+    expect(find.text('PRÓXIMOS EXAMES'), findsOneWidget);
+    expect(find.text('NA FILA, AGUARDANDO VAGA'), findsOneWidget);
+    expect(find.text('EXAMES ANTERIORES'), findsOneWidget);
+    expect(find.textContaining('Está na fila da regulação municipal (SISREG)'), findsOneWidget);
+    expect(find.text('Realizado'), findsOneWidget);
+  });
 }
