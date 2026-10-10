@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `SMSMais.arquivos.pwa` — **PWA "Arquivos Saúde Maricá"** (React + Vite + TS) para digitalizar exames em papel pelo celular e anexá-los à anamnese, via **ponte por QR** (sem login; token de upload escopado). Domínio `arquivos.smsmarica.online`; deploy `deploy-arquivos.yml` → `/var/www/smsmarica-arquivos`. Ver [ADR-0019](./docs/adr/0019-anexos-exame-pwa-qr-armazenamento.md).
 - `SMSMais.ouvidoria` — **módulo de Ouvidoria ([ADR-0060](./docs/adr/0060-modulo-ouvidoria.md); fase 1 implementada em 20/09/2026)**: pasta de aprendizados, referências e requisitos (marco legal Lei 13.460/PN CGU 116, OuvidorSUS × Fala.BR, exemplos de secretarias, Maricá). Ler `SMSMais.ouvidoria/README.md` antes de modelar qualquer entidade de ouvidoria.
 - `SMSMais.chrome` + `SMSMais.atualizador` — **extensão do Chrome e o programa que a mantém atualizada nos PCs** ([ADR-0064](./docs/adr/0064-extensao-chrome-distribuida-pela-plataforma.md)). A extensão é carregada sem compactação; o atualizador (Rust, Windows, sem administrador, `C:\SMSMais\`) baixa as versões **da plataforma** (`/extensao/*`, token por computador) e a extensão se recarrega sozinha. **Mexer em `SMSMais.chrome/` não entrega nada**: só chega aos PCs o que foi publicado em Sistema → Extensão Chrome (teste → produção). Ler `SMSMais.atualizador/README.md` antes de mexer no contrato `/extensao/*`.
-- `SMSMais.cidadao.app` está scaffoldado (Flutter, login mock + perfil consumindo `GET /pacientes/{id}`). `SMSMais.agente.app` ainda é README-only.
+- `SMSMais.cidadao.app` é a **versão nativa (Flutter) do App do Cidadão**, espelho do PWA `SMSMais.cidadao.pwa` (mesmas telas, rotas, textos, tokens visuais e contrato `/auth/paciente/*`; o PWA é a referência — mudou lá, muda aqui). Modo demonstração com `--dart-define=DEMO=true`. O cliente de push já está no app; o lado do servidor (ADR-0070) ainda está no branch `feat/push-cidadao` — até lá, o registro do aparelho falha calado e tenta de novo. Ver `SMSMais.cidadao.app/README.md`. `SMSMais.agente.app` ainda é README-only.
 
 Documentation is in **Portuguese (pt-BR)**. Match that language for docs, commit messages, and code comments. Identifiers follow [`docs/conventions.md §1`](./docs/conventions.md): pt-BR for domain (`Paciente`, `Veiculo`), en-US for technical infrastructure (`DbContext`, `Service`, `Controller`).
 
@@ -114,7 +114,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 | `SMSMais.front` | React + Vite + TypeScript, Tailwind | **Implementado** (~20 features). Tema vermelho/branco (logo Maricá horizontal). npm (`package-lock.json`). |
 | `SMSMais.EquipamentoSim` | Python 3.11+, `pynetdicom`/`pydicom`, Typer CLI | Simulador DICOM para o ciclo Solicitação→Worklist→Execução. |
 | `Salux` | Python 3.13, `paramiko`, `sqlplus`; alvo Oracle 12c | Engenharia reversa do Salux HIS. **Regras próprias em `Salux/CLAUDE.md`.** |
-| `SMSMais.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. **Ainda não está em produção** — login é mock; quebras de contrato com `/pacientes/{id}` são aceitáveis nesta fase. |
+| `SMSMais.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio + pdfrx + firebase_messaging. Espelho nativo do PWA (CPF + código no WhatsApp, offline-first). **Ainda não está em produção** (nem nas lojas). |
 | `SMSMais.agente.app` | Flutter Android only (planejado) | Foreground service + geofencing. |
 
 ## Comandos comuns
