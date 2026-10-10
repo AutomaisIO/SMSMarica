@@ -34,6 +34,12 @@ export const artigoPacientes: Artigo = {
     'pacientes',
     'cadastro',
     'ficha',
+    'ativo',
+    'inativo',
+    'óbito',
+    'falecido',
+    'falecida',
+    'data de óbito',
     'buscar',
     'CPF',
     'sem CPF',
@@ -214,6 +220,44 @@ export const artigoPacientes: Artigo = {
               documentos e origem.
             </Item>
           </Lista>
+        </>
+      ),
+    },
+    {
+      id: 'selo-cadastro',
+      titulo: 'O selo ao lado do nome: Ativo, Inativo ou Óbito',
+      busca:
+        'selo ativo inativo óbito obito falecido falecida morte data de óbito idade no óbito cabeçalho unificado absorvido prontuário de origem hospital',
+      conteudo: (
+        <>
+          <P>No cabeçalho da ficha, ao lado do nome, um selo diz em que pé está o cadastro:</P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: <SeloRef cor="sucesso">Ativo</SeloRef>,
+                descricao: 'O cadastro em uso. É o caso normal.',
+              },
+              {
+                termo: <SeloRef>Inativo</SeloRef>,
+                descricao:
+                  'O prontuário de onde o cadastro veio (o do hospital, por exemplo) o mandou como inativo, ou o cadastro foi absorvido numa unificação de duplicados e só aponta para o que ficou. Inativo não é excluído: o cadastro e o histórico continuam lá.',
+              },
+              {
+                termo: <SeloRef cor="escuro">Óbito em 12/03/2024</SeloRef>,
+                descricao:
+                  'O cadastro tem data de óbito. O selo toma o lugar de Ativo/Inativo, porque diz mais: conforme o sistema de onde o cadastro veio, quem faleceu chega como ativo ou como inativo, e nenhum dos dois conta o que aconteceu.',
+              },
+            ]}
+          />
+          <P>
+            Com óbito, a idade deixa de contar até hoje: o cabeçalho e o Resumo mostram a idade que a
+            pessoa tinha no dia (“71 anos no óbito”). A data também fica em{' '}
+            <AbaRef>Dados pessoais</AbaRef> → <AbaRef>Documentos & Origem</AbaRef>.
+          </P>
+          <Callout tipo="regra" titulo="A data de óbito vem do sistema de origem">
+            Ela chega pela integração com o sistema de onde o cadastro veio (prontuário do hospital ou
+            das UPAs, SER, SERNIT…) e não é editada no painel. Editar o cadastro não a apaga.
+          </Callout>
         </>
       ),
     },
