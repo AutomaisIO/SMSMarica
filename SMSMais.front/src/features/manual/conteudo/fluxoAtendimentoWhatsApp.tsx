@@ -56,7 +56,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
   grupo: 'atendimento',
   icone: Workflow,
   publico: 'Toda a equipe que atende pelo WhatsApp — e quem precisa explicar o sistema para alguém',
-  atualizadoEm: '2026-10-01',
+  atualizadoEm: '2026-10-09',
   palavrasChave: [
     'fluxo',
     'lógica',
@@ -95,6 +95,9 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     'esus',
     'motivo de pendência',
     'app do cidadão',
+    'sisreg',
+    'consultas anteriores',
+    'exames anteriores',
     'foto',
     'pdf',
     'arquivo',
@@ -315,7 +318,7 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
     {
       id: 'robo-ia',
       titulo: 'Quando o robô (IA) entra — e quando ele cala',
-      busca: 'robô ia atendente virtual entra cala trava humano expediente parar robô teto interações retomada resumo regulação ser sernit esus são gonçalo na fila pendência motivo app do cidadão',
+      busca: 'robô ia atendente virtual entra cala trava humano expediente parar robô teto interações retomada resumo regulação ser sernit esus são gonçalo sisreg na fila aguardando vaga pendência motivo app do cidadão próximos anteriores histórico realizado falta registrada já passou',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -345,9 +348,20 @@ export const artigoFluxoAtendimentoWhatsApp: Artigo = {
             ]}
           />
           <P>
-            O app do cidadão segue a mesma regra: em <strong>Consultas</strong> e <strong>Exames</strong> o
-            pedido aparece como <strong>Na fila</strong> (sem data) ou <strong>Agendado</strong> (com data,
-            local e quem marcou).
+            O app do cidadão segue a mesma regra para a fila e mostra mais: em <strong>Consultas</strong> e{' '}
+            <strong>Exames</strong>, os pedidos de todas as regulações — SISREG, SER, SERNIT e São
+            Gonçalo — vêm em três blocos:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              { termo: 'Próximos', descricao: 'Agendados de hoje em diante, com data, local e quem marcou. Os do SISREG abrem o ticket e trazem Confirmar presença / Não poderei ir.' },
+              { termo: 'Na fila, aguardando vaga', descricao: 'Só "está na fila da regulação X", sem data. A fila do SISREG é a que o próprio SISREG mostra, casada pelo Cartão SUS do paciente. Pendente também entra aqui — nunca o motivo, a posição ou uma previsão.' },
+              { termo: 'Anteriores', descricao: 'O que já passou ou foi encerrado: Realizado, Falta registrada (a unidade apontou), Cancelado, ou Já passou (a unidade não apontou nada — não é falta).' },
+            ]}
+          />
+          <P>
+            Pedido que saiu da fila sem desfecho conhecido não aparece para o paciente: o sistema de origem
+            não diz por quê, e “saiu da fila” sem explicação assusta mais do que informa.
           </P>
           <Sub>Retomada pedida pela equipe</Sub>
           <P>

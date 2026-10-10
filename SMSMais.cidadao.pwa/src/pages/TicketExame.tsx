@@ -88,6 +88,8 @@ export function TicketExame() {
   const d = detalhe;
   const confirmada = d.statusConfirmacao === 'Confirmada';
   const cancelada = d.statusConfirmacao === 'Cancelada';
+  // O ticket vale para qualquer pedido do SISREG — consulta inclusive.
+  const consulta = d.tipo === 'Consulta';
 
   return (
     <div className="animate-rise space-y-4 pb-6">
@@ -98,7 +100,7 @@ export function TicketExame() {
         <div className="bg-gradient-to-br from-vinho to-marica p-5 text-white">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/85">
             <CalendarPlus className="h-3.5 w-3.5" />
-            Exame agendado
+            {consulta ? 'Consulta agendada' : 'Exame agendado'}
           </div>
           <h1 className="mt-2 font-display text-2xl font-bold leading-tight">{d.tipoExame}</h1>
           {d.dataAgendada && (
@@ -121,7 +123,11 @@ export function TicketExame() {
 
         {/* Corpo do ticket */}
         <div className="space-y-4 px-5 pb-5">
-          <Item icone={Building2} rotulo="Local do exame (executante)" valor={d.unidadeExecutoraNome} />
+          <Item
+            icone={Building2}
+            rotulo={consulta ? 'Local da consulta (executante)' : 'Local do exame (executante)'}
+            valor={d.unidadeExecutoraNome}
+          />
           {d.unidadeExecutoraEndereco && (
             <Item icone={MapPin} rotulo="Endereço" valor={d.unidadeExecutoraEndereco} />
           )}
@@ -205,7 +211,7 @@ export function TicketExame() {
                 <p className="flex items-start gap-2 text-sm text-tinta-mute">
                   <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-marica" />
                   <span>
-                    A <strong>chave de acesso</strong> aparece aqui <strong>no dia do exame</strong>.
+                    A <strong>chave de acesso</strong> aparece aqui <strong>{consulta ? 'no dia da consulta' : 'no dia do exame'}</strong>.
                   </span>
                 </p>
               )}

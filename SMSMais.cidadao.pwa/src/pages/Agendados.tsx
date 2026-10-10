@@ -12,12 +12,29 @@ import {
   Stethoscope,
   X,
 } from 'lucide-react';
-import { api, type Agendamento } from '@/lib/api';
+import { api, type Agendamento, type MomentoAgendamento } from '@/lib/api';
 import { classificarErro } from '@/lib/httpClient';
 import { Card, GhostButton, PrimaryButton } from '@/components/ui';
 import { Lista } from '@/components/Lista';
 import { Etiqueta } from '@/components/Etiqueta';
 import { CHAVE_CONFIRMACAO_AGENDAMENTO } from '@/pages/Entrar';
+
+/** Servidor antigo não manda `momento`: o que não está na fila era sempre "próximo". */
+function momentoDe(a: Agendamento): MomentoAgendamento {
+  return a.momento ?? (a.naFila ? 'NaFila' : 'Proximo');
+}
+
+const SECOES_CONSULTAS: Record<MomentoAgendamento, string> = {
+  Proximo: 'Próximas consultas',
+  NaFila: 'Na fila, aguardando vaga',
+  Passado: 'Consultas anteriores',
+};
+
+const SECOES_EXAMES: Record<MomentoAgendamento, string> = {
+  Proximo: 'Próximos exames',
+  NaFila: 'Na fila, aguardando vaga',
+  Passado: 'Exames anteriores',
+};
 
 export function ConsultasAgendadas() {
   return (
@@ -26,8 +43,9 @@ export function ConsultasAgendadas() {
       titulo="Consultas"
       carregar={() => api.agendamentos('consulta')}
       emptyIcon={CalendarClock}
-      emptyTitulo="Nenhuma consulta agendada ou na fila"
-      emptyDescricao="Suas próximas consultas marcadas vão aparecer aqui com data, profissional e local — e as que estão na fila da regulação também."
+      emptyTitulo="Nenhuma consulta por aqui"
+      emptyDescricao="Suas consultas aparecem aqui: as marcadas, com data, profissional e local; as que estão na fila da regulação (SISREG, SER, SERNIT ou São Gonçalo); e as que já passaram."
+      secao={(a) => SECOES_CONSULTAS[momentoDe(a)]}
       renderItem={(a) => <AgendamentoCard agendamento={a} />}
     />
   );
@@ -66,8 +84,9 @@ export function ExamesAgendados() {
         titulo="Exames"
         carregar={() => api.agendamentos('exame')}
         emptyIcon={CalendarPlus}
-        emptyTitulo="Nenhum exame agendado ou na fila"
-        emptyDescricao="Seus próximos exames marcados vão aparecer aqui com data, tipo e local — e os que estão na fila da regulação também."
+        emptyTitulo="Nenhum exame por aqui"
+        emptyDescricao="Seus exames aparecem aqui: os marcados, com data, tipo e local; os que estão na fila da regulação (SISREG, SER, SERNIT ou São Gonçalo); e os que já passaram."
+        secao={(a) => SECOES_EXAMES[momentoDe(a)]}
         renderItem={(a) => (
           <AgendamentoCard
             agendamento={a}
@@ -130,7 +149,8 @@ function AgendamentoCard({
 }) {
   const navigate = useNavigate();
   const destacado = a.solicitacaoExameId != null && a.solicitacaoExameId === destacadoId;
-  // Exames importados (SISREG) têm ticket com detalhes; consultas (sem solicitação) não.
+  const passado = momentoDe(a) === 'Passado';
+  // Pedidos do SISREG (exame ou consulta) têm ticket com detalhes; os das outras regulações, não.
   const abrirTicket = a.solicitacaoExameId
     ? () => navigate(`/agendados/exames/${a.solicitacaoExameId}`)
     : undefined;
@@ -148,12 +168,12 @@ function AgendamentoCard({
             {a.inicioEm ? (
               <p className="mt-0.5 flex items-center gap-1.5 text-sm text-tinta-mute">
                 <Clock className="h-4 w-4 shrink-0" />
-                {formatarDataHora(a.inicioEm)}
+                {a.temHora === false ? formatarData(a.inicioEm) : formatarDataHora(a.inicioEm)}
               </p>
             ) : (
               <p className="mt-0.5 flex items-center gap-1.5 text-sm text-tinta-mute">
                 <Hourglass className="h-4 w-4 shrink-0" />
-                Ainda sem data
+                {passado ? 'Sem data marcada' : 'Ainda sem data'}
               </p>
             )}
           </div>
@@ -186,7 +206,9 @@ function AgendamentoCard({
             a.origem && (
               <p className="flex items-center gap-1.5">
                 <Landmark className="h-4 w-4 shrink-0" />
-                <span className="truncate">Marcado pela {a.origem}</span>
+                <span className="truncate">
+                  {a.inicioEm ? `Marcado pela ${a.origem}` : `Pedido na ${a.origem}`}
+                </span>
               </p>
             )
           )}
@@ -304,6 +326,12 @@ function RespostaConfirmacao({
       {erro && <p className="mt-2 text-sm text-marica">{erro}</p>}
     </div>
   );
+}
+
+function formatarData(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function formatarDataHora(iso: string): string {

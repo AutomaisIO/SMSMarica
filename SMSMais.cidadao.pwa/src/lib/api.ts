@@ -96,6 +96,9 @@ export type PesquisaPublica = {
   jaRespondida: boolean;
   instrumentoVersao: string;
 };
+/** Parte da agenda: agendado de hoje em diante, esperando vaga, ou já passou/encerrou. */
+export type MomentoAgendamento = 'Proximo' | 'NaFila' | 'Passado';
+
 export type Agendamento = {
   id: string;
   // Nulo quando o pedido ainda está NA FILA da regulação (sem data).
@@ -106,14 +109,18 @@ export type Agendamento = {
   profissional: string | null;
   unidade: string | null;
   status: string;
-  // Exame importado (SISREG): habilita confirmar/avisar ausência no card.
+  // Pedido do SISREG: abre o ticket e, no próximo ainda sem resposta, confirma/avisa ausência.
   solicitacaoExameId: string | null;
   statusConfirmacao: 'Pendente' | 'Confirmada' | 'Cancelada' | null;
   podeResponder: boolean;
-  // Pedido da regulação externa (SER, SERNIT, ESUS SG): quem marcou, em linguagem do paciente.
+  // Quem regula/marcou (SISREG, SER, SERNIT, ESUS SG), em linguagem do paciente.
   origem?: string | null;
   // Na fila da regulação: só "está na fila" — nunca motivo de pendência, posição ou previsão.
   naFila?: boolean;
+  // A lista vem em blocos, nessa ordem: Proximo → NaFila → Passado. Servidor antigo não manda.
+  momento?: MomentoAgendamento;
+  // false: a fonte só deu o dia — não mostrar "00:00".
+  temHora?: boolean;
 };
 
 export type AgendamentoExameDetalhe = {
@@ -138,6 +145,8 @@ export type AgendamentoExameDetalhe = {
   motivoCancelamentoPaciente: string | null;
   /** Decidido no back: true só no dia do atendimento (Brasília). */
   chaveAcessoDisponivelHoje: boolean;
+  /** O ticket vale para qualquer pedido do SISREG; servidor antigo não manda (= exame). */
+  tipo?: 'Consulta' | 'Exame';
 };
 
 /** Chave de acesso (confirmação do SISREG) — entregue só no dia do exame. */
