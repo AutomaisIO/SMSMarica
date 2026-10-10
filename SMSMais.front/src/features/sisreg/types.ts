@@ -479,7 +479,8 @@ export type EsperaColetaIndicadores =
   | 'ForaDoHorario'
   | 'OutroMotorUsandoASessao'
   | 'TetoDoColetor'
-  | 'OrcamentoGlobalCurto';
+  | 'OrcamentoGlobalCurto'
+  | 'LoginRecusado';
 
 export type ResumoColetorIndicador = {
   coletor: ColetorIndicadorSisreg;

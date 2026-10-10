@@ -42,6 +42,31 @@ public sealed class ColetaIndicadoresEstadoVivo
     {
         lock (_trava) UltimoPassoEm = agoraUtc;
     }
+
+    /// <summary>Até quando o coletor espera depois de o SISREG recusar o login (null = não espera).</summary>
+    public DateTime? LoginRecusadoAte { get; private set; }
+
+    /// <summary>Registra a recusa. Devolve <c>true</c> na primeira de uma sequência — é a que vira aviso.</summary>
+    public bool RecusarLogin(DateTime ateUtc)
+    {
+        lock (_trava)
+        {
+            var primeira = LoginRecusadoAte is null;
+            LoginRecusadoAte = ateUtc;
+            return primeira;
+        }
+    }
+
+    /// <summary>Um passo andou: o login voltou. Devolve <c>true</c> se havia uma sequência de recusas.</summary>
+    public bool LoginAceito()
+    {
+        lock (_trava)
+        {
+            var havia = LoginRecusadoAte is not null;
+            LoginRecusadoAte = null;
+            return havia;
+        }
+    }
 }
 
 /// <summary>Conta, para o teto do coletor, cada ida ao SISREG feita pelos trabalhos.</summary>
@@ -152,7 +177,7 @@ public sealed class ColetaIndicadoresScheduler(
         var espera = PortaoColetaIndicadores.Decidir(new EntradaPortaoColeta(
             config.Ativa, chave, config.PausadaAte, agoraUtc, TimeOnly.FromDateTime(local),
             OutroMotorVivo(), estado.Requisicoes.NaUltimaHora(agoraUtc),
-            orcamento.Restante(orcamentoOpcoes.Value.TetoAutomatico)), _opcoes);
+            orcamento.Restante(orcamentoOpcoes.Value.TetoAutomatico), estado.LoginRecusadoAte), _opcoes);
         estado.Esperando(espera);
 
         if (espera is not null)
@@ -192,9 +217,24 @@ public sealed class ColetaIndicadoresScheduler(
             scope.ServiceProvider.GetRequiredService<ISisregWebSessao>(), estado.Requisicoes);
         var armazem = scope.ServiceProvider.GetRequiredService<IArmazemIndicadoresSisreg>();
 
-        var r = await TrabalhoColeta.ExecutarAsync(trabalho, sessao, armazem, ct);
-        estado.Passo(DateTime.UtcNow);
-        await AplicarAsync(servico, credenciais, trabalho, r, ct);
+        try
+        {
+            var r = await TrabalhoColeta.ExecutarAsync(trabalho, sessao, armazem, ct);
+            estado.Passo(DateTime.UtcNow);
+            await AplicarAsync(servico, credenciais, trabalho, r, ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            // Erro que o passo não sabe tratar (banco, leitor de página): o item falha COM o motivo. Antes
+            // ele voltava a pendente como órfão no tick seguinte e gastava as 6 tentativas em 3 minutos,
+            // sem deixar erro na tela.
+            estado.Assumir(null);
+            var noTeto = await servico.FalharAsync(
+                trabalho.Item.Id, $"erro inesperado ({ex.GetType().Name}): {ex.Message}", ct);
+            logger.LogError(ex,
+                "SISREG_INDICADORES_ERRO: {Trabalho} parou num erro inesperado{Teto}.",
+                trabalho.Descricao, noTeto ? " e esgotou as tentativas — volta pelo botão Tentar todas de novo" : "");
+        }
     }
 
     private async Task AplicarAsync(
@@ -202,10 +242,34 @@ public sealed class ColetaIndicadoresScheduler(
         TrabalhoColeta trabalho, ResultadoPasso r, CancellationToken ct)
     {
         var item = trabalho.Item;
+        if (r.Desfecho != DesfechoPasso.LoginRecusado && estado.LoginAceito())
+            logger.LogInformation("SISREG_INDICADORES_LOGIN: o SISREG voltou a aceitar o login; coletor retomado.");
+
         switch (r.Desfecho)
         {
             case DesfechoPasso.Continuar:
                 return;
+
+            case DesfechoPasso.LoginRecusado:
+            {
+                // Nenhuma leitura anda sem login, e o item não tem culpa: volta para a fila com a
+                // tentativa devolvida e o coletor espera alguns minutos antes de tentar outro login.
+                await servico.DevolverAsync(item.Id, r.Mensagem, ct);
+                var esperaAte = DateTime.UtcNow.AddMinutes(Math.Max(1, _opcoes.MinutosDeEsperaNoLoginRecusado));
+                if (estado.RecusarLogin(esperaAte))
+                {
+                    // Error: é o nível que leva o aviso ao celular. Só na primeira da sequência.
+                    logger.LogError(
+                        "SISREG_INDICADORES_LOGIN: o SISREG recusou o login em {Trabalho}. O coletor tenta de novo "
+                        + "a cada {Minutos} min; se continuar, confira o Endereço do SISREG em Integrações antes da senha.",
+                        trabalho.Descricao, _opcoes.MinutosDeEsperaNoLoginRecusado);
+                }
+                else
+                {
+                    logger.LogWarning("SISREG_INDICADORES_LOGIN: login ainda recusado em {Trabalho}.", trabalho.Descricao);
+                }
+                break;
+            }
 
             case DesfechoPasso.Concluida:
                 await servico.ConcluirAsync(item.Id, r.Linhas ?? 0, ct);
@@ -238,8 +302,20 @@ public sealed class ColetaIndicadoresScheduler(
                 break;
 
             default:
-                await servico.FalharAsync(item.Id, r.Mensagem ?? "falha sem mensagem", ct);
-                logger.LogWarning("SISREG_INDICADORES_FALHA: {Trabalho}: {Mensagem}", trabalho.Descricao, r.Mensagem);
+                var noTeto = await servico.FalharAsync(item.Id, r.Mensagem ?? "falha sem mensagem", ct);
+                // As faltas recentes voltam sozinhas de hora em hora, com as tentativas zeradas; o resto,
+                // no teto, só volta pelo botão — e isso precisa chegar a alguém.
+                if (noTeto && item.Coletor != ColetorIndicadorSisreg.FaltasRecentes)
+                {
+                    logger.LogError(
+                        "SISREG_INDICADORES_PARADA: {Trabalho} falhou em todas as {N} tentativas e fica parada até "
+                        + "alguém clicar Tentar todas de novo (SISREG → Configuração): {Mensagem}",
+                        trabalho.Descricao, _opcoes.MaximoTentativas, r.Mensagem);
+                }
+                else
+                {
+                    logger.LogWarning("SISREG_INDICADORES_FALHA: {Trabalho}: {Mensagem}", trabalho.Descricao, r.Mensagem);
+                }
                 break;
         }
         estado.Assumir(null);

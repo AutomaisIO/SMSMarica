@@ -142,9 +142,9 @@ public class ColetaIndicadoresSisregTests
 
     private static EntradaPortaoColeta Entrada(
         string hora = "10:00", bool ativa = true, bool chave = true, DateTime? pausa = null,
-        bool outro = false, int gastas = 0, int restante = 400) =>
+        bool outro = false, int gastas = 0, int restante = 400, DateTime? login = null) =>
         new(ativa, chave, pausa, new DateTime(2031, 3, 10, 13, 0, 0, DateTimeKind.Utc),
-            TimeOnly.Parse(hora, System.Globalization.CultureInfo.InvariantCulture), outro, gastas, restante);
+            TimeOnly.Parse(hora, System.Globalization.CultureInfo.InvariantCulture), outro, gastas, restante, login);
 
     [Theory]
     [InlineData("01:19", EsperaColetaIndicadores.ForaDoHorario)]
@@ -169,6 +169,16 @@ public class ColetaIndicadoresSisregTests
         PortaoColetaIndicadores.Decidir(Entrada(gastas: 150), o).Should().Be(EsperaColetaIndicadores.TetoDoColetor);
         PortaoColetaIndicadores.Decidir(Entrada(gastas: 149), o).Should().BeNull();
         PortaoColetaIndicadores.Decidir(Entrada(restante: 119), o).Should().Be(EsperaColetaIndicadores.OrcamentoGlobalCurto);
+    }
+
+    [Fact]
+    public void Portao_espera_alguns_minutos_depois_de_login_recusado()
+    {
+        var o = new ColetaIndicadoresOpcoes();
+        PortaoColetaIndicadores.Decidir(Entrada(login: new DateTime(2031, 3, 10, 13, 10, 0, DateTimeKind.Utc)), o)
+            .Should().Be(EsperaColetaIndicadores.LoginRecusado);
+        PortaoColetaIndicadores.Decidir(Entrada(login: new DateTime(2031, 3, 10, 12, 59, 0, DateTimeKind.Utc)), o)
+            .Should().BeNull("a espera já passou");
     }
 
     [Fact]
@@ -478,6 +488,27 @@ public class ColetaIndicadoresSisregTests
             sessao, new ArmazemFalso(), default);
 
         r.Desfecho.Should().Be(DesfechoPasso.Captcha);
+    }
+
+    /// <summary>
+    /// Login recusado não é culpa da consulta. Até 10/10/2026 a exceção escapava do passo: o item voltava
+    /// a pendente como órfão a cada tick e, em meia hora de login recusado (09/10), 10 leituras de faltas
+    /// gastaram as 6 tentativas e ficaram paradas sem erro na tela.
+    /// </summary>
+    [Fact]
+    public async Task Login_recusado_e_desfecho_proprio_e_nao_grava_nada()
+    {
+        var sessao = new SessaoRoteirizada("x")
+        {
+            Lancar = new ValidacaoException(SisregWebSessao.CodigoLoginFalhou, "Não foi possível autenticar no SISREG."),
+        };
+        var armazem = new ArmazemFalso();
+
+        var r = await TrabalhoColeta.ExecutarAsync(new TrabalhoFaltas(Item(ColetorIndicadorSisreg.Faltas), 0.7),
+            sessao, armazem, default);
+
+        r.Desfecho.Should().Be(DesfechoPasso.LoginRecusado);
+        armazem.FaltasSubstituidas.Should().BeNull();
     }
 
     [Fact]
