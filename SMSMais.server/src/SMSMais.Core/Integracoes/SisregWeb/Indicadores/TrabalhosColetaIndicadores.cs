@@ -71,7 +71,7 @@ public abstract class TrabalhoColeta(ItemColeta item)
         catch (Exception ex) when (SisregWebSessao.EhLoginRecusado(ex))
         {
             // Antes de 10/10/2026 esta exceção escapava do passo: o item voltava a pendente como órfão
-            // a cada tick e, em meia hora de login recusado (09/10), 10 leituras de faltas gastaram as
+            // a cada tick e, na madrugada de login recusado (09/10), 10 leituras de faltas gastaram as
             // 6 tentativas e ficaram paradas sem erro nenhum na tela.
             return new ResultadoPasso(DesfechoPasso.LoginRecusado, Mensagem: ex.Message);
         }

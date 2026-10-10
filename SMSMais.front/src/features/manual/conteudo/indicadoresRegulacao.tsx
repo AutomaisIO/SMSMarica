@@ -418,7 +418,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
           <P>
             Quando o SISREG <strong>recusa o login</strong>, a culpa não é da leitura: ela volta para a fila sem
             gastar tentativa, e o coletor espera alguns minutos antes de tentar de novo. Até 10/10/2026 não era
-            assim: em meia hora de login recusado, na noite em que o SISREG trocou de endereço, dez leituras de
+            assim: na noite em que o SISREG trocou de endereço e recusou o login, dez leituras de
             faltas de setembro gastaram as seis tentativas e ficaram paradas sem aparecer na tela.
           </P>
           <P>Dois casos que se resolvem sozinhos:</P>

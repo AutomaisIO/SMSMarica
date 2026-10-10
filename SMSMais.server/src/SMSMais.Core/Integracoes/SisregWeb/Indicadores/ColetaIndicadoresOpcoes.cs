@@ -82,7 +82,8 @@ public sealed class ColetaIndicadoresOpcoes
 
     /// <summary>
     /// Espera depois de o SISREG recusar o login, em minutos. Curta: em 09/10/2026, na troca de endereço
-    /// do SISREG, o login voltou sozinho em meia hora. Fica só na memória — um restart tenta de novo.
+    /// do SISREG, o login ficou recusado da noite de 08/10 à manhã de 09/10 e voltou sozinho — insistir a
+    /// cada 30 s não adiantava. Fica só na memória — um restart tenta de novo.
     /// </summary>
     public int MinutosDeEsperaNoLoginRecusado { get; set; } = 15;
 }

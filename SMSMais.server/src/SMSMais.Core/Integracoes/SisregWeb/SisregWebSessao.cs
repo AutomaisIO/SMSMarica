@@ -88,7 +88,7 @@ public sealed class SisregWebSessao(
 
     /// <summary>
     /// O SISREG recusou o login? Não é culpa da consulta em curso: em 09/10/2026, na troca de endereço
-    /// do SISREG, o login falhou por meia hora com a senha certa.
+    /// do SISREG, o login foi recusado da noite de 08/10 à manhã de 09/10 com a senha certa.
     /// </summary>
     public static bool EhLoginRecusado(Exception excecao) =>
         excecao is ValidacaoException validacao && validacao.Erros.ContainsKey(CodigoLoginFalhou);
