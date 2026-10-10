@@ -492,7 +492,7 @@ public class ColetaIndicadoresSisregTests
 
     /// <summary>
     /// Login recusado não é culpa da consulta. Até 10/10/2026 a exceção escapava do passo: o item voltava
-    /// a pendente como órfão a cada tick e, em meia hora de login recusado (09/10), 10 leituras de faltas
+    /// a pendente como órfão a cada tick e, na madrugada de login recusado (09/10), 10 leituras de faltas
     /// gastaram as 6 tentativas e ficaram paradas sem erro na tela.
     /// </summary>
     [Fact]
