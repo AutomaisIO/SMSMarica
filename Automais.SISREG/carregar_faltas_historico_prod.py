@@ -130,9 +130,11 @@ def main() -> int:
 
         # O efeito na ficha: agendamento Agendada, sem chegada na recepção, que na linha guardada
         # estava PENDENTE e cai num dia lido — vira "Faltou" (está na lista) ou "Em aberto".
+        # `lista` vira junção por hash: com `exists` sobre o unnest (sem índice) a conta é linha × lista
+        # e, com out/2019–jun/2024 inteiro (~200 mil faltas), passou dos 180 s em 10/10/2026.
         cur.execute("""
             with lidas as (select * from unnest(%s::date[], %s::date[]) as j(ini, fim)),
-                 lista as (select * from unnest(%s::text[], %s::date[]) as l(cod, dia)),
+                 lista as materialized (select distinct cod, dia from unnest(%s::text[], %s::date[]) as l(cod, dia)),
                  alvo as (
                    select s.codigo_solicitacao cod, (s.data_agendada at time zone 'America/Sao_Paulo')::date dia
                      from smsmarica.solicitacao s
@@ -141,10 +143,10 @@ def main() -> int:
                       and s.codigo_solicitacao is not null and s.codigo_solicitacao <> '0000'
                       and upper(trim(split_part(s.raw_sisreg, ';', 35))) = 'PENDENTE'
                       and s.data_agendada >= %s::date and s.data_agendada < (%s::date + 1))
-            select count(*) filter (where exists (select 1 from lista where lista.cod = a.cod and lista.dia = a.dia)),
-                   count(*) filter (where exists (select 1 from lidas where a.dia between lidas.ini and lidas.fim)
-                                      and not exists (select 1 from lista where lista.cod = a.cod and lista.dia = a.dia))
-              from alvo a""",
+            select count(*) filter (where l.cod is not null),
+                   count(*) filter (where l.cod is null
+                                      and exists (select 1 from lidas where a.dia between lidas.ini and lidas.fim))
+              from alvo a left join lista l on l.cod = a.cod and l.dia = a.dia""",
             ([k[0] for k in coletas], [v[0] for v in coletas.values()],
              [k[0] for k in faltas], [k[1] for k in faltas], inicio, fim))
         faltou, em_aberto = cur.fetchone()
