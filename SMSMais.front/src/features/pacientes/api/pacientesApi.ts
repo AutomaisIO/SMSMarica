@@ -4,13 +4,17 @@ import type { PaginaAuditoria } from '@/features/auditoria/types';
 import type { Mensagem } from '@/features/conversas/types';
 import type {
   AgendamentosPaciente,
+  AplicarEnriquecimentoPayload,
   Atendimento,
   AtualizarPacientePayload,
   CadastrarPacientePayload,
+  ComparacaoFicha,
+  ConsultarEsusPayload,
   Paciente,
   PacienteExistencia,
   PacienteListItem,
   PreviaUnificacao,
+  ResultadoEnriquecimento,
   ResultadoUnificacao,
   SessaoConversaPaciente,
   UnificarPacientesPayload,
@@ -112,6 +116,36 @@ export async function atualizarPaciente(
  */
 export async function atualizarNomePaciente(id: string, nomeCompleto: string): Promise<void> {
   await http.put(`/pacientes/${id}/nome`, { nomeCompleto });
+}
+
+/** "Enriquecer" pelo CADSUS (pela porta do SER): compara com a ficha, não grava nada. */
+export async function enriquecerPeloCadsus(id: string): Promise<ComparacaoFicha> {
+  const { data } = await http.post<ComparacaoFicha>(`/pacientes/${id}/enriquecimento/cadsus`);
+  return data;
+}
+
+/**
+ * "Enriquecer" pelo e-SUS PEC. Sem senha, usa a conta da plataforma (só acesso global). A senha
+ * vai só nesta requisição — o servidor não a guarda.
+ */
+export async function enriquecerPeloEsus(
+  id: string,
+  payload: ConsultarEsusPayload,
+): Promise<ComparacaoFicha> {
+  const { data } = await http.post<ComparacaoFicha>(`/pacientes/${id}/enriquecimento/esus`, payload);
+  return data;
+}
+
+/** Grava na ficha os campos escolhidos de uma consulta do "Enriquecer". */
+export async function aplicarEnriquecimento(
+  id: string,
+  payload: AplicarEnriquecimentoPayload,
+): Promise<ResultadoEnriquecimento> {
+  const { data } = await http.post<ResultadoEnriquecimento>(
+    `/pacientes/${id}/enriquecimento/aplicar`,
+    payload,
+  );
+  return data;
 }
 
 /** Histórico de alterações auditadas deste paciente (ex.: correções de nome). */

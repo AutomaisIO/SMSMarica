@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0071 — Enriquecer a ficha do paciente pelo CADSUS e pelo e-SUS (escolha humana, campo a campo)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+pre{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.5}
+pre code{background:none;padding:0;font-size:inherit}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);vertical-align:top}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0071 — Enriquecer a ficha do paciente pelo CADSUS e pelo e-SUS (escolha humana, campo a campo)</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-10 · fase 1 implementada em 10/10/2026 <strong>Relacionado:</strong> <a href="./0067-telefone-pelo-esus-pec-rotina-noturna.md">ADR-0067</a> (credencial do e-SUS, rotina da madrugada) · <a href="./0041-identidade-incompleta-no-hub.md">ADR-0041</a> (paciente sem CPF) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (contato negado) · <a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a> (proveniência)</p>
+<h2>Contexto</h2>
+<p>O envio ao SERNIT mediu em 08/10/2026 (e um teste confirmou em 10/10) que o SERNIT <strong>não consulta o CADSUS</strong>: paciente que ele não conhece volta com o painel vazio. Quem digita o cadastro lá é a plataforma, com a nossa ficha — e a nossa ficha, muitas vezes, está incompleta (sem mãe, sem endereço, sem celular) ou desatualizada.</p>
+<p>Duas fontes têm o que falta:</p>
+<ul>
+<li>o <strong>CADSUS</strong>, pela porta do <strong>SER</strong> (botão Pesquisar do painel de paciente) — não gasta o orçamento</li>
+</ul>
+<p>  anti-robô do SISREG;</p>
+<ul>
+<li>o <strong>e-SUS PEC</strong> do município, onde a atenção básica atualiza o cadastro — a fonte mais fresca de</li>
+</ul>
+<p>  telefone e filiação (ADR-0067).</p>
+<p>Faltava um jeito de, numa ficha só, buscar nas duas e trazer o que interessa <strong>sem atropelar o que já está certo</strong>. E o e-SUS tem uma restrição dura: <strong>sessão única por usuário</strong>. A conta da plataforma foi cedida por uma servidora e só é usada de madrugada, para não derrubá-la.</p>
+<h2>Decisão</h2>
+<ol>
+<li><strong>Dois botões na ficha</strong>, ao lado do <em>Verificar</em>: <strong>CADSUS</strong> e <strong>e-SUS</strong>. Busca pelo CPF (o CNS só</li>
+</ol>
+<p>   quando não há CPF). Se nada difere, a tela diz que confere; se algo difere, abre a comparação.</p>
+<ol>
+<li><strong>A pessoa escolhe, campo a campo.</strong> O que completa um vazio vem marcado; o que diverge vem</li>
+</ol>
+<p>   desmarcado (fica o da ficha). Nada é gravado sem essa escolha.</p>
+<ol>
+<li><strong>Os valores ficam no servidor.</strong> A consulta guarda a ficha da fonte por 20 minutos, amarrada ao</li>
+</ol>
+<p>   paciente e ao operador; a tela devolve só <em>quais</em> campos quer. Ao gravar, a ficha é relida e    recomparada.</p>
+<ol>
+<li><strong>As réguas que já existiam continuam valendo:</strong></li>
+</ol>
+<ul>
+<li><strong>CPF diferente na fonte bloqueia tudo</strong> (pode ser outra pessoa — mesma guarda do CADSUS). CPF só</li>
+</ul>
+<p>     se acrescenta em quem não tem, e não entra se for de outro cadastro (o caminho é Unificar).    - <strong>Nome e data de nascimento</strong> só mudam se a <strong>Receita</strong> confirmar o CPF com o dado novo (regra de      02/10/2026). Todas as conferências acontecem <strong>antes</strong> da primeira escrita.    - <strong>CNS</strong> novo vira o oficial; o anterior fica como <code>old</code> (continua em <code>cns_todos</code>, a pessoa segue      sendo achada por ele).    - <strong>Telefone só se acrescenta</strong>, com <code>contato-origem</code> (<code>cadsus</code> ou <code>esus-pec</code>); nunca troca o      principal nem apaga número.    - Campo vazio na fonte nunca apaga o da ficha.    - Cada mudança entra no Histórico de alterações; nascimento corrigido é marcado como editado e      vence o reimport do PEP.</p>
+<ol>
+<li><strong>e-SUS de dia, sem derrubar ninguém:</strong></li>
+</ol>
+<ul>
+<li><strong>Conta da plataforma</strong> (a do ADR-0067): só para quem tem <strong>acesso global</strong>, e <strong>nunca força</strong> a</li>
+</ul>
+<p>     entrada. Se a servidora estiver no sistema, a tela pede a senha do próprio operador.    - <strong>Conta do operador</strong>: usuário e senha digitados na hora, usados <strong>só naquela consulta</strong> — não      são guardados nem logados. Se ele estiver no e-SUS em outra janela, a tela avisa e só força a      entrada se ele marcar <em>Encerrar a minha outra sessão</em>.    - Sempre login → acesso (primeira lotação que consiga buscar cidadão) → busca → <strong>logout</strong>.    - O cliente continua só-leitura: 3 mutações de sessão e agora 4 consultas (sessão, acessos, busca      e detalhe do cidadão). Nada grava no e-SUS.</p>
+<ol>
+<li><strong>Permissão:</strong> módulo Pacientes, ação Edição (consultar e gravar).</li>
+</ol>
+<h2>Consequências</h2>
+<ul>
+<li>A ficha passa a poder ser completada antes de um envio ao SER/SERNIT, por quem está com ela aberta.</li>
+<li>O e-SUS registra, na auditoria dele, a consulta com o usuário do próprio operador — quando é a conta</li>
+</ul>
+<p>  dele que entra.</p>
+<ul>
+<li>A conta cedida pode ser usada de dia por quem tem acesso global; como não força a entrada, o pior</li>
+</ul>
+<p>  caso é a servidora encontrar "você já está logado" durante os ~10 s da consulta.</p>
+<ul>
+<li>Consulta por CNS sem CPF pode trazer outra pessoa com o mesmo cartão: a tela avisa quando o nome é</li>
+</ul>
+<p>  muito diferente, e a decisão é de quem está olhando.</p>
+<h2>Fora de escopo (fases seguintes)</h2>
+<ul>
+<li>Rodar o enriquecimento em lote ou automaticamente (ex.: antes do envio ao SERNIT).</li>
+<li>Trazer a Receita como terceira coluna da comparação.</li>
+<li>Guardar a sessão do e-SUS do operador entre consultas.</li>
+</ul>
+</main>
+</body>
+</html>

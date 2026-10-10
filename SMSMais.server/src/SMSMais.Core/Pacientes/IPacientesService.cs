@@ -85,6 +85,19 @@ public interface IPacientesService
     Task CompletarNascimentoAsync(Guid id, DateOnly nascimento, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// <b>Corrige</b> a data de nascimento (sobrescreve), com auditoria. Ao contrário de
+    /// <see cref="CompletarNascimentoAsync"/>, não é para automação: só o "Enriquecer" da ficha chama,
+    /// depois de a Receita confirmar o CPF com a data nova. No-op se a data já é a mesma.
+    /// </summary>
+    Task CorrigirNascimentoAsync(Guid id, DateOnly nascimento, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Torna <paramref name="cns"/> o CNS oficial do paciente; o anterior fica guardado como antigo
+    /// (continua achando a pessoa). Com auditoria; no-op se já é o oficial.
+    /// </summary>
+    Task TrocarCnsPrincipalAsync(Guid id, string cns, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Preenche mãe e/ou pai de um paciente que está <b>sem eles</b>. Filiação é o desempate de
     /// homônimo — toda importação tenta trazê-la (decisão de 29/09/2026). Valor existente NÃO é
     /// sobrescrito (mesma régua do nome); vazio de ambos os lados é no-op.

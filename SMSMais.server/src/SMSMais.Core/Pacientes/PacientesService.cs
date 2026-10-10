@@ -383,6 +383,52 @@ public sealed class PacientesService(
         }
     }
 
+    public async Task CorrigirNascimentoAsync(
+        Guid id, DateOnly nascimento, CancellationToken cancellationToken = default)
+    {
+        var novo = nascimento.ToString("yyyy-MM-dd");
+        string? anterior = null;
+        var alterou = false;
+        await AtualizarComRetryAsync(id, patient =>
+        {
+            anterior = patient.BirthDate;
+            if (string.Equals(anterior, novo, StringComparison.Ordinal)) return false;
+            PacienteFhirMapper.AplicarNascimento(patient, nascimento);
+            alterou = true;
+            return true;
+        }, cancellationToken);
+
+        if (alterou)
+        {
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), "AlteracaoNascimento", anterior ?? "", novo, cancellationToken);
+        }
+    }
+
+    public async Task TrocarCnsPrincipalAsync(Guid id, string cns, CancellationToken cancellationToken = default)
+    {
+        var novo = Digitos(cns);
+        if (novo.Length != 15)
+            throw new ValidacaoException("paciente.cns_invalido", "CNS deve ter 15 dígitos.");
+
+        string? anterior = null;
+        var alterou = false;
+        await AtualizarComRetryAsync(id, patient =>
+        {
+            anterior = PacienteFhirMapper.CnsDe(patient);
+            if (Digitos(anterior) == novo) return false;
+            PacienteFhirMapper.TrocarCnsPrincipal(patient, novo);
+            alterou = true;
+            return true;
+        }, cancellationToken);
+
+        if (alterou)
+        {
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), "TrocouCnsPrincipal", anterior ?? "", novo, cancellationToken);
+        }
+    }
+
     public async Task CompletarFiliacaoAsync(
         Guid id, string? nomeMae, string? nomePai, CancellationToken cancellationToken = default)
     {

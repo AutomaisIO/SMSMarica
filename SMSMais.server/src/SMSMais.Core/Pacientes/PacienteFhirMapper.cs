@@ -215,6 +215,65 @@ internal static class PacienteFhirMapper
     }
 
     /// <summary>
+    /// Faz de <paramref name="cns"/> o CNS oficial do paciente <b>sem perder o anterior</b>: os CNS
+    /// que já estavam ficam com <c>use = old</c> (o hub continua achando a pessoa por eles, em
+    /// <c>cns_todos</c>) e o novo entra no lugar do primeiro, com <c>use = official</c> — o mapper lê
+    /// "o CNS" pelo primeiro do system e o hub pelo official, e os dois têm de concordar.
+    /// Mesma régua da unificação e da troca de 03/10/2026 (provisório → definitivo).
+    /// </summary>
+    public static void TrocarCnsPrincipal(Patient existente, string cns)
+    {
+        var limpo = Digitos(cns);
+        existente.Identifier ??= [];
+        var doCns = existente.Identifier.Where(i => i.System == SystemCns).ToList();
+        var posicao = existente.Identifier.FindIndex(i => i.System == SystemCns);
+
+        var oficial = doCns.FirstOrDefault(i => Digitos(i.Value) == limpo);
+        foreach (var i in doCns) i.Use = Identifier.IdentifierUse.Old;
+        if (oficial is not null) existente.Identifier.Remove(oficial);
+        else oficial = new Identifier(SystemCns, limpo);
+        oficial.Use = Identifier.IdentifierUse.Official;
+        existente.Identifier.Insert(posicao < 0 ? existente.Identifier.Count : Math.Min(posicao, existente.Identifier.Count), oficial);
+
+        var raw = (existente.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
+        if (raw is not null)
+        {
+            var pl = JsonSerializer.Deserialize<Payload>(raw, Json)! with { Cns = limpo };
+            existente.RemoveExtension(PayloadUrl);
+            existente.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+        }
+    }
+
+    /// <summary>
+    /// Corrige a data de nascimento — nativo E blob. O blob importa: <see cref="AplicarAtualizacao"/>
+    /// preserva o nascimento do blob antes do nativo, então corrigir só o <c>birthDate</c> seria
+    /// desfeito na próxima edição pelo painel. Marca "nascimento" como editado para o reimport do
+    /// PEP não trazer a data antiga de volta. Quem decide se PODE (conferência na Receita) é o service.
+    /// </summary>
+    public static void AplicarNascimento(Patient existente, DateOnly nascimento)
+    {
+        PatientMergeFhir.SetBirthDate(existente, nascimento);
+
+        var raw = (existente.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
+        if (raw is not null)
+        {
+            var pl = JsonSerializer.Deserialize<Payload>(raw, Json)! with { DataNascimento = nascimento };
+            existente.RemoveExtension(PayloadUrl);
+            existente.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+        }
+
+        PatientMergeFhir.MarcarEditados(existente, ["nascimento"]);
+    }
+
+    /// <summary>Dígitos de todos os telefones do paciente — inclusive histórico e negado — para dizer
+    /// se um número de fora "já está na ficha".</summary>
+    public static IReadOnlyList<string> TelefonesDe(Patient p) =>
+        [.. (p.Telecom ?? [])
+            .Where(t => t.System == ContactPoint.ContactPointSystem.Phone)
+            .Select(t => Digitos(t.Value))
+            .Where(d => d.Length > 0)];
+
+    /// <summary>
     /// Carimba o CPF num paciente que entrou <b>sem ele</b> — o cidadão que a importação do SISREG
     /// criou ancorado só no CNS, e cujo CPF a recepção informa quando ele aparece no balcão.
     ///

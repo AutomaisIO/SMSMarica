@@ -5,7 +5,9 @@ import { consultarCpf } from '@/shared/api/integracoes';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
+import { usePermissao } from '@/shared/auth/authStore';
 import { useAtualizarNomePaciente } from '@/features/pacientes/api/queries';
+import { BotoesEnriquecerFicha } from '@/features/pacientes/components/EnriquecerFicha';
 import type { Paciente } from '@/features/pacientes/types';
 
 type Fase =
@@ -201,22 +203,27 @@ export function VerificarNomeBotao({ pacienteId, nomeCompleto, cpf, dataNascimen
 }
 
 /**
- * Campo "Nome completo" (rótulo + valor) com o botão "Verificar" ao lado.
+ * Campo "Nome completo" (rótulo + valor) com o botão "Verificar" ao lado — e, para quem edita
+ * pacientes, os botões "CADSUS" e "e-SUS" do Enriquecer.
  * Usado na tela de detalhe do paciente.
  */
 export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
+  const podeEditar = usePermissao('Pacientes', 'Edicao');
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
           Nome completo
         </span>
-        <VerificarNomeBotao
-          pacienteId={paciente.id}
-          nomeCompleto={paciente.nomeCompleto}
-          cpf={paciente.cpf}
-          dataNascimento={paciente.dataNascimento}
-        />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <VerificarNomeBotao
+            pacienteId={paciente.id}
+            nomeCompleto={paciente.nomeCompleto}
+            cpf={paciente.cpf}
+            dataNascimento={paciente.dataNascimento}
+          />
+          {podeEditar ? <BotoesEnriquecerFicha pacienteId={paciente.id} /> : null}
+        </div>
       </div>
       <span className="text-sm text-gray-900">
         {paciente.nomeCompleto || <span className="text-gray-400">—</span>}

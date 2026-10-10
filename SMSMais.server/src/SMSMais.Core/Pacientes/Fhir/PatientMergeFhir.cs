@@ -551,6 +551,9 @@ public static class PatientMergeFhir
             var apelido = atual.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Nickname);
             if (apelido is not null) novo.Name.Add((HumanName)apelido.DeepCopy());
         }
+        // Nascimento corrigido pelo "Enriquecer" (conferido na Receita) vence a data do PEP.
+        if (editados.Contains("nascimento") && !string.IsNullOrWhiteSpace(atual.BirthDate))
+            novo.BirthDate = atual.BirthDate;
         if (editados.Contains("endereco"))
             novo.Address = atual.Address is null ? null : [.. atual.Address.Select(a => (Address)a.DeepCopy())];
         if (editados.Contains("estadoCivil"))

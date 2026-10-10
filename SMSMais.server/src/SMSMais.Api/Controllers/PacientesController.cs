@@ -14,6 +14,8 @@ using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Agendamentos;
 using SMSMais.Core.Pacientes.Agendamentos.Dtos;
 using SMSMais.Core.Pacientes.Dtos;
+using SMSMais.Core.Pacientes.Enriquecimento;
+using SMSMais.Core.Pacientes.Enriquecimento.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -257,6 +259,57 @@ public sealed class PacientesController(
         await _service.AtualizarNomeAsync(id, request, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// "Enriquecer" pelo CADSUS: pesquisa o paciente no CADSUS pela porta do SER (sem gastar o
+    /// orçamento do SISREG) e compara com a ficha. Não grava nada — devolve o que difere e uma
+    /// <c>consultaId</c> para gravar as escolhas.
+    /// </summary>
+    [HttpPost("{id:guid}/enriquecimento/cadsus")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ComparacaoFichaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<ComparacaoFichaDto> EnriquecerPeloCadsus(
+        Guid id,
+        [FromServices] IEnriquecimentoPacienteService enriquecimento,
+        CancellationToken cancellationToken) =>
+        enriquecimento.ConsultarCadsusAsync(id, cancellationToken);
+
+    /// <summary>
+    /// "Enriquecer" pelo e-SUS PEC. Sem senha no corpo, usa a conta da plataforma — só para quem tem
+    /// acesso global, e sem derrubar quem estiver nela (409 <c>esus.credencial_em_uso</c>). Com
+    /// usuário/senha, é a conta da própria pessoa; a senha não é guardada. 409
+    /// <c>esus.sessao_aberta</c> = a pessoa está no e-SUS em outro lugar; reenviar com
+    /// <c>encerrarOutraSessao</c> encerra aquela sessão.
+    /// </summary>
+    [HttpPost("{id:guid}/enriquecimento/esus")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ComparacaoFichaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<ComparacaoFichaDto> EnriquecerPeloEsus(
+        Guid id,
+        [FromBody] ConsultarEsusRequest request,
+        [FromServices] IEnriquecimentoPacienteService enriquecimento,
+        CancellationToken cancellationToken) =>
+        enriquecimento.ConsultarEsusAsync(id, request, cancellationToken);
+
+    /// <summary>
+    /// Grava na ficha os campos escolhidos de uma consulta do "Enriquecer". Nome e nascimento só
+    /// mudam com a Receita confirmando; telefone só é acrescentado. Cada campo entra no Histórico de
+    /// alterações.
+    /// </summary>
+    [HttpPost("{id:guid}/enriquecimento/aplicar")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ResultadoEnriquecimentoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<ResultadoEnriquecimentoDto> AplicarEnriquecimento(
+        Guid id,
+        [FromBody] AplicarEnriquecimentoRequest request,
+        [FromServices] IEnriquecimentoPacienteService enriquecimento,
+        CancellationToken cancellationToken) =>
+        enriquecimento.AplicarAsync(id, request, cancellationToken);
 
     /// <summary>
     /// Histórico de alterações auditadas deste paciente (ex.: correções de nome),

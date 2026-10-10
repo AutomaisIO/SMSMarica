@@ -15,7 +15,9 @@ import type { Artigo } from '@/features/manual/tipos';
  * regra dos selos), `VarreduraAgendaService.ConferirChegadasAsync` (chegadas dos últimos 31 dias
  * toda noite), o coletor `FaltasRecentes` (lista de faltas de hora em hora) e
  * `DocumentosPacienteService` (o que entra no acervo, dedup por conteúdo, teto de 10 pendentes,
- * 25 MB, exclusão) + `DocumentosPacienteController` (permissões).
+ * 25 MB, exclusão) + `DocumentosPacienteController` (permissões). O "Enriquecer" (botões CADSUS e
+ * e-SUS): `EnriquecerFicha.tsx` e, no backend, `EnriquecimentoPacienteService` + `ComparadorFicha`
+ * (o que se oferece, CPF diferente bloqueia, Receita para nome/nascimento, telefone só acrescenta).
  */
 export const artigoPacientes: Artigo = {
   slug: 'pacientes',
@@ -26,7 +28,7 @@ export const artigoPacientes: Artigo = {
   icone: Users,
   rota: '/app/pacientes',
   publico: 'Quem atende, regula ou acompanha o paciente e precisa da ficha dele',
-  atualizadoEm: '2026-10-09',
+  atualizadoEm: '2026-10-10',
   palavrasChave: [
     'paciente',
     'pacientes',
@@ -91,6 +93,16 @@ export const artigoPacientes: Artigo = {
     'limite de 10',
     '25 MB',
     'duplicado',
+    'enriquecer',
+    'CADSUS',
+    'e-SUS',
+    'e-SUS PEC',
+    'completar cadastro',
+    'atualizar cadastro',
+    'divergência',
+    'Receita',
+    'verificar',
+    'senha do e-SUS',
   ],
   secoes: () => [
     {
@@ -202,6 +214,90 @@ export const artigoPacientes: Artigo = {
               documentos e origem.
             </Item>
           </Lista>
+        </>
+      ),
+    },
+    {
+      id: 'enriquecer',
+      titulo: 'Completar a ficha pelo CADSUS ou pelo e-SUS',
+      busca:
+        'enriquecer completar atualizar cadastro CADSUS e-SUS esus PEC SER botão ao lado do verificar comparar divergência diferente completa a ficha gravar na ficha Receita nome nascimento CPF CNS antigo telefone acrescentar senha do e-SUS outra sessão conta da plataforma acesso global',
+      conteudo: (
+        <>
+          <P>
+            Ao lado do nome, junto do <BotaoRef variante="outline">Verificar</BotaoRef>, há dois botões
+            para buscar o cadastro do paciente fora e trazer para a ficha o que falta ou está diferente:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: <BotaoRef variante="outline">CADSUS</BotaoRef>,
+                descricao:
+                  'O cadastro nacional do SUS, consultado pelo SER. A plataforma faz sozinha: é só clicar.',
+              },
+              {
+                termo: <BotaoRef variante="outline">e-SUS</BotaoRef>,
+                descricao:
+                  'O e-SUS do município, onde a atenção básica atualiza o cadastro — costuma ter o telefone e a filiação mais recentes. Pede o seu usuário e a sua senha do e-SUS.',
+              },
+            ]}
+          />
+          <P>
+            A busca é pelo CPF (ou pelo CNS, se o cadastro não tem CPF). Se tudo confere, aparece “A
+            ficha confere” ao lado dos botões. Se algo difere, abre a comparação: cada dado aparece com o
+            que está <strong>na ficha</strong> e o que está <strong>na fonte</strong>, e você marca o que
+            vai para a ficha antes de clicar em <BotaoRef>Gravar na ficha</BotaoRef>.
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: <SeloRef cor="sucesso">Completa a ficha</SeloRef>,
+                descricao: 'A ficha está vazia e a fonte tem o dado. Já vem marcado.',
+              },
+              {
+                termo: <SeloRef cor="alerta">Diferente</SeloRef>,
+                descricao:
+                  'Os dois têm, e são diferentes. Vem desmarcado — o da ficha fica, a não ser que você marque o da fonte.',
+              },
+            ]}
+          />
+          <Callout tipo="regra" titulo="O que a plataforma garante ao gravar">
+            <Lista>
+              <Item>
+                <strong>Nome e data de nascimento</strong> só mudam se a Receita confirmar o CPF com o
+                dado novo. Se não confirmar, nada é gravado e a tela diz o que a Receita respondeu.
+              </Item>
+              <Item>
+                <strong>CPF diferente</strong> na fonte bloqueia tudo: pode ser outra pessoa. CPF só se
+                acrescenta em quem não tem — e não entra se já for de outro cadastro (aí o caminho é
+                Unificar cadastros).
+              </Item>
+              <Item>
+                <strong>CNS</strong> novo vira o principal; o anterior fica guardado como antigo e o
+                paciente continua sendo achado por ele.
+              </Item>
+              <Item>
+                <strong>Telefone</strong> só se acrescenta: nenhum número da ficha é apagado nem deixa de
+                ser o principal.
+              </Item>
+              <Item>
+                Dado que a fonte não tem nunca apaga o da ficha. Cada mudança vai para o{' '}
+                <AbaRef>Histórico de alterações</AbaRef>.
+              </Item>
+            </Lista>
+          </Callout>
+          <Callout tipo="atencao" titulo="A senha do e-SUS e a outra sessão">
+            O e-SUS aceita uma sessão por usuário. A senha que você digita serve só para aquela consulta:
+            a plataforma não a guarda e sai do e-SUS logo em seguida. Se você estiver com o e-SUS aberto
+            em outra janela, a tela avisa e só consulta se você marcar{' '}
+            <strong>Encerrar a minha outra sessão</strong>. Quem tem acesso global usa a conta da
+            plataforma sem digitar senha — mas, se ela estiver em uso, a plataforma não derruba quem está
+            nela e pede a sua senha.
+          </Callout>
+          <P>
+            Os botões aparecem para quem tem <strong>Edição</strong> no módulo Pacientes do perfil. A
+            comparação vale por 20 minutos; depois disso, clique de novo no botão.
+          </P>
         </>
       ),
     },

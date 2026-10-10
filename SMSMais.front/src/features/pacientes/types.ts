@@ -356,3 +356,61 @@ export type SessaoConversaPaciente = {
   temAutomaticas: boolean;
   peloTelefone: boolean;
 };
+
+// ---------------------------------------------------------------- Enriquecer a ficha
+
+/** De onde vêm os dados do "Enriquecer". */
+export type FonteEnriquecimento = 'cadsus' | 'esus';
+
+/** O campo da fonte completa a ficha (vazia) ou diverge do que está nela. */
+export type SituacaoCampoFicha = 'Completar' | 'Divergente';
+
+export type CampoComparado = {
+  /** cpf, cns, nome, dataNascimento, sexo, racaCor, nomeSocial, nomeMae, nomePai, email, endereco */
+  campo: string;
+  rotulo: string;
+  naFicha: string | null;
+  naFonte: string;
+  situacao: SituacaoCampoFicha;
+  /** Nome e nascimento só são gravados se a Receita confirmar. */
+  confereNaReceita: boolean;
+  observacao: string | null;
+};
+
+/** Número da fonte que a ficha não tem. Telefone só se acrescenta. */
+export type TelefoneSugerido = { numero: string; tipo: string; rotulo: string };
+
+/** Resultado de consultar uma fonte e comparar com a ficha (só o que difere). */
+export type ComparacaoFicha = {
+  /** Chave para gravar as escolhas (os valores ficam no servidor por 20 min). Nula = nada a gravar. */
+  consultaId: string | null;
+  fonte: FonteEnriquecimento;
+  fonteRotulo: string;
+  encontrado: boolean;
+  consultadoPor: string;
+  atualizadoNaFonteEm: string | null;
+  /** O CPF de lá é outro — pode ser outra pessoa; nada se grava. */
+  bloqueado: boolean;
+  avisos: string[];
+  campos: CampoComparado[];
+  telefones: TelefoneSugerido[];
+  camposIguais: number;
+};
+
+export type ConsultarEsusPayload = {
+  usuario?: string;
+  senha?: string;
+  encerrarOutraSessao?: boolean;
+};
+
+export type AplicarEnriquecimentoPayload = {
+  consultaId: string;
+  campos: string[];
+  telefones: string[];
+};
+
+export type ResultadoEnriquecimento = {
+  gravados: string[];
+  telefonesAcrescentados: string[];
+  jaEstavamIguais: string[];
+};

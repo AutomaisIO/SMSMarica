@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  aplicarEnriquecimento,
   atualizarNomePaciente,
   atualizarPaciente,
   buscarPacientes,
   cadastrarPaciente,
   desativarPaciente,
+  enriquecerPeloCadsus,
+  enriquecerPeloEsus,
   obterAcessos,
   obterAgendamentosPaciente,
   obterAnexosExame,
@@ -19,8 +22,10 @@ import {
   unificarPacientes,
 } from '@/features/pacientes/api/pacientesApi';
 import type {
+  AplicarEnriquecimentoPayload,
   AtualizarPacientePayload,
   CadastrarPacientePayload,
+  ConsultarEsusPayload,
   UnificarPacientesPayload,
 } from '@/features/pacientes/types';
 
@@ -174,6 +179,33 @@ export function useAtualizarNomePaciente() {
   return useMutation({
     mutationFn: ({ id, nomeCompleto }: { id: string; nomeCompleto: string }) =>
       atualizarNomePaciente(id, nomeCompleto),
+    onSuccess: (_data, variables) => {
+      client.invalidateQueries({ queryKey: pacientesKeys.raiz });
+      client.invalidateQueries({ queryKey: pacientesKeys.porId(variables.id) });
+      client.invalidateQueries({ queryKey: pacientesKeys.auditoria(variables.id) });
+    },
+  });
+}
+
+/** "Enriquecer" pelo CADSUS — consulta e compara; não grava. */
+export function useEnriquecerPeloCadsus() {
+  return useMutation({ mutationFn: (id: string) => enriquecerPeloCadsus(id) });
+}
+
+/** "Enriquecer" pelo e-SUS — consulta e compara; não grava. */
+export function useEnriquecerPeloEsus() {
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: ConsultarEsusPayload }) =>
+      enriquecerPeloEsus(id, payload),
+  });
+}
+
+/** Grava as escolhas do "Enriquecer" e recarrega a ficha e o Histórico de alterações. */
+export function useAplicarEnriquecimento() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: AplicarEnriquecimentoPayload }) =>
+      aplicarEnriquecimento(id, payload),
     onSuccess: (_data, variables) => {
       client.invalidateQueries({ queryKey: pacientesKeys.raiz });
       client.invalidateQueries({ queryKey: pacientesKeys.porId(variables.id) });

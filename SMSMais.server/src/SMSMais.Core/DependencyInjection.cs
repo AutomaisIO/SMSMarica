@@ -42,6 +42,8 @@ public static class DependencyInjection
     {
         services.AddScoped<IPacientesService, PacientesService>();
         services.AddScoped<Pacientes.Unificacao.IRepontadorPacienteService, Pacientes.Unificacao.RepontadorPacienteService>();
+        services.AddScoped<Pacientes.Enriquecimento.IEnriquecimentoPacienteService, Pacientes.Enriquecimento.EnriquecimentoPacienteService>();
+        services.AddScoped<Pacientes.Enriquecimento.IConsultaFichaEsusPec, Pacientes.Enriquecimento.ConsultaFichaEsusPec>();
         services.AddScoped<IAgendamentosPacienteService, AgendamentosPacienteService>();
         services.AddScoped<Pacientes.Fhir.IPacienteResolver, Pacientes.Fhir.PacienteResolver>();
         services.AddScoped<Pacientes.IIdadePacientesService, Pacientes.IdadePacientesService>();
