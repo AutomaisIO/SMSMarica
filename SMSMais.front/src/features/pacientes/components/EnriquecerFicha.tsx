@@ -38,7 +38,14 @@ const classeBotao =
  * ninguém); os demais — ou quando a conta da plataforma está em uso — entram com a própria senha,
  * que vai só na consulta e não é guardada.
  */
-export function BotoesEnriquecerFicha({ pacienteId }: { pacienteId: string }) {
+export function BotoesEnriquecerFicha({
+  pacienteId,
+  aoGravar,
+}: {
+  pacienteId: string;
+  /** Chamado depois que a ficha foi atualizada (os dados do paciente já foram recarregados). */
+  aoGravar?: () => void;
+}) {
   const acessoGlobal = useAuth((s) => s.usuario?.acessoGlobal ?? false);
   const cadsus = useEnriquecerPeloCadsus();
   const esus = useEnriquecerPeloEsus();
@@ -146,6 +153,7 @@ export function BotoesEnriquecerFicha({ pacienteId }: { pacienteId: string }) {
           pacienteId={pacienteId}
           comparacao={comparacao}
           aoFechar={() => setComparacao(null)}
+          aoGravar={aoGravar}
         />
       ) : null}
     </>
@@ -280,10 +288,12 @@ function ComparacaoModal({
   pacienteId,
   comparacao,
   aoFechar,
+  aoGravar,
 }: {
   pacienteId: string;
   comparacao: ComparacaoFicha;
   aoFechar: () => void;
+  aoGravar?: () => void;
 }) {
   const aplicar = useAplicarEnriquecimento();
   const fonte: FonteEnriquecimento = comparacao.fonte;
@@ -314,6 +324,7 @@ function ComparacaoModal({
           payload: { consultaId: comparacao.consultaId, campos: [...campos], telefones: [...telefones] },
         }),
       );
+      aoGravar?.();
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }

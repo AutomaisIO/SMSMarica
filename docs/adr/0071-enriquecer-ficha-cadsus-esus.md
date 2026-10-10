@@ -70,3 +70,21 @@ cedida por uma servidora e só é usada de madrugada, para não derrubá-la.
 - Rodar o enriquecimento em lote ou automaticamente (ex.: antes do envio ao SERNIT).
 - Trazer a Receita como terceira coluna da comparação.
 - Guardar a sessão do e-SUS do operador entre consultas.
+
+## Complemento (10/10/2026) — antes do envio ao SERNIT, e o telefone confirmado
+
+Pedido do Bernardo no mesmo dia, já sabendo o que o SERNIT exige no painel do paciente (nome, CPF,
+sexo, nascimento, nome da mãe, logradouro, UF, município e celular — medido na PR-23):
+
+1. **Quem pede vê antes.** Na nova solicitação (passo Paciente e Revisão) aparece o quadro *Cadastro do
+   paciente*: o telefone confirmado (ou o aviso de que não há) e, com destino SERNIT, o que ele exige e
+   o que falta na ficha, com os botões CADSUS e e-SUS ali mesmo. Não trava o envio — informa a tempo.
+   O CPF que entra pelo quadro já vale para a solicitação (ela relê o cadastro).
+2. **No envio do regulador**, a recusa por dado do paciente mostra o mesmo quadro no modal, para
+   completar e "Tentar de novo" sem sair dali; a prévia avisa quando o paciente não tem telefone confirmado.
+3. **O SERNIT recebe o que temos.** Paciente que o SERNIT já conhece: todo campo **vazio** lá recebe o
+   nosso dado (antes, só os obrigatórios). O que lá está preenchido não é tocado — exceto o celular.
+4. **Telefone confirmado primeiro.** O "Telefone Celular" do SERNIT é por onde ele avisa o paciente: vai
+   o telefone **confirmado** na plataforma (OTP pelo WhatsApp) antes do celular e do principal da ficha,
+   e ele substitui o celular que o SERNIT tinha quando são diferentes — a prévia mostra o número antigo.
+   Número negado nunca vai; confirmado que depois foi negado deixa de contar como confirmado.

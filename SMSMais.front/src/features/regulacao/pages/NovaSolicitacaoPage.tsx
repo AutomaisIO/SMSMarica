@@ -42,6 +42,7 @@ import {
 } from '../api/solicitacoesQueries';
 import { BuscaProcedimento } from '../components/BuscaProcedimento';
 import { PassoPaciente } from '../components/wizard/PassoPaciente';
+import { CadastroDoPaciente, resumoDaFicha } from '../components/CadastroDoPaciente';
 import { PassoRegras } from '../components/wizard/PassoRegras';
 import { ExamesInternosSugeridos } from '../components/ExamesInternosSugeridos';
 import { CHAVE_CIDS_SECUNDARIOS, CidsSecundarios } from '../components/CidsSecundarios';
@@ -57,6 +58,7 @@ import {
 import { SeletorCidRegulacao } from '../components/SeletorCidRegulacao';
 import type { FluxoRegulacao, SolicitacaoRegulacao } from '../tiposSolicitacao';
 import { ROTULO_SISTEMA_REGULACAO } from '../types';
+import type { Paciente } from '@/features/pacientes/types';
 import type { PacienteResumoRegulacao, RegulacaoProcedimentoItem, SistemaRegulacao } from '../types';
 
 type Passo = 'procedimento' | 'destino' | 'paciente' | 'regras' | 'formulario' | 'revisao';
@@ -321,6 +323,24 @@ export function NovaSolicitacaoPage() {
     }
   }
 
+  /**
+   * Na revisão, a ficha pode ganhar o CPF pelo CADSUS/e-SUS. A solicitação guarda uma cópia do
+   * paciente: reenviar o mesmo paciente faz o servidor reler o cadastro — e a pendência de CPF sai.
+   */
+  async function fichaMudouNaRevisao(p: Paciente) {
+    if (!paciente) return;
+    const novo = resumoDaFicha(p, paciente);
+    if (!novo) return;
+    setPaciente(novo);
+    const gravado = (atual.data?.pacienteCpf ?? '').replace(/\D/g, '');
+    if (!solicitacaoId || (novo.cpf ?? '').replace(/\D/g, '') === gravado) return;
+    try {
+      await atualizar.mutateAsync({ id: solicitacaoId, pacienteId: novo.id });
+    } finally {
+      void pendencias.refetch();
+    }
+  }
+
   async function enviarParaAFila() {
     if (!solicitacaoId) return;
     try {
@@ -497,6 +517,7 @@ export function NovaSolicitacaoPage() {
             value={paciente}
             onChange={setPaciente}
             exigirCpf={config.data?.exigirCpf ?? true}
+            destino={fluxo ? destinoDoFluxo(fluxo) : null}
           />
         ) : null}
 
@@ -666,6 +687,14 @@ export function NovaSolicitacaoPage() {
               <Linha rotulo="Paciente" valor={paciente?.nome} />
               <Linha rotulo="CPF" valor={paciente?.cpf ?? 'não informado'} />
             </dl>
+
+            {paciente ? (
+              <CadastroDoPaciente
+                pacienteId={paciente.id}
+                destino={fluxo ? destinoDoFluxo(fluxo) : null}
+                aoAtualizar={(p) => void fichaMudouNaRevisao(p)}
+              />
+            ) : null}
 
             {pendencias.isLoading ? (
               <p className="text-sm text-slate-500">Conferindo…</p>

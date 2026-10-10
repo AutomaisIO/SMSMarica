@@ -27,9 +27,12 @@ export const artigoRegulacaoGestaoFila: Artigo = {
   icone: ClipboardCheck,
   rota: '/app/regulacao/gestao-fila',
   publico: 'Quem avalia e regula as solicitações (agente regulador)',
-  atualizadoEm: '2026-10-09',
+  atualizadoEm: '2026-10-10',
   palavrasChave: [
     'gestão de fila',
+    'telefone confirmado',
+    'celular do SERNIT',
+    'cadastro do paciente',
     'classificação de risco',
     'alterar classificação de risco',
     'reclassificar risco',
@@ -392,7 +395,7 @@ export const artigoRegulacaoGestaoFila: Artigo = {
       id: 'enviar-ao-ser',
       titulo: 'Enviar ao SER ou ao SERNIT',
       busca:
-        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente campo município é obrigatório telefone celular para contato é obrigatório município uf celular nome da mãe logradouro o sernit não tinha médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
+        'médico dado como cadastrado não está na lista cadastrei não entrou pedido de cadastro reaberto existe uma solicitação ativa deste recurso pedido ativo cpf cns recusou cadastrar o médico e enviar enviar ao ser aceitar e enviar envio automático prévia preencher tela do ser anexar gravar número senha do ser usuário do ser assinatura quem assina pedido parecido duplicado conferi é outro caso falha no envio gravar chegou ao ser conferir no ser enviar de novo registrar número dois anexos 5 mb pdf juntado sernit niterói enviar ao sernit usuário do sernit senha do sernit paciente novo no sernit cadastrado com o nosso cadastro só pelo cns completar cadastro do paciente telefone confirmado celular do sernit aviso ao paciente não confirmado tentar de novo quadro cadastro do paciente cadsus e-sus campo município é obrigatório telefone celular para contato é obrigatório município uf celular nome da mãe logradouro o sernit não tinha médico não cadastrado no ser médico novo nomes parecidos abreviado é este autorizo cadastrar no ser cadastrar médico especialidade da lista do ser adicionar médico cadastro incerto cadastro a conferir não entrou duplicar médico no estado',
       conteudo: (
         <>
           <p>
@@ -490,12 +493,23 @@ export const artigoRegulacaoGestaoFila: Artigo = {
             <br />
             <br />
             O SERNIT só grava o pedido com <strong>nome da mãe, logradouro, UF, município e telefone
-            celular</strong> do paciente. Quando ele já conhece o paciente mas o cadastro de lá está sem
-            algum desses, a plataforma completa só o que está vazio com o nosso cadastro — a prévia mostra
-            “o SERNIT não tinha; foi o do nosso cadastro”. O celular precisa ter DDD e 9 dígitos: telefone
-            fixo não serve, e o número marcado como <em>não é desta pessoa</em> nunca vai. Se nem lá nem no
-            nosso cadastro houver o dado, a prévia já avisa qual falta e por quê — complete o cadastro do
-            paciente aqui na plataforma e abra a prévia de novo.
+            celular</strong> do paciente. Quando ele já conhece o paciente, a plataforma completa{' '}
+            <strong>todo campo que está vazio lá</strong> com o nosso cadastro (número, CEP, bairro, telefone…)
+            — a prévia mostra “o SERNIT não tinha; foi o do nosso cadastro”. O que lá já está preenchido não é
+            tocado, com uma exceção: o celular. O celular precisa ter DDD e 9 dígitos: telefone fixo não
+            serve, e o número marcado como <em>não é desta pessoa</em> nunca vai.
+            <br />
+            <br />
+            Se nem lá nem no nosso cadastro houver o dado, o envio para e mostra o quadro{' '}
+            <strong>Cadastro do paciente</strong> ali mesmo, com o que falta e os botões{' '}
+            <BotaoRef variante="outline">CADSUS</BotaoRef> e <BotaoRef variante="outline">e-SUS</BotaoRef> para
+            buscar — complete e clique em <BotaoRef>Tentar de novo</BotaoRef>.
+          </Callout>
+          <Callout tipo="atencao" titulo="O celular do SERNIT é o telefone confirmado">
+            É pelo celular que o SERNIT avisa o paciente. Se o paciente tem <strong>telefone confirmado</strong>{' '}
+            na plataforma (alguém confirmou com o código do WhatsApp), é ele que vai — mesmo que o SERNIT tenha
+            outro número, e a prévia mostra qual estava lá. Sem confirmado, vai o celular da ficha, que ninguém
+            confirmou: a prévia avisa, e vale confirmar o número antes de enviar.
           </Callout>
           <Callout tipo="dica" titulo="Por que a plataforma acha tudo pelo nome">
             O SER renumera a lista de recursos quando a SES acrescenta um — o número de ontem pode ser

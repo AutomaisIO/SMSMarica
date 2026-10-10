@@ -158,6 +158,32 @@ public class PacienteNaTelaTests
         PacienteNaTela.Celular(p).Should().Be("(21)99111-2222", "o SERNIT avisa o paciente por esse número");
     }
 
+    [Fact]
+    public void Celular_confirmado_vence_o_celular_da_ficha()
+    {
+        // É por esse campo que o SERNIT avisa o paciente — e o confirmado é o único que alguém
+        // provou ser dele (10/10/2026).
+        var p = Paciente(celular: "21977776666") with { TelefoneVerificado = "5521998765432" };
+
+        PacienteNaTela.Celular(p).Should().Be("(21)99876-5432");
+        PacienteNaTela.CelularConfirmado(p).Should().Be("(21)99876-5432");
+        PacienteNaTela.ObservacaoCelular(p, "(21)99876-5432").Should().Contain("confirmado");
+        PacienteNaTela.ObservacaoCelular(p, "(21)97777-6666").Should().Contain("ninguém confirmou");
+    }
+
+    [Fact]
+    public void Confirmado_que_depois_foi_negado_nao_conta_como_confirmado()
+    {
+        var p = Paciente(celular: "21977776666") with
+        {
+            TelefoneVerificado = "21998765432",
+            TelefoneNegado = "5521998765432",
+        };
+
+        PacienteNaTela.CelularConfirmado(p).Should().BeNull();
+        PacienteNaTela.Celular(p).Should().Be("(21)97777-6666");
+    }
+
     [Theory]
     [InlineData("RJ", "RIO DE JANEIRO")]
     [InlineData("sp", "SAO PAULO")]

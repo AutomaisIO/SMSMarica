@@ -817,7 +817,11 @@ public sealed partial class RegulacaoEnvioSerService(
         {
             motor.Digitar(campo, valor);
             preenchidos.Add(campo);
-            if (campo != CampoNome) passos.Add(new EnvioSerPassoDto($"Paciente · {rotulo}", valor, true));
+            if (campo != CampoNome)
+            {
+                passos.Add(new EnvioSerPassoDto($"Paciente · {rotulo}", valor, true,
+                    PacienteNaTela.EhCelular(rotulo) ? PacienteNaTela.ObservacaoCelular(nosso, valor) : null));
+            }
         }
 
         await PreencherMunicipioAsync(ctx, motor, nosso, painel, passos, preenchidos, motivos, null, ct);
@@ -825,30 +829,42 @@ public sealed partial class RegulacaoEnvioSerService(
     }
 
     /// <summary>
-    /// Paciente que o sistema conhece, com o cadastro de lá incompleto: o campo OBRIGATÓRIO que veio
-    /// aberto e vazio recebe o do nosso cadastro — o resto do cadastro de lá não é tocado. Sem esses
-    /// campos o Gravar volta recusado ("Campo Município é Obrigatório", PR-23).
+    /// Paciente que o sistema conhece, com o cadastro de lá incompleto: todo campo que veio aberto e
+    /// VAZIO recebe o do nosso cadastro (pedido do Bernardo, 10/10/2026 — "preencher com os dados que
+    /// temos"); o que lá já está preenchido não é tocado. Sem os obrigatórios o Gravar volta recusado
+    /// ("Campo Município é Obrigatório", PR-23).
+    ///
+    /// <para>A exceção é o <b>Telefone Celular</b>: com telefone CONFIRMADO na plataforma, é ele que vai,
+    /// mesmo que o sistema tenha outro número — é por esse campo que o paciente é avisado, e o nosso
+    /// é o único que alguém provou ser dele. A prévia mostra o número que estava lá.</para>
     /// </summary>
     private async Task CompletarPacienteNaTelaAsync(
         Contexto ctx, SerCriacaoSolicitacao motor, PacienteDto nosso, IReadOnlyList<SerCampoPacienteDto> painel,
         List<EnvioSerPassoDto> passos, HashSet<string> preenchidos, Dictionary<string, string> motivos,
         CancellationToken ct)
     {
-        var vazios = painel
-            .Where(c => c.Obrigatorio && c.Editavel && string.IsNullOrWhiteSpace(c.Valor))
-            .Select(c => c.Campo)
-            .ToHashSet(StringComparer.Ordinal);
-        if (vazios.Count == 0) return;
-
         var observacao = $"o {ctx.Nome} não tinha; foi o do nosso cadastro";
-        foreach (var (campo, rotulo, valor) in PacienteNaTela.Montar(nosso, painel).Campos.Where(c => vazios.Contains(c.Campo)))
+        foreach (var (campo, rotulo, valor) in PacienteNaTela.Montar(nosso, painel).Campos)
         {
             motor.Digitar(campo, valor);
             preenchidos.Add(campo);
-            passos.Add(new EnvioSerPassoDto($"Paciente · {rotulo}", valor, true, observacao));
+            passos.Add(new EnvioSerPassoDto($"Paciente · {rotulo}", valor, true,
+                PacienteNaTela.EhCelular(rotulo) ? $"{observacao} ({PacienteNaTela.ObservacaoCelular(nosso, valor)})" : observacao));
         }
 
-        if (vazios.Contains(CampoUf) || vazios.Contains(CampoMunicipio))
+        if (PacienteNaTela.CelularConfirmado(nosso) is { } confirmado
+            && painel.FirstOrDefault(c => PacienteNaTela.EhCelular(c.Rotulo) && c.Editavel) is { } celular
+            && !string.IsNullOrWhiteSpace(celular.Valor)
+            && !PacienteNaTela.MesmoNumero(celular.Valor, confirmado))
+        {
+            motor.Digitar(celular.Campo, confirmado);
+            preenchidos.Add(celular.Campo);
+            passos.Add(new EnvioSerPassoDto($"Paciente · {celular.Rotulo}", confirmado, true,
+                $"telefone confirmado na plataforma — o {ctx.Nome} tinha {celular.Valor!.Trim()}, que ninguém confirmou"));
+        }
+
+        bool Vazio(string campo) => painel.Any(c => c.Campo == campo && c.Editavel && string.IsNullOrWhiteSpace(c.Valor));
+        if (Vazio(CampoUf) || Vazio(CampoMunicipio))
         {
             await PreencherMunicipioAsync(ctx, motor, nosso, painel, passos, preenchidos, motivos, observacao, ct);
         }

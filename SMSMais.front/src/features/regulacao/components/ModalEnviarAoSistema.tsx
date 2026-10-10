@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { AlertTriangle, CheckCircle2, FileText, Loader2, Send, UserPlus, XCircle } from 'lucide-react';
+import { AlertTriangle, BellOff, CheckCircle2, FileText, Loader2, Send, UserPlus, XCircle } from 'lucide-react';
 
+import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { ModalLoginSer } from '@/features/ser/components/ModalLoginSer';
 import { useSessaoSerObrigatoria } from '@/features/ser/lib/sessaoSer';
 import { ModalLoginSernit } from '@/features/sernit/components/ModalLoginSernit';
@@ -13,6 +14,7 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 
 import { resolverMedicoPendente, TIPOS_DOCUMENTO, type MedicoParecido } from '../api/medicosApi';
+import { CadastroDoPaciente } from './CadastroDoPaciente';
 import { useEnviarAoSer, usePrepararEnvioSer } from '../api/solicitacoesQueries';
 import type {
   AutorizoCadastroMedico,
@@ -51,7 +53,20 @@ export function ModalEnviarAoSistema({
   return sistema === 'Sernit' ? <EnvioSernit {...props} /> : <EnvioSer {...props} />;
 }
 
-type PropsModal = { solicitacaoId: string; aberto: boolean; aoFechar: () => void };
+type PropsModal = {
+  solicitacaoId: string;
+  /** O paciente da solicitação — para completar a ficha ali mesmo quando o sistema recusa por ela. */
+  pacienteId?: string | null;
+  aberto: boolean;
+  aoFechar: () => void;
+};
+
+/** A recusa veio do cadastro do paciente (`ValidacaoException("ser.paciente", …)` no servidor)? */
+function erroDoPaciente(e: unknown): boolean {
+  if (!(e instanceof AxiosError)) return false;
+  const erros = (e.response?.data as { errors?: Record<string, unknown> } | undefined)?.errors;
+  return !!erros && 'ser.paciente' in erros;
+}
 
 function EnvioSer(props: PropsModal) {
   const sessao = useSessaoSerObrigatoria();
@@ -71,6 +86,7 @@ type Sessao = Pick<
 
 function ModalEnvioAutomatico({
   solicitacaoId,
+  pacienteId,
   aberto,
   aoFechar,
   nome,
@@ -89,6 +105,8 @@ function ModalEnvioAutomatico({
   const [resultado, setResultado] = useState<ResultadoEnvioSer | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [erroDepoisDeEnviar, setErroDepoisDeEnviar] = useState(false);
+  const [faltaNoCadastro, setFaltaNoCadastro] = useState(false);
+  const paciente = usePacientePorId(aberto ? (pacienteId ?? null) : null);
   const [conferiParecidos, setConferiParecidos] = useState(false);
   /** Desfecho do médico resolvido nesta abertura ("cadastrado e conferido") — fica à vista na prévia refeita. */
   const [avisoMedico, setAvisoMedico] = useState<string | null>(null);
@@ -100,6 +118,7 @@ function ModalEnvioAutomatico({
     setEtapa('preparando');
     setErro(null);
     setErroDepoisDeEnviar(false);
+    setFaltaNoCadastro(false);
     setConferiParecidos(false);
     setAutorizoMedico(null);
     try {
@@ -107,6 +126,7 @@ function ModalEnvioAutomatico({
       setEtapa('previa');
     } catch (e) {
       if (sessao.tratouFaltaDeSessao(e, fazerPrevia)) return;
+      setFaltaNoCadastro(erroDoPaciente(e));
       setErro(extrairMensagemDeErro(e));
       setEtapa('erro');
     }
@@ -217,6 +237,16 @@ function ModalEnvioAutomatico({
               />
             )}
 
+            {paciente.data && !paciente.data.telefoneVerificado && (
+              <p className="flex items-start gap-2 rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
+                <BellOff className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  O paciente não tem telefone confirmado: o {nome} vai com o celular da ficha, que ninguém confirmou,
+                  e os avisos podem não chegar a ele. Se der, confirme o número antes de enviar.
+                </span>
+              </p>
+            )}
+
             <ListaPassos passos={previa.passos} />
 
             <div>
@@ -310,6 +340,14 @@ function ModalEnvioAutomatico({
               </p>
               <p className="mt-1 whitespace-pre-line">{erro}</p>
             </div>
+            {faltaNoCadastro && pacienteId && (
+              <>
+                <CadastroDoPaciente pacienteId={pacienteId} destino={nome === 'SERNIT' ? 'Sernit' : 'Ser'} />
+                <p className="text-xs text-slate-500">
+                  Complete a ficha (CADSUS, e-SUS ou à mão) e clique em “Tentar de novo”.
+                </p>
+              </>
+            )}
             <div className="flex justify-end gap-2">
               <Button variante="secundaria" onClick={aoFechar}>
                 Fechar

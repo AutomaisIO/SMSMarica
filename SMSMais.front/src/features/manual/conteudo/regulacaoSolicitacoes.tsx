@@ -13,7 +13,8 @@ import type { Artigo } from '@/features/manual/tipos';
  * Conferido no código em 05/10/2026 (regras no envio e wizard/VisaoRegras em 09/10/2026): `features/regulacao` (MinhaFilaPage, NovaSolicitacaoPage,
  * SolicitacaoDetalhePage, NotificacoesRegulacaoPage, AbasFilaRegulacao, TabelaSolicitacoes,
  * StatusRegulacaoBadge, BuscaProcedimento, wizard/PassoPaciente, wizard/PassoRegras,
- * SeletorCidRegulacao, CabecalhoSolicitacao, AnexosSolicitacao, ModalMotivo, LinhaDoTempo) e no backend
+ * SeletorCidRegulacao, CabecalhoSolicitacao, AnexosSolicitacao, ModalMotivo, LinhaDoTempo,
+ * CadastroDoPaciente — o quadro "Cadastro do paciente", 10/10/2026) e no backend
  * (`MaquinaDeEstadosRegulacao`, `RegulacaoSolicitacaoService`, `RegulacaoFormularioService`,
  * `RegulacaoCidService`, `RegulacaoNotificacaoService`, `ModuloPermissao` 47/48/51).
  */
@@ -26,7 +27,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
   publico: 'Quem abre e acompanha solicitações na unidade',
-  atualizadoEm: '2026-10-09',
+  atualizadoEm: '2026-10-10',
   palavrasChave: [
     'médico do SISREG',
     'profissional solicitante',
@@ -61,6 +62,17 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     'paciente',
     'CPF pendente',
     'CADSUS',
+    'e-SUS',
+    'cadastro do paciente',
+    'completar cadastro',
+    'telefone confirmado',
+    'confirmar telefone',
+    'avisos',
+    'não recebe aviso',
+    'campos obrigatórios do SERNIT',
+    'nome da mãe',
+    'município',
+    'celular',
     'regras',
     'elegibilidade',
     'não sei',
@@ -235,7 +247,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
     {
       id: 'paciente',
       titulo: 'O paciente',
-      busca: 'paciente buscar cpf cns nome cadsus confirmar e usar cpf pendente informar cpf sem cpf cadastro pacientes',
+      busca: 'paciente buscar cpf cns nome cadsus e-sus confirmar e usar cpf pendente informar cpf sem cpf cadastro pacientes cadastro do paciente telefone confirmado não confirmado avisos whatsapp verificar código sernit exige nome da mãe logradouro uf município celular falta na ficha completar',
       conteudo: (
         <>
           <Lista>
@@ -252,6 +264,47 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
               Sem CPF o pedido fica salvo como rascunho, mas (com a exigência ligada) não vai para a fila.
             </Item>
           </Lista>
+          <Sub>O quadro “Cadastro do paciente”</Sub>
+          <P>
+            Escolhido o paciente, aparece embaixo o quadro <strong>Cadastro do paciente</strong> (ele volta na
+            Revisão). Ele responde duas perguntas antes de o pedido sair da unidade:
+          </P>
+          <ListaDefinicoes
+            itens={[
+              {
+                termo: 'O paciente vai ficar sabendo?',
+                descricao: (
+                  <>
+                    Só se o <strong>telefone estiver confirmado</strong>. É por ele que a plataforma avisa o paciente
+                    pelo WhatsApp (data marcada, mudança, cancelamento) e é ele que vai no celular do SERNIT. Sem
+                    confirmado, o quadro fica amarelo: clique em <BotaoRef variante="outline">Verificar</BotaoRef>,
+                    confira o número com o paciente, e ele diz o código que chega no WhatsApp.
+                  </>
+                ),
+              },
+              {
+                termo: 'O cadastro chega completo ao destino?',
+                descricao: (
+                  <>
+                    Para o <strong>SERNIT</strong>, o quadro mostra o que ele exige — nome, CPF, sexo, nascimento,
+                    nome da mãe, logradouro, UF, município e celular — e marca o que falta na ficha. O SERNIT não
+                    consulta o CADSUS: quando não conhece o paciente, a plataforma o cadastra lá com a nossa ficha,
+                    e sem esses dados ele recusa o pedido.
+                  </>
+                ),
+              },
+            ]}
+          />
+          <P>
+            Faltou alguma coisa? Use <BotaoRef variante="outline">CADSUS</BotaoRef> ou{' '}
+            <BotaoRef variante="outline">e-SUS</BotaoRef> no próprio quadro para buscar o cadastro e escolher o que
+            vai para a ficha (o mesmo do cadastro de Pacientes), ou <strong>Editar a ficha</strong> para completar
+            à mão. O CPF que entra por ali já vale para a solicitação.
+          </P>
+          <Callout tipo="dica" titulo="Melhor completar agora do que na hora do envio">
+            Se a ficha vai incompleta, o regulador só descobre quando o SERNIT recusa — e o pedido para até alguém
+            completar. Quem está com o paciente na frente resolve em um minuto.
+          </Callout>
         </>
       ),
     },
@@ -459,6 +512,11 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             Quando a pendência é de regra, o botão <BotaoRef>Ir para o passo Regras</BotaoRef> leva direto ao
             lugar de resolver. Os documentos das regras viram caixinha mesmo que o passo Regras tenha sido
             pulado: a conferência do envio avalia as regras de novo e cria o que faltar.
+          </P>
+          <P>
+            Embaixo do resumo volta o quadro <strong>Cadastro do paciente</strong> (ver “O paciente”): o telefone
+            sem confirmação e o que falta para o SERNIT não travam o envio, mas é a última chance de completar
+            antes de o pedido sair da unidade.
           </P>
           <P>
             Sem pendências, aparece “Tudo certo” e <BotaoRef>Enviar para a pré-regulação</BotaoRef> libera.

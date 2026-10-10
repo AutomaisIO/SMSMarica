@@ -16,13 +16,17 @@ import {
   useInformarCpf,
 } from '../../api/queries';
 import type { PacienteCadsus, PacienteResumoRegulacao } from '../../types';
+import { CadastroDoPaciente, resumoDaFicha } from '../CadastroDoPaciente';
 
 type Props = {
   value: PacienteResumoRegulacao | null;
   onChange: (p: PacienteResumoRegulacao | null) => void;
   /** Vem de `GET regulacao/configuracao/fluxo`. */
   exigirCpf: boolean;
+  /** Sistema de destino já escolhido ('Sernit', 'Ser'…) — decide o que o cadastro precisa ter. */
+  destino?: string | null;
 };
+
 
 /**
  * Passo "paciente" do wizard (plano 10).
@@ -31,7 +35,7 @@ type Props = {
  * cadastrado duas vezes não se desfaz depois, e passa a ter metade do histórico em cada
  * registro. Por isso a consulta ao CADSUS é um botão, nunca automática.</p>
  */
-export function PassoPaciente({ value, onChange, exigirCpf }: Props) {
+export function PassoPaciente({ value, onChange, exigirCpf, destino = null }: Props) {
   const [termo, setTermo] = useState('');
   const debounced = useDebounce(termo, 300);
   const busca = useBuscarPacienteLocal(debounced);
@@ -128,6 +132,19 @@ export function PassoPaciente({ value, onChange, exigirCpf }: Props) {
               </Button>
             </div>
           ) : null}
+        </div>
+
+        <div className="mt-3">
+          <CadastroDoPaciente
+            pacienteId={value.id}
+            destino={destino}
+            aoAtualizar={(p) => {
+              // A ficha mudou por aqui (CPF ou nascimento vindos do CADSUS/e-SUS): o resumo da
+              // solicitação acompanha — é ele que a solicitação regrava ao avançar.
+              const novo = resumoDaFicha(p, value);
+              if (novo) onChange(novo);
+            }}
+          />
         </div>
 
         {informandoCpf ? (

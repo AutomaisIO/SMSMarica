@@ -98,18 +98,37 @@ public static class PacienteNaTela
     };
 
     /// <summary>
-    /// O número do campo "Telefone Celular" (o SERNIT exige para gravar): o celular do cadastro, o
-    /// principal ou o verificado — o primeiro que é celular com DDD. O número NEGADO ("não sou essa
-    /// pessoa", ADR-0057) nunca vai: o SERNIT avisa o paciente por ele.
+    /// O número do campo "Telefone Celular" (o SERNIT exige para gravar e avisa o paciente por ele):
+    /// o CONFIRMADO primeiro — alguém atendeu naquele número e provou que é do paciente —, depois o
+    /// celular do cadastro e o principal; o primeiro que é celular com DDD. O número NEGADO ("não sou
+    /// essa pessoa", ADR-0057) nunca vai.
     /// </summary>
     internal static string? Celular(PacienteDto p)
     {
         var negado = SemPais(Digitos(p.TelefoneNegado));
-        return new[] { p.TelefoneCelular, p.TelefonePrincipal, p.TelefoneVerificado }
+        return new[] { p.TelefoneVerificado, p.TelefoneCelular, p.TelefonePrincipal }
             .Where(n => negado.Length == 0 || SemPais(Digitos(n)) != negado)
             .Select(n => Telefone(n))
             .FirstOrDefault(n => n is not null);
     }
+
+    /// <summary>O celular confirmado do paciente na máscara da tela, ou null (sem confirmado, ou negado).</summary>
+    internal static string? CelularConfirmado(PacienteDto p)
+    {
+        var negado = SemPais(Digitos(p.TelefoneNegado));
+        var confirmado = SemPais(Digitos(p.TelefoneVerificado));
+        return confirmado.Length == 0 || confirmado == negado ? null : Telefone(confirmado);
+    }
+
+    /// <summary>Observação da prévia para o número que vai no "Telefone Celular".</summary>
+    internal static string ObservacaoCelular(PacienteDto p, string valor) =>
+        CelularConfirmado(p) is { } c && MesmoNumero(c, valor)
+            ? "telefone confirmado na plataforma — é por ele que o paciente é avisado"
+            : "telefone da ficha, que ninguém confirmou — o aviso pode não chegar ao paciente";
+
+    internal static bool EhCelular(string rotulo) => Chave(rotulo) == Chave("Telefone Celular");
+
+    internal static bool MesmoNumero(string? a, string? b) => SemPais(Digitos(a)) == SemPais(Digitos(b));
 
     /// <summary>Celular <c>(99)99999-9999</c>, fixo <c>(99)9999-9999</c>; o 55 do país sai.</summary>
     internal static string? Telefone(string? numero, bool fixo = false)

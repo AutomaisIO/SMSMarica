@@ -250,6 +250,7 @@ export function AnaliseSolicitacaoPage() {
         <ModalEnviarAoSistema
           sistema={automatico}
           solicitacaoId={id}
+          pacienteId={solicitacao.data?.pacienteId}
           aberto={modalAutomatico}
           aoFechar={() => {
             setModalAutomatico(false);
