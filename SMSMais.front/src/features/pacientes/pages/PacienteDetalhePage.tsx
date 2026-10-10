@@ -838,12 +838,14 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
   );
 }
 
-function calcularIdade(iso?: string | null): number | null {
+/** Idade hoje — ou, com `ate` (a data do óbito), a idade que a pessoa tinha naquele dia. */
+function calcularIdade(iso?: string | null, ate?: string | null): number | null {
   if (!iso) return null;
   const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return null;
   const nasc = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const hoje = new Date();
+  const a = ate ? String(ate).match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+  const hoje = a ? new Date(Number(a[1]), Number(a[2]) - 1, Number(a[3])) : new Date();
   let idade = hoje.getFullYear() - nasc.getFullYear();
   const diffMes = hoje.getMonth() - nasc.getMonth();
   if (diffMes < 0 || (diffMes === 0 && hoje.getDate() < nasc.getDate())) idade--;
@@ -1077,7 +1079,9 @@ function ResumoPaciente({
             <div>
               <dt className="text-xs uppercase tracking-wide text-gray-500">Idade</dt>
               <dd className="text-sm text-gray-900">
-                {calcularIdade(p.dataNascimento) != null ? `${calcularIdade(p.dataNascimento)} anos` : '—'}
+                {calcularIdade(p.dataNascimento, p.dataObito) != null
+                  ? `${calcularIdade(p.dataNascimento, p.dataObito)} anos${p.dataObito ? ' no óbito' : ''}`
+                  : '—'}
               </dd>
             </div>
             <div>
@@ -1252,7 +1256,7 @@ export function PacienteDetalhePage() {
     { id: 'dados', rotulo: 'Dados pessoais' },
   ];
 
-  const idade = calcularIdade(p?.dataNascimento);
+  const idade = calcularIdade(p?.dataNascimento, p?.dataObito);
 
   return (
     <div className="space-y-6">
@@ -1274,14 +1278,25 @@ export function PacienteDetalhePage() {
               </h1>
               {/* A idade já está por extenso logo abaixo — aqui não se repete. */}
               {p ? <NomePacienteComResumo pacienteId={p.id} mostrarIdade={false} /> : null}
-              {p ? <StatusBadge ativo={p.ativo} /> : null}
+              {/* Óbito fica no lugar de Ativo/Inativo: conforme a origem, quem faleceu chega ativo
+                  (Klinikos, SER, SERNIT, ESUS SG) ou inativo (Salux), e nenhum dos dois diz isso. */}
+              {p?.dataObito ? (
+                <span
+                  className="badge bg-gray-800 text-white"
+                  title="Data de óbito registrada no cadastro (aba Dados pessoais → Documentos & Origem)"
+                >
+                  Óbito em {formatarData(p.dataObito)}
+                </span>
+              ) : p ? (
+                <StatusBadge ativo={p.ativo} />
+              ) : null}
               <AjudaManual artigo="pacientes" secao={vista === 'agendamentos' ? 'selos' : undefined} />
             </div>
             {p ? (
               <p className="text-sm text-gray-500">
                 CPF {formatarCpf(p.cpf)}
                 {p.dataNascimento ? ` · Nasc. ${formatarData(p.dataNascimento.toString())}` : ''}
-                {idade != null ? ` · ${idade} anos` : ''}
+                {idade != null ? ` · ${idade} anos${p.dataObito ? ' no óbito' : ''}` : ''}
                 {' · '}
                 {SEXO_LABEL[String(p.sexo)] ?? String(p.sexo)}
               </p>
