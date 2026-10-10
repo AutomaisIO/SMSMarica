@@ -361,6 +361,8 @@ class Agendamento {
     this.statusConfirmacao,
     this.origem,
     this.naFila = false,
+    this.momento,
+    this.temHora = true,
   });
 
   factory Agendamento.deJson(Json j) => Agendamento(
@@ -377,6 +379,9 @@ class Agendamento {
         podeResponder: _b(j['podeResponder']),
         origem: _s(j['origem']),
         naFila: _b(j['naFila']),
+        momento: _s(j['momento']),
+        // Servidor antigo não manda: as datas dele sempre traziam hora.
+        temHora: j['temHora'] as bool? ?? true,
       );
 
   final String id;
@@ -392,18 +397,27 @@ class Agendamento {
   final String? unidade;
   final String status;
 
-  /// Exame importado (SISREG): habilita confirmar/avisar ausência no card.
+  /// Pedido do SISREG: abre o ticket e, no próximo ainda sem resposta, confirma/avisa ausência.
   final String? solicitacaoExameId;
 
   /// 'Pendente' | 'Confirmada' | 'Cancelada' | null
   final String? statusConfirmacao;
   final bool podeResponder;
 
-  /// Pedido da regulação externa (SER, SERNIT, ESUS SG): quem marcou, em linguagem do paciente.
+  /// Quem regula/marcou (SISREG, SER, SERNIT, ESUS SG), em linguagem do paciente.
   final String? origem;
 
   /// Na fila da regulação: só "está na fila" — nunca motivo de pendência, posição ou previsão.
   final bool naFila;
+
+  /// 'Proximo' | 'NaFila' | 'Passado' — a lista vem em blocos, nessa ordem. Servidor antigo não manda.
+  final String? momento;
+
+  /// false: a fonte só deu o dia — não mostrar "00:00".
+  final bool temHora;
+
+  /// Parte da agenda, com o servidor antigo (sem [momento]): o que não está na fila era próximo.
+  String get momentoEfetivo => momento ?? (naFila ? 'NaFila' : 'Proximo');
 }
 
 class AgendamentoExameDetalhe {
@@ -428,6 +442,7 @@ class AgendamentoExameDetalhe {
     this.confirmadoCanal,
     this.confirmacaoCanceladaEm,
     this.motivoCancelamentoPaciente,
+    this.tipo = 'Exame',
   });
 
   factory AgendamentoExameDetalhe.deJson(Json j) => AgendamentoExameDetalhe(
@@ -451,6 +466,7 @@ class AgendamentoExameDetalhe {
         confirmacaoCanceladaEm: _s(j['confirmacaoCanceladaEm']),
         motivoCancelamentoPaciente: _s(j['motivoCancelamentoPaciente']),
         chaveAcessoDisponivelHoje: _b(j['chaveAcessoDisponivelHoje']),
+        tipo: _s(j['tipo']) ?? 'Exame',
       );
 
   final String solicitacaoExameId;
@@ -477,6 +493,9 @@ class AgendamentoExameDetalhe {
 
   /// Decidido no back: true só no dia do atendimento (Brasília).
   final bool chaveAcessoDisponivelHoje;
+
+  /// 'Consulta' | 'Exame' — o ticket vale para qualquer pedido do SISREG.
+  final String tipo;
 }
 
 /// Chave de acesso (confirmação do SISREG) — entregue só no dia do exame.

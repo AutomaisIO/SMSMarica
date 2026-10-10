@@ -25,8 +25,8 @@ class _Atalho {
 
 /// Mesmos atalhos do PWA (`ATALHOS` de Home.tsx), na mesma ordem e com os mesmos tons.
 const _atalhos = [
-  _Atalho('/agendados/consultas', 'Consultas', 'Agendadas e na fila', LucideIcons.calendarClock),
-  _Atalho('/agendados/exames', 'Exames', 'Agendados e na fila', LucideIcons.calendarPlus),
+  _Atalho('/agendados/consultas', 'Consultas', 'Agenda, fila e histórico', LucideIcons.calendarClock),
+  _Atalho('/agendados/exames', 'Exames', 'Agenda, fila e histórico', LucideIcons.calendarPlus),
   _Atalho('/atendimentos', 'Atendimentos', 'Suas consultas', LucideIcons.stethoscope),
   _Atalho('/exames', 'Exames', 'Resultados', LucideIcons.flaskConical),
   _Atalho('/chat', 'Chat', 'Fale com a Saúde', LucideIcons.messageCircle, marica: true),
@@ -43,10 +43,8 @@ class InicioPage extends ConsumerStatefulWidget {
 }
 
 class _InicioPageState extends ConsumerState<InicioPage> {
-  // Badge: exames agendados que ainda PRECISAM de atenção — cancelados e já confirmados
-  // (inclusive presencialmente na recepção) saem da conta; o card continua na lista. Some
-  // sozinho quando o exame passa (o backend só devolve futuros). Só conta exame do SISREG (com
-  // solicitação): pedido da regulação externa não tem confirmação a responder.
+  // Badge: exames agendados que ainda PRECISAM de resposta (Confirmar / Não poderei ir) — só os
+  // próximos do SISREG ainda sem resposta. A lista traz também a fila e o histórico, que não contam.
   int _examesAgendados = 0;
 
   @override
@@ -60,14 +58,7 @@ class _InicioPageState extends ConsumerState<InicioPage> {
       final lista = await ref.read(apiProvider).agendamentos('exame');
       if (!mounted) return;
       setState(() {
-        _examesAgendados = lista
-            .where(
-              (a) =>
-                  a.solicitacaoExameId != null &&
-                  a.statusConfirmacao != 'Cancelada' &&
-                  a.statusConfirmacao != 'Confirmada',
-            )
-            .length;
+        _examesAgendados = lista.where((a) => a.podeResponder).length;
       });
     } on Object {
       /* badge é enfeite — sem rede, fica como estava */

@@ -500,6 +500,22 @@ class CabecalhoSecao extends StatelessWidget {
   }
 }
 
+/// Título de um bloco dentro da lista (`h2` de `Lista.tsx`: text-xs, semibold, maiúsculas,
+/// tracking-widest, tinta-mute).
+class TituloBloco extends StatelessWidget {
+  const TituloBloco(this.titulo, {super.key});
+
+  final String titulo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      titulo.toUpperCase(),
+      style: Txt.sans(12, peso: FontWeight.w600, cor: CoresMarica.tintaMute, espacamento: 12 * 0.1),
+    );
+  }
+}
+
 /// `Skeleton`: bloco areia pulsando.
 class Esqueleto extends StatefulWidget {
   const Esqueleto({this.altura = 80, this.largura = double.infinity, super.key});

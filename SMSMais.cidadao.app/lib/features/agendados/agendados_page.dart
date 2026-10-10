@@ -12,7 +12,19 @@ import 'package:sms_mais_cidadao/shared/util/formatos.dart';
 import 'package:sms_mais_cidadao/shared/widgets/lista.dart';
 import 'package:sms_mais_cidadao/shared/widgets/ui.dart';
 
-/// Consultas agendadas e na fila da regulação (`ConsultasAgendadas` de Agendados.tsx).
+const _secoesConsultas = {
+  'Proximo': 'Próximas consultas',
+  'NaFila': 'Na fila, aguardando vaga',
+  'Passado': 'Consultas anteriores',
+};
+
+const _secoesExames = {
+  'Proximo': 'Próximos exames',
+  'NaFila': 'Na fila, aguardando vaga',
+  'Passado': 'Exames anteriores',
+};
+
+/// Consultas próximas, na fila da regulação e anteriores (`ConsultasAgendadas` de Agendados.tsx).
 class ConsultasAgendadasPage extends ConsumerWidget {
   const ConsultasAgendadasPage({super.key});
 
@@ -23,15 +35,16 @@ class ConsultasAgendadasPage extends ConsumerWidget {
       titulo: 'Consultas',
       carregar: () => ref.read(apiProvider).agendamentos('consulta'),
       iconeVazio: LucideIcons.calendarClock,
-      tituloVazio: 'Nenhuma consulta agendada ou na fila',
+      tituloVazio: 'Nenhuma consulta por aqui',
       descricaoVazio:
-          'Suas próximas consultas marcadas vão aparecer aqui com data, profissional e local — e as que estão na fila da regulação também.',
+          'Suas consultas aparecem aqui: as marcadas, com data, profissional e local; as que estão na fila da regulação (SISREG, SER, SERNIT ou São Gonçalo); e as que já passaram.',
+      secao: (a) => _secoesConsultas[a.momentoEfetivo] ?? '',
       item: (_, a, __) => AgendamentoCard(agendamento: a),
     );
   }
 }
 
-/// Exames agendados e na fila (`ExamesAgendados`). Quando o link do WhatsApp acabou de confirmar
+/// Exames próximos, na fila e anteriores (`ExamesAgendados`). Quando o link do WhatsApp acabou de confirmar
 /// a presença, mostra o modal "Agenda confirmada" e destaca o card — no PWA isto chega pelo
 /// `sessionStorage`; aqui, pelo [confirmacaoPendenteProvider].
 class ExamesAgendadosPage extends ConsumerStatefulWidget {
@@ -65,9 +78,10 @@ class _ExamesAgendadosPageState extends ConsumerState<ExamesAgendadosPage> {
       titulo: 'Exames',
       carregar: () => ref.read(apiProvider).agendamentos('exame'),
       iconeVazio: LucideIcons.calendarPlus,
-      tituloVazio: 'Nenhum exame agendado ou na fila',
+      tituloVazio: 'Nenhum exame por aqui',
       descricaoVazio:
-          'Seus próximos exames marcados vão aparecer aqui com data, tipo e local — e os que estão na fila da regulação também.',
+          'Seus exames aparecem aqui: os marcados, com data, tipo e local; os que estão na fila da regulação (SISREG, SER, SERNIT ou São Gonçalo); e os que já passaram.',
+      secao: (a) => _secoesExames[a.momentoEfetivo] ?? '',
       item: (_, a, recarregar) => AgendamentoCard(
         agendamento: a,
         destacado: a.solicitacaoExameId != null && a.solicitacaoExameId == _destacadoId,
@@ -138,7 +152,8 @@ class AgendamentoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = agendamento;
     final mute = Txt.sans(14, cor: CoresMarica.tintaMute);
-    // Exames importados (SISREG) têm ticket com detalhes; consultas (sem solicitação) não.
+    final passado = a.momentoEfetivo == 'Passado';
+    // Pedidos do SISREG (exame ou consulta) têm ticket com detalhes; os das outras regulações, não.
     final abrirTicket = a.solicitacaoExameId == null
         ? null
         : () => context.push('/agendados/exames/${a.solicitacaoExameId}');
@@ -161,7 +176,7 @@ class AgendamentoCard extends StatelessWidget {
           style: mute.copyWith(height: 1.375),
         )
       else if (a.origem != null)
-        linha(LucideIcons.landmark, 'Marcado pela ${a.origem}'),
+        linha(LucideIcons.landmark, a.inicioEm != null ? 'Marcado pela ${a.origem}' : 'Pedido na ${a.origem}'),
     ];
 
     return Cartao(
@@ -197,7 +212,9 @@ class AgendamentoCard extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Flexible(
                                   child: Text(
-                                    a.inicioEm != null ? formatarDataHora(a.inicioEm!) : 'Ainda sem data',
+                                    a.inicioEm != null
+                                        ? (a.temHora ? formatarDataHora(a.inicioEm!) : formatarData(a.inicioEm!))
+                                        : (passado ? 'Sem data marcada' : 'Ainda sem data'),
                                     style: mute,
                                   ),
                                 ),
