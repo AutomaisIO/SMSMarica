@@ -290,6 +290,19 @@ public sealed class ColetaIndicadoresScheduler(
                 logger.LogWarning("SISREG_INDICADORES: {Trabalho} estourou o tempo — dividido em dias.", trabalho.Descricao);
                 break;
 
+            // Um dia só não se divide mais. Se a lista da REDE do dia estourar duas vezes seguidas, a
+            // próxima leitura dele vai unidade executante por unidade (11/10/2026: 14/09 cortado nas
+            // cinco tentativas da manhã, e o aviso de base desatualizada no celular).
+            case DesfechoPasso.TempoEsgotado when item.Coletor == ColetorIndicadorSisreg.FaltasRecentes
+                                                  && item.Fim == item.Inicio && trabalho is TrabalhoFaltas:
+            {
+                var erro = ColetaIndicadoresSisregService.ErroDeTempoEsgotadoNoDia(
+                    item.ErroAnterior, r.Mensagem ?? "tempo esgotado");
+                await servico.FalharAsync(item.Id, erro, ct);
+                logger.LogWarning("SISREG_INDICADORES_FALHA: {Trabalho}: {Mensagem}", trabalho.Descricao, erro);
+                break;
+            }
+
             case DesfechoPasso.Captcha:
                 // O operador está bloqueado: parar tudo por um dia. O item não tem culpa — volta a pendente.
                 await servico.DevolverAsync(item.Id, "CAPTCHA — coletor pausado", ct);
@@ -333,6 +346,12 @@ public sealed class ColetaIndicadoresScheduler(
                         c => c.Coletor == ColetorIndicadorSisreg.FaltasRecentes
                              && c.JanelaInicio <= item.Fim && c.JanelaFim >= item.Inicio, ct);
                 return new TrabalhoFaltas(item, fracao, substituiProvisoria: provisoria);
+            case ColetorIndicadorSisreg.FaltasRecentes
+                when item.Inicio == item.Fim
+                     && item.ErroAnterior?.StartsWith(ColetaIndicadoresSisregService.MarcaPorExecutante, StringComparison.Ordinal) == true:
+                var executantes = await scope.ServiceProvider.GetRequiredService<IColetaIndicadoresSisregService>()
+                    .ExecutantesDoDiaAsync(item.Inicio, ct);
+                return new TrabalhoFaltasPorExecutante(item, executantes);
             case ColetorIndicadorSisreg.FaltasRecentes:
                 return new TrabalhoFaltas(item, fracao, recentes: true);
             case ColetorIndicadorSisreg.Canceladas when item.Escopo == PlanoColetaIndicadores.EscopoAmostra:

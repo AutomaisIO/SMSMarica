@@ -134,9 +134,15 @@ internal sealed class ConsultaBaseSisregPdf(
             col.Item().Text("Atenção: a base ainda não leu tudo do SISREG neste período").Bold().FontColor("#7d4e00");
             if (frescor.DiasSemFaltas.Count > 0)
             {
-                col.Item().Text("Lista de faltas não lida para: "
-                    + string.Join(", ", frescor.DiasSemFaltas.Select(d => d.Dia.ToString("dd/MM/yyyy", PtBr)))
-                    + ". Quem faltou nesses dias aparece como \"Pendente de atualização\".");
+                // Dia já lido e não relido: só a falta marcada depois da última leitura não entrou —
+                // quem estava na lista já sai como Faltou. Dia nunca lido: toda falta sai como pendente.
+                col.Item().Text("Lista de faltas não atualizada para: "
+                    + string.Join(", ", frescor.DiasSemFaltas.Select(d => d.Dia.ToString("dd/MM/yyyy", PtBr)
+                        + (d.UltimaLeitura is { } u
+                            ? $" (lida em {FusoBrasilia.ParaExibicao(u).ToString("dd/MM HH:mm", PtBr)})"
+                            : " (nunca lida)")))
+                    + ". Falta que a unidade marcou depois da última leitura — ou em dia nunca lido — aparece "
+                    + "como \"Pendente de atualização\".");
             }
             if (frescor.ChegadasAtrasadas.Count > 0)
             {

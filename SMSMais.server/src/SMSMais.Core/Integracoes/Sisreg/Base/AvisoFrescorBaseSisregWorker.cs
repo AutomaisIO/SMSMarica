@@ -190,7 +190,14 @@ public sealed class AvisoFrescorBaseSisregWorker(
         return new EstadoRestaurado(true, ultimaFoiDesatualizada);
     }
 
-    /// <summary>O texto do aviso. Público para teste: é o que o Bernardo lê no celular.</summary>
+    /// <summary>
+    /// O texto do aviso. Público para teste: é o que o Bernardo lê no celular.
+    ///
+    /// <para>Conta só quem a Consulta mostra como "Pendente de atualização". Até 11/10/2026 o número era
+    /// o de agendamentos em aberto do dia, e a frase dizia que todos apareciam como pendentes: no 14/09,
+    /// "375 em aberto", quando 318 já apareciam como Faltou pela lista lida na véspera. Com o dia já
+    /// lido, o que o atraso esconde é só a falta que a unidade marcou depois da última leitura.</para>
+    /// </summary>
     public static (string Titulo, string Detalhe) Montar(FrescorBaseSisregDto f)
     {
         var partes = new List<string>();
@@ -205,10 +212,18 @@ public sealed class AvisoFrescorBaseSisregWorker(
         {
             sb.Append("Faltas não atualizadas: ");
             sb.Append(string.Join(", ", f.DiasSemFaltas.Take(Citados).Select(d =>
-                $"{d.Dia.ToString("dd/MM", Br)} ({d.Agendamentos} em aberto, "
-                + (d.UltimaLeitura is { } u ? $"última leitura {Quando(u)}" : "nunca lido") + ")")));
+                $"{d.Dia.ToString("dd/MM", Br)} ("
+                + (d.UltimaLeitura is { } u
+                    ? $"última leitura {Quando(u)}; {d.Pendentes} como \"Pendente de atualização\""
+                    : $"nunca lido; {d.Pendentes} como \"Pendente de atualização\", inclusive quem faltou")
+                + ")")));
             if (f.DiasSemFaltas.Count > Citados) sb.Append($" e mais {f.DiasSemFaltas.Count - Citados}");
             sb.Append(". ");
+            if (f.DiasSemFaltas.Any(d => d.UltimaLeitura is not null))
+            {
+                sb.Append("Em SISREG → Consultar, quem estava na última lista lida já aparece como Faltou; só a "
+                          + "falta que a unidade marcou depois da última leitura ainda não entrou. ");
+            }
         }
         if (f.ChegadasAtrasadas.Count > 0)
         {
@@ -217,10 +232,9 @@ public sealed class AvisoFrescorBaseSisregWorker(
                 $"{c.Unidade} ({c.Agendamentos} em aberto, "
                 + (c.UltimaLeitura is { } u ? $"desde {Quando(u)}" : "nunca relidas") + ")")));
             if (f.ChegadasAtrasadas.Count > Citados) sb.Append($" e mais {f.ChegadasAtrasadas.Count - Citados}");
-            sb.Append(". ");
+            sb.Append(". Quem compareceu e foi confirmado depois disso aparece como \"Pendente de atualização\". ");
         }
-        sb.Append("Enquanto isso, SISREG → Consultar mostra esses atendimentos como \"Pendente de atualização\".");
-        return (titulo, sb.ToString());
+        return (titulo, sb.ToString().TrimEnd());
     }
 
     private static string Quando(DateTime utc) =>

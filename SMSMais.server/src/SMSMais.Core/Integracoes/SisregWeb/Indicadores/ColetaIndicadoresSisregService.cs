@@ -58,6 +58,12 @@ public interface IColetaIndicadoresSisregService
     /// <summary>Semana de faltas que estourou o tempo: vira uma janela por dia.</summary>
     Task DividirEmDiasAsync(Guid id, string motivo, CancellationToken ct);
 
+    /// <summary>
+    /// CNES das unidades executantes dos agendamentos nossos do dia — por quem a lista de faltas é lida
+    /// quando a da rede inteira não passa (ver <see cref="TrabalhoFaltasPorExecutante"/>).
+    /// </summary>
+    Task<IReadOnlyList<string>> ExecutantesDoDiaAsync(DateOnly dia, CancellationToken ct);
+
     /// <summary>Um item de desfechos por unidade para o mês.</summary>
     Task CriarItensDeUnidadesAsync(DateOnly mes, IReadOnlyList<UnidadeSolicitanteSisreg> unidades, CancellationToken ct);
 
@@ -84,6 +90,26 @@ public sealed class ColetaIndicadoresSisregService(
 
     /// <summary>Erro gravado na semana dividida — ela não é re-armada (os dias a substituem).</summary>
     public const string MarcaDividida = "DIVIDIDA EM DIAS";
+
+    /// <summary>Erro do dia de faltas recentes cuja lista da rede estourou o tempo do SISREG.</summary>
+    public const string MarcaTempoEsgotado = "TEMPO ESGOTADO";
+
+    /// <summary>
+    /// Erro do dia de faltas recentes cuja lista da rede estourou o tempo DUAS vezes seguidas: a próxima
+    /// leitura vai unidade executante por unidade (<see cref="TrabalhoFaltasPorExecutante"/>).
+    /// </summary>
+    public const string MarcaPorExecutante = "PRÓXIMA POR EXECUTANTE";
+
+    /// <summary>
+    /// O erro a gravar quando a lista da REDE de um dia de faltas recentes estoura o tempo. Pura, para
+    /// teste. Uma vez é o SISREG cortando (corta uma leitura em cada duas ou três e a rodada seguinte
+    /// fecha); duas seguidas é o dia pesado demais para aquela hora — e então a próxima vai por unidade.
+    /// A contagem vive no próprio erro, que a releitura de hora em hora preserva e só a reserva apaga.
+    /// </summary>
+    public static string ErroDeTempoEsgotadoNoDia(string? erroAnterior, string mensagem) =>
+        erroAnterior?.StartsWith(MarcaTempoEsgotado, StringComparison.Ordinal) == true
+            ? $"{MarcaPorExecutante}: {mensagem} — 2ª vez seguida; a próxima leitura vai unidade executante por unidade"
+            : $"{MarcaTempoEsgotado}: {mensagem}";
 
     /// <summary>Erro do item que foi interrompido no meio em todas as tentativas.</summary>
     public const string ErroInterrompida =
@@ -322,12 +348,13 @@ public sealed class ColetaIndicadoresSisregService(
         if (item is null) return null;
 
         // A tentativa conta ANTES da chamada: se o processo morrer no meio, o teto ainda vale.
+        var erroAnterior = item.Erro;
         item.Status = StatusColetaIndicador.EmAndamento;
         item.Tentativas++;
         item.IniciadoEm = DateTime.UtcNow;
         item.Erro = null;
         await db.SaveChangesAsync(ct);
-        return new ItemColeta(item.Id, item.Coletor, item.JanelaInicio, item.JanelaFim, item.Escopo);
+        return new ItemColeta(item.Id, item.Coletor, item.JanelaInicio, item.JanelaFim, item.Escopo, erroAnterior);
     }
 
     public Task ConcluirAsync(Guid id, int linhas, CancellationToken ct) =>
@@ -374,6 +401,21 @@ public sealed class ColetaIndicadoresSisregService(
             });
         }
         await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<string>> ExecutantesDoDiaAsync(DateOnly dia, CancellationToken ct)
+    {
+        var de = FusoBrasilia.DeBrasiliaParaUtc(dia.ToDateTime(TimeOnly.MinValue));
+        var ate = FusoBrasilia.DeBrasiliaParaUtc(dia.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        return await db.Solicitacoes
+            .Where(s => s.ExcluidoEm == null && s.CodigoSolicitacao != null && s.RawSisreg != null
+                        && s.DataAgendada >= de && s.DataAgendada < ate)
+            .Join(db.Unidades, s => s.UnidadeExecutanteId, u => u.Id, (s, u) => u.Cnes)
+            .Where(c => c != null && c != "")
+            .Select(c => c!)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToListAsync(ct);
     }
 
     public async Task CriarItensDeUnidadesAsync(

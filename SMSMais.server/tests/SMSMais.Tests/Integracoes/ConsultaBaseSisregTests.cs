@@ -280,7 +280,7 @@ public class ConsultaBaseSisregTests(PostgresFixture fixture)
             new ConsultaBaseSisregFiltro(Dia, Dia, Situacoes: [SituacaoAgendamentoSisreg.Pendente]),
             itens, ["UNIDADE"],
             // Com o aviso de base incompleta: é o caminho que imprime a faixa amarela.
-            new FrescorBaseSisregDto([new DiaSemFaltasDto(Dia, 3, null)],
+            new FrescorBaseSisregDto([new DiaSemFaltasDto(Dia, 3, null, 3), new DiaSemFaltasDto(Dia.AddDays(1), 5, DateTime.UtcNow, 1)],
                 [new ChegadaAtrasadaDto(Guid.NewGuid(), "UNIDADE", 2, null)], 30),
             DateTime.UtcNow,
             new IdentidadeVisualPdf("Secretaria de Teste", "#B71C1C", "#700000", null)).Gerar();

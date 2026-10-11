@@ -77,6 +77,16 @@ public static partial class IndicadoresSisregHtmlParser
     public static bool TelaDeFaltas(string html) =>
         Texto(html).Contains("Data de Execu", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Só o formulário da Consulta de Absenteísmo, sem lista: é assim que o SISREG responde "nenhuma
+    /// falta" quando a consulta vem filtrada por unidade executante (<c>cnes_executante</c>) — não escreve
+    /// "nenhum registro". Medido em 01/10/2026 com controle de resposta conhecida (DIMAGEM em jan/2024,
+    /// antes de ter agenda), em <c>Automais.SISREG/coletar_faltas_historico.py</c>.
+    /// </summary>
+    public static bool FormularioDeFaltas(string html) =>
+        html.Contains("cnes_executante", StringComparison.OrdinalIgnoreCase)
+        && Texto(html).Contains("Absente", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>"Mostrando Página de N" da consulta paginada — N páginas de <see cref="FaltasPorPagina"/>.</summary>
     public static int? PaginasDeFaltas(string html)
     {

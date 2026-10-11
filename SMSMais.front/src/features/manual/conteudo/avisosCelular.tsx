@@ -20,7 +20,7 @@ export const artigoAvisosCelular: Artigo = {
   icone: BellRing,
   rota: '/app/avisos-celular',
   publico: 'Quem cuida da plataforma (permissão Erros)',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-11',
   palavrasChave: [
     'avisos no celular',
     'aviso de erro',
@@ -45,7 +45,7 @@ export const artigoAvisosCelular: Artigo = {
     {
       id: 'para-que-serve',
       titulo: 'Para que serve',
-      busca: 'erro plataforma whatsapp robô sincronismo erro 500 log base sisreg desatualizada faltas 07:00',
+      busca: 'erro plataforma whatsapp robô sincronismo erro 500 log base sisreg desatualizada faltas 07:00 pendente de atualização última leitura',
       conteudo: (
         <>
           <P>
@@ -59,6 +59,9 @@ export const artigoAvisosCelular: Artigo = {
             é relida há mais de 30 h. A conferência é de hora em hora, das 07:00 às 18:00: resumo na primeira hora do
             dia, depois só pendência nova, e um aviso de “voltou ao normal” quando tudo é lido.
             É o que impede o relatório de pendentes de sair contando falta como pendente sem ninguém saber.
+            Para cada dia, o aviso diz quando foi a última leitura e quantos atendimentos ficam como “Pendente de
+            atualização”: quem estava na última lista lida já aparece como Faltou, então num dia lido na véspera
+            o atraso só esconde a falta que a unidade marcou depois.
           </P>
           <P>
             Se a pessoa escreveu para o número da Secretaria nas últimas 23 horas, o aviso chega como mensagem

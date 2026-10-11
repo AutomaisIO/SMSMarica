@@ -22,7 +22,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
   icone: Gauge,
   rota: '/app/regulacao/indicadores',
   publico: 'Quem acompanha e presta contas da regulação: gestão, coordenação e controle',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-10-11',
   palavrasChave: [
     'indicadores',
     'indicadores de regulação',
@@ -380,7 +380,7 @@ export const artigoIndicadoresRegulacao: Artigo = {
       id: 'leitura-nao-fechou',
       titulo: 'Quando uma leitura do coletor não fecha',
       busca:
-        'leitura não fechou falha erro tentar todas de novo reler botão de volta na fila tentativas seis tempo esgotado 504 SISREG não respondeu dividida em dias declarou lidas distintas período fora do indicador configuração coletor página única rodapé paginação a menos aviso celular 07:00 base desatualizada login recusado interrompida leitura parada',
+        'leitura não fechou falha erro tentar todas de novo reler botão de volta na fila tentativas seis tempo esgotado 504 SISREG não respondeu dividida em dias unidade executante por unidade duas vezes seguidas próxima por executante declarou lidas distintas período fora do indicador configuração coletor página única rodapé paginação a menos aviso celular 07:00 base desatualizada login recusado interrompida leitura parada',
       conteudo: (
         <>
           <P>
@@ -421,13 +421,22 @@ export const artigoIndicadoresRegulacao: Artigo = {
             assim: na noite em que o SISREG trocou de endereço e recusou o login, dez leituras de
             faltas de setembro gastaram as seis tentativas e ficaram paradas sem aparecer na tela.
           </P>
-          <P>Dois casos que se resolvem sozinhos:</P>
+          <P>Casos que se resolvem sozinhos:</P>
           <Lista>
             <Item>
               <strong>“O SISREG não respondeu a tempo”</strong>: o SISREG corta uma consulta pesada perto de um
               minuto. Nas faltas, a semana que estoura o tempo é <strong>dividida em dias</strong>, cada dia lido
               separado. Vale tanto para a leitura oficial quanto para a das últimas semanas, que alimenta a ficha
               do paciente.
+            </Item>
+            <Item>
+              <strong>Dia pesado que estoura duas vezes seguidas</strong>: um dia só não se divide mais. Nas faltas
+              das últimas semanas, quando a lista da rede inteira de um dia estoura o tempo duas vezes seguidas
+              (o erro aparece como “TEMPO ESGOTADO” e depois “PRÓXIMA POR EXECUTANTE”), a leitura seguinte desse
+              dia vai <strong>unidade executante por unidade</strong>, que sai em segundos. Cada unidade troca só
+              as faltas dela; falta de agendamento que não temos fica como a última leitura da rede deixou, até a
+              leitura oficial. Se alguma unidade não fechar, o que foi lido fica gravado e o dia continua na
+              lista. A rodada seguinte volta a tentar a rede inteira.
             </Item>
             <Item>
               <strong>Dia com até 10 faltas</strong>: a lista de uma página só não traz o rodapé “Mostrando

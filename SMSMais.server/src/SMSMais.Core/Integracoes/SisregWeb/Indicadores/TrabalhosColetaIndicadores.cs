@@ -4,7 +4,10 @@ using SMSMais.Data.Entities.Sisreg;
 namespace SMSMais.Core.Integracoes.SisregWeb.Indicadores;
 
 /// <summary>Um item do cursor <c>sisreg_indicador_coleta</c>, como o coletor o executa.</summary>
-public sealed record ItemColeta(Guid Id, ColetorIndicadorSisreg Coletor, DateOnly Inicio, DateOnly Fim, string Escopo);
+/// <param name="ErroAnterior">O erro da tentativa anterior, como estava gravado antes da reserva (que o
+/// apaga) — é por ele que o dia de faltas sabe que a lista da rede já estourou o tempo antes.</param>
+public sealed record ItemColeta(
+    Guid Id, ColetorIndicadorSisreg Coletor, DateOnly Inicio, DateOnly Fim, string Escopo, string? ErroAnterior = null);
 
 public enum DesfechoPasso
 {
@@ -172,6 +175,125 @@ public sealed class TrabalhoFaltas(
             ["co_solicitacao"] = "", ["ETAPA"] = "", ["ordem"] = "1", ["offset"] = "0",
             ["cnes_solicitante"] = "", ["cnes_executante"] = "", ["cns"] = "", ["co_proc"] = "", ["no_proc"] = "",
             ["data1"] = Br(Item.Inicio), ["data2"] = Br(Item.Fim),
+        };
+        if (lista) campos["imprimir_lista"] = "1";
+        return campos;
+    }
+}
+
+/// <summary>
+/// A lista de faltas de UM dia recente lida unidade executante por unidade (<c>cnes_executante</c>), para
+/// o dia em que a lista da rede inteira estoura o tempo do SISREG duas vezes seguidas. Caso de origem
+/// (11/10/2026): 14/09, 318 faltas, cortado aos ~65 s nas cinco tentativas da manhã, numa hora em que o
+/// SISREG cortava uma leitura em cada três. Filtrada por executante, a mesma consulta sai em segundos
+/// (<c>Automais.SISREG/coletar_faltas_historico.py</c>), e as listas por unidade somam a da rede.
+///
+/// <para><b>Cada unidade só troca as faltas que são dela</b> (<see cref="IArmazemIndicadoresSisreg.SubstituirFaltasDaExecutanteAsync"/>):
+/// as unidades lidas são as executantes dos agendamentos NOSSOS do dia, e a falta de um agendamento que
+/// não temos não tem executante conhecida — fica como a última leitura da rede deixou, até a leitura
+/// oficial (aos 30 dias) reler a rede inteira. Por isso este caminho é só das faltas RECENTES.</para>
+///
+/// <para>Um passo por requisição. A mesma prova da rede vale por unidade: sem rodapé e com até 10
+/// linhas, a página já é a lista inteira (uma requisição só); com rodapé, a lista inteira tem de caber
+/// na paginação. Unidade que falha não impede as outras — o que foi lido fica gravado —, mas o dia só
+/// fecha como lido se todas fecharem. Resposta vazia para unidade que tinha falta gravada não apaga
+/// nada: uma unidade inteira trocando todas as faltas por chegada de uma hora para outra é mais
+/// provável ser resposta errada do que verdade, e a próxima leitura da rede resolve.</para>
+/// </summary>
+public sealed class TrabalhoFaltasPorExecutante(ItemColeta item, IReadOnlyList<string> executantes) : TrabalhoColeta(item)
+{
+    private int _indice;
+    private int? _paginas;
+    private readonly List<string> _falhas = [];
+    private int _gravadasNoDia;
+
+    public override string Descricao =>
+        $"faltas recentes {Br(Item.Inicio)} por unidade executante"
+        + (executantes.Count > 0 ? $" ({Math.Min(_indice + 1, executantes.Count)} de {executantes.Count})" : "");
+
+    public override async Task<ResultadoPasso> PassoAsync(
+        ISisregWebSessao sessao, IArmazemIndicadoresSisreg armazem, CancellationToken ct)
+    {
+        if (executantes.Count == 0)
+            return ResultadoPasso.Falha("nenhuma unidade executante com agendamento nosso neste dia — não há por quem ler");
+
+        var cnes = executantes[_indice];
+        string html;
+        try
+        {
+            html = await sessao.GetAsync(TrabalhoFaltas.Tela, Campos(cnes, lista: _paginas is not null), ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested
+                                   && ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            // Corte numa unidade não derruba o dia: ela fica de fora e a leitura segue nas outras.
+            return Proxima(cnes, $"o SISREG não respondeu a tempo ({ex.GetType().Name})");
+        }
+
+        if (IndicadoresSisregHtmlParser.PaginaDeGateway(html)) return Proxima(cnes, "tempo esgotado (504)");
+        if (!IndicadoresSisregHtmlParser.Inteira(html)) return Proxima(cnes, "resposta incompleta");
+
+        var faltas = IndicadoresSisregHtmlParser.Faltas(html);
+        if (!IndicadoresSisregHtmlParser.TelaDeFaltas(html)
+            && !(faltas.Count == 0 && IndicadoresSisregHtmlParser.FormularioDeFaltas(html)))
+        {
+            return Proxima(cnes, "a resposta não é a Consulta de Absenteísmo");
+        }
+
+        if (_paginas is null)
+        {
+            var paginas = IndicadoresSisregHtmlParser.PaginasDeFaltas(html);
+            if (paginas is null)
+            {
+                // Sem rodapé: uma página só (ou nenhuma falta). Ela já é a lista inteira.
+                return faltas.Count <= IndicadoresSisregHtmlParser.FaltasPorPagina
+                    ? await GravarAsync(armazem, cnes, faltas, ct)
+                    : Proxima(cnes, "a consulta paginada não trouxe o rodapé \"Mostrando Página de N\"");
+            }
+            _paginas = paginas;
+            return ResultadoPasso.Continuar();
+        }
+
+        var n = _paginas.Value;
+        var minimo = n == 0 ? 0 : (n - 1) * IndicadoresSisregHtmlParser.FaltasPorPagina + 1;
+        var maximo = n * IndicadoresSisregHtmlParser.FaltasPorPagina;
+        if (faltas.Count < minimo - TrabalhoFaltas.FolgaDaPaginacao || faltas.Count > maximo)
+            return Proxima(cnes, $"a lista trouxe {faltas.Count} e a paginação indica entre {minimo} e {maximo}");
+        return await GravarAsync(armazem, cnes, faltas, ct);
+    }
+
+    private async Task<ResultadoPasso> GravarAsync(
+        IArmazemIndicadoresSisreg armazem, string cnes, List<FaltaLidaSisreg> faltas, CancellationToken ct)
+    {
+        var doDia = faltas.Where(f => f.DataExecucao == Item.Inicio).ToList();
+        if (doDia.Count == 0 && await armazem.ContarFaltasDaExecutanteAsync(Item.Inicio, cnes, ct) is > 0 and var antes)
+            return Proxima(cnes, $"tinha {antes} falta(s) gravada(s) e a resposta veio vazia — nada foi apagado");
+
+        _gravadasNoDia = await armazem.SubstituirFaltasDaExecutanteAsync(Item.Inicio, cnes, doDia, ct);
+        return Proxima(cnes, erro: null);
+    }
+
+    /// <summary>Fecha a unidade atual (com ou sem erro) e passa para a próxima — ou encerra o dia.</summary>
+    private ResultadoPasso Proxima(string cnes, string? erro)
+    {
+        if (erro is not null) _falhas.Add($"{cnes} ({erro})");
+        _indice++;
+        _paginas = null;
+        if (_indice < executantes.Count) return ResultadoPasso.Continuar();
+
+        if (_falhas.Count == 0) return ResultadoPasso.Concluida(_gravadasNoDia);
+        return ResultadoPasso.Falha(
+            $"lidas {executantes.Count - _falhas.Count} de {executantes.Count} unidades executantes (o que foi lido "
+            + $"ficou gravado); sem leitura: {string.Join("; ", _falhas)}");
+    }
+
+    private Dictionary<string, string> Campos(string cnes, bool lista)
+    {
+        var campos = new Dictionary<string, string>
+        {
+            ["co_solicitacao"] = "", ["ETAPA"] = "", ["ordem"] = "1", ["offset"] = "0",
+            ["cnes_solicitante"] = "", ["cnes_executante"] = cnes, ["cns"] = "", ["co_proc"] = "", ["no_proc"] = "",
+            ["data1"] = Br(Item.Inicio), ["data2"] = Br(Item.Inicio),
         };
         if (lista) campos["imprimir_lista"] = "1";
         return campos;

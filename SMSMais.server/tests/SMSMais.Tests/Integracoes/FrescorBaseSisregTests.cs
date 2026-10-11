@@ -96,7 +96,7 @@ public class FrescorBaseSisregTests(PostgresFixture fixture)
         var f = await Servico(db).ConferirAsync(semLista, lido, [unidade], default);
 
         f.DiasSemFaltas.Should().ContainSingle()
-            .Which.Should().Be(new DiaSemFaltasDto(semLista, 2, null));
+            .Which.Should().Be(new DiaSemFaltasDto(semLista, 2, null, 2));
         f.EmDia.Should().BeFalse();
     }
 
@@ -120,6 +120,37 @@ public class FrescorBaseSisregTests(PostgresFixture fixture)
         var f = await Servico(db).ConferirAsync(renovado, parado, [unidade], default);
 
         f.DiasSemFaltas.Select(d => d.Dia).Should().Contain(parado).And.NotContain(renovado);
+    }
+
+    /// <summary>
+    /// 11/10/2026: o aviso dizia "375 em aberto" no 14/09 e que todos apareciam como pendentes, mas 318
+    /// estavam na lista lida na véspera e já apareciam como Faltou. Pendente é só quem está fora da lista.
+    /// </summary>
+    [Fact]
+    public async Task Pendentes_do_dia_sao_so_os_que_nao_estao_na_lista_gravada()
+    {
+        await using var db = fixture.CriarDbContext();
+        var unidade = await UnidadeAsync(db);
+        var dia = Hoje.AddDays(-4);
+        var faltou1 = Agendamento(db, unidade, dia);
+        var faltou2 = Agendamento(db, unidade, dia);
+        Agendamento(db, unidade, dia);
+        foreach (var s in new[] { faltou1, faltou2 })
+        {
+            db.SisregFaltasOficiais.Add(new SisregFaltaOficial
+            {
+                Id = Guid.NewGuid(), CodigoSolicitacao = s.CodigoSolicitacao!, DataExecucao = dia, LidoEm = DateTime.UtcNow.AddHours(-20),
+            });
+        }
+        // Lida ontem e não renovada desde então: atrasada.
+        JanelaLida(db, ColetorIndicadorSisreg.FaltasRecentes, dia, dia, DateTime.UtcNow.AddHours(-20));
+        await db.SaveChangesAsync();
+
+        var f = await Servico(db).ConferirAsync(dia, dia, [unidade], default);
+
+        var linha = f.DiasSemFaltas.Should().ContainSingle().Which;
+        linha.Agendamentos.Should().Be(3);
+        linha.Pendentes.Should().Be(1);
     }
 
     [Fact]
@@ -157,21 +188,32 @@ public class FrescorBaseSisregTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public void Aviso_diz_o_dia_quantos_estao_em_aberto_e_desde_quando()
+    public void Aviso_diz_o_dia_quantos_ficam_pendentes_e_desde_quando()
     {
         var f = new FrescorBaseSisregDto(
-            [new DiaSemFaltasDto(new DateOnly(2026, 9, 14), 875, null),
-             new DiaSemFaltasDto(new DateOnly(2026, 9, 12), 32, new DateTime(2026, 10, 5, 19, 52, 0, DateTimeKind.Utc))],
+            [new DiaSemFaltasDto(new DateOnly(2026, 9, 14), 875, null, 875),
+             new DiaSemFaltasDto(new DateOnly(2026, 9, 12), 375, new DateTime(2026, 10, 5, 19, 52, 0, DateTimeKind.Utc), 57)],
             [new ChegadaAtrasadaDto(Guid.NewGuid(), "CDT", 120, new DateTime(2026, 10, 5, 21, 0, 0, DateTimeKind.Utc))],
             30);
 
         var (titulo, detalhe) = AvisoFrescorBaseSisregWorker.Montar(f);
 
         titulo.Should().Be("FALHOU a atualização das faltas do SISREG em 2 dia(s) e FALHOU a releitura de chegada em 1 unidade(s)");
-        detalhe.Should().Contain("Faltas não atualizadas: 14/09 (875 em aberto, nunca lido)")
-            .And.Contain("12/09 (32 em aberto, última leitura 05/10 16:52)")
+        detalhe.Should().Contain("Faltas não atualizadas: 14/09 (nunca lido; 875 como \"Pendente de atualização\", inclusive quem faltou)")
+            .And.Contain("12/09 (última leitura 05/10 16:52; 57 como \"Pendente de atualização\")")
+            .And.Contain("quem estava na última lista lida já aparece como Faltou")
             .And.Contain("CDT (120 em aberto, desde 05/10 18:00)")
-            .And.Contain("Pendente de atualização");
+            .And.NotContain("375");
+    }
+
+    [Fact]
+    public void Aviso_de_dia_nunca_lido_nao_fala_da_ultima_lista()
+    {
+        var f = new FrescorBaseSisregDto([new DiaSemFaltasDto(new DateOnly(2026, 9, 14), 10, null, 10)], [], 30);
+
+        var (_, detalhe) = AvisoFrescorBaseSisregWorker.Montar(f);
+
+        detalhe.Should().NotContain("última lista lida").And.NotContain("Chegadas");
     }
 
     private static HashSet<string> P(params string[] p) => [.. p];

@@ -70,8 +70,11 @@ export type AgendamentoBaseSisreg = {
  * atualização" pode ser falta ou comparecimento que a base ainda não sabe.
  */
 export type FrescorBaseSisreg = {
-  /** `dia` é data-só (wall-clock); `ultimaLeitura` é instante UTC ou null (nunca lido). */
-  diasSemFaltas: { dia: string; agendamentos: number; ultimaLeitura: string | null }[];
+  /**
+   * `dia` é data-só (wall-clock); `ultimaLeitura` é instante UTC ou null (nunca lido). `pendentes` são
+   * os em aberto que não estão na lista gravada — os que aparecem como "Pendente de atualização".
+   */
+  diasSemFaltas: { dia: string; agendamentos: number; ultimaLeitura: string | null; pendentes: number }[];
   chegadasAtrasadas: { unidadeId: string; unidade: string; agendamentos: number; ultimaLeitura: string | null }[];
   horasParaAtraso: number;
 };

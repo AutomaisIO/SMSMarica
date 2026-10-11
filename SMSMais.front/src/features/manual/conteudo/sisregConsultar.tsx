@@ -18,7 +18,7 @@ export const artigoSisregConsultar: Artigo = {
   icone: ClipboardList,
   rota: '/app/sisreg',
   publico: 'Quem acompanha a regulação e cobra das unidades o apontamento de chegada e falta',
-  atualizadoEm: '2026-10-08',
+  atualizadoEm: '2026-10-11',
   palavrasChave: [
     'consultar sisreg',
     'pendente de atualização',
@@ -32,6 +32,7 @@ export const artigoSisregConsultar: Artigo = {
     'procedimento',
     'base desatualizada',
     'faltas não lidas',
+    'lista de faltas não atualizada',
     'aviso amarelo',
     'aviso no celular',
   ],
@@ -89,7 +90,7 @@ export const artigoSisregConsultar: Artigo = {
       id: 'base-incompleta',
       titulo: 'Quando aparece o aviso amarelo: a base ainda não leu tudo',
       busca:
-        'aviso amarelo base desatualizada de hora em hora incompleta lista de faltas não lida dia sem leitura chegada não relida 30 horas pendente errado falta contada como pendente celular 07:00 pdf',
+        'aviso amarelo base desatualizada de hora em hora incompleta lista de faltas não lida não atualizada última leitura última lista lida faltou pendentes dia sem leitura nunca lida chegada não relida 30 horas pendente errado falta contada como pendente celular 07:00 pdf',
       conteudo: (
         <>
           <P>
@@ -104,8 +105,11 @@ export const artigoSisregConsultar: Artigo = {
           </P>
           <Lista>
             <Item>
-              <strong>Lista de faltas não lida</strong>: os dias sem a lista, quantos atendimentos estão em aberto
-              em cada um e quando foi a última leitura. Quem faltou nesses dias aparece como pendente.
+              <strong>Lista de faltas não atualizada</strong>: os dias cuja lista nunca foi lida, ou não é relida
+              há mais de 6 h, quantos atendimentos ficam como pendentes em cada um e quando foi a última leitura.
+              Quem estava na última lista lida já aparece como Faltou; só a falta que a unidade marcou depois
+              dessa leitura aparece como pendente. No dia nunca lido, todo mundo que faltou aparece como
+              pendente.
             </Item>
             <Item>
               <strong>Chegada não relida há mais de 30 h</strong>: as unidades que a leitura da noite deixou de
@@ -119,7 +123,8 @@ export const artigoSisregConsultar: Artigo = {
           <P>
             Ninguém precisa ficar conferindo isso: de hora em hora, das 07:00 às 18:00, o sistema confere os
             últimos 45 dias e manda um aviso pelo WhatsApp para a lista de Avisos no celular. O aviso diz com
-            todas as letras que a atualização das faltas falhou e em quais dias. Chega um resumo na primeira hora
+            todas as letras que a atualização das faltas falhou, em quais dias, quantos atendimentos ficam como
+            pendentes em cada um e quando foi a última leitura. Chega um resumo na primeira hora
             do dia, um aviso a cada pendência nova e um aviso quando tudo volta ao normal.
           </P>
         </>
