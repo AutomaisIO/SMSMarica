@@ -27,7 +27,7 @@ export function AuthShell({
       </div>
 
       {/* Folha de papel: logo + conteúdo, centralizados no espaço restante. */}
-      <div className="-mt-12 flex flex-1 flex-col rounded-t-[2rem] bg-papel px-6 pb-8 pt-9 shadow-[0_-14px_44px_-26px_rgba(110,19,34,0.55)]">
+      <div className="-mt-12 flex flex-1 flex-col rounded-t-[2rem] bg-papel px-6 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-9 shadow-[0_-14px_44px_-26px_rgba(110,19,34,0.55)]">
         <div className="flex flex-1 flex-col justify-center pb-6">
           <div className="animate-rise">
             <img

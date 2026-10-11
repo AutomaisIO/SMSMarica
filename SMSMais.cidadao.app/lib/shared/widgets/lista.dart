@@ -3,8 +3,11 @@ import 'package:sms_mais_cidadao/shared/api/http.dart';
 import 'package:sms_mais_cidadao/shared/theme/cores_marica.dart';
 import 'package:sms_mais_cidadao/shared/widgets/ui.dart';
 
-/// Padding do conteúdo das telas autenticadas (`main` do AppShell: px-4 pt-5 pb-10).
-const paddingPagina = EdgeInsets.fromLTRB(16, 20, 16, 40);
+/// Padding do conteúdo das telas autenticadas (`main` do AppShell: px-4 pt-5 pb-10), com a barra
+/// de navegação do sistema somada no fim. O Android desenha o app por baixo dela (48 dp com os
+/// três botões); sem a soma, o último item da lista terminava colado ou embaixo da barra.
+EdgeInsets paddingPagina(BuildContext context, {double topo = 20, double fim = 40}) =>
+    EdgeInsets.fromLTRB(16, topo, 16, fim + MediaQuery.paddingOf(context).bottom);
 
 /// Corpo rolável padrão de uma tela do app, com a animação de entrada (`animate-rise`).
 class CorpoPagina extends StatelessWidget {
@@ -26,7 +29,7 @@ class CorpoPagina extends StatelessWidget {
       itens.add(children[i]);
     }
     final lista = ListView(
-      padding: paddingPagina,
+      padding: paddingPagina(context),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [Subir(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: itens))],
     );

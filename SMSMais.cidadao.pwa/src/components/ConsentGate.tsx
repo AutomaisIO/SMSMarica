@@ -94,7 +94,7 @@ export function ConsentGate({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      <footer className="space-y-3 border-t border-areia bg-white px-5 py-4">
+      <footer className="space-y-3 border-t border-areia bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4">
         {erro ? <p className="text-center text-sm text-marica">{erro}</p> : null}
         <PrimaryButton type="button" onClick={aceitar} carregando={enviando}>
           Li e concordo
