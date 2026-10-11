@@ -173,7 +173,7 @@ export type ConfirmacaoConfiguracao = {
   orientacaoPostoHabilitada: boolean;
   /**
    * Aviso dos agendamentos do SER, do SERNIT e do ESUS (10/10/2026): a mesma conversa da confirmação,
-   * com o endereço do local e sem mandar ao posto. Nasce ligado.
+   * com o nome do local e sem mandar ao posto. Nasce ligado.
    */
   avisoAgendamentoExternoHabilitado: boolean;
   /** De quantos em quantos minutos o motor relê o dia corrente (1 a 120). */

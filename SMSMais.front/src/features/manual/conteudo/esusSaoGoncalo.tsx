@@ -24,7 +24,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/esussg',
   publico: 'Quem acompanha os pedidos de exame da PPI encaminhados ao ESUS de São Gonçalo',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-10-11',
   palavrasChave: [
     'contato com o paciente',
     'aviso pelo WhatsApp',
@@ -230,7 +230,7 @@ export const artigoEsusSaoGoncalo: Artigo = {
           <P>
             E o quadro <strong>Contato com o paciente</strong>: desde 10/10/2026 a plataforma avisa pelo
             WhatsApp o paciente do pedido agendado — além da notificação do próprio ESUS. O quadro mostra
-            o aviso (enviado, entregue, lido), o endereço que foi na mensagem, a resposta do paciente
+            o aviso (enviado, entregue, lido), a resposta do paciente
             (confirmou ou avisou que não vai, com o motivo) e as mensagens trocadas desde o pedido. A
             resposta fica só na plataforma: nada é escrito no ESUS. Como o aviso funciona está no artigo
             da Mensageria, seção “Agendamentos do SER, do SERNIT e do ESUS”.

@@ -246,8 +246,6 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.AgendamentosExternos.IAgendamentoExternoService,
             Notificacoes.AgendamentosExternos.AgendamentoExternoService>();
         services.AddHostedService<Notificacoes.AgendamentosExternos.AgendamentoExternoWorker>();
-        services.AddScoped<Notificacoes.AgendamentosExternos.ILocaisAgendamentoExternoService,
-            Notificacoes.AgendamentosExternos.LocaisAgendamentoExternoService>();
         services.AddScoped<Notificacoes.Confirmacoes.IAtendimentoConfirmacaoService,
             Notificacoes.Confirmacoes.AtendimentoConfirmacaoService>();
         // Aba Equipe (produção por atendente, lida da trilha) — módulo ConfirmacoesEquipe.

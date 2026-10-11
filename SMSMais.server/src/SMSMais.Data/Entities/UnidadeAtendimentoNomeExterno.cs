@@ -2,8 +2,12 @@ namespace SMSMais.Data.Entities;
 
 /// <summary>
 /// Um nome com que a <see cref="UnidadeAtendimento"/> aparece num sistema de regulação ("MS
-/// HOSPITAL FEDERAL CARDOSO FONTES - HFCF (RIO DE JANEIRO)" no SER). É a ponte que dá ENDEREÇO ao
-/// aviso de agendamento do SER/SERNIT/ESUS (10/10/2026), que só traz o nome.
+/// HOSPITAL FEDERAL CARDOSO FONTES - HFCF (RIO DE JANEIRO)" no SER). Nasceu em 10/10/2026 para dar
+/// ENDEREÇO ao aviso de agendamento do SER/SERNIT/ESUS, que só traz o nome.
+///
+/// <para><b>SEM USO desde 11/10/2026:</b> o dono decidiu que o aviso leva só o nome do local. A
+/// tabela ficou (vazia) porque tirá-la exige migration nova e mexer na publicação da replicação
+/// DO→EVEO — custo sem ganho. Se o endereço voltar a ser pedido, a ligação é por aqui (ADR-0072).</para>
 ///
 /// <para><b>Ligado por uma pessoa, nunca pela máquina.</b> A máquina sugere, e erra de um jeito
 /// que custa caro: "RIO IMAGEM LAGOS (CASIMIRO DE ABREU)" casa por nome com o Rio Imagem do Rio de

@@ -1,6 +1,6 @@
-# ADR-0072 — Aviso dos agendamentos do SER, do SERNIT e do ESUS pelo WhatsApp (âncora própria, endereço ligado por pessoa)
+# ADR-0072 — Aviso dos agendamentos do SER, do SERNIT e do ESUS pelo WhatsApp (âncora própria, nome do local)
 
-**Status:** aceito · **Data:** 2026-10-10 · implementado em 10/10/2026
+**Status:** aceito · **Data:** 2026-10-10 · em produção desde 10/10/2026 · revisto em 11/10/2026 (sem endereço)
 **Relacionado:** [ADR-0042](./0042-ser-segunda-fonte-de-regulacao.md) (o espelho do SER não é `solicitacao`) ·
 [ADR-0063](./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md) (ESUS de São Gonçalo) ·
 [ADR-0057](./0057-destinatario-correto-e-contato-negado.md) (destinatário correto) ·
@@ -21,7 +21,7 @@ só **1** estava ligado a uma solicitação da regulação; os demais existem s�
 
 Pedido do dono: avisar direto quando agendar, com a **mesma conversa** do SISREG (primeira mensagem
 anônima, "Quero mais informações", CPF e nascimento quando o número não é confirmado), mas a confirmação
-completa **com o endereço e o procedimento** e **sem mandar buscar a guia no posto**, porque o atendimento
+completa **com o local e o procedimento** e **sem mandar buscar a guia no posto**, porque o atendimento
 é fora do município.
 
 ## Decisão
@@ -56,12 +56,13 @@ completa **com o endereço e o procedimento** e **sem mandar buscar a guia no po
    - Os dados saem **só como mensagem de sessão**, depois que a pessoa escreveu: não há modelo aprovado
      com o agendamento externo, e o da regulação manda retirar a guia.
    - Os botões têm prefixos próprios (`confext_*`, `cancext_*`), porque o id é de `agendamento_externo`.
-5. **Endereço ligado por pessoa** (`unidade_atendimento_nome_externo`). Os sistemas mandam só o nome do
-   local. O endereço vem da Unidade de Atendimento (o cadastro do transporte, que já tem os hospitais de
-   referência com endereço) ligada àquele nome, em Unidades de Atendimento → Locais dos agendamentos.
-   - A máquina **sugere**, nunca liga: "RIO IMAGEM LAGOS (CASIMIRO DE ABREU)" casa por nome com o Rio
-     Imagem do Rio de Janeiro. É a mesma régua do ADR-0065.
-   - Local sem ligação: o aviso sai só com o nome.
+5. **O local vai pelo nome, sem endereço** (revisto em 11/10/2026). A primeira versão ligava o nome do
+   local, por uma pessoa, a uma Unidade de Atendimento (`unidade_atendimento_nome_externo`) para mandar o
+   endereço. No dia seguinte o dono decidiu que o nome do hospital basta: a ligação e a tela saíram, e a
+   mensagem leva o local como o sistema o escreve. A tabela ficou, vazia e sem uso. Tirá-la exigiria uma
+   migration nova e mexer na publicação da replicação; se o endereço voltar a ser pedido, a ligação é por
+   ela. A régua, nesse caso, continua a mesma do ADR-0065: a máquina sugere e quem liga é uma pessoa.
+   "RIO IMAGEM LAGOS (CASIMIRO DE ABREU)" casa por nome com o Rio Imagem do Rio de Janeiro.
 6. **A resposta não volta ao sistema de destino.** "Não poderei ir" fica no `agendamento_externo` e
    aparece no quadro *Contato com o paciente* (regulação e detalhe do pedido de cada sistema) e na
    Mensageria. Nada é escrito no SER, no SERNIT ou no ESUS.
@@ -75,16 +76,14 @@ completa **com o endereço e o procedimento** e **sem mandar buscar a guia no po
 - O primeiro deploy põe na fila os agendamentos futuros que já existem (cerca de 165 em 10/10/2026). Eles
   saem no horário de envio, dentro da vazão configurada.
 - O SER manda o próprio WhatsApp ao paciente ("Paciente confirmou presença no agendamento via WhatsApp"
-  aparece na trilha). Com isso, o paciente pode receber as duas mensagens. A nossa traz o endereço e fica
-  registrada para a unidade.
+  aparece na trilha). Com isso, o paciente pode receber as duas mensagens. A nossa fica registrada para a
+  unidade, com a resposta do paciente.
 - **Fica de fora nesta fase:**
   - o lembrete às vésperas;
   - a régua de reforço;
   - o aviso de cancelamento ou remarcação de um agendamento que já chegou ao paciente;
   - a aba de Confirmações (que é da espinha);
   - o robô consultar esses agendamentos.
-- Cada local novo do SER sem ligação faz avisos saírem sem endereço até alguém ligar. A lista mostra
-  primeiro os que estão saindo sem endereço.
 - Banco: tabela nova `agendamento_externo` e `unidade_atendimento_nome_externo`; colunas novas em
   `comunicacao_paciente` e `confirmacao_configuracao`. Com a replicação lógica para a EVEO ligada, a DDL
   das colunas novas em tabelas publicadas precisa estar no destino **antes** do deploy.

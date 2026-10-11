@@ -402,8 +402,6 @@ export type AgendamentoNoDestino = {
   dataHora: string | null;
   dataTexto: string | null;
   local: string | null;
-  /** Endereço que vai no aviso (unidade de atendimento ligada ao nome do local). Nulo = sem ligação. */
-  endereco?: string | null;
 };
 
 /** A mensagem é um aviso automático — e de qual pedido (o paciente pode ter vários). */

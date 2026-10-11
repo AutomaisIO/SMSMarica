@@ -19,15 +19,12 @@ namespace SMSMais.Core.Regulacao.ContatoPaciente;
 /// <summary>O agendamento como o sistema de destino o mostra.</summary>
 /// <param name="DataHora">Instante (UTC) — só o SISREG entrega data e hora como dado.</param>
 /// <param name="DataTexto">Como o SER, o SERNIT e o ESUS escrevem a data (texto da tela deles).</param>
-/// <param name="Endereco">O endereço do local que vai no aviso — o da unidade de atendimento ligada
-/// ao nome do local. Nulo quando ninguém ligou ainda (o aviso sai só com o nome).</param>
 public sealed record AgendamentoNoDestinoDto(
     SistemaRegulacao Sistema,
     string? Situacao,
     DateTime? DataHora,
     string? DataTexto,
-    string? Local,
-    string? Endereco = null);
+    string? Local);
 
 /// <summary>
 /// A mensagem é um aviso automático (confirmação, lembrete...) — e de qual pedido. O paciente pode
@@ -324,8 +321,7 @@ public sealed class RegulacaoContatoPacienteService(
                     x.Status.ToString(),
                     x.DataAgendada,
                     null,
-                    db.Unidades.Where(u => u.Id == x.UnidadeExecutanteId).Select(u => u.Nome).FirstOrDefault(),
-                    null))
+                    db.Unidades.Where(u => u.Id == x.UnidadeExecutanteId).Select(u => u.Nome).FirstOrDefault()))
                 .FirstOrDefaultAsync(ct);
         }
         else if (sistema == SistemaRegulacao.Ser && espelhoId is { } ser)
@@ -333,7 +329,7 @@ public sealed class RegulacaoContatoPacienteService(
             a = await db.SerSolicitacoes.AsNoTracking()
                 .Where(x => x.Id == ser)
                 .Select(x => new AgendamentoNoDestinoDto(
-                    SistemaRegulacao.Ser, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora, null))
+                    SistemaRegulacao.Ser, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora))
                 .FirstOrDefaultAsync(ct);
         }
         else if (sistema == SistemaRegulacao.Sernit && espelhoId is { } sernit)
@@ -341,7 +337,7 @@ public sealed class RegulacaoContatoPacienteService(
             a = await db.SernitSolicitacoes.AsNoTracking()
                 .Where(x => x.Id == sernit)
                 .Select(x => new AgendamentoNoDestinoDto(
-                    SistemaRegulacao.Sernit, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora, null))
+                    SistemaRegulacao.Sernit, x.Situacao.ToString(), null, x.AgendadoParaTexto, x.UnidadeExecutora))
                 .FirstOrDefaultAsync(ct);
         }
         else if (sistema == SistemaRegulacao.EsusSg && espelhoId is { } esus)
@@ -355,26 +351,26 @@ public sealed class RegulacaoContatoPacienteService(
                 a = new AgendamentoNoDestinoDto(
                     SistemaRegulacao.EsusSg, e.Situacao.ToString(), null,
                     e.DataHoraAgendadaTexto ?? e.DataAgendada?.ToString("dd/MM/yyyy"),
-                    e.UnidadeExecutora ?? e.Local, null);
+                    e.UnidadeExecutora ?? e.Local);
             }
         }
 
         // Sem data o "agendamento" é só a situação — essa a tela já mostra no cabeçalho.
         if (a is null || (a.DataHora is null && string.IsNullOrWhiteSpace(a.DataTexto))) return null;
 
-        // O local que o AVISO usa (o vigente do pedido) e o endereço ligado a ele — é o que a equipe
-        // precisa ver para saber se o paciente recebeu o endereço certo.
-        if (a.Sistema != SistemaRegulacao.Sisreg && espelhoId is { } origem)
+        // O SERNIT deixa a unidade executora vazia e escreve o local junto da data: o quadro mostra o
+        // mesmo local que foi no aviso.
+        if (a.Local is null && a.Sistema != SistemaRegulacao.Sisreg && espelhoId is { } origem)
         {
             var localDoAviso = await db.AgendamentosExternos.AsNoTracking()
                 .Where(x => x.OrigemId == origem && x.Sistema == a.Sistema && x.Situacao == SituacaoAgendamentoExterno.Ativo)
                 .Select(x => x.LocalNome)
                 .FirstOrDefaultAsync(ct);
-            var nome = localDoAviso
-                ?? (a.Sistema == SistemaRegulacao.Sernit ? LeituraAgendamentoExterno.DataHora(a.DataTexto).Resto : null)
-                ?? (a.Sistema == SistemaRegulacao.EsusSg ? LeituraAgendamentoExterno.LocalEsusSg(a.Local) : a.Local);
-            var resolvido = await LocaisAgendamentoExternoService.ResolverAsync(db, nome, ct);
-            a = a with { Local = a.Local ?? nome, Endereco = resolvido?.Endereco };
+            a = a with
+            {
+                Local = localDoAviso
+                    ?? (a.Sistema == SistemaRegulacao.Sernit ? LeituraAgendamentoExterno.DataHora(a.DataTexto).Resto : null),
+            };
         }
         return a;
     }

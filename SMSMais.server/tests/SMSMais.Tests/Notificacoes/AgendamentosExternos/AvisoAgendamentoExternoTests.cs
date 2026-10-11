@@ -33,8 +33,9 @@ namespace SMSMais.Tests.Notificacoes.AgendamentosExternos;
 /// <para>O que estes testes guardam: a varredura acha o agendamento no espelho (com a hora do evento
 /// "Agendar" do SER) e põe UM aviso na fila; a remarcação gera aviso novo e encerra o velho; o que
 /// sai de "Agendada" não sai; a primeira mensagem é a mesma do SISREG (sem dado nenhum); depois da
-/// identificação vão o procedimento, a data e o ENDEREÇO — sem mandar ao posto buscar guia; e a
-/// resposta do paciente fica no agendamento, não no SER.</para>
+/// identificação vão o procedimento, a data e o NOME do local — sem endereço (decisão do dono,
+/// 11/10/2026) e sem mandar ao posto buscar guia; e a resposta do paciente fica no agendamento, não
+/// no SER.</para>
 /// </summary>
 [Collection(nameof(PostgresCollection))]
 public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
@@ -175,27 +176,6 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
         db.ComunicacoesPaciente.Add(c);
         await db.SaveChangesAsync();
         return (a, c);
-    }
-
-    private static async Task<UnidadeAtendimento> UnidadeComNomeExternoAsync(SmsMaisDbContext db, string nomeNoSistema)
-    {
-        var u = new UnidadeAtendimento
-        {
-            Id = Guid.NewGuid(),
-            Nome = $"HEX - HOSPITAL DE EXEMPLO {Guid.NewGuid():N}"[..36],
-            Endereco = new Endereco
-            {
-                Logradouro = "Avenida de Exemplo", Numero = "3245", Bairro = "Bairro Exemplo",
-                Cidade = "Rio de Janeiro", Uf = "RJ", PontoReferencia = "Portão 2",
-            },
-            Externa = true,
-            CriadoEm = DateTime.UtcNow,
-        };
-        db.UnidadesAtendimento.Add(u);
-        await db.SaveChangesAsync();
-        await new LocaisAgendamentoExternoService(db, new UsuarioAtualAccessorFake())
-            .VincularAsync(new VincularLocalExternoRequest(nomeNoSistema, u.Id));
-        return u;
     }
 
     private ManipuladorContexto Contexto(Guid pacienteId, string? texto = null, string? interativo = null)
@@ -445,12 +425,11 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Depois_da_identificacao_vao_procedimento_data_e_endereco_sem_mandar_ao_posto()
+    public async Task Depois_da_identificacao_vao_procedimento_data_e_local_sem_mandar_ao_posto()
     {
         await using var db = fixture.CriarDbContext();
         var paciente = Guid.NewGuid();
-        var local = $"MS HOSPITAL DE EXEMPLO {Guid.NewGuid():N}"[..36] + " (RIO DE JANEIRO)";
-        await UnidadeComNomeExternoAsync(db, local.ToLowerInvariant()); // a ligação ignora caixa e acento
+        var local = "MS HOSPITAL DE EXEMPLO - HEX (RIO DE JANEIRO)";
         var (a, c) = await AvisoAsync(db, paciente, liberado: true, local: local);
         var whats = Whats();
 
@@ -462,8 +441,8 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
         var texto = (string)args[1]!;
         Assert.Contains("Consulta: *CONSULTA EM ODONTOLOGIA - CIRURGIA BUCO-MAXILO FACIAL*", texto);
         Assert.Contains($"Data: *{a.Data:dd/MM/yyyy} às 08:30h*", texto);
-        Assert.Contains("Endereço: Avenida de Exemplo, 3245 · Bairro Exemplo · Rio de Janeiro/RJ", texto);
-        Assert.Contains("Referência: Portão 2", texto);
+        Assert.Contains($"Local: *{local}*", texto);
+        Assert.DoesNotContain("Endereço", texto);
         Assert.Contains("regulação do *SER*", texto);
         Assert.DoesNotContain("posto", texto, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("guia", texto, StringComparison.OrdinalIgnoreCase);
@@ -475,14 +454,14 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Local_sem_endereco_ligado_sai_com_o_nome_que_o_sistema_mostra()
+    public void Sem_hora_o_aviso_pede_para_confirmar_o_horario_com_o_local()
     {
         var a = new AgendamentoExterno
         {
             Sistema = SistemaRegulacao.EsusSg, Tipo = TipoAgendamento.Exame, Procedimento = "TRATAMENTO DE RETINA",
             Data = new DateOnly(2026, 10, 13), LocalNome = "OFTALMOCLÍNICA DE EXEMPLO",
         };
-        var texto = ComunicacaoPacienteService.TextoDetalhesExterno(a, "JOANA (EXEMPLO)", null);
+        var texto = ComunicacaoPacienteService.TextoDetalhesExterno(a, "JOANA (EXEMPLO)");
         Assert.Contains("Exame: *TRATAMENTO DE RETINA*", texto);
         Assert.Contains("Data: *13/10/2026*", texto);
         Assert.Contains("Local: *OFTALMOCLÍNICA DE EXEMPLO*", texto);
@@ -635,12 +614,11 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
     // ===================== quadro "Contato com o paciente" =====================
 
     [Fact]
-    public async Task Quadro_do_pedido_do_ser_mostra_o_aviso_a_resposta_e_o_endereco()
+    public async Task Quadro_do_pedido_do_ser_mostra_o_aviso_e_a_resposta()
     {
         await using var db = fixture.CriarDbContext();
         var paciente = Guid.NewGuid();
         var local = $"MS HOSPITAL DO QUADRO {Guid.NewGuid():N}"[..34] + " (RIO DE JANEIRO)";
-        await UnidadeComNomeExternoAsync(db, local);
         var ser = await SerAsync(db, paciente, Hoje.AddDays(9), local: local);
         await Varredura(db).SincronizarAsync();
         var a = await db.AgendamentosExternos.SingleAsync(x => x.OrigemId == ser.Id);
@@ -662,27 +640,6 @@ public class AvisoAgendamentoExternoTests(PostgresFixture fixture)
         Assert.True(dto.DestinoComAvisoAutomatico);
         Assert.Equal("Confirmada", dto.Confirmacao);
         Assert.Equal("Pendente", Assert.Single(dto.Avisos).Status);
-        Assert.Equal("Avenida de Exemplo, 3245 · Bairro Exemplo · Rio de Janeiro/RJ", dto.Agendamento!.Endereco);
-    }
-
-    [Fact]
-    public async Task Lista_de_locais_mostra_o_ligado_e_poe_os_sem_endereco_primeiro()
-    {
-        await using var db = fixture.CriarDbContext();
-        var ligado = $"HOSPITAL LIGADO {Guid.NewGuid():N}"[..30];
-        var solto = $"HOSPITAL SOLTO {Guid.NewGuid():N}"[..30];
-        var u = await UnidadeComNomeExternoAsync(db, ligado);
-        await SerAsync(db, Guid.NewGuid(), Hoje.AddDays(3), local: ligado);
-        await SerAsync(db, Guid.NewGuid(), Hoje.AddDays(4), local: solto);
-        await Varredura(db).SincronizarAsync();
-
-        var locais = await new LocaisAgendamentoExternoService(db, new UsuarioAtualAccessorFake()).ListarAsync();
-
-        var l = locais.Single(x => x.Nome == ligado);
-        Assert.Equal(u.Id, l.Ligada!.Id);
-        Assert.True(l.Ligada.TemEndereco);
-        var s = locais.Single(x => x.Nome == solto);
-        Assert.Null(s.Ligada);
-        Assert.True(locais.ToList().IndexOf(s) < locais.ToList().IndexOf(l));
+        Assert.Equal(local, dto.Agendamento!.Local);
     }
 }

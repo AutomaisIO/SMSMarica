@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADR-0072 — Aviso dos agendamentos do SER, do SERNIT e do ESUS pelo WhatsApp (âncora própria, endereço ligado por pessoa)</title>
+<title>ADR-0072 — Aviso dos agendamentos do SER, do SERNIT e do ESUS pelo WhatsApp (âncora própria, nome do local)</title>
 <style>
 :root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
 @media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
@@ -26,12 +26,12 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 </head>
 <body>
 <main>
-<h1>ADR-0072 — Aviso dos agendamentos do SER, do SERNIT e do ESUS pelo WhatsApp (âncora própria, endereço ligado por pessoa)</h1>
-<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-10 · implementado em 10/10/2026 <strong>Relacionado:</strong> <a href="./0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> (o espelho do SER não é <code>solicitacao</code>) · <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a> (ESUS de São Gonçalo) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (destinatário correto) · <a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a> (Confirmações) · <a href="./0065-medicos-do-ser-espelho-separado.md">ADR-0065</a> (ligação só por confirmação humana)</p>
+<h1>ADR-0072 — Aviso dos agendamentos do SER, do SERNIT e do ESUS pelo WhatsApp (âncora própria, nome do local)</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-10-10 · em produção desde 10/10/2026 · revisto em 11/10/2026 (sem endereço) <strong>Relacionado:</strong> <a href="./0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> (o espelho do SER não é <code>solicitacao</code>) · <a href="./0063-esus-sao-goncalo-e-analise-de-regras-dos-espelhos.md">ADR-0063</a> (ESUS de São Gonçalo) · <a href="./0057-destinatario-correto-e-contato-negado.md">ADR-0057</a> (destinatário correto) · <a href="./0059-atendimento-humano-de-confirmacao.md">ADR-0059</a> (Confirmações) · <a href="./0065-medicos-do-ser-espelho-separado.md">ADR-0065</a> (ligação só por confirmação humana)</p>
 <h2>Contexto</h2>
 <p>Em 10/10/2026 uma unidade perguntou se a paciente de um pedido do SER, agendado para 19/10 num hospital do Rio de Janeiro, tinha sido avisada. Não tinha: <strong>só o agendamento do SISREG avisava o paciente.</strong> A <code>comunicacao_paciente</code> era ancorada na espinha <code>solicitacao</code>, e o único gatilho de aviso de agendamento era a importação do SISREG. Os espelhos do SER, do SERNIT e do ESUS SG (ADR-0042/0063) nunca viram <code>solicitacao</code>, e a conciliação da regulação não avisava ninguém. O paciente só sabia da data se alguém da equipe mandasse a mensagem à mão.</p>
 <p>Medido em produção no mesmo dia: 128 agendamentos futuros no SER, 17 no SERNIT e 20 no ESUS. Desses 165, só <strong>1</strong> estava ligado a uma solicitação da regulação; os demais existem só no espelho.</p>
-<p>Pedido do dono: avisar direto quando agendar, com a <strong>mesma conversa</strong> do SISREG (primeira mensagem anônima, "Quero mais informações", CPF e nascimento quando o número não é confirmado), mas a confirmação completa <strong>com o endereço e o procedimento</strong> e <strong>sem mandar buscar a guia no posto</strong>, porque o atendimento é fora do município.</p>
+<p>Pedido do dono: avisar direto quando agendar, com a <strong>mesma conversa</strong> do SISREG (primeira mensagem anônima, "Quero mais informações", CPF e nascimento quando o número não é confirmado), mas a confirmação completa <strong>com o local e o procedimento</strong> e <strong>sem mandar buscar a guia no posto</strong>, porque o atendimento é fora do município.</p>
 <h2>Decisão</h2>
 <ol>
 <li><strong>Âncora própria: <code>agendamento_externo</code></strong>, uma linha por pedido do espelho × data. Guarda o sistema, o</li>
@@ -56,9 +56,9 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 </ul>
 <p>     o "Quero mais informações" de quem já provou o número entrega os dados sem perguntar CPF.    - Os dados saem <strong>só como mensagem de sessão</strong>, depois que a pessoa escreveu: não há modelo aprovado      com o agendamento externo, e o da regulação manda retirar a guia.    - Os botões têm prefixos próprios (<code>confext_<em></code>, <code>cancext_</em></code>), porque o id é de <code>agendamento_externo</code>.</p>
 <ol>
-<li><strong>Endereço ligado por pessoa</strong> (<code>unidade_atendimento_nome_externo</code>). Os sistemas mandam só o nome do</li>
+<li><strong>O local vai pelo nome, sem endereço</strong> (revisto em 11/10/2026). A primeira versão ligava o nome do</li>
 </ol>
-<p>   local. O endereço vem da Unidade de Atendimento (o cadastro do transporte, que já tem os hospitais de    referência com endereço) ligada àquele nome, em Unidades de Atendimento → Locais dos agendamentos.    - A máquina <strong>sugere</strong>, nunca liga: "RIO IMAGEM LAGOS (CASIMIRO DE ABREU)" casa por nome com o Rio      Imagem do Rio de Janeiro. É a mesma régua do ADR-0065.    - Local sem ligação: o aviso sai só com o nome.</p>
+<p>   local, por uma pessoa, a uma Unidade de Atendimento (<code>unidade_atendimento_nome_externo</code>) para mandar o    endereço. No dia seguinte o dono decidiu que o nome do hospital basta: a ligação e a tela saíram, e a    mensagem leva o local como o sistema o escreve. A tabela ficou, vazia e sem uso. Tirá-la exigiria uma    migration nova e mexer na publicação da replicação; se o endereço voltar a ser pedido, a ligação é por    ela. A régua, nesse caso, continua a mesma do ADR-0065: a máquina sugere e quem liga é uma pessoa.    "RIO IMAGEM LAGOS (CASIMIRO DE ABREU)" casa por nome com o Rio Imagem do Rio de Janeiro.</p>
 <ol>
 <li><strong>A resposta não volta ao sistema de destino.</strong> "Não poderei ir" fica no <code>agendamento_externo</code> e</li>
 </ol>
@@ -78,7 +78,7 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <ul>
 <li>O SER manda o próprio WhatsApp ao paciente ("Paciente confirmou presença no agendamento via WhatsApp"</li>
 </ul>
-<p>  aparece na trilha). Com isso, o paciente pode receber as duas mensagens. A nossa traz o endereço e fica   registrada para a unidade.</p>
+<p>  aparece na trilha). Com isso, o paciente pode receber as duas mensagens. A nossa fica registrada para a   unidade, com a resposta do paciente.</p>
 <ul>
 <li><strong>Fica de fora nesta fase:</strong></li>
 <li>o lembrete às vésperas;</li>
@@ -86,10 +86,6 @@ img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--border);
 <li>o aviso de cancelamento ou remarcação de um agendamento que já chegou ao paciente;</li>
 <li>a aba de Confirmações (que é da espinha);</li>
 <li>o robô consultar esses agendamentos.</li>
-<li>Cada local novo do SER sem ligação faz avisos saírem sem endereço até alguém ligar. A lista mostra</li>
-</ul>
-<p>  primeiro os que estão saindo sem endereço.</p>
-<ul>
 <li>Banco: tabela nova <code>agendamento_externo</code> e <code>unidade_atendimento_nome_externo</code>; colunas novas em</li>
 </ul>
 <p>  <code>comunicacao_paciente</code> e <code>confirmacao_configuracao</code>. Com a replicação lógica para a EVEO ligada, a DDL   das colunas novas em tabelas publicadas precisa estar no destino <strong>antes</strong> do deploy.</p>

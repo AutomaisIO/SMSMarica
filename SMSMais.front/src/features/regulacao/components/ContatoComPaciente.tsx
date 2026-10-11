@@ -9,7 +9,6 @@ import {
   CheckCheck,
   CheckCircle2,
   Clock3,
-  MapPin,
   ShieldCheck,
   XCircle,
 } from 'lucide-react';
@@ -131,33 +130,14 @@ function Agendamento({ c }: { c: ContatoPacienteRegulacao }) {
   const a = c.agendamento;
   if (!a) return null;
   const quando = a.dataHora ? formatarInstante(a.dataHora) : a.dataTexto;
-  // O endereço do aviso só existe para SER/SERNIT/ESUS (o do SISREG está na guia do posto).
-  const externo = a.sistema !== 'Sisreg';
   return (
-    <div className="space-y-1">
-      <p className="flex items-start gap-2 text-sm text-slate-800">
-        <CalendarCheck className="mt-0.5 size-4 shrink-0 text-primary-600" />
-        <span>
-          Agendado no {ROTULO_SISTEMA_REGULACAO[a.sistema] ?? a.sistema} para <b>{quando}</b>
-          {a.local ? <> — {a.local}</> : null}.
-        </span>
-      </p>
-      {externo && a.endereco ? (
-        <p className="flex items-start gap-2 pl-6 text-xs text-slate-600">
-          <MapPin className="mt-0.5 size-3.5 shrink-0 text-slate-400" />
-          <span>Endereço que vai no aviso: {a.endereco}</span>
-        </p>
-      ) : null}
-      {externo && !a.endereco && c.destinoComAvisoAutomatico ? (
-        <p className="flex items-start gap-2 pl-6 text-xs text-amber-800">
-          <MapPin className="mt-0.5 size-3.5 shrink-0" />
-          <span>
-            Este local ainda não está ligado a uma unidade de atendimento: o aviso sai só com o nome, sem endereço.
-            Ligue em Unidades de Atendimento → Locais dos agendamentos externos.
-          </span>
-        </p>
-      ) : null}
-    </div>
+    <p className="flex items-start gap-2 text-sm text-slate-800">
+      <CalendarCheck className="mt-0.5 size-4 shrink-0 text-primary-600" />
+      <span>
+        Agendado no {ROTULO_SISTEMA_REGULACAO[a.sistema] ?? a.sistema} para <b>{quando}</b>
+        {a.local ? <> — {a.local}</> : null}.
+      </span>
+    </p>
   );
 }
 

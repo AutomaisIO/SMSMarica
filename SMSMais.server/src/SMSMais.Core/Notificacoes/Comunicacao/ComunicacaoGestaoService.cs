@@ -279,7 +279,7 @@ public sealed class ComunicacaoGestaoService(
     private static ComunicacaoResumoDto Mapear(ComunicacaoPaciente n, string? pacienteNome)
     {
         var s = n.Solicitacao;
-        // SER/SERNIT/ESUS SG: sem espinha — o código é "SER 8407041" e o procedimento e o local são
+        // SER/SERNIT/ESUS SG: sem espinha — o código é "SER 1234567" e o procedimento e o local são
         // os do agendamento externo, como o sistema de destino os mostra.
         var a = n.AgendamentoExterno;
         return new ComunicacaoResumoDto(

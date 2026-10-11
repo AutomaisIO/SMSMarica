@@ -18,12 +18,12 @@ export const artigoUnidadesAtendimento: Artigo = {
   slug: 'unidades-atendimento',
   titulo: 'Unidades de Atendimento (destinos do transporte)',
   resumo:
-    'O cadastro dos lugares onde o paciente é atendido fora da rede: o destino da van e o endereço que vai no aviso dos agendamentos do SER, do SERNIT e do ESUS.',
+    'O cadastro dos lugares para onde a van leva o paciente: nome, endereço e o ponto no mapa que fecha a rota.',
   grupo: 'transporte',
   icone: Hospital,
   rota: '/app/unidades-atendimento',
   publico: 'Quem organiza o transporte de pacientes e cadastra os atendimentos',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-09-29',
   palavrasChave: [
     'unidade de atendimento',
     'destino',
@@ -50,13 +50,6 @@ export const artigoUnidadesAtendimento: Artigo = {
     'desativar',
     'reativar',
     'maiúsculas',
-    'locais dos agendamentos externos',
-    'SER',
-    'SERNIT',
-    'ESUS',
-    'endereço do aviso',
-    'ligar local',
-    'nome no sistema de regulação',
   ],
   secoes: () => [
     {
@@ -183,57 +176,6 @@ export const artigoUnidadesAtendimento: Artigo = {
             A busca procura em nome, bairro, cidade e rua, sem ligar para acento. Por padrão só as
             ativas aparecem; marque <strong>Mostrar desativadas</strong> para ver as outras. Clicar
             na linha abre o detalhe: endereço, o mapa e a lista dos atendimentos com destino ali.
-          </P>
-        </>
-      ),
-    },
-    {
-      id: 'locais-externos',
-      titulo: 'Locais dos agendamentos do SER, do SERNIT e do ESUS',
-      busca:
-        'locais agendamentos externos ser sernit esus endereço do aviso ligar desfazer sugestão parece conferi é esta sem endereço nome como o sistema escreve whatsapp paciente',
-      conteudo: (
-        <>
-          <P>
-            Quando um pedido do SER, do SERNIT ou do ESUS é agendado, o paciente recebe pelo WhatsApp o
-            procedimento, o dia, a hora e o local. Esses sistemas mandam só o <strong>nome</strong> do local
-            (“MS HGB HOSPITAL GERAL DE BONSUCESSO”) — o <strong>endereço</strong> sai daqui: da unidade de
-            atendimento ligada a esse nome.
-          </P>
-          <P>
-            A lista, embaixo das unidades, mostra cada local dos agendamentos futuros como o sistema o escreve,
-            quantos agendamentos usam o nome e o próximo dia. Os que estão saindo <strong>sem endereço</strong>{' '}
-            vêm primeiro.
-          </P>
-          <Passos
-            itens={[
-              {
-                titulo: 'Escolha a unidade em “Ligar a”',
-                detalhe:
-                  'A busca acha pelo começo das palavras, sem acento. Se a unidade ainda não existe, cadastre-a com o endereço antes.',
-              },
-              {
-                titulo: 'Ou confirme a sugestão',
-                detalhe:
-                  'Quando a tela acha uma unidade parecida, mostra “Parece: …”. Confira o endereço e use Conferi, é esta.',
-              },
-              {
-                titulo: 'Pronto — vale já',
-                detalhe:
-                  'O próximo paciente que pedir os dados desse local recebe o endereço. Desfazer volta o local para “sem ligação”.',
-              },
-            ]}
-          />
-          <Callout tipo="atencao" titulo="A sugestão não decide">
-            Nomes parecidos enganam: “Rio Imagem Lagos”, em Casimiro de Abreu, se parece com o Rio Imagem do Rio de
-            Janeiro. Ligar errado manda o paciente para outra cidade. Por isso nada é ligado sozinho — só quando
-            alguém escolhe.
-          </Callout>
-          <P>
-            Um nome aponta para uma unidade só; uma unidade pode ter vários nomes (o SER e o SERNIT costumam escrever
-            o mesmo hospital de jeitos diferentes). Unidade ligada <strong>sem endereço</strong> cadastrado também
-            faz o aviso sair só com o nome — a lista avisa. Ligar e desfazer pede a permissão de editar unidades de
-            atendimento.
           </P>
         </>
       ),

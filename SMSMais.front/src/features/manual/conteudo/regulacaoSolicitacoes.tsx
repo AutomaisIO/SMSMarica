@@ -27,11 +27,10 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
   icone: ClipboardList,
   rota: '/app/regulacao/solicitacoes',
   publico: 'Quem abre e acompanha solicitações na unidade',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-10-11',
   palavrasChave: [
     'contato com o paciente',
     'aviso do SER',
-    'endereço do agendamento',
     'paciente foi avisado',
     'aviso pelo WhatsApp',
     'paciente confirmou',
@@ -650,7 +649,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
       id: 'contato-paciente',
       titulo: 'Contato com o paciente: ele foi avisado?',
       busca:
-        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu motivo telefone confirmado sisreg ser sernit esus endereço local unidade de atendimento outro pedido equipe avisou à mão conversas',
+        'contato com o paciente avisado aviso agendamento whatsapp mensagem recebeu entregue leu lida confirmou confirmação não vai cancelou respondeu motivo telefone confirmado sisreg ser sernit esus local outro pedido equipe avisou à mão conversas',
       conteudo: (
         <>
           <P>
@@ -660,8 +659,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
           <Lista>
             <Item>
               <strong>O agendamento</strong> — a data e o local como o sistema de destino mostra (o SER e o
-              SERNIT escrevem a data do jeito deles). Para o SER, o SERNIT e o ESUS, embaixo vem o{' '}
-              <strong>endereço que vai no aviso</strong> — ou o alerta de que o local ainda não tem endereço ligado.
+              SERNIT escrevem a data do jeito deles).
             </Item>
             <Item>
               <strong>O aviso automático</strong> — do SISREG, do SER, do SERNIT e do ESUS. Aparece com os
@@ -682,7 +680,7 @@ export const artigoRegulacaoSolicitacoes: Artigo = {
             Quando o pedido aparece agendado na leitura do sistema, a plataforma manda a mesma primeira
             mensagem do SISREG — sem dizer o quê, nem onde. Quando o paciente toca em “Quero mais
             informações” (e confirma o CPF e o nascimento, se o número dele não é confirmado), recebe o
-            procedimento, o dia, a hora, o local e o <strong>endereço</strong>. Não manda buscar guia no posto:
+            procedimento, o dia, a hora e o nome do local. Não manda buscar guia no posto:
             esses atendimentos são marcados por outra regulação. Se ele responder que não vai, a resposta
             fica registrada aqui — <strong>nada é desmarcado no SER, no SERNIT ou no ESUS</strong>; isso
             continua sendo com a equipe. Só são avisados agendamentos de amanhã em diante.

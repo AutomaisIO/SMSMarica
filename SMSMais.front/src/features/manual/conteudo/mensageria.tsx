@@ -24,7 +24,7 @@ export const artigoMensageria: Artigo = {
   icone: BellRing,
   rota: '/app/mensageria',
   publico: 'Quem responde pelo canal: coordenação, regulação e quem configura o envio automático',
-  atualizadoEm: '2026-10-10',
+  atualizadoEm: '2026-10-11',
   palavrasChave: [
     'mensageria',
     'retorno',
@@ -89,8 +89,7 @@ export const artigoMensageria: Artigo = {
     'agendamento do ser',
     'agendamento fora do município',
     'regulação estadual',
-    'endereço do local',
-    'locais dos agendamentos externos',
+    'nome do local',
   ],
   secoes: () => [
     {
@@ -615,7 +614,7 @@ export const artigoMensageria: Artigo = {
       id: 'agendamentos-externos',
       titulo: 'Agendamentos do SER, do SERNIT e do ESUS',
       busca:
-        'ser sernit esus são gonçalo regulação estadual agendado aviso automático fora do município endereço local unidade de atendimento quero mais informações cpf nascimento confirmo não poderei ir motivo não desmarca hora do agendamento histórico amanhã remarcado desmarcado contato com o paciente',
+        'ser sernit esus são gonçalo regulação estadual agendado aviso automático fora do município nome do local hospital quero mais informações cpf nascimento confirmo não poderei ir motivo não desmarca hora do agendamento histórico amanhã remarcado desmarcado contato com o paciente',
       conteudo: (
         <div className="space-y-4">
           <P>
@@ -643,7 +642,7 @@ export const artigoMensageria: Artigo = {
               {
                 titulo: 'Recebe o agendamento completo',
                 detalhe:
-                  'Procedimento, dia, hora, local e o ENDEREÇO de onde vai ser, e quem marcou (SER, SERNIT ou ESUS). Sem guia do posto: esses atendimentos não usam a guia do SISREG.',
+                  'Procedimento, dia, hora, o nome do local onde vai ser e quem marcou (SER, SERNIT ou ESUS). Sem guia do posto: esses atendimentos não usam a guia do SISREG.',
               },
               {
                 titulo: 'Responde',
@@ -667,20 +666,11 @@ export const artigoMensageria: Artigo = {
               },
               {
                 termo: 'Local',
-                descricao: 'O nome como o sistema escreve (o ESUS cola o CNES no nome; ele é tirado).',
-              },
-              {
-                termo: 'Endereço',
                 descricao:
-                  'Os sistemas não mandam endereço. Ele vem da unidade de atendimento ligada ao nome do local, em Unidades de Atendimento → Locais dos agendamentos do SER, SERNIT e ESUS. Local sem ligação sai só com o nome.',
+                  'O nome do hospital ou da clínica como o sistema escreve (o ESUS cola o CNES no nome; ele é tirado). O endereço não vai na mensagem: o nome do local basta.',
               },
             ]}
           />
-          <Callout tipo="atencao" titulo="Quem liga o endereço é uma pessoa">
-            A tela sugere a unidade parecida, mas a sugestão não vale sozinha: “Rio Imagem Lagos”, em Casimiro de
-            Abreu, se parece com o Rio Imagem do Rio de Janeiro — e o paciente iria para a cidade errada. Confira o
-            endereço antes de ligar.
-          </Callout>
           <Sub>Remarcou ou desmarcou no sistema</Sub>
           <P>
             Se o sistema passa a mostrar <strong>outra data</strong>, o aviso antigo que ainda não tinha chegado ao
@@ -690,7 +680,7 @@ export const artigoMensageria: Artigo = {
           </P>
           <P>
             Em <AbaRef>Envios</AbaRef> esses avisos aparecem com o número do pedido no lugar do código do SISREG
-            (“SER 8407041”).
+            (por exemplo, “SER 1234567”).
           </P>
         </div>
       ),

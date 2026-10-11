@@ -1273,12 +1273,11 @@ public sealed class ComunicacaoPacienteService(
     }
 
     /// <summary>Monta e envia a mensagem de detalhes (texto + botões de presença, quando ainda não
-    /// respondeu). O endereço vem da unidade de atendimento ligada ao nome do local.</summary>
+    /// respondeu).</summary>
     private async Task<EnvioWhatsAppResultado> EnviarDetalhesExternoAsync(
         ComunicacaoPaciente n, AgendamentoExterno a, PacienteDto paciente, string telefoneDestino, CancellationToken ct)
     {
-        var local = await AgendamentosExternos.LocaisAgendamentoExternoService.ResolverAsync(db, a.LocalNome, ct);
-        var texto = TextoDetalhesExterno(a, paciente.NomeCompleto, local);
+        var texto = TextoDetalhesExterno(a, paciente.NomeCompleto);
 
         if (a.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
             return await whatsApp.EnviarInterativoBotoesAsync(
@@ -1297,18 +1296,19 @@ public sealed class ComunicacaoPacienteService(
     }
 
     /// <summary>
-    /// O texto dos dados do agendamento externo: o quê, quando, onde e o endereço — e quem marcou.
-    /// SEM o recado da guia no posto: o atendimento é fora do município, a guia do SISREG não existe
-    /// e mandar a pessoa ao posto só a faria perder uma viagem. Cabe no corpo de mensagem interativa
-    /// (1024 caracteres) com folga: cada campo livre é aparado.
+    /// O texto dos dados do agendamento externo: o quê, quando, onde — e quem marcou. O local vai com
+    /// o NOME que o sistema de destino mostra, sem endereço (decisão do dono, 11/10/2026: o nome do
+    /// hospital basta). SEM o recado da guia no posto: o atendimento é de outra regulação, a guia do
+    /// SISREG não existe e mandar a pessoa ao posto só a faria perder uma viagem. Cabe no corpo de
+    /// mensagem interativa (1024 caracteres) com folga: cada campo livre é aparado.
     /// </summary>
-    internal static string TextoDetalhesExterno(AgendamentoExterno a, string? nomePaciente, AgendamentosExternos.LocalComEnderecoDto? local)
+    internal static string TextoDetalhesExterno(AgendamentoExterno a, string? nomePaciente)
     {
         static string Curto(string? s, int max) =>
             string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim().Length <= max ? s.Trim() : s.Trim()[..max] + "…";
 
         var rotulo = a.Tipo == TipoAgendamento.Consulta ? "Consulta" : "Exame";
-        var nomeLocal = local?.Nome ?? a.LocalNome;
+        var nomeLocal = a.LocalNome;
         var sb = new System.Text.StringBuilder()
             .Append($"Aqui estão as informações do agendamento de *{PrimeiroNome(nomePaciente)}*:\n\n");
         if (!string.IsNullOrWhiteSpace(a.Procedimento))
@@ -1316,16 +1316,10 @@ public sealed class ComunicacaoPacienteService(
         sb.Append($"Data: *{AgendamentosExternos.LeituraAgendamentoExterno.DataParaPaciente(a.Data, a.Hora)}*\n");
         if (!string.IsNullOrWhiteSpace(nomeLocal))
             sb.Append($"Local: *{Curto(nomeLocal, 150)}*\n");
-        if (!string.IsNullOrWhiteSpace(local?.Endereco))
-            sb.Append($"Endereço: {Curto(local.Endereco, 250)}\n");
-        if (!string.IsNullOrWhiteSpace(local?.PontoReferencia))
-            sb.Append($"Referência: {Curto(local.PontoReferencia, 120)}\n");
-        if (!string.IsNullOrWhiteSpace(local?.Telefone))
-            sb.Append($"Telefone do local: {Curto(local.Telefone, 30)}\n");
         if (a.Hora is null)
             sb.Append("\nO horário não veio do sistema de regulação — confirme com o local antes de ir.\n");
-        // "Fora do município" não é dito: quase sempre é, mas o endereço acima é o que vale — e uma
-        // unidade do SER dentro do município receberia a frase errada.
+        // "Fora do município" não é dito: quase sempre é, mas uma unidade do SER dentro do município
+        // receberia a frase errada.
         sb.Append($"\nEste agendamento foi feito pela regulação do *{AgendamentosExternos.AgendamentoExternoService.Rotulo(a.Sistema)}*. "
             + "No dia, leve um documento com foto e o cartão do SUS.");
         return sb.ToString();

@@ -479,7 +479,7 @@ export function AbaRegras() {
                 <span className="block text-xs text-gray-500">
                   A mesma conversa da confirmação do SISREG: a primeira mensagem não diz nada do agendamento; quando a
                   pessoa pede mais informações (e confirma o CPF e o nascimento, se o número não é confirmado), recebe o
-                  procedimento, o dia, a hora, o local e o endereço — sem a guia do posto, que não existe para esses
+                  procedimento, o dia, a hora e o nome do local — sem a guia do posto, que não existe para esses
                   atendimentos. Só agendamentos de amanhã em diante. Desligar segura os avisos na fila.
                 </span>
               </span>
