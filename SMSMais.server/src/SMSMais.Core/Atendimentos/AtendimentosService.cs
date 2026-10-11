@@ -82,7 +82,7 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir, IMemoryCache 
                     Guid.Parse(d.Id!),
                     d.Type?.Text ?? "Documento",
                     d.Date,
-                    DecodificarHtml(d.Content?.FirstOrDefault()?.Attachment))).ToList()
+                    DocumentoAtendimentoHtml.ParaExibir(d.Content?.FirstOrDefault()?.Attachment))).ToList()
                 : [];
 
             var (sinaisVitais, risco) = obsPorEncounter.TryGetValue(enc.Id!, out var obs)
@@ -210,9 +210,6 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir, IMemoryCache 
     };
 
     private static string IdDaReferencia(string reference) => reference.Split('/')[^1];
-
-    private static string DecodificarHtml(Attachment? a) =>
-        a?.Data is { } bytes ? System.Text.Encoding.UTF8.GetString(bytes) : string.Empty;
 
     private static DateTimeOffset? ParseData(string? d) =>
         DateTimeOffset.TryParse(d, System.Globalization.CultureInfo.InvariantCulture,

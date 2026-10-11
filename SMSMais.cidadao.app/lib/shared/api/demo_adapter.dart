@@ -169,13 +169,40 @@ class DemoAdapter implements HttpClientAdapter {
               'estabelecimento': 'UBS DEMONSTRAÇÃO',
               'profissional': 'Dra. Ana Exemplo · Clínica médica',
               'descricao': 'Consulta de rotina.',
+              // As três formas que o servidor entrega: eDoc do Salux, Boletim e evolução do Klinikos.
               'documentos': [
                 {
                   'id': 'doc1',
-                  'tipo': 'Receituário',
+                  'tipo': 'Boletim de Atendimento de Urgência',
                   'data': em(-20),
-                  'conteudoHtml':
-                      '<h2>Receituário (demonstração)</h2><p>1. Paracetamol 500 mg — 1 comprimido de 8 em 8 horas, se dor.</p>',
+                  'conteudoHtml': [
+                    '<section class="edoc-doc"><h3 class="edoc-titulo">Boletim de Atendimento de Urgência</h3>',
+                    '<div class="edoc-campo"><span class="edoc-rotulo">Queixa principal</span>',
+                    '<div class="edoc-valor"><div class="edoc-linha">Dor de cabeça há 2 dias.</div></div></div>',
+                    '<div class="edoc-campo"><span class="edoc-rotulo">Sinais vitais</span><div class="edoc-valor">',
+                    '<div class="edoc-linha">PA 120x80 mmHg</div><div class="edoc-linha">Temperatura 36,8 °C</div>',
+                    '</div></div><div class="edoc-campo"><span class="edoc-rotulo">Conduta</span>',
+                    '<div class="edoc-valor"><div class="edoc-linha">Analgésico e retorno se piorar.</div></div></div>',
+                    '</section>',
+                  ].join(),
+                },
+                {
+                  'id': 'doc2',
+                  'tipo': 'Boletim de Atendimento Médico',
+                  'data': em(-20),
+                  'conteudoHtml': [
+                    '<h3>Anamnese</h3><p>Paciente (demonstração) com dor de cabeça.<br/>Nega febre.</p>',
+                    '<h3>Exame físico</h3><p>Bom estado geral.</p><h3>Conduta</h3><p>Orientada.</p>',
+                  ].join(),
+                },
+                {
+                  'id': 'doc3',
+                  'tipo': 'Evolução de enfermagem',
+                  'data': em(-20),
+                  'conteudoHtml': [
+                    '<div class="edoc-texto"><p>Paciente (demonstração) acolhida na triagem.<br/>PA: 120x80</p>',
+                    '<p>Encaminhada ao consultório.</p></div>',
+                  ].join(),
                 },
               ],
             },

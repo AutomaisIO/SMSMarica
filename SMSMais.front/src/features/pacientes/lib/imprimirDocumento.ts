@@ -6,16 +6,26 @@
  * app e a janela de impressão — fonte única, nada de "prose" do Tailwind.
  */
 
-/** CSS dos documentos remontados (classes .edoc-* emitidas pelo importador). Escopo `.edoc-render`. */
+/**
+ * CSS dos documentos de atendimento. Escopo `.edoc-render`. É o padrão visual único — o PWA e o
+ * app nativo do cidadão desenham o mesmo documento do mesmo jeito. Cobre as três formas que chegam:
+ * eDoc do Salux (`.edoc-campo`: rótulo + valor), Boletim do Klinikos (`h3` + `p`, sem classe) e
+ * evolução em texto (`.edoc-texto`, parágrafos montados no servidor).
+ */
 export const EDOC_CSS = `
-.edoc-render { color:#1f2937; font-size:14px; line-height:1.55; }
+.edoc-render { color:#1f2937; font-size:14px; line-height:1.6; overflow-wrap:anywhere; }
 .edoc-render .edoc-doc + .edoc-doc { margin-top:1.5rem; border-top:1px solid #e5e7eb; padding-top:1rem; }
-.edoc-render .edoc-titulo { font-size:15px; font-weight:600; color:#b91c1c; margin:0 0 .75rem; padding-bottom:.35rem; border-bottom:2px solid #fca5a5; }
-.edoc-render .edoc-campo { display:grid; grid-template-columns:minmax(130px,28%) 1fr; gap:.2rem 1.25rem; padding:.4rem 0; border-bottom:1px solid #f3f4f6; }
+.edoc-render .edoc-titulo { font-size:15px; font-weight:600; color:var(--theme-primary,#b91c1c); margin:0 0 .75rem; padding-bottom:.35rem; border-bottom:2px solid #e5e7eb; }
+.edoc-render .edoc-campo { display:grid; grid-template-columns:minmax(130px,28%) 1fr; gap:.2rem 1.25rem; padding:.5rem 0; border-bottom:1px solid #f3f4f6; }
 .edoc-render .edoc-campo:last-child { border-bottom:0; }
-.edoc-render .edoc-rotulo { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:#6b7280; }
-.edoc-render .edoc-valor { color:#111827; white-space:pre-wrap; word-break:break-word; }
+.edoc-render .edoc-rotulo,
+.edoc-render h3:not(.edoc-titulo) { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; }
+.edoc-render .edoc-valor { color:#111827; white-space:pre-wrap; }
 .edoc-render .edoc-linha + .edoc-linha { margin-top:.15rem; }
+.edoc-render h3:not(.edoc-titulo) { margin:1.1rem 0 .3rem; padding-top:.9rem; border-top:1px solid #f3f4f6; }
+.edoc-render h3:not(.edoc-titulo):first-child { margin-top:0; padding-top:0; border-top:0; }
+.edoc-render p { margin:0 0 .75rem; color:#111827; }
+.edoc-render p:last-child { margin-bottom:0; }
 .edoc-render .edoc-vazio { color:#9ca3af; font-style:italic; }
 `;
 
@@ -114,7 +124,7 @@ export function montarDocumentoImprimivel(d: DadosImpressao): string {
     ${d.conteudoHtml}
     ${blocoMedicamentos(d.medicamentos)}
   </div>
-  <div class="rodape">Documento gerado pelo SMS Maricá a partir do histórico clínico (origem: Salux).</div>
+  <div class="rodape">Documento gerado pelo SMS Maricá a partir do histórico clínico.</div>
   <script>window.onload = function () { window.focus(); window.print(); };</script>
 </body>
 </html>`;

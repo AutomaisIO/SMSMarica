@@ -3,6 +3,7 @@ import { FileText, Stethoscope, X } from 'lucide-react';
 import { api, type DocumentoAtendimento } from '@/lib/api';
 import { Card } from '@/components/ui';
 import { Lista } from '@/components/Lista';
+import { paginaDoDocumento } from '@/lib/documentoAtendimento';
 
 export function Atendimentos() {
   const [doc, setDoc] = useState<DocumentoAtendimento | null>(null);
@@ -48,11 +49,12 @@ export function Atendimentos() {
 }
 
 /** Visualizador do documento clínico. O HTML do hub é renderizado num iframe
- * com sandbox vazio (sem scripts), isolando o conteúdo da aplicação. */
+ * com sandbox vazio (sem scripts), isolando o conteúdo da aplicação, com o padrão
+ * visual do documento (`paginaDoDocumento`). */
 function DocumentoModal({ doc, aoFechar }: { doc: DocumentoAtendimento; aoFechar: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 mx-auto flex max-w-[460px] animate-fade-in flex-col bg-papel"
+      className="fixed inset-0 z-50 mx-auto flex max-w-[460px] animate-fade-in flex-col bg-white pb-[env(safe-area-inset-bottom)]"
       role="dialog"
       aria-modal="true"
       aria-label={doc.tipo}
@@ -78,7 +80,7 @@ function DocumentoModal({ doc, aoFechar }: { doc: DocumentoAtendimento; aoFechar
       <iframe
         title={doc.tipo}
         sandbox=""
-        srcDoc={doc.conteudoHtml}
+        srcDoc={paginaDoDocumento(doc.conteudoHtml)}
         className="min-h-0 w-full flex-1 bg-white"
       />
     </div>
