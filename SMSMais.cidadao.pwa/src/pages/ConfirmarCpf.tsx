@@ -34,7 +34,7 @@ export function ConfirmarCpf({
   const cpfLimpo = cpf.replace(/\D/g, '');
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[460px] flex-col bg-papel px-6 pb-8 pt-14 shadow-2xl">
+    <div className="mx-auto flex min-h-dvh max-w-[460px] flex-col bg-papel px-6 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-14 shadow-2xl">
       <div className="animate-rise flex flex-1 flex-col justify-center">
         <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-lagoa-claro text-lagoa">
           <ShieldCheck className="h-10 w-10" />

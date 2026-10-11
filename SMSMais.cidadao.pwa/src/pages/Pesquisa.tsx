@@ -254,7 +254,7 @@ export function Pesquisa() {
 
       <Progresso feitas={respondidas} total={FECHADAS} />
 
-      <div className="space-y-3 px-4 pb-32 pt-4">
+      <div className="space-y-3 px-4 pb-[calc(env(safe-area-inset-bottom)+8rem)] pt-4">
         {PERGUNTAS.map((p, i) => (
           <CartaoPergunta
             key={p.id}

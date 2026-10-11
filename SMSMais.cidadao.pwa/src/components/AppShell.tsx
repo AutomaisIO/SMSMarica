@@ -124,7 +124,7 @@ export function AppShell() {
         </div>
       )}
 
-      <main className="flex-1 px-4 pb-10 pt-5">
+      <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] pt-5">
         {/* Convite de instalação em todas as telas autenticadas (some se instalado/adiado). */}
         <div className="mb-4 empty:hidden">
           <InstalarApp />
@@ -185,7 +185,7 @@ export function AppShell() {
               ))}
             </div>
 
-            <div className="border-t border-areia p-3">
+            <div className="border-t border-areia px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">
               <button
                 type="button"
                 onClick={fazerLogout}

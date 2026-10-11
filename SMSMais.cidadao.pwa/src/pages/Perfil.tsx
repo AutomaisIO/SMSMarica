@@ -255,7 +255,7 @@ function TrocaCelularModal({
   return (
     <div className="fixed inset-0 z-50 mx-auto flex max-w-[460px] items-end" role="dialog" aria-modal="true">
       <button type="button" aria-label="Fechar" onClick={aoFechar} className="absolute inset-0 animate-fade-in bg-tinta/40" />
-      <div className="relative w-full animate-rise rounded-t-3xl bg-papel p-6 shadow-2xl">
+      <div className="relative w-full animate-rise rounded-t-3xl bg-papel p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-2xl">
         <SectionHeader eyebrow="Segurança" title="Trocar celular" />
 
         {passo === 'numero' ? (

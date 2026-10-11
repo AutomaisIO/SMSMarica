@@ -90,7 +90,7 @@ class _TicketExamePageState extends ConsumerState<TicketExamePage> {
   Widget build(BuildContext context) {
     if (_erro != null) {
       return ListView(
-        padding: paddingPagina.copyWith(top: 28),
+        padding: paddingPagina(context, topo: 28),
         children: [
           Subir(
             child: Column(
@@ -179,7 +179,7 @@ class _TicketExamePageState extends ConsumerState<TicketExamePage> {
     ];
 
     return ListView(
-      padding: paddingPagina.copyWith(bottom: 64),
+      padding: paddingPagina(context, fim: 64),
       children: [
         Subir(
           child: Column(
