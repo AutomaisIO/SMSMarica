@@ -250,10 +250,18 @@ public class ColetaIndicadoresSisregTests
         public List<(string Caminho, IReadOnlyDictionary<string, string>? Campos)> Pedidos { get; } = [];
         public Exception? Lancar { get; init; }
 
+        /// <summary>Índices (base 0) das requisições que estouram o tempo — a resposta da posição é pulada.</summary>
+        public HashSet<int> CortarEm { get; init; } = [];
+
         private Task<string> Proxima(string caminho, IReadOnlyDictionary<string, string>? campos)
         {
             Pedidos.Add((caminho, campos));
             if (Lancar is not null) throw Lancar;
+            if (CortarEm.Contains(Pedidos.Count - 1))
+            {
+                _i++;
+                throw new HttpRequestException("connection reset");
+            }
             return Task.FromResult(respostas[Math.Min(_i++, respostas.Length - 1)]);
         }
 
@@ -281,6 +289,19 @@ public class ColetaIndicadoresSisregTests
         {
             FaltasSubstituidas = faltas.Count;
             return Task.CompletedTask;
+        }
+
+        public Dictionary<string, int> FaltasDaExecutante { get; } = [];
+        public List<(string Cnes, int Faltas)> SubstituidasPorExecutante { get; } = [];
+
+        public Task<int> ContarFaltasDaExecutanteAsync(DateOnly dia, string cnes, CancellationToken ct) =>
+            Task.FromResult(FaltasDaExecutante.GetValueOrDefault(cnes));
+
+        public Task<int> SubstituirFaltasDaExecutanteAsync(
+            DateOnly dia, string cnes, IReadOnlyList<FaltaLidaSisreg> faltas, CancellationToken ct)
+        {
+            SubstituidasPorExecutante.Add((cnes, faltas.Count));
+            return Task.FromResult(SubstituidasPorExecutante.Sum(x => x.Faltas));
         }
 
         public Task<int> ContarPpiAsync(DateOnly competencia, CancellationToken ct) => Task.FromResult(PpiGravadas);
@@ -453,6 +474,120 @@ public class ColetaIndicadoresSisregTests
 
         await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default);
         (await TrabalhoColeta.ExecutarAsync(t, sessao, armazem, default)).Should().Be(ResultadoPasso.Concluida(0));
+    }
+
+    // ============================================== dia pesado: lista por unidade executante
+
+    private static ItemColeta DiaRecente() =>
+        new(Guid.NewGuid(), ColetorIndicadorSisreg.FaltasRecentes, new DateOnly(2031, 1, 15), new DateOnly(2031, 1, 15),
+            PlanoColetaIndicadores.EscopoDia);
+
+    /// <summary>Como o SISREG responde "nenhuma falta" quando a consulta vem filtrada por executante.</summary>
+    private const string SoFormulario =
+        "<html><body><h1>Consulta de Absente&iacute;smo</h1><form><input name=cnes_executante value=''></form></body></html>";
+
+    private const string Login = "<html><body><form><input name=\"senha_256\"></form></body></html>";
+
+    private static async Task<ResultadoPasso> AteOFimAsync(TrabalhoColeta t, ISisregWebSessao s, IArmazemIndicadoresSisreg a)
+    {
+        for (var passos = 0; ; passos++)
+        {
+            var r = await TrabalhoColeta.ExecutarAsync(t, s, a, default);
+            if (r.Desfecho != DesfechoPasso.Continuar || passos > 50) return r;
+        }
+    }
+
+    /// <summary>
+    /// 11/10/2026: o 14/09 (318 faltas) estourou o tempo da rede nas cinco tentativas da manhã. Duas
+    /// vezes seguidas e a próxima vai por unidade — a primeira de novo é a rede, que custa 2 requisições.
+    /// </summary>
+    [Fact]
+    public void Dia_que_estoura_duas_vezes_seguidas_marca_a_proxima_por_executante()
+    {
+        const string corte = "o SISREG não respondeu a tempo (HttpRequestException)";
+        var primeira = ColetaIndicadoresSisregService.ErroDeTempoEsgotadoNoDia(null, corte);
+        primeira.Should().Be($"{ColetaIndicadoresSisregService.MarcaTempoEsgotado}: {corte}");
+
+        var segunda = ColetaIndicadoresSisregService.ErroDeTempoEsgotadoNoDia(primeira, corte);
+        segunda.Should().StartWith(ColetaIndicadoresSisregService.MarcaPorExecutante).And.Contain("2ª vez seguida");
+
+        // Depois de outro desfecho (leitura por unidade, falha de outra natureza), recomeça pela rede.
+        ColetaIndicadoresSisregService.ErroDeTempoEsgotadoNoDia(segunda, corte)
+            .Should().StartWith(ColetaIndicadoresSisregService.MarcaTempoEsgotado);
+        ColetaIndicadoresSisregService.ErroDeTempoEsgotadoNoDia("lidas 12 de 13 unidades executantes", corte)
+            .Should().StartWith(ColetaIndicadoresSisregService.MarcaTempoEsgotado);
+    }
+
+    [Fact]
+    public async Task Dia_por_executante_le_cada_unidade_com_o_filtro_e_a_mesma_prova()
+    {
+        // Pequena: sem rodapé e até 10 linhas, a página já é a lista (1 requisição). Grande: rodapé de 2
+        // páginas e a lista inteira tem de caber nelas (2 requisições).
+        var sessao = new SessaoRoteirizada(Faltas(paginas: null, linhas: 4), Faltas(paginas: 2, linhas: 10),
+            Faltas(paginas: null, linhas: 15));
+        var armazem = new ArmazemFalso();
+        var t = new TrabalhoFaltasPorExecutante(DiaRecente(), ["1111111", "2222222"]);
+
+        var r = await AteOFimAsync(t, sessao, armazem);
+
+        r.Should().Be(ResultadoPasso.Concluida(19));
+        armazem.SubstituidasPorExecutante.Should().Equal(("1111111", 4), ("2222222", 15));
+        armazem.FaltasSubstituidas.Should().BeNull("a leitura por unidade nunca troca o dia inteiro");
+        sessao.Pedidos.Select(p => p.Campos!["cnes_executante"]).Should().Equal("1111111", "2222222", "2222222");
+        sessao.Pedidos[0].Campos!.ContainsKey("imprimir_lista").Should().BeFalse();
+        sessao.Pedidos[2].Campos!["imprimir_lista"].Should().Be("1");
+        sessao.Pedidos[0].Campos!["data1"].Should().Be("15/01/2031");
+        sessao.Pedidos[0].Campos!["data2"].Should().Be("15/01/2031");
+    }
+
+    [Fact]
+    public async Task Dia_por_executante_segue_quando_uma_unidade_corta_mas_nao_fecha_o_dia()
+    {
+        var sessao = new SessaoRoteirizada(Faltas(paginas: null, linhas: 3), "cortada", Faltas(paginas: null, linhas: 2))
+        {
+            CortarEm = [1],
+        };
+        var armazem = new ArmazemFalso();
+        var t = new TrabalhoFaltasPorExecutante(DiaRecente(), ["1111111", "2222222", "3333333"]);
+
+        var r = await AteOFimAsync(t, sessao, armazem);
+
+        r.Desfecho.Should().Be(DesfechoPasso.Falha);
+        r.Mensagem.Should().Contain("lidas 2 de 3").And.Contain("2222222 (o SISREG não respondeu a tempo");
+        armazem.SubstituidasPorExecutante.Select(x => x.Cnes).Should().Equal("1111111", "3333333");
+    }
+
+    /// <summary>
+    /// Filtrado por executante, "nenhuma falta" vem como o formulário sozinho. Vale como lista vazia —
+    /// menos para a unidade que tinha falta gravada: aí é mais provável resposta errada do que a unidade
+    /// inteira ter trocado tudo para chegada, e nada é apagado.
+    /// </summary>
+    [Fact]
+    public async Task Formulario_sozinho_e_nenhuma_falta_mas_nao_apaga_unidade_que_tinha_falta()
+    {
+        IndicadoresSisregHtmlParser.FormularioDeFaltas(SoFormulario).Should().BeTrue();
+        IndicadoresSisregHtmlParser.FormularioDeFaltas(Login).Should().BeFalse();
+
+        var armazem = new ArmazemFalso { FaltasDaExecutante = { ["2222222"] = 7 } };
+        var sessao = new SessaoRoteirizada(SoFormulario, SoFormulario, Login);
+        var t = new TrabalhoFaltasPorExecutante(DiaRecente(), ["1111111", "2222222", "3333333"]);
+
+        var r = await AteOFimAsync(t, sessao, armazem);
+
+        armazem.SubstituidasPorExecutante.Should().Equal(("1111111", 0));
+        r.Desfecho.Should().Be(DesfechoPasso.Falha);
+        r.Mensagem.Should().Contain("2222222 (tinha 7 falta(s) gravada(s) e a resposta veio vazia")
+            .And.Contain("3333333 (a resposta não é a Consulta de Absenteísmo)");
+    }
+
+    [Fact]
+    public async Task Dia_sem_executante_conhecida_falha_sem_ir_ao_SISREG()
+    {
+        var sessao = new SessaoRoteirizada("x");
+        var r = await TrabalhoColeta.ExecutarAsync(new TrabalhoFaltasPorExecutante(DiaRecente(), []), sessao, new ArmazemFalso(), default);
+
+        r.Desfecho.Should().Be(DesfechoPasso.Falha);
+        sessao.Pedidos.Should().BeEmpty();
     }
 
     [Fact]

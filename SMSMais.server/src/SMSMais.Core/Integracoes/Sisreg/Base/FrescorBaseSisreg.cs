@@ -40,10 +40,13 @@ public sealed class FrescorBaseSisregOpcoes
     public bool AvisoLigado { get; set; } = true;
 }
 
-/// <param name="Agendamentos">Agendamentos do dia que passaram sem chegada confirmada — os que o
-/// relatório mostra como "Pendente de atualização" enquanto as faltas do dia não forem lidas.</param>
+/// <param name="Agendamentos">Agendamentos do dia que passaram sem chegada confirmada.</param>
 /// <param name="UltimaLeitura">Última leitura completa da lista de faltas do dia (null = nunca lida).</param>
-public sealed record DiaSemFaltasDto(DateOnly Dia, int Agendamentos, DateTime? UltimaLeitura);
+/// <param name="Pendentes">Desses, os que NÃO estão na lista de faltas gravada — os que o relatório mostra
+/// como "Pendente de atualização". Quem estava na última lista lida já aparece como Faltou: com o dia lido
+/// ontem, o atraso só esconde a falta que a unidade marcou depois (11/10/2026: o aviso dizia "375 em
+/// aberto" no 14/09, e 318 deles já apareciam como Faltou).</param>
+public sealed record DiaSemFaltasDto(DateOnly Dia, int Agendamentos, DateTime? UltimaLeitura, int Pendentes);
 
 /// <param name="Agendamentos">Agendamentos passados em aberto da unidade, dentro da janela relida.</param>
 /// <param name="UltimaLeitura">Última vez que a varredura releu a chegada desses agendamentos (null = nunca).</param>
@@ -106,7 +109,11 @@ public sealed class FrescorBaseSisregService(
     /// </summary>
     private const string SqlDias = """
         with dias as (
-            select (s.data_agendada at time zone 'America/Sao_Paulo')::date dia, count(*)::int n
+            select (s.data_agendada at time zone 'America/Sao_Paulo')::date dia, count(*)::int n,
+                   count(*) filter (where not exists (
+                       select 1 from smsmarica.sisreg_falta f
+                       where f.codigo_solicitacao = s.codigo_solicitacao
+                         and f.data_execucao = (s.data_agendada at time zone 'America/Sao_Paulo')::date))::int p
             from smsmarica.solicitacao s
             where s.excluido_em is null and s.raw_sisreg is not null and s.codigo_solicitacao is not null
               and s.status = 2 and s.autorizado_em is null
@@ -115,7 +122,7 @@ public sealed class FrescorBaseSisregService(
               and (@todas or s.unidade_executante_id = any(@unidades))
             group by 1
         )
-        select d.dia "Dia", d.n "Agendamentos", l.ultima "UltimaLeitura"
+        select d.dia "Dia", d.n "Agendamentos", l.ultima "UltimaLeitura", d.p "Pendentes"
         from dias d
         left join lateral (
             select max(c.lido_em) ultima, bool_or(c.coletor = 1) oficial

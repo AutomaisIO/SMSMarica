@@ -17,6 +17,18 @@ public interface IArmazemIndicadoresSisreg
     /// <summary>Troca as faltas de [início, fim] pelas lidas, numa transação.</summary>
     Task SubstituirFaltasAsync(DateOnly inicio, DateOnly fim, IReadOnlyList<FaltaLidaSisreg> faltas, CancellationToken ct);
 
+    /// <summary>Faltas gravadas no dia cujo agendamento (nosso) é da unidade executante <paramref name="cnes"/>.</summary>
+    Task<int> ContarFaltasDaExecutanteAsync(DateOnly dia, string cnes, CancellationToken ct);
+
+    /// <summary>
+    /// Troca, no dia, só as faltas da unidade executante <paramref name="cnes"/> pelas lidas com o filtro
+    /// dela: some a falta de agendamento nosso daquela executante que não veio na lista (a unidade trocou
+    /// para chegada) e entra a que faltava. Falta de agendamento que não temos não tem executante
+    /// conhecida e fica como estava. Devolve quantas ficaram gravadas no dia, ao todo.
+    /// </summary>
+    Task<int> SubstituirFaltasDaExecutanteAsync(
+        DateOnly dia, string cnes, IReadOnlyList<FaltaLidaSisreg> faltas, CancellationToken ct);
+
     Task<int> ContarPpiAsync(DateOnly competencia, CancellationToken ct);
 
     /// <summary>Troca as cotas da competência pelas lidas, numa transação.</summary>
@@ -77,6 +89,58 @@ public sealed class ArmazemIndicadoresSisreg(SmsMaisDbContext db) : IArmazemIndi
         });
         db.ChangeTracker.Clear();
     }
+
+    public Task<int> ContarFaltasDaExecutanteAsync(DateOnly dia, string cnes, CancellationToken ct) =>
+        DaExecutante(dia, cnes).CountAsync(ct);
+
+    public async Task<int> SubstituirFaltasDaExecutanteAsync(
+        DateOnly dia, string cnes, IReadOnlyList<FaltaLidaSisreg> faltas, CancellationToken ct)
+    {
+        var agora = DateTime.UtcNow;
+        var unicas = faltas
+            .Where(f => f.DataExecucao == dia)
+            .GroupBy(f => Cortar(f.Codigo, 20)!)
+            .Select(g => g.First())
+            .ToList();
+        var codigos = unicas.Select(f => Cortar(f.Codigo, 20)!).ToList();
+
+        var total = 0;
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await DaExecutante(dia, cnes)
+                .Where(f => !codigos.Contains(f.CodigoSolicitacao))
+                .ExecuteDeleteAsync(ct);
+            var ja = await db.SisregFaltasOficiais
+                .Where(f => f.DataExecucao == dia && codigos.Contains(f.CodigoSolicitacao))
+                .Select(f => f.CodigoSolicitacao)
+                .ToListAsync(ct);
+            db.SisregFaltasOficiais.AddRange(unicas
+                .Where(f => !ja.Contains(Cortar(f.Codigo, 20)!))
+                .Select(f => new SisregFaltaOficial
+                {
+                    Id = Guid.NewGuid(),
+                    CodigoSolicitacao = Cortar(f.Codigo, 20)!,
+                    DataExecucao = dia,
+                    Hora = Cortar(f.Hora, 10),
+                    Procedimento = Cortar(f.Procedimento, 300),
+                    UnidadeSolicitante = Cortar(f.UnidadeSolicitante, 200),
+                    LidoEm = agora,
+                }));
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            total = await db.SisregFaltasOficiais.CountAsync(f => f.DataExecucao == dia, ct);
+        });
+        db.ChangeTracker.Clear();
+        return total;
+    }
+
+    /// <summary>As faltas do dia cujo agendamento nosso é da executante — a única ligação falta→executante.</summary>
+    private IQueryable<SisregFaltaOficial> DaExecutante(DateOnly dia, string cnes) =>
+        db.SisregFaltasOficiais.Where(f => f.DataExecucao == dia
+            && db.Solicitacoes.Any(s => s.CodigoSolicitacao == f.CodigoSolicitacao && s.ExcluidoEm == null
+                                        && db.Unidades.Any(u => u.Id == s.UnidadeExecutanteId && u.Cnes == cnes)));
 
     public Task<int> ContarPpiAsync(DateOnly competencia, CancellationToken ct) =>
         db.SisregPpiCotas.CountAsync(c => c.Competencia == competencia, ct);

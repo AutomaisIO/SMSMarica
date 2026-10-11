@@ -61,6 +61,35 @@ public class ColetaIndicadoresCursorTests(PostgresFixture fixture)
     }
 
     /// <summary>
+    /// A reserva apaga o erro (a tela não mostra erro velho de leitura em curso), mas entrega ao trabalho
+    /// o que estava gravado: é por ele que o dia de faltas sabe que a rede já estourou o tempo antes.
+    /// </summary>
+    [Fact]
+    public async Task Reserva_entrega_o_erro_da_tentativa_anterior_e_limpa_o_gravado()
+    {
+        await using var db = fixture.CriarDbContext();
+        await LimparAsync(db);
+        var id = Guid.NewGuid();
+        var anterior = $"{ColetaIndicadoresSisregService.MarcaTempoEsgotado}: o SISREG não respondeu a tempo";
+        db.SisregIndicadorColetas.Add(new SisregIndicadorColeta
+        {
+            Id = id, Coletor = ColetorIndicadorSisreg.Ppi, JanelaInicio = InicioDoTeste,
+            JanelaFim = InicioDoTeste.AddMonths(1).AddDays(-1), Status = StatusColetaIndicador.Pendente,
+            Erro = anterior, CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var item = await Criar(db).ReservarProximoAsync(default);
+
+        Assert.Equal(id, item?.Id);
+        Assert.Equal(anterior, item?.ErroAnterior);
+        await using (var ver = fixture.CriarDbContext())
+            Assert.Null((await ver.SisregIndicadorColetas.SingleAsync(c => c.Id == id)).Erro);
+
+        await LimparAsync(db);
+    }
+
+    /// <summary>
     /// O beco de 09/10/2026: o item interrompido no meio em todas as tentativas voltava a "pendente" com
     /// o teto gasto — a reserva não o pegava mais, e nem o botão nem a rodada do dia o enxergavam (os dois
     /// só re-armam falha). Agora ele vira falha com o motivo; e o que é devolvido sem culpa (CAPTCHA,

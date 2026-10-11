@@ -27,11 +27,12 @@ export function AvisoFrescorBase({ frescor }: { frescor: FrescorBaseSisreg | und
       </p>
       {dias.length > 0 ? (
         <p className="mt-1">
-          <span className="font-medium">Lista de faltas não lida</span> (quem faltou aparece como pendente):{' '}
+          <span className="font-medium">Lista de faltas não atualizada</span> (quem estava na última lista lida já
+          aparece como Faltou; a falta marcada depois dela — ou em dia nunca lido — aparece como pendente):{' '}
           {dias.slice(0, CITADOS).map((d, i) => (
             <span key={d.dia} title={d.ultimaLeitura ? `Última leitura em ${quando(d.ultimaLeitura)}` : 'Nunca lida'}>
               {i > 0 ? ', ' : ''}
-              {formatarWallClock(d.dia)} ({d.agendamentos} em aberto
+              {formatarWallClock(d.dia)} ({d.pendentes} pendente{d.pendentes === 1 ? '' : 's'}
               {d.ultimaLeitura ? `, lida em ${quando(d.ultimaLeitura)}` : ', nunca lida'})
             </span>
           ))}
